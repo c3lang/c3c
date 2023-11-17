@@ -4,14 +4,6 @@
 module std::core::runtime;
 import libc;
 
-struct StackTrace
-{
-	StackTrace* prev;
-	String file;
-	String function;
-	uint line;
-}
-
 struct AnyStruct
 {
 	void* ptr;
@@ -223,8 +215,6 @@ fn bool run_tests(TestUnit[] tests)
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
-		CallstackElement* stack = $$stacktrace();
-		if (stack) stack.prev = null;
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			if (catch err = unit.func())

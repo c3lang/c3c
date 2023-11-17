@@ -14,7 +14,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
 static inline void
 llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
-               Decl *decl, StacktraceType type);
+               Decl *decl);
 
 
 /**
@@ -408,7 +408,7 @@ void llvm_emit_return_implicit(GenContext *c)
 	llvm_emit_return_abi(c, NULL, &value);
 }
 
-void llvm_emit_function_body(GenContext *c, Decl *decl, StacktraceType type)
+void llvm_emit_function_body(GenContext *c, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->extname);
 	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
@@ -421,142 +421,19 @@ void llvm_emit_function_body(GenContext *c, Decl *decl, StacktraceType type)
 	               decl->backend_ref,
 	               type_get_resolved_prototype(decl->type),
 	               decl->func_decl.attr_naked ? NULL : &decl->func_decl.signature,
-	               astptr(decl->func_decl.body), decl, type);
-}
-
-static void llvm_emit_stacktrace_definitions(GenContext *c)
-{
-	const char *name = ".stacktrace_current";
-	LLVMValueRef current_stack = c->debug.current_stack_ptr = llvm_add_global_raw(c, name, c->ptr_type, 0);
-	LLVMSetThreadLocal(current_stack, true);
-	LLVMSetInitializer(current_stack, llvm_get_zero_raw(c->ptr_type));
-	llvm_set_weak(c, current_stack);
-	LLVMTypeRef uint_type = llvm_get_type(c, type_uint);
-	LLVMTypeRef args[7] = { c->ptr_type, c->ptr_type, c->size_type, c->ptr_type, c->size_type, uint_type, uint_type };
-	LLVMTypeRef func_type = c->debug.stack_init_fn_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), args, 7, false);
-	LLVMValueRef func = c->debug.stack_init_fn = LLVMAddFunction(c->module, ".stacktrace_init", func_type);
-	llvm_set_weak(c, func);
-	LLVMBuilderRef builder = llvm_create_builder(c);
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
-	LLVMPositionBuilderAtEnd(builder, entry);
-	c->builder = builder;
-	LLVMValueRef stacktrace = LLVMGetParam(func, 0);
-	AlignSize align_to_use;
-	LLVMTypeRef slot_type = c->debug.stack_type;
-	AlignSize alignment = llvm_abi_alignment(c, slot_type);
-	LLVMValueRef prev_ptr = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 0, alignment, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, prev_ptr,
-								  LLVMBuildLoad2(c->builder, c->ptr_type, c->debug.current_stack_ptr, ""),
-								  align_to_use);
-	LLVMValueRef func_name = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 1, alignment, &align_to_use);
-	LLVMValueRef func_name_ptr = llvm_emit_struct_gep_raw(c, func_name, c->chars_type, 0, align_to_use, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, func_name_ptr, LLVMGetParam(func, 1), align_to_use);
-	LLVMValueRef func_name_sz = llvm_emit_struct_gep_raw(c, func_name, c->chars_type, 1, align_to_use, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, func_name_sz, LLVMGetParam(func, 2), align_to_use);
-
-	LLVMValueRef file_name = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 2, alignment, &align_to_use);
-	LLVMValueRef file_name_ptr = llvm_emit_struct_gep_raw(c, file_name, c->chars_type, 0, align_to_use, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, file_name_ptr, LLVMGetParam(func, 3), align_to_use);
-	LLVMValueRef file_name_sz = llvm_emit_struct_gep_raw(c, file_name, c->chars_type, 1, align_to_use, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, file_name_sz, LLVMGetParam(func, 4), align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, c->debug.current_stack_ptr, stacktrace, type_alloca_alignment(type_voidptr));
-	LLVMValueRef type = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 3, alignment, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, type, LLVMGetParam(func, 5), align_to_use);
-	LLVMValueRef line = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 4, alignment, &align_to_use);
-	llvm_store_to_ptr_raw_aligned(c, line, LLVMGetParam(func, 6), align_to_use);
-	LLVMBuildRetVoid(c->builder);
-	LLVMDisposeBuilder(c->builder);
-	c->builder = NULL;
-}
-
-void llvm_emit_pop_stacktrace(GenContext *c, Stacktrace *slot)
-{
-	if (!c->debug.emulated_stacktrace) return;
-	if (slot)
-	{
-		c->debug.stacktrace = *slot;
-	}
-	llvm_store_to_ptr_raw_aligned(c, c->debug.current_stack_ptr, c->debug.stacktrace.ref, type_alloca_alignment(type_voidptr));
-}
-void llvm_emit_update_stack_row(GenContext *c, uint32_t row)
-{
-	if (!c->debug.emulated_stacktrace) return;
-	if (row == 0) row = 1;
-	if (c->debug.stacktrace.last_row == row) return;
-	c->debug.stacktrace.last_row = row;
-	llvm_store_to_ptr_raw_aligned(c, c->debug.stacktrace.row, llvm_const_int(c, type_uint, row), type_abi_alignment(type_uint));
-
-}
-void llvm_emit_push_emulated_stacktrace(GenContext *c, Decl *decl, const char *function_name, StacktraceType type)
-{
-	LLVMTypeRef slot_type = c->debug.stack_type;
-	AlignSize alignment = llvm_abi_alignment(c, slot_type);
-	LLVMValueRef stacktrace = llvm_emit_alloca(c, slot_type, alignment, ".$stacktrace");
-	scratch_buffer_clear();
-	scratch_buffer_append(decl->unit->module->name->module);
-	scratch_buffer_append("::");
-	scratch_buffer_append(function_name);
-	size_t func_name_len = scratch_buffer.len;
-	LLVMValueRef func_name = llvm_emit_zstring_named(c, scratch_buffer_to_string(), ".callname");
-	File *file = decl->unit->file;
-	size_t file_name_len = strlen(file->full_path);
-	LLVMValueRef file_name = llvm_emit_zstring_named(c, file->full_path, ".filename");
-	LLVMValueRef args[] = {stacktrace, func_name, llvm_const_int(c, type_usz, func_name_len),
-	                       file_name, llvm_const_int(c, type_usz, file_name_len),
-	                       llvm_const_int(c, type_uint, type),
-	                       llvm_const_int(c, type_uint, decl->span.row)};
-	LLVMValueRef call = LLVMBuildCall2(c->builder, c->debug.stack_init_fn_type, c->debug.stack_init_fn, args, 7, "");
-	llvm_attribute_add_call(c, call, attribute_id.alwaysinline, -1, 0);
-	if (type == ST_FUNCTION && (function_name == kw_main || function_name == kw_mainstub))
-	{
-		AlignSize align_size;
-		LLVMValueRef last = llvm_emit_struct_gep_raw(c, stacktrace, slot_type, 0, alignment, &align_size);
-		llvm_store_to_ptr_raw_aligned(c, last, LLVMConstNull(c->ptr_type), align_size);
-	}
-	LLVMValueRef row_ptr = LLVMBuildStructGEP2(c->builder, c->debug.stack_type, stacktrace, 4, ".$row");
-	c->debug.stacktrace = (Stacktrace) { .row = row_ptr, .ref = stacktrace, .last_row = ~(uint32_t)0 };
+	               astptr(decl->func_decl.body), decl);
 }
 
 
-void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype,
-					Signature *signature, Ast *body, Decl *decl, StacktraceType type)
+void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
+                    Decl *decl)
 {
 	bool emit_debug = llvm_use_debug(c);
 	LLVMValueRef prev_function = c->function;
 	LLVMBuilderRef prev_builder = c->builder;
 
-	bool use_emulated_stacktrace = emit_debug && c->debug.emulated_stacktrace;
-	if (use_emulated_stacktrace && !c->debug.stack_init_fn)
-	{
-		llvm_emit_stacktrace_definitions(c);
-		c->builder = prev_builder;
-	}
 	c->opt_var = NULL;
 	c->catch_block = NULL;
-
-	const char *function_name;
-	switch (type)
-	{
-		case ST_UNKNOWN:
-			UNREACHABLE
-		case ST_FUNCTION:
-		case ST_BENCHMARK:
-		case ST_TEST:
-			assert(decl->name);
-			function_name = decl->name;
-			break;
-		case ST_METHOD:
-			function_name = decl->name;
-			break;
-		case ST_LAMBDA:
-			function_name = "[lambda]";
-			break;
-		case ST_MACRO:
-			function_name = decl->name;
-			break;
-		default:
-			UNREACHABLE
-	}
 
 	c->function = function;
 	if (emit_debug)
@@ -564,7 +441,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		c->debug.function = LLVMGetSubprogram(function);
 	}
 
-	c->cur_func.name = function_name;
+	c->cur_func.name = decl->name;
 	c->cur_func.prototype = prototype;
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
 	c->current_block = entry;
@@ -582,10 +459,6 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		llvm_debug_scope_push(c, c->debug.function);
 		EMIT_LOC(c, body);
-		if (use_emulated_stacktrace)
-		{
-			llvm_emit_push_emulated_stacktrace(c, decl, function_name, type);
-		}
 	}
 
 	c->optional_out = NULL;

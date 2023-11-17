@@ -68,25 +68,6 @@ macro anycast(any* v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-enum CallLocation : int(String name)
-{
-	UNKNOWN("???"),
-	FUNCTION("function"),
-	METHOD("method"),
-	MACRO("macro"),
-	LAMBDA("lambda"),
-	TEST("test"),
-}
-
-struct CallstackElement
-{
-	CallstackElement* prev;
-	String function;
-	String file;
-	CallLocation location;
-	uint line;
-}
-
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE)
 {
 	@pool()
@@ -132,27 +113,10 @@ fn void default_panic(String message, String file, String function, uint line) @
 }
 fn void default_panic(String message, String file, String function, uint line) @if(!env::NATIVE_STACKTRACE)
 {
-	CallstackElement* stack = $$stacktrace();
 	$if $defined(io::stderr):
-	if (stack) stack = stack.prev;
-	if (stack)
-	{
-		io::eprint("\nERROR: '");
-		io::eprint(message);
-		io::eprintn("'");
-	}
-	else
-	{
-		io::eprint("\nERROR: '");
-		io::eprint(message);
-		io::eprintfn("', in %s (%s:%d)", function, file, line);
-	}
-	while (stack)
-	{
-		io::eprintfn("  in %s %s (%s:%d)", stack.location.name, stack.function, stack.file, stack.line);
-		if (stack == stack.prev) break;
-		stack = stack.prev;
-	}
+	io::eprint("\nERROR: '");
+	io::eprint(message);
+	io::eprintfn("', in %s (%s:%d)", function, file, line);
 	$endif
 	$$trap();
 }

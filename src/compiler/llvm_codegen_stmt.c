@@ -1304,7 +1304,6 @@ void llvm_emit_unreachable(GenContext *c)
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *varargs)
 {
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
-	llvm_emit_update_stack_row(c, loc.row);
 
 	Decl *panic_var = c->panic_var;
 	if (!panic_var)
