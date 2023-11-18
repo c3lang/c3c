@@ -338,9 +338,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_GET_ROUNDING_MODE:
 			expr->type = type_int;
 			return true;
-		case BUILTIN_FRAMEADDRESS:
-			expr->type = type_voidptr;
-			return true;
 		case BUILTIN_COMPARE_EXCHANGE:
 			return sema_expr_analyse_compare_exchange(context, expr);
 		default:
@@ -513,6 +510,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE },
 										 arg_count)) return false;
 			rtype = args[0]->type;
+			break;
+		case BUILTIN_FRAMEADDRESS:
+		case BUILTIN_RETURNADDRESS:
+			assert(arg_count);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTEGER }, arg_count)) return false;
+			if (!cast_implicit(context, args[0], type_int)) return false;
+			if (!expr_is_const_int(args[0])) RETURN_SEMA_ERROR(args[0], "Expected a compile time constant integer.");
+			rtype = type_voidptr;
 			break;
 		case BUILTIN_WASM_MEMORY_SIZE:
 			assert(arg_count == 1);
@@ -865,7 +870,6 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_NONE:
 		case BUILTIN_COMPARE_EXCHANGE:
-		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_GET_ROUNDING_MODE:
 		case BUILTIN_SWIZZLE:
 		case BUILTIN_SWIZZLE2:
@@ -892,7 +896,6 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
-		case BUILTIN_FRAMEADDRESS:
 			return 0;
 		case BUILTIN_ABS:
 		case BUILTIN_BITREVERSE:
@@ -931,6 +934,8 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_REDUCE_MIN:
 		case BUILTIN_SET_ROUNDING_MODE:
 		case BUILTIN_WASM_MEMORY_SIZE:
+		case BUILTIN_FRAMEADDRESS:
+		case BUILTIN_RETURNADDRESS:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:

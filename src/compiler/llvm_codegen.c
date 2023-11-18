@@ -702,6 +702,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.powi = lookup_intrinsic("llvm.powi");
 	intrinsic_id.prefetch = lookup_intrinsic("llvm.prefetch");
 	intrinsic_id.readcyclecounter = lookup_intrinsic("llvm.readcyclecounter");
+	intrinsic_id.returnaddress = lookup_intrinsic("llvm.returnaddress");
 	intrinsic_id.rint = lookup_intrinsic("llvm.rint");
 	intrinsic_id.round = lookup_intrinsic("llvm.round");
 	intrinsic_id.roundeven = lookup_intrinsic("llvm.roundeven");

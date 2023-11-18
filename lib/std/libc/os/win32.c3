@@ -45,7 +45,7 @@ extern fn CInt get_system_info(SystemInfo*) @extern("GetSystemInfo");
 
 // Aliases to simplify libc use
 macro Tm* localtime_r(Time_t* timer, Tm* buf) => _localtime64_s(buf, timer);
-macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(), buffer);
+macro CInt setjmp(JmpBuf* buffer) => _setjmp($$frameaddress(0), buffer);
 macro Tm* gmtime_r(Time_t* timer, Tm* buf) => _gmtime64_s(buf, timer);
 macro isz read(Fd fd, void* buffer, usz buffer_size) => _read(fd, buffer, (CUInt)buffer_size);
 macro isz write(Fd fd, void* buffer, usz count) => _write(fd, buffer, (CUInt)count);

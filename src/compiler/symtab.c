@@ -265,6 +265,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_REDUCE_OR] = KW_DEF("reduce_or");
 	builtin_list[BUILTIN_REDUCE_XOR] = KW_DEF("reduce_xor");
 	builtin_list[BUILTIN_REVERSE] = KW_DEF("reverse");
+	builtin_list[BUILTIN_RETURNADDRESS] = KW_DEF("returnaddress");
 	builtin_list[BUILTIN_RINT] = KW_DEF("rint");
 	builtin_list[BUILTIN_ROUND] = KW_DEF("round");
 	builtin_list[BUILTIN_ROUNDEVEN] = KW_DEF("roundeven");
