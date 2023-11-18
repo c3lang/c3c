@@ -1,5 +1,6 @@
 module std::core::values;
 
+macro typeid @typeid(#value) @builtin => $typeof(#value).typeid;
 macro TypeKind @typekind(#value) @builtin => $typeof(#value).kindof;
 macro bool @typeis(#value, $Type) @builtin => $typeof(#value).typeid == $Type.typeid;
 /**

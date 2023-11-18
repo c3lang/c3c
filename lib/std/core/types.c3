@@ -184,12 +184,12 @@ macro bool is_same($TypeA, $TypeB)
 
 macro bool @has_same(#a, #b, ...)
 {
-	var $type_a = $typeof(#a).typeid;
-	$if $type_a != $typeof(#b).typeid:
+	var $type_a = @typeid(#a);
+	$if $type_a != @typeid(#b):
 		return false;
 	$endif
 	$for (var $i = 0; $i < $vacount; $i++)
-		$if $typeof($vaexpr($i)).typeid != $type_a:
+		$if @typeid($vaexpr($i)) != $type_a:
 			return false;
 		$endif
 	$endfor

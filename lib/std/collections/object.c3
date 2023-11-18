@@ -100,7 +100,7 @@ fn Object* new_int(int128 i, Allocator* allocator)
 macro Object* new_enum(e, Allocator* allocator)
 {
 	Object* o = allocator.new(Object);
-	*o = { .i = (int128)e, .allocator = allocator, .type = $typeof(e).typeid };
+	*o = { .i = (int128)e, .allocator = allocator, .type = @typeid(e) };
 	return o;
 }
 

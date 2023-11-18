@@ -51,7 +51,7 @@ fault IoError
  **/
 macro  String! readline(stream = io::stdin(), Allocator* allocator = mem::heap())
 {
-	bool $is_stream = $typeof(stream).typeid == InStream*.typeid;
+	bool $is_stream = @typeid(stream) == InStream*.typeid;
 	$if $is_stream:
 		$typeof(&stream.read_byte) func = &stream.read_byte;
 		char val = func((void*)stream)!;
@@ -133,7 +133,7 @@ macro usz! fprintn(out, x = "")
 	usz len = fprint(out, x)!;
 	out.write_byte('\n')!;
 	$switch
-		$case $typeof(out).typeid == OutStream*.typeid:
+		$case @typeid(out) == OutStream*.typeid:
 			if (&out.flush) out.flush()!;
 		$case $defined(out.flush):
 			out.flush()!;

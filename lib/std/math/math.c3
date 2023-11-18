@@ -156,7 +156,7 @@ macro atan2(x, y)
  **/
 macro sincos(x, y)
 {
-	$if $typeof(y[0]).typeid == float.typeid:
+	$if @typeid(y[0]) == float.typeid:
 		return _sincosf(x, y);
 	$else
 		return _sincos(x, y);
@@ -168,7 +168,7 @@ macro sincos(x, y)
  **/
 macro atan(x)
 {
-	$if $typeof(x).typeid == float.typeid:
+	$if @typeid(x) == float.typeid:
 		return _atanf(x);
 	$else
 		return _atan(x);
@@ -180,7 +180,7 @@ macro atan(x)
  **/
 macro atanh(x)
 {
-	$if $typeof(x).typeid == float.typeid:
+	$if @typeid(x) == float.typeid:
 		return _atanhf(x);
 	$else
 		return _atanh(x);
@@ -192,7 +192,7 @@ macro atanh(x)
  **/
 macro acos(x)
 {
-	$if $typeof(x).typeid == float.typeid:
+	$if @typeid(x) == float.typeid:
 		return _acosf(x);
 	$else
 		return _acos(x);
@@ -204,7 +204,7 @@ macro acos(x)
  **/
 macro acosh(x)
 {
-	$if $typeof(x).typeid == float.typeid:
+	$if @typeid(x) == float.typeid:
 		return _acoshf(x);
 	$else
 		return _acosh(x);
@@ -216,7 +216,7 @@ macro acosh(x)
  **/
 macro asin(x)
 {
-	$if $typeof(x).typeid == float.typeid:
+	$if @typeid(x) == float.typeid:
 		return _asinf(x);
 	$else
 		return _asin(x);
@@ -228,7 +228,7 @@ macro asin(x)
  **/
 macro asinh(x)
 {
-	$if $typeof(x).typeid == float.typeid:
+	$if @typeid(x) == float.typeid:
 		return _asinhf(x);
 	$else
 		return _asinh(x);

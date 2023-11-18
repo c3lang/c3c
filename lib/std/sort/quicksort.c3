@@ -4,7 +4,7 @@ import std::sort::qs;
 /**
  * Sort list using the quick sort algorithm.
  * @require $defined(list[0]) && $defined(list.len) "The list must be indexable and support .len or .len()"
- * @require $or($typeof(cmp).typeid == void*.typeid, @is_comparer(cmp, list)) "Expected a comparison function which compares values"
+ * @require $or(@typeid(cmp) == void*.typeid, @is_comparer(cmp, list)) "Expected a comparison function which compares values"
  **/
 macro quicksort(list, cmp = null) @builtin
 {
@@ -31,7 +31,7 @@ def Stack = StackElementItem[64] @private;
 fn void qsort(Type list, isz low, isz high, Comparer cmp)
 {
 	var $no_cmp = Comparer.typeid == void*.typeid;
-	var $cmp_by_value = $and(!$no_cmp, Comparer.params[0] == $typeof(list[0]).typeid);
+	var $cmp_by_value = $and(!$no_cmp, Comparer.params[0] == @typeid(list[0]));
 	if (low >= 0 && high >= 0 && low < high)
 	{
 		Stack stack;

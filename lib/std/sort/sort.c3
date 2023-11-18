@@ -19,7 +19,7 @@ macro bool @is_comparer(#cmp, #list)
 		$if $params[0] != $params[1]:
 			return false;
 		$else
-			var $element = $typeof(#list[0]).typeid;
+			var $element = @typeid(#list[0]);
 			$switch
 				$case $element == $params[0]:
 					return true;

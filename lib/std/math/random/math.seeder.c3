@@ -69,7 +69,7 @@ fn void seeder(char[] input, char[] out_buffer)
 
 macro uint hash(value) @local
 {
-	return fnv32a::encode(&&bitcast(value, char[$typeof(value).sizeof]));
+	return fnv32a::encode(&&bitcast(value, char[$sizeof(value)]));
 }
 
 fn char[8 * 4] entropy()
