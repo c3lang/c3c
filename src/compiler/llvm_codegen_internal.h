@@ -178,6 +178,7 @@ typedef struct
 	unsigned powi;
 	unsigned prefetch;
 	unsigned readcyclecounter;
+	unsigned returnaddress;
 	unsigned rint;
 	unsigned round;
 	unsigned roundeven;

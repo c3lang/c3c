@@ -37,7 +37,6 @@ def spawn = posix_spawn;
 extern fn CInt kill(Pid_t pid, CInt sig);
 extern fn Pid_t waitpid(Pid_t pid, CInt* stat_loc, int options);
 extern fn CInt raise(CInt sig);
-extern fn CInt backtrace(void **buffer, CInt size);
 extern fn ZString* backtrace_symbols(void** buffer, CInt size);
 extern fn void backtrace_symbols_fd(void** buffer, CInt size, CInt fd);
 macro CInt wEXITSTATUS(CInt status) => (status & 0xff00) >> 8;
@@ -55,3 +54,17 @@ const CInt __W_CONTINUED = 0xffff;
 const CInt WNOHANG = 1;
 const CInt WUNTRACES = 2;
 
+extern fn CInt backtrace(void** buffer, CInt size) @if(env::DARWIN);
+
+fn CInt backtrace(void** buffer, CInt size) @if(!env::DARWIN)
+{
+	if (size < 1) return 0;
+	void*[128] buffer_first;
+	CInt i;
+    for (i = 0; (uptr)builtin::get_frameaddress(i + 1) > 1 && i < size; i++)
+    {
+        buffer[i] = builtin::get_returnaddress(i);
+        if (!buffer[i]) break;
+	}
+    return i;
+}

@@ -6,7 +6,7 @@ module std::core::mem::allocator;
 import std::collections::map;
 import std::collections::list;
 
-const MAX_BACKTRACE = 8;
+const MAX_BACKTRACE = 16;
 struct Allocation
 {
 	void* ptr;
@@ -104,7 +104,7 @@ fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz align
 	}
 	if (data)
 	{
-		void*[8] bt;
+		void*[MAX_BACKTRACE] bt;
 		backtrace::capture_current(&bt);
 		self.map.set((uptr)data, { data, size, bt });
     	self.mem_total += size;
@@ -115,8 +115,14 @@ fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz align
 
 fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
 {
+	if (old_pointer)
+	{
+		if (catch self.map.remove((uptr)old_pointer))
+    	{
+    	    assert(false, "Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
+    	}
+	}
 	self.inner_allocator.release(old_pointer, is_aligned);
-	if (old_pointer) self.map.remove((uptr)old_pointer);
 }
 
 fn void TrackingAllocator.clear(&self)
@@ -205,7 +211,17 @@ fn void! TrackingAllocator.fprint_report(&self, OutStream* out)
                 io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
         		foreach (trace : list)
         		{
-        		    io::fprintfn(out, "   %s", trace);
+        			if (trace.has_file())
+                	{
+                	    io::fprintfn(out, "   %s (in %s:%d)", trace.function, trace.file, trace.line);
+                	    continue;
+                	}
+                	if (trace.is_unknown())
+                	{
+                	    io::fprintfn(out, "   ??? (in unknown)");
+                	    continue;
+                	}
+					io::fprintfn(out, "   %s (source unavailable)", trace.function);
 				}
         	}
         }
