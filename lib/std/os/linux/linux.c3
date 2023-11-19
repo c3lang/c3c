@@ -131,45 +131,72 @@ fn ulong! elf_module_image_base(String path) @local
 	return 0;
 }
 
+fn Backtrace! backtrace_load_from_exec(void* addr, Allocator* allocator) @local
+{
+	char[] buf = mem::temp_array(char, 1024);
+
+	String exec_path = process::execute_stdout_to_buffer(buf, {"realpath", "-e", string::tformat("/proc/%d/exe", posix::getpid())})!;
+	String obj_name = exec_path.copy(allocator);
+	String addr2line = process::execute_stdout_to_buffer(buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", exec_path, string::tformat("0x%x", addr)})!;
+	return backtrace_from_addr2line(addr, addr2line, obj_name, "???", allocator);
+}
+
+fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Allocator* allocator) @local
+{
+	char[] buf = mem::temp_array(char, 1024);
+
+	void*   obj_addr  = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
+	ZString obj_path  = info.dli_fname;
+	String  sname     = info.dli_sname ? info.dli_sname.str_view() : "???";
+	String  addr2line = process::execute_stdout_to_buffer(buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_addr - 1)})!;
+	return backtrace_from_addr2line(addr, addr2line, info.dli_fname.str_view(), sname, allocator);
+}
+
+fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_name, String func_name, Allocator* allocator) @local
+{
+	String[] parts = addr2line.tsplit(" at ");
+	if (parts.len != 2)
+	{
+		return {
+			.function    = func_name.copy(allocator),
+			.object_file = obj_name.copy(allocator),
+			.offset      = (uptr)addr,
+			.file        = "".copy(allocator),
+			.line        = 0,
+			.allocator   = allocator
+		};
+	}
+
+	uint   line   = 0;
+	String source = "";
+	if (!parts[1].contains("?") && parts[1].contains(":"))
+	{
+		usz index = parts[1].rindex_of_char(':')!;
+
+		source = parts[1][:index];
+		line   = parts[1][index + 1..].to_uint()!;
+	}
+	return {
+		.function    = parts[0].copy(allocator),
+		.object_file = obj_name.copy(allocator),
+		.file        = source.copy(allocator),
+		.line        = line,
+		.allocator   = allocator,
+	};
+}
+
 fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::heap()) @local
 {
-	@pool(allocator)
-	{
-		if (!addr) return backtrace::BACKTRACE_UNKNOWN;
-		char[] buf = mem::temp_array(char, 1024);
-    	Linux_Dl_info info;
-    	if (dladdr(addr, &info) == 0) return backtrace::BACKTRACE_UNKNOWN;
-        void* obj_address = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
-        ZString obj_path = info.dli_fname;
-        ZString sname = info.dli_sname ? info.dli_sname : (ZString)"???";
-        String s = process::execute_stdout_to_buffer(buf, { "addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_address - 1) })!;
-        String[] parts = s.tsplit(" at ");
-		if (parts.len != 2)
+	if (!addr) return backtrace::BACKTRACE_UNKNOWN;
+
+	@pool(allocator) {
+		Linux_Dl_info info;
+
+		if (dladdr(addr, &info) == 0)
 		{
-			return {
-				.function = sname.copy(allocator),
-                .object_file = info.dli_fname.copy(allocator),
-				.offset = (uptr)addr,
-				.file = "".copy(allocator),
-                .line = 0,
-                .allocator = allocator
-            };
-        }
-        uint line = 0;
-        String source = "";
-        if (!parts[1].contains("?") && parts[1].contains(":"))
-        {
-            usz index = parts[1].rindex_of_char(':')!;
-            source = parts[1][:index];
-            line = parts[1][index + 1..].to_uint()!;
-        }
-        return {
-			.function = parts[0].copy(allocator),
-			.object_file = info.dli_fname.copy(allocator),
-			.file = source.copy(allocator),
-			.line = line,
-			.allocator = allocator
-		};
+			return backtrace_load_from_exec(addr, allocator);
+		}
+		return backtrace_load_from_dlinfo(addr, &info, allocator);
 	};
 }
 

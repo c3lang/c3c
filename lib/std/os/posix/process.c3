@@ -34,6 +34,7 @@ extern fn CInt posix_spawn(Pid_t* pid, char* file, Posix_spawn_file_actions_t* f
 def spawnp = posix_spawnp;
 def spawn = posix_spawn;
 
+extern fn CInt getpid();
 extern fn CInt kill(Pid_t pid, CInt sig);
 extern fn Pid_t waitpid(Pid_t pid, CInt* stat_loc, int options);
 extern fn CInt raise(CInt sig);
