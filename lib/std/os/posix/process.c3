@@ -55,20 +55,30 @@ const CInt __W_CONTINUED = 0xffff;
 const CInt WNOHANG = 1;
 const CInt WUNTRACES = 2;
 
+JmpBuf backtrace_jmpbuf @local;
 fn CInt backtrace(void** buffer, CInt size) @extern("backtrace") @weak
 {
 	if (size < 1) return 0;
+
+	// Loop through the return addresses until we hit a signal.
+	// This avoids using the frame address.
+	SignalFunction restore_backtrace = fn void(CInt) {
+		libc::longjmp(&backtrace_jmpbuf, 1);
+	};
+	SignalFunction sig_bus = libc::signal(libc::SIGBUS, restore_backtrace);
+    SignalFunction sig_segv = libc::signal(libc::SIGSEGV, restore_backtrace);
+    SignalFunction sig_ill = libc::signal(libc::SIGILL, restore_backtrace);
+
 	void*[128] buffer_first;
-	CInt i;
+	int i = 0;
     for (i = 0; i < size; i++)
     {
-        uptr frame = (uptr)builtin::get_frameaddress(i + 1);
-        // This is a hack. Unfortunately glibc won't set the
-        // frame address to 0, but it contains argc. Here we assume less than 512 arguments
-        // to the program and hope no frame is in the 0x00 - 0x1FF range.
-        if (frame < 0x200) break;
+		if (libc::setjmp(&backtrace_jmpbuf) == 1) break;
         buffer[i] = builtin::get_returnaddress(i);
         if (!buffer[i]) break;
 	}
-    return i;
+	libc::signal(libc::SIGBUS, sig_bus);
+	libc::signal(libc::SIGSEGV, sig_segv);
+	libc::signal(libc::SIGILL, sig_ill);
+	return i;
 }
