@@ -63,7 +63,10 @@ fn CInt backtrace(void** buffer, CInt size) @extern("backtrace") @weak
     for (i = 0; i < size; i++)
     {
         uptr frame = (uptr)builtin::get_frameaddress(i + 1);
-        if (!frame || frame & 0x1) break;
+        // This is a hack. Unfortunately glibc won't set the
+        // frame address to 0, but it contains argc. Here we assume less than 512 arguments
+        // to the program and hope no frame is in the 0x00 - 0x1FF range.
+        if (frame < 0x200) break;
         buffer[i] = builtin::get_returnaddress(i);
         if (!buffer[i]) break;
 	}
