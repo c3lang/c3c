@@ -55,9 +55,7 @@ const CInt __W_CONTINUED = 0xffff;
 const CInt WNOHANG = 1;
 const CInt WUNTRACES = 2;
 
-extern fn CInt backtrace(void** buffer, CInt size) @if(env::DARWIN);
-
-fn CInt backtrace(void** buffer, CInt size) @if(!env::DARWIN)
+fn CInt backtrace(void** buffer, CInt size) @weak @extern("backtrace")
 {
 	if (size < 1) return 0;
 	void*[128] buffer_first;
