@@ -51,7 +51,7 @@ else()
     endif()
 endif()
 
-
+option(C3_LINK_DYNAMIC "link dynamically with LLVM/LLD libs")
 
 set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
 option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
@@ -140,49 +140,63 @@ include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
 
-set(LLVM_LINK_COMPONENTS
-        AllTargetsAsmParsers
-        AllTargetsCodeGens
-        AllTargetsDescs
-        AllTargetsDisassemblers
-        AllTargetsInfos
-        Analysis
-        AsmPrinter
-        BitReader
-        Core
-        DebugInfoPDB
-        InstCombine
-        IrReader
-        LibDriver
-        Linker
-        LTO
-        MC
-        MCDisassembler
-        native
-        nativecodegen
-        Object
-        Option
-        ScalarOpts
-        Support
-        Target
-        TransformUtils
-        WindowsManifest
-        WindowsDriver
-)
+if(NOT C3_LINK_DYNAMIC)
+    set(LLVM_LINK_COMPONENTS
+	    AllTargetsAsmParsers
+	    AllTargetsCodeGens
+	    AllTargetsDescs
+	    AllTargetsDisassemblers
+	    AllTargetsInfos
+	    Analysis
+	    AsmPrinter
+	    BitReader
+	    Core
+	    DebugInfoPDB
+	    InstCombine
+	    IrReader
+	    LibDriver
+	    Linker
+	    LTO
+	    MC
+	    MCDisassembler
+	    native
+	    nativecodegen
+	    Object
+	    Option
+	    ScalarOpts
+	    Support
+	    Target
+	    TransformUtils
+	    WindowsManifest
+	    WindowsDriver
+    )
 
-llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
+    llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
+
+    # These don't seem to be reliable on windows.
+    message(STATUS "using find_library")
+    find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_MINGW NAMES lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_WASM NAMES lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+else()
+    find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    set(llvm_libs ${LLVM})
+
+    # These don't seem to be reliable on windows.
+    message(STATUS "using find_library")
+    find_library(LLD_COFF NAMES liblldCOFF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_COMMON NAMES liblldCommon.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_ELF NAMES liblldELF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_MINGW NAMES liblldMinGW.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    find_library(LLD_WASM NAMES liblldWasm.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+endif()
+
 file(REMOVE_RECURSE ${CMAKE_BINARY_DIR}/lib)
 file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
-
-
-# These don't seem to be reliable on windows.
-message(STATUS "using find_library")
-find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-find_library(LLD_MINGW NAMES lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-find_library(LLD_WASM NAMES lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
 
 if (${LLVM_PACKAGE_VERSION} VERSION_GREATER_EQUAL 16)
     find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
@@ -400,5 +414,6 @@ endif()
 
 
 install(TARGETS c3c DESTINATION bin)
+install(DIRECTORY lib/ DESTINATION lib/c3)
 
 feature_summary(WHAT ALL)
