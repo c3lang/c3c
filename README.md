@@ -137,11 +137,9 @@ fn void main()
 
 ### Current status
 
-The current version of the compiler is alpha release 0.4.
+The current stable version of the compiler is **version 0.5**.
 
-Design work on C3 is complete aside from fleshing out details, such as
-inline asm. As the standard library work progresses, changes and improvements
-to the language will happen continuously.
+The upcoming 0.6 release will focus on expanding the standard library.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 

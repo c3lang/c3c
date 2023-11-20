@@ -24,7 +24,7 @@
 - Subtype matching in type switches.
 - Added parentof typeid property.
 - Slice assignment is expanded.
-- Strong optional handling requirements.
+- Enforced optional handling.
 - Better dead code analysis, and added dead code errors.
 - Exhaustive switches with enums has better analysis.
 - Globals may now be initialized with optional values.
