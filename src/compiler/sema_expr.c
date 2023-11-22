@@ -416,13 +416,11 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 			Decl *decl = expr->identifier_expr.decl;
 			if (decl->decl_kind != DECL_VAR)
 			{
-				SEMA_ERROR(top_expr, "You cannot assign a value to %s.", decl_to_a_name(decl));
-				return false;
+				RETURN_SEMA_ERROR(top_expr, "You cannot assign a value to %s.", decl_to_a_name(decl));
 			}
 			if (decl->var.kind == VARDECL_CONST)
 			{
-				SEMA_ERROR(top_expr, "You cannot assign to a constant.");
-				return false;
+				RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant.");
 			}
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
@@ -469,16 +467,16 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_SUBSCRIPT_ADDR:
 			if (IS_OPTIONAL(expr))
 			{
-				SEMA_ERROR(top_expr, "You cannot assign to an optional value.");
-				return false;
+				RETURN_SEMA_ERROR(top_expr, "You cannot assign to an optional value.");
 			}
 			return true;
 		case EXPR_HASH_IDENT:
-			SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
-			return false;
+			RETURN_SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
 		case EXPR_EXPRESSION_LIST:
 			if (!vec_size(expr->expression_list)) return false;
 			return sema_binary_is_expr_lvalue(top_expr, VECLAST(expr->expression_list));
+		case EXPR_CONST:
+			RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant expression.");
 		case EXPR_POISONED:
 		case EXPR_ASM:
 		case EXPR_BINARY:
@@ -491,7 +489,6 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CONST:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_AND_OR:
