@@ -17,32 +17,32 @@ fn void test9()
 
 fn void test10()
 {
-    10 = 20;        // #error: An assignable expression
+    10 = 20;        // #error: to a constant expression
 }
 
 fn void test11()
 {
-    '10' = '20';        // #error: An assignable expression
+    '10' = '20';        // #error: to a constant expression
 }
 
 fn void test12()
 {
-    true = false;        // #error: An assignable expression
+    true = false;        // #error: to a constant expression
 }
 
 fn void test13()
 {
-    "a" = "b";        // #error: An assignable expression
+    "a" = "b";        // #error: to a constant expression
 }
 
 fn void test14()
 {
-    1.2 = 1.3;        // #error: An assignable expression
+    1.2 = 1.3;        // #error: to a constant expression
 }
 
 fn void test15()
 {
-    null = null;      // #error: An assignable expression
+    null = null;      // #error: to a constant expression
 }
 
 fn void test16()

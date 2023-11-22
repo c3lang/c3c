@@ -387,7 +387,7 @@ static void print_all_targets(void)
 
 static void print_version(void)
 {
-	OUTPUT("C3 Compiler Version (pre-alpha):   %s", COMPILER_VERSION);
+	OUTPUT("C3 Compiler Version (alpha):       %s", COMPILER_VERSION);
 	OUTPUT("Installed directory:               %s", find_executable_path());
 	OUTPUT("LLVM version:                      %s", llvm_version);
 	OUTPUT("LLVM default target:               %s", llvm_target);
