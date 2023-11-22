@@ -16,7 +16,7 @@ static Vmem char_arena;
 
 void memory_init(void)
 {
-	vmem_init(&arena, 2048);
+	vmem_init(&arena, 512);
 	vmem_init(&char_arena, 512);
 	allocations_done = 0;
 	arena_zero = (uintptr_t)arena.ptr;
