@@ -48,7 +48,6 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_DEF:
 			case TOKEN_FAULT:
 				return;
-			case TOKEN_IDENT: // Incr arrays only
 			case TOKEN_CONST:
 			case TOKEN_ASM:
 			case TOKEN_CT_ASSERT:
