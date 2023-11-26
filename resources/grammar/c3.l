@@ -41,6 +41,7 @@ int comment_level = 0;
 "$alignof"      { count(); return(CT_ALIGNOF); }
 "$and"          { count(); return(CT_AND); }
 "$assert"       { count(); return(CT_ASSERT); }
+"$assignable"   { count(); return(CT_ASSIGNABLE); }
 "$case"         { count(); return(CT_CASE); }
 "$default"      { count(); return(CT_DEFAULT); }
 "$defined"      { count(); return(CT_DEFINED); }
@@ -173,7 +174,7 @@ b64\'{B64}+\' { count(); return(BYTES); }
 b64\"{B64}+\" { count(); return(BYTES); }
 b64\`{B64}+\` { count(); return(BYTES); }
 
-{INT}{E}{REALTYPE}? { count(); return(REAL); }
+{INT}{E}?{REALTYPE}? { count(); return(REAL); }
 0[xX]{HINT}{P}{REALTYPE}?	{ count(); return(REAL); }
 {INT}"."{INT}{E}?{REALTYPE}?	{ count(); return(REAL); }
 0[xX]{HINT}"."{HINT}{P}{REALTYPE}? { count(); return(REAL); }

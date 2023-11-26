@@ -33,7 +33,7 @@ void yyerror(char *s);
 %token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR CT_FEATURE
 %token CT_EXTNAMEOF CT_EVAL CT_DEFINED CT_ALIGNOF ASSERT
 %token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
-%token LBRAPIPE RBRAPIPE HASH_CONST_IDENT CT_CASTABLE CT_ASSIGNABLE CT_AND CT_IS_CONST
+%token LBRAPIPE RBRAPIPE HASH_CONST_IDENT CT_ASSIGNABLE CT_AND CT_IS_CONST
 
 %start translation_unit
 %%
@@ -142,7 +142,7 @@ base_expr
 	| expr_block
 	| ct_call '(' flat_path ')'
 	| ct_arg '(' expr ')'
-	| ct_analyse '(' expr ')'
+	| ct_analyse '(' expression_list ')'
 	| CT_VACOUNT
 	| CT_FEATURE '(' CONST_IDENT ')'
 	| CT_AND '(' expression_list ')'
@@ -522,8 +522,8 @@ base_type
     | ANYFAULT
     | ANY
     | TYPEID
-    | TYPE_IDENT
-    | path TYPE_IDENT
+    | TYPE_IDENT opt_generic_parameters
+    | path TYPE_IDENT opt_generic_parameters
     | CT_TYPE_IDENT
     | CT_TYPEOF '(' expr ')'
     | CT_TYPEFROM '(' constant_expr ')'
@@ -1095,8 +1095,12 @@ parameter
 	| CT_IDENT ELLIPSIS
 	;
 
-func_definition
+func_defintion_decl
 	: FN func_header fn_parameter_list opt_attributes ';'
+	;
+
+func_definition
+	: func_defintion_decl
 	| FN func_header fn_parameter_list opt_attributes macro_func_body
 	;
 
@@ -1123,7 +1127,7 @@ generic_parameters
 
 typedef_type
 	: func_typedef
-	| type opt_generic_parameters
+	| type
 	;
 
 
@@ -1189,8 +1193,8 @@ define_declaration
 	;
 
 interface_body
-	: func_typedef
-	| interface_body func_typedef
+	: func_defintion_decl
+	| interface_body func_defintion_decl
 	;
 
 interface_declaration
@@ -1199,7 +1203,7 @@ interface_declaration
 	;
 
 distinct_declaration
-	: DISTINCT TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type opt_generic_parameters ';'
+	: DISTINCT TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
 	;
 
 tl_ct_if
