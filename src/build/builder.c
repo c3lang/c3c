@@ -252,6 +252,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->arch_os_target = options->arch_os_target_override;
 	}
+	target->print_linking = options->print_linking;
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 
 	if (options->symtab_size) target->symtab_size = options->symtab_size;

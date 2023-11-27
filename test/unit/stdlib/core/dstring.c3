@@ -2,6 +2,28 @@ module std::core::dstring2 @test;
 
 const TEST_STRING = "hello world";
 
+fn void test_delete()
+{
+	{
+		DString d;
+		d.append("Hello cruel world.");
+		d.delete_range(5, 10);
+		assert(d.str_view() == "Hello world.");
+	}
+	DString d;
+	d.append("Hello cruel world.");
+	d.delete(0, 2);
+	assert(d.str_view() == "llo cruel world.");
+	d.delete(14, 2);
+	assert(d.str_view() == "llo cruel worl");
+	d.delete(7);
+	assert(d.str_view() == "llo crul worl");
+	d.delete(2, 0);
+	assert(d.str_view() == "llo crul worl");
+	d.delete(0, 1);
+	assert(d.str_view() == "lo crul worl");
+}
+
 fn void test_append()
 {
 	DString str = dstring::new(TEST_STRING);

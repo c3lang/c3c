@@ -4484,12 +4484,12 @@ static inline IndexDiff range_const_len(Range *range)
 {
 	Expr *start = exprptr(range->start);
 	Expr *end = exprptrzero(range->end);
-	if (!expr_is_const_int(start)) return -1;
 	if (!end || !expr_is_const_int(end)) return -1;
 	if (!int_fits(end->const_expr.ixx, TYPE_I32)) return -1;
-	if (!int_fits(start->const_expr.ixx, TYPE_I32)) return -1;
 	IndexDiff end_val = (IndexDiff)int_to_i64(end->const_expr.ixx);
 	if (range->is_len) return end_val;
+	if (!expr_is_const_int(start)) return -1;
+	if (!int_fits(start->const_expr.ixx, TYPE_I32)) return -1;
 	IndexDiff start_val = (IndexDiff)int_to_i64(start->const_expr.ixx);
 	if (range->start_from_end && range->end_from_end) return start_val - end_val + 1;
 	if (range->start_from_end != range->end_from_end) return -1;
@@ -8387,7 +8387,11 @@ MemberIndex sema_len_from_const(Expr *expr)
 	// We also handle the case where we have a cast from a const array.
 	if (!expr_is_const(expr))
 	{
-		if (expr->type->type_kind != TYPE_SUBARRAY) return -1;
+		if (type_flatten(expr->type)->type_kind != TYPE_SUBARRAY) return -1;
+		if (expr->expr_kind == EXPR_SLICE)
+		{
+			return range_const_len(&expr->subscript_expr.range);
+		}
 		if (expr->expr_kind != EXPR_CAST) return -1;
 		if (expr->cast_expr.kind != CAST_APTSA) return -1;
 		Expr *inner = exprptr(expr->cast_expr.expr);

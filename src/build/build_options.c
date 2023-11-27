@@ -123,6 +123,7 @@ static void usage(void)
 	OUTPUT("  -L <library dir>          - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>             - Send the <argument> as a parameter to the linker.");
 	OUTPUT("  --system-linker=<yes|no>  - Use the system linker (default: no for cross compilation, yes otherwise).");
+	OUTPUT("  --cc <path>               - Set C compiler (for C files in projects and use as system linker).");
 	OUTPUT("");
 	OUTPUT("  --use-stdlib=<yes|no>     - Include the standard library (default: yes).");
 	OUTPUT("  --link-libc=<yes|no>      - Link libc other default libraries (default: yes).");
@@ -140,6 +141,7 @@ static void usage(void)
 	OUTPUT("  --fp-math=<option>        - FP math behaviour: strict, relaxed, fast.");
 	OUTPUT("");
 	OUTPUT("  --debug-stats             - Print debug statistics.");
+	OUTPUT("  --print-linking           - Print linker arguments.");
 #ifndef NDEBUG
 	OUTPUT("  --debug-log               - Print debug logging to stdout.");
 #endif
@@ -745,6 +747,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("debug-stats"))
 			{
 				debug_stats = true;
+				return;
+			}
+			if (match_longopt("print-linking"))
+			{
+				options->print_linking = true;
 				return;
 			}
 			if (match_longopt("list-keywords"))

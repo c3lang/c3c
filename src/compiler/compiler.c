@@ -490,8 +490,25 @@ void compiler_compile(void)
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
 		}
-		if (link_libc() && platform_target.os != OS_TYPE_WIN32
-			&& active_target.arch_os_target == default_target && active_target.system_linker != SYSTEM_LINKER_OFF)
+		bool system_linker_available = link_libc() && platform_target.os != OS_TYPE_WIN32;
+		bool use_system_linker = system_linker_available && active_target.arch_os_target == default_target;
+		switch (active_target.system_linker)
+		{
+			case SYSTEM_LINKER_ON:
+				if (!system_linker_available)
+				{
+					eprintf("System linker is not supported, defaulting to built-in linker\n");
+					break;
+				}
+				use_system_linker = true;
+				break;
+			case SYSTEM_LINKER_OFF:
+				use_system_linker = false;
+				break;
+			default:
+				break;
+		}
+		if (use_system_linker)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
@@ -504,7 +521,7 @@ void compiler_compile(void)
 			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_exe, obj_files,
 																						output_file_count))
 			{
-				printf("No linking is performed due to missing linker support.\n");
+				eprintf("No linking is performed due to missing linker support.\n");
 				active_target.run_after_compile = false;
 			}
 			else

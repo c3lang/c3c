@@ -99,8 +99,8 @@ jobs:
           install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-17.0.4-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-17.0.4-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-17.0.6-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-17.0.6-1-any.pkg.tar.zst
       - name: CMake
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}

@@ -444,6 +444,11 @@ fn String String.new_ascii_to_upper(s, Allocator* allocator = mem::heap())
 	return copy;
 }
 
+fn StringIterator String.iterator(s)
+{
+	return { s, 0 };
+}
+
 fn String String.temp_ascii_to_upper(s)
 {
 	return s.new_ascii_to_upper(mem::temp());
@@ -575,3 +580,38 @@ fn char! String.to_uchar(s) => s.to_integer(char);
 
 fn double! String.to_double(s) => s.to_real(double);
 fn float! String.to_float(s) => s.to_real(float);
+
+fn Splitter String.splitter(self, String split)
+{
+	return Splitter { self, split, 0 };
+}
+
+struct Splitter
+{
+	String string;
+	String split;
+	usz current;
+}
+
+fn void Splitter.reset(&self)
+{
+	self.current = 0;
+}
+
+fn String! Splitter.next(&self)
+{
+	usz len = self.string.len;
+	usz current = self.current;
+	if (current >= len) return IteratorResult.NO_MORE_ELEMENT?;
+	String remaining = self.string[current..];
+	usz! next = remaining.index_of(self.split);
+	if (try next)
+	{
+		defer self.current = current + next + self.split.len;
+		return remaining[:next];
+	}
+	self.current = len;
+	return remaining;
+}
+
+

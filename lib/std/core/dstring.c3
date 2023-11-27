@@ -280,6 +280,37 @@ fn void DString.append_char(&self, char c)
 	data.chars[data.len++] = c;
 }
 
+/**
+ * @require start < self.len()
+ * @require end < self.len()
+ * @require end >= start "End must be same or equal to the start"
+ **/
+fn void DString.delete_range(&self, usz start, usz end)
+{
+	self.delete(start, end - start + 1);
+}
+
+/**
+ * @require start < self.len()
+ * @require start + len <= self.len()
+ **/
+fn void DString.delete(&self, usz start, usz len = 1)
+{
+	if (!len) return;
+	StringData* data = self.data();
+	usz new_len = data.len - len;
+	if (new_len == 0)
+	{
+		data.len = 0;
+		return;
+	}
+	usz len_after = data.len - start - len;
+	if (len_after > 0)
+	{
+		data.chars[start:len_after] = data.chars[start + len:len_after];
+	}
+	data.len = new_len;
+}
 
 macro void DString.append(&self, value)
 {

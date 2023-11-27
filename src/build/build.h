@@ -379,6 +379,7 @@ typedef struct BuildOptions_
 	bool print_project_properties;
 	bool print_precedence;
 	bool print_build_settings;
+	bool print_linking;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
@@ -450,6 +451,7 @@ typedef struct
 	bool testing;
 	bool read_stdin;
 	bool print_output;
+	bool print_linking;
 	bool no_entry;
 	int build_threads;
 	TrustLevel trust_level;

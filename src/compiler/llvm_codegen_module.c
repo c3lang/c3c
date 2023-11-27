@@ -152,9 +152,9 @@ void gencontext_begin_module(GenContext *c)
 		{
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 4, type_uint);
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 3, type_uint);
-			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "frame-pointer", 2, type_uint);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "frame-pointer", FRAMEPOINTER, type_uint);
 		}
-		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "uwtable", 2, type_uint);
+		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "uwtable", UWTABLE, type_uint);
 
 		c->debug.runtime_version = 1;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
