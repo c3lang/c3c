@@ -1,5 +1,27 @@
 # C3C Release Notes
 
+## 0.5.1 Change list
+
+### Changes / improvements
+- Improved error messages for const errors.
+- Do not link with debug libraries unless using static libraries.
+- Add 'print-linking' build option.
+- System linker may be used even if the target arch is different from current.
+- Slice -> array/vector works for constant slice lenghts.
+
+### Fixes
+- On Aarch64 use the correct frame pointer type.
+- On Aarch64 macOS, ensure the minimum version is 11.0 (Big Sur)
+- Fixes to the yacc grammar.
+- Dsym generation on macOS will correctly emit -arch.
+- Stacktrace on signals on Linux when backtrace is available.
+
+### Stdlib changes
+- `delete` and `delete_range` added to DString.
+- `Splitter` iterator added.
+- `splitter` and `iterator` String methods.
+- `load_new`, `load_buffer` and `load_temp` std::io::file functions.
+
 ## 0.5.0 Change List
 
 ### Changes / improvements

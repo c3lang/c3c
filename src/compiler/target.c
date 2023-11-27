@@ -1948,6 +1948,17 @@ void target_setup(BuildTarget *target)
 		{
 			DEBUG_LOG("Macos SDK: %s", sysroot);
 			active_target.macos.sdk = macos_sysroot_sdk_information(sysroot);
+			if (platform_target.arch == ARCH_TYPE_AARCH64)
+			{
+				if (active_target.macos.sdk->macos_min_deploy_target.major < 11)
+				{
+					active_target.macos.sdk->macos_min_deploy_target = (Version) { 11, 0 };
+				}
+				if (active_target.macos.sdk->macos_deploy_target.major < 11)
+				{
+					active_target.macos.sdk->macos_deploy_target = (Version) { 11, 0 };
+				}
+			}
 		}
 		platform_target.target_triple = strdup(llvm_macos_target_triple(platform_target.target_triple));
 

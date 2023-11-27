@@ -1859,10 +1859,24 @@ static void cast_sa_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
 {
 	if (!expr_is_const(expr))
 	{
+		switch (expr->expr_kind)
+		{
+			case EXPR_CAST:
+			{
+				Expr *inner = exprptr(expr->cast_expr.expr)->unary_expr.expr;
+				expr_replace(expr, inner);
+				cast_no_check(context, expr, to_type, false);
+				return;
+			}
+			case EXPR_SLICE:
+			{
+				insert_runtime_cast(expr, CAST_SAARR, to_type);
+				return;
+			}
+			default:
+				UNREACHABLE;
+		}
 		assert(expr->expr_kind == EXPR_CAST);
-		Expr *inner = exprptr(expr->cast_expr.expr)->unary_expr.expr;
-		expr_replace(expr, inner);
-		cast_no_check(context, expr, to_type, false);
 		return;
 	}
 	assert(expr_is_const(expr));

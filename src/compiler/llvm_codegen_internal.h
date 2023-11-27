@@ -522,6 +522,8 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
 
+#define FRAMEPOINTER (platform_target.arch == ARCH_TYPE_AARCH64 ? 1 : 2)
+#define UWTABLE (active_target.arch_os_target == MACOS_AARCH64 ? 1 : 2)
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0)
 #define EMIT_SPAN(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x); } while (0)
 

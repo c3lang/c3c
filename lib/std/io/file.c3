@@ -139,6 +139,50 @@ fn char! File.read_byte(&self) @dynamic
 }
 
 /**
+ * Load up to buffer.len characters. Returns IoError.OVERFLOW if the file is longer
+ * than the buffer.
+ *
+ * @param filename "The path to the file to read"
+ * @param [in] buffer "The buffer to read to"
+ **/
+fn char[]! load_buffer(String filename, char[] buffer)
+{
+	File file = open(filename, "rb")!;
+	defer (void)file.close();
+	usz len = file.seek(0, END)!;
+	if (len > buffer.len) return IoError.OVERFLOW?;
+	file.seek(0, SET)!;
+	usz read = 0;
+	while (read < len)
+	{
+		read += file.read(buffer[read:len - read])!;
+	}
+	return buffer[:len];
+
+}
+
+fn char[]! load_new(String filename, Allocator* allocator = mem::heap())
+{
+	File file = open(filename, "rb")!;
+	defer (void)file.close();
+	usz len = file.seek(0, END)!;
+	file.seek(0, SET)!;
+	char* data = allocator.alloc_checked(len)!;
+	defer catch allocator.free(data);
+	usz read = 0;
+	while (read < len)
+	{
+		read += file.read(data[read:len - read])!;
+	}
+	return data[:len];
+}
+
+fn char[]! load_temp(String filename)
+{
+	return load_new(filename, mem::temp());
+}
+
+/**
  * @require self.file `File must be initialized`
  */
 fn void! File.flush(&self) @dynamic

@@ -380,8 +380,10 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_IDINT:
 		case CAST_INTARRBS:
 		case CAST_BSINTARR:
+		case CAST_SAARR:
 			if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+
 	}
 	UNREACHABLE
 }

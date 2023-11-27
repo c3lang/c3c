@@ -49,7 +49,7 @@ fault IoError
  * @param stream
  * @require @is_instream(stream)
  **/
-macro  String! readline(stream = io::stdin(), Allocator* allocator = mem::heap())
+macro String! readline(stream = io::stdin(), Allocator* allocator = mem::heap())
 {
 	bool $is_stream = @typeid(stream) == InStream*.typeid;
 	$if $is_stream:

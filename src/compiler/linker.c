@@ -98,6 +98,12 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type,
 			UNREACHABLE
 	}
 	if (!link_libc()) return;
+	bool link_with_dynamic_debug_libc = true;
+#if !PLATFORM_WINDOWS
+	// The debug version of libc is usually not available on target machines,
+	// so we do not link with debug dll versions of libc.
+	link_with_dynamic_debug_libc = false;
+#endif
 	if (!active_target.win.sdk)
 	{
 		const char *path = windows_cross_compile_library();
@@ -123,6 +129,9 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type,
 			if (file_exists(scratch_buffer_to_string()))
 			{
 				active_target.win.sdk = scratch_buffer_copy();
+				// If we only use the msvc cross compile on windows, we
+				// avoid linking with dynamic debug dlls.
+				link_with_dynamic_debug_libc = false;
 			}
 		}
 	}
@@ -171,7 +180,9 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type,
 	}
 	else
 	{
-		if (is_debug)
+		// When cross compiling we might not have the relevant debug libraries.
+		// if so, then exclude them.
+		if (is_debug && link_with_dynamic_debug_libc)
 		{
 			vec_add(*additional_linked_ref, "ucrtd");
 			vec_add(*additional_linked_ref, "vcruntimed");
@@ -284,6 +295,8 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	add_arg("CoreFoundation");
 	if (linker_type == LINKER_CC)
 	{
+		add_arg("-target");
+		add_arg(platform_target.target_triple);
 		return;
 	}
 	add_arg("-arch");
@@ -774,6 +787,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 		vec_add(parts, "-lm");
 	}
 	const char *output = concat_string_parts(parts);
+	if (active_target.print_linking) puts(output);
 	if (system(output) != 0)
 	{
 		error_exit("Failed to link executable '%s' using command '%s'.\n", output_file, output);
@@ -782,7 +796,8 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	{
 		// Create .dSYM
 		scratch_buffer_clear();
-		scratch_buffer_printf("dsymutil %s", output_file);
+		scratch_buffer_printf("dsymutil -arch %s %s", arch_to_linker_arch(platform_target.arch), output_file);
+		if (active_target.print_linking) puts(scratch_buffer_to_string());
 		if (system(scratch_buffer_to_string()) != 0)
 		{
 			puts("Failed to create .dSYM files, debugging will be impacted.");

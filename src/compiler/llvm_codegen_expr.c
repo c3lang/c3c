@@ -1236,6 +1236,22 @@ void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type
 }
 
 
+void llvm_emit_subarray_to_vec_array_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	BEValue pointer;
+	Type *base = type_lowering(from_type)->array.base;
+	AlignSize element_alignment = type_abi_alignment(base);
+	llvm_emit_subarray_pointer(c, value, &pointer);
+	llvm_value_rvalue(c, &pointer);
+	LLVMTypeRef type = llvm_get_type(c, to_type);
+	AlignSize alignment = llvm_abi_alignment(c, type);
+	LLVMValueRef temp = llvm_emit_alloca(c, type, alignment, ".temp");
+	unsigned elements = LLVMGetTypeKind(type) == LLVMVectorTypeKind
+			? LLVMGetVectorSize(type) : LLVMGetArrayLength(type);
+	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, elements);
+	llvm_value_set_address(value, temp, to_type, alignment);
+}
+
 void llvm_emit_expand_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
 	llvm_value_rvalue(c, value);
@@ -1356,6 +1372,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
+		case CAST_SAARR:
+			llvm_emit_subarray_to_vec_array_cast(c, value, to_type, from_type);
+			return;
 		case CAST_EXPVEC:
 			llvm_emit_expand_to_vec_cast(c, value, to_type, from_type);
 			return;

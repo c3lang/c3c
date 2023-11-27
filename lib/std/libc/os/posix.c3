@@ -1,5 +1,15 @@
 module libc @if(env::POSIX);
 
+
+extern fn void* dlopen(ZString path, int flags);
+extern fn CInt dlclose(void*);
+extern fn void* dlsym(void* handle, ZString symbol);
+
+const int RTLD_LAZY = 0x1;
+const int RTLD_NOW = 0x2;
+const int RTLD_LOCAL = 0x4;
+const int RTLD_GLOBAL = 0x8;
+
 def Pid_t = int;
 def Uid_t = uint;
 def Gid_t = uint;

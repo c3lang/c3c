@@ -56,10 +56,21 @@ const CInt WNOHANG = 1;
 const CInt WUNTRACES = 2;
 
 JmpBuf backtrace_jmpbuf @local;
-fn CInt backtrace(void** buffer, CInt size) @extern("backtrace") @weak
+def BacktraceFn = fn CInt(void** buffer, CInt size);
+
+fn CInt backtrace(void** buffer, CInt size)
 {
 	if (size < 1) return 0;
-
+	void* handle = libc::dlopen("libc.so.6", libc::RTLD_LAZY);
+	if (handle)
+	{
+		BacktraceFn backtrace_fn = libc::dlsym(handle, "backtrace");
+		libc::dlclose(handle);
+		if (backtrace_fn)
+		{
+			return backtrace_fn(buffer, size);
+		}
+	}
 	// Loop through the return addresses until we hit a signal.
 	// This avoids using the frame address.
 	SignalFunction restore_backtrace = fn void(CInt) {
