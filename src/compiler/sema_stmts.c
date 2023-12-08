@@ -1426,6 +1426,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			SEMA_ERROR(enumerator, "%s does not support 'foreach' with the value by reference.", type_quoted_error_string(enumerator->type));
 			return false;
 		}
+		if (!decl_ok(len) || !decl_ok(by_val) || !decl_ok(by_ref)) return false;
 		index_macro = value_by_ref ? by_ref : by_val;
 		assert(index_macro);
 		index_type = index_macro->func_decl.signature.params[1]->type;
@@ -1559,7 +1560,24 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (len_call)
 		{
 			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
-			if (!cast_implicit(context, len_call, index_type)) return false;
+			if (!cast_implicit_silent(context, len_call, index_type))
+			{
+				SEMA_ERROR(enumerator,
+				           "'foreach' is not supported, as the length %s cannot "
+				           "be cast implicitly cast to %s - please update your definition.",
+				           type_quoted_error_string(len_call->type), type_quoted_error_string(index_type));
+				if (len)
+				{
+					SEMA_NOTE(len, "The definition of 'len()' is here.");
+					decl_poison(len);
+				}
+				if (index_macro)
+				{
+					SEMA_NOTE(index_macro, "The index definition is here.");
+					decl_poison(index_macro);
+				}
+				return false;
+			}
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
 		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0);

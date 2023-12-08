@@ -495,7 +495,11 @@ fn usz String.utf8_codepoints(s)
 	return len;
 }
 
-macro String.to_integer(string, $Type)
+
+/**
+ * @require (base <= 10 && base > 1) || base == 16 : "Unsupported base"
+ **/
+macro String.to_integer(string, $Type, int base = 10)
 {
 	usz len = string.len;
 	usz index = 0;
@@ -515,8 +519,8 @@ macro String.to_integer(string, $Type)
 			break;
 	}
 	if (len == index) return NumberConversion.MALFORMED_INTEGER?;
-	$Type base = 10;
-	if (string[index] == '0')
+	$Type base_used = ($Type)base;
+	if (string[index] == '0' && base == 10)
 	{
 		index++;
 		if (index == len) return ($Type)0;
@@ -524,15 +528,15 @@ macro String.to_integer(string, $Type)
 		{
 			case 'x':
 			case 'X':
-				base = 16;
+				base_used = 16;
 				index++;
 			case 'b':
 			case 'B':
-				base = 2;
+				base_used = 2;
 				index++;
 			case 'o':
 			case 'O':
-				base = 8;
+				base_used = 8;
 				index++;
 			default:
 				break;
@@ -544,21 +548,21 @@ macro String.to_integer(string, $Type)
 	{
 		char c = {|
 			char ch = string[index++];
-			if (base != 16 || ch < 'A') return (char)(ch - '0');
-			if (ch <= 'F') return (char)(ch - 'A');
+			if (base_used != 16 || ch < 'A') return (char)(ch - '0');
+			if (ch <= 'F') return (char)(ch - 'A' + 10);
 			if (ch < 'a') return NumberConversion.MALFORMED_INTEGER?;
 			if (ch > 'f') return NumberConversion.MALFORMED_INTEGER?;
-			return (char)(ch - 'a');
+			return (char)(ch - 'a' + 10);
 		|}!;
-		if (c >= base) return NumberConversion.MALFORMED_INTEGER?;
+		if (c >= base_used) return NumberConversion.MALFORMED_INTEGER?;
 		value = {|
 			if (is_negative)
 			{
-				$Type new_value = value * base - c;
+				$Type new_value = value * base_used - c;
 				if (new_value > value) return NumberConversion.INTEGER_OVERFLOW?;
 				return new_value;
 			}
-			$Type new_value = value * base + c;
+			$Type new_value = value * base_used + c;
 			if (new_value < value) return NumberConversion.INTEGER_OVERFLOW?;
 			return new_value;
 		|}!;
@@ -566,17 +570,17 @@ macro String.to_integer(string, $Type)
 	return value;
 }
 
-fn int128! String.to_int128(s) => s.to_integer(int128);
-fn long! String.to_long(s) => s.to_integer(long);
-fn int! String.to_int(s) => s.to_integer(int);
-fn short! String.to_short(s) => s.to_integer(short);
-fn ichar! String.to_ichar(s) => s.to_integer(ichar);
+fn int128! String.to_int128(s, int base = 10) => s.to_integer(int128, base);
+fn long! String.to_long(s, int base = 10) => s.to_integer(long, base);
+fn int! String.to_int(s, int base = 10) => s.to_integer(int, base);
+fn short! String.to_short(s, int base = 10) => s.to_integer(short, base);
+fn ichar! String.to_ichar(s, int base = 10) => s.to_integer(ichar, base);
 
-fn uint128! String.to_uint128(s) => s.to_integer(uint128);
-fn ulong! String.to_ulong(s) => s.to_integer(ulong);
-fn uint! String.to_uint(s) => s.to_integer(uint);
-fn ushort! String.to_ushort(s) => s.to_integer(ushort);
-fn char! String.to_uchar(s) => s.to_integer(char);
+fn uint128! String.to_uint128(s, int base = 10) => s.to_integer(uint128, base);
+fn ulong! String.to_ulong(s, int base = 10) => s.to_integer(ulong, base);
+fn uint! String.to_uint(s, int base = 10) => s.to_integer(uint, base);
+fn ushort! String.to_ushort(s, int base = 10) => s.to_integer(ushort, base);
+fn char! String.to_uchar(s, int base = 10) => s.to_integer(char, base);
 
 fn double! String.to_double(s) => s.to_real(double);
 fn float! String.to_float(s) => s.to_real(float);

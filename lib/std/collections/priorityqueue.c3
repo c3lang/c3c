@@ -74,29 +74,32 @@ fn Type! PrivatePriorityQueue.pop(&self)
 	usz i = 0;
 	usz len = self.heap.len();
 	if (!len) return IteratorResult.NO_MORE_ELEMENT?;
-	usz newCount = len - 1;
-	self.heap.swap(0, newCount);
-	while ((2 * i + 1) < newCount)
+	usz new_count = len - 1;
+	self.heap.swap(0, new_count);
+	while OUTER: ((2 * i + 1) < new_count)
 	{
 		usz j = 2 * i + 1;
-		Type itemj = self.heap[j];
-		if ((j + 1) < newCount)
-		{
-			Type nextj = self.heap[j + 1];
-			$if MAX:
-				bool ok = greater(nextj, itemj);
-			$else
-				bool ok = less(nextj, itemj);
-			$endif
-			if (ok) j++;
-		}
+		Type left = self.heap[j];
 		Type item = self.heap[i];
-		$if MAX:
-			bool ok = less(item, itemj);
-		$else
-			bool ok = greater(item, itemj);
-		$endif
-		if (!ok) break;
+		switch
+		{
+			case j + 1 < new_count:
+				Type right = self.heap[j + 1];
+				$if MAX:
+				if (!greater(right, left)) nextcase;
+				if (!greater(right, item)) break OUTER;
+				$else
+				if (!greater(left, right)) nextcase;
+				if (!greater(item, right)) break OUTER;
+				$endif
+				j++;
+			default:
+				$if MAX:
+				if (!greater(left, item)) break OUTER;
+				$else
+				if (!greater(item, left)) break OUTER;
+				$endif
+		}
 		self.heap.swap(i, j);
 		i = j;
 	}

@@ -31,6 +31,8 @@ extern const char *ct_eval_error;
 Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);
 
+const char *context_filename(SemaContext *context);
+
 AstId context_get_defers(SemaContext *context, AstId defer_top, AstId defer_bottom, bool is_success);
 void context_pop_defers(SemaContext *context, AstId *next);
 void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast);

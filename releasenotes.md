@@ -1,5 +1,23 @@
 # C3C Release Notes
 
+## 0.5.2 Change list
+
+### Changes / improvements
+- Allow trailing comma in calls and parameters #1092.
+
+### Fixes
+- Fixes issue where single character filenames like 'a.c3' would be rejected.
+- Better errors when index type doesn't match len() when doing user defined foreach.
+- Fixes to `to_int` for hexadecimal strings.
+- Fixed issue when using a generic type from a generic type.
+- Bug with vector parameters when the size > 2 and modified.
+- Missing error on assigning to in-parameters through subscripting.
+- Inference of a vector on the lhs of a binary expression would cause a crash.
+- Fixes to PriorityQueue
+
+### Stdlib changes
+- Allow `to_int` family functions take a base, parsing base 2-10 and 16.
+
 ## 0.5.1 Change list
 
 ### Changes / improvements
@@ -7,7 +25,7 @@
 - Do not link with debug libraries unless using static libraries.
 - Add 'print-linking' build option.
 - System linker may be used even if the target arch is different from current.
-- Slice -> array/vector works for constant slice lenghts.
+- Slice -> array/vector works for constant slice lengths.
 
 ### Fixes
 - On Aarch64 use the correct frame pointer type.

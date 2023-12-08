@@ -444,6 +444,7 @@ bool file_has_suffix_in_list(const char *file_name, int name_len, const char **s
 	{
 		const char *suffix = suffix_list[i];
 		int len = (int)strlen(suffix);
+		if (name_len < len + 1) continue;
 		if (strncmp(&file_name[name_len - len], suffix, len) == 0) return true;
 	}
 	return false;

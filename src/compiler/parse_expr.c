@@ -441,8 +441,7 @@ Expr *parse_vasplat(ParseContext *c)
  *
  * parameter ::= (param_path '=')? expr
  */
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat,
-					bool allow_trailing_comma)
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
 {
 	*result = NULL;
 	if (splat) *splat = false;
@@ -483,15 +482,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		{
 			return true;
 		}
-		if (tok_is(c, param_end))
-		{
-			if (!allow_trailing_comma)
-			{
-				sema_error_at(c->prev_span, "Trailing commas are not allowed.");
-				return false;
-			}
-			return true;
-		}
+		if (tok_is(c, param_end)) return true;
 		if (splat && *splat)
 		{
 			SEMA_ERROR_HERE("'...' is only allowed on the last argument in a call.");
@@ -756,7 +747,7 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
-		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true, true)) return poisoned_expr;
+		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
 		VECEACH(exprs, i)
 		{
@@ -854,7 +845,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		// Pick a modest guess.
 		params = VECNEW(Expr*, 4);
-		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true, false)) return poisoned_expr;
+		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true)) return poisoned_expr;
 	}
 	if (try_consume(c, TOKEN_EOS))
 	{
