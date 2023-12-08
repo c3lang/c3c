@@ -89,6 +89,12 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 	return decl;
 }
 
+const char *decl_safe_name(Decl *decl)
+{
+	if (!decl) return "<no decl>";
+	if (decl->name) return decl->name;
+	return decl_to_name(decl);
+}
 const char *decl_to_name(Decl *decl)
 {
 	const char *name = decl_to_a_name(decl);

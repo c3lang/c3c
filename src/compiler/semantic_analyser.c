@@ -51,6 +51,15 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	}
 }
 
+const char *context_filename(SemaContext *context)
+{
+	CompilationUnit *unit = context->unit;
+	if (!unit) return "<unknown unit>";
+	File *file = unit->file;
+	if (!file || !file->full_path) return "<unknown file>";
+	return file->full_path;
+}
+
 void context_change_scope_for_label(SemaContext *context, DeclId label_id)
 {
 	context_change_scope_with_flags(context, SCOPE_NONE);

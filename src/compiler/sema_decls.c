@@ -2789,7 +2789,7 @@ static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, Att
 
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	DEBUG_LOG("----Analysing function %s", decl->name);
+	DEBUG_LOG(">>> Analyse function [%s] in %s", decl_safe_name(decl), context->unit->file->full_path);
 
 	bool is_interface_method = decl->func_decl.attr_interface_method;
 	if (!sema_analyse_func_macro(context, decl, is_interface_method ? ATTR_INTERFACE_METHOD : ATTR_FUNC, erase_decl)) return false;
@@ -2892,7 +2892,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, NULL, &pure)) return decl_poison(decl);
 	decl->func_decl.signature.attrs.is_pure = pure;
 	if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
-	DEBUG_LOG("Function analysis done.");
+	DEBUG_LOG("<<< Function analysis of [%s] successful.", decl_safe_name(decl));
 	return true;
 }
 
@@ -3396,9 +3396,10 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 			SEMA_ERROR(param, "Expected a value, not a type.");
 			return NULL;
 		}
+		TypeInfo *type_info = param->type_expr;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
-		TypeInfo *type_info = param->type_expr;
 		assert(type_info->resolve_status == RESOLVE_DONE);
 		decl->typedef_decl.type_info = type_info;
 		decl->type->name = decl->name;
@@ -3406,9 +3407,9 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		params_decls[decls++] = decl;
 	}
 
-
 	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = false;
+	new_module->is_from_generic = true;
 	CompilationUnit **units = module->units;
 	VECEACH(units, i)
 	{
@@ -3633,7 +3634,14 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		if (!sema_append_generate_parameterized_name(c, module, params, false)) return poisoned_decl;
 		if (!instantiated_module) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
-		sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
+		if (c->unit->module->is_from_generic)
+		{
+			sema_analyze_stage(instantiated_module, c->unit->module->stage);
+		}
+		else
+		{
+			sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
+		}
 	}
 	if (global_context.errors_found) return poisoned_decl;
 	Decl *symbol = module_find_symbol(instantiated_module, name);
@@ -3770,10 +3778,11 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
 
+	DEBUG_LOG(">>> Analyse declaration [%s] in %s.", decl_safe_name(decl), context_filename(context));
+
 	SemaContext temp_context;
 	context = context_transform_for_eval(context, &temp_context, decl->unit);
 
-	DEBUG_LOG(">>> Analysing %s.", decl->name ? decl->name : ".anon");
 	if (decl->resolve_status == RESOLVE_RUNNING)
 	{
 		SEMA_ERROR(decl, decl->name
@@ -3859,9 +3868,12 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	decl->resolve_status = RESOLVE_DONE;
 	sema_context_destroy(&temp_context);
 
+	DEBUG_LOG("<<< Analysis of [%s] successful.", decl_safe_name(decl));
+
 	return true;
 FAILED:
 	sema_context_destroy(&temp_context);
+	DEBUG_LOG("<<< Analysis of [%s] failed.", decl_safe_name(decl));
 	return decl_poison(decl);
 }
 

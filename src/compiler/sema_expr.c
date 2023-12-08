@@ -648,15 +648,22 @@ static bool expr_may_ref(Expr *expr)
 
 bool sema_expr_check_assign(SemaContext *c, Expr *expr)
 {
+	Expr *inner;
 	if (!sema_binary_is_expr_lvalue(expr, expr)) return false;
-	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN) return true;
+	if (expr->expr_kind == EXPR_SUBSCRIPT)
+	{
+		inner = exprptr(expr->subscript_expr.expr);
+		if (inner->expr_kind == EXPR_IDENTIFIER) inner->identifier_expr.decl->var.is_written = true;
+		goto CHECK_INNER;
+	}
 	if (expr->expr_kind == EXPR_BITACCESS || expr->expr_kind == EXPR_ACCESS) expr = expr->access_expr.parent;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
 		expr->identifier_expr.decl->var.is_written = true;
 	}
 	if (expr->expr_kind != EXPR_UNARY) return true;
-	Expr *inner = expr->inner_expr;
+	inner = expr->inner_expr;
+CHECK_INNER:
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = inner->identifier_expr.decl;
 	if (decl->decl_kind != DECL_VAR) return true;
@@ -1067,7 +1074,7 @@ static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binar
 		if (!sema_analyse_expr(context, right)) return false;
 		if (type_kind_is_any_vector(type_flatten(right->type)->type_kind))
 		{
-			return sema_analyse_inferred_expr(context, right->type, right);
+			return sema_analyse_inferred_expr(context, right->type, left);
 		}
 		return sema_analyse_expr(context, left);
 	}
@@ -2536,6 +2543,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// 1. Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr_lvalue_fold_const(context, subscripted)) return false;
+	if (eval_type == SUBSCRIPT_EVAL_ASSIGN && !sema_expr_check_assign(context, expr)) return false;
 
 	// 2. Evaluate the index.
 	Expr *index = exprptr(expr->subscript_expr.range.start);
@@ -2547,7 +2555,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	Type *underlying_type = type_flatten(subscripted->type);
 
 	Type *current_type = underlying_type;
-
+	assert(current_type == current_type->canonical);
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.range.start_from_end;
 	if (start_from_end && (underlying_type->type_kind == TYPE_POINTER || underlying_type->type_kind == TYPE_FLEXIBLE_ARRAY))
@@ -4732,9 +4740,6 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 	{
 		if (!sema_analyse_expr_lvalue(context, left)) return false;
 	}
-
-	bool is_subscript_assign = left->expr_kind == EXPR_SUBSCRIPT_ASSIGN;
-
 	// 2. Check assignability
 	if (!sema_expr_check_assign(context, left)) return false;
 

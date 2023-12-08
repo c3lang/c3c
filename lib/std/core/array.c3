@@ -1,4 +1,5 @@
 module std::core::array;
+import std::core::array::slice;
 
 /**
  * @param [in] array
@@ -14,6 +15,19 @@ macro index_of(array, element)
 	}
 	return SearchResult.MISSING?;
 }
+
+/**
+ * @require @typekind(array) == VECTOR || @typekind(array) == ARRAY
+ * @require @typekind(array[0]) == VECTOR || @typekind(array[0]) == ARRAY
+ **/
+macro slice2d(array, x = 0, xlen = 0, y = 0, ylen = 0)
+{
+	if (xlen < 1) xlen = $typeof(array[0]).len + xlen;
+	if (ylen < 1) ylen = $typeof(array).len + ylen;
+	var $ElementType = $typeof(array[0][0]);
+	return Slice2d(<$ElementType>) { ($ElementType*)&array, $typeof(array[0]).len, y, ylen, x, xlen };
+}
+
 
 /**
  * @param [in] array
@@ -68,3 +82,66 @@ macro concat_new(arr1, arr2, Allocator* allocator = mem::heap())
  * @ensure result.len == arr1.len + arr2.len
  **/
 macro tconcat(arr1, arr2) => concat(arr1, arr2, mem::temp());
+
+module std::core::array::slice(<Type>);
+
+struct Slice2d
+{
+	Type* ptr;
+	usz inner_len;
+	usz ystart;
+	usz ylen;
+	usz xstart;
+	usz xlen;
+}
+
+fn usz Slice2d.len(&self) @operator(len)
+{
+	return self.ylen;
+}
+
+fn usz Slice2d.count(&self)
+{
+	return self.ylen * self.xlen;
+}
+
+macro void Slice2d.@each(&self; @body(usz[<2>], Type))
+{
+	foreach (y, line : *self)
+	{
+		foreach (x, val : line)
+		{
+			@body({ x, y }, val);
+		}
+	}
+}
+
+macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
+{
+	foreach (y, line : *self)
+	{
+		foreach (x, &val : line)
+		{
+			@body({ x, y }, val);
+		}
+	}
+}
+
+/**
+ * @require idy >= 0 && idy < self.ylen
+ **/
+macro Type[] Slice2d.get(self, usz idy) @operator([])
+{
+	return (self.ptr + self.inner_len * (idy + self.ystart))[self.xstart:self.xlen];
+}
+
+/**
+ * @require y >= 0 && y < self.ylen
+ * @require x >= 0 && x < self.xlen
+ **/
+fn Slice2d Slice2d.slice(&self, isz x = 0, isz xlen = 0, isz y = 0, isz ylen = 0)
+{
+	if (xlen < 1) xlen = self.xlen + xlen;
+	if (ylen < 1) ylen = self.ylen + ylen;
+	return { self.ptr, self.inner_len, y + self.ystart, ylen, x + self.xstart, xlen };
+}

@@ -604,8 +604,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 			}
 			goto INVALID_NAME;
 		}
-		if (name_len < 4) goto INVALID_NAME;
-		if (name_len < 5 || !file_has_suffix_in_list(name, name_len, suffix_list, suffix_count)) goto INVALID_NAME;
+		if (!file_has_suffix_in_list(name, name_len, suffix_list, suffix_count)) goto INVALID_NAME;
 		vec_add(files, name);
 		continue;
 		INVALID_NAME:
@@ -615,7 +614,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 			continue;
 		}
 		if (!error_on_mismatch) continue;
-		error_exit("File names must end with %s or they cannot be compiled: '%s' is invalid.", suffix_list[0], name);
+		error_exit("File names must be a non-empty name followed by %s or they cannot be compiled: '%s' is invalid.", suffix_list[0], name);
 	}
 	return files;
 }

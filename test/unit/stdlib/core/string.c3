@@ -112,3 +112,9 @@ fn void! test_rindex_of_char()
 	assert(test.rindex_of_char('h')! == 12);
 	assert(@catch(test.index_of_char('x')));
 }
+
+fn void! test_hex_conversion()
+{
+	assert("0x123aCd".to_long()! == 0x123acd);
+	assert("123acD".to_long(16)! == 0x123acd);
+}

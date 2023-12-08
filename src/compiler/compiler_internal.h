@@ -1508,6 +1508,7 @@ typedef struct Module_
 	bool is_c_library : 1;
 	bool is_exported : 1;
 	bool is_generic : 1;
+	bool is_from_generic : 1;
 	bool no_extprefix : 1;
 	AnalysisStage stage : 6;
 
@@ -2163,6 +2164,7 @@ Decl *decl_new_with_type(const char *name, SourceSpan span, DeclKind decl_type);
 Decl *decl_new_var(const char *name, SourceSpan span, TypeInfo *type, VarDeclKind kind);
 Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span);
 void decl_set_external_name(Decl *decl);
+const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
