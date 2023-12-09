@@ -319,6 +319,21 @@ You should now have a `c3c` executable.
 You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
 
 
+#### Compiling on Void Linux
+
+1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm lld-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
+2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
+    - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git`
+3. Enter the directory: `cd c3c`
+4. Create a build directory: `mkdir build`
+5. Enter the build directory: `cd build`
+6. Create the CMake build cache: `cmake ..`
+7. Build: `cmake --build .`
+
+Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`  
+For a sytem-wide installation, run the following as root: `cmake --install .`
+
+
 #### Compiling on other Linux / Unix variants
 
 1. Install CMake.
