@@ -365,7 +365,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			[OPT_SETTING_OTINY] = "Oz"
 	};
 	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, ELEMENTLEN(opt_settings), "'O0', 'O1' etc.");
-	update_build_target_with_opt_level(target, opt);
+	if (opt != OPTIMIZATION_NOT_SET) target->optsetting = opt;
 
 	// Safety level
 	target->feature.safe_mode = (SafetyLevel)get_valid_bool(json, "safe", type, target->feature.safe_mode);
@@ -527,6 +527,7 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 	}
 	type = str_printf("%s %s", type, target->name);
 	load_into_build_target(json, type, target, false);
+	update_build_target_with_opt_level(target, target->optsetting);
 }
 
 static void project_add_targets(Project *project, JSONObject *project_data)

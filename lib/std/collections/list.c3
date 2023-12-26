@@ -18,11 +18,12 @@ struct List (Printable)
 	Type *entries;
 }
 
+
 /**
  * @param initial_capacity "The initial capacity to reserve"
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap())
+fn List* List.new_init(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap())
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -40,13 +41,32 @@ fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = 
 }
 
 /**
+ * @param initial_capacity "The initial capacity to reserve"
+ * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ **/
+fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+{
+	return self.new_init(initial_capacity, allocator) @inline;
+}
+
+/**
  * Initialize the list using the temp allocator.
  *
  * @param initial_capacity "The initial capacity to reserve"
  **/
-fn List* List.init_temp(&self, usz initial_capacity = 16)
+fn List* List.temp_init(&self, usz initial_capacity = 16)
 {
-	return self.init_new(initial_capacity, mem::temp()) @inline;
+	return self.new_init(initial_capacity, mem::temp()) @inline;
+}
+
+/**
+ * Initialize the list using the temp allocator.
+ *
+ * @param initial_capacity "The initial capacity to reserve"
+ **/
+fn List* List.init_temp(&self, usz initial_capacity = 16) @deprecated("Replaced by temp_init")
+{
+	return self.temp_init(initial_capacity) @inline;
 }
 
 /**
@@ -129,11 +149,8 @@ fn Type List.pop_first(&self)
  **/
 fn void List.remove_at(&self, usz index)
 {
-	for (usz i = index + 1; i < self.size; i++)
-	{
-		self.entries[i - 1] = self.entries[i];
-	}
-	self.size--;
+	if (!--self.size || index == self.size) return;
+	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
 }
 
 fn void List.add_all(&self, List* other_list)

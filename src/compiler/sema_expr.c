@@ -54,7 +54,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *expr, bool report_missing);
-static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_call(SemaContext *context, Expr *expr);
@@ -752,6 +752,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	switch (decl->var.kind)
 	{
 		case VARDECL_CONST:
+			if (decl->is_extern) return true;
 			if (!expr_is_constant_eval(decl->var.init_expr, CONSTANT_EVAL_NO_SIDE_EFFECTS))
 			{
 				UNREACHABLE
@@ -928,7 +929,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (decl_needs_prefix(decl))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
-		if (decl->unit->module != context->unit->module && !expr->identifier_expr.path)
+		if (decl_module(decl) != context->unit->module && !expr->identifier_expr.path)
 		{
 			const char *message;
 			switch (decl->decl_kind)
@@ -3105,7 +3106,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
 									"it may refer to method defined in '%s' or one in '%s'",
-					   name, member->unit->module->name->module, ambiguous->unit->module->name->module);
+					   name, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
 		}
 	}
 	if (!member)
@@ -4157,7 +4158,7 @@ CHECK_DEEPER:
 		{
 			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
 									"it may refer to method defined in '%s' or one in '%s'",
-									kw, method->unit->module->name->module, ambiguous->unit->module->name->module);
+									kw, decl_module(method)->name->module, decl_module(ambiguous)->name->module);
 		}
 		if (!method)
 		{
@@ -4201,7 +4202,7 @@ CHECK_DEEPER:
 		if (ambiguous)
 		{
 			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
+					   kw, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
 			return false;
 		}
 	}
@@ -7085,7 +7086,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		if (ambiguous)
 		{
 			sema_error_at(loc, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
+					   kw, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
 			return false;
 		}
 		if (is_missing)
@@ -7205,7 +7206,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		return true;
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append(decl->unit->module->name->module);
+	scratch_buffer_append(decl_module(decl)->name->module);
 	scratch_buffer_append("::");
 	scratch_buffer_append(decl->name);
 	expr_rewrite_to_string(expr, scratch_buffer_copy());
@@ -7835,7 +7836,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 	return true;
 }
 
-static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_type, Expr *expr)
 {
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	TokenType type = expr->ct_arg_expr.type;
@@ -7871,6 +7872,10 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Expr *expr)
 			// Not found, so generate a new.
 			if (!decl)
 			{
+				if (type_is_invalid_storage_type(arg_expr->type))
+				{
+					RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
+				}
 				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM, arg_expr->span);
 				decl->var.init_expr = arg_expr;
 				decl->va_index = (uint16_t)index;
@@ -8190,7 +8195,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_CT_AND_OR:
 			return sema_expr_analyse_ct_and_or(context, expr);
 		case EXPR_CT_ARG:
-			return sema_expr_analyse_ct_arg(context, expr);
+			return sema_expr_analyse_ct_arg(context, NULL, expr);
 		case EXPR_STRINGIFY:
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
@@ -8658,6 +8663,9 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			break;
 		case EXPR_LAMBDA:
 			if (!sema_expr_analyse_lambda(context, infer_type, expr)) return expr_poison(expr);
+			break;
+		case EXPR_CT_ARG:
+			if (!sema_expr_analyse_ct_arg(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		default:
 			if (!sema_analyse_expr_dispatch(context, expr)) return expr_poison(expr);

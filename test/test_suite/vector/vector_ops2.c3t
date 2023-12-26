@@ -40,15 +40,16 @@ entry:
   %4 = call <4 x float> @llvm.fabs.v4f32(<4 x float> %3)
   %5 = call float @llvm.vector.reduce.fmin.v4f32(<4 x float> %4)
   %zero = fcmp ueq float %5, 0.000000e+00
-  br i1 %zero, label %panic, label %checkok
-
-panic:                                            ; preds = %entry
-  %6 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %6(ptr @.panic_msg, i64 17, ptr @.file, i64 14, ptr @.func, i64 5, i32 9)
-  unreachable
+  %6 = call i1 @llvm.expect.i1(i1 %zero, i1 false)
+  br i1 %6, label %panic, label %checkok
 
 checkok:                                          ; preds = %entry
   %fdiv = fdiv <4 x float> %2, %3
   store <4 x float> %fdiv, ptr %w, align 16
   ret void
+
+panic:                                            ; preds = %entry
+  %7 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %7(ptr @.panic_msg, i64 17, ptr @.file, i64 14, ptr @.func, i64 5, i32 9)
+  unreachable
 }

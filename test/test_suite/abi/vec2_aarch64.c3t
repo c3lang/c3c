@@ -20,25 +20,25 @@ fn Vector2 vector2_subtract_value(Vector2 v, float sub) @extern("vector2_subtrac
 define %Vector2 @vector2_zero() #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %0 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %0, align 4
-  %1 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %1, align 4
-  %2 = load %Vector2, ptr %literal, align 4
-  ret %Vector2 %2
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %0 = load %Vector2, ptr %literal, align 4
+  ret %Vector2 %0
 }
 
+; Function Attrs:
 define %Vector2 @vector2_one() #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %0 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %0, align 4
-  %1 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %1, align 4
-  %2 = load %Vector2, ptr %literal, align 4
-  ret %Vector2 %2
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %0 = load %Vector2, ptr %literal, align 4
+  ret %Vector2 %0
 }
 
+; Function Attrs:
 define %Vector2 @vector2_add([2 x float] %0, [2 x float] %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
@@ -46,27 +46,27 @@ entry:
   %literal = alloca %Vector2, align 4
   store [2 x float] %0, ptr %v1, align 4
   store [2 x float] %1, ptr %v2, align 4
-  %2 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = load %Vector2, ptr %literal, align 4
-  ret %Vector2 %4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %2 = load %Vector2, ptr %literal, align 4
+  ret %Vector2 %2
 }
 
+; Function Attrs:
 define %Vector2 @vector2_add_value([2 x float] %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
   store [2 x float] %0, ptr %v, align 4
-  %2 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = load %Vector2, ptr %literal, align 4
-  ret %Vector2 %4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %2 = load %Vector2, ptr %literal, align 4
+  ret %Vector2 %2
 }
 
+; Function Attrs:
 define %Vector2 @vector2_subtract([2 x float] %0, [2 x float] %1) #0 {
 entry:
   %v1 = alloca %Vector2, align 4
@@ -74,23 +74,22 @@ entry:
   %literal = alloca %Vector2, align 4
   store [2 x float] %0, ptr %v1, align 4
   store [2 x float] %1, ptr %v2, align 4
-  %2 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = load %Vector2, ptr %literal, align 4
-  ret %Vector2 %4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %2 = load %Vector2, ptr %literal, align 4
+  ret %Vector2 %2
 }
 
+; Function Attrs:
 define %Vector2 @vector2_subtract_value([2 x float] %0, float %1) #0 {
 entry:
   %v = alloca %Vector2, align 4
   %literal = alloca %Vector2, align 4
   store [2 x float] %0, ptr %v, align 4
-  %2 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = load %Vector2, ptr %literal, align 4
-  ret %Vector2 %4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %2 = load %Vector2, ptr %literal, align 4
+  ret %Vector2 %2
 }

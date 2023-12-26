@@ -72,6 +72,22 @@ LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id)
 	return value.value;
 }
 
+void llvm_emit_assume_raw(GenContext *c, LLVMValueRef assume_true)
+{
+	llvm_emit_call_intrinsic(c, intrinsic_id.assume, NULL, 0, &assume_true, 1);
+}
+
+LLVMValueRef llvm_emit_expect_false_raw(GenContext *c, LLVMValueRef expect_false)
+{
+	LLVMValueRef values[2] = { expect_false, LLVMConstNull(c->bool_type) };
+	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
+}
+
+LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true)
+{
+	LLVMValueRef values[2] = { expect_true, LLVMConstInt(c->bool_type, 1, false) };
+	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
+}
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional)
 {
 	assert(ref->kind == BE_ADDRESS || ref->kind == BE_ADDRESS_OPTIONAL);
@@ -367,11 +383,11 @@ LLVMTypeRef llvm_coerce_expand_hi_offset(GenContext *c, LLVMValueRef *addr, ABIA
 	if (info->coerce_expand.packed)
 	{
 		*align = type_min_alignment(*align, *align + info->coerce_expand.offset_hi);
-		llvm_emit_pointer_inbounds_gep_raw_index(c, c->byte_type, *addr, info->coerce_expand.offset_hi);
+		llvm_emit_const_ptradd_inbounds_raw(c, *addr, info->coerce_expand.offset_hi);
 		return type2;
 	}
 	*align = type_min_alignment(*align, *align + llvm_store_size(c, type2) * info->coerce_expand.offset_hi);
-	llvm_emit_pointer_inbounds_gep_raw_index(c, type2, *addr, info->coerce_expand.offset_hi);
+	llvm_emit_const_ptradd_inbounds_raw(c, *addr, type_size(info->coerce_expand.hi) * info->coerce_expand.offset_hi);
 	return type2;
 }
 /**
@@ -576,13 +592,13 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 	if (type_is_signed(index->type))
 	{
 		llvm_emit_int_comp_raw(c, &result, index->type, index->type, index->value,
-							   llvm_get_zero(c, index->type), BINARYOP_LT);
+		                       llvm_get_zero(c, index->type), BINARYOP_LT);
 		llvm_emit_panic_if_true(c, &result, "Negative array indexing", loc, "Negative array indexing (index was %d)", index, NULL);
 	}
 
 	llvm_emit_int_comp_raw(c, &result, index->type, index->type,
-						   index->value, array_max_index,
-						   BINARYOP_GE);
+	                       index->value, array_max_index,
+	                       BINARYOP_GE);
 	BEValue max;
 	llvm_value_set(&max, array_max_index, index->type);
 	llvm_emit_panic_if_true(c, &result, "Array index out of bounds", loc, "Array index out of bounds (array had size %d, index was %d)", &max, index);
@@ -4117,18 +4133,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				{
 					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_vec_type, ""),
 					                   LLVMBuildPtrToInt(c->builder, rhs_value, int_vec_type, ""), "");
-					LLVMValueRef slots[256];
-					LLVMValueRef *ptr = slots;
-					if (len > 256)
-					{
-						ptr = MALLOC(len * sizeof(LLVMValueRef));
-					}
-					AlignSize diff = type_abi_alignment(element_type);
-					for (ArraySize i = 0; i < len; i++)
-					{
-						ptr[i] = llvm_const_int(c, type_isz, diff);
-					}
-					LLVMValueRef divisor = LLVMConstVector(ptr, len);
+					LLVMValueRef divisor = llvm_emit_const_vector(llvm_const_int(c, type_isz, type_abi_alignment(element_type)), len);
 					val = LLVMBuildExactSDiv(c->builder, val, divisor, "");
 					break;
 				}
@@ -4964,32 +4969,29 @@ void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *me
 	llvm_value_set_address(member_ref, ptr, struct_ref->type->decl->strukt.members[member_id]->type, align);
 }
 
-LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
-									  unsigned struct_alignment, AlignSize *alignment)
+LLVMValueRef llvm_emit_struct_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
+                                      unsigned struct_alignment, AlignSize *alignment)
 {
-	*alignment = type_min_alignment((AlignSize)LLVMOffsetOfElement(context->target_data, struct_type, index), struct_alignment);
-	if (llvm_is_const(ptr))
-	{
-		LLVMValueRef idx[2] = { llvm_get_zero(context, type_int), llvm_const_int(context, type_int, index) };
-		return LLVMBuildInBoundsGEP2(context->builder, struct_type, ptr, idx, 2, "");
-	}
-	return LLVMBuildStructGEP2(context->builder, struct_type, ptr, index, "");
+	*alignment = type_min_alignment((AlignSize)LLVMOffsetOfElement(c->target_data, struct_type, index), struct_alignment);
+	if (!index) return ptr;
+	ByteSize offset = LLVMOffsetOfElement(c->target_data, struct_type, index);
+	return llvm_emit_const_ptradd_inbounds_raw(c, ptr, offset);
 }
 
 
 LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, BEValue *index, AlignSize array_alignment, AlignSize *alignment)
 {
 	LLVMValueRef index_val = llvm_load_value(c, index);
+	LLVMTypeRef element_type = LLVMGetElementType(array_type);
 	Type *index_type = index->type;
 	assert(type_is_integer(index_type));
+	LLVMTypeRef idx_type = llvm_get_type(c, index_type);
 	if (type_is_unsigned(index_type) && type_size(index_type) < type_size(type_usz))
 	{
-		index_type = type_usz->canonical;
-		index_val = llvm_zext_trunc(c, index_val, llvm_get_type(c, index_type));
+		index_val = llvm_zext_trunc(c, index_val, idx_type);
 	}
-	*alignment = type_min_alignment(llvm_store_size(c, LLVMGetElementType(array_type)), array_alignment);
-	LLVMValueRef idx[2] = { llvm_get_zero(c, index_type), index_val };
-	return LLVMBuildInBoundsGEP2(c->builder, array_type, ptr, idx, 2, "");
+	*alignment = type_min_alignment(llvm_store_size(c, element_type), array_alignment);
+	return llvm_emit_pointer_inbounds_gep_raw(c, element_type, ptr, index_val);
 }
 
 LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment)
@@ -4999,20 +5001,80 @@ LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRe
 	return llvm_emit_array_gep_raw_index(c, ptr, array_type, &index_value, array_alignment, alignment);
 }
 
+LLVMValueRef llvm_emit_ptradd_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult)
+{
+	if (LLVMIsConstant(offset) && LLVMIsNull(offset))
+	{
+		return ptr;
+	}
+	if (mult == 1) return LLVMBuildGEP2(c->builder, c->byte_type, ptr, &offset, 1, "ptradd_any");
+	return LLVMBuildGEP2(c->builder, LLVMArrayType(c->byte_type, mult), ptr, &offset, 1, "ptroffset_any");
+}
+
+LLVMValueRef llvm_emit_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult)
+{
+	if (LLVMIsConstant(offset) && LLVMIsNull(offset))
+	{
+		return ptr;
+	}
+	if (mult == 1) return LLVMBuildInBoundsGEP2(c->builder, c->byte_type, ptr, &offset, 1, "ptradd");
+	return LLVMBuildInBoundsGEP2(c->builder, LLVMArrayType(c->byte_type, mult), ptr, &offset, 1, "ptroffset");
+}
+
+LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArraySize len)
+{
+	LLVMValueRef slots[256];
+	LLVMValueRef *ptr = slots;
+	if (len > 256)
+	{
+		ptr = MALLOC(len * sizeof(LLVMValueRef));
+	}
+	for (ArraySize i = 0; i < len; i++)
+	{
+		ptr[i] = value;
+	}
+	return LLVMConstVector(ptr, len);
+}
+
+
+LLVMValueRef llvm_ptr_mult(GenContext *c, LLVMValueRef offset, LLVMTypeRef pointee_type)
+{
+	ByteSize size = llvm_store_size(c, pointee_type);
+	if (size == 1) return offset;
+
+	LLVMTypeRef offset_type = LLVMTypeOf(offset);
+	LLVMValueRef mult;
+	if (LLVMGetTypeKind(offset_type) == LLVMVectorTypeKind)
+	{
+		mult = llvm_emit_const_vector(LLVMConstInt(LLVMGetElementType(offset_type), size, false), LLVMGetVectorSize(offset_type));
+	}
+	else
+	{
+		mult = LLVMConstInt(offset_type, size, false);
+	}
+	return LLVMBuildMul(c->builder, offset, mult, "");
+}
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
 {
-	return LLVMBuildGEP2(c->builder, pointee_type, ptr, &offset, 1, "ptroffset");
+	if (LLVMIsConstant(offset))
+	{
+		return llvm_emit_ptradd_raw(c, ptr, llvm_ptr_mult(c, offset, pointee_type), 1);
+	}
+	return llvm_emit_ptradd_raw(c, ptr, offset, llvm_store_size(c, pointee_type));
 }
 
 LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
 {
-	return LLVMBuildInBoundsGEP2(c->builder, pointee_type, ptr, &offset, 1, "ptroffset");
+	if (LLVMIsConstant(offset))
+	{
+		return llvm_emit_ptradd_inbounds_raw(c, ptr, llvm_ptr_mult(c, offset, pointee_type), 1);
+	}
+	return llvm_emit_ptradd_inbounds_raw(c, ptr, offset, llvm_store_size(c, pointee_type));
 }
 
-LLVMValueRef llvm_emit_pointer_inbounds_gep_raw_index(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, ByteSize offset)
+LLVMValueRef llvm_emit_const_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, ByteSize offset)
 {
-	LLVMValueRef offset_val = LLVMConstInt(c->size_type, offset, false);
-	return LLVMBuildInBoundsGEP2(c->builder, pointee_type, ptr, &offset_val, 1, "ptroffset");
+	return llvm_emit_ptradd_inbounds_raw(c, ptr, LLVMConstInt(c->size_type, offset, false), 1);
 }
 
 void llvm_emit_subarray_len(GenContext *c, BEValue *subarray, BEValue *len)

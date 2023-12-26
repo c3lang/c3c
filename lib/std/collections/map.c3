@@ -23,17 +23,40 @@ struct HashMap
  * @param [&inout] allocator "The allocator to use"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap())
+{
+	capacity = math::next_power_of_2(capacity);
+	self.allocator = allocator;
+	self.load_factor = load_factor;
+	self.threshold = (uint)(capacity * load_factor);
+	self.table = allocator.new_zero_array(Entry*, capacity);
+	return self;
+}
+
+/**
+ * @param [&inout] allocator "The allocator to use"
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !map.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap())
+fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
 {
-	capacity = math::next_power_of_2(capacity);
-	map.allocator = allocator;
-	map.load_factor = load_factor;
-	map.threshold = (uint)(capacity * load_factor);
-	map.table = allocator.new_zero_array(Entry*, capacity);
-	return map;
+	return map.new_init(capacity, load_factor, allocator);
+}
+
+/**
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+{
+	return self.new_init(capacity, load_factor, mem::temp()) @inline;
 }
 
 /**
@@ -42,9 +65,9 @@ fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, flo
  * @require !map.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.init_temp(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn HashMap* HashMap.init_temp(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR) @deprecated("Replaced by temp_init")
 {
-	return map.init_new(capacity, load_factor, mem::temp());
+	return map.temp_init(capacity, load_factor) @inline;
 }
 
 /**
@@ -62,20 +85,39 @@ fn bool HashMap.is_initialized(&map)
  * @param [&inout] allocator "The allocator to use"
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap())
+fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap())
 {
-	self.init_new(other_map.table.len, other_map.load_factor, allocator);
+	self.new_init(other_map.table.len, other_map.load_factor, allocator);
 	self.put_all_for_create(other_map);
 	return self;
 }
 
 /**
+ * @param [&inout] allocator "The allocator to use"
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.init_temp_from_map(&map, HashMap* other_map)
+fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init_from_map")
+
 {
-	return map.init_new_from_map(other_map, mem::temp()) @inline;
+	return self.new_init_from_map(other_map, allocator) @inline;
 }
+
+/**
+ * @param [&in] other_map "The map to copy from."
+ **/
+fn HashMap* HashMap.temp_init_from_map(&map, HashMap* other_map)
+{
+	return map.new_init_from_map(other_map, mem::temp()) @inline;
+}
+
+/**
+ * @param [&in] other_map "The map to copy from."
+ **/
+fn HashMap* HashMap.init_temp_from_map(&map, HashMap* other_map) @deprecated("Replaced by temp_init_from_map")
+{
+	return map.temp_init_from_map(other_map) @inline;
+}
+
 
 fn bool HashMap.is_empty(&map) @inline
 {
@@ -146,7 +188,7 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 	// If the map isn't initialized, use the defaults to initialize it.
 	if (!map.allocator)
 	{
-		map.init_new();
+		map.new_init();
 	}
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);

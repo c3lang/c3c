@@ -136,7 +136,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 {
 	void *load_addr = (void *)load_address()!;
 	BacktraceList list;
-	list.init_new(backtrace.len, allocator);
+	list.new_init(backtrace.len, allocator);
 	defer catch
 	{
 		foreach (trace : list)

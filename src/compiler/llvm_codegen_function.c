@@ -441,6 +441,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		c->debug.function = LLVMGetSubprogram(function);
 	}
 
+	c->panic_blocks = NULL;
 	c->cur_func.name = decl->name;
 	c->cur_func.prototype = prototype;
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
@@ -509,6 +510,16 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	{
 		llvm_emit_return_implicit(c);
 	}
+
+	LLVMBasicBlockRef last_block = LLVMGetLastBasicBlock(c->function);
+
+	// Move panic blocks last, this is just overall nicer to read, and might be better from
+	// a performance POV
+	FOREACH_BEGIN(LLVMBasicBlockRef panic_block, c->panic_blocks)
+		if (last_block == panic_block) continue;
+		LLVMMoveBasicBlockAfter(panic_block, last_block);
+		last_block = panic_block;
+	FOREACH_END();
 
 	// erase alloca point
 	if (LLVMGetInstructionParent(alloca_point))

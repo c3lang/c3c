@@ -27,6 +27,20 @@ loop.cond:                                        ; preds = %checkok, %entry
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %i, align 8
   %ge = icmp uge i64 %1, 2
-  br i1 %ge, label %panic, label %checkok
+  %2 = call i1 @llvm.expect.i1(i1 %ge, i1 false)
+  br i1 %2, label %panic, label %checkok
+
+checkok:                                          ; preds = %loop.body
+  %ptroffset = getelementptr inbounds [4 x i8], ptr @testing.FOO, i64 %1
+  %3 = load i32, ptr %ptroffset, align 4
+  store i32 %3, ptr %x, align 4
+  %4 = load i64, ptr %i, align 8
+  %add = add i64 %4, 1
+  store i64 %add, ptr %i, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i64 0
+
 panic:                                            ; preds = %loop.body
   store i64 2, ptr %taddr, align 8

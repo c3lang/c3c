@@ -203,7 +203,7 @@ fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::hea
 fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 {
 	BacktraceList list;
-	list.init_new(backtrace.len, allocator);
+	list.new_init(backtrace.len, allocator);
 	defer catch
 	{
 		foreach (trace : list)

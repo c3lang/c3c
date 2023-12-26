@@ -777,7 +777,7 @@ Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref)
 /**
  * const_decl ::= 'const' type? CONST_IDENT attributes? '=' const_expr
  */
-Decl *parse_const_declaration(ParseContext *c, bool is_global)
+Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 {
 	advance_and_verify(c, TOKEN_CONST);
 
@@ -805,6 +805,7 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global)
 		if (!parse_attributes(c, &decl->attributes, NULL, NULL, NULL)) return poisoned_decl;
 	}
 
+	if (is_extern) return decl;
 	// Required initializer
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 	if (!parse_decl_initializer(c, decl)) return poisoned_decl;
@@ -1702,9 +1703,9 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 }
 
-static inline Decl *parse_top_level_const_declaration(ParseContext *c)
+static inline Decl *parse_top_level_const_declaration(ParseContext *c, bool is_extern)
 {
-	ASSIGN_DECL_OR_RET(Decl * decl, parse_const_declaration(c, true), poisoned_decl);
+	ASSIGN_DECL_OR_RET(Decl *decl, parse_const_declaration(c, true, is_extern), poisoned_decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
@@ -2694,7 +2695,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 					break;
 				case TOKEN_CONST:
 					if (contracts) goto CONTRACT_NOT_ALLOWED;
-					decl = parse_top_level_const_declaration(c);
+					decl = parse_top_level_const_declaration(c, true);
 					break;
 				case TOKEN_IDENT:
 				case TOKEN_TLOCAL:
@@ -2791,7 +2792,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			break;
 		case TOKEN_CONST:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_top_level_const_declaration(c);
+			decl = parse_top_level_const_declaration(c, false);
 			break;
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:

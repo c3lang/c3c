@@ -990,7 +990,7 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 		llvm_value_rvalue(c, &value);
 		assert(value.kind == BE_BOOLEAN);
 		EMIT_LOC(c, expr);
-		llvm_emit_call_intrinsic(c, intrinsic_id.assume, NULL, 0, &(value.value), 1);
+		llvm_emit_assume_raw(c, value.value);
 	}
 }
 
@@ -1392,8 +1392,11 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
 	assert(llvm_value_is_bool(value));
+	value->value = llvm_emit_expect_false_raw(c, value->value);
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
+
 	llvm_emit_block(c, panic_block);
+	vec_add(c->panic_blocks, panic_block);
 	BEValue *values = NULL;
 	if (value_1)
 	{

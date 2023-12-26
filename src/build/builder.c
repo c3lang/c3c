@@ -234,6 +234,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->optsize = options->optsize;
 	}
+	if (options->single_module != SINGLE_MODULE_NOT_SET)
+	{
+		target->single_module = options->single_module;
+	}
 	if (options->safety_level != SAFETY_NOT_SET)
 	{
 		target->feature.safe_mode = options->safety_level;
@@ -377,6 +381,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->optsetting != OPT_SETTING_NOT_SET)
 	{
 		target->optsetting = options->optsetting;
+	}
+	else
+	{
+		if (target->optsetting == OPT_SETTING_NOT_SET) target->optsetting = OPT_SETTING_O0;
 	}
 	update_build_target_with_opt_level(target, target->optsetting);
 }

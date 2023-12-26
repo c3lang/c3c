@@ -30,6 +30,6 @@ fn int extract_or_test_files()
 @g = external global %UzGlobs, align 8
 
 entry:
-  store ptr getelementptr inbounds (%UzGlobs, ptr @g, i32 0, i32 1), ptr getelementptr inbounds (%UzGlobs, ptr @g, i32 0, i32 2), align 8
+  store ptr getelementptr inbounds (i8, ptr @g, i64 8), ptr getelementptr inbounds (i8, ptr @g, i64 24), align 8
   ret i32 0
 }

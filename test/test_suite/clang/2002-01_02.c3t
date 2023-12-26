@@ -135,7 +135,6 @@ void *[*] data = { &afoo, &abar, &axx };
 
 %Foo = type { i32, i32 }
 %Foostruct = type { i16 }
-%Edge_rec = type { ptr, ptr, i32, i32 }
 %Test = type { i16, i16, i32, i32 }
 %STest2 = type { i32, [4 x i16], double }
 
@@ -148,21 +147,26 @@ void *[*] data = { &afoo, &abar, &axx };
 @test.data = local_unnamed_addr global [3 x ptr] [ptr @test.afoo, ptr @test.abar, ptr @test.axx], align 16
 @.str.6 = private unnamed_addr constant [6 x i8] c"%lld\0A\00", align 1
 
+; Function Attrs:
 define void @test.foo() #0 {
 entry:
   ret void
 }
 
+; Function Attrs:
 declare ptr @dlclose(ptr) #0
 
+; Function Attrs:
 define void @test.ap_os_dso_unload(ptr %0) #0 {
 entry:
   %1 = call ptr @dlclose(ptr %0)
   ret void
 }
 
+; Function Attrs:
 declare void @foo2(i32, double, float) #0
 
+; Function Attrs:
 define void @test.bar(i32 %0) #0 {
 entry:
   %intbool = icmp ne i32 %0, 0
@@ -171,8 +175,10 @@ entry:
   ret void
 }
 
+; Function Attrs:
 declare i32 @tolower(i32) #0
 
+; Function Attrs:
 define ptr @test.rangematch(ptr %0, i32 %1, i32 %2) #0 {
 entry:
   %le = icmp sle i32 %2, %1
@@ -183,14 +189,18 @@ entry:
   %le1 = icmp sle i32 %3, %4
   %or = or i1 %le, %le1
   br i1 %or, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %entry
   ret ptr null
+
 if.exit:                                          ; preds = %entry
   ret ptr %0
 }
 
+; Function Attrs:
 declare i32 @foo3(i16) #0
 
+; Function Attrs:
 define void @test.teste2() #0 {
 entry:
   %xqic = alloca %Foostruct, align 2
@@ -200,7 +210,7 @@ entry:
   ret void
 }
 
-
+; Function Attrs:
 define i32 @test.do_merge(ptr %0, ptr %1) #0 {
 entry:
   %lvalid = alloca i32, align 4
@@ -210,27 +220,33 @@ entry:
   store ptr null, ptr %basel, align 8
   store ptr null, ptr %rcand, align 8
   br label %loop.body
+
 loop.body:                                        ; preds = %if.exit, %entry
   %2 = load i32, ptr %lvalid, align 4
   %not = icmp eq i32 %2, 0
   br i1 %not, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %loop.body
   %3 = load ptr, ptr %basel, align 8
-  %4 = getelementptr inbounds %Edge_rec, ptr %3, i32 0, i32 1
-  %5 = load ptr, ptr %4, align 8
-  %ptrxi = ptrtoint ptr %5 to i32
+  %ptradd = getelementptr inbounds i8, ptr %3, i64 8
+  %4 = load ptr, ptr %ptradd, align 8
+  %ptrxi = ptrtoint ptr %4 to i32
   ret i32 %ptrxi
+
 if.exit:                                          ; preds = %loop.body
   br label %loop.body
 }
 
+; Function Attrs:
 define i32 @test.test(i32 %0) #0 {
 entry:
   ret i32 %0
 }
 
+; Function Attrs:
 declare void @abc(ptr) #0
 
+; Function Attrs:
 define i32 @test.deff(i32 %0, i32 %1) #0 {
 entry:
   %z = alloca i32, align 4
@@ -239,88 +255,96 @@ entry:
   ret i32 %0
 }
 
+; Function Attrs:
 define i32 @test.testing(ptr %0) #0 {
 entry:
-  %1 = getelementptr inbounds %Test, ptr %0, i32 0, i32 1
-  %2 = load i16, ptr %1, align 2
-  %sext = sext i16 %2 to i32
-  %3 = getelementptr inbounds %Test, ptr %0, i32 0, i32 2
-  %4 = load i32, ptr %3, align 4
-  %add = add i32 %sext, %4
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 2
+  %1 = load i16, ptr %ptradd, align 2
+  %sext = sext i16 %1 to i32
+  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 4
+  %2 = load i32, ptr %ptradd1, align 4
+  %add = add i32 %sext, %2
   ret i32 %add
 }
 
+; Function Attrs:
 define i32 @test.test2(i32 %0, i64 %1, i32 %2, i32 %3) #0 {
 entry:
   %a = alloca %Test, align 8
   store i64 %1, ptr %a, align 8
-  %ptroffset = getelementptr inbounds i32, ptr %a, i64 2
-  store i32 %2, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 8
+  store i32 %2, ptr %ptradd, align 8
   %add = add i32 %0, %3
-  %4 = getelementptr inbounds %Test, ptr %a, i32 0, i32 1
-  %5 = load i16, ptr %4, align 2
-  %sext = sext i16 %5 to i32
-  %add1 = add i32 %add, %sext
-  %6 = getelementptr inbounds %Test, ptr %a, i32 0, i32 2
-  %7 = load i32, ptr %6, align 4
-  %add2 = add i32 %add1, %7
-  ret i32 %add2
+  %ptradd1 = getelementptr inbounds i8, ptr %a, i64 2
+  %4 = load i16, ptr %ptradd1, align 2
+  %sext = sext i16 %4 to i32
+  %add2 = add i32 %add, %sext
+  %ptradd3 = getelementptr inbounds i8, ptr %a, i64 4
+  %5 = load i32, ptr %ptradd3, align 4
+  %add4 = add i32 %add2, %5
+  ret i32 %add4
 }
 
+; Function Attrs:
 define i32 @test.test3(i64 %0, i32 %1, i64 %2, i32 %3) #0 {
 entry:
   %a = alloca %Test, align 8
   %b = alloca %Test, align 8
   store i64 %0, ptr %a, align 8
-  %ptroffset = getelementptr inbounds i32, ptr %a, i64 2
-  store i32 %1, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 8
+  store i32 %1, ptr %ptradd, align 8
   store i64 %2, ptr %b, align 8
-  %ptroffset1 = getelementptr inbounds i32, ptr %b, i64 2
-  store i32 %3, ptr %ptroffset1, align 8
-  %4 = getelementptr inbounds %Test, ptr %a, i32 0, i32 1
-  %5 = load i16, ptr %4, align 2
-  %sext = sext i16 %5 to i32
-  %6 = getelementptr inbounds %Test, ptr %a, i32 0, i32 2
-  %7 = load i32, ptr %6, align 4
-  %add = add i32 %sext, %7
-  %8 = getelementptr inbounds %Test, ptr %b, i32 0, i32 2
-  %9 = load i32, ptr %8, align 4
-  %add2 = add i32 %add, %9
-  %10 = getelementptr inbounds %Test, ptr %b, i32 0, i32 3
-  %11 = load i32, ptr %10, align 8
-  %add3 = add i32 %add2, %11
-  ret i32 %add3
+  %ptradd1 = getelementptr inbounds i8, ptr %b, i64 8
+  store i32 %3, ptr %ptradd1, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %a, i64 2
+  %4 = load i16, ptr %ptradd2, align 2
+  %sext = sext i16 %4 to i32
+  %ptradd3 = getelementptr inbounds i8, ptr %a, i64 4
+  %5 = load i32, ptr %ptradd3, align 4
+  %add = add i32 %sext, %5
+  %ptradd4 = getelementptr inbounds i8, ptr %b, i64 4
+  %6 = load i32, ptr %ptradd4, align 4
+  %add5 = add i32 %add, %6
+  %ptradd6 = getelementptr inbounds i8, ptr %b, i64 8
+  %7 = load i32, ptr %ptradd6, align 8
+  %add7 = add i32 %add5, %7
+  ret i32 %add7
 }
 
+; Function Attrs:
 define { i64, i32 } @test.test4(i64 %0, i32 %1) #0 {
 entry:
   %a = alloca %Test, align 8
   %tempcoerce = alloca { i64, i32 }, align 8
   store i64 %0, ptr %a, align 8
-  %ptroffset = getelementptr inbounds i32, ptr %a, i64 2
-  store i32 %1, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 8
+  store i32 %1, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce, ptr align 8 %a, i32 12, i1 false)
   %2 = load { i64, i32 }, ptr %tempcoerce, align 8
   ret { i64, i32 } %2
 }
 
+; Function Attrs:
 define i32 @test.test6() #0 {
 entry:
   %b = alloca [200 x i32], align 16
   call void @llvm.memset.p0.i64(ptr align 16 %b, i8 0, i64 800, i1 false)
-  %0 = getelementptr inbounds [200 x i32], ptr %b, i64 0, i64 4
-  %1 = load i32, ptr %0, align 4
-  ret i32 %1
+  %ptradd = getelementptr inbounds i8, ptr %b, i64 16
+  %0 = load i32, ptr %ptradd, align 4
+  ret i32 %0
 }
 
+; Function Attrs:
 define void @test.test7(ptr noalias sret(%STest2) align 8 %0, ptr byval(%STest2) align 8 %1) #0 {
 entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %1, i32 24, i1 false)
   ret void
 }
 
+; Function Attrs:
 declare i32 @printf(ptr, ...) #0
 
+; Function Attrs:
 define i32 @test.main2() #0 {
 entry:
   %v = alloca i64, align 8

@@ -30,49 +30,47 @@ entry:
   %b = alloca i32, align 4
   %c = alloca i32, align 4
   %d = alloca i32, align 4
-  %ptroffset = getelementptr inbounds i32, ptr %0, i64 0
-  %1 = load i32, ptr %ptroffset, align 4
+  %1 = load i32, ptr %0, align 4
   store i32 %1, ptr %a, align 4
   %2 = load i32, ptr %0, align 4
   store i32 %2, ptr %b, align 4
-  %ptroffset1 = getelementptr inbounds i32, ptr %0, i64 1
-  %3 = load i32, ptr %ptroffset1, align 4
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 4
+  %3 = load i32, ptr %ptradd, align 4
   store i32 %3, ptr %c, align 4
-  %ptroffset2 = getelementptr inbounds i32, ptr %0, i64 -1
-  %4 = load i32, ptr %ptroffset2, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 -4
+  %4 = load i32, ptr %ptradd1, align 4
   store i32 %4, ptr %d, align 4
   ret void
 }
 
-
+; Function Attrs:
 define void @pointer_index.test2(ptr %0) #0 {
 entry:
   %a = alloca i8, align 1
   %b = alloca i8, align 1
   %c = alloca i8, align 1
-  %ptroffset = getelementptr inbounds i8, ptr %0, i64 0
-  %1 = load i8, ptr %ptroffset, align 1
+  %1 = load i8, ptr %0, align 1
   store i8 %1, ptr %a, align 1
   %2 = load i8, ptr %0, align 1
   store i8 %2, ptr %b, align 1
-  %ptroffset1 = getelementptr inbounds i8, ptr %0, i64 1
-  %3 = load i8, ptr %ptroffset1, align 1
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 1
+  %3 = load i8, ptr %ptradd, align 1
   store i8 %3, ptr %c, align 1
   ret void
 }
 
+; Function Attrs:
 define void @pointer_index.test3(ptr %0) #0 {
 entry:
   %a = alloca i64, align 8
   %b = alloca i64, align 8
   %c = alloca i64, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %0, i64 0
-  %1 = load i64, ptr %ptroffset, align 8
+  %1 = load i64, ptr %0, align 8
   store i64 %1, ptr %a, align 8
   %2 = load i64, ptr %0, align 8
   store i64 %2, ptr %b, align 8
-  %ptroffset1 = getelementptr inbounds i64, ptr %0, i64 1
-  %3 = load i64, ptr %ptroffset1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 8
+  %3 = load i64, ptr %ptradd, align 8
   store i64 %3, ptr %c, align 8
   ret void
 }

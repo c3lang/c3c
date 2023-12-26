@@ -4,7 +4,7 @@ import std::io;
 fn void! write_read()
 {
 	ByteBuffer buf;
-	buf.init_temp(16)!;
+	buf.temp_init(16)!;
 	usz n;
 	uint x;
 	uint y;
@@ -45,7 +45,7 @@ fn void! samples()
 	foreach (tc : tcases)
 	{
 		ByteWriter bw;
-		bw.init_temp();
+		bw.temp_init();
 		usz n = io::write_varint(&bw, tc.in)!;
 		assert(n == tc.bytes.len, "got %d; want %d", n, tc.bytes.len);
 		char[] bytes = bw.bytes[:bw.index];

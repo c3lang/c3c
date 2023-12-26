@@ -34,10 +34,10 @@ fn void main()
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
-
+; Function Attrs:
 declare i32 @printf(ptr, ...) #0
 
-
+; Function Attrs:
 define void @test.main() #0 {
 entry:
   %z = alloca i32, align 4
@@ -48,21 +48,20 @@ entry:
   %literal5 = alloca %Foo, align 4
   store i32 2, ptr %z, align 4
   store i64 0, ptr %z.f, align 8
-  %0 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
   %optval = load i64, ptr %z.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %1, label %after_check, label %assign_optional
+  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %0, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %w.f, align 8
   br label %after_assign
 
 after_check:                                      ; preds = %entry
-  %2 = load i32, ptr %z, align 4
-  store i32 %2, ptr %0, align 4
-  %3 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 1
-  store i32 0, ptr %3, align 4
+  %1 = load i32, ptr %z, align 4
+  store i32 %1, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store i32 0, ptr %ptradd, align 4
   store ptr %literal, ptr %w, align 8
   store i64 0, ptr %w.f, align 8
   br label %after_assign
@@ -70,14 +69,13 @@ after_check:                                      ; preds = %entry
 after_assign:                                     ; preds = %after_check, %assign_optional
   %optval1 = load i64, ptr %w.f, align 8
   %not_err2 = icmp eq i64 %optval1, 0
-  %4 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
-  br i1 %4, label %after_check3, label %voiderr
+  %2 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
+  br i1 %2, label %after_check3, label %voiderr
 
 after_check3:                                     ; preds = %after_assign
-  %5 = load ptr, ptr %w, align 8
-  %6 = getelementptr inbounds %Foo, ptr %5, i32 0, i32 0
-  %7 = load i32, ptr %6, align 4
-  %8 = call i32 (ptr, ...) @printf(ptr @.str, i32 %7)
+  %3 = load ptr, ptr %w, align 8
+  %4 = load i32, ptr %3, align 4
+  %5 = call i32 (ptr, ...) @printf(ptr @.str, i32 %4)
   br label %voiderr
 
 voiderr:                                          ; preds = %after_check3, %after_assign
@@ -85,38 +83,36 @@ voiderr:                                          ; preds = %after_check3, %afte
   br label %after_check4
 
 after_check4:                                     ; preds = %voiderr
-  %9 = getelementptr inbounds %Foo, ptr %literal5, i32 0, i32 0
   %optval6 = load i64, ptr %z.f, align 8
   %not_err7 = icmp eq i64 %optval6, 0
-  %10 = call i1 @llvm.expect.i1(i1 %not_err7, i1 true)
-  br i1 %10, label %after_check9, label %assign_optional8
+  %6 = call i1 @llvm.expect.i1(i1 %not_err7, i1 true)
+  br i1 %6, label %after_check9, label %assign_optional8
 
 assign_optional8:                                 ; preds = %after_check4
   store i64 %optval6, ptr %w.f, align 8
-  br label %after_assign10
+  br label %after_assign11
 
 after_check9:                                     ; preds = %after_check4
-  %11 = load i32, ptr %z, align 4
-  store i32 %11, ptr %9, align 4
-  %12 = getelementptr inbounds %Foo, ptr %literal5, i32 0, i32 1
-  store i32 0, ptr %12, align 4
+  %7 = load i32, ptr %z, align 4
+  store i32 %7, ptr %literal5, align 4
+  %ptradd10 = getelementptr inbounds i8, ptr %literal5, i64 4
+  store i32 0, ptr %ptradd10, align 4
   store ptr %literal5, ptr %w, align 8
   store i64 0, ptr %w.f, align 8
-  br label %after_assign10
+  br label %after_assign11
 
-after_assign10:                                   ; preds = %after_check9, %assign_optional8
-  %optval11 = load i64, ptr %w.f, align 8
-  %not_err12 = icmp eq i64 %optval11, 0
-  %13 = call i1 @llvm.expect.i1(i1 %not_err12, i1 true)
-  br i1 %13, label %after_check13, label %voiderr14
+after_assign11:                                   ; preds = %after_check9, %assign_optional8
+  %optval12 = load i64, ptr %w.f, align 8
+  %not_err13 = icmp eq i64 %optval12, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err13, i1 true)
+  br i1 %8, label %after_check14, label %voiderr15
 
-after_check13:                                    ; preds = %after_assign10
-  %14 = load ptr, ptr %w, align 8
-  %15 = getelementptr inbounds %Foo, ptr %14, i32 0, i32 0
-  %16 = load i32, ptr %15, align 4
-  %17 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %16)
-  br label %voiderr14
+after_check14:                                    ; preds = %after_assign11
+  %9 = load ptr, ptr %w, align 8
+  %10 = load i32, ptr %9, align 4
+  %11 = call i32 (ptr, ...) @printf(ptr @.str.1, i32 %10)
+  br label %voiderr15
 
-voiderr14:                                        ; preds = %after_check13, %after_assign10
+voiderr15:                                        ; preds = %after_check14, %after_assign11
   ret void
 }

@@ -22,14 +22,15 @@ fn void test(int x)
 @.taddr = private global [2 x i32] [i32 0, i32 1], align 4
 @test.zw = local_unnamed_addr global %"int[]" { ptr @.taddr, i64 2 }, align 8
 
+; Function Attrs:
 define void @test.test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4
   %literal = alloca [2 x i32], align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
   %sext = sext i32 %0 to i64
-  %1 = getelementptr inbounds [2 x i32], ptr %literal, i64 0, i64 %sext
-  %2 = load i32, ptr %1, align 4
-  store i32 %2, ptr %zonk, align 4
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %literal, i64 %sext
+  %1 = load i32, ptr %ptroffset, align 4
+  store i32 %1, ptr %zonk, align 4
   ret void
 }

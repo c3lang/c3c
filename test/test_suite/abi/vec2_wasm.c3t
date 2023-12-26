@@ -21,65 +21,64 @@ target triple = "wasm32-unknown-unknown"
 define void @vector2_zero(ptr noalias sret(%Vector2) align 4 %0) #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %1 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %1, align 4
-  %2 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %2, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i32 4
+  store float 0.000000e+00, ptr %ptradd, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 8, i1 false)
   ret void
 }
 
+; Function Attrs:
 define void @vector2_one(ptr noalias sret(%Vector2) align 4 %0) #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %1 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %1, align 4
-  %2 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %2, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i32 4
+  store float 0.000000e+00, ptr %ptradd, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 8, i1 false)
   ret void
 }
 
+; Function Attrs:
 define void @vector2_add(ptr noalias sret(%Vector2) align 4 %0, ptr byval(%Vector2) align 4 %1, ptr byval(%Vector2) align 4 %2) #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %4, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i32 4
+  store float 0.000000e+00, ptr %ptradd, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 8, i1 false)
   ret void
 }
 
+; Function Attrs:
 define void @vector2_add_value(ptr noalias sret(%Vector2) align 4 %0, ptr byval(%Vector2) align 4 %1, float %2) #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %4, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i32 4
+  store float 0.000000e+00, ptr %ptradd, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 8, i1 false)
   ret void
 }
 
+; Function Attrs:
 define void @vector2_subtract(ptr noalias sret(%Vector2) align 4 %0, ptr byval(%Vector2) align 4 %1, ptr byval(%Vector2) align 4 %2) #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %4, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i32 4
+  store float 0.000000e+00, ptr %ptradd, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 8, i1 false)
   ret void
 }
 
+; Function Attrs:
 define void @vector2_subtract_value(ptr noalias sret(%Vector2) align 4 %0, ptr byval(%Vector2) align 4 %1, float %2) #0 {
 entry:
   %literal = alloca %Vector2, align 4
-  %3 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %3, align 4
-  %4 = getelementptr inbounds %Vector2, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %4, align 4
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i32 4
+  store float 0.000000e+00, ptr %ptradd, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %0, ptr align 4 %literal, i32 8, i1 false)
   ret void
 }

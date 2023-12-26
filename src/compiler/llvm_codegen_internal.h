@@ -83,6 +83,7 @@ typedef struct GenContext_
 	LLVMBuilderRef builder;
 	LLVMBasicBlockRef current_block;
 	LLVMBasicBlockRef catch_block;
+	LLVMBasicBlockRef *panic_blocks;
 	LLVMValueRef *constructors;
 	LLVMValueRef *destructors;
 	ReusableConstant *reusable_constants;
@@ -425,13 +426,16 @@ TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);
 /// -- Aggregates --
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);
 LLVMValueRef llvm_emit_aggregate_two(GenContext *c, Type *type, LLVMValueRef value1, LLVMValueRef value2);
-LLVMValueRef llvm_emit_struct_gep_raw(GenContext *context, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
-									  unsigned struct_alignment, AlignSize *alignment);
+LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArraySize len);
+LLVMValueRef llvm_emit_struct_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef struct_type, unsigned index,
+                                      unsigned struct_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_array_gep_raw(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, unsigned index, AlignSize array_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVMTypeRef array_type, BEValue *index, AlignSize array_alignment, AlignSize *alignment);
 LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset);
+LLVMValueRef llvm_emit_ptradd_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult);
+LLVMValueRef llvm_emit_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult);
+LLVMValueRef llvm_emit_const_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, ByteSize offset);
 LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset);
-LLVMValueRef llvm_emit_pointer_inbounds_gep_raw_index(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, ByteSize offset);
 LLVMTypeRef llvm_coerce_expand_hi_offset(GenContext *c, LLVMValueRef *addr, ABIArgInfo *info, AlignSize *align);
 void llvm_emit_ptr_from_array(GenContext *c, BEValue *value);
 void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id);
@@ -482,7 +486,9 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 							 BEValue *value_2);
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
 void llvm_emit_unreachable(GenContext *c);
-
+void llvm_emit_assume_raw(GenContext *c, LLVMValueRef assume_true);
+LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
+LLVMValueRef llvm_emit_expect_false_raw(GenContext *c, LLVMValueRef expect_false);
 void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type);
 void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
 void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);

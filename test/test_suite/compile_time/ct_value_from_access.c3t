@@ -23,7 +23,7 @@ fn void main()
 
 @test.X = constant %Abc { i32 2, i32 3 }, align 4
 @test.Y = constant i32 3, align 4
-@test.Z = local_unnamed_addr constant ptr getelementptr inbounds (%Abc, ptr @test.X, i32 0, i32 1), align 8
+@test.Z = local_unnamed_addr constant ptr getelementptr inbounds (i8, ptr @test.X, i64 4), align 8
 
 define void @test.main() #0 {
 entry:
@@ -34,7 +34,7 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @test.X, i32 8, i1 false)
   store i32 3, ptr %y, align 4
   store ptr @test.Y, ptr %yy, align 8
-  store ptr getelementptr inbounds (%Abc, ptr @test.X, i32 0, i32 1), ptr %z, align 8
+  store ptr getelementptr inbounds (i8, ptr @test.X, i64 4), ptr %z, align 8
   ret void
 }
 

@@ -226,10 +226,10 @@ const char *type_to_error_string(Type *type)
 		case TYPE_INTERFACE:
 		{
 			Decl *decl = type->decl;
-			if (!decl || !decl->unit || !decl->unit->module->generic_suffix) return type->name;
+			if (!decl || !decl_module(decl)->generic_suffix) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->name);
-			scratch_buffer_append(decl->unit->module->generic_suffix);
+			scratch_buffer_append(decl_module(decl)->generic_suffix);
 			return scratch_buffer_copy();
 		}
 		case TYPE_FUNC:
@@ -572,7 +572,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			type = type->function.prototype->raw_type;
 			if (type->function.decl)
 			{
-				Module *module = type->function.decl->unit->module;
+				Module *module = decl_module(type->function.decl);
 				scratch_buffer_append(module->extname ? module->extname : module->name->module);
 				scratch_buffer_append_char('$');
 				scratch_buffer_append(type->name);
@@ -2314,7 +2314,7 @@ Module *type_base_module(Type *type)
 			type = type->pointer;
 			goto RETRY;
 		case TYPE_FUNC:
-			return type->function.decl ? type->function.decl->unit->module : NULL;
+			return type->function.decl ? decl_module(type->function.decl) : NULL;
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:

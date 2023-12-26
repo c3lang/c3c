@@ -75,7 +75,7 @@ entry:
   ret void
 }
 
-
+; Function Attrs:
 define void @foo.test2() #0 {
 entry:
   %b = alloca [4 x i8], align 1
@@ -94,16 +94,15 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 %b, i32 4, i1 false)
   store ptr %b, ptr %c, align 8
   %1 = load ptr, ptr %c, align 8
-  %2 = getelementptr inbounds [4 x i8], ptr %1, i64 0, i64 0
-  %3 = load i8, ptr %2, align 1
-  %zext = zext i8 %3 to i32
+  %2 = load i8, ptr %1, align 1
+  %zext = zext i8 %2 to i32
   %lshrl = lshr i32 %zext, 1
   %shl = shl i32 %lshrl, 29
   %ashr = ashr i32 %shl, 29
   call void (ptr, ...) @printf(ptr @.str, i32 %ashr)
+  %3 = load ptr, ptr %c, align 8
+  store ptr %3, ptr %x2, align 8
   %4 = load ptr, ptr %c, align 8
-  store ptr %4, ptr %x2, align 8
-  %5 = load ptr, ptr %c, align 8
-  store ptr %5, ptr %y2, align 8
+  store ptr %4, ptr %y2, align 8
   ret void
 }

@@ -13,7 +13,7 @@ struct ByteWriter (OutStream)
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure (bool)allocator, self.index == 0
  **/
-fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = mem::heap())
+fn ByteWriter* ByteWriter.new_init(&self, Allocator* allocator = mem::heap())
 {
 	*self = { .bytes = {}, .allocator = allocator };
 	return self;
@@ -21,12 +21,33 @@ fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = mem::heap())
 
 /**
  * @param [&inout] self
+ * @param [&inout] allocator
+ * @require self.bytes.len == 0 "Init may not run on on already initialized data"
+ * @ensure (bool)allocator, self.index == 0
+ **/
+fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+{
+	return self.new_init(allocator) @inline;
+}
+
+/**
+ * @param [&inout] self
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure self.index == 0
  **/
-fn ByteWriter* ByteWriter.init_temp(&self)
+fn ByteWriter* ByteWriter.temp_init(&self)
 {
-	return self.init_new(mem::temp());
+	return self.new_init(mem::temp()) @inline;
+}
+
+/**
+ * @param [&inout] self
+ * @require self.bytes.len == 0 "Init may not run on on already initialized data"
+ * @ensure self.index == 0
+ **/
+fn ByteWriter* ByteWriter.init_temp(&self) @deprecated("Replaced by temp_init")
+{
+	return self.temp_init() @inline;
 }
 
 fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)

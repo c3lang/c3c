@@ -3,7 +3,7 @@ module std::io::file::os @if(env::POSIX);
 fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* allocator)
 {
 	PathList list;
-	list.init_new(.allocator = allocator);
+	list.new_init(.allocator = allocator);
 	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) posix::closedir(directory);
 	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
@@ -25,7 +25,7 @@ module std::io::os @if(env::WIN32);
 fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* allocator)
 {
 	PathList list;
-	list.init_new(.allocator = allocator);
+	list.new_init(.allocator = allocator);
 
 	@pool(allocator)
 	{

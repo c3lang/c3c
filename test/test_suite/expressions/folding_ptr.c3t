@@ -19,8 +19,7 @@ fn int f()
 define i32 @test.f() #0 {
 entry:
   %0 = load ptr, ptr @cfun, align 8
-  %ptroffset = getelementptr %Test, ptr %0, i64 0
-  %not = icmp eq ptr %ptroffset, null
+  %not = icmp eq ptr %0, null
   br i1 %not, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
@@ -28,7 +27,6 @@ if.then:                                          ; preds = %entry
 
 if.exit:                                          ; preds = %entry
   %1 = load ptr, ptr @cfun, align 8
-  %2 = getelementptr inbounds %Test, ptr %1, i32 0, i32 0
-  %3 = load i32, ptr %2, align 4
-  ret i32 %3
+  %2 = load i32, ptr %1, align 4
+  ret i32 %2
 }

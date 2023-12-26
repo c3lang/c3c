@@ -35,6 +35,7 @@ Decl *decl_new(DeclKind decl_kind, const char *name, SourceSpan span)
 	return decl;
 }
 
+
 // Check if local or parameter $foo/$Foo
 bool decl_is_ct_var(Decl *decl)
 {
@@ -169,16 +170,16 @@ void decl_set_external_name(Decl *decl)
 	if (!name) name = "$anon";
 
 	// "extern" or the module has no prefix?
-	if (decl->is_extern || decl->unit->module->no_extprefix)
+	if (decl->is_extern || decl_module(decl)->no_extprefix)
 	{
-		assert(decl->name || decl->unit->module->no_extprefix);
+		assert(decl->name || decl_module(decl)->no_extprefix);
 		decl->extname = name;
 		return;
 	}
 
 	// Otherwise, first put the module name into the scratch buffer
 	scratch_buffer_clear();
-	Module *module = decl->unit->module;
+	Module *module = decl_module(decl);
 	const char *module_name = module->extname ? module->extname : module->name->module;
 	char c;
 	while ((c = *(module_name++)) != 0)

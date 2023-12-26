@@ -24,7 +24,7 @@ fn void test(Bar b)
 
 define void @foo.test(ptr byval(%Bar) align 8 %0) #0 {
 entry:
-  %1 = getelementptr inbounds %Bar, ptr %0, i32 0, i32 2
-  %2 = getelementptr inbounds [0 x i32], ptr %1, i64 0, i64 1
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 8
+  %ptradd1 = getelementptr inbounds i8, ptr %ptradd, i64 4
   ret void
 }

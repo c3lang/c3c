@@ -1,5 +1,23 @@
 # C3C Release Notes
 
+## 0.5.3 Change list
+
+### Changes / improvements
+- Migrate from using actual type with GEP, use i8 or i8 array instead.
+- Optimize foreach for single element arrays.
+- Move all calls to panic due to checks to the end of the function.
+
+### Fixes
+- Single module command line option was not respected.
+- Fixed issue with compile time defined types (String in this case), which would crash the compiler in certain cases.
+- Projects now correctly respect optimization directives.
+- Generic modules now correctly follow the implicit import rules of regular modules.
+- Passing an untyped list to a macro and then using it as a vaarg would crash the compiler.
+- Extern const globals now work correctly.
+
+### Stdlib changes
+- init_new/init_temp deprecated, replaced by new_init and temp_init.
+
 ## 0.5.2 Change list
 
 ### Changes / improvements

@@ -20,46 +20,46 @@ fn void main()
 
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
-
+; Function Attrs:
 declare void @printf(ptr, ...) #0
 
+; Function Attrs:
 define void @test.main() #0 {
 entry:
   %x = alloca [8 x i32], align 16
   %.anon = alloca i64, align 8
   %i = alloca i32, align 4
   call void @llvm.memset.p0.i64(ptr align 16 %x, i8 0, i64 32, i1 false)
-  %0 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 0
-  store i32 3, ptr %0, align 4
-  %1 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 1
-  store i32 3, ptr %1, align 4
-  %2 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 1
-  store i32 5, ptr %2, align 4
-  %3 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 2
-  store i32 5, ptr %3, align 4
-  %4 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 5
-  store i32 52, ptr %4, align 4
-  %5 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 6
-  store i32 52, ptr %5, align 4
-  %6 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 7
-  store i32 52, ptr %6, align 4
+  store i32 3, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 3, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 5, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %x, i64 8
+  store i32 5, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %x, i64 20
+  store i32 52, ptr %ptradd3, align 4
+  %ptradd4 = getelementptr inbounds i8, ptr %x, i64 24
+  store i32 52, ptr %ptradd4, align 4
+  %ptradd5 = getelementptr inbounds i8, ptr %x, i64 28
+  store i32 52, ptr %ptradd5, align 4
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %7 = load i64, ptr %.anon, align 8
-  %gt = icmp ugt i64 8, %7
+  %0 = load i64, ptr %.anon, align 8
+  %gt = icmp ugt i64 8, %0
   br i1 %gt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %8 = load i64, ptr %.anon, align 8
-  %9 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 %8
-  %10 = load i32, ptr %9, align 4
-  store i32 %10, ptr %i, align 4
-  %11 = load i32, ptr %i, align 4
-  call void (ptr, ...) @printf(ptr @.str, i32 %11)
-  %12 = load i64, ptr %.anon, align 8
-  %add = add i64 %12, 1
+  %1 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %1
+  %2 = load i32, ptr %ptroffset, align 4
+  store i32 %2, ptr %i, align 4
+  %3 = load i32, ptr %i, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %3)
+  %4 = load i64, ptr %.anon, align 8
+  %add = add i64 %4, 1
   store i64 %add, ptr %.anon, align 8
   br label %loop.cond
 
@@ -67,21 +67,21 @@ loop.exit:                                        ; preds = %loop.cond
   br label %cond
 
 cond:                                             ; preds = %assign, %loop.exit
-  %13 = phi i64 [ 0, %loop.exit ], [ %add1, %assign ]
-  %lt = icmp slt i64 %13, 8
+  %5 = phi i64 [ 0, %loop.exit ], [ %add7, %assign ]
+  %lt = icmp slt i64 %5, 8
   br i1 %lt, label %assign, label %exit
 
 assign:                                           ; preds = %cond
-  %14 = getelementptr inbounds [8 x i32], ptr %x, i64 0, i64 %13
-  store i32 123, ptr %14, align 4
-  %add1 = add i64 %13, 1
+  %ptroffset6 = getelementptr inbounds [4 x i8], ptr %x, i64 %5
+  store i32 123, ptr %ptroffset6, align 4
+  %add7 = add i64 %5, 1
   br label %cond
 
 exit:                                             ; preds = %cond
   ret void
 }
 
-
+; Function Attrs:
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   call void @test.main()

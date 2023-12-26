@@ -212,46 +212,6 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 	}
 	return NULL;
 }
-static Decl *sema_find_decl_in_global(DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
-{
-	const char *symbol = name_resolve->symbol;
-	Path *path = name_resolve->path;
-	DeclId decl_ids = decltable_get(table, symbol);
-
-	// We might have no match at all.
-	if (!decl_ids)
-	{
-		// Update the path found
-		if (path && !name_resolve->path_found) name_resolve->path_found = sema_is_path_found(module_list, path, want_generic);
-		return NULL;
-	}
-
-	Decl *decls = declptr(decl_ids);
-	// There might just be a single match.
-	if (decls->decl_kind != DECL_DECLARRAY)
-	{
-		if (path && !matches_subpath(decls->unit->module->name, path)) return false;
-		name_resolve->private_decl = NULL;
-		return decls;
-	}
-
-	// Else go through the list
-	Decl **decl_list = decls->decl_list;
-	Decl *ambiguous = NULL;
-	Decl *decl = NULL;
-	VECEACH(decl_list, i)
-	{
-		Decl *candidate = decl_list[i];
-		if (!ambiguous && (!path || matches_subpath(candidate->unit->module->name, path)))
-		{
-			ambiguous = decl;
-			decl = candidate;
-		}
-	}
-	if (ambiguous) name_resolve->ambiguous_other_decl = ambiguous;
-	name_resolve->private_decl = NULL;
-	return decl;
-}
 
 static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 {
@@ -289,7 +249,7 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	return false;
 }
 
-static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
+static Decl *sema_find_decl_in_global(CompilationUnit *unit, DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
 {
 	const char *symbol = name_resolve->symbol;
 	Path *path = name_resolve->path;
@@ -307,7 +267,7 @@ static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *tabl
 	// There might just be a single match.
 	if (decls->decl_kind != DECL_DECLARRAY)
 	{
-		if (path && !matches_subpath(decls->unit->module->name, path)) return NULL;
+		if (path && !matches_subpath(decl_module(decls)->name, path)) return NULL;
 		if (!decl_is_visible(unit, decls))
 		{
 			name_resolve->maybe_decl = decls;
@@ -324,7 +284,7 @@ static Decl *sema_find_decl_in_global_new(CompilationUnit *unit, DeclTable *tabl
 	VECEACH(decl_list, i)
 	{
 		Decl *candidate = decl_list[i];
-		if (path && !matches_subpath(candidate->unit->module->name, path)) continue;
+		if (path && !matches_subpath(decl_module(candidate)->name, path)) continue;
 		if (!decl_is_visible(unit, candidate))
 		{
 			maybe_decl = candidate;
@@ -393,7 +353,7 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
 
 	// 4. Go to global search
-	return decl ? decl : sema_find_decl_in_global_new(unit, &global_context.symbols, global_context.module_list, name_resolve, false);
+	return decl ? decl : sema_find_decl_in_global(unit, &global_context.symbols, global_context.module_list, name_resolve, false);
 }
 
 static inline Decl *sema_find_ct_local(SemaContext *context, const char *symbol)
@@ -435,18 +395,16 @@ static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
 
 static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
-	Decl *decl = NULL;
-
 	const char *symbol = name_resolve->symbol;
 	assert(name_resolve->path == NULL);
 
-	Decl *found = sema_find_local(context, symbol);
-	if (found) return found;
+	Decl *decl = sema_find_local(context, symbol);
+	if (decl) return decl;
 
 	CompilationUnit *unit = context->unit;
 
 	// Search in file scope.
-	decl = htable_get(&unit->local_symbols, (void*)symbol);
+	decl = htable_get(&unit->local_symbols, (void *) symbol);
 
 	if (decl) return decl;
 
@@ -463,13 +421,13 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 	{
 		// Find the global
 		NameResolve copy = *name_resolve;
-		Decl *global = sema_find_decl_in_global_new(context->unit, &global_context.symbols, NULL, name_resolve, false);
+		Decl *global = sema_find_decl_in_global(context->unit, &global_context.symbols, NULL, name_resolve, false);
 		// If it exists and is autoimport, then prefer it.
 		if (global && global->is_autoimport) return global;
 		*name_resolve = copy;
 		return decl;
 	}
-	return decl ? decl : sema_find_decl_in_global_new(context->unit, &global_context.symbols, NULL, name_resolve, false);
+	return decl ? decl : sema_find_decl_in_global(context->unit, &global_context.symbols, NULL, name_resolve, false);
 }
 
 
@@ -498,7 +456,7 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 	if (!found && name_resolve->maybe_decl)
 	{
 		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
-		const char *module_name = name_resolve->maybe_decl->unit->module->name->module;
+		const char *module_name = decl_module(name_resolve->maybe_decl)->name->module;
 		if (path_name)
 		{
 			sema_error_at(span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
@@ -517,8 +475,8 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 	{
 		assert(found);
 		const char *symbol_type = decl_to_name(found);
-		const char *found_path = found->unit->module->name->module;
-		const char *other_path = name_resolve->ambiguous_other_decl->unit->module->name->module;
+		const char *found_path = decl_module(found)->name->module;
+		const char *other_path = decl_module(name_resolve->ambiguous_other_decl)->name->module;
 		if (path_name)
 		{
 			sema_error_at(span,
@@ -849,9 +807,9 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 	Decl *decl = sema_find_decl_in_imports(unit->imports, name_resolve, true);
 	if (!decl)
 	{
-		decl = sema_find_decl_in_global_new(unit, &global_context.generic_symbols,
-											global_context.generic_module_list,
-											name_resolve, true);
+		decl = sema_find_decl_in_global(unit, &global_context.generic_symbols,
+		                                global_context.generic_module_list,
+		                                name_resolve, true);
 	}
 	// 14. Error report
 	if (!decl || name_resolve->ambiguous_other_decl)
@@ -918,7 +876,7 @@ bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
 	// Unknown symbol => not defined
 	if (!decl) return false;
 	// Defined in the same module => defined
-	if (decl->unit->module == c->unit->module) return true;
+	if (decl_module(decl) == c->unit->module) return true;
 	// Not a variable or function => defined
 	if (decl->decl_kind != DECL_VAR && decl->decl_kind != DECL_FUNC) return true;
 	// Otherwise defined only if autoimport.
@@ -995,8 +953,8 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	if (is_var && decl->var.shadow) goto ADD_VAR;
 
 	Decl *other = sema_find_local(context, decl->name);
-	assert(!other || other->unit->module);
-	if (other && (other->unit->module == current_unit->module || other->is_autoimport))
+	assert(!other || decl_module(other));
+	if (other && (decl_module(other) == current_unit->module || other->is_autoimport))
 	{
 		sema_shadow_error(decl, other);
 		decl_poison(decl);

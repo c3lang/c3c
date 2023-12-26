@@ -87,22 +87,19 @@ fn int main()
 @init.foo = internal unnamed_addr global ptr @"test.$global$lambda1", align 8
 @init.foo.2 = internal unnamed_addr global ptr @"test.$global$lambda2", align 8
 
-
+; Function Attrs:
 define void @test.Foo.test(ptr %0, i32 %1) #0 {
 entry:
-  %2 = getelementptr inbounds %Foo, ptr %0, i32 0, i32 0
-  %3 = load ptr, ptr %2, align 8
-  call void %3(ptr %0, i32 %1)
+  %2 = load ptr, ptr %0, align 8
+  call void %2(ptr %0, i32 %1)
   ret void
 }
 
-
+; Function Attrs:
 define void @test.FooTest.init(ptr %0) #0 {
 entry:
-  %1 = getelementptr inbounds %FooTest, ptr %0, i32 0, i32 0
-  %2 = getelementptr inbounds %Foo, ptr %1, i32 0, i32 0
-  %3 = load ptr, ptr @init.foo, align 8
-  store ptr %3, ptr %2, align 8
+  %1 = load ptr, ptr @init.foo, align 8
+  store ptr %1, ptr %0, align 8
   ret void
 }
 
@@ -124,7 +121,7 @@ if.exit:                                          ; preds = %entry
   ret void
 }
 
-
+; Function Attrs:
 define internal void @"test.$global$lambda2"(ptr %0, i32 %1) #0 {
 entry:
   %z = alloca ptr, align 8

@@ -110,7 +110,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
-	if (!decl->unit || decl->unit->module == unit->module || !decl->extname) return;
+	if (decl_module(decl) == unit->module || !decl->extname) return;
 	decl->is_external_visible = true;
 }
 

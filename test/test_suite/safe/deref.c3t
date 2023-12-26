@@ -17,16 +17,15 @@ entry:
   store ptr null, ptr %x, align 8
   %0 = load ptr, ptr %x, align 8
   %checknull = icmp eq ptr %0, null
-  br i1 %checknull, label %panic, label %checkok
-
-panic:                                            ; preds = %entry
-  %1 = load ptr, ptr @std.core.builtin.panic, align 8
-  call void %1(ptr @.panic_msg, i64 42, ptr @.file, i64 8, ptr @.func, i64 4, i32 6)
-  unreachable
-
+  %1 = call i1 @llvm.expect.i1(i1 %checknull, i1 false)
+  br i1 %1, label %panic, label %checkok
 checkok:                                          ; preds = %entry
   %2 = load i32, ptr %0, align 4
   store i32 %2, ptr %y, align 4
   ret void
+panic:                                            ; preds = %entry
+  %3 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %3(ptr @.panic_msg, i64 42, ptr @.file, i64 8, ptr @.func, i64 4, i32 6)
+  unreachable
 }
 

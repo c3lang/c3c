@@ -46,58 +46,53 @@ fn void main()
 
   %z = alloca i32, align 4
   %z1 = alloca %Abc, align 4
-  %z2 = alloca i64, align 8
-  %z3 = alloca i32, align 4
-  %z4 = alloca ptr, align 8
-  %z5 = alloca i8, align 1
-  %z6 = alloca i64, align 8
-  %z7 = alloca <3 x i32>, align 16
-  %z8 = alloca %Abc, align 4
-  %z9 = alloca [2 x i32], align 4
-  %z10 = alloca %"int[]", align 8
+  %z4 = alloca i64, align 8
+  %z5 = alloca i32, align 4
+  %z6 = alloca ptr, align 8
+  %z7 = alloca i8, align 1
+  %z8 = alloca i64, align 8
+  %z9 = alloca <3 x i32>, align 16
+  %z10 = alloca %Abc, align 4
+  %z14 = alloca [2 x i32], align 4
+  %z16 = alloca %"int[]", align 8
   %varargslots = alloca [1 x %"any*"], align 16
   %literal = alloca %Abc, align 4
   %retparam = alloca i64, align 8
   store i32 0, ptr %z, align 4
-  %0 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 0
-  store float 0.000000e+00, ptr %0, align 4
-  %1 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 1
-  store float 0.000000e+00, ptr %1, align 4
-  %2 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 2
-  store float 0.000000e+00, ptr %2, align 4
-  %3 = getelementptr inbounds %Abc, ptr %z1, i32 0, i32 3
-  store float 0.000000e+00, ptr %3, align 4
-  store i64 0, ptr %z2, align 8
-  store i32 0, ptr %z3, align 4
-  store ptr null, ptr %z4, align 8
-  store i8 0, ptr %z5, align 1
-  store i64 0, ptr %z6, align 8
-  store <3 x i32> zeroinitializer, ptr %z7, align 16
-  %4 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 0
-  store float 0.000000e+00, ptr %4, align 4
-  %5 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 1
-  store float 0.000000e+00, ptr %5, align 4
-  %6 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 2
-  store float 0.000000e+00, ptr %6, align 4
-  %7 = getelementptr inbounds %Abc, ptr %z8, i32 0, i32 3
-  store float 0.000000e+00, ptr %7, align 4
-  %8 = getelementptr inbounds [2 x i32], ptr %z9, i64 0, i64 0
-  store i32 0, ptr %8, align 4
-  %9 = getelementptr inbounds [2 x i32], ptr %z9, i64 0, i64 1
-  store i32 0, ptr %9, align 4
-  call void @llvm.memset.p0.i64(ptr align 8 %z10, i8 0, i64 16, i1 false)
-  %10 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 0
-  store float 0.000000e+00, ptr %10, align 4
-  %11 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 1
-  store float 0.000000e+00, ptr %11, align 4
-  %12 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 2
-  store float 0.000000e+00, ptr %12, align 4
-  %13 = getelementptr inbounds %Abc, ptr %literal, i32 0, i32 3
-  store float 0.000000e+00, ptr %13, align 4
-  %14 = insertvalue %"any*" undef, ptr %literal, 0
-  %15 = insertvalue %"any*" %14, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
-  %16 = getelementptr inbounds [1 x %"any*"], ptr %varargslots, i64 0, i64 0
-  store %"any*" %15, ptr %16, align 16
-  %17 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
+  store float 0.000000e+00, ptr %z1, align 4
+  %ptradd = getelementptr inbounds i8, ptr %z1, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %z1, i64 8
+  store float 0.000000e+00, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %z1, i64 12
+  store float 0.000000e+00, ptr %ptradd3, align 4
+  store i64 0, ptr %z4, align 8
+  store i32 0, ptr %z5, align 4
+  store ptr null, ptr %z6, align 8
+  store i8 0, ptr %z7, align 1
+  store i64 0, ptr %z8, align 8
+  store <3 x i32> zeroinitializer, ptr %z9, align 16
+  store float 0.000000e+00, ptr %z10, align 4
+  %ptradd11 = getelementptr inbounds i8, ptr %z10, i64 4
+  store float 0.000000e+00, ptr %ptradd11, align 4
+  %ptradd12 = getelementptr inbounds i8, ptr %z10, i64 8
+  store float 0.000000e+00, ptr %ptradd12, align 4
+  %ptradd13 = getelementptr inbounds i8, ptr %z10, i64 12
+  store float 0.000000e+00, ptr %ptradd13, align 4
+  store i32 0, ptr %z14, align 4
+  %ptradd15 = getelementptr inbounds i8, ptr %z14, i64 4
+  store i32 0, ptr %ptradd15, align 4
+  call void @llvm.memset.p0.i64(ptr align 8 %z16, i8 0, i64 16, i1 false)
+  store float 0.000000e+00, ptr %literal, align 4
+  %ptradd17 = getelementptr inbounds i8, ptr %literal, i64 4
+  store float 0.000000e+00, ptr %ptradd17, align 4
+  %ptradd18 = getelementptr inbounds i8, ptr %literal, i64 8
+  store float 0.000000e+00, ptr %ptradd18, align 4
+  %ptradd19 = getelementptr inbounds i8, ptr %literal, i64 12
+  store float 0.000000e+00, ptr %ptradd19, align 4
+  %0 = insertvalue %"any*" undef, ptr %literal, 0
+  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
+  store %"any*" %1, ptr %varargslots, align 16
+  %2 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   ret void
 }

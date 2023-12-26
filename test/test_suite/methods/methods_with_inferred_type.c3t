@@ -49,16 +49,17 @@ entry:
   ret void
 }
 
+; Function Attrs:
 define i32 @test.Abc.add(ptr %0) #0 {
 entry:
-  %1 = getelementptr inbounds %Abc, ptr %0, i32 0, i32 0
-  %2 = load i32, ptr %1, align 4
-  %3 = getelementptr inbounds %Abc, ptr %0, i32 0, i32 1
-  %4 = load i32, ptr %3, align 4
-  %add = add i32 %2, %4
+  %1 = load i32, ptr %0, align 4
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 4
+  %2 = load i32, ptr %ptradd, align 4
+  %add = add i32 %1, %2
   ret i32 %add
 }
 
+; Function Attrs:
 define void @test.test() #0 {
 entry:
   %x = alloca %Abc, align 4
@@ -68,16 +69,15 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
   %0 = call i32 @test.Abc.add(ptr %x)
   store i32 %0, ptr %a, align 4
-  %1 = getelementptr inbounds %Abc, ptr %x, i32 0, i32 0
-  %2 = load i32, ptr %1, align 4
-  %3 = getelementptr inbounds %Abc, ptr %x, i32 0, i32 1
-  %4 = load i32, ptr %3, align 4
-  %add = add i32 %2, %4
+  %1 = load i32, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  %2 = load i32, ptr %ptradd, align 4
+  %add = add i32 %1, %2
   store i32 %add, ptr %b, align 4
   store i32 100, ptr %f, align 4
   call void @test.Foo.add(ptr %f)
-  %5 = load i32, ptr %f, align 4
-  %add1 = add i32 %5, 1
+  %3 = load i32, ptr %f, align 4
+  %add1 = add i32 %3, 1
   store i32 %add1, ptr %f, align 4
   ret void
 }

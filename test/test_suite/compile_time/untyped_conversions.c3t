@@ -28,6 +28,7 @@ fn void main()
 %Foo = type { i32, i32 }
 %"int[]" = type { ptr, i64 }
 %"any*" = type { ptr, i64 }
+
 @"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [9 x i8] c"%s %s %s\00", align 1
 @"$ct.a2$int" = linkonce global %.introspect { i8 15, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [0 x i64] zeroinitializer }, align 8
@@ -48,6 +49,7 @@ fn void main()
 @.__const.7 = private unnamed_addr constant [2 x i32] [i32 2, i32 7], align 4
 @.__const.8 = private unnamed_addr constant [2 x i32] [i32 2, i32 7], align 4
 
+; Function Attrs:
 define void @test.test(i64 %0, ptr %1, i64 %2, double %3) #0 {
 entry:
   %a = alloca [2 x i32], align 4
@@ -57,25 +59,25 @@ entry:
   %retparam = alloca i64, align 8
   store i64 %0, ptr %a, align 4
   store ptr %1, ptr %b, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %b, i64 1
-  store i64 %2, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %b, i64 8
+  store i64 %2, ptr %ptradd, align 8
   store double %3, ptr %c, align 8
   %4 = insertvalue %"any*" undef, ptr %a, 0
   %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.a2$int" to i64), 1
-  %6 = getelementptr inbounds [3 x %"any*"], ptr %varargslots, i64 0, i64 0
-  store %"any*" %5, ptr %6, align 16
-  %7 = insertvalue %"any*" undef, ptr %b, 0
-  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
-  %9 = getelementptr inbounds [3 x %"any*"], ptr %varargslots, i64 0, i64 1
-  store %"any*" %8, ptr %9, align 16
-  %10 = insertvalue %"any*" undef, ptr %c, 0
-  %11 = insertvalue %"any*" %10, i64 ptrtoint (ptr @"$ct.v2$int" to i64), 1
-  %12 = getelementptr inbounds [3 x %"any*"], ptr %varargslots, i64 0, i64 2
-  store %"any*" %11, ptr %12, align 16
-  %13 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
+  store %"any*" %5, ptr %varargslots, align 16
+  %6 = insertvalue %"any*" undef, ptr %b, 0
+  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
+  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %"any*" %7, ptr %ptradd1, align 16
+  %8 = insertvalue %"any*" undef, ptr %c, 0
+  %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.v2$int" to i64), 1
+  %ptradd2 = getelementptr inbounds i8, ptr %varargslots, i64 32
+  store %"any*" %9, ptr %ptradd2, align 16
+  %10 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 3)
   ret void
 }
 
+; Function Attrs:
 define void @test.main() #0 {
 entry:
   %abc = alloca [1 x %Foo], align 4
@@ -85,49 +87,47 @@ entry:
   %varargslots = alloca [4 x %"any*"], align 16
   %retparam = alloca i64, align 8
   %literal = alloca [2 x i32], align 4
-  %literal1 = alloca [2 x i32], align 4
+  %literal4 = alloca [2 x i32], align 4
   %taddr = alloca <2 x i32>, align 8
-  %literal2 = alloca [2 x i32], align 4
-  %literal3 = alloca [2 x i32], align 4
-  %taddr4 = alloca <2 x i32>, align 8
+  %literal5 = alloca [2 x i32], align 4
+  %literal6 = alloca [2 x i32], align 4
+  %taddr7 = alloca <2 x i32>, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %abc, ptr align 4 @.__const, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %defg, ptr align 4 @.__const.1, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y2, ptr align 16 @.__const.3, i32 16, i1 false)
   %0 = insertvalue %"any*" undef, ptr %y, 0
   %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.a1$a2$int" to i64), 1
-  %2 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 0
-  store %"any*" %1, ptr %2, align 16
-  %3 = insertvalue %"any*" undef, ptr %y2, 0
-  %4 = insertvalue %"any*" %3, i64 ptrtoint (ptr @"$ct.a1$a2$double" to i64), 1
-  %5 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 1
-  store %"any*" %4, ptr %5, align 16
-  %6 = getelementptr inbounds %Foo, ptr %defg, i32 0, i32 0
-  %7 = insertvalue %"any*" undef, ptr %6, 0
-  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %9 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 2
-  store %"any*" %8, ptr %9, align 16
-  %10 = getelementptr inbounds %Foo, ptr %defg, i32 0, i32 1
-  %11 = insertvalue %"any*" undef, ptr %10, 0
-  %12 = insertvalue %"any*" %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  %13 = getelementptr inbounds [4 x %"any*"], ptr %varargslots, i64 0, i64 3
-  store %"any*" %12, ptr %13, align 16
-  %14 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
+  store %"any*" %1, ptr %varargslots, align 16
+  %2 = insertvalue %"any*" undef, ptr %y2, 0
+  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.a1$a2$double" to i64), 1
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %"any*" %3, ptr %ptradd, align 16
+  %4 = insertvalue %"any*" undef, ptr %defg, 0
+  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 32
+  store %"any*" %5, ptr %ptradd1, align 16
+  %ptradd2 = getelementptr inbounds i8, ptr %defg, i64 4
+  %6 = insertvalue %"any*" undef, ptr %ptradd2, 0
+  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 48
+  store %"any*" %7, ptr %ptradd3, align 16
+  %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.4, i64 14, ptr %varargslots, i64 4)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.5, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal1, ptr align 4 @.__const.6, i32 8, i1 false)
-  %15 = insertvalue %"int[]" undef, ptr %literal1, 0
-  %16 = insertvalue %"int[]" %15, i64 2, 1
-  %17 = load i64, ptr %literal, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal4, ptr align 4 @.__const.6, i32 8, i1 false)
+  %9 = insertvalue %"int[]" undef, ptr %literal4, 0
+  %10 = insertvalue %"int[]" %9, i64 2, 1
+  %11 = load i64, ptr %literal, align 4
   store <2 x i32> <i32 5, i32 6>, ptr %taddr, align 8
-  %18 = load double, ptr %taddr, align 8
-  call void @test.test(i64 %17, ptr %literal1, i64 2, double %18)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal2, ptr align 4 @.__const.7, i32 8, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal3, ptr align 4 @.__const.8, i32 8, i1 false)
-  %19 = insertvalue %"int[]" undef, ptr %literal3, 0
-  %20 = insertvalue %"int[]" %19, i64 2, 1
-  %21 = load i64, ptr %literal2, align 4
-  store <2 x i32> <i32 2, i32 7>, ptr %taddr4, align 8
-  %22 = load double, ptr %taddr4, align 8
-  call void @test.test(i64 %21, ptr %literal3, i64 2, double %22)
+  %12 = load double, ptr %taddr, align 8
+  call void @test.test(i64 %11, ptr %literal4, i64 2, double %12)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal5, ptr align 4 @.__const.7, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal6, ptr align 4 @.__const.8, i32 8, i1 false)
+  %13 = insertvalue %"int[]" undef, ptr %literal6, 0
+  %14 = insertvalue %"int[]" %13, i64 2, 1
+  %15 = load i64, ptr %literal5, align 4
+  store <2 x i32> <i32 2, i32 7>, ptr %taddr7, align 8
+  %16 = load double, ptr %taddr7, align 8
+  call void @test.test(i64 %15, ptr %literal6, i64 2, double %16)
   ret void
 }

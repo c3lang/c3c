@@ -25,7 +25,7 @@ fn Foo getFoo(Foo f)
 
 @"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 3, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 
-
+; Function Attrs:
 define i32 @test.testing() #0 {
 entry:
   %y = alloca %Foo, align 1
@@ -40,17 +40,16 @@ entry:
   store i24 %1, ptr %tempcoerce1, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %result, ptr align 4 %tempcoerce1, i32 3, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 %result, i32 3, i1 false)
-  %2 = getelementptr inbounds %Foo, ptr %y, i32 0, i32 0
-  %3 = load i8, ptr %2, align 1
-  %zext = zext i8 %3 to i32
-  %4 = getelementptr inbounds %Foo, ptr %y, i32 0, i32 2
-  %5 = load i8, ptr %4, align 1
-  %zext2 = zext i8 %5 to i32
+  %2 = load i8, ptr %y, align 1
+  %zext = zext i8 %2 to i32
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 2
+  %3 = load i8, ptr %ptradd, align 1
+  %zext2 = zext i8 %3 to i32
   %add = add i32 %zext, %zext2
   ret i32 %add
 }
 
-
+; Function Attrs:
 define i24 @test.getFoo(i24 %0) #0 {
 entry:
   %f = alloca %Foo, align 1

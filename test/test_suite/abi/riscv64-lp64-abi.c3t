@@ -26,20 +26,20 @@ entry:
   %add = add i32 %zext, %zext1
   ret i32 %add
 
-define void @test.f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7)
+; Function Attrs:
+define void @test.f_scalar_stack_2(ptr noalias sret(%Large) align 8 %0, double %1, i128 %2, fp128 %3, ptr align 32 %4, i8 zeroext %5, i8 %6, i8 %7) #0 {
 entry:
   %literal = alloca %Large, align 8
-  %8 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 0
   %fpsi = fptosi double %1 to i64
-  store i64 %fpsi, ptr %8, align 8
-  %9 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 1
+  store i64 %fpsi, ptr %literal, align 8
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   %zext = zext i8 %5 to i64
-  store i64 %zext, ptr %9, align 8
-  %10 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 2
+  store i64 %zext, ptr %ptradd, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 16
   %sext = sext i8 %6 to i64
-  store i64 %sext, ptr %10, align 8
-  %11 = getelementptr inbounds %Large, ptr %literal, i32 0, i32 3
-  %zext1 = zext i8 %7 to i64
-  store i64 %zext1, ptr %11, align 8
+  store i64 %sext, ptr %ptradd1, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %literal, i64 24
+  %zext3 = zext i8 %7 to i64
+  store i64 %zext3, ptr %ptradd2, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %0, ptr align 8 %literal, i32 32, i1 false)
   ret void

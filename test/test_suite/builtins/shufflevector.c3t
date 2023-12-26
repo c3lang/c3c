@@ -64,33 +64,27 @@ entry:
   %flip = alloca <2 x float>, align 8
   %taddr = alloca <2 x float>, align 8
   store double %1, ptr %vec, align 8
-  %2 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
-  %3 = getelementptr inbounds %.anon.1, ptr %2, i32 0, i32 0
-  %4 = load <2 x float>, ptr %3, align 16
-  %5 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
-  %6 = getelementptr inbounds %.anon.1, ptr %5, i32 0, i32 1
-  %7 = load <2 x float>, ptr %6, align 8
-  %shuffle = shufflevector <2 x float> %4, <2 x float> %7, <2 x i32> <i32 0, i32 3>
+  %2 = load <2 x float>, ptr %0, align 16
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 8
+  %3 = load <2 x float>, ptr %ptradd, align 8
+  %shuffle = shufflevector <2 x float> %2, <2 x float> %3, <2 x i32> <i32 0, i32 3>
   store <2 x float> %shuffle, ptr %a, align 8
-  %8 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
-  %9 = getelementptr inbounds %.anon.1, ptr %8, i32 0, i32 0
-  %10 = load <2 x float>, ptr %9, align 16
-  %11 = getelementptr inbounds %Matrix2x2, ptr %0, i32 0, i32 0
-  %12 = getelementptr inbounds %.anon.1, ptr %11, i32 0, i32 1
-  %13 = load <2 x float>, ptr %12, align 8
-  %shuffle1 = shufflevector <2 x float> %10, <2 x float> %13, <2 x i32> <i32 1, i32 2>
-  store <2 x float> %shuffle1, ptr %b, align 8
-  %14 = load <2 x float>, ptr %vec, align 8
-  %shuffle2 = shufflevector <2 x float> %14, <2 x float> poison, <2 x i32> <i32 1, i32 0>
-  store <2 x float> %shuffle2, ptr %flip, align 8
-  %15 = load <2 x float>, ptr %a, align 8
-  %16 = load <2 x float>, ptr %vec, align 8
-  %fmul = fmul <2 x float> %15, %16
-  %17 = load <2 x float>, ptr %b, align 8
-  %18 = load <2 x float>, ptr %flip, align 8
-  %fmul3 = fmul <2 x float> %17, %18
-  %fadd = fadd <2 x float> %fmul, %fmul3
+  %4 = load <2 x float>, ptr %0, align 16
+  %ptradd1 = getelementptr inbounds i8, ptr %0, i64 8
+  %5 = load <2 x float>, ptr %ptradd1, align 8
+  %shuffle2 = shufflevector <2 x float> %4, <2 x float> %5, <2 x i32> <i32 1, i32 2>
+  store <2 x float> %shuffle2, ptr %b, align 8
+  %6 = load <2 x float>, ptr %vec, align 8
+  %shuffle3 = shufflevector <2 x float> %6, <2 x float> poison, <2 x i32> <i32 1, i32 0>
+  store <2 x float> %shuffle3, ptr %flip, align 8
+  %7 = load <2 x float>, ptr %a, align 8
+  %8 = load <2 x float>, ptr %vec, align 8
+  %fmul = fmul <2 x float> %7, %8
+  %9 = load <2 x float>, ptr %b, align 8
+  %10 = load <2 x float>, ptr %flip, align 8
+  %fmul4 = fmul <2 x float> %9, %10
+  %fadd = fadd <2 x float> %fmul, %fmul4
   store <2 x float> %fadd, ptr %taddr, align 8
-  %19 = load double, ptr %taddr, align 8
-  ret double %19
+  %11 = load double, ptr %taddr, align 8
+  ret double %11
 }

@@ -85,7 +85,7 @@ fn char[8 * 4] entropy()
 		hash(&entropy),
 		random_int,
 		hash(clock::now()),
-		hash(&DString.init_new),
+		hash(&DString.new_init),
 		hash(mem::heap())
     };
     return bitcast(entropy_data, char[8 * 4]);
