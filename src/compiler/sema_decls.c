@@ -1708,7 +1708,7 @@ static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type
 			vec_add(parent->methods, method_like);
 			break;
 		case VISIBLE_PRIVATE:
-			if (parent->unit && parent->unit->module == unit->module && parent->visibility >= VISIBLE_PRIVATE)
+			if (decl_module(parent) == unit->module && parent->visibility >= VISIBLE_PRIVATE)
 			{
 				vec_add(parent->methods, method_like);
 				break;
@@ -3206,7 +3206,12 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		scratch_buffer_append(decl->name);
 		decl->extname = scratch_buffer_copy();
 	}
-
+	if (decl->is_extern && decl->var.init_expr)
+	{
+		assert(is_global);
+		SEMA_ERROR(decl->var.init_expr, "Extern globals may not have initializers.");
+		return decl_poison(decl);
+	}
 	if (erase_decl)
 	{
 		decl->decl_kind = DECL_ERASED;
@@ -3603,7 +3608,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	Decl *alias = unit_resolve_parameterized_symbol(c->unit, &name_resolve);
 	if (!decl_ok(alias)) return poisoned_decl;
 
-	Module *module = alias->unit->module;
+	Module *module = decl_module(alias);
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))

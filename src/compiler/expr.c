@@ -217,15 +217,15 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_RETHROW:
 			return false;
 		case EXPR_IDENTIFIER:
-			if (expr->identifier_expr.decl->decl_kind != DECL_VAR) return true;
-			if (expr->identifier_expr.decl->var.kind == VARDECL_CONST)
-			{
-				expr = expr->identifier_expr.decl->var.init_expr;
-				goto RETRY;
-			}
-			switch (expr->identifier_expr.decl->var.kind)
+		{
+			Decl *ident = expr->identifier_expr.decl;
+			if (ident->decl_kind != DECL_VAR) return true;
+			switch (ident->var.kind)
 			{
 				case VARDECL_CONST:
+					if (ident->is_extern) return false;
+					expr = ident->var.init_expr;
+					goto RETRY;
 				case VARDECL_PARAM_CT_TYPE:
 				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_LOCAL_CT:
@@ -234,6 +234,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 				default:
 					return false;
 			}
+		}
 		case EXPR_EXPRESSION_LIST:
 			return expr_list_is_constant_eval(expr->expression_list, eval_kind);
 		case EXPR_TYPEID_INFO:

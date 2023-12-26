@@ -8,7 +8,7 @@ const usz MIN_CAPACITY @private = 16;
 /**
  * @require !self.data() "String already initialized"
  **/
-fn DString DString.init_new(&self, usz capacity = MIN_CAPACITY, Allocator* allocator = mem::heap())
+fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator* allocator = mem::heap())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = allocator.new(StringData, .end_padding = capacity);
@@ -21,15 +21,31 @@ fn DString DString.init_new(&self, usz capacity = MIN_CAPACITY, Allocator* alloc
 /**
  * @require !self.data() "String already initialized"
  **/
-fn DString DString.init_temp(&self, usz capacity = MIN_CAPACITY)
+fn DString DString.init_new(&self, usz capacity = MIN_CAPACITY, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
 {
-	self.init_new(capacity, mem::temp()) @inline;
+	return self.new_init(capacity, allocator) @inline;
+}
+
+/**
+ * @require !self.data() "String already initialized"
+ **/
+fn DString DString.temp_init(&self, usz capacity = MIN_CAPACITY)
+{
+	self.new_init(capacity, mem::temp()) @inline;
 	return *self;
+}
+
+/**
+ * @require !self.data() "String already initialized"
+ **/
+fn DString DString.init_temp(&self, usz capacity = MIN_CAPACITY) @deprecated("Replaced by temp_init")
+{
+	return self.temp_init(capacity) @inline;
 }
 
 fn DString new_with_capacity(usz capacity, Allocator* allocator = mem::heap())
 {
-	return DString{}.init_new(capacity, allocator);
+	return DString{}.new_init(capacity, allocator);
 }
 
 fn DString temp_with_capacity(usz capacity) => new_with_capacity(capacity, mem::temp()) @inline;
@@ -51,13 +67,15 @@ fn DString temp_new(String s = "") => new(s, mem::temp()) @inline;
 fn DString DString.new_concat(self, DString b, Allocator* allocator = mem::heap())
 {
 	DString string;
-	string.init_new(self.len() + b.len(), allocator);
+	string.new_init(self.len() + b.len(), allocator);
 	string.append(self);
 	string.append(b);
 	return string;
 }
 
-fn DString DString.new_tconcat(self, DString b) => self.new_concat(b, mem::temp());
+fn DString DString.temp_concat(self, DString b) => self.new_concat(b, mem::temp());
+
+fn DString DString.new_tconcat(self, DString b) @deprecated("Replaced by temp_concat") => self.new_concat(b, mem::temp());
 
 fn ZString DString.zstr_view(&self)
 {

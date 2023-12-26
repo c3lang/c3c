@@ -22,14 +22,13 @@ entry:
   %literal = alloca %Rectangle, align 4
   %coerce = alloca %Rectangle, align 8
   store <2 x float> %0, ptr %r, align 8
-  %ptroffset = getelementptr inbounds <2 x float>, ptr %r, i64 1
-  store <2 x float> %1, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %r, i64 8
+  store <2 x float> %1, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %literal, i32 16, i1 false)
-  %2 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %coerce, i32 0, i32 0
-  %lo = load <2 x float>, ptr %2, align 8
-  %3 = getelementptr inbounds { <2 x float>, <2 x float> }, ptr %coerce, i32 0, i32 1
-  %hi = load <2 x float>, ptr %3, align 8
+  %lo = load <2 x float>, ptr %coerce, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load <2 x float>, ptr %ptradd1, align 8
   call void @foo.test(<2 x float> %lo, <2 x float> %hi)
   ret void
 }

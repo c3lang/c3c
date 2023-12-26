@@ -85,17 +85,17 @@ Foo6 foo6 = { 1, 2, 3 };
 @struct2.foo5 = local_unnamed_addr global %Foo5 { i32 1, [12 x i8] undef, i8 2, [15 x i8] undef }, align 16
 @struct2.foo6 = local_unnamed_addr global %Foo6 { i32 1, i16 2, i16 3 }, align 1
 
+; Function Attrs:
 define i32 @struct2.test5(i8 signext %0) #0 {
 entry:
   %y = alloca %Foo5, align 16
   call void @llvm.memset.p0.i64(ptr align 16 %y, i8 0, i64 32, i1 false)
-  %1 = getelementptr inbounds %Foo5, ptr %y, i32 0, i32 2
-  store i8 %0, ptr %1, align 16
-  %2 = getelementptr inbounds %Foo5, ptr %y, i32 0, i32 2
-  %3 = load i8, ptr %2, align 16
-  %sext = sext i8 %3 to i32
-  %4 = getelementptr inbounds %Foo5, ptr %y, i32 0, i32 0
-  %5 = load i32, ptr %4, align 16
-  %add = add i32 %sext, %5
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 16
+  store i8 %0, ptr %ptradd, align 16
+  %ptradd1 = getelementptr inbounds i8, ptr %y, i64 16
+  %1 = load i8, ptr %ptradd1, align 16
+  %sext = sext i8 %1 to i32
+  %2 = load i32, ptr %y, align 16
+  %add = add i32 %sext, %2
   ret i32 %add
 }

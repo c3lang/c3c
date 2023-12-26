@@ -17,7 +17,7 @@ fn void map()
 {
     Map m;
     assert(!m.is_initialized());
-    m.init_temp();
+    m.temp_init();
     assert(m.is_initialized());
     assert(m.is_empty());
     assert(m.len() == 0);
@@ -41,7 +41,7 @@ fn void map()
     }
 
     List list;
-    list.init_temp();
+    list.temp_init();
     m.@each(;String key, usz value)
     {
         list.push({key, value});

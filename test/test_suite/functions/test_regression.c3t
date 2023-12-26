@@ -236,7 +236,6 @@ fn Type getValue(Blob blob)
 
 %Blob = type { i32 }
 %Blob.0 = type { double }
-%Foo2 = type { i32 }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { ptr, i64 }
 %LinkedList = type { %"any*", i64, ptr, ptr }
@@ -255,34 +254,32 @@ fn Type getValue(Blob blob)
 
 define void @test.Foo2.printme(ptr %0) #0 {
 entry:
-  %1 = getelementptr inbounds %Foo2, ptr %0, i32 0, i32 0
-  %2 = load i32, ptr %1, align 4
-  %3 = call i32 (ptr, ...) @printf(ptr @.str.21, i32 %2)
+  %1 = load i32, ptr %0, align 4
+  %2 = call i32 (ptr, ...) @printf(ptr @.str.21, i32 %1)
   ret void
 }
 
-
+; Function Attrs:
 define i32 @test.Foo2.mutate(ptr %0) #0 {
 entry:
   %1 = call i32 (ptr, ...) @printf(ptr @.str.22)
-  %2 = getelementptr inbounds %Foo2, ptr %0, i32 0, i32 0
-  %3 = load i32, ptr %2, align 4
-  %add = add i32 %3, 1
-  store i32 %add, ptr %2, align 4
+  %2 = load i32, ptr %0, align 4
+  %add = add i32 %2, 1
+  store i32 %add, ptr %0, align 4
   ret i32 %add
 }
 
-
+; Function Attrs:
 declare i32 @printf(ptr, ...) #0
 
-
+; Function Attrs:
 define void @test.helloWorld() #0 {
 entry:
   %0 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 }
 
-
+; Function Attrs:
 define i32 @test.test_static() #0 {
 entry:
   %0 = load i32, ptr @test_static.x, align 4
@@ -294,7 +291,7 @@ entry:
   ret i32 %3
 }
 
-
+; Function Attrs:
 define i32 @test.helo(double %0, ptr byval(%Bobo) align 8 %1) #0 {
 entry:
   %de = alloca [3 x i32], align 4
@@ -307,7 +304,7 @@ entry:
   ret i32 1
 }
 
-
+; Function Attrs:
 define i32 @test.test1(i32 %0, i32 %1) #0 {
 entry:
   %a = alloca i32, align 4
@@ -327,55 +324,53 @@ if.exit:                                          ; preds = %entry
   ret i32 %4
 }
 
-
+; Function Attrs:
 define i32 @test.sum_us(ptr %0, i64 %1) #0 {
 entry:
   %x = alloca %"int[]", align 8
   %sum = alloca i32, align 4
   store ptr %0, ptr %x, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %x, i64 1
-  store i64 %1, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  store i64 %1, ptr %ptradd, align 8
   store i32 0, ptr %sum, align 4
-  %2 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
-  %3 = load i64, ptr %2, align 8
-  %eq = icmp eq i64 0, %3
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  %2 = load i64, ptr %ptradd1, align 8
+  %eq = icmp eq i64 0, %2
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
   ret i32 0
 
 if.exit:                                          ; preds = %entry
-  %4 = load i32, ptr %sum, align 4
-  %5 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 0
-  %6 = load ptr, ptr %5, align 8
-  %ptroffset1 = getelementptr inbounds i32, ptr %6, i64 0
-  %7 = load i32, ptr %ptroffset1, align 4
-  %8 = load %"int[]", ptr %x, align 8
-  %9 = extractvalue %"int[]" %8, 0
-  %10 = extractvalue %"int[]" %8, 1
-  %sub = sub i64 %10, 1
-  %11 = add i64 %sub, 1
-  %size = sub i64 %11, 1
-  %ptroffset2 = getelementptr inbounds i32, ptr %9, i64 1
-  %12 = insertvalue %"int[]" undef, ptr %ptroffset2, 0
-  %13 = insertvalue %"int[]" %12, i64 %size, 1
-  %14 = call i32 @test.sum_us(ptr %ptroffset2, i64 %size)
-  %add = add i32 %7, %14
-  %add3 = add i32 %4, %add
+  %3 = load i32, ptr %sum, align 4
+  %4 = load ptr, ptr %x, align 8
+  %5 = load i32, ptr %4, align 4
+  %6 = load %"int[]", ptr %x, align 8
+  %7 = extractvalue %"int[]" %6, 0
+  %8 = extractvalue %"int[]" %6, 1
+  %sub = sub i64 %8, 1
+  %9 = add i64 %sub, 1
+  %size = sub i64 %9, 1
+  %ptradd2 = getelementptr inbounds i8, ptr %7, i64 4
+  %10 = insertvalue %"int[]" undef, ptr %ptradd2, 0
+  %11 = insertvalue %"int[]" %10, i64 %size, 1
+  %12 = call i32 @test.sum_us(ptr %ptradd2, i64 %size)
+  %add = add i32 %5, %12
+  %add3 = add i32 %3, %add
   store i32 %add3, ptr %sum, align 4
-  %15 = load i32, ptr %sum, align 4
-  ret i32 %15
+  %13 = load i32, ptr %sum, align 4
+  ret i32 %13
 }
 
-
+; Function Attrs:
 define i32 @test.sumd(ptr %0, i64 %1) #0 {
 entry:
   %x = alloca %"int[]", align 8
   %sum = alloca i32, align 4
   %i = alloca i32, align 4
   store ptr %0, ptr %x, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %x, i64 1
-  store i64 %1, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  store i64 %1, ptr %ptradd, align 8
   store i32 0, ptr %sum, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
@@ -383,34 +378,33 @@ entry:
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load i32, ptr %i, align 4
   %sext = sext i32 %2 to i64
-  %3 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 1
-  %4 = load i64, ptr %3, align 8
-  %lt = icmp slt i64 %sext, %4
-  %check = icmp slt i64 %4, 0
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  %3 = load i64, ptr %ptradd1, align 8
+  %lt = icmp slt i64 %sext, %3
+  %check = icmp slt i64 %3, 0
   %siui-lt = or i1 %check, %lt
   br i1 %siui-lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %5 = load i32, ptr %sum, align 4
-  %6 = getelementptr inbounds %"int[]", ptr %x, i32 0, i32 0
-  %7 = load ptr, ptr %6, align 8
-  %8 = load i32, ptr %i, align 4
-  %sext1 = sext i32 %8 to i64
-  %ptroffset2 = getelementptr inbounds i32, ptr %7, i64 %sext1
-  %9 = load i32, ptr %ptroffset2, align 4
-  %add = add i32 %5, %9
+  %4 = load i32, ptr %sum, align 4
+  %5 = load ptr, ptr %x, align 8
+  %6 = load i32, ptr %i, align 4
+  %sext2 = sext i32 %6 to i64
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %5, i64 %sext2
+  %7 = load i32, ptr %ptroffset, align 4
+  %add = add i32 %4, %7
   store i32 %add, ptr %sum, align 4
-  %10 = load i32, ptr %i, align 4
-  %add3 = add i32 %10, 1
+  %8 = load i32, ptr %i, align 4
+  %add3 = add i32 %8, 1
   store i32 %add3, ptr %i, align 4
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %11 = load i32, ptr %sum, align 4
-  ret i32 %11
+  %9 = load i32, ptr %sum, align 4
+  ret i32 %9
 }
 
-
+; Function Attrs:
 define void @test.main() #0 {
 entry:
   %list = alloca %LinkedList, align 8
@@ -426,7 +420,7 @@ entry:
   %z = alloca %"int[]", align 8
   %de = alloca [3 x i32], align 4
   %varargslots = alloca [4 x i32], align 16
-  %varargslots10 = alloca [1 x i32], align 4
+  %varargslots14 = alloca [1 x i32], align 4
   %a1 = alloca ptr, align 8
   %b2 = alloca ptr, align 8
   %0 = call i32 @test.test_static()
@@ -505,51 +499,47 @@ loop.exit8:                                       ; preds = %loop.cond2
   %27 = call double @"test2$double$.getMult"(double 3.300000e+00)
   %28 = call i32 (ptr, ...) @printf(ptr @.str.11, double %27)
   call void @test.helloWorld()
-  %29 = getelementptr inbounds %Foo, ptr %ddx, i32 0, i32 0
-  store i32 0, ptr %29, align 4
-  %30 = getelementptr inbounds %Foo, ptr %ddx, i32 0, i32 1
-  store i32 0, ptr %30, align 4
+  store i32 0, ptr %ddx, align 4
+  %ptradd = getelementptr inbounds i8, ptr %ddx, i64 4
+  store i32 0, ptr %ptradd, align 4
   store i32 3, ptr %fro, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %x, ptr align 16 @.__const.12, i32 16, i1 false)
-  %31 = load i32, ptr %fro, align 4
-  %32 = insertvalue %"int[]" undef, ptr %x, 0
-  %33 = insertvalue %"int[]" %32, i64 4, 1
-  %34 = call i32 @test.sum_us(ptr %x, i64 4)
-  %35 = call i32 (ptr, ...) @printf(ptr @.str.13, i32 %34)
-  %add9 = add i32 %31, %35
+  %29 = load i32, ptr %fro, align 4
+  %30 = insertvalue %"int[]" undef, ptr %x, 0
+  %31 = insertvalue %"int[]" %30, i64 4, 1
+  %32 = call i32 @test.sum_us(ptr %x, i64 4)
+  %33 = call i32 (ptr, ...) @printf(ptr @.str.13, i32 %32)
+  %add9 = add i32 %29, %33
   store i32 %add9, ptr %fro, align 4
-  %36 = load i32, ptr %fro, align 4
-  %37 = call i32 (ptr, ...) @printf(ptr @.str.14, i32 %36)
+  %34 = load i32, ptr %fro, align 4
+  %35 = call i32 (ptr, ...) @printf(ptr @.str.14, i32 %34)
+  %36 = insertvalue %"int[]" undef, ptr %x, 0
+  %37 = insertvalue %"int[]" %36, i64 4, 1
+  store %"int[]" %37, ptr %z, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const.15, i32 12, i1 false)
   %38 = insertvalue %"int[]" undef, ptr %x, 0
   %39 = insertvalue %"int[]" %38, i64 4, 1
-  store %"int[]" %39, ptr %z, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %de, ptr align 4 @.__const.15, i32 12, i1 false)
-  %40 = insertvalue %"int[]" undef, ptr %x, 0
-  %41 = insertvalue %"int[]" %40, i64 4, 1
-  %42 = call i32 @test.sum_us(ptr %x, i64 4)
-  %43 = call i32 (ptr, ...) @printf(ptr @.str.16, i32 %42)
-  %44 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 0
-  %lo = load ptr, ptr %44, align 8
-  %45 = getelementptr inbounds %"int[]", ptr %z, i32 0, i32 1
-  %hi = load i64, ptr %45, align 8
-  %46 = call i32 @test.sum_us(ptr %lo, i64 %hi)
-  %47 = call i32 (ptr, ...) @printf(ptr @.str.17, i32 %46)
-  %48 = getelementptr inbounds [4 x i32], ptr %varargslots, i64 0, i64 0
-  store i32 1, ptr %48, align 4
-  %49 = getelementptr inbounds [4 x i32], ptr %varargslots, i64 0, i64 1
-  store i32 2, ptr %49, align 4
-  %50 = getelementptr inbounds [4 x i32], ptr %varargslots, i64 0, i64 2
-  store i32 4, ptr %50, align 4
-  %51 = getelementptr inbounds [4 x i32], ptr %varargslots, i64 0, i64 3
-  store i32 5, ptr %51, align 4
-  %52 = call i32 @test.sum_us(ptr %varargslots, i64 4)
-  %53 = call i32 (ptr, ...) @printf(ptr @.str.18, i32 %52)
-  %54 = getelementptr inbounds [1 x i32], ptr %varargslots10, i64 0, i64 0
-  store i32 1, ptr %54, align 4
-  %55 = call i32 @test.sum_us(ptr %varargslots10, i64 1)
-  %56 = call i32 (ptr, ...) @printf(ptr @.str.19, i32 %55)
-  %57 = call i32 @test.sum_us(ptr null, i64 0)
-  %58 = call i32 (ptr, ...) @printf(ptr @.str.20, i32 %57)
+  %40 = call i32 @test.sum_us(ptr %x, i64 4)
+  %41 = call i32 (ptr, ...) @printf(ptr @.str.16, i32 %40)
+  %lo = load ptr, ptr %z, align 8
+  %ptradd10 = getelementptr inbounds i8, ptr %z, i64 8
+  %hi = load i64, ptr %ptradd10, align 8
+  %42 = call i32 @test.sum_us(ptr %lo, i64 %hi)
+  %43 = call i32 (ptr, ...) @printf(ptr @.str.17, i32 %42)
+  store i32 1, ptr %varargslots, align 4
+  %ptradd11 = getelementptr inbounds i8, ptr %varargslots, i64 4
+  store i32 2, ptr %ptradd11, align 4
+  %ptradd12 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i32 4, ptr %ptradd12, align 4
+  %ptradd13 = getelementptr inbounds i8, ptr %varargslots, i64 12
+  store i32 5, ptr %ptradd13, align 4
+  %44 = call i32 @test.sum_us(ptr %varargslots, i64 4)
+  %45 = call i32 (ptr, ...) @printf(ptr @.str.18, i32 %44)
+  store i32 1, ptr %varargslots14, align 4
+  %46 = call i32 @test.sum_us(ptr %varargslots14, i64 1)
+  %47 = call i32 (ptr, ...) @printf(ptr @.str.19, i32 %46)
+  %48 = call i32 @test.sum_us(ptr null, i64 0)
+  %49 = call i32 (ptr, ...) @printf(ptr @.str.20, i32 %48)
   store ptr null, ptr %a1, align 8
   store ptr null, ptr %b2, align 8
   ret void
@@ -591,9 +581,8 @@ define i32 @"test2$int$.getValue"(i32 %0) #0 {
 entry:
   %blob = alloca %Blob, align 4
   store i32 %0, ptr %blob, align 4
-  %1 = getelementptr inbounds %Blob, ptr %blob, i32 0, i32 0
-  %2 = load i32, ptr %1, align 4
-  ret i32 %2
+  %1 = load i32, ptr %blob, align 4
+  ret i32 %1
 }
 
 // #expect: test2.double.ll
@@ -614,6 +603,5 @@ define double @"test2$double$.getValue"(double %0)
 entry:
   %blob = alloca %Blob, align 8
   store double %0, ptr %blob, align 8
-  %1 = getelementptr inbounds %Blob, ptr %blob, i32 0, i32 0
-  %2 = load double, ptr %1, align 8
-  ret double %2
+  %1 = load double, ptr %blob, align 8
+  ret double %1

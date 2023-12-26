@@ -98,8 +98,7 @@ LLVMBuilderRef llvm_create_builder(GenContext *c)
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 {
 	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyfault), "not_err");
-	LLVMValueRef values[2] = { compare, LLVMConstInt(c->bool_type, 1, false) };
-	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
+	return llvm_emit_expect_raw(c, compare);
 }
 
 LLVMValueRef llvm_emit_memclear_size_align(GenContext *c, LLVMValueRef ptr, uint64_t size, AlignSize align)
@@ -934,7 +933,7 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
-	bool same_module = decl->unit->module == c->code_module;
+	bool same_module = decl_module(decl) == c->code_module;
 	const char *name = same_module ? "temp_global" : decl_get_extname(decl);
 	decl->backend_ref = llvm_add_global(c, name, decl->type, decl->alignment);
 	llvm_set_alignment(decl->backend_ref, decl->alignment);
@@ -1053,7 +1052,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	if (decl->is_export && arch_is_wasm(platform_target.arch))
 	{
-		if (c->code_module == decl->unit->module)
+		if (c->code_module == decl_module(decl))
 		{
 			llvm_attribute_add_string(c, function, "wasm-export-name", decl_get_extname(decl), -1);
 		}
@@ -1113,7 +1112,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			if (decl_is_local(decl))
 			{
-				assert(decl->unit->module == c->code_module);
+				assert(decl_module(decl) == c->code_module);
 				llvm_set_internal_linkage(backend_ref);
 			}
 			return backend_ref;

@@ -1,0 +1,16 @@
+module test;
+
+extern const int FOO @extern("foo1");
+fn int main()
+{
+	return FOO;
+}
+
+module bar;
+const int FOO @export("foo1") = 123;
+
+
+
+/* #expect: bar.ll
+
+@foo1 = local_unnamed_addr constant i32 123, align 4

@@ -26,37 +26,37 @@ fn void main() {
 @test.c = local_unnamed_addr global i32 0, align 4
 @test.d = local_unnamed_addr global i32 0, align 4
 @test.abc = local_unnamed_addr global [3 x i32] zeroinitializer, align 4
-@test.b = local_unnamed_addr global ptr getelementptr (i32, ptr @test.a, i64 7), align 8
-@test.bf = local_unnamed_addr global ptr getelementptr ([3 x i32], ptr @test.abc, i64 1, i64 1), align 8
-@test.bf2 = local_unnamed_addr global ptr getelementptr inbounds ([3 x i32], ptr @test.abc, i64 0, i64 2), align 8
-@test.bf3 = local_unnamed_addr global ptr getelementptr ([3 x i32], ptr @test.abc, i64 1, i64 1), align 8
+@test.b = local_unnamed_addr global ptr getelementptr (i8, ptr @test.a, i64 28), align 8
+@test.bf = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
+@test.bf2 = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @test.abc, i64 8), align 8
+@test.bf3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
 @.taddr.9 = private global i32 42, align 4
 @.taddr.10 = private global i8 99, align 1
 @.taddr.11 = private global %"char[]" { ptr @.str, i64 3 }, align 8
 @main.x = internal unnamed_addr global [3 x %"any*"] [%"any*" { ptr @.taddr.9, i64 ptrtoint (ptr @"$ct.int" to i64) }, %"any*" { ptr @.taddr.10, i64 ptrtoint (ptr @"$ct.char" to i64) }, %"any*" { ptr @.taddr.11, i64 ptrtoint (ptr @"$ct.String" to i64) }], align 16
 
+; Function Attrs:
 define void @test.main() #0 {
 entry:
   %bf34 = alloca ptr, align 8
   %y = alloca [3 x %"any*"], align 16
   %taddr = alloca i32, align 4
   %taddr1 = alloca i8, align 1
-  %taddr2 = alloca %"char[]", align 8
-  store ptr getelementptr ([3 x i32], ptr @test.abc, i64 2, i64 1), ptr %bf34, align 8
-  %0 = getelementptr inbounds [3 x %"any*"], ptr %y, i64 0, i64 0
+  %taddr3 = alloca %"char[]", align 8
+  store ptr getelementptr (i8, ptr @test.abc, i64 28), ptr %bf34, align 8
   store i32 42, ptr %taddr, align 4
-  %1 = insertvalue %"any*" undef, ptr %taddr, 0
-  %2 = insertvalue %"any*" %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %2, ptr %0, align 16
-  %3 = getelementptr inbounds [3 x %"any*"], ptr %y, i64 0, i64 1
+  %0 = insertvalue %"any*" undef, ptr %taddr, 0
+  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %"any*" %1, ptr %y, align 16
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 16
   store i8 99, ptr %taddr1, align 1
-  %4 = insertvalue %"any*" undef, ptr %taddr1, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.char" to i64), 1
-  store %"any*" %5, ptr %3, align 16
-  %6 = getelementptr inbounds [3 x %"any*"], ptr %y, i64 0, i64 2
-  store %"char[]" { ptr @.str.12, i64 3 }, ptr %taddr2, align 8
-  %7 = insertvalue %"any*" undef, ptr %taddr2, 0
-  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %8, ptr %6, align 16
+  %2 = insertvalue %"any*" undef, ptr %taddr1, 0
+  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.char" to i64), 1
+  store %"any*" %3, ptr %ptradd, align 16
+  %ptradd2 = getelementptr inbounds i8, ptr %y, i64 32
+  store %"char[]" { ptr @.str.12, i64 3 }, ptr %taddr3, align 8
+  %4 = insertvalue %"any*" undef, ptr %taddr3, 0
+  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %"any*" %5, ptr %ptradd2, align 16
   ret void
 }

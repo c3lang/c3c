@@ -18,14 +18,14 @@ fn void main()
 
 /* #expect: foo.ll
 
-  %6 = load <2 x ptr>, ptr %ptrvec, align 16
-  %7 = call <2 x i32> @llvm.masked.gather.v2i32.v2p0(<2 x ptr> %6, i32 4, <2 x i1> <i1 true, i1 false>, <2 x i32> <i32 10, i32 20>)
+  %4 = load <2 x ptr>, ptr %ptrvec, align 16
+  %5 = call <2 x i32> @llvm.masked.gather.v2i32.v2p0(<2 x ptr> %4, i32 4, <2 x i1> <i1 true, i1 false>, <2 x i32> <i32 10, i32 20>)
 
-  %11 = load <2 x ptr>, ptr %ptrvec1, align 16
-  %12 = call <2 x i32> @llvm.masked.gather.v2i32.v2p0(<2 x ptr> %11, i32 4, <2 x i1> <i1 true, i1 false>, <2 x i32> <i32 10, i32 20>)
+  %9 = load <2 x ptr>, ptr %ptrvec1, align 16
+  %10 = call <2 x i32> @llvm.masked.gather.v2i32.v2p0(<2 x ptr> %9, i32 4, <2 x i1> <i1 true, i1 false>, <2 x i32> <i32 10, i32 20>)
 
-  %16 = load <2 x ptr>, ptr %ptrvec3, align 16
-  call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 66, i32 77>, <2 x ptr> %16, i32 4, <2 x i1> <i1 false, i1 true>)
+  %14 = load <2 x ptr>, ptr %ptrvec3, align 16
+  call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 66, i32 77>, <2 x ptr> %14, i32 4, <2 x i1> <i1 false, i1 true>)
 
-  %38 = load <2 x ptr>, ptr %ptrvec12, align 16
-  call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 88, i32 99>, <2 x ptr> %38, i32 4, <2 x i1> <i1 true, i1 false>)
+  %26 = load <2 x ptr>, ptr %ptrvec20, align 16
+  call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 88, i32 99>, <2 x ptr> %26, i32 4, <2 x i1> <i1 true, i1 false>)

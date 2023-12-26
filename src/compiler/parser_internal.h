@@ -36,7 +36,7 @@ TypeInfo *parse_optional_type(ParseContext *c);
 TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info);
 Expr* parse_constant_expr(ParseContext *c);
 
-Decl *parse_const_declaration(ParseContext *c, bool is_global);
+Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern);
 Expr *parse_integer(ParseContext *c, Expr *left);
 Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);

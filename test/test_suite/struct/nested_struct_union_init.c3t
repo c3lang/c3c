@@ -67,43 +67,36 @@ entry:
   %x = alloca %Matrix3x3, align 4
   %m = alloca %Matrix2x2, align 4
   %m2 = alloca %Matrix2x2_b, align 4
-  %0 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %1 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 0
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %1, ptr align 4 @.__const, i32 4, i1 false)
-  %2 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %2, ptr align 4 @.__const.16, i32 4, i1 false)
-  %3 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 2
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %3, ptr align 4 @.__const.17, i32 4, i1 false)
-  %4 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 3
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %4, ptr align 4 @.__const.18, i32 4, i1 false)
-  %5 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %5, ptr align 4 @.__const.19, i32 4, i1 false)
-  %6 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 5
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %6, ptr align 4 @.__const.20, i32 4, i1 false)
-  %7 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 6
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %7, ptr align 4 @.__const.21, i32 4, i1 false)
-  %8 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 7
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %8, ptr align 4 @.__const.22, i32 4, i1 false)
-  %9 = getelementptr inbounds %.anon.0, ptr %0, i32 0, i32 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %9, ptr align 4 @.__const.23, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 4, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd, ptr align 4 @.__const.16, i32 4, i1 false)
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd1, ptr align 4 @.__const.17, i32 4, i1 false)
+  %ptradd2 = getelementptr inbounds i8, ptr %x, i64 12
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd2, ptr align 4 @.__const.18, i32 4, i1 false)
+  %ptradd3 = getelementptr inbounds i8, ptr %x, i64 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd3, ptr align 4 @.__const.19, i32 4, i1 false)
+  %ptradd4 = getelementptr inbounds i8, ptr %x, i64 20
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd4, ptr align 4 @.__const.20, i32 4, i1 false)
+  %ptradd5 = getelementptr inbounds i8, ptr %x, i64 24
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd5, ptr align 4 @.__const.21, i32 4, i1 false)
+  %ptradd6 = getelementptr inbounds i8, ptr %x, i64 28
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd6, ptr align 4 @.__const.22, i32 4, i1 false)
+  %ptradd7 = getelementptr inbounds i8, ptr %x, i64 32
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd7, ptr align 4 @.__const.23, i32 4, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m, ptr align 4 @.__const.24, i32 16, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.25, i32 16, i1 false)
-  %10 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %11 = getelementptr inbounds %.anon.0, ptr %10, i32 0, i32 0
-  %12 = load float, ptr %11, align 4
-  %fpfpext = fpext float %12 to double
-  %13 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %14 = getelementptr inbounds [9 x float], ptr %13, i64 0, i64 1
-  %15 = load float, ptr %14, align 4
-  %fpfpext1 = fpext float %15 to double
-  %16 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %17 = getelementptr inbounds %.anon.0, ptr %16, i32 0, i32 3
-  %18 = load float, ptr %17, align 4
-  %fpfpext2 = fpext float %18 to double
-  %19 = getelementptr inbounds %Matrix3x3, ptr %x, i32 0, i32 0
-  %20 = getelementptr inbounds [9 x float], ptr %19, i64 0, i64 3
-  %21 = load float, ptr %20, align 4
-  %fpfpext3 = fpext float %21 to double
-  %22 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext, double %fpfpext1, double %fpfpext2, double %fpfpext3)
+  %0 = load float, ptr %x, align 4
+  %fpfpext = fpext float %0 to double
+  %ptradd8 = getelementptr inbounds i8, ptr %x, i64 4
+  %1 = load float, ptr %ptradd8, align 4
+  %fpfpext9 = fpext float %1 to double
+  %ptradd10 = getelementptr inbounds i8, ptr %x, i64 12
+  %2 = load float, ptr %ptradd10, align 4
+  %fpfpext11 = fpext float %2 to double
+  %ptradd12 = getelementptr inbounds i8, ptr %x, i64 12
+  %3 = load float, ptr %ptradd12, align 4
+  %fpfpext13 = fpext float %3 to double
+  %4 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext, double %fpfpext9, double %fpfpext11, double %fpfpext13)
   ret void
 }

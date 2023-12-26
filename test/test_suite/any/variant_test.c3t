@@ -76,132 +76,158 @@ entry:
   %x = alloca %"any*", align 8
   %switch = alloca i64, align 8
   store i64 %0, ptr %x, align 8
-  %ptroffset = getelementptr inbounds ptr, ptr %x, i64 1
-  store ptr %1, ptr %ptroffset, align 8
-  %2 = getelementptr inbounds %"any*", ptr %x, i32 0, i32 1
-  %3 = load i64, ptr %2, align 8
-  store i64 %3, ptr %switch, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  store ptr %1, ptr %ptradd, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  %2 = load i64, ptr %ptradd1, align 8
+  store i64 %2, ptr %switch, align 8
   br label %switch.entry
+
 switch.entry:                                     ; preds = %entry
-  %4 = load i64, ptr %switch, align 8
+  %3 = load i64, ptr %switch, align 8
   br label %check_subtype
+
 check_subtype:                                    ; preds = %parent_type_block, %switch.entry
-  %5 = phi i64 [ %4, %switch.entry ], [ %typeid.parent, %parent_type_block ]
-  %eq = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %5
+  %4 = phi i64 [ %3, %switch.entry ], [ %typeid.parent, %parent_type_block ]
+  %eq = icmp eq i64 ptrtoint (ptr @"$ct.int" to i64), %4
   br i1 %eq, label %result_block, label %parent_type_block
+
 parent_type_block:                                ; preds = %check_subtype
-  %6 = inttoptr i64 %5 to ptr
-  %7 = getelementptr inbounds %.introspect, ptr %6, i32 0, i32 1
-  %typeid.parent = load i64, ptr %7, align 8
-  %8 = icmp eq i64 %typeid.parent, 0
-  br i1 %8, label %result_block, label %check_subtype
+  %5 = inttoptr i64 %4 to ptr
+  %ptradd2 = getelementptr inbounds i8, ptr %5, i64 8
+  %typeid.parent = load i64, ptr %ptradd2, align 8
+  %6 = icmp eq i64 %typeid.parent, 0
+  br i1 %6, label %result_block, label %check_subtype
+
 result_block:                                     ; preds = %parent_type_block, %check_subtype
-  %9 = phi i1 [ false, %parent_type_block ], [ true, %check_subtype ]
-  br i1 %9, label %switch.case, label %next_if
+  %7 = phi i1 [ false, %parent_type_block ], [ true, %check_subtype ]
+  br i1 %7, label %switch.case, label %next_if
+
 switch.case:                                      ; preds = %result_block
   call void (ptr, ...) @printf(ptr @.str)
   br label %switch.exit
+
 next_if:                                          ; preds = %result_block
-  br label %check_subtype1
-check_subtype1:                                   ; preds = %parent_type_block3, %next_if
-  %10 = phi i64 [ %4, %next_if ], [ %typeid.parent4, %parent_type_block3 ]
-  %eq2 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %10
-  br i1 %eq2, label %result_block5, label %parent_type_block3
-parent_type_block3:                               ; preds = %check_subtype1
-  %11 = inttoptr i64 %10 to ptr
-  %12 = getelementptr inbounds %.introspect, ptr %11, i32 0, i32 1
-  %typeid.parent4 = load i64, ptr %12, align 8
-  %13 = icmp eq i64 %typeid.parent4, 0
-  br i1 %13, label %result_block5, label %check_subtype1
-result_block5:                                    ; preds = %parent_type_block3, %check_subtype1
-  %14 = phi i1 [ false, %parent_type_block3 ], [ true, %check_subtype1 ]
-  br i1 %14, label %switch.case6, label %next_if7
-switch.case6:                                     ; preds = %result_block5
+  br label %check_subtype3
+
+check_subtype3:                                   ; preds = %parent_type_block5, %next_if
+  %8 = phi i64 [ %3, %next_if ], [ %typeid.parent7, %parent_type_block5 ]
+  %eq4 = icmp eq i64 ptrtoint (ptr @"$ct.double" to i64), %8
+  br i1 %eq4, label %result_block8, label %parent_type_block5
+
+parent_type_block5:                               ; preds = %check_subtype3
+  %9 = inttoptr i64 %8 to ptr
+  %ptradd6 = getelementptr inbounds i8, ptr %9, i64 8
+  %typeid.parent7 = load i64, ptr %ptradd6, align 8
+  %10 = icmp eq i64 %typeid.parent7, 0
+  br i1 %10, label %result_block8, label %check_subtype3
+
+result_block8:                                    ; preds = %parent_type_block5, %check_subtype3
+  %11 = phi i1 [ false, %parent_type_block5 ], [ true, %check_subtype3 ]
+  br i1 %11, label %switch.case9, label %next_if10
+
+switch.case9:                                     ; preds = %result_block8
   call void (ptr, ...) @printf(ptr @.str.1)
   br label %switch.exit
-next_if7:                                         ; preds = %result_block5
-  br label %check_subtype8
-check_subtype8:                                   ; preds = %parent_type_block10, %next_if7
-  %15 = phi i64 [ %4, %next_if7 ], [ %typeid.parent11, %parent_type_block10 ]
-  %eq9 = icmp eq i64 ptrtoint (ptr @"$ct.any$" to i64), %15
-  br i1 %eq9, label %result_block12, label %parent_type_block10
-parent_type_block10:                              ; preds = %check_subtype8
-  %16 = inttoptr i64 %15 to ptr
-  %17 = getelementptr inbounds %.introspect, ptr %16, i32 0, i32 1
-  %typeid.parent11 = load i64, ptr %17, align 8
-  %18 = icmp eq i64 %typeid.parent11, 0
-  br i1 %18, label %result_block12, label %check_subtype8
-result_block12:                                   ; preds = %parent_type_block10, %check_subtype8
-  %19 = phi i1 [ false, %parent_type_block10 ], [ true, %check_subtype8 ]
-  br i1 %19, label %switch.case13, label %next_if14
-switch.case13:                                    ; preds = %result_block12
+
+next_if10:                                        ; preds = %result_block8
+  br label %check_subtype11
+
+check_subtype11:                                  ; preds = %parent_type_block13, %next_if10
+  %12 = phi i64 [ %3, %next_if10 ], [ %typeid.parent15, %parent_type_block13 ]
+  %eq12 = icmp eq i64 ptrtoint (ptr @"$ct.any$" to i64), %12
+  br i1 %eq12, label %result_block16, label %parent_type_block13
+
+parent_type_block13:                              ; preds = %check_subtype11
+  %13 = inttoptr i64 %12 to ptr
+  %ptradd14 = getelementptr inbounds i8, ptr %13, i64 8
+  %typeid.parent15 = load i64, ptr %ptradd14, align 8
+  %14 = icmp eq i64 %typeid.parent15, 0
+  br i1 %14, label %result_block16, label %check_subtype11
+
+result_block16:                                   ; preds = %parent_type_block13, %check_subtype11
+  %15 = phi i1 [ false, %parent_type_block13 ], [ true, %check_subtype11 ]
+  br i1 %15, label %switch.case17, label %next_if18
+
+switch.case17:                                    ; preds = %result_block16
   call void (ptr, ...) @printf(ptr @.str.2)
   br label %switch.exit
-next_if14:                                        ; preds = %result_block12
-  br label %check_subtype15
-check_subtype15:                                  ; preds = %parent_type_block17, %next_if14
-  %20 = phi i64 [ %4, %next_if14 ], [ %typeid.parent18, %parent_type_block17 ]
-  %eq16 = icmp eq i64 ptrtoint (ptr @"$ct.p$int" to i64), %20
-  br i1 %eq16, label %result_block19, label %parent_type_block17
-parent_type_block17:                              ; preds = %check_subtype15
-  %21 = inttoptr i64 %20 to ptr
-  %22 = getelementptr inbounds %.introspect, ptr %21, i32 0, i32 1
-  %typeid.parent18 = load i64, ptr %22, align 8
-  %23 = icmp eq i64 %typeid.parent18, 0
-  br i1 %23, label %result_block19, label %check_subtype15
-result_block19:                                   ; preds = %parent_type_block17, %check_subtype15
-  %24 = phi i1 [ false, %parent_type_block17 ], [ true, %check_subtype15 ]
-  br i1 %24, label %switch.case20, label %next_if21
-switch.case20:                                    ; preds = %result_block19
+
+next_if18:                                        ; preds = %result_block16
+  br label %check_subtype19
+
+check_subtype19:                                  ; preds = %parent_type_block21, %next_if18
+  %16 = phi i64 [ %3, %next_if18 ], [ %typeid.parent23, %parent_type_block21 ]
+  %eq20 = icmp eq i64 ptrtoint (ptr @"$ct.p$int" to i64), %16
+  br i1 %eq20, label %result_block24, label %parent_type_block21
+
+parent_type_block21:                              ; preds = %check_subtype19
+  %17 = inttoptr i64 %16 to ptr
+  %ptradd22 = getelementptr inbounds i8, ptr %17, i64 8
+  %typeid.parent23 = load i64, ptr %ptradd22, align 8
+  %18 = icmp eq i64 %typeid.parent23, 0
+  br i1 %18, label %result_block24, label %check_subtype19
+
+result_block24:                                   ; preds = %parent_type_block21, %check_subtype19
+  %19 = phi i1 [ false, %parent_type_block21 ], [ true, %check_subtype19 ]
+  br i1 %19, label %switch.case25, label %next_if26
+
+switch.case25:                                    ; preds = %result_block24
   call void (ptr, ...) @printf(ptr @.str.3)
   br label %switch.exit
-next_if21:                                        ; preds = %result_block19
+
+next_if26:                                        ; preds = %result_block24
   br label %switch.default
-switch.default:                                   ; preds = %next_if21
+
+switch.default:                                   ; preds = %next_if26
   call void (ptr, ...) @printf(ptr @.str.4)
   br label %switch.exit
-switch.exit:                                      ; preds = %switch.default, %switch.case20, %switch.case13, %switch.case6, %switch.case
+
+switch.exit:                                      ; preds = %switch.default, %switch.case25, %switch.case17, %switch.case9, %switch.case
   ret void
 }
 
+; Function Attrs:
 define void @foo.test_all(ptr %0, i64 %1) #0 {
 entry:
   %y = alloca %"any*[]", align 8
   %.anon = alloca i64, align 8
-  %.anon1 = alloca i64, align 8
+  %.anon2 = alloca i64, align 8
   %element = alloca %"any*", align 8
   store ptr %0, ptr %y, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %y, i64 1
-  store i64 %1, ptr %ptroffset, align 8
-  %2 = getelementptr inbounds %"any*[]", ptr %y, i32 0, i32 1
-  %3 = load i64, ptr %2, align 8
-  store i64 %3, ptr %.anon, align 8
-  store i64 0, ptr %.anon1, align 8
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %y, i64 8
+  %2 = load i64, ptr %ptradd1, align 8
+  store i64 %2, ptr %.anon, align 8
+  store i64 0, ptr %.anon2, align 8
   br label %loop.cond
+
 loop.cond:                                        ; preds = %loop.body, %entry
-  %4 = load i64, ptr %.anon1, align 8
-  %5 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %4, %5
+  %3 = load i64, ptr %.anon2, align 8
+  %4 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %3, %4
   br i1 %lt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
-  %6 = getelementptr inbounds %"any*[]", ptr %y, i32 0, i32 0
-  %7 = load ptr, ptr %6, align 8
-  %8 = load i64, ptr %.anon1, align 8
-  %ptroffset2 = getelementptr inbounds %"any*", ptr %7, i64 %8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %element, ptr align 8 %ptroffset2, i32 16, i1 false)
-  %9 = getelementptr inbounds { i64, ptr }, ptr %element, i32 0, i32 0
-  %lo = load i64, ptr %9, align 8
-  %10 = getelementptr inbounds { i64, ptr }, ptr %element, i32 0, i32 1
-  %hi = load ptr, ptr %10, align 8
+  %5 = load ptr, ptr %y, align 8
+  %6 = load i64, ptr %.anon2, align 8
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %5, i64 %6
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %element, ptr align 8 %ptroffset, i32 16, i1 false)
+  %lo = load i64, ptr %element, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %element, i64 8
+  %hi = load ptr, ptr %ptradd3, align 8
   call void @foo.test(i64 %lo, ptr %hi)
-  %11 = load i64, ptr %.anon1, align 8
-  %add = add i64 %11, 1
-  store i64 %add, ptr %.anon1, align 8
+  %7 = load i64, ptr %.anon2, align 8
+  %add = add i64 %7, 1
+  store i64 %add, ptr %.anon2, align 8
   br label %loop.cond
+
 loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
+; Function Attrs:
 define void @foo.main() #0 {
 entry:
   %x = alloca %"any*", align 8
@@ -210,16 +236,16 @@ entry:
   %y = alloca %"any*", align 8
   %g = alloca i64, align 8
   %h = alloca i64, align 8
-  %taddr4 = alloca double, align 8
-  %taddr11 = alloca double, align 8
-  %taddr12 = alloca %"any*", align 8
-  %taddr15 = alloca i32, align 4
-  %taddr16 = alloca %"any*", align 8
-  %taddr19 = alloca i8, align 1
-  %taddr20 = alloca %"any*", align 8
+  %taddr7 = alloca double, align 8
+  %taddr17 = alloca double, align 8
+  %taddr18 = alloca %"any*", align 8
+  %taddr22 = alloca i32, align 4
+  %taddr23 = alloca %"any*", align 8
+  %taddr27 = alloca i8, align 1
+  %taddr28 = alloca %"any*", align 8
   %df = alloca ptr, align 8
   %varargslots = alloca [5 x %"any*"], align 16
-  %taddr23 = alloca double, align 8
+  %taddr33 = alloca double, align 8
   store i32 1, ptr %taddr, align 4
   %0 = insertvalue %"any*" undef, ptr %taddr, 0
   %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
@@ -228,102 +254,105 @@ entry:
   %2 = insertvalue %"any*" undef, ptr %z, 0
   %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %"any*" %3, ptr %y, align 8
-  %4 = getelementptr inbounds %"any*", ptr %y, i32 0, i32 1
-  %5 = load i64, ptr %4, align 8
-  store i64 %5, ptr %g, align 8
-  %6 = getelementptr inbounds %"any*", ptr %x, i32 0, i32 1
-  %7 = load i64, ptr %6, align 8
-  store i64 %7, ptr %h, align 8
-  %8 = getelementptr inbounds %"any*", ptr %y, i32 0, i32 1
-  %9 = load i64, ptr %8, align 8
-  %eq = icmp eq i64 %9, ptrtoint (ptr @"$ct.int" to i64)
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 8
+  %4 = load i64, ptr %ptradd, align 8
+  store i64 %4, ptr %g, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  %5 = load i64, ptr %ptradd1, align 8
+  store i64 %5, ptr %h, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %y, i64 8
+  %6 = load i64, ptr %ptradd2, align 8
+  %eq = icmp eq i64 %6, ptrtoint (ptr @"$ct.int" to i64)
   br i1 %eq, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %entry
   call void (ptr, ...) @printf(ptr @.str.5)
   br label %if.exit
+
 if.exit:                                          ; preds = %if.then, %entry
-  %10 = getelementptr inbounds %"any*", ptr %x, i32 0, i32 1
-  %11 = load i64, ptr %10, align 8
-  %eq1 = icmp eq i64 %11, ptrtoint (ptr @"$ct.int" to i64)
-  br i1 %eq1, label %if.then2, label %if.exit3
-if.then2:                                         ; preds = %if.exit
+  %ptradd3 = getelementptr inbounds i8, ptr %x, i64 8
+  %7 = load i64, ptr %ptradd3, align 8
+  %eq4 = icmp eq i64 %7, ptrtoint (ptr @"$ct.int" to i64)
+  br i1 %eq4, label %if.then5, label %if.exit6
+
+if.then5:                                         ; preds = %if.exit
   call void (ptr, ...) @printf(ptr @.str.6)
-  br label %if.exit3
-if.exit3:                                         ; preds = %if.then2, %if.exit
-  store double 1.000000e+00, ptr %taddr4, align 8
-  %12 = insertvalue %"any*" undef, ptr %taddr4, 0
-  %13 = insertvalue %"any*" %12, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  store %"any*" %13, ptr %y, align 8
-  %14 = insertvalue %"any*" undef, ptr %x, 0
-  %15 = insertvalue %"any*" %14, i64 ptrtoint (ptr @"$ct.any$" to i64), 1
-  store %"any*" %15, ptr %x, align 8
-  %16 = getelementptr inbounds %"any*", ptr %y, i32 0, i32 1
-  %17 = load i64, ptr %16, align 8
-  %eq5 = icmp eq i64 %17, ptrtoint (ptr @"$ct.int" to i64)
-  br i1 %eq5, label %if.then6, label %if.exit7
-if.then6:                                         ; preds = %if.exit3
+  br label %if.exit6
+
+if.exit6:                                         ; preds = %if.then5, %if.exit
+  store double 1.000000e+00, ptr %taddr7, align 8
+  %8 = insertvalue %"any*" undef, ptr %taddr7, 0
+  %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  store %"any*" %9, ptr %y, align 8
+  %10 = insertvalue %"any*" undef, ptr %x, 0
+  %11 = insertvalue %"any*" %10, i64 ptrtoint (ptr @"$ct.any$" to i64), 1
+  store %"any*" %11, ptr %x, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %y, i64 8
+  %12 = load i64, ptr %ptradd8, align 8
+  %eq9 = icmp eq i64 %12, ptrtoint (ptr @"$ct.int" to i64)
+  br i1 %eq9, label %if.then10, label %if.exit11
+
+if.then10:                                        ; preds = %if.exit6
   call void (ptr, ...) @printf(ptr @.str.7)
-  br label %if.exit7
-if.exit7:                                         ; preds = %if.then6, %if.exit3
-  %18 = getelementptr inbounds %"any*", ptr %x, i32 0, i32 1
-  %19 = load i64, ptr %18, align 8
-  %eq8 = icmp eq i64 %19, ptrtoint (ptr @"$ct.int" to i64)
-  br i1 %eq8, label %if.then9, label %if.exit10
-if.then9:                                         ; preds = %if.exit7
+  br label %if.exit11
+
+if.exit11:                                        ; preds = %if.then10, %if.exit6
+  %ptradd12 = getelementptr inbounds i8, ptr %x, i64 8
+  %13 = load i64, ptr %ptradd12, align 8
+  %eq13 = icmp eq i64 %13, ptrtoint (ptr @"$ct.int" to i64)
+  br i1 %eq13, label %if.then14, label %if.exit15
+
+if.then14:                                        ; preds = %if.exit11
   call void (ptr, ...) @printf(ptr @.str.8)
-  br label %if.exit10
-if.exit10:                                        ; preds = %if.then9, %if.exit7
-  %20 = getelementptr inbounds { i64, ptr }, ptr %x, i32 0, i32 0
-  %lo = load i64, ptr %20, align 8
-  %21 = getelementptr inbounds { i64, ptr }, ptr %x, i32 0, i32 1
-  %hi = load ptr, ptr %21, align 8
+  br label %if.exit15
+
+if.exit15:                                        ; preds = %if.then14, %if.exit11
+  %lo = load i64, ptr %x, align 8
+  %ptradd16 = getelementptr inbounds i8, ptr %x, i64 8
+  %hi = load ptr, ptr %ptradd16, align 8
   call void @foo.test(i64 %lo, ptr %hi)
-  store double 1.000000e+00, ptr %taddr11, align 8
-  %22 = insertvalue %"any*" undef, ptr %taddr11, 0
-  %23 = insertvalue %"any*" %22, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  store %"any*" %23, ptr %taddr12, align 8
-  %24 = getelementptr inbounds { i64, ptr }, ptr %taddr12, i32 0, i32 0
-  %lo13 = load i64, ptr %24, align 8
-  %25 = getelementptr inbounds { i64, ptr }, ptr %taddr12, i32 0, i32 1
-  %hi14 = load ptr, ptr %25, align 8
-  call void @foo.test(i64 %lo13, ptr %hi14)
-  store i32 1, ptr %taddr15, align 4
-  %26 = insertvalue %"any*" undef, ptr %taddr15, 0
-  %27 = insertvalue %"any*" %26, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %27, ptr %taddr16, align 8
-  %28 = getelementptr inbounds { i64, ptr }, ptr %taddr16, i32 0, i32 0
-  %lo17 = load i64, ptr %28, align 8
-  %29 = getelementptr inbounds { i64, ptr }, ptr %taddr16, i32 0, i32 1
-  %hi18 = load ptr, ptr %29, align 8
-  call void @foo.test(i64 %lo17, ptr %hi18)
-  store i8 1, ptr %taddr19, align 1
-  %30 = insertvalue %"any*" undef, ptr %taddr19, 0
-  %31 = insertvalue %"any*" %30, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  store %"any*" %31, ptr %taddr20, align 8
-  %32 = getelementptr inbounds { i64, ptr }, ptr %taddr20, i32 0, i32 0
-  %lo21 = load i64, ptr %32, align 8
-  %33 = getelementptr inbounds { i64, ptr }, ptr %taddr20, i32 0, i32 1
-  %hi22 = load ptr, ptr %33, align 8
-  call void @foo.test(i64 %lo21, ptr %hi22)
+  store double 1.000000e+00, ptr %taddr17, align 8
+  %14 = insertvalue %"any*" undef, ptr %taddr17, 0
+  %15 = insertvalue %"any*" %14, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  store %"any*" %15, ptr %taddr18, align 8
+  %lo19 = load i64, ptr %taddr18, align 8
+  %ptradd20 = getelementptr inbounds i8, ptr %taddr18, i64 8
+  %hi21 = load ptr, ptr %ptradd20, align 8
+  call void @foo.test(i64 %lo19, ptr %hi21)
+  store i32 1, ptr %taddr22, align 4
+  %16 = insertvalue %"any*" undef, ptr %taddr22, 0
+  %17 = insertvalue %"any*" %16, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %"any*" %17, ptr %taddr23, align 8
+  %lo24 = load i64, ptr %taddr23, align 8
+  %ptradd25 = getelementptr inbounds i8, ptr %taddr23, i64 8
+  %hi26 = load ptr, ptr %ptradd25, align 8
+  call void @foo.test(i64 %lo24, ptr %hi26)
+  store i8 1, ptr %taddr27, align 1
+  %18 = insertvalue %"any*" undef, ptr %taddr27, 0
+  %19 = insertvalue %"any*" %18, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  store %"any*" %19, ptr %taddr28, align 8
+  %lo29 = load i64, ptr %taddr28, align 8
+  %ptradd30 = getelementptr inbounds i8, ptr %taddr28, i64 8
+  %hi31 = load ptr, ptr %ptradd30, align 8
+  call void @foo.test(i64 %lo29, ptr %hi31)
   call void (ptr, ...) @printf(ptr @.str.9)
   store ptr null, ptr %df, align 8
-  %34 = getelementptr inbounds [5 x %"any*"], ptr %varargslots, i64 0, i64 0
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %34, ptr align 8 %x, i32 16, i1 false)
-  %35 = getelementptr inbounds [5 x %"any*"], ptr %varargslots, i64 0, i64 1
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %35, ptr align 8 %x, i32 16, i1 false)
-  store double 1.000000e+00, ptr %taddr23, align 8
-  %36 = insertvalue %"any*" undef, ptr %taddr23, 0
-  %37 = insertvalue %"any*" %36, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  %38 = getelementptr inbounds [5 x %"any*"], ptr %varargslots, i64 0, i64 2
-  store %"any*" %37, ptr %38, align 16
-  %39 = insertvalue %"any*" undef, ptr %x, 0
-  %40 = insertvalue %"any*" %39, i64 ptrtoint (ptr @"$ct.any$" to i64), 1
-  %41 = getelementptr inbounds [5 x %"any*"], ptr %varargslots, i64 0, i64 3
-  store %"any*" %40, ptr %41, align 16
-  %42 = insertvalue %"any*" undef, ptr %df, 0
-  %43 = insertvalue %"any*" %42, i64 ptrtoint (ptr @"$ct.p$int" to i64), 1
-  %44 = getelementptr inbounds [5 x %"any*"], ptr %varargslots, i64 0, i64 4
-  store %"any*" %43, ptr %44, align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %varargslots, ptr align 8 %x, i32 16, i1 false)
+  %ptradd32 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %ptradd32, ptr align 8 %x, i32 16, i1 false)
+  store double 1.000000e+00, ptr %taddr33, align 8
+  %20 = insertvalue %"any*" undef, ptr %taddr33, 0
+  %21 = insertvalue %"any*" %20, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  %ptradd34 = getelementptr inbounds i8, ptr %varargslots, i64 32
+  store %"any*" %21, ptr %ptradd34, align 16
+  %22 = insertvalue %"any*" undef, ptr %x, 0
+  %23 = insertvalue %"any*" %22, i64 ptrtoint (ptr @"$ct.any$" to i64), 1
+  %ptradd35 = getelementptr inbounds i8, ptr %varargslots, i64 48
+  store %"any*" %23, ptr %ptradd35, align 16
+  %24 = insertvalue %"any*" undef, ptr %df, 0
+  %25 = insertvalue %"any*" %24, i64 ptrtoint (ptr @"$ct.p$int" to i64), 1
+  %ptradd36 = getelementptr inbounds i8, ptr %varargslots, i64 64
+  store %"any*" %25, ptr %ptradd36, align 16
   call void @foo.test_all(ptr %varargslots, i64 5)
   ret void
 }

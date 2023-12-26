@@ -238,11 +238,17 @@ static void analyze_generic_module(Module *module)
 		register_generic_decls(unit, unit->global_decls);
 		register_generic_decls(unit, unit->global_cond_decls);
 	}
-	sema_analyze_stage(module, ANALYSIS_MODULE_HIERARCHY);
 }
 
 static void sema_analyze_to_stage(AnalysisStage stage)
 {
+	if (stage <= ANALYSIS_MODULE_TOP)
+	{
+		VECEACH(global_context.generic_module_list, i)
+		{
+			sema_analyze_stage(global_context.generic_module_list[i], stage);
+		}
+	}
 	VECEACH(global_context.module_list, i)
 	{
 		sema_analyze_stage(global_context.module_list[i], stage);

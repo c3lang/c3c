@@ -25,9 +25,8 @@ fn void test_bar(int idx)
 define void @foo.test_bar(i32 %0) #0 {
 entry:
   %sext = sext i32 %0 to i64
-  %1 = getelementptr inbounds [6 x %Bar], ptr @foo.bar, i64 0, i64 %sext
-  %2 = getelementptr inbounds %Bar, ptr %1, i32 0, i32 0
-  store i32 0, ptr %2, align 4
+  %ptroffset = getelementptr inbounds [4 x i8], ptr @foo.bar, i64 %sext
+  store i32 0, ptr %ptroffset, align 4
   store i32 %0, ptr @foo.bar, align 4
   ret void
 }

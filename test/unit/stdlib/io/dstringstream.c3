@@ -3,7 +3,7 @@ module std::io @test;
 fn void! test_writing()
 {
 	DString foo;
-	foo.init_new();
+	foo.new_init();
 	OutStream* s = &foo;
 	s.write("hello")!!;
 	s.write_byte('-')!!;

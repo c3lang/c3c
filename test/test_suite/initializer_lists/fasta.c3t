@@ -131,7 +131,7 @@ fn int main(int argc, char **argv)
 @.str.15 = private unnamed_addr constant [26 x i8] c">TWO IUB ambiguity codes\0A\00", align 1
 @.str.16 = private unnamed_addr constant [31 x i8] c">THREE Homo sapiens frequency\0A\00", align 1
 
-
+; Function Attrs:
 define float @fasta.fasta_rand(float %0) #0 {
 entry:
   %1 = load i32, ptr @fasta.seed, align 4
@@ -146,49 +146,48 @@ entry:
   ret float %fdiv
 }
 
-
+; Function Attrs:
 declare i32 @atoi(ptr) #0
 
-
+; Function Attrs:
 declare i32 @printf(ptr, ...) #0
 
-
+; Function Attrs:
 declare void @putchar(i32) #0
 
-
+; Function Attrs:
 define void @fasta.repeat_fasta(ptr %0, i64 %1, i32 %2) #0 {
 entry:
   %seq = alloca %"char[]", align 8
   %len = alloca i64, align 8
   %i = alloca i32, align 4
   store ptr %0, ptr %seq, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %seq, i64 1
-  store i64 %1, ptr %ptroffset, align 8
-  %3 = getelementptr inbounds %"char[]", ptr %seq, i32 0, i32 1
-  %4 = load i64, ptr %3, align 8
-  store i64 %4, ptr %len, align 8
+  %ptradd = getelementptr inbounds i8, ptr %seq, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %seq, i64 8
+  %3 = load i64, ptr %ptradd1, align 8
+  store i64 %3, ptr %len, align 8
   store i32 0, ptr %i, align 4
   br label %loop.cond
 
 loop.cond:                                        ; preds = %if.exit, %entry
-  %5 = load i32, ptr %i, align 4
-  %lt = icmp slt i32 %5, %2
+  %4 = load i32, ptr %i, align 4
+  %lt = icmp slt i32 %4, %2
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %6 = getelementptr inbounds %"char[]", ptr %seq, i32 0, i32 0
-  %7 = load ptr, ptr %6, align 8
-  %8 = load i32, ptr %i, align 4
-  %sext = sext i32 %8 to i64
-  %9 = load i64, ptr %len, align 8
-  %smod = srem i64 %sext, %9
-  %ptroffset1 = getelementptr inbounds i8, ptr %7, i64 %smod
-  %10 = load i8, ptr %ptroffset1, align 1
-  %zext = zext i8 %10 to i32
+  %5 = load ptr, ptr %seq, align 8
+  %6 = load i32, ptr %i, align 4
+  %sext = sext i32 %6 to i64
+  %7 = load i64, ptr %len, align 8
+  %smod = srem i64 %sext, %7
+  %ptradd2 = getelementptr inbounds i8, ptr %5, i64 %smod
+  %8 = load i8, ptr %ptradd2, align 1
+  %zext = zext i8 %8 to i32
   call void @putchar(i32 %zext)
-  %11 = load i32, ptr %i, align 4
-  %smod2 = srem i32 %11, 60
-  %eq = icmp eq i32 %smod2, 59
+  %9 = load i32, ptr %i, align 4
+  %smod3 = srem i32 %9, 60
+  %eq = icmp eq i32 %smod3, 59
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %loop.body
@@ -196,26 +195,26 @@ if.then:                                          ; preds = %loop.body
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %loop.body
-  %12 = load i32, ptr %i, align 4
-  %add = add i32 %12, 1
+  %10 = load i32, ptr %i, align 4
+  %add = add i32 %10, 1
   store i32 %add, ptr %i, align 4
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  %13 = load i32, ptr %i, align 4
-  %smod3 = srem i32 %13, 60
-  %neq = icmp ne i32 %smod3, 0
-  br i1 %neq, label %if.then4, label %if.exit5
+  %11 = load i32, ptr %i, align 4
+  %smod4 = srem i32 %11, 60
+  %neq = icmp ne i32 %smod4, 0
+  br i1 %neq, label %if.then5, label %if.exit6
 
-if.then4:                                         ; preds = %loop.exit
+if.then5:                                         ; preds = %loop.exit
   call void @putchar(i32 10)
-  br label %if.exit5
+  br label %if.exit6
 
-if.exit5:                                         ; preds = %if.then4, %loop.exit
+if.exit6:                                         ; preds = %if.then5, %loop.exit
   ret void
 }
 
-
+; Function Attrs:
 define void @fasta.random_fasta(ptr %0, i64 %1, ptr %2, i64 %3, i32 %4) #0 {
 entry:
   %symb = alloca %"char[]", align 8
@@ -225,105 +224,103 @@ entry:
   %v = alloca double, align 8
   %j = alloca i32, align 4
   store ptr %0, ptr %symb, align 8
-  %ptroffset = getelementptr inbounds i64, ptr %symb, i64 1
-  store i64 %1, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %symb, i64 8
+  store i64 %1, ptr %ptradd, align 8
   store ptr %2, ptr %probability, align 8
-  %ptroffset1 = getelementptr inbounds i64, ptr %probability, i64 1
-  store i64 %3, ptr %ptroffset1, align 8
-  %5 = getelementptr inbounds %"char[]", ptr %symb, i32 0, i32 1
-  %6 = load i64, ptr %5, align 8
-  %7 = getelementptr inbounds %"double[]", ptr %probability, i32 0, i32 1
-  %8 = load i64, ptr %7, align 8
-  %eq = icmp eq i64 %6, %8
+  %ptradd1 = getelementptr inbounds i8, ptr %probability, i64 8
+  store i64 %3, ptr %ptradd1, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %symb, i64 8
+  %5 = load i64, ptr %ptradd2, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %probability, i64 8
+  %6 = load i64, ptr %ptradd3, align 8
+  %eq = icmp eq i64 %5, %6
   call void @llvm.assume(i1 %eq)
-  %9 = getelementptr inbounds %"double[]", ptr %probability, i32 0, i32 1
-  %10 = load i64, ptr %9, align 8
-  %trunc = trunc i64 %10 to i32
+  %ptradd4 = getelementptr inbounds i8, ptr %probability, i64 8
+  %7 = load i64, ptr %ptradd4, align 8
+  %trunc = trunc i64 %7 to i32
   store i32 %trunc, ptr %len, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
 
-loop.cond:                                        ; preds = %if.exit11, %entry
-  %11 = load i32, ptr %i, align 4
-  %lt = icmp slt i32 %11, %4
-  br i1 %lt, label %loop.body, label %loop.exit13
+loop.cond:                                        ; preds = %if.exit13, %entry
+  %8 = load i32, ptr %i, align 4
+  %lt = icmp slt i32 %8, %4
+  br i1 %lt, label %loop.body, label %loop.exit15
 
 loop.body:                                        ; preds = %loop.cond
-  %12 = call float @fasta.fasta_rand(float 1.000000e+00)
-  %fpfpext = fpext float %12 to double
+  %9 = call float @fasta.fasta_rand(float 1.000000e+00)
+  %fpfpext = fpext float %9 to double
   store double %fpfpext, ptr %v, align 8
   store i32 0, ptr %j, align 4
-  br label %loop.cond2
+  br label %loop.cond5
 
-loop.cond2:                                       ; preds = %if.exit, %loop.body
-  %13 = load i32, ptr %j, align 4
-  %14 = load i32, ptr %len, align 4
-  %sub = sub i32 %14, 1
-  %lt3 = icmp slt i32 %13, %sub
-  br i1 %lt3, label %loop.body4, label %loop.exit
+loop.cond5:                                       ; preds = %if.exit, %loop.body
+  %10 = load i32, ptr %j, align 4
+  %11 = load i32, ptr %len, align 4
+  %sub = sub i32 %11, 1
+  %lt6 = icmp slt i32 %10, %sub
+  br i1 %lt6, label %loop.body7, label %loop.exit
 
-loop.body4:                                       ; preds = %loop.cond2
-  %15 = load double, ptr %v, align 8
-  %16 = getelementptr inbounds %"double[]", ptr %probability, i32 0, i32 0
-  %17 = load ptr, ptr %16, align 8
-  %18 = load i32, ptr %j, align 4
-  %sext = sext i32 %18 to i64
-  %ptroffset5 = getelementptr inbounds double, ptr %17, i64 %sext
-  %19 = load double, ptr %ptroffset5, align 8
-  %fsub = fsub double %15, %19
+loop.body7:                                       ; preds = %loop.cond5
+  %12 = load double, ptr %v, align 8
+  %13 = load ptr, ptr %probability, align 8
+  %14 = load i32, ptr %j, align 4
+  %sext = sext i32 %14 to i64
+  %ptroffset = getelementptr inbounds [8 x i8], ptr %13, i64 %sext
+  %15 = load double, ptr %ptroffset, align 8
+  %fsub = fsub double %12, %15
   store double %fsub, ptr %v, align 8
-  %20 = load double, ptr %v, align 8
-  %lt6 = fcmp olt double %20, 0.000000e+00
-  br i1 %lt6, label %if.then, label %if.exit
+  %16 = load double, ptr %v, align 8
+  %lt8 = fcmp olt double %16, 0.000000e+00
+  br i1 %lt8, label %if.then, label %if.exit
 
-if.then:                                          ; preds = %loop.body4
+if.then:                                          ; preds = %loop.body7
   br label %loop.exit
 
-if.exit:                                          ; preds = %loop.body4
-  %21 = load i32, ptr %j, align 4
-  %add = add i32 %21, 1
+if.exit:                                          ; preds = %loop.body7
+  %17 = load i32, ptr %j, align 4
+  %add = add i32 %17, 1
   store i32 %add, ptr %j, align 4
-  br label %loop.cond2
+  br label %loop.cond5
 
-loop.exit:                                        ; preds = %if.then, %loop.cond2
-  %22 = getelementptr inbounds %"char[]", ptr %symb, i32 0, i32 0
-  %23 = load ptr, ptr %22, align 8
-  %24 = load i32, ptr %j, align 4
-  %sext7 = sext i32 %24 to i64
-  %ptroffset8 = getelementptr inbounds i8, ptr %23, i64 %sext7
-  %25 = load i8, ptr %ptroffset8, align 1
-  %zext = zext i8 %25 to i32
+loop.exit:                                        ; preds = %if.then, %loop.cond5
+  %18 = load ptr, ptr %symb, align 8
+  %19 = load i32, ptr %j, align 4
+  %sext9 = sext i32 %19 to i64
+  %ptradd10 = getelementptr inbounds i8, ptr %18, i64 %sext9
+  %20 = load i8, ptr %ptradd10, align 1
+  %zext = zext i8 %20 to i32
   call void @putchar(i32 %zext)
-  %26 = load i32, ptr %i, align 4
-  %smod = srem i32 %26, 60
-  %eq9 = icmp eq i32 %smod, 59
-  br i1 %eq9, label %if.then10, label %if.exit11
+  %21 = load i32, ptr %i, align 4
+  %smod = srem i32 %21, 60
+  %eq11 = icmp eq i32 %smod, 59
+  br i1 %eq11, label %if.then12, label %if.exit13
 
-if.then10:                                        ; preds = %loop.exit
+if.then12:                                        ; preds = %loop.exit
   call void @putchar(i32 10)
-  br label %if.exit11
+  br label %if.exit13
 
-if.exit11:                                        ; preds = %if.then10, %loop.exit
-  %27 = load i32, ptr %i, align 4
-  %add12 = add i32 %27, 1
-  store i32 %add12, ptr %i, align 4
+if.exit13:                                        ; preds = %if.then12, %loop.exit
+  %22 = load i32, ptr %i, align 4
+  %add14 = add i32 %22, 1
+  store i32 %add14, ptr %i, align 4
   br label %loop.cond
 
-loop.exit13:                                      ; preds = %loop.cond
-  %28 = load i32, ptr %i, align 4
-  %smod14 = srem i32 %28, 60
-  %neq = icmp ne i32 %smod14, 0
-  br i1 %neq, label %if.then15, label %if.exit16
+loop.exit15:                                      ; preds = %loop.cond
+  %23 = load i32, ptr %i, align 4
+  %smod16 = srem i32 %23, 60
+  %neq = icmp ne i32 %smod16, 0
+  br i1 %neq, label %if.then17, label %if.exit18
 
-if.then15:                                        ; preds = %loop.exit13
+if.then17:                                        ; preds = %loop.exit15
   call void @putchar(i32 10)
-  br label %if.exit16
+  br label %if.exit18
 
-if.exit16:                                        ; preds = %if.then15, %loop.exit13
+if.exit18:                                        ; preds = %if.then17, %loop.exit15
   ret void
 }
 
-
+; Function Attrs:
 define i32 @main(i32 %0, ptr %1) #0 {
 entry:
   %n = alloca i32, align 4
@@ -332,8 +329,8 @@ entry:
   br i1 %gt, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  %ptroffset = getelementptr inbounds ptr, ptr %1, i64 1
-  %2 = load ptr, ptr %ptroffset, align 8
+  %ptradd = getelementptr inbounds i8, ptr %1, i64 8
+  %2 = load ptr, ptr %ptradd, align 8
   %3 = call i32 @atoi(ptr %2)
   store i32 %3, ptr %n, align 4
   br label %if.exit
@@ -343,23 +340,23 @@ if.exit:                                          ; preds = %if.then, %entry
   %5 = load i32, ptr %n, align 4
   %mul = mul i32 %5, 2
   %lo = load ptr, ptr @fasta.alu, align 8
-  %hi = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta.alu, i32 0, i32 1), align 8
+  %hi = load i64, ptr getelementptr inbounds (i8, ptr @fasta.alu, i64 8), align 8
   call void @fasta.repeat_fasta(ptr %lo, i64 %hi, i32 %mul)
   %6 = call i32 (ptr, ...) @printf(ptr @.str.15)
   %7 = load i32, ptr %n, align 4
   %mul1 = mul i32 %7, 3
   %lo2 = load ptr, ptr @fasta.iub, align 8
-  %hi3 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta.iub, i32 0, i32 1), align 8
+  %hi3 = load i64, ptr getelementptr inbounds (i8, ptr @fasta.iub, i64 8), align 8
   %lo4 = load ptr, ptr @fasta.iub_p, align 8
-  %hi5 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta.iub_p, i32 0, i32 1), align 8
+  %hi5 = load i64, ptr getelementptr inbounds (i8, ptr @fasta.iub_p, i64 8), align 8
   call void @fasta.random_fasta(ptr %lo2, i64 %hi3, ptr %lo4, i64 %hi5, i32 %mul1)
   %8 = call i32 (ptr, ...) @printf(ptr @.str.16)
   %9 = load i32, ptr %n, align 4
   %mul6 = mul i32 %9, 5
   %lo7 = load ptr, ptr @fasta.homosapiens, align 8
-  %hi8 = load i64, ptr getelementptr inbounds (%"char[]", ptr @fasta.homosapiens, i32 0, i32 1), align 8
+  %hi8 = load i64, ptr getelementptr inbounds (i8, ptr @fasta.homosapiens, i64 8), align 8
   %lo9 = load ptr, ptr @fasta.homosapiens_p, align 8
-  %hi10 = load i64, ptr getelementptr inbounds (%"double[]", ptr @fasta.homosapiens_p, i32 0, i32 1), align 8
+  %hi10 = load i64, ptr getelementptr inbounds (i8, ptr @fasta.homosapiens_p, i64 8), align 8
   call void @fasta.random_fasta(ptr %lo7, i64 %hi8, ptr %lo9, i64 %hi10, i32 %mul6)
   ret i32 0
 }

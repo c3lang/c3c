@@ -43,7 +43,7 @@ fn int test()
 @test.foo1 = internal unnamed_addr global i32 22, align 4
 @.str = private unnamed_addr constant [7 x i8] c"Hello!\00", align 1
 
-
+; Function Attrs:
 define i32 @general_tests.test() #0 {
 entry:
   %ffe = alloca %Baz, align 8
@@ -58,21 +58,19 @@ entry:
   %foo = alloca %"Bar[]", align 8
   %baz = alloca [3 x %Baz], align 16
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ffe, ptr align 8 @.__const, i32 8, i1 false)
-  %0 = getelementptr inbounds [1 x i32], ptr %azz, i64 0, i64 0
-  store i32 0, ptr %0, align 4
+  store i32 0, ptr %azz, align 4
   store i32 33, ptr %foo2, align 4
   store ptr @.str, ptr %str, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.1, i32 12, i1 false)
-  %1 = insertvalue %"int[]" undef, ptr %literal, 0
-  %2 = insertvalue %"int[]" %1, i64 3, 1
-  %3 = extractvalue %"int[]" %2, 1
-  %not = icmp eq i64 %3, 0
-  %4 = zext i1 %not to i8
-  store i8 %4, ptr %x, align 1
-  %5 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 0
-  store i32 0, ptr %5, align 4
-  %6 = getelementptr inbounds %Bar, ptr %b, i32 0, i32 1
-  store i32 0, ptr %6, align 4
+  %0 = insertvalue %"int[]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[]" %0, i64 3, 1
+  %2 = extractvalue %"int[]" %1, 1
+  %not = icmp eq i64 %2, 0
+  %3 = zext i1 %not to i8
+  store i8 %3, ptr %x, align 1
+  store i32 0, ptr %b, align 4
+  %ptradd = getelementptr inbounds i8, ptr %b, i64 4
+  store i32 0, ptr %ptradd, align 4
   call void @llvm.memset.p0.i64(ptr align 8 %z, i8 0, i64 8, i1 false)
   store %"int[]" zeroinitializer, ptr %sub, align 8
   store %"Bar[]" zeroinitializer, ptr %foo, align 8

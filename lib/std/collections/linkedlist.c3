@@ -32,15 +32,29 @@ fn void LinkedList.push_last(&self, Type value)
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  * @return "the initialized list"
  **/
-fn LinkedList* LinkedList.init_new(&self, Allocator* allocator = mem::heap())
+fn LinkedList* LinkedList.new_init(&self, Allocator* allocator = mem::heap())
 {
 	*self = { .allocator = allocator };
 	return self;
 }
 
-fn LinkedList* LinkedList.init_temp(&self)
+/**
+ * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ * @return "the initialized list"
+ **/
+fn LinkedList* LinkedList.init_new(&self, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
 {
-	return self.init_new(mem::temp()) @inline;
+	return self.new_init(allocator);
+}
+
+fn LinkedList* LinkedList.temp_init(&self)
+{
+	return self.new_init(mem::temp()) @inline;
+}
+
+fn LinkedList* LinkedList.init_temp(&self) @deprecated("Replaced by temp_init")
+{
+	return self.temp_init() @inline;
 }
 
 /**

@@ -53,86 +53,69 @@ entry:
   %f = alloca ptr, align 8
   %literal = alloca %Foo, align 8
   %f2 = alloca ptr, align 8
-  %literal1 = alloca %Foo2, align 8
+  %literal2 = alloca %Foo2, align 8
   %f3 = alloca ptr, align 8
-  %literal2 = alloca %Foo3, align 8
+  %literal6 = alloca %Foo3, align 8
   %f4 = alloca ptr, align 8
-  %literal3 = alloca %Foo4, align 8
+  %literal11 = alloca %Foo4, align 8
   store ptr null, ptr %foo, align 8
-  %0 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
-  store i16 0, ptr %0, align 8
-  %1 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 1
-  store ptr null, ptr %1, align 8
-  %2 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 0
-  %3 = load i16, ptr %2, align 8
-  %4 = and i16 %3, -256
-  %5 = or i16 %4, 2
-  store i16 %5, ptr %2, align 8
-  %6 = getelementptr inbounds %Foo, ptr %literal, i32 0, i32 1
-  store ptr %f, ptr %6, align 8
+  store i16 0, ptr %literal, align 8
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
+  store ptr null, ptr %ptradd, align 8
+  %0 = load i16, ptr %literal, align 8
+  %1 = and i16 %0, -256
+  %2 = or i16 %1, 2
+  store i16 %2, ptr %literal, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
+  store ptr %f, ptr %ptradd1, align 8
   store ptr %literal, ptr %f, align 8
-  %7 = getelementptr inbounds %Foo2, ptr %literal1, i32 0, i32 0
-  %8 = getelementptr inbounds [2 x i8], ptr %7, i64 0, i64 0
-  store i8 0, ptr %8, align 1
-  %9 = getelementptr inbounds [2 x i8], ptr %7, i64 0, i64 1
-  store i8 0, ptr %9, align 1
-  %10 = getelementptr inbounds %Foo2, ptr %literal1, i32 0, i32 1
-  store ptr null, ptr %10, align 8
-  %11 = getelementptr inbounds %Foo2, ptr %literal1, i32 0, i32 0
-  %12 = getelementptr inbounds [2 x i8], ptr %11, i64 0, i64 0
-  store i8 2, ptr %12, align 1
-  %13 = getelementptr inbounds %Foo2, ptr %literal1, i32 0, i32 1
-  store ptr %f, ptr %13, align 8
-  store ptr %literal1, ptr %f2, align 8
-  %14 = getelementptr inbounds %Foo3, ptr %literal2, i32 0, i32 0
-  %15 = getelementptr inbounds [2 x i8], ptr %14, i64 0, i64 0
-  store i8 0, ptr %15, align 1
-  %16 = getelementptr inbounds [2 x i8], ptr %14, i64 0, i64 1
-  store i8 0, ptr %16, align 1
-  %17 = getelementptr inbounds %Foo3, ptr %literal2, i32 0, i32 1
-  store ptr null, ptr %17, align 8
-  %18 = getelementptr inbounds %Foo3, ptr %literal2, i32 0, i32 0
-  %19 = getelementptr inbounds [2 x i8], ptr %18, i64 0, i64 0
-  %20 = load i8, ptr %19, align 1
-  %21 = and i8 %20, 1
-  %22 = or i8 %21, 4
-  store i8 %22, ptr %19, align 1
-  %23 = getelementptr inbounds %Foo3, ptr %literal2, i32 0, i32 0
-  %24 = getelementptr inbounds [2 x i8], ptr %23, i64 0, i64 0
-  %25 = load i8, ptr %24, align 1
-  %26 = and i8 %25, -2
-  %27 = or i8 %26, 1
-  store i8 %27, ptr %24, align 1
-  %28 = getelementptr inbounds %Foo3, ptr %literal2, i32 0, i32 0
-  %29 = getelementptr inbounds [2 x i8], ptr %28, i64 0, i64 1
-  %30 = load i8, ptr %29, align 1
-  %31 = and i8 %30, -2
-  %32 = or i8 %31, 1
-  store i8 %32, ptr %29, align 1
-  %33 = getelementptr inbounds %Foo3, ptr %literal2, i32 0, i32 1
-  store ptr %f, ptr %33, align 8
-  store ptr %literal2, ptr %f3, align 8
-  %34 = getelementptr inbounds %Foo4, ptr %literal3, i32 0, i32 0
-  store i16 0, ptr %34, align 8
-  %35 = getelementptr inbounds %Foo4, ptr %literal3, i32 0, i32 1
-  store ptr null, ptr %35, align 8
-  %36 = getelementptr inbounds %Foo4, ptr %literal3, i32 0, i32 0
-  %37 = load i16, ptr %36, align 8
-  %38 = and i16 %37, -255
-  %39 = or i16 %38, 4
-  store i16 %39, ptr %36, align 8
-  %40 = getelementptr inbounds %Foo4, ptr %literal3, i32 0, i32 0
-  %41 = load i16, ptr %40, align 8
-  %42 = and i16 %41, -2
-  %43 = or i16 %42, 1
-  store i16 %43, ptr %40, align 8
-  %44 = getelementptr inbounds %Foo4, ptr %literal3, i32 0, i32 0
-  %45 = load i16, ptr %44, align 8
-  %46 = and i16 %45, -257
-  %47 = or i16 %46, 256
-  store i16 %47, ptr %44, align 8
-  %48 = getelementptr inbounds %Foo4, ptr %literal3, i32 0, i32 1
-  store ptr %f, ptr %48, align 8
-  store ptr %literal3, ptr %f4, align 8
+  store i8 0, ptr %literal2, align 1
+  %ptradd3 = getelementptr inbounds i8, ptr %literal2, i64 1
+  store i8 0, ptr %ptradd3, align 1
+  %ptradd4 = getelementptr inbounds i8, ptr %literal2, i64 8
+  store ptr null, ptr %ptradd4, align 8
+  store i8 2, ptr %literal2, align 1
+  %ptradd5 = getelementptr inbounds i8, ptr %literal2, i64 8
+  store ptr %f, ptr %ptradd5, align 8
+  store ptr %literal2, ptr %f2, align 8
+  store i8 0, ptr %literal6, align 1
+  %ptradd7 = getelementptr inbounds i8, ptr %literal6, i64 1
+  store i8 0, ptr %ptradd7, align 1
+  %ptradd8 = getelementptr inbounds i8, ptr %literal6, i64 8
+  store ptr null, ptr %ptradd8, align 8
+  %3 = load i8, ptr %literal6, align 1
+  %4 = and i8 %3, 1
+  %5 = or i8 %4, 4
+  store i8 %5, ptr %literal6, align 1
+  %6 = load i8, ptr %literal6, align 1
+  %7 = and i8 %6, -2
+  %8 = or i8 %7, 1
+  store i8 %8, ptr %literal6, align 1
+  %ptradd9 = getelementptr inbounds i8, ptr %literal6, i64 1
+  %9 = load i8, ptr %ptradd9, align 1
+  %10 = and i8 %9, -2
+  %11 = or i8 %10, 1
+  store i8 %11, ptr %ptradd9, align 1
+  %ptradd10 = getelementptr inbounds i8, ptr %literal6, i64 8
+  store ptr %f, ptr %ptradd10, align 8
+  store ptr %literal6, ptr %f3, align 8
+  store i16 0, ptr %literal11, align 8
+  %ptradd12 = getelementptr inbounds i8, ptr %literal11, i64 8
+  store ptr null, ptr %ptradd12, align 8
+  %12 = load i16, ptr %literal11, align 8
+  %13 = and i16 %12, -255
+  %14 = or i16 %13, 4
+  store i16 %14, ptr %literal11, align 8
+  %15 = load i16, ptr %literal11, align 8
+  %16 = and i16 %15, -2
+  %17 = or i16 %16, 1
+  store i16 %17, ptr %literal11, align 8
+  %18 = load i16, ptr %literal11, align 8
+  %19 = and i16 %18, -257
+  %20 = or i16 %19, 256
+  store i16 %20, ptr %literal11, align 8
+  %ptradd13 = getelementptr inbounds i8, ptr %literal11, i64 8
+  store ptr %f, ptr %ptradd13, align 8
+  store ptr %literal11, ptr %f4, align 8
   ret void
 }

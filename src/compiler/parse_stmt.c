@@ -85,7 +85,7 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 	{
 		// Consts don't have multiple declarations.
 		Ast *decl_stmt = new_ast(AST_DECLARE_STMT, c->span);
-		ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_const_declaration(c, false), poisoned_ast);
+		ASSIGN_DECL_OR_RET(decl_stmt->declare_stmt, parse_const_declaration(c, false, false), poisoned_ast);
 		decl_stmt->declare_stmt->visibility = VISIBLE_LOCAL;
 		RANGE_EXTEND_PREV(decl_stmt);
 		CONSUME_EOS_OR_RET(poisoned_ast);

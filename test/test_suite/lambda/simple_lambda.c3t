@@ -23,7 +23,7 @@ define void @simple_lambda.main() #0 {
 entry:
   %z = alloca i32, align 4
   %0 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda1")
-  %5 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda2")
+  %4 = call i32 @simple_lambda.xy(ptr @"simple_lambda.main$lambda2")
 
 define internal i32 @"simple_lambda.main$lambda1"() #0 {
 

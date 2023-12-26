@@ -2179,6 +2179,7 @@ static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);
 bool decl_is_ct_var(Decl *decl);
+INLINE Module* decl_module(Decl *decl);
 Decl *decl_find_enum_constant(Decl *decl, const char *name);
 bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
@@ -3505,6 +3506,11 @@ INLINE bool expr_is_const(Expr *expr)
 INLINE bool decl_var_kind_is_ct(VarDeclKind kind)
 {
 	return kind >= VARDECL_FIRST_CT && kind <= VARDECL_LAST_CT;
+}
+
+INLINE Module *decl_module(Decl *decl)
+{
+	return decl->unit ? decl->unit->module : global_context.core_module;
 }
 
 static inline bool decl_is_var_local(Decl *decl)

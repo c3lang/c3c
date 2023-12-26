@@ -35,57 +35,54 @@ entry:
   %xx = alloca [3 x i8], align 1
   %xxu = alloca [3 x i8], align 1
   store [3 x i8] c"\E0\FD\7F", ptr %xx, align 1
-  %0 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
-  %1 = load i8, ptr %0, align 1
-  %zext = zext i8 %1 to i32
+  %0 = load i8, ptr %xx, align 1
+  %zext = zext i8 %0 to i32
   %lshrl = lshr i32 %zext, 5
-  %2 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %3 = load i8, ptr %2, align 1
-  %zext1 = zext i8 %3 to i32
+  %ptradd = getelementptr inbounds i8, ptr %xx, i64 1
+  %1 = load i8, ptr %ptradd, align 1
+  %zext1 = zext i8 %1 to i32
   %shl = shl i32 %zext1, 3
-  %4 = or i32 %shl, %lshrl
-  %5 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 2
-  %6 = load i8, ptr %5, align 1
-  %zext2 = zext i8 %6 to i32
-  %shl3 = shl i32 %zext2, 11
-  %7 = or i32 %shl3, %4
-  %shl4 = shl i32 %7, 14
-  %ashr = ashr i32 %shl4, 14
+  %2 = or i32 %shl, %lshrl
+  %ptradd2 = getelementptr inbounds i8, ptr %xx, i64 2
+  %3 = load i8, ptr %ptradd2, align 1
+  %zext3 = zext i8 %3 to i32
+  %shl4 = shl i32 %zext3, 11
+  %4 = or i32 %shl4, %2
+  %shl5 = shl i32 %4, 14
+  %ashr = ashr i32 %shl5, 14
   call void (ptr, ...) @printf(ptr @.str, i32 %ashr)
   store [3 x i8] c"\FF\FD\FF", ptr %xx, align 1
-  %8 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 0
-  %9 = load i8, ptr %8, align 1
-  %zext5 = zext i8 %9 to i32
-  %lshrl6 = lshr i32 %zext5, 5
-  %10 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 1
-  %11 = load i8, ptr %10, align 1
-  %zext7 = zext i8 %11 to i32
-  %shl8 = shl i32 %zext7, 3
-  %12 = or i32 %shl8, %lshrl6
-  %13 = getelementptr inbounds [3 x i8], ptr %xx, i64 0, i64 2
-  %14 = load i8, ptr %13, align 1
-  %zext9 = zext i8 %14 to i32
-  %shl10 = shl i32 %zext9, 11
-  %15 = or i32 %shl10, %12
-  %shl11 = shl i32 %15, 14
-  %ashr12 = ashr i32 %shl11, 14
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %ashr12)
+  %5 = load i8, ptr %xx, align 1
+  %zext6 = zext i8 %5 to i32
+  %lshrl7 = lshr i32 %zext6, 5
+  %ptradd8 = getelementptr inbounds i8, ptr %xx, i64 1
+  %6 = load i8, ptr %ptradd8, align 1
+  %zext9 = zext i8 %6 to i32
+  %shl10 = shl i32 %zext9, 3
+  %7 = or i32 %shl10, %lshrl7
+  %ptradd11 = getelementptr inbounds i8, ptr %xx, i64 2
+  %8 = load i8, ptr %ptradd11, align 1
+  %zext12 = zext i8 %8 to i32
+  %shl13 = shl i32 %zext12, 11
+  %9 = or i32 %shl13, %7
+  %shl14 = shl i32 %9, 14
+  %ashr15 = ashr i32 %shl14, 14
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %ashr15)
   store [3 x i8] c"\1F\CF\AA", ptr %xxu, align 1
-  %16 = getelementptr inbounds [3 x i8], ptr %xxu, i64 0, i64 0
-  %17 = load i8, ptr %16, align 1
-  %zext13 = zext i8 %17 to i32
-  %lshrl14 = lshr i32 %zext13, 5
-  %18 = getelementptr inbounds [3 x i8], ptr %xxu, i64 0, i64 1
-  %19 = load i8, ptr %18, align 1
-  %zext15 = zext i8 %19 to i32
-  %shl16 = shl i32 %zext15, 3
-  %20 = or i32 %shl16, %lshrl14
-  %21 = getelementptr inbounds [3 x i8], ptr %xxu, i64 0, i64 2
-  %22 = load i8, ptr %21, align 1
-  %zext17 = zext i8 %22 to i32
-  %shl18 = shl i32 %zext17, 11
-  %23 = or i32 %shl18, %20
-  %24 = and i32 262143, %23
-  call void (ptr, ...) @printf(ptr @.str.2, i32 %24)
+  %10 = load i8, ptr %xxu, align 1
+  %zext16 = zext i8 %10 to i32
+  %lshrl17 = lshr i32 %zext16, 5
+  %ptradd18 = getelementptr inbounds i8, ptr %xxu, i64 1
+  %11 = load i8, ptr %ptradd18, align 1
+  %zext19 = zext i8 %11 to i32
+  %shl20 = shl i32 %zext19, 3
+  %12 = or i32 %shl20, %lshrl17
+  %ptradd21 = getelementptr inbounds i8, ptr %xxu, i64 2
+  %13 = load i8, ptr %ptradd21, align 1
+  %zext22 = zext i8 %13 to i32
+  %shl23 = shl i32 %zext22, 11
+  %14 = or i32 %shl23, %12
+  %15 = and i32 262143, %14
+  call void (ptr, ...) @printf(ptr @.str.2, i32 %15)
   ret void
 }

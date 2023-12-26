@@ -1108,6 +1108,7 @@ func_definition
 const_declaration
 	: CONST CONST_IDENT opt_attributes '=' expr ';'
 	| CONST type CONST_IDENT opt_attributes '=' expr ';'
+	| CONST type CONST_IDENT opt_attributes ';'
 	;
 
 func_typedef

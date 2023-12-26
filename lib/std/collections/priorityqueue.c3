@@ -36,14 +36,24 @@ struct PrivatePriorityQueue (Printable)
 	Heap heap;
 }
 
-fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline
+fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline @deprecated("Replaced by new_init")
 {
-	self.heap.init_new(initial_capacity, allocator);
+	return self.new_init(initial_capacity, allocator);
 }
 
-fn void PrivatePriorityQueue.init_temp(&self, usz initial_capacity = 16) @inline
+fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline
 {
-	self.heap.init_new(initial_capacity, mem::temp()) @inline;
+	self.heap.new_init(initial_capacity, allocator);
+}
+
+fn void PrivatePriorityQueue.temp_init(&self, usz initial_capacity = 16) @inline
+{
+	self.heap.new_init(initial_capacity, mem::temp()) @inline;
+}
+
+fn void PrivatePriorityQueue.init_temp(&self, usz initial_capacity = 16) @inline @deprecated("Replaced by temp_init")
+{
+	return self.temp_init(initial_capacity) @inline;
 }
 
 fn void PrivatePriorityQueue.push(&self, Type element)

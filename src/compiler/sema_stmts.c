@@ -1539,10 +1539,17 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			len_call->type = type_isz;
 		}
 	}
+	bool is_single_pass = array_len == 1;
+	if (is_single_pass)
+	{
+		is_reverse = false;
+	}
+
 	Decl *idx_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
 
 	// IndexType __len$ = (IndexType)(@__enum$.len())
 	Decl *len_decl = NULL;
+
 
 	if (is_reverse)
 	{
@@ -1607,6 +1614,10 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		update_stmt->expr_stmt = dec;
 		ast_append(&succ, update_stmt);
 	}
+	else if (is_single_pass)
+	{
+		cond = expr_new_const_bool(idx_decl->span, type_bool, false);
+	}
 	else
 	{
 		// Create __idx$ < __len$
@@ -1648,7 +1659,14 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	enum_val = expr_variable(temp);
 	if (is_addr) expr_rewrite_insert_deref(enum_val);
 	subscript->subscript_expr.expr = exprid(enum_val);
-	subscript->subscript_expr.range.start = exprid(expr_variable(idx_decl));
+	if (array_len == 1)
+	{
+		subscript->subscript_expr.range.start = exprid(expr_new_const_int(var->span, idx_decl->type, 0));
+	}
+	else
+	{
+		subscript->subscript_expr.range.start = exprid(expr_variable(idx_decl));
+	}
 	if (value_by_ref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
@@ -1663,11 +1681,12 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Ast *compound_stmt = new_ast(AST_COMPOUND_STMT, body_ast->span);
 	compound_stmt->compound_stmt.first_stmt = first_stmt;
 	FlowCommon flow = statement->foreach_stmt.flow;
+	flow.skip_first = is_single_pass;
 	statement->for_stmt = (AstForStmt){ .init = exprid(init_expr),
 										.cond = exprid(cond),
 										.incr = update ? exprid(update) : 0,
 										.flow = flow,
-										.body = astid(compound_stmt)
+										.body = astid(compound_stmt),
 	};
 	statement->ast_kind = AST_FOR_STMT;
 	return sema_analyse_for_stmt(context, statement);

@@ -27,7 +27,7 @@ fn void! readbuffer()
     reader_buf.init(&src, buf[..]);
 
     ByteWriter bw;
-    bw.init_temp();
+    bw.temp_init();
 
     usz n = io::copy_to(&reader_buf, &bw)!;
 
@@ -39,7 +39,7 @@ fn void! readbuffer()
 fn void! writebuffer_large()
 {
     ByteWriter out;
-    out.init_temp();
+    out.temp_init();
     char[16] buf;
     WriteBuffer write_buf;
     write_buf.init(&out, buf[..]);
@@ -56,7 +56,7 @@ fn void! writebuffer()
     ByteReader br;
     br.init(DATA);
     ByteWriter out;
-    out.init_temp();
+    out.temp_init();
     char[3] buf;
     WriteBuffer write_buf;
     write_buf.init(&out, buf[..]);
