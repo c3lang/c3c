@@ -1,17 +1,32 @@
 project('c3c', ['c', 'cpp'])
 cc = meson.get_compiler('c')
 
+if get_option('hide_unused_function_warning')
+    add_global_arguments('-Wno-unused-function', language: 'c')
+    add_global_arguments('-Wno-unused-function', language: 'cpp')
+endif
+
+if get_option('hide_unused_variable_warning')
+    add_global_arguments('-Wno-unused-variable', language: 'c')
+    add_global_arguments('-Wno-unused-variable', language: 'cpp')
+endif
+
+if get_option('hide_unknown_pragmas')
+    add_global_arguments('-Wno-unknown-pragmas', language: 'c')
+    add_global_arguments('-Wno-unknown-pragmas', language: 'cpp')
+endif
+
 llvm_lib = dependency('llvm', required : true)
 lld_common_lib = cc.find_library('lldCommon', required : true)
 lld_elf_lib = cc.find_library('lldELF', required : true)
 lld_coff_lib = cc.find_library('lldCOFF', required : true)
 lld_wasm_lib = cc.find_library('lldWasm', required : true)
 lld_macho_lib = cc.find_library('lldMachO', required : true)
-curl_dep = dependency('libcurl')
-libedit_dep = dependency('libedit')
-zlib_dep = dependency('zlib')
-zstd_dep = dependency('libzstd')
-libxml2_dep = dependency('libxml2')
+curl_dep = dependency('libcurl', required : true)
+libedit_dep = dependency('libedit', required : true)
+zlib_dep = dependency('zlib', required : true)
+zstd_dep = dependency('libzstd', required : true)
+libxml2_dep = dependency('libxml2', required : true)
 
 c3c_deps = [
     llvm_lib,
@@ -118,10 +133,11 @@ compiler_src = [
     'src/compiler/sema_errors.c',
     'src/compiler/semantic_analyser.c',
     'src/compiler/symtab.c',
-    'src/compiler/tokens.c'
+    'src/compiler/tokens.c',
+    'src/compiler/windows_support.c',
+    'src/compiler/mac_support.c'
 ]
-compiler_src += 'src/compiler/windows_support.c'
-compiler_src += 'src/compiler/mac_support.c'
+
 
 compiler_benchmark_src = [
     'src/compiler_tests/benchmark.c',
@@ -163,4 +179,5 @@ c3c_include = [
     './dependencies/miniz/'
 ]
 
-c3c_exe = executable('c3c', c3c_src, dependencies: c3c_deps, include_directories: c3c_include)
+c3c_exe = executable('c3c', c3c_src, dependencies: c3c_deps, include_directories: c3c_include, install: true)
+install_subdir('lib/std', install_dir: 'lib/c3')
