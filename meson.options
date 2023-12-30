@@ -1,0 +1,3 @@
+option('hide_unused_function_warning', type : 'boolean', value : true, description: 'Add compile time option of -Wno-unused-function to hide unused function warning.')
+option('hide_unused_variable_warning', type : 'boolean', value : true, description: 'Add compile time option of -Wno-unused-variable to hide unused variable warning.')
+option('hide_unknown_pragmas', type : 'boolean', value : true, description: 'Add compile time option of -Wno-unknown-pragmas to hide unknown pragmas warning.')
