@@ -213,22 +213,32 @@ More platforms will be supported in the future.
 4. Run `./c3c`.
 
 #### Installing on Arch Linux
-There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git).
+Install the required dependencies:
 
-Due to some issues with the LLVM packaged for Arch Linux, the AUR package will download and use LLVM 16 for Ubuntu-23.04 to compile the c3c compiler.
-
-You can use your AUR package manager:
-```sh
-paru -S c3c-git
-# or yay -S c3c-git
-# or aura -A c3c-git
+```
+sudo pacman -S base-devel llvm clang python lld curl libedit zlib zstd libxml2 meson cmake
 ```
 
-Or clone it manually:
-```sh
-git clone https://aur.archlinux.org/c3c-git.git
-cd c3c-git
-makepkg -si
+Then simply run the followings for Meson Build:
+
+Set up the build directory:
+```
+meson setup build
+```
+
+Compile the c3c compiler:
+```
+meson compile -C build
+```
+
+Test the c3c compiler:
+```
+meson test -C build
+```
+
+Install the c3c compiler:
+```
+meson install -C build
 ```
 
 #### Building via Docker
