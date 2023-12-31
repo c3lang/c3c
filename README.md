@@ -213,33 +213,14 @@ More platforms will be supported in the future.
 4. Run `./c3c`.
 
 #### Installing on Arch Linux
-Install the required dependencies:
-
-```
-sudo pacman -S base-devel llvm clang python lld curl libedit zlib zstd libxml2 meson cmake
-```
-
-Then simply run the followings for Meson Build:
-
-Set up the build directory:
-```
-meson setup build
-```
-
-Compile the c3c compiler:
-```
-meson compile -C build
-```
-
-Test the c3c compiler:
-```
-meson test -C build
-```
-
-Install the c3c compiler:
-```
-meson install -C build
-```
+1. As root, ensure that all project dependencies are installed: `sudo pacman -S base-devel llvm clang python lld curl libedit zlib zstd libxml2 meson cmake`
+2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
+    - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
+3. Enter the directory: `cd c3c`
+4. Create a build directory: `meson setup build`
+5. Build: `meson compile -C build`
+6. Test: `meson test -C build`
+7. Install: `meson install -C build`
 
 #### Building via Docker
 
@@ -316,13 +297,13 @@ You can try it out by running some sample code: `c3c.exe compile ../resources/ex
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
 2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 15 (or greater: C3C supports LLVM 15-17): `sudo apt-get install clang-15 zlib1g zlib1g-dev libllvm15 llvm-15 llvm-15-dev llvm-15-runtime liblld-15-dev liblld-15`
+3. Install LLVM 15 (or greater: C3C supports LLVM 15-17): `sudo apt-get install clang-15 zlib1g zlib1g-dev libllvm15 llvm-15 llvm-15-dev llvm-15-runtime liblld-15-dev liblld-15 meson`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
-6. Create a build directory `mkdir build`
-7. Change directory to the build directory `cd build`
-8. Set up CMake build: `cmake ..`
-9. Build: `cmake --build .`
+6. Create a build directory: `meson setup build`
+7. Build: `meson compile -C build`
+8. Test: `meson test -C build`
+9. Install: `meson install -C build`
 
 You should now have a `c3c` executable.
 
@@ -331,14 +312,14 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 
 #### Compiling on Void Linux
 
-1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm lld-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
+1. As root, ensure that all project dependencies are installed: `xbps-install git cmake meson python llvm lld-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
-    - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git`
+    - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the directory: `cd c3c`
-4. Create a build directory: `mkdir build`
-5. Enter the build directory: `cd build`
-6. Create the CMake build cache: `cmake ..`
-7. Build: `cmake --build .`
+4. Create a build directory: `meson setup build`
+5. Build: `meson compile -C build`
+6. Test: `meson test -C build`
+7. Install: `meson install -C build`
 
 Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`  
 For a sytem-wide installation, run the following as root: `cmake --install .`
@@ -350,11 +331,19 @@ For a sytem-wide installation, run the following as root: `cmake --install .`
 2. Install or compile LLVM and LLD *libraries* (version 15+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
+
+**CMake Approach:**
 5. Create a build directory `mkdir build`
 6. Change directory to the build directory `cd build`
 7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
 provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
 8. Build: `cmake --build .`
+
+**Meson Build Approach:**
+5. Create a build directory: `meson setup build`
+6. Build: `meson compile -C build`
+7. Test: `meson test -C build`
+8. Install: `meson install -C build`
 
 *A note on compiling for Linux/Unix/MacOS: to be able to fetch vendor libraries
 libcurl is needed. The CMake script should detect it if it is available. Note that
