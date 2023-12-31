@@ -1,19 +1,17 @@
-project('c3c', ['c', 'cpp'])
+project('c3c', 'c', 'cpp', version: '0.5.2')
+
 cc = meson.get_compiler('c')
 
 if get_option('hide_unused_function_warning')
-    add_global_arguments('-Wno-unused-function', language: 'c')
-    add_global_arguments('-Wno-unused-function', language: 'cpp')
+    add_project_arguments('-Wno-unused-function', language: ['c', 'cpp'])
 endif
 
 if get_option('hide_unused_variable_warning')
-    add_global_arguments('-Wno-unused-variable', language: 'c')
-    add_global_arguments('-Wno-unused-variable', language: 'cpp')
+    add_project_arguments('-Wno-unused-variable', language: ['c', 'cpp'])
 endif
 
 if get_option('hide_unknown_pragmas')
-    add_global_arguments('-Wno-unknown-pragmas', language: 'c')
-    add_global_arguments('-Wno-unknown-pragmas', language: 'cpp')
+    add_project_arguments('-Wno-unknown-pragmas', language: ['c', 'cpp'])
 endif
 
 llvm_lib = dependency('llvm', required : true)
@@ -176,14 +174,13 @@ c3c_src = [
 
 c3c_include = [
     'src/',
-    './dependencies/miniz/'
+    'dependencies/miniz/'
 ]
 
 c3c_exe = executable('c3c', c3c_src, dependencies: c3c_deps, include_directories: c3c_include, install: true)
 install_subdir('lib/std', install_dir: 'lib/c3')
 
 py3 = find_program('python3', required: true)
-
 test_args = ['../test/src/check.py', '../test/src/tester.py', c3c_exe]
 
 test('Test Suite - initialize - initializer_var', py3, args: [test_args, '../test/test_suite/initialize/initializer_var.c3t'])
