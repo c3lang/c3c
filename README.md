@@ -333,6 +333,7 @@ For a sytem-wide installation, run the following as root: `cmake --install .`
 4. Enter the C3C directory `cd c3c`.
 
 **CMake Approach:**
+
 5. Create a build directory `mkdir build`
 6. Change directory to the build directory `cd build`
 7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
@@ -340,6 +341,7 @@ provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr
 8. Build: `cmake --build .`
 
 **Meson Build Approach:**
+
 5. Create a build directory: `meson setup build`
 6. Build: `meson compile -C build`
 7. Test: `meson test -C build`
