@@ -6,8 +6,6 @@
 
 import platform
 import io
-import os
-import sys
 import json
 import shutil
 import hashlib
@@ -16,7 +14,6 @@ import tempfile
 import argparse
 import subprocess
 import urllib.request
-import re
 from pathlib import Path
 
 OUTPUT = Path("msvc_temp") # output folder
@@ -176,10 +173,10 @@ for pkg in msvc_packages:
 
 sdk_packages = [
   # Windows SDK libs
-  f"Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
-  f"Windows SDK Desktop Libs x64-x86_en-us.msi",
+  "Windows SDK for Windows Store Apps Libs-x86_en-us.msi",
+  "Windows SDK Desktop Libs x64-x86_en-us.msi",
   # CRT headers & libs
-  f"Universal CRT Headers Libraries and Sources-x86_en-us.msi",
+  "Universal CRT Headers Libraries and Sources-x86_en-us.msi",
 ]
 
 with tempfile.TemporaryDirectory() as d:
