@@ -137,6 +137,9 @@ void gencontext_begin_module(GenContext *c)
 	LLVMTypeRef dtable_type[3] = { c->ptr_type, c->ptr_type, c->ptr_type };
 	c->dtable_type = LLVMStructTypeInContext(c->context, dtable_type, 3, false);
 	c->chars_type = llvm_get_type(c, type_chars);
+	LLVMTypeRef ctor_type[3] = { LLVMInt32TypeInContext(c->context), c->ptr_type, c->ptr_type };
+	c->xtor_entry_type = LLVMStructTypeInContext(c->context, ctor_type, 3, false);
+	c->xtor_func_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
@@ -156,7 +159,7 @@ void gencontext_begin_module(GenContext *c)
 		}
 		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "uwtable", UWTABLE, type_uint);
 
-		c->debug.runtime_version = 1;
+		c->debug.runtime_version = 0;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
 		if (active_target.debug_info == DEBUG_INFO_FULL && safe_mode_enabled())
 		{

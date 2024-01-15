@@ -1,8 +1,5 @@
 module std::os::linux @if(env::LINUX);
-import libc;
-import std::os::posix;
-import std::io;
-import std::collections::list;
+import libc, std::os, std::io, std::collections::list;
 
 extern fn isz readlink(ZString path, char* buf, usz bufsize);
 
@@ -133,7 +130,7 @@ fn ulong! elf_module_image_base(String path) @local
 
 fn Backtrace! backtrace_load_from_exec(void* addr, Allocator* allocator) @local
 {
-	char[] buf = mem::temp_array(char, 1024);
+	char[] buf = mem::temp_alloc_array(char, 1024);
 
 	String exec_path = process::execute_stdout_to_buffer(buf, {"realpath", "-e", string::tformat("/proc/%d/exe", posix::getpid())})!;
 	String obj_name = exec_path.copy(allocator);
@@ -143,7 +140,7 @@ fn Backtrace! backtrace_load_from_exec(void* addr, Allocator* allocator) @local
 
 fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Allocator* allocator) @local
 {
-	char[] buf = mem::temp_array(char, 1024);
+	char[] buf = mem::temp_alloc_array(char, 1024);
 
 	void*   obj_addr  = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
 	ZString obj_path  = info.dli_fname;
@@ -185,7 +182,7 @@ fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_
 	};
 }
 
-fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = mem::heap()) @local
+fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = allocator::heap()) @local
 {
 	if (!addr) return backtrace::BACKTRACE_UNKNOWN;
 

@@ -103,6 +103,7 @@ void llvm_emit_debug_global_var(GenContext *c, Decl *global)
 			LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 			NULL,
 			global->alignment);
+	LLVMGlobalSetMetadata(llvm_get_ref(c, global), 0, global->var.backend_debug_ref);
 }
 
 void llvm_emit_debug_function(GenContext *c, Decl *decl)
@@ -240,7 +241,7 @@ static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const 
 													   type->name, strlen(type->name),
 													   scope,
 													   c->debug.file.debug_file, row,
-													   1 /* version TODO */,
+													   c->debug.runtime_version,
 													   type_size(type) * 8,
 													   type_abi_alignment(type) * 8,
 													   flags,

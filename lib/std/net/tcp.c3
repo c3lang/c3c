@@ -1,6 +1,6 @@
 module std::net::tcp @if(os::SUPPORTS_INET);
 import std::net @public;
-import libc;
+import std::time, libc;
 
 distinct TcpSocket = inline Socket;
 distinct TcpServerSocket = inline Socket;

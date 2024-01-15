@@ -5,7 +5,7 @@ import std::collections::map;
 fn void! copy_map() @test
 {
 	TrackingAllocator alloc;
-	alloc.init(mem::heap());
+	alloc.init(allocator::heap());
 	assert(alloc.allocated() == 0);
     mem::@scoped(&alloc)
 	{

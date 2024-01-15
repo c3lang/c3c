@@ -4,10 +4,11 @@
 #define YYERROR_VERBOSE
 int yydebug = 1;
 extern char yytext[];
-extern int column;
+extern int column, yylineno;
 int yylex(void);
-void yyerror(char *s);
+void yyerror(const char *s);
 %}
+%locations
 
 %token IDENT HASH_IDENT CT_IDENT CONST_IDENT
 %token TYPE_IDENT CT_TYPE_IDENT
@@ -126,12 +127,16 @@ base_expr
 	| INTEGER
 	| bytes_expr
 	| NUL
-	| BUILTIN CONST_IDENT
-	| BUILTIN IDENT
 	| CHAR_LITERAL
 	| REAL
 	| TRUE
 	| FALSE
+	| base_expr_assignable
+	;
+
+base_expr_assignable :
+	BUILTIN CONST_IDENT
+	| BUILTIN IDENT
 	| path ident_expr
 	| ident_expr
 	| local_ident_expr
@@ -203,7 +208,7 @@ call_trailing
 	;
 
 call_stmt_expr
-	: base_expr
+	: base_expr_assignable
 	| call_stmt_expr call_trailing
 	;
 
@@ -1150,22 +1155,6 @@ global_declaration
     | global_storage optional_type IDENT opt_attributes '=' expr ';'
     ;
 
-opt_tl_stmts
-	: top_level_statements
-	| empty
-	;
-
-tl_ct_case
-	: CT_CASE constant_expr ':' opt_tl_stmts
-	| CT_CASE type ':' opt_tl_stmts
-    	| CT_DEFAULT ':' opt_tl_stmts
-    	;
-
-tl_ct_switch_body
-    	: tl_ct_case
-    	| tl_ct_switch_body tl_ct_case
-    	;
-
 define_attribute
 	: AT_TYPE_IDENT '(' parameters ')' opt_attributes '=' '{' opt_attributes '}'
 	| AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}'
@@ -1204,19 +1193,6 @@ interface_declaration
 
 distinct_declaration
 	: DISTINCT TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
-	;
-
-tl_ct_if
-	: CT_IF constant_expr ':' opt_tl_stmts tl_ct_if_tail
-	;
-
-tl_ct_if_tail
-	: CT_ENDIF
-	| CT_ELSE opt_tl_stmts CT_ENDIF
-	;
-
-tl_ct_switch
-	: ct_switch tl_ct_switch_body CT_ENDSWITCH
 	;
 
 module_param
@@ -1267,8 +1243,6 @@ top_level
 	| ct_assert_stmt
 	| ct_echo_stmt
 	| ct_include_stmt
-	| tl_ct_if
-	| tl_ct_switch
 	| struct_declaration
 	| fault_declaration
 	| enum_declaration
@@ -1282,14 +1256,15 @@ top_level
 
 %%
 
-void yyerror(char *s)
+void yyerror(const char *s)
 {
 	fflush(stdout);
-	printf("\n%*s\n%*s\n", column, "^", column, s);
+	printf(":%d:%d:\n%*s\n%*s\n", yylineno, column, column, "^", column, s);
 }
 
 int main(int argc, char *argv[])
 {
-	yyparse();
-	return 0;
+	int rc = yyparse();
+	printf(" -> yyparse return %d\n", rc);
+	return rc;
 }

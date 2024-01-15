@@ -1,3 +1,4 @@
+%option yylineno
 
 D			[0-9]
 DU          [0-9_]
@@ -180,13 +181,13 @@ b64\`{B64}+\` { count(); return(BYTES); }
 0[xX]{HINT}"."{HINT}{P}{REALTYPE}? { count(); return(REAL); }
 
 \"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
-\'(\\.|[^\\'])*\'	{ count(); return(CHAR_LITERAL); }
+\'(\\[ux]{HEX}+|\\.|[^\\'])\'	{ count(); return(CHAR_LITERAL); }
 
 "`"             { count(); BEGIN(RAW_STRING); }
 <RAW_STRING>{
 	"``"        { count(); }
 	"`"         { count(); BEGIN(INITIAL); return(STRING_LITERAL); }
-	"*"+        { count(); }
+	"[^`]"+        { count(); }
 	<<EOF>>     { BEGIN(INITIAL); return(RAW_STRING); }
 }
 

@@ -306,7 +306,7 @@ fn void! test_path_is_absolute()
 fn void! test_path_absolute()
 {
     assert(path::new_posix("/").absolute()!.str_view() == "/");
-    assert(path::new_posix(".").absolute()!.str_view() == path::getcwd(mem::temp())!!.str_view());
+    assert(path::new_posix(".").absolute()!.str_view() == path::getcwd(allocator::temp())!!.str_view());
 
 	assert(path::new_windows(`C:\abs`).absolute()!.str_view() == `C:\abs`);
 }

@@ -878,8 +878,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	unsigned param_count = vec_size(params);
 	unsigned vararg_index = sig->vararg_index;
 	bool is_macro = sig->is_macro;
-	bool is_macro_at_name = sig->is_at_macro;
-
+	bool is_macro_at_name = sig->is_at_macro || sig->is_safemacro;
 	// Check return type
 	assert(sig->rtype || sig->is_macro);
 	Type *rtype = NULL;
@@ -2018,6 +2017,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
+			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
@@ -2298,6 +2298,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_PURE:
 			// Only used for calls.
 			UNREACHABLE
+		case ATTRIBUTE_SAFEMACRO:
+			decl->func_decl.signature.is_safemacro = true;
+			break;
 		case ATTRIBUTE_REFLECT:
 			decl->will_reflect = true;
 			break;
@@ -2976,7 +2979,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (*erase_decl) return true;
 	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent)) return decl_poison(decl);
 
-	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param)
+	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{
 		SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 		return decl_poison(decl);
@@ -3414,7 +3417,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 
 	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = false;
-	new_module->is_from_generic = true;
+	new_module->generic_module = module;
 	CompilationUnit **units = module->units;
 	VECEACH(units, i)
 	{
@@ -3605,6 +3608,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 			.span = span,
 			.symbol = name
 	};
+
 	Decl *alias = unit_resolve_parameterized_symbol(c->unit, &name_resolve);
 	if (!decl_ok(alias)) return poisoned_decl;
 
@@ -3639,7 +3643,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		if (!sema_append_generate_parameterized_name(c, module, params, false)) return poisoned_decl;
 		if (!instantiated_module) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
-		if (c->unit->module->is_from_generic)
+		if (c->unit->module->generic_module)
 		{
 			sema_analyze_stage(instantiated_module, c->unit->module->stage);
 		}

@@ -42,3 +42,24 @@ fn void! test_bitops() @test
 	assert(b3.z == true && b3.w == false && b3.gh == true);
 }
 
+fn void! test_bitops_const() @test
+{
+	const Foo F1 = { true, true };
+	const Foo F2 = { true, false };
+
+	const Foo F3 = F1 & F2;
+	assert(F3.a == true);
+	assert(F3.b == false);
+
+	const Foo F4 = (F1 | ~F2) ^ F3;
+	assert(F4.a == false && F4.b == true);
+	const Foo F5 = Foo { true, false } | Foo { false, true };
+	assert(F5.a == true && F5.b == true);
+
+	const Bar B1 = { true, true, true };
+	const Bar B2 = { true, false, false };
+
+	const Bar B3 = B1 & B2;
+	assert(B3.z == true && B3.w == false && B3.gh == false);
+}
+

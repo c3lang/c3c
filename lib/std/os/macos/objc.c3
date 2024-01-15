@@ -26,7 +26,7 @@ macro Class! class_by_name(char* c)
 	return cls;
 }
 
-macro Class[] class_get_list(Allocator *allocator = mem::heap())
+macro Class[] class_get_list(Allocator *allocator = allocator::heap())
 {
 	int num_classes = _macos_objc_getClassList(null, 0);
 	if (!num_classes) return {};

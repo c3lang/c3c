@@ -1,5 +1,5 @@
 module std::io::os;
-import libc;
+import libc, std::os, std::io;
 
 fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX)
 {

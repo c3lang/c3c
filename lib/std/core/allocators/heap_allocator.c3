@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::core::mem::allocator;
-
+import std::math;
 
 struct SimpleHeapAllocator (Allocator)
 {

@@ -1,5 +1,5 @@
 module std::thread::os @if(env::WIN32);
-import std::os::win32;
+import std::os::win32, std::time;
 
 distinct NativeThread = inline Win32_HANDLE;
 

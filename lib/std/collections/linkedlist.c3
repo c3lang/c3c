@@ -32,7 +32,7 @@ fn void LinkedList.push_last(&self, Type value)
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  * @return "the initialized list"
  **/
-fn LinkedList* LinkedList.new_init(&self, Allocator* allocator = mem::heap())
+fn LinkedList* LinkedList.new_init(&self, Allocator* allocator = allocator::heap())
 {
 	*self = { .allocator = allocator };
 	return self;
@@ -42,14 +42,14 @@ fn LinkedList* LinkedList.new_init(&self, Allocator* allocator = mem::heap())
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  * @return "the initialized list"
  **/
-fn LinkedList* LinkedList.init_new(&self, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+fn LinkedList* LinkedList.init_new(&self, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
 {
 	return self.new_init(allocator);
 }
 
 fn LinkedList* LinkedList.temp_init(&self)
 {
-	return self.new_init(mem::temp()) @inline;
+	return self.new_init(allocator::temp()) @inline;
 }
 
 fn LinkedList* LinkedList.init_temp(&self) @deprecated("Replaced by temp_init")
@@ -62,12 +62,13 @@ fn LinkedList* LinkedList.init_temp(&self) @deprecated("Replaced by temp_init")
  **/
 macro void LinkedList.free_node(&self, Node* node) @private
 {
-	self.allocator.free(node);
+	allocator::free(self.allocator, node);
 }
+
 macro Node* LinkedList.alloc_node(&self) @private
 {
-	if (!self.allocator) self.allocator = mem::heap();
-	return self.allocator.new(Node);
+	if (!self.allocator) self.allocator = allocator::heap();
+	return allocator::alloc(self.allocator, Node);
 }
 
 fn void LinkedList.link_first(&self, Type value) @private

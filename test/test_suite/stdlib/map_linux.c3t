@@ -1,4 +1,4 @@
-// #target: macos-x64
+// #target: linux-x64
 
 module test;
 import std::io;
@@ -9,7 +9,7 @@ struct Foo (Printable) { int x; void* bar; }
 def IntFooMap = HashMap(<int, Foo>);
 def IntDoubleMap = HashMap(<int, double>);
 
-fn String Foo.to_new_string(Foo* foo, Allocator* allocator = mem::heap()) @dynamic
+fn String Foo.to_new_string(Foo* foo, Allocator* allocator = allocator::heap()) @dynamic
 {
 	DString s = dstring::new_with_capacity(128, allocator);
 	s.appendf("{%s, %p}", foo.x, foo.bar);
@@ -51,6 +51,9 @@ fn void main()
 }
 
 /* #expect: test.ll
+
+@"$sel.to_new_string" = linkonce_odr constant [14 x i8] c"to_new_string\00", comdat, align 1
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.c3_dynamic_register, ptr null }]
 
 define { ptr, i64 } @test.Foo.to_new_string(ptr %0, i64 %1, ptr %2) #0 {
 entry:
@@ -128,8 +131,8 @@ entry:
   %result70 = alloca %"int[]", align 8
   %retparam71 = alloca i64, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map, i8 0, i64 48, i1 false)
-  %lo = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %0 = call ptr @"std.collections.map$int$test.Foo$.HashMap.new_init"(ptr %map, i32 16, float 7.500000e-01, i64 %lo, ptr %hi)
   %ptradd = getelementptr inbounds i8, ptr %map, i64 32
   %1 = insertvalue %"any*" undef, ptr %ptradd, 0
@@ -188,8 +191,8 @@ after_check18:                                    ; preds = %entry, %after_check
   %ptradd30 = getelementptr inbounds i8, ptr %literal28, i64 8
   %hi31 = load ptr, ptr %ptradd30, align 8
   %26 = call i8 @"std.collections.map$int$test.Foo$.HashMap.set"(ptr %map, i32 7, i64 %lo29, ptr %hi31)
-  %lo33 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi34 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo33 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi34 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %27 = call { ptr, i64 } @"std.collections.map$int$test.Foo$.HashMap.value_new_list"(ptr %map, i64 %lo33, ptr %hi34)
   store { ptr, i64 } %27, ptr %result, align 8
   %28 = insertvalue %"any*" undef, ptr %result, 0
@@ -197,8 +200,8 @@ after_check18:                                    ; preds = %entry, %after_check
   store %"any*" %29, ptr %varargslots32, align 16
   %30 = call i64 @std.io.printfn(ptr %retparam35, ptr @.str.8, i64 10, ptr %varargslots32, i64 1)
   call void @llvm.memset.p0.i64(ptr align 8 %map2, i8 0, i64 48, i1 false)
-  %lo38 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi39 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo38 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi39 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %31 = call ptr @"std.collections.map$int$double$.HashMap.new_init"(ptr %map2, i32 16, float 7.500000e-01, i64 %lo38, ptr %hi39)
   %32 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map2, i32 4, double 1.300000e+00)
   %33 = call i8 @"std.collections.map$int$double$.HashMap.has_value"(ptr %map2, double 1.300000e+00)
@@ -214,45 +217,45 @@ after_check18:                                    ; preds = %entry, %after_check
   store %"any*" %39, ptr %varargslots45, align 16
   %40 = call i64 @std.io.printfn(ptr %retparam47, ptr @.str.10, i64 12, ptr %varargslots45, i64 1)
   %41 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map2, i32 100, double 3.400000e+00)
-  %lo51 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi52 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo51 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi52 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %42 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_new_list"(ptr %map2, i64 %lo51, ptr %hi52)
   store { ptr, i64 } %42, ptr %result53, align 8
   %43 = insertvalue %"any*" undef, ptr %result53, 0
   %44 = insertvalue %"any*" %43, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
   store %"any*" %44, ptr %varargslots50, align 16
   %45 = call i64 @std.io.printfn(ptr %retparam54, ptr @.str.11, i64 2, ptr %varargslots50, i64 1)
-  %lo58 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi59 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo58 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi59 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %46 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.value_new_list"(ptr %map2, i64 %lo58, ptr %hi59)
   store { ptr, i64 } %46, ptr %result60, align 8
   %47 = insertvalue %"any*" undef, ptr %result60, 0
   %48 = insertvalue %"any*" %47, i64 ptrtoint (ptr @"$ct.sa$double" to i64), 1
   store %"any*" %48, ptr %varargslots57, align 16
   %49 = call i64 @std.io.printfn(ptr %retparam61, ptr @.str.12, i64 2, ptr %varargslots57, i64 1)
-  %50 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
+  %50 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
   %not = icmp eq ptr %50, null
   br i1 %not, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %after_check18
-  call void @std.core.mem.init_default_temp_allocators()
+  call void @std.core.mem.allocator.init_default_temp_allocators()
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %after_check18
-  %51 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
+  %51 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
   store ptr %51, ptr %current, align 8
   %52 = load ptr, ptr %current, align 8
   %ptradd64 = getelementptr inbounds i8, ptr %52, i64 24
   %53 = load i64, ptr %ptradd64, align 8
   store i64 %53, ptr %mark, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 48, i1 false)
-  %lo65 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi66 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo65 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi66 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %54 = call ptr @"std.collections.map$int$double$.HashMap.new_init"(ptr %map3, i32 16, float 7.500000e-01, i64 %lo65, ptr %hi66)
   %55 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 5, double 3.200000e+00)
   %56 = call i8 @"std.collections.map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
-  %lo68 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi69 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo68 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi69 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %57 = call { ptr, i64 } @"std.collections.map$int$double$.HashMap.key_new_list"(ptr %map3, i64 %lo68, ptr %hi69)
   store { ptr, i64 } %57, ptr %result70, align 8
   %58 = insertvalue %"any*" undef, ptr %result70, 0
@@ -264,7 +267,8 @@ if.exit:                                          ; preds = %if.then, %after_che
   call void @std.core.mem.allocator.TempAllocator.reset(ptr %61, i64 %62)
   ret void
 }
-define internal void @.static_initialize.0() {
+
+define internal void @.c3_dynamic_register() align 8 {
 entry:
   br label %dtable_check
 

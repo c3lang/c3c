@@ -162,6 +162,7 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("  --winsdk <dir>            - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>         - Windows CRT linking: none, static, dynamic (default).");
+	OUTPUT("  --windef <file>           - Use Windows 'def' file for function exports instead of 'dllexport'.");
 	OUTPUT("");
 	OUTPUT("  --macossdk <dir>          - Set the directory for the MacOS SDK for cross compilation.");
 	OUTPUT("  --macos-min-version <ver> - Set the minimum MacOS version to compile for.");
@@ -898,6 +899,12 @@ static void parse_option(BuildOptions *options)
 				options->trust_level = (TrustLevel) parse_multi_option(argopt, 3, trust_level);
 				return;
 			}
+			if (match_longopt("windef"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --windef needs a file.");
+				options->win.def = next_arg();
+				return;
+			}
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
@@ -951,8 +958,27 @@ static void parse_option(BuildOptions *options)
 				const char *name = next_arg();
 				if (!str_is_valid_lowercase_name(name))
 				{
+					if (str_has_suffix(name, ".c3l"))
+					{
+						error_exit("When specifying libraries, the .c3l suffix should"
+								   " not be included, so rather than '--lib %s', try using '--lib %s' instead.",
+								   name, str_remove_suffix(name, ".c3l"));
+					}
+					if (str_has_suffix(name, ".lib") || str_has_suffix(name, ".a")
+						|| str_has_suffix(name, ".dll") || str_has_suffix(name, ".so"))
+					{
+						error_exit("You tried to add '%s' as a C3 library, but from the name it appears to be a"
+								   " static/dynamic library. To link with such a library, use '-l <name>' instead.",
+								   name);
+					}
 					char *name_copy = strdup(name);
 					str_ellide_in_place(name_copy, 32);
+					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL))
+					{
+						error_exit("There is a problem including the library '%s': a library name should never contain the path. Use '--libdir' to add the "
+						           "directory to the library search paths, then use the plain name for '--lib', "
+						           "e.g '--libdir my_project/libs --lib some_lib'.", name_copy);
+					}
 					error_exit("Invalid library name '%s', it should be something like 'foo_lib'.", name_copy);
 				}
 				options->libs[options->lib_count++] = name;

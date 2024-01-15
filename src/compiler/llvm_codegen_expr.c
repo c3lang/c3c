@@ -2170,8 +2170,10 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		unsigned start_bit = member->var.start_bit;
 		unsigned end_bit = member->var.end_bit;
 		Type *member_type = type_flatten(member->type);
-		assert(initializer->init_struct[i]->kind == CONST_INIT_VALUE);
-		Expr *expr = initializer->init_struct[i]->init_value;
+		ConstInitializer *init = initializer->init_struct[i];
+		if (init->kind == CONST_INIT_ZERO) continue;
+		assert(init->kind == CONST_INIT_VALUE);
+		Expr *expr = init->init_value;
 
 		// Special case for bool
 		if (member_type == type_bool)
@@ -6231,20 +6233,14 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		val->backend_value = value.value;
 	FOREACH_END();
 
-	if (llvm_use_debug(c))
-	{
-		llvm_debug_push_lexical_scope(c, astptr(expr->macro_block.first_stmt)->span);
-	}
+	DEBUG_PUSH_LEXICAL_SCOPE(c, astptr(expr->macro_block.first_stmt)->span);
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block && c->current_block_is_target;
 	if (is_unreachable)
 	{
 		llvm_emit_unreachable(c);
 	}
-	if (llvm_use_debug(c))
-	{
-		llvm_debug_scope_pop(c);
-	}
+	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,
@@ -6879,6 +6875,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
+		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
 		case EXPR_LAMBDA:
 			llvm_emit_lambda(c, value, expr);

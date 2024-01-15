@@ -49,6 +49,7 @@ const char *project_default_keys[][2] = {
 		{"version", "Version using semantic versioning."},
 		{"warnings", "Warnings used for all targets."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"winsdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
@@ -108,6 +109,7 @@ const char* project_target_keys[][2] = {
 		{"version", "Version using semantic versioning."},
 		{"warnings", "Warnings used for all targets."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"winsdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
 		{"x86vec", "Set max type of vector use: none, mmx, sse, avx, avx512, native."},
@@ -289,6 +291,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 		FOREACH_END();
 	}
 
+	const char *output_dir = get_valid_string(json, "output", type, false);
+	if (output_dir) target->output_dir = output_dir;
+
 	// CFlags
 	const char *cflags = get_valid_string(json, is_default ? "cflags" : "cflags-override" , type, false);
 	const char *cflags_add = is_default ? NULL : get_valid_string(json, "cflags-add" , type, false);
@@ -365,7 +370,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 			[OPT_SETTING_OTINY] = "Oz"
 	};
 	OptimizationSetting opt = (OptimizationSetting)get_valid_string_setting(json, "opt", type, opt_settings, 0, ELEMENTLEN(opt_settings), "'O0', 'O1' etc.");
-	if (opt != OPTIMIZATION_NOT_SET) target->optsetting = opt;
+	if (opt != OPT_SETTING_NOT_SET) target->optsetting = opt;
 
 	// Safety level
 	target->feature.safe_mode = (SafetyLevel)get_valid_bool(json, "safe", type, target->feature.safe_mode);
@@ -443,6 +448,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 
 	// winsdk
 	target->win.sdk = get_valid_string(json, "winsdk", type, false);
+
+	// windef
+	target->win.def = get_valid_string(json, "windef", type, false);
 
 	// macossdk
 	target->macos.sysroot = get_valid_string(json, "macossdk", type, false);

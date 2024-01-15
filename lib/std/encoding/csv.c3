@@ -13,12 +13,12 @@ fn void CsvReader.init(&self, InStream* stream, String separator = ",")
 	self.separator = separator;
 }
 
-fn String[]! CsvReader.read_new_row(self, Allocator* allocator = mem::heap())
+fn String[]! CsvReader.read_new_row(self, Allocator* allocator = allocator::heap())
 {
-	return self.read_new_row_with_allocator(mem::temp()) @inline;
+	return self.read_new_row_with_allocator(allocator::temp()) @inline;
 }
 
-fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator* allocator = mem::heap())
+fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator* allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -28,7 +28,7 @@ fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator* allocator = 
 
 fn String[]! CsvReader.read_temp_row(self)
 {
-	return self.read_new_row_with_allocator(mem::temp()) @inline;
+	return self.read_new_row_with_allocator(allocator::temp()) @inline;
 }
 
 fn void! CsvReader.skip_row(self) @maydiscard

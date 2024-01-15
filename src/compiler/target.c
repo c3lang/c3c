@@ -766,8 +766,8 @@ static const char *x86_cpu_from_set(X86CpuSet set)
 static void x86_features_from_host(X86Features *cpu_features)
 {
 	char *features = LLVMGetHostCPUFeatures();
-	DEBUG_LOG("Detected the following host features: %s", features);
-	DEBUG_LOG("For %s", LLVMGetHostCPUName());
+	INFO_LOG("Detected the following host features: %s", features);
+	INFO_LOG("For %s", LLVMGetHostCPUName());
 	char *tok = strtok(features, ",");
 	*cpu_features = x86_feature_zero;
 	while (tok != NULL)
@@ -915,7 +915,7 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	else
 	{
 		cpu_set = x64_cpu_default();
-		DEBUG_LOG("Set default CPU as %s\n", x86_cpu_set[cpu_set]);
+		INFO_LOG("Set default CPU as %s\n", x86_cpu_set[cpu_set]);
 	}
 
 	platform_target.cpu = x86_cpu_from_set(cpu_set);
@@ -1737,8 +1737,8 @@ void *llvm_target_machine_create(void)
 		default:
 			UNREACHABLE
 	}
-	DEBUG_LOG("CPU: %s", platform_target.cpu);
-	DEBUG_LOG("Features: %s", platform_target.features);
+	INFO_LOG("CPU: %s", platform_target.cpu);
+	INFO_LOG("Features: %s", platform_target.features);
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
 										   platform_target.cpu ? platform_target.cpu : "", platform_target.features ? platform_target.features : "",
 										   (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
@@ -1754,6 +1754,12 @@ void *llvm_target_machine_create(void)
 
 void target_setup(BuildTarget *target)
 {
+
+	if (target->win.def && !file_exists(target->win.def))
+	{
+		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
+	}
+
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
 
 	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
@@ -1789,8 +1795,8 @@ void target_setup(BuildTarget *target)
 	}
 
 	platform_target.llvm_opt_level = (int)level;
-	DEBUG_LOG("Triple picked was %s.", platform_target.target_triple);
-	DEBUG_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
+	INFO_LOG("Triple picked was %s.", platform_target.target_triple);
+	INFO_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
 
 	StringSlice target_triple_string = slice_from_string(platform_target.target_triple);
 	platform_target.arch = arch_from_llvm_string(slice_next_token(&target_triple_string, '-'));
@@ -1946,7 +1952,7 @@ void target_setup(BuildTarget *target)
 		active_target.macos.sdk = NULL;
 		if (sysroot)
 		{
-			DEBUG_LOG("Macos SDK: %s", sysroot);
+			INFO_LOG("Macos SDK: %s", sysroot);
 			active_target.macos.sdk = macos_sysroot_sdk_information(sysroot);
 			if (platform_target.arch == ARCH_TYPE_AARCH64)
 			{

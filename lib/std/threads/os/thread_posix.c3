@@ -1,6 +1,5 @@
-module std::threads::os @if(env::POSIX);
-import std::os::posix;
-import libc;
+module std::thread::os @if(env::POSIX);
+import std::os::posix, std::time, libc;
 
 struct NativeMutex
 {
@@ -152,8 +151,7 @@ fn void* callback(void* arg) @private
 fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
 
-	PosixThreadData *thread_data = mem::new(PosixThreadData);
-	*thread_data = { .thread_fn = thread_fn, .arg = arg };
+	PosixThreadData *thread_data = mem::new(PosixThreadData, { .thread_fn = thread_fn, .arg = arg });
 	if (posix::pthread_create(thread, null, &callback, thread_data) != 0)
 	{
 		*thread = null;

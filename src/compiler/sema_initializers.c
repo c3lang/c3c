@@ -526,6 +526,150 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 	}
 }
 
+void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
+{
+	Decl **members = initializer->type->decl->strukt.members;
+	unsigned len = vec_size(members);
+
+	// Expand
+	if (initializer->kind == CONST_INIT_ZERO)
+	{
+		ConstInitializer **initializers = MALLOC(sizeof(ConstInitializer*) * len);
+		for (unsigned i = 0; i < len; i++)
+		{
+			initializers[i] = MALLOCS(ConstInitializer);
+			initializers[i]->kind = CONST_INIT_ZERO;
+			initializers[i]->type = type_flatten(members[i]->type);
+		}
+		initializer->init_struct = initializers;
+		initializer->kind = CONST_INIT_STRUCT;
+	}
+
+	ConstInitializer **initializers = initializer->init_struct;
+	for (unsigned i = 0; i < len; i++)
+	{
+		ConstInitializer *init = initializers[i];
+		Type *type = type_flatten(init->type);
+		if (type == type_bool)
+		{
+			if (init->kind == CONST_INIT_ZERO)
+			{
+				init->init_value = expr_new_const_bool(INVALID_SPAN, init->type, true);
+				continue;
+			}
+			init->init_value->const_expr.b = !init->init_value->const_expr.b;
+			continue;
+		}
+		Decl *member = members[i];
+		unsigned bits = member->var.end_bit - member->var.start_bit;
+		if (init->kind == CONST_INIT_ZERO)
+		{
+			init->init_value = expr_new_const_int(INVALID_SPAN, init->type, 0);
+			init->kind = CONST_INIT_VALUE;
+		}
+		Int res = init->init_value->const_expr.ixx;
+		res = int_not(res);
+		Int neg = int_not((Int){ .type = res.type });
+		uint32_t bits_used = 128 - i128_clz(&neg.i);
+		if (bits_used > bits)
+		{
+			neg.i = i128_lshr64(neg.i, bits_used - bits);
+			res = int_and(res, neg);
+		}
+		init->init_value->const_expr.ixx = res;
+	}
+}
+
+
+ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs, ConstInitializer *rhs, BinaryOp op)
+{
+	if (rhs->kind == CONST_INIT_ZERO)
+	{
+		ConstInitializer *temp = lhs;
+		lhs = rhs;
+		rhs = temp;
+	}
+
+	if (lhs->kind == CONST_INIT_ZERO )
+	{
+		if (rhs->kind == CONST_INIT_ZERO)
+		{
+			lhs->kind = CONST_INIT_ZERO;
+			return lhs;
+		}
+		switch (op)
+		{
+			case BINARYOP_BIT_OR:
+			case BINARYOP_BIT_XOR:
+				return rhs;
+			case BINARYOP_BIT_AND:
+				lhs->kind = CONST_INIT_ZERO;
+				return lhs;
+			default:
+				UNREACHABLE
+		}
+	}
+	assert(lhs->kind == CONST_INIT_STRUCT && rhs->kind == CONST_INIT_STRUCT);
+	ConstInitializer **lhs_inits = lhs->init_struct;
+	ConstInitializer **rhs_inits = rhs->init_struct;
+	Decl **members = lhs->type->decl->strukt.members;
+	unsigned len = vec_size(members);
+	for (unsigned i = 0; i < len; i++)
+	{
+		ConstInitializer *init_lhs = lhs_inits[i];
+		ConstInitializer *init_rhs = rhs_inits[i];
+		// Switch to check const int in a simple way.
+		if (init_rhs->kind == CONST_INIT_ZERO)
+		{
+			ConstInitializer *temp = init_lhs;
+			init_lhs = init_rhs;
+			init_rhs = temp;
+		}
+		if (init_lhs->kind == CONST_INIT_ZERO)
+		{
+			lhs_inits[i] = op == BINARYOP_BIT_AND ? init_lhs : init_rhs;
+			continue;
+		}
+		// We know switch happened, init_lhs == init_lhs[i]
+		Expr *lhs_expr = init_lhs->init_value;
+		Expr *rhs_expr = init_rhs->init_value;
+		if (type_flatten(init_lhs->type) == type_bool)
+		{
+			switch (op)
+			{
+				case BINARYOP_BIT_OR:
+					lhs_expr->const_expr.b |= rhs_expr->const_expr.b;
+					break;
+				case BINARYOP_BIT_XOR:
+					lhs_expr->const_expr.b ^= rhs_expr->const_expr.b;
+					break;
+				case BINARYOP_BIT_AND:
+					lhs_expr->const_expr.b &= rhs_expr->const_expr.b;
+					break;
+				default:
+					UNREACHABLE
+			}
+			continue;
+		}
+		assert(type_is_integer(type_flatten(init_lhs->type)));
+		switch (op)
+		{
+			case BINARYOP_BIT_AND:
+				lhs_expr->const_expr.ixx = int_and(lhs_expr->const_expr.ixx, rhs_expr->const_expr.ixx);
+				break;
+			case BINARYOP_BIT_XOR:
+				lhs_expr->const_expr.ixx = int_xor(lhs_expr->const_expr.ixx, rhs_expr->const_expr.ixx);
+				break;
+			case BINARYOP_BIT_OR:
+				lhs_expr->const_expr.ixx = int_or(lhs_expr->const_expr.ixx, rhs_expr->const_expr.ixx);
+				break;
+			default:
+				UNREACHABLE;
+		}
+	}
+	return lhs;
+}
+
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
 	if (!to) to = type_untypedlist;
@@ -607,7 +751,7 @@ static void sema_create_const_initializer_value(ConstInitializer *const_init, Ex
 	}
 	if (value->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *ident = value->identifier_expr.decl;
+		Decl *ident = decl_flatten(value->identifier_expr.decl);
 		assert(ident->decl_kind == DECL_VAR);
 		assert(ident->var.kind == VARDECL_CONST);
 		sema_create_const_initializer_value(const_init, expr_copy(ident->var.init_expr));

@@ -1,5 +1,5 @@
-module std::io::file::os @if(env::POSIX);
-import libc;
+module std::io::os @if(env::POSIX);
+import std::io, std::os, libc;
 
 /**
  * @require dir.str_view()
@@ -33,6 +33,7 @@ fn void! native_rmtree(Path dir)
 }
 
 module std::io::os @if(env::WIN32);
+import std::io, std::time, std::os;
 
 fn void! native_rmtree(Path path)
 {
@@ -46,7 +47,7 @@ fn void! native_rmtree(Path path)
 	{
 		@pool()
 		{
-			String filename = string::new_from_wstring((WString)&find_data.cFileName, mem::temp())!;
+			String filename = string::new_from_wstring((WString)&find_data.cFileName, allocator::temp())!;
 			if (filename == "." || filename == "..") continue;
 			Path file_path = path.tappend(filename)!;
 			if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)

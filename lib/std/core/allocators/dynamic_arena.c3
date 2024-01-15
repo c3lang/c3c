@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocator;
+import std::math;
 
 struct DynamicArenaAllocator (Allocator)
 {
@@ -29,14 +30,14 @@ fn void DynamicArenaAllocator.free(&self)
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
-		self.backing_allocator.free(page);
+		allocator::free(self.backing_allocator, page);
 		page = next_page;
 	}
 	page = self.unused_page;
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
-		self.backing_allocator.free(page);
+		allocator::free(self.backing_allocator, page);
 		page = next_page;
 	}
 	self.page = null;
@@ -140,11 +141,11 @@ fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment, usz o
 	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + offset, alignment) - offset);
 
 	// Grab the page without alignment (we do it ourselves)
-	void* mem = self.backing_allocator.alloc_checked(page_size)!;
-	DynamicArenaPage*! page = self.backing_allocator.new(DynamicArenaPage);
+	void* mem = allocator::malloc_try(self.backing_allocator, page_size)!;
+	DynamicArenaPage*! page = allocator::new_try(self.backing_allocator, DynamicArenaPage);
 	if (catch err = page)
 	{
-		self.backing_allocator.free(mem);
+		allocator::free(self.backing_allocator, mem);
 		return err?;
 	}
 	page.memory = mem;
