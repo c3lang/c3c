@@ -10,6 +10,7 @@ union Quaternion
 }
 
 macro Quaternion identity() => { 0, 0, 0, 1 };
+const Quaternion IDENTITY = { 0, 0, 0, 1 };
 macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => Quaternion { .v = a.v + b.v };
 macro Quaternion Quaternion.add_each(Quaternion a, Real b) => Quaternion { .v = a.v + b };
 macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => Quaternion { .v = a.v - b.v };
@@ -69,30 +70,33 @@ fn Quaternion Quaternion.mul(a, Quaternion b)
 
 macro into_matrix(Quaternion* q, $Type) @private
 {
-	$Type result = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
-	Quaternion norm = q.normalize();
+	Quaternion q_norm = q.normalize();
 
-	var ii = norm.i*norm.i;
-	var jj = norm.j*norm.j;
-	var kk = norm.k*norm.k;
-	var ik = norm.i*norm.k;
-	var ij = norm.i*q.j;
-	var jk = norm.j*norm.k;
-	var li = norm.l*norm.i;
-	var lj = norm.l*norm.j;
-	var lk = norm.l*norm.k;
+	var x = q_norm.i;
+	var y = q_norm.j;
+	var z = q_norm.k;
+	var w = q_norm.l;
 
-	result.m00 = 1 - 2*(jj + kk);
-	result.m01 = 2*(ik + lk);
-	result.m02 = 2*(ij - lj);
+	var xx = x + x;
+	var yy = y + y;
+	var zz = z + z;
 
-	result.m10 = 2*(ij - lk);
-	result.m11 = 1 - 2*(ii + kk);
-	result.m12 = 2*(jk + li);
+	var xxx = xx * x;
+	var xxy = xx * y;
+	var xxz = xx * z;
 
-	result.m20 = 2*(ik + lj);
-	result.m21 = 2*(jk - li);
-	result.m22 = 1 - 2*(ii + jj);
+	var yyy = yy * y;
+	var yyz = yy * z;
+	var zzz = zz * z;
 
-	return result;
+	var yyw = yy * w;
+	var zzw = zz * w;
+	var xxw = xx * w;
+
+ 	return $Type {
+		1 - yyy - zzz, xxy - zzw, xxz + yyw, 0,
+		xxy + zzw, 1 - xxx - zzz, yyz - xxw, 0,
+		xxz - yyw, yyz + zzw, 1.0 - xxx - yyy, 0,
+		0, 0, 0, 1,
+	};
 }

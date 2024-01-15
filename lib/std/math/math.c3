@@ -99,6 +99,8 @@ def Quaternionf = Quaternion(<float>);
 def Quaternion = Quaternion(<double>);
 def quaternionf_identity = quaternion::identity(<float>);
 def quaternion_identity = quaternion::identity(<double>);
+def QUATERNION_IDENTITY = quaternion::IDENTITY(<double>);
+def QUATERNIONF_IDENTITY = quaternion::IDENTITY(<float>);
 
 def Matrix2f = Matrix2x2(<float>);
 def Matrix2 = Matrix2x2(<double>);

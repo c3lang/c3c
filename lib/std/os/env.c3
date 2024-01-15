@@ -2,14 +2,14 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::os::env;
-import libc;
+import std::io::path, libc, std::os;
 
 /**
  * @param [in] name
  * @require name.len > 0
  * @return! SearchResult.MISSING
  **/
-fn String! get_var(String name, Allocator* allocator = mem::heap())
+fn String! get_var(String name, Allocator* allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -38,7 +38,7 @@ fn String! get_var(String name, Allocator* allocator = mem::heap())
 
 fn String! get_var_temp(String name)
 {
-	return get_var(name, mem::temp());
+	return get_var(name, allocator::temp());
 }
 
 /**
@@ -72,7 +72,7 @@ fn bool set_var(String name, String value, bool overwrite = true)
 /**
  * Returns the current user's home directory.
  **/
-fn String! get_home_dir(Allocator* using = mem::heap())
+fn String! get_home_dir(Allocator* using = allocator::heap())
 {
 	String home;
 	$if !env::WIN32:
@@ -86,7 +86,7 @@ fn String! get_home_dir(Allocator* using = mem::heap())
 /**
  * Returns the current user's config directory.
  **/
-fn Path! get_config_dir(Allocator* allocator = mem::heap())
+fn Path! get_config_dir(Allocator* allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -126,7 +126,7 @@ fn bool clear_var(String name)
 	};
 }
 
-fn String! executable_path(Allocator *allocator = mem::heap())
+fn String! executable_path(Allocator *allocator = allocator::heap())
 {
 	$if env::DARWIN:
 		return darwin::executable_path(allocator);

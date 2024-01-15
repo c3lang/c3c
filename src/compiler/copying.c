@@ -296,6 +296,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	{
 		case EXPR_ANYSWITCH:
 			UNREACHABLE
+		case EXPR_OTHER_CONTEXT:
+			MACRO_COPY_EXPR(expr->expr_other_context.inner);
+			return expr;
 		case EXPR_EMBED:
 			MACRO_COPY_EXPR(expr->embed_expr.len);
 			MACRO_COPY_EXPR(expr->embed_expr.filename);

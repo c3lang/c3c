@@ -1,4 +1,5 @@
 module std::net;
+import std::io;
 
 fault NetError
 {
@@ -56,7 +57,7 @@ fn uint! ipv4toint(String s)
 	return out;
 }
 
-fn String! int_to_new_ipv4(uint val, Allocator* allocator = mem::heap())
+fn String! int_to_new_ipv4(uint val, Allocator* allocator = allocator::heap())
 {
 	char[3 * 4 + 3 + 1] buffer;
 	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", val >> 24, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)!;
@@ -65,5 +66,5 @@ fn String! int_to_new_ipv4(uint val, Allocator* allocator = mem::heap())
 
 fn String! int_to_temp_ipv4(uint val)
 {
-	return int_to_new_ipv4(val, mem::temp());
+	return int_to_new_ipv4(val, allocator::temp());
 }

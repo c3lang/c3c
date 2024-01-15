@@ -545,27 +545,43 @@ static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initi
 {
 	LLVMValueRef **array_ref = is_initializer ? &c->constructors : &c->destructors;
 	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
-	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
-}
-
-static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_initializer)
-{
-	LLVMTypeRef initializer_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
-	LLVMValueRef **array_ref = is_initializer ? &c->constructors : &c->destructors;
-	scratch_buffer_clear();
-	scratch_buffer_printf(is_initializer ? ".static_initialize.%u" : ".static_finalize.%u", vec_size(*array_ref));
-	LLVMValueRef function = LLVMAddFunction(c->module, scratch_buffer_to_string(), initializer_type);
-	LLVMSetLinkage(function, LLVMInternalLinkage);
-	LLVMValueRef vals[3] = { llvm_const_int(c, type_int, priority), function, llvm_get_zero(c, type_voidptr) };
-	vec_add(*array_ref, LLVMConstStructInContext(c->context, vals, 3, false));
-	return function;
+	vec_add(*array_ref, LLVMConstNamedStruct(c->xtor_entry_type, vals, 3));
 }
 
 
 void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 {
-	if (!vec_size(funcs)) return;
-	LLVMValueRef initializer = llvm_add_xxlizer(c, 1, true);
+	size_t len = vec_size(funcs);
+	if (!len) return;
+	if (platform_target.object_format == OBJ_FORMAT_MACHO)
+	{
+		LLVMTypeRef types[3] = { c->ptr_type, c->ptr_type, c->typeid_type };
+		LLVMTypeRef entry_type = LLVMStructType(types, 3, false);
+		c->dyn_section_type = entry_type;
+		LLVMValueRef *entries = VECNEW(LLVMValueRef, len);
+		FOREACH_BEGIN(Decl *func, funcs)
+			Type *type = typeget(func->func_decl.type_parent);
+			Decl *proto = declptrzero(func->func_decl.interface_method);
+			LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, func->name);
+			LLVMValueRef vals[3] = { llvm_get_ref(c, func), proto_ref, llvm_get_typeid(c, type) };
+			LLVMValueRef entry = LLVMConstNamedStruct(entry_type, vals, 3);
+			vec_add(entries, entry);
+		FOREACH_END();
+		LLVMValueRef array = LLVMConstArray(entry_type, entries, len);
+		LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), "$c3_dynamic");
+		LLVMSetLinkage(global, LLVMInternalLinkage);
+		LLVMSetInitializer(global, array);
+		LLVMSetSection(global, "__DATA,__c3_dynamic");
+		LLVMSetAlignment(global, llvm_abi_alignment(c, c->xtor_entry_type));
+		return;
+	}
+
+	LLVMValueRef initializer = LLVMAddFunction(c->module, ".c3_dynamic_register", c->xtor_func_type);
+	LLVMSetLinkage(initializer, LLVMInternalLinkage);
+	LLVMSetAlignment(initializer, 8);
+	LLVMValueRef vals_fn[3] = { llvm_const_int(c, type_int, 1), initializer, llvm_get_zero(c, type_voidptr) };
+	vec_add(c->constructors, LLVMConstNamedStruct(c->xtor_entry_type, vals_fn, 3));
+
 	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, initializer, "entry");
 	LLVMBuilderRef builder = llvm_create_builder(c);
 	LLVMPositionBuilderAtEnd(builder, entry);

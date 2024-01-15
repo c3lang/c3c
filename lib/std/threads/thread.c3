@@ -1,5 +1,6 @@
 module std::thread;
 import std::thread::os;
+import std::time;
 
 distinct MutexType = int;
 

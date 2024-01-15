@@ -34,15 +34,15 @@ fn void OnStackAllocator.free(&self)
 	{
 		if (chunk.is_aligned)
 		{
-			self.backing_allocator.free_aligned(chunk.data);
+			allocator::free_aligned(self.backing_allocator, chunk.data);
 		}
 		else
 		{
-			self.backing_allocator.free(chunk.data);
+			allocator::free(self.backing_allocator, chunk.data);
 		}
 		void* old = chunk;
 		chunk = chunk.prev;
-		self.backing_allocator.free(old);
+		allocator::free(self.backing_allocator, old);
 	}
 	self.chunk = null;
 	self.used = 0;
@@ -76,7 +76,7 @@ fn void on_stack_allocator_remove_chunk(OnStackAllocator* a, void* ptr) @local
 		if (chunk.data == ptr)
 		{
 			*addr = chunk.prev;
-			a.backing_allocator.free(chunk);
+			allocator::free(a.backing_allocator, chunk);
 			return;
 		}
 		addr = &chunk.prev;
@@ -140,8 +140,8 @@ fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, u
 
 	if (end > total_len)
 	{
-		OnStackAllocatorExtraChunk* chunk = backing_allocator.alloc_checked(OnStackAllocatorExtraChunk.sizeof)!;
-		defer catch backing_allocator.free(chunk);
+		OnStackAllocatorExtraChunk* chunk = allocator::alloc_try(backing_allocator, OnStackAllocatorExtraChunk)!;
+		defer catch allocator::free(backing_allocator, chunk);
 		defer try self.chunk = chunk;
 		*chunk = { .prev = self.chunk, .is_aligned = aligned };
 		return chunk.data = backing_allocator.acquire(size, clear, aligned ? alignment : 0, offset)!;

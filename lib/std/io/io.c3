@@ -49,7 +49,7 @@ fault IoError
  * @param stream
  * @require @is_instream(stream)
  **/
-macro String! readline(stream = io::stdin(), Allocator* allocator = mem::heap())
+macro String! readline(stream = io::stdin(), Allocator* allocator = allocator::heap())
 {
 	bool $is_stream = @typeid(stream) == InStream*.typeid;
 	$if $is_stream:
@@ -84,7 +84,7 @@ macro String! readline(stream = io::stdin(), Allocator* allocator = mem::heap())
     };
 }
 
-macro String! treadline(stream = io::stdin()) => readline(stream, mem::temp()) @inline;
+macro String! treadline(stream = io::stdin()) => readline(stream, allocator::temp()) @inline;
 
 /**
  * @require @is_outstream(out) "The output must implement OutStream"

@@ -98,9 +98,9 @@ fn usz! Formatter.print_with_function(&self, Printable* arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
-		@pool()
+		@stack_mem(1024; Allocator* mem)
 		{
-			return self.out_substr(arg.to_new_string(mem::temp()));
+			return self.out_substr(arg.to_new_string(mem));
 		};
 	}
 	return SearchResult.MISSING?;

@@ -1,6 +1,5 @@
 module std::net @if(os::SUPPORTS_INET);
-import std::io;
-import libc;
+import std::io, std::os, std::time, libc;
 
 struct Socket (InStream, OutStream)
 {

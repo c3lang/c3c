@@ -50,7 +50,7 @@ struct Lexer
     }
 }
 
-fn void! Lexer.init(&self, InStream* reader, Ident ident, Allocator* using = mem::heap())
+fn void! Lexer.init(&self, InStream* reader, Ident ident, Allocator* using = allocator::heap())
 {
     TokenTrie trie;
     ushort max_token;
@@ -67,13 +67,13 @@ fn void! Lexer.init(&self, InStream* reader, Ident ident, Allocator* using = mem
         assert(end.len > 0 && end.len <= ushort.max);
         max_token = max(max_token, (ushort)end.len);
     }
-    char* buf = using.alloc_checked(max_token)!;
+    char* buf = allocator::malloc_try(using, max_token)!;
     *self = { .allocator = using, .reader = reader, .buf = buf[:max_token], .tokens = trie };
 }
 
 fn void! Lexer.free(&self)
 {
-    self.allocator.free(self.buf);
+	allocator::free(self.allocator, self.buf);
     *self = {};
 }
 
@@ -489,7 +489,7 @@ struct TrieNode
     bool valid;
 }
 
-fn void Trie.init(&self, usz initial_capacity = 8, Allocator* using = mem::heap())
+fn void Trie.init(&self, usz initial_capacity = 8, Allocator* using = allocator::heap())
 {
     *self = {};
     self.nodes.new_init(initial_capacity, .allocator = using);
@@ -709,7 +709,7 @@ fn void test()
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@std.core.mem.thread_allocator = external thread_local global %"any*", align 8
+@std.core.mem.allocator.thread_allocator = external thread_local global %"any*", align 8
 
 ; Function Attrs:
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
@@ -789,8 +789,8 @@ loop.body:                                        ; preds = %loop.cond
   %lo3 = load i64, ptr %taddr, align 8
   %ptradd4 = getelementptr inbounds i8, ptr %taddr, i64 8
   %hi5 = load ptr, ptr %ptradd4, align 8
-  %lo6 = load i64, ptr @std.core.mem.thread_allocator, align 8
-  %hi7 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.thread_allocator, i64 8), align 8
+  %lo6 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi7 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
   %8 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, i64 %lo3, ptr %hi5, ptr @lexer_test.is_ident_char, i64 %lo6, ptr %hi7)
   %not_err = icmp eq i64 %8, 0
   %9 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)

@@ -1,4 +1,5 @@
 module std::os::posix @if(env::POSIX);
+import std::thread;
 import libc;
 
 const PTHREAD_MUTEX_NORMAL = 0;

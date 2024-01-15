@@ -134,8 +134,50 @@ LLVMValueRef llvm_get_selector(GenContext *c, const char *name)
 	return selector;
 }
 
+
+void llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, const char *name)
+{
+	unsigned len = vec_size(list);
+	if (!len) return;
+	scratch_buffer_clear();
+	scratch_buffer_append(".list$");
+	scratch_buffer_append(name);
+	LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, list, vec_size(list));
+	LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), scratch_buffer_to_string());
+	scratch_buffer_clear();
+	scratch_buffer_append("__DATA,__");
+	scratch_buffer_append(name);
+	LLVMSetLinkage(global, LLVMInternalLinkage);
+	LLVMSetInitializer(global, array);
+	LLVMSetSection(global, scratch_buffer_to_string());
+	LLVMSetAlignment(global, llvm_abi_alignment(c, c->xtor_entry_type));
+}
+
 void llvm_emit_constructors_and_destructors(GenContext *c)
 {
+	if (platform_target.object_format == OBJ_FORMAT_MACHO)
+	{
+		llvm_emit_macho_xtor(c, c->constructors, "c3ctor");
+		llvm_emit_macho_xtor(c, c->destructors, "c3dtor");
+
+		LLVMValueRef runtime_start = LLVMGetNamedFunction(c->module, "__c3_runtime_startup");
+		if (!runtime_start || !LLVMGetFirstBasicBlock(runtime_start)) return;
+		LLVMValueRef vals[3] = { llvm_const_int(c, type_int, 65535), runtime_start, llvm_get_zero(c, type_voidptr) };
+		LLVMValueRef entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
+		LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
+		LLVMValueRef global_ctor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_ctors");
+		LLVMSetLinkage(global_ctor, LLVMAppendingLinkage);
+		LLVMSetInitializer(global_ctor, array);
+		LLVMValueRef runtime_end = LLVMGetNamedFunction(c->module, "__c3_runtime_finalize");
+		if (!runtime_end || !LLVMGetFirstBasicBlock(runtime_end)) error_exit("Failed to find __c3_runtime_finalize in the same module as __c3_runtime_startup.");
+		vals[1] = runtime_end;
+		entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
+		array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
+		LLVMValueRef global_dtor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_dtors");
+		LLVMSetLinkage(global_dtor, LLVMAppendingLinkage);
+		LLVMSetInitializer(global_dtor, array);
+		return;
+	}
 	llvm_emit_xtor(c, c->constructors, "llvm.global_ctors");
 	llvm_emit_xtor(c, c->destructors, "llvm.global_dtors");
 }
@@ -413,11 +455,13 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	Type *var_type = type_lowering(decl->type);
 
 	Expr *init_expr = decl->var.init_expr;
-	while (init_expr && init_expr->expr_kind == EXPR_IDENTIFIER
-		&& init_expr->identifier_expr.decl->decl_kind == DECL_VAR
-		&& init_expr->identifier_expr.decl->var.kind == VARDECL_CONST)
+	// Fold "source" of the init.
+	while (init_expr && init_expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		init_expr = init_expr->identifier_expr.decl->var.init_expr;
+		Decl *inner_decl = decl_flatten(init_expr->identifier_expr.decl);
+		if (inner_decl->decl_kind != DECL_VAR) break;
+		if (inner_decl->var.kind != VARDECL_CONST) break;
+		init_expr = inner_decl->var.init_expr;
 	}
 	if (init_expr && init_expr->expr_kind != EXPR_OPTIONAL)
 	{
@@ -429,7 +473,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		else
 		{
 			BEValue value;
-			llvm_emit_expr(c, &value, decl->var.init_expr);
+			llvm_emit_expr(c, &value, init_expr);
 			init_value = llvm_load_value_store(c, &value);
 		}
 	}
@@ -1094,7 +1138,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
-			if (decl->is_export && platform_target.os == OS_TYPE_WIN32)
+			if (decl->is_export && platform_target.os == OS_TYPE_WIN32 && !active_target.win.def)
 			{
 				LLVMSetDLLStorageClass(decl->backend_ref, LLVMDLLExportStorageClass);
 			}
@@ -1106,7 +1150,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
 			llvm_append_function_attributes(c, decl);
-			if (decl->is_export && platform_target.os == OS_TYPE_WIN32 && decl->name != kw_main && decl->name != kw_mainstub)
+			if (decl->is_export && platform_target.os == OS_TYPE_WIN32  && !active_target.win.def && decl->name != kw_main && decl->name != kw_mainstub)
 			{
 				LLVMSetDLLStorageClass(backend_ref, LLVMDLLExportStorageClass);
 			}

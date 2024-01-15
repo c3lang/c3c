@@ -334,14 +334,14 @@ static inline const char *lib_find(const char *exe_path, const char *rel_path)
 	if (err || !S_ISREG(info.st_mode)) return NULL;
 
 	const char *lib_path = str_printf("%s%s", exe_path, rel_path);
-	DEBUG_LOG("Library path found at %s", lib_path);
+	INFO_LOG("Library path found at %s", lib_path);
 	return lib_path;
 }
 
 const char *find_rel_exe_dir(const char *dir)
 {
 	char *path = find_executable_path();
-	DEBUG_LOG("Detected executable path at %s", path);
+	INFO_LOG("Detected executable path at %s", path);
 	size_t strlen_path = strlen(path);
 	// Remove any last path slash
 	if (strlen_path > 1 && (path[strlen_path - 1] == '/' || path[strlen_path - 1] == '\\'))
@@ -372,7 +372,7 @@ const char *find_lib_dir(void)
 
 	char *path = find_executable_path();
 
-	DEBUG_LOG("Detected executable path at %s", path);
+	INFO_LOG("Detected executable path at %s", path);
 
 	size_t strlen_path = strlen(path);
 	// Remove any last path slash
@@ -392,7 +392,7 @@ const char *find_lib_dir(void)
 	if ((lib_path = lib_find(path, "/../../lib/c3/"))) goto DONE;
 	if ((lib_path = lib_find(path, "/../../lib/"))) goto DONE;
 
-	DEBUG_LOG("Could not find the standard library /lib/std/");
+	INFO_LOG("Could not find the standard library /lib/std/");
 DONE:;
 	free(path);
 	return lib_path;
@@ -536,8 +536,14 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count)
 {
+	size_t len = strlen(path);
+	if (len == 0)
+	{
+		path = "./";
+		len = 2;
+	}
 	DIR *dir = opendir(path);
-	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
+	bool path_ends_with_slash = is_path_separator(path[len - 1]);
 	if (!dir)
 	{
 		error_exit("Can't open the directory '%s'. Please check the paths. %s", path, strerror(errno));
@@ -568,7 +574,7 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 			continue;
 		}
 		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
-		DEBUG_LOG("Added file %s", ent->d_name);
+		INFO_LOG("Added file %s", ent->d_name);
 		vec_add(*files, str_printf(format, path, ent->d_name));
 	}
 	closedir(dir);

@@ -1,4 +1,5 @@
 module std::io;
+import std::math;
 
 const char[16] XDIGITS_H = "0123456789ABCDEF";
 const char[16] XDIGITS_L = "0123456789abcdef";
