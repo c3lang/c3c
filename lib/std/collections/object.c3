@@ -2,9 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::object;
-import std::collections::map;
-import std::collections::list;
-import std::io;
+import std::collections::map, std::collections::list, std::io;
 
 const Object TRUE_OBJECT = { .b = true, .type = bool.typeid };
 const Object FALSE_OBJECT = { .b = false, .type = bool.typeid };
@@ -80,9 +78,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 
 fn Object* new_obj(Allocator* allocator)
 {
-	Object* o = allocator.new(Object);
-	*o = { .allocator = allocator, .type = void.typeid };
-	return o;
+	return allocator::new(allocator, Object, { .allocator = allocator, .type = void.typeid });
 }
 
 fn Object* new_null()
@@ -92,30 +88,22 @@ fn Object* new_null()
 
 fn Object* new_int(int128 i, Allocator* allocator)
 {
-	Object* o = allocator.new(Object);
-	*o = { .i = i, .allocator = allocator, .type = int128.typeid };
-	return o;
+	return allocator::new(allocator, Object, { .i = i, .allocator = allocator, .type = int128.typeid });
 }
 
 macro Object* new_enum(e, Allocator* allocator)
 {
-	Object* o = allocator.new(Object);
-	*o = { .i = (int128)e, .allocator = allocator, .type = @typeid(e) };
-	return o;
+	return allocator::new(allocator, Object, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) });
 }
 
 fn Object* new_float(double f, Allocator* allocator)
 {
-	Object* o = allocator.new(Object);
-	*o = { .f = f, .allocator = allocator, .type = double.typeid };
-	return o;
+	return allocator::new(allocator, Object, { .f = f, .allocator = allocator, .type = double.typeid });
 }
 
 fn Object* new_string(String s, Allocator* allocator)
 {
-	Object* o = allocator.new(Object);
-	*o = { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid };
-	return o;
+	return allocator::new(allocator, Object, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid });
 }
 
 
@@ -131,7 +119,7 @@ fn void Object.free(&self)
 		case void:
 			break;
 		case String:
-			self.allocator.free(self.s);
+			allocator::free(self.allocator, self.s);
 		case ObjectInternalList:
 			foreach (ol : self.array)
 			{
@@ -140,13 +128,13 @@ fn void Object.free(&self)
 			self.array.free();
 		case ObjectInternalMap:
 			self.map.@each_entry(; ObjectInternalMapEntry* entry) {
-				self.allocator.free(entry.key);
+				allocator::free(self.allocator, entry.key);
 				entry.value.free();
 			};
 		default:
 			break;
 	}
-	if (self.allocator) self.allocator.free(self);
+	if (self.allocator) allocator::free(self.allocator, self);
 }
 
 fn bool Object.is_null(&self) @inline => self == &NULL_OBJECT;
@@ -193,7 +181,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 	ObjectInternalMapEntry*! entry = self.map.get_entry(key);
 	defer
 	{
-		(void)self.allocator.free(entry.key);
+		(void)allocator::free(self.allocator, entry.key);
 		(void)entry.value.free();
 	}
 	self.map.set(key.copy(self.map.allocator), new_object);

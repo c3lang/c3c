@@ -3,12 +3,12 @@ import std::collections::object;
 
 fn void test_general()
 {
-	Object* root = object::new_obj(mem::heap());
+	Object* root = object::new_obj(allocator::heap());
 	root.set("foo", 1);
 	root.set("bar", "baz");
 	assert(root.get_int("foo")! == 1);
 	assert(root.get_string("bar")! == "baz");
-	Object* goo = root.set("goo", object::new_obj(mem::heap()));
+	Object* goo = root.set("goo", object::new_obj(allocator::heap()));
 	goo.append("hello");
 	goo.append(132);
 	assert(root.get("goo").get_int_at(1)! == 132);

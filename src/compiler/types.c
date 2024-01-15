@@ -483,13 +483,15 @@ bool type_is_comparable(Type *type)
 		case TYPE_VOID:
 		case TYPE_UNION:
 		case TYPE_STRUCT:
-		case TYPE_BITSTRUCT:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return false;
+		case TYPE_BITSTRUCT:
+			type = type->decl->bitstruct.base_type->type;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;

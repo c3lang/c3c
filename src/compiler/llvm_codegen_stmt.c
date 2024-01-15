@@ -12,16 +12,12 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 	assert(ast->ast_kind == AST_COMPOUND_STMT);
 
 	// Push the lexical scope if in debug.
-	if (llvm_use_debug(c))
-	{
-		llvm_debug_push_lexical_scope(c, ast->span);
-	}
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
+
 	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
-	if (llvm_use_debug(c))
-	{
-		llvm_debug_scope_pop(c);
-	}
+
+	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
 /**
@@ -433,6 +429,7 @@ static inline LoopType loop_type_for_cond(Expr *cond, bool do_while)
 
 void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 {
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
 	// First, emit all inits.
 	BEValue value;
 	if (ast->for_stmt.init) llvm_emit_expr(c, &value, exprptr(ast->for_stmt.init));
@@ -471,8 +468,10 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 
 			llvm_emit_panic(c, "Infinite loop found", loc, NULL, NULL);
 			llvm_emit_block(c, llvm_basic_block_new(c, "unreachable_block"));
+			DEBUG_POP_LEXICAL_SCOPE(c);
 			return;
 		}
+		DEBUG_POP_LEXICAL_SCOPE(c);
 		return;
 	}
 
@@ -596,12 +595,17 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	else
 	{
 		// If the exit block is unused, just skip it.
-		if (llvm_basic_block_is_unused(exit_block)) return;
+		if (llvm_basic_block_is_unused(exit_block))
+		{
+			DEBUG_POP_LEXICAL_SCOPE(c);
+			return;
+		}
 		llvm_emit_br(c, exit_block);
 	}
 
 	// And insert exit block
 	llvm_emit_block(c, exit_block);
+	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
 
@@ -873,6 +877,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 
 void llvm_emit_switch(GenContext *c, Ast *ast)
 {
+	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
 	BEValue switch_value;
 	Expr *expr = exprptrzero(ast->switch_stmt.cond);
 	bool is_typeid = expr && expr->type->canonical == type_typeid;
@@ -887,6 +892,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 		llvm_value_set(&switch_value, llvm_const_int(c, type_bool, 1), type_bool);
 	}
 	llvm_emit_switch_body(c, &switch_value, ast, is_typeid);
+	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
 

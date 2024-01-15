@@ -1,9 +1,8 @@
-// Copyright (c) 2021-2022 Christoffer Lerno and contributors. All rights reserved.
+// Copyright (c) 2021-2024 Christoffer Lerno and contributors. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
-import libc;
-import std::hash;
+import libc, std::hash, std::io, std::os::backtrace;
 
 /**
  * Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
@@ -75,7 +74,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 		void*[256] buffer;
 		void*[] backtraces = backtrace::capture_current(&buffer);
 		backtraces_to_ignore++;
-		BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, mem::temp());
+		BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, allocator::temp());
 		if (catch backtrace) return false;
 		if (backtrace.len() <= backtraces_to_ignore) return false;
 		io::eprint("\nERROR: '");

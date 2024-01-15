@@ -75,7 +75,7 @@ fn void main()
 {
     const String[] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
     DynamicArenaAllocator dynamic_arena;
-	dynamic_arena.init(1024, mem::heap());
+	dynamic_arena.init(1024, allocator::heap());
 	OutStream* out = io::stdout();
     foreach (String url : URLS)
     {

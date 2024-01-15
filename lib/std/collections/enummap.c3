@@ -1,5 +1,5 @@
 module std::collections::enummap(<Enum, ValueType>);
-
+import std::io;
 struct EnumMap (Printable)
 {
 	ValueType[Enum.len] values;
@@ -25,7 +25,7 @@ fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 	return n;
 }
 
-fn String EnumMap.to_new_string(&self, Allocator* allocator = mem::heap()) @dynamic
+fn String EnumMap.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
 {
 	return string::new_format("%s", *self, .allocator = allocator);
 }

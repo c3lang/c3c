@@ -111,7 +111,7 @@ static Library *find_library(Library **libs, size_t lib_count, const char *name)
 	{
 		if (str_eq(libs[i]->provides, name)) return libs[i];
 	}
-	error_exit("Required library '%s' could not be found.\n", name);
+	error_exit("Required library '%s' could not be found. You can add additional library search paths using '--libdir' in case you forgot one.", name);
 }
 
 static void add_library_dependency(Library *library, Library **library_list, size_t lib_count)
@@ -212,9 +212,18 @@ void resolve_libraries(void)
 {
 	static const char *c3lib_suffix = ".c3l";
 	const char **c3_libs = NULL;
-	VECEACH(active_target.libdirs, i)
+	unsigned libdir_count = vec_size(active_target.libdirs);
+	if (libdir_count)
 	{
-		file_add_wildcard_files(&c3_libs, active_target.libdirs[i], false, &c3lib_suffix, 1);
+		VECEACH(active_target.libdirs, i)
+		{
+			file_add_wildcard_files(&c3_libs, active_target.libdirs[i], false, &c3lib_suffix, 1);
+		}
+	}
+	else
+	{
+		// Default to '.'
+		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
 	}
 	Library *libraries[MAX_LIB_DIRS * 2];
 	size_t lib_count = 0;

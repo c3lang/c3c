@@ -1,5 +1,5 @@
 module std::net @if(os::SUPPORTS_INET);
-import libc;
+import std::time, libc, std::os;
 
 macro apply_sockoptions(sockfd, options) @private
 {

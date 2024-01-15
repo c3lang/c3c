@@ -31,6 +31,7 @@ typedef enum
 	LINKER_LD64,
 	LINKER_WASM,
 	LINKER_CC,
+	LINKER_UNKNOWN
 } LinkerType;
 
 #define add_arg(arg_) vec_add(*args_ref, (arg_))
@@ -134,6 +135,10 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type,
 				link_with_dynamic_debug_libc = false;
 			}
 		}
+	}
+	if (active_target.win.def)
+	{
+		add_arg(str_printf("/def:%s", active_target.win.def));
 	}
 	if (active_target.win.sdk)
 	{
@@ -358,7 +363,7 @@ static const char *find_linux_crt(void)
 	if (!glob("/usr/lib/*/crt1.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
 	{
 		const char *path = globbuf.gl_pathv[0];
-		DEBUG_LOG("Found crt at %s", path);
+		INFO_LOG("Found crt at %s", path);
 		size_t len = strlen(path);
 		assert(len > 6);
 		const char *res = str_copy(path, len - 6);
@@ -367,7 +372,7 @@ static const char *find_linux_crt(void)
 	}
 	else
 	{
-		DEBUG_LOG("No crt in /usr/lib/*/");
+		INFO_LOG("No crt in /usr/lib/*/");
 	}
 #endif
 	return NULL;
@@ -381,7 +386,7 @@ static const char *find_linux_crt_begin(void)
 	if (!glob("/usr/lib/gcc/*/*/crtbegin.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
 	{
 		const char *path = globbuf.gl_pathv[0];
-		DEBUG_LOG("Found crtbegin at %s", path);
+		INFO_LOG("Found crtbegin at %s", path);
 		size_t len = strlen(path);
 		assert(len > 10);
 		const char *res = str_copy(path, len - 10);
@@ -390,7 +395,7 @@ static const char *find_linux_crt_begin(void)
 	}
 	else
 	{
-		DEBUG_LOG("No crtbegin in /usr/lib/gcc/*/*/");
+		INFO_LOG("No crtbegin in /usr/lib/gcc/*/*/");
 	}
 #endif
 	return NULL;
@@ -548,6 +553,8 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	}
 	switch (linker_type)
 	{
+		case LINKER_UNKNOWN:
+			break;
 		case LINKER_WASM:
 			if (!is_dylib && active_target.no_entry) add_arg("--no-entry");
 			break;
@@ -694,7 +701,7 @@ LinkerType linker_find_linker_type(void)
 
 static bool link_exe(const char *output_file, const char **files_to_link, unsigned file_count)
 {
-	DEBUG_LOG("Using linker directly.");
+	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
 	LinkerType linker_type = linker_find_linker_type();
 	linker_setup(&args, files_to_link, file_count, output_file, linker_type);
@@ -709,7 +716,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		arg_list = str_cat(arg_list, " ");
 		arg_list = str_cat(arg_list, args[i]);
 	}
-	DEBUG_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
+	INFO_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -731,7 +738,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	{
 		error_exit("Failed to create an executable: %s", error);
 	}
-	DEBUG_LOG("Linking complete.");
+	INFO_LOG("Linking complete.");
 	return true;
 }
 
@@ -777,11 +784,42 @@ const char *concat_string_parts(const char **args)
 
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
-	DEBUG_LOG("Using cc linker.");
 	const char **parts = NULL;
-	vec_add(parts, active_target.cc ? active_target.cc : "cc");
-	append_fpie_pic_options(platform_target.reloc_model, &parts);
-	linker_setup(&parts, files, file_count, output_file, LINKER_CC);
+	LinkerType linker_type = LINKER_CC;
+	if (active_target.linker)
+	{
+		INFO_LOG("Using linker %s.", active_target.linker);
+		vec_add(parts, active_target.linker);
+		switch (platform_target.object_format)
+		{
+			case OBJ_FORMAT_UNSUPPORTED:
+			case OBJ_FORMAT_GOFF:
+			case OBJ_FORMAT_XCOFF:
+			case OBJ_FORMAT_AOUT:
+				linker_type = LINKER_UNKNOWN;
+				break;
+			case OBJ_FORMAT_COFF:
+				linker_type = LINKER_LINK_EXE;
+				break;
+			case OBJ_FORMAT_ELF:
+				linker_type = LINKER_LD;
+				break;
+			case OBJ_FORMAT_MACHO:
+				linker_type = LINKER_LD64;
+				break;
+			case OBJ_FORMAT_WASM:
+				linker_type = LINKER_WASM;
+				break;
+		}
+	}
+	else
+	{
+		INFO_LOG("Using cc linker.");
+		vec_add(parts, active_target.cc ? active_target.cc : "cc");
+		append_fpie_pic_options(platform_target.reloc_model, &parts);
+	}
+
+	linker_setup(&parts, files, file_count, output_file, linker_type);
 	if (link_libc())
 	{
 		vec_add(parts, "-lm");
@@ -860,22 +898,25 @@ const char *platform_compiler(const char *file, const char *flags)
 
 bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count)
 {
-	DEBUG_LOG("Using linker directly.");
+	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
+	if (active_target.linker) vec_add(args, active_target.linker);
 	LinkerType linker_type = linker_find_linker_type();
 	linker_setup(&args, files, file_count, output_file, linker_type);
 
-	const char *error = NULL;
-	// This isn't used in most cases, but its contents should get freed after linking.
-
-	bool success;
-	const char *arg_list = "";
-	VECEACH(args, i)
+	const char *command = concat_string_parts(args);
+	if (active_target.print_linking) puts(command);
+	DEBUG_LOG("Linker arguments: %s to %d", command, platform_target.object_format);
+	if (active_target.linker)
 	{
-		arg_list = str_cat(arg_list, " ");
-		arg_list = str_cat(arg_list, args[i]);
+		if (system(command) != 0)
+		{
+			error_exit("Failed to create a dynamic library using command '%s'.", command);
+		}
+		return true;
 	}
-	DEBUG_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
+	bool success;
+	const char *error = NULL;
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -895,12 +936,10 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 	}
 	if (!success)
 	{
-		error_exit("Failed to create an executable: %s", error);
+		error_exit("Failed to create a dynamic library: %s", error);
 	}
-	DEBUG_LOG("Linking complete.");
+	INFO_LOG("Linking complete.");
 	return true;
-
-	error_exit("Apologies, dynamic libs are still not supported.");
 }
 
 bool static_lib_linker(const char *output_file, const char **files, unsigned file_count)

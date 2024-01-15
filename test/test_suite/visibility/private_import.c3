@@ -9,7 +9,7 @@ import foo;
 
 fn void test()
 {
-    foo::hidden(); // #error: The function 'foo::hidden' is not visible from this module.
+    foo::hidden(); // #error: 'foo::hidden' could not be found,
 }
 
 module baz;

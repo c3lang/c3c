@@ -56,7 +56,7 @@ fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
-fn String InetAddress.to_new_string(InetAddress* addr, Allocator* allocator = mem::heap()) @dynamic
+fn String InetAddress.to_new_string(InetAddress* addr, Allocator* allocator = allocator::heap()) @dynamic
 {
 	if (addr.is_ipv6)
 	{

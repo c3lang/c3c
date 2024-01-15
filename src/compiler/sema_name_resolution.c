@@ -132,7 +132,7 @@ static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const c
 	return module_find_symbol(module, symbol);
 }
 
-static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve, bool want_generic)
+static Decl *sema_find_decl_in_private_imports(Decl **imports, NameResolve *name_resolve, bool want_generic)
 {
 	Decl *decl = NULL;
 	// 1. Loop over imports.
@@ -142,7 +142,7 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 	{
 		Decl *import = imports[i];
 		if (import->import.module->is_generic != want_generic) continue;
-
+		if (!import->import.import_private_as_public) continue;
 		// Is the decl in the import.
 		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
 
@@ -150,14 +150,6 @@ static Decl *sema_find_decl_in_imports(Decl **imports, NameResolve *name_resolve
 		if (!found) continue;
 
 		assert(found->visibility != VISIBLE_LOCAL);
-
-		// If we found something private, but we don't import privately?
-		if (found->visibility == VISIBLE_PRIVATE && !import->import.import_private_as_public && !decl)
-		{
-			// Register this as a possible private decl.
-			name_resolve->private_decl = found;
-			continue;
-		}
 
 		// Did we already have a match?
 		if (decl)
@@ -213,14 +205,32 @@ Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *in
 	return NULL;
 }
 
+INLINE bool module_inclusion_match(Module *a, Module *b)
+{
+	Module *temp;
+	while ((temp = a->generic_module)) a = temp;
+	while ((temp = b->generic_module)) b = temp;
+
+	// Quick check
+	if (a->top_module != b->top_module) return false;
+	if (a->name->len < b->name->len)
+	{
+		temp = a;
+		a = b;
+		b = temp;
+	}
+	while (a->name->len > b->name->len) a = a->parent_module;
+	return a == b;
+}
+
 static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 {
 	Module *module = decl->unit->module;
 	// 1. Same module as unit -> ok
 	if (module == unit->module) return true;
-	Module *top = module->top_module;
-	// 2. Same top module as unit -> ok
-	if (top == unit->module->top_module) return true;
+
+	// 2. Module inclusion: a is submodule of b or b of a.
+	if (module_inclusion_match(module, unit->module)) return true;
 
 	// 3. We want to check std::core
 	Module *lookup = module;
@@ -234,19 +244,16 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	{
 		Decl *import = unit->imports[i];
 		Module *import_module = import->import.module;
-		// 4. Same as import
 		if (import_module == module) return true;
-		// 5. If import and decl doesn't share a top module -> no match
-		if (import_module->top_module != top) continue;
-		Module *search = module->parent_module;
-		// 6. Start upward from the decl module
-		//    break if no parent or we reached the import module.
-		while (search && search != import_module) search = search->parent_module;
-		// 7. We found the import module
-		if (search) return true;
-		// 8. Otherwise go to next
+		if (module_inclusion_match(import_module, module)) return true;
 	}
 	return false;
+}
+
+static bool sema_first_is_preferred(Decl *decl, Decl *decl2)
+{
+	return (decl->is_autoimport && !decl2->is_autoimport)
+		|| (decl2->unit->module->generic_module && !decl->unit->module->generic_module);
 }
 
 static Decl *sema_find_decl_in_global(CompilationUnit *unit, DeclTable *table, Module **module_list, NameResolve *name_resolve, bool want_generic)
@@ -292,7 +299,7 @@ static Decl *sema_find_decl_in_global(CompilationUnit *unit, DeclTable *table, M
 		}
 		if (ambiguous)
 		{
-			if (candidate->is_autoimport && !decl->is_autoimport)
+			if (sema_first_is_preferred(candidate, decl))
 			{
 				ambiguous = NULL;
 				decl = candidate;
@@ -305,11 +312,11 @@ static Decl *sema_find_decl_in_global(CompilationUnit *unit, DeclTable *table, M
 			if (ambiguous)
 			{
 				// If we have a same match but one is builtin, prefer builtin.
-				if (!ambiguous->is_autoimport && decl->is_autoimport)
+				if (sema_first_is_preferred(decl, ambiguous))
 				{
 					ambiguous = NULL;
 				}
-				else if (ambiguous->is_autoimport && !decl->is_autoimport)
+				else if (sema_first_is_preferred(ambiguous, decl))
 				{
 					decl = ambiguous;
 					ambiguous = NULL;
@@ -350,7 +357,7 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 	}
 
 	// 3. Loop over imports.
-	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
+	decl = sema_find_decl_in_private_imports(unit->imports, name_resolve, false);
 
 	// 4. Go to global search
 	return decl ? decl : sema_find_decl_in_global(unit, &global_context.symbols, global_context.module_list, name_resolve, false);
@@ -413,20 +420,8 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 
 	if (decl) return decl;
 
-	decl = sema_find_decl_in_imports(unit->imports, name_resolve, false);
+	decl = sema_find_decl_in_private_imports(unit->imports, name_resolve, false);
 
-	// Special case: the declaration in import is not autoimport and is not a type (which won't be @builtin)
-	// e.g. we have a malloc builtin and libc::malloc
-	if (decl && !decl->is_autoimport && !decl_is_user_defined_type(decl))
-	{
-		// Find the global
-		NameResolve copy = *name_resolve;
-		Decl *global = sema_find_decl_in_global(context->unit, &global_context.symbols, NULL, name_resolve, false);
-		// If it exists and is autoimport, then prefer it.
-		if (global && global->is_autoimport) return global;
-		*name_resolve = copy;
-		return decl;
-	}
 	return decl ? decl : sema_find_decl_in_global(context->unit, &global_context.symbols, NULL, name_resolve, false);
 }
 
@@ -804,7 +799,8 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 	name_resolve->private_decl = NULL;
 	name_resolve->path_found = false;
 
-	Decl *decl = sema_find_decl_in_imports(unit->imports, name_resolve, true);
+	Decl *decl = sema_find_decl_in_private_imports(unit->imports, name_resolve, true);
+
 	if (!decl)
 	{
 		decl = sema_find_decl_in_global(unit, &global_context.generic_symbols,

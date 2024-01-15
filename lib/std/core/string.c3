@@ -38,7 +38,7 @@ macro String tformat(String fmt, ...)
 	return str.str_view();
 }
 
-macro String new_format(String fmt, ..., Allocator* allocator = mem::heap())
+macro String new_format(String fmt, ..., Allocator* allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -55,11 +55,11 @@ macro bool char_in_set(char c, String set)
 	return false;
 }
 
-fn String join_new(String[] s, String joiner, Allocator* allocator = mem::heap())
+fn String join_new(String[] s, String joiner, Allocator* allocator = allocator::heap())
 {
 	if (!s)
 	{
-		return (String)allocator.new_zero_array(char, 2)[:0];
+		return (String)allocator::new_array(allocator, char, 2)[:0];
 	}
 
 	usz total_size = joiner.len * s.len;
@@ -153,11 +153,11 @@ fn String String.strip_end(string, String needle)
  * @require needle.len > 0 "The needle must be at least 1 character long"
  * @ensure return.len > 0
  **/
-fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = mem::heap())
+fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = allocator::heap())
 {
 	usz capacity = 16;
 	usz i = 0;
-	String* holder = allocator.new_array(String, capacity);
+	String* holder = allocator::alloc_array(allocator, String, capacity);
 	bool no_more = false;
 	while (!no_more)
 	{
@@ -176,7 +176,7 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = m
 		if (i == capacity)
 		{
 			capacity *= 2;
-			holder = allocator.realloc(holder, String.sizeof * capacity);
+			holder = allocator::realloc(allocator, holder, String.sizeof * capacity);
 		}
 		holder[i++] = res;
 	}
@@ -193,7 +193,7 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator* allocator = m
  **/
 fn String[] String.tsplit(s, String needle, usz max = 0)
 {
-	return s.split(needle, max, mem::temp()) @inline;
+	return s.split(needle, max, allocator::temp()) @inline;
 }
 
 fn bool String.contains(s, String needle)
@@ -312,19 +312,19 @@ fn usz ZString.len(str)
 }
 
 
-fn ZString String.zstr_copy(s, Allocator* allocator = mem::heap())
+fn ZString String.zstr_copy(s, Allocator* allocator = allocator::heap())
 {
 	usz len = s.len;
-	char* str = allocator.alloc(len + 1);
+	char* str = allocator::malloc(allocator, len + 1);
 	mem::copy(str, s.ptr, len);
 	str[len] = 0;
 	return (ZString)str;
 }
 
-fn String String.concat(s1, String s2, Allocator* allocator = mem::heap())
+fn String String.concat(s1, String s2, Allocator* allocator = allocator::heap())
 {
 	usz full_len = s1.len + s2.len;
-	char* str = allocator.alloc(full_len + 1);
+	char* str = allocator::malloc(allocator, full_len + 1);
 	usz s1_len = s1.len;
 	mem::copy(str, s1.ptr, s1_len);
 	mem::copy(str + s1_len, s2.ptr, s2.len);
@@ -332,37 +332,37 @@ fn String String.concat(s1, String s2, Allocator* allocator = mem::heap())
 	return (String)str[:full_len];
 }
 
-fn String String.tconcat(s1, String s2) => s1.concat(s2, mem::temp());
+fn String String.tconcat(s1, String s2) => s1.concat(s2, allocator::temp());
 
 
-fn ZString String.zstr_tcopy(s) => s.zstr_copy(mem::temp()) @inline;
+fn ZString String.zstr_tcopy(s) => s.zstr_copy(allocator::temp()) @inline;
 
-fn String String.copy(s, Allocator* allocator = mem::heap())
+fn String String.copy(s, Allocator* allocator = allocator::heap())
 {
 	usz len = s.len;
-	char* str = allocator.alloc(len + 1);
+	char* str = allocator::malloc(allocator, len + 1);
 	mem::copy(str, s.ptr, len);
 	str[len] = 0;
 	return (String)str[:len];
 }
 
-fn void String.free(&s, Allocator* allocator = mem::heap())
+fn void String.free(&s, Allocator* allocator = allocator::heap())
 {
 	if (!s.len) return;
-	allocator.free(s.ptr);
+	allocator::free(allocator, s.ptr);
 	*s = "";
 }
 
-fn String String.tcopy(s) => s.copy(mem::temp()) @inline;
+fn String String.tcopy(s) => s.copy(allocator::temp()) @inline;
 
-fn String ZString.copy(z, Allocator* allocator = mem::temp())
+fn String ZString.copy(z, Allocator* allocator = allocator::temp())
 {
 	return z.str_view().copy(allocator) @inline;
 }
 
 fn String ZString.tcopy(z)
 {
-	return z.str_view().copy(mem::temp()) @inline;
+	return z.str_view().copy(allocator::temp()) @inline;
 }
 
 /**
@@ -371,10 +371,10 @@ fn String ZString.tcopy(z)
  * @return! UnicodeResult.INVALID_UTF8 "If the string contained an invalid UTF-8 sequence"
  * @return! AllocationFailure "If allocation of the string fails"
  **/
-fn Char16[]! String.to_new_utf16(s, Allocator* allocator = mem::heap())
+fn Char16[]! String.to_new_utf16(s, Allocator* allocator = allocator::heap())
 {
 	usz len16 = conv::utf16len_for_utf8(s);
-	Char16* data = allocator.new_array_checked(Char16, len16 + 1)!;
+	Char16* data = allocator::alloc_array_try(allocator, Char16, len16 + 1)!;
 	conv::utf8to16_unsafe(s, data)!;
 	data[len16] = 0;
 	return data[:len16];
@@ -388,10 +388,10 @@ fn Char16[]! String.to_new_utf16(s, Allocator* allocator = mem::heap())
  **/
 fn Char16[]! String.to_temp_utf16(s)
 {
-	return s.to_new_utf16(mem::temp());
+	return s.to_new_utf16(allocator::temp());
 }
 
-fn WString! String.to_new_wstring(s, Allocator* allocator = mem::heap())
+fn WString! String.to_new_wstring(s, Allocator* allocator = allocator::heap())
 {
 	return (WString)s.to_new_utf16(allocator).ptr;
 }
@@ -401,10 +401,10 @@ fn WString! String.to_temp_wstring(s)
 	return (WString)s.to_temp_utf16().ptr;
 }
 
-fn Char32[]! String.to_new_utf32(s, Allocator* allocator = mem::heap())
+fn Char32[]! String.to_new_utf32(s, Allocator* allocator = allocator::heap())
 {
 	usz codepoints = conv::utf8_codepoints(s);
-	Char32* data = allocator.new_array(Char32, codepoints + 1);
+	Char32* data = allocator::alloc_array_try(allocator, Char32, codepoints + 1)!;
 	conv::utf8to32_unsafe(s, data)!;
 	data[codepoints] = 0;
 	return data[:codepoints];
@@ -412,7 +412,7 @@ fn Char32[]! String.to_new_utf32(s, Allocator* allocator = mem::heap())
 
 fn Char32[]! String.to_temp_utf32(s)
 {
-	return s.to_new_utf32(mem::temp());
+	return s.to_new_utf32(allocator::temp());
 }
 
 fn void String.convert_ascii_to_lower(s)
@@ -420,16 +420,16 @@ fn void String.convert_ascii_to_lower(s)
 	foreach (&c : s) if (c.is_upper()) *c += 'a' - 'A';
 }
 
-fn String String.new_ascii_to_lower(s, Allocator* allocator = mem::heap())
+fn String String.new_ascii_to_lower(s, Allocator* allocator = allocator::heap())
 {
 	String copy = s.copy(allocator);
 	copy.convert_ascii_to_lower();
 	return copy;
 }
 
-fn String String.temp_ascii_to_lower(s, Allocator* allocator = mem::heap())
+fn String String.temp_ascii_to_lower(s, Allocator* allocator = allocator::heap())
 {
-	return s.new_ascii_to_lower(mem::temp());
+	return s.new_ascii_to_lower(allocator::temp());
 }
 
 fn void String.convert_ascii_to_upper(s)
@@ -437,7 +437,7 @@ fn void String.convert_ascii_to_upper(s)
 	foreach (&c : s) if (c.is_lower()) *c -= 'a' - 'A';
 }
 
-fn String String.new_ascii_to_upper(s, Allocator* allocator = mem::heap())
+fn String String.new_ascii_to_upper(s, Allocator* allocator = allocator::heap())
 {
 	String copy = s.copy(allocator);
 	copy.convert_ascii_to_upper();
@@ -451,30 +451,30 @@ fn StringIterator String.iterator(s)
 
 fn String String.temp_ascii_to_upper(s)
 {
-	return s.new_ascii_to_upper(mem::temp());
+	return s.new_ascii_to_upper(allocator::temp());
 }
 
-fn String! new_from_utf32(Char32[] utf32, Allocator* allocator = mem::heap())
+fn String! new_from_utf32(Char32[] utf32, Allocator* allocator = allocator::heap())
 {
 	usz len = conv::utf8len_for_utf32(utf32);
-	char* data = allocator.alloc_checked(len + 1)!;
-	defer catch allocator.free(data);
+	char* data = allocator::malloc_try(allocator, len + 1)!;
+	defer catch allocator::free(allocator, data);
 	conv::utf32to8_unsafe(utf32, data);
 	data[len] = 0;
 	return (String)data[:len];
 }
 
-fn String! new_from_utf16(Char16[] utf16, Allocator* allocator = mem::heap())
+fn String! new_from_utf16(Char16[] utf16, Allocator* allocator = allocator::heap())
 {
 	usz len = conv::utf8len_for_utf16(utf16);
-	char* data = allocator.alloc_checked(len + 1)!;
-	defer catch allocator.free(data);
+	char* data = allocator::malloc_try(allocator, len + 1)!;
+	defer catch allocator::free(allocator, data);
 	conv::utf16to8_unsafe(utf16, data)!;
 	data[len] = 0;
 	return (String)data[:len];
 }
 
-fn String! new_from_wstring(WString wstring, Allocator* allocator = mem::heap())
+fn String! new_from_wstring(WString wstring, Allocator* allocator = allocator::heap())
 {
 	usz utf16_len;
 	while (wstring[utf16_len] != 0) utf16_len++;
@@ -482,8 +482,8 @@ fn String! new_from_wstring(WString wstring, Allocator* allocator = mem::heap())
 	return new_from_utf16(utf16, allocator);
 }
 
-fn String! temp_from_wstring(WString wstring) => new_from_wstring(wstring, mem::temp()) @inline;
-fn String! temp_from_utf16(Char16[] utf16) => new_from_utf16(utf16, mem::temp()) @inline;
+fn String! temp_from_wstring(WString wstring) => new_from_wstring(wstring, allocator::temp()) @inline;
+fn String! temp_from_utf16(Char16[] utf16) => new_from_utf16(utf16, allocator::temp()) @inline;
 
 fn usz String.utf8_codepoints(s)
 {

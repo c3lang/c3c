@@ -1,4 +1,5 @@
 module std::time;
+import std::io;
 
 distinct Time = long;
 distinct Duration = long;

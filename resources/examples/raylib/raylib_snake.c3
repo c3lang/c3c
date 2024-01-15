@@ -124,12 +124,12 @@ fn void update_game()
 
     if (raylib::is_key_pressed(keyboard::RIGHT) && allow_move)
     {
-        snake_direction = (SnakeDirection)((snake_direction + 1) % 4);
+        snake_direction = (SnakeDirection)((snake_direction.ordinal + 1) % 4);
         allow_move = false;
     }
     if (raylib::is_key_pressed(keyboard::LEFT) && allow_move)
     {
-        snake_direction = (SnakeDirection)((snake_direction + 3) % 4);
+        snake_direction = (SnakeDirection)((snake_direction.ordinal + 3) % 4);
         allow_move = false;
     }
 
@@ -179,13 +179,13 @@ fn void update_game()
     if (!fruit.active)
     {
         fruit.active = true;
-        fruit.position = { raylib::get_random_value(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x/2, raylib::get_random_value(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
+        fruit.position = { (float)raylib::get_random_value(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x / 2, (float)raylib::get_random_value(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
 
         for (int i = 0; i < counter_tail; i++)
         {
             while ((fruit.position.x == snake[i].position.x) && (fruit.position.y == snake[i].position.y))
             {
-                fruit.position = { raylib::get_random_value(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x/2, raylib::get_random_value(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
+                fruit.position = { (float)raylib::get_random_value(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x/2, (float)raylib::get_random_value(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
                 i = 0;
             }
         }
@@ -213,12 +213,12 @@ fn void draw_game()
         // Draw grid lines
         for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
         {
-            raylib::draw_line_v({SQUARE_SIZE * i + offset.x/2, offset.y/2}, {SQUARE_SIZE * i + offset.x/2, SCREEN_HEIGHT - offset.y/2}, raylib::LIGHTGRAY);
+            raylib::draw_line_v({(float)SQUARE_SIZE * i + offset.x/2, offset.y/2}, {(float)SQUARE_SIZE * i + offset.x/2, SCREEN_HEIGHT - offset.y/2}, raylib::LIGHTGRAY);
         }
 
             for (int i = 0; i < SCREEN_HEIGHT/SQUARE_SIZE + 1; i++)
             {
-                raylib::draw_line_v({offset.x/2, SQUARE_SIZE * i + offset.y / 2 }, { SCREEN_WIDTH - offset.x/2, SQUARE_SIZE * i + offset.y / 2 }, raylib::LIGHTGRAY);
+                raylib::draw_line_v({offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, { SCREEN_WIDTH - offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, raylib::LIGHTGRAY);
             }
 
             // Draw snake
@@ -249,4 +249,3 @@ fn void update_draw_frame()
 	update_game();
 	draw_game();
 }
-

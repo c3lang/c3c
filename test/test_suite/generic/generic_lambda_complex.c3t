@@ -46,7 +46,7 @@ struct TextTag
  * @require self.tags.len == 0 "template already initialized"
  * @require tag_start != tag_end
  **/
-fn void! TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator* using = mem::heap())
+fn void! TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator* using = allocator::heap())
 {
 
 	TextTagList tags;
@@ -98,7 +98,7 @@ fn void! TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 
 fn void! TextTemplate.free(&self)
 {
-	self.allocator.free(self.tags);
+	allocator::free(self.allocator, self.tags);
 	*self = {};
 }
 
@@ -161,7 +161,7 @@ fn void! main()
 
 	String foo_tmpl = "<<{{foo}} | {{bar}}>>";
 	FooTmpl ft;
-	ft.init(foo_tmpl, .using = mem::temp())!;
+	ft.init(foo_tmpl, .using = allocator::temp())!;
 	defer ft.free()!!;
 
 
@@ -183,16 +183,16 @@ entry:
   %indirectarg6 = alloca %"any*[]", align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
-  %0 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
+  %0 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
   %not = icmp eq ptr %0, null
   br i1 %not, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  call void @std.core.mem.init_default_temp_allocators()
+  call void @std.core.mem.allocator.init_default_temp_allocators()
   br label %if.exit
 
 if.exit:                                          ; preds = %if.then, %entry
-  %1 = load ptr, ptr @std.core.mem.thread_temp_allocator, align 8
+  %1 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
   %2 = insertvalue %"any*" undef, ptr %1, 0
   %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.std.core.mem.allocator.TempAllocator" to i64), 1
   %lo = load ptr, ptr %foo_tmpl, align 8

@@ -55,10 +55,10 @@ macro rindex_of(array, element)
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  * @ensure result.len == arr1.len + arr2.len
  **/
-macro concat_new(arr1, arr2, Allocator* allocator = mem::heap())
+macro concat_new(arr1, arr2, Allocator* allocator = allocator::heap())
 {
 	var $Type = $typeof(arr1[0]);
-	$Type[] result = allocator.new_array($Type, arr1.len + arr2.len);
+	$Type[] result = allocator::alloc_array(allocator, $Type, arr1.len + arr2.len);
 	if (arr1.len > 0)
 	{
 		mem::copy(result.ptr, &arr1[0], arr1.len * $Type.sizeof, $Type.alignof, $Type.alignof);
@@ -81,7 +81,7 @@ macro concat_new(arr1, arr2, Allocator* allocator = mem::heap())
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  * @ensure result.len == arr1.len + arr2.len
  **/
-macro tconcat(arr1, arr2) => concat(arr1, arr2, mem::temp());
+macro tconcat(arr1, arr2) => concat(arr1, arr2, allocator::temp());
 
 module std::core::array::slice(<Type>);
 

@@ -22,6 +22,6 @@ import test;
 
 fn void abc()
 {
-	test::bar(); // #error: not visible
+	test::bar(); // #error: could not be found
 	test::bar2(); // #error: could not be found
 }

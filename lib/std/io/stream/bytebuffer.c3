@@ -16,7 +16,7 @@ struct ByteBuffer (InStream, OutStream)
  * max_read defines how many bytes might be kept before its internal buffer is shrinked.
  * @require self.bytes.len == 0 "Buffer already initialized."
  **/
-fn ByteBuffer*! ByteBuffer.init_new(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+fn ByteBuffer*! ByteBuffer.init_new(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
 {
 	return self.new_init(max_read, initial_capacity, allocator) @inline;
 }
@@ -26,7 +26,7 @@ fn ByteBuffer*! ByteBuffer.init_new(&self, usz max_read, usz initial_capacity = 
  * max_read defines how many bytes might be kept before its internal buffer is shrinked.
  * @require self.bytes.len == 0 "Buffer already initialized."
  **/
-fn ByteBuffer*! ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = mem::heap())
+fn ByteBuffer*! ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = allocator::heap())
 {
 	*self = { .allocator = allocator, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
@@ -41,7 +41,7 @@ fn ByteBuffer*! ByteBuffer.init_temp(&self, usz max_read, usz initial_capacity =
 
 fn ByteBuffer*! ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity = 16)
 {
-	return self.new_init(max_read, initial_capacity, mem::temp());
+	return self.new_init(max_read, initial_capacity, allocator::temp());
 }
 
 /**
@@ -56,7 +56,7 @@ fn ByteBuffer*! ByteBuffer.init_with_buffer(&self, char[] buf)
 
 fn void ByteBuffer.free(&self)
 {
-	if (self.allocator) self.allocator.free(self.bytes);
+	if (self.allocator) allocator::free(self.allocator, self.bytes);
 	*self = {};
 }
 
@@ -146,7 +146,7 @@ fn usz! ByteBuffer.available(&self) @inline @dynamic
 fn void! ByteBuffer.grow(&self, usz n)
 {
 	n = math::next_power_of_2(n);
-	char* p = self.allocator.realloc_aligned(self.bytes, n, .alignment = char.alignof)!;
+	char* p = allocator::realloc_aligned(self.allocator, self.bytes, n, .alignment = char.alignof)!;
 	self.bytes = p[:n];
 }
 

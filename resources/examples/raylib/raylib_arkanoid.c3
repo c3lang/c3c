@@ -1,5 +1,6 @@
 module arkanoid;
 import raylib;
+import std::math;
 /**
  *
  *   raylib - classic game: arkanoid
@@ -102,7 +103,7 @@ fn void main()
 // Initialize game variables
 fn void init_game()
 {
-    brick_size = { raylib::get_screen_width() / BRICKS_PER_LINE, 40 };
+    brick_size = { (float)raylib::get_screen_width() / BRICKS_PER_LINE, 40 };
 
     // Initialize player
     player.position = { SCREEN_WIDTH/2, SCREEN_HEIGHT * 7 / 8 };
@@ -201,7 +202,7 @@ fn void update_game()
                 // Hit below
                 if (((ball.position.y - ball.radius) <= (brick[i][j].position.y + brick_size.y / 2)) &&
                     ((ball.position.y - ball.radius) > (brick[i][j].position.y + brick_size.y / 2 + ball.speed.y)) &&
-                    ((math::fabs((double)ball.position.x - brick[i][j].position.x)) < (double)(brick_size.x / 2 + ball.radius * 2 / 3)) && (ball.speed.y < 0))
+                    ((math::abs(ball.position.x - brick[i][j].position.x)) < (brick_size.x / 2 + ball.radius * 2.0f / 3)) && (ball.speed.y < 0))
                 {
                     brick[i][j].active = false;
                     ball.speed.y *= -1;
@@ -209,7 +210,7 @@ fn void update_game()
                 // Hit above
                 else if (((ball.position.y + ball.radius) >= (brick[i][j].position.y - brick_size.y/2)) &&
                         ((ball.position.y + ball.radius) < (brick[i][j].position.y - brick_size.y/2 + ball.speed.y)) &&
-                        ((math::fabs((double)ball.position.x - brick[i][j].position.x)) < (double)(brick_size.x/2 + ball.radius*2/3)) && (ball.speed.y > 0))
+                        ((math::abs(ball.position.x - brick[i][j].position.x)) < (brick_size.x / 2 + ball.radius * 2.0f / 3)) && (ball.speed.y > 0))
                 {
                     brick[i][j].active = false;
                     ball.speed.y *= -1;
@@ -217,7 +218,7 @@ fn void update_game()
                 // Hit left
                 else if (((ball.position.x + ball.radius) >= (brick[i][j].position.x - brick_size.x/2)) &&
                         ((ball.position.x + ball.radius) < (brick[i][j].position.x - brick_size.x/2 + ball.speed.x)) &&
-                        ((math::fabs((double)ball.position.y - brick[i][j].position.y)) < (double)(brick_size.y/2 + ball.radius*2/3)) && (ball.speed.x > 0))
+                        ((math::abs(ball.position.y - brick[i][j].position.y)) < (brick_size.y / 2 + ball.radius * 2.0f / 3)) && (ball.speed.x > 0))
                 {
                     brick[i][j].active = false;
                     ball.speed.x *= -1;
@@ -225,7 +226,7 @@ fn void update_game()
                 // Hit right
                 else if (((ball.position.x - ball.radius) <= (brick[i][j].position.x + brick_size.x/2)) &&
                         ((ball.position.x - ball.radius) > (brick[i][j].position.x + brick_size.x/2 + ball.speed.x)) &&
-                        ((math::fabs((double)ball.position.y - brick[i][j].position.y)) < (double)(brick_size.y/2 + ball.radius*2/3)) && (ball.speed.x < 0))
+                        ((math::abs(ball.position.y - brick[i][j].position.y)) < (brick_size.y / 2 + ball.radius * 2.0f / 3)) && (ball.speed.x < 0))
                 {
                     brick[i][j].active = false;
                     ball.speed.x *= -1;

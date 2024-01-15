@@ -280,6 +280,7 @@ RETRY:
 		case EXPR_CT_CASTABLE:
 		case EXPR_CT_AND_OR:
 		case EXPR_MACRO_BODY:
+		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);

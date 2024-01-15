@@ -15,7 +15,7 @@ fault JsonParsingError
 	INVALID_NUMBER,
 }
 
-fn Object*! parse(InStream* s, Allocator* allocator = mem::heap())
+fn Object*! parse(InStream* s, Allocator* allocator = allocator::heap())
 {
 	JsonContext context = { .last_string = dstring::new_with_capacity(64, allocator), .stream = s, .allocator = allocator };
 	defer context.last_string.free();

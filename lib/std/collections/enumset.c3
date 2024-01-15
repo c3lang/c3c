@@ -1,4 +1,4 @@
-// Copyright (c) 2021 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
@@ -6,8 +6,9 @@
  * @require Enum.kindof == TypeKind.ENUM : "Only enums maybe be used with an enumset"
  **/
 module std::collections::enumset(<Enum>);
+import std::io;
 
-def EnumSetType = $typefrom(private::type_for_enum_elements(Enum.elements)) @private ;
+def EnumSetType = $typefrom(private::type_for_enum_elements(Enum.elements)) @private;
 
 const IS_CHAR_ARRAY = Enum.elements > 128;
 distinct EnumSet (Printable) = EnumSetType;
@@ -140,7 +141,7 @@ fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 	return n;
 }
 
-fn String EnumSet.to_new_string(&set, Allocator* allocator = mem::heap()) @dynamic
+fn String EnumSet.to_new_string(&set, Allocator* allocator = allocator::heap()) @dynamic
 {
 	return string::new_format("%s", *set, .allocator = allocator);
 }
