@@ -64,6 +64,7 @@ typedef unsigned AstId;
 typedef unsigned ExprId;
 typedef unsigned DeclId;
 typedef unsigned TypeInfoId;
+typedef struct SemaContext_ SemaContext;
 
 
 typedef struct Int128_
@@ -469,7 +470,7 @@ typedef struct VarDecl_
 		int32_t index;
 		struct
 		{
-			struct SemaContext_ *context;
+			SemaContext *context;
 			SourceSpan span;
 		} hash_var;
 		struct
@@ -533,6 +534,7 @@ struct Signature_
 	CalleeAttributes attrs;
 	bool is_macro : 1;
 	bool is_at_macro : 1;
+	bool is_safemacro : 1;
 	Variadic variadic : 3;
 	CallABI abi : 8;
 	unsigned vararg_index;
@@ -1138,6 +1140,11 @@ typedef struct
 	TypeInfoId type;
 } ExprCastable;
 
+typedef struct
+{
+	Expr *inner;
+	SemaContext *context;
+} ExprOtherContext;
 
 struct Expr_
 {
@@ -1159,6 +1166,7 @@ struct Expr_
 		ExprConst const_expr;                       // 32
 		ExprCtArg ct_arg_expr;
 		ExprCtAndOr ct_and_or_expr;
+		ExprOtherContext expr_other_context;
 		ExprCastable castable_expr;
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
@@ -1664,7 +1672,7 @@ typedef struct
 	};
 } CallEnv;
 
-typedef struct SemaContext_
+struct SemaContext_
 {
 	Module *core_module;
 	// Evaluated in this.
@@ -1700,11 +1708,11 @@ typedef struct SemaContext_
 		Decl** ct_locals;
 	};
 	Type *rtype;
-	struct SemaContext_ *yield_context;
+	SemaContext *yield_context;
 	Decl** locals;
 	DynamicScope active_scope;
 	Expr *return_expr;
-} SemaContext;
+};
 
 
 typedef struct
@@ -2011,7 +2019,6 @@ int64_t int_to_i64(Int op);
 bool int_is_zero(Int op);
 unsigned int_bits_needed(Int op);
 bool int_fits(Int op1, TypeKind kind);
-Int int_rightmost_bits(Int op, unsigned to_bits, TypeKind result_type);
 Int int_conv(Int op, TypeKind to_type);
 Int int_div(Int op1, Int op2);
 Int int_mul(Int op1, Int op2);

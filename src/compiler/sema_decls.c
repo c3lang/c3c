@@ -878,8 +878,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	unsigned param_count = vec_size(params);
 	unsigned vararg_index = sig->vararg_index;
 	bool is_macro = sig->is_macro;
-	bool is_macro_at_name = sig->is_at_macro;
-
+	bool is_macro_at_name = sig->is_at_macro || sig->is_safemacro;
 	// Check return type
 	assert(sig->rtype || sig->is_macro);
 	Type *rtype = NULL;
@@ -2018,6 +2017,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
+			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
 			[ATTRIBUTE_SECTION] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_TEST] = ATTR_FUNC,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
@@ -2298,6 +2298,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_PURE:
 			// Only used for calls.
 			UNREACHABLE
+		case ATTRIBUTE_SAFEMACRO:
+			decl->func_decl.signature.is_safemacro = true;
+			break;
 		case ATTRIBUTE_REFLECT:
 			decl->will_reflect = true;
 			break;
@@ -2976,7 +2979,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (*erase_decl) return true;
 	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent)) return decl_poison(decl);
 
-	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param)
+	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{
 		SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 		return decl_poison(decl);

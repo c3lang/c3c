@@ -274,6 +274,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
 	target->trust_level = options->trust_level;
+	if (options->win.def) target->win.def = options->win.def;
 	if (options->use_stdlib != USE_STDLIB_NOT_SET) target->use_stdlib = options->use_stdlib;
 	if (options->link_libc != LINK_LIBC_NOT_SET) target->link_libc = options->link_libc;
 	if (options->system_linker != SYSTEM_LINKER_NOT_SET) target->system_linker = options->system_linker;

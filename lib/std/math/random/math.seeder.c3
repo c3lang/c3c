@@ -26,7 +26,7 @@ fn void seeder(char[] input, char[] out_buffer)
 	usz out_chars = out_buffer.len;
 	@pool()
 	{
-		ulong[] words = mem::temp_array(ulong, (out_chars + 7) / 8);
+		ulong[] words = mem::temp_alloc_array(ulong, (out_chars + 7) / 8);
 		words[..] = ODD_PHI64;
 		usz words_len_2 = words.len * 2;
 
@@ -86,7 +86,7 @@ fn char[8 * 4] entropy()
 		random_int,
 		hash(clock::now()),
 		hash(&DString.new_init),
-		hash(mem::heap())
+		hash(allocator::heap())
     };
     return bitcast(entropy_data, char[8 * 4]);
 }

@@ -101,6 +101,8 @@ typedef struct GenContext_
 	LLVMTypeRef dtable_type;
 	LLVMTypeRef ptr_type;
 	LLVMTypeRef chars_type;
+	LLVMTypeRef xtor_entry_type;
+	LLVMTypeRef xtor_func_type;
 	Decl *panic_var;
 	Decl *panicf;
 	struct
@@ -121,6 +123,7 @@ typedef struct GenContext_
 	Decl **dynamic_functions;
 	LLVMValueRef dyn_find_function;
 	LLVMTypeRef dyn_find_function_type;
+	LLVMTypeRef dyn_section_type;
 } GenContext;
 
 // LLVM Intrinsics

@@ -23,14 +23,14 @@ struct List (Printable)
  * @param initial_capacity "The initial capacity to reserve"
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn List* List.new_init(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap())
+fn List* List.new_init(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap())
 {
 	self.allocator = allocator;
 	self.size = 0;
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		self.entries = allocator.alloc_aligned(Type.sizeof * initial_capacity, .alignment = Type[1].alignof)!!;
+		self.entries = allocator::malloc_aligned(allocator, Type.sizeof * initial_capacity, .alignment = Type[1].alignof)!!;
 	}
 	else
 	{
@@ -44,7 +44,7 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator* allocator = 
  * @param initial_capacity "The initial capacity to reserve"
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
 {
 	return self.new_init(initial_capacity, allocator) @inline;
 }
@@ -56,7 +56,7 @@ fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = 
  **/
 fn List* List.temp_init(&self, usz initial_capacity = 16)
 {
-	return self.new_init(initial_capacity, mem::temp()) @inline;
+	return self.new_init(initial_capacity, allocator::temp()) @inline;
 }
 
 /**
@@ -72,7 +72,7 @@ fn List* List.init_temp(&self, usz initial_capacity = 16) @deprecated("Replaced 
 /**
  * @require self.size == 0 "The List must be empty"
  **/
-fn void List.init_wrapping_array(&self, Type[] types, Allocator* allocator = mem::heap())
+fn void List.init_wrapping_array(&self, Type[] types, Allocator* allocator = allocator::heap())
 {
 	self.allocator = allocator;
 	self.size = types.len;
@@ -100,7 +100,7 @@ fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn String List.to_new_string(&self, Allocator* allocator = mem::heap()) @dynamic
+fn String List.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
 {
 	return string::new_format("%s", *self, .allocator = allocator);
 }
@@ -164,17 +164,17 @@ fn void List.add_all(&self, List* other_list)
 }
 
 
-fn Type[] List.to_new_array(&self, Allocator* allocator = mem::heap())
+fn Type[] List.to_new_array(&self, Allocator* allocator = allocator::heap())
 {
 	if (!self.size) return Type[] {};
-	Type[] result = allocator.new_array(Type, self.size);
+	Type[] result = allocator::alloc_array(allocator, Type, self.size);
 	result[..] = self.entries[:self.size];
 	return result;
 }
 
 fn Type[] List.to_tarray(&self)
 {
-	return self.to_new_array(mem::temp());
+	return self.to_new_array(allocator::temp());
 }
 
 /**
@@ -277,7 +277,7 @@ fn Type List.get(&self, usz index) @inline
 fn void List.free(&self)
 {
 	if (!self.allocator) return;
-	self.allocator.free_aligned(self.entries);
+	allocator::free_aligned(self.allocator, self.entries);
 	self.capacity = 0;
 	self.size = 0;
 	self.entries = null;
@@ -373,9 +373,9 @@ fn void List.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
-	if (!self.allocator) self.allocator = mem::heap();
+	if (!self.allocator) self.allocator = allocator::heap();
 	min_capacity = math::next_power_of_2(min_capacity);
-	self.entries = self.allocator.realloc_aligned(self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof) ?? null;
+	self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof) ?? null;
 	self.capacity = min_capacity;
 }
 

@@ -1,5 +1,38 @@
 # C3C Release Notes
 
+## 0.5.4 Change list
+
+### Changes / improvements
+- Hash variables may now take a designated initializer.
+- Added @safemacro to override the `@` requirement for non-function-like macros.
+- More information available with debug log in non debug builds.
+- Removed install_win_reqs.bat which didn't work well.
+- Support `**` to mean `./**`
+- MacOS init/finalizer now respects priority.
+- Bitstructs supports `!=` and `==`.
+- Support Windows `.def` files using `--windef`.
+- Bitstructs now fold compile time constant bit ops.
+- Fix issue where in some cases a constant global with a string wasn't folded (e.g. in asm stmts)
+
+### Fixes
+- Fixes to macro context evaluation with macro varargs.
+- Dynamic methods registered before init functions on MacOS.
+- Fixed clobber on x86 `cpuid` instruction.
+- Removed invalid syntax from grammar.y.
+- `output` project setting now respected.
+- Aliased declarations caused errors when used in initializers.
+- Aliased consts used as constant initializers caused errors.
+- Exported module names replace `::` by `_`.
+
+### Stdlib changes
+- Deprecated `Allocator` helper functions.
+- Added `mem::allocator` functions corresponding to removed allocator functions.
+- Changed `mem::new` / `mem::temp_new` to accept an optional initializer, and will clear by default.
+- Mem `_clear` and `_zero` variants deprecated. "new_*" functions will clear by default.
+- Mem "alloc_*" functions replace old "new_*" behaviour.
+- Fixed temp memory issue with formatter.
+- Added temp_push and temp_pop for pushing / popping the temp allocator manually (or from C).
+
 ## 0.5.3 Change list
 
 ### Changes / improvements
@@ -229,7 +262,7 @@
 - Added `saturated` math.
 - Added `@expect`, `@unlikely` and `@likely` macros.
 - Temp allocator uses memory-env to determine starting size.
-- Temp allocator is now accessed using `mem::temp()`, heap allocator using `mem::heap()`.
+- Temp allocator is now accessed using `mem::temp()`, heap allocator using `allocator::heap()`.
 - Float parsing added.
 - Additions to std::net, ipv4/ipv6 parsing.
 - Stream api.

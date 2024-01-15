@@ -43,6 +43,8 @@ bool expr_may_addr(Expr *expr)
 	if (IS_OPTIONAL(expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_OTHER_CONTEXT:
+			return expr_may_addr(expr->expr_other_context.inner);
 		case EXPR_IDENTIFIER:
 		{
 			Decl *decl = expr->identifier_expr.decl;
@@ -148,6 +150,9 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_OTHER_CONTEXT:
+			expr = expr->expr_other_context.inner;
+			goto RETRY;
 		case EXPR_SWIZZLE:
 			return false;
 		case EXPR_POINTER_OFFSET:
@@ -660,6 +665,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
+		case EXPR_OTHER_CONTEXT:
+			return expr_is_pure(expr->expr_other_context.inner);
 		case EXPR_SWIZZLE:
 			return exprid_is_pure(expr->swizzle_expr.parent);
 		case EXPR_BUILTIN_ACCESS:

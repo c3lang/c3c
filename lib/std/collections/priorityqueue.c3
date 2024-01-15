@@ -36,19 +36,19 @@ struct PrivatePriorityQueue (Printable)
 	Heap heap;
 }
 
-fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline @deprecated("Replaced by new_init")
+fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @inline @deprecated("Replaced by new_init")
 {
 	return self.new_init(initial_capacity, allocator);
 }
 
-fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator* allocator = mem::heap()) @inline
+fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @inline
 {
 	self.heap.new_init(initial_capacity, allocator);
 }
 
 fn void PrivatePriorityQueue.temp_init(&self, usz initial_capacity = 16) @inline
 {
-	self.heap.new_init(initial_capacity, mem::temp()) @inline;
+	self.heap.new_init(initial_capacity, allocator::temp()) @inline;
 }
 
 fn void PrivatePriorityQueue.init_temp(&self, usz initial_capacity = 16) @inline @deprecated("Replaced by temp_init")
@@ -151,7 +151,7 @@ fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 	return self.heap.to_format(formatter);
 }
 
-fn String PrivatePriorityQueue.to_new_string(&self, Allocator* allocator = mem::heap()) @dynamic
+fn String PrivatePriorityQueue.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
 {
 	return self.heap.to_new_string(allocator);
 }

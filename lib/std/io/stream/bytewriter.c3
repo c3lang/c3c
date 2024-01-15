@@ -13,7 +13,7 @@ struct ByteWriter (OutStream)
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure (bool)allocator, self.index == 0
  **/
-fn ByteWriter* ByteWriter.new_init(&self, Allocator* allocator = mem::heap())
+fn ByteWriter* ByteWriter.new_init(&self, Allocator* allocator = allocator::heap())
 {
 	*self = { .bytes = {}, .allocator = allocator };
 	return self;
@@ -25,7 +25,7 @@ fn ByteWriter* ByteWriter.new_init(&self, Allocator* allocator = mem::heap())
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure (bool)allocator, self.index == 0
  **/
-fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
 {
 	return self.new_init(allocator) @inline;
 }
@@ -37,7 +37,7 @@ fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = mem::heap()) @d
  **/
 fn ByteWriter* ByteWriter.temp_init(&self)
 {
-	return self.new_init(mem::temp()) @inline;
+	return self.new_init(allocator::temp()) @inline;
 }
 
 /**
@@ -59,7 +59,7 @@ fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
 fn void! ByteWriter.destroy(&self) @dynamic
 {
 	if (!self.allocator) return;
-	if (void* ptr = self.bytes.ptr) self.allocator.free(ptr);
+	if (void* ptr = self.bytes.ptr) allocator::free(self.allocator, ptr);
 	*self = { };
 }
 
@@ -74,7 +74,7 @@ fn void! ByteWriter.ensure_capacity(&self, usz len) @inline
 	if (!self.allocator) return IoError.OUT_OF_SPACE?;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
-	char* new_ptr = self.allocator.realloc_checked(self.bytes.ptr, new_capacity)!;
+	char* new_ptr = allocator::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
 	self.bytes = new_ptr[:new_capacity];
 }
 

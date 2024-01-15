@@ -35,14 +35,19 @@ macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED ==
 /**
  * @require size >= 16
  **/
-fn TempAllocator*! new_temp(usz size, Allocator* allocator)
+fn TempAllocator*! new_temp_allocator(usz size, Allocator* allocator)
 {
-	TempAllocator* temp = allocator.alloc_checked(TempAllocator.sizeof + size)!;
+	TempAllocator* temp = allocator::alloc_with_padding(allocator, TempAllocator, size)!;
 	temp.last_page = null;
 	temp.backing_allocator = allocator;
 	temp.used = 0;
 	temp.capacity = size;
 	return temp;
+}
+
+fn TempAllocator*! new_temp(usz size, Allocator* allocator) @deprecated("Use new_temp_allocator")
+{
+	return new_temp_allocator(size, allocator);
 }
 
 fn usz TempAllocator.mark(&self) @dynamic => self.used;
@@ -71,8 +76,7 @@ fn void TempAllocator.reset(&self, usz mark) @dynamic
 fn void! TempAllocator._free_page(&self, TempAllocatorPage* page) @inline @local
 {
 	void* mem = page.start;
-	if (page.is_aligned()) return self.backing_allocator.free_aligned(mem);
-	return self.backing_allocator.free(mem);
+	return self.backing_allocator.release(mem, page.is_aligned());
 }
 
 fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, usz alignment, usz offset) @inline @local
@@ -92,14 +96,7 @@ fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, 
 	// Clear on size > original size.
 	void* data = self.acquire(size, size > page_size, alignment, offset)!;
 	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-	if (page.is_aligned())
-	{
-		self.backing_allocator.free_aligned(real_pointer);
-	}
-	else
-	{
-		self.backing_allocator.free(real_pointer);
-	}
+	self.backing_allocator.release(real_pointer, page.is_aligned());
 	return data;
 }
 
@@ -168,11 +165,11 @@ fn void*! TempAllocator.acquire(&self, usz size, bool clear, usz alignment, usz 
 		usz total_alloc_size = TempAllocatorPage.sizeof + size;
 		if (clear)
 		{
-			page = self.backing_allocator.calloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
+			page = allocator::calloc_aligned(self.backing_allocator, total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
 		}
 		else
 		{
-			page = self.backing_allocator.alloc_aligned(total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
+			page = allocator::malloc_aligned(self.backing_allocator, total_alloc_size, alignment, TempAllocatorPage.sizeof + offset)!;
 		}
 		page.start = page;
 		page.size = size | PAGE_IS_ALIGNED;

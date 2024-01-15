@@ -24,11 +24,11 @@ struct BenchmarkUnit
 	BenchmarkFn func;
 }
 
-fn BenchmarkUnit[] benchmark_collection_create(Allocator* allocator = mem::heap())
+fn BenchmarkUnit[] benchmark_collection_create(Allocator* allocator = allocator::heap())
 {
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
-	BenchmarkUnit[] benchmarks = allocator.new_array(BenchmarkUnit, names.len);
+	BenchmarkUnit[] benchmarks = allocator::alloc_array(allocator, BenchmarkUnit, names.len);
 	foreach (i, benchmark : fns)
 	{
 		benchmarks[i] = { names[i], fns[i] };
@@ -130,7 +130,7 @@ fn bool default_benchmark_runner()
 {
 	@pool()
 	{
-		return run_benchmarks(benchmark_collection_create(mem::temp()));
+		return run_benchmarks(benchmark_collection_create(allocator::temp()));
 	};
 }
 
@@ -142,11 +142,11 @@ struct TestUnit
 	TestFn func;
 }
 
-fn TestUnit[] test_collection_create(Allocator* allocator = mem::heap())
+fn TestUnit[] test_collection_create(Allocator* allocator = allocator::heap())
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
-	TestUnit[] tests = allocator.new_array(TestUnit, names.len);
+	TestUnit[] tests = allocator::alloc_array(allocator, TestUnit, names.len);
 	foreach (i, test : fns)
 	{
 		tests[i] = { names[i], fns[i] };
@@ -236,7 +236,7 @@ fn bool default_test_runner()
 {
 	@pool()
 	{
-		return run_tests(test_collection_create(mem::temp()));
+		return run_tests(test_collection_create(allocator::temp()));
 	};
 }
 

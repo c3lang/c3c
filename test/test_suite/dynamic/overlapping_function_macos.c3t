@@ -1,0 +1,176 @@
+// #target: macos-x64
+module overlap;
+import std::io;
+
+interface TestProto
+{
+	fn void tesT();
+}
+
+interface TestProto2
+{
+	fn void tesT();
+}
+
+fn void Test.tesT(&self) @dynamic
+{
+}
+
+fn void Test.foo(&self) @dynamic {}
+
+struct Test (TestProto, TestProto2)
+{
+	void* abc;
+}
+
+fn void main()
+{
+	TestProto* z = mem::alloc(Test);
+	z.tesT();
+	TestProto2* w = (TestProto2*)z;
+	w.tesT();
+}
+
+/* #expect: overlap.ll
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"any*" = type { ptr, i64 }
+
+@"$ct.overlap.Test" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$sel.tesT" = linkonce_odr constant [5 x i8] c"tesT\00", align 1
+@.panic_msg = internal constant [42 x i8] c"No method 'tesT' could be found on target\00", align 1
+@.file = internal constant [30 x i8] c"overlapping_function_macos.c3\00", align 1
+@.func = internal constant [5 x i8] c"main\00", align 1
+@std.core.builtin.panic = external global ptr, align 8
+@"$sel.foo" = linkonce_odr constant [4 x i8] c"foo\00", align 1
+@"$c3_dynamic" = internal global [2 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @overlap.Test.tesT, ptr @"$sel.tesT", i64 ptrtoint (ptr @"$ct.overlap.Test" to i64) }, { ptr, ptr, i64 } { ptr @overlap.Test.foo, ptr @"$sel.foo", i64 ptrtoint (ptr @"$ct.overlap.Test" to i64) }], section "__DATA,__c3_dynamic", align 8
+
+; Function Attrs: nounwind uwtable
+define void @overlap.Test.tesT(ptr %0) #0 {
+entry:
+  ret void
+}
+
+; Function Attrs:
+define void @overlap.Test.foo(ptr %0) #0 {
+entry:
+  ret void
+}
+
+; Function Attrs:
+define void @overlap.main() #0 {
+entry:
+  %z = alloca %"any*", align 8
+  %.inlinecache = alloca ptr, align 8
+  %.cachedtype = alloca ptr, align 8
+  %w = alloca %"any*", align 8
+  %.inlinecache3 = alloca ptr, align 8
+  %.cachedtype4 = alloca ptr, align 8
+  store ptr null, ptr %.cachedtype4, align 8
+  store ptr null, ptr %.cachedtype, align 8
+  %0 = call ptr @std.core.mem.malloc(i64 8) #1
+  %1 = insertvalue %"any*" undef, ptr %0, 0
+  %2 = insertvalue %"any*" %1, i64 ptrtoint (ptr @"$ct.overlap.Test" to i64), 1
+  store %"any*" %2, ptr %z, align 8
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 8
+  %3 = load i64, ptr %ptradd, align 8
+  %4 = inttoptr i64 %3 to ptr
+  %type = load ptr, ptr %.cachedtype, align 8
+  %5 = icmp eq ptr %4, %type
+  br i1 %5, label %cache_hit, label %cache_miss
+
+cache_miss:                                       ; preds = %entry
+  %ptradd1 = getelementptr inbounds i8, ptr %4, i64 16
+  %6 = load ptr, ptr %ptradd1, align 8
+  %7 = call ptr @.dyn_search(ptr %6, ptr @"$sel.tesT")
+  store ptr %7, ptr %.inlinecache, align 8
+  store ptr %4, ptr %.cachedtype, align 8
+  br label %8
+
+cache_hit:                                        ; preds = %entry
+  %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
+  br label %8
+
+8:                                                ; preds = %cache_hit, %cache_miss
+  %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %7, %cache_miss ]
+  %9 = icmp eq ptr %fn_phi, null
+  br i1 %9, label %missing_function, label %match
+
+missing_function:                                 ; preds = %8
+  %10 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %10(ptr @.panic_msg, i64 41, ptr @.file
+  unreachable
+
+match:                                            ; preds = %8
+  %11 = load ptr, ptr %z, align 8
+  call void %fn_phi(ptr %11)
+  %12 = load %"any*", ptr %z, align 8
+  store %"any*" %12, ptr %w, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %w, i64 8
+  %13 = load i64, ptr %ptradd2, align 8
+  %14 = inttoptr i64 %13 to ptr
+  %type5 = load ptr, ptr %.cachedtype4, align 8
+  %15 = icmp eq ptr %14, %type5
+  br i1 %15, label %cache_hit8, label %cache_miss6
+
+cache_miss6:                                      ; preds = %match
+  %ptradd7 = getelementptr inbounds i8, ptr %14, i64 16
+  %16 = load ptr, ptr %ptradd7, align 8
+  %17 = call ptr @.dyn_search(ptr %16, ptr @"$sel.tesT")
+  store ptr %17, ptr %.inlinecache3, align 8
+  store ptr %14, ptr %.cachedtype4, align 8
+  br label %18
+
+cache_hit8:                                       ; preds = %match
+  %cache_hit_fn9 = load ptr, ptr %.inlinecache3, align 8
+  br label %18
+
+18:                                               ; preds = %cache_hit8, %cache_miss6
+  %fn_phi10 = phi ptr [ %cache_hit_fn9, %cache_hit8 ], [ %17, %cache_miss6 ]
+  %19 = icmp eq ptr %fn_phi10, null
+  br i1 %19, label %missing_function11, label %match12
+
+missing_function11:                               ; preds = %18
+  %20 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %20(ptr @.panic_msg, i64 41, ptr @.file
+  unreachable
+
+match12:                                          ; preds = %18
+  %21 = load ptr, ptr %w, align 8
+  call void %fn_phi10(ptr %21)
+  ret void
+}
+
+; Function Attrs:
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  call void @overlap.main()
+  ret i32 0
+}
+
+define weak_odr ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
+entry:
+  br label %check
+
+check:                                            ; preds = %no_match, %entry
+  %2 = phi ptr [ %0, %entry ], [ %9, %no_match ]
+  %3 = icmp eq ptr %2, null
+  br i1 %3, label %missing_function, label %compare
+
+missing_function:                                 ; preds = %check
+  ret ptr null
+
+compare:                                          ; preds = %check
+  %4 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 1
+  %5 = load ptr, ptr %4, align 8
+  %6 = icmp eq ptr %5, %1
+  br i1 %6, label %match, label %no_match
+
+match:                                            ; preds = %compare
+  %7 = load ptr, ptr %2, align 8
+  ret ptr %7
+
+no_match:                                         ; preds = %compare
+  %8 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 2
+  %9 = load ptr, ptr %8, align 8
+  br label %check
+}

@@ -161,14 +161,14 @@ fn char[]! load_buffer(String filename, char[] buffer)
 
 }
 
-fn char[]! load_new(String filename, Allocator* allocator = mem::heap())
+fn char[]! load_new(String filename, Allocator* allocator = allocator::heap())
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
 	usz len = file.seek(0, END)!;
 	file.seek(0, SET)!;
-	char* data = allocator.alloc_checked(len)!;
-	defer catch allocator.free(data);
+	char* data = allocator::malloc_try(allocator, len)!;
+	defer catch allocator::free(allocator, data);
 	usz read = 0;
 	while (read < len)
 	{
@@ -179,7 +179,7 @@ fn char[]! load_new(String filename, Allocator* allocator = mem::heap())
 
 fn char[]! load_temp(String filename)
 {
-	return load_new(filename, mem::temp());
+	return load_new(filename, allocator::temp());
 }
 
 /**

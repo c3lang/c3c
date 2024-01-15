@@ -46,7 +46,7 @@ fn void! native_rmtree(Path path)
 	{
 		@pool()
 		{
-			String filename = string::new_from_wstring((WString)&find_data.cFileName, mem::temp())!;
+			String filename = string::new_from_wstring((WString)&find_data.cFileName, allocator::temp())!;
 			if (filename == "." || filename == "..") continue;
 			Path file_path = path.tappend(filename)!;
 			if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)

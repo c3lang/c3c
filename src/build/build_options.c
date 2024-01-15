@@ -162,6 +162,7 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("  --winsdk <dir>            - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>         - Windows CRT linking: none, static, dynamic (default).");
+	OUTPUT("  --windef <file>           - Use Windows 'def' file for function exports instead of 'dllexport'.");
 	OUTPUT("");
 	OUTPUT("  --macossdk <dir>          - Set the directory for the MacOS SDK for cross compilation.");
 	OUTPUT("  --macos-min-version <ver> - Set the minimum MacOS version to compile for.");
@@ -896,6 +897,12 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("trust")))
 			{
 				options->trust_level = (TrustLevel) parse_multi_option(argopt, 3, trust_level);
+				return;
+			}
+			if (match_longopt("windef"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --windef needs a file.");
+				options->win.def = next_arg();
 				return;
 			}
 			if ((argopt = match_argopt("wincrt")))

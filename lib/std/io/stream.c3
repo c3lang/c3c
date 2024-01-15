@@ -142,12 +142,12 @@ fn usz! copy_to(InStream* in, OutStream* dst, char[] buffer = {})
 		$case NORMAL:
 			@pool()
 			{
-				return copy_through_buffer(in, dst, mem::temp_array(char, 4096));
+				return copy_through_buffer(in, dst, mem::temp_alloc_array(char, 4096));
 			};
 		$case SMALL:
 			@pool()
 			{
-				return copy_through_buffer(in, dst, mem::temp_array(char, 1024));
+				return copy_through_buffer(in, dst, mem::temp_alloc_array(char, 1024));
 			};
 		$case TINY:
 		$case NONE:

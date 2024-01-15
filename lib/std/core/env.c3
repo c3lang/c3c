@@ -131,6 +131,7 @@ const bool TESTING = $$TESTING;
 const MemoryEnvironment MEMORY_ENV = (MemoryEnvironment)$$MEMORY_ENVIRONMENT;
 const bool TRACK_MEMORY = DEBUG_SYMBOLS && (COMPILER_SAFE_MODE || TESTING);
 const bool X86_64 = ARCH_TYPE == X86_64;
+const bool X86 = ARCH_TYPE == X86;
 const bool AARCH64 = ARCH_TYPE == AARCH64;
 const bool NATIVE_STACKTRACE = LINUX || DARWIN || WIN32;
 const bool LINUX = LIBC && OS_TYPE == LINUX;

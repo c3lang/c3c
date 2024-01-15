@@ -71,6 +71,11 @@ jobs:
           cd test
           ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
 
+      - name: Test python script
+        run: |
+          py msvc_build_libraries.py --accept-license
+          dir msvc_sdk
+
       - name: upload artifacts
         uses: actions/upload-artifact@v3
         with:
@@ -193,7 +198,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17, 18]
+        llvm_version: [15, 16, 17, 18, 19]
 
     steps:
       - uses: actions/checkout@v4
@@ -207,7 +212,7 @@ jobs:
           if [[ "${{matrix.llvm_version}}" < 16 ]]; then
             sudo apt remove libllvm15
           fi
-          if [[ "${{matrix.llvm_version}}" < 18 ]]; then
+          if [[ "${{matrix.llvm_version}}" < 19 ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
             sudo apt-get update
             sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
@@ -222,6 +227,7 @@ jobs:
               libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
           fi
       - name: CMake
+        if: matrix.llvm_version != 18
         run: |
           cmake -B build \
                 -G Ninja \
@@ -233,6 +239,20 @@ jobs:
                 -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
                 -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}
+          cmake --build build
+      - name: CMake18
+        if: matrix.llvm_version == 18
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DC3_LLVM_VERSION=18.1
           cmake --build build
 
       - name: Compile and run some examples
@@ -418,7 +438,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16]
+        llvm_version: [15, 16, 17]
     steps:
       - uses: actions/checkout@v4
       - name: Download LLVM

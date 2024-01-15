@@ -308,6 +308,7 @@ typedef struct BuildOptions_
 	const char* std_lib_dir;
 	struct {
 		const char *sdk;
+		const char *def;
 		WinCrtLinking crt_linking;
 	} win;
 	struct {
@@ -431,6 +432,7 @@ typedef struct
 	const char **link_args;
 	const char *build_dir;
 	const char *object_file_dir;
+	const char *output_dir;
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *script_dir;
@@ -501,6 +503,7 @@ typedef struct
 	struct
 	{
 		const char *sdk;
+		const char *def;
 		WinCrtLinking crt_linking;
 		bool use_win_subsystem;
 	} win;
@@ -551,6 +554,7 @@ static BuildTarget default_build_target = {
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
 		.feature.safe_mode = SAFETY_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
+		.win.def = NULL,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 };
 

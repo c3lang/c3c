@@ -2,6 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem;
+import std::core::mem::allocator @public;
 
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
@@ -379,9 +380,9 @@ macro type_alloc_must_be_aligned($Type)
  **/
 macro void @scoped(Allocator* allocator; @body())
 {
-	Allocator* old_allocator = thread_allocator;
-	thread_allocator = allocator;
-	defer thread_allocator = old_allocator;
+	Allocator* old_allocator = allocator::thread_allocator;
+	allocator::thread_allocator = allocator;
+	defer allocator::thread_allocator = old_allocator;
 	@body();
 }
 
@@ -389,11 +390,11 @@ macro void @report_heap_allocs_in_scope(;@body())
 {
 	TrackingAllocator tracker;
 	tracker.init(thread_allocator);
-	Allocator* old_allocator = thread_allocator;
-	thread_allocator = &tracker;
+	Allocator* old_allocator = allocator::thread_allocator;
+	allocator::thread_allocator = &tracker;
 	defer
 	{
-		thread_allocator = old_allocator;
+		allocator::thread_allocator = old_allocator;
 		tracker.print_report();
 		tracker.free();
 	}
@@ -404,7 +405,7 @@ macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
 {
 	char[$size] buffer;
 	OnStackAllocator allocator;
-	allocator.init(&buffer, mem::heap());
+	allocator.init(&buffer, allocator::heap());
 	defer allocator.free();
 	@body(&allocator);
 }
@@ -413,7 +414,7 @@ macro void @stack_pool(usz $size; @body) @builtin
 {
 	char[$size] buffer;
 	OnStackAllocator allocator;
-	allocator.init(&buffer, mem::heap());
+	allocator.init(&buffer, allocator::heap());
 	defer allocator.free();
 	mem::@scoped(&allocator)
 	{
@@ -421,76 +422,67 @@ macro void @stack_pool(usz $size; @body) @builtin
 	};
 }
 
+struct TempState
+{
+	TempAllocator* old;
+	TempAllocator* current;
+	usz mark;
+}
+
+/**
+ * Push the current temp allocator. A push must always be balanced with a pop using the current state.
+ **/
+fn TempState temp_push(TempAllocator* other = null)
+{
+	TempAllocator* current = allocator::temp();
+	TempAllocator* old = current;
+	if (other == current)
+	{
+		current = allocator::temp_allocator_next();
+	}
+	return { old, current, current.used };
+}
+
+/**
+ * Pop the current temp allocator. A pop must always be balanced with a push.
+ **/
+fn void temp_pop(TempState old_state)
+{
+	assert(allocator::thread_temp_allocator == old_state.current, "Tried to pop temp allocators out of order.");
+	assert(old_state.current.used >= old_state.mark, "Tried to pop temp allocators out of order.");
+	old_state.current.reset(old_state.mark);
+	allocator::thread_temp_allocator = old_state.old;
+}
+
 macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 {
-	TempAllocator* current = temp();
+	TempAllocator* current = allocator::temp();
 	var $has_arg = !$is_const(#other_temp);
 	$if $has_arg:
 		TempAllocator* original = current;
-		if (current == (void*)#other_temp) current = temp_allocator_next();
+		if (current == (void*)#other_temp) current = allocator::temp_allocator_next();
 	$endif
 	usz mark = current.used;
 	defer
 	{
 		current.reset(mark);
 		$if $has_arg:
-			thread_temp_allocator = original;
+			allocator::thread_temp_allocator = original;
 		$endif;
 	}
 	@body();
 }
 
-tlocal Allocator* thread_allocator @private = &allocator::LIBC_ALLOCATOR;
-tlocal TempAllocator* thread_temp_allocator @private = null;
-tlocal TempAllocator*[2] temp_allocator_pair @private;
-Allocator* temp_base_allocator @private = &allocator::LIBC_ALLOCATOR;
 
-macro TempAllocator* create_default_sized_temp_allocator(Allocator* allocator) @local
-{
-	$switch (env::MEMORY_ENV)
-	$case NORMAL:
-		return allocator::new_temp(1024 * 256, allocator)!!;
-	$case SMALL:
-		return allocator::new_temp(1024 * 16, allocator)!!;
-	$case TINY:
-		return allocator::new_temp(1024 * 2, allocator)!!;
-	$case NONE:
-		unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
-	$endswitch
-}
 
-fn TempAllocator *temp_allocator_next() @private
-{
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-		return thread_temp_allocator;
-	}
-	usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
-	return thread_temp_allocator = temp_allocator_pair[index];
-}
 
 import libc;
 
-fn void init_default_temp_allocators() @private
-{
-	temp_allocator_pair[0] = create_default_sized_temp_allocator(temp_base_allocator);
-	temp_allocator_pair[1] = create_default_sized_temp_allocator(temp_base_allocator);
-	thread_temp_allocator = temp_allocator_pair[0];
-}
 
-macro TempAllocator* temp()
-{
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-	}
-	return thread_temp_allocator;
-}
 
-macro Allocator* current_allocator() => thread_allocator;
-macro Allocator* heap() => thread_allocator;
-
+macro TempAllocator* temp() @deprecated("Use allocator::temp()") => allocator::temp();
+macro Allocator* current_allocator() @deprecated("Use allocator::heap()") => allocator::heap();
+macro Allocator* heap() @deprecated("Use allocator::heap()") => allocator::heap();
 
 module std::core::mem @if(WASM_NOLIBC);
 
@@ -520,88 +512,143 @@ macro TrackingEnv* get_tracking_env()
 	$endif
 }
 
-macro @clone(value) @builtin
+macro @clone(value) @builtin @nodiscard
 {
-	return mem::heap().clone(value);
+	return allocator::clone(allocator::heap(), value);
 }
 
-macro @tclone(value) @builtin
+macro @tclone(value) @builtin @nodiscard
 {
-	return mem::temp().clone(value);
+	return temp_new($typeof(value), value);
 }
 
-fn void* malloc(usz size) @builtin @inline
+fn void* malloc(usz size) @builtin @inline @nodiscard
 {
-	return mem::heap().alloc(size);
+	return allocator::malloc(allocator::heap(), size);
 }
 
-fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
+fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
 {
-	return temp().acquire(size, false, alignment, offset)!!;
+	return allocator::temp().acquire(size, false, alignment, offset)!!;
 }
 
-macro new($Type)
+/**
+ * @require $vacount < 2 : "Too many arguments."
+ * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ **/
+macro new($Type, ...) @nodiscard
 {
-	return heap().new($Type);
+	$if $vacount == 0:
+		return ($Type*)calloc($Type.sizeof);
+	$else
+		$Type* val = malloc($Type.sizeof);
+		*val = $vaexpr(0);
+		return val;
+	$endif
 }
 
-macro new_clear($Type)
+macro alloc($Type) @nodiscard
 {
-	return heap().new_clear($Type);
+	return ($Type*)malloc($Type.sizeof);
 }
 
-macro new_temp($Type)
+macro new_clear($Type) @deprecated("Use mem::new")
+{
+	return new($Type);
+}
+
+macro new_temp($Type) @deprecated("Use mem::temp_alloc or mem::temp_new")
 {
 	return tmalloc($Type.sizeof);
 }
 
-macro new_temp_clear($Type)
+/**
+ * @require $vacount < 2 : "Too many arguments."
+ * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ **/
+macro temp_new($Type, ...) @nodiscard
+{
+	$if $vacount == 0:
+		return ($Type*)tcalloc($Type.sizeof) @inline;
+	$else
+		$Type* val = tmalloc($Type.sizeof) @inline;
+		*val = $vaexpr(0);
+		return val;
+	$endif
+}
+
+macro temp_alloc($Type) @nodiscard
+{
+	return tmalloc($Type.sizeof);
+}
+
+macro new_temp_clear($Type) @deprecated("use mem::temp_new")
 {
 	return tcalloc($Type.sizeof);
 }
 
-macro new_array($Type, usz elements)
+macro new_array($Type, usz elements) @nodiscard
 {
-	return heap().new_array($Type, elements);
+	return allocator::new_array(allocator::heap(), $Type, elements);
 }
 
-macro temp_array($Type, usz elements)
+macro alloc_array($Type, usz elements) @nodiscard
+{
+	return allocator::alloc_array(allocator::heap(), $Type, elements);
+}
+
+macro talloc_array($Type, usz elements) @nodiscard @deprecated("use mem::temp_alloc_array")
+{
+	return temp_alloc_array($Type, elements);
+}
+
+macro temp_alloc_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
-macro new_zero_array($Type, usz elements)
+macro temp_array($Type, usz elements) @nodiscard @deprecated("use mem::temp_alloc_array")
 {
-	return heap().new_zero_array($Type, elements);
+	return temp_alloc_array($Type, elements);
 }
 
-macro temp_zero_array($Type, usz elements)
+macro temp_new_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
-fn void* calloc(usz size) @builtin @inline
+macro new_zero_array($Type, usz elements) @deprecated("Use new_array")
 {
-	return heap().calloc(size);
+	return new_array($Type, elements);
 }
 
-fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline
+macro temp_zero_array($Type, usz elements) @deprecated("Use temp_new_array")
 {
-	return temp().acquire(size, false, alignment, offset)!!;
+	return temp_new_array($Type, elements);
 }
 
-fn void* realloc(void *ptr, usz new_size) @builtin @inline
+fn void* calloc(usz size) @builtin @inline @nodiscard
 {
-	return heap().realloc(ptr, new_size);
+	return allocator::calloc(allocator::heap(), size);
+}
+
+fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
+{
+	return allocator::temp().acquire(size, false, alignment, offset)!!;
+}
+
+fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
+{
+	return allocator::realloc(allocator::heap(), ptr, new_size);
 }
 
 fn void free(void* ptr) @builtin @inline
 {
-	heap().free(ptr);
+	return allocator::free(allocator::heap(), ptr);
 }
 
-fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline
+fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline @nodiscard
 {
-	return temp().resize(ptr, size, alignment, 0)!!;
+	return allocator::temp().resize(ptr, size, alignment, 0)!!;
 }
 

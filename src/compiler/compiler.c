@@ -486,6 +486,7 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
+		if (active_target.output_dir) output_exe = file_append_path(active_target.output_dir, output_exe);
 		if (file_is_dir(output_exe))
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
@@ -541,6 +542,7 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
+		if (active_target.output_dir) output_static = file_append_path(active_target.output_dir, output_static);
 		if (file_is_dir(output_static))
 		{
 			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -556,6 +558,7 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
+		if (active_target.output_dir) output_dynamic = file_append_path(active_target.output_dir, output_dynamic);
 		if (file_is_dir(output_dynamic))
 		{
 			error_exit("Cannot create a dynamic library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -582,7 +585,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 	VECEACH(dirs, i)
 	{
 		const char *name = dirs[i];
-		DEBUG_LOG("Searching for sources in %s", name);
+		INFO_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
 		if (name[name_len - 1] == '*')
@@ -594,7 +597,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 				continue;
 			}
 			if (name[name_len - 2] != '*') goto INVALID_NAME;
-			DEBUG_LOG("Searching for wildcard sources in %s", name);
+			INFO_LOG("Searching for wildcard sources in %s", name);
 			if (name_len == 2 || name[name_len - 3] == '/')
 			{
 				char *path = str_copy(name, name_len - 2);

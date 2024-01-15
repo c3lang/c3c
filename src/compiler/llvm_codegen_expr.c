@@ -2170,8 +2170,10 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		unsigned start_bit = member->var.start_bit;
 		unsigned end_bit = member->var.end_bit;
 		Type *member_type = type_flatten(member->type);
-		assert(initializer->init_struct[i]->kind == CONST_INIT_VALUE);
-		Expr *expr = initializer->init_struct[i]->init_value;
+		ConstInitializer *init = initializer->init_struct[i];
+		if (init->kind == CONST_INIT_ZERO) continue;
+		assert(init->kind == CONST_INIT_VALUE);
+		Expr *expr = init->init_value;
 
 		// Special case for bool
 		if (member_type == type_bool)
@@ -6879,6 +6881,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
+		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
 		case EXPR_LAMBDA:
 			llvm_emit_lambda(c, value, expr);

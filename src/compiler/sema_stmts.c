@@ -81,7 +81,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	Expr *message_expr = exprptrzero(statement->assert_stmt.message);
 	if (message_expr)
 	{
-		if (!sema_analyse_expr(context, message_expr)) return false;
+		if (!sema_analyse_ct_expr(context, message_expr)) return false;
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
 		FOREACH_BEGIN(Expr *e, statement->assert_stmt.args)
 			if (!sema_analyse_expr(context, e)) return false;
@@ -1799,7 +1799,7 @@ END:
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt)
 {
 	Expr *body = exprptr(stmt->asm_block_stmt.asm_string);
-	if (!sema_analyse_expr(context, body)) return false;
+	if (!sema_analyse_ct_expr(context, body)) return false;
 	if (!expr_is_const_string(body))
 	{
 		SEMA_ERROR(body, "The asm statement expects a constant string.");

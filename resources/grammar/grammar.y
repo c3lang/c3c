@@ -1150,22 +1150,6 @@ global_declaration
     | global_storage optional_type IDENT opt_attributes '=' expr ';'
     ;
 
-opt_tl_stmts
-	: top_level_statements
-	| empty
-	;
-
-tl_ct_case
-	: CT_CASE constant_expr ':' opt_tl_stmts
-	| CT_CASE type ':' opt_tl_stmts
-    	| CT_DEFAULT ':' opt_tl_stmts
-    	;
-
-tl_ct_switch_body
-    	: tl_ct_case
-    	| tl_ct_switch_body tl_ct_case
-    	;
-
 define_attribute
 	: AT_TYPE_IDENT '(' parameters ')' opt_attributes '=' '{' opt_attributes '}'
 	| AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}'
@@ -1204,19 +1188,6 @@ interface_declaration
 
 distinct_declaration
 	: DISTINCT TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
-	;
-
-tl_ct_if
-	: CT_IF constant_expr ':' opt_tl_stmts tl_ct_if_tail
-	;
-
-tl_ct_if_tail
-	: CT_ENDIF
-	| CT_ELSE opt_tl_stmts CT_ENDIF
-	;
-
-tl_ct_switch
-	: ct_switch tl_ct_switch_body CT_ENDSWITCH
 	;
 
 module_param
@@ -1267,8 +1238,6 @@ top_level
 	| ct_assert_stmt
 	| ct_echo_stmt
 	| ct_include_stmt
-	| tl_ct_if
-	| tl_ct_switch
 	| struct_declaration
 	| fault_declaration
 	| enum_declaration

@@ -1,7 +1,7 @@
 module std::io::os;
 import libc;
 
-macro String! getcwd(Allocator* allocator = mem::heap())
+macro String! getcwd(Allocator* allocator = allocator::heap())
 {
 	$switch
 		$case env::WIN32:

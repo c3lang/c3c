@@ -80,7 +80,7 @@ fn uptr! load_address() @local
 {
 	Darwin_segment_command_64* cmd = darwin::getsegbyname("__TEXT");
 	if (!cmd) return BacktraceFault.SEGMENT_NOT_FOUND?;
-	String path = env::executable_path(mem::temp()) ?? BacktraceFault.EXECUTABLE_PATH_NOT_FOUND?!;
+	String path = env::executable_path(allocator::temp()) ?? BacktraceFault.EXECUTABLE_PATH_NOT_FOUND?!;
     uint dyld_count = darwin::_dyld_image_count();
 	for (uint i = 0; i < dyld_count; i++)
 	{
@@ -93,7 +93,7 @@ fn uptr! load_address() @local
 }
 
 
-fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator* allocator = mem::heap()) @local
+fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator* allocator = allocator::heap()) @local
 {
 	@pool(allocator)
 	{
@@ -147,7 +147,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 	}
 	@pool(allocator)
 	{
-		String execpath = executable_path(mem::temp())!;
+		String execpath = executable_path(allocator::temp())!;
 		foreach (addr : backtrace)
 		{
 			list.append(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);

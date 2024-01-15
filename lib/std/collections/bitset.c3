@@ -86,7 +86,7 @@ struct GrowableBitSet
  * @param initial_capacity
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn GrowableBitSet* GrowableBitSet.new_init(&self, usz initial_capacity = 1, Allocator* allocator = mem::heap())
+fn GrowableBitSet* GrowableBitSet.new_init(&self, usz initial_capacity = 1, Allocator* allocator = allocator::heap())
 {
 	self.data.new_init(initial_capacity, allocator);
 	return self;
@@ -96,14 +96,14 @@ fn GrowableBitSet* GrowableBitSet.new_init(&self, usz initial_capacity = 1, Allo
  * @param initial_capacity
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn GrowableBitSet* GrowableBitSet.init_new(&self, usz initial_capacity = 1, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+fn GrowableBitSet* GrowableBitSet.init_new(&self, usz initial_capacity = 1, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
 {
 	return self.new_init(initial_capacity, allocator) @inline;
 }
 
 fn GrowableBitSet* GrowableBitSet.temp_init(&self, usz initial_capacity = 1)
 {
-	return self.new_init(initial_capacity, mem::temp()) @inline;
+	return self.new_init(initial_capacity, allocator::temp()) @inline;
 }
 
 fn GrowableBitSet* GrowableBitSet.init_temp(&self, usz initial_capacity = 1) @deprecated("Replaced by temp_init")

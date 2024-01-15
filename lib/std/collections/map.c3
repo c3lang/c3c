@@ -26,13 +26,13 @@ struct HashMap
  * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap())
+fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = allocator::heap())
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
 	self.load_factor = load_factor;
 	self.threshold = (uint)(capacity * load_factor);
-	self.table = allocator.new_zero_array(Entry*, capacity);
+	self.table = allocator::new_array(allocator, Entry*, capacity);
 	return self;
 }
 
@@ -43,7 +43,7 @@ fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, fl
  * @require !map.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init")
+fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
 {
 	return map.new_init(capacity, load_factor, allocator);
 }
@@ -56,7 +56,7 @@ fn HashMap* HashMap.init_new(&map, uint capacity = DEFAULT_INITIAL_CAPACITY, flo
  **/
 fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.new_init(capacity, load_factor, mem::temp()) @inline;
+	return self.new_init(capacity, load_factor, allocator::temp()) @inline;
 }
 
 /**
@@ -85,7 +85,7 @@ fn bool HashMap.is_initialized(&map)
  * @param [&inout] allocator "The allocator to use"
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap())
+fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator* allocator = allocator::heap())
 {
 	self.new_init(other_map.table.len, other_map.load_factor, allocator);
 	self.put_all_for_create(other_map);
@@ -96,7 +96,7 @@ fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator* allo
  * @param [&inout] allocator "The allocator to use"
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allocator = mem::heap()) @deprecated("Replaced by new_init_from_map")
+fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init_from_map")
 
 {
 	return self.new_init_from_map(other_map, allocator) @inline;
@@ -107,7 +107,7 @@ fn HashMap* HashMap.init_new_from_map(&self, HashMap* other_map, Allocator* allo
  **/
 fn HashMap* HashMap.temp_init_from_map(&map, HashMap* other_map)
 {
-	return map.new_init_from_map(other_map, mem::temp()) @inline;
+	return map.new_init_from_map(other_map, allocator::temp()) @inline;
 }
 
 /**
@@ -153,6 +153,7 @@ fn Entry*! HashMap.get_entry(&map, Key key)
 
 /**
  * Get the value or update and
+ * @require $assignable(#expr, Value)
  **/
 macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 {
@@ -239,14 +240,14 @@ fn void HashMap.free(&map)
 
 fn Key[] HashMap.key_tlist(&map)
 {
-	return map.key_new_list(mem::temp()) @inline;
+	return map.key_new_list(allocator::temp()) @inline;
 }
 
-fn Key[] HashMap.key_new_list(&map, Allocator* allocator = mem::heap())
+fn Key[] HashMap.key_new_list(&map, Allocator* allocator = allocator::heap())
 {
 	if (!map.count) return {};
 
-	Key[] list = allocator.new_array(Key, map.count);
+	Key[] list = allocator::alloc_array(allocator, Key, map.count);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
@@ -283,13 +284,13 @@ macro HashMap.@each_entry(map; @body(entry))
 
 fn Value[] HashMap.value_tlist(&map)
 {
-	return map.value_new_list(mem::temp()) @inline;
+	return map.value_new_list(allocator::temp()) @inline;
 }
 
-fn Value[] HashMap.value_new_list(&map, Allocator* allocator = mem::heap())
+fn Value[] HashMap.value_new_list(&map, Allocator* allocator = allocator::heap())
 {
 	if (!map.count) return {};
-	Value[] list = allocator.new_array(Value, map.count);
+	Value[] list = allocator::alloc_array(allocator, Value, map.count);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
 	{
@@ -320,11 +321,10 @@ fn bool HashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 
 fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
 {
-	Entry* entry = map.allocator.new(Entry);
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
 	$endif
-	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
+	Entry* entry = allocator::new(map.allocator, Entry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
 	map.table[bucket_index] = entry;
 	if (map.count++ >= map.threshold)
 	{
@@ -341,7 +341,7 @@ fn void HashMap.resize(&map, uint new_capacity) @private
 		map.threshold = uint.max;
 		return;
 	}
-	Entry*[] new_table = map.allocator.new_zero_array(Entry*, new_capacity);
+	Entry*[] new_table = allocator::new_array(map.allocator, Entry*, new_capacity);
 	map.transfer(new_table);
 	map.table = new_table;
 	map.free_internal(old_table.ptr);
@@ -405,7 +405,7 @@ fn void HashMap.put_for_create(&map, Key key, Value value) @private
 
 fn void HashMap.free_internal(&map, void* ptr) @inline @private
 {
-	map.allocator.free(ptr);
+	allocator::free(map.allocator, ptr);
 }
 
 fn bool HashMap.remove_entry_for_key(&map, Key key) @private
@@ -440,11 +440,10 @@ fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
-	Entry* entry = map.allocator.new(Entry);
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
 	$endif
-	*entry = { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] };
+	Entry* entry = allocator::new(map.allocator, Entry, { .hash = hash, .key = key, .value = value, .next = map.table[bucket_index] });
 	map.table[bucket_index] = entry;
 	map.count++;
 }
@@ -452,7 +451,7 @@ fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_i
 fn void HashMap.free_entry(&self, Entry *entry) @local
 {
 	$if COPY_KEYS:
-	self.allocator.free(entry.key);
+	allocator::free(self.allocator, entry.key);
 	$endif
 	self.free_internal(entry);
 }
