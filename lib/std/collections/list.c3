@@ -264,7 +264,7 @@ fn bool List.is_empty(&self) @inline
 	return !self.size;
 }
 
-fn usz List.byteSize(&self) @inline
+fn usz List.byte_size(&self) @inline
 {
 	return Type.sizeof * self.size;
 }
