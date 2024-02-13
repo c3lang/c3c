@@ -203,10 +203,10 @@ macro matrix_look_at($Type, eye, target, up) @private
 	var vy = vz.cross(vx);
 
 	return $Type {
-		vx[0], vy[0], vz[0], 0,
-		vx[1], vy[1], vz[1], 0,
-		vx[2], vy[2], vz[2], 0,
-		- vx.dot(eye), - vy.dot(eye), - vz.dot(eye), 1
+		vx[0], vx[1], vx[2], - vx.dot(eye),
+		vy[0], vy[1], vy[2], - vy.dot(eye),
+		vz[0], vz[1], vz[2], - vz.dot(eye),
+		0.0, 0.0, 0.0, 1
 	};
 }
 

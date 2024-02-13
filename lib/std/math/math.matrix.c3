@@ -402,12 +402,12 @@ fn Matrix4x4 perspective(Real fov, Real aspect_ratio, Real near, Real far)
 {
 	Real f = (Real)math::tan(math::PI * 0.5 - 0.5 * fov);
 	Real rangeInv = (Real)1.0 / (near - far);
-	
-	return {
+
+	return Matrix4x4 {
 		f / aspect_ratio, 0, 0, 0,
 		0, f, 0, 0,
-		0, 0, (near + far) * rangeInv, -1,
-		0, 0, near * far * rangeInv * 2, 0,
+		0, 0, (near + far) * rangeInv,  near * far * rangeInv * 2,
+		0, 0, -1, 0,
 	};
 }
 

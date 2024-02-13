@@ -97,8 +97,9 @@ def complex_identity = complex::identity(<double>);
 
 def Quaternionf = Quaternion(<float>);
 def Quaternion = Quaternion(<double>);
-def quaternionf_identity = quaternion::identity(<float>);
-def quaternion_identity = quaternion::identity(<double>);
+
+def QUATERNION_IDENTITY = quaternion::IDENTITY(<double>);
+def QUATERNIONF_IDENTITY = quaternion::IDENTITY(<float>);
 
 def Matrix2f = Matrix2x2(<float>);
 def Matrix2 = Matrix2x2(<double>);
@@ -117,6 +118,7 @@ def MATRIX3_IDENTITY = matrix::IDENTITY3(<double>);
 def MATRIX3F_IDENTITY = matrix::IDENTITY3(<float>);
 def MATRIX4_IDENTITY = matrix::IDENTITY4(<double>);
 def MATRIX4F_IDENTITY = matrix::IDENTITY4(<float>);
+
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
