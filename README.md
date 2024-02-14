@@ -35,7 +35,7 @@ whole new language.
 The following code shows [generic modules](http://www.c3-lang.org/generics/) (more examples can be found at http://www.c3-lang.org/examples/). 
 
 ```c++
-module stack <Type>;
+module stack (<Type>);
 // Above: the parameterized type is applied to the entire module.
 
 struct Stack
