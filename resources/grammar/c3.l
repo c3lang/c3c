@@ -191,6 +191,7 @@ b64\`{B64}+\` { count(); return(BYTES); }
 	<<EOF>>     { BEGIN(INITIAL); return(RAW_STRING); }
 }
 
+"!!"			{ count(); return(BANGBANG); }
 "..."			{ count(); return(ELLIPSIS); }
 ".."			{ count(); return(DOTDOT); }
 ">>="			{ count(); return(SHR_ASSIGN); }
