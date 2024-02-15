@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.5.5 Change list
+
+### Changes / improvements
+- Disallow multiple `_` in a row in digits, e.g. `1__000`.
+
+### Fixes
+None
+
+### Stdlib changes
+None
+
 ## 0.5.4 Change list
 
 ### Changes / improvements
