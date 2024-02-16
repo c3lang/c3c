@@ -168,20 +168,21 @@ ${IDENTIFIER}   { count(); return(CT_IDENT); }
 0[oO]{OINT}{INTTYPE}?	{ count(); return(INTEGER); }
 0[bB]{BINT}{INTTYPE}?   { count(); return(INTEGER); }
 {INT}{INTTYPE}?		    { count(); return(INTEGER); }
-x\'{HEX}+\' { count(); return(BYTES); }
-x\"{HEX}+\" { count(); return(BYTES); }
-x\`{HEX}+\` { count(); return(BYTES); }
-b64\'{B64}+\' { count(); return(BYTES); }
-b64\"{B64}+\" { count(); return(BYTES); }
-b64\`{B64}+\` { count(); return(BYTES); }
+x\'{HEX}\' { count(); return(BYTES); }
+x\"{HEX}\" { count(); return(BYTES); }
+x\`{HEX}\` { count(); return(BYTES); }
+b64\'{B64}\' { count(); return(BYTES); }
+b64\"{B64}\" { count(); return(BYTES); }
+b64\`{B64}\` { count(); return(BYTES); }
 
-{INT}{E}?{REALTYPE}? { count(); return(REAL); }
+{INT}{REALTYPE} { count(); return(REAL); }
+{INT}{E}{REALTYPE}? { count(); return(REAL); }
 0[xX]{HINT}{P}{REALTYPE}?	{ count(); return(REAL); }
 {INT}"."{INT}{E}?{REALTYPE}?	{ count(); return(REAL); }
 0[xX]{HINT}"."{HINT}{P}{REALTYPE}? { count(); return(REAL); }
 
 \"(\\.|[^\\"])*\"	{ count(); return(STRING_LITERAL); }
-\'(\\[ux]{HEX}+|\\.|[^\\'])\'	{ count(); return(CHAR_LITERAL); }
+\'(\\[ux]{HEX}|\\.|[^\\'])\'	{ count(); return(CHAR_LITERAL); }
 
 "`"             { count(); BEGIN(RAW_STRING); }
 <RAW_STRING>{
