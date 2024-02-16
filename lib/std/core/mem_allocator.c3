@@ -108,7 +108,7 @@ macro void free_aligned(Allocator* allocator, void* ptr)
 
 /**
  * @require $vacount < 2 : "Too many arguments."
- * @require $or($vacount == 1, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
  **/
 macro new(Allocator* allocator, $Type, ...) @nodiscard
 {
