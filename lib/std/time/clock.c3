@@ -1,11 +1,12 @@
 module std::time::clock;
+import std::time::os;
 
 fn Clock now()
 {
-	$if $defined(native_clock):
+	$if $defined(os::native_clock):
 		return os::native_clock();
 	$else
-		return 0;
+		unreachable("Clock unsupported");
 	$endif
 }
 
