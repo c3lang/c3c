@@ -24,16 +24,16 @@ fn void setstring(char* dst, String str)
 fn void testAllocator(Allocator* a, int val)
 {
 	io::printn("Test");
-	void* data = a.malloc_aligned(val, 128, 16)!!;
+	void* data = allocator::malloc_aligned(a, val, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = a.calloc_aligned(val, 128, 16)!!;
+	data = allocator::calloc_aligned(a, val, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = a.realloc_aligned(data, (usz)val + 1, 128, 16)!!;
+	data = allocator::realloc_aligned(a, data, (usz)val + 1, 128, 16)!!;
 	io::printf("Aligned with offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
-	data = a.realloc_aligned(data, (usz)val + 1, 128, 0)!!;
+	data = allocator::realloc_aligned(a, data, (usz)val + 1, 128, 0)!!;
 	io::printf("No offset %p, align 16: %s offset align 128: %s\n", data, mem::ptr_is_aligned(data, 16), mem::ptr_is_aligned(data + 16, 128));
 	io::printfn("Freeing %p", data);
-	a.free_aligned(data);
+	allocator::free_aligned(a, data);
 }
 fn void main()
 {
