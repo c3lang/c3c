@@ -27,7 +27,7 @@ macro @retry(#function, int retries = 3)
         }
         return result;
     } while (retries-- > 0);
-    return e!;
+    return e?;
 }
 
 fn void main()
