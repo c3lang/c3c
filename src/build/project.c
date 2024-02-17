@@ -118,20 +118,24 @@ const char* project_target_keys[][2] = {
 
 const int project_target_keys_count = ELEMENTLEN(project_target_keys);
 
-const char *get_valid_string(JSONObject *table, const char *key, const char *category, bool mandatory)
+static const char *get_string(JSONObject *table, const char *key, const char *category, const char *default_value)
 {
 	JSONObject *value = json_obj_get(table, key);
-	if (!value)
-	{
-		if (mandatory)
-		{
-			error_exit("%s was missing a mandatory '%s' field, please add it.", category, key);
-		}
-		return NULL;
-	}
+	if (!value) return default_value;
 	if (value->type != J_STRING)
 	{
-		error_exit("%s had an invalid mandatory '%s' field that was not a string, please correct it.", category, key);
+		error_exit("%s had an invalid '%s' field that was not a string, please correct it.", category, key);
+	}
+	return value->str;
+}
+
+static const char *get_valid_string(JSONObject *table, const char *key, const char *category)
+{
+	JSONObject *value = json_obj_get(table, key);
+	if (!value) return NULL;
+	if (value->type != J_STRING)
+	{
+		error_exit("%s had an invalid '%s' field that was not a string, please correct it.", category, key);
 	}
 	return value->str;
 }
@@ -264,11 +268,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	{
 		check_json_keys(project_target_keys, project_target_keys_count, json, type);
 	}
-	const char *cc = get_valid_string(json, "cc", type, false);
-	if (cc) target->cc = cc;
+	target->cc = get_string(json, "cc", type, target->cc);
 
-	const char *script_dir = get_valid_string(json, "script-dir", type, false);
-	if (script_dir) target->script_dir = script_dir;
+	target->script_dir = get_string(json, "script-dir", type, target->script_dir);
 
 	// Exec
 	const char **exec = get_valid_array(json, is_default ? "exec" : "exec-override" , type, false);
@@ -291,12 +293,11 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 		FOREACH_END();
 	}
 
-	const char *output_dir = get_valid_string(json, "output", type, false);
-	if (output_dir) target->output_dir = output_dir;
+	target->output_dir = get_string(json, "output", type, target->output_dir);
 
 	// CFlags
-	const char *cflags = get_valid_string(json, is_default ? "cflags" : "cflags-override" , type, false);
-	const char *cflags_add = is_default ? NULL : get_valid_string(json, "cflags-add" , type, false);
+	const char *cflags = get_valid_string(json, is_default ? "cflags" : "cflags-override" , type);
+	const char *cflags_add = is_default ? NULL : get_valid_string(json, "cflags-add" , type);
 	if (cflags && cflags_add)
 	{
 		error_exit("'%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", type);
@@ -398,7 +399,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	}
 
 	// Target
-	const char *arch_os_string = get_valid_string(json, "target", type, false);
+	const char *arch_os_string = get_valid_string(json, "target", type);
 	if (arch_os_string)
 	{
 		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
@@ -411,8 +412,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (reloc > -1) target->reloc_model = (RelocModel)reloc;
 
 	// Cpu
-	const char *cpu = get_valid_string(json, "cpu", type, false);
-	if (cpu) target->cpu = cpu;
+	target->cpu = get_string(json, "cpu", type, target->cpu);
 
 	// WinCRT
 	int wincrt = get_valid_string_setting(json, "wincrt", type, wincrt_linking, 0, ELEMENTLEN(wincrt_linking), "'none', 'static' or 'dynamic'.");
@@ -447,45 +447,40 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (riscv_float > -1) target->feature.riscv_float_capability = riscv_float;
 
 	// winsdk
-	target->win.sdk = get_valid_string(json, "winsdk", type, false);
+	target->win.sdk = get_string(json, "winsdk", type, target->win.sdk);
 
 	// windef
-	target->win.def = get_valid_string(json, "windef", type, false);
+	target->win.def = get_string(json, "windef", type, target->win.def);
 
 	// macossdk
-	target->macos.sysroot = get_valid_string(json, "macossdk", type, false);
+	target->macos.sysroot = get_string(json, "macossdk", type, target->macos.sysroot);
 
 	// macos-min-version
-	target->macos.min_version = get_valid_string(json, "macos-min-version", type, false);
+	target->macos.min_version = get_string(json, "macos-min-version", type, target->macos.min_version);
 
 	// macos-sdk-version
-	target->macos.sdk_version = get_valid_string(json, "macos-sdk-version", type, false);
+	target->macos.sdk_version = get_string(json, "macos-sdk-version", type, target->macos.sdk_version);
 
 	// Linux crt
-	target->linuxpaths.crt = get_valid_string(json, "linux-crt", type, false);
+	target->linuxpaths.crt = get_string(json, "linux-crt", type, target->linuxpaths.crt);
 
 	// Linux crtbegin
-	target->linuxpaths.crtbegin = get_valid_string(json, "linux-crtbegin", type, false);
+	target->linuxpaths.crtbegin = get_string(json, "linux-crtbegin", type, target->linuxpaths.crtbegin);
 
 	// version
-	const char *version = get_valid_string(json, "version", type, false);
-	if (version) target->version = version;
+	target->version = get_string(json, "version", type, target->version);
 
 	// langrev
-	const char *langrev = get_valid_string(json, "langrev", type, false);
-	if (langrev) target->langrev = langrev;
+	target->langrev = get_string(json, "langrev", type, target->langrev);
 
 	// panicfn
-	const char *panicfn = get_valid_string(json, "panicfn", type, false);
-	target->panicfn = panicfn;
+	target->panicfn = get_string(json, "panicfn", type, target->panicfn);
 
 	// testfn
-	const char *testfn = get_valid_string(json, "testfn", type, false);
-	target->testfn = testfn;
+	target->testfn = get_string(json, "testfn", type, target->testfn);
 
 	// testfn
-	const char *benchfn = get_valid_string(json, "benchfn", type, false);
-	target->benchfn = benchfn;
+	target->benchfn = get_string(json, "benchfn", type, target->benchfn);
 
 	// link-libc
 	target->link_libc = (LinkLibc)get_valid_bool(json, "link-libc", type, target->link_libc);
@@ -497,7 +492,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	target->system_linker = (SystemLinker)get_valid_bool(json, "system-linker", type, target->system_linker);
 
 	// linker
-	target->linker = get_valid_string(json, "linker", type, false);
+	target->linker = get_string(json, "linker", type, target->linker);
 
 	if (target->system_linker != SYSTEM_LINKER_NOT_SET && target->linker)
 	{
