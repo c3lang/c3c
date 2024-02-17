@@ -390,7 +390,7 @@ macro void @scoped(Allocator* allocator; @body())
 macro void @report_heap_allocs_in_scope(;@body())
 {
 	TrackingAllocator tracker;
-	tracker.init(thread_allocator);
+	tracker.init(allocator::thread_allocator);
 	Allocator* old_allocator = allocator::thread_allocator;
 	allocator::thread_allocator = &tracker;
 	defer
@@ -498,7 +498,7 @@ fn void initialize_wasm_mem() @init(1) @private
 	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
 	temp_base_allocator = &wasm_allocator;
-	thread_allocator = &wasm_allocator;
+	allocator::thread_allocator = &wasm_allocator;
 }
 
 module std::core::mem;
