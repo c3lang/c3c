@@ -97,10 +97,10 @@ def complex_identity = complex::identity(<double>);
 
 def Quaternionf = Quaternion(<float>);
 def Quaternion = Quaternion(<double>);
-def quaternionf_identity = quaternion::identity(<float>);
-def quaternion_identity = quaternion::identity(<double>);
 def QUATERNION_IDENTITY = quaternion::IDENTITY(<double>);
 def QUATERNIONF_IDENTITY = quaternion::IDENTITY(<float>);
+def quaternion_identity = quaternion::identity(<double>);
+def quaternionf_identity = quaternion::identity(<float>);
 
 def Matrix2f = Matrix2x2(<float>);
 def Matrix2 = Matrix2x2(<double>);
@@ -119,6 +119,14 @@ def MATRIX3_IDENTITY = matrix::IDENTITY3(<double>);
 def MATRIX3F_IDENTITY = matrix::IDENTITY3(<float>);
 def MATRIX4_IDENTITY = matrix::IDENTITY4(<double>);
 def MATRIX4F_IDENTITY = matrix::IDENTITY4(<float>);
+
+
+/**
+ * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
+ **/
+macro deg_to_rad(x) {
+    return x * PI / 180;
+}
 
 /**
  * @require types::is_numerical($typeof(x)) `The input must be a numerical value or numerical vector`
@@ -392,14 +400,14 @@ macro nearbyint(x) => $$nearbyint(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
- * @require $assignable(exp, $typeof(x)) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
+ * @require $assignable(exp, $typeof(values::promote_int(x))) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
  **/
 macro pow(x, exp)
 {
 	$if types::is_floatlike($typeof(exp)):
-		return $$pow(x, ($typeof(x))exp);
+		return $$pow(values::promote_int(x), ($typeof(values::promote_int(x)))exp);
 	$else
-		return $$pow_int(x, exp);
+		return $$pow_int(values::promote_int(x), exp);
 	$endif
 }
 
@@ -440,6 +448,16 @@ macro rint(x) => $$rint(x);
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
  **/
 macro round(x) => $$round(x);
+
+
+/**
+ * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
+ **/
+macro round_to_decimals(x, int decimal_places)
+{
+  var div = $$pow_int(($typeof(x))10, decimal_places);
+  return round(div * x) / div;
+}
 
 /**
  * @require values::@is_floatlike(x) `The input must be a floating point value or float vector`
