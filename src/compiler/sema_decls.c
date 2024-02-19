@@ -225,13 +225,22 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	switch (decl->decl_kind)
 	{
 		case DECL_VAR:
+		{
 			assert(decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
 			// Inferred types are not strictly allowed, but we use the int[*] for the flexible array member.
-			if (!sema_resolve_type_info(context, type_infoptrzero(decl->var.type_info), RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
-			decl->type = typeget(decl->var.type_info);
+			assert(type_infoptrzero(decl->var.type_info));
+			TypeInfo *type_info = type_infoptr(decl->var.type_info);
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
+			Type *type = type_info->type;
+			if (type_is_invalid_storage_type(type))
+			{
+				RETURN_SEMA_ERROR(type_info, "Members cannot be of type %s.", type_quoted_error_string(type));
+			}
+			decl->type = type;
 			decl->resolve_status = RESOLVE_DONE;
 			return true;
+		}
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_BITSTRUCT:
