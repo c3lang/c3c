@@ -392,14 +392,14 @@ macro nearbyint(x) => $$nearbyint(x);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
- * @require $assignable(exp, $typeof(x)) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
+ * @require $assignable(exp, $typeof(values::promote_int(x))) || values::@is_int(exp) `The input must be an integer, castable to the type of x`
  **/
 macro pow(x, exp)
 {
 	$if types::is_floatlike($typeof(exp)):
-		return $$pow(x, ($typeof(x))exp);
+		return $$pow(values::promote_int(x), ($typeof(values::promote_int(x)))exp);
 	$else
-		return $$pow_int(x, exp);
+		return $$pow_int(values::promote_int(x), exp);
 	$endif
 }
 

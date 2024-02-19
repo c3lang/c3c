@@ -7,6 +7,7 @@
 
 ### Fixes
 - Struct/union members now correctly rejects members without storage size #1147.
+- `math::pow` will now correctly promote integer arguments.
 
 ### Stdlib changes
 None
