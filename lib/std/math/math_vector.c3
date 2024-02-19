@@ -206,7 +206,7 @@ macro matrix_look_at($Type, eye, target, up) @private
 		vx[0], vx[1], vx[2], - vx.dot(eye),
 		vy[0], vy[1], vy[2], - vy.dot(eye),
 		vz[0], vz[1], vz[2], - vz.dot(eye),
-		0, 0, 0, 1
+		0.0, 0.0, 0.0, 1
 	};
 }
 

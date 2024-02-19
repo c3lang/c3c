@@ -145,3 +145,23 @@ fn void! test_trunc() @test
 	double[<5>] vec = { -123.9, 123.9, 0.9, -0.9, 0 };
 	assert(math::trunc(vec) == double[<5>] { -123, 123, 0, 0, 0 });
 }
+
+fn void! test_round_decimals() @test
+{
+	double d = 0.532451241142;
+	float d_f = 0.532451241142;
+	assert(math::round_to_decimals(d, 2) == 0.53);
+	assert(math::round_to_decimals(d, 5) == 0.53245);
+
+	assert(math::round_to_decimals(d_f, 2) == 0.53f);
+	assert(math::round_to_decimals(d_f, 5) == 0.53245f);
+}
+
+fn void! test() @test
+{
+	double radians = math::deg_to_rad(45);
+	float radians_f = (float)math::deg_to_rad(45);
+
+	assert(math::round_to_decimals(radians, 3) == 0.785);
+	assert(math::round_to_decimals(radians_f, 3) == 0.785f);
+}
