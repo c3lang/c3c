@@ -6,7 +6,7 @@
 - Disallow multiple `_` in a row in digits, e.g. `1__000`.
 
 ### Fixes
-None
+- Struct/union members now correctly rejects members without storage size #1147.
 
 ### Stdlib changes
 None

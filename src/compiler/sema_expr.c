@@ -1276,7 +1276,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			{
 				if (!sema_analyse_expr(context, arg)) return false;
 				Type *type = arg->type;
-				if (type_is_invalid_storage_type(type) || type == type_void)
+				if (type_is_invalid_storage_type(type))
 				{
 					RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
 					                  type_quoted_error_string(type));
@@ -1489,7 +1489,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				else
 				{
 					if (!sema_analyse_expr(context, val)) return false;
-					if (type_is_invalid_storage_type(val->type) || val->type == type_void)
+					if (type_is_invalid_storage_type(val->type))
 					{
 						SEMA_ERROR(val, "A value of type %s cannot be passed as a variadic argument.",
 								   type_quoted_error_string(val->type));
@@ -1561,7 +1561,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!type_is_any_interface_ptr(arg->type)) expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
-				if (type_is_invalid_storage_type(type) || type == type_void)
+				if (type_is_invalid_storage_type(type))
 				{
 					SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
 					return false;
@@ -6391,7 +6391,7 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 	if (!sema_analyse_expr(context, inner)) return false;
 
 	Type *type = inner->type;
-	if (type_is_invalid_storage_type(type) || type == type_void)
+	if (type_is_invalid_storage_type(type))
 	{
 		if (failed_ref)
 		{
@@ -7141,7 +7141,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	Decl *decl = sema_expr_analyse_var_path(context, main_var);
 	if (!decl) return false;
 	Type *type = decl->type;
-	if (type_is_invalid_storage_type(type) || type == type_void)
+	if (type_is_invalid_storage_type(type))
 	{
 		SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
 		return false;

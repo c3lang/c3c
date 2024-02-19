@@ -2837,6 +2837,7 @@ INLINE bool type_is_invalid_storage_type(Type *type)
 	if (type == type_wildcard_optional) return true;
 	switch (type->type_kind)
 	{
+		case TYPE_VOID:
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
