@@ -15,7 +15,7 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz
 	assert(alignment != 0 || offset == 0);
 	if (clear)
 	{
-		void* data = alignment ? @aligned_calloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment, offset)!! : libc::calloc(bytes, 1);
+		void* data = alignment ? @aligned_alloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment, offset)!! : libc::calloc(bytes, 1);
         return data ?: AllocationFailure.OUT_OF_MEMORY?;
 	}
 	else

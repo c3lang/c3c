@@ -1693,6 +1693,6 @@ TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type)
 
 TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type)
 {
-	return (TypeSize)aligned_offset((AlignSize)LLVMStoreSizeOfType(c->target_data, type), llvm_abi_alignment(c, type));
+	return (TypeSize)aligned_offset((AlignSize)LLVMABISizeOfType(c->target_data, type), llvm_abi_alignment(c, type));
 }
 

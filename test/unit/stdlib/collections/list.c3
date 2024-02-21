@@ -6,7 +6,7 @@ def PtrList = List(<void*>);
 
 struct Overalign
 {
-	double[<32>] x;
+	double[<33>] x;
 }
 
 fn void overaligned_type()
@@ -14,7 +14,9 @@ fn void overaligned_type()
 	List(<Overalign>) l;
 	Overalign y;
 	for (int i = 0; i < 1000; i++) l.push(y);
+	assert((usz)l.get_ref(2) - (usz)l.get_ref(1) == Overalign.sizeof);
 }
+
 
 fn void! delete_contains_index()
 {

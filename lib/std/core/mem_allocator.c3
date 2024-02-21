@@ -319,35 +319,20 @@ macro void Allocator.free_aligned(&self, void* ptr) @deprecated("Use allocator::
 /**
  * @require bytes > 0
  * @require alignment > 0
+ * @require offset <= bytes
+ * @require bytes <= isz.max
  **/
 macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
 {
-	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
+	if (alignment < void*.alignof) alignment = void*.alignof;
+	usz header = AlignedBlock.sizeof + alignment;
+	usz alignsize = bytes + header;
 	$if @typekind(#alloc_fn(bytes)) == OPTIONAL:
-		void* data = #alloc_fn(header + bytes)!;
+		void* data = #alloc_fn(alignsize)!;
 	$else
-		void* data = #alloc_fn(header + bytes);
+		void* data = #alloc_fn(alignsize);
 	$endif
-	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
-	assert(mem > data);
-	AlignedBlock* desc = (AlignedBlock*)mem - 1;
-	*desc = { bytes, data };
-	return mem;
-}
-
-/**
- * @require bytes > 0
- * @require alignment > 0
- **/
-macro void*! @aligned_calloc(#calloc_fn, usz bytes, usz alignment, usz offset)
-{
-	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if @typekind(#calloc_fn(bytes)) == OPTIONAL:
-		void* data = #calloc_fn(header + bytes)!;
-	$else
-		void* data = #calloc_fn(header + bytes);
-	$endif
-	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
+	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof + offset, alignment) - offset;
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
 	*desc = { bytes, data };
@@ -378,8 +363,8 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
-	void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)!;
-	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	void* new_data = @aligned_alloc(#calloc_fn, bytes, alignment, offset)!;
+	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
 	$if @typekind(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else

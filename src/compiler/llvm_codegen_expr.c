@@ -4992,7 +4992,7 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVM
 	{
 		index_val = llvm_zext_trunc(c, index_val, idx_type);
 	}
-	*alignment = type_min_alignment(llvm_store_size(c, element_type), array_alignment);
+	*alignment = type_min_alignment(llvm_abi_size(c, element_type), array_alignment);
 	return llvm_emit_pointer_inbounds_gep_raw(c, element_type, ptr, index_val);
 }
 
@@ -5041,7 +5041,7 @@ LLVMValueRef llvm_emit_const_vector(LLVMValueRef value, ArraySize len)
 
 LLVMValueRef llvm_ptr_mult(GenContext *c, LLVMValueRef offset, LLVMTypeRef pointee_type)
 {
-	ByteSize size = llvm_store_size(c, pointee_type);
+	ByteSize size = llvm_abi_size(c, pointee_type);
 	if (size == 1) return offset;
 
 	LLVMTypeRef offset_type = LLVMTypeOf(offset);
@@ -5062,7 +5062,7 @@ LLVMValueRef llvm_emit_pointer_gep_raw(GenContext *c, LLVMTypeRef pointee_type, 
 	{
 		return llvm_emit_ptradd_raw(c, ptr, llvm_ptr_mult(c, offset, pointee_type), 1);
 	}
-	return llvm_emit_ptradd_raw(c, ptr, offset, llvm_store_size(c, pointee_type));
+	return llvm_emit_ptradd_raw(c, ptr, offset, llvm_abi_size(c, pointee_type));
 }
 
 LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef pointee_type, LLVMValueRef ptr, LLVMValueRef offset)
@@ -5071,7 +5071,7 @@ LLVMValueRef llvm_emit_pointer_inbounds_gep_raw(GenContext *c, LLVMTypeRef point
 	{
 		return llvm_emit_ptradd_inbounds_raw(c, ptr, llvm_ptr_mult(c, offset, pointee_type), 1);
 	}
-	return llvm_emit_ptradd_inbounds_raw(c, ptr, offset, llvm_store_size(c, pointee_type));
+	return llvm_emit_ptradd_inbounds_raw(c, ptr, offset, llvm_abi_size(c, pointee_type));
 }
 
 LLVMValueRef llvm_emit_const_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, ByteSize offset)
