@@ -536,6 +536,7 @@ fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @
 /**
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  **/
 macro new($Type, ...) @nodiscard
 {
@@ -548,9 +549,38 @@ macro new($Type, ...) @nodiscard
 	$endif
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ * @require $vacount < 2 : "Too many arguments."
+ * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ **/
+macro new_aligned($Type, ...) @nodiscard
+{
+	$if $vacount == 0:
+		return ($Type*)calloc_aligned($Type.sizeof, $Type.alignof);
+	$else
+		$Type* val = malloc_aligned($Type.sizeof, $Type.alignof);
+		*val = $vaexpr(0);
+		return val;
+	$endif
+}
+
+/**
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ **/
 macro alloc($Type) @nodiscard
 {
 	return ($Type*)malloc($Type.sizeof);
+}
+
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro alloc_aligned($Type) @nodiscard
+{
+	return ($Type*)malloc_aligned($Type.sizeof, $Type.alignof);
 }
 
 macro new_clear($Type) @deprecated("Use mem::new")
@@ -588,12 +618,38 @@ macro new_temp_clear($Type) @deprecated("use mem::temp_new")
 	return tcalloc($Type.sizeof);
 }
 
+
+
+/**
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ **/
 macro new_array($Type, usz elements) @nodiscard
 {
 	return allocator::new_array(allocator::heap(), $Type, elements);
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro new_array_aligned($Type, usz elements) @nodiscard
+{
+	return allocator::new_array_aligned(allocator::heap(), $Type, elements);
+}
+
+/**
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ **/
 macro alloc_array($Type, usz elements) @nodiscard
+{
+	return allocator::alloc_array(allocator::heap(), $Type, elements);
+}
+
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
 	return allocator::alloc_array(allocator::heap(), $Type, elements);
 }
@@ -633,6 +689,11 @@ fn void* calloc(usz size) @builtin @inline @nodiscard
 	return allocator::calloc(allocator::heap(), size);
 }
 
+fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
+{
+	return allocator::calloc_aligned(allocator::heap(), size, alignment)!!;
+}
+
 fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
 {
 	return allocator::temp().acquire(size, false, alignment, offset)!!;
@@ -643,9 +704,19 @@ fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
 	return allocator::realloc(allocator::heap(), ptr, new_size);
 }
 
+fn void* realloc_aligned(void *ptr, usz new_size, usz alignment) @builtin @inline @nodiscard
+{
+	return allocator::realloc_aligned(allocator::heap(), ptr, new_size, alignment)!!;
+}
+
 fn void free(void* ptr) @builtin @inline
 {
 	return allocator::free(allocator::heap(), ptr);
+}
+
+fn void free_aligned(void* ptr) @builtin @inline
+{
+	return allocator::free_aligned(allocator::heap(), ptr);
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline @nodiscard

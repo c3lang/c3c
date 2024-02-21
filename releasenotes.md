@@ -10,7 +10,7 @@
 - `math::pow` will now correctly promote integer arguments.
 
 ### Stdlib changes
-None
+- Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.
 
 ## 0.5.4 Change list
 

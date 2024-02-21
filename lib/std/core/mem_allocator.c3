@@ -166,9 +166,19 @@ macro new_array_try(Allocator* allocator, $Type, usz elements) @nodiscard
 	return (($Type*)calloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
+macro new_array_aligned(Allocator* allocator, $Type, usz elements) @nodiscard
+{
+	return ((Type*)calloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+}
+
 macro alloc_array(Allocator* allocator, $Type, usz elements) @nodiscard
 {
 	return alloc_array_try(allocator, $Type, elements)!!;
+}
+
+macro alloc_array_aligned(Allocator* allocator, $Type, usz elements) @nodiscard
+{
+	return ((Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
 macro alloc_array_try(Allocator* allocator, $Type, usz elements) @nodiscard
