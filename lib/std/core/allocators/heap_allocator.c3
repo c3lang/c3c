@@ -23,27 +23,17 @@ fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
 
 fn void*! SimpleHeapAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
 {
-	if (!size) return null;
 	if (clear)
 	{
-		return alignment > 0 ? @aligned_alloc(self._calloc, size, alignment, offset) : self._calloc(size);
+		return alignment > 0 ? @aligned_alloc(self._calloc, size, alignment) : self._calloc(size);
 	}
-	return alignment > 0 ? @aligned_alloc(self._alloc, size, alignment, offset) : self._alloc(size);
+	return alignment > 0 ? @aligned_alloc(self._alloc, size, alignment) : self._alloc(size);
 }
 
 fn void*! SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
 {
-	if (!size)
-	{
-		self.release(old_pointer, alignment > 0);
-		return null;
-	}
-	if (!old_pointer)
-	{
-		return self.acquire(size, true, alignment, offset);
-	}
 	return alignment > 0
-		? @aligned_realloc(self._calloc, self._free, old_pointer, size, alignment, offset)
+		? @aligned_realloc(self._calloc, self._free, old_pointer, size, alignment)
 		:  self._realloc(old_pointer, size);
 }
 

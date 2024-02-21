@@ -79,48 +79,36 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator* allocator)
  **/
 fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
+fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, usz deprecated) @dynamic
 {
-	void* data = self.inner_allocator.acquire(size, clear, alignment, offset)!;
+	void* data = self.inner_allocator.acquire(size, clear, alignment, 0)!;
 	self.allocs_total++;
-	if (data)
-	{
-		void*[MAX_BACKTRACE] bt;
-		backtrace::capture_current(&bt);
-		self.map.set((uptr)data, { data, size, bt });
-    	self.mem_total += size;
-		self.allocs_total++;
-	}
+	void*[MAX_BACKTRACE] bt;
+	backtrace::capture_current(&bt);
+	self.map.set((uptr)data, { data, size, bt });
+    self.mem_total += size;
+	self.allocs_total++;
 	return data;
 }
 
-fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
+fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz deprecated) @dynamic
 {
-	void* data = self.inner_allocator.resize(old_pointer, size, alignment, offset)!;
-	if (old_pointer)
-	{
-		self.map.remove((uptr)old_pointer);
-	}
-	if (data)
-	{
-		void*[MAX_BACKTRACE] bt;
-		backtrace::capture_current(&bt);
-		self.map.set((uptr)data, { data, size, bt });
-    	self.mem_total += size;
-		self.allocs_total++;
-	}
+	void* data = self.inner_allocator.resize(old_pointer, size, alignment, 0)!;
+	self.map.remove((uptr)old_pointer);
+	void*[MAX_BACKTRACE] bt;
+	backtrace::capture_current(&bt);
+	self.map.set((uptr)data, { data, size, bt });
+    self.mem_total += size;
+	self.allocs_total++;
 	return data;
 }
 
 fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dynamic
 {
-	if (old_pointer)
-	{
-		if (catch self.map.remove((uptr)old_pointer))
-    	{
-    	    assert(false, "Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
-    	}
-	}
+	if (catch self.map.remove((uptr)old_pointer))
+    {
+        assert(false, "Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
+    }
 	self.inner_allocator.release(old_pointer, is_aligned);
 }
 

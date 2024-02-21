@@ -10,10 +10,16 @@
 - `math::pow` will now correctly promote integer arguments.
 - Pointer difference would fail where alignment != size (structs etc) #1150
 - Fixed array calculation for npot2 vectors.
+- $$memcpy_inline and $$memset_inline fixed.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.
 - Fixes to realloc of aligned allocations
+- Use native Windows calls on aligned allocations on Windows.
+- mem::copy_inline, mem::clear_inline and mem::set_inline added.
+- mem::copy / clear / set no longer has an `$inline` attribute.
+- Native aligned libc malloc on Windows & POSIX.
+- Simplification of the allocator interface.
 
 ## 0.5.4 Change list
 
