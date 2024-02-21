@@ -8,6 +8,7 @@
 ### Fixes
 - Struct/union members now correctly rejects members without storage size #1147.
 - `math::pow` will now correctly promote integer arguments.
+- Pointer difference would fail where alignment != size (structs etc) #1150
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.

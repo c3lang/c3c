@@ -4135,7 +4135,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 				{
 					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_vec_type, ""),
 					                   LLVMBuildPtrToInt(c->builder, rhs_value, int_vec_type, ""), "");
-					LLVMValueRef divisor = llvm_emit_const_vector(llvm_const_int(c, type_isz, type_abi_alignment(element_type)), len);
+					LLVMValueRef divisor = llvm_emit_const_vector(llvm_const_int(c, type_isz, type_size(element_type)), len);
 					val = LLVMBuildExactSDiv(c->builder, val, divisor, "");
 					break;
 				}
@@ -4150,7 +4150,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 					LLVMTypeRef int_type = llvm_get_type(c, type_isz);
 					val = LLVMBuildSub(c->builder, LLVMBuildPtrToInt(c->builder, lhs_value, int_type, ""),
 									   LLVMBuildPtrToInt(c->builder, rhs_value, int_type, ""), "");
-					val = LLVMBuildExactSDiv(c->builder, val, llvm_const_int(c, type_isz, type_abi_alignment(lhs_type->pointer)), "");
+					val = LLVMBuildExactSDiv(c->builder, val, llvm_const_int(c, type_isz, type_size(lhs_type->pointer)), "");
 					break;
 				}
 				rhs_value = LLVMBuildNeg(c->builder, rhs_value, "");
