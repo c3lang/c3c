@@ -4,6 +4,18 @@ import std::collections::list;
 def IntList = List(<int>);
 def PtrList = List(<void*>);
 
+struct Overalign
+{
+	double[<32>] x;
+}
+
+fn void overaligned_type()
+{
+	List(<Overalign>) l;
+	Overalign y;
+	for (int i = 0; i < 1000; i++) l.push(y);
+}
+
 fn void! delete_contains_index()
 {
 	IntList test;
