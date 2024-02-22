@@ -24,13 +24,13 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 		{
 			if (decl->var.init_expr)
 			{
-				SEMA_ERROR(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");
+				PRINT_ERROR_AT(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");
 				return poisoned_ast;
 			}
 			if (decl->attributes)
 			{
 				assert(VECLAST(decl->attributes));
-				SEMA_ERROR(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
+				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
 		}
@@ -45,7 +45,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 		ASSIGN_DECL_OR_RET(decl, parse_local_decl_after_type(c, copy_type_info_single(type)), poisoned_ast);
 		if (decl->var.init_expr)
 		{
-			SEMA_ERROR(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");
+			PRINT_ERROR_AT(decl->var.init_expr, "Multiple variable declarations cannot use initialization.");
 			return poisoned_ast;
 		}
 		if (decl->attributes)
@@ -53,7 +53,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 			if (tok_is(c, TOKEN_COMMA))
 			{
 				assert(VECLAST(decl->attributes));
-				SEMA_ERROR(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
+				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
 			attributes = decl->attributes;
@@ -121,7 +121,7 @@ static inline Decl *parse_optional_label(ParseContext *c, Ast *parent)
 	advance_and_verify(c, TOKEN_CONST_IDENT);
 	if (!try_consume(c, TOKEN_COLON))
 	{
-		SEMA_ERROR(decl, "The name must be followed by a ':', did you forget it?");
+		PRINT_ERROR_AT(decl, "The name must be followed by a ':', did you forget it?");
 		return poisoned_decl;
 	}
 	return decl;
@@ -141,7 +141,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 {
 	if (!tok_is(c, TOKEN_INTEGER))
 	{
-		SEMA_ERROR_HERE("Expected an integer value.");
+		PRINT_ERROR_HERE("Expected an integer value.");
 		return false;
 	}
 	Expr *offset = parse_integer(c, NULL);
@@ -149,7 +149,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 	Int i = offset->const_expr.ixx;
 	if (i.i.high)
 	{
-		SEMA_ERROR_HERE("The value is too high for an offset.");
+		PRINT_ERROR_HERE("The value is too high for an offset.");
 		return false;
 	}
 	asm_arg->offset = i.i.low;
@@ -160,7 +160,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 {
 	if (!tok_is(c, TOKEN_INTEGER))
 	{
-		SEMA_ERROR_HERE("Expected an integer value.");
+		PRINT_ERROR_HERE("Expected an integer value.");
 		return false;
 	}
 	Expr *value = parse_integer(c, NULL);
@@ -168,7 +168,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 	Int i = value->const_expr.ixx;
 	if (i.i.high)
 	{
-		SEMA_ERROR_HERE("The value is too high for a scale: %s", int_to_str(i, 10));
+		PRINT_ERROR_HERE("The value is too high for a scale: %s", int_to_str(i, 10));
 		return false;
 	}
 	switch (i.i.low)
@@ -186,7 +186,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 			asm_arg->offset_type = ASM_SCALE_8;
 			break;
 		default:
-			SEMA_ERROR_HERE("Expected 1, 2, 4 or 8.");
+			PRINT_ERROR_HERE("Expected 1, 2, 4 or 8.");
 			return false;
 	}
 	return true;
@@ -222,7 +222,7 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 			advance(c);
 			break;
 		default:
-			SEMA_ERROR_HERE("Expected + or - here.");
+			PRINT_ERROR_HERE("Expected + or - here.");
 			return false;
 	}
 	if (type == TOKEN_MINUS) asm_arg->neg_offset = true;
@@ -267,7 +267,7 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 
 	if (asm_arg->neg_offset)
 	{
-		SEMA_ERROR_HERE("Addressing cannot both have a negated index and an offset.");
+		PRINT_ERROR_HERE("Addressing cannot both have a negated index and an offset.");
 		return false;
 	}
 
@@ -279,7 +279,7 @@ static inline bool parse_asm_addr(ParseContext *c, ExprAsmArg *asm_arg)
 		case TOKEN_PLUS:
 			break;
 		default:
-			SEMA_ERROR_HERE("Expected + or - here.");
+			PRINT_ERROR_HERE("Expected + or - here.");
 			return false;
 	}
 	advance(c);
@@ -311,7 +311,7 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 			advance(c);
 			return expr;
 		case TOKEN_HASH_IDENT:
-			SEMA_ERROR_HERE("Compile time variables need to be wrapped in () inside an asm block.");
+			PRINT_ERROR_HERE("Compile time variables need to be wrapped in () inside an asm block.");
 			return poisoned_expr;
 		case TOKEN_IDENT:
 			expr->expr_asm_arg.kind = ASM_ARG_REGVAR;
@@ -324,7 +324,7 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 			expr->expr_asm_arg.ident.name = c->data.string;
 			if (!try_consume(c, TOKEN_IDENT))
 			{
-				SEMA_ERROR_HERE("Expected a variable name after '&', like '&foo'.");
+				PRINT_ERROR_HERE("Expected a variable name after '&', like '&foo'.");
 				return poisoned_expr;
 			}
 			return expr;
@@ -342,7 +342,7 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 			RANGE_EXTEND_PREV(expr);
 			return expr;
 		default:
-			SEMA_ERROR_HERE("This doesn't look like an asm argument.");
+			PRINT_ERROR_HERE("This doesn't look like an asm argument.");
 			return poisoned_expr;
 	}
 }
@@ -352,7 +352,7 @@ static inline Ast *parse_asm_stmt(ParseContext *c)
 	Ast *asm_stmt = ast_new_curr(c, AST_ASM_STMT);
 	if (!tok_is(c, TOKEN_IDENT) && !tok_is(c, TOKEN_INT))
 	{
-		SEMA_ERROR_HERE("Expected an asm instruction here.");
+		PRINT_ERROR_HERE("Expected an asm instruction here.");
 		return poisoned_ast;
 	}
 	asm_stmt->asm_stmt.instruction = symstr(c);
@@ -361,7 +361,7 @@ static inline Ast *parse_asm_stmt(ParseContext *c)
 	{
 		if (!tok_is(c, TOKEN_IDENT))
 		{
-			SEMA_ERROR_HERE("Expected asm instruction variant.");
+			PRINT_ERROR_HERE("Expected asm instruction variant.");
 			return poisoned_ast;
 		}
 		asm_stmt->asm_stmt.variant = symstr(c);
@@ -400,13 +400,13 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		}
 		else
 		{
-			SEMA_ERROR_HERE("Only the '@pure' attribute is allowed.");
+			PRINT_ERROR_HERE("Only the '@pure' attribute is allowed.");
 			return false;
 		}
 		advance_and_verify(c, TOKEN_AT_IDENT);
 		if (!tok_is(c, TOKEN_LBRACE))
 		{
-			SEMA_ERROR_HERE("Expected '{' after the attribute.");
+			PRINT_ERROR_HERE("Expected '{' after the attribute.");
 		}
 	}
 	if (try_consume(c, TOKEN_LBRACE))
@@ -435,7 +435,7 @@ static inline Ast* parse_asm_block_stmt(ParseContext *c)
 		}
 		else
 		{
-			SEMA_ERROR_HERE("Only the '@pure' attribute is allowed.");
+			PRINT_ERROR_HERE("Only the '@pure' attribute is allowed.");
 			return false;
 		}
 		advance_and_verify(c, TOKEN_AT_IDENT);
@@ -554,7 +554,7 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
 	if (body->ast_kind != AST_COMPOUND_STMT && row != c->prev_span.row)
 	{
-		SEMA_ERROR(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
+		PRINT_ERROR_AT(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
 		return poisoned_ast;
 	}
 	while_ast->for_stmt.body = astid(body);
@@ -577,7 +577,6 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	ASSIGN_EXPRID_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
 	unsigned row = c->span.row;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-
 	// Special case, we might have if ( ) { case ... }
 	if (tok_is(c, TOKEN_LBRACE) && (peek(c) == TOKEN_CASE || peek(c) == TOKEN_DEFAULT))
 	{
@@ -586,6 +585,7 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 		if (!parse_switch_body(c, &cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
 		stmt->switch_stmt.cases = cases;
 		if_ast->if_stmt.then_body = astid(stmt);
+
 	}
 	else
 	{
@@ -630,7 +630,7 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 	}
 	if (!try_consume(c, TOKEN_COLON))
 	{
-		sema_error_at(c->prev_span, "Missing ':' after case");
+		print_error_at(c->prev_span, "Missing ':' after case");
 		return poisoned_ast;
 	}
 	RANGE_EXTEND_PREV(ast);
@@ -678,7 +678,7 @@ bool parse_switch_body(ParseContext *c, Ast ***cases, TokenType case_type, Token
 		}
 		else
 		{
-			SEMA_ERROR_HERE("A 'case' or 'default' would be needed here.");
+			PRINT_ERROR_HERE("A 'case' or 'default' would be needed here.");
 			return false;
 		}
 		vec_add((*cases), result);
@@ -703,6 +703,16 @@ static inline Ast* parse_switch_stmt(ParseContext *c)
 	{
 		ASSIGN_EXPRID_OR_RET(switch_ast->switch_stmt.cond, parse_cond(c), poisoned_ast);
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+	}
+	if (tok_is(c, TOKEN_AT_IDENT))
+	{
+		if (symstr(c) != kw_at_jump)
+		{
+			PRINT_ERROR_HERE("Only '@jump' is allowed after a switch.");
+			return poisoned_ast;
+		}
+		switch_ast->switch_stmt.flow.jump = true;
+		advance(c);
 	}
 
 	if (!parse_switch_body(c, &switch_ast->switch_stmt.cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
@@ -782,8 +792,8 @@ static inline bool parse_foreach_var(ParseContext *c, Ast *foreach)
 	Decl *var = decl_new_var(symstr(c), c->span, type, VARDECL_LOCAL);
 	if (!try_consume(c, TOKEN_IDENT))
 	{
-		if (type) RETURN_SEMA_ERROR_HERE("Expected an identifier after the type.");
-		RETURN_SEMA_ERROR_HERE("Expected an identifier or type.");
+		if (type) RETURN_PRINT_ERROR_HERE("Expected an identifier after the type.");
+		RETURN_PRINT_ERROR_HERE("Expected an identifier or type.");
 	}
 	foreach->foreach_stmt.variable = declid(var);
 	return true;
@@ -924,8 +934,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->expr_stmt = expr;
 	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		SEMA_ERROR(expr, "Expected a type here.");
-		return poisoned_ast;
+		RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here.");
 	}
 	CONSUME_EOS_OR_RET(poisoned_ast);
 	return ast;
@@ -1110,7 +1119,7 @@ static inline Ast* parse_ct_switch_stmt(ParseContext *c)
 		}
 		else
 		{
-			SEMA_ERROR_HERE("A '$case' or '$default' would be needed here.");
+			PRINT_ERROR_HERE("A '$case' or '$default' would be needed here.");
 			return poisoned_ast;
 		}
 		vec_add(cases, result);
@@ -1123,7 +1132,7 @@ static inline Ast *consume_eos(ParseContext *c, Ast *ast)
 {
 	if (!try_consume(c, TOKEN_EOS))
 	{
-		sema_error_at_after(c->prev_span, "Expected a ';' here.");
+		print_error_after(c->prev_span, "Expected a ';' here.");
 		advance(c);
 		return poisoned_ast;
 	}
@@ -1234,7 +1243,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CONTINUE:
 			return parse_continue_stmt(c);
 		case TOKEN_CASE:
-			SEMA_ERROR_HERE("'case' was found outside of 'switch', did you mismatch a '{ }' pair?");
+			PRINT_ERROR_HERE("'case' was found outside of 'switch', did you mismatch a '{ }' pair?");
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_BREAK:
@@ -1244,7 +1253,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_ASM:
 			return parse_asm_block_stmt(c);
 		case TOKEN_DEFAULT:
-			SEMA_ERROR_HERE("'default' was found outside of 'switch', did you mismatch a '{ }' pair?");
+			PRINT_ERROR_HERE("'default' was found outside of 'switch', did you mismatch a '{ }' pair?");
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_CT_ECHO:
@@ -1385,30 +1394,30 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_EXEC:
 		case TOKEN_LGENPAR:
 		case TOKEN_INTERFACE:
-			SEMA_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
-							token_type_to_string(c->tok));
+			PRINT_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
+			                 token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_RPAREN:
 		case TOKEN_RBRACE:
 		case TOKEN_RBRACKET:
 		case TOKEN_RGENPAR:
-			SEMA_ERROR_HERE("Mismatched '%s' found.", token_type_to_string(c->tok));
+			PRINT_ERROR_HERE("Mismatched '%s' found.", token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_TRY:
 		case TOKEN_CATCH:
-			SEMA_ERROR_HERE("'%s' can only be used when unwrapping an optional, did you mean '%s?'?", token_type_to_string(c->tok), token_type_to_string(c->tok));
+			PRINT_ERROR_HERE("'%s' can only be used when unwrapping an optional, did you mean '%s?'?", token_type_to_string(c->tok), token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_EOS:
 			advance(c);
 			return ast_new_curr(c, AST_NOP_STMT);
 		case TOKEN_EOF:
-			SEMA_ERROR_HERE("Reached the end of the file when expecting a statement.");
+			PRINT_ERROR_HERE("Reached the end of the file when expecting a statement.");
 			return poisoned_ast;
 		case TOKEN_DOC_DIRECTIVE:
-			SEMA_ERROR_HERE("Unexpectedly encountered doc directives.");
+			PRINT_ERROR_HERE("Unexpectedly encountered doc directives.");
 			return poisoned_ast;
 	}
 	UNREACHABLE

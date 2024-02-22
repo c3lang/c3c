@@ -7,6 +7,7 @@ extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_
 static bool x64features_contains(X86Features *cpu_features, X86Feature feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
+static unsigned arch_int_register_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
 static bool arch_is_supported(ArchType arch);
@@ -928,6 +929,7 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	x86features_from_cpu(&cpu_features, cpu_set);
 	x64features_limit_from_capability(&cpu_features, target->feature.x86_vector_capability);
 	if (target->feature.soft_float == SOFT_FLOAT_YES) platform_target.x64.soft_float = true;
+	if (target->feature.pass_win64_simd_as_arrays == WIN64_SIMD_ARRAY) platform_target.x64.win64_simd_as_array = true;
 	scratch_buffer_clear();
 	x86features_as_diff_to_scratch(&cpu_features, cpu_set);
 	if (platform_target.x64.soft_float) scratch_buffer_append("+soft-float,");
@@ -1259,6 +1261,39 @@ static VendorType vendor_from_llvm_string(StringSlice slice)
 
 
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_UNKNOWN:
+		case ARCH_UNSUPPORTED:
+			return 0;
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_ARMB:
+		case ARCH_TYPE_PPC:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_THUMB:
+		case ARCH_TYPE_THUMBEB:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_WASM32:
+			return 32;
+		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_RISCV64:
+			return 64;
+		case ARCH_TYPE_PPC64:
+		case ARCH_TYPE_PPC64LE:
+			if (os == OS_TYPE_PS3) return 32;
+			return 64;
+		case ARCH_TYPE_X86_64:
+			if (os == OS_TYPE_NACL) return 32;
+			return 64;
+		default:
+			UNREACHABLE
+	}
+}
+
+static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
 {
 	switch (arch)
 	{
@@ -1816,6 +1851,7 @@ void target_setup(BuildTarget *target)
 	platform_target.tls_supported = os_target_use_thread_local(platform_target.os);
 	platform_target.big_endian = arch_big_endian(platform_target.arch);
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
+	platform_target.width_register = arch_int_register_bit_width(platform_target.os, platform_target.arch);
 	platform_target.alloca_address_space = 0;
 	platform_target.object_format = object_format_from_os(platform_target.os, platform_target.arch);
 	switch (platform_target.object_format)

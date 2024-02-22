@@ -152,11 +152,6 @@ INLINE LLVMValueRef llvm_emit_trunc_bool(GenContext *c, LLVMValueRef value)
 	return LLVMBuildTrunc(c->builder, value, c->bool_type, "");
 }
 
-INLINE LLVMValueRef llvm_emit_trunc(GenContext *c, LLVMValueRef value, Type *type)
-{
-	return LLVMBuildTrunc(c->builder, value, llvm_get_type(c, type), "");
-}
-
 INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, unsigned index)
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
@@ -166,7 +161,7 @@ INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, uns
 	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
-INLINE bool llvn_use_accurate_debug_info(GenContext *context)
+INLINE bool llvm_use_accurate_debug_info(GenContext *context)
 {
 	return context->debug.builder && active_target.optlevel <= OPTIMIZATION_NONE;
 }
@@ -178,15 +173,24 @@ INLINE bool llvm_basic_block_is_unused(LLVMBasicBlockRef block)
 	return !LLVMGetFirstInstruction(block) && !LLVMGetFirstUse(LLVMBasicBlockAsValue(block));
 }
 
+static inline bool llvm_delete_current_if_unused(GenContext *c)
+{
+	LLVMBasicBlockRef current = c->current_block;
+	if (!current || !llvm_basic_block_is_unused(current)) return false;
+	LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(current);
+	LLVMDeleteBasicBlock(current);
+	c->current_block = prev_block;
+	LLVMPositionBuilderAtEnd(c->builder, prev_block);
+	return true;
+}
+
 static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *context)
 {
 	LLVMBasicBlockRef block = context->current_block;
-	if (llvm_basic_block_is_unused(block))
+	if (block && llvm_basic_block_is_unused(block))
 	{
 		LLVMDeleteBasicBlock(block);
-		context->current_block = NULL;
-		context->current_block_is_target = false;
-		return NULL;
+		return context->current_block = NULL;
 	}
 	return block;
 }

@@ -17,7 +17,7 @@ typedef enum
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
 
-static void print_error(SourceSpan location, const char *message, PrintType print_type)
+static void print_error_type_at(SourceSpan location, const char *message, PrintType print_type)
 {
 	if (!location.a)
 	{
@@ -154,7 +154,7 @@ static void print_error(SourceSpan location, const char *message, PrintType prin
 
 static void vprint_error(SourceSpan location, const char *message, va_list args)
 {
-	print_error(location, str_vprintf(message, args), PRINT_TYPE_ERROR);
+	print_error_type_at(location, str_vprintf(message, args), PRINT_TYPE_ERROR);
 }
 
 
@@ -168,12 +168,12 @@ void sema_warning_at(SourceSpan loc, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
-	print_error(loc, str_vprintf(message, list), PRINT_TYPE_NOTE);
+	print_error_type_at(loc, str_vprintf(message, list), PRINT_TYPE_NOTE);
 	va_end(list);
 }
 
 
-void sema_error_at(SourceSpan loc, const char *message, ...)
+void print_error_at(SourceSpan loc, const char *message, ...)
 {
 	va_list list;
 	va_start(list, message);
@@ -181,7 +181,7 @@ void sema_error_at(SourceSpan loc, const char *message, ...)
 	va_end(list);
 }
 
-void sema_error_at_after(SourceSpan loc, const char *message, ...)
+void print_error_after(SourceSpan loc, const char *message, ...)
 {
 	loc.col += loc.length;
 	loc.length = 1;
@@ -201,14 +201,14 @@ void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 	// Ignore errors
 	if (written <= MAX_ERROR_LEN - 2)
 	{
-		print_error(loc, buffer, PRINT_TYPE_NOTE);
+		print_error_type_at(loc, buffer, PRINT_TYPE_NOTE);
 	}
 	va_end(args);
 	return;
 }
 
 
-void sema_error(ParseContext *context, const char *message, ...)
+void print_error(ParseContext *context, const char *message, ...)
 {
 	global_context.errors_found++;
 	File *file = context->unit->file;

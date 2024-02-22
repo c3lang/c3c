@@ -33,9 +33,9 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\hello_world_many.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\time.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\fannkuch-redux.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\hello_world_many.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\time.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\fannkuch-redux.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\ls.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
@@ -122,11 +122,11 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
-          ../build/c3c compile-run examples/hello_world_many.c3
-          ../build/c3c compile-run examples/time.c3
-          ../build/c3c compile-run examples/fannkuch-redux.c3
-          ../build/c3c compile-run examples/contextfree/boolerr.c3
-          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run --print-linking examples/hello_world_many.c3
+          ../build/c3c compile-run --print-linking examples/time.c3
+          ../build/c3c compile-run --print-linking examples/fannkuch-redux.c3
+          ../build/c3c compile-run --print-linking examples/contextfree/boolerr.c3
+          ../build/c3c compile-run --print-linking examples/load_world.c3
           ../build/c3c compile --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
 
       - name: Build testproject
@@ -293,7 +293,7 @@ jobs:
           ../build/c3c compile-run examples/load_world.c3
           ../build/c3c compile-run examples/process.c3
           ../build/c3c compile-run examples/ls.c3
-          ../build/c3c compile-run --system-linker=no linux_stack.c3
+          ../build/c3c compile-run --linker=builtin linux_stack.c3
           ../build/c3c compile-run linux_stack.c3
 
       - name: Compile run unit tests
@@ -309,7 +309,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --system-linker=no
+          ../../build/c3c run --debug-log --linker=builtin
 
       - name: run compiler tests
         run: |
@@ -400,7 +400,7 @@ jobs:
           ../build/c3c compile-run examples/factorial_macro.c3
           ../build/c3c compile-run examples/fasta.c3
           ../build/c3c compile-run examples/process.c3
-          ../build/c3c compile-run --system-linker=no linux_stack.c3
+          ../build/c3c compile-run --linker=builtin linux_stack.c3
           ../build/c3c compile-run linux_stack.c3
 
       - name: Compile run unit tests
@@ -416,7 +416,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --system-linker=no
+          ../../build/c3c run --debug-log --linker=builtin
 
       - name: run compiler tests
         run: |
@@ -474,6 +474,7 @@ jobs:
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/process.c3
           ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run -O5 examples/load_world.c3
 
       - name: Compile run unit tests
         run: |
@@ -488,7 +489,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --system-linker=no
+          ../../build/c3c run --debug-log --linker=builtin
 
       - name: Build testproject lib
         run: |

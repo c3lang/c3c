@@ -286,6 +286,7 @@ typedef struct
 		{
 			X86Features features;
 			unsigned align_simd_default : 16;
+			bool win64_simd_as_array : 1;
 			bool soft_float : 1;
 			bool is_win64 : 1;
 			bool is_mingw64 : 1;
@@ -347,6 +348,7 @@ typedef struct
 	unsigned align_max_tls;
 	unsigned align_large_array;
 	unsigned width_pointer;
+	unsigned width_register;
 	unsigned width_c_short;
 	unsigned width_c_int;
 	unsigned width_c_long;

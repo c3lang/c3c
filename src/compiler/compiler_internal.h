@@ -105,12 +105,11 @@ typedef enum
 {
 	RESOLVE_TYPE_DEFAULT,
 	RESOLVE_TYPE_ALLOW_INFER    = 0x01,
-	RESOLVE_TYPE_ALLOW_ANY      = 0x02,
-	RESOLVE_TYPE_IS_POINTEE     = 0x04,
-	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x08,
-	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_IS_POINTEE,
-	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_ALLOW_INFER,
-	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_ALLOW_ANY
+	RESOLVE_TYPE_IS_POINTEE     = 0x02,
+	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x04,
+	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_IS_POINTEE,
+	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_INFER,
+	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_DEFAULT
 } ResolveTypeKind;
 
 struct ConstInitializer_
@@ -447,7 +446,6 @@ typedef struct
 typedef struct VarDecl_
 {
 	VarDeclKind kind : 8;
-	bool unwrap : 1;
 	bool shadow : 1;
 	bool vararg : 1;
 	bool is_static : 1;
@@ -567,7 +565,6 @@ typedef struct
 			bool attr_finalizer : 1;
 			bool attr_interface_method : 1;
 			bool attr_dynamic : 1;
-			bool attr_default : 1;
 			bool is_lambda : 1;
 			union
 			{
@@ -691,8 +688,8 @@ typedef struct Decl_
 		SectionId section_id;
 		uint16_t va_index;
 	};
-	AlignSize offset : 32;
-	AlignSize padding : 32;
+	AlignSize offset;
+	AlignSize padding;
 	struct CompilationUnit_ *unit;
 	Attr **attributes;
 	Type *type;
@@ -1022,23 +1019,13 @@ typedef struct
 typedef struct
 {
 	AstId first_stmt;
-	BlockExit **block_exit_ref;
-} ExprFuncBlock;
-
-
-typedef struct
-{
-	AstId first_stmt;
 	bool is_noreturn : 1;
 	bool is_must_use : 1;
 	bool is_optional_return : 1;
 	bool had_optional_arg : 1;
-	Decl **params;
-	Decl *macro;
+	DeclId macro_id;
 	BlockExit **block_exit;
-} ExprMacroBlock;
-
-
+} ExprBlock;
 
 typedef struct
 {
@@ -1179,7 +1166,6 @@ struct Expr_
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr** exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
-		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr** expression_list;                     // 8
 		ExprGenericIdent generic_ident_expr;
@@ -1188,7 +1174,7 @@ struct Expr_
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
 		Decl *lambda_expr;                          // 8
-		ExprMacroBlock macro_block;                 // 24
+		ExprBlock expr_block;                     // 24
 		ExprMacroBody macro_body_expr;              // 16;
 		OperatorOverload overload_expr;             // 4
 		ExprPointerOffset pointer_offset_expr;
@@ -1234,6 +1220,7 @@ typedef struct
 	bool no_exit : 1;
 	bool skip_first : 1;
 	bool if_chain : 1;
+	bool jump : 1;
 } FlowCommon;
 
 
@@ -1273,20 +1260,31 @@ typedef struct
 typedef struct
 {
 	FlowCommon flow;
+	Ast **cases;
 	union
 	{
 		struct
 		{
 			ExprId cond;
 			AstId defer;
-			Ast **cases;
 			Ast *scope_defer;
 		};
 		struct
 		{
-			void *retry_block;
 			void *exit_block;
-			void *retry_var;
+			union
+			{
+				struct {
+					void *block;
+					void *var;
+				} retry;
+				struct {
+					uint16_t count;
+					int16_t min_index;
+					int16_t default_index;
+					void *jmptable;
+				} jump;
+			};
 		} codegen;
 	};
 } AstSwitchStmt;
@@ -1506,7 +1504,7 @@ typedef struct Ast_
 
 
 //static_assert(sizeof(AstContinueBreakStmt) == 24, "Ooops");
-static_assert(sizeof(Ast) == 48, "Not expected size on 64 bit");
+static_assert(sizeof(Ast) == 56, "Not expected size on 64 bit");
 
 typedef struct Module_
 {
@@ -1543,6 +1541,7 @@ typedef struct DynamicScope_
 	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
+	bool is_dead : 1;
 	ScopeFlags flags;
 	unsigned label_start;
 	unsigned current_local;
@@ -1677,6 +1676,12 @@ typedef struct
 	};
 } CallEnv;
 
+typedef struct InliningSpan_
+{
+	SourceSpan span;
+	struct InliningSpan_ *prev;
+} InliningSpan;
+
 struct SemaContext_
 {
 	Module *core_module;
@@ -1686,7 +1691,7 @@ struct SemaContext_
 	CompilationUnit *compilation_unit;
 	CallEnv call_env;
 	Decl *current_macro;
-	SourceSpan inlining_span;
+	InliningSpan *inlined_at;
 	ScopeId scope_id;
 	unsigned macro_call_depth;
 	Ast *break_target;
@@ -1882,12 +1887,12 @@ extern TypeInfo *poisoned_type_info;
 
 
 extern Type *type_bool, *type_void, *type_voidptr;
-extern Type *type_float16, *type_float, *type_double, *type_f128;
+extern Type *type_float16, *type_bfloat, *type_float, *type_double, *type_f128;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyfault, *type_anyptr, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_anyfault, *type_any, *type_typeinfo, *type_member;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -1916,6 +1921,7 @@ extern const char *kw_at_param;
 extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
+extern const char *kw_at_jump;
 extern const char *kw_check_assign;
 extern const char *kw_deprecated;
 extern const char *kw_in;
@@ -2281,12 +2287,12 @@ Decl **parse_include_file(File *file, CompilationUnit *unit);
 bool parse_stdin(void);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
 
-#define SEMA_ERROR_HERE(...) sema_error_at(c->span, __VA_ARGS__)
-#define RETURN_SEMA_ERROR_HERE(...) do { sema_error_at(c->span, __VA_ARGS__); return false; } while (0)
-#define SEMA_ERROR_LAST(...) sema_error_at(c->prev_span, __VA_ARGS__)
-#define RETURN_SEMA_ERROR_LAST(...) do { sema_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
-#define SEMA_ERROR(_node, ...) sema_error_at((_node)->span, __VA_ARGS__)
-#define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at((_node)->span, __VA_ARGS__); return false; } while (0)
+#define PRINT_ERROR_AT(_node, ...) print_error_at((_node)->span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_AT(_val, _node, ...) do { print_error_at((_node)->span, __VA_ARGS__); return _val; } while (0)
+#define PRINT_ERROR_HERE(...) print_error_at(c->span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_HERE(...) do { print_error_at(c->span, __VA_ARGS__); return false; } while (0)
+#define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
+#define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
@@ -2297,18 +2303,20 @@ Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);
-bool sema_error_failed_cast(Expr *expr, Type *from, Type *to);
+
+bool sema_error_failed_cast(SemaContext *context, Expr *expr, Type *from, Type *to);
 bool sema_add_local(SemaContext *context, Decl *decl);
 void sema_unwrap_var(SemaContext *context, Decl *decl);
 void sema_rewrap_var(SemaContext *context, Decl *decl);
 void sema_erase_var(SemaContext *context, Decl *decl);
 void sema_erase_unwrapped(SemaContext *context, Decl *decl);
-bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
+bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result);
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref);
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
-bool sema_expr_check_discard(Expr *expr);
+
+bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
 bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span);
@@ -2344,15 +2352,16 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 
 bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind);
 
-void sema_error_at(SourceSpan loc, const char *message, ...);
-void sema_error_at_after(SourceSpan loc, const char *message, ...);
+void print_error_at(SourceSpan loc, const char *message, ...);
+void print_error_after(SourceSpan loc, const char *message, ...);
 void sema_error_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
-void sema_error(ParseContext *context, const char *message, ...);
+void print_error(ParseContext *context, const char *message, ...);
 
 void sema_warning_at(SourceSpan loc, const char *message, ...);
-void sema_shadow_error(Decl *decl, Decl *old);
-bool sema_type_error_on_binop(Expr *expr);
+void sema_shadow_error(SemaContext *context, Decl *decl, Decl *old);
+
+bool sema_type_error_on_binop(SemaContext *context, Expr *expr);
 
 File *source_file_by_id(FileId file);
 File *source_file_load(const char *filename, bool *already_loaded, const char **error);
@@ -2422,7 +2431,7 @@ Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
-Type *type_get_subarray(Type *arr_type);
+Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
@@ -2600,7 +2609,7 @@ INLINE bool type_len_is_inferred(Type *type)
 				type = type->optional;
 				continue;
 			case TYPE_ARRAY:
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_VECTOR:
 				type = type->array.base;
@@ -2635,26 +2644,13 @@ INLINE bool type_is_any_raw(Type *type)
 	}
 }
 
-INLINE bool type_is_any_interface_ptr(Type *type)
-{
-	switch (type->canonical->type_kind)
-	{
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
-			return true;
-		default:
-			return false;
-	}
-}
+
 INLINE bool type_is_any(Type *type)
 {
-	return type->canonical == type_anyptr;
+	return type->canonical == type_any;
 }
 
-INLINE bool type_is_anyfault(Type *type)
-{
-	return type->canonical == type_anyfault;
-}
+
 
 INLINE bool type_is_optional(Type *type)
 {
@@ -2838,29 +2834,50 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 			return "an untyped list";
 		case TYPE_TYPEINFO:
 			return "a type";
+		case TYPE_WILDCARD:
+			return "an empty value";
 		default:
 			UNREACHABLE;
 	}
 }
 
-INLINE bool type_is_invalid_storage_type(Type *type)
+typedef enum
 {
-	if (!type) return false;
+	STORAGE_NORMAL,
+	STORAGE_VOID,
+	STORAGE_COMPILE_TIME,
+	STORAGE_WILDCARD,
+	STORAGE_UNKNOWN
+} StorageType;
+
+static inline StorageType type_storage_type(Type *type)
+{
+	if (!type) return STORAGE_NORMAL;
+	bool is_distinct = false;
 	RETRY:
-	if (type == type_wildcard_optional) return true;
+	if (type == type_wildcard_optional) return STORAGE_WILDCARD;
 	switch (type->type_kind)
 	{
 		case TYPE_VOID:
+			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
+		case TYPE_WILDCARD:
+			return STORAGE_WILDCARD;
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
-		case TYPE_WILDCARD:
-			return true;
+			return STORAGE_COMPILE_TIME;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
+		case TYPE_DISTINCT:
+			is_distinct = true;
+			type = type->decl->distinct->type;
+			goto RETRY;
 		default:
-			return false;
+			return STORAGE_NORMAL;
 	}
 }
 
@@ -2956,7 +2973,7 @@ static inline Type *type_base(Type *type)
 		}
 	}
 }
-static inline Type *type_flat_inline(Type *type)
+static inline Type *type_flat_distinct_inline(Type *type)
 {
 	do
 	{
@@ -3436,6 +3453,8 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	Real real;
 	switch (kind)
 	{
+		case TYPE_F16:
+		case TYPE_BF16:
 		case TYPE_F32:
 			real = (float)d;
 			break;
@@ -3607,3 +3626,5 @@ INLINE const char *section_from_id(SectionId id)
 {
 	return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
 }
+
+extern char swizzle[256];

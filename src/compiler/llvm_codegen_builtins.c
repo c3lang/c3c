@@ -115,14 +115,8 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 		assert(is_power_of_two(alignment));
 		LLVMSetAlignment(result, alignment);
 	}
-	if (is_volatile)
-	{
-		LLVMSetVolatile(result, true);
-	}
-	if (is_weak)
-	{
-		LLVMSetWeak(result, true);
-	}
+	if (is_volatile) LLVMSetVolatile(result, true);
+	if (is_weak) LLVMSetWeak(result, true);
 
 	llvm_value_set(result_value, llvm_emit_extract_value(c, result, 0), type);
 }
@@ -131,9 +125,6 @@ INLINE void llvm_emit_unreachable_stmt(GenContext *c, BEValue *result_value, Exp
 {
 	llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
 	c->current_block = NULL;
-	c->current_block_is_target = false;
-	LLVMBasicBlockRef after_unreachable = llvm_basic_block_new(c, "after.unreachable");
-	llvm_emit_block(c, after_unreachable);
 }
 
 INLINE void llvm_emit_volatile_store(GenContext *c, BEValue *result_value, Expr *expr)
@@ -754,7 +745,7 @@ static inline void llvm_emit_any_make(GenContext *c, BEValue *value, Expr *expr)
 	Expr *typeid = args[1];
 	if (expr_is_const(typeid) && typeid->const_expr.typeid == type_void)
 	{
-		llvm_value_set(value, llvm_get_zero(c, type_anyptr), type_anyptr);
+		llvm_value_set(value, llvm_get_zero(c, type_any), type_any);
 		return;
 	}
 	BEValue ptr;
@@ -763,11 +754,11 @@ static inline void llvm_emit_any_make(GenContext *c, BEValue *value, Expr *expr)
 	BEValue typeid_value;
 	llvm_emit_expr(c, &typeid_value, typeid);
 	llvm_value_rvalue(c, &typeid_value);
-	LLVMValueRef var = llvm_get_undef(c, type_anyptr);
+	LLVMValueRef var = llvm_get_undef(c, type_any);
 	var = llvm_emit_insert_value(c, var, ptr.value, 0);
 	var = llvm_emit_insert_value(c, var, typeid_value.value, 1);
 	assert(!LLVMIsConstant(ptr.value) || !LLVMIsConstant(typeid_value.value) || LLVMIsConstant(var));
-	llvm_value_set(value, var, type_anyptr);
+	llvm_value_set(value, var, type_any);
 }
 
 

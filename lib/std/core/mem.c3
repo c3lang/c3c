@@ -343,9 +343,9 @@ macro void set_inline(void* dst, char val, usz $len, usz $dst_align = 0, bool $i
 	$$memset_inline(dst, val, $len, $is_volatile, $dst_align);
 }
 /**
- * @require values::@inner_kind(a) == TypeKind.SUBARRAY || values::@inner_kind(a) == TypeKind.POINTER
- * @require values::@inner_kind(b) == TypeKind.SUBARRAY || values::@inner_kind(b) == TypeKind.POINTER
- * @require values::@inner_kind(a) != TypeKind.SUBARRAY || len == -1
+ * @require values::@inner_kind(a) == TypeKind.SLICE || values::@inner_kind(a) == TypeKind.POINTER
+ * @require values::@inner_kind(b) == TypeKind.SLICE || values::@inner_kind(b) == TypeKind.POINTER
+ * @require values::@inner_kind(a) != TypeKind.SLICE || len == -1
  * @require values::@inner_kind(a) != TypeKind.POINTER || len > -1
  * @require values::@assign_to(a, b) && values::@assign_to(b, a)
  **/
@@ -356,7 +356,7 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	$endif
 	void* x @noinit;
 	void* y @noinit;
-	$if values::@inner_kind(a) == TypeKind.SUBARRAY:
+	$if values::@inner_kind(a) == TypeKind.SLICE:
 		len = a.len;
 		if (len != b.len) return false;
 		x = a.ptr;
@@ -403,9 +403,9 @@ macro type_alloc_must_be_aligned($Type)
 /**
  * Run with a specific allocator inside of the macro body.
  **/
-macro void @scoped(Allocator* allocator; @body())
+macro void @scoped(Allocator allocator; @body())
 {
-	Allocator* old_allocator = allocator::thread_allocator;
+	Allocator old_allocator = allocator::thread_allocator;
 	allocator::thread_allocator = allocator;
 	defer allocator::thread_allocator = old_allocator;
 	@body();
@@ -415,7 +415,7 @@ macro void @report_heap_allocs_in_scope(;@body())
 {
 	TrackingAllocator tracker;
 	tracker.init(allocator::thread_allocator);
-	Allocator* old_allocator = allocator::thread_allocator;
+	Allocator old_allocator = allocator::thread_allocator;
 	allocator::thread_allocator = &tracker;
 	defer
 	{
@@ -426,7 +426,7 @@ macro void @report_heap_allocs_in_scope(;@body())
 	@body();
 }
 
-macro void @stack_mem(usz $size; @body(Allocator* mem)) @builtin
+macro void @stack_mem(usz $size; @body(Allocator mem)) @builtin
 {
 	char[$size] buffer;
 	OnStackAllocator allocator;
@@ -504,11 +504,6 @@ macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 import libc;
 
 
-
-macro TempAllocator* temp() @deprecated("Use allocator::temp()") => allocator::temp();
-macro Allocator* current_allocator() @deprecated("Use allocator::heap()") => allocator::heap();
-macro Allocator* heap() @deprecated("Use allocator::heap()") => allocator::heap();
-
 module std::core::mem @if(WASM_NOLIBC);
 
 SimpleHeapAllocator wasm_allocator @private;
@@ -552,10 +547,10 @@ fn void* malloc(usz size) @builtin @inline @nodiscard
 	return allocator::malloc(allocator::heap(), size);
 }
 
-fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
+fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-	return allocator::temp().acquire(size, false, alignment, 0)!!;
+	return allocator::temp().acquire(size, NO_ZERO, alignment)!!;
 }
 
 /**
@@ -608,16 +603,6 @@ macro alloc_aligned($Type) @nodiscard
 	return ($Type*)malloc_aligned($Type.sizeof, $Type.alignof);
 }
 
-macro new_clear($Type) @deprecated("Use mem::new")
-{
-	return new($Type);
-}
-
-macro new_temp($Type) @deprecated("Use mem::temp_alloc or mem::temp_new")
-{
-	return tmalloc($Type.sizeof);
-}
-
 /**
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
@@ -637,12 +622,6 @@ macro temp_alloc($Type) @nodiscard
 {
 	return tmalloc($Type.sizeof);
 }
-
-macro new_temp_clear($Type) @deprecated("use mem::temp_new")
-{
-	return tcalloc($Type.sizeof);
-}
-
 
 
 /**
@@ -679,34 +658,14 @@ macro alloc_array_aligned($Type, usz elements) @nodiscard
 	return allocator::alloc_array(allocator::heap(), $Type, elements);
 }
 
-macro talloc_array($Type, usz elements) @nodiscard @deprecated("use mem::temp_alloc_array")
-{
-	return temp_alloc_array($Type, elements);
-}
-
 macro temp_alloc_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
-macro temp_array($Type, usz elements) @nodiscard @deprecated("use mem::temp_alloc_array")
-{
-	return temp_alloc_array($Type, elements);
-}
-
 macro temp_new_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
-}
-
-macro new_zero_array($Type, usz elements) @deprecated("Use new_array")
-{
-	return new_array($Type, elements);
-}
-
-macro temp_zero_array($Type, usz elements) @deprecated("Use temp_new_array")
-{
-	return temp_new_array($Type, elements);
 }
 
 fn void* calloc(usz size) @builtin @inline @nodiscard
@@ -719,10 +678,10 @@ fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 	return allocator::calloc_aligned(allocator::heap(), size, alignment)!!;
 }
 
-fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
+fn void* tcalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-	return allocator::temp().acquire(size, false, alignment, 0)!!;
+	return allocator::temp().acquire(size, ZERO, alignment)!!;
 }
 
 fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
@@ -749,6 +708,6 @@ fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMEN
 {
 	if (!size) return null;
     if (!ptr) return tmalloc(size, alignment);
-	return allocator::temp().resize(ptr, size, alignment, 0)!!;
+	return allocator::temp().resize(ptr, size, alignment)!!;
 }
 

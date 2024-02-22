@@ -17,7 +17,7 @@ fn void switch_subtyping()
 {
 	Foo f = {};
 	f.z = 123;
-	any* x = &f;
+	any x = &f;
 	switch (x)
 	{
 		case int:

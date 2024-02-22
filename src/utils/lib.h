@@ -152,6 +152,8 @@ void slice_trim(StringSlice *slice);
 
 void scratch_buffer_clear(void);
 void scratch_buffer_append(const char *string);
+UNUSED char *scratch_buffer_get_quoted(const char *string);
+UNUSED void scratch_buffer_append_quoted(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
 void scratch_buffer_append_signed_int(int64_t i);
@@ -322,7 +324,7 @@ static inline void* expand_(void *vec, size_t element_size)
 	for (unsigned foreach_index = 0; foreach_index < foreach_len__; val = foreach_vec__[++foreach_index])
 
 #define FOREACH_BEGIN_IDX(idx__, decl__, vec__) \
-void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
+;void* CONCAT(foreach_vec_, __LINE__) = (vec__); unsigned CONCAT(foreach_len_, __LINE__) = vec_size(CONCAT(foreach_vec_, __LINE__)); \
 	for (unsigned idx__ = 0; idx__ < CONCAT(foreach_len_, __LINE__); idx__++) { decl__ = ((void**)CONCAT(foreach_vec_, __LINE__))[idx__];
 #define FOREACH_END() } do {} while (0)
 #define FOREACH_BEGIN(decl__, vec__) FOREACH_BEGIN_IDX(CONCAT(idx__, __LINE__), decl__, vec__)

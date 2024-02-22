@@ -99,6 +99,8 @@ extern fn CFile _fdopen(int fd, ZString mode);
 extern fn CInt _access(ZString path, CInt mode);
 extern fn CInt _waccess(WString path, CInt mode);
 
+extern fn WString _wfullpath(WString absPath, WString relPath, usz maxLength);
+
 /*
 extern ulong _win32_GetCurrentDirectoryW(ulong, Char16* buffer) @extern("GetCurrentDirectoryW");
 extern bool _win32_CreateSymbolicLinkW(WString symlink_file, WString target_file, ulong flags) @extern("CreateSymbolicLinkW");

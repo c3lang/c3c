@@ -100,7 +100,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	TypeInfoKind kind = type->kind;
 	// We can resolve the base type in a shallow way if we don't use it to determine
 	// length and alignment
-	if (kind == TYPE_INFO_SUBARRAY || (resolve_type_kind & RESOLVE_TYPE_IS_POINTEE))
+	if (kind == TYPE_INFO_SLICE || (resolve_type_kind & RESOLVE_TYPE_IS_POINTEE))
 	{
 		if (!sema_resolve_type(context, type->array.base, resolve_type_kind))
 		{
@@ -134,15 +134,15 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	Type *base = base_info->type;
 	switch (type->kind)
 	{
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 			if (!type_is_valid_for_array(base))
 			{
 				SEMA_ERROR(base_info,
-				           "You cannot form a subarray with elements of type %s.",
+				           "You cannot form a slice with elements of type %s.",
 				           type_quoted_error_string(base));
 				return type_info_poison(type);
 			}
-			type->type = type_get_subarray(type->array.base->type);
+			type->type = type_get_slice(type->array.base->type);
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
 			if (!type_is_valid_for_array(base))
@@ -299,13 +299,19 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 	}
 	TypeInfo *inner_type = inner->type_expr;
 	if (!sema_resolve_type(context, inner_type, resolve_kind)) return false;
-	if (inner_type->type != type_void && type_is_invalid_storage_type(inner_type->type))
+	switch (type_storage_type(inner_type->type))
 	{
-		SEMA_ERROR(expr, "Compile-time types may not be used with $evaltype.");
-		return false;
+		case STORAGE_VOID:
+		case STORAGE_UNKNOWN:
+		case STORAGE_NORMAL:
+			type_info->type = inner_type->type;
+			return true;
+		case STORAGE_WILDCARD:
+			RETURN_SEMA_ERROR(expr, "$evaltype failed to resolve this to a definite type.");
+		case STORAGE_COMPILE_TIME:
+			RETURN_SEMA_ERROR(expr, "$evaltype does not support compile-time types.");
 	}
-	type_info->type = inner_type->type;
-	return true;
+	UNREACHABLE
 }
 
 // $typeof(...)
@@ -314,20 +320,19 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	Expr *expr = type_info->unresolved_type_expr;
 	if (!sema_analyse_expr(context, expr)) return false;
 	Type *expr_type = expr->type;
-	if (expr_type != type_void && type_is_invalid_storage_type(expr->type))
+	switch (type_storage_type(expr->type))
 	{
-		if (expr_type == type_wildcard)
-		{
-			RETURN_SEMA_ERROR(expr, "This expression has no concrete type.");
-		}
-		if (expr_type == type_wildcard_optional)
-		{
-			RETURN_SEMA_ERROR(expr, "This optional expression is untyped.");
-		}
-		RETURN_SEMA_ERROR(expr, "Expected a regular runtime expression here.");
+		case STORAGE_NORMAL:
+		case STORAGE_VOID:
+		case STORAGE_UNKNOWN:
+			type_info->type = expr_type;
+			return true;
+		case STORAGE_WILDCARD:
+			RETURN_SEMA_ERROR(expr, "This %sexpression lacks a concrete type.", type_is_optional(expr_type) ? "optional " : "");
+		case STORAGE_COMPILE_TIME:
+			RETURN_SEMA_ERROR(expr, "This expression has a compile time type.");
 	}
-	type_info->type = expr_type;
-	return true;
+	UNREACHABLE
 }
 
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info)
@@ -380,19 +385,6 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	if (type_info->resolve_status == RESOLVE_DONE)
 	{
 		if (!type_info_ok(type_info)) return false;
-		if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
-		{
-			switch (type_no_optional(type_info->type)->canonical->type_kind)
-			{
-				case TYPE_ANY:
-				case TYPE_INTERFACE:
-					RETURN_SEMA_ERROR(type_info, "%s has no valid runtime size, you should use '%s' instead.",
-					                  type_quoted_error_string(type_no_optional(type_info->type)),
-					                  type_quoted_error_string(type_get_ptr(type_no_optional(type_info->type))));
-				default:
-					break;
-			}
-		}
 		return true;
 	}
 
@@ -468,7 +460,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 				return type_info_poison(type_info);
 			}
 			FALLTHROUGH;
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
 			if (!sema_resolve_array_type(context, type_info, resolve_type_kind))
@@ -481,27 +473,6 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			break;
 	}
 APPEND_QUALIFIERS:
-	switch (type_info->type->type_kind)
-	{
-		case TYPE_ANY:
-			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
-			{
-				SEMA_ERROR(type_info, "An 'any' has undefined size, please use 'any*' instead.");
-				return type_info_poison(type_info);
-			}
-			break;
-		case TYPE_INTERFACE:
-			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
-			{
-				SEMA_ERROR(type_info, "%s is an interface and has undefined size, please use %s instead.",
-				           type_quoted_error_string(type_info->type),
-				           type_quoted_error_string(type_get_ptr(type_info->type)));
-				return type_info_poison(type_info);
-			}
-			break;
-		default:
-			break;
-	}
 	switch (kind)
 	{
 		case TYPE_COMPRESSED_NONE:
@@ -510,19 +481,19 @@ APPEND_QUALIFIERS:
 			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_SUB:
-			type_info->type = type_get_subarray(type_info->type);
+			type_info->type = type_get_slice(type_info->type);
 			break;
 		case TYPE_COMPRESSED_SUBPTR:
-			type_info->type = type_get_ptr(type_get_subarray(type_info->type));
+			type_info->type = type_get_ptr(type_get_slice(type_info->type));
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
 			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_PTRSUB:
-			type_info->type = type_get_subarray(type_get_ptr(type_info->type));
+			type_info->type = type_get_slice(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
-			type_info->type = type_get_subarray(type_get_subarray(type_info->type));
+			type_info->type = type_get_slice(type_get_slice(type_info->type));
 			break;
 	}
 	if (type_info->optional)
@@ -533,4 +504,5 @@ APPEND_QUALIFIERS:
 	type_info->resolve_status = RESOLVE_DONE;
 	return true;
 }
+
 

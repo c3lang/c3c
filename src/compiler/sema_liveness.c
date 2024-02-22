@@ -17,11 +17,10 @@ RETRY:
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_INFPTR:
 			case TYPE_POINTER:
 				type = type->pointer;
 				goto RETRY;
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
@@ -389,17 +388,6 @@ RETRY:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			sema_trace_expr_list_liveness(expr->designated_init_list);
 			return;
-		case EXPR_EXPR_BLOCK:
-		{
-			AstId current = expr->expr_block.first_stmt;
-			if (!current) return;
-			do
-			{
-				Ast *value = ast_next(&current);
-				sema_trace_stmt_liveness(value);
-			} while (current);
-			return;
-		}
 		case EXPR_IDENTIFIER:
 			sema_trace_decl_liveness(expr->identifier_expr.decl);
 			return;
@@ -413,14 +401,9 @@ RETRY:
 		case EXPR_LAMBDA:
 			sema_trace_decl_liveness(expr->lambda_expr);
 			return;
-		case EXPR_MACRO_BLOCK:
-		{
-			FOREACH_BEGIN(Decl *val, expr->macro_block.params)
-				sema_trace_decl_liveness(val);
-			FOREACH_END();
-			sema_trace_stmt_chain_liveness(expr->macro_block.first_stmt);
+		case EXPR_EXPR_BLOCK:
+			sema_trace_stmt_chain_liveness(expr->expr_block.first_stmt);
 			return;
-		}
 		case EXPR_MACRO_BODY_EXPANSION:
 		{
 			FOREACH_BEGIN(Decl *arg, expr->body_expansion_expr.declarations)
@@ -460,8 +443,6 @@ RETRY:
 			sema_trace_expr_liveness(exprptr(expr->swizzle_expr.parent));
 			return;
 		case EXPR_TERNARY:
-		{
-			REMINDER("Tracing ternary can be optimized");
 			sema_trace_expr_liveness(exprptr(expr->ternary_expr.cond));
 			if (expr->ternary_expr.then_expr)
 			{
@@ -469,7 +450,6 @@ RETRY:
 			}
 			expr = exprptr(expr->ternary_expr.else_expr);
 			goto RETRY;
-		}
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return;
@@ -539,7 +519,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	{
 		Decl *method = methods[i];
 		if (method->decl_kind == DECL_MACRO) continue;
-		if (method->func_decl.attr_dynamic || method->func_decl.attr_default)
+		if (method->func_decl.attr_dynamic)
 		{
 			sema_trace_decl_liveness(method);
 		}

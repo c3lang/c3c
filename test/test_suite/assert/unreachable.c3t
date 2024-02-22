@@ -17,7 +17,7 @@ fn void test()
 define void @unreachable.test() #0 {
 entry:
   %x = alloca i32, align 4
-  %indirectarg = alloca %"any*[]", align 8
+  %indirectarg = alloca %"any[]", align 8
   %0 = call i32 @unreachable.foo()
   store i32 %0, ptr %x, align 4
   %1 = load i32, ptr %x, align 4
@@ -28,7 +28,7 @@ if.then:                                          ; preds = %entry
   ret void
 
 if.exit:                                          ; preds = %entry
-  store %"any*[]" zeroinitializer, ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.str, i64 30, ptr @.str.1, i64 14, ptr @.str.2, i64 4, i32 10, ptr byval(%"any*[]") align 8 %indirectarg)
+  store %"any[]" zeroinitializer, ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.str, i64 30, ptr @.str.1, i64 14, ptr @.str.2, i64 4, i32 10, ptr byval(%"any[]") align 8 %indirectarg)
   unreachable
 }

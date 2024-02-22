@@ -400,10 +400,10 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 		case TYPE_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			return;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		{
 			BEValue member;
-			llvm_emit_subarray_pointer(c, value, &member);
+			llvm_emit_slice_pointer(c, value, &member);
 			llvm_value_rvalue(c, &member);
 			llvm_value_set_address(value,
 								   member.value,
@@ -543,16 +543,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	else
 	{
-		if (decl->var.kind == VARDECL_CONST || decl->var.kind == VARDECL_GLOBAL)
-		{
-			LLVMSetVisibility(global_ref, LLVMProtectedVisibility);
-			if (optional_ref) LLVMSetVisibility(optional_ref, LLVMProtectedVisibility);
-		}
-		else
-		{
-			LLVMSetLinkage(global_ref, LLVMInternalLinkage);
-			if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
-		}
+		LLVMSetLinkage(global_ref, LLVMInternalLinkage);
+		if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
 	}
 
 	decl->backend_ref = global_ref;
@@ -865,6 +857,19 @@ void llvm_value_set_decl(GenContext *c, BEValue *value, Decl *decl)
 	llvm_value_set_decl_address(c, value, decl);
 }
 
+LLVMBuilderRef llvm_create_function_entry(GenContext *c, LLVMValueRef func, LLVMBasicBlockRef *entry_block_ref)
+{
+	LLVMBasicBlockRef entry = llvm_append_basic_block(c, func, "entry");
+	LLVMBuilderRef builder = llvm_create_builder(c);
+	LLVMPositionBuilderAtEnd(builder, entry);
+	if (entry_block_ref) *entry_block_ref = entry;
+	return builder;
+}
+
+LLVMBasicBlockRef llvm_append_basic_block(GenContext *c, LLVMValueRef function, const char *name)
+{
+	return LLVMAppendBasicBlockInContext(c->context, function, name);
+}
 
 LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name)
 {
@@ -982,7 +987,6 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 	bool same_module = decl_module(decl) == c->code_module;
 	const char *name = same_module ? "temp_global" : decl_get_extname(decl);
 	decl->backend_ref = llvm_add_global(c, name, decl->type, decl->alignment);
-	llvm_set_alignment(decl->backend_ref, decl->alignment);
 	if (!same_module)
 	{
 		LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
@@ -1211,9 +1215,7 @@ static void llvm_gen_test_main(GenContext *c)
 	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
 	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
 	LLVMValueRef other_func = LLVMAddFunction(c->module, test_runner->extname, runner_type);
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
-	LLVMBuilderRef builder = llvm_create_builder(c);
-	LLVMPositionBuilderAtEnd(builder, entry);
+	LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
 						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
@@ -1273,11 +1275,11 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
 	LLVMValueRef count = llvm_const_int(c, type_usz, test_count);
-	Type *chars_array = type_get_subarray(type_chars);
+	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, test_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
 	LLVMSetInitializer(name_list, llvm_emit_aggregate_two(c, chars_array, name_ref, count));
-	Type *decls_array_type = type_get_subarray(type_voidptr);
+	Type *decls_array_type = type_get_slice(type_voidptr);
 	LLVMValueRef decl_list = llvm_add_global(c, test_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
@@ -1309,9 +1311,7 @@ static void llvm_gen_benchmark_main(GenContext *c)
 	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
 	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
 	LLVMValueRef other_func = LLVMAddFunction(c->module, benchmark_runner->extname, runner_type);
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, func, "entry");
-	LLVMBuilderRef builder = llvm_create_builder(c);
-	LLVMPositionBuilderAtEnd(builder, entry);
+	LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
 						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
@@ -1371,11 +1371,11 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
 	LLVMValueRef count = llvm_const_int(c, type_usz, benchmark_count);
-	Type *chars_array = type_get_subarray(type_chars);
+	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, benchmark_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
 	LLVMSetInitializer(name_list, llvm_emit_aggregate_two(c, chars_array, name_ref, count));
-	Type *decls_array_type = type_get_subarray(type_voidptr);
+	Type *decls_array_type = type_get_slice(type_voidptr);
 	LLVMValueRef decl_list = llvm_add_global(c, benchmark_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
@@ -1492,9 +1492,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		gencontext_init_file_emit(gen_context, unit);
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
-		gen_context->debug.file = (DebugFile){
-				.debug_file = unit->llvm.debug_file,
-				.file_id = unit->file->file_id };
+		gen_context->debug.file = (DebugFile){ .debug_file = unit->llvm.debug_file, .file_id = unit->file->file_id };
 
 		FOREACH_BEGIN(Decl *method, unit->methods)
 			if (only_used && !method->is_live) continue;
@@ -1679,13 +1677,6 @@ LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_al
 		return LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_uint, len));
 	}
 	return LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_ulong, len));
-}
-
-void llvm_emit_memcpy_to_decl(GenContext *c, Decl *decl, LLVMValueRef source, unsigned source_alignment)
-{
-	if (source_alignment == 0) source_alignment = type_abi_alignment(decl->type);
-	assert(!decl->is_value);
-	llvm_emit_memcpy(c, decl->backend_ref, decl->alignment, source, source_alignment, type_size(decl->type));
 }
 
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type)

@@ -2,7 +2,7 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "compiler_internal.h"
+#include "sema_internal.h"
 
 Decl *module_find_symbol(Module *module, const char *symbol)
 {
@@ -44,7 +44,7 @@ Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 	path->len = len;
 	if (type != TOKEN_IDENT)
 	{
-		SEMA_ERROR(path, "A module name was expected here.");
+		PRINT_ERROR_AT(path, "A module name was expected here.");
 		return NULL;
 	}
 	return path;

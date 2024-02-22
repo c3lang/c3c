@@ -137,12 +137,6 @@ typedef enum
 	SINGLE_MODULE_ON = 1
 } SingleModule;
 
-typedef enum
-{
-	SYSTEM_LINKER_NOT_SET = -1,
-	SYSTEM_LINKER_OFF = 0,
-	SYSTEM_LINKER_ON = 1
-} SystemLinker;
 
 typedef enum
 {
@@ -186,6 +180,13 @@ typedef enum
 	SOFT_FLOAT_NONE = 0,
 	SOFT_FLOAT_YES = 1
 } SoftFloat;
+
+typedef enum
+{
+	WIN64_SIMD_DEFAULT = -1,
+	WIN64_SIMD_FULL = 0,
+	WIN64_SIMD_ARRAY = 1
+} Win64Simd;
 
 typedef enum
 {
@@ -366,6 +367,7 @@ typedef struct BuildOptions_
 	const char *testfn;
 	const char *cc;
 	const char *build_dir;
+	const char *output_dir;
 	const char *llvm_out;
 	const char *asm_out;
 	const char *obj_out;
@@ -373,6 +375,7 @@ typedef struct BuildOptions_
 	RelocModel reloc_model;
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
+	Win64Simd win_64_simd;
 	FpOpt fp_math;
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
@@ -501,6 +504,7 @@ typedef struct
 		X86VectorCapability x86_vector_capability : 4;
 		RiscvFloatCapability riscv_float_capability : 4;
 		bool trap_on_wrap : 1;
+		Win64Simd pass_win64_simd_as_arrays : 3;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
 		X86CpuSet x86_cpu_set;

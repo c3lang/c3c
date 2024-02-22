@@ -62,13 +62,13 @@ fn void main()
 
 define i32 @test.ping(i32 %0) #0 {
 entry:
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %retparam = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
-  %1 = insertvalue %"any*" undef, ptr %taddr, 0
-  %2 = insertvalue %"any*" %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %2, ptr %varargslots, align 16
+  %1 = insertvalue %any undef, ptr %taddr, 0
+  %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %2, ptr %varargslots, align 16
   %3 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 1)
   ret i32 %0
 }
@@ -78,36 +78,36 @@ define void @test.main() #0 {
 entry:
   %i = alloca i32, align 4
   %j = alloca i32, align 4
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %retparam = alloca i64, align 8
-  %varargslots2 = alloca [1 x %"any*"], align 16
+  %varargslots2 = alloca [1 x %any], align 16
   %taddr3 = alloca i32, align 4
   %retparam4 = alloca i64, align 8
-  %varargslots5 = alloca [1 x %"any*"], align 16
+  %varargslots5 = alloca [1 x %any], align 16
   %taddr6 = alloca i32, align 4
   %retparam7 = alloca i64, align 8
-  %varargslots8 = alloca [1 x %"any*"], align 16
+  %varargslots8 = alloca [1 x %any], align 16
   %taddr9 = alloca i32, align 4
   %retparam10 = alloca i64, align 8
   %x = alloca i32, align 4
-  %varargslots11 = alloca [1 x %"any*"], align 16
+  %varargslots11 = alloca [1 x %any], align 16
   %taddr12 = alloca %"char[]", align 8
   %retparam13 = alloca i64, align 8
   %x14 = alloca double, align 8
-  %varargslots15 = alloca [1 x %"any*"], align 16
+  %varargslots15 = alloca [1 x %any], align 16
   %taddr16 = alloca %"char[]", align 8
   %retparam17 = alloca i64, align 8
-  %varargslots18 = alloca [1 x %"any*"], align 16
+  %varargslots18 = alloca [1 x %any], align 16
   %taddr19 = alloca i32, align 4
   %retparam20 = alloca i64, align 8
   %x21 = alloca i32, align 4
   %y = alloca i32, align 4
   %a = alloca i32, align 4
-  %varargslots22 = alloca [2 x %"any*"], align 16
+  %varargslots22 = alloca [2 x %any], align 16
   %retparam23 = alloca i64, align 8
   %a24 = alloca i32, align 4
-  %varargslots25 = alloca [2 x %"any*"], align 16
+  %varargslots25 = alloca [2 x %any], align 16
   %retparam27 = alloca i64, align 8
   %0 = call i32 @test.ping(i32 -1)
   %1 = call i32 @test.ping(i32 1)
@@ -120,41 +120,41 @@ entry:
   %add1 = add i32 %4, %5
   store i32 %add1, ptr %j, align 4
   store i32 %1, ptr %taddr, align 4
-  %6 = insertvalue %"any*" undef, ptr %taddr, 0
-  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %7, ptr %varargslots, align 16
+  %6 = insertvalue %any undef, ptr %taddr, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %7, ptr %varargslots, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.1, i64 2, ptr %varargslots, i64 1)
   store i32 %0, ptr %taddr3, align 4
-  %9 = insertvalue %"any*" undef, ptr %taddr3, 0
-  %10 = insertvalue %"any*" %9, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %10, ptr %varargslots2, align 16
+  %9 = insertvalue %any undef, ptr %taddr3, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %10, ptr %varargslots2, align 16
   %11 = call i64 @std.io.printfn(ptr %retparam4, ptr @.str.2, i64 2, ptr %varargslots2, i64 1)
   store i32 %2, ptr %taddr6, align 4
-  %12 = insertvalue %"any*" undef, ptr %taddr6, 0
-  %13 = insertvalue %"any*" %12, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %13, ptr %varargslots5, align 16
+  %12 = insertvalue %any undef, ptr %taddr6, 0
+  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %13, ptr %varargslots5, align 16
   %14 = call i64 @std.io.printfn(ptr %retparam7, ptr @.str.3, i64 2, ptr %varargslots5, i64 1)
   store i32 %3, ptr %taddr9, align 4
-  %15 = insertvalue %"any*" undef, ptr %taddr9, 0
-  %16 = insertvalue %"any*" %15, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %16, ptr %varargslots8, align 16
+  %15 = insertvalue %any undef, ptr %taddr9, 0
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %16, ptr %varargslots8, align 16
   %17 = call i64 @std.io.printfn(ptr %retparam10, ptr @.str.4, i64 2, ptr %varargslots8, i64 1)
   store i32 0, ptr %x, align 4
   store %"char[]" { ptr @.str.6, i64 3 }, ptr %taddr12, align 8
-  %18 = insertvalue %"any*" undef, ptr %taddr12, 0
-  %19 = insertvalue %"any*" %18, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %19, ptr %varargslots11, align 16
+  %18 = insertvalue %any undef, ptr %taddr12, 0
+  %19 = insertvalue %any %18, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %19, ptr %varargslots11, align 16
   %20 = call i64 @std.io.printfn(ptr %retparam13, ptr @.str.5, i64 2, ptr %varargslots11, i64 1)
   store double 0.000000e+00, ptr %x14, align 8
   store %"char[]" { ptr @.str.8, i64 6 }, ptr %taddr16, align 8
-  %21 = insertvalue %"any*" undef, ptr %taddr16, 0
-  %22 = insertvalue %"any*" %21, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %22, ptr %varargslots15, align 16
+  %21 = insertvalue %any undef, ptr %taddr16, 0
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %22, ptr %varargslots15, align 16
   %23 = call i64 @std.io.printfn(ptr %retparam17, ptr @.str.7, i64 2, ptr %varargslots15, i64 1)
   store i32 105, ptr %taddr19, align 4
-  %24 = insertvalue %"any*" undef, ptr %taddr19, 0
-  %25 = insertvalue %"any*" %24, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %25, ptr %varargslots18, align 16
+  %24 = insertvalue %any undef, ptr %taddr19, 0
+  %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %25, ptr %varargslots18, align 16
   %26 = call i64 @std.io.printfn(ptr %retparam20, ptr @.str.9, i64 2, ptr %varargslots18, i64 1)
   store i32 123, ptr %x21, align 4
   store i32 33, ptr %y, align 4
@@ -164,13 +164,13 @@ entry:
   store i32 %28, ptr %x21, align 4
   %29 = load i32, ptr %a, align 4
   store i32 %29, ptr %y, align 4
-  %30 = insertvalue %"any*" undef, ptr %x21, 0
-  %31 = insertvalue %"any*" %30, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %31, ptr %varargslots22, align 16
-  %32 = insertvalue %"any*" undef, ptr %y, 0
-  %33 = insertvalue %"any*" %32, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %30 = insertvalue %any undef, ptr %x21, 0
+  %31 = insertvalue %any %30, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %31, ptr %varargslots22, align 16
+  %32 = insertvalue %any undef, ptr %y, 0
+  %33 = insertvalue %any %32, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %ptradd = getelementptr inbounds i8, ptr %varargslots22, i64 16
-  store %"any*" %33, ptr %ptradd, align 16
+  store %any %33, ptr %ptradd, align 16
   %34 = call i64 @std.io.printfn(ptr %retparam23, ptr @.str.10, i64 6, ptr %varargslots22, i64 2)
   %35 = load i32, ptr %x21, align 4
   store i32 %35, ptr %a24, align 4
@@ -178,13 +178,13 @@ entry:
   store i32 %36, ptr %x21, align 4
   %37 = load i32, ptr %a24, align 4
   store i32 %37, ptr %y, align 4
-  %38 = insertvalue %"any*" undef, ptr %x21, 0
-  %39 = insertvalue %"any*" %38, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %39, ptr %varargslots25, align 16
-  %40 = insertvalue %"any*" undef, ptr %y, 0
-  %41 = insertvalue %"any*" %40, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %38 = insertvalue %any undef, ptr %x21, 0
+  %39 = insertvalue %any %38, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %39, ptr %varargslots25, align 16
+  %40 = insertvalue %any undef, ptr %y, 0
+  %41 = insertvalue %any %40, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %ptradd26 = getelementptr inbounds i8, ptr %varargslots25, i64 16
-  store %"any*" %41, ptr %ptradd26, align 16
+  store %any %41, ptr %ptradd26, align 16
   %42 = call i64 @std.io.printfn(ptr %retparam27, ptr @.str.11, i64 6, ptr %varargslots25, i64 2)
   ret void
 }

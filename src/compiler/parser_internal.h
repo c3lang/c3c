@@ -18,7 +18,7 @@ typedef enum
 #define EXPECT_IDENT_FOR_OR(_name, _res) do { if (!expect_ident(c, _name)) return _res; } while(0)
 #define EXPECT_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; } while(0)
 #define CONSUME_OR_RET(_tok, _res) do { if (!expect(c, _tok)) return _res; advance(c); } while(0)
-#define CONSUME_EOS_OR_RET(_res) do { if (!tok_is(c, TOKEN_EOS)) { sema_error_at_after(c->prev_span, "Expected ';'"); return _res; } advance(c); } while(0)
+#define CONSUME_EOS_OR_RET(_res) do { if (!tok_is(c, TOKEN_EOS)) { print_error_after(c->prev_span, "Expected ';'"); return _res; } advance(c); } while(0)
 #define TRY_CONSUME_OR_RET(_tok, _message, _type) do { if (!consume(c, _tok, _message)) return _type; } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
@@ -109,7 +109,7 @@ INLINE bool expect(ParseContext *c, TokenType token_type)
 {
 	if (tok_is(c, token_type)) return true;
 
-	SEMA_ERROR_HERE("Expected '%s'.", token_type_to_string(token_type));
+	PRINT_ERROR_HERE("Expected '%s'.", token_type_to_string(token_type));
 	return false;
 }
 
@@ -139,10 +139,10 @@ static inline bool expect_ident(ParseContext *c, const char* name)
 			return true;
 		case TOKEN_TYPE_IDENT:
 		case TOKEN_CONST_IDENT:
-			SEMA_ERROR_HERE("A %s cannot start with a capital letter.", name);
+			PRINT_ERROR_HERE("A %s cannot start with a capital letter.", name);
 			return false;
 		default:
-			SEMA_ERROR_HERE("A %s was expected.", name);
+			PRINT_ERROR_HERE("A %s was expected.", name);
 			return false;
 	}
 }

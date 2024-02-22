@@ -7,7 +7,7 @@ fn void main()
 	defer printf("On exit\n");
 	{|
 		defer printf("Baz\n");
-		defer {|
+		defer (void){|
 			defer printf("Hello!\n");
 			defer printf("1\n");
 			if (true) return 12;
@@ -30,9 +30,9 @@ if.then:                                          ; preds = %entry
   call void (ptr, ...) @printf(ptr @.str.1)
   br label %expr_block.exit
 expr_block.exit:                                  ; preds = %if.then
-  call void (ptr, ...) @printf(ptr @.str.5)
-  call void (ptr, ...) @printf(ptr @.str.6)
-  call void (ptr, ...) @printf(ptr @.str.7)
+  call void (ptr, ...) @printf(ptr @.str.2)
+  call void (ptr, ...) @printf(ptr @.str.3)
+  call void (ptr, ...) @printf(ptr @.str.4)
   ret void
 }
 

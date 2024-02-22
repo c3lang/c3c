@@ -1,0 +1,69 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+	anyfault x = SearchResult.MISSING;
+	int! a = x?;
+	int! b = a = x?;
+	int! c = b = a;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %x = alloca i64, align 8
+  %a = alloca i32, align 4
+  %a.f = alloca i64, align 8
+  %b = alloca i32, align 4
+  %b.f = alloca i64, align 8
+  %c = alloca i32, align 4
+  %c.f = alloca i64, align 8
+  store i64 ptrtoint (ptr @"std.core.builtin.SearchResult$MISSING" to i64), ptr %x, align 8
+  %0 = load i64, ptr %x, align 8
+  store i64 %0, ptr %a.f, align 8
+  %1 = load i64, ptr %x, align 8
+  store i64 %1, ptr %a.f, align 8
+  %not_err = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %1, ptr %b.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  store i32 undef, ptr %b, align 4
+  store i64 0, ptr %b.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  %optval = load i64, ptr %a.f, align 8
+  %not_err1 = icmp eq i64 %optval, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
+  br i1 %3, label %after_check3, label %assign_optional2
+
+assign_optional2:                                 ; preds = %after_assign
+  store i64 %optval, ptr %b.f, align 8
+  br label %optional_assign_jump
+
+after_check3:                                     ; preds = %after_assign
+  %4 = load i32, ptr %a, align 4
+  store i32 %4, ptr %b, align 4
+  store i64 0, ptr %b.f, align 8
+  br label %after_assign4
+
+optional_assign_jump:                             ; preds = %assign_optional2
+  %reload_err = load i64, ptr %b.f, align 8
+  store i64 %reload_err, ptr %c.f, align 8
+  br label %after_assign5
+
+after_assign4:                                    ; preds = %after_check3
+  store i32 %4, ptr %c, align 4
+  store i64 0, ptr %c.f, align 8
+  br label %after_assign5
+
+after_assign5:                                    ; preds = %after_assign4, %optional_assign_jump
+  ret void
+}

@@ -97,7 +97,6 @@ void gencontext_begin_module(GenContext *c)
 	// We need to remove the context from the cache after this.
 	// This would seem to indicate that we should change Type / actual type.
 
-	c->block_global_unique_count = 0;
 	c->ast_alloca_addr_space = target_alloca_addr_space();
 	VECEACH(global_context.type, i)
 	{

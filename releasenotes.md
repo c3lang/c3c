@@ -1,5 +1,47 @@
 # C3C Release Notes
 
+## 0.6.0 Change list
+
+### Changes / improvements
+- `@default` implementations for interfaces removed.
+- `any*` => `any`, same for interfaces.
+- Private / local globals now have `internal` visibility in LLVM.
+- Updated enum syntax.
+- 'rgba' also available for swizzling.
+- The name "subarray" has been replaced by the more well known name "slice' across the codebase.
+- Improved alignment handling.
+- Add `--output-dir` to command line. #1155
+- Allow making distinct types out of "void", "typeid", "anyfault" and faults.
+- Removed `--system-linker` setting.
+- "Try" expressions may not be any binary or unary expressions. So for example `try foo() + 1` is disallowed.
+- Added `$$REGISTER_SIZE` for int register size.
+- `assert(false)` only allowed in unused branches or in tests. Compile time failed asserts is a compile time error.
+- Require expression blocks returning values to have the value used.
+- Detect "unsigned >= 0" as errors.
+- Improve callstack debug information #1184.
+- Request jump table using @jump for switches.
+- Improved inline debug information.
+- Improved error messages on inlined macros.
+- Introduce MSVC compatible SIMD ABI.
+
+### Fixes
+- Fixed issue in safe mode when converting enums.
+- Better checking of operator methods.
+- Bug when assigning an optional from an optional.
+- Lambdas were not type checked thoroughly #1185. 
+
+### Stdlib changes
+- "init_new/init_temp" removed. 
+- LinkedList API rewritten. 
+- List "pop" and "remove" function now return Optionals. 
+- RingBuffer API rewritten. Allocator interface changed. 
+- Deprecated Allocator, DString and mem functions removed. 
+- "identity" functions are now constants for Matrix and Complex numbers.
+- Removed 'append' from Object and List, replaced by 'push'.
+- `GenericList` renamed `AnyList`.
+- Proper handling of '.' and Win32 '//server' paths.
+- Path normalization - fix possible null terminator out of bounds.
+
 ## 0.5.6 Change list
 
 ### Changes / improvements
@@ -388,13 +430,13 @@
 - Fixed errors on flexible array slices.
 - Fix of `readdir` issues on macOS.
 - Fix to slice assignment of distinct types.
-- Fix of issue casting subarrays to distinct types.
+- Fix of issue casting slices to distinct types.
 - Fixes to `split`, `rindex_of`.
 - List no longer uses the temp allocator by default.
 - Remove test global when not in test mode.
 - Fix sum/product on floats.
 - Fix error on void! return of macros.
-- Removed too permissive casts on subarrays.
+- Removed too permissive casts on slices.
 - Using C files correctly places objects in the build folder.
 - Fix of overaligned deref.
 - Fix negating a float vector.
@@ -497,7 +539,7 @@
 - Added type.inner and type.len reflection.
 - Support float mod operations.
 - Add float.max/min.
-- Allow [in] contract to be used on subarray types.
+- Allow [in] contract to be used on slices.
 - Add linker and linked dir arguments to build files.
 - Auto-import std::core.
 - LLVM 15 support.

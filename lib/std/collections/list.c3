@@ -5,7 +5,7 @@ module std::collections::list(<Type>);
 import std::io,std::math;
 
 def ElementPredicate = fn bool(Type *type);
-def ElementTest = fn bool(Type *type, any* context);
+def ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
@@ -13,7 +13,7 @@ struct List (Printable)
 {
 	usz size;
 	usz capacity;
-	Allocator *allocator;
+	Allocator allocator;
 	Type *entries;
 }
 
@@ -22,7 +22,7 @@ struct List (Printable)
  * @param initial_capacity "The initial capacity to reserve"
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn List* List.new_init(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap())
+fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -40,15 +40,6 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator* allocator = 
 }
 
 /**
- * @param initial_capacity "The initial capacity to reserve"
- * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
- **/
-fn List* List.init_new(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
-{
-	return self.new_init(initial_capacity, allocator) @inline;
-}
-
-/**
  * Initialize the list using the temp allocator.
  *
  * @param initial_capacity "The initial capacity to reserve"
@@ -59,19 +50,9 @@ fn List* List.temp_init(&self, usz initial_capacity = 16)
 }
 
 /**
- * Initialize the list using the temp allocator.
- *
- * @param initial_capacity "The initial capacity to reserve"
- **/
-fn List* List.init_temp(&self, usz initial_capacity = 16) @deprecated("Replaced by temp_init")
-{
-	return self.temp_init(initial_capacity) @inline;
-}
-
-/**
  * @require self.size == 0 "The List must be empty"
  **/
-fn void List.init_wrapping_array(&self, Type[] types, Allocator* allocator = allocator::heap())
+fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
 	self.size = types.len;
@@ -99,7 +80,7 @@ fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn String List.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
+fn String List.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
 	return string::new_format("%s", *self, .allocator = allocator);
 }
@@ -111,20 +92,13 @@ fn String List.to_tstring(&self)
 
 fn void List.push(&self, Type element) @inline
 {
-	self.append(element);
-}
-
-fn void List.append(&self, Type element)
-{
 	self.ensure_capacity();
-	self.entries[self.size++] = element;
+    self.entries[self.size++] = element;
 }
 
-/**
- * @require self.size > 0
- **/
-fn Type List.pop(&self)
+fn Type! List.pop(&self)
 {
+	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	return self.entries[--self.size];
 }
 
@@ -136,11 +110,11 @@ fn void List.clear(&self)
 /**
  * @require self.size > 0
  **/
-fn Type List.pop_first(&self)
+fn Type! List.pop_first(&self)
 {
-	Type value = self.entries[0];
-	self.remove_at(0);
-	return value;
+	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	defer self.remove_at(0);
+	return self.entries[0];
 }
 
 /**
@@ -163,7 +137,7 @@ fn void List.add_all(&self, List* other_list)
 }
 
 
-fn Type[] List.to_new_array(&self, Allocator* allocator = allocator::heap())
+fn Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return Type[] {};
 	Type[] result = allocator::alloc_array(allocator, Type, self.size);
@@ -232,30 +206,28 @@ fn void List.set_at(&self, usz index, Type type)
 	self.entries[index] = type;
 }
 
-/**
- * @require self.size > 0
- **/
-fn void List.remove_last(&self)
+fn void! List.remove_last(&self) @maydiscard
 {
+	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	self.size--;
 }
 
-/**
- * @require self.size > 0
- **/
-fn void List.remove_first(&self)
+fn void! List.remove_first(&self) @maydiscard
 {
+	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	self.remove_at(0);
 }
 
-fn Type* List.first(&self)
+fn Type! List.first(&self)
 {
-	return self.size ? &self.entries[0] : null;
+	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	return self.entries[0];
 }
 
-fn Type* List.last(&self)
+fn Type! List.last(&self)
 {
-	return self.size ? &self.entries[self.size - 1] : null;
+	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	return self.entries[self.size - 1];
 }
 
 fn bool List.is_empty(&self) @inline
@@ -335,12 +307,12 @@ macro usz List._remove_if(&self, ElementPredicate filter, bool $invert) @local
 	return size - self.size;
 }
 
-fn usz List.remove_using_test(&self, ElementTest filter, any* context)
+fn usz List.remove_using_test(&self, ElementTest filter, any context)
 {
 	return self._remove_using_test(filter, false, context);
 }
 
-fn usz List.retain_using_test(&self, ElementTest filter, any* context)
+fn usz List.retain_using_test(&self, ElementTest filter, any context)
 {
 	return self._remove_using_test(filter, true, context);
 }
@@ -460,15 +432,35 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 /**
  * @param [&inout] self "The list to remove elements from"
  * @param value "The value to remove"
+ * @return "true if the value was found"
+ **/
+fn bool List.remove_last_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+{
+	return @ok(self.remove_at(self.rindex_of(value)));
+}
+
+/**
+ * @param [&inout] self "The list to remove elements from"
+ * @param value "The value to remove"
+ * @return "true if the value was found"
+ **/
+fn bool List.remove_first_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+{
+	return @ok(self.remove_at(self.index_of(value)));
+}
+
+/**
+ * @param [&inout] self "The list to remove elements from"
+ * @param value "The value to remove"
  * @return "the number of deleted elements."
  **/
-fn usz List.remove(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn usz List.remove_all_matches(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	usz size = self.size;
 	for (usz i = size; i > 0; i--)
 	{
 		if (!equals(self.entries[i - 1], value)) continue;
-		for (usz j = i; j < size; j++)
+		for (usz j = i; j < self.size; j++)
 		{
 			self.entries[j - 1] = self.entries[j];
 		}
@@ -477,10 +469,10 @@ fn usz List.remove(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 	return size - self.size;
 }
 
-fn void List.remove_all(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
+fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
-	foreach (v : other_list) self.remove(v);
+	foreach (v : other_list) self.remove_all_matches(v);
 }
 
 /**

@@ -25,7 +25,7 @@ enum TextTagKind: char
 
 struct TextTemplate
 {
-	Allocator* allocator;
+	Allocator allocator;
 	String template;
 	TextTag[] tags;
 	Type data;
@@ -46,7 +46,7 @@ struct TextTag
  * @require self.tags.len == 0 "template already initialized"
  * @require tag_start != tag_end
  **/
-fn void! TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator* using = allocator::heap())
+fn void! TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())
 {
 
 	TextTagList tags;
@@ -102,7 +102,7 @@ fn void! TextTemplate.free(&self)
 	*self = {};
 }
 
-fn usz! TextTemplate.write_to(&self, OutStream* writer)
+fn usz! TextTemplate.write_to(&self, OutStream writer)
 {
 	usz n;
 	usz pos;
@@ -116,7 +116,7 @@ fn usz! TextTemplate.write_to(&self, OutStream* writer)
 	return n;
 }
 
-fn usz! TextTag.write(&self, OutStream* writer)
+fn usz! TextTag.write(&self, OutStream writer)
 {
 	switch (self.kind)
 	{
@@ -177,10 +177,10 @@ entry:
   %ft = alloca %TextTemplate, align 8
   %error_var = alloca i64, align 8
   %indirectarg = alloca %"char[]", align 8
-  %indirectarg1 = alloca %"any*", align 8
+  %indirectarg1 = alloca %any, align 8
   %error_var2 = alloca i64, align 8
-  %varargslots = alloca [1 x %"any*"], align 16
-  %indirectarg6 = alloca %"any*[]", align 8
+  %varargslots = alloca [1 x %any], align 16
+  %indirectarg6 = alloca %"any[]", align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
   %0 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
@@ -193,14 +193,14 @@ if.then:                                          ; preds = %entry
 
 if.exit:                                          ; preds = %if.then, %entry
   %1 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  %2 = insertvalue %"any*" undef, ptr %1, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.std.core.mem.allocator.TempAllocator" to i64), 1
+  %2 = insertvalue %any undef, ptr %1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.std.core.mem.allocator.TempAllocator" to i64), 1
   %lo = load ptr, ptr %foo_tmpl, align 8
   %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
   %hi = load i64, ptr %ptradd, align 8
   store %"char[]" { ptr @.str.2, i64 2 }, ptr %indirectarg, align 8
-  store %"any*" %3, ptr %indirectarg1, align 8
-  %4 = call i64 @"abc$text_test.Foo$.TextTemplate.init"(ptr %ft, ptr %lo, i64 %hi, ptr @.str.1, i64 2, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%"any*") align 8 %indirectarg1)
+  store %any %3, ptr %indirectarg1, align 8
+  %4 = call i64 @"abc$text_test.Foo$.TextTemplate.init"(ptr %ft, ptr %lo, i64 %hi, ptr @.str.1, i64 2, ptr byval(%"char[]") align 8 %indirectarg, ptr byval(%any) align 8 %indirectarg1)
   %not_err = icmp eq i64 %4, 0
   %5 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %5, label %after_check, label %assign_optional
@@ -230,12 +230,12 @@ after_check5:                                     ; preds = %noerr_block
   br label %noerr_block7
 
 panic_block:                                      ; preds = %assign_optional4
-  %9 = insertvalue %"any*" undef, ptr %error_var2, 0
-  %10 = insertvalue %"any*" %9, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %10, ptr %varargslots, align 16
-  %11 = insertvalue %"any*[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any*[]" %11, i64 1, 1
-  store %"any*[]" %"$$temp", ptr %indirectarg6, align 8
+  %9 = insertvalue %any undef, ptr %error_var2, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %10, ptr %varargslots, align 16
+  %11 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %11, i64 1, 1
+  store %"any[]" %"$$temp", ptr %indirectarg6, align 8
   call void @std.core.builtin.panicf(ptr @.panic_msg, i64 36, ptr @.file, i64 25
   unreachable
 

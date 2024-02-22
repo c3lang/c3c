@@ -11,7 +11,7 @@ const Object NULL_OBJECT = { .type = void*.typeid };
 struct Object (Printable)
 {
 	typeid type;
-	Allocator* allocator;
+	Allocator allocator;
 	union
 	{
 		uint128 i;
@@ -76,7 +76,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn Object* new_obj(Allocator* allocator)
+fn Object* new_obj(Allocator allocator)
 {
 	return allocator::new(allocator, Object, { .allocator = allocator, .type = void.typeid });
 }
@@ -86,22 +86,22 @@ fn Object* new_null()
 	return &NULL_OBJECT;
 }
 
-fn Object* new_int(int128 i, Allocator* allocator)
+fn Object* new_int(int128 i, Allocator allocator)
 {
 	return allocator::new(allocator, Object, { .i = i, .allocator = allocator, .type = int128.typeid });
 }
 
-macro Object* new_enum(e, Allocator* allocator)
+macro Object* new_enum(e, Allocator allocator)
 {
 	return allocator::new(allocator, Object, { .i = (int128)e, .allocator = allocator, .type = @typeid(e) });
 }
 
-fn Object* new_float(double f, Allocator* allocator)
+fn Object* new_float(double f, Allocator allocator)
 {
 	return allocator::new(allocator, Object, { .f = f, .allocator = allocator, .type = double.typeid });
 }
 
-fn Object* new_string(String s, Allocator* allocator)
+fn Object* new_string(String s, Allocator allocator)
 {
 	return allocator::new(allocator, Object, { .s = s.copy(allocator), .allocator = allocator, .type = String.typeid });
 }
@@ -234,10 +234,10 @@ macro Object* Object.set_at(&self, usz index, String key, value)
  * @require self.is_indexable()
  * @ensure return != null
  **/
-macro Object* Object.append(&self, value)
+macro Object* Object.push(&self, value)
 {
 	Object* val = self.object_from_value(value);
-	self.append_object(val);
+	self.push_object(val);
 	return val;
 }
 
@@ -268,10 +268,10 @@ fn usz Object.get_len(&self)
 /**
  * @require self.is_indexable()
  **/
-fn void Object.append_object(&self, Object* to_append)
+fn void Object.push_object(&self, Object* to_append)
 {
 	self.init_array_if_needed();
-	self.array.append(to_append);
+	self.array.push(to_append);
 }
 
 /**
@@ -282,11 +282,11 @@ fn void Object.set_object_at(&self, usz index, Object* to_set)
 	self.init_array_if_needed();
 	while (self.array.len() < index)
 	{
-		self.array.append(&NULL_OBJECT);
+		self.array.push(&NULL_OBJECT);
 	}
 	if (self.array.len() == index)
 	{
-		self.array.append(to_set);
+		self.array.push(to_set);
 		return;
 	}
 	self.array.get(index).free();

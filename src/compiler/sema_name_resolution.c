@@ -437,13 +437,13 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		const char *private_name = decl_to_name(name_resolve->private_decl);
 		if (path_name)
 		{
-			sema_error_at(span, "The %s '%s::%s' is not visible from this module.",
+			print_error_at(span, "The %s '%s::%s' is not visible from this module.",
 						  private_name, path_name,
 						  symbol);
 		}
 		else
 		{
-			sema_error_at(span, "The %s '%s' is not visible from this module.",
+			print_error_at(span, "The %s '%s' is not visible from this module.",
 						  private_name, symbol);
 		}
 		return;
@@ -454,13 +454,13 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		const char *module_name = decl_module(name_resolve->maybe_decl)->name->module;
 		if (path_name)
 		{
-			sema_error_at(span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
+			print_error_at(span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
 						  maybe_name, module_name, symbol, module_name, module_name);
 
 		}
 		else
 		{
-			sema_error_at(span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
+			print_error_at(span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
 						  maybe_name, symbol, module_name, module_name);
 		}
 		return;
@@ -474,7 +474,7 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		const char *other_path = decl_module(name_resolve->ambiguous_other_decl)->name->module;
 		if (path_name)
 		{
-			sema_error_at(span,
+			print_error_at(span,
 						  "The %s '%s::%s' is defined in both '%s' and '%s', "
 						  "please use either %s::%s or %s::%s to resolve the ambiguity.",
 						  symbol_type, path_name, symbol, found_path, other_path,
@@ -484,10 +484,10 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		{
 			if (decl_needs_prefix(found))
 			{
-				sema_error_at(span, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path, symbol);
+				print_error_at(span, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path, symbol);
 				return;
 			}
-			sema_error_at(span,
+			print_error_at(span,
 						  "The %s '%s' is defined in both '%s' and '%s', please use either "
 						  "%s::%s or %s::%s to resolve the ambiguity.",
 						  symbol_type, symbol, found_path, other_path,
@@ -498,11 +498,11 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 	assert(!found);
 	if (path_name)
 	{
-		sema_error_at(span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
+		print_error_at(span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
 	}
 	else
 	{
-		sema_error_at(span, "'%s' could not be found, did you spell it right?", symbol);
+		print_error_at(span, "'%s' could not be found, did you spell it right?", symbol);
 	}
 }
 
@@ -539,7 +539,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 			}
 			if (module_with_path)
 			{
-				sema_error_at(name_resolve->span, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
+				print_error_at(name_resolve->span, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
 			}
 			else
 			{
@@ -645,7 +645,7 @@ bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 			case TYPE_POINTER:
 				type = type->pointer;
 				continue;
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_INFERRED_ARRAY:
@@ -678,7 +678,6 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_ANYPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
@@ -686,8 +685,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
-		case TYPE_SUBARRAY:
-		case TYPE_INFPTR:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return true;
@@ -720,10 +718,6 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
 	assert(type == type->canonical);
-	if (type->type_kind == TYPE_INFPTR)
-	{
-		type = type->pointer;
-	}
 	Decl *private = NULL;
 	Decl *ambiguous = NULL;
 	Decl *found = sema_find_extension_method_in_list(unit->local_method_extensions, type, method_name);
@@ -817,7 +811,7 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 	if (!decl_is_user_defined_type(decl) && !name_resolve->path)
 	{
 		if (name_resolve->suppress_error) return poisoned_decl;
-		sema_error_at(name_resolve->span, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
+		print_error_at(name_resolve->span, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
 		return poisoned_decl;
 	}
 
@@ -928,7 +922,7 @@ INLINE bool sema_add_ct_local(SemaContext *context, Decl *decl)
 	Decl *other = sema_find_ct_local(context, decl->name);
 	if (other)
 	{
-		sema_shadow_error(decl, other);
+		sema_shadow_error(context, decl, other);
 		decl_poison(decl);
 		decl_poison(other);
 		return false;
@@ -952,7 +946,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	assert(!other || decl_module(other));
 	if (other && (decl_module(other) == current_unit->module || other->is_autoimport))
 	{
-		sema_shadow_error(decl, other);
+		sema_shadow_error(context, decl, other);
 		decl_poison(decl);
 		decl_poison(other);
 		return false;

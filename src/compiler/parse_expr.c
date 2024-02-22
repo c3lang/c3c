@@ -65,7 +65,7 @@ bool parse_range(ParseContext *c, Range *range)
 	// Otherwise we have [1..] or [3:]
 	if (range->is_len)
 	{
-		sema_error_at(extend_span_with_token(start, c->prev_span), "Length-ranges using ':' may not elide the length.");
+		print_error_at(extend_span_with_token(start, c->prev_span), "Length-ranges using ':' may not elide the length.");
 		return false;
 	}
 
@@ -108,7 +108,7 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 		// Otherwise we ran into a symbol that can't appear in this position.
 		if (!infix_rule)
 		{
-			SEMA_ERROR_HERE("'%s' can't appear in this position, did you forget something before the operator?", token_type_to_string(tok));
+			PRINT_ERROR_HERE("'%s' can't appear in this position, did you forget something before the operator?", token_type_to_string(tok));
 			return poisoned_expr;
 		}
 		// The rule exists, so run it.
@@ -128,7 +128,7 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	// or it is a token that can't be in a prefix position.
 	if (!prefix_rule)
 	{
-		SEMA_ERROR_HERE("An expression was expected.");
+		PRINT_ERROR_HERE("An expression was expected.");
 		return poisoned_expr;
 	}
 	// Get the expression
@@ -139,17 +139,18 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	return parse_precedence_with_left_side(c, left_side, precedence);
 }
 
+
 /*
- * Parse anything with higher precedence than &&, that means <= >= etc are ok.
+ * Parse anything with higher precedence than && etc.
  */
-static inline Expr *parse_relational_expr(ParseContext *c)
+static inline Expr *parse_try_chain_expr(ParseContext *c)
 {
 	return parse_precedence(c, PREC_RELATIONAL);
 }
 
 /**
  * catch_unwrap ::= CATCH (IDENT | type? IDENT '=' catch_chain) | catch_chain
- * catch_chain ::= try_rhs_expr (',' try_rhs_expr)*
+ * catch_chain ::= parse_try_catch_rhs_expr (',' parse_try_catch_rhs_expr)*
  */
 static inline Expr *parse_catch_unwrap(ParseContext *c)
 {
@@ -158,7 +159,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	Expr **exprs = NULL;
 
 	// First, try parsing as single expression
-	ASSIGN_EXPR_OR_RET(Expr *sub_expr, parse_relational_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *sub_expr, parse_try_chain_expr(c), poisoned_expr);
 
 	// Check if we have a chain.
 	if (try_consume(c, TOKEN_COMMA))
@@ -167,7 +168,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		vec_add(exprs, sub_expr);
 		do
 		{
-			ASSIGN_EXPR_OR_RET(sub_expr, parse_relational_expr(c), poisoned_expr);
+			ASSIGN_EXPR_OR_RET(sub_expr, parse_try_chain_expr(c), poisoned_expr);
 			vec_add(exprs, sub_expr);
 		} while (try_consume(c, TOKEN_COMMA));
 		// We're done.
@@ -181,7 +182,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		// Assign the type
 		expr->catch_unwrap_expr.type = sub_expr->type_expr;
 		// Assign the variable
-		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_try_chain_expr(c), poisoned_expr);
 	}
 	else
 	{
@@ -195,7 +196,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		// If we had "anyfault f", then we MUST have '='
 		if (expr->catch_unwrap_expr.type)
 		{
-			SEMA_ERROR_HERE("Expected a '=' here.");
+			PRINT_ERROR_HERE("Expected a '=' here.");
 			return poisoned_expr;
 		}
 		// We just have `catch foo`, so we add the "variable" as an expression
@@ -207,7 +208,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	// After '=' we have a chain of expressions.
 	do
 	{
-		ASSIGN_EXPR_OR_RET(sub_expr, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(sub_expr, parse_try_chain_expr(c), poisoned_expr);
 		vec_add(exprs, sub_expr);
 	} while (try_consume(c, TOKEN_COMMA));
 	expr->catch_unwrap_expr.exprs = exprs;
@@ -222,11 +223,11 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP);
 	advance_and_verify(c, TOKEN_TRY);
-	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_relational_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_try_chain_expr(c), poisoned_expr);
 	if (lhs->expr_kind == EXPR_TYPEINFO)
 	{
 		expr->try_unwrap_expr.type = lhs->type_expr;
-		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_try_chain_expr(c), poisoned_expr);
 	}
 	else
 	{
@@ -234,19 +235,18 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 	}
 	if (lhs->expr_kind == EXPR_TYPEINFO && expr->try_unwrap_expr.variable->expr_kind != EXPR_IDENTIFIER)
 	{
-		SEMA_ERROR(expr->try_unwrap_expr.variable, "A new variable was expected.");
-		return poisoned_expr;
+		RETURN_PRINT_ERROR_AT(poisoned_expr, expr->try_unwrap_expr.variable, "A new variable was expected.");
 	}
 	if (try_consume(c, TOKEN_EQ))
 	{
-		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.init, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.init, parse_try_chain_expr(c), poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
 /**
- * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | try_rhs_expr))*
+ * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | try_chain_expr))*
  */
 static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 {
@@ -261,7 +261,7 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 			vec_add(unwraps, expr);
 			continue;
 		}
-		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_try_chain_expr(c), poisoned_expr);
 		vec_add(unwraps, next_unwrap);
 	}
 	Expr *try_unwrap_chain = expr_new_expr(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
@@ -287,8 +287,7 @@ Expr *parse_cond(ParseContext *c)
 			vec_add(decl_expr->cond_expr, try_unwrap);
 			if (tok_is(c, TOKEN_COMMA))
 			{
-				SEMA_ERROR(try_unwrap, "The 'try' must be placed last, can you change it?");
-				return poisoned_expr;
+				RETURN_PRINT_ERROR_AT(poisoned_expr, try_unwrap, "The 'try' must be placed last, can you change it?");
 			}
 			break;
 		}
@@ -298,8 +297,7 @@ Expr *parse_cond(ParseContext *c)
 			vec_add(decl_expr->cond_expr, catch_unwrap);
 			if (tok_is(c, TOKEN_COMMA))
 			{
-				SEMA_ERROR(catch_unwrap, "The 'catch' must be placed last, can you change it?");
-				return poisoned_expr;
+				RETURN_PRINT_ERROR_AT(poisoned_expr, catch_unwrap, "The 'catch' must be placed last, can you change it?");
 			}
 			break;
 		}
@@ -414,7 +412,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	}
 	else
 	{
-		SEMA_ERROR_HERE("Expected the beginning of a block or a short statement.");
+		PRINT_ERROR_HERE("Expected the beginning of a block or a short statement.");
 	}
 	expr->lambda_expr = func;
 	return expr;
@@ -485,7 +483,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		if (tok_is(c, param_end)) return true;
 		if (splat && *splat)
 		{
-			SEMA_ERROR_HERE("'...' is only allowed on the last argument in a call.");
+			PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
 			return false;
 		}
 	}
@@ -505,7 +503,7 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decl)
 		{
 			if (!allow_decl)
 			{
-				SEMA_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
+				PRINT_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
 				return poisoned_expr;
 			}
 			expr = expr_new(EXPR_DECL, decl->span);
@@ -528,7 +526,7 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
 			ASSIGN_DECL_OR_RET(Decl *decl, parse_var_decl(c), poisoned_expr);
 			if (!allow_decl)
 			{
-				SEMA_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
+				PRINT_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
 				return poisoned_expr;
 			}
 			expr = expr_new(EXPR_DECL, decl->span);
@@ -570,7 +568,7 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	expr->type_expr = type;
 	if (tok_is(c, TOKEN_SCOPE))
 	{
-		SEMA_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
+		PRINT_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
 		return poisoned_expr;
 	}
 	return expr;
@@ -709,7 +707,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		TypeInfo *info = expr->inner_expr->type_expr;
 		if (tok_is(c, TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
 		{
-			SEMA_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
+			PRINT_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
 			return poisoned_expr;
 		}
 		// Create a cast expr
@@ -756,16 +754,14 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 			{
 				if (designated == 0)
 				{
-					SEMA_ERROR(expr, "Designated initialization with '[] = ...' and '.param = ...' cannot be mixed with normal initialization.");
-					return poisoned_expr;
+					RETURN_PRINT_ERROR_AT(poisoned_expr, expr, "Designated initialization with '[] = ...' and '.param = ...' cannot be mixed with normal initialization.");
 				}
 				designated = 1;
 				continue;
 			}
 			if (designated == 1)
 			{
-				SEMA_ERROR(expr, "Normal initialization cannot be mixed with designated initialization.");
-				return poisoned_expr;
+				RETURN_PRINT_ERROR_AT(poisoned_expr, expr, "Normal initialization cannot be mixed with designated initialization.");
 			}
 			designated = 0;
 		}
@@ -851,14 +847,14 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	{
 		if (!parse_next_may_be_type_or_ident(c))
 		{
-			SEMA_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
+			PRINT_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
 		if (!parse_parameters(c, &body_args, NULL, NULL, NULL, PARAM_PARSE_CALL)) return poisoned_expr;
 	}
 	if (!tok_is(c, TOKEN_RPAREN))
 	{
-		SEMA_ERROR_LAST("Expected the ending ')' here.");
+		PRINT_ERROR_LAST("Expected the ending ')' here.");
 		return poisoned_expr;
 	}
 	advance(c);
@@ -870,7 +866,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	RANGE_EXTEND_PREV(call);
 	if (body_args && !tok_is(c, TOKEN_LBRACE))
 	{
-		SEMA_ERROR_HERE("Expected a macro body here.");
+		PRINT_ERROR_HERE("Expected a macro body here.");
 		return poisoned_expr;
 	}
 	Attr *attr;
@@ -887,8 +883,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			case ATTRIBUTE_PURE:
 				if (call->call_expr.attr_pure)
 				{
-					SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
-					return poisoned_expr;
+					RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "Repeat of the same attribute is not allowed.");
 				}
 				call->call_expr.attr_pure = true;
 				continue;
@@ -896,19 +891,16 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			case ATTRIBUTE_NOINLINE:
 				if (force_inline == new_inline)
 				{
-					SEMA_ERROR(attr, "Repeat of the same attribute is not allowed.");
-					return poisoned_expr;
+					RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "Repeat of the same attribute is not allowed.");
 				}
 				if (force_inline != -1)
 				{
-					SEMA_ERROR(attr, "@inline and @noinline cannot be combined");
-					return poisoned_expr;
+					RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "@inline and @noinline cannot be combined");
 				}
 				force_inline = new_inline;
 				continue;
 			default:
-				SEMA_ERROR(attr, "Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
-				return poisoned_expr;
+				RETURN_PRINT_ERROR_AT(poisoned_expr, attr, "Only '@pure', '@inline' and '@noinline' are valid attributes for calls.");
 		}
 	}
 	if (force_inline != -1)
@@ -994,7 +986,7 @@ static Expr *parse_ct_ident(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	if (try_consume(c, TOKEN_CT_CONST_IDENT))
 	{
-		SEMA_ERROR_LAST("Compile time identifiers may not be constants.");
+		PRINT_ERROR_LAST("Compile time identifiers may not be constants.");
 		return poisoned_expr;
 	}
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_IDENT);
@@ -1229,7 +1221,7 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 		case TOKEN_TYPE_IDENT:
 			return parse_type_expression_with_path(c, path);
 		default:
-			SEMA_ERROR_HERE("Expected a type, function or constant.");
+			PRINT_ERROR_HERE("Expected a type, function or constant.");
 			return poisoned_expr;
 	}
 }
@@ -1260,7 +1252,7 @@ static Expr *parse_builtin(ParseContext *c, Expr *left)
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_BUILTIN);
 	if (!token_is_some_ident(peek(c)))
 	{
-		SEMA_ERROR_HERE("Unexpected '$$', did you mean to write a builtin?");
+		PRINT_ERROR_HERE("Unexpected '$$', did you mean to write a builtin?");
 		return poisoned_expr;
 	}
 	advance_and_verify(c, TOKEN_BUILTIN);
@@ -1436,7 +1428,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 EXIT:
 	if (wrapped)
 	{
-		SEMA_ERROR_HERE("Integer size exceeded 128 bits, max 128 bits are supported.");
+		PRINT_ERROR_HERE("Integer size exceeded 128 bits, max 128 bits are supported.");
 		return poisoned_expr;
 	}
 	expr_int->const_expr.const_kind = CONST_INTEGER;
@@ -1447,7 +1439,7 @@ EXIT:
 	{
 		if (type_bits < 0 || !is_power_of_two((uint64_t)type_bits) || type_bits > 128)
 		{
-			SEMA_ERROR_HERE("Integer type suffix should be i8, i16, i32, i64 or i128.");
+			PRINT_ERROR_HERE("Integer type suffix should be i8, i16, i32, i64 or i128.");
 			return poisoned_expr;
 		}
 	}
@@ -1458,7 +1450,7 @@ EXIT:
 			type_bits = 4 * hex_characters;
 			if (type_bits > 128)
 			{
-				SEMA_ERROR_HERE("%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
+				PRINT_ERROR_HERE("%d hex digits indicates a bit width over 128, which is not supported.", hex_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1467,7 +1459,7 @@ EXIT:
 			type_bits = 3 * oct_characters;
 			if (type_bits > 128)
 			{
-				SEMA_ERROR_HERE("%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
+				PRINT_ERROR_HERE("%d octal digits indicates a bit width over 128, which is not supported.", oct_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1476,7 +1468,7 @@ EXIT:
 			type_bits = binary_characters;
 			if (type_bits > 128)
 			{
-				SEMA_ERROR_HERE("%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
+				PRINT_ERROR_HERE("%d binary digits indicates a bit width over 128, which is not supported.", binary_characters);
 				return poisoned_expr;
 			}
 		}
@@ -1516,13 +1508,13 @@ EXIT:
 		if (binary_characters) radix = 2;
 		if (type_bits)
 		{
-			SEMA_ERROR_HERE("'%s' does not fit in a '%c%d' literal.",
-							i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
+			PRINT_ERROR_HERE("'%s' does not fit in a '%c%d' literal.",
+			                 i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
-			SEMA_ERROR_HERE("'%s' does not fit in an %s literal.",
-							i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
+			PRINT_ERROR_HERE("'%s' does not fit in an %s literal.",
+			                 i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
 		}
 		return poisoned_expr;
 	}
@@ -1688,7 +1680,7 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 	Float f = is_hex ? float_from_hex(original, &err) : float_from_string(original, &err);
 	if (f.type == TYPE_POISONED)
 	{
-		SEMA_ERROR_HERE(err);
+		PRINT_ERROR_HERE(err);
 		return poisoned_expr;
 	}
 	number->const_expr.fxx = f;
@@ -1707,7 +1699,8 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 			number->type = type_float16;
 			break;
 		case TYPE_BF16:
-			TODO
+			number->type = type_bfloat;
+			break;
 		default:
 			UNREACHABLE
 	}
@@ -1752,7 +1745,7 @@ static Expr *parse_string_literal(ParseContext *c, Expr *left)
 	}
 	if (len > UINT32_MAX)
 	{
-		SEMA_ERROR_HERE("String exceeded max size.");
+		PRINT_ERROR_HERE("String exceeded max size.");
 		return poisoned_expr;
 	}
 	assert(str);
@@ -1834,7 +1827,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	expr->type_expr = type;
 	if (tok_is(c, TOKEN_SCOPE))
 	{
-		SEMA_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
+		PRINT_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
 		return poisoned_expr;
 	}
 	return expr;
@@ -1879,6 +1872,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_UPTR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_DOUBLE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_BFLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT16] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },

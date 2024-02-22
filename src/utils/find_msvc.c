@@ -9,6 +9,13 @@
 #include <stdbool.h>
 #include <io.h>         // For _get_osfhandle
 
+void free_windows_link_paths(WindowsSDK* obj)
+{
+	free(obj->vs_library_path);
+	free(obj->windows_sdk_ucrt_library_path);
+	free(obj->windows_sdk_um_library_path);
+}
+
 typedef struct
 {
   int windows_sdk_version;   // Zero if no Windows SDK found.
@@ -22,64 +29,25 @@ typedef struct
   wchar_t* vs_library_path;
 } Find_Result;
 
+
 Find_Result find_visual_studio_and_windows_sdk();
 void free_resources(Find_Result* result);
 
-WindowsSDK get_windows_link_paths() {
-  Find_Result paths = find_visual_studio_and_windows_sdk();
+WindowsSDK get_windows_link_paths()
+{
+	Find_Result paths = find_visual_studio_and_windows_sdk();
+	WindowsSDK out = { 0 };
 
-  WindowsSDK out = { 0 };
-
-  // note: WideCharToMultiByte doesn't seem to do null termination.
-  // I'm wary of manually adding a null terminator, so hopefully this is reliable.
-  // This wouldn't be a problem if windows used UTF-8 like the rest of the world >:(
-  out.windows_sdk_um_library_path = (char*)ccalloc(MAX_PATH, 1);
-  out.windows_sdk_ucrt_library_path = (char*)ccalloc(MAX_PATH, 1);
-  out.vs_library_path = (char*)ccalloc(MAX_PATH, 1);
-
-  int um_len = wcslen(paths.windows_sdk_um_library_path);
-  WideCharToMultiByte(
-	CP_UTF8,                          // UTF-8
-	0,                                // config flags- I don't think we need these
-	paths.windows_sdk_um_library_path,// in
-	um_len,                           // in len
-	out.windows_sdk_um_library_path,  // out
-	MAX_PATH,                         // out len
-	NULL,
-	NULL
-  );
-  int ucrt_len = wcslen(paths.windows_sdk_ucrt_library_path);
-  WideCharToMultiByte(
-	CP_UTF8,
-	0,
-	paths.windows_sdk_ucrt_library_path,
-	ucrt_len,
-	out.windows_sdk_ucrt_library_path,
-	MAX_PATH,
-	NULL,
-	NULL
-  );
-  int vsl_len = wcslen(paths.vs_library_path);
-  WideCharToMultiByte(
-	CP_UTF8,
-	0,
-	paths.vs_library_path,
-	vsl_len,
-	out.vs_library_path,
-	MAX_PATH,
-	NULL,
-	NULL
-  );
-
-  free_resources(&paths);
-  return out;
+	// note: WideCharToMultiByte doesn't seem to do null termination.
+    // I'm wary of manually adding a null terminator, so hopefully this is reliable.
+	// This wouldn't be a problem if windows used UTF-8 like the rest of the world >:(
+	out.windows_sdk_um_library_path = win_utf16to8(paths.windows_sdk_um_library_path);
+	out.windows_sdk_ucrt_library_path = win_utf16to8(paths.windows_sdk_ucrt_library_path);
+	out.vs_library_path = win_utf16to8(paths.vs_library_path);
+	free_resources(&paths);
+	return out;
 }
 
-void free_windows_link_paths(WindowsSDK* obj) {
-  free(obj->vs_library_path);
-  free(obj->windows_sdk_ucrt_library_path);
-  free(obj->windows_sdk_um_library_path);
-}
 
 // Everything past here is taken from microsoft_craziness.h:
 // https://gist.github.com/ActuallyaDeviloper/cd25b190743234d58079d6b08a8631e3
@@ -115,63 +83,63 @@ void free_resources(Find_Result* result) {
 #define INTERFACE ISetupInstance
 DECLARE_INTERFACE_(ISetupInstance, IUnknown)
 {
-  BEGIN_INTERFACE
+	BEGIN_INTERFACE
 
 	// IUnknown methods
 	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
-  STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
-  STDMETHOD_(ULONG, Release)   (THIS) PURE;
+    STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
+    STDMETHOD_(ULONG, Release)   (THIS) PURE;
 
-  // ISetupInstance methods
-  STDMETHOD(GetInstanceId)(THIS_ _Out_ BSTR * pbstrInstanceId) PURE;
-  STDMETHOD(GetInstallDate)(THIS_ _Out_ LPFILETIME pInstallDate) PURE;
-  STDMETHOD(GetInstallationName)(THIS_ _Out_ BSTR * pbstrInstallationName) PURE;
-  STDMETHOD(GetInstallationPath)(THIS_ _Out_ BSTR * pbstrInstallationPath) PURE;
-  STDMETHOD(GetInstallationVersion)(THIS_ _Out_ BSTR * pbstrInstallationVersion) PURE;
-  STDMETHOD(GetDisplayName)(THIS_ _In_ LCID lcid, _Out_ BSTR * pbstrDisplayName) PURE;
-  STDMETHOD(GetDescription)(THIS_ _In_ LCID lcid, _Out_ BSTR * pbstrDescription) PURE;
-  STDMETHOD(ResolvePath)(THIS_ _In_opt_z_ LPCOLESTR pwszRelativePath, _Out_ BSTR * pbstrAbsolutePath) PURE;
+    // ISetupInstance methods
+    STDMETHOD(GetInstanceId)(THIS_ _Out_ BSTR * pbstrInstanceId) PURE;
+    STDMETHOD(GetInstallDate)(THIS_ _Out_ LPFILETIME pInstallDate) PURE;
+    STDMETHOD(GetInstallationName)(THIS_ _Out_ BSTR * pbstrInstallationName) PURE;
+    STDMETHOD(GetInstallationPath)(THIS_ _Out_ BSTR * pbstrInstallationPath) PURE;
+    STDMETHOD(GetInstallationVersion)(THIS_ _Out_ BSTR * pbstrInstallationVersion) PURE;
+    STDMETHOD(GetDisplayName)(THIS_ _In_ LCID lcid, _Out_ BSTR * pbstrDisplayName) PURE;
+    STDMETHOD(GetDescription)(THIS_ _In_ LCID lcid, _Out_ BSTR * pbstrDescription) PURE;
+    STDMETHOD(ResolvePath)(THIS_ _In_opt_z_ LPCOLESTR pwszRelativePath, _Out_ BSTR * pbstrAbsolutePath) PURE;
 
-  END_INTERFACE
+	END_INTERFACE
 };
 
 #undef  INTERFACE
 #define INTERFACE IEnumSetupInstances
 DECLARE_INTERFACE_(IEnumSetupInstances, IUnknown)
 {
-  BEGIN_INTERFACE
+	BEGIN_INTERFACE
 
 	// IUnknown methods
 	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
-  STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
-  STDMETHOD_(ULONG, Release)   (THIS) PURE;
+	STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
+	STDMETHOD_(ULONG, Release)   (THIS) PURE;
 
-  // IEnumSetupInstances methods
-  STDMETHOD(Next)(THIS_ _In_ ULONG celt, _Out_writes_to_(celt, *pceltFetched) ISetupInstance * *rgelt, _Out_opt_ _Deref_out_range_(0, celt) ULONG * pceltFetched) PURE;
-  STDMETHOD(Skip)(THIS_ _In_ ULONG celt) PURE;
-  STDMETHOD(Reset)(THIS) PURE;
-  STDMETHOD(Clone)(THIS_ _Deref_out_opt_ IEnumSetupInstances * *ppenum) PURE;
+	// IEnumSetupInstances methods
+	STDMETHOD(Next)(THIS_ _In_ ULONG celt, _Out_writes_to_(celt, *pceltFetched) ISetupInstance * *rgelt, _Out_opt_ _Deref_out_range_(0, celt) ULONG * pceltFetched) PURE;
+	STDMETHOD(Skip)(THIS_ _In_ ULONG celt) PURE;
+	STDMETHOD(Reset)(THIS) PURE;
+	STDMETHOD(Clone)(THIS_ _Deref_out_opt_ IEnumSetupInstances * *ppenum) PURE;
 
-  END_INTERFACE
+	END_INTERFACE
 };
 
 #undef  INTERFACE
 #define INTERFACE ISetupConfiguration
 DECLARE_INTERFACE_(ISetupConfiguration, IUnknown)
 {
-  BEGIN_INTERFACE
+	BEGIN_INTERFACE
 
 	// IUnknown methods
 	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
-  STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
-  STDMETHOD_(ULONG, Release)   (THIS) PURE;
+	STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
+	STDMETHOD_(ULONG, Release)   (THIS) PURE;
 
-  // ISetupConfiguration methods
-  STDMETHOD(EnumInstances)(THIS_ _Out_ IEnumSetupInstances * *ppEnumInstances) PURE;
-  STDMETHOD(GetInstanceForCurrentProcess)(THIS_ _Out_ ISetupInstance * *ppInstance) PURE;
-  STDMETHOD(GetInstanceForPath)(THIS_ _In_z_ LPCWSTR wzPath, _Out_ ISetupInstance * *ppInstance) PURE;
+	// ISetupConfiguration methods
+	STDMETHOD(EnumInstances)(THIS_ _Out_ IEnumSetupInstances * *ppEnumInstances) PURE;
+	STDMETHOD(GetInstanceForCurrentProcess)(THIS_ _Out_ ISetupInstance * *ppInstance) PURE;
+	STDMETHOD(GetInstanceForPath)(THIS_ _In_z_ LPCWSTR wzPath, _Out_ ISetupInstance * *ppInstance) PURE;
 
-  END_INTERFACE
+    END_INTERFACE
 };
 
 #define CALL_STDMETHOD(object, method, ...) object->lpVtbl->method(object, __VA_ARGS__)
@@ -182,14 +150,15 @@ typedef struct {
   wchar_t* best_name;
 } Version_Data;
 
-bool os_file_exists(wchar_t* name) {
-  // @Robustness: What flags do we really want to check here?
+bool os_file_exists(wchar_t* name)
+{
+	// @Robustness: What flags do we really want to check here?
 
-  DWORD attrib = GetFileAttributesW(name);
-  if (attrib == INVALID_FILE_ATTRIBUTES) return false;
-  if (attrib & FILE_ATTRIBUTE_DIRECTORY) return false;
+	DWORD attrib = GetFileAttributesW(name);
+	if (attrib == INVALID_FILE_ATTRIBUTES) return false;
+	if (attrib & FILE_ATTRIBUTE_DIRECTORY) return false;
 
-  return true;
+	return true;
 }
 
 #define concat2(a, b) concat(a, b, NULL, NULL)
@@ -222,221 +191,230 @@ wchar_t* concat(wchar_t* a, wchar_t* b, wchar_t* c, wchar_t* d) {
 }
 
 typedef void (*Visit_Proc_W)(wchar_t* short_name, wchar_t* full_name, Version_Data* data);
-bool visit_files_w(wchar_t* dir_name, Version_Data* data, Visit_Proc_W proc) {
+bool visit_files_w(wchar_t* dir_name, Version_Data* data, Visit_Proc_W proc)
+{
 
-  // Visit everything in one folder (non-recursively). If it's a directory
-  // that doesn't start with ".", call the visit proc on it. The visit proc
-  // will see if the filename conforms to the expected versioning pattern.
+	// Visit everything in one folder (non-recursively). If it's a directory
+	// that doesn't start with ".", call the visit proc on it. The visit proc
+	// will see if the filename conforms to the expected versioning pattern.
 
-  WIN32_FIND_DATAW find_data;
+	WIN32_FIND_DATAW find_data;
 
-  wchar_t* wildcard_name = concat2(dir_name, L"\\*");
-  HANDLE handle = FindFirstFileW(wildcard_name, &find_data);
-  free(wildcard_name);
+	wchar_t* wildcard_name = concat2(dir_name, L"\\*");
+	HANDLE handle = FindFirstFileW(wildcard_name, &find_data);
+	free(wildcard_name);
 
-  if (handle == INVALID_HANDLE_VALUE) return false;
+	if (handle == INVALID_HANDLE_VALUE) return false;
 
-  while (true) {
-	if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (find_data.cFileName[0] != '.')) {
-	  wchar_t* full_name = concat3(dir_name, L"\\", find_data.cFileName);
-	  proc(find_data.cFileName, full_name, data);
-	  free(full_name);
+	while (true)
+	{
+		if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (find_data.cFileName[0] != '.'))
+		{
+			wchar_t* full_name = concat3(dir_name, L"\\", find_data.cFileName);
+			proc(find_data.cFileName, full_name, data);
+			free(full_name);
+		}
+
+		BOOL success = FindNextFileW(handle, &find_data);
+		if (!success) break;
 	}
 
-	BOOL success = FindNextFileW(handle, &find_data);
-	if (!success) break;
-  }
+	FindClose(handle);
 
-  FindClose(handle);
-
-  return true;
+	return true;
 }
 
-wchar_t* find_windows_kit_root_with_key(HKEY key, wchar_t* version) {
-  // Given a key to an already opened registry entry,
-  // get the value stored under the 'version' subkey.
-  // If that's not the right terminology, hey, I never do registry stuff.
+wchar_t* find_windows_kit_root_with_key(HKEY key, wchar_t* version)
+{
+	// Given a key to an already opened registry entry,
+	// get the value stored under the 'version' subkey.
+	// If that's not the right terminology, hey, I never do registry stuff.
 
-  DWORD required_length;
-  LSTATUS rc = RegQueryValueExW(key, version, NULL, NULL, NULL, &required_length);
-  if (rc != 0)  return NULL;
+	DWORD required_length;
+	LSTATUS rc = RegQueryValueExW(key, version, NULL, NULL, NULL, &required_length);
+	if (rc != 0)  return NULL;
 
-  DWORD length = required_length + 2;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
-  wchar_t* value = (wchar_t*)cmalloc(length);
-  if (!value) return NULL;
+	DWORD length = required_length + 2;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
+	wchar_t* value = (wchar_t*)cmalloc(length);
+	if (!value) return NULL;
 
-  rc = RegQueryValueExW(key, version, NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
-  if (rc != 0)  return NULL;
+	rc = RegQueryValueExW(key, version, NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
+	if (rc != 0)  return NULL;
 
-  // The documentation says that if the string for some reason was not stored
-  // with zero-termination, we need to manually terminate it. Sigh!!
+	// The documentation says that if the string for some reason was not stored
+	// with zero-termination, we need to manually terminate it. Sigh!!
 
-  value[required_length / 2] = 0;
+	value[required_length / 2] = 0;
 
-  return value;
+	return value;
 }
 
-void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
-  // Find the Windows 10 subdirectory with the highest version number.
+void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data)
+{
+	// Find the Windows 10 subdirectory with the highest version number.
 
-  int i0, i1, i2, i3;
-  int success = swscanf_s(short_name, L"%d.%d.%d.%d", &i0, &i1, &i2, &i3);
-  if (success < 4) return;
+	int i0, i1, i2, i3;
+	int success = swscanf_s(short_name, L"%d.%d.%d.%d", &i0, &i1, &i2, &i3);
+	if (success < 4) return;
 
-  if (i0 < data->best_version[0]) return;
-  else if (i0 == data->best_version[0]) {
-	if (i1 < data->best_version[1]) return;
-	else if (i1 == data->best_version[1]) {
-	  if (i2 < data->best_version[2]) return;
-	  else if (i2 == data->best_version[2]) {
-		if (i3 < data->best_version[3]) return;
-	  }
+	if (i0 < data->best_version[0]) return;
+	else if (i0 == data->best_version[0]) {
+		if (i1 < data->best_version[1]) return;
+		else if (i1 == data->best_version[1]) {
+		  if (i2 < data->best_version[2]) return;
+		  else if (i2 == data->best_version[2]) {
+			if (i3 < data->best_version[3]) return;
+		  }
+		}
 	}
-  }
 
-  // we have to copy_string and free here because visit_files free's the full_name string
-  // after we execute this function, so Win*_Data would contain an invalid pointer.
-  if (data->best_name) free(data->best_name);
-  data->best_name = _wcsdup(full_name);
+	// we have to copy_string and free here because visit_files free's the full_name string
+	// after we execute this function, so Win*_Data would contain an invalid pointer.
+	if (data->best_name) free(data->best_name);
+	data->best_name = _wcsdup(full_name);
 
-  if (data->best_name) {
-	data->best_version[0] = i0;
-	data->best_version[1] = i1;
-	data->best_version[2] = i2;
-	data->best_version[3] = i3;
-  }
+	if (data->best_name)
+	{
+		data->best_version[0] = i0;
+		data->best_version[1] = i1;
+		data->best_version[2] = i2;
+		data->best_version[3] = i3;
+	}
 }
 
-void win8_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data) {
-  // Find the Windows 8 subdirectory with the highest version number.
+void win8_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data)
+{
+	// Find the Windows 8 subdirectory with the highest version number.
 
-  int i0, i1;
-  int success = swscanf_s(short_name, L"winv%d.%d", &i0, &i1);
-  if (success < 2) return;
+	int i0, i1;
+	int success = swscanf_s(short_name, L"winv%d.%d", &i0, &i1);
+	if (success < 2) return;
 
-  if (i0 < data->best_version[0]) return;
-  else if (i0 == data->best_version[0]) {
-	if (i1 < data->best_version[1]) return;
-  }
+	if (i0 < data->best_version[0]) return;
 
-  // we have to copy_string and free here because visit_files free's the full_name string
-  // after we execute this function, so Win*_Data would contain an invalid pointer.
-  if (data->best_name) free(data->best_name);
-  data->best_name = _wcsdup(full_name);
+	if (i0 == data->best_version[0])
+	{
+		if (i1 < data->best_version[1]) return;
+	}
 
-  if (data->best_name) {
-	data->best_version[0] = i0;
-	data->best_version[1] = i1;
-  }
+	// we have to copy_string and free here because visit_files free's the full_name string
+	// after we execute this function, so Win*_Data would contain an invalid pointer.
+	if (data->best_name) free(data->best_name);
+	data->best_name = _wcsdup(full_name);
+
+	if (data->best_name)
+	{
+		data->best_version[0] = i0;
+		data->best_version[1] = i1;
+	}
 }
 
-void find_windows_kit_root(Find_Result* result) {
-  // Information about the Windows 10 and Windows 8 development kits
-  // is stored in the same place in the registry. We open a key
-  // to that place, first checking preferntially for a Windows 10 kit,
-  // then, if that's not found, a Windows 8 kit.
+void find_windows_kit_root(Find_Result* result)
+{
+	// Information about the Windows 10 and Windows 8 development kits
+	// is stored in the same place in the registry. We open a key
+	// to that place, first checking preferntially for a Windows 10 kit,
+	// then, if that's not found, a Windows 8 kit.
 
-  HKEY main_key;
+	HKEY main_key;
+	LSTATUS rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
+		0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
+	if (rc != S_OK) return;
 
-  LSTATUS rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
-	0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
-  if (rc != S_OK) return;
+	// Look for a Windows 10 entry.
+	wchar_t* windows10_root = find_windows_kit_root_with_key(main_key, L"KitsRoot10");
 
-  // Look for a Windows 10 entry.
-  wchar_t* windows10_root = find_windows_kit_root_with_key(main_key, L"KitsRoot10");
+	if (windows10_root) {
+		wchar_t* windows10_lib = concat2(windows10_root, L"Lib");
+		free(windows10_root);
 
-  if (windows10_root) {
-	wchar_t* windows10_lib = concat2(windows10_root, L"Lib");
-	free(windows10_root);
+		Version_Data data = { 0 };
+		visit_files_w(windows10_lib, &data, win10_best);
+		free(windows10_lib);
 
-	Version_Data data = { 0 };
-	visit_files_w(windows10_lib, &data, win10_best);
-	free(windows10_lib);
-
-	if (data.best_name) {
-	  result->windows_sdk_version = 10;
-	  result->windows_sdk_root = data.best_name;
-	  RegCloseKey(main_key);
-	  return;
+		if (data.best_name) {
+		  result->windows_sdk_version = 10;
+		  result->windows_sdk_root = data.best_name;
+		  RegCloseKey(main_key);
+		  return;
+		}
 	}
-  }
 
-  // Look for a Windows 8 entry.
-  wchar_t* windows8_root = find_windows_kit_root_with_key(main_key, L"KitsRoot81");
+	// Look for a Windows 8 entry.
+	wchar_t* windows8_root = find_windows_kit_root_with_key(main_key, L"KitsRoot81");
 
-  if (windows8_root) {
-	wchar_t* windows8_lib = concat2(windows8_root, L"Lib");
-	free(windows8_root);
+	if (windows8_root)
+	{
+		wchar_t* windows8_lib = concat2(windows8_root, L"Lib");
+		free(windows8_root);
 
-	Version_Data data = { 0 };
-	visit_files_w(windows8_lib, &data, win8_best);
-	free(windows8_lib);
+		Version_Data data = { 0 };
+		visit_files_w(windows8_lib, &data, win8_best);
+		free(windows8_lib);
 
-	if (data.best_name) {
-	  result->windows_sdk_version = 8;
-	  result->windows_sdk_root = data.best_name;
-	  RegCloseKey(main_key);
-	  return;
+		if (data.best_name)
+		{
+			result->windows_sdk_version = 8;
+			result->windows_sdk_root = data.best_name;
+			RegCloseKey(main_key);
+			return;
+		}
 	}
-  }
 
-  // If we get here, we failed to find anything.
-  RegCloseKey(main_key);
+	// If we get here, we failed to find anything.
+	RegCloseKey(main_key);
 }
 
-bool find_visual_studio_2017_by_fighting_through_microsoft_craziness(Find_Result* result) {
-  HRESULT rc = CoInitialize(NULL);
-  // "Subsequent valid calls return false." So ignore false.
-  // if rc != S_OK  return false;
+bool find_visual_studio_2017_by_fighting_through_microsoft_craziness(Find_Result* result)
+{
+	HRESULT rc = CoInitialize(NULL);
+	// "Subsequent valid calls return false." So ignore false.
+	// if rc != S_OK  return false;
 
-  GUID my_uid = { 0x42843719, 0xDB4C, 0x46C2, {0x8E, 0x7C, 0x64, 0xF1, 0x81, 0x6E, 0xFD, 0x5B} };
-  GUID CLSID_SetupConfiguration = { 0x177F0C4A, 0x1CD3, 0x4DE7, {0xA3, 0x2C, 0x71, 0xDB, 0xBB, 0x9F, 0xA3, 0x6D} };
+	GUID my_uid = { 0x42843719, 0xDB4C, 0x46C2, {0x8E, 0x7C, 0x64, 0xF1, 0x81, 0x6E, 0xFD, 0x5B} };
+	GUID CLSID_SetupConfiguration = { 0x177F0C4A, 0x1CD3, 0x4DE7, {0xA3, 0x2C, 0x71, 0xDB, 0xBB, 0x9F, 0xA3, 0x6D} };
 
-  ISetupConfiguration* config = NULL;
+	ISetupConfiguration* config = NULL;
 
-  // NOTE(Kalinovcic): This is so stupid... These functions take references, so the code is different for C and C++......
-//#ifdef __cplusplus
-//  HRESULT hr = CoCreateInstance(CLSID_SetupConfiguration, NULL, CLSCTX_INPROC_SERVER, my_uid, (void**)&config);
-//#else
-  HRESULT hr = CoCreateInstance(&CLSID_SetupConfiguration, NULL, CLSCTX_INPROC_SERVER, &my_uid, (void**)&config);
-//#endif
+	HRESULT hr = CoCreateInstance(&CLSID_SetupConfiguration, NULL, CLSCTX_INPROC_SERVER, &my_uid, (void**)&config);
 
-  if (hr != 0)  return false;
+    if (hr != 0)  return false;
 
-  IEnumSetupInstances* instances = NULL;
-  hr = CALL_STDMETHOD(config, EnumInstances, &instances);
-  CALL_STDMETHOD_(config, Release);
-  if (hr != 0)     return false;
-  if (!instances)  return false;
+    IEnumSetupInstances* instances = NULL;
+    hr = CALL_STDMETHOD(config, EnumInstances, &instances);
+    CALL_STDMETHOD_(config, Release);
+    if (hr != 0)     return false;
+    if (!instances)  return false;
 
-  bool found_visual_studio_2017 = false;
-  while (1) {
-	ULONG found = 0;
-	ISetupInstance* instance = NULL;
-	HRESULT hr = CALL_STDMETHOD(instances, Next, 1, &instance, &found);
-	if (hr != S_OK) break;
+    bool found_visual_studio_2017 = false;
+    while (1)
+	{
+		ULONG found = 0;
+		ISetupInstance* instance = NULL;
+		HRESULT hr = CALL_STDMETHOD(instances, Next, 1, &instance, &found);
+		if (hr != S_OK) break;
 
-	BSTR bstr_inst_path;
-	hr = CALL_STDMETHOD(instance, GetInstallationPath, &bstr_inst_path);
-	CALL_STDMETHOD_(instance, Release);
-	if (hr != S_OK)  continue;
+		BSTR bstr_inst_path;
+		hr = CALL_STDMETHOD(instance, GetInstallationPath, &bstr_inst_path);
+		CALL_STDMETHOD_(instance, Release);
+		if (hr != S_OK)  continue;
 
-	wchar_t* tools_filename = concat2(bstr_inst_path, L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
-	SysFreeString(bstr_inst_path);
+		wchar_t* tools_filename = concat2(bstr_inst_path, L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
+		SysFreeString(bstr_inst_path);
 
-	FILE* f;
-	errno_t open_result = _wfopen_s(&f, tools_filename, L"rt");
-	free(tools_filename);
-	if (open_result != 0) continue;
-	if (!f) continue;
+		FILE* f;
+		errno_t open_result = _wfopen_s(&f, tools_filename, L"rt");
+		free(tools_filename);
+		if (open_result != 0) continue;
+		if (!f) continue;
 
-	LARGE_INTEGER tools_file_size;
-	HANDLE file_handle = (HANDLE)_get_osfhandle(_fileno(f));
-	BOOL success = GetFileSizeEx(file_handle, &tools_file_size);
-	if (!success) {
-	  fclose(f);
-	  continue;
-	}
+		LARGE_INTEGER tools_file_size;
+		HANDLE file_handle = (HANDLE)_get_osfhandle(_fileno(f));
+		if (!GetFileSizeEx(file_handle, &tools_file_size))
+		{
+			fclose(f);
+			continue;
+		}
 
 	size_t version_length = (size_t)(tools_file_size.QuadPart + 1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
 	wchar_t* version = (wchar_t*)cmalloc(version_length * 2);
@@ -551,19 +529,21 @@ void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result* res
   // If we get here, we failed to find anything.
 }
 
-Find_Result find_visual_studio_and_windows_sdk() {
-  Find_Result result = { 0 };
+Find_Result find_visual_studio_and_windows_sdk()
+{
+	Find_Result result = { 0 };
 
-  find_windows_kit_root(&result);
+	find_windows_kit_root(&result);
 
-  if (result.windows_sdk_root) {
-	result.windows_sdk_um_library_path = concat2(result.windows_sdk_root, L"\\um\\x64");
-	result.windows_sdk_ucrt_library_path = concat2(result.windows_sdk_root, L"\\ucrt\\x64");
-  }
+	if (result.windows_sdk_root)
+	{
+		result.windows_sdk_um_library_path = concat2(result.windows_sdk_root, L"\\um\\x64");
+		result.windows_sdk_ucrt_library_path = concat2(result.windows_sdk_root, L"\\ucrt\\x64");
+	}
 
-  find_visual_studio_by_fighting_through_microsoft_craziness(&result);
+	find_visual_studio_by_fighting_through_microsoft_craziness(&result);
 
-  return result;
+	return result;
 }
 
 #endif //defined(_MSC_VER)

@@ -49,6 +49,7 @@ const char *kw_at_param;
 const char *kw_at_pure;
 const char *kw_at_require;
 const char *kw_at_return;
+const char *kw_at_jump;
 const char *kw_check_assign;
 const char *kw_deprecated;
 const char *kw_finalize;
@@ -318,13 +319,12 @@ void symtab_init(uint32_t capacity)
 	kw_at_pure = KW_DEF("@pure");
 	kw_at_require = KW_DEF("@require");
 	kw_at_return = KW_DEF("@return");
-
+	kw_at_jump = KW_DEF("@jump");
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
 	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");
-	attribute_list[ATTRIBUTE_DEFAULT] = KW_DEF("@default");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");

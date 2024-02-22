@@ -1,5 +1,6 @@
 module std::io::path;
 import std::collections::list, std::io::os;
+import std::os::win32;
 
 const PathEnv DEFAULT_PATH_ENV = env::WIN32 ? PathEnv.WIN32 : PathEnv.POSIX;
 const char PREFERRED_SEPARATOR_WIN32 = '\\';
@@ -26,7 +27,7 @@ enum PathEnv
 	POSIX
 }
 
-fn Path! getcwd(Allocator* allocator = allocator::heap())
+fn Path! getcwd(Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -40,7 +41,7 @@ fn usz! file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
 fn Path! tgetcwd() => getcwd(allocator::temp()) @inline;
 fn void! chdir(Path path) => os::native_chdir(path) @inline;
-fn Path! temp_directory(Allocator* allocator = allocator::heap()) => os::native_temp_directory(allocator);
+fn Path! temp_directory(Allocator allocator = allocator::heap()) => os::native_temp_directory(allocator);
 fn void! delete(Path path) => os::native_remove(path.str_view()) @inline;
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_PATH_ENV)
@@ -58,7 +59,7 @@ macro bool is_win32_separator(char c)
 	return c == '/' || c == '\\';
 }
 
-fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", Allocator* allocator = allocator::heap())
+fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", Allocator allocator = allocator::heap())
 {
 	$if $defined(os::native_ls):
 		return os::native_ls(dir, no_dirs, no_symlinks, mask, allocator);
@@ -105,7 +106,7 @@ fn void! rmtree(Path path)
 	$endif
 }
 
-fn Path! new(String path, Allocator* allocator = allocator::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
+fn Path! new(String path, Allocator allocator = allocator::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	return { normalize(path.copy(allocator), path_env), path_env };
 }
@@ -115,7 +116,7 @@ fn Path! temp_new(String path, PathEnv path_env = DEFAULT_PATH_ENV)
 	return new(path, allocator::temp(), path_env);
 }
 
-fn Path! new_win32_wstring(WString path, Allocator* allocator = allocator::heap())
+fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -123,12 +124,12 @@ fn Path! new_win32_wstring(WString path, Allocator* allocator = allocator::heap(
 	};
 }
 
-fn Path! new_windows(String path, Allocator* allocator = allocator::heap())
+fn Path! new_windows(String path, Allocator allocator = allocator::heap())
 {
 	return new(path, allocator, WIN32);
 }
 
-fn Path! new_posix(String path, Allocator* allocator = allocator::heap())
+fn Path! new_posix(String path, Allocator allocator = allocator::heap())
 {
 	return new(path, allocator, POSIX);
 }
@@ -143,7 +144,7 @@ fn bool Path.equals(self, Path p2)
  *
  * @param [in] filename
  **/
-fn Path! Path.append(self, String filename, Allocator* allocator = allocator::heap())
+fn Path! Path.append(self, String filename, Allocator allocator = allocator::heap())
 {
 	if (!self.path_string.len) return new(filename, allocator, self.env)!;
 	assert(!is_separator(self.path_string[^1], self.env));
@@ -166,7 +167,19 @@ fn usz Path.start_of_base_name(self) @local
 	if (!path_str.len) return 0;
 	if (self.env == PathEnv.WIN32)
 	{
-		return path_str.rindex_of_char('\\') + 1 ?? volume_name_len(path_str, self.env)!!;
+		if (try index = path_str.rindex_of_char('\\'))
+		{
+			// c:\ style path, we're done!
+			if (path_str[0] != '\\') return index + 1;
+			// Handle \\server\foo
+			// Find the \ before "foo"
+			usz last_index = 2 + path_str[2..].index_of_char('\\')!!;
+			// If they don't match, we're done
+			assert(last_index <= index, "Invalid normalized, path %d vs %s in %s", last_index, index, path_str);
+			if (last_index != index) return index + 1;
+			// Otherwise just default to the volume length.
+		}
+		return volume_name_len(path_str, self.env)!!;
 	}
 	return path_str.rindex_of_char('/') + 1 ?? 0;
 }
@@ -176,28 +189,39 @@ fn bool! Path.is_absolute(self)
 	String path_str = self.str_view();
 	if (!path_str.len) return false;
 	usz path_start = volume_name_len(path_str, self.env)!;
+	if (path_start > 0 && path_str[0] == '\\') return true;
 	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
 }
 
-fn Path! Path.absolute(self, Allocator* allocator = allocator::heap())
+/**
+ * @require self.env == DEFAULT_PATH_ENV : "This method is only available on native paths"
+ **/
+fn Path! Path.absolute(self, Allocator allocator = allocator::heap())
 {
 	String path_str = self.str_view();
-	if (!path_str.len) path_str = ".";
+	if (!path_str.len) return PathResult.INVALID_PATH?;
+	if (self.is_absolute()!) return new(path_str, allocator, self.env);
 	if (path_str == ".")
 	{
+		@pool(allocator)
+		{
+			String cwd = os::getcwd(allocator::temp())!;
+			return new(cwd, allocator, self.env);
+		};
+	}
+	$if DEFAULT_PATH_ENV == WIN32:
+		@pool(allocator)
+		{
+			const usz BUFFER_LEN = 4096;
+			WString buffer = (WString)mem::temp_alloc_array(Char16, BUFFER_LEN);
+			buffer = win32::_wfullpath(buffer, path_str.to_temp_wstring()!, BUFFER_LEN);
+			if (!buffer) return PathResult.INVALID_PATH?;
+			return { string::new_from_wstring(buffer, allocator), WIN32 };
+		};
+	$else
 		String cwd = os::getcwd(allocator::temp())!;
-		return new(cwd, allocator, self.env);
-	}
-	switch (self.env)
-	{
-		case WIN32:
-			usz path_start = volume_name_len(path_str, self.env)!;
-			if (path_start > 0) return self;
-		case POSIX:
-			if (path_str[0] == PREFERRED_SEPARATOR_POSIX) return self;
-	}
-	String cwd = os::getcwd(allocator::temp())!;
-	return Path{ cwd, self.env }.append(path_str, allocator)!;
+		return Path { cwd, self.env }.append(path_str, allocator)!;
+	$endif
 }
 
 fn String Path.basename(self)
@@ -208,13 +232,21 @@ fn String Path.basename(self)
 	return path_str[basename_start..];
 }
 
+
 fn String Path.dirname(self)
 {
 	usz basename_start = self.start_of_base_name();
 	String path_str = self.path_string;
-	if (basename_start == 0) return "";
+	if (basename_start == 0) return ".";
 	usz start = volume_name_len(path_str, self.env)!!;
-	if (basename_start <= start + 1) return path_str[:basename_start];
+	if (basename_start <= start + 1)
+	{
+		if (self.env == WIN32 && basename_start > start && path_str[0..1] == `\\`)
+		{
+			return path_str[:basename_start - 1];
+		}
+		return path_str[:basename_start];
+	}
 	return path_str[:basename_start - 1];
 }
 
@@ -248,13 +280,20 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
 			while (count < len && path[count] == '\\') count++;
 			// Not 2 => folded paths
 			if (count != 2) return 0;
-			// Check that we have a name followed by '/'
+			// Check that we have a name followed by '\'
+			isz base_found = 0;
 			for (usz i = 2; i < len; i++)
 			{
 				char c = path[i];
-				if (is_win32_separator(c)) return i;
+				if (is_win32_separator(c))
+				{
+					if (base_found) return i;
+					base_found = i;
+					continue;
+				}
 				if (is_reserved_win32_path_char(c)) return PathResult.INVALID_PATH?;
 			}
+			if (base_found > 0 && base_found + 1 < len) return len;
 			return PathResult.INVALID_PATH?;
 		case 'A'..'Z':
 		case 'a'..'z':
@@ -281,6 +320,10 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	if (!path_str.len) return "";
 	usz path_start = volume_name_len(path_str, path_env)!;
+	if (path_start > 0 && path_env == PathEnv.WIN32)
+	{
+		for (usz i = 0; i < path_start; i++) if (path_str[i] == '/') path_str[i] = '\\';
+	}
 	usz path_len = path_str.len;
 	if (path_start == path_len) return path_str;
 	char path_separator = path_env == PathEnv.WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
@@ -384,7 +427,9 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 		len++;
 	}
 	if (len > path_start + 1 && is_separator(path_str[len - 1], path_env)) len--;
-	path_str.ptr[len] = 0;
+	if (path_str.len > len) path_str.ptr[len] = 0;
+	// Empty path after normalization -> "."
+	if (!len) return ".";
 	return path_str[:len];
 }
 
@@ -395,6 +440,7 @@ fn String Path.root_directory(self)
 	String path_str = self.str_view();
 	usz len = path_str.len;
 	if (!len) return "";
+	if (path_str == ".") return ".";
 	if (self.env == PathEnv.WIN32)
 	{
 		usz root_len = volume_name_len(path_str, self.env)!!;
@@ -417,11 +463,12 @@ def PathWalker = fn bool! (Path, bool is_dir, void*);
 /*
  * Walk the path recursively. PathWalker is run on every file and
  * directory found. Return true to abort the walk.
+ * @require self.env == DEFAULT_PATH_ENV : "This method is only available on native paths"
  */
 fn bool! Path.walk(self, PathWalker w, void* data)
 {
 	const PATH_MAX = 512;
-	@stack_mem(PATH_MAX; Allocator* allocator)
+	@stack_mem(PATH_MAX; Allocator allocator)
 	{
 		Path abs = self.absolute(allocator)!;
 		PathList files = ls(abs, .allocator = allocator)!;
@@ -448,6 +495,11 @@ fn bool Path.has_suffix(self, String str)
 	return self.str_view().ends_with(str);
 }
 
+fn void Path.free_with_allocator(self, Allocator allocator)
+{
+	allocator::free(allocator, self.path_string.ptr);
+}
+
 fn void Path.free(self)
 {
 	free(self.path_string.ptr);
@@ -459,7 +511,7 @@ fn usz! Path.to_format(&self, Formatter* formatter) @dynamic
 	return formatter.print(self.str_view());
 }
 
-fn String Path.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
+fn String Path.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
 	return self.str_view().copy(allocator);
 }

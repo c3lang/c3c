@@ -47,6 +47,11 @@ static const char *riscv_capability[3] = {
 	[RISCVFLOAT_DOUBLE] = "double",
 };
 
+static const char *win64_simd_type[2] = {
+	[WIN64_SIMD_ARRAY] = "array",
+	[WIN64_SIMD_FULL] = "full",
+};
+
 static const char *fp_math[3] = {
 	[FP_STRICT] = "strict",
 	[FP_RELAXED] = "relaxed",

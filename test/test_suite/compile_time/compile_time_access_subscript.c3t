@@ -27,7 +27,7 @@ fn void main()
 {
 	var $i = int[4] { 1, 2, 3, 4 };
 	var $b = Abc[2] { Abc {}, Abc { 11, 22, 33, 44 }};
-	var $c = any*[4] {};
+	var $c = any[4] {};
 	check_type(int);
 	check_type(Abc);
 	check_type(anyfault);
@@ -55,7 +55,7 @@ fn void main()
   %z10 = alloca %Abc, align 4
   %z14 = alloca [2 x i32], align 4
   %z16 = alloca %"int[]", align 8
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %literal = alloca %Abc, align 4
   %retparam = alloca i64, align 8
   store i32 0, ptr %z, align 4
@@ -90,9 +90,9 @@ fn void main()
   store float 0.000000e+00, ptr %ptradd18, align 4
   %ptradd19 = getelementptr inbounds i8, ptr %literal, i64 12
   store float 0.000000e+00, ptr %ptradd19, align 4
-  %0 = insertvalue %"any*" undef, ptr %literal, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
-  store %"any*" %1, ptr %varargslots, align 16
+  %0 = insertvalue %any undef, ptr %literal, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.test.Abc" to i64), 1
+  store %any %1, ptr %varargslots, align 16
   %2 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   ret void
 }

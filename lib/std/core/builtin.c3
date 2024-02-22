@@ -61,7 +61,7 @@ macro void @swap(&a, &b) @builtin
  * @ensure @typeis(return, $Type*)
  * @return! CastResult.TYPE_MISMATCH
  **/
-macro anycast(any* v, $Type) @builtin
+macro anycast(any v, $Type) @builtin
 {
 	if (v.type != $Type.typeid) return CastResult.TYPE_MISMATCH?;
 	return ($Type*)v.ptr;
@@ -126,7 +126,7 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	@stack_mem(512; Allocator* allocator)
+	@stack_mem(512; Allocator allocator)
 	{
 		DString s;
 		s.new_init(.allocator = allocator);

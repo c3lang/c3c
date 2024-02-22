@@ -66,7 +66,7 @@
   // of symbols that can be used. Should usually not be changed.
   "symtab": 1048576,
   // Use the system linker.
-  "system-linker": false,
+  "linker": "cc",
   // Include the standard library.
   "use-stdlib": true,
   // Set general level of x64 cpu: "baseline", "ssse3", "sse4", "avx1", "avx2-v1", "avx2-v2", "avx512", "native".

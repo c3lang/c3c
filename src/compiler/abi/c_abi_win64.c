@@ -4,7 +4,7 @@
 
 #include "compiler/c_abi_internal.h"
 
-ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector)
+ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vector_call)
 {
 	if (type_is_void(type)) return abi_arg_ignore();
 	
@@ -19,7 +19,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 
 	Type *base = NULL;
 	unsigned elements = 0;
-	if (is_vector && type_is_homogenous_aggregate(type, &base, &elements))
+	if (is_vector_call && type_is_homogenous_aggregate(type, &base, &elements))
 	{
 		// Enough registers AND return / builtin / vector
 		if (regs->float_regs >= elements &&
@@ -36,7 +36,8 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 		// => to main handling.
 	}
 	ByteSize size = type_size(type);
-	if (type_is_abi_aggregate(type))
+	bool type_is_vector_to_pass_as_array = active_target.feature.pass_win64_simd_as_arrays && type_flat_is_vector(type);
+	if (type_is_vector_to_pass_as_array || type_is_abi_aggregate(type))
 	{
 		// Not 1, 2, 4, 8? Pass indirect.
 		if (size > 8 || !is_power_of_two(size))

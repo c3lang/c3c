@@ -68,7 +68,7 @@ struct Darwin_segment_command_64
 }
 
 
-fn String! executable_path(Allocator *allocator)
+fn String! executable_path(Allocator allocator)
 {
 	char[4096] path;
 	uint len = path.len;
@@ -93,7 +93,7 @@ fn uptr! load_address() @local
 }
 
 
-fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator* allocator = allocator::heap()) @local
+fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator allocator = allocator::heap()) @local
 {
 	@pool(allocator)
 	{
@@ -132,7 +132,7 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 	};
 }
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 {
 	void *load_addr = (void *)load_address()!;
 	BacktraceList list;
@@ -150,7 +150,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 		String execpath = executable_path(allocator::temp())!;
 		foreach (addr : backtrace)
 		{
-			list.append(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
+			list.push(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
 		}
 	};
 	return list;

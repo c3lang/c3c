@@ -4,13 +4,13 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
-struct AnyStruct
+struct AnyRaw
 {
 	void* ptr;
 	typeid type;
 }
 
-struct SubArrayStruct
+struct SliceRaw
 {
 	void* ptr;
 	usz len;
@@ -24,7 +24,7 @@ struct BenchmarkUnit
 	BenchmarkFn func;
 }
 
-fn BenchmarkUnit[] benchmark_collection_create(Allocator* allocator = allocator::heap())
+fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator = allocator::heap())
 {
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
@@ -142,7 +142,7 @@ struct TestUnit
 	TestFn func;
 }
 
-fn TestUnit[] test_collection_create(Allocator* allocator = allocator::heap())
+fn TestUnit[] test_collection_create(Allocator allocator = allocator::heap())
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
