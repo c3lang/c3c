@@ -11,6 +11,7 @@
 - Pointer difference would fail where alignment != size (structs etc) #1150
 - Fixed array calculation for npot2 vectors.
 - $$memcpy_inline and $$memset_inline fixed.
+- `.$Type = ...` and `.$foo = ...` now works #1156.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.

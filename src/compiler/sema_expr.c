@@ -1121,12 +1121,22 @@ static inline int sema_call_find_index_of_named_parameter(SemaContext *context, 
 	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL);
 	if (!field) return false;
 
-	if (field->expr_kind != EXPR_IDENTIFIER)
+	const char *name;
+	switch (field->expr_kind)
 	{
-		SEMA_ERROR(expr, "A name was expected here.");
-		return -1;
+		case EXPR_IDENTIFIER:
+			name = field->identifier_expr.ident;
+			break;
+		case EXPR_CT_IDENT:
+			name = field->ct_ident_expr.identifier;
+			break;
+		case EXPR_TYPEINFO:
+			name = field->type_expr->unresolved.name;
+			break;
+		default:
+			SEMA_ERROR(expr, "A name was expected here.");
+			return -1;
 	}
-	const char *name = field->identifier_expr.ident;
 	VECEACH(func_params, i)
 	{
 		if (func_params[i] && func_params[i]->name == name) return (int)i;
@@ -2941,6 +2951,8 @@ static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr)
  * 4. .#bar -> It is an identifier to resolve as a member or a function
  * 5. .@#bar -> It is an identifier to resolve as a macro
  * 6. .$eval(...) -> resolve the eval and retry.
+ * 7. .$ident -> It is a child to resolve as CT param
+ * 8. .$Type -> It is a child to resolve as CT type param
  */
  Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
 {
@@ -2952,6 +2964,12 @@ RETRY:
 			assert(child->resolve_status != RESOLVE_DONE);
 			if (child->identifier_expr.path) break;
 			return child;
+		case EXPR_CT_IDENT:
+			assert(child->resolve_status != RESOLVE_DONE);
+			return child;
+		case EXPR_TYPEINFO:
+			if (child->type_expr->kind == TYPE_INFO_CT_IDENTIFIER) return child;
+			break;
 		case EXPR_HASH_IDENT:
 		{
 			assert(child->resolve_status != RESOLVE_DONE);
