@@ -5,7 +5,7 @@ import std::io;
 fn void! main()
 {
 	ByteReader r;
-	InStream* s = &r;
+	InStream s = &r;
 	s.foo()!;
 }
 
@@ -26,9 +26,8 @@ macro InStream.foo(&self)
 define i64 @oups.main() #0 {
 entry:
   %r = alloca %ByteReader, align 8
-  %s = alloca %"any*", align 8
+  %s = alloca %any, align 8
   %error_var = alloca i64, align 8
-  %self = alloca %"any*", align 8
   %c = alloca i8, align 1
   %c.f = alloca i64, align 8
   %.inlinecache = alloca ptr, align 8
@@ -37,17 +36,15 @@ entry:
   %err = alloca i64, align 8
   store ptr null, ptr %.cachedtype, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %r, i8 0, i64 24, i1 false)
-  %0 = insertvalue %"any*" undef, ptr %r, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
-  store %"any*" %1, ptr %s, align 8
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %self, ptr align 8 %s, i32 16, i1 false)
-  %ptradd = getelementptr inbounds i8, ptr %self, i64 8
+  %0 = insertvalue %any undef, ptr %r, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
+  store %any %1, ptr %s, align 8
+  %ptradd = getelementptr inbounds i8, ptr %s, i64 8
   %2 = load i64, ptr %ptradd, align 8
   %3 = inttoptr i64 %2 to ptr
   %type = load ptr, ptr %.cachedtype, align 8
   %4 = icmp eq ptr %3, %type
   br i1 %4, label %cache_hit, label %cache_miss
-
 cache_miss:                                       ; preds = %entry
   %ptradd1 = getelementptr inbounds i8, ptr %3, i64 16
   %5 = load ptr, ptr %ptradd1, align 8
@@ -55,72 +52,57 @@ cache_miss:                                       ; preds = %entry
   store ptr %6, ptr %.inlinecache, align 8
   store ptr %3, ptr %.cachedtype, align 8
   br label %7
-
 cache_hit:                                        ; preds = %entry
   %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
   br label %7
-
 7:                                                ; preds = %cache_hit, %cache_miss
   %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %6, %cache_miss ]
   %8 = icmp eq ptr %fn_phi, null
   br i1 %8, label %missing_function, label %match
-
 missing_function:                                 ; preds = %7
   %9 = load ptr, ptr @std.core.builtin.panic, align 8
   call void %9(ptr @.panic_msg, i64 46, ptr @.file, i64 25, ptr @.func, i64 4, i32 13)
   unreachable
-
 match:                                            ; preds = %7
-  %10 = load ptr, ptr %self, align 8
+  %10 = load ptr, ptr %s, align 8
   %11 = call i64 %fn_phi(ptr %retparam, ptr %10)
   %not_err = icmp eq i64 %11, 0
   %12 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %12, label %after_check, label %assign_optional
-
 assign_optional:                                  ; preds = %match
   store i64 %11, ptr %c.f, align 8
   br label %after_assign
-
 after_check:                                      ; preds = %match
   %13 = load i8, ptr %retparam, align 1
   store i8 %13, ptr %c, align 1
   store i64 0, ptr %c.f, align 8
   br label %after_assign
-
 after_assign:                                     ; preds = %after_check, %assign_optional
   br label %testblock
-
 testblock:                                        ; preds = %after_assign
   %optval = load i64, ptr %c.f, align 8
   %not_err2 = icmp eq i64 %optval, 0
   %14 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
   br i1 %14, label %after_check4, label %assign_optional3
-
 assign_optional3:                                 ; preds = %testblock
   store i64 %optval, ptr %err, align 8
   br label %end_block
-
 after_check4:                                     ; preds = %testblock
   store i64 0, ptr %err, align 8
   br label %end_block
-
 end_block:                                        ; preds = %after_check4, %assign_optional3
   %15 = load i64, ptr %err, align 8
   %neq = icmp ne i64 %15, 0
   br i1 %neq, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %end_block
   %16 = load i64, ptr %err, align 8
   store i64 %16, ptr %error_var, align 8
   br label %guard_block
-
 if.exit:                                          ; preds = %end_block
   br label %noerr_block
-
 guard_block:                                      ; preds = %if.then
   %17 = load i64, ptr %error_var, align 8
   ret i64 %17
-
 noerr_block:                                      ; preds = %if.exit
   ret i64 0
 }

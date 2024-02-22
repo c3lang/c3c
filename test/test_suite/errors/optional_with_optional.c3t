@@ -34,38 +34,38 @@ fn int! get_b(int x)
 
 define void @test.main() #0 {
 entry:
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i32, align 4
   %retparam1 = alloca i32, align 4
   %taddr = alloca i32, align 4
   %retparam7 = alloca i64, align 8
-  %varargslots10 = alloca [1 x %"any*"], align 16
+  %varargslots10 = alloca [1 x %any], align 16
   %retparam11 = alloca i32, align 4
   %retparam15 = alloca i32, align 4
   %taddr23 = alloca i32, align 4
   %retparam24 = alloca i64, align 8
-  %varargslots27 = alloca [1 x %"any*"], align 16
+  %varargslots27 = alloca [1 x %any], align 16
   %retparam28 = alloca i32, align 4
   %retparam32 = alloca i32, align 4
   %taddr40 = alloca i32, align 4
   %retparam41 = alloca i64, align 8
-  %varargslots44 = alloca [1 x %"any*"], align 16
+  %varargslots44 = alloca [1 x %any], align 16
   %blockret = alloca i64, align 8
   %f = alloca i64, align 8
   %retparam45 = alloca i64, align 8
-  %varargslots48 = alloca [1 x %"any*"], align 16
+  %varargslots48 = alloca [1 x %any], align 16
   %taddr49 = alloca i32, align 4
   %retparam50 = alloca i64, align 8
-  %varargslots53 = alloca [1 x %"any*"], align 16
+  %varargslots53 = alloca [1 x %any], align 16
   %blockret54 = alloca i64, align 8
   %f55 = alloca i64, align 8
   %retparam62 = alloca i64, align 8
-  %varargslots65 = alloca [1 x %"any*"], align 16
+  %varargslots65 = alloca [1 x %any], align 16
   %blockret66 = alloca i64, align 8
   %f67 = alloca i64, align 8
   %retparam76 = alloca i64, align 8
   %x = alloca i64, align 8
-  %varargslots79 = alloca [1 x %"any*"], align 16
+  %varargslots79 = alloca [1 x %any], align 16
   %retparam80 = alloca i64, align 8
   %xy = alloca i32, align 4
   %xy.f = alloca i64, align 8
@@ -98,9 +98,9 @@ phi_block:                                        ; preds = %else_block4, %after
 phi_block5:                                       ; preds = %phi_block, %after_check
   %val6 = phi i32 [ %2, %after_check ], [ %val, %phi_block ]
   store i32 %val6, ptr %taddr, align 4
-  %6 = insertvalue %"any*" undef, ptr %taddr, 0
-  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %7, ptr %varargslots, align 16
+  %6 = insertvalue %any undef, ptr %taddr, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %7, ptr %varargslots, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam7, ptr @.str, i64 4, ptr %varargslots, i64 1)
   %9 = call i64 @test.get_a(ptr %retparam11, i32 2)
   %not_err12 = icmp eq i64 %9, 0
@@ -131,9 +131,9 @@ phi_block19:                                      ; preds = %else_block18, %afte
 phi_block21:                                      ; preds = %phi_block19, %after_check13
   %val22 = phi i32 [ %11, %after_check13 ], [ %val20, %phi_block19 ]
   store i32 %val22, ptr %taddr23, align 4
-  %15 = insertvalue %"any*" undef, ptr %taddr23, 0
-  %16 = insertvalue %"any*" %15, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %16, ptr %varargslots10, align 16
+  %15 = insertvalue %any undef, ptr %taddr23, 0
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %16, ptr %varargslots10, align 16
   %17 = call i64 @std.io.printfn(ptr %retparam24, ptr @.str.2, i64 4, ptr %varargslots10, i64 1)
   %18 = call i64 @test.get_a(ptr %retparam28, i32 1)
   %not_err29 = icmp eq i64 %18, 0
@@ -164,9 +164,9 @@ phi_block36:                                      ; preds = %else_block35, %afte
 phi_block38:                                      ; preds = %phi_block36, %after_check30
   %val39 = phi i32 [ %20, %after_check30 ], [ %val37, %phi_block36 ]
   store i32 %val39, ptr %taddr40, align 4
-  %24 = insertvalue %"any*" undef, ptr %taddr40, 0
-  %25 = insertvalue %"any*" %24, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %25, ptr %varargslots27, align 16
+  %24 = insertvalue %any undef, ptr %taddr40, 0
+  %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %25, ptr %varargslots27, align 16
   %26 = call i64 @std.io.printfn(ptr %retparam41, ptr @.str.3, i64 4, ptr %varargslots27, i64 1)
   br label %testblock
 
@@ -189,14 +189,14 @@ if.exit:                                          ; preds = %end_block
   br label %expr_block.exit
 
 expr_block.exit:                                  ; preds = %if.exit, %if.then
-  %29 = insertvalue %"any*" undef, ptr %blockret, 0
-  %30 = insertvalue %"any*" %29, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %30, ptr %varargslots44, align 16
+  %29 = insertvalue %any undef, ptr %blockret, 0
+  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %30, ptr %varargslots44, align 16
   %31 = call i64 @std.io.printfn(ptr %retparam45, ptr @.str.4, i64 4, ptr %varargslots44, i64 1)
   store i32 3, ptr %taddr49, align 4
-  %32 = insertvalue %"any*" undef, ptr %taddr49, 0
-  %33 = insertvalue %"any*" %32, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %33, ptr %varargslots48, align 16
+  %32 = insertvalue %any undef, ptr %taddr49, 0
+  %33 = insertvalue %any %32, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %33, ptr %varargslots48, align 16
   %34 = call i64 @std.io.printfn(ptr %retparam50, ptr @.str.5, i64 4, ptr %varargslots48, i64 1)
   br label %testblock56
 
@@ -219,9 +219,9 @@ if.exit60:                                        ; preds = %end_block57
   br label %expr_block.exit61
 
 expr_block.exit61:                                ; preds = %if.exit60, %if.then59
-  %37 = insertvalue %"any*" undef, ptr %blockret54, 0
-  %38 = insertvalue %"any*" %37, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %38, ptr %varargslots53, align 16
+  %37 = insertvalue %any undef, ptr %blockret54, 0
+  %38 = insertvalue %any %37, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %38, ptr %varargslots53, align 16
   %39 = call i64 @std.io.printfn(ptr %retparam62, ptr @.str.6, i64 4, ptr %varargslots53, i64 1)
   br label %testblock68
 
@@ -247,14 +247,14 @@ if.exit74:                                        ; preds = %end_block71
   br label %expr_block.exit75
 
 expr_block.exit75:                                ; preds = %if.exit74, %if.then73
-  %42 = insertvalue %"any*" undef, ptr %blockret66, 0
-  %43 = insertvalue %"any*" %42, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %43, ptr %varargslots65, align 16
+  %42 = insertvalue %any undef, ptr %blockret66, 0
+  %43 = insertvalue %any %42, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %43, ptr %varargslots65, align 16
   %44 = call i64 @std.io.printfn(ptr %retparam76, ptr @.str.7, i64 4, ptr %varargslots65, i64 1)
   store i64 3, ptr %x, align 8
-  %45 = insertvalue %"any*" undef, ptr %x, 0
-  %46 = insertvalue %"any*" %45, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  store %"any*" %46, ptr %varargslots79, align 16
+  %45 = insertvalue %any undef, ptr %x, 0
+  %46 = insertvalue %any %45, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %46, ptr %varargslots79, align 16
   %47 = call i64 @std.io.printfn(ptr %retparam80, ptr @.str.8, i64 4, ptr %varargslots79, i64 1)
   store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %xy.f, align 8
   ret void

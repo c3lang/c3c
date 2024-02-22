@@ -32,8 +32,8 @@ def Ident = fn bool (usz index, char c);
 
 struct Lexer
 {
-    Allocator* allocator;
-    InStream* reader;
+    Allocator allocator;
+    InStream reader;
     char[] buf;
     TokenTrie tokens;
     Ident ident;
@@ -50,7 +50,7 @@ struct Lexer
     }
 }
 
-fn void! Lexer.init(&self, InStream* reader, Ident ident, Allocator* using = allocator::heap())
+fn void! Lexer.init(&self, InStream reader, Ident ident, Allocator using = allocator::heap())
 {
     TokenTrie trie;
     ushort max_token;
@@ -489,7 +489,7 @@ struct TrieNode
     bool valid;
 }
 
-fn void Trie.init(&self, usz initial_capacity = 8, Allocator* using = allocator::heap())
+fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::heap())
 {
     *self = {};
     self.nodes.new_init(initial_capacity, .allocator = using);
@@ -603,7 +603,7 @@ fn void! TrieNode.del(&self, Trie* t, char[] key, TriePath path) @private
         }
         return;
     }
-    Index current = path.pop();
+    Index current = path.pop()!;
     for (isz i = path.len() - 1; i >= 0; i--)
     {
         Index parent = path[i];
@@ -682,13 +682,13 @@ fn void test()
 
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %"char[]" = type { ptr, i64 }
-%"any*" = type { ptr, i64 }
+%any = type { ptr, i64 }
 %"UintTest[]" = type { ptr, i64 }
 %UintTest = type { %"char[]", i64 }
 %ByteReader = type { %"char[]", i64 }
-%Lexer = type { %"any*", %"any*", %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
+%Lexer = type { %any, %any, %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
 %Trie = type { %List }
-%List = type { i64, i64, %"any*", ptr }
+%List = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
 
 @"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
@@ -709,7 +709,7 @@ fn void test()
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@std.core.mem.allocator.thread_allocator = external thread_local global %"any*", align 8
+@std.core.mem.allocator.thread_allocator = external thread_local global %any, align 8
 
 ; Function Attrs:
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
@@ -755,7 +755,7 @@ entry:
   %br = alloca %ByteReader, align 8
   %lex = alloca %Lexer, align 8
   %error_var = alloca i64, align 8
-  %taddr = alloca %"any*", align 8
+  %taddr = alloca %any, align 8
   %kind = alloca i8, align 1
   %error_var8 = alloca i64, align 8
   %retparam = alloca i8, align 1
@@ -783,9 +783,9 @@ loop.body:                                        ; preds = %loop.cond
   %ptradd2 = getelementptr inbounds i8, ptr %tc, i64 8
   %hi = load i64, ptr %ptradd2, align 8
   %5 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
-  %6 = insertvalue %"any*" undef, ptr %5, 0
-  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
-  store %"any*" %7, ptr %taddr, align 8
+  %6 = insertvalue %any undef, ptr %5, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
+  store %any %7, ptr %taddr, align 8
   %lo3 = load i64, ptr %taddr, align 8
   %ptradd4 = getelementptr inbounds i8, ptr %taddr, i64 8
   %hi5 = load ptr, ptr %ptradd4, align 8

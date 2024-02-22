@@ -6,7 +6,7 @@ import std::math;
 
 struct DynamicArenaAllocator (Allocator)
 {
-	Allocator* backing_allocator;
+	Allocator backing_allocator;
 	DynamicArenaPage* page;
 	DynamicArenaPage* unused_page;
 	usz page_size;
@@ -16,7 +16,7 @@ struct DynamicArenaAllocator (Allocator)
  * @param [&inout] allocator
  * @require page_size >= 128
  **/
-fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator* allocator)
+fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator allocator)
 {
 	self.page = null;
 	self.unused_page = null;
@@ -77,7 +77,7 @@ fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
  * @require old_pointer != null `Resize doesn't handle null pointers`
  * @require self.page `tried to realloc pointer on invalid allocator`
  */
-fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
+fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	DynamicArenaPage* current_page = self.page;
 	alignment = alignment_for_allocation(alignment);
@@ -102,7 +102,7 @@ fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz a
 		current_page.used += add_size;
 		return old_pointer;
 	}
-	void* new_mem = self.acquire(size, false, alignment, 0)!;
+	void* new_mem = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(new_mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT);
 	return new_mem;
 }
@@ -158,7 +158,7 @@ fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @loca
  * @require size > 0 `acquire expects size > 0`
  * @require !alignment || math::is_power_of_2(alignment)
  */
-fn void*! DynamicArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
+fn void*! DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	DynamicArenaPage* page = self.page;
@@ -195,6 +195,6 @@ fn void*! DynamicArenaAllocator.acquire(&self, usz size, bool clear, usz alignme
 		chunk.size = size;
 		return mem;
 	|}!;
-	if (clear) mem::clear(ptr, size, mem::DEFAULT_MEM_ALIGNMENT);
+	if (init_type == ZERO) mem::clear(ptr, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return ptr;
 }

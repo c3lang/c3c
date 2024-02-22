@@ -10,7 +10,7 @@ void*[3] data @private = { &foo, &bar, &xx };
 
 /* #expect: const_pointer.ll
 
-@const_pointer.foo = protected global double 1.700000e+01, align 8
-@const_pointer.bar = protected global double 1.200000e+01, align 8
-@const_pointer.xx = protected global float 1.200000e+01, align 4
-@const_pointer.data = protected unnamed_addr global [3 x ptr] [ptr @const_pointer.foo, ptr @const_pointer.bar, ptr @const_pointer.xx], align 16
+@const_pointer.foo = internal global double 1.700000e+01, align 8
+@const_pointer.bar = internal global double 1.200000e+01, align 8
+@const_pointer.xx = internal global float 1.200000e+01, align 4
+@const_pointer.data = internal unnamed_addr global [3 x ptr] [ptr @const_pointer.foo, ptr @const_pointer.bar, ptr @const_pointer.xx], align 16

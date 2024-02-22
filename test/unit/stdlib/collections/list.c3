@@ -32,7 +32,7 @@ fn void! delete_contains_index()
 	assert(test.contains(3));
 	test[0] = 10;
 	assert(test.contains(10));
-	test.remove(10);
+	test.remove_all_matches(10);
 	assert(test.array_view() == int[]{ 2, 3 });
 	assert(!test.contains(1));
 	assert(test.contains(2));
@@ -42,7 +42,7 @@ fn void! delete_contains_index()
 	assert(test.array_view() == int[]{ 0, 2, 3, 0 });
 	assert(test.index_of(0)! == 0);
 	assert(test.rindex_of(0)! == 3);
-	test.remove(0);
+	test.remove_all_matches(0);
 	assert(test.len() == 2);
 	assert(test.array_view() == int[]{ 2, 3 });
 }

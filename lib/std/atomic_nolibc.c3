@@ -28,7 +28,7 @@ macro @__atomic_compare_exchange_ordering_success(ptr, expected, desired, succes
 	return 0;
 }
 
-fn CInt __atomic_compare_exchange(CInt size, any* ptr, any* expected, any* desired, CInt success, CInt failure) @extern("__atomic_compare_exchange") @export
+fn CInt __atomic_compare_exchange(CInt size, any ptr, any expected, any desired, CInt success, CInt failure) @extern("__atomic_compare_exchange") @export
 {
 	switch (size)
 	{

@@ -10,6 +10,11 @@ struct TrackingEnv
 	uint line;
 }
 
+enum AllocInitType
+{
+	NO_ZERO,
+	ZERO
+}
 
 interface Allocator
 {
@@ -18,18 +23,16 @@ interface Allocator
 	/**
      * @require !alignment || math::is_power_of_2(alignment)
      * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
-     * @require offset == 0 `offset no longer supported`
      * @require size > 0
      **/
-	fn void*! acquire(usz size, bool clear, usz alignment, usz offset);
+	fn void*! acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	/**
      * @require !alignment || math::is_power_of_2(alignment)
      * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
-     * @require offset == 0 `offset no longer supported`
      * @require ptr != null
      * @require new_size > 0
      **/
-	fn void*! resize(void* ptr, usz new_size, usz alignment, usz offset);
+	fn void*! resize(void* ptr, usz new_size, usz alignment = 0);
 	/**
      * @require ptr != null
      **/
@@ -49,51 +52,51 @@ fn usz alignment_for_allocation(usz alignment) @inline @private
 	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? alignment = mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }
 
-macro void* malloc(Allocator* allocator, usz size) @nodiscard
+macro void* malloc(Allocator allocator, usz size) @nodiscard
 {
 	return malloc_try(allocator, size)!!;
 }
 
-macro void*! malloc_try(Allocator* allocator, usz size) @nodiscard
+macro void*! malloc_try(Allocator allocator, usz size) @nodiscard
 {
 	if (!size) return null;
 	$if env::TESTING:
-		char* data = allocator.acquire(size, false, 0, 0)!;
+		char* data = allocator.acquire(size, NO_ZERO)!;
 		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
 		return data;
 	$else
-		return allocator.acquire(size, false, 0, 0);
+		return allocator.acquire(size, NO_ZERO);
 	$endif
 }
 
-macro void* calloc(Allocator* allocator, usz size) @nodiscard
+macro void* calloc(Allocator allocator, usz size) @nodiscard
 {
 	return calloc_try(allocator, size)!!;
 }
 
-macro void*! calloc_try(Allocator* allocator, usz size) @nodiscard
+macro void*! calloc_try(Allocator allocator, usz size) @nodiscard
 {
 	if (!size) return null;
-	return allocator.acquire(size, true, 0, 0);
+	return allocator.acquire(size, ZERO);
 }
 
-macro void* realloc(Allocator* allocator, void* ptr, usz new_size) @nodiscard
+macro void* realloc(Allocator allocator, void* ptr, usz new_size) @nodiscard
 {
 	return realloc_try(allocator, ptr, new_size)!!;
 }
 
-macro void*! realloc_try(Allocator* allocator, void* ptr, usz new_size) @nodiscard
+macro void*! realloc_try(Allocator allocator, void* ptr, usz new_size) @nodiscard
 {
 	if (!new_size)
 	{
 		free(allocator, ptr);
 		return null;
 	}
-	if (!ptr) return allocator.acquire(new_size, false, 0, 0);
-	return allocator.resize(ptr, new_size, 0, 0);
+	if (!ptr) return allocator.acquire(new_size, NO_ZERO);
+	return allocator.resize(ptr, new_size);
 }
 
-macro void free(Allocator* allocator, void* ptr)
+macro void free(Allocator allocator, void* ptr)
 {
 	if (!ptr) return;
 	$if env::TESTING:
@@ -102,25 +105,25 @@ macro void free(Allocator* allocator, void* ptr)
 	allocator.release(ptr, false);
 }
 
-macro void*! malloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0) @nodiscard
+macro void*! malloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
 {
 	if (!size) return null;
 	$if env::TESTING:
-		char* data = allocator.acquire(size, false, alignment, offset)!;
+		char* data = allocator.acquire(size, NO_ZERO, alignment)!;
 		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
 		return data;
 	$else
-		return allocator.acquire(size, false, alignment, offset);
+		return allocator.acquire(size, NO_ZERO, alignment);
 	$endif
 }
 
-macro void*! calloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0) @nodiscard
+macro void*! calloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
 {
 	if (!size) return null;
-	return allocator.acquire(size, true, alignment, offset);
+	return allocator.acquire(size, ZERO, alignment);
 }
 
-macro void*! realloc_aligned(Allocator* allocator, void* ptr, usz new_size, usz alignment, usz offset = 0) @nodiscard
+macro void*! realloc_aligned(Allocator allocator, void* ptr, usz new_size, usz alignment) @nodiscard
 {
 	if (!new_size)
 	{
@@ -131,23 +134,23 @@ macro void*! realloc_aligned(Allocator* allocator, void* ptr, usz new_size, usz 
 	{
 		return malloc_aligned(allocator, new_size, alignment);
 	}
-	return allocator.resize(ptr, new_size, alignment, offset);
+	return allocator.resize(ptr, new_size, alignment);
 }
 
-macro void free_aligned(Allocator* allocator, void* ptr)
+macro void free_aligned(Allocator allocator, void* ptr)
 {
 	if (!ptr) return;
 	$if env::TESTING:
 	((char*)ptr)[0] = 0xBA;
 	$endif
-	allocator.release(ptr, true);
+	allocator.release(ptr, .aligned = true);
 }
 
 /**
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
  **/
-macro new(Allocator* allocator, $Type, ...) @nodiscard
+macro new(Allocator allocator, $Type, ...) @nodiscard
 {
 	$if $vacount == 0:
 		return ($Type*)calloc(allocator, $Type.sizeof);
@@ -162,7 +165,7 @@ macro new(Allocator* allocator, $Type, ...) @nodiscard
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
  **/
-macro new_try(Allocator* allocator, $Type, ...) @nodiscard
+macro new_try(Allocator allocator, $Type, ...) @nodiscard
 {
 	$if $vacount == 0:
 		return ($Type*)calloc_try(allocator, $Type.sizeof);
@@ -173,167 +176,67 @@ macro new_try(Allocator* allocator, $Type, ...) @nodiscard
 	$endif
 }
 
-macro new_with_padding(Allocator* allocator, $Type, usz padding) @nodiscard
+macro new_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
 {
 	return ($Type*)calloc_try(allocator, $Type.sizeof + padding);
 }
 
-macro alloc(Allocator* allocator, $Type) @nodiscard
+macro alloc(Allocator allocator, $Type) @nodiscard
 {
 	return ($Type*)malloc(allocator, $Type.sizeof);
 }
 
-macro alloc_try(Allocator* allocator, $Type) @nodiscard
+macro alloc_try(Allocator allocator, $Type) @nodiscard
 {
 	return ($Type*)malloc_try(allocator, $Type.sizeof);
 }
 
-macro alloc_with_padding(Allocator* allocator, $Type, usz padding) @nodiscard
+macro alloc_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
 {
 	return ($Type*)malloc_try(allocator, $Type.sizeof + padding);
 }
 
-macro new_array(Allocator* allocator, $Type, usz elements) @nodiscard
+macro new_array(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return new_array_try(allocator, $Type, elements)!!;
 }
 
-macro new_array_try(Allocator* allocator, $Type, usz elements) @nodiscard
+macro new_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)calloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
-macro new_array_aligned(Allocator* allocator, $Type, usz elements) @nodiscard
+macro new_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return ((Type*)calloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
-macro alloc_array(Allocator* allocator, $Type, usz elements) @nodiscard
+macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return alloc_array_try(allocator, $Type, elements)!!;
 }
 
-macro alloc_array_aligned(Allocator* allocator, $Type, usz elements) @nodiscard
+macro alloc_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return ((Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
-macro alloc_array_try(Allocator* allocator, $Type, usz elements) @nodiscard
+macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
-macro clone(Allocator* allocator, value) @nodiscard
+macro clone(Allocator allocator, value) @nodiscard
 {
 	return new(allocator, $typeof(value), value);
 }
 
-fn any* clone_any(Allocator* allocator, any* value) @nodiscard
+fn any clone_any(Allocator allocator, any value) @nodiscard
 {
 	usz size = value.type.sizeof;
 	void* data = malloc(allocator, size);
 	mem::copy(data, value.ptr, size);
 	return any_make(data, value.type);
-}
-
-// Allocator "functions"
-
-macro void*! Allocator.alloc_checked(&self, usz size) @deprecated("Use allocator::malloc_try")
-{
-	return malloc_try(self, size);
-}
-
-macro void*! Allocator.calloc_checked(&self, usz size) @deprecated("Use allocator::calloc_try")
-{
-	return calloc_try(self, size);
-}
-
-macro void*! Allocator.realloc_checked(&self, void* ptr, usz new_size) @deprecated("Use allocator::realloc_try")
-{
-	return realloc_try(ptr, new_size);
-}
-
-macro Allocator.new_array(&self, $Type, usz size, usz end_padding = 0) @deprecated("Use allocator::alloc_array")
-{
-	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding))[:size]!!;
-}
-
-macro Allocator.new_array_checked(&self, $Type, usz size, usz end_padding = 0) @deprecated("Use allocator::alloc_array_try")
-{
-	return (($Type*)self.alloc_checked($Type.sizeof * size + end_padding))[:size];
-}
-
-macro Allocator.new_zero_array(&self, $Type, usz size, usz end_padding = 0) @deprecated("Use allocator::new_array")
-{
-	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding))[:size]!!;
-}
-
-macro Allocator.new_zero_array_checked(&self, $Type, usz size, usz end_padding = 0) @deprecated("Use allocator::new_array_try")
-{
-	return (($Type*)self.calloc_checked($Type.sizeof * size + end_padding))[:size];
-}
-
-macro Allocator.new(&self, $Type, usz end_padding = 0) @nodiscard @deprecated("Use allocator::alloc")
-{
-	return ($Type*)self.alloc_checked($Type.sizeof + end_padding)!!;
-}
-
-macro Allocator.new_checked(&self, $Type, usz end_padding = 0) @nodiscard @deprecated("Use allocator::alloc_try")
-{
-	return ($Type*)self.alloc_checked($Type.sizeof + end_padding);
-}
-
-macro Allocator.new_clear(&self, $Type, usz end_padding = 0) @nodiscard @deprecated("Use allocator::new")
-{
-	return ($Type*)self.calloc_checked($Type.sizeof + end_padding)!!;
-}
-
-macro Allocator.new_clear_checked(&self, $Type, usz end_padding = 0) @nodiscard  @deprecated("Use allocator::new_try")
-{
-	return ($Type*)self.calloc_checked($Type.sizeof + end_padding);
-}
-macro Allocator.clone(&self, value) @deprecated("Use allocator::clone")
-{
-	var x = self.alloc($typeof(value));
-	*x = value;
-	return x;
-}
-
-fn void* Allocator.alloc(&self, usz size) @nodiscard @deprecated("Use allocator::malloc")
-{
-	return malloc(self, size);
-}
-fn void* Allocator.calloc(&self, usz size) @nodiscard @deprecated("Use allocator::calloc")
-{
-	return calloc(self, size);
-}
-fn void* Allocator.realloc(&self, void* ptr, usz new_size) @nodiscard @deprecated("Use allocator::realloc")
-{
-	return realloc(self, ptr, new_size);
-}
-
-fn void*! Allocator.alloc_aligned(&self, usz size, usz alignment, usz offset = 0) @deprecated("Use allocator::malloc_aligned")
-{
-	return malloc_aligned(self, size, alignment, 0);
-}
-
-fn void*! Allocator.calloc_aligned(&self, usz size, usz alignment, usz offset = 0) @deprecated("Use allocator::calloc_aligned")
-{
-	return calloc_aligned(self, size, alignment, 0);
-}
-
-fn void*! Allocator.realloc_aligned(&self, void* ptr, usz new_size, usz alignment = 0, usz offset = 0)  @deprecated("Use allocator::realloc_aligned")
-{
-	return realloc_aligned(self, ptr, new_size, alignment, 0);
-}
-
-fn void Allocator.free(&self, void* ptr) @deprecated("Use allocator::free")
-{
-	free(self, ptr);
-}
-fn void Allocator.free_aligned(&self, void* ptr) @deprecated("Use allocator::free_aligned")
-{
-	free_aligned(self, ptr);
 }
 
 
@@ -395,12 +298,12 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 
 
 // All allocators
-tlocal Allocator* thread_allocator @private = &allocator::LIBC_ALLOCATOR;
+tlocal Allocator thread_allocator @private = &allocator::LIBC_ALLOCATOR;
 tlocal TempAllocator* thread_temp_allocator @private = null;
 tlocal TempAllocator*[2] temp_allocator_pair @private;
-Allocator* temp_base_allocator @private = &allocator::LIBC_ALLOCATOR;
+Allocator temp_base_allocator @private = &allocator::LIBC_ALLOCATOR;
 
-macro TempAllocator* create_default_sized_temp_allocator(Allocator* allocator) @local
+macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @local
 {
 	$switch (env::MEMORY_ENV)
 	$case NORMAL:
@@ -414,7 +317,7 @@ macro TempAllocator* create_default_sized_temp_allocator(Allocator* allocator) @
 	$endswitch
 }
 
-macro Allocator* heap() => thread_allocator;
+macro Allocator heap() => thread_allocator;
 
 macro TempAllocator* temp()
 {
@@ -432,7 +335,7 @@ fn void init_default_temp_allocators() @private
 	thread_temp_allocator = temp_allocator_pair[0];
 }
 
-fn TempAllocator *temp_allocator_next() @private
+fn TempAllocator* temp_allocator_next() @private
 {
 	if (!thread_temp_allocator)
 	{

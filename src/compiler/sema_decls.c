@@ -140,7 +140,7 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 	{
 		TypeInfo *inf_info = interfaces[i];
 		// Resolve the name
-		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_ALLOW_ANY)) return false;
+		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Type *inf_type = inf_info->type->canonical;
 		if (inf_type->type_kind != TYPE_INTERFACE)
 		{
@@ -949,11 +949,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			default:
 				goto CHECK_PARAMS;
 		}
-		if (type_is_any_raw(inferred_type))
-		{
-			RETURN_SEMA_ERROR(param, "This would infer to %s, which cannot be passed by value. Use '&%s' instead.",
-			                  type_quoted_error_string(inferred_type), param->name);
-		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 	}
 
@@ -1007,7 +1002,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
-				if (type_info && !type_is_pointer(param->type) && !type_is_any_interface_ptr(param->type))
+				if (type_info && !type_is_pointer(param->type))
 				{
 					RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 							   type_quoted_error_string(type_get_ptr(param->type)));
@@ -1196,8 +1191,6 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 		case TYPE_TYPEDEF:
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			UNREACHABLE
 			return false;
 		case TYPE_OPTIONAL:
@@ -1207,12 +1200,6 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 			return false;
 		case TYPE_ANYFAULT:
 			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
-			return false;
-		case TYPE_INFPTR:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an interface pointer.");
-			return false;
-		case TYPE_ANYPTR:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an 'any*'.");
 			return false;
 		case TYPE_VOID:
 		case TYPE_TYPEID:
@@ -1229,6 +1216,8 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
 		case TYPE_DISTINCT:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
 			break;
 	}
 	// Do we need anything else?
@@ -1859,27 +1848,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 												   "it is a method of, e.g. 'fn Foo.test(Foo* foo)'.");
 	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
-	if (decl->func_decl.attr_default)
-	{
-		if (par_type->type_kind != TYPE_INTERFACE)
-		{
-			RETURN_SEMA_ERROR(decl, "Only interfaces may have @default methods.");
-		}
-		Decl *implemented_method = sema_interface_method_by_name(par_type->decl, decl->name);
-		if (!implemented_method)
-		{
-			RETURN_SEMA_ERROR(decl, "No matching interface method could be found for the '%s' method.", decl->name);
-		}
-		if (!implemented_method->func_decl.attr_optional)
-		{
-			SEMA_ERROR(decl, "Only @optional interface methods may have @default implementations.", decl->name);
-			SEMA_NOTE(implemented_method, "The definition of the interface method is here.");
-			return false;
-		}
-		if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
-		implemented_method->func_decl.default_method = declid(decl);
-		decl->func_decl.interface_method = declid(implemented_method);
-	}
 	if (is_dynamic)
 	{
 		if (par_type->type_kind == TYPE_INTERFACE)
@@ -1999,7 +1967,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
-			[ATTRIBUTE_DEFAULT] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
@@ -2273,9 +2240,6 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_OVERLAP:
 			decl->bitstruct.overlap = true;
 			break;
-		case ATTRIBUTE_DEFAULT:
-			decl->func_decl.attr_default = true;
-			break;
 		case ATTRIBUTE_DYNAMIC:
 			decl->func_decl.attr_dynamic = true;
 			break;
@@ -2465,7 +2429,7 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
-		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_interface_ptr(type);
+		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_raw(type);
 		if (directive->contract_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)
@@ -2930,8 +2894,6 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 
 	switch (param_type->type_kind)
 	{
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			if (param_type->pointer == parent_type) return true;
 			break;
@@ -2939,12 +2901,6 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 			break;
 	}
 ERROR:
-	if (type_is_any_raw(parent_type))
-	{
-		RETURN_SEMA_ERROR(param, "The first parameter must have the type %s.",
-						  type_quoted_error_string(type_get_ptr(parent_type)));
-
-	}
 	RETURN_SEMA_ERROR(param, "The first parameter must be of type %s or %s.",
 					  type_quoted_error_string(parent_type),
 	                  type_quoted_error_string(type_get_ptr(parent_type)));
@@ -3756,7 +3712,6 @@ RETRY:
 		case TYPE_WILDCARD:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-		case TYPE_ANYPTR:
 			return true;
 		case TYPE_FUNC:
 			if (!type->decl) return true;
@@ -3767,7 +3722,6 @@ RETRY:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 			return sema_analyse_decl(context, type->decl);
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			type = type->pointer;
 			goto RETRY;

@@ -21,7 +21,7 @@ fn void main()
 
 /* #expect: test.ll
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
-%"any*" = type { ptr, i64 }
+%any = type { ptr, i64 }
 
 @"$ct.test.Ghh" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 12, i64 0, i64 3, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [3 x i8] c"%d\00", align 1
@@ -33,7 +33,7 @@ entry:
   %a = alloca i32, align 4
   %x = alloca i32, align 4
   %y = alloca i32, align 4
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
   call void @llvm.dbg.declare(metadata ptr %a, metadata !10, metadata !DIExpression()), !dbg !12
   store i32 111, ptr %a, align 4, !dbg !13
@@ -49,9 +49,9 @@ entry:
   %3 = load i32, ptr %y, align 4, !dbg !27
   %add1 = add i32 33, %3, !dbg !28
   store atomic volatile i32 %add1, ptr %a monotonic, align 4, !dbg !29
-  %4 = insertvalue %"any*" undef, ptr %a, 0, !dbg !31
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !31
-  store %"any*" %5, ptr %varargslots, align 16, !dbg !31
+  %4 = insertvalue %any undef, ptr %a, 0, !dbg !31
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !31
+  store %any %5, ptr %varargslots, align 16, !dbg !31
   %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !32
   ret void, !dbg !32
 }

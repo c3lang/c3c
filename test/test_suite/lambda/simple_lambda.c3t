@@ -17,7 +17,7 @@ fn void main()
 
 /* #expect: simple_lambda.ll
 
-@main.F = protected unnamed_addr constant ptr @"simple_lambda.main$lambda1", align 8
+@main.F = internal unnamed_addr constant ptr @"simple_lambda.main$lambda1", align 8
 
 define void @simple_lambda.main() #0 {
 entry:

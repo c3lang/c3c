@@ -240,9 +240,9 @@ fn Type getValue(Blob blob)
 %Blob.0 = type { double }
 %Bobo = type { i16, float, i16, i16, float, i16 }
 %"int[]" = type { ptr, i64 }
-%LinkedList = type { %"any*", i64, ptr, ptr }
-%"any*" = type { ptr, i64 }
-%List = type { i64, i64, %"any*", ptr }
+%LinkedList = type { %any, i64, ptr, ptr }
+%any = type { ptr, i64 }
+%List = type { i64, i64, %any, ptr }
 %Foo = type { i32, i32 }
 
 $"$ct.test.Bobo" = comdat any

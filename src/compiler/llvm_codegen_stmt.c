@@ -1346,8 +1346,8 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	if (panicf)
 	{
 		unsigned elements = vec_size(varargs);
-		Type *any_subarray = type_get_subarray(type_anyptr);
-		Type *any_array = type_get_array(type_anyptr, elements);
+		Type *any_subarray = type_get_subarray(type_any);
+		Type *any_array = type_get_array(type_any, elements);
 		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
 		AlignSize alignment = type_alloca_alignment(any_array);
 		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);

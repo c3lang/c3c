@@ -31,12 +31,12 @@ fn void main() {
 define void @foo.main() #0 {
 entry:
   %test = alloca %Test, align 2
-  %varargslots = alloca [3 x %"any*"], align 16
+  %varargslots = alloca [3 x %any], align 16
   %taddr = alloca i8, align 1
   %taddr5 = alloca i8, align 1
   %taddr8 = alloca i16, align 2
   %retparam = alloca i64, align 8
-  %varargslots10 = alloca [4 x %"any*"], align 16
+  %varargslots10 = alloca [4 x %any], align 16
   %taddr14 = alloca i8, align 1
   %taddr18 = alloca i8, align 1
   %taddr23 = alloca i8, align 1
@@ -54,25 +54,25 @@ entry:
   %2 = and i16 255, %lshrl
   %trunc = trunc i16 %2 to i8
   store i8 %trunc, ptr %taddr, align 1
-  %3 = insertvalue %"any*" undef, ptr %taddr, 0
-  %4 = insertvalue %"any*" %3, i64 ptrtoint (ptr @"$ct.char" to i64), 1
-  store %"any*" %4, ptr %varargslots, align 16
+  %3 = insertvalue %any undef, ptr %taddr, 0
+  %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.char" to i64), 1
+  store %any %4, ptr %varargslots, align 16
   %ptradd3 = getelementptr inbounds i8, ptr %test, i64 2
   %5 = load i16, ptr %ptradd3, align 2
   %6 = and i16 255, %5
   %trunc4 = trunc i16 %6 to i8
   store i8 %trunc4, ptr %taddr5, align 1
-  %7 = insertvalue %"any*" undef, ptr %taddr5, 0
-  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.char" to i64), 1
+  %7 = insertvalue %any undef, ptr %taddr5, 0
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.char" to i64), 1
   %ptradd6 = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store %"any*" %8, ptr %ptradd6, align 16
+  store %any %8, ptr %ptradd6, align 16
   %ptradd7 = getelementptr inbounds i8, ptr %test, i64 2
   %9 = load i16, ptr %ptradd7, align 2
   store i16 %9, ptr %taddr8, align 2
-  %10 = insertvalue %"any*" undef, ptr %taddr8, 0
-  %11 = insertvalue %"any*" %10, i64 ptrtoint (ptr @"$ct.ushort" to i64), 1
+  %10 = insertvalue %any undef, ptr %taddr8, 0
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.ushort" to i64), 1
   %ptradd9 = getelementptr inbounds i8, ptr %varargslots, i64 32
-  store %"any*" %11, ptr %ptradd9, align 16
+  store %any %11, ptr %ptradd9, align 16
   %12 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 18, ptr %varargslots, i64 3)
   %ptradd11 = getelementptr inbounds i8, ptr %test, i64 2
   %13 = load i16, ptr %ptradd11, align 2
@@ -80,39 +80,39 @@ entry:
   %14 = and i16 1, %lshrl12
   %trunc13 = trunc i16 %14 to i8
   store i8 %trunc13, ptr %taddr14, align 1
-  %15 = insertvalue %"any*" undef, ptr %taddr14, 0
-  %16 = insertvalue %"any*" %15, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  store %"any*" %16, ptr %varargslots10, align 16
+  %15 = insertvalue %any undef, ptr %taddr14, 0
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  store %any %16, ptr %varargslots10, align 16
   %ptradd15 = getelementptr inbounds i8, ptr %test, i64 2
   %17 = load i16, ptr %ptradd15, align 2
   %lshrl16 = lshr i16 %17, 6
   %18 = and i16 1, %lshrl16
   %trunc17 = trunc i16 %18 to i8
   store i8 %trunc17, ptr %taddr18, align 1
-  %19 = insertvalue %"any*" undef, ptr %taddr18, 0
-  %20 = insertvalue %"any*" %19, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %19 = insertvalue %any undef, ptr %taddr18, 0
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %ptradd19 = getelementptr inbounds i8, ptr %varargslots10, i64 16
-  store %"any*" %20, ptr %ptradd19, align 16
+  store %any %20, ptr %ptradd19, align 16
   %ptradd20 = getelementptr inbounds i8, ptr %test, i64 2
   %21 = load i16, ptr %ptradd20, align 2
   %lshrl21 = lshr i16 %21, 5
   %22 = and i16 1, %lshrl21
   %trunc22 = trunc i16 %22 to i8
   store i8 %trunc22, ptr %taddr23, align 1
-  %23 = insertvalue %"any*" undef, ptr %taddr23, 0
-  %24 = insertvalue %"any*" %23, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %23 = insertvalue %any undef, ptr %taddr23, 0
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %ptradd24 = getelementptr inbounds i8, ptr %varargslots10, i64 32
-  store %"any*" %24, ptr %ptradd24, align 16
+  store %any %24, ptr %ptradd24, align 16
   %ptradd25 = getelementptr inbounds i8, ptr %test, i64 2
   %25 = load i16, ptr %ptradd25, align 2
   %lshrl26 = lshr i16 %25, 4
   %26 = and i16 1, %lshrl26
   %trunc27 = trunc i16 %26 to i8
   store i8 %trunc27, ptr %taddr28, align 1
-  %27 = insertvalue %"any*" undef, ptr %taddr28, 0
-  %28 = insertvalue %"any*" %27, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  %27 = insertvalue %any undef, ptr %taddr28, 0
+  %28 = insertvalue %any %27, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
   %ptradd29 = getelementptr inbounds i8, ptr %varargslots10, i64 48
-  store %"any*" %28, ptr %ptradd29, align 16
+  store %any %28, ptr %ptradd29, align 16
   %29 = call i64 @std.io.printfn(ptr %retparam30, ptr @.str.1, i64 12, ptr %varargslots10, i64 4)
   ret void
 }

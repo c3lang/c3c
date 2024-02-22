@@ -380,19 +380,6 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	if (type_info->resolve_status == RESOLVE_DONE)
 	{
 		if (!type_info_ok(type_info)) return false;
-		if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
-		{
-			switch (type_no_optional(type_info->type)->canonical->type_kind)
-			{
-				case TYPE_ANY:
-				case TYPE_INTERFACE:
-					RETURN_SEMA_ERROR(type_info, "%s has no valid runtime size, you should use '%s' instead.",
-					                  type_quoted_error_string(type_no_optional(type_info->type)),
-					                  type_quoted_error_string(type_get_ptr(type_no_optional(type_info->type))));
-				default:
-					break;
-			}
-		}
 		return true;
 	}
 
@@ -481,27 +468,6 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			break;
 	}
 APPEND_QUALIFIERS:
-	switch (type_info->type->type_kind)
-	{
-		case TYPE_ANY:
-			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
-			{
-				SEMA_ERROR(type_info, "An 'any' has undefined size, please use 'any*' instead.");
-				return type_info_poison(type_info);
-			}
-			break;
-		case TYPE_INTERFACE:
-			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_ANY))
-			{
-				SEMA_ERROR(type_info, "%s is an interface and has undefined size, please use %s instead.",
-				           type_quoted_error_string(type_info->type),
-				           type_quoted_error_string(type_get_ptr(type_info->type)));
-				return type_info_poison(type_info);
-			}
-			break;
-		default:
-			break;
-	}
 	switch (kind)
 	{
 		case TYPE_COMPRESSED_NONE:

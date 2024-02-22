@@ -315,9 +315,6 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case LOWERED_TYPES:
 			// If this is reachable, then we're not doing the proper lowering.
 			UNREACHABLE
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
-			UNREACHABLE
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
@@ -353,7 +350,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			LLVMStructSetBody(array_type, types, 2, false);
 			return any_type->backend_type = array_type;
 		}
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 		{
 			LLVMTypeRef virtual_type = LLVMStructCreateNamed(c->context, any_type->name);
 			LLVMTypeRef types[2] = { c->ptr_type, c->typeid_type };
@@ -642,9 +639,9 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, type->array.len, NULL, false);
 		case TYPE_SUBARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_SUBARRAY, type->array.base, 0, NULL, false);
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ANY, NULL, 0, NULL, false);
-		case TYPE_INFPTR:
+		case TYPE_INTERFACE:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_INTERFACE, NULL, 0, NULL, false);
 		case TYPE_POINTER:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_POINTER, type->pointer, 0, NULL, false);
@@ -672,8 +669,6 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
 		case CT_TYPES:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_VOID:
 			return llvm_get_introspection_for_builtin_type(c, type, INTROSPECT_TYPE_VOID, 0);

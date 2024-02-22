@@ -414,7 +414,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ANY_MAKE:
 			assert(arg_count == 2);
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_TYPEID }, 2)) return false;
-			rtype = type_anyptr;
+			rtype = type_any;
 			break;
 		case BUILTIN_EXACT_NEG:
 			assert(arg_count == 1);
