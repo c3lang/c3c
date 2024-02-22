@@ -645,7 +645,7 @@ bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 			case TYPE_POINTER:
 				type = type->pointer;
 				continue;
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_INFERRED_ARRAY:
@@ -678,7 +678,6 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_ANYPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
@@ -686,8 +685,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
-		case TYPE_SUBARRAY:
-		case TYPE_INFPTR:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return true;
@@ -720,10 +718,6 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
 	assert(type == type->canonical);
-	if (type->type_kind == TYPE_INFPTR)
-	{
-		type = type->pointer;
-	}
 	Decl *private = NULL;
 	Decl *ambiguous = NULL;
 	Decl *found = sema_find_extension_method_in_list(unit->local_method_extensions, type, method_name);

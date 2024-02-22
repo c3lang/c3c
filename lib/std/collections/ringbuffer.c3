@@ -12,7 +12,7 @@ fn void RingBuffer.init(&self) @inline
 	*self = {};
 }
 
-fn void RingBuffer.putc(&self, Type c)
+fn void RingBuffer.push(&self, Type c)
 {
 	if (self.written < SIZE)
 	{
@@ -26,7 +26,7 @@ fn void RingBuffer.putc(&self, Type c)
 	}
 }
 
-fn Type RingBuffer.getc(&self, usz index)
+fn Type RingBuffer.get(&self, usz index) @operator([])
 {
 	index %= SIZE;
 	usz avail = SIZE - self.head;
@@ -37,7 +37,7 @@ fn Type RingBuffer.getc(&self, usz index)
 	return self.buf[index - avail];
 }
 
-fn Type! RingBuffer.popc(&self)
+fn Type! RingBuffer.pop(&self)
 {
 	switch
 	{
@@ -52,7 +52,7 @@ fn Type! RingBuffer.popc(&self)
 	}
 }
 
-fn usz RingBuffer.get(&self, usz index, Type[] buffer)
+fn usz RingBuffer.read(&self, usz index, Type[] buffer)
 {
 	index %= SIZE;
 	if (self.written < SIZE)
@@ -87,7 +87,7 @@ fn usz RingBuffer.get(&self, usz index, Type[] buffer)
 	return n1 + n2;
 }
 
-fn void RingBuffer.push(&self, Type[] buffer)
+fn void RingBuffer.write(&self, Type[] buffer)
 {
 	usz i;
 	while (self.written < SIZE && i < buffer.len)

@@ -137,12 +137,6 @@ typedef enum
 	SINGLE_MODULE_ON = 1
 } SingleModule;
 
-typedef enum
-{
-	SYSTEM_LINKER_NOT_SET = -1,
-	SYSTEM_LINKER_OFF = 0,
-	SYSTEM_LINKER_ON = 1
-} SystemLinker;
 
 typedef enum
 {
@@ -366,6 +360,7 @@ typedef struct BuildOptions_
 	const char *testfn;
 	const char *cc;
 	const char *build_dir;
+	const char *output_dir;
 	const char *llvm_out;
 	const char *asm_out;
 	const char *obj_out;

@@ -12,6 +12,6 @@ module std::os::env @test;
  	env::clear_var(NAME);
  	if (try env::get_var(NAME))
  	{
- 		assert(false, "environment variable should no longer exist");
+ 	    unreachable("environment variable should no longer exist");
  	}
  }

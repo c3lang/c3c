@@ -10,7 +10,7 @@ fn usz! Formatter.adjust(&self, usz len) @local
 	return self.pad(' ', self.width, len);
 }
 
-fn uint128! int_from_any(any* arg, bool *is_neg) @private
+fn uint128! int_from_any(any arg, bool *is_neg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -63,13 +63,10 @@ fn uint128! int_from_any(any* arg, bool *is_neg) @private
 	}
 }
 
-fn FloatType! float_from_any(any* arg) @private
+fn FloatType! float_from_any(any arg) @private
 {
 	$if env::F128_SUPPORT:
 		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
-	$endif
-	$if env::F16_SUPPORT:
-		if (arg.type == float16.typeid) return *((float16*)arg.ptr);
 	$endif
 	if (arg.type.kindof == TypeKind.DISTINCT)
 	{
@@ -99,6 +96,8 @@ fn FloatType! float_from_any(any* arg) @private
 			return *arg;
 		case uint128:
 			return *arg;
+		case float16:
+			return (FloatType)*arg;
 		case float:
 			return (FloatType)*arg;
 		case double:
@@ -588,14 +587,14 @@ fn usz! Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 }
 
 
-fn usz! Formatter.ntoa_any(&self, any* arg, uint base) @private
+fn usz! Formatter.ntoa_any(&self, any arg, uint base) @private
 {
 	bool is_neg;
 	uint128 val = int_from_any(arg, &is_neg)!!;
 	return self.ntoa(val, is_neg, base) @inline;
 }
 
-fn usz! Formatter.out_char(&self, any* arg) @private
+fn usz! Formatter.out_char(&self, any arg) @private
 {
 	usz len = 1;
 	uint l = 1;
@@ -649,21 +648,21 @@ fn void! printf_advance_format(usz format_len, usz *index_ptr) @inline @private
 	if (val >= format_len) return FormattingFault.UNTERMINATED_FORMAT?;
 }
 
-fn any*! next_any(any** args_ptr, usz args_len, usz* arg_index_ptr) @inline @private
+fn any! next_any(any* args_ptr, usz args_len, usz* arg_index_ptr) @inline @private
 {
 	if (*arg_index_ptr >= args_len) return FormattingFault.MISSING_ARG?;
 	return args_ptr[(*arg_index_ptr)++];
 }
 
 fn int! printf_parse_format_field(
-	any** args_ptr, usz args_len, usz* args_index_ptr,
+	any* args_ptr, usz args_len, usz* args_index_ptr,
 	char* format_ptr, usz format_len, usz* index_ptr) @inline @private
 {
 	char c = format_ptr[*index_ptr];
 	if (c.is_digit()) return simple_atoi(format_ptr, format_len, index_ptr);
 	if (c != '*') return 0;
 	printf_advance_format(format_len, index_ptr)!;
-	any* val = next_any(args_ptr, args_len, args_index_ptr)!;
+	any val = next_any(args_ptr, args_len, args_index_ptr)!;
 	if (!val.type.kindof.is_int()) return FormattingFault.INVALID_WIDTH_ARG?;
 	uint! intval = types::any_to_int(val, int);
 	return intval ?? FormattingFault.INVALID_WIDTH_ARG?;

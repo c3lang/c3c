@@ -10,23 +10,23 @@ static struct
 {
 	Type u0, u1, i8, i16, i32, i64, i128;
 	Type u8, u16, u32, u64, u128;
-	Type f16, f32, f64, f128;
+	Type bf16, f16, f32, f64, f128;
 	Type usz, isz, uptr, iptr;
 	Type string;
 	Type voidstar, typeid, anyfault, member, typeinfo, untyped_list;
-	Type any, anyptr, wildcard;
+	Type any, wildcard;
 } t;
 
 Type *type_bool = &t.u1;
 Type *type_void = &t.u0;
 Type *type_voidptr = &t.voidstar;
 Type *type_float16 = &t.f16;
+Type *type_bfloat = &t.bf16;
 Type *type_float = &t.f32;
 Type *type_double = &t.f64;
 Type *type_f128 = &t.f128;
 Type *type_typeid = &t.typeid;
 Type *type_any = &t.any;
-Type *type_anyptr = &t.anyptr;
 Type *type_typeinfo = &t.typeinfo;
 Type *type_ichar = &t.i8;
 Type *type_short = &t.i16;
@@ -50,14 +50,14 @@ Type *type_chars = NULL;
 Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;
 
-static unsigned size_subarray;
-static AlignSize alignment_subarray;
+static unsigned size_slice;
+static AlignSize alignment_slice;
 static AlignSize max_alignment_vector;
 
 #define PTR_OFFSET 0
 #define INFERRED_ARRAY_OFFSET 1
 #define FLEXIBLE_ARRAY_OFFSET 2
-#define SUB_ARRAY_OFFSET 3
+#define SLICE_OFFSET 3
 #define INFERRED_VECTOR_OFFSET 4
 #define OPTIONAL_OFFSET 5
 #define ARRAY_OFFSET 6
@@ -124,8 +124,6 @@ static void type_append_name_to_scratch(Type *type)
 		case TYPE_INTERFACE:
 			scratch_buffer_append(type->decl->name);
 			break;
-		case TYPE_INFPTR:
-		case TYPE_ANYPTR:
 		case TYPE_POINTER:
 			type_append_name_to_scratch(type->pointer);
 			scratch_buffer_append_char('*');
@@ -141,7 +139,7 @@ static void type_append_name_to_scratch(Type *type)
 			}
 			scratch_buffer_append_char('!');
 			break;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			type_append_name_to_scratch(type->array.base);
 			scratch_buffer_append("[]");
 			break;
@@ -214,7 +212,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_ANY:
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
-		case TYPE_ANYPTR:
 			return type->name;
 		case TYPE_ENUM:
 		case TYPE_FAULTTYPE:
@@ -246,7 +243,6 @@ const char *type_to_error_string(Type *type)
 			return "typeinfo";
 		case TYPE_TYPEID:
 			return "typeid";
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_FUNC)
 			{
@@ -261,7 +257,7 @@ const char *type_to_error_string(Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			return str_printf("%s[*]", type_to_error_string(type->array.base));
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			return str_printf("%s[]", type_to_error_string(type->array.base));
 	}
 	UNREACHABLE
@@ -324,8 +320,6 @@ RETRY:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->strukt.size;
 		case TYPE_VOID:
-		case TYPE_INTERFACE:
-		case TYPE_ANY:
 			return 1;
 		case TYPE_BOOL:
 		case TYPE_TYPEID:
@@ -333,16 +327,16 @@ RETRY:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
 			return type->builtin.bytesize;
-		case TYPE_INFPTR:
-		case TYPE_ANYPTR:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
 			return t.iptr.canonical->builtin.bytesize * 2;
 		case TYPE_FUNC:
 		case TYPE_POINTER:
 			return t.iptr.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
 			return type_size(type->array.base) * type->array.len;
-		case TYPE_SUBARRAY:
-			return size_subarray;
+		case TYPE_SLICE:
+			return size_slice;
 	}
 	UNREACHABLE
 }
@@ -423,15 +417,13 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_VECTOR:
 		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			return false;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ARRAY:
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
 			return true;
 		case CT_TYPES:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -497,8 +489,6 @@ bool type_is_comparable(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			return false;
 		case TYPE_BITSTRUCT:
 			type = type->decl->bitstruct.base_type->type;
@@ -506,7 +496,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ARRAY:
 			// Arrays are comparable if elements are
 			type = type->array.base;
@@ -517,8 +507,8 @@ bool type_is_comparable(Type *type)
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
@@ -539,9 +529,8 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
-		case TYPE_ANY:
 			UNREACHABLE
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			scratch_buffer_append("any$");
 			return;
 		case TYPE_VOID:
@@ -552,12 +541,11 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_TYPEID:
 			scratch_buffer_append(type->name);
 			return;
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			scratch_buffer_append("p$");
 			type_mangle_introspect_name_to_buffer(type->pointer);
 			return;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			scratch_buffer_append("sa$");
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
@@ -678,8 +666,6 @@ AlignSize type_abi_alignment(Type *type)
 			return alignment;
 		}
 		case TYPE_VOID:
-		case TYPE_INTERFACE:
-		case TYPE_ANY:
 			return 1;
 		case TYPE_OPTIONAL:
 			type = type->optional;
@@ -705,8 +691,8 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ANYFAULT:
 			return type->builtin.abi_alignment;
 		case TYPE_FUNC:
-		case TYPE_INFPTR:
-		case TYPE_ANYPTR:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
 			return t.iptr.canonical->builtin.abi_alignment;
@@ -715,8 +701,8 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 			type = type->array.base;
 			goto RETRY;
-		case TYPE_SUBARRAY:
-			return alignment_subarray;
+		case TYPE_SLICE:
+			return alignment_slice;
 	}
 	UNREACHABLE
 }
@@ -740,7 +726,7 @@ static Type *type_generate_ptr(Type *ptr_type, bool canonical)
 	Type *ptr = ptr_type->type_cache[PTR_OFFSET];
 	if (ptr == NULL)
 	{
-		ptr = type_new(ptr_type->type_kind == TYPE_INTERFACE ? TYPE_INFPTR : TYPE_POINTER, str_printf("%s*", ptr_type->name));
+		ptr = type_new(TYPE_POINTER, str_printf("%s*", ptr_type->name));
 		ptr->pointer = ptr_type;
 		ptr_type->type_cache[PTR_OFFSET] = ptr;
 		if (ptr_type == ptr_type->canonical)
@@ -780,7 +766,7 @@ static Type *type_generate_optional(Type *optional_type, bool canonical)
 	return optional;
 }
 
-static Type *type_generate_subarray(Type *arr_type, bool canonical)
+static Type *type_generate_slice(Type *arr_type, bool canonical)
 {
 	if (canonical) arr_type = arr_type->canonical;
 	if (!arr_type->type_cache)
@@ -788,19 +774,19 @@ static Type *type_generate_subarray(Type *arr_type, bool canonical)
 		create_type_cache(arr_type);
 	}
 
-	Type *arr = arr_type->type_cache[SUB_ARRAY_OFFSET];
+	Type *arr = arr_type->type_cache[SLICE_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_SUBARRAY, str_printf("%s[]", arr_type->name));
+		arr = type_new(TYPE_SLICE, str_printf("%s[]", arr_type->name));
 		arr->array.base = arr_type;
-		arr_type->type_cache[SUB_ARRAY_OFFSET] = arr;
+		arr_type->type_cache[SLICE_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
 		{
 			arr->canonical = arr;
 		}
 		else
 		{
-			arr->canonical = type_generate_subarray(arr_type->canonical, true);
+			arr->canonical = type_generate_slice(arr_type->canonical, true);
 		}
 	}
 	return arr;
@@ -909,10 +895,10 @@ Type *type_get_optional(Type *optional_type)
 	return type_generate_optional(optional_type, false);
 }
 
-Type *type_get_subarray(Type *arr_type)
+Type *type_get_slice(Type *arr_type)
 {
 	assert(type_is_valid_for_array(arr_type));
-	return type_generate_subarray(arr_type, false);
+	return type_generate_slice(arr_type, false);
 }
 
 Type *type_get_inferred_array(Type *arr_type)
@@ -932,6 +918,7 @@ Type *type_get_flexible_array(Type *arr_type)
 	assert(type_is_valid_for_array(arr_type));
 	return type_generate_flexible_array(arr_type, false);
 }
+
 
 static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)
 {
@@ -1050,7 +1037,7 @@ Type *type_get_indexed_type(Type *type)
 		case TYPE_POINTER:
 			return type->pointer->canonical;
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1158,8 +1145,8 @@ bool type_is_valid_for_array(Type *type)
 			assert(!type->decl || type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
@@ -1173,7 +1160,7 @@ bool type_is_valid_for_array(Type *type)
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
@@ -1192,8 +1179,6 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_MEMBER:
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			return false;
 	}
 	UNREACHABLE
@@ -1312,7 +1297,7 @@ static bool compare_func_param(Type *one, Type *other)
 		case TYPE_ARRAY:
 			if (one->array.len != other->array.len) return false;
 			FALLTHROUGH;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_FLEXIBLE_ARRAY:
 			return compare_func_param(one->array.base, other->array.base);
 		case TYPE_FUNC:
@@ -1373,10 +1358,10 @@ static Type *flatten_raw_function_type(Type *type)
 			current = type->array.base;
 			other = flatten_raw_function_type(current);
 			return other == current ? type : type_get_array(other, type->array.len);
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			current = type->array.base;
 			other = flatten_raw_function_type(current);
-			return other == current ? type : type_get_subarray(other);
+			return other == current ? type : type_get_slice(other);
 		case TYPE_FLEXIBLE_ARRAY:
 			current = type->array.base;
 			other = flatten_raw_function_type(current);
@@ -1523,6 +1508,7 @@ void type_setup(PlatformTarget *target)
 	max_alignment_vector = (AlignSize)target->align_max_vector;
 
 	type_create_float("float16", &t.f16, TYPE_F16, BITS16);
+	type_create_float("bfloat", &t.bf16, TYPE_BF16, BITS16);
 	type_create_float("float", &t.f32, TYPE_F32, BITS32);
 	type_create_float("double", &t.f64, TYPE_F64, BITS64);
 	type_create_float("float128", &t.f128, TYPE_F128, BITS128);
@@ -1552,21 +1538,17 @@ void type_setup(PlatformTarget *target)
 	create_type_cache(type_void);
 	type_void->type_cache[0] = &t.voidstar;
 	t.voidstar.pointer = type_void;
-	type_create("any", &t.any, TYPE_ANY, 1, 1, 1);
-	type_init("any*", &t.anyptr, TYPE_ANYPTR, target->width_pointer * 2, target->align_pointer);
-	create_type_cache(type_any);
-	type_any->type_cache[0] = &t.anyptr;
-	t.anyptr.pointer = type_any;
+	type_create("any", &t.any, TYPE_ANY, target->width_pointer * 2, target->align_pointer.align, target->align_pointer.pref_align);
 
 	type_create_alias("usz", &t.usz, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("isz", &t.isz, type_int_signed_by_bitsize(target->width_pointer));
 	type_create_alias("uptr", &t.uptr, type_int_unsigned_by_bitsize(target->width_pointer));
 	type_create_alias("iptr", &t.iptr, type_int_signed_by_bitsize(target->width_pointer));
 
-	alignment_subarray = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
-	size_subarray = (unsigned)(alignment_subarray * 2);
+	alignment_slice = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
+	size_slice = (unsigned)(alignment_slice * 2);
 	type_init("anyfault", &t.anyfault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
-	type_chars = type_get_subarray(type_char);
+	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
 	string_decl->extname = string_decl->name;
@@ -1588,6 +1570,7 @@ int type_kind_bitsize(TypeKind kind)
 		case TYPE_I16:
 		case TYPE_U16:
 		case TYPE_F16:
+		case TYPE_BF16:
 			return 16;
 		case TYPE_I32:
 		case TYPE_U32:
@@ -1611,18 +1594,16 @@ bool type_is_scalar(Type *type)
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
-		case TYPE_INTERFACE:
-		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_FUNC:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_VECTOR:
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
 		case TYPE_FLEXIBLE_ARRAY:
 			return false;
 		case TYPE_BOOL:
@@ -1705,6 +1686,8 @@ Type *type_from_token(TokenType type)
 			return type_char;
 		case TOKEN_FLOAT16:
 			return type_float16;
+		case TOKEN_BFLOAT:
+			return type_bfloat;
 		case TOKEN_DOUBLE:
 			return type_double;
 		case TOKEN_FLOAT:
@@ -1887,7 +1870,7 @@ bool type_may_have_method(Type *type)
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1907,8 +1890,6 @@ bool type_may_have_method(Type *type)
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 		case TYPE_WILDCARD:
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
 			return false;
 	}
 	UNREACHABLE
@@ -1925,7 +1906,7 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_ENUM:
 		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
-		case TYPE_INFPTR:
+		case TYPE_INTERFACE:
 			return true;
 		default:
 			return false;
@@ -1947,6 +1928,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	{
 		switch (other_kind)
 		{
+			case TYPE_BF16:
 			case TYPE_F16:
 			case TYPE_F32:
 			case TYPE_F64:
@@ -1995,15 +1977,15 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
  */
 static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 {
-	// Subarray and vararray can implicitly convert to a pointer.
-	if (other->type_kind == TYPE_SUBARRAY)
+	// Slice and vararray can implicitly convert to a pointer.
+	if (other->type_kind == TYPE_SLICE)
 	{
 		Type *max_type = type_find_max_type(type->pointer, other->pointer);
 		if (!max_type) return NULL;
 		return type_get_ptr(max_type);
 	}
 
-	// Neither subarray, vararray nor pointer? Then no max
+	// Neither slice, vararray nor pointer? Then no max
 	if (other->type_kind != TYPE_POINTER) return NULL;
 
 	Type* other_pointer_type = other->pointer;
@@ -2087,9 +2069,6 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_OPTIONAL:
 		case TYPE_WILDCARD:
 			UNREACHABLE
-		case TYPE_INTERFACE:
-		case TYPE_ANY:
-			return NULL;
 		case TYPE_VOID:
 		case TYPE_BOOL:
 		case TYPE_TYPEINFO:
@@ -2105,18 +2084,18 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct->type)) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			// any + interface => any
 			if (other == type_voidptr) return other;
-			return other->type_kind == TYPE_INFPTR ? type : NULL;
-		case TYPE_INFPTR:
+			return other->type_kind == TYPE_INTERFACE ? type : NULL;
+		case TYPE_INTERFACE:
 			// interface + void* => void*
 			return other == type_voidptr ? type_voidptr : NULL;
 		case TYPE_POINTER:
 			if (type->pointer->type_kind == TYPE_ARRAY)
 			{
 				Type *array_base = type->pointer->array.base->canonical;
-				if (other->type_kind == TYPE_SUBARRAY &&
+				if (other->type_kind == TYPE_SLICE &&
 					array_base == other->array.base->canonical)
 				{
 					return other;
@@ -2126,14 +2105,14 @@ Type *type_find_max_type(Type *type, Type *other)
 					Type *other_pointer = other->pointer;
 					if (other_pointer->type_kind == TYPE_ARRAY && other_pointer->array.base->canonical == array_base)
 					{
-						return type_get_subarray(array_base);
+						return type_get_slice(array_base);
 					}
 				}
 			}
 			if (type->pointer->type_kind == TYPE_VECTOR)
 			{
 				Type *vector_base = type->pointer->array.base->canonical;
-				if (other->type_kind == TYPE_SUBARRAY && vector_base == other->array.base->canonical)
+				if (other->type_kind == TYPE_SLICE && vector_base == other->array.base->canonical)
 				{
 					return other;
 				}
@@ -2161,7 +2140,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_ARRAY) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			if (other->type_kind == TYPE_STRUCT) return other;
-			if (other->type_kind == TYPE_SUBARRAY) return other;
+			if (other->type_kind == TYPE_SLICE) return other;
 			return NULL;
 		case TYPE_UNION:
 		case TYPE_STRUCT:
@@ -2178,10 +2157,10 @@ Type *type_find_max_type(Type *type, Type *other)
 			// distinct + any other type => no
 			return NULL;
 		case TYPE_ARRAY:
-			// array + [subarray, other array, vector] => no
+			// array + [slice, other array, vector] => no
 			return NULL;
-		case TYPE_SUBARRAY:
-			// subarray + [other subarray, vector] => no
+		case TYPE_SLICE:
+			// slice + [other slice, vector] => no
 			return NULL;
 		case TYPE_VECTOR:
 			// No implicit conversion between vectors
@@ -2271,8 +2250,6 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_TYPEID:
 			return INTROSPECT_TYPE_TYPEID;
 		case TYPE_POINTER:
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
 			return INTROSPECT_TYPE_POINTER;
 		case TYPE_ENUM:
 			return INTROSPECT_TYPE_ENUM;
@@ -2294,8 +2271,8 @@ unsigned type_get_introspection_kind(TypeKind kind)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			return INTROSPECT_TYPE_ARRAY;
-		case TYPE_SUBARRAY:
-			return INTROSPECT_TYPE_SUBARRAY;
+		case TYPE_SLICE:
+			return INTROSPECT_TYPE_SLICE;
 		case TYPE_VECTOR:
 		case TYPE_INFERRED_VECTOR:
 			return INTROSPECT_TYPE_VECTOR;
@@ -2322,12 +2299,10 @@ Module *type_base_module(Type *type)
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 		case TYPE_ANY:
-		case TYPE_ANYPTR:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_WILDCARD:
 			return NULL;
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			type = type->pointer;
 			goto RETRY;
@@ -2345,7 +2320,7 @@ Module *type_base_module(Type *type)
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_VECTOR:

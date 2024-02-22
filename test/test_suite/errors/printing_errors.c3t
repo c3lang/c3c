@@ -18,15 +18,15 @@ fn void main()
 define void @test.main() #0 {
 entry:
   %x = alloca i64, align 8
-  %varargslots = alloca [2 x %"any*"], align 16
+  %varargslots = alloca [2 x %any], align 16
   %taddr = alloca %"char[]", align 8
   %faultname_zero = alloca %"char[]", align 8
   %retparam = alloca i64, align 8
   store i64 ptrtoint (ptr @"test.Cde$WORLD" to i64), ptr %x, align 8
   store %"char[]" { ptr @.str.2, i64 5 }, ptr %taddr, align 8
-  %0 = insertvalue %"any*" undef, ptr %taddr, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %1, ptr %varargslots, align 16
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %1, ptr %varargslots, align 16
   %2 = load i64, ptr %x, align 8
   %eq = icmp eq i64 %2, 0
   br i1 %eq, label %faultname_no, label %faultname_ok
@@ -42,10 +42,10 @@ faultname_ok:                                     ; preds = %entry
 
 faultname_exit:                                   ; preds = %faultname_ok, %faultname_no
   %faultname = phi ptr [ %faultname_zero, %faultname_no ], [ %4, %faultname_ok ]
-  %5 = insertvalue %"any*" undef, ptr %faultname, 0
-  %6 = insertvalue %"any*" %5, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %5 = insertvalue %any undef, ptr %faultname, 0
+  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store %"any*" %6, ptr %ptradd, align 16
+  store %any %6, ptr %ptradd, align 16
   %7 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 2)
   ret void
 }

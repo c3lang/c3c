@@ -17,11 +17,10 @@ RETRY:
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_INFPTR:
 			case TYPE_POINTER:
 				type = type->pointer;
 				goto RETRY;
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
@@ -460,8 +459,6 @@ RETRY:
 			sema_trace_expr_liveness(exprptr(expr->swizzle_expr.parent));
 			return;
 		case EXPR_TERNARY:
-		{
-			REMINDER("Tracing ternary can be optimized");
 			sema_trace_expr_liveness(exprptr(expr->ternary_expr.cond));
 			if (expr->ternary_expr.then_expr)
 			{
@@ -469,7 +466,6 @@ RETRY:
 			}
 			expr = exprptr(expr->ternary_expr.else_expr);
 			goto RETRY;
-		}
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return;
@@ -539,7 +535,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	{
 		Decl *method = methods[i];
 		if (method->decl_kind == DECL_MACRO) continue;
-		if (method->func_decl.attr_dynamic || method->func_decl.attr_default)
+		if (method->func_decl.attr_dynamic)
 		{
 			sema_trace_decl_liveness(method);
 		}

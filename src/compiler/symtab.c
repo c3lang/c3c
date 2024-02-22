@@ -324,7 +324,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");
-	attribute_list[ATTRIBUTE_DEFAULT] = KW_DEF("@default");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");

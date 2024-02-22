@@ -66,7 +66,7 @@ fn void! testrun_mutex_timeout() @test
 	m.lock()!;
 	if (try m.lock_timeout(20))
 	{
-		assert(false, "lock_timeout should fail");
+		unreachable("lock_timeout should fail");
 	}
 	m.unlock()!;
 	m.lock_timeout(20)!;

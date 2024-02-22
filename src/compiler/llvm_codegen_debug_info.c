@@ -18,7 +18,7 @@ static LLVMMetadataRef llvm_debug_vector_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_array_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_errunion_type(GenContext *c, Type *type);
-static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type);
+static LLVMMetadataRef llvm_debug_slice_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_any_type(GenContext *c, Type *type);
 static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetadataRef scope);
 
@@ -393,7 +393,7 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 	return llvm_get_debug_struct(c, type, decl->name ? decl->extname : "", elements, vec_size(elements), &decl->span, scope, LLVMDIFlagZero);
 }
 
-static LLVMMetadataRef llvm_debug_subarray_type(GenContext *c, Type *type)
+static LLVMMetadataRef llvm_debug_slice_type(GenContext *c, Type *type)
 {
 	LLVMMetadataRef forward = llvm_debug_forward_comp(c, type, type->name, NULL, NULL, LLVMDIFlagZero);
 	type->backend_debug_type = forward;
@@ -555,8 +555,6 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
-		case TYPE_INTERFACE:
-		case TYPE_ANY:
 			UNREACHABLE
 		case TYPE_BITSTRUCT:
 		case TYPE_OPTIONAL:
@@ -606,12 +604,12 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ARRAY:
 			return type->backend_debug_type = llvm_debug_array_type(c, type);
-		case TYPE_SUBARRAY:
-			return type->backend_debug_type = llvm_debug_subarray_type(c, type);
+		case TYPE_SLICE:
+			return type->backend_debug_type = llvm_debug_slice_type(c, type);
 		case TYPE_ANYFAULT:
 			return type->backend_debug_type = llvm_debug_errunion_type(c, type);
-		case TYPE_INFPTR:
-		case TYPE_ANYPTR:
+		case TYPE_INTERFACE:
+		case TYPE_ANY:
 			return type->backend_debug_type = llvm_debug_any_type(c, type);
 	}
 	UNREACHABLE

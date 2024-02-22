@@ -2,7 +2,7 @@ module std::io;
 
 struct ReadBuffer (InStream)
 {
-	InStream* wrapped_stream;
+	InStream wrapped_stream;
 	char[] bytes;
 	usz read_idx;
 	usz write_idx;
@@ -14,7 +14,7 @@ struct ReadBuffer (InStream)
  * @require bytes.len > 0
  * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn ReadBuffer* ReadBuffer.init(&self, InStream* wrapped_stream, char[] bytes)
+fn ReadBuffer* ReadBuffer.init(&self, InStream wrapped_stream, char[] bytes)
 {
 	*self = { .wrapped_stream = wrapped_stream, .bytes = bytes };
 	return self;
@@ -63,7 +63,7 @@ fn void! ReadBuffer.refill(&self) @local @inline
 
 struct WriteBuffer (OutStream)
 {
-	OutStream* wrapped_stream;
+	OutStream wrapped_stream;
 	char[] bytes;
 	usz index;
 }
@@ -74,7 +74,7 @@ struct WriteBuffer (OutStream)
  * @require bytes.len > 0 "Non-empty buffer required"
  * @require self.bytes.len == 0 "Init may not run on already initialized data"
  **/
-fn WriteBuffer* WriteBuffer.init(&self, OutStream* wrapped_stream, char[] bytes)
+fn WriteBuffer* WriteBuffer.init(&self, OutStream wrapped_stream, char[] bytes)
 {
 	*self = { .wrapped_stream = wrapped_stream, .bytes = bytes };
 	return self;

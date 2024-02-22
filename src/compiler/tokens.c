@@ -285,6 +285,10 @@ const char *token_type_to_string(TokenType type)
 			return "double";
 		case TOKEN_FLOAT:
 			return "float";
+		case TOKEN_BFLOAT:
+			return "bfloat";
+		case TOKEN_FLOAT16:
+			return "float16";
 		case TOKEN_LONG:
 			return "long";
 		case TOKEN_ULONG:
@@ -313,8 +317,6 @@ const char *token_type_to_string(TokenType type)
 			return "iptr";
 		case TOKEN_UPTR:
 			return "uptr";
-		case TOKEN_FLOAT16:
-			return "float16";
 		case TOKEN_DOCS_START:
 			return "/**";
 		case TOKEN_DOCS_END:

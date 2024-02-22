@@ -20,7 +20,7 @@ int d @private;
 
 
 @TEST_a = local_unnamed_addr global i32 0, align 4
-@TEST.b = protected unnamed_addr global i32 0, align 4
+@TEST.b = internal unnamed_addr global i32 0, align 4
 @TEST_c = local_unnamed_addr global i32 0, align 4
 @TEST_d = local_unnamed_addr global i32 0, align 4
 

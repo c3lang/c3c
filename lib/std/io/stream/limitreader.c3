@@ -2,7 +2,7 @@ module std::io;
 
 struct LimitReader (InStream)
 {
-	InStream* wrapped_stream;
+	InStream wrapped_stream;
 	usz limit;
 }
 
@@ -10,7 +10,7 @@ struct LimitReader (InStream)
  * @param [&inout] wrapped_stream "The stream to read from"
  * @param limit "The max limit to read"
  **/
-fn LimitReader* LimitReader.init(&self, InStream* wrapped_stream, usz limit)
+fn LimitReader* LimitReader.init(&self, InStream wrapped_stream, usz limit)
 {
 	*self = { .wrapped_stream = wrapped_stream, .limit = limit };
 	return self;

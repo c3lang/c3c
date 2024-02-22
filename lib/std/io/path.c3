@@ -26,7 +26,7 @@ enum PathEnv
 	POSIX
 }
 
-fn Path! getcwd(Allocator* allocator = allocator::heap())
+fn Path! getcwd(Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -40,7 +40,7 @@ fn usz! file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
 fn Path! tgetcwd() => getcwd(allocator::temp()) @inline;
 fn void! chdir(Path path) => os::native_chdir(path) @inline;
-fn Path! temp_directory(Allocator* allocator = allocator::heap()) => os::native_temp_directory(allocator);
+fn Path! temp_directory(Allocator allocator = allocator::heap()) => os::native_temp_directory(allocator);
 fn void! delete(Path path) => os::native_remove(path.str_view()) @inline;
 
 macro bool is_separator(char c, PathEnv path_env = DEFAULT_PATH_ENV)
@@ -58,7 +58,7 @@ macro bool is_win32_separator(char c)
 	return c == '/' || c == '\\';
 }
 
-fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", Allocator* allocator = allocator::heap())
+fn PathList! ls(Path dir, bool no_dirs = false, bool no_symlinks = false, String mask = "", Allocator allocator = allocator::heap())
 {
 	$if $defined(os::native_ls):
 		return os::native_ls(dir, no_dirs, no_symlinks, mask, allocator);
@@ -105,7 +105,7 @@ fn void! rmtree(Path path)
 	$endif
 }
 
-fn Path! new(String path, Allocator* allocator = allocator::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
+fn Path! new(String path, Allocator allocator = allocator::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	return { normalize(path.copy(allocator), path_env), path_env };
 }
@@ -115,7 +115,7 @@ fn Path! temp_new(String path, PathEnv path_env = DEFAULT_PATH_ENV)
 	return new(path, allocator::temp(), path_env);
 }
 
-fn Path! new_win32_wstring(WString path, Allocator* allocator = allocator::heap())
+fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -123,12 +123,12 @@ fn Path! new_win32_wstring(WString path, Allocator* allocator = allocator::heap(
 	};
 }
 
-fn Path! new_windows(String path, Allocator* allocator = allocator::heap())
+fn Path! new_windows(String path, Allocator allocator = allocator::heap())
 {
 	return new(path, allocator, WIN32);
 }
 
-fn Path! new_posix(String path, Allocator* allocator = allocator::heap())
+fn Path! new_posix(String path, Allocator allocator = allocator::heap())
 {
 	return new(path, allocator, POSIX);
 }
@@ -143,7 +143,7 @@ fn bool Path.equals(self, Path p2)
  *
  * @param [in] filename
  **/
-fn Path! Path.append(self, String filename, Allocator* allocator = allocator::heap())
+fn Path! Path.append(self, String filename, Allocator allocator = allocator::heap())
 {
 	if (!self.path_string.len) return new(filename, allocator, self.env)!;
 	assert(!is_separator(self.path_string[^1], self.env));
@@ -179,7 +179,7 @@ fn bool! Path.is_absolute(self)
 	return path_start < path_str.len && is_separator(path_str[path_start], self.env);
 }
 
-fn Path! Path.absolute(self, Allocator* allocator = allocator::heap())
+fn Path! Path.absolute(self, Allocator allocator = allocator::heap())
 {
 	String path_str = self.str_view();
 	if (!path_str.len) path_str = ".";
@@ -421,7 +421,7 @@ def PathWalker = fn bool! (Path, bool is_dir, void*);
 fn bool! Path.walk(self, PathWalker w, void* data)
 {
 	const PATH_MAX = 512;
-	@stack_mem(PATH_MAX; Allocator* allocator)
+	@stack_mem(PATH_MAX; Allocator allocator)
 	{
 		Path abs = self.absolute(allocator)!;
 		PathList files = ls(abs, .allocator = allocator)!;
@@ -459,7 +459,7 @@ fn usz! Path.to_format(&self, Formatter* formatter) @dynamic
 	return formatter.print(self.str_view());
 }
 
-fn String Path.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
+fn String Path.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
 	return self.str_view().copy(allocator);
 }

@@ -9,8 +9,8 @@ fn void test_general()
 	assert(root.get_int("foo")! == 1);
 	assert(root.get_string("bar")! == "baz");
 	Object* goo = root.set("goo", object::new_obj(allocator::heap()));
-	goo.append("hello");
-	goo.append(132);
+	goo.push("hello");
+	goo.push(132);
 	assert(root.get("goo").get_int_at(1)! == 132);
 	assert(root.get("goo").get_string_at(0)! == "hello");
 	Object* abc = root.get_or_create_obj("abc80");

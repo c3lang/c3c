@@ -536,7 +536,7 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 	if (try_consume(c, TOKEN_RBRACKET))
 	{
 		bool is_resolved = type->resolve_status == RESOLVE_DONE;
-		if (is_resolved && !type_is_valid_for_array(type->type)) goto DIRECT_SUBARRAY;
+		if (is_resolved && !type_is_valid_for_array(type->type)) goto DIRECT_SLICE;
 		switch (type->subtype)
 		{
 			case TYPE_COMPRESSED_NONE:
@@ -549,20 +549,20 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 				type->subtype = TYPE_COMPRESSED_SUBSUB;
 				break;
 			default:
-				goto DIRECT_SUBARRAY;
+				goto DIRECT_SLICE;
 		}
 		if (is_resolved)
 		{
-			type->type = type_get_subarray(type->type);
+			type->type = type_get_slice(type->type);
 		}
 		RANGE_EXTEND_PREV(type);
 		return type;
-DIRECT_SUBARRAY:;
-		TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
-		subarray->array.base = type;
-		subarray->array.len = NULL;
-		RANGE_EXTEND_PREV(subarray);
-		return subarray;
+DIRECT_SLICE:;
+		TypeInfo *slice = type_info_new(TYPE_INFO_SLICE, type->span);
+		slice->array.base = type;
+		slice->array.len = NULL;
+		RANGE_EXTEND_PREV(slice);
+		return slice;
 	}
 	TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
 	array->array.base = type;
@@ -1140,7 +1140,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 
 
 /**
- * enum_param_decl ::= type IDENT ('=' expr)?
+ * enum_param_decl ::= type IDENT attributes?
  */
 static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 {
@@ -1153,10 +1153,7 @@ static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 		if (token_is_some_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Expected a name starting with a lower-case letter.");
 		RETURN_SEMA_ERROR_HERE("Expected a member name here.");
 	}
-	if (try_consume(c, TOKEN_EQ))
-	{
-		if (!parse_decl_initializer(c, param)) return poisoned_decl;
-	}
+	if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
 	return true;
@@ -1256,7 +1253,6 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				*variadic = VARIADIC_TYPED;
 			}
 		}
-
 		// We have parsed the optional type, next get the optional variable name
 		VarDeclKind param_kind;
 		const char *name = NULL;
@@ -1298,7 +1294,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					// This is "foo..."
 					*variadic = VARIADIC_ANY;
 					// We generate the type as type_any
-					type = type_info_new_base(type_anyptr, c->span);
+					type = type_info_new_base(type_any, c->span);
 				}
 				break;
 			case TOKEN_CT_IDENT:
@@ -1372,13 +1368,11 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				param_kind = VARDECL_PARAM;
 				break;
 			default:
-				SEMA_ERROR_HERE("Expected a parameter.");
-				return false;
+				RETURN_SEMA_ERROR_HERE("Expected a parameter.");
 		}
 		if (type && type->optional)
 		{
-			SEMA_ERROR(type, "Parameters may not be optional.");
-			return false;
+			RETURN_SEMA_ERROR(type, "Parameters may not be optional.");
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
@@ -2169,7 +2163,6 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 
-	// We allow (), but we might consider making it an error later on.
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
@@ -2188,7 +2181,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 /**
  * Parse an enum declaration (after "enum")
  *
- * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type enum_param_list)? opt_attributes '{' enum_body '}'
+ * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type? enum_param_list?)? opt_attributes '{' enum_body '}'
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
@@ -2201,20 +2194,23 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	TypeInfo *type = NULL;
-	// Parse the spec
+
 	if (try_consume(c, TOKEN_COLON))
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
-		if (type->optional)
+		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
-			SEMA_ERROR(type, "An enum can't have an optional type.");
-			return poisoned_decl;
+			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
+			if (type->optional)
+			{
+				SEMA_ERROR(type, "An enum can't have an optional type.");
+				return poisoned_decl;
+			}
 		}
 		if (!parse_enum_param_list(c, &decl->enums.parameters)) return poisoned_decl;
 	}
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
+	unsigned expected_parameters = vec_size(decl->enums.parameters);
 	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
@@ -2239,14 +2235,21 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 				break;
 			}
 		}
-		if (try_consume(c, TOKEN_LPAREN))
-		{
-			Expr **result = NULL;
-			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL, false)) return poisoned_decl;
-			enum_const->enum_constant.args = result;
-			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
-		}
 		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
+		if (try_consume(c, TOKEN_EQ))
+		{
+			if (expected_parameters == 1 || !tok_is(c, TOKEN_LBRACE))
+			{
+				ASSIGN_EXPR_OR_RET(Expr *single, parse_expr(c), poisoned_decl);
+				vec_add(enum_const->enum_constant.args, single);
+			}
+			else
+			{
+				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
+				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, NULL, false)) return poisoned_decl;
+				CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+			}
+		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))

@@ -10,4 +10,4 @@ Foo[10] array @private;
 
 /* #expect: test.ll
 
-@test.array = protected unnamed_addr global [10 x %Foo] zeroinitializer, align 16
+@test.array = internal unnamed_addr global [10 x %Foo] zeroinitializer, align 16

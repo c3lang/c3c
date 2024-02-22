@@ -1,0 +1,22 @@
+// #target: windows-x64
+module test;
+int[<2>] foo @align(1);
+
+fn void main()
+{
+	foo[1] = 2;
+	foo.y = 4;
+}
+
+/* #expect: test.ll
+
+@test.foo = local_unnamed_addr global <2 x i32> zeroinitializer, align 1
+
+define void @test.main() #0 {
+entry:
+  %0 = load <2 x i32>, ptr @test.foo, align 1
+  %elemset = insertelement <2 x i32> %0, i32 2, i64 1
+  store <2 x i32> %elemset, ptr @test.foo, align 1
+  store i32 4, ptr getelementptr inbounds (i8, ptr @test.foo, i64 4), align 1
+  ret void
+}

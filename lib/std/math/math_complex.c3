@@ -10,7 +10,7 @@ union Complex
 }
 
 
-macro Complex identity() => { 1, 0 };
+const Complex IDENTITY = { 1, 0 };
 macro Complex Complex.add(self, Complex b) => Complex { .v = self.v + b.v };
 macro Complex Complex.add_each(self, Real b) => Complex { .v = self.v + b };
 macro Complex Complex.sub(self, Complex b) => Complex { .v = self.v - b.v };

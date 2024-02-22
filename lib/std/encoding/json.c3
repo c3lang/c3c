@@ -15,7 +15,7 @@ fault JsonParsingError
 	INVALID_NUMBER,
 }
 
-fn Object*! parse(InStream* s, Allocator* allocator = allocator::heap())
+fn Object*! parse(InStream s, Allocator allocator = allocator::heap())
 {
 	JsonContext context = { .last_string = dstring::new_with_capacity(64, allocator), .stream = s, .allocator = allocator };
 	defer context.last_string.free();
@@ -44,8 +44,8 @@ enum JsonTokenType @local
 struct JsonContext @local
 {
 	uint line;
-	InStream* stream;
-	Allocator* allocator;
+	InStream stream;
+	Allocator allocator;
 	JsonTokenType token;
 	DString last_string;
 	double last_number;
@@ -170,7 +170,7 @@ fn Object*! parse_array(JsonContext* context) @local
 	while (token != JsonTokenType.RBRACKET)
 	{
 		Object* element = parse_from_token(context, token)!;
-		list.append(element);
+		list.push(element);
 		token = advance(context)!;
 		if (token == JsonTokenType.COMMA)
 		{

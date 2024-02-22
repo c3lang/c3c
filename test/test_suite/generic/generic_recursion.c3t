@@ -17,5 +17,5 @@ TreeNode abc;
 /* #expect: test.ll
 
 %TreeNode = type { ptr, ptr, %List }
-%List = type { i64, i64, %"any*", ptr }
+%List = type { i64, i64, %any, ptr }
 @test.abc = local_unnamed_addr global %TreeNode zeroinitializer, align 8

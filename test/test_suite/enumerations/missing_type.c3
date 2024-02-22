@@ -1,4 +1,4 @@
-enum Kind : (int x) // #error: A type name
+enum Kind : (x) // #error: A type name
 {
 	FOO (10),
 }

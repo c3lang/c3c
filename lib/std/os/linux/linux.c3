@@ -128,7 +128,7 @@ fn ulong! elf_module_image_base(String path) @local
 	return 0;
 }
 
-fn Backtrace! backtrace_load_from_exec(void* addr, Allocator* allocator) @local
+fn Backtrace! backtrace_load_from_exec(void* addr, Allocator allocator) @local
 {
 	char[] buf = mem::temp_alloc_array(char, 1024);
 
@@ -138,7 +138,7 @@ fn Backtrace! backtrace_load_from_exec(void* addr, Allocator* allocator) @local
 	return backtrace_from_addr2line(addr, addr2line, obj_name, "???", allocator);
 }
 
-fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Allocator* allocator) @local
+fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Allocator allocator) @local
 {
 	char[] buf = mem::temp_alloc_array(char, 1024);
 
@@ -149,7 +149,7 @@ fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Alloca
 	return backtrace_from_addr2line(addr, addr2line, info.dli_fname.str_view(), sname, allocator);
 }
 
-fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_name, String func_name, Allocator* allocator) @local
+fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_name, String func_name, Allocator allocator) @local
 {
 	String[] parts = addr2line.tsplit(" at ");
 	if (parts.len != 2)
@@ -182,7 +182,7 @@ fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_
 	};
 }
 
-fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = allocator::heap()) @local
+fn Backtrace! backtrace_load_element(void* addr, Allocator allocator = allocator::heap()) @local
 {
 	if (!addr) return backtrace::BACKTRACE_UNKNOWN;
 
@@ -197,7 +197,7 @@ fn Backtrace! backtrace_load_element(void* addr, Allocator* allocator = allocato
 	};
 }
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 {
 	BacktraceList list;
 	list.new_init(backtrace.len, allocator);
@@ -214,7 +214,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 		foreach (addr : backtrace)
 		{
 			Backtrace trace = backtrace_load_element(addr, allocator)!;
-			list.append(trace);
+			list.push(trace);
 		}
 	};
 	return list;

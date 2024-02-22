@@ -12,9 +12,9 @@ module std::core::mem::allocator @if(env::POSIX);
 import std::os;
 import libc;
 
-fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz offset) @dynamic
+fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	if (clear)
+	if (init_type == ZERO)
 	{
 		void* data @noinit;
 		if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
@@ -43,19 +43,9 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz
 	}
 }
 
-fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment, usz offset) @dynamic
+fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	if (!new_bytes)
-	{
-		self.release(old_ptr, alignment > 0);
-		return null;
-	}
-	if (!old_ptr)
-	{
-		return self.acquire(new_bytes, false, alignment, 0);
-	}
 	if (alignment <= mem::DEFAULT_MEM_ALIGNMENT) return libc::realloc(old_ptr, new_bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
-
     void* new_ptr;
 	if (posix::posix_memalign(&new_ptr, alignment, new_bytes)) return AllocationFailure.OUT_OF_MEMORY?;
 
@@ -83,9 +73,9 @@ module std::core::mem::allocator @if(env::WIN32);
 import std::os::win32;
 import libc;
 
-fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz offset) @dynamic
+fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	if (clear)
+	if (init_type == ZERO)
 	{
 		if (alignment > 0)
 		{
@@ -101,7 +91,7 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz
     return data;
 }
 
-fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment, usz offset) @dynamic
+fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
 	if (alignment)
 	{
@@ -123,9 +113,9 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 module std::core::mem::allocator @if(!env::WIN32 && !env::POSIX);
 import libc;
 
-fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz offset) @dynamic
+fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	if (clear)
+	if (init_type == ZERO)
 	{
 		void* data = alignment ? @aligned_alloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment)!! : libc::calloc(bytes, 1);
         return data ?: AllocationFailure.OUT_OF_MEMORY?;
@@ -142,7 +132,7 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, bool clear, usz alignment, usz
 }
 
 
-fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment, usz offset) @dynamic
+fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
 	if (alignment)
 	{

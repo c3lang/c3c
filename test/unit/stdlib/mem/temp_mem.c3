@@ -1,6 +1,6 @@
 module test;
 
-fn String add(String s, Allocator* a, int x)
+fn String add(String s, Allocator a, int x)
 {
     if (x < 0) return s.copy(a);
     String tmp;
@@ -14,7 +14,7 @@ fn String add(String s, Allocator* a, int x)
     return tmp.concat("a", .allocator = a);
 }
 
-fn String breakit(String s, Allocator* a)
+fn String breakit(String s, Allocator a)
 {
     @pool(a)
     {
@@ -22,7 +22,7 @@ fn String breakit(String s, Allocator* a)
     };
 }
 
-fn String inner2(String s, Allocator* a)
+fn String inner2(String s, Allocator a)
 {
     @pool(a)
     {
@@ -35,7 +35,7 @@ fn String inner2(String s, Allocator* a)
     };
 }
 
-fn String inner3(String s, Allocator* a)
+fn String inner3(String s, Allocator a)
 {
     @pool(a)
     {
@@ -48,7 +48,7 @@ fn String inner3(String s, Allocator* a)
     };
 }
 
-fn String inner4(String s, Allocator* a)
+fn String inner4(String s, Allocator a)
 {
     @pool(a)
     {

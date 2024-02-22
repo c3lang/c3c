@@ -38,7 +38,7 @@
 
 uint16_t *win_utf8to16(const char *value UNUSED)
 {
-#if (_MSC_VER)
+#if PLATFORM_WINDOWS
 	size_t len = strlen(value);
 	int needed = MultiByteToWideChar(CP_UTF8, 0, value, len + 1, NULL, 0);
 	if (needed <= 0)
@@ -59,7 +59,7 @@ uint16_t *win_utf8to16(const char *value UNUSED)
 #include <wchar.h>
 char *win_utf16to8(const uint16_t *wname UNUSED)
 {
-#if (_MSC_VER)
+#if PLATFORM_WINDOWS
 	size_t len = wcslen(wname);
 	int needed = WideCharToMultiByte(CP_UTF8, 0, wname, len + 1, NULL, 0, NULL, NULL);
 	if (needed <= 0)

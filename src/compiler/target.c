@@ -7,6 +7,7 @@ extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_
 static bool x64features_contains(X86Features *cpu_features, X86Feature feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
+static unsigned arch_int_register_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice string);
 static EnvironmentType environment_type_from_llvm_string(StringSlice string);
 static bool arch_is_supported(ArchType arch);
@@ -1298,6 +1299,39 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 	}
 }
 
+static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_UNKNOWN:
+		case ARCH_UNSUPPORTED:
+			return 0;
+		case ARCH_TYPE_ARM:
+		case ARCH_TYPE_ARMB:
+		case ARCH_TYPE_PPC:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_THUMB:
+		case ARCH_TYPE_THUMBEB:
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_WASM32:
+			return 32;
+		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_AARCH64:
+		case ARCH_TYPE_AARCH64_BE:
+		case ARCH_TYPE_RISCV64:
+			return 64;
+		case ARCH_TYPE_PPC64:
+		case ARCH_TYPE_PPC64LE:
+			if (os == OS_TYPE_PS3) return 32;
+			return 64;
+		case ARCH_TYPE_X86_64:
+			if (os == OS_TYPE_NACL) return 32;
+			return 64;
+		default:
+			UNREACHABLE
+	}
+}
+
 static unsigned os_target_supports_float16(OsType os, ArchType arch)
 {
 	switch (arch)
@@ -1823,6 +1857,7 @@ void target_setup(BuildTarget *target)
 	platform_target.tls_supported = os_target_use_thread_local(platform_target.os);
 	platform_target.big_endian = arch_big_endian(platform_target.arch);
 	platform_target.width_pointer = arch_pointer_bit_width(platform_target.os, platform_target.arch);
+	platform_target.width_register = arch_int_register_bit_width(platform_target.os, platform_target.arch);
 	platform_target.alloca_address_space = 0;
 	platform_target.object_format = object_format_from_os(platform_target.os, platform_target.arch);
 	switch (platform_target.object_format)

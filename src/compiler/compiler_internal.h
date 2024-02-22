@@ -105,12 +105,11 @@ typedef enum
 {
 	RESOLVE_TYPE_DEFAULT,
 	RESOLVE_TYPE_ALLOW_INFER    = 0x01,
-	RESOLVE_TYPE_ALLOW_ANY      = 0x02,
-	RESOLVE_TYPE_IS_POINTEE     = 0x04,
-	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x08,
-	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_IS_POINTEE,
-	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_ALLOW_INFER,
-	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_ALLOW_ANY
+	RESOLVE_TYPE_IS_POINTEE     = 0x02,
+	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x04,
+	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_IS_POINTEE,
+	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_INFER,
+	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_DEFAULT
 } ResolveTypeKind;
 
 struct ConstInitializer_
@@ -447,7 +446,6 @@ typedef struct
 typedef struct VarDecl_
 {
 	VarDeclKind kind : 8;
-	bool unwrap : 1;
 	bool shadow : 1;
 	bool vararg : 1;
 	bool is_static : 1;
@@ -567,7 +565,6 @@ typedef struct
 			bool attr_finalizer : 1;
 			bool attr_interface_method : 1;
 			bool attr_dynamic : 1;
-			bool attr_default : 1;
 			bool is_lambda : 1;
 			union
 			{
@@ -691,8 +688,8 @@ typedef struct Decl_
 		SectionId section_id;
 		uint16_t va_index;
 	};
-	AlignSize offset : 32;
-	AlignSize padding : 32;
+	AlignSize offset;
+	AlignSize padding;
 	struct CompilationUnit_ *unit;
 	Attr **attributes;
 	Type *type;
@@ -1542,6 +1539,7 @@ typedef struct DynamicScope_
 	ScopeId scope_id;
 	bool allow_dead_code : 1;
 	bool jump_end : 1;
+	bool is_dead : 1;
 	ScopeFlags flags;
 	unsigned label_start;
 	unsigned current_local;
@@ -1881,12 +1879,12 @@ extern TypeInfo *poisoned_type_info;
 
 
 extern Type *type_bool, *type_void, *type_voidptr;
-extern Type *type_float16, *type_float, *type_double, *type_f128;
+extern Type *type_float16, *type_bfloat, *type_float, *type_double, *type_f128;
 extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyfault, *type_anyptr, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_anyfault, *type_any, *type_typeinfo, *type_member;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -2301,7 +2299,7 @@ void sema_unwrap_var(SemaContext *context, Decl *decl);
 void sema_rewrap_var(SemaContext *context, Decl *decl);
 void sema_erase_var(SemaContext *context, Decl *decl);
 void sema_erase_unwrapped(SemaContext *context, Decl *decl);
-bool sema_analyse_cond_expr(SemaContext *context, Expr *expr);
+bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result);
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref);
 MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
@@ -2420,7 +2418,7 @@ Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
-Type *type_get_subarray(Type *arr_type);
+Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
@@ -2598,7 +2596,7 @@ INLINE bool type_len_is_inferred(Type *type)
 				type = type->optional;
 				continue;
 			case TYPE_ARRAY:
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_VECTOR:
 				type = type->array.base;
@@ -2633,26 +2631,13 @@ INLINE bool type_is_any_raw(Type *type)
 	}
 }
 
-INLINE bool type_is_any_interface_ptr(Type *type)
-{
-	switch (type->canonical->type_kind)
-	{
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
-			return true;
-		default:
-			return false;
-	}
-}
+
 INLINE bool type_is_any(Type *type)
 {
-	return type->canonical == type_anyptr;
+	return type->canonical == type_any;
 }
 
-INLINE bool type_is_anyfault(Type *type)
-{
-	return type->canonical == type_anyfault;
-}
+
 
 INLINE bool type_is_optional(Type *type)
 {
@@ -2836,29 +2821,46 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 			return "an untyped list";
 		case TYPE_TYPEINFO:
 			return "a type";
+		case TYPE_WILDCARD:
+			return "an empty value";
 		default:
 			UNREACHABLE;
 	}
 }
 
-INLINE bool type_is_invalid_storage_type(Type *type)
+typedef enum
 {
-	if (!type) return false;
+	STORAGE_NORMAL,
+	STORAGE_VOID,
+	STORAGE_COMPILE_TIME,
+	STORAGE_WILDCARD,
+	STORAGE_UNKNOWN
+} StorageType;
+
+static inline StorageType type_storage_type(Type *type)
+{
+	if (!type) return STORAGE_NORMAL;
+	bool is_distinct = false;
 	RETRY:
-	if (type == type_wildcard_optional) return true;
+	if (type == type_wildcard_optional) return STORAGE_WILDCARD;
 	switch (type->type_kind)
 	{
 		case TYPE_VOID:
+			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
+		case TYPE_WILDCARD:
+			return STORAGE_WILDCARD;
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
-		case TYPE_WILDCARD:
-			return true;
+			return STORAGE_COMPILE_TIME;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
 		default:
-			return false;
+			return STORAGE_NORMAL;
 	}
 }
 
@@ -2954,7 +2956,7 @@ static inline Type *type_base(Type *type)
 		}
 	}
 }
-static inline Type *type_flat_inline(Type *type)
+static inline Type *type_flat_distinct_inline(Type *type)
 {
 	do
 	{
@@ -3434,6 +3436,8 @@ INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
 	Real real;
 	switch (kind)
 	{
+		case TYPE_F16:
+		case TYPE_BF16:
 		case TYPE_F32:
 			real = (float)d;
 			break;
@@ -3605,3 +3609,5 @@ INLINE const char *section_from_id(SectionId id)
 {
 	return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
 }
+
+extern char swizzle[256];

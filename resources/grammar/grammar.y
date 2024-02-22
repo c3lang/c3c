@@ -320,7 +320,12 @@ relational_stmt_expr
 	| relational_stmt_expr relational_op additive_expr
 	;
 
-rel_or_lambda_expr
+try_catch_rhs_expr
+	: call_expr
+	| lambda_decl IMPLIES relational_expr
+	;
+
+try_chain_expr
 	: relational_expr
 	| lambda_decl IMPLIES relational_expr
 	;
@@ -484,7 +489,7 @@ enum_list
 
 enum_constant
 	: CONST_IDENT opt_attributes
-	| CONST_IDENT '(' arg_list ')' opt_attributes
+	| CONST_IDENT opt_attributes '=' constant_expr
 	;
 
 identifier_list
@@ -493,9 +498,7 @@ identifier_list
 	;
 
 enum_param_decl
-	: type
-	| type IDENT
-	| type IDENT '=' expr
+	: type IDENT
 	;
 
 base_type
@@ -638,15 +641,15 @@ catch_unwrap
 	;
 
 try_unwrap
-	: TRY rel_or_lambda_expr
-	| TRY IDENT '=' rel_or_lambda_expr
-	| TRY type IDENT '=' rel_or_lambda_expr
+	: TRY try_catch_rhs_expr
+	| TRY IDENT '=' try_chain_expr
+	| TRY type IDENT '=' try_chain_expr
 	;
 
 try_unwrap_chain
 	: try_unwrap
 	| try_unwrap_chain AND_OP try_unwrap
-	| try_unwrap_chain AND_OP rel_or_lambda_expr
+	| try_unwrap_chain AND_OP try_chain_expr
 	;
 
 default_stmt
@@ -1017,12 +1020,6 @@ enum_params
 	| enum_params ',' enum_param_decl
 	;
 
-enum_param_list
-	: '(' enum_params ')'
-	| '(' ')'
-	| empty
-	;
-
 struct_member_decl
 	: type identifier_list opt_attributes ';'
 	| struct_or_union IDENT opt_attributes struct_body
@@ -1034,12 +1031,14 @@ struct_member_decl
 	;
 
 enum_spec
-	: ':' type enum_param_list
-	| empty
+	: ':' base_type '(' enum_params ')'
+	| ':' base_type
+	| ':' '(' enum_params ')'
 	;
 
 enum_declaration
 	: ENUM TYPE_IDENT opt_interface_impl enum_spec opt_attributes '{' enum_list '}'
+	| ENUM TYPE_IDENT opt_interface_impl opt_attributes '{' enum_list '}'
 	;
 
 faults

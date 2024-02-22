@@ -139,17 +139,18 @@ static Expr *parse_precedence(ParseContext *c, Precedence precedence)
 	return parse_precedence_with_left_side(c, left_side, precedence);
 }
 
+
 /*
- * Parse anything with higher precedence than &&, that means <= >= etc are ok.
+ * Parse anything with higher precedence than && etc.
  */
-static inline Expr *parse_relational_expr(ParseContext *c)
+static inline Expr *parse_try_chain_expr(ParseContext *c)
 {
 	return parse_precedence(c, PREC_RELATIONAL);
 }
 
 /**
  * catch_unwrap ::= CATCH (IDENT | type? IDENT '=' catch_chain) | catch_chain
- * catch_chain ::= try_rhs_expr (',' try_rhs_expr)*
+ * catch_chain ::= parse_try_catch_rhs_expr (',' parse_try_catch_rhs_expr)*
  */
 static inline Expr *parse_catch_unwrap(ParseContext *c)
 {
@@ -158,7 +159,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	Expr **exprs = NULL;
 
 	// First, try parsing as single expression
-	ASSIGN_EXPR_OR_RET(Expr *sub_expr, parse_relational_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *sub_expr, parse_try_chain_expr(c), poisoned_expr);
 
 	// Check if we have a chain.
 	if (try_consume(c, TOKEN_COMMA))
@@ -167,7 +168,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		vec_add(exprs, sub_expr);
 		do
 		{
-			ASSIGN_EXPR_OR_RET(sub_expr, parse_relational_expr(c), poisoned_expr);
+			ASSIGN_EXPR_OR_RET(sub_expr, parse_try_chain_expr(c), poisoned_expr);
 			vec_add(exprs, sub_expr);
 		} while (try_consume(c, TOKEN_COMMA));
 		// We're done.
@@ -181,7 +182,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		// Assign the type
 		expr->catch_unwrap_expr.type = sub_expr->type_expr;
 		// Assign the variable
-		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_try_chain_expr(c), poisoned_expr);
 	}
 	else
 	{
@@ -207,7 +208,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	// After '=' we have a chain of expressions.
 	do
 	{
-		ASSIGN_EXPR_OR_RET(sub_expr, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(sub_expr, parse_try_chain_expr(c), poisoned_expr);
 		vec_add(exprs, sub_expr);
 	} while (try_consume(c, TOKEN_COMMA));
 	expr->catch_unwrap_expr.exprs = exprs;
@@ -222,11 +223,11 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TRY_UNWRAP);
 	advance_and_verify(c, TOKEN_TRY);
-	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_relational_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *lhs, parse_try_chain_expr(c), poisoned_expr);
 	if (lhs->expr_kind == EXPR_TYPEINFO)
 	{
 		expr->try_unwrap_expr.type = lhs->type_expr;
-		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.variable, parse_try_chain_expr(c), poisoned_expr);
 	}
 	else
 	{
@@ -239,14 +240,14 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 	}
 	if (try_consume(c, TOKEN_EQ))
 	{
-		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.init, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->try_unwrap_expr.init, parse_try_chain_expr(c), poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 
 /**
- * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | try_rhs_expr))*
+ * try_unwrap_chain ::= try_unwrap ('&&' (try_unwrap | try_chain_expr))*
  */
 static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 {
@@ -261,7 +262,7 @@ static inline Expr *parse_try_unwrap_chain(ParseContext *c)
 			vec_add(unwraps, expr);
 			continue;
 		}
-		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_relational_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(Expr * next_unwrap, parse_try_chain_expr(c), poisoned_expr);
 		vec_add(unwraps, next_unwrap);
 	}
 	Expr *try_unwrap_chain = expr_new_expr(EXPR_TRY_UNWRAP_CHAIN, first_unwrap);
@@ -1707,7 +1708,8 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 			number->type = type_float16;
 			break;
 		case TYPE_BF16:
-			TODO
+			number->type = type_bfloat;
+			break;
 		default:
 			UNREACHABLE
 	}
@@ -1879,6 +1881,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_UPTR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_DOUBLE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_BFLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT16] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },

@@ -3,7 +3,7 @@ import std::math;
 
 struct ByteBuffer (InStream, OutStream)
 {
-	Allocator* allocator;
+	Allocator allocator;
 	usz max_read;
 	char[] bytes;
 	usz read_idx;
@@ -16,27 +16,12 @@ struct ByteBuffer (InStream, OutStream)
  * max_read defines how many bytes might be kept before its internal buffer is shrinked.
  * @require self.bytes.len == 0 "Buffer already initialized."
  **/
-fn ByteBuffer*! ByteBuffer.init_new(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
-{
-	return self.new_init(max_read, initial_capacity, allocator) @inline;
-}
-
-/**
- * ByteBuffer provides a streamable read/write buffer.
- * max_read defines how many bytes might be kept before its internal buffer is shrinked.
- * @require self.bytes.len == 0 "Buffer already initialized."
- **/
-fn ByteBuffer*! ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator* allocator = allocator::heap())
+fn ByteBuffer*! ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	*self = { .allocator = allocator, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
 	self.grow(initial_capacity)!;
 	return self;
-}
-
-fn ByteBuffer*! ByteBuffer.init_temp(&self, usz max_read, usz initial_capacity = 16) @deprecated("Replaced by temp_init")
-{
-	return self.temp_init(max_read, initial_capacity) @inline;
 }
 
 fn ByteBuffer*! ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity = 16)

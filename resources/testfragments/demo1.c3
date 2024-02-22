@@ -111,7 +111,7 @@ fn void testArrays()
     printArray(&x);
     printArray(y);
     printArray(x[1..]);
-    puts("Array to pointer to subarray---");
+    puts("Array to pointer to slice---");
     int* z = &x;
     printArray(z[0..2]);
     printf("Pointer to array: %p\nPointer to slice: %p\nPointer to first element of slice: %p\n", z, &y, &y[0]);

@@ -88,7 +88,7 @@ bitstruct UInt128LE : uint128 @littleendian
 }
 
 /**
- * @require is_array_or_sub_of_char(bytes) "argument must be an array, a pointer to an array or a subarray of char"
+ * @require is_array_or_slice_of_char(bytes) "argument must be an array, a pointer to an array or a slice of char"
  * @require is_bitorder($Type) "type must be a bitorder integer"
  **/
 macro read(bytes, $Type)
@@ -104,7 +104,7 @@ macro read(bytes, $Type)
 }
 
 /**
- * @require is_arrayptr_or_sub_of_char(bytes) "argument must be a pointer to an array or a subarray of char"
+ * @require is_arrayptr_or_slice_of_char(bytes) "argument must be a pointer to an array or a slice of char"
  * @require is_bitorder($Type) "type must be a bitorder integer"
  **/
 macro write(x, bytes, $Type)
@@ -144,7 +144,7 @@ macro is_bitorder($Type)
 	$endswitch
 }
 
-macro bool is_array_or_sub_of_char(bytes)
+macro bool is_array_or_slice_of_char(bytes)
 {
 	$switch (@typekind(bytes))
 	$case POINTER:
@@ -154,7 +154,7 @@ macro bool is_array_or_sub_of_char(bytes)
 			return $Inner2.typeid == char.typeid;
 		$endif
 	$case ARRAY:
-	$case SUBARRAY:
+	$case SLICE:
 		var $Inner = $typefrom($typeof(bytes).inner);
 		return $Inner.typeid == char.typeid;
 	$default:
@@ -162,7 +162,7 @@ macro bool is_array_or_sub_of_char(bytes)
 	$endswitch
 }
 
-macro bool is_arrayptr_or_sub_of_char(bytes)
+macro bool is_arrayptr_or_slice_of_char(bytes)
 {
 	$switch (@typekind(bytes))
 	$case POINTER:
@@ -171,7 +171,7 @@ macro bool is_arrayptr_or_sub_of_char(bytes)
 			var $Inner2 = $typefrom($Inner.inner);
 			return $Inner2.typeid == char.typeid;
 		$endif
-	$case SUBARRAY:
+	$case SLICE:
 		var $Inner = $typefrom($typeof(bytes).inner);
 		return $Inner.typeid == char.typeid;
 	$default:

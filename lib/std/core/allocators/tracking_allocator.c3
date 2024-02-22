@@ -20,7 +20,7 @@ def AllocMap = HashMap(<uptr, Allocation>);
 // is not compatible with allocators that uses mark()
 struct TrackingAllocator (Allocator)
 {
-	Allocator* inner_allocator;
+	Allocator inner_allocator;
 	AllocMap map;
 	usz mem_total;
 	usz allocs_total;
@@ -31,7 +31,7 @@ struct TrackingAllocator (Allocator)
  *
  * @param [&inout] allocator "The allocator to track"
  **/
-fn void TrackingAllocator.init(&self, Allocator* allocator)
+fn void TrackingAllocator.init(&self, Allocator allocator)
 {
 	*self = { .inner_allocator = allocator };
 	self.map.new_init(.allocator = allocator);
@@ -69,7 +69,7 @@ fn usz TrackingAllocator.total_allocated(&self) => self.mem_total;
  **/
 fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
-fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator* allocator)
+fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 {
 	return self.map.value_tlist();
 }
@@ -79,9 +79,9 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator* allocator)
  **/
 fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, usz deprecated) @dynamic
+fn void*! TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
-	void* data = self.inner_allocator.acquire(size, clear, alignment, 0)!;
+	void* data = self.inner_allocator.acquire(size, init_type, alignment)!;
 	self.allocs_total++;
 	void*[MAX_BACKTRACE] bt;
 	backtrace::capture_current(&bt);
@@ -91,9 +91,9 @@ fn void*! TrackingAllocator.acquire(&self, usz size, bool clear, usz alignment, 
 	return data;
 }
 
-fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz deprecated) @dynamic
+fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
-	void* data = self.inner_allocator.resize(old_pointer, size, alignment, 0)!;
+	void* data = self.inner_allocator.resize(old_pointer, size, alignment)!;
 	self.map.remove((uptr)old_pointer);
 	void*[MAX_BACKTRACE] bt;
 	backtrace::capture_current(&bt);
@@ -107,7 +107,7 @@ fn void TrackingAllocator.release(&self, void* old_pointer, bool is_aligned) @dy
 {
 	if (catch self.map.remove((uptr)old_pointer))
     {
-        assert(false, "Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
+        unreachable("Attempt to release untracked pointer %p, this is likely a bug.", old_pointer);
     }
 	self.inner_allocator.release(old_pointer, is_aligned);
 }
@@ -119,7 +119,7 @@ fn void TrackingAllocator.clear(&self)
 
 fn void TrackingAllocator.print_report(&self) => self.fprint_report(io::stdout())!!;
 
-fn void! TrackingAllocator.fprint_report(&self, OutStream* out)
+fn void! TrackingAllocator.fprint_report(&self, OutStream out)
 {
 
 	usz total = 0;

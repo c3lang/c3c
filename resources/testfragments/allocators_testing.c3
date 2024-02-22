@@ -21,7 +21,7 @@ fn void setstring(char* dst, String str)
 	dst[0] = 0;
 }
 
-fn void testAllocator(Allocator* a, int val)
+fn void testAllocator(Allocator a, int val)
 {
 	io::printn("Test");
 	void* data = allocator::malloc_aligned(a, val, 128, 16)!!;

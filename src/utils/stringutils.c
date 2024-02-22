@@ -304,6 +304,39 @@ void scratch_buffer_append_len(const char *string, size_t len)
 	scratch_buffer.len += (uint32_t)len;
 }
 
+char *scratch_buffer_get_quoted(const char *string)
+{
+	scratch_buffer_clear();
+	scratch_buffer_append_quoted(string);
+	return scratch_buffer_to_string();
+}
+
+void scratch_buffer_append_quoted(const char *string)
+{
+	char c;
+	while ((c = string++[0]) != '\0')
+	{
+		switch (c)
+		{
+			case '"':
+				scratch_buffer_append("\\\"");
+				continue;
+			case '\\':
+				scratch_buffer_append("\\\\");
+				continue;
+			case '\n':
+				scratch_buffer_append("\\n");
+				continue;
+			case '\'':
+				scratch_buffer_append("\\'");
+				continue;
+			default:
+				scratch_buffer_append_char(c);
+				continue;
+
+		}
+	}
+}
 void scratch_buffer_append(const char *string)
 {
 	scratch_buffer_append_len(string, strlen(string));

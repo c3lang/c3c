@@ -9,10 +9,10 @@ const FOO @private = ~(uint)(0);
 
 ; ModuleID = 'constants_mingw'
 
-@constants_mingw.AA = protected unnamed_addr constant i8 1, align 1, !dbg !0
+@constants_mingw.AA = internal unnamed_addr constant i8 1, align 1, !dbg !0
 @constants_mingw.BB = local_unnamed_addr constant i8 -56, align 1, !dbg !4
-@constants_mingw.CC = protected unnamed_addr constant i32 -1, align 4, !dbg !6
-@constants_mingw.FOO = protected unnamed_addr constant i32 -1, align 4, !dbg !9
+@constants_mingw.CC = internal unnamed_addr constant i32 -1, align 4, !dbg !6
+@constants_mingw.FOO = internal unnamed_addr constant i32 -1, align 4, !dbg !9
 
 !llvm.module.flags = !{!11, !12, !13, !14}
 !llvm.dbg.cu = !{!15}

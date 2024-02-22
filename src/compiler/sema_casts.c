@@ -171,7 +171,7 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
  * Perform vararg promotions typical for C style varargs:
  * 1. Widen int and bool to C int size
  * 2. Widen float and smaller to double
- * 3. Turn subarrays into pointers
+ * 3. Turn slices into pointers
  */
 void cast_promote_vararg(SemaContext *context, Expr *arg)
 {
@@ -192,8 +192,8 @@ void cast_promote_vararg(SemaContext *context, Expr *arg)
 		return;
 	}
 
-	// 3. Turn subarrays into pointers
-	if (arg_type->type_kind == TYPE_SUBARRAY)
+	// 3. Turn slices into pointers
+	if (arg_type->type_kind == TYPE_SLICE)
 	{
 		cast_no_check(context, arg, type_get_ptr(arg_type->array.base), IS_OPTIONAL(arg));
 		return;
@@ -261,8 +261,8 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 		case TYPE_INFERRED_VECTOR:
 			assert(type_is_arraylike(type_flatten(actual_type)));
 			return type_add_optional(type_get_vector(indexed, type_flatten(actual_type)->array.len), is_optional);
-		case TYPE_SUBARRAY:
-			return type_add_optional(type_get_subarray(indexed), is_optional);
+		case TYPE_SLICE:
+			return type_add_optional(type_get_slice(indexed), is_optional);
 		case TYPE_VECTOR:
 			// The case of int[*]*[<2>] x = ...
 			return type_add_optional(type_get_vector(indexed, to_infer->array.len), is_optional);
@@ -338,16 +338,16 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
 			return CAST_EUBOOL;
-		case TYPE_SUBARRAY:
-			return CAST_SABOOL;
+		case TYPE_SLICE:
+			return CAST_SLBOOL;
 		case ALL_INTS:
 			return CAST_INTBOOL;
 		case ALL_FLOATS:
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
 			return CAST_ANYBOOL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -367,8 +367,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ENUM:
 		case TYPE_MEMBER:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			// Everything else is an error
 			return CAST_ERROR;
 	}
@@ -629,6 +627,7 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 		case ALL_UNSIGNED_INTS:
 			if (canonical->builtin.bitsize < platform_target.width_c_int) return type_cuint;
 			return type;
+		case TYPE_BF16:
 		case TYPE_F16:
 			// Promote F16 to a real type.
 			return type_float;
@@ -742,26 +741,26 @@ static bool rule_ptr_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 	return true;
 }
 
-static bool rule_arrptr_to_sa(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *subarray_base = cc->to->array.base;
+	Type *slice_base = cc->to->array.base;
 	Type *from_base = cc->from_type->pointer->array.base;
 
 	// int[<2>]*, int[2]*
 	if (is_explicit)
 	{
-		subarray_base = type_flatten(subarray_base);
+		slice_base = type_flatten(slice_base);
 		from_base = type_flatten(from_base);
 	}
 	// Same base type? E.g. int[2]* -> int[], then we're done.
-	if (from_base == subarray_base)
+	if (from_base == slice_base)
 	{
 		return true;
 	}
 
-	if (subarray_base->type_kind == TYPE_POINTER && from_base->type_kind == TYPE_POINTER)
+	if (slice_base->type_kind == TYPE_POINTER && from_base->type_kind == TYPE_POINTER)
 	{
-		switch (match_pointers(cc, subarray_base, from_base, is_explicit, is_silent))
+		switch (match_pointers(cc, slice_base, from_base, is_explicit, is_silent))
 		{
 			case TYPE_SAME:
 				return true;
@@ -776,7 +775,7 @@ static bool rule_arrptr_to_sa(CastContext *cc, bool is_explicit, bool is_silent)
 				UNREACHABLE
 		}
 	}
-	bool may_explicit = !is_silent && rule_arrptr_to_sa(cc, true, true);
+	bool may_explicit = !is_silent && rule_arrptr_to_slice(cc, true, true);
 	return sema_cast_error(cc, may_explicit, is_silent);
 }
 
@@ -820,7 +819,7 @@ static bool rule_ulist_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 	return true;
 }
 
-static bool rule_ulist_to_subarray(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_ulist_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base = cc->to->array.base;
 	FOREACH_BEGIN(Expr *expr, cc->expr->const_expr.untyped_list)
@@ -845,10 +844,10 @@ static bool rule_ulist_to_inferred(CastContext *cc, bool is_explicit, bool is_si
 	return true;
 }
 
-static bool rule_sa_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *subarray_base = cc->from_type->array.base->canonical;
-	Type *natural_ptr = type_get_ptr(subarray_base);
+	Type *slice_base = cc->from_type->array.base->canonical;
+	Type *natural_ptr = type_get_ptr(slice_base);
 	switch (match_pointers(cc, natural_ptr, cc->to, is_explicit, is_silent))
 	{
 		case TYPE_SAME:
@@ -863,7 +862,7 @@ static bool rule_sa_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		default:
 			UNREACHABLE
 	}
-	bool may_explicit = !is_silent && rule_sa_to_ptr(cc, true, true);
+	bool may_explicit = !is_silent && rule_slice_to_ptr(cc, true, true);
 	return sema_cast_error(cc, may_explicit, is_silent);
 }
 
@@ -872,7 +871,7 @@ static bool rule_untyped_to_struct(CastContext *cc, bool is_explicit, bool is_si
 	TODO
 }
 
-static bool rule_sa_to_sa(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *from_type = cc->from_type;
 	Type *from_base = from_type->array.base;
@@ -919,7 +918,7 @@ static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 		if (is_silent) return false;
 		RETURN_SEMA_ERROR(cc->expr, "Arrays of different size may not be converted.");
 	}
-	return rule_sa_to_sa(cc, is_explicit, is_silent);
+	return rule_slice_to_slice(cc, is_explicit, is_silent);
 }
 
 static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
@@ -956,19 +955,19 @@ static bool rule_vec_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
-static bool rule_sa_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Expr *expr = cc->expr;
 	MemberIndex size = sema_len_from_const(expr);
 	if (size < 0)
 	{
 		if (is_silent) return false;
-		RETURN_SEMA_ERROR(expr, "Conversions from subarrays to arrays or vectors are only permitted on constant subarrays.");
+		RETURN_SEMA_ERROR(expr, "Conversions from slices to arrays or vectors are only permitted on constant slices.");
 	}
 	if (size == 0)
 	{
 		if (is_silent) return false;
-		RETURN_SEMA_ERROR(expr, "Zero sized subarrays can't be converted to arrays or vectors.");
+		RETURN_SEMA_ERROR(expr, "Zero sized slices can't be converted to arrays or vectors.");
 	}
 	if (cc->to_group == CONV_ARRAY)
 	{
@@ -985,11 +984,11 @@ static bool rule_sa_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
-static bool rule_sa_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_slice_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Expr *expr = cc->expr;
 	// 1. We might infer something above.
-	if (cc->to->type_kind == TYPE_SUBARRAY)
+	if (cc->to->type_kind == TYPE_SLICE)
 	{
 		cast_context_set_from(cc, cc->from_type->array.base);
 		cast_context_set_to(cc, cc->to->array.base);
@@ -1000,12 +999,12 @@ static bool rule_sa_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 	if (size < 0)
 	{
 		if (is_silent) return false;
-		RETURN_SEMA_ERROR(expr, "Conversions from subarrays to arrays or vectors are only permitted on constant subarrays.");
+		RETURN_SEMA_ERROR(expr, "Conversions from slices to arrays or vectors are only permitted on constant slices.");
 	}
 	if (size == 0)
 	{
 		if (is_silent) return false;
-		RETURN_SEMA_ERROR(expr, "Zero sized subarrays can't be converted to arrays or vectors.");
+		RETURN_SEMA_ERROR(expr, "Zero sized slices can't be converted to arrays or vectors.");
 	}
 	cast_context_set_from(cc, type_get_array(cc->from_type->array.base, size));
 	return cast_is_allowed(cc, is_explicit, is_silent);
@@ -1025,10 +1024,10 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	Type *pointee = cc->from_type->pointer;
 	if (type_may_implement_interface(pointee))
 	{
-		Type *interface = cc->to->pointer;
+		Type *interface = cc->to;
 		Decl *pointee_decl = pointee->decl;
 		FOREACH_BEGIN(TypeInfo *interface_type, pointee_decl->interfaces)
-			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_ALLOW_ANY)) return false;
+			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return false;
 			if (interface_type->type == interface) return true;
 		FOREACH_END();
 	}
@@ -1042,15 +1041,15 @@ static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool 
 {
 	if (is_explicit) return true;
 
-	Type *from_interface = cc->from_type->pointer;
-	Type *interface = cc->to->pointer->canonical;
+	Type *from_interface = cc->from_type;
+	Type *interface = cc->to->canonical;
 	if (!sema_resolve_type_decl(cc->context, from_interface)) return false;
 	FOREACH_BEGIN(TypeInfo *parent, from_interface->decl->interfaces)
 		if (parent->type->canonical == interface) return true;
 	FOREACH_END();
 	if (is_silent) return false;
 	RETURN_SEMA_ERROR(cc->expr, "%s is not a parent interface of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
-	                  type_quoted_error_string(cc->to->pointer), type_quoted_error_string(from_interface),
+	                  type_quoted_error_string(cc->to), type_quoted_error_string(from_interface),
 	                  type_to_error_string(cc->to_type));
 }
 
@@ -1308,7 +1307,7 @@ static inline bool insert_runtime_cast(Expr *expr, CastKind kind, Type *type)
 	return true;
 }
 
-static void cast_vaptr_to_sa(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_APTSA, type); }
+static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_APTSA, type); }
 static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_PTRANY, type); }
 static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_STINLINE, type); }
 static void cast_fault_to_anyfault(SemaContext *context, Expr *expr, Type *type) { expr->type = type; };
@@ -1717,7 +1716,7 @@ static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
 	expr->type = type;
 }
 
-static void cast_sa_to_ptr(SemaContext *context, Expr *expr, Type *type)
+static void cast_slice_to_ptr(SemaContext *context, Expr *expr, Type *type)
 {
 	if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
 	{
@@ -1824,7 +1823,7 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 	expr_rewrite_const_bool(expr, type, true);
 }
 
-static void cast_sa_to_bool(SemaContext *context, Expr *expr, Type *type)
+static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
 	if (expr_is_const_initializer(expr))
 	{
@@ -1847,7 +1846,7 @@ static void cast_sa_to_bool(SemaContext *context, Expr *expr, Type *type)
 				break;
 		}
 	}
-	insert_runtime_cast(expr, CAST_SABOOL, type);
+	insert_runtime_cast(expr, CAST_SLBOOL, type);
 }
 
 /**
@@ -1855,7 +1854,7 @@ static void cast_sa_to_bool(SemaContext *context, Expr *expr, Type *type)
  * 1. int[] -> Foo[] where Foo is a distinct or typedef or pointer. Then we can just redefine
  * 2. The second case is something like int[] -> float[] for this case we need to make a bitcast using CAST_SASA.
  */
-static void cast_sa_to_sa(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 {
 	Type *to_type_base = type_flatten(type_flatten(to_type)->array.base);
 	Type *from_type_base = type_flatten(type_flatten(expr->type)->array.base);
@@ -1864,10 +1863,10 @@ static void cast_sa_to_sa(SemaContext *context, Expr *expr, Type *to_type)
 		expr->type = to_type;
 		return;
 	}
-	insert_runtime_cast(expr, CAST_SASA, to_type);
+	insert_runtime_cast(expr, CAST_SLSL, to_type);
 }
 
-static void cast_sa_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
 {
 	if (!expr_is_const(expr))
 	{
@@ -1882,7 +1881,7 @@ static void cast_sa_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
 			}
 			case EXPR_SLICE:
 			{
-				insert_runtime_cast(expr, CAST_SAARR, to_type);
+				insert_runtime_cast(expr, CAST_SLARR, to_type);
 				return;
 			}
 			default:
@@ -1896,7 +1895,7 @@ static void cast_sa_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
 	return;
 }
 
-static void cast_sa_to_infer(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_slice_to_infer(SemaContext *context, Expr *expr, Type *to_type)
 {
 	ArraySize len = sema_len_from_const(expr);
 	assert(len > 0);
@@ -1986,10 +1985,10 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define PT2IN &cast_ptr_to_int           
 #define PT2PT &cast_ptr_to_ptr           
 #define PT2AY &cast_ptr_to_any           
-#define AP2SA &cast_vaptr_to_sa          
-#define SA2BO &cast_sa_to_bool           
-#define SA2PT &cast_sa_to_ptr            
-#define SA2SA &cast_sa_to_sa             
+#define AP2SL &cast_vaptr_to_slice
+#define SL2BO &cast_slice_to_bool
+#define SL2PT &cast_slice_to_ptr
+#define SL2SL &cast_slice_to_slice
 #define VC2AR &cast_vec_to_arr           
 #define VC2VC &cast_vec_to_vec           
 #define AR2VC &cast_arr_to_vec           
@@ -2005,9 +2004,9 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define TI2PT &cast_typeid_to_ptr        
 #define AF2BO &cast_anyfault_to_bool     
 #define AF2FA &cast_anyfault_to_fault    
-#define SA2VA &cast_sa_to_vecarr         
+#define SL2VA &cast_slice_to_vecarr
 #define XX2VO &cast_all_to_void          
-#define SA2FE &cast_sa_to_infer
+#define SL2FE &cast_slice_to_infer
 #define VA2FE &cast_vecarr_to_infer
 #define PT2FE &cast_ptr_to_infer
 #define UL2XX &cast_untyped_list_to_other
@@ -2025,20 +2024,20 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RARBS &rule_arr_to_bits           /* Char[*] -> bits (explicit + base match)                                                           */
 #define RINEN &rule_int_to_enum           /* Int -> enum (explicit, range check const)                                                         */
 #define RPTPT &rule_ptr_to_ptr            /* Ptr -> ptr (explicit or ptr match)                                                                */
-#define RAPSA &rule_arrptr_to_sa          /* Arrptr -> Subarray (explicit flattens distinct, pointer match)                                    */
-#define RSAPT &rule_sa_to_ptr             /* Subarray -> ptr (explicit flatens distinct, pointer match)                                        */
-#define RSASA &rule_sa_to_sa              /* Subarray -> subarray (explicit same size, align safe, match base otherwise) void* <-> int* match. */
-#define RSAVA &rule_sa_to_vecarr          /* Subarray -> vec/arr (if const, convert to vec/arr, check)                                         */
+#define RAPSL &rule_arrptr_to_slice       /* Arrptr -> Slice (explicit flattens distinct, pointer match)                                    */
+#define RSLPT &rule_slice_to_ptr          /* Slice -> ptr (explicit flatens distinct, pointer match)                                        */
+#define RSLSL &rule_slice_to_slice        /* Slice -> slice (explicit same size, align safe, match base otherwise) void* <-> int* match. */
+#define RSLVA &rule_slice_to_vecarr       /* Slice -> vec/arr (if const, convert to vec/arr, check)                                         */
 #define RVCVC &rule_vec_to_vec            /* Vec -> vec (as underlying type)                                                                   */
 #define RBSAR &rule_bits_to_arr           /* Bits -> arr (explicit + base match)                                                               */
 #define RBSIN &rule_bits_to_int           /* Bits -> int (explicit + size match)                                                               */
 #define RDIXX &rule_from_distinct         /* Distinct -> internal (explicit or inline)                                                         */
 #define RARVC &rule_arr_to_vec            /* Arr -> Vec (len matches, valid elements, flatten if explicit)                                     */
 #define RVCAR &rule_vec_to_arr            /* Vec -> Arr (len matches, if base can be converted, flatten if explicit)                           */
-#define RARAR &rule_arr_to_arr            /* Array to array conversion (like subarray, but len must match)                                     */
+#define RARAR &rule_arr_to_arr            /* Array to array conversion (like slice, but len must match)                                        */
 #define RSTST &rule_struct_to_struct      /* Struct -> struct (if inline)                                                                      */
 #define RSTDI &rule_to_struct_to_distinct /* Struct -> inline (struct inline = distinct, distinct inline = struct if explicit flatten)         */
-#define RSAFE &rule_sa_to_infer           /* Subarray -> infer (only if subarray is constant or can infer)                                     */
+#define RSLFE &rule_slice_to_infer        /* Slice -> infer (only if slice is constant or can infer)                                           */
 #define RVAFE &rule_vecarr_to_infer       /* Vec/arr -> infer (if base matches)                                                                */
 #define RPTFE &rule_ptr_to_infer          /* Ptr -> infer (if pointee may infer)                                                               */
 #define RPTIF &rule_ptr_to_interface      /* Ptr -> Interface if the pointee implements it                                                     */
@@ -2046,17 +2045,17 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RULST &rule_ulist_to_struct       /* Untyped list -> bitstruct or union                                                                */
 #define RULAR &rule_ulist_to_vecarr       /* Untyped list -> vector or array                                                                   */
 #define RULFE &rule_ulist_to_inferred     /* Untyped list -> inferred vector or array                                                          */
-#define RULSA &rule_ulist_to_subarray     /* Untyped list -> subarray                                                                          */
+#define RULSL &rule_ulist_to_slice        /* Untyped list -> slice                                                                          */
 
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
-// void, wildc,  bool,   int, float,   ptr,  sarr,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, typid, afaul, voidp, arrpt, infer, ulist (to)
+// void, wildc,  bool,   int, float,   ptr, slice,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, typid, afaul, voidp, arrpt, infer, ulist (to)
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
  {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__, _NO__}, // WILDCARD
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
  {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
  {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
- {REXPL, _NO__, REXPL, _NO__, _NO__, RSAPT, RSASA, RSAVA, _NO__, RXXDI, RSAVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSAPT, RSAFE, _NO__}, // SARRAY
+ {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
  {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
  {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
@@ -2070,36 +2069,36 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSA, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
- {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSA, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST
+ {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSL, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST
 };
 
 CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
-//void,  wildcd, bool, int,   float, ptr,   sarr,  vec,   bitst, dist,  array, struct,union, any,   infc,  fault, enum,  typeid,anyfa, vptr,  aptr,  infer, ulist (to)
- {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
- {XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0,     XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, 0,     0     }, // WILDCARD
- {XX2VO, 0,     0,     BO2IN, BO2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
- {XX2VO, 0,     IN2BO, IN2IN, IN2FP, IN2PT, 0,     EX2VC, IA2BS, 0,     0,     0,     0,     0,     0,     0,     IN2EN, 0,     0,     IN2PT, IN2PT, 0,     0     }, // INT
- {XX2VO, 0,     FP2BO, FP2IN, FP2FP, 0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
- {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE, 0     }, // PTR
- {XX2VO, 0,     SA2BO, 0,     0,     SA2PT, SA2SA, SA2VA, 0,     0,     SA2VA, 0,     0,     0,     0,     0,     0,     0,     0,     SA2PT, SA2PT, SA2FE, 0     }, // SARRAY
- {XX2VO, 0,     0,     0,     0,     0,     0,     VC2VC, 0,     0,     VC2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE, 0     }, // VECTOR
- {XX2VO, 0,     0,     BS2IA, 0,     0,     0,     0,     0,     0,     BS2IA, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
- {0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT
- {XX2VO, 0,     0,     0,     0,     0,     0,     AR2VC, IA2BS, 0,     AR2AR, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     VA2FE, 0     }, // ARRAY
- {XX2VO, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0,     ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, 0,     0     }, // STRUCT
- {XX2VO, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
- {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0,     0     }, // ANY
- {XX2VO, 0,     AY2BO, 0,     0,     AY2PT, 0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0,     AY2PT, AY2PT, 0,     0     }, // INTERFACE
- {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     FA2AF, FA2PT, FA2PT, 0,     0     }, // FAULT
- {XX2VO, 0,     0,     EN2IN, 0,     0,     0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // ENUM
- {XX2VO, 0,     TI2BO, TI2IN, 0,     TI2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     TI2PT, TI2PT, 0,     0     }, // TYPEID
- {XX2VO, 0,     AF2BO, FA2IN, 0,     FA2IN, 0,     EX2VC, 0,     0,     0,     0,     0,     0,     0,     AF2FA, 0,     0,     0,     FA2IN, FA2IN, 0,     0     }, // ANYFAULT
- {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, 0,     EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     0,     PT2PT, 0,     0     }, // VOIDPTR
- {XX2VO, 0,     PT2BO, PT2IN, 0,     PT2PT, AP2SA, EX2VC, 0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     PT2PT, PT2PT, PT2FE, 0     }, // ARRAYPTR
- {    0, 0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
- {    0, 0,     0,     0,     0,     0,     UL2XX, UL2XX, UL2XX, 0, UL2XX, UL2XX,     0,     0,     0,     0,     0,     0,     0,     0,     0,     UL2XX, 0     }, // UNTYPED
+//void,  wildcd, bool,    int, float,   ptr, slice,  vec,  bitst, dist,  array, struct,union,   any,  infc, fault,  enum,typeid, anyfa,  vptr,  aptr, infer, ulist (to)
+ {0,          0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
+ {XX2XX,      0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0,     0     }, // WILDCARD
+ {XX2VO,      0,     0, BO2IN, BO2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
+ {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0,     0, IN2EN,     0,     0, IN2PT, IN2PT,     0,     0     }, // INT
+ {XX2VO,      0, FP2BO, FP2IN, FP2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
+ {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
+ {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
+ {XX2VO,      0,     0,     0,     0,     0,     0, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, VA2FE,     0     }, // VECTOR
+ {XX2VO,      0,     0, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
+ {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT
+ {XX2VO,      0,     0,     0,     0,     0,     0, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, VA2FE,     0     }, // ARRAY
+ {XX2VO,      0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0,     0     }, // STRUCT
+ {XX2VO,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
+ {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // ANY
+ {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // INTERFACE
+ {XX2VO,      0, AF2BO, FA2IN,     0, FA2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, FA2AF, FA2PT, FA2PT,     0,     0     }, // FAULT
+ {XX2VO,      0,     0, EN2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // ENUM
+ {XX2VO,      0, TI2BO, TI2IN,     0, TI2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, TI2PT, TI2PT,     0,     0     }, // TYPEID
+ {XX2VO,      0, AF2BO, FA2IN,     0, FA2IN,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     AF2FA, 0,     0,     0, FA2IN, FA2IN,     0,     0     }, // ANYFAULT
+ {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     0, PT2PT,     0,     0     }, // VOIDPTR
+ {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT, AP2SL, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // ARRAYPTR
+ {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
+ {    0,      0,     0,     0,     0,     0, UL2XX, UL2XX, UL2XX,     0, UL2XX, UL2XX,     0,     0,     0,     0,     0,     0,     0,     0,     0, UL2XX,     0     }, // UNTYPED
 };
 
 static ConvGroup group_from_type[TYPE_LAST + 1] = {
@@ -2121,8 +2120,8 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_F32]              = CONV_FLOAT,
 	[TYPE_F64]              = CONV_FLOAT,
 	[TYPE_F128]             = CONV_FLOAT,
-	[TYPE_ANY]              = CONV_NO,
-	[TYPE_INTERFACE]         = CONV_NO,
+	[TYPE_ANY]              = CONV_ANY,
+	[TYPE_INTERFACE]        = CONV_INTERFACE,
 	[TYPE_ANYFAULT]         = CONV_ANYFAULT,
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
@@ -2135,9 +2134,7 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEDEF]          = CONV_NO,
 	[TYPE_DISTINCT]         = CONV_DISTINCT,
 	[TYPE_ARRAY]            = CONV_ARRAY,
-	[TYPE_INFPTR]           = CONV_INTERFACE,
-	[TYPE_ANYPTR]           = CONV_ANY,
-	[TYPE_SUBARRAY]         = CONV_SUBARRAY,
+	[TYPE_SLICE]            = CONV_SLICE,
 	[TYPE_FLEXIBLE_ARRAY]   = CONV_NO,
 	[TYPE_INFERRED_ARRAY]   = CONV_NO,
 	[TYPE_VECTOR]           = CONV_VECTOR,

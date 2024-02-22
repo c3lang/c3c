@@ -7,10 +7,10 @@ const FOO @private = ~(uint)(0);
 
 /* #expect: constants.ll
 
-@constants.AA = protected unnamed_addr constant i8 1, align 1, !dbg !0
+@constants.AA = internal unnamed_addr constant i8 1, align 1, !dbg !0
 @constants.BB = local_unnamed_addr constant i8 -56, align 1, !dbg !4
-@constants.CC = protected unnamed_addr constant i32 -1, align 4, !dbg !6
-@constants.FOO = protected unnamed_addr constant i32 -1, align 4, !dbg !9
+@constants.CC = internal unnamed_addr constant i32 -1, align 4, !dbg !6
+@constants.FOO = internal unnamed_addr constant i32 -1, align 4, !dbg !9
 
 !llvm.module.flags = !{!11, !12, !13, !14}
 !llvm.dbg.cu = !{!15}

@@ -82,14 +82,12 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, uns
 Expr *sema_ct_eval_expr(SemaContext *c, bool is_type, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 bool sema_bit_assignment_check(Expr *right, Decl *member);
-int sema_check_comp_time_bool(SemaContext *context, Expr *expr);
+CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 bool sema_expr_check_assign(SemaContext *c, Expr *expr);
 bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature);
 ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs, ConstInitializer *rhs, BinaryOp op);
 void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer);
-
 MemberIndex sema_len_from_const(Expr *expr);
-
 void cast_promote_vararg(SemaContext *context, Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
@@ -99,7 +97,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
@@ -114,3 +112,28 @@ INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSiz
 	*result = type_alloca_alignment(type);
 	return true;
 }
+
+INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
+{
+	FOREACH_BEGIN(Attr *attr, attrs)
+		if (attr->attr_kind == attr_type) return attr;
+	FOREACH_END();
+	return NULL;
+}
+
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
+{
+	if (!decl->is_deprecated) return;
+	// Prevent multiple reports
+	decl->is_deprecated = false;
+	Attr *attr = attr_find_kind(decl->attributes, ATTRIBUTE_DEPRECATED);
+	assert(attr);
+	if (attr->exprs)
+	{
+		const char *comment_string = attr->exprs[0]->const_expr.bytes.ptr;
+		sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
+		return;
+	}
+	sema_warning_at(span, "'%s' is deprecated.", decl->name);
+}
+

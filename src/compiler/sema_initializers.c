@@ -496,7 +496,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_VECTOR ||
-		flattened->type_kind == TYPE_SUBARRAY ||
+		flattened->type_kind == TYPE_SLICE ||
 		flattened->type_kind == TYPE_VECTOR)
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr);
@@ -691,7 +691,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
 			return sema_expr_analyse_initializer(context, to, flattened, expr);
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		{
 			if (is_zero_init)
 			{
@@ -1126,7 +1126,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 					*may_be_array = true;
 					return (MemberIndex)type->array.len;
 				}
-				if (type->type_kind == TYPE_SUBARRAY)
+				if (type->type_kind == TYPE_SLICE)
 				{
 					*may_be_array = true;
 					return 0;

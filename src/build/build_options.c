@@ -105,6 +105,7 @@ static void usage(void)
 	OUTPUT("  -D <name>                  - Add feature flag <name>.");
 	OUTPUT("  -U <name>                  - Remove feature flag <name>.");
 	OUTPUT("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
+	OUTPUT("  --output-dir <dir>        - Override general output directory.");
 	OUTPUT("  --build-dir <dir>          - Override build output directory.");
 	OUTPUT("  --obj-out <dir>            - Override object file output directory.");
 	OUTPUT("  --script-dir <dir>         - Override the base directory for $exec.");
@@ -128,9 +129,7 @@ static void usage(void)
 	OUTPUT("  -l <library>               - Link with the library provided.");
 	OUTPUT("  -L <library dir>           - Append the directory to the linker search paths.");
 	OUTPUT("  -z <argument>              - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --system-linker=<yes|no>   - Use the system linker (default: no for cross compilation, yes otherwise). [deprecated]");
 	OUTPUT("  --cc <path>                - Set C compiler (for C files in projects and use as system linker).");
-	OUTPUT("  --linker <path>            - Use the linker in the given path. [deprecated]");
 	OUTPUT("  --linker=<option> [<path>] - Linker: builtin, cc, custom (default is 'cc'), 'custom' requires a path.");
 	OUTPUT("");
 	OUTPUT("  --use-stdlib=<yes|no>      - Include the standard library (default: yes).");
@@ -693,31 +692,6 @@ static void parse_option(BuildOptions *options)
 				}
 				return;
 			}
-			if ((argopt = match_argopt("system-linker")))
-			{
-				puts("NOTE: 'system-linker' is deprecated, please use --linker instead.");
-				options->custom_linker_path = NULL;
-				switch ((SystemLinker)parse_multi_option(argopt, 2, on_off))
-				{
-					case SYSTEM_LINKER_ON:
-						options->linker_type = LINKER_TYPE_CC;
-						break;
-					case SYSTEM_LINKER_OFF:
-						options->linker_type = LINKER_TYPE_BUILTIN;
-						break;
-					default:
-						UNREACHABLE
-				}
-				return;
-			}
-			if (match_longopt("linker"))
-			{
-				if (at_end() || next_is_opt()) error_exit("error: --linker expects a valid linker name.");
-				options->linker_type = LINKER_TYPE_CUSTOM;
-				options->custom_linker_path = next_arg();
-				puts("NOTE: 'linker' is deprecated, please use --linker=custom <path> instead.");
-				return;
-			}
 			if ((argopt = match_argopt("link-libc")))
 			{
 				options->link_libc = (LinkLibc)parse_multi_option(argopt, 2, on_off);
@@ -967,6 +941,12 @@ static void parse_option(BuildOptions *options)
 				options->macos.min_version = next_arg();
 				return;
 			}
+			if (match_longopt("output-dir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --output-dir needs a directory.");
+				options->output_dir = next_arg();
+				return;
+			}
 			if (match_longopt("build-dir"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --build-dir needs a directory.");
@@ -1132,6 +1112,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
+		.output_dir = NULL,
 		.script_dir = NULL,
 
 	};

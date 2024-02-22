@@ -316,6 +316,15 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
+static void create_output_dir(const char *dir)
+{
+	if (!file_exists(dir))
+	{
+		if (!dir_make(dir)) error_exit("Failed to create output directory %s.", dir);
+	}
+	if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
+}
+
 void compiler_compile(void)
 {
 	sema_analysis_run();
@@ -498,11 +507,16 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
-		if (active_target.output_dir) output_exe = file_append_path(active_target.output_dir, output_exe);
+		if (active_target.output_dir)
+		{
+			create_output_dir(active_target.output_dir);
+			output_exe = file_append_path(active_target.output_dir, output_exe);
+		}
 		if (file_is_dir(output_exe))
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
 		}
+
 		bool system_linker_available = link_libc() && platform_target.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && active_target.arch_os_target == default_target;
 		switch (active_target.linker_type)
@@ -604,7 +618,11 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
-		if (active_target.output_dir) output_static = file_append_path(active_target.output_dir, output_static);
+		if (active_target.output_dir)
+		{
+			create_output_dir(active_target.output_dir);
+			output_static = file_append_path(active_target.output_dir, output_static);
+		}
 		if (file_is_dir(output_static))
 		{
 			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -620,7 +638,11 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
-		if (active_target.output_dir) output_dynamic = file_append_path(active_target.output_dir, output_dynamic);
+		if (active_target.output_dir)
+		{
+			create_output_dir(active_target.output_dir);
+			output_dynamic = file_append_path(active_target.output_dir, output_dynamic);
+		}
 		if (file_is_dir(output_dynamic))
 		{
 			error_exit("Cannot create a dynamic library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -784,7 +806,7 @@ void print_syntax(BuildOptions *options)
 			if (name[0] == '$' || (name[0] >= 'a' && name[0] <= 'z'))
 			{
 				if (name[1] == '$' || name[1] == '\0') continue;
-				printf("%3d %s\n", index++, name);
+				printf("%s\n", name);
 			}
 		}
 	}
@@ -802,33 +824,32 @@ void print_syntax(BuildOptions *options)
 			{
 				continue;
 			}
-			printf("%2d %s\n", index++, name);
+			printf("%s\n", name);
 		}
 	}
 	if (options->print_attributes)
 	{
 		for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 		{
-			printf("%2d %s\n", i + 1, attribute_list[i]);
+			printf("%s\n", attribute_list[i]);
 		}
 	}
 	if (options->print_builtins)
 	{
 		for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 		{
-			printf("%3d $$%s\n", i + 1, builtin_list[i]);
+			printf("$$%s\n", builtin_list[i]);
 		}
-		puts("---");
 		for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 		{
-			printf("%2d $$%s\n", i + 1, builtin_defines[i]);
+			printf("$$%s\n", builtin_defines[i]);
 		}
 	}
 	if (options->print_type_properties)
 	{
 		for (int i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
 		{
-			printf("%2d .%s\n", i + 1, type_property_list[i]);
+			printf("%s\n", type_property_list[i]);
 		}
 	}
 	if (options->print_project_properties)
@@ -838,14 +859,14 @@ void print_syntax(BuildOptions *options)
 		puts("------------------");
 		for (int i = 0; i < project_default_keys_count; i++)
 		{
-			printf("%2d %-*s%s\n", i + 1, 35, project_default_keys[i][0], project_default_keys[i][1]);
+			printf("%-*s%s\n", 35, project_default_keys[i][0], project_default_keys[i][1]);
 		}
 		puts("");
 		puts("Target properties");
 		puts("-----------------");
 		for (int i = 0; i < project_target_keys_count; i++)
 		{
-			printf("%2d %-*s%s\n", i + 1, 35, project_target_keys[i][0], project_target_keys[i][1]);
+			printf("%-*s%s\n", 35, project_target_keys[i][0], project_target_keys[i][1]);
 		}
 		puts("");
 	}
@@ -985,6 +1006,7 @@ void compile()
 	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_int);
 	setup_int_define("C_LONG_SIZE", platform_target.width_c_long, type_int);
 	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long, type_int);
+	setup_int_define("REGISTER_SIZE", platform_target.width_register, type_int);
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);

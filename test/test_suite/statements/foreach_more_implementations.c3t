@@ -49,14 +49,14 @@ entry:
   %.anon1 = alloca i64, align 8
   %ref = alloca ptr, align 8
   %element = alloca i64, align 8
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
   %.anon4 = alloca i64, align 8
   %vector5 = alloca %Vector, align 8
   %.anon6 = alloca i64, align 8
   %i = alloca i32, align 4
   %element10 = alloca i64, align 8
-  %varargslots13 = alloca [1 x %"any*"], align 16
+  %varargslots13 = alloca [1 x %any], align 16
   %retparam14 = alloca i64, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
   store i64 2, ptr %v, align 8
@@ -83,9 +83,9 @@ loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds [4 x i8], ptr %4, i64 %5
   store ptr %ptroffset, ptr %ref, align 8
   %6 = load ptr, ptr %ref, align 8
-  %7 = insertvalue %"any*" undef, ptr %6, 0
-  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %8, ptr %varargslots, align 16
+  %7 = insertvalue %any undef, ptr %6, 0
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %8, ptr %varargslots, align 16
   %9 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 3, ptr %varargslots, i64 1)
   %10 = load ptr, ptr %ref, align 8
   %11 = load i32, ptr %10, align 4
@@ -118,9 +118,9 @@ loop.body9:                                       ; preds = %loop.cond7
   %ptroffset12 = getelementptr inbounds [4 x i8], ptr %17, i64 %18
   %19 = load i32, ptr %ptroffset12, align 4
   store i32 %19, ptr %i, align 4
-  %20 = insertvalue %"any*" undef, ptr %i, 0
-  %21 = insertvalue %"any*" %20, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %21, ptr %varargslots13, align 16
+  %20 = insertvalue %any undef, ptr %i, 0
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %21, ptr %varargslots13, align 16
   %22 = call i64 @std.io.printf(ptr %retparam14, ptr @.str.1, i64 3, ptr %varargslots13, i64 1)
   %23 = load i64, ptr %.anon6, align 8
   %add15 = add i64 %23, 1

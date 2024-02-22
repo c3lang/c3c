@@ -347,6 +347,7 @@ typedef struct
 	unsigned align_max_tls;
 	unsigned align_large_array;
 	unsigned width_pointer;
+	unsigned width_register;
 	unsigned width_c_short;
 	unsigned width_c_int;
 	unsigned width_c_long;

@@ -92,15 +92,13 @@ fault MatrixError
 
 def Complexf = Complex(<float>);
 def Complex = Complex(<double>);
-def complexf_identity = complex::identity(<float>);
-def complex_identity = complex::identity(<double>);
+def COMPLEX_IDENTITY = complex::IDENTITY(<double>);
+def COMPLEXF_IDENTITY = complex::IDENTITY(<float>);
 
 def Quaternionf = Quaternion(<float>);
 def Quaternion = Quaternion(<double>);
 def QUATERNION_IDENTITY = quaternion::IDENTITY(<double>);
 def QUATERNIONF_IDENTITY = quaternion::IDENTITY(<float>);
-def quaternion_identity = quaternion::identity(<double>);
-def quaternionf_identity = quaternion::identity(<float>);
 
 def Matrix2f = Matrix2x2(<float>);
 def Matrix2 = Matrix2x2(<double>);

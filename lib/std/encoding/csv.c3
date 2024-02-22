@@ -3,22 +3,22 @@ import std::io;
 
 struct CsvReader
 {
-	InStream* stream;
+	InStream stream;
 	String separator;
 }
 
-fn void CsvReader.init(&self, InStream* stream, String separator = ",")
+fn void CsvReader.init(&self, InStream stream, String separator = ",")
 {
 	self.stream = stream;
 	self.separator = separator;
 }
 
-fn String[]! CsvReader.read_new_row(self, Allocator* allocator = allocator::heap())
+fn String[]! CsvReader.read_new_row(self, Allocator allocator = allocator::heap())
 {
 	return self.read_new_row_with_allocator(allocator::temp()) @inline;
 }
 
-fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator* allocator = allocator::heap())
+fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
@@ -45,7 +45,7 @@ macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 	String sep = self.separator;
 	while (rows--)
 	{
-		@stack_mem(512; Allocator* mem)
+		@stack_mem(512; Allocator mem)
 		{
 			String[] parts;
 			@pool()

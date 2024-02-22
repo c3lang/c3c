@@ -19,4 +19,4 @@ Connection[3] link @private
 @.str = private unnamed_addr constant [6 x i8] c"link1\00", align 1
 @.str.1 = private unnamed_addr constant [6 x i8] c"link2\00", align 1
 @.str.2 = private unnamed_addr constant [6 x i8] c"link3\00", align 1
-@test.link = protected unnamed_addr global [3 x %Connection] [%Connection { i64 1, ptr @.str, i64 10 }, %Connection { i64 2, ptr @.str.1, i64 20 }, %Connection { i64 3, ptr @.str.2, i64 30 }], align 16
+@test.link = internal unnamed_addr global [3 x %Connection] [%Connection { i64 1, ptr @.str, i64 10 }, %Connection { i64 2, ptr @.str.1, i64 20 }, %Connection { i64 3, ptr @.str.2, i64 30 }], align 16

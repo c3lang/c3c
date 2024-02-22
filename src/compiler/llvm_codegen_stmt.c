@@ -17,6 +17,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 	// Emit the statement chain
 	llvm_emit_statement_chain(c, ast->compound_stmt.first_stmt);
 
+	// Pop lexical scope.
 	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
@@ -39,8 +40,12 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			llvm_value_set_decl(c, value, decl);
 			return;
 		}
+
+		// Push the builder
 		void *builder = c->builder;
 		c->builder = c->global_builder;
+
+		// Emit the global.
 		decl->backend_ref = llvm_add_global(c, "temp", var_type, decl->alignment);
 		if (IS_OPTIONAL(decl))
 		{
@@ -50,13 +55,18 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
+
+		// Pop the builder
 		c->builder = builder;
 		llvm_value_set_decl(c, value, decl);
 		return;
 	}
+
+	// Create a local alloca
 	assert(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
-	Expr *init = decl->var.init_expr;
+
+	// Create optional storage
 	bool is_optional = IS_OPTIONAL(decl);
 	if (is_optional)
 	{
@@ -67,88 +77,88 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
+	// Grab the init expression
+	Expr *init = decl->var.init_expr;
 	if (init)
 	{
 		llvm_value_set_decl_address(c, value, decl);
 		value->kind = BE_ADDRESS;
 		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.optional_ref);
 		if (!is_optional) *value = res;
+		return;
 	}
-	else if (decl->var.no_init)
+
+	// If the variable has a no-init, then set the value to undef.
+	if (decl->var.no_init)
 	{
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
-		if (decl->var.optional_ref)
+		if (is_optional)
 		{
 			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_anyfault), type_anyfault);
 		}
+		return;
 	}
-	else
-	{
-		if (decl->var.optional_ref)
-		{
-			llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyfault);
-		}
 
-		Type *type = type_lowering(decl->type);
-		// Normal case, zero init.
-		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
-		{
-			LLVMValueRef zero = llvm_get_zero(c, var_type);
-			llvm_value_set(value, zero, type);
-			llvm_store_decl(c, decl, value);
-		}
-		else
-		{
-			llvm_value_set_decl_address(c, value, decl);
-			value->kind = BE_ADDRESS;
-			llvm_store_zero(c, value);
-			llvm_value_set(value, llvm_get_zero(c, type), type);
-		}
+
+	// Normal case, zero init.
+	llvm_value_set_decl_address(c, value, decl);
+	if (is_optional)
+	{
+		llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyfault);
+
+		// Prevent accidental optional folding in "llvm_store_zero"!
+		value->kind = BE_ADDRESS;
 	}
+
+	llvm_store_zero(c, value);
+	llvm_value_set(value, llvm_get_zero(c, var_type), var_type);
 }
 
-
-
-static void llvm_emit_decl_expr_list(GenContext *context, BEValue *be_value, Expr *expr, bool bool_cast)
+/**
+ * Emit the 'cond' in something like: "while (int a = foo(), int bar = a * a, bar > baz)"
+ * But also the switch value in switches.
+ *
+ * @param c the context to use
+ * @param be_value the value to return the value of the cond
+ * @param expr the expression of type EXPR_COND
+ * @param bool_cast true if in while/for/etc false if it is a switch
+ */
+static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bool_cast)
 {
 	assert(expr->expr_kind == EXPR_COND);
 	ByteSize size = vec_size(expr->cond_expr);
+
+	// First emit everything up to the last element.
 	ByteSize last_index = size - 1;
 	for (ByteSize i = 0; i < last_index; i++)
 	{
 		BEValue value;
-		llvm_emit_expr(context, &value, expr->cond_expr[i]);
+		llvm_emit_expr(c, &value, expr->cond_expr[i]);
 	}
+
+	// Emit the last element.
 	Expr *last = expr->cond_expr[last_index];
-	Type *type = last->type;
-	llvm_emit_expr(context, be_value, last);
+	llvm_emit_expr(c, be_value, last);
+
+	// If it is a declaration, set it to the address of the variable.
 	if (last->expr_kind == EXPR_DECL)
 	{
-		type = typeget(last->decl_expr->var.type_info);
-
-		LLVMValueRef decl_value = llvm_get_ref(context, last->decl_expr);
-		if (bool_cast && last->decl_expr->var.unwrap)
-		{
-			llvm_value_set(be_value, LLVMConstInt(context->bool_type, 1, false), type_bool);
-			return;
-		}
-		llvm_value_set_address_abi_aligned(be_value, decl_value, type);
+		llvm_value_set_decl_address(c, be_value, last->decl_expr);
 	}
-	if (bool_cast)
+
+	// Cast the result to bool if needed.
+	if (bool_cast && be_value->type != type_bool)
 	{
-		type = type_lowering(type);
-		if (type->type_kind != TYPE_BOOL)
-		{
-			CastKind cast = cast_to_bool_kind(type);
-			llvm_emit_cast(context, cast, last, be_value, type_bool, type);
-		}
+		Type *type = be_value->type;
+		CastKind cast = cast_to_bool_kind(type);
+		llvm_emit_cast(c, cast, last, be_value, type_bool, type);
 	}
 }
 
 void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
 {
 	llvm_emit_br(context, block);
-	LLVMBasicBlockRef post_jump_block = llvm_basic_block_new(context, "jmp");
+	LLVMBasicBlockRef post_jump_block = llvm_basic_block_new(context, "unreachable");
 	llvm_emit_block(context, post_jump_block);
 }
 
@@ -198,14 +208,17 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 	}
 
-	// Are we in an expression block?
-	if (!has_return_value)
+	if (llvm_get_current_block_if_in_use(c))
 	{
-		llvm_emit_return_implicit(c);
-	}
-	else
-	{
-		llvm_emit_return_abi(c, &return_value, NULL);
+		// Are we in an expression block?
+		if (!has_return_value)
+		{
+			llvm_emit_return_implicit(c);
+		}
+		else
+		{
+			llvm_emit_return_abi(c, &return_value, NULL);
+		}
 	}
 	c->current_block = NULL;
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
@@ -323,7 +336,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 
 	if (then_body->ast_kind == AST_IF_CATCH_SWITCH_STMT)
 	{
-		llvm_emit_decl_expr_list(c, &be_value, cond, false);
+		llvm_emit_cond(c, &be_value, cond, false);
 		llvm_value_rvalue(c, &be_value);
 		BEValue comp;
 		llvm_emit_int_comp_zero(c, &comp, &be_value, BINARYOP_NE);
@@ -335,7 +348,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 		goto EMIT_ELSE;
 	}
 
-	llvm_emit_decl_expr_list(c, &be_value, cond, true);
+	llvm_emit_cond(c, &be_value, cond, true);
 
 	llvm_value_rvalue(c, &be_value);
 
@@ -516,7 +529,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		assert(cond);
 		if (cond->expr_kind == EXPR_COND)
 		{
-			llvm_emit_decl_expr_list(c, &be_value, cond, true);
+			llvm_emit_cond(c, &be_value, cond, true);
 		}
 		else
 		{
@@ -585,8 +598,11 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			// The inc block might also be the end of the body block.
 			llvm_emit_block(c, inc_block);
 		}
-		BEValue dummy;
-		llvm_emit_expr(c, &dummy, incr ? exprptr(incr) : NULL);
+		if (llvm_get_current_block_if_in_use(c))
+		{
+			BEValue dummy;
+			llvm_emit_expr(c, &dummy, incr ? exprptr(incr) : NULL);
+		}
 	}
 
 	// Loop back.
@@ -886,7 +902,7 @@ void llvm_emit_switch(GenContext *c, Ast *ast)
 	if (expr)
 	{
 		// Regular switch
-		llvm_emit_decl_expr_list(c, &switch_value, expr, false);
+		llvm_emit_cond(c, &switch_value, expr, false);
 	}
 	else
 	{
@@ -998,7 +1014,7 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 		llvm_value_rvalue(c, &value);
 		assert(value.kind == BE_BOOLEAN);
 		EMIT_LOC(c, expr);
-		llvm_emit_assume_raw(c, value.value);
+		llvm_emit_assume_true(c, &value);
 	}
 }
 
@@ -1348,8 +1364,8 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	if (panicf)
 	{
 		unsigned elements = vec_size(varargs);
-		Type *any_subarray = type_get_subarray(type_anyptr);
-		Type *any_array = type_get_array(type_anyptr, elements);
+		Type *any_slice = type_get_slice(type_any);
+		Type *any_array = type_get_array(type_any, elements);
 		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
 		AlignSize alignment = type_alloca_alignment(any_array);
 		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
@@ -1365,10 +1381,10 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 			llvm_store_to_ptr_aligned(c, slot, &varargs[i], store_alignment);
 		}
 		BEValue value;
-		llvm_value_aggregate_two(c, &value, any_subarray, array_ref, llvm_const_int(c, type_usz, elements));
+		llvm_value_aggregate_two(c, &value, any_slice, array_ref, llvm_const_int(c, type_usz, elements));
 		LLVMSetValueName2(value.value, temp_name, 6);
 
-		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, any_subarray);
+		llvm_emit_parameter(c, actual_args, &count, abi_args[4], &value, any_slice);
 
 		BEValue res;
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);
@@ -1399,8 +1415,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");
 	LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "checkok");
-	assert(llvm_value_is_bool(value));
-	value->value = llvm_emit_expect_false_raw(c, value->value);
+	value->value = llvm_emit_expect_false(c, value);
 	llvm_emit_cond_br(c, value, panic_block, ok_block);
 
 	llvm_emit_block(c, panic_block);

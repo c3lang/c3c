@@ -4,8 +4,8 @@ import libc;
 
 enum Foo : uint (int val, char* testme)
 {
-	A(123, "Number A"),
-	B(333, "Number B"),
+	A = { 123, "Number A" },
+	B = { 333, "Number B" },
 }
 
 fn void main()

@@ -13,7 +13,7 @@ macro deep_print(a)
     var $Type = $typeof(a);
     $switch ($Type.kindof)
         $case ARRAY:
-        $case SUBARRAY:
+        $case SLICE:
             io::print("[");
             foreach (i, x : a)
             {

@@ -6,7 +6,7 @@ const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
 interface Printable
 {
-	fn String to_new_string(Allocator *allocator) @optional;
+	fn String to_new_string(Allocator allocator) @optional;
 	fn usz! to_format(Formatter* formatter) @optional;
 }
 
@@ -72,7 +72,7 @@ fn usz! Formatter.out(&self, char c) @private
 	return 1;
 }
 
-fn usz! Formatter.print_with_function(&self, Printable* arg)
+fn usz! Formatter.print_with_function(&self, Printable arg)
 {
 	if (&arg.to_format)
 	{
@@ -98,7 +98,7 @@ fn usz! Formatter.print_with_function(&self, Printable* arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
-		@stack_mem(1024; Allocator* mem)
+		@stack_mem(1024; Allocator mem)
 		{
 			return self.out_substr(arg.to_new_string(mem));
 		};
@@ -107,7 +107,7 @@ fn usz! Formatter.print_with_function(&self, Printable* arg)
 }
 
 
-fn usz! Formatter.out_str(&self, any* arg) @private
+fn usz! Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -119,7 +119,7 @@ fn usz! Formatter.out_str(&self, any* arg) @private
 		case FAULT:
 			return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case ANY:
-			return self.out_str(*(any**)arg);
+			return self.out_str(*(any*)arg);
 		case OPTIONAL:
 			unreachable();
 		case SIGNED_INT:
@@ -149,7 +149,7 @@ fn usz! Formatter.out_str(&self, any* arg) @private
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
 	}
-	usz! n = self.print_with_function((Printable*)arg);
+	usz! n = self.print_with_function((Printable)arg);
 	if (catch err = n)
 	{
 		case SearchResult.MISSING:
@@ -246,7 +246,7 @@ fn usz! Formatter.out_str(&self, any* arg) @private
 			}
 			len += self.out_substr(">]")!;
 			return len;
-		case SUBARRAY:
+		case SLICE:
 			// this is SomeType[] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			if (inner == char.typeid)
@@ -291,7 +291,7 @@ fn void! out_null_fn(void* data @unused, char c @unused) @private
 
 
 
-fn usz! Formatter.vprintf(&self, String format, any*[] anys)
+fn usz! Formatter.vprintf(&self, String format, any[] anys)
 {
 	if (!self.out_fn)
 	{
@@ -358,7 +358,7 @@ fn usz! Formatter.vprintf(&self, String format, any*[] anys)
 		// evaluate specifier
 		uint base = 0;
 		if (variant_index >= anys.len) return PrintFault.MISSING_ARG?;
-		any* current = anys[variant_index++];
+		any current = anys[variant_index++];
 		switch (c)
 		{
 			case 'd':

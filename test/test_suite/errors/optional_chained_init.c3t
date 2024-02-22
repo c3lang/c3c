@@ -53,14 +53,14 @@ entry:
   %b = alloca i32, align 4
   %b.f = alloca i64, align 8
   %err = alloca i64, align 8
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
   %err3 = alloca i64, align 8
-  %varargslots12 = alloca [1 x %"any*"], align 16
+  %varargslots12 = alloca [1 x %any], align 16
   %retparam13 = alloca i64, align 8
-  %varargslots17 = alloca [1 x %"any*"], align 16
+  %varargslots17 = alloca [1 x %any], align 16
   %retparam21 = alloca i64, align 8
-  %varargslots24 = alloca [1 x %"any*"], align 16
+  %varargslots24 = alloca [1 x %any], align 16
   %retparam28 = alloca i64, align 8
   store i32 1, ptr %a, align 4
   store i64 0, ptr %a.f, align 8
@@ -91,9 +91,9 @@ end_block:                                        ; preds = %after_check, %assig
   br i1 %neq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  %2 = insertvalue %"any*" undef, ptr %err, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %3, ptr %varargslots, align 16
+  %2 = insertvalue %any undef, ptr %err, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %3, ptr %varargslots, align 16
   %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 13, ptr %varargslots, i64 1)
   br label %if.exit
 
@@ -120,9 +120,9 @@ end_block9:                                       ; preds = %after_check8, %assi
   br i1 %neq10, label %if.then11, label %if.exit16
 
 if.then11:                                        ; preds = %end_block9
-  %7 = insertvalue %"any*" undef, ptr %err3, 0
-  %8 = insertvalue %"any*" %7, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %8, ptr %varargslots12, align 16
+  %7 = insertvalue %any undef, ptr %err3, 0
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %8, ptr %varargslots12, align 16
   %9 = call i64 @std.io.printfn(ptr %retparam13, ptr @.str.1, i64 13, ptr %varargslots12, i64 1)
   br label %if.exit16
 
@@ -133,9 +133,9 @@ if.exit16:                                        ; preds = %if.then11, %end_blo
   br i1 %10, label %after_check20, label %after_check23
 
 after_check20:                                    ; preds = %if.exit16
-  %11 = insertvalue %"any*" undef, ptr %a, 0
-  %12 = insertvalue %"any*" %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %12, ptr %varargslots17, align 16
+  %11 = insertvalue %any undef, ptr %a, 0
+  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %12, ptr %varargslots17, align 16
   %13 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.2, i64 9, ptr %varargslots17, i64 1)
   %not_err22 = icmp eq i64 %13, 0
   %14 = call i1 @llvm.expect.i1(i1 %not_err22, i1 true)
@@ -148,9 +148,9 @@ after_check23:                                    ; preds = %if.exit16, %after_c
   br i1 %15, label %after_check27, label %after_check30
 
 after_check27:                                    ; preds = %after_check23
-  %16 = insertvalue %"any*" undef, ptr %b, 0
-  %17 = insertvalue %"any*" %16, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %17, ptr %varargslots24, align 16
+  %16 = insertvalue %any undef, ptr %b, 0
+  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %17, ptr %varargslots24, align 16
   %18 = call i64 @std.io.printfn(ptr %retparam28, ptr @.str.3, i64 9, ptr %varargslots24, i64 1)
   %not_err29 = icmp eq i64 %18, 0
   %19 = call i1 @llvm.expect.i1(i1 %not_err29, i1 true)
@@ -170,14 +170,14 @@ entry:
   %b = alloca i32, align 4
   %b.f = alloca i64, align 8
   %err = alloca i64, align 8
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
   %err8 = alloca i64, align 8
-  %varargslots17 = alloca [1 x %"any*"], align 16
+  %varargslots17 = alloca [1 x %any], align 16
   %retparam18 = alloca i64, align 8
-  %varargslots22 = alloca [1 x %"any*"], align 16
+  %varargslots22 = alloca [1 x %any], align 16
   %retparam26 = alloca i64, align 8
-  %varargslots29 = alloca [1 x %"any*"], align 16
+  %varargslots29 = alloca [1 x %any], align 16
   %retparam33 = alloca i64, align 8
   store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %x.f, align 8
   store i32 1, ptr %a, align 4
@@ -230,9 +230,9 @@ end_block:                                        ; preds = %after_check5, %assi
   br i1 %neq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  %4 = insertvalue %"any*" undef, ptr %err, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %5, ptr %varargslots, align 16
+  %4 = insertvalue %any undef, ptr %err, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %5, ptr %varargslots, align 16
   %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.4, i64 13, ptr %varargslots, i64 1)
   br label %if.exit
 
@@ -259,9 +259,9 @@ end_block14:                                      ; preds = %after_check13, %ass
   br i1 %neq15, label %if.then16, label %if.exit21
 
 if.then16:                                        ; preds = %end_block14
-  %9 = insertvalue %"any*" undef, ptr %err8, 0
-  %10 = insertvalue %"any*" %9, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %10, ptr %varargslots17, align 16
+  %9 = insertvalue %any undef, ptr %err8, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %10, ptr %varargslots17, align 16
   %11 = call i64 @std.io.printfn(ptr %retparam18, ptr @.str.5, i64 13, ptr %varargslots17, i64 1)
   br label %if.exit21
 
@@ -272,9 +272,9 @@ if.exit21:                                        ; preds = %if.then16, %end_blo
   br i1 %12, label %after_check25, label %after_check28
 
 after_check25:                                    ; preds = %if.exit21
-  %13 = insertvalue %"any*" undef, ptr %a, 0
-  %14 = insertvalue %"any*" %13, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %14, ptr %varargslots22, align 16
+  %13 = insertvalue %any undef, ptr %a, 0
+  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %14, ptr %varargslots22, align 16
   %15 = call i64 @std.io.printfn(ptr %retparam26, ptr @.str.6, i64 9, ptr %varargslots22, i64 1)
   %not_err27 = icmp eq i64 %15, 0
   %16 = call i1 @llvm.expect.i1(i1 %not_err27, i1 true)
@@ -287,9 +287,9 @@ after_check28:                                    ; preds = %if.exit21, %after_c
   br i1 %17, label %after_check32, label %after_check35
 
 after_check32:                                    ; preds = %after_check28
-  %18 = insertvalue %"any*" undef, ptr %b, 0
-  %19 = insertvalue %"any*" %18, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %19, ptr %varargslots29, align 16
+  %18 = insertvalue %any undef, ptr %b, 0
+  %19 = insertvalue %any %18, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %19, ptr %varargslots29, align 16
   %20 = call i64 @std.io.printfn(ptr %retparam33, ptr @.str.7, i64 9, ptr %varargslots29, i64 1)
   %not_err34 = icmp eq i64 %20, 0
   %21 = call i1 @llvm.expect.i1(i1 %not_err34, i1 true)
@@ -309,14 +309,14 @@ entry:
   %b = alloca i32, align 4
   %b.f = alloca i64, align 8
   %err = alloca i64, align 8
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
   %err8 = alloca i64, align 8
-  %varargslots17 = alloca [1 x %"any*"], align 16
+  %varargslots17 = alloca [1 x %any], align 16
   %retparam18 = alloca i64, align 8
-  %varargslots22 = alloca [1 x %"any*"], align 16
+  %varargslots22 = alloca [1 x %any], align 16
   %retparam26 = alloca i64, align 8
-  %varargslots29 = alloca [1 x %"any*"], align 16
+  %varargslots29 = alloca [1 x %any], align 16
   %retparam33 = alloca i64, align 8
   store i32 23, ptr %x, align 4
   store i64 0, ptr %x.f, align 8
@@ -370,9 +370,9 @@ end_block:                                        ; preds = %after_check5, %assi
   br i1 %neq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
-  %4 = insertvalue %"any*" undef, ptr %err, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %5, ptr %varargslots, align 16
+  %4 = insertvalue %any undef, ptr %err, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %5, ptr %varargslots, align 16
   %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.8, i64 13, ptr %varargslots, i64 1)
   br label %if.exit
 
@@ -399,9 +399,9 @@ end_block14:                                      ; preds = %after_check13, %ass
   br i1 %neq15, label %if.then16, label %if.exit21
 
 if.then16:                                        ; preds = %end_block14
-  %9 = insertvalue %"any*" undef, ptr %err8, 0
-  %10 = insertvalue %"any*" %9, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %10, ptr %varargslots17, align 16
+  %9 = insertvalue %any undef, ptr %err8, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %10, ptr %varargslots17, align 16
   %11 = call i64 @std.io.printfn(ptr %retparam18, ptr @.str.9, i64 13, ptr %varargslots17, i64 1)
   br label %if.exit21
 
@@ -412,9 +412,9 @@ if.exit21:                                        ; preds = %if.then16, %end_blo
   br i1 %12, label %after_check25, label %after_check28
 
 after_check25:                                    ; preds = %if.exit21
-  %13 = insertvalue %"any*" undef, ptr %a, 0
-  %14 = insertvalue %"any*" %13, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %14, ptr %varargslots22, align 16
+  %13 = insertvalue %any undef, ptr %a, 0
+  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %14, ptr %varargslots22, align 16
   %15 = call i64 @std.io.printfn(ptr %retparam26, ptr @.str.10, i64 9, ptr %varargslots22, i64 1)
   %not_err27 = icmp eq i64 %15, 0
   %16 = call i1 @llvm.expect.i1(i1 %not_err27, i1 true)
@@ -427,9 +427,9 @@ after_check28:                                    ; preds = %if.exit21, %after_c
   br i1 %17, label %after_check32, label %after_check35
 
 after_check32:                                    ; preds = %after_check28
-  %18 = insertvalue %"any*" undef, ptr %b, 0
-  %19 = insertvalue %"any*" %18, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %19, ptr %varargslots29, align 16
+  %18 = insertvalue %any undef, ptr %b, 0
+  %19 = insertvalue %any %18, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %19, ptr %varargslots29, align 16
   %20 = call i64 @std.io.printfn(ptr %retparam33, ptr @.str.11, i64 9, ptr %varargslots29, i64 1)
   %not_err34 = icmp eq i64 %20, 0
   %21 = call i1 @llvm.expect.i1(i1 %not_err34, i1 true)

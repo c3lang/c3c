@@ -5,6 +5,9 @@
 #include <compiler_tests/benchmark.h>
 #include "sema_internal.h"
 
+char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
+					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
+
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 {
 	unsigned depth = context->active_scope.depth + 1;
@@ -13,6 +16,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 		FATAL_ERROR("Too deeply nested scopes.");
 	}
 
+	bool scope_is_dead = context->active_scope.is_dead;
 	Ast *previous_defer = context->active_scope.in_defer;
 	AstId parent_defer = context->active_scope.defer_last;
 	unsigned last_local = context->active_scope.current_local;
@@ -37,6 +41,7 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 			.scope_id = ++context->scope_id,
 			.allow_dead_code = false,
 			.jump_end = false,
+			.is_dead = scope_is_dead,
 			.depth = depth,
 			.current_local = last_local,
 			.label_start = label_start,
@@ -312,7 +317,7 @@ static void assign_panicfn(void)
 		error_exit("'%s' is not a function function.", panicf);
 	}
 	if (!type_func_match(type_get_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_uint,
-						 type_get_subarray(type_anyptr)))
+	                     type_get_slice(type_any)))
 	{
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");
 	}

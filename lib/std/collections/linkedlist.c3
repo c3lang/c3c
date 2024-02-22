@@ -3,6 +3,8 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::linkedlist(<Type>);
 
+const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
+
 struct Node @private
 {
 	Node *next;
@@ -12,49 +14,26 @@ struct Node @private
 
 struct LinkedList
 {
-	Allocator *allocator;
+	Allocator allocator;
 	usz size;
 	Node *_first;
 	Node *_last;
 }
 
-fn void LinkedList.push(&self, Type value)
-{
-	self.link_first(value);
-}
-
-fn void LinkedList.push_last(&self, Type value)
-{
-	self.link_last(value);
-}
-
 /**
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  * @return "the initialized list"
  **/
-fn LinkedList* LinkedList.new_init(&self, Allocator* allocator = allocator::heap())
+fn LinkedList* LinkedList.new_init(&self, Allocator allocator = allocator::heap())
 {
 	*self = { .allocator = allocator };
 	return self;
 }
 
-/**
- * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
- * @return "the initialized list"
- **/
-fn LinkedList* LinkedList.init_new(&self, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
-{
-	return self.new_init(allocator);
-}
 
 fn LinkedList* LinkedList.temp_init(&self)
 {
 	return self.new_init(allocator::temp()) @inline;
-}
-
-fn LinkedList* LinkedList.init_temp(&self) @deprecated("Replaced by temp_init")
-{
-	return self.temp_init() @inline;
 }
 
 /**
@@ -71,7 +50,7 @@ macro Node* LinkedList.alloc_node(&self) @private
 	return allocator::alloc(self.allocator, Node);
 }
 
-fn void LinkedList.link_first(&self, Type value) @private
+fn void LinkedList.push_front(&self, Type value)
 {
 	Node *first = self._first;
 	Node *new_node = self.alloc_node();
@@ -88,7 +67,7 @@ fn void LinkedList.link_first(&self, Type value) @private
 	self.size++;
 }
 
-fn void LinkedList.link_last(&self, Type value) @private
+fn void LinkedList.push(&self, Type value)
 {
 	Node *last = self._last;
 	Node *new_node = self.alloc_node();
@@ -172,7 +151,7 @@ fn void LinkedList.set(&self, usz index, Type element)
 /**
  * @require index < self.size
  **/
-fn void LinkedList.remove(&self, usz index)
+fn void LinkedList.remove_at(&self, usz index)
 {
 	self.unlink(self.node_at_index(index));
 }
@@ -180,14 +159,14 @@ fn void LinkedList.remove(&self, usz index)
 /**
  * @require index <= self.size
  **/
-fn void LinkedList.insert(&self, usz index, Type element)
+fn void LinkedList.insert_at(&self, usz index, Type element)
 {
 	switch (index)
 	{
 		case 0:
-			self.push(element);
+			self.push_front(element);
 		case self.size:
-			self.push_last(element);
+			self.push(element);
 		default:
 			self.link_before(self.node_at_index(index), element);
 	}
@@ -232,7 +211,53 @@ fn void LinkedList.unlink_first(&self) @private
 	self.size--;
 }
 
-fn bool LinkedList.remove_value(&self, Type t)
+fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
+{
+	usz start = self.size;
+	Node* node = self._first;
+	while (node)
+	{
+		switch
+		{
+			case equals(node.value, t):
+				Node* next = node.next;
+				self.unlink(node);
+				node = next;
+			default:
+				node = node.next;
+		}
+	}
+	return start - self.size;
+}
+
+fn Type! LinkedList.pop(&self)
+{
+	if (!self._last) return IteratorResult.NO_MORE_ELEMENT?;
+	defer self.unlink_last();
+	return self._last.value;
+}
+
+fn Type! LinkedList.pop_front(&self)
+{
+	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	defer self.unlink_first();
+	return self._first.value;
+}
+
+fn void! LinkedList.remove_last(&self) @maydiscard
+{
+	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	self.unlink_last();
+}
+
+fn void! LinkedList.remove_first(&self) @maydiscard
+{
+	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	self.unlink_first();
+}
+
+
+fn bool LinkedList.remove_first_match(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 {
 	for (Node* node = self._first; node != null; node = node.next)
 	{
@@ -245,7 +270,7 @@ fn bool LinkedList.remove_value(&self, Type t)
 	return false;
 }
 
-fn bool LinkedList.remove_last_value(&self, Type t)
+fn bool LinkedList.remove_last_match(&self, Type t)  @if(ELEMENT_IS_EQUATABLE)
 {
 	for (Node* node = self._last; node != null; node = node.prev)
 	{
@@ -257,26 +282,6 @@ fn bool LinkedList.remove_last_value(&self, Type t)
 	}
 	return false;
 }
-
-fn Type! LinkedList.pop(&self)
-{
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
-	defer self.unlink_first();
-	return self._first.value;
-}
-
-fn void! LinkedList.remove_last(&self)
-{
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
-	self.unlink_last();
-}
-
-fn void! LinkedList.remove_first(&self)
-{
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
-	self.unlink_first();
-}
-
 /**
  * @require self._last
  **/

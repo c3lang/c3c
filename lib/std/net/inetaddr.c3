@@ -4,9 +4,9 @@ import std::ascii;
 
 enum IpProtocol : char (AIFamily ai_family)
 {
-	UNSPECIFIED (os::AF_UNSPEC),
-	IPV4        (os::AF_INET),
-	IPV6        (os::AF_INET6),
+	UNSPECIFIED = os::AF_UNSPEC,
+	IPV4        = os::AF_INET,
+	IPV6        = os::AF_INET6,
 }
 
 struct InetAddress (Printable)
@@ -56,7 +56,7 @@ fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
-fn String InetAddress.to_new_string(InetAddress* addr, Allocator* allocator = allocator::heap()) @dynamic
+fn String InetAddress.to_new_string(InetAddress* addr, Allocator allocator = allocator::heap()) @dynamic
 {
 	if (addr.is_ipv6)
 	{

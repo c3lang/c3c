@@ -53,7 +53,7 @@ fn usz! ByteReader.seek(&self, isz offset, Seek seek) @dynamic
 	return new_index;
 }
 
-fn usz! ByteReader.write_to(&self, OutStream* writer) @dynamic
+fn usz! ByteReader.write_to(&self, OutStream writer) @dynamic
 {
 	if (self.index >= self.bytes.len) return 0;
 	usz written = writer.write(self.bytes[self.index..])!;

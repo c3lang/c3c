@@ -11,7 +11,7 @@ fault ConversionResult
 /**
  * @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
  **/
-macro any_to_int(any* v, $Type)
+macro any_to_int(any v, $Type)
 {
 	typeid any_type = v.type;
 	TypeKind kind = any_type.kindof;
@@ -108,10 +108,10 @@ fn bool TypeKind.is_int(kind) @inline
 	return kind == TypeKind.SIGNED_INT || kind == TypeKind.UNSIGNED_INT;
 }
 
-macro bool is_subarray_convertable($Type)
+macro bool is_slice_convertable($Type)
 {
 	$switch ($Type.kindof)
-		$case SUBARRAY:
+		$case SLICE:
 			return true;
 		$case POINTER:
 			return $Type.inner.kindof == TypeKind.ARRAY;
@@ -298,7 +298,7 @@ enum TypeKind : char
 	FUNC,
 	OPTIONAL,
 	ARRAY,
-	SUBARRAY,
+	SLICE,
 	VECTOR,
 	DISTINCT,
 	POINTER,

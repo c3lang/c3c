@@ -1,3 +1,4 @@
+// #target: windows-x64
 module test;
 
 fn int foo()

@@ -2,36 +2,36 @@
 module foo;
 fn void main()
 {
-	any* x;
+	any x;
 	x = &x;
 	x = &&(&x);
 	x = &&(&&(&x));
 }
 /* #expect: foo.ll
 
-%"any*" = type { ptr, i64 }
+%any = type { ptr, i64 }
 @"$ct.any$" = linkonce global %.introspect { i8 7, i64 0, ptr null, i64 16, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.p$any$" = linkonce global %.introspect { i8 19, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.any$" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.p$p$any$" = linkonce global %.introspect { i8 19, i64 0, ptr null, i64 8, i64 ptrtoint (ptr @"$ct.p$any$" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 
 define void @foo.main() #0 {
 entry:
-  %x = alloca %"any*", align 8
+  %x = alloca %any, align 8
   %taddr = alloca ptr, align 8
   %taddr1 = alloca ptr, align 8
   %taddr2 = alloca ptr, align 8
-  store %"any*" zeroinitializer, ptr %x, align 8
-  %0 = insertvalue %"any*" undef, ptr %x, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.any$" to i64), 1
-  store %"any*" %1, ptr %x, align 8
+  store %any zeroinitializer, ptr %x, align 8
+  %0 = insertvalue %any undef, ptr %x, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.any$" to i64), 1
+  store %any %1, ptr %x, align 8
   store ptr %x, ptr %taddr, align 8
-  %2 = insertvalue %"any*" undef, ptr %taddr, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.p$any$" to i64), 1
-  store %"any*" %3, ptr %x, align 8
+  %2 = insertvalue %any undef, ptr %taddr, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.p$any$" to i64), 1
+  store %any %3, ptr %x, align 8
   store ptr %x, ptr %taddr1, align 8
   store ptr %taddr1, ptr %taddr2, align 8
-  %4 = insertvalue %"any*" undef, ptr %taddr2, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.p$p$any$" to i64), 1
-  store %"any*" %5, ptr %x, align 8
+  %4 = insertvalue %any undef, ptr %taddr2, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.p$p$any$" to i64), 1
+  store %any %5, ptr %x, align 8
   ret void
 }

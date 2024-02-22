@@ -490,12 +490,12 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 							 BEValue *value_2);
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
 void llvm_emit_unreachable(GenContext *c);
-void llvm_emit_assume_raw(GenContext *c, LLVMValueRef assume_true);
+void llvm_emit_assume_true(GenContext *c, BEValue *assume_true);
 LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
-LLVMValueRef llvm_emit_expect_false_raw(GenContext *c, LLVMValueRef expect_false);
+LLVMValueRef llvm_emit_expect_false(GenContext *c, BEValue *expect_false);
 void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type);
-void llvm_emit_subarray_len(GenContext *context, BEValue *subarray, BEValue *len);
-void llvm_emit_subarray_pointer(GenContext *context, BEValue *subarray, BEValue *pointer);
+void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len);
+void llvm_emit_slice_pointer(GenContext *context, BEValue *slice, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *context, Decl *decl);

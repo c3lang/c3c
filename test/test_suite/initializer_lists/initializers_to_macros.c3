@@ -7,5 +7,5 @@ macro test(foo)
 fn void main()
 {
 	test(int[] { 1, 2 });
-	test({ 1, 2 }); // #error: A value of type 'untyped_list' can only be passed as a compile time parameter.
+	test({ 1, 2 }); // #error: It is only possible to use an untyped list as a
 }

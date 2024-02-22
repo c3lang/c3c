@@ -33,7 +33,7 @@ struct MyData
     union
     {
         Person* person;
-        Company* company;
+        Company company;
     }
 
     // named sub-unions (x.either.this)

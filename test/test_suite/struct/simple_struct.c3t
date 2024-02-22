@@ -11,4 +11,4 @@ struct Foo
 /* #expect: test.ll
 
 %Foo = type { i32, double }
-@test.a = protected unnamed_addr global %Foo zeroinitializer, align 8
+@test.a = internal unnamed_addr global %Foo zeroinitializer, align 8

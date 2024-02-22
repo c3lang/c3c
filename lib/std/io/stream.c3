@@ -9,7 +9,7 @@ interface InStream
 	fn usz! available() @optional;
 	fn usz! read(char[] buffer);
 	fn char! read_byte();
-	fn usz! write_to(OutStream* out) @optional;
+	fn usz! write_to(OutStream out) @optional;
 	fn void! pushback_byte() @optional;
 }
 
@@ -21,10 +21,10 @@ interface OutStream
 	fn void! flush() @optional;
 	fn usz! write(char[] bytes);
 	fn void! write_byte(char c);
-	fn usz! read_to(InStream* in) @optional;
+	fn usz! read_to(InStream in) @optional;
 }
 
-fn usz! available(InStream* s)
+fn usz! available(InStream s)
 {
 	if (&s.available) return s.available();
 	if (&s.seek)
@@ -39,19 +39,19 @@ fn usz! available(InStream* s)
 
 macro bool @is_instream(#expr)
 {
-	return $assignable(#expr, InStream*);
+	return $assignable(#expr, InStream);
 }
 
 macro bool @is_outstream(#expr)
 {
-	return $assignable(#expr, OutStream*);
+	return $assignable(#expr, OutStream);
 }
 
 /**
  * @param [&out] ref
  * @require @is_instream(stream)
  **/
-macro usz! read_any(stream, any* ref)
+macro usz! read_any(stream, any ref)
 {
 	return read_all(stream, ((char*)ref)[:ref.type.sizeof]);
 }
@@ -61,7 +61,7 @@ macro usz! read_any(stream, any* ref)
  * @require @is_outstream(stream)
  * @ensure return == ref.type.sizeof
  */
-macro usz! write_any(stream, any* ref)
+macro usz! write_any(stream, any ref)
 {
 	return write_all(stream, ((char*)ref)[:ref.type.sizeof]);
 }
@@ -134,7 +134,7 @@ macro void! @pushback_using_seek(&s)
 	s.seek(-1, CURSOR)!;
 }
 
-fn usz! copy_to(InStream* in, OutStream* dst, char[] buffer = {})
+fn usz! copy_to(InStream in, OutStream dst, char[] buffer = {})
 {
 	if (buffer.len) return copy_through_buffer(in, dst, buffer);
 	if (&in.write_to) return in.write_to(dst);
@@ -156,7 +156,7 @@ fn usz! copy_to(InStream* in, OutStream* dst, char[] buffer = {})
 	$endswitch
 }
 
-macro usz! copy_through_buffer(InStream *in, OutStream* dst, char[] buffer) @local
+macro usz! copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 {
 	usz total_copied;
 	while (true)

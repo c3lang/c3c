@@ -9,12 +9,12 @@ macro test()
 
 fn void a()
 {
-	String s = $typeof(test()).qnameof; // #error: This optional expression is untyped.
+	String s = $typeof(test()).qnameof; // #error: This optional expression lacks
 }
 
 fn void b()
 {
-	$sizeof(test()); // #error: This optional expression is untyped.
+	$sizeof(test()); // #error: This optional expression lacks
 }
 
 fn void c()
@@ -24,7 +24,7 @@ fn void c()
 
 fn void! d()
 {
-	$typeof(test()!) g; // #error: This expression has no concrete type
+	$typeof(test()!) g; // #error: This expression lacks a concrete type
 }
 
 macro e()

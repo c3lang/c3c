@@ -28,7 +28,7 @@ fn void main()
 
 define void @test.test(i32 %0) #0 {
 entry:
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca i32, align 4
   %retparam = alloca i64, align 8
   %len = alloca i64, align 8
@@ -41,10 +41,10 @@ entry:
   %retparam18 = alloca i64, align 8
   %error_var24 = alloca i64, align 8
   %error_var30 = alloca i64, align 8
-  %varargslots38 = alloca [1 x %"any*"], align 16
+  %varargslots38 = alloca [1 x %any], align 16
   %taddr39 = alloca i64, align 8
   %retparam40 = alloca i64, align 8
-  %varargslots43 = alloca [1 x %"any*"], align 16
+  %varargslots43 = alloca [1 x %any], align 16
   %taddr44 = alloca i64, align 8
   %retparam45 = alloca i64, align 8
   %len48 = alloca i64, align 8
@@ -58,9 +58,9 @@ entry:
   %error_var80 = alloca i64, align 8
   %error_var86 = alloca i64, align 8
   store i32 %0, ptr %taddr, align 4
-  %1 = insertvalue %"any*" undef, ptr %taddr, 0
-  %2 = insertvalue %"any*" %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %2, ptr %varargslots, align 16
+  %1 = insertvalue %any undef, ptr %taddr, 0
+  %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %2, ptr %varargslots, align 16
   %3 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   %gt = icmp sgt i32 %0, 0
   br i1 %gt, label %if.then, label %if.exit
@@ -184,14 +184,14 @@ noerr_block35:                                    ; preds = %after_check33
 
 voiderr37:                                        ; preds = %noerr_block35, %guard_block34, %guard_block28, %guard_block22
   store i64 14, ptr %taddr39, align 8
-  %22 = insertvalue %"any*" undef, ptr %taddr39, 0
-  %23 = insertvalue %"any*" %22, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  store %"any*" %23, ptr %varargslots38, align 16
+  %22 = insertvalue %any undef, ptr %taddr39, 0
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %23, ptr %varargslots38, align 16
   %24 = call i64 @std.io.printfn(ptr %retparam40, ptr @.str.3, i64 2, ptr %varargslots38, i64 1)
   store i64 6, ptr %taddr44, align 8
-  %25 = insertvalue %"any*" undef, ptr %taddr44, 0
-  %26 = insertvalue %"any*" %25, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  store %"any*" %26, ptr %varargslots43, align 16
+  %25 = insertvalue %any undef, ptr %taddr44, 0
+  %26 = insertvalue %any %25, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %26, ptr %varargslots43, align 16
   %27 = call i64 @std.io.printfn(ptr %retparam45, ptr @.str.4, i64 2, ptr %varargslots43, i64 1)
   %28 = call ptr @std.io.stdout()
   %29 = call i64 @std.io.File.write(ptr %retparam51, ptr %28, ptr @.str.5, i64 23)

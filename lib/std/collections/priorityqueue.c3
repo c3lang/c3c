@@ -36,12 +36,7 @@ struct PrivatePriorityQueue (Printable)
 	Heap heap;
 }
 
-fn void PrivatePriorityQueue.init_new(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @inline @deprecated("Replaced by new_init")
-{
-	return self.new_init(initial_capacity, allocator);
-}
-
-fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @inline
+fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @inline
 {
 	self.heap.new_init(initial_capacity, allocator);
 }
@@ -49,11 +44,6 @@ fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocato
 fn void PrivatePriorityQueue.temp_init(&self, usz initial_capacity = 16) @inline
 {
 	self.heap.new_init(initial_capacity, allocator::temp()) @inline;
-}
-
-fn void PrivatePriorityQueue.init_temp(&self, usz initial_capacity = 16) @inline @deprecated("Replaced by temp_init")
-{
-	return self.temp_init(initial_capacity) @inline;
 }
 
 fn void PrivatePriorityQueue.push(&self, Type element)
@@ -117,7 +107,7 @@ fn Type! PrivatePriorityQueue.pop(&self)
 	return self.heap.pop();
 }
 
-fn Type! PrivatePriorityQueue.peek(&self)
+fn Type! PrivatePriorityQueue.first(&self)
 {
 	if (!self.len()) return IteratorResult.NO_MORE_ELEMENT?;
 	return self.heap.get(0);
@@ -141,7 +131,7 @@ fn bool PrivatePriorityQueue.is_empty(&self)
 /**
  * @require index < self.len()
  */
-fn Type PrivatePriorityQueue.peek_at(&self, usz index) @operator([])
+fn Type PrivatePriorityQueue.get(&self, usz index) @operator([])
 {
 	return self.heap[index];
 }
@@ -151,7 +141,7 @@ fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 	return self.heap.to_format(formatter);
 }
 
-fn String PrivatePriorityQueue.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
+fn String PrivatePriorityQueue.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
 	return self.heap.to_new_string(allocator);
 }

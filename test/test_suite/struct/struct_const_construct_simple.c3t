@@ -21,12 +21,12 @@ Foo foo8 @private = FOO7;
 /* #expect: structo.ll
 
 @"$ct.structo.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@structo.x = protected unnamed_addr global i64 16, align 8
-@structo.foo1 = protected unnamed_addr global %Foo { i32 1, i64 2 }, align 8
-@structo.foo2 = protected unnamed_addr global %Foo { i32 2, i64 0 }, align 8
-@structo.foo3 = protected unnamed_addr global %Foo { i32 0, i64 3 }, align 8
-@structo.foo4 = protected unnamed_addr global %Foo { i32 4, i64 1 }, align 8
-@structo.foo5 = protected unnamed_addr global %Foo zeroinitializer, align 8
-@structo.foo6 = protected unnamed_addr global %Foo zeroinitializer, align 8
-@structo.FOO7 = protected unnamed_addr constant %Foo { i32 1, i64 2 }, align 8
-@structo.foo8 = protected unnamed_addr global %Foo { i32 1, i64 2 }, align 8
+@structo.x = internal unnamed_addr global i64 16, align 8
+@structo.foo1 = internal unnamed_addr global %Foo { i32 1, i64 2 }, align 8
+@structo.foo2 = internal unnamed_addr global %Foo { i32 2, i64 0 }, align 8
+@structo.foo3 = internal unnamed_addr global %Foo { i32 0, i64 3 }, align 8
+@structo.foo4 = internal unnamed_addr global %Foo { i32 4, i64 1 }, align 8
+@structo.foo5 = internal unnamed_addr global %Foo zeroinitializer, align 8
+@structo.foo6 = internal unnamed_addr global %Foo zeroinitializer, align 8
+@structo.FOO7 = internal unnamed_addr constant %Foo { i32 1, i64 2 }, align 8
+@structo.foo8 = internal unnamed_addr global %Foo { i32 1, i64 2 }, align 8

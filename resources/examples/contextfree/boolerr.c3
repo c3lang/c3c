@@ -27,7 +27,7 @@ struct Summary
 	bool ok;
 }
 
-fn void! Summary.print(Summary *s, OutStream* out)
+fn void! Summary.print(Summary *s, OutStream out)
 {
 	io::fprintf(out, "Summary({ .title = %s, .ok = %s})", s.title.get() ?? "missing", s.ok)!;
 }
@@ -76,7 +76,7 @@ fn void main()
     const String[] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
     DynamicArenaAllocator dynamic_arena;
 	dynamic_arena.init(1024, allocator::heap());
-	OutStream* out = io::stdout();
+	OutStream out = io::stdout();
     foreach (String url : URLS)
     {
         mem::@scoped(&dynamic_arena)
