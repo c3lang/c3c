@@ -265,7 +265,7 @@ jobs:
 
       - name: Compile and run some examples
         run: |
-          cd resources
+          cd resources            
           ../build/c3c compile examples/base64.c3
           ../build/c3c compile examples/binarydigits.c3
           ../build/c3c compile examples/brainfk.c3
@@ -285,7 +285,7 @@ jobs:
           ../build/c3c compile examples/contextfree/dynscope.c3
           ../build/c3c compile examples/contextfree/guess_number.c3
           ../build/c3c compile examples/contextfree/multi.c3          
-          ../build/c3c compile examples/contextfree/cleanup.c3          
+          ../build/c3c compile examples/contextfree/cleanup.c3  
           ../build/c3c compile-run examples/hello_world_many.c3
           ../build/c3c compile-run examples/time.c3
           ../build/c3c compile-run examples/fannkuch-redux.c3

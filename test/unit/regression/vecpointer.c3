@@ -1,5 +1,11 @@
 module vecpointer @test;
 
+fn void pointer_npot2_size()
+{
+	int[<9>][3] a;
+	assert((usz)&a[1] - (usz)&a[0] == 64);
+}
+
 fn void pointer_add_sub_diff()
 {
 	int[5] a;

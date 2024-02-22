@@ -9,8 +9,9 @@ union Quaternion
 	Real[<4>] v;
 }
 
-macro Quaternion identity() => { 0, 0, 0, 1 };
 const Quaternion IDENTITY = { 0, 0, 0, 1 };
+
+macro Quaternion identity() @deprecated("Replaced with QUATERNION_IDENTITY constant") => { 0, 0, 0, 1 };
 macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => Quaternion { .v = a.v + b.v };
 macro Quaternion Quaternion.add_each(Quaternion a, Real b) => Quaternion { .v = a.v + b };
 macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => Quaternion { .v = a.v - b.v };
@@ -70,33 +71,16 @@ fn Quaternion Quaternion.mul(a, Quaternion b)
 
 macro into_matrix(Quaternion* q, $Type) @private
 {
-	Quaternion q_norm = q.normalize();
+    Quaternion rotation = q.normalize();
+    var x = rotation.i;
+    var y = rotation.j;
+    var z = rotation.k;
+    var w = rotation.l;
 
-	var x = q_norm.i;
-	var y = q_norm.j;
-	var z = q_norm.k;
-	var w = q_norm.l;
-
-	var xx = x + x;
-	var yy = y + y;
-	var zz = z + z;
-
-	var xxx = xx * x;
-	var xxy = xx * y;
-	var xxz = xx * z;
-
-	var yyy = yy * y;
-	var yyz = yy * z;
-	var zzz = zz * z;
-
-	var yyw = yy * w;
-	var zzw = zz * w;
-	var xxw = xx * w;
-
- 	return $Type {
-		1 - yyy - zzz, xxy - zzw, xxz + yyw, 0,
-		xxy + zzw, 1 - xxx - zzz, yyz - xxw, 0,
-		xxz - yyw, yyz + zzw, 1.0 - xxx - yyy, 0,
-		0, 0, 0, 1,
-	};
+    return $Type {
+        1 - 2*y*y - 2*z*z, 2*x*y - 2*z*w, 2*x*z + 2*y*w, 0,
+        2*x*y + 2*z*w, 1 - 2*x*x - 2*z*z, 2*y*z - 2*x*w, 0,
+        2*x*z - 2*y*w, 2*y*z + 2*x*w , 1 - 2*x*x - 2*y*y, 0,
+        0.0, 0.0, 0.0, 1.0,
+    };
 }

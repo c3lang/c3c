@@ -54,9 +54,11 @@ struct OnStackAllocatorHeader
 	char[*] data;
 }
 
+/**
+ * @require old_pointer
+ **/
 fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {
-	if (!old_pointer) return;
 	if (allocation_in_stack_mem(self, old_pointer)) return;
 	on_stack_allocator_remove_chunk(self, old_pointer);
 	self.release(old_pointer, aligned);
@@ -98,44 +100,38 @@ fn OnStackAllocatorExtraChunk* on_stack_allocator_find_chunk(OnStackAllocator* a
 
 /**
  * @require size > 0
+ * @require old_pointer != null
  * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
- * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
- * @require offset <= size && offset >= 0
- * @require mem::aligned_offset(offset, OnStackAllocatorExtraChunk.alignof) == offset
  **/
-fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz offset) @dynamic
+fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment, usz deprecated) @dynamic
 {
 	if (!allocation_in_stack_mem(self, old_pointer))
 	{
 		OnStackAllocatorExtraChunk* chunk = on_stack_allocator_find_chunk(self, old_pointer);
 		assert(chunk, "Tried to realloc pointer not belonging to the allocator");
-		return chunk.data = self.backing_allocator.resize(old_pointer, size, alignment, offset)!;
+		return chunk.data = self.backing_allocator.resize(old_pointer, size, alignment, 0)!;
 	}
 
 	OnStackAllocatorHeader* header = old_pointer - OnStackAllocatorHeader.sizeof;
 	usz old_size = header.size;
-	void* mem = self.acquire(size, true, alignment, offset)!;
+	void* mem = self.acquire(size, false, alignment, 0)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
 
 /**
  * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
- * @require offset <= mem::MAX_MEMORY_ALIGNMENT `offset too big`
- * @require offset <= size && offset >= 0
- * @require offset == 0 || alignment > 0
- * @require mem::aligned_offset(offset, OnStackAllocatorHeader.alignof) == offset
+ * @require size > 0
  **/
-fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
+fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, usz deprecated) @dynamic
 {
-	if (size == 0) return null;
 	bool aligned = alignment > 0;
 	alignment = alignment_for_allocation(alignment);
 	usz total_len = self.data.len;
 	void* start_mem = self.data.ptr;
-	void* unaligned_pointer_to_offset = start_mem + self.used + OnStackAllocatorHeader.sizeof + offset;
-	void* aligned_pointer_to_offset = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
-	usz end = (usz)(aligned_pointer_to_offset - self.data.ptr) + size - offset;
+	void* unaligned_pointer_to_offset = start_mem + self.used + OnStackAllocatorHeader.sizeof ;
+	void* mem = mem::aligned_pointer(unaligned_pointer_to_offset, alignment);
+	usz end = (usz)(mem - self.data.ptr) + size;
 	Allocator* backing_allocator = self.backing_allocator;
 
 	if (end > total_len)
@@ -144,10 +140,9 @@ fn void*! OnStackAllocator.acquire(&self, usz size, bool clear, usz alignment, u
 		defer catch allocator::free(backing_allocator, chunk);
 		defer try self.chunk = chunk;
 		*chunk = { .prev = self.chunk, .is_aligned = aligned };
-		return chunk.data = backing_allocator.acquire(size, clear, aligned ? alignment : 0, offset)!;
+		return chunk.data = backing_allocator.acquire(size, clear, aligned ? alignment : 0, 0)!;
 	}
 	self.used = end;
-	void *mem = aligned_pointer_to_offset - offset;
 	OnStackAllocatorHeader* header = mem - OnStackAllocatorHeader.sizeof;
 	header.size = size;
 	return mem;

@@ -15,8 +15,24 @@ interface Allocator
 {
 	fn void reset(usz mark) @optional;
 	fn usz mark() @optional;
+	/**
+     * @require !alignment || math::is_power_of_2(alignment)
+     * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+     * @require offset == 0 `offset no longer supported`
+     * @require size > 0
+     **/
 	fn void*! acquire(usz size, bool clear, usz alignment, usz offset);
+	/**
+     * @require !alignment || math::is_power_of_2(alignment)
+     * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+     * @require offset == 0 `offset no longer supported`
+     * @require ptr != null
+     * @require new_size > 0
+     **/
 	fn void*! resize(void* ptr, usz new_size, usz alignment, usz offset);
+	/**
+     * @require ptr != null
+     **/
 	fn void release(void* ptr, bool aligned);
 }
 
@@ -40,6 +56,7 @@ macro void* malloc(Allocator* allocator, usz size) @nodiscard
 
 macro void*! malloc_try(Allocator* allocator, usz size) @nodiscard
 {
+	if (!size) return null;
 	$if env::TESTING:
 		char* data = allocator.acquire(size, false, 0, 0)!;
 		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
@@ -56,6 +73,7 @@ macro void* calloc(Allocator* allocator, usz size) @nodiscard
 
 macro void*! calloc_try(Allocator* allocator, usz size) @nodiscard
 {
+	if (!size) return null;
 	return allocator.acquire(size, true, 0, 0);
 }
 
@@ -66,19 +84,27 @@ macro void* realloc(Allocator* allocator, void* ptr, usz new_size) @nodiscard
 
 macro void*! realloc_try(Allocator* allocator, void* ptr, usz new_size) @nodiscard
 {
+	if (!new_size)
+	{
+		free(allocator, ptr);
+		return null;
+	}
+	if (!ptr) return allocator.acquire(new_size, false, 0, 0);
 	return allocator.resize(ptr, new_size, 0, 0);
 }
 
 macro void free(Allocator* allocator, void* ptr)
 {
+	if (!ptr) return;
 	$if env::TESTING:
-		if (ptr) ((char*)ptr)[0] = 0xBA;
+		((char*)ptr)[0] = 0xBA;
 	$endif
 	allocator.release(ptr, false);
 }
 
 macro void*! malloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0) @nodiscard
 {
+	if (!size) return null;
 	$if env::TESTING:
 		char* data = allocator.acquire(size, false, alignment, offset)!;
 		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
@@ -90,18 +116,29 @@ macro void*! malloc_aligned(Allocator* allocator, usz size, usz alignment, usz o
 
 macro void*! calloc_aligned(Allocator* allocator, usz size, usz alignment, usz offset = 0) @nodiscard
 {
+	if (!size) return null;
 	return allocator.acquire(size, true, alignment, offset);
 }
 
 macro void*! realloc_aligned(Allocator* allocator, void* ptr, usz new_size, usz alignment, usz offset = 0) @nodiscard
 {
+	if (!new_size)
+	{
+		free_aligned(allocator, ptr);
+		return null;
+	}
+	if (!ptr)
+	{
+		return malloc_aligned(allocator, new_size, alignment);
+	}
 	return allocator.resize(ptr, new_size, alignment, offset);
 }
 
 macro void free_aligned(Allocator* allocator, void* ptr)
 {
+	if (!ptr) return;
 	$if env::TESTING:
-		if (ptr) ((char*)ptr)[0] = 0xBA;
+	((char*)ptr)[0] = 0xBA;
 	$endif
 	allocator.release(ptr, true);
 }
@@ -166,9 +203,19 @@ macro new_array_try(Allocator* allocator, $Type, usz elements) @nodiscard
 	return (($Type*)calloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
+macro new_array_aligned(Allocator* allocator, $Type, usz elements) @nodiscard
+{
+	return ((Type*)calloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+}
+
 macro alloc_array(Allocator* allocator, $Type, usz elements) @nodiscard
 {
 	return alloc_array_try(allocator, $Type, elements)!!;
+}
+
+macro alloc_array_aligned(Allocator* allocator, $Type, usz elements) @nodiscard
+{
+	return ((Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
 macro alloc_array_try(Allocator* allocator, $Type, usz elements) @nodiscard
@@ -193,23 +240,17 @@ fn any* clone_any(Allocator* allocator, any* value) @nodiscard
 
 macro void*! Allocator.alloc_checked(&self, usz size) @deprecated("Use allocator::malloc_try")
 {
-	$if env::TESTING:
-		char* data = self.acquire(size, false, 0, 0)!;
-		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
-		return data;
-	$else
-		return self.acquire(size, false, 0, 0);
-	$endif
+	return malloc_try(self, size);
 }
 
 macro void*! Allocator.calloc_checked(&self, usz size) @deprecated("Use allocator::calloc_try")
 {
-	return self.acquire(size, true, 0, 0);
+	return calloc_try(self, size);
 }
 
 macro void*! Allocator.realloc_checked(&self, void* ptr, usz new_size) @deprecated("Use allocator::realloc_try")
 {
-	return self.resize(ptr, new_size, 0, 0);
+	return realloc_try(ptr, new_size);
 }
 
 macro Allocator.new_array(&self, $Type, usz size, usz end_padding = 0) @deprecated("Use allocator::alloc_array")
@@ -258,86 +299,60 @@ macro Allocator.clone(&self, value) @deprecated("Use allocator::clone")
 	return x;
 }
 
-macro void* Allocator.alloc(&self, usz size) @nodiscard @deprecated("Use allocator::malloc")
+fn void* Allocator.alloc(&self, usz size) @nodiscard @deprecated("Use allocator::malloc")
 {
-	return self.alloc_checked(size)!!;
+	return malloc(self, size);
 }
-macro void* Allocator.calloc(&self, usz size) @nodiscard @deprecated("Use allocator::calloc")
+fn void* Allocator.calloc(&self, usz size) @nodiscard @deprecated("Use allocator::calloc")
 {
-	return self.acquire(size, true, 0, 0)!!;
+	return calloc(self, size);
 }
-macro void* Allocator.realloc(&self, void* ptr, usz new_size) @nodiscard @deprecated("Use allocator::realloc")
+fn void* Allocator.realloc(&self, void* ptr, usz new_size) @nodiscard @deprecated("Use allocator::realloc")
 {
-	return self.resize(ptr, new_size, 0, 0)!!;
-}
-
-macro void*! Allocator.alloc_aligned(&self, usz size, usz alignment, usz offset = 0) @deprecated("Use allocator::alloc_aligned")
-{
-	$if env::TESTING:
-		char* data = self.acquire(size, false, alignment, offset)!;
-		mem::set(data, 0xAA, size, mem::DEFAULT_MEM_ALIGNMENT);
-		return data;
-	$else
-		return self.acquire(size, false, alignment, offset);
-	$endif
-}
-macro void*! Allocator.calloc_aligned(&self, usz size, usz alignment, usz offset = 0) @deprecated("Use allocator::calloc_aligned")
-{
-	return self.acquire(size, true, alignment, offset);
-}
-macro void*! Allocator.realloc_aligned(&self, void* ptr, usz new_size, usz alignment = 0, usz offset = 0)  @deprecated("Use allocator::realloc_aligned")
-{
-	return self.resize(ptr, new_size, alignment, offset);
+	return realloc(self, ptr, new_size);
 }
 
-macro void Allocator.free(&self, void* ptr) @deprecated("Use allocator::free")
+fn void*! Allocator.alloc_aligned(&self, usz size, usz alignment, usz offset = 0) @deprecated("Use allocator::malloc_aligned")
 {
-	$if env::TESTING:
-		if (ptr) ((char*)ptr)[0] = 0xBA;
-	$endif
-	self.release(ptr, false);
+	return malloc_aligned(self, size, alignment, 0);
 }
-macro void Allocator.free_aligned(&self, void* ptr) @deprecated("Use allocator::free_aligned")
+
+fn void*! Allocator.calloc_aligned(&self, usz size, usz alignment, usz offset = 0) @deprecated("Use allocator::calloc_aligned")
 {
-	$if env::TESTING:
-		if (ptr) ((char*)ptr)[0] = 0xBA;
-	$endif
-	self.release(ptr, true);
+	return calloc_aligned(self, size, alignment, 0);
+}
+
+fn void*! Allocator.realloc_aligned(&self, void* ptr, usz new_size, usz alignment = 0, usz offset = 0)  @deprecated("Use allocator::realloc_aligned")
+{
+	return realloc_aligned(self, ptr, new_size, alignment, 0);
+}
+
+fn void Allocator.free(&self, void* ptr) @deprecated("Use allocator::free")
+{
+	free(self, ptr);
+}
+fn void Allocator.free_aligned(&self, void* ptr) @deprecated("Use allocator::free_aligned")
+{
+	free_aligned(self, ptr);
 }
 
 
 /**
  * @require bytes > 0
  * @require alignment > 0
+ * @require bytes <= isz.max
  **/
-macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment, usz offset)
+macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 {
-	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
+	if (alignment < void*.alignof) alignment = void*.alignof;
+	usz header = AlignedBlock.sizeof + alignment;
+	usz alignsize = bytes + header;
 	$if @typekind(#alloc_fn(bytes)) == OPTIONAL:
-		void* data = #alloc_fn(header + bytes)!;
+		void* data = #alloc_fn(alignsize)!;
 	$else
-		void* data = #alloc_fn(header + bytes);
+		void* data = #alloc_fn(alignsize);
 	$endif
-	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
-	assert(mem > data);
-	AlignedBlock* desc = (AlignedBlock*)mem - 1;
-	*desc = { bytes, data };
-	return mem;
-}
-
-/**
- * @require bytes > 0
- * @require alignment > 0
- **/
-macro void*! @aligned_calloc(#calloc_fn, usz bytes, usz alignment, usz offset)
-{
-	usz header = mem::aligned_offset(AlignedBlock.sizeof + offset, alignment) - offset;
-	$if @typekind(#calloc_fn(bytes)) == OPTIONAL:
-		void* data = #calloc_fn(header + bytes)!;
-	$else
-		void* data = #calloc_fn(header + bytes);
-	$endif
-	void* mem = mem::aligned_pointer(data + header + offset, alignment) - offset;
+	void* mem = mem::aligned_pointer(data + AlignedBlock.sizeof, alignment);
 	AlignedBlock* desc = (AlignedBlock*)mem - 1;
 	assert(mem > data);
 	*desc = { bytes, data };
@@ -364,12 +379,12 @@ macro void! @aligned_free(#free_fn, void* old_pointer)
  * @require bytes > 0
  * @require alignment > 0
  **/
-macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment, usz offset)
+macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
-	void* new_data = @aligned_calloc(#calloc_fn, bytes, alignment, offset)!;
-	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	void* new_data = @aligned_alloc(#calloc_fn, bytes, alignment)!;
+	mem::copy(new_data, old_pointer, desc.len < bytes ? desc.len : bytes, 1, 1);
 	$if @typekind(#free_fn(data_start)) == OPTIONAL:
 	#free_fn(data_start)!;
 	$else

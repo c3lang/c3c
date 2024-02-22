@@ -417,6 +417,11 @@ static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 	}
 	return true;
 }
+
+#define NEXT_AND_CHECK_NO_MULTIPLE_(lexer__) \
+	do { if (next(lexer__) == '_' && prev(lexer__) == '_') { \
+		return add_error_token_at_current(lexer__, "Multiple consecutive '_' are not allowed."); \
+	} } while(0);
 /**
  * Parsing octals. Here we depart from the (error prone) C style octals with initial zero e.g. 0231
  * Instead we only support 0o prefix like 0o231. Note that lexing here doesn't actually parse the
@@ -429,7 +434,8 @@ static bool scan_oct(Lexer *lexer)
 		return add_error_token_at_current(lexer, "An expression starting with '0o' should be followed by octal numbers (0-7).");
 	}
 	next(lexer);
-	while (char_is_oct_or_(peek(lexer))) next(lexer);
+	while (char_is_oct_or_(peek(lexer))) NEXT_AND_CHECK_NO_MULTIPLE_(lexer);
+
 	if (char_is_digit(peek(lexer)))
 	{
 		return add_error_token_at_current(lexer, "An expression starting with '0o' should be followed by octal numbers (0-7).");
@@ -453,7 +459,7 @@ static bool scan_binary(Lexer *lexer)
 		return add_error_token_at_current(lexer, "An expression starting with '0b' should be followed by binary digits (0-1).");
 	}
 	next(lexer);
-	while (char_is_binary_or_(peek(lexer))) next(lexer);
+	while (char_is_binary_or_(peek(lexer))) NEXT_AND_CHECK_NO_MULTIPLE_(lexer);
 	if (char_is_digit(peek((lexer))))
 	{
 		return add_error_token_at_current(lexer, "An expression starting with '0b' should be followed by binary digits (0-1).");
@@ -512,7 +518,7 @@ static inline bool scan_hex(Lexer *lexer)
 		return add_error_token_at_current(lexer, "'0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.");
 	}
 	next(lexer);
-	while (char_is_hex_or_(peek(lexer))) next(lexer);
+	while (char_is_hex_or_(peek(lexer))) NEXT_AND_CHECK_NO_MULTIPLE_(lexer);
 	bool is_float = false;
 	if (peek(lexer) == '.' && peek_next(lexer) != '.')
 	{
@@ -521,7 +527,7 @@ static inline bool scan_hex(Lexer *lexer)
 		char c = peek(lexer);
 		if (c == '_') return add_error_token_at_current(lexer, "'_' is not allowed directly after decimal point, try removing it.");
 		if (char_is_hex(c)) next(lexer);
-		while (char_is_hex_or_(peek(lexer))) next(lexer);
+		while (char_is_hex_or_(peek(lexer))) NEXT_AND_CHECK_NO_MULTIPLE_(lexer);
 	}
 	char c = peek(lexer);
 	if (c == 'p' || c == 'P')
@@ -547,7 +553,7 @@ static inline bool scan_dec(Lexer *lexer)
 
 	// Walk through the digits, we don't need to worry about
 	// initial _ because we only call this if we have a digit initially.
-	while (char_is_digit_or_(peek(lexer))) next(lexer);
+	while (char_is_digit_or_(peek(lexer))) NEXT_AND_CHECK_NO_MULTIPLE_(lexer);
 
 	// Assume no float.
 	bool is_float = false;
@@ -565,7 +571,7 @@ static inline bool scan_dec(Lexer *lexer)
 		if (c == '_') return add_error_token_at_current(lexer, "'_' is not allowed directly after decimal point, try removing it.");
 		// Now walk until we see no more digits.
 		// This allows 123. as a floating point number.
-		while (char_is_digit_or_(peek(lexer))) next(lexer);
+		while (char_is_digit_or_(peek(lexer))) NEXT_AND_CHECK_NO_MULTIPLE_(lexer);
 	}
 	char c = peek(lexer);
 	// We might have an exponential. We allow 123e1 and 123.e1 as floating point, so

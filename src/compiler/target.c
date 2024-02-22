@@ -4,7 +4,7 @@
 #include "compiler_internal.h"
 
 extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
-
+static bool x64features_contains(X86Features *cpu_features, X86Feature feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
 static ArchType arch_from_llvm_string(StringSlice string);
@@ -47,7 +47,7 @@ bool arch_is_wasm(ArchType type)
 	return type == ARCH_TYPE_WASM32 || type == ARCH_TYPE_WASM64;
 }
 
-static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, EnvironmentType type, ARMVariant variant)
+static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, EnvironmentType type, ARMVariant variant, X86Features* features)
 {
 	switch (arch)
 	{
@@ -71,12 +71,14 @@ static AlignSize os_arch_max_alignment_of_vector(OsType os, ArchType arch, Envir
 		case ARCH_TYPE_X86:
 			if (os == OS_TYPE_WIN32) /* COFF */
 			{
-				return 8192;
+				return 8192 / 8;
 			}
 			if (os_is_apple(os))
 			{
 				// With AVX512 - 512, AVX - 256 otherwise AVX - 128
-				return 256;
+				if (x64features_contains(features, X86_FEAT_AVX512F)) return 512 / 8;
+				if (x64features_contains(features, X86_FEAT_AVX)) return 256 / 8;
+				return 128 / 8;
 			}
 			break;
 		default:
@@ -393,6 +395,7 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_AVXVNNIINT8] = "avxvnniint8",
 		[X86_FEAT_AVXVNNIINT16] = "avxvnniint16",
 };
+
 static X86Feature x86feature_from_string(const char *str)
 {
 	for (int i = 0; i <= X86_FEATURE_LAST; i++)
@@ -1928,7 +1931,11 @@ void target_setup(BuildTarget *target)
 			platform_target.abi = ABI_UNKNOWN;
 			break;
 	}
-	platform_target.align_max_vector = os_arch_max_alignment_of_vector(platform_target.os, platform_target.arch, platform_target.environment_type, platform_target.arm.variant);
+	platform_target.align_max_vector = os_arch_max_alignment_of_vector(platform_target.os,
+																	   platform_target.arch,
+																	   platform_target.environment_type,
+																	   platform_target.arm.variant,
+																	   &platform_target.x64.features);
 	platform_target.align_max_tls = os_arch_max_alignment_of_tls(platform_target.os,
 																 platform_target.arch,
 																 platform_target.environment_type);

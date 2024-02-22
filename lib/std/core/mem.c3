@@ -253,11 +253,12 @@ fn bool ptr_is_aligned(void* ptr, usz alignment) @inline
 
 macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$if $inlined:
-		$$memset_inline(dst, (char)0, len, $is_volatile, $dst_align);
-	$else
-		$$memset(dst, (char)0, len, $is_volatile, $dst_align);
-	$endif
+	$$memset(dst, (char)0, len, $is_volatile, $dst_align);
+}
+
+macro void clear_inline(void* dst, usz $len, usz $dst_align = 0, bool $is_volatile = false)
+{
+	$$memset_inline(dst, (char)0, $len, $is_volatile, $dst_align);
 }
 
 /**
@@ -269,17 +270,30 @@ macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = fal
  * @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
  * @param $src_align "the alignment of the destination if different from the default, 0 assumes the default"
  * @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
- * @param $inlined "True if this copy should never call the OS memcpy."
  *
  * @require len == 0 || dst + len <= src || src + len <= dst : "Ranges may not overlap"
  **/
 macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false, bool $inlined = false)
 {
-	$if $inlined:
-		$$memcpy_inline(dst, src, len, $is_volatile, $dst_align, $src_align);
-	$else
-		$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
-	$endif
+	$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
+}
+
+/**
+ * Copy memory from src to dst efficiently, assuming the memory ranges do not overlap, it
+ * will always be inlined and never call memcopy
+ *
+ * @param [&out] dst "The destination to copy to"
+ * @param [&in] src "The source to copy from"
+ * @param $len "The number of bytes to copy"
+ * @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
+ * @param $src_align "the alignment of the destination if different from the default, 0 assumes the default"
+ * @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ *
+ * @require $len == 0 || dst + $len <= src || src + $len <= dst : "Ranges may not overlap"
+ **/
+macro void copy_inline(void* dst, void* src, usz $len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false)
+{
+	$$memcpy_inline(dst, src, $len, $is_volatile, $dst_align, $src_align);
 }
 
 /**
@@ -305,19 +319,29 @@ macro void move(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_alig
  * @param len "The number of bytes to copy"
  * @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
  * @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
- * @param $inlined "True if this copy should never call the OS memset."
  *
  * @ensure !len || (dst[0] == val && dst[len - 1] == val)
  **/
-macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
+macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volatile = false)
 {
-	$if $inlined:
-		$$memset_inline(dst, val, len, $is_volatile, $dst_align);
-	$else
-		$$memset(dst, val, len, $is_volatile, $dst_align);
-	$endif
+	$$memset(dst, val, len, $is_volatile, $dst_align);
 }
 
+/**
+ * Sets all memory in a region to that of the provided byte. Never calls OS memset.
+ *
+ * @param [&out] dst "The destination to copy to"
+ * @param val "The value to copy into memory"
+ * @param $len "The number of bytes to copy"
+ * @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
+ * @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ *
+ * @ensure !$len || (dst[0] == val && dst[$len - 1] == val)
+ **/
+macro void set_inline(void* dst, char val, usz $len, usz $dst_align = 0, bool $is_volatile = false)
+{
+	$$memset_inline(dst, val, $len, $is_volatile, $dst_align);
+}
 /**
  * @require values::@inner_kind(a) == TypeKind.SUBARRAY || values::@inner_kind(a) == TypeKind.POINTER
  * @require values::@inner_kind(b) == TypeKind.SUBARRAY || values::@inner_kind(b) == TypeKind.POINTER
@@ -530,12 +554,14 @@ fn void* malloc(usz size) @builtin @inline @nodiscard
 
 fn void* tmalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
 {
-	return allocator::temp().acquire(size, false, alignment, offset)!!;
+	if (!size) return null;
+	return allocator::temp().acquire(size, false, alignment, 0)!!;
 }
 
 /**
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  **/
 macro new($Type, ...) @nodiscard
 {
@@ -548,9 +574,38 @@ macro new($Type, ...) @nodiscard
 	$endif
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ * @require $vacount < 2 : "Too many arguments."
+ * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ **/
+macro new_aligned($Type, ...) @nodiscard
+{
+	$if $vacount == 0:
+		return ($Type*)calloc_aligned($Type.sizeof, $Type.alignof);
+	$else
+		$Type* val = malloc_aligned($Type.sizeof, $Type.alignof);
+		*val = $vaexpr(0);
+		return val;
+	$endif
+}
+
+/**
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ **/
 macro alloc($Type) @nodiscard
 {
 	return ($Type*)malloc($Type.sizeof);
+}
+
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro alloc_aligned($Type) @nodiscard
+{
+	return ($Type*)malloc_aligned($Type.sizeof, $Type.alignof);
 }
 
 macro new_clear($Type) @deprecated("Use mem::new")
@@ -588,12 +643,38 @@ macro new_temp_clear($Type) @deprecated("use mem::temp_new")
 	return tcalloc($Type.sizeof);
 }
 
+
+
+/**
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ **/
 macro new_array($Type, usz elements) @nodiscard
 {
 	return allocator::new_array(allocator::heap(), $Type, elements);
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro new_array_aligned($Type, usz elements) @nodiscard
+{
+	return allocator::new_array_aligned(allocator::heap(), $Type, elements);
+}
+
+/**
+ * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ **/
 macro alloc_array($Type, usz elements) @nodiscard
+{
+	return allocator::alloc_array(allocator::heap(), $Type, elements);
+}
+
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
 	return allocator::alloc_array(allocator::heap(), $Type, elements);
 }
@@ -633,9 +714,15 @@ fn void* calloc(usz size) @builtin @inline @nodiscard
 	return allocator::calloc(allocator::heap(), size);
 }
 
+fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
+{
+	return allocator::calloc_aligned(allocator::heap(), size, alignment)!!;
+}
+
 fn void* tcalloc(usz size, usz alignment = 0, usz offset = 0) @builtin @inline @nodiscard
 {
-	return allocator::temp().acquire(size, false, alignment, offset)!!;
+	if (!size) return null;
+	return allocator::temp().acquire(size, false, alignment, 0)!!;
 }
 
 fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
@@ -643,13 +730,25 @@ fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
 	return allocator::realloc(allocator::heap(), ptr, new_size);
 }
 
+fn void* realloc_aligned(void *ptr, usz new_size, usz alignment) @builtin @inline @nodiscard
+{
+	return allocator::realloc_aligned(allocator::heap(), ptr, new_size, alignment)!!;
+}
+
 fn void free(void* ptr) @builtin @inline
 {
 	return allocator::free(allocator::heap(), ptr);
 }
 
+fn void free_aligned(void* ptr) @builtin @inline
+{
+	return allocator::free_aligned(allocator::heap(), ptr);
+}
+
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline @nodiscard
 {
+	if (!size) return null;
+    if (!ptr) return tmalloc(size, alignment);
 	return allocator::temp().resize(ptr, size, alignment, 0)!!;
 }
 

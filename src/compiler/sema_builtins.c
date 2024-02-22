@@ -421,8 +421,15 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_INTLIKE }, 1)) return false;
 			rtype = args[0]->type->canonical;
 			break;
-		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMCOPY_INLINE:
+			assert(arg_count == 6);
+			if (!sema_check_builtin_args(args,
+			                             (BuiltinArg[]) { BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE },
+			                             6)) return false;
+			if (!sema_check_builtin_args_const(&args[2], 4)) return false;
+			rtype = type_void;
+			break;
+		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMMOVE:
 			assert(arg_count == 6);
 			if (!sema_check_builtin_args(args,
@@ -432,11 +439,17 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET:
+			assert(arg_count == 5);
+			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE },
+			                             5)) return false;
+			if (!sema_check_builtin_args_const(&args[3], 2)) return false;
+			rtype = type_void;
+			break;
 		case BUILTIN_MEMSET_INLINE:
 			assert(arg_count == 5);
 			if (!sema_check_builtin_args(args, (BuiltinArg[]) { BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE },
 										 5)) return false;
-			if (!sema_check_builtin_args_const(&args[3], 2)) return false;
+			if (!sema_check_builtin_args_const(&args[2], 3)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_BITREVERSE:

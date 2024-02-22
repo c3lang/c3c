@@ -299,7 +299,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 	}
 	TypeInfo *inner_type = inner->type_expr;
 	if (!sema_resolve_type(context, inner_type, resolve_kind)) return false;
-	if (type_is_invalid_storage_type(inner_type->type))
+	if (inner_type->type != type_void && type_is_invalid_storage_type(inner_type->type))
 	{
 		SEMA_ERROR(expr, "Compile-time types may not be used with $evaltype.");
 		return false;
@@ -313,19 +313,20 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
 	if (!sema_analyse_expr(context, expr)) return false;
-	if (type_is_invalid_storage_type(expr->type))
+	Type *expr_type = expr->type;
+	if (expr_type != type_void && type_is_invalid_storage_type(expr->type))
 	{
-		if (expr->type == type_wildcard)
+		if (expr_type == type_wildcard)
 		{
 			RETURN_SEMA_ERROR(expr, "This expression has no concrete type.");
 		}
-		if (expr->type == type_wildcard_optional)
+		if (expr_type == type_wildcard_optional)
 		{
 			RETURN_SEMA_ERROR(expr, "This optional expression is untyped.");
 		}
 		RETURN_SEMA_ERROR(expr, "Expected a regular runtime expression here.");
 	}
-	type_info->type = expr->type;
+	type_info->type = expr_type;
 	return true;
 }
 
