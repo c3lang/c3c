@@ -5,16 +5,12 @@
 
 #include "llvm_codegen_internal.h"
 
-static LLVMValueRef llvm_add_xxlizer(GenContext *c, unsigned priority, bool is_finalizer);
 static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initializer, LLVMValueRef function);
-static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index);
 static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef value);
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment);
 static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIArgInfo *info, unsigned *index);
 static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index);
-static inline void
-llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
-               Decl *decl);
+static inline void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body, Decl *decl);
 
 
 /**
@@ -49,7 +45,7 @@ bool llvm_emit_check_block_branch(GenContext *c)
 	// But this leaves us with blocks that have no parent.
 	// Consequently, we will delete those and realize that
 	// we then have no need for emitting a br.
-	if (!c->current_block_is_target
+	if (c->current_block != c->first_block
 		&& !LLVMGetFirstUse(LLVMBasicBlockAsValue(c->current_block)))
 	{
 		LLVMDeleteBasicBlock(c->current_block);
@@ -67,13 +63,12 @@ void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
 }
 
 
-void llvm_emit_block(GenContext *context, LLVMBasicBlockRef next_block)
+void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block)
 {
-	assert(context->current_block == NULL);
-	LLVMAppendExistingBasicBlock(context->function, next_block);
-	LLVMPositionBuilderAtEnd(context->builder, next_block);
-	context->current_block = next_block;
-	context->current_block_is_target = false;
+	assert(c->current_block == NULL);
+	LLVMAppendExistingBasicBlock(c->cur_func.ref, next_block);
+	LLVMPositionBuilderAtEnd(c->builder, next_block);
+	c->current_block = next_block;
 }
 
 static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, unsigned *index, AlignSize alignment)
@@ -116,9 +111,9 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 	}
 }
 
-LLVMValueRef llvm_get_next_param(GenContext *context, unsigned *index)
+LLVMValueRef llvm_get_next_param(GenContext *c, unsigned *index)
 {
-	return LLVMGetParam(context->function, (*index)++);
+	return LLVMGetParam(c->cur_func.ref, (*index)++);
 }
 
 
@@ -196,7 +191,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 										decl->span,
 										NULL, NULL, NULL);
 			}
-			if (!decl->var.is_written && !decl->var.is_addr && !llvn_use_accurate_debug_info(c))
+			if (!decl->var.is_written && !decl->var.is_addr && !llvm_use_accurate_debug_info(c))
 			{
 				decl->backend_value = param_value;
 				decl->is_value = true;
@@ -285,7 +280,6 @@ static inline void llvm_emit_return_value(GenContext *context, LLVMValueRef valu
 		LLVMBuildRet(context->builder, value);
 	}
 	context->current_block = NULL;
-	context->current_block_is_target = false;
 }
 
 
@@ -428,27 +422,26 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
                     Decl *decl)
 {
+	assert(prototype && function && body);
+	// Signature is NULL if the function is naked.
+
 	bool emit_debug = llvm_use_debug(c);
-	LLVMValueRef prev_function = c->function;
+	LLVMValueRef prev_function = c->cur_func.ref;
 	LLVMBuilderRef prev_builder = c->builder;
 
-	c->opt_var = NULL;
-	c->catch_block = NULL;
+	c->catch = NO_CATCH;
 
-	c->function = function;
 	if (emit_debug)
 	{
 		c->debug.function = LLVMGetSubprogram(function);
 	}
 
 	c->panic_blocks = NULL;
+	c->cur_func.ref = function;
 	c->cur_func.name = decl->name;
 	c->cur_func.prototype = prototype;
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, c->function, "entry");
-	c->current_block = entry;
-	c->current_block_is_target = true;
-	c->builder = llvm_create_builder(c);
-	LLVMPositionBuilderAtEnd(c->builder, entry);
+	c->builder = llvm_create_function_entry(c, function, &c->current_block);
+	c->first_block = c->current_block;
 
 	LLVMValueRef alloca_point = LLVMBuildAlloca(c->builder, LLVMInt32TypeInContext(c->context), "alloca_point");
 	c->alloca_point = alloca_point;
@@ -456,29 +449,31 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	unsigned arg = 0;
 
 
+	DebugScope scope;
 	if (emit_debug)
 	{
-		llvm_debug_scope_push(c, c->debug.function);
+		scope = (DebugScope) { .lexical_block = c->debug.function, NULL, NULL };
+		c->debug.block_stack = &scope;
 		EMIT_LOC(c, body);
 	}
 
 	c->optional_out = NULL;
 	c->return_out = NULL;
-	if (prototype && prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
+	if (prototype->ret_abi_info->kind == ABI_ARG_INDIRECT)
 	{
 		if (prototype->is_optional)
 		{
-			c->optional_out = LLVMGetParam(c->function, arg++);
+			c->optional_out = llvm_get_next_param(c, &arg);
 		}
 		else
 		{
-			c->return_out = LLVMGetParam(c->function, arg++);
+			c->return_out = llvm_get_next_param(c, &arg);
 		}
 	}
-	if (prototype && prototype->ret_by_ref_abi_info)
+	if (prototype->ret_by_ref_abi_info)
 	{
 		assert(!c->return_out);
-		c->return_out = LLVMGetParam(c->function, arg++);
+		c->return_out = llvm_get_next_param(c, &arg);
 	}
 
 
@@ -498,20 +493,15 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 		llvm_emit_stmt(c, ast_next(&current));
 	}
 
-	if (c->current_block && llvm_basic_block_is_unused(c->current_block))
-	{
-		LLVMBasicBlockRef prev_block = LLVMGetPreviousBasicBlock(c->current_block);
-		LLVMDeleteBasicBlock(c->current_block);
-		c->current_block = prev_block;
-		LLVMPositionBuilderAtEnd(c->builder, c->current_block);
-	}
+	llvm_delete_current_if_unused(c);
+
 	// Insert a return (and defer) if needed.
 	if (c->current_block && !LLVMGetBasicBlockTerminator(c->current_block))
 	{
 		llvm_emit_return_implicit(c);
 	}
 
-	LLVMBasicBlockRef last_block = LLVMGetLastBasicBlock(c->function);
+	LLVMBasicBlockRef last_block = LLVMGetLastBasicBlock(c->cur_func.ref);
 
 	// Move panic blocks last, this is just overall nicer to read, and might be better from
 	// a performance POV
@@ -533,12 +523,12 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 
 	if (llvm_use_debug(c))
 	{
-		llvm_debug_scope_pop(c);
+		c->debug.block_stack = NULL;
 		LLVMDIBuilderFinalizeSubprogram(c->debug.builder, c->debug.function);
 	}
 
 	c->builder = prev_builder;
-	c->function = prev_function;
+	c->cur_func.ref = prev_function;
 }
 
 static void llvm_append_xxlizer(GenContext *c, unsigned  priority, bool is_initializer, LLVMValueRef function)
@@ -557,7 +547,6 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	{
 		LLVMTypeRef types[3] = { c->ptr_type, c->ptr_type, c->typeid_type };
 		LLVMTypeRef entry_type = LLVMStructType(types, 3, false);
-		c->dyn_section_type = entry_type;
 		LLVMValueRef *entries = VECNEW(LLVMValueRef, len);
 		FOREACH_BEGIN(Decl *func, funcs)
 			Type *type = typeget(func->func_decl.type_parent);
@@ -587,10 +576,8 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 	LLVMValueRef vals_fn[3] = { llvm_const_int(c, type_int, 1), initializer, llvm_get_zero(c, type_voidptr) };
 	vec_add(c->constructors, LLVMConstNamedStruct(c->xtor_entry_type, vals_fn, 3));
 
-	LLVMBasicBlockRef entry = LLVMAppendBasicBlockInContext(c->context, initializer, "entry");
-	LLVMBuilderRef builder = llvm_create_builder(c);
-	LLVMPositionBuilderAtEnd(builder, entry);
-	LLVMBasicBlockRef last_block = entry;
+	LLVMBasicBlockRef last_block;
+	LLVMBuilderRef builder = llvm_create_function_entry(c, initializer, &last_block);
 	FOREACH_BEGIN(Decl *decl, funcs)
 		Type *type = typeget(decl->func_decl.type_parent);
 		scratch_buffer_clear();
@@ -615,9 +602,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMAppendExistingBasicBlock(initializer, next);
 		LLVMPositionBuilderAtEnd(builder, next);
 		LLVMValueRef next_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, load_dtable, 2, "next_dtable_ref");
-		LLVMValueRef phi_in[2] = { dtable_ref, next_ptr };
-		LLVMBasicBlockRef phi_in_block[2] = { last_block, next };
-		LLVMAddIncoming(phi, phi_in, phi_in_block, 2);
+		llvm_set_phi(phi, dtable_ref, last_block, next_ptr, next);
 		LLVMBuildBr(builder, check);
 		LLVMAppendExistingBasicBlock(initializer, after_check);
 		LLVMPositionBuilderAtEnd(builder, after_check);

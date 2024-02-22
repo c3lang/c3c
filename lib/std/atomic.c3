@@ -124,7 +124,7 @@ macro @atomic_exec(#func, data, value, ordering) @local
 		case RELEASE: return #func(data, value, RELEASE);
 		case ACQUIRE_RELEASE: return #func(data, value, ACQUIRE_RELEASE);
 		case SEQ_CONSISTENT: return #func(data, value, SEQ_CONSISTENT);
-		default: assert(false, "Ordering may not be non-atomic or unordered.");
+		default: unreachable("Ordering may not be non-atomic or unordered.");
 	}
 }
 

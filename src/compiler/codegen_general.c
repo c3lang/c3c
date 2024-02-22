@@ -172,14 +172,12 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 	switch (type->type_kind)
 	{
 		case LOWERED_TYPES:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			UNREACHABLE;
 		case TYPE_VOID:
 		case TYPE_FUNC:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			return false;
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			*base = type_iptr->canonical;
 			*elements = 2;
 			return true;

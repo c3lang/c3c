@@ -9,7 +9,7 @@ macro @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, $succe
 		case AtomicOrdering.RELAXED.ordinal: return $$compare_exchange(ptr, expected, desired, false, false, $success, AtomicOrdering.RELAXED.ordinal, $alignment);
 		case AtomicOrdering.ACQUIRE.ordinal: return $$compare_exchange(ptr, expected, desired, false, false, $success, AtomicOrdering.ACQUIRE.ordinal, $alignment);
 		case AtomicOrdering.SEQ_CONSISTENT.ordinal: return $$compare_exchange(ptr, expected, desired, false, false, $success, AtomicOrdering.SEQ_CONSISTENT.ordinal, $alignment);
-		default: assert(false, "Unrecognized failure ordering");
+		default: unreachable("Unrecognized failure ordering");
 	}
 	return 0;
 }
@@ -23,12 +23,12 @@ macro @__atomic_compare_exchange_ordering_success(ptr, expected, desired, succes
 		case AtomicOrdering.RELEASE.ordinal: return @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, AtomicOrdering.RELEASE.ordinal, failure, $alignment);
 		case AtomicOrdering.ACQUIRE_RELEASE.ordinal: return @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, AtomicOrdering.ACQUIRE_RELEASE.ordinal, failure, $alignment);
 		case AtomicOrdering.SEQ_CONSISTENT.ordinal: return @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, AtomicOrdering.SEQ_CONSISTENT.ordinal, failure, $alignment);
-		default: assert(false, "Unrecognized success ordering");
+		default: unreachable("Unrecognized success ordering");
 	}
 	return 0;
 }
 
-fn CInt __atomic_compare_exchange(CInt size, any* ptr, any* expected, any* desired, CInt success, CInt failure) @extern("__atomic_compare_exchange") @export
+fn CInt __atomic_compare_exchange(CInt size, any ptr, any expected, any desired, CInt success, CInt failure) @extern("__atomic_compare_exchange") @export
 {
 	switch (size)
 	{
@@ -57,7 +57,7 @@ fn CInt __atomic_compare_exchange(CInt size, any* ptr, any* expected, any* desir
 				nextcase;
 			$endif
 		default:
-			assert(false, "Unsuported size (%d) for atomic_compare_exchange", size);
+			unreachable("Unsuported size (%d) for atomic_compare_exchange", size);
 	}
 	return 0;
 }

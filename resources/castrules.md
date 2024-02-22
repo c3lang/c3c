@@ -18,7 +18,7 @@ Some short names:
 | int      | cond   | sw/sn    | always | explptr | no     | expand   | explbase | edist | no       | no     | no     | no     | no     | edist  | no     |
 | float    | cond   | expl     | sw/sn  | no      | no     | expand   | no       | edist | no       | no     | no     | no     | no     | no     | no     |
 | pointer  | cond   | explptr  | no     | ptrconv | arve   | expand   | no       | edist | no       | no     | no     | yes    | expl   | no     | expl   |
-| subarray | cond   | no       | no     | no      | saconv | no       | no       | edist | no?      | no     | no     | no     | no     | no     | no     |
+| slice    | cond   | no       | no     | no      | saconv | no       | no       | edist | no?      | no     | no     | no     | no     | no     | no     |
 | vec      | cond   | no       | no     | no      | no     | as base  | no       | edist | expl     | no     | no     | no     | no     | no     | no     |
 | bits     | no     | explbase | no     | no      | no     | no       | no?      | edist | explbase | no     | no     | no     | no     | no     | no     |
 | distc    | edist  | edist    | edist  | edist   | edist  | edist    | edist    | edist | edist    | edist  | edist  | edist  | edist  | edist  | edist  |

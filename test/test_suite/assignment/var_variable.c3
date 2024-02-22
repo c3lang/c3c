@@ -1,7 +1,6 @@
 module test;
 import std::io;
 
-
 macro @foo(;@body)
 {
 	var i = 1.0;

@@ -3,7 +3,7 @@ module std::core::builtins @test;
 fn void! test_anycast()
 {
 	int a;
-	any* b = &a;
+	any b = &a;
 	assert(anycast(b, int)! == &a);
 	assert(@catch(anycast(b, double)) == CastResult.TYPE_MISMATCH);
 }

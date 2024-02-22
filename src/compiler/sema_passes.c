@@ -87,7 +87,7 @@ void sema_analysis_pass_process_imports(Module *module)
 			{
 				if (imports[j]->import.path->module == path->module)
 				{
-					SEMA_ERROR(import, "Module '%s' imported more than once, please remove one.", path->module);
+					PRINT_ERROR_AT(import, "Module '%s' imported more than once, please remove one.", path->module);
 					SEMA_NOTE(imports[j], "The previous one was here.");
 					decl_poison(import);
 					goto NEXT;
@@ -99,7 +99,7 @@ void sema_analysis_pass_process_imports(Module *module)
 			// 5. Do we find it?
 			if (!import_module)
 			{
-				SEMA_ERROR(import, "No module named '%s' could be found, did you type the name right?", path->module);
+				PRINT_ERROR_AT(import, "No module named '%s' could be found, did you type the name right?", path->module);
 				decl_poison(import);
 				continue;
 			}
@@ -107,7 +107,7 @@ void sema_analysis_pass_process_imports(Module *module)
 			// 6. Importing itself is not allowed.
 			if (import_module == module)
 			{
-				SEMA_ERROR(import, "Importing the current module is not allowed, you need to remove it.");
+				PRINT_ERROR_AT(import, "Importing the current module is not allowed, you need to remove it.");
 				decl_poison(import);
 				continue;
 			}
@@ -136,8 +136,7 @@ INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filena
 {
 	if (!expr_is_const_string(filename))
 	{
-		SEMA_ERROR(filename, "A compile time string was expected.");
-		return NULL;
+		RETURN_PRINT_ERROR_AT(NULL, filename, "A compile time string was expected.");
 	}
 	const char *string = filename->const_expr.bytes.ptr;
 	bool loaded;
@@ -152,7 +151,7 @@ INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filena
 	if (!file)
 	{
 		if (no_file) return no_file;
-		sema_error_at(span, "Failed to load file %s: %s", string, error);
+		print_error_at(span, "Failed to load file %s: %s", string, error);
 		return NULL;
 	}
 	if (global_context.errors_found) return NULL;
@@ -163,16 +162,14 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 {
 	if (active_target.trust_level < TRUST_INCLUDE)
 	{
-		SEMA_ERROR(decl, "'$include' not permitted, trust level must be set to '--trust=include' or '--trust=full' to permit it.");
-		return NULL;
+		RETURN_PRINT_ERROR_AT(NULL, decl, "'$include' not permitted, trust level must be set to '--trust=include' or '--trust=full' to permit it.");
 	}
 	SemaContext context;
 	sema_context_init(&context, unit);
 	FOREACH_BEGIN(Attr *attr, decl->attributes)
 		if (attr->attr_kind != ATTRIBUTE_IF)
 		{
-			SEMA_ERROR(attr, "Invalid attribute for '$include'.");
-			return NULL;
+			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$include'.");
 		}
 	FOREACH_END();
 	bool success = sema_analyse_ct_expr(&context, decl->include.filename);
@@ -182,8 +179,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	if (!file) return NULL;
 	if (global_context.includes_used++ > MAX_INCLUDES)
 	{
-		SEMA_ERROR(decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
-		return NULL;
+		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
 	}
 	return parse_include_file(file, unit);
 }
@@ -192,16 +188,14 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
 	if (active_target.trust_level < TRUST_FULL)
 	{
-		SEMA_ERROR(decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
-		return NULL;
+		RETURN_PRINT_ERROR_AT(NULL, decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
 	}
 	SemaContext context;
 	sema_context_init(&context, unit);
 	FOREACH_BEGIN(Attr *attr, decl->attributes)
 		if (attr->attr_kind != ATTRIBUTE_IF)
 		{
-			SEMA_ERROR(attr, "Invalid attribute for '$exec'.");
-			return NULL;
+			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$exec'.");
 		}
 	FOREACH_END();
 	Expr *filename = decl->exec_decl.filename;
@@ -213,8 +207,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	if (!success) return NULL;
 	if (!expr_is_const_string(filename))
 	{
-		SEMA_ERROR(filename, "A filename was expected as the first argument to '$exec'.");
-		return NULL;
+		RETURN_PRINT_ERROR_AT(NULL, filename, "A filename was expected as the first argument to '$exec'.");
 	}
 	scratch_buffer_clear();
 	const char *file_str = filename->const_expr.bytes.ptr;
@@ -245,8 +238,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 			case CONST_TYPEID:
 				if (!arg->const_expr.typeid->name)
 				{
-					SEMA_ERROR(arg, "The type '%s' has no trivial name.", type_quoted_error_string(arg->const_expr.typeid));
-					return NULL;
+					RETURN_PRINT_ERROR_AT(NULL, arg, "The type '%s' has no trivial name.", type_quoted_error_string(arg->const_expr.typeid));
 				}
 				scratch_buffer_append(arg->const_expr.typeid->name);
 				continue;
@@ -260,8 +252,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_MEMBER:
-				SEMA_ERROR(arg, "Bytes, initializers and member references may not be used as arguments.");
-				return NULL;
+				RETURN_PRINT_ERROR_AT(NULL, arg, "Bytes, initializers and member references may not be used as arguments.");
 		}
 		UNREACHABLE
 	FOREACH_END();
@@ -274,8 +265,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		if (!dir_change(active_target.script_dir))
 		{
 			free(old_path);
-			SEMA_ERROR(decl, "Failed to open script dir '%s'", active_target.script_dir);
-			return NULL;
+			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", active_target.script_dir);
 		}
 	}
 	if (c3_script)
@@ -293,14 +283,12 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		free(old_path);
 		if (!success)
 		{
-			SEMA_ERROR(decl, "Failed to open run dir '%s'", active_target.script_dir);
-			return NULL;
+			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", active_target.script_dir);
 		}
 	}
 	if (global_context.includes_used++ > MAX_INCLUDES)
 	{
-		SEMA_ERROR(decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
-		return NULL;
+		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
 	}
 	return parse_include_file(file, unit);
 }
@@ -373,14 +361,14 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		if (!if_attr) goto CHECK_LINK;
 		if (vec_size(if_attr->exprs) != 1)
 		{
-			SEMA_ERROR(if_attr, "Expected one parameter.");
+			PRINT_ERROR_AT(if_attr, "Expected one parameter.");
 			goto FAIL_CONTEXT;
 		}
 		Expr *expr = if_attr->exprs[0];
 		if (!sema_analyse_ct_expr(&context, expr)) goto FAIL_CONTEXT;
 		if (!expr_is_const(expr) || expr->type->canonical != type_bool)
 		{
-			SEMA_ERROR(expr, "Expected a constant boolean expression.");
+			PRINT_ERROR_AT(expr, "Expected a constant boolean expression.");
 			goto FAIL_CONTEXT;
 		}
 		if (!expr->const_expr.b)
@@ -405,7 +393,7 @@ CHECK_LINK:
 				if (!sema_analyse_expr(&context, string)) goto FAIL_CONTEXT;
 				if (!expr_is_const_string(string))
 				{
-					SEMA_ERROR(string, "Expected a constant string here, usage is: "
+					PRINT_ERROR_AT(string, "Expected a constant string here, usage is: "
 							   "'@link([cond1, ]link1, link2, ...)'.");
 					goto FAIL_CONTEXT;
 				}
@@ -635,7 +623,7 @@ void sema_analysis_pass_lambda(Module *module)
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
 
-static inline bool sema_check_interfaces(Decl *decl)
+static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
 	FOREACH_BEGIN(Decl *method, decl->methods)
@@ -699,7 +687,7 @@ void sema_analysis_pass_interface(Module *module)
 			}
 			if (decl->interfaces)
 			{
-				sema_check_interfaces(decl);
+				sema_check_interfaces(&context, decl);
 			}
 		}
 		sema_context_destroy(&context);

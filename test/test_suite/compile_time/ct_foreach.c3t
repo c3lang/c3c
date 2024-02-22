@@ -16,6 +16,7 @@ fn void main()
     $endforeach;
 
     $foreach ($x : { 123, "abc", 1177, "hello" })
+    {
         $typeof($x) z = $x;
         $switch ($typeof($x))
         $case int:
@@ -23,6 +24,7 @@ fn void main()
         $default:
             printf("Bar %s\n", $x);
         $endswitch
+    }
     $endforeach;
 
 }

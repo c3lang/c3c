@@ -52,7 +52,7 @@ fn void ArenaAllocator.reset(&self, usz mark) @dynamic => self.used = mark;
  * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
  * @require size > 0
  **/
-fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz offset) @dynamic
+fn void*! ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	usz total_len = self.data.len;
@@ -65,7 +65,7 @@ fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz
 	self.used = end;
 	ArenaAllocatorHeader* header = mem - ArenaAllocatorHeader.sizeof;
 	header.size = size;
-	if (clear) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
+	if (init_type == ZERO) mem::clear(mem, size, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }
 
@@ -75,7 +75,7 @@ fn void*! ArenaAllocator.acquire(&self, usz size, bool clear, usz alignment, usz
  * @require old_pointer != null
  * @require size > 0
  **/
-fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignment, usz offset) @dynamic
+fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	assert(old_pointer >= self.data.ptr, "Pointer originates from a different allocator.");
@@ -100,7 +100,7 @@ fn void*! ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 		return old_pointer;
 	}
 	// Otherwise just allocate new memory.
-	void* mem = self.acquire(size, false, alignment, 0)!;
+	void* mem = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
 }

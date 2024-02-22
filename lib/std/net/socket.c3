@@ -83,12 +83,12 @@ macro Socket new_socket(fd, ai)
 
 enum SocketOption : char (CInt value)
 {
-	REUSEADDR (os::SO_REUSEADDR),
-	REUSEPORT (os::SO_REUSEPORT) @if(!env::WIN32),
-	KEEPALIVE (os::SO_KEEPALIVE),
-	BROADCAST (os::SO_BROADCAST),
-	OOBINLINE (os::SO_OOBINLINE),
-	DONTROUTE (os::SO_DONTROUTE),
+	REUSEADDR                  = os::SO_REUSEADDR,
+	REUSEPORT @if(!env::WIN32) = os::SO_REUSEPORT,
+	KEEPALIVE                  = os::SO_KEEPALIVE,
+	BROADCAST                  = os::SO_BROADCAST,
+	OOBINLINE                  = os::SO_OOBINLINE,
+	DONTROUTE                  = os::SO_DONTROUTE,
 }
 
 fn bool! Socket.get_broadcast(&self) => self.get_option(BROADCAST);

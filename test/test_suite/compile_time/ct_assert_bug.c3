@@ -6,13 +6,13 @@ fn void! main()
 {
     String[] s1;
     String[] s2;
-    deep_equal(s1, s2); // #error: Compile time assert failed
+    deep_equal(s1, s2);
 }
 
 macro bool deep_equal(a, b)
 {
     $switch ($typeof(a).kindof)
-        $case SUBARRAY:
+        $case SLICE:
             if (a.len != b.len) return false;
             foreach (i, x : a)
             {
@@ -20,6 +20,6 @@ macro bool deep_equal(a, b)
             }
             return true;
         $default:
-            $assert(false);
+            $assert(false); // #error: Compile time assert failed
     $endswitch
 }

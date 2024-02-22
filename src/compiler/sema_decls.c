@@ -4,26 +4,33 @@
 
 #include "sema_internal.h"
 
+#define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
+#define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
+#define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
 
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
-static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count);
+static inline bool
+sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, unsigned current_index,
+                                     unsigned count);
 
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
-static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like);
-static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like);
+static inline bool
+unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type *parent_type, Decl *method);
+static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method);
 
-static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
+static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
+                                         uint32_t parameters);
 static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload);
-static inline bool sema_analyse_operator_element_at(Decl *method);
-static inline bool sema_analyse_operator_element_set(Decl *method);
-static inline bool sema_analyse_operator_len(Decl *method);
-static bool sema_check_operator_method_validity(Decl *method);
+static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
+static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
+static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context);
+static bool sema_check_operator_method_validity(SemaContext *context, Decl *method);
 static inline const char *method_name_by_decl(Decl *method_like);
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -33,7 +40,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 
-static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
+static inline bool
+sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
@@ -43,7 +51,7 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 									bool *erase_decl);
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
-static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
@@ -55,7 +63,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
 										  SourceSpan from);
 
-static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl);
 
@@ -95,7 +103,8 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 /**
  * Check parameter name uniqueness and that the type is not void.
  */
-static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *current, unsigned current_index, unsigned count)
+static inline bool sema_check_param_uniqueness_and_type(
+		SemaContext *context, Decl **decls, Decl *current, unsigned current_index, unsigned count)
 {
 	// We may have `void` arguments. They are not allowed in C3. Theoretically they could
 	// be permitted, but it would complicate semantics in general.
@@ -140,7 +149,7 @@ static inline bool sema_resolve_implemented_interfaces(SemaContext *context, Dec
 	{
 		TypeInfo *inf_info = interfaces[i];
 		// Resolve the name
-		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_ALLOW_ANY)) return false;
+		if (!sema_resolve_type_info(context, inf_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Type *inf_type = inf_info->type->canonical;
 		if (inf_type->type_kind != TYPE_INTERFACE)
 		{
@@ -233,9 +242,16 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
 			Type *type = type_info->type;
-			if (type_is_invalid_storage_type(type))
+			switch (type_storage_type(type))
 			{
-				RETURN_SEMA_ERROR(type_info, "Members cannot be of type %s.", type_quoted_error_string(type));
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_VOID:
+				case STORAGE_COMPILE_TIME:
+					RETURN_SEMA_ERROR(type_info, "Members cannot be of type %s.", type_quoted_error_string(type));
+				case STORAGE_WILDCARD:
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(type_info, "%s has unknown size and cannot be used as a member.", type_quoted_error_string(type));
 			}
 			decl->type = type;
 			decl->resolve_status = RESOLVE_DONE;
@@ -879,6 +895,54 @@ ERROR:
 	return decl_poison(decl);
 }
 
+INLINE Decl *sema_member_decl_for_name(Type *type, const char *name)
+{
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_POINTER:
+		case TYPE_FUNC:
+		case TYPE_FAULTTYPE:
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_OPTIONAL:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+		case TYPE_SLICE:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case TYPE_ENUM:
+		{
+			FOREACH_BEGIN(Decl *param, type->decl->enums.parameters)
+				if (param->name == name) return param;
+			FOREACH_END();
+			return NULL;
+		}
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
+			return sema_decl_stack_find_decl_member(type->decl, name);
+		default:
+			UNREACHABLE
+	}
+}
+
 
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent)
 {
@@ -902,8 +966,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			if (type_is_void(rtype))
 			{
-				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_macro ? "macros" : "functions");
-				return false;
+				RETURN_SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_macro ? "macros" : "functions");
 			}
 		}
 		if (sig->attrs.maydiscard)
@@ -949,11 +1012,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			default:
 				goto CHECK_PARAMS;
 		}
-		if (type_is_any_raw(inferred_type))
-		{
-			RETURN_SEMA_ERROR(param, "This would infer to %s, which cannot be passed by value. Use '&%s' instead.",
-			                  type_quoted_error_string(inferred_type), param->name);
-		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 	}
 
@@ -993,6 +1051,12 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 		assert(param->resolve_status == RESOLVE_NOT_DONE && "The param shouldn't have been resolved yet.");
 		param->resolve_status = RESOLVE_RUNNING;
+		bool erase = false;
+		if (!sema_analyse_attributes(context, param, param->attributes, ATTR_PARAM, &erase))
+		{
+			return decl_poison(param);
+		}
+		assert(!erase);
 		param->unit = context->unit;
 		assert(param->decl_kind == DECL_VAR);
 		VarDeclKind var_kind = param->var.kind;
@@ -1007,7 +1071,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
-				if (type_info && !type_is_pointer(param->type) && !type_is_any_interface_ptr(param->type))
+				if (type_info && !type_is_pointer(param->type))
 				{
 					RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 							   type_quoted_error_string(type_get_ptr(param->type)));
@@ -1087,7 +1151,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 					return decl_poison(param);
 				}
 			}
-			type_info->type = type_get_subarray(type_info->type);
+			type_info->type = type_get_slice(type_info->type);
 		}
 
 		if (type_info)
@@ -1097,6 +1161,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			param->type = type_info->type;
 			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
 		}
+
 		if (param->var.init_expr)
 		{
 			Expr *expr = param->var.init_expr;
@@ -1105,7 +1170,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL)) return decl_poison(param);
 			}
 		}
-		if (!sema_check_param_uniqueness_and_type(params, param, i, param_count)) return decl_poison(param);
+		if (!sema_check_param_uniqueness_and_type(context, params, param, i, param_count)) return decl_poison(param);
 		param->resolve_status = RESOLVE_DONE;
 	}
 	return true;
@@ -1190,61 +1255,12 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 	}
 	// Distinct types drop the canonical
 	Type *base = info->type = info->type->canonical;
-	switch (base->type_kind)
-	{
-		case TYPE_FUNC:
-		case TYPE_TYPEDEF:
-		case CT_TYPES:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
-			UNREACHABLE
-			return false;
-		case TYPE_OPTIONAL:
-			UNREACHABLE
-		case TYPE_FAULTTYPE:
-			SEMA_ERROR(decl, "You cannot create a distinct type from a fault type.");
-			return false;
-		case TYPE_ANYFAULT:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an error union.");
-			return false;
-		case TYPE_INFPTR:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an interface pointer.");
-			return false;
-		case TYPE_ANYPTR:
-			SEMA_ERROR(decl, "You cannot create a distinct type from an 'any*'.");
-			return false;
-		case TYPE_VOID:
-		case TYPE_TYPEID:
-			SEMA_ERROR(decl, "Cannot create a distinct type from %s.", type_quoted_error_string(base));
-		case TYPE_BOOL:
-		case ALL_INTS:
-		case ALL_FLOATS:
-		case TYPE_POINTER:
-		case TYPE_ENUM:
-		case TYPE_BITSTRUCT:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
-		case TYPE_VECTOR:
-		case TYPE_DISTINCT:
-			break;
-	}
-	// Do we need anything else?
 	return true;
 }
 
-static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default)
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 {
-	*has_default = false;
-	assert(param->decl_kind == DECL_VAR);
-	// We need to check that the parameters are not typeless nor are of any macro parameter kind.
-	if (param->var.kind != VARDECL_PARAM && !param->var.type_info)
-	{
-		SEMA_ERROR(param, "An associated value must be a normal typed parameter.");
-		return false;
-	}
+	assert(param->decl_kind == DECL_VAR && param->var.kind == VARDECL_PARAM && param->var.type_info);
 	if (vec_size(param->attributes))
 	{
 		SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
@@ -1252,10 +1268,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 	}
 	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (param->var.vararg)
-	{
-		type_info->type = type_get_subarray(type_info->type);
-	}
+	assert(!param->var.vararg);
 	param->type = type_info->type;
 	assert(param->name);
 	if (param->name == kw_nameof)
@@ -1270,23 +1283,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		return false;
 	}
 	sema_decl_stack_push(param);
-	if (param->var.init_expr)
-	{
-		Expr *expr = param->var.init_expr;
-
-		if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL)) return false;
-		if (IS_OPTIONAL(expr))
-		{
-			SEMA_ERROR(expr, "Default arguments may not be optionals.");
-			return false;
-		}
-		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_GLOBAL_INIT))
-		{
-			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
-			return false;
-		}
-		*has_default = true;
-	}
+	assert(!param->var.init_expr);
 	return sema_set_abi_alignment(context, param->type, &param->alignment);
 }
 
@@ -1312,11 +1309,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 
-
 	Decl **associated_values = decl->enums.parameters;
 	unsigned associated_value_count = vec_size(associated_values);
-	unsigned mandatory_count = 0;
-	bool default_values_used = false;
 	Decl** state = sema_decl_stack_store();
 	for (unsigned i = 0; i < associated_value_count; i++)
 	{
@@ -1332,18 +1326,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				value->resolve_status = RESOLVE_RUNNING;
 				break;
 		}
-		bool has_default = false;
-		if (!sema_analyse_enum_param(context, value, &has_default)) goto ERR;
-		if (!has_default)
-		{
-			mandatory_count++;
-			if (default_values_used && !value->var.vararg)
-			{
-				SEMA_ERROR(value, "Non-default parameters cannot appear after default parameters.");
-				goto ERR;
-			}
-		}
-		default_values_used |= has_default;
+		if (!sema_analyse_enum_param(context, value)) goto ERR;
 		value->resolve_status = RESOLVE_DONE;
 	}
 	sema_decl_stack_restore(state);
@@ -1407,15 +1390,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				SEMA_ERROR(args[0], "No associated values are defined for this enum.");
-				return false;
+				RETURN_SEMA_ERROR(args[0], "No associated values are defined for this enum.");
 			}
-			SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
-			return false;
+			RETURN_SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
 		}
-		if (arg_count < mandatory_count)
+		if (arg_count < associated_value_count)
 		{
-			SEMA_ERROR(enum_value, "Expected associated value(s) defined for this enum.");
+			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value(s) for this enum.", associated_value_count);
 			return false;
 		}
 		for (unsigned j = 0; j < arg_count; j++)
@@ -1429,7 +1410,6 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				return false;
 			}
 		}
-		REMINDER("named parameters and defaults do not work");
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
@@ -1478,34 +1458,29 @@ static inline const char *method_name_by_decl(Decl *method_like)
 
 
 
-static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters)
+static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
+                                         uint32_t parameters)
 {
 	Signature *signature = &method->func_decl.signature;
 	Decl **params = *params_ptr = signature->params;
 	uint32_t param_count = vec_size(params);
 	if (param_count > parameters)
 	{
-		SEMA_ERROR(params[parameters], "Too many parameters, '%s' expects only %u.", method->name, (unsigned)parameters);
-		return false;
+		RETURN_SEMA_ERROR(params[parameters], "Too many parameters, '%s' expects only %u.", method->name, (unsigned)parameters);
 	}
 	if (param_count < parameters)
 	{
-		SEMA_ERROR(method, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
-		return false;
+		RETURN_SEMA_ERROR(method, "Not enough parameters, '%s' requires %u.", method->name, (unsigned)parameters);
 	}
 
-	if (!signature->rtype)
-	{
-		SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
-		return false;
-	}
+	if (!signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
+
 	VECEACH(params, i)
 	{
 		Decl *param = params[i];
 		if (!params[i]->var.type_info)
 		{
-			SEMA_ERROR(param, "All parameters must be explicitly typed for '%s'.", method->name);
-			return false;
+			RETURN_SEMA_ERROR(param, "All parameters must be explicitly typed for '%s'.", method->name);
 		}
 	}
 	*rtype_ptr = type_infoptr(signature->rtype);
@@ -1560,50 +1535,63 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 }
 
 
-static inline bool sema_analyse_operator_element_at(Decl *method)
+static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method)
 {
 	TypeInfo *rtype;
 	Decl **params;
-	if (!sema_analyse_operator_common(method, &rtype, &params, 2)) return false;
-	if (type_is_void(rtype->type))
+	if (!sema_analyse_operator_common(context, method, &rtype, &params, 2)) return false;
+	switch (type_storage_type(rtype->type))
 	{
-		SEMA_ERROR(rtype, "The return type cannot be 'void'.");
-		return false;
+		case STORAGE_NORMAL:
+			break;
+		case STORAGE_VOID:
+		case STORAGE_WILDCARD:
+			RETURN_SEMA_ERROR(rtype, "The return type cannot be 'void'.");
+		case STORAGE_COMPILE_TIME:
+			RETURN_SEMA_ERROR(rtype, "The return type is %s which is a compile time type, which isn't allowed.",
+			                  type_quoted_error_string(rtype->type));
+		case STORAGE_UNKNOWN:
+			RETURN_SEMA_ERROR(rtype, "%s has unknown size and cannot be used as a return type.",
+			                  type_quoted_error_string(rtype->type));
+	}
+	if (method->operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(rtype->type))
+	{
+		RETURN_SEMA_ERROR(rtype, "The return type must be a pointer, but it is returning %s, did you mean to overload [] instead?",
+		                  type_quoted_error_string(rtype->type));
 	}
 	return true;
 }
 
-static inline bool sema_analyse_operator_element_set(Decl *method)
+static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method)
 {
 	TypeInfo *rtype;
 	Decl **params;
-	return sema_analyse_operator_common(method, &rtype, &params, 3);
+	return sema_analyse_operator_common(context, method, &rtype, &params, 3);
 }
 
-static inline bool sema_analyse_operator_len(Decl *method)
+static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context)
 {
 	TypeInfo *rtype;
 	Decl **params;
-	if (!sema_analyse_operator_common(method, &rtype, &params, 1)) return false;
+	if (!sema_analyse_operator_common(context, method, &rtype, &params, 1)) return false;
 	if (!type_is_integer(rtype->type))
 	{
-		SEMA_ERROR(rtype, "The return type must be an integer type.");
-		return false;
+		RETURN_SEMA_ERROR(rtype, "The return type must be an integer type.");
 	}
 	return true;
 }
 
-static bool sema_check_operator_method_validity(Decl *method)
+static bool sema_check_operator_method_validity(SemaContext *context, Decl *method)
 {
 	switch (method->operator)
 	{
 		case OVERLOAD_ELEMENT_SET:
-			return sema_analyse_operator_element_set(method);
+			return sema_analyse_operator_element_set(context, method);
 		case OVERLOAD_ELEMENT_AT:
 		case OVERLOAD_ELEMENT_REF:
-			return sema_analyse_operator_element_at(method);
+			return sema_analyse_operator_element_at(context, method);
 		case OVERLOAD_LEN:
-			return sema_analyse_operator_len(method);
+			return sema_analyse_operator_len(method, context);
 	}
 	UNREACHABLE
 }
@@ -1643,101 +1631,287 @@ INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_n
 
 bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 {
-	FOREACH_BEGIN(Attr *attr, decl->attributes)
-		if (attr->attr_kind != ATTRIBUTE_IF) continue;
-		if (vec_size(attr->exprs) != 1)
-		{
-			RETURN_SEMA_ERROR(attr, "Expected an argument to '@if'.");
-		}
-		Expr *expr = attr->exprs[0];
-		if (!sema_analyse_ct_expr(context, expr)) return false;
-		if (expr->type->canonical != type_bool)
-		{
-			RETURN_SEMA_ERROR(expr, "Expected a boolean value not %s.", type_quoted_error_string(expr->type));
-		}
-		if (expr->const_expr.b) return true;
-		decl->decl_kind = DECL_ERASED;
-		return false;
+	Attr *attr = attr_find_kind(decl->attributes, ATTRIBUTE_IF);
+	decl->is_if = true;
+	assert(attr);
+	if (vec_size(attr->exprs) != 1)
+	{
+		RETURN_SEMA_ERROR(attr, "Expected an argument to '@if'.");
+	}
+	Expr *expr = attr->exprs[0];
+	context->call_env.in_if_resolution = attr->span;
+	bool success = sema_analyse_ct_expr(context, expr);
+	context->call_env.in_if_resolution.a = 0;
+	if (!success) return false;
+	if (expr->type->canonical != type_bool)
+	{
+		RETURN_SEMA_ERROR(expr, "Expected a boolean value not %s.", type_quoted_error_string(expr->type));
+	}
+	if (expr->const_expr.b) return true;
+	decl->decl_kind = DECL_ERASED;
+	context->call_env.in_if_resolution.a = 0;
+	return false;
+}
+
+INLINE Attr* method_find_overload_attribute(Decl *method)
+{
+	FOREACH_BEGIN(Attr *attr, method->attributes)
+		if (attr->attr_kind == ATTRIBUTE_OPERATOR) return attr;
 	FOREACH_END();
 	UNREACHABLE
 }
-static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+
+static inline bool
+unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type *parent_type, Decl *method)
 {
-	sema_set_method_ext_name(unit, parent_type->name, method_like);
-	switch (method_like->visibility)
+	// We don't support operator overloading on base types, because
+	// there seems little use for it frankly.
+	if (method->operator)
+	{
+		RETURN_SEMA_ERROR(method_find_overload_attribute(method),
+						  "Only user-defined types support operator oveloading.");
+	}
+
+	// As with normal methods, update the name.
+	sema_set_method_ext_name(unit, parent_type->name, method);
+
+	// Add it to the right list of extensions.
+	switch (method->visibility)
 	{
 		case VISIBLE_PUBLIC:
-			vec_add(global_context.method_extensions, method_like);
+			vec_add(global_context.method_extensions, method);
 			break;
 		case VISIBLE_PRIVATE:
-			vec_add(unit->module->private_method_extensions, method_like);
+			vec_add(unit->module->private_method_extensions, method);
 			break;
 		case VISIBLE_LOCAL:
-			vec_add(unit->local_method_extensions, method_like);
+			vec_add(unit->local_method_extensions, method);
 			break;
 	}
-	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method_like->name);
+	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method->name);
 	return true;
 }
 
-static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, Type **index_ref)
 {
-	assert(parent_type->canonical == parent_type);
-	const char *name = method_like->name;
-	Decl *method = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
-	if (!method) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
-	if (!method) sema_find_extension_method_in_list(global_context.method_extensions, parent_type, name);
-	if (method)
+	switch (method->operator)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined.", method_name_by_decl(method_like));
-		SEMA_NOTE(method, "The previous definition was here.");
+		case OVERLOAD_LEN:
+			UNREACHABLE
+		case OVERLOAD_ELEMENT_AT:
+			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical);
+			*index_ref = method->func_decl.signature.params[1]->type->canonical;
+			return;
+		case OVERLOAD_ELEMENT_REF:
+			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical->pointer);
+			*index_ref = method->func_decl.signature.params[1]->type->canonical;
+			return;
+		case OVERLOAD_ELEMENT_SET:
+			*value_ref = method->func_decl.signature.params[2]->type->canonical;
+			*index_ref = method->func_decl.signature.params[1]->type->canonical;
+			return;
+		default:
+			UNREACHABLE
+	}
+}
+
+/**
+ * Do checks on an operator method:
+ *
+ * 1. Are the arguments valid for the operator?
+ * 2. Check if the operator was already defined.
+ * 3. See if another operator was defined and if the results match up.
+ */
+INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type, Decl *method)
+{
+	// Check it's valid for the operator type.
+	if (!sema_check_operator_method_validity(context, method)) return false;
+
+	// See if the operator has already been defined.
+	OperatorOverload operator = method->operator;
+	Decl *other = sema_find_operator(context, parent_type, operator);
+	if (other)
+	{
+		Attr *attr = method_find_overload_attribute(method);
+		SEMA_ERROR(attr->exprs[0], "This operator is already defined for '%s'.", parent_type->name);
+		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
 	}
 
-	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(unit, parent_type, method_like);
+	// Check that actual types match up
+	Type *value;
+	Type *index_type;
+	switch (operator)
+	{
+		case OVERLOAD_LEN:
+			// No dependency
+			return true;
+		case OVERLOAD_ELEMENT_AT:
+			// [] compares &[]
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			// And []=
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			return true;
+		case OVERLOAD_ELEMENT_REF:
+			// &[] compares []
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			// And []=
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			return true;
+		case OVERLOAD_ELEMENT_SET:
+			// []= compares &[]
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			// And []
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			return true;
+		default:
+			UNREACHABLE
+	}
+
+	// We have an operator to compare with.
+	Type *this_value;
+	Type *this_index_type;
+	sema_get_overload_arguments(method, &this_value, &this_index_type);
+
+	// So compare the value
+	if (this_value != value)
+	{
+		SEMA_ERROR(method, "There is a mismatch of the 'value' type compared to that of another operator: expected %s but got %s.",
+		           type_quoted_error_string(value), type_quoted_error_string(this_value));
+		SEMA_NOTE(other, "The other definition is here.");
+		return false;
+	}
+
+	// And the index.
+	if (this_index_type != index_type)
+	{
+		SEMA_ERROR(method, "There is a mismatch of the 'index' type compared to that of another operator: expected %s but got %s.",
+		           type_quoted_error_string(index_type), type_quoted_error_string(this_index_type));
+		SEMA_NOTE(other, "The other definition is here.");
+		return false;
+	}
+
+	// Everything worked! Done.
+	return true;
+}
+
+/**
+ * Attempt to add a method to the type:
+ *
+ * 1. See if it is already defined as an extension method => if so show error
+ * 2. If it is a non-user defined => delegate to unit_add_base_extension_method
+ * 3. If it is check if it is defined on the type.
+ * 4. If it is an operator method call sema_analyse_operator_method to check it.
+ * 5. Register its external name.
+ * 6. Add the module according to visibility.
+ */
+static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method)
+{
+	CompilationUnit *unit = context->unit;
+	assert(parent_type->canonical == parent_type);
+	const char *name = method->name;
+
+	// Did we already define it externally?
+	Decl *other = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
+	if (!other) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
+	if (!other) sema_find_extension_method_in_list(global_context.method_extensions, parent_type, name);
+	if (other)
+	{
+		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
+		SEMA_NOTE(other, "The previous definition was here.");
+		return false;
+	}
+
+	// Is it a base extension?
+	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, unit, parent_type, method);
+
+	// Resolve it as a user-defined type extension.
 	Decl *parent = parent_type->decl;
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
-	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
-	if (method && !method->func_decl.attr_interface_method)
+
+	// If we found it, issue an error.
+	other = sema_resolve_method(unit, parent, name, &ambiguous, &private);
+	if (other)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined for '%s'.",
-				   method_name_by_decl(method_like), parent_type->name);
-		SEMA_NOTE(method, "The previous definition was here.");
+		SEMA_ERROR(method, "This %s is already defined for '%s'.",
+		           method_name_by_decl(method), parent_type->name);
+		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
 	}
-	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
-	REMINDER("Check multiple operator");
-	sema_set_method_ext_name(unit, parent->extname, method_like);
-	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
-	switch (method_like->visibility)
+
+	// Is it an operator?
+	if (method->operator)
+	{
+		if (!sema_analyse_operator_method(context, parent_type, method)) return false;
+	}
+
+	// Set the external name
+	sema_set_method_ext_name(unit, parent->extname, method);
+	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
+
+	// Add it to the correct place: type methods, private extensions, local method extensions
+	switch (method->visibility)
 	{
 		case VISIBLE_PUBLIC:
-			vec_add(parent->methods, method_like);
+			vec_add(parent->methods, method);
 			break;
 		case VISIBLE_PRIVATE:
 			if (decl_module(parent) == unit->module && parent->visibility >= VISIBLE_PRIVATE)
 			{
-				vec_add(parent->methods, method_like);
+				vec_add(parent->methods, method);
 				break;
 			}
-			vec_add(unit->module->private_method_extensions, method_like);
+			vec_add(unit->module->private_method_extensions, method);
 			break;
 		case VISIBLE_LOCAL:
 			if (parent->unit == unit && parent->visibility >= VISIBLE_LOCAL)
 			{
-				vec_add(parent->methods, method_like);
+				vec_add(parent->methods, method);
 				break;
 			}
-			vec_add(unit->local_method_extensions, method_like);
+			vec_add(unit->local_method_extensions, method);
 			break;
 		default:
 			UNREACHABLE
 	}
 	return true;
-
 }
 
+/**
+ * Find an interface name by searching through its own interfaces as well as any
+ * parents to the interface.
+ */
 static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 {
 	FOREACH_BEGIN(Decl *method, interface->interface_methods)
@@ -1750,7 +1924,19 @@ static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 	return NULL;
 }
 
-static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *parent_type, Decl *method)
+/**
+ * Given a method, find the interface it implements.
+ *
+ * 1. Check that it can implement an interface (structs, unions, distinct, faults and enums can)
+ * 2. Find the method in the interfaces implemented. If more than one interface has the method then they must match
+ * 3. If no match is found we return.
+ * 4. Otherwise we fully resolve the matching interface.
+ * 5. And return the interface method.
+ *
+ * If (2) or (4) fails, then this is an error returning a poisoned decl. Not finding a method is fine,
+ * this returns NULL.
+ */
+static inline Decl *sema_find_interface_for_method(SemaContext *context, CanonicalType *parent_type, Decl *method)
 {
 	// Can the parent even implement a interface?
 	switch (parent_type->type_kind)
@@ -1761,16 +1947,22 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *p
 		case TYPE_FAULTTYPE:
 		case TYPE_ENUM:
 			break;
+		case TYPE_TYPEDEF:
+			UNREACHABLE
 		default:
 			return NULL;
 	}
 	const char *name = method->name;
 	Decl *first_match = NULL;
 	Decl *first_interface = NULL;
+
+	// Walk through all implemented interfaces.
 	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->interfaces)
 		Decl *interface = proto->type->decl;
 		Decl *match = sema_interface_method_by_name(interface, name);
 		if (!match) continue;
+
+		// Is there a already a match?
 		if (first_match)
 		{
 			if (first_match->type->function.prototype->raw_type == match->type->function.prototype->raw_type) continue;
@@ -1778,24 +1970,42 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *p
 			           "Both '%s' and '%s' interfaces have a method matching '%s' but their signatures are different, "
 			           "which prevents it from being implemented.",
 			           first_interface->name, interface->name, name);
-			return NULL;
+			return poisoned_decl;
 		}
+
+		// Update the match.
 		first_match = match;
 		first_interface = interface;
 	FOREACH_END();
-	if (!first_match)
-	{
-		return NULL;
-	}
+
+	// No match => return NULL.
+	if (!first_match) return NULL;
+
+	// Analyse the interface.
 	if (!sema_analyse_decl(context, first_interface)) return poisoned_decl;
+
+	// Return the match.
 	return first_match;
 }
+
+
+/**
+ * Check that an interface matches the implementing method.
+ *
+ * 1. Check return types.
+ * 2. Check parameter count.
+ * 3. Check each parameter for matching types (TODO, should there be more checks?)
+ *
+ * @return true if it matches, false otherwise.
+ */
 static inline bool sema_compare_method_with_interface(SemaContext *context, Decl *decl, Decl *implemented_method)
 {
 	Signature interface_sig = implemented_method->func_decl.signature;
 	Signature this_sig = decl->func_decl.signature;
 	Type *any_rtype = typeget(interface_sig.rtype);
 	Type *this_rtype = typeget(this_sig.rtype);
+
+	// Do the return types match?
 	if (any_rtype->canonical != this_rtype->canonical)
 	{
 		SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
@@ -1803,10 +2013,13 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 		SEMA_NOTE(type_infoptr(interface_sig.rtype), "The interface definition is here.");
 		return false;
 	}
+
 	Decl **any_params = interface_sig.params;
 	Decl **this_params = this_sig.params;
 	unsigned any_param_count = vec_size(any_params);
 	unsigned this_param_count = vec_size(this_params);
+
+	// Do the param counts match?
 	if (any_param_count != this_param_count)
 	{
 		if (any_param_count > this_param_count)
@@ -1823,6 +2036,8 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 		}
 		return false;
 	}
+
+	// Check each param.
 	FOREACH_BEGIN_IDX(i, Decl *param, this_params)
 		if (i == 0) continue;
 		if (param->type->canonical != any_params[i]->type->canonical)
@@ -1836,8 +2051,22 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 	return true;
 }
 
+/**
+ * Analyse a method.
+ *
+ * 1. Check that it has no init/finalizer attributes.
+ * 2. Check that it has no test/benchmark attributes.
+ * 3. Resolve the parent type.
+ * 4. Resolve the declaration of the parent (as needed).
+ * 5. Check that it has at least one parameter.
+ * 6. Check that this parameter is correct.
+ * 7. If it is dynamic, the type may not be an interface or any
+ * 8. If it is dynamic, make sure that it implements an interface correctly if available
+ * 9. Try adding the method
+ */
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
+	// Check for @init, @finalizer, @test and @benchmark
 	if (decl->func_decl.attr_init | decl->func_decl.attr_finalizer)
 	{
 		SEMA_ERROR(decl, "Methods may not have '@init' or '@finalizer' attributes.");
@@ -1849,45 +2078,40 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		return decl_poison(decl);
 	}
 
+	// Resolve the parent type.
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type, RESOLVE_TYPE_FUNC_METHOD)) return false;
 	Type *par_type = parent_type->type->canonical;
+
+	// Resolve declaration of parent as needed.
 	if (!sema_resolve_type_decl(context, par_type)) return false;
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
+
+	// Ensure it has at least one parameter.
 	if (!vec_size(params)) RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
-												   "it is a method of, e.g. 'fn Foo.test(Foo* foo)'.");
+												   "it is a method of, e.g. 'fn void %s.%s(%s* self)'.",
+	                                         type_to_error_string(par_type), decl->name, type_to_error_string(par_type));
+
+	// Ensure that the first parameter is valid.
 	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
-	if (decl->func_decl.attr_default)
-	{
-		if (par_type->type_kind != TYPE_INTERFACE)
-		{
-			RETURN_SEMA_ERROR(decl, "Only interfaces may have @default methods.");
-		}
-		Decl *implemented_method = sema_interface_method_by_name(par_type->decl, decl->name);
-		if (!implemented_method)
-		{
-			RETURN_SEMA_ERROR(decl, "No matching interface method could be found for the '%s' method.", decl->name);
-		}
-		if (!implemented_method->func_decl.attr_optional)
-		{
-			SEMA_ERROR(decl, "Only @optional interface methods may have @default implementations.", decl->name);
-			SEMA_NOTE(implemented_method, "The definition of the interface method is here.");
-			return false;
-		}
-		if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
-		implemented_method->func_decl.default_method = declid(decl);
-		decl->func_decl.interface_method = declid(implemented_method);
-	}
+	// Make dynamic checks.
 	if (is_dynamic)
 	{
 		if (par_type->type_kind == TYPE_INTERFACE)
 		{
-			RETURN_SEMA_ERROR(decl, "Interfaces may not implement @dynamic methods.");
+			RETURN_SEMA_ERROR(decl, "Interfaces may not implement '@dynamic' methods, only regular methods.");
 		}
+		if (par_type == type_any)
+		{
+			RETURN_SEMA_ERROR(decl, "'any' may not implement '@dynamic' methods, only regular methods.");
+		}
+		// Retrieve the implemented method.
 		Decl *implemented_method = sema_find_interface_for_method(context, par_type, decl);
 		if (!decl_ok(implemented_method)) return false;
+
+		// If it's implementing a method, check it.
 		if (implemented_method)
 		{
 			if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
@@ -1898,7 +2122,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			decl->func_decl.interface_method = 0;
 		}
 	}
-	return unit_add_method_like(context->unit, par_type, decl);
+	return unit_add_method(context, par_type, decl);
 }
 
 static const char *attribute_domain_to_string(AttributeDomain domain)
@@ -1919,6 +2143,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "bitstruct member";
 		case ATTR_FUNC:
 			return "function";
+		case ATTR_PARAM:
+			return "parameter";
 		case ATTR_ENUM_VALUE:
 			return "enum value";
 		case ATTR_GLOBAL:
@@ -1945,17 +2171,32 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 	UNREACHABLE
 }
 
+// Helper method
 INLINE bool update_abi(Decl *decl, CallABI abi)
 {
 	decl->func_decl.signature.abi = abi;
 	return true;
 }
-static bool update_call_abi_from_string(Decl *decl, Expr *expr)
+
+/**
+ * Given a @callconv string, update the call convention.
+ *
+ * Test for:
+ * 1. cdecl
+ * 2. veccall
+ * 3. stdcall
+ *
+ * If the platform is unsupported on the platform, it is ignored.
+ */
+static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *expr)
 {
 	const char *str = expr->const_expr.bytes.ptr;
 	CallABI abi;
-	if (strcmp(str, "cdecl") == 0) return update_abi(decl, CALL_C);
-	if (strcmp(str, "veccall") == 0)
+	// C decl is easy
+	if (str_eq(str, "cdecl")) return update_abi(decl, CALL_C);
+
+	// Check veccall
+	if (str_eq(str, "veccall"))
 	{
 		switch (platform_target.arch)
 		{
@@ -1974,6 +2215,7 @@ static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 				return true;
 		}
 	}
+	// Finally check stdcall.
 	if (strcmp(str, "stdcall") == 0)
 	{
 		if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
@@ -1982,14 +2224,16 @@ static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 		}
 		return true;
 	}
-	SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
-	return false;
+	RETURN_SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
 }
 
 #define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
 #define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
 #define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
 
+/**
+ * Analyse almost all attributes.
+ */
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl)
 {
 	AttributeType type = attr->attr_kind;
@@ -2000,13 +2244,12 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
-			[ATTRIBUTE_DEFAULT] = ATTR_FUNC | ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
-			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
+			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LINK] = ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL,
@@ -2038,11 +2281,13 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 
+	// First check if it doesn't match the domain.
 	if ((attribute_domain[type] & domain) != domain)
 	{
-		sema_error_at(attr->span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
-		return false;
+		RETURN_SEMA_ERROR(attr, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 	}
+
+	// No attribute has more than one argument right now.
 	unsigned args = vec_size(attr->exprs);
 	if (args > 1 && type != ATTRIBUTE_LINK)
 	{
@@ -2050,22 +2295,23 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		return false;
 	}
 	Expr *expr = args ? attr->exprs[0] : NULL;
+
 	switch (type)
 	{
 		case ATTRIBUTE_PRIVATE:
 		case ATTRIBUTE_PUBLIC:
 		case ATTRIBUTE_LOCAL:
 		case ATTRIBUTE_BUILTIN:
-			// These are pseudo-attributes.
+			// These are pseudo-attributes and are processed separately.
 			UNREACHABLE;
 		case ATTRIBUTE_DEPRECATED:
+			// We expect an optional string.
 			if (expr)
 			{
 				if (!sema_analyse_expr(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
-					SEMA_ERROR(expr, "Expected a constant string value as argument.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 				}
 			}
 			decl->is_deprecated = true;
@@ -2085,8 +2331,8 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
 			if (expr && !sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
-			if (!update_call_abi_from_string(decl, expr)) return false;
-			break;
+			if (!update_call_abi_from_string(context, decl, expr)) return false;
+			return true;
 		case ATTRIBUTE_BENCHMARK:
 			decl->func_decl.attr_benchmark = true;
 			break;
@@ -2117,37 +2363,31 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			}
 			return true;
 			FAILED_OP_TYPE:
-			SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
-			return false;
+			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
 		}
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
 			{
-				sema_error_at(attr->span, "'align' requires an power-of-2 argument, e.g. align(8).");
-				return false;
+				RETURN_SEMA_ERROR(attr, "'align' requires an power-of-2 argument, e.g. align(8).");
 			}
 			if (!sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_int(expr))
 			{
-				SEMA_ERROR(expr, "Expected a constant integer value as argument.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
 			}
 			{
 				if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 				{
-					SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
-					return false;
+					RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
 				}
 				if (int_ucomp(expr->const_expr.ixx, 0, BINARYOP_LE))
 				{
-					SEMA_ERROR(expr, "Alignment must be greater than zero.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Alignment must be greater than zero.");
 				}
 				uint64_t align = int_to_u64(expr->const_expr.ixx);
 				if (!is_power_of_two(align))
 				{
-					SEMA_ERROR(expr, "Alignment must be a power of two.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Alignment must be a power of two.");
 				}
 				decl->alignment = (AlignSize)align;
 				return true;
@@ -2155,21 +2395,18 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_EXPORT:
 			if (context->unit->module->is_generic)
 			{
-				sema_error_at(attr->span, "'@export' is not allowed in generic modules.");
-				return false;
+				RETURN_SEMA_ERROR(attr, "'@export' is not allowed in generic modules.");
 			}
 			if (expr)
 			{
 				if (!sema_analyse_expr(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
-					SEMA_ERROR(expr, "Expected a constant string value as argument.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 				}
 				if (decl->has_extname)
 				{
-					SEMA_ERROR(expr, "An external name is already defined, please use '@extern` without an argument.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "An external name is already defined, please use '@extern` without an argument.");
 				}
 				decl->has_extname = true;
 				decl->extname = expr->const_expr.bytes.ptr;
@@ -2235,19 +2472,16 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_EXTERN:
 			if (context->unit->module->is_generic)
 			{
-				sema_error_at(attr->span, "'%s' attributes are not allowed in generic modules.", attr->name);
-				return false;
+				RETURN_SEMA_ERROR(attr, "'%s' attributes are not allowed in generic modules.", attr->name);
 			}
 			if (!expr)
 			{
-				sema_error_at(attr->span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
-				return false;
+				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 			}
 			if (!sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr))
 			{
-				SEMA_ERROR(expr, "Expected a constant string value as argument.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 			}
 			switch (type)
 			{
@@ -2296,16 +2530,13 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_OVERLAP:
 			decl->bitstruct.overlap = true;
 			break;
-		case ATTRIBUTE_DEFAULT:
-			decl->func_decl.attr_default = true;
-			break;
 		case ATTRIBUTE_DYNAMIC:
 			decl->func_decl.attr_dynamic = true;
 			break;
 		case ATTRIBUTE_BIGENDIAN:
 			if (decl->bitstruct.little_endian)
 			{
-				sema_error_at(attr->span, "Attribute cannot be combined with @littleendian");
+				SEMA_ERROR(attr, "Attribute cannot be combined with @littleendian");
 				return decl_poison(decl);
 			}
 			decl->bitstruct.big_endian = true;
@@ -2313,7 +2544,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_LITTLEENDIAN:
 			if (decl->bitstruct.big_endian)
 			{
-				sema_error_at(attr->span, "Attribute cannot be combined with @bigendian");
+				SEMA_ERROR(attr, "Attribute cannot be combined with @bigendian");
 				return decl_poison(decl);
 			}
 			decl->bitstruct.little_endian = true;
@@ -2342,14 +2573,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NONE:
 			UNREACHABLE
 	}
-	if (expr)
-	{
-		SEMA_ERROR(expr, "'%s' should not have any arguments.", attr->name);
-		return false;
-	}
+	if (expr) RETURN_SEMA_ERROR(expr, "'%s' should not have any arguments.", attr->name);
 	return true;
 
 }
+
 
 // TODO consider doing this evaluation early, it should be possible.
 static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
@@ -2451,7 +2679,8 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 	return sema_analyse_attributes_inner(context, decl, attrs, domain, NULL, erase_decl);
 }
 
-static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extra_params, bool *pure_ref)
+static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
+										   Decl **params, Decl **extra_params, bool *pure_ref)
 {
 	while (doc)
 	{
@@ -2475,26 +2704,24 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 		VECEACH(params, j)
 		{
 			param = params[j];
-			if (param->name == param_name) goto NEXT;
+			if (param && param->name == param_name) goto NEXT;
 		}
 		VECEACH(extra_params, j)
 		{
 			assert(extra_params);
 			param = extra_params[j];
-			if (param->name == param_name) goto NEXT;
+			if (param && param->name == param_name) goto NEXT;
 		}
-		SEMA_ERROR(&directive->contract_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
-		return false;
+		RETURN_SEMA_ERROR(&directive->contract_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
 	NEXT:;
 		Type *type = param->type;
 		if (type) type = type_flatten(type);
-		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_interface_ptr(type);
+		bool may_be_pointer = !type || type_is_pointer(type) || type_is_any_raw(type);
 		if (directive->contract_stmt.param.by_ref)
 		{
 			if (!may_be_pointer)
 			{
-				SEMA_ERROR(directive, "'&' can only be added to pointer type parameters.");
-				return false;
+				RETURN_SEMA_ERROR(directive, "'&' can only be added to pointer type parameters.");
 			}
 			param->var.not_null = true;
 		}
@@ -2511,10 +2738,9 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			case PARAM_INOUT:
 				break;
 		}
-		if (!may_be_pointer && type->type_kind != TYPE_SUBARRAY)
+		if (!may_be_pointer && type->type_kind != TYPE_SLICE)
 		{
-			SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers and subarrays.");
-			return false;
+			RETURN_SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers and slices.");
 		}
 ADDED:;
 	}
@@ -2534,7 +2760,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			break;
 		case 1:
 			arg_type = type_flatten(params[0]->type);
-			if (arg_type == type_get_subarray(type_string)) return MAIN_TYPE_ARGS;
+			if (arg_type == type_get_slice(type_string)) return MAIN_TYPE_ARGS;
 			SEMA_ERROR(params[0], "Expected a parameter of type 'String[]'.");
 			return MAIN_TYPE_ERROR;
 		case 2:
@@ -2567,7 +2793,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 				SEMA_ERROR(params[0], "Expected a parameter of type 'void*' (HINSTANCE)");
 				return MAIN_TYPE_ERROR;
 			}
-			if (arg_type2 != type_get_subarray(type_string))
+			if (arg_type2 != type_get_slice(type_string))
 			{
 				SEMA_ERROR(params[1], "Expected a parameter of type 'String[]'.");
 				return MAIN_TYPE_ERROR;
@@ -2922,9 +3148,9 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		SEMA_ERROR(decl, "Expected a function body, if you want to declare an extern function use 'extern' or place it in an .c3i file.");
 		return false;
 	}
-
 	bool pure = false;
-	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, NULL, &pure)) return decl_poison(decl);
+	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, NULL,
+	                             &pure)) return decl_poison(decl);
 	decl->func_decl.signature.attrs.is_pure = pure;
 	if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	DEBUG_LOG("<<< Function analysis of [%s] successful.", decl_safe_name(decl));
@@ -2943,7 +3169,10 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 	{
 		if (param_type->type_kind != TYPE_POINTER || param_type->pointer != parent_type)
 		{
-			RETURN_SEMA_ERROR(param, "The fist parameter must be of type %s", type_quoted_error_string(type_get_ptr(parent_type)));
+			RETURN_SEMA_ERROR(type_infoptr(param->var.type_info),
+							  "The first parameter must always be a pointer for '@dynamic' methods, "
+							  "so please change its type to %s if possible.",
+							  type_quoted_error_string(type_get_ptr(parent_type)));
 		}
 		return true;
 	}
@@ -2953,8 +3182,6 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 
 	switch (param_type->type_kind)
 	{
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			if (param_type->pointer == parent_type) return true;
 			break;
@@ -2962,31 +3189,32 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 			break;
 	}
 ERROR:
-	if (type_is_any_raw(parent_type))
-	{
-		RETURN_SEMA_ERROR(param, "The first parameter must have the type %s.",
-						  type_quoted_error_string(type_get_ptr(parent_type)));
-
-	}
-	RETURN_SEMA_ERROR(param, "The first parameter must be of type %s or %s.",
+	RETURN_SEMA_ERROR(type_infoptr(param->var.type_info),
+					  "The first parameter of a method must be of type %s or %s.",
 					  type_quoted_error_string(parent_type),
 	                  type_quoted_error_string(type_get_ptr(parent_type)));
 }
 
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
+	// Resolve the type of the method.
 	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type_info, RESOLVE_TYPE_MACRO_METHOD)) return false;
+
+	// Can the type have methods?
 	Type *parent_type = parent_type_info->type;
 	if (!type_may_have_method(parent_type))
 	{
 		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
+
+	// We need at least one argument (the parent type)
 	if (!vec_size(decl->func_decl.signature.params))
 	{
-		SEMA_ERROR(decl, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
-		return false;
+		RETURN_SEMA_ERROR(decl, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
 	}
+
+	// Check the first argument.
 	Decl *first_param = decl->func_decl.signature.params[0];
 	if (!first_param)
 	{
@@ -2997,12 +3225,49 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 
 	if (first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
-		SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
-		return false;
+		RETURN_SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
 	}
-	return unit_add_method_like(context->unit, parent_type->canonical, decl);
+	return unit_add_method(context, parent_type->canonical, decl);
 }
 
+INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters)
+{
+	unsigned body_param_count = vec_size(body_parameters);
+	for (unsigned i = 0; i < body_param_count; i++)
+	{
+		assert(body_parameters);
+		Decl *param = body_parameters[i];
+		assert(param);
+		param->resolve_status = RESOLVE_RUNNING;
+		assert(param->decl_kind == DECL_VAR);
+		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM:
+				if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+				break;
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_CT_TYPE:
+				RETURN_SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_BITMEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
+				UNREACHABLE
+		}
+		if (!sema_check_param_uniqueness_and_type(context, body_parameters, param, i, body_param_count)) return false;
+		param->resolve_status = RESOLVE_DONE;
+	}
+	return true;
+}
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	decl->func_decl.unit = context->unit;
@@ -3016,47 +3281,12 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 		SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 		return decl_poison(decl);
 	}
-
 	DeclId body_param = decl->func_decl.body_param;
-
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
-	unsigned body_param_count = vec_size(body_parameters);
-	for (unsigned i = 0; i < body_param_count; i++)
-	{
-		assert(body_parameters);
-		Decl *param = body_parameters[i];
-		param->resolve_status = RESOLVE_RUNNING;
-		assert(param->decl_kind == DECL_VAR);
-		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
-		switch (param->var.kind)
-		{
-			case VARDECL_PARAM:
-				if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return decl_poison(decl);
-				break;
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_CT:
-			case VARDECL_PARAM_REF:
-			case VARDECL_PARAM_CT_TYPE:
-				SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
-				return decl_poison(decl);
-			case VARDECL_CONST:
-			case VARDECL_GLOBAL:
-			case VARDECL_LOCAL:
-			case VARDECL_MEMBER:
-			case VARDECL_BITMEMBER:
-			case VARDECL_LOCAL_CT:
-			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_UNWRAPPED:
-			case VARDECL_REWRAPPED:
-			case VARDECL_ERASE:
-				UNREACHABLE
-		}
-		if (!sema_check_param_uniqueness_and_type(body_parameters, param, i, body_param_count)) return decl_poison(decl);
-		param->resolve_status = RESOLVE_DONE;
-	}
+	if (!sema_analyse_macro_body(context, body_parameters)) return decl_poison(decl);
 	bool pure = false;
-	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, body_parameters, &pure)) return decl_poison(decl);
-
+	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, body_parameters,
+	                             &pure)) return decl_poison(decl);
 	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
@@ -3077,6 +3307,12 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 		case VARDECL_GLOBAL:
 			domain = ATTR_GLOBAL;
 			break;
+		case VARDECL_PARAM:
+		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_PARAM_CT:
+			domain = ATTR_PARAM;
+			break;
 		default:
 			domain = ATTR_LOCAL;
 			break;
@@ -3087,34 +3323,42 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 
 bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 {
-	switch (type->type_kind)
+	switch (type_storage_type(type))
 	{
-		case TYPE_VOID:
-			sema_error_at(span, "The use of 'void' as a variable type is not permitted.");
+		case STORAGE_NORMAL:
+			return true;
+		case STORAGE_VOID:
+		case STORAGE_WILDCARD:
+			if (type_is_optional(type))
+			{
+				sema_error_at(context, span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
+				              type_quoted_error_string(type_anyfault));
+			} else
+			{
+				sema_error_at(context, span, "The use of 'void' as a variable type is not permitted.");
+			}
 			return false;
-		case TYPE_UNTYPED_LIST:
-		case TYPE_MEMBER:
-		case TYPE_TYPEINFO:
-			sema_error_at(span, "The variable cannot have an compile time %s type.",
-						  type_quoted_error_string(type));
+		case STORAGE_COMPILE_TIME:
+			sema_error_at(context, span, "The variable cannot have an compile time %s type.",
+			              type_quoted_error_string(type));
 			return false;
-		default:
-			break;
+		case STORAGE_UNKNOWN:
+			sema_error_at(context, span, "%s has unknown size, and so it cannot be a variable type.",
+			              type_quoted_error_string(type));
+			return false;
 	}
-	if (!type_is_optional(type)) return true;
-	if (type == type_wildcard_optional || type_is_void(type->optional))
-	{
-		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
-						 type_quoted_error_string(type_anyfault));
-		return false;
-	}
-	return true;
+	UNREACHABLE
 }
 
+/**
+ * Analyse $foo and $Foo variables.
+ */
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 {
 	Expr *init;
-	assert(decl->decl_kind == DECL_VAR);
+	assert(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
+
+	// Grab the optional type_info.
 	TypeInfo *type_info = vartype(decl);
 	switch (decl->var.kind)
 	{
@@ -3125,51 +3369,63 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				SEMA_ERROR(type_info, "Compile time type variables may not have a type.");
 				goto FAIL;
 			}
+			// Check initialization.
 			if ((init = decl->var.init_expr))
 			{
+				// Try to fold any constant into an lvalue.
 				if (!sema_analyse_expr_lvalue_fold_const(context, init)) goto FAIL;
+
+				// If this isn't a type, it's an error.
 				if (init->expr_kind != EXPR_TYPEINFO)
 				{
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;
 				}
 			}
+			// Otherwise we're done.
 			break;
 		case VARDECL_LOCAL_CT:
-			if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) goto FAIL;
+			// Resolve the type if it's present.
 			if (type_info)
 			{
+				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) goto FAIL;
+				// Set the type of the declaration.
 				decl->type = type_info->type->canonical;
 				init = decl->var.init_expr;
+				// If there is no init, set it to zero.
 				if (!init)
 				{
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
 					expr_rewrite_to_const_zero(init, decl->type);
 				}
+
+				// Analyse the expression.
 				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL)) goto FAIL;
+
+				// Check that it is constant.
 				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
+				break;
 			}
-			else
+			// If we don't have a type, resolve the expression.
+			if ((init = decl->var.init_expr))
 			{
-				if ((init = decl->var.init_expr))
+				if (!sema_analyse_expr(context, init)) goto FAIL;
+				// Check it is constant.
+				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
-					if (!sema_analyse_expr(context, init)) goto FAIL;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
-					{
-						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						goto FAIL;
-					}
-					decl->type = init->type;
+					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
+					goto FAIL;
 				}
-				else
-				{
-					decl->type = type_void;
-				}
+				// Update the type.
+				decl->type = init->type;
+				break;
 			}
+			// Here we set a void type if both init and type is missing.
+			decl->type = type_void;
 			break;
 		default:
 			UNREACHABLE
@@ -3279,29 +3535,33 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				return decl_poison(decl);
 			}
 			decl->type = init_expr->type;
-			if (type_is_invalid_storage_type(init_expr->type))
+			switch (type_storage_type(init_expr->type))
 			{
-				if (init_expr->type == type_wildcard_optional || init_expr->type == type_wildcard)
-				{
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_WILDCARD:
 					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
-				}
-				else if (type_is_void(init_expr->type))
-				{
+					return decl_poison(decl);
+				case STORAGE_VOID:
 					SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
-				}
-				else if (init_expr->type == type_untypedlist)
-				{
-					SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
-				}
-				else if (decl->var.kind == VARDECL_CONST)
-				{
-					SEMA_ERROR(init_expr, "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.", type_invalid_storage_type_name(init_expr->type));
-				}
-				else
-				{
+					return decl_poison(decl);
+				case STORAGE_COMPILE_TIME:
+					if (init_expr->type == type_untypedlist)
+					{
+						SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
+						return decl_poison(decl);
+					}
+					if (decl->var.kind == VARDECL_CONST)
+					{
+						SEMA_ERROR(init_expr, "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.", type_invalid_storage_type_name(init_expr->type));
+						return decl_poison(decl);
+					}
 					SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
-				}
-				return decl_poison(decl);
+					return decl_poison(decl);
+				case STORAGE_UNKNOWN:
+					SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
+					           type_quoted_error_string(init_expr->type));
+					return decl_poison(decl);
 			}
 			if (!decl->alignment)
 			{
@@ -3373,14 +3633,6 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		{
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
 			return decl_poison(decl);
-		}
-		else
-		{
-			if (decl->var.unwrap && IS_OPTIONAL(init))
-			{
-				SEMA_ERROR(decl->var.init_expr, "An optional expression was expected here.");
-				return decl_poison(decl);
-			}
 		}
 		if (expr_is_const(init_expr))
 		{
@@ -3471,26 +3723,39 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	return new_module;
 }
 
-static bool sema_generate_parameterized_name_to_scratch(SemaContext *c, Module *module, Expr **params, bool mangled)
+static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Module *module, Expr **params, bool mangled)
 {
 	// First resolve
 	FOREACH_BEGIN_IDX(i, Expr *param, params)
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
 			TypeInfo *type_info = param->type_expr;
-			if (!sema_resolve_type_info(c, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = type_info->type->canonical;
 			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
-			if (type_is_void(type)) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
-			if (type_is_invalid_storage_type(type)) RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
+			switch (type_storage_type(type))
+			{
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_VOID:
+					RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
+				case STORAGE_WILDCARD:
+					RETURN_SEMA_ERROR(type_info, "The type is undefined and cannot be used as a parameter type.");
+				case STORAGE_COMPILE_TIME:
+					RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(type_info,
+					                  "%s doesn't have a well defined size and cannot be used as a parameter type.",
+					                  type_quoted_error_string(type));
+			}
 			if (type_is_func_ptr(type))
 			{
-				if (!sema_resolve_type_decl(c, type->pointer)) return false;
+				if (!sema_resolve_type_decl(context, type->pointer)) return false;
 			}
 		}
 		else
 		{
-			if (!sema_analyse_ct_expr(c, param)) return false;
+			if (!sema_analyse_ct_expr(context, param)) return false;
 			Type *type = param->type->canonical;
 			bool is_enum_like = type_kind_is_enumlike(type->type_kind);
 			if (!type_is_integer_or_bool_kind(type) && !is_enum_like)
@@ -3595,17 +3860,18 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		assert(ast->contract_stmt.kind == CONTRACT_REQUIRE);
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
 		FOREACH_BEGIN(Expr *expr, ast->contract_stmt.contract.decl_exprs->expression_list)
-			int res = sema_check_comp_time_bool(new_context, expr);
-			if (res == -1) goto FAIL;
-			if (res) continue;
+			CondResult res = sema_check_comp_time_bool(new_context, expr);
+			if (res == COND_MISSING) goto FAIL;
+			if (res == COND_TRUE) continue;
 			if (ast->contract_stmt.contract.comment)
 			{
-				sema_error_at(error_span,
+				sema_error_at(c, error_span,
 				              "Parameter(s) would violate constraint: %s.",
 				              ast->contract_stmt.contract.comment);
-			} else
+			}
+			else
 			{
-				sema_error_at(error_span, "Parameter(s) failed validation: %s",
+				sema_error_at(c, error_span, "Parameter(s) failed validation: %s",
 				              ast->contract_stmt.contract.expr_string);
 			}
 		FAIL:
@@ -3655,7 +3921,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 			.symbol = name
 	};
 
-	Decl *alias = unit_resolve_parameterized_symbol(c->unit, &name_resolve);
+	Decl *alias = unit_resolve_parameterized_symbol(NULL, c->unit, &name_resolve);
 	if (!decl_ok(alias)) return poisoned_decl;
 
 	Module *module = decl_module(alias);
@@ -3664,7 +3930,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	if (parameter_count != vec_size(params))
 	{
 		assert(vec_size(params));
-		sema_error_at(extend_span_with_token(params[0]->span, vectail(params)->span),
+		sema_error_at(c, extend_span_with_token(params[0]->span, vectail(params)->span),
 					  "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
 					  parameter_count,
 					  vec_size(params));
@@ -3700,7 +3966,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	Decl *symbol = module_find_symbol(instantiated_module, name);
 	if (!symbol)
 	{
-		sema_error_at(span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
+		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
 		return poisoned_decl;
 	}
 	if (was_initiated && instantiated_module->contracts)
@@ -3716,7 +3982,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	return symbol;
 }
 
-static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
@@ -3726,28 +3992,15 @@ static inline bool sema_analyse_attribute_decl(SemaContext *c, Decl *decl, bool 
 	for (unsigned i = 0; i < param_count; i++)
 	{
 		Decl *param = params[i];
-		if (param->var.kind != VARDECL_PARAM)
-		{
-			SEMA_ERROR(param, "Expected a simple replacement parameter e.g. 'val' here.");
-			return false;
-		}
-		if (param->var.type_info)
-		{
-			SEMA_ERROR(param, "Type is not allowed on attribute parameters.");
-			return false;
-		}
-		if (param->var.init_expr)
-		{
-			SEMA_ERROR(param, "Attribute parameters may not have default values.");
-			return false;
-		}
+		if (param->var.kind != VARDECL_PARAM) RETURN_SEMA_ERROR(param, "Expected a simple replacement parameter e.g. 'val' here.");
+		if (param->var.type_info) RETURN_SEMA_ERROR(param, "Type is not allowed on attribute parameters.");
+		if (param->var.init_expr) RETURN_SEMA_ERROR(param, "Attribute parameters may not have default values.");
 		param->resolve_status = RESOLVE_DONE;
 		for (int j = 0; j < i; j++)
 		{
 			if (param[j].name == param->name)
 			{
-				SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
-				return false;
+				RETURN_SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
 			}
 		}
 	}
@@ -3791,7 +4044,6 @@ RETRY:
 		case TYPE_WILDCARD:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-		case TYPE_ANYPTR:
 			return true;
 		case TYPE_FUNC:
 			if (!type->decl) return true;
@@ -3802,7 +4054,6 @@ RETRY:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 			return sema_analyse_decl(context, type->decl);
-		case TYPE_INFPTR:
 		case TYPE_POINTER:
 			type = type->pointer;
 			goto RETRY;
@@ -3814,7 +4065,7 @@ RETRY:
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_VECTOR:
@@ -3827,6 +4078,7 @@ RETRY:
 	}
 	UNREACHABLE
 }
+
 bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
@@ -3878,7 +4130,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			set_external_name = true;
 			break;
 		case DECL_ATTRIBUTE:
-			if (!sema_analyse_attribute_decl(context, decl, &erase_decl)) goto FAILED;
+			if (!sema_analyse_attribute_decl(context, context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_DISTINCT:
 			if (!sema_analyse_distinct(context, decl, &erase_decl)) goto FAILED;
@@ -3930,22 +4182,3 @@ FAILED:
 	return decl_poison(decl);
 }
 
-void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
-{
-	if (!decl->is_deprecated) return;
-	// Prevent multiple reports
-	decl->is_deprecated = false;
-	FOREACH_BEGIN(Attr *attr, decl->attributes)
-		if (attr->attr_kind == ATTRIBUTE_DEPRECATED)
-		{
-			if (attr->exprs)
-			{
-				const char *comment_string = attr->exprs[0]->const_expr.bytes.ptr;
-				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
-				return;
-			}
-			break;
-		}
-	FOREACH_END();
-	sema_warning_at(span, "'%s' is deprecated.", decl->name);
-}

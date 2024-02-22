@@ -101,15 +101,15 @@ static inline Path *parse_module_path(ParseContext *c)
 		{
 			if (token_is_keyword_ident(c->tok))
 			{
-				SEMA_ERROR_HERE("The module path cannot contain a reserved keyword, try another name.");
+				PRINT_ERROR_HERE("The module path cannot contain a reserved keyword, try another name.");
 				return NULL;
 			}
 			if (token_is_some_ident(c->tok))
 			{
-				SEMA_ERROR_HERE("The elements of a module path must consist of only lower case letters, 0-9 and '_'.");
+				PRINT_ERROR_HERE("The elements of a module path must consist of only lower case letters, 0-9 and '_'.");
 				return NULL;
 			}
-			SEMA_ERROR_HERE("Each '::' must be followed by a regular lower case sub module name.");
+			PRINT_ERROR_HERE("Each '::' must be followed by a regular lower case sub module name.");
 			return NULL;
 		}
 		scratch_buffer_append(string);
@@ -142,7 +142,7 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 	if (!try_consume(c, TOKEN_LGENPAR)) return true;
 
-	if (try_consume(c, TOKEN_RGENPAR)) RETURN_SEMA_ERROR_HERE("Generic parameter list cannot be empty.");
+	if (try_consume(c, TOKEN_RGENPAR)) RETURN_PRINT_ERROR_HERE("Generic parameter list cannot be empty.");
 
 	// No params
 	while (1)
@@ -153,14 +153,14 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 			case TOKEN_CONST_IDENT:
 				break;
 			case TOKEN_COMMA:
-				RETURN_SEMA_ERROR_HERE("Unexpected ','");
+				RETURN_PRINT_ERROR_HERE("Unexpected ','");
 			case TOKEN_IDENT:
-				RETURN_SEMA_ERROR_HERE("The module parameter must be a type or a constant.");
+				RETURN_PRINT_ERROR_HERE("The module parameter must be a type or a constant.");
 			case TOKEN_CT_IDENT:
 			case TOKEN_CT_TYPE_IDENT:
-				RETURN_SEMA_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
+				RETURN_PRINT_ERROR_HERE("The module parameter cannot be a $-prefixed name.");
 			default:
-				RETURN_SEMA_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
+				RETURN_PRINT_ERROR_HERE("Only generic parameters are allowed here as parameters to the module.");
 		}
 		vec_add(*tokens_ref, symstr(c));
 		advance(c);
@@ -178,20 +178,20 @@ bool parse_module(ParseContext *c, AstId contracts)
 {
 	if (tok_is(c, TOKEN_STRING))
 	{
-		RETURN_SEMA_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+		RETURN_PRINT_ERROR_HERE("'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 	}
 
 	if (!tok_is(c, TOKEN_IDENT))
 	{
 		if (token_is_keyword_ident(c->tok))
 		{
-			RETURN_SEMA_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
+			RETURN_PRINT_ERROR_HERE("The module name cannot contain a reserved keyword, try another name.");
 		}
 		if (token_is_some_ident(c->tok))
 		{
-			RETURN_SEMA_ERROR_HERE("The module name must consist of only lower case letters, 0-9 and '_'.");
+			RETURN_PRINT_ERROR_HERE("The module name must consist of only lower case letters, 0-9 and '_'.");
 		}
-		RETURN_SEMA_ERROR_HERE("'module' should be followed by a module name.");
+		RETURN_PRINT_ERROR_HERE("'module' should be followed by a module name.");
 	}
 
 	Path *path = parse_module_path(c);
@@ -214,7 +214,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 	{
 		if (!context_set_module(c, path, NULL)) return false;
 		recover_top_level(c);
-		if (contracts) RETURN_SEMA_ERROR(astptr(contracts), "Contracts cannot be use with non-generic modules.");
+		if (contracts) RETURN_PRINT_ERROR_AT(false, astptr(contracts), "Contracts cannot be use with non-generic modules.");
 		return true;
 	}
 	if (!context_set_module(c, path, generic_parameters)) return false;
@@ -246,7 +246,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 				case CONTRACT_REQUIRE:
 					continue;
 			}
-			RETURN_SEMA_ERROR(current, "Invalid constraint - only '@require' is valid for modules.");
+			RETURN_PRINT_ERROR_AT(false, current, "Invalid constraint - only '@require' is valid for modules.");
 		}
 	}
 	Visibility visibility = VISIBLE_PUBLIC;
@@ -254,18 +254,18 @@ bool parse_module(ParseContext *c, AstId contracts)
 	bool is_cond;
 	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond)) return false;
 	FOREACH_BEGIN(Attr *attr, attrs)
-		if (attr->is_custom) RETURN_SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
+		if (attr->is_custom) RETURN_PRINT_ERROR_AT(false, attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_LINK:
 				{
 					unsigned args = vec_size(attr->exprs);
-					if (args < 1) RETURN_SEMA_ERROR(attr, "'@link' needs at least 1 argument.");
+					if (args < 1) RETURN_PRINT_ERROR_AT(false, attr, "'@link' needs at least 1 argument.");
 				}
 				vec_add(c->unit->attr_links, attr);
 				continue;
 			case ATTRIBUTE_IF:
-				if (c->unit->if_attr) RETURN_SEMA_ERROR(attr, "'@if' appeared more than once.");
+				if (c->unit->if_attr) RETURN_PRINT_ERROR_AT(false, attr, "'@if' appeared more than once.");
 				c->unit->if_attr = attr;
 				continue;
 			case ATTRIBUTE_BENCHMARK:
@@ -275,21 +275,21 @@ bool parse_module(ParseContext *c, AstId contracts)
 				c->unit->test_by_default = true;
 				continue;
 			case ATTRIBUTE_EXPORT:
-				if (attr->exprs) RETURN_SEMA_ERROR(attr, "Expected no arguments to '@export'");
-				if (c->unit->export_by_default) RETURN_SEMA_ERROR(attr, "'@export' appeared more than once.");
+				if (attr->exprs) RETURN_PRINT_ERROR_AT(false, attr, "Expected no arguments to '@export'");
+				if (c->unit->export_by_default) RETURN_PRINT_ERROR_AT(false, attr, "'@export' appeared more than once.");
 				c->unit->export_by_default = true;
 				continue;
 			case ATTRIBUTE_EXTERN:
 			{
 				if (vec_size(attr->exprs) != 1)
 				{
-					RETURN_SEMA_ERROR(attr, "Expected 1 argument to '@extern(..), not %d'.", vec_size(attr->exprs));
+					RETURN_PRINT_ERROR_AT(false, attr, "Expected 1 argument to '@extern(..), not %d'.", vec_size(attr->exprs));
 				}
 				Expr *expr = attr->exprs[0];
-				if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string.");
+				if (!expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
 				if (c->unit->module->extname)
 				{
-					RETURN_SEMA_ERROR(attr, "External name for the module may only be declared in one location.");
+					RETURN_PRINT_ERROR_AT(false, attr, "External name for the module may only be declared in one location.");
 				}
 				c->unit->module->extname = expr->const_expr.bytes.ptr;
 				continue;
@@ -297,7 +297,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 			default:
 				break;
 		}
-		RETURN_SEMA_ERROR(attr, "'%s' cannot be used after a module declaration.", attr->name);
+		RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used after a module declaration.", attr->name);
 	FOREACH_END();
 	c->unit->default_visibility = visibility;
 	CONSUME_EOS_OR_RET(false);
@@ -309,11 +309,11 @@ static bool consume_type_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || token_is_keyword_ident(c->tok))
 	{
-		RETURN_SEMA_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
+		RETURN_PRINT_ERROR_HERE("Names of %ss must start with an uppercase letter.", type);
 	}
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
-		RETURN_SEMA_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
+		RETURN_PRINT_ERROR_HERE("Names of %ss cannot be all uppercase.", type);
 	}
 	return consume(c, TOKEN_TYPE_IDENT, "'%s' should be followed by the name of the %s.", type, type);
 }
@@ -322,7 +322,7 @@ bool consume_const_name(ParseContext *c, const char* type)
 {
 	if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT) || token_is_keyword_ident(c->tok))
 	{
-		RETURN_SEMA_ERROR_HERE("Names of %ss must be all uppercase.", type);
+		RETURN_PRINT_ERROR_HERE("Names of %ss must be all uppercase.", type);
 	}
 	return consume(c, TOKEN_CONST_IDENT, "A constant name was expected here, did you forget it?");
 }
@@ -362,7 +362,7 @@ bool parse_path_prefix(ParseContext *c, Path** path_ref)
 	path->module = symtab_add(scratch_ptr, offset, fnv1a(scratch_ptr, offset), &type);
 	if (type != TOKEN_IDENT)
 	{
-		RETURN_SEMA_ERROR(path, "A module name was expected here.");
+		RETURN_PRINT_ERROR_AT(false, path, "A module name was expected here.");
 	}
 	path->len = offset;
 	*path_ref = path;
@@ -471,11 +471,11 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		default:
 			if (c->tok == TOKEN_IDENT)
 			{
-				SEMA_ERROR_HERE("A type name was expected, but this looks a variable or function name (as it doesn't start with an uppercase letter).");
+				PRINT_ERROR_HERE("A type name was expected, but this looks a variable or function name (as it doesn't start with an uppercase letter).");
 			}
 			else
 			{
-				SEMA_ERROR_HERE("A type name was expected here.");
+				PRINT_ERROR_HERE("A type name was expected here.");
 			}
 			return poisoned_type_info;
 	}
@@ -536,7 +536,7 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 	if (try_consume(c, TOKEN_RBRACKET))
 	{
 		bool is_resolved = type->resolve_status == RESOLVE_DONE;
-		if (is_resolved && !type_is_valid_for_array(type->type)) goto DIRECT_SUBARRAY;
+		if (is_resolved && !type_is_valid_for_array(type->type)) goto DIRECT_SLICE;
 		switch (type->subtype)
 		{
 			case TYPE_COMPRESSED_NONE:
@@ -549,20 +549,20 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 				type->subtype = TYPE_COMPRESSED_SUBSUB;
 				break;
 			default:
-				goto DIRECT_SUBARRAY;
+				goto DIRECT_SLICE;
 		}
 		if (is_resolved)
 		{
-			type->type = type_get_subarray(type->type);
+			type->type = type_get_slice(type->type);
 		}
 		RANGE_EXTEND_PREV(type);
 		return type;
-DIRECT_SUBARRAY:;
-		TypeInfo *subarray = type_info_new(TYPE_INFO_SUBARRAY, type->span);
-		subarray->array.base = type;
-		subarray->array.len = NULL;
-		RANGE_EXTEND_PREV(subarray);
-		return subarray;
+DIRECT_SLICE:;
+		TypeInfo *slice = type_info_new(TYPE_INFO_SLICE, type->span);
+		slice->array.base = type;
+		slice->array.len = NULL;
+		RANGE_EXTEND_PREV(slice);
+		return slice;
 	}
 	TypeInfo *array = type_info_new(TYPE_INFO_ARRAY, type->span);
 	array->array.base = type;
@@ -725,7 +725,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 {
 	if (tok_is(c, TOKEN_LPAREN))
 	{
-		SEMA_ERROR_HERE("Expected '{'.");
+		PRINT_ERROR_HERE("Expected '{'.");
 		return poisoned_decl;
 	}
 
@@ -750,7 +750,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 	{
 		if (!decl)
 		{
-			SEMA_ERROR_HERE("Expected an identifier before '='.");
+			PRINT_ERROR_HERE("Expected an identifier before '='.");
 			return poisoned_decl;
 		}
 		advance_and_verify(c, TOKEN_EQ);
@@ -833,14 +833,14 @@ Decl *parse_var_decl(ParseContext *c)
 	switch (c->tok)
 	{
 		case TOKEN_CONST_IDENT:
-			SEMA_ERROR_HERE("Constants must be declared using 'const' not 'var'.");
+			PRINT_ERROR_HERE("Constants must be declared using 'const' not 'var'.");
 			return poisoned_decl;
 		case TOKEN_IDENT:
 			decl = decl_new_var_current(c, NULL, VARDECL_LOCAL);
 			advance(c);
 			if (!tok_is(c, TOKEN_EQ))
 			{
-				SEMA_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
+				PRINT_ERROR_HERE("'var' must always have an initial value, or the type cannot be inferred.");
 				return false;
 			}
 			advance_and_verify(c, TOKEN_EQ);
@@ -863,7 +863,7 @@ Decl *parse_var_decl(ParseContext *c)
 			}
 			break;
 		default:
-			SEMA_ERROR_HERE("Expected a compile time variable name ('$Foo' or '$foo').");
+			PRINT_ERROR_HERE("Expected a compile time variable name ('$Foo' or '$foo').");
 			return poisoned_decl;
 	}
 	return decl;
@@ -893,10 +893,10 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 		{
 			if (expect_eos)
 			{
-				sema_error_at_after(start_span, "Expected a ';' here.");
+				print_error_after(start_span, "Expected a ';' here.");
 				return false;
 			}
-			RETURN_SEMA_ERROR_HERE("Expected an attribute name.");
+			RETURN_PRINT_ERROR_HERE("Expected an attribute name.");
 		}
 
 		// Otherwise assume no attributes
@@ -914,11 +914,11 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 	if (tok_is(c, TOKEN_AT_IDENT))
 	{
 		// Error for foo::bar::@inline
-		if (path) RETURN_SEMA_ERROR_HERE("Only user-defined attribute names can have a module path prefix.");
+		if (path) RETURN_PRINT_ERROR_HERE("Only user-defined attribute names can have a module path prefix.");
 
 		// Check attribute it exists, theoretically we could defer this to semantic analysis
 		AttributeType type = attribute_by_name(attr->name);
-		if (type == ATTRIBUTE_NONE) RETURN_SEMA_ERROR_HERE("This is not a known valid attribute name.");
+		if (type == ATTRIBUTE_NONE) RETURN_PRINT_ERROR_HERE("This is not a known valid attribute name.");
 		attr->attr_kind = type;
 	}
 	else
@@ -1027,7 +1027,7 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 					parsed_builtin = true;
 					break;
 				case ATTRIBUTE_IF:
-					if (!cond_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.", attr->name);
+					if (!cond_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
 					*cond_ref = true;
 					break;
 				default:
@@ -1035,21 +1035,21 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 			}
 			if (parsed_builtin)
 			{
-				if (!builtin_ref) RETURN_SEMA_ERROR(attr, "'@builtin' cannot be used here.");
+				if (!builtin_ref) RETURN_PRINT_ERROR_AT(false, attr, "'@builtin' cannot be used here.");
 				*builtin_ref = true;
 				continue;
 			}
 			if (parsed_visibility != -1)
 			{
-				if (!visibility_ref) RETURN_SEMA_ERROR(attr, "'%s' cannot be used here.", attr->name);
-				if (visibility != -1) RETURN_SEMA_ERROR(attr, "Only a single visibility attribute may be added.");
+				if (!visibility_ref) RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used here.", attr->name);
+				if (visibility != -1) RETURN_PRINT_ERROR_AT(false, attr, "Only a single visibility attribute may be added.");
 				*visibility_ref = visibility = parsed_visibility;
 				continue;
 			}
 		}
 		const char *name = attr->name;
 		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
-			if (other_attr->name == name) RETURN_SEMA_ERROR(attr, "Repeat of attribute '%s' here.", name);
+			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		FOREACH_END();
 		vec_add(*attributes_ref, attr);
 	}
@@ -1070,7 +1070,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 
 	if (tok_is(c, TOKEN_CONST_IDENT))
 	{
-		SEMA_ERROR_HERE("This looks like a constant variable, did you forget 'const'?");
+		PRINT_ERROR_HERE("This looks like a constant variable, did you forget 'const'?");
 		return poisoned_decl;
 	}
 
@@ -1086,10 +1086,10 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 		{
 			if (token_is_some_ident(c->tok))
 			{
-				SEMA_ERROR_HERE("I expected a variable name here, but global variables need to start with lower case.");
+				PRINT_ERROR_HERE("I expected a variable name here, but global variables need to start with lower case.");
 				return poisoned_decl;
 			}
-			SEMA_ERROR_HERE("The name of a global variable was expected here");
+			PRINT_ERROR_HERE("The name of a global variable was expected here");
 			return poisoned_decl;
 		}
 		if (!try_consume(c, TOKEN_COMMA)) break;
@@ -1105,7 +1105,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	{
 		if (decls)
 		{
-			SEMA_ERROR_HERE("Initialization is not allowed with multiple declarations.");
+			PRINT_ERROR_HERE("Initialization is not allowed with multiple declarations.");
 			return poisoned_decl;
 		}
 		if (!parse_decl_initializer(c, decl)) return poisoned_decl;
@@ -1113,7 +1113,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	else if (!decl->attributes && tok_is(c, TOKEN_LPAREN) && !threadlocal)
 	{
 		// Guess we forgot `fn`? -> improve error reporting.
-		sema_error_at(type->span, "This looks like the beginning of a function declaration but it's missing the initial `fn`. Did you forget it?");
+		print_error_at(type->span, "This looks like the beginning of a function declaration but it's missing the initial `fn`. Did you forget it?");
 		return poisoned_decl;
 	}
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -1140,23 +1140,20 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 
 
 /**
- * enum_param_decl ::= type IDENT ('=' expr)?
+ * enum_param_decl ::= type IDENT attributes?
  */
 static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
-	if (type->optional) RETURN_SEMA_ERROR(type, "Parameters may not be optional.");
+	if (type->optional) RETURN_PRINT_ERROR_AT(false, type, "Parameters may not be optional.");
 	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
 	if (!try_consume(c, TOKEN_IDENT))
 	{
-		if (token_is_keyword_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Keywords cannot be used as member names.");
-		if (token_is_some_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Expected a name starting with a lower-case letter.");
-		RETURN_SEMA_ERROR_HERE("Expected a member name here.");
+		if (token_is_keyword_ident(c->tok)) RETURN_PRINT_ERROR_HERE("Keywords cannot be used as member names.");
+		if (token_is_some_ident(c->tok)) RETURN_PRINT_ERROR_HERE("Expected a name starting with a lower-case letter.");
+		RETURN_PRINT_ERROR_HERE("Expected a member name here.");
 	}
-	if (try_consume(c, TOKEN_EQ))
-	{
-		if (!parse_decl_initializer(c, param)) return poisoned_decl;
-	}
+	if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
 	return true;
@@ -1209,19 +1206,19 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 			// In the future maybe this
 			if (!is_end_of_param_list(c) && !tok_is(c, TOKEN_COMMA))
 			{
-				SEMA_ERROR_HERE("Expected ')' here.");
+				PRINT_ERROR_HERE("Expected ')' here.");
 				return false;
 			}
 			// Variadics might not be allowed
 			if (!variadic)
 			{
-				SEMA_ERROR_LAST("Variadic parameters are not allowed.");
+				PRINT_ERROR_LAST("Variadic parameters are not allowed.");
 				return false;
 			}
 			// Check that we only have one variadic parameter.
 			if (var_arg_found)
 			{
-				SEMA_ERROR_LAST("Only a single variadic parameter is allowed.");
+				PRINT_ERROR_LAST("Only a single variadic parameter is allowed.");
 				return false;
 			}
 			// Set the variadic type and insert a dummy argument.
@@ -1245,18 +1242,17 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 			{
 				if (!variadic)
 				{
-					SEMA_ERROR_HERE("Variadic arguments are not allowed.");
+					PRINT_ERROR_HERE("Variadic arguments are not allowed.");
 					return false;
 				}
 				if (var_arg_found)
 				{
-					sema_error_at(extend_span_with_token(type->span, c->prev_span), "Only a single variadic parameter is allowed.");
+					print_error_at(extend_span_with_token(type->span, c->prev_span), "Only a single variadic parameter is allowed.");
 					return false;
 				}
 				*variadic = VARIADIC_TYPED;
 			}
 		}
-
 		// We have parsed the optional type, next get the optional variable name
 		VarDeclKind param_kind;
 		const char *name = NULL;
@@ -1267,7 +1263,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 			case TOKEN_CONST_IDENT:
 			case TOKEN_CT_CONST_IDENT:
 				// We reserve upper case constants for globals.
-				SEMA_ERROR_HERE("Parameter names may not be all uppercase.");
+				PRINT_ERROR_HERE("Parameter names may not be all uppercase.");
 				return false;
 			case TOKEN_IDENT:
 				// normal "foo"
@@ -1280,25 +1276,25 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					// Did we get Foo... foo...
 					if (ellipsis)
 					{
-						SEMA_ERROR_HERE("Unexpected '...' following a vararg declaration.");
+						PRINT_ERROR_HERE("Unexpected '...' following a vararg declaration.");
 						return false;
 					}
 					ellipsis = true;
 					if (!variadic)
 					{
-						sema_error_at(extend_span_with_token(span, c->span), "Variadic parameters are not allowed.");
+						print_error_at(extend_span_with_token(span, c->span), "Variadic parameters are not allowed.");
 						return false;
 					}
 					// Did we get Foo foo...? If so then that's an error.
 					if (type)
 					{
-						SEMA_ERROR_HERE("For typed varargs '...', needs to appear after the type.");
+						PRINT_ERROR_HERE("For typed varargs '...', needs to appear after the type.");
 						return false;
 					}
 					// This is "foo..."
 					*variadic = VARIADIC_ANY;
 					// We generate the type as type_any
-					type = type_info_new_base(type_anyptr, c->span);
+					type = type_info_new_base(type_any, c->span);
 				}
 				break;
 			case TOKEN_CT_IDENT:
@@ -1308,7 +1304,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				// This will catch Type... $foo and $foo..., neither is allowed.
 				if (ellipsis || peek(c) == TOKEN_ELLIPSIS)
 				{
-					SEMA_ERROR_HERE("Compile time parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_HERE("Compile time parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_CT;
@@ -1319,13 +1315,13 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				name = symstr(c);
 				if (!try_consume(c, TOKEN_IDENT))
 				{
-					SEMA_ERROR_HERE("A regular variable name, e.g. 'foo' was expected after the '&'.");
+					PRINT_ERROR_HERE("A regular variable name, e.g. 'foo' was expected after the '&'.");
 					return false;
 				}
 				// This will catch Type... &foo and &foo..., neither is allowed.
 				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
 				{
-					SEMA_ERROR_HERE("Reference parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_HERE("Reference parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				// Span includes the "&"
@@ -1334,7 +1330,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				break;
 			case TOKEN_HASH_TYPE_IDENT:
 				// #Foo (not allowed)
-				SEMA_ERROR_HERE("An unevaluated expression can never be a type, did you mean to use $Type?");
+				PRINT_ERROR_HERE("An unevaluated expression can never be a type, did you mean to use $Type?");
 				return false;
 			case TOKEN_HASH_IDENT:
 				// expression #foo
@@ -1342,7 +1338,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				advance_and_verify(c, TOKEN_HASH_IDENT);
 				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
 				{
-					SEMA_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_EXPR;
@@ -1353,7 +1349,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
 				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
 				{
-					SEMA_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_CT_TYPE;
@@ -1364,7 +1360,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				// Handle "Type..." and "Type"
 				if (!type && !ellipsis)
 				{
-					sema_error_at_after(c->prev_span, "Expected a parameter.");
+					print_error_after(c->prev_span, "Expected a parameter.");
 					return false;
 				}
 				no_name = true;
@@ -1372,13 +1368,11 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				param_kind = VARDECL_PARAM;
 				break;
 			default:
-				SEMA_ERROR_HERE("Expected a parameter.");
-				return false;
+				RETURN_PRINT_ERROR_HERE("Expected a parameter.");
 		}
 		if (type && type->optional)
 		{
-			SEMA_ERROR(type, "Parameters may not be optional.");
-			return false;
+			RETURN_PRINT_ERROR_AT(false, type, "Parameters may not be optional.");
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
@@ -1483,7 +1477,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			index++;
 			if (index > MAX_MEMBERS)
 			{
-				RETURN_SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
+				RETURN_PRINT_ERROR_AT(false, member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
 			}
 			continue;
 		}
@@ -1492,11 +1486,11 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 		{
 			if (parent->decl_kind != DECL_STRUCT)
 			{
-				RETURN_SEMA_ERROR_HERE("Only structs may have 'inline' elements, did you make a mistake?");
+				RETURN_PRINT_ERROR_HERE("Only structs may have 'inline' elements, did you make a mistake?");
 			}
 			if (index > 0)
 			{
-				RETURN_SEMA_ERROR_LAST("Only the first element may be 'inline', did you order your fields wrong?");
+				RETURN_PRINT_ERROR_LAST("Only the first element may be 'inline', did you order your fields wrong?");
 			}
 			parent->is_substruct = true;
 			was_inline = true;
@@ -1506,14 +1500,14 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 
 		while (1)
 		{
-			if (!tok_is(c, TOKEN_IDENT)) RETURN_SEMA_ERROR_HERE("A valid member name was expected here.");
+			if (!tok_is(c, TOKEN_IDENT)) RETURN_PRINT_ERROR_HERE("A valid member name was expected here.");
 
 			Decl *member = decl_new_var_current(c, type, VARDECL_MEMBER);
 			vec_add(parent->strukt.members, member);
 			index++;
 			if (index > MAX_MEMBERS)
 			{
-				RETURN_SEMA_ERROR(member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
+				RETURN_PRINT_ERROR_AT(false, member, "Can't add another member: the count would exceed maximum of %d elements.", MAX_MEMBERS);
 			}
 			advance(c);
 			bool is_cond;
@@ -1522,7 +1516,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			if (!try_consume(c, TOKEN_COMMA)) break;
 			if (was_inline)
 			{
-				RETURN_SEMA_ERROR(member, "'inline' can only be applied to a single member, so please define it on its own line.");
+				RETURN_PRINT_ERROR_AT(false, member, "'inline' can only be applied to a single member, so please define it on its own line.");
 			}
 		}
 		CONSUME_EOS_OR_RET(false);
@@ -1605,10 +1599,10 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		{
 			if (try_consume(c, TOKEN_CONST_IDENT) || try_consume(c, TOKEN_TYPE_IDENT))
 			{
-				SEMA_ERROR_LAST("Expected a field name with an initial lower case.");
+				PRINT_ERROR_LAST("Expected a field name with an initial lower case.");
 				return false;
 			}
-			SEMA_ERROR_HERE("Expected a field name at this position.");
+			PRINT_ERROR_HERE("Expected a field name at this position.");
 			return false;
 		}
 		if (tok_is(c, TOKEN_EOS))
@@ -1617,8 +1611,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			{
 				if (decl->bitstruct.members)
 				{
-					SEMA_ERROR(member_decl, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either add a range to this member or remove ranges from the other member(s).");
-					return false;
+					RETURN_PRINT_ERROR_AT(false, member_decl, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either add a range to this member or remove ranges from the other member(s).");
 				}
 				is_consecutive = true;
 			}
@@ -1643,8 +1636,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		CONSUME_EOS_OR_RET(false);
 		if (is_consecutive)
 		{
-			SEMA_ERROR(member_decl->var.start, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either remove this range, or add ranges to all other members.");
-			return false;
+			RETURN_PRINT_ERROR_AT(false, member_decl->var.start, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either remove this range, or add ranges to all other members.");
 		}
 		vec_add(decl->bitstruct.members, member_decl);
 	}
@@ -1801,16 +1793,16 @@ static inline Decl *parse_def_type(ParseContext *c)
 	{
 		if (token_is_any_type(c->tok))
 		{
-			SEMA_ERROR_HERE("'%s' is the name of a built-in type and can't be used as an alias.",
-							token_type_to_string(c->tok));
+			PRINT_ERROR_HERE("'%s' is the name of a built-in type and can't be used as an alias.",
+			                 token_type_to_string(c->tok));
 			return poisoned_decl;
 		}
 		if (token_is_some_ident(c->tok))
 		{
-			SEMA_ERROR_HERE("The type name must start with an uppercase letter followed by at least 1 lowercase letter.");
+			PRINT_ERROR_HERE("The type name must start with an uppercase letter followed by at least 1 lowercase letter.");
 			return poisoned_decl;
 		}
-		SEMA_ERROR_HERE("A type name was expected here.");
+		PRINT_ERROR_HERE("A type name was expected here.");
 		return poisoned_decl;
 	}
 
@@ -1870,15 +1862,15 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	{
 		if (token_is_keyword_ident(alias_type) && alias_type != TOKEN_FN)
 		{
-			SEMA_ERROR_HERE("'%s' is a reserved keyword, try another name.", token_type_to_string(alias_type));
+			PRINT_ERROR_HERE("'%s' is a reserved keyword, try another name.", token_type_to_string(alias_type));
 		}
 		else if (alias_type == TOKEN_TYPE_IDENT)
 		{
-			SEMA_ERROR_HERE("A variable, constant or attribute name was expected here. If you want to define a new type, use 'typedef' instead.");
+			PRINT_ERROR_HERE("A variable, constant or attribute name was expected here. If you want to define a new type, use 'typedef' instead.");
 		}
 		else
 		{
-			SEMA_ERROR_HERE("A type, variable, constant or attribute name was expected here.");
+			PRINT_ERROR_HERE("A type, variable, constant or attribute name was expected here.");
 		}
 		return poisoned_decl;
 	}
@@ -1889,8 +1881,7 @@ static inline Decl *parse_def_ident(ParseContext *c)
 
 	if (decl->name == kw_main)
 	{
-		SEMA_ERROR(decl, "'main' is reserved and cannot be used as an alias.");
-		return poisoned_decl;
+		RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "'main' is reserved and cannot be used as an alias.");
 	}
 	// 4. Advance and consume the '='
 	advance(c);
@@ -1911,25 +1902,22 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	{
 		if (token_is_any_type(c->tok) || tok_is(c, TOKEN_TYPE_IDENT))
 		{
-			SEMA_ERROR(decl, "A type alias must start with an uppercase letter and contain at least one lower case letter.");
-			return poisoned_decl;
+			RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "A type alias must start with an uppercase letter and contain at least one lower case letter.");
 		}
 		if (alias_type == TOKEN_CONST_IDENT)
 		{
-			SEMA_ERROR_HERE("Expected a constant name here.");
+			PRINT_ERROR_HERE("Expected a constant name here.");
 			return poisoned_decl;
 		}
 		if (alias_type == TOKEN_IDENT && c->tok == TOKEN_AT_IDENT)
 		{
-			SEMA_ERROR(decl, "A name with '@' prefix cannot be aliased to a name without '@', try adding a '@' before '%s'.", decl->name);
-			return poisoned_decl;
+			RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "A name with '@' prefix cannot be aliased to a name without '@', try adding a '@' before '%s'.", decl->name);
 		}
 		if (alias_type == TOKEN_AT_IDENT && c->tok == TOKEN_IDENT)
 		{
-			SEMA_ERROR(decl, "An alias cannot use '@' if the aliased identifier doesn't, please remove the '@' symbol.");
-			return poisoned_decl;
+			RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "An alias cannot use '@' if the aliased identifier doesn't, please remove the '@' symbol.");
 		}
-		SEMA_ERROR_HERE("Expected a function or variable name here.");
+		PRINT_ERROR_HERE("Expected a function or variable name here.");
 		return poisoned_decl;
 	}
 
@@ -1968,7 +1956,7 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	{
 		if (tok_is(c, TOKEN_RPAREN))
 		{
-			sema_error_at(c->prev_span, "At least one parameter was expected after '(' - try removing the '()'.");
+			print_error_at(c->prev_span, "At least one parameter was expected after '(' - try removing the '()'.");
 			return poisoned_decl;
 		}
 		if (!parse_parameters(c, &decl->attr_decl.params, NULL, NULL, NULL, PARAM_PARSE_ATTR)) return poisoned_decl;
@@ -2047,7 +2035,7 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 			// 5b. If the rtype is not optional or the return type was an optional, then this is an error.
 			if (!is_macro || rtype->optional)
 			{
-				SEMA_ERROR_LAST("This looks like you are declaring a method without a return type?");
+				PRINT_ERROR_LAST("This looks like you are declaring a method without a return type?");
 				return false;
 			}
 			method_type = rtype;
@@ -2057,20 +2045,19 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 	else if (method_type)
 	{
 		// 5d. A method type but no dot is also wrong.
-		SEMA_ERROR(method_type, "There is unexpectedly a type after the return type, did you forget a '.'?");
-		return false;
+		RETURN_PRINT_ERROR_AT(false, method_type, "There is unexpectedly a type after the return type, did you forget a '.'?");
 	}
 	RESULT:
 	decl->name = symstr(c);
 	decl->span = c->span;
 	if (is_macro && c->tok != TOKEN_IDENT && c->tok != TOKEN_AT_IDENT)
 	{
-		sema_error_at(c->span, "Expected a macro name here, e.g. '@someName' or 'someName'.");
+		print_error_at(c->span, "Expected a macro name here, e.g. '@someName' or 'someName'.");
 		return false;
 	}
 	else if (!is_macro && c->tok != TOKEN_IDENT)
 	{
-		sema_error_at(c->span, "Expected a function name here, e.g. 'someName'.");
+		print_error_at(c->span, "Expected a function name here, e.g. 'someName'.");
 		return false;
 	}
 	advance(c);
@@ -2142,7 +2129,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
-				SEMA_ERROR(fault_const, "This fault value was declared twice.");
+				PRINT_ERROR_AT(fault_const, "This fault value was declared twice.");
 				SEMA_NOTE(other_constant, "The previous declaration was here.");
 				return poisoned_decl;
 			}
@@ -2156,7 +2143,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 	}
 	if (ordinal == 0)
 	{
-		sema_error_at(c->prev_span, "Declaration of '%s' contains no values, at least one value is required.", decl->name);
+		print_error_at(c->prev_span, "Declaration of '%s' contains no values, at least one value is required.", decl->name);
 		return poisoned_decl;
 	}
 	return decl;
@@ -2170,7 +2157,6 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 
-	// We allow (), but we might consider making it an error later on.
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
@@ -2189,7 +2175,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 /**
  * Parse an enum declaration (after "enum")
  *
- * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type enum_param_list)? opt_attributes '{' enum_body '}'
+ * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type? enum_param_list?)? opt_attributes '{' enum_body '}'
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
@@ -2202,20 +2188,22 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
 
 	TypeInfo *type = NULL;
-	// Parse the spec
+
 	if (try_consume(c, TOKEN_COLON))
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
-		if (type->optional)
+		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
-			SEMA_ERROR(type, "An enum can't have an optional type.");
-			return poisoned_decl;
+			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
+			if (type->optional)
+			{
+				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum can't have an optional type.");
+			}
 		}
 		if (!parse_enum_param_list(c, &decl->enums.parameters)) return poisoned_decl;
 	}
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
+	unsigned expected_parameters = vec_size(decl->enums.parameters);
 	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
@@ -2234,20 +2222,27 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
-				SEMA_ERROR(enum_const, "This enum constant is declared twice.");
+				PRINT_ERROR_AT(enum_const, "This enum constant is declared twice.");
 				SEMA_NOTE(other_constant, "The previous declaration was here.");
 				decl_poison(enum_const);
 				break;
 			}
 		}
-		if (try_consume(c, TOKEN_LPAREN))
-		{
-			Expr **result = NULL;
-			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL, false)) return poisoned_decl;
-			enum_const->enum_constant.args = result;
-			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
-		}
 		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
+		if (try_consume(c, TOKEN_EQ))
+		{
+			if (expected_parameters == 1 || !tok_is(c, TOKEN_LBRACE))
+			{
+				ASSIGN_EXPR_OR_RET(Expr *single, parse_expr(c), poisoned_decl);
+				vec_add(enum_const->enum_constant.args, single);
+			}
+			else
+			{
+				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
+				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, NULL, false)) return poisoned_decl;
+				CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+			}
+		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))
@@ -2290,8 +2285,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	if (!parse_func_macro_header(c, func)) return poisoned_decl;
 	if (func->name[0] == '@')
 	{
-		SEMA_ERROR(func, "Function names may not use '@'.");
-		return false;
+		RETURN_PRINT_ERROR_AT(false, func, "Function names may not use '@'.");
 	}
 	if (!parse_fn_parameter_list(c, &(func->func_decl.signature), is_interface)) return poisoned_decl;
 	if (!parse_attributes_for_global(c, func)) return poisoned_decl;
@@ -2301,11 +2295,11 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 		{
 			if (c->unit->is_interface_file)
 			{
-				SEMA_ERROR_HERE("An interface file may not contain function bodies.");
+				PRINT_ERROR_HERE("An interface file may not contain function bodies.");
 			}
 			else
 			{
-				SEMA_ERROR_HERE("An 'extern' function may not have a body.");
+				PRINT_ERROR_HERE("An 'extern' function may not have a body.");
 			}
 			return poisoned_decl;
 		}
@@ -2329,7 +2323,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	}
 	else
 	{
-		SEMA_ERROR_HERE("Expected the beginning of a block or a short statement.");
+		PRINT_ERROR_HERE("Expected the beginning of a block or a short statement.");
 	}
 
 	DEBUG_LOG("Finished parsing function %s", func->name);
@@ -2355,15 +2349,15 @@ static inline bool parse_import(ParseContext *c)
 		{
 			if (is_not_first)
 			{
-				SEMA_ERROR_LAST("Another module name was expected after the comma.");
+				PRINT_ERROR_LAST("Another module name was expected after the comma.");
 				return false;
 			}
 			if (tok_is(c, TOKEN_STRING))
 			{
-				SEMA_ERROR_HERE("An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
+				PRINT_ERROR_HERE("An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between \"\"?");
 				return false;
 			}
-			SEMA_ERROR_HERE("Import statement should be followed by the name of the module to import.");
+			PRINT_ERROR_HERE("Import statement should be followed by the name of the module to import.");
 			return false;
 		}
 		is_not_first = true;
@@ -2374,7 +2368,7 @@ static inline bool parse_import(ParseContext *c)
 		{
 			if (symstr(c) != attribute_list[ATTRIBUTE_PUBLIC])
 			{
-				SEMA_ERROR_HERE("Only '@public' is a valid attribute here.");
+				PRINT_ERROR_HERE("Only '@public' is a valid attribute here.");
 				return false;
 			}
 			private = true;
@@ -2383,7 +2377,7 @@ static inline bool parse_import(ParseContext *c)
 		unit_add_import(c->unit, path, private);
 		if (tok_is(c, TOKEN_COLON) && peek(c) == TOKEN_IDENT)
 		{
-			SEMA_ERROR_HERE("'::' was expected here, did you make a mistake?");
+			PRINT_ERROR_HERE("'::' was expected here, did you make a mistake?");
 			return false;
 		}
 		if (!try_consume(c, TOKEN_COMMA)) break;
@@ -2434,7 +2428,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 	{
 		if (!tok_is(c, TOKEN_STRING))
 		{
-			sema_error_at(c->prev_span, "Expected a string after ':'");
+			print_error_at(c->prev_span, "Expected a string after ':'");
 			return false;
 		}
 	}
@@ -2487,7 +2481,7 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 		}
 		else
 		{
-			RETURN_SEMA_ERROR_LAST("'in', 'out' or 'inout' were expected.");
+			RETURN_PRINT_ERROR_LAST("'in', 'out' or 'inout' were expected.");
 		}
 		CONSUME_OR_RET(TOKEN_RBRACKET, false);
 	}
@@ -2505,7 +2499,7 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 		case TOKEN_HASH_IDENT:
 			break;
 		default:
-			SEMA_ERROR_HERE("Expected a parameter name here.");
+			PRINT_ERROR_HERE("Expected a parameter name here.");
 			return false;
 	}
 	ast->contract_stmt.param.name = symstr(c);
@@ -2538,8 +2532,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 		ASSIGN_TYPE_OR_RET(ret->contract_fault.type, parse_base_type(c), false);
 		if (ret->contract_fault.type->kind != TYPE_INFO_IDENTIFIER)
 		{
-			SEMA_ERROR(ret->contract_fault.type, "Expected a fault type.");
-			return false;
+			RETURN_PRINT_ERROR_AT(false, ret->contract_fault.type, "Expected a fault type.");
 		}
 		if (try_consume(c, TOKEN_DOT))
 		{
@@ -2629,10 +2622,10 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 			default:
 				if (row_last_row == row)
 				{
-					SEMA_ERROR_HERE("Expected end of line.");
+					PRINT_ERROR_HERE("Expected end of line.");
 					return false;
 				}
-				SEMA_ERROR_HERE("Expected a directive or a comment.");
+				PRINT_ERROR_HERE("Expected a directive or a comment.");
 				return false;
 		}
 		row_last_row = row;
@@ -2712,7 +2705,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 					decl = parse_global_declaration(c);
 					break;
 				default:
-					SEMA_ERROR_HERE("Expected 'extern' to be followed by a function, constant or global variable.");
+					PRINT_ERROR_HERE("Expected 'extern' to be followed by a function, constant or global variable.");
 					return poisoned_decl;
 			}
 			if (!decl_ok(decl)) return decl;
@@ -2721,7 +2714,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_MODULE:
 			if (!c_ref)
 			{
-				SEMA_ERROR_HERE("'module' is not valid inside an include.");
+				PRINT_ERROR_HERE("'module' is not valid inside an include.");
 				return poisoned_decl;
 			}
 			advance(c);
@@ -2736,7 +2729,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			if (!parse_module(c, contracts)) return poisoned_decl;
 			return NULL;
 		case TOKEN_DOCS_START:
-			SEMA_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
+			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_DEF:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
@@ -2773,7 +2766,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			if (!c_ref)
 			{
-				SEMA_ERROR_HERE("'import' may not appear inside a compile time statement.");
+				PRINT_ERROR_HERE("'import' may not appear inside a compile time statement.");
 				return poisoned_decl;
 			}
 			if (!parse_import(c)) return poisoned_decl;
@@ -2823,19 +2816,19 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			decl = parse_global_declaration(c);
 			break;
 		case TOKEN_EOF:
-			SEMA_ERROR_LAST("Expected a top level declaration.");
+			PRINT_ERROR_LAST("Expected a top level declaration.");
 			return poisoned_decl;
 		case TOKEN_STATIC:
-			SEMA_ERROR_HERE("'static' is only used with local variable declarations.");
+			PRINT_ERROR_HERE("'static' is only used with local variable declarations.");
 			return poisoned_decl;
 		case TOKEN_CT_CONST_IDENT:
 			if (peek(c) == TOKEN_EQ)
 			{
-				SEMA_ERROR_HERE("Did you forget a 'const' before the name of this compile time constant?");
+				PRINT_ERROR_HERE("Did you forget a 'const' before the name of this compile time constant?");
 			}
 			else
 			{
-				SEMA_ERROR_HERE("Compile time constant unexpectedly found.");
+				PRINT_ERROR_HERE("Compile time constant unexpectedly found.");
 			}
 			return poisoned_decl;
 		case TOKEN_TLOCAL:
@@ -2844,17 +2837,16 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			decl = parse_global_declaration(c);
 			break;
 		case TOKEN_EOS:
-			SEMA_ERROR_HERE("';' wasn't expected here, try removing it.");
+			PRINT_ERROR_HERE("';' wasn't expected here, try removing it.");
 			return poisoned_decl;
 		default:
-			SEMA_ERROR_HERE("Expected the start of a global declaration here.");
+			PRINT_ERROR_HERE("Expected the start of a global declaration here.");
 			return poisoned_decl;
 	}
 	if (!decl_ok(decl)) return decl;
 	assert(decl);
 	return decl;
 CONTRACT_NOT_ALLOWED:
-	SEMA_ERROR(astptr(contracts), "Contracts are only used for modules, functions and macros.");
-	return poisoned_decl;
+	RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");
 }
 

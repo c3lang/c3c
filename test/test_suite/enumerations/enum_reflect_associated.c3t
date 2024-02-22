@@ -4,7 +4,7 @@ import std::io;
 
 enum Abc : int (int x, double y, String z)
 {
-	OFEKFE(1, 2.0, "foek"),
+	OFEKFE = { 1, 2.0, "foek" },
 }
 
 fn int main()
@@ -23,29 +23,29 @@ fn int main()
 ; Function Attrs:
 define i32 @main() #0 {
 entry:
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %taddr = alloca %"char[]", align 8
   %retparam = alloca i64, align 8
-  %varargslots1 = alloca [1 x %"any*"], align 16
+  %varargslots1 = alloca [1 x %any], align 16
   %taddr2 = alloca %"char[]", align 8
   %retparam3 = alloca i64, align 8
-  %varargslots4 = alloca [1 x %"any*"], align 16
+  %varargslots4 = alloca [1 x %any], align 16
   %taddr5 = alloca %"char[]", align 8
   %retparam6 = alloca i64, align 8
   store %"char[]" { ptr @.str.2, i64 3 }, ptr %taddr, align 8
-  %0 = insertvalue %"any*" undef, ptr %taddr, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %1, ptr %varargslots, align 16
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %1, ptr %varargslots, align 16
   %2 = call i64 @std.io.printfn(ptr %retparam, ptr @.str.1, i64 2, ptr %varargslots, i64 1)
   store %"char[]" { ptr @.str.4, i64 6 }, ptr %taddr2, align 8
-  %3 = insertvalue %"any*" undef, ptr %taddr2, 0
-  %4 = insertvalue %"any*" %3, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %4, ptr %varargslots1, align 16
+  %3 = insertvalue %any undef, ptr %taddr2, 0
+  %4 = insertvalue %any %3, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %4, ptr %varargslots1, align 16
   %5 = call i64 @std.io.printfn(ptr %retparam3, ptr @.str.3, i64 2, ptr %varargslots1, i64 1)
   store %"char[]" { ptr @.str.6, i64 6 }, ptr %taddr5, align 8
-  %6 = insertvalue %"any*" undef, ptr %taddr5, 0
-  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %7, ptr %varargslots4, align 16
+  %6 = insertvalue %any undef, ptr %taddr5, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %7, ptr %varargslots4, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam6, ptr @.str.5, i64 2, ptr %varargslots4, i64 1)
   ret i32 0
 }

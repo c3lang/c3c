@@ -527,6 +527,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// Use the fact that they correspond to 0, 1, -1
 	target->feature.x86_struct_return = get_valid_bool(json, "x86-stack-struct-return", type, target->feature.x86_struct_return);
 	target->feature.soft_float = get_valid_bool(json, "soft-float", type, target->feature.soft_float);
+	target->feature.pass_win64_simd_as_arrays = get_valid_bool(json, "win64-simd-array", type, target->feature.pass_win64_simd_as_arrays);
 
 }
 static void project_add_target(Project *project, BuildTarget *default_target,  JSONObject *json, const char *name, const char *type, TargetType target_type)

@@ -10,7 +10,7 @@ fault BacktraceFault
 	RESOLUTION_FAILED,
 }
 
-const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null };
+const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null, false };
 
 struct Backtrace (Printable)
 {
@@ -19,7 +19,8 @@ struct Backtrace (Printable)
 	String object_file;
 	String file;
 	uint line;
-	Allocator* allocator;
+	Allocator allocator;
+	bool is_inline;
 }
 
 
@@ -35,15 +36,16 @@ fn bool Backtrace.is_unknown(&self)
 
 fn usz! Backtrace.to_format(&self, Formatter* formatter) @dynamic
 {
+	String inline_suffix = self.is_inline ? " [inline]" : "";
 	if (self.has_file())
 	{
-		return formatter.printf("%s (in %s) (%s:%d)", self.function, self.object_file, self.file, self.line);
+		return formatter.printf("%s (in %s) (%s:%d)%s", self.function, self.object_file, self.file, self.line, inline_suffix);
 	}
 	if (self.is_unknown())
 	{
-		return formatter.printf("??? (in unknown)");
+		return formatter.printf("??? (in unknown)%s", inline_suffix);
 	}
-	return formatter.printf("%s (in %s) (source unavailable)", self.function, self.object_file);
+	return formatter.printf("%s (in %s) (source unavailable)%s", self.function, self.object_file, inline_suffix);
 }
 fn void Backtrace.free(&self)
 {
@@ -53,7 +55,7 @@ fn void Backtrace.free(&self)
 	allocator::free(self.allocator, self.file);
 }
 
-fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator* allocator)
+fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator allocator)
 {
 	if (!allocator)
 	{
@@ -95,7 +97,7 @@ def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
 def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
 def symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator) @if(!env::NATIVE_STACKTRACE)
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator) @if(!env::NATIVE_STACKTRACE)
 {
 	return {};
 }

@@ -15,8 +15,14 @@ fn int main(String[] args) {
     .x = x,
     .flags.flag1 = true,
   };
+  Flags flags;
+  Foo bar = {
+    .x = x,
+    .flags = flags,
+  };
   return 0;
 }
+
 
 /* #expect: test.ll
 
@@ -34,5 +40,13 @@ fn int main(String[] args) {
   %4 = and i32 %3, -2
   %5 = or i32 %4, 1
   store i32 %5, ptr %ptradd2, align 8
+  store i32 0, ptr %flags, align 4
+  store i64 0, ptr %bar, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %bar, i64 8
+  store i32 0, ptr %ptradd3, align 8
+  %6 = load i64, ptr %x, align 8
+  store i64 %6, ptr %bar, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %bar, i64 8
+  %7 = load i32, ptr %flags, align 4
+  store i32 %7, ptr %ptradd4, align 8
   ret i32 0
-

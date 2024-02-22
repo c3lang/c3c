@@ -125,7 +125,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	assert(x64_type_is_structure(type));
 
 	// These are all passed in two registers.
-	if (type->type_kind == TYPE_SUBARRAY || type->type_kind == TYPE_ANY)
+	if (type->type_kind == TYPE_SLICE || type->type_kind == TYPE_ANY)
 	{
 		needed_registers->int_registers += 2;
 		return abi_arg_new_direct();
@@ -382,16 +382,14 @@ static void x64_classify(Type *type, ByteSize offset_base, X64Class *lo_class, X
 	{
 		case LOWERED_TYPES:
 		case TYPE_FUNC:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_VOID:
 			*current = CLASS_NO_CLASS;
 			break;
 		case TYPE_I128:
 		case TYPE_U128:
-		case TYPE_SUBARRAY:
-		case TYPE_ANYPTR:
+		case TYPE_SLICE:
+		case TYPE_ANY:
 			*lo_class = CLASS_INTEGER;
 			*hi_class = CLASS_INTEGER;
 			break;
@@ -565,8 +563,6 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 		case LOWERED_TYPES:
 		case TYPE_VOID:
 		case TYPE_FUNC:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			UNREACHABLE
 		case TYPE_U64:
 		case TYPE_I64:
@@ -597,11 +593,11 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 			}
 			break;
 		}
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			if (offset < 8) return abi_type_get(type_ulong);
 			if (offset < 16) return abi_type_get(type_voidptr);
 			break;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			if (offset < 8) return abi_type_get(type_voidptr);
 			if (offset < 16) return abi_type_get(type_ulong);
 			break;
@@ -858,7 +854,7 @@ bool x64_type_is_structure(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_STRUCT:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 			return true;
 		default:

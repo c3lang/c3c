@@ -1,5 +1,22 @@
 module std::io::path @test;
 
+fn void! test_dot()
+{
+	Path p = path::new(".")!;
+	assert(@catch(p.parent()));
+	// It must be possible to form the absolute version.
+	Path p2 = p.absolute()!;
+	p2 = p.append("/hello/world")!;
+	if (p2.env == POSIX)
+	{
+		assert(p2.str_view() == "hello/world");
+	}
+	else
+	{
+		assert(p2.str_view() == `hello\world`);
+	}
+}
+
 fn void! test_parent()
 {
 	Path p = path::new("")!;
@@ -71,10 +88,10 @@ fn void! test_path_normalized()
 	assert(path::new(`a/b/..`, .path_env = PathEnv.POSIX).str_view()! == `a`);
 	assert(path::new(`a/b/../`, .path_env = PathEnv.WIN32).str_view()! == `a`);
 	assert(path::new(`a/b/../`, .path_env = PathEnv.POSIX).str_view()! == `a`);
-	assert(path::new(`a/b/../..`, .path_env = PathEnv.WIN32).str_view()! == "");
-	assert(path::new(`a/b/../..`, .path_env = PathEnv.POSIX).str_view()! == "");
-	assert(path::new(`a/b/../../`, .path_env = PathEnv.WIN32).str_view()! == "");
-	assert(path::new(`a/b/../../`, .path_env = PathEnv.POSIX).str_view()! == "");
+	assert(path::new(`a/b/../..`, .path_env = PathEnv.WIN32).str_view()! == ".");
+	assert(path::new(`a/b/../..`, .path_env = PathEnv.POSIX).str_view()! == ".");
+	assert(path::new(`a/b/../../`, .path_env = PathEnv.WIN32).str_view()! == ".");
+	assert(path::new(`a/b/../../`, .path_env = PathEnv.POSIX).str_view()! == ".");
 	assert(path::new(`a/b/../c/../d`, .path_env = PathEnv.WIN32).str_view()! == `a\d`);
 	assert(path::new(`a/b/../c/../d`, .path_env = PathEnv.POSIX).str_view()! == `a/d`);
 	assert(path::new(`a/b/../c/../d/`, .path_env = PathEnv.WIN32).str_view()! == `a\d`);
@@ -87,10 +104,10 @@ fn void! test_path_normalized()
 	assert(path::new(`a/b/./././`, .path_env = PathEnv.POSIX).str_view()! == `a/b`);
 	assert(path::new(`./a/`, .path_env = PathEnv.WIN32).str_view()! == `a`);
 	assert(path::new(`./a/`, .path_env = PathEnv.POSIX).str_view()! == `a`);
-	assert(path::new(`./`, .path_env = PathEnv.WIN32).str_view()! == ``);
-	assert(path::new(`./`, .path_env = PathEnv.POSIX).str_view()! == ``);
-	assert(path::new(`.`, .path_env = PathEnv.WIN32).str_view()! == ``);
-	assert(path::new(`.`, .path_env = PathEnv.POSIX).str_view()! == ``);
+	assert(path::new(`./`, .path_env = PathEnv.WIN32).str_view()! == `.`);
+	assert(path::new(`./`, .path_env = PathEnv.POSIX).str_view()! == `.`);
+	assert(path::new(`.`, .path_env = PathEnv.WIN32).str_view()! == `.`);
+	assert(path::new(`.`, .path_env = PathEnv.POSIX).str_view()! == `.`);
 	assert(path::new(``, .path_env = PathEnv.WIN32).str_view()! == ``);
 	assert(path::new(``, .path_env = PathEnv.POSIX).str_view()! == ``);
 	assert(path::new(`/a`, .path_env = PathEnv.WIN32).str_view()! == `\a`);
@@ -139,7 +156,7 @@ fn void! test_path_normalized()
 	assert(path::new(`C:/./`, .path_env = PathEnv.WIN32).str_view()! == `C:\`);
 	assert(path::new(`C:/./`, .path_env = PathEnv.POSIX).str_view()! == `C:`);
 	assert(path::new(`C:/../a`, .path_env = PathEnv.POSIX).str_view()! == `a`);
-	assert(path::new(`C:/..`, .path_env = PathEnv.POSIX).str_view()! == ``);
+	assert(path::new(`C:/..`, .path_env = PathEnv.POSIX).str_view()! == `.`);
 	assert(path::new(`C:/`, .path_env = PathEnv.WIN32).str_view()! == `C:\`);
 	assert(path::new(`C:/`, .path_env = PathEnv.POSIX).str_view()! == `C:`);
 	assert(path::new(`C:a`, .path_env = PathEnv.WIN32).str_view()! == `C:a`);
@@ -154,7 +171,7 @@ fn void! test_path_normalized()
 	assert(path::new(`C:a/b/..`, .path_env = PathEnv.WIN32).str_view()! == `C:a`);
 	assert(path::new(`C:a/b/..`, .path_env = PathEnv.POSIX).str_view()! == `C:a`);
 	assert(path::new(`C:a/b/../..`, .path_env = PathEnv.WIN32).str_view()! == `C:`);
-	assert(path::new(`C:a/b/../..`, .path_env = PathEnv.POSIX).str_view()! == ``);
+	assert(path::new(`C:a/b/../..`, .path_env = PathEnv.POSIX).str_view()! == `.`);
 	assert(path::new(`C:a/b/../c/../d`, .path_env = PathEnv.WIN32).str_view()! == `C:a\d`);
 	assert(path::new(`C:a/b/../c/../d`, .path_env = PathEnv.POSIX).str_view()! == `C:a/d`);
 	assert(path::new(`C:a/b//d`, .path_env = PathEnv.WIN32).str_view()! == `C:a\b\d`);
@@ -173,18 +190,18 @@ fn void! test_path_normalized()
 	assert(path::new(`C:`, .path_env = PathEnv.WIN32).str_view()! == `C:`);
 	assert(path::new(`C:`, .path_env = PathEnv.POSIX).str_view()! == `C:`);
 
-	assert(path::new(`\\server/a`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a`);
-	assert(path::new(`\\server/a`, .path_env = PathEnv.POSIX).str_view()! == `\\server/a`);
-	assert(path::new(`\\server\a\b\..\c`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a\c`);
-	assert(path::new(`\\server\a\b\..\..\c`, .path_env = PathEnv.WIN32).str_view()! == `\\server\c`);
-	assert(path::new(`\\server\a\b\..`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a`);
-	assert(path::new(`\\server\a\..`, .path_env = PathEnv.WIN32).str_view()! == `\\server\`);
-	assert(path::new(`\\server\a\b\..\c\..\d`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a\d`);
-	assert(path::new(`\\server\a\b\\d`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a\b\d`);
-	assert(path::new(`\\server\a\b\.\.\.`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a\b`);
-	assert(path::new(`\\server\.\a`, .path_env = PathEnv.WIN32).str_view()! == `\\server\a`);
-	assert(path::new(`\\server\.`, .path_env = PathEnv.WIN32).str_view()! == `\\server\`);
-	assert(path::new(`\\server\`, .path_env = PathEnv.WIN32).str_view()! == `\\server\`);
+	assert(path::new(`\\server\foo/a`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a`);
+	assert(path::new(`\\server\foo/a`, .path_env = PathEnv.POSIX).str_view()! == `\\server\foo/a`);
+	assert(path::new(`\\server\foo\a\b\..\c`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a\c`);
+	assert(path::new(`\\server\foo\a\b\..\..\c`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\c`);
+	assert(path::new(`\\server\foo\a\b\..`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a`);
+	assert(path::new(`\\server\foo\a\..`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\`);
+	assert(path::new(`\\server\foo\a\b\..\c\..\d`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a\d`);
+	assert(path::new(`\\server\foo\a\b\\d`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a\b\d`);
+	assert(path::new(`\\server\foo\a\b\.\.\.`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a\b`);
+	assert(path::new(`\\server\foo\.\a`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\a`);
+	assert(path::new(`\\server\foo\.`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\`);
+	assert(path::new(`\\server\foo\`, .path_env = PathEnv.WIN32).str_view()! == `\\server\foo\`);
 
 }
 
@@ -245,14 +262,21 @@ fn void! test_basename()
 	assert(path::new_windows("../..").basename()! == "..");
 	assert(path::new_posix("../..").basename()! == "..");
 
-	assert(path::new_windows(`\\server\`).basename()! == "");
-	assert(path::new_posix(`\\server\`).basename()! == `\\server\`);
+	assert(path::new_windows(`\\server\abc`).basename()! == "");
+	assert(path::new_posix(`\\server\abc`).basename()! == `\\server\abc`);
 }
 
 fn void! test_dirname()
 {
-	assert(path::new_windows("file.txt").dirname()! == "");
-	assert(path::new_posix("file.txt").dirname()! == "");
+	assert(path::new_posix("").dirname()! == ".");
+	assert(path::new_posix("/file").dirname()! == "/");
+	assert(path::new_posix("///").dirname()! == "/");
+	assert(path::new_windows("d:").dirname()! == "d:");
+	assert(path::new_windows("d:file").dirname()! == "d:");
+	assert(path::new_windows(`d:\file`).dirname()! == `d:\`);
+
+	assert(path::new_windows("file.txt").dirname()! == ".");
+	assert(path::new_posix("file.txt").dirname()! == ".");
 
 	assert(path::new_windows("a/b/file.txt").dirname()! == `a\b`);
 	assert(path::new_posix("a/b/file.txt").dirname()! == "a/b");
@@ -264,10 +288,10 @@ fn void! test_dirname()
 	assert(path::new_posix("../filename.ext").dirname()! == "..");
 
 	assert(path::new_windows("C:").dirname()! == "C:");
-	assert(path::new_posix("C:").dirname()! == "");
+	assert(path::new_posix("C:").dirname()! == ".");
 
 	assert(path::new_windows("C:/").dirname()! == "C:\\");
-	assert(path::new_posix("C:/").dirname()! == "");
+	assert(path::new_posix("C:/").dirname()! == ".");
 
 	assert(path::new_windows("C:/a").dirname()! == "C:\\");
 	assert(path::new_posix("C:/a").dirname()! == "C:");
@@ -275,8 +299,11 @@ fn void! test_dirname()
 	assert(path::new_windows("../..").dirname()! == "..");
 	assert(path::new_posix("../..").dirname()! == "..");
 
-	assert(path::new_windows(`\\server\`).dirname()! == `\\server\`);
-	assert(path::new_posix(`\\server\`).dirname()! == ``);
+	assert(path::new_windows(`\\server\share\dir\file`).dirname()! == `\\server\share\dir`);
+	assert(path::new_windows(`\\server\share\file`).dirname()! == `\\server\share`);
+	assert(path::new_windows(`\\server\share\`).dirname()! == `\\server\share`);
+	assert(path::new_windows(`\\server\share`).dirname()! == `\\server\share`);
+	assert(path::new_posix(`\\server\`).dirname()! == `.`);
 }
 
 fn void! test_path_volume()
@@ -285,8 +312,8 @@ fn void! test_path_volume()
 	assert(path::new_windows(`C:abs`).volume_name()! == `C:`);
 	assert(path::new_posix(`C:/abs`).volume_name()! == ``);
 	assert(path::new_posix(`C:abs`).volume_name()! == ``);
-	assert(path::new_windows(`\\server\`).volume_name()! == `\\server`);
-    assert(path::new_windows(`\\server\abc`).volume_name()! == `\\server`);
+	assert(path::new_windows(`\\server\foo`).volume_name()! == `\\server\foo`);
+    assert(path::new_windows(`\\server\foo\abc`).volume_name()! == `\\server\foo`);
 }
 
 fn void! test_path_is_absolute()
@@ -299,14 +326,16 @@ fn void! test_path_is_absolute()
 	assert(!path::new_windows(`C:`).is_absolute()!);
 	assert(path::new_windows(`C:\abs`).is_absolute()!);
 	assert(!path::new_windows(`C:abs`).is_absolute()!);
-	assert(path::new_windows(`\\server\`).is_absolute()!);
-	assert(path::new_windows(`\\server\abc`).is_absolute()!);
+	assert(path::new_windows(`\\server\foo`).is_absolute()!);
+	assert(path::new_windows(`\\server\foo\abc`).is_absolute()!);
 }
 
 fn void! test_path_absolute()
 {
+$if env::WIN32:
+	assert(path::new_windows(`C:\abs`).absolute()!.str_view() == `C:\abs`);
+$else
     assert(path::new_posix("/").absolute()!.str_view() == "/");
     assert(path::new_posix(".").absolute()!.str_view() == path::getcwd(allocator::temp())!!.str_view());
-
-	assert(path::new_windows(`C:\abs`).absolute()!.str_view() == `C:\abs`);
+$endif
 }

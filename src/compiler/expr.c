@@ -127,6 +127,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
+		case EXPR_DEFAULT_ARG:
 		case EXPR_LAST_FAULT:
 			return false;
 	}
@@ -250,6 +251,9 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_GROUP:
 			expr = expr->inner_expr;
 			goto RETRY;
+		case EXPR_DEFAULT_ARG:
+			expr = expr->default_arg_expr.inner;
+			goto RETRY;
 		case EXPR_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->initializer_list, eval_kind);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
@@ -360,7 +364,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_FPFP:
 		case CAST_FPINT:
 		case CAST_INTFP:
-		case CAST_SABOOL:
+		case CAST_SLBOOL:
 		case CAST_STINLINE:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
@@ -372,7 +376,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_PTRPTR:
 		case CAST_APTSA:
 		case CAST_SAPTR:
-		case CAST_SASA:
+		case CAST_SLSL:
 		case CAST_VOID:
 		case CAST_ANYBOOL:
 		case CAST_ERPTR:
@@ -388,7 +392,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_IDINT:
 		case CAST_INTARRBS:
 		case CAST_BSINTARR:
-		case CAST_SAARR:
+		case CAST_SLARR:
 			if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 
@@ -494,7 +498,7 @@ bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type)
 	switch (canonical->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			return canonical->array.base == base_type;
 		case TYPE_POINTER:
 			if (canonical->pointer->type_kind == TYPE_ARRAY) return canonical->pointer->array.base == base_type;
@@ -576,8 +580,6 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_VOID:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			UNREACHABLE
 		case ALL_INTS:
 			expr_rewrite_const_int(expr, type, 0);
@@ -590,8 +592,8 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		case TYPE_POINTER:
 		case TYPE_FAULTTYPE:
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 			expr_rewrite_const_null(expr, type);
@@ -611,7 +613,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_UNTYPED_LIST:
@@ -779,6 +781,8 @@ bool expr_is_pure(Expr *expr)
 				   && exprid_is_pure(expr->ternary_expr.then_expr);
 		case EXPR_ASM:
 			return false;
+		case EXPR_DEFAULT_ARG:
+			return expr_is_pure(expr->default_arg_expr.inner);
 		case EXPR_GROUP:
 			return expr_is_pure(expr->inner_expr);
 	}

@@ -16,10 +16,10 @@ module abc;
 int dabc;
 
 struct Abc { int x; }
-enum Foo : int(String val)
+enum Foo : int (String val)
 {
-	ABC("hello"),
-	DEF("world")
+	ABC = "hello" ,
+	DEF = "world"
 }
 
 /* #expect: abc.ll

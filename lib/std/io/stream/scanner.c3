@@ -2,7 +2,7 @@ module std::io;
 
 struct Scanner (InStream)
 {
-	InStream* wrapped_stream;
+	InStream wrapped_stream;
 	char[] buf;
 	usz pattern_idx;
 	usz read_idx;
@@ -16,7 +16,7 @@ struct Scanner (InStream)
  * @param [&in] stream "The stream to read data from."
  * @require buffer.len > 0 "Non-empty buffer required."
  **/
-fn void Scanner.init(&self, InStream* stream, char[] buffer)
+fn void Scanner.init(&self, InStream stream, char[] buffer)
 {
 	*self = { .wrapped_stream = stream, .buf = buffer };
 }

@@ -117,7 +117,7 @@ fn int main(int argc, char **argv)
 @fasta.SEED = local_unnamed_addr constant i32 42, align 4
 @fasta.seed = local_unnamed_addr global i32 42, align 4
 @.str = private unnamed_addr constant [288 x i8] c"GGCCGGGCGCGGTGGCTCACGCCTGTAATCCCAGCACTTTGGGAGGCCGAGGCGGGCGGATCACCTGAGGTCAGGAGTTCGAGACCAGCCTGGCCAACATGGTGAAACCCCGTCTCTACTAAAAATACAAAAATTAGCCGGGCGTGGTGGCGCGCGCCTGTAATCCCAGCTACTCGGGAGGCTGAGGCAGGAGAATCGCTTGAACCCGGGAGGCGGAGGTTGCAGTGAGCCGAGATCGCGCCACTGCACTCCAGCCTGGGCGACAGAGCGAGACTCCGTCTCAAAAA\00", align 1
-@fasta.alu = protected unnamed_addr global %"char[]" { ptr @.str, i64 287 }, align 8
+@fasta.alu = internal unnamed_addr global %"char[]" { ptr @.str, i64 287 }, align 8
 @.str.11 = private unnamed_addr constant [16 x i8] c"acgtBDHKMNRSVWY\00", align 1
 @fasta.iub = local_unnamed_addr global %"char[]" { ptr @.str.11, i64 15 }, align 8
 @.taddr = private global [15 x double] [double 2.700000e-01, double 1.200000e-01, double 1.200000e-01, double 2.700000e-01, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02], align 8

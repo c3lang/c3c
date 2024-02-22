@@ -61,7 +61,7 @@ macro void @swap(&a, &b) @builtin
  * @ensure @typeis(return, $Type*)
  * @return! CastResult.TYPE_MISMATCH
  **/
-macro anycast(any* v, $Type) @builtin
+macro anycast(any v, $Type) @builtin
 {
 	if (v.type != $Type.typeid) return CastResult.TYPE_MISMATCH?;
 	return ($Type*)v.ptr;
@@ -83,17 +83,18 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 		foreach (i, &trace : backtrace)
         {
             if (i < backtraces_to_ignore) continue;
+            String inline_suffix = trace.is_inline ? " [inline]" : "";
             if (trace.is_unknown())
             {
-				io::eprintn("  in ???");
+				io::eprintfn("  in ???%s", inline_suffix);
 				continue;
 			}
 			if (trace.has_file())
             {
-                io::eprintfn("  in %s (%s:%d) [%s]", trace.function, trace.file, trace.line, trace.object_file);
+                io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
                 continue;
             }
-            io::eprintfn("  in %s (source unavailable) [%s]", trace.function, trace.object_file);
+            io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
 		return true;
 	};
@@ -126,7 +127,7 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
-	@stack_mem(512; Allocator* allocator)
+	@stack_mem(512; Allocator allocator)
 	{
 		DString s;
 		s.new_init(.allocator = allocator);

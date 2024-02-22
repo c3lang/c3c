@@ -8,9 +8,7 @@ void llvm_emit_cond_br_raw(GenContext *context, LLVMValueRef b, LLVMBasicBlockRe
 {
 	assert(context->current_block);
 	LLVMBuildCondBr(context->builder, b, then_block, else_block);
-	LLVMClearInsertionPosition(context->builder);
 	context->current_block = NULL;
-	context->current_block_is_target = false;
 }
 
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block)
@@ -18,9 +16,7 @@ void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef th
 	assert(context->current_block);
 	assert(value->kind == BE_BOOLEAN);
 	LLVMBuildCondBr(context->builder, value->value, then_block, else_block);
-	LLVMClearInsertionPosition(context->builder);
 	context->current_block = NULL;
-	context->current_block_is_target = false;
 }
 
 LLVMValueRef llvm_emit_lshr_fixed(GenContext *c, LLVMValueRef data, int shift)

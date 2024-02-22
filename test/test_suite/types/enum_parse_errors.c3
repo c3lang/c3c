@@ -1,15 +1,15 @@
 
-enum EnumWithErrorWithMissingName : int (int) // #error: Expected a member name here
+enum EnumWithErrorWithMissingName : (int)  // #error: Expected a member name here
 {
     TEST
 }
 
-enum EnumWithErrorData : int (int
+enum EnumWithErrorData : ( int
 { // #error: Expected a member name here
     TEST
 }
 
-enum EnumWithErrorData2 : int (int, int bar) // #error: Expected a member name here
+enum EnumWithErrorData2 :  ( int, int bar ) // #error: Expected a member name here
 {
     TEST
 }

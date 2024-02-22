@@ -133,202 +133,202 @@ entry:
   %3 = load i64, ptr %xx, align 8
   %shl = shl i64 %3, 61
   %ashr = ashr i64 %shl, 61
-  %4 = trunc i64 %ashr to i32
-  %5 = load i64, ptr %xx, align 8
-  %shl1 = shl i64 %5, 55
+  %trunc = trunc i64 %ashr to i32
+  %4 = load i64, ptr %xx, align 8
+  %shl1 = shl i64 %4, 55
   %ashr2 = ashr i64 %shl1, 58
-  %6 = trunc i64 %ashr2 to i32
-  call void (ptr, ...) @printf(ptr @.str, i32 %4, i32 %6)
-  %7 = load i64, ptr %xx, align 8
-  %shl3 = shl i64 %7, 61
-  %ashr4 = ashr i64 %shl3, 61
-  %8 = trunc i64 %ashr4 to i32
-  %sub = sub i32 %8, 1
-  %9 = load i64, ptr %xx, align 8
+  %trunc3 = trunc i64 %ashr2 to i32
+  call void (ptr, ...) @printf(ptr @.str, i32 %trunc, i32 %trunc3)
+  %5 = load i64, ptr %xx, align 8
+  %shl4 = shl i64 %5, 61
+  %ashr5 = ashr i64 %shl4, 61
+  %trunc6 = trunc i64 %ashr5 to i32
+  %sub = sub i32 %trunc6, 1
+  %6 = load i64, ptr %xx, align 8
   %zext = zext i32 %sub to i64
-  %10 = and i64 %zext, 7
-  %11 = and i64 %9, -8
-  %12 = or i64 %11, %10
-  store i64 %12, ptr %xx, align 8
+  %7 = and i64 %zext, 7
+  %8 = and i64 %6, -8
+  %9 = or i64 %8, %7
+  store i64 %9, ptr %xx, align 8
+  %10 = load i64, ptr %xx, align 8
+  %shl7 = shl i64 %10, 61
+  %ashr8 = ashr i64 %shl7, 61
+  %trunc9 = trunc i64 %ashr8 to i32
+  %11 = load i64, ptr %xx, align 8
+  %shl10 = shl i64 %11, 55
+  %ashr11 = ashr i64 %shl10, 58
+  %trunc12 = trunc i64 %ashr11 to i32
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %trunc9, i32 %trunc12)
+  %12 = load i64, ptr %xx, align 8
+  %shl13 = shl i64 %12, 55
+  %ashr14 = ashr i64 %shl13, 58
+  %trunc15 = trunc i64 %ashr14 to i32
+  %mul = mul i32 %trunc15, 2
   %13 = load i64, ptr %xx, align 8
-  %shl5 = shl i64 %13, 61
-  %ashr6 = ashr i64 %shl5, 61
-  %14 = trunc i64 %ashr6 to i32
-  %15 = load i64, ptr %xx, align 8
-  %shl7 = shl i64 %15, 55
-  %ashr8 = ashr i64 %shl7, 58
-  %16 = trunc i64 %ashr8 to i32
-  call void (ptr, ...) @printf(ptr @.str.1, i32 %14, i32 %16)
+  %zext16 = zext i32 %mul to i64
+  %shl17 = shl i64 %zext16, 3
+  %14 = and i64 %shl17, 504
+  %15 = and i64 %13, -505
+  %16 = or i64 %15, %14
+  store i64 %16, ptr %xx, align 8
   %17 = load i64, ptr %xx, align 8
-  %shl9 = shl i64 %17, 55
-  %ashr10 = ashr i64 %shl9, 58
-  %18 = trunc i64 %ashr10 to i32
-  %mul = mul i32 %18, 2
+  %shl18 = shl i64 %17, 61
+  %ashr19 = ashr i64 %shl18, 61
+  %trunc20 = trunc i64 %ashr19 to i32
+  %18 = load i64, ptr %xx, align 8
+  %shl21 = shl i64 %18, 55
+  %ashr22 = ashr i64 %shl21, 58
+  %trunc23 = trunc i64 %ashr22 to i32
+  call void (ptr, ...) @printf(ptr @.str.2, i32 %trunc20, i32 %trunc23)
   %19 = load i64, ptr %xx, align 8
-  %zext11 = zext i32 %mul to i64
-  %shl12 = shl i64 %zext11, 3
-  %20 = and i64 %shl12, 504
-  %21 = and i64 %19, -505
-  %22 = or i64 %21, %20
-  store i64 %22, ptr %xx, align 8
-  %23 = load i64, ptr %xx, align 8
-  %shl13 = shl i64 %23, 61
-  %ashr14 = ashr i64 %shl13, 61
-  %24 = trunc i64 %ashr14 to i32
-  %25 = load i64, ptr %xx, align 8
-  %shl15 = shl i64 %25, 55
-  %ashr16 = ashr i64 %shl15, 58
-  %26 = trunc i64 %ashr16 to i32
-  call void (ptr, ...) @printf(ptr @.str.2, i32 %24, i32 %26)
-  %27 = load i64, ptr %xx, align 8
-  %shl17 = shl i64 %27, 55
-  %ashr18 = ashr i64 %shl17, 58
-  %28 = trunc i64 %ashr18 to i32
-  %xor = xor i32 %28, 4
-  %29 = load i64, ptr %xx, align 8
-  %zext19 = zext i32 %xor to i64
-  %shl20 = shl i64 %zext19, 3
-  %30 = and i64 %shl20, 504
-  %31 = and i64 %29, -505
-  %32 = or i64 %31, %30
-  store i64 %32, ptr %xx, align 8
-  %33 = load i64, ptr %xx, align 8
-  %shl21 = shl i64 %33, 61
-  %ashr22 = ashr i64 %shl21, 61
-  %34 = trunc i64 %ashr22 to i32
-  %35 = load i64, ptr %xx, align 8
-  %shl23 = shl i64 %35, 55
-  %ashr24 = ashr i64 %shl23, 58
-  %36 = trunc i64 %ashr24 to i32
-  call void (ptr, ...) @printf(ptr @.str.3, i32 %34, i32 %36)
-  %37 = load i64, ptr %xx, align 8
-  %shl25 = shl i64 %37, 55
-  %ashr26 = ashr i64 %shl25, 58
-  %38 = trunc i64 %ashr26 to i32
-  %or = or i32 %38, 4
-  %39 = load i64, ptr %xx, align 8
-  %zext27 = zext i32 %or to i64
+  %shl24 = shl i64 %19, 55
+  %ashr25 = ashr i64 %shl24, 58
+  %trunc26 = trunc i64 %ashr25 to i32
+  %xor = xor i32 %trunc26, 4
+  %20 = load i64, ptr %xx, align 8
+  %zext27 = zext i32 %xor to i64
   %shl28 = shl i64 %zext27, 3
-  %40 = and i64 %shl28, 504
-  %41 = and i64 %39, -505
-  %42 = or i64 %41, %40
-  store i64 %42, ptr %xx, align 8
-  %43 = load i64, ptr %xx, align 8
-  %shl29 = shl i64 %43, 61
+  %21 = and i64 %shl28, 504
+  %22 = and i64 %20, -505
+  %23 = or i64 %22, %21
+  store i64 %23, ptr %xx, align 8
+  %24 = load i64, ptr %xx, align 8
+  %shl29 = shl i64 %24, 61
   %ashr30 = ashr i64 %shl29, 61
-  %44 = trunc i64 %ashr30 to i32
-  %45 = load i64, ptr %xx, align 8
-  %shl31 = shl i64 %45, 55
-  %ashr32 = ashr i64 %shl31, 58
-  %46 = trunc i64 %ashr32 to i32
-  call void (ptr, ...) @printf(ptr @.str.4, i32 %44, i32 %46)
+  %trunc31 = trunc i64 %ashr30 to i32
+  %25 = load i64, ptr %xx, align 8
+  %shl32 = shl i64 %25, 55
+  %ashr33 = ashr i64 %shl32, 58
+  %trunc34 = trunc i64 %ashr33 to i32
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %trunc31, i32 %trunc34)
+  %26 = load i64, ptr %xx, align 8
+  %shl35 = shl i64 %26, 55
+  %ashr36 = ashr i64 %shl35, 58
+  %trunc37 = trunc i64 %ashr36 to i32
+  %or = or i32 %trunc37, 4
+  %27 = load i64, ptr %xx, align 8
+  %zext38 = zext i32 %or to i64
+  %shl39 = shl i64 %zext38, 3
+  %28 = and i64 %shl39, 504
+  %29 = and i64 %27, -505
+  %30 = or i64 %29, %28
+  store i64 %30, ptr %xx, align 8
+  %31 = load i64, ptr %xx, align 8
+  %shl40 = shl i64 %31, 61
+  %ashr41 = ashr i64 %shl40, 61
+  %trunc42 = trunc i64 %ashr41 to i32
+  %32 = load i64, ptr %xx, align 8
+  %shl43 = shl i64 %32, 55
+  %ashr44 = ashr i64 %shl43, 58
+  %trunc45 = trunc i64 %ashr44 to i32
+  call void (ptr, ...) @printf(ptr @.str.4, i32 %trunc42, i32 %trunc45)
+  %33 = load i64, ptr %xx, align 8
+  %shl46 = shl i64 %33, 55
+  %ashr47 = ashr i64 %shl46, 58
+  %trunc48 = trunc i64 %ashr47 to i32
+  %shl49 = shl i32 %trunc48, 1
+  %34 = freeze i32 %shl49
+  %35 = load i64, ptr %xx, align 8
+  %zext50 = zext i32 %34 to i64
+  %shl51 = shl i64 %zext50, 3
+  %36 = and i64 %shl51, 504
+  %37 = and i64 %35, -505
+  %38 = or i64 %37, %36
+  store i64 %38, ptr %xx, align 8
+  %39 = load i64, ptr %xx, align 8
+  %shl52 = shl i64 %39, 61
+  %ashr53 = ashr i64 %shl52, 61
+  %trunc54 = trunc i64 %ashr53 to i32
+  %40 = load i64, ptr %xx, align 8
+  %shl55 = shl i64 %40, 55
+  %ashr56 = ashr i64 %shl55, 58
+  %trunc57 = trunc i64 %ashr56 to i32
+  call void (ptr, ...) @printf(ptr @.str.5, i32 %trunc54, i32 %trunc57)
+  %41 = load i64, ptr %xx, align 8
+  %shl58 = shl i64 %41, 55
+  %ashr59 = ashr i64 %shl58, 58
+  %trunc60 = trunc i64 %ashr59 to i32
+  %ashr61 = ashr i32 %trunc60, 1
+  %42 = freeze i32 %ashr61
+  %43 = load i64, ptr %xx, align 8
+  %zext62 = zext i32 %42 to i64
+  %shl63 = shl i64 %zext62, 3
+  %44 = and i64 %shl63, 504
+  %45 = and i64 %43, -505
+  %46 = or i64 %45, %44
+  store i64 %46, ptr %xx, align 8
   %47 = load i64, ptr %xx, align 8
-  %shl33 = shl i64 %47, 55
-  %ashr34 = ashr i64 %shl33, 58
-  %48 = trunc i64 %ashr34 to i32
-  %shl35 = shl i32 %48, 1
-  %49 = freeze i32 %shl35
+  %shl64 = shl i64 %47, 61
+  %ashr65 = ashr i64 %shl64, 61
+  %trunc66 = trunc i64 %ashr65 to i32
+  %48 = load i64, ptr %xx, align 8
+  %shl67 = shl i64 %48, 55
+  %ashr68 = ashr i64 %shl67, 58
+  %trunc69 = trunc i64 %ashr68 to i32
+  call void (ptr, ...) @printf(ptr @.str.6, i32 %trunc66, i32 %trunc69)
+  %49 = load i64, ptr %xx, align 8
+  %shl70 = shl i64 %49, 55
+  %ashr71 = ashr i64 %shl70, 58
+  %trunc72 = trunc i64 %ashr71 to i32
+  %sdiv = sdiv i32 %trunc72, 2
   %50 = load i64, ptr %xx, align 8
-  %zext36 = zext i32 %49 to i64
-  %shl37 = shl i64 %zext36, 3
-  %51 = and i64 %shl37, 504
+  %zext73 = zext i32 %sdiv to i64
+  %shl74 = shl i64 %zext73, 3
+  %51 = and i64 %shl74, 504
   %52 = and i64 %50, -505
   %53 = or i64 %52, %51
   store i64 %53, ptr %xx, align 8
   %54 = load i64, ptr %xx, align 8
-  %shl38 = shl i64 %54, 61
-  %ashr39 = ashr i64 %shl38, 61
-  %55 = trunc i64 %ashr39 to i32
+  %shl75 = shl i64 %54, 61
+  %ashr76 = ashr i64 %shl75, 61
+  %trunc77 = trunc i64 %ashr76 to i32
+  %55 = load i64, ptr %xx, align 8
+  %shl78 = shl i64 %55, 55
+  %ashr79 = ashr i64 %shl78, 58
+  %trunc80 = trunc i64 %ashr79 to i32
+  call void (ptr, ...) @printf(ptr @.str.7, i32 %trunc77, i32 %trunc80)
   %56 = load i64, ptr %xx, align 8
-  %shl40 = shl i64 %56, 55
-  %ashr41 = ashr i64 %shl40, 58
-  %57 = trunc i64 %ashr41 to i32
-  call void (ptr, ...) @printf(ptr @.str.5, i32 %55, i32 %57)
-  %58 = load i64, ptr %xx, align 8
-  %shl42 = shl i64 %58, 55
-  %ashr43 = ashr i64 %shl42, 58
-  %59 = trunc i64 %ashr43 to i32
-  %ashr44 = ashr i32 %59, 1
-  %60 = freeze i32 %ashr44
+  %shl81 = shl i64 %56, 55
+  %ashr82 = ashr i64 %shl81, 58
+  %trunc83 = trunc i64 %ashr82 to i32
+  %smod = srem i32 %trunc83, 2
+  %57 = load i64, ptr %xx, align 8
+  %zext84 = zext i32 %smod to i64
+  %shl85 = shl i64 %zext84, 3
+  %58 = and i64 %shl85, 504
+  %59 = and i64 %57, -505
+  %60 = or i64 %59, %58
+  store i64 %60, ptr %xx, align 8
   %61 = load i64, ptr %xx, align 8
-  %zext45 = zext i32 %60 to i64
-  %shl46 = shl i64 %zext45, 3
-  %62 = and i64 %shl46, 504
-  %63 = and i64 %61, -505
-  %64 = or i64 %63, %62
-  store i64 %64, ptr %xx, align 8
-  %65 = load i64, ptr %xx, align 8
-  %shl47 = shl i64 %65, 61
-  %ashr48 = ashr i64 %shl47, 61
-  %66 = trunc i64 %ashr48 to i32
-  %67 = load i64, ptr %xx, align 8
-  %shl49 = shl i64 %67, 55
-  %ashr50 = ashr i64 %shl49, 58
-  %68 = trunc i64 %ashr50 to i32
-  call void (ptr, ...) @printf(ptr @.str.6, i32 %66, i32 %68)
-  %69 = load i64, ptr %xx, align 8
-  %shl51 = shl i64 %69, 55
-  %ashr52 = ashr i64 %shl51, 58
-  %70 = trunc i64 %ashr52 to i32
-  %sdiv = sdiv i32 %70, 2
-  %71 = load i64, ptr %xx, align 8
-  %zext53 = zext i32 %sdiv to i64
-  %shl54 = shl i64 %zext53, 3
-  %72 = and i64 %shl54, 504
-  %73 = and i64 %71, -505
-  %74 = or i64 %73, %72
-  store i64 %74, ptr %xx, align 8
-  %75 = load i64, ptr %xx, align 8
-  %shl55 = shl i64 %75, 61
-  %ashr56 = ashr i64 %shl55, 61
-  %76 = trunc i64 %ashr56 to i32
-  %77 = load i64, ptr %xx, align 8
-  %shl57 = shl i64 %77, 55
-  %ashr58 = ashr i64 %shl57, 58
-  %78 = trunc i64 %ashr58 to i32
-  call void (ptr, ...) @printf(ptr @.str.7, i32 %76, i32 %78)
-  %79 = load i64, ptr %xx, align 8
-  %shl59 = shl i64 %79, 55
-  %ashr60 = ashr i64 %shl59, 58
-  %80 = trunc i64 %ashr60 to i32
-  %smod = srem i32 %80, 2
-  %81 = load i64, ptr %xx, align 8
-  %zext61 = zext i32 %smod to i64
-  %shl62 = shl i64 %zext61, 3
-  %82 = and i64 %shl62, 504
-  %83 = and i64 %81, -505
-  %84 = or i64 %83, %82
-  store i64 %84, ptr %xx, align 8
-  %85 = load i64, ptr %xx, align 8
-  %shl63 = shl i64 %85, 61
-  %ashr64 = ashr i64 %shl63, 61
-  %86 = trunc i64 %ashr64 to i32
-  %87 = load i64, ptr %xx, align 8
-  %shl65 = shl i64 %87, 55
-  %ashr66 = ashr i64 %shl65, 58
-  %88 = trunc i64 %ashr66 to i32
-  call void (ptr, ...) @printf(ptr @.str.8, i32 %86, i32 %88)
-  %89 = load i64, ptr %xx, align 8
-  %90 = and i64 %89, -1048577
-  %91 = or i64 %90, 1048576
-  store i64 %91, ptr %xx, align 8
-  %92 = load i64, ptr %xx, align 8
-  %lshrl = lshr i64 %92, 20
-  %93 = and i64 1, %lshrl
-  %trunc = trunc i64 %93 to i8
-  %94 = trunc i8 %trunc to i1
-  %boolsi = zext i1 %94 to i32
+  %shl86 = shl i64 %61, 61
+  %ashr87 = ashr i64 %shl86, 61
+  %trunc88 = trunc i64 %ashr87 to i32
+  %62 = load i64, ptr %xx, align 8
+  %shl89 = shl i64 %62, 55
+  %ashr90 = ashr i64 %shl89, 58
+  %trunc91 = trunc i64 %ashr90 to i32
+  call void (ptr, ...) @printf(ptr @.str.8, i32 %trunc88, i32 %trunc91)
+  %63 = load i64, ptr %xx, align 8
+  %64 = and i64 %63, -1048577
+  %65 = or i64 %64, 1048576
+  store i64 %65, ptr %xx, align 8
+  %66 = load i64, ptr %xx, align 8
+  %lshrl = lshr i64 %66, 20
+  %67 = and i64 1, %lshrl
+  %trunc92 = trunc i64 %67 to i8
+  %68 = trunc i8 %trunc92 to i1
+  %boolsi = zext i1 %68 to i32
   call void (ptr, ...) @printf(ptr @.str.9, i32 %boolsi)
-  %95 = load i64, ptr %xx, align 8
-  %96 = and i64 %95, -1048577
-  store i64 %96, ptr %xx, align 8
-  %97 = load i64, ptr %xx, align 8
-  %lshrl67 = lshr i64 %97, 20
-  %98 = and i64 1, %lshrl67
-  %trunc68 = trunc i64 %98 to i8
-  %99 = trunc i8 %trunc68 to i1
-  %boolsi69 = zext i1 %99 to i32
-  call void (ptr, ...) @printf(ptr @.str.10, i32 %boolsi69)
+  %69 = load i64, ptr %xx, align 8
+  %70 = and i64 %69, -1048577
+  store i64 %70, ptr %xx, align 8
+  %71 = load i64, ptr %xx, align 8
+  %lshrl93 = lshr i64 %71, 20
+  %72 = and i64 1, %lshrl93
+  %trunc94 = trunc i64 %72 to i8
+  %73 = trunc i8 %trunc94 to i1
+  %boolsi95 = zext i1 %73 to i32
+  call void (ptr, ...) @printf(ptr @.str.10, i32 %boolsi95)
   ret void
 }
 

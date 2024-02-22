@@ -1,18 +1,18 @@
 // Copyright (c) 2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::generic_list;
+module std::collections::anylist;
 import std::io,std::math;
 
-def GenericPredicate = fn bool(any* value);
-def GenericTest = fn bool(any* type, any* context);
+def AnyPredicate = fn bool(any value);
+def AnyTest = fn bool(any type, any context);
 
-struct GenericList (Printable)
+struct AnyList (Printable)
 {
 	usz size;
 	usz capacity;
-	Allocator* allocator;
-	any** entries;
+	Allocator allocator;
+	any* entries;
 }
 
 
@@ -20,14 +20,14 @@ struct GenericList (Printable)
  * @param initial_capacity "The initial capacity to reserve"
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  **/
-fn GenericList* GenericList.new_init(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap())
+fn AnyList* AnyList.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
 	self.size = 0;
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
-		self.entries = allocator::alloc_array(allocator, any*, initial_capacity);
+		self.entries = allocator::alloc_array(allocator, any, initial_capacity);
 	}
 	else
 	{
@@ -38,25 +38,16 @@ fn GenericList* GenericList.new_init(&self, usz initial_capacity = 16, Allocator
 }
 
 /**
- * @param initial_capacity "The initial capacity to reserve"
- * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
- **/
-fn GenericList* GenericList.init_new(&self, usz initial_capacity = 16, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
-{
-	return self.new_init(initial_capacity, allocator) @inline;
-}
-
-/**
  * Initialize the list using the temp allocator.
  *
  * @param initial_capacity "The initial capacity to reserve"
  **/
-fn GenericList* GenericList.temp_init(&self, usz initial_capacity = 16)
+fn AnyList* AnyList.temp_init(&self, usz initial_capacity = 16)
 {
 	return self.new_init(initial_capacity, allocator::temp()) @inline;
 }
 
-fn usz! GenericList.to_format(&self, Formatter* formatter) @dynamic
+fn usz! AnyList.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
@@ -76,12 +67,12 @@ fn usz! GenericList.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn String GenericList.to_new_string(&self, Allocator* allocator = allocator::heap()) @dynamic
+fn String AnyList.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
 	return string::new_format("%s", *self, .allocator = allocator);
 }
 
-fn String GenericList.to_tstring(&self)
+fn String AnyList.to_tstring(&self)
 {
 	return string::tformat("%s", *self);
 }
@@ -89,13 +80,13 @@ fn String GenericList.to_tstring(&self)
 /**
  * Push an element on the list by cloning it.
  **/
-macro void GenericList.push(&self, element)
+macro void AnyList.push(&self, element)
 {
 	if (!self.allocator) self.allocator = allocator::heap();
 	self.append_internal(allocator::clone(self.allocator, element));
 }
 
-fn void GenericList.append_internal(&self, any* element) @local
+fn void AnyList.append_internal(&self, any element) @local
 {
 	self.ensure_capacity();
 	self.entries[self.size++] = element;
@@ -104,7 +95,7 @@ fn void GenericList.append_internal(&self, any* element) @local
 /**
  * Free a retained element removed using *_retained.
  **/
-fn void GenericList.free_element(&self, any* element) @inline
+fn void AnyList.free_element(&self, any element) @inline
 {
 	allocator::free(self.allocator, element.ptr);
 }
@@ -115,7 +106,7 @@ fn void GenericList.free_element(&self, any* element) @inline
  *
  * @return! CastResult.TYPE_MISMATCH, IteratorResult.NO_MORE_ELEMENT
  **/
-macro GenericList.pop(&self, $Type)
+macro AnyList.pop(&self, $Type)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
@@ -126,7 +117,7 @@ macro GenericList.pop(&self, $Type)
  * Pop the last value and allocate the copy using the given allocator.
  * @return! IteratorResult.NO_MORE_ELEMENT
  **/
-fn any*! GenericList.new_pop(&self, Allocator* allocator = allocator::heap())
+fn any! AnyList.new_pop(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
@@ -137,19 +128,19 @@ fn any*! GenericList.new_pop(&self, Allocator* allocator = allocator::heap())
  * Pop the last value and allocate the copy using the temp allocator
  * @return! IteratorResult.NO_MORE_ELEMENT
  **/
-fn any*! GenericList.temp_pop(&self) => self.new_pop(allocator::temp());
+fn any! AnyList.temp_pop(&self) => self.new_pop(allocator::temp());
 
 /**
  * Pop the last value. It must later be released using list.free_element()
  * @return! IteratorResult.NO_MORE_ELEMENT
  **/
-fn any*! GenericList.pop_retained(&self)
+fn any! AnyList.pop_retained(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	return self.entries[--self.size];
 }
 
-fn void GenericList.clear(&self)
+fn void AnyList.clear(&self)
 {
 	for (usz i = 0; i < self.size; i++)
 	{
@@ -161,7 +152,7 @@ fn void GenericList.clear(&self)
 /**
  * Same as pop() but pops the first value instead.
  **/
-macro GenericList.pop_first(&self, $Type)
+macro AnyList.pop_first(&self, $Type)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.remove_at(0);
@@ -171,7 +162,7 @@ macro GenericList.pop_first(&self, $Type)
 /**
  * Same as pop_retained() but pops the first value instead.
  **/
-fn any*! GenericList.pop_first_retained(&self)
+fn any! AnyList.pop_first_retained(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.remove_at(0);
@@ -181,7 +172,7 @@ fn any*! GenericList.pop_first_retained(&self)
 /**
  * Same as new_pop() but pops the first value instead.
  **/
-fn any*! GenericList.new_pop_first(&self, Allocator* allocator = allocator::heap())
+fn any! AnyList.new_pop_first(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
@@ -192,19 +183,19 @@ fn any*! GenericList.new_pop_first(&self, Allocator* allocator = allocator::heap
 /**
  * Same as temp_pop() but pops the first value instead.
  **/
-fn any*! GenericList.temp_pop_first(&self) => self.new_pop_first(allocator::temp());
+fn any! AnyList.temp_pop_first(&self) => self.new_pop_first(allocator::temp());
 
 /**
  * @require index < self.size
  **/
-fn void GenericList.remove_at(&self, usz index)
+fn void AnyList.remove_at(&self, usz index)
 {
 	if (!--self.size || index == self.size) return;
 	self.free_element(self.entries[index]);
 	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
 }
 
-fn void GenericList.add_all(&self, GenericList* other_list)
+fn void AnyList.add_all(&self, AnyList* other_list)
 {
 	if (!other_list.size) return;
 	self.reserve(other_list.size);
@@ -217,7 +208,7 @@ fn void GenericList.add_all(&self, GenericList* other_list)
 /**
  * Reverse the elements in a list.
  **/
-fn void GenericList.reverse(&self)
+fn void AnyList.reverse(&self)
 {
 	if (self.size < 2) return;
 	usz half = self.size / 2U;
@@ -228,7 +219,7 @@ fn void GenericList.reverse(&self)
 	}
 }
 
-fn any*[] GenericList.array_view(&self)
+fn any[] AnyList.array_view(&self)
 {
 	return self.entries[:self.size];
 }
@@ -236,7 +227,7 @@ fn any*[] GenericList.array_view(&self)
 /**
  * Push an element to the front of the list.
  **/
-macro void GenericList.push_front(&self, type)
+macro void AnyList.push_front(&self, type)
 {
 	self.insert_at(0, type);
 }
@@ -244,16 +235,16 @@ macro void GenericList.push_front(&self, type)
 /**
  * @require index < self.size
  **/
-macro void GenericList.insert_at(&self, usz index, type) @local
+macro void AnyList.insert_at(&self, usz index, type) @local
 {
-	any* value = allocator::copy(self.allocator, type);
+	any value = allocator::copy(self.allocator, type);
 	self.insert_at_internal(self, index, value);
 }
 
 /**
  * @require index < self.size
  **/
-fn void GenericList.insert_at_internal(&self, usz index, any* value) @local
+fn void AnyList.insert_at_internal(&self, usz index, any value) @local
 {
 	self.ensure_capacity();
 	for (usz i = self.size; i > index; i--)
@@ -268,7 +259,7 @@ fn void GenericList.insert_at_internal(&self, usz index, any* value) @local
 /**
  * @require self.size > 0
  **/
-fn void GenericList.remove_last(&self)
+fn void AnyList.remove_last(&self)
 {
 	self.free_element(self.entries[--self.size]);
 }
@@ -276,37 +267,37 @@ fn void GenericList.remove_last(&self)
 /**
  * @require self.size > 0
  **/
-fn void GenericList.remove_first(&self)
+fn void AnyList.remove_first(&self)
 {
 	self.remove_at(0);
 }
 
-macro GenericList.first(&self, $Type)
+macro AnyList.first(&self, $Type)
 {
 	return *anycast(self.first_any(), $Type);
 }
 
-fn any*! GenericList.first_any(&self) @inline
+fn any! AnyList.first_any(&self) @inline
 {
 	return self.size ? self.entries[0] : IteratorResult.NO_MORE_ELEMENT?;
 }
 
-macro GenericList.last(&self, $Type)
+macro AnyList.last(&self, $Type)
 {
 	return *anycast(self.last_any(), $Type);
 }
 
-fn any*! GenericList.last_any(&self) @inline
+fn any! AnyList.last_any(&self) @inline
 {
 	return self.size ? self.entries[self.size - 1] : IteratorResult.NO_MORE_ELEMENT?;
 }
 
-fn bool GenericList.is_empty(&self) @inline
+fn bool AnyList.is_empty(&self) @inline
 {
 	return !self.size;
 }
 
-fn usz GenericList.len(&self) @operator(len) @inline
+fn usz AnyList.len(&self) @operator(len) @inline
 {
 	return self.size;
 }
@@ -314,7 +305,7 @@ fn usz GenericList.len(&self) @operator(len) @inline
 /**
  * @require index < self.size "Index out of range"
  **/
-macro GenericList.get(&self, usz index, $Type)
+macro AnyList.get(&self, usz index, $Type)
 {
 	return *anycast(self.entries[index], $Type);
 }
@@ -322,12 +313,12 @@ macro GenericList.get(&self, usz index, $Type)
 /**
  * @require index < self.size "Index out of range"
  **/
-fn any* GenericList.get_any(&self, usz index) @inline
+fn any AnyList.get_any(&self, usz index) @inline
 {
 	return self.entries[index];
 }
 
-fn void GenericList.free(&self)
+fn void AnyList.free(&self)
 {
 	if (!self.allocator) return;
 	self.clear();
@@ -336,9 +327,9 @@ fn void GenericList.free(&self)
 	self.entries = null;
 }
 
-fn void GenericList.swap(&self, usz i, usz j)
+fn void AnyList.swap(&self, usz i, usz j)
 {
-	any* temp = self.entries[i];
+	any temp = self.entries[i];
 	self.entries[i] = self.entries[j];
 	self.entries[j] = temp;
 }
@@ -347,7 +338,7 @@ fn void GenericList.swap(&self, usz i, usz j)
  * @param filter "The function to determine if it should be removed or not"
  * @return "the number of deleted elements"
  **/
-fn usz GenericList.remove_if(&self, GenericPredicate filter)
+fn usz AnyList.remove_if(&self, AnyPredicate filter)
 {
 	return self._remove_if(filter, false);
 }
@@ -356,12 +347,12 @@ fn usz GenericList.remove_if(&self, GenericPredicate filter)
  * @param selection "The function to determine if it should be kept or not"
  * @return "the number of deleted elements"
  **/
-fn usz GenericList.retain_if(&self, GenericPredicate selection)
+fn usz AnyList.retain_if(&self, AnyPredicate selection)
 {
 	return self._remove_if(selection, true);
 }
 
-macro usz GenericList._remove_if(&self, GenericPredicate filter, bool $invert) @local
+macro usz AnyList._remove_if(&self, AnyPredicate filter, bool $invert) @local
 {
 	usz size = self.size;
 	for (usz i = size, usz k = size; k > 0; k = i)
@@ -387,17 +378,17 @@ macro usz GenericList._remove_if(&self, GenericPredicate filter, bool $invert) @
 	return size - self.size;
 }
 
-fn usz GenericList.remove_using_test(&self, GenericTest filter, any* context)
+fn usz AnyList.remove_using_test(&self, AnyTest filter, any context)
 {
 	return self._remove_using_test(filter, false, context);
 }
 
-fn usz GenericList.retain_using_test(&self, GenericTest filter, any* context)
+fn usz AnyList.retain_using_test(&self, AnyTest filter, any context)
 {
 	return self._remove_using_test(filter, true, context);
 }
 
-macro usz GenericList._remove_using_test(&self, GenericTest filter, bool $invert, ctx) @local
+macro usz AnyList._remove_using_test(&self, AnyTest filter, bool $invert, ctx) @local
 {
 	usz size = self.size;
 	for (usz i = size, usz k = size; k > 0; k = i)
@@ -426,17 +417,17 @@ macro usz GenericList._remove_using_test(&self, GenericTest filter, bool $invert
 /**
  * Reserve at least min_capacity
  **/
-fn void GenericList.reserve(&self, usz min_capacity)
+fn void AnyList.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = allocator::heap();
 	min_capacity = math::next_power_of_2(min_capacity);
-	self.entries = allocator::realloc(self.allocator, self.entries, any*.sizeof * min_capacity);
+	self.entries = allocator::realloc(self.allocator, self.entries, any.sizeof * min_capacity);
 	self.capacity = min_capacity;
 }
 
-macro any* GenericList.@item_at(&self, usz index) @operator([])
+macro any AnyList.@item_at(&self, usz index) @operator([])
 {
 	return self.entries[index];
 }
@@ -444,7 +435,7 @@ macro any* GenericList.@item_at(&self, usz index) @operator([])
 /**
  * @require index <= self.size "Index out of range"
  **/
-macro void GenericList.set(&self, usz index, value)
+macro void AnyList.set(&self, usz index, value)
 {
 	if (index == self.size)
 	{
@@ -455,7 +446,7 @@ macro void GenericList.set(&self, usz index, value)
 	self.entries[index] = allocator::copy(self.allocator, value);
 }
 
-fn void GenericList.ensure_capacity(&self, usz added = 1) @inline @private
+fn void AnyList.ensure_capacity(&self, usz added = 1) @inline @private
 {
 	usz new_size = self.size + added;
 	if (self.capacity >= new_size) return;

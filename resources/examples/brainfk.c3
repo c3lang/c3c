@@ -9,7 +9,7 @@ fault InterpretError
 	INTEPRET_FAILED
 }
 
-fn void! print_error(usz pos, String err)
+fn void! print_error_type_at(usz pos, String err)
 {
 	io::printfn("Error at %s: %s", pos, err);
 	return InterpretError.INTEPRET_FAILED?;
@@ -25,10 +25,10 @@ fn void! brainf(String program)
 		switch (c)
 		{
 			case '<':
-				if (!mem) return print_error(sp, "Memory underflow");
+				if (!mem) return print_error_type_at(sp, "Memory underflow");
 				mem--;
 			case '>':
-				if (mem == BF_MEM - 1) return print_error(sp, "Memory overflow");
+				if (mem == BF_MEM - 1) return print_error_type_at(sp, "Memory overflow");
 				mem++;
 			case '+':
 				memory[mem]++;
@@ -45,7 +45,7 @@ fn void! brainf(String program)
 				usz start = sp - 1;
 				while (indent)
 				{
-					if (sp == program.len) return print_error(start, "No matching ']'");
+					if (sp == program.len) return print_error_type_at(start, "No matching ']'");
 					switch (program[sp++])
 					{
 						case ']': indent--;
@@ -59,7 +59,7 @@ fn void! brainf(String program)
 				usz indent = 1;
 				while (indent)
 				{
-					if (!sp) return print_error(start, "No matching '['");
+					if (!sp) return print_error_type_at(start, "No matching '['");
 					switch (program[--sp])
 					{
 						case ']': indent++;

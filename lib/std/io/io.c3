@@ -49,9 +49,9 @@ fault IoError
  * @param stream
  * @require @is_instream(stream)
  **/
-macro String! readline(stream = io::stdin(), Allocator* allocator = allocator::heap())
+macro String! readline(stream = io::stdin(), Allocator allocator = allocator::heap())
 {
-	bool $is_stream = @typeid(stream) == InStream*.typeid;
+	bool $is_stream = @typeid(stream) == InStream.typeid;
 	$if $is_stream:
 		$typeof(&stream.read_byte) func = &stream.read_byte;
 		char val = func((void*)stream)!;
@@ -108,14 +108,14 @@ macro usz! fprint(out, x)
 	$endswitch
 }
 
-fn usz! fprintf(OutStream* out, String format, args...)
+fn usz! fprintf(OutStream out, String format, args...)
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
 	return formatter.vprintf(format, args);
 }
 
-fn usz! fprintfn(OutStream* out, String format, args...) @maydiscard
+fn usz! fprintfn(OutStream out, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
@@ -133,7 +133,7 @@ macro usz! fprintn(out, x = "")
 	usz len = fprint(out, x)!;
 	out.write_byte('\n')!;
 	$switch
-		$case @typeid(out) == OutStream*.typeid:
+		$case @typeid(out) == OutStream.typeid:
 			if (&out.flush) out.flush()!;
 		$case $defined(out.flush):
 			out.flush()!;
@@ -164,7 +164,7 @@ macro void eprintn(x)
 
 fn void! out_putstream_fn(void* data, char c) @private
 {
-	OutStream** stream = data;
+	OutStream* stream = data;
 	return (*stream).write_byte(c);
 }
 
@@ -193,7 +193,7 @@ fn usz! printfn(String format, args...) @maydiscard
 fn usz! eprintf(String format, args...) @maydiscard
 {
 	Formatter formatter;
-	OutStream* stream = stderr();
+	OutStream stream = stderr();
 	formatter.init(&out_putstream_fn, &stream);
 	return formatter.vprintf(format, args);
 }
@@ -202,7 +202,7 @@ fn usz! eprintf(String format, args...) @maydiscard
 fn usz! eprintfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
-	OutStream* stream = stderr();
+	OutStream stream = stderr();
 	formatter.init(&out_putstream_fn, &stream);
 	usz len = formatter.vprintf(format, args)! + 1;
 	stderr().write_byte('\n')!;

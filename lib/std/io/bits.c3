@@ -2,12 +2,12 @@ module std::io;
 
 struct BitReader
 {
-	InStream* reader;
+	InStream reader;
 	uint bits;
 	uint len;
 }
 
-fn void BitReader.init(&self, InStream* byte_reader)
+fn void BitReader.init(&self, InStream byte_reader)
 {
 	*self = { .reader = byte_reader };
 }
@@ -40,12 +40,12 @@ fn char! BitReader.read_bits(&self, uint nbits)
 
 struct BitWriter
 {
-	OutStream* writer;
+	OutStream writer;
 	uint bits;
 	uint len;
 }
 
-fn void BitWriter.init(&self, OutStream* byte_writer)
+fn void BitWriter.init(&self, OutStream byte_writer)
 {
 	*self = { .writer = byte_writer };
 }

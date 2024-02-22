@@ -1,7 +1,7 @@
 fn int! bar()
 {
 	defer {
-		{|
+		(void){|
 			return 4;
 		|};
 	}

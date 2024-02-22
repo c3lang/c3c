@@ -1,4 +1,3 @@
-module baba;
 // #target: macos-x64
 module foo;
 import std::io;
@@ -36,19 +35,19 @@ entry:
   %x = alloca i32, align 4
   %x.f = alloca i64, align 8
   %err = alloca i64, align 8
-  %varargslots = alloca [1 x %"any*"], align 16
+  %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
   %err3 = alloca i64, align 8
-  %varargslots4 = alloca [1 x %"any*"], align 16
+  %varargslots4 = alloca [1 x %any], align 16
   %retparam5 = alloca i64, align 8
   %x8 = alloca i32, align 4
   %x.f9 = alloca i64, align 8
   %reterr = alloca i64, align 8
   %err14 = alloca i64, align 8
-  %varargslots15 = alloca [1 x %"any*"], align 16
+  %varargslots15 = alloca [1 x %any], align 16
   %retparam16 = alloca i64, align 8
   %err19 = alloca i64, align 8
-  %varargslots20 = alloca [1 x %"any*"], align 16
+  %varargslots20 = alloca [1 x %any], align 16
   %retparam21 = alloca i64, align 8
   store i64 ptrtoint (ptr @"std.core.builtin.SearchResult$MISSING" to i64), ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
@@ -65,16 +64,16 @@ after_check:                                      ; preds = %entry
 opt_block_cleanup:                                ; preds = %assign_optional
   %3 = load i64, ptr %z.f, align 8
   store i64 %3, ptr %err, align 8
-  %4 = insertvalue %"any*" undef, ptr %err, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %5, ptr %varargslots, align 16
+  %4 = insertvalue %any undef, ptr %err, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %5, ptr %varargslots, align 16
   %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 1)
   store i64 ptrtoint (ptr @"foo.Test$FOO" to i64), ptr %err, align 8
   %7 = load i64, ptr %z.f, align 8
   store i64 %7, ptr %err3, align 8
-  %8 = insertvalue %"any*" undef, ptr %err3, 0
-  %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %9, ptr %varargslots4, align 16
+  %8 = insertvalue %any undef, ptr %err3, 0
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %9, ptr %varargslots4, align 16
   %10 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.2, i64 8, ptr %varargslots4, i64 1)
   br label %after_assign
 expr_block.exit:                                  ; preds = %after_check
@@ -98,16 +97,16 @@ after_check13:                                    ; preds = %after_assign
 err_retblock:                                     ; preds = %assign_optional12
   %14 = load i64, ptr %reterr, align 8
   store i64 %14, ptr %err14, align 8
-  %15 = insertvalue %"any*" undef, ptr %err14, 0
-  %16 = insertvalue %"any*" %15, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %16, ptr %varargslots15, align 16
+  %15 = insertvalue %any undef, ptr %err14, 0
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %16, ptr %varargslots15, align 16
   %17 = call i64 @std.io.printfn(ptr %retparam16, ptr @.str.4, i64 6, ptr %varargslots15, i64 1)
   store i64 ptrtoint (ptr @"foo.Test$FOO" to i64), ptr %err14, align 8
   %18 = load i64, ptr %reterr, align 8
   store i64 %18, ptr %err19, align 8
-  %19 = insertvalue %"any*" undef, ptr %err19, 0
-  %20 = insertvalue %"any*" %19, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
-  store %"any*" %20, ptr %varargslots20, align 16
+  %19 = insertvalue %any undef, ptr %err19, 0
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  store %any %20, ptr %varargslots20, align 16
   %21 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.5, i64 8, ptr %varargslots20, i64 1)
   %22 = load i64, ptr %reterr, align 8
   ret i64 %22

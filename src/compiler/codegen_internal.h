@@ -36,8 +36,8 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
 				continue;
-			case TYPE_INFPTR:
-				return type_anyptr;
+			case TYPE_INTERFACE:
+				return type_any;
 			case TYPE_ANYFAULT:
 			case TYPE_TYPEID:
 			case TYPE_FAULTTYPE:
@@ -55,7 +55,7 @@ static inline Type *type_lowering(Type *type)
 				if (flat == pointer) return type;
 				return type_get_ptr(flat);
 			}
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_VECTOR:
 			case TYPE_FLEXIBLE_ARRAY:
@@ -65,8 +65,8 @@ static inline Type *type_lowering(Type *type)
 				if (flat == arr_type) return type;
 				switch (type->type_kind)
 				{
-					case TYPE_SUBARRAY:
-						return type_get_subarray(flat);
+					case TYPE_SLICE:
+						return type_get_slice(flat);
 					case TYPE_ARRAY:
 						return type_get_array(flat, type->array.len);
 					case TYPE_VECTOR:

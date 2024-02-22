@@ -8,7 +8,7 @@ const usz MIN_CAPACITY @private = 16;
 /**
  * @require !self.data() "String already initialized"
  **/
-fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator* allocator = allocator::heap())
+fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator allocator = allocator::heap())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = allocator::alloc_with_padding(allocator, StringData, capacity)!!;
@@ -21,36 +21,20 @@ fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator* alloc
 /**
  * @require !self.data() "String already initialized"
  **/
-fn DString DString.init_new(&self, usz capacity = MIN_CAPACITY, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
-{
-	return self.new_init(capacity, allocator) @inline;
-}
-
-/**
- * @require !self.data() "String already initialized"
- **/
 fn DString DString.temp_init(&self, usz capacity = MIN_CAPACITY)
 {
 	self.new_init(capacity, allocator::temp()) @inline;
 	return *self;
 }
 
-/**
- * @require !self.data() "String already initialized"
- **/
-fn DString DString.init_temp(&self, usz capacity = MIN_CAPACITY) @deprecated("Replaced by temp_init")
-{
-	return self.temp_init(capacity) @inline;
-}
-
-fn DString new_with_capacity(usz capacity, Allocator* allocator = allocator::heap())
+fn DString new_with_capacity(usz capacity, Allocator allocator = allocator::heap())
 {
 	return DString{}.new_init(capacity, allocator);
 }
 
 fn DString temp_with_capacity(usz capacity) => new_with_capacity(capacity, allocator::temp()) @inline;
 
-fn DString new(String c = "", Allocator* allocator = allocator::heap())
+fn DString new(String c = "", Allocator allocator = allocator::heap())
 {
 	usz len = c.len;
 	StringData* data = (StringData*)new_with_capacity(len, allocator);
@@ -64,7 +48,7 @@ fn DString new(String c = "", Allocator* allocator = allocator::heap())
 
 fn DString temp_new(String s = "") => new(s, allocator::temp()) @inline;
 
-fn DString DString.new_concat(self, DString b, Allocator* allocator = allocator::heap())
+fn DString DString.new_concat(self, DString b, Allocator allocator = allocator::heap())
 {
 	DString string;
 	string.new_init(self.len() + b.len(), allocator);
@@ -74,8 +58,6 @@ fn DString DString.new_concat(self, DString b, Allocator* allocator = allocator:
 }
 
 fn DString DString.temp_concat(self, DString b) => self.new_concat(b, allocator::temp());
-
-fn DString DString.new_tconcat(self, DString b) @deprecated("Replaced by temp_concat") => self.new_concat(b, allocator::temp());
 
 fn ZString DString.zstr_view(&self)
 {
@@ -166,7 +148,7 @@ fn void DString.append_char32(&self, Char32 c)
 
 fn DString DString.tcopy(&self) => self.copy(allocator::temp());
 
-fn DString DString.copy(self, Allocator* allocator = null)
+fn DString DString.copy(self, Allocator allocator = null)
 {
 	if (!self)
 	{
@@ -180,7 +162,7 @@ fn DString DString.copy(self, Allocator* allocator = null)
 	return new_string;
 }
 
-fn ZString DString.copy_zstr(self, Allocator* allocator = allocator::heap())
+fn ZString DString.copy_zstr(self, Allocator allocator = allocator::heap())
 {
 	usz str_len = self.len();
 	if (!str_len)
@@ -194,7 +176,7 @@ fn ZString DString.copy_zstr(self, Allocator* allocator = allocator::heap())
 	return (ZString)zstr;
 }
 
-fn String DString.copy_str(self, Allocator* allocator = allocator::heap())
+fn String DString.copy_str(self, Allocator allocator = allocator::heap())
 {
 	return (String)self.copy_zstr(allocator)[:self.len()];
 }
@@ -258,7 +240,7 @@ fn void DString.append_chars(&self, String str)
 	data.len += other_len;
 }
 
-fn Char32[] DString.copy_utf32(&self, Allocator* allocator = allocator::heap())
+fn Char32[] DString.copy_utf32(&self, Allocator allocator = allocator::heap())
 {
 	return self.str_view().to_new_utf32(allocator) @inline!!;
 }
@@ -403,7 +385,7 @@ fn usz! DString.appendfn(&self, String format, args...) @maydiscard
 	return len + 1;
 }
 
-fn DString new_join(String[] s, String joiner, Allocator* allocator = allocator::heap())
+fn DString new_join(String[] s, String joiner, Allocator allocator = allocator::heap())
 {
 	if (!s.len) return (DString)null;
 	usz total_size = joiner.len * s.len;
@@ -450,7 +432,7 @@ fn void DString.reserve(&self, usz addition)
 	*self = (DString)allocator::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
 
-fn usz! DString.read_from_stream(&self, InStream* reader)
+fn usz! DString.read_from_stream(&self, InStream reader)
 {
 	if (&reader.available)
 	{
@@ -482,7 +464,7 @@ fn usz! DString.read_from_stream(&self, InStream* reader)
 
 struct StringData @private
 {
-	Allocator* allocator;
+	Allocator allocator;
 	usz len;
 	usz capacity;
 	char[*] chars;

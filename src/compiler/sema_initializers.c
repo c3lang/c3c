@@ -10,7 +10,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer);
 static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type *assigned, Type *flattened,
 													 Expr *initializer);
-static inline void sema_not_enough_elements_error(Expr *initializer, int element);
+static inline void sema_not_enough_elements_error(SemaContext *context, Expr *initializer, int element);
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
@@ -50,7 +50,7 @@ static inline ConstantEvalKind env_eval_type(SemaContext *context)
 	return context->call_env.kind == CALL_ENV_GLOBAL_INIT ? CONSTANT_EVAL_GLOBAL_INIT : CONSTANT_EVAL_LOCAL_INIT;
 }
 
-static inline void sema_not_enough_elements_error(Expr *initializer, int element)
+static inline void sema_not_enough_elements_error(SemaContext *context, Expr *initializer, int element)
 {
 	if (element == 0)
 	{
@@ -133,7 +133,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			}
 			if (i >= size)
 			{
-				sema_not_enough_elements_error(initializer, (int)i);
+				sema_not_enough_elements_error(context, initializer, (int)i);
 				return false;
 			}
 			Expr *new_initializer = expr_new(EXPR_INITIALIZER_LIST, elements[i]->span);
@@ -153,7 +153,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		}
 		if (i >= size)
 		{
-			sema_not_enough_elements_error(initializer, i);
+			sema_not_enough_elements_error(context, initializer, i);
 			return false;
 		}
 		Expr *element = elements[i];
@@ -161,7 +161,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true, NULL)) return false;
 		if (member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
 		{
-			if (!sema_bit_assignment_check(element, members[i])) return false;
+			if (!sema_bit_assignment_check(context, element, members[i])) return false;
 		}
 		optional = optional || IS_OPTIONAL(element);
 	}
@@ -416,7 +416,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (!sema_analyse_expr_rhs(context, result, value, true, NULL)) return false;
 		if (member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
 		{
-			if (!sema_bit_assignment_check(value, member)) return false;
+			if (!sema_bit_assignment_check(context, value, member)) return false;
 		}
 		optional = optional || IS_OPTIONAL(value);
 		expr->resolve_status = RESOLVE_DONE;
@@ -496,7 +496,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		flattened->type_kind == TYPE_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_ARRAY ||
 		flattened->type_kind == TYPE_INFERRED_VECTOR ||
-		flattened->type_kind == TYPE_SUBARRAY ||
+		flattened->type_kind == TYPE_SLICE ||
 		flattened->type_kind == TYPE_VECTOR)
 	{
 		return sema_expr_analyse_array_plain_initializer(context, assigned_type, flattened, expr);
@@ -691,7 +691,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
 			return sema_expr_analyse_initializer(context, to, flattened, expr);
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		{
 			if (is_zero_init)
 			{
@@ -1126,7 +1126,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 					*may_be_array = true;
 					return (MemberIndex)type->array.len;
 				}
-				if (type->type_kind == TYPE_SUBARRAY)
+				if (type->type_kind == TYPE_SLICE)
 				{
 					*may_be_array = true;
 					return 0;

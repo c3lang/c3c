@@ -440,6 +440,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CT_IS_CONST:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
+		case EXPR_DEFAULT_ARG:
+			MACRO_COPY_EXPR(expr->default_arg_expr.inner);
+			return expr;
 		case EXPR_CT_DEFINED:
 			MACRO_COPY_EXPR_LIST(expr->expression_list);
 			return expr;
@@ -452,7 +455,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_MACRO_BLOCK:
 			MACRO_COPY_DECL_LIST(expr->macro_block.params);
 			MACRO_COPY_ASTID(expr->macro_block.first_stmt);
-			MACRO_COPY_DECL(expr->macro_block.macro);
+			fixup_decl(c, &expr->macro_block.macro);
 			return expr;
 		case EXPR_COMPOUND_LITERAL:
 			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
@@ -625,6 +628,7 @@ RETRY:
 			break;
 		case AST_COMPOUND_STMT:
 			MACRO_COPY_ASTID(ast->compound_stmt.first_stmt);
+			fixup_astid(c, &ast->compound_stmt.parent_defer);
 			break;
 		case AST_CT_IF_STMT:
 			MACRO_COPY_EXPR(ast->ct_if_stmt.expr);
@@ -840,7 +844,7 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;
 		case TYPE_INFO_INFERRED_ARRAY:
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 		case TYPE_INFO_INFERRED_VECTOR:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(c, source->array.base);

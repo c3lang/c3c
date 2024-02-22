@@ -111,7 +111,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 {
-	assert(c->catch_block && "unexpected emit");
+	assert(c->catch.block && "unexpected emit");
 	bool is_constant_opt = llvm_is_const(opt_value);
 
 	// Maybe we don't need to emit anything?
@@ -119,16 +119,16 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 
 	LLVMBasicBlockRef after_block = llvm_basic_block_new(c, "after_check");
 	// No error variable
-	if (!c->opt_var)
+	if (!c->catch.fault)
 	{
 		// No error var and a constant error means jumping to the "catch" block
 		if (is_constant_opt)
 		{
-			llvm_emit_br(c, c->catch_block);
+			llvm_emit_br(c, c->catch.block);
 		}
 		else
 		{
-			llvm_emit_cond_br_raw(c, llvm_emit_is_no_opt(c, opt_value), after_block, c->catch_block);
+			llvm_emit_cond_br_raw(c, llvm_emit_is_no_opt(c, opt_value), after_block, c->catch.block);
 		}
 		llvm_emit_block(c, after_block);
 		return;
@@ -143,8 +143,8 @@ void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 		llvm_emit_block(c, error_block);
 	}
 
-	llvm_store_to_ptr_raw(c, c->opt_var, opt_value, type_anyfault);
-	llvm_emit_br(c, c->catch_block);
+	llvm_store_to_ptr_raw(c, c->catch.fault, opt_value, type_anyfault);
+	llvm_emit_br(c, c->catch.block);
 	llvm_emit_block(c, after_block);
 }
 

@@ -3,7 +3,7 @@ import std::collections;
 
 fn void simple_use()
 {
-	GenericList l;
+	AnyList l;
 	l.push(1);
 	l.push("Hello");
 	assert(l.get(1, String)!! == "Hello");
