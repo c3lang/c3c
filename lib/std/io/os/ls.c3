@@ -1,7 +1,7 @@
 module std::io::os @if(env::POSIX);
 import std::io, std::os;
 
-fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* allocator)
+fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
 	list.new_init(.allocator = allocator);
@@ -24,7 +24,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 module std::io::os @if(env::WIN32);
 import std::time, std::os, std::io;
 
-fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator* allocator)
+fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
 	list.new_init(.allocator = allocator);

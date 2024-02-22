@@ -312,8 +312,8 @@ fn int strcmp(char *s1, char *s2) {
 @foo.listNode0 = local_unnamed_addr global %List { i32 1, ptr @foo.listNode1 }, align 8
 @foo.listNode1 = global %List { i32 2, ptr @foo.listNode2 }, align 8
 @foo.listArray = local_unnamed_addr global [10 x %List] zeroinitializer, align 16
-@foo.temp = protected unnamed_addr global ptr null, align 8
-@foo.remaining = protected unnamed_addr global i32 0, align 4
+@foo.temp = internal unnamed_addr global ptr null, align 8
+@foo.remaining = internal unnamed_addr global i32 0, align 4
 @foo.ext = local_unnamed_addr global ptr null, align 8
 @foo.globalQuad = local_unnamed_addr global %Quad { i32 4, %SubStruct { i16 1, i16 2 }, ptr null, i8 3, i32 156 }, align 8
 @foo.foo.10 = internal unnamed_addr global i32 0, align 4

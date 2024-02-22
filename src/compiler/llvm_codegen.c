@@ -541,16 +541,8 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	}
 	else
 	{
-		if (decl->var.kind == VARDECL_CONST || decl->var.kind == VARDECL_GLOBAL)
-		{
-			LLVMSetVisibility(global_ref, LLVMProtectedVisibility);
-			if (optional_ref) LLVMSetVisibility(optional_ref, LLVMProtectedVisibility);
-		}
-		else
-		{
-			LLVMSetLinkage(global_ref, LLVMInternalLinkage);
-			if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
-		}
+		LLVMSetLinkage(global_ref, LLVMInternalLinkage);
+		if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
 	}
 
 	decl->backend_ref = global_ref;

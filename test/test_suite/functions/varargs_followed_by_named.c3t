@@ -40,7 +40,7 @@ entry:
 ; Function Attrs:
 define void @foo.test2(i32 %0, ptr %1, i64 %2, i32 %3) #0 {
 entry:
-  %y = alloca %"any*[]", align 8
+  %y = alloca %"any[]", align 8
   store ptr %1, ptr %y, align 8
   %ptradd = getelementptr inbounds i8, ptr %y, i64 8
   store i64 %2, ptr %ptradd, align 8
@@ -55,11 +55,11 @@ entry:
 define void @foo.main() #0 {
 entry:
   %varargslots = alloca [2 x i32], align 4
-  %varargslots1 = alloca [2 x %"any*"], align 16
+  %varargslots1 = alloca [2 x %any], align 16
   %taddr = alloca i32, align 4
   %taddr2 = alloca i32, align 4
   %varargslots4 = alloca [2 x i32], align 4
-  %varargslots6 = alloca [2 x %"any*"], align 16
+  %varargslots6 = alloca [2 x %any], align 16
   %taddr7 = alloca i32, align 4
   %taddr8 = alloca i32, align 4
   store i32 4, ptr %varargslots, align 4
@@ -67,28 +67,28 @@ entry:
   store i32 5, ptr %ptradd, align 4
   call void @foo.test(i32 3, ptr %varargslots, i64 2, i32 123)
   store i32 4, ptr %taddr, align 4
-  %0 = insertvalue %"any*" undef, ptr %taddr, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %1, ptr %varargslots1, align 16
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots1, align 16
   store i32 5, ptr %taddr2, align 4
-  %2 = insertvalue %"any*" undef, ptr %taddr2, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %2 = insertvalue %any undef, ptr %taddr2, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %ptradd3 = getelementptr inbounds i8, ptr %varargslots1, i64 16
-  store %"any*" %3, ptr %ptradd3, align 16
+  store %any %3, ptr %ptradd3, align 16
   call void @foo.test2(i32 3, ptr %varargslots1, i64 2, i32 123)
   store i32 4, ptr %varargslots4, align 4
   %ptradd5 = getelementptr inbounds i8, ptr %varargslots4, i64 4
   store i32 5, ptr %ptradd5, align 4
   call void @foo.test(i32 3, ptr %varargslots4, i64 2, i32 2)
   store i32 4, ptr %taddr7, align 4
-  %4 = insertvalue %"any*" undef, ptr %taddr7, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %5, ptr %varargslots6, align 16
+  %4 = insertvalue %any undef, ptr %taddr7, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %5, ptr %varargslots6, align 16
   store i32 5, ptr %taddr8, align 4
-  %6 = insertvalue %"any*" undef, ptr %taddr8, 0
-  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %6 = insertvalue %any undef, ptr %taddr8, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   %ptradd9 = getelementptr inbounds i8, ptr %varargslots6, i64 16
-  store %"any*" %7, ptr %ptradd9, align 16
+  store %any %7, ptr %ptradd9, align 16
   call void @foo.test2(i32 3, ptr %varargslots6, i64 2, i32 2)
   ret void
 }

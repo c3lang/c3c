@@ -2644,8 +2644,8 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
 					break;
-				case TYPE_ANYPTR:
-				case TYPE_INFPTR:
+				case TYPE_ANY:
+				case TYPE_INTERFACE:
 					llvm_emit_any_pointer(c, value, value);
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
@@ -3829,12 +3829,10 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			return;
 		case TYPE_FUNC:
 			break;
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			llvm_emit_any_comparison(c, result, lhs, rhs, binary_op);
 			return;
 		case LOWERED_TYPES:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -4931,8 +4929,6 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case LOWERED_TYPES:
 		case TYPE_VOID:
 		case TYPE_FUNC:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			break;
@@ -4955,7 +4951,7 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 		case TYPE_UNION:
 		case TYPE_SUBARRAY:
 		case TYPE_VECTOR:
-		case TYPE_ANYPTR:
+		case TYPE_ANY:
 			TODO
 			break;
 	}
@@ -6646,10 +6642,10 @@ void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type)
 	BEValue typeid;
 	llvm_emit_typeid(c, &typeid, type);
 	llvm_value_rvalue(c, &typeid);
-	LLVMValueRef var = llvm_get_undef(c, type_anyptr);
+	LLVMValueRef var = llvm_get_undef(c, type_any);
 	var = llvm_emit_insert_value(c, var, value->value, 0);
 	var = llvm_emit_insert_value(c, var, typeid.value, 1);
-	llvm_value_set(value, var, type_anyptr);
+	llvm_value_set(value, var, type_any);
 }
 
 
@@ -6660,7 +6656,7 @@ static inline void llvm_emit_type_from_any(GenContext *c, BEValue *be_value)
 		AlignSize alignment = 0;
 		LLVMValueRef pointer_addr = llvm_emit_struct_gep_raw(c,
 															 be_value->value,
-															 llvm_get_type(c, type_anyptr),
+															 llvm_get_type(c, type_any),
 															 1,
 															 be_value->alignment,
 															 &alignment);

@@ -17,7 +17,6 @@ RETRY:
 		type = type->canonical;
 		switch (type->type_kind)
 		{
-			case TYPE_INFPTR:
 			case TYPE_POINTER:
 				type = type->pointer;
 				goto RETRY;
@@ -538,7 +537,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 	{
 		Decl *method = methods[i];
 		if (method->decl_kind == DECL_MACRO) continue;
-		if (method->func_decl.attr_dynamic || method->func_decl.attr_default)
+		if (method->func_decl.attr_dynamic)
 		{
 			sema_trace_decl_liveness(method);
 		}

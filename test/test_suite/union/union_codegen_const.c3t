@@ -13,7 +13,7 @@ Foo i = { .b = 2.3, .a = 23 };
 
 /* #expect: test.ll
 
-@test.f = protected unnamed_addr global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
-@test.g = protected unnamed_addr global %Foo { double 2.300000e+00 }, align 8
-@test.h = protected unnamed_addr global %Foo { double 2.300000e+00 }, align 8
+@test.f = internal unnamed_addr global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8
+@test.g = internal unnamed_addr global %Foo { double 2.300000e+00 }, align 8
+@test.h = internal unnamed_addr global %Foo { double 2.300000e+00 }, align 8
 @test.i = local_unnamed_addr global { i32, [4 x i8] } { i32 23, [4 x i8] undef }, align 8

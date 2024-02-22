@@ -935,13 +935,13 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		if (is_deref) right = right->unary_expr.expr;
 		if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL)) return false;
 		Type *type = right->type->canonical;
-		if (type == type_get_ptr(type_anyptr) && is_deref)
+		if (type == type_get_ptr(type_any) && is_deref)
 		{
 			is_deref = false;
 			right = exprptr(expr->binary_expr.right);
 			if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL)) return false;
 		}
-		if (type != type_anyptr) goto NORMAL_EXPR;
+		if (type != type_any) goto NORMAL_EXPR;
 		// Found an expansion here
 		expr->expr_kind = EXPR_ANYSWITCH;
 		expr->any_switch.new_ident = left->identifier_expr.ident;
@@ -955,7 +955,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	}
 	if (!sema_analyse_expr(context, expr)) return false;
 	Type *type = expr->type->canonical;
-	if (type != type_anyptr) return true;
+	if (type != type_any) return true;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
 		Decl *decl = expr->identifier_expr.decl;
@@ -2663,7 +2663,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 				if (var_switch.is_assign)
 				{
 					inner = expr_new(EXPR_DECL, last->span);
-					any_decl = decl_new_generated_var(type_anyptr, VARDECL_LOCAL, last->span);
+					any_decl = decl_new_generated_var(type_any, VARDECL_LOCAL, last->span);
 					any_decl->var.init_expr = var_switch.any_expr;
 					inner->decl_expr = any_decl;
 					if (!sema_analyse_expr(context, inner)) return false;
@@ -2673,7 +2673,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 					inner = expr_new(EXPR_IDENTIFIER, last->span);
 					any_decl = var_switch.variable;
 					expr_resolve_ident(inner, any_decl);
-					inner->type = type_anyptr;
+					inner->type = type_any;
 				}
 				expr_rewrite_to_builtin_access(last, inner, ACCESS_TYPEOFANY, type_typeid);
 				switch_type = type_typeid;

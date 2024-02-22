@@ -11,7 +11,6 @@ union Quaternion
 
 const Quaternion IDENTITY = { 0, 0, 0, 1 };
 
-macro Quaternion identity() @deprecated("Replaced with QUATERNION_IDENTITY constant") => { 0, 0, 0, 1 };
 macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => Quaternion { .v = a.v + b.v };
 macro Quaternion Quaternion.add_each(Quaternion a, Real b) => Quaternion { .v = a.v + b };
 macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => Quaternion { .v = a.v - b.v };

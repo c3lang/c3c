@@ -46,7 +46,7 @@ macro Callback get_callback2()
 
 /* #expect: abc.ll
 
-@main.F = protected unnamed_addr constant ptr @"bar.get_callback$lambda1", align 8
+@main.F = internal unnamed_addr constant ptr @"bar.get_callback$lambda1", align 8
   %0 = call i32 @abc.xy(ptr @"bar.get_callback$lambda1")
   %1 = call i32 @abc.xy(ptr @"bar.get_callback$lambda1")
 declare i32 @"bar.get_callback$lambda1"()

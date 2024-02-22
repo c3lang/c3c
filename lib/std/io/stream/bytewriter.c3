@@ -5,7 +5,7 @@ struct ByteWriter (OutStream)
 {
 	char[] bytes;
 	usz index;
-	Allocator* allocator;
+	Allocator allocator;
 }
 
 /**
@@ -14,21 +14,10 @@ struct ByteWriter (OutStream)
  * @require self.bytes.len == 0 "Init may not run on on already initialized data"
  * @ensure (bool)allocator, self.index == 0
  **/
-fn ByteWriter* ByteWriter.new_init(&self, Allocator* allocator = allocator::heap())
+fn ByteWriter* ByteWriter.new_init(&self, Allocator allocator = allocator::heap())
 {
 	*self = { .bytes = {}, .allocator = allocator };
 	return self;
-}
-
-/**
- * @param [&inout] self
- * @param [&inout] allocator
- * @require self.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure (bool)allocator, self.index == 0
- **/
-fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = allocator::heap()) @deprecated("Replaced by new_init")
-{
-	return self.new_init(allocator) @inline;
 }
 
 /**
@@ -39,16 +28,6 @@ fn ByteWriter* ByteWriter.init_new(&self, Allocator* allocator = allocator::heap
 fn ByteWriter* ByteWriter.temp_init(&self)
 {
 	return self.new_init(allocator::temp()) @inline;
-}
-
-/**
- * @param [&inout] self
- * @require self.bytes.len == 0 "Init may not run on on already initialized data"
- * @ensure self.index == 0
- **/
-fn ByteWriter* ByteWriter.init_temp(&self) @deprecated("Replaced by temp_init")
-{
-	return self.temp_init() @inline;
 }
 
 fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
@@ -97,7 +76,7 @@ fn void! ByteWriter.write_byte(&self, char c) @dynamic
  * @param [&inout] self
  * @param reader
  **/
-fn usz! ByteWriter.read_from(&self, InStream* reader) @dynamic
+fn usz! ByteWriter.read_from(&self, InStream reader) @dynamic
 {
 	usz start_index = self.index;
 	if (&reader.available)

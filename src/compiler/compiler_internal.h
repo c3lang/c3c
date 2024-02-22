@@ -104,12 +104,11 @@ typedef enum
 {
 	RESOLVE_TYPE_DEFAULT,
 	RESOLVE_TYPE_ALLOW_INFER    = 0x01,
-	RESOLVE_TYPE_ALLOW_ANY      = 0x02,
-	RESOLVE_TYPE_IS_POINTEE     = 0x04,
-	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x08,
-	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_IS_POINTEE,
-	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_ANY | RESOLVE_TYPE_ALLOW_INFER,
-	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_ALLOW_ANY
+	RESOLVE_TYPE_IS_POINTEE     = 0x02,
+	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x04,
+	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_IS_POINTEE,
+	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_INFER,
+	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_DEFAULT
 } ResolveTypeKind;
 
 struct ConstInitializer_
@@ -566,7 +565,6 @@ typedef struct
 			bool attr_finalizer : 1;
 			bool attr_interface_method : 1;
 			bool attr_dynamic : 1;
-			bool attr_default : 1;
 			bool is_lambda : 1;
 			union
 			{
@@ -1881,7 +1879,7 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyfault, *type_anyptr, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_anyfault, *type_any, *type_typeinfo, *type_member;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -2623,20 +2621,10 @@ INLINE bool type_is_any_raw(Type *type)
 	}
 }
 
-INLINE bool type_is_any_interface_ptr(Type *type)
-{
-	switch (type->canonical->type_kind)
-	{
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
-			return true;
-		default:
-			return false;
-	}
-}
+
 INLINE bool type_is_any(Type *type)
 {
-	return type->canonical == type_anyptr;
+	return type->canonical == type_any;
 }
 
 INLINE bool type_is_anyfault(Type *type)

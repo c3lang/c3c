@@ -312,7 +312,7 @@ static void assign_panicfn(void)
 		error_exit("'%s' is not a function function.", panicf);
 	}
 	if (!type_func_match(type_get_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_uint,
-						 type_get_subarray(type_anyptr)))
+						 type_get_subarray(type_any)))
 	{
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");
 	}

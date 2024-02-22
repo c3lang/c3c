@@ -150,7 +150,7 @@ struct Symbol
 
 Win32_DWORD64 displacement;
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
+fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 {
 	BacktraceList list;
 	list.new_init(backtrace.len, allocator);
@@ -164,7 +164,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator* allocator)
 	return list;
 }
 
-fn Backtrace! resolve_backtrace(void* addr, Win32_HANDLE process, Allocator* allocator)
+fn Backtrace! resolve_backtrace(void* addr, Win32_HANDLE process, Allocator allocator)
 {
 	Symbol symbol;
 	//Win32_DWORD image_type = load_modules()!;

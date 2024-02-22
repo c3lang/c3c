@@ -14,8 +14,8 @@ int *bf3 = &abc[2] + 2;
 
 fn void main() {
 	int *bf34 = (&abc[2] + 2) + 3;
-	static any*[3] x = { &&42, &&'c', &&"for" };
-	any*[3] y = { &&42, &&'c', &&"for" };
+	static any[3] x = { &&42, &&'c', &&"for" };
+	any[3] y = { &&42, &&'c', &&"for" };
 }
 
 /* #expect: test.ll
@@ -33,30 +33,30 @@ fn void main() {
 @.taddr.9 = private global i32 42, align 4
 @.taddr.10 = private global i8 99, align 1
 @.taddr.11 = private global %"char[]" { ptr @.str, i64 3 }, align 8
-@main.x = internal unnamed_addr global [3 x %"any*"] [%"any*" { ptr @.taddr.9, i64 ptrtoint (ptr @"$ct.int" to i64) }, %"any*" { ptr @.taddr.10, i64 ptrtoint (ptr @"$ct.char" to i64) }, %"any*" { ptr @.taddr.11, i64 ptrtoint (ptr @"$ct.String" to i64) }], align 16
+@main.x = internal unnamed_addr global [3 x %any] [%any { ptr @.taddr.9, i64 ptrtoint (ptr @"$ct.int" to i64) }, %any { ptr @.taddr.10, i64 ptrtoint (ptr @"$ct.char" to i64) }, %any { ptr @.taddr.11, i64 ptrtoint (ptr @"$ct.String" to i64) }], align 16
 
 ; Function Attrs:
 define void @test.main() #0 {
 entry:
   %bf34 = alloca ptr, align 8
-  %y = alloca [3 x %"any*"], align 16
+  %y = alloca [3 x %any], align 16
   %taddr = alloca i32, align 4
   %taddr1 = alloca i8, align 1
   %taddr3 = alloca %"char[]", align 8
   store ptr getelementptr (i8, ptr @test.abc, i64 28), ptr %bf34, align 8
   store i32 42, ptr %taddr, align 4
-  %0 = insertvalue %"any*" undef, ptr %taddr, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %1, ptr %y, align 16
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %y, align 16
   %ptradd = getelementptr inbounds i8, ptr %y, i64 16
   store i8 99, ptr %taddr1, align 1
-  %2 = insertvalue %"any*" undef, ptr %taddr1, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.char" to i64), 1
-  store %"any*" %3, ptr %ptradd, align 16
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.char" to i64), 1
+  store %any %3, ptr %ptradd, align 16
   %ptradd2 = getelementptr inbounds i8, ptr %y, i64 32
   store %"char[]" { ptr @.str.12, i64 3 }, ptr %taddr3, align 8
-  %4 = insertvalue %"any*" undef, ptr %taddr3, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.String" to i64), 1
-  store %"any*" %5, ptr %ptradd2, align 16
+  %4 = insertvalue %any undef, ptr %taddr3, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  store %any %5, ptr %ptradd2, align 16
   ret void
 }
