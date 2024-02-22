@@ -1291,7 +1291,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					// This is "foo..."
 					*variadic = VARIADIC_ANY;
 					// We generate the type as type_any
-					type = type_info_new_base(type_anyptr, c->span);
+					type = type_info_new_base(type_any, c->span);
 				}
 				break;
 			case TOKEN_CT_IDENT:

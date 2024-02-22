@@ -4,7 +4,7 @@ fn void! test_writing()
 {
 	DString foo;
 	foo.new_init();
-	OutStream* s = &foo;
+	OutStream s = &foo;
 	s.write("hello")!!;
 	s.write_byte('-')!!;
 	s.write("what?-------------------------------------------------------")!!;

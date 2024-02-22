@@ -16,8 +16,8 @@ define i64 @main.main() #0 {
 entry:
   %i = alloca i64, align 8
   %taddr = alloca i64, align 8
-  %varargslots = alloca [2 x %"any*"], align 16
-  %indirectarg = alloca %"any*[]", align 8
+  %varargslots = alloca [2 x %any], align 16
+  %indirectarg = alloca %"any[]", align 8
   store i64 0, ptr %i, align 8
   br label %loop.cond
 
@@ -32,20 +32,20 @@ loop.body:                                        ; preds = %loop.cond
   br i1 %neq, label %assert_ok, label %assert_fail
 
 assert_fail:                                      ; preds = %loop.body
-  %2 = insertvalue %"any*" undef, ptr %i, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  %2 = insertvalue %any undef, ptr %i, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
   %4 = load i64, ptr %i, align 8
   %mul = mul i64 %4, 2
   store i64 %mul, ptr %taddr, align 8
-  %5 = insertvalue %"any*" undef, ptr %taddr, 0
-  %6 = insertvalue %"any*" %5, i64 ptrtoint (ptr @"$ct.long" to i64), 1
-  store %"any*" %3, ptr %varargslots, align 16
+  %5 = insertvalue %any undef, ptr %taddr, 0
+  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.long" to i64), 1
+  store %any %3, ptr %varargslots, align 16
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store %"any*" %6, ptr %ptradd, align 16
-  %7 = insertvalue %"any*[]" undef, ptr %varargslots, 0
-  %"$$temp" = insertvalue %"any*[]" %7, i64 2, 1
-  store %"any*[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 10, ptr @.file, i64 10, ptr @.func, i64 4, i32 7, ptr byval(%"any*[]") align 8 %indirectarg)
+  store %any %6, ptr %ptradd, align 16
+  %7 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %7, i64 2, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg, i64 10, ptr @.file, i64 10, ptr @.func, i64 4, i32 7, ptr byval(%"any[]") align 8 %indirectarg)
   unreachable
 
 assert_ok:                                        ; preds = %loop.body

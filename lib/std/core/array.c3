@@ -55,7 +55,7 @@ macro rindex_of(array, element)
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  * @ensure result.len == arr1.len + arr2.len
  **/
-macro concat_new(arr1, arr2, Allocator* allocator = allocator::heap())
+macro concat_new(arr1, arr2, Allocator allocator = allocator::heap())
 {
 	var $Type = $typeof(arr1[0]);
 	$Type[] result = allocator::alloc_array(allocator, $Type, arr1.len + arr2.len);

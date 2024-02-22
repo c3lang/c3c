@@ -1,7 +1,7 @@
 module std::io::os @if(env::LIBC);
 import std::io::path, std::os;
 
-fn Path! native_temp_directory(Allocator* allocator = allocator::heap()) @if(!env::WIN32)
+fn Path! native_temp_directory(Allocator allocator = allocator::heap()) @if(!env::WIN32)
 {
 	foreach (String env : { "TMPDIR", "TMP", "TEMP", "TEMPDIR" })
 	{
@@ -11,7 +11,7 @@ fn Path! native_temp_directory(Allocator* allocator = allocator::heap()) @if(!en
 	return path::new("/tmp", allocator);
 }
 
-fn Path! native_temp_directory(Allocator* allocator = allocator::heap()) @if(env::WIN32)
+fn Path! native_temp_directory(Allocator allocator = allocator::heap()) @if(env::WIN32)
 {
 	@pool(allocator)
 	{
@@ -25,7 +25,7 @@ fn Path! native_temp_directory(Allocator* allocator = allocator::heap()) @if(env
 
 module std::io::os @if(env::NO_LIBC);
 
-macro Path! native_temp_directory(Allocator* allocator = allocator::heap())
+macro Path! native_temp_directory(Allocator allocator = allocator::heap())
 {
 	return IoError.UNSUPPORTED_OPERATION?;
 }

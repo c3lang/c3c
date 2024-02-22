@@ -1567,8 +1567,8 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM_REF:
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-				if (!type_is_any_interface_ptr(arg->type) && !sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
-				if (!type_is_any_interface_ptr(arg->type)) expr_insert_addr(arg);
+				if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
+				expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
 				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				if (type_is_invalid_storage_type(type))
@@ -4039,7 +4039,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	const char *kw = identifier->identifier_expr.ident;
 	if (kw_type == kw)
 	{
-		if (flat_type->type_kind == TYPE_ANYPTR)
+		if (flat_type->type_kind == TYPE_ANY)
 		{
 			expr_rewrite_to_builtin_access(expr, parent, ACCESS_TYPEOFANY, type_typeid);
 			return true;
@@ -4107,7 +4107,7 @@ CHECK_DEEPER:
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_ANYPTR)
+		if (flat_type->type_kind == TYPE_ANY)
 		{
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_voidptr);
 			return true;
@@ -4172,9 +4172,7 @@ CHECK_DEEPER:
 	{
 		Decl *ambiguous = NULL;
 		Decl *private = NULL;
-		// We look at any for any* and interface for interface*
-		Type *actual = type_is_any_interface_ptr(type) ? type->pointer : type;
-		Decl *method = sema_resolve_type_method(context->unit, actual, kw, &ambiguous, &private);
+		Decl *method = sema_resolve_type_method(context->unit, type, kw, &ambiguous, &private);
 		if (private)
 		{
 			if (missing_ref) goto MISSING_REF;
@@ -4189,7 +4187,7 @@ CHECK_DEEPER:
 		if (!method)
 		{
 			if (missing_ref) goto MISSING_REF;
-			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(actual));
+			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
 		}
 		expr->access_expr.parent = current_parent;
 		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
@@ -4199,7 +4197,7 @@ CHECK_DEEPER:
 	}
 
 	// 10. Dump all members and methods into the scope.
-	Decl *decl = type->type_kind == TYPE_INFPTR ? type->pointer->decl : type->decl;
+	Decl *decl = type->decl;
 
 	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
 
@@ -4264,7 +4262,7 @@ CHECK_DEEPER:
 			if (missing_ref) goto MISSING_REF;
 			RETURN_SEMA_ERROR(expr, "The method '%s' has private visibility.", kw);
 		}
-		if (parent->type->canonical->type_kind == TYPE_INFPTR)
+		if (parent->type->canonical->type_kind == TYPE_INTERFACE)
 		{
 			if (missing_ref) goto MISSING_REF;
 			RETURN_SEMA_ERROR(expr, "The '%s' interface has no method '%s', did you spell it correctly?", parent->type->canonical->pointer->canonical->name, kw);

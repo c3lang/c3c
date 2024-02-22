@@ -1,5 +1,22 @@
 # C3C Release Notes
 
+## 0.6.0 Change list
+
+### Changes / improvements
+- `@default` implementations for interfaces removed.
+- `any*` => `any`, same for interfaces.
+- Private / local globals now have `internal` visibility in LLVM.
+
+### Fixes
+
+### Stdlib changes
+- "init_new/init_temp" removed. 
+- LinkedList API rewritten. 
+- List "pop" and "remove" function now return Optionals. 
+- RingBuffer API rewritten. Allocator interface changed. 
+- Deprecated Allocator, DString and mem functions removed. 
+- "identity" functions are now constants for Matrix and Complex numbers.
+
 ## 0.5.5 Change list
 
 ### Changes / improvements

@@ -3,7 +3,7 @@ module foo;
 
 extern fn void printf(char*, ...);
 
-fn void test(any* z)
+fn void test(any z)
 {
     switch (z)
     {
@@ -15,7 +15,7 @@ fn void test(any* z)
             printf("Unknown type.\n");
     }
 }
-fn void test2(any* y)
+fn void test2(any y)
 {
     switch (z = y)
     {
@@ -29,7 +29,7 @@ fn void test2(any* y)
     }
 }
 
-fn void test3(any* y)
+fn void test3(any y)
 {
     switch (z = *y)
     {
@@ -64,7 +64,7 @@ fn int main()
 
 define void @foo.test(i64 %0, ptr %1) #0 {
 entry:
-  %z = alloca %"any*", align 8
+  %z = alloca %any, align 8
   %switch = alloca i64, align 8
   %z3 = alloca ptr, align 8
   %z11 = alloca ptr, align 8
@@ -145,8 +145,8 @@ switch.exit:                                      ; preds = %switch.default, %sw
 ; Function Attrs:
 define void @foo.test2(i64 %0, ptr %1) #0 {
 entry:
-  %y = alloca %"any*", align 8
-  %.anon = alloca %"any*", align 8
+  %y = alloca %any, align 8
+  %.anon = alloca %any, align 8
   %switch = alloca i64, align 8
   %z = alloca ptr, align 8
   %taddr = alloca i32, align 4
@@ -184,9 +184,9 @@ switch.case:                                      ; preds = %result_block
   %8 = load ptr, ptr %.anon, align 8
   store ptr %8, ptr %z, align 8
   store i32 12, ptr %taddr, align 4
-  %9 = insertvalue %"any*" undef, ptr %taddr, 0
-  %10 = insertvalue %"any*" %9, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %10, ptr %y, align 8
+  %9 = insertvalue %any undef, ptr %taddr, 0
+  %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %10, ptr %y, align 8
   %11 = load ptr, ptr %z, align 8
   %12 = load i32, ptr %11, align 4
   call void (ptr, ...) @printf(ptr @.str.3, i32 %12)
@@ -233,8 +233,8 @@ switch.exit:                                      ; preds = %switch.default, %sw
 ; Function Attrs:
 define void @foo.test3(i64 %0, ptr %1) #0 {
 entry:
-  %y = alloca %"any*", align 8
-  %.anon = alloca %"any*", align 8
+  %y = alloca %any, align 8
+  %.anon = alloca %any, align 8
   %switch = alloca i64, align 8
   %z = alloca i32, align 4
   %z10 = alloca double, align 8
@@ -317,91 +317,91 @@ switch.exit:                                      ; preds = %switch.default, %sw
 define i32 @main() #0 {
 entry:
   %taddr = alloca double, align 8
-  %taddr1 = alloca %"any*", align 8
+  %taddr1 = alloca %any, align 8
   %taddr2 = alloca i32, align 4
-  %taddr3 = alloca %"any*", align 8
+  %taddr3 = alloca %any, align 8
   %taddr7 = alloca i8, align 1
-  %taddr8 = alloca %"any*", align 8
+  %taddr8 = alloca %any, align 8
   %taddr12 = alloca double, align 8
-  %taddr13 = alloca %"any*", align 8
+  %taddr13 = alloca %any, align 8
   %taddr17 = alloca i32, align 4
-  %taddr18 = alloca %"any*", align 8
+  %taddr18 = alloca %any, align 8
   %taddr22 = alloca i8, align 1
-  %taddr23 = alloca %"any*", align 8
+  %taddr23 = alloca %any, align 8
   %taddr27 = alloca double, align 8
-  %taddr28 = alloca %"any*", align 8
+  %taddr28 = alloca %any, align 8
   %taddr32 = alloca i32, align 4
-  %taddr33 = alloca %"any*", align 8
+  %taddr33 = alloca %any, align 8
   %taddr37 = alloca i8, align 1
-  %taddr38 = alloca %"any*", align 8
+  %taddr38 = alloca %any, align 8
   store double 1.230000e+02, ptr %taddr, align 8
-  %0 = insertvalue %"any*" undef, ptr %taddr, 0
-  %1 = insertvalue %"any*" %0, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  store %"any*" %1, ptr %taddr1, align 8
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  store %any %1, ptr %taddr1, align 8
   %lo = load i64, ptr %taddr1, align 8
   %ptradd = getelementptr inbounds i8, ptr %taddr1, i64 8
   %hi = load ptr, ptr %ptradd, align 8
   call void @foo.test(i64 %lo, ptr %hi)
   store i32 1, ptr %taddr2, align 4
-  %2 = insertvalue %"any*" undef, ptr %taddr2, 0
-  %3 = insertvalue %"any*" %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %3, ptr %taddr3, align 8
+  %2 = insertvalue %any undef, ptr %taddr2, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %3, ptr %taddr3, align 8
   %lo4 = load i64, ptr %taddr3, align 8
   %ptradd5 = getelementptr inbounds i8, ptr %taddr3, i64 8
   %hi6 = load ptr, ptr %ptradd5, align 8
   call void @foo.test(i64 %lo4, ptr %hi6)
   store i8 1, ptr %taddr7, align 1
-  %4 = insertvalue %"any*" undef, ptr %taddr7, 0
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  store %"any*" %5, ptr %taddr8, align 8
+  %4 = insertvalue %any undef, ptr %taddr7, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  store %any %5, ptr %taddr8, align 8
   %lo9 = load i64, ptr %taddr8, align 8
   %ptradd10 = getelementptr inbounds i8, ptr %taddr8, i64 8
   %hi11 = load ptr, ptr %ptradd10, align 8
   call void @foo.test(i64 %lo9, ptr %hi11)
   store double 1.235000e+02, ptr %taddr12, align 8
-  %6 = insertvalue %"any*" undef, ptr %taddr12, 0
-  %7 = insertvalue %"any*" %6, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  store %"any*" %7, ptr %taddr13, align 8
+  %6 = insertvalue %any undef, ptr %taddr12, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  store %any %7, ptr %taddr13, align 8
   %lo14 = load i64, ptr %taddr13, align 8
   %ptradd15 = getelementptr inbounds i8, ptr %taddr13, i64 8
   %hi16 = load ptr, ptr %ptradd15, align 8
   call void @foo.test2(i64 %lo14, ptr %hi16)
   store i32 1, ptr %taddr17, align 4
-  %8 = insertvalue %"any*" undef, ptr %taddr17, 0
-  %9 = insertvalue %"any*" %8, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %9, ptr %taddr18, align 8
+  %8 = insertvalue %any undef, ptr %taddr17, 0
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %9, ptr %taddr18, align 8
   %lo19 = load i64, ptr %taddr18, align 8
   %ptradd20 = getelementptr inbounds i8, ptr %taddr18, i64 8
   %hi21 = load ptr, ptr %ptradd20, align 8
   call void @foo.test2(i64 %lo19, ptr %hi21)
   store i8 1, ptr %taddr22, align 1
-  %10 = insertvalue %"any*" undef, ptr %taddr22, 0
-  %11 = insertvalue %"any*" %10, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  store %"any*" %11, ptr %taddr23, align 8
+  %10 = insertvalue %any undef, ptr %taddr22, 0
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  store %any %11, ptr %taddr23, align 8
   %lo24 = load i64, ptr %taddr23, align 8
   %ptradd25 = getelementptr inbounds i8, ptr %taddr23, i64 8
   %hi26 = load ptr, ptr %ptradd25, align 8
   call void @foo.test2(i64 %lo24, ptr %hi26)
   store double 1.240000e+02, ptr %taddr27, align 8
-  %12 = insertvalue %"any*" undef, ptr %taddr27, 0
-  %13 = insertvalue %"any*" %12, i64 ptrtoint (ptr @"$ct.double" to i64), 1
-  store %"any*" %13, ptr %taddr28, align 8
+  %12 = insertvalue %any undef, ptr %taddr27, 0
+  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.double" to i64), 1
+  store %any %13, ptr %taddr28, align 8
   %lo29 = load i64, ptr %taddr28, align 8
   %ptradd30 = getelementptr inbounds i8, ptr %taddr28, i64 8
   %hi31 = load ptr, ptr %ptradd30, align 8
   call void @foo.test3(i64 %lo29, ptr %hi31)
   store i32 2, ptr %taddr32, align 4
-  %14 = insertvalue %"any*" undef, ptr %taddr32, 0
-  %15 = insertvalue %"any*" %14, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %"any*" %15, ptr %taddr33, align 8
+  %14 = insertvalue %any undef, ptr %taddr32, 0
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %15, ptr %taddr33, align 8
   %lo34 = load i64, ptr %taddr33, align 8
   %ptradd35 = getelementptr inbounds i8, ptr %taddr33, i64 8
   %hi36 = load ptr, ptr %ptradd35, align 8
   call void @foo.test3(i64 %lo34, ptr %hi36)
   store i8 1, ptr %taddr37, align 1
-  %16 = insertvalue %"any*" undef, ptr %taddr37, 0
-  %17 = insertvalue %"any*" %16, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
-  store %"any*" %17, ptr %taddr38, align 8
+  %16 = insertvalue %any undef, ptr %taddr37, 0
+  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.bool" to i64), 1
+  store %any %17, ptr %taddr38, align 8
   %lo39 = load i64, ptr %taddr38, align 8
   %ptradd40 = getelementptr inbounds i8, ptr %taddr38, i64 8
   %hi41 = load ptr, ptr %ptradd40, align 8

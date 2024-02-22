@@ -346,8 +346,8 @@ CastKind cast_to_bool_kind(Type *type)
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
 			return CAST_PTRBOOL;
-		case TYPE_ANYPTR:
-		case TYPE_INFPTR:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
 			return CAST_ANYBOOL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
@@ -367,8 +367,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ENUM:
 		case TYPE_MEMBER:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
 			// Everything else is an error
 			return CAST_ERROR;
 	}
@@ -1018,10 +1016,10 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	Type *pointee = cc->from_type->pointer;
 	if (type_may_implement_interface(pointee))
 	{
-		Type *interface = cc->to->pointer;
+		Type *interface = cc->to;
 		Decl *pointee_decl = pointee->decl;
 		FOREACH_BEGIN(TypeInfo *interface_type, pointee_decl->interfaces)
-			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_ALLOW_ANY)) return false;
+			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return false;
 			if (interface_type->type == interface) return true;
 		FOREACH_END();
 	}
@@ -1035,15 +1033,15 @@ static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool 
 {
 	if (is_explicit) return true;
 
-	Type *from_interface = cc->from_type->pointer;
-	Type *interface = cc->to->pointer->canonical;
+	Type *from_interface = cc->from_type;
+	Type *interface = cc->to->canonical;
 	if (!sema_resolve_type_decl(cc->context, from_interface)) return false;
 	FOREACH_BEGIN(TypeInfo *parent, from_interface->decl->interfaces)
 		if (parent->type->canonical == interface) return true;
 	FOREACH_END();
 	if (is_silent) return false;
 	RETURN_SEMA_ERROR(cc->expr, "%s is not a parent interface of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
-	                  type_quoted_error_string(cc->to->pointer), type_quoted_error_string(from_interface),
+	                  type_quoted_error_string(cc->to), type_quoted_error_string(from_interface),
 	                  type_to_error_string(cc->to_type));
 }
 
@@ -2114,8 +2112,8 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_F32]              = CONV_FLOAT,
 	[TYPE_F64]              = CONV_FLOAT,
 	[TYPE_F128]             = CONV_FLOAT,
-	[TYPE_ANY]              = CONV_NO,
-	[TYPE_INTERFACE]         = CONV_NO,
+	[TYPE_ANY]              = CONV_ANY,
+	[TYPE_INTERFACE]        = CONV_INTERFACE,
 	[TYPE_ANYFAULT]         = CONV_ANYFAULT,
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
@@ -2128,8 +2126,6 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEDEF]          = CONV_NO,
 	[TYPE_DISTINCT]         = CONV_DISTINCT,
 	[TYPE_ARRAY]            = CONV_ARRAY,
-	[TYPE_INFPTR]           = CONV_INTERFACE,
-	[TYPE_ANYPTR]           = CONV_ANY,
 	[TYPE_SUBARRAY]         = CONV_SUBARRAY,
 	[TYPE_FLEXIBLE_ARRAY]   = CONV_NO,
 	[TYPE_INFERRED_ARRAY]   = CONV_NO,
