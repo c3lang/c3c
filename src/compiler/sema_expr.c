@@ -3403,16 +3403,16 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		switch (flat->type_kind)
 		{
 			case TYPE_I8:
-				expr->const_expr.ixx.i = (Int128){ 0, 0x80 };
+				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFFFF80 };
 				break;
 			case TYPE_I16:
-				expr->const_expr.ixx.i = (Int128){ 0, 0x8000 };
+				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFFFFFF8000 };
 				break;
 			case TYPE_I32:
-				expr->const_expr.ixx.i = (Int128){ 0, 1ULL << 31 };
+				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFF, 0xFFFFFFFF80000000 };
 				break;
 			case TYPE_I64:
-				expr->const_expr.ixx.i = (Int128){ 0, 1ULL << 63 };
+				expr->const_expr.ixx.i = (Int128){ 0xFFFFFFFFFFFFFFFF, 1ULL << 63 };
 				break;
 			case TYPE_I128:
 				expr->const_expr.ixx.i = (Int128){ 1ULL << 63, 0 };
