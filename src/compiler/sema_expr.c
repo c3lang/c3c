@@ -3934,15 +3934,58 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
 	assert(len > 0);
+	bool in_xyzw = false;
+	bool in_rgba = false;
 	int index;
 	for (unsigned i = 0; i < len; i++)
 	{
-		index = (kw[0] + 3 - 'w') % 4;
+		switch (kw[i])
+		{
+			case 'x':
+				in_xyzw = true;
+				index = 0;
+				break;
+			case 'r':
+				in_rgba = true;
+				index = 0;
+				break;
+			case 'y':
+				in_xyzw = true;
+				index = 1;
+				break;
+			case 'g':
+				in_rgba = true;
+				index = 1;
+				break;
+			case 'z':
+				in_xyzw = true;
+				index = 2;
+				break;
+			case 'b':
+				in_rgba = true;
+				index = 2;
+				break;
+			case 'w':
+				in_xyzw = true;
+				index = 3;
+				break;
+			case 'a':
+				in_rgba = true;
+				index = 3;
+				break;
+			default:
+				SEMA_ERROR(expr, "The '%c' component is not suported in a vector of length %d.", kw[i], vec_len);
+				return false;
+		}
 		if (index >= vec_len)
 		{
 			SEMA_ERROR(expr, "The '%c' component is not present in a vector of length %d.", kw[i], vec_len);
 			return false;
 		}
+	}
+	if (in_xyzw && in_rgba)
+	{
+		RETURN_SEMA_ERROR(expr, "Simultaneous usage of [xyzw] and [rgba] is disallowed.");
 	}
 	if (len == 1)
 	{
@@ -4158,7 +4201,8 @@ CHECK_DEEPER:
 			for (unsigned i = 0; i < len; i++)
 			{
 				char c = kw[i];
-				if (c < 'w' || c > 'z') goto NOT_SWIZZLE;
+				if (!strchr("xyzwrgba", c))
+					goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
 			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len);
