@@ -4201,8 +4201,7 @@ CHECK_DEEPER:
 			for (unsigned i = 0; i < len; i++)
 			{
 				char c = kw[i];
-				if (!strchr("xyzwrgba", c))
-					goto NOT_SWIZZLE;
+				if (!strchr("xyzwrgba", c)) goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
 			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len);
