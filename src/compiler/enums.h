@@ -762,7 +762,8 @@ typedef enum
 	ATTR_MACRO = 1 << 14,
 	ATTR_DISTINCT = 1 << 15,
 	ATTR_ENUM_VALUE = 1 << 16,
-	ATTR_INTERFACE_METHOD = 1 << 17
+	ATTR_INTERFACE_METHOD = 1 << 17,
+	ATTR_PARAM = 1 << 18,
 } AttributeDomain;
 
 typedef enum

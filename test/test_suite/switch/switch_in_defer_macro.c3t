@@ -416,18 +416,18 @@ import std::io;
 def Lexer = Lexer(<Token, Comment>);
 def Kind = Kind(<Token, Comment>);
 
-enum Token : char (String token)
+enum Token : { String token } char
 {
-    KEYWORD1 ("keword1"),
-    KEYWORD2 ("keyword2"),
-    SINGLE   ("//"),
-    MULTI    ("/*"),
+    KEYWORD1 = "keword1",
+    KEYWORD2 = "keyword2",
+    SINGLE   = "//",
+    MULTI    = "/*",
 }
 
-enum Comment : char (Token start, String end)
+enum Comment : { Token start, String end } char
 {
-    SINGLE (SINGLE, "\n"),
-    MULTI  (MULTI, "*/"),
+    SINGLE = { SINGLE, "\n" },
+    MULTI  = { MULTI, "*/" },
 }
 
 fn bool is_ident_char(usz i, char c)

@@ -2,10 +2,10 @@
 module test;
 import libc;
 
-enum Foo : uint (int val, char* testme)
+enum Foo : { int val, char* testme } uint
 {
-	A(123, "Number A"),
-	B(333, "Number B"),
+	A = { 123, "Number A" },
+	B = { 333, "Number B" },
 }
 
 fn void main()

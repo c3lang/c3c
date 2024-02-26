@@ -2,9 +2,9 @@
 module test;
 import std::io;
 
-enum Abc : int (int x, double y, String z)
+enum Abc : { int x, double y, String z } int
 {
-	OFEKFE(1, 2.0, "foek"),
+	OFEKFE = { 1, 2.0, "foek" },
 }
 
 fn int main()

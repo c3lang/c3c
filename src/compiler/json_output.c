@@ -184,6 +184,7 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 		if (!decl) continue;
 		fputs("\t\t\t\t{\n", file);
 		fprintf(file, "\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
+		fprintf(file, "\t\t\t\t\t\"inline\": \"%s\",\n", decl->var.is_inline ? "false" : "true");
 		fprintf(file, "\t\t\t\t\t\"type\": \"");
 		if (decl->var.type_info)
 		{

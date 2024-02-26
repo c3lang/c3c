@@ -2,11 +2,11 @@ module std::net;
 import std::io;
 import std::ascii;
 
-enum IpProtocol : char (AIFamily ai_family)
+enum IpProtocol : { AIFamily ai_family} char
 {
-	UNSPECIFIED (os::AF_UNSPEC),
-	IPV4        (os::AF_INET),
-	IPV6        (os::AF_INET6),
+	UNSPECIFIED = os::AF_UNSPEC,
+	IPV4        = os::AF_INET,
+	IPV6        = os::AF_INET6,
 }
 
 struct InetAddress (Printable)

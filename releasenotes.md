@@ -6,6 +6,8 @@
 - `@default` implementations for interfaces removed.
 - `any*` => `any`, same for interfaces.
 - Private / local globals now have `internal` visibility in LLVM.
+- Updated enum syntax.
+- `inline` on function parameters for implicit conversions.
 
 ### Fixes
 

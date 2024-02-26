@@ -907,6 +907,25 @@ Type *type_get_flexible_array(Type *arr_type)
 	return type_generate_flexible_array(arr_type, false);
 }
 
+Type *type_inline_type(Type *type)
+{
+	type = type->canonical;
+	if (!type_is_user_defined(type)) return type;
+	Decl *decl = type->decl;
+	if (!decl->is_substruct) return type;
+	switch (decl->decl_kind)
+	{
+		case DECL_STRUCT:
+			return decl->strukt.members[0]->type->canonical;
+		case DECL_DISTINCT:
+			return decl->distinct->type->canonical;
+		case DECL_ENUM:
+			return decl->enums.parameters[0]->type->canonical;
+		default:
+			UNREACHABLE
+	}
+}
+
 static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)
 {
 	assert(array->type_kind == TYPE_ARRAY);
