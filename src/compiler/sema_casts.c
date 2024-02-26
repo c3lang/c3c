@@ -1528,8 +1528,13 @@ static void cast_int_arr_to_bitstruct(SemaContext *context, Expr *expr, Type *ty
 {
 	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_BSINTARR)
 	{
-		expr_replace(expr, exprptr(expr->cast_expr.expr));
-		return;
+		Expr *inner = exprptr(expr->cast_expr.expr);
+		if (type_flatten(inner->type) == type_flatten(type))
+		{
+			expr_replace(expr, inner);
+			expr->type = type;
+			return;
+		}
 	}
 	insert_runtime_cast(expr, CAST_INTARRBS, type);
 }

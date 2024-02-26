@@ -13,6 +13,7 @@
 - $$memcpy_inline and $$memset_inline fixed.
 - `.$Type = ...` and `.$foo = ...` now works #1156.
 - `int.min` incorrect behaviour #1154.
+- Bitstruct cast to other bitstruct by way of underlying type would fail #1159.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.
