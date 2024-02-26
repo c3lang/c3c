@@ -5,6 +5,9 @@
 #include <compiler_tests/benchmark.h>
 #include "sema_internal.h"
 
+char swizzle[256] = { ['x'] = 0x01, ['y'] = 0x02, ['z'] = 0x03, ['w'] = 0x04,
+					  ['r'] = 0x11, ['g'] = 0x12, ['b'] = 0x13, ['a'] = 0x14 };
+
 void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 {
 	unsigned depth = context->active_scope.depth + 1;
