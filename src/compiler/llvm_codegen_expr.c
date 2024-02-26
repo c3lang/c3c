@@ -6849,10 +6849,30 @@ static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)
 	LLVMValueRef mask_val[4];
 	assert(vec_len <= 4);
 	const char *sw_ptr = expr->swizzle_expr.swizzle;
-	char ch;
 	for (unsigned i = 0; i < vec_len; i++)
 	{
-		int index = (sw_ptr[i] + 3 - 'w') % 4;
+		int index;
+		switch (sw_ptr[i])
+		{
+			case 'x':
+			case 'r':
+				index = 0;
+				break;
+			case 'y':
+			case 'g':
+				index = 1;
+				break;
+			case 'z':
+			case 'b':
+				index = 2;
+				break;
+			case 'w':
+			case 'a':
+				index = 3;
+				break;
+			default:
+				UNREACHABLE
+		}
 		mask_val[i] = llvm_const_int(c, type_uint, index);
 	}
 	LLVMValueRef res = LLVMBuildShuffleVector(c->builder, parent, LLVMGetUndef(LLVMTypeOf(parent)), LLVMConstVector(mask_val, vec_len), sw_ptr);
