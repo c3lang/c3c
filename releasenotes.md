@@ -8,6 +8,7 @@
 - Private / local globals now have `internal` visibility in LLVM.
 - Updated enum syntax.
 - `inline` on function parameters for implicit conversions.
+- 'rgba' also available for swizzling.
 
 ### Fixes
 

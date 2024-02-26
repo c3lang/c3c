@@ -3585,3 +3585,5 @@ INLINE const char *section_from_id(SectionId id)
 {
 	return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
 }
+
+extern char swizzle[256];

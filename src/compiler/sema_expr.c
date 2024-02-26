@@ -3934,59 +3934,25 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
 	assert(len > 0);
-	bool in_xyzw = false;
-	bool in_rgba = false;
 	int index;
 	for (unsigned i = 0; i < len; i++)
 	{
-		switch (kw[i])
+		char val = swizzle[(int)kw[i]] - 1;
+		if ((val & 0xF) >= vec_len)
 		{
-			case 'x':
-				in_xyzw = true;
-				index = 0;
-				break;
-			case 'r':
-				in_rgba = true;
-				index = 0;
-				break;
-			case 'y':
-				in_xyzw = true;
-				index = 1;
-				break;
-			case 'g':
-				in_rgba = true;
-				index = 1;
-				break;
-			case 'z':
-				in_xyzw = true;
-				index = 2;
-				break;
-			case 'b':
-				in_rgba = true;
-				index = 2;
-				break;
-			case 'w':
-				in_xyzw = true;
-				index = 3;
-				break;
-			case 'a':
-				in_rgba = true;
-				index = 3;
-				break;
-			default:
-				SEMA_ERROR(expr, "The '%c' component is not suported in a vector of length %d.", kw[i], vec_len);
-				return false;
-		}
-		if (index >= vec_len)
-		{
-			SEMA_ERROR(expr, "The '%c' component is not present in a vector of length %d.", kw[i], vec_len);
+			RETURN_SEMA_ERROR(expr, "The '%c' component is not present in a vector of length %d, did you assume a longer vector?", kw[i], vec_len);
 			return false;
 		}
+		if (i == 0)
+		{
+			index = val;
+		}
+		if ((index ^ val) & 0x10)
+		{
+			RETURN_SEMA_ERROR(expr, "Mixing [xyzw] and [rgba] is not permitted, you will need to select one of them.");
+		}
 	}
-	if (in_xyzw && in_rgba)
-	{
-		RETURN_SEMA_ERROR(expr, "Simultaneous usage of [xyzw] and [rgba] is disallowed.");
-	}
+	index &= 0xF;
 	if (len == 1)
 	{
 		expr->expr_kind = EXPR_SUBSCRIPT_ADDR;
@@ -4200,8 +4166,7 @@ CHECK_DEEPER:
 		{
 			for (unsigned i = 0; i < len; i++)
 			{
-				char c = kw[i];
-				if (!strchr("xyzwrgba", c)) goto NOT_SWIZZLE;
+				if (!swizzle[(int)kw[i]]) goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
 			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len);
