@@ -55,7 +55,7 @@ static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
 										  SourceSpan from);
 
-static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default);
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl);
 
@@ -988,6 +988,12 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 		assert(param->resolve_status == RESOLVE_NOT_DONE && "The param shouldn't have been resolved yet.");
 		param->resolve_status = RESOLVE_RUNNING;
+		bool erase = false;
+		if (!sema_analyse_attributes(context, param, param->attributes, ATTR_PARAM, &erase))
+		{
+			return decl_poison(param);
+		}
+		assert(!erase);
 		param->unit = context->unit;
 		assert(param->decl_kind == DECL_VAR);
 		VarDeclKind var_kind = param->var.kind;
@@ -1085,13 +1091,33 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			type_info->type = type_get_subarray(type_info->type);
 		}
 
-		if (type_info)
+		if (!type_info)
+		{
+			if (param->var.is_inline) RETURN_SEMA_ERROR(param, "An 'inline' parameter must be typed.");
+		}
+		else
 		{
 			if (!sema_resolve_type_structure(context, type_info->type, type_info->span)) return false;
-
-			param->type = type_info->type;
+			if (param->var.is_inline)
+			{
+				if (param->var.kind != VARDECL_PARAM && param->var.kind != VARDECL_PARAM_CT)
+				{
+					RETURN_SEMA_ERROR(param, "Only regular and constant parameters may be 'inline'.");
+				}
+				Type *type = type_info->type->canonical;
+				if (!(type_is_user_defined(type) && type->decl && type->decl->is_substruct))
+				{
+					RETURN_SEMA_ERROR(param, "The type must either be an enum with 'inline', an distinct 'inline' or a substruct.");
+				}
+				param->type = type_inline_type(type);
+			}
+			else
+			{
+				param->type = type_info->type;
+			}
 			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
 		}
+
 		if (param->var.init_expr)
 		{
 			Expr *expr = param->var.init_expr;
@@ -1224,16 +1250,9 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 	return true;
 }
 
-static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bool *has_default)
+static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 {
-	*has_default = false;
-	assert(param->decl_kind == DECL_VAR);
-	// We need to check that the parameters are not typeless nor are of any macro parameter kind.
-	if (param->var.kind != VARDECL_PARAM && !param->var.type_info)
-	{
-		SEMA_ERROR(param, "An associated value must be a normal typed parameter.");
-		return false;
-	}
+	assert(param->decl_kind == DECL_VAR && param->var.kind == VARDECL_PARAM && param->var.type_info);
 	if (vec_size(param->attributes))
 	{
 		SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
@@ -1241,10 +1260,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 	}
 	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (param->var.vararg)
-	{
-		type_info->type = type_get_subarray(type_info->type);
-	}
+	assert(!param->var.vararg);
 	param->type = type_info->type;
 	assert(param->name);
 	if (param->name == kw_nameof)
@@ -1259,23 +1275,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param, bo
 		return false;
 	}
 	sema_decl_stack_push(param);
-	if (param->var.init_expr)
-	{
-		Expr *expr = param->var.init_expr;
-
-		if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL)) return false;
-		if (IS_OPTIONAL(expr))
-		{
-			SEMA_ERROR(expr, "Default arguments may not be optionals.");
-			return false;
-		}
-		if (!expr_is_constant_eval(expr, CONSTANT_EVAL_GLOBAL_INIT))
-		{
-			SEMA_ERROR(expr, "Only constant expressions may be used as default values.");
-			return false;
-		}
-		*has_default = true;
-	}
+	assert(!param->var.init_expr);
 	return sema_set_abi_alignment(context, param->type, &param->alignment);
 }
 
@@ -1301,11 +1301,8 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
 
-
 	Decl **associated_values = decl->enums.parameters;
 	unsigned associated_value_count = vec_size(associated_values);
-	unsigned mandatory_count = 0;
-	bool default_values_used = false;
 	Decl** state = sema_decl_stack_store();
 	for (unsigned i = 0; i < associated_value_count; i++)
 	{
@@ -1321,18 +1318,12 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				value->resolve_status = RESOLVE_RUNNING;
 				break;
 		}
-		bool has_default = false;
-		if (!sema_analyse_enum_param(context, value, &has_default)) goto ERR;
-		if (!has_default)
+		if (!sema_analyse_enum_param(context, value)) goto ERR;
+		if (value->var.is_inline)
 		{
-			mandatory_count++;
-			if (default_values_used && !value->var.vararg)
-			{
-				SEMA_ERROR(value, "Non-default parameters cannot appear after default parameters.");
-				goto ERR;
-			}
+			if (i != 0) RETURN_SEMA_ERROR(value, "Only the first parameter may be declared 'inline'.");
+			decl->is_substruct = true;
 		}
-		default_values_used |= has_default;
 		value->resolve_status = RESOLVE_DONE;
 	}
 	sema_decl_stack_restore(state);
@@ -1396,15 +1387,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				SEMA_ERROR(args[0], "No associated values are defined for this enum.");
-				return false;
+				RETURN_SEMA_ERROR(args[0], "No associated values are defined for this enum.");
 			}
-			SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
-			return false;
+			RETURN_SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
 		}
-		if (arg_count < mandatory_count)
+		if (arg_count < associated_value_count)
 		{
-			SEMA_ERROR(enum_value, "Expected associated value(s) defined for this enum.");
+			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value(s) for this enum.", associated_value_count);
 			return false;
 		}
 		for (unsigned j = 0; j < arg_count; j++)
@@ -1418,7 +1407,6 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				return false;
 			}
 		}
-		REMINDER("named parameters and defaults do not work");
 		enum_value->resolve_status = RESOLVE_DONE;
 	}
 	return success;
@@ -1887,6 +1875,8 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 			return "bitstruct member";
 		case ATTR_FUNC:
 			return "function";
+		case ATTR_PARAM:
+			return "parameter";
 		case ATTR_ENUM_VALUE:
 			return "enum value";
 		case ATTR_GLOBAL:
@@ -1972,7 +1962,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
-			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
+			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,

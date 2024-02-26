@@ -458,6 +458,7 @@ typedef struct VarDecl_
 	bool is_threadlocal : 1;
 	bool no_init : 1;
 	bool bit_is_expr : 1;
+	bool is_inline : 1;
 	TypeInfoId type_info;
 	union
 	{
@@ -2403,6 +2404,7 @@ Type *type_find_largest_union_element(Type *type);
 Type *type_find_max_type(Type *type, Type *other);
 Type *type_find_max_type_may_fail(Type *type, Type *other);
 Type *type_abi_find_single_struct_element(Type *type);
+Type *type_inline_type(Type *type);
 Module *type_base_module(Type *type);
 bool type_is_valid_for_vector(Type *type);
 bool type_is_valid_for_array(Type *type);
@@ -2932,7 +2934,7 @@ static inline Type *type_base(Type *type)
 		}
 	}
 }
-static inline Type *type_flat_inline(Type *type)
+static inline Type *type_flat_distinct_inline(Type *type)
 {
 	do
 	{

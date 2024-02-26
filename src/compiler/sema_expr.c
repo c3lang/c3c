@@ -224,6 +224,45 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 	UNREACHABLE
 }
 
+Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		{
+			Decl *decl = type->decl;
+			if (!decl->is_substruct) return NULL;
+			Expr *embedded_struct = expr_access_inline_member(parent, decl);
+			return embedded_struct;
+		}
+		case TYPE_DISTINCT:
+		{
+			Decl *decl = type->decl;
+			if (!decl->is_substruct) return NULL;
+			Expr *inner_expr = expr_copy(parent);
+			type = type->decl->distinct->type;
+			inner_expr->type = type;
+			return inner_expr;
+		}
+		case TYPE_ENUM:
+		{
+			Decl *decl = type->decl;
+			if (!decl->is_substruct) return NULL;
+			if (parent->expr_kind == EXPR_CONST)
+			{
+				return copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[0]);
+			}
+			Expr *property = expr_new(EXPR_ACCESS, parent->span);
+			property->resolve_status = RESOLVE_DONE;
+			property->access_expr.parent = parent;
+			property->access_expr.ref = decl->enums.parameters[0];
+			property->type = property->access_expr.ref->type;
+			return property;
+		}
+		default:
+			return NULL;
+	}
+}
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref, bool report_error)
 {
 	unsigned args = vec_size(context->macro_varargs);
@@ -1561,6 +1600,8 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 		VarDeclKind kind = param->var.kind;
 		Type *type = param->type;
 
+		bool is_inline = param->var.is_inline;
+
 		// 16. Analyse a regular argument.
 		switch (kind)
 		{
@@ -1595,7 +1636,14 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				break;
 			case VARDECL_PARAM:
 				// foo
-				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
+				if (is_inline)
+				{
+					if (!sema_analyse_expr_rhs(context, typeget(param->var.type_info), arg, true, no_match_ref)) return false;
+				}
+				else
+				{
+					if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
+				}
 				if (type_is_void(type_no_optional(arg->type))) RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
 				if (IS_OPTIONAL(arg)) *optional = true;
 				if (type_is_invalid_storage_type(arg->type))
@@ -1603,12 +1651,17 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 					assert(!type_is_wildcard(arg->type));
 					RETURN_SEMA_ERROR(arg, "A value of type %s can only be passed as a compile time parameter.", type_quoted_error_string(arg->type));
 				}
+				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
+				if (is_inline)
+				{
+					args[i] = arg = sema_enter_inline_member(arg, arg->type->canonical);
+					assert(arg);
+				}
 				if (!param->alignment)
 				{
 					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
 					if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
 				}
-				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
 				break;
 			case VARDECL_PARAM_EXPR:
 				// #foo
@@ -1618,11 +1671,24 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM_CT:
 				// $foo
 				assert(callee.macro);
+				if (is_inline)
+				{
+					if (!sema_analyse_expr_rhs(context, typeget(param->var.type_info), arg, true, no_match_ref)) return false;
+				}
+				else
+				{
+					if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
+				}
 				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
 				if (!expr_is_constant_eval(arg, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
 					SEMA_ERROR(arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
 					return false;
+				}
+				if (is_inline)
+				{
+					args[i] = arg = sema_enter_inline_member(arg, arg->type->canonical);
+					assert(arg);
 				}
 				break;
 			case VARDECL_PARAM_CT_TYPE:
@@ -4240,22 +4306,15 @@ CHECK_DEEPER:
 	if (!member)
 	{
 		// 11a. We have a potential embedded struct check:
-		if (type_is_substruct(type))
+		Expr *substruct = sema_enter_inline_member(current_parent, type);
+		if (substruct)
 		{
-			Expr *embedded_struct = expr_access_inline_member(parent, type->decl);
-			current_parent = embedded_struct;
-			type = embedded_struct->type->canonical;
+			current_parent = substruct;
+			type = current_parent->type->canonical;
+			flat_type = type_flatten(type);
 			goto CHECK_DEEPER;
 		}
 
-		if (type->type_kind == TYPE_DISTINCT && decl->is_substruct)
-		{
-			Expr *inner_expr = expr_copy(current_parent);
-			type = type->decl->distinct->type;
-			inner_expr->type = type;
-			current_parent = inner_expr;
-			goto CHECK_DEEPER;
-		}
 		// 11b. Otherwise we give up.
 		if (private)
 		{
@@ -5296,7 +5355,7 @@ INLINE bool sema_is_valid_vector_pointer_offset_type(Type *canonical_type, Type 
 	if (canonical_type->type_kind == TYPE_VECTOR)
 	{
 		// Reduce according to inline.
-		Type *element = type_flat_inline(canonical_type->array.base);
+		Type *element = type_flat_distinct_inline(canonical_type->array.base);
 		if (type_is_integer(element))
 		{
 			if (canonical_type->array.len != canonical_pointer_type->array.len)

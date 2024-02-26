@@ -1137,18 +1137,16 @@ static inline Decl *parse_global_declaration(ParseContext *c)
  */
 static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 {
+	bool is_inline = try_consume(c, TOKEN_INLINE);
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
 	if (type->optional) RETURN_SEMA_ERROR(type, "Parameters may not be optional.");
 	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
+	if (is_inline) param->var.is_inline = is_inline;
 	if (!try_consume(c, TOKEN_IDENT))
 	{
 		if (token_is_keyword_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Keywords cannot be used as member names.");
 		if (token_is_some_ident(c->tok)) RETURN_SEMA_ERROR_HERE("Expected a name starting with a lower-case letter.");
 		RETURN_SEMA_ERROR_HERE("Expected a member name here.");
-	}
-	if (try_consume(c, TOKEN_EQ))
-	{
-		if (!parse_decl_initializer(c, param)) return poisoned_decl;
 	}
 	vec_add(*parameters, param);
 	RANGE_EXTEND_PREV(param);
@@ -1228,6 +1226,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 
 		// Now we have the following possibilities: "foo", "Foo foo", "Foo... foo", "foo...", "Foo"
 		TypeInfo *type = NULL;
+		bool is_inline = try_consume(c, TOKEN_INLINE);
 		if (parse_next_is_typed_parameter(c, parse_kind))
 		{
 			// Parse the type,
@@ -1249,7 +1248,10 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				*variadic = VARIADIC_TYPED;
 			}
 		}
-
+		else
+		{
+			if (is_inline) RETURN_SEMA_ERROR_HERE("'inline' can only preceed a type.");
+		}
 		// We have parsed the optional type, next get the optional variable name
 		VarDeclKind param_kind;
 		const char *name = NULL;
@@ -1365,16 +1367,19 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				param_kind = VARDECL_PARAM;
 				break;
 			default:
-				SEMA_ERROR_HERE("Expected a parameter.");
-				return false;
+				RETURN_SEMA_ERROR_HERE("Expected a parameter.");
 		}
 		if (type && type->optional)
 		{
-			SEMA_ERROR(type, "Parameters may not be optional.");
-			return false;
+			RETURN_SEMA_ERROR(type, "Parameters may not be optional.");
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
+		if (is_inline)
+		{
+			assert(type);
+			param->var.is_inline = true;
+		}
 		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 		if (!no_name)
 		{
@@ -2160,10 +2165,10 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref)
 {
 	// If no left parenthesis we're done.
-	if (!try_consume(c, TOKEN_LPAREN)) return true;
+	if (!try_consume(c, TOKEN_LBRACE)) return true;
 
 	// We allow (), but we might consider making it an error later on.
-	while (!try_consume(c, TOKEN_RPAREN))
+	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
@@ -2171,7 +2176,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 		last_parameter->var.index = vec_size(*parameters_ref) - 1;
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			EXPECT_OR_RET(TOKEN_RPAREN, false);
+			EXPECT_OR_RET(TOKEN_RBRACE, false);
 		}
 	}
 	return true;
@@ -2181,7 +2186,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 /**
  * Parse an enum declaration (after "enum")
  *
- * enum ::= ENUM TYPE_IDENT opt_interfaces (':' type enum_param_list)? opt_attributes '{' enum_body '}'
+ * enum ::= ENUM TYPE_IDENT opt_interfaces (':' enum_param_list? type?)? opt_attributes '{' enum_body '}'
  * enum_body ::= enum_def (',' enum_def)* ','?
  * enum_def ::= CONST_IDENT ('(' arg_list ')')?
  */
@@ -2197,17 +2202,19 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	// Parse the spec
 	if (try_consume(c, TOKEN_COLON))
 	{
-		ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
-		if (type->optional)
-		{
-			SEMA_ERROR(type, "An enum can't have an optional type.");
-			return poisoned_decl;
-		}
 		if (!parse_enum_param_list(c, &decl->enums.parameters)) return poisoned_decl;
+		if (!decl->enums.parameters || !tok_is(c, TOKEN_LBRACE))
+		{
+			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
+			if (type->optional)
+			{
+				SEMA_ERROR(type, "An enum can't have an optional type.");
+				return poisoned_decl;
+			}
+		}
 	}
-
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
+	unsigned expected_parameters = vec_size(decl->enums.parameters);
 	Visibility visibility = decl->visibility;
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
@@ -2232,14 +2239,21 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 				break;
 			}
 		}
-		if (try_consume(c, TOKEN_LPAREN))
-		{
-			Expr **result = NULL;
-			if (!parse_arg_list(c, &result, TOKEN_RPAREN, NULL, false)) return poisoned_decl;
-			enum_const->enum_constant.args = result;
-			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
-		}
 		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
+		if (try_consume(c, TOKEN_EQ))
+		{
+			if (expected_parameters == 1 || !tok_is(c, TOKEN_LBRACE))
+			{
+				ASSIGN_EXPR_OR_RET(Expr *single, parse_expr(c), poisoned_decl);
+				vec_add(enum_const->enum_constant.args, single);
+			}
+			else
+			{
+				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
+				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, NULL, false)) return poisoned_decl;
+				CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+			}
+		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))

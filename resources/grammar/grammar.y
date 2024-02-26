@@ -484,7 +484,7 @@ enum_list
 
 enum_constant
 	: CONST_IDENT opt_attributes
-	| CONST_IDENT '(' arg_list ')' opt_attributes
+	| CONST_IDENT opt_attributes '=' constant_expr
 	;
 
 identifier_list
@@ -1017,9 +1017,7 @@ enum_params
 	;
 
 enum_param_list
-	: '(' enum_params ')'
-	| '(' ')'
-	| empty
+	: '{' enum_params '}'
 	;
 
 struct_member_decl
@@ -1033,12 +1031,14 @@ struct_member_decl
 	;
 
 enum_spec
-	: ':' type enum_param_list
-	| empty
+	: ':' enum_param_list opt_attributes
+	| ':' enum_param_list base_type opt_attributes
+	| ':' base_type opt_attributes
+	| opt_attributes
 	;
 
 enum_declaration
-	: ENUM TYPE_IDENT opt_interface_impl enum_spec opt_attributes '{' enum_list '}'
+	: ENUM TYPE_IDENT opt_interface_impl enum_spec '{' enum_list '}'
 	;
 
 faults
