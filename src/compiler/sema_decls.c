@@ -900,7 +900,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		rtype = rtype_info->type;
 		if (sig->attrs.nodiscard)
 		{
-			if (rtype == type_void)
+			if (type_is_void(rtype))
 			{
 				SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_macro ? "macros" : "functions");
 				return false;
@@ -1565,7 +1565,7 @@ static inline bool sema_analyse_operator_element_at(Decl *method)
 	TypeInfo *rtype;
 	Decl **params;
 	if (!sema_analyse_operator_common(method, &rtype, &params, 2)) return false;
-	if (rtype->type->canonical == type_void)
+	if (type_is_void(rtype->type))
 	{
 		SEMA_ERROR(rtype, "The return type cannot be 'void'.");
 		return false;
@@ -2842,7 +2842,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 				SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
 				return decl_poison(decl);
 			}
-			if (rtype->canonical == type_void)
+			if (type_is_void(rtype))
 			{
 				rtype_info->type = type_get_optional(rtype);
 			}
@@ -2856,7 +2856,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	Type *rtype = rtype_info->type->canonical;
 	if (sig->attrs.nodiscard)
 	{
-		if (rtype == type_void)
+		if (type_is_void(rtype))
 		{
 			SEMA_ERROR(rtype_info, "@nodiscard cannot be used on functions returning 'void'.");
 			return decl_poison(decl);
@@ -3079,7 +3079,7 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 			break;
 	}
 	if (!type_is_optional(type)) return true;
-	if (type == type_wildcard_optional || type->optional == type_void)
+	if (type == type_wildcard_optional || type_is_void(type->optional))
 	{
 		sema_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 						 type_quoted_error_string(type_anyfault));
@@ -3262,7 +3262,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				{
 					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
 				}
-				else if (init_expr->type == type_void)
+				else if (type_is_void(init_expr->type))
 				{
 					SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
 				}
@@ -3470,7 +3470,7 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 			if (!sema_resolve_type_info(c, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = type_info->type->canonical;
 			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
-			if (type == type_void) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
+			if (type_is_void(type)) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
 			if (type_is_invalid_storage_type(type)) RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
 			if (type_is_func_ptr(type))
 			{

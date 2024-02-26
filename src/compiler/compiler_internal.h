@@ -2834,6 +2834,7 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 INLINE bool type_is_invalid_storage_type(Type *type)
 {
 	if (!type) return false;
+	RETRY:
 	if (type == type_wildcard_optional) return true;
 	switch (type->type_kind)
 	{
@@ -2843,6 +2844,9 @@ INLINE bool type_is_invalid_storage_type(Type *type)
 		case TYPE_TYPEINFO:
 		case TYPE_WILDCARD:
 			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
 		default:
 			return false;
 	}

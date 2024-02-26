@@ -1391,7 +1391,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		proto->is_optional = true;
 		Type *real_return_type = rtype->optional;
 		proto->ret_by_ref_type = rtype->optional;
-		proto->ret_by_ref = real_return_type->type_kind != TYPE_VOID;
+		proto->ret_by_ref = !type_is_void(real_return_type);
 		proto->abi_ret_type = type_anyfault;
 	}
 	else
@@ -1773,7 +1773,7 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 		element2 = element2->canonical;
 	}
 	if (element1 == element2) return TYPE_SAME;
-	if ((element1 == type_void && element2 == type_char) || (element1 == type_char && element2 == type_void))
+	if ((type_is_void(element1) && element2 == type_char) || (element1 == type_char && type_is_void(element2)))
 	{
 		return TYPE_SAME;
 	}

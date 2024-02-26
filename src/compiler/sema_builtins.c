@@ -227,8 +227,8 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	for (int i = 1; i < 3; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_analyse_expr_rhs(context, pointee == type_void ? NULL : pointee, arg, true, NULL)) return false;
-		if (pointee == type_void) pointee = arg->type->canonical;
+		if (!sema_analyse_expr_rhs(context, type_is_void(pointee) ? NULL : pointee, arg, true, NULL)) return false;
+		if (type_is_void(pointee)) pointee = arg->type->canonical;
 		if (!type_is_atomic(type_flatten(arg->type)))
 		{
 			RETURN_SEMA_ERROR(arg, "%s may not be used with atomics.", type_quoted_error_string(arg->type));

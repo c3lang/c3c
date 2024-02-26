@@ -1069,7 +1069,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	// 3a. Check for optional in case of an expression.
 	if (IS_OPTIONAL(last))
 	{
-		if (type_no_optional(last->type) == type_void && cast_to_bool)
+		if (type_is_void(type_no_optional(last->type)) && cast_to_bool)
 		{
 			SEMA_ERROR(last, "Use '@ok(<expr>)' or '@catch(<expr>)' to explicitly convert a 'void!' to a boolean.");
 			return false;

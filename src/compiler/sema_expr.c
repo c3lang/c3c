@@ -1596,7 +1596,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM:
 				// foo
 				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
-				if (type_no_optional(arg->type) == type_void) RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
+				if (type_is_void(type_no_optional(arg->type))) RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
 				if (IS_OPTIONAL(arg)) *optional = true;
 				if (type_is_invalid_storage_type(arg->type))
 				{
@@ -1748,7 +1748,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 		}
 
 		// 3. Same type -> we're done.
-		if (common_type == rtype || (common_type == type_void && rtype == type_wildcard)) continue;
+		if (common_type == rtype || (type_is_void(common_type) && rtype == type_wildcard)) continue;
 
 		// 4. Find the max of the old and new.
 		Type *max = type_find_max_type(common_type, rtype);
@@ -1783,7 +1783,7 @@ static inline Type *context_unify_returns(SemaContext *context)
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			if (!ret_expr)
 			{
-				if (common_type == type_void) continue;
+				if (type_is_void(common_type)) continue;
 				context_unify_returns(context);
 			}
 			// 8. All casts should work.
@@ -2023,7 +2023,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			if (!ret_expr)
 			{
-				if (rtype == type_void) continue;
+				if (type_is_void(rtype)) continue;
 				SEMA_ERROR(return_stmt, "Expected returning a value of type %s.", type_quoted_error_string(rtype));
 				goto EXIT_FAIL;
 			}
@@ -5977,7 +5977,7 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 		RETURN_SEMA_ERROR(inner, "Cannot dereference a value of type %s, it must be a pointer.",
 						  type_quoted_error_string(inner_type_nofail));
 	}
-	if (canonical->pointer == type_void)
+	if (type_is_void(canonical->pointer))
 	{
 		if (failed_ref) goto ON_FAILED;
 		RETURN_SEMA_ERROR(inner, "A 'void*' cannot be dereferenced, you need to first cast it to a concrete type.");
@@ -8172,7 +8172,7 @@ static inline bool sema_expr_analyse_retval(SemaContext *c, Expr *expr)
 	else
 	{
 		expr->type = type_no_optional(c->rtype);
-		if (expr->type == type_void)
+		if (type_is_void(expr->type))
 		{
 			SEMA_ERROR(expr, "'return' cannot be used on void functions.");
 			return false;

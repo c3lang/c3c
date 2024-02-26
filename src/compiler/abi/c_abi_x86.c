@@ -163,7 +163,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 	type = type_lowering(type);
 
 	// 2. Void is ignored
-	if (type == type_void) return abi_arg_ignore();
+	if (type_is_void(type)) return abi_arg_ignore();
 
 	// 3. In the case of a vector or regcall, a homogenous aggregate
 	//    should be passed directly in a register.

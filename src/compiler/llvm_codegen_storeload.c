@@ -51,6 +51,7 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 LLVMValueRef llvm_store(GenContext *c, BEValue *destination, BEValue *value)
 {
 	if (value->type == type_void) return NULL;
+	assert(!type_is_void(value->type));
 	assert(llvm_value_is_addr(destination));
 	return llvm_store_to_ptr_aligned(c, destination->value, value, destination->alignment);
 }

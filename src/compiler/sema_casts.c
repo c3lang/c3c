@@ -286,7 +286,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 
 	if (from_type == to_type) return true;
 
-	bool is_void_silence = to_type == type_void && is_explicit;
+	bool is_void_silence = type_is_void(to_type) && is_explicit;
 	bool add_optional = type_is_optional(to_type) || type_is_optional(from_type);
 	from_type = type_no_optional(from_type);
 	to_type = type_no_optional(to_type);
