@@ -16,7 +16,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		if (entry.d_type == posix::DT_LNK && no_symlinks) continue;
 		if (entry.d_type == posix::DT_DIR && no_dirs) continue;
 		Path path = path::new(name, allocator)!!;
-		list.append(path);
+		list.push(path);
 	}
 	return list;
 }
@@ -43,7 +43,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 			{
 				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
 				if (filename == ".." || filename == ".") continue;
-				list.append(path::new(filename, allocator)!);
+				list.push(path::new(filename, allocator)!);
 			};
 		} while (win32::findNextFileW(find, &find_data));
 		return list;

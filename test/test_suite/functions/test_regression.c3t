@@ -134,9 +134,9 @@ fn void main()
     int elements = MyEnum.elements;
     printf("Hello\n");
     IntArray array;
-    array.append(100);
-    array.append(200);
-    array.append(400);
+    array.push(100);
+    array.push(200);
+    array.push(400);
     array.push(600);
     array.insert_at(2, 300);
     for (int i = 0; i < (int)(array.len()); i++)
@@ -458,9 +458,9 @@ loop.exit:                                        ; preds = %loop.cond
   store i32 3, ptr %elements, align 4
   %11 = call i32 (ptr, ...) @printf(ptr @.str.4)
   call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 40, i1 false)
-  call void @"std.collections.list$int$.List.append"(ptr %array, i32 100)
-  call void @"std.collections.list$int$.List.append"(ptr %array, i32 200)
-  call void @"std.collections.list$int$.List.append"(ptr %array, i32 400)
+  call void @"std.collections.list$int$.List.push"(ptr %array, i32 100)
+  call void @"std.collections.list$int$.List.push"(ptr %array, i32 200)
+  call void @"std.collections.list$int$.List.push"(ptr %array, i32 400)
   call void @"std.collections.list$int$.List.push"(ptr %array, i32 600) #3
   call void @"std.collections.list$int$.List.insert_at"(ptr %array, i64 2, i32 300)
   store i32 0, ptr %i1, align 4

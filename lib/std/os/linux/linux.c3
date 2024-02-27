@@ -214,7 +214,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 		foreach (addr : backtrace)
 		{
 			Backtrace trace = backtrace_load_element(addr, allocator)!;
-			list.append(trace);
+			list.push(trace);
 		}
 	};
 	return list;

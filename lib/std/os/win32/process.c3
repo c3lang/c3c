@@ -159,7 +159,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 	defer symCleanup(process);
 	foreach (addr : backtrace)
 	{
-		list.append(resolve_backtrace(addr, process, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
+		list.push(resolve_backtrace(addr, process, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
 	}
 	return list;
 }
