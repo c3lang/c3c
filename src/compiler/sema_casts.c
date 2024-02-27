@@ -1856,7 +1856,7 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 		expr->type = to_type;
 		return;
 	}
-	insert_runtime_cast(expr, CAST_SASA, to_type);
+	insert_runtime_cast(expr, CAST_SLSL, to_type);
 }
 
 static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
@@ -1874,7 +1874,7 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 			}
 			case EXPR_SLICE:
 			{
-				insert_runtime_cast(expr, CAST_SAARR, to_type);
+				insert_runtime_cast(expr, CAST_SLARR, to_type);
 				return;
 			}
 			default:

@@ -658,20 +658,14 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 
 
 /**
- * Expand foo[123] or someCall()[n] or some such.
+ * Expand &foo[123] or &someCall()[n] or some such.
  * Evaluation order is left to right.
  */
-static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr *expr)
+static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr *expr)
 {
-	bool is_value = expr->expr_kind == EXPR_SUBSCRIPT;
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
 	Expr *index_expr = exprptr(expr->subscript_expr.range.start);
 	Type *parent_type = type_lowering(parent_expr->type);
-	if (is_value && parent_type->type_kind == TYPE_VECTOR)
-	{
-		llvm_emit_vector_subscript(c, value, expr);
-		return;
-	}
 	BEValue ref;
 	// First, get thing being subscripted.
 	llvm_emit_expr(c, value, parent_expr);
@@ -714,13 +708,24 @@ static inline void gencontext_emit_subscript(GenContext *c, BEValue *value, Expr
 		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
 	llvm_emit_subscript_addr_with_base(c, value, value, &index, index_expr->span);
-	if (!is_value)
+	assert(llvm_value_is_addr(value));
+	llvm_value_fold_optional(c, value);
+}
+
+/**
+ * Expand foo[123] or someCall()[n] or some such.
+ * Evaluation order is left to right.
+ */
+static inline void llvm_emit_subscript(GenContext *c, BEValue *value, Expr *expr)
+{
+	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
+	Type *parent_type = type_lowering(parent_expr->type);
+	if (parent_type->type_kind == TYPE_VECTOR)
 	{
-		assert(llvm_value_is_addr(value));
-		llvm_value_fold_optional(c, value);
-		value->kind = BE_VALUE;
-		value->type = type_get_ptr(value->type);
+		llvm_emit_vector_subscript(c, value, expr);
+		return;
 	}
+	llvm_emit_subscript_addr(c, value, expr);
 }
 
 static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr *expr)
@@ -1388,7 +1393,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
-		case CAST_SAARR:
+		case CAST_SLARR:
 			llvm_emit_slice_to_vec_array_cast(c, value, to_type, from_type);
 			return;
 		case CAST_EXPVEC:
@@ -1541,8 +1546,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "intptr");
 			break;
-		case CAST_SASA:
+		case CAST_SLSL:
 			// Improve this
+			break;
 		case CAST_STINLINE:
 			llvm_value_addr(c, value);
 			value->type = to_type;
@@ -2513,20 +2519,27 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 
 static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, Type *type)
 {
-	if (inner->expr_kind == EXPR_UNARY)
+	switch (inner->expr_kind)
 	{
-		switch (inner->unary_expr.operator)
-		{
-			case UNARYOP_ADDR:
-				llvm_emit_expr(c, value, inner->unary_expr.expr);
-				return;
-			case UNARYOP_TADDR:
-				llvm_emit_expr(c, value, inner->unary_expr.expr);
-				llvm_value_addr(c, value);
-				return;
-			default:
-				break;
-		}
+		case EXPR_UNARY:
+			switch (inner->unary_expr.operator)
+			{
+				case UNARYOP_ADDR:
+					llvm_emit_expr(c, value, inner->unary_expr.expr);
+					return;
+				case UNARYOP_TADDR:
+					llvm_emit_expr(c, value, inner->unary_expr.expr);
+					llvm_value_addr(c, value);
+					return;
+				default:
+					break;
+			}
+			break;
+		case EXPR_SUBSCRIPT_ADDR:
+			llvm_emit_subscript_addr(c, value, inner);
+			return;
+		default:
+			break;
 	}
 	llvm_emit_expr(c, value, inner);
 	llvm_value_rvalue(c, value);
@@ -6974,8 +6987,14 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_value_set_decl(c, value, expr->identifier_expr.decl);
 			return;
 		case EXPR_SUBSCRIPT:
+			llvm_emit_subscript(c, value, expr);
+			return;
 		case EXPR_SUBSCRIPT_ADDR:
-			gencontext_emit_subscript(c, value, expr);
+			llvm_emit_subscript_addr(c, value, expr);
+			assert(llvm_value_is_addr(value));
+			llvm_value_fold_optional(c, value);
+			value->kind = BE_VALUE;
+			value->type = type_get_ptr(value->type);
 			return;
 		case EXPR_ACCESS:
 			llvm_emit_access_addr(c, value, expr);

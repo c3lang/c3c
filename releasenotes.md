@@ -10,6 +10,7 @@
 - `inline` on function parameters for implicit conversions.
 - 'rgba' also available for swizzling.
 - The name "subarray" has been replaced by the more well known name "slice' across the codebase.
+- Improved alignment handling.
 
 ### Fixes
 - Fixed issue in safe mode when converting enums.

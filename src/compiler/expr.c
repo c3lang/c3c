@@ -370,7 +370,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_PTRPTR:
 		case CAST_APTSA:
 		case CAST_SAPTR:
-		case CAST_SASA:
+		case CAST_SLSL:
 		case CAST_VOID:
 		case CAST_ANYBOOL:
 		case CAST_ERPTR:
@@ -386,7 +386,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_IDINT:
 		case CAST_INTARRBS:
 		case CAST_BSINTARR:
-		case CAST_SAARR:
+		case CAST_SLARR:
 			if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
 
