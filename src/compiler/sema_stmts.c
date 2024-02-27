@@ -490,8 +490,8 @@ CHECK_ACCESS:
 			switch (type_flatten(decl->type)->type_kind)
 			{
 				case TYPE_POINTER:
-				case TYPE_SUBARRAY:
-					// &foo[2] is fine if foo is a pointer or subarray.
+				case TYPE_SLICE:
+					// &foo[2] is fine if foo is a pointer or slice.
 					return true;
 				default:
 					break;
@@ -2409,7 +2409,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 			break;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			if (expr_is_const_string(cond)) break;
 			FALLTHROUGH;
 		default:

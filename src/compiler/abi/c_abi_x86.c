@@ -126,7 +126,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 		case TYPE_POINTER:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 			return true;
 		case TYPE_ARRAY:
@@ -366,7 +366,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 
 /**
  * Handle:
- * error type, struct, union, subarray,
+ * error type, struct, union, slice,
  * string, array, error union, complex.
  */
 static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type *type)
@@ -468,7 +468,7 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 			return x86_classify_vector(regs, type);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_ARRAY:
 			return x86_classify_aggregate(call, regs, type);

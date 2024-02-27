@@ -100,7 +100,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	TypeInfoKind kind = type->kind;
 	// We can resolve the base type in a shallow way if we don't use it to determine
 	// length and alignment
-	if (kind == TYPE_INFO_SUBARRAY || (resolve_type_kind & RESOLVE_TYPE_IS_POINTEE))
+	if (kind == TYPE_INFO_SLICE || (resolve_type_kind & RESOLVE_TYPE_IS_POINTEE))
 	{
 		if (!sema_resolve_type(context, type->array.base, resolve_type_kind))
 		{
@@ -134,15 +134,15 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	Type *base = base_info->type;
 	switch (type->kind)
 	{
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 			if (!type_is_valid_for_array(base))
 			{
 				SEMA_ERROR(base_info,
-				           "You cannot form a subarray with elements of type %s.",
+				           "You cannot form a slice with elements of type %s.",
 				           type_quoted_error_string(base));
 				return type_info_poison(type);
 			}
-			type->type = type_get_subarray(type->array.base->type);
+			type->type = type_get_slice(type->array.base->type);
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
 			if (!type_is_valid_for_array(base))
@@ -455,7 +455,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 				return type_info_poison(type_info);
 			}
 			FALLTHROUGH;
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
 			if (!sema_resolve_array_type(context, type_info, resolve_type_kind))
@@ -476,19 +476,19 @@ APPEND_QUALIFIERS:
 			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_SUB:
-			type_info->type = type_get_subarray(type_info->type);
+			type_info->type = type_get_slice(type_info->type);
 			break;
 		case TYPE_COMPRESSED_SUBPTR:
-			type_info->type = type_get_ptr(type_get_subarray(type_info->type));
+			type_info->type = type_get_ptr(type_get_slice(type_info->type));
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
 			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_PTRSUB:
-			type_info->type = type_get_subarray(type_get_ptr(type_info->type));
+			type_info->type = type_get_slice(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
-			type_info->type = type_get_subarray(type_get_subarray(type_info->type));
+			type_info->type = type_get_slice(type_get_slice(type_info->type));
 			break;
 	}
 	if (type_info->optional)

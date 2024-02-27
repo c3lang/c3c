@@ -175,7 +175,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			UNREACHABLE;
 		case TYPE_VOID:
 		case TYPE_FUNC:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			return false;
 		case TYPE_ANY:
 			*base = type_iptr->canonical;

@@ -122,7 +122,7 @@ fn void main()
 - No mandatory header files
 - New semantic macro system
 - Module based name spacing
-- Subarrays (slices)
+- Slices
 - Compile time reflection
 - Enhanced compile time execution
 - Generics based on generic modules

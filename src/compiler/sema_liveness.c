@@ -20,7 +20,7 @@ RETRY:
 			case TYPE_POINTER:
 				type = type->pointer;
 				goto RETRY;
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_INFERRED_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:

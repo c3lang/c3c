@@ -839,7 +839,7 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;
 		case TYPE_INFO_INFERRED_ARRAY:
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 		case TYPE_INFO_INFERRED_VECTOR:
 			assert(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(c, source->array.base);

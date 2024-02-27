@@ -1174,7 +1174,7 @@ void tilde_emit_comp(TildeContext *c, TBEValue *result, TBEValue *lhs, TBEValue 
 		TODO // tilde_emit_float_comp(c, result, lhs, rhs, binary_op, NULL);
 		return;
 	}
-	if (lhs->type->type_kind == TYPE_SUBARRAY)
+	if (lhs->type->type_kind == TYPE_INFO_SLICE)
 	{
 		TODO // tilde_emit_subarray_comp(c, result, lhs, rhs, binary_op);
 		return;

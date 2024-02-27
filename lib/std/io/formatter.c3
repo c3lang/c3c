@@ -246,7 +246,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			len += self.out_substr(">]")!;
 			return len;
-		case SUBARRAY:
+		case SLICE:
 			// this is SomeType[] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			if (inner == char.typeid)

@@ -4,13 +4,13 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
-struct AnyStruct
+struct AnyRaw
 {
 	void* ptr;
 	typeid type;
 }
 
-struct SubArrayStruct
+struct SliceRaw
 {
 	void* ptr;
 	usz len;
