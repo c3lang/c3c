@@ -170,7 +170,7 @@ fn Object*! parse_array(JsonContext* context) @local
 	while (token != JsonTokenType.RBRACKET)
 	{
 		Object* element = parse_from_token(context, token)!;
-		list.append(element);
+		list.push(element);
 		token = advance(context)!;
 		if (token == JsonTokenType.COMMA)
 		{

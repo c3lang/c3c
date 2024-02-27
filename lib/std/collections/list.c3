@@ -92,15 +92,9 @@ fn String List.to_tstring(&self)
 
 fn void List.push(&self, Type element) @inline
 {
-	self.append(element);
-}
-
-fn void List.append(&self, Type element)
-{
 	self.ensure_capacity();
-	self.entries[self.size++] = element;
+    self.entries[self.size++] = element;
 }
-
 
 fn Type! List.pop(&self)
 {

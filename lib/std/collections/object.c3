@@ -234,10 +234,10 @@ macro Object* Object.set_at(&self, usz index, String key, value)
  * @require self.is_indexable()
  * @ensure return != null
  **/
-macro Object* Object.append(&self, value)
+macro Object* Object.push(&self, value)
 {
 	Object* val = self.object_from_value(value);
-	self.append_object(val);
+	self.push_object(val);
 	return val;
 }
 
@@ -268,10 +268,10 @@ fn usz Object.get_len(&self)
 /**
  * @require self.is_indexable()
  **/
-fn void Object.append_object(&self, Object* to_append)
+fn void Object.push_object(&self, Object* to_append)
 {
 	self.init_array_if_needed();
-	self.array.append(to_append);
+	self.array.push(to_append);
 }
 
 /**
@@ -282,11 +282,11 @@ fn void Object.set_object_at(&self, usz index, Object* to_set)
 	self.init_array_if_needed();
 	while (self.array.len() < index)
 	{
-		self.array.append(&NULL_OBJECT);
+		self.array.push(&NULL_OBJECT);
 	}
 	if (self.array.len() == index)
 	{
-		self.array.append(to_set);
+		self.array.push(to_set);
 		return;
 	}
 	self.array.get(index).free();

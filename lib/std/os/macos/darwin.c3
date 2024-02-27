@@ -150,7 +150,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 		String execpath = executable_path(allocator::temp())!;
 		foreach (addr : backtrace)
 		{
-			list.append(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
+			list.push(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
 		}
 	};
 	return list;
