@@ -356,6 +356,7 @@ typedef struct BuildOptions_
 	const char *testfn;
 	const char *cc;
 	const char *build_dir;
+	const char *output_dir;
 	const char *llvm_out;
 	const char *asm_out;
 	const char *obj_out;

@@ -11,6 +11,7 @@
 - 'rgba' also available for swizzling.
 - The name "subarray" has been replaced by the more well known name "slice' across the codebase.
 - Improved alignment handling.
+- Add `--output-dir` to command line. #1155
 
 ### Fixes
 - Fixed issue in safe mode when converting enums.

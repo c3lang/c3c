@@ -99,6 +99,7 @@ static void usage(void)
 	OUTPUT("  -D <name>                 - Add feature flag <name>.");
 	OUTPUT("  -U <name>                 - Remove feature flag <name>.");
 	OUTPUT("  --trust=<option>          - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
+	OUTPUT("  --output-dir <dir>        - Override general output directory.");
 	OUTPUT("  --build-dir <dir>         - Override build output directory.");
 	OUTPUT("  --obj-out <dir>           - Override object file output directory.");
 	OUTPUT("  --script-dir <dir>        - Override the base directory for $exec.");
@@ -931,6 +932,12 @@ static void parse_option(BuildOptions *options)
 				options->macos.min_version = next_arg();
 				return;
 			}
+			if (match_longopt("output-dir"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --output-dir needs a directory.");
+				options->output_dir = next_arg();
+				return;
+			}
 			if (match_longopt("build-dir"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --build-dir needs a directory.");
@@ -1096,6 +1103,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.files = NULL,
 		.build_dir = NULL,
+		.output_dir = NULL,
 		.script_dir = NULL,
 
 	};
