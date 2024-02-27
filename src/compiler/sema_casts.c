@@ -339,7 +339,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ANYFAULT:
 			return CAST_EUBOOL;
 		case TYPE_SLICE:
-			return CAST_SABOOL;
+			return CAST_SLBOOL;
 		case ALL_INTS:
 			return CAST_INTBOOL;
 		case ALL_FLOATS:
@@ -627,6 +627,7 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 		case ALL_UNSIGNED_INTS:
 			if (canonical->builtin.bitsize < platform_target.width_c_int) return type_cuint;
 			return type;
+		case TYPE_BF16:
 		case TYPE_F16:
 			// Promote F16 to a real type.
 			return type_float;
@@ -1838,7 +1839,7 @@ static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
 				break;
 		}
 	}
-	insert_runtime_cast(expr, CAST_SABOOL, type);
+	insert_runtime_cast(expr, CAST_SLBOOL, type);
 }
 
 /**

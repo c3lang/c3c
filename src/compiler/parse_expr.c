@@ -1707,7 +1707,8 @@ static Expr *parse_double(ParseContext *c, Expr *left)
 			number->type = type_float16;
 			break;
 		case TYPE_BF16:
-			TODO
+			number->type = type_bfloat;
+			break;
 		default:
 			UNREACHABLE
 	}
@@ -1879,6 +1880,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_UPTR] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_DOUBLE] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_BFLOAT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT16] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_FLOAT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },

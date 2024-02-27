@@ -3440,6 +3440,9 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		expr->const_expr.fxx.type = flat->type_kind;
 		switch (flat->type_kind)
 		{
+			case TYPE_BF16:
+				expr->const_expr.fxx.f = -338953138925153547590470800371487866880.0;
+				break;
 			case TYPE_F16:
 				expr->const_expr.fxx.f = -65504.0;
 				break;
@@ -3616,6 +3619,9 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 		expr->const_expr.fxx.type = flat->type_kind;
 		switch (flat->type_kind)
 		{
+			case TYPE_BF16:
+				expr->const_expr.fxx.f = 338953138925153547590470800371487866880.0;
+				break;
 			case TYPE_F16:
 				expr->const_expr.fxx.f = 65504.0;
 				break;
@@ -7926,7 +7932,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_VASPLAT:
 			case EXPR_MACRO_BODY:
 				REMINDER("Check if these should be analysed");
-						FALLTHROUGH;
+				FALLTHROUGH;
 				// Above needs to be analysed
 			case EXPR_GROUP:
 			case EXPR_INITIALIZER_LIST:

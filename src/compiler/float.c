@@ -9,8 +9,8 @@ UNUSED static int precision_bits(TypeKind kind)
 	{
 		case TYPE_F16:
 			return 11;
-			/*case TYPE_BF16:
-				return 8;*/
+		case TYPE_BF16:
+			return 8;
 		case TYPE_F32:
 			return 24;
 		case TYPE_F64:
@@ -28,8 +28,8 @@ UNUSED static int max_exponent(TypeKind kind)
 	{
 		case TYPE_F16:
 			return 15;
-			/*case TYPE_BF16:
-					return 127;*/
+		case TYPE_BF16:
+			return 127;
 		case TYPE_F32:
 			return 127;
 		case TYPE_F64:
@@ -47,8 +47,8 @@ UNUSED static int min_exponent(TypeKind kind)
 	{
 		case TYPE_F16:
 			return -14;
-			/*case TYPE_BF16:
-					return -126;*/
+		case TYPE_BF16:
+			return -126;
 		case TYPE_F32:
 			return -126;
 		case TYPE_F64:
@@ -95,6 +95,43 @@ static char *err_invalid_float_width = "The float width is not valid, it must be
 static char *err_float_out_of_range = "The float value is out of range.";
 static char *err_float_format_invalid = "The float format is invalid.";
 
+TypeKind float_suffix(char c, const char **index_ref, char** error_ref)
+{
+	if (c == 'b' && (*index_ref)[0] == 'f' && (*index_ref)[1] == '1' && (*index_ref)[1] == '6')
+	{
+		(*index_ref) += 4;
+		return TYPE_BF16;
+	}
+	if (c == 'f')
+	{
+		int i = 0;
+		while ((c = *((*index_ref)++)) && (c >= '0' && c <= '9'))
+		{
+			if (i > 100)
+			{
+				if (error_ref) *error_ref = err_invalid_float_width;
+				return TYPE_POISONED;
+			}
+			i = i * 10 + c - '0';
+		}
+		switch (i)
+		{
+			case 0:
+			case 32:
+				return TYPE_F32;
+			case 16:
+				return TYPE_F16;
+			case 64:
+				return TYPE_F64;
+			case 128:
+				return TYPE_F128;
+			default:
+				if (error_ref) *error_ref = err_invalid_float_width;
+				return TYPE_POISONED;
+		}
+	}
+	return TYPE_F64;
+}
 /**
  * This parses a float from a string. Unfortunately it is limited to parsing doubles as of now.
  *
@@ -135,39 +172,8 @@ Float float_from_string(const char *string, char **error)
 			scratch_buffer_append_char(c);
 		}
 	}
-	TypeKind kind = TYPE_F64;
-	if (c == 'f')
-	{
-		int i = 0;
-		while ((c = *(index++)) && (c >= '0' && c <= '9'))
-		{
-			if (i > 100)
-			{
-				if (error) *error = err_invalid_float_width;
-				return (Float){ .type = TYPE_POISONED };
-			}
-			i = i * 10 + c - '0';
-		}
-		switch (i)
-		{
-			case 0:
-			case 32:
-				kind = TYPE_F32;
-				break;
-			case 16:
-				kind = TYPE_F16;
-				break;
-			case 64:
-				kind = TYPE_F64;
-				break;
-			case 128:
-				kind = TYPE_F128;
-				break;
-			default:
-				if (error) *error = err_invalid_float_width;
-				return (Float){ .type = TYPE_POISONED };
-		}
-	}
+	TypeKind kind = float_suffix(c, &index, error);
+	if (kind == TYPE_POISONED) return (Float){ .type = TYPE_POISONED };
 
 	const char *str = scratch_buffer_to_string();
 	char *end = NULL;
@@ -228,39 +234,8 @@ Float float_from_hex(const char *string, char **error)
 			scratch_buffer_append_char(c);
 		}
 	}
-	TypeKind kind = TYPE_F64;
-	if (c == 'f')
-	{
-		int i = 0;
-		while ((c = *(index++)) && (c >= '0' && c <= '9'))
-		{
-			if (i > 100)
-			{
-				if (error) *error = err_invalid_float_width;
-				return (Float){ .type = TYPE_POISONED };
-			}
-			i = i * 10 + c - '0';
-		}
-		switch (i)
-		{
-			case 0:
-			case 32:
-				kind = TYPE_F32;
-				break;
-			case 16:
-				kind = TYPE_F16;
-				break;
-			case 64:
-				kind = TYPE_F64;
-				break;
-			case 128:
-				kind = TYPE_F128;
-				break;
-			default:
-				if (error) *error = err_invalid_float_width;
-				return (Float){ .type = TYPE_POISONED };
-		}
-	}
+	TypeKind kind = float_suffix(c, &index, error);
+	if (kind == TYPE_POISONED) return (Float){ .type = TYPE_POISONED };
 
 	const char *str = scratch_buffer_to_string();
 	char *end = NULL;

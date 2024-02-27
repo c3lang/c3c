@@ -358,7 +358,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_FPFP:
 		case CAST_FPINT:
 		case CAST_INTFP:
-		case CAST_SABOOL:
+		case CAST_SLBOOL:
 		case CAST_STINLINE:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
