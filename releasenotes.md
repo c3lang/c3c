@@ -12,6 +12,7 @@
 - The name "subarray" has been replaced by the more well known name "slice' across the codebase.
 
 ### Fixes
+- Fixed issue in safe mode when converting enums.
 
 ### Stdlib changes
 - "init_new/init_temp" removed. 
@@ -20,6 +21,7 @@
 - RingBuffer API rewritten. Allocator interface changed. 
 - Deprecated Allocator, DString and mem functions removed. 
 - "identity" functions are now constants for Matrix and Complex numbers.
+- "float16" can now be printed.
 
 ## 0.5.5 Change list
 

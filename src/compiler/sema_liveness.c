@@ -459,8 +459,6 @@ RETRY:
 			sema_trace_expr_liveness(exprptr(expr->swizzle_expr.parent));
 			return;
 		case EXPR_TERNARY:
-		{
-			REMINDER("Tracing ternary can be optimized");
 			sema_trace_expr_liveness(exprptr(expr->ternary_expr.cond));
 			if (expr->ternary_expr.then_expr)
 			{
@@ -468,7 +466,6 @@ RETRY:
 			}
 			expr = exprptr(expr->ternary_expr.else_expr);
 			goto RETRY;
-		}
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return;

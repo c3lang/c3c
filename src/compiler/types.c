@@ -10,7 +10,7 @@ static struct
 {
 	Type u0, u1, i8, i16, i32, i64, i128;
 	Type u8, u16, u32, u64, u128;
-	Type f16, f32, f64, f128;
+	Type bf16, f16, f32, f64, f128;
 	Type usz, isz, uptr, iptr;
 	Type string;
 	Type voidstar, typeid, anyfault, member, typeinfo, untyped_list;
@@ -21,6 +21,7 @@ Type *type_bool = &t.u1;
 Type *type_void = &t.u0;
 Type *type_voidptr = &t.voidstar;
 Type *type_float16 = &t.f16;
+Type *type_bfloat = &t.bf16;
 Type *type_float = &t.f32;
 Type *type_double = &t.f64;
 Type *type_f128 = &t.f128;
@@ -1514,6 +1515,7 @@ void type_setup(PlatformTarget *target)
 	max_alignment_vector = (AlignSize)target->align_max_vector;
 
 	type_create_float("float16", &t.f16, TYPE_F16, BITS16);
+	type_create_float("bfloat", &t.bf16, TYPE_BF16, BITS16);
 	type_create_float("float", &t.f32, TYPE_F32, BITS32);
 	type_create_float("double", &t.f64, TYPE_F64, BITS64);
 	type_create_float("float128", &t.f128, TYPE_F128, BITS128);
@@ -1575,6 +1577,7 @@ int type_kind_bitsize(TypeKind kind)
 		case TYPE_I16:
 		case TYPE_U16:
 		case TYPE_F16:
+		case TYPE_BF16:
 			return 16;
 		case TYPE_I32:
 		case TYPE_U32:
@@ -1690,6 +1693,8 @@ Type *type_from_token(TokenType type)
 			return type_char;
 		case TOKEN_FLOAT16:
 			return type_float16;
+		case TOKEN_BFLOAT:
+			return type_bfloat;
 		case TOKEN_DOUBLE:
 			return type_double;
 		case TOKEN_FLOAT:
@@ -1925,6 +1930,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	{
 		switch (other_kind)
 		{
+			case TYPE_BF16:
 			case TYPE_F16:
 			case TYPE_F32:
 			case TYPE_F64:

@@ -68,9 +68,6 @@ fn FloatType! float_from_any(any arg) @private
 	$if env::F128_SUPPORT:
 		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
 	$endif
-	$if env::F16_SUPPORT:
-		if (arg.type == float16.typeid) return *((float16*)arg.ptr);
-	$endif
 	if (arg.type.kindof == TypeKind.DISTINCT)
 	{
 		return float_from_any(arg.as_inner());
@@ -99,6 +96,8 @@ fn FloatType! float_from_any(any arg) @private
 			return *arg;
 		case uint128:
 			return *arg;
+		case float16:
+			return (FloatType)*arg;
 		case float:
 			return (FloatType)*arg;
 		case double:

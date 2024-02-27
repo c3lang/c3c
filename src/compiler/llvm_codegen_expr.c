@@ -1560,13 +1560,13 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 					scratch_buffer_printf("Attempt to convert a negative value (%%d) to enum '%s' failed.", decl->name);
 					llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
 					BEValue val;
-					llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_to_string(), value, NULL);
+					llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_copy(), value, NULL);
 				}
 				scratch_buffer_clear();
 				scratch_buffer_printf("Attempting to convert %%d to enum '%s' failed as the value exceeds the max ordinal (%u).", decl->name, max - 1);
 				LLVMValueRef val = llvm_const_int(c, value->type, max);
 				llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
-				llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->span, scratch_buffer_to_string(), value, NULL);
+				llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->span, scratch_buffer_copy(), value, NULL);
 			}
 			// We might need to extend or truncate.
 			if (type_size(to_type) != type_size(from_type))
@@ -1576,7 +1576,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 				return;
 			}
 			return;
-		case CAST_SABOOL:
+		case CAST_SLBOOL:
 			llvm_value_fold_optional(c, value);
 			if (llvm_value_is_addr(value))
 			{
