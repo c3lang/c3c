@@ -1088,7 +1088,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 					return decl_poison(param);
 				}
 			}
-			type_info->type = type_get_subarray(type_info->type);
+			type_info->type = type_get_slice(type_info->type);
 		}
 
 		if (!type_info)
@@ -1239,7 +1239,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_VECTOR:
 		case TYPE_DISTINCT:
 		case TYPE_INTERFACE:
@@ -2442,9 +2442,9 @@ static inline bool sema_analyse_doc_header(AstId doc, Decl **params, Decl **extr
 			case PARAM_INOUT:
 				break;
 		}
-		if (!may_be_pointer && type->type_kind != TYPE_SUBARRAY)
+		if (!may_be_pointer && type->type_kind != TYPE_SLICE)
 		{
-			SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers and subarrays.");
+			SEMA_ERROR(directive, "'in', 'out' and 'inout' may only be added to pointers and slices.");
 			return false;
 		}
 ADDED:;
@@ -2465,7 +2465,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			break;
 		case 1:
 			arg_type = type_flatten(params[0]->type);
-			if (arg_type == type_get_subarray(type_string)) return MAIN_TYPE_ARGS;
+			if (arg_type == type_get_slice(type_string)) return MAIN_TYPE_ARGS;
 			SEMA_ERROR(params[0], "Expected a parameter of type 'String[]'.");
 			return MAIN_TYPE_ERROR;
 		case 2:
@@ -2498,7 +2498,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 				SEMA_ERROR(params[0], "Expected a parameter of type 'void*' (HINSTANCE)");
 				return MAIN_TYPE_ERROR;
 			}
-			if (arg_type2 != type_get_subarray(type_string))
+			if (arg_type2 != type_get_slice(type_string))
 			{
 				SEMA_ERROR(params[1], "Expected a parameter of type 'String[]'.");
 				return MAIN_TYPE_ERROR;
@@ -3723,7 +3723,7 @@ RETRY:
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_VECTOR:

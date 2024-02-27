@@ -9,6 +9,7 @@
 - Updated enum syntax.
 - `inline` on function parameters for implicit conversions.
 - 'rgba' also available for swizzling.
+- The name "subarray" has been replaced by the more well known name "slice' across the codebase.
 
 ### Fixes
 
@@ -371,13 +372,13 @@
 - Fixed errors on flexible array slices.
 - Fix of `readdir` issues on macOS.
 - Fix to slice assignment of distinct types.
-- Fix of issue casting subarrays to distinct types.
+- Fix of issue casting slices to distinct types.
 - Fixes to `split`, `rindex_of`.
 - List no longer uses the temp allocator by default.
 - Remove test global when not in test mode.
 - Fix sum/product on floats.
 - Fix error on void! return of macros.
-- Removed too permissive casts on subarrays.
+- Removed too permissive casts on slices.
 - Using C files correctly places objects in the build folder.
 - Fix of overaligned deref.
 - Fix negating a float vector.
@@ -480,7 +481,7 @@
 - Added type.inner and type.len reflection.
 - Support float mod operations.
 - Add float.max/min.
-- Allow [in] contract to be used on subarray types.
+- Allow [in] contract to be used on slices.
 - Add linker and linked dir arguments to build files.
 - Auto-import std::core.
 - LLVM 15 support.

@@ -343,9 +343,9 @@ macro void set_inline(void* dst, char val, usz $len, usz $dst_align = 0, bool $i
 	$$memset_inline(dst, val, $len, $is_volatile, $dst_align);
 }
 /**
- * @require values::@inner_kind(a) == TypeKind.SUBARRAY || values::@inner_kind(a) == TypeKind.POINTER
- * @require values::@inner_kind(b) == TypeKind.SUBARRAY || values::@inner_kind(b) == TypeKind.POINTER
- * @require values::@inner_kind(a) != TypeKind.SUBARRAY || len == -1
+ * @require values::@inner_kind(a) == TypeKind.SLICE || values::@inner_kind(a) == TypeKind.POINTER
+ * @require values::@inner_kind(b) == TypeKind.SLICE || values::@inner_kind(b) == TypeKind.POINTER
+ * @require values::@inner_kind(a) != TypeKind.SLICE || len == -1
  * @require values::@inner_kind(a) != TypeKind.POINTER || len > -1
  * @require values::@assign_to(a, b) && values::@assign_to(b, a)
  **/
@@ -356,7 +356,7 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 	$endif
 	void* x @noinit;
 	void* y @noinit;
-	$if values::@inner_kind(a) == TypeKind.SUBARRAY:
+	$if values::@inner_kind(a) == TypeKind.SLICE:
 		len = a.len;
 		if (len != b.len) return false;
 		x = a.ptr;

@@ -492,7 +492,7 @@ bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type)
 	switch (canonical->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			return canonical->array.base == base_type;
 		case TYPE_POINTER:
 			if (canonical->pointer->type_kind == TYPE_ARRAY) return canonical->pointer->array.base == base_type;
@@ -607,7 +607,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_UNTYPED_LIST:

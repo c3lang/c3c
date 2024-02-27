@@ -400,10 +400,10 @@ void llvm_emit_ptr_from_array(GenContext *c, BEValue *value)
 		case TYPE_VECTOR:
 		case TYPE_FLEXIBLE_ARRAY:
 			return;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		{
 			BEValue member;
-			llvm_emit_subarray_pointer(c, value, &member);
+			llvm_emit_slice_pointer(c, value, &member);
 			llvm_value_rvalue(c, &member);
 			llvm_value_set_address(value,
 								   member.value,
@@ -1263,11 +1263,11 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
 	LLVMValueRef count = llvm_const_int(c, type_usz, test_count);
-	Type *chars_array = type_get_subarray(type_chars);
+	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, test_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
 	LLVMSetInitializer(name_list, llvm_emit_aggregate_two(c, chars_array, name_ref, count));
-	Type *decls_array_type = type_get_subarray(type_voidptr);
+	Type *decls_array_type = type_get_slice(type_voidptr);
 	LLVMValueRef decl_list = llvm_add_global(c, test_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
@@ -1361,11 +1361,11 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		decl_ref = LLVMConstNull(c->ptr_type);
 	}
 	LLVMValueRef count = llvm_const_int(c, type_usz, benchmark_count);
-	Type *chars_array = type_get_subarray(type_chars);
+	Type *chars_array = type_get_slice(type_chars);
 	LLVMValueRef name_list = llvm_add_global(c, benchmark_names_var_name, chars_array, type_alloca_alignment(chars_array));
 	LLVMSetGlobalConstant(name_list, 1);
 	LLVMSetInitializer(name_list, llvm_emit_aggregate_two(c, chars_array, name_ref, count));
-	Type *decls_array_type = type_get_subarray(type_voidptr);
+	Type *decls_array_type = type_get_slice(type_voidptr);
 	LLVMValueRef decl_list = llvm_add_global(c, benchmark_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));

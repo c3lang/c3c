@@ -343,7 +343,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			return any_type->backend_type = llvm_type_from_array(c, any_type);
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		{
 			LLVMTypeRef array_type = LLVMStructCreateNamed(c->context, any_type->name);
 			LLVMTypeRef types[2] = { c->ptr_type, c->size_type };
@@ -637,8 +637,8 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_VECTOR, type->array.base, type->array.len, NULL, false);
 		case TYPE_ARRAY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ARRAY, type->array.base, type->array.len, NULL, false);
-		case TYPE_SUBARRAY:
-			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_SUBARRAY, type->array.base, 0, NULL, false);
+		case TYPE_SLICE:
+			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_SLICE, type->array.base, 0, NULL, false);
 		case TYPE_ANY:
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ANY, NULL, 0, NULL, false);
 		case TYPE_INTERFACE:
@@ -664,7 +664,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_BITSTRUCT:
 		{
 			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, NULL, 0, NULL, false);
+			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, type->decl->bitstruct.base_type->type, 0, NULL, false);
 		}
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);

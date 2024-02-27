@@ -2412,7 +2412,7 @@ Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
-Type *type_get_subarray(Type *arr_type);
+Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
 Type *type_get_inferred_vector(Type *arr_type);
 Type *type_get_flexible_array(Type *arr_type);
@@ -2588,7 +2588,7 @@ INLINE bool type_len_is_inferred(Type *type)
 				type = type->optional;
 				continue;
 			case TYPE_ARRAY:
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_VECTOR:
 				type = type->array.base;

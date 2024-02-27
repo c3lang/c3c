@@ -135,7 +135,7 @@ void print_type(FILE *file, TypeInfo *type)
 			print_type(file, type->array.base);
 			fputs("[<>]", file);
 			break;
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 			print_type(file, type->array.base);
 			fputs("[]", file);
 			break;

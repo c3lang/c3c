@@ -137,7 +137,7 @@ static void header_print_type(FILE *file, Type *type)
 		case TYPE_INTERFACE:
 			OUTPUT("c3any_t");
 			return;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			OUTPUT("c3slice_t");
 			return;
 		case TYPE_VECTOR:
@@ -377,7 +377,7 @@ RETRY:
 		case TYPE_TYPEID:
 		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return;
@@ -431,7 +431,7 @@ RETRY:
 			if (htable_get(table, type)) return;
 			{
 				Decl *decl = type->decl;
-				OUTPUT("typedef struct %s__subarray__ %s;\n", decl_get_extname(decl), decl_get_extname(decl));
+				OUTPUT("typedef struct %s__slice__ %s;\n", decl_get_extname(decl), decl_get_extname(decl));
 				htable_set(table, type, type);
 				header_ensure_member_types_exist(file, table, decl->strukt.members);
 				OUTPUT("%s %s__\n", struct_union_str(decl), decl->extname);

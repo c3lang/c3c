@@ -1510,7 +1510,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
 		Type *vararg_slot_type = decl_params[vararg_index]->type;
-		assert(vararg_slot_type->type_kind == TYPE_SUBARRAY);
+		assert(vararg_slot_type->type_kind == TYPE_SLICE);
 		variadic_type = vararg_slot_type->array.base;
 	}
 
@@ -2433,7 +2433,7 @@ static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *l
 		case TYPE_FLEXIBLE_ARRAY:
 			assert(!from_end);
 			FALLTHROUGH;
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			return true;
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
@@ -2522,7 +2522,7 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 			}
 			break;
 		}
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			// If not from end, just check the negative values.
 			if (!from_end) break;
 			// From end we can only do sanity checks ^0 is invalid for non-end index. ^-1 and less is invalid for all.
@@ -2992,7 +2992,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	}
 
 	// Retain the original type when doing distinct slices.
-	Type *result_type = type_get_subarray(inner_type);
+	Type *result_type = type_get_slice(inner_type);
 	Type *original_type_canonical = original_type->canonical;
 	if (original_type_canonical->type_kind == TYPE_DISTINCT && type_base(original_type_canonical) == result_type)
 	{
@@ -3115,7 +3115,7 @@ static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, 
 	initializer->initializer_list = element_values;
 	enum_array_expr->expr_kind = EXPR_COMPOUND_LITERAL;
 	enum_array_expr->expr_compound_literal.initializer = initializer;
-	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_subarray(type_string), span);
+	enum_array_expr->expr_compound_literal.type_info = type_info_new_base(type_get_slice(type_string), span);
 	enum_array_expr->resolve_status = RESOLVE_NOT_DONE;
 	return sema_analyse_expr(context, enum_array_expr);
 }
@@ -3376,7 +3376,7 @@ static inline bool sema_create_const_len(SemaContext *context, Expr *expr, Type 
 			break;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		default:
 			UNREACHABLE
 	}
@@ -3407,7 +3407,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 			break;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
@@ -3671,7 +3671,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_PARENTOF:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_PARENTOF, type_typeid);
 		case TYPE_PROPERTY_NAMES:
-			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_subarray(type_string));
+			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_slice(type_string));
 		case TYPE_PROPERTY_ALIGNOF:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_MIN:
@@ -3773,7 +3773,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 				case TYPE_BITSTRUCT:
 				case TYPE_ARRAY:
 				case TYPE_FLEXIBLE_ARRAY:
-				case TYPE_SUBARRAY:
+				case TYPE_SLICE:
 				case TYPE_INFERRED_ARRAY:
 				case TYPE_INFERRED_VECTOR:
 				case TYPE_VECTOR:
@@ -4128,12 +4128,12 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 CHECK_DEEPER:
 
-	// 9. Fix hard coded function `len` on subarrays and arrays
+	// 9. Fix hard coded function `len` on slices and arrays
 	if (kw == kw_len)
 	{
-		if (flat_type->type_kind == TYPE_SUBARRAY)
+		if (flat_type->type_kind == TYPE_SLICE)
 		{
-			// Handle literal "foo".len which is now a subarray.
+			// Handle literal "foo".len which is now a slice.
 			sema_expr_flatten_const(context, parent);
 			if (expr_is_const_string(parent))
 			{
@@ -4173,10 +4173,10 @@ CHECK_DEEPER:
 			NOT_SWIZZLE:;
 		}
 	}
-	// Hard coded ptr on subarrays and any
+	// Hard coded ptr on slices and any
 	if (kw == kw_ptr)
 	{
-		if (flat_type->type_kind == TYPE_SUBARRAY)
+		if (flat_type->type_kind == TYPE_SLICE)
 		{
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
 			return true;
@@ -4602,7 +4602,7 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 	if (!sema_analyse_expr(context, right)) return false;
 	if (IS_OPTIONAL(right))
 	{
-		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using subarray assign.");
+		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using slice assign.");
 	}
 	Type *base = type_flatten(left_type)->array.base;
 	Type *rhs_type = type_flatten(right->type);
@@ -4613,7 +4613,7 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 			break;
 		case TYPE_VECTOR:
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 			if (base == rhs_type->array.base) goto SLICE_COPY;
 			break;
 		default:
@@ -4641,7 +4641,7 @@ SLICE_COPY:;
 	switch (rhs_type->type_kind)
 	{
 		case TYPE_ARRAY:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_VECTOR:
 			if (rhs_type->array.base != base) goto EXPECTED;
 			break;
@@ -4659,7 +4659,7 @@ SLICE_COPY:;
 		default:
 			goto EXPECTED;
 	}
-	assert(right->expr_kind != EXPR_SLICE || rhs_type->type_kind == TYPE_SUBARRAY);
+	assert(right->expr_kind != EXPR_SLICE || rhs_type->type_kind == TYPE_SLICE);
 
 	// If we have a slice operation on the right hand side, check the ranges.
 	if (right->expr_kind == EXPR_SLICE)
@@ -4668,7 +4668,7 @@ SLICE_COPY:;
 		IndexDiff right_len = range_const_len(right_range);
 		if (left_len >= 0 && right_len >= 0 && left_len != right_len)
 		{
-			RETURN_SEMA_ERROR(expr, "Length mismatch between subarrays.");
+			RETURN_SEMA_ERROR(expr, "Length mismatch between slices.");
 		}
 	}
 	else
@@ -4694,7 +4694,7 @@ SLICE_COPY:;
 	expr->slice_assign_expr.right = exprid(right);
 	return true;
 EXPECTED:
-	RETURN_SEMA_ERROR(right, "Expected an array, vector or subarray with element type %s.",
+	RETURN_SEMA_ERROR(right, "Expected an array, vector or slice with element type %s.",
 	                  type_quoted_error_string(base));
 }
 
@@ -6997,10 +6997,10 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->expr_kind = EXPR_CONST;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_subarray(type_string);
+				init->type = expr->type = type_get_slice(type_string);
 				return true;
 			}
-			expr->type = type_get_subarray(type_string);
+			expr->type = type_get_slice(type_string);
 			expr->benchmark_hook_expr = BUILTIN_DEF_BENCHMARK_NAMES;
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
@@ -7011,10 +7011,10 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->expr_kind = EXPR_CONST;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_subarray(type_voidptr);
+				init->type = expr->type = type_get_slice(type_voidptr);
 				return true;
 			}
-			expr->type = type_get_subarray(type_voidptr);
+			expr->type = type_get_slice(type_voidptr);
 			expr->benchmark_hook_expr = BUILTIN_DEF_BENCHMARK_FNS;
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
@@ -7025,10 +7025,10 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->expr_kind = EXPR_CONST;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_subarray(type_string);
+				init->type = expr->type = type_get_slice(type_string);
 				return true;
 			}
-			expr->type = type_get_subarray(type_string);
+			expr->type = type_get_slice(type_string);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_NAMES;
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
@@ -7039,10 +7039,10 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->expr_kind = EXPR_CONST;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_subarray(type_voidptr);
+				init->type = expr->type = type_get_slice(type_voidptr);
 				return true;
 			}
-			expr->type = type_get_subarray(type_voidptr);
+			expr->type = type_get_slice(type_voidptr);
 			expr->test_hook_expr = BUILTIN_DEF_TEST_FNS;
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
@@ -7150,7 +7150,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 	{
 		switch (actual_type->type_kind)
 		{
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 				*member_ref = NULL;
 				*return_type = actual_type->array.base;
 				return true;
@@ -7164,7 +7164,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 	}
 	if (kw == kw_len)
 	{
-		if (type_is_arraylike(actual_type) || actual_type->type_kind == TYPE_SUBARRAY)
+		if (type_is_arraylike(actual_type) || actual_type->type_kind == TYPE_SLICE)
 		{
 			*member_ref = NULL;
 			*return_type = type_usz;
@@ -7409,13 +7409,13 @@ RETRY:
 			type_info = expr->type_expr;
 			goto RETRY;
 		}
-		case TYPE_INFO_SUBARRAY:
+		case TYPE_INFO_SLICE:
 		{
 			// If it's an array, make sure we can resolve the length
 			Type *type = sema_expr_check_type_exists(context, type_info->array.base);
 			if (!type) return NULL;
 			if (!type_ok(type)) return type;
-			return type_get_subarray(type);
+			return type_get_slice(type);
 		}
 		case TYPE_INFO_INFERRED_ARRAY:
 		{
@@ -7604,7 +7604,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 			.bytes.len = len,
 	};
 	expr->expr_kind = EXPR_CONST;
-	expr->type = type_get_subarray(type_char);
+	expr->type = type_get_slice(type_char);
 	return true;
 }
 
@@ -8461,9 +8461,9 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 			return false;
 		}
 	}
-	// Let's see if we have a fixed subarray.
+	// Let's see if we have a fixed slice.
 
-	if (to && type_is_arraylike(to_canonical) && expr->expr_kind == EXPR_SLICE && rhs_type_canonical->type_kind == TYPE_SUBARRAY)
+	if (to && type_is_arraylike(to_canonical) && expr->expr_kind == EXPR_SLICE && rhs_type_canonical->type_kind == TYPE_SLICE)
 	{
 		Type *element = type_get_indexed_type(rhs_type_canonical)->canonical;
 		if (element != type_get_indexed_type(to_canonical)->canonical) goto NO_SLICE;
@@ -8529,7 +8529,7 @@ MemberIndex sema_len_from_const(Expr *expr)
 	// We also handle the case where we have a cast from a const array.
 	if (!expr_is_const(expr))
 	{
-		if (type_flatten(expr->type)->type_kind != TYPE_SUBARRAY) return -1;
+		if (type_flatten(expr->type)->type_kind != TYPE_SLICE) return -1;
 		if (expr->expr_kind == EXPR_SLICE)
 		{
 			return range_const_len(&expr->subscript_expr.range);

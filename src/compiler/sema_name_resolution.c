@@ -645,7 +645,7 @@ bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 			case TYPE_POINTER:
 				type = type->pointer;
 				continue;
-			case TYPE_SUBARRAY:
+			case TYPE_SLICE:
 			case TYPE_ARRAY:
 			case TYPE_FLEXIBLE_ARRAY:
 			case TYPE_INFERRED_ARRAY:
@@ -685,7 +685,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
-		case TYPE_SUBARRAY:
+		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return true;
