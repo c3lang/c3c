@@ -304,6 +304,15 @@ void compiler_parse(void)
 	compiler_parsing_time = bench_mark();
 }
 
+static void create_output_dir(const char *dir)
+{
+	if (!file_exists(dir))
+	{
+		if (!dir_make(dir)) error_exit("Failed to create output directory %s.", dir);
+	}
+	if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
+}
+
 void compiler_compile(void)
 {
 	sema_analysis_run();
@@ -486,11 +495,16 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
-		if (active_target.output_dir) output_exe = file_append_path(active_target.output_dir, output_exe);
+		if (active_target.output_dir)
+		{
+			create_output_dir(active_target.output_dir);
+			output_exe = file_append_path(active_target.output_dir, output_exe);
+		}
 		if (file_is_dir(output_exe))
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
 		}
+
 		bool system_linker_available = link_libc() && platform_target.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && active_target.arch_os_target == default_target;
 		switch (active_target.system_linker)
@@ -545,7 +559,11 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
-		if (active_target.output_dir) output_static = file_append_path(active_target.output_dir, output_static);
+		if (active_target.output_dir)
+		{
+			create_output_dir(active_target.output_dir);
+			output_static = file_append_path(active_target.output_dir, output_static);
+		}
 		if (file_is_dir(output_static))
 		{
 			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -561,7 +579,11 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
-		if (active_target.output_dir) output_dynamic = file_append_path(active_target.output_dir, output_dynamic);
+		if (active_target.output_dir)
+		{
+			create_output_dir(active_target.output_dir);
+			output_dynamic = file_append_path(active_target.output_dir, output_dynamic);
+		}
 		if (file_is_dir(output_dynamic))
 		{
 			error_exit("Cannot create a dynamic library with the name '%s' - there is already a directory with that name.", output_exe);
