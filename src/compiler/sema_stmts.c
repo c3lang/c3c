@@ -1052,13 +1052,12 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			return false;
 		}
 		// 3e. Expect that it isn't an optional
-		if (IS_OPTIONAL(init) && !decl->var.unwrap)
+		if (IS_OPTIONAL(init))
 		{
 			return sema_error_failed_cast(last, last->type, cast_to_bool ? type_bool : init->type);
 			return false;
 		}
-		// TODO document
-		if (!decl->var.unwrap && cast_to_bool && cast_to_bool_kind(typeget(decl->var.type_info)) == CAST_ERROR)
+		if (cast_to_bool && cast_to_bool_kind(typeget(decl->var.type_info)) == CAST_ERROR)
 		{
 			SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
 			return false;

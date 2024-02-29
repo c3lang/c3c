@@ -3297,14 +3297,6 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
 			return decl_poison(decl);
 		}
-		else
-		{
-			if (decl->var.unwrap && IS_OPTIONAL(init))
-			{
-				SEMA_ERROR(decl->var.init_expr, "An optional expression was expected here.");
-				return decl_poison(decl);
-			}
-		}
 		if (expr_is_const(init_expr))
 		{
 			init_expr->const_expr.is_hex = false;

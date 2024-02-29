@@ -72,14 +72,17 @@ LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id)
 	return value.value;
 }
 
-void llvm_emit_assume_raw(GenContext *c, LLVMValueRef assume_true)
+void llvm_emit_assume_true(GenContext *c, BEValue *assume_true)
 {
-	llvm_emit_call_intrinsic(c, intrinsic_id.assume, NULL, 0, &assume_true, 1);
+	assert(llvm_value_is_bool(assume_true));
+	LLVMValueRef value = assume_true->value;
+	llvm_emit_call_intrinsic(c, intrinsic_id.assume, NULL, 0, &value, 1);
 }
 
-LLVMValueRef llvm_emit_expect_false_raw(GenContext *c, LLVMValueRef expect_false)
+LLVMValueRef llvm_emit_expect_false(GenContext *c, BEValue *expect_false)
 {
-	LLVMValueRef values[2] = { expect_false, LLVMConstNull(c->bool_type) };
+	assert(llvm_value_is_bool(expect_false));
+	LLVMValueRef values[2] = { expect_false->value, LLVMConstNull(c->bool_type) };
 	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
 }
 
