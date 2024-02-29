@@ -25,6 +25,7 @@
 - "identity" functions are now constants for Matrix and Complex numbers.
 - "float16" can now be printed.
 - Removed 'append' from Object and List, replaced by 'push'.
+- `GenericList` renamed `AnyList`.
 
 ## 0.5.5 Change list
 
