@@ -445,7 +445,6 @@ typedef struct
 typedef struct VarDecl_
 {
 	VarDeclKind kind : 8;
-	bool unwrap : 1;
 	bool shadow : 1;
 	bool vararg : 1;
 	bool is_static : 1;

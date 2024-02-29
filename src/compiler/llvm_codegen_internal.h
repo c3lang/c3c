@@ -489,9 +489,9 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 							 BEValue *value_2);
 void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const char *fmt, BEValue *args);
 void llvm_emit_unreachable(GenContext *c);
-void llvm_emit_assume_raw(GenContext *c, LLVMValueRef assume_true);
+void llvm_emit_assume_true(GenContext *c, BEValue *assume_true);
 LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
-LLVMValueRef llvm_emit_expect_false_raw(GenContext *c, LLVMValueRef expect_false);
+LLVMValueRef llvm_emit_expect_false(GenContext *c, BEValue *expect_false);
 void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type);
 void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len);
 void llvm_emit_slice_pointer(GenContext *context, BEValue *slice, BEValue *pointer);
