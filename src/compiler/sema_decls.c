@@ -4,6 +4,9 @@
 
 #include "sema_internal.h"
 
+#define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
+#define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
+#define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
 
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -1544,8 +1547,12 @@ static inline bool sema_analyse_operator_element_at(Decl *method)
 	if (!sema_analyse_operator_common(method, &rtype, &params, 2)) return false;
 	if (type_is_void(rtype->type))
 	{
-		SEMA_ERROR(rtype, "The return type cannot be 'void'.");
-		return false;
+		RETURN_SEMA_ERROR(rtype, "The return type cannot be 'void'.");
+	}
+	if (method->operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(rtype->type))
+	{
+		RETURN_SEMA_ERROR(rtype, "The return type must be a pointer, but it is returning %s, did you mean to overload [] instead?",
+		                  type_quoted_error_string(rtype->type));
 	}
 	return true;
 }
@@ -1677,16 +1684,148 @@ static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *p
 	return true;
 }
 
+static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, Type **index_ref)
+{
+	switch (method->operator)
+	{
+		case OVERLOAD_LEN:
+			UNREACHABLE
+		case OVERLOAD_ELEMENT_AT:
+			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical);
+			*index_ref = method->func_decl.signature.params[1]->type->canonical;
+			return;
+		case OVERLOAD_ELEMENT_REF:
+			*value_ref = type_no_optional(typeget(method->func_decl.signature.rtype)->canonical->pointer);
+			*index_ref = method->func_decl.signature.params[1]->type->canonical;
+			return;
+		case OVERLOAD_ELEMENT_SET:
+			*value_ref = method->func_decl.signature.params[2]->type->canonical;
+			*index_ref = method->func_decl.signature.params[1]->type->canonical;
+			return;
+		default:
+			UNREACHABLE
+	}
+}
+
+/**
+ * Do checks on an operator method:
+ *
+ * 1. Are the arguments valid for the operator?
+ * 2. Check if the operator was already defined.
+ * 3. See if another operator was defined and if the results match up.
+ */
+INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type, Decl *method)
+{
+	// Check it's valid for the operator type.
+	if (!sema_check_operator_method_validity(method)) return false;
+
+	// See if the operator has already been defined.
+	OperatorOverload operator = method->operator;
+	Decl *other = sema_find_operator(context, parent_type, operator);
+	if (other)
+	{
+		Attr *attr = method_find_overload_attribute(method);
+		SEMA_ERROR(attr->exprs[0], "This operator is already defined for '%s'.", parent_type->name);
+		SEMA_NOTE(other, "The previous definition was here.");
+		return false;
+	}
+
+	// Check that actual types match up
+	Type *value;
+	Type *index_type;
+	switch (operator)
+	{
+		case OVERLOAD_LEN:
+			// No dependency
+			return true;
+		case OVERLOAD_ELEMENT_AT:
+			// [] compares &[]
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			// And []=
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			return true;
+		case OVERLOAD_ELEMENT_REF:
+			// &[] compares []
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			// And []=
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			return true;
+		case OVERLOAD_ELEMENT_SET:
+			// []= compares &[]
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			// And []
+			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			if (other && decl_ok(other))
+			{
+				sema_get_overload_arguments(other, &value, &index_type);
+				break;
+			}
+			return true;
+		default:
+			UNREACHABLE
+	}
+
+	// We have an operator to compare with.
+	Type *this_value;
+	Type *this_index_type;
+	sema_get_overload_arguments(method, &this_value, &this_index_type);
+
+	// So compare the value
+	if (this_value != value)
+	{
+		SEMA_ERROR(method, "There is a mismatch of the 'value' type compared to that of another operator: expected %s but got %s.",
+		           type_quoted_error_string(value), type_quoted_error_string(this_value));
+		SEMA_NOTE(other, "The other definition is here.");
+		return false;
+	}
+
+	// And the index.
+	if (this_index_type != index_type)
+	{
+		SEMA_ERROR(method, "There is a mismatch of the 'index' type compared to that of another operator: expected %s but got %s.",
+		           type_quoted_error_string(index_type), type_quoted_error_string(this_index_type));
+		SEMA_NOTE(other, "The other definition is here.");
+		return false;
+	}
+
+	// Everything worked! Done.
+	return true;
+}
+
 /**
  * Attempt to add a method to the type:
  *
  * 1. See if it is already defined as an extension method => if so show error
  * 2. If it is a non-user defined => delegate to unit_add_base_extension_method
  * 3. If it is check if it is defined on the type.
- * 4. If it is an operator method, check that it satifies the operatior.
- * 5. If it is an operator method check that the operator type is not already defined.
- * 6. Register its external name.
- * 7. Add the module according to visibility.
+ * 4. If it is an operator method call sema_analyse_operator_method to check it.
+ * 5. Register its external name.
+ * 6. Add the module according to visibility.
  */
 static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method)
 {
@@ -1726,18 +1865,7 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 	// Is it an operator?
 	if (method->operator)
 	{
-		// Check it's valid for the operator type.
-		if (!sema_check_operator_method_validity(method)) return false;
-
-		// See if the operator has already been defined.
-		other = sema_find_operator(context, parent_type, method->operator);
-		if (other)
-		{
-			Attr *attr = method_find_overload_attribute(method);
-			SEMA_ERROR(attr->exprs[0], "This operator is already defined for '%s'.", parent_type->name);
-			SEMA_NOTE(other, "The previous definition was here.");
-			return false;
-		}
+		if (!sema_analyse_operator_method(context, parent_type, method)) return false;
 	}
 
 	// Set the external name
@@ -2035,17 +2163,32 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 	UNREACHABLE
 }
 
+// Helper method
 INLINE bool update_abi(Decl *decl, CallABI abi)
 {
 	decl->func_decl.signature.abi = abi;
 	return true;
 }
+
+/**
+ * Given a @callconv string, update the call convention.
+ *
+ * Test for:
+ * 1. cdecl
+ * 2. veccall
+ * 3. stdcall
+ *
+ * If the platform is unsupported on the platform, it is ignored.
+ */
 static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 {
 	const char *str = expr->const_expr.bytes.ptr;
 	CallABI abi;
-	if (strcmp(str, "cdecl") == 0) return update_abi(decl, CALL_C);
-	if (strcmp(str, "veccall") == 0)
+	// C decl is easy
+	if (str_eq(str, "cdecl")) return update_abi(decl, CALL_C);
+
+	// Check veccall
+	if (str_eq(str, "veccall"))
 	{
 		switch (platform_target.arch)
 		{
@@ -2064,6 +2207,7 @@ static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 				return true;
 		}
 	}
+	// Finally check stdcall.
 	if (strcmp(str, "stdcall") == 0)
 	{
 		if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
@@ -2072,13 +2216,12 @@ static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 		}
 		return true;
 	}
-	SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
-	return false;
+	RETURN_SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
 }
 
-#define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
-#define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
-#define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
+/**
+ * Analyse almost all attributes.
+ */
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl)
 {
 	AttributeType type = attr->attr_kind;
@@ -2125,34 +2268,35 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 
+	// First check if it doesn't match the domain.
 	if ((attribute_domain[type] & domain) != domain)
 	{
-		sema_error_at(attr->span, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
-		return false;
+		RETURN_SEMA_ERROR(attr, "'%s' is not a valid %s attribute.", attr->name, attribute_domain_to_string(domain));
 	}
+
+	// No attribute has more than one argument right now.
 	unsigned args = vec_size(attr->exprs);
-	if (args > 1)
-	{
-		SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
-		return false;
-	}
+	if (args > 1) RETURN_SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
+
+	// Grab that first argument.
 	Expr *expr = args ? attr->exprs[0] : NULL;
+
 	switch (type)
 	{
 		case ATTRIBUTE_PRIVATE:
 		case ATTRIBUTE_PUBLIC:
 		case ATTRIBUTE_LOCAL:
 		case ATTRIBUTE_BUILTIN:
-			// These are pseudo-attributes.
+			// These are pseudo-attributes and are processed separately.
 			UNREACHABLE;
 		case ATTRIBUTE_DEPRECATED:
+			// We expect an optional string.
 			if (expr)
 			{
 				if (!sema_analyse_expr(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
-					SEMA_ERROR(expr, "Expected a constant string value as argument.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 				}
 			}
 			decl->is_deprecated = true;
@@ -2405,11 +2549,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NONE:
 			UNREACHABLE
 	}
-	if (expr)
-	{
-		SEMA_ERROR(expr, "'%s' should not have any arguments.", attr->name);
-		return false;
-	}
+	if (expr) RETURN_SEMA_ERROR(expr, "'%s' should not have any arguments.", attr->name);
 	return true;
 
 }
@@ -3071,6 +3211,7 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 	unsigned body_param_count = vec_size(body_parameters);
 	for (unsigned i = 0; i < body_param_count; i++)
 	{
+		assert(body_parameters);
 		Decl *param = body_parameters[i];
 		assert(param);
 		param->resolve_status = RESOLVE_RUNNING;
@@ -3175,10 +3316,15 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 	return true;
 }
 
+/**
+ * Analyse $foo and $Foo variables.
+ */
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 {
 	Expr *init;
-	assert(decl->decl_kind == DECL_VAR);
+	assert(decl->decl_kind == DECL_VAR && "Should only be called on variables.");
+
+	// Grab the optional type_info.
 	TypeInfo *type_info = vartype(decl);
 	switch (decl->var.kind)
 	{
@@ -3189,51 +3335,63 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				SEMA_ERROR(type_info, "Compile time type variables may not have a type.");
 				goto FAIL;
 			}
+			// Check initialization.
 			if ((init = decl->var.init_expr))
 			{
+				// Try to fold any constant into an lvalue.
 				if (!sema_analyse_expr_lvalue_fold_const(context, init)) goto FAIL;
+
+				// If this isn't a type, it's an error.
 				if (init->expr_kind != EXPR_TYPEINFO)
 				{
 					SEMA_ERROR(decl->var.init_expr, "Expected a type assigned to %s.", decl->name);
 					goto FAIL;
 				}
 			}
+			// Otherwise we're done.
 			break;
 		case VARDECL_LOCAL_CT:
-			if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) goto FAIL;
+			// Resolve the type if it's present.
 			if (type_info)
 			{
+				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) goto FAIL;
+				// Set the type of the declaration.
 				decl->type = type_info->type->canonical;
 				init = decl->var.init_expr;
+				// If there is no init, set it to zero.
 				if (!init)
 				{
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
 					expr_rewrite_to_const_zero(init, decl->type);
 				}
+
+				// Analyse the expression.
 				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL)) goto FAIL;
+
+				// Check that it is constant.
 				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
 				}
+				break;
 			}
-			else
+			// If we don't have a type, resolve the expression.
+			if ((init = decl->var.init_expr))
 			{
-				if ((init = decl->var.init_expr))
+				if (!sema_analyse_expr(context, init)) goto FAIL;
+				// Check it is constant.
+				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
-					if (!sema_analyse_expr(context, init)) goto FAIL;
-					if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
-					{
-						SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
-						goto FAIL;
-					}
-					decl->type = init->type;
+					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
+					goto FAIL;
 				}
-				else
-				{
-					decl->type = type_void;
-				}
+				// Update the type.
+				decl->type = init->type;
+				break;
 			}
+			// Here we set a void type if both init and type is missing.
+			decl->type = type_void;
 			break;
 		default:
 			UNREACHABLE
@@ -3869,6 +4027,7 @@ RETRY:
 	}
 	UNREACHABLE
 }
+
 bool sema_analyse_decl(SemaContext *context, Decl *decl)
 {
 	if (decl->resolve_status == RESOLVE_DONE) return decl_ok(decl);
@@ -3972,22 +4131,3 @@ FAILED:
 	return decl_poison(decl);
 }
 
-void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
-{
-	if (!decl->is_deprecated) return;
-	// Prevent multiple reports
-	decl->is_deprecated = false;
-	FOREACH_BEGIN(Attr *attr, decl->attributes)
-		if (attr->attr_kind == ATTRIBUTE_DEPRECATED)
-		{
-			if (attr->exprs)
-			{
-				const char *comment_string = attr->exprs[0]->const_expr.bytes.ptr;
-				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
-				return;
-			}
-			break;
-		}
-	FOREACH_END();
-	sema_warning_at(span, "'%s' is deprecated.", decl->name);
-}
