@@ -15,8 +15,8 @@ static inline bool sema_check_param_uniqueness_and_type(Decl **decls, Decl *curr
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
-static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like);
-static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like);
+static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method);
+static inline bool unit_add_method_like(SemaContext *context, Type *parent_type, Decl *method);
 
 static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
 static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload);
@@ -1638,81 +1638,138 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 	FOREACH_END();
 	UNREACHABLE
 }
-static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+
+INLINE Attr* method_find_overload_attribute(Decl *method)
 {
-	sema_set_method_ext_name(unit, parent_type->name, method_like);
-	switch (method_like->visibility)
+	FOREACH_BEGIN(Attr *attr, method->attributes)
+		if (attr->attr_kind == ATTRIBUTE_OPERATOR) return attr;
+	FOREACH_END();
+	UNREACHABLE
+}
+
+static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method)
+{
+	// We don't support operator overloading on base types, because
+	// there seems little use for it frankly.
+	if (method->operator)
+	{
+		RETURN_SEMA_ERROR(method_find_overload_attribute(method),
+						  "Only user-defined types support operator oveloading.");
+	}
+
+	// As with normal methods, update the name.
+	sema_set_method_ext_name(unit, parent_type->name, method);
+
+	// Add it to the right list of extensions.
+	switch (method->visibility)
 	{
 		case VISIBLE_PUBLIC:
-			vec_add(global_context.method_extensions, method_like);
+			vec_add(global_context.method_extensions, method);
 			break;
 		case VISIBLE_PRIVATE:
-			vec_add(unit->module->private_method_extensions, method_like);
+			vec_add(unit->module->private_method_extensions, method);
 			break;
 		case VISIBLE_LOCAL:
-			vec_add(unit->local_method_extensions, method_like);
+			vec_add(unit->local_method_extensions, method);
 			break;
 	}
-	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method_like->name);
+	DEBUG_LOG("Method-like '%s.%s' analysed.", parent_type->name, method->name);
 	return true;
 }
 
-static inline bool unit_add_method_like(CompilationUnit *unit, Type *parent_type, Decl *method_like)
+/**
+ * Attempt to add a method to the type:
+ *
+ * 1. See if it is already defined as an extension method => if so show error
+ * 2. If it is a non-user defined => delegate to unit_add_base_extension_method
+ * 3. If it is check if it is defined on the type.
+ * 4. If it is an operator method, check that it satifies the operatior.
+ * 5. If it is an operator method check that the operator type is not already defined.
+ * 6. Register its external name.
+ * 7. Add the module according to visibility.
+ */
+static inline bool unit_add_method_like(SemaContext *context, Type *parent_type, Decl *method)
 {
+	CompilationUnit *unit = context->unit;
 	assert(parent_type->canonical == parent_type);
-	const char *name = method_like->name;
-	Decl *method = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
-	if (!method) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
-	if (!method) sema_find_extension_method_in_list(global_context.method_extensions, parent_type, name);
-	if (method)
+	const char *name = method->name;
+
+	// Did we already define it externally?
+	Decl *other = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
+	if (!other) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
+	if (!other) sema_find_extension_method_in_list(global_context.method_extensions, parent_type, name);
+	if (other)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined.", method_name_by_decl(method_like));
-		SEMA_NOTE(method, "The previous definition was here.");
+		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
+		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
 	}
 
-	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(unit, parent_type, method_like);
+	// Is it a base extension?
+	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(unit, parent_type, method);
+
+	// Resolve it as a user-defined type extension.
 	Decl *parent = parent_type->decl;
 	Decl *ambiguous = NULL;
 	Decl *private = NULL;
-	method = sema_resolve_method(unit, parent, name, &ambiguous, &private);
-	if (method && !method->func_decl.attr_interface_method)
+
+	// If we found it, issue an error.
+	other = sema_resolve_method(unit, parent, name, &ambiguous, &private);
+	if (other)
 	{
-		SEMA_ERROR(method_like, "This %s is already defined for '%s'.",
-				   method_name_by_decl(method_like), parent_type->name);
-		SEMA_NOTE(method, "The previous definition was here.");
+		SEMA_ERROR(method, "This %s is already defined for '%s'.",
+		           method_name_by_decl(method), parent_type->name);
+		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
 	}
-	if (method_like->operator && !sema_check_operator_method_validity(method_like)) return false;
-	REMINDER("Check multiple operator");
-	sema_set_method_ext_name(unit, parent->extname, method_like);
-	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method_like->name);
-	switch (method_like->visibility)
+
+	// Is it an operator?
+	if (method->operator)
+	{
+		// Check it's valid for the operator type.
+		if (!sema_check_operator_method_validity(method)) return false;
+
+		// See if the operator has already been defined.
+		other = sema_find_operator(context, parent_type, method->operator);
+		if (other)
+		{
+			Attr *attr = method_find_overload_attribute(method);
+			SEMA_ERROR(attr->exprs[0], "This operator is already defined for '%s'.", parent_type->name);
+			SEMA_NOTE(other, "The previous definition was here.");
+			return false;
+		}
+	}
+
+	// Set the external name
+	sema_set_method_ext_name(unit, parent->extname, method);
+	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
+
+	// Add it to the correct place: type methods, private extensions, local method extensions
+	switch (method->visibility)
 	{
 		case VISIBLE_PUBLIC:
-			vec_add(parent->methods, method_like);
+			vec_add(parent->methods, method);
 			break;
 		case VISIBLE_PRIVATE:
 			if (decl_module(parent) == unit->module && parent->visibility >= VISIBLE_PRIVATE)
 			{
-				vec_add(parent->methods, method_like);
+				vec_add(parent->methods, method);
 				break;
 			}
-			vec_add(unit->module->private_method_extensions, method_like);
+			vec_add(unit->module->private_method_extensions, method);
 			break;
 		case VISIBLE_LOCAL:
 			if (parent->unit == unit && parent->visibility >= VISIBLE_LOCAL)
 			{
-				vec_add(parent->methods, method_like);
+				vec_add(parent->methods, method);
 				break;
 			}
-			vec_add(unit->local_method_extensions, method_like);
+			vec_add(unit->local_method_extensions, method);
 			break;
 		default:
 			UNREACHABLE
 	}
 	return true;
-
 }
 
 static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
@@ -1854,7 +1911,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			decl->func_decl.interface_method = 0;
 		}
 	}
-	return unit_add_method_like(context->unit, par_type, decl);
+	return unit_add_method_like(context, par_type, decl);
 }
 
 static const char *attribute_domain_to_string(AttributeDomain domain)
@@ -2853,7 +2910,6 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		SEMA_ERROR(decl, "Expected a function body, if you want to declare an extern function use 'extern' or place it in an .c3i file.");
 		return false;
 	}
-
 	bool pure = false;
 	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, NULL, &pure)) return decl_poison(decl);
 	decl->func_decl.signature.attrs.is_pure = pure;
@@ -2898,18 +2954,24 @@ ERROR:
 
 static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
+	// Resolve the type of the method.
 	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type_info, RESOLVE_TYPE_MACRO_METHOD)) return false;
+
+	// Can the type have methods?
 	Type *parent_type = parent_type_info->type;
 	if (!type_may_have_method(parent_type))
 	{
 		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
+
+	// We need at least one argument (the parent type)
 	if (!vec_size(decl->func_decl.signature.params))
 	{
-		SEMA_ERROR(decl, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
-		return false;
+		RETURN_SEMA_ERROR(decl, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
 	}
+
+	// Check the first argument.
 	Decl *first_param = decl->func_decl.signature.params[0];
 	if (!first_param)
 	{
@@ -2920,12 +2982,48 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 
 	if (first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
-		SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
-		return false;
+		RETURN_SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
 	}
-	return unit_add_method_like(context->unit, parent_type->canonical, decl);
+	return unit_add_method_like(context, parent_type->canonical, decl);
 }
 
+INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters)
+{
+	unsigned body_param_count = vec_size(body_parameters);
+	for (unsigned i = 0; i < body_param_count; i++)
+	{
+		Decl *param = body_parameters[i];
+		assert(param);
+		param->resolve_status = RESOLVE_RUNNING;
+		assert(param->decl_kind == DECL_VAR);
+		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM:
+				if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+				break;
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_CT_TYPE:
+				RETURN_SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_BITMEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
+				UNREACHABLE
+		}
+		if (!sema_check_param_uniqueness_and_type(body_parameters, param, i, body_param_count)) return false;
+		param->resolve_status = RESOLVE_DONE;
+	}
+	return true;
+}
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	decl->func_decl.unit = context->unit;
@@ -2939,47 +3037,11 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 		SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 		return decl_poison(decl);
 	}
-
 	DeclId body_param = decl->func_decl.body_param;
-
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
-	unsigned body_param_count = vec_size(body_parameters);
-	for (unsigned i = 0; i < body_param_count; i++)
-	{
-		assert(body_parameters);
-		Decl *param = body_parameters[i];
-		param->resolve_status = RESOLVE_RUNNING;
-		assert(param->decl_kind == DECL_VAR);
-		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
-		switch (param->var.kind)
-		{
-			case VARDECL_PARAM:
-				if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return decl_poison(decl);
-				break;
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_CT:
-			case VARDECL_PARAM_REF:
-			case VARDECL_PARAM_CT_TYPE:
-				SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
-				return decl_poison(decl);
-			case VARDECL_CONST:
-			case VARDECL_GLOBAL:
-			case VARDECL_LOCAL:
-			case VARDECL_MEMBER:
-			case VARDECL_BITMEMBER:
-			case VARDECL_LOCAL_CT:
-			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_UNWRAPPED:
-			case VARDECL_REWRAPPED:
-			case VARDECL_ERASE:
-				UNREACHABLE
-		}
-		if (!sema_check_param_uniqueness_and_type(body_parameters, param, i, body_param_count)) return decl_poison(decl);
-		param->resolve_status = RESOLVE_DONE;
-	}
+	if (!sema_analyse_macro_body(context, body_parameters)) return decl_poison(decl);
 	bool pure = false;
 	if (!sema_analyse_doc_header(decl->func_decl.docs, decl->func_decl.signature.params, body_parameters, &pure)) return decl_poison(decl);
-
 	if (decl->func_decl.type_parent)
 	{
 		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
