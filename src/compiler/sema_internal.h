@@ -99,7 +99,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
@@ -113,4 +113,25 @@ INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSiz
 	if (!sema_resolve_type_decl(context, type)) return false;
 	*result = type_alloca_alignment(type);
 	return true;
+}
+
+
+INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
+{
+	if (!decl->is_deprecated) return;
+	// Prevent multiple reports
+	decl->is_deprecated = false;
+	FOREACH_BEGIN(Attr *attr, decl->attributes)
+		if (attr->attr_kind == ATTRIBUTE_DEPRECATED)
+		{
+			if (attr->exprs)
+			{
+				const char *comment_string = attr->exprs[0]->const_expr.bytes.ptr;
+				sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
+				return;
+			}
+			break;
+		}
+	FOREACH_END();
+	sema_warning_at(span, "'%s' is deprecated.", decl->name);
 }
