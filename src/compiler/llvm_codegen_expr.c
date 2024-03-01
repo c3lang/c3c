@@ -6165,8 +6165,12 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 
 	} while (0);
 
-	// Emit the last statement
-	llvm_emit_stmt(c, value);
+	bool has_current_block = llvm_get_current_block_if_in_use(c) != NULL;
+	if (has_current_block)
+	{
+		// Emit the last statement
+		llvm_emit_stmt(c, value);
+	}
 
 	// In the case of a void with no return, then this may be true.
 	if (llvm_basic_block_is_unused(expr_block))
@@ -6176,7 +6180,10 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 		goto DONE;
 	}
 
-	llvm_emit_br(c, expr_block);
+	if (has_current_block)
+	{
+		llvm_emit_br(c, expr_block);
+	}
 
 	// Emit the exit block.
 	llvm_emit_block(c, expr_block);

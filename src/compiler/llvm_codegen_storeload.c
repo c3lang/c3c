@@ -105,7 +105,7 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 {
 	llvm_value_addr(c, ref);
 	Type *type = ref->type;
-	if (!type_is_abi_aggregate(type))
+	if (!type_is_abi_aggregate(type) || type_is_builtin(type->type_kind))
 	{
 		return llvm_store_raw(c, ref, llvm_get_zero(c, type));
 	}
