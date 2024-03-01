@@ -16,7 +16,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
 static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *parent_type, Decl *method);
-static inline bool unit_add_method_like(SemaContext *context, Type *parent_type, Decl *method);
+static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method);
 
 static bool sema_analyse_operator_common(Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr, uint32_t parameters);
 static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload);
@@ -1688,7 +1688,7 @@ static inline bool unit_add_base_extension_method(CompilationUnit *unit, Type *p
  * 6. Register its external name.
  * 7. Add the module according to visibility.
  */
-static inline bool unit_add_method_like(SemaContext *context, Type *parent_type, Decl *method)
+static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method)
 {
 	CompilationUnit *unit = context->unit;
 	assert(parent_type->canonical == parent_type);
@@ -1772,6 +1772,10 @@ static inline bool unit_add_method_like(SemaContext *context, Type *parent_type,
 	return true;
 }
 
+/**
+ * Find an interface name by searching through its own interfaces as well as any
+ * parents to the interface.
+ */
 static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 {
 	FOREACH_BEGIN(Decl *method, interface->interface_methods)
@@ -1784,7 +1788,19 @@ static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 	return NULL;
 }
 
-static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *parent_type, Decl *method)
+/**
+ * Given a method, find the interface it implements.
+ *
+ * 1. Check that it can implement an interface (structs, unions, distinct, faults and enums can)
+ * 2. Find the method in the interfaces implemented. If more than one interface has the method then they must match
+ * 3. If no match is found we return.
+ * 4. Otherwise we fully resolve the matching interface.
+ * 5. And return the interface method.
+ *
+ * If (2) or (4) fails, then this is an error returning a poisoned decl. Not finding a method is fine,
+ * this returns NULL.
+ */
+static inline Decl *sema_find_interface_for_method(SemaContext *context, CanonicalType *parent_type, Decl *method)
 {
 	// Can the parent even implement a interface?
 	switch (parent_type->type_kind)
@@ -1795,16 +1811,22 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *p
 		case TYPE_FAULTTYPE:
 		case TYPE_ENUM:
 			break;
+		case TYPE_TYPEDEF:
+			UNREACHABLE
 		default:
 			return NULL;
 	}
 	const char *name = method->name;
 	Decl *first_match = NULL;
 	Decl *first_interface = NULL;
+
+	// Walk through all implemented interfaces.
 	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->interfaces)
 		Decl *interface = proto->type->decl;
 		Decl *match = sema_interface_method_by_name(interface, name);
 		if (!match) continue;
+
+		// Is there a already a match?
 		if (first_match)
 		{
 			if (first_match->type->function.prototype->raw_type == match->type->function.prototype->raw_type) continue;
@@ -1812,24 +1834,42 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Type *p
 			           "Both '%s' and '%s' interfaces have a method matching '%s' but their signatures are different, "
 			           "which prevents it from being implemented.",
 			           first_interface->name, interface->name, name);
-			return NULL;
+			return poisoned_decl;
 		}
+
+		// Update the match.
 		first_match = match;
 		first_interface = interface;
 	FOREACH_END();
-	if (!first_match)
-	{
-		return NULL;
-	}
+
+	// No match => return NULL.
+	if (!first_match) return NULL;
+
+	// Analyse the interface.
 	if (!sema_analyse_decl(context, first_interface)) return poisoned_decl;
+
+	// Return the match.
 	return first_match;
 }
+
+
+/**
+ * Check that an interface matches the implementing method.
+ *
+ * 1. Check return types.
+ * 2. Check parameter count.
+ * 3. Check each parameter for matching types (TODO, should there be more checks?)
+ *
+ * @return true if it matches, false otherwise.
+ */
 static inline bool sema_compare_method_with_interface(SemaContext *context, Decl *decl, Decl *implemented_method)
 {
 	Signature interface_sig = implemented_method->func_decl.signature;
 	Signature this_sig = decl->func_decl.signature;
 	Type *any_rtype = typeget(interface_sig.rtype);
 	Type *this_rtype = typeget(this_sig.rtype);
+
+	// Do the return types match?
 	if (any_rtype->canonical != this_rtype->canonical)
 	{
 		SEMA_ERROR(type_infoptr(this_sig.rtype), "The prototype method has a return type %s, but this function returns %s, they need to match.",
@@ -1837,10 +1877,13 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 		SEMA_NOTE(type_infoptr(interface_sig.rtype), "The interface definition is here.");
 		return false;
 	}
+
 	Decl **any_params = interface_sig.params;
 	Decl **this_params = this_sig.params;
 	unsigned any_param_count = vec_size(any_params);
 	unsigned this_param_count = vec_size(this_params);
+
+	// Do the param counts match?
 	if (any_param_count != this_param_count)
 	{
 		if (any_param_count > this_param_count)
@@ -1857,6 +1900,8 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 		}
 		return false;
 	}
+
+	// Check each param.
 	FOREACH_BEGIN_IDX(i, Decl *param, this_params)
 		if (i == 0) continue;
 		if (param->type->canonical != any_params[i]->type->canonical)
@@ -1870,8 +1915,22 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 	return true;
 }
 
+/**
+ * Analyse a method.
+ *
+ * 1. Check that it has no init/finalizer attributes.
+ * 2. Check that it has no test/benchmark attributes.
+ * 3. Resolve the parent type.
+ * 4. Resolve the declaration of the parent (as needed).
+ * 5. Check that it has at least one parameter.
+ * 6. Check that this parameter is correct.
+ * 7. If it is dynamic, the type may not be an interface or any
+ * 8. If it is dynamic, make sure that it implements an interface correctly if available
+ * 9. Try adding the method
+ */
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
+	// Check for @init, @finalizer, @test and @benchmark
 	if (decl->func_decl.attr_init | decl->func_decl.attr_finalizer)
 	{
 		SEMA_ERROR(decl, "Methods may not have '@init' or '@finalizer' attributes.");
@@ -1883,24 +1942,40 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		return decl_poison(decl);
 	}
 
+	// Resolve the parent type.
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
 	if (!sema_resolve_type_info(context, parent_type, RESOLVE_TYPE_FUNC_METHOD)) return false;
 	Type *par_type = parent_type->type->canonical;
+
+	// Resolve declaration of parent as needed.
 	if (!sema_resolve_type_decl(context, par_type)) return false;
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
+
+	// Ensure it has at least one parameter.
 	if (!vec_size(params)) RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
-												   "it is a method of, e.g. 'fn Foo.test(Foo* foo)'.");
+												   "it is a method of, e.g. 'fn void %s.%s(%s* self)'.",
+	                                         type_to_error_string(par_type), decl->name, type_to_error_string(par_type));
+
+	// Ensure that the first parameter is valid.
 	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
+	// Make dynamic checks.
 	if (is_dynamic)
 	{
 		if (par_type->type_kind == TYPE_INTERFACE)
 		{
-			RETURN_SEMA_ERROR(decl, "Interfaces may not implement @dynamic methods.");
+			RETURN_SEMA_ERROR(decl, "Interfaces may not implement '@dynamic' methods, only regular methods.");
 		}
+		if (par_type == type_any)
+		{
+			RETURN_SEMA_ERROR(decl, "'any' may not implement '@dynamic' methods, only regular methods.");
+		}
+		// Retrieve the implemented method.
 		Decl *implemented_method = sema_find_interface_for_method(context, par_type, decl);
 		if (!decl_ok(implemented_method)) return false;
+
+		// If it's implementing a method, check it.
 		if (implemented_method)
 		{
 			if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
@@ -1911,7 +1986,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			decl->func_decl.interface_method = 0;
 		}
 	}
-	return unit_add_method_like(context, par_type, decl);
+	return unit_add_method(context, par_type, decl);
 }
 
 static const char *attribute_domain_to_string(AttributeDomain domain)
@@ -2930,7 +3005,10 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 	{
 		if (param_type->type_kind != TYPE_POINTER || param_type->pointer != parent_type)
 		{
-			RETURN_SEMA_ERROR(param, "The fist parameter must be of type %s", type_quoted_error_string(type_get_ptr(parent_type)));
+			RETURN_SEMA_ERROR(type_infoptr(param->var.type_info),
+							  "The first parameter must always be a pointer for '@dynamic' methods, "
+							  "so please change its type to %s if possible.",
+							  type_quoted_error_string(type_get_ptr(parent_type)));
 		}
 		return true;
 	}
@@ -2947,7 +3025,8 @@ static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param,
 			break;
 	}
 ERROR:
-	RETURN_SEMA_ERROR(param, "The first parameter must be of type %s or %s.",
+	RETURN_SEMA_ERROR(type_infoptr(param->var.type_info),
+					  "The first parameter of a method must be of type %s or %s.",
 					  type_quoted_error_string(parent_type),
 	                  type_quoted_error_string(type_get_ptr(parent_type)));
 }
@@ -2984,7 +3063,7 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
 	}
-	return unit_add_method_like(context, parent_type->canonical, decl);
+	return unit_add_method(context, parent_type->canonical, decl);
 }
 
 INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters)
