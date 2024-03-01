@@ -78,7 +78,7 @@ fn Time now()
 	$endif
 }
 
-fn Time Time.add_seconds(time, long seconds) => time + (Time)(seconds * (long)MS);
+fn Time Time.add_seconds(time, long seconds) => time + (Time)(seconds * (long)SEC);
 fn Time Time.add_minutes(time, long minutes) => time + (Time)(minutes * (long)MIN);
 fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)HOUR);
 fn Time Time.add_days(time, long days) => time + (Time)(days * (long)DAY);
