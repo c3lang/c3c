@@ -40,8 +40,12 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			llvm_value_set_decl(c, value, decl);
 			return;
 		}
+
+		// Push the builder
 		void *builder = c->builder;
 		c->builder = c->global_builder;
+
+		// Emit the global.
 		decl->backend_ref = llvm_add_global(c, "temp", var_type, decl->alignment);
 		if (IS_OPTIONAL(decl))
 		{
@@ -51,13 +55,18 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 			decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
 		}
 		llvm_emit_global_variable_init(c, decl);
+
+		// Pop the builder
 		c->builder = builder;
 		llvm_value_set_decl(c, value, decl);
 		return;
 	}
+
+	// Create a local alloca
 	assert(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
-	Expr *init = decl->var.init_expr;
+
+	// Create optional storage
 	bool is_optional = IS_OPTIONAL(decl);
 	if (is_optional)
 	{
@@ -68,44 +77,41 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
+	// Grab the init expression
+	Expr *init = decl->var.init_expr;
 	if (init)
 	{
 		llvm_value_set_decl_address(c, value, decl);
 		value->kind = BE_ADDRESS;
 		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.optional_ref);
 		if (!is_optional) *value = res;
+		return;
 	}
-	else if (decl->var.no_init)
+
+	// If the variable has a no-init, then set the value to undef.
+	if (decl->var.no_init)
 	{
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
-		if (decl->var.optional_ref)
+		if (is_optional)
 		{
 			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_anyfault), type_anyfault);
 		}
+		return;
 	}
-	else
-	{
-		if (decl->var.optional_ref)
-		{
-			llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyfault);
-		}
 
-		Type *type = type_lowering(decl->type);
-		// Normal case, zero init.
-		if (type_is_builtin(type->type_kind) || type->type_kind == TYPE_POINTER)
-		{
-			LLVMValueRef zero = llvm_get_zero(c, var_type);
-			llvm_value_set(value, zero, type);
-			llvm_store_decl(c, decl, value);
-		}
-		else
-		{
-			llvm_value_set_decl_address(c, value, decl);
-			value->kind = BE_ADDRESS;
-			llvm_store_zero(c, value);
-			llvm_value_set(value, llvm_get_zero(c, type), type);
-		}
+
+	// Normal case, zero init.
+	llvm_value_set_decl_address(c, value, decl);
+	if (is_optional)
+	{
+		llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyfault);
+
+		// Prevent accidental optional folding in "llvm_store_zero"!
+		value->kind = BE_ADDRESS;
 	}
+
+	llvm_store_zero(c, value);
+	llvm_value_set(value, llvm_get_zero(c, var_type), var_type);
 }
 
 /**
@@ -152,7 +158,7 @@ static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bo
 void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
 {
 	llvm_emit_br(context, block);
-	LLVMBasicBlockRef post_jump_block = llvm_basic_block_new(context, "jmp");
+	LLVMBasicBlockRef post_jump_block = llvm_basic_block_new(context, "unreachable");
 	llvm_emit_block(context, post_jump_block);
 }
 
@@ -202,14 +208,17 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 	}
 
-	// Are we in an expression block?
-	if (!has_return_value)
+	if (llvm_get_current_block_if_in_use(c))
 	{
-		llvm_emit_return_implicit(c);
-	}
-	else
-	{
-		llvm_emit_return_abi(c, &return_value, NULL);
+		// Are we in an expression block?
+		if (!has_return_value)
+		{
+			llvm_emit_return_implicit(c);
+		}
+		else
+		{
+			llvm_emit_return_abi(c, &return_value, NULL);
+		}
 	}
 	c->current_block = NULL;
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
@@ -587,8 +596,11 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			// The inc block might also be the end of the body block.
 			llvm_emit_block(c, inc_block);
 		}
-		BEValue dummy;
-		llvm_emit_expr(c, &dummy, incr ? exprptr(incr) : NULL);
+		if (llvm_get_current_block_if_in_use(c))
+		{
+			BEValue dummy;
+			llvm_emit_expr(c, &dummy, incr ? exprptr(incr) : NULL);
+		}
 	}
 
 	// Loop back.

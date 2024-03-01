@@ -972,7 +972,6 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 	bool same_module = decl_module(decl) == c->code_module;
 	const char *name = same_module ? "temp_global" : decl_get_extname(decl);
 	decl->backend_ref = llvm_add_global(c, name, decl->type, decl->alignment);
-	llvm_set_alignment(decl->backend_ref, decl->alignment);
 	if (!same_module)
 	{
 		LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
