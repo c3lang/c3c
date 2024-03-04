@@ -747,7 +747,7 @@ void print_syntax(BuildOptions *options)
 			if (name[0] == '$' || (name[0] >= 'a' && name[0] <= 'z'))
 			{
 				if (name[1] == '$' || name[1] == '\0') continue;
-				printf("%3d %s\n", index++, name);
+				printf("%s\n", name);
 			}
 		}
 	}
@@ -765,33 +765,32 @@ void print_syntax(BuildOptions *options)
 			{
 				continue;
 			}
-			printf("%2d %s\n", index++, name);
+			printf("%s\n", name);
 		}
 	}
 	if (options->print_attributes)
 	{
 		for (int i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 		{
-			printf("%2d %s\n", i + 1, attribute_list[i]);
+			printf("%s\n", attribute_list[i]);
 		}
 	}
 	if (options->print_builtins)
 	{
 		for (int i = 0; i < NUMBER_OF_BUILTINS; i++)
 		{
-			printf("%3d $$%s\n", i + 1, builtin_list[i]);
+			printf("$$%s\n", builtin_list[i]);
 		}
-		puts("---");
 		for (int i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 		{
-			printf("%2d $$%s\n", i + 1, builtin_defines[i]);
+			printf("$$%s\n", builtin_defines[i]);
 		}
 	}
 	if (options->print_type_properties)
 	{
 		for (int i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
 		{
-			printf("%2d .%s\n", i + 1, type_property_list[i]);
+			printf("%s\n", type_property_list[i]);
 		}
 	}
 	if (options->print_project_properties)
@@ -801,14 +800,14 @@ void print_syntax(BuildOptions *options)
 		puts("------------------");
 		for (int i = 0; i < project_default_keys_count; i++)
 		{
-			printf("%2d %-*s%s\n", i + 1, 35, project_default_keys[i][0], project_default_keys[i][1]);
+			printf("%-*s%s\n", 35, project_default_keys[i][0], project_default_keys[i][1]);
 		}
 		puts("");
 		puts("Target properties");
 		puts("-----------------");
 		for (int i = 0; i < project_target_keys_count; i++)
 		{
-			printf("%2d %-*s%s\n", i + 1, 35, project_target_keys[i][0], project_target_keys[i][1]);
+			printf("%-*s%s\n", 35, project_target_keys[i][0], project_target_keys[i][1]);
 		}
 		puts("");
 	}
