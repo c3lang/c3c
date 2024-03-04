@@ -687,8 +687,8 @@ typedef struct Decl_
 		SectionId section_id;
 		uint16_t va_index;
 	};
-	AlignSize offset : 32;
-	AlignSize padding : 32;
+	AlignSize offset;
+	AlignSize padding;
 	struct CompilationUnit_ *unit;
 	Attr **attributes;
 	Type *type;
