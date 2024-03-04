@@ -15,6 +15,7 @@
 - `int.min` incorrect behaviour #1154.
 - Bitstruct cast to other bitstruct by way of underlying type would fail #1159.
 - Bug in `time.add_seconds` #1162.
+- Remove initial './' in Win32 paths when running a binary.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.

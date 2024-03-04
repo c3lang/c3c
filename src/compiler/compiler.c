@@ -534,8 +534,11 @@ void compiler_compile(void)
 		if (active_target.run_after_compile)
 		{
 			DEBUG_LOG("Will run");
-			printf("Launching %s...\n", output_exe);
-			int ret = system(platform_target.os == OS_TYPE_WIN32 ? output_exe : str_printf("./%s", output_exe));
+			const char *name = output_exe;
+			while (name[0] == '.' && name[1] == '/') name += 2;
+			name = platform_target.os == OS_TYPE_WIN32 ? name : str_printf("./%s", name);
+			printf("Launching %s...\n", name);
+			int ret = system(name);
 			printf("Program finished with exit code %d.\n", ret);
 			if (ret != 0) exit(EXIT_FAILURE);
 		}
