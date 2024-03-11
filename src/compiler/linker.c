@@ -76,10 +76,11 @@ static const char *string_esc(const char *str)
 	}
 	return strdup(scratch_buffer_to_string());
 }
-static void linker_setup_windows(const char ***args_ref, LinkerType linker_type, const char ***additional_linked_ref)
+
+static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 {
 	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
-	vec_add(*additional_linked_ref, "dbghelp");
+	global_context_add_link("dbghelp");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
 	bool is_debug = false;
@@ -158,29 +159,29 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type,
 	// Do not link any.
 	if (active_target.win.crt_linking == WIN_CRT_NONE) return;
 
-	vec_add(*additional_linked_ref, "kernel32");
-	vec_add(*additional_linked_ref, "ntdll");
-	vec_add(*additional_linked_ref, "user32");
-	vec_add(*additional_linked_ref, "shell32");
-	vec_add(*additional_linked_ref, "Shlwapi");
-	vec_add(*additional_linked_ref, "Ws2_32");
-	vec_add(*additional_linked_ref, "legacy_stdio_definitions");
+	global_context_add_link("kernel32");
+	global_context_add_link("ntdll");
+	global_context_add_link("user32");
+	global_context_add_link("shell32");
+	global_context_add_link("Shlwapi");
+	global_context_add_link("Ws2_32");
+	global_context_add_link("legacy_stdio_definitions");
 
 	if (active_target.win.crt_linking == WIN_CRT_STATIC)
 	{
 		if (is_debug)
 		{
-			vec_add(*additional_linked_ref, "libucrtd");
-			vec_add(*additional_linked_ref, "libvcruntimed");
-			vec_add(*additional_linked_ref, "libcmtd");
-			vec_add(*additional_linked_ref, "libcpmtd");
+			global_context_add_link("libucrtd");
+			global_context_add_link("libvcruntimed");
+			global_context_add_link("libcmtd");
+			global_context_add_link("libcpmtd");
 		}
 		else
 		{
-			vec_add(*additional_linked_ref, "libucrt");
-			vec_add(*additional_linked_ref, "libvcruntime");
-			vec_add(*additional_linked_ref, "libcmt");
-			vec_add(*additional_linked_ref, "libcpmt");
+			global_context_add_link("libucrt");
+			global_context_add_link("libvcruntime");
+			global_context_add_link("libcmt");
+			global_context_add_link("libcpmt");
 		}
 	}
 	else
@@ -189,115 +190,24 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type,
 		// if so, then exclude them.
 		if (is_debug && link_with_dynamic_debug_libc)
 		{
-			vec_add(*additional_linked_ref, "ucrtd");
-			vec_add(*additional_linked_ref, "vcruntimed");
-			vec_add(*additional_linked_ref, "msvcrtd");
-			vec_add(*additional_linked_ref, "msvcprtd");
+			global_context_add_link("ucrtd");
+			global_context_add_link("vcruntimed");
+			global_context_add_link("msvcrtd");
+			global_context_add_link("msvcprtd");
 		}
 		else
 		{
-			vec_add(*additional_linked_ref, "ucrt");
-			vec_add(*additional_linked_ref, "vcruntime");
-			vec_add(*additional_linked_ref, "msvcrt");
-			vec_add(*additional_linked_ref, "msvcprt");
+			global_context_add_link("ucrt");
+			global_context_add_link("vcruntime");
+			global_context_add_link("msvcrt");
+			global_context_add_link("msvcprt");
 		}
 	}
 	add_arg("/NOLOGO");
 }
-#ifdef mingw64_support
-static void linker_setup_mingw64_gcc(const char ***args_ref)
-{
-	add_arg("-m");
-	add_arg("i386pep");
-	add_arg("-Bdynamic");
-	const char *root = getenv("MSYSTEM_PREFIX");
-	const char *gcc_base = strformat("%s/lib/gcc/x86_64-w64-mingw32", root);
-	if (!file_exists(gcc_base)) error_exit("Missing GCC");
-	const char *name = file_first(gcc_base);
-	const char *gcc_path = strformat("%s/%s/", gcc_base, name);
-	add_arg(strformat("-L%s/x86_64-w64-mingw32/lib", root));
-	add_arg(strformat("-L%s/lib", root));
-	add_arg2(gcc_path, "crtbegin.o");
-	add_arg(strformat("%s/lib/crt2.o", root));
-	add_arg(strformat("%s/lib/default-manifest.o", root));
-	add_arg2("-L", gcc_path);
-	add_arg("-lkernel32");
-	add_arg("-lmingw32");
-	add_arg("-lgcc");
-	add_arg("-lgcc_eh");
-	add_arg("-lmoldname");
-	add_arg("-lmingwex");
-	add_arg("-lmsvcrt");
-	add_arg("-ladvapi32");
-	add_arg("-lshell32");
-	add_arg("-luser32");
-	add_arg("-lpthread");
-
-	add_arg2(gcc_path, "crtend.o");
-}
-
-static void linker_setup_windows_gnu(const char ***args_ref, LinkerType linker_type)
-{
-	if (linker_type == LINKER_CC) return;
-	bool is_clang = strcmp(getenv("MSYSTEM"), "CLANG64") == 0;
-	bool is_mingw = strcmp(getenv("MSYSTEM"), "MINGW64") == 0;
-	if (!is_clang && !is_mingw)
-	{
-		error_exit("Crosslinking MSYS is not yet supported.");
-	}
-	if (is_mingw)
-	{
-		linker_setup_mingw64_gcc(args_ref);
-		return;
-	}
-	const char *root = getenv("MSYSTEM_PREFIX");
-	const char *compiler_prefix;
-	if (is_clang)
-	{
-		char *filename;
-		char *dir;
-		path_get_dir_and_filename_from_full(root, &filename, &dir);
-		compiler_prefix = filename;
-		root = dir;
-	}
-	else
-	{
-		compiler_prefix = "x86_64-w64-mingw32";
-	}
-	add_arg("-m");
-	add_arg("i386pep");
-	add_arg("-Bdynamic");
-	const char *lib = strformat("%s/%s/lib", root, compiler_prefix);
-	if (!file_exists(lib))
-	{
-		error_exit("Cannot find '%s'.", lib);
-	}
-	add_arg2(lib, "/crt2.o");
-	add_arg2(lib, "/crtbegin.o");
-	add_arg2("-L", lib);
-	add_arg(strformat("-L%s/lib", root));
-	add_arg(strformat("-L%s/%s/sys-root/mingw/lib", root, compiler_prefix));
-	const char *clang_dir = strformat("%s/lib/clang/" LLVM_VERSION_STRING, root);
-	add_arg(strformat("-L%s/lib/windows", clang_dir));
-	add_arg("-lmingw32");
-	add_arg(strformat("%s/lib/windows/libclang_rt.builtins-x86_64.a", clang_dir));
-	add_arg("-lmoldname");
-	add_arg("-lmingwex");
-	add_arg("-lmsvcrt");
-	add_arg("-ladvapi32");
-	add_arg("-lshell32");
-	add_arg("-luser32");
-	add_arg("-lkernel32");
-	add_arg("-lmingw32");
-	add_arg2(lib, "\\crtend.o");
-}
-*/
-#endif
 
 static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 {
-	add_arg("-framework");
-	add_arg("CoreFoundation");
 	if (linker_type == LINKER_CC)
 	{
 		add_arg("-target");
@@ -319,8 +229,8 @@ static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
 	{
 		error_exit("Cannot crosslink MacOS without providing --macossdk.");
 	}
-	add_arg("-lSystem");
-	add_arg("-lm");
+	global_context_add_link("System");
+	global_context_add_link("m");
 	add_arg("-syslibroot");
 	add_arg(active_target.macos.sysroot);
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no_pie");
@@ -401,9 +311,9 @@ static const char *find_linux_crt_begin(void)
 	return NULL;
 }
 
-static void linker_setup_linux(const char ***args_ref, LinkerType linker_type, const char ***additional_linked_ref)
+static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 {
-	vec_add(*additional_linked_ref, "dl");
+	global_context_add_link("dl");
 	if (linker_type == LINKER_CC)
 	{
 		if (!link_libc())
@@ -458,9 +368,9 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type, c
 	add_arg("-L");
 	add_arg("/usr/lib/x86_64-linux-gnu/libdl.so");
 	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
-	add_arg("-lm");
-	add_arg("-lpthread");
-	add_arg("-lc");
+	global_context_add_link("m");
+	global_context_add_link("pthread");
+	global_context_add_link("c");
 	add_arg("-L/usr/lib/");
 	add_arg("-L/lib/");
 	add_arg("-m");
@@ -504,10 +414,11 @@ static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
 	add_arg2(crt_dir, "crtn.o");
 	add_arg2("-L", crt_dir);
 	add_arg("--dynamic-linker=/libexec/ld-elf.so.1");
-	add_arg("-lc");
-	add_arg("-lm");
-	add_arg("-lgcc");
-	add_arg("-lgcc_s");
+	global_context_add_link("c");
+	global_context_add_link("m");
+	global_context_add_link("gcc");
+	global_context_add_link("gcc_s");
+
 	add_arg("-L/usr/lib/");
 	add_arg("-m");
 	add_arg(ld_target(platform_target.arch));
@@ -581,13 +492,12 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	}
 	const char *lib_path_opt = use_win ? "/LIBPATH:" : "-L";
 
-	const char **additional_linked = NULL;
 	switch (platform_target.os)
 	{
 		case OS_UNSUPPORTED:
 			UNREACHABLE
 		case OS_TYPE_WIN32:
-			linker_setup_windows(args_ref, linker_type, &additional_linked);
+			linker_setup_windows(args_ref, linker_type);
 			break;
 		case OS_TYPE_MACOSX:
 			linker_setup_macos(args_ref, linker_type);
@@ -603,7 +513,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			linker_setup_freebsd(args_ref, linker_type);
 			break;
 		case OS_TYPE_LINUX:
-			linker_setup_linux(args_ref, linker_type, &additional_linked);
+			linker_setup_linux(args_ref, linker_type);
 			break;
 		case OS_TYPE_UNKNOWN:
 			if (link_libc())
@@ -638,7 +548,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		}
 		add_linked_libs(args_ref, target->linked_libs, use_win);
 	}
-	add_linked_libs(args_ref, additional_linked, use_win);
+	add_linked_libs(args_ref, global_context.links, use_win);
 	return true;
 }
 #undef add_arg2
@@ -717,6 +627,8 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		arg_list = str_cat(arg_list, args[i]);
 	}
 	INFO_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
+	if (active_target.print_linking) puts(arg_list);
+
 	switch (platform_target.object_format)
 	{
 		case OBJ_FORMAT_COFF:

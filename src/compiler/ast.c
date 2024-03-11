@@ -335,6 +335,31 @@ AttributeType attribute_by_name(const char *name)
 }
 
 
+void decl_append_links_to_global(Decl *decl)
+{
+	CompilationUnit *unit = decl->unit;
+	if (unit && unit->links)
+	{
+		FOREACH_BEGIN(const char *link, unit->links)
+			global_context_add_link(link);
+		FOREACH_END();
+		unit->links = NULL; // Don't register twice
+	}
+	if (decl->has_link)
+	{
+		FOREACH_BEGIN(Attr* attr, decl->attributes)
+			if (attr->attr_kind != ATTRIBUTE_LINK) continue;
+			if (!attr->exprs) continue;
+			unsigned args = vec_size(attr->exprs);
+			for (unsigned i = 0; i < args; i++)
+			{
+				Expr *string = attr->exprs[i];
+				if (!string) continue;
+				global_context_add_link(string->const_expr.bytes.ptr);
+			}
+		FOREACH_END();
+	}
+}
 
 int decl_count_elements(Decl *structlike)
 {

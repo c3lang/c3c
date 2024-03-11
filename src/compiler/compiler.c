@@ -985,6 +985,14 @@ void global_context_add_generic_decl(Decl *decl)
 	decltable_set(&global_context.generic_symbols, decl);
 }
 
+void global_context_add_link(const char *link)
+{
+	FOREACH_BEGIN(const char *existing_link, global_context.links)
+		if (str_eq(link, existing_link)) return;
+	FOREACH_END();
+	vec_add(global_context.links, link);
+}
+
 SectionId global_context_register_section(const char *section)
 {
 	scratch_buffer_clear();

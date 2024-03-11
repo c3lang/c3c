@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Disallow multiple `_` in a row in digits, e.g. `1__000`.
+- Added `@link` attribute.
 
 ### Fixes
 - Struct/union members now correctly rejects members without storage size #1147.
@@ -26,6 +27,7 @@
 - mem::copy / clear / set no longer has an `$inline` attribute.
 - Native aligned libc malloc on Windows & POSIX.
 - Simplification of the allocator interface.
+- CoreFoundation only linked on MacOS when used.
 
 ## 0.5.4 Change list
 

@@ -1989,6 +1989,7 @@ static bool update_call_abi_from_string(Decl *decl, Expr *expr)
 #define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
 #define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
 #define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
+
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl)
 {
 	AttributeType type = attr->attr_kind;
@@ -2008,6 +2009,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
+			[ATTRIBUTE_LINK] = ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_MAYDISCARD] = CALLABLE_TYPE,
@@ -2042,7 +2044,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		return false;
 	}
 	unsigned args = vec_size(attr->exprs);
-	if (args > 1)
+	if (args > 1 && type != ATTRIBUTE_LINK)
 	{
 		SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
 		return false;
@@ -2190,6 +2192,27 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->func_decl.attr_finalizer = true;
 			// Ugly
 			goto PARSE;
+		case ATTRIBUTE_LINK:
+			if (args < 1) RETURN_SEMA_ERROR(attr, "'@link' requires at least one argument.");
+			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
+			if (cond && !sema_analyse_expr(context, cond)) return false;
+			int start = 0;
+			decl->has_link = true;
+			if (cond && expr_is_const_bool(cond))
+			{
+				start = 1;
+				decl->has_link = cond->const_expr.b;
+			}
+			for (unsigned i = start; i < args; i++)
+			{
+				Expr *string = attr->exprs[i];
+				if (!sema_analyse_expr(context, string)) return false;
+				if (!expr_is_const_string(string)) RETURN_SEMA_ERROR(string, "Expected a constant string here, usage is: '@link(cond1, link1, link2, ...)'.");
+			}
+			// Erase if not applicable.
+			if (start == 1) attr->exprs[0] = NULL;
+			if (!decl->has_link) attr->exprs = NULL;
+			return true;
 		case ATTRIBUTE_INIT:
 			decl->func_decl.attr_init = true;
 		PARSE:;

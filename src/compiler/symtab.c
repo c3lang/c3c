@@ -333,6 +333,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_IF] = KW_DEF("@if");
 	attribute_list[ATTRIBUTE_INIT] = KW_DEF("@init");
 	attribute_list[ATTRIBUTE_INLINE] = KW_DEF("@inline");
+	attribute_list[ATTRIBUTE_LINK] = KW_DEF("@link");
 	attribute_list[ATTRIBUTE_LITTLEENDIAN] = KW_DEF("@littleendian");
 	attribute_list[ATTRIBUTE_LOCAL] = KW_DEF("@local");
 	attribute_list[ATTRIBUTE_MAYDISCARD] = KW_DEF("@maydiscard");

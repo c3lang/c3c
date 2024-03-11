@@ -675,6 +675,7 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_deprecated : 1;
 	bool is_cond : 1;
+	bool has_link : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -1614,12 +1615,14 @@ struct CompilationUnit_
 	Decl **enums;
 	Decl **attributes;
 	Decl **faulttypes;
+	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
 	bool export_by_default;
 	bool is_interface_file;
 	bool benchmark_by_default;
 	bool test_by_default;
+	Attr **attr_links;
 	Decl **generic_defines;
 	Decl **ct_asserts;
 	Decl **ct_echos;
@@ -1732,6 +1735,7 @@ typedef struct
 	unsigned warnings_found;
 	unsigned includes_used;
 	Decl ***locals_list;
+	const char **links;
 	HTable compiler_defines;
 	HTable features;
 	Module std_module;
@@ -2149,6 +2153,8 @@ void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
 void global_context_add_generic_decl(Decl *decl);
 SectionId global_context_register_section(const char *section);
+void global_context_add_link(const char *link);
+
 INLINE const char *section_from_id(SectionId id);
 
 Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
@@ -2176,6 +2182,7 @@ const char *decl_safe_name(Decl *decl);
 const char *decl_to_name(Decl *decl);
 const char *decl_to_a_name(Decl *decl);
 int decl_count_elements(Decl *structlike);
+void decl_append_links_to_global(Decl *decl);
 
 INLINE bool decl_ok(Decl *decl);
 INLINE bool decl_poison(Decl *decl);

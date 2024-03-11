@@ -257,6 +257,13 @@ bool parse_module(ParseContext *c, AstId contracts)
 		if (attr->is_custom) RETURN_SEMA_ERROR(attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
 		{
+			case ATTRIBUTE_LINK:
+				{
+					unsigned args = vec_size(attr->exprs);
+					if (args < 1) RETURN_SEMA_ERROR(attr, "'@link' needs at least 1 argument.");
+				}
+				vec_add(c->unit->attr_links, attr);
+				continue;
 			case ATTRIBUTE_IF:
 				if (c->unit->if_attr) RETURN_SEMA_ERROR(attr, "'@if' appeared more than once.");
 				c->unit->if_attr = attr;

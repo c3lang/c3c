@@ -366,22 +366,22 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		assert(!unit->ct_includes);
 
 		Attr *if_attr = unit->if_attr;
-		if (!if_attr) continue;
+		if (!if_attr && !unit->attr_links) continue;
+
+		SemaContext context;
+		sema_context_init(&context, unit);
+		if (!if_attr) goto CHECK_LINK;
 		if (vec_size(if_attr->exprs) != 1)
 		{
 			SEMA_ERROR(if_attr, "Expected one parameter.");
-			break;
+			goto FAIL_CONTEXT;
 		}
 		Expr *expr = if_attr->exprs[0];
-		SemaContext context;
-		sema_context_init(&context, unit);
-		bool success = sema_analyse_ct_expr(&context, expr);
-		sema_context_destroy(&context);
-		if (!success) continue;
+		if (!sema_analyse_ct_expr(&context, expr)) goto FAIL_CONTEXT;
 		if (!expr_is_const(expr) || expr->type->canonical != type_bool)
 		{
 			SEMA_ERROR(expr, "Expected a constant boolean expression.");
-			break;
+			goto FAIL_CONTEXT;
 		}
 		if (!expr->const_expr.b)
 		{
@@ -389,9 +389,41 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 			vec_resize(unit->global_cond_decls, 0);
 			continue;
 		}
+CHECK_LINK:
+		if (!unit->attr_links) goto RELEASE_CONTEXT;
+		FOREACH_BEGIN(Attr* attr, unit->attr_links)
+			Expr **exprs = attr->exprs;
+			unsigned args = vec_size(exprs);
+			assert(args > 0 && "Should already have been checked.");
+			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
+			if (cond && !sema_analyse_expr(&context, cond)) goto FAIL_CONTEXT;
+			bool start = cond && expr_is_const_bool(cond) ? 1 : 0;
+			bool add = start == 0 ? true : cond->const_expr.b;
+			for (unsigned i = start; i < args; i++)
+			{
+				Expr *string = attr->exprs[i];
+				if (!sema_analyse_expr(&context, string)) goto FAIL_CONTEXT;
+				if (!expr_is_const_string(string))
+				{
+					SEMA_ERROR(string, "Expected a constant string here, usage is: "
+							   "'@link([cond1, ]link1, link2, ...)'.");
+					goto FAIL_CONTEXT;
+				}
+				if (add)
+				{
+					vec_add(unit->links, string->const_expr.bytes.ptr);
+				}
+			}
+		FOREACH_END();
+RELEASE_CONTEXT:
+		sema_context_destroy(&context);
 		register_global_decls(unit, unit->global_decls);
 		// There may be includes, add those.
 		sema_process_includes(unit);
+		continue;
+FAIL_CONTEXT:
+		sema_context_destroy(&context);
+		break;
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
 }
