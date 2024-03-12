@@ -3,6 +3,8 @@
 
 #define MANIFEST_FILE "manifest.json"
 
+static inline void parse_library_target(Library *library, LibraryTarget *target, JSONObject *object);
+
 static inline JSONObject *get_mandatory(Library *library, JSONObject *object, const char *key)
 {
 	JSONObject *value = json_obj_get(object, key);
@@ -43,37 +45,6 @@ static inline const char **get_optional_string_array_as_array(Library *library, 
 }
 
 
-static inline void parse_provides(Library *library, JSONObject *object)
-{
-	const char *provides = get_mandatory_string(library, object, "provides");
-	if (!str_is_valid_lowercase_name(provides))
-	{
-		char *res = strdup(provides);
-		str_ellide_in_place(res, 32);
-		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir, json_obj_get(object, "provides")->str);
-	}
-	library->provides = provides;
-}
-
-static inline void parse_execs(Library *library, JSONObject *object)
-{
-	library->execs = get_optional_string_array_as_array(library, object, "execs");
-}
-static inline void parse_depends(Library *library, JSONObject *object)
-{
-	library->depends = get_optional_string_array_as_array(library, object, "depends");
-}
-
-static inline void parse_library_run(Library *library, LibraryTarget *target, JSONObject *object)
-{
-	target->execs = get_optional_string_array_as_array(library, object, "execs");
-}
-static inline void parse_library_target(Library *library, LibraryTarget *target, JSONObject *object)
-{
-	target->link_flags = get_optional_string_array_as_array(library, object, "linkflags");
-	target->linked_libs = get_optional_string_array_as_array(library, object, "linked-libs");
-	target->depends = get_optional_string_array_as_array(library, object, "depends");
-}
 static inline void parse_library_type(Library *library, LibraryTarget ***target_group, JSONObject *object)
 {
 	if (!object) return;
@@ -95,15 +66,34 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 	}
 }
 
+static inline void parse_library_target(Library *library, LibraryTarget *target, JSONObject *object)
+{
+	target->link_flags = get_optional_string_array_as_array(library, object, "linkflags");
+	target->linked_libs = get_optional_string_array_as_array(library, object, "linked-libs");
+	target->depends = get_optional_string_array_as_array(library, object, "depends");
+	target->execs = get_optional_string_array_as_array(library, object, "execs");
+}
+
 static Library *add_library(JSONObject *object, const char *dir)
 {
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
-	parse_provides(library, object);
-	parse_depends(library, object);
+	const char *provides = get_mandatory_string(library, object, "provides");
+	if (!str_is_valid_lowercase_name(provides))
+	{
+		char *res = strdup(provides);
+		str_ellide_in_place(res, 32);
+		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir,
+		           json_obj_get(object, "provides")->str);
+	}
+	library->provides = provides;
+	library->execs = get_optional_string_array_as_array(library, object, "execs");
+	library->depends = get_optional_string_array_as_array(library, object, "depends");
 	parse_library_type(library, &library->targets, json_obj_get(object, "targets"));
 	return library;
 }
+
+
 
 static Library *find_library(Library **libs, size_t lib_count, const char *name)
 {
@@ -260,9 +250,9 @@ void resolve_libraries(void)
 		if (file_is_dir(libdir)) vec_add(active_target.linker_libdirs, libdir);
 		if ((vec_size(library->execs) || vec_size(target->execs)) && active_target.trust_level < TRUST_FULL)
 		{
-			error_exit("Could not use library '%s' as it requires the 'exec' trust level (it "
-			           "is currently %d). Use the '-t' option to enable it.",
-					   library->provides, active_target.trust_level + 1);
+			error_exit("Could not use library '%s' as it requires 'exec' trust level to execute (it "
+			           "is currently '%s'). Use the '--trust=full' option to enable it.",
+					   library->provides, trust_level[active_target.trust_level]);
 		}
 		FOREACH_BEGIN(const char *exec, library->execs)
 			printf("] Execute '%s' for library '%s':", exec, library->provides);

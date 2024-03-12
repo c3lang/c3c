@@ -5,6 +5,8 @@
 ### Changes / improvements
 - Disallow multiple `_` in a row in digits, e.g. `1__000`.
 - Added `@link` attribute.
+- New 'linker' build option.
+- "linker" project setting updated, "system-linker" removed.
 
 ### Fixes
 - Struct/union members now correctly rejects members without storage size #1147.

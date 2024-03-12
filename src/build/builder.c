@@ -277,15 +277,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->win.def) target->win.def = options->win.def;
 	if (options->use_stdlib != USE_STDLIB_NOT_SET) target->use_stdlib = options->use_stdlib;
 	if (options->link_libc != LINK_LIBC_NOT_SET) target->link_libc = options->link_libc;
-	if (options->system_linker != SYSTEM_LINKER_NOT_SET)
+	if (options->linker_type != LINKER_TYPE_NOT_SET)
 	{
-		target->system_linker = options->system_linker;
-		target->linker = NULL;
-	}
-	if (options->linker)
-	{
-		target->linker = options->linker;
-		target->system_linker = SYSTEM_LINKER_NOT_SET;
+		target->custom_linker_path = options->custom_linker_path;
+		target->linker_type = options->linker_type;
 	}
 	if (options->emit_stdlib != EMIT_STDLIB_NOT_SET) target->emit_stdlib = options->emit_stdlib;
 	if (options->no_entry) target->no_entry = true;

@@ -85,6 +85,14 @@ typedef enum
 
 typedef enum
 {
+	LINKER_TYPE_NOT_SET = -1,
+	LINKER_TYPE_BUILTIN = 0,
+	LINKER_TYPE_CC = 1,
+	LINKER_TYPE_CUSTOM = 2,
+} LinkerType;
+
+typedef enum
+{
 	TRUST_NONE,
 	TRUST_INCLUDE,
 	TRUST_FULL
@@ -330,7 +338,8 @@ typedef struct BuildOptions_
 	const char *target_select;
 	const char *path;
 	const char *template;
-	const char *linker;
+	LinkerType linker_type;
+	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
 	CompilerBackend backend;
@@ -367,7 +376,6 @@ typedef struct BuildOptions_
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
 	LinkLibc link_libc;
-	SystemLinker system_linker;
 	StripUnused strip_unused;
 	OptimizationLevel optlevel;
 	SizeOptimizationLevel optsize;
@@ -471,7 +479,7 @@ typedef struct
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
-	SystemLinker system_linker;
+	LinkerType linker_type;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
 	const char *panicfn;
@@ -483,7 +491,7 @@ typedef struct
 	const char **csource_dirs;
 	const char **csources;
 	const char **feature_list;
-	const char *linker;
+	const char *custom_linker_path;
 	struct
 	{
 		SoftFloat soft_float : 3;
@@ -537,7 +545,7 @@ static BuildTarget default_build_target = {
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
-		.system_linker = SYSTEM_LINKER_NOT_SET,
+		.linker_type = LINKER_TYPE_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,

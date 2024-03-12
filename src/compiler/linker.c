@@ -32,7 +32,7 @@ typedef enum
 	LINKER_WASM,
 	LINKER_CC,
 	LINKER_UNKNOWN
-} LinkerType;
+} Linker;
 
 #define add_arg(arg_) vec_add(*args_ref, (arg_))
 #define add_arg2(arg_, arg_2) vec_add(*args_ref, str_cat((arg_), (arg_2)))
@@ -77,7 +77,7 @@ static const char *string_esc(const char *str)
 	return strdup(scratch_buffer_to_string());
 }
 
-static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
+static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 {
 	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
 	global_context_add_link("dbghelp");
@@ -206,7 +206,7 @@ static void linker_setup_windows(const char ***args_ref, LinkerType linker_type)
 	add_arg("/NOLOGO");
 }
 
-static void linker_setup_macos(const char ***args_ref, LinkerType linker_type)
+static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 {
 	if (linker_type == LINKER_CC)
 	{
@@ -311,7 +311,7 @@ static const char *find_linux_crt_begin(void)
 	return NULL;
 }
 
-static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
+static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 {
 	global_context_add_link("dl");
 	if (linker_type == LINKER_CC)
@@ -377,7 +377,7 @@ static void linker_setup_linux(const char ***args_ref, LinkerType linker_type)
 	add_arg(ld_target(platform_target.arch));
 }
 
-static void linker_setup_freebsd(const char ***args_ref, LinkerType linker_type)
+static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 {
 	if (linker_type == LINKER_CC) return;
 	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
@@ -453,7 +453,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 }
 
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
-						 const char *output_file, LinkerType linker_type)
+                         const char *output_file, Linker linker_type)
 {
 	bool is_dylib = active_target.type == TARGET_TYPE_DYNAMIC_LIB;
 	bool use_win = linker_type == LINKER_LINK_EXE;
@@ -524,6 +524,10 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_NONE:
 			break;
 	}
+	if (link_libc())
+	{
+		global_context_add_link("m");
+	}
 	for (unsigned i = 0; i < file_count; i++)
 	{
 		add_arg(files_to_link[i]);
@@ -583,7 +587,7 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 	}
 }
 
-LinkerType linker_find_linker_type(void)
+Linker linker_find_linker_type(void)
 {
 	if (arch_is_wasm(platform_target.arch)) return LINKER_WASM;
 	switch (platform_target.os)
@@ -613,7 +617,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 {
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
-	LinkerType linker_type = linker_find_linker_type();
+	Linker linker_type = linker_find_linker_type();
 	linker_setup(&args, files_to_link, file_count, output_file, linker_type);
 
 	const char *error = NULL;
@@ -697,11 +701,11 @@ const char *concat_string_parts(const char **args)
 void platform_linker(const char *output_file, const char **files, unsigned file_count)
 {
 	const char **parts = NULL;
-	LinkerType linker_type = LINKER_CC;
-	if (active_target.linker)
+	Linker linker_type = LINKER_CC;
+	if (active_target.linker_type == LINKER_TYPE_CUSTOM)
 	{
-		INFO_LOG("Using linker %s.", active_target.linker);
-		vec_add(parts, active_target.linker);
+		INFO_LOG("Using linker %s.", active_target.custom_linker_path);
+		vec_add(parts, active_target.custom_linker_path);
 		switch (platform_target.object_format)
 		{
 			case OBJ_FORMAT_UNSUPPORTED:
@@ -732,10 +736,6 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	}
 
 	linker_setup(&parts, files, file_count, output_file, linker_type);
-	if (link_libc())
-	{
-		vec_add(parts, "-lm");
-	}
 	const char *output = concat_string_parts(parts);
 	if (active_target.print_linking) puts(output);
 	if (system(output) != 0)
@@ -812,14 +812,14 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 {
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
-	if (active_target.linker) vec_add(args, active_target.linker);
-	LinkerType linker_type = linker_find_linker_type();
+	if (active_target.linker_type == LINKER_TYPE_CUSTOM) vec_add(args, active_target.custom_linker_path);
+	Linker linker_type = linker_find_linker_type();
 	linker_setup(&args, files, file_count, output_file, linker_type);
 
 	const char *command = concat_string_parts(args);
 	if (active_target.print_linking) puts(command);
 	DEBUG_LOG("Linker arguments: %s to %d", command, platform_target.object_format);
-	if (active_target.linker)
+	if (active_target.linker_type == LINKER_TYPE_CUSTOM)
 	{
 		if (system(command) != 0)
 		{

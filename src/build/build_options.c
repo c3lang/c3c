@@ -41,6 +41,12 @@ char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 	[WINDOWS_X64] = "windows-x64",
 };
 
+const char *trust_level[3] = {
+	[TRUST_NONE] = "none",
+	[TRUST_INCLUDE] = "include",
+	[TRUST_FULL] = "full",
+};
+
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
 #define OUTPUT(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__)
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0)
@@ -73,104 +79,105 @@ static void usage(void)
 	OUTPUT("  vendor-fetch <library> ...              Fetches one or more libraries from the vendor collection.");
 	OUTPUT("");
 	OUTPUT("Options:");
-	OUTPUT("  --tb                      - Use Tilde Backend for compilation.");
-	OUTPUT("  --stdlib <dir>            - Use this directory as the C3 standard library path.");
-	OUTPUT("  --no-entry                - Do not generate (or require) a main function.");
-	OUTPUT("  --libdir <dir>            - Add this directory to the C3 library search paths.");
-	OUTPUT("  --lib <name>              - Add this library to the compilation.");
-	OUTPUT("  --path <dir>              - Use this as the base directory for the current command.");
-	OUTPUT("  --template <template>     - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
-	OUTPUT("  --about                   - Prints a short description of C3.");
-	OUTPUT("  --symtab <value>          - Sets the preferred symtab size.");
-	OUTPUT("  -V --version              - Print version information.");
-	OUTPUT("  -E                        - Lex only.");
-	OUTPUT("  -P                        - Only parse and output the AST as JSON.");
-	OUTPUT("  -C                        - Only lex, parse and check.");
-	OUTPUT("  -                         - Read code from standard in.");
-	OUTPUT("  -o <file>                 - Write output to <file>.");
-	OUTPUT("  -O0                       - Safe, no optimizations, emit debug info.");
-	OUTPUT("  -O1                       - Safe, high optimization, emit debug info.");
-	OUTPUT("  -O2                       - Unsafe, high optimization, emit debug info.");
-	OUTPUT("  -O3                       - Unsafe, high optimization, single module, emit debug info.");
-	OUTPUT("  -O4                       - Unsafe, highest optimization, relaxed maths, single module, emit debug info.");
-	OUTPUT("  -O5                       - Unsafe, highest optimization, fast maths, single module, emit debug info.");
-	OUTPUT("  -Os                       - Unsafe, high optimization, small code, single module, no debug info.");
-	OUTPUT("  -Oz                       - Unsafe, high optimization, tiny code, single module, no debug info.");
-	OUTPUT("  -D <name>                 - Add feature flag <name>.");
-	OUTPUT("  -U <name>                 - Remove feature flag <name>.");
-	OUTPUT("  --trust=<option>          - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
-	OUTPUT("  --build-dir <dir>         - Override build output directory.");
-	OUTPUT("  --obj-out <dir>           - Override object file output directory.");
-	OUTPUT("  --script-dir <dir>        - Override the base directory for $exec.");
-	OUTPUT("  --llvm-out <dir>          - Override llvm output directory for '--emit-llvm'.");
-	OUTPUT("  --emit-llvm               - Emit LLVM IR as a .ll file per module.");
-	OUTPUT("  --asm-out <dir>           - Override asm output directory for '--emit-asm'.");
-	OUTPUT("  --emit-asm                - Emit asm as a .s file per module.");
-	OUTPUT("  --obj                     - Emit object files. (Enabled by default)");
-	OUTPUT("  --no-obj                  - Do not output object files, this is only valid for `compile-only`.");
-	OUTPUT("  --target <target>         - Compile for a particular architecture + OS target.");
-	OUTPUT("  --threads <number>        - Set the number of threads to use for compilation.");
-	OUTPUT("  --safe=<yes|no>           - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
-	OUTPUT("  --optlevel=<option>       - Code optimization level: none, less, more, max.");
-	OUTPUT("  --optsize=<option>        - Code size optimization: none, small, tiny.");
-	OUTPUT("  --single-module=<yes|no>  - Compile all modules together, enables more inlining.");
+	OUTPUT("  --tb                       - Use Tilde Backend for compilation.");
+	OUTPUT("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
+	OUTPUT("  --no-entry                 - Do not generate (or require) a main function.");
+	OUTPUT("  --libdir <dir>             - Add this directory to the C3 library search paths.");
+	OUTPUT("  --lib <name>               - Add this library to the compilation.");
+	OUTPUT("  --path <dir>               - Use this as the base directory for the current command.");
+	OUTPUT("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
+	OUTPUT("  --about                    - Prints a short description of C3.");
+	OUTPUT("  --symtab <value>           - Sets the preferred symtab size.");
+	OUTPUT("  -V --version               - Print version information.");
+	OUTPUT("  -E                         - Lex only.");
+	OUTPUT("  -P                         - Only parse and output the AST as JSON.");
+	OUTPUT("  -C                         - Only lex, parse and check.");
+	OUTPUT("  -                          - Read code from standard in.");
+	OUTPUT("  -o <file>                  - Write output to <file>.");
+	OUTPUT("  -O0                        - Safe, no optimizations, emit debug info.");
+	OUTPUT("  -O1                        - Safe, high optimization, emit debug info.");
+	OUTPUT("  -O2                        - Unsafe, high optimization, emit debug info.");
+	OUTPUT("  -O3                        - Unsafe, high optimization, single module, emit debug info.");
+	OUTPUT("  -O4                        - Unsafe, highest optimization, relaxed maths, single module, emit debug info.");
+	OUTPUT("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info.");
+	OUTPUT("  -Os                        - Unsafe, high optimization, small code, single module, no debug info.");
+	OUTPUT("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info.");
+	OUTPUT("  -D <name>                  - Add feature flag <name>.");
+	OUTPUT("  -U <name>                  - Remove feature flag <name>.");
+	OUTPUT("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
+	OUTPUT("  --build-dir <dir>          - Override build output directory.");
+	OUTPUT("  --obj-out <dir>            - Override object file output directory.");
+	OUTPUT("  --script-dir <dir>         - Override the base directory for $exec.");
+	OUTPUT("  --llvm-out <dir>           - Override llvm output directory for '--emit-llvm'.");
+	OUTPUT("  --emit-llvm                - Emit LLVM IR as a .ll file per module.");
+	OUTPUT("  --asm-out <dir>            - Override asm output directory for '--emit-asm'.");
+	OUTPUT("  --emit-asm                 - Emit asm as a .s file per module.");
+	OUTPUT("  --obj                      - Emit object files. (Enabled by default)");
+	OUTPUT("  --no-obj                   - Do not output object files, this is only valid for `compile-only`.");
+	OUTPUT("  --target <target>          - Compile for a particular architecture + OS target.");
+	OUTPUT("  --threads <number>         - Set the number of threads to use for compilation.");
+	OUTPUT("  --safe=<yes|no>            - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
+	OUTPUT("  --optlevel=<option>        - Code optimization level: none, less, more, max.");
+	OUTPUT("  --optsize=<option>         - Code size optimization: none, small, tiny.");
+	OUTPUT("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
 	OUTPUT("");
-	OUTPUT("  -g                        - Emit debug info.");
-	OUTPUT("  -g0                       - Emit no debug info.");
+	OUTPUT("  -g                         - Emit debug info.");
+	OUTPUT("  -g0                        - Emit no debug info.");
 	OUTPUT("");
 	OUTPUT("");
-	OUTPUT("  -l <library>              - Link with the library provided.");
-	OUTPUT("  -L <library dir>          - Append the directory to the linker search paths.");
-	OUTPUT("  -z <argument>             - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --system-linker=<yes|no>  - Use the system linker (default: no for cross compilation, yes otherwise).");
-	OUTPUT("  --cc <path>               - Set C compiler (for C files in projects and use as system linker).");
-	OUTPUT("  --linker <path>           - Use the linker in the given path.");
+	OUTPUT("  -l <library>               - Link with the library provided.");
+	OUTPUT("  -L <library dir>           - Append the directory to the linker search paths.");
+	OUTPUT("  -z <argument>              - Send the <argument> as a parameter to the linker.");
+	OUTPUT("  --system-linker=<yes|no>   - Use the system linker (default: no for cross compilation, yes otherwise). [deprecated]");
+	OUTPUT("  --cc <path>                - Set C compiler (for C files in projects and use as system linker).");
+	OUTPUT("  --linker <path>            - Use the linker in the given path. [deprecated]");
+	OUTPUT("  --linker=<option> [<path>] - Linker: builtin, cc, custom (default is 'cc'), 'custom' requires a path.");
 	OUTPUT("");
-	OUTPUT("  --use-stdlib=<yes|no>     - Include the standard library (default: yes).");
-	OUTPUT("  --link-libc=<yes|no>      - Link libc other default libraries (default: yes).");
-	OUTPUT("  --emit-stdlib=<yes|no>    - Output files for the standard library. (default: yes)");
-	OUTPUT("  --panicfn <name>          - Override the panic function name.");
-	OUTPUT("  --testfn <name>           - Override the test runner function name.");
-	OUTPUT("  --benchfn <name>          - Override the benchmark runner function name.");
+	OUTPUT("  --use-stdlib=<yes|no>      - Include the standard library (default: yes).");
+	OUTPUT("  --link-libc=<yes|no>       - Link libc other default libraries (default: yes).");
+	OUTPUT("  --emit-stdlib=<yes|no>     - Output files for the standard library. (default: yes)");
+	OUTPUT("  --panicfn <name>           - Override the panic function name.");
+	OUTPUT("  --testfn <name>            - Override the test runner function name.");
+	OUTPUT("  --benchfn <name>           - Override the benchmark runner function name.");
 	OUTPUT("");
-	OUTPUT("  --reloc=<option>          - Relocation model: none, pic, PIC, pie, PIE.");
-	OUTPUT("  --x86cpu=<option>         - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
-	OUTPUT("  --x86vec=<option>         - Set max type of vector use: none, mmx, sse, avx, avx512, native.");
-	OUTPUT("  --riscvfloat=<option>     - Set type of RISC-V float support: none, float, double");
-	OUTPUT("  --memory-env=<option>     - Set the memory environment: normal, small, tiny, none.");
-	OUTPUT("  --strip-unused=<yes|no>   - Strip unused code and globals from the output. (default: yes)");
-	OUTPUT("  --fp-math=<option>        - FP math behaviour: strict, relaxed, fast.");
+	OUTPUT("  --reloc=<option>           - Relocation model: none, pic, PIC, pie, PIE.");
+	OUTPUT("  --x86cpu=<option>          - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
+	OUTPUT("  --x86vec=<option>          - Set max type of vector use: none, mmx, sse, avx, avx512, native.");
+	OUTPUT("  --riscvfloat=<option>      - Set type of RISC-V float support: none, float, double");
+	OUTPUT("  --memory-env=<option>      - Set the memory environment: normal, small, tiny, none.");
+	OUTPUT("  --strip-unused=<yes|no>    - Strip unused code and globals from the output. (default: yes)");
+	OUTPUT("  --fp-math=<option>         - FP math behaviour: strict, relaxed, fast.");
 	OUTPUT("");
-	OUTPUT("  --debug-stats             - Print debug statistics.");
-	OUTPUT("  --print-linking           - Print linker arguments.");
+	OUTPUT("  --debug-stats              - Print debug statistics.");
+	OUTPUT("  --print-linking            - Print linker arguments.");
 #ifndef NDEBUG
-	OUTPUT("  --debug-log               - Print debug logging to stdout.");
+	OUTPUT("  --debug-log                - Print debug logging to stdout.");
 #endif
 	OUTPUT("");
-	OUTPUT("  --benchmarking            - Run built-in benchmarks.");
-	OUTPUT("  --testing                 - Run built-in tests.");
+	OUTPUT("  --benchmarking             - Run built-in benchmarks.");
+	OUTPUT("  --testing                  - Run built-in tests.");
 	OUTPUT("");
-	OUTPUT("  --list-attributes         - List all attributes.");
-	OUTPUT("  --list-builtins           - List all builtins.");
-	OUTPUT("  --list-keywords           - List all keywords.");
-	OUTPUT("  --list-operators          - List all operators.");
-	OUTPUT("  --list-precedence         - List operator precedence order.");
-	OUTPUT("  --list-project-properties - List all available keys used in project.json files.");
-	OUTPUT("  --list-targets            - List all architectures the compiler supports.");
-	OUTPUT("  --list-type-properties    - List all type properties.");
+	OUTPUT("  --list-attributes          - List all attributes.");
+	OUTPUT("  --list-builtins            - List all builtins.");
+	OUTPUT("  --list-keywords            - List all keywords.");
+	OUTPUT("  --list-operators           - List all operators.");
+	OUTPUT("  --list-precedence          - List operator precedence order.");
+	OUTPUT("  --list-project-properties  - List all available keys used in project.json files.");
+	OUTPUT("  --list-targets             - List all architectures the compiler supports.");
+	OUTPUT("  --list-type-properties     - List all type properties.");
 	OUTPUT("");
-	OUTPUT("  --print-output            - Print the object files created to stdout.");
+	OUTPUT("  --print-output             - Print the object files created to stdout.");
 	OUTPUT("");
-	OUTPUT("  --winsdk <dir>            - Set the directory for Windows system library files for cross compilation.");
-	OUTPUT("  --wincrt=<option>         - Windows CRT linking: none, static, dynamic (default).");
-	OUTPUT("  --windef <file>           - Use Windows 'def' file for function exports instead of 'dllexport'.");
+	OUTPUT("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
+	OUTPUT("  --wincrt=<option>          - Windows CRT linking: none, static, dynamic (default).");
+	OUTPUT("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
 	OUTPUT("");
-	OUTPUT("  --macossdk <dir>          - Set the directory for the MacOS SDK for cross compilation.");
-	OUTPUT("  --macos-min-version <ver> - Set the minimum MacOS version to compile for.");
-	OUTPUT("  --macos-sdk-version <ver> - Set the MacOS SDK compiled for.");
+	OUTPUT("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
+	OUTPUT("  --macos-min-version <ver>  - Set the minimum MacOS version to compile for.");
+	OUTPUT("  --macos-sdk-version <ver>  - Set the MacOS SDK compiled for.");
 	OUTPUT("");
-	OUTPUT("  --linux-crt <dir>         - Set the directory to use for finding crt1.o and related files.");
-	OUTPUT("  --linux-crtbegin <dir>    - Set the directory to use for finding crtbegin.o and related files.");
+	OUTPUT("  --linux-crt <dir>          - Set the directory to use for finding crt1.o and related files.");
+	OUTPUT("  --linux-crtbegin <dir>     - Set the directory to use for finding crtbegin.o and related files.");
 }
 
 
@@ -674,17 +681,40 @@ static void parse_option(BuildOptions *options)
 				options->single_module = (SingleModule)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("linker")))
+			{
+				options->custom_linker_path = NULL;
+				options->linker_type = (LinkerType) parse_multi_option(argopt, 3, linker);
+				if (options->linker_type == LINKER_TYPE_CUSTOM)
+				{
+					if (at_end() || next_is_opt()) error_exit("error: --linker=custom expects a valid linker name.");
+					options->custom_linker_path = next_arg();
+				}
+				return;
+			}
 			if ((argopt = match_argopt("system-linker")))
 			{
-				options->system_linker = (SystemLinker)parse_multi_option(argopt, 2, on_off);
-				options->linker = NULL;
+				puts("NOTE: 'system-linker' is deprecated, please use --linker instead.");
+				options->custom_linker_path = NULL;
+				switch ((SystemLinker)parse_multi_option(argopt, 2, on_off))
+				{
+					case SYSTEM_LINKER_ON:
+						options->linker_type = LINKER_TYPE_CC;
+						break;
+					case SYSTEM_LINKER_OFF:
+						options->linker_type = LINKER_TYPE_BUILTIN;
+						break;
+					default:
+						UNREACHABLE
+				}
 				return;
 			}
 			if (match_longopt("linker"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --linker expects a valid linker name.");
-				options->system_linker = SYSTEM_LINKER_NOT_SET;
-				options->linker = next_arg();
+				options->linker_type = LINKER_TYPE_CUSTOM;
+				options->custom_linker_path = next_arg();
+				puts("NOTE: 'linker' is deprecated, please use --linker=custom <path> instead.");
 				return;
 			}
 			if ((argopt = match_argopt("link-libc")))
@@ -1091,7 +1121,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
-		.system_linker = SYSTEM_LINKER_NOT_SET,
+		.linker_type = LINKER_TYPE_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.files = NULL,

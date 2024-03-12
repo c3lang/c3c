@@ -21,6 +21,7 @@ const char *project_default_keys[][2] = {
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"langrev", "Version of the C3 language used."},
 		{"linked-libraries", "Libraries linked by the linker for all targets."},
+		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
 		{"linker-search-paths", "Linker search paths."},
 		{"link-args", "Linker arguments for all targets."},
 		{"link-libc", "Link libc (default: true)."},
@@ -40,7 +41,6 @@ const char *project_default_keys[][2] = {
 		{"sources", "Paths to project sources for all targets."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
-		{"system-linker", "Use the system linker (default: no for cross compilation, yes otherwise)."},
 		{"target", "Compile for a particular architecture + OS target."},
 		{"targets", "Set of targets for the project."},
 		{"testfn", "Override the test function."},
@@ -78,6 +78,7 @@ const char* project_target_keys[][2] = {
 		{"langrev", "Version of the C3 language used."},
 		{"linked-libraries-add", "Additional libraries linked by the linker for the target."},
 		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding global settings."},
+		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
 		{"linker-search-paths-add", "Additional linker search paths for the target."},
 		{"linker-search-paths-override", "Linker search paths for this target, overriding global settings."},
 		{"link-args-add", "Additional linker arguments for the target."},
@@ -100,7 +101,6 @@ const char* project_target_keys[][2] = {
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
-		{"system-linker", "Use the system linker (default: no for cross compilation, yes otherwise)."},
 		{"target", "Compile for a particular architecture + OS target."},
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
@@ -488,16 +488,27 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	// strip-unused
 	target->strip_unused = (StripUnused)get_valid_bool(json, "strip-unused", type, target->strip_unused);
 
-	// system-linker
-	target->system_linker = (SystemLinker)get_valid_bool(json, "system-linker", type, target->system_linker);
-
 	// linker
-	target->linker = get_string(json, "linker", type, target->linker);
-
-	if (target->system_linker != SYSTEM_LINKER_NOT_SET && target->linker)
+	const char *linker_selection = get_string(json, "linker", type, NULL);
+	if (linker_selection)
 	{
-		error_exit("%s has both 'linker' and 'system-linker' set. They cannot be combined, so please remove one of them.", type);
+		if (str_eq("cc", linker_selection))
+		{
+			target->linker_type = LINKER_TYPE_CC;
+			target->custom_linker_path = NULL;
+		}
+		else if (str_eq("builtin", linker_selection))
+		{
+			target->linker_type = LINKER_TYPE_BUILTIN;
+			target->custom_linker_path = NULL;
+		}
+		else
+		{
+			target->linker_type = LINKER_TYPE_CUSTOM;
+			target->custom_linker_path = linker_selection;
+		}
 	}
+
 	// no-entry
 	target->no_entry = get_valid_bool(json, "no-entry", type, target->no_entry);
 

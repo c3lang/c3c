@@ -493,9 +493,9 @@ void compiler_compile(void)
 		}
 		bool system_linker_available = link_libc() && platform_target.os != OS_TYPE_WIN32;
 		bool use_system_linker = system_linker_available && active_target.arch_os_target == default_target;
-		switch (active_target.system_linker)
+		switch (active_target.linker_type)
 		{
-			case SYSTEM_LINKER_ON:
+			case LINKER_TYPE_CC:
 				if (!system_linker_available)
 				{
 					eprintf("System linker is not supported, defaulting to built-in linker\n");
@@ -503,13 +503,13 @@ void compiler_compile(void)
 				}
 				use_system_linker = true;
 				break;
-			case SYSTEM_LINKER_OFF:
+			case LINKER_TYPE_BUILTIN:
 				use_system_linker = false;
 				break;
 			default:
 				break;
 		}
-		if (use_system_linker || active_target.linker)
+		if (use_system_linker || active_target.linker_type == LINKER_TYPE_BUILTIN)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();

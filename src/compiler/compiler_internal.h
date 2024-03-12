@@ -49,6 +49,7 @@ extern const char *project_default_keys[][2];
 extern const int project_default_keys_count;
 extern const char* project_target_keys[][2];
 extern const int project_target_keys_count;
+extern const char *trust_level[3];
 
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
