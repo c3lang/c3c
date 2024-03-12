@@ -321,6 +321,10 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 			add_arg("-nostdlib");
 			return;
 		}
+		else
+		{
+			global_context_add_link("m");
+		}
 		if (active_target.debug_info == DEBUG_INFO_FULL)
 		{
 			add_arg("-rdynamic");
@@ -523,10 +527,6 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			break;
 		case OS_TYPE_NONE:
 			break;
-	}
-	if (link_libc())
-	{
-		global_context_add_link("m");
 	}
 	for (unsigned i = 0; i < file_count; i++)
 	{
