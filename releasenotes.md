@@ -20,6 +20,7 @@
 - Bug in `time.add_seconds` #1162.
 - Remove initial './' in Win32 paths when running a binary.
 - 'output' directory for projects was incorrect in templates.
+- Regression: no stacktrace.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.
