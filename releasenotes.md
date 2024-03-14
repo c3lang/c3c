@@ -21,6 +21,7 @@
 - Remove initial './' in Win32 paths when running a binary.
 - 'output' directory for projects was incorrect in templates.
 - Regression: no stacktrace.
+- For MacOS, running with higher optimization would crash as initializers were removed.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.
