@@ -540,6 +540,7 @@ void compiler_compile(void)
 			printf("Launching %s...\n", name);
 
 			int ret = system(name);
+#if PLATFORM_POSIX
 			if (WIFEXITED(ret))
 			{
 				int status = WEXITSTATUS(ret);
@@ -559,6 +560,10 @@ void compiler_compile(void)
 			{
 				printf("Program finished with unexpected code %d.\n", ret);
 			}
+#else
+			printf("Program completed with exit code %d.\n", ret);
+			if (ret != 0) exit(ret);
+#endif
 		}
 	}
 	else if (output_static)
