@@ -22,6 +22,7 @@
 - 'output' directory for projects was incorrect in templates.
 - Regression: no stacktrace.
 - For MacOS, running with higher optimization would crash as initializers were removed.
+- `compile-run` and `run` now returns the proper return code.
 
 ### Stdlib changes
 - Added `new_aligned` and `alloc_aligned` functions to prevent accidental under-alignment when allocating simd.

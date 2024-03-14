@@ -538,9 +538,27 @@ void compiler_compile(void)
 			while (name[0] == '.' && name[1] == '/') name += 2;
 			name = platform_target.os == OS_TYPE_WIN32 ? name : str_printf("./%s", name);
 			printf("Launching %s...\n", name);
+
 			int ret = system(name);
-			printf("Program finished with exit code %d.\n", ret);
-			if (ret != 0) exit(EXIT_FAILURE);
+			if (WIFEXITED(ret))
+			{
+				int status = WEXITSTATUS(ret);
+				printf("Program completed with exit code %d.\n", status);
+				if (status != 0) exit(status);
+			}
+			else if (WIFSIGNALED(ret))
+			{
+				printf("Program interrupted by signal %d.\n", WTERMSIG(ret));
+				exit(EXIT_FAILURE);
+			}
+			else if (WIFSTOPPED(ret))
+			{
+				printf("Program stopped by signal %d.\n", WSTOPSIG(ret));
+			}
+			else
+			{
+				printf("Program finished with unexpected code %d.\n", ret);
+			}
 		}
 	}
 	else if (output_static)
