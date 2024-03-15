@@ -268,6 +268,17 @@ const char *type_to_error_string(Type *type)
 }
 
 
+bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2)
+{
+	assert(type1->canonical == type1 && type2->canonical == type2);
+	TypeKind typekind1 = type1->type_kind;
+	TypeKind typekind2 = type2->type_kind;
+	if (typekind1 == typekind2) return type_kind_is_any_integer(typekind1);
+	if (type_kind_is_signed(typekind1)) return typekind1 + (TYPE_U8 - TYPE_I8) == typekind2;
+	if (type_kind_is_unsigned(typekind1)) return typekind2 + (TYPE_U8 - TYPE_I8) == typekind1;
+	return false;
+}
+
 TypeSize type_size(Type *type)
 {
 RETRY:
@@ -1790,6 +1801,9 @@ TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *eleme
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 			return type_array_is_equivalent(context, element1, element2, is_explicit);
+		case ALL_INTS:
+			if (type_is_matching_int(element1, element2)) return TYPE_SAME_INT_SIZE;
+			FALLTHROUGH;
 		default:
 			return TYPE_MISMATCH;
 	}
@@ -1824,6 +1838,8 @@ RETRY:
 
 	if (to_pointee->type_kind != from_pointee->type_kind)
 	{
+		if (type_is_matching_int(to_pointee, from_pointee)) return TYPE_SAME_INT_SIZE;
+
 		if (type_is_any_arraylike(from_pointee))
 		{
 			// Try array equivalence.

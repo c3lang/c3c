@@ -683,6 +683,7 @@ static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		case TYPE_ERROR:
 			return false;
 		case TYPE_MISMATCH:
+		case TYPE_SAME_INT_SIZE:
 			return sema_cast_error(cc, true, is_silent);
 	}
 	UNREACHABLE
@@ -764,6 +765,9 @@ static bool rule_arrptr_to_sa(CastContext *cc, bool is_explicit, bool is_silent)
 		{
 			case TYPE_SAME:
 				return true;
+			case TYPE_SAME_INT_SIZE:
+				if (is_explicit) return true;
+				break;
 			case TYPE_ERROR:
 				return false;
 			case TYPE_MISMATCH:
@@ -849,6 +853,9 @@ static bool rule_sa_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		case TYPE_SAME:
 			return true;
+		case TYPE_SAME_INT_SIZE:
+			if (is_explicit || expr_is_const_string(cc->expr)) return true;
+			break;
 		case TYPE_ERROR:
 			return false;
 		case TYPE_MISMATCH:

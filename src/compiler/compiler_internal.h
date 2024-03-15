@@ -2430,6 +2430,7 @@ Type *type_get_vector(Type *vector_type, unsigned len);
 Type *type_get_vector_bool(Type *original_type);
 Type *type_int_signed_by_bitsize(BitSize bitsize);
 Type *type_int_unsigned_by_bitsize(BitSize bit_size);
+bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2);
 TypeSize type_size(Type *type); // Only call after all types are resolved.
 void type_init_cint(void);
 Type *type_new_func(Decl *decl, Signature *sig);
@@ -2454,6 +2455,7 @@ typedef enum
 {
 	TYPE_MISMATCH = 0,
 	TYPE_SAME = 1,
+	TYPE_SAME_INT_SIZE = 2,
 	TYPE_ERROR = -1,
 } TypeCmpResult;
 
