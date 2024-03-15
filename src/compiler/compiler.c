@@ -536,7 +536,31 @@ void compiler_compile(void)
 			DEBUG_LOG("Will run");
 			const char *name = output_exe;
 			while (name[0] == '.' && name[1] == '/') name += 2;
-			name = platform_target.os == OS_TYPE_WIN32 ? name : str_printf("./%s", name);
+			scratch_buffer_clear();
+			if (platform_target.os == OS_TYPE_WIN32)
+			{
+				size_t len = strlen(name);
+				for (unsigned i = 0; i < len; i++)
+				{
+					if (name[i] == '/')
+					{
+						if (name[i + 1] == '.' && name[i + 2] == '/')
+						{
+							i++;
+							continue;
+						}
+						scratch_buffer_append_char('\\');
+						continue;
+					}
+					scratch_buffer_append_char(name[i]);
+				}
+			}
+			else
+			{
+				scratch_buffer_append("./");
+				scratch_buffer_append(name);
+			}
+			name = scratch_buffer_to_string();
 			printf("Launching %s...\n", name);
 
 			int ret = system(name);
@@ -945,10 +969,10 @@ void compile()
 		htable_set(&global_context.features, (void *)feature_flag, (void *)feature_flag);
 	FOREACH_END();
 
-	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_long);
-	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_long);
-	setup_int_define("C_LONG_SIZE", platform_target.width_c_long, type_long);
-	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long, type_long);
+	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_int);
+	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_int);
+	setup_int_define("C_LONG_SIZE", platform_target.width_c_long, type_int);
+	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long, type_int);
 	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
 	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
 	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);

@@ -18,7 +18,7 @@
 - `int.min` incorrect behaviour #1154.
 - Bitstruct cast to other bitstruct by way of underlying type would fail #1159.
 - Bug in `time.add_seconds` #1162.
-- Remove initial './' in Win32 paths when running a binary.
+- Remove initial './' in Win32 and convert '/' to '\' for paths when running a binary.
 - 'output' directory for projects was incorrect in templates.
 - Regression: no stacktrace.
 - For MacOS, running with higher optimization would crash as initializers were removed.
