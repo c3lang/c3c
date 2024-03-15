@@ -573,10 +573,11 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMSetInitializer(global, array);
 		LLVMSetSection(global, "__DATA,__c3_dynamic");
 		LLVMSetAlignment(global, llvm_abi_alignment(c, c->xtor_entry_type));
-		LLVMValueRef array_used = LLVMConstArray(c->ptr_type, &global, 1);
+		LLVMValueRef array_used = LLVMConstArray(LLVMTypeOf(global), &global, 1);
 		LLVMValueRef global_used = LLVMAddGlobal(c->module, LLVMTypeOf(array_used), "llvm.used");
 		LLVMSetLinkage(global_used, LLVMAppendingLinkage);
 		LLVMSetInitializer(global_used, array_used);
+		LLVMSetSection(global_used, "llvm.metadata");
 		return;
 	}
 
