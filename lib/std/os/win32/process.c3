@@ -103,6 +103,8 @@ extern fn Win32_BOOL symFromAddr(Win32_HANDLE hProcess, Win32_DWORD64 address, W
 extern fn Win32_BOOL symGetLineFromAddr64(Win32_HANDLE hProcess, Win32_DWORD64 dwAddr, Win32_PDWORD pdwDisplacement, Win32_PIMAGEHLP_LINE64 line) @extern("SymGetLineFromAddr64");
 extern fn Win32_WORD rtlCaptureStackBackTrace(Win32_DWORD framesToSkip, Win32_DWORD framesToCapture, Win32_PVOID *backTrace, Win32_PDWORD backTraceHash) @extern("RtlCaptureStackBackTrace");
 extern fn Win32_BOOL symGetModuleInfo64(Win32_HANDLE hProcess, Win32_DWORD64 qwAddr, Win32_PIMAGEHLP_MODULE64 moduleInfo) @extern("SymGetModuleInfo64");
+extern fn Win32_HANDLE getModuleHandleA(Win32_LPCSTR lpModuleName) @extern("GetModuleHandleA");
+extern fn Win32_HANDLE getModuleHandleW(Win32_LPCWSTR lpModuleName) @extern("GetModuleHandleW");
 
 fn Win32_DWORD! load_modules()
 {
