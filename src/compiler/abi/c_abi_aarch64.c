@@ -201,12 +201,12 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 
 		unsigned alignment = type_abi_alignment(type);
 		// Align to multiple of 8.
-		unsigned aligned_size = aligned_offset(size, 8);
+		size = aligned_offset(size, 8);
 		if (alignment < 16 && size == 16)
 		{
 			return abi_arg_new_direct_coerce_type(type_get_array(type_ulong, size / 8));
 		}
-		return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(aligned_size * 8));
+		return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 	}
 
 	return abi_arg_new_indirect_by_val(type);
