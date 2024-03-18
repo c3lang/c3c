@@ -398,10 +398,10 @@ static void print_all_targets(void)
 
 static void print_version(void)
 {
-	OUTPUT("C3 Compiler Version (alpha):       %s", COMPILER_VERSION);
-	OUTPUT("Installed directory:               %s", find_executable_path());
-	OUTPUT("LLVM version:                      %s", llvm_version);
-	OUTPUT("LLVM default target:               %s", llvm_target);
+	OUTPUT("C3 Compiler Version:       %s%s", COMPILER_VERSION, PRERELEASE ? " (prerelease)" : "");
+	OUTPUT("Installed directory:       %s", find_executable_path());
+	OUTPUT("LLVM version:              %s", llvm_version);
+	OUTPUT("LLVM default target:       %s", llvm_target);
 }
 
 static void add_linker_arg(BuildOptions *options, const char *arg)
