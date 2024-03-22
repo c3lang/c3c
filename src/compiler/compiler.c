@@ -5,6 +5,9 @@
 #include "compiler_internal.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
+#if PLATFORM_POSIX
+#include <sys/wait.h>
+#endif
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
