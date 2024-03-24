@@ -462,7 +462,7 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 		{
 			Decl *member = members[i];
 			unsigned offset = member->offset;
-			if (offset > end) break;
+			if (offset >= end) break;
 			unsigned field_start = offset < start ? start - offset : 0;
 			if (!x64_bits_contain_no_user_data(member->type, field_start, end - offset)) return false;
 		}
