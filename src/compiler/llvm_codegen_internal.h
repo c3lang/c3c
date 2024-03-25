@@ -81,6 +81,7 @@ typedef struct GenContext_
 	LLVMValueRef function;
 	LLVMValueRef alloca_point;
 	LLVMBuilderRef builder;
+	LLVMValueRef defer_error_var;
 	LLVMBasicBlockRef current_block;
 	LLVMBasicBlockRef catch_block;
 	LLVMBasicBlockRef *panic_blocks;

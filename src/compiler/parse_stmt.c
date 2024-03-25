@@ -500,7 +500,7 @@ static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenT
 
 
 /**
- * defer_stmt ::= DEFER (TRY | CATCH)? statement
+ * defer_stmt ::= DEFER (TRY | CATCH | '(' CATCH var ')')? statement
  */
 static inline Ast* parse_defer_stmt(ParseContext *c)
 {
@@ -513,6 +513,24 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 	else if (try_consume(c, TOKEN_CATCH))
 	{
 		defer_stmt->defer_stmt.is_catch = true;
+	}
+	else if (tok_is(c, TOKEN_LPAREN) && peek(c) == TOKEN_CATCH)
+	{
+		advance_and_verify(c, TOKEN_LPAREN);
+		CONSUME_OR_RET(TOKEN_CATCH, poisoned_ast);
+		if (!expect_ident(c, "identifier")) return poisoned_ast;
+		Ast *compound = ast_new_curr(c, AST_COMPOUND_STMT);
+		Ast *first = ast_new_curr(c, AST_DECLARE_STMT);
+		Decl *decl = decl_new_var(c->data.string, c->span, type_info_new_base(type_anyfault, c->span), VARDECL_LOCAL);
+		defer_stmt->defer_stmt.is_catch = true;
+		decl->var.init_expr = expr_new(EXPR_LAST_FAULT, decl->span);
+		first->declare_stmt = decl;
+		advance_and_verify(c, TOKEN_IDENT);
+		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
+		ASSIGN_ASTID_OR_RET(first->next, parse_stmt(c), poisoned_ast);
+		compound->compound_stmt.first_stmt = astid(first);
+		defer_stmt->defer_stmt.body = astid(compound);
+		return defer_stmt;
 	}
 	ASSIGN_ASTID_OR_RET(defer_stmt->defer_stmt.body, parse_stmt(c), poisoned_ast);
 	return defer_stmt;

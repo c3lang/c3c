@@ -211,6 +211,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
 	{
 		llvm_emit_block(c, error_return_block);
+		c->defer_error_var = error_out;
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
@@ -263,6 +264,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	{
 		llvm_emit_br(c, exit->block_return_exit);
 		llvm_emit_block(c, err_cleanup_block);
+		c->defer_error_var = exit->block_error_var;
 		llvm_emit_statement_chain(c, err_cleanup);
 		llvm_emit_jmp(c, exit->block_optional_exit);
 	}

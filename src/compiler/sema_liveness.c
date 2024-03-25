@@ -491,6 +491,7 @@ RETRY:
 			sema_trace_expr_list_liveness(expr->try_unwrap_chain_expr);
 			return;
 		case EXPR_TYPEID:
+		case EXPR_LAST_FAULT:
 			return;
 	}
 	UNREACHABLE

@@ -528,6 +528,7 @@ static bool sema_binary_is_expr_lvalue(Expr *top_expr, Expr *expr)
 		case EXPR_TEST_HOOK:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_MACRO_BODY:
+		case EXPR_LAST_FAULT:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -644,6 +645,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_TEST_HOOK:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_MACRO_BODY:
+		case EXPR_LAST_FAULT:
 			return false;
 	}
 	UNREACHABLE
@@ -7841,6 +7843,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_MACRO_BODY_EXPANSION:
 			case EXPR_BUILTIN_ACCESS:
 			case EXPR_DECL:
+			case EXPR_LAST_FAULT:
 				UNREACHABLE
 			case EXPR_CT_ARG:
 				FALLTHROUGH;
@@ -8269,6 +8272,9 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_DECL:
 			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;
 			expr->type = expr->decl_expr->type;
+			return true;
+		case EXPR_LAST_FAULT:
+			expr->type = type_anyfault;
 			return true;
 		case EXPR_RETVAL:
 			return sema_expr_analyse_retval(context, expr);

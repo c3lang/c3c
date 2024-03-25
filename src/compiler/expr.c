@@ -127,6 +127,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
+		case EXPR_LAST_FAULT:
 			return false;
 	}
 	UNREACHABLE
@@ -289,6 +290,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			assert(!exprid_is_constant_eval(expr->ternary_expr.cond, eval_kind));
 			return false;
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_LAST_FAULT:
 			return false;
 		case EXPR_TYPEID:
 			return eval_kind != CONSTANT_EVAL_CONSTANT_VALUE;
@@ -693,6 +695,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_STRINGIFY:
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
+		case EXPR_LAST_FAULT:
 			return true;
 		case EXPR_VASPLAT:
 			return true;

@@ -3,7 +3,7 @@
 ## 0.5.6 Change list
 
 ### Changes / improvements
-None
+- Support `defer (catch err)`
 
 ### Fixes
 None

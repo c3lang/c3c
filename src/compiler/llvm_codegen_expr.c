@@ -6803,7 +6803,12 @@ static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
 	return global;
 }
 
-static void llmv_emit_benchmark_hook(GenContext *c, BEValue *value, Expr *expr)
+INLINE void llvm_emit_last_fault(GenContext *c, BEValue *value)
+{
+	llvm_value_set_address_abi_aligned(value, c->defer_error_var, type_anyfault);
+}
+
+INLINE void llmv_emit_benchmark_hook(GenContext *c, BEValue *value, Expr *expr)
 {
 	LLVMValueRef get_global = llvm_get_benchmark_hook_global(c, expr);
 	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
@@ -6885,6 +6890,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_BENCHMARK_HOOK:
 			llmv_emit_benchmark_hook(c, value, expr);
+			return;
+		case EXPR_LAST_FAULT:
+			llvm_emit_last_fault(c, value);
 			return;
 		case EXPR_TEST_HOOK:
 			llmv_emit_test_hook(c, value, expr);

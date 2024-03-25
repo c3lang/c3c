@@ -388,6 +388,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_COMPILER_CONST:
+		case EXPR_LAST_FAULT:
 			return expr;
 		case EXPR_DESIGNATOR:
 			expr->designator_expr.path = macro_copy_designator_list(c, expr->designator_expr.path);

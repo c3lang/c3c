@@ -315,7 +315,6 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom)
 {
 	AstId first = 0;
-	AstId *next = &first;
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
@@ -1145,7 +1144,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 		SEMA_ERROR(body, "A defer may not have a body consisting of a raw 'defer', this looks like a mistake.");
 		return false;
 	}
-	bool success;
+	bool success = true;
 	SCOPE_START
 
 	context->active_scope.defer_last = 0;
@@ -1172,6 +1171,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 }
 static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement)
 {
+
 	if (!sema_analyse_defer_stmt_body(context, statement, astptr(statement->defer_stmt.body))) return false;
 
 	statement->defer_stmt.prev_defer = context->active_scope.defer_last;
