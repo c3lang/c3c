@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Support `defer (catch err)`
+- Added `print-input` command argument to print all files used for compilation
 
 ### Fixes
 None

@@ -301,7 +301,7 @@ void compiler_parse(void)
 		if (!file) error_exit(error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
-		if (active_target.print_input) puts(file->name);
+		if (active_target.print_input) puts(file->full_path);
 	}
 	if (active_target.print_input)
 	{
