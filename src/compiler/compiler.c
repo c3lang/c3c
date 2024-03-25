@@ -289,6 +289,10 @@ void compiler_parse(void)
 
 	// Load and parse all files.
 	bool has_error = false;
+	if (active_target.print_input)
+	{
+		puts("# input-files-begin");
+	}
 	VECEACH(global_context.sources, i)
 	{
 		bool loaded = false;
@@ -297,6 +301,11 @@ void compiler_parse(void)
 		if (!file) error_exit(error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
+		if (active_target.print_input) puts(file->name);
+	}
+	if (active_target.print_input)
+	{
+		puts("# input-files-end");
 	}
 	if (active_target.read_stdin)
 	{

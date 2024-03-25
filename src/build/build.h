@@ -360,6 +360,7 @@ typedef struct BuildOptions_
 	bool no_obj;
 	bool read_stdin;
 	bool print_output;
+	bool print_input;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -462,6 +463,7 @@ typedef struct
 	bool testing;
 	bool read_stdin;
 	bool print_output;
+	bool print_input; 
 	bool print_linking;
 	bool no_entry;
 	int build_threads;
