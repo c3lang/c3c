@@ -167,6 +167,7 @@ static void usage(void)
 	OUTPUT("  --list-type-properties     - List all type properties.");
 	OUTPUT("");
 	OUTPUT("  --print-output             - Print the object files created to stdout.");
+	OUTPUT("  --print-input              - Print inputted C3 files to stdout.");
 	OUTPUT("");
 	OUTPUT("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
 	OUTPUT("  --wincrt=<option>          - Windows CRT linking: none, static, dynamic (default).");
@@ -883,6 +884,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("print-output"))
 			{
 				options->print_output = true;
+				return;
+			}
+			if (match_longopt("print-input"))
+			{
+				options->print_input = true; 
 				return;
 			}
 			if (match_longopt("no-entry"))

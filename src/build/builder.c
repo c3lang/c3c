@@ -285,6 +285,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->emit_stdlib != EMIT_STDLIB_NOT_SET) target->emit_stdlib = options->emit_stdlib;
 	if (options->no_entry) target->no_entry = true;
 	target->print_output = options->print_output;
+	target->print_input = options->print_input;
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
