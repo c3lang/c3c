@@ -767,6 +767,7 @@ defer_stmt
 	: DEFER statement
 	| DEFER TRY statement
 	| DEFER CATCH statement
+	| DEFER '(' CATCH IDENT ')' statement
 	;
 
 ct_if_stmt
