@@ -48,7 +48,7 @@ fn int rand(int max) @builtin
 /**
  * @require is_random(random)
  **/
-macro void next_bool(random)
+macro bool next_bool(random)
 {
 	return random.next_byte() & 1;
 }
