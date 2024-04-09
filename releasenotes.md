@@ -7,7 +7,7 @@
 - Added `print-input` command argument to print all files used for compilation
 
 ### Fixes
-None
+- Incorrect length passed to scratch buffer printf.
 
 ### Stdlib changes
 None

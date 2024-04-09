@@ -353,8 +353,9 @@ void scratch_buffer_printf(const char *format, ...)
 {
 	va_list args;
 	va_start(args, format);
-	uint32_t len_needed = (uint32_t)vsnprintf(&scratch_buffer.str[scratch_buffer.len], MAX_STRING_BUFFER, format, args);
-	if (scratch_buffer.len + len_needed > MAX_STRING_BUFFER - 1)
+	size_t available = MAX_STRING_BUFFER - scratch_buffer.len;
+	uint32_t len_needed = (uint32_t)vsnprintf(&scratch_buffer.str[scratch_buffer.len], available, format, args);
+	if (len_needed > available - 1)
 	{
 		error_exit("Scratch buffer size (%d chars) exceeded", MAX_STRING_BUFFER - 1);
 	}
