@@ -32,7 +32,7 @@ whole new language.
 
 ### Example code
 
-The following code shows [generic modules](http://www.c3-lang.org/generics/) (more examples can be found at http://www.c3-lang.org/examples/). 
+The following code shows [generic modules](https://c3-lang.org/references/docs/generics/) (more examples can be found at https://c3-lang.org/references/docs/examples/). 
 
 ```c++
 module stack (<Type>);
