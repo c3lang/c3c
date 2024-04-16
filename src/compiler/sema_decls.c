@@ -914,7 +914,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				return false;
 			}
 		}
-		if (!sema_resolve_type_structure(context, rtype_info->type, rtype_info->span)) return false;
+		if (type_is_func_ptr(rtype_info->type) && !sema_resolve_type_structure(context, rtype_info->type, rtype_info->span)) return false;
 	}
 
 	// We don't support more than MAX_PARAMS number of params. This makes everything sane.
@@ -1092,8 +1092,8 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 		if (type_info)
 		{
-			if (!sema_resolve_type_structure(context, type_info->type, type_info->span)) return false;
-
+			Type *type = type_info->type;
+			if (type_is_func_ptr(type) && !sema_resolve_type_structure(context, type, type_info->span)) return false;
 			param->type = type_info->type;
 			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
 		}

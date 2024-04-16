@@ -1831,6 +1831,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 			return poisoned_decl;
 		}
 		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+		RANGE_EXTEND_PREV(decl_type);
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
 		return decl;

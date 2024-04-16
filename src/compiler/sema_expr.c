@@ -7574,7 +7574,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	{
 		if (!type_is_func_ptr(flat))
 		{
-			SEMA_ERROR(expr, "Can't convert a lambda to %s.", type_quoted_error_string(target_type));
+			RETURN_SEMA_ERROR(expr, "Can't convert a lambda to %s.", type_quoted_error_string(target_type));
 		}
 		if (!sema_resolve_type_decl(context, flat->pointer)) return false;
 	}

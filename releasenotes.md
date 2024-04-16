@@ -5,12 +5,13 @@
 ### Changes / improvements
 - Support `defer (catch err)`
 - Added `print-input` command argument to print all files used for compilation
+- Allow recursive function definitions as long as they are pointers. #1182
 
 ### Fixes
 - Incorrect length passed to scratch buffer printf.
 
 ### Stdlib changes
-None
+- Add 'zstr' variants for `string::new_format` / `string::tformat`.
 
 ## 0.5.5 Change list
 
