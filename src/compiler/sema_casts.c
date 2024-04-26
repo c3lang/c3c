@@ -1223,7 +1223,7 @@ static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 	Type *base_type = cc->to->decl->bitstruct.base_type->type;
 	Type *from_type = cc->from_type;
 	bool success = type_is_integer(base_type) && type_size(from_type) == type_size(base_type);
-	if (!is_explicit) sema_cast_error(cc, success, is_silent);
+	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
 	return true;
 }
 
@@ -1231,7 +1231,8 @@ static bool rule_arr_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base_type = cc->to->decl->bitstruct.base_type->type;
 	Type *from_type = cc->from_type;
-	if (!is_explicit) return sema_cast_error(cc, from_type == base_type, is_silent);
+	bool success = from_type == base_type;
+	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
 	return true;
 }
 

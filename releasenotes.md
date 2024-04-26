@@ -9,6 +9,7 @@
 
 ### Fixes
 - Incorrect length passed to scratch buffer printf.
+- Casting to a bitstruct would be allowed even if the type was the wrong size.
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
