@@ -202,7 +202,7 @@ typedef enum
 	X86VECTOR_SSE = 2,
 	X86VECTOR_AVX = 3,
 	X86VECTOR_AVX512 = 4,
-	X86VECTOR_NATIVE = 5,
+	X86VECTOR_CPU = 5,
 } X86VectorCapability;
 
 typedef enum

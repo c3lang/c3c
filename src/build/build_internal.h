@@ -59,7 +59,7 @@ static const char *x86_vector_capability[6] = {
 	[X86VECTOR_SSE] = "sse",
 	[X86VECTOR_AVX] = "avx",
 	[X86VECTOR_AVX512] = "avx512",
-	[X86VECTOR_NATIVE] = "native"
+	[X86VECTOR_CPU] = "default"
 };
 
 static const char *optlevels[4] = {

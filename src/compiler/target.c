@@ -738,7 +738,7 @@ static void x64features_limit_from_capability(X86Features *cpu_features, X86Vect
 			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VPOPCNTDQ);
 			break;
 		case X86VECTOR_AVX512:
-		case X86VECTOR_NATIVE:
+		case X86VECTOR_CPU:
 		case X86VECTOR_DEFAULT:
 			break;
 	}
@@ -910,21 +910,16 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	platform_target.abi = ABI_X64;
 	X86CpuSet cpu_set;
 	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
+	bool is_native = target->arch_os_target == default_target;
+	if (!is_native && target->feature.x86_cpu_set == X86CPU_NATIVE) target->feature.x86_cpu_set = X86CPU_DEFAULT;
 	if (target->feature.x86_cpu_set != X86CPU_DEFAULT)
 	{
 		cpu_set = target->feature.x86_cpu_set;
 	}
 	else
 	{
-		switch (platform_target.os)
-		{
-			case OS_TYPE_MACOSX:
-				cpu_set = X86CPU_AVX1;
-				break;
-			default:
-				cpu_set = X86CPU_SSSE3;
-				break;
-		}
+		cpu_set = is_native ? x64_cpu_default() : X86CPU_AVX1;
+		if (cpu_set > X86CPU_AVX1) cpu_set = X86CPU_AVX1;
 		INFO_LOG("Set default CPU as %s\n", x86_cpu_set[cpu_set]);
 	}
 

@@ -142,7 +142,7 @@ static void usage(void)
 	OUTPUT("");
 	OUTPUT("  --reloc=<option>           - Relocation model: none, pic, PIC, pie, PIE.");
 	OUTPUT("  --x86cpu=<option>          - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
-	OUTPUT("  --x86vec=<option>          - Set max type of vector use: none, mmx, sse, avx, avx512, native.");
+	OUTPUT("  --x86vec=<option>          - Set max type of vector use: none, mmx, sse, avx, avx512, default.");
 	OUTPUT("  --riscvfloat=<option>      - Set type of RISC-V float support: none, float, double");
 	OUTPUT("  --memory-env=<option>      - Set the memory environment: normal, small, tiny, none.");
 	OUTPUT("  --strip-unused=<yes|no>    - Strip unused code and globals from the output. (default: yes)");

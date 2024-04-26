@@ -1,3 +1,4 @@
+// #target: macos-x64
 fn int* elvis(int *x, int *y)
 {
     return x ?: y;
