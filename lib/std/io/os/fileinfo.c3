@@ -95,7 +95,7 @@ fn bool native_is_file(String path)
 		$case env::DARWIN:
 		$case env::LINUX:
 			Stat stat;
-			return @ok(native_stat(&stat, path)) && stat.st_mode & libc::S_IFREG;
+			return @ok(native_stat(&stat, path)) && stat.st_mode & libc::S_IFMT == libc::S_IFREG;
 		$default:
 			File! f = file::open(path, "r");
 			defer (void)f.close();
@@ -107,7 +107,7 @@ fn bool native_is_dir(String path)
 {
 	$if env::DARWIN || env::LINUX:
 		Stat stat;
-		return @ok(native_stat(&stat, path)) && stat.st_mode & libc::S_IFDIR;
+		return @ok(native_stat(&stat, path)) && stat.st_mode & libc::S_IFMT == libc::S_IFDIR;
 	$else
 		return native_file_or_dir_exists(path) && !native_is_file(path);
 	$endif
