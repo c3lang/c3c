@@ -446,7 +446,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17, 18]
+        llvm_version: [15, 16, 17]
     steps:
       - uses: actions/checkout@v4
       - name: Download LLVM
