@@ -908,7 +908,6 @@ static X86CpuSet x64_cpu_default(void)
 static inline void target_setup_x64_abi(BuildTarget *target)
 {
 	platform_target.abi = ABI_X64;
-	X86VectorCapability capability;
 	X86CpuSet cpu_set;
 	platform_target.x64.is_win64 = platform_target.os == OS_TYPE_WIN32;
 	if (target->feature.x86_cpu_set != X86CPU_DEFAULT)
@@ -924,16 +923,7 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	platform_target.cpu = x86_cpu_from_set(cpu_set);
 	X86Features cpu_features;
 	x86features_from_cpu(&cpu_features, cpu_set);
-	if (target->feature.x86_vector_capability != X86VECTOR_DEFAULT)
-	{
-		capability = target->feature.x86_vector_capability;
-	}
-	else
-	{
-		capability = X86VECTOR_NATIVE;
-	}
-
-	x64features_limit_from_capability(&cpu_features, capability);
+	x64features_limit_from_capability(&cpu_features, target->feature.x86_vector_capability);
 	if (target->feature.soft_float == SOFT_FLOAT_YES) platform_target.x64.soft_float = true;
 	scratch_buffer_clear();
 	x86features_as_diff_to_scratch(&cpu_features, cpu_set);
