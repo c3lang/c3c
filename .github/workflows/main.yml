@@ -112,8 +112,8 @@ jobs:
           install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-18.1.3-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-18.1.3-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-18.1.4-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-18.1.4-1-any.pkg.tar.zst
       - name: CMake
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -446,13 +446,13 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17]
+        llvm_version: [15, 16, 17, 18]
     steps:
       - uses: actions/checkout@v4
       - name: Download LLVM
         run: |
           brew install llvm@${{ matrix.llvm_version }} ninja curl
-          echo "/usr/local/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH
+          echo "/opt/homebrew/opt/llvm@${{ matrix.llvm_version }}/bin" >> $GITHUB_PATH    
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
 
