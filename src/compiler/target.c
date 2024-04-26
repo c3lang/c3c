@@ -916,7 +916,15 @@ static inline void target_setup_x64_abi(BuildTarget *target)
 	}
 	else
 	{
-		cpu_set = x64_cpu_default();
+		switch (platform_target.os)
+		{
+			case OS_TYPE_MACOSX:
+				cpu_set = X86CPU_AVX1;
+				break;
+			default:
+				cpu_set = X86CPU_SSSE3;
+				break;
+		}
 		INFO_LOG("Set default CPU as %s\n", x86_cpu_set[cpu_set]);
 	}
 
