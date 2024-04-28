@@ -2954,16 +2954,30 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		}
 
 		// This will trap any bad negative index, so we're fine.
-		if (safe_mode_enabled() && !is_len_range)
+		if (safe_mode_enabled())
 		{
-			BEValue excess;
-			llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
-			llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (start %d is less than end %d)", &start_index, &end_index);
-
-			if (len.value)
+			if (is_len_range)
 			{
-				llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
-				llvm_emit_panic_if_true(c, &excess, "Size exceeds index", slice->span, "Size exceeds index (end index was %d, size was %d)", &end_index, &len);
+				if (len.value)
+				{
+					BEValue excess;
+					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
+					BEValue actual_end_index = end_index;
+					actual_end_index.value = llvm_emit_sub_int(c, end_type, end_index.value, llvm_const_int(c, end_type, 1), slice->span);
+					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->span, "End index out of bounds (end index of %d exceeds size of %d)", &actual_end_index, &len);
+				}
+			}
+			else
+			{
+				BEValue excess;
+				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
+				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (start %d is less than end %d)", &start_index, &end_index);
+
+				if (len.value)
+				{
+					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LE);
+					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->span, "End index out of bounds (end index of %d exceeds size of %d)", &end_index, &len);
+				}
 			}
 		}
 	}

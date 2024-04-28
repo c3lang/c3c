@@ -7,6 +7,7 @@
 - Added `print-input` command argument to print all files used for compilation
 - Allow recursive function definitions as long as they are pointers. #1182
 - Default CPU to native if less than AVX, otherwise use AVX.
+- Bounds checking on length for `foo[1:2]` slicing #1191.
 
 ### Fixes
 - Incorrect length passed to scratch buffer printf.
