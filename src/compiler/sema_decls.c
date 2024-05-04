@@ -3471,8 +3471,38 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	return new_module;
 }
 
-static bool sema_append_generate_parameterized_name(SemaContext *c, Module *module, Expr **params, bool mangled)
+static bool sema_generate_parameterized_name_to_scratch(SemaContext *c, Module *module, Expr **params, bool mangled)
 {
+	// First resolve
+	FOREACH_BEGIN_IDX(i, Expr *param, params)
+		if (param->expr_kind == EXPR_TYPEINFO)
+		{
+			TypeInfo *type_info = param->type_expr;
+			if (!sema_resolve_type_info(c, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+			Type *type = type_info->type->canonical;
+			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
+			if (type_is_void(type)) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
+			if (type_is_invalid_storage_type(type)) RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
+			if (type_is_func_ptr(type))
+			{
+				if (!sema_resolve_type_decl(c, type->pointer)) return false;
+			}
+		}
+		else
+		{
+			if (!sema_analyse_ct_expr(c, param)) return false;
+			Type *type = param->type->canonical;
+			bool is_enum_like = type_kind_is_enumlike(type->type_kind);
+			if (!type_is_integer_or_bool_kind(type) && !is_enum_like)
+			{
+				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
+				return poisoned_decl;
+			}
+			assert(expr_is_const(param));
+		}
+	FOREACH_END();
+
+	scratch_buffer_clear();
 	if (mangled)
 	{
 		scratch_buffer_append_len(module->name->module, module->name->len);
@@ -3489,36 +3519,20 @@ static bool sema_append_generate_parameterized_name(SemaContext *c, Module *modu
 		}
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
-			TypeInfo *type_info = param->type_expr;
-			if (!sema_resolve_type_info(c, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-			Type *type = type_info->type->canonical;
-			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
-			if (type_is_void(type)) RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
-			if (type_is_invalid_storage_type(type)) RETURN_SEMA_ERROR(type_info, "Expected a runtime type.");
-			if (type_is_func_ptr(type))
-			{
-				if (!sema_resolve_type_decl(c, type->pointer)) return false;
-			}
+			Type *type = param->type_expr->type->canonical;
 			if (mangled)
 			{
 				type_mangle_introspect_name_to_buffer(type);
 			}
 			else
 			{
-				scratch_buffer_append(type_info->type->name);
+				scratch_buffer_append(type->name);
 			}
 		}
 		else
 		{
-			if (!sema_analyse_ct_expr(c, param)) return false;
 			Type *type = param->type->canonical;
 			bool is_enum_like = type_kind_is_enumlike(type->type_kind);
-			if (!type_is_integer_or_bool_kind(type) && !is_enum_like)
-			{
-				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
-				return poisoned_decl;
-			}
-			assert(expr_is_const(param));
 			if (type == type_bool)
 			{
 				if (mangled)
@@ -3656,8 +3670,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 					  vec_size(params));
 		return poisoned_decl;
 	}
-	scratch_buffer_clear();
-	if (!sema_append_generate_parameterized_name(c, module, params, true)) return poisoned_decl;
+	if (!sema_generate_parameterized_name_to_scratch(c, module, params, true)) return poisoned_decl;
 	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
@@ -3671,8 +3684,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
 		instantiated_module = module_instantiate_generic(c, module, path, params, span);
-		scratch_buffer_clear();
-		if (!sema_append_generate_parameterized_name(c, module, params, false)) return poisoned_decl;
+		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false)) return poisoned_decl;
 		if (!instantiated_module) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
 		if (c->unit->module->generic_module)

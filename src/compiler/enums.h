@@ -366,6 +366,7 @@ typedef enum
 	SCOPE_ENSURE_MACRO = 1 << 2,
 	SCOPE_EXPR_BLOCK = 1 << 3,
 	SCOPE_MACRO = 1 << 4,
+	SCOPE_COND = 1 << 5,
 } ScopeFlags;
 
 typedef enum

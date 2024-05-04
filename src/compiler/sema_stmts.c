@@ -1025,7 +1025,12 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	assert(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
 
 	// 1. Analyse the declaration list.
-	if (!sema_analyse_cond_list(context, expr, cond_type)) return false;
+	ScopeFlags current_flags = context->active_scope.flags;
+	context->active_scope.flags |= SCOPE_COND;
+	bool success = sema_analyse_cond_list(context, expr, cond_type);
+	context->active_scope.flags = current_flags;
+	if (!success) return false;
+
 
 	// 2. If we get "void", either through a void call or an empty list,
 	//    signal that.
