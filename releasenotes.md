@@ -8,6 +8,7 @@
 - Allow recursive function definitions as long as they are pointers. #1182
 - Default CPU to native if less than AVX, otherwise use AVX.
 - Bounds checking on length for `foo[1:2]` slicing #1191.
+- Foreach uses non-wrapping add/dec.
 
 ### Fixes
 - Incorrect length passed to scratch buffer printf.

@@ -54,8 +54,8 @@ loop.body:                                        ; preds = %loop.cond
   %4 = load i32, ptr %v, align 4
   call void (ptr, ...) @printf(ptr @.str, i32 %4)
   %5 = load i64, ptr %.anon, align 8
-  %add = add i64 %5, 1
-  store i64 %add, ptr %.anon, align 8
+  %addnuw = add nuw i64 %5, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

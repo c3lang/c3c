@@ -64,8 +64,8 @@ if.exit4:                                         ; preds = %if.exit
 
 loop.inc:                                         ; preds = %if.exit4, %if.then3
   %7 = load i64, ptr %.anon, align 8
-  %add5 = add i64 %7, 1
-  store i64 %add5, ptr %.anon, align 8
+  %addnuw = add nuw i64 %7, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %if.then, %loop.cond

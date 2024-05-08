@@ -372,8 +372,8 @@ loop.body:                                        ; preds = %loop.cond
   %fpfpext89 = fpext float %152 to double
   %153 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext86, double %fpfpext87, double %fpfpext88, double %fpfpext89)
   %154 = load i64, ptr %.anon, align 8
-  %add = add i64 %154, 1
-  store i64 %add, ptr %.anon, align 8
+  %addnuw = add nuw i64 %154, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -405,8 +405,8 @@ loop.body93:                                      ; preds = %loop.cond91
   %fpfpext99 = fpext float %166 to double
   %167 = call i32 (ptr, ...) @printf(ptr @.str.2, double %fpfpext96, double %fpfpext97, double %fpfpext98, double %fpfpext99)
   %168 = load i64, ptr %.anon90, align 8
-  %add100 = add i64 %168, 1
-  store i64 %add100, ptr %.anon90, align 8
+  %addnuw100 = add nuw i64 %168, 1
+  store i64 %addnuw100, ptr %.anon90, align 8
   br label %loop.cond91
 
 loop.exit101:                                     ; preds = %loop.cond91

@@ -17,16 +17,17 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr);
-static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr,
-											int diff);
+static inline void
+llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff,
+                         bool allow_wrap);
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements);
 static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements);
 static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr);
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr);
-static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
-static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff);
+static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap);
+static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap);
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc);
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr);
@@ -2318,7 +2319,7 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, E
 	}
 }
 
-static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan span, BEValue *original, int diff)
+static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan span, BEValue *original, int diff, bool allow_wrap)
 {
 	assert(!llvm_value_is_addr(original));
 
@@ -2343,9 +2344,21 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 			// Instead of negative numbers do dec/inc with a positive number.
 			LLVMTypeRef llvm_type = llvm_get_type(c, type);
 			LLVMValueRef diff_value = LLVMConstInt(llvm_type, 1, false);
+			if (!allow_wrap)
+			{
+				if (type_is_signed(type))
+				{
+					return diff > 0
+					       ? LLVMBuildNSWAdd(c->builder, original->value, diff_value, "addnsw")
+						   : LLVMBuildNSWSub(c->builder, original->value, diff_value, "subnsw");
+				}
+				return diff > 0
+				       ? LLVMBuildNUWAdd(c->builder, original->value, diff_value, "addnuw")
+				       : LLVMBuildNUWSub(c->builder, original->value, diff_value, "subnuw");
+			}
 			return diff > 0
-				   ? llvm_emit_add_int(c, type, original->value, diff_value, span)
-				   : llvm_emit_sub_int(c, type, original->value, diff_value, span);
+			       ? llvm_emit_add_int(c, type, original->value, diff_value, span)
+			       : llvm_emit_sub_int(c, type, original->value, diff_value, span);
 		}
 		case TYPE_VECTOR:
 		{
@@ -2381,8 +2394,8 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 			UNREACHABLE
 	}
 }
-static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr,
-											int diff)
+static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before,
+											Expr *expr, int diff, bool allow_wrap)
 {
 	EMIT_LOC(c, expr);
 
@@ -2393,7 +2406,7 @@ static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValu
 	// Store the original value if we want it
 	if (before) *before = value;
 
-	LLVMValueRef after_value = llvm_emit_inc_dec_value(c, expr->span, &value, diff);
+	LLVMValueRef after_value = llvm_emit_inc_dec_value(c, expr->span, &value, diff, allow_wrap);
 
 	// Store the result aligned.
 	llvm_store_raw(c, addr, after_value);
@@ -2475,7 +2488,7 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	llvm_value_set(&current_res, LLVMBuildExtractElement(c->builder, vector, index, ""), element);
 
 	// Calculate the new value.
-	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->span, &current_res, diff);
+	LLVMValueRef new_value = llvm_emit_inc_dec_value(c, expr->span, &current_res, diff, false);
 
 	// We update the vector value.
 	vector = LLVMBuildInsertElement(c->builder, vector, new_value, index, "");
@@ -2490,7 +2503,7 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 /**
  * This method implements the common ++x and --x operators
  */
-static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff)
+static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap)
 {
 	if (expr_is_vector_subscript(expr))
 	{
@@ -2508,7 +2521,7 @@ static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *ex
 	llvm_value_addr(c, &addr);
 
 	// Set the value to the new value.
-	llvm_emit_inc_dec_change(c, &addr, value, NULL, expr, diff);
+	llvm_emit_inc_dec_change(c, &addr, value, NULL, expr, diff, allow_wrap);
 }
 
 static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, Type *type)
@@ -2548,7 +2561,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 /**
  * Emit the common x++ and x-- operations.
  */
-static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff)
+static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap)
 {
 	if (expr_is_vector_subscript(expr))
 	{
@@ -2568,7 +2581,7 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 	llvm_value_addr(c, &addr);
 
 	// Perform the actual dec/inc to generate the new value.
-	llvm_emit_inc_dec_change(c, &addr, NULL, value, expr, diff);
+	llvm_emit_inc_dec_change(c, &addr, NULL, value, expr, diff, allow_wrap);
 }
 
 static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *expr)
@@ -2716,10 +2729,10 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_deref(c, value, inner, type_lowering(expr->type));
 			return;
 		case UNARYOP_INC:
-			llvm_emit_pre_inc_dec(c, value, inner, 1);
+			llvm_emit_pre_inc_dec(c, value, inner, 1, !expr->unary_expr.no_wrap);
 			return;
 		case UNARYOP_DEC:
-			llvm_emit_pre_inc_dec(c, value, inner, -1);
+			llvm_emit_pre_inc_dec(c, value, inner, -1, !expr->unary_expr.no_wrap);
 			return;
 	}
 	UNREACHABLE
@@ -4283,9 +4296,9 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 {
 
 	llvm_emit_post_inc_dec(context,
-						   be_value,
-						   expr->unary_expr.expr,
-						   expr->unary_expr.operator == UNARYOP_INC ? 1 : -1);
+	                       be_value,
+	                       expr->unary_expr.expr,
+	                       expr->unary_expr.operator == UNARYOP_INC ? 1 : -1, !expr->unary_expr.no_wrap);
 }
 
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)

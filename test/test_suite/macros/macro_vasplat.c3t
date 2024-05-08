@@ -139,12 +139,10 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const, i32 12, i1 false)
   store i64 0, ptr %.anon, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i64, ptr %.anon, align 8
   %gt = icmp ugt i64 3, %0
   br i1 %gt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
   store i64 %1, ptr %i, align 8
@@ -161,10 +159,9 @@ loop.body:                                        ; preds = %loop.cond
   store %"any*" %7, ptr %ptradd, align 16
   %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 8, ptr %varargslots, i64 2)
   %9 = load i64, ptr %.anon, align 8
-  %add = add i64 %9, 1
-  store i64 %add, ptr %.anon, align 8
+  %addnuw = add nuw i64 %9, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a1, ptr align 4 @.__const.1, i32 4, i1 false)
   store i64 0, ptr %.anon2, align 8
@@ -183,12 +180,10 @@ loop.exit:                                        ; preds = %loop.cond
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a8, ptr align 16 @.__const.3, i32 16, i1 false)
   store i64 0, ptr %.anon9, align 8
   br label %loop.cond10
-
 loop.cond10:                                      ; preds = %loop.body12, %loop.exit
   %17 = load i64, ptr %.anon9, align 8
   %gt11 = icmp ugt i64 4, %17
   br i1 %gt11, label %loop.body12, label %loop.exit20
-
 loop.body12:                                      ; preds = %loop.cond10
   %18 = load i64, ptr %.anon9, align 8
   store i64 %18, ptr %i13, align 8
@@ -205,20 +200,17 @@ loop.body12:                                      ; preds = %loop.cond10
   store %"any*" %24, ptr %ptradd17, align 16
   %25 = call i64 @std.io.printfn(ptr %retparam18, ptr @.str.4, i64 6, ptr %varargslots16, i64 2)
   %26 = load i64, ptr %.anon9, align 8
-  %add19 = add i64 %26, 1
-  store i64 %add19, ptr %.anon9, align 8
+  %addnuw19 = add nuw i64 %26, 1
+  store i64 %addnuw19, ptr %.anon9, align 8
   br label %loop.cond10
-
 loop.exit20:                                      ; preds = %loop.cond10
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a21, ptr align 4 @.__const.5, i32 8, i1 false)
   store i64 0, ptr %.anon22, align 8
   br label %loop.cond23
-
 loop.cond23:                                      ; preds = %loop.body25, %loop.exit20
   %27 = load i64, ptr %.anon22, align 8
   %gt24 = icmp ugt i64 2, %27
   br i1 %gt24, label %loop.body25, label %loop.exit33
-
 loop.body25:                                      ; preds = %loop.cond23
   %28 = load i64, ptr %.anon22, align 8
   store i64 %28, ptr %i26, align 8
@@ -235,20 +227,17 @@ loop.body25:                                      ; preds = %loop.cond23
   store %"any*" %34, ptr %ptradd30, align 16
   %35 = call i64 @std.io.printfn(ptr %retparam31, ptr @.str.6, i64 6, ptr %varargslots29, i64 2)
   %36 = load i64, ptr %.anon22, align 8
-  %add32 = add i64 %36, 1
-  store i64 %add32, ptr %.anon22, align 8
+  %addnuw32 = add nuw i64 %36, 1
+  store i64 %addnuw32, ptr %.anon22, align 8
   br label %loop.cond23
-
 loop.exit33:                                      ; preds = %loop.cond23
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a34, ptr align 4 @.__const.7, i32 12, i1 false)
   store i64 0, ptr %.anon35, align 8
   br label %loop.cond36
-
 loop.cond36:                                      ; preds = %loop.body38, %loop.exit33
   %37 = load i64, ptr %.anon35, align 8
   %gt37 = icmp ugt i64 3, %37
   br i1 %gt37, label %loop.body38, label %loop.exit46
-
 loop.body38:                                      ; preds = %loop.cond36
   %38 = load i64, ptr %.anon35, align 8
   store i64 %38, ptr %i39, align 8
@@ -265,10 +254,9 @@ loop.body38:                                      ; preds = %loop.cond36
   store %"any*" %44, ptr %ptradd43, align 16
   %45 = call i64 @std.io.printfn(ptr %retparam44, ptr @.str.8, i64 8, ptr %varargslots42, i64 2)
   %46 = load i64, ptr %.anon35, align 8
-  %add45 = add i64 %46, 1
-  store i64 %add45, ptr %.anon35, align 8
+  %addnuw45 = add nuw i64 %46, 1
+  store i64 %addnuw45, ptr %.anon35, align 8
   br label %loop.cond36
-
 loop.exit46:                                      ; preds = %loop.cond36
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a47, ptr align 4 @.__const.9, i32 4, i1 false)
   store i64 0, ptr %.anon48, align 8
@@ -287,12 +275,10 @@ loop.exit46:                                      ; preds = %loop.cond36
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a54, ptr align 4 @.__const.11, i32 8, i1 false)
   store i64 0, ptr %.anon55, align 8
   br label %loop.cond56
-
 loop.cond56:                                      ; preds = %loop.body58, %loop.exit46
   %54 = load i64, ptr %.anon55, align 8
   %gt57 = icmp ugt i64 2, %54
   br i1 %gt57, label %loop.body58, label %loop.exit66
-
 loop.body58:                                      ; preds = %loop.cond56
   %55 = load i64, ptr %.anon55, align 8
   store i64 %55, ptr %i59, align 8
@@ -309,20 +295,17 @@ loop.body58:                                      ; preds = %loop.cond56
   store %"any*" %61, ptr %ptradd63, align 16
   %62 = call i64 @std.io.printfn(ptr %retparam64, ptr @.str.12, i64 8, ptr %varargslots62, i64 2)
   %63 = load i64, ptr %.anon55, align 8
-  %add65 = add i64 %63, 1
-  store i64 %add65, ptr %.anon55, align 8
+  %addnuw65 = add nuw i64 %63, 1
+  store i64 %addnuw65, ptr %.anon55, align 8
   br label %loop.cond56
-
 loop.exit66:                                      ; preds = %loop.cond56
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a67, ptr align 16 @.__const.13, i32 20, i1 false)
   store i64 0, ptr %.anon68, align 8
   br label %loop.cond69
-
 loop.cond69:                                      ; preds = %loop.body71, %loop.exit66
   %64 = load i64, ptr %.anon68, align 8
   %gt70 = icmp ugt i64 5, %64
   br i1 %gt70, label %loop.body71, label %loop.exit79
-
 loop.body71:                                      ; preds = %loop.cond69
   %65 = load i64, ptr %.anon68, align 8
   store i64 %65, ptr %i72, align 8
@@ -339,20 +322,17 @@ loop.body71:                                      ; preds = %loop.cond69
   store %"any*" %71, ptr %ptradd76, align 16
   %72 = call i64 @std.io.printfn(ptr %retparam77, ptr @.str.14, i64 8, ptr %varargslots75, i64 2)
   %73 = load i64, ptr %.anon68, align 8
-  %add78 = add i64 %73, 1
-  store i64 %add78, ptr %.anon68, align 8
+  %addnuw78 = add nuw i64 %73, 1
+  store i64 %addnuw78, ptr %.anon68, align 8
   br label %loop.cond69
-
 loop.exit79:                                      ; preds = %loop.cond69
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a80, ptr align 16 @.__const.15, i32 32, i1 false)
   store i64 0, ptr %.anon81, align 8
   br label %loop.cond82
-
 loop.cond82:                                      ; preds = %loop.body84, %loop.exit79
   %74 = load i64, ptr %.anon81, align 8
   %gt83 = icmp ugt i64 8, %74
   br i1 %gt83, label %loop.body84, label %loop.exit92
-
 loop.body84:                                      ; preds = %loop.cond82
   %75 = load i64, ptr %.anon81, align 8
   store i64 %75, ptr %i85, align 8
@@ -369,20 +349,17 @@ loop.body84:                                      ; preds = %loop.cond82
   store %"any*" %81, ptr %ptradd89, align 16
   %82 = call i64 @std.io.printfn(ptr %retparam90, ptr @.str.16, i64 8, ptr %varargslots88, i64 2)
   %83 = load i64, ptr %.anon81, align 8
-  %add91 = add i64 %83, 1
-  store i64 %add91, ptr %.anon81, align 8
+  %addnuw91 = add nuw i64 %83, 1
+  store i64 %addnuw91, ptr %.anon81, align 8
   br label %loop.cond82
-
 loop.exit92:                                      ; preds = %loop.cond82
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %b, ptr align 16 @.__const.17, i32 28, i1 false)
   store i64 0, ptr %.anon93, align 8
   br label %loop.cond94
-
 loop.cond94:                                      ; preds = %loop.body96, %loop.exit92
   %84 = load i64, ptr %.anon93, align 8
   %gt95 = icmp ugt i64 7, %84
   br i1 %gt95, label %loop.body96, label %loop.exit104
-
 loop.body96:                                      ; preds = %loop.cond94
   %85 = load i64, ptr %.anon93, align 8
   store i64 %85, ptr %i97, align 8
@@ -399,20 +376,17 @@ loop.body96:                                      ; preds = %loop.cond94
   store %"any*" %91, ptr %ptradd101, align 16
   %92 = call i64 @std.io.printfn(ptr %retparam102, ptr @.str.18, i64 8, ptr %varargslots100, i64 2)
   %93 = load i64, ptr %.anon93, align 8
-  %add103 = add i64 %93, 1
-  store i64 %add103, ptr %.anon93, align 8
+  %addnuw103 = add nuw i64 %93, 1
+  store i64 %addnuw103, ptr %.anon93, align 8
   br label %loop.cond94
-
 loop.exit104:                                     ; preds = %loop.cond94
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %c, ptr align 16 @.__const.19, i32 32, i1 false)
   store i64 0, ptr %.anon105, align 8
   br label %loop.cond106
-
 loop.cond106:                                     ; preds = %loop.body108, %loop.exit104
   %94 = load i64, ptr %.anon105, align 8
   %gt107 = icmp ugt i64 8, %94
   br i1 %gt107, label %loop.body108, label %loop.exit116
-
 loop.body108:                                     ; preds = %loop.cond106
   %95 = load i64, ptr %.anon105, align 8
   store i64 %95, ptr %i109, align 8
@@ -429,20 +403,17 @@ loop.body108:                                     ; preds = %loop.cond106
   store %"any*" %101, ptr %ptradd113, align 16
   %102 = call i64 @std.io.printfn(ptr %retparam114, ptr @.str.20, i64 9, ptr %varargslots112, i64 2)
   %103 = load i64, ptr %.anon105, align 8
-  %add115 = add i64 %103, 1
-  store i64 %add115, ptr %.anon105, align 8
+  %addnuw115 = add nuw i64 %103, 1
+  store i64 %addnuw115, ptr %.anon105, align 8
   br label %loop.cond106
-
 loop.exit116:                                     ; preds = %loop.cond106
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %a117, ptr align 16 @.__const.21, i32 24, i1 false)
   store i64 0, ptr %.anon118, align 8
   br label %loop.cond119
-
 loop.cond119:                                     ; preds = %loop.body121, %loop.exit116
   %104 = load i64, ptr %.anon118, align 8
   %gt120 = icmp ugt i64 6, %104
   br i1 %gt120, label %loop.body121, label %loop.exit129
-
 loop.body121:                                     ; preds = %loop.cond119
   %105 = load i64, ptr %.anon118, align 8
   store i64 %105, ptr %i122, align 8
@@ -459,10 +430,9 @@ loop.body121:                                     ; preds = %loop.cond119
   store %"any*" %111, ptr %ptradd126, align 16
   %112 = call i64 @std.io.printfn(ptr %retparam127, ptr @.str.22, i64 6, ptr %varargslots125, i64 2)
   %113 = load i64, ptr %.anon118, align 8
-  %add128 = add i64 %113, 1
-  store i64 %add128, ptr %.anon118, align 8
+  %addnuw128 = add nuw i64 %113, 1
+  store i64 %addnuw128, ptr %.anon118, align 8
   br label %loop.cond119
-
 loop.exit129:                                     ; preds = %loop.cond119
   ret void
 }

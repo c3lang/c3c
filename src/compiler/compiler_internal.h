@@ -764,6 +764,7 @@ typedef struct
 {
 	Expr* expr;
 	UnaryOp operator : 8;
+	bool no_wrap : 1;
 } ExprUnary;
 
 

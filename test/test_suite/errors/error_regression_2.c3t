@@ -834,8 +834,8 @@ phi_block19:                                      ; preds = %else_block18, %afte
   %ternary = select i1 %val20, ptr @.str.26, ptr @.str.27
   %32 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val14, ptr %ternary)
   %33 = load i64, ptr %.anon1, align 8
-  %add = add i64 %33, 1
-  store i64 %add, ptr %.anon1, align 8
+  %addnuw = add nuw i64 %33, 1
+  store i64 %addnuw, ptr %.anon1, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

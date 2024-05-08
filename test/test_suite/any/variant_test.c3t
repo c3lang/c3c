@@ -219,8 +219,8 @@ loop.body:                                        ; preds = %loop.cond
   %hi = load ptr, ptr %ptradd3, align 8
   call void @foo.test(i64 %lo, ptr %hi)
   %7 = load i64, ptr %.anon2, align 8
-  %add = add i64 %7, 1
-  store i64 %add, ptr %.anon2, align 8
+  %addnuw = add nuw i64 %7, 1
+  store i64 %addnuw, ptr %.anon2, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

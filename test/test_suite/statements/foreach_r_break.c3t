@@ -39,8 +39,8 @@ loop.cond:                                        ; preds = %if.exit4, %if.then3
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
-  %sub = sub i64 %1, 1
-  store i64 %sub, ptr %.anon, align 8
+  %subnuw = sub nuw i64 %1, 1
+  store i64 %subnuw, ptr %.anon, align 8
   %2 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %2
   %3 = load i32, ptr %ptroffset, align 4

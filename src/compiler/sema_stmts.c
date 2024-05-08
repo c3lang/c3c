@@ -1624,6 +1624,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		Expr *dec = expr_new(EXPR_UNARY, idx_decl->span);
 		dec->unary_expr.expr = expr_variable(idx_decl);
 		dec->unary_expr.operator = UNARYOP_DEC;
+		dec->unary_expr.no_wrap = true;
 		Ast *update_stmt = new_ast(AST_EXPR_STMT, idx_decl->span);
 		update_stmt->expr_stmt = dec;
 		ast_append(&succ, update_stmt);
@@ -1652,6 +1653,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		update = expr_new(EXPR_UNARY, idx_decl->span);
 		update->unary_expr.expr = expr_variable(idx_decl);
 		update->unary_expr.operator = UNARYOP_INC;
+		update->unary_expr.no_wrap = true;
 	}
 
 	// Create IndexType index = __idx$

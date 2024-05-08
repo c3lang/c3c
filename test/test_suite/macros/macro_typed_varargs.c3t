@@ -75,8 +75,8 @@ loop.body:                                        ; preds = %loop.cond
   store %"any*" %9, ptr %varargslots, align 16
   %10 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
   %11 = load i64, ptr %.anon1, align 8
-  %add = add i64 %11, 1
-  store i64 %add, ptr %.anon1, align 8
+  %addnuw = add nuw i64 %11, 1
+  store i64 %addnuw, ptr %.anon1, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
@@ -125,8 +125,8 @@ loop.body15:                                      ; preds = %loop.cond13
   store %"any*" %29, ptr %varargslots18, align 16
   %30 = call i64 @std.io.printfn(ptr %retparam19, ptr @.str.1, i64 2, ptr %varargslots18, i64 1)
   %31 = load i64, ptr %.anon12, align 8
-  %add20 = add i64 %31, 1
-  store i64 %add20, ptr %.anon12, align 8
+  %addnuw20 = add nuw i64 %31, 1
+  store i64 %addnuw20, ptr %.anon12, align 8
   br label %loop.cond13
 
 loop.exit21:                                      ; preds = %loop.cond13

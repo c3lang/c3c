@@ -57,8 +57,8 @@ loop.cond:                                        ; preds = %entry
 
 loop.body:                                        ; preds = %loop.cond
   %4 = load i64, ptr %.anon, align 8
-  %sub = sub i64 %4, 1
-  store i64 %sub, ptr %.anon, align 8
+  %subnuw = sub nuw i64 %4, 1
+  store i64 %subnuw, ptr %.anon, align 8
   %5 = load i64, ptr %.anon, align 8
   store i64 %5, ptr %index, align 8
   %6 = load ptr, ptr %x, align 8

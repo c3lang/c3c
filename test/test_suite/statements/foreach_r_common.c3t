@@ -99,8 +99,8 @@ loop.cond:                                        ; preds = %loop.body, %entry
 
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %.anon, align 8
-  %sub = sub i64 %1, 1
-  store i64 %sub, ptr %.anon, align 8
+  %subnuw = sub nuw i64 %1, 1
+  store i64 %subnuw, ptr %.anon, align 8
   %2 = load i64, ptr %.anon, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %foo, i64 %2
   %3 = load float, ptr %ptroffset, align 4
@@ -121,8 +121,8 @@ loop.cond2:                                       ; preds = %loop.body4, %loop.e
 
 loop.body4:                                       ; preds = %loop.cond2
   %6 = load i64, ptr %.anon1, align 8
-  %sub5 = sub i64 %6, 1
-  store i64 %sub5, ptr %.anon1, align 8
+  %subnuw5 = sub nuw i64 %6, 1
+  store i64 %subnuw5, ptr %.anon1, align 8
   %7 = load i64, ptr %.anon1, align 8
   %ptroffset7 = getelementptr inbounds [4 x i8], ptr %foo, i64 %7
   store ptr %ptroffset7, ptr %a6, align 8
@@ -147,8 +147,8 @@ loop.cond11:                                      ; preds = %loop.body13, %loop.
 
 loop.body13:                                      ; preds = %loop.cond11
   %13 = load i64, ptr %.anon10, align 8
-  %sub14 = sub i64 %13, 1
-  store i64 %sub14, ptr %.anon10, align 8
+  %subnuw14 = sub nuw i64 %13, 1
+  store i64 %subnuw14, ptr %.anon10, align 8
   %14 = load i64, ptr %.anon10, align 8
   %ptroffset16 = getelementptr inbounds [4 x i8], ptr %foo, i64 %14
   store ptr %ptroffset16, ptr %a15, align 8
@@ -169,8 +169,8 @@ loop.cond20:                                      ; preds = %loop.body22, %loop.
 
 loop.body22:                                      ; preds = %loop.cond20
   %18 = load i64, ptr %.anon19, align 8
-  %sub23 = sub i64 %18, 1
-  store i64 %sub23, ptr %.anon19, align 8
+  %subnuw23 = sub nuw i64 %18, 1
+  store i64 %subnuw23, ptr %.anon19, align 8
   %19 = load i64, ptr %.anon19, align 8
   store i64 %19, ptr %i, align 8
   %20 = load i64, ptr %.anon19, align 8
@@ -194,8 +194,8 @@ loop.cond29:                                      ; preds = %loop.body31, %loop.
 
 loop.body31:                                      ; preds = %loop.cond29
   %25 = load i64, ptr %.anon28, align 8
-  %sub32 = sub i64 %25, 1
-  store i64 %sub32, ptr %.anon28, align 8
+  %subnuw32 = sub nuw i64 %25, 1
+  store i64 %subnuw32, ptr %.anon28, align 8
   %26 = load i64, ptr %.anon28, align 8
   %trunc = trunc i64 %26 to i8
   store i8 %trunc, ptr %i33, align 1
@@ -221,8 +221,8 @@ loop.cond39:                                      ; preds = %loop.body41, %loop.
 
 loop.body41:                                      ; preds = %loop.cond39
   %32 = load i64, ptr %.anon38, align 8
-  %sub42 = sub i64 %32, 1
-  store i64 %sub42, ptr %.anon38, align 8
+  %subnuw42 = sub nuw i64 %32, 1
+  store i64 %subnuw42, ptr %.anon38, align 8
   %33 = load i64, ptr %.anon38, align 8
   %ptroffset44 = getelementptr inbounds [4 x i8], ptr %foo, i64 %33
   %34 = load float, ptr %ptroffset44, align 4
@@ -243,8 +243,8 @@ loop.cond48:                                      ; preds = %loop.body50, %loop.
 
 loop.body50:                                      ; preds = %loop.cond48
   %37 = load i64, ptr %.anon47, align 8
-  %sub51 = sub i64 %37, 1
-  store i64 %sub51, ptr %.anon47, align 8
+  %subnuw51 = sub nuw i64 %37, 1
+  store i64 %subnuw51, ptr %.anon47, align 8
   %38 = load <3 x float>, ptr %foo2, align 16
   %39 = load i64, ptr %.anon47, align 8
   %40 = extractelement <3 x float> %38, i64 %39
@@ -265,8 +265,8 @@ loop.cond56:                                      ; preds = %loop.body58, %loop.
 
 loop.body58:                                      ; preds = %loop.cond56
   %43 = load i64, ptr %.anon55, align 8
-  %sub59 = sub i64 %43, 1
-  store i64 %sub59, ptr %.anon55, align 8
+  %subnuw59 = sub nuw i64 %43, 1
+  store i64 %subnuw59, ptr %.anon55, align 8
   %44 = load i64, ptr %.anon55, align 8
   %ptroffset61 = getelementptr inbounds [4 x i8], ptr %foo2, i64 %44
   store ptr %ptroffset61, ptr %a60, align 8
@@ -291,8 +291,8 @@ loop.cond66:                                      ; preds = %loop.body68, %loop.
 
 loop.body68:                                      ; preds = %loop.cond66
   %50 = load i64, ptr %.anon65, align 8
-  %sub69 = sub i64 %50, 1
-  store i64 %sub69, ptr %.anon65, align 8
+  %subnuw69 = sub nuw i64 %50, 1
+  store i64 %subnuw69, ptr %.anon65, align 8
   %51 = load i64, ptr %.anon65, align 8
   store i64 %51, ptr %i70, align 8
   %52 = load <3 x float>, ptr %foo2, align 16
@@ -316,8 +316,8 @@ loop.cond75:                                      ; preds = %loop.body77, %loop.
 
 loop.body77:                                      ; preds = %loop.cond75
   %58 = load i64, ptr %.anon74, align 8
-  %sub78 = sub i64 %58, 1
-  store i64 %sub78, ptr %.anon74, align 8
+  %subnuw78 = sub nuw i64 %58, 1
+  store i64 %subnuw78, ptr %.anon74, align 8
   %59 = load i64, ptr %.anon74, align 8
   %trunc80 = trunc i64 %59 to i8
   store i8 %trunc80, ptr %i79, align 1
@@ -343,8 +343,8 @@ loop.cond86:                                      ; preds = %loop.body88, %loop.
 
 loop.body88:                                      ; preds = %loop.cond86
   %66 = load i64, ptr %.anon85, align 8
-  %sub89 = sub i64 %66, 1
-  store i64 %sub89, ptr %.anon85, align 8
+  %subnuw89 = sub nuw i64 %66, 1
+  store i64 %subnuw89, ptr %.anon85, align 8
   %67 = load <3 x float>, ptr %foo2, align 16
   %68 = load i64, ptr %.anon85, align 8
   %69 = extractelement <3 x float> %67, i64 %68
