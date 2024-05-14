@@ -2694,8 +2694,6 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				return;
 			}
 			assert(type->canonical != type_bool);
-			llvm_emit_expr(c, value, expr->unary_expr.expr);
-			llvm_value_rvalue(c, value);
 			if (active_target.feature.trap_on_wrap && !type_flat_is_vector(value->type))
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);

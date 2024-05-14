@@ -73,23 +73,22 @@ entry:
   %sext11 = sext i32 %bnot to i64
   store i64 %sext11, ptr %z, align 8
   %17 = load i32, ptr %x, align 4
-  %18 = load i32, ptr %x, align 4
-  %neg = sub i32 0, %18
+  %neg = sub i32 0, %17
   %sext12 = sext i32 %neg to i64
   store i64 %sext12, ptr %z, align 8
   store i64 0, ptr %w.f, align 8
   store i32 0, ptr %w, align 4
   %optval = load i64, ptr %w.f, align 8
   %not_err = icmp eq i64 %optval, 0
-  %19 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %19, label %after_check, label %else_block
+  %18 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %18, label %after_check, label %else_block
 after_check:                                      ; preds = %entry
-  %20 = load i32, ptr %w, align 4
+  %19 = load i32, ptr %w, align 4
   br label %phi_block
 else_block:                                       ; preds = %entry
   br label %phi_block
 phi_block:                                        ; preds = %else_block, %after_check
-  %val = phi i32 [ %20, %after_check ], [ 1, %else_block ]
+  %val = phi i32 [ %19, %after_check ], [ 1, %else_block ]
   %sext13 = sext i32 %val to i64
   store i64 %sext13, ptr %z, align 8
   ret void
