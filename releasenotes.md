@@ -15,6 +15,7 @@
 - Casting to a bitstruct would be allowed even if the type was the wrong size.
 - Generic modules parameterized with constants would sometimes get the wrong parameterized module name causing conversion errors #1192.
 - Duplicate emit of expressions on negation would incorrectly compile negated macros.
+- Casting a slice address to its pointer type should not compile #1193.
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
