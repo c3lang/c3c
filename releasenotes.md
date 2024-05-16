@@ -17,6 +17,7 @@
 - Duplicate emit of expressions on negation would incorrectly compile negated macros.
 - Casting a slice address to its pointer type should not compile #1193.
 - Union is not properly zero-initialized with designated initializer #1194.
+- Compile time fmod evaluates to 0 #1195.
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.

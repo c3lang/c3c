@@ -5561,19 +5561,36 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 	// 1. Analyse both sides and promote to a common type
 	if (!sema_binary_analyse_arithmetic_subexpr(context, expr, NULL, false)) return false;
 
-	// 3. a % 0 is not valid, so detect it.
-	if (expr_is_const(right) && int_is_zero(right->const_expr.ixx))
+	Type *flat = type_flatten(left->type);
+	if (type_is_float(flat))
 	{
-		SEMA_ERROR(right, "Cannot perform %% with a constant zero.");
-		return false;
-	}
+		// 3. a % 0 is not valid, so detect it.
+		if (expr_is_const(right) && right->const_expr.fxx.f == 0.0)
+		{
+			RETURN_SEMA_ERROR(right, "Cannot perform %% with a constant zero.");
+		}
 
-	// 4. Constant fold
-	if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+		// 4. Constant fold
+		if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+		{
+			expr_replace(expr, left);
+			// 4a. Remember this is remainder.
+			expr->const_expr.fxx = float_rem(left->const_expr.fxx, right->const_expr.fxx);
+		}
+	}
+	else
 	{
-		expr_replace(expr, left);
-		// 4a. Remember this is remainder.
-		expr->const_expr.ixx = int_rem(left->const_expr.ixx, right->const_expr.ixx);
+		assert(type_is_integer(flat));
+		// 3. a % 0 is not valid, so detect it.
+		if (expr_is_const(right) && int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, "Cannot perform %% with a constant zero.");
+
+		// 4. Constant fold
+		if (expr_both_const(left, right) && sema_constant_fold_ops(left))
+		{
+			expr_replace(expr, left);
+			// 4a. Remember this is remainder.
+			expr->const_expr.ixx = int_rem(left->const_expr.ixx, right->const_expr.ixx);
+		}
 	}
 
 	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));

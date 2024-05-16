@@ -2015,6 +2015,7 @@ Float float_sub(Float op1, Float op2);
 Float float_mul(Float op1, Float op2);
 Float float_div(Float op1, Float op2);
 Float float_neg(Float op);
+Float float_rem(Float op1, Float op2);
 Float float_from_string(const char *string, char **error);
 Float float_from_hex(const char *string, char **error);
 Int128 i128_from_double(double x);

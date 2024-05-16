@@ -85,6 +85,12 @@ Float float_div(Float op1, Float op2)
 	return (Float){ op1.f / op2.f, op1.type };
 }
 
+Float float_rem(Float op1, Float op2)
+{
+	assert(op1.type == op2.type);
+	return (Float){fmod(op1.f, op2.f), op1.type };
+}
+
 Float float_neg(Float op)
 {
 	op.f = -op.f;
