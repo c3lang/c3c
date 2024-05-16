@@ -2124,14 +2124,12 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 		llvm_emit_initialize_reference_designated_bitstruct(c, ref, type->decl, elements);
 		return;
 	}
-	// Getting ready to initialize, get the real type.
-	Type *real_type = type_lowering(ref->type);
 
 	// Make sure we have an address.
 	llvm_value_addr(c, ref);
 
-	// Clear the memory if not union.
-	if (real_type->type_kind != TYPE_UNION) llvm_store_zero(c, ref);
+	// Clear the memory
+	llvm_store_zero(c, ref);
 
 	// Now walk through the elements.
 	VECEACH(elements, i)

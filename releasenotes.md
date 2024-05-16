@@ -16,6 +16,7 @@
 - Generic modules parameterized with constants would sometimes get the wrong parameterized module name causing conversion errors #1192.
 - Duplicate emit of expressions on negation would incorrectly compile negated macros.
 - Casting a slice address to its pointer type should not compile #1193.
+- Union is not properly zero-initialized with designated initializer #1194.
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
