@@ -1576,6 +1576,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 				llvm_value_set(value, llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type)), to_type);
 				return;
 			}
+			value->type = type_lowering(to_type);
 			return;
 		case CAST_SABOOL:
 			llvm_value_fold_optional(c, value);

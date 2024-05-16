@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+enum Abc : char { ABC }
+
+enum Mouse_Button {
+  LEFT,
+  RIGHT,
+  MIDDLE,
+}
+
+fn void foo(Mouse_Button button)
+{
+}
+
+fn int main() {
+  uint x = 1;
+  foo((Mouse_Button)x);
+  return 0;
+}
+
+/* #expect: test.ll
+
+  %x = alloca i32, align 4
+  store i32 1, ptr %x, align 4
+  %0 = load i32, ptr %x, align 4
+  call void @test.foo(i32 %0)
+  ret i32 0
