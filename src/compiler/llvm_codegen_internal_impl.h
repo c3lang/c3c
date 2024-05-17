@@ -166,6 +166,11 @@ INLINE LLVMValueRef llvm_emit_extract_value(GenContext *c, LLVMValueRef agg, uns
 	return LLVMBuildExtractValue(c->builder, agg, index, "");
 }
 
+INLINE bool llvn_use_accurate_debug_info(GenContext *context)
+{
+	return context->debug.builder && active_target.optlevel <= OPTIMIZATION_NONE;
+}
+
 INLINE bool llvm_use_debug(GenContext *context) { return context->debug.builder != NULL; }
 
 INLINE bool llvm_basic_block_is_unused(LLVMBasicBlockRef block)

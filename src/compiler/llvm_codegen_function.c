@@ -196,7 +196,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 										decl->span,
 										NULL, NULL, NULL);
 			}
-			if (!decl->var.is_written && !decl->var.is_addr)
+			if (!decl->var.is_written && !decl->var.is_addr && !llvn_use_accurate_debug_info(c))
 			{
 				decl->backend_value = param_value;
 				decl->is_value = true;

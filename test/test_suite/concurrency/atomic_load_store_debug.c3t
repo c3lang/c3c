@@ -31,35 +31,63 @@ define void @test.main() #0 !dbg !6 {
 entry:
   %a = alloca i32, align 4
   %x = alloca i32, align 4
+  %x1 = alloca ptr, align 8
   %y = alloca i32, align 4
+  %x2 = alloca ptr, align 8
+  %x3 = alloca ptr, align 8
+  %value = alloca i32, align 4
+  %x4 = alloca ptr, align 8
+  %value6 = alloca i32, align 4
   %varargslots = alloca [1 x %"any*"], align 16
   %retparam = alloca i64, align 8
   call void @llvm.dbg.declare(metadata ptr %a, metadata !10, metadata !DIExpression()), !dbg !12
   store i32 111, ptr %a, align 4, !dbg !13
   call void @llvm.dbg.declare(metadata ptr %x, metadata !14, metadata !DIExpression()), !dbg !15
-  %0 = load atomic i32, ptr %a seq_cst, align 4, !dbg !16
-  store i32 %0, ptr %x, align 4, !dbg !16
+  store ptr %a, ptr %x1, align 8
+  %0 = load ptr, ptr %x1, align 8, !dbg !16
+  %1 = load atomic i32, ptr %0 seq_cst, align 4, !dbg !16
+  store i32 %1, ptr %x, align 4, !dbg !16
   call void @llvm.dbg.declare(metadata ptr %y, metadata !19, metadata !DIExpression()), !dbg !20
-  %1 = load atomic volatile i32, ptr %a monotonic, align 4, !dbg !21
-  store i32 %1, ptr %y, align 4, !dbg !21
-  %2 = load i32, ptr %x, align 4, !dbg !23
-  %add = add i32 123, %2, !dbg !24
-  store atomic i32 %add, ptr %a seq_cst, align 4, !dbg !25
-  %3 = load i32, ptr %y, align 4, !dbg !27
-  %add1 = add i32 33, %3, !dbg !28
-  store atomic volatile i32 %add1, ptr %a monotonic, align 4, !dbg !29
-  %4 = insertvalue %"any*" undef, ptr %a, 0, !dbg !31
-  %5 = insertvalue %"any*" %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !31
-  store %"any*" %5, ptr %varargslots, align 16, !dbg !31
-  %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !32
+  store ptr %a, ptr %x2, align 8
+  %2 = load ptr, ptr %x2, align 8, !dbg !21
+  %3 = load atomic volatile i32, ptr %2 monotonic, align 4, !dbg !21
+  store i32 %3, ptr %y, align 4, !dbg !21
+  store ptr %a, ptr %x3, align 8
+  %4 = load i32, ptr %x, align 4, !dbg !23
+  %add = add i32 123, %4, !dbg !24
+  store i32 %add, ptr %value, align 4
+  %5 = load ptr, ptr %x3, align 8, !dbg !25
+  %6 = load i32, ptr %value, align 4, !dbg !25
+  store atomic i32 %6, ptr %5 seq_cst, align 4, !dbg !25
+  store ptr %a, ptr %x4, align 8
+  %7 = load i32, ptr %y, align 4, !dbg !27
+  %add5 = add i32 33, %7, !dbg !28
+  store i32 %add5, ptr %value6, align 4
+  %8 = load ptr, ptr %x4, align 8, !dbg !29
+  %9 = load i32, ptr %value6, align 4, !dbg !29
+  store atomic volatile i32 %9, ptr %8 monotonic, align 4, !dbg !29
+  %10 = insertvalue %"any*" undef, ptr %a, 0, !dbg !31
+  %11 = insertvalue %"any*" %10, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !31
+  store %"any*" %11, ptr %varargslots, align 16, !dbg !31
+  %12 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !32
   ret void, !dbg !32
 }
 
 ; Function Attrs:
 define i32 @main(i32 %0, ptr %1) #0 !dbg !33 {
 entry:
-  call void @llvm.dbg.value(metadata i32 %0, metadata !39, metadata !DIExpression()), !dbg !40
-  call void @llvm.dbg.value(metadata ptr %1, metadata !41, metadata !DIExpression()), !dbg !40
+  %.anon = alloca i32, align 4
+  %.anon1 = alloca ptr, align 8
+  %.anon2 = alloca i32, align 4
+  %.anon3 = alloca ptr, align 8
+  store i32 %0, ptr %.anon, align 4
+  call void @llvm.dbg.declare(metadata ptr %.anon, metadata !39, metadata !DIExpression()), !dbg !40
+  store ptr %1, ptr %.anon1, align 8
+  call void @llvm.dbg.declare(metadata ptr %.anon1, metadata !41, metadata !DIExpression()), !dbg !40
+  %2 = load i32, ptr %.anon, align 4
+  store i32 %2, ptr %.anon2, align 4
+  %3 = load ptr, ptr %.anon1, align 8
+  store ptr %3, ptr %.anon3, align 8
   call void @test.main(), !dbg !42
   ret i32 0, !dbg !45
 }

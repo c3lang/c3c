@@ -6246,13 +6246,12 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		Expr *init_expr = val->var.init_expr;
 		BEValue value;
 		llvm_emit_expr(c, &value, init_expr);
-		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr)
+		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvn_use_accurate_debug_info(c))
 		{
 			llvm_emit_and_set_decl_alloca(c, val);
 			llvm_store_decl(c, val, &value);
 			continue;
 		}
-
 		val->is_value = true;
 		val->backend_value = value.value;
 	FOREACH_END();
