@@ -199,9 +199,18 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			LLVMDIFlagZero);
 	LLVMMetadataRef inline_at = NULL;
 
-	if (parameter->is_value) return;
+	if (parameter->is_value)
+	{
+		LLVMDIBuilderInsertDbgValueAtEnd(c->debug.builder, parameter->backend_value, parameter->var.backend_debug_ref,
+		                                 LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
+		                                 LLVMDIBuilderCreateDebugLocation(c->context, row, col, c->debug.function,
+		                                                                  inline_at),
+		                                 LLVMGetInsertBlock(c->builder));
+		return;
+	}
+
 	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
-									parameter->is_value ? NULL : parameter->backend_ref,
+									parameter->backend_ref,
 									parameter->var.backend_debug_ref,
 									LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
 									LLVMDIBuilderCreateDebugLocation(c->context, row, col, c->debug.function,

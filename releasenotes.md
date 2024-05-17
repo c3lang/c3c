@@ -19,6 +19,7 @@
 - Union is not properly zero-initialized with designated initializer #1194.
 - Compile time fmod evaluates to 0 #1195.
 - Assertion failed when casting (unsigned) argument to enum #1196
+- Correct debug info on parameters without storage.
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
