@@ -23,6 +23,7 @@
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
+- Fix mutex and wait signatures for Win32.
 
 ## 0.5.5 Change list
 

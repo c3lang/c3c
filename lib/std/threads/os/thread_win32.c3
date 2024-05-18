@@ -48,7 +48,7 @@ fn void! NativeMutex.init(&mtx, MutexType type)
 		win32::initializeCriticalSection(&(mtx.critical_section));
 		return;
 	}
-	if (!(mtx.handle = win32::createMutex(null, false, null))) return ThreadFault.INIT_FAILED?;
+	if (!(mtx.handle = win32::createMutex(null, 0, null))) return ThreadFault.INIT_FAILED?;
 }
 
 fn void! NativeMutex.destroy(&mtx)
@@ -208,7 +208,7 @@ fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout
 
 	mtx.unlock()!;
 
-	uint result = win32::waitForMultipleObjects(2, &cond.events, false, timeout);
+	uint result = win32::waitForMultipleObjects(2, &cond.events, 0, timeout);
 	switch (result)
 	{
 		case win32::WAIT_TIMEOUT:

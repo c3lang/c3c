@@ -48,14 +48,14 @@ const UNDNAME_COMPLETE = 0x0000;
 
 extern fn void initializeCriticalSection(Win32_CRITICAL_SECTION* section) @extern("InitializeCriticalSection");
 extern fn void deleteCriticalSection(Win32_CRITICAL_SECTION* section) @extern("DeleteCriticalSection");
-extern fn Win32_HANDLE createMutex(void*, bool, void*) @extern("CreateMutexA");
+extern fn Win32_HANDLE createMutex(void*, Win32_BOOL, void*) @extern("CreateMutexA");
 extern fn Win32_BOOL releaseMutex(Win32_HANDLE) @extern("ReleaseMutex");
 extern fn void enterCriticalSection(Win32_CRITICAL_SECTION* section) @extern("EnterCriticalSection");
 extern fn void leaveCriticalSection(Win32_CRITICAL_SECTION* section) @extern("LeaveCriticalSection");
 extern fn Win32_BOOL tryEnterCriticalSection(Win32_CRITICAL_SECTION* section) @extern("TryEnterCriticalSection");
 extern fn uint waitForSingleObject(Win32_HANDLE, uint milliseconds) @extern("WaitForSingleObject");
 extern fn void sleep(uint ms) @extern("Sleep");
-extern fn uint waitForMultipleObjects(uint count, Win32_HANDLE* handles, bool wait_all, uint ms) @extern("WaitForMultipleObjects");
+extern fn uint waitForMultipleObjects(uint count, Win32_HANDLE* handles, Win32_BOOL wait_all, uint ms) @extern("WaitForMultipleObjects");
 extern fn Win32_BOOL resetEvent(Win32_HANDLE event) @extern("ResetEvent");
 extern fn Win32_BOOL setEvent(Win32_HANDLE handle) @extern("SetEvent");
 extern fn long interlockedCompareExchange(int* dest, int exchange, int comperand) @extern("InterlockedCompareExchange");
