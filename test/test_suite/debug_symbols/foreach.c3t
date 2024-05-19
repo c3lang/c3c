@@ -1,0 +1,70 @@
+// #target: macos-x64
+// #debuginfo: yes
+module test;
+
+fn void foo(String[] args)
+{
+	foreach (a : args)
+	{
+		int x = a.len;
+	}
+}
+
+/* #expect: test.ll
+
+define void @test.foo(ptr %0, i64 %1) #0 !dbg !6 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %.anon = alloca i64, align 8
+  %.anon2 = alloca i64, align 8
+  %a = alloca %"char[]", align 8
+  %x = alloca i32, align 4
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  call void @llvm.dbg.declare(metadata ptr %args, metadata !23, metadata !DIExpression()), !dbg !24
+  call void @llvm.dbg.declare(metadata ptr %.anon, metadata !25, metadata !DIExpression()), !dbg !27
+  %ptradd1 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !27
+  %2 = load i64, ptr %ptradd1, align 8, !dbg !27
+  store i64 %2, ptr %.anon, align 8, !dbg !27
+  call void @llvm.dbg.declare(metadata ptr %.anon2, metadata !25, metadata !DIExpression()), !dbg !27
+  store i64 0, ptr %.anon2, align 8, !dbg !27
+  br label %loop.cond, !dbg !27
+loop.cond:                                        ; preds = %loop.body, %entry
+  %3 = load i64, ptr %.anon2, align 8, !dbg !27
+  %4 = load i64, ptr %.anon, align 8, !dbg !27
+  %lt = icmp ult i64 %3, %4, !dbg !27
+  br i1 %lt, label %loop.body, label %loop.exit, !dbg !27
+loop.body:                                        ; preds = %loop.cond
+  call void @llvm.dbg.declare(metadata ptr %a, metadata !28, metadata !DIExpression()), !dbg !30
+  %5 = load ptr, ptr %args, align 8, !dbg !31
+  %6 = load i64, ptr %.anon2, align 8, !dbg !31
+  %ptroffset = getelementptr inbounds [16 x i8], ptr %5, i64 %6, !dbg !31
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %a, ptr align 8 %ptroffset, i32 16, i1 false), !dbg !31
+  call void @llvm.dbg.declare(metadata ptr %x, metadata !32, metadata !DIExpression()), !dbg !35
+  %ptradd3 = getelementptr inbounds i8, ptr %a, i64 8, !dbg !36
+  %7 = load i64, ptr %ptradd3, align 8, !dbg !36
+  %trunc = trunc i64 %7 to i32, !dbg !36
+  store i32 %trunc, ptr %x, align 4, !dbg !36
+  %8 = load i64, ptr %.anon2, align 8, !dbg !27
+  %addnuw = add nuw i64 %8, 1, !dbg !27
+  store i64 %addnuw, ptr %.anon2, align 8, !dbg !27
+  br label %loop.cond, !dbg !27
+loop.exit:                                        ; preds = %loop.cond
+  ret void, !dbg !27
+}
+
+!23 = !DILocalVariable(name: "args", arg: 1, scope: !6, file: !5, line: 3, type: !9)
+!24 = !DILocation(line: 3, column: 22, scope: !6)
+!25 = !DILocalVariable(name: ".temp", scope: !26, file: !5, line: 5, type: !20, align: 8)
+!26 = distinct !DILexicalBlock(scope: !6, file: !5, line: 5, column: 2)
+!27 = !DILocation(line: 5, column: 15, scope: !26)
+!28 = !DILocalVariable(name: "a", scope: !29, file: !5, line: 5, type: !13, align: 8)
+!29 = distinct !DILexicalBlock(scope: !26, file: !5, line: 6, column: 2)
+!30 = !DILocation(line: 5, column: 11, scope: !29)
+!31 = !DILocation(line: 5, column: 15, scope: !29)
+!32 = !DILocalVariable(name: "x", scope: !33, file: !5, line: 7, type: !34, align: 4)
+!33 = distinct !DILexicalBlock(scope: !29, file: !5, line: 6, column: 2)
+!34 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
+!35 = !DILocation(line: 7, column: 7, scope: !33)
+!36 = !DILocation(line: 7, column: 11, scope: !33)

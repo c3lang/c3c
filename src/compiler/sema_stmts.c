@@ -1527,6 +1527,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	// Create @__enum$.len() or @(*__enum$).len()
 	Expr *enum_val = expr_variable(temp);
+	enum_val->span = enumerator->span;
 	if (is_addr) expr_rewrite_insert_deref(enum_val);
 	Type *enumerator_type = type_flatten(enum_val->type);
 	Expr *len_call;
@@ -1673,6 +1674,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	Expr *subscript = expr_new(EXPR_SUBSCRIPT, var->span);
 	enum_val = expr_variable(temp);
+	enum_val->span = enumerator->span;
 	if (is_addr) expr_rewrite_insert_deref(enum_val);
 	subscript->subscript_expr.expr = exprid(enum_val);
 	if (array_len == 1)
