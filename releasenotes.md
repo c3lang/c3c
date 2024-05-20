@@ -21,6 +21,7 @@
 - Assertion failed when casting (unsigned) argument to enum #1196
 - Correct debug info on parameters without storage.
 - Fix location on foreach debug output.
+- Compiler crash on designated initializer for structs with bitstruct.
 
 ### Stdlib changes
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.

@@ -2004,7 +2004,7 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 		{
 			Decl *decl = ref->type->canonical->decl->strukt.members[curr->index];
 			offset += decl->offset;
-			Type *type = decl->type->canonical;
+			Type *type = type_flatten(decl->type);
 			unsigned decl_alignment = decl->alignment;
 			if (ref->type->type_kind == TYPE_UNION)
 			{
@@ -2017,11 +2017,11 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 			{
 				llvm_value_struct_gep(c, &value, ref, (unsigned) curr->index);
 			}
-			if (decl->decl_kind == DECL_BITSTRUCT)
+			if (type->type_kind == TYPE_BITSTRUCT)
 			{
 				assert(llvm_value_is_addr(&value));
 				assert(last == current + 1);
-				Decl *member = decl->bitstruct.members[last[0]->index];
+				Decl *member = type->decl->bitstruct.members[last[0]->index];
 				// Special handling of bitstructs.
 				Type *underlying_type = value.type;
 				assert(!emitted_value);

@@ -1,0 +1,38 @@
+// #target: macos-x64
+module test;
+bitstruct Flags : int {
+  bool flag1;
+}
+
+struct Foo {
+  long x;
+  Flags flags;
+}
+
+fn int main(String[] args) {
+  long x;
+  Foo foo = {
+    .x = x,
+    .flags.flag1 = true,
+  };
+  return 0;
+}
+
+/* #expect: test.ll
+
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store i64 0, ptr %x, align 8
+  store i64 0, ptr %foo, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %foo, i64 8
+  store i32 0, ptr %ptradd1, align 8
+  %2 = load i64, ptr %x, align 8
+  store i64 %2, ptr %foo, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %foo, i64 8
+  %3 = load i32, ptr %ptradd2, align 8
+  %4 = and i32 %3, -2
+  %5 = or i32 %4, 1
+  store i32 %5, ptr %ptradd2, align 8
+  ret i32 0
+
