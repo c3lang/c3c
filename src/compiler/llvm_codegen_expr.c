@@ -2017,10 +2017,9 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 			{
 				llvm_value_struct_gep(c, &value, ref, (unsigned) curr->index);
 			}
-			if (type->type_kind == TYPE_BITSTRUCT)
+			if (type->type_kind == TYPE_BITSTRUCT && last == current + 1)
 			{
 				assert(llvm_value_is_addr(&value));
-				assert(last == current + 1);
 				Decl *member = type->decl->bitstruct.members[last[0]->index];
 				// Special handling of bitstructs.
 				Type *underlying_type = value.type;
