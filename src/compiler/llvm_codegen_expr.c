@@ -6180,9 +6180,7 @@ static inline void llvm_emit_expr_block(GenContext *c, BEValue *be_value, Expr *
 		SourceSpan span = expr->span;
 		Decl *macro = declptr(expr->expr_block.macro_id);
 		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro);
-		LLVMMetadataRef loc = LLVMDIBuilderCreateDebugLocation(c->context, span.row, span.col,
-		                                                       llvm_debug_current_scope(c),
-		                                                       old_inline_location ? old_inline_location->inline_loc : NULL);
+		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
 
 		updated = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
 		c->debug.block_stack = &updated;
@@ -6314,8 +6312,19 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	Decl **declarations = body_expr->body_expansion_expr.declarations;
 	Expr **values = body_expr->body_expansion_expr.values;
 
-	DebugScope  *old_inline_loc = c->debug.block_stack;
-	c->debug.block_stack = old_inline_loc ? old_inline_loc->outline_loc : NULL;
+
+
+	DebugScope *old_inline_loc = c->debug.block_stack;
+	LLVMMetadataRef debug_location;
+	if (llvm_use_debug(c))
+	{
+		debug_location = llvm_create_debug_location(c, body_expr->span);
+		assert(old_inline_loc && old_inline_loc->outline_loc);
+		DebugScope patched = *old_inline_loc->outline_loc;
+		patched.inline_loc = debug_location;
+		c->debug.block_stack = &patched;
+	}
+
 	// Create backend refs on demand.
 	VECEACH(declarations, i)
 	{

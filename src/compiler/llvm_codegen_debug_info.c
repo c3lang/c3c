@@ -208,17 +208,22 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 
 }
 
+LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceSpan location)
+{
+	LLVMMetadataRef scope = llvm_debug_current_scope(c);
+	unsigned row = location.row;
+	unsigned col = location.col;
+	return llvm_create_debug_location_with_inline(c, row ? row : 1, col ? col : 1, scope);
+}
+
 void llvm_emit_debug_location(GenContext *c, SourceSpan location)
 {
 	if (llvm_is_global_eval(c)) return;
 	// Avoid re-emitting the same location.
 	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(c->builder);
 	if (oldloc && c->last_emitted_loc.a == location.a) return;
-	LLVMMetadataRef scope = llvm_debug_current_scope(c);
-	unsigned row = location.row;
-	unsigned col = location.col;
+	LLVMMetadataRef loc = llvm_create_debug_location(c, location);
 	c->last_emitted_loc.a = location.a;
-	LLVMMetadataRef loc = llvm_create_debug_location_with_inline(c, row ? row : 1, col ? col : 1, scope);
 	LLVMSetCurrentDebugLocation2(c->builder, loc);
 }
 

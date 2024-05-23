@@ -555,6 +555,7 @@ DebugScope llvm_debug_create_lexical_scope(GenContext *context, SourceSpan locat
 LLVMMetadataRef llvm_debug_current_scope(GenContext *context);
 void llvm_emit_debug_function(GenContext *c, Decl *decl);
 void llvm_emit_debug_location(GenContext *c, SourceSpan location);
+LLVMMetadataRef llvm_create_debug_location(GenContext *c, SourceSpan location);
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index);
 void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 void llvm_emit_debug_global_var(GenContext *c, Decl *global);
