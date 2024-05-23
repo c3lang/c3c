@@ -6312,18 +6312,11 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	Decl **declarations = body_expr->body_expansion_expr.declarations;
 	Expr **values = body_expr->body_expansion_expr.values;
 
-
+	DEBUG_PUSH_LEXICAL_SCOPE(c, body_expr->span);
 
 	DebugScope *old_inline_loc = c->debug.block_stack;
-	LLVMMetadataRef debug_location;
-	if (llvm_use_debug(c))
-	{
-		debug_location = llvm_create_debug_location(c, body_expr->span);
-		assert(old_inline_loc && old_inline_loc->outline_loc);
-		DebugScope patched = *old_inline_loc->outline_loc;
-		patched.inline_loc = debug_location;
-		c->debug.block_stack = &patched;
-	}
+	DebugScope *outline = llvm_use_debug(c) ? old_inline_loc->outline_loc : NULL;
+	c->debug.block_stack = outline;
 
 	// Create backend refs on demand.
 	VECEACH(declarations, i)
@@ -6331,6 +6324,9 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 		Decl *decl = declarations[i];
 		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
 	}
+
+	c->debug.block_stack = old_inline_loc;
+
 	// Set the values
 	VECEACH(values, i)
 	{
@@ -6338,9 +6334,14 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 		llvm_emit_expr(c, value, expr);
 		llvm_store_to_ptr_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
 	}
+
+	c->debug.block_stack = outline;
 	AstId body = body_expr->body_expansion_expr.first_stmt;
 	if (body) llvm_emit_stmt(c, astptr(body));
+
 	c->debug.block_stack = old_inline_loc;
+
+	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
