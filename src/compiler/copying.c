@@ -449,12 +449,17 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_COND:
 			MACRO_COPY_EXPR_LIST(expr->cond_expr);
 			return expr;
-		case EXPR_EXPR_BLOCK:
-			MACRO_COPY_ASTID(expr->expr_block.first_stmt);
+		case EXPR_MACRO_BLOCK:
+			MACRO_COPY_DECL_LIST(expr->macro_block.params);
+			MACRO_COPY_ASTID(expr->macro_block.first_stmt);
+			fixup_decl(c, &expr->macro_block.macro);
 			return expr;
 		case EXPR_COMPOUND_LITERAL:
 			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
+			return expr;
+		case EXPR_EXPR_BLOCK:
+			MACRO_COPY_ASTID(expr->expr_block.first_stmt);
 			return expr;
 		case EXPR_POISONED:
 			return source_expr;

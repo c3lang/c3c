@@ -540,6 +540,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
+		case EXPR_MACRO_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_INITIALIZER_LIST:
@@ -659,6 +660,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
@@ -2162,40 +2164,16 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			goto EXIT;
 		}
 	}
-NOT_CT:;
-	Expr **list = NULL;
-	FOREACH_BEGIN(Decl *param, params)
-		if (!param) continue;
-		VarDeclKind kind = param->var.kind;
-		if (kind != VARDECL_PARAM_REF && kind != VARDECL_PARAM) continue;
-		Expr *decl_expr = expr_new(EXPR_DECL, param->span);
-		decl_expr->decl_expr = param;
-		decl_expr->type = param->type;
-		decl_expr->resolve_status = RESOLVE_DONE;
-		vec_add(list, decl_expr);
-	FOREACH_END();
-	Expr *new_block;
-	if (list)
-	{
-		call_expr->expr_kind = EXPR_EXPRESSION_LIST;
-		new_block = expr_new(EXPR_EXPR_BLOCK, call_expr->span);
-		new_block->type = call_expr->type;
-		vec_add(list, new_block);
-		call_expr->expression_list = list;
-	}
-	else
-	{
-		new_block = call_expr;
-		call_expr->expr_kind = EXPR_EXPR_BLOCK;
-	}
-	new_block->resolve_status = RESOLVE_DONE;
-	new_block->expr_block.macro_id = declid(decl);
-	new_block->expr_block.had_optional_arg = has_optional_arg;
-	new_block->expr_block.is_must_use = must_use;
-	new_block->expr_block.is_optional_return = optional_return;
-	new_block->expr_block.first_stmt = body->compound_stmt.first_stmt;
-	new_block->expr_block.block_exit = block_exit_ref;
-	new_block->expr_block.is_noreturn = is_no_return;
+NOT_CT:
+	call_expr->expr_kind = EXPR_MACRO_BLOCK;
+	call_expr->macro_block.had_optional_arg = has_optional_arg;
+	call_expr->macro_block.is_must_use = must_use;
+	call_expr->macro_block.is_optional_return = optional_return;
+	call_expr->macro_block.first_stmt = body->compound_stmt.first_stmt;
+	call_expr->macro_block.macro = decl;
+	call_expr->macro_block.params = params;
+	call_expr->macro_block.block_exit = block_exit_ref;
+	call_expr->macro_block.is_noreturn = is_no_return;
 EXIT:
 	assert(context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;
@@ -6823,7 +6801,7 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	BlockExit **ref = CALLOCS(BlockExit*);
 	BlockExit **stored_block_exit = context->block_exit_ref;
 	context->block_exit_ref = ref;
-	expr->expr_block.block_exit = ref;
+	expr->expr_block.block_exit_ref = ref;
 	SCOPE_START_WITH_FLAGS(SCOPE_EXPR_BLOCK)
 
 		context->block_return_defer = context->active_scope.defer_last;
@@ -6871,7 +6849,6 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 		POP_NEXT();
 		context_pop_defers(context, &stmt->next);
 	SCOPE_END;
-	expr->expr_block.macro_id = 0;
 	context->expected_block_type = stored_block_type;
 	context->block_exit_ref = stored_block_exit;
 	context_pop_returns(context, saved_returns);
@@ -7982,6 +7959,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_ASM:
 			case EXPR_CONST:
 			case EXPR_NOP:
+			case EXPR_MACRO_BLOCK:
 			case EXPR_LAMBDA:
 			case EXPR_EXPR_BLOCK:
 			case EXPR_CT_IS_CONST:
@@ -8408,6 +8386,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_BITASSIGN:
 			// Created during semantic analysis
 			UNREACHABLE
+		case EXPR_MACRO_BLOCK:
+			UNREACHABLE
 		case EXPR_TYPEINFO:
 			expr->type = type_typeinfo;
 			return sema_resolve_type_info(context, expr->type_expr, RESOLVE_TYPE_DEFAULT);
@@ -8759,15 +8739,15 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator >= BINARYOP_ASSIGN) return true;
 	if (expr->expr_kind == EXPR_EXPR_BLOCK)
 	{
-		if (!expr->expr_block.macro_id)
+		if (type_is_void(expr->type)) return true;
+		RETURN_SEMA_ERROR(expr, "The block returns a value of type %s, which must be handled – did you forget to assign it to something?",
+								type_quoted_error_string(expr->type));
+	}
+	if (expr->expr_kind == EXPR_MACRO_BLOCK)
+	{
+		if (expr->macro_block.is_must_use)
 		{
-			if (type_is_void(expr->type)) return true;
-			RETURN_SEMA_ERROR(expr, "The block returns a value of type %s, which must be handled – did you forget to assign it to something?",
-									type_quoted_error_string(expr->type));
-		}
-		if (expr->expr_block.is_must_use)
-		{
-			if (expr->expr_block.is_optional_return)
+			if (expr->macro_block.is_optional_return)
 			{
 				RETURN_SEMA_ERROR(expr, "The macro returns %s, which is an optional and must be handled. "
 				                        "You can either assign it to a variable, rethrow it using '!', "
@@ -8776,7 +8756,7 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 			}
 			RETURN_SEMA_ERROR(expr, "The called macro is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
 		}
-		if (expr->expr_block.had_optional_arg) goto ERROR_ARGS;
+		if (expr->macro_block.had_optional_arg) goto ERROR_ARGS;
 		return true;
 	}
 	if (expr->expr_kind == EXPR_CALL)

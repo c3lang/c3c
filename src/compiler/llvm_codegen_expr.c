@@ -24,6 +24,7 @@ static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEVal
 static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *ref, Expr *expr);
 static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue *ref, Type *real_type, Expr **elements);
 static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value, Expr *expr);
+static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap);
 static inline void llvm_emit_pre_inc_dec(GenContext *c, BEValue *value, Expr *expr, int diff, bool allow_wrap);
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit);
@@ -6173,28 +6174,75 @@ DONE:
 
 static inline void llvm_emit_expr_block(GenContext *c, BEValue *be_value, Expr *expr)
 {
+	DEBUG_PUSH_LEXICAL_SCOPE(c, astptr(expr->expr_block.first_stmt)->span);
+	llvm_emit_return_block(c, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit_ref);
+	DEBUG_POP_LEXICAL_SCOPE(c);
+}
+
+static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr)
+{
 	DebugScope *old_inline_location = c->debug.block_stack;
 	DebugScope updated;
-	if (expr->expr_block.macro_id && llvm_use_debug(c))
+	if (llvm_use_debug(c))
 	{
 		SourceSpan span = expr->span;
-		Decl *macro = declptr(expr->expr_block.macro_id);
+		Decl *macro = expr->macro_block.macro;
 		LLVMMetadataRef macro_def = llvm_debug_create_macro(c, macro);
 		LLVMMetadataRef loc = llvm_create_debug_location(c, span);
 
 		updated = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
-		c->debug.block_stack = &updated;
 	}
-	DEBUG_PUSH_LEXICAL_SCOPE(c, astptr(expr->expr_block.first_stmt)->span);
-	llvm_emit_return_block(c, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit);
-	bool is_unreachable = expr->expr_block.is_noreturn && c->current_block;
+	FOREACH_BEGIN(Decl *val, expr->macro_block.params)
+		// Skip vararg
+		if (!val) continue;
+		// In case we have a constant, we never do an emit. The value is already folded.
+		switch (val->var.kind)
+		{
+			case VARDECL_CONST:
+			case VARDECL_GLOBAL:
+			case VARDECL_LOCAL:
+			case VARDECL_MEMBER:
+			case VARDECL_LOCAL_CT:
+			case VARDECL_LOCAL_CT_TYPE:
+			case VARDECL_UNWRAPPED:
+			case VARDECL_REWRAPPED:
+			case VARDECL_ERASE:
+			case VARDECL_BITMEMBER:
+				UNREACHABLE
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_CT_TYPE:
+			case VARDECL_PARAM_EXPR:
+				continue;
+			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM:
+				break;
+		}
+
+		Expr *init_expr = val->var.init_expr;
+		BEValue value;
+		c->debug.block_stack = old_inline_location;
+		llvm_emit_expr(c, &value, init_expr);
+		if (llvm_value_is_addr(&value) || val->var.is_written || val->var.is_addr || llvm_use_accurate_debug_info(c))
+		{
+			c->debug.block_stack = &updated;
+			llvm_emit_and_set_decl_alloca(c, val);
+			llvm_store_decl(c, val, &value);
+			continue;
+		}
+		val->is_value = true;
+		val->backend_value = value.value;
+	FOREACH_END();
+
+	c->debug.block_stack = &updated;
+	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
+	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)
 	{
 		llvm_emit_unreachable(c);
 	}
-	DEBUG_POP_LEXICAL_SCOPE(c);
 	c->debug.block_stack = old_inline_location;
 }
+
 
 LLVMValueRef llvm_emit_call_intrinsic(GenContext *context, unsigned intrinsic, LLVMTypeRef *types, unsigned type_count,
 									  LLVMValueRef *values, unsigned arg_count)
@@ -6858,6 +6906,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			llvm_emit_try_unwrap_chain(c, value, expr);
+			return;
+		case EXPR_MACRO_BLOCK:
+			llvm_emit_macro_block(c, value, expr);
 			return;
 		case EXPR_TRY_UNWRAP:
 			llvm_emit_try_unwrap(c, value, expr);

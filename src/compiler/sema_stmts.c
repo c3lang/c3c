@@ -647,6 +647,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_EMBED:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXPR_BLOCK:
+		case EXPR_MACRO_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_GENERIC_IDENT:
@@ -1227,8 +1228,8 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 		case EXPR_CALL:
 			if (expr->call_expr.no_return) context->active_scope.jump_end = true;
 			break;
-		case EXPR_EXPR_BLOCK:
-			if (expr->expr_block.is_noreturn) context->active_scope.jump_end = true;
+		case EXPR_MACRO_BLOCK:
+			if (expr->macro_block.is_noreturn) context->active_scope.jump_end = true;
 			break;
 		case EXPR_CONST:
 			// Remove all const statements.

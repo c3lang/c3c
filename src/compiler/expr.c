@@ -104,6 +104,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_EXPR_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_MACRO_BLOCK:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
@@ -218,6 +219,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
 			return false;
 		case EXPR_IDENTIFIER:
@@ -508,9 +510,9 @@ bool expr_is_compile_time(Expr *expr)
 	{
 		case EXPR_CONST:
 			return true;
-		case EXPR_EXPR_BLOCK:
+		case EXPR_MACRO_BLOCK:
 		{
-			AstId current = expr->expr_block.first_stmt;
+			AstId current = expr->macro_block.first_stmt;
 			while (current)
 			{
 				if (!ast_is_compile_time(ast_next(&current))) return false;
@@ -740,6 +742,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_OPTIONAL:
 		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:
+		case EXPR_MACRO_BLOCK:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:

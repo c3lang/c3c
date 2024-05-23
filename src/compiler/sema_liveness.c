@@ -401,6 +401,14 @@ RETRY:
 		case EXPR_LAMBDA:
 			sema_trace_decl_liveness(expr->lambda_expr);
 			return;
+		case EXPR_MACRO_BLOCK:
+		{
+			FOREACH_BEGIN(Decl *val, expr->macro_block.params)
+				sema_trace_decl_liveness(val);
+			FOREACH_END();
+			sema_trace_stmt_chain_liveness(expr->macro_block.first_stmt);
+			return;
+		}
 		case EXPR_EXPR_BLOCK:
 			sema_trace_stmt_chain_liveness(expr->expr_block.first_stmt);
 			return;

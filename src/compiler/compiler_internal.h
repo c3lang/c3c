@@ -1019,13 +1019,23 @@ typedef struct
 typedef struct
 {
 	AstId first_stmt;
+	BlockExit **block_exit_ref;
+} ExprFuncBlock;
+
+
+typedef struct
+{
+	AstId first_stmt;
 	bool is_noreturn : 1;
 	bool is_must_use : 1;
 	bool is_optional_return : 1;
 	bool had_optional_arg : 1;
-	DeclId macro_id;
+	Decl **params;
+	Decl *macro;
 	BlockExit **block_exit;
-} ExprBlock;
+} ExprMacroBlock;
+
+
 
 typedef struct
 {
@@ -1166,6 +1176,7 @@ struct Expr_
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr** exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
+		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr** expression_list;                     // 8
 		ExprGenericIdent generic_ident_expr;
@@ -1174,7 +1185,7 @@ struct Expr_
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
 		Decl *lambda_expr;                          // 8
-		ExprBlock expr_block;                     // 24
+		ExprMacroBlock macro_block;                 // 24
 		ExprMacroBody macro_body_expr;              // 16;
 		OperatorOverload overload_expr;             // 4
 		ExprPointerOffset pointer_offset_expr;
