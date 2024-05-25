@@ -3241,11 +3241,165 @@ INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind)
 
 INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
 
+static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
+static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
+INLINE void expr_set_span(Expr *expr, SourceSpan loc);
+
+INLINE void const_init_set_span(ConstInitializer *init, SourceSpan loc)
+{
+	RETRY:
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return;
+		case CONST_INIT_STRUCT:
+		{
+			uint32_t members = vec_size(type_flatten(init->type)->decl->strukt.members);
+			for (uint32_t i = 0; i < members; i++)
+			{
+				const_init_set_span(init->init_struct[i], loc);
+			}
+			return;
+		}
+		case CONST_INIT_UNION:
+			init = init->init_union.element;
+			goto RETRY;
+		case CONST_INIT_VALUE:
+			expr_set_span(init->init_value, loc);
+			return;
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH_BEGIN(ConstInitializer *init2, init->init_array.elements)
+				const_init_set_span(init2, loc);
+			FOREACH_END();
+			return;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			FOREACH_BEGIN(ConstInitializer *init2, init->init_array_full)
+				const_init_set_span(init2, loc);
+			FOREACH_END();
+			return;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			const_init_set_span(init->init_array_value.element, loc);
+			return;
+	}
+	UNREACHABLE
+}
+
+static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
+static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
+
+INLINE void expr_set_span(Expr *expr, SourceSpan loc)
+{
+	expr->span = loc;
+	switch (expr->expr_kind)
+	{
+		case EXPR_CONST:
+			switch (expr->const_expr.const_kind)
+			{
+				case CONST_INITIALIZER:
+					const_init_set_span(expr->const_expr.initializer, loc);
+					return;
+				case CONST_UNTYPED_LIST:
+					expr_list_set_span(expr->const_expr.untyped_list, loc);
+					return;
+				default:
+					return;
+			}
+			expr_list_set_span(expr->expression_list, loc);
+			return;
+		case EXPR_CAST:
+			exprid_set_span(expr->cast_expr.expr, loc);
+			return;
+		case EXPR_INITIALIZER_LIST:
+			expr_list_set_span(expr->initializer_list, loc);
+			return;
+		case EXPR_DESIGNATED_INITIALIZER_LIST:
+			expr_list_set_span(expr->designated_init_list, loc);
+			return;
+		case EXPR_EXPRESSION_LIST:
+		case EXPR_ACCESS:
+		case EXPR_BITACCESS:
+		case EXPR_POISONED:
+		case EXPR_ASM:
+		case EXPR_BUILTIN:
+		case EXPR_BINARY:
+		case EXPR_BITASSIGN:
+		case EXPR_BUILTIN_ACCESS:
+		case EXPR_CALL:
+		case EXPR_CATCH_UNWRAP:
+		case EXPR_COMPILER_CONST:
+		case EXPR_COMPOUND_LITERAL:
+		case EXPR_COND:
+		case EXPR_CT_AND_OR:
+		case EXPR_CT_ARG:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CASTABLE:
+		case EXPR_CT_IS_CONST:
+		case EXPR_CT_DEFINED:
+		case EXPR_CT_EVAL:
+		case EXPR_CT_IDENT:
+		case EXPR_DECL:
+		case EXPR_DESIGNATOR:
+		case EXPR_EMBED:
+		case EXPR_EXPR_BLOCK:
+		case EXPR_OPTIONAL:
+		case EXPR_FORCE_UNWRAP:
+		case EXPR_GENERIC_IDENT:
+		case EXPR_GROUP:
+		case EXPR_HASH_IDENT:
+		case EXPR_IDENTIFIER:
+		case EXPR_LAMBDA:
+		case EXPR_LAST_FAULT:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_NOP:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_OTHER_CONTEXT:
+		case EXPR_POINTER_OFFSET:
+		case EXPR_POST_UNARY:
+		case EXPR_RETHROW:
+		case EXPR_RETVAL:
+		case EXPR_SLICE:
+		case EXPR_SLICE_ASSIGN:
+		case EXPR_SLICE_COPY:
+		case EXPR_STRINGIFY:
+		case EXPR_SUBSCRIPT:
+		case EXPR_SWIZZLE:
+		case EXPR_SUBSCRIPT_ADDR:
+		case EXPR_SUBSCRIPT_ASSIGN:
+		case EXPR_TERNARY:
+		case EXPR_BENCHMARK_HOOK:
+		case EXPR_TEST_HOOK:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TYPEID:
+		case EXPR_TYPEID_INFO:
+		case EXPR_TYPEINFO:
+		case EXPR_UNARY:
+		case EXPR_ANYSWITCH:
+		case EXPR_VASPLAT:
+		case EXPR_MACRO_BODY:
+			break;
+	}
+}
+static inline void exprid_set_span(ExprId expr_id, SourceSpan loc)
+{
+	if (expr_id) expr_set_span(exprptr(expr_id), loc);
+}
+static inline void expr_list_set_span(Expr **exprs, SourceSpan loc)
+{
+	FOREACH_BEGIN(Expr *expr, exprs)
+		expr_set_span(expr, loc);
+	FOREACH_END();
+}
 INLINE void expr_replace(Expr *expr, Expr *replacement)
 {
 	SourceSpan loc = expr->span;
 	*expr = *replacement;
-	expr->span = loc;
+	expr_set_span(expr, loc);
 }
 
 INLINE bool expr_ok(Expr *expr) { return expr == NULL || expr->expr_kind != EXPR_POISONED; }
