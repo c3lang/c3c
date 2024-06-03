@@ -29,6 +29,7 @@
 - Better checking of operator methods.
 - Bug when assigning an optional from an optional.
 - Lambdas were not type checked thoroughly #1185. 
+- Fix problems using reflection on interface types #1203.
 
 ### Stdlib changes
 - "init_new/init_temp" removed. 

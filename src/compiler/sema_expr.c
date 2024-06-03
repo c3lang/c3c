@@ -3112,6 +3112,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			return sema_expr_rewrite_to_type_property(context, expr, canonical, type_property_by_name(name), parent_type);
 		}
 	}
+
 	if (!type_may_have_sub_elements(canonical))
 	{
 		if (missing_ref) goto MISSING_REF;
@@ -3153,6 +3154,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		case DECL_STRUCT:
 		case DECL_DISTINCT:
 		case DECL_BITSTRUCT:
+		case DECL_INTERFACE:
 			break;
 		default:
 			UNREACHABLE

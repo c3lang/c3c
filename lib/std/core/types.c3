@@ -302,6 +302,7 @@ enum TypeKind : char
 	VECTOR,
 	DISTINCT,
 	POINTER,
+	INTERFACE,
 }
 
 struct TypeEnum
