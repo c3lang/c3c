@@ -23,6 +23,7 @@
 - Improved inline debug information.
 - Improved error messages on inlined macros.
 - Introduce MSVC compatible SIMD ABI.
+- `$foreach` doesn't create an implicit syntactic scope.
 
 ### Fixes
 - Fixed issue in safe mode when converting enums.

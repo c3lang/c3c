@@ -1,0 +1,57 @@
+// #target: macos-x64
+// #debuginfo: yes
+module test;
+struct Flags { bool flag1; }
+
+fn void foo() {
+  int[1] values;
+  $foreach ($i, $member : Flags.membersof)
+    values[$i] = $i;
+  $endforeach
+}
+
+fn void main() {
+  foo();
+}
+
+/* #expect: test.ll
+
+define void @test.foo() #0 !dbg !6 {
+entry:
+  %values = alloca [1 x i32], align 4
+  call void @llvm.dbg.declare(metadata ptr %values, metadata !10, metadata !DIExpression()), !dbg !15
+  store i32 0, ptr %values, align 4, !dbg !15
+  store i32 0, ptr %values, align 4, !dbg !16
+  ret void, !dbg !16
+}
+!0 = !{i32 2, !"Dwarf Version", i32 4}
+!1 = !{i32 2, !"Debug Info Version", i32 3}
+!2 = !{i32 2, !"frame-pointer", i32 2}
+!3 = !{i32 1, !"uwtable", i32 2}
+!7 = !DISubroutineType(types: !8)
+!8 = !{null}
+!9 = !{}
+!10 = !DILocalVariable(name: "values", scope: !6, file: !5, line: 5, type: !11, align: 4)
+!11 = !DICompositeType(tag: DW_TAG_array_type, baseType: !12, size: 32, align: 32, elements: !13)
+!12 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
+!13 = !{!14}
+!14 = !DISubrange(count: 1, lowerBound: 0)
+!15 = !DILocation(line: 5, column: 10, scope: !6)
+!16 = !DILocation(line: 7, column: 18, scope: !17)
+!17 = distinct !DILexicalBlock(scope: !18, file: !5, line: 6, column: 3)
+!18 = distinct !DILexicalBlock(scope: !6, file: !5, line: 6, column: 3)
+!19 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !5, file: !5, line: 11, type: !7, scopeLine: 11, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition
+!20 = !DILocation(line: 12, column: 3, scope: !19)
+!21 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !5, file: !5, line: 11, type: !22, scopeLine: 11, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition
+!22 = !DISubroutineType(types: !23)
+!23 = !{!12, !12, !24}
+!24 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !25, size: 64, align: 64
+!25 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !26, size: 64, align: 64
+!26 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
+!27 = !DILocalVariable(name: ".anon", arg: 1, scope: !21, file: !5, line: 11, type: !12)
+!28 = !DILocation(line: 11, column: 9, scope: !21)
+!29 = !DILocalVariable(name: ".anon", arg: 2, scope: !21, file: !5, line: 11, type: !24)
+!30 = !DILocation(line: 18, column: 2, scope: !31, inlinedAt: !28)
+!31 = distinct !DISubprogram(name: "@main_to_void_main", linkageName: "@main_to_void_main", scope: !32, file: !32, line: 16, scopeLine: 16, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
+!32 = !DIFile(filename: "main_stub.c3"
+!33 = !DILocation(line: 19, column: 9, scope: !31, inlinedAt: !28)

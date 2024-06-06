@@ -2746,13 +2746,13 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			index->var.init_expr = expr_new_const_int(index->span, type_int, i);
 			index->type = type_int;
 		}
-		if (!sema_analyse_compound_stmt(context, compound_stmt)) goto FAILED;
+		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) goto FAILED;
 		*current = astid(compound_stmt);
 		current = &compound_stmt->next;
 	}
 	sema_context_pop_ct_stack(context, ct_context);
 	statement->ast_kind = AST_COMPOUND_STMT;
-	statement->compound_stmt.first_stmt = start;
+	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
 	return true;
 FAILED:
 	sema_context_pop_ct_stack(context, ct_context);
