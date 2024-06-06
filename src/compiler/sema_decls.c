@@ -1632,19 +1632,24 @@ INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_n
 bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 {
 	Attr *attr = attr_find_kind(decl->attributes, ATTRIBUTE_IF);
+	decl->is_if = true;
 	assert(attr);
 	if (vec_size(attr->exprs) != 1)
 	{
 		RETURN_SEMA_ERROR(attr, "Expected an argument to '@if'.");
 	}
 	Expr *expr = attr->exprs[0];
-	if (!sema_analyse_ct_expr(context, expr)) return false;
+	context->call_env.in_if_resolution = attr->span;
+	bool success = sema_analyse_ct_expr(context, expr);
+	context->call_env.in_if_resolution.a = 0;
+	if (!success) return false;
 	if (expr->type->canonical != type_bool)
 	{
 		RETURN_SEMA_ERROR(expr, "Expected a boolean value not %s.", type_quoted_error_string(expr->type));
 	}
 	if (expr->const_expr.b) return true;
 	decl->decl_kind = DECL_ERASED;
+	context->call_env.in_if_resolution.a = 0;
 	return false;
 }
 

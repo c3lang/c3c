@@ -674,6 +674,7 @@ typedef struct Decl_
 	bool is_deprecated : 1;
 	bool is_cond : 1;
 	bool has_link : 1;
+	bool is_if : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -1681,6 +1682,7 @@ typedef struct
 	CallEnvKind kind : 8;
 	bool ensures : 1;
 	bool pure : 1;
+	SourceSpan in_if_resolution;
 	Decl **opt_returns;
 	union
 	{

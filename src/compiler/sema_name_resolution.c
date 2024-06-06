@@ -560,6 +560,12 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 		return poisoned_decl;
 	}
 	unit_register_external_symbol(context->compilation_unit, decl);
+	if (decl->is_if && context->call_env.in_if_resolution.a)
+	{
+		print_error_at(context->call_env.in_if_resolution, "This @if expression is dependent on '%s' which is also conditional.", decl->name);
+		SEMA_NOTE(decl, "'%s' is defined here.", decl->name);
+		return poisoned_decl;
+	}
 	return decl;
 }
 

@@ -24,6 +24,7 @@
 - Improved error messages on inlined macros.
 - Introduce MSVC compatible SIMD ABI.
 - `$foreach` doesn't create an implicit syntactic scope.
+- Error of `@if` depends on `@if`
 
 ### Fixes
 - Fixed issue in safe mode when converting enums.
