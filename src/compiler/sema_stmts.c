@@ -26,7 +26,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr);
 static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom);
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
-static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body);
+static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
 static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location);
 static bool sema_analyse_asm_string_stmt(SemaContext *context, Ast *stmt);
@@ -1241,13 +1241,21 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 	return true;
 }
 
-bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *body)
+bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement)
 {
+	Ast *body = astptr(statement->defer_stmt.body);
 	if (body->ast_kind == AST_DEFER_STMT)
 	{
-		SEMA_ERROR(body, "A defer may not have a body consisting of a raw 'defer', this looks like a mistake.");
-		return false;
+		RETURN_SEMA_ERROR(body, "A defer may not have a body consisting of a raw 'defer', this looks like a mistake.");
 	}
+	if (body->ast_kind != AST_COMPOUND_STMT)
+	{
+		Ast *new_body = new_ast(AST_COMPOUND_STMT, body->span);
+		new_body->compound_stmt.first_stmt = astid(body);
+		body = new_body;
+		statement->defer_stmt.body = astid(body);
+	}
+	body->compound_stmt.parent_defer = astid(statement);
 	bool success = true;
 	SCOPE_START
 
@@ -1276,7 +1284,7 @@ bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement, Ast *bod
 static inline bool sema_analyse_defer_stmt(SemaContext *context, Ast *statement)
 {
 
-	if (!sema_analyse_defer_stmt_body(context, statement, astptr(statement->defer_stmt.body))) return false;
+	if (!sema_analyse_defer_stmt_body(context, statement)) return false;
 
 	statement->defer_stmt.prev_defer = context->active_scope.defer_last;
 	context->active_scope.defer_last = astid(statement);
@@ -1328,14 +1336,12 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	assert(body);
 	if (body->ast_kind == AST_DEFER_STMT)
 	{
-		SEMA_ERROR(body, "Looping over a raw 'defer' is not allowed, was this a mistake?");
-		return false;
+		RETURN_SEMA_ERROR(body, "Looping over a raw 'defer' is not allowed, was this a mistake?");
 	}
 	bool do_loop = statement->for_stmt.flow.skip_first;
 	if (body->ast_kind != AST_COMPOUND_STMT && do_loop)
 	{
-		SEMA_ERROR(body, "A do loop must use { } around its body.");
-		return false;
+		RETURN_SEMA_ERROR(body, "A do loop must use { } around its body.");
 	}
 	// Enter for scope
 	SCOPE_OUTER_START
@@ -1825,8 +1831,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	Ast *then = astptr(statement->if_stmt.then_body);
 	if (then->ast_kind == AST_DEFER_STMT)
 	{
-		SEMA_ERROR(then, "An 'if' statement may not be followed by a raw 'defer' statement, this looks like a mistake.");
-		return false;
+		RETURN_SEMA_ERROR(then, "An 'if' statement may not be followed by a raw 'defer' statement, this looks like a mistake.");
 	}
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;

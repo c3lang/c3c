@@ -11,6 +11,13 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 {
 	assert(ast->ast_kind == AST_COMPOUND_STMT);
 
+	DebugScope *old_block = NULL;
+	if (ast->compound_stmt.parent_defer && llvm_use_debug(c))
+	{
+		old_block = c->debug.block_stack;
+		assert(ast->compound_stmt.parent_defer);
+		c->debug.block_stack = astptr(ast->compound_stmt.parent_defer)->defer_stmt.scope;
+	}
 	// Push the lexical scope if in debug.
 	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
 
@@ -19,6 +26,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 
 	// Pop lexical scope.
 	DEBUG_POP_LEXICAL_SCOPE(c);
+	if (old_block) c->debug.block_stack = old_block;
 }
 
 void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
@@ -1616,6 +1624,8 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			gencontext_emit_next_stmt(c, ast);
 			break;
 		case AST_DEFER_STMT:
+			if (llvm_use_debug(c)) ast->defer_stmt.scope = c->debug.block_stack;
+			break;
 		case AST_NOP_STMT:
 			break;
 		case AST_ASM_BLOCK_STMT:

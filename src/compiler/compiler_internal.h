@@ -1213,6 +1213,7 @@ static_assert(sizeof(Expr) == 56, "Expr not expected size");
 typedef struct
 {
 	AstId first_stmt;
+	AstId parent_defer;
 } AstCompoundStmt;
 
 
@@ -1338,6 +1339,7 @@ typedef struct
 {
 	AstId prev_defer;
 	AstId body; // Compound statement
+	void *scope;
 	bool is_try : 1;
 	bool is_catch : 1;
 } AstDeferStmt;
