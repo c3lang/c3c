@@ -682,6 +682,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_MACRO_BODY:
 		case EXPR_ACCESS:
 		case EXPR_ASM:
+		case EXPR_DEFAULT_ARG:
 			return true;
 	}
 	UNREACHABLE

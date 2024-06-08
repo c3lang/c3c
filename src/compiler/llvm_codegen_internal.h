@@ -128,6 +128,8 @@ typedef struct GenContext_
 		LLVMBasicBlockRef first_block;
 		// The last emitted location.
 		SourceSpan last_emitted_loc;
+		// Last emitted location metadata
+		LLVMMetadataRef last_loc;
 		// Used for defer (catch err)
 		LLVMValueRef defer_error_var;
 		// The current block

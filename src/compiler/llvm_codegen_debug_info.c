@@ -222,9 +222,10 @@ void llvm_emit_debug_location(GenContext *c, SourceSpan location)
 	// Avoid re-emitting the same location.
 	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(c->builder);
 	if (oldloc && c->last_emitted_loc.a == location.a) return;
-	LLVMMetadataRef loc = llvm_create_debug_location(c, location);
+	LLVMMetadataRef loc = c->last_loc = llvm_create_debug_location(c, location);
 	c->last_emitted_loc.a = location.a;
 	LLVMSetCurrentDebugLocation2(c->builder, loc);
+
 }
 
 static LLVMMetadataRef llvm_debug_forward_comp(GenContext *c, Type *type, const char *external_name, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)

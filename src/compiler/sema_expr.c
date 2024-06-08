@@ -18,6 +18,7 @@ typedef enum
 typedef struct
 {
 	bool macro;
+	SourceSpan call_location;
 	const char *name;
 	const char *block_parameter;
 	Decl **params;
@@ -521,6 +522,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_ASM:
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
+		case EXPR_DEFAULT_ARG:
 		case EXPR_BUILTIN:
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
@@ -583,6 +585,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_LAMBDA:
 		case EXPR_CT_IDENT:
 		case EXPR_EMBED:
+		case EXPR_DEFAULT_ARG:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -1347,7 +1350,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 		Expr *init_expr = param->var.init_expr;
 		if (init_expr)
 		{
-			Expr *arg = actual_args[i] = copy_expr_single(init_expr);
+			Expr *arg = copy_expr_single(init_expr);
 			if (arg->resolve_status != RESOLVE_DONE)
 			{
 
@@ -1363,6 +1366,24 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				sema_context_destroy(&default_context);
 				if (!success) return false;
 			}
+			if (expr_is_const(arg))
+			{
+				switch (param->var.kind)
+				{
+					case VARDECL_PARAM_CT:
+					case VARDECL_PARAM_CT_TYPE:
+						actual_args[i] = arg;
+						continue;
+					default:
+						break;
+				}
+			}
+			Expr *function_scope_arg = expr_new(EXPR_DEFAULT_ARG, arg->span);
+			function_scope_arg->resolve_status = RESOLVE_DONE;
+			function_scope_arg->type = arg->type;
+			function_scope_arg->default_arg_expr.inner = arg;
+			function_scope_arg->default_arg_expr.loc = callee->call_location;
+			actual_args[i] = function_scope_arg;
 			continue;
 		}
 
@@ -1704,6 +1725,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type 
 	Signature *sig = type->function.signature;
 	CalledDecl callee = {
 			.macro = false,
+			.call_location = expr->span,
 			.name = name,
 			.block_parameter = NULL,
 			.struct_var = struct_var,
@@ -1893,6 +1915,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	copy_end();
 	CalledDecl callee = {
 			.macro = true,
+			.call_location = call_expr->span,
 			.name = decl->name,
 			.params = params,
 			.block_parameter = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->name : NULL,
@@ -7933,6 +7956,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_BUILTIN_ACCESS:
 			case EXPR_DECL:
 			case EXPR_LAST_FAULT:
+			case EXPR_DEFAULT_ARG:
 				UNREACHABLE
 			case EXPR_CT_ARG:
 				FALLTHROUGH;
@@ -8327,6 +8351,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_TEST_HOOK:
 		case EXPR_SWIZZLE:
 		case EXPR_MACRO_BODY:
+		case EXPR_DEFAULT_ARG:
 			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:
 			context = expr->expr_other_context.context;

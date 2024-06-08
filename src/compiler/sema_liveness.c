@@ -345,6 +345,9 @@ RETRY:
 		case EXPR_OPTIONAL:
 			expr = expr->inner_expr;
 			goto RETRY;
+		case EXPR_DEFAULT_ARG:
+			expr = expr->default_arg_expr.inner;
+			goto RETRY;
 		case EXPR_BUILTIN_ACCESS:
 			expr = exprptr(expr->builtin_access_expr.inner);
 			goto RETRY;

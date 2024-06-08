@@ -906,6 +906,11 @@ typedef struct
 	};
 } ExprIdentifier;
 
+typedef struct
+{
+	SourceSpan loc;
+	Expr *inner;
+} ExprDefaultArg;
 
 typedef struct
 {
@@ -1181,6 +1186,7 @@ struct Expr_
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr** expression_list;                     // 8
 		ExprGenericIdent generic_ident_expr;
+		ExprDefaultArg default_arg_expr;
 		ExprIdentifierRaw hash_ident_expr;          // 24
 		ExprIdentifier identifier_expr;             // 24
 		Expr** initializer_list;                    // 8
@@ -3386,6 +3392,7 @@ INLINE void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
+		case EXPR_DEFAULT_ARG:
 			break;
 	}
 }

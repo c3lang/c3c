@@ -127,6 +127,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
+		case EXPR_DEFAULT_ARG:
 		case EXPR_LAST_FAULT:
 			return false;
 	}
@@ -249,6 +250,9 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_OPTIONAL:
 		case EXPR_GROUP:
 			expr = expr->inner_expr;
+			goto RETRY;
+		case EXPR_DEFAULT_ARG:
+			expr = expr->default_arg_expr.inner;
 			goto RETRY;
 		case EXPR_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->initializer_list, eval_kind);
@@ -777,6 +781,8 @@ bool expr_is_pure(Expr *expr)
 				   && exprid_is_pure(expr->ternary_expr.then_expr);
 		case EXPR_ASM:
 			return false;
+		case EXPR_DEFAULT_ARG:
+			return expr_is_pure(expr->default_arg_expr.inner);
 		case EXPR_GROUP:
 			return expr_is_pure(expr->inner_expr);
 	}

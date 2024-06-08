@@ -5926,7 +5926,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		Expr *arg = args[i];
 		if (arg)
 		{
-			llvm_emit_expr(c, value_ref, args[i]);
+			llvm_emit_expr(c, value_ref, arg);
 			llvm_value_fold_optional(c, value_ref);
 			continue;
 		}
@@ -6869,6 +6869,31 @@ static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set(value, res, expr->type);
 }
 
+static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
+{
+	if (llvm_use_debug(c))
+	{
+		SourceSpan location = expr->span;
+		const char *name = "[DEFAULT INIT]";
+		size_t namelen = strlen(name);
+		LLVMMetadataRef file = llvm_get_debug_file(c, location.file_id);
+		LLVMMetadataRef init_def = LLVMDIBuilderCreateFunction(c->debug.builder, file, name, namelen, name, namelen,
+																 file, location.row, NULL, true, true, location.row, LLVMDIFlagZero, false);
+		llvm_emit_debug_location(c, expr->default_arg_expr.loc);
+		DebugScope scope = { .lexical_block = init_def, .inline_loc = c->last_loc };
+		DebugScope *old = c->debug.block_stack;
+		c->debug.block_stack = &scope;
+		llvm_emit_expr(c, value, expr->default_arg_expr.inner);
+		llvm_value_fold_optional(c, value);
+		c->debug.block_stack = old;
+		c->last_emitted_loc.a = 0;
+	}
+	else
+	{
+		llvm_emit_expr(c, value, expr->default_arg_expr.inner);
+	}
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);
@@ -6883,6 +6908,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MACRO_BODY:
 		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
+		case EXPR_DEFAULT_ARG:
+			llvm_emit_default_arg(c, value, expr);
+			return;
 		case EXPR_LAMBDA:
 			llvm_emit_lambda(c, value, expr);
 			return;

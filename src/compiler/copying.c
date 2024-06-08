@@ -440,6 +440,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CT_IS_CONST:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
+		case EXPR_DEFAULT_ARG:
+			MACRO_COPY_EXPR(expr->default_arg_expr.inner);
+			return expr;
 		case EXPR_CT_DEFINED:
 			MACRO_COPY_EXPR_LIST(expr->expression_list);
 			return expr;
