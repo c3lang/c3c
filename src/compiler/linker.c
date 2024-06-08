@@ -431,6 +431,7 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 static void add_linked_libs(const char ***args_ref, const char **libs, bool is_win)
 {
 	FOREACH_BEGIN(const char *lib, libs)
+		INFO_LOG("Linking %s", lib);
 		const char *framework = str_remove_suffix(lib, ".framework");
 		if (framework)
 		{
@@ -451,7 +452,15 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 		}
 		else
 		{
-			add_arg2("-l", lib);
+			if (str_has_suffix(lib, ".a") || str_has_suffix(lib, ".so") ||
+					str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
+			{
+				add_arg(lib);
+			}
+			else
+			{
+				add_arg2("-l", lib);
+			}
 		}
 	FOREACH_END();
 }
