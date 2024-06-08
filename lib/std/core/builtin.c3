@@ -83,17 +83,18 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 		foreach (i, &trace : backtrace)
         {
             if (i < backtraces_to_ignore) continue;
+            String inline_suffix = trace.is_inline ? " [inline]" : "";
             if (trace.is_unknown())
             {
-				io::eprintn("  in ???");
+				io::eprintfn("  in ???%s", inline_suffix);
 				continue;
 			}
 			if (trace.has_file())
             {
-                io::eprintfn("  in %s (%s:%d) [%s]", trace.function, trace.file, trace.line, trace.object_file);
+                io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
                 continue;
             }
-            io::eprintfn("  in %s (source unavailable) [%s]", trace.function, trace.object_file);
+            io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
 		return true;
 	};

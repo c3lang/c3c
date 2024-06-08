@@ -128,17 +128,17 @@ fn ulong! elf_module_image_base(String path) @local
 	return 0;
 }
 
-fn Backtrace! backtrace_load_from_exec(void* addr, Allocator allocator) @local
+fn void! backtrace_add_from_exec(BacktraceList* list, void* addr, Allocator allocator) @local
 {
 	char[] buf = mem::temp_alloc_array(char, 1024);
 
 	String exec_path = process::execute_stdout_to_buffer(buf, {"realpath", "-e", string::tformat("/proc/%d/exe", posix::getpid())})!;
 	String obj_name = exec_path.copy(allocator);
 	String addr2line = process::execute_stdout_to_buffer(buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", exec_path, string::tformat("0x%x", addr)})!;
-	return backtrace_from_addr2line(addr, addr2line, obj_name, "???", allocator);
+	return backtrace_add_addr2line(list, addr, addr2line, obj_name, "???", allocator);
 }
 
-fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Allocator allocator) @local
+fn void! backtrace_add_from_dlinfo(BacktraceList* list, void* addr, Linux_Dl_info* info, Allocator allocator) @local
 {
 	char[] buf = mem::temp_alloc_array(char, 1024);
 
@@ -146,30 +146,19 @@ fn Backtrace! backtrace_load_from_dlinfo(void* addr, Linux_Dl_info* info, Alloca
 	ZString obj_path  = info.dli_fname;
 	String  sname     = info.dli_sname ? info.dli_sname.str_view() : "???";
 	String  addr2line = process::execute_stdout_to_buffer(buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_addr - 1)})!;
-	return backtrace_from_addr2line(addr, addr2line, info.dli_fname.str_view(), sname, allocator);
+	return backtrace_add_addr2line(list, addr, addr2line, info.dli_fname.str_view(), sname, allocator);
 }
 
-fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_name, String func_name, Allocator allocator) @local
+fn Backtrace! backtrace_line_parse(String string, String obj_name, String func_name, bool is_inlined, Allocator allocator)
 {
-	String[] parts = addr2line.tsplit(" at ");
-	if (parts.len != 2)
-	{
-		return {
-			.function    = func_name.copy(allocator),
-			.object_file = obj_name.copy(allocator),
-			.offset      = (uptr)addr,
-			.file        = "".copy(allocator),
-			.line        = 0,
-			.allocator   = allocator
-		};
-	}
+	String[] parts = string.trim().tsplit(" at ");
+	if (parts.len != 2) return SearchResult.MISSING?;
 
-	uint   line   = 0;
+	uint line   = 0;
 	String source = "";
 	if (!parts[1].contains("?") && parts[1].contains(":"))
 	{
 		usz index = parts[1].rindex_of_char(':')!;
-
 		source = parts[1][:index];
 		line   = parts[1][index + 1..].to_uint()!;
 	}
@@ -179,21 +168,49 @@ fn Backtrace! backtrace_from_addr2line(void* addr, String addr2line, String obj_
 		.file        = source.copy(allocator),
 		.line        = line,
 		.allocator   = allocator,
+		.is_inline   = is_inlined
 	};
 }
-
-fn Backtrace! backtrace_load_element(void* addr, Allocator allocator = allocator::heap()) @local
+fn void! backtrace_add_addr2line(BacktraceList* list, void* addr, String addr2line, String obj_name, String func_name, Allocator allocator) @local
 {
-	if (!addr) return backtrace::BACKTRACE_UNKNOWN;
+	String[] inline_parts = addr2line.tsplit("(inlined by)");
+	usz last = inline_parts.len - 1;
+	foreach (i, part : inline_parts)
+	{
+		bool is_inline = i != last;
+		Backtrace! trace = backtrace_line_parse(part, obj_name, func_name, is_inline, allocator);
+		if (catch trace)
+		{
+			list.push({
+				.function    = func_name.copy(allocator),
+				.object_file = obj_name.copy(allocator),
+				.offset      = (uptr)addr,
+				.file        = "".copy(allocator),
+				.line        = 0,
+				.allocator   = allocator,
+				.is_inline   = is_inline
+			});
+			continue;
+		}
+		list.push(trace);
+	}
+}
+
+fn void! backtrace_add_element(BacktraceList *list, void* addr, Allocator allocator = allocator::heap()) @local
+{
+	if (!addr)
+	{
+		list.push(backtrace::BACKTRACE_UNKNOWN);
+		return;
+	}
 
 	@pool(allocator) {
 		Linux_Dl_info info;
-
 		if (dladdr(addr, &info) == 0)
 		{
-			return backtrace_load_from_exec(addr, allocator);
+			return backtrace_add_from_exec(list, addr, allocator);
 		}
-		return backtrace_load_from_dlinfo(addr, &info, allocator);
+		return backtrace_add_from_dlinfo(list, addr, &info, allocator);
 	};
 }
 
@@ -213,8 +230,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 	{
 		foreach (addr : backtrace)
 		{
-			Backtrace trace = backtrace_load_element(addr, allocator)!;
-			list.push(trace);
+			backtrace_add_element(&list, addr, allocator)!;
 		}
 	};
 	return list;
