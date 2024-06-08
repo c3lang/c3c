@@ -7,8 +7,8 @@
 
 #include "compiler_internal.h"
 
-#define SEMA_ERROR(_node, ...) print_error_at((_node)->span, __VA_ARGS__); sema_print_inline(context);
-#define RETURN_SEMA_ERROR(_node, ...) do { print_error_at((_node)->span, __VA_ARGS__); sema_print_inline(context); return false; } while (0)
+#define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
+#define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 
 #define SCOPE_OUTER_START do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE);
 #define SCOPE_OUTER_END assert(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
@@ -44,6 +44,7 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
 void sema_print_inline(SemaContext *context);
+void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);

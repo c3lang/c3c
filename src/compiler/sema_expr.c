@@ -1070,7 +1070,12 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type 
 	expr_replace(expr, copy_expr_single(decl->var.init_expr));
 	if (infer_type)
 	{
-		if (!sema_analyse_inferred_expr(decl->var.hash_var.context, infer_type, expr)) return decl_poison(decl);
+		SemaContext *hash_context = decl->var.hash_var.context;
+		InliningSpan *old_span = hash_context->inlined_at;
+		hash_context->inlined_at = context->inlined_at;
+		bool success = sema_analyse_inferred_expr(decl->var.hash_var.context, infer_type, expr);
+		hash_context->inlined_at = old_span;
+		if (!success) return decl_poison(decl);
 	}
 	else
 	{
@@ -7122,11 +7127,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 												  bool *is_missing)
 {
 	DesignatorType kind = element->kind;
-	if (kind == DESIGNATOR_RANGE)
-	{
-		SEMA_ERROR(element->index_expr, "Ranges are not allowed.");
-		return false;
-	}
+	if (kind == DESIGNATOR_RANGE) RETURN_SEMA_ERROR(element->index_expr, "Ranges are not allowed.");
 	Type *actual_type = type_flatten(type);
 	if (kind == DESIGNATOR_ARRAY)
 	{
@@ -7138,31 +7139,24 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 				*is_missing = true;
 				return false;
 			}
-			SEMA_ERROR(inner, "It's not possible to constant index into something that is not an array nor vector.");
-			return false;
+			RETURN_SEMA_ERROR(inner, "It's not possible to constant index into something that is not an array nor vector.");
 		}
 		if (!sema_analyse_expr(context, inner)) return false;
 		if (!type_is_integer(inner->type))
 		{
-			SEMA_ERROR(inner, "Expected an integer index.");
-			return false;
+			RETURN_SEMA_ERROR(inner, "Expected an integer index.");
 		}
 		if (!sema_flattened_expr_is_const(context, inner))
 		{
-			SEMA_ERROR(inner, "Expected a constant index.");
-			return false;
+			RETURN_SEMA_ERROR(inner, "Expected a constant index.");
 		}
 		Int value = inner->const_expr.ixx;
 		if (!int_fits(value, type_isz->canonical->type_kind))
 		{
-			SEMA_ERROR(inner, "The index is out of range for a %s.", type_quoted_error_string(type_isz));
-			return false;
+			RETURN_SEMA_ERROR(inner, "The index is out of range for a %s.", type_quoted_error_string(type_isz));
 		}
-		if (int_is_neg(value))
-		{
-			SEMA_ERROR(inner, "The index must be zero or greater.");
-			return false;
-		}
+		if (int_is_neg(value)) RETURN_SEMA_ERROR(inner, "The index must be zero or greater.");
+
 		type = actual_type->array.base;
 		ArraySize len = actual_type->array.len;
 		int64_t index = int_to_i64(value);
@@ -7174,8 +7168,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 				*index_ref = 0;
 				return false;
 			}
-			SEMA_ERROR(inner, "Index exceeds array bounds.");
-			return false;
+			RETURN_SEMA_ERROR(inner, "Index exceeds array bounds.");
 		}
 		*return_type = type;
 		*index_ref = index;
@@ -7184,11 +7177,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 	}
 	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, is_missing);
 	if (!field) return false;
-	if (field->expr_kind != EXPR_IDENTIFIER)
-	{
-		SEMA_ERROR(field, "Expected an identifier here.");
-		return false;
-	}
+	if (field->expr_kind != EXPR_IDENTIFIER) RETURN_SEMA_ERROR(field, "Expected an identifier here.");
 	const char *kw = field->identifier_expr.ident;
 	if (kw == kw_ptr)
 	{
@@ -7228,11 +7217,11 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		}
 		if (i == 0)
 		{
-			print_error_at(loc, "%s has no members.", type_quoted_error_string(type));
+			sema_error_at(context, loc, "%s has no members.", type_quoted_error_string(type));
 		}
 		else
 		{
-			print_error_at(loc, "There is no such member in %s.", type_quoted_error_string(type));
+			sema_error_at(context, loc, "There is no such member in %s.", type_quoted_error_string(type));
 		}
 		return false;
 	}
@@ -7244,7 +7233,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		member = sema_resolve_method(context->unit, actual_type->decl, kw, &ambiguous, &private);
 		if (ambiguous)
 		{
-			print_error_at(loc, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
+			sema_error_at(context, loc, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
 					   kw, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
 			return false;
 		}
@@ -7253,7 +7242,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 			*is_missing = true;
 			return false;
 		}
-		print_error_at(loc, "There is no such member in %s.", type_quoted_error_string(type));
+		sema_error_at(context, loc, "There is no such member in %s.", type_quoted_error_string(type));
 		return false;
 	}
 	*member_ref = member;

@@ -2355,7 +2355,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
-Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve);
+Decl *unit_resolve_parameterized_symbol(SemaContext *context, CompilationUnit *unit, NameResolve *name_resolve);
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);

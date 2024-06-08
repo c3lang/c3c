@@ -2363,37 +2363,31 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			}
 			return true;
 			FAILED_OP_TYPE:
-			SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
-			return false;
+			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
 		}
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
 			{
-				print_error_at(attr->span, "'align' requires an power-of-2 argument, e.g. align(8).");
-				return false;
+				RETURN_SEMA_ERROR(attr, "'align' requires an power-of-2 argument, e.g. align(8).");
 			}
 			if (!sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_int(expr))
 			{
-				SEMA_ERROR(expr, "Expected a constant integer value as argument.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "Expected a constant integer value as argument.");
 			}
 			{
 				if (int_ucomp(expr->const_expr.ixx, MAX_ALIGNMENT, BINARYOP_GT))
 				{
-					SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
-					return false;
+					RETURN_SEMA_ERROR(expr, "Alignment must be less or equal to %ull.", MAX_ALIGNMENT);
 				}
 				if (int_ucomp(expr->const_expr.ixx, 0, BINARYOP_LE))
 				{
-					SEMA_ERROR(expr, "Alignment must be greater than zero.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Alignment must be greater than zero.");
 				}
 				uint64_t align = int_to_u64(expr->const_expr.ixx);
 				if (!is_power_of_two(align))
 				{
-					SEMA_ERROR(expr, "Alignment must be a power of two.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Alignment must be a power of two.");
 				}
 				decl->alignment = (AlignSize)align;
 				return true;
@@ -2401,21 +2395,18 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_EXPORT:
 			if (context->unit->module->is_generic)
 			{
-				print_error_at(attr->span, "'@export' is not allowed in generic modules.");
-				return false;
+				RETURN_SEMA_ERROR(attr, "'@export' is not allowed in generic modules.");
 			}
 			if (expr)
 			{
 				if (!sema_analyse_expr(context, expr)) return false;
 				if (!expr_is_const_string(expr))
 				{
-					SEMA_ERROR(expr, "Expected a constant string value as argument.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 				}
 				if (decl->has_extname)
 				{
-					SEMA_ERROR(expr, "An external name is already defined, please use '@extern` without an argument.");
-					return false;
+					RETURN_SEMA_ERROR(expr, "An external name is already defined, please use '@extern` without an argument.");
 				}
 				decl->has_extname = true;
 				decl->extname = expr->const_expr.bytes.ptr;
@@ -2481,19 +2472,16 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_EXTERN:
 			if (context->unit->module->is_generic)
 			{
-				print_error_at(attr->span, "'%s' attributes are not allowed in generic modules.", attr->name);
-				return false;
+				RETURN_SEMA_ERROR(attr, "'%s' attributes are not allowed in generic modules.", attr->name);
 			}
 			if (!expr)
 			{
-				print_error_at(attr->span, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
-				return false;
+				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"foo\").", attr->name, attr->name);
 			}
 			if (!sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr))
 			{
-				SEMA_ERROR(expr, "Expected a constant string value as argument.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
 			}
 			switch (type)
 			{
@@ -2548,7 +2536,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_BIGENDIAN:
 			if (decl->bitstruct.little_endian)
 			{
-				print_error_at(attr->span, "Attribute cannot be combined with @littleendian");
+				SEMA_ERROR(attr, "Attribute cannot be combined with @littleendian");
 				return decl_poison(decl);
 			}
 			decl->bitstruct.big_endian = true;
@@ -2556,7 +2544,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_LITTLEENDIAN:
 			if (decl->bitstruct.big_endian)
 			{
-				print_error_at(attr->span, "Attribute cannot be combined with @bigendian");
+				SEMA_ERROR(attr, "Attribute cannot be combined with @bigendian");
 				return decl_poison(decl);
 			}
 			decl->bitstruct.little_endian = true;
@@ -3343,20 +3331,19 @@ bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 		case STORAGE_WILDCARD:
 			if (type_is_optional(type))
 			{
-				print_error_at(span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
+				sema_error_at(context, span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
 				              type_quoted_error_string(type_anyfault));
-			}
-			else
+			} else
 			{
-				print_error_at(span, "The use of 'void' as a variable type is not permitted.");
+				sema_error_at(context, span, "The use of 'void' as a variable type is not permitted.");
 			}
 			return false;
 		case STORAGE_COMPILE_TIME:
-			print_error_at(span, "The variable cannot have an compile time %s type.",
+			sema_error_at(context, span, "The variable cannot have an compile time %s type.",
 			              type_quoted_error_string(type));
 			return false;
 		case STORAGE_UNKNOWN:
-			print_error_at(span, "%s has unknown size, and so it cannot be a variable type.",
+			sema_error_at(context, span, "%s has unknown size, and so it cannot be a variable type.",
 			              type_quoted_error_string(type));
 			return false;
 	}
@@ -3878,12 +3865,13 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 			if (res == COND_TRUE) continue;
 			if (ast->contract_stmt.contract.comment)
 			{
-				print_error_at(error_span,
+				sema_error_at(c, error_span,
 				              "Parameter(s) would violate constraint: %s.",
 				              ast->contract_stmt.contract.comment);
-			} else
+			}
+			else
 			{
-				print_error_at(error_span, "Parameter(s) failed validation: %s",
+				sema_error_at(c, error_span, "Parameter(s) failed validation: %s",
 				              ast->contract_stmt.contract.expr_string);
 			}
 		FAIL:
@@ -3933,7 +3921,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 			.symbol = name
 	};
 
-	Decl *alias = unit_resolve_parameterized_symbol(c->unit, &name_resolve);
+	Decl *alias = unit_resolve_parameterized_symbol(NULL, c->unit, &name_resolve);
 	if (!decl_ok(alias)) return poisoned_decl;
 
 	Module *module = decl_module(alias);
@@ -3942,7 +3930,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	if (parameter_count != vec_size(params))
 	{
 		assert(vec_size(params));
-		print_error_at(extend_span_with_token(params[0]->span, vectail(params)->span),
+		sema_error_at(c, extend_span_with_token(params[0]->span, vectail(params)->span),
 					  "The generic module expected %d arguments, but you supplied %d, did you make a mistake?",
 					  parameter_count,
 					  vec_size(params));
@@ -3978,7 +3966,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	Decl *symbol = module_find_symbol(instantiated_module, name);
 	if (!symbol)
 	{
-		print_error_at(span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
+		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
 		return poisoned_decl;
 	}
 	if (was_initiated && instantiated_module->contracts)

@@ -526,3 +526,12 @@ void sema_print_inline(SemaContext *context)
 		inlined_at = inlined_at->prev;
 	}
 }
+
+void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...)
+{
+	va_list list;
+	va_start(list, message);
+	sema_verror_range(span, message, list);
+	va_end(list);
+	sema_print_inline(context);
+}

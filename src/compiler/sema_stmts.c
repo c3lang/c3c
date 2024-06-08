@@ -311,7 +311,7 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 		if (result == COND_TRUE) continue;
 		if (result == COND_FALSE)
 		{
-			print_error_at(evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
+			sema_error_at(context, evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
 			return false;
 		}
 		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
@@ -2293,7 +2293,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	}
 	if (is_range && (!expr_is_const_int(expr) || !expr_is_const(to_expr)))
 	{
-		print_error_at(extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
+		sema_error_at(context, extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
 		return false;
 	}
 	ExprConst *const_expr = &expr->const_expr;
@@ -2303,7 +2303,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
 		{
-			print_error_at(extend_span_with_token(expr->span, to_expr->span),
+			sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
 						  "The range is not valid because the first value (%s) is greater than the second (%s). "
 						  "It would work if you swapped their order.",
 						  int_to_str(const_expr->ixx, 10),
@@ -2382,7 +2382,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool use_type_id = false;
 	if (!type_is_comparable(switch_type))
 	{
-		print_error_at(expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
+		sema_error_at(context, expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
 		return false;
 	}
 	// We need an if-chain if this isn't an enum/integer type.
@@ -2846,13 +2846,12 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	{
 		if (message_expr)
 		{
-			print_error_at(span, "%.*s", EXPAND_EXPR_STRING(message_expr));
+			sema_error_at(context, span, "%.*s", EXPAND_EXPR_STRING(message_expr));
 		}
 		else
 		{
-			print_error_at(span, "Compile time assert failed.");
+			sema_error_at(context, span, "Compile time assert failed.");
 		}
-		sema_print_inline(context);
 		return false;
 	}
 	statement->ast_kind = AST_NOP_STMT;

@@ -426,7 +426,7 @@ static Decl *sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name
 }
 
 
-static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
+static void sema_report_error_on_decl(SemaContext *context, Decl *found, NameResolve *name_resolve)
 {
 	assert(!name_resolve->suppress_error);
 	const char *symbol = name_resolve->symbol;
@@ -437,14 +437,13 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		const char *private_name = decl_to_name(name_resolve->private_decl);
 		if (path_name)
 		{
-			print_error_at(span, "The %s '%s::%s' is not visible from this module.",
-						  private_name, path_name,
-						  symbol);
-		}
-		else
+			sema_error_at(context, span, "The %s '%s::%s' is not visible from this module.",
+			              private_name, path_name,
+			              symbol);
+		} else
 		{
-			print_error_at(span, "The %s '%s' is not visible from this module.",
-						  private_name, symbol);
+			sema_error_at(context, span, "The %s '%s' is not visible from this module.",
+			              private_name, symbol);
 		}
 		return;
 	}
@@ -454,14 +453,13 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		const char *module_name = decl_module(name_resolve->maybe_decl)->name->module;
 		if (path_name)
 		{
-			print_error_at(span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
-						  maybe_name, module_name, symbol, module_name, module_name);
+			sema_error_at(context, span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
+			              maybe_name, module_name, symbol, module_name, module_name);
 
-		}
-		else
+		} else
 		{
-			print_error_at(span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
-						  maybe_name, symbol, module_name, module_name);
+			sema_error_at(context, span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
+			              maybe_name, symbol, module_name, module_name);
 		}
 		return;
 	}
@@ -474,35 +472,34 @@ static void sema_report_error_on_decl(Decl *found, NameResolve *name_resolve)
 		const char *other_path = decl_module(name_resolve->ambiguous_other_decl)->name->module;
 		if (path_name)
 		{
-			print_error_at(span,
-						  "The %s '%s::%s' is defined in both '%s' and '%s', "
-						  "please use either %s::%s or %s::%s to resolve the ambiguity.",
-						  symbol_type, path_name, symbol, found_path, other_path,
-						  found_path, symbol, other_path, symbol);
-		}
-		else
+			sema_error_at(context, span,
+			              "The %s '%s::%s' is defined in both '%s' and '%s', "
+			              "please use either %s::%s or %s::%s to resolve the ambiguity.",
+			              symbol_type, path_name, symbol, found_path, other_path,
+			              found_path, symbol, other_path, symbol);
+		} else
 		{
 			if (decl_needs_prefix(found))
 			{
-				print_error_at(span, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path, symbol);
+				sema_error_at(context, span, "The %s needs a path prefix (e.g. '%s::%s').", symbol_type, found_path,
+				              symbol);
 				return;
 			}
-			print_error_at(span,
-						  "The %s '%s' is defined in both '%s' and '%s', please use either "
-						  "%s::%s or %s::%s to resolve the ambiguity.",
-						  symbol_type, symbol, found_path, other_path,
-						  found_path, symbol, other_path, symbol);
+			sema_error_at(context, span,
+			              "The %s '%s' is defined in both '%s' and '%s', please use either "
+			              "%s::%s or %s::%s to resolve the ambiguity.",
+			              symbol_type, symbol, found_path, other_path,
+			              found_path, symbol, other_path, symbol);
 		}
 		return;
 	}
 	assert(!found);
 	if (path_name)
 	{
-		print_error_at(span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
-	}
-	else
+		sema_error_at(context, span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
+	} else
 	{
-		print_error_at(span, "'%s' could not be found, did you spell it right?", symbol);
+		sema_error_at(context, span, "'%s' could not be found, did you spell it right?", symbol);
 	}
 }
 
@@ -539,7 +536,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 			}
 			if (module_with_path)
 			{
-				print_error_at(name_resolve->span, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
+				SEMA_ERROR(name_resolve, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
 			}
 			else
 			{
@@ -556,13 +553,13 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 	if (!decl || name_resolve->ambiguous_other_decl)
 	{
 		if (name_resolve->suppress_error) return NULL;
-		sema_report_error_on_decl(decl, name_resolve);
+		sema_report_error_on_decl(context, decl, name_resolve);
 		return poisoned_decl;
 	}
 	unit_register_external_symbol(context->compilation_unit, decl);
 	if (decl->is_if && context->call_env.in_if_resolution.a)
 	{
-		print_error_at(context->call_env.in_if_resolution, "This @if expression is dependent on '%s' which is also conditional.", decl->name);
+		sema_error_at(context, context->call_env.in_if_resolution, "This @if expression is dependent on '%s' which is also conditional.", decl->name);
 		SEMA_NOTE(decl, "'%s' is defined here.", decl->name);
 		return poisoned_decl;
 	}
@@ -793,7 +790,7 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 	return found;
 }
 
-Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name_resolve)
+Decl *unit_resolve_parameterized_symbol(SemaContext *context, CompilationUnit *unit, NameResolve *name_resolve)
 {
 	name_resolve->ambiguous_other_decl = NULL;
 	name_resolve->private_decl = NULL;
@@ -811,13 +808,13 @@ Decl *unit_resolve_parameterized_symbol(CompilationUnit *unit, NameResolve *name
 	if (!decl || name_resolve->ambiguous_other_decl)
 	{
 		if (name_resolve->suppress_error) return poisoned_decl;
-		sema_report_error_on_decl(decl, name_resolve);
+		sema_report_error_on_decl(context, decl, name_resolve);
 		return poisoned_decl;
 	}
 	if (!decl_is_user_defined_type(decl) && !name_resolve->path)
 	{
 		if (name_resolve->suppress_error) return poisoned_decl;
-		print_error_at(name_resolve->span, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
+		SEMA_ERROR(name_resolve, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
 		return poisoned_decl;
 	}
 
