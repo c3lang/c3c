@@ -59,88 +59,6 @@ void free_resources(Find_Result *result)
 	free(result->vs_library_path);
 }
 
-#ifndef _Out_
-#define _Out_
-#endif
-#ifndef _In_
-#define _In_
-#endif
-#ifndef _Out_writes_to_
-#define _Out_writes_to_(a, b)
-#endif
-#ifndef _Deref_out_opt_
-#define _Deref_out_opt_
-#endif
-#ifndef _In_z_
-#define _In_z_
-#endif
-
-#undef  INTERFACE
-#define INTERFACE ISetupInstance
-DECLARE_INTERFACE_(ISetupInstance, IUnknown)
-{
-	BEGIN_INTERFACE
-
-	// IUnknown methods
-	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
-    STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
-    STDMETHOD_(ULONG, Release)   (THIS) PURE;
-
-    // ISetupInstance methods
-    STDMETHOD(GetInstanceId)(THIS_ _Out_ BSTR * pbstrInstanceId) PURE;
-    STDMETHOD(GetInstallDate)(THIS_ _Out_ LPFILETIME pInstallDate) PURE;
-    STDMETHOD(GetInstallationName)(THIS_ _Out_ BSTR * pbstrInstallationName) PURE;
-    STDMETHOD(GetInstallationPath)(THIS_ _Out_ BSTR * pbstrInstallationPath) PURE;
-    STDMETHOD(GetInstallationVersion)(THIS_ _Out_ BSTR * pbstrInstallationVersion) PURE;
-    STDMETHOD(GetDisplayName)(THIS_ _In_ LCID lcid, _Out_ BSTR * pbstrDisplayName) PURE;
-    STDMETHOD(GetDescription)(THIS_ _In_ LCID lcid, _Out_ BSTR * pbstrDescription) PURE;
-    STDMETHOD(ResolvePath)(THIS_ _In_opt_z_ LPCOLESTR pwszRelativePath, _Out_ BSTR * pbstrAbsolutePath) PURE;
-
-	END_INTERFACE
-};
-
-#undef  INTERFACE
-#define INTERFACE IEnumSetupInstances
-DECLARE_INTERFACE_(IEnumSetupInstances, IUnknown)
-{
-	BEGIN_INTERFACE
-
-	// IUnknown methods
-	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
-	STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
-	STDMETHOD_(ULONG, Release)   (THIS) PURE;
-
-	// IEnumSetupInstances methods
-	STDMETHOD(Next)(THIS_ _In_ ULONG celt, _Out_writes_to_(celt, *pceltFetched) ISetupInstance * *rgelt, _Out_opt_ _Deref_out_range_(0, celt) ULONG * pceltFetched) PURE;
-	STDMETHOD(Skip)(THIS_ _In_ ULONG celt) PURE;
-	STDMETHOD(Reset)(THIS) PURE;
-	STDMETHOD(Clone)(THIS_ _Deref_out_opt_ IEnumSetupInstances * *ppenum) PURE;
-
-	END_INTERFACE
-};
-
-#undef  INTERFACE
-#define INTERFACE ISetupConfiguration
-DECLARE_INTERFACE_(ISetupConfiguration, IUnknown)
-{
-	BEGIN_INTERFACE
-
-	// IUnknown methods
-	STDMETHOD(QueryInterface)   (THIS_  REFIID, void**) PURE;
-	STDMETHOD_(ULONG, AddRef)    (THIS) PURE;
-	STDMETHOD_(ULONG, Release)   (THIS) PURE;
-
-	// ISetupConfiguration methods
-	STDMETHOD(EnumInstances)(THIS_ _Out_ IEnumSetupInstances * *ppEnumInstances) PURE;
-	STDMETHOD(GetInstanceForCurrentProcess)(THIS_ _Out_ ISetupInstance * *ppInstance) PURE;
-	STDMETHOD(GetInstanceForPath)(THIS_ _In_z_ LPCWSTR wzPath, _Out_ ISetupInstance * *ppInstance) PURE;
-
-    END_INTERFACE
-};
-
-#define CALL_STDMETHOD(object, method, ...) object->lpVtbl->method(object, __VA_ARGS__)
-#define CALL_STDMETHOD_(object, method) object->lpVtbl->method(object)
-
 typedef struct
 {
 	int32_t best_version[4];  // For Windows 8 versions, only two of these numbers are used.
@@ -263,13 +181,15 @@ bool find_windows_kit_root(Find_Result* result)
 	// to that place, first checking preferntially for a Windows 10 kit,
 	// then, if that's not found, a Windows 8 kit.
 
+	puts("Grab key");
 	HKEY main_key;
-	LSTATUS rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
+	LSTATUS rc = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
 		0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
 	if (rc != S_OK) return false;
 
 	// Look for a Windows 10 entry.
 
+	puts("Get win10 entry");
 	DWORD required_length;
 	rc = RegQueryValueExW(main_key, L"KitsRoot10", NULL, NULL, NULL, &required_length);
 	if (rc != S_OK) return false;
@@ -278,16 +198,19 @@ bool find_windows_kit_root(Find_Result* result)
 	uint16_t* value = (uint16_t*)cmalloc(length * 2);
 	if (!value) return false;
 
+	puts("Get val");
 	rc = RegQueryValueExW(main_key, L"KitsRoot10", NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
 	if (rc != S_OK) return false;
-
 	value[required_length / 2] = 0;
 
+	puts("Convert");
 	char *root = win_utf16to8(value);
-
+	printf("Now: %s\n", root);
 	scratch_buffer_clear();
 	scratch_buffer_append(root);
 	scratch_buffer_append("Lib");
+
+	error_exit("Ooops");
 
 	DEBUG_LOG("Grabbing %s", scratch_buffer_to_string());
 	struct _wfinddata_t file_data;
