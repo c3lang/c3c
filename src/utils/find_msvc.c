@@ -9,7 +9,7 @@
 #include <stdbool.h>
 #include <io.h>         // For _get_osfhandle
 
-void free_windows_link_paths(WindowsSDK* obj)
+void free_windows_link_paths(WindowsSDK *obj)
 {
 	free(obj->vs_library_path);
 	free(obj->windows_sdk_ucrt_library_path);
@@ -18,15 +18,11 @@ void free_windows_link_paths(WindowsSDK* obj)
 
 typedef struct
 {
-  int windows_sdk_version;   // Zero if no Windows SDK found.
-
-  wchar_t* windows_sdk_root;
-  wchar_t* windows_sdk_um_library_path;
-  wchar_t* windows_sdk_ucrt_library_path;
-
-  int is_vs_2017;
-  wchar_t* vs_exe_path;
-  wchar_t* vs_library_path;
+	int windows_sdk_version;   // Zero if no Windows SDK found.
+	wchar_t *windows_sdk_root;
+	wchar_t *windows_sdk_um_library_path;
+	wchar_t *windows_sdk_ucrt_library_path;
+	wchar_t *vs_library_path;
 } Find_Result;
 
 
@@ -36,10 +32,10 @@ void free_resources(Find_Result* result);
 WindowsSDK get_windows_link_paths()
 {
 	Find_Result paths = find_visual_studio_and_windows_sdk();
-	WindowsSDK out = { 0 };
+	WindowsSDK out = {0};
 
 	// note: WideCharToMultiByte doesn't seem to do null termination.
-    // I'm wary of manually adding a null terminator, so hopefully this is reliable.
+	// I'm wary of manually adding a null terminator, so hopefully this is reliable.
 	// This wouldn't be a problem if windows used UTF-8 like the rest of the world >:(
 	out.windows_sdk_um_library_path = win_utf16to8(paths.windows_sdk_um_library_path);
 	out.windows_sdk_ucrt_library_path = win_utf16to8(paths.windows_sdk_ucrt_library_path);
@@ -55,12 +51,12 @@ WindowsSDK get_windows_link_paths()
 //
 // Credit to Jonathan Blow, Kalinovcic, and ActuallyaDeviloper.
 
-void free_resources(Find_Result* result) {
-  free(result->windows_sdk_root);
-  free(result->windows_sdk_um_library_path);
-  free(result->windows_sdk_ucrt_library_path);
-  free(result->vs_exe_path);
-  free(result->vs_library_path);
+void free_resources(Find_Result *result)
+{
+	free(result->windows_sdk_root);
+	free(result->windows_sdk_um_library_path);
+	free(result->windows_sdk_ucrt_library_path);
+	free(result->vs_library_path);
 }
 
 #ifndef _Out_
@@ -145,9 +141,10 @@ DECLARE_INTERFACE_(ISetupConfiguration, IUnknown)
 #define CALL_STDMETHOD(object, method, ...) object->lpVtbl->method(object, __VA_ARGS__)
 #define CALL_STDMETHOD_(object, method) object->lpVtbl->method(object)
 
-typedef struct {
-  int32_t best_version[4];  // For Windows 8 versions, only two of these numbers are used.
-  wchar_t* best_name;
+typedef struct
+{
+	int32_t best_version[4];  // For Windows 8 versions, only two of these numbers are used.
+	wchar_t *best_name;
 } Version_Data;
 
 bool os_file_exists(wchar_t* name)
@@ -191,16 +188,16 @@ wchar_t* concat(wchar_t* a, wchar_t* b, wchar_t* c, wchar_t* d) {
 }
 
 typedef void (*Visit_Proc_W)(wchar_t* short_name, wchar_t* full_name, Version_Data* data);
-bool visit_files_w(wchar_t* dir_name, Version_Data* data, Visit_Proc_W proc)
-{
 
+bool visit_files_w(wchar_t *dir_name, Version_Data *data, Visit_Proc_W proc)
+{
 	// Visit everything in one folder (non-recursively). If it's a directory
 	// that doesn't start with ".", call the visit proc on it. The visit proc
 	// will see if the filename conforms to the expected versioning pattern.
 
 	WIN32_FIND_DATAW find_data;
 
-	wchar_t* wildcard_name = concat2(dir_name, L"\\*");
+	wchar_t *wildcard_name = concat2(dir_name, L"\\*");
 	HANDLE handle = FindFirstFileW(wildcard_name, &find_data);
 	free(wildcard_name);
 
@@ -210,7 +207,7 @@ bool visit_files_w(wchar_t* dir_name, Version_Data* data, Visit_Proc_W proc)
 	{
 		if ((find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) && (find_data.cFileName[0] != '.'))
 		{
-			wchar_t* full_name = concat3(dir_name, L"\\", find_data.cFileName);
+			wchar_t *full_name = concat3(dir_name, L"\\", find_data.cFileName);
 			proc(find_data.cFileName, full_name, data);
 			free(full_name);
 		}
@@ -371,167 +368,172 @@ bool find_visual_studio_2017_by_fighting_through_microsoft_craziness(Find_Result
 	// "Subsequent valid calls return false." So ignore false.
 	// if rc != S_OK  return false;
 
-	GUID my_uid = { 0x42843719, 0xDB4C, 0x46C2, {0x8E, 0x7C, 0x64, 0xF1, 0x81, 0x6E, 0xFD, 0x5B} };
+	GUID my_uid                   = { 0x42843719, 0xDB4C, 0x46C2, {0x8E, 0x7C, 0x64, 0xF1, 0x81, 0x6E, 0xFD, 0x5B} };
 	GUID CLSID_SetupConfiguration = { 0x177F0C4A, 0x1CD3, 0x4DE7, {0xA3, 0x2C, 0x71, 0xDB, 0xBB, 0x9F, 0xA3, 0x6D} };
 
 	ISetupConfiguration* config = NULL;
 
-	HRESULT hr = CoCreateInstance(&CLSID_SetupConfiguration, NULL, CLSCTX_INPROC_SERVER, &my_uid, (void**)&config);
+	HRESULT hr = CoCreateInstance(&CLSID_SetupConfiguration, NULL, CLSCTX_INPROC_SERVER, &my_uid, (void **) &config);
 
-    if (hr != 0)  return false;
+	if (hr != 0) return false;
 
-    IEnumSetupInstances* instances = NULL;
-    hr = CALL_STDMETHOD(config, EnumInstances, &instances);
-    CALL_STDMETHOD_(config, Release);
-    if (hr != 0)     return false;
-    if (!instances)  return false;
+	IEnumSetupInstances * instances = NULL;
+	hr = CALL_STDMETHOD(config, EnumInstances, &instances);
+	CALL_STDMETHOD_(config, Release);
+	if (hr != 0) return false;
+	if (!instances) return false;
 
-    bool found_visual_studio_2017 = false;
-    while (1)
+	bool found_visual_studio_2017 = false;
+	while (1)
 	{
 		ULONG found = 0;
-		ISetupInstance* instance = NULL;
+		ISetupInstance * instance = NULL;
 		HRESULT hr = CALL_STDMETHOD(instances, Next, 1, &instance, &found);
 		if (hr != S_OK) break;
 
 		BSTR bstr_inst_path;
 		hr = CALL_STDMETHOD(instance, GetInstallationPath, &bstr_inst_path);
 		CALL_STDMETHOD_(instance, Release);
-		if (hr != S_OK)  continue;
+		if (hr != S_OK) continue;
 
-		wchar_t* tools_filename = concat2(bstr_inst_path, L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
+		wchar_t *tools_filename = concat2(bstr_inst_path,
+		                                  L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
 		SysFreeString(bstr_inst_path);
 
-		FILE* f;
+		FILE *f;
 		errno_t open_result = _wfopen_s(&f, tools_filename, L"rt");
 		free(tools_filename);
 		if (open_result != 0) continue;
 		if (!f) continue;
 
 		LARGE_INTEGER tools_file_size;
-		HANDLE file_handle = (HANDLE)_get_osfhandle(_fileno(f));
+		HANDLE file_handle = (HANDLE) _get_osfhandle(_fileno(f));
 		if (!GetFileSizeEx(file_handle, &tools_file_size))
 		{
 			fclose(f);
 			continue;
 		}
 
-	size_t version_length = (size_t)(tools_file_size.QuadPart + 1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
-	wchar_t* version = (wchar_t*)cmalloc(version_length * 2);
+		size_t version_length = (size_t) (tools_file_size.QuadPart +
+		                                  1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
+		wchar_t *version = (wchar_t *) cmalloc(version_length * 2);
 
-	wchar_t* read_result = fgetws(version, version_length, f);
-	fclose(f);
-	if (!read_result) continue;
+		wchar_t *read_result = fgetws(version, version_length, f);
+		fclose(f);
+		if (!read_result) continue;
 
-	wchar_t* version_tail = wcschr(version, '\n');
-	if (version_tail)  *version_tail = 0;  // Stomp the data, because nobody cares about it.
+		wchar_t *version_tail = wcschr(version, '\n');
+		if (version_tail) *version_tail = 0;  // Stomp the data, because nobody cares about it.
 
-	wchar_t* library_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x64");
-	wchar_t* library_file = concat2(library_path, L"\\vcruntime.lib");  // @Speed: Could have library_path point to this string, with a smaller count, to save on memory flailing!
+		wchar_t *library_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x64");
+		wchar_t *library_file = concat2(library_path,
+		                                L"\\vcruntime.lib");  // @Speed: Could have library_path point to this string, with a smaller count, to save on memory flailing!
 
-	if (os_file_exists(library_file)) {
-	  wchar_t* link_exe_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\bin\\Hostx64\\x64");
-	  free(version);
+		if (os_file_exists(library_file))
+		{
+			free(version);
 
-	  result->vs_exe_path = link_exe_path;
-	  result->vs_library_path = library_path;
-	  result->is_vs_2017 = true;
-	  found_visual_studio_2017 = true;
-	  break;
+			result->vs_library_path = library_path;
+			found_visual_studio_2017 = true;
+			break;
+		}
+
+		free(version);
+
+		/*
+		   Ryan Saunderson said:
+		   "Clang uses the 'SetupInstance->GetInstallationVersion' / ISetupHelper->ParseVersion to find the newest version
+		   and then reads the tools file to define the tools path - which is definitely better than what i did."
+
+		   So... @Incomplete: Should probably pick the newest version...
+		*/
 	}
 
-	free(version);
-
-	/*
-	   Ryan Saunderson said:
-	   "Clang uses the 'SetupInstance->GetInstallationVersion' / ISetupHelper->ParseVersion to find the newest version
-	   and then reads the tools file to define the tools path - which is definitely better than what i did."
-
-	   So... @Incomplete: Should probably pick the newest version...
-	*/
-  }
-
-  CALL_STDMETHOD_(instances, Release);
-  return found_visual_studio_2017;
+	CALL_STDMETHOD_(instances, Release);
+	return found_visual_studio_2017;
 }
 
-void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result* result) {
-  // The name of this procedure is kind of cryptic. Its purpose is
-  // to fight through Microsoft craziness. The things that the fine
-  // Visual Studio team want you to do, JUST TO FIND A SINGLE FOLDER
-  // THAT EVERYONE NEEDS TO FIND, are ridiculous garbage.
+void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *result)
+{
+	// The name of this procedure is kind of cryptic. Its purpose is
+	// to fight through Microsoft craziness. The things that the fine
+	// Visual Studio team want you to do, JUST TO FIND A SINGLE FOLDER
+	// THAT EVERYONE NEEDS TO FIND, are ridiculous garbage.
 
-  // For earlier versions of Visual Studio, you'd find this information in the registry,
-  // similarly to the Windows Kits above. But no, now it's the future, so to ask the
-  // question "Where is the Visual Studio folder?" you have to do a bunch of COM object
-  // instantiation, enumeration, and querying. (For extra bonus points, try doing this in
-  // a new, underdeveloped programming language where you don't have COM routines up
-  // and running yet. So fun.)
-  //
-  // If all this COM object instantiation, enumeration, and querying doesn't give us
-  // a useful result, we drop back to the registry-checking method.
+	// For earlier versions of Visual Studio, you'd find this information in the registry,
+	// similarly to the Windows Kits above. But no, now it's the future, so to ask the
+	// question "Where is the Visual Studio folder?" you have to do a bunch of COM object
+	// instantiation, enumeration, and querying. (For extra bonus points, try doing this in
+	// a new, underdeveloped programming language where you don't have COM routines up
+	// and running yet. So fun.)
+	//
+	// If all this COM object instantiation, enumeration, and querying doesn't give us
+	// a useful result, we drop back to the registry-checking method.
 
-  bool found_visual_studio_2017 = find_visual_studio_2017_by_fighting_through_microsoft_craziness(result);
-  if (found_visual_studio_2017)  return;
+	bool found_visual_studio_2017 = find_visual_studio_2017_by_fighting_through_microsoft_craziness(result);
+	if (found_visual_studio_2017) return;
 
 
-  // If we get here, we didn't find Visual Studio 2017. Try earlier versions.
+	// If we get here, we didn't find Visual Studio 2017. Try earlier versions.
 
-  HKEY vs7_key;
-  HRESULT rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", 0, KEY_QUERY_VALUE | KEY_WOW64_32KEY, &vs7_key);
-  if (rc != S_OK)  return;
+	HKEY vs7_key;
+	HRESULT rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", 0,
+	                           KEY_QUERY_VALUE | KEY_WOW64_32KEY, &vs7_key);
+	if (rc != S_OK) return;
 
-  // Hardcoded search for 4 prior Visual Studio versions. Is there something better to do here?
-  wchar_t* versions[] = { L"14.0", L"12.0", L"11.0", L"10.0" };
-  const int NUM_VERSIONS = sizeof(versions) / sizeof(versions[0]);
+	// Hardcoded search for 4 prior Visual Studio versions. Is there something better to do here?
+	wchar_t *versions[] = {L"14.0", L"12.0", L"11.0", L"10.0"};
+	const int NUM_VERSIONS = sizeof(versions) / sizeof(versions[0]);
 
-  for (int i = 0; i < NUM_VERSIONS; i++) {
-	wchar_t* v = versions[i];
+	for (int i = 0; i < NUM_VERSIONS; i++)
+	{
+		wchar_t *v = versions[i];
 
-	DWORD dw_type;
-	DWORD cb_data;
+		DWORD dw_type;
+		DWORD cb_data;
 
-	LSTATUS rc = RegQueryValueExW(vs7_key, v, NULL, &dw_type, NULL, &cb_data);
-	if ((rc == ERROR_FILE_NOT_FOUND) || (dw_type != REG_SZ)) {
-	  continue;
+		LSTATUS rc = RegQueryValueExW(vs7_key, v, NULL, &dw_type, NULL, &cb_data);
+		if ((rc == ERROR_FILE_NOT_FOUND) || (dw_type != REG_SZ))
+		{
+			continue;
+		}
+
+		wchar_t *buffer = (wchar_t *) cmalloc(cb_data);
+		if (!buffer) return;
+
+		rc = RegQueryValueExW(vs7_key, v, NULL, NULL, (LPBYTE) buffer, &cb_data);
+		if (rc != 0) continue;
+
+		// @Robustness: Do the zero-termination thing suggested in the RegQueryValue docs?
+
+		wchar_t *lib_path = concat2(buffer, L"VC\\Lib\\amd64");
+
+		// Check to see whether a vcruntime.lib actually exists here.
+		wchar_t *vcruntime_filename = concat2(lib_path, L"\\vcruntime.lib");
+		bool vcruntime_exists = os_file_exists(vcruntime_filename);
+		free(vcruntime_filename);
+
+		if (vcruntime_exists)
+		{
+			result->vs_library_path = lib_path;
+
+			free(buffer);
+			RegCloseKey(vs7_key);
+			return;
+		}
+
+		free(lib_path);
+		free(buffer);
 	}
 
-	wchar_t* buffer = (wchar_t*)cmalloc(cb_data);
-	if (!buffer)  return;
+	RegCloseKey(vs7_key);
 
-	rc = RegQueryValueExW(vs7_key, v, NULL, NULL, (LPBYTE)buffer, &cb_data);
-	if (rc != 0)  continue;
-
-	// @Robustness: Do the zero-termination thing suggested in the RegQueryValue docs?
-
-	wchar_t* lib_path = concat2(buffer, L"VC\\Lib\\amd64");
-
-	// Check to see whether a vcruntime.lib actually exists here.
-	wchar_t* vcruntime_filename = concat2(lib_path, L"\\vcruntime.lib");
-	bool vcruntime_exists = os_file_exists(vcruntime_filename);
-	free(vcruntime_filename);
-
-	if (vcruntime_exists) {
-	  result->vs_exe_path = concat2(buffer, L"VC\\bin\\amd64");
-	  result->vs_library_path = lib_path;
-
-	  free(buffer);
-	  RegCloseKey(vs7_key);
-	  return;
-	}
-
-	free(lib_path);
-	free(buffer);
-  }
-
-  RegCloseKey(vs7_key);
-
-  // If we get here, we failed to find anything.
+	// If we get here, we failed to find anything.
 }
 
 Find_Result find_visual_studio_and_windows_sdk()
 {
-	Find_Result result = { 0 };
+	Find_Result result = {0};
 
 	find_windows_kit_root(&result);
 
@@ -546,4 +548,4 @@ Find_Result find_visual_studio_and_windows_sdk()
 	return result;
 }
 
-#endif //defined(_MSC_VER)
+#endif
