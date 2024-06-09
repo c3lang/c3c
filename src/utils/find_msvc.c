@@ -181,7 +181,6 @@ bool find_windows_kit_root(Find_Result* result)
 	// to that place, first checking preferntially for a Windows 10 kit,
 	// then, if that's not found, a Windows 8 kit.
 
-	puts("Grab key");
 	HKEY main_key;
 	LSTATUS rc = RegOpenKeyExW(HKEY_LOCAL_MACHINE, L"SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
 		0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
@@ -189,16 +188,14 @@ bool find_windows_kit_root(Find_Result* result)
 
 	// Look for a Windows 10 entry.
 
-	puts("Get win10 entry");
 	DWORD required_length;
 	rc = RegQueryValueExW(main_key, L"KitsRoot10", NULL, NULL, NULL, &required_length);
 	if (rc != S_OK) return false;
 
 	DWORD length = required_length + 1;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
-	uint16_t* value = (uint16_t*)cmalloc(length * 2);
+	uint16_t *value = (uint16_t *)cmalloc(length * 2);
 	if (!value) return false;
 
-	puts("Get val");
 	rc = RegQueryValueExW(main_key, L"KitsRoot10", NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
 	if (rc != S_OK) return false;
 	value[required_length / 2] = 0;
@@ -208,32 +205,47 @@ bool find_windows_kit_root(Find_Result* result)
 	printf("Now: %s\n", root);
 	scratch_buffer_clear();
 	scratch_buffer_append(root);
-	scratch_buffer_append("Lib");
+	scratch_buffer_append("Lib\\*");
 
-	error_exit("Ooops");
+	printf("Grabbing %s\n", scratch_buffer_to_string());
+	puts("Find first");
+	WIN32_FIND_DATAW find_data;
+	uint16_t *wildcard_name = win_utf8to16(scratch_buffer_to_string());
+	HANDLE handle = FindFirstFileW(wildcard_name, &find_data);
+	free(wildcard_name);
 
-	DEBUG_LOG("Grabbing %s", scratch_buffer_to_string());
-	struct _wfinddata_t file_data;
-	intptr_t file_handle;
-	if ((file_handle = _wfindfirst(win_utf8to16(scratch_buffer_to_string()), &file_data)) == -1L) return false;
-	long best = 0;
-	scratch_buffer_clear();
+	if (handle == INVALID_HANDLE_VALUE) return false;
+	char *best_file = NULL;
+	long long best = 0;
 	do
 	{
-		char *name = win_utf16to8(file_data.name);
-		int part1 = atoi(strtok(name, "."));
-		int part2 = atoi(strtok(NULL, "."));
-		int part3 = atoi(strtok(NULL, "."));
-		int part4 = atoi(strtok(NULL, "."));
-		if (!part2 && !part3 && !part4) continue;
-		long long ver = part1 * 1000000000000LL
-				   + part2 * 100000000LL
-				   + part3 * 10000LL
-				   + part4;
-		printf("Found ver %lld\n", ver);
-		if (best < ver) best = ver;
-	} while (_wfindnext(file_handle, &file_data) == 0);
-	_findclose(file_handle);
+
+		if (!(find_data.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY)) continue;
+		int i0, i1, i2, i3;
+		int success = swscanf_s(find_data.cFileName, L"%d.%d.%d.%d", &i0, &i1, &i2, &i3);
+		if (success < 4) continue;
+
+		long long ver = i0 * 0x1000000000000LL
+		                + i1 * 0x100000000LL
+		                + i2 * 0x10000LL
+		                + i3;
+		printf("%lld\n", ver);
+		if (ver > best)
+		{
+			best = ver;
+			if (best_file) free(best_file);
+			best_file = win_utf16to8(find_data.cFileName);
+			printf("Best now %s\n", best_file);
+		}
+	}
+	while (FindNextFileW(handle, &find_data));
+
+	FindClose(handle);
+	if (!best_file) return false;
+
+	printf("Best was %s\n", best_file);
+	error_exit("Ok bye");
+
 
 	if (root) {
 		wchar_t* windows10_lib = concat2(value, L"Lib");
