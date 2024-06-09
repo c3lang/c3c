@@ -1,6 +1,6 @@
 #include "lib.h"
 
-#if PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS || 1
 
 #include <windows.h>
 #include <string.h>
@@ -22,7 +22,7 @@ typedef struct
 	wchar_t *windows_sdk_root;
 	wchar_t *windows_sdk_um_library_path;
 	wchar_t *windows_sdk_ucrt_library_path;
-	wchar_t *vs_library_path;
+	char *vs_library_path;
 } Find_Result;
 
 
@@ -39,7 +39,7 @@ WindowsSDK get_windows_link_paths()
 	// This wouldn't be a problem if windows used UTF-8 like the rest of the world >:(
 	out.windows_sdk_um_library_path = win_utf16to8(paths.windows_sdk_um_library_path);
 	out.windows_sdk_ucrt_library_path = win_utf16to8(paths.windows_sdk_ucrt_library_path);
-	out.vs_library_path = win_utf16to8(paths.vs_library_path);
+	out.vs_library_path = paths.vs_library_path;
 	free_resources(&paths);
 	return out;
 }
@@ -221,30 +221,6 @@ bool visit_files_w(wchar_t *dir_name, Version_Data *data, Visit_Proc_W proc)
 	return true;
 }
 
-wchar_t* find_windows_kit_root_with_key(HKEY key, wchar_t* version)
-{
-	// Given a key to an already opened registry entry,
-	// get the value stored under the 'version' subkey.
-	// If that's not the right terminology, hey, I never do registry stuff.
-
-	DWORD required_length;
-	LSTATUS rc = RegQueryValueExW(key, version, NULL, NULL, NULL, &required_length);
-	if (rc != 0)  return NULL;
-
-	DWORD length = required_length + 2;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
-	wchar_t* value = (wchar_t*)cmalloc(length);
-	if (!value) return NULL;
-
-	rc = RegQueryValueExW(key, version, NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
-	if (rc != 0)  return NULL;
-
-	// The documentation says that if the string for some reason was not stored
-	// with zero-termination, we need to manually terminate it. Sigh!!
-
-	value[required_length / 2] = 0;
-
-	return value;
-}
 
 void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data)
 {
@@ -279,34 +255,8 @@ void win10_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data)
 	}
 }
 
-void win8_best(wchar_t* short_name, wchar_t* full_name, Version_Data* data)
-{
-	// Find the Windows 8 subdirectory with the highest version number.
 
-	int i0, i1;
-	int success = swscanf_s(short_name, L"winv%d.%d", &i0, &i1);
-	if (success < 2) return;
-
-	if (i0 < data->best_version[0]) return;
-
-	if (i0 == data->best_version[0])
-	{
-		if (i1 < data->best_version[1]) return;
-	}
-
-	// we have to copy_string and free here because visit_files free's the full_name string
-	// after we execute this function, so Win*_Data would contain an invalid pointer.
-	if (data->best_name) free(data->best_name);
-	data->best_name = _wcsdup(full_name);
-
-	if (data->best_name)
-	{
-		data->best_version[0] = i0;
-		data->best_version[1] = i1;
-	}
-}
-
-void find_windows_kit_root(Find_Result* result)
+bool find_windows_kit_root(Find_Result* result)
 {
 	// Information about the Windows 10 and Windows 8 development kits
 	// is stored in the same place in the registry. We open a key
@@ -316,14 +266,55 @@ void find_windows_kit_root(Find_Result* result)
 	HKEY main_key;
 	LSTATUS rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows Kits\\Installed Roots",
 		0, KEY_QUERY_VALUE | KEY_WOW64_32KEY | KEY_ENUMERATE_SUB_KEYS, &main_key);
-	if (rc != S_OK) return;
+	if (rc != S_OK) return false;
 
 	// Look for a Windows 10 entry.
-	wchar_t* windows10_root = find_windows_kit_root_with_key(main_key, L"KitsRoot10");
 
-	if (windows10_root) {
-		wchar_t* windows10_lib = concat2(windows10_root, L"Lib");
-		free(windows10_root);
+	DWORD required_length;
+	rc = RegQueryValueExW(main_key, L"KitsRoot10", NULL, NULL, NULL, &required_length);
+	if (rc != S_OK) return false;
+
+	DWORD length = required_length + 1;  // The +2 is for the maybe optional zero later on. Probably we are over-allocating.
+	uint16_t* value = (uint16_t*)cmalloc(length * 2);
+	if (!value) return false;
+
+	rc = RegQueryValueExW(main_key, L"KitsRoot10", NULL, NULL, (LPBYTE)value, &required_length);  // We know that version is zero-terminated...
+	if (rc != S_OK) return false;
+
+	value[required_length / 2] = 0;
+
+	char *root = win_utf16to8(value);
+
+	scratch_buffer_clear();
+	scratch_buffer_append(root);
+	scratch_buffer_append("Lib");
+
+	DEBUG_LOG("Grabbing %s", scratch_buffer_to_string());
+	struct _wfinddata_t file_data;
+	intptr_t file_handle;
+	if ((file_handle = _wfindfirst(win_utf8to16(scratch_buffer_to_string()), &file_data)) == -1L) return false;
+	long best = 0;
+	scratch_buffer_clear();
+	do
+	{
+		char *name = win_utf16to8(file_data.name);
+		int part1 = atoi(strtok(name, "."));
+		int part2 = atoi(strtok(NULL, "."));
+		int part3 = atoi(strtok(NULL, "."));
+		int part4 = atoi(strtok(NULL, "."));
+		if (!part2 && !part3 && !part4) continue;
+		long long ver = part1 * 1000000000000LL
+				   + part2 * 100000000LL
+				   + part3 * 10000LL
+				   + part4;
+		printf("Found ver %lld\n", ver);
+		if (best < ver) best = ver;
+	} while (_wfindnext(file_handle, &file_data) == 0);
+	_findclose(file_handle);
+
+	if (root) {
+		wchar_t* windows10_lib = concat2(value, L"Lib");
+		free(root);
 
 		Version_Data data = { 0 };
 		visit_files_w(windows10_lib, &data, win10_best);
@@ -333,209 +324,56 @@ void find_windows_kit_root(Find_Result* result)
 		  result->windows_sdk_version = 10;
 		  result->windows_sdk_root = data.best_name;
 		  RegCloseKey(main_key);
-		  return;
+		  return true;
 		}
 	}
-
-	// Look for a Windows 8 entry.
-	wchar_t* windows8_root = find_windows_kit_root_with_key(main_key, L"KitsRoot81");
-
-	if (windows8_root)
-	{
-		wchar_t* windows8_lib = concat2(windows8_root, L"Lib");
-		free(windows8_root);
-
-		Version_Data data = { 0 };
-		visit_files_w(windows8_lib, &data, win8_best);
-		free(windows8_lib);
-
-		if (data.best_name)
-		{
-			result->windows_sdk_version = 8;
-			result->windows_sdk_root = data.best_name;
-			RegCloseKey(main_key);
-			return;
-		}
-	}
-
-	// If we get here, we failed to find anything.
-	RegCloseKey(main_key);
+	return false;
 }
 
-bool find_visual_studio_2017_by_fighting_through_microsoft_craziness(Find_Result* result)
+bool find_visual_studio(Find_Result* result)
 {
-	HRESULT rc = CoInitialize(NULL);
-	// "Subsequent valid calls return false." So ignore false.
-	// if rc != S_OK  return false;
+	// Let's locate vswhere.exe
+	char *path = win_utf16to8(_wgetenv(L"ProgramFiles(x86)"));
+	scratch_buffer_clear();
+	DEBUG_LOG("Program files path: %s", path);
+	scratch_buffer_printf("\"%s\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -prerelease -property installationPath", path);
+	const char *install_path = NULL;
 
-	GUID my_uid                   = { 0x42843719, 0xDB4C, 0x46C2, {0x8E, 0x7C, 0x64, 0xF1, 0x81, 0x6E, 0xFD, 0x5B} };
-	GUID CLSID_SetupConfiguration = { 0x177F0C4A, 0x1CD3, 0x4DE7, {0xA3, 0x2C, 0x71, 0xDB, 0xBB, 0x9F, 0xA3, 0x6D} };
-
-	ISetupConfiguration* config = NULL;
-
-	HRESULT hr = CoCreateInstance(&CLSID_SetupConfiguration, NULL, CLSCTX_INPROC_SERVER, &my_uid, (void **) &config);
-
-	if (hr != 0) return false;
-
-	IEnumSetupInstances * instances = NULL;
-	hr = CALL_STDMETHOD(config, EnumInstances, &instances);
-	CALL_STDMETHOD_(config, Release);
-	if (hr != 0) return false;
-	if (!instances) return false;
-
-	bool found_visual_studio_2017 = false;
-	while (1)
+	// Call vswhere.exe
+	if (!execute_cmd_failable(scratch_buffer_to_string(), &install_path))
 	{
-		ULONG found = 0;
-		ISetupInstance * instance = NULL;
-		HRESULT hr = CALL_STDMETHOD(instances, Next, 1, &instance, &found);
-		if (hr != S_OK) break;
-
-		BSTR bstr_inst_path;
-		hr = CALL_STDMETHOD(instance, GetInstallationPath, &bstr_inst_path);
-		CALL_STDMETHOD_(instance, Release);
-		if (hr != S_OK) continue;
-
-		wchar_t *tools_filename = concat2(bstr_inst_path,
-		                                  L"\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt");
-		SysFreeString(bstr_inst_path);
-
-		FILE *f;
-		errno_t open_result = _wfopen_s(&f, tools_filename, L"rt");
-		free(tools_filename);
-		if (open_result != 0) continue;
-		if (!f) continue;
-
-		LARGE_INTEGER tools_file_size;
-		HANDLE file_handle = (HANDLE) _get_osfhandle(_fileno(f));
-		if (!GetFileSizeEx(file_handle, &tools_file_size))
-		{
-			fclose(f);
-			continue;
-		}
-
-		size_t version_length = (size_t) (tools_file_size.QuadPart +
-		                                  1);  // Warning: This multiplication by 2 presumes there is no variable-length encoding in the wchars (wacky characters in the file could betray this expectation).
-		wchar_t *version = (wchar_t *) cmalloc(version_length * 2);
-
-		wchar_t *read_result = fgetws(version, version_length, f);
-		fclose(f);
-		if (!read_result) continue;
-
-		wchar_t *version_tail = wcschr(version, '\n');
-		if (version_tail) *version_tail = 0;  // Stomp the data, because nobody cares about it.
-
-		wchar_t *library_path = concat4(bstr_inst_path, L"\\VC\\Tools\\MSVC\\", version, L"\\lib\\x64");
-		wchar_t *library_file = concat2(library_path,
-		                                L"\\vcruntime.lib");  // @Speed: Could have library_path point to this string, with a smaller count, to save on memory flailing!
-
-		if (os_file_exists(library_file))
-		{
-			free(version);
-
-			result->vs_library_path = library_path;
-			found_visual_studio_2017 = true;
-			break;
-		}
-
-		free(version);
-
-		/*
-		   Ryan Saunderson said:
-		   "Clang uses the 'SetupInstance->GetInstallationVersion' / ISetupHelper->ParseVersion to find the newest version
-		   and then reads the tools file to define the tools path - which is definitely better than what i did."
-
-		   So... @Incomplete: Should probably pick the newest version...
-		*/
+		error_exit("Failed to find vswhere.exe to detect MSVC.");
 	}
 
-	CALL_STDMETHOD_(instances, Release);
-	return found_visual_studio_2017;
-}
-
-void find_visual_studio_by_fighting_through_microsoft_craziness(Find_Result *result)
-{
-	// The name of this procedure is kind of cryptic. Its purpose is
-	// to fight through Microsoft craziness. The things that the fine
-	// Visual Studio team want you to do, JUST TO FIND A SINGLE FOLDER
-	// THAT EVERYONE NEEDS TO FIND, are ridiculous garbage.
-
-	// For earlier versions of Visual Studio, you'd find this information in the registry,
-	// similarly to the Windows Kits above. But no, now it's the future, so to ask the
-	// question "Where is the Visual Studio folder?" you have to do a bunch of COM object
-	// instantiation, enumeration, and querying. (For extra bonus points, try doing this in
-	// a new, underdeveloped programming language where you don't have COM routines up
-	// and running yet. So fun.)
-	//
-	// If all this COM object instantiation, enumeration, and querying doesn't give us
-	// a useful result, we drop back to the registry-checking method.
-
-	bool found_visual_studio_2017 = find_visual_studio_2017_by_fighting_through_microsoft_craziness(result);
-	if (found_visual_studio_2017) return;
-
-
-	// If we get here, we didn't find Visual Studio 2017. Try earlier versions.
-
-	HKEY vs7_key;
-	HRESULT rc = RegOpenKeyExA(HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\VisualStudio\\SxS\\VS7", 0,
-	                           KEY_QUERY_VALUE | KEY_WOW64_32KEY, &vs7_key);
-	if (rc != S_OK) return;
-
-	// Hardcoded search for 4 prior Visual Studio versions. Is there something better to do here?
-	wchar_t *versions[] = {L"14.0", L"12.0", L"11.0", L"10.0"};
-	const int NUM_VERSIONS = sizeof(versions) / sizeof(versions[0]);
-
-	for (int i = 0; i < NUM_VERSIONS; i++)
+	// Find and read the version file.
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\VC\\Auxiliary\\Build\\Microsoft.VCToolsVersion.default.txt", install_path);
+	const char *version_file = scratch_buffer_to_string();
+	DEBUG_LOG("MSVC version file: %s", version_file);
+	size_t size;
+	char *version = file_read_all(scratch_buffer_to_string(), &size);
+	if (version) version = str_trim(version);
+	if (!version || strlen(version) == 0)
 	{
-		wchar_t *v = versions[i];
-
-		DWORD dw_type;
-		DWORD cb_data;
-
-		LSTATUS rc = RegQueryValueExW(vs7_key, v, NULL, &dw_type, NULL, &cb_data);
-		if ((rc == ERROR_FILE_NOT_FOUND) || (dw_type != REG_SZ))
-		{
-			continue;
-		}
-
-		wchar_t *buffer = (wchar_t *) cmalloc(cb_data);
-		if (!buffer) return;
-
-		rc = RegQueryValueExW(vs7_key, v, NULL, NULL, (LPBYTE) buffer, &cb_data);
-		if (rc != 0) continue;
-
-		// @Robustness: Do the zero-termination thing suggested in the RegQueryValue docs?
-
-		wchar_t *lib_path = concat2(buffer, L"VC\\Lib\\amd64");
-
-		// Check to see whether a vcruntime.lib actually exists here.
-		wchar_t *vcruntime_filename = concat2(lib_path, L"\\vcruntime.lib");
-		bool vcruntime_exists = os_file_exists(vcruntime_filename);
-		free(vcruntime_filename);
-
-		if (vcruntime_exists)
-		{
-			result->vs_library_path = lib_path;
-
-			free(buffer);
-			RegCloseKey(vs7_key);
-			return;
-		}
-
-		free(lib_path);
-		free(buffer);
+		error_exit("Failed to detect MSVC, could not read %s.", scratch_buffer_to_string());
 	}
 
-	RegCloseKey(vs7_key);
-
-	// If we get here, we failed to find anything.
+	// We have the version, so we're done with the path:
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s\\VC\\Tools\\MSVC\\%s\\lib\\x64", install_path, version);
+	result->vs_library_path = scratch_buffer_copy();
+	return true;
 }
+
 
 Find_Result find_visual_studio_and_windows_sdk()
 {
 	Find_Result result = {0};
 
-	find_windows_kit_root(&result);
+	if (!find_windows_kit_root(&result))
+	{
+		error_exit("Failed to find windows kit root.");
+	}
 
 	if (result.windows_sdk_root)
 	{
@@ -543,7 +381,7 @@ Find_Result find_visual_studio_and_windows_sdk()
 		result.windows_sdk_ucrt_library_path = concat2(result.windows_sdk_root, L"\\ucrt\\x64");
 	}
 
-	find_visual_studio_by_fighting_through_microsoft_craziness(&result);
+	find_visual_studio(&result);
 
 	return result;
 }
