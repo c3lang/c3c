@@ -17,7 +17,6 @@ static WindowsSDK *sdk = NULL;
 #if PLATFORM_WINDOWS
 
 WindowsSDK get_windows_link_paths(void);
-void free_windows_link_paths(WindowsSDK* obj);
 
 static WindowsSDK loaded;
 WindowsSDK *windows_get_sdk(void)
