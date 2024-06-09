@@ -2704,13 +2704,13 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 		VECEACH(params, j)
 		{
 			param = params[j];
-			if (param->name == param_name) goto NEXT;
+			if (param && param->name == param_name) goto NEXT;
 		}
 		VECEACH(extra_params, j)
 		{
 			assert(extra_params);
 			param = extra_params[j];
-			if (param->name == param_name) goto NEXT;
+			if (param && param->name == param_name) goto NEXT;
 		}
 		RETURN_SEMA_ERROR(&directive->contract_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
 	NEXT:;
