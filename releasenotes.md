@@ -32,7 +32,8 @@
 - Bug when assigning an optional from an optional.
 - Lambdas were not type checked thoroughly #1185. 
 - Fix problems using reflection on interface types #1203.
-- `@param` with unnamed macro varargs could crash the compiler.
+- `@param` with unnamed macro varargs could crash the compiler. 
+- Compiler crash using enum nameof from different module #1205.
 
 ### Stdlib changes
 - "init_new/init_temp" removed. 
