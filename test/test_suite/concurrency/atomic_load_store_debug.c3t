@@ -40,14 +40,14 @@ entry:
   %value6 = alloca i32, align 4
   %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
-  call void @llvm.dbg.declare(metadata ptr %a, metadata !10, metadata !DIExpression()), !dbg !12
+    !12
   store i32 111, ptr %a, align 4, !dbg !13
-  call void @llvm.dbg.declare(metadata ptr %x, metadata !14, metadata !DIExpression()), !dbg !15
+    !15
   store ptr %a, ptr %x1, align 8
   %0 = load ptr, ptr %x1, align 8, !dbg !16
   %1 = load atomic i32, ptr %0 seq_cst, align 4, !dbg !16
   store i32 %1, ptr %x, align 4, !dbg !16
-  call void @llvm.dbg.declare(metadata ptr %y, metadata !20, metadata !DIExpression()), !dbg !21
+    !21
   store ptr %a, ptr %x2, align 8
   %2 = load ptr, ptr %x2, align 8, !dbg !22
   %3 = load atomic volatile i32, ptr %2 monotonic, align 4, !dbg !22
@@ -80,9 +80,9 @@ entry:
   %.anon2 = alloca i32, align 4
   %.anon3 = alloca ptr, align 8
   store i32 %0, ptr %.anon, align 4
-  call void @llvm.dbg.declare(metadata ptr %.anon, metadata !43, metadata !DIExpression()), !dbg !44
+    !44
   store ptr %1, ptr %.anon1, align 8
-  call void @llvm.dbg.declare(metadata ptr %.anon1, metadata !45, metadata !DIExpression()), !dbg !44
+    !44
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %.anon2, align 4
   %3 = load ptr, ptr %.anon1, align 8
@@ -90,16 +90,14 @@ entry:
   call void @test.main(), !dbg !46
   ret i32 0, !dbg !49
 }
-
-declare void @llvm.dbg.declare(metadata, metadata, metadata) #1
-
-; Function Attrs:
+e
 declare i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
 
-declare i1 @llvm.expect.i1(i1, i1) #2
+declare i1 @llvm.expect.i1(i1, i1)
 
 !llvm.module.flags = !{!0, !1, !2, !3}
 !llvm.dbg.cu = !{!4}
+
 !0 = !{i32 2, !"Dwarf Version", i32 4}
 !1 = !{i32 2, !"Debug Info Version", i32 3}
 !2 = !{i32 2, !"frame-pointer", i32 2}

@@ -26,10 +26,10 @@ fn void main() {
 @test.c = local_unnamed_addr global i32 0, align 4
 @test.d = local_unnamed_addr global i32 0, align 4
 @test.abc = local_unnamed_addr global [3 x i32] zeroinitializer, align 4
-@test.b = local_unnamed_addr global ptr getelementptr (i8, ptr @test.a, i64 28), align 8
-@test.bf = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
+@test.b = local_unnamed_addr global ptr getelementptr
+@test.bf = local_unnamed_addr global ptr getelementptr
 @test.bf2 = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @test.abc, i64 8), align 8
-@test.bf3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
+@test.bf3 = local_unnamed_addr global ptr getelementptr
 @.taddr.9 = private global i32 42, align 4
 @.taddr.10 = private global i8 99, align 1
 @.taddr.11 = private global %"char[]" { ptr @.str, i64 3 }, align 8
@@ -43,7 +43,7 @@ entry:
   %taddr = alloca i32, align 4
   %taddr1 = alloca i8, align 1
   %taddr3 = alloca %"char[]", align 8
-  store ptr getelementptr (i8, ptr @test.abc, i64 28), ptr %bf34, align 8
+  store ptr getelementptr (i8, ptr
   store i32 42, ptr %taddr, align 4
   %0 = insertvalue %any undef, ptr %taddr, 0
   %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1

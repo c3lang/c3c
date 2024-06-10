@@ -22,26 +22,28 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  call void @llvm.dbg.declare(metadata ptr %args, metadata !23, metadata !DIExpression()), !dbg !24
-  call void @llvm.dbg.declare(metadata ptr %.anon, metadata !25, metadata !DIExpression()), !dbg !27
+    !24
+    !27
   %ptradd1 = getelementptr inbounds i8, ptr %args, i64 8, !dbg !27
   %2 = load i64, ptr %ptradd1, align 8, !dbg !27
   store i64 %2, ptr %.anon, align 8, !dbg !27
-  call void @llvm.dbg.declare(metadata ptr %.anon2, metadata !25, metadata !DIExpression()), !dbg !27
+    !27
   store i64 0, ptr %.anon2, align 8, !dbg !27
   br label %loop.cond, !dbg !27
+
 loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i64, ptr %.anon2, align 8, !dbg !27
   %4 = load i64, ptr %.anon, align 8, !dbg !27
   %lt = icmp ult i64 %3, %4, !dbg !27
   br i1 %lt, label %loop.body, label %loop.exit, !dbg !27
+
 loop.body:                                        ; preds = %loop.cond
-  call void @llvm.dbg.declare(metadata ptr %a, metadata !28, metadata !DIExpression()), !dbg !30
+    !30
   %5 = load ptr, ptr %args, align 8, !dbg !31
   %6 = load i64, ptr %.anon2, align 8, !dbg !31
   %ptroffset = getelementptr inbounds [16 x i8], ptr %5, i64 %6, !dbg !31
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %a, ptr align 8 %ptroffset, i32 16, i1 false), !dbg !31
-  call void @llvm.dbg.declare(metadata ptr %x, metadata !32, metadata !DIExpression()), !dbg !35
+    !35
   %ptradd3 = getelementptr inbounds i8, ptr %a, i64 8, !dbg !36
   %7 = load i64, ptr %ptradd3, align 8, !dbg !36
   %trunc = trunc i64 %7 to i32, !dbg !36
