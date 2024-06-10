@@ -497,7 +497,8 @@ static void sema_report_error_on_decl(SemaContext *context, Decl *found, NameRes
 	if (path_name)
 	{
 		sema_error_at(context, span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
-	} else
+	}
+	else
 	{
 		sema_error_at(context, span, "'%s' could not be found, did you spell it right?", symbol);
 	}

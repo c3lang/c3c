@@ -1068,19 +1068,20 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type 
 
 	assert(decl->decl_kind == DECL_VAR);
 	expr_replace(expr, copy_expr_single(decl->var.init_expr));
+	SemaContext *hash_context = decl->var.hash_var.context;
+	InliningSpan *old_span = hash_context->inlined_at;
+	hash_context->inlined_at = context->inlined_at;
+	bool success;
 	if (infer_type)
 	{
-		SemaContext *hash_context = decl->var.hash_var.context;
-		InliningSpan *old_span = hash_context->inlined_at;
-		hash_context->inlined_at = context->inlined_at;
-		bool success = sema_analyse_inferred_expr(decl->var.hash_var.context, infer_type, expr);
-		hash_context->inlined_at = old_span;
-		if (!success) return decl_poison(decl);
+		success = sema_analyse_inferred_expr(decl->var.hash_var.context, infer_type, expr);
 	}
 	else
 	{
-		if (!sema_analyse_expr_lvalue_fold_const(decl->var.hash_var.context, expr)) return decl_poison(decl);
+		success = sema_analyse_expr_lvalue_fold_const(decl->var.hash_var.context, expr);
 	}
+	hash_context->inlined_at = old_span;
+	if (!success) return decl_poison(decl);
 	return true;
 }
 
