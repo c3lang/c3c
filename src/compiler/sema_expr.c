@@ -8853,9 +8853,16 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 	switch (expr->expr_kind)
 	{
 		case EXPR_OTHER_CONTEXT:
+		{
+			InliningSpan *new_span = context->inlined_at;
 			context = expr->expr_other_context.context;
+			InliningSpan *old_span = context->inlined_at;
+			context->inlined_at = new_span;
 			expr_replace(expr, expr->expr_other_context.inner);
-			return sema_analyse_inferred_expr(context, infer_type, expr);
+			bool success = sema_analyse_inferred_expr(context, infer_type, expr);
+			context->inlined_at = old_span;
+			return success;
+		}
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_INITIALIZER_LIST:
 			if (!sema_expr_analyse_initializer_list(context, infer_type, expr)) return expr_poison(expr);
