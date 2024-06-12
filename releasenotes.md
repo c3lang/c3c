@@ -25,6 +25,12 @@
 - Introduce MSVC compatible SIMD ABI.
 - `$foreach` doesn't create an implicit syntactic scope.
 - Error of `@if` depends on `@if`
+- Support `defer (catch err)`
+- Added `print-input` command argument to print all files used for compilation
+- Allow recursive function definitions as long as they are pointers. #1182
+- Default CPU to native if less than AVX, otherwise use AVX.
+- Bounds checking on length for `foo[1:2]` slicing #1191.
+- Foreach uses non-wrapping add/dec.
 
 ### Fixes
 - Fixed issue in safe mode when converting enums.
@@ -34,30 +40,6 @@
 - Fix problems using reflection on interface types #1203.
 - `@param` with unnamed macro varargs could crash the compiler. 
 - Compiler crash using enum nameof from different module #1205.
-
-### Stdlib changes
-- "init_new/init_temp" removed. 
-- LinkedList API rewritten. 
-- List "pop" and "remove" function now return Optionals. 
-- RingBuffer API rewritten. Allocator interface changed. 
-- Deprecated Allocator, DString and mem functions removed. 
-- "identity" functions are now constants for Matrix and Complex numbers.
-- Removed 'append' from Object and List, replaced by 'push'.
-- `GenericList` renamed `AnyList`.
-- Proper handling of '.' and Win32 '//server' paths.
-- Path normalization - fix possible null terminator out of bounds.
-
-## 0.5.6 Change list
-
-### Changes / improvements
-- Support `defer (catch err)`
-- Added `print-input` command argument to print all files used for compilation
-- Allow recursive function definitions as long as they are pointers. #1182
-- Default CPU to native if less than AVX, otherwise use AVX.
-- Bounds checking on length for `foo[1:2]` slicing #1191.
-- Foreach uses non-wrapping add/dec.
-
-### Fixes
 - Incorrect length passed to scratch buffer printf.
 - Casting to a bitstruct would be allowed even if the type was the wrong size.
 - Generic modules parameterized with constants would sometimes get the wrong parameterized module name causing conversion errors #1192.
@@ -71,6 +53,16 @@
 - Compiler crash on designated initializer for structs with bitstruct.
 
 ### Stdlib changes
+- "init_new/init_temp" removed. 
+- LinkedList API rewritten. 
+- List "pop" and "remove" function now return Optionals. 
+- RingBuffer API rewritten. Allocator interface changed. 
+- Deprecated Allocator, DString and mem functions removed. 
+- "identity" functions are now constants for Matrix and Complex numbers.
+- Removed 'append' from Object and List, replaced by 'push'.
+- `GenericList` renamed `AnyList`.
+- Proper handling of '.' and Win32 '//server' paths.
+- Path normalization - fix possible null terminator out of bounds.
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
 - Fix mutex and wait signatures for Win32.
 
