@@ -428,13 +428,12 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 	return false;
 }
 
-
 /**
  * @param [&inout] self "The list to remove elements from"
  * @param value "The value to remove"
  * @return "true if the value was found"
  **/
-fn bool List.remove_last_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.remove_last_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	return @ok(self.remove_at(self.rindex_of(value)));
 }
@@ -444,7 +443,7 @@ fn bool List.remove_last_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
  * @param value "The value to remove"
  * @return "true if the value was found"
  **/
-fn bool List.remove_first_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	return @ok(self.remove_at(self.index_of(value)));
 }
@@ -454,7 +453,7 @@ fn bool List.remove_first_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
  * @param value "The value to remove"
  * @return "the number of deleted elements."
  **/
-fn usz List.remove_all_matches(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
+fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	usz size = self.size;
 	for (usz i = size; i > 0; i--)
@@ -469,10 +468,12 @@ fn usz List.remove_all_matches(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 	return size - self.size;
 }
 
+
+
 fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 {
 	if (!other_list.size) return;
-	foreach (v : other_list) self.remove_all_matches(v);
+	foreach (v : other_list) self.remove_item(v);
 }
 
 /**
@@ -499,4 +500,37 @@ fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 		self.size--;
 	}
 	return size - self.size;
+}
+
+// --> Deprecated
+
+/**
+ * @param [&inout] self "The list to remove elements from"
+ * @param value "The value to remove"
+ * @return "true if the value was found"
+ **/
+fn bool List.remove_last_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
+{
+	return self.remove_last_item(value) @inline;
+}
+
+/**
+ * @param [&inout] self "The list to remove elements from"
+ * @param value "The value to remove"
+ * @return "true if the value was found"
+ **/
+fn bool List.remove_first_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
+{
+	return self.remove_first_item(value) @inline;
+}
+
+
+/**
+ * @param [&inout] self "The list to remove elements from"
+ * @param value "The value to remove"
+ * @return "the number of deleted elements."
+ **/
+fn usz List.remove_all_matches(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
+{
+	return self.remove_item(value) @inline;
 }

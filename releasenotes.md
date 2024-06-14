@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.6.1 Change list
+
+### Changes / improvements
+
+### Fixes
+- Error with unsigned compare in `@ensure` when early returning 0 #1207.
+
+### Stdlib changes
+- Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
+
+
 ## 0.6.0 Change list
 
 ### Changes / improvements

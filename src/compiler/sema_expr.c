@@ -5896,7 +5896,7 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right,
                                                            Type *lhs_type, Type *rhs_type)
 {
-	if (context->active_scope.flags & SCOPE_MACRO) return true;
+	if (context->active_scope.flags & (SCOPE_MACRO | SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) return true;
 	if (!expr_is_const(left) && !expr_is_const(right)) return true;
 	if (!type_is_integer(left->type)) return true;
 	if (expr_is_const(left) && type_is_unsigned(rhs_type))
