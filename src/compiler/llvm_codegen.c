@@ -135,10 +135,27 @@ LLVMValueRef llvm_get_selector(GenContext *c, const char *name)
 }
 
 
-void llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, const char *name)
+static LLVMValueRef llvm_emit_macho_xtor_use(GenContext *c, LLVMValueRef global, const char *name)
+{
+	LLVMValueRef initializer = LLVMAddFunction(c->module, name, c->xtor_func_type);
+	LLVMSetLinkage(initializer, LLVMInternalLinkage);
+	LLVMSetAlignment(initializer, 8);
+	LLVMValueRef vals_fn[3] = { llvm_const_int(c, type_int, 1), initializer, llvm_get_zero(c, type_voidptr) };
+	LLVMValueRef result = LLVMConstNamedStruct(c->xtor_entry_type, vals_fn, 3);
+
+	LLVMBasicBlockRef last_block;
+	LLVMBuilderRef builder = llvm_create_function_entry(c, initializer, &last_block);
+	LLVMValueRef load = LLVMBuildLoad2(builder, LLVMTypeOf(LLVMGetInitializer(global)), global, ".retain_global");
+	LLVMSetVolatile(load, true);
+	LLVMBuildRetVoid(builder);
+	LLVMDisposeBuilder(builder);
+	return result;
+}
+
+static LLVMValueRef llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, const char *name, const char *retain_name)
 {
 	unsigned len = vec_size(list);
-	if (!len) return;
+	if (!len) return NULL;
 	scratch_buffer_clear();
 	scratch_buffer_append(".list$");
 	scratch_buffer_append(name);
@@ -151,31 +168,46 @@ void llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, const char *name)
 	LLVMSetInitializer(global, array);
 	LLVMSetSection(global, scratch_buffer_to_string());
 	LLVMSetAlignment(global, llvm_abi_alignment(c, c->xtor_entry_type));
+
+	return llvm_emit_macho_xtor_use(c, global, retain_name);
 }
 
 void llvm_emit_constructors_and_destructors(GenContext *c)
 {
 	if (platform_target.object_format == OBJ_FORMAT_MACHO)
 	{
-		llvm_emit_macho_xtor(c, c->constructors, "c3ctor");
-		llvm_emit_macho_xtor(c, c->destructors, "c3dtor");
+
+		LLVMValueRef c3_dynamic = LLVMGetNamedGlobal(c->module, "$c3_dynamic");
+		LLVMValueRef dtor_global = llvm_emit_macho_xtor(c, c->constructors, "c3ctor", ".c3_ctor_retain");
+		LLVMValueRef ctor_global = llvm_emit_macho_xtor(c, c->destructors, "c3dtor", ".c3_dtor_retain");
 
 		LLVMValueRef runtime_start = LLVMGetNamedFunction(c->module, "__c3_runtime_startup");
-		if (!runtime_start || !LLVMGetFirstBasicBlock(runtime_start)) return;
-		LLVMValueRef vals[3] = { llvm_const_int(c, type_int, 65535), runtime_start, llvm_get_zero(c, type_voidptr) };
-		LLVMValueRef entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
-		LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
-		LLVMValueRef global_ctor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_ctors");
-		LLVMSetLinkage(global_ctor, LLVMAppendingLinkage);
-		LLVMSetInitializer(global_ctor, array);
+		int len = 0;
+		LLVMValueRef ctors[5];
+		if (ctor_global) ctors[len++] = ctor_global;
+		if (dtor_global) ctors[len++] = dtor_global;
+		if (c3_dynamic) ctors[len++] = llvm_emit_macho_xtor_use(c, c3_dynamic, ".c3_dynamic_retain");
+		if (!runtime_start || !LLVMGetFirstBasicBlock(runtime_start))
+		{
+			goto EMIT_CTORS;
+		}
 		LLVMValueRef runtime_end = LLVMGetNamedFunction(c->module, "__c3_runtime_finalize");
 		if (!runtime_end || !LLVMGetFirstBasicBlock(runtime_end)) error_exit("Failed to find __c3_runtime_finalize in the same module as __c3_runtime_startup.");
-		vals[1] = runtime_end;
-		entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
-		array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
+		LLVMValueRef vals[3] = { llvm_const_int(c, type_int, 65535), runtime_end, llvm_get_zero(c, type_voidptr) };
+		LLVMValueRef entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
+		LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
 		LLVMValueRef global_dtor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_dtors");
 		LLVMSetLinkage(global_dtor, LLVMAppendingLinkage);
 		LLVMSetInitializer(global_dtor, array);
+		vals[1] = runtime_start;
+		entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
+		ctors[len++] = entry;
+EMIT_CTORS:
+		if (len == 0) return;
+		array = LLVMConstArray(c->xtor_entry_type, ctors, len);
+		LLVMValueRef global_ctor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_ctors");
+		LLVMSetLinkage(global_ctor, LLVMAppendingLinkage);
+		LLVMSetInitializer(global_ctor, array);
 		return;
 	}
 	llvm_emit_xtor(c, c->constructors, "llvm.global_ctors");

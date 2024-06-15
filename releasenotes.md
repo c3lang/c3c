@@ -6,10 +6,10 @@
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
+- Prevent Mach-O from removing `@init` and `@dynamic` in a more reliable way #1200.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
-
 
 ## 0.6.0 Change list
 
