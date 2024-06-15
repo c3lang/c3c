@@ -328,12 +328,16 @@ const char *token_type_to_string(TokenType type)
 			return "$alignof";
 		case TOKEN_CT_AND:
 			return "$and";
+		case TOKEN_CT_APPEND:
+			return "$append";
 		case TOKEN_CT_ASSERT:
 			return "$assert";
 		case TOKEN_CT_ASSIGNABLE:
 			return "$assignable";
 		case TOKEN_CT_CASE:
 			return "$case";
+		case TOKEN_CT_CONCAT:
+			return "$concat";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
 		case TOKEN_CT_DEFINED:

@@ -3,6 +3,8 @@
 ## 0.6.1 Change list
 
 ### Changes / improvements
+- Addition of $append and $concat functions.
+- Added $$str_hash builtin.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

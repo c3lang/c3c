@@ -292,6 +292,19 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 	return true;
 }
 
+bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
+{
+	Expr *inner = expr->call_expr.arguments[0];
+	if (!sema_analyse_expr(context, inner)) return true;
+	if (!expr_is_const_string(inner))
+	{
+		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take the hash of it.");
+	}
+	uint32_t hash = fnv1a(inner->const_expr.bytes.ptr, inner->const_expr.bytes.len);
+	expr_rewrite_const_int(expr, type_uint, hash);
+	return true;
+}
+
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
@@ -321,6 +334,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 
 	switch (func)
 	{
+		case BUILTIN_STR_HASH:
+			return sema_expr_analyse_str_hash(context, expr);
 		case BUILTIN_SWIZZLE2:
 		case BUILTIN_SWIZZLE:
 			return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
@@ -362,6 +377,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_SYSCALL:
+		case BUILTIN_STR_HASH:
 			UNREACHABLE
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
@@ -915,39 +931,40 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_CEIL:
 		case BUILTIN_COS:
 		case BUILTIN_CTLZ:
-		case BUILTIN_POPCOUNT:
 		case BUILTIN_CTTZ:
 		case BUILTIN_EXACT_NEG:
-		case BUILTIN_EXP:
 		case BUILTIN_EXP2:
+		case BUILTIN_EXP:
 		case BUILTIN_FLOOR:
+		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_LLRINT:
 		case BUILTIN_LLROUND:
-		case BUILTIN_LOG:
-		case BUILTIN_LOG2:
 		case BUILTIN_LOG10:
+		case BUILTIN_LOG2:
+		case BUILTIN_LOG:
 		case BUILTIN_LRINT:
 		case BUILTIN_LROUND:
 		case BUILTIN_NEARBYINT:
+		case BUILTIN_POPCOUNT:
+		case BUILTIN_REDUCE_ADD:
+		case BUILTIN_REDUCE_AND:
+		case BUILTIN_REDUCE_MAX:
+		case BUILTIN_REDUCE_MIN:
+		case BUILTIN_REDUCE_MUL:
+		case BUILTIN_REDUCE_OR:
+		case BUILTIN_REDUCE_XOR:
+		case BUILTIN_RETURNADDRESS:
 		case BUILTIN_REVERSE:
 		case BUILTIN_RINT:
 		case BUILTIN_ROUND:
 		case BUILTIN_ROUNDEVEN:
+		case BUILTIN_SET_ROUNDING_MODE:
 		case BUILTIN_SIN:
 		case BUILTIN_SQRT:
+		case BUILTIN_STR_HASH:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
-		case BUILTIN_REDUCE_MUL:
-		case BUILTIN_REDUCE_AND:
-		case BUILTIN_REDUCE_ADD:
-		case BUILTIN_REDUCE_OR:
-		case BUILTIN_REDUCE_XOR:
-		case BUILTIN_REDUCE_MAX:
-		case BUILTIN_REDUCE_MIN:
-		case BUILTIN_SET_ROUNDING_MODE:
 		case BUILTIN_WASM_MEMORY_SIZE:
-		case BUILTIN_FRAMEADDRESS:
-		case BUILTIN_RETURNADDRESS:
 			return 1;
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:

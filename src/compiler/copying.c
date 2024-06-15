@@ -429,6 +429,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->castable_expr.expr);
 			MACRO_COPY_TYPEID(expr->castable_expr.type);
 			return expr;
+		case EXPR_CT_APPEND:
+		case EXPR_CT_CONCAT:
+			MACRO_COPY_EXPR_LIST(expr->ct_concat);
+			return expr;
 		case EXPR_CT_AND_OR:
 			MACRO_COPY_EXPR_LIST(expr->ct_and_or_expr.args);
 			return expr;

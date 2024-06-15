@@ -175,7 +175,7 @@ fn void runtime_startup() @public @export("__c3_runtime_startup")
 	}
 	assert(runtime_state == RUN_CTORS);
 	runtime_state = READ_DYLIB;
-	ctor = null;
+	ctor_first = null;
 }
 
 fn void runtime_finalize() @public @export("__c3_runtime_finalize")

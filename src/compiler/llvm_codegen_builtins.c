@@ -1075,6 +1075,8 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			TODO
 		case BUILTIN_LLROUND:
 			TODO
+		case BUILTIN_STR_HASH:
+			UNREACHABLE
 		case BUILTIN_NONE:
 			UNREACHABLE
 	}

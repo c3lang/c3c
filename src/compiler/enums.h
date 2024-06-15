@@ -174,7 +174,8 @@ typedef enum
 		case EXPR_CT_CASTABLE: case EXPR_CT_IS_CONST: \
 		case EXPR_CT_ARG: case EXPR_TYPEINFO: case EXPR_CT_IDENT: case EXPR_HASH_IDENT: \
 		case EXPR_COMPILER_CONST: case EXPR_CT_CALL: \
-		case EXPR_ANYSWITCH: case EXPR_STRINGIFY: case EXPR_CT_EVAL
+		case EXPR_ANYSWITCH: case EXPR_STRINGIFY: \
+		case EXPR_CT_EVAL: case EXPR_CT_CONCAT: case EXPR_CT_APPEND
 
 typedef enum
 {
@@ -231,8 +232,10 @@ typedef enum
 	EXPR_CONST,
 	EXPR_CT_AND_OR,
 	EXPR_CT_ARG,
+	EXPR_CT_APPEND,
 	EXPR_CT_CALL,
 	EXPR_CT_CASTABLE,
+	EXPR_CT_CONCAT,
 	EXPR_CT_DEFINED,
 	EXPR_CT_EVAL,
 	EXPR_CT_IDENT,
@@ -575,9 +578,11 @@ typedef enum
 
 	TOKEN_CT_ALIGNOF,           // $alignof
 	TOKEN_CT_AND,               // $and
+	TOKEN_CT_APPEND,            // $append
 	TOKEN_CT_ASSERT,            // $assert
 	TOKEN_CT_ASSIGNABLE,        // $assignable
 	TOKEN_CT_CASE,              // $case
+	TOKEN_CT_CONCAT,            // $concat
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
@@ -941,6 +946,7 @@ typedef enum
 	BUILTIN_SCATTER,
 	BUILTIN_SELECT,
 	BUILTIN_SET_ROUNDING_MODE,
+	BUILTIN_STR_HASH,
 	BUILTIN_SWIZZLE,
 	BUILTIN_SWIZZLE2,
 	BUILTIN_SIN,

@@ -1104,6 +1104,21 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left)
 	return embed;
 }
 
+
+static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
+{
+	assert(!left && "Unexpected left hand side");
+	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCAT) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
+	advance(c);
+
+	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+	if (!parse_arg_list(c, &expr->ct_concat, TOKEN_RPAREN, NULL, true)) return poisoned_expr;
+	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
+
+
 /**
  * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
@@ -1943,6 +1958,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
+		[TOKEN_CT_CONCAT] = { parse_ct_concat_append, NULL, PREC_NONE },
+		[TOKEN_CT_APPEND] = { parse_ct_concat_append, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_AND] = {parse_ct_and_or, NULL, PREC_NONE },

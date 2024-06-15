@@ -709,6 +709,7 @@ AlignSize type_abi_alignment(Type *type)
 
 static inline void create_type_cache(Type *type)
 {
+	assert(type->type_cache == NULL);
 	for (int i = 0; i < ARRAY_OFFSET; i++)
 	{
 		vec_add(type->type_cache, NULL);

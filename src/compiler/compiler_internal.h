@@ -999,6 +999,7 @@ typedef struct
 	Expr** args;
 } ExprCtAndOr;
 
+
 typedef struct
 {
 	CastKind kind : 8;
@@ -1172,6 +1173,7 @@ struct Expr_
 		ExprConst const_expr;                       // 32
 		ExprCtArg ct_arg_expr;
 		ExprCtAndOr ct_and_or_expr;
+		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
 		ExprCastable castable_expr;
 		ExprCtCall ct_call_expr;                    // 24
@@ -3344,6 +3346,8 @@ INLINE void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CT_AND_OR:
+		case EXPR_CT_APPEND:
+		case EXPR_CT_CONCAT:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CASTABLE:
