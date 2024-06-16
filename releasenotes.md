@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Addition of $append and $concat functions.
 - Added $$str_hash, $$str_upper, $$str_lower, $$str_find builtins.
+- Improved error notes when call expressions have errors.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

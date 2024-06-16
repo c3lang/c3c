@@ -7,6 +7,9 @@
 
 const char *ct_eval_error = "EVAL_ERROR";
 
+#define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
+#define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0);
+
 typedef enum
 {
 	SUBSCRIPT_EVAL_VALUE,
@@ -18,6 +21,7 @@ typedef enum
 typedef struct
 {
 	bool macro;
+	Decl *definition;
 	SourceSpan call_location;
 	const char *name;
 	const char *block_parameter;
@@ -134,8 +138,9 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 											   Expr *struct_var, bool optional, bool *no_match_ref);
 static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee,
 												bool *optional, bool *no_match_ref);
-static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type *type, Expr *expr, Expr *struct_var,
-													 bool optional, const char *name, bool *no_match_ref);
+static inline bool
+sema_call_analyse_func_invocation(SemaContext *context, Decl *decl, Type *type, Expr *expr, Expr *struct_var,
+                                  bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
 INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call,
 									   Expr **args, unsigned func_param_count,
@@ -1320,8 +1325,8 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			//     this is an error.
 			if (params[index]->var.vararg)
 			{
-				RETURN_SEMA_ERROR(arg, "Vararg parameters may not be named parameters, "
-									   "use normal parameters instead.", params[index]->name);
+				RETURN_SEMA_FUNC_ERROR(callee->definition, arg, "Vararg parameters may not be named parameters, "
+				                "use normal parameters instead.", params[index]->name);
 			}
 
 			// 8e. We might have already set this parameter, that is not allowed.
@@ -1337,7 +1342,8 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 
 		if (has_named)
 		{
-			RETURN_SEMA_ERROR(args[i - 1], "Named arguments must be placed after positional arguments.");
+			RETURN_SEMA_FUNC_ERROR(callee->definition, args[i - 1],
+								   "Named arguments must be placed after positional arguments.");
 		}
 
 		// 11. We might have a typed variadic argument.
@@ -1345,7 +1351,8 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 		{
 			// 15. We have too many parameters...
 			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_ERROR(arg, "This argument would exceed the number of parameters, "
+			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
+								   "This argument would exceed the number of parameters, "
 								   "did you add too many arguments?");
 		}
 
@@ -1361,7 +1368,8 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				if (i < num_args - 1)
 				{
 					if (no_match_ref) goto NO_MATCH_REF;
-					RETURN_SEMA_ERROR(arg, "This looks like a variable argument before an splatted variable which "
+					RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
+										   "This looks like a variable argument before an splatted variable which "
 					                       "isn't allowed. Did you add too many arguments?");
 				}
 				*vararg_splat_ref = arg;
@@ -1410,7 +1418,10 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 					success = sema_analyse_expr_rhs(new_context, param->type, arg, true, no_match_ref);
 				SCOPE_END;
 				sema_context_destroy(&default_context);
-				if (!success) return false;
+				if (!success)
+				{
+					RETURN_NOTE_FUNC_DEFINITION;
+				}
 			}
 			if (expr_is_const(arg))
 			{
@@ -1444,32 +1455,33 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			{
 				if (param->type)
 				{
-					RETURN_SEMA_ERROR(call, "This call expected a parameter of type %s, did you forget it?",
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call,
+										   "This call expected a parameter of type %s, did you forget it?",
 									  type_quoted_error_string(param->type));
 				}
-				RETURN_SEMA_ERROR(call, "This call expected a parameter, did you forget it?");
+				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "This call expected a parameter, did you forget it?");
 			}
 			if (variadic != VARIADIC_NONE && i > vararg_index)
 			{
 				if (!param)
 				{
 					print_error_after(args[num_args - 1]->span, "Argument #%d is not set.", i);
-					return false;
+					RETURN_NOTE_FUNC_DEFINITION;
 				}
 				print_error_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", param->name);
-				return false;
+				RETURN_NOTE_FUNC_DEFINITION;
 			}
 			if (num_args > (callee->struct_var ? 1 : 0))
 			{
 				unsigned needed = func_param_count - num_args;
-				RETURN_SEMA_ERROR(args[num_args - 1],
+				RETURN_SEMA_FUNC_ERROR(callee->definition, args[num_args - 1],
 				                  "Expected %d more %s after this one, did you forget %s?",
 				                  needed, needed == 1 ? "argument" : "arguments", needed == 1 ? "it" : "them");
 			}
-			RETURN_SEMA_ERROR(call, "'%s' expects %d parameter(s), but none was provided.",
+			RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
 							  callee->name, callee->struct_var ? func_param_count - 1 : func_param_count);
 		}
-		RETURN_SEMA_ERROR(call, "The parameter '%s' must be set, did you forget it?", param->name);
+		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
 	}
 	call->call_expr.arguments = actual_args;
 	return true;
@@ -1670,17 +1682,27 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM_REF:
 				// &foo
 				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-				if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg)) return false;
+				if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg))
+				{
+					SEMA_NOTE(callee.definition, "The definition is here.");
+					return false;
+				}
 				expr_insert_addr(arg);
 				*optional |= IS_OPTIONAL(arg);
-				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
+				if (!sema_call_check_contract_param_match(context, param, arg))
+				{
+					SEMA_NOTE(callee.definition, "The definition is here.");
+					return false;
+				}
 				if (type_storage_type(type) != STORAGE_NORMAL)
 				{
 					RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
 				}
 				if (type && type->canonical != arg->type->canonical)
 				{
-					RETURN_SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
+					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
+					SEMA_NOTE(callee.definition, "The definition is here.");
+					return false;
 				}
 				if (!param->alignment)
 				{
@@ -1713,7 +1735,11 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 											   "passed as a parameter, you can pass a pointer to it though.",
 						                  type_quoted_error_string(arg->type));
 				}
-				if (!sema_call_check_contract_param_match(context, param, arg)) return false;
+				if (!sema_call_check_contract_param_match(context, param, arg))
+				{
+					SEMA_NOTE(callee.definition, "The definition was here.");
+					return false;
+				}
 				if (!param->alignment)
 				{
 					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
@@ -1728,11 +1754,14 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			case VARDECL_PARAM_CT:
 				// $foo
 				assert(callee.macro);
-				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
+				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref))
+				{
+					SEMA_NOTE(callee.definition, "The definition is here.");
+					return false;
+				}
 				if (!expr_is_constant_eval(arg, CONSTANT_EVAL_CONSTANT_VALUE))
 				{
-					SEMA_ERROR(arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
-					return false;
+					RETURN_SEMA_FUNC_ERROR(callee.definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
 				}
 				break;
 			case VARDECL_PARAM_CT_TYPE:
@@ -1740,8 +1769,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 				if (!sema_analyse_expr_lvalue_fold_const(context, arg)) return false;
 				if (arg->expr_kind != EXPR_TYPEINFO)
 				{
-					SEMA_ERROR(arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
-					return false;
+					RETURN_SEMA_FUNC_ERROR(callee.definition, arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
 				}
 				break;
 			case VARDECL_CONST:
@@ -1764,13 +1792,14 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	return true;
 }
 
-static inline bool sema_call_analyse_func_invocation(SemaContext *context, Type *type, Expr *expr,
-													 Expr *struct_var, bool optional, const char *name,
-													 bool *no_match_ref)
+static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl,
+													 Type *type, Expr *expr, Expr *struct_var,
+													 bool optional, const char *name, bool *no_match_ref)
 {
 	Signature *sig = type->function.signature;
 	CalledDecl callee = {
 			.macro = false,
+			.definition = decl,
 			.call_location = expr->span,
 			.name = name,
 			.block_parameter = NULL,
@@ -1818,7 +1847,8 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	}
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
-	return sema_call_analyse_func_invocation(context, pointee, expr, NULL, optional, func_ptr_type->pointer->name,
+	return sema_call_analyse_func_invocation(context, pointee->function.decl, pointee, expr, NULL, optional,
+	                                         func_ptr_type->pointer->name,
 	                                         no_match_ref);
 }
 
@@ -1929,7 +1959,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	// Tag dynamic dispatch.
 	if (struct_var && decl->func_decl.attr_interface_method) expr->call_expr.is_dynamic_dispatch = true;
 
-	return sema_call_analyse_func_invocation(context,
+	return sema_call_analyse_func_invocation(context, decl,
 	                                         decl->type,
 	                                         expr,
 	                                         struct_var,
@@ -1964,6 +1994,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			.call_location = call_expr->span,
 			.name = decl->name,
 			.params = params,
+			.definition = decl,
 			.block_parameter = decl->func_decl.body_param ? declptr(decl->func_decl.body_param)->name : NULL,
 			.signature = sig,
 			.struct_var = struct_var
