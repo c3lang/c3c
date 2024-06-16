@@ -4,7 +4,7 @@
 
 ### Changes / improvements
 - Addition of $append and $concat functions.
-- Added $$str_hash builtin.
+- Added $$str_hash, $$str_upper, $$str_lower, $$str_find builtins.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -12,6 +12,7 @@
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
+- Added @str_hash, @str_upper, @str_lower, @str_find compile time macros.
 
 ## 0.6.0 Change list
 

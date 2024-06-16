@@ -315,6 +315,11 @@ macro char[] @as_char_view(&value) @builtin
 	return ((char*)value)[:$sizeof(*value)];
 }
 
+macro isz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);
+macro String @str_upper(String $str) @builtin => $$str_upper($str);
+macro String @str_lower(String $str) @builtin => $$str_lower($str);
+macro uint @str_hash(String $str) @builtin => $$str_hash($str);
+
 macro uint int.hash(int i) => i;
 macro uint uint.hash(uint i) => i;
 macro uint short.hash(short s) => s;

@@ -305,6 +305,73 @@ bool sema_expr_analyse_str_hash(SemaContext *context, Expr *expr)
 	return true;
 }
 
+bool sema_expr_analyse_str_find(SemaContext *context, Expr *expr)
+{
+	Expr *inner = expr->call_expr.arguments[0];
+	Expr *inner_find = expr->call_expr.arguments[1];
+	if (!sema_analyse_expr(context, inner) || !sema_analyse_expr(context, inner_find)) return true;
+	if (!expr_is_const_string(inner))
+	{
+		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to search.");
+	}
+	if (!expr_is_const_string(inner_find))
+	{
+		RETURN_SEMA_ERROR(inner_find, "You need a compile time constant string to search for.");
+	}
+	const char *inner_str = inner->const_expr.bytes.ptr;
+	const char *find_str = inner_find->const_expr.bytes.ptr;
+	char *ret = strstr(inner_str, find_str);
+	expr_rewrite_const_int(expr, type_isz, (uint64_t)(ret == NULL ? -1 : ret - inner_str));
+	return true;
+}
+
+bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunction func)
+{
+	Expr *inner = expr->call_expr.arguments[0];
+	if (!sema_analyse_expr(context, inner)) return true;
+	if (!expr_is_const_string(inner))
+	{
+		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to take convert.");
+	}
+	const char *string = inner->const_expr.bytes.ptr;
+	ArraySize len = inner->const_expr.bytes.len;
+	// Empty string: no conversion
+	if (!len)
+	{
+		expr_replace(expr, inner);
+		return true;
+	}
+	char *new_string = malloc_string(len + 1);
+	switch (func)
+	{
+		case BUILTIN_STR_LOWER:
+			for (ArraySize i = 0; i < len; i++)
+			{
+				char c = string[i];
+				new_string[i] = char_is_upper(c) ? (c | 0x20) : c;
+			}
+			break;
+		case BUILTIN_STR_UPPER:
+			for (ArraySize i = 0; i < len; i++)
+			{
+				char c = string[i];
+				new_string[i] = char_is_lower(c) ? (c & ~0x20) : c;
+			}
+			break;
+		default:
+			UNREACHABLE
+	}
+	expr->expr_kind = EXPR_CONST;
+	expr->const_expr.const_kind = CONST_STRING;
+	new_string[len] = 0;
+	expr->const_expr.bytes.ptr = new_string;
+	expr->const_expr.bytes.len = len;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->type = type_string;
+	return true;
+}
+
+
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.is_builtin = true;
@@ -336,6 +403,11 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 	{
 		case BUILTIN_STR_HASH:
 			return sema_expr_analyse_str_hash(context, expr);
+		case BUILTIN_STR_UPPER:
+		case BUILTIN_STR_LOWER:
+			return sema_expr_analyse_str_conv(context, expr, func);
+		case BUILTIN_STR_FIND:
+			return sema_expr_analyse_str_find(context, expr);
 		case BUILTIN_SWIZZLE2:
 		case BUILTIN_SWIZZLE:
 			return sema_expr_analyse_swizzle(context, expr, func == BUILTIN_SWIZZLE2);
@@ -378,6 +450,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_SYSCALL:
 		case BUILTIN_STR_HASH:
+		case BUILTIN_STR_UPPER:
+		case BUILTIN_STR_LOWER:
+		case BUILTIN_STR_FIND:
 			UNREACHABLE
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
@@ -962,10 +1037,13 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_SIN:
 		case BUILTIN_SQRT:
 		case BUILTIN_STR_HASH:
+		case BUILTIN_STR_UPPER:
+		case BUILTIN_STR_LOWER:
 		case BUILTIN_TRUNC:
 		case BUILTIN_VOLATILE_LOAD:
 		case BUILTIN_WASM_MEMORY_SIZE:
 			return 1;
+		case BUILTIN_STR_FIND:
 		case BUILTIN_COPYSIGN:
 		case BUILTIN_EXACT_ADD:
 		case BUILTIN_EXACT_DIV:
