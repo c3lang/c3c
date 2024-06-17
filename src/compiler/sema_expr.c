@@ -5,8 +5,6 @@
 #include "sema_internal.h"
 #include <math.h>
 
-const char *ct_eval_error = "EVAL_ERROR";
-
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0);
 
@@ -133,27 +131,25 @@ static void sema_binary_unify_voidptr(SemaContext *context, Expr *left, Expr *ri
 
 // -- function helper functions
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type,
-											  bool optional, bool *no_match_ref);
+                                              bool optional, bool *no_match_ref);
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl,
-											   Expr *struct_var, bool optional, bool *no_match_ref);
+                                               Expr *struct_var, bool optional, bool *no_match_ref);
 static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee,
-												bool *optional, bool *no_match_ref);
-static inline bool
-sema_call_analyse_func_invocation(SemaContext *context, Decl *decl, Type *type, Expr *expr, Expr *struct_var,
-                                  bool optional, const char *name, bool *no_match_ref);
+                                                bool *optional, bool *no_match_ref);
+static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl, Type *type, Expr *expr,
+                                                     Expr *struct_var,
+                                                     bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
 INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call,
-									   Expr **args, unsigned func_param_count,
-									   Variadic variadic, unsigned vararg_index, bool *optional,
-									   Expr ***varargs_ref, Expr **vararg_splat_ref, bool *no_match_ref);
+                                       Expr **args, unsigned func_param_count,
+                                       Variadic variadic, unsigned vararg_index, bool *optional,
+                                       Expr ***varargs_ref, Expr **vararg_splat_ref, bool *no_match_ref);
 static inline int sema_call_find_index_of_named_parameter(SemaContext *context, Decl **func_params, Expr *expr);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_flattened_expr_is_const_initializer(SemaContext *context, Expr *expr);
-
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
-
 static Expr **sema_vasplat_append(SemaContext *context, Expr **init_expressions, Expr *expr);
 INLINE Expr **sema_expand_vasplat(SemaContext *c, Expr **list, unsigned index);
 static inline IndexDiff range_const_len(Range *range);
@@ -164,7 +160,6 @@ static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_decl_element(SemaContext *context, DesignatorElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc,
 												  bool *is_missing);
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
-static inline Expr *sema_ct_checks_exprlist_compiles(SemaContext *context, Expr *exprlist);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw, bool *was_error);
 static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
@@ -885,6 +880,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	{
 		// Elvis
 		if (!sema_analyse_expr(context, cond)) return expr_poison(expr);
+		assert(cond && cond->type);
 		Type *type = cond->type->canonical;
 		if (type->type_kind != TYPE_BOOL && cast_to_bool_kind(type) == CAST_ERROR)
 		{
@@ -5452,32 +5448,6 @@ INLINE bool sema_is_valid_pointer_offset_type(SemaContext *context, Type *canoni
 	return true;
 }
 
-INLINE bool sema_is_valid_vector_pointer_offset_type(SemaContext *context, Type *canonical_type,
-													 Type *canonical_pointer_type, Expr *ptr_expr,
-													 Expr *add_expr, const char *error)
-{
-	if (canonical_type->type_kind == TYPE_VECTOR)
-	{
-		// Reduce according to inline.
-		Type *element = type_flat_distinct_inline(canonical_type->array.base);
-		if (type_is_integer(element))
-		{
-			if (canonical_type->array.len != canonical_pointer_type->array.len)
-			{
-				RETURN_SEMA_ERROR(ptr_expr, "A value of type '%s' cannot %s '%s', vector widths must be the same.",
-				                  type_to_error_string(add_expr->type),
-								  error,
-				                  type_to_error_string(add_expr->type));
-			}
-			return true;
-		}
-	}
-	RETURN_SEMA_ERROR(ptr_expr, "A value of type '%s' cannot %s to '%s', an integer vector was expected here.",
-	                  type_to_error_string(add_expr->type),
-					  error,
-	                  type_to_error_string(add_expr->type));
-}
-
 /**
  * Analyse a + b
  * @return true if it succeeds.
@@ -5506,6 +5476,7 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 		left_type = left->type->canonical;
 		left_is_pointer = true;
 		right_is_pointer = false;
+		(void)right_is_pointer;
 		expr->binary_expr.left = exprid(left);
 		expr->binary_expr.right = exprid(right);
 	}

@@ -2637,7 +2637,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 
 		// Ok, we have the list of inner attributes.
 		Attr **attributes = attr_decl->attr_decl.attrs;
-
+		attributes = copy_attributes_single(attributes);
 		// Now we need to evaluate these attributes in the attribute definition
 		// context.
 		SemaContext eval_context;

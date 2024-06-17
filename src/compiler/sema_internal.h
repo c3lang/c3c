@@ -29,8 +29,6 @@
 #define PUSH_BREAKCONT(ast) PUSH_CONTINUE(ast); PUSH_BREAK(ast)
 #define POP_BREAKCONT() POP_CONTINUE(); POP_BREAK()
 
-extern const char *ct_eval_error;
-
 Decl **global_context_acquire_locals_list(void);
 void generic_context_release_locals_list(Decl **);
 const char *context_filename(SemaContext *context);
