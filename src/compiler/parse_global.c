@@ -497,15 +497,8 @@ static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 	assert(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LGENPAR);
-	Expr **exprs = NULL;
-	do
-	{
-		ASSIGN_EXPR_OR_RET(Expr *param, parse_expr(c), poisoned_type_info);
-		vec_add(exprs, param);
-	} while (try_consume(c, TOKEN_COMMA));
-	CONSUME_OR_RET(TOKEN_RGENPAR, poisoned_type_info);
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
-	generic_type->generic.params = exprs;
+	if (!parse_expr_list_no_trail(c, &generic_type->generic.params, TOKEN_RGENPAR)) return poisoned_type_info;
 	generic_type->generic.base = type;
 	return generic_type;
 }
@@ -1934,9 +1927,7 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	if (try_consume(c, TOKEN_LGENPAR))
 	{
 		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
-		Expr **params = parse_generic_parameters(c);
-		if (!params) return poisoned_decl;
-		decl->define_decl.generic_params = params;
+		if (!parse_expr_list_no_trail(c, &decl->define_decl.generic_params, TOKEN_RGENPAR)) return poisoned_decl;
 	}
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 

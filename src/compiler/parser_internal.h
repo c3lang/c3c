@@ -54,6 +54,7 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decls);
 Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
 bool parse_current_is_expr(ParseContext *c);
+bool parse_expr_list_no_trail(ParseContext *c, Expr ***exprs_ref, TokenType end_token);
 
 bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);

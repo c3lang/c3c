@@ -147,7 +147,6 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 static inline int sema_call_find_index_of_named_parameter(SemaContext *context, Decl **func_params, Expr *expr);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
-static bool sema_flattened_expr_is_const_initializer(SemaContext *context, Expr *expr);
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
 static Expr **sema_vasplat_append(SemaContext *context, Expr **init_expressions, Expr *expr);
@@ -4101,12 +4100,6 @@ bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr)
 	return expr_is_const(expr);
 }
 
-static bool sema_flattened_expr_is_const_initializer(SemaContext *context, Expr *expr)
-{
-	sema_expr_flatten_const(context, expr);
-	return expr_is_const_initializer(expr);
-}
-
 /**
  * Analyse "x.y"
  */
@@ -5433,19 +5426,6 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 	return true;
 
-}
-
-INLINE bool sema_is_valid_pointer_offset_type(SemaContext *context, Type *canonical_type,
-											  Expr *ptr_expr, Expr *add_expr, const char *error)
-{
-	if (!type_is_integer(canonical_type))
-	{
-		RETURN_SEMA_ERROR(ptr_expr, "A value of type '%s' cannot %s '%s', an integer was expected here.",
-		                  type_to_error_string(add_expr->type),
-		                  error,
-		                  type_to_error_string(add_expr->type));
-	}
-	return true;
 }
 
 /**

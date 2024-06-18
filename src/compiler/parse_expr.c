@@ -74,6 +74,34 @@ bool parse_range(ParseContext *c, Range *range)
 	return true;
 }
 
+static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
+{
+	while (!try_consume(c, end_token))
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
+		vec_add(*exprs_ref, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			CONSUME_OR_RET(end_token, false);
+			return true;
+		}
+	}
+	return true;
+}
+
+bool parse_expr_list_no_trail(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
+{
+	if (try_consume(c, end_token)) return true;
+	while (true)
+	{
+		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
+		vec_add(*exprs_ref, expr);
+		if (try_consume(c, TOKEN_COMMA)) continue;
+		CONSUME_OR_RET(end_token, false);
+		return true;
+	}
+}
+
 /**
  * rethrow_expr ::= call_expr '!'
  */
@@ -955,14 +983,7 @@ static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 
 	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
 	subs_expr->generic_ident_expr.parent = exprid(left);
-	Expr **exprs = NULL;
-	do
-	{
-			ASSIGN_EXPR_OR_RET(Expr *param, parse_expr(c), poisoned_expr);
-			vec_add(exprs, param);
-	} while (try_consume(c, TOKEN_COMMA));
-	CONSUME_OR_RET(TOKEN_RGENPAR, poisoned_expr);
-	subs_expr->generic_ident_expr.parmeters = exprs;
+	if (!parse_expr_list_no_trail(c, &subs_expr->generic_ident_expr.parmeters, TOKEN_RGENPAR)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
@@ -1027,19 +1048,8 @@ static Expr *parse_ct_defined(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *defined = expr_new(EXPR_CT_DEFINED, c->span);
 	advance(c);
-	Expr **list = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	while (!try_consume(c, TOKEN_RPAREN))
-	{
-		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_expr);
-		vec_add(list, expr);
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-			break;
-		}
-	}
-	defined->expression_list = list;
+	if (!parse_expr_list(c, &defined->expression_list, TOKEN_RPAREN)) return poisoned_expr;
 	return defined;
 
 }
@@ -1112,8 +1122,7 @@ static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
 	advance(c);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (!parse_arg_list(c, &expr->ct_concat, TOKEN_RPAREN, NULL, true)) return poisoned_expr;
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+	if (!parse_expr_list(c, &expr->ct_concat, TOKEN_RPAREN)) return poisoned_expr;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -1147,16 +1156,7 @@ static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
 	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_AND);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	Expr **exprs = NULL;
-	while (true)
-	{
-		ASSIGN_EXPR_OR_RET(Expr* internal, parse_expr(c), poisoned_expr);
-		vec_add(exprs, internal);
-		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-		break;
-	}
-	expr->ct_and_or_expr.args = exprs;
+	if (!parse_expr_list(c, &expr->ct_and_or_expr.args, TOKEN_RPAREN)) return poisoned_expr;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
