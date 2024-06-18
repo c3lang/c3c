@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2024 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -13,9 +13,10 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
-static inline bool
-sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current, unsigned current_index,
-                                     unsigned count);
+
+static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
+                                                        unsigned current_index,
+                                                        unsigned count);
 
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
@@ -40,8 +41,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 
-static inline bool
-sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
+static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
 
 static const char *attribute_domain_to_string(AttributeDomain domain);
 static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain, bool *erase_decl);
@@ -103,8 +103,8 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 /**
  * Check parameter name uniqueness and that the type is not void.
  */
-static inline bool sema_check_param_uniqueness_and_type(
-		SemaContext *context, Decl **decls, Decl *current, unsigned current_index, unsigned count)
+static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
+                                                        unsigned current_index, unsigned count)
 {
 	// We may have `void` arguments. They are not allowed in C3. Theoretically they could
 	// be permitted, but it would complicate semantics in general.
@@ -114,11 +114,14 @@ static inline bool sema_check_param_uniqueness_and_type(
 		{
 			RETURN_SEMA_ERROR(current, "C-style 'foo(void)' style argument declarations are not valid, please remove 'void'.");
 		}
+		// Some languages would allow this, because it is a way to do overloading
 		RETURN_SEMA_ERROR(current, "Parameters may not be of type 'void'.");
 	}
+
 	const char *name = current->name;
 	// There is no need to do a check if it is anonymous.
 	if (!name) return true;
+
 	// Check for a duplicate name, this algorithm is O(n^2),
 	// but is fine as parameters are typically few, and doing something like
 	// a hash map would be more expensive to set up.
@@ -854,6 +857,55 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 	}
 	return true;
 }
+
+static bool sema_deep_resolve_function_ptr(SemaContext *context, TypeInfo *type_to_resolve)
+{
+	Type *type = type_to_resolve->type->canonical;
+RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_DISTINCT:
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			return true;
+		case TYPE_TYPEDEF:
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_POINTER:
+			type = type->pointer;
+			goto RETRY;
+		case TYPE_FUNC:
+			return sema_analyse_decl(context, type->decl);
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_SLICE:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+			type = type->array.base;
+			goto RETRY;
+	}
+	UNREACHABLE
+}
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT, erase_decl)) return decl_poison(decl);
@@ -895,55 +947,6 @@ ERROR:
 	return decl_poison(decl);
 }
 
-INLINE Decl *sema_member_decl_for_name(Type *type, const char *name)
-{
-	RETRY:
-	switch (type->type_kind)
-	{
-		case TYPE_TYPEDEF:
-			type = type->canonical;
-			goto RETRY;
-		case TYPE_POISONED:
-		case TYPE_VOID:
-		case TYPE_BOOL:
-		case ALL_INTS:
-		case ALL_FLOATS:
-		case TYPE_ANYFAULT:
-		case TYPE_TYPEID:
-		case TYPE_POINTER:
-		case TYPE_FUNC:
-		case TYPE_FAULTTYPE:
-		case TYPE_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_VECTOR:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_OPTIONAL:
-		case TYPE_WILDCARD:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-		case TYPE_SLICE:
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
-		case TYPE_ENUM:
-		{
-			FOREACH_BEGIN(Decl *param, type->decl->enums.parameters)
-				if (param->name == name) return param;
-			FOREACH_END();
-			return NULL;
-		}
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_DISTINCT:
-		case TYPE_BITSTRUCT:
-			return sema_decl_stack_find_decl_member(type->decl, name);
-		default:
-			UNREACHABLE
-	}
-}
-
-
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent)
 {
 	Variadic variadic_type = sig->variadic;
@@ -977,7 +980,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				return false;
 			}
 		}
-		if (type_is_func_ptr(rtype_info->type) && !sema_resolve_type_structure(context, rtype_info->type, rtype_info->span)) return false;
+		if (!sema_deep_resolve_function_ptr(context, rtype_info)) return false;
 	}
 
 	// We don't support more than MAX_PARAMS number of params. This makes everything sane.
@@ -1156,8 +1159,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 
 		if (type_info)
 		{
-			Type *type = type_info->type;
-			if (type_is_func_ptr(type) && !sema_resolve_type_structure(context, type, type_info->span)) return false;
+			if (!sema_deep_resolve_function_ptr(context, type_info)) return false;
 			param->type = type_info->type;
 			if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
 		}
@@ -1175,7 +1177,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	}
 	return true;
 }
-
 
 bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature)
 {
@@ -1205,7 +1206,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 	}
 
 	if (!all_ok) return false;
-	Type *raw_type = type_get_func(signature, abi);
+	Type *raw_type = sema_resolve_type_get_func(signature, abi);
 	assert(func_decl->type->type_kind == TYPE_FUNC);
 	assert(raw_type->function.prototype);
 	func_decl->type->function.prototype = raw_type->function.prototype;
@@ -1242,19 +1243,24 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase)
 {
+	// Check the attributes on the distinct type.
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase)) return false;
-	if (*erase) return true;
-	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 
+	// Erase it?
+	if (*erase) return true;
+
+	// Check the interfaces.
+	if (!sema_resolve_implemented_interfaces(context, decl, false)) return false;
+
+	// Infer the underlying type normally.
 	TypeInfo *info = decl->distinct;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (type_is_optional(info->type))
-	{
-		SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
-		return false;
-	}
-	// Distinct types drop the canonical
-	Type *base = info->type = info->type->canonical;
+
+	// Optional isn't allowed of course.
+	if (type_is_optional(info->type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
+
+	// Distinct types drop the canonical part.
+	info->type = info->type->canonical;
 	return true;
 }
 
@@ -2579,6 +2585,82 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 }
 
 
+static inline bool sema_analyse_custom_attribute(SemaContext *context, Decl *decl, Attr *attr, AttributeDomain domain,
+                                            Decl *top, bool *erase_decl)
+{
+	// Custom attributes.
+	// First find it.
+	Decl *attr_decl = sema_resolve_symbol(context, attr->name, attr->path, attr->span);
+	if (!attr_decl) return false;
+
+	// Detect direct cycles @Foo = @Bar @Bar = @Foo
+	if (attr_decl == top)
+	{
+		SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
+		return decl_poison(attr_decl);
+	}
+
+	// Handle the case where the current function is the declaration itself.
+	if (context->call_env.kind == CALL_ENV_ATTR && context->call_env.attr_declaration == attr_decl)
+	{
+		RETURN_SEMA_ERROR(attr_decl, "Recursive declaration of attribute '%s' – it contains itself.",
+		                  attr_decl->name);
+	}
+
+	// Grab all the parameters to the attribute and copy them.
+	Decl **params = attr_decl->attr_decl.params;
+	unsigned param_count = vec_size(params);
+	params = copy_decl_list_single(params);
+
+	// Get the arguments
+	Expr **args = attr->exprs;
+
+	// Check that the parameters match. No varargs are allowed on attributes,
+	// there seems to be little use for it.
+	if (param_count != vec_size(args))
+	{
+		SEMA_ERROR(attr, "Expected %d parameter(s).", param_count);
+		SEMA_NOTE(attr_decl, "The declaration was here.");
+		return false;
+	}
+
+	// Ok, we have the list of inner attributes.
+	Attr **attributes = attr_decl->attr_decl.attrs;
+	attributes = copy_attributes_single(attributes);
+
+	// Now we need to evaluate these attributes in the attribute definition
+	// context.
+	SemaContext eval_context;
+	sema_context_init(&eval_context, attr_decl->unit);
+	eval_context.macro_call_depth = context->macro_call_depth + 1;
+	eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl };
+
+	// We copy the compilation unit.
+	eval_context.compilation_unit = context->unit;
+
+	// First we need to analyse each expression in the current scope
+	for (int j = 0; j < param_count; j++)
+	{
+		if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
+
+		params[j]->var.init_expr = args[j];
+		params[j]->var.kind = VARDECL_CONST;
+		// Then add them to the evaluation context.
+		// (Yes this is messy)
+		sema_add_local(&eval_context, params[j]);
+	}
+	// Now we've added everything to the evaluation context, so we can (recursively)
+	// apply it to the contained attributes, which in turn may be derived attributes.
+	if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl, erase_decl)) goto ERR;
+	// Then destroy the eval context.
+	sema_context_destroy(&eval_context);
+	// Stop evaluating on erase.
+	return true;
+ERR:
+	sema_context_destroy(&eval_context);
+	return false;
+}
+
 // TODO consider doing this evaluation early, it should be possible.
 static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr **attrs, AttributeDomain domain,
 										  Decl *top, bool *erase_decl)
@@ -2587,88 +2669,24 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 	if (context->macro_call_depth > 1024)
 	{
 		if (!top) top = decl;
-		SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
-		return false;
+		RETURN_SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
 	}
+
+	// Walk through all of the attributes.
 	int count = vec_size(attrs);
 	for (int i = 0; i < count; i++)
 	{
 		Attr *attr = attrs[i];
-		// The simple case,
-		if (!attr->is_custom)
+		if (attr->is_custom)
 		{
-			// Analyse it and move on.
+			if (!sema_analyse_custom_attribute(context, decl, attr, domain, top, erase_decl)) return false;
+		}
+		else
+		{
+			// The simple case, we have a built in attribute:
 			if (!sema_analyse_attribute(context, decl, attr, domain, erase_decl)) return false;
-			if (*erase_decl) return true;
-			continue;
 		}
-
-		// Custom attributes.
-		// First find it.
-		Decl *attr_decl = sema_resolve_symbol(context, attr->name, attr->path, attr->span);
-		if (!attr_decl) return false;
-
-		// Detect direct cycles @Foo = @Bar @Bar = @Foo
-		if (attr_decl == top)
-		{
-			SEMA_ERROR(top, "Recursive declaration of attribute '%s'.", top->name);
-			return decl_poison(attr_decl);
-		}
-
-		// Handle the case where the current function is the declaration itself.
-		if (context->call_env.kind == CALL_ENV_ATTR && context->call_env.attr_declaration == attr_decl)
-		{
-			SEMA_ERROR(attr_decl, "Recursive declaration of attribute '%s' – it contains itself.", attr_decl->name);
-			return false;
-		}
-
-		// Grab all the parameters.
-		Decl **params = attr_decl->attr_decl.params;
-		params = copy_decl_list_single(params);
-		unsigned param_count = vec_size(params);
-		Expr **args = attr->exprs;
-
-		// Check that the parameters match. No varargs, little use for it.
-		if (param_count != vec_size(args))
-		{
-			SEMA_ERROR(attr, "Expected %d parameter(s).", param_count);
-			return false;
-		}
-
-		// Ok, we have the list of inner attributes.
-		Attr **attributes = attr_decl->attr_decl.attrs;
-		attributes = copy_attributes_single(attributes);
-		// Now we need to evaluate these attributes in the attribute definition
-		// context.
-		SemaContext eval_context;
-		sema_context_init(&eval_context, attr_decl->unit);
-		eval_context.macro_call_depth = context->macro_call_depth + 1;
-		eval_context.call_env = (CallEnv) { .kind = CALL_ENV_ATTR, .attr_declaration = decl };
-		// We copy the compilation unit.
-		eval_context.compilation_unit = context->unit;
-
-		// First we need to analyse each expression in the current scope
-		for (int j = 0; j < param_count; j++)
-		{
-			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
-
-			params[j]->var.init_expr = args[j];
-			params[j]->var.kind = VARDECL_CONST;
-			// Then add them to the evaluation context.
-			// (Yes this is messy)
-			sema_add_local(&eval_context, params[j]);
-		}
-		// Now we've added everything to the evaluation context, so we can (recursively)
-		// apply it to the contained attributes, which in turn may be derived attributes.
-		if (!sema_analyse_attributes_inner(&eval_context, decl, attributes, domain, top ? top : attr_decl, erase_decl)) goto ERR;
-		// Then destroy the eval context.
-		sema_context_destroy(&eval_context);
-		// Stop evaluating on erase.
 		if (*erase_decl) return true;
-		continue;
-ERR:
-		sema_context_destroy(&eval_context);
-		return decl_poison(decl);
 	}
 	return true;
 }

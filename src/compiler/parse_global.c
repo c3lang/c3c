@@ -1547,6 +1547,11 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 
 	decl->is_substruct = try_consume(c, TOKEN_INLINE);
 
+	if (tok_is(c, TOKEN_FN))
+	{
+		PRINT_ERROR_HERE("A distinct type cannot define a new function type, but you can make a distinct type from an existing function type, e.g. `def FooFn = fn void(); distinct Bar = FooFn;`");
+		return poisoned_decl;
+	}
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
 

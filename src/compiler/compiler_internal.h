@@ -2474,7 +2474,6 @@ bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
 
-Type *type_get_func(Signature *signature, CallABI abi);
 Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);
 bool type_is_structurally_equivalent(Type *type1, Type *type);
@@ -2484,6 +2483,7 @@ bool type_flat_is_boolintlike(Type *type);
 bool type_flat_is_numlike(Type *type);
 bool type_may_have_sub_elements(Type *type);
 bool type_may_have_method(Type *type);
+void type_append_name_to_scratch(Type *type);
 
 typedef enum
 {

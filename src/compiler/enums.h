@@ -4,6 +4,13 @@
 
 // Only include this from compiler_common.h
 
+
+#if IS_CLANG
+#define FLAG_ATTR __attribute__((flag_enum))
+#else
+#define FLAG_ATTR
+#endif
+
 typedef enum
 {
 	COND_MISSING = -1,
@@ -305,7 +312,7 @@ typedef enum
 	ASM_REF_FVEC,
 } AsmRegisterType;
 
-typedef enum
+typedef enum FLAG_ATTR
 {
 	ARG_BITS_8 = 1 << 0,
 	ARG_BITS_16 = 1 << 1,
@@ -370,7 +377,7 @@ typedef enum
 	PREC_FIRST = PREC_PRIMARY
 } Precedence;
 
-typedef enum
+typedef enum FLAG_ATTR
 {
 	SCOPE_NONE = 0,
 	SCOPE_ENSURE = 1 << 1,
@@ -759,7 +766,7 @@ typedef enum
 	VISIBLE_LOCAL,
 } Visibility;
 
-typedef enum
+typedef enum FLAG_ATTR
 {
 	ATTR_FUNC = 1 << 0,
 	ATTR_GLOBAL = 1 << 1,

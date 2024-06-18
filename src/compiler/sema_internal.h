@@ -97,13 +97,18 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 bool sema_flattened_expr_is_const(SemaContext *context, Expr *expr);
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
-
+Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
+	if (type_is_func_ptr(type))
+	{
+		*result = type_abi_alignment(type_voidptr);
+		return true;
+	}
 	if (!sema_resolve_type_decl(context, type)) return false;
 	*result = type_abi_alignment(type);
 	return true;
