@@ -2047,7 +2047,6 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
-	// TODO test that nextcase out of a switch using label correctly creates defers.
 	Ast *parent = context->next_switch;
 	if (statement->nextcase_stmt.label.name)
 	{
@@ -2057,14 +2056,12 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		AstKind kind = parent->ast_kind;
 		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
 		{
-			SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the label to match a 'switch' or 'if-catch' statement.");
-			return false;
+			RETURN_SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the label to match a 'switch' or 'if-catch' statement.");
 		}
 	}
 	if (!parent)
 	{
-		SEMA_ERROR(statement, "No matching switch could be found.");
-		return false;
+		RETURN_SEMA_ERROR(statement, "No matching switch could be found.");
 	}
 
 	// Handle jump to default.
