@@ -374,7 +374,6 @@ typedef enum
 	PREC_UNARY,             // ! - + ~ * & prefix ++/-- (type)
 	PREC_CALL,              // . () [] postfix ++ -- !! !
 	PREC_PRIMARY,
-	PREC_FIRST = PREC_PRIMARY
 } Precedence;
 
 typedef enum FLAG_ATTR

@@ -1130,7 +1130,7 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	expr->ct_call_expr.token_type = c->tok;
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	ASSIGN_EXPR_OR_RET(Expr* internal, parse_precedence(c, PREC_FIRST + 1), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr* internal, parse_precedence(c, PREC_PRIMARY), poisoned_expr);
 	DesignatorElement **elements = NULL;
 	if (!parse_param_path(c, &elements)) return poisoned_expr;
 	expr->ct_call_expr.main_var = internal;

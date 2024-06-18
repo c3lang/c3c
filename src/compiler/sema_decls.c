@@ -13,18 +13,14 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
-
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
-                                                        unsigned current_index,
-                                                        unsigned count);
-
+                                                        unsigned current_index, unsigned count);
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl);
 static inline bool sema_is_valid_method_param(SemaContext *context, Decl *param, Type *parent_type, bool is_dynamic);
 static inline bool sema_analyse_macro_method(SemaContext *context, Decl *decl);
-static inline bool
-unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type *parent_type, Decl *method);
+static inline bool unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type *parent_type,
+                                                  Decl *method);
 static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method);
-
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
                                          uint32_t parameters);
 static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload);
@@ -54,7 +50,7 @@ static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
-bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
+static bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
 static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl);
 
@@ -860,6 +856,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 
 static bool sema_deep_resolve_function_ptr(SemaContext *context, TypeInfo *type_to_resolve)
 {
+	assert(type_to_resolve->type);
 	Type *type = type_to_resolve->type->canonical;
 RETRY:
 	switch (type->type_kind)
@@ -3339,7 +3336,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 	return true;
 }
 
-bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
+static bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
 {
 	switch (type_storage_type(type))
 	{
