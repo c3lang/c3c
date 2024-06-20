@@ -1997,7 +1997,7 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
  *
  * 1. Check return types.
  * 2. Check parameter count.
- * 3. Check each parameter for matching types (TODO, should there be more checks?)
+ * 3. Check each parameter for matching types
  *
  * @return true if it matches, false otherwise.
  */
@@ -2670,10 +2670,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 	}
 
 	// Walk through all of the attributes.
-	int count = vec_size(attrs);
-	for (int i = 0; i < count; i++)
-	{
-		Attr *attr = attrs[i];
+	FOREACH_BEGIN(Attr *attr, attrs)
 		if (attr->is_custom)
 		{
 			if (!sema_analyse_custom_attribute(context, decl, attr, domain, top, erase_decl)) return false;
@@ -2684,7 +2681,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 			if (!sema_analyse_attribute(context, decl, attr, domain, erase_decl)) return false;
 		}
 		if (*erase_decl) return true;
-	}
+	FOREACH_END();
 	return true;
 }
 
@@ -2772,7 +2769,6 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 	{
 		case 0:
 			return MAIN_TYPE_NO_ARGS;
-			break;
 		case 1:
 			arg_type = type_flatten(params[0]->type);
 			if (arg_type == type_get_slice(type_string)) return MAIN_TYPE_ARGS;
@@ -3003,8 +2999,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 
 	if (is_int_return && type_flatten(rtype) != type_cint)
 	{
-		SEMA_ERROR(rtype_info, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
-		return false;
+		RETURN_SEMA_ERROR(rtype_info, "Expected a return type of 'void' or %s.", type_quoted_error_string(type_cint));
 	}
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
 	MainType type = sema_find_main_type(context, signature, is_winmain);
@@ -3018,8 +3013,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	}
 	if (type == MAIN_TYPE_RAW && !is_int_return)
 	{
-		SEMA_ERROR(rtype_info, "Int return is required for C style main.");
-		return false;
+		RETURN_SEMA_ERROR(rtype_info, "Int return is required for a C style main.");
 	}
 	// Suppress winmain on non-win32
 	if (platform_target.os != OS_TYPE_WIN32) is_winmain = false;
@@ -3055,10 +3049,7 @@ REGISTER_MAIN:
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl)
 {
 	assert((domain & CALLABLE_TYPE) == domain);
-	if (!sema_analyse_attributes(context,
-								 decl,
-								 decl->attributes,
-								 domain,
+	if (!sema_analyse_attributes(context, decl, decl->attributes, domain,
 								 erase_decl)) return decl_poison(decl);
 	return true;
 }
@@ -3084,9 +3075,8 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		assert(!is_interface_method);
 		if (vec_size(sig->params))
 		{
-			SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
+			RETURN_SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
 			           is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
-			return decl_poison(decl);
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
 		if (!sema_resolve_type_info(context, rtype_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -3095,16 +3085,14 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 		{
 			if (rtype->canonical != type_void)
 			{
-				SEMA_ERROR(rtype_info, "'@init' and '@finalizer' functions may only return 'void'.");
-				return decl_poison(decl);
+				RETURN_SEMA_ERROR(rtype_info, "'@init' and '@finalizer' functions may only return 'void'.");
 			}
 		}
 		else
 		{
 			if (type_no_optional(rtype) != type_void)
 			{
-				SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
-				return decl_poison(decl);
+				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
 			}
 			if (type_is_void(rtype))
 			{
@@ -3122,37 +3110,28 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	{
 		if (type_is_void(rtype))
 		{
-			SEMA_ERROR(rtype_info, "@nodiscard cannot be used on functions returning 'void'.");
-			return decl_poison(decl);
+			RETURN_SEMA_ERROR(rtype_info, "@nodiscard cannot be used on functions returning 'void'.");
 		}
 	}
-	if (sig->attrs.maydiscard)
+	if (sig->attrs.maydiscard && !type_is_optional(rtype))
 	{
-		if (!type_is_optional(rtype))
-		{
-			SEMA_ERROR(rtype_info, "@maydiscard can only be used on functions returning optional values.");
-			return decl_poison(decl);
-		}
+		RETURN_SEMA_ERROR(rtype_info, "@maydiscard can only be used on functions returning optional values.");
 	}
+
 	if (decl->func_decl.type_parent)
 	{
-		if (!sema_analyse_method(context, decl)) return decl_poison(decl);
+		if (!sema_analyse_method(context, decl)) return false;
 	}
 	else if (!is_interface_method)
 	{
-		if (decl->func_decl.attr_dynamic)
-		{
-			SEMA_ERROR(decl, "Only methods may implement interfaces.");
-			return decl_poison(decl);
-		}
+		if (decl->func_decl.attr_dynamic) RETURN_SEMA_ERROR(decl, "Only methods may implement interfaces.");
 		if (decl->name == kw_main)
 		{
 			if (is_test || is_benchmark)
 			{
-				SEMA_ERROR(decl, "The main function may not be annotated %s.", is_test ? "@test" : "@benchmark");
-				return decl_poison(decl);
+				RETURN_SEMA_ERROR(decl, "The main function may not be annotated %s.", is_test ? "@test" : "@benchmark");
 			}
-			if (!sema_analyse_main_function(context, decl)) return decl_poison(decl);
+			if (!sema_analyse_main_function(context, decl)) return false;
 		}
 		decl_set_external_name(decl);
 	}
@@ -3160,12 +3139,12 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	// Do we have fn void any.foo(void*) { ... }?
 	if (!decl->func_decl.body && !decl->is_extern && !decl->unit->is_interface_file && !is_interface_method)
 	{
-		SEMA_ERROR(decl, "Expected a function body, if you want to declare an extern function use 'extern' or place it in an .c3i file.");
-		return false;
+		RETURN_SEMA_ERROR(decl, "Expected a function body, if you want to declare an extern function use "
+								"'extern' or place it in an .c3i file.");
 	}
 	bool pure = false;
 	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, NULL,
-	                             &pure)) return decl_poison(decl);
+	                             &pure)) return false;
 	decl->func_decl.signature.attrs.is_pure = pure;
 	if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 	DEBUG_LOG("<<< Function analysis of [%s] successful.", decl_safe_name(decl));

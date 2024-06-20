@@ -12,6 +12,7 @@
 - Prevent Mach-O from removing `@init` and `@dynamic` in a more reliable way #1200.
 - Fix of missing copy of parameterized custom attributes.
 - Fixed crash on certain recursive function definitions #1209.
+- Return the typekind "FUNC" for a function pointer.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

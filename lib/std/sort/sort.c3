@@ -12,22 +12,27 @@ macro usz @len_from_list(&list)
 
 macro bool @is_comparer(#cmp, #list)
 {
-	var $params = $typeof(#cmp).params;
-	$if $params.len != 2:
-		return false;
-	$else
-		$if $params[0] != $params[1]:
+	var $Type = $typeof(#cmp);
+	$if $and($Type.kindof == FUNC, $Type.returns.kindof == SIGNED_INT):
+		var $params = $Type.params;
+		$if $params.len != 2:
 			return false;
 		$else
-			var $element = @typeid(#list[0]);
-			$switch
-				$case $element == $params[0]:
-					return true;
-				$case $and($params[0].kindof == POINTER, $params[0].inner == $element):
-					return true;
-				$default:
-					return false;
-			$endswitch
+			$if $params[0] != $params[1]:
+				return false;
+			$else
+				var $element = @typeid(#list[0]);
+				$switch
+					$case $element == $params[0]:
+						return true;
+					$case $and($params[0].kindof == POINTER, $params[0].inner == $element):
+						return true;
+					$default:
+						return false;
+				$endswitch
+			$endif
 		$endif
+	$else
+		return false;
 	$endif
 }

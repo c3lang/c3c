@@ -3412,7 +3412,8 @@ static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
-	unsigned val = type_get_introspection_kind(type->type_kind);
+	TypeKind kind = type_is_func_ptr(type) ? TYPE_FUNC : type->type_kind;
+	unsigned val = type_get_introspection_kind(kind);
 	if (!type_kind)
 	{
 		// No TypeKind defined, fallback to char.
@@ -3846,6 +3847,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 			switch (original_type->type_kind)
 			{
 				case TYPE_POINTER:
+					return !type_is_func_ptr(original_type);
 				case TYPE_OPTIONAL:
 				case TYPE_DISTINCT:
 				case TYPE_ENUM:
@@ -3901,7 +3903,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 			}
 		case TYPE_PROPERTY_PARAMS:
 		case TYPE_PROPERTY_RETURNS:
-			return type->type_kind == TYPE_FUNC || (type->type_kind == TYPE_POINTER && type->pointer->type_kind == TYPE_FUNC);
+			return type_is_func_ptr(type);
 		case TYPE_PROPERTY_EXTNAMEOF:
 			return !type_is_builtin(type->type_kind);
 	}
