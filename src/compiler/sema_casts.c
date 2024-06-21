@@ -866,11 +866,6 @@ static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 	return sema_cast_error(cc, may_explicit, is_silent);
 }
 
-static bool rule_untyped_to_struct(CastContext *cc, bool is_explicit, bool is_silent)
-{
-	TODO
-}
-
 static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *from_type = cc->from_type;

@@ -939,18 +939,6 @@ Expr *expr_variable(Decl *decl)
 	return expr;
 }
 
-void expr_rewrite_to_variable(Expr *expr, Decl *decl)
-{
-	expr->expr_kind = EXPR_IDENTIFIER;
-	if (decl->resolve_status == RESOLVE_DONE)
-	{
-		expr_resolve_ident(expr, decl);
-		return;
-	}
-	expr->identifier_expr.ident = decl->name;
-	expr->resolve_status = RESOLVE_NOT_DONE;
-}
-
 void expr_rewrite_insert_deref(Expr *original)
 {
 	// Assume *(&x) => x

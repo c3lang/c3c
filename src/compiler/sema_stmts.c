@@ -2970,7 +2970,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		current = &compound_stmt->next;
 
 		// Copy and evaluate all the expressions in "incr"
-		FOREACH_BEGIN(Expr *expr, incr_list)
+		FOREACH_BEGIN(Expr *expr, incr_list) // NOLINT
 			if (!sema_analyse_ct_expr(context, copy_expr_single(expr))) goto FAILED;
 		FOREACH_END();
 	}
@@ -3003,8 +3003,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_BREAK_STMT:
 			return sema_analyse_break_stmt(context, statement);
 		case AST_CASE_STMT:
-			SEMA_ERROR(statement, "Unexpected 'case' outside of switch");
-			return false;
+			RETURN_SEMA_ERROR(statement, "Unexpected 'case' outside of switch");
 		case AST_COMPOUND_STMT:
 			return sema_analyse_compound_stmt(context, statement);
 		case AST_CONTINUE_STMT:
@@ -3018,8 +3017,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_DECLARE_STMT:
 			return sema_analyse_declare_stmt(context, statement);
 		case AST_DEFAULT_STMT:
-			SEMA_ERROR(statement, "Unexpected 'default' outside of switch");
-			return false;
+			RETURN_SEMA_ERROR(statement, "Unexpected 'default' outside of switch");
 		case AST_DEFER_STMT:
 			return sema_analyse_defer_stmt(context, statement);
 		case AST_EXPR_STMT:

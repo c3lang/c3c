@@ -1,6 +1,5 @@
 #include "compiler_internal.h"
 
-#include <llvm/Config/llvm-config.h>  // for LLVM_VERSION_STRING
 #if PLATFORM_POSIX
 #include <glob.h>
 #endif

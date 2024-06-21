@@ -991,7 +991,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
  */
 bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref)
 {
-	Visibility visibility = -1;
+	Visibility visibility = -1; // NOLINT
 	if (cond_ref) *cond_ref = false;
 	while (1)
 	{
@@ -999,7 +999,7 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 		if (!parse_attribute(c, &attr, false)) return false;
 		if (!attr) return true;
 		bool parsed_builtin = false;
-		Visibility parsed_visibility = -1;
+		Visibility parsed_visibility = -1; // NOLINT
 		if (!attr->is_custom)
 		{
 			// This is important: if we would allow user defined attributes,
@@ -1745,27 +1745,6 @@ static bool parse_macro_params(ParseContext *c, Decl *macro)
 	}
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	return true;
-}
-
-/**
- * define_parameters ::= expr (<',' expr)* '>)'
- *
- * @return NULL if parsing failed, otherwise a list of Type*
- */
-static inline Expr **parse_generic_parameters(ParseContext *c)
-{
-	Expr **params = NULL;
-	while (!try_consume(c, TOKEN_RGENPAR))
-	{
-		ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), NULL);
-		vec_add(params, arg);
-		TokenType tok = c->tok;
-		if (tok != TOKEN_RGENPAR)
-		{
-			TRY_CONSUME_OR_RET(TOKEN_COMMA, "Expected ',' after the argument.", NULL);
-		}
-	}
-	return params;
 }
 
 static inline void decl_add_type(Decl *decl, TypeKind kind)
