@@ -1662,6 +1662,7 @@ struct CompilationUnit_
 	HTable local_symbols;
 	int lambda_count;
 	Decl **local_method_extensions;
+	TypeInfo **check_type_variable_array;
 	struct
 	{
 		void *debug_file;

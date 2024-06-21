@@ -101,8 +101,11 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 	if (!sema_resolve_type(context, type->array.base, resolve_type_kind)) return type_info_poison(type);
 
 	Type *distinct_base = type_flatten(type->array.base->type);
+
+	// We don't want to allow arrays with flexible members
 	if (distinct_base->type_kind == TYPE_STRUCT)
 	{
+		// If the struct is resolved, we can check immediately
 		if (distinct_base->decl->resolve_status == RESOLVE_DONE)
 		{
 			if (distinct_base->decl->has_variable_array)
@@ -110,6 +113,11 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 				SEMA_ERROR(type, "Arrays of structs with flexible array members is not allowed.");
 				return type_info_poison(type);
 			}
+		}
+		else
+		{
+			// Otherwise we have to defer it:
+			vec_add(context->unit->check_type_variable_array, type);
 		}
 	}
 	TypeInfo *base_info = type->array.base;
