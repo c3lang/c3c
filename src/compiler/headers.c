@@ -15,7 +15,7 @@ static bool type_is_func_pointer(Type *type)
 {
 	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;
 	type = type_flatten(type);
-	return type->pointer->type_kind == TYPE_FUNC_PTR;
+	return type->type_kind == TYPE_FUNC_PTR;
 }
 
 static void indent_line(FILE *file, int indent)
