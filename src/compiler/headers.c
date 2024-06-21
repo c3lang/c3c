@@ -15,8 +15,7 @@ static bool type_is_func_pointer(Type *type)
 {
 	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;
 	type = type_flatten(type);
-	if (type->type_kind != TYPE_POINTER) return false;
-	return type->pointer->type_kind == TYPE_FUNC;
+	return type->pointer->type_kind == TYPE_FUNC_PTR;
 }
 
 static void indent_line(FILE *file, int indent)
@@ -106,7 +105,10 @@ static void header_print_type(FILE *file, Type *type)
 			header_print_type(file, type->pointer);
 			OUTPUT("*");
 			return;
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
 			OUTPUT("%s", decl_get_extname(type->function.decl));
 			return;
 		case TYPE_STRUCT:
@@ -382,6 +384,7 @@ RETRY:
 		case TYPE_INTERFACE:
 			return;
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			type = type->pointer;
 			goto RETRY;
 		case TYPE_ENUM:
@@ -408,7 +411,7 @@ RETRY:
 				FOREACH_END();
 				return;
 			}
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			UNREACHABLE
 			return;
 		case TYPE_STRUCT:

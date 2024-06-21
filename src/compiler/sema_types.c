@@ -537,12 +537,16 @@ static Type *flatten_raw_function_type(Type *type)
 	{
 		case TYPE_TYPEDEF:
 			return flatten_raw_function_type(type->canonical);
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			return type->function.prototype->raw_type;
 		case TYPE_OPTIONAL:
 			current = type->optional;
 			other = flatten_raw_function_type(current);
 			return other == current ? type : type_get_optional(other);
+		case TYPE_FUNC_PTR:
+			current = type->pointer;
+			other = flatten_raw_function_type(current);
+			return other == current ? type : type_get_func_ptr(other);
 		case TYPE_POINTER:
 			current = type->pointer;
 			other = flatten_raw_function_type(current);
@@ -630,7 +634,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		type_append_name_to_scratch(val);
 	}
 	scratch_buffer_append_char(')');
-	Type *type = type_new(TYPE_FUNC, scratch_buffer_interned());
+	Type *type = type_new(TYPE_FUNC_RAW, scratch_buffer_interned());
 	Signature *copy_sig = CALLOCS(Signature);
 	*copy_sig = *sig;
 	copy_sig->attrs = (CalleeAttributes) { .nodiscard = false };
@@ -685,6 +689,7 @@ static bool compare_func_param(Type *one, Type *other)
 	switch (one->type_kind)
 	{
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			return compare_func_param(one->pointer, other->pointer);
 		case TYPE_ARRAY:
 			if (one->array.len != other->array.len) return false;
@@ -692,7 +697,7 @@ static bool compare_func_param(Type *one, Type *other)
 		case TYPE_SLICE:
 		case TYPE_FLEXIBLE_ARRAY:
 			return compare_func_param(one->array.base, other->array.base);
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			return one->function.prototype->raw_type == other->function.prototype->raw_type;
 		case TYPE_OPTIONAL:
 			return compare_func_param(one->optional, other->optional);

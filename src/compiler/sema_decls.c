@@ -857,7 +857,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 static bool sema_deep_resolve_function_ptr(SemaContext *context, TypeInfo *type_to_resolve)
 {
 	assert(type_to_resolve->type);
-	Type *type = type_to_resolve->type->canonical;
+	Type *type = type_to_resolve->type;
 RETRY:
 	switch (type->type_kind)
 	{
@@ -887,9 +887,10 @@ RETRY:
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			type = type->pointer;
 			goto RETRY;
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			return sema_analyse_decl(context, type->decl);
 		case TYPE_OPTIONAL:
 			type = type->optional;
@@ -1204,7 +1205,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 
 	if (!all_ok) return false;
 	Type *raw_type = sema_resolve_type_get_func(signature, abi);
-	assert(func_decl->type->type_kind == TYPE_FUNC);
+	assert(func_decl->type->type_kind == TYPE_FUNC_RAW);
 	assert(raw_type->function.prototype);
 	func_decl->type->function.prototype = raw_type->function.prototype;
 	return true;
@@ -1228,7 +1229,7 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 		Decl *fn_decl = decl->typedef_decl.decl;
 		fn_decl->unit = decl->unit;
 		fn_decl->type = type_new_func(fn_decl, &fn_decl->fntype_decl);
-		decl->type->canonical = type_get_ptr(fn_decl->type);
+		decl->type->canonical = type_get_func_ptr(fn_decl->type);
 		return true;
 	}
 	TypeInfo *info = decl->typedef_decl.type_info;
@@ -4039,7 +4040,7 @@ RETRY:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			return true;
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			if (!type->decl) return true;
 			FALLTHROUGH;
 		case TYPE_ENUM:
@@ -4049,6 +4050,7 @@ RETRY:
 		case TYPE_FAULTTYPE:
 			return sema_analyse_decl(context, type->decl);
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			type = type->pointer;
 			goto RETRY;
 		case TYPE_TYPEDEF:

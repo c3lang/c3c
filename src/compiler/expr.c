@@ -598,6 +598,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INTERFACE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
+		case TYPE_FUNC_PTR:
 			expr_rewrite_const_null(expr, type);
 			return;
 		case TYPE_ENUM:
@@ -605,7 +606,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			expr->const_expr.enum_err_val = type->decl->enums.values[0];
 			break;
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:

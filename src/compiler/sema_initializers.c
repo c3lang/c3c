@@ -710,6 +710,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			return cast_explicit(context, expr, to);
 		}
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			if (is_zero_init)
 			{
 				expr_rewrite_to_const_zero(expr, to);
@@ -719,7 +720,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			return false;
 		case TYPE_VOID:
 		case TYPE_POISONED:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:

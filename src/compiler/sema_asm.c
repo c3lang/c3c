@@ -323,7 +323,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		asm_reg_add_output(block, arg);
 	}
 	Type *type = type_flatten(decl->type);
-	if (type_is_pointer(type))
+	if (type_is_pointer_type(type))
 	{
 		type = type_uptr->canonical;
 	}
@@ -434,7 +434,7 @@ static inline bool sema_check_asm_arg_value(SemaContext *context, AsmInlineBlock
 		return false;
 	}
 	Type *type = type_flatten(inner->type);
-	if (type_is_pointer(type)) type = type_uptr->canonical;
+	if (type_is_pointer_type(type)) type = type_uptr->canonical;
 	if (type_is_integer(type))
 	{
 		if (!sema_reg_int_suported_type(arg_type, type))

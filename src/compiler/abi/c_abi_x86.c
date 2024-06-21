@@ -109,7 +109,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 	{
 		case TYPE_VECTOR:
 		case TYPE_VOID:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
@@ -126,6 +126,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case ALL_FLOATS:
 		case TYPE_BOOL:
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 		case TYPE_SLICE:
 		case TYPE_ANY:
 			return true;
@@ -189,7 +190,7 @@ ABIArgInfo *x86_classify_return(CallABI call, Regs *regs, Type *type)
 				{
 					return abi_arg_new_expand();
 				}
-				if (type_is_pointer(type))
+				if (type_is_pointer_type(type))
 				{
 					return abi_arg_new_expand();
 				}
@@ -456,12 +457,13 @@ static ABIArgInfo *x86_classify_argument(CallABI call, Regs *regs, Type *type)
 	{
 		case LOWERED_TYPES:
 		case TYPE_VOID:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case ALL_FLOATS:
 		case ALL_INTS:
 		case TYPE_BOOL:
+		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 			return x86_classify_primitives(call, regs, type);
 		case TYPE_VECTOR:

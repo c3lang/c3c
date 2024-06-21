@@ -2607,7 +2607,7 @@ static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *e
 	Decl *dyn_fn = expr->access_expr.ref;
 	LLVMValueRef func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
 
-	llvm_value_set(value, func, type_get_ptr(dyn_fn->type));
+	llvm_value_set(value, func, type_get_func_ptr(dyn_fn->type));
 }
 
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
@@ -2665,6 +2665,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					llvm_value = LLVMBuildIsNull(c->builder, llvm_value, "not");
 					break;
 				case ALL_INTS:
+				case TYPE_FUNC_PTR:
 				case TYPE_POINTER:
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
@@ -3845,12 +3846,13 @@ void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, 
 			llvm_emit_float_comp(c, result, lhs, rhs, binary_op, NULL);
 			return;
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			llvm_emit_ptr_comparison(c, result, lhs, rhs, binary_op);
 			return;
 		case TYPE_ARRAY:
 			llvm_emit_array_comp(c, result, lhs, rhs, binary_op);
 			return;
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			break;
 		case TYPE_ANY:
 			llvm_emit_any_comparison(c, result, lhs, rhs, binary_op);
@@ -4917,13 +4919,14 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 	{
 		case LOWERED_TYPES:
 		case TYPE_VOID:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 			break;
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
+		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 			args[(*arg_count_ref)++] = llvm_load(context,
 												 llvm_get_type(context, param_type),

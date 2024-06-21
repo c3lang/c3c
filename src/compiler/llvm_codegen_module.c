@@ -121,7 +121,7 @@ void gencontext_begin_module(GenContext *c)
 			case TYPE_DISTINCT:
 				type->decl->backend_ref = NULL;
 				break;
-			case TYPE_FUNC:
+			case TYPE_FUNC_RAW:
 				//REMINDER("Clear func when it has reflection");
 				break;
 			default:

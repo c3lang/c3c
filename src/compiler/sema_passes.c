@@ -528,9 +528,10 @@ INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 		default:
 			return;
 	}
-	if (inner->type_kind != TYPE_POINTER) return;
-	Type *pointer = inner->pointer;
-	if (pointer->type_kind == TYPE_FUNC && !sema_resolve_type_decl(c, pointer)) decl_poison(decl);
+	if (inner->type_kind != TYPE_FUNC_PTR) return;
+	Type *func = inner->pointer;
+	assert(func->type_kind == TYPE_FUNC_RAW);
+	if (!sema_resolve_type_decl(c, func)) decl_poison(decl);
 }
 
 void sema_analysis_pass_decls(Module *module)

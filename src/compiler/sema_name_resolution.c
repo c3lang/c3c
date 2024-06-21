@@ -685,6 +685,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
@@ -702,7 +703,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_DISTINCT:
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			return sema_resolve_type_decl(context, type->decl->distinct->type);
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			if (!type->function.prototype && type->function.decl->decl_kind == DECL_FNTYPE) return sema_analyse_decl(context, type->function.decl);
 			return true;
 		case TYPE_ENUM:

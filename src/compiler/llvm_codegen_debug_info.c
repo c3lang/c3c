@@ -552,9 +552,9 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 		vec_add(buffer, LLVMDIBuilderCreateUnspecifiedType(c->debug.builder, "", 0));
 	}
 	return LLVMDIBuilderCreateSubroutineType(c->debug.builder,
-											 c->debug.file.debug_file,
-											 buffer,
-											 vec_size(buffer), 0);
+	                                         c->debug.file.debug_file,
+	                                         buffer,
+	                                         vec_size(buffer), 0);
 }
 
 
@@ -603,12 +603,13 @@ static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *
 		case TYPE_TYPEID:
 			return type->backend_debug_type = llvm_debug_typeid_type(c, type);
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			return type->backend_debug_type = llvm_debug_pointer_type(c, type);
 		case TYPE_ENUM:
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
 		case TYPE_FAULTTYPE:
 			return type->backend_debug_type = llvm_debug_enum_type(c, type, scope);
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			return type->backend_debug_type = llvm_debug_func_type(c, type);
 		case TYPE_STRUCT:
 		case TYPE_UNION:

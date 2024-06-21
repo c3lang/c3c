@@ -316,7 +316,7 @@ static void assign_panicfn(void)
 	{
 		error_exit("'%s' is not a function function.", panicf);
 	}
-	if (!type_func_match(type_get_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_uint,
+	if (!type_func_match(type_get_func_ptr(panicf_fn_type), type_void, 5, type_string, type_string, type_string, type_uint,
 	                     type_get_slice(type_any)))
 	{
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");
@@ -349,7 +349,7 @@ static void assign_testfn(void)
 	{
 		error_exit("'%s::%s' is not a function.", path->module, ident);
 	}
-	if (!type_func_match(type_get_ptr(decl->type->canonical), type_bool, 0))
+	if (!type_func_match(type_get_func_ptr(decl->type->canonical), type_bool, 0))
 	{
 		error_exit("Expected test runner to have the signature fn void().");
 	}
@@ -382,7 +382,7 @@ static void assign_benchfn(void)
 	{
 		error_exit("'%s::%s' is not a function.", path->module, ident);
 	}
-	if (!type_func_match(type_get_ptr(decl->type->canonical), type_bool, 0))
+	if (!type_func_match(type_get_func_ptr(decl->type->canonical), type_bool, 0))
 	{
 		error_exit("Expected benchmark function to have the signature fn void().");
 	}

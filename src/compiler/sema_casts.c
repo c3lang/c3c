@@ -346,6 +346,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case ALL_FLOATS:
 			return CAST_FPBOOL;
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			return CAST_PTRBOOL;
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
@@ -358,7 +359,7 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_VOID:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_ARRAY:
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
@@ -885,7 +886,7 @@ static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silen
 	if (from_base == array_base) return true;
 
 	// This is allowed: void*[] -> int*[] and int*[] -> void*[]
-	if ((from_base == type_voidptr && type_is_pointer(array_base)) || (array_base == type_voidptr && type_is_pointer(from_base))) return true;
+	if ((from_base == type_voidptr && type_is_pointer_type(array_base)) || (array_base == type_voidptr && type_is_pointer_type(from_base))) return true;
 
 	if (is_silent) return false;
 
@@ -1651,6 +1652,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 					insert_runtime_cast(expr, CAST_INTINT, to_type);
 					return;
 				case TYPE_POINTER:
+				case TYPE_FUNC_PTR:
 				case TYPE_TYPEID:
 				case TYPE_ANYFAULT:
 				case TYPE_FAULTTYPE:
@@ -1672,6 +1674,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 				insert_runtime_cast(expr, CAST_INTPTR, to_type);
 				return;
 			case TYPE_POINTER:
+			case TYPE_FUNC_PTR:
 			case TYPE_TYPEID:
 			case TYPE_ANYFAULT:
 			case TYPE_FAULTTYPE:
@@ -1821,6 +1824,7 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 	assert(expr->const_expr.const_kind == CONST_STRING);
 	expr_rewrite_const_bool(expr, type, true);
 }
+
 
 static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
@@ -1983,7 +1987,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define PT2BO &cast_ptr_to_bool          
 #define PT2IN &cast_ptr_to_int           
 #define PT2PT &cast_ptr_to_ptr           
-#define PT2AY &cast_ptr_to_any           
+#define PT2AY &cast_ptr_to_any
 #define AP2SL &cast_vaptr_to_slice
 #define SL2BO &cast_slice_to_bool
 #define SL2PT &cast_slice_to_ptr
@@ -2023,10 +2027,10 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RARBS &rule_arr_to_bits           /* Char[*] -> bits (explicit + base match)                                                           */
 #define RINEN &rule_int_to_enum           /* Int -> enum (explicit, range check const)                                                         */
 #define RPTPT &rule_ptr_to_ptr            /* Ptr -> ptr (explicit or ptr match)                                                                */
-#define RAPSL &rule_arrptr_to_slice       /* Arrptr -> Slice (explicit flattens distinct, pointer match)                                    */
-#define RSLPT &rule_slice_to_ptr          /* Slice -> ptr (explicit flatens distinct, pointer match)                                        */
-#define RSLSL &rule_slice_to_slice        /* Slice -> slice (explicit same size, align safe, match base otherwise) void* <-> int* match. */
-#define RSLVA &rule_slice_to_vecarr       /* Slice -> vec/arr (if const, convert to vec/arr, check)                                         */
+#define RAPSL &rule_arrptr_to_slice       /* Arrptr -> Slice (explicit flattens distinct, pointer match)                                       */
+#define RSLPT &rule_slice_to_ptr          /* Slice -> ptr (explicit flatens distinct, pointer match)                                           */
+#define RSLSL &rule_slice_to_slice        /* Slice -> slice (explicit same size, align safe, match base otherwise) void* <-> int* match.       */
+#define RSLVA &rule_slice_to_vecarr       /* Slice -> vec/arr (if const, convert to vec/arr, check)                                            */
 #define RVCVC &rule_vec_to_vec            /* Vec -> vec (as underlying type)                                                                   */
 #define RBSAR &rule_bits_to_arr           /* Bits -> arr (explicit + base match)                                                               */
 #define RBSIN &rule_bits_to_int           /* Bits -> int (explicit + size match)                                                               */
@@ -2045,59 +2049,60 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RULAR &rule_ulist_to_vecarr       /* Untyped list -> vector or array                                                                   */
 #define RULFE &rule_ulist_to_inferred     /* Untyped list -> inferred vector or array                                                          */
 #define RULSL &rule_ulist_to_slice        /* Untyped list -> slice                                                                          */
-
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
-// void, wildc,  bool,   int, float,   ptr, slice,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, typid, afaul, voidp, arrpt, infer, ulist (to)
- {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
- {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__, _NO__}, // WILDCARD
- {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
- {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
- {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
- {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
- {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
- {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // ARRAY
- {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__, _NO__}, // STRUCT
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
- {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // ANY
- {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RIFIF, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // INTERFACE
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__, _NO__}, // FAULT
- {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
- {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
- {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSL, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST
+// void, wildc,  bool,   int, float,   ptr, slice,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, func,  typid, afaul, voidp, arrpt, infer, ulist (to)
+ {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
+ {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__, _NO__}, // WILDCARD
+ {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
+ {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, RINPT, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
+ {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
+ {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
+ {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
+ {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // ARRAY
+ {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__, _NO__}, // STRUCT
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // ANY
+ {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RIFIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // INTERFACE
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__, _NO__}, // FAULT
+ {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RPTPT, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__}, // FUNC
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
+ {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
+ {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSL, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST
 };
 
 CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
-//void,  wildcd, bool,    int, float,   ptr, slice,  vec,  bitst, dist,  array, struct,union,   any,  infc, fault,  enum,typeid, anyfa,  vptr,  aptr, infer, ulist (to)
- {0,          0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
- {XX2XX,      0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0,     0     }, // WILDCARD
- {XX2VO,      0,     0, BO2IN, BO2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
- {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0,     0, IN2EN,     0,     0, IN2PT, IN2PT,     0,     0     }, // INT
- {XX2VO,      0, FP2BO, FP2IN, FP2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
- {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
- {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
- {XX2VO,      0,     0,     0,     0,     0,     0, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, VA2FE,     0     }, // VECTOR
- {XX2VO,      0,     0, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BITSTRUCT
- {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // DISTINCT
- {XX2VO,      0,     0,     0,     0,     0,     0, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, VA2FE,     0     }, // ARRAY
- {XX2VO,      0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0,     0     }, // STRUCT
- {XX2VO,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // UNION
- {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // ANY
- {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,     0, AY2PT, AY2PT,     0,     0     }, // INTERFACE
- {XX2VO,      0, AF2BO, FA2IN,     0, FA2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, FA2AF, FA2PT, FA2PT,     0,     0     }, // FAULT
- {XX2VO,      0,     0, EN2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // ENUM
- {XX2VO,      0, TI2BO, TI2IN,     0, TI2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0, TI2PT, TI2PT,     0,     0     }, // TYPEID
- {XX2VO,      0, AF2BO, FA2IN,     0, FA2IN,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     AF2FA, 0,     0,     0, FA2IN, FA2IN,     0,     0     }, // ANYFAULT
- {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0,     0, PT2PT,     0,     0     }, // VOIDPTR
- {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT, AP2SL, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // ARRAYPTR
- {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // INFERRED
- {    0,      0,     0,     0,     0,     0, UL2XX, UL2XX, UL2XX,     0, UL2XX, UL2XX,     0,     0,     0,     0,     0,     0,     0,     0,     0, UL2XX,     0     }, // UNTYPED
+//void,  wildcd, bool,    int, float,   ptr, slice,  vec,  bitst, dist,  array, struct,union,   any,  infc, fault,  enum, func,typeid, anyfa,  vptr,  aptr, infer, ulist (to)
+ {0,          0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // VOID (from)
+ {XX2XX,      0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,XX2XX, XX2XX, XX2XX, XX2XX,     0,     0     }, // WILDCARD
+ {XX2VO,      0,     0, BO2IN, BO2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // BOOL
+ {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0,     0, IN2EN, IN2PT,    0,     0, IN2PT, IN2PT,     0,     0     }, // INT
+ {XX2VO,      0, FP2BO, FP2IN, FP2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // FLOAT
+ {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,    0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
+ {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,    0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
+ {XX2VO,      0,     0,     0,     0,     0,     0, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // VECTOR
+ {XX2VO,      0,     0, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // BITSTRUCT
+ {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // DISTINCT
+ {XX2VO,      0,     0,     0,     0,     0,     0, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // ARRAY
+ {XX2VO,      0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,ST2LN, ST2LN, ST2LN, ST2LN,     0,     0     }, // STRUCT
+ {XX2VO,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // UNION
+ {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,    0,     0, AY2PT, AY2PT,     0,     0     }, // ANY
+ {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,    0,     0, AY2PT, AY2PT,     0,     0     }, // INTERFACE
+ {XX2VO,      0, AF2BO, FA2IN,     0, FA2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0, FA2AF, FA2PT, FA2PT,     0,     0     }, // FAULT
+ {XX2VO,      0,     0, EN2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // ENUM
+ {XX2VO,      0, PT2BO, PT2IN,     0,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0, PT2PT,    0,     0, PT2PT,     0,     0,     0     }, // FUNC
+ {XX2VO,      0, TI2BO, TI2IN,     0, TI2PT,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0, TI2PT, TI2PT,     0,     0     }, // TYPEID
+ {XX2VO,      0, AF2BO, FA2IN,     0, FA2IN,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     AF2FA, 0,     0,    0,     0, FA2IN, FA2IN,     0,     0     }, // ANYFAULT
+ {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0, PT2PT,    0,     0,     0, PT2PT,     0,     0     }, // VOIDPTR
+ {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT, AP2SL, EX2VC,     0,     0,     0,     0,     0,     PT2AY, PT2AY, 0,     0,     0,    0,     0, PT2PT, PT2PT, PT2FE,     0     }, // ARRAYPTR
+ {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // INFERRED
+ {    0,      0,     0,     0,     0,     0, UL2XX, UL2XX, UL2XX,     0, UL2XX, UL2XX,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, UL2XX,     0     }, // UNTYPED
 };
 
 static ConvGroup group_from_type[TYPE_LAST + 1] = {
@@ -2125,7 +2130,7 @@ static ConvGroup group_from_type[TYPE_LAST + 1] = {
 	[TYPE_TYPEID]           = CONV_TYPEID,
 	[TYPE_POINTER]          = CONV_POINTER,
 	[TYPE_ENUM]             = CONV_ENUM,
-	[TYPE_FUNC]             = CONV_NO,
+	[TYPE_FUNC_PTR]         = CONV_FUNC,
 	[TYPE_STRUCT]           = CONV_STRUCT,
 	[TYPE_UNION]            = CONV_UNION,
 	[TYPE_BITSTRUCT]        = CONV_BITSTRUCT,

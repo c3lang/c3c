@@ -165,7 +165,10 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_WILDCARD:
 			UNREACHABLE
 			break;
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
 			type_append_func_to_scratch(type->function.prototype);
 			break;
 		case TYPE_ARRAY:
@@ -229,7 +232,10 @@ const char *type_to_error_string(Type *type)
 			scratch_buffer_append(decl_module(decl)->generic_suffix);
 			return scratch_buffer_copy();
 		}
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
 			if (!type->function.prototype) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append("fn ");
@@ -244,10 +250,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_TYPEID:
 			return "typeid";
 		case TYPE_POINTER:
-			if (type->pointer->type_kind == TYPE_FUNC)
-			{
-				return type_to_error_string(type->pointer);
-			}
 			return str_printf("%s*", type_to_error_string(type->pointer));
 		case TYPE_OPTIONAL:
 			if (!type->optional) return "void!";
@@ -299,6 +301,7 @@ RETRY:
 			return width;
 		}
 		case CT_TYPES:
+		case TYPE_FUNC_RAW:
 			UNREACHABLE;
 		case TYPE_FLEXIBLE_ARRAY:
 			return 0;
@@ -330,7 +333,7 @@ RETRY:
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
 			return t.iptr.canonical->builtin.bytesize * 2;
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 			return t.iptr.canonical->builtin.bytesize;
 		case TYPE_ARRAY:
@@ -343,7 +346,7 @@ RETRY:
 
 FunctionPrototype *type_get_resolved_prototype(Type *type)
 {
-	assert(type->type_kind == TYPE_FUNC);
+	assert(type->type_kind == TYPE_FUNC_RAW);
 	FunctionPrototype *prototype = type->function.prototype;
 	if (!prototype->is_resolved) c_abi_func_create(prototype);
 	return prototype;
@@ -413,7 +416,8 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
 		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
@@ -513,7 +517,8 @@ bool type_is_comparable(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+		case TYPE_FUNC_RAW:
 		case TYPE_FAULTTYPE:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
@@ -569,7 +574,10 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			scratch_buffer_append_char('$');
 			type_mangle_introspect_name_to_buffer(type->array.base);
 			return;
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
 			type = type->function.prototype->raw_type;
 			if (type->function.decl)
 			{
@@ -685,12 +693,14 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_UNION:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->alignment;
+			UNREACHABLE
 		case TYPE_BOOL:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_ANYFAULT:
 			return type->builtin.abi_alignment;
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
+		case TYPE_FUNC_PTR:
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
 		case TYPE_POINTER:
@@ -886,8 +896,19 @@ Type *type_get_ptr_recurse(Type *ptr_type)
 }
 Type *type_get_ptr(Type *ptr_type)
 {
+	assert(ptr_type->type_kind != TYPE_FUNC_RAW);
 	assert(!type_is_optional(ptr_type));
 	return type_generate_ptr(ptr_type, false);
+}
+
+Type *type_get_func_ptr(Type *func_type)
+{
+	assert(func_type->type_kind == TYPE_FUNC_RAW);
+	if (func_type->func_ptr) return func_type->func_ptr;
+	Type *type = func_type->func_ptr = type_new(TYPE_FUNC_PTR, func_type->name);
+	type->pointer = func_type;
+	type->canonical = type;
+	return type;
 }
 
 Type *type_get_optional(Type *optional_type)
@@ -1016,7 +1037,7 @@ bool type_is_user_defined(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_ENUM:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FAULTTYPE:
@@ -1152,7 +1173,8 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
 		case TYPE_ENUM:
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
@@ -1248,7 +1270,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 
 Type *type_new_func(Decl *decl, Signature *sig)
 {
-	Type *type = type_new(TYPE_FUNC, decl->name);
+	Type *type = type_new(TYPE_FUNC_RAW, decl->name);
 	type->canonical = type;
 	type->function.signature = sig;
 	type->function.decl = decl;
@@ -1360,7 +1382,7 @@ bool type_is_scalar(Type *type)
 		case CT_TYPES:
 			UNREACHABLE
 		case TYPE_VOID:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_ARRAY:
@@ -1375,6 +1397,7 @@ bool type_is_scalar(Type *type)
 		case ALL_FLOATS:
 		case TYPE_TYPEID:
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 		case TYPE_ENUM:
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
@@ -1602,7 +1625,7 @@ RETRY:
 		return TYPE_MISMATCH;
 	}
 
-	if (to_pointee->type_kind == TYPE_FUNC && from_pointee->type_kind == TYPE_FUNC)
+	if (to_pointee->type_kind == TYPE_FUNC_RAW && from_pointee->type_kind == TYPE_FUNC_RAW)
 	{
 		if (!sema_resolve_type_decl(context, to_pointee)) return TYPE_ERROR;
 		if (!sema_resolve_type_decl(context, from_pointee)) return TYPE_ERROR;
@@ -1648,7 +1671,8 @@ bool type_may_have_method(Type *type)
 			return type == type_voidptr;
 		case TYPE_POISONED:
 		case TYPE_VOID:
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+		case TYPE_FUNC_RAW:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
@@ -1895,11 +1919,13 @@ Type *type_find_max_type(Type *type, Type *other)
 			return NULL;
 		case TYPE_ANYFAULT:
 			return type_anyfault;
-		case TYPE_FUNC:
-			if (other->type_kind != TYPE_FUNC) return NULL;
-			other = other->function.prototype->raw_type;
-			type = other->function.prototype->raw_type;
-			return other == type ? type : NULL;
+		case TYPE_FUNC_PTR:
+			if (other == type_voidptr) return other;
+			if (other->type_kind != TYPE_FUNC_PTR) return NULL;
+			if (other->pointer->function.prototype->raw_type != type->pointer->function.prototype->raw_type) return NULL;
+			return type;
+		case TYPE_FUNC_RAW:
+			UNREACHABLE
 		case TYPE_UNTYPED_LIST:
 			if (other->type_kind == TYPE_ARRAY) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
@@ -2017,7 +2043,7 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_POINTER;
 		case TYPE_ENUM:
 			return INTROSPECT_TYPE_ENUM;
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
 			return INTROSPECT_TYPE_FUNC;
 		case TYPE_STRUCT:
 			return INTROSPECT_TYPE_STRUCT;
@@ -2027,6 +2053,7 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_BITSTRUCT;
 		case TYPE_FAULTTYPE:
 			return INTROSPECT_TYPE_FAULT;
+		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 			UNREACHABLE
 		case TYPE_DISTINCT:
@@ -2070,7 +2097,10 @@ Module *type_base_module(Type *type)
 		case TYPE_POINTER:
 			type = type->pointer;
 			goto RETRY;
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
 			return type->function.decl ? decl_module(type->function.decl) : NULL;
 		case TYPE_ENUM:
 		case TYPE_STRUCT:

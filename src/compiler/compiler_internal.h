@@ -324,7 +324,11 @@ struct Type_
 	TypeKind type_kind;
 	CanonicalType *canonical;
 	const char *name;
-	Type **type_cache;
+	union
+	{
+		Type **type_cache;
+		Type *func_ptr;
+	};
 	union
 	{
 		void *backend_type;
@@ -2453,6 +2457,7 @@ bool type_is_valid_for_array(Type *type);
 Type *type_get_array(Type *arr_type, ArraySize len);
 Type *type_get_indexed_type(Type *type);
 Type *type_get_ptr(Type *ptr_type);
+Type *type_get_func_ptr(Type *func_type);
 Type *type_get_ptr_recurse(Type *ptr_type);
 Type *type_get_slice(Type *arr_type);
 Type *type_get_inferred_array(Type *arr_type);
@@ -2790,6 +2795,12 @@ INLINE bool type_is_pointer(Type *type)
 	return kind == TYPE_POINTER;
 }
 
+INLINE bool type_is_pointer_type(Type *type)
+{
+	DECL_TYPE_KIND_REAL(kind, type);
+	return kind == TYPE_POINTER || kind == TYPE_FUNC_PTR;
+}
+
 static inline AlignSize aligned_offset(AlignSize offset, AlignSize alignment)
 {
 	return ((offset + alignment - 1) / alignment) * alignment;
@@ -3071,9 +3082,7 @@ INLINE bool type_is_signed(Type *type)
 
 INLINE bool type_is_func_ptr(Type *fn_type)
 {
-	fn_type = fn_type->canonical;
-	if (fn_type->type_kind != TYPE_POINTER) return false;
-	return fn_type->pointer->type_kind == TYPE_FUNC;
+	return fn_type->canonical->type_kind == TYPE_FUNC_PTR;
 }
 
 INLINE bool type_is_inferred(Type *type)

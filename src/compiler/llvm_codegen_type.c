@@ -24,7 +24,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_FUNC:
 			UNREACHABLE
 		case DECL_TYPEDEF:
-			return llvm_get_type(c, decl->typedef_decl.type_info->type);
+			return llvm_get_type(c, decl->type);
 		case DECL_DISTINCT:
 			return llvm_get_type(c, decl->distinct->type);
 		case DECL_STRUCT:
@@ -318,7 +318,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return any_type->backend_type = llvm_type_from_decl(c, any_type->decl);
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 			return any_type->backend_type = llvm_func_type(c, type_get_resolved_prototype(any_type));
 		case TYPE_VOID:
 			return any_type->backend_type = LLVMVoidTypeInContext(c->context);
@@ -338,6 +338,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 		case TYPE_BOOL:
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, 8U);
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			assert(c->ptr_type);
 			return any_type->backend_type = c->ptr_type;
 		case TYPE_ARRAY:
@@ -441,7 +442,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 			[INTROSPECT_INDEX_KIND] = LLVMConstInt(c->byte_type, introspect_type, false),
 			[INTROSPECT_INDEX_PARENTOF] = parent_type ? llvm_get_typeid(c, parent_type->canonical) : LLVMConstNull(c->typeid_type),
 			[INTROSPECT_INDEX_DTABLE] = LLVMConstNull(c->ptr_type),
-			[INTROSPECT_INDEX_SIZEOF] = LLVMConstInt(c->size_type, type_size(type), false),
+			[INTROSPECT_INDEX_SIZEOF] = LLVMConstInt(c->size_type, type->type_kind == TYPE_FUNC_RAW ? type_size(type_voidptr) : type_size(type), false),
 			[INTROSPECT_INDEX_INNER] = inner ? llvm_get_typeid(c, inner) : llvm_get_zero(c, type_typeid),
 			[INTROSPECT_INDEX_LEN] = LLVMConstInt(c->size_type,len, false),
 			[INTROSPECT_INDEX_ADDITIONAL] = additional ? additional : LLVMConstArray(c->size_type, NULL, 0)
@@ -654,7 +655,10 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);
-		case TYPE_FUNC:
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
 			if (type->function.prototype->raw_type == type)
 			{
 				LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);

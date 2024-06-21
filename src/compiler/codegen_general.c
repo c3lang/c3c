@@ -174,7 +174,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case LOWERED_TYPES:
 			UNREACHABLE;
 		case TYPE_VOID:
-		case TYPE_FUNC:
+		case TYPE_FUNC_RAW:
 		case TYPE_SLICE:
 			return false;
 		case TYPE_ANY:
@@ -244,6 +244,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 		case TYPE_VECTOR:
 			break;
 		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
 			// All pointers are the same.
 			type = type_voidptr;
 			break;

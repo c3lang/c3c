@@ -13,6 +13,7 @@
 - Fix of missing copy of parameterized custom attributes.
 - Fixed crash on certain recursive function definitions #1209.
 - Return the typekind "FUNC" for a function pointer.
+- No longer possible to dereference a function pointer.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

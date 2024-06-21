@@ -1830,7 +1830,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional, bool *no_match_ref)
 {
 	Decl *decl = NULL;
-	if (func_ptr_type->type_kind != TYPE_POINTER || func_ptr_type->pointer->type_kind != TYPE_FUNC)
+	if (func_ptr_type->type_kind != TYPE_FUNC_PTR)
 	{
 		if (no_match_ref)
 		{
@@ -2464,7 +2464,7 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 		default:
 		{
 			Type *type = type_flatten(func_expr->type);
-			if (type->type_kind == TYPE_POINTER)
+			if (type->type_kind == TYPE_FUNC_PTR)
 			{
 				decl = NULL;
 				break;
@@ -3412,8 +3412,7 @@ static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type
 {
 	Module *module = global_context_find_module(kw_std__core__types);
 	Decl *type_kind = module ? module_find_symbol(module, kw_typekind) : NULL;
-	TypeKind kind = type_is_func_ptr(type) ? TYPE_FUNC : type->type_kind;
-	unsigned val = type_get_introspection_kind(kind);
+	unsigned val = type_get_introspection_kind(type->type_kind);
 	if (!type_kind)
 	{
 		// No TypeKind defined, fallback to char.
@@ -3571,7 +3570,8 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type)
 {
-	assert(type->type_kind == TYPE_FUNC);
+	assert(type->type_kind == TYPE_FUNC_PTR);
+	type = type->pointer;
 	Signature *sig = type->function.signature;
 	unsigned params = vec_size(sig->params);
 	Expr **param_exprs = params ? VECNEW(Expr*, params) : NULL;
@@ -3847,7 +3847,6 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 			switch (original_type->type_kind)
 			{
 				case TYPE_POINTER:
-					return !type_is_func_ptr(original_type);
 				case TYPE_OPTIONAL:
 				case TYPE_DISTINCT:
 				case TYPE_ENUM:
@@ -3973,12 +3972,9 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		}
 		case TYPE_PROPERTY_PARAMS:
-			if (flat->type_kind == TYPE_POINTER && flat->pointer->type_kind == TYPE_FUNC) flat = flat->pointer;
 			return sema_create_const_params(context, expr, flat);
 		case TYPE_PROPERTY_RETURNS:
-			if (flat->type_kind == TYPE_POINTER && flat->pointer->type_kind == TYPE_FUNC) flat = flat->pointer;
-			assert(flat->type_kind == TYPE_FUNC);
-			expr_rewrite_const_typeid(expr, type_infoptr(flat->function.signature->rtype)->type);
+			expr_rewrite_const_typeid(expr, type_infoptr(flat->pointer->function.signature->rtype)->type);
 			return true;
 		case TYPE_PROPERTY_SIZEOF:
 			if (!sema_resolve_type_decl(context, type)) return false;
@@ -4125,7 +4121,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 			SEMA_ERROR(child, "A type can't appear here.");
 			return false;
 		}
-		if (parent->expr_kind == EXPR_IDENTIFIER && parent->type->type_kind == TYPE_FUNC)
+		if (parent->expr_kind == EXPR_IDENTIFIER && parent->type->type_kind == TYPE_FUNC_RAW)
 		{
 			expr->type = type_typeid;
 			expr->expr_kind = EXPR_CONST;
@@ -4166,7 +4162,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, was_group, identifier, missing_ref);
 	}
-	if (parent->expr_kind == EXPR_IDENTIFIER && parent->type->type_kind == TYPE_FUNC)
+	if (parent->expr_kind == EXPR_IDENTIFIER && parent->type->type_kind == TYPE_FUNC_RAW)
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type, was_group, identifier, missing_ref);
 	}
@@ -6056,7 +6052,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 					   type_quoted_error_string(left->type));
 			return false;
 		}
-		if (type_flatten(max)->type_kind == TYPE_POINTER)
+		if (type_is_pointer_type(type_flatten(max)))
 		{
 
 			// Only comparisons between the same type is allowed. Subtypes not allowed.
@@ -6299,6 +6295,11 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 	}
 
 	// 3. Get the pointer of the underlying type.
+	if (inner->type->type_kind == TYPE_FUNC_RAW)
+	{
+		expr->type = type_get_func_ptr(inner->type);
+		return true;
+	}
 	expr->type = type_get_ptr_recurse(inner->type);
 
 	return true;
@@ -7326,6 +7327,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 
 static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, TokenType name_type)
 {
+	if (type_is_func_ptr(type)) type = type->pointer->function.prototype->raw_type;
 	if (name_type == TOKEN_CT_EXTNAMEOF)
 	{
 		expr_rewrite_to_string(expr, type->decl->extname);
@@ -7687,7 +7689,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	if (!decl_ok(decl)) return false;
 	if (decl->resolve_status == RESOLVE_DONE)
 	{
-		expr->type = type_get_ptr(decl->type);
+		expr->type = type_get_func_ptr(decl->type);
 		return true;
 	}
 	Type *flat = target_type ? type_flatten(target_type) : NULL;
@@ -7710,7 +7712,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		Decl *decl_cached = sema_find_cached_lambda(context, flat, decl, ct_lambda_parameters);
 		if (decl_cached)
 		{
-			expr->type = type_get_ptr(decl_cached->type);
+			expr->type = type_get_func_ptr(decl_cached->type);
 			expr->lambda_expr = decl_cached;
 			return true;
 		}
@@ -7793,7 +7795,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		sema_context_destroy(&lambda_context);
 	}
 
-	expr->type = type_get_ptr(decl->type);
+	expr->type = type_get_func_ptr(decl->type);
 	// If it's a distinct type we have to make a cast.
 	expr->resolve_status = RESOLVE_DONE;
 	if (target_type && expr->type != target_type && !cast_explicit(context, expr, target_type)) return false;
