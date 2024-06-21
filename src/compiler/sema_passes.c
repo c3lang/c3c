@@ -592,9 +592,6 @@ void sema_analysis_pass_decls(Module *module)
 		{
 			sema_analyse_decl(&context, unit->generic_defines[i]);
 		}
-		FOREACH_BEGIN(TypeInfo *info, unit->check_type_variable_array)
-			sema_check_type_variable_array(&context, info);
-		FOREACH_END();
 		sema_context_destroy(&context);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);

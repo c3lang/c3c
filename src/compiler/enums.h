@@ -766,7 +766,7 @@ typedef enum
 	VISIBLE_LOCAL,
 } Visibility;
 
-typedef enum FLAG_ATTR
+typedef enum FLAG_ATTR AttributeDomain_
 {
 	ATTR_FUNC = 1 << 0,
 	ATTR_GLOBAL = 1 << 1,

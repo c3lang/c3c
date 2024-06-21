@@ -105,9 +105,7 @@ typedef enum
 {
 	RESOLVE_TYPE_DEFAULT,
 	RESOLVE_TYPE_ALLOW_INFER    = 0x01,
-	RESOLVE_TYPE_IS_POINTEE     = 0x02,
-	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x04,
-	RESOLVE_TYPE_PTR            = RESOLVE_TYPE_IS_POINTEE,
+	RESOLVE_TYPE_ALLOW_FLEXIBLE = 0x02,
 	RESOLVE_TYPE_MACRO_METHOD   = RESOLVE_TYPE_ALLOW_INFER,
 	RESOLVE_TYPE_FUNC_METHOD    = RESOLVE_TYPE_DEFAULT
 } ResolveTypeKind;
@@ -1664,7 +1662,6 @@ struct CompilationUnit_
 	HTable local_symbols;
 	int lambda_count;
 	Decl **local_method_extensions;
-	TypeInfo **check_type_variable_array;
 	struct
 	{
 		void *debug_file;

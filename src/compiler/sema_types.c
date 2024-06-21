@@ -16,7 +16,7 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	// Try to resolve this type shallowly.
-	if (!sema_resolve_type(context, type_info->pointer, resolve_kind | RESOLVE_TYPE_PTR))
+	if (!sema_resolve_type(context, type_info->pointer, resolve_kind))
 	{
 		return type_info_poison(type_info);
 	}
@@ -97,23 +97,9 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 // TODO cleanup.
 static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_type_kind)
 {
-	TypeInfoKind kind = type->kind;
-	// We can resolve the base type in a shallow way if we don't use it to determine
-	// length and alignment
-	if (kind == TYPE_INFO_SLICE || (resolve_type_kind & RESOLVE_TYPE_IS_POINTEE))
-	{
-		if (!sema_resolve_type(context, type->array.base, resolve_type_kind))
-		{
-			return type_info_poison(type);
-		}
-	}
-	else
-	{
-		if (!sema_resolve_type(context, type->array.base, resolve_type_kind & ~RESOLVE_TYPE_IS_POINTEE))
-		{
-			return type_info_poison(type);
-		}
-	}
+	// Check the underlying type
+	if (!sema_resolve_type(context, type->array.base, resolve_type_kind)) return type_info_poison(type);
+
 	Type *distinct_base = type_flatten(type->array.base->type);
 	if (distinct_base->type_kind == TYPE_STRUCT)
 	{
@@ -124,10 +110,6 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 				SEMA_ERROR(type, "Arrays of structs with flexible array members is not allowed.");
 				return type_info_poison(type);
 			}
-		}
-		else
-		{
-			vec_add(context->unit->check_type_variable_array, type);
 		}
 	}
 	TypeInfo *base_info = type->array.base;
@@ -405,27 +387,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 	}
 
 	type_info->resolve_status = RESOLVE_RUNNING;
-
-	// Type compression means we don't need that many nested type infos.
 	TypeInfoCompressedKind kind = type_info->subtype;
-	switch (kind)
-	{
-		case TYPE_COMPRESSED_NONE:
-			break;
-		case TYPE_COMPRESSED_PTR:
-		case TYPE_COMPRESSED_PTRPTR:
-		case TYPE_COMPRESSED_PTRSUB:
-			resolve_type_kind |= RESOLVE_TYPE_PTR;
-			break;
-		case TYPE_COMPRESSED_SUB:
-		case TYPE_COMPRESSED_SUBPTR:
-		case TYPE_COMPRESSED_SUBSUB:
-			resolve_type_kind |= RESOLVE_TYPE_IS_POINTEE;
-			break;
-		default:
-			UNREACHABLE
-	}
-
 	switch (type_info->kind)
 	{
 		case TYPE_INFO_POISON:
