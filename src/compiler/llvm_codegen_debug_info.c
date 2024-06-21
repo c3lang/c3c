@@ -129,6 +129,39 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 
 }
 
+static void llvm_emit_debug_value(GenContext *c, LLVMValueRef value, LLVMMetadataRef debug_val, unsigned row, unsigned col, LLVMMetadataRef scope)
+{
+#if LLVM_VERSION_MAJOR < 19
+	LLVMDIBuilderInsertDbgValueAtEnd(c->debug.builder, value, debug_val,
+	                                 LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
+	                                 llvm_create_debug_location_with_inline(c, row, col, c->debug.function),
+	                                 LLVMGetInsertBlock(c->builder));
+#else
+	LLVMDIBuilderInsertDbgValueRecordAtEnd(c->debug.builder, value, debug_val,
+									 LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
+									 llvm_create_debug_location_with_inline(c, row, col, c->debug.function),
+									 LLVMGetInsertBlock(c->builder));
+#endif
+}
+
+
+static void llvm_emit_debug_declare(GenContext *c, LLVMValueRef var, LLVMMetadataRef debug_var, unsigned row, unsigned col, LLVMMetadataRef scope)
+{
+#if LLVM_VERSION_MAJOR < 19
+	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
+	                                var, debug_var,
+	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
+	                                llvm_create_debug_location_with_inline(c, row, col, scope),
+	                                LLVMGetInsertBlock(c->builder));
+#else
+	LLVMDIBuilderInsertDeclareRecordAtEnd(c->debug.builder,
+	                                var, debug_var,
+	                                LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
+	                                llvm_create_debug_location_with_inline(c, row, col, scope),
+	                                LLVMGetInsertBlock(c->builder));
+#endif
+}
+
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 {
 	assert(llvm_is_local_eval(c));
@@ -154,11 +187,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 	decl->var.backend_debug_ref = var;
 
 	assert(!decl->is_value);
-	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
-									decl->backend_ref, var,
-									LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-									llvm_create_debug_location_with_inline(c, row, col, scope),
-									LLVMGetInsertBlock(c->builder));
+	llvm_emit_debug_declare(c, decl->backend_ref, var, row, col, scope);
 }
 
 /**
@@ -191,20 +220,11 @@ void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 			LLVMDIFlagZero);
 	if (parameter->is_value)
 	{
-		LLVMDIBuilderInsertDbgValueAtEnd(c->debug.builder, parameter->backend_value, parameter->var.backend_debug_ref,
-		                                 LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-		                                 llvm_create_debug_location_with_inline(c, row, col, c->debug.function),
-		                                 LLVMGetInsertBlock(c->builder));
+		llvm_emit_debug_value(c, parameter->backend_value, parameter->var.backend_debug_ref, row, col, c->debug.function);
 		return;
 	}
-
-	LLVMDIBuilderInsertDeclareAtEnd(c->debug.builder,
-									parameter->backend_ref,
-									parameter->var.backend_debug_ref,
-									LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
-									llvm_create_debug_location_with_inline(c, row, col, c->debug.function),
-									LLVMGetInsertBlock(c->builder));
-
+	llvm_emit_debug_declare(c, parameter->backend_ref, parameter->var.backend_debug_ref,
+	                        row, col, c->debug.function);
 
 }
 
