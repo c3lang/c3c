@@ -752,7 +752,13 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	BEValue min_val;
 	llvm_emit_expr(c, &min_val, exprptr(cases[min_index]->case_stmt.expr));
 	assert(llvm_value_is_const(&min_val));
-	switch_value->value = LLVMBuildSub(c->builder, switch_value->value, min_val.value, "");
+	llvm_value_rvalue(c, switch_value);
+	llvm_value_rvalue(c, &min_val);
+	LLVMValueRef min = min_val.value;
+	if (!LLVMIsConstant(min) || !LLVMIsNull(min))
+	{
+		switch_value->value = LLVMBuildSub(c->builder, switch_value->value, min_val.value, "");
+	}
 	LLVMValueRef is_valid = LLVMBuildICmp(c->builder, LLVMIntUGT, switch_value->value, llvm_const_int(c, switch_value->type, count - 1), "");
 	LLVMBasicBlockRef switch_block = llvm_basic_block_new(c, "jumpblock");
 	LLVMBuildCondBr(c->builder, is_valid, default_block, switch_block);

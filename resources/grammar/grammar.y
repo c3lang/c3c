@@ -886,8 +886,8 @@ opt_stmt_list
 switch_stmt
 	: SWITCH optional_label '{' switch_body '}'
 	| SWITCH optional_label '{' '}'
-	| SWITCH optional_label paren_cond '{' switch_body '}'
-	| SWITCH optional_label paren_cond '{' '}'
+	| SWITCH optional_label paren_cond  opt_attributes '{' switch_body '}'
+	| SWITCH optional_label paren_cond  opt_attributes '{' '}'
 	;
 
 expression_list

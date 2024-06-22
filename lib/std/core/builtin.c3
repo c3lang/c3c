@@ -143,7 +143,9 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
  **/
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
 {
+	$if env::COMPILER_SAFE_MODE:
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
+	$endif;
 	$$unreachable();
 }
 
