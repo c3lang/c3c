@@ -3237,16 +3237,19 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		param->resolve_status = RESOLVE_RUNNING;
 		assert(param->decl_kind == DECL_VAR);
 		TypeInfo *type_info = type_infoptrzero(param->var.type_info);
-		switch (param->var.kind)
+		VarDeclKind kind = param->var.kind;
+		switch (kind)
 		{
 			case VARDECL_PARAM:
-				if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-				break;
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
 			case VARDECL_PARAM_CT_TYPE:
-				RETURN_SEMA_ERROR(param, "Only plain variables are allowed as body parameters.");
+				if (!type_info) break;
+				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+				if (kind != VARDECL_PARAM_REF || type_is_pointer(type_info->type)) break;
+				RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
+				                  type_quoted_error_string(type_get_ptr(type_info->type)));
 			case VARDECL_CONST:
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:

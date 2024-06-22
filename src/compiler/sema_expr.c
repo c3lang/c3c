@@ -1527,6 +1527,125 @@ INLINE bool sema_arg_is_pass_through_ref(Expr *expr)
 	return decl->var.kind == VARDECL_PARAM_REF;
 }
 
+static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param, Decl *definition, bool *optional_ref, bool *no_match_ref, bool macro)
+{
+	VarDeclKind kind = param->var.kind;
+	Type *type = param->type;
+
+	// 16. Analyse a regular argument.
+	switch (kind)
+	{
+		case VARDECL_PARAM_REF:
+			// &foo
+			if (!sema_analyse_expr_lvalue(context, arg)) return false;
+			if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg))
+			{
+				SEMA_NOTE(definition, "The definition is here.");
+				return false;
+			}
+			expr_insert_addr(arg);
+			*optional_ref |= IS_OPTIONAL(arg);
+			if (!sema_call_check_contract_param_match(context, param, arg))
+			{
+				SEMA_NOTE(definition, "The definition is here.");
+				return false;
+			}
+			if (type_storage_type(type) != STORAGE_NORMAL)
+			{
+				RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
+			}
+			if (type && type->canonical != arg->type->canonical)
+			{
+				SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
+				SEMA_NOTE(definition, "The definition is here.");
+				return false;
+			}
+			if (!param->alignment)
+			{
+				if (arg->expr_kind == EXPR_IDENTIFIER)
+				{
+					param->alignment = arg->identifier_expr.decl->alignment;
+				}
+				else
+				{
+					if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
+				}
+			}
+			break;
+		case VARDECL_PARAM:
+			// foo
+			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
+			if (IS_OPTIONAL(arg)) *optional_ref = true;
+			switch (type_storage_type(arg->type))
+			{
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_VOID:
+				case STORAGE_WILDCARD:
+					RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
+				case STORAGE_COMPILE_TIME:
+					RETURN_SEMA_ERROR(arg, "It is only possible to use %s as a compile time parameter.",
+					                  type_invalid_storage_type_name(arg->type));
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(arg, "A value of type '%s' has no known size so cannot be "
+					                       "passed as a parameter, you can pass a pointer to it though.",
+					                  type_quoted_error_string(arg->type));
+			}
+			if (!sema_call_check_contract_param_match(context, param, arg))
+			{
+				SEMA_NOTE(definition, "The definition was here.");
+				return false;
+			}
+			if (!param->alignment)
+			{
+				assert(macro && "Only in the macro case should we need to insert the alignment.");
+				if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
+			}
+			break;
+		case VARDECL_PARAM_EXPR:
+			// #foo
+			param->var.hash_var.context = context;
+			param->var.hash_var.span = arg->span;
+			break;
+		case VARDECL_PARAM_CT:
+			// $foo
+			assert(macro);
+			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref))
+			{
+				SEMA_NOTE(definition, "The definition is here.");
+				return false;
+			}
+			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_CONSTANT_VALUE))
+			{
+				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
+			}
+			break;
+		case VARDECL_PARAM_CT_TYPE:
+			// $Foo
+			if (!sema_analyse_expr_lvalue_fold_const(context, arg)) return false;
+			if (arg->expr_kind != EXPR_TYPEINFO)
+			{
+				RETURN_SEMA_FUNC_ERROR(definition, arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
+			}
+			break;
+		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+		case VARDECL_LOCAL:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_REWRAPPED:
+		case VARDECL_ERASE:
+			UNREACHABLE
+	}
+	if (param && type_len_is_inferred(type))
+	{
+		param->type = type_no_optional(arg->type);
+	}
+	return true;
+}
 static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee,
 												bool *optional, bool *no_match_ref)
 {
@@ -1670,123 +1789,8 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			assert(arg == NULL);
 			continue;
 		}
-
-		Decl *param = decl_params[i];
-		VarDeclKind kind = param->var.kind;
-		Type *type = param->type;
-
-		// 16. Analyse a regular argument.
-		switch (kind)
-		{
-			case VARDECL_PARAM_REF:
-				// &foo
-				if (!sema_analyse_expr_lvalue(context, arg)) return false;
-				if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg))
-				{
-					SEMA_NOTE(callee.definition, "The definition is here.");
-					return false;
-				}
-				expr_insert_addr(arg);
-				*optional |= IS_OPTIONAL(arg);
-				if (!sema_call_check_contract_param_match(context, param, arg))
-				{
-					SEMA_NOTE(callee.definition, "The definition is here.");
-					return false;
-				}
-				if (type_storage_type(type) != STORAGE_NORMAL)
-				{
-					RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
-				}
-				if (type && type->canonical != arg->type->canonical)
-				{
-					SEMA_ERROR(arg, "'%s' cannot be implicitly cast to '%s'.", type_to_error_string(arg->type), type_to_error_string(type));
-					SEMA_NOTE(callee.definition, "The definition is here.");
-					return false;
-				}
-				if (!param->alignment)
-				{
-					if (arg->expr_kind == EXPR_IDENTIFIER)
-					{
-						param->alignment = arg->identifier_expr.decl->alignment;
-					}
-					else
-					{
-						if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
-					}
-				}
-				break;
-			case VARDECL_PARAM:
-				// foo
-				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
-				if (IS_OPTIONAL(arg)) *optional = true;
-				switch (type_storage_type(arg->type))
-				{
-					case STORAGE_NORMAL:
-						break;
-					case STORAGE_VOID:
-					case STORAGE_WILDCARD:
-						RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
-					case STORAGE_COMPILE_TIME:
-						RETURN_SEMA_ERROR(arg, "It is only possible to use %s as a compile time parameter.",
-						                  type_invalid_storage_type_name(arg->type));
-					case STORAGE_UNKNOWN:
-						RETURN_SEMA_ERROR(arg, "A value of type '%s' has no known size so cannot be "
-											   "passed as a parameter, you can pass a pointer to it though.",
-						                  type_quoted_error_string(arg->type));
-				}
-				if (!sema_call_check_contract_param_match(context, param, arg))
-				{
-					SEMA_NOTE(callee.definition, "The definition was here.");
-					return false;
-				}
-				if (!param->alignment)
-				{
-					assert(callee.macro && "Only in the macro case should we need to insert the alignment.");
-					if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
-				}
-				break;
-			case VARDECL_PARAM_EXPR:
-				// #foo
-				param->var.hash_var.context = context;
-				param->var.hash_var.span = arg->span;
-				break;
-			case VARDECL_PARAM_CT:
-				// $foo
-				assert(callee.macro);
-				if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref))
-				{
-					SEMA_NOTE(callee.definition, "The definition is here.");
-					return false;
-				}
-				if (!expr_is_constant_eval(arg, CONSTANT_EVAL_CONSTANT_VALUE))
-				{
-					RETURN_SEMA_FUNC_ERROR(callee.definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
-				}
-				break;
-			case VARDECL_PARAM_CT_TYPE:
-				// $Foo
-				if (!sema_analyse_expr_lvalue_fold_const(context, arg)) return false;
-				if (arg->expr_kind != EXPR_TYPEINFO)
-				{
-					RETURN_SEMA_FUNC_ERROR(callee.definition, arg, "A type, like 'int' or 'double' was expected for the parameter '%s'.", param->name);
-				}
-				break;
-			case VARDECL_CONST:
-			case VARDECL_GLOBAL:
-			case VARDECL_LOCAL:
-			case VARDECL_MEMBER:
-			case VARDECL_BITMEMBER:
-			case VARDECL_LOCAL_CT:
-			case VARDECL_LOCAL_CT_TYPE:
-			case VARDECL_UNWRAPPED:
-			case VARDECL_REWRAPPED:
-			case VARDECL_ERASE:
-				UNREACHABLE
-		}
-		if (param && type_len_is_inferred(type))
-		{
-			param->type = type_no_optional(arg->type);
-		}
+		if (!sema_analyse_parameter(context, arg, decl_params[i], callee.definition,
+									optional, no_match_ref, callee.macro)) return false;
 	}
 	return true;
 }
@@ -2050,25 +2054,63 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Decl *body_param = macro_body_params[i];
 		assert(body_param->resolve_status == RESOLVE_DONE);
 		Decl *body_arg = body_params[i];
-		if (!body_arg->var.type_info)
+		VarDeclKind kind_of_expected = body_param->var.kind;
+		if (kind_of_expected != body_arg->var.kind)
 		{
-			RETURN_SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
-		}
-		TypeInfo *type_info = vartype(body_arg);
-		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-		body_arg->type = type_info->type;
-		if (type_info)
-		{
-			Type *declare_type = type_info->type->canonical;
-			if (declare_type != body_arg->type->canonical)
+			switch (kind_of_expected)
 			{
-				if (no_match_ref) goto NO_MATCH_REF;
-				RETURN_SEMA_ERROR(type_info, "This parameter should be %s but was %s",
-				                  type_quoted_error_string(declare_type),
-				                  type_quoted_error_string(body_arg->type));
+				case VARDECL_PARAM_CT_TYPE:
+					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a type argument.");
+				case VARDECL_PARAM_EXPR:
+					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected an expression argument.");
+				case VARDECL_PARAM_REF:
+					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a reference ('&') argument.");
+				case VARDECL_PARAM_CT:
+					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a compile time ('$') argument.");
+				case VARDECL_PARAM:
+					RETURN_SEMA_FUNC_ERROR(decl, body_arg, "Expected a regular argument.");
+				default:
+					UNREACHABLE
 			}
 		}
-		if (!body_arg->alignment)
+		// No type checking
+		switch (kind_of_expected)
+		{
+			case VARDECL_PARAM_CT_TYPE:
+				continue;
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_REF:
+				// Optional typing
+				break;
+			case VARDECL_PARAM:
+				// Mandatory typing
+				if (!body_arg->var.type_info)
+				{
+					RETURN_SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
+				}
+				break;
+			default:
+				UNREACHABLE
+		}
+		TypeInfo *expected_type_info = vartype(body_param);
+		TypeInfo *type_info = vartype(body_arg);
+		if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+		Type *type = type_info ? type_info->type : NULL;
+		if (type && expected_type_info && type->canonical != expected_type_info->type->canonical)
+		{
+			if (no_match_ref) goto NO_MATCH_REF;
+			RETURN_SEMA_ERROR(type_info, "This parameter should be %s but was %s",
+				                  type_quoted_error_string(expected_type_info->type),
+				                  type_quoted_error_string(type));
+		}
+		if (type && kind_of_expected == VARDECL_PARAM_REF && !type_is_pointer(type_info->type))
+		{
+			RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
+			                  type_quoted_error_string(type_get_ptr(type_info->type)));
+		}
+		body_arg->type = type;
+		if (type_info && type_storage_type(type_info->type))
 		{
 			if (!sema_set_alloca_alignment(context, body_arg->type, &body_arg->alignment)) return false;
 		}
@@ -2290,10 +2332,8 @@ NO_MATCH_REF:
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call)
 {
 	Decl *macro = macro_context->current_macro;
-	assert(macro);
-	DeclId body_param = macro->func_decl.body_param;
-	assert(body_param);
-
+	assert(macro && macro->func_decl.body_param);
+	Decl *body_decl = declptr(macro->func_decl.body_param);
 	ExprCall *call_expr = &call->call_expr;
 	Expr *macro_body = exprptrzero(call_expr->macro_body);
 	if (macro_body && vec_size(macro_body->macro_body_expr.body_arguments))
@@ -2307,19 +2347,42 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	}
 	// Theoretically we could support named arguments, but that's unnecessary.
 	unsigned expressions = vec_size(call_expr->arguments);
-	Decl **body_parameters = declptr(body_param)->body_params;
+	Decl **body_parameters = body_decl->body_params;
 	if (expressions != vec_size(body_parameters))
 	{
-		PRINT_ERROR_AT(call, "Expected %d parameter(s).", vec_size(body_parameters));
+		PRINT_ERROR_AT(call, "Expected %d parameter(s) to %s.", vec_size(body_parameters), body_decl->name);
 	}
 	Expr **args = call_expr->arguments;
 
 	Decl **params = macro_context->yield_params;
-	// Evaluate the expressions. TODO hash expressions
+
+	bool has_optional_arg = false;
+
+	// Evaluate the expressions.
 	for (unsigned i = 0; i < expressions; i++)
 	{
+		Decl *param = params[i];
 		Expr *expr = args[i];
-		if (!sema_analyse_expr_rhs(macro_context, params[i]->type, expr, false, NULL)) return false;
+		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, NULL, true))
+		{
+			return false;
+		}
+		if (has_optional_arg)
+		{
+			sema_error_at(macro_context, expr->span, "Optional arguments are not permitted in a body invocation.");
+			return false;
+		}
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_CT_TYPE:
+				param->var.init_expr = args[i];
+				args[i] = NULL;
+				break;
+			default:
+				break;
+		}
 	}
 
 	AstId macro_defer = macro_context->active_scope.defer_last;
@@ -2404,10 +2467,6 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 			RETURN_SEMA_ERROR(expr, "This expression cannot be called.");
 	}
 }
-
-
-
-
 
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool *no_match_ref)
 {
@@ -4354,11 +4413,10 @@ CHECK_DEEPER:
 		return true;
 	}
 
-	// 10. Dump all members and methods into the scope.
+	// 10. Dump all members and methods into a decl stack.
 	Decl *decl = type->decl;
 
 	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
-
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && expr_is_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
@@ -9023,8 +9081,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 			}
 			break;
 		case EXPR_TYPEINFO:
-			SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");
 		case EXPR_CT_IDENT:
 			if (!sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;

@@ -1166,9 +1166,20 @@ static bool parse_next_is_typed_parameter(ParseContext *c, ParameterParseKind pa
 		case TOKEN_CT_TYPEOF:
 		case TOKEN_CT_TYPEFROM:
 			return true;
-		case TOKEN_CT_TYPE_IDENT:
 		case TOKEN_CT_VATYPE:
 			return parse_kind == PARAM_PARSE_LAMBDA || parse_kind == PARAM_PARSE_CALL;
+		case TOKEN_CT_TYPE_IDENT:
+			if (parse_kind == PARAM_PARSE_LAMBDA) return true;
+			if (parse_kind != PARAM_PARSE_CALL) return false;
+			switch (peek(c))
+			{
+				case TOKEN_IDENT:
+				case TOKEN_HASH_IDENT:
+				case TOKEN_CT_IDENT:
+					return true;
+				default:
+					return false;
+			}
 		default:
 			return false;
 	}

@@ -6373,6 +6373,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	VECEACH(declarations, i)
 	{
 		Decl *decl = declarations[i];
+		if (!values[i]) continue;
 		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
 	}
 
@@ -6382,6 +6383,7 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	VECEACH(values, i)
 	{
 		Expr *expr = values[i];
+		if (!expr) continue;
 		llvm_emit_expr(c, value, expr);
 		llvm_store_to_ptr_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
 	}
