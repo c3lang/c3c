@@ -441,6 +441,7 @@ param_path
 
 arg
 	: param_path '=' expr
+	| param_path
 	| type
 	| param_path '=' type
 	| expr

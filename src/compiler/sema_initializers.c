@@ -406,15 +406,24 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	bool optional = false;
 	Type *inner_type = NULL;
 	bool is_inferred = type_is_inferred(flattened);
+	int bitmember_count_without_value = 0;
 	VECEACH(init_expressions, i)
 	{
 		Expr *expr = init_expressions[i];
 		Decl *member;
 		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index, &member);
 		if (!result) return false;
+		bool is_bitmember = member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER;
 		Expr *value = expr->designator_expr.value;
+		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool) {
+			assert(is_bitstruct);
+			value = expr_new_const_bool(INVALID_SPAN, type_bool, true);
+			expr->designator_expr.value = value;
+			bitmember_count_without_value += 1;
+		}
+		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
 		if (!sema_analyse_expr_rhs(context, result, value, true, NULL)) return false;
-		if (member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
+		if (is_bitmember)
 		{
 			if (!sema_bit_assignment_check(context, value, member)) return false;
 		}
@@ -425,6 +434,9 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 			inner_type = type_no_optional(value->type);
 			continue;
 		}
+	}
+	if (bitmember_count_without_value != 0 && bitmember_count_without_value != vec_size(init_expressions)) {
+		RETURN_SEMA_ERROR(initializer, "Mixing the omission of initializers is not permitted.");
 	}
 	Type *type;
 	if (!is_structlike && is_inferred)
@@ -522,6 +534,7 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 		Expr *expr = init_expressions[i];
 		DesignatorElement **path = expr->designator_expr.path;
 		Expr *value = expr->designator_expr.value;
+		assert(value);
 		sema_update_const_initializer_with_designator(const_init, path, path + vec_size(path), value);
 	}
 }

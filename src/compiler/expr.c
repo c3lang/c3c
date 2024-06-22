@@ -211,6 +211,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return expr_list_is_constant_eval(expr->cond_expr, eval_kind);
 		case EXPR_DESIGNATOR:
 			expr = expr->designator_expr.value;
+			if (!expr) return true;
 			goto RETRY;
 		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
