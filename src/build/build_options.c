@@ -105,7 +105,7 @@ static void usage(void)
 	PRINTF("  -D <name>                  - Add feature flag <name>.");
 	PRINTF("  -U <name>                  - Remove feature flag <name>.");
 	PRINTF("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
-	PRINTF("  --output-dir <dir>        - Override general output directory.");
+	PRINTF("  --output-dir <dir>         - Override general output directory.");
 	PRINTF("  --build-dir <dir>          - Override build output directory.");
 	PRINTF("  --obj-out <dir>            - Override object file output directory.");
 	PRINTF("  --script-dir <dir>         - Override the base directory for $exec.");
@@ -115,6 +115,7 @@ static void usage(void)
 	PRINTF("  --emit-asm                 - Emit asm as a .s file per module.");
 	PRINTF("  --obj                      - Emit object files. (Enabled by default)");
 	PRINTF("  --no-obj                   - Do not output object files, this is only valid for `compile-only`.");
+	PRINTF("  --no-headers               - Do not generate C headers when building a library.");
 	PRINTF("  --target <target>          - Compile for a particular architecture + OS target.");
 	PRINTF("  --threads <number>         - Set the number of threads to use for compilation.");
 	PRINTF("  --safe=<yes|no>            - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
@@ -763,6 +764,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("obj"))
 			{
 				options->no_obj = false;
+				return;
+			}
+			if (match_longopt("no-headers"))
+			{
+				options->no_headers = true;
 				return;
 			}
 			if (match_longopt("debug-log"))

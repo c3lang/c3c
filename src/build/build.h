@@ -367,6 +367,7 @@ typedef struct BuildOptions_
 	bool test_mode;
 	bool no_entry;
 	bool no_obj;
+	bool no_headers;
 	bool read_stdin;
 	bool print_output;
 	bool print_input;

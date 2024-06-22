@@ -195,7 +195,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	switch (options->command)
 	{
 		case COMMAND_BUILD:
-			target->output_headers = target->type == TARGET_TYPE_DYNAMIC_LIB || target->type == TARGET_TYPE_STATIC_LIB;
+			target->output_headers = (target->type == TARGET_TYPE_DYNAMIC_LIB || target->type == TARGET_TYPE_STATIC_LIB) && !options->no_headers;
 			break;
 		case COMMAND_GENERATE_HEADERS:
 			target->output_headers = true;
