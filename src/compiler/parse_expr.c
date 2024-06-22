@@ -465,7 +465,7 @@ Expr *parse_vasplat(ParseContext *c)
 /**
  * param_list ::= ('...' arg | arg (',' arg)*)?
  *
- * parameter ::= (param_path '=')? expr
+ * parameter ::= ((param_path '=')? expr) | param_path
  */
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
 {
@@ -483,11 +483,9 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			expr = expr_new(EXPR_DESIGNATOR, start_span);
 			expr->designator_expr.path = path;
 
-			// Expect the '=' after.
-			CONSUME_OR_RET(TOKEN_EQ, false);
-
-			// Now parse the rest
-			ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr(c), false);
+			if (try_consume(c, TOKEN_EQ)) {
+				ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr(c), false);
+			}
 
 			RANGE_EXTEND_PREV(expr);
 		}

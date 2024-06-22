@@ -1331,6 +1331,10 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			}
 
 			// 8g. Set the parameter
+			if (!arg->designator_expr.value)
+			{
+				RETURN_SEMA_ERROR(arg, "Expected a value for this argument.");
+			}
 			actual_args[index] = arg->designator_expr.value;
 			continue;
 		}

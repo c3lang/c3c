@@ -60,3 +60,45 @@ fn void test3()
 {
     Foo abc = { .x = -4, .z = 0, .y = 8 }; // #error: would be truncated
 }
+
+bitstruct Flags1 : int
+{
+    bool a;
+    bool b;
+    bool c;
+}
+
+distinct Bool = bool;
+
+bitstruct Flags2 : int
+{
+    bool a : 0;
+    Bool b : 1;
+    int  c : 2..3;
+    bool d : 6;
+}
+
+struct Flags2_Struct
+{
+    bool a;
+    bool b;
+    int c;
+    bool d;
+}
+
+fn void test4()
+{
+    Flags1 flags1 = {.a, .b, .c};
+    flags1 = {.a};
+    flags1 = {.a = true, .b = true, .c = false};
+    flags1 = {.a, .b = true, .c = true}; // #error: Mixing the omission
+    Foo foo = { .x = 0, .z }; // #error: needs a value
+
+    Flags2 flags2 = {.b, .d};
+    flags2 = {.b, .c, .d}; // #error: needs a value
+    flags2 = {.a, .c = 1, .d}; // #error: Mixing the omission
+
+    Flags2_Struct flags2s;
+    flags2s = {.b, .c, .d}; // #error: needs a value
+    flags2s = {.a, .c = 1, .d}; // #error: needs a value
+}
