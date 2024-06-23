@@ -94,7 +94,6 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	return true;
 }
 
-// TODO cleanup.
 static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_type_kind)
 {
 	// Check the underlying type

@@ -31,7 +31,6 @@ static inline bool matches_subpath(Path *path_to_check, Path *path_to_find)
 
 Decl *sema_decl_stack_resolve_symbol(const char *symbol)
 {
-	Decl **members = global_context.decl_stack;
 	Decl **current = global_context.decl_stack_top;
 	Decl **end = global_context.decl_stack_bottom;
 	while (current > end)
@@ -636,6 +635,7 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
 
+__attribute__((unused))
 bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 {
 	if (!type_info_ok(type_info)) return false;
