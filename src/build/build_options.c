@@ -49,7 +49,7 @@ const char *trust_level[3] = {
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
-#define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0)
+#define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 
 static void usage(void)
 {

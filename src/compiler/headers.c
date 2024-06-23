@@ -4,9 +4,9 @@
 
 #include "compiler_internal.h"
 
-#define PRINTF(x, ...) fprintf(file, x, ## __VA_ARGS__)
+#define PRINTF(x, ...) fprintf(file, x, ## __VA_ARGS__) /* NOLINT */
 #define INDENT() indent_line(file, indent)
-#define OUT(file, x, ...) fprintf(file, x, ## __VA_ARGS__)
+#define OUT(file, x, ...) fprintf(file, x, ## __VA_ARGS__) /* NOLINT */
 
 static void header_gen_struct_union(FILE *file, int indent, Decl *decl);
 static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type);
@@ -125,11 +125,8 @@ static void header_print_type(FILE *file, Type *type)
 			return;
 		case TYPE_DISTINCT:
 		case TYPE_TYPEDEF:
-			UNREACHABLE
 		case TYPE_FLEXIBLE_ARRAY:
-			header_print_type(file, type->array.base);
-			PRINTF("[]");
-			return;
+			UNREACHABLE
 		case TYPE_ARRAY:
 			PRINTF("struct { ");
 			header_print_type(file, type->array.base);
@@ -203,6 +200,7 @@ static void header_gen_function_ptr(FILE *file, HTable *table, Type *type)
 static void header_gen_function(FILE *file, FILE *file_types, HTable *table, Decl *decl)
 {
 	if (!decl->is_export) return;
+	if (decl->name[0] == '_' && decl->name[1] == '_') return;
 	Signature *sig = &decl->func_decl.signature;
 	PRINTF("extern ");
 	Type *rtype = typeget(sig->rtype);
@@ -240,22 +238,40 @@ static void header_gen_members(FILE *file, int indent, Decl **members)
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
+		Type *type = type_flatten(member->type);
 		switch (member->decl_kind)
 		{
 			case DECL_VAR:
 				INDENT();
-				if (member->type->canonical->type_kind == TYPE_ARRAY)
+				switch (type->type_kind)
 				{
-					header_print_type(file, member->type->canonical->array.base);
-					PRINTF(" %s[%d];\n", member->name, member->type->canonical->array.len);
-					break;
+					case TYPE_ARRAY:
+						header_print_type(file, type->array.base);
+						PRINTF(" %s[%d];\n", member->name, type->array.len);
+						break;
+					case TYPE_FLEXIBLE_ARRAY:
+						header_print_type(file, type->array.base);
+						PRINTF(" %s[];\n", member->name);
+						break;
+					default:
+						header_print_type(file, member->type);
+						PRINTF(" %s;\n", member->name);
+						break;
 				}
-				header_print_type(file, member->type);
-				PRINTF(" %s;\n", member->name);
 				break;
 			case DECL_STRUCT:
 			case DECL_UNION:
 				header_gen_struct_union(file, indent, member);
+				break;
+			case DECL_BITSTRUCT:
+				INDENT();
+				header_print_type(file, member->bitstruct.base_type->type->canonical);
+				if (member->name)
+				{
+					PRINTF(" %s;\n", member->name);
+					break;
+				}
+				PRINTF(" __bits%d;\n", i);
 				break;
 			default:
 				UNREACHABLE
@@ -266,7 +282,7 @@ static void header_gen_struct_union(FILE *file, int indent, Decl *decl)
 {
 	if (!indent)
 	{
-		PRINTF("typedef struct %s__ %s;\n", decl->extname, decl->extname);
+		PRINTF("typedef %s %s__ %s;\n", struct_union_str(decl), decl->extname, decl->extname);
 	}
 	INDENT();
 	if (decl->name)
@@ -342,6 +358,8 @@ void header_ensure_member_types_exist(FILE *file, HTable *table, Decl **members)
 			case DECL_STRUCT:
 			case DECL_UNION:
 				header_ensure_member_types_exist(file, table, member->strukt.members);
+				break;
+			case DECL_BITSTRUCT:
 				break;
 			default:
 				UNREACHABLE
@@ -419,7 +437,7 @@ RETRY:
 			if (htable_get(table, type)) return;
 			{
 				Decl *decl = type->decl;
-				PRINTF("typedef struct %s__ %s;\n", decl_get_extname(decl), decl_get_extname(decl));
+				PRINTF("typedef %s %s__ %s;\n", struct_union_str(decl), decl_get_extname(decl), decl_get_extname(decl));
 				htable_set(table, type, type);
 				header_ensure_member_types_exist(file, table, decl->strukt.members);
 				PRINTF("%s %s__\n", struct_union_str(decl), decl->extname);
@@ -544,6 +562,7 @@ void header_gen(Module **modules, unsigned module_count)
 	FILE *file_types = fopen(filename_types, "w");
 	OUT(file_types, "#include <stdint.h>\n");
 	OUT(file_types, "#include <stddef.h>\n");
+	OUT(file_types, "#include <stdbool.h>\n");
 	OUT(file_types, "#ifndef __c3__\n");
 	OUT(file_types, "#define __c3__\n\n");
 	OUT(file_types, "typedef void* c3typeid_t;\n");

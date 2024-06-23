@@ -384,6 +384,59 @@ bool type_flat_is_boolintlike(Type *type)
 	return kind == TYPE_BOOL || (kind >= TYPE_INTEGER_FIRST && kind <= TYPE_INTEGER_LAST);
 }
 
+Decl *type_no_export(Type *type)
+{
+	type = type->canonical;
+	RETRY:
+	switch (type->type_kind)
+	{
+		case TYPE_POISONED:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_WILDCARD:
+		case TYPE_MEMBER:
+		case TYPE_TYPEINFO:
+			return NULL;
+		case TYPE_VOID:
+		case TYPE_BOOL:
+		case ALL_INTS:
+		case ALL_FLOATS:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+			return NULL;
+		case TYPE_POINTER:
+			type = type->pointer;
+			goto RETRY;
+		case TYPE_FUNC_PTR:
+			type = type->pointer;
+			FALLTHROUGH;
+		case TYPE_FUNC_RAW:
+		case TYPE_ENUM:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+		case TYPE_FAULTTYPE:
+		case TYPE_DISTINCT:
+			if (type->decl->is_export) return NULL;
+			return type->decl;
+		case TYPE_SLICE:
+		case TYPE_TYPEDEF:
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+			return NULL;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+	}
+	UNREACHABLE
+}
+
 
 bool type_is_int128(Type *type)
 {

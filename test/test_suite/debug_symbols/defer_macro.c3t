@@ -83,11 +83,11 @@ distinct Color = float[<4>];
 const Color BLACK = {0, 0, 0, 1};
 const Color WHITE = {1, 1, 1, 1};
 
-struct Arena {
+struct Arena @export {
   usz cursor;
 }
 
-struct Arena_Cursor {
+struct Arena_Cursor @export {
   Arena* arena;
   usz cursor;
 }
@@ -690,11 +690,11 @@ no_match:                                         ; preds = %compare
 !106 = !{!12}
 !107 = !DILocalVariable(name: "scratch", scope: !108, file: !5, line: 110, type: !109, align: 8)
 !108 = distinct !DISubprogram(name: "@scratch", linkageName: "@scratch", scope: !5, file: !5, line: 109, scopeLine: 109, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit:
-!109 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena_Cursor", scope: !5, file: !5, line: 88, size: 128, align: 64, elements: !110, identifier: "foo.Arena_Cursor")
+!109 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena_Cursor", scope: !5, file: !5, line: 88, size: 128, align: 64, elements: !110, identifier: "foo_Arena_Cursor")
 !110 = !{!111, !116}
 !111 = !DIDerivedType(tag: DW_TAG_member, name: "arena", scope: !109, file: !5, line: 89, baseType: !112, size: 64, align: 64)
 !112 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "Arena*", baseType: !113, size: 64, align: 64, dwarfAddressSpace: 0)
-!113 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena", scope: !5, file: !5, line: 84, size: 64, align: 64, elements: !114, identifier: "foo.Arena")
+!113 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena", scope: !5, file: !5, line: 84, size: 64, align: 64, elements: !114, identifier: "foo_Arena")
 !114 = !{!115}
 !115 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !113, file: !5, line: 85, baseType: !44, size: 64, align: 64)
 !116 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !109, file: !5, line: 90, baseType: !44, size: 64, align: 64, offset: 64)

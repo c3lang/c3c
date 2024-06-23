@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent, bool is_export);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -27,6 +27,7 @@ static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorO
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context);
+static bool sema_require_export_type(SemaContext *context, TypeInfo *type_info);
 static bool sema_check_operator_method_validity(SemaContext *context, Decl *method);
 static inline const char *method_name_by_decl(Decl *method_like);
 
@@ -229,6 +230,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		sema_decl_stack_push(decl);
 	}
 
+	bool is_export = parent->is_export;
 	// Analysis depends on the underlying type.
 	switch (decl->decl_kind)
 	{
@@ -240,6 +242,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			assert(type_infoptrzero(decl->var.type_info));
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
+			if (is_export && !sema_require_export_type(context, type_info)) return decl_poison(decl);
 			Type *type = type_info->type;
 			switch (type_storage_type(type))
 			{
@@ -259,6 +262,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_BITSTRUCT:
+			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
 			return true;
 		default:
@@ -945,7 +949,17 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent)
+static bool sema_require_export_type(SemaContext *context, TypeInfo *type_info)
+{
+	Decl *decl = type_no_export(type_info->type);
+	if (!decl) return true;
+	SEMA_ERROR(type_info, "%s must also be an exported type, to make this work '%s' needs to be marked '@export'",
+	           type_quoted_error_string(type_info->type), decl->name);
+	SEMA_NOTE(decl, "The definition is here.");
+	return false;
+}
+
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent, bool is_export)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -963,6 +977,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 		                                     : RESOLVE_TYPE_DEFAULT)) return false;
 		rtype = rtype_info->type;
+		if (is_export && !sema_require_export_type(context, rtype_info)) return false;
 		if (sig->attrs.nodiscard)
 		{
 			if (type_is_void(rtype))
@@ -993,10 +1008,12 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		return false;
 	}
 
+	TypeInfo *method_parent = type_infoptrzero(type_parent);
+	if (is_export && method_parent && !sema_require_export_type(context, method_parent)) return false;
+
 	// Fill in the type if the first parameter is lacking a type.
-	if (type_parent && params && params[0] && !params[0]->var.type_info)
+	if (method_parent && params && params[0] && !params[0]->var.type_info)
 	{
-		TypeInfo *method_parent = type_infoptr(type_parent);
 		if (!sema_resolve_type_info(context, method_parent,
 		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 		Decl *param = params[0];
@@ -1067,6 +1084,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			if (!sema_resolve_type_info(context, type_info,
 			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
+			if (is_export && !sema_require_export_type(context, type_info)) return false;
 			param->type = type_info->type;
 		}
 		switch (var_kind)
@@ -1181,7 +1199,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 	// Get param count and variadic type
 	Decl **params = signature->params;
 
-	if (!sema_analyse_signature(context, signature, func_decl->func_decl.type_parent)) return false;
+	if (!sema_analyse_signature(context, signature, func_decl->func_decl.type_parent, func_decl->is_export)) return false;
 
 	Variadic variadic_type = signature->variadic;
 	// Remove the last empty value.
@@ -3273,7 +3291,8 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
-	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent)) return decl_poison(decl);
+	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent,
+	                            false)) return decl_poison(decl);
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{

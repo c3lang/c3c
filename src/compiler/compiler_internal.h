@@ -2471,6 +2471,7 @@ Type *type_find_parent_type(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
+Decl * type_no_export(Type *type);
 
 Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);

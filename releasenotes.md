@@ -8,6 +8,7 @@
 - Improved error notes when call expressions have errors.
 - Trailing body arguments may now be `&ref`, `#hash`, `$const` and `$Type` arguments.
 - "panic-msg" setting to suppress panic message output.
+- Require `@export` functions to have `@export` types.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -18,6 +19,7 @@
 - No longer possible to dereference a function pointer.
 - Fix bug with @jump miscompile.
 - Bit negate does implicit integer promotion.
+- Bitstructs, unions and flexible arrays now correctly emitted in headers.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
