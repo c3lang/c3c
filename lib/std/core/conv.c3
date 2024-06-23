@@ -108,14 +108,14 @@ fn usz char32_to_utf8_unsafe(Char32 c, char** output)
 {
 	switch
 	{
-		case c < 0x7f:
+		case c <= 0x7f:
 			(*output)++[0] = (char)c;
 			return 1;
-		case c < 0x7ff:
+		case c <= 0x7ff:
 			(*output)++[0] = (char)(0xC0 | c >> 6);
 			(*output)++[0] = (char)(0x80 | (c & 0x3F));
 			return 2;
-		case c < 0xffff:
+		case c <= 0xffff:
 			(*output)++[0] = (char)(0xE0 | c >> 12);
 			(*output)++[0] = (char)(0x80 | (c >> 6 & 0x3F));
 			(*output)++[0] = (char)(0x80 | (c & 0x3F));
@@ -210,11 +210,11 @@ fn usz utf8len_for_utf32(Char32[] utf32)
 	{
 		switch (true)
 		{
-			case uc < 0x7f:
+			case uc <= 0x7f:
 				len++;
-			case uc < 0x7ff:
+			case uc <= 0x7ff:
 				len += 2;
-			case uc < 0xffff:
+			case uc <= 0xffff:
 				len += 3;
 			default:
 				len += 4;
@@ -237,12 +237,12 @@ fn usz utf8len_for_utf16(Char16[] utf16)
 		Char16 c = utf16[i];
 		if (c & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
 		{
-			if (c < 0x7f)
+			if (c <= 0x7f)
 			{
 				len++;
 				continue;
 			}
-			if (c < 0x7ff)
+			if (c <= 0x7ff)
 			{
 				len += 2;
 				continue;
