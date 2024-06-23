@@ -128,8 +128,9 @@ fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 {
 	TimeSpec now;
 	if (libc::timespec_get(&now, libc::TIME_UTC) != libc::TIME_UTC) return ThreadFault.WAIT_FAILED?;
-	now.s += (Time_t)(ms / 1000);
-	now.ns += (CLong)((ms % 1000) * 1000_000);
+	now.ns += (CLong)(ms * 1_000_000);
+	now.s += (Time_t)(now.ns / 1_000_000_000);
+	now.ns = now.ns % 1_000_000_000;
 	switch (posix::pthread_cond_timedwait(cond, &mtx.mutex, &now))
 	{
 		case errno::ETIMEDOUT:
