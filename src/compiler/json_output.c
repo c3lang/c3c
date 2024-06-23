@@ -10,25 +10,25 @@
 	unsigned decl_count_ = vec_size(unit->global_decls); \
 	for (unsigned k_ = 0; k_ < decl_count_; k_++) { \
 	a__ = unit->global_decls[k_];
-
+#define PRINTF(string, ...) fprintf(file, string, ##__VA_ARGS__) /* NOLINT */
 #define FOREACH_DECL_END } } }
 #define INERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
 static inline void emit_modules(FILE *file)
 {
 
-	fputs("\t\"modules\": {\n", file);
+	fputs("\t\"modules\": [\n", file);
 	FOREACH_BEGIN_IDX(i, Module *module, global_context.module_list)
 		if (i != 0) fputs(",\n", file);
-		fprintf(file, "\t\t\"%s\"", module->name->module);
+		PRINTF("\t\t\"%s\"", module->name->module);
 	FOREACH_END();
-	fputs("\n\t},\n", file);
-	fputs("\t\"generic_modules\": {\n", file);
+	fputs("\n\t],\n", file);
+	fputs("\t\"generic_modules\": [\n", file);
 	FOREACH_BEGIN_IDX(i, Module *module, global_context.generic_module_list)
 		if (i != 0) fputs(",\n", file);
-		fprintf(file, "\t\t\"%s\"", module->name->module);
+		PRINTF("\t\t\"%s\"", module->name->module);
 	FOREACH_END();
-	fputs("\n\t}\n", file);
+	fputs("\n\t]\n", file);
 }
 
 static inline const char *decl_type_to_string(Decl *type)
@@ -68,14 +68,14 @@ static inline const char *decl_type_to_string(Decl *type)
 }
 static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 {
-	fprintf(file, "\t\t\"%s::%s\": {\n", module->name->module, type->name);
-	fprintf(file, "\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
+	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
+	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
 	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
 	{
 		fputs(",\n\t\t\t\"members\": {\n", file);
 		FOREACH_BEGIN_IDX(i, Decl *member, type->strukt.members)
 			if (i != 0) fputs(",\n", file);
-			fprintf(file, "\t\t\t\t\"%s\"", member->name);
+			PRINTF("\t\t\t\t\"%s\"", member->name);
 		FOREACH_END();
 		fputs("\n\t\t\t}", file);
 	}
@@ -97,35 +97,35 @@ void print_type(FILE *file, TypeInfo *type)
 		case TYPE_INFO_CT_IDENTIFIER:
 			if (type->unresolved.path)
 			{
-				fprintf(file, "%s::", type->unresolved.path->module);
+				PRINTF("%s::", type->unresolved.path->module);
 			}
 			fputs(type->unresolved.name, file);
 			break;
 		case TYPE_INFO_TYPEOF:
 			scratch_buffer_clear();
 			span_to_scratch(type->unresolved_type_expr->span);
-			fprintf(file, "$typeof(%s)", scratch_buffer_to_string());
+			PRINTF("$typeof(%s)", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_VATYPE:
-			fprintf(file, "$vatype(...)");
+			PRINTF("$vatype(...)");
 			break;
 		case TYPE_INFO_EVALTYPE:
-			fprintf(file, "$evaltype(...)");
+			PRINTF("$evaltype(...)");
 			break;
 		case TYPE_INFO_TYPEFROM:
-			fprintf(file, "$typefrom(...)");
+			PRINTF("$typefrom(...)");
 			break;
 		case TYPE_INFO_ARRAY:
 			print_type(file, type->array.base);
 			scratch_buffer_clear();
 			span_to_scratch(type->array.len->span);
-			fprintf(file, "[%s]", scratch_buffer_to_string());
+			PRINTF("[%s]", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_VECTOR:
 			print_type(file, type->array.base);
 			scratch_buffer_clear();
 			span_to_scratch(type->array.len->span);
-			fprintf(file, "[<%s>]", scratch_buffer_to_string());
+			PRINTF("[<%s>]", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
 			print_type(file, type->array.base);
@@ -174,17 +174,17 @@ void print_type(FILE *file, TypeInfo *type)
 }
 static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
-	fprintf(file, "\t\t\"%s::%s\": {\n", module->name->module, func->name);
-	fprintf(file, "\t\t\t\"rtype\": \"");
+	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, func->name);
+	PRINTF("\t\t\t\"rtype\": \"");
 	print_type(file, type_infoptr(func->func_decl.signature.rtype));
-	fprintf(file, "\",\n");
+	PRINTF("\",\n");
 	fputs("\t\t\t\"params\": [\n", file);
 	FOREACH_BEGIN_IDX(i, Decl *decl, func->func_decl.signature.params)
 		if (i != 0) fputs(",\n", file);
 		if (!decl) continue;
 		fputs("\t\t\t\t{\n", file);
-		fprintf(file, "\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
-		fprintf(file, "\t\t\t\t\t\"type\": \"");
+		PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
+		PRINTF("\t\t\t\t\t\"type\": \"");
 		if (decl->var.type_info)
 		{
 			print_type(file, type_infoptr(decl->var.type_info));

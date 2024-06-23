@@ -48,138 +48,138 @@ const char *trust_level[3] = {
 };
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
-#define OUTPUT(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__)
+#define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0)
 
 static void usage(void)
 {
-	OUTPUT("Usage: %s [<options>] <command> [<args>]", args[0]);
-	OUTPUT("");
-	OUTPUT("Commands:");
-	OUTPUT("");
-	OUTPUT("  compile <file1> [<file2> ...]           Compile files without a project into an executable.");
-	OUTPUT("  init <project name>                     Initialize a new project structure.");
-	OUTPUT("  init-lib <library name>                 Initialize a new library structure.");
-	OUTPUT("  build [<target>]                        Build the target in the current project.");
-	OUTPUT("  benchmark                               Run the benchmarks in the current project.");
-	OUTPUT("  test                                    Run the unit tests in the current project.");
-	OUTPUT("  clean                                   Clean all build files.");
-	OUTPUT("  run [<target>]                          Run (and build if needed) the target in the current project.");
-	OUTPUT("  dist [<target>]                         Clean and build a target for distribution.");
-	OUTPUT("  directives [<target>]                   Generate documentation for the target.");
-	OUTPUT("  bench [<target>]                        Benchmark a target.");
-	OUTPUT("  clean-run [<target>]                    Clean, then run the target.");
-	OUTPUT("  compile-run <file1> [<file2> ...]       Compile files then immediately run the result.");
-	OUTPUT("  compile-only <file1> [<file2> ...]      Compile files but do not perform linking.");
-	OUTPUT("  compile-benchmark <file1> [<file2> ...] Compile files into an executable and run benchmarks.");
-	OUTPUT("  compile-test <file1> [<file2> ...]      Compile files into an executable and run unit tests.");
-	OUTPUT("  static-lib <file1> [<file2> ...]        Compile files without a project into a static library.");
-	OUTPUT("  dynamic-lib <file1> [<file2> ...]       Compile files without a project into a dynamic library.");
-	OUTPUT("  headers <file1> [<file2> ...]           Analyse files and generate C headers for public methods.");
-	OUTPUT("  vendor-fetch <library> ...              Fetches one or more libraries from the vendor collection.");
-	OUTPUT("");
-	OUTPUT("Options:");
-	OUTPUT("  --tb                       - Use Tilde Backend for compilation.");
-	OUTPUT("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
-	OUTPUT("  --no-entry                 - Do not generate (or require) a main function.");
-	OUTPUT("  --libdir <dir>             - Add this directory to the C3 library search paths.");
-	OUTPUT("  --lib <name>               - Add this library to the compilation.");
-	OUTPUT("  --path <dir>               - Use this as the base directory for the current command.");
-	OUTPUT("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
-	OUTPUT("  --about                    - Prints a short description of C3.");
-	OUTPUT("  --symtab <value>           - Sets the preferred symtab size.");
-	OUTPUT("  -V --version               - Print version information.");
-	OUTPUT("  -E                         - Lex only.");
-	OUTPUT("  -P                         - Only parse and output the AST as JSON.");
-	OUTPUT("  -C                         - Only lex, parse and check.");
-	OUTPUT("  -                          - Read code from standard in.");
-	OUTPUT("  -o <file>                  - Write output to <file>.");
-	OUTPUT("  -O0                        - Safe, no optimizations, emit debug info.");
-	OUTPUT("  -O1                        - Safe, high optimization, emit debug info.");
-	OUTPUT("  -O2                        - Unsafe, high optimization, emit debug info.");
-	OUTPUT("  -O3                        - Unsafe, high optimization, single module, emit debug info.");
-	OUTPUT("  -O4                        - Unsafe, highest optimization, relaxed maths, single module, emit debug info, no panic messages.");
-	OUTPUT("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info, no panic messages.");
-	OUTPUT("  -Os                        - Unsafe, high optimization, small code, single module, no debug info, no panic messages.");
-	OUTPUT("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info, no panic messages.");
-	OUTPUT("  -D <name>                  - Add feature flag <name>.");
-	OUTPUT("  -U <name>                  - Remove feature flag <name>.");
-	OUTPUT("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
-	OUTPUT("  --output-dir <dir>        - Override general output directory.");
-	OUTPUT("  --build-dir <dir>          - Override build output directory.");
-	OUTPUT("  --obj-out <dir>            - Override object file output directory.");
-	OUTPUT("  --script-dir <dir>         - Override the base directory for $exec.");
-	OUTPUT("  --llvm-out <dir>           - Override llvm output directory for '--emit-llvm'.");
-	OUTPUT("  --emit-llvm                - Emit LLVM IR as a .ll file per module.");
-	OUTPUT("  --asm-out <dir>            - Override asm output directory for '--emit-asm'.");
-	OUTPUT("  --emit-asm                 - Emit asm as a .s file per module.");
-	OUTPUT("  --obj                      - Emit object files. (Enabled by default)");
-	OUTPUT("  --no-obj                   - Do not output object files, this is only valid for `compile-only`.");
-	OUTPUT("  --target <target>          - Compile for a particular architecture + OS target.");
-	OUTPUT("  --threads <number>         - Set the number of threads to use for compilation.");
-	OUTPUT("  --safe=<yes|no>            - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
-	OUTPUT("  --panic-msg=<yes|no>       - Turn panic message output on or off.");
-	OUTPUT("  --optlevel=<option>        - Code optimization level: none, less, more, max.");
-	OUTPUT("  --optsize=<option>         - Code size optimization: none, small, tiny.");
-	OUTPUT("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
-	OUTPUT("");
-	OUTPUT("  -g                         - Emit debug info.");
-	OUTPUT("  -g0                        - Emit no debug info.");
-	OUTPUT("");
-	OUTPUT("");
-	OUTPUT("  -l <library>               - Link with the library provided.");
-	OUTPUT("  -L <library dir>           - Append the directory to the linker search paths.");
-	OUTPUT("  -z <argument>              - Send the <argument> as a parameter to the linker.");
-	OUTPUT("  --cc <path>                - Set C compiler (for C files in projects and use as system linker).");
-	OUTPUT("  --linker=<option> [<path>] - Linker: builtin, cc, custom (default is 'cc'), 'custom' requires a path.");
-	OUTPUT("");
-	OUTPUT("  --use-stdlib=<yes|no>      - Include the standard library (default: yes).");
-	OUTPUT("  --link-libc=<yes|no>       - Link libc other default libraries (default: yes).");
-	OUTPUT("  --emit-stdlib=<yes|no>     - Output files for the standard library. (default: yes)");
-	OUTPUT("  --panicfn <name>           - Override the panic function name.");
-	OUTPUT("  --testfn <name>            - Override the test runner function name.");
-	OUTPUT("  --benchfn <name>           - Override the benchmark runner function name.");
-	OUTPUT("");
-	OUTPUT("  --reloc=<option>           - Relocation model: none, pic, PIC, pie, PIE.");
-	OUTPUT("  --x86cpu=<option>          - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
-	OUTPUT("  --x86vec=<option>          - Set max type of vector use: none, mmx, sse, avx, avx512, default.");
-	OUTPUT("  --riscvfloat=<option>      - Set type of RISC-V float support: none, float, double");
-	OUTPUT("  --memory-env=<option>      - Set the memory environment: normal, small, tiny, none.");
-	OUTPUT("  --strip-unused=<yes|no>    - Strip unused code and globals from the output. (default: yes)");
-	OUTPUT("  --fp-math=<option>         - FP math behaviour: strict, relaxed, fast.");
-	OUTPUT("  --win64-simd=<option>      - Win64 SIMD ABI: array, full.");
-	OUTPUT("");
-	OUTPUT("  --debug-stats              - Print debug statistics.");
-	OUTPUT("  --print-linking            - Print linker arguments.");
+	PRINTF("Usage: %s [<options>] <command> [<args>]", args[0]);
+	PRINTF("");
+	PRINTF("Commands:");
+	PRINTF("");
+	PRINTF("  compile <file1> [<file2> ...]           Compile files without a project into an executable.");
+	PRINTF("  init <project name>                     Initialize a new project structure.");
+	PRINTF("  init-lib <library name>                 Initialize a new library structure.");
+	PRINTF("  build [<target>]                        Build the target in the current project.");
+	PRINTF("  benchmark                               Run the benchmarks in the current project.");
+	PRINTF("  test                                    Run the unit tests in the current project.");
+	PRINTF("  clean                                   Clean all build files.");
+	PRINTF("  run [<target>]                          Run (and build if needed) the target in the current project.");
+	PRINTF("  dist [<target>]                         Clean and build a target for distribution.");
+	PRINTF("  directives [<target>]                   Generate documentation for the target.");
+	PRINTF("  bench [<target>]                        Benchmark a target.");
+	PRINTF("  clean-run [<target>]                    Clean, then run the target.");
+	PRINTF("  compile-run <file1> [<file2> ...]       Compile files then immediately run the result.");
+	PRINTF("  compile-only <file1> [<file2> ...]      Compile files but do not perform linking.");
+	PRINTF("  compile-benchmark <file1> [<file2> ...] Compile files into an executable and run benchmarks.");
+	PRINTF("  compile-test <file1> [<file2> ...]      Compile files into an executable and run unit tests.");
+	PRINTF("  static-lib <file1> [<file2> ...]        Compile files without a project into a static library.");
+	PRINTF("  dynamic-lib <file1> [<file2> ...]       Compile files without a project into a dynamic library.");
+	PRINTF("  headers <file1> [<file2> ...]           Analyse files and generate C headers for public methods.");
+	PRINTF("  vendor-fetch <library> ...              Fetches one or more libraries from the vendor collection.");
+	PRINTF("");
+	PRINTF("Options:");
+	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
+	PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
+	PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
+	PRINTF("  --libdir <dir>             - Add this directory to the C3 library search paths.");
+	PRINTF("  --lib <name>               - Add this library to the compilation.");
+	PRINTF("  --path <dir>               - Use this as the base directory for the current command.");
+	PRINTF("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
+	PRINTF("  --about                    - Prints a short description of C3.");
+	PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
+	PRINTF("  -V --version               - Print version information.");
+	PRINTF("  -E                         - Lex only.");
+	PRINTF("  -P                         - Only parse and output the AST as JSON.");
+	PRINTF("  -C                         - Only lex, parse and check.");
+	PRINTF("  -                          - Read code from standard in.");
+	PRINTF("  -o <file>                  - Write output to <file>.");
+	PRINTF("  -O0                        - Safe, no optimizations, emit debug info.");
+	PRINTF("  -O1                        - Safe, high optimization, emit debug info.");
+	PRINTF("  -O2                        - Unsafe, high optimization, emit debug info.");
+	PRINTF("  -O3                        - Unsafe, high optimization, single module, emit debug info.");
+	PRINTF("  -O4                        - Unsafe, highest optimization, relaxed maths, single module, emit debug info, no panic messages.");
+	PRINTF("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info, no panic messages.");
+	PRINTF("  -Os                        - Unsafe, high optimization, small code, single module, no debug info, no panic messages.");
+	PRINTF("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info, no panic messages.");
+	PRINTF("  -D <name>                  - Add feature flag <name>.");
+	PRINTF("  -U <name>                  - Remove feature flag <name>.");
+	PRINTF("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
+	PRINTF("  --output-dir <dir>        - Override general output directory.");
+	PRINTF("  --build-dir <dir>          - Override build output directory.");
+	PRINTF("  --obj-out <dir>            - Override object file output directory.");
+	PRINTF("  --script-dir <dir>         - Override the base directory for $exec.");
+	PRINTF("  --llvm-out <dir>           - Override llvm output directory for '--emit-llvm'.");
+	PRINTF("  --emit-llvm                - Emit LLVM IR as a .ll file per module.");
+	PRINTF("  --asm-out <dir>            - Override asm output directory for '--emit-asm'.");
+	PRINTF("  --emit-asm                 - Emit asm as a .s file per module.");
+	PRINTF("  --obj                      - Emit object files. (Enabled by default)");
+	PRINTF("  --no-obj                   - Do not output object files, this is only valid for `compile-only`.");
+	PRINTF("  --target <target>          - Compile for a particular architecture + OS target.");
+	PRINTF("  --threads <number>         - Set the number of threads to use for compilation.");
+	PRINTF("  --safe=<yes|no>            - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
+	PRINTF("  --panic-msg=<yes|no>       - Turn panic message output on or off.");
+	PRINTF("  --optlevel=<option>        - Code optimization level: none, less, more, max.");
+	PRINTF("  --optsize=<option>         - Code size optimization: none, small, tiny.");
+	PRINTF("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
+	PRINTF("");
+	PRINTF("  -g                         - Emit debug info.");
+	PRINTF("  -g0                        - Emit no debug info.");
+	PRINTF("");
+	PRINTF("");
+	PRINTF("  -l <library>               - Link with the library provided.");
+	PRINTF("  -L <library dir>           - Append the directory to the linker search paths.");
+	PRINTF("  -z <argument>              - Send the <argument> as a parameter to the linker.");
+	PRINTF("  --cc <path>                - Set C compiler (for C files in projects and use as system linker).");
+	PRINTF("  --linker=<option> [<path>] - Linker: builtin, cc, custom (default is 'cc'), 'custom' requires a path.");
+	PRINTF("");
+	PRINTF("  --use-stdlib=<yes|no>      - Include the standard library (default: yes).");
+	PRINTF("  --link-libc=<yes|no>       - Link libc other default libraries (default: yes).");
+	PRINTF("  --emit-stdlib=<yes|no>     - Output files for the standard library. (default: yes)");
+	PRINTF("  --panicfn <name>           - Override the panic function name.");
+	PRINTF("  --testfn <name>            - Override the test runner function name.");
+	PRINTF("  --benchfn <name>           - Override the benchmark runner function name.");
+	PRINTF("");
+	PRINTF("  --reloc=<option>           - Relocation model: none, pic, PIC, pie, PIE.");
+	PRINTF("  --x86cpu=<option>          - Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.");
+	PRINTF("  --x86vec=<option>          - Set max type of vector use: none, mmx, sse, avx, avx512, default.");
+	PRINTF("  --riscvfloat=<option>      - Set type of RISC-V float support: none, float, double");
+	PRINTF("  --memory-env=<option>      - Set the memory environment: normal, small, tiny, none.");
+	PRINTF("  --strip-unused=<yes|no>    - Strip unused code and globals from the output. (default: yes)");
+	PRINTF("  --fp-math=<option>         - FP math behaviour: strict, relaxed, fast.");
+	PRINTF("  --win64-simd=<option>      - Win64 SIMD ABI: array, full.");
+	PRINTF("");
+	PRINTF("  --debug-stats              - Print debug statistics.");
+	PRINTF("  --print-linking            - Print linker arguments.");
 #ifndef NDEBUG
-	OUTPUT("  --debug-log                - Print debug logging to stdout.");
+	PRINTF("  --debug-log                - Print debug logging to stdout.");
 #endif
-	OUTPUT("");
-	OUTPUT("  --benchmarking             - Run built-in benchmarks.");
-	OUTPUT("  --testing                  - Run built-in tests.");
-	OUTPUT("");
-	OUTPUT("  --list-attributes          - List all attributes.");
-	OUTPUT("  --list-builtins            - List all builtins.");
-	OUTPUT("  --list-keywords            - List all keywords.");
-	OUTPUT("  --list-operators           - List all operators.");
-	OUTPUT("  --list-precedence          - List operator precedence order.");
-	OUTPUT("  --list-project-properties  - List all available keys used in project.json files.");
-	OUTPUT("  --list-targets             - List all architectures the compiler supports.");
-	OUTPUT("  --list-type-properties     - List all type properties.");
-	OUTPUT("");
-	OUTPUT("  --print-output             - Print the object files created to stdout.");
-	OUTPUT("  --print-input              - Print inputted C3 files to stdout.");
-	OUTPUT("");
-	OUTPUT("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
-	OUTPUT("  --wincrt=<option>          - Windows CRT linking: none, static, dynamic (default).");
-	OUTPUT("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
-	OUTPUT("");
-	OUTPUT("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
-	OUTPUT("  --macos-min-version <ver>  - Set the minimum MacOS version to compile for.");
-	OUTPUT("  --macos-sdk-version <ver>  - Set the MacOS SDK compiled for.");
-	OUTPUT("");
-	OUTPUT("  --linux-crt <dir>          - Set the directory to use for finding crt1.o and related files.");
-	OUTPUT("  --linux-crtbegin <dir>     - Set the directory to use for finding crtbegin.o and related files.");
+	PRINTF("");
+	PRINTF("  --benchmarking             - Run built-in benchmarks.");
+	PRINTF("  --testing                  - Run built-in tests.");
+	PRINTF("");
+	PRINTF("  --list-attributes          - List all attributes.");
+	PRINTF("  --list-builtins            - List all builtins.");
+	PRINTF("  --list-keywords            - List all keywords.");
+	PRINTF("  --list-operators           - List all operators.");
+	PRINTF("  --list-precedence          - List operator precedence order.");
+	PRINTF("  --list-project-properties  - List all available keys used in project.json files.");
+	PRINTF("  --list-targets             - List all architectures the compiler supports.");
+	PRINTF("  --list-type-properties     - List all type properties.");
+	PRINTF("");
+	PRINTF("  --print-output             - Print the object files created to stdout.");
+	PRINTF("  --print-input              - Print inputted C3 files to stdout.");
+	PRINTF("");
+	PRINTF("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
+	PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static, dynamic (default).");
+	PRINTF("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
+	PRINTF("");
+	PRINTF("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
+	PRINTF("  --macos-min-version <ver>  - Set the minimum MacOS version to compile for.");
+	PRINTF("  --macos-sdk-version <ver>  - Set the MacOS SDK compiled for.");
+	PRINTF("");
+	PRINTF("  --linux-crt <dir>          - Set the directory to use for finding crt1.o and related files.");
+	PRINTF("  --linux-crtbegin <dir>     - Set the directory to use for finding crtbegin.o and related files.");
 }
 
 
@@ -391,19 +391,19 @@ static void parse_command(BuildOptions *options)
 }
 static void print_all_targets(void)
 {
-	OUTPUT("Available targets:");
+	PRINTF("Available targets:");
 	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
 	{
-		OUTPUT("   %s", arch_os_target[i]);
+		PRINTF("   %s", arch_os_target[i]);
 	}
 }
 
 static void print_version(void)
 {
-	OUTPUT("C3 Compiler Version:       %s%s", COMPILER_VERSION, PRERELEASE ? " (prerelease)" : "");
-	OUTPUT("Installed directory:       %s", find_executable_path());
-	OUTPUT("LLVM version:              %s", llvm_version);
-	OUTPUT("LLVM default target:       %s", llvm_target);
+	PRINTF("C3 Compiler Version:       %s%s", COMPILER_VERSION, PRERELEASE ? " (prerelease)" : "");
+	PRINTF("Installed directory:       %s", find_executable_path());
+	PRINTF("LLVM version:              %s", llvm_version);
+	PRINTF("LLVM default target:       %s", llvm_target);
 }
 
 static void add_linker_arg(BuildOptions *options, const char *arg)
@@ -649,7 +649,7 @@ static void parse_option(BuildOptions *options)
 				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a valid integer.");
 				const char *symtab_string = next_arg();
 				int symtab = atoi(symtab_string);
-				if (symtab < 1024) OUTPUT("Expected a valid positive integer >= 1024.");
+				if (symtab < 1024) PRINTF("Expected a valid positive integer >= 1024.");
 				options->symtab_size = next_highest_power_of_2(symtab);
 				return;
 			}
@@ -751,8 +751,8 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("about"))
 			{
-				OUTPUT("The C3 Compiler");
-				OUTPUT("C3 is low level programming language based on C.");
+				PRINTF("The C3 Compiler");
+				PRINTF("C3 is low level programming language based on C.");
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			if (match_longopt("no-obj"))
@@ -828,8 +828,8 @@ static void parse_option(BuildOptions *options)
 				if (at_end() || next_is_opt()) error_exit("error: --threads needs a valid integer 1 or higher.");
 				const char *thread_string = next_arg();
 				int threads = atoi(thread_string);
-				if (threads < 1) OUTPUT("Expected a valid integer 1 or higher.");
-				if (threads > MAX_THREADS) OUTPUT("Cannot exceed %d threads.", MAX_THREADS);
+				if (threads < 1) PRINTF("Expected a valid integer 1 or higher.");
+				if (threads > MAX_THREADS) PRINTF("Cannot exceed %d threads.", MAX_THREADS);
 				options->build_threads = threads;
 				return;
 			}
@@ -843,7 +843,7 @@ static void parse_option(BuildOptions *options)
 					options->arch_os_target_override = target_arch_os;
 					return;
 				}
-				OUTPUT("Available targets:");
+				PRINTF("Available targets:");
 				EOUTPUT("Invalid target %s.", target);
 				EOUTPUT("These targets are supported:");
 				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)

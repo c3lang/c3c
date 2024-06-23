@@ -635,8 +635,7 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
 
-__attribute__((unused))
-bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
+UNUSED bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 {
 	if (!type_info_ok(type_info)) return false;
 	Type *type = type_info->type;
