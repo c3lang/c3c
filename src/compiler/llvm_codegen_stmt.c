@@ -1458,9 +1458,12 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 
 	Decl *panic_var = c->panic_var;
-	if (!panic_var)
+	if (no_panic() || !panic_var )
 	{
-		llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		if (safe_mode_enabled())
+		{
+			llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0);
+		}
 		llvm_emit_unreachable(c);
 		return;
 	}

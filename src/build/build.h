@@ -132,6 +132,13 @@ typedef enum
 
 typedef enum
 {
+	PANIC_NOT_SET = -1,
+	PANIC_OFF = 0,
+	PANIC_ON = 1,
+} PanicLevel;
+
+typedef enum
+{
 	SINGLE_MODULE_NOT_SET = -1,
 	SINGLE_MODULE_OFF = 0,
 	SINGLE_MODULE_ON = 1
@@ -352,6 +359,7 @@ typedef struct BuildOptions_
 	DebugInfo debug_info_override;
 	ArchOsTarget arch_os_target_override;
 	SafetyLevel safety_level;
+	PanicLevel panic_level;
 	SingleModule single_module;
 	bool emit_llvm;
 	bool emit_asm;
@@ -507,6 +515,7 @@ typedef struct
 		Win64Simd pass_win64_simd_as_arrays : 3;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
+		PanicLevel panic_level;
 		X86CpuSet x86_cpu_set;
 	} feature;
 	struct
@@ -569,6 +578,7 @@ static BuildTarget default_build_target = {
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
 		.feature.safe_mode = SAFETY_NOT_SET,
+		.feature.panic_level = PANIC_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.win.def = NULL,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,

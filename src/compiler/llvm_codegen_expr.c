@@ -3314,6 +3314,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			Type *temp = lhs_type;
 			lhs_type = rhs_type;
 			rhs_type = temp;
+			(void)rhs_type;
 			lhs_signed = true;
 			rhs_signed = false;
 			LLVMValueRef temp_val = lhs_value;
@@ -5003,10 +5004,7 @@ LLVMValueRef llvm_emit_ptradd_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef 
 
 LLVMValueRef llvm_emit_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr, LLVMValueRef offset, ByteSize mult)
 {
-	if (LLVMIsConstant(offset) && LLVMIsNull(offset))
-	{
-		return ptr;
-	}
+	if (LLVMIsConstant(offset) && LLVMIsNull(offset)) return ptr;
 	if (mult == 1) return LLVMBuildInBoundsGEP2(c->builder, c->byte_type, ptr, &offset, 1, "ptradd");
 	return LLVMBuildInBoundsGEP2(c->builder, LLVMArrayType(c->byte_type, mult), ptr, &offset, 1, "ptroffset");
 }

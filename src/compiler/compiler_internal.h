@@ -1989,6 +1989,11 @@ INLINE Type *typeget(TypeInfoId id_)
 	return id_ ? type_infoptr(id_)->type : NULL;
 }
 
+INLINE bool no_panic(void)
+{
+	return active_target.feature.panic_level == PANIC_OFF;
+}
+
 INLINE bool safe_mode_enabled(void)
 {
 	return active_target.feature.safe_mode != SAFETY_OFF;

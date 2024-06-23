@@ -33,6 +33,7 @@ const char *project_default_keys[][2] = {
 		{"optsize", "Code size optimization: none, small, tiny."},
 		{"output", "Output location, relative to project file."},
 		{"panicfn", "Override the panic function."},
+		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"script-dir", "The directory where 'exec' is run."},
@@ -92,6 +93,7 @@ const char* project_target_keys[][2] = {
 		{"optsize", "Code size optimization: none, small, tiny."},
 		{"output", "Output location, relative to project file."},
 		{"panicfn", "Override the panic function."},
+		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"script-dir", "The directory where 'exec' is run."},
@@ -375,6 +377,9 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 
 	// Safety level
 	target->feature.safe_mode = (SafetyLevel)get_valid_bool(json, "safe", type, target->feature.safe_mode);
+
+	// Panic level
+	target->feature.panic_level = (PanicLevel)get_valid_bool(json, "panic-msg", type, target->feature.panic_level);
 
 	// Single module
 	target->single_module = (SingleModule)get_valid_bool(json, "single-module", type, target->single_module);

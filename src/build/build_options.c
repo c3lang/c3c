@@ -98,10 +98,10 @@ static void usage(void)
 	OUTPUT("  -O1                        - Safe, high optimization, emit debug info.");
 	OUTPUT("  -O2                        - Unsafe, high optimization, emit debug info.");
 	OUTPUT("  -O3                        - Unsafe, high optimization, single module, emit debug info.");
-	OUTPUT("  -O4                        - Unsafe, highest optimization, relaxed maths, single module, emit debug info.");
-	OUTPUT("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info.");
-	OUTPUT("  -Os                        - Unsafe, high optimization, small code, single module, no debug info.");
-	OUTPUT("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info.");
+	OUTPUT("  -O4                        - Unsafe, highest optimization, relaxed maths, single module, emit debug info, no panic messages.");
+	OUTPUT("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info, no panic messages.");
+	OUTPUT("  -Os                        - Unsafe, high optimization, small code, single module, no debug info, no panic messages.");
+	OUTPUT("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info, no panic messages.");
 	OUTPUT("  -D <name>                  - Add feature flag <name>.");
 	OUTPUT("  -U <name>                  - Remove feature flag <name>.");
 	OUTPUT("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
@@ -118,6 +118,7 @@ static void usage(void)
 	OUTPUT("  --target <target>          - Compile for a particular architecture + OS target.");
 	OUTPUT("  --threads <number>         - Set the number of threads to use for compilation.");
 	OUTPUT("  --safe=<yes|no>            - Turn safety (contracts, runtime bounds checking, null pointer checks etc) on or off.");
+	OUTPUT("  --panic-msg=<yes|no>       - Turn panic message output on or off.");
 	OUTPUT("  --optlevel=<option>        - Code optimization level: none, less, more, max.");
 	OUTPUT("  --optsize=<option>         - Code size optimization: none, small, tiny.");
 	OUTPUT("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
@@ -677,6 +678,11 @@ static void parse_option(BuildOptions *options)
 				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("panic-msg")))
+			{
+				options->panic_level = (PanicLevel)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("single-module")))
 			{
 				options->single_module = (SingleModule)parse_multi_option(argopt, 2, on_off);
@@ -1098,6 +1104,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
 		.safety_level = SAFETY_NOT_SET,
+		.panic_level = PANIC_NOT_SET,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),

@@ -99,6 +99,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	SizeOptimizationLevel optsize = SIZE_OPTIMIZATION_NONE;
 	DebugInfo debug = DEBUG_INFO_FULL;
 	SafetyLevel safety_level = SAFETY_ON;
+	PanicLevel panic_level = PANIC_ON;
 	bool single_module = false;
 	FpOpt fp_opt = FP_STRICT;
 	switch (level)
@@ -110,22 +111,24 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			break;
 		case OPT_SETTING_O2:
 			optlevel = OPTIMIZATION_MORE;
-			safety_level = false;
+			safety_level = SAFETY_OFF;
 			break;
 		case OPT_SETTING_O3:
 			optlevel = OPTIMIZATION_MORE;
-			safety_level = false;
+			safety_level = SAFETY_OFF;
 			single_module = true;
 			break;
 		case OPT_SETTING_O4:
 			optlevel = OPTIMIZATION_AGGRESSIVE;
 			safety_level = SAFETY_OFF;
+			panic_level = PANIC_OFF;
 			fp_opt = FP_RELAXED;
 			single_module = true;
 			break;
 		case OPT_SETTING_O5:
 			optlevel = OPTIMIZATION_AGGRESSIVE;
 			safety_level = SAFETY_OFF;
+			panic_level = PANIC_OFF;
 			fp_opt = FP_FAST;
 			single_module = true;
 			break;
@@ -133,11 +136,13 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_SMALL;
 			safety_level = SAFETY_OFF;
+			panic_level = PANIC_OFF;
 			break;
 		case OPT_SETTING_OTINY:
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_TINY;
 			safety_level = SAFETY_OFF;
+			panic_level = PANIC_OFF;
 			single_module = true;
 			debug = DEBUG_INFO_NONE;
 			break;
@@ -148,6 +153,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	if (target->optsize == SIZE_OPTIMIZATION_NOT_SET) target->optsize = optsize;
 	if (target->optlevel == OPTIMIZATION_NOT_SET) target->optlevel = optlevel;
 	if (target->feature.safe_mode == SAFETY_NOT_SET) target->feature.safe_mode = safety_level;
+	if (target->feature.panic_level == PANIC_NOT_SET) target->feature.panic_level = panic_level;
 	if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = debug;
 	if (target->feature.fp_math == FP_DEFAULT) target->feature.fp_math = fp_opt;
 	if (target->single_module == SINGLE_MODULE_NOT_SET && single_module) target->single_module = SINGLE_MODULE_ON;
@@ -241,6 +247,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->safety_level != SAFETY_NOT_SET)
 	{
 		target->feature.safe_mode = options->safety_level;
+	}
+	if (options->panic_level != PANIC_NOT_SET)
+	{
+		target->feature.panic_level = options->panic_level;
 	}
 	if (options->strip_unused != STRIP_UNUSED_NOT_SET) target->strip_unused = options->strip_unused;
 

@@ -7,6 +7,8 @@
 - Added $$str_hash, $$str_upper, $$str_lower, $$str_find builtins.
 - Improved error notes when call expressions have errors.
 - Trailing body arguments may now be `&ref`, `#hash`, `$const` and `$Type` arguments.
+- "panic-msg" setting to suppress panic message output.
+
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
 - Prevent Mach-O from removing `@init` and `@dynamic` in a more reliable way #1200.
