@@ -16,7 +16,8 @@
 - Fixed crash on certain recursive function definitions #1209.
 - Return the typekind "FUNC" for a function pointer.
 - No longer possible to dereference a function pointer.
-- Fix bug with @jump miscompile
+- Fix bug with @jump miscompile.
+- Bit negate does implicit integer promotion.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

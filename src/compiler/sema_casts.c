@@ -276,6 +276,8 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 {
 	Type *from_type = expr->type;
 
+	if (from_type == to_type) return true;
+
 	if (to_type->canonical->type_kind == TYPE_POINTER && from_type->canonical->type_kind != TYPE_POINTER
 	    && to_type->canonical->pointer == from_type->canonical && expr->expr_kind == EXPR_IDENTIFIER
 	    && expr->identifier_expr.was_ref)
@@ -285,7 +287,6 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 		                        " with '&' to pass it as a pointer.");
 	}
 
-	if (from_type == to_type) return true;
 
 	bool is_void_silence = type_is_void(to_type) && is_explicit;
 	bool add_optional = type_is_optional(to_type) || type_is_optional(from_type);

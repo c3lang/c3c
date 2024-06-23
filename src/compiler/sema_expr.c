@@ -3279,8 +3279,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	}
 	Decl *decl = canonical->decl;
 
-	// TODO add more constants that can be inspected?
-	// e.g. SomeEnum.values, MyUnion.x.offset etc?
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:
@@ -4081,7 +4079,6 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		if ((val & 0xF) >= vec_len)
 		{
 			RETURN_SEMA_ERROR(expr, "The '%c' component is not present in a vector of length %d, did you assume a longer vector?", kw[i], vec_len);
-			return false;
 		}
 		if (i == 0)
 		{
@@ -6087,32 +6084,28 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	// 4. If no common type, then that's an error:
 	if (!max)
 	{
-		SEMA_ERROR(expr, "%s and %s are different types and cannot be compared.",
-				   type_quoted_error_string(left->type), type_quoted_error_string(right->type));
-		return false;
+		RETURN_SEMA_ERROR(expr, "%s and %s are different types and cannot be compared.",
+		                  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
 
 	if (!type_is_comparable(max))
 	{
 		if (type_is_user_defined(max->canonical))
 		{
-			SEMA_ERROR(expr, "%s does not support comparisons, you need to manually implement a comparison if you need it.",
-					   type_quoted_error_string(left->type));
+			RETURN_SEMA_ERROR(expr,
+			                  "%s does not support comparisons, you need to manually implement a comparison if you need it.",
+			                  type_quoted_error_string(left->type));
 		}
-		else
-		{
-			SEMA_ERROR(expr, "%s does not support comparisons.",
-					   type_quoted_error_string(left->type));
-		}
-		return false;
+		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
+		                  type_quoted_error_string(left->type));
 	}
 	if (!is_equality_type_op)
 	{
 		if (!type_is_ordered(max))
 		{
-			SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it cannot be ordered, did you make a mistake?",
-					   type_quoted_error_string(left->type));
-			return false;
+			RETURN_SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it "
+			                        "cannot be ordered, did you make a mistake?",
+			                  type_quoted_error_string(left->type));
 		}
 		if (type_is_pointer_type(type_flatten(max)))
 		{
@@ -6120,9 +6113,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 			// Only comparisons between the same type is allowed. Subtypes not allowed.
 			if (left_type != right_type && left_type != type_voidptr && right_type != type_voidptr)
 			{
-				SEMA_ERROR(expr, "You are not allowed to compare pointers of different types, "
-								 "if you need to do, first convert all pointers to void*.");
-				return false;
+				RETURN_SEMA_ERROR(expr, "You are not allowed to compare pointers of different types, "
+				                        "if you need to do, first convert all pointers to void*.");
 			}
 		}
 	}
@@ -6441,8 +6433,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 	{
 		Type *vector_type = type_vector_type(canonical);
 		if (vector_type && (type_is_integer(vector_type) || vector_type == type_bool)) goto VALID_VEC;
-		SEMA_ERROR(expr, "Cannot bit negate '%s'.", type_to_error_string(inner->type));
-		return false;
+		RETURN_SEMA_ERROR(expr, "Cannot bit negate '%s'.", type_to_error_string(inner->type));
 	}
 
 VALID_VEC:
@@ -6452,9 +6443,15 @@ VALID_VEC:
 		sema_invert_bitstruct_const_initializer(expr->const_expr.initializer);
 		return true;
 	}
+
+	// Arithmetic promotion
+	Type *result_type = cast_numeric_arithmetic_promotion(type_no_optional(inner->type));
+	if (!cast_implicit(context, inner, result_type)) return false;
+
 	// 3. The simple case, non-const.
 	if (!sema_constant_fold_ops(inner))
 	{
+
 		expr->type = inner->type;
 		return true;
 	}
@@ -6468,7 +6465,6 @@ VALID_VEC:
 	}
 
 	// 5. Perform ~ constant folded
-	// TODO arithmetic promotion?
 	expr->const_expr.ixx = int_not(inner->const_expr.ixx);
 	return true;
 }
@@ -7574,6 +7570,7 @@ static inline bool sema_may_reuse_lambda(SemaContext *context, Decl *lambda, Typ
 	if (typeget(sig->rtype)->canonical != types[0]) return false;
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
 		TypeInfo *info = vartype(param);
+		assert(info && types[i + 1]); // NOLINT
 		if (info->type->canonical != types[i + 1]) return false;
 	FOREACH_END();
 	return true;
@@ -8319,30 +8316,6 @@ bool sema_append_const_array(SemaContext *context, Expr *expr, Expr *list, Expr 
 	ConstInitializer *new_init = CALLOCS(ConstInitializer);
 	new_init->init_array_full = inits;
 	new_init->type = new_type;
-	new_init->kind = CONST_INIT_ARRAY_FULL;
-	expr->const_expr = (ExprConst) {
-			.const_kind = CONST_INITIALIZER,
-			.initializer = new_init
-	};
-	return true;
-}
-
-static bool sema_concat_join_single(Expr *expr, Expr **exprs, Type *type, ArraySize len)
-{
-	ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-	assert(len == vec_size(exprs));
-	for (unsigned i = 0; i < len; i++)
-	{
-		ConstInitializer *in = CALLOCS(ConstInitializer);
-		in->kind = CONST_INIT_VALUE;
-		in->init_value = exprs[i];
-		vec_add(inits, in);
-	}
-	expr->expr_kind = EXPR_CONST;
-	expr->resolve_status = RESOLVE_DONE;
-	ConstInitializer *new_init = CALLOCS(ConstInitializer);
-	new_init->init_array_full = inits;
-	new_init->type = expr->type = type_get_array(type, len);
 	new_init->kind = CONST_INIT_ARRAY_FULL;
 	expr->const_expr = (ExprConst) {
 			.const_kind = CONST_INITIALIZER,
