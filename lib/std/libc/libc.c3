@@ -183,8 +183,8 @@ extern fn isz write(Fd fd, void* buffer, usz count) @if(!env::WIN32);
 
 extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
-extern fn int timespec_get(TimeSpec* ts, int base);
-extern fn int nanosleep(TimeSpec* req, TimeSpec* remaining);
+extern fn CInt timespec_get(TimeSpec* ts, CInt base);
+extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining);
 extern fn ZString ctime(Time_t *timer);
 extern fn Time_t time(Time_t *timer);
 
