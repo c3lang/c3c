@@ -1009,13 +1009,16 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	}
 
 	TypeInfo *method_parent = type_infoptrzero(type_parent);
+	if (method_parent)
+	{
+		if (!sema_resolve_type_info(context, method_parent,
+		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+	}
 	if (is_export && method_parent && !sema_require_export_type(context, method_parent)) return false;
 
 	// Fill in the type if the first parameter is lacking a type.
 	if (method_parent && params && params[0] && !params[0]->var.type_info)
 	{
-		if (!sema_resolve_type_info(context, method_parent,
-		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 		Decl *param = params[0];
 		Type *inferred_type = NULL;
 		switch (param->var.kind)
@@ -1242,6 +1245,7 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 
+	if (decl->is_export) decl_set_external_name(decl);
 	if (decl->typedef_decl.is_func)
 	{
 		Decl *fn_decl = decl->typedef_decl.decl;
@@ -2269,7 +2273,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
-			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
+			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL | ATTR_PARAM),

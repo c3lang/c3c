@@ -41,7 +41,7 @@ static void header_print_type(FILE *file, Type *type)
 		return;
 	}
 	assert(!type_is_optional(type));
-	type = type_flatten(type);
+	type = type_flatten_no_export(type);
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
@@ -117,6 +117,11 @@ static void header_print_type(FILE *file, Type *type)
 			PRINTF("%s", decl_get_extname(type->decl));
 			return;
 		case TYPE_BITSTRUCT:
+			if (type->decl->is_export)
+			{
+				PRINTF("%s", decl_get_extname(type->decl));
+				return;
+			}
 			header_print_type(file, type->decl->bitstruct.base_type->type);
 			return;
 		case TYPE_ANYFAULT:
@@ -124,7 +129,21 @@ static void header_print_type(FILE *file, Type *type)
 			PRINTF("c3fault_t");
 			return;
 		case TYPE_DISTINCT:
+			if (type->decl->is_export)
+			{
+				PRINTF("%s", decl_get_extname(type->decl));
+				return;
+			}
+			header_print_type(file, type->decl->distinct->type);
+			return;
 		case TYPE_TYPEDEF:
+			if (type->decl->is_export)
+			{
+				PRINTF("%s", decl_get_extname(type->decl));
+				return;
+			}
+			header_print_type(file, type->canonical);
+			return;
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case TYPE_ARRAY:
@@ -140,7 +159,7 @@ static void header_print_type(FILE *file, Type *type)
 			PRINTF("c3slice_t");
 			return;
 		case TYPE_VECTOR:
-			switch (type->array.base->type_kind)
+			switch (type_flatten(type->array.base)->type_kind)
 			{
 				case ALL_SIGNED_INTS:
 					PRINTF("int");
@@ -197,40 +216,61 @@ static void header_gen_function_ptr(FILE *file, HTable *table, Type *type)
 	PRINTF(");\n");
 }
 
-static void header_gen_function(FILE *file, FILE *file_types, HTable *table, Decl *decl)
+static void header_gen_function(FILE *file, HTable *table, Decl *decl, bool print_fn, bool* fn_found)
 {
 	if (!decl->is_export) return;
-	if (decl->name[0] == '_' && decl->name[1] == '_') return;
+	if (decl->extname[0] == '_' && decl->extname[1] == '_') return;
+	if (print_fn && !*fn_found)
+	{
+		*fn_found = true;
+		if (decl->func_decl.type_parent)
+		{
+			PRINTF("\n/* METHODS */\n");
+		}
+		else
+		{
+			PRINTF("\n/* FUNCTIONS */\n");
+		}
+	}
 	Signature *sig = &decl->func_decl.signature;
-	PRINTF("extern ");
 	Type *rtype = typeget(sig->rtype);
 	Type *extra_ret = NULL;
 	if (type_is_optional(rtype))
 	{
 		extra_ret = rtype->optional;
-		header_gen_maybe_generate_type(file_types, table, extra_ret);
+		if (!print_fn) header_gen_maybe_generate_type(file, table, extra_ret);
 		rtype = type_anyfault;
 	}
-	header_gen_maybe_generate_type(file_types, table, rtype);
-	header_print_type(file, rtype);
-	PRINTF(" %s(", decl_get_extname(decl));
-	if (!vec_size(sig->params) && !extra_ret)
+	if (!print_fn) header_gen_maybe_generate_type(file, table, rtype);
+	if (print_fn)
 	{
-		PRINTF("void);\n");
-		return;
-	}
-	if (extra_ret)
-	{
-		header_print_type(file, type_get_ptr(extra_ret));
-		PRINTF(" return_ref");
+		PRINTF("extern ");
+		header_print_type(file, rtype);
+		PRINTF(" %s(", decl_get_extname(decl));
+		if (!vec_size(sig->params) && !extra_ret)
+		{
+			PRINTF("void);\n");
+			return;
+		}
+		if (extra_ret)
+		{
+			header_print_type(file, type_get_ptr(extra_ret));
+			PRINTF(" return_ref");
+		}
 	}
 	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
-		if (i || extra_ret) PRINTF(", ");
-		header_print_type(file, param->type);
-		header_gen_maybe_generate_type(file_types, table, param->type);
-		if (param->name) PRINTF(" %s", param->name);
+		if (print_fn)
+		{
+			if (i || extra_ret) PRINTF(", ");
+			header_print_type(file, param->type);
+			if (param->name) PRINTF(" %s", param->name);
+		}
+		else
+		{
+			header_gen_maybe_generate_type(file, table, param->type);
+		}
 	FOREACH_END();
-	PRINTF(");\n");
+	if (print_fn) PRINTF(");\n");
 }
 
 static void header_gen_members(FILE *file, int indent, Decl **members)
@@ -238,7 +278,7 @@ static void header_gen_members(FILE *file, int indent, Decl **members)
 	VECEACH(members, i)
 	{
 		Decl *member = members[i];
-		Type *type = type_flatten(member->type);
+		Type *type = type_flatten_no_export(member->type);
 		switch (member->decl_kind)
 		{
 			case DECL_VAR:
@@ -377,10 +417,8 @@ static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type
 	}
 RETRY:
 	if (type_is_optional(type)) return;
-	type = type_flatten(type);
 	switch (type->type_kind)
 	{
-		case FLATTENED_TYPES:
 		case TYPE_POISONED:
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_UNTYPED_LIST:
@@ -388,6 +426,7 @@ RETRY:
 		case TYPE_MEMBER:
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_WILDCARD:
+		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -395,12 +434,50 @@ RETRY:
 		case ALL_INTS:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
-		case TYPE_BITSTRUCT:
 		case TYPE_FAULTTYPE:
 		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return;
+		case TYPE_DISTINCT:
+			if (type->decl->is_export)
+			{
+				if (htable_get(table, type)) return;
+				Type *underlying_type = type->decl->distinct->type;
+				header_gen_maybe_generate_type(file, table, underlying_type);
+				PRINTF("typedef ");
+				header_print_type(file, underlying_type);
+				PRINTF(" %s;\n", decl_get_extname(type->decl));
+				return;
+			}
+			type = type_flatten(type);
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			if (type->decl->is_export)
+			{
+				if (htable_get(table, type)) return;
+				Type *underlying_type = type->canonical;
+				header_gen_maybe_generate_type(file, table, underlying_type);
+				PRINTF("typedef ");
+				header_print_type(file, underlying_type);
+				PRINTF(" %s;\n", decl_get_extname(type->decl));
+				return;
+			}
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_BITSTRUCT:
+			if (type->decl->is_export)
+			{
+				if (htable_get(table, type)) return;
+				Type *underlying_type = type->decl->bitstruct.base_type->type;
+				header_gen_maybe_generate_type(file, table, underlying_type);
+				PRINTF("typedef ");
+				header_print_type(file, underlying_type);
+				PRINTF(" %s;\n", decl_get_extname(type->decl));
+				return;
+			}
+			type = type_flatten(type);
+			goto RETRY;
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 			type = type->pointer;
@@ -469,6 +546,7 @@ RETRY:
 			if (htable_get(table, type)) return;
 			PRINTF("typedef ");
 			header_print_type(file, type->array.base);
+			htable_set(table, type, type);
 			PRINTF(" ");
 			header_print_type(file, type);
 			PRINTF(" __attribute__((vector_size(%d)));\n", (int)type_size(type->array.base) * type->array.len);
@@ -476,7 +554,7 @@ RETRY:
 	}
 }
 
-static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, Decl *decl)
+static void header_gen_global_var(FILE *file, HTable *table, Decl *decl, bool fn_globals, bool *globals_found)
 {
 	assert(decl->decl_kind == DECL_VAR);
 	// Only exports.
@@ -484,7 +562,19 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 	Type *type = decl->type->canonical;
 	// Optionals are ignored.
 	if (type_is_optional(type)) return;
-	type = type_flatten(type);
+	type = type_flatten_no_export(type);
+	if (fn_globals && !*globals_found)
+	{
+		*globals_found = true;
+		if (decl->var.kind == VARDECL_CONST)
+		{
+			PRINTF("\n/* CONSTANTS */\n");
+		}
+		else
+		{
+			PRINTF("\n/* GLOBALS */\n");
+		}
+	}
 	// Flatten bitstructs.
 	if (type->type_kind == TYPE_BITSTRUCT) type = type->decl->bitstruct.base_type->type->canonical;
 	// We will lower some consts to defines, if they are:
@@ -493,8 +583,10 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 	// 3. Has an init method
 	if (decl->var.kind == VARDECL_CONST && !decl->var.is_addr)
 	{
+		if (!fn_globals) return;
 		Expr *init = decl->var.init_expr;
-		if (type_is_arraylike(type) || type_is_user_defined(type) || !init) return;
+		Type *flat = type_flatten(type);
+		if (type_is_arraylike(flat) || type_is_user_defined(flat) || !init) return;
 		PRINTF("#define %s ", decl_get_extname(decl));
 		assert(expr_is_const(init));
 		switch (init->const_expr.const_kind)
@@ -542,49 +634,21 @@ static void header_gen_global_var(FILE *file, FILE *file_type, HTable *table, De
 				UNREACHABLE
 		}
 	}
+	if (!fn_globals)
+	{
+		header_gen_maybe_generate_type(file, table, decl->type);
+		return;
+	}
+	header_print_type(file, decl->type);
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 	PRINTF("extern ");
 	if (decl->var.kind == VARDECL_CONST) PRINTF("const ");
-	header_gen_maybe_generate_type(file_type, table, decl->type);
-	header_print_type(file, decl->type);
 	PRINTF(" %s;\n", decl_get_extname(decl));
 }
 
-
-void header_gen(Module **modules, unsigned module_count)
+static void header_gen_global_decls(FILE *file, HTable *table, Module **modules, unsigned module_count, bool fn_globals)
 {
-	HTable table;
-	htable_init(&table, 1024);
-	const char *name = build_base_name();
-	const char *filename = str_printf("%s_fn.h", name);
-	const char *filename_types = str_printf("%s_types.h", name);
-	FILE *file = fopen(filename, "w");
-	FILE *file_types = fopen(filename_types, "w");
-	OUT(file_types, "#include <stdint.h>\n");
-	OUT(file_types, "#include <stddef.h>\n");
-	OUT(file_types, "#include <stdbool.h>\n");
-	OUT(file_types, "#ifndef __c3__\n");
-	OUT(file_types, "#define __c3__\n\n");
-	OUT(file_types, "typedef void* c3typeid_t;\n");
-	OUT(file_types, "typedef void* c3fault_t;\n");
-	OUT(file_types, "typedef struct { void* ptr; size_t len; } c3slice_t;\n");
-	OUT(file_types, "typedef struct { void* ptr; c3typeid_t type; } c3any_t;\n");
-	OUT(file_types, "\n#endif\n\n");
-	PRINTF("#include \"%s_types.h\"\n", name);
-
-	for (unsigned i = 0; i < module_count; i++)
-	{
-		Module *module = modules[i];
-		// Produce all constants.
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *var, unit->enums)
-				if (!var->is_export) continue;
-				header_gen_maybe_generate_type(file_types, &table, var->type);
-			FOREACH_END();
-		FOREACH_END();
-	}
-
-	PRINTF("/* Constants */\n");
+	bool constants_found = false;
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
@@ -592,12 +656,12 @@ void header_gen(Module **modules, unsigned module_count)
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *var, unit->vars)
 				if (var->var.kind != VARDECL_CONST) continue;
-				header_gen_global_var(file, file_types, &table, var);
+				header_gen_global_var(file, table, var, fn_globals, &constants_found);
 			FOREACH_END();
 		FOREACH_END();
 	}
 
-	PRINTF("\n/* Globals */\n");
+	bool globals_found = false;
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
@@ -606,12 +670,12 @@ void header_gen(Module **modules, unsigned module_count)
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *var, unit->vars)
 				if (var->var.kind != VARDECL_GLOBAL) continue;
-				header_gen_global_var(file, file_types, &table, var);
+				header_gen_global_var(file, table, var, fn_globals, &globals_found);
 			FOREACH_END();
 		FOREACH_END();
 	}
 
-	PRINTF("\n/* Functions */\n");
+	bool functions_found = false;
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
@@ -619,12 +683,12 @@ void header_gen(Module **modules, unsigned module_count)
 		// Generate all functions
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *fn, unit->functions)
-				header_gen_function(file, file_types, &table, fn);
+				header_gen_function(file, table, fn, fn_globals, &functions_found);
 			FOREACH_END();
 		FOREACH_END();
 	}
 
-	PRINTF("\n/* Methods */\n");
+	bool methods_found = false;
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		// Ignore stdlib modules
@@ -635,10 +699,45 @@ void header_gen(Module **modules, unsigned module_count)
 		// Generate all functions
 		FOREACH_BEGIN(CompilationUnit *unit, module->units)
 			FOREACH_BEGIN(Decl *method, unit->methods)
-				header_gen_function(file, file_types, &table, method);
+				header_gen_function(file, table, method, fn_globals, &methods_found);
 			FOREACH_END();
 		FOREACH_END();
 	}
-	fclose(file);
-	fclose(file_types);
+
 }
+void header_gen(Module **modules, unsigned module_count)
+{
+	HTable table;
+	htable_init(&table, 1024);
+	const char *name = build_base_name();
+	const char *filename = str_printf("%s.h", name);
+	FILE *file = fopen(filename, "w");
+	PRINTF("#include <stdint.h>\n");
+	PRINTF("#include <stddef.h>\n");
+	PRINTF("#include <stdbool.h>\n");
+	PRINTF("#ifndef __c3__\n");
+	PRINTF("#define __c3__\n\n");
+	PRINTF("typedef void* c3typeid_t;\n");
+	PRINTF("typedef void* c3fault_t;\n");
+	PRINTF("typedef struct { void* ptr; size_t len; } c3slice_t;\n");
+	PRINTF("typedef struct { void* ptr; c3typeid_t type; } c3any_t;\n");
+	PRINTF("\n#endif\n\n");
+
+	PRINTF("/* TYPES */\n");
+	for (unsigned i = 0; i < module_count; i++)
+	{
+		Module *module = modules[i];
+		// Produce all constants.
+		FOREACH_BEGIN(CompilationUnit *unit, module->units)
+			FOREACH_BEGIN(Decl *type, unit->types)
+				if (!type->is_export) continue;
+				header_gen_maybe_generate_type(file, &table, type->type);
+			FOREACH_END();
+		FOREACH_END();
+	}
+	header_gen_global_decls(file, &table, modules, module_count, false);
+	header_gen_global_decls(file, &table, modules, module_count, true);
+	fclose(file);
+
+}
+

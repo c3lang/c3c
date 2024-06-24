@@ -1766,7 +1766,7 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
 	decl->type = type;
 }
 /**
- * typedef_declaration ::= DEF TYPE_IDENT '=' 'distinct'? typedef_type ';'
+ * typedef_declaration ::= DEF TYPE_IDENT '=' typedef_type ';'
  *
  * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list

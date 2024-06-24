@@ -3035,6 +3035,29 @@ static inline Type *type_flatten(Type *type)
 	}
 }
 
+static inline Type *type_flatten_no_export(Type *type)
+{
+	while (1)
+	{
+		switch (type->type_kind)
+		{
+			case TYPE_TYPEDEF:
+				if (type->decl->is_export) return type;
+				type = type->canonical;
+				break;
+			case TYPE_DISTINCT:
+				if (type->decl->is_export) return type;
+				type = type->decl->distinct->type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			default:
+				return type;
+		}
+	}
+}
+
 static inline bool type_flat_is_char_array(Type *type)
 {
 	type = type_flatten(type);
