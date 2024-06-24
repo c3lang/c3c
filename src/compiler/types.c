@@ -386,7 +386,6 @@ bool type_flat_is_boolintlike(Type *type)
 
 Decl *type_no_export(Type *type)
 {
-	type = type->canonical;
 	RETRY:
 	switch (type->type_kind)
 	{
@@ -416,10 +415,12 @@ Decl *type_no_export(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_FAULTTYPE:
+		case TYPE_DISTINCT:
+		case TYPE_BITSTRUCT:
+		case TYPE_TYPEDEF:
 			if (type->decl->is_export) return NULL;
 			return type->decl;
 		case TYPE_SLICE:
-		case TYPE_TYPEDEF:
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
@@ -428,15 +429,6 @@ Decl *type_no_export(Type *type)
 		case TYPE_VECTOR:
 		case TYPE_INFERRED_VECTOR:
 			return NULL;
-		case TYPE_BITSTRUCT:
-			// Can be folded into its primitive version.
-			return NULL;
-		case TYPE_DISTINCT:
-			// Is it exported, then we're fine.
-			if (type->decl->is_export) return NULL;
-			// Otherwise the underlying type needs to be exported.
-			type = type->decl->distinct->type->canonical;
-			goto RETRY;
 		case TYPE_OPTIONAL:
 			type = type->optional;
 			goto RETRY;
