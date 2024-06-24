@@ -953,10 +953,8 @@ static void sema_recursively_import(Type *type)
 {
 	if (!type) return;
 	Decl *decl = type_no_export(type);
-	printf("Recursively import %s %p.\n", type->name, decl);
 	if (!decl) return;
 	decl->is_export = true;
-	printf("Recursively import %s.\n", type->name);
 	if (decl->resolve_status != RESOLVE_DONE) return;
 	decl->extname = NULL;
 	assert(!decl->has_extname);

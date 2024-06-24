@@ -1,0 +1,39 @@
+// #target: macos-aarch64
+module test;
+fn void test(Test a) @export
+{
+}
+
+enum Abc
+{
+	ABC,
+	DEF
+}
+struct Test
+{
+	struct
+	{
+		int a;
+		int b;
+	}
+	bitstruct : int
+	{
+		int fa : 1..6;
+	}
+	Abc y;
+	int[*] x;
+}
+
+/* #expect: test.ll
+
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"char[]" = type { ptr, i64 }
+%Test = type { %.anon, i32, i32, [0 x i32] }
+%.anon = type { i32, i32 }
+
+@"$ct.test_$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.test_Test" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@.enum.ABC = internal constant [4 x i8] c"ABC\00", align 1
+@.enum.DEF = internal constant [4 x i8] c"DEF\00", align 1
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.test_Abc" = linkonce global { i8, i64, ptr, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.ABC, i64 3 }, %"char[]" { ptr @.enum.DEF, i64 3 }] }, align 8

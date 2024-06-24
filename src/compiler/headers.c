@@ -137,6 +137,15 @@ static void header_print_type(FILE *file, Type *type)
 			header_print_type(file, type->decl->distinct->type);
 			return;
 		case TYPE_TYPEDEF:
+			if (!type->decl)
+			{
+				if (type == type_usz) { PRINTF("size_t"); return; }
+				if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
+				if (type == type_iptr) { PRINTF("intptr_t"); return; }
+				if (type == type_uptr) { PRINTF("uintptr_t"); return; }
+				header_print_type(file, type->canonical);
+				return;
+			}
 			if (type->decl->is_export)
 			{
 				PRINTF("%s", decl_get_extname(type->decl));
@@ -453,6 +462,11 @@ RETRY:
 		}
 		case TYPE_TYPEDEF:
 		{
+			if (!type->decl)
+			{
+				type = type->canonical;
+				goto RETRY;
+			}
 			assert(type->decl->is_export);
 			if (htable_get(table, type)) return;
 			htable_set(table, type, type);

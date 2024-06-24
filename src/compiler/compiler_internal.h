@@ -3042,7 +3042,7 @@ static inline Type *type_flatten_no_export(Type *type)
 		switch (type->type_kind)
 		{
 			case TYPE_TYPEDEF:
-				if (type->decl->is_export) return type;
+				if (!type->decl || type->decl->is_export) return type;
 				type = type->canonical;
 				break;
 			case TYPE_DISTINCT:

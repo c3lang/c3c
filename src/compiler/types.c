@@ -418,7 +418,7 @@ Decl *type_no_export(Type *type)
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
-			if (type->decl->is_export) return NULL;
+			if (!type->decl || type->decl->is_export) return NULL;
 			return type->decl;
 		case TYPE_SLICE:
 		case TYPE_ARRAY:
