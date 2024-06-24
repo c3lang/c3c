@@ -35,48 +35,50 @@ fn int main()
 
 
 define i32 @main() #0 {
-  store ptr @"main$lambda1", ptr %x, align 8
+  store ptr @"test.main$lambda1", ptr %x, align 8
   %0 = load ptr, ptr %x, align 8
   call void %0()
-  store ptr @"main$lambda2", ptr %x1, align 8
+  store ptr @"test.main$lambda2", ptr %x1, align 8
   %1 = load ptr, ptr %x1, align 8
   call void %1()
-  store ptr @"main$lambda1", ptr %x2, align 8
+  store ptr @"test.main$lambda1", ptr %x2, align 8
   %2 = load ptr, ptr %x2, align 8
   call void %2()
-  store ptr @"main$lambda3", ptr %x3, align 8
+  store ptr @"test.main$lambda3", ptr %x3, align 8
   %3 = load ptr, ptr %x3, align 8
   call void %3()
-  store ptr @"main$lambda4", ptr %x4, align 8
+  store ptr @"test.main$lambda4", ptr %x4, align 8
   %4 = load ptr, ptr %x4, align 8
   call void %4()
-  store ptr @"main$lambda3", ptr %x5, align 8
+  store ptr @"test.main$lambda3", ptr %x5, align 8
   %5 = load ptr, ptr %x5, align 8
   call void %5()
-  store ptr @"main$lambda5", ptr %x6, align 8
+  store ptr @"test.main$lambda5", ptr %x6, align 8
   %6 = load ptr, ptr %x6, align 8
   call void %6()
-  store ptr @"main$lambda6", ptr %x7, align 8
+  store ptr @"test.main$lambda6", ptr %x7, align 8
   %7 = load ptr, ptr %x7, align 8
   call void %7()
-  store ptr @"main$lambda5", ptr %x8, align 8
+  store ptr @"test.main$lambda5", ptr %x8, align 8
   %8 = load ptr, ptr %x8, align 8
   call void %8()
-  store ptr @"main$lambda7", ptr %x9, align 8
+  store ptr @"test.main$lambda7", ptr %x9, align 8
   %9 = load ptr, ptr %x9, align 8
   call void %9()
+  ret i32 0
+}
 
-define internal void @"main$lambda1"() #0 {
+define internal void @"test.main$lambda1"() #0 {
   store %"char[]" { ptr @.str.1, i64 6 }, ptr %taddr1, align 8
-define internal void @"main$lambda2"() #0 {
+define internal void @"test.main$lambda2"() #0 {
   store %"char[]" { ptr @.str.3, i64 3 }, ptr %taddr1, align 8
-define internal void @"main$lambda3"() #0 {
+define internal void @"test.main$lambda3"() #0 {
   store %"char[]" { ptr @.str.5, i64 3 }, ptr %taddr1, align 8
-define internal void @"main$lambda4"() #0 {
+define internal void @"test.main$lambda4"() #0 {
   store %"char[]" { ptr @.str.7, i64 6 }, ptr %taddr1, align 8
-define internal void @"main$lambda5"() #0 {
+define internal void @"test.main$lambda5"() #0 {
   store %"char[]" { ptr @.str.9, i64 6 }, ptr %taddr1, align 8
-define internal void @"main$lambda6"() #0 {
+define internal void @"test.main$lambda6"() #0 {
   store %"char[]" { ptr @.str.11, i64 3 }, ptr %taddr1, align 8
-define internal void @"main$lambda7"() #0 {
+define internal void @"test.main$lambda7"() #0 {
   store %"char[]" { ptr @.str.13, i64 3 }, ptr %taddr1, align 8

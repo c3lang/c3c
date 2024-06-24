@@ -7812,7 +7812,9 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 			}
 			else
 			{
-				scratch_buffer_append(decl_get_extname(context->call_env.current_function));
+				scratch_buffer_append(context->call_env.current_function->unit->module->name->module);
+				scratch_buffer_append(".");
+				scratch_buffer_append(context->call_env.current_function->name);
 			}
 			break;
 		case CALL_ENV_ATTR:

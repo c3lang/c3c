@@ -708,7 +708,7 @@ fn void test()
 @.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
-@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.std::io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @std.core.mem.allocator.thread_allocator = external thread_local global %any, align 8
 
 ; Function Attrs:
@@ -784,7 +784,7 @@ loop.body:                                        ; preds = %loop.cond
   %hi = load i64, ptr %ptradd2, align 8
   %5 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
   %6 = insertvalue %any undef, ptr %5, 0
-  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.std::io.ByteReader" to i64), 1
   store %any %7, ptr %taddr, align 8
   %lo3 = load i64, ptr %taddr, align 8
   %ptradd4 = getelementptr inbounds i8, ptr %taddr, i64 8

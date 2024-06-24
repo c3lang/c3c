@@ -237,7 +237,7 @@ entry:
   store <4 x float> %5, ptr %x3, align 16
   %6 = load ptr, ptr %out2, align 8, !dbg !94
   %7 = insertvalue %any undef, ptr %6, 0, !dbg !94
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1, !dbg !94
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std::io.File" to i64), 1, !dbg !94
   %9 = insertvalue %any undef, ptr %x3, 0, !dbg !97
   %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.foo.Color" to i64), 1, !dbg !97
   store %any %10, ptr %varargslots, align 16, !dbg !97
@@ -727,7 +727,7 @@ no_match:                                         ; preds = %compare
 !146 = !DILocation(line: 45, column: 18, scope: !140, inlinedAt: !137)
 !147 = !DILocation(line: 24, column: 43, scope: !144, inlinedAt: !146)
 !148 = !DILocation(line: 226, column: 55, scope: !149, inlinedAt: !151)
-151 = !DILocation(line: 216, column: 9, scope: !152, inlinedAt: !153)
+!151 = !DILocation(line: 216, column: 9, scope: !152, inlinedAt: !153)
 !152 = distinct !DISubprogram(name: "alloc_array", linkageName: "alloc_array", scope: !150, file: !150, line: 214, scopeLine: 214, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
 !153 = !DILocation(line: 649, column: 20, scope: !154, inlinedAt: !155)
 !154 = distinct !DISubprogram(name: "alloc_array", linkageName: "alloc_array", scope: !74, file: !74, line: 647, scopeLine: 647, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
