@@ -20,6 +20,7 @@
 - Fix bug with @jump miscompile.
 - Bit negate does implicit integer promotion.
 - Bitstructs, unions and flexible arrays now correctly emitted in headers.
+- Fix distinct inline conversions.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

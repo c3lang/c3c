@@ -1878,24 +1878,49 @@ Type *type_decay_array_pointer(Type *type)
 			return type;
 	}
 }
+#define MAX_SEARCH_DEPTH 512
+static inline Type *type_find_max_distinct_type(Type *left, Type *right)
+{
+	assert(left == left->canonical && right == right->canonical);
+	assert(left != right);
+	assert(left->type_kind == TYPE_DISTINCT && right->type_kind == TYPE_DISTINCT);
+	static Type *left_types[MAX_SEARCH_DEPTH];
+	int depth = 0;
+	while (depth < MAX_SEARCH_DEPTH)
+	{
+		left_types[depth++] = left;
+		if (left->type_kind != TYPE_DISTINCT || !left->decl->is_substruct) break;
+		left = left->decl->distinct->type;
+		if (left == right) return right;
+	}
+	if (depth == MAX_SEARCH_DEPTH)
+	{
+		error_exit("Common ancestor search depth %d exceeded.", MAX_SEARCH_DEPTH);
+	}
+	assert(left != right);
+	while (true)
+	{
+		for (int i = 0; i < depth; i++)
+		{
+			if (right == left_types[i]) return right;
+		}
+		if (right->type_kind != TYPE_DISTINCT || !right->decl->is_substruct) return NULL;
+		right = right->decl->distinct->type;
+		if (left == right) return right;
+	}
+}
+
 Type *type_find_max_type(Type *type, Type *other)
 {
 	type = type->canonical;
 	other = other->canonical;
-
 	assert(!type_is_optional(type) && !type_is_optional(other));
 
+RETRY_DISTINCT:
 	if (type == other) return type;
 
 	if (type == type_wildcard) return other;
 	if (other == type_wildcard) return type;
-
-	// Lower inlined distinct types.
-	while (type->type_kind == TYPE_DISTINCT && type->decl->is_substruct) type = type->decl->distinct->type;
-	while (other->type_kind == TYPE_DISTINCT && other->decl->is_substruct) other = other->decl->distinct->type;
-
-	// We may now have a match.
-	if (type == other) return type;
 
 	// Sort types
 	if (type->type_kind > other->type_kind)
@@ -1926,7 +1951,7 @@ Type *type_find_max_type(Type *type, Type *other)
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case ALL_FLOATS:
-			if (other->type_kind == TYPE_DISTINCT && type_is_float(other->decl->distinct->type)) return other;
+			if (other->type_kind == TYPE_DISTINCT && type_is_float(type_flatten(other))) return other;
 			if (other->type_kind == TYPE_VECTOR) return other;
 			return type_find_max_num_type(type, other);
 		case TYPE_ANY:
@@ -2000,9 +2025,6 @@ Type *type_find_max_type(Type *type, Type *other)
 			return NULL;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
-		case TYPE_DISTINCT:
-			// distinct + any other type => no
-			return NULL;
 		case TYPE_ARRAY:
 			// array + [slice, other array, vector] => no
 			return NULL;
@@ -2012,53 +2034,23 @@ Type *type_find_max_type(Type *type, Type *other)
 		case TYPE_VECTOR:
 			// No implicit conversion between vectors
 			return NULL;
+		case TYPE_DISTINCT:
+			if (other->type_kind == TYPE_DISTINCT)
+			{
+				return type_find_max_distinct_type(type, other);
+			}
+			// Try matching with its inline type
+			if (type->decl->is_substruct)
+			{
+				type = type->decl->distinct->type;
+				goto RETRY_DISTINCT;
+			}
+			// distinct + any other type => no
+			return NULL;
 	}
 	UNREACHABLE
 }
 
-#define MAX_SEARCH_DEPTH 512
-
-Type *type_find_common_ancestor(Type *left, Type *right)
-{
-	if (left == right) return left;
-	left = left->canonical;
-	right = right->canonical;
-	if (left == right) return left;
-	if (left->type_kind != right->type_kind) return NULL;
-	if (left->type_kind == TYPE_POINTER)
-	{
-		Type *common = type_find_common_ancestor(left->pointer, right->pointer);
-		return common ? type_get_ptr(common) : NULL;
-	}
-	if (left->type_kind != TYPE_STRUCT) return NULL;
-
-	static Type *left_types[MAX_SEARCH_DEPTH];
-	int depth = 0;
-	while (depth < MAX_SEARCH_DEPTH)
-	{
-		if (!left->decl->strukt.members) break;
-		Decl *first_element = left->decl->strukt.members[0];
-		if (first_element->decl_kind != DECL_VAR) break;
-		if (first_element->type->canonical == right) return right;
-		left = first_element->type->canonical;
-		left_types[depth++] = left;
-	}
-	if (depth == MAX_SEARCH_DEPTH)
-	{
-		error_exit("Struct type depth %d exceeded.", MAX_SEARCH_DEPTH);
-	}
-	while (true)
-	{
-		if (!right->decl->strukt.members) return NULL;
-		Decl *first_element = right->decl->strukt.members[0];
-		if (first_element->decl_kind != DECL_VAR) return NULL;
-		right = first_element->type->canonical;
-		for (int i = 0; i < depth; i++)
-		{
-			if (right == left_types[i]) return right;
-		}
-	}
-}
 
 unsigned type_get_introspection_kind(TypeKind kind)
 {
