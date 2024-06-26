@@ -34,6 +34,7 @@ const char *module_create_object_file_name(Module *module)
 	return scratch_buffer_to_string();
 }
 
+
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 {
 	assert(string);

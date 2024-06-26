@@ -992,6 +992,7 @@ static void sema_recursively_import(Type *type)
 			FOREACH_BEGIN(Decl *param, decl->enums.parameters)
 				sema_recursively_import(param->type);
 			FOREACH_END();
+			return;
 		case DECL_TYPEDEF:
 			sema_recursively_import(type->canonical);
 			return;

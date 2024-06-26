@@ -98,12 +98,11 @@ bool context_set_module_from_filename(ParseContext *context)
 
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters)
 {
-	// Note that we allow the illegal name for now, to be able to parse further.
+
 	if (!str_has_no_uppercase(path->module))
 	{
 		RETURN_PRINT_ERROR_AT(false, path, "A module name may not have any uppercase characters.");
 	}
-
 	return create_module_or_check_name(context->unit, path, generic_parameters);
 }
 
@@ -262,6 +261,7 @@ ERR:
 	decl_poison(decl);
 	decl_poison(old);
 }
+
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 {

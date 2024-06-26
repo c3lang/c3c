@@ -1154,8 +1154,13 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 const char *scratch_buffer_interned(void)
 {
 	TokenType type = TOKEN_INVALID_TOKEN;
+	return scratch_buffer_interned_as(&type);
+}
+
+const char *scratch_buffer_interned_as(TokenType* type)
+{
 	return symtab_add(scratch_buffer.str, scratch_buffer.len,
-					  fnv1a(scratch_buffer.str, scratch_buffer.len), &type);
+	                  fnv1a(scratch_buffer.str, scratch_buffer.len), type);
 }
 
 File *compile_and_invoke(const char *file, const char *args)

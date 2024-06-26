@@ -41,7 +41,6 @@ static void header_print_type(FILE *file, Type *type)
 		return;
 	}
 	assert(!type_is_optional(type));
-	type = type_flatten_no_export(type);
 	switch (type->type_kind)
 	{
 		case CT_TYPES:
@@ -502,12 +501,11 @@ RETRY:
 				Type *underlying_type = decl->enums.type_info->type->canonical;
 				if (underlying_type == type_cint->canonical)
 				{
-					PRINTF("typedef enum %s__ %s;\n", decl_get_extname(decl), decl_get_extname(decl));
-					PRINTF("enum %s__\n{\n", decl_get_extname(decl));
+					PRINTF("typedef enum %s__\n{\n", decl_get_extname(decl));
 					FOREACH_BEGIN(Decl *enum_member, decl->enums.values)
 						PRINTF("\t %s_%s,\n", decl_get_extname(decl), enum_member->name);
 					FOREACH_END();
-					PRINTF("};\n");
+					PRINTF("} %s;\n", decl_get_extname(decl));
 					return;
 				}
 				PRINTF("typedef ");

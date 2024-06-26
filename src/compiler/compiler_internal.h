@@ -2408,6 +2408,7 @@ DeclId decltable_get(DeclTable *table, const char *name);
 void decltable_set(DeclTable *table, Decl *decl);
 
 const char *scratch_buffer_interned(void);
+const char *scratch_buffer_interned_as(TokenType *type);
 
 const char *symtab_preset(const char *data, TokenType type);
 const char *symtab_add(const char *symbol, uint32_t len, uint32_t fnv1hash, TokenType *type);

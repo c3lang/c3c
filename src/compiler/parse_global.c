@@ -335,36 +335,29 @@ bool parse_path_prefix(ParseContext *c, Path** path_ref)
 	*path_ref = NULL;
 	if (!tok_is(c, TOKEN_IDENT) || peek(c) != TOKEN_SCOPE) return true;
 
-	char *scratch_ptr = scratch_buffer.str;
-	uint32_t offset = 0;
-
 	Path *path = CALLOCS(Path);
 	path->span = c->span;
-	unsigned len = (unsigned)strlen(symstr(c));
-	memcpy(scratch_ptr, symstr(c), len);
-	offset += len;
+	scratch_buffer_clear();
+	scratch_buffer_append(symstr(c));
 	SourceSpan last_loc = c->span;
 	advance(c);
 	advance(c);
 	while (tok_is(c, TOKEN_IDENT) && peek(c) == TOKEN_SCOPE)
 	{
 		last_loc = c->span;
-		scratch_ptr[offset++] = ':';
-		scratch_ptr[offset++] = ':';
-		len = c->data.lex_len;
-		memcpy(scratch_ptr + offset, symstr(c), len);
-		offset += len;
+		scratch_buffer_append("::");
+		scratch_buffer_append_len(symstr(c), c->data.lex_len);
 		advance(c); advance(c);
 	}
 
 	TokenType type = TOKEN_IDENT;
 	path->span = extend_span_with_token(path->span, last_loc);
-	path->module = symtab_add(scratch_ptr, offset, fnv1a(scratch_ptr, offset), &type);
+	path->module = scratch_buffer_interned_as(&type);
 	if (type != TOKEN_IDENT)
 	{
 		RETURN_PRINT_ERROR_AT(false, path, "A module name was expected here.");
 	}
-	path->len = offset;
+	path->len = scratch_buffer.len;
 	*path_ref = path;
 	return true;
 }
