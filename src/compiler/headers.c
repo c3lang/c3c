@@ -449,7 +449,6 @@ RETRY:
 			return;
 		case TYPE_DISTINCT:
 		{
-			assert(type->decl->is_export);
 			if (htable_get(table, type)) return;
 			Type *underlying_type = type->decl->distinct->type;
 			htable_set(table, type, type);
@@ -466,7 +465,6 @@ RETRY:
 				type = type->canonical;
 				goto RETRY;
 			}
-			assert(type->decl->is_export);
 			if (htable_get(table, type)) return;
 			htable_set(table, type, type);
 			Type *underlying_type = type->canonical;
@@ -478,7 +476,6 @@ RETRY:
 		}
 		case TYPE_BITSTRUCT:
 			{
-				assert(type->decl->is_export);
 				if (htable_get(table, type)) return;
 				htable_set(table, type, type);
 				Type *underlying_type = type->decl->bitstruct.base_type->type;
@@ -495,7 +492,6 @@ RETRY:
 		case TYPE_ENUM:
 			if (htable_get(table, type)) return;
 			{
-				assert(type->decl->is_export);
 				Decl *decl = type->decl;
 				htable_set(table, type, type);
 				Type *underlying_type = decl->enums.type_info->type->canonical;
@@ -523,7 +519,6 @@ RETRY:
 		case TYPE_UNION:
 			if (htable_get(table, type)) return;
 			{
-				assert(type->decl->is_export);
 				Decl *decl = type->decl;
 				PRINTF("typedef %s %s__ %s;\n", struct_union_str(decl), decl_get_extname(decl), decl_get_extname(decl));
 				htable_set(table, type, type);
