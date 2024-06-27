@@ -6043,8 +6043,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	bool is_equality_type_op = expr->binary_expr.operator == BINARYOP_NE || expr->binary_expr.operator == BINARYOP_EQ;
 
 	// Flatten distinct/optional
-	Type *left_type = type_flatten(left->type);
-	Type *right_type = type_flatten(right->type);
+	Type *left_type = type_flat_distinct_inline(type_no_optional(left->type)->canonical)->canonical;
+	Type *right_type = type_flat_distinct_inline(type_no_optional(right->type)->canonical)->canonical;
 
 	// 2. Handle the case of signed comparisons.
 	//    This happens when either side has a definite integer type
@@ -6058,28 +6058,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		goto DONE;
 	}
 
-	if (left_type->type_kind == TYPE_VECTOR && right_type->type_kind == TYPE_VECTOR)
-	{
-		if (!is_equality_type_op)
-		{
-			SEMA_ERROR(expr, "Vector types can only be tested for equality, for other comparison, use vector comparison functions.");
-			return false;
-		}
-		if (left_type->array.len == right_type->array.len)
-		{
-			Type *left_vec = type_vector_type(left_type);
-			Type *right_vec = type_vector_type(right_type);
-			if (left_vec == right_vec) goto DONE;
-			if (type_size(left_vec) != type_size(right_vec)) goto DONE;
-			if (type_is_integer(left_vec) && type_is_integer(right_vec)) goto DONE;
-		}
-		SEMA_ERROR(expr, "Vector types %s and %s cannot be compared.",
-				   type_quoted_error_string(left->type), type_quoted_error_string(right->type));
-		return false;
-	}
-
 	// 3. In the normal case, treat this as a binary op, finding the max type.
-	Type *max = type_find_max_type(type_no_optional(left->type)->canonical, type_no_optional(right->type)->canonical);
+	Type *max = type_find_max_type(left_type, right_type);
 
 	// 4. If no common type, then that's an error:
 	if (!max)
@@ -6088,6 +6068,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		                  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
 
+	max = max->canonical;
+
 	if (max->type_kind == TYPE_VECTOR && !is_equality_type_op)
 	{
 		RETURN_SEMA_ERROR(expr, "Vector types can only be tested for equality, for other comparison, use vector comparison functions.");
@@ -6095,7 +6077,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 
 	if (!type_is_comparable(max))
 	{
-		if (type_is_user_defined(max->canonical))
+		if (type_is_user_defined(max))
 		{
 			RETURN_SEMA_ERROR(expr,
 			                  "%s does not support comparisons, you need to manually implement a comparison if you need it.",
@@ -6104,6 +6086,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
 		                  type_quoted_error_string(left->type));
 	}
+
 	if (!is_equality_type_op)
 	{
 		if (!type_is_ordered(max))
@@ -6112,7 +6095,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 			                        "cannot be ordered, did you make a mistake?",
 			                  type_quoted_error_string(left->type));
 		}
-		if (type_is_pointer_type(type_flatten(max)))
+		if (type_is_pointer_type(max))
 		{
 
 			// Only comparisons between the same type is allowed. Subtypes not allowed.
@@ -6124,12 +6107,9 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		}
 	}
 
-	// 6. Do the implicit cast.
-	bool success = true;
-
-	if (!cast_implicit(context, left, max)) success = cast_explicit(context, left, max);
-	if (!cast_implicit(context, right, max)) success = success && cast_explicit(context, right, max);
-
+	// 6. Do the explicit cast.
+	if (!cast_implicit(context, left, max) || !cast_implicit(context, right, max)) return false;
+	bool success = cast_explicit(context, left, max) && cast_explicit(context, right, max);
 	assert(success);
 DONE:
 
@@ -6146,7 +6126,6 @@ DONE:
 	}
 
 	// 8. Set the type to bool
-
 	expr->type = type_add_optional(type_bool, IS_OPTIONAL(left) || IS_OPTIONAL(right));
 
 	return true;
