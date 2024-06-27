@@ -404,7 +404,7 @@ void llvm_emit_return_implicit(GenContext *c)
 
 void llvm_emit_function_body(GenContext *c, Decl *decl)
 {
-	DEBUG_LOG("Generating function %s.", decl->extname);
+	DEBUG_LOG("Generating function %s.", decl->name);
 	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
 	assert(decl->backend_ref);
 	if (decl->func_decl.attr_init || decl->func_decl.attr_finalizer)
@@ -577,8 +577,8 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		Type *type = typeget(decl->func_decl.type_parent);
 		scratch_buffer_clear();
 		scratch_buffer_append("$ct.dyn.");
-		scratch_buffer_append(decl_get_extname(decl));
-		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_to_string(), c->dtable_type, 0);
+		scratch_buffer_set_extern_decl_name(decl, false);
+		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_copy(), c->dtable_type, 0);
 		Decl *proto = declptrzero(decl->func_decl.interface_method);
 		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
 		LLVMValueRef vals[3] = { llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type) };

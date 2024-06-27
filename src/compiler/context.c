@@ -108,7 +108,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 
 void unit_register_external_symbol(CompilationUnit *unit, Decl *decl)
 {
-	if (decl_module(decl) == unit->module || !decl->extname) return;
+	if (decl_module(decl) == unit->module) return;
 	decl->is_external_visible = true;
 }
 
@@ -174,7 +174,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			{
 				vec_add(unit->macros, decl);
 			}
-			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
 		case DECL_FUNC:
@@ -193,7 +192,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_VAR:
 			assert(decl->name);
 			vec_add(unit->vars, decl);
-			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
 		case DECL_INTERFACE:
@@ -205,19 +203,16 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_BITSTRUCT:
 			assert(decl->name);
 			vec_add(unit->types, decl);
-			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
 		case DECL_DEFINE:
 			assert(decl->name);
 			vec_add(unit->generic_defines, decl);
-			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
 		case DECL_ENUM:
 			assert(decl->name);
 			vec_add(unit->enums, decl);
-			decl_set_external_name(decl);
 			decl_register(decl);
 			break;
 		case DECL_ATTRIBUTE:

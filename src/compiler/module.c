@@ -9,7 +9,7 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return htable_get(&module->symbols, (void*)symbol);
 }
 
-void module_copy_extern_name_to_buffer(Module *module)
+void scratch_buffer_append_module(Module *module, bool is_export)
 {
 	if (module->extname)
 	{
@@ -24,7 +24,7 @@ void module_copy_extern_name_to_buffer(Module *module)
 		{
 			case ':':
 				assert(name[0] == ':');
-				scratch_buffer_append_char('_');
+				scratch_buffer_append_char(is_export ? '_' : '.');
 				name++;
 				break;
 			default:

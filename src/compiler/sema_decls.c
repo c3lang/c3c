@@ -846,13 +846,6 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 				return false;
 			}
 		}
-		if (!method->extname)
-		{
-			scratch_buffer_clear();
-			type_mangle_introspect_name_to_buffer(decl->type);
-			scratch_buffer_printf(".%s", name);
-			method->extname = scratch_buffer_copy();
-		}
 	}
 	return true;
 }
@@ -1231,7 +1224,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	if (*erase_decl) return true;
 
 	bool is_export = decl->is_export;
-	if (is_export) decl_set_external_name(decl);
 	if (decl->typedef_decl.is_func)
 	{
 		Decl *fn_decl = decl->typedef_decl.decl;
@@ -1610,39 +1602,6 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 	UNREACHABLE
 }
 
-INLINE void sema_set_method_ext_name(CompilationUnit *unit, const char *parent_name, Decl *method_like)
-{
-	if (method_like->has_extname) return;
-	scratch_buffer_clear();
-	if (method_like->is_export)
-	{
-		scratch_buffer_append(parent_name);
-		scratch_buffer_append("_");
-		scratch_buffer_append(method_like->name);
-		method_like->extname = scratch_buffer_copy();
-		return;
-	}
-	switch (method_like->visibility)
-	{
-		case VISIBLE_PUBLIC:
-		case VISIBLE_PRIVATE:
-			scratch_buffer_append(parent_name);
-			scratch_buffer_append_char('.');
-			scratch_buffer_append(method_like->name);
-			break;
-		case VISIBLE_LOCAL:
-			scratch_buffer_append(unit->file->name);
-			scratch_buffer_append_char('.');
-			scratch_buffer_append(parent_name);
-			scratch_buffer_append_char('.');
-			scratch_buffer_append(method_like->name);
-			break;
-		default:
-			UNREACHABLE
-	}
-	method_like->extname = scratch_buffer_copy();
-}
-
 bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 {
 	Attr *attr = attr_find_kind(decl->attributes, ATTRIBUTE_IF);
@@ -1685,9 +1644,6 @@ unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type
 		RETURN_SEMA_ERROR(method_find_overload_attribute(method),
 						  "Only user-defined types support operator oveloading.");
 	}
-
-	// As with normal methods, update the name.
-	sema_set_method_ext_name(unit, parent_type->name, method);
 
 	// Add it to the right list of extensions.
 	switch (method->visibility)
@@ -1890,8 +1846,6 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 		if (!sema_analyse_operator_method(context, parent_type, method)) return false;
 	}
 
-	// Set the external name
-	sema_set_method_ext_name(unit, parent->extname, method);
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
 
 	// Add it to the correct place: type methods, private extensions, local method extensions
@@ -3145,7 +3099,6 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 			}
 			if (!sema_analyse_main_function(context, decl)) return false;
 		}
-		decl_set_external_name(decl);
 	}
 
 	// Do we have fn void any.foo(void*) { ... }?
@@ -3464,6 +3417,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		case VARDECL_GLOBAL:
 			is_global = true;
 			break;
+		case VARDECL_CONST:
 		default:
 			break;
 	}
@@ -3499,14 +3453,6 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	bool is_static = decl->var.is_static;
 	bool global_level_var = is_static || decl->var.kind == VARDECL_CONST || is_global;
 
-	if (global_level_var && !decl->has_extname)
-	{
-		scratch_buffer_clear();
-		scratch_buffer_append(context->call_env.kind == CALL_ENV_FUNCTION ? context->call_env.current_function->name : ".global");
-		scratch_buffer_append_char('.');
-		scratch_buffer_append(decl->name);
-		decl->extname = scratch_buffer_copy();
-	}
 	if (decl->is_extern && decl->var.init_expr)
 	{
 		assert(is_global);
@@ -3650,6 +3596,15 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 	}
 	EXIT_OK:;
+	// Patch the external name for local consts and static variables.
+	if ((decl->var.kind == VARDECL_CONST || is_static) && !decl->extname && context->call_env.kind == CALL_ENV_FUNCTION)
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append(context->call_env.current_function->name);
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(decl->name);
+		decl->extname = scratch_buffer_copy();
+	}
 	if (!decl->alignment)
 	{
 		if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
@@ -4109,23 +4064,19 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	decl->resolve_status = RESOLVE_RUNNING;
 	assert(decl->unit);
 	bool erase_decl = false;
-	bool set_external_name = false;
 	switch (decl->decl_kind)
 	{
 		case DECL_ERASED:
 			break;
 		case DECL_INTERFACE:
 			if (!sema_analyse_interface(context, decl, &erase_decl)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_BITSTRUCT:
 			if (!sema_analyse_bitstruct(context, decl, &erase_decl)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
 			if (!sema_analyse_struct_union(context, decl, &erase_decl)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_FNTYPE:
 			if (!sema_analyse_fntype(context, decl, &erase_decl)) goto FAILED;
@@ -4138,25 +4089,21 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 			break;
 		case DECL_VAR:
 			if (!sema_analyse_var_decl(context, decl, false)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_ATTRIBUTE:
 			if (!sema_analyse_attribute_decl(context, context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_DISTINCT:
 			if (!sema_analyse_distinct(context, decl, &erase_decl)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_TYPEDEF:
 			if (!sema_analyse_typedef(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_FAULT:
 			if (!sema_analyse_error(context, decl, &erase_decl)) goto FAILED;
-			set_external_name = true;
 			break;
 		case DECL_DEFINE:
 			if (!sema_analyse_define(context, decl, &erase_decl)) goto FAILED;
@@ -4178,9 +4125,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 	if (erase_decl)
 	{
 		decl->decl_kind = DECL_ERASED;
-		set_external_name = false;
 	}
-	if (set_external_name) decl_set_external_name(decl);
 	decl->resolve_status = RESOLVE_DONE;
 	sema_context_destroy(&temp_context);
 

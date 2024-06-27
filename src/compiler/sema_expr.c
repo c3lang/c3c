@@ -7372,7 +7372,15 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, Toke
 	if (type_is_func_ptr(type)) type = type->pointer->function.prototype->raw_type;
 	if (name_type == TOKEN_CT_EXTNAMEOF)
 	{
-		expr_rewrite_to_string(expr, type->decl->extname);
+		if (type_is_user_defined(type))
+		{
+			scratch_buffer_set_extern_decl_name(type->decl, true);
+			expr_rewrite_to_string(expr, scratch_buffer_copy());
+		}
+		else
+		{
+			expr_rewrite_to_string(expr, type->name);
+		}
 		return;
 	}
 
@@ -7409,12 +7417,64 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 
 	if (name_type == TOKEN_CT_EXTNAMEOF)
 	{
-		if (!decl->extname)
+		switch (decl->decl_kind)
 		{
-			SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
-			return false;
+			case DECL_VAR:
+				switch (decl->var.kind)
+				{
+					case VARDECL_CONST:
+					case VARDECL_GLOBAL:
+						goto RETURN_CT;
+					case VARDECL_LOCAL:
+					case VARDECL_PARAM:
+					case VARDECL_MEMBER:
+					case VARDECL_BITMEMBER:
+					case VARDECL_PARAM_REF:
+					case VARDECL_PARAM_EXPR:
+					case VARDECL_UNWRAPPED:
+					case VARDECL_ERASE:
+					case VARDECL_REWRAPPED:
+					case VARDECL_PARAM_CT:
+					case VARDECL_PARAM_CT_TYPE:
+					case VARDECL_LOCAL_CT:
+					case VARDECL_LOCAL_CT_TYPE:
+						// TODO verify that all of these are correct.
+						break;
+				}
+				FALLTHROUGH;
+			case DECL_POISONED:
+			case DECL_ATTRIBUTE:
+			case DECL_BODYPARAM:
+			case DECL_CT_ASSERT:
+			case DECL_CT_ECHO:
+			case DECL_CT_EXEC:
+			case DECL_CT_INCLUDE:
+			case DECL_DECLARRAY:
+			case DECL_ERASED:
+			case DECL_GLOBALS:
+			case DECL_IMPORT:
+			case DECL_LABEL:
+			case DECL_MACRO:
+			case DECL_DEFINE:
+				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
+			case DECL_BITSTRUCT:
+			case DECL_DISTINCT:
+			case DECL_ENUM:
+			case DECL_ENUM_CONSTANT:
+			case DECL_FAULT:
+			case DECL_FAULTVALUE:
+			case DECL_FNTYPE:
+			case DECL_FUNC:
+			case DECL_INTERFACE:
+			case DECL_STRUCT:
+			case DECL_TYPEDEF:
+			case DECL_UNION:
+				// TODO verify that all of these are correct
+				goto RETURN_CT;
 		}
-		expr_rewrite_to_string(expr, decl->extname);
+RETURN_CT:
+		scratch_buffer_set_extern_decl_name(decl, true);
+		expr_rewrite_to_string(expr, scratch_buffer_to_string());
 		return true;
 	}
 	if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_var_local(decl))
@@ -7808,7 +7868,8 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	}
 	scratch_buffer_append("$lambda");
 	scratch_buffer_append_unsigned_int(++unit->lambda_count);
-	decl->extname = decl->name = scratch_buffer_copy();
+	decl->name = scratch_buffer_copy();
+	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
 	if (!sema_analyse_function_signature(context, decl, sig->abi, sig)) return false;
 	if (target_type && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)

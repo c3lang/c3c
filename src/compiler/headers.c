@@ -11,6 +11,11 @@
 static void header_gen_struct_union(FILE *file, int indent, Decl *decl);
 static void header_gen_maybe_generate_type(FILE *file, HTable *table, Type *type);
 
+INLINE const char *decl_get_extname(Decl *decl)
+{
+	return decl->extname;
+}
+
 static bool type_is_func_pointer(Type *type)
 {
 	if (type->type_kind != TYPE_DISTINCT && type->type_kind != TYPE_TYPEDEF) return false;

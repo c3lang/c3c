@@ -518,10 +518,29 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 
 	LLVMValueRef old = decl->backend_ref;
-	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c,
-																	  decl_get_extname(decl),
-																	  LLVMTypeOf(init_value),
-																	  decl->alignment);
+	scratch_buffer_set_extern_decl_name(decl, true);
+	char *name = scratch_buffer_copy();
+	LLVMValueRef global_ref = decl->backend_ref = llvm_add_global_raw(c, name, LLVMTypeOf(init_value), decl->alignment);
+	if (llvm_use_debug(c))
+	{
+		SourceSpan loc = decl->span;
+		decl->var.backend_debug_ref = LLVMDIBuilderCreateGlobalVariableExpression(
+				c->debug.builder,
+				c->debug.file.debug_file,
+				decl->name,
+				strlen(decl->name),
+				name,
+				strlen(name),
+				c->debug.file.debug_file,
+				loc.row ? loc.row : 1,
+				llvm_get_debug_type(c, decl->type),
+				decl_is_local(decl),
+				LLVMDIBuilderCreateExpression(c->debug.builder, NULL, 0),
+				NULL,
+				decl->alignment);
+		LLVMGlobalSetMetadata(llvm_get_ref(c, decl), 0, decl->var.backend_debug_ref);
+	}
+
 	if (decl->var.is_addr)
 	{
 		LLVMSetUnnamedAddress(global_ref, LLVMNoUnnamedAddr);
@@ -586,11 +605,6 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMDeleteGlobal(old);
 	}
 
-	// Should we set linkage here?
-	if (llvm_use_debug(c))
-	{
-		llvm_emit_debug_global_var(c, decl);
-	}
 }
 static void gencontext_verify_ir(GenContext *context)
 {
@@ -1012,13 +1026,23 @@ const char *llvm_codegen(void *context)
 	return object_name;
 }
 
+
 void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	bool same_module = decl_module(decl) == c->code_module;
-	const char *name = same_module ? "temp_global" : decl_get_extname(decl);
-	decl->backend_ref = llvm_add_global(c, name, decl->type, decl->alignment);
+	LLVMTypeRef type = llvm_get_type(c, decl->type);
+	if (same_module)
+	{
+		// If we initialize it later, we must use a temp name.
+		decl->backend_ref = llvm_add_global_raw(c, ".tempglobal", type, decl->alignment);
+	}
+	else
+	{
+		scratch_buffer_set_extern_decl_name(decl, true);
+		decl->backend_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), type, decl->alignment);
+	}
 	if (!same_module)
 	{
 		LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
@@ -1029,10 +1053,10 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 	}
 	if (IS_OPTIONAL(decl))
 	{
-		scratch_buffer_clear();
-		scratch_buffer_append(decl_get_extname(decl));
+		LLVMTypeRef anyfault = llvm_get_type(c, type_anyfault);
+		scratch_buffer_set_extern_decl_name(decl, true);
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
+		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), anyfault, 0);
 	}
 	llvm_set_global_tls(decl);
 }
@@ -1136,12 +1160,14 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		if (c->code_module == decl_module(decl))
 		{
-			llvm_attribute_add_string(c, function, "wasm-export-name", decl_get_extname(decl), -1);
+			scratch_buffer_set_extern_decl_name(decl, true);
+			llvm_attribute_add_string(c, function, "wasm-export-name", scratch_buffer_to_string(), -1);
 		}
 	}
 	if (decl->is_extern && arch_is_wasm(platform_target.arch))
 	{
-		llvm_attribute_add_string(c, function, "wasm-import-name", decl_get_extname(decl), -1);
+		scratch_buffer_set_extern_decl_name(decl, true);
+		llvm_attribute_add_string(c, function, "wasm-import-name", scratch_buffer_to_string(), -1);
 	}
 	if (decl->alignment != type_abi_alignment(decl->type))
 	{
@@ -1186,7 +1212,9 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			{
 				return decl->backend_ref = llvm_get_selector(c, decl->name);
 			}
-			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, decl_get_extname(decl), llvm_get_type(c, decl->type));
+			LLVMTypeRef type = llvm_get_type(c, decl->type);
+			scratch_buffer_set_extern_decl_name(decl, true);
+			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			llvm_append_function_attributes(c, decl);
 			if (decl->is_export && platform_target.os == OS_TYPE_WIN32  && !active_target.win.def && decl->name != kw_main && decl->name != kw_mainstub)
 			{
@@ -1246,7 +1274,8 @@ static void llvm_gen_test_main(GenContext *c)
 	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
 	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
 	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
-	LLVMValueRef other_func = LLVMAddFunction(c->module, test_runner->extname, runner_type);
+	scratch_buffer_set_extern_decl_name(test_runner, true);
+	LLVMValueRef other_func = LLVMAddFunction(c->module, scratch_buffer_to_string(), runner_type);
 	LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
@@ -1275,7 +1304,8 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		FOREACH_BEGIN(Decl *test, module->tests)
 			LLVMValueRef ref;
 			LLVMTypeRef type = opt_test;
-			ref = LLVMAddFunction(c->module, test->extname, type);
+			scratch_buffer_set_extern_decl_name(test, true);
+			ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			scratch_buffer_clear();
 			scratch_buffer_printf("%s::%s", module->name->module, test->name);
 			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".test.name");
@@ -1342,7 +1372,8 @@ static void llvm_gen_benchmark_main(GenContext *c)
 	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
 	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
 	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
-	LLVMValueRef other_func = LLVMAddFunction(c->module, benchmark_runner->extname, runner_type);
+	scratch_buffer_set_extern_decl_name(benchmark_runner, true);
+	LLVMValueRef other_func = LLVMAddFunction(c->module, scratch_buffer_to_string(), runner_type);
 	LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
 	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
 	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
@@ -1371,7 +1402,8 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		FOREACH_BEGIN(Decl *benchmark, module->benchmarks)
 			LLVMValueRef ref;
 			LLVMTypeRef type = opt_benchmark;
-			ref = LLVMAddFunction(c->module, benchmark->extname, type);
+			scratch_buffer_set_extern_decl_name(benchmark, true);
+			ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			scratch_buffer_clear();
 			scratch_buffer_printf("%s::%s", module->name->module, benchmark->name);
 			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".benchmark.name");

@@ -2230,6 +2230,7 @@ bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
+void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
 
@@ -2300,7 +2301,7 @@ bool lexer_next_token(Lexer *lexer);
 
 // --- Module functions
 
-void module_copy_extern_name_to_buffer(Module *module);
+void scratch_buffer_append_module(Module *module, bool is_export);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 
@@ -3572,10 +3573,6 @@ INLINE Ast *ast_next(AstId *current_ptr)
 }
 
 
-INLINE const char *decl_get_extname(Decl *decl)
-{
-	return decl->extname;
-}
 
 
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b)

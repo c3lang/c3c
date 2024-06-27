@@ -483,3 +483,41 @@ bool ast_supports_continue(Ast *stmt)
 	if (stmt->ast_kind != AST_FOR_STMT) return false;
 	return stmt->for_stmt.cond || !stmt->flow.skip_first;
 }
+
+void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
+{
+	if (clear) scratch_buffer_clear();
+	if (decl->extname)
+	{
+		scratch_buffer_append(decl->extname);
+		return;
+	}
+	if (decl->is_extern)
+	{
+		scratch_buffer_append(decl->name);
+		return;
+	}
+	if (decl->decl_kind == DECL_FUNC && decl->func_decl.type_parent)
+	{
+		Type *parent = type_infoptr(decl->func_decl.type_parent)->type->canonical;
+		if (type_is_user_defined(parent))
+		{
+			Decl *parent_decl = parent->decl;
+			if (parent_decl->unit && parent_decl->unit->module) scratch_buffer_append_module(parent_decl->unit->module, decl->is_export);
+			scratch_buffer_append(decl->is_export ? "__" : ".");
+			scratch_buffer_append(parent->name);
+			scratch_buffer_append(decl->is_export ? "__" : ".");
+			scratch_buffer_append(decl->name);
+			return;
+		}
+		if (decl->unit && decl->unit->module) scratch_buffer_append_module(decl->unit->module, decl->is_export);
+		scratch_buffer_append(decl->is_export ? "__" : ".");
+		scratch_buffer_append(parent->name);
+		scratch_buffer_append(decl->is_export ? "__" : ".");
+		scratch_buffer_append(decl->name);
+		return;
+	}
+	if (decl->unit && decl->unit->module) scratch_buffer_append_module(decl->unit->module, decl->is_export);
+	scratch_buffer_append(decl->is_export ? "__" : ".");
+	scratch_buffer_append(decl->name);
+}

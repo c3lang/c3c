@@ -43,13 +43,15 @@ void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
 	c->builder = c->global_builder;
 
 	// Emit the global.
-	decl->backend_ref = llvm_add_global(c, "temp", type_lowering(decl->type), decl->alignment);
+	decl->backend_ref = llvm_add_global(c, "temp", decl->type, decl->alignment);
 	if (IS_OPTIONAL(decl))
 	{
-		scratch_buffer_clear();
-		scratch_buffer_append(decl_get_extname(decl));
+		LLVMTypeRef anyfault = llvm_get_type(c, type_anyfault);
+		scratch_buffer_append(c->cur_func.name);
+		scratch_buffer_append_char('.');
+		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_add_global(c, scratch_buffer_to_string(), type_anyfault, 0);
+		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), anyfault, 0);
 	}
 	llvm_emit_global_variable_init(c, decl);
 

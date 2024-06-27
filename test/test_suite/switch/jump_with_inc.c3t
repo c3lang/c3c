@@ -17,7 +17,7 @@ fn int foo(int x) @export
 }
 /* #expect: test.ll
 
-define i32 @test_foo(i32 %0) #0 {
+define i32 @test__foo(i32 %0) #0 {
 entry:
   %x = alloca i32, align 4
   %switch = alloca i32, align 4

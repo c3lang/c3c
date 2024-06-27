@@ -555,8 +555,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		Decl *associated_value = associated_values[ai];
 		LLVMValueRef associated_value_arr = mixed ? llvm_get_packed_struct(c, values, elements)
 				: llvm_get_array(val_type, values, elements);
-		scratch_buffer_clear();
-		scratch_buffer_append(decl->extname);
+		scratch_buffer_set_extern_decl_name(decl, true);
 		scratch_buffer_append("$");
 		scratch_buffer_append(associated_value->name);
 		LLVMValueRef global_ref = llvm_add_global_raw(c,
@@ -598,8 +597,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
 	for (unsigned i = 0; i < elements; i++)
 	{
-		scratch_buffer_clear();
-		scratch_buffer_append(decl_get_extname(decl));
+		scratch_buffer_set_extern_decl_name(decl, true);
 		scratch_buffer_append_char('$');
 		Decl *val = fault_vals[i];
 		scratch_buffer_append(val->name);
