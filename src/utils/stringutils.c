@@ -19,6 +19,22 @@ int str_findlist(const char *value, unsigned count, const char** elements)
 	return -1;
 }
 
+
+bool str_is_valid_module_name(const char *name)
+{
+	char c = *name++;
+	if (c == '_' || char_is_upper(c)) return false;
+	while ((c = *(name++)) != '\0')
+	{
+		if (c == '_')
+		{
+			// Prevent trailing `_` and `__`
+			if (name[-2] == ':' || name[0] == '_' || name[0] == ':' || name[0] == '\0') return false;
+		}
+		if (char_is_upper(c)) return false;
+	}
+	return true;
+}
 bool str_has_no_uppercase(const char *string)
 {
 	char c;

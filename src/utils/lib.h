@@ -143,6 +143,7 @@ bool str_eq(const char *str1, const char *str2);
 bool str_is_type(const char *string);
 bool str_is_integer(const char *string);
 bool str_has_no_uppercase(const char *string);
+bool str_is_valid_module_name(const char *name);
 char *str_copy(const char *start, size_t str_len);
 
 StringSlice slice_next_token(StringSlice *slice, char separator);

@@ -6088,6 +6088,11 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		                  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
 
+	if (max->type_kind == TYPE_VECTOR && !is_equality_type_op)
+	{
+		RETURN_SEMA_ERROR(expr, "Vector types can only be tested for equality, for other comparison, use vector comparison functions.");
+	}
+
 	if (!type_is_comparable(max))
 	{
 		if (type_is_user_defined(max->canonical))

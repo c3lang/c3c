@@ -9,6 +9,8 @@
 - Trailing body arguments may now be `&ref`, `#hash`, `$const` and `$Type` arguments.
 - "panic-msg" setting to suppress panic message output.
 - Require `@export` functions to have `@export` types.
+- Disallow leading/trailing/duplicate '_' in module names.
+- Updated mangling.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

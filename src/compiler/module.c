@@ -9,6 +9,31 @@ Decl *module_find_symbol(Module *module, const char *symbol)
 	return htable_get(&module->symbols, (void*)symbol);
 }
 
+void module_copy_extern_name_to_buffer(Module *module)
+{
+	if (module->extname)
+	{
+		scratch_buffer_append(module->extname);
+		return;
+	}
+	const char *name = module->name->module;
+	char c;
+	while ((c = *(name++)) != 0)
+	{
+		switch (c)
+		{
+			case ':':
+				assert(name[0] == ':');
+				scratch_buffer_append_char('_');
+				name++;
+				break;
+			default:
+				scratch_buffer_append_char(c);
+				break;
+		}
+	}
+}
+
 const char *module_create_object_file_name(Module *module)
 {
 	scratch_buffer_clear();

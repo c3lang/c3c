@@ -28,7 +28,7 @@ static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context);
 static bool sema_check_operator_method_validity(SemaContext *context, Decl *method);
-static void sema_recursively_import(Type *type);
+
 static inline const char *method_name_by_decl(Decl *method_like);
 
 static bool sema_analyse_struct_union(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -243,7 +243,6 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
 			Type *type = type_info->type;
-			if (is_export) sema_recursively_import(type);
 			switch (type_storage_type(type))
 			{
 				case STORAGE_NORMAL:
@@ -949,71 +948,6 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static void sema_recursively_import(Type *type)
-{
-	if (!type) return;
-	Decl *decl = type_no_export(type);
-	if (!decl) return;
-	decl->is_export = true;
-	if (decl->resolve_status != RESOLVE_DONE) return;
-	decl->extname = NULL;
-	assert(!decl->has_extname);
-	decl_set_external_name(decl);
-	switch (decl->decl_kind)
-	{
-		case DECL_POISONED:
-		case DECL_ATTRIBUTE:
-		case DECL_BODYPARAM:
-		case DECL_CT_ASSERT:
-		case DECL_CT_ECHO:
-		case DECL_CT_EXEC:
-		case DECL_CT_INCLUDE:
-		case DECL_DECLARRAY:
-		case DECL_DEFINE:
-		case DECL_ENUM_CONSTANT:
-		case DECL_ERASED:
-		case DECL_FAULTVALUE:
-		case DECL_FUNC:
-		case DECL_GLOBALS:
-		case DECL_IMPORT:
-		case DECL_LABEL:
-		case DECL_MACRO:
-		case DECL_INTERFACE:
-		case DECL_VAR:
-			UNREACHABLE
-		case DECL_BITSTRUCT:
-			sema_recursively_import(decl->bitstruct.base_type->type);
-			return;
-		case DECL_DISTINCT:
-			sema_recursively_import(decl->distinct->type);
-			return;
-		case DECL_ENUM:
-			sema_recursively_import(decl->enums.type_info->type);
-			FOREACH_BEGIN(Decl *param, decl->enums.parameters)
-				sema_recursively_import(param->type);
-			FOREACH_END();
-			return;
-		case DECL_TYPEDEF:
-			sema_recursively_import(type->canonical);
-			return;
-		case DECL_FAULT:
-			return;
-		case DECL_FNTYPE:
-			sema_recursively_import(type_infoptr(decl->fntype_decl.rtype)->type);
-			FOREACH_BEGIN(Decl *param, decl->fntype_decl.params)
-				sema_recursively_import(param->type);
-			FOREACH_END();
-			return;
-		case DECL_STRUCT:
-		case DECL_UNION:
-			FOREACH_BEGIN(Decl *param, decl->strukt.members)
-				sema_recursively_import(param->type);
-			FOREACH_END();
-			return;
-	}
-	UNREACHABLE
-}
-
 static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent, bool is_export)
 {
 	Variadic variadic_type = sig->variadic;
@@ -1032,7 +966,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 		                                     : RESOLVE_TYPE_DEFAULT)) return false;
 		rtype = rtype_info->type;
-		if (is_export) sema_recursively_import(rtype);
 		if (sig->attrs.nodiscard)
 		{
 			if (type_is_void(rtype))
@@ -1069,8 +1002,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		if (!sema_resolve_type_info(context, method_parent,
 		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 	}
-	if (is_export && method_parent) sema_recursively_import(method_parent->type);
-
 	// Fill in the type if the first parameter is lacking a type.
 	if (method_parent && params && params[0] && !params[0]->var.type_info)
 	{
@@ -1142,7 +1073,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			if (!sema_resolve_type_info(context, type_info,
 			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
-			if (is_export) sema_recursively_import(type_info->type);
 			param->type = type_info->type;
 		}
 		switch (var_kind)
@@ -1313,7 +1243,6 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	}
 	TypeInfo *info = decl->typedef_decl.type_info;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
-	if (is_export) sema_recursively_import(info->type);
 	decl->type->canonical = info->type->canonical;
 	// Do we need anything else?
 	return true;
@@ -1336,8 +1265,6 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 	// Optional isn't allowed of course.
 	if (type_is_optional(info->type)) RETURN_SEMA_ERROR(decl, "You cannot create a distinct type from an optional.");
-
-	if (decl->is_export) sema_recursively_import(info->type);
 
 	// Distinct types drop the canonical part.
 	info->type = info->type->canonical;

@@ -257,7 +257,11 @@ class Issues:
                     if current_line >= len(lines):
                         self.set_failed()
                         print(file.filename + " did not contain: \"" + line + "\"")
+                        print("");
+                        print("File dump: --------------------------------------------------->")
                         print("\n".join(lines) + "\n")
+                        print("<---------------------------------------------------- " + file.filename + " ends.")
+                        print("");
                         return
                     if line in lines[current_line]:
                         current_line += 1

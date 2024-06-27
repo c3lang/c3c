@@ -155,6 +155,7 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 	// Lhs is smaller than rhs, so widen it using the right type
 	if (bit_size_left < bit_size_right)
 	{
+
 		Type *to = lhs->type->type_kind < TYPE_U8
 		           ? type_int_signed_by_bitsize(bit_size_right)
 		           : type_int_unsigned_by_bitsize(bit_size_right);

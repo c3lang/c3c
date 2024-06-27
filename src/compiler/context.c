@@ -50,19 +50,25 @@ static bool filename_to_module_in_buffer(const char *path)
 	int name_len = last_dot - last_slash - 1;
 	if (name_len < 1) return false;
 	scratch_buffer_clear();
+	bool last_was_underscore = true;
 	for (int i = last_slash + 1; i < last_dot; i++)
 	{
 		char c = path[i];
 		if (char_is_letter(c) || char_is_digit(c))
 		{
+			last_was_underscore = false;
 			c = (char)(char_is_upper(c) ? c + 'a' - 'A' : c);
 		}
 		else
 		{
+			if (last_was_underscore) continue;
 			c = '_';
+			last_was_underscore = true;
 		}
 		scratch_buffer_append_char(c);
 	}
+	if (last_was_underscore && scratch_buffer.len) scratch_buffer.len--;
+	if (!scratch_buffer.len) return false;
 	return true;
 }
 
@@ -78,11 +84,7 @@ bool context_set_module_from_filename(ParseContext *context)
 	}
 
 	TokenType type = TOKEN_IDENT;
-	const char *module_name = symtab_add(scratch_buffer.str,
-										 scratch_buffer.len,
-										 fnv1a(scratch_buffer.str, (uint32_t) scratch_buffer.len),
-										 &type);
-
+	const char *module_name = scratch_buffer_interned_as(&type);
 	if (type != TOKEN_IDENT)
 	{
 		print_error(context, "Generating a filename from the file '%s' resulted in a name that is a reserved keyword, "
@@ -99,10 +101,7 @@ bool context_set_module_from_filename(ParseContext *context)
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters)
 {
 
-	if (!str_has_no_uppercase(path->module))
-	{
-		RETURN_PRINT_ERROR_AT(false, path, "A module name may not have any uppercase characters.");
-	}
+	if (!check_module_name(path)) return false;
 	return create_module_or_check_name(context->unit, path, generic_parameters);
 }
 
@@ -267,10 +266,7 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 {
 	DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
 
-	if (!str_has_no_uppercase(path->module))
-	{
-		RETURN_PRINT_ERROR_AT(false, path, "A module is not expected to have any uppercase characters, please change it.");
-	}
+	if (!check_module_name(path)) return false;
 
 	Decl *import = decl_calloc();
 	import->span = path->span;

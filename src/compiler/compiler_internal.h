@@ -2300,6 +2300,7 @@ bool lexer_next_token(Lexer *lexer);
 
 // --- Module functions
 
+void module_copy_extern_name_to_buffer(Module *module);
 Decl *module_find_symbol(Module *module, const char *symbol);
 const char *module_create_object_file_name(Module *module);
 
@@ -3831,6 +3832,15 @@ INLINE bool expr_is_const_member(Expr *expr)
 INLINE const char *section_from_id(SectionId id)
 {
 	return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
+}
+
+INLINE bool check_module_name(Path *path)
+{
+	if (!str_is_valid_module_name(path->module))
+	{
+		RETURN_PRINT_ERROR_AT(false, path, "A module name may not have any uppercase characters, trailing, leading or double '_'");
+	}
+	return true;
 }
 
 extern char swizzle[256];

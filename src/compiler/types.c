@@ -633,9 +633,8 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			type = type->function.prototype->raw_type;
 			if (type->function.decl)
 			{
-				Module *module = decl_module(type->function.decl);
-				scratch_buffer_append(module->extname ? module->extname : module->name->module);
-				scratch_buffer_append_char('$');
+				module_copy_extern_name_to_buffer(decl_module(type->function.decl));
+				scratch_buffer_append("$");
 				scratch_buffer_append(type->name);
 			}
 			else
