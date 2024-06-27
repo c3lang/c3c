@@ -12,7 +12,7 @@ typedef struct
 {
 	SemaContext *context;
 	Expr *expr;
-	Type *from_type;
+	Type *from;
 	Type *to_type;
 	Type *to;
 	ConvGroup from_group;
@@ -78,7 +78,7 @@ bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit,
 	Type *to = to_type->canonical;
 	CastContext cc = {
 			.from_group = type_to_group(from_type),
-			.from_type = from_type,
+			.from = from_type,
 			.to_group = type_to_group(to),
 			.to = to,
 			.to_type = to_type,
@@ -90,7 +90,7 @@ bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit,
 
 static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *from_type = cc->from_type;
+	Type *from_type = cc->from;
 	assert(from_type == from_type->canonical);
 	// Check simple equality.
 	from_type = from_type->canonical;
@@ -304,7 +304,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 	Type *to = to_type->canonical;
 	CastContext cc = {
 			.from_group = type_to_group(from_type),
-			.from_type = from_type,
+			.from = from_type,
 			.to_group = type_to_group(to),
 			.to = to,
 			.to_type = to_type,
@@ -677,7 +677,7 @@ static TypeCmpResult match_pointers(CastContext *cc, Type *to_ptr, Type *from_pt
 static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
-	switch (match_pointers(cc, cc->to, cc->from_type, is_silent, false))
+	switch (match_pointers(cc, cc->to, cc->from, is_silent, false))
 	{
 		case TYPE_SAME:
 			return true;
@@ -714,7 +714,7 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		return true;
 	}
 
-	if (type_size(cc->from_type) < type_size(type_iptr))
+	if (type_size(cc->from) < type_size(type_iptr))
 	{
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(expr, "You cannot convert an integer smaller than a pointer size to a pointer.");
@@ -746,7 +746,7 @@ static bool rule_ptr_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *slice_base = cc->to->array.base;
-	Type *from_base = cc->from_type->pointer->array.base;
+	Type *from_base = cc->from->pointer->array.base;
 
 	// int[<2>]*, int[2]*
 	if (is_explicit)
@@ -848,7 +848,7 @@ static bool rule_ulist_to_inferred(CastContext *cc, bool is_explicit, bool is_si
 
 static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *slice_base = cc->from_type->array.base->canonical;
+	Type *slice_base = cc->from->array.base->canonical;
 	Type *natural_ptr = type_get_ptr(slice_base);
 	switch (match_pointers(cc, natural_ptr, cc->to, is_explicit, is_silent))
 	{
@@ -870,7 +870,7 @@ static bool rule_slice_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *from_type = cc->from_type;
+	Type *from_type = cc->from;
 	Type *from_base = from_type->array.base;
 	Type *array_base = cc->to->array.base;
 
@@ -910,7 +910,7 @@ static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silen
 
 static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	if (type_size(cc->from_type) != type_size(cc->to))
+	if (type_size(cc->from) != type_size(cc->to))
 	{
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(cc->expr, "Arrays of different size may not be converted.");
@@ -920,9 +920,9 @@ static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	ArraySize len = cc->from_type->array.len;
+	ArraySize len = cc->from->array.len;
 	if (len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
-	Type *base = cc->from_type->array.base;
+	Type *base = cc->from->array.base;
 	switch (type_to_group(type_flatten(base)))
 	{
 		case CONV_BOOL:
@@ -945,9 +945,9 @@ static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_vec_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	ArraySize len = cc->from_type->array.len;
+	ArraySize len = cc->from->array.len;
 	if (len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
-	Type *base = cc->from_type->array.base;
+	Type *base = cc->from->array.base;
 	cast_context_set_from(cc, type_get_array(base, len));
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
@@ -972,11 +972,11 @@ static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 		{
 			if (cc->to->array.len > size) size = cc->to->array.len;
 		}
-		cast_context_set_from(cc, type_get_array(cc->from_type->array.base, size));
+		cast_context_set_from(cc, type_get_array(cc->from->array.base, size));
 	}
 	else
 	{
-		cast_context_set_from(cc, type_get_vector(cc->from_type->array.base, size));
+		cast_context_set_from(cc, type_get_vector(cc->from->array.base, size));
 	}
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
@@ -987,7 +987,7 @@ static bool rule_slice_to_infer(CastContext *cc, bool is_explicit, bool is_silen
 	// 1. We might infer something above.
 	if (cc->to->type_kind == TYPE_SLICE)
 	{
-		cast_context_set_from(cc, cc->from_type->array.base);
+		cast_context_set_from(cc, cc->from->array.base);
 		cast_context_set_to(cc, cc->to->array.base);
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
@@ -1003,13 +1003,13 @@ static bool rule_slice_to_infer(CastContext *cc, bool is_explicit, bool is_silen
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(expr, "Zero sized slices can't be converted to arrays or vectors.");
 	}
-	cast_context_set_from(cc, type_get_array(cc->from_type->array.base, size));
+	cast_context_set_from(cc, type_get_array(cc->from->array.base, size));
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
 static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from_type);
+	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from);
 	cast_context_set_to(cc, new_type);
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
@@ -1018,7 +1018,7 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 {
 	if (is_explicit) return true;
 
-	Type *pointee = cc->from_type->pointer;
+	Type *pointee = cc->from->pointer;
 	if (type_may_implement_interface(pointee))
 	{
 		Type *interface = cc->to;
@@ -1038,7 +1038,7 @@ static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool 
 {
 	if (is_explicit) return true;
 
-	Type *from_interface = cc->from_type;
+	Type *from_interface = cc->from;
 	Type *interface = cc->to->canonical;
 	if (!sema_resolve_type_decl(cc->context, from_interface)) return false;
 	FOREACH_BEGIN(TypeInfo *parent, from_interface->decl->interfaces)
@@ -1054,9 +1054,9 @@ static bool rule_ptr_to_infer(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (cc->to->type_kind != TYPE_POINTER) return sema_cast_error(cc, false, is_silent);
 
-	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from_type);
+	Type *new_type = type_infer_len_from_actual_type(cc->to, cc->from);
 	cast_context_set_to(cc, new_type->pointer->canonical);
-	cast_context_set_from(cc, cc->from_type->pointer);
+	cast_context_set_from(cc, cc->from->pointer);
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
@@ -1091,7 +1091,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	if (is_explicit) return true;
 
 	ByteSize to_size = type_size(cc->to);
-	ByteSize from_size = type_size(cc->from_type);
+	ByteSize from_size = type_size(cc->from);
 
 	Expr *expr = cc->expr;
 	// If widening, require simple.
@@ -1143,27 +1143,30 @@ static bool rule_not_applicable(CastContext *cc, bool is_explicit, bool is_silen
 	UNREACHABLE
 }
 
+
 static bool rule_from_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *from_type = cc->from_type;
+	Type *from_type = cc->from;
 	assert(from_type == from_type->canonical);
 
-	// By default there is no conversion.
-	if (!is_explicit && !from_type->decl->is_substruct)
+	// Explicit just flattens and tries again.
+	if (is_explicit)
 	{
-		if (is_silent) return false;
-
-		bool may_explicit = rule_from_distinct(cc, is_explicit, true);
-		sema_cast_error(cc, may_explicit, is_silent);
+		cast_context_set_from(cc, type_flatten(from_type));
+		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
-
-	cast_context_set_from(cc, type_flatten(from_type));
+	// No inline? Then it's an error.
+	if (!from_type->decl->is_substruct)
+	{
+		return sema_cast_error(cc, rule_from_distinct(cc, true, true), is_silent);
+	}
+	cast_context_set_from(cc, type_flat_distinct_inline(from_type));
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
 static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *from_type = cc->from_type;
+	Type *from_type = cc->from;
 	assert(from_type == from_type->canonical);
 	Type *flat = type_flatten(cc->to);
 	ConvGroup flat_group = type_to_group(flat);
@@ -1184,9 +1187,29 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	return sema_cast_error(cc, may_cast, is_silent);
 }
 
+static bool rule_to_from_distinct(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	// Handle the explicit case, in this case it's allowed if they cast to the same underlying type.
+	if (is_explicit)
+	{
+		cast_context_set_from(cc, type_flatten(cc->from));
+		return rule_to_distinct(cc, is_explicit, is_silent);
+	}
+	// The implicit case, if to is a parent of from, then it is ok.
+	if (type_is_subtype(cc->to, cc->from)) return true;
+	// It's not possible to inline from, so it's an error.
+	if (!cc->from->decl->is_substruct)
+	{
+		return sema_cast_error(cc, rule_to_from_distinct(cc, true, is_silent), is_silent);
+	}
+	// Let's to a flattering of the from, and see if it's allowed then.
+	cast_context_set_from(cc, type_flat_distinct_inline(cc->from));
+	return cast_is_allowed(cc, is_explicit, is_silent);
+}
+
 static bool rule_to_struct_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *from = cc->from_type;
+	Type *from = cc->from;
 	// 1. The distinct type is a subtype.
 	if (type_is_subtype(cc->to, from)) return true;
 	// 2. We don't check for subtype after this, just use regular "to distinct" rules.
@@ -1195,7 +1218,7 @@ static bool rule_to_struct_to_distinct(CastContext *cc, bool is_explicit, bool i
 
 static bool rule_struct_to_struct(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *from = cc->from_type;
+	Type *from = cc->from;
 	// 1. The distinct type is a subtype.
 	if (type_is_subtype(cc->to, from)) return true;
 
@@ -1204,8 +1227,8 @@ static bool rule_struct_to_struct(CastContext *cc, bool is_explicit, bool is_sil
 
 static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	if (cc->from_type->array.len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
-	Type *from_base = cc->from_type->array.base;
+	if (cc->from->array.len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
+	Type *from_base = cc->from->array.base;
 	cast_context_set_to(cc, cc->to->array.base);
 	// Allow bool vectors to expand to any int.
 	if (from_base == type_bool && cc->to_group == CONV_INT) return true;
@@ -1216,7 +1239,7 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base_type = cc->to->decl->bitstruct.base_type->type;
-	Type *from_type = cc->from_type;
+	Type *from_type = cc->from;
 	bool success = type_is_integer(base_type) && type_size(from_type) == type_size(base_type);
 	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
 	return true;
@@ -1225,7 +1248,7 @@ static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_arr_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base_type = cc->to->decl->bitstruct.base_type->type;
-	Type *from_type = cc->from_type;
+	Type *from_type = cc->from;
 	bool success = from_type == base_type;
 	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
 	return true;
@@ -1263,7 +1286,7 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_silent && !is_explicit) return false;
-	Type *base_type = cc->from_type->decl->bitstruct.base_type->type->canonical;
+	Type *base_type = cc->from->decl->bitstruct.base_type->type->canonical;
 	Type *to = cc->to;
 	if (base_type != to) return sema_cast_error(cc, false, is_silent);
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
@@ -1273,7 +1296,7 @@ static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_silent && !is_explicit) return false;
-	Type *base_type = cc->from_type->decl->bitstruct.base_type->type->canonical;
+	Type *base_type = cc->from->decl->bitstruct.base_type->type->canonical;
 	Type *to = cc->to;
 	if (base_type != to)
 	{
@@ -2032,6 +2055,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RBSAR &rule_bits_to_arr           /* Bits -> arr (explicit + base match)                                                               */
 #define RBSIN &rule_bits_to_int           /* Bits -> int (explicit + size match)                                                               */
 #define RDIXX &rule_from_distinct         /* Distinct -> internal (explicit or inline)                                                         */
+#define RDIDI &rule_to_from_distinct      /* Distinct -> other distinct                                                                        */
 #define RARVC &rule_arr_to_vec            /* Arr -> Vec (len matches, valid elements, flatten if explicit)                                     */
 #define RVCAR &rule_vec_to_arr            /* Vec -> Arr (len matches, if base can be converted, flatten if explicit)                           */
 #define RARAR &rule_arr_to_arr            /* Array to array conversion (like slice, but len must match)                                        */
@@ -2057,7 +2081,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
  {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
- {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
+ {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIDI, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // ARRAY
  {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__, _NO__}, // STRUCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
@@ -2158,7 +2182,7 @@ INLINE ConvGroup type_to_group(Type *type)
 
 INLINE void cast_context_set_from(CastContext *cc, Type *new_from)
 {
-	cc->from_group = type_to_group(cc->from_type = new_from);
+	cc->from_group = type_to_group(cc->from = new_from);
 }
 
 INLINE void cast_context_set_to(CastContext *cc, Type *new_to)
