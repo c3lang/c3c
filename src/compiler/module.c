@@ -27,6 +27,13 @@ void scratch_buffer_append_module(Module *module, bool is_export)
 				scratch_buffer_append_char(is_export ? '_' : '.');
 				name++;
 				break;
+			case '.':
+				if (is_export)
+				{
+					scratch_buffer_append_char('_');
+					break;
+				}
+				FALLTHROUGH;
 			default:
 				scratch_buffer_append_char(c);
 				break;

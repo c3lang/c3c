@@ -2219,7 +2219,6 @@ INLINE bool decl_poison(Decl *decl);
 INLINE bool decl_is_struct_type(Decl *decl);
 INLINE bool decl_is_user_defined_type(Decl *decl);
 INLINE Decl *decl_flatten(Decl *decl);
-INLINE const char *decl_get_extname(Decl *decl);
 static inline Decl *decl_raw(Decl *decl);
 static inline DeclKind decl_from_token(TokenType type);
 static inline bool decl_is_var_local(Decl *decl);

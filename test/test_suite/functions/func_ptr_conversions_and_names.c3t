@@ -37,7 +37,7 @@ fn void main()
 @.str.2 = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @.str.3 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
 @.str.4 = private unnamed_addr constant [12 x i8] c"fn int(int)\00", align 1
-@"$ct.$.String" = linkonce global %.introspect { i8 18, i64 ptrtoint (ptr @"$ct.sa$char" to i64), ptr null, i64 16, i64 ptrtoint (ptr @"$ct.sa$char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.String" = linkonce global %.introspect { i8 18, i64 ptrtoint (ptr @"$ct.sa$char" to i64), ptr null, i64 16, i64 ptrtoint (ptr @"$ct.sa$char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.sa$char" = linkonce global %.introspect { i8 16, i64 0, ptr null, i64 16, i64 ptrtoint (ptr @"$ct.char" to i64), i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.char" = linkonce global %.introspect { i8 3, i64 0, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @.str.5 = private unnamed_addr constant [3 x i8] c"%s\00", align 1
@@ -106,27 +106,27 @@ entry:
   %13 = call i64 @std.io.printfn(ptr %retparam6, ptr @.str.2, i64 2, ptr %varargslots4, i64 1)
   store %"char[]" { ptr @.str.4, i64 11 }, ptr %taddr8, align 8
   %14 = insertvalue %any undef, ptr %taddr8, 0
-  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.$.String" to i64), 1
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %15, ptr %varargslots7, align 16
   %16 = call i64 @std.io.printfn(ptr %retparam9, ptr @.str.3, i64 2, ptr %varargslots7, i64 1)
   store %"char[]" { ptr @.str.6, i64 11 }, ptr %taddr11, align 8
   %17 = insertvalue %any undef, ptr %taddr11, 0
-  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.$.String" to i64), 1
+  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %18, ptr %varargslots10, align 16
   %19 = call i64 @std.io.printfn(ptr %retparam12, ptr @.str.5, i64 2, ptr %varargslots10, i64 1)
   store %"char[]" { ptr @.str.8, i64 11 }, ptr %taddr14, align 8
   %20 = insertvalue %any undef, ptr %taddr14, 0
-  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.$.String" to i64), 1
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %21, ptr %varargslots13, align 16
   %22 = call i64 @std.io.printfn(ptr %retparam15, ptr @.str.7, i64 2, ptr %varargslots13, i64 1)
   store %"char[]" { ptr @.str.10, i64 11 }, ptr %taddr17, align 8
   %23 = insertvalue %any undef, ptr %taddr17, 0
-  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.$.String" to i64), 1
+  %24 = insertvalue %any %23, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %24, ptr %varargslots16, align 16
   %25 = call i64 @std.io.printfn(ptr %retparam18, ptr @.str.9, i64 2, ptr %varargslots16, i64 1)
   store %"char[]" { ptr @.str.12, i64 12 }, ptr %taddr20, align 8
   %26 = insertvalue %any undef, ptr %taddr20, 0
-  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.$.String" to i64), 1
+  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %27, ptr %varargslots19, align 16
   %28 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.11, i64 2, ptr %varargslots19, i64 1)
   store ptr @test.test2, ptr %y, align 8

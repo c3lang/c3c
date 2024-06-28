@@ -428,15 +428,15 @@ entry:
   %2 = call i32 @test.test_static()
   call void @hello_world.hello()
   call void @llvm.memset.p0.i64(ptr align 8 %list, i8 0, i64 40, i1 false)
-  call void @"std.collections.linkedlist$int$.LinkedList.push"(ptr %list, i32 10)
-  call void @"std.collections.linkedlist$int$.LinkedList.push"(ptr %list, i32 15)
-  call void @"std.collections.linkedlist$int$.LinkedList.push"(ptr %list, i32 30)
+  call void @"std_collections_linkedlist$int$.LinkedList.push"(ptr %list, i32 10)
+  call void @"std_collections_linkedlist$int$.LinkedList.push"(ptr %list, i32 15)
+  call void @"std_collections_linkedlist$int$.LinkedList.push"(ptr %list, i32 30)
   store i32 0, ptr %i, align 4
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i32, ptr %i, align 4
-  %4 = call i64 @"std.collections.linkedlist$int$.LinkedList.len"(ptr %list) #3
+  %4 = call i64 @"std_collections_linkedlist$int$.LinkedList.len"(ptr %list) #3
   %trunc = trunc i64 %4 to i32
   %lt = icmp slt i32 %3, %trunc
   br i1 %lt, label %loop.body, label %loop.exit
@@ -444,7 +444,7 @@ loop.cond:                                        ; preds = %loop.body, %entry
 loop.body:                                        ; preds = %loop.cond
   %5 = load i32, ptr %i, align 4
   %sext = sext i32 %5 to i64
-  %6 = call i32 @"std.collections.linkedlist$int$.LinkedList.get"(ptr %list, i64 %sext)
+  %6 = call i32 @"std_collections_linkedlist$int$.LinkedList.get"(ptr %list, i64 %sext)
   %7 = load i32, ptr %i, align 4
   %8 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %7, i32 %6)
   %9 = load i32, ptr %i, align 4
@@ -453,22 +453,22 @@ loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @"std.collections.linkedlist$int$.LinkedList.free"(ptr %list)
+  call void @"std_collections_linkedlist$int$.LinkedList.free"(ptr %list)
   %10 = call i32 (ptr, ...) @printf(ptr @.str.3, i32 3)
   store i32 3, ptr %elements, align 4
   %11 = call i32 (ptr, ...) @printf(ptr @.str.4)
   call void @llvm.memset.p0.i64(ptr align 8 %array, i8 0, i64 40, i1 false)
-  call void @"std.collections.list$int$.List.push"(ptr %array, i32 100)
-  call void @"std.collections.list$int$.List.push"(ptr %array, i32 200)
-  call void @"std.collections.list$int$.List.push"(ptr %array, i32 400)
-  call void @"std.collections.list$int$.List.push"(ptr %array, i32 600) #3
-  call void @"std.collections.list$int$.List.insert_at"(ptr %array, i64 2, i32 300)
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 100)
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 200)
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 400)
+  call void @"std_collections_list$int$.List.push"(ptr %array, i32 600) #3
+  call void @"std_collections_list$int$.List.insert_at"(ptr %array, i64 2, i32 300)
   store i32 0, ptr %i1, align 4
   br label %loop.cond2
 
 loop.cond2:                                       ; preds = %loop.body5, %loop.exit
   %12 = load i32, ptr %i1, align 4
-  %13 = call i64 @"std.collections.list$int$.List.len"(ptr %array) #3
+  %13 = call i64 @"std_collections_list$int$.List.len"(ptr %array) #3
   %trunc3 = trunc i64 %13 to i32
   %lt4 = icmp slt i32 %12, %trunc3
   br i1 %lt4, label %loop.body5, label %loop.exit8
@@ -476,7 +476,7 @@ loop.cond2:                                       ; preds = %loop.body5, %loop.e
 loop.body5:                                       ; preds = %loop.cond2
   %14 = load i32, ptr %i1, align 4
   %sext6 = sext i32 %14 to i64
-  %15 = call i32 @"std.collections.list$int$.List.get"(ptr %array, i64 %sext6) #3
+  %15 = call i32 @"std_collections_list$int$.List.get"(ptr %array, i64 %sext6) #3
   %16 = load i32, ptr %i1, align 4
   %17 = call i32 (ptr, ...) @printf(ptr @.str.5, i32 %16, i32 %15)
   %18 = load i32, ptr %i1, align 4
@@ -485,7 +485,7 @@ loop.body5:                                       ; preds = %loop.cond2
   br label %loop.cond2
 
 loop.exit8:                                       ; preds = %loop.cond2
-  call void @"std.collections.list$int$.List.free"(ptr %array)
+  call void @"std_collections_list$int$.List.free"(ptr %array)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const.6, i32 4, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %b, ptr align 8 @.__const.7, i32 8, i1 false)
   %19 = load i32, ptr %a, align 4

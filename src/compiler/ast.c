@@ -519,5 +519,5 @@ void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear)
 	}
 	if (decl->unit && decl->unit->module) scratch_buffer_append_module(decl->unit->module, decl->is_export);
 	scratch_buffer_append(decl->is_export ? "__" : ".");
-	scratch_buffer_append(decl->name);
+	scratch_buffer_append(decl->name ? decl->name : "$anon");
 }

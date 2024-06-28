@@ -237,7 +237,7 @@ entry:
   store <4 x float> %5, ptr %x3, align 16
   %6 = load ptr, ptr %out2, align 8, !dbg !94
   %7 = insertvalue %any undef, ptr %6, 0, !dbg !94
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std::io.File" to i64), 1, !dbg !94
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1, !dbg !94
   %9 = insertvalue %any undef, ptr %x3, 0, !dbg !97
   %10 = insertvalue %any %9, i64 ptrtoint (ptr @"$ct.foo.Color" to i64), 1, !dbg !97
   store %any %10, ptr %varargslots, align 16, !dbg !97

@@ -3735,7 +3735,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	scratch_buffer_clear();
 	if (mangled)
 	{
-		scratch_buffer_append_len(module->name->module, module->name->len);
+		scratch_buffer_append_module(module, true);
 		scratch_buffer_append("$");
 	}
 	else

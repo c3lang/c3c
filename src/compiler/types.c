@@ -667,13 +667,8 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
 		case TYPE_INTERFACE:
-		{
-			CompilationUnit *unit = type->decl->unit;
-			scratch_buffer_append(unit ? unit->module->name->module : "$");
-			scratch_buffer_append(".");
-			scratch_buffer_append(type->decl->name ? type->decl->name : "$anon");
+			scratch_buffer_set_extern_decl_name(type->decl, false);
 			return;
-		}
 		case TYPE_TYPEDEF:
 			type_mangle_introspect_name_to_buffer(type->canonical);
 			return;
