@@ -568,6 +568,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 			if (init->kind == CONST_INIT_ZERO)
 			{
 				init->init_value = expr_new_const_bool(INVALID_SPAN, init->type, true);
+				init->kind = CONST_INIT_VALUE;
 				continue;
 			}
 			init->init_value->const_expr.b = !init->init_value->const_expr.b;
@@ -922,11 +923,11 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 	ConstInitializer **array_elements = const_init->init_array.elements;
 
 	unsigned array_count = vec_size(array_elements);
-
 	MemberIndex insert_index = 0;
 
 	for (MemberIndex index = low_index; index <= high_index; index++)
 	{
+		assert(insert_index >= array_count || array_elements);
 		// Walk to the insert point or until we reached the end of the array.
 		while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
 		{

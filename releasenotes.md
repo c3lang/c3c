@@ -23,6 +23,7 @@
 - Bit negate does implicit integer promotion.
 - Bitstructs, unions and flexible arrays now correctly emitted in headers.
 - Fix distinct inline conversions.
+- Bit negating const zero flags would give an incorrect result.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

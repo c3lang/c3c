@@ -70,3 +70,21 @@ fn void test_inc_array()
 	assert(x.a == 11, "Value was %d", x.a);
 	assert(--x.a == 10);
 }
+
+bitstruct Flags : int
+{
+	bool flag1;
+	bool flag2;
+}
+
+fn void negate()
+{
+	Flags flags;
+	flags = ~flags;
+	assert(~0 == (int)flags);
+	flags = ~Flags {};
+	assert(3 == (int)flags);
+	const Flags FLAGS = {.flag1 };
+	flags = ~FLAGS;
+	assert(2 == (int)flags);
+}
