@@ -130,6 +130,10 @@ message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
 message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
 message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
 
+if (NOT LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 15.0)
+    message(FATAL_ERROR "LLVM version 15.0 or later is required.")
+endif()
+
 if(LLVM_ENABLE_RTTI)
     message(STATUS "LLVM was built with RTTI")
 else()

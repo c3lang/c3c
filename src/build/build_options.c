@@ -47,7 +47,7 @@ const char *trust_level[3] = {
 	[TRUST_FULL] = "full",
 };
 
-#define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__)
+#define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 
@@ -237,7 +237,7 @@ void append_file(BuildOptions *build_options)
 {
 	if (vec_size(build_options->files) == MAX_FILES)
 	{
-		fprintf(stderr, "Max %d files may be specified\n", MAX_FILES);
+		EOUTPUT("Max %d files may be specified.", MAX_FILES);
 		exit_compiler(EXIT_FAILURE);
 	}
 	vec_add(build_options->files, current_arg);
