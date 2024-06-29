@@ -161,6 +161,16 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 	}
 }
 
+INLINE void llvm_emit_unaligned_store(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	BEValue value;
+	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
+	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
+	llvm_value_deref(c, &value);
+	value.alignment = expr->call_expr.arguments[2]->const_expr.ixx.i.low;
+	llvm_store(c, &value, result_value);
+}
+
 INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue *result_value, Expr *expr)
 {
 	BEValue value;
@@ -230,6 +240,14 @@ INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *ex
 	llvm_value_rvalue(c, result_value);
 	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(result_value->value, true);
 	LLVMSetOrdering(result_value->value,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
+}
+
+INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr *expr)
+{
+	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
+	llvm_value_deref(c, result_value);
+	result_value->alignment = expr->call_expr.arguments[1]->const_expr.ixx.i.low;
+	llvm_value_rvalue(c, result_value);
 }
 
 static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type, char *call)
@@ -836,6 +854,12 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 			llvm_emit_atomic_fetch(c, func, result_value, expr);
+			return;
+		case BUILTIN_UNALIGNED_LOAD:
+			llvm_emit_unaligned_load(c, result_value, expr);
+			return;
+		case BUILTIN_UNALIGNED_STORE:
+			llvm_emit_unaligned_store(c, result_value, expr);
 			return;
 		case BUILTIN_ATOMIC_LOAD:
 			llvm_emit_atomic_load(c, result_value, expr);

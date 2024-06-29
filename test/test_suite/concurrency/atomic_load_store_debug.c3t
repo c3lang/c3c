@@ -115,7 +115,7 @@ declare i1 @llvm.expect.i1(i1, i1)
 !14 = !DILocalVariable(name: "x", scope: !6, file: !5, line: 13, type: !11, align: 4)
 !15 = !DILocation(line: 13, column: 6, scope: !6)
 !16 = !DILocation(line:
-!17 = distinct !DISubprogram(name: "@atomic_load", linkageName: "@atomic_load", scope: !18, file: !18,
+!17 = distinct !DISubprogram(name: "@atomic_load",
 !18 = !DIFile(filename: "mem.c3",
 !19 = !DILocation(line: 13, column: 10, scope: !6)
 !20 = !DILocalVariable(name: "y", scope: !6, file: !5, line: 14, type: !11, align: 4)
@@ -125,13 +125,13 @@ declare i1 @llvm.expect.i1(i1, i1)
 !24 = !DILocation(line: 14, column: 10, scope: !6)
 !25 = !DILocation(line: 15, column: 25, scope: !6)
 !26 = !DILocation(line: 15, column: 19, scope: !6)
-!27 = !DILocation(line: 212, column: 20, scope: !28, inlinedAt: !29)
+!27 = !DILocation(
 !28 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !18
 !29 = !DILocation(line: 15, column: 2, scope: !6)
 !30 = !DILocation(line: 16, column: 24, scope: !6)
 !31 = !DILocation(line: 16, column: 19, scope: !6)
-!32 = !DILocation(line: 212, column: 20, scope: !33, inlinedAt: !34)
-!33 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !18, file: !18, line: 210, scopeLine: 210, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !4
+!32 = !DILocation(
+!33 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !18
 !34 = !DILocation(line: 16, column: 2, scope: !6)
 !35 = !DILocation(line: 17, column: 20, scope: !6)
 !36 = !DILocation(line: 17, column: 6, scope: !6)

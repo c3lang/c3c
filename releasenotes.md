@@ -11,6 +11,7 @@
 - Require `@export` functions to have `@export` types.
 - Disallow leading/trailing/duplicate '_' in module names.
 - Updated mangling.
+- Added `$$unaligned_load` and `$$unaligned_store`.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -29,6 +30,7 @@
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
 - Added @str_hash, @str_upper, @str_lower, @str_find compile time macros.
 - Remove "panic" text from unreachable() when safe mode is turned off.
+- Added `@unaligned_store` and `@unaligned_load`.
 
 ## 0.6.0 Change list
 

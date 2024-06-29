@@ -272,6 +272,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_VECCOMPEQ] = KW_DEF("veccompeq");
 	builtin_list[BUILTIN_VECCOMPNE] = KW_DEF("veccompne");
 	builtin_list[BUILTIN_UNREACHABLE] = KW_DEF("unreachable");
+	builtin_list[BUILTIN_UNALIGNED_LOAD] = KW_DEF("unaligned_load");
+	builtin_list[BUILTIN_UNALIGNED_STORE] = KW_DEF("unaligned_store");
 	builtin_list[BUILTIN_VOLATILE_LOAD] = KW_DEF("volatile_load");
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
 	builtin_list[BUILTIN_WASM_MEMORY_GROW] = KW_DEF("wasm_memory_grow");

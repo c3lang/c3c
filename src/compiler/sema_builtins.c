@@ -825,6 +825,29 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = original->pointer;
 			break;
 		}
+		case BUILTIN_UNALIGNED_LOAD:
+		{
+			assert(arg_count == 2);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
+			Type *original = type_flatten(args[0]->type);
+			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
+			if (!sema_check_alignment_expression(context, args[1])) return false;
+			rtype = original->pointer;
+			break;
+		}
+		case BUILTIN_UNALIGNED_STORE:
+		{
+			assert(arg_count == 3);
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER }, 2)) return false;
+			Type *original = type_flatten(args[0]->type);
+			if (!sema_check_alignment_expression(context, args[2])) return false;
+			if (original != type_voidptr)
+			{
+				if (!cast_implicit(context, args[1], original->pointer)) return false;
+			}
+			rtype = args[1]->type;
+			break;
+		}
 		case BUILTIN_VOLATILE_LOAD:
 		{
 			assert(arg_count == 1);
@@ -1069,6 +1092,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_WASM_MEMORY_GROW:
 		case BUILTIN_ANY_MAKE:
+		case BUILTIN_UNALIGNED_LOAD:
 			return 2;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
 		case BUILTIN_FMA:
@@ -1080,6 +1104,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_OVERFLOW_SUB:
 		case BUILTIN_PREFETCH:
 		case BUILTIN_ATOMIC_LOAD:
+		case BUILTIN_UNALIGNED_STORE:
 		case BUILTIN_SELECT:
 			return 3;
 		case BUILTIN_ATOMIC_STORE:

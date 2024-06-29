@@ -8,6 +8,10 @@ import std::math;
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
+macro bool @constant_is_power_of_2($x) @private
+{
+	return $x != 0 && ($x & ($x - 1)) == 0;
+}
 
 /**
  * Load a vector from memory according to a mask assuming default alignment.
@@ -37,7 +41,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
  * @require $assignable(&&passthru, $typeof(ptr)) : "Pointer and passthru must match"
  * @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
  * @require passthru.len == mask.len : "Mask and passthru must have the same length"
- * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  *
  * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
  **/
@@ -80,7 +84,7 @@ macro gather(ptrvec, bool[<*>] mask, passthru)
  * @require $assignable(&&passthru[0], $typeof(ptrvec[0])) : "Pointer and passthru must match"
  * @require passthru.len == mask.len : "Mask and passthru must have the same length"
  * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
- * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  *
  * @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
  **/
@@ -115,7 +119,7 @@ macro masked_store(ptr, value, bool[<*>] mask)
  * @require $assignable(&&value, $typeof(ptr)) : "Pointer and value must match"
  * @require @typekind(value) == VECTOR : "Expected value to be a vector"
  * @require value.len == mask.len : "Mask and value must have the same length"
- * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  *
  **/
 macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
@@ -150,11 +154,33 @@ macro scatter(ptrvec, value, bool[<*>] mask)
  * @require $assignable(&&value[0], $typeof(ptrvec[0])) : "Pointer and value must match"
  * @require value.len == mask.len : "Mask and value must have the same length"
  * @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
- * @require math::is_power_of_2($alignment) : "The alignment must be a power of two"
+ * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  **/
 macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 {
 	return $$scatter(ptrvec, value, mask, $alignment);
+}
+
+/**
+ * @param [in] x "the variable or dereferenced pointer to load."
+ * @param $alignment "the alignment to assume for the load"
+ * @return "returns the value of x"
+ *
+ * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
+ **/
+macro @unaligned_load(&x, usz $alignment) @builtin
+{
+	return $$unaligned_load(x, $alignment);
+}
+
+/**
+ * @require $assignable(y, $typeof(*x)) : "The value doesn't match the variable"
+ *
+ * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
+ **/
+macro @unaligned_store(&x, y, usz $alignment) @builtin
+{
+	return $$unaligned_store(x, ($typeof(*x))y, $alignment);
 }
 
 macro @volatile_load(&x) @builtin
