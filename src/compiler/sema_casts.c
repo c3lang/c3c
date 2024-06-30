@@ -611,6 +611,13 @@ bool cast_to_index(SemaContext *context, Expr *index)
 		case TYPE_ENUM:
 			type = type->decl->enums.type_info->type->canonical;
 			goto RETRY;
+		case TYPE_DISTINCT:
+			if (type->decl->is_substruct)
+			{
+				type = type->decl->distinct->type->canonical;
+				goto RETRY;
+			}
+			FALLTHROUGH;
 		default:
 			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
 			return false;
