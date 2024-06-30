@@ -260,6 +260,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		}
 		case DECL_STRUCT:
 		case DECL_UNION:
+			// Extend the nopadding attribute to substructs.
+		  if (parent->strukt.attr_no_padding) decl->strukt.attr_no_padding = true;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
@@ -564,6 +566,12 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		member->alignment = member_alignment;
 
+		if (decl->strukt.attr_no_padding) {
+			if (align_offset - offset != 0) {
+				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member.", align_offset - offset);
+			}
+		}
+
 		offset = align_offset;
 		member->offset = offset;
 		offset += type_size(member->type);
@@ -599,6 +607,21 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		assert(!decl->strukt.padding);
 		decl->strukt.padding = (AlignSize)(size - offset);
 	}
+
+	if (decl->strukt.attr_no_padding) {
+		if (type_is_substruct(decl->type)) {
+			Decl *first_member = struct_members[0];
+			Type *type = type_flatten(first_member->type);
+			if (type->type_kind == TYPE_STRUCT && !type->decl->strukt.attr_no_padding) {
+				RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
+			}
+		}
+
+		if (size != offset) {
+			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct.", size - offset);
+		}
+	}
+
 	decl->is_packed = is_unaligned;
 	decl->strukt.size = size;
 	return true;
@@ -2295,6 +2318,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
+			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
@@ -2535,6 +2559,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NOINLINE:
 			decl->func_decl.attr_noinline = true;
 			decl->func_decl.attr_inline = false;
+			break;
+		case ATTRIBUTE_NOPADDING:
+			decl->strukt.attr_no_padding = true;
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;

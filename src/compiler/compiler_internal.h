@@ -430,6 +430,7 @@ typedef struct
 	Decl **members;
 	MemberIndex union_rep;
 	AlignSize padding : 16;
+	bool attr_no_padding : 1;
 } StructDecl;
 
 
