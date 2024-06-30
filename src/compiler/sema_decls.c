@@ -36,6 +36,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 static bool sema_analyse_union_members(SemaContext *context, Decl *decl);
 static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
+static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 
 static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
@@ -260,8 +261,9 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		}
 		case DECL_STRUCT:
 		case DECL_UNION:
-			// Extend the nopadding attribute to substructs.
+			// Extend the nopadding attributes to substructs.
 		  if (parent->strukt.attr_no_padding) decl->strukt.attr_no_padding = true;
+		  if (parent->strukt.attr_no_padding_recursive) decl->strukt.attr_no_padding_recursive = true;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
@@ -269,6 +271,19 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		default:
 			UNREACHABLE
 	}
+}
+
+static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type) {
+	if (member_type->type_kind == TYPE_STRUCT || member_type->type_kind == TYPE_UNION) {
+		if (member_type->decl->strukt.decl_with_hole) {
+			if (!decl->strukt.decl_with_hole) decl->strukt.decl_with_hole = member_type->decl->strukt.decl_with_hole;
+			if (decl->strukt.attr_no_padding_recursive) {
+				sema_error_at(context, member->span, "This member has holes.");
+				RETURN_SEMA_ERROR(member_type->decl->strukt.decl_with_hole, "Padding would be added for this.");
+			}
+		}
+	}
+	return true;
 }
 
 /**
@@ -318,6 +333,10 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		}
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
+
+		Type *member_type = type_flatten(member->type);
+		if (!sema_check_struct_holes(context, decl, member, member_type)) return false;
+
 		ByteSize member_size = type_size(member->type);
 		assert(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
@@ -566,11 +585,14 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		member->alignment = member_alignment;
 
-		if (decl->strukt.attr_no_padding) {
-			if (align_offset - offset != 0) {
+		if (align_offset - offset != 0) {
+			if (!decl->strukt.decl_with_hole) decl->strukt.decl_with_hole = member;
+			if (decl->strukt.attr_no_padding) {
 				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member.", align_offset - offset);
 			}
 		}
+
+		if (!sema_check_struct_holes(context, decl, member, member_type)) return false;
 
 		offset = align_offset;
 		member->offset = offset;
@@ -616,8 +638,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 				RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
 			}
 		}
+	}
 
-		if (size != offset) {
+	if (size != offset) {
+		if (!decl->strukt.decl_with_hole) decl->strukt.decl_with_hole = decl;
+		if (decl->strukt.attr_no_padding) {
 			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct.", size - offset);
 		}
 	}
@@ -2319,6 +2344,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_NOPADDING_RECURSIVE] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
@@ -2562,6 +2588,10 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_NOPADDING:
 			decl->strukt.attr_no_padding = true;
+			break;
+		case ATTRIBUTE_NOPADDING_RECURSIVE:
+			decl->strukt.attr_no_padding = true;
+			decl->strukt.attr_no_padding_recursive = true;
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;
