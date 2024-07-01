@@ -104,11 +104,8 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 	// No rule => no
 	if (!rule)
 	{
-		if (!is_silent)
-		{
-			RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
-		}
-		return false;
+		if (is_silent) return false;
+		RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 	}
 
 	return rule(cc, is_explicit, is_silent);
