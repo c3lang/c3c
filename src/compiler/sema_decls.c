@@ -262,8 +262,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_STRUCT:
 		case DECL_UNION:
 			// Extend the nopadding attributes to substructs.
-		  if (parent->strukt.attr_no_padding) decl->strukt.attr_no_padding = true;
-		  if (parent->strukt.attr_no_padding_recursive) decl->strukt.attr_no_padding_recursive = true;
+		  if (parent->strukt.attr_nopadding) decl->strukt.attr_nopadding = true;
+		  if (parent->strukt.attr_nopadding_recursive) decl->strukt.attr_nopadding_recursive = true;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
@@ -275,11 +275,11 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 
 static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type) {
 	if (member_type->type_kind == TYPE_STRUCT || member_type->type_kind == TYPE_UNION) {
-		if (member_type->decl->strukt.decl_with_hole) {
-			if (!decl->strukt.decl_with_hole) decl->strukt.decl_with_hole = member_type->decl->strukt.decl_with_hole;
-			if (decl->strukt.attr_no_padding_recursive) {
+		if (member_type->decl->strukt.padded_decl) {
+			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member_type->decl->strukt.padded_decl;
+			if (decl->strukt.attr_nopadding_recursive) {
 				sema_error_at(context, member->span, "This member has holes.");
-				RETURN_SEMA_ERROR(member_type->decl->strukt.decl_with_hole, "Padding would be added for this.");
+				RETURN_SEMA_ERROR(member_type->decl->strukt.padded_decl, "Padding would be added for this.");
 			}
 		}
 	}
@@ -586,8 +586,8 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		member->alignment = member_alignment;
 
 		if (align_offset - offset != 0) {
-			if (!decl->strukt.decl_with_hole) decl->strukt.decl_with_hole = member;
-			if (decl->strukt.attr_no_padding) {
+			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member;
+			if (decl->strukt.attr_nopadding) {
 				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member.", align_offset - offset);
 			}
 		}
@@ -630,19 +630,19 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		decl->strukt.padding = (AlignSize)(size - offset);
 	}
 
-	if (decl->strukt.attr_no_padding) {
+	if (decl->strukt.attr_nopadding) {
 		if (type_is_substruct(decl->type)) {
 			Decl *first_member = struct_members[0];
 			Type *type = type_flatten(first_member->type);
-			if (type->type_kind == TYPE_STRUCT && !type->decl->strukt.attr_no_padding) {
+			if (type->type_kind == TYPE_STRUCT && !type->decl->strukt.attr_nopadding) {
 				RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
 			}
 		}
 	}
 
 	if (size != offset) {
-		if (!decl->strukt.decl_with_hole) decl->strukt.decl_with_hole = decl;
-		if (decl->strukt.attr_no_padding) {
+		if (!decl->strukt.padded_decl) decl->strukt.padded_decl = decl;
+		if (decl->strukt.attr_nopadding) {
 			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct.", size - offset);
 		}
 	}
@@ -2587,11 +2587,11 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->func_decl.attr_inline = false;
 			break;
 		case ATTRIBUTE_NOPADDING:
-			decl->strukt.attr_no_padding = true;
+			decl->strukt.attr_nopadding = true;
 			break;
 		case ATTRIBUTE_NOPADDING_RECURSIVE:
-			decl->strukt.attr_no_padding = true;
-			decl->strukt.attr_no_padding_recursive = true;
+			decl->strukt.attr_nopadding = true;
+			decl->strukt.attr_nopadding_recursive = true;
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;

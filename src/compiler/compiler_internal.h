@@ -429,10 +429,10 @@ typedef struct
 	TypeSize size;
 	MemberIndex union_rep;
 	Decl **members;
-	Decl *decl_with_hole;
+	Decl *padded_decl;
 	AlignSize padding : 16;
-	bool attr_no_padding : 1;
-	bool attr_no_padding_recursive : 1;
+	bool attr_nopadding : 1;
+	bool attr_nopadding_recursive : 1;
 } StructDecl;
 
 
