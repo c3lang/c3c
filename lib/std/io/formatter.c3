@@ -178,14 +178,18 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case DISTINCT:
 			if (arg.type == ZString.typeid)
 			{
-				return self.out_substr(((ZString*)arg).str_view());
+				return self.out_substr(*(ZString*)arg ? ((ZString*)arg).str_view() : "(null)");
 			}
 			if (arg.type == DString.typeid)
 			{
-				return self.out_substr(((DString*)arg).str_view());
+				return self.out_substr(*(DString*)arg ? ((DString*)arg).str_view() : "(null)");
 			}
 			return self.out_str(arg.as_inner());
 		case POINTER:
+			if (*(void**)arg == null)
+			{
+				return self.out_substr("(null)");
+			}
 			PrintFlags flags = self.flags;
 			uint width = self.width;
 			defer
