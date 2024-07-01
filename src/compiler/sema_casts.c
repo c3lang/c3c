@@ -588,8 +588,9 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 
 bool cast_to_index(SemaContext *context, Expr *index)
 {
-	Type *type = index->type->canonical;
+	Type *type = index->type;
 	RETRY:
+	type = type_flat_distinct_inline(type);
 	switch (type->type_kind)
 	{
 		case TYPE_I8:
@@ -609,7 +610,7 @@ bool cast_to_index(SemaContext *context, Expr *index)
 			SEMA_ERROR(index, "index->type->canonical this to an int or long.");
 			return false;
 		case TYPE_ENUM:
-			type = type->decl->enums.type_info->type->canonical;
+			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		default:
 			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
