@@ -12,6 +12,7 @@
 - Disallow leading/trailing/duplicate '_' in module names.
 - Updated mangling.
 - Added `$$unaligned_load` and `$$unaligned_store`.
+- `--no-headers` option to suppress creating headers when generating a library.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -25,6 +26,7 @@
 - Bitstructs, unions and flexible arrays now correctly emitted in headers.
 - Fix distinct inline conversions.
 - Bit negating const zero flags would give an incorrect result.
+- Fix to scalar -> vector conversions.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

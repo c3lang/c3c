@@ -1244,6 +1244,12 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
+static bool rule_expand_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	cast_context_set_to(cc, cc->to->array.base);
+	return cast_is_allowed(cc, is_explicit, is_silent);
+}
+
 static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base_type = cc->to->decl->bitstruct.base_type->type;
@@ -2062,6 +2068,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RSLSL &rule_slice_to_slice        /* Slice -> slice (explicit same size, align safe, match base otherwise) void* <-> int* match.       */
 #define RSLVA &rule_slice_to_vecarr       /* Slice -> vec/arr (if const, convert to vec/arr, check)                                            */
 #define RVCVC &rule_vec_to_vec            /* Vec -> vec (as underlying type)                                                                   */
+#define REXVC &rule_expand_to_vec         /* Int/Ptr/Float/Bool -> vec (expand if base match)                                                  */
 #define RBSAR &rule_bits_to_arr           /* Bits -> arr (explicit + base match)                                                               */
 #define RBSIN &rule_bits_to_int           /* Bits -> int (explicit + size match)                                                               */
 #define RDIXX &rule_from_distinct         /* Distinct -> internal (explicit or inline)                                                         */
@@ -2084,10 +2091,10 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
 // void, wildc,  bool,   int, float,   ptr, slice,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, func,  typid, afaul, voidp, arrpt, infer, ulist (to)
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
  {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__, _NO__}, // WILDCARD
- {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
- {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, ROKOK, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, RINPT, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
- {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
+ {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
+ {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, REXVC, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, RINPT, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
+ {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
  {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
@@ -2097,13 +2104,13 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // ANY
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RIFIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // INTERFACE
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__, _NO__}, // FAULT
- {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
- {REXPL, _NO__, REXPL, RPTIN, _NO__, _NO__, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RPTPT, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__}, // FUNC
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
- {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, ROKOK, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, REXPL, _NO__, _NO__}, // FAULT
+ {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RPTPT, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__}, // FUNC
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSL, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST
 };
