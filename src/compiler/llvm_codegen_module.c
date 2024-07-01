@@ -98,9 +98,8 @@ void gencontext_begin_module(GenContext *c)
 	// This would seem to indicate that we should change Type / actual type.
 
 	c->ast_alloca_addr_space = target_alloca_addr_space();
-	VECEACH(global_context.type, i)
+	FOREACH(Type *, type, global_context.type)
 	{
-		Type *type = global_context.type[i];
 		type->backend_type = NULL;
 		type->backend_debug_type = NULL;
 		type->backend_typeid = NULL;
@@ -109,10 +108,9 @@ void gencontext_begin_module(GenContext *c)
 			case TYPE_ENUM:
 			case TYPE_FAULTTYPE:
 			{
-				Decl **values = type->decl->enums.values;
-				VECEACH(values, j)
+				FOREACH(Decl *, value, type->decl->enums.values)
 				{
-					values[j]->backend_ref = NULL;
+					value->backend_ref = NULL;
 				}
 				FALLTHROUGH;
 			}

@@ -253,15 +253,16 @@ bool parse_module(ParseContext *c, AstId contracts)
 	Attr** attrs = NULL;
 	bool is_cond;
 	if (!parse_attributes(c, &attrs, &visibility, NULL, &is_cond)) return false;
-	FOREACH_BEGIN(Attr *attr, attrs)
+	FOREACH(Attr *, attr, attrs)
+	{
 		if (attr->is_custom) RETURN_PRINT_ERROR_AT(false, attr, "Custom attributes cannot be used with 'module'.");
 		switch (attr->attr_kind)
 		{
 			case ATTRIBUTE_LINK:
-				{
-					unsigned args = vec_size(attr->exprs);
-					if (args < 1) RETURN_PRINT_ERROR_AT(false, attr, "'@link' needs at least 1 argument.");
-				}
+			{
+				unsigned args = vec_size(attr->exprs);
+				if (args < 1) RETURN_PRINT_ERROR_AT(false, attr, "'@link' needs at least 1 argument.");
+			}
 				vec_add(c->unit->attr_links, attr);
 				continue;
 			case ATTRIBUTE_IF:
@@ -276,20 +277,23 @@ bool parse_module(ParseContext *c, AstId contracts)
 				continue;
 			case ATTRIBUTE_EXPORT:
 				if (attr->exprs) RETURN_PRINT_ERROR_AT(false, attr, "Expected no arguments to '@export'");
-				if (c->unit->export_by_default) RETURN_PRINT_ERROR_AT(false, attr, "'@export' appeared more than once.");
+				if (c->unit->export_by_default)
+					RETURN_PRINT_ERROR_AT(false, attr, "'@export' appeared more than once.");
 				c->unit->export_by_default = true;
 				continue;
 			case ATTRIBUTE_EXTERN:
 			{
 				if (vec_size(attr->exprs) != 1)
 				{
-					RETURN_PRINT_ERROR_AT(false, attr, "Expected 1 argument to '@extern(..), not %d'.", vec_size(attr->exprs));
+					RETURN_PRINT_ERROR_AT(false, attr, "Expected 1 argument to '@extern(..), not %d'.",
+					                      vec_size(attr->exprs));
 				}
 				Expr *expr = attr->exprs[0];
 				if (!expr_is_const_string(expr)) RETURN_PRINT_ERROR_AT(false, expr, "Expected a constant string.");
 				if (c->unit->module->extname)
 				{
-					RETURN_PRINT_ERROR_AT(false, attr, "External name for the module may only be declared in one location.");
+					RETURN_PRINT_ERROR_AT(false, attr,
+					                      "External name for the module may only be declared in one location.");
 				}
 				c->unit->module->extname = expr->const_expr.bytes.ptr;
 				continue;
@@ -298,7 +302,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 				break;
 		}
 		RETURN_PRINT_ERROR_AT(false, attr, "'%s' cannot be used after a module declaration.", attr->name);
-	FOREACH_END();
+	}
 	c->unit->default_visibility = visibility;
 	CONSUME_EOS_OR_RET(false);
 	return true;
@@ -1034,9 +1038,10 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 			}
 		}
 		const char *name = attr->name;
-		FOREACH_BEGIN(Attr *other_attr, *attributes_ref)
+		FOREACH(Attr *, other_attr, *attributes_ref)
+		{
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
-		FOREACH_END();
+		}
 		vec_add(*attributes_ref, attr);
 	}
 	return true;
@@ -1107,10 +1112,11 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	// Copy the attributes to the other variables.
 	if (attributes)
 	{
-		FOREACH_BEGIN(Decl *d, decls)
+		FOREACH(Decl *, d, decls)
+		{
 			if (d == decl) continue;
 			d->attributes = copy_attributes_single(attributes);
-		FOREACH_END();
+		}
 	}
 	// If we have multiple decls, then we return that as a bundled decl_globals
 	if (decls)
@@ -2103,9 +2109,8 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 		fault_const->enum_constant.parent = declid(decl);
 		fault_const->enum_constant.ordinal = ordinal;
 		ordinal++;
-		VECEACH(decl->enums.values, i)
+		FOREACH(Decl *, other_constant, decl->enums.values)
 		{
-			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
 				PRINT_ERROR_AT(fault_const, "This fault value was declared twice.");
@@ -2196,9 +2201,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		{
 			return poisoned_decl;
 		}
-		VECEACH(decl->enums.values, i)
+		FOREACH(Decl *, other_constant, decl->enums.values)
 		{
-			Decl *other_constant = decl->enums.values[i];
 			if (other_constant->name == name)
 			{
 				PRINT_ERROR_AT(enum_const, "This enum constant is declared twice.");

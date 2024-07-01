@@ -64,10 +64,9 @@ void sema_analysis_pass_process_imports(Module *module)
 	DEBUG_LOG("Pass: Importing dependencies for files in module '%s'.", module->name->module);
 
 	unsigned total_import_count = 0;
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		// 1. Loop through each context in the module.
-		CompilationUnit *unit = module->units[index];
 		DEBUG_LOG("Checking imports for %s.", unit->file->name);
 
 		// 2. Loop through imports
@@ -125,9 +124,9 @@ NEXT:;
 
 INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
 {
-	VECEACH(decls, i)
+	FOREACH(Decl *, decl, decls)
 	{
-		unit_register_global_decl(unit, decls[i]);
+		unit_register_global_decl(unit, decl);
 	}
 	vec_resize(decls, 0);
 }
@@ -166,12 +165,13 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	}
 	SemaContext context;
 	sema_context_init(&context, unit);
-	FOREACH_BEGIN(Attr *attr, decl->attributes)
+	FOREACH(Attr *, attr, decl->attributes)
+	{
 		if (attr->attr_kind != ATTRIBUTE_IF)
 		{
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$include'.");
 		}
-	FOREACH_END();
+	}
 	bool success = sema_analyse_ct_expr(&context, decl->include.filename);
 	sema_context_destroy(&context);
 	if (success) return NULL;
@@ -192,17 +192,16 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	}
 	SemaContext context;
 	sema_context_init(&context, unit);
-	FOREACH_BEGIN(Attr *attr, decl->attributes)
+	FOREACH(Attr *, attr, decl->attributes)
+	{
 		if (attr->attr_kind != ATTRIBUTE_IF)
 		{
 			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$exec'.");
 		}
-	FOREACH_END();
+	}
 	Expr *filename = decl->exec_decl.filename;
 	bool success = sema_analyse_ct_expr(&context, filename);
-	FOREACH_BEGIN(Expr *arg, decl->exec_decl.args)
-		success &= sema_analyse_ct_expr(&context, arg);
-	FOREACH_END();
+	FOREACH(Expr *, arg, decl->exec_decl.args) success &= sema_analyse_ct_expr(&context, arg);
 	sema_context_destroy(&context);
 	if (!success) return NULL;
 	if (!expr_is_const_string(filename))
@@ -217,7 +216,8 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		scratch_buffer_append(file_str);
 		scratch_buffer_append(" ");
 	}
-	FOREACH_BEGIN_IDX(i, Expr *arg, decl->exec_decl.args)
+	FOREACH_IDX(i, Expr *, arg, decl->exec_decl.args)
+	{
 		if (i) scratch_buffer_append(" ");
 		assert(expr_is_const(arg));
 		switch (arg->const_expr.const_kind)
@@ -238,7 +238,8 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 			case CONST_TYPEID:
 				if (!arg->const_expr.typeid->name)
 				{
-					RETURN_PRINT_ERROR_AT(NULL, arg, "The type '%s' has no trivial name.", type_quoted_error_string(arg->const_expr.typeid));
+					RETURN_PRINT_ERROR_AT(NULL, arg, "The type '%s' has no trivial name.",
+					                      type_quoted_error_string(arg->const_expr.typeid));
 				}
 				scratch_buffer_append(arg->const_expr.typeid->name);
 				continue;
@@ -252,10 +253,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_MEMBER:
-				RETURN_PRINT_ERROR_AT(NULL, arg, "Bytes, initializers and member references may not be used as arguments.");
+				RETURN_PRINT_ERROR_AT(NULL, arg,
+				                      "Bytes, initializers and member references may not be used as arguments.");
 		}
 		UNREACHABLE
-	FOREACH_END();
+	}
 	File *file;
 	// TODO fix Win32
 	char *old_path = NULL;
@@ -295,11 +297,13 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 
 INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 {
-	FOREACH_BEGIN(Decl *include, decls)
-		Decl **include_decls = include->decl_kind == DECL_CT_EXEC ? sema_run_exec(unit, include) : sema_load_include(unit, include);
-		VECEACH(include_decls, i)
+	FOREACH(Decl *, include, decls)
+	{
+		Decl **include_decls = include->decl_kind == DECL_CT_EXEC
+				? sema_run_exec(unit, include)
+				: sema_load_include(unit, include);
+		FOREACH(Decl *, decl, include_decls)
 		{
-			Decl *decl = include_decls[i];
 			if (decl->is_cond)
 			{
 				vec_add(unit->global_cond_decls, decl);
@@ -309,7 +313,7 @@ INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 				unit_register_global_decl(unit, decl);
 			}
 		}
-	FOREACH_END();
+	}
 }
 
 void sema_process_includes(CompilationUnit *unit)
@@ -327,9 +331,8 @@ void sema_process_includes(CompilationUnit *unit)
 void sema_analysis_pass_register_global_declarations(Module *module)
 {
 	DEBUG_LOG("Pass: Register globals for module '%s'.", module->name->module);
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		if (unit->if_attr) continue;
 		assert(!unit->ct_includes);
 		unit->module = module;
@@ -347,9 +350,8 @@ void sema_analysis_pass_register_global_declarations(Module *module)
 void sema_analysis_pass_register_conditional_units(Module *module)
 {
 	DEBUG_LOG("Pass: Register conditional units for %s", module->name->module);
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		// All ct_includes should already be registered.
 		assert(!unit->ct_includes);
 
@@ -379,7 +381,8 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		}
 CHECK_LINK:
 		if (!unit->attr_links) goto RELEASE_CONTEXT;
-		FOREACH_BEGIN(Attr* attr, unit->attr_links)
+		FOREACH(Attr*,  attr, unit->attr_links)
+		{
 			Expr **exprs = attr->exprs;
 			unsigned args = vec_size(exprs);
 			assert(args > 0 && "Should already have been checked.");
@@ -394,7 +397,7 @@ CHECK_LINK:
 				if (!expr_is_const_string(string))
 				{
 					PRINT_ERROR_AT(string, "Expected a constant string here, usage is: "
-							   "'@link([cond1, ]link1, link2, ...)'.");
+					                       "'@link([cond1, ]link1, link2, ...)'.");
 					goto FAIL_CONTEXT;
 				}
 				if (add)
@@ -402,7 +405,7 @@ CHECK_LINK:
 					vec_add(unit->links, string->const_expr.bytes.ptr);
 				}
 			}
-		FOREACH_END();
+		}
 RELEASE_CONTEXT:
 		sema_context_destroy(&context);
 		register_global_decls(unit, unit->global_decls);
@@ -419,16 +422,14 @@ FAIL_CONTEXT:
 void sema_analysis_pass_register_conditional_declarations(Module *module)
 {
 	DEBUG_LOG("Pass: Register conditional declarations for module '%s'.", module->name->module);
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
 RETRY:;
 		Decl **decls = unit->global_cond_decls;
-		VECEACH(decls, i)
+		FOREACH(Decl *, decl, decls)
 		{
-			Decl *decl = decls[i];
 			SemaContext context;
 			sema_context_init(&context, unit);
 			if (sema_decl_if_cond(&context, decl))
@@ -453,15 +454,14 @@ RETRY_INCLUDES:
 void sema_analysis_pass_ct_assert(Module *module)
 {
 	DEBUG_LOG("Pass: $assert checks %s", module->name->module);
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		SemaContext context;
-		sema_context_init(&context, module->units[index]);
-		Decl **asserts = context.unit->ct_asserts;
+		sema_context_init(&context, unit);
 		bool success = true;
-		VECEACH(asserts, i)
+		FOREACH(Decl *, assert, context.unit->ct_asserts)
 		{
-			if (!sema_analyse_ct_assert_stmt(&context, asserts[i]->ct_assert_decl))
+			if (!sema_analyse_ct_assert_stmt(&context, assert->ct_assert_decl))
 			{
 				success = false;
 				break;
@@ -476,15 +476,14 @@ void sema_analysis_pass_ct_assert(Module *module)
 void sema_analysis_pass_ct_echo(Module *module)
 {
 	DEBUG_LOG("Pass: $echo checks %s", module->name->module);
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		SemaContext context;
-		sema_context_init(&context, module->units[index]);
-		Decl **echos = context.unit->ct_echos;
+		sema_context_init(&context, unit);
 		bool success = true;
-		VECEACH(echos, i)
+		FOREACH(Decl *, echo, context.unit->ct_echos)
 		{
-			if (!sema_analyse_ct_echo_stmt(&context, echos[i]->ct_echo_decl))
+			if (!sema_analyse_ct_echo_stmt(&context, echo->ct_echo_decl))
 			{
 				success = false;
 				break;
@@ -534,13 +533,20 @@ INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 	if (!sema_resolve_type_decl(c, func)) decl_poison(decl);
 }
 
+INLINE void sema_analyse_decls(SemaContext *context, Decl **decls)
+{
+	FOREACH(Decl *, decl, decls)
+	{
+		sema_analyse_decl(context, decl);
+	}
+}
+
 void sema_analysis_pass_decls(Module *module)
 {
 	DEBUG_LOG("Pass: Decl analysis %s", module->name->module);
 
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		SemaContext context;
 		sema_context_init(&context, unit);
 		context.active_scope = (DynamicScope)
@@ -550,51 +556,27 @@ void sema_analysis_pass_decls(Module *module)
 					.label_start = 0,
 					.current_local = 0,
 				};
-		VECEACH(unit->attributes, i)
+		sema_analyse_decls(&context, unit->attributes);
+		sema_analyse_decls(&context, unit->enums);
+		FOREACH(Decl *, decl, unit->types)
 		{
-			sema_analyse_decl(&context, unit->attributes[i]);
-		}
-		VECEACH(unit->enums, i)
-		{
-			sema_analyse_decl(&context, unit->enums[i]);
-		}
-		VECEACH(unit->types, i)
-		{
-			Decl *decl = unit->types[i];
 			sema_analyse_decl(&context, decl);
 			sema_analyse_inner_func_ptr(&context, decl);
 		}
-		VECEACH(unit->macros, i)
-		{
-			sema_analyse_decl(&context, unit->macros[i]);
-		}
-		VECEACH(unit->methods, i)
-		{
-			sema_analyse_decl(&context, unit->methods[i]);
-		}
-		VECEACH(unit->macro_methods, i)
-		{
-			sema_analyse_decl(&context, unit->macro_methods[i]);
-		}
-		VECEACH(unit->vars, i)
-		{
-			sema_analyse_decl(&context, unit->vars[i]);
-		}
-		VECEACH(unit->functions, i)
-		{
-			sema_analyse_decl(&context, unit->functions[i]);
-		}
+		sema_analyse_decls(&context, unit->macros);
+		sema_analyse_decls(&context, unit->methods);
+		sema_analyse_decls(&context, unit->macro_methods);
+		sema_analyse_decls(&context, unit->vars);
+		sema_analyse_decls(&context, unit->functions);
 		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			sema_analyse_decl(&context, unit->main_function);
 		}
-		VECEACH(unit->generic_defines, i)
+		sema_analyse_decls(&context, unit->generic_defines);
+		FOREACH(TypeInfo *, info, unit->check_type_variable_array)
 		{
-			sema_analyse_decl(&context, unit->generic_defines[i]);
-		}
-		FOREACH_BEGIN(TypeInfo *info, unit->check_type_variable_array)
 			sema_check_type_variable_array(&context, info);
-		FOREACH_END();
+		}
 		sema_context_destroy(&context);
 	}
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
@@ -604,21 +586,18 @@ void sema_analysis_pass_lambda(Module *module)
 {
 	DEBUG_LOG("Extra pass: Lambda analysis %s", module->name->module);
 
-	VECEACH(module->units, index)
+	while (vec_size(module->lambdas_to_evaluate))
 	{
-		while (vec_size(module->lambdas_to_evaluate))
+		Decl *lambda = VECLAST(module->lambdas_to_evaluate);
+		CompilationUnit *unit = lambda->unit;
+		SemaContext context;
+		sema_context_init(&context, unit);
+		vec_pop(module->lambdas_to_evaluate);
+		if (analyse_func_body(&context, lambda))
 		{
-			Decl *lambda = VECLAST(module->lambdas_to_evaluate);
-			CompilationUnit *unit = lambda->unit;
-			SemaContext context;
-			sema_context_init(&context, unit);
-			vec_pop(module->lambdas_to_evaluate);
-			if (analyse_func_body(&context, lambda))
-			{
-				vec_add(unit->lambdas, lambda);
-			}
-			sema_context_destroy(&context);
+			vec_add(unit->lambdas, lambda);
 		}
+		sema_context_destroy(&context);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
@@ -627,12 +606,12 @@ void sema_analysis_pass_lambda(Module *module)
 static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
 {
 	Decl **store = sema_decl_stack_store();
-	FOREACH_BEGIN(Decl *method, decl->methods)
-		sema_decl_stack_push(method);
-	FOREACH_END();
-	FOREACH_BEGIN(TypeInfo *interface_type, decl->interfaces)
+	FOREACH(Decl *, method, decl->methods) sema_decl_stack_push(method);
+	FOREACH(TypeInfo *, interface_type, decl->interfaces)
+	{
 		Decl *interface = interface_type->type->decl;
-		FOREACH_BEGIN(Decl *method, interface->interface_methods)
+		FOREACH(Decl *, method, interface->interface_methods)
+		{
 			Decl *matching_method = sema_decl_stack_resolve_symbol(method->name);
 			if (!matching_method)
 			{
@@ -658,8 +637,8 @@ static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
 				sema_decl_stack_restore(store);
 				return false;
 			}
-		FOREACH_END();
-	FOREACH_END();
+		}
+	}
 	sema_decl_stack_restore(store);
 	return true;
 }
@@ -668,12 +647,12 @@ void sema_analysis_pass_interface(Module *module)
 {
 	DEBUG_LOG("Pass: Interface analysis %s", module->name->module);
 
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		SemaContext context;
 		sema_context_init(&context, unit);
-		FOREACH_BEGIN(Decl *decl, unit->types)
+		FOREACH(Decl *, decl, unit->types)
+		{
 			switch (decl->decl_kind)
 			{
 				case DECL_DISTINCT:
@@ -701,18 +680,17 @@ void sema_analysis_pass_functions(Module *module)
 {
 	DEBUG_LOG("Pass: Function analysis %s", module->name->module);
 
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		SemaContext context;
 		sema_context_init(&context, unit);
-		VECEACH(unit->methods, i)
+		FOREACH(Decl *, method, unit->methods)
 		{
-			analyse_func_body(&context, unit->methods[i]);
+			analyse_func_body(&context, method);
 		}
-		VECEACH(unit->functions, i)
+		FOREACH(Decl *, func, unit->functions)
 		{
-			analyse_func_body(&context, unit->functions[i]);
+			analyse_func_body(&context, func);
 		}
 		if (unit->main_function && unit->main_function->is_synthetic) analyse_func_body(&context, unit->main_function);
 		sema_context_destroy(&context);

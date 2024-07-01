@@ -682,9 +682,8 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 										   bool is_type_switch)
 {
 	LLVMBasicBlockRef next = NULL;
-	VECEACH(cases, i)
+	FOREACH(Ast *, case_stmt, cases)
 	{
-		Ast *case_stmt = cases[i];
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt == default_case) continue;
 		BEValue be_value;
@@ -1098,10 +1097,11 @@ void gencontext_emit_next_stmt(GenContext *context, Ast *ast)
 														? exit_block
 		                                                : cases[default_index]->case_stmt.backend_block,
 		                                                &be_value);
-		FOREACH_BEGIN(Ast *case_ast, cases)
+		FOREACH(Ast *, case_ast, cases)
+		{
 			if (!case_ast->case_stmt.body) continue;
 			LLVMAddDestination(instr, case_ast->case_stmt.backend_block);
-		FOREACH_END();
+		}
 		if (default_index < 0) LLVMAddDestination(instr, exit_block);
 
 		return;
@@ -1180,12 +1180,13 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 			if (vec_size(args))
 			{
 				fmt = err_msg;
-				FOREACH_BEGIN(Expr *arg, args)
+				FOREACH(Expr *, arg, args)
+				{
 					BEValue var;
 					llvm_emit_expr(c, &var, arg);
 					llvm_emit_any_from_value(c, &var, arg->type);
 					vec_add(values, var);
-				FOREACH_END();
+				}
 			}
 			else
 			{
@@ -1261,7 +1262,8 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 	{
 		data = codegen_create_asm(ast);
 		clobbers = clobber_list.string;
-		FOREACH_BEGIN(ExprAsmArg * var, block->output_vars)
+		FOREACH(ExprAsmArg *,  var, block->output_vars)
+		{
 			codegen_new_constraint(&clobber_list);
 			if (var->kind == ASM_ARG_MEMVAR)
 			{
@@ -1295,9 +1297,10 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			}
 			Decl *decl = result_decls[result_count] = var->ident.ident_decl;
 			result_types[result_count++] = llvm_get_type(c, decl->type);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(ExprAsmArg *val, block->input)
+		FOREACH(ExprAsmArg *, val, block->input)
+		{
 			BEValue value;
 			codegen_new_constraint(&clobber_list);
 			pointer_type[param_count] = NULL;
@@ -1335,7 +1338,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 			llvm_value_rvalue(c, &value);
 			param_types[param_count] = LLVMTypeOf(value.value);
 			args[param_count++] = value.value;
-		FOREACH_END();
+		}
 
 
 		for (int i = 0; i < CLOBBER_FLAG_ELEMENTS; i++)
@@ -1428,11 +1431,11 @@ LLVMValueRef llvm_emit_empty_string_const(GenContext *c)
 
 LLVMValueRef llvm_emit_zstring_named(GenContext *c, const char *str, const char *extname)
 {
-	VECEACH(c->reusable_constants, i)
+	FOREACH(ReusableConstant, constant, c->reusable_constants)
 	{
-		if (strcmp(str, c->reusable_constants[i].string) == 0 && strcmp(extname, c->reusable_constants[i].name) == 0)
+		if (str_eq(str, constant.string) && str_eq(extname, constant.name))
 		{
-			return c->reusable_constants[i].value;
+			return constant.value;
 		}
 	}
 
@@ -1502,15 +1505,16 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		LLVMTypeRef llvm_array_type = llvm_get_type(c, any_array);
 		AlignSize alignment = type_alloca_alignment(any_array);
 		LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
-		VECEACH(varargs, i)
+		unsigned vacount = vec_size(varargs);
+		for (unsigned i = 0; i < vacount; i++)
 		{
 			AlignSize store_alignment;
 			LLVMValueRef slot = llvm_emit_array_gep_raw(c,
-														array_ref,
-														llvm_array_type,
-														i,
-														alignment,
-														&store_alignment);
+			                                            array_ref,
+			                                            llvm_array_type,
+			                                            i,
+			                                            alignment,
+			                                            &store_alignment);
 			llvm_store_to_ptr_aligned(c, slot, &varargs[i], store_alignment);
 		}
 		BEValue value;
@@ -1604,10 +1608,11 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_DECLS_STMT:
 		{
 			BEValue value;
-			FOREACH_BEGIN(Decl *decl, ast->decls_stmt)
+			FOREACH(Decl *, decl, ast->decls_stmt)
+			{
 				if (!decl) continue;
 				llvm_emit_local_decl(c, decl, &value);
-			FOREACH_END();
+			}
 			break;
 		}
 		case AST_BREAK_STMT:

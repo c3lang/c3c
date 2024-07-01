@@ -18,16 +18,18 @@ static inline void emit_modules(FILE *file)
 {
 
 	fputs("\t\"modules\": [\n", file);
-	FOREACH_BEGIN_IDX(i, Module *module, global_context.module_list)
+	FOREACH_IDX(i, Module *, module, global_context.module_list)
+	{
 		if (i != 0) fputs(",\n", file);
 		PRINTF("\t\t\"%s\"", module->name->module);
-	FOREACH_END();
+	}
 	fputs("\n\t],\n", file);
 	fputs("\t\"generic_modules\": [\n", file);
-	FOREACH_BEGIN_IDX(i, Module *module, global_context.generic_module_list)
-		if (i != 0) fputs(",\n", file);
+	FOREACH_IDX(j, Module *, module, global_context.generic_module_list)
+	{
+		if (j != 0) fputs(",\n", file);
 		PRINTF("\t\t\"%s\"", module->name->module);
-	FOREACH_END();
+	}
 	fputs("\n\t]\n", file);
 }
 
@@ -73,10 +75,11 @@ static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
 	{
 		fputs(",\n\t\t\t\"members\": {\n", file);
-		FOREACH_BEGIN_IDX(i, Decl *member, type->strukt.members)
+		FOREACH_IDX(i, Decl *, member, type->strukt.members)
+		{
 			if (i != 0) fputs(",\n", file);
 			PRINTF("\t\t\t\t\"%s\"", member->name);
-		FOREACH_END();
+		}
 		fputs("\n\t\t\t}", file);
 	}
 	fputs("\n\t\t}", file);
@@ -179,7 +182,8 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 	print_type(file, type_infoptr(func->func_decl.signature.rtype));
 	PRINTF("\",\n");
 	fputs("\t\t\t\"params\": [\n", file);
-	FOREACH_BEGIN_IDX(i, Decl *decl, func->func_decl.signature.params)
+	FOREACH_IDX(i, Decl *, decl, func->func_decl.signature.params)
+	{
 		if (i != 0) fputs(",\n", file);
 		if (!decl) continue;
 		fputs("\t\t\t\t{\n", file);
@@ -195,7 +199,7 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 		}
 		fputs("\"\n", file);
 		fputs("\t\t\t\t}", file);
-	FOREACH_END();
+	}
 	fputs("\n\t\t\t]\n", file);
 
 	fputs("\n\t\t}", file);

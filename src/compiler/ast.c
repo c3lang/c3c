@@ -340,14 +340,13 @@ void decl_append_links_to_global(Decl *decl)
 	CompilationUnit *unit = decl->unit;
 	if (unit && unit->links)
 	{
-		FOREACH_BEGIN(const char *link, unit->links)
-			global_context_add_link(link);
-		FOREACH_END();
+		FOREACH(const char *, link, unit->links) global_context_add_link(link);
 		unit->links = NULL; // Don't register twice
 	}
 	if (decl->has_link)
 	{
-		FOREACH_BEGIN(Attr* attr, decl->attributes)
+		FOREACH(Attr *, attr, decl->attributes)
+		{
 			if (attr->attr_kind != ATTRIBUTE_LINK) continue;
 			if (!attr->exprs) continue;
 			unsigned args = vec_size(attr->exprs);
@@ -357,7 +356,7 @@ void decl_append_links_to_global(Decl *decl)
 				if (!string) continue;
 				global_context_add_link(string->const_expr.bytes.ptr);
 			}
-		FOREACH_END();
+		}
 	}
 }
 
@@ -432,13 +431,9 @@ bool decl_needs_prefix(Decl *decl)
 
 Decl *decl_find_enum_constant(Decl *decl, const char *name)
 {
-	VECEACH(decl->enums.values, i)
+	FOREACH(Decl *, enum_constant, decl->enums.values)
 	{
-		Decl *enum_constant = decl->enums.values[i];
-		if (enum_constant->name == name)
-		{
-			return enum_constant;
-		}
+		if (enum_constant->name == name) return enum_constant;
 	}
 	return NULL;
 }

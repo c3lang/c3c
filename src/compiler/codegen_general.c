@@ -16,10 +16,9 @@ Type *type_abi_find_single_struct_element(Type *type)
 	if (type->decl->has_variable_array) return NULL;
 
 	Type *found = NULL;
-	Decl **members = type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, type->decl->strukt.members)
 	{
-		Type *field_type = type_lowering(members[i]->type);
+		Type *field_type = type_lowering(member->type);
 
 		// Already one field found, not single field.
 		if (found) return NULL;
@@ -186,12 +185,11 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 			if (type->decl->has_variable_array) return false;
 			*elements = 0;
 			{
-				Decl **members = type->decl->strukt.members;
-				VECEACH(members, i)
+				FOREACH(Decl *, member, type->decl->strukt.members)
 				{
 					unsigned member_mult = 1;
 					// Flatten the type.
-					Type *member_type = type_lowering(members[i]->type);
+					Type *member_type = type_lowering(member->type);
 					// Go down deep into  a nester array.
 					while (member_type->type_kind == TYPE_ARRAY)
 					{

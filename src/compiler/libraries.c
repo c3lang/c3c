@@ -108,9 +108,8 @@ static void add_library_dependency(Library *library, Library **library_list, siz
 {
 	if (library->target_used) return;
 	LibraryTarget *target_found = NULL;
-	VECEACH(library->targets, j)
+	FOREACH(LibraryTarget *, target, library->targets)
 	{
-		LibraryTarget *target = library->targets[j];
 		if (target->arch_os == active_target.arch_os_target)
 		{
 			target_found = target;
@@ -122,13 +121,13 @@ static void add_library_dependency(Library *library, Library **library_list, siz
 		error_exit("Library '%s' cannot be used with arch/os '%s'.", library->provides, arch_os_target[active_target.arch_os_target]);
 	}
 	library->target_used = target_found;
-	VECEACH(library->depends, i)
+	FOREACH(const char *, dependency, library->depends)
 	{
-		add_library_dependency(find_library(library_list, lib_count, library->depends[i]), library_list, lib_count);
+		add_library_dependency(find_library(library_list, lib_count, dependency), library_list, lib_count);
 	}
-	VECEACH(target_found->depends, i)
+	FOREACH(const char *, dependency, target_found->depends)
 	{
-		add_library_dependency(find_library(library_list, lib_count, target_found->depends[i]),
+		add_library_dependency(find_library(library_list, lib_count, dependency),
 							   library_list,
 							   lib_count);
 	}
@@ -205,9 +204,9 @@ void resolve_libraries(void)
 	unsigned libdir_count = vec_size(active_target.libdirs);
 	if (libdir_count)
 	{
-		VECEACH(active_target.libdirs, i)
+		FOREACH(const char *, dir, active_target.libdirs)
 		{
-			file_add_wildcard_files(&c3_libs, active_target.libdirs[i], false, &c3lib_suffix, 1);
+			file_add_wildcard_files(&c3_libs, dir, false, &c3lib_suffix, 1);
 		}
 	}
 	else
@@ -217,9 +216,8 @@ void resolve_libraries(void)
 	}
 	Library *libraries[MAX_LIB_DIRS * 2];
 	size_t lib_count = 0;
-	VECEACH(c3_libs, i)
+	FOREACH(const char *, lib, c3_libs)
 	{
-		const char *lib = c3_libs[i];
 		JSONObject *json;
 		if (!file_is_dir(lib))
 		{
@@ -234,9 +232,8 @@ void resolve_libraries(void)
 		if (lib_count == MAX_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_LIB_DIRS * 2);
 		libraries[lib_count++] = add_library(json, lib);
 	}
-	VECEACH(active_target.libs, i)
+	FOREACH(const char *, lib_name, active_target.libs)
 	{
-		const char *lib_name = active_target.libs[i];
 		add_library_dependency(find_library(libraries, lib_count, lib_name), libraries, lib_count);
 	}
 	for (size_t i = 0; i < lib_count; i++)
@@ -254,13 +251,15 @@ void resolve_libraries(void)
 			           "is currently '%s'). Use the '--trust=full' option to enable it.",
 					   library->provides, trust_level[active_target.trust_level]);
 		}
-		FOREACH_BEGIN(const char *exec, library->execs)
+		FOREACH(const char *, exec, library->execs)
+		{
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
 			puts(execute_cmd(exec, false));
-		FOREACH_END();
-		FOREACH_BEGIN(const char *exec, target->execs)
+		}
+		FOREACH(const char *, exec, target->execs)
+		{
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
 			puts(execute_cmd(exec, false));
-		FOREACH_END();
+		}
 	}
 }

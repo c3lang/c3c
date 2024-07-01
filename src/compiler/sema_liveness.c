@@ -45,9 +45,7 @@ INLINE void sema_trace_astid_liveness(AstId astid)
 
 static void sema_trace_expr_list_liveness(Expr **exprlist)
 {
-	FOREACH_BEGIN(Expr *arg, exprlist)
-		sema_trace_expr_liveness(arg);
-	FOREACH_END();
+	FOREACH(Expr *, arg, exprlist) sema_trace_expr_liveness(arg);
 }
 
 static void sema_trace_stmt_chain_liveness(AstId astid)
@@ -73,7 +71,8 @@ static void sema_trace_stmt_chain_liveness(AstId astid)
 }
 static void sema_trace_asm_arg_list(ExprAsmArg **list)
 {
-	FOREACH_BEGIN(ExprAsmArg *asm_arg, list)
+	FOREACH(ExprAsmArg *, asm_arg, list)
+	{
 		switch (asm_arg->kind)
 		{
 			case ASM_ARG_ADDR:
@@ -91,7 +90,7 @@ static void sema_trace_asm_arg_list(ExprAsmArg **list)
 				continue;
 		}
 		UNREACHABLE
-	FOREACH_END();
+	}
 }
 
 static void sema_trace_stmt_liveness(Ast *ast)
@@ -158,9 +157,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		}
 		case AST_DECLS_STMT:
 		{
-			FOREACH_BEGIN(Decl *decl, ast->decls_stmt)
-				sema_trace_decl_liveness(decl);
-			FOREACH_END();
+			FOREACH(Decl *, decl, ast->decls_stmt) sema_trace_decl_liveness(decl);
 			return;
 		}
 		case AST_FOR_STMT:
@@ -178,9 +175,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_IF_CATCH_SWITCH_STMT:
 			sema_trace_exprid_liveness(ast->switch_stmt.cond);
 			{
-				FOREACH_BEGIN(Ast *casestm, ast->switch_stmt.cases)
-					sema_trace_stmt_liveness(casestm);
-				FOREACH_END();
+				FOREACH(Ast *, casestm, ast->switch_stmt.cases) sema_trace_stmt_liveness(casestm);
 			}
 			return;
 		case AST_CASE_STMT:
@@ -226,9 +221,7 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 		}
 		case CONST_INIT_ARRAY:
 		{
-			FOREACH_BEGIN(ConstInitializer *i, const_init->init_array.elements)
-				sema_trace_const_initializer_liveness(i);
-			FOREACH_END();
+			FOREACH(ConstInitializer *, i, const_init->init_array.elements) sema_trace_const_initializer_liveness(i);
 			return;
 		}
 		case CONST_INIT_UNION:
@@ -363,9 +356,7 @@ RETRY:
 			{
 				sema_trace_decl_liveness(expr->catch_unwrap_expr.decl);
 			}
-			FOREACH_BEGIN(Expr *e, expr->catch_unwrap_expr.exprs)
-				sema_trace_expr_liveness(e);
-			FOREACH_END();
+			FOREACH(Expr *, e, expr->catch_unwrap_expr.exprs) sema_trace_expr_liveness(e);
 			return;
 		}
 		case EXPR_CONST:
@@ -379,9 +370,7 @@ RETRY:
 			return;
 		case EXPR_COND:
 		{
-			FOREACH_BEGIN(Expr *e, expr->cond_expr)
-				sema_trace_expr_liveness(e);
-			FOREACH_END();
+			FOREACH(Expr *, e, expr->cond_expr) sema_trace_expr_liveness(e);
 			return;
 		}
 		case EXPR_DECL:
@@ -398,9 +387,7 @@ RETRY:
 			return;
 		case EXPR_INITIALIZER_LIST:
 		{
-			FOREACH_BEGIN(Expr *e, expr->initializer_list)
-				sema_trace_expr_liveness(e);
-			FOREACH_END();
+			FOREACH(Expr *, e, expr->initializer_list) sema_trace_expr_liveness(e);
 			return;
 		}
 		case EXPR_LAMBDA:
@@ -408,9 +395,7 @@ RETRY:
 			return;
 		case EXPR_MACRO_BLOCK:
 		{
-			FOREACH_BEGIN(Decl *val, expr->macro_block.params)
-				sema_trace_decl_liveness(val);
-			FOREACH_END();
+			FOREACH(Decl *, val, expr->macro_block.params) sema_trace_decl_liveness(val);
 			sema_trace_stmt_chain_liveness(expr->macro_block.first_stmt);
 			return;
 		}
@@ -419,12 +404,8 @@ RETRY:
 			return;
 		case EXPR_MACRO_BODY_EXPANSION:
 		{
-			FOREACH_BEGIN(Decl *arg, expr->body_expansion_expr.declarations)
-				sema_trace_decl_liveness(arg);
-			FOREACH_END();
-			FOREACH_BEGIN(Expr *arg, expr->body_expansion_expr.values)
-				sema_trace_expr_liveness(arg);
-			FOREACH_END();
+			FOREACH(Decl *, arg, expr->body_expansion_expr.declarations) sema_trace_decl_liveness(arg);
+			FOREACH(Expr *, arg, expr->body_expansion_expr.values) sema_trace_expr_liveness(arg);
 			sema_trace_stmt_liveness(astptrzero(expr->body_expansion_expr.first_stmt));
 			return;
 		}
@@ -498,28 +479,37 @@ void sema_trace_liveness(void)
 	}
 	bool keep_tests = active_target.testing;
 	bool keep_benchmarks = active_target.benchmarking;
-	FOREACH_BEGIN(Decl *function, global_context.method_extensions)
+	FOREACH(Decl *, function, global_context.method_extensions)
+	{
 		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
-	FOREACH_END();
-	FOREACH_BEGIN(Module *module, global_context.module_list)
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *function, unit->functions)
-				if (function->is_export || function->no_strip || function->func_decl.attr_finalizer || function->func_decl.attr_init ||
-				   (function->func_decl.attr_test && keep_tests) ||
-				   (function->func_decl.attr_benchmark && keep_benchmarks)) sema_trace_decl_liveness(function);
-			FOREACH_END();
-			FOREACH_BEGIN(Decl *method, unit->methods)
+	}
+	FOREACH(Module *, module, global_context.module_list)
+	{
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, function, unit->functions)
+			{
+				if (function->is_export || function->no_strip || function->func_decl.attr_finalizer ||
+				    function->func_decl.attr_init ||
+				    (function->func_decl.attr_test && keep_tests) ||
+				    (function->func_decl.attr_benchmark && keep_benchmarks))
+					sema_trace_decl_liveness(function);
+			}
+			FOREACH(Decl *, method, unit->methods)
+			{
 				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);
-			FOREACH_END();
-			FOREACH_BEGIN(Decl *var, unit->vars)
+			}
+			FOREACH(Decl *, var, unit->vars)
+			{
 				if (var->is_export || var->no_strip) sema_trace_decl_liveness(var);
-			FOREACH_END();
-			FOREACH_BEGIN(Decl *method, unit->local_method_extensions)
+			}
+			FOREACH(Decl *, method, unit->local_method_extensions)
+			{
 				if (method->is_export || method->no_strip) sema_trace_decl_liveness(method);
-			FOREACH_END();
-		FOREACH_END();
-	FOREACH_END();
+			}
+		}
+	}
 }
 
 
@@ -540,9 +530,7 @@ INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 }
 static void sema_trace_func_liveness(Signature *sig)
 {
-	FOREACH_BEGIN(Decl *param, sig->params)
-		sema_trace_decl_liveness(param);
-	FOREACH_END();
+	FOREACH(Decl *, param, sig->params) sema_trace_decl_liveness(param);
 	sema_trace_type_liveness(typeget(sig->rtype));
 }
 

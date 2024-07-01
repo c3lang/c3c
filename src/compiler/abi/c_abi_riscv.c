@@ -77,10 +77,8 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 	{
 		// Unions aren't eligible unless they're empty (which is caught above).
 		if (type->type_kind == TYPE_UNION) return false;
-		Decl **members = type->decl->strukt.members;
-		VECEACH(members, i)
+		FOREACH(Decl *, member, type->decl->strukt.members)
 		{
-			Decl *member = members[i];
 			if (!riscv_detect_fpcc_struct_internal(member->type,
 												   (unsigned)(current_offset + member->offset),
 												   field1_ref,

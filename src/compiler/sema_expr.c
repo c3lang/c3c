@@ -1217,9 +1217,9 @@ static inline int sema_call_find_index_of_named_parameter(SemaContext *context, 
 			SEMA_ERROR(expr, "A name was expected here.");
 			return -1;
 	}
-	VECEACH(func_params, i)
+	FOREACH_IDX(i, Decl *, func_param, func_params)
 	{
-		if (func_params[i] && func_params[i]->name == name) return (int)i;
+		if (func_param && func_param->name == name) return (int) i;
 	}
 	SEMA_ERROR(expr, "There's no parameter with the name '%s'.", name);
 	return -1;
@@ -1721,7 +1721,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	{
 		if (variadic == VARIADIC_RAW)
 		{
-			foreach(Expr*, varargs)
+			FOREACH(Expr*, val, varargs)
 			{
 				// 12a. Analyse the expression.
 				if (callee.macro)
@@ -1747,7 +1747,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 		}
 		else
 		{
-			foreach(Expr*, varargs)
+			FOREACH(Expr*, val, varargs)
 			{
 				// 11e. A simple variadic value:
 				if (!sema_analyse_expr_rhs(context, variadic_type, val, true, no_match_ref)) return false;
@@ -1920,9 +1920,8 @@ static inline Type *context_unify_returns(SemaContext *context)
 	if (all_returns_need_casts)
 	{
 		assert(common_type != type_wildcard);
-		VECEACH(context->returns, i)
+		FOREACH(Ast *, return_stmt, context->returns)
 		{
-			Ast *return_stmt = context->returns[i];
 			if (!return_stmt) continue;
 			Expr *ret_expr = return_stmt->return_stmt.expr;
 			if (!ret_expr)
@@ -2008,9 +2007,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 	unsigned vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
-	VECEACH(params, i)
+	FOREACH_IDX(i, Decl *, param, params)
 	{
-		Decl *param = params[i];
 		if (i == vararg_index)
 		{
 			if (!param) continue;
@@ -2142,13 +2140,14 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	macro_context.yield_body = macro_body ? macro_body->macro_body_expr.body : NULL;
 	macro_context.yield_params = body_params;
 	macro_context.yield_context = context;
-	FOREACH_BEGIN(Expr *expr, call_expr->call_expr.varargs)
+	FOREACH(Expr *, expr, call_expr->call_expr.varargs)
+	{
 		if (expr->resolve_status == RESOLVE_DONE) continue;
 		Expr *expr_inner = expr_copy(expr);
 		expr->expr_kind = EXPR_OTHER_CONTEXT;
 		expr->expr_other_context.inner = expr_inner;
 		expr->expr_other_context.context = context;
-	FOREACH_END();
+	}
 	macro_context.macro_varargs = call_expr->call_expr.varargs;
 	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
 	macro_context.original_module = context->original_module ? context->original_module : context->compilation_unit->module;
@@ -2156,9 +2155,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
 	macro_context.block_exit_ref = block_exit_ref;
 
-	VECEACH(params, i)
+	FOREACH(Decl *, param, params)
 	{
-		Decl *param = params[i];
 		// Skip raw vararg
 		if (!param) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
@@ -2197,9 +2195,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	if (rtype)
 	{
 		bool inferred_len = type_len_is_inferred(rtype);
-		VECEACH(macro_context.returns, i)
+		FOREACH(Ast *, return_stmt, macro_context.returns)
 		{
-			Ast *return_stmt = macro_context.returns[i];
 			if (!return_stmt)
 			{
 				assert(may_be_optional);
@@ -2284,9 +2281,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		if (!result) goto NOT_CT;
 		if (!expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE)) goto NOT_CT;
 		bool only_ct_params = true;
-		VECEACH(params, i)
+		FOREACH(Decl *, param, params)
 		{
-			Decl *param = params[i];
 			// Skip raw vararg
 			if (!param) continue;
 			switch (param->var.kind)
@@ -2409,9 +2405,8 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 			first_defer->defer_stmt.prev_defer = context->active_scope.defer_last;
 			context->active_scope.defer_last = macro_defer;
 		}
-		VECEACH(params, i)
+		FOREACH(Decl *, param, params)
 		{
-			Decl *param = params[i];
 			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
 		}
 		Ast *ast = copy_ast_single(macro_context->yield_body);
@@ -3848,10 +3843,9 @@ static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *memb
 			goto EVAL;
 		case CONST_INIT_STRUCT:
 		{
-			Decl **members = init->type->decl->strukt.members;
-			VECEACH(members, i)
+			FOREACH_IDX(i, Decl *, other_member, init->type->decl->strukt.members)
 			{
-				if (members[i] == member)
+				if (other_member == member)
 				{
 					result = init->init_struct[i];
 					goto EVAL;
@@ -4431,10 +4425,11 @@ CHECK_DEEPER:
 		// Look at interface parents
 		if (!member && decl->decl_kind == DECL_INTERFACE)
 		{
-			FOREACH_BEGIN(TypeInfo *parent_interface, decl->interfaces)
+			FOREACH(TypeInfo *, parent_interface, decl->interfaces)
+			{
 				member = sema_resolve_method(context->unit, parent_interface->type->decl, kw, &ambiguous, &private);
 				if (member) break;
-			FOREACH_END();
+			}
 		}
 		if (ambiguous)
 		{
@@ -4678,7 +4673,7 @@ static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr)
 {
 	bool success = true;
 	ByteSize last = vec_size(expr->expression_list) - 1;
-	VECEACH(expr->expression_list, i)
+	for (unsigned i = 0; i <= last; i++)
 	{
 		Expr *checked_expr = expr->expression_list[i];
 		if (!sema_analyse_expr(context, checked_expr)) return false;
@@ -7339,7 +7334,8 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	{
 		if (!sema_set_abi_alignment(context, type, &align)) return false;
 	}
-	FOREACH_BEGIN_IDX(i, DesignatorElement *element, path)
+	FOREACH_IDX(i, DesignatorElement *, element, path)
+	{
 		Decl *member;
 		ArraySize index = 0;
 		Type *result_type;
@@ -7362,7 +7358,7 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 			align = type_min_alignment(size * index, align);
 		}
 		type = result_type;
-	FOREACH_END();
+	}
 	expr_rewrite_const_int(expr, type_isz, align);
 	return true;
 }
@@ -7612,11 +7608,12 @@ static inline bool sema_may_reuse_lambda(SemaContext *context, Decl *lambda, Typ
 {
 	Signature *sig = &lambda->func_decl.signature;
 	if (typeget(sig->rtype)->canonical != types[0]) return false;
-	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
 		TypeInfo *info = vartype(param);
 		assert(info && types[i + 1]); // NOLINT
 		if (info->type->canonical != types[i + 1]) return false;
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -7633,7 +7630,8 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 	unsigned param_count = vec_size(ct_lambda_params);
 	assert(vec_size(candidate->func_decl.lambda_ct_parameters) == param_count);
 	if (!param_count) return true;
-	FOREACH_BEGIN_IDX(i, Decl *param, candidate->func_decl.lambda_ct_parameters)
+	FOREACH_IDX(i, Decl *, param, candidate->func_decl.lambda_ct_parameters)
+	{
 		Decl *ct_param = ct_lambda_params[i];
 		if (!param->var.is_read) continue;
 		assert(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
@@ -7643,19 +7641,21 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_PARAM_CT_TYPE:
 				if (ct_param->var.init_expr->type_expr->type->canonical !=
-					param->var.init_expr->type_expr->type->canonical) return false;
+				    param->var.init_expr->type_expr->type->canonical)
+					return false;
 				break;
 			case VARDECL_LOCAL_CT:
 			case VARDECL_PARAM_CT:
 				assert(expr_is_const(ct_param->var.init_expr));
 				assert(expr_is_const(param->var.init_expr));
 				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
-										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
+				                        &param->var.init_expr->const_expr, BINARYOP_EQ))
+					return false;
 				break;
 			default:
 				UNREACHABLE
 		}
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -7668,10 +7668,12 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	if (func_type)
 	{
 		Type *raw = func_type->canonical->pointer->function.prototype->raw_type;
-		FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
+		FOREACH(Decl *, candidate, original->func_decl.generated_lambda)
+		{
 			if (raw == candidate->type->function.prototype->raw_type &&
-					lambda_parameter_match(ct_lambda_parameters, candidate)) return candidate;
-		FOREACH_END();
+			    lambda_parameter_match(ct_lambda_parameters, candidate))
+				return candidate;
+		}
 		return NULL;
 	}
 	Signature *sig = &original->func_decl.signature;
@@ -7680,18 +7682,22 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	if (!rtype) return NULL;
 	Type *types[200];
 	types[0] = rtype;
-	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
 		TypeInfo *info = vartype(param);
 		if (!info) return NULL;
 		Type *type = sema_evaluate_type_copy(context, info);
 		if (!type) return NULL;
 		assert(i < 198);
 		types[i + 1] = type;
-	FOREACH_END();
+	}
 
-	FOREACH_BEGIN(Decl *candidate, original->func_decl.generated_lambda)
-		if (sema_may_reuse_lambda(context, candidate, types) && lambda_parameter_match(ct_lambda_parameters, candidate)) return candidate;
-	FOREACH_END();
+	FOREACH(Decl *, candidate, original->func_decl.generated_lambda)
+	{
+		if (sema_may_reuse_lambda(context, candidate, types) &&
+		    lambda_parameter_match(ct_lambda_parameters, candidate))
+			return candidate;
+	}
 	return NULL;
 }
 
@@ -7737,13 +7743,14 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 			Decl *fault = poisoned_decl;
 			if (io_error && io_error->decl_kind == DECL_FAULT)
 			{
-				FOREACH_BEGIN(Decl *f, io_error->enums.values)
+				FOREACH(Decl *, f, io_error->enums.values)
+				{
 					if (f->name == kw_FILE_NOT_FOUND)
 					{
 						fault = f;
 						break;
 					}
-				FOREACH_END();
+				}
 			}
 			global_context.io_error_file_not_found = fault;
 		}
@@ -7833,11 +7840,12 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	{
 		RETURN_SEMA_ERROR(expr, "The lambda doesn't match the required type %s.", type_quoted_error_string(target_type));
 	}
-	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
 		if (param->var.type_info) continue;
 		if (!to_sig) goto FAIL_NO_INFER;
 		param->var.type_info = type_info_id_new_base(to_sig->params[i]->type, param->span);
-	FOREACH_END();
+	}
 	CompilationUnit *unit = decl->unit = context->unit;
 	assert(!decl->name);
 	scratch_buffer_clear();
@@ -8157,14 +8165,15 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 			assert(index < 0x10000);
 			Decl *decl = NULL;
 			// Try to find the original param.
-			FOREACH_BEGIN(Decl *val, context->macro_params)
+			FOREACH(Decl *, val, context->macro_params)
+			{
 				if (!val) continue;
 				if (val->va_index == index && val->var.kind == VARDECL_PARAM)
 				{
 					decl = val;
 					break;
 				}
-			FOREACH_END();
+			}
 			// Not found, so generate a new.
 			if (!decl)
 			{
@@ -8219,14 +8228,15 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 
 			Decl *decl = NULL;
 			// Try to find the original param.
-			FOREACH_BEGIN(Decl *val, context->macro_params)
+			FOREACH(Decl *, val, context->macro_params)
+			{
 				if (!val) continue;
 				if (val->var.kind == VARDECL_PARAM_REF && val->va_index == index)
 				{
 					decl = val;
 					break;
 				}
-			FOREACH_END();
+			}
 			// Not found, so generate a new.
 			if (!decl)
 			{
@@ -8269,15 +8279,17 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr)
 	assert(expr->resolve_status == RESOLVE_RUNNING);
 	bool is_and = expr->ct_and_or_expr.is_and;
 	Expr **exprs = expr->ct_and_or_expr.args;
-	FOREACH_BEGIN(Expr *single_expr, exprs)
+	FOREACH(Expr *, single_expr, exprs)
+	{
 		if (!sema_analyse_expr(context, single_expr)) return false;
-		if (!expr_is_const_bool(single_expr)) RETURN_SEMA_ERROR(single_expr, "Expected this to evaluate to a constant boolean.");
+		if (!expr_is_const_bool(single_expr))
+			RETURN_SEMA_ERROR(single_expr, "Expected this to evaluate to a constant boolean.");
 		if (single_expr->const_expr.b != is_and)
 		{
 			expr_rewrite_const_bool(expr, type_bool, !is_and);
 			return true;
 		}
-	FOREACH_END();
+	}
 	expr_rewrite_const_bool(expr, type_bool, is_and);
 	return true;
 }
@@ -8294,7 +8306,8 @@ typedef enum ConcatType_
 bool sema_concat_join_arrays(SemaContext *context, Expr *expr, Expr **exprs, Type *type, ArraySize len)
 {
 	ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-	FOREACH_BEGIN(Expr *element, exprs)
+	FOREACH(Expr *, element, exprs)
+	{
 		assert(element->const_expr.const_kind == CONST_INITIALIZER);
 		ConstInitType init_type = element->const_expr.initializer->kind;
 		switch (init_type)
@@ -8306,12 +8319,11 @@ bool sema_concat_join_arrays(SemaContext *context, Expr *expr, Expr **exprs, Typ
 			default:
 				RETURN_SEMA_ERROR(element, "Only fully initialized arrays may be concatenated.");
 		}
-		ConstInitializer **element_inits = element->const_expr.initializer->init_array_full;
-		VECEACH(element_inits, i)
+		FOREACH(ConstInitializer *, init, element->const_expr.initializer->init_array_full)
 		{
-			vec_add(inits, element_inits[i]);
+			vec_add(inits, init);
 		}
-	FOREACH_END();
+	}
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;
 	expr->type = type;
@@ -8342,9 +8354,7 @@ bool sema_append_const_array(SemaContext *context, Expr *expr, Expr *list, Expr 
 	ConstInitializer **inits = VECNEW(ConstInitializer*, len);
 	if (!is_empty_slice)
 	{
-		FOREACH_BEGIN(ConstInitializer *i, init->init_array_full)
-			vec_add(inits, i);
-		FOREACH_END();
+		FOREACH(ConstInitializer *, i, init->init_array_full) vec_add(inits, i);
 	}
 	unsigned elements = vec_size(exprs);
 	for (unsigned i = 1; i < elements; i++)
@@ -8376,12 +8386,13 @@ bool sema_concat_join_bytes(Expr *expr, Expr **exprs, ArraySize len)
 	bool is_bytes = exprs[0]->const_expr.const_kind == CONST_BYTES;
 	char *data = malloc_arena(len + 1);
 	char *current = data;
-	FOREACH_BEGIN(Expr *element, exprs)
+	FOREACH(Expr *, element, exprs)
+	{
 		size_t str_len = element->const_expr.bytes.len;
 		if (!str_len) continue;
 		memcpy(current, element->const_expr.bytes.ptr, str_len);
 		current += str_len;
-	FOREACH_END();
+	}
 	*current = '\0';
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr = (ExprConst) {
@@ -8510,9 +8521,10 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 			Expr *single_expr = exprs[i];
 			if (expr_is_const_untyped_list(single_expr))
 			{
-				FOREACH_BEGIN(Expr *expr_untyped, single_expr->const_expr.untyped_list)
+				FOREACH(Expr *, expr_untyped, single_expr->const_expr.untyped_list)
+				{
 					vec_add(untyped_exprs, expr_untyped);
-				FOREACH_END();
+				}
 				continue;
 			}
 			ConstInitializer *init = single_expr->const_expr.initializer;
@@ -8521,9 +8533,10 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 				if (init->kind == CONST_INIT_ZERO && init->type == type_untypedlist) continue;
 				RETURN_SEMA_ERROR(single_expr, "Expected a full array here.");
 			}
-			FOREACH_BEGIN(ConstInitializer *val, init->init_array_full)
+			FOREACH(ConstInitializer *, val, init->init_array_full)
+			{
 				vec_add(untyped_exprs, val->init_value);
-			FOREACH_END();
+			}
 		}
 		concat_expr->expr_kind = EXPR_CONST;
 		concat_expr->type = type_untypedlist;
@@ -8632,7 +8645,8 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 
 	ByteSize offset = 0;
 	Type *type = decl->type;
-	FOREACH_BEGIN_IDX(i, DesignatorElement *element, path)
+	FOREACH_IDX(i, DesignatorElement *, element, path)
+	{
 		Decl *member;
 		ArraySize index = 0;
 		Type *result_type;
@@ -8654,7 +8668,7 @@ static inline bool sema_expr_analyse_ct_offsetof(SemaContext *context, Expr *exp
 			offset += type_size(result_type) * index;
 		}
 		type = result_type;
-	FOREACH_END();
+	}
 
 	expr_rewrite_const_int(expr, type_isz, offset);
 
@@ -9004,10 +9018,11 @@ static MemberIndex len_from_const_initializer(ConstInitializer *init)
 		case CONST_INIT_ARRAY:
 		{
 			MemberIndex max = 0;
-			FOREACH_BEGIN(ConstInitializer *element, init->init_array.elements)
+			FOREACH(ConstInitializer *, element, init->init_array.elements)
+			{
 				assert(element->kind == CONST_INIT_ARRAY_VALUE);
 				if (element->init_array_value.index > max) max = element->init_array_value.index;
-			FOREACH_END();
+			}
 			return max;
 		}
 		case CONST_INIT_ARRAY_FULL:
@@ -9188,9 +9203,10 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 {
 	if (expr->expr_kind == EXPR_EXPRESSION_LIST)
 	{
-		FOREACH_BEGIN(Expr *expr_element, expr->expression_list)
+		FOREACH(Expr *, expr_element, expr->expression_list)
+		{
 			if (!sema_expr_check_discard(context, expr_element)) return false;
-		FOREACH_END();
+		}
 		return true;
 	}
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN || expr->expr_kind == EXPR_SLICE_ASSIGN) return true;

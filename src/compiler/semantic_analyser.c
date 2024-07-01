@@ -20,7 +20,6 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	Ast *previous_defer = context->active_scope.in_defer;
 	AstId parent_defer = context->active_scope.defer_last;
 	unsigned last_local = context->active_scope.current_local;
-	assert(parent_defer < 1000000);
 	// Defer and expression blocks introduce their own return/break/continue
 	// otherwise just merge with the old flags.
 	if (flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
@@ -189,9 +188,8 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 
 static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 {
-	VECEACH(decls, i)
+	FOREACH(Decl *, decl, decls)
 	{
-		Decl *decl = decls[i];
 		if (decl->visibility == VISIBLE_LOCAL) continue;
 		decl->unit = unit;
 		switch (decl->decl_kind)
@@ -233,13 +231,11 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 	}
 }
 
-
 static void analyze_generic_module(Module *module)
 {
 	assert(module->parameters && module->is_generic);
-	VECEACH(module->units, index)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		CompilationUnit *unit = module->units[index];
 		register_generic_decls(unit, unit->global_decls);
 		register_generic_decls(unit, unit->global_cond_decls);
 	}
@@ -249,14 +245,15 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 {
 	if (stage <= ANALYSIS_MODULE_TOP)
 	{
-		VECEACH(global_context.generic_module_list, i)
+
+		FOREACH(Module *, module, global_context.generic_module_list)
 		{
-			sema_analyze_stage(global_context.generic_module_list[i], stage);
+			sema_analyze_stage(module, stage);
 		}
 	}
-	VECEACH(global_context.module_list, i)
+	FOREACH(Module *, module, global_context.module_list)
 	{
-		sema_analyze_stage(global_context.module_list[i], stage);
+		sema_analyze_stage(module, stage);
 	}
 	halt_on_error();
 }
@@ -425,9 +422,10 @@ void sema_analysis_run(void)
 	global_context.core_module = compiler_find_or_create_module(core_path, NULL);
 
 	// We parse the generic modules, just by storing the decls.
-	FOREACH_BEGIN(Module *module, global_context.generic_module_list)
+	FOREACH(Module *, module, global_context.generic_module_list)
+	{
 		analyze_generic_module(module);
-	FOREACH_END();
+	}
 
 	for (AnalysisStage stage = ANALYSIS_NOT_BEGUN + 1; stage <= ANALYSIS_LAST; stage++)
 	{
@@ -436,13 +434,14 @@ void sema_analysis_run(void)
 
 RESOLVE_LAMBDA:;
 	bool found_lambda = false;
-	FOREACH_BEGIN(Module *module, global_context.module_list)
+	FOREACH(Module *, module, global_context.module_list)
+	{
 		if (vec_size(module->lambdas_to_evaluate))
 		{
 			sema_analysis_pass_lambda(module);
 			found_lambda = true;
 		}
-	FOREACH_END();
+	}
 	if (found_lambda) goto RESOLVE_LAMBDA;
 	halt_on_error();
 

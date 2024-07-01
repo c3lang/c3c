@@ -89,12 +89,11 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 		case TYPE_STRUCT:
 		{
 			LLVMTypeRef struct_type = llvm_get_type(c, type);
-			Decl **members = type->decl->strukt.members;
-			VECEACH(members, i)
+			FOREACH_IDX(i, Decl *, member, type->decl->strukt.members)
 			{
 				AlignSize element_align;
 				LLVMValueRef target = llvm_emit_struct_gep_raw(c, ref, struct_type, i, alignment, &element_align);
-				llvm_expand_from_args(c, members[i]->type, target, index, element_align);
+				llvm_expand_from_args(c, member->type, target, index, element_align);
 			}
 			return;
 		}
@@ -480,9 +479,10 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	if (signature)
 	{
 		// Generate LLVMValueRef's for all parameters, so we can use them as local vars in code
-		FOREACH_BEGIN_IDX(i, Decl *param, signature->params)
+		FOREACH_IDX(i, Decl *, param, signature->params)
+		{
 			llvm_emit_func_parameter(c, param, prototype->abi_args[i], &arg, i);
-		FOREACH_END();
+		}
 	}
 
 	LLVMSetCurrentDebugLocation2(c->builder, NULL);
@@ -505,11 +505,12 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 
 	// Move panic blocks last, this is just overall nicer to read, and might be better from
 	// a performance POV
-	FOREACH_BEGIN(LLVMBasicBlockRef panic_block, c->panic_blocks)
+	FOREACH(LLVMBasicBlockRef, panic_block, c->panic_blocks)
+	{
 		if (last_block == panic_block) continue;
 		LLVMMoveBasicBlockAfter(panic_block, last_block);
 		last_block = panic_block;
-	FOREACH_END();
+	}
 
 	// erase alloca point
 	if (LLVMGetInstructionParent(alloca_point))
@@ -548,14 +549,15 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMTypeRef types[3] = { c->ptr_type, c->ptr_type, c->typeid_type };
 		LLVMTypeRef entry_type = LLVMStructType(types, 3, false);
 		LLVMValueRef *entries = VECNEW(LLVMValueRef, len);
-		FOREACH_BEGIN(Decl *func, funcs)
+		FOREACH(Decl *, func, funcs)
+		{
 			Type *type = typeget(func->func_decl.type_parent);
 			Decl *proto = declptrzero(func->func_decl.interface_method);
 			LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, func->name);
-			LLVMValueRef vals[3] = { llvm_get_ref(c, func), proto_ref, llvm_get_typeid(c, type) };
+			LLVMValueRef vals[3] = {llvm_get_ref(c, func), proto_ref, llvm_get_typeid(c, type)};
 			LLVMValueRef entry = LLVMConstNamedStruct(entry_type, vals, 3);
 			vec_add(entries, entry);
-		FOREACH_END();
+		}
 		LLVMValueRef array = LLVMConstArray(entry_type, entries, len);
 		LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), "$c3_dynamic");
 		LLVMSetLinkage(global, LLVMInternalLinkage);
@@ -573,7 +575,8 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 
 	LLVMBasicBlockRef last_block;
 	LLVMBuilderRef builder = llvm_create_function_entry(c, initializer, &last_block);
-	FOREACH_BEGIN(Decl *decl, funcs)
+	FOREACH(Decl *, decl, funcs)
+	{
 		Type *type = typeget(decl->func_decl.type_parent);
 		scratch_buffer_clear();
 		scratch_buffer_append("$ct.dyn.");
@@ -581,10 +584,11 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_copy(), c->dtable_type, 0);
 		Decl *proto = declptrzero(decl->func_decl.interface_method);
 		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
-		LLVMValueRef vals[3] = { llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type) };
+		LLVMValueRef vals[3] = {llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type)};
 		LLVMSetInitializer(global, LLVMConstNamedStruct(c->dtable_type, vals, 3));
 		LLVMValueRef type_id_ptr = LLVMBuildIntToPtr(builder, llvm_get_typeid(c, type), c->ptr_type, "");
-		LLVMValueRef dtable_ref = LLVMBuildStructGEP2(builder, c->introspect_type, type_id_ptr, INTROSPECT_INDEX_DTABLE, "");
+		LLVMValueRef dtable_ref = LLVMBuildStructGEP2(builder, c->introspect_type, type_id_ptr, INTROSPECT_INDEX_DTABLE,
+		                                              "");
 		LLVMBasicBlockRef check = LLVMAppendBasicBlockInContext(c->context, initializer, "dtable_check");
 		LLVMBuildBr(builder, check);
 		LLVMPositionBuilderAtEnd(builder, check);
@@ -603,7 +607,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMPositionBuilderAtEnd(builder, after_check);
 		LLVMBuildStore(builder, global, phi);
 		last_block = after_check;
-	FOREACH_END();
+	}
 
 	LLVMBuildRet(builder, NULL);
 	LLVMDisposeBuilder(builder);

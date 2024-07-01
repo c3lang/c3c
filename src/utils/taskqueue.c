@@ -105,9 +105,10 @@ void taskqueue_run(int threads, Task **task_list)
 
 void taskqueue_run(int threads, Task **task_list)
 {
-	FOREACH_BEGIN(Task *task, task_list)
-	task->task(task->arg);
-	FOREACH_END();
+	FOREACH(Task *, task, task_list)
+	{
+		task->task(task->arg);
+	}
 }
 
 #endif

@@ -83,11 +83,12 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	{
 		if (!sema_analyse_ct_expr(context, message_expr)) return false;
 		if (!expr_is_const_string(message_expr)) RETURN_SEMA_ERROR(message_expr, "Expected a constant string as the error message.");
-		FOREACH_BEGIN(Expr *e, statement->assert_stmt.args)
+		FOREACH(Expr *, e, statement->assert_stmt.args)
+		{
 			if (!sema_analyse_expr(context, e)) return false;
 			if (IS_OPTIONAL(e)) RETURN_SEMA_ERROR(e, "Optionals cannot be used as assert arguments, use '?" "?', '!' or '!!' to fix this.");
 			if (type_is_void(e->type)) RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
-		FOREACH_END();
+		}
 	}
 
 	CondResult result_no_resolve = COND_MISSING;
@@ -259,11 +260,8 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 	}
 	if (!last || last->expr_kind != EXPR_CATCH_UNWRAP) return;
 
-	Expr **unwrapped = last->catch_unwrap_expr.exprs;
-
-	VECEACH(unwrapped, i)
+	FOREACH(Expr *, expr, last->catch_unwrap_expr.exprs)
 	{
-		Expr *expr = unwrapped[i];
 		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
 		Decl *decl = expr->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR) continue;
@@ -293,11 +291,8 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
-	Expr **exprs = declexpr->expression_list;
-
-	VECEACH(exprs, j)
+	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
-		Expr *expr = exprs[j];
 		if (expr->expr_kind == EXPR_DECL)
 		{
 			SEMA_ERROR(expr, "Only expressions are allowed.");
@@ -358,16 +353,16 @@ static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *con
 	if (!expr_is_const(inner)) return true;
 	assert(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
 	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
-	FOREACH_BEGIN(Decl *opt, context->call_env.opt_returns)
+	FOREACH(Decl *, opt, context->call_env.opt_returns)
+	{
 		if (opt->decl_kind == DECL_FAULT)
 		{
 			if (fault->type->decl == opt) return true;
 			continue;
 		}
 		if (opt == fault) return true;
-	FOREACH_END();
-	SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
-	return false;
+	}
+	RETURN_SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
 }
 
 static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_expr)
@@ -396,7 +391,8 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 			Expr *checks = copy_expr_single(directive->contract_stmt.contract.decl_exprs);
 			assert(checks->expr_kind == EXPR_EXPRESSION_LIST);
 			Expr **exprs = checks->expression_list;
-			FOREACH_BEGIN(Expr *expr, exprs)
+			FOREACH(Expr *, expr, exprs)
+			{
 				if (expr->expr_kind == EXPR_DECL)
 				{
 					SEMA_ERROR(expr, "Only expressions are allowed.");
@@ -417,7 +413,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 				SEMA_ERROR(ret_expr, "%s", comment);
 				success = false;
 				goto END;
-			FOREACH_END();
+			}
 		}
 END:
 	SCOPE_END;
@@ -858,11 +854,9 @@ static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *exp
 	assert(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
 
 	assert(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
-	Expr **chain = expr->try_unwrap_chain_expr;
 
-	VECEACH(expr->try_unwrap_chain_expr, i)
+	FOREACH(Expr *, chain_element, expr->try_unwrap_chain_expr)
 	{
-		Expr *chain_element = chain[i];
 		if (chain_element->expr_kind == EXPR_TRY_UNWRAP)
 		{
 			if (!sema_analyse_try_unwrap(context, chain_element)) return false;
@@ -952,10 +946,8 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		expr->catch_unwrap_expr.lhs = NULL;
 	}
 RESOLVE_EXPRS:;
-	Expr **exprs = expr->catch_unwrap_expr.exprs;
-	VECEACH(exprs, i)
+	FOREACH(Expr *, fail, expr->catch_unwrap_expr.exprs)
 	{
-		Expr *fail = exprs[i];
 		if (!sema_analyse_expr(context, fail)) return false;
 		if (!type_is_optional(fail->type))
 		{
@@ -972,10 +964,8 @@ static void sema_remove_unwraps_from_try(SemaContext *c, Expr *cond)
 	assert(cond->expr_kind == EXPR_COND);
 	Expr *last = VECLAST(cond->cond_expr);
 	if (!last || last->expr_kind != EXPR_TRY_UNWRAP_CHAIN) return;
-	Expr **chain = last->try_unwrap_chain_expr;
-	VECEACH(chain, i)
+	FOREACH(Expr *, expr, last->try_unwrap_chain_expr)
 	{
-		Expr *expr = chain[i];
 		if (expr->expr_kind != EXPR_TRY_UNWRAP) continue;
 		if (expr->try_unwrap_expr.assign_existing) continue;
 		if (expr->try_unwrap_expr.optional)
@@ -1195,7 +1185,8 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 {
 	bool should_nop = true;
-	FOREACH_BEGIN_IDX(i, Decl *decl, statement->decls_stmt)
+	FOREACH_IDX(i, Decl *, decl, statement->decls_stmt)
+	{
 		VarDeclKind kind = decl->var.kind;
 		if (kind == VARDECL_LOCAL_CT_TYPE || kind == VARDECL_LOCAL_CT)
 		{
@@ -1207,7 +1198,7 @@ static inline bool sema_analyse_decls_stmt(SemaContext *context, Ast *statement)
 			if (!sema_analyse_var_decl(context, decl, true)) return false;
 			should_nop = false;
 		}
-	FOREACH_END();
+	}
 	if (should_nop) statement->ast_kind = AST_NOP_STMT;
 	return true;
 }
@@ -2069,13 +2060,14 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	if (statement->nextcase_stmt.is_default)
 	{
 		Ast *default_ast = NULL;
-		FOREACH_BEGIN(Ast *cs, cases)
+		FOREACH(Ast *, cs, cases)
+		{
 			if (cs->ast_kind == AST_DEFAULT_STMT)
 			{
 				default_ast = cs;
 				break;
 			}
-		FOREACH_END();
+		}
 		if (!default_ast) RETURN_SEMA_ERROR(statement, "There is no 'default' in the switch to jump to.");
 		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 		statement->nextcase_stmt.case_switch_stmt = astid(default_ast);
@@ -2111,12 +2103,9 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 			SEMA_NOTE(statement, "The 'switch' here uses expected a type '%s'.", type_to_error_string(cond->type));
 			return false;
 		}
-		cases = parent->switch_stmt.cases;
-
 		Type *type = type_info->type->canonical;
-		VECEACH(cases, i)
+		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
 		{
-			Ast *case_stmt = cases[i];
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 			Expr *expr = exprptr(case_stmt->case_stmt.expr);
 			if (expr_is_const(expr) && expr->const_expr.typeid == type)
@@ -2137,9 +2126,8 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	if (expr_is_const(value))
 	{
-		VECEACH(parent->switch_stmt.cases, i)
+		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
 		{
-			Ast *case_stmt = parent->switch_stmt.cases[i];
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
 			if (!expr_is_const(from)) goto VARIABLE_JUMP;
@@ -2347,7 +2335,8 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned ca
 		scratch_buffer_printf("%u enum values were not handled in the switch: ", missing);
 	}
 	unsigned printed = 0;
-	FOREACH_BEGIN(Decl *decl, enums)
+	FOREACH(Decl *, decl, enums)
+	{
 		for (unsigned i = 0; i < case_count; i++)
 		{
 			Expr *e = exprptr(cases[i]->case_stmt.expr);
@@ -2366,7 +2355,7 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned ca
 		}
 		if (printed == missing) goto DONE;
 CONTINUE:;
-	FOREACH_END();
+	}
 DONE:;
 	if (missing == 1)
 	{
@@ -2916,7 +2905,8 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		assert(init_expr->expr_kind == EXPR_EXPRESSION_LIST);
 
 		// Check the list of expressions.
-		FOREACH_BEGIN(Expr *expr, init_expr->expression_list)
+		FOREACH(Expr *, expr, init_expr->expression_list)
+		{
 			// Only a subset of declarations are allowed. We check this here.
 			if (expr->expr_kind == EXPR_DECL)
 			{
@@ -2931,7 +2921,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 			}
 			// If expression evaluate it and make sure it is constant.
 			if (!sema_analyse_ct_expr(context, expr)) goto FAILED;
-		FOREACH_END();
+		}
 	}
 	ExprId condition = statement->for_stmt.cond;
 	ExprId incr = statement->for_stmt.incr;
@@ -2970,9 +2960,10 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		current = &compound_stmt->next;
 
 		// Copy and evaluate all the expressions in "incr"
-		FOREACH_BEGIN(Expr *expr, incr_list) // NOLINT
+		FOREACH(Expr *, expr, incr_list)
+		{
 			if (!sema_analyse_ct_expr(context, copy_expr_single(expr))) goto FAILED;
-		FOREACH_END();
+		}
 	}
 	// Analysis is done turn the generated statements into a compound statement for lowering.
 	statement->ast_kind = AST_COMPOUND_STMT;
@@ -3086,9 +3077,8 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
 	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
-	VECEACH(declexpr->expression_list, j)
+	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
-		Expr *expr = declexpr->expression_list[j];
 		if (expr->expr_kind == EXPR_DECL)
 		{
 			SEMA_ERROR(expr, "Only expressions are allowed.");
@@ -3102,7 +3092,8 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 {
 	Ast **returns = NULL;
 	context->call_env.opt_returns = NULL;
-	FOREACH_BEGIN(Ast *ret, directive->contract_stmt.faults)
+	FOREACH(Ast *, ret, directive->contract_stmt.faults)
+	{
 		if (ret->contract_fault.resolved) continue;
 		TypeInfo *type_info = ret->contract_fault.type;
 		const char *ident = ret->contract_fault.ident;
@@ -3118,9 +3109,8 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 		}
 		Decl *decl = type->decl;
 		Decl **enums = decl->enums.values;
-		VECEACH(enums, j)
+		FOREACH(Decl *, opt_value, enums)
 		{
-			Decl *opt_value = enums[j];
 			if (opt_value->name == ident)
 			{
 				ret->contract_fault.decl = opt_value;
@@ -3129,9 +3119,9 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 			}
 		}
 		RETURN_SEMA_ERROR(ret, "No fault value '%s' found.", ident);
-NEXT:;
+	NEXT:;
 		vec_add(context->call_env.opt_returns, ret->contract_fault.decl);
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -3209,18 +3199,18 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	Decl **lambda_params = NULL;
 	SCOPE_START
 		assert(context->active_scope.depth == 1);
-		Decl **params = signature->params;
-		VECEACH(params, i)
+		FOREACH(Decl *, param, signature->params)
 		{
-			if (!sema_add_local(context, params[i])) return false;
+			if (!sema_add_local(context, param)) return false;
 		}
 		if (func->func_decl.is_lambda)
 		{
 			lambda_params = copy_decl_list_single(func->func_decl.lambda_ct_parameters);
-			FOREACH_BEGIN(Decl *ct_param, lambda_params)
+			FOREACH(Decl *, ct_param, lambda_params)
+			{
 				ct_param->var.is_read = false;
 				if (!sema_add_local(context, ct_param)) return false;
-			FOREACH_END();
+			}
 		}
 		AstId assert_first = 0;
 		AstId *next = &assert_first;
@@ -3240,9 +3230,10 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	SCOPE_END;
 	if (lambda_params)
 	{
-		FOREACH_BEGIN_IDX(i, Decl *ct_param, lambda_params)
+		FOREACH_IDX(i, Decl *, ct_param, lambda_params)
+		{
 			func->func_decl.lambda_ct_parameters[i]->var.is_read = ct_param->var.is_read;
-		FOREACH_END();
+		}
 	}
 	return true;
 }

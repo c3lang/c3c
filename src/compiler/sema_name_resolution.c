@@ -67,9 +67,8 @@ void sema_decl_stack_push(Decl *decl)
 
 static void add_members_to_decl_stack(Decl *decl)
 {
-	VECEACH(decl->methods, i)
+	FOREACH(Decl *, func, decl->methods)
 	{
-		Decl *func = decl->methods[i];
 		sema_decl_stack_push(func);
 	}
 	while (decl->decl_kind == DECL_DISTINCT)
@@ -80,29 +79,23 @@ static void add_members_to_decl_stack(Decl *decl)
 	}
 	if (decl_is_enum_kind(decl))
 	{
-		Decl **members = decl->enums.parameters;
-		VECEACH(members, i)
-		{
-			sema_decl_stack_push(members[i]);
-		}
+		FOREACH(Decl *, member, decl->enums.parameters) sema_decl_stack_push(member);
 	}
 	if (decl->decl_kind == DECL_INTERFACE)
 	{
-		FOREACH_BEGIN(TypeInfo *parent_interface, decl->interfaces)
-			FOREACH_BEGIN(Decl *interface, parent_interface->type->decl->interface_methods)
+		FOREACH(TypeInfo *, parent_interface, decl->interfaces)
+		{
+			FOREACH(Decl *, interface, parent_interface->type->decl->interface_methods)
+			{
 				sema_decl_stack_push(interface);
-			FOREACH_END();
-		FOREACH_END();
-		FOREACH_BEGIN(Decl *interface, decl->interface_methods)
-			sema_decl_stack_push(interface);
-		FOREACH_END();
+			}
+		}
+		FOREACH(Decl *, interface, decl->interface_methods) sema_decl_stack_push(interface);
 	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{
-		Decl **members = decl->strukt.members;
-		VECEACH(members, i)
+		FOREACH(Decl *, member, decl->strukt.members)
 		{
-			Decl *member = members[i];
 			if (member->name == NULL)
 			{
 				add_members_to_decl_stack(member);
@@ -137,9 +130,8 @@ static Decl *sema_find_decl_in_private_imports(Decl **imports, NameResolve *name
 	// 1. Loop over imports.
 	Path *path = name_resolve->path;
 	const char *symbol = name_resolve->symbol;
-	VECEACH(imports, i)
+	FOREACH(Decl *, import, imports)
 	{
-		Decl *import = imports[i];
 		if (import->import.module->is_generic != want_generic) continue;
 		if (!import->import.import_private_as_public) continue;
 		// Is the decl in the import.
@@ -180,9 +172,8 @@ static Decl *sema_find_decl_in_private_imports(Decl **imports, NameResolve *name
 
 static inline bool sema_is_path_found(Module **modules, Path *path, bool want_generic)
 {
-	VECEACH(modules, i)
+	FOREACH(Module *, module, modules)
 	{
-		Module *module = modules[i];
 		if (module->is_generic != want_generic) continue;
 		if (matches_subpath(module->name, path))
 		{
@@ -195,9 +186,8 @@ static inline bool sema_is_path_found(Module **modules, Path *path, bool want_ge
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name)
 {
 	bool path_found = false;
-	VECEACH(module_list, i)
+	FOREACH(Module *, module, module_list)
 	{
-		Module *module = module_list[i];
 		Decl *decl = sema_find_decl_in_module(module, path, interned_name, &path_found);
 		if (decl) return decl;
 	}
@@ -239,9 +229,8 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 		lookup = lookup->parent_module;
 	}
 
-	VECEACH(unit->imports, i)
+	FOREACH(Decl *, import, unit->imports)
 	{
-		Decl *import = unit->imports[i];
 		Module *import_module = import->import.module;
 		if (import_module == module) return true;
 		if (module_inclusion_match(import_module, module)) return true;
@@ -284,12 +273,10 @@ static Decl *sema_find_decl_in_global(CompilationUnit *unit, DeclTable *table, M
 	}
 
 	// Else go through the list
-	Decl **decl_list = decls->decl_list;
 	Decl *ambiguous = NULL;
 	Decl *decl = NULL;
-	VECEACH(decl_list, i)
+	FOREACH(Decl *, candidate, decls->decl_list)
 	{
-		Decl *candidate = decl_list[i];
 		if (path && !matches_subpath(decl_module(candidate)->name, path)) continue;
 		if (!decl_is_visible(unit, candidate))
 		{
@@ -365,9 +352,10 @@ static Decl *sema_resolve_path_symbol(SemaContext *context, NameResolve *name_re
 static inline Decl *sema_find_ct_local(SemaContext *context, const char *symbol)
 {
 	Decl **locals = context->ct_locals;
-	FOREACH_BEGIN(Decl *cur, locals)
+	FOREACH(Decl *, cur, locals)
+	{
 		if (cur->name == symbol) return cur;
-	FOREACH_END();
+	}
 	return NULL;
 }
 
@@ -517,22 +505,24 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 			if (name_resolve->suppress_error) return NULL;
 			bool path_found = false;
 			Module *module_with_path = NULL;
-			FOREACH_BEGIN(Module *module, global_context.module_list)
+			FOREACH(Module *, module, global_context.module_list)
+			{
 				if (matches_subpath(module->name, name_resolve->path))
 				{
 					module_with_path = module;
 					break;
 				}
-			FOREACH_END();
+			}
 			if (!module_with_path)
 			{
-				FOREACH_BEGIN(Module *module, global_context.generic_module_list)
+				FOREACH(Module *, module, global_context.generic_module_list)
+				{
 					if (matches_subpath(module->name, name_resolve->path))
 					{
 						module_with_path = module;
 						break;
 					}
-				FOREACH_END();
+				}
 			}
 			if (module_with_path)
 			{
@@ -568,9 +558,8 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name)
 {
-	VECEACH(extensions, i)
+	FOREACH(Decl *, extension, extensions)
 	{
-		Decl *extension = extensions[i];
 		if (extension->name != method_name) continue;
 		if (type_infoptr(extension->func_decl.type_parent)->type->canonical == type) return extension;
 	}
@@ -601,8 +590,10 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
 	// We are now searching submodules, so hide the private ones.
 	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
-	FOREACH_BEGIN(Module *mod, module->sub_modules)
-		Decl *new_found = sema_resolve_method_in_module(mod, actual_type, method_name, private_found, ambiguous, search_type);
+	FOREACH(Module *, mod, module->sub_modules)
+	{
+		Decl *new_found = sema_resolve_method_in_module(mod, actual_type, method_name, private_found, ambiguous,
+		                                                search_type);
 		if (!new_found) continue;
 		if (found)
 		{
@@ -610,7 +601,7 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 			return found;
 		}
 		found = new_found;
-	FOREACH_END();
+	}
 	// We might have it ambiguous due to searching sub modules.
 	return found;
 }
@@ -620,17 +611,16 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	// Interface, prefer interface methods.
 	if (type->decl_kind == DECL_INTERFACE)
 	{
-		FOREACH_BEGIN(Decl *method, type->interface_methods)
+		FOREACH(Decl *, method, type->interface_methods)
+		{
 			if (method_name == method->name) return method;
-		FOREACH_END();
+		}
 	}
 	// Look through natively defined methods.
-	FOREACH_BEGIN(Decl *method, type->methods)
-		if (method_name == method->name)
-		{
-			return method;
-		}
-	FOREACH_END();
+	FOREACH(Decl *, method, type->methods)
+	{
+		if (method_name == method->name) return method;
+	}
 
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
@@ -734,9 +724,8 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 	}
 
 	// 2. Lookup in imports
-	VECEACH(unit->imports, i)
+	FOREACH(Decl *, import, unit->imports)
 	{
-		Decl *import = unit->imports[i];
 		if (import->import.module->is_generic) continue;
 
 		Decl *new_found = sema_resolve_method_in_module(import->import.module, type, method_name,

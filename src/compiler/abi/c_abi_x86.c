@@ -21,9 +21,9 @@ static bool type_is_union_struct_with_simd_vector(Type *type)
 	if (!type_is_union_or_strukt(type)) return false;
 
 	Decl **members = type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, members)
 	{
-		Type *member_type = members[i]->type;
+		Type *member_type = type_lowering(member->type);
 		if (type_is_simd_vector(member_type)) return true;
 		if (type_is_union_struct_with_simd_vector(member_type)) return true;
 	}
@@ -141,9 +141,9 @@ static bool x86_should_return_type_in_reg(Type *type)
 	// If all can be passed in registers, then pass in register
 	// (remember we already limited the size!)
 	Decl** members = type->decl->strukt.members;
-	VECEACH (members, i)
+	FOREACH(Decl *, member, members)
 	{
-		Type *member_type = members[i]->type->canonical;
+		Type *member_type = member->type->canonical;
 		if (!x86_should_return_type_in_reg(member_type)) return false;
 	}
 	return true;
@@ -237,9 +237,9 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 
 	ByteSize size = 0;
 	Decl **members = type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, members)
 	{
-		Type *member_type = type_lowering(members[i]->type);
+		Type *member_type = type_lowering(member->type);
 		switch (member_type->type_kind)
 		{
 			case TYPE_I32:

@@ -49,12 +49,12 @@ File *source_file_load(const char *filename, bool *already_loaded, const char **
 		return NULL;
 	}
 
-	VECEACH(global_context.loaded_sources, index)
+	FOREACH(File *, file, global_context.loaded_sources)
 	{
-		if (strcmp(global_context.loaded_sources[index]->full_path, full_path) == 0)
+		if (strcmp(file->full_path, full_path) == 0)
 		{
 			if (already_loaded) *already_loaded = true;
-			return global_context.loaded_sources[index];
+			return file;
 		}
 	}
 	if (vec_size(global_context.loaded_sources) == MAX_FILES)

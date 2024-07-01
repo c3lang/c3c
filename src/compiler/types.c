@@ -496,12 +496,12 @@ Type *type_find_largest_union_element(Type *type)
 	assert(type->type_kind == TYPE_UNION);
 	ByteSize largest = 0;
 	Type *largest_type = NULL;
-	Decl **members = type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, type->decl->strukt.members)
 	{
-		if (type_size(type) > largest)
+		Type *member_type = member->type;
+		if (type_size(member_type) > largest)
 		{
-			largest = type_size(type);
+			largest = type_size(member_type);
 			largest_type = type->canonical;
 		}
 	}
@@ -684,14 +684,15 @@ bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
 	if (vec_size(sig->params) != arg_count) return false;
 	va_list ap;
 	va_start(ap, arg_count);
-	FOREACH_BEGIN(Decl* decl, sig->params)
+	FOREACH(Decl *, decl, sig->params)
+	{
 		Type *arg = va_arg(ap, Type*);
 		if (decl->type->canonical != arg->canonical)
 		{
 			va_end(ap);
 			return false;
 		}
-	FOREACH_END();
+	}
 	va_end(ap);
 	return true;
 }
@@ -1014,10 +1015,10 @@ static inline bool array_structurally_equivalent_to_struct(Type *array, Type *ty
 	MemberIndex  offset = 0;
 	AlignSize align_size = type_abi_alignment(array);
 	Type *array_base = array->array.base;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, members)
 	{
-		if (!type_is_structurally_equivalent(array_base, members[i]->type)) return false;
-		if (members[i]->offset != offset) return false;
+		if (!type_is_structurally_equivalent(array_base, member->type)) return false;
+		if (member->offset != offset) return false;
 		offset += align_size;
 	}
 	return true;
@@ -1034,12 +1035,11 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 	// noting that there is only structural equivalence if it fills out the
 	if (type2->type_kind == TYPE_UNION)
 	{
-		Decl **members = type2->decl->strukt.members;
 		// If any member is structurally equivalent, then
 		// the cast is valid.
-		VECEACH(members, i)
+		FOREACH(Decl *, member, type2->decl->strukt.members)
 		{
-			if (type_is_structurally_equivalent(type1, members[i]->type)) return true;
+			if (type_is_structurally_equivalent(type1, member->type)) return true;
 		}
 		// In this case we can't get a match.
 		return false;
@@ -1062,9 +1062,9 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 	{
 		// If any member is structurally equivalent, then
 		// the cast is valid.
-		VECEACH(members, i)
+		FOREACH(Decl *, member, members)
 		{
-			if (type_is_structurally_equivalent(members[i]->type, type2)) return true;
+			if (type_is_structurally_equivalent(member->type, type2)) return true;
 		}
 		return false;
 	}
@@ -1075,11 +1075,12 @@ bool type_is_structurally_equivalent(Type *type1, Type *type2)
 	Decl **other_members = type2->decl->strukt.members;
 
 	// For structs / errors, all members must match.
-	VECEACH(members, i)
+	FOREACH_IDX(i, Decl *, member, members)
 	{
-		if (!type_is_structurally_equivalent(members[i]->type, other_members[i]->type)) return false;
-		if (members[i]->offset != other_members[i]->offset) return false;
+		if (!type_is_structurally_equivalent(member->type, other_members[i]->type)) return false;
+		if (member->offset != other_members[i]->offset) return false;
 	}
+
 	return true;
 }
 

@@ -196,9 +196,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			return true;
 		}
 		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
-		VECEACH(elements, i)
+		FOREACH_IDX(i, Expr *, expr, elements)
 		{
-			Expr *expr = elements[i];
 			if (expr_is_const_initializer(expr))
 			{
 				inits[i] = expr->const_expr.initializer;
@@ -358,9 +357,8 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		const_init->kind = CONST_INIT_ARRAY_FULL;
 		const_init->type = type_flatten(initializer->type);
 		ConstInitializer **inits = VECNEW(ConstInitializer*, vec_size(elements));
-		VECEACH(elements, i)
+		FOREACH(Expr *, expr, elements)
 		{
-			Expr *expr = elements[i];
 			if (expr_is_const_initializer(expr))
 			{
 				vec_add(inits, expr->const_expr.initializer);
@@ -381,14 +379,17 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, Expr *initializer)
 {
 	Expr **init_list = initializer->initializer_list;
-	FOREACH_BEGIN(Expr *element, init_list)
+	FOREACH(Expr *, element, init_list)
+	{
 		if (!sema_analyse_expr(context, element)) return false;
 		if (!expr_is_const(element))
 		{
-			SEMA_ERROR(element, "An untyped list can only have constant elements, you can try to type the list by prefixing the type, e.g. 'int[2] { a, b }'.");
-			return false;
+			RETURN_SEMA_ERROR(element, "An untyped list can only have "
+									   "constant elements, you can try "
+									   "to type the list by prefixing the type, "
+									   "e.g. 'int[2] { a, b }'.");
 		}
-	FOREACH_END();
+	}
 	initializer->expr_kind = EXPR_CONST;
 	initializer->const_expr = (ExprConst) { .const_kind = CONST_UNTYPED_LIST, .untyped_list = init_list };
 	initializer->type = type_untypedlist;
@@ -407,9 +408,8 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	Type *inner_type = NULL;
 	bool is_inferred = type_is_inferred(flattened);
 	int bitmember_count_without_value = 0;
-	VECEACH(init_expressions, i)
+	FOREACH(Expr *, expr, init_expressions)
 	{
-		Expr *expr = init_expressions[i];
 		Decl *member;
 		Type *result = sema_expr_analyse_designator(context, original, expr, &max_index, &member);
 		if (!result) return false;
@@ -528,10 +528,8 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 	const_init->type = type_flatten(initializer->type);
 
 	// Loop through the initializers.
-	Expr **init_expressions = initializer->initializer_list;
-	VECEACH(init_expressions, i)
+	FOREACH(Expr *, expr, initializer->initializer_list)
 	{
-		Expr *expr = init_expressions[i];
 		DesignatorElement **path = expr->designator_expr.path;
 		Expr *value = expr->designator_expr.value;
 		assert(value);
@@ -804,11 +802,11 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	{
 		// Allocate array containing all elements { a, b, c ... }
 		ConstInitializer **const_inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
-		VECEACH(elements, i)
+		FOREACH_IDX(i, Decl *, el, elements)
 		{
 			// Create zero initializers for each of those { a: zeroinit, b: zeroinit, ... }
 			ConstInitializer *element_init = MALLOCS(ConstInitializer);
-			element_init->type = type_flatten(elements[i]->type);
+			element_init->type = type_flatten(el->type);
 			element_init->kind = CONST_INIT_ZERO;
 			const_inits[i] = element_init;
 		}
@@ -1178,9 +1176,8 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 	Expr **initializers = initializer->designated_init_list;
 	MemberIndex size = 0;
 	// Otherwise we assume everything's a designator.
-	VECEACH(initializers, i)
+	FOREACH(Expr *, sub_initializer, initializers)
 	{
-		Expr *sub_initializer = initializers[i];
 		assert(sub_initializer->expr_kind == EXPR_DESIGNATOR);
 
 		DesignatorElement *element = sub_initializer->designator_expr.path[0];
@@ -1265,9 +1262,8 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 	}
 	const char *name = field->identifier_expr.ident;
 	unsigned old_index = *index;
-	VECEACH(decls, i)
+	FOREACH_IDX(i, Decl *, decl, decls)
 	{
-		Decl *decl = decls[i];
 		// The simple case, we have a match.
 		if (decl->name == name)
 		{

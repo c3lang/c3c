@@ -240,9 +240,10 @@ static void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONO
 
 INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const char **strings_to_append)
 {
-	FOREACH_BEGIN(const char *string, strings_to_append)
+	FOREACH(const char *, string, strings_to_append)
+	{
 		vec_add(*list_of_strings_ptr, string);
-	FOREACH_END();
+	}
 }
 
 static void target_append_strings(JSONObject *json, const char *type, const char ***list_ptr, const char *base, const char *override, const char *add, bool is_default)
@@ -290,9 +291,7 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	if (exec_add)
 	{
 		assert(target->exec);
-		FOREACH_BEGIN(const char *exec_command, exec_add)
-			vec_add(target->exec, exec_command);
-		FOREACH_END();
+		FOREACH(const char *, exec_command, exec_add) vec_add(target->exec, exec_command);
 	}
 
 	target->output_dir = get_string(json, "output", type, target->output_dir);
@@ -336,14 +335,15 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 
 	// Dependencies
 	target_append_strings(json, type, &target->libs, "dependencies", "dependencies-override", "dependencies-add", is_default);
-	FOREACH_BEGIN(const char *name, target->libs)
+	FOREACH(const char *, name, target->libs)
+	{
 		if (!str_is_valid_lowercase_name(name))
 		{
 			char *name_copy = strdup(name);
 			str_ellide_in_place(name_copy, 32);
 			error_exit("Error reading %s: invalid library target '%s'.", PROJECT_JSON, name_copy);
 		}
-	FOREACH_END();
+	}
 
 	// debug-info
 	static const char *debug_infos[3] = {
@@ -430,13 +430,14 @@ static void load_into_build_target(JSONObject *json, const char *type, BuildTarg
 	const char **features = get_valid_array(json, "features", type, false);
 	if (features)
 	{
-		FOREACH_BEGIN(const char *feature, features)
+		FOREACH(const char *, feature, features)
+		{
 			if (!str_is_valid_constant(feature))
 			{
 				error_exit("Error reading 'features': '%s' is not a valid feature name.", feature);
 			}
 			vec_add(target->feature_list, feature);
-		FOREACH_END();
+		}
 	}
 
 	// x86vec
@@ -543,9 +544,8 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 	vec_add(project->targets, target);
 	target->name = name;
 	target->type = target_type;
-	VECEACH(project->targets, i)
+	FOREACH(BuildTarget *, other_target, project->targets)
 	{
-		BuildTarget *other_target = project->targets[i];
 		if (other_target == target) continue;
 		if (strcmp(other_target->name, target->name) == 0)
 		{
@@ -611,9 +611,8 @@ static void project_add_targets(Project *project, JSONObject *project_data)
  */
 static BuildTarget *project_select_default_target(Project *project)
 {
-	VECEACH(project->targets, i)
+	FOREACH(BuildTarget *, target, project->targets)
 	{
-		BuildTarget *target = project->targets[i];
 		if (target->type == TARGET_TYPE_EXECUTABLE) return target;
 	}
 	return project->targets[0];
@@ -637,9 +636,8 @@ BuildTarget *project_select_target(Project *project, const char *optional_target
 	{
 		return project_select_default_target(project);
 	}
-	VECEACH(project->targets, i)
+	FOREACH(BuildTarget *, target, project->targets)
 	{
-		BuildTarget *target = project->targets[i];
 		if (str_eq(target->name, optional_target)) return target;
 	}
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, PROJECT_JSON);

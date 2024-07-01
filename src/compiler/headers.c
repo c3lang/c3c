@@ -250,9 +250,10 @@ static void header_gen_function_ptr(HeaderContext *c, Type *type)
 		rtype = type_anyfault;
 	}
 	header_gen_maybe_generate_type(c, rtype, false);
-	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+	FOREACH(Decl *, param, sig->params)
+	{
 		header_gen_maybe_generate_type(c, param->type, false);
-	FOREACH_END();
+	}
 
 	PRINTF("typedef ");
 	header_print_type(c, rtype);
@@ -267,11 +268,12 @@ static void header_gen_function_ptr(HeaderContext *c, Type *type)
 		header_print_type(c, type_get_ptr(extra_ret));
 		PRINTF(" return_ref");
 	}
-	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
 		if (i || extra_ret) PRINTF(", ");
 		header_print_type(c, param->type);
 		if (param->name) PRINTF(" %s", param->name);
-	FOREACH_END();
+	}
 	PRINTF(");\n");
 }
 
@@ -317,7 +319,8 @@ static void header_gen_function(HeaderContext *c, Decl *decl, bool print_fn, boo
 			PRINTF(" return_ref");
 		}
 	}
-	FOREACH_BEGIN_IDX(i, Decl *param, sig->params)
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
 		if (print_fn)
 		{
 			if (i || extra_ret) PRINTF(", ");
@@ -328,15 +331,15 @@ static void header_gen_function(HeaderContext *c, Decl *decl, bool print_fn, boo
 		{
 			header_gen_maybe_generate_type(c, param->type, false);
 		}
-	FOREACH_END();
+	}
 	if (print_fn) PRINTF(");\n");
 }
 
 static void header_gen_members(HeaderContext *c, int indent, Decl **members)
 {
-	VECEACH(members, i)
+	int i = 0;
+	FOREACH(Decl *,member, members)
 	{
-		Decl *member = members[i];
 		Type *type = type_flatten_no_export(member->type);
 		switch (member->decl_kind)
 		{
@@ -370,7 +373,7 @@ static void header_gen_members(HeaderContext *c, int indent, Decl **members)
 					PRINTF(" %s;\n", member->name);
 					break;
 				}
-				PRINTF(" __bits%d;\n", i);
+				PRINTF(" __bits%d;\n", ++i);
 				break;
 			default:
 				UNREACHABLE
@@ -452,21 +455,25 @@ static void header_gen_enum(HeaderContext *c, int indent, Decl *decl)
 	{
 		PRINTF("typedef ");
 		header_print_type(c, underlying_type);
-		PRINTF(" %s;\n", decl_get_extname(decl));FOREACH_BEGIN_IDX(i, Decl *enum_member, decl->enums.values)
+		PRINTF(" %s;\n", decl_get_extname(decl));
+		FOREACH_IDX(i, Decl *, enum_member, decl->enums.values)
+		{
 			PRINTF("%s %s_%s = %d;\n", decl_get_extname(decl), decl_get_extname(decl), enum_member->name, i);
-		FOREACH_END();
+		}
 		return;
 	}
 	PRINTF("typedef enum %s__\n{\n", decl_get_extname(decl));
-	FOREACH_BEGIN(Decl *enum_member, decl->enums.values)
+	FOREACH(Decl *, enum_member, decl->enums.values)
+	{
 		PRINTF("\t %s_%s,\n", decl_get_extname(decl), enum_member->name);
-	FOREACH_END();
+	}
 	PRINTF("} %s;\n", decl_get_extname(decl));
 }
 
 static void header_ensure_member_types_exist(HeaderContext *c, Decl **members)
 {
-	FOREACH_BEGIN(Decl *member, members)
+	FOREACH(Decl *, member, members)
+	{
 		switch (member->decl_kind)
 		{
 			case DECL_VAR:
@@ -481,7 +488,7 @@ static void header_ensure_member_types_exist(HeaderContext *c, Decl **members)
 			default:
 				UNREACHABLE
 		}
-	FOREACH_END();
+	}
 }
 static void header_gen_maybe_generate_type(HeaderContext *c, Type *type, bool is_pointer)
 {
@@ -687,12 +694,14 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 	{
 		Module *module = modules[i];
 		// Produce all constants.
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *var, unit->vars)
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, var, unit->vars)
+			{
 				if (var->var.kind != VARDECL_CONST) continue;
 				header_gen_global_var(c, var, fn_globals, &constants_found);
-			FOREACH_END();
-		FOREACH_END();
+			}
+		}
 	}
 
 	bool globals_found = false;
@@ -701,12 +710,14 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 		Module *module = modules[i];
 
 		// Generate all globals
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *var, unit->vars)
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, var, unit->vars)
+			{
 				if (var->var.kind != VARDECL_GLOBAL) continue;
 				header_gen_global_var(c, var, fn_globals, &globals_found);
-			FOREACH_END();
-		FOREACH_END();
+			}
+		}
 	}
 
 	bool functions_found = false;
@@ -715,11 +726,13 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 		Module *module = modules[i];
 
 		// Generate all functions
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *fn, unit->functions)
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, fn, unit->functions)
+			{
 				header_gen_function(c, fn, fn_globals, &functions_found);
-			FOREACH_END();
-		FOREACH_END();
+			}
+		}
 	}
 
 	bool methods_found = false;
@@ -731,11 +744,13 @@ static void header_gen_global_decls(HeaderContext *c, Module **modules, unsigned
 		while (top_module->parent_module) top_module = top_module->parent_module;
 		if (top_module->name->module == kw_std) continue;
 		// Generate all functions
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *method, unit->methods)
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, method, unit->methods)
+			{
 				header_gen_function(c, method, fn_globals, &methods_found);
-			FOREACH_END();
-		FOREACH_END();
+			}
+		}
 	}
 
 }
@@ -782,12 +797,14 @@ void header_gen(Module **modules, unsigned module_count)
 	{
 		Module *module = modules[i];
 		// Produce all constants.
-		FOREACH_BEGIN(CompilationUnit *unit, module->units)
-			FOREACH_BEGIN(Decl *type, unit->types)
+		FOREACH(CompilationUnit *, unit, module->units)
+		{
+			FOREACH(Decl *, type, unit->types)
+			{
 				if (!type->is_export) continue;
 				header_gen_maybe_generate_type(c, type->type, false);
-			FOREACH_END();
-		FOREACH_END();
+			}
+		}
 		process_queue(c);
 	}
 	process_queue(c);

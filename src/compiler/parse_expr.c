@@ -773,9 +773,8 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 		Expr **exprs = NULL;
 		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
-		VECEACH(exprs, i)
+		FOREACH(Expr *, expr, exprs)
 		{
-			Expr *expr = exprs[i];
 			if (expr->expr_kind == EXPR_DESIGNATOR)
 			{
 				if (designated == 0)

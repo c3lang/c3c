@@ -429,7 +429,8 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 
 static void add_linked_libs(const char ***args_ref, const char **libs, bool is_win)
 {
-	FOREACH_BEGIN(const char *lib, libs)
+	FOREACH(const char *, lib, libs)
+	{
 		INFO_LOG("Linking %s", lib);
 		const char *framework = str_remove_suffix(lib, ".framework");
 		if (framework)
@@ -452,7 +453,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 		else
 		{
 			if (str_has_suffix(lib, ".a") || str_has_suffix(lib, ".so") ||
-					str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
+			    str_has_suffix(lib, ".dylib") || str_has_suffix(lib, ".tbd"))
 			{
 				add_arg(lib);
 			}
@@ -461,7 +462,7 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 				add_arg2("-l", lib);
 			}
 		}
-	FOREACH_END();
+	}
 }
 
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
@@ -541,23 +542,19 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		add_arg(files_to_link[i]);
 	}
 
-	VECEACH(active_target.linker_libdirs, i)
+	FOREACH(const char *, dir, active_target.linker_libdirs)
 	{
-		add_arg2(lib_path_opt, active_target.linker_libdirs[i]);
+		add_arg2(lib_path_opt, dir);
 	}
-	VECEACH(active_target.link_args, i)
+	FOREACH(const char *, arg, active_target.link_args)
 	{
-		add_arg(active_target.link_args[i]);
+		add_arg(arg);
 	}
 	add_linked_libs(args_ref, active_target.linker_libs, use_win);
-	VECEACH(active_target.library_list, i)
+	FOREACH(Library *, library, active_target.library_list)
 	{
-		Library *library = active_target.library_list[i];
 		LibraryTarget *target = library->target_used;
-		VECEACH(target->link_flags, j)
-		{
-			add_arg(target->link_flags[j]);
-		}
+		FOREACH(const char *, flag, target->link_flags) add_arg(flag);
 		add_linked_libs(args_ref, target->linked_libs, use_win);
 	}
 	add_linked_libs(args_ref, global_context.links, use_win);
@@ -633,10 +630,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 
 	bool success;
 	const char *arg_list = "";
-	VECEACH(args, i)
+	FOREACH(const char *, arg, args)
 	{
 		arg_list = str_cat(arg_list, " ");
-		arg_list = str_cat(arg_list, args[i]);
+		arg_list = str_cat(arg_list, arg);
 	}
 	INFO_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
 	if (active_target.print_linking) puts(arg_list);
@@ -688,16 +685,16 @@ bool obj_format_linking_supported(ObjectFormatType format_type)
 const char *concat_string_parts(const char **args)
 {
 	unsigned size_needed = 0;
-	VECEACH(args, i)
+	FOREACH(const char *, arg, args)
 	{
-		size_needed += strlen(args[i]) + 1;
+		size_needed += strlen(arg) + 1;
 	}
 	char *output = malloc_string(size_needed);
 	char *ptr = output;
-	VECEACH(args, i)
+	FOREACH(const char *, arg, args)
 	{
-		unsigned len = (unsigned)strlen(args[i]);
-		memcpy(ptr, args[i], len);
+		unsigned len = (unsigned)strlen(arg);
+		memcpy(ptr, arg, len);
 		ptr += len;
 		*(ptr++) = ' ';
 	}

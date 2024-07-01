@@ -430,20 +430,22 @@ void update_feature_flags(const char ***flags, const char ***removed_flags, cons
 	// Remove from opposite list using string equality
 	// More elegant would be using a Set or Map, but that's overkill
 	// for something that's likely just 1-2 values.
-	FOREACH_BEGIN_IDX(i, const char *value, *to_remove_from)
+	FOREACH_IDX(i, const char *, value, *to_remove_from)
+	{
 		if (str_eq(value, arg))
 		{
 			vec_erase_ptr_at(*to_remove_from, i);
 			break;
 		}
-	FOREACH_END();
+	}
 
 	// First we check that it's not in the list
 	const char ***to_add_to_ref = add ? flags : removed_flags;
-	FOREACH_BEGIN(const char *value, *to_add_to_ref)
+	FOREACH(const char *, value, *to_add_to_ref)
+	{
 		// If we have a match, we don't add it.
 		if (str_eq(value, arg)) return;
-	FOREACH_END();
+	}
 
 	// No match, so add it.
 	vec_add(*to_add_to_ref, arg);

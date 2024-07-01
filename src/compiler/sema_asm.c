@@ -202,9 +202,10 @@ static inline bool sema_check_asm_arg_reg(SemaContext *context, AsmInlineBlock *
 
 static inline ExprAsmArg *asm_reg_find_decl(ExprAsmArg **args, Decl *decl, AsmArgKind kind)
 {
-	FOREACH_BEGIN(ExprAsmArg *val, args)
+	FOREACH(ExprAsmArg *, val, args)
+	{
 		if (val->kind == kind && val->ident.ident_decl == decl) return val;
-	FOREACH_END();
+	}
 	return NULL;
 
 }
@@ -275,10 +276,7 @@ static inline void asm_reg_add_input(AsmInlineBlock *block, ExprAsmArg *arg)
 		asm_add_input(block, arg);
 	}
 ADD_CLOBBER:;
-	foreach(ExprAsmArg *, block->output_vars)
-	{
-		val->ident.early_clobber = true;
-	}
+	FOREACH(ExprAsmArg *, val, block->output_vars) val->ident.early_clobber = true;
 }
 
 static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)

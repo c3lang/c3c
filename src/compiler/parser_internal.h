@@ -66,9 +66,7 @@ INLINE void add_decl_to_list(Decl ***list, Decl *decl)
 {
 	if (decl->decl_kind == DECL_GLOBALS)
 	{
-		FOREACH_BEGIN(Decl *d, decl->decls)
-			vec_add(*list, d);
-		FOREACH_END();
+		FOREACH(Decl *, d, decl->decls) vec_add(*list, d);
 		return;
 	}
 	vec_add(*list, decl);

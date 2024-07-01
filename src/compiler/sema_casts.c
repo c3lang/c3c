@@ -580,9 +580,10 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 	expr->expr_kind = EXPR_INITIALIZER_LIST;
 	expr->initializer_list = list;
 	expr->resolve_status = RESOLVE_NOT_DONE;
-	FOREACH_BEGIN(Expr *inner, list)
+	FOREACH(Expr *, inner, list)
+	{
 		expr_recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
-	FOREACH_END();
+	}
 }
 
 
@@ -797,9 +798,10 @@ static bool rule_ulist_to_struct(CastContext *cc, bool is_explicit, bool is_sile
 		                  vec_size(members), size);
 	}
 	if (!sema_analyse_decl(cc->context, strukt)) return false;
-	FOREACH_BEGIN_IDX(i, Expr *expr, expressions)
+	FOREACH_IDX(i, Expr *, expr, expressions)
+	{
 		if (!may_cast(cc->context, expr, members[i]->type, false, is_silent)) return false;
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -816,18 +818,20 @@ static bool rule_ulist_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 						  cc->to->array.len, size);
 	}
 	Type *base = cc->to->array.base;
-	FOREACH_BEGIN(Expr *expr, expressions)
+	FOREACH(Expr *, expr, expressions)
+	{
 		if (!may_cast(cc->context, expr, base, false, is_silent)) return false;
-	FOREACH_END();
+	}
 	return true;
 }
 
 static bool rule_ulist_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *base = cc->to->array.base;
-	FOREACH_BEGIN(Expr *expr, cc->expr->const_expr.untyped_list)
+	FOREACH(Expr *, expr, cc->expr->const_expr.untyped_list)
+	{
 		if (!may_cast(cc->context, expr, base, false, is_silent)) return false;
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -841,9 +845,10 @@ static bool rule_ulist_to_inferred(CastContext *cc, bool is_explicit, bool is_si
 		RETURN_CAST_ERROR(cc->expr, "This untyped list would infer to a zero elements, which is not allowed.");
 	}
 	Type *base = cc->to->array.base;
-	FOREACH_BEGIN(Expr *expr, expressions)
+	FOREACH(Expr *, expr, expressions)
+	{
 		if (!may_cast(cc->context, expr, base, false, is_silent)) return false;
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -1024,10 +1029,11 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	{
 		Type *interface = cc->to;
 		Decl *pointee_decl = pointee->decl;
-		FOREACH_BEGIN(TypeInfo *interface_type, pointee_decl->interfaces)
+		FOREACH(TypeInfo *, interface_type, pointee_decl->interfaces)
+		{
 			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return false;
 			if (interface_type->type == interface) return true;
-		FOREACH_END();
+		}
 	}
 	if (is_silent) return false;
 	RETURN_CAST_ERROR(cc->expr, "%s cannot be implicitly cast to %s, but you can use an explicit "
@@ -1042,9 +1048,10 @@ static bool rule_interface_to_interface(CastContext *cc, bool is_explicit, bool 
 	Type *from_interface = cc->from;
 	Type *interface = cc->to->canonical;
 	if (!sema_resolve_type_decl(cc->context, from_interface)) return false;
-	FOREACH_BEGIN(TypeInfo *parent, from_interface->decl->interfaces)
+	FOREACH(TypeInfo *, parent, from_interface->decl->interfaces)
+	{
 		if (parent->type->canonical == interface) return true;
-	FOREACH_END();
+	}
 	if (is_silent) return false;
 	RETURN_CAST_ERROR(cc->expr, "%s is not a parent interface of %s, but you can insert an explicit cast '(%s)value' to enforce the (unsafe) conversion.",
 	                  type_quoted_error_string(cc->to), type_quoted_error_string(from_interface),
@@ -1357,17 +1364,19 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 		case CONST_INIT_ARRAY:
 		{
 			Type *element_type = type_flatten(to_type)->array.base;
-			FOREACH_BEGIN(ConstInitializer *element, initializer->init_array.elements)
+			FOREACH(ConstInitializer *, element, initializer->init_array.elements)
+			{
 				vector_const_initializer_convert_to_type(context, element, element_type);
-			FOREACH_END();
+			}
 			break;
 		}
 		case CONST_INIT_ARRAY_FULL:
 		{
 			Type *element_type = type_flatten(to_type)->array.base;
-			FOREACH_BEGIN(ConstInitializer *element, initializer->init_array_full)
+			FOREACH(ConstInitializer *, element, initializer->init_array_full)
+			{
 				vector_const_initializer_convert_to_type(context, element, element_type);
-			FOREACH_END();
+			}
 			break;
 		}
 		case CONST_INIT_VALUE:

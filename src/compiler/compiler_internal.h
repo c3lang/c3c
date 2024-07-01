@@ -3308,16 +3308,12 @@ INLINE void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			return;
 		case CONST_INIT_ARRAY:
 		{
-			FOREACH_BEGIN(ConstInitializer *init2, init->init_array.elements)
-				const_init_set_span(init2, loc);
-			FOREACH_END();
+			FOREACH(ConstInitializer *, init2, init->init_array.elements) const_init_set_span(init2, loc);
 			return;
 		}
 		case CONST_INIT_ARRAY_FULL:
 		{
-			FOREACH_BEGIN(ConstInitializer *init2, init->init_array_full)
-				const_init_set_span(init2, loc);
-			FOREACH_END();
+			FOREACH(ConstInitializer *, init2, init->init_array_full) const_init_set_span(init2, loc);
 			return;
 		}
 		case CONST_INIT_ARRAY_VALUE:
@@ -3433,9 +3429,7 @@ static inline void exprid_set_span(ExprId expr_id, SourceSpan loc)
 }
 static inline void expr_list_set_span(Expr **exprs, SourceSpan loc)
 {
-	FOREACH_BEGIN(Expr *expr, exprs)
-		expr_set_span(expr, loc);
-	FOREACH_END();
+	FOREACH(Expr *, expr, exprs) expr_set_span(expr, loc);
 }
 INLINE void expr_replace(Expr *expr, Expr *replacement)
 {

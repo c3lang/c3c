@@ -337,9 +337,8 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 	Decl **enums = decl->enums.values;
 
 	bool is_unsigned = type_is_unsigned(enum_real_type);
-	VECEACH(enums, i)
+	FOREACH(Decl *, enum_constant, enums)
 	{
-		Decl *enum_constant = enums[i];
 		int64_t val = enum_constant->enum_constant.ordinal;
 		LLVMMetadataRef debug_info = LLVMDIBuilderCreateEnumerator(
 				c->debug.builder,
@@ -374,7 +373,8 @@ static LLVMMetadataRef llvm_debug_structlike_type(GenContext *c, Type *type, LLV
 
 	LLVMMetadataRef *elements = NULL;
 	Decl **members = decl->strukt.members;
-	VECEACH(members, i)
+	unsigned count = vec_size(members);
+	for (unsigned i = 0; i < count; i++)
 	{
 		Decl *member = members[i];
 		LLVMMetadataRef debug_info = llvm_get_debug_member(c,
@@ -532,9 +532,9 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 {
 	FunctionPrototype *prototype = type_get_resolved_prototype(type);
 	// 1. Generate all the parameter types, this may cause this function to be called again!
-	VECEACH(prototype->param_types, i)
+	FOREACH(Type *, param_type, prototype->param_types)
 	{
-		llvm_get_debug_type(c, prototype->param_types[i]);
+		llvm_get_debug_type(c, param_type);
 	}
 	// 2. We might be done!
 	if (type->backend_debug_type) return type->backend_debug_type;
@@ -552,9 +552,9 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 		vec_add(buffer, llvm_get_debug_type(c, type_anyfault));
 		vec_add(buffer, llvm_get_debug_type(c, type_get_ptr(type_no_optional(return_type))));
 	}
-	VECEACH(prototype->param_types, i)
+	FOREACH(Type *, param_type, prototype->param_types)
 	{
-		vec_add(buffer, llvm_get_debug_type(c, prototype->param_types[i]));
+		vec_add(buffer, llvm_get_debug_type(c, param_type));
 	}
 	if (prototype->raw_variadic)
 	{

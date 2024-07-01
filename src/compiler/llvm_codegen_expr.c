@@ -763,9 +763,8 @@ static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr 
 
 static MemberIndex find_member_index(Decl *parent, Decl *member)
 {
-	VECEACH(parent->strukt.members, i)
+	FOREACH_IDX(i, Decl *, maybe_member, parent->strukt.members)
 	{
-		Decl *maybe_member = parent->strukt.members[i];
 		if (member == maybe_member)
 		{
 			return (int)i;
@@ -1782,9 +1781,8 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			ConstInitializer **elements = const_init->init_array.elements;
 			MemberIndex current_index = 0;
 			LLVMValueRef *parts = NULL;
-			VECEACH(elements, i)
+			FOREACH(ConstInitializer *, element, elements)
 			{
-				ConstInitializer *element = elements[i];
 				assert(element->kind == CONST_INIT_ARRAY_VALUE);
 				MemberIndex element_index = element->init_array_value.index;
 				AlignSize alignment;
@@ -1838,11 +1836,12 @@ static inline void llvm_emit_initialize_reference_vector(GenContext *c, BEValue 
 	LLVMTypeRef llvm_type = llvm_get_type(c, real_type);
 	LLVMValueRef vector_val = LLVMGetUndef(llvm_type);
 	BEValue element_val;
-	FOREACH_BEGIN_IDX(i, Expr *element, elements)
+	FOREACH_IDX(i, Expr *, element, elements)
+	{
 		llvm_emit_expr(c, &element_val, element);
 		llvm_value_rvalue(c, &element_val);
 		vector_val = LLVMBuildInsertElement(c->builder, vector_val, element_val.value, llvm_const_int(c, type_usz, i), "");
-	FOREACH_END();
+	}
 	llvm_store_raw(c, ref, vector_val);
 }
 
@@ -1855,12 +1854,14 @@ INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValu
 	AlignSize alignment = ref->alignment;
 	LLVMValueRef array_ptr = ref->value;
 	// Now walk through the elements.
-	FOREACH_BEGIN_IDX(i, Expr *init, elements)
+	FOREACH_IDX(i, Expr *, init, elements)
+	{
 		Decl *member = bitstruct->bitstruct.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
-		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, type, is_bitswap, member, llvm_load_value_store(c, &val));
-	FOREACH_END();
+		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, type, is_bitswap, member,
+		                                 llvm_load_value_store(c, &val));
+	}
 }
 
 static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEValue *ref, Decl *bitstruct, Expr** elements)
@@ -1876,12 +1877,13 @@ static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEVal
 	TypeSize bits = type_bit_size(underlying_type);
 
 	// Now walk through the elements.
-	FOREACH_BEGIN_IDX(i, Expr *init, elements)
+	FOREACH_IDX(i, Expr *, init, elements)
+	{
 		Decl *member = bitstruct->bitstruct.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
-	FOREACH_END();
+	}
 	if (bitstruct_requires_bitswap(bitstruct))
 	{
 		data = llvm_emit_bswap(c, data);
@@ -1918,9 +1920,8 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 
 	bool is_vector = real_type->type_kind == TYPE_VECTOR;
 	// Now walk through the elements.
-	VECEACH(elements, i)
+	FOREACH_IDX(i, Expr *, element, elements)
 	{
-		Expr *element = elements[i];
 		BEValue pointer;
 		if (is_struct)
 		{
@@ -2076,9 +2077,8 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 	AlignSize alignment = ref->alignment;
 	LLVMValueRef array_ptr = ref->value;
 	// Now walk through the elements.
-	VECEACH(elements, i)
+	FOREACH(Expr *, designator, elements)
 	{
-		Expr *designator = elements[i];
 		assert(vec_size(designator->designator_expr.path) == 1);
 		DesignatorElement *element = designator->designator_expr.path[0];
 		assert(element->kind == DESIGNATOR_FIELD);
@@ -2102,9 +2102,8 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 	TypeSize bits = type_bit_size(underlying_type);
 
 	// Now walk through the elements.
-	VECEACH(elements, i)
+	FOREACH(Expr *, designator, elements)
 	{
-		Expr *designator = elements[i];
 		assert(vec_size(designator->designator_expr.path) == 1);
 		DesignatorElement *element = designator->designator_expr.path[0];
 		assert(element->kind == DESIGNATOR_FIELD);
@@ -2139,9 +2138,8 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 	llvm_store_zero(c, ref);
 
 	// Now walk through the elements.
-	VECEACH(elements, i)
+	FOREACH(Expr *, designator, elements)
 	{
-		Expr *designator = elements[i];
 		DesignatorElement **last_element = designator->designator_expr.path + vec_size(designator->designator_expr.path) - 1;
 		llvm_emit_initialize_designated_element(c, ref, 0, designator->designator_expr.path, last_element,
 		                                        designator->designator_expr.value, NULL);
@@ -4899,10 +4897,9 @@ static void llvm_expand_array_to_args(GenContext *c, Type *param_type, LLVMValue
 
 static void llvm_expand_struct_to_args(GenContext *context, Type *param_type, LLVMValueRef expand_ptr, LLVMValueRef *args, unsigned *arg_count_ref, AlignSize alignment)
 {
-	Decl **members = param_type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH_IDX(i, Decl *, member, param_type->decl->strukt.members)
 	{
-		Type *member_type = members[i]->type;
+		Type *member_type = member->type;
 		AlignSize load_align;
 		LLVMValueRef member_ptr = llvm_emit_struct_gep_raw(context,
 														   expand_ptr,
@@ -5658,7 +5655,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 			copy = *prototype;
 			copy.varargs = NULL;
 
-			foreach(Expr*, varargs)
+			FOREACH(Expr *, val, varargs)
 			{
 				vec_add(copy.varargs, type_flatten(val->type));
 			}
@@ -5800,7 +5797,7 @@ INLINE void llvm_emit_varargs_expr(GenContext *c, BEValue *value_ref, Expr **var
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, array);
 	AlignSize alignment = type_alloca_alignment(array);
 	LLVMValueRef array_ref = llvm_emit_alloca(c, llvm_array_type, alignment, varargslots_name);
-	foreach(Expr*, varargs)
+	FOREACH_IDX(foreach_index, Expr *, val, varargs)
 	{
 		llvm_emit_expr(c, &inner_temp, val);
 		llvm_value_fold_optional(c, &inner_temp);
@@ -5948,11 +5945,12 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	// Emit raw varargs
 	if (prototype->raw_variadic && varargs)
 	{
-		FOREACH_BEGIN_IDX(i, Expr *vararg, varargs)
+		FOREACH_IDX(i, Expr *, vararg, varargs)
+		{
 			BEValue *value_ref = &values[arg_count + i];
 			llvm_emit_expr(c, value_ref, vararg);
 			llvm_value_fold_optional(c, value_ref);
-		FOREACH_END();
+		}
 	}
 
 	// 1. Dynamic dispatch.
@@ -6029,9 +6027,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	VECEACH(expr->expression_list, i)
+	FOREACH(Expr *, e, expr->expression_list)
 	{
-		llvm_emit_expr(c, be_value, expr->expression_list[i]);
+		llvm_emit_expr(c, be_value, e);
 	}
 }
 
@@ -6193,7 +6191,8 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 
 		updated = (DebugScope) { .lexical_block = macro_def, .inline_loc = loc, .outline_loc = old_inline_location };
 	}
-	FOREACH_BEGIN(Decl *val, expr->macro_block.params)
+	FOREACH(Decl *, val, expr->macro_block.params)
+	{
 		// Skip vararg
 		if (!val) continue;
 		// In case we have a constant, we never do an emit. The value is already folded.
@@ -6232,7 +6231,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 		}
 		val->is_value = true;
 		val->backend_value = value.value;
-	FOREACH_END();
+	}
 
 	c->debug.block_stack = &updated;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
@@ -6301,9 +6300,8 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 		Expr **elements = expr->initializer_list;
 
 		// Now walk through the elements.
-		VECEACH(elements, i)
+		FOREACH_IDX(i, Expr *, element, elements)
 		{
-			Expr *element = elements[i];
 			llvm_emit_expr(c, &val, element);
 			llvm_value_rvalue(c, &val);
 			vec_value = llvm_update_vector(c, vec_value, val.value, (MemberIndex)i);
@@ -6314,9 +6312,8 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 		vec_value = llvm_get_zero_raw(llvm_type);
 		Expr **elements = expr->designated_init_list;
 
-		VECEACH(elements, i)
+		FOREACH(Expr *, designator, elements)
 		{
-			Expr *designator = elements[i];
 			assert(vec_size(designator->designator_expr.path) == 1);
 			DesignatorElement *element = designator->designator_expr.path[0];
 			llvm_emit_expr(c, &val, designator->designator_expr.value);
@@ -6368,9 +6365,8 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	c->debug.block_stack = outline;
 
 	// Create backend refs on demand.
-	VECEACH(declarations, i)
+	FOREACH_IDX(i, Decl *, decl, declarations)
 	{
-		Decl *decl = declarations[i];
 		if (!values[i]) continue;
 		if (!decl->backend_ref) llvm_emit_local_var_alloca(c, decl);
 	}
@@ -6378,12 +6374,11 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 	c->debug.block_stack = old_inline_loc;
 
 	// Set the values
-	VECEACH(values, i)
+	FOREACH_IDX(j, Expr *, expr, values)
 	{
-		Expr *expr = values[i];
 		if (!expr) continue;
 		llvm_emit_expr(c, value, expr);
-		llvm_store_to_ptr_aligned(c, declarations[i]->backend_ref, value, declarations[i]->alignment);
+		llvm_store_to_ptr_aligned(c, declarations[j]->backend_ref, value, declarations[j]->alignment);
 	}
 
 	c->debug.block_stack = outline;
@@ -6450,13 +6445,13 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	PUSH_CATCH_VAR_BLOCK(addr.value, catch_block);
 
-	VECEACH(expr->catch_unwrap_expr.exprs, i)
+	FOREACH(Expr *, e, expr->catch_unwrap_expr.exprs)
 	{
 		BEValue val;
 		LLVMBasicBlockRef block = llvm_basic_block_new(c, "testblock");
 		llvm_emit_br(c, block);
 		llvm_emit_block(c, block);
-		llvm_emit_expr(c, &val, expr->catch_unwrap_expr.exprs[i]);
+		llvm_emit_expr(c, &val, e);
 		llvm_value_fold_optional(c, &val);
 	}
 

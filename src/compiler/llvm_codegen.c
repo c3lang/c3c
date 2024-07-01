@@ -277,9 +277,8 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
-			VECEACH(elements, i)
+			FOREACH(ConstInitializer *, element, elements)
 			{
-				ConstInitializer *element = elements[i];
 				assert(element->kind == CONST_INIT_ARRAY_VALUE);
 				MemberIndex element_index = element->init_array_value.index;
 				IndexDiff diff = element_index - current_index;
@@ -1301,7 +1300,8 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
-		FOREACH_BEGIN(Decl *test, module->tests)
+		FOREACH(Decl *, test, module->tests)
+		{
 			LLVMValueRef ref;
 			LLVMTypeRef type = opt_test;
 			scratch_buffer_set_extern_decl_name(test, true);
@@ -1311,7 +1311,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".test.name");
 			vec_add(names, name);
 			vec_add(decls, ref);
-		FOREACH_END();
+		}
 	}
 	unsigned test_count = vec_size(decls);
 	LLVMValueRef name_ref;
@@ -1399,7 +1399,8 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
-		FOREACH_BEGIN(Decl *benchmark, module->benchmarks)
+		FOREACH(Decl *, benchmark, module->benchmarks)
+		{
 			LLVMValueRef ref;
 			LLVMTypeRef type = opt_benchmark;
 			scratch_buffer_set_extern_decl_name(benchmark, true);
@@ -1409,7 +1410,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".benchmark.name");
 			vec_add(names, name);
 			vec_add(decls, ref);
-		FOREACH_END();
+		}
 	}
 	unsigned benchmark_count = vec_size(decls);
 	LLVMValueRef name_ref;
@@ -1512,10 +1513,9 @@ void **llvm_gen(Module** modules, unsigned module_count)
 
 LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
 {
-	VECEACH(c->debug.debug_files, i)
+	FOREACH(DebugFile, file, c->debug.debug_files)
 	{
-		DebugFile *ref = &c->debug.debug_files[i];
-		if (ref->file_id == file_id) return ref->debug_file;
+		if (file.file_id == file_id) return file.debug_file;
 	}
 	File *f = source_file_by_id(file_id);
 	LLVMMetadataRef file = LLVMDIBuilderCreateFile(c->debug.builder,
@@ -1552,28 +1552,32 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 	bool only_used = strip_unused();
 
-	FOREACH_BEGIN(CompilationUnit *unit, module->units)
-
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
 		gencontext_init_file_emit(gen_context, unit);
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = (DebugFile){ .debug_file = unit->llvm.debug_file, .file_id = unit->file->file_id };
 
-		FOREACH_BEGIN(Decl *method, unit->methods)
+		FOREACH(Decl *, method, unit->methods)
+		{
 			if (only_used && !method->is_live) continue;
 			llvm_emit_function_decl(gen_context, method);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *type_decl, unit->types)
+		FOREACH(Decl *, type_decl, unit->types)
+		{
 			if (only_used && !type_decl->is_live) continue;
 			llvm_emit_type_decls(gen_context, type_decl);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *enum_decl, unit->enums)
+		FOREACH(Decl *, enum_decl, unit->enums)
+		{
 			if (only_used && !enum_decl->is_live) continue;
 			llvm_emit_type_decls(gen_context, enum_decl);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *func, unit->functions)
+		FOREACH(Decl *, func, unit->functions)
+		{
 			if (only_used && !func->is_live) continue;
 			if (func->func_decl.attr_test)
 			{
@@ -1586,14 +1590,15 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 				vec_add(module->benchmarks, func);
 			}
 			llvm_emit_function_decl(gen_context, func);
-		FOREACH_END();
+		}
 
 
-		FOREACH_BEGIN(Decl *func, unit->lambdas)
+		FOREACH(Decl *, func, unit->lambdas)
+		{
 			if (only_used && !func->is_live) continue;
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, func);
-		FOREACH_END();
+		}
 
 		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
@@ -1601,28 +1606,31 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, unit->main_function);
 		}
 
-	FOREACH_END();
+	}
 
-	FOREACH_BEGIN(CompilationUnit *unit, module->units)
-
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = (DebugFile){
 				.debug_file = unit->llvm.debug_file,
 				.file_id = unit->file->file_id };
 
-		FOREACH_BEGIN(Decl *var, unit->vars)
+		FOREACH(Decl *, var, unit->vars)
+		{
 			if (only_used && !var->is_live) continue;
 			has_elements = true;
 			llvm_get_ref(gen_context, var);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *var, unit->vars)
+		FOREACH(Decl *, var, unit->vars)
+		{
 			if (only_used && !var->is_live) continue;
 			has_elements = true;
 			llvm_emit_global_variable_init(gen_context, var);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *decl, unit->functions)
+		FOREACH(Decl *, decl, unit->functions)
+		{
 			if (decl->func_decl.attr_test && !active_target.testing) continue;
 			if (decl->func_decl.attr_benchmark && !active_target.benchmarking) continue;
 			if (only_used && !decl->is_live) continue;
@@ -1631,13 +1639,14 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 				has_elements = true;
 				llvm_emit_function_body(gen_context, decl);
 			}
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *func, unit->lambdas)
+		FOREACH(Decl *, func, unit->lambdas)
+		{
 			if (only_used && !func->is_live) continue;
 			has_elements = true;
 			llvm_emit_function_body(gen_context, func);
-		FOREACH_END();
+		}
 
 		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
@@ -1645,16 +1654,17 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_body(gen_context, unit->main_function);
 		}
 
-		FOREACH_BEGIN(Decl *decl, unit->methods)
+		FOREACH(Decl *, decl, unit->methods)
+		{
 			if (only_used && !decl->is_live) continue;
 			if (!decl->func_decl.body) continue;
 			has_elements = true;
 			llvm_emit_function_body(gen_context, decl);
-		FOREACH_END();
+		}
 
 		gencontext_end_file_emit(gen_context, unit);
 
-	FOREACH_END();
+	}
 
 	llvm_emit_dynamic_functions(gen_context, gen_context->dynamic_functions);
 

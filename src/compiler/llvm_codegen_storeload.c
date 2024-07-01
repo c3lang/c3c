@@ -122,10 +122,9 @@ LLVMValueRef llvm_store_zero(GenContext *c, BEValue *ref)
 		if (type->type_kind == TYPE_STRUCT)
 		{
 			Decl *decl = type->decl;
-			Decl **members = decl->strukt.members;
-			VECEACH(members, i)
+			FOREACH_IDX(i, Decl *, member, decl->strukt.members)
 			{
-				if (!type_size(members[i]->type)) continue;
+				if (!type_size(member->type)) continue;
 				BEValue member_ref;
 				llvm_emit_struct_member_ref(c, ref, &member_ref, i);
 				llvm_store_zero(c, &member_ref);

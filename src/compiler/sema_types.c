@@ -545,9 +545,8 @@ static uint32_t hash_function(Signature *sig)
 	uintptr_t hash = sig->variadic == VARIADIC_RAW ? 0 : 1;
 	hash = hash * 31 + (uintptr_t)flatten_raw_function_type(type_infoptr(sig->rtype)->type);
 	Decl **params = sig->params;
-	VECEACH(params, i)
+	FOREACH(Decl *, param, params)
 	{
-		Decl *param = params[i];
 		hash = hash * 31 + (uintptr_t)flatten_raw_function_type(param->type->canonical);
 	}
 	return (uint32_t)((hash >> 16) ^ hash);
@@ -597,9 +596,9 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 	scratch_buffer_append("fn ");
 	type_append_name_to_scratch(proto->rtype);
 	scratch_buffer_append_char('(');
-	foreach(Type*, proto->param_types)
+	FOREACH_IDX(index, Type *, val, proto->param_types)
 	{
-		if (foreach_index != 0) scratch_buffer_append(", ");
+		if (index != 0) scratch_buffer_append(", ");
 		type_append_name_to_scratch(val);
 	}
 	scratch_buffer_append_char(')');
@@ -684,9 +683,8 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 	unsigned param_count = vec_size(params);
 	if (param_count != vec_size(other_params)) return -1;
 	if (!compare_func_param(type_infoptr(sig->rtype)->type, proto->rtype)) return -1;
-	VECEACH(params, i)
+	FOREACH_IDX(i, Decl *, param, params)
 	{
-		Decl *param = params[i];
 		Type *other_param = other_params[i];
 		if (!compare_func_param(param->type, other_param->canonical)) return -1;
 	}

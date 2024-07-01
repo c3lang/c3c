@@ -34,14 +34,13 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 			// Avoid recursive issues.
 			decl->type->backend_type = type;
 			Decl **members = decl->strukt.members;
-			VECEACH(members, i)
+			FOREACH(Decl *, member, members)
 			{
-				Decl *member = members[i];
 				if (member->padding)
 				{
 					vec_add(types, llvm_const_padding_type(c, member->padding));
 				}
-				vec_add(types, llvm_get_type(c, members[i]->type));
+				vec_add(types, llvm_get_type(c, member->type));
 			}
 			if (decl->strukt.padding)
 			{
@@ -111,10 +110,9 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			return;
 		case TYPE_STRUCT:
 		{
-			Decl **members = type->decl->strukt.members;
-			VECEACH(members, i)
+			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				param_expand(context, params_ref, members[i]->type);
+				param_expand(context, params_ref, member->type);
 			}
 			return;
 		}
@@ -127,15 +125,15 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		{
 			ByteSize largest = 0;
 			Type *largest_type = NULL;
-			Decl **members = type->decl->strukt.members;
 			// Clang: Unions can be here only in degenerative cases - all the fields are same
 			// after flattening. Thus we have to use the "largest" field.
-			VECEACH(members, i)
+			FOREACH(Decl *, member, type->decl->strukt.members)
 			{
-				if (type_size(type) > largest)
+				Type *member_type = member->type;
+				if (type_size(member_type) > largest)
 				{
-					largest = type_size(type);
-					type = type->canonical;
+					largest = type_size(member_type);
+					largest_type = type_flatten(member_type);
 				}
 			}
 			if (!largest) return;
@@ -256,14 +254,14 @@ LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototyp
 	}
 
 	// Add in all of the required arguments.
-	VECEACH(prototype->param_types, i)
+	FOREACH_IDX(i, Type *, type, prototype->param_types)
 	{
-		add_func_type_param(c, prototype->param_types[i], prototype->abi_args[i], params);
+		add_func_type_param(c, type, prototype->abi_args[i], params);
 	}
 
-	VECEACH(prototype->varargs, i)
+	FOREACH_IDX(j, Type *, type, prototype->varargs)
 	{
-		add_func_type_param(c, prototype->varargs[i], prototype->abi_varargs[i], params);
+		add_func_type_param(c, type, prototype->abi_varargs[j], params);
 	}
 	return retval;
 }
@@ -532,8 +530,8 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_base(type), elements, names, is_external);
 	LLVMTypeRef val_type;
 
-
-	VECEACH(associated_values, ai)
+	unsigned count = vec_size(associated_values);
+	for (unsigned ai = 0; ai < count; ai++)
 	{
 		val_type = NULL;
 		bool mixed = false;
@@ -575,9 +573,8 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 	Decl *decl = type->decl;
 	Decl **decls = decl->strukt.members;
 	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-	VECEACH(decls, i)
+	FOREACH(Decl *, member_decl, decls)
 	{
-		Decl *member_decl = decls[i];
 		if (decl_is_struct_type(member_decl))
 		{
 			llvm_get_typeid(c, member_decl->type);

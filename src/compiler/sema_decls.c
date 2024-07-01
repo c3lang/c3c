@@ -355,9 +355,9 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	decl->strukt.union_rep = max_alignment_element;
 
 	// All members share the same alignment
-	VECEACH(members, i)
+	FOREACH(Decl *, member, members)
 	{
-		members[i]->alignment = decl->alignment;
+		member->alignment = decl->alignment;
 	}
 
 	assert(max_size);
@@ -1481,10 +1481,9 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 
 	if (!signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
 
-	VECEACH(params, i)
+	FOREACH(Decl *, param, params)
 	{
-		Decl *param = params[i];
-		if (!params[i]->var.type_info)
+		if (!param->var.type_info)
 		{
 			RETURN_SEMA_ERROR(param, "All parameters must be explicitly typed for '%s'.", method->name);
 		}
@@ -1497,18 +1496,17 @@ static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorO
 {
 	if (module->is_generic) return NULL;
 	Decl **extensions = module->private_method_extensions;
-	VECEACH(extensions, j)
+	FOREACH(Decl *, extension, extensions)
 	{
-		Decl *extension = extensions[j];
 		if (extension->operator == operator_overload)
 		{
 			unit_register_external_symbol(c->compilation_unit, extension);
 			return extension;
 		}
 	}
-	VECEACH(module->sub_modules, i)
+	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		return operator_in_module(c, module->sub_modules[i], operator_overload);
+		return operator_in_module(c, sub_module, operator_overload);
 	}
 	return NULL;
 }
@@ -1518,10 +1516,8 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 	type = type->canonical;
 	if (!type_may_have_sub_elements(type)) return NULL;
 	Decl *def = type->decl;
-	Decl **funcs = def->methods;
-	VECEACH(funcs, i)
+	FOREACH(Decl *, func, def->methods)
 	{
-		Decl *func = funcs[i];
 		if (func->operator == operator_overload)
 		{
 			unit_register_external_symbol(context->compilation_unit, func);
@@ -1531,10 +1527,9 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 	Decl *extension = operator_in_module(context, context->compilation_unit->module, operator_overload);
 	if (extension) return extension;
 
-	Decl **imports = context->unit->imports;
-	VECEACH(imports, i)
+	FOREACH(Decl *, import, context->unit->imports)
 	{
-		extension = operator_in_module(context, imports[i]->import.module, operator_overload);
+		extension = operator_in_module(context, import->import.module, operator_overload);
 		if (extension) return extension;
 	}
 	return NULL;
@@ -1628,9 +1623,10 @@ bool sema_decl_if_cond(SemaContext *context, Decl *decl)
 
 INLINE Attr* method_find_overload_attribute(Decl *method)
 {
-	FOREACH_BEGIN(Attr *attr, method->attributes)
+	FOREACH(Attr *, attr, method->attributes)
+	{
 		if (attr->attr_kind == ATTRIBUTE_OPERATOR) return attr;
-	FOREACH_END();
+	}
 	UNREACHABLE
 }
 
@@ -1882,13 +1878,15 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
  */
 static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 {
-	FOREACH_BEGIN(Decl *method, interface->interface_methods)
+	FOREACH(Decl *, method, interface->interface_methods)
+	{
 		if (method->name == name) return method;
-	FOREACH_END();
-	FOREACH_BEGIN(TypeInfo *parent_type, interface->interfaces)
+	}
+	FOREACH(TypeInfo *, parent_type, interface->interfaces)
+	{
 		Decl *res = sema_interface_method_by_name(parent_type->type->decl, name);
 		if (res) return res;
-	FOREACH_END();
+	}
 	return NULL;
 }
 
@@ -1925,7 +1923,8 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
 	Decl *first_interface = NULL;
 
 	// Walk through all implemented interfaces.
-	FOREACH_BEGIN(TypeInfo *proto, parent_type->decl->interfaces)
+	FOREACH(TypeInfo *, proto, parent_type->decl->interfaces)
+	{
 		Decl *interface = proto->type->decl;
 		Decl *match = sema_interface_method_by_name(interface, name);
 		if (!match) continue;
@@ -1944,7 +1943,7 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
 		// Update the match.
 		first_match = match;
 		first_interface = interface;
-	FOREACH_END();
+	}
 
 	// No match => return NULL.
 	if (!first_match) return NULL;
@@ -2006,16 +2005,18 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
 	}
 
 	// Check each param.
-	FOREACH_BEGIN_IDX(i, Decl *param, this_params)
+	FOREACH_IDX(i, Decl *, param, this_params)
+	{
 		if (i == 0) continue;
 		if (param->type->canonical != any_params[i]->type->canonical)
 		{
-			SEMA_ERROR(vartype(param), "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
+			SEMA_ERROR(vartype(param),
+			           "The prototype argument has type %s, but in this function it has type %s. Please make them match.",
 			           type_quoted_error_string(any_params[i]->type), type_quoted_error_string(param->type));
 			SEMA_NOTE(vartype(any_params[i]), "The interface definition is here.");
 			return false;
 		}
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -2636,7 +2637,8 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 	}
 
 	// Walk through all of the attributes.
-	FOREACH_BEGIN(Attr *attr, attrs)
+	FOREACH(Attr *, attr, attrs)
+	{
 		if (attr->is_custom)
 		{
 			if (!sema_analyse_custom_attribute(context, decl, attr, domain, top, erase_decl)) return false;
@@ -2647,7 +2649,7 @@ static bool sema_analyse_attributes_inner(SemaContext *context, Decl *decl, Attr
 			if (!sema_analyse_attribute(context, decl, attr, domain, erase_decl)) return false;
 		}
 		if (*erase_decl) return true;
-	FOREACH_END();
+	}
 	return true;
 }
 
@@ -2679,15 +2681,14 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 		const char *param_name = directive->contract_stmt.param.name;
 		Decl *extra_param = NULL;
 		Decl *param = NULL;
-		VECEACH(params, j)
+		FOREACH(Decl *, other_param, params)
 		{
-			param = params[j];
+			param = other_param;
 			if (param && param->name == param_name) goto NEXT;
 		}
-		VECEACH(extra_params, j)
+		FOREACH(Decl *, extra, extra_params)
 		{
-			assert(extra_params);
-			param = extra_params[j];
+			param = extra;
 			if (param && param->name == param_name) goto NEXT;
 		}
 		RETURN_SEMA_ERROR(&directive->contract_stmt.param, "There is no parameter '%s', did you misspell it?", param_name);
@@ -3629,7 +3630,8 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
-	VECEACH(module->parameters, i)
+	unsigned count = vec_size(module->parameters);
+	for (unsigned i = 0; i < count; i++)
 	{
 		const char *param_name = module->parameters[i];
 		bool is_value = str_is_valid_constant(param_name);
@@ -3667,10 +3669,9 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 	Module *new_module = compiler_find_or_create_module(path, NULL);
 	new_module->is_generic = false;
 	new_module->generic_module = module;
-	CompilationUnit **units = module->units;
-	VECEACH(units, i)
+	FOREACH(CompilationUnit *, unit, module->units)
 	{
-		vec_add(new_module->units, unit_copy(new_module, units[i]));
+		vec_add(new_module->units, unit_copy(new_module, unit));
 	}
 	CompilationUnit *first_context = new_module->units[0];
 	for (unsigned  i = 0; i < decls; i++)
@@ -3691,7 +3692,8 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Module *module, Expr **params, bool mangled)
 {
 	// First resolve
-	FOREACH_BEGIN_IDX(i, Expr *param, params)
+	FOREACH_IDX(i, Expr *, param, params)
+	{
 		if (param->expr_kind == EXPR_TYPEINFO)
 		{
 			TypeInfo *type_info = param->type_expr;
@@ -3730,7 +3732,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			}
 			assert(expr_is_const(param));
 		}
-	FOREACH_END();
+	}
 
 	scratch_buffer_clear();
 	if (mangled)
@@ -3742,8 +3744,9 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	{
 		scratch_buffer_append("(<");
 	}
-	FOREACH_BEGIN_IDX(i, Expr *param, params)
-		if (i != 0)
+	FOREACH_IDX(j, Expr *, param, params)
+	{
+		if (j != 0)
 		{
 			scratch_buffer_append(mangled ? "$" : ", ");
 		}
@@ -3807,7 +3810,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 				}
 			}
 		}
-	FOREACH_END();
+	}
 	scratch_buffer_append(mangled ? "$" : ">)");
 	return true;
 }
@@ -3824,7 +3827,8 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 		SemaContext temp_context;
 		assert(ast->contract_stmt.kind == CONTRACT_REQUIRE);
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
-		FOREACH_BEGIN(Expr *expr, ast->contract_stmt.contract.decl_exprs->expression_list)
+		FOREACH(Expr *, expr, ast->contract_stmt.contract.decl_exprs->expression_list)
+		{
 			CondResult res = sema_check_comp_time_bool(new_context, expr);
 			if (res == COND_MISSING) goto FAIL;
 			if (res == COND_TRUE) continue;
@@ -3839,10 +3843,10 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 				sema_error_at(c, error_span, "Parameter(s) failed validation: %s",
 				              ast->contract_stmt.contract.expr_string);
 			}
-		FAIL:
+			FAIL:
 			sema_context_destroy(&temp_context);
 			return false;
-		FOREACH_END();
+		}
 		sema_context_destroy(&temp_context);
 	}
 	return true;

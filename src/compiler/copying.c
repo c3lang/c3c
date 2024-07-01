@@ -72,10 +72,7 @@ INLINE void fixup_astid(CopyStruct *c, AstId *astid_ref)
 Expr **copy_expr_list(CopyStruct *c, Expr **expr_list)
 {
 	Expr **result = NULL;
-	VECEACH(expr_list, i)
-	{
-		vec_add(result, copy_expr(c, expr_list[i]));
-	}
+	FOREACH(Expr *,expr, expr_list) vec_add(result, copy_expr(c, expr));
 	return result;
 }
 
@@ -96,10 +93,7 @@ static inline void copy_flow(CopyStruct *c, Ast *ast)
 static TypeInfo** type_info_copy_list_from_macro(CopyStruct *c, TypeInfo **to_copy)
 {
 	TypeInfo **result = NULL;
-	VECEACH(to_copy, i)
-	{
-		vec_add(result, copy_type_info(c, to_copy[i]));
-	}
+	FOREACH(TypeInfo *, type, to_copy) vec_add(result, copy_type_info(c, type));
 	return result;
 }
 
@@ -131,10 +125,9 @@ INLINE DeclId declid_copy_deep(CopyStruct *c, DeclId source)
 static DesignatorElement **macro_copy_designator_list(CopyStruct *c, DesignatorElement **list)
 {
 	DesignatorElement **result = NULL;
-	VECEACH(list, i)
+	FOREACH(DesignatorElement *, to_copy, list)
 	{
 		DesignatorElement *element = MALLOCS(DesignatorElement);
-		DesignatorElement *to_copy = list[i];
 		*element = *to_copy;
 		switch (to_copy->kind)
 		{
@@ -206,10 +199,11 @@ void copy_range(CopyStruct *c, Range *range)
 INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitializer **initializer_list)
 {
 	ConstInitializer **initializer = NULL;
-	FOREACH_BEGIN(ConstInitializer *element, initializer_list)
+	FOREACH(ConstInitializer *, element, initializer_list)
+	{
 		copy_const_initializer(c, &element);
 		vec_add(initializer, element);
-	FOREACH_END();
+	}
 	return initializer;
 }
 
@@ -728,10 +722,7 @@ RETRY:
 Ast **copy_ast_list(CopyStruct *c, Ast **to_copy)
 {
 	Ast **result = NULL;
-	VECEACH(to_copy, i)
-	{
-		vec_add(result, ast_copy_deep(c, to_copy[i]));
-	}
+	FOREACH(Ast *, ast, to_copy) vec_add(result, ast_copy_deep(c, ast));
 	return result;
 }
 
@@ -767,9 +758,9 @@ static Attr **copy_attributes(CopyStruct *c, Attr** attr_list)
 {
 	if (!attr_list) return attr_list;
 	Attr** list = NULL;
-	VECEACH(attr_list, i)
+	FOREACH(Attr *, attribute, attr_list)
 	{
-		Attr *attribute = attr_list[i];
+
 		Attr *copy = MALLOCS(Attr);
 		*copy = *attribute;
 		MACRO_COPY_EXPR_LIST(copy->exprs);
@@ -811,10 +802,7 @@ Decl *copy_lambda_deep(Decl *decl)
 Decl **copy_decl_list(CopyStruct *c, Decl **decl_list)
 {
 	Decl **result = NULL;
-	VECEACH(decl_list, i)
-	{
-		vec_add(result, copy_decl(c, decl_list[i]));
-	}
+	FOREACH(Decl *, decl, decl_list) vec_add(result, copy_decl(c, decl));
 	return result;
 }
 

@@ -123,9 +123,10 @@ INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSiz
 
 INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 {
-	FOREACH_BEGIN(Attr *attr, attrs)
+	FOREACH(Attr *, attr, attrs)
+	{
 		if (attr->attr_kind == attr_type) return attr;
-	FOREACH_END();
+	}
 	return NULL;
 }
 

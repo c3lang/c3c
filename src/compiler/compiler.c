@@ -77,11 +77,11 @@ void compiler_init(const char *std_lib_dir)
 
 static void compiler_lex(void)
 {
-	VECEACH(global_context.sources, i)
+	FOREACH(const char *, source, global_context.sources)
 	{
 		bool loaded = false;
 		const char *error;
-		File *file = source_file_load(global_context.sources[i], &loaded, &error);
+		File *file = source_file_load(source, &loaded, &error);
 		if (!file) error_exit(error);
 		if (loaded) continue;
 		Lexer lexer = { .file = file };
@@ -293,11 +293,11 @@ void compiler_parse(void)
 	{
 		puts("# input-files-begin");
 	}
-	VECEACH(global_context.sources, i)
+	FOREACH(const char *, source, global_context.sources)
 	{
 		bool loaded = false;
 		const char *error;
-		File *file = source_file_load(global_context.sources[i], &loaded, &error);
+		File *file = source_file_load(source, &loaded, &error);
 		if (!file) error_exit(error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
@@ -666,9 +666,8 @@ void compiler_compile(void)
 static const char **target_expand_source_names(const char** dirs, const char **suffix_list, int suffix_count, bool error_on_mismatch)
 {
 	const char **files = NULL;
-	VECEACH(dirs, i)
+	FOREACH(const char *, name, dirs)
 	{
-		const char *name = dirs[i];
 		INFO_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
@@ -768,7 +767,8 @@ static void setup_bool_define(const char *id, bool value)
 void vendor_fetch(BuildOptions *options)
 {
 	unsigned count = 0;
-	FOREACH_BEGIN(const char *lib, options->libraries_to_fetch)
+	FOREACH(const char *, lib, options->libraries_to_fetch)
+	{
 		const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
 		printf("Fetching library '%s'...", lib);
 		fflush(stdout);
@@ -782,7 +782,7 @@ void vendor_fetch(BuildOptions *options)
 		{
 			printf("FAILED: '%s'\n", error);
 		}
-	FOREACH_END();
+	}
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
 }
@@ -963,18 +963,20 @@ static void execute_scripts(void)
 			error_exit("Failed to open script dir '%s'", active_target.script_dir);
 		}
 	}
-	FOREACH_BEGIN(const char *exec, active_target.exec)
+	FOREACH(const char *, exec, active_target.exec)
+	{
 		StringSlice execs = slice_from_string(exec);
 		StringSlice call = slice_next_token(&execs, ' ');
-		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' || call.ptr[call.len - 2] != '3')
+		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' ||
+		    call.ptr[call.len - 2] != '3')
 		{
 			(void) execute_cmd(exec, false);
 			continue;
 		}
 		scratch_buffer_clear();
 		scratch_buffer_append_len(call.ptr, call.len);
-		(void)compile_and_invoke(scratch_buffer_to_string(), execs.len ? execs.ptr : "");
-	FOREACH_END();
+		(void) compile_and_invoke(scratch_buffer_to_string(), execs.len ? execs.ptr : "");
+	}
 	dir_change(old_path);
 	free(old_path);
 }
@@ -997,10 +999,11 @@ void compile()
 	global_context.sources = active_target.sources;
 
 	TokenType type = TOKEN_CONST_IDENT;
-	FOREACH_BEGIN(const char *feature_flag, active_target.feature_list)
+	FOREACH(const char *, feature_flag, active_target.feature_list)
+	{
 		feature_flag = symtab_preset(feature_flag, TOKEN_CONST_IDENT);
-		htable_set(&global_context.features, (void *)feature_flag, (void *)feature_flag);
-	FOREACH_END();
+		htable_set(&global_context.features, (void *) feature_flag, (void *) feature_flag);
+	}
 
 	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_int);
 	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_int);
@@ -1068,9 +1071,10 @@ void global_context_add_generic_decl(Decl *decl)
 
 void global_context_add_link(const char *link)
 {
-	FOREACH_BEGIN(const char *existing_link, global_context.links)
+	FOREACH(const char *, existing_link, global_context.links)
+	{
 		if (str_eq(link, existing_link)) return;
-	FOREACH_END();
+	}
 	vec_add(global_context.links, link);
 }
 
@@ -1081,9 +1085,10 @@ SectionId global_context_register_section(const char *section)
 	scratch_buffer_append(section);
 	TokenType type = TOKEN_INVALID_TOKEN;
 	const char *result = scratch_buffer_interned();
-	FOREACH_BEGIN_IDX(i, const char *candidate, global_context.section_list)
+	FOREACH_IDX(i, const char *, candidate, global_context.section_list)
+	{
 		if (result == candidate) return i + 1;
-	FOREACH_END();
+	}
 	unsigned len = vec_size(global_context.section_list);
 	if (len >= MAX_SECTIONS)
 	{

@@ -405,9 +405,9 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 
 static inline bool expr_list_is_constant_eval(Expr **exprs, ConstantEvalKind eval_kind)
 {
-	VECEACH(exprs, i)
+	FOREACH(Expr *, expr, exprs)
 	{
-		if (!expr_is_constant_eval(exprs[i], eval_kind)) return false;
+		if (!expr_is_constant_eval(expr, eval_kind)) return false;
 	}
 	return true;
 }
@@ -559,10 +559,8 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 				if (index > len || !index) return NULL;
 				index = len - index;
 			}
-			ConstInitializer **sub_values = initializer->init_array.elements;
-			VECEACH(sub_values, i)
+			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
 			{
-				ConstInitializer *init = sub_values[i];
 				assert(init->kind == CONST_INIT_ARRAY_VALUE);
 				if (init->init_array_value.index == index) return init->init_array_value.element;
 			}
@@ -766,11 +764,13 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CAST:
 			return exprid_is_pure(expr->cast_expr.expr);
 		case EXPR_EXPRESSION_LIST:
-			VECEACH(expr->expression_list, i)
+		{
+			FOREACH(Expr *, e, expr->expression_list)
 			{
-				if (!expr_is_pure(expr->expression_list[i])) return false;
+				if (!expr_is_pure(e)) return false;
 			}
 			return true;
+		}
 		case EXPR_TYPEID_INFO:
 			return exprid_is_pure(expr->typeid_info_expr.parent);
 		case EXPR_SLICE:

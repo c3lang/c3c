@@ -62,10 +62,11 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	}
 	if (attributes)
 	{
-		FOREACH_BEGIN(Decl *d, decls)
+		FOREACH(Decl *, d, decls)
+		{
 			if (d == decl) continue;
 			d->attributes = copy_attributes_single(attributes);
-		FOREACH_END();
+		}
 	}
 	ast->decls_stmt = decls;
 	ast->ast_kind = AST_DECLS_STMT;
@@ -105,11 +106,12 @@ static inline Ast *parse_declaration_stmt(ParseContext *c)
 		result->declare_stmt->visibility = VISIBLE_LOCAL;
 		return result;
 	}
-	FOREACH_BEGIN(Decl *var, result->decls_stmt)
+	FOREACH(Decl *, var, result->decls_stmt)
+	{
 		var->var.is_threadlocal = is_threadlocal;
 		var->var.is_static = is_static || is_threadlocal;
 		var->visibility = VISIBLE_LOCAL;
-	FOREACH_END();
+	}
 	return result;
 }
 

@@ -137,10 +137,9 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	// Variable array structs are always passed by pointer.
 	if (type->decl->has_variable_array) return x64_indirect_return_result(type);
 
-	Decl **members = type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, type->decl->strukt.members)
 	{
-		Type *member_type = type_lowering(members[i]->type->canonical);
+		Type *member_type = type_lowering(member->type->canonical);
 		ABIArgInfo *member_info;
 		Registers temp_needed_registers = { 0, 0 };
 		if (x64_type_is_structure(member_type))
@@ -235,9 +234,8 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 	bool is_union = type->type_kind == TYPE_UNION;
 
 	Decl **members = type->decl->strukt.members;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, members)
 	{
-		Decl *member = members[i];
 		ByteSize offset = offset_base + member->offset;
 		// The only case a 256-bit or a 512-bit wide vector could be used is when
 		// the struct contains a single 256-bit or 512-bit field. Early check
@@ -362,10 +360,10 @@ static Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 	if (type_size(decl->type) <= offset) return NULL;
 	Decl **members = decl->strukt.members;
 	Decl *last_match = NULL;
-	VECEACH(members, i)
+	FOREACH(Decl *, member, members)
 	{
-		if (members[i]->offset > (MemberIndex)offset) break;
-		last_match = members[i];
+		if (member->offset > (MemberIndex)offset) break;
+		last_match = member;
 	}
 	assert(last_match);
 	return last_match;
@@ -456,10 +454,8 @@ bool x64_bits_contain_no_user_data(Type *type, unsigned start, unsigned end)
 	}
 	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION)
 	{
-		Decl **members = type->decl->strukt.members;
-		VECEACH(members, i)
+		FOREACH(Decl *, member, type->decl->strukt.members)
 		{
-			Decl *member = members[i];
 			unsigned offset = member->offset;
 			if (offset >= end) break;
 			unsigned field_start = offset < start ? start - offset : 0;

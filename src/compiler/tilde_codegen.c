@@ -397,31 +397,35 @@ static TildeContext *tilde_gen_module(Module *module, TB_FeatureSet *feature_set
 	codegen_setup_object_names(module, &context->ir_filename, &context->asm_filename, &context->object_filename);
 	context->module = tb_module;
 
-	FOREACH_BEGIN(CompilationUnit *unit, module->units)
-
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
 		REMINDER("Add debug info");
 		/* gencontext_init_file_emit(gen_context, unit);
 		context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = unit->llvm.debug_file;*/
 
-		FOREACH_BEGIN(Decl *initializer, unit->xxlizers)
+		FOREACH(Decl *, initializer, unit->xxlizers)
+		{
 			REMINDER("Add xxlizer");
 			//tilde_emit_xxlizer(gen_context, initializer);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *method, unit->methods)
+		FOREACH(Decl *, method, unit->methods)
+		{
 			tilde_emit_function_decl(context, method);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *type_decl, unit->types)
+		FOREACH(Decl *, type_decl, unit->types)
+		{
 			tilde_emit_type_decls(context, type_decl);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *enum_decl, unit->enums)
+		FOREACH(Decl *, enum_decl, unit->enums)
+		{
 			tilde_emit_type_decls(context, enum_decl);
-		FOREACH_END();
+		}
 
-		FOREACH_BEGIN(Decl *func, unit->functions)
+		FOREACH(Decl *, func, unit->functions)
 			if (func->func_decl.attr_test)
 			{
 				if (!active_target.testing) continue;
@@ -442,21 +446,21 @@ static TildeContext *tilde_gen_module(Module *module, TB_FeatureSet *feature_set
 
 	FOREACH_END();
 
-	FOREACH_BEGIN(CompilationUnit *unit, module->units)
+	FOREACH(CompilationUnit *, unit, module->units)
 
 	/*--- TODO
 		context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		context->debug.file = unit->llvm.debug_file;
 */
-		FOREACH_BEGIN(Decl *var, unit->vars)
+		FOREACH(Decl *, var, unit->vars)
 			tilde_get_ref(context, var);
 		FOREACH_END();
 
-		FOREACH_BEGIN(Decl *var, unit->vars)
+		FOREACH(Decl *, var, unit->vars)
 			// TODO tilde_emit_global_variable_init(context, var);
 		FOREACH_END();
 
-		FOREACH_BEGIN(Decl *decl, unit->functions)
+		FOREACH(Decl *, decl, unit->functions)
 			if (decl->func_decl.attr_test && !active_target.testing) continue;
 			if (decl->func_decl.body) tilde_emit_function_body(context, decl);
 		FOREACH_END();
@@ -466,7 +470,7 @@ static TildeContext *tilde_gen_module(Module *module, TB_FeatureSet *feature_set
 			tilde_emit_function_body(context, unit->main_function);
 		}
 
-		FOREACH_BEGIN(Decl *decl, unit->methods)
+		FOREACH(Decl *, decl, unit->methods)
 			if (decl->func_decl.body) tilde_emit_function_body(context, decl);
 		FOREACH_END();
 
@@ -619,7 +623,7 @@ const char *tilde_codegen(void *context)
 	TB_DebugFormat debug_format = is_win32 ? TB_DEBUGFMT_CODEVIEW : TB_DEBUGFMT_DWARF;
 	if (active_target.debug_info == DEBUG_INFO_NONE) debug_format = TB_DEBUGFMT_NONE;
 
-	FOREACH_BEGIN(TB_Function *function, c->functions)
+	FOREACH(TB_Function *, function, c->functions)
 		if (!tb_module_compile_function(c->module, function, TB_ISEL_FAST))
 		{
 			error_exit("Failed to compile function.");
