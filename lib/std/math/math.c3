@@ -266,7 +266,7 @@ macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))up
  * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
  * @require values::@assign_to(sgn, values::promote_int(mag))
  **/
-macro copysign(mag, sgn) => $$copysign(values::promote_int(mag), ($typeof(values::promote_int(mag)))sgn);
+macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
@@ -339,7 +339,10 @@ macro ln(x) => $$log(values::promote_int(x));
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
  * @require values::@is_promotable_to_floatlike(base) `The base must be a number or a float vector`
  **/
-macro log(x, base) => $$log(values::promote_int(x)) / $$log(values::promote_int(base));
+macro log(x, base)
+{
+	return $$log(values::promote_int_same(x, base)) / $$log(values::promote_int_same(base, x));
+}
 
 /**
  * @require values::@is_promotable_to_floatlike(x) `The input must be a number or a float vector`
@@ -403,7 +406,7 @@ macro nearbyint(x) => $$nearbyint(x);
 macro pow(x, exp)
 {
 	$if types::is_floatlike($typeof(exp)):
-		return $$pow(values::promote_int(x), ($typeof(values::promote_int(x)))exp);
+		return $$pow(values::promote_int_same(x, exp), ($typeof(values::promote_int_same(x, exp)))exp);
 	$else
 		return $$pow_int(values::promote_int(x), exp);
 	$endif

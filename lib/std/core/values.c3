@@ -26,5 +26,21 @@ macro promote_int(x)
 	$endif
 }
 
+macro promote_int_same(x, y)
+{
+	$if @is_int(x):
+		$switch
+		$case $and(@is_vector(y), $typeof(y).inner == float.typeid):
+			return (float)x;
+		$case $typeof(y).typeid == float.typeid:
+			return (float)x;
+		$default:
+			return (double)x;
+		$endswitch
+	$else
+		return x;
+	$endif
+}
+
 macro TypeKind @inner_kind(#value) => types::inner_kind($typeof(#value));
 
