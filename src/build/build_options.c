@@ -179,7 +179,7 @@ static void usage(void)
 	PRINTF("  --print-input              - Print inputted C3 files to stdout.");
 	PRINTF("");
 	PRINTF("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
-	PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static, dynamic (default).");
+	PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 	PRINTF("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
 	PRINTF("");
 	PRINTF("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
@@ -190,6 +190,7 @@ static void usage(void)
 	PRINTF("  --linux-crtbegin <dir>     - Set the directory to use for finding crtbegin.o and related files.");
 	PRINTF("");
 	PRINTF("  --vector-conv=<option>     - Set vector conversion behaviour: default, old.");
+	PRINTF("  --sanitize=<option>        - Enable sanitizer: address, memory, thread.");
 }
 
 
@@ -1052,7 +1053,12 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("wincrt")))
 			{
-				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
+				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 5, wincrt_linking);
+				return;
+			}
+			if ((argopt = match_argopt("sanitize")))
+			{
+				options->sanitize_mode = (SanitizeMode)parse_multi_option(argopt, 4, sanitize_modes);
 				return;
 			}
 			if (match_longopt("macos-sdk-version"))
@@ -1238,6 +1244,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
+		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
@@ -1246,7 +1253,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.build_dir = NULL,
 		.output_dir = NULL,
 		.script_dir = NULL,
-
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
 	{

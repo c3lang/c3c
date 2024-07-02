@@ -494,6 +494,9 @@ typedef struct
 			bool attr_finalizer : 1;
 			bool attr_interface_method : 1;
 			bool attr_dynamic : 1;
+			bool attr_nosanitize_address : 1;
+			bool attr_nosanitize_memory : 1;
+			bool attr_nosanitize_thread : 1;
 			bool is_lambda : 1;
 			union
 			{

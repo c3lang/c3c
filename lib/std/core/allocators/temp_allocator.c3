@@ -60,21 +60,12 @@ fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 	if (old_pointer + old_size == &self.data[self.used])
 	{
 		self.used -= old_size;
+		asan::poison_memory_region(&self.data[self.used], old_size);
 	}
 }
 fn void TempAllocator.reset(&self, usz mark) @dynamic
 {
 	TempAllocatorPage *last_page = self.last_page;
-	$if env::COMPILER_SAFE_MODE:
-		if (!last_page)
-		{
-			usz cleaned = self.used - mark;
-			if (cleaned > 0)
-			{
-				self.data[mark : cleaned] = 0xAA;
-			}
-		}
-	$endif
 	while (last_page && last_page.mark > mark)
 	{
 		TempAllocatorPage *to_free = last_page;
@@ -82,6 +73,19 @@ fn void TempAllocator.reset(&self, usz mark) @dynamic
 		self._free_page(to_free)!!;
 	}
 	self.last_page = last_page;
+	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
+		if (!last_page)
+		{
+			usz cleaned = self.used - mark;
+			if (cleaned > 0)
+			{
+				$if env::COMPILER_SAFE_MODE:
+					self.data[mark : cleaned] = 0xAA;
+				$endif
+				asan::poison_memory_region(&self.data[mark], cleaned);
+			}
+		}
+	$endif
 	self.used = mark;
 }
 
@@ -147,9 +151,10 @@ fn void*! TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	}
 	usz new_usage = (usz)(mem - start_mem) + size;
 
-	// Arena alignment, simple!
+	// Arena allocation, simple!
 	if (new_usage <= self.capacity)
 	{
+		asan::unpoison_memory_region(starting_ptr, new_usage - self.used);
 		TempAllocatorChunk* chunk_start = mem - TempAllocatorChunk.sizeof;
 		chunk_start.size = size;
 		self.used = new_usage;

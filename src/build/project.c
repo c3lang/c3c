@@ -38,6 +38,7 @@ const char *project_default_keys[][2] = {
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
@@ -52,7 +53,7 @@ const char *project_default_keys[][2] = {
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"version", "Version using semantic versioning."},
 		{"warnings", "Warnings used for all targets."},
-		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"winsdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
@@ -107,6 +108,7 @@ const char* project_target_keys[][2] = {
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"show-backtrace", "Print backtrace on signals."},
@@ -122,7 +124,7 @@ const char* project_target_keys[][2] = {
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"version", "Version using semantic versioning."},
 		{"warnings", "Warnings used for all targets."},
-		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"winsdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
@@ -274,11 +276,27 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 	RelocModel reloc = GET_SETTING(RelocModel, "reloc", reloc_models, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
 	if (reloc != RELOC_DEFAULT) target->reloc_model = reloc;
 
+	// Sanitize
+	SanitizeMode sanitize_mode = GET_SETTING(SanitizeMode, "sanitize", sanitize_modes, "'none', 'address', 'memory' or 'thread'.");
+	switch (sanitize_mode)
+	{
+		case SANITIZE_NOT_SET: break;
+		case SANITIZE_NONE:
+			target->feature.sanitize_address = false;
+			target->feature.sanitize_memory = false;
+			target->feature.sanitize_thread = false;
+			break;
+		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
+		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
+		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
+		default: UNREACHABLE;
+	}
+
 	// Cpu
 	target->cpu = get_string(PROJECT_JSON, target_name, json, "cpu", target->cpu);
 
 	// WinCRT
-	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static' or 'dynamic'.");
+	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static-debug', 'staticdebug, 'dynamic-debug' or 'dynamic'.");
 	if (wincrt != WIN_CRT_DEFAULT) target->win.crt_linking = wincrt;
 
 	// fp-math
