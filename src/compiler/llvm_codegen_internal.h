@@ -221,6 +221,7 @@ typedef struct
 	unsigned ssub_overflow;
 	unsigned ssub_sat;
 	unsigned trap;
+	unsigned debugtrap;
 	unsigned trunc;
 	unsigned uadd_overflow;
 	unsigned uadd_sat;

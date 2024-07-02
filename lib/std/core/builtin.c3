@@ -159,6 +159,11 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
 	$$unreachable();
 }
 
+macro void breakpoint() @builtin
+{
+	$$debugtrap();
+}
+
 macro any_make(void* ptr, typeid type) @builtin
 {
 	return $$any_make(ptr, type);

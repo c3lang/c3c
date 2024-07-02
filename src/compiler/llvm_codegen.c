@@ -740,6 +740,7 @@ static void llvm_codegen_setup()
 	intrinsic_id.ctlz = lookup_intrinsic("llvm.ctlz");
 	intrinsic_id.ctpop = lookup_intrinsic("llvm.ctpop");
 	intrinsic_id.cttz = lookup_intrinsic("llvm.cttz");
+	intrinsic_id.debugtrap = lookup_intrinsic("llvm.debugtrap");
 	intrinsic_id.exp = lookup_intrinsic("llvm.exp");
 	intrinsic_id.exp2 = lookup_intrinsic("llvm.exp2");
 	intrinsic_id.expect = lookup_intrinsic("llvm.expect");

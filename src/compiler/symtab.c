@@ -197,6 +197,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_COS] = KW_DEF("cos");
 	builtin_list[BUILTIN_CTLZ] = KW_DEF("clz");
 	builtin_list[BUILTIN_CTTZ] = KW_DEF("ctz");
+	builtin_list[BUILTIN_DEBUGTRAP] = KW_DEF("debugtrap");
 	builtin_list[BUILTIN_EXACT_ADD] = KW_DEF("add");
 	builtin_list[BUILTIN_EXACT_DIV] = KW_DEF("div");
 	builtin_list[BUILTIN_EXACT_MOD] = KW_DEF("mod");
