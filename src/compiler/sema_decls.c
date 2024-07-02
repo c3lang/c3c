@@ -319,6 +319,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		ByteSize member_size = type_size(member->type);
 		assert(member_size <= MAX_TYPE_SIZE);
 		// Update max alignment
+		if (member->alignment > member_alignment) member_alignment = member->alignment;
 		if (member_alignment > max_alignment)
 		{
 			max_alignment = member_alignment;
@@ -378,6 +379,66 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	return true;
 }
 
+AlignSize sema_get_max_natural_alignment(Type *type)
+{
+RETRY:;
+	type = type_flatten(type);
+	switch (type->type_kind)
+	{
+		case TYPE_DISTINCT:
+		case TYPE_POISONED:
+		case TYPE_TYPEDEF:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_OPTIONAL:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+		case TYPE_VOID:
+			return 1;
+		case TYPE_BOOL:
+			return 1;
+		case ALL_INTS:
+		case ALL_FLOATS:
+			return type->builtin.abi_alignment;
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+		case TYPE_ANYFAULT:
+		case TYPE_TYPEID:
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+		case TYPE_FUNC_RAW:
+		case TYPE_FAULTTYPE:
+		case TYPE_SLICE:
+			return platform_target.align_pointer.align / 8;
+		case TYPE_ENUM:
+			type = type->decl->enums.type_info->type;
+			goto RETRY;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		{
+			AlignSize max = 0;
+			FOREACH(Decl *, member, type->decl->strukt.members)
+			{
+				AlignSize member_max = sema_get_max_natural_alignment(member->type);
+				if (member_max > max) max = member_max;
+			}
+			return max;
+		}
+		case TYPE_BITSTRUCT:
+			type = type->decl->bitstruct.base_type->type;
+			goto RETRY;
+		case TYPE_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+			type = type->array.base;
+			goto RETRY;
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+			return type_abi_alignment(type);
+	}
+	UNREACHABLE
+}
 /*
  * Analyse the members of a struct, assumed to be 1 or more (should already be checked before calling the function)
  */
@@ -385,6 +446,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 {
 	// Default alignment is 1 even if it is empty.
 	AlignSize natural_alignment = 1;
+	AlignSize actual_alignment = 1;
 	bool is_unaligned = false;
 	AlignSize size = 0;
 	AlignSize offset = 0;
@@ -453,12 +515,12 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		assert(decl_ok(decl) && "The declaration should be fine at this point.");
 
 		// Grab the ABI alignment as its natural alignment
-		AlignSize member_natural_alignment;
-		if (!sema_set_abi_alignment(context, member->type, &member_natural_alignment)) return decl_poison(decl);
+		AlignSize member_inherited_alignment;
+		if (!sema_set_abi_alignment(context, member->type, &member_inherited_alignment)) return decl_poison(decl);
+		AlignSize member_natural_alignment = sema_get_max_natural_alignment(member->type);
 
-		// If packed, then the alignment is 1
-		AlignSize member_alignment = is_packed ? 1 : member_natural_alignment;
-
+			// If packed, then the alignment is 1
+		AlignSize member_alignment = is_packed ? 1 : member_inherited_alignment;
 		// If a member has an assigned alignment, then we use that one, even if it is packed.
 		if (member->alignment)
 		{
@@ -473,6 +535,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		{
 			natural_alignment = member_natural_alignment;
 		}
+		if (member_alignment > actual_alignment) actual_alignment = member_alignment;
 
 		// In the case of a struct, we will align this to the next offset,
 		// using the alignment of the member.
@@ -511,7 +574,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
 
 	// 2. otherwise pick the highest of the natural alignment and the given alignment.
-	if (!decl->is_packed && decl->alignment < natural_alignment) decl->alignment = natural_alignment;
+	if (!decl->is_packed && decl->alignment < actual_alignment) decl->alignment = actual_alignment;
 
 	// We must now possibly add the end padding.
 	// First we calculate the actual size
@@ -519,13 +582,14 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 	// We might get a size that is greater than the natural alignment
 	// in this case we need an additional padding
-	if (size > aligned_offset(offset, natural_alignment))
+	AlignSize natural_size = aligned_offset(offset, natural_alignment);
+	if (size > natural_size)
 	{
 		decl->strukt.padding = (AlignSize)(size - offset);
 	}
 
 	// If the size is smaller the naturally aligned struct, then it is also unaligned
-	if (size < aligned_offset(offset, natural_alignment))
+	if (size < natural_size)
 	{
 		is_unaligned = true;
 	}

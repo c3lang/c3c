@@ -27,7 +27,8 @@
 - Fix distinct inline conversions.
 - Bit negating const zero flags would give an incorrect result.
 - Fix to scalar -> vector conversions.
-- Bug fix for rethrow + defer catch.
+- Bug fix for rethrow + defer catch. 
+- Wrong size for structs containing overaligned structs #1219
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
