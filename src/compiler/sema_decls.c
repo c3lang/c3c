@@ -262,7 +262,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_STRUCT:
 		case DECL_UNION:
 			// Extend the nopadding attributes to substructs.
-		  if (parent->strukt.attr_nopadding) decl->strukt.attr_nopadding = true;
+		  if (parent->attr_nopadding) decl->attr_nopadding = true;
 		  if (parent->strukt.attr_nopadding_recursive) decl->strukt.attr_nopadding_recursive = true;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
@@ -587,7 +587,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		if (align_offset - offset != 0) {
 			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member;
-			if (decl->strukt.attr_nopadding) {
+			if (decl->attr_nopadding || member->attr_nopadding) {
 				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member.", align_offset - offset);
 			}
 		}
@@ -630,11 +630,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		decl->strukt.padding = (AlignSize)(size - offset);
 	}
 
-	if (decl->strukt.attr_nopadding) {
+	if (decl->attr_nopadding) {
 		if (type_is_substruct(decl->type)) {
 			Decl *first_member = struct_members[0];
 			Type *type = type_flatten(first_member->type);
-			if (type->type_kind == TYPE_STRUCT && !type->decl->strukt.attr_nopadding) {
+			if (type->type_kind == TYPE_STRUCT && !type->decl->attr_nopadding) {
 				RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
 			}
 		}
@@ -642,7 +642,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 	if (size != offset) {
 		if (!decl->strukt.padded_decl) decl->strukt.padded_decl = decl;
-		if (decl->strukt.attr_nopadding) {
+		if (decl->attr_nopadding) {
 			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct.", size - offset);
 		}
 	}
@@ -2343,7 +2343,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
-			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_NOPADDING_RECURSIVE] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
@@ -2587,10 +2587,10 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->func_decl.attr_inline = false;
 			break;
 		case ATTRIBUTE_NOPADDING:
-			decl->strukt.attr_nopadding = true;
+			decl->attr_nopadding = true;
 			break;
 		case ATTRIBUTE_NOPADDING_RECURSIVE:
-			decl->strukt.attr_nopadding = true;
+			decl->attr_nopadding = true;
 			decl->strukt.attr_nopadding_recursive = true;
 			break;
 		case ATTRIBUTE_NOINIT:
