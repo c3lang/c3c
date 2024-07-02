@@ -1117,6 +1117,9 @@ void compile()
 	setup_bool_define("BENCHMARKING", active_target.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", active_target.testing);
+	setup_bool_define("ADDRESS_SANITIZER", active_target.feature.sanitize_address);
+	setup_bool_define("MEMORY_SANITIZER", active_target.feature.sanitize_memory);
+	setup_bool_define("THREAD_SANITIZER", active_target.feature.sanitize_thread);
 
 	type_init_cint();
 

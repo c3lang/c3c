@@ -94,6 +94,12 @@ static const char *reloc_models[5] = {
 	[RELOC_BIG_PIE] = "PIE",
 };
 
+static const char *sanitize[3] = {
+	[WIN_CRT_NONE] = "address",
+	[WIN_CRT_DYNAMIC] = "memory",
+	[WIN_CRT_STATIC] = "thread",
+};
+
 Project *project_load(void);
 BuildTarget *project_select_target(Project *project, const char *optional_target);
 void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);

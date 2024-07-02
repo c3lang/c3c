@@ -340,6 +340,13 @@ typedef enum
 	ARCH_OS_TARGET_LAST = WINDOWS_X64
 } ArchOsTarget;
 
+typedef enum
+{
+  SANITIZE_ADDRESS,
+  SANITIZE_MEMORY,
+  SANITIZE_THREAD,
+} SanitizeMode;
+
 #define ANY_WINDOWS_ARCH_OS WINDOWS_AARCH64: case WINDOWS_X64: case MINGW_X64
 
 typedef struct BuildOptions_
@@ -433,6 +440,9 @@ typedef struct BuildOptions_
 	SizeOptimizationLevel optsize;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
+	bool sanitize_address;
+	bool sanitize_memory;
+	bool sanitize_thread;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -567,8 +577,11 @@ typedef struct
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
 		RiscvFloatCapability riscv_float_capability : 4;
-		bool trap_on_wrap : 1;
 		Win64Simd pass_win64_simd_as_arrays : 3;
+		bool trap_on_wrap : 1;
+		bool sanitize_address : 1;
+		bool sanitize_memory : 1;
+		bool sanitize_thread : 1;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
 		PanicLevel panic_level;

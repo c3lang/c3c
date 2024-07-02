@@ -524,6 +524,11 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_NONE:
 			break;
 	}
+
+	if (active_target.feature.sanitize_address) add_arg("-fsanitize=address");
+	if (active_target.feature.sanitize_memory) add_arg("-fsanitize=memory");
+	if (active_target.feature.sanitize_thread) add_arg("-fsanitize=thread");
+
 	for (unsigned i = 0; i < file_count; i++)
 	{
 		add_arg(files_to_link[i]);

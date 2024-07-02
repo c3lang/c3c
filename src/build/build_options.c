@@ -187,6 +187,7 @@ static void usage(void)
 	PRINTF("  --linux-crtbegin <dir>     - Set the directory to use for finding crtbegin.o and related files.");
 	PRINTF("");
 	PRINTF("  --vector-conv=<option>     - Set vector conversion behaviour: default, old.");
+	PRINTF("  --sanitize=<option>        - Enable sanitizer: address, memory, thread.");
 }
 
 
@@ -977,6 +978,18 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
+				return;
+			}
+			if ((argopt = match_argopt("sanitize")))
+			{
+				SanitizeMode mode = (SanitizeMode)parse_multi_option(argopt, 3, sanitize);
+				switch (mode)
+				{
+					case SANITIZE_ADDRESS: options->sanitize_address = true; break;
+					case SANITIZE_MEMORY: options->sanitize_memory = true; break;
+					case SANITIZE_THREAD: options->sanitize_thread = true; break;
+					default: UNREACHABLE;
+				}
 				return;
 			}
 			if (match_longopt("macos-sdk-version"))
