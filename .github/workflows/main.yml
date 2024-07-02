@@ -94,7 +94,9 @@ jobs:
         uses: actions/upload-artifact@v3
         with:
           name: c3-windows-${{ matrix.build_type }}
-          path: build\${{ matrix.build_type }}\c3c.exe
+          path: |
+            build\${{ matrix.build_type }}\c3c.exe
+            build\${{ matrix.build_type }}\c3c_rt
 
   build-msys2-mingw:
     runs-on: windows-latest

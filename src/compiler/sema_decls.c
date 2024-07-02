@@ -2386,6 +2386,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
+			[ATTRIBUTE_NOSANITIZE] = ATTR_FUNC,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
 			[ATTRIBUTE_OPERATOR] = ATTR_MACRO | ATTR_FUNC,
@@ -2686,6 +2687,34 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_NORETURN:
 			decl->func_decl.signature.attrs.noreturn = true;
 			break;
+		case ATTRIBUTE_NOSANITIZE:
+			if (!expr)
+			{
+				RETURN_SEMA_ERROR(attr, "'%s' requires a string argument, e.g. %s(\"address\").", attr->name, attr->name);
+			}
+			if (!sema_analyse_expr(context, expr)) return false;
+			if (!expr_is_const_string(expr))
+			{
+				RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
+			}
+			const char *str = expr->const_expr.bytes.ptr;
+			if (str_eq(str, "address"))
+			{
+				decl->func_decl.attr_nosanitize_address = true;
+			}
+			else if (str_eq(str, "memory"))
+			{
+				decl->func_decl.attr_nosanitize_memory = true;
+			}
+			else if (str_eq(str, "thread"))
+			{
+				decl->func_decl.attr_nosanitize_thread = true;
+			}
+			else
+			{
+				RETURN_SEMA_ERROR(expr, "Expected \"address\", \"memory\" or \"thread\" as argument.");
+			}
+			return true;
 		case ATTRIBUTE_WEAK:
 			if (domain == ATTR_DEF)
 			{
