@@ -274,6 +274,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_block(c, error_return_block);
 		c->defer_error_var = error_out;
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
+		c->defer_error_var = NULL;
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
 		llvm_emit_return_abi(c, NULL, &value);
@@ -322,6 +323,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 		llvm_emit_block(c, err_cleanup_block);
 		c->defer_error_var = exit->block_error_var;
 		llvm_emit_statement_chain(c, err_cleanup);
+		c->defer_error_var = NULL;
 		llvm_emit_jmp(c, exit->block_optional_exit);
 	}
 	else

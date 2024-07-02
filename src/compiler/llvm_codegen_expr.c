@@ -4367,7 +4367,9 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	// Ensure we are on a branch that is non-empty.
 	if (llvm_emit_check_block_branch(c))
 	{
+		c->defer_error_var = error_var;
 		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
+		c->defer_error_var = NULL;
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_var, type_anyfault);
 		if (expr->rethrow_expr.in_block)
@@ -6804,6 +6806,7 @@ static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
 
 INLINE void llvm_emit_last_fault(GenContext *c, BEValue *value)
 {
+	assert(c->defer_error_var);
 	llvm_value_set_address_abi_aligned(value, c->defer_error_var, type_anyfault);
 }
 
