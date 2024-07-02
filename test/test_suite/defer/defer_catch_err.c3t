@@ -3,6 +3,13 @@ module foo;
 import std::io;
 
 fault Test { FOO }
+
+fn void! test2()
+{
+	defer (catch err) {};
+	test()!;
+}
+
 fn int! test()
 {
 	int! z = {|
@@ -26,6 +33,33 @@ fn void main()
 
 
 /* #expect: foo.ll
+
+define i64 @foo.test2() #0 {
+entry:
+  %error_var = alloca i64, align 8
+  %retparam = alloca i32, align 4
+  %err = alloca i64, align 8
+  %0 = call i64 @foo.test(ptr %retparam)
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %0, ptr %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+guard_block:                                      ; preds = %assign_optional
+  %2 = load i64, ptr %error_var, align 8
+  store i64 %2, ptr %err, align 8
+  %3 = load i64, ptr %error_var, align 8
+  ret i64 %3
+
+noerr_block:                                      ; preds = %after_check
+  ret i64 0
+}
 
 define i64 @foo.test(ptr %0) #0 {
 entry:
@@ -54,13 +88,16 @@ entry:
   %not_err = icmp eq i64 %optval, 0
   %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %1, label %after_check, label %assign_optional
+
 assign_optional:                                  ; preds = %entry
   store i64 %optval, ptr %z.f, align 8
   br label %opt_block_cleanup
+
 after_check:                                      ; preds = %entry
   %2 = load i32, ptr %x, align 4
   store i32 %2, ptr %blockret, align 4
   br label %expr_block.exit
+
 opt_block_cleanup:                                ; preds = %assign_optional
   %3 = load i64, ptr %z.f, align 8
   store i64 %3, ptr %err, align 8
@@ -76,24 +113,29 @@ opt_block_cleanup:                                ; preds = %assign_optional
   store %any %9, ptr %varargslots4, align 16
   %10 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.2, i64 8, ptr %varargslots4, i64 1)
   br label %after_assign
+
 expr_block.exit:                                  ; preds = %after_check
   %11 = load i32, ptr %blockret, align 4
   store i32 %11, ptr %z, align 4
   store i64 0, ptr %z.f, align 8
   br label %after_assign
+
 after_assign:                                     ; preds = %expr_block.exit, %opt_block_cleanup
   store i64 ptrtoint (ptr @"std.core.builtin.SearchResult$MISSING" to i64), ptr %x.f9, align 8
   %optval10 = load i64, ptr %x.f9, align 8
   %not_err11 = icmp eq i64 %optval10, 0
   %12 = call i1 @llvm.expect.i1(i1 %not_err11, i1 true)
   br i1 %12, label %after_check13, label %assign_optional12
+
 assign_optional12:                                ; preds = %after_assign
   store i64 %optval10, ptr %reterr, align 8
   br label %err_retblock
+
 after_check13:                                    ; preds = %after_assign
   %13 = load i32, ptr %x8, align 4
   store i32 %13, ptr %0, align 4
   ret i64 0
+
 err_retblock:                                     ; preds = %assign_optional12
   %14 = load i64, ptr %reterr, align 8
   store i64 %14, ptr %err14, align 8
