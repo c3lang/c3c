@@ -35,6 +35,7 @@
 - Added @str_hash, @str_upper, @str_lower, @str_find compile time macros.
 - Remove "panic" text from unreachable() when safe mode is turned off.
 - Added `@unaligned_store` and `@unaligned_load`.
+- Null ZString, DString or pointer prints "(null)" for printf.
 
 ## 0.6.0 Change list
 

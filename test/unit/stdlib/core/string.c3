@@ -12,6 +12,16 @@ fn void test_starts_with()
 	assert(!s.starts_with("o"));
 }
 
+fn void test_print_null()
+{
+	ZString z;
+	int* y;
+	ZString w = "hello";
+	String s = string::new_format("%s %s %s", z, w, y);
+	defer free(s);
+	assert(s == "(null) hello (null)");
+}
+
 fn void test_strip()
 {
 	String s = "ofke";
