@@ -6,7 +6,6 @@ enum Win32_GET_FILEEX_INFO_LEVELS
 	MAX,
 }
 
-
 struct Win32_FILE_ATTRIBUTE_DATA
 {
 	Win32_DWORD    dwFileAttributes;
@@ -16,7 +15,6 @@ struct Win32_FILE_ATTRIBUTE_DATA
 	Win32_DWORD    nFileSizeHigh;
 	Win32_DWORD    nFileSizeLow;
 }
-
 
 const MAX_PATH = 260;
 
