@@ -431,7 +431,7 @@ typedef struct
 	Decl **members;
 	Decl *padded_decl;
 	AlignSize padding : 16;
-	bool attr_nopadding_recursive : 1;
+	bool attr_dense : 1;
 } StructDecl;
 
 

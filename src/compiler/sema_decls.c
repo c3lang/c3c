@@ -263,7 +263,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_UNION:
 			// Extend the nopadding attributes to substructs.
 		  if (parent->attr_nopadding) decl->attr_nopadding = true;
-		  if (parent->strukt.attr_nopadding_recursive) decl->strukt.attr_nopadding_recursive = true;
+		  if (parent->strukt.attr_dense) decl->strukt.attr_dense = true;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
@@ -277,7 +277,7 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 	if (member_type->type_kind == TYPE_STRUCT || member_type->type_kind == TYPE_UNION) {
 		if (member_type->decl->strukt.padded_decl) {
 			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member_type->decl->strukt.padded_decl;
-			if (decl->strukt.attr_nopadding_recursive) {
+			if (decl->strukt.attr_dense) {
 				sema_error_at(context, member->span, "This member has holes.");
 				RETURN_SEMA_ERROR(member_type->decl->strukt.padded_decl, "Padding would be added for this.");
 			}
@@ -2344,7 +2344,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_NOPADDING] = ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER,
-			[ATTRIBUTE_NOPADDING_RECURSIVE] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_DENSE] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_NORETURN] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOSTRIP] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | EXPORTED_USER_DEFINED_TYPES,
 			[ATTRIBUTE_OBFUSCATE] = ATTR_ENUM | ATTR_FAULT,
@@ -2589,9 +2589,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_NOPADDING:
 			decl->attr_nopadding = true;
 			break;
-		case ATTRIBUTE_NOPADDING_RECURSIVE:
+		case ATTRIBUTE_DENSE:
 			decl->attr_nopadding = true;
-			decl->strukt.attr_nopadding_recursive = true;
+			decl->strukt.attr_dense = true;
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;

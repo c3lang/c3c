@@ -309,6 +309,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");
 	attribute_list[ATTRIBUTE_BUILTIN] = KW_DEF("@builtin");
 	attribute_list[ATTRIBUTE_CALLCONV] = KW_DEF("@callconv");
+	attribute_list[ATTRIBUTE_DENSE] = KW_DEF("@dense");
 	attribute_list[ATTRIBUTE_DEPRECATED] = KW_DEF("@deprecated");
 	attribute_list[ATTRIBUTE_DYNAMIC] = KW_DEF("@dynamic");
 	attribute_list[ATTRIBUTE_EXPORT] = KW_DEF("@export");
@@ -326,7 +327,6 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_NOINIT] = KW_DEF("@noinit");
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("@noinline");
 	attribute_list[ATTRIBUTE_NOPADDING] = KW_DEF("@nopadding");
-	attribute_list[ATTRIBUTE_NOPADDING_RECURSIVE] = KW_DEF("@nopadding_recursive");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("@noreturn");
 	attribute_list[ATTRIBUTE_NOSTRIP] = KW_DEF("@nostrip");
 	attribute_list[ATTRIBUTE_OBFUSCATE] = KW_DEF("@obfuscate");
