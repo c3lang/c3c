@@ -1082,14 +1082,18 @@ static void check_sanitizer_options(BuildTarget *target)
 		}
 		switch (target->arch_os_target)
 		{
+			case LINUX_X86:
 			case LINUX_X64:
+			case MACOS_AARCH64:
 			case MACOS_X64:
 			case WINDOWS_X64:
+			case FREEBSD_X86:
 			case FREEBSD_X64:
+			case NETBSD_X86:
 			case NETBSD_X64:
 				break;
 			default:
-				error_exit("Address sanitizer is only supported on 64-bit Windows, Darwin and Linux.");
+				error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
 		}
 	}
 	if (target->feature.sanitize_memory)
