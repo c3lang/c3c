@@ -162,9 +162,9 @@ macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 }
 
 /**
- * @param [in] x "the variable or dereferenced pointer to load."
- * @param $alignment "the alignment to assume for the load"
- * @return "returns the value of x"
+ * @param [in] x "The variable or dereferenced pointer to load."
+ * @param $alignment "The alignment to assume for the load"
+ * @return "The value of x"
  *
  * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  **/
@@ -174,13 +174,17 @@ macro @unaligned_load(&x, usz $alignment) @builtin
 }
 
 /**
- * @require $assignable(y, $typeof(*x)) : "The value doesn't match the variable"
+ * @param [out] x "The variable or dereferenced pointer to store to."
+ * @param value "The value to store."
+ * @param $alignment "The alignment to assume for the store"
+ * @return "The value of x"
  *
+ * @require $assignable(value, $typeof(*x)) : "The value doesn't match the variable"
  * @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
  **/
-macro @unaligned_store(&x, y, usz $alignment) @builtin
+macro @unaligned_store(&x, value, usz $alignment) @builtin
 {
-	return $$unaligned_store(x, ($typeof(*x))y, $alignment);
+	return $$unaligned_store(x, ($typeof(*x))value, $alignment);
 }
 
 macro @volatile_load(&x) @builtin

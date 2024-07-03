@@ -838,7 +838,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_UNALIGNED_STORE:
 		{
 			assert(arg_count == 3);
-			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER }, 2)) return false;
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
+			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (!sema_check_alignment_expression(context, args[2])) return false;
 			if (original != type_voidptr)
