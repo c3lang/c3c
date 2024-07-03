@@ -1,4 +1,4 @@
-module std::core::sanitizer @if (env::ADDRESS_SANITIZER || env::MEMORY_SANITIZER || env::THREAD_SANITIZER) @private;
+module std::core::sanitizer @if (env::ANY_SANITIZER) @private;
 
 // TODO ...
 
@@ -8,7 +8,7 @@ module std::core::sanitizer;
 
 fn void set_death_callback(VoidFn callback)
 {
-	$if env::ADDRESS_SANITIZER:
+	$if env::ANY_SANITIZER:
 		__sanitizer_set_death_callback(callback);
 	$endif
 }

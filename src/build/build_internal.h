@@ -95,9 +95,9 @@ static const char *reloc_models[5] = {
 };
 
 static const char *sanitize[3] = {
-	[WIN_CRT_NONE] = "address",
-	[WIN_CRT_DYNAMIC] = "memory",
-	[WIN_CRT_STATIC] = "thread",
+	[SANITIZE_ADDRESS] = "address",
+	[SANITIZE_MEMORY] = "memory",
+	[SANITIZE_THREAD] = "thread",
 };
 
 Project *project_load(void);
