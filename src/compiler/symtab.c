@@ -190,6 +190,7 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_ATOMIC_FETCH_INC_WRAP] = KW_DEF("atomic_fetch_inc_wrap");
 	builtin_list[BUILTIN_ATOMIC_FETCH_DEC_WRAP] = KW_DEF("atomic_fetch_dec_wrap");
 	builtin_list[BUILTIN_BITREVERSE] = KW_DEF("bitreverse");
+	builtin_list[BUILTIN_BREAKPOINT] = KW_DEF("breakpoint");
 	builtin_list[BUILTIN_BSWAP] = KW_DEF("bswap");
 	builtin_list[BUILTIN_CEIL] = KW_DEF("ceil");
 	builtin_list[BUILTIN_COMPARE_EXCHANGE] = KW_DEF(("compare_exchange"));

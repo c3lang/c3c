@@ -159,6 +159,14 @@ macro void unsupported(String string = "Unsupported function invoked") @builtin 
 	$$unreachable();
 }
 
+/**
+ * Unconditionally break into an attached debugger when reached.
+ **/
+macro void breakpoint() @builtin
+{
+	$$breakpoint();
+}
+
 macro any_make(void* ptr, typeid type) @builtin
 {
 	return $$any_make(ptr, type);

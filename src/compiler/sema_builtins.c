@@ -415,8 +415,10 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_syscall(context, expr);
 		case BUILTIN_TRAP:
 		case BUILTIN_UNREACHABLE:
-			expr->type = type_void;
 			expr->call_expr.no_return = true;
+			FALLTHROUGH;
+		case BUILTIN_BREAKPOINT:
+			expr->type = type_void;
 			return true;
 		case BUILTIN_SYSCLOCK:
 			expr->type = type_ulong;
@@ -1002,6 +1004,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_SWIZZLE2:
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
+		case BUILTIN_BREAKPOINT:
 		case BUILTIN_UNREACHABLE:
 			UNREACHABLE
 	}
@@ -1022,6 +1025,7 @@ static inline int builtin_expected_args(BuiltinFunction func)
 		case BUILTIN_GET_ROUNDING_MODE:
 		case BUILTIN_SYSCLOCK:
 		case BUILTIN_TRAP:
+		case BUILTIN_BREAKPOINT:
 		case BUILTIN_UNREACHABLE:
 			return 0;
 		case BUILTIN_ABS:
