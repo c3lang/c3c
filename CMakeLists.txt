@@ -98,15 +98,15 @@ endif()
 
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if (C3_LLVM_VERSION STREQUAL "auto")
-        set(C3_LLVM_VERSION "16")
+        set(C3_LLVM_VERSION "18")
     endif()
     FetchContent_Declare(
             LLVM_Windows
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm_16_0_2/llvm-16.0.2-windows-amd64-msvc17-libcmt.7z
+            URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8/llvm-18.1.8-windows-amd64-msvc17-libcmt.7z
     )
     FetchContent_Declare(
             LLVM_Windows_debug
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm_16_0_2/llvm-16.0.2-windows-amd64-msvc17-libcmt-dbg.7z
+            URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8/llvm-18.1.8-windows-amd64-msvc17-libcmt-dbg.7z
     )
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message("Loading Windows LLVM debug libraries, this may take a while...")

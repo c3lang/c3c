@@ -7,7 +7,7 @@ on:
     branches: [ master ]
 
 env:
-  LLVM_RELEASE_VERSION: 16
+  LLVM_RELEASE_VERSION: 18
 
 jobs:
 
@@ -446,7 +446,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17]
+        llvm_version: [15, 16, 17, 18]
     steps:
       - uses: actions/checkout@v4
       - name: Download LLVM
