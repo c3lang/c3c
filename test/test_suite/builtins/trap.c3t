@@ -2,7 +2,7 @@ module test;
 
 fn void main()
 {
-    $$debugtrap();
+    $$breakpoint();
     $$trap();
 }
 

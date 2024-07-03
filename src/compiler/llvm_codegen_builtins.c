@@ -888,7 +888,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_TRAP:
 			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.trap, NULL, 0, NULL, 0), type_void);
 			return;
-		case BUILTIN_DEBUGTRAP:
+		case BUILTIN_BREAKPOINT:
 			llvm_value_set(result_value, llvm_emit_call_intrinsic(c, intrinsic_id.debugtrap, NULL, 0, NULL, 0), type_void);
 			return;
 		case BUILTIN_PREFETCH:
