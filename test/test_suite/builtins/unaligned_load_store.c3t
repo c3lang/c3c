@@ -1,0 +1,40 @@
+module test;
+
+struct Foo
+{
+  float[4] a;
+}
+
+fn void main()
+{
+  Foo* foo;
+  float[<4>] a @align(1) @noinit;
+
+  a = *(float[<4>]*)&foo.a;
+  *(float[<4>]*)&foo.a = a;
+
+  a = $$unaligned_load((float[<4>]*)&foo.a, 1);
+  $$unaligned_store((float[<4>]*)&foo.a, a, 1);
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %foo = alloca ptr, align 8
+  %a = alloca <4 x float>, align 1
+  store ptr null, ptr %foo, align 8
+  %0 = load ptr, ptr %foo, align 8
+  %1 = load <4 x float>, ptr %0, align 16
+  store <4 x float> %1, ptr %a, align 1
+  %2 = load ptr, ptr %foo, align 8
+  %3 = load <4 x float>, ptr %a, align 1
+  store <4 x float> %3, ptr %2, align 16
+  %4 = load ptr, ptr %foo, align 8
+  %5 = load <4 x float>, ptr %4, align 1
+  store <4 x float> %5, ptr %a, align 1
+  %6 = load ptr, ptr %foo, align 8
+  %7 = load <4 x float>, ptr %a, align 1
+  store <4 x float> %7, ptr %6, align 1
+  ret void
+}
