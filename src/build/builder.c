@@ -441,69 +441,6 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 	update_build_target_from_options(target, options);
 }
 
-static void check_sanitizer_options(BuildTarget *target)
-{
-	if (target->feature.sanitize_address)
-	{
-		if (target->feature.sanitize_memory || target->feature.sanitize_thread)
-		{
-			error_exit("Address sanitizer cannot be used together with memory or thread sanitizer.");
-		}
-		switch (target->arch_os_target)
-		{
-			case LINUX_X64:
-			case MACOS_X64:
-			case WINDOWS_X64:
-			case FREEBSD_X64:
-			case NETBSD_X64:
-				break;
-			default:
-				error_exit("Address sanitizer is only supported on 64-bit Windows, Darwin and Linux.");
-		}
-	}
-
-	if (target->feature.sanitize_memory)
-	{
-		if (target->feature.sanitize_address || target->feature.sanitize_thread)
-		{
-			error_exit("Memory sanitizer cannot be used together with address or thread sanitizer.");
-		}
-		switch (target->arch_os_target)
-		{
-			case LINUX_AARCH64:
-			case LINUX_X86:
-			case LINUX_X64:
-			case FREEBSD_X86:
-			case FREEBSD_X64:
-			case NETBSD_X86:
-			case NETBSD_X64:
-				break;
-			default:
-				error_exit("Memory sanitizer is only supported on Linux.");
-		}
-	}
-
-	if (target->feature.sanitize_thread)
-	{
-		if (target->feature.sanitize_address || target->feature.sanitize_memory)
-		{
-			error_exit("Thread sanitizer cannot be used together with address or memory sanitizer.");
-		}
-		switch (target->arch_os_target)
-		{
-			case LINUX_AARCH64:
-			case LINUX_X64:
-			case MACOS_AARCH64:
-			case MACOS_X64:
-			case FREEBSD_X64:
-			case NETBSD_X64:
-				break;
-			default:
-				error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
-		}
-	}
-}
-
 void init_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = (BuildTarget) { 0 };
@@ -519,8 +456,6 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 		if (!dir_make(target->build_dir)) error_exit("Failed to create build directory '%s'.", target->build_dir);
 		if (!file_is_dir(target->build_dir)) error_exit("Expected '%s' to be a directory.", target->build_dir);
 	}
-
-	check_sanitizer_options(target);
 
 	load_library_files();
 }

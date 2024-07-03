@@ -1071,6 +1071,68 @@ static void execute_scripts(void)
 	dir_change(old_path);
 	free(old_path);
 }
+
+static void check_sanitizer_options(BuildTarget *target)
+{
+	if (target->feature.sanitize_address)
+	{
+		if (target->feature.sanitize_memory || target->feature.sanitize_thread)
+		{
+			error_exit("Address sanitizer cannot be used together with memory or thread sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_X64:
+			case MACOS_X64:
+			case WINDOWS_X64:
+			case FREEBSD_X64:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Address sanitizer is only supported on 64-bit Windows, Darwin and Linux.");
+		}
+	}
+	if (target->feature.sanitize_memory)
+	{
+		if (target->feature.sanitize_address || target->feature.sanitize_thread)
+		{
+			error_exit("Memory sanitizer cannot be used together with address or thread sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_AARCH64:
+			case LINUX_X86:
+			case LINUX_X64:
+			case FREEBSD_X86:
+			case FREEBSD_X64:
+			case NETBSD_X86:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Memory sanitizer is only supported on Linux.");
+		}
+	}
+	if (target->feature.sanitize_thread)
+	{
+		if (target->feature.sanitize_address || target->feature.sanitize_memory)
+		{
+			error_exit("Thread sanitizer cannot be used together with address or memory sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_AARCH64:
+			case LINUX_X64:
+			case MACOS_AARCH64:
+			case MACOS_X64:
+			case FREEBSD_X64:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
+		}
+	}
+}
+
 void compile()
 {
 	symtab_init(active_target.symtab_size);
@@ -1081,6 +1143,7 @@ void compile()
 	global_context.string_type = NULL;
 	asm_target.initialized = false;
 	target_setup(&active_target);
+	check_sanitizer_options(&active_target);
 	resolve_libraries(&active_target);
 	global_context.sources = active_target.sources;
 	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
