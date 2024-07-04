@@ -307,7 +307,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr(context, expr)) return false;
+	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
 	Type *expr_type = expr->type;
 	switch (type_storage_type(expr->type))
 	{

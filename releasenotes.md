@@ -29,7 +29,8 @@
 - Fix to scalar -> vector conversions.
 - Bug fix for rethrow + defer catch. 
 - Wrong size for structs containing overaligned structs #1219
-
+- $typeof(*x) should be valid when x is an `[out]` parameter #1226
+ 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
 - Added @str_hash, @str_upper, @str_lower, @str_find compile time macros.
