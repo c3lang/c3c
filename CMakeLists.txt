@@ -10,6 +10,11 @@ endif()
 project(c3c VERSION ${CMAKE_MATCH_1})
 message("C3C version: ${CMAKE_PROJECT_VERSION}")
 
+# Avoid warning for FetchContent
+if (CMAKE_VERSION VERSION_GREATER_EQUAL "3.24.0")
+    cmake_policy(SET CMP0135 NEW)
+endif()
+
 if (NOT DEFINED CMAKE_INSTALL_LIBDIR)
     if (MSVC)
         set(CMAKE_INSTALL_LIBDIR "c:\\c3c\\lib")
