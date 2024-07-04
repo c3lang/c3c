@@ -514,13 +514,14 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		assert(decl_ok(decl) && "The declaration should be fine at this point.");
 
-		// Grab the ABI alignment as its natural alignment
-		AlignSize member_inherited_alignment;
-		if (!sema_set_abi_alignment(context, member->type, &member_inherited_alignment)) return decl_poison(decl);
+		// Grab the alignment of the member type
+		AlignSize member_type_alignment;
+		if (!sema_set_abi_alignment(context, member->type, &member_type_alignment)) return decl_poison(decl);
+		// And get the natural alignment
 		AlignSize member_natural_alignment = sema_get_max_natural_alignment(member->type);
 
-			// If packed, then the alignment is 1
-		AlignSize member_alignment = is_packed ? 1 : member_inherited_alignment;
+		// If packed, then the alignment is 1
+		AlignSize member_alignment = is_packed ? 1 : member_type_alignment;
 		// If a member has an assigned alignment, then we use that one, even if it is packed.
 		if (member->alignment)
 		{
@@ -529,7 +530,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			if (member_alignment > decl->alignment) decl->alignment = member_alignment;
 		}
 
-		// If the member alignment is higher than the currently detected alignment,
+		// If the natural alignment is higher than the currently detected alignment,
 		// then we update the natural alignment
 		if (member_natural_alignment > natural_alignment)
 		{
@@ -573,7 +574,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	// 1. If packed, use the alignment given, otherwise set to 1.
 	if (decl->is_packed && !decl->alignment) decl->alignment = 1;
 
-	// 2. otherwise pick the highest of the natural alignment and the given alignment.
+	// 2. otherwise pick the highest of the actual alignment and the given alignment.
 	if (!decl->is_packed && decl->alignment < actual_alignment) decl->alignment = actual_alignment;
 
 	// We must now possibly add the end padding.
