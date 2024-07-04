@@ -1095,6 +1095,10 @@ static void check_sanitizer_options(BuildTarget *target)
 			default:
 				error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
 		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			eprintf("WARNING: Running benchmarks with address sanitizer enabled!\n");
+		}
 	}
 	if (target->feature.sanitize_memory)
 	{
@@ -1115,6 +1119,10 @@ static void check_sanitizer_options(BuildTarget *target)
 			default:
 				error_exit("Memory sanitizer is only supported on Linux.");
 		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			eprintf("WARNING: Running benchmarks with memory sanitizer enabled!\n");
+		}
 	}
 	if (target->feature.sanitize_thread)
 	{
@@ -1133,6 +1141,10 @@ static void check_sanitizer_options(BuildTarget *target)
 				break;
 			default:
 				error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			eprintf("WARNING: Running benchmarks with thread sanitizer enabled!\n");
 		}
 	}
 }
