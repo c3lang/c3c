@@ -339,7 +339,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [16,17]
+        llvm_version: [16]
 
     steps:
       - uses: actions/checkout@v4
@@ -424,7 +424,7 @@ jobs:
           python3 src/tester.py ../build/c3c test_suite/
 
       - name: bundle_output
-        if: matrix.llvm_version == 17
+        if: matrix.llvm_version == 16
         run: |
           mkdir linux
           cp -r lib linux
@@ -433,7 +433,7 @@ jobs:
           tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz linux
 
       - name: upload artifacts
-        if: matrix.llvm_version == 17
+        if: matrix.llvm_version == 16
         uses: actions/upload-artifact@v3
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
