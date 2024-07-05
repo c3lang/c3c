@@ -4,7 +4,7 @@ on:
   push:
     branches: [ master, dev, ci_testing, experiments ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, dev ]
 
 env:
   LLVM_RELEASE_VERSION: 18
