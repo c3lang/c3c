@@ -327,10 +327,9 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 		}
 		return;
 	}
+	Type *element = type->array.base;
 	if (size == 8)
 	{
-		Type *element = type->array.base;
-
 		// 1 x double passed in memory (by gcc)
 		if (element->type_kind == TYPE_F64) return;
 
@@ -346,7 +345,8 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 	}
 	if (size == 16 || (named_arg == NAMED && size <= platform_target.x64.native_vector_size_avx))
 	{
-		if (platform_target.x64.pass_int128_vector_in_mem) return;
+		if (platform_target.x64.pass_int128_vector_in_mem
+			&& size != 16 && type_is_int128(element)) return;
 
 		*lo_class = CLASS_SSE;
 		*hi_class = CLASS_SSEUP;
