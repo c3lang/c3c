@@ -244,6 +244,7 @@ add_executable(c3c
         src/build/builder.c
         src/build/build_options.c
         src/build/project_creation.c
+        src/build/libraries.c
         src/compiler/ast.c
         src/compiler/bigint.c
         src/compiler/codegen_general.c
@@ -256,7 +257,6 @@ add_executable(c3c
         src/compiler/headers.c
         src/compiler/json_output.c
         src/compiler/lexer.c
-        src/compiler/libraries.c
         src/compiler/linker.c
         src/compiler/llvm_codegen.c
         src/compiler/abi/c_abi_aarch64.c
@@ -325,7 +325,8 @@ add_executable(c3c
         src/compiler/expr.c
         src/utils/time.c
         src/utils/http.c
-        src/compiler/sema_liveness.c)
+        src/compiler/sema_liveness.c
+        src/build/common_build.c)
 
 
 if (C3_USE_TB)

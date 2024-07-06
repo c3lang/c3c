@@ -253,6 +253,16 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
+static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **out_files)
+{
+	int total = 0;
+	FOREACH(const char *, file, files)
+	{
+		out_files[total++] = cc_compiler(compiler, file, flags);
+	}
+	return total;
+}
+
 static void compiler_print_bench(void)
 {
 	if (debug_stats)
@@ -439,8 +449,12 @@ void compiler_compile(void)
 
 	uint32_t output_file_count = vec_size(gen_contexts);
 	unsigned cfiles = vec_size(active_target.csources);
-
-	if (output_file_count + cfiles > MAX_OUTPUT_FILES)
+	unsigned cfiles_library = 0;
+	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
+	{
+		cfiles_library += vec_size(lib->csources);
+	}
+	if (output_file_count + cfiles + cfiles_library > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
 	}
@@ -450,16 +464,18 @@ void compiler_compile(void)
 	}
 
 	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
-	const char **obj_files = cmalloc(sizeof(char*) * (output_file_count + cfiles));
+	const char **obj_files = cmalloc(sizeof(char*) * (output_file_count + cfiles + cfiles_library));
 
 	if (cfiles)
 	{
-		for (int i = 0; i < cfiles; i++)
-		{
-			const char *file = active_target.csources[i];
-			const char *obj = platform_compiler(file, active_target.cflags);
-			obj_files[output_file_count + i] = obj;
-		}
+		int compiled = compile_cfiles(active_target.cc, active_target.csources, active_target.cflags, &obj_files[output_file_count]);
+		assert(cfiles == compiled);
+		(void)compiled;
+	}
+	const char **obj_file_next = &obj_files[output_file_count + cfiles];
+	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
+	{
+		obj_file_next += compile_cfiles(lib->cc ? lib->cc : active_target.cc, lib->csources, lib->cflags, obj_file_next);
 	}
 
 	Task **tasks = NULL;
@@ -501,7 +517,7 @@ void compiler_compile(void)
 		puts("# output-files-end");
 	}
 
-	output_file_count += cfiles;
+	output_file_count += cfiles + cfiles_library;
 	free(compile_data);
 	compiler_codegen_time = bench_mark();
 
@@ -663,11 +679,12 @@ void compiler_compile(void)
 	free(obj_files);
 }
 
-static const char **target_expand_source_names(const char** dirs, const char **suffix_list, int suffix_count, bool error_on_mismatch)
+static const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, int suffix_count, bool error_on_mismatch)
 {
 	const char **files = NULL;
 	FOREACH(const char *, name, dirs)
 	{
+		if (base_dir) name = file_append_path(base_dir, name);
 		INFO_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
@@ -683,7 +700,7 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 			INFO_LOG("Searching for wildcard sources in %s", name);
 			if (name_len == 2 || name[name_len - 3] == '/')
 			{
-				char *path = str_copy(name, name_len - 2);
+				const char *path = str_copy(name, name_len - 2);
 				DEBUG_LOG("Reduced path %s", path);
 				file_add_wildcard_files(&files, path, true, suffix_list, suffix_count);
 				continue;
@@ -703,6 +720,15 @@ static const char **target_expand_source_names(const char** dirs, const char **s
 		error_exit("File names must be a non-empty name followed by %s or they cannot be compiled: '%s' is invalid.", suffix_list[0], name);
 	}
 	return files;
+}
+
+INLINE void expand_csources(const char *base_dir, const char **source_dirs, const char ***sources_ref)
+{
+	if (source_dirs)
+	{
+		static const char* c_suffix_list[3] = { ".c" };
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, 1, false);
+	}
 }
 
 void compile_target(BuildOptions *options)
@@ -890,8 +916,6 @@ void print_syntax(BuildOptions *options)
 
 }
 
-void resolve_libraries(void);
-
 static int jump_buffer_size()
 {
 	switch (active_target.arch_os_target)
@@ -980,24 +1004,22 @@ static void execute_scripts(void)
 	dir_change(old_path);
 	free(old_path);
 }
-
 void compile()
 {
 	symtab_init(active_target.symtab_size);
-	active_target.sources = target_expand_source_names(active_target.source_dirs, c3_suffix_list, 3, true);
-	if (active_target.csource_dirs)
-	{
-		static const char* c_suffix_list[3] = { ".c" };
-		active_target.csources = target_expand_source_names(active_target.csource_dirs, c_suffix_list, 1, false);
-	}
+	active_target.sources = target_expand_source_names(NULL, active_target.source_dirs, c3_suffix_list, 3, true);
+	expand_csources(NULL, active_target.csource_dirs, &active_target.csources);
 	execute_scripts();
 	global_context.main = NULL;
 	global_context.string_type = NULL;
 	asm_target.initialized = false;
 	target_setup(&active_target);
-	resolve_libraries();
+	resolve_libraries(&active_target);
 	global_context.sources = active_target.sources;
-
+	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
+	{
+		expand_csources(lib->parent->dir, lib->csource_dirs, &lib->csources);
+	}
 	TokenType type = TOKEN_CONST_IDENT;
 	FOREACH(const char *, feature_flag, active_target.feature_list)
 	{
@@ -1034,10 +1056,6 @@ void compile()
 
 	if (!vec_size(active_target.sources) && !active_target.read_stdin) error_exit("No files to compile.");
 
-	if (active_target.exec)
-	{
-
-	}
 	if (active_target.lex_only)
 	{
 		compiler_lex();

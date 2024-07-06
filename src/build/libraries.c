@@ -1,49 +1,10 @@
-#include "compiler_internal.h"
-#include "../utils/json.h"
+#include "build_internal.h"
+#include "compiler/compiler.h"
 
 #define MANIFEST_FILE "manifest.json"
 
-static inline void parse_library_target(Library *library, LibraryTarget *target, JSONObject *object);
-
-static inline JSONObject *get_mandatory(Library *library, JSONObject *object, const char *key)
-{
-	JSONObject *value = json_obj_get(object, key);
-	if (!value) error_exit("The mandatory '%s' field was missing in '%s'.", library->dir);
-	return value;
-}
-
-static inline const char *get_mandatory_string(Library *library, JSONObject *object, const char *key)
-{
-	JSONObject *value = get_mandatory(library, object, key);
-	if (value->type != J_STRING) error_exit("Expected string value for '%s' in '%s'.", library->dir);
-	return value->str;
-}
-
-static inline JSONObject *get_optional_string_array(Library *library, JSONObject *object, const char *key)
-{
-	JSONObject *value = json_obj_get(object, key);
-	if (!value) return NULL;
-	if (value->type != J_ARRAY) error_exit("Expected an array value for '%s' in '%s'.", library->dir);
-	for (int i = 0; i < value->array_len; i++)
-	{
-		JSONObject *val = value->elements[i];
-		if (val->type != J_STRING) error_exit("Expected only strings in array '%s' in '%s'.", library->dir);
-	}
-	return value;
-}
-
-static inline const char **get_optional_string_array_as_array(Library *library, JSONObject *object, const char *key)
-{
-	JSONObject *array = get_optional_string_array(library, object, key);
-	if (!array || !array->array_len) return NULL;
-	const char **array_result = VECNEW(const char*, array->array_len);
-	for (size_t i = 0; i < array->array_len; i++)
-	{
-		vec_add(array_result, array->elements[i]->str);
-	}
-	return array_result;
-}
-
+static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
+                                        JSONObject *object);
 
 static inline void parse_library_type(Library *library, LibraryTarget ***target_group, JSONObject *object)
 {
@@ -55,6 +16,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		const char *key = object->keys[i];
 		if (member->type != J_OBJECT) error_exit("Expected a list of properties for a target in %s.", library->dir);
 		LibraryTarget *library_target = CALLOCS(LibraryTarget);
+		library_target->parent = library;
 		ArchOsTarget target = arch_os_target_from_string(key);
 		if (target == ARCH_OS_TARGET_DEFAULT)
 		{
@@ -62,38 +24,44 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		}
 		library_target->arch_os = target;
 		vec_add(*target_group, library_target);
-		parse_library_target(library, library_target, member);
+		parse_library_target(library, library_target, key, member);
 	}
 }
 
-static inline void parse_library_target(Library *library, LibraryTarget *target, JSONObject *object)
+static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
+                                        JSONObject *object)
 {
-	target->link_flags = get_optional_string_array_as_array(library, object, "linkflags");
-	target->linked_libs = get_optional_string_array_as_array(library, object, "linked-libs");
-	target->depends = get_optional_string_array_as_array(library, object, "depends");
-	target->execs = get_optional_string_array_as_array(library, object, "execs");
+	target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
+	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
+	target->depends = get_string_array(library->dir, target_name, object, "depends", false);
+	target->execs = get_string_array(library->dir, target_name, object, "execs", false);
+	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
+	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
+	target->csource_dirs = library->csource_dirs;
+	get_list_append_strings(library->dir, target_name, object, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 }
 
 static Library *add_library(JSONObject *object, const char *dir)
 {
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
-	const char *provides = get_mandatory_string(library, object, "provides");
+	const char *provides = get_mandatory_string(dir, NULL, object, "provides");
+	DEBUG_LOG("Added library %s", provides);
 	if (!str_is_valid_lowercase_name(provides))
 	{
 		char *res = strdup(provides);
 		str_ellide_in_place(res, 32);
-		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir,
-		           json_obj_get(object, "provides")->str);
+		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir, res);
 	}
 	library->provides = provides;
-	library->execs = get_optional_string_array_as_array(library, object, "execs");
-	library->depends = get_optional_string_array_as_array(library, object, "depends");
+	library->execs = get_optional_string_array(library->dir, NULL, object, "execs");
+	library->depends = get_optional_string_array(library->dir, NULL, object, "depends");
+	library->cc = get_optional_string(dir, NULL, object, "cc");
+	library->cflags = get_cflags(library->dir, NULL, object, NULL);
+	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 	parse_library_type(library, &library->targets, json_obj_get(object, "targets"));
 	return library;
 }
-
-
 
 static Library *find_library(Library **libs, size_t lib_count, const char *name)
 {
@@ -104,13 +72,13 @@ static Library *find_library(Library **libs, size_t lib_count, const char *name)
 	error_exit("Required library '%s' could not be found. You can add additional library search paths using '--libdir' in case you forgot one.", name);
 }
 
-static void add_library_dependency(Library *library, Library **library_list, size_t lib_count)
+static void add_library_dependency(BuildTarget *build_target, Library *library, Library **library_list, size_t lib_count)
 {
 	if (library->target_used) return;
 	LibraryTarget *target_found = NULL;
 	FOREACH(LibraryTarget *, target, library->targets)
 	{
-		if (target->arch_os == active_target.arch_os_target)
+		if (target->arch_os == build_target->arch_os_target)
 		{
 			target_found = target;
 			break;
@@ -118,16 +86,17 @@ static void add_library_dependency(Library *library, Library **library_list, siz
 	}
 	if (!target_found)
 	{
-		error_exit("Library '%s' cannot be used with arch/os '%s'.", library->provides, arch_os_target[active_target.arch_os_target]);
+		error_exit("Library '%s' cannot be used with arch/os '%s'.", library->provides, arch_os_target[build_target->arch_os_target]);
 	}
 	library->target_used = target_found;
 	FOREACH(const char *, dependency, library->depends)
 	{
-		add_library_dependency(find_library(library_list, lib_count, dependency), library_list, lib_count);
+		add_library_dependency(build_target, find_library(library_list, lib_count, dependency), library_list, lib_count);
 	}
 	FOREACH(const char *, dependency, target_found->depends)
 	{
-		add_library_dependency(find_library(library_list, lib_count, dependency),
+		add_library_dependency(build_target,
+							   find_library(library_list, lib_count, dependency),
 							   library_list,
 							   lib_count);
 	}
@@ -150,7 +119,7 @@ INLINE JSONObject* read_manifest(const char *lib, const char *manifest_data)
 	return json;
 }
 
-static inline JSONObject *resolve_zip_library(const char *lib, const char **resulting_library)
+static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const char *lib, const char **resulting_library)
 {
 	FILE *f = fopen(lib, "rb");
 	if (!f) error_exit("Failed to open library '%s' for reading.", lib);
@@ -176,7 +145,7 @@ static inline JSONObject *resolve_zip_library(const char *lib, const char **resu
 	// Create the directory for the temporary files.
 	const char *lib_name = filename(lib);
 	scratch_buffer_clear();
-	scratch_buffer_append(active_target.build_dir ? active_target.build_dir : "_temp_build");
+	scratch_buffer_append(build_target->build_dir ? build_target->build_dir : "_temp_build");
 	scratch_buffer_printf("/_c3l/%s_%x/", lib_name, file.file_crc32);
 	const char *lib_dir = scratch_buffer_copy();
 	dir_make_recursive(scratch_buffer_to_string());
@@ -197,21 +166,24 @@ static inline JSONObject *resolve_zip_library(const char *lib, const char **resu
 	return json;
 
 }
-void resolve_libraries(void)
+void resolve_libraries(BuildTarget *build_target)
 {
+	DEBUG_LOG("Resolve libraries");
 	static const char *c3lib_suffix = ".c3l";
 	const char **c3_libs = NULL;
-	unsigned libdir_count = vec_size(active_target.libdirs);
+	unsigned libdir_count = vec_size(build_target->libdirs);
 	if (libdir_count)
 	{
-		FOREACH(const char *, dir, active_target.libdirs)
+		FOREACH(const char *, dir, build_target->libdirs)
 		{
+			DEBUG_LOG("Search %s", dir);
 			file_add_wildcard_files(&c3_libs, dir, false, &c3lib_suffix, 1);
 		}
 	}
 	else
 	{
 		// Default to '.'
+		DEBUG_LOG("Search '.'");
 		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
 	}
 	Library *libraries[MAX_LIB_DIRS * 2];
@@ -221,7 +193,7 @@ void resolve_libraries(void)
 		JSONObject *json;
 		if (!file_is_dir(lib))
 		{
-			json = resolve_zip_library(lib, &lib);
+			json = resolve_zip_library(build_target, lib, &lib);
 		}
 		else
 		{
@@ -232,24 +204,28 @@ void resolve_libraries(void)
 		if (lib_count == MAX_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_LIB_DIRS * 2);
 		libraries[lib_count++] = add_library(json, lib);
 	}
-	FOREACH(const char *, lib_name, active_target.libs)
+	FOREACH(const char *, lib_name, build_target->libs)
 	{
-		add_library_dependency(find_library(libraries, lib_count, lib_name), libraries, lib_count);
+		add_library_dependency(build_target, find_library(libraries, lib_count, lib_name), libraries, lib_count);
 	}
 	for (size_t i = 0; i < lib_count; i++)
 	{
 		Library *library = libraries[i];
 		LibraryTarget *target = library->target_used;
 		if (!target) continue;
-		file_add_wildcard_files(&active_target.sources, library->dir, false, c3_suffix_list, 3);
-		vec_add(active_target.library_list, library);
-		const char *libdir = file_append_path(library->dir, arch_os_target[active_target.arch_os_target]);
-		if (file_is_dir(libdir)) vec_add(active_target.linker_libdirs, libdir);
-		if ((vec_size(library->execs) || vec_size(target->execs)) && active_target.trust_level < TRUST_FULL)
+		if (vec_size(target->csource_dirs))
+		{
+			vec_add(build_target->ccompling_libraries, target);
+		}
+		file_add_wildcard_files(&build_target->sources, library->dir, false, c3_suffix_list, 3);
+		vec_add(build_target->library_list, library);
+		const char *libdir = file_append_path(library->dir, arch_os_target[build_target->arch_os_target]);
+		if (file_is_dir(libdir)) vec_add(build_target->linker_libdirs, libdir);
+		if ((vec_size(library->execs) || vec_size(target->execs)) && build_target->trust_level < TRUST_FULL)
 		{
 			error_exit("Could not use library '%s' as it requires 'exec' trust level to execute (it "
 			           "is currently '%s'). Use the '--trust=full' option to enable it.",
-					   library->provides, trust_level[active_target.trust_level]);
+					   library->provides, trust_level[build_target->trust_level]);
 		}
 		FOREACH(const char *, exec, library->execs)
 		{

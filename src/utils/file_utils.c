@@ -507,28 +507,26 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 	bool path_ends_with_slash = is_path_separator(path[strlen(path) - 1]);
 	struct _wfinddata_t file_data;
 	intptr_t file_handle;
-	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s/*.*", path);
+	const char *search = str_printf(path_ends_with_slash ? "%s*.*" : "%s\\*.*", path);
+	DEBUG_LOG("Search %s", search);
 	if ((file_handle = _wfindfirst(win_utf8to16(search), &file_data)) == -1L) return;
 	do
 	{
-		if ((file_data.attrib & _A_SUBDIR))
+		char *name = win_utf16to8(file_data.name);
+		if (file_has_suffix_in_list(name, strlen(name), suffix_list, suffix_count))
 		{
-			if (recursive)
-			{
-				if (file_data.name[0] == L'.')
-				{
-					continue;
-				}
-				char *format = path_ends_with_slash ? "%s%ls" : "%s/%ls";
-				char *new_path = str_printf(format, path, file_data.name);
-				file_add_wildcard_files(files, new_path, true, suffix_list, suffix_count);
-			}
+			char *format = path_ends_with_slash ? "%s%s" : "%s\\%s";
+			vec_add(*files, str_printf(format, path, name));
 			continue;
 		}
-		char *name = win_utf16to8(file_data.name);
-		if (!file_has_suffix_in_list(name, strlen(name), suffix_list, suffix_count)) continue;
-		char *format = path_ends_with_slash ? "%s%s" : "%s/%s";
-		vec_add(*files, str_printf(format, path, name));
+		if (!(file_data.attrib & _A_SUBDIR)) continue;
+		if (recursive)
+		{
+			if (file_data.name[0] == L'.') continue;
+			char *format = path_ends_with_slash ? "%s%s" : "%s\\%s";
+			char *new_path = str_printf(format, path, name);
+			file_add_wildcard_files(files, new_path, true, suffix_list, suffix_count);
+		}
 	} while (_wfindnext(file_handle, &file_data) == 0);
 	_findclose(file_handle);
 }

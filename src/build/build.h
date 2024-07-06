@@ -419,19 +419,27 @@ typedef enum
 
 typedef struct
 {
+	struct Library__ *parent;
 	ArchOsTarget arch_os;
+	const char *cc;
+	const char *cflags;
+	const char **csource_dirs;
+	const char **csources;
 	const char **execs;
 	const char **link_flags;
 	const char **linked_libs;
 	const char **depends;
 } LibraryTarget;
 
-typedef struct
+typedef struct Library__
 {
 	const char *dir;
 	const char *provides;
 	const char **depends;
 	const char **execs;
+	const char *cc;
+	const char *cflags;
+	const char **csource_dirs;
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;
@@ -441,6 +449,7 @@ typedef struct
 {
 	TargetType type;
 	Library **library_list;
+	LibraryTarget **ccompling_libraries;
 	const char *name;
 	const char *version;
 	const char *langrev;
@@ -501,9 +510,9 @@ typedef struct
 	const char *testfn;
 	const char *cc;
 	const char *cflags;
-	const char **exec;
 	const char **csource_dirs;
 	const char **csources;
+	const char **exec;
 	const char **feature_list;
 	const char *custom_linker_path;
 	struct
@@ -566,7 +575,7 @@ static BuildTarget default_build_target = {
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
 		.reloc_model = RELOC_DEFAULT,
-		.cc = "cc",
+		.cc = NULL,
 		.version = "1.0.0",
 		.langrev = "1",
 		.cpu = "generic",
@@ -591,3 +600,4 @@ bool command_accepts_files(CompilerCommand command);
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
+void resolve_libraries(BuildTarget *build_target);

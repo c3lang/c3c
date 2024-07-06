@@ -13,6 +13,7 @@
 - Updated mangling.
 - Added `$$unaligned_load` and `$$unaligned_store`.
 - `--no-headers` option to suppress creating headers when generating a library.
+- Support c-file compilation in libraries.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

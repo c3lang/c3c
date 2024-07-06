@@ -302,6 +302,8 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_SSE4_2] = "sse4.2",
 		[X86_FEAT_AVX] = "avx",
 		[X86_FEAT_AVX2] = "avx2",
+		[X86_FEAT_AVX10_1_512] = "avx10.1-512",
+		[X86_FEAT_AVX10_1_256] = "avx10.1-256",
 		[X86_FEAT_SSE4_A] = "sse4a",
 		[X86_FEAT_FMA4] = "fma4",
 		[X86_FEAT_XOP] = "xop",
@@ -375,6 +377,7 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_TBM] = "tbm",
 		[X86_FEAT_TSXLDTRK] = "tsxldtrk",
 		[X86_FEAT_UINTR] = "uintr",
+		[X86_FEAT_USERMSR] = "usermsr",
 		[X86_FEAT_VAES] = "vaes",
 		[X86_FEAT_VZEROUPPER] = "vzeroupper",
 		[X86_FEAT_WAITPKG] = "waitpkg",
@@ -663,6 +666,11 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_WBNOINVD:
 		case X86_FEAT_X87:
 		case X86_FEAT_XSAVE:
+			return;
+		case X86_FEAT_AVX10_1_256:
+		case X86_FEAT_AVX10_1_512:
+		case X86_FEAT_USERMSR:
+			// TODO
 			return;
 	}
 	UNREACHABLE
@@ -1864,7 +1872,10 @@ void target_setup(BuildTarget *target)
 		default:
 			break;
 	}
-
+	if (!target->cc)
+	{
+		target->cc = platform_target.os == OS_TYPE_WIN32 ? "cl.exe" : "cc";
+	}
 
 	platform_target.int128 = os_target_supports_int128(platform_target.os, platform_target.arch);
 	platform_target.vec128f = os_target_supports_vec(platform_target.os, platform_target.arch, 128, false);

@@ -761,11 +761,12 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	printf("Program linked to executable '%s'.\n", output_file);
 }
 
-const char *platform_compiler(const char *file, const char *flags)
+const char *cc_compiler(const char *cc, const char *file, const char *flags)
 {
 	const char *dir = active_target.object_file_dir;
 	if (!dir) dir = active_target.build_dir;
 
+	bool is_cl_exe = str_eq(cc, "cl.exe");
 	char *filename = NULL;
 	bool split_worked = file_namesplit(file, &filename, NULL);
 	if (!split_worked) error_exit("Cannot compile '%s'", file);
@@ -781,12 +782,21 @@ const char *platform_compiler(const char *file, const char *flags)
 		len -= 2;
 		filename[len] = 0;
 	}
-	const char *out_name = dir
-			? str_printf("%s/%s%s", dir, filename, get_object_extension())
-			: str_printf("%s%s", filename, get_object_extension());
-
+	const char *out_name;
+	if (is_cl_exe)
+	{
+		out_name = dir
+		           ? str_printf("/Fo:\"%s\\%s%s\"", dir, filename, get_object_extension())
+		           : str_printf("/Fo:\"%s%s\"", filename, get_object_extension());
+	}
+	else
+	{
+		out_name = dir
+		      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
+		      : str_printf("%s%s", filename, get_object_extension());
+	}
 	const char **parts = NULL;
-	vec_add(parts, active_target.cc);
+	vec_add(parts, cc);
 
 	const bool pie_set =
 			flags != NULL &&
@@ -794,18 +804,19 @@ const char *platform_compiler(const char *file, const char *flags)
 			 strstr(flags, "-fno-pie") || // it is being set in user defined cflags.
 			 strstr(flags, "-fpie") ||
 			 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
-	if (!pie_set)
+	if (!pie_set && !is_cl_exe)
 	{
 		append_fpie_pic_options(platform_target.reloc_model, &parts);
 	}
 
-	vec_add(parts, "-c");
+	vec_add(parts, is_cl_exe ? "/c" : "-c");
 	if (flags) vec_add(parts, flags);
 	vec_add(parts, file);
-	vec_add(parts, "-o");
+	if (!is_cl_exe) vec_add(parts, "-o");
 	vec_add(parts, out_name);
 
 	const char *output = concat_string_parts(parts);
+	DEBUG_LOG("Compiling c sources using '%s'", output);
 	if (system(output) != 0)
 	{
 		error_exit("Failed to compile c sources using command '%s'.\n", output);

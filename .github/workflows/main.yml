@@ -45,6 +45,7 @@ jobs:
 
       - name: Build testproject
         run: |
+          set PATH=%PATH%;"C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.40.33807/bin/Hostx64/x64"
           cd resources/testproject
           ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log --emit-llvm run hello_world_win32
           dir build\llvm_ir

@@ -1,0 +1,13 @@
+{ 
+  "provides" : "clib",
+  "c-sources" : ["hello.c"],
+  "targets" : {
+    "macos-x64" : {
+    },
+    "macos-aarch64" : {},
+    "linux-x64" : {
+      "c-flags-override": "-fPIE"
+    },
+	"windows-x64" : { }
+  }
+}

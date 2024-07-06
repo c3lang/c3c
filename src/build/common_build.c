@@ -1,0 +1,135 @@
+#include "build_internal.h"
+#include "utils/common.h"
+
+const char *get_optional_string(const char *file, const char *category, JSONObject *table, const char *key)
+{
+	JSONObject *value = json_obj_get(table, key);
+	if (!value) return NULL;
+	if (value->type != J_STRING)
+	{
+		if (category) error_exit("In file '%s': '%s' had an invalid '%s' field that was not a string, please correct it.", file, category, key);
+		error_exit("File '%s' had an invalid '%s' field that was not a string, please correct it.", file, category, key);
+	}
+	return value->str;
+}
+
+const char *get_mandatory_string(const char *file, const char *category, JSONObject *object, const char *key)
+{
+	const char *value = get_optional_string(file, category, object, key);
+	if (!value)
+	{
+		if (category) error_exit("In file '%s': The mandatory field '%s' was missing in '%s'.", file, key, category);
+		error_exit("In file '%s': The mandatory field '%s' was missing.", file);
+	}
+	return value;
+}
+
+const char *get_string(const char *file, const char *category, JSONObject *table, const char *key,
+                       const char *default_value)
+{
+	const char *value = get_optional_string(file, category, table, key);
+	return value ? value : default_value;
+}
+
+
+int get_valid_bool(const char *file, const char *target, JSONObject *json, const char *key, int default_val)
+{
+	JSONObject *value = json_obj_get(json, key);
+	if (!value) return default_val;
+	if (value->type != J_BOOL)
+	{
+		if (target) error_exit("In file '%s': '%s' had an invalid '%s' field that was not a boolean, please correct it.", file, target, key);
+		error_exit("In file '%s': An invalid '%s' field that was not a boolean, please correct it.", file, target, key);
+	}
+	return value->b;
+}
+
+const char **get_string_array(const char *file, const char *category, JSONObject *table, const char *key, bool mandatory)
+{
+	JSONObject *value = json_obj_get(table, key);
+	if (!value)
+	{
+		if (mandatory)
+		{
+			if (category) error_exit("In file '%s': '%s' was missing a mandatory '%s' field, please add it.", file, category, key);
+			error_exit("In file '%s': mandatory '%s' field is missing, please add it.", file, key);
+		}
+		return NULL;
+	}
+	if (value->type != J_ARRAY) goto NOT_ARRAY;
+	const char **values = NULL;
+	for (unsigned i = 0; i < value->array_len; i++)
+	{
+		JSONObject *val = value->elements[i];
+		if (val->type != J_STRING) goto NOT_ARRAY;
+		vec_add(values, val->str);
+	}
+	return values;
+NOT_ARRAY:
+	if (category) error_exit("In file '%s': '%s' had an invalid mandatory '%s' field that was not a string array, please correct it", file, category, key);
+	error_exit("In file '%s': mandatory '%s' field that was not a string array, please correct it.", file, key);
+}
+
+const char **get_optional_string_array(const char *file, const char *target, JSONObject *table, const char *key)
+{
+	return get_string_array(file, target, table, key, false);
+}
+
+const char *get_cflags(const char *file, const char *target, JSONObject *json, const char *original_flags)
+{
+	// CFlags
+	const char *cflags = get_optional_string(file, target, json, target ? "cflags-override" : "cflags");
+	const char *cflags_add = target ? get_optional_string(file, target, json, "cflags-add") : NULL;
+	if (cflags && cflags_add)
+	{
+		error_exit("In file '%s': '%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", file, target);
+	}
+	if (cflags) original_flags = cflags;
+	if (!cflags_add) return original_flags;
+	if (original_flags)
+	{
+		return str_printf("%s %s", original_flags, cflags_add);
+	}
+	return cflags_add;
+}
+
+INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const char **strings_to_append)
+{
+	FOREACH(const char *, string, strings_to_append) vec_add(*list_of_strings_ptr, string);
+}
+
+void get_list_append_strings(const char *file, const char *target, JSONObject *json, const char ***list_ptr,
+                             const char *base, const char *override, const char *add)
+{
+	const char **value = get_optional_string_array(file, target, json, target ? override : base);
+	const char **add_value = target ? get_optional_string_array(file, target, json, add) : NULL;
+	if (value && add_value)
+	{
+		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", file, target, override, add);
+	}
+	if (value) *list_ptr = value;
+	if (add_value)
+	{
+		append_strings_to_strings(&add_value, *list_ptr);
+		*list_ptr = add_value;
+	}
+}
+
+int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char** values, int first_result, int count, const char *expected)
+{
+	JSONObject *value = json_obj_get(json, key);
+	if (!value)
+	{
+		return -1;
+	}
+	if (value->type == J_STRING)
+	{
+		int res = str_findlist(value->str, count, values);
+		if (res >= 0) return res + first_result;
+	}
+	if (target)
+	{
+		error_exit("In file '%s': '%s' had an invalid value for '%s', expected %s", file, target, key, expected);
+	}
+	error_exit("In file '%s': Invalid value for '%s', expected %s", file, key, expected);
+}

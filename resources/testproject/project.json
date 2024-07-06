@@ -11,23 +11,23 @@
   "sources": [
     "./**"
   ],
-  // libraries to use
-  "dependencies": [],
+  "dependency-search-paths": [ "./lib" ],
+  "dependencies": ["clib"],
 
   "features": ["ABCD"],
 
-  // c compiler
-  "cc": "cc",
   // c sources
   "targets": {
     "hello_world": {
       "type": "executable",
       "c-sources-override": [
         "./csource/**"
-      ]
+      ],
+      "reloc": "PIE",
     },
     "hello_world_win32": {
       "type": "executable",
+      "cc" : "cl.exe",
       "c-sources-override": [
       ]
     },

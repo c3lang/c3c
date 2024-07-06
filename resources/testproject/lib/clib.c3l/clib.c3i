@@ -1,0 +1,3 @@
+module clib;
+
+extern fn void hello_from_c();
