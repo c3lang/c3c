@@ -2752,7 +2752,8 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	assert(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
 
 	bool is_checking = eval_type == SUBSCRIPT_EVAL_VALID;
-	if (is_checking) eval_type = SUBSCRIPT_EVAL_VALUE;
+	if (is_checking) eval_type = expr->expr_kind == EXPR_SUBSCRIPT_ADDR
+			? SUBSCRIPT_EVAL_REF : SUBSCRIPT_EVAL_VALUE;
 
 	// 1. Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
@@ -2826,6 +2827,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	{
 		if (eval_type == SUBSCRIPT_EVAL_REF)
 		{
+			if (is_checking) goto VALID_FAIL_POISON;
 			RETURN_SEMA_ERROR(subscripted, "You need to use && to take the address of a temporary.");
 		}
 		// 4a. This may either be an initializer list or a CT value
@@ -2835,6 +2837,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		// 4b. Now we need to check that we actually have a valid type.
 		if (index_value < 0)
 		{
+			if (is_checking) goto VALID_FAIL_POISON;
 			RETURN_SEMA_ERROR(index, "To subscript an untyped list a compile time integer index is needed.");
 		}
 		if (eval_type == SUBSCRIPT_EVAL_ASSIGN) TODO;
@@ -2857,10 +2860,10 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 																	&index_type,
 																	&overload))
 			{
-				SEMA_ERROR(expr,
-						   "A function or macro with '@operator(&[])' is not defined for %s, so you need && to take the address of the temporary.",
-						   type_quoted_error_string(subscripted->type));
-				return false;
+				if (is_checking) goto VALID_FAIL_POISON;
+				RETURN_SEMA_ERROR(expr, "A function or macro with '@operator(&[])' is not defined for %s, "
+										"so you need && to take the address of the temporary.",
+										type_quoted_error_string(subscripted->type));
 			}
 		}
 		if (is_checking) goto VALID_FAIL_POISON;
@@ -2874,8 +2877,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			if (!len)
 			{
 				if (is_checking) goto VALID_FAIL_POISON;
-				SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
-				return false;
+				RETURN_SEMA_ERROR(subscripted, "Cannot index '%s' from the end, since there is no 'len' overload.", type_to_error_string(subscripted->type));
 			}
 			if (!sema_analyse_expr(context, current_expr)) return false;
 			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->span);
@@ -6298,6 +6300,15 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 			goto REDO;
 		case EXPR_SUBSCRIPT:
 			inner->expr_kind = EXPR_SUBSCRIPT_ADDR;
+			if (failed_ref)
+			{
+				if (!sema_expr_analyse_subscript(context, inner, SUBSCRIPT_EVAL_VALID)) return false;
+				if (!expr_ok(inner))
+				{
+					*failed_ref = true;
+					return false;
+				}
+			}
 			if (!sema_analyse_expr_lvalue_fold_const(context, inner)) return false;
 			expr_replace(expr, inner);
 			return true;

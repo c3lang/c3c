@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+struct Abc { int x; }
+fn int* Abc.get(&self, usz index) @operator(&[]) { return &self.x; }
+
+struct Bcd { int x; }
+fn int Bcd.get(&self, usz index) @operator([]) { return 1; }
+
+fn void main()
+{
+	Abc a;
+	Bcd b;
+	int[4] c;
+	bool a1 = $defined(&a[0]);
+	bool a2 = $defined(a[0]);
+	bool b1 = $defined(&b[0]);
+	bool b2 = $defined(b[0]);
+	bool c1 = $defined(&c[0]);
+	bool c2 = $defined(c[0]);
+}
+
+/* #expect: test.ll
+
+  store i8 1, ptr %a1, align 1
+  store i8 0, ptr %a2, align 1
+  store i8 0, ptr %b1, align 1
+  store i8 1, ptr %b2, align 1
+  store i8 1, ptr %c1, align 1
+  store i8 1, ptr %c2, align 1
