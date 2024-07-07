@@ -45,7 +45,7 @@ jobs:
 
       - name: Build testproject
         run: |
-          set PATH=%PATH%;"C:/Program Files/Microsoft Visual Studio/2022/Enterprise/VC/Tools/MSVC/14.40.33807/bin/Hostx64/x64"
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           cd resources/testproject
           ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log --emit-llvm run hello_world_win32
           dir build\llvm_ir
@@ -56,6 +56,7 @@ jobs:
       - name: Build testproject lib
         run: |
           cd resources/testproject
+          call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log build hello_world_win32_lib
 
       - name: Vendor-fetch
@@ -142,7 +143,7 @@ jobs:
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib --debug-log
+          ../../build/c3c build hello_world_lib --cc cc --debug-log
 
       - name: run compiler tests
         run: |

@@ -20,6 +20,7 @@
   "targets": {
     "hello_world": {
       "type": "executable",
+      "cc" : "cc",
       "c-sources-override": [
         "./csource/**"
       ],
@@ -27,12 +28,12 @@
     },
     "hello_world_win32": {
       "type": "executable",
-      "cc" : "cl.exe",
       "c-sources-override": [
       ]
     },
     "hello_world_lib": {
       "type": "static-lib",
+      "cc" : "cc",
       "c-sources-override": [
         "./csource/**"
       ]

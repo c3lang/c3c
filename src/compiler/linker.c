@@ -782,19 +782,9 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags)
 		len -= 2;
 		filename[len] = 0;
 	}
-	const char *out_name;
-	if (is_cl_exe)
-	{
-		out_name = dir
-		           ? str_printf("/Fo:\"%s\\%s%s\"", dir, filename, get_object_extension())
-		           : str_printf("/Fo:\"%s%s\"", filename, get_object_extension());
-	}
-	else
-	{
-		out_name = dir
-		      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
-		      : str_printf("%s%s", filename, get_object_extension());
-	}
+	const char *out_name = dir
+	                      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
+	                      : str_printf("%s%s", filename, get_object_extension());;
 	const char **parts = NULL;
 	vec_add(parts, cc);
 
@@ -812,8 +802,15 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags)
 	vec_add(parts, is_cl_exe ? "/c" : "-c");
 	if (flags) vec_add(parts, flags);
 	vec_add(parts, file);
-	if (!is_cl_exe) vec_add(parts, "-o");
-	vec_add(parts, out_name);
+	if (is_cl_exe)
+	{
+		vec_add(parts, str_printf("/Fo:\"%s\"", out_name));
+	}
+	else
+	{
+		vec_add(parts, "-o");
+		vec_add(parts, out_name);
+	}
 
 	const char *output = concat_string_parts(parts);
 	DEBUG_LOG("Compiling c sources using '%s'", output);
