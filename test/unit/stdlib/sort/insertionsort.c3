@@ -71,11 +71,11 @@ fn void insertionsort_with_lambda()
     }
 }
 
-def List = List(<int>);
+def InsertionSortTestList = List(<int>);
 
 fn void insertionsort_list()
 {
-    List list;
+    InsertionSortTestList list;
     list.temp_init();
     list.add_array({ 2, 1, 3});
     sort::insertionsort(list, &sort::cmp_int_value);
