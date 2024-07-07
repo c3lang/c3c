@@ -3283,7 +3283,7 @@ static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 INLINE void expr_set_span(Expr *expr, SourceSpan loc);
 
-INLINE void const_init_set_span(ConstInitializer *init, SourceSpan loc)
+static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 {
 	RETRY:
 	switch (init->kind)
