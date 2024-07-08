@@ -34,3 +34,14 @@ macro bool @is_cmp_fn(#cmp, #list)
 		$default: return false;
 	$endswitch
 }
+
+macro bool @is_cmp_key_fn(#key_fn, #list)
+{
+	$switch
+	    $case $typeof(#key_fn).kindof != FUNC: return false;
+	    $case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;
+		$case $defined(#key_fn(#list[0])): return true;
+		$case $defined(#key_fn(&&(#list[0]))): return true;
+		$default: return false;
+	$endswitch
+}
