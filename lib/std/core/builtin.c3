@@ -346,6 +346,11 @@ macro uint String.hash(String c) => (uint)fnv32a::encode(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
 macro uint void*.hash(void* ptr) => ((ulong)(uptr)ptr).hash();
 
+distinct EmptySlot = void*;
+const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
+macro @is_empty_macro_slot(#arg) @builtin => @typeis(#arg, EmptySlot);
+macro @is_valid_macro_slot(#arg) @builtin => !@typeis(#arg, EmptySlot);
+
 const MAX_FRAMEADDRESS = 128;
 /**
  * @require n >= 0

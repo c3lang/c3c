@@ -4,15 +4,16 @@ import std::sort::qs;
 /**
  * Sort list using the quick sort algorithm.
  * @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- * @require $or(@typeid(cmp) == void*.typeid, @is_cmp_fn(cmp, list)) "Expected a comparison function which compares values"
+ * @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
+ * @require @is_valid_context(cmp, context) "Expected a valid context"
  **/
-macro quicksort(list, cmp = null) @builtin
+macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::@len_from_list(list);
-	qs::qsort(<$typeof(list), $typeof(cmp)>)(list, 0, (isz)len - 1, cmp);
+	qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, cmp, context);
 }
 
-module std::sort::qs(<Type, Comparer>);
+module std::sort::qs(<Type, CmpFn, Context>);
 
 def ElementType = $typeof(Type{}[0]);
 
@@ -26,10 +27,11 @@ def Stack = StackElementItem[64] @private;
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 
-fn void qsort(Type list, isz low, isz high, Comparer cmp)
+fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 {
-	var $no_cmp = Comparer.typeid == void*.typeid;
-	var $cmp_by_value = $and(!$no_cmp, Comparer.params[0] == @typeid(list[0]));
+	var $has_cmp = @is_valid_macro_slot(cmp);
+	var $has_context = @is_valid_macro_slot(context);
+	var $cmp_by_value = $and($has_cmp, $assignable(list[0], $typefrom(CmpFn.params[0])));
 	if (low >= 0 && high >= 0 && low < high)
 	{
 		Stack stack;
@@ -49,20 +51,25 @@ fn void qsort(Type list, isz low, isz high, Comparer cmp)
 				while (l < h)
 				{
 					$switch
+						$case $cmp_by_value && $has_context:
+							while (cmp(list[h], pivot, context) >= 0 && l < h) h--;
+		  					if (l < h) list[l++] = list[h];
+							while (cmp(list[l], pivot, context) <= 0 && l < h) l++;
 						$case $cmp_by_value:
 							while (cmp(list[h], pivot) >= 0 && l < h) h--;
-						$case !$no_cmp:
-							while (cmp(&list[h], &pivot) >= 0 && l < h) h--;
-						$default:
-							while (greater_eq(list[h], pivot) && l < h) h--;
-					$endswitch
-					if (l < h) list[l++] = list[h];
-					$switch
-						$case $cmp_by_value:
+		  					if (l < h) list[l++] = list[h];
 							while (cmp(list[l], pivot) <= 0 && l < h) l++;
-						$case !$no_cmp:
+						$case $has_cmp && $has_context:
+							while (cmp(&list[h], &pivot, context) >= 0 && l < h) h--;
+		  					if (l < h) list[l++] = list[h];
+							while (cmp(&list[l], &pivot, context) <= 0 && l < h) l++;
+						$case $has_cmp:
+							while (cmp(&list[h], &pivot) >= 0 && l < h) h--;
+		  					if (l < h) list[l++] = list[h];
 							while (cmp(&list[l], &pivot) <= 0 && l < h) l++;
 						$default:
+							while (greater_eq(list[h], pivot) && l < h) h--;
+		  					if (l < h) list[l++] = list[h];
 							while (less_eq(list[l], pivot) && l < h) l++;
 					$endswitch
 					if (l < h) list[h--] = list[l];

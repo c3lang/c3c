@@ -107,6 +107,8 @@
 - Path normalization - fix possible null terminator out of bounds.
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
 - Fix mutex and wait signatures for Win32.
+- Updated sorting API.
+- Insertion sort and counting sort added.
 
 ## 0.5.5 Change list
 

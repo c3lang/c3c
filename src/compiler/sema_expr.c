@@ -7931,7 +7931,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->resolve_status = RESOLVE_DONE;
 	return true;
 FAIL_NO_INFER:
-	SEMA_ERROR(decl, "Inferred lambda expressions cannot be used unless the type can be determined.");
+	SEMA_ERROR(expr, "Inferred lambda expressions cannot be used unless the type can be determined.");
 	return false;
 }
 

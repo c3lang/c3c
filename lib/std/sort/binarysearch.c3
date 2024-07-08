@@ -4,16 +4,19 @@ module std::sort;
  * Perform a binary search over the sorted array and return the index
  * in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true for j in [i, array.len).
  * @require @is_sortable(list) "The list must be sortable"
- * @require $or(@typeid(cmp) == void*.typeid, @is_cmp_fn(cmp, list)) "Expected a comparison function which compares values"
+ * @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
+ * @require @is_valid_context(cmp, context) "Expected a valid context"
  **/
-macro usz binarysearch(list, x, cmp = null) @builtin
+macro usz binarysearch(list, x, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz i;
 	usz len = @len_from_list(list);
+	var $no_cmp = @is_empty_macro_slot(cmp);
+	var $has_context = @is_valid_macro_slot(context);
 	for (usz j = len; i < j;)
 	{
 		usz half = i + (j - i) / 2;
-		$if @typeid(cmp) == void*.typeid:
+		$if $no_cmp:
 			switch
 			{
 				case greater(list[half], x): j = half;
@@ -21,11 +24,20 @@ macro usz binarysearch(list, x, cmp = null) @builtin
 				default: return half;
 			}
 		$else
+
 			$switch
-				$case $typeof(cmp).params[0] == @typeid(list[0]):
+				$case $defined(cmp(list[0], list[0], context)):
+					int res = cmp(list[half], x, context);
+				$case $defined(cmp(list[0], list[0])):
+					assert(!$has_context);
 					int res = cmp(list[half], x);
-				$default:
+				$case $defined(cmp(&list[0], &list[0], context)):
+					int res = cmp(&list[half], &x, context);
+				$case $defined(cmp(&list[0], &list[0])):
+					assert(!$has_context);
 					int res = cmp(&list[half], &x);
+				$default:
+					assert(false, "Invalid comparison function");
 			$endswitch
 			switch
 			{
