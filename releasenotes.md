@@ -33,6 +33,7 @@
 - Wrong size for structs containing overaligned structs #1219
 - $typeof(*x) should be valid when x is an `[out]` parameter #1226
 - Fix ABI lowering for 128 bit vectors on Linux.
+- Bad error message when using a generic method without generic parameters #1228
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

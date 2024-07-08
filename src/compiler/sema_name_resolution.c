@@ -519,8 +519,9 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 				{
 					if (matches_subpath(module->name, name_resolve->path))
 					{
-						module_with_path = module;
-						break;
+						SEMA_ERROR(name_resolve->path, "%s is a generic module, did you forget to add the generic parameter(s) (<...>) after '%s'?",
+								   module->name->module, name_resolve->symbol);
+						return poisoned_decl;
 					}
 				}
 			}
