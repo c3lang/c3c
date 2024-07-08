@@ -10,7 +10,21 @@ macro usz @len_from_list(&list)
 	$endif
 }
 
-macro bool @is_comparer(#cmp, #list)
+macro bool @is_sortable(#list)
+{
+	$switch
+		$case !$defined(#list[0]):
+			return false;
+		$case !$defined(#list.len):
+			return false;
+		$case $and($defined(&#list[0]) && !types::is_same($typeof(&#list[0]), $typeof(#list[0])*)):
+			return false;
+		$default:
+			return true;
+	$endswitch;
+}
+
+macro bool @is_cmp_fn(#cmp, #list)
 {
 	var $Type = $typeof(#cmp);
 	$switch

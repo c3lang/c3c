@@ -3,15 +3,13 @@ import std::sort::qs;
 
 /**
  * Sort list using the quick sort algorithm.
- * @require $defined(list[0]) && $defined(list.len) "The list must be indexable and support .len or .len()"
- * @require $or(@typeid(cmp) == void*.typeid, @is_comparer(cmp, list)) "Expected a comparison function which compares values"
+ * @require @is_sortable(list) "The list must be indexable and support .len or .len()"
+ * @require $or(@typeid(cmp) == void*.typeid, @is_cmp_fn(cmp, list)) "Expected a comparison function which compares values"
  **/
 macro quicksort(list, cmp = null) @builtin
 {
-	var $Type = $typeof(list);
-	var $CmpType = $typeof(cmp);
 	usz len = sort::@len_from_list(list);
-	qs::qsort(<$Type, $CmpType>)(list, 0, (isz)len - 1, cmp);
+	qs::qsort(<$typeof(list), $typeof(cmp)>)(list, 0, (isz)len - 1, cmp);
 }
 
 module std::sort::qs(<Type, Comparer>);

@@ -123,6 +123,16 @@ macro bool is_slice_convertable($Type)
 macro bool is_bool($Type) => $Type.kindof == TypeKind.BOOL;
 macro bool is_int($Type) => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
 
+macro bool is_indexable($Type)
+{
+	return $defined($Type{}[0]);
+}
+
+macro bool is_ref_indexable($Type)
+{
+	return $defined(&$Type{}[0]);
+}
+
 macro bool is_intlike($Type)
 {
 	$switch ($Type.kindof)

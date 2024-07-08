@@ -3,8 +3,8 @@ module std::sort;
 /**
  * Perform a binary search over the sorted array and return the index
  * in [0, array.len) where x would be inserted or cmp(i) is true and cmp(j) is true for j in [i, array.len).
- * @require $defined(list[0]) && $defined(list.len) "The list must be indexable"
- * @require $or(@typeid(cmp) == void*.typeid, @is_comparer(cmp, list)) "Expected a comparison function which compares values"
+ * @require @is_sortable(list) "The list must be sortable"
+ * @require $or(@typeid(cmp) == void*.typeid, @is_cmp_fn(cmp, list)) "Expected a comparison function which compares values"
  **/
 macro usz binarysearch(list, x, cmp = null) @builtin
 {
