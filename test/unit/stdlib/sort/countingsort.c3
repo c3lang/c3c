@@ -1,0 +1,106 @@
+module sort_test @test;
+import std::math;
+import std::sort;
+import sort::check;
+import std::collections::list;
+
+fn uint key_int_ref(int* x) {
+	return (uint)(*x + int.min);
+}
+
+fn uint key_int_value(int x) {
+	return (uint)(x + int.min);
+}
+
+fn void countingsort()
+{
+    int[][] tcases = {
+        {},
+        {[0..128] = 10, [129..192] = 3},
+        {[0..128] = 3, [129..192] = 2, [193..200] = 1},
+        {[0..128] = 1, [129..192] = 2, [193..200] = 3},
+        {[0..128] = 2, [129..192] = 1, [193..200] = 3},
+    };
+
+    foreach (tc : tcases)
+    {
+        sort::countingsort(tc);
+        assert(check::int_ascending_sort(tc));
+    }
+}
+
+fn void countingsort_with_ref()
+{
+    int[][] tcases = {
+        {},
+        {[0..128] = 10, [129..192] = 3},
+        {[0..128] = 3, [129..192] = 2, [193..200] = 1},
+        {[0..128] = 1, [129..192] = 2, [193..200] = 3},
+        {[0..128] = 2, [129..192] = 1, [193..200] = 3},
+    };
+
+    foreach (tc : tcases)
+    {
+        sort::countingsort(tc, &sort::key_int_ref);
+        assert(check::int_ascending_sort(tc));
+    }
+}
+
+fn void countingsort_with_value()
+{
+    int[][] tcases = {
+        {},
+        {[0..128] = 10, [129..192] = 3},
+        {[0..128] = 3, [129..192] = 2, [193..200] = 1},
+        {[0..128] = 1, [129..192] = 2, [193..200] = 3},
+        {[0..128] = 2, [129..192] = 1, [193..200] = 3},
+    };
+
+    foreach (tc : tcases)
+    {
+        sort::countingsort(tc, &sort::key_int_value);
+        assert(check::int_ascending_sort(tc));
+    }
+}
+
+fn void countingsort_with_lambda()
+{
+    int[][] tcases = {
+        {},
+        {[0..128] = 10, [129..192] = 3},
+        {[0..128] = 3, [129..192] = 2, [193..200] = 1},
+        {[0..128] = 1, [129..192] = 2, [193..200] = 3},
+        {[0..128] = 2, [129..192] = 1, [193..200] = 3},
+    };
+
+    foreach (tc : tcases)
+    {
+        sort::countingsort(tc, fn uint(int a) => ((uint)(a + int.min)));
+        assert(check::int_ascending_sort(tc));
+    }
+}
+
+def List = List(<int>);
+
+fn void countingsort_list()
+{
+    List list;
+    list.temp_init();
+    list.add_array({ 2, 1, 3});
+    sort::countingsort(list, &sort::key_int_value);
+    assert(check::int_ascending_sort(list.array_view()));
+}
+
+fn void countingsort_random_large_list()
+{
+    Lcg128Random random;
+    math::seed_entropy(&random); 
+
+    List list;
+    for (usz i = 0; i < 2048; i++) {
+      list.push(random.next_int());
+    }
+
+    sort::countingsort(list, &sort::key_int_value);
+    assert(check::int_ascending_sort(list.array_view()));
+}
