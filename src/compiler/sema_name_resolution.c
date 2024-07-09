@@ -547,7 +547,7 @@ INLINE Decl *sema_resolve_symbol_common(SemaContext *context, NameResolve *name_
 		sema_report_error_on_decl(context, decl, name_resolve);
 		return poisoned_decl;
 	}
-	unit_register_external_symbol(context->compilation_unit, decl);
+	unit_register_external_symbol(context, decl);
 	if (decl->is_if && context->call_env.in_if_resolution.a)
 	{
 		sema_error_at(context, context->call_env.in_if_resolution, "This @if expression is dependent on '%s' which is also conditional.", decl->name);

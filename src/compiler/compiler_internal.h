@@ -2193,7 +2193,7 @@ const char *get_exe_extension(void);
 
 CompilationUnit * unit_create(File *file);
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl);
-void unit_register_external_symbol(CompilationUnit *unit, Decl *decl);
+void unit_register_external_symbol(SemaContext *context, Decl *decl);
 
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import);
 bool context_set_module_from_filename(ParseContext *context);

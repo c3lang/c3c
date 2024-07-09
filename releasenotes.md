@@ -34,6 +34,7 @@
 - $typeof(*x) should be valid when x is an `[out]` parameter #1226
 - Fix ABI lowering for 128 bit vectors on Linux.
 - Bad error message when using a generic method without generic parameters #1228
+- Private function called from nested macro not visible to linker #1232
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
@@ -41,6 +42,8 @@
 - Remove "panic" text from unreachable() when safe mode is turned off.
 - Added `@unaligned_store` and `@unaligned_load`.
 - Null ZString, DString or pointer prints "(null)" for printf.
+- Updated sorting API.
+- Insertion sort and counting sort added.
 
 ## 0.6.0 Change list
 
@@ -107,8 +110,6 @@
 - Path normalization - fix possible null terminator out of bounds.
 - Add 'zstr' variants for `string::new_format` / `string::tformat`.
 - Fix mutex and wait signatures for Win32.
-- Updated sorting API.
-- Insertion sort and counting sort added.
 
 ## 0.5.5 Change list
 

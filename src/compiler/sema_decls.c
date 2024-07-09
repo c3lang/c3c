@@ -1565,7 +1565,7 @@ static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorO
 	{
 		if (extension->operator == operator_overload)
 		{
-			unit_register_external_symbol(c->compilation_unit, extension);
+			unit_register_external_symbol(c, extension);
 			return extension;
 		}
 	}
@@ -1585,7 +1585,7 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 	{
 		if (func->operator == operator_overload)
 		{
-			unit_register_external_symbol(context->compilation_unit, func);
+			unit_register_external_symbol(context, func);
 			return func;
 		}
 	}
@@ -4012,7 +4012,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		}
 	}
 	if (!sema_analyse_decl(c, symbol)) return poisoned_decl;
-	unit_register_external_symbol(c->compilation_unit, symbol);
+	unit_register_external_symbol(c, symbol);
 	return symbol;
 }
 

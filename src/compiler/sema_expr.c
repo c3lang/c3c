@@ -1033,7 +1033,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	}
 	sema_display_deprecated_warning_on_use(context, decl, expr->span);
 
-	unit_register_external_symbol(context->compilation_unit, decl);
+	unit_register_external_symbol(context, decl);
 	if (decl->decl_kind == DECL_VAR)
 	{
 		decl->var.is_read = true;
@@ -3291,7 +3291,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			}
 			break;
 		case DECL_FAULT:
-			unit_register_external_symbol(context->compilation_unit, decl);
+			unit_register_external_symbol(context, decl);
 			if (is_const)
 			{
 				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
@@ -4402,7 +4402,7 @@ CHECK_DEEPER:
 		expr->access_expr.parent = current_parent;
 		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
 		expr->access_expr.ref = method;
-		if (method->decl_kind == DECL_FUNC) unit_register_external_symbol(context->compilation_unit, method);
+		if (method->decl_kind == DECL_FUNC) unit_register_external_symbol(context, method);
 		return true;
 	}
 
@@ -4443,7 +4443,7 @@ CHECK_DEEPER:
 
 	if (member && member->decl_kind == DECL_FUNC)
 	{
-		unit_register_external_symbol(context->compilation_unit, member);
+		unit_register_external_symbol(context, member);
 	}
 
 	// 11. If we didn't find a match...
