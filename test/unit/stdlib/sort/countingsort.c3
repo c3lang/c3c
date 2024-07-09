@@ -80,11 +80,11 @@ fn void countingsort_with_lambda()
     }
 }
 
-def List = List(<int>);
+def CountingSortTestList = List(<int>);
 
 fn void countingsort_list()
 {
-    List list;
+    CountingSortTestList list;
     list.temp_init();
     list.add_array({ 2, 1, 3});
     sort::countingsort(list, &sort::key_int_value);
@@ -96,7 +96,7 @@ fn void countingsort_random_large_list()
     Lcg128Random random;
     math::seed_entropy(&random); 
 
-    List list;
+    CountingSortTestList list;
     for (usz i = 0; i < 2048; i++) {
       list.push(random.next_int());
     }
