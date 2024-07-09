@@ -40,6 +40,24 @@ def KeyFnReturnType = ElementType @if(NO_KEY_FN);
 def CmpCallback = fn int(ElementType, ElementType, KeyFn) @if(KEY_BY_VALUE);
 def CmpCallback = fn int(ElementType*, ElementType*, KeyFn) @if(!KEY_BY_VALUE);
 
+fn uchar* partition_uchar_less(uchar *first, uchar *last, uchar limit) @private {
+	for (;;) {
+		if (first == last)
+			return first;
+		if (!(*first < limit))
+			break;
+		++first;
+	}
+
+	for (uchar* i = first; ++i != last;) {
+		usz r = *i < limit;
+		@swap(*i, *first);
+		first += r;
+	}
+	
+	return first;
+}
+
 fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 {
 	if (high <= low) return;
@@ -54,7 +72,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 		$endswitch;
 	};
 
-    byte_idx = byte_idx >= KeyFnReturnType.sizeof ? KeyFnReturnType.sizeof - 1 : byte_idx;
+	byte_idx = byte_idx >= KeyFnReturnType.sizeof ? KeyFnReturnType.sizeof - 1 : byte_idx;
 
 	Counts counts;
 	Ranges ranges;
@@ -92,12 +110,15 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 	KeyFnReturnType diff = mx - mn;
 	if (diff == 0) return;
 
-	ushort parition_count = 0;
+	ushort fallback128_count = 0;
+	ushoft recurse_count     = 0;
 	usz total = 0;
 	foreach (char i, count : counts)
 	{
-		indexs[parition_count] = i;
-		parition_count += (ushort)(count > 0);
+		indexs[fallback128_count] = i;
+		indexs[255-recurse_count] = i;
+		fallback128_count += (ushort)(count > 0 && count <= 128);
+		recurse_count     += (ushort)(count > 128);
 		counts[i] = total;
 		ranges[i] = total;
 		total += count;
@@ -137,23 +158,33 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 	if (byte_idx)
 	{
-		for (usz p = 0; p < parition_count; p++)
+		uchar* fallback32_pointer = partition_uchar_less(&indexs[0],&indexs[p],33);
+		usz    fallback32_count   = fallback32_pointer - &indexs[0];
+	
+		for (usz p = 0; p < fallback32_count; p++) {
+			usz i            = indexs[p];
+			usz start_offset = ranges[i];
+			usz end_offset   = ranges[i + 1];
+
+			insertionsort_indexed(list, low + start_offset, low + end_offset, compare_fn, key_fn);
+		}
+
+		for (usz p = fallback32_count; p < fallback128_count; p++)
 		{
-			usz i = indexs[p];
-			usz	start_offset = ranges[i];
-			usz	end_offset = ranges[i + 1];
+			usz i            = indexs[p];
+			usz start_offset = ranges[i];
+			usz end_offset   = ranges[i + 1];
 
-			usz	items = end_offset - start_offset;
+			quicksort_indexed(list, low + start_offset, low + end_offset, compare_fn, key_fn);
+		}
 
-			switch (items)
-			{
-				case 0..32:
-					insertionsort_indexed(list, low + start_offset, low + end_offset, compare_fn, key_fn);
-				case 33..128:
-					quicksort_indexed(list, low + start_offset, low + end_offset, compare_fn, key_fn);
-				default:
-					csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1);
-			}
+		for (usz p = 0; p < recurse_count; p++)
+		{
+			usz i            = indexs[255-p];
+			usz start_offset = ranges[i];
+			usz end_offset   = ranges[i + 1];
+
+			csort(list, low + start_offset, low + end_offset, key_fn, byte_idx - 1);
 		}
 	}
 }
