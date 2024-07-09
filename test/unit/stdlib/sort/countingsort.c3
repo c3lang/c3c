@@ -4,14 +4,6 @@ import std::sort;
 import sort::check;
 import std::collections::list;
 
-fn uint key_int_ref(int* x) {
-	return (uint)(*x + int.min);
-}
-
-fn uint key_int_value(int x) {
-	return (uint)(x + int.min);
-}
-
 fn void countingsort()
 {
     int[][] tcases = {
