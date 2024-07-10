@@ -761,11 +761,12 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	printf("Program linked to executable '%s'.\n", output_file);
 }
 
-const char *cc_compiler(const char *cc, const char *file, const char *flags)
+const char *cc_compiler(const char *cc, const char *file, const char *flags, const char *output_subdir)
 {
 	const char *dir = active_target.object_file_dir;
 	if (!dir) dir = active_target.build_dir;
-
+	if (output_subdir) dir = file_append_path(dir, output_subdir);
+	dir_make(dir);
 	bool is_cl_exe = str_eq(cc, "cl.exe");
 	char *filename = NULL;
 	bool split_worked = file_namesplit(file, &filename, NULL);

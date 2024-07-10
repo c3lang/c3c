@@ -3504,7 +3504,7 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 bool dynamic_lib_linker(const char *output_file, const char **files, unsigned file_count);
 bool linker(const char *output_file, const char **files, unsigned file_count);
 void platform_linker(const char *output_file, const char **files, unsigned file_count);
-const char *cc_compiler(const char *cc, const char *file, const char *flags);
+const char *cc_compiler(const char *cc, const char *file, const char *flags, const char *output_subdir);
 const char *arch_to_linker_arch(ArchType arch);
 
 #define CAT(a,b) CAT2(a,b) // force expand

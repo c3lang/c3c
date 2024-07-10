@@ -1,6 +1,6 @@
 { 
   "provides" : "clib",
-  "c-sources" : ["hello.c"],
+  "c-sources" : ["hello2.c"],
   "targets" : {
     "macos-x64" : {
     },

@@ -12,7 +12,7 @@
     "./**"
   ],
   "dependency-search-paths": [ "./lib" ],
-  "dependencies": ["clib"],
+  "dependencies": ["clib", "clib2"],
 
   "features": ["ABCD"],
 

@@ -253,12 +253,13 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
-static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **out_files)
+static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **out_files,
+                          const char *output_subdir)
 {
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
-		out_files[total++] = cc_compiler(compiler, file, flags);
+		out_files[total++] = cc_compiler(compiler, file, flags, output_subdir);
 	}
 	return total;
 }
@@ -468,14 +469,15 @@ void compiler_compile(void)
 
 	if (cfiles)
 	{
-		int compiled = compile_cfiles(active_target.cc, active_target.csources, active_target.cflags, &obj_files[output_file_count]);
+		int compiled = compile_cfiles(active_target.cc, active_target.csources, active_target.cflags, &obj_files[output_file_count], "tmp_c_compile");
 		assert(cfiles == compiled);
 		(void)compiled;
 	}
 	const char **obj_file_next = &obj_files[output_file_count + cfiles];
 	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
 	{
-		obj_file_next += compile_cfiles(lib->cc ? lib->cc : active_target.cc, lib->csources, lib->cflags, obj_file_next);
+		obj_file_next += compile_cfiles(lib->cc ? lib->cc : active_target.cc, lib->csources,
+		                                lib->cflags, obj_file_next, lib->parent->provides);
 	}
 
 	Task **tasks = NULL;
