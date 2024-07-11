@@ -636,16 +636,13 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		decl->strukt.padding = (AlignSize)(size - offset);
 	}
 
-	if (decl->attr_nopadding)
+	if (decl->attr_nopadding && type_is_substruct(decl->type))
 	{
-		if (type_is_substruct(decl->type))
+		Decl *first_member = struct_members[0];
+		Type *type = type_flatten(first_member->type);
+		if (type->type_kind == TYPE_STRUCT && !type->decl->attr_nopadding)
 		{
-			Decl *first_member = struct_members[0];
-			Type *type = type_flatten(first_member->type);
-			if (type->type_kind == TYPE_STRUCT && !type->decl->attr_nopadding)
-			{
-				RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
-			}
+			RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
 		}
 	}
 
