@@ -80,3 +80,9 @@ macro unpoison_value(value) => unpoison_memory_region((void*)value, $sizeof(*val
 // {
 // 	return "detect_leaks=0";
 // }
+
+// Add this to break on error
+// asan::set_error_report_callback(fn (ZString err)
+// {
+//   breakpoint();
+// });
