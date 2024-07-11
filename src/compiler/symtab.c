@@ -164,6 +164,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
 	type_property_list[TYPE_PROPERTY_IS_EQ] = KW_DEF("is_eq");
 	type_property_list[TYPE_PROPERTY_IS_ORDERED] = KW_DEF("is_ordered");
+	type_property_list[TYPE_PROPERTY_IS_SUBSTRUCT] = KW_DEF("is_substruct");
 	type_property_list[TYPE_PROPERTY_KINDOF] = KW_DEF("kindof");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
 	type_property_list[TYPE_PROPERTY_NAMEOF] = KW_DEF("nameof");

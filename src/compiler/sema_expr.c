@@ -3423,6 +3423,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_PARENTOF:
 		case TYPE_PROPERTY_IS_EQ:
 		case TYPE_PROPERTY_IS_ORDERED:
+		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			break;
 	}
 
@@ -3831,6 +3832,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_ASSOCIATED:
 		case TYPE_PROPERTY_IS_EQ:
 		case TYPE_PROPERTY_IS_ORDERED:
+		case TYPE_PROPERTY_IS_SUBSTRUCT:
 			// Not supported by dynamic typeid
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -4028,6 +4030,8 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 		case TYPE_PROPERTY_IS_ORDERED:
 		case TYPE_PROPERTY_IS_EQ:
 			return true;
+		case TYPE_PROPERTY_IS_SUBSTRUCT:
+			return type->type_kind == TYPE_STRUCT;
 		case TYPE_PROPERTY_LEN:
 			switch (type->type_kind)
 			{
@@ -4088,6 +4092,9 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_IS_EQ:
 			expr_rewrite_const_bool(expr, type_bool, type_is_comparable(flat));
+			return true;
+		case TYPE_PROPERTY_IS_SUBSTRUCT:
+			expr_rewrite_const_bool(expr, type_bool, type_is_substruct(flat));
 			return true;
 		case TYPE_PROPERTY_INNER:
 			return sema_create_const_inner(context, expr, type);

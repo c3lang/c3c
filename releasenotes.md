@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Updated LLVM passes
+- Added `is_substruct` type property.
 
 ### Fixes
 None
