@@ -263,7 +263,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		case DECL_UNION:
 			// Extend the nopadding attributes to substructs.
 		  if (parent->attr_nopadding) decl->attr_nopadding = true;
-		  if (parent->strukt.attr_compact) decl->strukt.attr_compact = true;
+		  if (parent->attr_compact) decl->attr_compact = true;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
@@ -277,7 +277,7 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 	if (member_type->type_kind == TYPE_STRUCT || member_type->type_kind == TYPE_UNION) {
 		if (member_type->decl->strukt.padded_decl) {
 			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member_type->decl->strukt.padded_decl;
-			if (decl->strukt.attr_compact) {
+			if (decl->attr_compact) {
 				sema_error_at(context, member->span, "This member has holes.");
 				RETURN_SEMA_ERROR(member_type->decl->strukt.padded_decl, "Padding would be added for this.");
 			}
@@ -2591,7 +2591,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_COMPACT:
 			decl->attr_nopadding = true;
-			decl->strukt.attr_compact = true;
+			decl->attr_compact = true;
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;
