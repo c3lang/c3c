@@ -427,8 +427,9 @@ typedef struct
 typedef struct
 {
 	TypeSize size;
-	Decl **members;
 	MemberIndex union_rep;
+	Decl **members;
+	Decl *padded_decl;
 	AlignSize padding : 16;
 } StructDecl;
 
@@ -676,6 +677,8 @@ typedef struct Decl_
 	bool is_cond : 1;
 	bool has_link : 1;
 	bool is_if : 1;
+	bool attr_nopadding : 1;
+	bool attr_compact : 1;
 	OperatorOverload operator : 4;
 	union
 	{
