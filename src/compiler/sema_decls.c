@@ -276,7 +276,8 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type) 
 {
 	member_type = type_flatten(member_type);
-	if (member_type->type_kind != TYPE_STRUCT && member_type->type_kind != TYPE_UNION) return true;
+	if (!type_is_union_or_strukt(member_type)) return true;
+	assert(decl_is_struct_type(member_type->decl));
 	if (!member_type->decl->strukt.padded_decl_id) return true;
 	if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = member_type->decl->strukt.padded_decl_id;
 	if (decl->attr_compact)
@@ -377,6 +378,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	decl->is_packed = decl->is_packed && max_alignment > 1;
 
 	// "Representative" type is the one with the maximum alignment.
+	assert(max_alignment_element >= 0);
 	decl->strukt.union_rep = max_alignment_element;
 
 	// All members share the same alignment
@@ -590,6 +592,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		if (align_offset - offset != 0)
 		{
+			assert(decl_is_struct_type(decl));
 			if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(member);
 			if (decl->attr_nopadding || member->attr_nopadding)
 			{
@@ -647,6 +650,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 	if (size != offset)
 	{
+		assert(decl_is_struct_type(decl));
 		if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(decl);
 		if (decl->attr_nopadding)
 		{

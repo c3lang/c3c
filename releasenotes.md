@@ -15,6 +15,8 @@
 - `--no-headers` option to suppress creating headers when generating a library.
 - Support c-file compilation in libraries.
 - Allow using $defined(&a[1]) to check if the operation is supported.
+- Max number of members in a struct is limited to 65535.
+- The maximum number of parameters in a call is now 255, up from 127.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -35,6 +37,7 @@
 - Fix ABI lowering for 128 bit vectors on Linux.
 - Bad error message when using a generic method without generic parameters #1228
 - Private function called from nested macro not visible to linker #1232
+- Bitstructs in structs would not be correctly be handled in some cases.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

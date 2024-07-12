@@ -1013,7 +1013,7 @@ static inline bool array_structurally_equivalent_to_struct(Type *array, Type *ty
 	Decl **members = type->decl->strukt.members;
 
 	// For structs / errors, all members must match.
-	ArrayIndex  offset = 0;
+	ArrayIndex offset = 0;
 	AlignSize align_size = type_abi_alignment(array);
 	Type *array_base = array->array.base;
 	FOREACH(Decl *, member, members)

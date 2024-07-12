@@ -271,8 +271,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
-			unsigned element_count = vec_size(elements);
-			assert(element_count > 0 && "Array should always have gotten at least one element.");
+			assert(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
 			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;

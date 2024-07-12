@@ -907,6 +907,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
+			MACRO_COPY_DECLID(copy->strukt.padded_decl_id);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_DECLARRAY:

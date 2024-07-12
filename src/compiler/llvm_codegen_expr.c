@@ -804,14 +804,16 @@ static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, D
 	} while (found != member);
 }
 
-static void llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *parent, Decl *member)
+static Decl *llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *parent, Decl *member)
 {
 	assert(member->resolve_status == RESOLVE_DONE);
-	Decl *found = NULL;
+	Decl *found = parent;
+	Decl *last = NULL;
 	do
 	{
 		ArrayIndex index = find_member_index(parent, member);
 		assert(index > -1);
+		last = found;
 		found = parent->strukt.members[index];
 		switch (parent->type->canonical->type_kind)
 		{
@@ -829,6 +831,7 @@ static void llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *pare
 		}
 		parent = found;
 	} while (found != member);
+	return last ? last : parent;
 }
 
 static LLVMValueRef llvm_emit_bswap(GenContext *c, LLVMValueRef value)
@@ -838,6 +841,7 @@ static LLVMValueRef llvm_emit_bswap(GenContext *c, LLVMValueRef value)
 		return LLVMConstBswap(value);
 	}
 	LLVMTypeRef type = LLVMTypeOf(value);
+	assert(type != c->byte_type);
 	return llvm_emit_call_intrinsic(c, intrinsic_id.bswap, &type, 1, &value, 1);
 }
 
@@ -871,6 +875,7 @@ static inline void llvm_extract_bool_bit_from_array(GenContext *c, BEValue *be_v
 static inline LLVMValueRef llvm_bswap_non_integral(GenContext *c, LLVMValueRef value, unsigned bitsize)
 {
 	if (bitsize <= 8) return value;
+	assert(is_power_of_two(bitsize));
 	LLVMValueRef shifted = llvm_emit_shl_fixed(c, value, (int)llvm_bitsize(c, LLVMTypeOf(value)) - (int)bitsize);
 	return llvm_emit_bswap(c, shifted);
 }
@@ -942,9 +947,8 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 }
 
 
-static inline void llvm_extract_bitvalue(GenContext *c, BEValue *be_value, Expr *parent, Decl *member)
+static inline void llvm_extract_bitvalue(GenContext *c, BEValue *be_value, Decl *parent_decl, Decl *member)
 {
-	Decl *parent_decl = type_flatten(parent->type)->decl;
 	if (be_value->type->type_kind == TYPE_ARRAY)
 	{
 		llvm_extract_bitvalue_from_array(c, be_value, member, parent_decl);
@@ -1126,14 +1130,14 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 	BEValue parent;
 	Decl *member = lhs->access_expr.ref;
 	llvm_emit_expr(c, &parent, parent_expr);
-	llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
+	Decl *parent_decl = llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
 
 	// If we have assign + op, load the current value, perform the operation.
 	if (expr->binary_expr.operator != BINARYOP_ASSIGN)
 	{
 		// Grab the current value.
 		BEValue value = parent;
-		llvm_extract_bitvalue(c, &value, parent_expr, member);
+		llvm_extract_bitvalue(c, &value, parent_decl, member);
 		// Perform the operation and place it in be_value
 		llvm_emit_binary(c, be_value, expr, &value, binaryop_assign_base_op(expr->binary_expr.operator));
 	}
@@ -1152,10 +1156,10 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 
 	// To start the assign, pull out the current value.
 	LLVMValueRef current_value = llvm_load_value_store(c, &parent);
-	bool bswap = bitstruct_requires_bitswap(parent_type->decl);
+	bool bswap = bitstruct_requires_bitswap(parent_decl);
 	if (bswap) current_value = llvm_emit_bswap(c, current_value);
 	LLVMValueRef value = llvm_load_value_store(c, be_value);
-	current_value = llvm_emit_bitstruct_value_update(c, current_value, type_size(parent.type) * 8, LLVMTypeOf(current_value), member, value);
+	current_value = llvm_emit_bitstruct_value_update(c, current_value, type_size(parent_decl->type) * 8, LLVMTypeOf(current_value), member, value);
 	if (bswap) current_value = llvm_emit_bswap(c, current_value);
 	llvm_store_raw(c, &parent, current_value);
 }
@@ -1167,8 +1171,8 @@ static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *e
 	Decl *member = expr->access_expr.ref;
 	assert(be_value && be_value->type);
 
-	llvm_emit_bitstruct_member(c, be_value, type_flatten(parent->type)->decl, member);
-	llvm_extract_bitvalue(c, be_value, parent, expr->access_expr.ref);
+	Decl *parent_decl = llvm_emit_bitstruct_member(c, be_value, type_flatten(parent->type)->decl, member);
+	llvm_extract_bitvalue(c, be_value, parent_decl, expr->access_expr.ref);
 }
 
 static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr *expr)
@@ -2037,7 +2041,7 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 				llvm_emit_expr(c, &exprval, expr);
 				LLVMValueRef val = llvm_load_value_store(c, &exprval);
 				LLVMTypeRef bitstruct_type = llvm_get_type(c, underlying_type);
-				bool is_bitswap = bitstruct_requires_bitswap(decl);
+				bool is_bitswap = bitstruct_requires_bitswap(type->decl);
 				if (underlying_type->type_kind == TYPE_ARRAY)
 				{
 					llvm_emit_update_bitstruct_array(c, value.value, value.alignment, bitstruct_type, is_bitswap, member, val);
@@ -2150,6 +2154,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 
 static bool bitstruct_requires_bitswap(Decl *decl)
 {
+	assert(decl->decl_kind == DECL_BITSTRUCT);
 	bool big_endian = platform_target.big_endian;
 	if (decl->bitstruct.big_endian) return !big_endian;
 	if (decl->bitstruct.little_endian) return big_endian;
@@ -2435,27 +2440,26 @@ static inline void llvm_emit_pre_post_inc_dec_bitstruct(GenContext *c, BEValue *
 	BEValue parent;
 	Decl *member = lhs->access_expr.ref;
 	llvm_emit_expr(c, &parent, parent_expr);
-	llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
+	Decl *parent_decl = llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
 
 	BEValue value = parent;
-	llvm_extract_bitvalue(c, &value, parent_expr, member);
+	llvm_extract_bitvalue(c, &value, parent_decl, member);
 	LLVMValueRef value_start = llvm_load_value_store(c, &value);
 	LLVMValueRef result = llvm_emit_add_int(c, value.type, value_start, llvm_const_int(c, value.type, diff), lhs->span);
 
 	llvm_value_set(be_value, pre ? result : value_start, value.type);
 
-	Type *parent_type = type_flatten(parent_expr->type);
-	if (type_lowering(parent_type)->type_kind == TYPE_ARRAY)
+	if (type_lowering(parent_decl->type)->type_kind == TYPE_ARRAY)
 	{
-		llvm_emit_bitassign_array(c, result, parent, parent_type->decl, member);
+		llvm_emit_bitassign_array(c, result, parent, parent_decl, member);
 		return;
 	}
 
 	// To start the assign, pull out the current value.
 	LLVMValueRef current_value = llvm_load_value_store(c, &parent);
-	bool bswap = bitstruct_requires_bitswap(parent_type->decl);
+	bool bswap = bitstruct_requires_bitswap(parent_decl);
 	if (bswap) current_value = llvm_emit_bswap(c, current_value);
-	current_value = llvm_emit_bitstruct_value_update(c, current_value, type_size(parent.type) * 8, LLVMTypeOf(current_value), member, result);
+	current_value = llvm_emit_bitstruct_value_update(c, current_value, type_size(parent_decl->type) * 8, LLVMTypeOf(current_value), member, result);
 	if (bswap) current_value = llvm_emit_bswap(c, current_value);
 	llvm_store_raw(c, &parent, current_value);
 }
