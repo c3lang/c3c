@@ -150,7 +150,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 
 static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
 {
-	arg_info->param_index_start = (MemberIndex)vec_size(*params);
+	arg_info->param_index_start = (ArrayIndex)vec_size(*params);
 	switch (arg_info->kind)
 	{
 		case ABI_ARG_IGNORE:
@@ -197,7 +197,7 @@ static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgIn
 			vec_add(*params, llvm_abi_type(c, arg_info->direct_pair.hi));
 			break;
 	}
-	arg_info->param_index_end = (MemberIndex)vec_size(*params);
+	arg_info->param_index_end = (ArrayIndex)vec_size(*params);
 }
 
 LLVMTypeRef llvm_update_prototype_abi(GenContext *c, FunctionPrototype *prototype, LLVMTypeRef **params)

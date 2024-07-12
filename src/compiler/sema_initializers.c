@@ -15,11 +15,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
 static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index);
-static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, MemberIndex *max_index, Decl **member_ptr);
+static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
-static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr);
-MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
-static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
+static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr);
+ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
+static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
 static void sema_update_const_initializer_with_designator(ConstInitializer *const_init,
 														  DesignatorElement **curr,
 														  DesignatorElement **end,
@@ -69,7 +69,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	assert(assigned->resolve_status == RESOLVE_DONE);
 	Expr **elements = initializer->initializer_list;
 	Decl **members = assigned->strukt.members;
-	MemberIndex size = (MemberIndex)vec_size(elements);
+	ArrayIndex size = (ArrayIndex)vec_size(elements);
 	unsigned elements_needed = decl_count_elements(assigned);
 
 	// 1. For struct number of members must be the same as the size of the struct.
@@ -98,8 +98,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	}
 
 	// 3. Loop through all elements.
-	MemberIndex max_loop = size > elements_needed ? size : elements_needed;
-	for (MemberIndex i = 0; i < max_loop; i++)
+	ArrayIndex max_loop = size > elements_needed ? size : elements_needed;
+	for (ArrayIndex i = 0; i < max_loop; i++)
 	{
 		// 4. Check if we exceeded the list of elements in the struct/union.
 		//    This way we can check the other elements which might help the
@@ -403,7 +403,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	Type *original = flattened->canonical;
 	bool is_bitstruct = original->type_kind == TYPE_BITSTRUCT;
 	bool is_structlike = type_is_union_or_strukt(original) || is_bitstruct;
-	MemberIndex max_index = -1;
+	ArrayIndex max_index = -1;
 	bool optional = false;
 	Type *inner_type = NULL;
 	bool is_inferred = type_is_inferred(flattened);
@@ -902,8 +902,8 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 																	   Expr *value)
 {
 	DesignatorElement *element = curr[0];
-	MemberIndex low_index = element->index;
-	MemberIndex high_index = element->kind == DESIGNATOR_RANGE ? element->index_end : element->index;
+	ArrayIndex low_index = element->index;
+	ArrayIndex high_index = element->kind == DESIGNATOR_RANGE ? element->index_end : element->index;
 	assert(element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE);
 
 	// Expand zero into array.
@@ -921,9 +921,9 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 	ConstInitializer **array_elements = const_init->init_array.elements;
 
 	unsigned array_count = vec_size(array_elements);
-	MemberIndex insert_index = 0;
+	ArrayIndex insert_index = 0;
 
-	for (MemberIndex index = low_index; index <= high_index; index++)
+	for (ArrayIndex index = low_index; index <= high_index; index++)
 	{
 		assert(insert_index >= array_count || array_elements);
 		// Walk to the insert point or until we reached the end of the array.
@@ -1017,7 +1017,7 @@ static inline void sema_update_const_initializer_with_designator(
 	}
 }
 
-static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, MemberIndex *max_index, Decl **member_ptr)
+static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr)
 {
 	DesignatorElement **path = expr->designator_expr.path;
 
@@ -1045,7 +1045,7 @@ INLINE bool sema_initializer_list_is_empty(Expr *value)
 	return expr_is_const_initializer(value) && value->const_expr.initializer->kind == CONST_INIT_ZERO;
 }
 
-static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, MemberIndex *max_index, Decl **member_ptr)
+static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr)
 {
 	Type *type_flattened = type_flatten(type);
 	DesignatorElement *element = (*elements_ref)[*curr_index];
@@ -1069,13 +1069,13 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 			default:
 				return NULL;
 		}
-		MemberIndex index = sema_analyse_designator_index(context, element->index_expr);
+		ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
 		if (index < 0)
 		{
 			*did_report_error = true;
 			return NULL;
 		}
-		if (index >= (MemberIndex)len)
+		if (index >= (ArrayIndex)len)
 		{
 			SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
 			*did_report_error = true;
@@ -1086,7 +1086,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		if (max_index && *max_index < index) *max_index = index;
 		if (element->kind == DESIGNATOR_RANGE)
 		{
-			MemberIndex end_index = sema_analyse_designator_index(context, element->index_end_expr);
+			ArrayIndex end_index = sema_analyse_designator_index(context, element->index_end_expr);
 			if (end_index < 0)
 			{
 				*did_report_error = true;
@@ -1098,7 +1098,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 				*did_report_error = true;
 				return NULL;
 			}
-			if (end_index > (MemberIndex)len)
+			if (end_index > (ArrayIndex)len)
 			{
 				*did_report_error = true;
 				SEMA_ERROR(element->index_expr, "The index may must be less than the array length (which was %llu).", (unsigned long long)len);
@@ -1123,7 +1123,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 	return member->type;
 }
 
-MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
+ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
 {
 	if (expr_is_const(initializer))
 	{
@@ -1137,7 +1137,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 				if (type->type_kind == TYPE_ARRAY)
 				{
 					*may_be_array = true;
-					return (MemberIndex)type->array.len;
+					return (ArrayIndex)type->array.len;
 				}
 				if (type->type_kind == TYPE_SLICE)
 				{
@@ -1151,7 +1151,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 				return vectail(init->init_array.elements)->init_array_value.index + 1;
 			case CONST_INIT_ARRAY_FULL:
 				*may_be_array = true;
-				return (MemberIndex)vec_size(init->init_array_full);
+				return (ArrayIndex)vec_size(init->init_array_full);
 			case CONST_INIT_ARRAY_VALUE:
 				UNREACHABLE;
 			case CONST_INIT_STRUCT:
@@ -1167,14 +1167,14 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 		case EXPR_INITIALIZER_LIST:
 			*may_be_array = true;
 			*is_const_size = true;
-			return (MemberIndex)vec_size(initializer->initializer_list);
+			return (ArrayIndex)vec_size(initializer->initializer_list);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			break;
 		default:
 			UNREACHABLE
 	}
 	Expr **initializers = initializer->designated_init_list;
-	MemberIndex size = 0;
+	ArrayIndex size = 0;
 	// Otherwise we assume everything's a designator.
 	FOREACH(Expr *, sub_initializer, initializers)
 	{
@@ -1189,7 +1189,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 				return -1;
 			case DESIGNATOR_ARRAY:
 			{
-				MemberIndex index = sema_analyse_designator_index(context, element->index_expr);
+				ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
 				if (index < 0 || element->index_expr->expr_kind != EXPR_CONST)
 				{
 					*is_const_size = false;
@@ -1200,7 +1200,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 			}
 			case DESIGNATOR_RANGE:
 			{
-				MemberIndex index = sema_analyse_designator_index(context, element->index_end_expr);
+				ArrayIndex index = sema_analyse_designator_index(context, element->index_end_expr);
 				if (index < 0 || element->index_end_expr->expr_kind != EXPR_CONST)
 				{
 					*is_const_size = false;
@@ -1216,7 +1216,7 @@ MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *in
 	return size;
 }
 
-static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *index)
+static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index)
 {
 	if (!sema_analyse_expr(context, index))
 	{
@@ -1244,7 +1244,7 @@ static MemberIndex sema_analyse_designator_index(SemaContext *context, Expr *ind
 		SEMA_ERROR(index, "Negative index values is not allowed.");
 		return -1;
 	}
-	return (MemberIndex)index_val;
+	return (ArrayIndex)index_val;
 }
 
 
@@ -1267,7 +1267,7 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 		// The simple case, we have a match.
 		if (decl->name == name)
 		{
-			element->index = (MemberIndex)i;
+			element->index = (ArrayIndex)i;
 			return decl;
 		}
 		if (!decl->name)
@@ -1281,7 +1281,7 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 			// Create our anon field.
 			DesignatorElement *anon_element = CALLOCS(DesignatorElement);
 			anon_element->kind = DESIGNATOR_FIELD;
-			anon_element->index = (MemberIndex)i;
+			anon_element->index = (ArrayIndex)i;
 			vec_insert_at(*elements_ref, old_index, anon_element);
 			// Advance
 			(*index)++;

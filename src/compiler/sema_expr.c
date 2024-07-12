@@ -280,8 +280,8 @@ static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr)
 		{
 			bool may_be_array;
 			bool is_const_size;
-			MemberIndex len = (ArraySize) sema_get_initializer_const_array_size(context, expr, &may_be_array,
-			                                                                    &is_const_size);
+			ArrayIndex len = (ArraySize) sema_get_initializer_const_array_size(context, expr, &may_be_array,
+			                                                                   &is_const_size);
 			assert(is_const_size);
 			return (ArraySize) len;
 		}
@@ -2555,7 +2555,7 @@ static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *l
 		SEMA_ERROR(len_expr, "The length may not be negative.");
 		return false;
 	}
-	MemberIndex len_val = (MemberIndex)const_len.i.low;
+	ArrayIndex len_val = (ArrayIndex)const_len.i.low;
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -2567,7 +2567,7 @@ static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *l
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
 		{
-			MemberIndex len = (MemberIndex)type->array.len;
+			ArrayIndex len = (ArrayIndex)type->array.len;
 			bool is_vector = type->type_kind == TYPE_VECTOR;
 			if (from_end)
 			{
@@ -2613,7 +2613,7 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 		SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
 		return false;
 	}
-	MemberIndex idx = (MemberIndex)index.i.low;
+	ArrayIndex idx = (ArrayIndex)index.i.low;
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -2626,7 +2626,7 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 		case TYPE_ARRAY:
 		case TYPE_VECTOR:
 		{
-			MemberIndex len = (MemberIndex)type->array.len;
+			ArrayIndex len = (ArrayIndex)type->array.len;
 			if (from_end)
 			{
 				idx = len - idx;
@@ -9015,7 +9015,7 @@ NO_MATCH_REF:
 	return false;
 }
 
-static MemberIndex len_from_const_initializer(ConstInitializer *init)
+static ArrayIndex len_from_const_initializer(ConstInitializer *init)
 {
 	switch (init->kind)
 	{
@@ -9028,7 +9028,7 @@ static MemberIndex len_from_const_initializer(ConstInitializer *init)
 			return -1;
 		case CONST_INIT_ARRAY:
 		{
-			MemberIndex max = 0;
+			ArrayIndex max = 0;
 			FOREACH(ConstInitializer *, element, init->init_array.elements)
 			{
 				assert(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -9041,7 +9041,7 @@ static MemberIndex len_from_const_initializer(ConstInitializer *init)
 	}
 	UNREACHABLE
 }
-MemberIndex sema_len_from_const(Expr *expr)
+ArrayIndex sema_len_from_const(Expr *expr)
 {
 	// We also handle the case where we have a cast from a const array.
 	if (!expr_is_const(expr))

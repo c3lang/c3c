@@ -1443,7 +1443,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		{
 			bool may_be_array;
 			bool is_const_size;
-			MemberIndex size = sema_get_initializer_const_array_size(context, enumerator, &may_be_array, &is_const_size);
+			ArrayIndex size = sema_get_initializer_const_array_size(context, enumerator, &may_be_array, &is_const_size);
 			if (!may_be_array)
 			{
 				SEMA_ERROR(enumerator,

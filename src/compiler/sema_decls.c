@@ -297,7 +297,7 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 {
 	AlignSize max_size = 0;
-	MemberIndex max_alignment_element = 0;
+	ArrayIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
 	bool has_named_parameter = false;
@@ -349,7 +349,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		if (member_alignment > max_alignment)
 		{
 			max_alignment = member_alignment;
-			max_alignment_element = (MemberIndex)i;
+			max_alignment_element = (ArrayIndex)i;
 		}
 		// Update max size
 		if (member_size > max_size)
@@ -358,9 +358,9 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 			max_size = (AlignSize)member_size;
 			// If this is bigger than the previous with max
 			// alignment, pick this as the maximum size field.
-			if (max_alignment_element != (MemberIndex)i && max_alignment == member_alignment)
+			if (max_alignment_element != (ArrayIndex)i && max_alignment == member_alignment)
 			{
-				max_alignment_element = (MemberIndex)i;
+				max_alignment_element = (ArrayIndex)i;
 			}
 		}
 		// Offset is always 0

@@ -958,7 +958,7 @@ static bool rule_vec_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Expr *expr = cc->expr;
-	MemberIndex size = sema_len_from_const(expr);
+	ArrayIndex size = sema_len_from_const(expr);
 	if (size < 0)
 	{
 		if (is_silent) return false;
@@ -995,7 +995,7 @@ static bool rule_slice_to_infer(CastContext *cc, bool is_explicit, bool is_silen
 		return cast_is_allowed(cc, is_explicit, is_silent);
 	}
 	// 2. Otherwise there is a vector matching.
-	MemberIndex size = sema_len_from_const(expr);
+	ArrayIndex size = sema_len_from_const(expr);
 	if (size < 0)
 	{
 		if (is_silent) return false;

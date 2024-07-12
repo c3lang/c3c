@@ -9,7 +9,7 @@ static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value,
 static bool bitstruct_requires_bitswap(Decl *decl);
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
-static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index);
+static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index);
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr);
 static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id_ptr, LLVMValueRef selector);
 static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result, BEValue parent, Decl *parent_decl, Decl *member);
@@ -761,7 +761,7 @@ static inline void llvm_emit_pointer_offset(GenContext *c, BEValue *value, Expr 
 }
 
 
-static MemberIndex find_member_index(Decl *parent, Decl *member)
+static ArrayIndex find_member_index(Decl *parent, Decl *member)
 {
 	FOREACH_IDX(i, Decl *, maybe_member, parent->strukt.members)
 	{
@@ -783,7 +783,7 @@ static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, D
 	Decl *found = NULL;
 	do
 	{
-		MemberIndex index = find_member_index(parent, member);
+		ArrayIndex index = find_member_index(parent, member);
 		assert(index > -1);
 		found = parent->strukt.members[index];
 		switch (parent->type->canonical->type_kind)
@@ -809,7 +809,7 @@ static void llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *pare
 	Decl *found = NULL;
 	do
 	{
-		MemberIndex index = find_member_index(parent, member);
+		ArrayIndex index = find_member_index(parent, member);
 		assert(index > -1);
 		found = parent->strukt.members[index];
 		switch (parent->type->canonical->type_kind)
@@ -1640,7 +1640,7 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 			case DESIGNATOR_ARRAY:
 				return llvm_emit_insert_value(c, parent, val, index);
 			case DESIGNATOR_RANGE:
-				for (MemberIndex i = current_element->index; i <= current_element->index_end; i++)
+				for (ArrayIndex i = current_element->index; i <= current_element->index_end; i++)
 				{
 					parent = llvm_emit_insert_value(c, parent, val, i);
 				}
@@ -1663,7 +1663,7 @@ static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **
 			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
 			return llvm_emit_insert_value(c, parent, current_val, current_element->index);
 		case DESIGNATOR_RANGE:
-			for (MemberIndex i = current_element->index; i <= current_element->index_end; i++)
+			for (ArrayIndex i = current_element->index; i <= current_element->index_end; i++)
 			{
 				current_val = llvm_emit_extract_value(c, parent, i);
 				current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
@@ -1758,10 +1758,10 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			LLVMValueRef array_ref = ref->value;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
-			MemberIndex size = (MemberIndex)array_type->array.len;
+			ArrayIndex size = (ArrayIndex)array_type->array.len;
 			LLVMTypeRef array_type_llvm = llvm_get_type(c, array_type);
 			assert(size <= UINT32_MAX);
-			for (MemberIndex i = 0; i < size; i++)
+			for (ArrayIndex i = 0; i < size; i++)
 			{
 				AlignSize alignment;
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)i, ref->alignment, &alignment);
@@ -1779,12 +1779,12 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef array_type_llvm = llvm_get_type(c, array_type);
 			ConstInitializer **elements = const_init->init_array.elements;
-			MemberIndex current_index = 0;
+			ArrayIndex current_index = 0;
 			LLVMValueRef *parts = NULL;
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				assert(element->kind == CONST_INIT_ARRAY_VALUE);
-				MemberIndex element_index = element->init_array_value.index;
+				ArrayIndex element_index = element->init_array_value.index;
 				AlignSize alignment;
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)element_index, ref->alignment, &alignment);
 				BEValue value;
@@ -1796,7 +1796,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 		case CONST_INIT_UNION:
 		{
 			Decl *decl = const_init->type->decl;
-			MemberIndex index = const_init->init_union.index;
+			ArrayIndex index = const_init->init_union.index;
 			Type *type = decl->strukt.members[index]->type->canonical;
 			// Bitcast.
 			BEValue value = *ref;
@@ -1810,8 +1810,8 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 		{
 			Decl *decl = const_init->type->decl;
 			Decl **members = decl->strukt.members;
-			MemberIndex count = (MemberIndex)vec_size(members);
-			for (MemberIndex i = 0; i < count; i++)
+			ArrayIndex count = (ArrayIndex)vec_size(members);
+			for (ArrayIndex i = 0; i < count; i++)
 			{
 				BEValue value;
 				llvm_value_struct_gep(c, &value, ref, (unsigned)i);
@@ -1969,7 +1969,7 @@ static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *
 		emitted_value = &emitted_local;
 	}
 	LLVMTypeRef ref_type = llvm_get_type(c, ref->type);
-	for (MemberIndex i = curr->index; i <= curr->index_end; i++)
+	for (ArrayIndex i = curr->index; i <= curr->index_end; i++)
 	{
 		BEValue new_ref;
 		AlignSize alignment;
@@ -2167,8 +2167,8 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		slots[i] = llvm_get_zero_raw(c->byte_type);
 	}
 	Decl **members = decl->strukt.members;
-	MemberIndex count = (MemberIndex)vec_size(members);
-	for (MemberIndex i = 0; i < count; i++)
+	ArrayIndex count = (ArrayIndex)vec_size(members);
+	for (ArrayIndex i = 0; i < count; i++)
 	{
 		Decl *member = members[i];
 		unsigned start_bit = member->var.start_bit;
@@ -2245,10 +2245,10 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 	LLVMTypeRef llvm_base_type = llvm_get_type(c, base_type);
 	LLVMValueRef result = llvm_get_zero_raw(llvm_base_type);
 	Decl **members = decl->strukt.members;
-	MemberIndex count = (MemberIndex)vec_size(members);
+	ArrayIndex count = (ArrayIndex)vec_size(members);
 	TypeSize base_type_size = type_size(base_type);
 	TypeSize base_type_bitsize = base_type_size * 8;
-	for (MemberIndex i = 0; i < count; i++)
+	for (ArrayIndex i = 0; i < count; i++)
 	{
 		ConstInitializer *val = initializer->init_struct[i];
 		Decl *member = members[i];
@@ -5109,9 +5109,9 @@ static void llvm_emit_any_pointer(GenContext *c, BEValue *value, BEValue *pointe
 void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_pointer, unsigned index)
 {
 	llvm_value_fold_optional(c, struct_pointer);
-	MemberIndex actual_index = -1;
+	ArrayIndex actual_index = -1;
 	Decl *member;
-	for (MemberIndex i = 0; i <= index; i++)
+	for (ArrayIndex i = 0; i <= index; i++)
 	{
 		member = struct_pointer->type->decl->strukt.members[i];
 		if (member->padding)
@@ -6281,7 +6281,7 @@ static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *ex
 	llvm_value_set(be_value, llvm_get_undef(c, type), type);
 }
 
-static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, MemberIndex index)
+static inline LLVMValueRef llvm_update_vector(GenContext *c, LLVMValueRef vector, LLVMValueRef value, ArrayIndex index)
 {
 	LLVMValueRef index_value = llvm_const_int(c, type_usz, (uint64_t)index);
 	return LLVMBuildInsertElement(c->builder, vector, value, index_value, "");
@@ -6306,7 +6306,7 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 		{
 			llvm_emit_expr(c, &val, element);
 			llvm_value_rvalue(c, &val);
-			vec_value = llvm_update_vector(c, vec_value, val.value, (MemberIndex)i);
+			vec_value = llvm_update_vector(c, vec_value, val.value, (ArrayIndex)i);
 		}
 	}
 	else
@@ -6328,7 +6328,7 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 					break;
 				}
 				case DESIGNATOR_RANGE:
-					for (MemberIndex idx = element->index; idx <= element->index_end; idx++)
+					for (ArrayIndex idx = element->index; idx <= element->index_end; idx++)
 					{
 						vec_value = llvm_update_vector(c, vec_value, val.value, idx);
 					}

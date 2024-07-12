@@ -213,7 +213,7 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 			Type *array_type = const_init->type;
 			ConstInitializer **elements = const_init->init_array_full;
 			ArraySize size = array_type->array.len;
-			for (MemberIndex i = 0; i < (MemberIndex)size; i++)
+			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
 				sema_trace_const_initializer_liveness(elements[i]);
 			}
@@ -233,7 +233,7 @@ static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 			Decl **members = decl->strukt.members;
 			uint32_t count = vec_size(members);
 			if (decl->decl_kind == DECL_UNION && count) count = 1;
-			for (MemberIndex i = 0; i < count; i++)
+			for (ArrayIndex i = 0; i < count; i++)
 			{
 				sema_trace_const_initializer_liveness(const_init->init_struct[i]);
 			}

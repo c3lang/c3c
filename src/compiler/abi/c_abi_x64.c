@@ -362,7 +362,7 @@ static Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 	Decl *last_match = NULL;
 	FOREACH(Decl *, member, members)
 	{
-		if (member->offset > (MemberIndex)offset) break;
+		if (member->offset > (ArrayIndex)offset) break;
 		last_match = member;
 	}
 	assert(last_match);

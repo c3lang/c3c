@@ -246,7 +246,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			ArraySize size = array_type->array.len;
 			assert(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
-			for (MemberIndex i = 0; i < (MemberIndex)size; i++)
+			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
 				LLVMValueRef element = llvm_emit_const_initializer(c, elements[i]);
 				if (element_type_llvm != LLVMTypeOf(element)) was_modified = true;
@@ -273,14 +273,14 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			ConstInitializer **elements = const_init->init_array.elements;
 			unsigned element_count = vec_size(elements);
 			assert(element_count > 0 && "Array should always have gotten at least one element.");
-			MemberIndex current_index = 0;
+			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				assert(element->kind == CONST_INIT_ARRAY_VALUE);
-				MemberIndex element_index = element->init_array_value.index;
+				ArrayIndex element_index = element->init_array_value.index;
 				IndexDiff diff = element_index - current_index;
 				if (alignment && expected_align != alignment)
 				{
@@ -298,7 +298,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				current_index = element_index + 1;
 			}
 
-			IndexDiff end_diff = (MemberIndex)array_type->array.len - current_index;
+			IndexDiff end_diff = (ArrayIndex)array_type->array.len - current_index;
 			if (end_diff > 0)
 			{
 				vec_add(parts, llvm_emit_const_array_padding(element_type_llvm, end_diff, &was_modified));
@@ -365,7 +365,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			LLVMValueRef *entries = NULL;
 			bool was_modified = false;
 			ByteSize prev_size = 0;
-			for (MemberIndex i = 0; i < count; i++)
+			for (ArrayIndex i = 0; i < count; i++)
 			{
 				if (members[i]->padding)
 				{

@@ -1443,7 +1443,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 
 	assert(decl_is_struct_type(parent));
-	MemberIndex index = 0;
+	ArrayIndex index = 0;
 	while (!tok_is(c, TOKEN_RBRACE))
 	{
 		TokenType token_type = c->tok;

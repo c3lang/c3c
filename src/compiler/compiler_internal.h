@@ -17,7 +17,7 @@ typedef double Real;
 typedef uint64_t ByteSize;
 typedef uint32_t TypeSize;
 typedef int32_t IndexDiff;
-typedef int32_t MemberIndex;
+typedef int32_t ArrayIndex;
 typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
 typedef uint32_t ArraySize;
@@ -36,8 +36,8 @@ typedef uint16_t SectionId;
 #define MAX_MACRO_ITERATIONS 0xFFFFFF
 #define MAX_PARAMS 127
 #define MAX_BITSTRUCT 0x1000
-#define MAX_MEMBERS ((MemberIndex)(((uint64_t)2) << 28))
-#define MAX_ALIGNMENT ((MemberIndex)(((uint64_t)2) << 28))
+#define MAX_MEMBERS ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
 #define MAX_GLOBAL_DECL_STACK (65536)
@@ -121,7 +121,7 @@ struct ConstInitializer_
 		struct
 		{
 			ConstInitializer *element;
-			MemberIndex index;
+			ArrayIndex index;
 		} init_union;
 		struct
 		{
@@ -131,7 +131,7 @@ struct ConstInitializer_
 		struct
 		{
 			ConstInitializer *element;
-			MemberIndex index;
+			ArrayIndex index;
 		} init_array_value;
 	};
 };
@@ -427,7 +427,7 @@ typedef struct
 typedef struct
 {
 	TypeSize size;
-	MemberIndex union_rep;
+	ArrayIndex union_rep;
 	Decl **members;
 	Decl *padded_decl;
 	AlignSize padding : 16;
@@ -882,8 +882,8 @@ typedef struct DesignatorElement_
 			Expr *index_end_expr;
 		};
 	};
-	MemberIndex index;
-	MemberIndex index_end;
+	ArrayIndex index;
+	ArrayIndex index_end;
 } DesignatorElement;
 
 typedef struct
@@ -1816,8 +1816,8 @@ typedef struct
 
 typedef struct ABIArgInfo_
 {
-	MemberIndex param_index_start : 16;
-	MemberIndex param_index_end : 16;
+	ArrayIndex param_index_start : 16;
+	ArrayIndex param_index_end : 16;
 	ABIKind kind : 6;
 	struct
 	{
@@ -2337,7 +2337,7 @@ void sema_erase_unwrapped(SemaContext *context, Decl *decl);
 bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result);
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref);
-MemberIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
+ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
