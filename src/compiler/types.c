@@ -540,12 +540,13 @@ bool type_is_comparable(Type *type)
 		case TYPE_POISONED:
 			UNREACHABLE
 		case TYPE_VOID:
-		case TYPE_UNION:
-		case TYPE_STRUCT:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_OPTIONAL:
 		case TYPE_MEMBER:
 			return false;
+		case TYPE_UNION:
+		case TYPE_STRUCT:
+			return type->decl->attr_compact;
 		case TYPE_BITSTRUCT:
 			type = type->decl->bitstruct.base_type->type;
 			goto RETRY;

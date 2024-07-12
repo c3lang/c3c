@@ -275,18 +275,16 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 
 static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type) 
 {
-	if (member_type->type_kind == TYPE_STRUCT || member_type->type_kind == TYPE_UNION) 
+	member_type = type_flatten(member_type);
+	if (member_type->type_kind != TYPE_STRUCT && member_type->type_kind != TYPE_UNION) return true;
+	if (!member_type->decl->strukt.padded_decl_id) return true;
+	if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = member_type->decl->strukt.padded_decl_id;
+	if (decl->attr_compact)
 	{
-		if (member_type->decl->strukt.padded_decl) 
-		{
-			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member_type->decl->strukt.padded_decl;
-			if (decl->attr_compact) 
-			{
-				SEMA_ERROR(member, "This member has holes.");
-				SEMA_NOTE(member_type->decl->strukt.padded_decl, "Padding would be added for this type.");
-				return false;
-			}
-		}
+		SEMA_ERROR(member, "%s has padding and can't be used as the type of '%s', because members of a `@compact` type must all have zero padding.", type_quoted_error_string(member_type), member->name);
+		SEMA_NOTE(declptr(member_type->decl->strukt.padded_decl_id), "The first padded field in %s is here.",
+		          type_quoted_error_string(member_type));
+		return false;
 	}
 	return true;
 }
@@ -592,7 +590,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 		if (align_offset - offset != 0)
 		{
-			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member;
+			if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(member);
 			if (decl->attr_nopadding || member->attr_nopadding)
 			{
 				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member.", align_offset - offset);
@@ -649,10 +647,10 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 
 	if (size != offset)
 	{
-		if (!decl->strukt.padded_decl) decl->strukt.padded_decl = decl;
+		if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(decl);
 		if (decl->attr_nopadding)
 		{
-			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct.", size - offset);
+			RETURN_SEMA_ERROR(decl, "%d bytes of padding would be added to the end this struct which is not allowed with `@nopadding` and `@compact`.", size - offset);
 		}
 	}
 

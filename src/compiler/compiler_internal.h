@@ -18,6 +18,7 @@ typedef uint64_t ByteSize;
 typedef uint32_t TypeSize;
 typedef int32_t IndexDiff;
 typedef int32_t ArrayIndex;
+typedef uint16_t StructIndex;
 typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
 typedef uint32_t ArraySize;
@@ -34,9 +35,9 @@ typedef uint16_t SectionId;
 #define INITIAL_SYMBOL_MAP 0x10000
 #define INITIAL_GENERIC_SYMBOL_MAP 0x1000
 #define MAX_MACRO_ITERATIONS 0xFFFFFF
-#define MAX_PARAMS 127
+#define MAX_PARAMS 255
 #define MAX_BITSTRUCT 0x1000
-#define MAX_MEMBERS ((ArrayIndex)(((uint64_t)2) << 28))
+#define MAX_MEMBERS ((StructIndex)1) << 15
 #define MAX_ALIGNMENT ((ArrayIndex)(((uint64_t)2) << 28))
 #define MAX_PRIORITY 0xFFFF
 #define MAX_TYPE_SIZE UINT32_MAX
@@ -44,6 +45,7 @@ typedef uint16_t SectionId;
 #define MAX_ASM_INSTRUCTION_PARAMS 6
 #define CLOBBER_FLAG_ELEMENTS 4
 #define MAX_CLOBBER_FLAGS (64 * CLOBBER_FLAG_ELEMENTS)
+#define MEMCMP_INLINE_REGS 8
 
 extern const char *project_default_keys[][2];
 extern const int project_default_keys_count;
@@ -427,9 +429,9 @@ typedef struct
 typedef struct
 {
 	TypeSize size;
-	ArrayIndex union_rep;
 	Decl **members;
-	Decl *padded_decl;
+	DeclId padded_decl_id;
+	StructIndex union_rep;
 	AlignSize padding : 16;
 } StructDecl;
 
