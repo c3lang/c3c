@@ -282,8 +282,9 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 			if (!decl->strukt.padded_decl) decl->strukt.padded_decl = member_type->decl->strukt.padded_decl;
 			if (decl->attr_compact) 
 			{
-				sema_error_at(context, member->span, "This member has holes.");
-				RETURN_SEMA_ERROR(member_type->decl->strukt.padded_decl, "Padding would be added for this.");
+				SEMA_ERROR(member, "This member has holes.");
+				SEMA_NOTE(member_type->decl->strukt.padded_decl, "Padding would be added for this.");
+				return false;
 			}
 		}
 	}
