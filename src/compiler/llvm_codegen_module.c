@@ -139,6 +139,9 @@ void gencontext_begin_module(GenContext *c)
 	c->xtor_func_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
 	c->introspect_type = create_introspection_type(c);
 	c->fault_type = create_fault_type(c);
+	c->memcmp_function = NULL;
+	LLVMTypeRef memcmp_types[3] = {c->ptr_type, c->ptr_type, c->size_type };
+	c->memcmp_function_type = LLVMFunctionType(llvm_get_type(c, type_cint), memcmp_types, 3, false);
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 	if (c->panicf) c->panicf->backend_ref = NULL;
 

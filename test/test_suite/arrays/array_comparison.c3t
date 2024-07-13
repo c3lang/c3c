@@ -82,7 +82,6 @@ entry:
   %1 = load double, ptr %b, align 8
   %eq = fcmp oeq double %0, %1
   br i1 %eq, label %next_check, label %exit
-
 next_check:                                       ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %a, i64 8
   %ptradd1 = getelementptr inbounds i8, ptr %b, i64 8
@@ -90,10 +89,8 @@ next_check:                                       ; preds = %entry
   %3 = load double, ptr %ptradd1, align 8
   %eq2 = fcmp oeq double %2, %3
   br i1 %eq2, label %match, label %exit
-
 match:                                            ; preds = %next_check
   br label %exit
-
 exit:                                             ; preds = %match, %next_check, %entry
   %array_cmp_phi = phi i1 [ false, %entry ], [ false, %next_check ], [ true, %match ]
   %4 = zext i1 %array_cmp_phi to i8
@@ -102,7 +99,6 @@ exit:                                             ; preds = %match, %next_check,
   %6 = load double, ptr %b, align 8
   %eq3 = fcmp oeq double %5, %6
   br i1 %eq3, label %next_check4, label %exit9
-
 next_check4:                                      ; preds = %exit
   %ptradd5 = getelementptr inbounds i8, ptr %a, i64 8
   %ptradd6 = getelementptr inbounds i8, ptr %b, i64 8
@@ -110,106 +106,66 @@ next_check4:                                      ; preds = %exit
   %8 = load double, ptr %ptradd6, align 8
   %eq7 = fcmp oeq double %7, %8
   br i1 %eq7, label %match8, label %exit9
-
 match8:                                           ; preds = %next_check4
   br label %exit9
-
 exit9:                                            ; preds = %match8, %next_check4, %exit
   %array_cmp_phi10 = phi i1 [ true, %exit ], [ true, %next_check4 ], [ false, %match8 ]
   %9 = zext i1 %array_cmp_phi10 to i8
   store i8 %9, ptr %y, align 1
   call void @get2(ptr %a2)
   call void @get2(ptr %b2)
-  %10 = load i32, ptr %a2, align 4
-  %11 = load i32, ptr %b2, align 4
-  %eq11 = icmp eq i32 %10, %11
-  br i1 %eq11, label %next_check12, label %exit17
-
-next_check12:                                     ; preds = %exit9
-  %ptradd13 = getelementptr inbounds i8, ptr %a2, i64 4
-  %ptradd14 = getelementptr inbounds i8, ptr %b2, i64 4
-  %12 = load i32, ptr %ptradd13, align 4
-  %13 = load i32, ptr %ptradd14, align 4
-  %eq15 = icmp eq i32 %12, %13
-  br i1 %eq15, label %match16, label %exit17
-
-match16:                                          ; preds = %next_check12
-  br label %exit17
-
-exit17:                                           ; preds = %match16, %next_check12, %exit9
-  %array_cmp_phi18 = phi i1 [ false, %exit9 ], [ false, %next_check12 ], [ true, %match16 ]
-  %14 = zext i1 %array_cmp_phi18 to i8
-  store i8 %14, ptr %x2, align 1
-  %15 = load i32, ptr %a2, align 4
-  %16 = load i32, ptr %b2, align 4
-  %eq19 = icmp eq i32 %15, %16
-  br i1 %eq19, label %next_check20, label %exit25
-
-next_check20:                                     ; preds = %exit17
-  %ptradd21 = getelementptr inbounds i8, ptr %a2, i64 4
-  %ptradd22 = getelementptr inbounds i8, ptr %b2, i64 4
-  %17 = load i32, ptr %ptradd21, align 4
-  %18 = load i32, ptr %ptradd22, align 4
-  %eq23 = icmp eq i32 %17, %18
-  br i1 %eq23, label %match24, label %exit25
-
-match24:                                          ; preds = %next_check20
-  br label %exit25
-
-exit25:                                           ; preds = %match24, %next_check20, %exit17
-  %array_cmp_phi26 = phi i1 [ true, %exit17 ], [ true, %next_check20 ], [ false, %match24 ]
-  %19 = zext i1 %array_cmp_phi26 to i8
-  store i8 %19, ptr %y2, align 1
+  %cmp = call i32 @memcmp(ptr %a2, ptr %b2, i64 8)
+  %eq11 = icmp eq i32 %cmp, 0
+  %10 = zext i1 %eq11 to i8
+  store i8 %10, ptr %x2, align 1
+  %cmp12 = call i32 @memcmp(ptr %a2, ptr %b2, i64 8)
+  %neq = icmp ne i32 %cmp12, 0
+  %11 = zext i1 %neq to i8
+  store i8 %11, ptr %y2, align 1
   call void @get3(ptr %a3)
   call void @get3(ptr %b3)
-  %20 = load i8, ptr %a3, align 1
-  %21 = trunc i8 %20 to i1
-  %22 = load i8, ptr %b3, align 1
-  %23 = trunc i8 %22 to i1
-  %eq27 = icmp eq i1 %21, %23
-  br i1 %eq27, label %next_check28, label %exit33
-
-next_check28:                                     ; preds = %exit25
-  %ptradd29 = getelementptr inbounds i8, ptr %a3, i64 1
-  %ptradd30 = getelementptr inbounds i8, ptr %b3, i64 1
-  %24 = load i8, ptr %ptradd29, align 1
-  %25 = trunc i8 %24 to i1
-  %26 = load i8, ptr %ptradd30, align 1
-  %27 = trunc i8 %26 to i1
-  %eq31 = icmp eq i1 %25, %27
-  br i1 %eq31, label %match32, label %exit33
-
-match32:                                          ; preds = %next_check28
-  br label %exit33
-
-exit33:                                           ; preds = %match32, %next_check28, %exit25
-  %array_cmp_phi34 = phi i1 [ false, %exit25 ], [ false, %next_check28 ], [ true, %match32 ]
-  %28 = zext i1 %array_cmp_phi34 to i8
-  store i8 %28, ptr %x3, align 1
-  %29 = load i8, ptr %a3, align 1
-  %30 = trunc i8 %29 to i1
-  %31 = load i8, ptr %b3, align 1
-  %32 = trunc i8 %31 to i1
-  %eq35 = icmp eq i1 %30, %32
-  br i1 %eq35, label %next_check36, label %exit41
-
-next_check36:                                     ; preds = %exit33
-  %ptradd37 = getelementptr inbounds i8, ptr %a3, i64 1
-  %ptradd38 = getelementptr inbounds i8, ptr %b3, i64 1
-  %33 = load i8, ptr %ptradd37, align 1
-  %34 = trunc i8 %33 to i1
-  %35 = load i8, ptr %ptradd38, align 1
-  %36 = trunc i8 %35 to i1
-  %eq39 = icmp eq i1 %34, %36
-  br i1 %eq39, label %match40, label %exit41
-
-match40:                                          ; preds = %next_check36
-  br label %exit41
-
-exit41:                                           ; preds = %match40, %next_check36, %exit33
-  %array_cmp_phi42 = phi i1 [ true, %exit33 ], [ true, %next_check36 ], [ false, %match40 ]
-  %37 = zext i1 %array_cmp_phi42 to i8
-  store i8 %37, ptr %y3, align 1
+  %12 = load i8, ptr %a3, align 1
+  %13 = trunc i8 %12 to i1
+  %14 = load i8, ptr %b3, align 1
+  %15 = trunc i8 %14 to i1
+  %eq13 = icmp eq i1 %13, %15
+  br i1 %eq13, label %next_check14, label %exit19
+next_check14:                                     ; preds = %exit9
+  %ptradd15 = getelementptr inbounds i8, ptr %a3, i64 1
+  %ptradd16 = getelementptr inbounds i8, ptr %b3, i64 1
+  %16 = load i8, ptr %ptradd15, align 1
+  %17 = trunc i8 %16 to i1
+  %18 = load i8, ptr %ptradd16, align 1
+  %19 = trunc i8 %18 to i1
+  %eq17 = icmp eq i1 %17, %19
+  br i1 %eq17, label %match18, label %exit19
+match18:                                          ; preds = %next_check14
+  br label %exit19
+exit19:                                           ; preds = %match18, %next_check14, %exit9
+  %array_cmp_phi20 = phi i1 [ false, %exit9 ], [ false, %next_check14 ], [ true, %match18 ]
+  %20 = zext i1 %array_cmp_phi20 to i8
+  store i8 %20, ptr %x3, align 1
+  %21 = load i8, ptr %a3, align 1
+  %22 = trunc i8 %21 to i1
+  %23 = load i8, ptr %b3, align 1
+  %24 = trunc i8 %23 to i1
+  %eq21 = icmp eq i1 %22, %24
+  br i1 %eq21, label %next_check22, label %exit27
+next_check22:                                     ; preds = %exit19
+  %ptradd23 = getelementptr inbounds i8, ptr %a3, i64 1
+  %ptradd24 = getelementptr inbounds i8, ptr %b3, i64 1
+  %25 = load i8, ptr %ptradd23, align 1
+  %26 = trunc i8 %25 to i1
+  %27 = load i8, ptr %ptradd24, align 1
+  %28 = trunc i8 %27 to i1
+  %eq25 = icmp eq i1 %26, %28
+  br i1 %eq25, label %match26, label %exit27
+match26:                                          ; preds = %next_check22
+  br label %exit27
+exit27:                                           ; preds = %match26, %next_check22, %exit19
+  %array_cmp_phi28 = phi i1 [ true, %exit19 ], [ true, %next_check22 ], [ false, %match26 ]
+  %29 = zext i1 %array_cmp_phi28 to i8
+  store i8 %29, ptr %y3, align 1
   ret void
 }
 define void @test.test2() #0 {
@@ -223,20 +179,17 @@ entry:
   %a2 = alloca [200 x i32], align 16
   %b2 = alloca [200 x i32], align 16
   %x2 = alloca i8, align 1
-  %cmp.idx12 = alloca i64, align 8
   %y2 = alloca i8, align 1
-  %cmp.idx22 = alloca i64, align 8
   %a3 = alloca [200 x i8], align 16
   %b3 = alloca [200 x i8], align 16
   %x3 = alloca i8, align 1
-  %cmp.idx32 = alloca i64, align 8
+  %cmp.idx14 = alloca i64, align 8
   %y3 = alloca i8, align 1
-  %cmp.idx41 = alloca i64, align 8
+  %cmp.idx23 = alloca i64, align 8
   call void @aget(ptr %a)
   call void @aget(ptr %b)
   store i64 0, ptr %cmp.idx, align 8
   br label %array_loop_start
-
 array_loop_start:                                 ; preds = %array_loop_comparison, %entry
   %0 = load i64, ptr %cmp.idx, align 8
   %ptroffset = getelementptr inbounds [8 x i8], ptr %a, i64 %0
@@ -245,20 +198,17 @@ array_loop_start:                                 ; preds = %array_loop_comparis
   %2 = load double, ptr %ptroffset1, align 8
   %eq = fcmp oeq double %1, %2
   br i1 %eq, label %array_loop_comparison, label %array_cmp_exit
-
 array_loop_comparison:                            ; preds = %array_loop_start
   %inc = add i64 %0, 1
   store i64 %inc, ptr %cmp.idx, align 8
   %lt = icmp ult i64 %inc, 200
   br i1 %lt, label %array_loop_start, label %array_cmp_exit
-
 array_cmp_exit:                                   ; preds = %array_loop_comparison, %array_loop_start
   %array_cmp_phi = phi i1 [ true, %array_loop_comparison ], [ false, %array_loop_start ]
   %3 = zext i1 %array_cmp_phi to i8
   store i8 %3, ptr %x, align 1
   store i64 0, ptr %cmp.idx2, align 8
   br label %array_loop_start3
-
 array_loop_start3:                                ; preds = %array_loop_comparison7, %array_cmp_exit
   %4 = load i64, ptr %cmp.idx2, align 8
   %ptroffset4 = getelementptr inbounds [8 x i8], ptr %a, i64 %4
@@ -267,112 +217,68 @@ array_loop_start3:                                ; preds = %array_loop_comparis
   %6 = load double, ptr %ptroffset5, align 8
   %eq6 = fcmp oeq double %5, %6
   br i1 %eq6, label %array_loop_comparison7, label %array_cmp_exit10
-
 array_loop_comparison7:                           ; preds = %array_loop_start3
   %inc8 = add i64 %4, 1
   store i64 %inc8, ptr %cmp.idx2, align 8
   %lt9 = icmp ult i64 %inc8, 200
   br i1 %lt9, label %array_loop_start3, label %array_cmp_exit10
-
 array_cmp_exit10:                                 ; preds = %array_loop_comparison7, %array_loop_start3
   %array_cmp_phi11 = phi i1 [ false, %array_loop_comparison7 ], [ true, %array_loop_start3 ]
   %7 = zext i1 %array_cmp_phi11 to i8
   store i8 %7, ptr %y, align 1
   call void @aget2(ptr %a2)
   call void @aget2(ptr %b2)
-  store i64 0, ptr %cmp.idx12, align 8
-  br label %array_loop_start13
-
-array_loop_start13:                               ; preds = %array_loop_comparison17, %array_cmp_exit10
-  %8 = load i64, ptr %cmp.idx12, align 8
-  %ptroffset14 = getelementptr inbounds [4 x i8], ptr %a2, i64 %8
-  %ptroffset15 = getelementptr inbounds [4 x i8], ptr %b2, i64 %8
-  %9 = load i32, ptr %ptroffset14, align 4
-  %10 = load i32, ptr %ptroffset15, align 4
-  %eq16 = icmp eq i32 %9, %10
-  br i1 %eq16, label %array_loop_comparison17, label %array_cmp_exit20
-
-array_loop_comparison17:                          ; preds = %array_loop_start13
-  %inc18 = add i64 %8, 1
-  store i64 %inc18, ptr %cmp.idx12, align 8
-  %lt19 = icmp ult i64 %inc18, 200
-  br i1 %lt19, label %array_loop_start13, label %array_cmp_exit20
-
-array_cmp_exit20:                                 ; preds = %array_loop_comparison17, %array_loop_start13
-  %array_cmp_phi21 = phi i1 [ true, %array_loop_comparison17 ], [ false, %array_loop_start13 ]
-  %11 = zext i1 %array_cmp_phi21 to i8
-  store i8 %11, ptr %x2, align 1
-  store i64 0, ptr %cmp.idx22, align 8
-  br label %array_loop_start23
-
-array_loop_start23:                               ; preds = %array_loop_comparison27, %array_cmp_exit20
-  %12 = load i64, ptr %cmp.idx22, align 8
-  %ptroffset24 = getelementptr inbounds [4 x i8], ptr %a2, i64 %12
-  %ptroffset25 = getelementptr inbounds [4 x i8], ptr %b2, i64 %12
-  %13 = load i32, ptr %ptroffset24, align 4
-  %14 = load i32, ptr %ptroffset25, align 4
-  %eq26 = icmp eq i32 %13, %14
-  br i1 %eq26, label %array_loop_comparison27, label %array_cmp_exit30
-
-array_loop_comparison27:                          ; preds = %array_loop_start23
-  %inc28 = add i64 %12, 1
-  store i64 %inc28, ptr %cmp.idx22, align 8
-  %lt29 = icmp ult i64 %inc28, 200
-  br i1 %lt29, label %array_loop_start23, label %array_cmp_exit30
-
-array_cmp_exit30:                                 ; preds = %array_loop_comparison27, %array_loop_start23
-  %array_cmp_phi31 = phi i1 [ false, %array_loop_comparison27 ], [ true, %array_loop_start23 ]
-  %15 = zext i1 %array_cmp_phi31 to i8
-  store i8 %15, ptr %y2, align 1
+  %cmp = call i32 @memcmp(ptr %a2, ptr %b2, i64 800)
+  %eq12 = icmp eq i32 %cmp, 0
+  %8 = zext i1 %eq12 to i8
+  store i8 %8, ptr %x2, align 1
+  %cmp13 = call i32 @memcmp(ptr %a2, ptr %b2, i64 800)
+  %neq = icmp ne i32 %cmp13, 0
+  %9 = zext i1 %neq to i8
+  store i8 %9, ptr %y2, align 1
   call void @aget3(ptr %a3)
   call void @aget3(ptr %b3)
-  store i64 0, ptr %cmp.idx32, align 8
-  br label %array_loop_start33
-
-array_loop_start33:                               ; preds = %array_loop_comparison36, %array_cmp_exit30
-  %16 = load i64, ptr %cmp.idx32, align 8
-  %ptradd = getelementptr inbounds i8, ptr %a3, i64 %16
-  %ptradd34 = getelementptr inbounds i8, ptr %b3, i64 %16
-  %17 = load i8, ptr %ptradd, align 1
+  store i64 0, ptr %cmp.idx14, align 8
+  br label %array_loop_start15
+array_loop_start15:                               ; preds = %array_loop_comparison18, %array_cmp_exit10
+  %10 = load i64, ptr %cmp.idx14, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a3, i64 %10
+  %ptradd16 = getelementptr inbounds i8, ptr %b3, i64 %10
+  %11 = load i8, ptr %ptradd, align 1
+  %12 = trunc i8 %11 to i1
+  %13 = load i8, ptr %ptradd16, align 1
+  %14 = trunc i8 %13 to i1
+  %eq17 = icmp eq i1 %12, %14
+  br i1 %eq17, label %array_loop_comparison18, label %array_cmp_exit21
+array_loop_comparison18:                          ; preds = %array_loop_start15
+  %inc19 = add i64 %10, 1
+  store i64 %inc19, ptr %cmp.idx14, align 8
+  %lt20 = icmp ult i64 %inc19, 200
+  br i1 %lt20, label %array_loop_start15, label %array_cmp_exit21
+array_cmp_exit21:                                 ; preds = %array_loop_comparison18, %array_loop_start15
+  %array_cmp_phi22 = phi i1 [ true, %array_loop_comparison18 ], [ false, %array_loop_start15 ]
+  %15 = zext i1 %array_cmp_phi22 to i8
+  store i8 %15, ptr %x3, align 1
+  store i64 0, ptr %cmp.idx23, align 8
+  br label %array_loop_start24
+array_loop_start24:                               ; preds = %array_loop_comparison28, %array_cmp_exit21
+  %16 = load i64, ptr %cmp.idx23, align 8
+  %ptradd25 = getelementptr inbounds i8, ptr %a3, i64 %16
+  %ptradd26 = getelementptr inbounds i8, ptr %b3, i64 %16
+  %17 = load i8, ptr %ptradd25, align 1
   %18 = trunc i8 %17 to i1
-  %19 = load i8, ptr %ptradd34, align 1
+  %19 = load i8, ptr %ptradd26, align 1
   %20 = trunc i8 %19 to i1
-  %eq35 = icmp eq i1 %18, %20
-  br i1 %eq35, label %array_loop_comparison36, label %array_cmp_exit39
-
-array_loop_comparison36:                          ; preds = %array_loop_start33
-  %inc37 = add i64 %16, 1
-  store i64 %inc37, ptr %cmp.idx32, align 8
-  %lt38 = icmp ult i64 %inc37, 200
-  br i1 %lt38, label %array_loop_start33, label %array_cmp_exit39
-
-array_cmp_exit39:                                 ; preds = %array_loop_comparison36, %array_loop_start33
-  %array_cmp_phi40 = phi i1 [ true, %array_loop_comparison36 ], [ false, %array_loop_start33 ]
-  %21 = zext i1 %array_cmp_phi40 to i8
-  store i8 %21, ptr %x3, align 1
-  store i64 0, ptr %cmp.idx41, align 8
-  br label %array_loop_start42
-
-array_loop_start42:                               ; preds = %array_loop_comparison46, %array_cmp_exit39
-  %22 = load i64, ptr %cmp.idx41, align 8
-  %ptradd43 = getelementptr inbounds i8, ptr %a3, i64 %22
-  %ptradd44 = getelementptr inbounds i8, ptr %b3, i64 %22
-  %23 = load i8, ptr %ptradd43, align 1
-  %24 = trunc i8 %23 to i1
-  %25 = load i8, ptr %ptradd44, align 1
-  %26 = trunc i8 %25 to i1
-  %eq45 = icmp eq i1 %24, %26
-  br i1 %eq45, label %array_loop_comparison46, label %array_cmp_exit49
-
-array_loop_comparison46:                          ; preds = %array_loop_start42
-  %inc47 = add i64 %22, 1
-  store i64 %inc47, ptr %cmp.idx41, align 8
-  %lt48 = icmp ult i64 %inc47, 200
-  br i1 %lt48, label %array_loop_start42, label %array_cmp_exit49
-
-array_cmp_exit49:                                 ; preds = %array_loop_comparison46, %array_loop_start42
-  %array_cmp_phi50 = phi i1 [ false, %array_loop_comparison46 ], [ true, %array_loop_start42 ]
-  %27 = zext i1 %array_cmp_phi50 to i8
-  store i8 %27, ptr %y3, align 1
+  %eq27 = icmp eq i1 %18, %20
+  br i1 %eq27, label %array_loop_comparison28, label %array_cmp_exit31
+array_loop_comparison28:                          ; preds = %array_loop_start24
+  %inc29 = add i64 %16, 1
+  store i64 %inc29, ptr %cmp.idx23, align 8
+  %lt30 = icmp ult i64 %inc29, 200
+  br i1 %lt30, label %array_loop_start24, label %array_cmp_exit31
+array_cmp_exit31:                                 ; preds = %array_loop_comparison28, %array_loop_start24
+  %array_cmp_phi32 = phi i1 [ false, %array_loop_comparison28 ], [ true, %array_loop_start24 ]
+  %21 = zext i1 %array_cmp_phi32 to i8
+  store i8 %21, ptr %y3, align 1
   ret void
 }

@@ -146,6 +146,8 @@ typedef struct GenContext_
 	LLVMValueRef dyn_find_function;
 	// The type of the find function.
 	LLVMTypeRef dyn_find_function_type;
+	LLVMValueRef memcmp_function;
+	LLVMTypeRef memcmp_function_type;
 } GenContext;
 
 // LLVM Intrinsics

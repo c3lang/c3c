@@ -17,6 +17,7 @@
 - Allow using $defined(&a[1]) to check if the operation is supported.
 - Max number of members in a struct is limited to 65535.
 - The maximum number of parameters in a call is now 255, up from 127.
+- Array comparison now uses built-in memcmp on LLVM to enable optimizations.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

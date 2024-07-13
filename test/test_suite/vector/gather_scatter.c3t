@@ -26,6 +26,5 @@ fn void main()
 
   %14 = load <2 x ptr>, ptr %ptrvec3, align 16
   call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 66, i32 77>, <2 x ptr> %14, i32 4, <2 x i1> <i1 false, i1 true>)
-
-  %26 = load <2 x ptr>, ptr %ptrvec20, align 16
-  call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 88, i32 99>, <2 x ptr> %26, i32 4, <2 x i1> <i1 true, i1 false>)
+  %16 = load <2 x ptr>, ptr %ptrvec5, align 16
+  call void @llvm.masked.scatter.v2i32.v2p0(<2 x i32> <i32 88, i32 99>, <2 x ptr> %16, i32 4, <2 x i1> <i1 true, i1 false>)
