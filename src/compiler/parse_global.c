@@ -451,7 +451,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 	}
 
 	TypeInfo *type_info = NULL;
-	Type *type_found = NULL;
 	switch (c->tok)
 	{
 		case TOKEN_TYPE_IDENT:
@@ -463,7 +462,9 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 			type_info->unresolved.name = symstr(c);
 			break;
 		case TYPE_TOKENS:
-			type_found = type_from_token(c->tok);
+			type_info = type_info_new_curr(c, TYPE_INFO_IDENTIFIER);
+			type_info->resolve_status = RESOLVE_DONE;
+			type_info->type = type_from_token(c->tok);
 			break;
 		default:
 			if (c->tok == TOKEN_IDENT)
@@ -476,36 +477,25 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 			}
 			return poisoned_type_info;
 	}
-	if (type_found)
-	{
-		assert(!type_info);
-		type_info = type_info_new_curr(c, TYPE_INFO_IDENTIFIER);
-		type_info->resolve_status = RESOLVE_DONE;
-		type_info->type = type_found;
-	}
-	assert(type_info);
 	advance(c);
 	RANGE_EXTEND_PREV(type_info);
 	return type_info;
 }
 
+/**
+ * generic_type ::= type generic_parameters
+ */
 static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 {
 	assert(type_info_ok(type));
-
-	advance_and_verify(c, TOKEN_LGENPAR);
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
-	if (!parse_expr_list_no_trail(c, &generic_type->generic.params, TOKEN_RGENPAR)) return poisoned_type_info;
+	if (!parse_generic_parameters(c, &generic_type->generic.params)) return poisoned_type_info;
 	generic_type->generic.base = type;
 	return generic_type;
 }
 
 /**
- * array_type_index
- *		: '[' constant_expression ']'
- *		| '[' ']'
- *		| '[' '*' ']'
- *		;
+ * array_type_index ::= '[' (constant_expression | '*')? ']'
  *
  * @param type the type to wrap, may not be poisoned.
  * @return type (poisoned if fails)
@@ -563,9 +553,7 @@ DIRECT_SLICE:;
 }
 
 /**
- * vector_type_index
- *		: '[<' constant_expression '>]'
- *		;
+ * vector_type_index ::= '[<' (constant_expression | '*') '>]'
  *
  * @param type the type to wrap, may not be poisoned.
  * @return type (poisoned if fails)
@@ -592,10 +580,7 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 }
 
 /**
- * type
- * 		: base_type
- *		| type '*'
- *		| type array_type_index
+ * type ::= base_type ('*' | array_type_index | vector_type_index | generic_parameters)*
  *
  * Assume already stepped into.
  * @return Type, poisoned if parsing is invalid.
@@ -656,10 +641,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 }
 
 /**
- * type
- * 		: base_type
- *		| type '*'
- *		| type array_type_index
+ * type ::= base_type modifiers
  *
  * Assume already stepped into.
  * @return Type, poisoned if parsing is invalid.
@@ -670,6 +652,11 @@ TypeInfo *parse_type(ParseContext *c)
 	return parse_type_with_base(c, base);
 }
 
+/**
+ * optional_type ::= type '!'?
+ * @param c
+ * @return
+ */
 TypeInfo *parse_optional_type(ParseContext *c)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *info, parse_base_type(c), poisoned_type_info);
@@ -690,6 +677,13 @@ TypeInfo *parse_optional_type(ParseContext *c)
 
 // --- Decl parsing
 
+/**
+ * interface_impls ::= '(' (type (',' type)* ','? )? ')'
+ *
+ * @param c the context
+ * @param interfaces_ref the list to add interfaces to
+ * @return false if the parsing failed
+ */
 bool parse_interface_impls(ParseContext *c, TypeInfo ***interfaces_ref)
 {
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
@@ -1913,10 +1907,10 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	decl->define_decl.span = c->span;
 	advance(c);
 
-	if (try_consume(c, TOKEN_LGENPAR))
+	if (tok_is(c, TOKEN_LGENPAR))
 	{
 		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
-		if (!parse_expr_list_no_trail(c, &decl->define_decl.generic_params, TOKEN_RGENPAR)) return poisoned_decl;
+		if (!parse_generic_parameters(c, &decl->define_decl.generic_params)) return poisoned_decl;
 	}
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
@@ -2146,7 +2140,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		assert(last_parameter);
-		last_parameter->var.index = vec_size(*parameters_ref) - 1;
+		last_parameter->var.index = vec_size(*parameters_ref) - 1; // NOLINT
 		if (!try_consume(c, TOKEN_COMMA))
 		{
 			EXPECT_OR_RET(TOKEN_RPAREN, false);
@@ -2241,23 +2235,9 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 /**
  * Starts after 'fn'
  *
- * func_name
- *		: path TYPE_IDENT '.' IDENT
- *		| TYPE_IDENT '.' IDENT
- *		| IDENT
- *		;
+ * func_definition ::= func_macro_header fn_parameter_list opt_attributes (func_body | ';')
+ * func_body ::= ('=>' short_body) | compound_stmt
  *
- * func_definition
- * 		: func_declaration compound_statement
- *  	| func_declaration ';'
- *  	;
- *
- * func_declaration
- *  	: FN optional_type func_name '(' opt_parameter_type_list ')' opt_attributes
- *		;
- *
- * @param visibility
- * @return Decl*
  */
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface)
 {
@@ -2307,6 +2287,7 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	else
 	{
 		PRINT_ERROR_HERE("Expected the beginning of a block or a short statement.");
+		return poisoned_decl;
 	}
 
 	DEBUG_LOG("Finished parsing function %s", func->name);

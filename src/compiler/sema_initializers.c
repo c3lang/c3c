@@ -47,7 +47,8 @@ static inline ConstantEvalKind env_eval_type(SemaContext *context);
 
 static inline ConstantEvalKind env_eval_type(SemaContext *context)
 {
-	return context->call_env.kind == CALL_ENV_GLOBAL_INIT ? CONSTANT_EVAL_GLOBAL_INIT : CONSTANT_EVAL_LOCAL_INIT;
+	if (context->call_env.kind == CALL_ENV_FUNCTION) return CONSTANT_EVAL_LOCAL_INIT;
+	return CONSTANT_EVAL_GLOBAL_INIT;
 }
 
 static inline void sema_not_enough_elements_error(SemaContext *context, Expr *initializer, int element)

@@ -6829,6 +6829,10 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 {
 	if (context->call_env.kind != CALL_ENV_FUNCTION)
 	{
+		if (CALL_ENV_FUNCTION_STATIC)
+		{
+			RETURN_SEMA_ERROR(expr, "Rethrow cannot be used for a static initializer.");
+		}
 		RETURN_SEMA_ERROR(expr, "Rethrow cannot be used outside of a function.");
 	}
 
@@ -7066,6 +7070,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 					}
 					return false;
 				case CALL_ENV_FUNCTION:
+				case CALL_ENV_FUNCTION_STATIC:
 					expr->expr_kind = EXPR_IDENTIFIER;
 					expr_resolve_ident(expr, context->call_env.current_function);
 					return true;
@@ -7077,6 +7082,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				case CALL_ENV_GLOBAL_INIT:
 					expr_rewrite_to_string(expr, "<GLOBAL>");
 					return true;
+				case CALL_ENV_FUNCTION_STATIC:
 				case CALL_ENV_FUNCTION:
 				{
 					Decl *current_func = context->call_env.current_function;
@@ -7867,6 +7873,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 			scratch_buffer_append(".$global");
 			break;
 		case CALL_ENV_FUNCTION:
+		case CALL_ENV_FUNCTION_STATIC:
 			if (context->current_macro)
 			{
 				scratch_buffer_append(unit->module->name->module);

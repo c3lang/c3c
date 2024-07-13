@@ -65,7 +65,6 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl);
 
-
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
 	Expr *expr = attr->exprs[0];
@@ -976,10 +975,9 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 
 static bool sema_deep_resolve_function_ptr(SemaContext *context, TypeInfo *type_to_resolve)
 {
-	assert(type_to_resolve->type);
 	Type *type = type_to_resolve->type;
 RETRY:
-	switch (type->type_kind)
+	switch (type->type_kind) // NOLINT
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
@@ -1024,6 +1022,7 @@ RETRY:
 	}
 	UNREACHABLE
 }
+
 static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_BITSTRUCT, erase_decl)) return decl_poison(decl);
@@ -1087,15 +1086,17 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			if (type_is_void(rtype))
 			{
-				RETURN_SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.", is_macro ? "macros" : "functions");
+				RETURN_SEMA_ERROR(rtype_info, "@nodiscard cannot be used on %s returning 'void'.",
+								  is_macro ? "macros" : "functions");
 			}
 		}
 		if (sig->attrs.maydiscard)
 		{
 			if (!type_is_optional(rtype))
 			{
-				SEMA_ERROR(rtype_info, "@maydiscard can only be used on %s returning optional values.", is_macro ? "macros" : "functions");
-				return false;
+				RETURN_SEMA_ERROR(rtype_info,
+				                  "@maydiscard can only be used on %s returning optional values.",
+				                  is_macro ? "macros" : "functions");
 			}
 		}
 		if (!sema_deep_resolve_function_ptr(context, rtype_info)) return false;
@@ -1106,11 +1107,10 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	{
 		if (variadic_type != VARIADIC_NONE)
 		{
-			SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d.", MAX_PARAMS);
-			return false;
+			RETURN_SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d.", MAX_PARAMS);
 		}
-		SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d. To accept more arguments, consider using varargs.", MAX_PARAMS);
-		return false;
+		RETURN_SEMA_ERROR(params[MAX_PARAMS], "The number of params exceeded the max of %d. To accept more arguments, "
+											  "consider using varargs.", MAX_PARAMS);
 	}
 
 	TypeInfo *method_parent = type_infoptrzero(type_parent);
@@ -1307,6 +1307,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 	if (!sema_analyse_signature(context, signature, func_decl->func_decl.type_parent, func_decl->is_export)) return false;
 
 	Variadic variadic_type = signature->variadic;
+
 	// Remove the last empty value.
 	if (variadic_type == VARIADIC_RAW)
 	{
@@ -1316,7 +1317,6 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 	}
 
 	Type **types = NULL;
-	bool all_ok = true;
 	unsigned param_count = vec_size(params);
 
 	for (unsigned i = 0; i < param_count; i++)
@@ -1326,7 +1326,6 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Call
 		vec_add(types, params[i]->type);
 	}
 
-	if (!all_ok) return false;
 	Type *raw_type = sema_resolve_type_get_func(signature, abi);
 	assert(func_decl->type->type_kind == TYPE_FUNC_RAW);
 	assert(raw_type->function.prototype);
@@ -1364,6 +1363,9 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 	return true;
 }
 
+/**
+ * Analyse a distinct type.
+ */
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase)
 {
 	// Check the attributes on the distinct type.
@@ -1392,24 +1394,21 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	assert(param->decl_kind == DECL_VAR && param->var.kind == VARDECL_PARAM && param->var.type_info);
 	if (vec_size(param->attributes))
 	{
-		SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
-		return false;
+		RETURN_SEMA_ERROR(param->attributes[0], "There are no valid attributes for associated values.");
 	}
 	TypeInfo *type_info = type_infoptrzero(param->var.type_info);
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 	assert(!param->var.vararg);
 	param->type = type_info->type;
 	assert(param->name);
-	if (param->name == kw_nameof)
+	if (param->name == kw_nameof || param->name == kw_ordinal)
 	{
-		SEMA_ERROR(param, "'nameof' is not a valid parameter name for enums.");
-		return false;
+		RETURN_SEMA_ERROR(param, "'%s' is not a valid parameter name for enums.", param->name);
 	}
 	Decl *other = sema_decl_stack_resolve_symbol(param->name);
 	if (other)
 	{
-		SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
-		return false;
+		RETURN_SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
 	}
 	sema_decl_stack_push(param);
 	assert(!param->var.init_expr);
@@ -3703,7 +3702,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		}
 
 		CallEnvKind env_kind = context->call_env.kind;
-		if (is_static) context->call_env.kind = CALL_ENV_GLOBAL_INIT;
+		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false))
 		{
 			context->call_env.kind = env_kind;

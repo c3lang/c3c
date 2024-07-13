@@ -38,6 +38,8 @@
 - Bad error message when using a generic method without generic parameters #1228
 - Private function called from nested macro not visible to linker #1232
 - Bitstructs in structs would not be correctly be handled in some cases.
+- Fix problem where a $$FUNC would return "<GLOBAL>" when evaluated for a static in a function #1236.
+- `ordinal` is no longer a valid associated value name for enums.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

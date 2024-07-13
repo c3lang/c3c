@@ -16,7 +16,6 @@ typedef struct
 
 extern ParseRule rules[TOKEN_EOF + 1];
 
-
 bool parse_current_is_expr(ParseContext *c)
 {
 	return rules[c->tok].prefix != NULL;
@@ -88,16 +87,18 @@ static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_to
 	}
 	return true;
 }
-
-bool parse_expr_list_no_trail(ParseContext *c, Expr ***exprs_ref, TokenType end_token)
+/**
+ * generic_parameters ::= '(<' expr (',' expr) '>)'
+ */
+bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
 {
-	if (try_consume(c, end_token)) return true;
+	advance_and_verify(c, TOKEN_LGENPAR);
 	while (true)
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 		vec_add(*exprs_ref, expr);
 		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(end_token, false);
+		CONSUME_OR_RET(TOKEN_RGENPAR, false);
 		return true;
 	}
 }
@@ -971,16 +972,14 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 }
 
 /**
- * generic_expr ::= '(<' generic_parameters '>)'
+ * generic_expr ::= IDENT generic_parameters
  */
 static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 {
 	assert(left && expr_ok(left));
-	advance_and_verify(c, TOKEN_LGENPAR);
-
 	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
 	subs_expr->generic_ident_expr.parent = exprid(left);
-	if (!parse_expr_list_no_trail(c, &subs_expr->generic_ident_expr.parmeters, TOKEN_RGENPAR)) return poisoned_expr;
+	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
