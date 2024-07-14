@@ -682,6 +682,17 @@ static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 			return true;
 		case TYPE_ERROR:
 			return false;
+		case TYPE_ALIGNMENT_INCREASE:
+			if (is_explicit) return false;
+			assert(!is_explicit);
+			RETURN_CAST_ERROR(cc->expr,
+			                  "Implicitly casting %s (alignment %d) to %s (alignment %d) is not permitted, "
+							  "it would require an explicit cast. Before using an explicit cast, please make "
+							  "sure you understand the ramifications as the explicit cast might crash your program if used incorrectly.",
+			                  type_quoted_error_string(type_no_optional(cc->expr->type)),
+			                  type_abi_alignment(type_get_indexed_type(cc->expr->type)),
+							  type_quoted_error_string(cc->to),
+							  type_abi_alignment(type_get_indexed_type(cc->to)));
 		case TYPE_MISMATCH:
 		case TYPE_SAME_INT_SIZE:
 			return sema_cast_error(cc, true, is_silent);

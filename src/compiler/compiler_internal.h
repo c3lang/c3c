@@ -2496,6 +2496,7 @@ typedef enum
 	TYPE_MISMATCH = 0,
 	TYPE_SAME = 1,
 	TYPE_SAME_INT_SIZE = 2,
+	TYPE_ALIGNMENT_INCREASE = 3,
 	TYPE_ERROR = -1,
 } TypeCmpResult;
 

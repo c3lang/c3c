@@ -18,6 +18,7 @@
 - Max number of members in a struct is limited to 65535.
 - The maximum number of parameters in a call is now 255, up from 127.
 - Array comparison now uses built-in memcmp on LLVM to enable optimizations.
+- Prevent implicit array casts to pointers with higher alignment #1237.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
