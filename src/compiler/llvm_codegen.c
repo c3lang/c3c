@@ -1213,7 +1213,14 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			LLVMTypeRef type = llvm_get_type(c, decl->type);
 			scratch_buffer_set_extern_decl_name(decl, true);
-			backend_ref = decl->backend_ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
+			if (decl->name == kw_memcmp && c->memcmp_function)
+			{
+				backend_ref = decl->backend_ref = c->memcmp_function;
+			}
+			else
+			{
+				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
+			}
 			llvm_append_function_attributes(c, decl);
 			if (decl->is_export && platform_target.os == OS_TYPE_WIN32  && !active_target.win.def && decl->name != kw_main && decl->name != kw_mainstub)
 			{

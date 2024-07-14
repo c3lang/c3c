@@ -3691,10 +3691,10 @@ static inline void llvm_emit_memcmp(GenContext *c, BEValue *be_value, LLVMValueR
 {
 	if (!c->memcmp_function)
 	{
-		c->memcmp_function = LLVMGetNamedFunction(c->module, "memcmp");
+		c->memcmp_function = LLVMGetNamedFunction(c->module, kw_memcmp);
 		if (!c->memcmp_function)
 		{
-			c->memcmp_function = LLVMAddFunction(c->module, "memcmp", c->memcmp_function_type);
+			c->memcmp_function = LLVMAddFunction(c->module, kw_memcmp, c->memcmp_function_type);
 		}
 	}
 	LLVMValueRef args[3] = { ptr, other_ptr, size };
