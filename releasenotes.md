@@ -52,6 +52,7 @@
 - Null ZString, DString or pointer prints "(null)" for printf.
 - Updated sorting API.
 - Insertion sort and counting sort added.
+- Added missing `mem` and `mem::allocator` functions for aligned allocations.
 
 ## 0.6.0 Change list
 
