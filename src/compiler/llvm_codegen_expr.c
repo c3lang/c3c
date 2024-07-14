@@ -3702,6 +3702,48 @@ static inline void llvm_emit_memcmp(GenContext *c, BEValue *be_value, LLVMValueR
 	llvm_value_set(be_value, function, type_cint);
 }
 
+static inline void llvm_emit_fp_vector_compare(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, Type *base_type, unsigned len)
+{
+	LLVMTypeRef fp_vec = LLVMVectorType(llvm_get_type(c, base_type), len);
+	LLVMTypeRef bool_vec = LLVMVectorType(c->bool_type, len);
+	llvm_value_addr(c, lhs);
+	llvm_value_addr(c, rhs);
+	LLVMValueRef left = llvm_load(c, fp_vec, lhs->value, lhs->alignment, "lhs");
+	LLVMValueRef right = llvm_load(c, fp_vec, rhs->value, rhs->alignment, "rhs");
+	LLVMValueRef cmp = LLVMBuildFCmp(c->builder, binary_op == BINARYOP_EQ ? LLVMRealOEQ : LLVMRealONE, left, right, "cmp");
+	if (binary_op == BINARYOP_EQ)
+	{
+		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_and, &bool_vec, 1, &cmp, 1);
+	}
+	else
+	{
+		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_or, &bool_vec, 1, &cmp, 1);
+	}
+	llvm_value_set(be_value, cmp, type_bool);
+}
+
+static inline void llvm_emit_bool_vector_compare(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op, unsigned len)
+{
+	LLVMTypeRef bool_vec = LLVMVectorType(c->bool_type, len);
+	LLVMTypeRef load_vec = LLVMVectorType(c->byte_type, len);
+	llvm_value_addr(c, lhs);
+	llvm_value_addr(c, rhs);
+	LLVMValueRef left = llvm_load(c, load_vec, lhs->value, lhs->alignment, "lhs");
+	LLVMValueRef right = llvm_load(c, load_vec, rhs->value, rhs->alignment, "rhs");
+	left = LLVMBuildTrunc(c->builder, left, bool_vec, "");
+	right = LLVMBuildTrunc(c->builder, right, bool_vec, "");
+	LLVMValueRef cmp = LLVMBuildICmp(c->builder, binary_op == BINARYOP_EQ ? LLVMIntEQ : LLVMIntNE, left, right, "cmp");
+	if (binary_op == BINARYOP_EQ)
+	{
+		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_and, &bool_vec, 1, &cmp, 1);
+	}
+	else
+	{
+		cmp = llvm_emit_call_intrinsic(c, intrinsic_id.vector_reduce_or, &bool_vec, 1, &cmp, 1);
+	}
+	llvm_value_set(be_value, cmp, type_bool);
+}
+
 static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
 	Type *array_base = type_flatten(lhs->type->array.base);
@@ -3744,11 +3786,11 @@ MEMCMP:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
 			UNREACHABLE
+		case TYPE_BOOL:
 		case ALL_FLOATS:
 		case TYPE_SLICE:
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_BOOL:
 			break;
 	}
 
@@ -3758,6 +3800,16 @@ MEMCMP:
 	LLVMTypeRef array_type = llvm_get_type(c, lhs->type);
 	if (should_inline_array_comp(len, array_base_type))
 	{
+		if (array_base_type == type_bool)
+		{
+			llvm_emit_bool_vector_compare(c, be_value, lhs, rhs, binary_op, len);
+			return;
+		}
+		if (type_is_float(array_base_type))
+		{
+			llvm_emit_fp_vector_compare(c, be_value, lhs, rhs, binary_op, array_base_type, len);
+			return;
+		}
 		LLVMBasicBlockRef blocks[17];
 		LLVMValueRef value_block[17];
 		LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "match");

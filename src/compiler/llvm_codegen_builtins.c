@@ -430,7 +430,7 @@ INLINE void llvm_emit_prefetch(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_value_set(be_value, result, type_void);
 }
 
-void llvm_emit_reduce_int_builtin(GenContext *c, unsigned intrinsic, BEValue *be_value, Expr *expr)
+static void llvm_emit_reduce_int_builtin(GenContext *c, unsigned intrinsic, BEValue *be_value, Expr *expr)
 {
 	Expr **args = expr->call_expr.arguments;
 	LLVMValueRef arg_slots[1];
@@ -685,6 +685,7 @@ static void llvm_emit_veccomp(GenContext *c, BEValue *value, Expr *expr, Builtin
 {
 	Expr **args = expr->call_expr.arguments;
 	unsigned count = vec_size(args);
+	(void)count;
 	assert(count == 2);
 
 	LLVMValueRef mask;
