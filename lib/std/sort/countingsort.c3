@@ -26,8 +26,8 @@ macro quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPT
 
 module std::sort::cs(<Type, KeyFn>);
 
-def Counts = ulong[256] @private;
-def Ranges = ulong[257] @private;
+def Counts = usz[256] @private;
+def Ranges = usz[257] @private;
 def Indexs = char[256] @private;
 def ElementType = $typeof(Type{}[0]);
 
@@ -110,7 +110,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 	for(ushort i = 0; i < 256; i++) {
 		indexs[fallback0_count + fallback1_count] = (char)i;
-		ushort count = ranges[i + 1] - ranges[i];
+		usz count = ranges[i + 1] - ranges[i];
 		fallback1_count += (ushort)(count > 32 && count <= 128);
 	}
 	
