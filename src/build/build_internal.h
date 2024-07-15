@@ -94,7 +94,8 @@ static const char *reloc_models[5] = {
 	[RELOC_BIG_PIE] = "PIE",
 };
 
-static const char *sanitize[3] = {
+static const char *sanitize_modes[4] = {
+	[SANITIZE_NONE] = "none",
 	[SANITIZE_ADDRESS] = "address",
 	[SANITIZE_MEMORY] = "memory",
 	[SANITIZE_THREAD] = "thread",

@@ -41,6 +41,7 @@ const char *project_default_keys[][2] = {
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"show-backtrace", "Print backtrace on signals."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
@@ -106,6 +107,7 @@ const char* project_target_keys[][2] = {
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"sanitize", "Enable sanitizer: none, address, memory, thread."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"show-backtrace", "Print backtrace on signals."},
@@ -277,6 +279,22 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 	// Reloc
 	RelocModel reloc = GET_SETTING(RelocModel, "reloc", reloc_models, "'none', 'pic', 'PIC', 'pie' or 'PIE'.");
 	if (reloc != RELOC_DEFAULT) target->reloc_model = reloc;
+
+	// Sanitize
+	SanitizeMode sanitize_mode = GET_SETTING(SanitizeMode, "sanitize", sanitize_modes, "'none', 'address', 'memory' or 'thread'.");
+	switch (sanitize_mode)
+	{
+		case SANITIZE_NOT_SET: break;
+		case SANITIZE_NONE:
+			target->feature.sanitize_address = false;
+			target->feature.sanitize_memory = false;
+			target->feature.sanitize_thread = false;
+			break;
+		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
+		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
+		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
+		default: UNREACHABLE;
+	}
 
 	// Cpu
 	target->cpu = get_string(PROJECT_JSON, target_name, json, "cpu", target->cpu);

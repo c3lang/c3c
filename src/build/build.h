@@ -342,9 +342,11 @@ typedef enum
 
 typedef enum
 {
-  SANITIZE_ADDRESS,
-  SANITIZE_MEMORY,
-  SANITIZE_THREAD,
+	SANITIZE_NOT_SET = -1,
+	SANITIZE_NONE,
+	SANITIZE_ADDRESS,
+	SANITIZE_MEMORY,
+	SANITIZE_THREAD,
 } SanitizeMode;
 
 #define ANY_WINDOWS_ARCH_OS WINDOWS_AARCH64: case WINDOWS_X64: case MINGW_X64
@@ -440,9 +442,7 @@ typedef struct BuildOptions_
 	SizeOptimizationLevel optsize;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
-	bool sanitize_address;
-	bool sanitize_memory;
-	bool sanitize_thread;
+	SanitizeMode sanitize_mode;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;

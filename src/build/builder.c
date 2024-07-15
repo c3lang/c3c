@@ -332,9 +332,20 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
 	if (options->linuxpaths.crt) target->linuxpaths.crt = options->linuxpaths.crt;
 	if (options->linuxpaths.crtbegin) target->linuxpaths.crtbegin = options->linuxpaths.crtbegin;
-	if (options->sanitize_address) target->feature.sanitize_address = true;
-	if (options->sanitize_memory) target->feature.sanitize_memory = true;
-	if (options->sanitize_thread) target->feature.sanitize_thread = true;
+	switch (options->sanitize_mode)
+	{
+		case SANITIZE_NOT_SET: break;
+		case SANITIZE_NONE:
+			target->feature.sanitize_address = false;
+			target->feature.sanitize_memory = false;
+			target->feature.sanitize_thread = false;
+			break;
+		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
+		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
+		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
+		default: UNREACHABLE;
+	}
+
 	if (options->fp_math != FP_DEFAULT)
 	{
 		target->feature.fp_math = options->fp_math;

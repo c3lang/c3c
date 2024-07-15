@@ -982,14 +982,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("sanitize")))
 			{
-				SanitizeMode mode = (SanitizeMode)parse_multi_option(argopt, 3, sanitize);
-				switch (mode)
-				{
-					case SANITIZE_ADDRESS: options->sanitize_address = true; break;
-					case SANITIZE_MEMORY: options->sanitize_memory = true; break;
-					case SANITIZE_THREAD: options->sanitize_thread = true; break;
-					default: UNREACHABLE;
-				}
+				options->sanitize_mode = (SanitizeMode)parse_multi_option(argopt, 4, sanitize_modes);
 				return;
 			}
 			if (match_longopt("macos-sdk-version"))
@@ -1175,6 +1168,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
+		.sanitize_mode = SANITIZE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
 		.slp_vectorization = VECTORIZATION_NOT_SET,
@@ -1183,7 +1177,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.build_dir = NULL,
 		.output_dir = NULL,
 		.script_dir = NULL,
-
 	};
 	for (int i = DIAG_NONE; i < DIAG_WARNING_TYPE; i++)
 	{
