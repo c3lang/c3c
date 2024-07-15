@@ -167,7 +167,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 		for (usz p = 0; p < recursion_count; p++)
 		{
-			usz i = indexs[255 - p];
+			usz i = indexs[256 - p];
 
 			usz	start_offset = ranges[i];
 			usz	end_offset   = ranges[i + 1];
