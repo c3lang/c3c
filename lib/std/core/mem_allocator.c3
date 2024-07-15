@@ -49,7 +49,7 @@ fault AllocationFailure
 
 fn usz alignment_for_allocation(usz alignment) @inline @private
 {
-	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? alignment = mem::DEFAULT_MEM_ALIGNMENT : alignment;
+	return alignment < mem::DEFAULT_MEM_ALIGNMENT ? mem::DEFAULT_MEM_ALIGNMENT : alignment;
 }
 
 macro void* malloc(Allocator allocator, usz size) @nodiscard
@@ -147,6 +147,7 @@ macro void free_aligned(Allocator allocator, void* ptr)
 }
 
 /**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
  **/
@@ -162,6 +163,7 @@ macro new(Allocator allocator, $Type, ...) @nodiscard
 }
 
 /**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_aligned' instead"
  * @require $vacount < 2 : "Too many arguments."
  * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
  **/
@@ -176,51 +178,109 @@ macro new_try(Allocator allocator, $Type, ...) @nodiscard
 	$endif
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ * @require $vacount < 2 : "Too many arguments."
+ * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ **/
+macro new_aligned($Type, ...) @nodiscard
+{
+	$if $vacount == 0:
+		return ($Type*)calloc_aligned(allocator, $Type.sizeof, $Type.alignof);
+	$else
+		$Type* val = malloc_aligned(allocator, $Type.sizeof, $Type.alignof);
+		*val = $vaexpr(0);
+		return val;
+	$endif
+}
+
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT
+ **/
 macro new_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
 {
 	return ($Type*)calloc_try(allocator, $Type.sizeof + padding);
 }
 
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ **/
 macro alloc(Allocator allocator, $Type) @nodiscard
 {
 	return ($Type*)malloc(allocator, $Type.sizeof);
 }
 
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+ **/
 macro alloc_try(Allocator allocator, $Type) @nodiscard
 {
 	return ($Type*)malloc_try(allocator, $Type.sizeof);
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+macro alloc_aligned(Allocator allocator, $Type) @nodiscard
+{
+	return ($Type*)malloc_aligned(allocator, $Type.sizeof, $Type.alignof);
+}
+
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT
+ **/
 macro alloc_with_padding(Allocator allocator, $Type, usz padding) @nodiscard
 {
 	return ($Type*)malloc_try(allocator, $Type.sizeof + padding);
 }
 
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ **/
 macro new_array(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return new_array_try(allocator, $Type, elements)!!;
 }
 
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"
+ **/
 macro new_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)calloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
 macro new_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)calloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ **/
 macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return alloc_array_try(allocator, $Type, elements)!!;
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
 macro alloc_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
 }
 
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ **/
 macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];

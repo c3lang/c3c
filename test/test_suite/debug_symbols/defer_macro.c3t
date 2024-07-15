@@ -145,21 +145,17 @@ entry:
   store i32 %1, ptr %a, align 4, !dbg !24
   store i64 0, ptr %a.f, align 8, !dbg !24
   br label %loop.cond, !dbg !25
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %load.err = load i64, ptr %a.f, align 8, !dbg !26
   %result = icmp eq i64 %load.err, 0, !dbg !26
   br i1 %result, label %loop.body, label %loop.exit, !dbg !26
-
 loop.body:                                        ; preds = %loop.cond
   store i32 2, ptr %a, align 4, !dbg !28
   store i64 0, ptr %a.f, align 8, !dbg !28
   br label %loop.cond, !dbg !28
-
 loop.exit:                                        ; preds = %loop.cond
   ret void, !dbg !28
 }
-
 ; Function Attrs: nounwind uwtable
 define i32 @test.main(ptr %0, i64 %1) #0 !dbg !30 {
 entry:
@@ -252,17 +248,13 @@ entry:
   %not_err = icmp eq i64 %12, 0, !dbg !98
   %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !98
   br i1 %13, label %after_check, label %assign_optional, !dbg !98
-
 assign_optional:                                  ; preds = %entry
   store i64 %12, ptr %error_var, align 8, !dbg !98
   br label %guard_block, !dbg !98
-
 after_check:                                      ; preds = %entry
   br label %noerr_block, !dbg !98
-
 guard_block:                                      ; preds = %assign_optional
   br label %voiderr, !dbg !98
-
 noerr_block:                                      ; preds = %after_check
   %14 = load i64, ptr %retparam, align 8, !dbg !98
   store i64 %14, ptr %len, align 8, !dbg !98
@@ -271,39 +263,30 @@ noerr_block:                                      ; preds = %after_check
   %not_err6 = icmp eq i64 %16, 0, !dbg !100
   %17 = call i1 @llvm.expect.i1(i1 %not_err6, i1 true), !dbg !100
   br i1 %17, label %after_check8, label %assign_optional7, !dbg !100
-
 assign_optional7:                                 ; preds = %noerr_block
   store i64 %16, ptr %error_var5, align 8, !dbg !100
   br label %guard_block9, !dbg !100
-
 after_check8:                                     ; preds = %noerr_block
   br label %noerr_block10, !dbg !100
-
 guard_block9:                                     ; preds = %assign_optional7
   br label %voiderr, !dbg !100
-
 noerr_block10:                                    ; preds = %after_check8
   %18 = load ptr, ptr %out, align 8, !dbg !101
   %19 = call i64 @std.io.File.flush(ptr %18), !dbg !101
   %not_err12 = icmp eq i64 %19, 0, !dbg !101
   %20 = call i1 @llvm.expect.i1(i1 %not_err12, i1 true), !dbg !101
   br i1 %20, label %after_check14, label %assign_optional13, !dbg !101
-
 assign_optional13:                                ; preds = %noerr_block10
   store i64 %19, ptr %error_var11, align 8, !dbg !101
   br label %guard_block15, !dbg !101
-
 after_check14:                                    ; preds = %noerr_block10
   br label %noerr_block16, !dbg !101
-
 guard_block15:                                    ; preds = %assign_optional13
   br label %voiderr, !dbg !101
-
 noerr_block16:                                    ; preds = %after_check14
   %21 = load i64, ptr %len, align 8, !dbg !102
   %add = add i64 %21, 1, !dbg !102
   br label %voiderr, !dbg !93
-
 voiderr:                                          ; preds = %noerr_block16, %guard_block15, %guard_block9, %guard_block
   ret ptr null, !dbg !103
 }
@@ -398,11 +381,9 @@ entry:
   %10 = load i64, ptr %size, align 8, !dbg !157
   %not = icmp eq i64 %10, 0, !dbg !157
   br i1 %not, label %if.then, label %if.exit, !dbg !157
-
 if.then:                                          ; preds = %entry
   store ptr null, ptr %blockret11, align 8, !dbg !160
   br label %expr_block.exit, !dbg !160
-
 if.exit:                                          ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %allocator10, i64 8, !dbg !161
   %11 = load i64, ptr %ptradd, align 8, !dbg !161
@@ -410,7 +391,6 @@ if.exit:                                          ; preds = %entry
   %type = load ptr, ptr %.cachedtype, align 8
   %13 = icmp eq ptr %12, %type
   br i1 %13, label %cache_hit, label %cache_miss
-
 cache_miss:                                       ; preds = %if.exit
   %ptradd12 = getelementptr inbounds i8, ptr %12, i64 16
   %14 = load ptr, ptr %ptradd12, align 8
@@ -418,21 +398,17 @@ cache_miss:                                       ; preds = %if.exit
   store ptr %15, ptr %.inlinecache, align 8
   store ptr %12, ptr %.cachedtype, align 8
   br label %16
-
 cache_hit:                                        ; preds = %if.exit
   %cache_hit_fn = load ptr, ptr %.inlinecache, align 8
   br label %16
-
 16:                                               ; preds = %cache_hit, %cache_miss
   %fn_phi = phi ptr [ %cache_hit_fn, %cache_hit ], [ %15, %cache_miss ]
   %17 = icmp eq ptr %fn_phi, null
   br i1 %17, label %missing_function, label %match
-
 missing_function:                                 ; preds = %16
   %18 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !163
   call void %18(ptr @.panic_msg, i64 44, ptr @.file, i64 16, ptr @.func, i64 6, i32 68), !dbg !163
   unreachable, !dbg !163
-
 match:                                            ; preds = %16
   %19 = load ptr, ptr %allocator10, align 8
   %20 = load i64, ptr %size, align 8
@@ -440,16 +416,13 @@ match:                                            ; preds = %16
   %not_err = icmp eq i64 %21, 0, !dbg !163
   %22 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !163
   br i1 %22, label %after_check, label %assign_optional, !dbg !163
-
 assign_optional:                                  ; preds = %match
   store i64 %21, ptr %error_var, align 8, !dbg !163
   br label %panic_block, !dbg !163
-
 after_check:                                      ; preds = %match
   %23 = load ptr, ptr %retparam, align 8, !dbg !163
   store ptr %23, ptr %blockret11, align 8, !dbg !163
   br label %expr_block.exit, !dbg !163
-
 expr_block.exit:                                  ; preds = %after_check, %if.then
   %24 = load ptr, ptr %blockret11, align 8, !dbg !163
   store ptr %24, ptr %taddr, align 8
@@ -460,7 +433,6 @@ expr_block.exit:                                  ; preds = %after_check, %if.th
   %27 = insertvalue %"char[][]" undef, ptr %25, 0, !dbg !164
   %28 = insertvalue %"char[][]" %27, i64 %size13, 1, !dbg !164
   br label %noerr_block, !dbg !164
-
 panic_block:                                      ; preds = %assign_optional
   %29 = insertvalue %any undef, ptr %error_var, 0, !dbg !164
   %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1, !dbg !164
@@ -468,21 +440,18 @@ panic_block:                                      ; preds = %assign_optional
   %31 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %31, i64 1, 1
   store %"any[]" %"$$temp", ptr %indirectarg, align 8
-  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 36, ptr @.file, i64 16, ptr @.func, i64 6, i32 216, ptr byval(%"any[]") align 8 %indirectarg), !dbg !151
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1
   unreachable, !dbg !151
-
 noerr_block:                                      ; preds = %expr_block.exit
   store %"char[][]" %28, ptr %list5, align 8, !dbg !151
     !167
   store i32 0, ptr %i, align 4, !dbg !168
   br label %loop.cond, !dbg !168
-
 loop.cond:                                        ; preds = %loop.exit, %noerr_block
   %32 = load i32, ptr %i, align 4, !dbg !169
   %33 = load i32, ptr %argc2, align 4, !dbg !170
   %lt = icmp slt i32 %32, %33, !dbg !169
   br i1 %lt, label %loop.body, label %loop.exit26, !dbg !169
-
 loop.body:                                        ; preds = %loop.cond
     !173
   %34 = load ptr, ptr %argv3, align 8, !dbg !174
@@ -503,7 +472,6 @@ loop.body:                                        ; preds = %loop.cond
     !184
   store i64 0, ptr %len18, align 8, !dbg !186
   br label %loop.cond19, !dbg !187
-
 loop.cond19:                                      ; preds = %loop.body21, %loop.body
   %41 = load ptr, ptr %ptr, align 8, !dbg !188
   %42 = load i64, ptr %len18, align 8, !dbg !190
@@ -511,13 +479,11 @@ loop.cond19:                                      ; preds = %loop.body21, %loop.
   %43 = load i8, ptr %ptradd20, align 1, !dbg !190
   %intbool = icmp ne i8 %43, 0, !dbg !190
   br i1 %intbool, label %loop.body21, label %loop.exit, !dbg !190
-
 loop.body21:                                      ; preds = %loop.cond19
   %44 = load i64, ptr %len18, align 8, !dbg !191
   %add22 = add i64 %44, 1, !dbg !191
   store i64 %add22, ptr %len18, align 8, !dbg !191
   br label %loop.cond19, !dbg !191
-
 loop.exit:                                        ; preds = %loop.cond19
   %45 = load i64, ptr %len18, align 8, !dbg !192
   %add23 = add i64 0, %45, !dbg !192
@@ -529,7 +495,6 @@ loop.exit:                                        ; preds = %loop.cond19
   %add25 = add i32 %48, 1, !dbg !193
   store i32 %add25, ptr %i, align 4, !dbg !193
   br label %loop.cond, !dbg !193
-
 loop.exit26:                                      ; preds = %loop.cond
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %list, ptr align 8 %list5, i32 16, i1 false), !dbg !194
   %lo = load ptr, ptr %list, align 8, !dbg !195
@@ -540,7 +505,6 @@ loop.exit26:                                      ; preds = %loop.cond
   %50 = load ptr, ptr %list, align 8, !dbg !197
   call void @std.core.mem.free(ptr %50)
   br label %expr_block.exit28, !dbg !199
-
 expr_block.exit28:                                ; preds = %loop.exit26
   %51 = load i32, ptr %blockret, align 4, !dbg !199
   ret i32 %51, !dbg !199
@@ -563,20 +527,16 @@ check:                                            ; preds = %no_match, %entry
   %2 = phi ptr [ %0, %entry ], [ %9, %no_match ]
   %3 = icmp eq ptr %2, null
   br i1 %3, label %missing_function, label %compare
-
 missing_function:                                 ; preds = %check
   ret ptr null
-
 compare:                                          ; preds = %check
   %4 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 1
   %5 = load ptr, ptr %4, align 8
   %6 = icmp eq ptr %5, %1
   br i1 %6, label %match, label %no_match
-
 match:                                            ; preds = %compare
   %7 = load ptr, ptr %2, align 8
   ret ptr %7
-
 no_match:                                         ; preds = %compare
   %8 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 2
   %9 = load ptr, ptr %8, align 8
@@ -712,7 +672,7 @@ no_match:                                         ; preds = %compare
 !129 = !DILocation(line: 111, column: 21, scope: !130, inlinedAt: !118)
 !130 = distinct !DILexicalBlock(scope: !108, file: !5, line: 111, column: 9)
 !131 = !DILocation(line: 111, column: 9, scope: !130, inlinedAt: !118)
-!132 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !5, file: !5, line: 15, type: !133, scopeLine: 15, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !4, retainedNodes: !19)
+!132 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !5, file: !5, line: 15, type: !133, scopeLine: 15, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition
 !133 = !DISubroutineType(types: !134)
 !134 = !{!13, !13, !135}
 !135 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !41, size: 64, align: 64
@@ -725,20 +685,23 @@ no_match:                                         ; preds = %compare
 !145 = !DILocation(line: 24, column: 11, scope: !144, inlinedAt: !146)
 !146 = !DILocation(line: 45, column: 18, scope: !140, inlinedAt: !137)
 !147 = !DILocation(line: 24, column: 43, scope: !144, inlinedAt: !146)
-!148 = !DILocation(line: 226, column: 55, scope: !149, inlinedAt: !151)
-!151 = !DILocation(line: 216, column: 9, scope: !152, inlinedAt: !153)
-!152 = distinct !DISubprogram(name: "alloc_array", linkageName: "alloc_array", scope: !150, file: !150
-!153 = !DILocation(line:
-!154 = distinct !DISubprogram(name: "alloc_array", linkageName: "alloc_array", scope: !74, file: !74
-!155 = !DILocation(line:
-!156 = !DILocation(line: 226, column: 40, scope: !149, inlinedAt: !151)
+!148 = !DILocation(line: 277, column: 55, scope: !149, inlinedAt: !151)
+!149 = distinct !DISubprogram(name: "alloc_array_try", linkageName: "alloc_array_try", scope: !150, file: !150, line: 275, scopeLine: 275, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
+!150 = !DIFile(filename: "mem_allocator.c3",
+!151 = !DILocation(line: 269, column: 9, scope: !152, inlinedAt: !153)
+!152 = distinct !DISubprogram(name: "alloc_array", linkageName: "alloc_array", scope: !150, file: !150, line: 267, scopeLine: 267, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
+!153 = !DILocation(line: 688, column: 20, scope: !154, inlinedAt: !155)
+!154 = distinct !DISubprogram(name: "alloc_array", linkageName: "alloc_array", scope: !74, file: !74, line: 686, scopeLine: 686, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
+!155 = !DILocation(line: 24, column: 23, scope: !144, inlinedAt: !146)
+!156 = !DILocation(line: 277, column: 40, scope: !149, inlinedAt: !151)
 !157 = !DILocation(line: 62, column: 7, scope: !158, inlinedAt: !159)
 !158 = distinct !DISubprogram(name: "malloc_try", linkageName: "malloc_try", scope: !150, file: !150, line: 60, scopeLine: 60, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
+!159 = !DILocation(line: 277, column: 10, scope: !149, inlinedAt: !151)
 !160 = !DILocation(line: 62, column: 20, scope: !158, inlinedAt: !159)
 !161 = !DILocation(line: 28, column: 71, scope: !162, inlinedAt: !163)
-!162 = distinct !DISubprogram(name: "[DEFAULT INIT]", linkageName: "[DEFAULT INIT]", scope: !150, file: !150, line: 28, scopeLine: 28, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !4
+!162 = distinct !DISubprogram(name: "[DEFAULT INIT]", linkageName: "[DEFAULT INIT]", scope: !150, file: !150, line: 28, scopeLine: 28, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
 !163 = !DILocation(line: 68, column: 10, scope: !158, inlinedAt: !159)
-!164 = !DILocation(line: 226, column: 67, scope: !149, inlinedAt: !151)
+!164 = !DILocation(line: 277, column: 67, scope: !149, inlinedAt: !151)
 !165 = !DILocalVariable(name: "i", scope: !166, file: !5, line: 25, type: !13, align: 4)
 !166 = distinct !DILexicalBlock(scope: !144, file: !141, line: 25, column: 2)
 !167 = !DILocation(line: 25, column: 11, scope: !166, inlinedAt: !146)

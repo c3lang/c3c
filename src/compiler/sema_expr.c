@@ -3276,7 +3276,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		return false;
 	}
 	Decl *decl = canonical->decl;
-
+	if (!decl_ok(decl)) return false;
 	switch (decl->decl_kind)
 	{
 		case DECL_ENUM:

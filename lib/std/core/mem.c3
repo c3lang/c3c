@@ -577,6 +577,15 @@ fn void* malloc(usz size) @builtin @inline @nodiscard
 	return allocator::malloc(allocator::heap(), size);
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
+fn void* malloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
+{
+	return allocator::malloc_aligned(allocator::heap(), size, alignment)!!;
+}
+
 fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
@@ -685,7 +694,7 @@ macro alloc_array($Type, usz elements) @nodiscard
  **/
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
-	return allocator::alloc_array(allocator::heap(), $Type, elements);
+	return allocator::alloc_array_aligned(allocator::heap(), $Type, elements);
 }
 
 macro temp_alloc_array($Type, usz elements) @nodiscard
@@ -703,6 +712,10 @@ fn void* calloc(usz size) @builtin @inline @nodiscard
 	return allocator::calloc(allocator::heap(), size);
 }
 
+/**
+ * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
+ * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
+ **/
 fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 {
 	return allocator::calloc_aligned(allocator::heap(), size, alignment)!!;
