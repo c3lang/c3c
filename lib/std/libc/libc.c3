@@ -360,6 +360,7 @@ const int EOF = -1;
 const int FOPEN_MAX = 20;
 const int FILENAME_MAX = 1024;
 
+macro bool libc_S_ISTYPE(value, mask) @builtin => (value & S_IFMT) == mask;
 const S_IFMT   = 0o170000; // type of file mask
 const S_IFIFO  = 0o010000; // named pipe (fifo)
 const S_IFCHR  = 0o020000; // character special
