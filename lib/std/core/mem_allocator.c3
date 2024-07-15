@@ -270,20 +270,20 @@ macro alloc_array(Allocator allocator, $Type, usz elements) @nodiscard
 }
 
 /**
- * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
- **/
-macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
-{
-	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];
-}
-
-/**
  * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  **/
 macro alloc_array_aligned(Allocator allocator, $Type, usz elements) @nodiscard
 {
 	return (($Type*)malloc_aligned(allocator, $Type.sizeof * elements, $Type.alignof))[:elements]!!;
+}
+
+/**
+ * @require $Type.alignof <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_array_aligned' instead"
+ **/
+macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
+{
+	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
 macro clone(Allocator allocator, value) @nodiscard

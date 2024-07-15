@@ -9,6 +9,8 @@ def ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
+macro type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
+
 struct List (Printable)
 {
 	usz size;
@@ -16,7 +18,6 @@ struct List (Printable)
 	Allocator allocator;
 	Type *entries;
 }
-
 
 /**
  * @param initial_capacity "The initial capacity to reserve"
@@ -29,7 +30,11 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 	if (initial_capacity > 0)
 	{
 		initial_capacity = math::next_power_of_2(initial_capacity);
+		$if type_is_overaligned():
 		self.entries = allocator::malloc_aligned(allocator, Type.sizeof * initial_capacity, .alignment = Type[1].alignof)!!;
+		$else
+		self.entries = allocator::malloc(allocator, Type.sizeof * initial_capacity);
+		$endif
 	}
 	else
 	{
@@ -93,7 +98,7 @@ fn String List.to_tstring(&self)
 fn void List.push(&self, Type element) @inline
 {
 	self.ensure_capacity();
-		self.entries[self.size++] = element;
+	self.entries[self.size++] = element;
 }
 
 fn Type! List.pop(&self)
@@ -136,10 +141,11 @@ fn void List.add_all(&self, List* other_list)
 	}
 }
 
+
 /**
  * IMPORTANT The returned array must be freed using free_aligned.
  **/
-fn Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
+fn Type[] List.to_new_aligned_array(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return Type[] {};
 	Type[] result = allocator::alloc_array_aligned(allocator, Type, self.size);
@@ -147,9 +153,24 @@ fn Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
 	return result;
 }
 
+/**
+ * @require !type_is_overaligned() : "This function is not available on overaligned types"
+ **/
+macro Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
+{
+	if (!self.size) return Type[] {};
+	Type[] result = allocator::alloc_array(allocator, Type, self.size);
+	result[..] = self.entries[:self.size];
+	return result;
+}
+
 fn Type[] List.to_tarray(&self)
 {
+	$if type_is_overaligned():
+	return self.to_new_aligned_array(allocator::temp());
+	$else
 	return self.to_new_array(allocator::temp());
+	$endif;
 }
 
 /**
@@ -255,7 +276,11 @@ fn Type List.get(&self, usz index) @inline
 fn void List.free(&self)
 {
 	if (!self.allocator) return;
+	$if type_is_overaligned():
 	allocator::free_aligned(self.allocator, self.entries);
+	$else
+	allocator::free(self.allocator, self.entries);
+	$endif;
 	self.capacity = 0;
 	self.size = 0;
 	self.entries = null;
@@ -353,7 +378,11 @@ fn void List.reserve(&self, usz min_capacity)
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = allocator::heap();
 	min_capacity = math::next_power_of_2(min_capacity);
-	self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof) ?? null;
+	$if type_is_overaligned():
+	self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof)!!;
+	$else
+	self.entries = allocator::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
+	$endif;
 	self.capacity = min_capacity;
 }
 

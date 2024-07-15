@@ -6,7 +6,7 @@ def PtrList = List(<void*>);
 
 struct Overalign
 {
-	double[<33>] x;
+	float[<4>] x @align(128);
 }
 
 fn void overaligned_type()
