@@ -4,15 +4,15 @@ fn void test()
     $switch (3)
         $case 2:
             return;
+        $default: // #error: $default must be last in a $switch
         $default:
-        $default: // #error: More than one $default is not allowed
             return;
     $endswitch
 }
 
 fn void test1()
 {
-    $switch (-1)
+    $switch (1)
         $case -1:
             return;
         $case -1: // #error: '-1' appears more than once

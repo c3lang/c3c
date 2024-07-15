@@ -2522,7 +2522,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			FALLTHROUGH;
 		default:
 			assert(cond);
-			SEMA_ERROR(cond, "Only types, strings, enums, integers, floats and booleans may be used with '$switch'.");
+			SEMA_ERROR(cond, "Only types, strings, enums, integers, floats and booleans may be used with '$switch'."); // NOLINT
 			goto FAILED;
 	}
 
@@ -2549,6 +2549,11 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 					SEMA_ERROR(to_expr, "$case ranges are only allowed for integers.");
 					goto FAILED;
 				}
+				// Do not evaluate if found.
+				if (matched_case != case_count && expr && expr->resolve_status != RESOLVE_DONE)
+				{
+					continue;
+				}
 				if (is_type)
 				{
 					if (!sema_analyse_ct_expr(context, expr)) goto FAILED;
@@ -2560,6 +2565,8 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				}
 				else
 				{
+					// Do not evaluate if found.
+					if (matched_case != case_count && expr->resolve_status != RESOLVE_DONE) continue;
 					if (!sema_analyse_expr_rhs(context, type, expr, false, NULL)) goto FAILED;
 					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false, NULL)) goto FAILED;
 				}
@@ -2591,6 +2598,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				{
 					Ast *other_stmt = cases[j];
 					if (other_stmt->ast_kind == AST_DEFAULT_STMT) continue;
+					if (exprptr(other_stmt->case_stmt.expr)->resolve_status != RESOLVE_DONE) continue;
 					ExprConst *other_const = &exprptr(other_stmt->case_stmt.expr)->const_expr;
 					ExprConst *other_const_to = other_stmt->case_stmt.to_expr ? &exprptr(other_stmt->case_stmt.to_expr)->const_expr : other_const;
 					if (expr_const_in_range(const_expr, other_const, other_const_to))
@@ -2617,10 +2625,9 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				break;
 			}
 			case AST_DEFAULT_STMT:
-				if (default_case < case_count)
+				if (i != case_count - 1)
 				{
-					SEMA_ERROR(stmt, "More than one $default is not allowed.");
-					SEMA_NOTE(cases[default_case], "The previous $default was here.");
+					SEMA_ERROR(stmt, "$default must be last in a $switch.");
 					goto FAILED;
 				}
 				default_case = (int)i;

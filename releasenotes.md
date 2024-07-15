@@ -19,6 +19,7 @@
 - The maximum number of parameters in a call is now 255, up from 127.
 - Array comparison now uses built-in memcmp on LLVM to enable optimizations.
 - Prevent implicit array casts to pointers with higher alignment #1237.
+- Macro `$case` statements now pick the first match and does not evaluate the rest.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

@@ -624,7 +624,19 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 	// Change type -> type.typeid
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
-		expr->expr_kind = EXPR_TYPEID;
+		// Fold constant immediately
+		if (expr->type_expr->resolve_status == RESOLVE_DONE)
+		{
+			Type *cond_val = expr->type_expr->type;
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_TYPEID;
+			expr->const_expr.typeid = cond_val->canonical;
+			expr->type = type_typeid;
+		}
+		else
+		{
+			expr->expr_kind = EXPR_TYPEID;
+		}
 	}
 	if (try_consume(c, TOKEN_DOTDOT))
 	{

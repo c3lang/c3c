@@ -4,8 +4,8 @@ fn void test()
     $switch (int.typeid)
         $case int:
             return;
+        $default: // #error: must be last in a $switch
         $default:
-        $default: // #error: More than one $default is not allowed
             return;
     $endswitch
 }
@@ -27,11 +27,11 @@ def Bar = double;
 fn void test2()
 {
     $switch (int.typeid)
-        $case int:
+        $case Foo:
             return;
         $case Bar:
             return;
-        $case Foo: // #error: 'int' appears more than once
+        $case int: // #error: 'int' appears more than once
             return;
         $default:
             return;

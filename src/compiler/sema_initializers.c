@@ -394,6 +394,7 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 	initializer->expr_kind = EXPR_CONST;
 	initializer->const_expr = (ExprConst) { .const_kind = CONST_UNTYPED_LIST, .untyped_list = init_list };
 	initializer->type = type_untypedlist;
+	initializer->resolve_status = RESOLVE_DONE;
 	return true;
 }
 
@@ -712,6 +713,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr->const_expr.const_kind = CONST_POINTER;
 				expr->const_expr.ptr = 0;
 				expr->type = to;
+				expr->resolve_status = RESOLVE_DONE;
 				return true;
 			}
 			// Resolve this as an inferred array.

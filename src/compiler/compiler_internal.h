@@ -3620,6 +3620,7 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 {
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
 	TypeKind kind = type_flatten(type)->type_kind;
 	(&expr->const_expr)->ixx.i.high = 0;
 	if (type_kind_is_signed(kind))

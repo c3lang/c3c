@@ -604,6 +604,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr->const_expr.const_kind = CONST_ENUM;
 			assert(type->decl->resolve_status == RESOLVE_DONE);
 			expr->const_expr.enum_err_val = type->decl->enums.values[0];
+			expr->resolve_status = RESOLVE_DONE;
 			break;
 		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:

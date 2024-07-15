@@ -31,28 +31,25 @@ def Ranges = ulong[257] @private;
 def Indexs = char[256] @private;
 def ElementType = $typeof(Type{}[0]);
 
-const bool NO_KEY_FN @private = KeyFn.typeid == void*.typeid;
+const bool NO_KEY_FN @private = types::is_same(KeyFn, EmptySlot);
 const bool KEY_BY_VALUE @private = $or(NO_KEY_FN, $assignable(Type{}[0], $typefrom(KeyFn.params[0])));
 const bool LIST_HAS_REF @private = $defined(&Type{}[0]);
 
 def KeyFnReturnType = $typefrom(KeyFn.returns) @if(!NO_KEY_FN);
 def KeyFnReturnType = ElementType @if(NO_KEY_FN);
-def CmpCallback = fn int(ElementType, ElementType, KeyFn) @if(KEY_BY_VALUE);
-def CmpCallback = fn int(ElementType*, ElementType*, KeyFn) @if(!KEY_BY_VALUE);
+def CmpCallback = fn int(ElementType, ElementType) @if(KEY_BY_VALUE && NO_KEY_FN);
+def CmpCallback = fn int(ElementType*, ElementType*) @if(!KEY_BY_VALUE && NO_KEY_FN);
+def CmpCallback = fn int(ElementType, ElementType, KeyFn) @if(KEY_BY_VALUE && !NO_KEY_FN);
+def CmpCallback = fn int(ElementType*, ElementType*, KeyFn) @if(!KEY_BY_VALUE && !NO_KEY_FN);
 
 fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 {
 	if (high <= low) return;
-	CmpCallback compare_fn = fn (lhs, rhs, key_fn) {
-		$switch
-			$case NO_KEY_FN:
-				return compare_to(lhs, rhs);
-			$case KEY_BY_VALUE:
-				return compare_to(key_fn(lhs), key_fn(rhs));
-			$default:
-				return compare_to(key_fn(lhs), key_fn(rhs));
-		$endswitch;
-	};
+	$if NO_KEY_FN:
+		CmpCallback compare_fn = fn (lhs, rhs) => compare_to(lhs, rhs);
+	$else
+		CmpCallback compare_fn = fn (lhs, rhs, key_fn) => compare_to(key_fn(lhs), key_fn(rhs));
+	$endif;
 
     byte_idx = byte_idx >= KeyFnReturnType.sizeof ? KeyFnReturnType.sizeof - 1 : byte_idx;
 

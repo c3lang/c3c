@@ -593,6 +593,8 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	}
 	expr->span = type->span;
 	expr->type_expr = type;
+	expr->type = type_typeinfo;
+	if (type->resolve_status == RESOLVE_DONE) expr->resolve_status = RESOLVE_DONE;
 	if (tok_is(c, TOKEN_SCOPE))
 	{
 		PRINT_ERROR_HERE("A type is never followed by '::', did you mean '.'?");
@@ -625,6 +627,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 	expr->const_expr.bytes.ptr = content;
 	expr->const_expr.bytes.len = len;
 	expr->type = type_string;
+	expr->resolve_status = RESOLVE_DONE;
 	return expr;
 }
 
@@ -1313,6 +1316,7 @@ Expr *parse_integer(ParseContext *c, Expr *left)
 {
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
+	expr_int->resolve_status = RESOLVE_DONE;
 	size_t len = c->data.lex_len;
 	const char *string = symstr(c);
 	Int128 i = { 0, 0 };
@@ -1632,6 +1636,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 	expr_bytes->const_expr.const_kind = CONST_BYTES;
 	Type *type = type_get_array(type_char, len);
 	expr_bytes->type = type;
+	expr_bytes->resolve_status = RESOLVE_DONE;
 	return expr_bytes;
 }
 
@@ -1643,6 +1648,7 @@ static Expr *parse_char_lit(ParseContext *c, Expr *left)
 	assert(!left && "Had left hand side");
 	Expr *expr_int = EXPR_NEW_TOKEN(EXPR_CONST);
 	expr_int->const_expr.is_character = true;
+	expr_int->resolve_status = RESOLVE_DONE;
 	expr_int->const_expr.ixx.i = c->data.char_value;
 	expr_int->const_expr.const_kind = CONST_INTEGER;
 	switch (c->data.width)
@@ -1836,6 +1842,8 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 	}
 	Expr *expr = expr_new(EXPR_TYPEINFO, type->span);
 	expr->type_expr = type;
+	expr->type = type_typeinfo;
+	if (type->resolve_status == RESOLVE_DONE) expr->resolve_status = RESOLVE_DONE;
 	if (tok_is(c, TOKEN_SCOPE))
 	{
 		PRINT_ERROR_HERE("A type is never followed by '::', did you mean '.'?");

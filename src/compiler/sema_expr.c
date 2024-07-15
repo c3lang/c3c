@@ -938,6 +938,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = enum_constant->decl_kind == DECL_ENUM_CONSTANT ? CONST_ENUM : CONST_ERR;
 	expr->const_expr.enum_err_val = enum_constant;
+	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
 
@@ -3341,6 +3342,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 	if (member->decl_kind == DECL_VAR || member->decl_kind == DECL_UNION || member->decl_kind == DECL_STRUCT || member->decl_kind == DECL_BITSTRUCT)
 	{
 		expr->expr_kind = EXPR_CONST;
+		expr->resolve_status = RESOLVE_DONE;
 		AlignSize align;
 		if (!sema_set_abi_alignment(context, decl->type, &align)) return false;
 		expr->const_expr = (ExprConst) {
@@ -3441,6 +3443,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	}
 
 	expr->expr_kind = EXPR_CONST;
+	expr->resolve_status = RESOLVE_DONE;
 	expr->const_expr = (ExprConst) {
 		.member.decl = member,
 		.member.align = parent->const_expr.member.align,
@@ -3482,6 +3485,7 @@ static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type
 	assert(vec_size(values) > val);
 	expr->type = type_kind->type;
 	expr->expr_kind = EXPR_CONST;
+	expr->resolve_status = RESOLVE_DONE;
 	assert(type_kind->resolve_status == RESOLVE_DONE);
 	expr->const_expr = (ExprConst) {
 		.const_kind = CONST_ENUM,
@@ -3683,6 +3687,7 @@ static inline void sema_create_const_membersof(SemaContext *context, Expr *expr,
 	{
 		Decl *decl = members[i];
 		Expr *expr_element = expr_new(EXPR_CONST, expr->span);
+		expr_element->resolve_status = RESOLVE_DONE;
 		expr_element->type = type_member;
 		expr_element->const_expr = (ExprConst) {
 			.const_kind = CONST_MEMBER,
@@ -5287,6 +5292,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 			expr->const_expr.const_kind = CONST_INTEGER;
 			expr->const_expr.is_character = false;
 			expr->expr_kind = EXPR_CONST;
+			expr->resolve_status = RESOLVE_DONE;
 		}
 		return true;
 	}
@@ -5316,6 +5322,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 		assert(left_type->decl->resolve_status == RESOLVE_DONE);
 		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_err_val = enums[int_to_i64(i)] };
 		expr->expr_kind = EXPR_CONST;
+		expr->resolve_status = RESOLVE_DONE;
 	}
 	return true;
 
@@ -6116,6 +6123,7 @@ DONE:
 		expr->const_expr.b = expr_const_compare(&left->const_expr, &right->const_expr, expr->binary_expr.operator);
 		expr->const_expr.const_kind = CONST_BOOL;
 		expr->expr_kind = EXPR_CONST;
+		expr->resolve_status = RESOLVE_DONE;
 	}
 	else
 	{
@@ -6508,6 +6516,7 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 		assert(inner->const_expr.const_kind == CONST_BOOL);
 		expr->const_expr.const_kind = CONST_BOOL;
 		expr->expr_kind = EXPR_CONST;
+		expr->resolve_status = RESOLVE_DONE;
 		expr->const_expr.b = !inner->const_expr.b;
 	}
 	return true;
@@ -6893,6 +6902,7 @@ static inline bool sema_expr_analyse_typeid(SemaContext *context, Expr *expr)
 	if (!sema_resolve_type_info(context, expr->typeid_expr, RESOLVE_TYPE_DEFAULT)) return expr_poison(expr);
 	Type *type = expr->type_expr->type;
 	expr->expr_kind = EXPR_CONST;
+	expr->resolve_status = RESOLVE_DONE;
 	expr->const_expr.const_kind = CONST_TYPEID;
 	expr->const_expr.typeid = type->canonical;
 	expr->type = type_typeid;
@@ -7124,6 +7134,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
+				expr->resolve_status = RESOLVE_DONE;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
 				init->type = expr->type = type_get_slice(type_string);
@@ -7138,6 +7149,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
+				expr->resolve_status = RESOLVE_DONE;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
 				init->type = expr->type = type_get_slice(type_voidptr);
@@ -7152,6 +7164,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
+				expr->resolve_status = RESOLVE_DONE;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
 				init->type = expr->type = type_get_slice(type_string);
@@ -7166,6 +7179,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
+				expr->resolve_status = RESOLVE_DONE;
 				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
 				init->kind = CONST_INIT_ZERO;
 				init->type = expr->type = type_get_slice(type_voidptr);
@@ -7791,6 +7805,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 			.bytes.len = len,
 	};
 	expr->expr_kind = EXPR_CONST;
+	expr->resolve_status = RESOLVE_DONE;
 	expr->type = type_get_slice(type_char);
 	return true;
 }
@@ -8558,6 +8573,7 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 		}
 		concat_expr->expr_kind = EXPR_CONST;
 		concat_expr->type = type_untypedlist;
+		concat_expr->resolve_status = RESOLVE_DONE;
 		concat_expr->const_expr = (ExprConst) {
 				.const_kind = CONST_UNTYPED_LIST,
 				.untyped_list = untyped_exprs
