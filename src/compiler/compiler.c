@@ -1084,16 +1084,19 @@ static void check_sanitizer_options(BuildTarget *target)
 		{
 			case LINUX_X86:
 			case LINUX_X64:
-			case MACOS_AARCH64:
-			case MACOS_X64:
-			case WINDOWS_X64:
+			// TODO enable again once supported
+			// case MACOS_AARCH64:
+			// case MACOS_X64:
+			// case WINDOWS_X64:
 			case FREEBSD_X86:
 			case FREEBSD_X64:
 			case NETBSD_X86:
 			case NETBSD_X64:
 				break;
 			default:
-				error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
+				// TODO enable again once supported
+				// error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
+				error_exit("Address sanitizer is currently only supported on Linux.");
 		}
 		if (target->type == TARGET_TYPE_BENCHMARK)
 		{
@@ -1134,13 +1137,16 @@ static void check_sanitizer_options(BuildTarget *target)
 		{
 			case LINUX_AARCH64:
 			case LINUX_X64:
-			case MACOS_AARCH64:
-			case MACOS_X64:
+			// TODO enable again once supported
+			// case MACOS_AARCH64:
+			// case MACOS_X64:
 			case FREEBSD_X64:
 			case NETBSD_X64:
 				break;
 			default:
-				error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
+				// TODO enable again once supported
+				// error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
+				error_exit("Thread sanitizer is currently only supported on 64-bit Linux.");
 		}
 		if (target->type == TARGET_TYPE_BENCHMARK)
 		{
