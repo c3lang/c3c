@@ -93,7 +93,7 @@ fn String List.to_tstring(&self)
 fn void List.push(&self, Type element) @inline
 {
 	self.ensure_capacity();
-    self.entries[self.size++] = element;
+		self.entries[self.size++] = element;
 }
 
 fn Type! List.pop(&self)
@@ -136,11 +136,13 @@ fn void List.add_all(&self, List* other_list)
 	}
 }
 
-
+/**
+ * IMPORTANT The returned array must be freed using free_aligned.
+ **/
 fn Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return Type[] {};
-	Type[] result = allocator::alloc_array(allocator, Type, self.size);
+	Type[] result = allocator::alloc_array_aligned(allocator, Type, self.size);
 	result[..] = self.entries[:self.size];
 	return result;
 }
