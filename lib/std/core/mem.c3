@@ -694,7 +694,7 @@ macro alloc_array($Type, usz elements) @nodiscard
  **/
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
-	return allocator::alloc_array(allocator::heap(), $Type, elements);
+	return allocator::alloc_array_aligned(allocator::heap(), $Type, elements);
 }
 
 macro temp_alloc_array($Type, usz elements) @nodiscard
