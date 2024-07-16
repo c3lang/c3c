@@ -116,12 +116,14 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message("Loading Windows LLVM debug libraries, this may take a while...")
         FetchContent_MakeAvailable(LLVM_Windows_debug)
-        set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_debug_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
+        set(llvm_dir ${llvm_windows_debug_SOURCE_DIR})
     else()
         message("Loading Windows LLVM libraries, this may take a while...")
         FetchContent_MakeAvailable(LLVM_Windows)
-        set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
+        set(llvm_dir ${llvm_windows_SOURCE_DIR})
     endif()
+    set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
+
     find_package(LLVM REQUIRED CONFIG)
     find_package(LLD REQUIRED CONFIG)
 else()
@@ -418,6 +420,15 @@ if(MSVC)
         endif()
     endif()
 
+    set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
+    set(asan_runtime_libraries 
+        ${clang_lib_dir}/clang_rt.asan_static-x86_64.lib
+        ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib
+        ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll)
+    add_custom_command(TARGET c3c POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E copy ${asan_runtime_libraries $<TARGET_FILE_DIR:c3c>
+        COMMENT "Copying ASan runtime libraries to output directory")
+    install(FILES ${asan_runtime_libraries} DESTINATION bin)
 else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)
