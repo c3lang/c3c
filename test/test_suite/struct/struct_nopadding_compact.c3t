@@ -1,0 +1,272 @@
+module struct2;
+
+struct Foo1
+{
+  bool a @nopadding;
+  int b;
+  int c @nopadding;
+}
+
+union Foo1_Union
+{
+  bool a @nopadding;
+  int b;
+  int c @nopadding;
+}
+
+struct Foo2 @nopadding
+{
+  bool a;
+  bool b;
+  bool c;
+}
+
+union Foo2_Union @nopadding
+{
+  bool a;
+  bool b;
+  bool c;
+}
+
+struct Foo3
+{
+  bool a;
+  int b @nopadding; // #error: 3 bytes of padding would be added
+  int c @nopadding;
+}
+
+struct Foo4 @nopadding
+{
+  bool a;
+  int b; // #error: 3 bytes of padding would be added
+  int c;
+}
+
+struct Foo5 @nopadding // #error: 3 bytes of padding would be added
+{
+  int a;
+  bool b;
+}
+
+struct Foo5_B @align(16) @nopadding // #error: 8 bytes of padding would be added
+{
+  int a;
+  int b;
+}
+
+struct Foo6 @nopadding
+{
+  int a;
+  struct // #error: 3 bytes of padding would be added
+  {
+    int b;
+    bool c;
+  }
+}
+
+struct Foo7 @nopadding
+{
+  int a;
+  struct nested
+  {
+    bool b;
+    int c; // #error: 3 bytes of padding would be added
+  }
+}
+
+struct Foo7_A @nopadding
+{
+  int a;
+  struct
+  {
+    bool b;
+    union // #error: 7 bytes of padding would be added
+    {
+      int c;
+      long d;
+    }
+  }
+}
+
+struct Foo7_B @nopadding
+{
+  int a;
+  char[4] _pad;
+  struct
+  {
+    long b;
+    union
+    {
+      int c;
+      long d;
+      struct // #error: 3 bytes of padding would be added
+      {
+        int e;
+        bool f;
+      }
+    }
+  }
+}
+
+struct Foo7_C @nopadding
+{
+  int a;
+  char[4] _pad;
+  struct
+  {
+    int b @align(8);
+    union // #error: 4 bytes of padding would be added
+    {
+      int c;
+      long d;
+      struct
+      {
+        bool f;
+      }
+    }
+  }
+}
+
+struct Foo10 @nopadding
+{
+  inline Foo2 a;
+}
+
+struct Foo11 @nopadding
+{
+  inline Foo1 a; // #error: An inlined struct or union type also requires the `@nopadding` attribute
+}
+
+struct Foo11_A @nopadding
+{
+  inline Foo1_Union a; // #error: An inlined struct or union type also requires the `@nopadding` attribute
+}
+
+union Foo12 @nopadding
+{
+  int b;
+  bool a;
+  long c;
+  struct
+  {
+    bool d;
+    int e; // #error: 3 bytes of padding would be added
+  }
+}
+
+union Foo12_A @nopadding
+{
+  int b;
+  bool a;
+  long c;
+}
+
+struct Foo13 @nopadding
+{
+  inline Foo12_A a;
+  short b @align(32); // #error: 24 bytes of padding would be added
+}
+
+struct Foo14 @compact // #error: 2 bytes of padding would be added to the end
+{
+  Foo10 a @align(4);
+  char[1] _pad;
+  short b;
+}
+
+struct Foo1_Compact
+{
+  bool a @compact; // #error: '@compact' is not a valid member attribute
+  int b;
+  int c @compact;
+}
+
+struct Foo2_Compact @compact
+{
+  bool a;
+  bool b;
+  bool c;
+}
+
+struct Foo4_Compact @compact
+{
+  bool a;
+  int b; // #error: 3 bytes of padding would be added
+  int c;
+}
+
+struct Foo5_Compact @compact // #error: 3 bytes of padding would be added
+{
+  int a;
+  bool b;
+}
+
+struct Foo6_Compact @compact
+{
+  int a;
+  struct nested // #error: 3 bytes of padding would be added
+  {
+    int a;
+    bool b;
+  }
+}
+
+struct Foo7_Compact @compact
+{
+  int a;
+  struct nested
+  {
+    bool b;
+    int a; // #error: 3 bytes of padding would be added
+  }
+}
+
+struct Foo8 @compact
+{
+  Foo8_A a; // #error: 'Foo8_A' has padding
+}
+
+struct Foo8_A
+{
+  long a;
+  Foo8_B b;
+}
+
+struct Foo8_B
+{
+  int a;
+  char[4] _pad;
+  struct
+  {
+    long b;
+    union
+    {
+      int c;
+      long d;
+      struct
+      {
+        int e;
+        Foo8_C f;
+      }
+    }
+  }
+}
+
+struct Foo8_C
+{
+  bool a;
+  int b;
+}
+
+struct Foo9 @compact
+{
+  Foo10 a;
+  char[13] _pad;
+  Foo9_A b; // #error: 'Foo9_A' has padding
+}
+
+struct Foo9_A @align(16)
+{
+  int a;
+  int b;
+}
