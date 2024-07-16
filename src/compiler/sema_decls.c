@@ -36,7 +36,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 static bool sema_analyse_union_members(SemaContext *context, Decl *decl);
 static bool sema_analyse_struct_members(SemaContext *context, Decl *decl);
 static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent, Decl *decl, bool *erase_decl);
-static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type);
+static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member);
 static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *parent, Decl *member, unsigned index, bool allow_overlap, bool *erase_decl);
 
 static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc, Decl **params, Decl **extra_params, bool *pure_ref);
@@ -260,9 +260,10 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		}
 		case DECL_STRUCT:
 		case DECL_UNION:
-			// Extend the nopadding attributes to substructs.
+			// Extend the nopadding attributes to nested structs.
 			if (parent->attr_nopadding) decl->attr_nopadding = true;
 			if (parent->attr_compact) decl->attr_compact = true;
+			FALLTHROUGH;
 		case DECL_BITSTRUCT:
 			decl->is_export = is_export;
 			if (!sema_analyse_decl(context, decl)) return false;
@@ -272,9 +273,9 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 	}
 }
 
-static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member, Type *member_type) 
+static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Decl *member)
 {
-	member_type = type_flatten(member_type);
+	Type* member_type = type_flatten(member->type);
 	if (!type_is_union_or_strukt(member_type)) return true;
 	assert(decl_is_struct_type(member_type->decl));
 	if (!member_type->decl->strukt.padded_decl_id) return true;
@@ -282,8 +283,16 @@ static inline bool sema_check_struct_holes(SemaContext *context, Decl *decl, Dec
 	if (decl->attr_compact)
 	{
 		SEMA_ERROR(member, "%s has padding and can't be used as the type of '%s', because members of a `@compact` type must all have zero padding.", type_quoted_error_string(member_type), member->name);
-		SEMA_NOTE(declptr(member_type->decl->strukt.padded_decl_id), "The first padded field in %s is here.",
-		          type_quoted_error_string(member_type));
+		Decl* padded_decl = declptr(member_type->decl->strukt.padded_decl_id);
+		if (decl_is_struct_type(padded_decl))
+		{
+			SEMA_NOTE(padded_decl, "The first padding in %s would be added to the end of this type.",
+			          type_quoted_error_string(member_type));
+		}
+		else
+		{
+			SEMA_NOTE(padded_decl, "The first padded field in %s is here.", type_quoted_error_string(member_type));
+		}
 		return false;
 	}
 	return true;
@@ -337,8 +346,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
 
-		Type *member_type = type_flatten(member->type);
-		if (!sema_check_struct_holes(context, decl, member, member_type)) return false;
+		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);
 		assert(member_size <= MAX_TYPE_SIZE);
@@ -595,11 +603,11 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			if (!decl->strukt.padded_decl_id) decl->strukt.padded_decl_id = declid(member);
 			if (decl->attr_nopadding || member->attr_nopadding)
 			{
-				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member.", align_offset - offset);
+				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member which is not allowed with `@nopadding` and `@compact`.", align_offset - offset);
 			}
 		}
 
-		if (!sema_check_struct_holes(context, decl, member, member_type)) return false;
+		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		offset = align_offset;
 		member->offset = offset;
@@ -641,9 +649,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	{
 		Decl *first_member = struct_members[0];
 		Type *type = type_flatten(first_member->type);
-		if (type->type_kind == TYPE_STRUCT && !type->decl->attr_nopadding)
+		if (type_is_union_or_strukt(type) && !type->decl->attr_nopadding)
 		{
-			RETURN_SEMA_ERROR(first_member, "Inlined struct requires @nopadding attribute.");
+			RETURN_SEMA_ERROR(first_member, "An inlined struct or union type also requires the `@nopadding` attribute.");
 		}
 	}
 
