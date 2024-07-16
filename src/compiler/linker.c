@@ -42,7 +42,7 @@ static inline bool is_no_pie(RelocModel reloc)
 }
 static inline bool is_pie(RelocModel reloc)
 {
-	return reloc == RELOC_BIG_PIE || reloc == RELOC_BIG_PIE;
+	return reloc == RELOC_BIG_PIE || reloc == RELOC_SMALL_PIE;
 }
 
 static const char *ld_target(ArchType arch_type)
