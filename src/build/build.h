@@ -282,7 +282,9 @@ typedef enum
 	WIN_CRT_DEFAULT = -1,
 	WIN_CRT_NONE = 0,
 	WIN_CRT_DYNAMIC = 1,
-	WIN_CRT_STATIC = 2,
+	WIN_CRT_DYNAMIC_DEBUG = 2,
+	WIN_CRT_STATIC = 3,
+	WIN_CRT_STATIC_DEBUG = 4,
 } WinCrtLinking;
 
 typedef enum

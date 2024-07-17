@@ -176,7 +176,7 @@ static void usage(void)
 	PRINTF("  --print-input              - Print inputted C3 files to stdout.");
 	PRINTF("");
 	PRINTF("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
-	PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static, dynamic (default).");
+	PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 	PRINTF("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
 	PRINTF("");
 	PRINTF("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
@@ -977,7 +977,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("wincrt")))
 			{
-				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 3, wincrt_linking);
+				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 5, wincrt_linking);
 				return;
 			}
 			if ((argopt = match_argopt("sanitize")))

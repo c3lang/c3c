@@ -56,7 +56,7 @@ const char *project_default_keys[][2] = {
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"version", "Version using semantic versioning."},
 		{"warnings", "Warnings used for all targets."},
-		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"winsdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
@@ -123,7 +123,7 @@ const char* project_target_keys[][2] = {
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"version", "Version using semantic versioning."},
 		{"warnings", "Warnings used for all targets."},
-		{"wincrt", "Windows CRT linking: none, static, dynamic (default)."},
+		{"wincrt", "Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default)."},
 		{"windef", "Windows def file, used as an alternative to dllexport when exporting a DLL."},
 		{"winsdk", "Set the path to Windows system library files for cross compilation."},
 		{"x86cpu", "Set general level of x64 cpu: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native."},
@@ -300,7 +300,7 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 	target->cpu = get_string(PROJECT_JSON, target_name, json, "cpu", target->cpu);
 
 	// WinCRT
-	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static' or 'dynamic'.");
+	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static-debug', 'staticdebug, 'dynamic-debug' or 'dynamic'.");
 	if (wincrt != WIN_CRT_DEFAULT) target->win.crt_linking = wincrt;
 
 	// fp-math

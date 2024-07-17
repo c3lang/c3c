@@ -1082,12 +1082,30 @@ static void check_sanitizer_options(BuildTarget *target)
 		}
 		switch (target->arch_os_target)
 		{
+			case WINDOWS_X64:
+				WinCrtLinking crt_linking = active_target.win.crt_linking;
+				if (crt_linking == WIN_CRT_DEFAULT)
+				{
+					error_exit("Please specify `static` or `debug` wincrt when using address sanitizer.");
+				}
+
+				if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
+				{
+					// We currently don't have ASan runtime libraries linked against debug CRT.
+					error_exit("Address sanitizer cannot be used when using `static-debug` or `dynamic-debug` wincrt. Please use `static` or `debug` instead.");
+				}
+
+				if (target->single_module != SINGLE_MODULE_ON)
+				{
+					// TODO Temporary?
+					error_exit("Address sanitizer requires a single-module build.");
+				}
+				break;
 			case LINUX_X86:
 			case LINUX_X64:
 			// TODO enable again once supported
 			// case MACOS_AARCH64:
 			// case MACOS_X64:
-			// case WINDOWS_X64:
 			case FREEBSD_X86:
 			case FREEBSD_X64:
 			case NETBSD_X86:

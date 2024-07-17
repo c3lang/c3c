@@ -21,10 +21,12 @@ static const char *memory_environment[6] = {
 	[MEMORY_ENV_NONE] = "none",
 };
 
-static const char *wincrt_linking[3] = {
+static const char *wincrt_linking[5] = {
 	[WIN_CRT_NONE] = "none",
 	[WIN_CRT_DYNAMIC] = "dynamic",
+	[WIN_CRT_DYNAMIC_DEBUG] = "dynamic-debug",
 	[WIN_CRT_STATIC] = "static",
+	[WIN_CRT_STATIC_DEBUG] = "static-debug",
 };
 
 static const char *vector_conv[2] = {
