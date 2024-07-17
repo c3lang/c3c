@@ -1083,6 +1083,7 @@ static void check_sanitizer_options(BuildTarget *target)
 		switch (target->arch_os_target)
 		{
 			case WINDOWS_X64:
+			{
 				WinCrtLinking crt_linking = active_target.win.crt_linking;
 				if (crt_linking == WIN_CRT_DEFAULT)
 				{
@@ -1101,6 +1102,7 @@ static void check_sanitizer_options(BuildTarget *target)
 					error_exit("Address sanitizer requires a single-module build.");
 				}
 				break;
+			}
 			case LINUX_X86:
 			case LINUX_X64:
 			// TODO enable again once supported
