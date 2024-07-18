@@ -222,20 +222,28 @@ jobs:
           if [[ "${{matrix.llvm_version}}" < 16 ]]; then
             sudo apt remove libllvm15
           fi
-          if [[ "${{matrix.llvm_version}}" < 19 ]]; then
-            sudo apt remove libllvm18
+          if [[ "${{matrix.llvm_version}}" < 18 ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
             sudo apt-get update
             sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
               clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
               lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
-              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
           else
-            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-            sudo apt-get install -y -t llvm-toolchain-focal libpolly-${{matrix.llvm_version}}-dev \
-              clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
-              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+            if [[ "${{matrix.llvm_version}}" < 19 ]]; then
+              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
+              sudo apt-get update
+              sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
+                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} libllvm-${{matrix.llvm_version}} \
+                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
+                libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+            else
+              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+              sudo apt-get install -y -t llvm-toolchain-focal libpolly-${{matrix.llvm_version}}-dev \
+                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
+                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
+                libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+            fi
           fi
       - name: CMake
         if: matrix.llvm_version != 18
