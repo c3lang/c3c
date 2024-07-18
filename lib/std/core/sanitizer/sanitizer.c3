@@ -2,21 +2,21 @@ module std::core::sanitizer;
 
 macro void annotate_contiguous_container(void *beg, void *end, void *old_mid, void *new_mid)
 {
-	$if env::ANY_SANITIZER:
+	$if env::ADDRESS_SANITIZER:
 		__sanitizer_annotate_contiguous_container(beg, end, old_mid, new_mid);
 	$endif
 }
 
 macro void annotate_double_ended_contiguous_container(void *storage_beg, void *storage_end, void *old_container_beg, void *old_container_end, void *new_container_beg, void *new_container_end)
 {
-	$if env::ANY_SANITIZER:
+	$if env::ADDRESS_SANITIZER:
 		__sanitizer_annotate_double_ended_contiguous_container(storage_beg, storage_end, old_container_beg, old_container_end, new_container_beg, new_container_end);
 	$endif
 }
 
 macro void print_stack_trace()
 {
-	$if env::ANY_SANITIZER:
+	$if env::ADDRESS_SANITIZER:
 		__sanitizer_print_stack_trace();
 	$endif
 }

@@ -1142,6 +1142,10 @@ static void check_sanitizer_options(BuildTarget *target)
 			default:
 				error_exit("Memory sanitizer is only supported on Linux.");
 		}
+		if (target->reloc_model != RELOC_BIG_PIE)
+		{
+			error_exit("Memory sanitizer requires `PIE` relocation model.");
+		}
 		if (target->type == TARGET_TYPE_BENCHMARK)
 		{
 			eprintf("WARNING: Running benchmarks with memory sanitizer enabled!\n");

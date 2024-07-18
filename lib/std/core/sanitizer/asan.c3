@@ -57,9 +57,6 @@ macro unpoison_memory_region(void *addr, usz size)
 	$endif 
 }
 
-macro @poison(&v) => poison_memory_region((void*)v, $sizeof(*v));
-macro @unpoison(&v) => unpoison_memory_region((void*)v, $sizeof(*v));
-
 /**
  * Checks if an address is poisoned.
  * @return "True if 'addr' is poisoned (that is, 1-byte read/write access to this address would result in an error report from ASan). Otherwise returns false."
@@ -127,4 +124,4 @@ extern fn void __asan_print_accumulated_stats();
 extern fn void *__asan_get_current_fake_stack();
 extern fn void *__asan_addr_is_in_fake_stack(void *fake_stack, void *addr, void **beg, void **end);
 extern fn void __asan_handle_no_return();
-extern fn int __asan_update_allocation_context(void *addr);
+extern fn CInt __asan_update_allocation_context(void *addr);
