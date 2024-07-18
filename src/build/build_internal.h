@@ -99,3 +99,4 @@ const char *get_cflags(const char *file, const char *target, JSONObject *json, c
 void get_list_append_strings(const char *file, const char *target, JSONObject *json, const char ***list_ptr,
                              const char *base, const char *override, const char *add);
 int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char** values, int first_result, int count, const char *expected);
+void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONObject *json, const char *target_name, const char *option);

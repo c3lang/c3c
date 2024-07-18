@@ -1,6 +1,28 @@
 #include "build_internal.h"
 #include "utils/common.h"
 
+void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONObject *json, const char *target_name, const char *option)
+{
+	static bool failed_shown = false;
+	bool failed = false;
+	for (size_t i = 0; i < json->member_len; i++)
+	{
+		const char *key = json->keys[i];
+		for (size_t j = 0; j < key_count; j++)
+		{
+			if (strcmp(key, valid_keys[j][0]) == 0) goto OK;
+		}
+		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, target_name);
+		failed = true;
+		OK:;
+	}
+	if (failed && !failed_shown)
+	{
+		eprintf("You can use '%s' to list all valid properties.\n", option);
+		failed_shown = true;
+	}
+}
+
 const char *get_optional_string(const char *file, const char *category, JSONObject *table, const char *key)
 {
 	JSONObject *value = json_obj_get(table, key);

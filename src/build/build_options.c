@@ -165,6 +165,7 @@ static void usage(void)
 	PRINTF("  --list-operators           - List all operators.");
 	PRINTF("  --list-precedence          - List operator precedence order.");
 	PRINTF("  --list-project-properties  - List all available keys used in project.json files.");
+	PRINTF("  --list-manifest-properties  - List all available keys used in manifest.json files.");
 	PRINTF("  --list-targets             - List all architectures the compiler supports.");
 	PRINTF("  --list-type-properties     - List all type properties.");
 	PRINTF("");
@@ -816,6 +817,12 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("list-project-properties"))
 			{
 				options->print_project_properties = true;
+				options->command = COMMAND_PRINT_SYNTAX;
+				return;
+			}
+			if (match_longopt("list-manifest-properties"))
+			{
+				options->print_manifest_properties = true;
 				options->command = COMMAND_PRINT_SYNTAX;
 				return;
 			}

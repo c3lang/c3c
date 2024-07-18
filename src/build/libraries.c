@@ -3,6 +3,32 @@
 
 #define MANIFEST_FILE "manifest.json"
 
+const char *manifest_default_keys[][2] = {
+		{"c-sources", "Set the C sources to be compiled."},
+		{"cc", "Set C compiler (defaults to 'cc')."},
+		{"cflags", "C compiler flags."},
+		{"depends", "List of C3 libraries to also include."},
+		{"exec", "Scripts run for all platforms."},
+		{"provides", "The library name"},
+		{"targets", "The map of supported platforms"}
+};
+
+const int manifest_default_keys_count = ELEMENTLEN(manifest_default_keys);
+
+const char *manifest_target_keys[][2] = {
+		{"c-sources-add", "Additional C sources to be compiled for the target."},
+		{"c-sources-override", "C sources to be compiled, overriding global settings."},
+		{"cc", "Set C compiler (defaults to 'cc')."},
+		{"cflags-add", "Additional C compiler flags for the target."},
+		{"cflags-override", "C compiler flags for the target, overriding global settings."},
+		{"depends", "List of C3 libraries to also include for this target."},
+		{"exec", "Scripts to also run for the target."},
+		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
+		{"link-args", "Linker arguments for this target."},
+};
+
+const int manifest_target_keys_count = ELEMENTLEN(manifest_target_keys);
+
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object);
 
@@ -15,6 +41,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		JSONObject *member = object->members[i];
 		const char *key = object->keys[i];
 		if (member->type != J_OBJECT) error_exit("Expected a list of properties for a target in %s.", library->dir);
+		check_json_keys(manifest_target_keys, manifest_target_keys_count, member, key, "--list-library-properties");
 		LibraryTarget *library_target = CALLOCS(LibraryTarget);
 		library_target->parent = library;
 		ArchOsTarget target = arch_os_target_from_string(key);
@@ -31,10 +58,10 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object)
 {
-	target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
-	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
+	target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
 	target->depends = get_string_array(library->dir, target_name, object, "depends", false);
-	target->execs = get_string_array(library->dir, target_name, object, "execs", false);
+	target->execs = get_string_array(library->dir, target_name, object, "exec", false);
 	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
 	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
 	target->csource_dirs = library->csource_dirs;
@@ -43,6 +70,7 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 
 static Library *add_library(JSONObject *object, const char *dir)
 {
+	check_json_keys(manifest_default_keys, manifest_default_keys_count, object, "library", "--list-library-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
 	const char *provides = get_mandatory_string(dir, NULL, object, "provides");
@@ -54,7 +82,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir, res);
 	}
 	library->provides = provides;
-	library->execs = get_optional_string_array(library->dir, NULL, object, "execs");
+	library->execs = get_optional_string_array(library->dir, NULL, object, "exec");
 	library->depends = get_optional_string_array(library->dir, NULL, object, "depends");
 	library->cc = get_optional_string(dir, NULL, object, "cc");
 	library->cflags = get_cflags(library->dir, NULL, object, NULL);

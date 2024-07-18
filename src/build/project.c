@@ -144,37 +144,16 @@ long get_valid_integer(JSONObject *table, const char *key, const char *category,
 	return (long)trunc(value->f);
 }
 
-static void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONObject *json, const char *target_name)
-{
-	static bool failed_shown = false;
-	bool failed = false;
-	for (size_t i = 0; i < json->member_len; i++)
-	{
-		const char *key = json->keys[i];
-		for (size_t j = 0; j < key_count; j++)
-		{
-			if (strcmp(key, valid_keys[j][0]) == 0) goto OK;
-		}
-		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, target_name ? target_name : "default_target");
-		failed = true;
-	OK:;
-	}
-	if (failed && !failed_shown)
-	{
-		eprintf("You can use '--list-project-properties' to list all valid properties.\n");
-		failed_shown = true;
-	}
-}
 
 static void load_into_build_target(JSONObject *json, const char *target_name, BuildTarget *target)
 {
 	if (target_name)
 	{
-		check_json_keys(project_target_keys, project_target_keys_count, json, target_name);
+		check_json_keys(project_target_keys, project_target_keys_count, json, target_name, "--list-project-properties");
 	}
 	else
 	{
-		check_json_keys(project_default_keys, project_default_keys_count, json, NULL);
+		check_json_keys(project_default_keys, project_default_keys_count, json, "default target", "--list-project-properties");
 	}
 	target->cc = get_string(PROJECT_JSON, target_name, json, "cc", target->cc);
 

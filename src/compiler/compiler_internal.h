@@ -49,8 +49,12 @@ typedef uint16_t SectionId;
 
 extern const char *project_default_keys[][2];
 extern const int project_default_keys_count;
-extern const char* project_target_keys[][2];
+extern const char *project_target_keys[][2];
 extern const int project_target_keys_count;
+extern const char *manifest_default_keys[][2];
+extern const int manifest_default_keys_count;
+extern const char *manifest_target_keys[][2];
+extern const int manifest_target_keys_count;
 
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;

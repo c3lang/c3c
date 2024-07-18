@@ -898,6 +898,24 @@ void print_syntax(BuildOptions *options)
 		}
 		puts("");
 	}
+	if (options->print_manifest_properties)
+	{
+		int width;
+		puts("Manifest properties");
+		puts("------------------");
+		for (int i = 0; i < manifest_default_keys_count; i++)
+		{
+			printf("%-*s%s\n", 35, manifest_default_keys[i][0], manifest_default_keys[i][1]);
+		}
+		puts("");
+		puts("Target properties");
+		puts("-----------------");
+		for (int i = 0; i < manifest_target_keys_count; i++)
+		{
+			printf("%-*s%s\n", 35, manifest_target_keys[i][0], manifest_target_keys[i][1]);
+		}
+		puts("");
+	}
 	if (options->print_precedence)
 	{
 		puts("precedence     | operators");

@@ -20,6 +20,8 @@
 - Array comparison now uses built-in memcmp on LLVM to enable optimizations.
 - Prevent implicit array casts to pointers with higher alignment #1237.
 - Macro `$case` statements now pick the first match and does not evaluate the rest.
+- `mainfest.json` is now checked for incorrect keys.
+- Added `--list-manifest-properties` to list the available properties in `manifest.json`.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
