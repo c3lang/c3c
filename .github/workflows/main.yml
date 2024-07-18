@@ -7,8 +7,9 @@ on:
     branches: [ master, dev ]
 
 env:
-  LLVM_RELEASE_VERSION: 18
-
+  LLVM_RELEASE_VERSION_WINDOWS: 18
+  LLVM_RELEASE_VERSION_MAC: 18
+  LLVM_RELEASE_VERSION_LINUX: 17
 jobs:
 
   build-msvc:
@@ -208,7 +209,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [15, 16, 17, 18, 19]
+        llvm_version: [15, 16, 17, 19]
 
     steps:
       - uses: actions/checkout@v4
@@ -234,9 +235,8 @@ jobs:
               sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
               sudo apt-get update
               sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
-                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} libllvm-${{matrix.llvm_version}} \
-                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
-                libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} libllvm${{matrix.llvm_version}} \
+                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev 
             else
               sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
               sudo apt-get install -y -t llvm-toolchain-focal libpolly-${{matrix.llvm_version}}-dev \
@@ -328,7 +328,7 @@ jobs:
           python3 src/tester.py ../build/c3c test_suite/
 
       - name: bundle_output
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
         run: |
           mkdir linux
           cp -r lib linux
@@ -337,7 +337,7 @@ jobs:
           tar czf c3-linux-${{matrix.build_type}}.tar.gz linux
 
       - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
         uses: actions/upload-artifact@v3
         with:
           name: c3-linux-${{matrix.build_type}}
@@ -519,7 +519,7 @@ jobs:
           python3 src/tester.py ../build/c3c test_suite/
 
       - name: bundle_output
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
         run: |
           mkdir macos
           cp -r lib macos
@@ -528,7 +528,7 @@ jobs:
           zip -r c3-macos-${{matrix.build_type}}.zip macos
 
       - name: upload artifacts
-        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
         uses: actions/upload-artifact@v3
         with:
           name: c3-macos-${{matrix.build_type}}

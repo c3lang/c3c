@@ -24,6 +24,7 @@ const char *manifest_target_keys[][2] = {
 		{"dependencies", "List of C3 libraries to also include for this target."},
 		{"exec", "Scripts to also run for the target."},
 		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
+		{"linked-libs", "Libraries linked by the linker for this target, overriding global settings - deprecated."},
 		{"link-args", "Linker arguments for this target."},
 		{"linkflags", "Linker arguments for this target - deprecated."},
 };
@@ -59,17 +60,24 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object)
 {
-	const char **link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
-	if (link_flags)
+	target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
+	if (target->link_flags)
 	{
 		eprintf("Library %s is using the deprecated `linkflags` parameter.", library->provides);
 	}
 	else
 	{
-		link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+		target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
 	}
-	target->link_flags = link_flags;
-	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
+	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
+	if (target->linked_libs)
+	{
+		eprintf("Library %s is using the deprecated `linked-libs` parameter.", library->provides);
+	}
+	else
+	{
+		target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
+	}
 	target->dependencies = get_string_array(library->dir, target_name, object, "dependencies", false);
 	target->execs = get_string_array(library->dir, target_name, object, "exec", false);
 	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
