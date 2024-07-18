@@ -429,14 +429,14 @@ typedef struct
 	const char **execs;
 	const char **link_flags;
 	const char **linked_libs;
-	const char **depends;
+	const char **dependencies;
 } LibraryTarget;
 
 typedef struct Library__
 {
 	const char *dir;
 	const char *provides;
-	const char **depends;
+	const char **dependencies;
 	const char **execs;
 	const char *cc;
 	const char *cflags;

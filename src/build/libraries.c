@@ -7,7 +7,7 @@ const char *manifest_default_keys[][2] = {
 		{"c-sources", "Set the C sources to be compiled."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "C compiler flags."},
-		{"depends", "List of C3 libraries to also include."},
+		{"dependencies", "List of C3 libraries to also include."},
 		{"exec", "Scripts run for all platforms."},
 		{"provides", "The library name"},
 		{"targets", "The map of supported platforms"}
@@ -21,10 +21,11 @@ const char *manifest_target_keys[][2] = {
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags-add", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
-		{"depends", "List of C3 libraries to also include for this target."},
+		{"dependencies", "List of C3 libraries to also include for this target."},
 		{"exec", "Scripts to also run for the target."},
 		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
 		{"link-args", "Linker arguments for this target."},
+		{"linkflags", "Linker arguments for this target - deprecated."},
 };
 
 const int manifest_target_keys_count = ELEMENTLEN(manifest_target_keys);
@@ -58,9 +59,18 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object)
 {
-	target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+	const char **link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
+	if (link_flags)
+	{
+		eprintf("Library %s is using the deprecated `linkflags` parameter.", library->provides);
+	}
+	else
+	{
+		link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+	}
+	target->link_flags = link_flags;
 	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
-	target->depends = get_string_array(library->dir, target_name, object, "depends", false);
+	target->dependencies = get_string_array(library->dir, target_name, object, "dependencies", false);
 	target->execs = get_string_array(library->dir, target_name, object, "exec", false);
 	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
 	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
@@ -83,7 +93,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 	}
 	library->provides = provides;
 	library->execs = get_optional_string_array(library->dir, NULL, object, "exec");
-	library->depends = get_optional_string_array(library->dir, NULL, object, "depends");
+	library->dependencies = get_optional_string_array(library->dir, NULL, object, "dependencies");
 	library->cc = get_optional_string(dir, NULL, object, "cc");
 	library->cflags = get_cflags(library->dir, NULL, object, NULL);
 	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
@@ -117,11 +127,11 @@ static void add_library_dependency(BuildTarget *build_target, Library *library, 
 		error_exit("Library '%s' cannot be used with arch/os '%s'.", library->provides, arch_os_target[build_target->arch_os_target]);
 	}
 	library->target_used = target_found;
-	FOREACH(const char *, dependency, library->depends)
+	FOREACH(const char *, dependency, library->dependencies)
 	{
 		add_library_dependency(build_target, find_library(library_list, lib_count, dependency), library_list, lib_count);
 	}
-	FOREACH(const char *, dependency, target_found->depends)
+	FOREACH(const char *, dependency, target_found->dependencies)
 	{
 		add_library_dependency(build_target,
 							   find_library(library_list, lib_count, dependency),
