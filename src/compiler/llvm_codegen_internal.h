@@ -296,6 +296,7 @@ void gencontext_end_module(GenContext *context);
 // Patched functions
 LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FpOpt option);
+void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
 
 #ifndef LLVMCreateTypeAttribute
 LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,

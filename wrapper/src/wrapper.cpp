@@ -8,6 +8,7 @@
 #include "llvm-c/TargetMachine.h"
 #include "llvm/Target/TargetMachine.h"
 #include "lld/Common/CommonLinkerContext.h"
+#include "llvm/IR/GlobalValue.h"
 
 #define LINK_SIG \
 bool link(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS, \
@@ -182,6 +183,10 @@ extern "C" {
 	{
 		auto machine = reinterpret_cast<llvm::TargetMachine *>(ref);
 		machine->Options.UseInitArray = use_init_array;
+	}
+	void LLVMSetDSOLocal(LLVMValueRef Global, bool value)
+	{
+		llvm::unwrap<llvm::GlobalValue>(Global)->setDSOLocal(value);
 	}
 
 	void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
