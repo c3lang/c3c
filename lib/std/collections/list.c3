@@ -476,7 +476,7 @@ macro void List.post_alloc(&self) @private
 {
 	sanitizer::annotate_contiguous_container(self.entries,
 	                                         &self.entries[self.capacity],
-	                                         &self.entries[0],
+	                                         &self.entries[self.capacity],
 	                                         &self.entries[self.size]);
 }
 
