@@ -8,17 +8,9 @@
 #include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
 #include <llvm-c/Linker.h>
-
+#include <llvm-c/Transforms/PassBuilder.h>
 const char *varargslots_name = "varargslots";
 const char *temp_name = "$$temp";
-typedef struct LLVMOpaquePassBuilderOptions *LLVMPassBuilderOptionsRef;
-LLVMErrorRef LLVMRunPasses(LLVMModuleRef M, const char *Passes,
-						   LLVMTargetMachineRef TM,
-						   LLVMPassBuilderOptionsRef Options);
-LLVMPassBuilderOptionsRef LLVMCreatePassBuilderOptions(void);
-void LLVMPassBuilderOptionsSetVerifyEach(LLVMPassBuilderOptionsRef Options, LLVMBool VerifyEach);
-void LLVMPassBuilderOptionsSetDebugLogging(LLVMPassBuilderOptionsRef Options, LLVMBool DebugLogging);
-void LLVMDisposePassBuilderOptions(LLVMPassBuilderOptionsRef Options);
 
 static void llvm_emit_constructors_and_destructors(GenContext *c);
 static void llvm_codegen_setup();
