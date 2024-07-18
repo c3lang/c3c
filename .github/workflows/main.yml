@@ -223,6 +223,7 @@ jobs:
             sudo apt remove libllvm15
           fi
           if [[ "${{matrix.llvm_version}}" < 19 ]]; then
+            sudo apt remove libllvm18
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
             sudo apt-get update
             sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
