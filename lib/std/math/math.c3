@@ -693,6 +693,7 @@ macro ichar ichar[<*>].or(ichar[<*>] x) => $$reduce_or(x);
 macro ichar ichar[<*>].xor(ichar[<*>] x) => $$reduce_xor(x);
 macro ichar ichar[<*>].max(ichar[<*>] x) => $$reduce_max(x);
 macro ichar ichar[<*>].min(ichar[<*>] x) => $$reduce_min(x);
+macro ichar ichar[<*>].dot(ichar[<*>] x, ichar[<*>] y) => (x * y).sum();
 
 macro bool[<*>] short[<*>].comp_lt(short[<*>] x, short[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] short[<*>].comp_le(short[<*>] x, short[<*>] y) => $$veccomple(x, y);
@@ -708,6 +709,7 @@ macro short short[<*>].or(short[<*>] x) => $$reduce_or(x);
 macro short short[<*>].xor(short[<*>] x) => $$reduce_xor(x);
 macro short short[<*>].max(short[<*>] x) => $$reduce_max(x);
 macro short short[<*>].min(short[<*>] x) => $$reduce_min(x);
+macro short short[<*>].dot(short[<*>] x, short[<*>] y) => (x * y).sum();
 
 macro bool[<*>] int[<*>].comp_lt(int[<*>] x, int[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] int[<*>].comp_le(int[<*>] x, int[<*>] y) => $$veccomple(x, y);
@@ -723,6 +725,7 @@ macro int int[<*>].or(int[<*>] x) => $$reduce_or(x);
 macro int int[<*>].xor(int[<*>] x) => $$reduce_xor(x);
 macro int int[<*>].max(int[<*>] x) => $$reduce_max(x);
 macro int int[<*>].min(int[<*>] x) => $$reduce_min(x);
+macro int int[<*>].dot(int[<*>] x, int[<*>] y) => (x * y).sum();
 
 macro bool[<*>] long[<*>].comp_lt(long[<*>] x, long[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] long[<*>].comp_le(long[<*>] x, long[<*>] y) => $$veccomple(x, y);
@@ -737,6 +740,7 @@ macro long long[<*>].or(long[<*>] x) => $$reduce_or(x);
 macro long long[<*>].xor(long[<*>] x) => $$reduce_xor(x);
 macro long long[<*>].max(long[<*>] x) => $$reduce_max(x);
 macro long long[<*>].min(long[<*>] x) => $$reduce_min(x);
+macro long long[<*>].dot(long[<*>] x, long[<*>] y) => (x * y).sum();
 
 macro bool[<*>] int128[<*>].comp_lt(int128[<*>] x, int128[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] int128[<*>].comp_le(int128[<*>] x, int128[<*>] y) => $$veccomple(x, y);
@@ -751,6 +755,7 @@ macro int128 int128[<*>].or(int128[<*>] x) => $$reduce_or(x);
 macro int128 int128[<*>].xor(int128[<*>] x) => $$reduce_xor(x);
 macro int128 int128[<*>].max(int128[<*>] x) => $$reduce_max(x);
 macro int128 int128[<*>].min(int128[<*>] x) => $$reduce_min(x);
+macro int128 int128[<*>].dot(int128[<*>] x, int128[<*>] y) => (x * y).sum();
 
 macro bool[<*>] bool[<*>].comp_lt(bool[<*>] x, bool[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] bool[<*>].comp_le(bool[<*>] x, bool[<*>] y) => $$veccomple(x, y);
@@ -781,6 +786,7 @@ macro char char[<*>].or(char[<*>] x) => $$reduce_or(x);
 macro char char[<*>].xor(char[<*>] x) => $$reduce_xor(x);
 macro char char[<*>].max(char[<*>] x) => $$reduce_max(x);
 macro char char[<*>].min(char[<*>] x) => $$reduce_min(x);
+macro char char[<*>].dot(char[<*>] x, char[<*>] y) => (x * y).sum();
 
 macro bool[<*>] ushort[<*>].comp_lt(ushort[<*>] x, ushort[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] ushort[<*>].comp_le(ushort[<*>] x, ushort[<*>] y) => $$veccomple(x, y);
@@ -796,6 +802,7 @@ macro ushort ushort[<*>].or(ushort[<*>] x) => $$reduce_or(x);
 macro ushort ushort[<*>].xor(ushort[<*>] x) => $$reduce_xor(x);
 macro ushort ushort[<*>].max(ushort[<*>] x) => $$reduce_max(x);
 macro ushort ushort[<*>].min(ushort[<*>] x) => $$reduce_min(x);
+macro ushort ushort[<*>].dot(ushort[<*>] x, ushort[<*>] y) => (x * y).sum();
 
 macro bool[<*>] uint[<*>].comp_lt(uint[<*>] x, uint[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] uint[<*>].comp_le(uint[<*>] x, uint[<*>] y) => $$veccomple(x, y);
@@ -811,6 +818,7 @@ macro uint uint[<*>].or(uint[<*>] x) => $$reduce_or(x);
 macro uint uint[<*>].xor(uint[<*>] x) => $$reduce_xor(x);
 macro uint uint[<*>].max(uint[<*>] x) => $$reduce_max(x);
 macro uint uint[<*>].min(uint[<*>] x) => $$reduce_min(x);
+macro uint uint[<*>].dot(uint[<*>] x, uint[<*>] y) => (x * y).sum();
 
 macro bool[<*>] ulong[<*>].comp_lt(ulong[<*>] x, ulong[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] ulong[<*>].comp_le(ulong[<*>] x, ulong[<*>] y) => $$veccomple(x, y);
@@ -826,6 +834,7 @@ macro ulong ulong[<*>].or(ulong[<*>] x) => $$reduce_or(x);
 macro ulong ulong[<*>].xor(ulong[<*>] x) => $$reduce_xor(x);
 macro ulong ulong[<*>].max(ulong[<*>] x) => $$reduce_max(x);
 macro ulong ulong[<*>].min(ulong[<*>] x) => $$reduce_min(x);
+macro ulong ulong[<*>].dot(ulong[<*>] x, ulong[<*>] y) => (x * y).sum();
 
 macro bool[<*>] uint128[<*>].comp_lt(uint128[<*>] x, uint128[<*>] y) => $$veccomplt(x, y);
 macro bool[<*>] uint128[<*>].comp_le(uint128[<*>] x, uint128[<*>] y) => $$veccomple(x, y);
@@ -841,6 +850,7 @@ macro uint128 uint128[<*>].or(uint128[<*>] x) => $$reduce_or(x);
 macro uint128 uint128[<*>].xor(uint128[<*>] x) => $$reduce_xor(x);
 macro uint128 uint128[<*>].max(uint128[<*>] x) => $$reduce_max(x);
 macro uint128 uint128[<*>].min(uint128[<*>] x) => $$reduce_min(x);
+macro uint128 uint128[<*>].dot(uint128[<*>] x, uint128[<*>] y) => (x * y).sum();
 
 macro char char.sat_add(char x, char y) => $$sat_add(x, y);
 macro char char.sat_sub(char x, char y) => $$sat_sub(x, y);
