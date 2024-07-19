@@ -90,8 +90,9 @@ fn void! NativeMutex.lock(&mtx)
 /**
  * @require mtx.timed "Only available for timed locks"
  **/
-fn void! NativeMutex.lock_timeout(&mtx, usz ms)
+fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
 {
+	if (ms > uint.max) ms = uint.max;
 	switch (win32::waitForSingleObject(mtx.handle, (uint)ms))
 	{
 		case win32::WAIT_OBJECT_0:
@@ -244,9 +245,10 @@ fn void! NativeConditionVariable.wait(&cond, NativeMutex* mtx) @inline
 	return timedwait(cond, mtx, win32::INFINITE) @inline;
 }
 
-fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, uint time) @inline
+fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms) @inline
 {
-	return timedwait(cond, mtx, time) @inline;
+	if (ms > uint.max) ms = uint.max;
+	return timedwait(cond, mtx, (uint)ms) @inline;
 }
 
 fn void! NativeThread.create(&thread, ThreadFn func, void* args)

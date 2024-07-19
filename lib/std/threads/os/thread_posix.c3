@@ -62,7 +62,7 @@ fn void! NativeMutex.lock_timeout(&self, ulong ms)
 	{
 		if (!ms) break;
 		ulong sleep = min(5, ms);
-		if (!libc::nanosleep(&& TimeSpec { .s = 0, .ns = (CLong)sleep * 1000_000 }, null)) return ThreadFault.LOCK_FAILED?;
+		if (!libc::nanosleep(&&time::ms(ms).to_timespec(), null)) return ThreadFault.LOCK_FAILED?;
 		ms -= sleep;
 	}
 	switch (result)

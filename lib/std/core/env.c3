@@ -116,8 +116,8 @@ enum ArchType
 
 const OsType OS_TYPE = (OsType)$$OS_TYPE;
 const ArchType ARCH_TYPE = (ArchType)$$ARCH_TYPE;
-const bool ARCH_32_BIT = $$REGISTER_SIZE == 4;
-const bool ARCH_64_BIT = $$REGISTER_SIZE == 8;
+const bool ARCH_32_BIT = $$REGISTER_SIZE == 32;
+const bool ARCH_64_BIT = $$REGISTER_SIZE == 64;
 const bool LIBC = $$COMPILER_LIBC_AVAILABLE;
 const bool NO_LIBC = !$$COMPILER_LIBC_AVAILABLE;
 const CompilerOptLevel COMPILER_OPT_LEVEL = (CompilerOptLevel)$$COMPILER_OPT_LEVEL;

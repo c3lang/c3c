@@ -131,7 +131,8 @@ extern fn Win32_BOOL showWindow(Win32_HWND, CInt) @extern("ShowWindow");
 extern fn Win32_BOOL translateMessage(Win32_MSG* lpMsg) @extern("TranslateMessage");
 extern fn Win32_BOOL updateWindow(Win32_HWND) @extern("UpdateWindow");
 
-macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex) {
+macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex)
+{
 	$if env::ARCH_64_BIT:
 		return getWindowLongPtrW(hWnd, nIndex);
 	$else
@@ -139,7 +140,8 @@ macro getWindowLongPtr(Win32_HWND hWnd, CInt nIndex) {
 	$endif
 }
 
-macro setWindowLongPtr(Win32_HWND hWnd, CInt nIndex, dwNewLong) {
+macro setWindowLongPtr(Win32_HWND hWnd, CInt nIndex, dwNewLong)
+{
 	$if env::ARCH_64_BIT:
 		return setWindowLongPtrW(hWnd, nIndex, dwNewLong);
 	$else

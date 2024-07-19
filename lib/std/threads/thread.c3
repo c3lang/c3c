@@ -53,9 +53,9 @@ macro void! ConditionVariable.wait(&cond, Mutex* mutex)
 {
 	return NativeConditionVariable.wait((NativeConditionVariable*)cond, (NativeMutex*)mutex);
 }
-macro void! ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong timeout)
+macro void! ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong ms)
 {
-	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, timeout);
+	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, ms);
 }
 
 
