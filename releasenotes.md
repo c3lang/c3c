@@ -22,6 +22,7 @@
 - Macro `$case` statements now pick the first match and does not evaluate the rest.
 - `manifest.json` is now checked for incorrect keys.
 - Added `--list-manifest-properties` to list the available properties in `manifest.json`.
+- Indexing into a constant array / struct now works at compile time.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -45,6 +46,8 @@
 - Bitstructs in structs would not be correctly be handled in some cases.
 - Fix problem where a $$FUNC would return "<GLOBAL>" when evaluated for a static in a function #1236.
 - `ordinal` is no longer a valid associated value name for enums.
+- Constants defined by indexing into another constant could fail codegen.
+- Stdlib nolibc code bugs fixed.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
@@ -55,6 +58,7 @@
 - Updated sorting API.
 - Insertion sort and counting sort added.
 - Added missing `mem` and `mem::allocator` functions for aligned allocations.
+- Added `new_init_with_array` and `temp_init_with_array` for List.
 
 ## 0.6.0 Change list
 

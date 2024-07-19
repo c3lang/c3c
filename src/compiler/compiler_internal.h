@@ -2252,6 +2252,7 @@ bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
 bool expr_is_compile_time(Expr *ast);
+bool range_is_const(Range *range);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_rewrite_insert_deref(Expr *original);
@@ -2347,6 +2348,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref);
 ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
+bool sema_cast_const(Expr *expr);
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);

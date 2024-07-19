@@ -63,7 +63,7 @@ fn int __rem_pio2f(float x, double *y)
 	if (ix >= 0x7f800000)
 	{
 		// x is inf or NaN */
-		*y = x-x;
+		*y = x - (double)x;
 		return 0;
 	}
 	/* scale x into [2^23, 2^24-1] */

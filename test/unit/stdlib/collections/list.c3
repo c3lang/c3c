@@ -92,6 +92,22 @@ fn void! remove_if()
 	assert(test.array_view() == int[]{11, 10, 20});
 }
 
+fn void! init_with_array()
+{
+	IntList foo;
+	foo.new_init_with_array({ 1, 2, 3});
+	assert(foo.len() == 3);
+	assert(foo[2] == 3);
+}
+
+fn void! init_with_temp_array()
+{
+	IntList foo;
+	foo.temp_init_with_array({ 1, 2, 3});
+	assert(foo.len() == 3);
+	assert(foo[2] == 3);
+}
+
 fn void! remove_using_test()
 {
 	IntList test;

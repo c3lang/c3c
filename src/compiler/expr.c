@@ -268,7 +268,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
 			return exprid_is_constant_eval(expr->slice_expr.expr, eval_kind);*/
 		case EXPR_SUBSCRIPT:
-			if (!exprid_is_constant_eval(expr->subscript_expr.range.start, eval_kind)) return false;
+			if (!range_is_const(&expr->subscript_expr.range)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			goto RETRY;
 		case EXPR_SUBSCRIPT_ADDR:

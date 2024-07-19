@@ -55,6 +55,32 @@ fn List* List.temp_init(&self, usz initial_capacity = 16)
 }
 
 /**
+ * Initialize a new list with an array.
+ *
+ * @param [in] values `The values to initialize the list with.`
+ * @require self.size == 0 "The List must be empty"
+ **/
+fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap())
+{
+	self.new_init(values.len, allocator) @inline;
+	self.add_array(values) @inline;
+	return self;
+}
+
+/**
+ * Initialize a temporary list with an array.
+ *
+ * @param [in] values `The values to initialize the list with.`
+ * @require self.size == 0 "The List must be empty"
+ **/
+fn List* List.temp_init_with_array(&self, Type[] values)
+{
+	self.temp_init(values.len) @inline;
+	self.add_array(values) @inline;
+	return self;
+}
+
+/**
  * @require self.size == 0 "The List must be empty"
  **/
 fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
@@ -192,6 +218,12 @@ fn Type[] List.array_view(&self)
 	return self.entries[:self.size];
 }
 
+/**
+ * Add the values of an array to this list.
+ *
+ * @param [in] array
+ * @ensure self.size >= array.len
+ **/
 fn void List.add_array(&self, Type[] array)
 {
 	if (!array.len) return;
