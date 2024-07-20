@@ -572,10 +572,6 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	LLVMSetGlobalConstant(global_ref, decl->var.kind == VARDECL_CONST);
 
-	if (str_eq(decl->name, "x"))
-	{
-		puts("a");
-	}
 	if (decl->is_extern)
 	{
 		LLVMSetLinkage(global_ref, LLVMExternalLinkage);
