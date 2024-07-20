@@ -29,6 +29,18 @@ fn void Rc4.init(&self, char[] key)
 }
 
 /**
+ * Run a single pass of en/decryption using a particular key.
+ * @param [in] key
+ * @param [inout] data
+ **/
+fn void crypt(char[] key, char[] data)
+{
+	Rc4 rc4;
+	rc4.init(key);
+	rc4.crypt(data, data);
+}
+
+/**
  * Encrypt or decrypt a sequence of bytes.
  *
  * @param [in] in "The input"
