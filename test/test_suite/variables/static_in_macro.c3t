@@ -1,0 +1,76 @@
+// #target: macos-x64
+module test;
+import asdf;
+import foo;
+import std::io;
+
+fn int main(String[] args) {
+  bar();
+  bar2();
+  foo::bar();
+  foo::bar2();
+  return 0;
+}
+
+fn void bar() {
+  asdf::get_static();
+}
+
+fn void* bar2() {
+  return asdf::get_static_ref();
+}
+
+module foo;
+import asdf;
+import std::io;
+
+// Same function name
+fn void bar() {
+  asdf::get_static();
+}
+
+fn void* bar2() {
+  return asdf::get_static_ref();
+}
+
+module asdf;
+
+macro get_static() {
+  static char x;
+  return x;
+}
+
+macro get_static_ref() {
+	static char x;
+	return &x;
+}
+
+/* #expect: foo.ll
+
+@bar.x = internal local_unnamed_addr global i8 0, align 1
+@bar2.x = internal global i8 0, align 1
+
+define void @foo.bar() #0 {
+entry:
+  ret void
+}
+
+define ptr @foo.bar2() #0 {
+entry:
+  ret ptr @bar2.x
+}
+
+// #expect: test.ll
+
+@bar.x = internal local_unnamed_addr global i8 0, align 1
+@bar2.x = internal global i8 0, align 1
+
+define void @test.bar() #0 {
+entry:
+  ret void
+}
+
+define ptr @test.bar2() #0 {
+entry:
+  ret ptr @bar2.x
+}

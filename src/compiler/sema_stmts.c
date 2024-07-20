@@ -1500,13 +1500,16 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	// Insert a single deref as needed.
 	Type *flattened_type = enumerator->type->canonical;
+	if (flattened_type->type_kind == TYPE_UNTYPED_LIST)
+	{
+		RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate a compile time 'untyped' list at runtime, but you can use the compile time `$foreach` with the list.");
+	}
 	if (flattened_type->type_kind == TYPE_POINTER)
 	{
 		// Something like Foo** will not be dereferenced, only Foo*
 		if (flattened_type->pointer->type_kind == TYPE_POINTER)
 		{
-			SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
-			return false;
+			RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 		}
 		expr_rewrite_insert_deref(enumerator);
 	}

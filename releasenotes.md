@@ -23,6 +23,7 @@
 - `manifest.json` is now checked for incorrect keys.
 - Added `--list-manifest-properties` to list the available properties in `manifest.json`.
 - Indexing into a constant array / struct now works at compile time.
+- Improved error message when trying user foreach with an untyped list.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -48,6 +49,7 @@
 - `ordinal` is no longer a valid associated value name for enums.
 - Constants defined by indexing into another constant could fail codegen.
 - Stdlib nolibc code bugs fixed.
+- Regression: duplicate symbols with static variable declared in macro #1248.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
