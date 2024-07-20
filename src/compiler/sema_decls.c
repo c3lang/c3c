@@ -798,7 +798,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		if (!sema_analyse_expr(context, start)) return false;
 
 		// Check for negative, non integer or non const values.
-		if (!expr_is_const(start) || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
+		if (!sema_cast_const(start) || !type_is_integer(start->type) || int_is_neg(start->const_expr.ixx))
 		{
 			SEMA_ERROR(start, "This must be a constant non-negative integer value.");
 			return false;
@@ -819,7 +819,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		{
 			// Analyse the end
 			if (!sema_analyse_expr(context, start)) return false;
-			if (!expr_is_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
+			if (!sema_cast_const(end) || !type_is_integer(end->type) || int_is_neg(end->const_expr.ixx))
 			{
 				SEMA_ERROR(end, "This must be a constant non-negative integer value.");
 				return false;
@@ -2522,7 +2522,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
 			if (!sema_analyse_expr(context, expr)) return false;
-			if (expr->type->canonical != type_bool || !expr_is_const(expr))
+			if (expr->type->canonical != type_bool || !sema_cast_const(expr))
 			{
 				RETURN_SEMA_ERROR(expr, "Expected a boolean compile time constant value.");
 			}
@@ -3626,6 +3626,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!type_info)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
+			if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
 			if (global_level_var && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
@@ -3731,6 +3732,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
 			return decl_poison(decl);
 		}
+		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
 		if (expr_is_const(init_expr))
 		{
 			init_expr->const_expr.is_hex = false;

@@ -572,12 +572,16 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	LLVMSetGlobalConstant(global_ref, decl->var.kind == VARDECL_CONST);
 
+	if (str_eq(decl->name, "x"))
+	{
+		puts("a");
+	}
 	if (decl->is_extern)
 	{
 		LLVMSetLinkage(global_ref, LLVMExternalLinkage);
 		if (optional_ref) LLVMSetLinkage(optional_ref, LLVMExternalLinkage);
 	}
-	else if (decl_is_externally_visible(decl))
+	else if (decl_is_externally_visible(decl) && !decl->var.is_static)
 	{
 		LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
 		if (optional_ref) LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);

@@ -368,7 +368,7 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 		}
 		Expr *expr = if_attr->exprs[0];
 		if (!sema_analyse_ct_expr(&context, expr)) goto FAIL_CONTEXT;
-		if (!expr_is_const(expr) || expr->type->canonical != type_bool)
+		if (!sema_cast_const(expr) || expr->type->canonical != type_bool)
 		{
 			PRINT_ERROR_AT(expr, "Expected a constant boolean expression.");
 			goto FAIL_CONTEXT;

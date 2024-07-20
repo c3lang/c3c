@@ -71,7 +71,7 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 {
 	for (size_t i = 0; i < arg_len; i++)
 	{
-		if (!expr_is_const(args[i])) RETURN_SEMA_ERROR(args[i], "Expected a compile time constant value for this argument.");
+		if (!sema_cast_const(args[i])) RETURN_SEMA_ERROR(args[i], "Expected a compile time constant value for this argument.");
 	}
 	return true;
 }
@@ -238,11 +238,9 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	for (int i = 3; i < 5; i++)
 	{
 		if (!sema_analyse_expr_rhs(context, type_bool, args[i], false, NULL)) return false;
-		if (!expr_is_const(args[i]))
+		if (!sema_cast_const(args[i]))
 		{
-			SEMA_ERROR(args[i], "Expected a constant boolean value.");
-			return false;
-		}
+			RETURN_SEMA_ERROR(args[i], "Expected a constant boolean value.");}
 	}
 	for (int i = 5; i < 7; i++)
 	{
@@ -579,7 +577,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected a 'double', but was %s.", type_quoted_error_string(args[2]->type));
 			}
-			if (!expr_is_const(args[2]))
+			if (!sema_cast_const(args[2]))
 			{
 				RETURN_SEMA_ERROR(args[2], "This value must be a constant.");
 			}
@@ -640,7 +638,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_INTEGER}, 3)) return false;
 			for (unsigned i = 1; i < 3; i++)
 			{
-				if (!expr_is_const(args[i])) RETURN_SEMA_ERROR(args[i], "A constant value is required.");
+				if (!sema_cast_const(args[i])) RETURN_SEMA_ERROR(args[i], "A constant value is required.");
 				if (!cast_implicit(context, args[i], type_int)) return false;
 			}
 			if (!expr_in_int_range(args[1], 0, 1))
@@ -815,8 +813,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_BOOL, BA_INTEGER}, 3)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
-			if (!expr_is_const(args[1])) RETURN_SEMA_ERROR(args[1], "'is_volatile' must be a compile time constant.");
-			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "Ordering must be a compile time constant.");
+			if (!sema_cast_const(args[1])) RETURN_SEMA_ERROR(args[1], "'is_volatile' must be a compile time constant.");
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[2])) return false;
 			switch (args[2]->const_expr.ixx.i.low)
 			{
@@ -892,8 +890,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				}
 				if (!cast_implicit(context, args[1], original->pointer)) return false;
 			}
-			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
-			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			switch (args[3]->const_expr.ixx.i.low)
 			{
@@ -916,8 +914,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer)) return false;
 			}
-			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
-			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			switch (args[3]->const_expr.ixx.i.low)
 			{
@@ -939,8 +937,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			}
 			Type *val = type_flatten(args[1]->type);
 			if (!type_is_atomic(val)) RETURN_SEMA_ERROR(args[1], "%s exceeds pointer size.", val);
-			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
-			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			switch (args[3]->const_expr.ixx.i.low)
 			{
@@ -963,8 +961,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer)) return false;
 			}
-			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
-			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			switch (args[3]->const_expr.ixx.i.low)
 			{
@@ -985,8 +983,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			{
 				if (!cast_implicit(context, args[1], original->pointer)) return false;
 			}
-			if (!expr_is_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
-			if (!expr_is_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
+			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
+			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
 			if (!is_valid_atomicity(context, args[3])) return false;
 			switch (args[3]->const_expr.ixx.i.low)
 			{

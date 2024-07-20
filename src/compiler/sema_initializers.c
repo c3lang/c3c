@@ -383,7 +383,7 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 	FOREACH(Expr *, element, init_list)
 	{
 		if (!sema_analyse_expr(context, element)) return false;
-		if (!expr_is_const(element))
+		if (!sema_cast_const(element))
 		{
 			RETURN_SEMA_ERROR(element, "An untyped list can only have "
 									   "constant elements, you can try "

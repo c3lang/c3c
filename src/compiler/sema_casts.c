@@ -710,7 +710,7 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	// Handle const:
 	Expr *expr = cc->expr;
-	if (expr_is_const(expr))
+	if (sema_cast_const(expr))
 	{
 		if (!is_explicit) return sema_cast_error(cc, true, is_silent);
 
@@ -1123,7 +1123,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	}
 
 	// If const, check in range.
-	if (expr_is_const(expr) && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
+	if (sema_cast_const(expr) && expr_const_will_overflow(&expr->const_expr, cc->to->type_kind))
 	{
 		if (!is_silent)
 		{
@@ -1186,7 +1186,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	assert(from_type == from_type->canonical);
 	Type *flat = type_flatten(cc->to);
 	ConvGroup flat_group = type_to_group(flat);
-	if (expr_is_const(cc->expr))
+	if (sema_cast_const(cc->expr))
 	{
 		cc->to = flat;
 		cc->to_group = flat_group;
@@ -1280,7 +1280,7 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
 
-	if (!expr_is_const(cc->expr)) return true;
+	if (!sema_cast_const(cc->expr)) return true;
 
 	Decl *enum_decl = cc->to->decl;
 	// Check that the type is within limits.
@@ -1367,7 +1367,7 @@ static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr-
  */
 INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
 {
-	if (expr_is_const(expr) && expr->const_expr.const_kind != CONST_TYPEID) return false;
+	if (sema_cast_const(expr) && expr->const_expr.const_kind != CONST_TYPEID) return false;
 	return insert_runtime_cast(expr, kind, type);
 }
 
@@ -1605,7 +1605,7 @@ static void cast_enum_to_int(SemaContext *context, Expr* expr, Type *to_type)
 {
 	assert(type_flatten(expr->type)->type_kind == TYPE_ENUM);
 	Type *underlying_type = type_base(expr->type);
-	if (expr_is_const(expr))
+	if (sema_cast_const(expr))
 	{
 		assert(expr->const_expr.const_kind == CONST_ENUM);
 		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
@@ -1638,7 +1638,7 @@ static void cast_vec_to_arr(SemaContext *context, Expr *expr, Type *to_type)
  */
 static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 {
-	if (!expr_is_const(expr))
+	if (!sema_cast_const(expr))
 	{
 		// Extract indexed types.
 		Type *from_type = type_flatten(expr->type);
@@ -1781,7 +1781,7 @@ static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
 	assert(type_bit_size(type_uptr) <= 64 && "For > 64 bit pointers, this code needs updating.");
 
 	// Handle const:
-	if (expr_is_const(expr))
+	if (sema_cast_const(expr))
 	{
 		expr->type = type;
 		expr->const_expr.ptr = expr->const_expr.ixx.i.low;
@@ -1905,7 +1905,7 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 {
 	Type *to_type_base = type_flatten(type_flatten(to_type)->array.base);
 	Type *from_type_base = type_flatten(type_flatten(expr->type)->array.base);
-	if (expr_is_const(expr) || to_type_base == from_type_base || (type_is_pointer(to_type_base) && type_is_pointer(from_type_base)))
+	if (sema_cast_const(expr) || to_type_base == from_type_base || (type_is_pointer(to_type_base) && type_is_pointer(from_type_base)))
 	{
 		expr->type = to_type;
 		return;
@@ -1915,7 +1915,7 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 
 static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
 {
-	if (!expr_is_const(expr))
+	if (!sema_cast_const(expr))
 	{
 		switch (expr->expr_kind)
 		{
@@ -1973,7 +1973,7 @@ static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 	Type *index_vec = type_flatten(type_get_indexed_type(to_type));
 	Type *index_arr = type_flatten(type_get_indexed_type(expr->type));
 	Type *to_temp = index_vec == index_arr ? to_type : type_get_vector(index_arr, type_flatten(expr->type)->array.len);
-	if (expr_is_const(expr))
+	if (sema_cast_const(expr))
 	{
 		// For the array -> vector this is always a simple rewrite of type.
 		assert(expr->const_expr.const_kind == CONST_INITIALIZER);

@@ -60,7 +60,7 @@ fn double __tan(double x, double y, int odd) @extern("__tan") @weak @nostrip
 	w = x + r;
 	if (big)
 	{
-		s = 1 - 2 * odd;
+		s = (double)(1 - 2 * odd);
 		v = s - 2.0 * (x + (r - w*w/(w + s)));
 		return sign ? -v : v;
 	}

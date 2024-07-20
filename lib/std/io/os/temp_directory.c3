@@ -24,6 +24,7 @@ fn Path! native_temp_directory(Allocator allocator = allocator::heap()) @if(env:
 }
 
 module std::io::os @if(env::NO_LIBC);
+import std::io::path;
 
 macro Path! native_temp_directory(Allocator allocator = allocator::heap())
 {

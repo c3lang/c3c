@@ -384,7 +384,7 @@ File stderr_file;
 
 fn void putchar(char c) @inline
 {
-	(void)stdout_file.putc(c);
+	(void)stdout_file.write_byte(c);
 }
 
 fn File* stdout()
