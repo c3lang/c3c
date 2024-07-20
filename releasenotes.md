@@ -61,6 +61,9 @@
 - Insertion sort and counting sort added.
 - Added missing `mem` and `mem::allocator` functions for aligned allocations.
 - Added `new_init_with_array` and `temp_init_with_array` for List.
+- Fixed posix `NativeMutex.lock_timeout`.
+- Fixed `env::ARCH_32_BIT` and `env::ARCH_64_BIT`.
+- Added `time::us`.
 
 ## 0.6.0 Change list
 
