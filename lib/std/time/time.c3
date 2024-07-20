@@ -6,6 +6,7 @@ distinct Duration = long;
 distinct Clock = ulong;
 distinct NanoDuration (Printable) = long;
 
+const Duration US = 1;
 const Duration MS = 1_000;
 const Duration SEC = 1_000_000;
 const Duration MIN = 60 * SEC;
@@ -15,6 +16,7 @@ const Duration WEEK = 7 * DAY;
 const Duration MONTH = 30 * WEEK;
 const Duration YEAR = 36525 * DAY / 100;
 
+fn Duration us(long l) @inline => (Duration)l * US;
 fn Duration ms(long l) @inline => (Duration)l * MS;
 fn Duration sec(long l) @inline => (Duration)l * SEC;
 fn Duration min(long l) @inline => (Duration)l * MIN;
