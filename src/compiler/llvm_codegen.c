@@ -4,7 +4,7 @@
 
 #include "llvm_codegen_internal.h"
 #include "compiler_tests/benchmark.h"
-
+#include "c3_llvm.h"
 #include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
 #include <llvm-c/Linker.h>
@@ -83,7 +83,7 @@ static void gencontext_destroy(GenContext *context)
 LLVMBuilderRef llvm_create_builder(GenContext *c)
 {
 	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
-	LLVMBuilderSetFastMathFlags(builder, active_target.feature.fp_math);
+	LLVMBuilderSetFastMathFlags(builder, (FastMathOption)active_target.feature.fp_math);
 	return builder;
 }
 
@@ -946,45 +946,53 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 
 static inline void llvm_optimize(GenContext *c)
 {
-	LLVMPassBuilderOptionsRef options = LLVMCreatePassBuilderOptions();
-	LLVMPassBuilderOptionsSetVerifyEach(options, active_target.emit_llvm);
+	bool should_debug = false;
 #ifndef NDEBUG
-	LLVMPassBuilderOptionsSetDebugLogging(options, debug_log);
+	should_debug = debug_log;
 #endif
-	const char *passes = NULL;
+	LLVMOptLevels level;
 	switch (active_target.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
-			passes = "default<Os>";
+			level = LLVM_Os;
 			break;
 		case SIZE_OPTIMIZATION_TINY:
-			passes = "default<Oz>";
+			level = LLVM_Oz;
 			break;
 		default:
+			switch (active_target.optlevel)
+			{
+				case OPTIMIZATION_NONE:
+				case OPTIMIZATION_NOT_SET:
+					level = LLVM_O0;
+					break;
+				case OPTIMIZATION_LESS:
+					level = LLVM_O1;
+					break;
+				case OPTIMIZATION_MORE:
+					level = LLVM_O2;
+					break;
+				case OPTIMIZATION_AGGRESSIVE:
+					level = LLVM_O3;
+					break;
+			}
 			break;
 	}
-	switch (active_target.optlevel)
+	LLVMPasses passes = {
+			.opt_level = level,
+			.should_verify = active_target.emit_llvm,
+			.should_debug = should_debug,
+			.is_kernel = active_target.kernel_build,
+			.opt.vectorize_loops = active_target.loop_vectorization == VECTORIZATION_ON,
+			.opt.slp_vectorize = active_target.slp_vectorization == VECTORIZATION_ON,
+			.opt.unroll_loops = active_target.unroll_loops == UNROLL_LOOPS_ON,
+			.opt.interleave_loops = active_target.unroll_loops == UNROLL_LOOPS_ON,
+			.opt.merge_functions = active_target.merge_functions == MERGE_FUNCTIONS_ON
+	};
+	if (!llvm_run_passes(c->module, c->machine, &passes))
 	{
-		case OPTIMIZATION_NONE:
-		case OPTIMIZATION_NOT_SET:
-			passes = "default<O0>";
-			break;
-		case OPTIMIZATION_LESS:
-			if (!passes) passes = "default<O1>";
-			break;
-		case OPTIMIZATION_MORE:
-			if (!passes) passes = "default<O2>";
-			break;
-		case OPTIMIZATION_AGGRESSIVE:
-			if (!passes) passes = "default<O3>";
-			break;
+		error_exit("Failed to run passes.");
 	}
-	LLVMErrorRef err = LLVMRunPasses(c->module, passes, c->machine, options);
-	if (err)
-	{
-		error_exit("An error occurred: %s.", LLVMGetErrorMessage(err));
-	}
-	LLVMDisposePassBuilderOptions(options);
 }
 
 const char *llvm_codegen(void *context)

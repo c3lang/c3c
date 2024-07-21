@@ -1,26 +1,9 @@
 #include "compiler_internal.h"
+#include "c3_llvm.h"
 
 #if PLATFORM_POSIX
 #include <glob.h>
 #endif
-
-// Copied from wrapper.cpp
-typedef enum
-{
-	AR_GNU,
-	AR_DARWIN,
-	AR_DARWIN64,
-	AR_BSD,
-	AR_GNU64,
-	AR_COFF,
-} ArFormat;
-
-extern bool llvm_link_elf(const char **args, int arg_count, const char **error_string);
-extern bool llvm_link_macho(const char **args, int arg_count, const char **error_string);
-extern bool llvm_link_coff(const char **args, int arg_count, const char **error_string);
-extern bool llvm_link_wasm(const char **args, int arg_count, const char **error_string);
-extern UNUSED bool llvm_link_mingw(const char **args, int arg_count, const char **error_string);
-extern bool llvm_ar(const char *out_name, const char **args, size_t count, int ArFormat);
 
 
 typedef enum

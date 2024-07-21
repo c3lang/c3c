@@ -13,7 +13,7 @@
 #include <llvm-c/BitWriter.h>
 #include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
-
+#include "c3_llvm.h"
 #define SLICE_MAX_UNROLL 4
 
 extern const char *varargslots_name;
@@ -293,10 +293,6 @@ void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit);
 void gencontext_end_file_emit(GenContext *c, CompilationUnit *ast);
 void gencontext_end_module(GenContext *context);
 
-// Patched functions
-LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
-void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FpOpt option);
-void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
 
 #ifndef LLVMCreateTypeAttribute
 LLVMAttributeRef LLVMCreateTypeAttribute(LLVMContextRef C, unsigned KindID,

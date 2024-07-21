@@ -8,6 +8,7 @@
 #if PLATFORM_POSIX
 #include <sys/wait.h>
 #endif
+#include "c3_llvm.h"
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -29,7 +30,6 @@ double compiler_link_time;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
-extern int llvm_version_major;
 
 void compiler_init(const char *std_lib_dir)
 {

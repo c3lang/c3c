@@ -2,8 +2,8 @@
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Core.h>
 #include "compiler_internal.h"
+#include "c3_llvm.h"
 
-extern void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
 static bool x64features_contains(X86Features *cpu_features, X86Feature feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
 static unsigned arch_pointer_bit_width(OsType os, ArchType arch);
@@ -1798,10 +1798,11 @@ void *llvm_target_machine_create(void)
 	}
 	INFO_LOG("CPU: %s", platform_target.cpu);
 	INFO_LOG("Features: %s", platform_target.features);
+	LLVMCodeModel model = active_target.kernel_build ? LLVMCodeModelKernel : LLVMCodeModelDefault;
 	void *result = LLVMCreateTargetMachine(target, platform_target.target_triple,
 										   platform_target.cpu ? platform_target.cpu : "", platform_target.features ? platform_target.features : "",
 										   (LLVMCodeGenOptLevel)platform_target.llvm_opt_level,
-										   reloc_mode, LLVMCodeModelDefault);
+										   reloc_mode, model);
 	LLVMSetTargetMachineUseInitArray(result, true);
 	if (!result) error_exit("Failed to create target machine.");
 	LLVMSetTargetMachineAsmVerbosity(result, 1);
