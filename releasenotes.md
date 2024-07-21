@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.6.2 Change list
+
+### Changes / improvements
+- Updated LLVM passes
+
+### Fixes
+None
+
+### Stdlib changes
+None
+
 ## 0.6.1 Change list
 
 ### Changes / improvements

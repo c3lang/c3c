@@ -92,6 +92,7 @@ bool command_accepts_files(CompilerCommand command)
 	UNREACHABLE
 }
 
+
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level)
 {
 	if (level == OPT_SETTING_NOT_SET) level = OPT_SETTING_O0;
@@ -100,6 +101,10 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	DebugInfo debug = DEBUG_INFO_FULL;
 	SafetyLevel safety_level = SAFETY_ON;
 	PanicLevel panic_level = PANIC_ON;
+	UnrollLoops unroll_loops = UNROLL_LOOPS_OFF;
+	AutoVectorization vectorization = VECTORIZATION_OFF;
+	AutoVectorization slp_vectorization = VECTORIZATION_OFF;
+	MergeFunctions merge_functions = MERGE_FUNCTIONS_OFF;
 	bool single_module = false;
 	FpOpt fp_opt = FP_STRICT;
 	switch (level)
@@ -108,43 +113,68 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			break;
 		case OPT_SETTING_O1:
 			optlevel = OPTIMIZATION_MORE;
+			slp_vectorization = VECTORIZATION_ON;
+			unroll_loops = UNROLL_LOOPS_ON;
+			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_O2:
+			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			safety_level = SAFETY_OFF;
+			slp_vectorization = VECTORIZATION_ON;
+			unroll_loops = UNROLL_LOOPS_ON;
+			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_O3:
+			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			safety_level = SAFETY_OFF;
 			single_module = true;
+			slp_vectorization = VECTORIZATION_ON;
+			unroll_loops = UNROLL_LOOPS_ON;
+			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_O4:
-			optlevel = OPTIMIZATION_AGGRESSIVE;
-			safety_level = SAFETY_OFF;
-			panic_level = PANIC_OFF;
 			fp_opt = FP_RELAXED;
+			merge_functions = MERGE_FUNCTIONS_ON;
+			optlevel = OPTIMIZATION_AGGRESSIVE;
+			panic_level = PANIC_OFF;
+			safety_level = SAFETY_OFF;
 			single_module = true;
+			slp_vectorization = VECTORIZATION_ON;
+			unroll_loops = UNROLL_LOOPS_ON;
+			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_O5:
-			optlevel = OPTIMIZATION_AGGRESSIVE;
-			safety_level = SAFETY_OFF;
-			panic_level = PANIC_OFF;
 			fp_opt = FP_FAST;
+			merge_functions = MERGE_FUNCTIONS_ON;
+			optlevel = OPTIMIZATION_AGGRESSIVE;
+			panic_level = PANIC_OFF;
+			safety_level = SAFETY_OFF;
 			single_module = true;
+			slp_vectorization = VECTORIZATION_ON;
+			unroll_loops = UNROLL_LOOPS_ON;
+			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_OSMALL:
+			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_SMALL;
-			safety_level = SAFETY_OFF;
 			panic_level = PANIC_OFF;
+			safety_level = SAFETY_OFF;
+			slp_vectorization = VECTORIZATION_ON;
+			vectorization = VECTORIZATION_ON;
 			break;
 		case OPT_SETTING_OTINY:
+			debug = DEBUG_INFO_NONE;
+			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			optsize = SIZE_OPTIMIZATION_TINY;
-			safety_level = SAFETY_OFF;
 			panic_level = PANIC_OFF;
+			safety_level = SAFETY_OFF;
 			single_module = true;
-			debug = DEBUG_INFO_NONE;
+			slp_vectorization = VECTORIZATION_ON;
+			vectorization = VECTORIZATION_OFF;
 			break;
 		case OPT_SETTING_NOT_SET:
 		default:
@@ -157,6 +187,10 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = debug;
 	if (target->feature.fp_math == FP_DEFAULT) target->feature.fp_math = fp_opt;
 	if (target->single_module == SINGLE_MODULE_NOT_SET && single_module) target->single_module = SINGLE_MODULE_ON;
+	if (target->unroll_loops == UNROLL_LOOPS_NOT_SET) target->unroll_loops = unroll_loops;
+	if (target->merge_functions == MERGE_FUNCTIONS_NOT_SET) target->merge_functions = merge_functions;
+	if (target->slp_vectorization == VECTORIZATION_NOT_SET) target->slp_vectorization = slp_vectorization;
+	if (target->loop_vectorization == VECTORIZATION_NOT_SET) target->loop_vectorization = vectorization;
 }
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -234,46 +268,23 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 
 	target->read_stdin = options->read_stdin;
 
-
 	if (options->cc) target->cc = options->cc;
-	if (options->optlevel != OPTIMIZATION_NOT_SET)
-	{
-		target->optlevel = options->optlevel;
-	}
-	if (options->optsize != SIZE_OPTIMIZATION_NOT_SET)
-	{
-		target->optsize = options->optsize;
-	}
-	if (options->single_module != SINGLE_MODULE_NOT_SET)
-	{
-		target->single_module = options->single_module;
-	}
-	if (options->safety_level != SAFETY_NOT_SET)
-	{
-		target->feature.safe_mode = options->safety_level;
-	}
-	if (options->panic_level != PANIC_NOT_SET)
-	{
-		target->feature.panic_level = options->panic_level;
-	}
+	if (options->optlevel != OPTIMIZATION_NOT_SET) target->optlevel = options->optlevel;
+	if (options->optsize != SIZE_OPTIMIZATION_NOT_SET) target->optsize = options->optsize;
+	if (options->single_module != SINGLE_MODULE_NOT_SET) target->single_module = options->single_module;
+	if (options->unroll_loops != UNROLL_LOOPS_NOT_SET) target->unroll_loops = options->unroll_loops;
+	if (options->merge_functions != MERGE_FUNCTIONS_NOT_SET) target->merge_functions = options->merge_functions;
+	if (options->loop_vectorization != VECTORIZATION_NOT_SET) target->loop_vectorization = options->loop_vectorization;
+	if (options->slp_vectorization != VECTORIZATION_NOT_SET) target->slp_vectorization = options->slp_vectorization;
+	if (options->safety_level != SAFETY_NOT_SET) target->feature.safe_mode = options->safety_level;
+	if (options->panic_level != PANIC_NOT_SET) target->feature.panic_level = options->panic_level;
 	if (options->strip_unused != STRIP_UNUSED_NOT_SET) target->strip_unused = options->strip_unused;
-
-	if (options->memory_environment != MEMORY_ENV_NOT_SET)
-	{
-		target->memory_environment = options->memory_environment;
-	}
-	if (options->debug_info_override != DEBUG_INFO_NOT_SET)
-	{
-		target->debug_info = options->debug_info_override;
-	}
-	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT)
-	{
-		target->arch_os_target = options->arch_os_target_override;
-	}
-	target->print_linking = options->print_linking;
+	if (options->memory_environment != MEMORY_ENV_NOT_SET) target->memory_environment = options->memory_environment;
+	if (options->debug_info_override != DEBUG_INFO_NOT_SET) target->debug_info = options->debug_info_override;
+	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT) target->arch_os_target = options->arch_os_target_override;
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
-
 	if (options->symtab_size) target->symtab_size = options->symtab_size;
+	target->print_linking = options->print_linking;
 
 	for (int i = 0; i < options->linker_arg_count; i++)
 	{

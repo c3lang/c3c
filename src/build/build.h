@@ -144,7 +144,26 @@ typedef enum
 	SINGLE_MODULE_ON = 1
 } SingleModule;
 
+typedef enum
+{
+	UNROLL_LOOPS_NOT_SET = -1,
+	UNROLL_LOOPS_OFF = 0,
+	UNROLL_LOOPS_ON = 1
+} UnrollLoops;
 
+typedef enum
+{
+	MERGE_FUNCTIONS_NOT_SET = -1,
+	MERGE_FUNCTIONS_OFF = 0,
+	MERGE_FUNCTIONS_ON = 1
+} MergeFunctions;
+
+typedef enum
+{
+	VECTORIZATION_NOT_SET = -1,
+	VECTORIZATION_OFF = 0,
+	VECTORIZATION_ON = 1
+} AutoVectorization;
 typedef enum
 {
 	STRIP_UNUSED_NOT_SET = -1,
@@ -361,6 +380,10 @@ typedef struct BuildOptions_
 	SafetyLevel safety_level;
 	PanicLevel panic_level;
 	SingleModule single_module;
+	UnrollLoops unroll_loops;
+	MergeFunctions merge_functions;
+	AutoVectorization loop_vectorization;
+	AutoVectorization slp_vectorization;
 	bool emit_llvm;
 	bool emit_asm;
 	bool benchmark_mode;
@@ -488,6 +511,7 @@ typedef struct
 	bool print_input; 
 	bool print_linking;
 	bool no_entry;
+	bool kernel_build;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
@@ -500,6 +524,10 @@ typedef struct
 	LinkLibc link_libc;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
+	MergeFunctions merge_functions;
+	UnrollLoops unroll_loops;
+	AutoVectorization loop_vectorization;
+	AutoVectorization slp_vectorization;
 	RelocModel reloc_model;
 	ArchOsTarget arch_os_target;
 	CompilerBackend backend;
@@ -573,6 +601,10 @@ static BuildTarget default_build_target = {
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
+		.unroll_loops = UNROLL_LOOPS_NOT_SET,
+		.merge_functions = MERGE_FUNCTIONS_NOT_SET,
+		.slp_vectorization = VECTORIZATION_NOT_SET,
+		.loop_vectorization = VECTORIZATION_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.symtab_size = DEFAULT_SYMTAB_SIZE,
 		.reloc_model = RELOC_DEFAULT,
