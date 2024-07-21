@@ -14,6 +14,8 @@
 #include "llvm-c/TargetMachine.h"
 #include "llvm-c/Target.h"
 #include "llvm/IR/Verifier.h"
+#include "llvm/IR/Module.h"
+#include "llvm/IR/Function.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/StandardInstrumentations.h"
 #include "llvm/Support/CBindingWrapping.h"
@@ -25,8 +27,8 @@
 #include "llvm/Transforms/Scalar/GVN.h"
 #include "llvm/Transforms/Scalar/JumpThreading.h"
 #include "llvm/Transforms/InstCombine/InstCombine.h"
-#include "llvm/TargetParser/Triple.h"
 #include "llvm/Analysis/GlobalsModRef.h"
+static_assert(LLVM_VERSION_MAJOR >= 17, "Unsupported LLVM version, 17+ is needed.");
 
 #define LINK_SIG \
 bool link(llvm::ArrayRef<const char *> args, llvm::raw_ostream &stdoutOS, \
@@ -132,7 +134,7 @@ extern "C" {
 
 
 bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
-                     LLVMPasses *passes)
+					 LLVMPasses *passes)
 {
 	llvm::TargetMachine *Machine = reinterpret_cast<llvm::TargetMachine *>(tm);
 	llvm::Module *Mod = llvm::unwrap(m);
@@ -144,8 +146,9 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 	PTO.SLPVectorization = passes->opt.slp_vectorize;
 	PTO.MergeFunctions = passes->opt.merge_functions;
 	PTO.CallGraphProfile = true; // We always use integrated ASM
+#if LLVM_VERSION_MAJOR > 16
 	PTO.UnifiedLTO = false;
-
+#endif
 	llvm::PassBuilder PB(Machine, PTO, std::nullopt, &PIC);
 
 	llvm::LoopAnalysisManager LAM;
@@ -197,9 +200,9 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 	if (passes->sanitizer.mem_sanitize)
 	{
 		llvm::MemorySanitizerOptions options(passes->sanitizer.mem_track_origins,
-		                                     passes->sanitizer.recover,
-		                                     passes->is_kernel,
-		                                     passes->sanitizer.mem_retval);
+											 passes->sanitizer.recover,
+											 passes->is_kernel,
+											 passes->sanitizer.mem_retval);
 
 		MPM.addPass(llvm::MemorySanitizerPass(options));
 		if (passes->opt_level != LLVM_O0)
@@ -236,7 +239,7 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 											   use_globals_gc,
 											   !is_windows,
 											   passes->sanitizer.asan_use_global_dstor
-											    ? llvm::AsanDtorKind::Global
+												? llvm::AsanDtorKind::Global
 												: llvm::AsanDtorKind::None));
 	}
 	if (passes->sanitizer.hwaddress_sanitize)
