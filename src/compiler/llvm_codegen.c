@@ -992,9 +992,9 @@ static inline void llvm_optimize(GenContext *c)
 			.opt.unroll_loops = active_target.unroll_loops == UNROLL_LOOPS_ON,
 			.opt.interleave_loops = active_target.unroll_loops == UNROLL_LOOPS_ON,
 			.opt.merge_functions = active_target.merge_functions == MERGE_FUNCTIONS_ON,
-			.sanitizer.address = active_target.feature.sanitize_address,
-			.sanitizer.memory = active_target.feature.sanitize_memory,
-			.sanitizer.thread = active_target.feature.sanitize_thread
+			.sanitizer.address_sanitize = active_target.feature.sanitize_address,
+			.sanitizer.mem_sanitize = active_target.feature.sanitize_memory,
+			.sanitizer.thread_sanitize = active_target.feature.sanitize_thread
 	};
 	if (!llvm_run_passes(c->module, c->machine, &passes))
 	{
