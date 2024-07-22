@@ -398,6 +398,7 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_AVXIFMA] = "avxifma",
 		[X86_FEAT_AVXVNNIINT8] = "avxvnniint8",
 		[X86_FEAT_AVXVNNIINT16] = "avxvnniint16",
+		[X86_FEAT_EVEX512] = "evex512",
 };
 
 static X86Feature x86feature_from_string(const char *str)
@@ -666,11 +667,25 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_WBNOINVD:
 		case X86_FEAT_X87:
 		case X86_FEAT_XSAVE:
+		case X86_FEAT_EVEX512:
+		case X86_FEAT_USERMSR:
+			return;
+		case X86_FEAT_AVX10_1_512:
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_1_256);
+			x86_features_add_feature(cpu_features, X86_FEAT_EVEX512);
 			return;
 		case X86_FEAT_AVX10_1_256:
-		case X86_FEAT_AVX10_1_512:
-		case X86_FEAT_USERMSR:
-			// TODO
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512CD);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512VBMI);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512VBMI2);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512IFMA);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512VNNI);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512BF16);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512VPOPCNTDQ);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512BITALG);
+			x86_features_add_feature(cpu_features, X86_FEAT_VAES);
+			x86_features_add_feature(cpu_features, X86_FEAT_VPCLMULQDQ);
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX512FP16);
 			return;
 	}
 	UNREACHABLE
@@ -745,8 +760,13 @@ static void x64features_limit_from_capability(X86Features *cpu_features, X86Vect
 			x86features_remove_feature(cpu_features, X86_FEAT_AVX512PF);
 			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VP2INTERSECT);
 			x86features_remove_feature(cpu_features, X86_FEAT_AVX512VPOPCNTDQ);
-			break;
+			FALLTHROUGH;
 		case X86VECTOR_AVX512:
+			x86features_remove_feature(cpu_features, X86_FEAT_EVEX512);
+			x86features_remove_feature(cpu_features, X86_FEAT_AVX10_1_512);
+			x86features_remove_feature(cpu_features, X86_FEAT_AVX10_1_256);
+			x86features_remove_feature(cpu_features, X86_FEAT_USERMSR);
+			break;
 		case X86VECTOR_CPU:
 		case X86VECTOR_DEFAULT:
 			break;
@@ -789,7 +809,7 @@ static void x86_features_from_host(X86Features *cpu_features)
 			int i = x86feature_from_string(&tok[1]);
 			if (i < 0)
 			{
-				printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
+				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
 				goto NEXT;
 			}
 			x86features_remove_feature(cpu_features, (X86Feature)i);
@@ -801,7 +821,7 @@ static void x86_features_from_host(X86Features *cpu_features)
 			{
 				// Ignore "64bit"
 				if (strlen(&tok[1]) == 5 && memcmp(&tok[1], "64bit", 5) == 0) goto NEXT;
-				printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
+				if (debug_log || PRERELEASE) printf("WARNING, unknown feature %s - skipping\n", &tok[1]);
 				goto NEXT;
 			}
 			x86_features_add_feature(cpu_features, (X86Feature)i);
