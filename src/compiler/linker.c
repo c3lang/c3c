@@ -192,15 +192,15 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 		const char *compiler_path = find_executable_path();
 		if (active_target.win.crt_linking == WIN_CRT_STATIC)
 		{
-			add_arg2(compiler_path, "bin/clang_rt.asan-x86_64.lib");
+			add_arg2(compiler_path, "c3c_rt/clang_rt.asan-x86_64.lib");
 		}
 		else
 		{
-			add_arg2(compiler_path, "bin/clang_rt.asan_dynamic-x86_64.lib");
-			add_arg2(compiler_path, "bin/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib");
-			const char *dll_path = file_append_path(compiler_path, "bin/clang_rt.asan_dynamic-x86_64.dll");
+			add_arg2(compiler_path, "c3c_rt/clang_rt.asan_dynamic-x86_64.lib");
+			add_arg2(compiler_path, "c3c_rt/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib");
+			const char *dll_path = file_append_path(compiler_path, "c3c_rt/clang_rt.asan_dynamic-x86_64.dll");
 			const char *dst_path = file_append_path(active_target.output_dir, "clang_rt.asan_dynamic-x86_64.dll");
-			// printf("Copying %s to %s\n", dll_path, dst_path);
+			DEBUG_LOG("Copying %s to %s\n", dll_path, dst_path);
 			file_copy_file(dll_path, dst_path, true);
 		}
 	}

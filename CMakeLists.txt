@@ -148,6 +148,9 @@ else()
     message(STATUS "LLVM was not built with RTTI")
 endif()
 
+string(REPLACE "." ";" VERSION_LIST ${LLVM_PACKAGE_VERSION})
+list(GET VERSION_LIST 0 LLVM_MAJOR_VERSION)
+
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 add_definitions(${LLVM_DEFINITIONS})
@@ -212,29 +215,31 @@ if (NOT(${CMAKE_BINARY_DIR} EQUAL ${CMAKE_SOURCE_DIR}))
     file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 endif()
 
-if (${LLVM_PACKAGE_VERSION} VERSION_GREATER_EQUAL 16)
-    find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    set(lld_libs
-        ${LLD_COFF}
-        ${LLD_COMMON}
-        ${LLD_WASM}
-        ${LLD_MINGW}
-        ${LLD_ELF}
-        ${LLD_MACHO}
-        )
-else()
-    set(lld_libs
-        ${LLD_COFF}
-        ${LLD_COMMON}
-        ${LLD_WASM}
-        ${LLD_MINGW}
-        ${LLD_ELF}
-        ${LLD_MACHO}
-        )
-endif()
+find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+set(lld_libs
+    ${LLD_COFF}
+    ${LLD_COMMON}
+    ${LLD_WASM}
+    ${LLD_MINGW}
+    ${LLD_ELF}
+    ${LLD_MACHO}
+    )
 
 if (APPLE)
     set(lld_libs ${lld_libs} xar)
+    find_file(ASAN_STATIC NAMES libclang_rt.asan_abi_osx.a PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(UBSAN_STATIC NAMES libclang_rt.ubsan_minimal_osx.a PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    set(sanitizer_runtime_libraries
+            ${ASAN_STATIC}
+            ${UBSAN_STATIC}
+            ${TSAN_DYNAMIC}
+            ${LSAN_DYNAMIC}
+            ${UBSAN_DYNAMIC}
+            ${ASAN_DYNAMIC})
 endif ()
 
 message(STATUS "linking to llvm libs ${lld_libs}")
@@ -419,27 +424,30 @@ if(MSVC)
             target_compile_options(tilde-backend PUBLIC /MT)
         endif()
     endif()
-
     set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
-    set(asan_runtime_libraries 
+    set(sanitizer_runtime_libraries
         ${clang_lib_dir}/clang_rt.asan-x86_64.lib
         ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
         ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
         ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
-    add_custom_command(TARGET c3c POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:c3c>/bin
-        COMMAND "${CMAKE_COMMAND}" -E copy ${asan_runtime_libraries} $<TARGET_FILE_DIR:c3c>/bin
-        COMMENT "Copying ASan runtime libraries to output directory")
-    install(FILES ${asan_runtime_libraries} DESTINATION bin)
 else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)
     target_compile_options(c3c PRIVATE -pthread -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 endif()
-
+if (DEFINED sanitizer_runtime_libraries)
+    message(STATUS "Copying sanitizer libraries: ${sanitizer_runtime_libraries}")
+    set(RT_DIR ${CMAKE_BINARY_DIR}/c3c_rt)
+    file(REMOVE_RECURSE ${RT_DIR})
+    file(COPY ${sanitizer_runtime_libraries} DESTINATION ${RT_DIR})
+endif ()
 
 install(TARGETS c3c DESTINATION bin)
 install(DIRECTORY lib/ DESTINATION lib/c3)
+
+if (DEFINED sanitizer_runtime_libraries)
+install(DIRECTORY c3c_rt/ DESTINATION bin/c3c_rt)
+endif()
 
 feature_summary(WHAT ALL)
