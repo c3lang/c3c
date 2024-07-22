@@ -268,14 +268,56 @@ static void compiler_print_bench(void)
 {
 	if (debug_stats)
 	{
-		printf("Timings\n");
-		printf("-------\n");
-		if (compiler_init_time >= 0) printf("Initialization took: %.4f ms\n", compiler_init_time * 1000);
-		if (compiler_parsing_time >= 0) printf("Parsing took:        %.4f ms\n", (compiler_parsing_time - compiler_init_time) * 1000);
-		if (compiler_sema_time >= 0) printf("Analysis took:       %.4f ms\n", (compiler_sema_time - compiler_parsing_time) * 1000);
-		if (compiler_ir_gen_time >= 0) printf("Ir gen took:         %.4f ms\n", (compiler_ir_gen_time - compiler_sema_time) * 1000);
-		if (compiler_codegen_time >= 0) printf("Codegen took:        %.4f ms\n", (compiler_codegen_time - compiler_ir_gen_time) * 1000);
-		if (compiler_link_time >= 0) printf("Linking took:        %f ms\n", (compiler_link_time - compiler_codegen_time) * 1000);
+		puts("--------- Compilation time statistics --------\n");
+		double last = compiler_init_time;
+		double parse_time = compiler_parsing_time - compiler_init_time;
+		if (compiler_parsing_time) last = compiler_parsing_time;
+		double sema_time = compiler_sema_time - compiler_parsing_time;
+		if (compiler_sema_time) last = compiler_sema_time;
+		double ir_time = compiler_ir_gen_time - compiler_sema_time;
+		if (compiler_ir_gen_time) last = compiler_ir_gen_time;
+		double codegen_time = compiler_codegen_time - compiler_ir_gen_time;
+		if (compiler_codegen_time) last = compiler_codegen_time;
+		double link_time = compiler_link_time - compiler_codegen_time;
+		if (compiler_link_time) last = compiler_link_time;
+		printf("Frontend -------------------- Time --- %% total\n");
+		if (compiler_init_time >= 0) printf("Initialization took: %10.3f ms  %8.1f %%\n", compiler_init_time * 1000, compiler_init_time * 100 / last);
+		if (compiler_parsing_time >= 0) printf("Parsing took:        %10.3f ms  %8.1f %%\n", parse_time * 1000, parse_time * 100 / last);
+		if (compiler_sema_time >= 0)
+		{
+			printf("Analysis took:       %10.3f ms  %8.1f %%\n", sema_time * 1000, sema_time * 100 / last);
+			printf("TOTAL:               %10.3f ms  %8.1f %%\n", compiler_sema_time * 1000, compiler_sema_time * 100 / last);
+			puts("");
+		}
+		if (compiler_ir_gen_time >= 0)
+		{
+			printf("Backend --------------------- Time --- %% total\n");
+			printf("Ir gen took:         %10.3f ms  %8.1f %%\n", ir_time * 1000, ir_time * 100 / last);
+			if (compiler_codegen_time >= 0)
+			{
+				last = compiler_codegen_time;
+				if (active_target.build_threads > 1)
+				{
+					printf("Codegen took:        %10.3f ms  %8.1f %%  (%d threads)\n", codegen_time * 1000, codegen_time * 100 / last, active_target.build_threads);
+				}
+				else
+				{
+					printf("Codegen took:        %10.3f ms  %8.1f %%\n", codegen_time * 1000, codegen_time * 100 / last);
+				}
+			}
+			if (compiler_link_time >= 0)
+			{
+				last = compiler_link_time;
+				printf("Linking took:        %10.3f ms  %8.1f %%\n", link_time * 1000, link_time * 100 / last);
+			}
+			printf("TOTAL:               %10.3f ms  %8.1f %%\n", (last - compiler_sema_time) * 1000, 100 - compiler_sema_time * 100 / last);
+		}
+		if (last)
+		{
+			puts("----------------------------------------------");
+			printf("TOTAL compile time: %.3f ms.\n", last * 1000);
+			puts("----------------------------------------------");
+		}
 	}
 }
 
@@ -489,7 +531,7 @@ void compiler_compile(void)
 	}
 
 #if USE_PTHREAD
-	INFO_LOG("Will use %d thread(s).", active_target.build_threads);
+	INFO_LOG("Will use %d thread(s).\n", active_target.build_threads);
 #endif
 	unsigned task_count = vec_size(tasks);
 	if (task_count == 1)
