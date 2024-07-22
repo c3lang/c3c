@@ -157,52 +157,6 @@ const char *decl_to_a_name(Decl *decl)
 }
 
 
-// Set the external name of a declaration
-void decl_set_external_name(Decl *decl)
-{
-	if (decl->decl_kind == DECL_ERASED) return;
-
-	// Already has the extname set using an attribute?
-	// if so we're done.
-	if (decl->has_extname) return;
-
-	const char *name = decl->name;
-	if (!name) name = "$anon";
-
-	// "extern" or the module has no prefix?
-	if (decl->is_extern || decl_module(decl)->no_extprefix)
-	{
-		assert(decl->name || decl_module(decl)->no_extprefix);
-		decl->extname = name;
-		return;
-	}
-
-	// Otherwise, first put the module name into the scratch buffer
-	scratch_buffer_clear();
-	Module *module = decl_module(decl);
-	const char *module_name = module->extname ? module->extname : module->name->module;
-	char c;
-	while ((c = *(module_name++)) != 0)
-	{
-		switch (c)
-		{
-			case ':':
-				scratch_buffer_append_char(decl->is_export ? '_' : '.');
-				module_name++;
-				break;
-			default:
-				scratch_buffer_append_char(c);
-				break;
-		}
-	}
-	// Concat with the name
-	scratch_buffer_append(decl->is_export ? "_" : ".");
-	scratch_buffer_append(name);
-
-	// Copy it to extname
-	decl->extname = scratch_buffer_copy();
-}
-
 Decl *decl_new_var(const char *name, SourceSpan loc, TypeInfo *type, VarDeclKind kind)
 {
 	Decl *decl = decl_new(DECL_VAR, name, loc);

@@ -1059,12 +1059,6 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[WASM64] = "wasm64-unknown-unknown",
 };
 
-
-
-void target_destroy()
-{
-}
-
 static bool arch_is_supported(ArchType arch)
 {
 	switch (arch)
