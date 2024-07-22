@@ -1301,6 +1301,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 
 	// 2. Loop through the parameters.
 	bool has_named = false;
+	bool found_splat = false;
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
@@ -1340,7 +1341,13 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			actual_args[index] = arg->designator_expr.value;
 			continue;
 		}
-
+		if (*vararg_splat_ref)
+		{
+			if (no_match_ref) goto NO_MATCH_REF;
+			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
+			                       "This looks like an argument after a splatted variable, which "
+			                       "isn't allowed. Did you add too many arguments?");
+		}
 		if (has_named)
 		{
 			RETURN_SEMA_FUNC_ERROR(callee->definition, args[i - 1],
@@ -1365,14 +1372,6 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			// 11a. Look if we did a splat
 			if (call->call_expr.splat_vararg)
 			{
-				// 11b. Is this the last argument, or did we get some before the splat?
-				if (i < num_args - 1)
-				{
-					if (no_match_ref) goto NO_MATCH_REF;
-					RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
-										   "This looks like a variable argument before an splatted variable which "
-					                       "isn't allowed. Did you add too many arguments?");
-				}
 				*vararg_splat_ref = arg;
 				continue;
 			}

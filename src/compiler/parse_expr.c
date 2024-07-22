@@ -498,6 +498,11 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		{
 			if (splat)
 			{
+				if (*splat)
+				{
+					PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
+					return false;
+				}
 				*splat = try_consume(c, TOKEN_ELLIPSIS);
 			}
 			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
@@ -510,8 +515,6 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		if (tok_is(c, param_end)) return true;
 		if (splat && *splat)
 		{
-			PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
-			return false;
 		}
 	}
 }

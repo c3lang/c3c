@@ -50,6 +50,7 @@
 - Constants defined by indexing into another constant could fail codegen.
 - Stdlib nolibc code bugs fixed.
 - Regression: duplicate symbols with static variable declared in macro #1248.
+- Unsplat with named parameters was accidentally disallowed.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
