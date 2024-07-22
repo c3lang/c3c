@@ -140,7 +140,7 @@ typedef enum
 typedef enum
 {
 	SINGLE_MODULE_NOT_SET = -1,
-	SINGLE_MODULE_OFF = 0,
+	SINGLE_MODULE_OFF = 0,          // NOLINT
 	SINGLE_MODULE_ON = 1
 } SingleModule;
 
@@ -217,7 +217,7 @@ typedef enum
 typedef enum
 {
 	STRUCT_RETURN_DEFAULT = -1,
-	STRUCT_RETURN_STACK = 0,
+	STRUCT_RETURN_STACK = 0,        // NOLINT
 	STRUCT_RETURN_REG = 1
 } StructReturn;
 
@@ -425,7 +425,6 @@ typedef struct BuildOptions_
 	bool print_project_properties;
 	bool print_manifest_properties;
 	bool print_precedence;
-	bool print_build_settings;
 	bool print_linking;
 	bool benchmarking;
 	bool testing;
