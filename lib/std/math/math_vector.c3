@@ -190,7 +190,7 @@ macro rotate_axis_angle(v, axis, angle) @private
 	var w = axis * math::sin(angle);
 	var wv = w.cross(v);
 	var wwv = w.cross(wv);
-	wv *= math::cos(angle) * 2;
+	wv *= math::cos(($typeof(v))angle) * 2;
 	wwv *= 2;
 
 	return v + wv + wwv;

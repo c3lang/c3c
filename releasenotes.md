@@ -5,6 +5,8 @@
 ### Changes / improvements
 - Updated LLVM passes
 - Added `is_substruct` type property.
+- Scalar -> vector not implicit in call or assign.
+- Added `--vector-conv` to enable the old scalar->vector conversion behaviour.
 
 ### Fixes
 None

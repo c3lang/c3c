@@ -159,7 +159,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		}
 		Expr *element = elements[i];
 		// 6. We know the required type, so resolve the expression.
-		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, members[i]->type, element, true, NULL, false)) return false;
 		if (member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER)
 		{
 			if (!sema_bit_assignment_check(context, element, members[i])) return false;
@@ -284,7 +284,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
 				sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usz, 0));
 				vec_add(expr_list->expression_list, sub);
-				if (!sema_analyse_expr_rhs(context, inner_type, expr_list, true, NULL)) return false;
+				if (!sema_analyse_expr_rhs(context, inner_type, expr_list, true, NULL, false)) return false;
 				elements[i] = expr_list;
 				for (unsigned j = 1; j < len; j++)
 				{
@@ -292,7 +292,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 					sub->subscript_expr.expr = exprid(expr_variable(decl));
 					sub->subscript_expr.range.start = exprid(expr_new_const_int(element->span, type_usz, 1));
 					vec_insert_at(elements, i + j, sub);
-					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL)) return false;
+					if (!sema_analyse_expr_rhs(context, inner_type, sub, true, NULL, false)) return false;
 				}
 				initializer->initializer_list = elements;
 				count += len - 1;
@@ -300,17 +300,17 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				optional = optional || IS_OPTIONAL(element);
 				continue;
 			}
-			if (!cast_implicit(context, element, inner_type)) return false;
+			if (!cast_implicit(context, element, inner_type, false)) return false;
 			optional = optional || IS_OPTIONAL(element);
 		}
 		else
 		{
-			if (!sema_analyse_expr_rhs(context, inner_type, element, true, NULL)) return false;
+			if (!sema_analyse_expr_rhs(context, inner_type, element, true, NULL, false)) return false;
 			if (inner_is_inferred)
 			{
 				if (inferred_element)
 				{
-					if (!cast_implicit(context, element, inferred_element))
+					if (!cast_implicit(context, element, inferred_element, false))
 					{
 						SEMA_NOTE(elements[0], "Type inferred from here.");
 						return false;
@@ -424,7 +424,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 			bitmember_count_without_value += 1;
 		}
 		if (!value) RETURN_SEMA_ERROR(expr, "This initializer needs a value.");
-		if (!sema_analyse_expr_rhs(context, result, value, true, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, result, value, true, NULL, false)) return false;
 		if (is_bitmember)
 		{
 			if (!sema_bit_assignment_check(context, value, member)) return false;

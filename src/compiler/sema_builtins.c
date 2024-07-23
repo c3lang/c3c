@@ -78,7 +78,7 @@ static bool sema_check_builtin_args_const(SemaContext *context, Expr **args, siz
 
 static bool sema_check_alignment_expression(SemaContext *context, Expr *align)
 {
-	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL)) return false;
+	if (!sema_analyse_expr_rhs(context, type_usz, align, false, NULL, false)) return false;
 	if (!expr_is_const_int(align)
 	    || !int_fits(align->const_expr.ixx, TYPE_U64)
 	    || (!is_power_of_two(align->const_expr.ixx.i.low) && align->const_expr.ixx.i.low))
@@ -187,7 +187,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, b
 	for (unsigned i = first_mask_value; i < arg_count; i++)
 	{
 		Expr *mask_val = args[i];
-		if (!sema_analyse_expr_rhs(context, type_int, mask_val, false, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, type_int, mask_val, false, NULL, false)) return false;
 		if (!expr_is_const_int(mask_val))
 		{
 			RETURN_SEMA_ERROR(mask_val, "The swizzle positions must be compile time constants.");
@@ -226,7 +226,7 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	for (int i = 1; i < 3; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_analyse_expr_rhs(context, type_is_void(pointee) ? NULL : pointee, arg, true, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, type_is_void(pointee) ? NULL : pointee, arg, true, NULL, false)) return false;
 		if (type_is_void(pointee)) pointee = arg->type->canonical;
 		if (!type_is_atomic(type_flatten(arg->type)))
 		{
@@ -237,14 +237,14 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 	}
 	for (int i = 3; i < 5; i++)
 	{
-		if (!sema_analyse_expr_rhs(context, type_bool, args[i], false, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, type_bool, args[i], false, NULL, false)) return false;
 		if (!sema_cast_const(args[i]))
 		{
 			RETURN_SEMA_ERROR(args[i], "Expected a constant boolean value.");}
 	}
 	for (int i = 5; i < 7; i++)
 	{
-		if (!sema_analyse_expr_rhs(context, type_char, args[i], false, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, type_char, args[i], false, NULL, false)) return false;
 		if (!is_valid_atomicity(context, args[i])) return false;
 	}
 	unsigned success = args[5]->const_expr.ixx.i.low;
@@ -273,7 +273,7 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 	for (unsigned i = 0; i < arg_count; i++)
 	{
 		Expr *arg = args[i];
-		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true, NULL, false)) return false;
 		optional = optional || type_is_optional(arg->type);
 	}
 	switch (platform_target.arch)
@@ -573,7 +573,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
 			assert(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLINT, BA_BOOLINT}, 2)) return false;
-			if (!cast_implicit(context, args[2], type_double))
+			if (!cast_implicit(context, args[2], type_double, false))
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected a 'double', but was %s.", type_quoted_error_string(args[2]->type));
 			}
@@ -618,19 +618,19 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_RETURNADDRESS:
 			assert(arg_count);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER}, arg_count)) return false;
-			if (!cast_implicit(context, args[0], type_int)) return false;
+			if (!cast_implicit(context, args[0], type_int, false)) return false;
 			if (!expr_is_const_int(args[0])) RETURN_SEMA_ERROR(args[0], "Expected a compile time constant integer.");
 			rtype = type_voidptr;
 			break;
 		case BUILTIN_WASM_MEMORY_SIZE:
 			assert(arg_count == 1);
-			if (!cast_implicit(context, args[0], type_uint)) return false;
+			if (!cast_implicit(context, args[0], type_uint, false)) return false;
 			rtype = type_uptr;
 			break;
 		case BUILTIN_WASM_MEMORY_GROW:
 			assert(arg_count == 2);
-			if (!cast_implicit(context, args[0], type_uint)) return false;
-			if (!cast_implicit(context, args[1], type_uptr)) return false;
+			if (!cast_implicit(context, args[0], type_uint, false)) return false;
+			if (!cast_implicit(context, args[1], type_uptr, false)) return false;
 			rtype = type_iptr;
 			break;
 		case BUILTIN_PREFETCH:
@@ -639,7 +639,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			for (unsigned i = 1; i < 3; i++)
 			{
 				if (!sema_cast_const(args[i])) RETURN_SEMA_ERROR(args[i], "A constant value is required.");
-				if (!cast_implicit(context, args[i], type_int)) return false;
+				if (!cast_implicit(context, args[i], type_int, false)) return false;
 			}
 			if (!expr_in_int_range(args[1], 0, 1))
 			{
@@ -651,7 +651,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				SEMA_ERROR(args[2], "Expected a value between 0 and 3.");
 				return false;
 			}
-			if (!cast_implicit(context, args[0], type_voidptr)) return false;
+			if (!cast_implicit(context, args[0], type_voidptr, false)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_POW:
@@ -663,14 +663,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_POW_INT:
 			assert(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATLIKE, BA_INTLIKE}, 2)) return false;
-			if (!cast_implicit(context, args[1], type_cint)) return false;
+			if (!cast_implicit(context, args[1], type_cint, false)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_REDUCE_FMUL:
 		case BUILTIN_REDUCE_FADD:
 			assert(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATVEC, BA_FLOAT}, 2)) return false;
-			if (!cast_implicit(context, args[1], args[0]->type->canonical->array.base)) return false;
+			if (!cast_implicit(context, args[1], args[0]->type->canonical->array.base, false)) return false;
 			{
 				Expr *arg = args[0];
 				args[0] = args[1];
@@ -844,7 +844,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_alignment_expression(context, args[2])) return false;
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			rtype = args[1]->type;
 			break;
@@ -865,7 +865,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			rtype = args[1]->type;
 			break;
@@ -888,7 +888,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				{
 					RETURN_SEMA_ERROR(args[0], "Expected a pointer to an unsigned integer.");
 				}
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
@@ -912,7 +912,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
@@ -933,7 +933,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			Type *val = type_flatten(args[1]->type);
 			if (!type_is_atomic(val)) RETURN_SEMA_ERROR(args[1], "%s exceeds pointer size.", val);
@@ -959,7 +959,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");
@@ -981,7 +981,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
-				if (!cast_implicit(context, args[1], original->pointer)) return false;
+				if (!cast_implicit(context, args[1], original->pointer, false)) return false;
 			}
 			if (!sema_cast_const(args[2])) RETURN_SEMA_ERROR(args[2], "'is_volatile' must be a compile time constant.");
 			if (!sema_cast_const(args[3])) RETURN_SEMA_ERROR(args[3], "Ordering must be a compile time constant.");

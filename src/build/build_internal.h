@@ -27,6 +27,11 @@ static const char *wincrt_linking[3] = {
 	[WIN_CRT_STATIC] = "static",
 };
 
+static const char *vector_conv[2] = {
+		[VECTOR_CONV_DEFAULT] = "default",
+		[VECTOR_CONV_OLD] = "old",
+};
+
 static const char *optsizes[3] = {
 	[SIZE_OPTIMIZATION_NONE] = "none",
 	[SIZE_OPTIMIZATION_SMALL] = "small",

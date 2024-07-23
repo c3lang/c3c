@@ -182,6 +182,8 @@ static void usage(void)
 	PRINTF("");
 	PRINTF("  --linux-crt <dir>          - Set the directory to use for finding crt1.o and related files.");
 	PRINTF("  --linux-crtbegin <dir>     - Set the directory to use for finding crtbegin.o and related files.");
+	PRINTF("");
+	PRINTF("  --vector-conv=<option>     - Set vector conversion behaviour: default, old.");
 }
 
 
@@ -949,6 +951,11 @@ static void parse_option(BuildOptions *options)
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --windef needs a file.");
 				options->win.def = next_arg();
+				return;
+			}
+			if ((argopt = match_argopt("vector-conv")))
+			{
+				options->vector_conv = (VectorConv)parse_multi_option(argopt, 2, vector_conv);
 				return;
 			}
 			if ((argopt = match_argopt("wincrt")))

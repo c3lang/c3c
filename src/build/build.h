@@ -280,6 +280,12 @@ typedef enum
 
 typedef enum
 {
+	VECTOR_CONV_DEFAULT = 0,
+	VECTOR_CONV_OLD = 1,
+} VectorConv;
+
+typedef enum
+{
 	RELOC_DEFAULT = -1,
 	RELOC_NONE = 0,
 	RELOC_SMALL_PIC = 1,
@@ -341,6 +347,7 @@ typedef struct BuildOptions_
 	const char* linker_libs[MAX_LIB_DIRS];
 	int linker_lib_count;
 	const char* std_lib_dir;
+	VectorConv vector_conv;
 	struct {
 		const char *sdk;
 		const char *def;
@@ -515,6 +522,7 @@ typedef struct
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
+	VectorConv vector_conv;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;

@@ -1298,7 +1298,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			Expr *expr = param->var.init_expr;
 			if (expr_is_const(expr))
 			{
-				if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL)) return decl_poison(param);
+				if (!sema_analyse_expr_rhs(context, param->type, expr, true, NULL, false)) return decl_poison(param);
 			}
 		}
 		if (!sema_check_param_uniqueness_and_type(context, params, param, i, param_count)) return decl_poison(param);
@@ -1540,7 +1540,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			Expr *arg = args[j];
 
-			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false, NULL)) return false;
+			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false, NULL, false)) return false;
 			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_GLOBAL_INIT))
 			{
 				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
@@ -3504,7 +3504,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				}
 
 				// Analyse the expression.
-				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL)) goto FAIL;
+				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL, false)) goto FAIL;
 
 				// Check that it is constant.
 				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
@@ -3712,7 +3712,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
-		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false))
+		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true))
 		{
 			context->call_env.kind = env_kind;
 			return decl_poison(decl);

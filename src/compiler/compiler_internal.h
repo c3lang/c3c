@@ -2168,8 +2168,10 @@ INLINE AsmRegister *asm_reg_by_index(unsigned index);
 
 AsmRegister *asm_reg_by_index(unsigned index);
 
-bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type);
-bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type);
+bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type, bool is_binary_conversion);
+
+bool cast_implicit_binary(SemaContext *context, Expr *expr, Type *to_type, bool is_silent);
+bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type, bool is_binary);
 bool cast_explicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 
@@ -2345,7 +2347,8 @@ void sema_erase_var(SemaContext *context, Decl *decl);
 void sema_erase_unwrapped(SemaContext *context, Decl *decl);
 bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result);
 
-bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref);
+bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
+                           bool as_binary);
 ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
@@ -2359,7 +2362,9 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement);
 bool sema_analyse_statement(SemaContext *context, Ast *statement);
-bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped_var);
+
+bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
+                                         bool is_unwrapped_var, bool is_declaration);
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr);
 Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs);
 

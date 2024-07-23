@@ -438,7 +438,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 	{
 		if (block_type)
 		{
-			if (!sema_analyse_expr_rhs(context, block_type, ret_expr, true, NULL)) return false;
+			if (!sema_analyse_expr_rhs(context, block_type, ret_expr, true, NULL, false)) return false;
 		}
 		else
 		{
@@ -549,7 +549,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 
 	if (return_expr)
 	{
-		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype), NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype), NULL, false)) return false;
 		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
 		if (!sema_return_optional_check_is_valid_in_scope(context, return_expr)) return false;
 	}
@@ -784,7 +784,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			return false;
 		}
 
-		if (!cast_implicit(context, optional, ident->type)) return false;
+		if (!cast_implicit(context, optional, ident->type, false)) return false;
 
 		expr->try_unwrap_expr.assign_existing = true;
 		expr->try_unwrap_expr.lhs = ident;
@@ -824,7 +824,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 		if (var_type)
 		{
-			if (!cast_implicit(context, optional, var_type->type)) return false;
+			if (!cast_implicit(context, optional, var_type->type, false)) return false;
 		}
 
 		// 4c. Create a type_info if needed.
@@ -1018,13 +1018,13 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		Expr *right = exprptr(expr->binary_expr.right);
 		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;
 		if (is_deref) right = right->unary_expr.expr;
-		if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL, false)) return false;
 		Type *type = right->type->canonical;
 		if (type == type_get_ptr(type_any) && is_deref)
 		{
 			is_deref = false;
 			right = exprptr(expr->binary_expr.right);
-			if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL)) return false;
+			if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL, false)) return false;
 		}
 		if (type != type_any) goto NORMAL_EXPR;
 		// Found an expansion here
@@ -1674,7 +1674,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 			// Create const len if missing.
 			len_call = expr_new_const_int(enumerator->span, type_isz, array_len);
 		}
-		if (!cast_implicit(context, len_call, index_type)) return false;
+		if (!cast_implicit(context, len_call, index_type, false)) return false;
 		// __idx$ = (IndexType)(@__enum$.len()) (or const)
 		vec_add(expressions, expr_generate_decl(idx_decl, len_call));
 	}
@@ -1683,7 +1683,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		if (len_call)
 		{
 			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
-			if (!cast_implicit_silent(context, len_call, index_type))
+			if (!cast_implicit_silent(context, len_call, index_type, false))
 			{
 				SEMA_ERROR(enumerator,
 				           "'foreach' is not supported, as the length %s cannot "
@@ -2123,7 +2123,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 
 	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyfault;
 
-	if (!sema_analyse_expr_rhs(context, expected_type, value, false, NULL)) return false;
+	if (!sema_analyse_expr_rhs(context, expected_type, value, false, NULL, false)) return false;
 
 	statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 
@@ -2243,7 +2243,7 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
 {
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
-	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false, NULL)) return false;
+	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false, NULL, false)) return false;
 
 	if (sema_cast_const(expr))
 	{
@@ -2271,8 +2271,8 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 
 	// 1. Try to do implicit conversion to the correct type.
-	if (!sema_analyse_expr_rhs(context, switch_type, expr, false, NULL)) return false;
-	if (to_expr && !sema_analyse_expr_rhs(context, switch_type, to_expr, false, NULL)) return false;
+	if (!sema_analyse_expr_rhs(context, switch_type, expr, false, NULL, false)) return false;
+	if (to_expr && !sema_analyse_expr_rhs(context, switch_type, to_expr, false, NULL, false)) return false;
 
 	bool is_range = to_expr != NULL;
 	bool first_is_const = sema_cast_const(expr);
@@ -2570,8 +2570,8 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				{
 					// Do not evaluate if found.
 					if (matched_case != case_count && expr->resolve_status != RESOLVE_DONE) continue;
-					if (!sema_analyse_expr_rhs(context, type, expr, false, NULL)) goto FAILED;
-					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false, NULL)) goto FAILED;
+					if (!sema_analyse_expr_rhs(context, type, expr, false, NULL, false)) goto FAILED;
+					if (to_expr && !sema_analyse_expr_rhs(context, type, to_expr, false, NULL, false)) goto FAILED;
 				}
 				if (!sema_cast_const(expr))
 				{

@@ -10,6 +10,7 @@
 
 typedef struct
 {
+	bool is_binary_conversion;
 	SemaContext *context;
 	Expr *expr;
 	Type *from;
@@ -29,7 +30,8 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent);
 INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type);
 
-static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
+static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
+                          bool is_binary_conversion);
 INLINE ConvGroup type_to_group(Type *type);
 INLINE void cast_context_set_from(CastContext *cc, Type *new_from);
 INLINE void cast_context_set_to(CastContext *cc, Type *new_to);
@@ -43,17 +45,21 @@ extern CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1];
 /**
  * Try to make an implicit cast. Optional types are allowed.
  */
-bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type)
+bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type, bool is_binary)
 {
-	return cast_if_valid(context, expr, to_type, false, false);
+	return cast_if_valid(context, expr, to_type, false, false, is_binary);
 }
 
+bool cast_implicit_binary(SemaContext *context, Expr *expr, Type *to_type, bool is_silent)
+{
+	return cast_if_valid(context, expr, to_type, false, is_silent, true);
+}
 /**
  * Try to make an explicit cast, Optional types are allowed.
  */
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type)
 {
-	return cast_if_valid(context, expr, to_type, true, false);
+	return cast_if_valid(context, expr, to_type, true, false, false);
 }
 
 /**
@@ -61,14 +67,14 @@ bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type)
  */
 bool cast_explicit_silent(SemaContext *context, Expr *expr, Type *to_type)
 {
-	return cast_if_valid(context, expr, to_type, true, true);
+	return cast_if_valid(context, expr, to_type, true, true, false);
 }
 /**
  * Silent implicit casting will attempt a cast, but will silently back out if it fails.
  */
-bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type)
+bool cast_implicit_silent(SemaContext *context, Expr *expr, Type *to_type, bool is_binary_conversion)
 {
-	return cast_if_valid(context, expr, to_type, false, true);
+	return cast_if_valid(context, expr, to_type, false, true, is_binary_conversion);
 }
 
 
@@ -270,7 +276,8 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	}
 }
 
-static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent)
+static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
+                          bool is_binary_conversion)
 {
 	Type *from_type = expr->type;
 
@@ -300,6 +307,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 	from_type = from_type->canonical;
 	Type *to = to_type->canonical;
 	CastContext cc = {
+			.is_binary_conversion = is_binary_conversion,
 			.from_group = type_to_group(from_type),
 			.from = from_type,
 			.to_group = type_to_group(to),
@@ -1254,6 +1262,12 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_expand_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
+	if (!is_explicit && active_target.vector_conv == VECTOR_CONV_DEFAULT && !cc->is_binary_conversion)
+	{
+		if (is_silent) return false;
+		bool explicit_works = rule_expand_to_vec(cc, true, true);
+		return sema_cast_error(cc, explicit_works, false);
+	}
 	cast_context_set_to(cc, cc->to->array.base);
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
