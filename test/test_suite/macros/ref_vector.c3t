@@ -1,0 +1,40 @@
+// #target: macos-x64
+module test;
+
+fn int main() {
+  int[<4>] vec;
+  @foo(vec[0]);
+  @foo(vec[2]);
+  assert(vec[0] == 1);
+  assert(vec[2] == 1);
+  return 1;
+}
+
+macro @foo(&ref) {
+  *ref += 1;
+}
+
+/* #expect: test.ll
+
+
+define i32 @main() #0 {
+entry:
+  %vec = alloca <4 x i32>, align 16
+  store <4 x i32> zeroinitializer, ptr %vec, align 16
+  %0 = load i32, ptr %vec, align 4
+  %add = add i32 %0, 1
+  store i32 %add, ptr %vec, align 4
+  %ptradd = getelementptr inbounds i8, ptr %vec, i64 8
+  %1 = load i32, ptr %ptradd, align 4
+  %add1 = add i32 %1, 1
+  store i32 %add1, ptr %ptradd, align 4
+  %2 = load <4 x i32>, ptr %vec, align 16
+  %3 = extractelement <4 x i32> %2, i64 0
+  %eq = icmp eq i32 %3, 1
+  call void @llvm.assume(i1 %eq)
+  %4 = load <4 x i32>, ptr %vec, align 16
+  %5 = extractelement <4 x i32> %4, i64 2
+  %eq2 = icmp eq i32 %5, 1
+  call void @llvm.assume(i1 %eq2)
+  ret i32 1
+}

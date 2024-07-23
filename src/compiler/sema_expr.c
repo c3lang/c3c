@@ -1537,14 +1537,20 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	switch (kind)
 	{
 		case VARDECL_PARAM_REF:
+		{
 			// &foo
+			bool is_subscript = arg->expr_kind == EXPR_SUBSCRIPT;
+			if (is_subscript)
+			{
+				arg->expr_kind = EXPR_SUBSCRIPT_ADDR;
+			}
 			if (!sema_analyse_expr_lvalue(context, arg)) return false;
 			if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg))
 			{
 				SEMA_NOTE(definition, "The definition is here.");
 				return false;
 			}
-			expr_insert_addr(arg);
+			if (!is_subscript) expr_insert_addr(arg);
 			*optional_ref |= IS_OPTIONAL(arg);
 			if (!sema_call_check_contract_param_match(context, param, arg))
 			{
@@ -1573,6 +1579,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				}
 			}
 			break;
+		}
 		case VARDECL_PARAM:
 			// foo
 			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref)) return false;
