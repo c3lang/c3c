@@ -10,14 +10,25 @@ import json
 import shutil
 import hashlib
 import zipfile
-import tempfile
 import argparse
 import subprocess
 import urllib.request
+import os
+import ssl
+import tempfile
 from pathlib import Path
 
-OUTPUT = Path("msvc_temp") # output folder
+if (platform.system() == "Windows"):
+  print("Creating msvc_sdk for compilation without VS.")
+else:
+  print("Creating msvc_sdk for cross platform compilation to Windows.")
+
+OUTPUT = Path(tempfile.mkdtemp()) # output folder
 SDK_OUTPUT = Path("msvc_sdk")
+
+if (not os.environ.get('PYTHONHTTPSVERIFY', '') and
+        getattr(ssl, '_create_unverified_context', None)):
+  ssl._create_default_https_context = ssl._create_unverified_context
 
 MANIFEST_URL = "https://aka.ms/vs/17/release/channel"
 
@@ -57,7 +68,6 @@ def get_msi_cabs(msi):
 
 def first(items, cond):
   return next(item for item in items if cond(item))
-  
 
 ### parse command-line arguments
 
@@ -135,9 +145,7 @@ if not args.accept_license:
   if not accept or accept[0].lower() != "y":
     exit(0)
 
-shutil.rmtree(OUTPUT, ignore_errors = True)
 shutil.rmtree(SDK_OUTPUT, ignore_errors = True)
-OUTPUT.mkdir()
 total_download = 0
 
 ### download Windows SDK
@@ -157,7 +165,7 @@ for arch in archs:
   msvc_packages.append(f"microsoft.vc.{msvc_ver}.crt.{arch}.desktop.base")
   msvc_packages.append(f"microsoft.vc.{msvc_ver}.crt.{arch}.store.base")
   msvc_packages.append(f"microsoft.vc.{msvc_ver}.asan.{arch}.base")
-  
+
 for pkg in msvc_packages:
   p = first(packages[pkg], lambda p: p.get("language") in (None, "en-US"))
   for payload in p["payloads"]:
@@ -226,15 +234,10 @@ lib = list((OUTPUT / "VC/Tools/MSVC/").glob("*/lib"))[0]
 
 SDK_OUTPUT.mkdir(exist_ok=True)
 
-
-
 for arch in archs:
   out_dir = SDK_OUTPUT / arch
   shutil.copytree(ucrt / arch, out_dir, dirs_exist_ok=True)
-  shutil.copytree(um / arch, out_dir, dirs_exist_ok=True)  
+  shutil.copytree(um / arch, out_dir, dirs_exist_ok=True)
   shutil.copytree(lib / arch, out_dir, dirs_exist_ok=True)
 
-### cleanup
-
-shutil.rmtree(OUTPUT, ignore_errors=True)
-
+print("Congratulations! The 'msvc_sdk' directory was successfully generated.")

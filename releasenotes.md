@@ -52,6 +52,7 @@
 - Regression: duplicate symbols with static variable declared in macro #1248.
 - Unsplat with named parameters was accidentally disallowed.
 - Reference parameter doesn't work with vector subscript #1250.
+- The msvc_sdk script failed to work properly on windows when run in folders with spaces.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
