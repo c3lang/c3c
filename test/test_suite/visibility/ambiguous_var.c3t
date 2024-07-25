@@ -23,5 +23,5 @@ fn void test2()
     c = foo::b;
     c = bar::b;
     c = foo::a;
-    c = b; // #error: global variable needs a path prefix (e.g. 'bar::b')
+    c = b; // #error: global variable needs a path prefix (e.g. 'foo::b')
 }

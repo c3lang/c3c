@@ -2380,7 +2380,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_DEF,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 	// NOLINTEND(*.EnumCastOutOfRange)
@@ -2628,6 +2628,14 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			decl->func_decl.signature.attrs.noreturn = true;
 			break;
 		case ATTRIBUTE_WEAK:
+			if (domain == ATTR_DEF)
+			{
+				if (decl->decl_kind != DECL_TYPEDEF) RETURN_SEMA_ERROR(attr, "'@weak' can only be used on type aliases.");
+				if (!decl->typedef_decl.is_redef)
+				{
+					RETURN_SEMA_ERROR(attr, "'@weak' is only allowed on type aliases with the same name, eg 'def Foo = bar::def::Foo @weak'.");
+				}
+			}
 			decl->is_weak = true;
 			break;
 		case ATTRIBUTE_WASM:
@@ -4032,9 +4040,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 			.symbol = name
 	};
 
-	Decl *alias = unit_resolve_parameterized_symbol(NULL, c->unit, &name_resolve);
-	if (!decl_ok(alias)) return poisoned_decl;
-
+	if (!unit_resolve_parameterized_symbol(c, &name_resolve)) return poisoned_decl;
+	Decl *alias = name_resolve.found;
+	assert(alias);
 	Module *module = decl_module(alias);
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
@@ -4127,6 +4135,7 @@ static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_d
 	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
 	{
 		Decl *symbol = sema_resolve_symbol(c, decl->define_decl.ident, decl->define_decl.path, decl->define_decl.span);
+		if (!symbol) return false;
 		if (!sema_analyse_decl(c, symbol)) return false;
 		decl->type = symbol->type;
 		decl->define_decl.alias = symbol;

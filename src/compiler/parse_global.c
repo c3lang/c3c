@@ -1819,6 +1819,11 @@ static inline Decl *parse_def_type(ParseContext *c)
 	decl->typedef_decl.is_func = false;
 	decl->decl_kind = DECL_TYPEDEF;
 	decl_add_type(decl, TYPE_TYPEDEF);
+	if (type_info->kind == TYPE_INFO_IDENTIFIER && type_info->resolve_status == RESOLVE_NOT_DONE
+		&& type_info->unresolved.name == decl->name)
+	{
+		decl->typedef_decl.is_redef = true;
+	}
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);

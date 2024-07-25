@@ -56,6 +56,13 @@ extern const int manifest_default_keys_count;
 extern const char *manifest_target_keys[][2];
 extern const int manifest_target_keys_count;
 
+typedef enum BoolErr__
+{
+	BOOL_ERR = -1,
+	BOOL_FALSE = 0,
+	BOOL_TRUE = 1,
+} BoolErr;
+
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
 typedef struct TypeInfo_ TypeInfo;
@@ -601,6 +608,7 @@ typedef struct
 typedef struct
 {
 	bool is_func : 1;
+	bool is_redef : 1;
 	union
 	{
 		Decl *decl;
@@ -1887,6 +1895,7 @@ typedef struct
 	Decl *ambiguous_other_decl;
 	Decl *private_decl;
 	Decl *maybe_decl;
+	Decl *found;
 	Path *path;
 	SourceSpan span;
 	const char *symbol;
@@ -2373,7 +2382,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
-Decl *unit_resolve_parameterized_symbol(SemaContext *context, CompilationUnit *unit, NameResolve *name_resolve);
+bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref);
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name);
@@ -2384,7 +2393,7 @@ Decl *sema_find_path_symbol(SemaContext *context, const char *symbol, Path *path
 Decl *sema_find_label_symbol(SemaContext *context, const char *symbol);
 Decl *sema_find_label_symbol_anywhere(SemaContext *context, const char *symbol);
 Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, SourceSpan span);
-bool sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
+BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
 
@@ -2489,7 +2498,6 @@ Type *type_find_parent_type(Type *type);
 bool type_is_subtype(Type *type, Type *possible_subtype);
 bool type_is_abi_aggregate(Type *type);
 bool type_is_int128(Type *type);
-Decl * type_no_export(Type *type);
 
 Type *type_from_token(TokenType type);
 bool type_is_user_defined(Type *type);

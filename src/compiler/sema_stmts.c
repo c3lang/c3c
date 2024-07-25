@@ -738,7 +738,9 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// 1. Check if we are doing an implicit declaration.
 	if (!var_type && ident->expr_kind == EXPR_IDENTIFIER)
 	{
-		implicit_declaration = !sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
+		BoolErr res = sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
+		if (res == BOOL_ERR) return false;
+		implicit_declaration = res == BOOL_FALSE;
 	}
 
 	// 2. If we have a type for the variable, resolve it.
@@ -885,7 +887,9 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 	}
 	if (!type && ident->expr_kind == EXPR_IDENTIFIER)
 	{
-		implicit_declaration = !sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
+		BoolErr res = sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
+		if (res == BOOL_ERR) return false;
+		implicit_declaration = res == BOOL_FALSE;
 	}
 
 	if (!type && !implicit_declaration)
@@ -993,8 +997,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		case EXPR_CATCH_UNWRAP:
 			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
-				SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
-				return false;
+				RETURN_SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
 			}
 			return sema_analyse_catch_unwrap(context, expr);
 		default:
@@ -1013,7 +1016,9 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 
 		// Does the identifier exist in the parent scope?
 		// then again it can't be an any unwrap.
-		if (sema_symbol_is_defined_in_scope(context, left->identifier_expr.ident)) goto NORMAL_EXPR;
+		BoolErr defined_in_scope = sema_symbol_is_defined_in_scope(context, left->identifier_expr.ident);
+		if (defined_in_scope == BOOL_ERR) return false;
+		if (defined_in_scope == BOOL_TRUE) goto NORMAL_EXPR;
 
 		Expr *right = exprptr(expr->binary_expr.right);
 		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;

@@ -285,6 +285,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	const char *name = arg->ident.name;
 	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
 	if (!decl) return false;
+
 	assert(arg->kind == ASM_ARG_REGVAR);
 	arg->ident.ident_decl = decl;
 	if (decl->decl_kind != DECL_VAR)
@@ -382,13 +383,11 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 	arg->ident.ident_decl = decl;
 	if (decl->decl_kind != DECL_VAR)
 	{
-		SEMA_ERROR(expr, "Expected a global or local variable.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Expected a global or local variable.");
 	}
 	if (IS_OPTIONAL(decl))
 	{
-		SEMA_ERROR(expr, "Optional variables are not allowed in asm.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Optional variables are not allowed in asm.");
 	}
 	bool is_write = arg_type.is_write;
 	bool is_read = !arg_type.is_write || arg_type.is_readwrite;
@@ -398,8 +397,7 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 		decl->var.is_read = true;
 		if (decl->var.out_param)
 		{
-			SEMA_ERROR(expr, "An 'out' variable may not be read from.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "An 'out' variable may not be read from.");
 		}
 		asm_reg_add_input(block, arg);
 	}
@@ -408,15 +406,13 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 		decl->var.is_written = true;
 		if (decl->var.in_param)
 		{
-			SEMA_ERROR(expr, "An 'in' variable may not be written to.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "An 'in' variable may not be written to.");
 		}
 		asm_reg_add_output(block, arg);
 	}
 	if (!arg_type.is_address)
 	{
-		SEMA_ERROR(expr, "This slot does not accept an address.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "This slot does not accept an address.");
 	}
 	return true;
 }

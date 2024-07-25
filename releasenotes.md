@@ -7,6 +7,7 @@
 - Added `is_substruct` type property.
 - Scalar -> vector not implicit in call or assign.
 - Added `--vector-conv` to enable the old scalar->vector conversion behaviour.
+- Added "weak" type aliases `def Foo = my_foo::Foo @weak;`
 
 ### Fixes
 None

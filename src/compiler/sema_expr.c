@@ -1002,7 +1002,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	{
 		decl = sema_resolve_symbol(context, expr->identifier_expr.ident, expr->identifier_expr.path, expr->span);
 		(void)decl;
-		assert(!decl_ok(decl));
+		assert(!decl);
 		return false;
 	}
 
@@ -1081,7 +1081,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 	Decl *decl = sema_resolve_symbol(context, expr->ct_ident_expr.identifier, NULL, expr->span);
 
 	// Already handled
-	if (!decl_ok(decl))
+	if (!decl)
 	{
 		return expr_poison(expr);
 	}
@@ -1102,7 +1102,7 @@ static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type 
 	Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
 
 	// Already handled
-	if (!decl_ok(decl)) return expr_poison(expr);
+	if (!decl) return expr_poison(expr);
 
 	assert(decl->decl_kind == DECL_VAR);
 	expr_replace(expr, copy_expr_single(decl->var.init_expr));
@@ -3180,7 +3180,7 @@ RETRY:
 		{
 			assert(child->resolve_status != RESOLVE_DONE);
 			Decl *decl = sema_resolve_symbol(context, child->hash_ident_expr.identifier, NULL, child->span);
-			if (!decl_ok(decl)) return NULL;
+			if (!decl) return NULL;
 			Expr *expr = copy_expr_single(decl->var.init_expr);
 			return sema_expr_resolve_access_child(decl->var.hash_var.context, expr, missing);
 		}
@@ -5096,8 +5096,7 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 
 	if (!decl)
 	{
-		SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
-		return false;
+		RETURN_SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
 	}
 	decl->var.init_expr = right;
 	expr->expr_kind = EXPR_NOP;
@@ -8203,8 +8202,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_HASH_IDENT:
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl_ok(decl)) return false;
-				if (!decl) RETURN_SEMA_ERROR(list[i], "No parameter '%s' found.", main_expr->hash_ident_expr.identifier);
+				if (!decl) return false;
 				main_expr = copy_expr_single(decl->var.init_expr);
 				goto RETRY;
 			}
@@ -8230,8 +8228,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_CT_IDENT:
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->ct_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl_ok(decl)) return false;
-				success = decl != NULL;
+				if (!decl) return false;
 				break;
 			}
 			case EXPR_CALL:
@@ -8794,7 +8791,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 	// Only hash ident style stringify reaches here.
 	assert(inner->expr_kind == EXPR_HASH_IDENT);
 	Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
-	if (!decl_ok(decl)) return false;
+	if (!decl) return false;
 	const char *desc = span_to_string(decl->var.hash_var.span);
 	if (!desc)
 	{
