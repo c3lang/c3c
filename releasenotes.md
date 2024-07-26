@@ -13,6 +13,7 @@
 
 ### Fixes
 - Broken WASM library code.
+- Regression: Invalid is_random implementation due to changes in 0.6.
 
 ### Stdlib changes
 None
