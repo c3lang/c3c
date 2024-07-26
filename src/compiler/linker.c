@@ -62,7 +62,7 @@ static const char *string_esc(const char *str)
 static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 {
 	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
-	global_context_add_link("dbghelp");
+	if (link_libc()) global_context_add_link("dbghelp");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
 	bool is_debug = false;

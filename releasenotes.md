@@ -14,6 +14,7 @@
 ### Fixes
 - Broken WASM library code.
 - Regression: Invalid is_random implementation due to changes in 0.6.
+- `dbghelp.lib` was linked even on nolibc on Windows.
 
 ### Stdlib changes
 None
