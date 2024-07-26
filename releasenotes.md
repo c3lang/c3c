@@ -12,7 +12,7 @@
 - Made "add" the default for things like `sources`, `dependencies` and other keys in project and library files.
 
 ### Fixes
-None
+- Broken WASM library code.
 
 ### Stdlib changes
 None

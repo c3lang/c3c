@@ -535,7 +535,7 @@ import libc;
 
 
 module std::core::mem @if(WASM_NOLIBC);
-
+import std::core::mem::allocator @public;
 SimpleHeapAllocator wasm_allocator @private;
 extern int __heap_base;
 
@@ -546,8 +546,8 @@ fn void initialize_wasm_mem() @init(1) @private
 	uptr start = (uptr)&__heap_base;
 	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
-	temp_base_allocator = &wasm_allocator;
 	allocator::thread_allocator = &wasm_allocator;
+	allocator::init_default_temp_allocators();
 }
 
 module std::core::mem;
