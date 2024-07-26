@@ -16,20 +16,24 @@ const char *manifest_default_keys[][2] = {
 const int manifest_default_keys_count = ELEMENTLEN(manifest_default_keys);
 
 const char *manifest_target_keys[][2] = {
-		{"c-sources-add", "Additional C sources to be compiled for the target."},
+		{"c-sources", "Additional C sources to be compiled for the target."},
 		{"c-sources-override", "C sources to be compiled, overriding global settings."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
-		{"cflags-add", "Additional C compiler flags for the target."},
+		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
 		{"dependencies", "List of C3 libraries to also include for this target."},
 		{"exec", "Scripts to also run for the target."},
 		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
-		{"linked-libs", "Libraries linked by the linker for this target, overriding global settings - deprecated."},
 		{"link-args", "Linker arguments for this target."},
-		{"linkflags", "Linker arguments for this target - deprecated."},
 };
 
+
 const int manifest_target_keys_count = ELEMENTLEN(manifest_target_keys);
+
+const char *manifest_deprecated_target_keys[] = {
+		"c-sources-add", "cflags-add", "linkflags", "linked-libs" };
+
+const int manifest_deprecated_target_key_count = ELEMENTLEN(manifest_deprecated_target_keys);
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object);
@@ -43,7 +47,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		JSONObject *member = object->members[i];
 		const char *key = object->keys[i];
 		if (member->type != J_OBJECT) error_exit("Expected a list of properties for a target in %s.", library->dir);
-		check_json_keys(manifest_target_keys, manifest_target_keys_count, member, key, "--list-library-properties");
+		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, member, key, "--list-library-properties");
 		LibraryTarget *library_target = CALLOCS(LibraryTarget);
 		library_target->parent = library;
 		ArchOsTarget target = arch_os_target_from_string(key);
@@ -88,7 +92,7 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 
 static Library *add_library(JSONObject *object, const char *dir)
 {
-	check_json_keys(manifest_default_keys, manifest_default_keys_count, object, "library", "--list-library-properties");
+	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, object, "library", "--list-library-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
 	const char *provides = get_mandatory_string(dir, NULL, object, "provides");

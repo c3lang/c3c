@@ -6,7 +6,7 @@
     },
     "macos-aarch64" : {},
     "linux-x64" : {
-      "cflags-override": "-fPIE"
+      "cflags": "-fPIE"
     },
 	"windows-x64" : { }
   }

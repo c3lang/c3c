@@ -1,7 +1,7 @@
 #include "build_internal.h"
 #include "utils/common.h"
 
-void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONObject *json, const char *target_name, const char *option)
+void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option)
 {
 	static bool failed_shown = false;
 	bool failed = false;
@@ -10,7 +10,15 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, JSONObject *
 		const char *key = json->keys[i];
 		for (size_t j = 0; j < key_count; j++)
 		{
-			if (strcmp(key, valid_keys[j][0]) == 0) goto OK;
+			if (str_eq(key, valid_keys[j][0])) goto OK;
+		}
+		for (size_t j = 0; j < deprecated_key_count; j++)
+		{
+			if (str_eq(key, deprecated_keys[j]))
+			{
+				eprintf("'%s' is using the deprecated parameter '%s'", target_name, key);
+				goto OK;
+			}
 		}
 		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, target_name);
 		failed = true;
@@ -101,11 +109,18 @@ const char *get_cflags(const char *file, const char *target, JSONObject *json, c
 {
 	// CFlags
 	const char *cflags = get_optional_string(file, target, json, target ? "cflags-override" : "cflags");
-	const char *cflags_add = target ? get_optional_string(file, target, json, "cflags-add") : NULL;
+	const char *cflags_add = target ? get_optional_string(file, target, json, "cflags") : NULL;
 	if (cflags && cflags_add)
 	{
+		error_exit("In file '%s': '%s' is combining both 'cflags' and 'cflags-override', only one may be used.", file, target);
+	}
+	if (target && !cflags_add) cflags_add = get_optional_string(file, target, json, "cflags-add");
+	if (cflags && cflags_add)
+	{
+		// TODO remove in 0.7
 		error_exit("In file '%s': '%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", file, target);
 	}
+
 	if (cflags) original_flags = cflags;
 	if (!cflags_add) return original_flags;
 	if (original_flags)
@@ -124,9 +139,15 @@ void get_list_append_strings(const char *file, const char *target, JSONObject *j
                              const char *base, const char *override, const char *add)
 {
 	const char **value = get_optional_string_array(file, target, json, target ? override : base);
-	const char **add_value = target ? get_optional_string_array(file, target, json, add) : NULL;
+	const char **add_value = target ? get_optional_string_array(file, target, json, base) : NULL;
 	if (value && add_value)
 	{
+		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", file, target, override, base);
+	}
+	if (!add_value && target) add_value = get_optional_string_array(file, target, json, add);
+	if (value && add_value)
+	{
+		// TODO remove in 0.7
 		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", file, target, override, add);
 	}
 	if (value) *list_ptr = value;

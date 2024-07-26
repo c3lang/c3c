@@ -8,6 +8,8 @@
 - Scalar -> vector not implicit in call or assign.
 - Added `--vector-conv` to enable the old scalar->vector conversion behaviour.
 - Added "weak" type aliases `def Foo = my_foo::Foo @weak;`
+- `*-add` keys in targets in `manifest.json` and `project.json` are deprecated.
+- Made "add" the default for things like `sources`, `dependencies` and other keys in project and library files.
 
 ### Fixes
 None

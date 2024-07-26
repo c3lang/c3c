@@ -64,30 +64,34 @@ const char *project_default_keys[][2] = {
 
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 
+const char* project_deprecated_target_keys[] = {
+		"c-source-add", "cflags-add", "dependencies-add", "dependency-search-paths-add", "exec-add",
+		"linked-libraries", "linker-search-paths", "link-args-add", "sources-add"
+};
 const char* project_target_keys[][2] = {
 		{"benchfn", "Override the benchmark function."},
-		{"c-sources-add", "Additional C sources to be compiled for the target."},
+		{"c-sources", "Additional C sources to be compiled for the target."},
 		{"c-sources-override", "C sources to be compiled, overriding global settings."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
-		{"cflags-add", "Additional C compiler flags for the target."},
+		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
 		{"debug-info", "Debug level: none, line-tables, full."},
-		{"dependencies-add", "Additional C3 library dependencies for the target."},
+		{"dependencies", "Additional C3 library dependencies for the target."},
 		{"dependencies-override", "C3 library dependencies for this target, overriding global settings."},
-		{"dependency-search-paths-add", "Additional C3 library search paths for the target."},
+		{"dependency-search-paths", "Additional C3 library search paths for the target."},
 		{"dependency-search-paths-override", "C3 library search paths for this target, overriding global settings."},
-		{"exec-add", "Additional scripts to run for the target."},
+		{"exec", "Additional scripts to run for the target."},
 		{"exec-override", "Scripts to run for this target, overriding global settings."},
 		{"features", "Features enabled for all targets."},
 		{"fp-math", "Set math behaviour: `strict`, `relaxed` or `fast`."},
 		{"langrev", "Version of the C3 language used."},
-		{"linked-libraries-add", "Additional libraries linked by the linker for the target."},
+		{"linked-libraries", "Additional libraries linked by the linker for the target."},
 		{"linked-libraries-override", "Libraries linked by the linker for this target, overriding global settings."},
 		{"linker", "'builtin' for the builtin linker, 'cc' for the system linker or <path> to a custom compiler."},
-		{"linker-search-paths-add", "Additional linker search paths for the target."},
+		{"linker-search-paths", "Additional linker search paths for the target."},
 		{"linker-search-paths-override", "Linker search paths for this target, overriding global settings."},
-		{"link-args-add", "Additional linker arguments for the target."},
+		{"link-args", "Additional linker arguments for the target."},
 		{"link-args-override", "Linker arguments for this target, overriding global settings."},
 		{"link-libc", "Link libc (default: true)."},
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
@@ -104,7 +108,7 @@ const char* project_target_keys[][2] = {
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"soft-float", "Output soft-float functions."},
-		{"sources-add", "Additional paths to project sources for the target."},
+		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
 		{"strip-unused", "Strip unused code and globals from the output. (default: true)"},
 		{"symtab", "Sets the preferred symtab size."},
@@ -125,6 +129,7 @@ const char* project_target_keys[][2] = {
 
 const int project_target_keys_count = ELEMENTLEN(project_target_keys);
 
+const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_target_keys);
 
 long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
@@ -149,11 +154,11 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 {
 	if (target_name)
 	{
-		check_json_keys(project_target_keys, project_target_keys_count, json, target_name, "--list-project-properties");
+		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count, json, target_name, "--list-project-properties");
 	}
 	else
 	{
-		check_json_keys(project_default_keys, project_default_keys_count, json, "default target", "--list-project-properties");
+		check_json_keys(project_default_keys, project_default_keys_count, NULL, 0, json, "default target", "--list-project-properties");
 	}
 	target->cc = get_string(PROJECT_JSON, target_name, json, "cc", target->cc);
 

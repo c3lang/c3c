@@ -21,7 +21,7 @@
     "hello_world": {
       "type": "executable",
       "cc" : "cc",
-      "c-sources-override": [
+      "c-sources": [
         "./csource/**"
       ],
       "reloc": "PIE",
@@ -34,7 +34,7 @@
     "hello_world_lib": {
       "type": "static-lib",
       "cc" : "cc",
-      "c-sources-override": [
+      "c-sources": [
         "./csource/**"
       ]
     },

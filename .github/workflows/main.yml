@@ -10,6 +10,7 @@ env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
   LLVM_RELEASE_VERSION_MAC: 18
   LLVM_RELEASE_VERSION_LINUX: 18
+  LLVM_DEV_VERSION: 20
 jobs:
 
   build-msvc:
@@ -209,7 +210,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19]
+        llvm_version: [17, 18, 20]
 
     steps:
       - uses: actions/checkout@v4
@@ -228,7 +229,7 @@ jobs:
               lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
               libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
           else
-            if [[ "${{matrix.llvm_version}}" < 19 ]]; then
+            if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
               sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
               sudo apt-get update
               sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
@@ -242,7 +243,7 @@ jobs:
             fi
           fi
       - name: CMake
-        if: matrix.llvm_version != 18
+        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
         run: |
           cmake -B build \
                 -G Ninja \
@@ -256,7 +257,7 @@ jobs:
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}
           cmake --build build
       - name: CMake18
-        if: matrix.llvm_version == 18
+        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
         run: |
           cmake -B build \
                 -G Ninja \
@@ -267,7 +268,7 @@ jobs:
                 -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
                 -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
                 -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=18.1
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
 
       - name: Compile and run some examples
@@ -356,7 +357,7 @@ jobs:
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          if [[ "${{matrix.llvm_version}}" < 19 ]]; then
+          if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
           else
             sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
@@ -366,7 +367,7 @@ jobs:
           sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
           sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
       - name: CMake Old
-        if: matrix.llvm_version < 18
+        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
         run: |          
           cmake -B build \
                 -G Ninja \
@@ -380,7 +381,7 @@ jobs:
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}
           cmake --build build
       - name: CMake
-        if: matrix.llvm_version >= 18
+        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
         run: |
           cmake -B build \
                 -G Ninja \
@@ -477,12 +478,12 @@ jobs:
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
 
       - name: CMake
-        if: matrix.llvm_version != 18
+        if: matrix.llvm_version < 18
         run: |
           cmake -B build -G Ninja -DC3_LLVM_VERSION=${{matrix.llvm_version}} -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
       - name: CMake18
-        if: matrix.llvm_version == 18
+        if: matrix.llvm_version >= 18
         run: |
           cmake -B build -G Ninja -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
           cmake --build build
