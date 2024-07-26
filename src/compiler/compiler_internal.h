@@ -766,7 +766,7 @@ typedef struct
 	ExprId cond;
 	ExprId then_expr; // May be null for elvis!
 	ExprId else_expr;
-	bool widen : 1;
+	bool grouped : 1;
 } ExprTernary;
 
 typedef struct
@@ -774,6 +774,7 @@ typedef struct
 	ExprId left;
 	ExprId right;
 	BinaryOp operator : 8;
+	bool grouped : 1;
 } ExprBinary;
 
 typedef struct
@@ -3411,7 +3412,6 @@ INLINE void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_GENERIC_IDENT:
-		case EXPR_GROUP:
 		case EXPR_HASH_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:

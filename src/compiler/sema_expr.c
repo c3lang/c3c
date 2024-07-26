@@ -35,7 +35,7 @@ static inline bool sema_constant_fold_ops(Expr *expr);
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, SubscriptEval eval_type);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr);
+
 static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref);
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error);
@@ -189,8 +189,8 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr);
 static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr);
 
-static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, bool was_group, Expr *identifier, bool *missing_ref);
-static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, bool was_group, Expr *identifier, bool *missing_ref);
+static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, Expr *identifier, bool *missing_ref);
+static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, Expr *identifier, bool *missing_ref);
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, Range range);
 static inline void sema_expr_flatten_const_ident(Expr *expr);
@@ -532,8 +532,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			return sema_binary_is_expr_lvalue(context, top_expr, expr->access_expr.parent);
-		case EXPR_GROUP:
-			return sema_binary_is_expr_lvalue(context, top_expr, expr->inner_expr);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT_ADDR:
@@ -658,8 +656,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			return expr_may_ref(expr->access_expr.parent);
-		case EXPR_GROUP:
-			return expr_may_ref(expr->inner_expr);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT_ADDR:
@@ -3143,13 +3139,6 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 }
 
 
-static inline bool sema_expr_analyse_group(SemaContext *context, Expr *expr)
-{
-	if (!sema_analyse_expr(context, expr->inner_expr)) return false;
-	*expr = *expr->inner_expr;
-	return true;
-}
-
 /**
  * 1. .A -> It is an enum constant.
  * 2. .foo -> It is a function.
@@ -3260,8 +3249,7 @@ static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, 
 	return sema_analyse_expr(context, enum_array_expr);
 }
 
-static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, bool was_group,
-												 Expr *identifier, bool *missing_ref)
+static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, Expr *identifier, bool *missing_ref)
 {
 	assert(identifier->expr_kind == EXPR_IDENTIFIER);
 	Type *canonical = parent_type->canonical;
@@ -3371,9 +3359,7 @@ MISSING_REF:
 	return false;
 }
 
-static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr,
-												   Expr *parent, bool was_group, Expr *identifier,
-												   bool *missing_ref)
+static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, Expr *identifier, bool *missing_ref)
 {
 	assert(identifier->expr_kind == EXPR_IDENTIFIER);
 
@@ -4313,7 +4299,6 @@ static inline void sema_expr_flatten_const_ident(Expr *expr)
 static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref)
 {
 	Expr *parent = expr->access_expr.parent;
-	bool was_group = parent->expr_kind == EXPR_GROUP;
 	if (missing_ref) *missing_ref = false;
 
 	// 1. Resolve the left hand
@@ -4369,15 +4354,15 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
 	if (parent->expr_kind == EXPR_TYPEINFO)
 	{
-		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, was_group, identifier, missing_ref);
+		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
 	}
 	if (parent->expr_kind == EXPR_IDENTIFIER && parent->type->type_kind == TYPE_FUNC_RAW)
 	{
-		return sema_expr_analyse_type_access(context, expr, parent->type, was_group, identifier, missing_ref);
+		return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
 	}
 	if (expr_is_const_member(parent))
 	{
-		return sema_expr_analyse_member_access(context, expr, parent, was_group, identifier, missing_ref);
+		return sema_expr_analyse_member_access(context, expr, parent, identifier, missing_ref);
 	}
 
 	// 6. Copy failability
@@ -5112,22 +5097,21 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	// 1. Evaluate left side
-	if (left->expr_kind == EXPR_CT_IDENT)
+	switch (left->expr_kind)
 	{
-		return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
-	}
-
-	if (left->expr_kind == EXPR_TYPEINFO)
-	{
-		return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
-	}
-	if (left->expr_kind == EXPR_SUBSCRIPT)
-	{
-		if (!sema_expr_analyse_subscript(context, left, SUBSCRIPT_EVAL_ASSIGN)) return false;
-	}
-	else
-	{
-		if (!sema_analyse_expr_lvalue(context, left)) return false;
+		case EXPR_CT_IDENT:
+			// $foo = ...
+			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
+		case EXPR_TYPEINFO:
+			// $Foo = ...
+			return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
+		case EXPR_SUBSCRIPT:
+			// abc[...] = ...
+			if (!sema_expr_analyse_subscript(context, left, SUBSCRIPT_EVAL_ASSIGN)) return false;
+			break;
+		default:
+			if (!sema_analyse_expr_lvalue(context, left)) return false;
+			break;
 	}
 	// 2. Check assignability
 	if (!sema_expr_check_assign(context, left)) return false;
@@ -6430,8 +6414,6 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			}
 			return sema_addr_check_may_take(inner->access_expr.parent);
 		}
-		case EXPR_GROUP:
-			return sema_addr_check_may_take(inner->inner_expr);
 		case EXPR_SUBSCRIPT:
 			return sema_addr_check_may_take(exprptr(inner->subscript_expr.expr));
 		case EXPR_TYPEINFO:
@@ -6452,15 +6434,10 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 {
 	// 1. Evaluate the expression
 	Expr *inner = expr->unary_expr.expr;
-	REDO:
 	switch (inner->expr_kind)
 	{
 		case EXPR_POISONED:
 			return false;
-		case EXPR_GROUP:
-			// We want to collapse any grouping here.
-			expr_replace(inner, inner->inner_expr);
-			goto REDO;
 		case EXPR_SUBSCRIPT:
 			inner->expr_kind = EXPR_SUBSCRIPT_ADDR;
 			if (failed_ref)
@@ -6777,6 +6754,11 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 	return true;
 }
 
+INLINE bool expr_is_ungrouped_binary(Expr *expr)
+{
+	return expr->expr_kind == EXPR_BINARY && !expr->binary_expr.grouped;
+}
+
 static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side)
 {
 	static int BINOP_PREC_REQ[BINARYOP_LAST + 1] = {
@@ -6799,7 +6781,7 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 
 	BinaryOp main_op = main_expr->binary_expr.operator;
 	int precedence_main = BINOP_PREC_REQ[main_op];
-	if (left_side->expr_kind == EXPR_BINARY)
+	if (expr_is_ungrouped_binary(left_side))
 	{
 		int left_op = left_side->binary_expr.operator;
 		int precedence_left = BINOP_PREC_REQ[left_op];
@@ -6809,7 +6791,7 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 			if (precedence_left != 1 || left_op != main_op) return true;
 		}
 	}
-	if (right_side->expr_kind == EXPR_BINARY)
+	if (expr_is_ungrouped_binary(right_side))
 	{
 		int right_op = right_side->binary_expr.operator;
 		int precedence_right = BINOP_PREC_REQ[right_op];
@@ -6823,12 +6805,17 @@ static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main
 }
 
 
+INLINE bool expr_is_ungrouped_ternary(Expr *expr)
+{
+	return expr->expr_kind == EXPR_TERNARY && !expr->ternary_expr.grouped;
+}
+
 static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 {
 	Expr *lhs = exprptr(expr->binary_expr.left);
 	bool lhs_is_embed = lhs->expr_kind == EXPR_EMBED;
 	Expr *rhs = exprptr(expr->binary_expr.right);
-	if (lhs->expr_kind == EXPR_TERNARY || rhs->expr_kind == EXPR_TERNARY)
+	if (expr_is_ungrouped_ternary(lhs) || expr_is_ungrouped_ternary(rhs))
 	{
 		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
 		return false;
@@ -8295,7 +8282,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				REMINDER("Check if these should be analysed");
 				FALLTHROUGH;
 				// Above needs to be analysed
-			case EXPR_GROUP:
 			case EXPR_INITIALIZER_LIST:
 			case EXPR_DESIGNATED_INITIALIZER_LIST:
 			case EXPR_ASM:
@@ -9082,8 +9068,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 			return sema_expr_analyse_subscript(context, expr, SUBSCRIPT_EVAL_VALUE);
 		case EXPR_SUBSCRIPT_ADDR:
 			return sema_expr_analyse_subscript(context, expr, SUBSCRIPT_EVAL_REF);
-		case EXPR_GROUP:
-			return sema_expr_analyse_group(context, expr);
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
@@ -9103,18 +9087,17 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 
 bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result)
 {
-	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_ASSIGN)
+	if (expr_is_ungrouped_binary(expr) && expr->binary_expr.operator == BINARYOP_ASSIGN)
 	{
-		SEMA_ERROR(expr, "Assignment expressions must be enclosed in an extra () in conditionals.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Assignment expressions must be enclosed in an extra () in conditionals.");
 	}
 	if (!sema_analyse_expr(context, expr)) return false;
 	if (IS_OPTIONAL(expr))
 	{
-		SEMA_ERROR(expr, "An optional %s cannot be implicitly converted to a regular boolean value, use '@ok(<expr>)' "
-						 "and '@catch(<expr>)' to conditionally execute on success or failure.",
-				   type_quoted_error_string(expr->type));
-		return false;
+		RETURN_SEMA_ERROR(expr, "An optional %s cannot be implicitly converted to a regular boolean value, "
+								"use '@ok(<expr>)' and '@catch(<expr>)' to conditionally execute on success "
+								"or failure.",
+								type_quoted_error_string(expr->type));
 	}
 	if (!cast_explicit(context, expr, type_bool)) return false;
 	if (expr_is_const_bool(expr))

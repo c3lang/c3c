@@ -255,7 +255,6 @@ RETRY:
 	switch (expr->expr_kind)
 	{
 		case EXPR_SUBSCRIPT_ASSIGN:
-		case EXPR_GROUP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_VASPLAT:
 		case EXPR_POISONED:

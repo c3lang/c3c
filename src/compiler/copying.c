@@ -432,7 +432,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_OPTIONAL:
-		case EXPR_GROUP:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:

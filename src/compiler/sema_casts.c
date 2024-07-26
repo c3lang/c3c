@@ -517,7 +517,6 @@ RETRY:
 		case EXPR_POST_UNARY:
 			expr = expr->unary_expr.expr;
 			goto RETRY;
-		case EXPR_GROUP:
 		case EXPR_FORCE_UNWRAP:
 			expr = expr->inner_expr;
 			goto RETRY;

@@ -730,26 +730,41 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_GROUP);
+	Expr *expr;
 	advance_and_verify(c, TOKEN_LPAREN);
-	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	// Look at what follows.
-	if (expr->inner_expr->expr_kind == EXPR_TYPEINFO)
+	switch (expr->expr_kind)
 	{
-		TypeInfo *info = expr->inner_expr->type_expr;
-		if (tok_is(c, TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
+		case EXPR_TYPEINFO:
 		{
-			PRINT_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
-			return poisoned_expr;
+			TypeInfo *info = expr->type_expr;
+			if (tok_is(c, TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
+			{
+				PRINT_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
+				return poisoned_expr;
+			}
+			// Create a cast expr
+			if (rules[c->tok].prefix)
+			{
+				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, PREC_CALL), poisoned_expr);
+				SourceSpan span = expr->span;
+				*expr = (Expr) {.expr_kind = EXPR_CAST,
+						.span = span,
+						.cast_expr.type_info = type_infoid(info),
+						.cast_expr.expr = inner};
+			}
+			break;
 		}
-		// Create a cast expr
-		if (rules[c->tok].prefix)
-		{
-			ASSIGN_EXPRID_OR_RET(expr->cast_expr.expr, parse_precedence(c, PREC_CALL), poisoned_expr);
-			expr->expr_kind = EXPR_CAST;
-			expr->cast_expr.type_info = type_infoid(info);
-		}
+		case EXPR_BINARY:
+			expr->binary_expr.grouped = true;
+			break;
+		case EXPR_TERNARY:
+			expr->ternary_expr.grouped = true;
+			break;
+		default:
+			break;
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;

@@ -77,8 +77,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
 			return expr_may_addr(expr->access_expr.parent);
-		case EXPR_GROUP:
-			return expr_may_addr(expr->inner_expr);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 			return true;
@@ -251,7 +249,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			expr = exprptr(expr->typeid_info_expr.parent);
 			goto RETRY;
 		case EXPR_OPTIONAL:
-		case EXPR_GROUP:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_DEFAULT_ARG:
@@ -790,8 +787,6 @@ bool expr_is_pure(Expr *expr)
 			return false;
 		case EXPR_DEFAULT_ARG:
 			return expr_is_pure(expr->default_arg_expr.inner);
-		case EXPR_GROUP:
-			return expr_is_pure(expr->inner_expr);
 	}
 	UNREACHABLE
 }
@@ -802,9 +797,6 @@ bool expr_is_simple(Expr *expr, bool to_float)
 	RETRY:
 	switch (expr->expr_kind)
 	{
-		case EXPR_GROUP:
-			expr = expr->inner_expr;
-			goto RETRY;
 		case EXPR_TERNARY:
 			return exprid_is_simple(expr->ternary_expr.else_expr, to_float) && exprid_is_simple(expr->ternary_expr.then_expr, to_float);
 		case EXPR_RETHROW:

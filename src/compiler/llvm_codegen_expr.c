@@ -7153,7 +7153,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_rethrow_expr(c, value, expr);
 			return;
 		case EXPR_TYPEID:
-		case EXPR_GROUP:
 		case EXPR_SUBSCRIPT_ASSIGN:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE

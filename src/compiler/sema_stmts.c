@@ -649,7 +649,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_GENERIC_IDENT:
-		case EXPR_GROUP:
 		case EXPR_HASH_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_INITIALIZER_LIST:
@@ -1431,9 +1430,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	bool is_reverse = statement->foreach_stmt.is_reverse;
 	bool value_by_ref = statement->foreach_stmt.value_by_ref;
 	bool success = true;
-
-	// First fold the enumerator expression, removing any () around it.
-	while (enumerator->expr_kind == EXPR_GROUP) enumerator = enumerator->inner_expr;
 
 	bool iterator_based = false;
 
