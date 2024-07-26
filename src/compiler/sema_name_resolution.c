@@ -116,12 +116,12 @@ Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol)
 	return member;
 }
 
-static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const char *symbol, bool *path_found)
+static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const char *symbol, Module **path_found_ref)
 {
 	if (!path) return module_find_symbol(module, symbol);
 	if (path->len > module->name->len) return NULL;
 	if (!matches_subpath(module->name, path)) return NULL;
-	*path_found = true;
+	*path_found_ref = module;
 	return module_find_symbol(module, symbol);
 }
 
@@ -164,22 +164,22 @@ static bool sema_find_decl_in_private_imports(SemaContext *context, NameResolve 
 	return true;
 }
 
-static inline bool sema_is_path_found(Module **modules, Path *path, bool want_generic)
+static inline Module *sema_is_path_found(Module **modules, Path *path, bool want_generic)
 {
 	FOREACH(Module *, module, modules)
 	{
 		if (module->is_generic != want_generic) continue;
 		if (matches_subpath(module->name, path))
 		{
-			return true;
+			return module;
 		}
 	}
-	return false;
+	return NULL;
 }
 
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name)
 {
-	bool path_found = false;
+	Module *path_found = NULL;
 	FOREACH(Module *, module, module_list)
 	{
 		Decl *decl = sema_find_decl_in_module(module, path, interned_name, &path_found);
@@ -379,7 +379,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	Path *path = name_resolve->path;
 	name_resolve->ambiguous_other_decl = NULL;
 	Decl *decl = NULL;
-	name_resolve->path_found = false;
+	name_resolve->path_found = NULL;
 	name_resolve->found = NULL;
 	assert(name_resolve->path && "Expected path.");
 
@@ -387,7 +387,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	// 0. std module special handling.
 	if (path->module == global_context.std_module_path.module)
 	{
-		name_resolve->path_found = true;
+		name_resolve->path_found = &global_context.std_module;
 		name_resolve->found = module_find_symbol(&global_context.std_module, symbol);
 		return true;
 	}
@@ -399,7 +399,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	{
 		// 2. If so try to locally get the symbol.
 		if ((name_resolve->found = module_find_symbol(unit->module, symbol))) return true;
-		name_resolve->path_found = true;
+		name_resolve->path_found = unit->module;
 	}
 
 	// 3. Loop over imports.
@@ -484,7 +484,60 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	return sema_find_decl_in_global(context, &global_context.symbols, NULL, name_resolve, false);
 }
 
+static int levenshtein(const char *s, int ls, const char *t, int lt)
+{
+	if (!ls) return lt;
+	if (!lt) return ls;
+	if (s[ls - 1] == t[lt - 1]) return levenshtein(s, ls - 1, t, lt - 1);
+	int a = levenshtein(s, ls - 1, t, lt - 1);
+	int b = levenshtein(s, ls,     t, lt - 1);
+	int c = levenshtein(s, ls - 1, t, lt    );
 
+	if (a > b) a = b;
+	if (a > c) a = c;
+
+	return a + 1;
+}
+
+static void find_closest(const char *name, int name_len, Decl **decls, int *count_ref, Decl* matches[3], int *best_distance_ref)
+{
+	int best_distance = *best_distance_ref;
+	int count = *count_ref;
+	FOREACH(Decl *, decl, decls)
+	{
+		if (decl->visibility != VISIBLE_PUBLIC) continue;
+		int dist = levenshtein(name, name_len, decl->name, strlen(decl->name));
+		if (dist < best_distance)
+		{
+			matches[0] = decl;
+			best_distance = dist;
+			count = 1;
+			continue;
+		}
+		if (dist == best_distance && count < 3)
+		{
+			matches[count++] = decl;
+		}
+	}
+	*count_ref = count;
+	*best_distance_ref = best_distance;
+}
+static int module_closest_ident_names(Module *module, const char *name, Decl* matches[3])
+{
+	matches[0] = matches[1] = matches[2] = NULL;
+
+	Decl *best = NULL;
+	int distance = 2;
+	int count = 0;
+	int len = strlen(name);
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
+		find_closest(name, len, unit->functions, &count, matches, &distance);
+		find_closest(name, len, unit->macros, &count, matches, &distance);
+		find_closest(name, len, unit->vars, &count, matches, &distance);
+	}
+	return count;
+}
 static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_resolve)
 {
 	assert(!name_resolve->suppress_error);
@@ -537,7 +590,8 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 			              "please use either %s::%s or %s::%s to resolve the ambiguity.",
 			              symbol_type, path_name, symbol, found_path, other_path,
 			              found_path, symbol, other_path, symbol);
-		} else
+		}
+		else
 		{
 			if (decl_needs_prefix(found))
 			{
@@ -556,6 +610,34 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	assert(!found);
 	if (path_name)
 	{
+		// A common mistake is to type println and printfln
+		if (name_resolve->path_found)
+		{
+			Decl *closest[3];
+			int matches = module_closest_ident_names(name_resolve->path_found, symbol, closest);
+			switch (matches)
+			{
+				case 1:
+					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s'?",
+					              path_name, symbol, path_name, closest[0]->name);
+					return;
+				case 2:
+					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s' or '%s::%s'?",
+					              path_name, symbol, path_name, closest[0]->name, path_name, closest[1]->name);
+					return;
+				case 3:
+					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s', '%s::%s' or '%s::%s'?",
+					              path_name, symbol, path_name, closest[0]->name,
+					              path_name, closest[2]->name);
+					return;
+				default:
+					break;
+			}
+			if (matches > 0)
+			{
+				return;
+			}
+		}
 		sema_error_at(context, span, "'%s::%s' could not be found, did you spell it right?", path_name, symbol);
 	}
 	else
@@ -568,14 +650,13 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 {
 	name_resolve->ambiguous_other_decl = NULL;
 	name_resolve->private_decl = NULL;
-	name_resolve->path_found = false;
+	name_resolve->path_found = NULL;
 	if (name_resolve->path)
 	{
 		if (!sema_resolve_path_symbol(context, name_resolve)) return false;
 		if (!name_resolve->found && !name_resolve->maybe_decl && !name_resolve->path_found)
 		{
 			if (name_resolve->suppress_error) return true;
-			bool path_found = false;
 			Module *module_with_path = NULL;
 			FOREACH(Module *, module, global_context.module_list)
 			{
@@ -854,7 +935,7 @@ bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_r
 {
 	name_resolve->ambiguous_other_decl = NULL;
 	name_resolve->private_decl = NULL;
-	name_resolve->path_found = false;
+	name_resolve->path_found = NULL;
 
 	if (!sema_find_decl_in_private_imports(context, name_resolve, true)) return false;
 	if (!name_resolve->found)

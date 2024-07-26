@@ -1900,7 +1900,7 @@ typedef struct
 	Path *path;
 	SourceSpan span;
 	const char *symbol;
-	bool path_found;
+	Module *path_found;
 	bool suppress_error;
 } NameResolve;
 
