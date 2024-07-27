@@ -332,11 +332,11 @@ jobs:
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
         run: |
-          mkdir linux
-          cp -r lib linux
-          cp msvc_build_libraries.py linux
-          cp build/c3c linux
-          tar czf c3-linux-${{matrix.build_type}}.tar.gz linux
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          tar czf c3-linux-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
@@ -452,11 +452,11 @@ jobs:
       - name: bundle_output
         if: matrix.llvm_version == 17
         run: |
-          mkdir linux
-          cp -r lib linux
-          cp msvc_build_libraries.py linux
-          cp build/c3c linux
-          tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz linux
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
         if: matrix.llvm_version == 17
