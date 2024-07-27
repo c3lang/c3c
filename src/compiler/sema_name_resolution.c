@@ -484,20 +484,37 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 	return sema_find_decl_in_global(context, &global_context.symbols, NULL, name_resolve, false);
 }
 
-static int levenshtein(const char *s, int ls, const char *t, int lt)
+#define MAX_TEST 256
+
+int damerau_levenshtein_distance(const char *a, int a_len, const char *b, int b_len)
 {
-	if (!ls) return lt;
-	if (!lt) return ls;
-	if (s[ls - 1] == t[lt - 1]) return levenshtein(s, ls - 1, t, lt - 1);
-	int a = levenshtein(s, ls - 1, t, lt - 1);
-	int b = levenshtein(s, ls,     t, lt - 1);
-	int c = levenshtein(s, ls - 1, t, lt    );
-
-	if (a > b) a = b;
-	if (a > c) a = c;
-
-	return a + 1;
+	if (!a_len) return b_len;
+	if (!b_len) return a_len;
+	if (a_len >= MAX_TEST || b_len >= MAX_TEST) return MAX_TEST;
+	int score[MAX_TEST][MAX_TEST];
+	memset(score, 0, MAX_TEST * MAX_TEST);
+	for (int i = 0; i <= a_len; i++) score[i][0] = i;
+	for (int i = 0; i <= b_len; i++) score[0][i] = i;
+	for (int i = 0; i < a_len; i++)
+	{
+		for (int j = 0; j < b_len; j++)
+		{
+			int cost = a[i] == b[i] ? 0 : 1;
+			int del = score[i][j + 1] + 1;
+			int insert = score[i + 1][j] + 1;
+			int substitute = score[i][j] + cost;
+			int min = del < insert ? del : insert;
+			score[i + 1][j + 1] = min < substitute ? min : substitute;
+			if (i > 0 && j > 0 && a[i] == b[j - 1] && a[i - 1] == b[j])
+			{
+				int comp = score[i - 1][j - 1] + 1;
+				if (comp < score[i + 1][j + 1]) score[i + 1][j + 1] = comp;
+			}
+		}
+	}
+	return score[a_len][b_len];
 }
+
 
 static void find_closest(const char *name, int name_len, Decl **decls, int *count_ref, Decl* matches[3], int *best_distance_ref)
 {
@@ -506,7 +523,7 @@ static void find_closest(const char *name, int name_len, Decl **decls, int *coun
 	FOREACH(Decl *, decl, decls)
 	{
 		if (decl->visibility != VISIBLE_PUBLIC) continue;
-		int dist = levenshtein(name, name_len, decl->name, strlen(decl->name));
+		int dist = damerau_levenshtein_distance(name, name_len, decl->name, strlen(decl->name));
 		if (dist < best_distance)
 		{
 			matches[0] = decl;
@@ -527,9 +544,9 @@ static int module_closest_ident_names(Module *module, const char *name, Decl* ma
 	matches[0] = matches[1] = matches[2] = NULL;
 
 	Decl *best = NULL;
-	int distance = 2;
 	int count = 0;
 	int len = strlen(name);
+	int distance = MAX(1, (int)(len * 0.8));
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		find_closest(name, len, unit->functions, &count, matches, &distance);
@@ -627,7 +644,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 					return;
 				case 3:
 					sema_error_at(context, span, "'%s::%s' could not be found, did you perhaps want '%s::%s', '%s::%s' or '%s::%s'?",
-					              path_name, symbol, path_name, closest[0]->name,
+					              path_name, symbol, path_name, closest[0]->name, path_name, closest[1]->name,
 					              path_name, closest[2]->name);
 					return;
 				default:

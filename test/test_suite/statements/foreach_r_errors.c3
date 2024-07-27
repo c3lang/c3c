@@ -33,7 +33,7 @@ fn void test4()
 
 fn void test5()
 {
-    foreach_r (int! y : z) foo(); // #error: The variable may not be an optional.
+    foreach_r (int! y : z) foo();
 }
 
 fn void test6()

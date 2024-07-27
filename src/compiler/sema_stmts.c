@@ -1539,7 +1539,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		if (!by_ref && value_by_ref)
 		{
-			SEMA_ERROR(enumerator, "%s does not support 'foreach' with the value by reference.", type_quoted_error_string(enumerator->type));
+			SEMA_ERROR(enumerator, "%s does not support 'foreach' by reference, but you iterate by value.", type_quoted_error_string(enumerator->type));
 			return false;
 		}
 		if (!decl_ok(len) || !decl_ok(by_val) || !decl_ok(by_ref)) return false;
@@ -1565,12 +1565,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		var->var.type_info = type_infoid(type_info);
 	}
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-
-	if (type_is_optional(type_info->type))
-	{
-		SEMA_ERROR(type_info, "The variable may not be an optional.");
-		return false;
-	}
 
 	// Set up the optional index parameter
 	Type *index_var_type = NULL;
