@@ -81,6 +81,11 @@ static const char *optlevels[4] = {
 	[OPTIMIZATION_AGGRESSIVE] = "max",
 };
 
+static const char *backtrace_levels[2] = {
+	[SHOW_BACKTRACE_OFF] = "off",
+	[SHOW_BACKTRACE_ON] = "on",
+};
+
 static const char *reloc_models[5] = {
 	[RELOC_NONE] = "none",
 	[RELOC_SMALL_PIC] = "pic",

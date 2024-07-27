@@ -683,7 +683,7 @@ fn void install_signal_handler(CInt signal, SignalFunction func) @local
 }
 
 // Clean this up
-fn void install_signal_handlers() @init(101) @local
+fn void install_signal_handlers() @init(101) @local @if(env::BACKTRACE)
 {
 	install_signal_handler(libc::SIGBUS, &sig_bus_error);
 	install_signal_handler(libc::SIGSEGV, &sig_segmentation_fault);

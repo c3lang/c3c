@@ -105,6 +105,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	AutoVectorization vectorization = VECTORIZATION_OFF;
 	AutoVectorization slp_vectorization = VECTORIZATION_OFF;
 	MergeFunctions merge_functions = MERGE_FUNCTIONS_OFF;
+	ShowBacktrace show_backtrace = SHOW_BACKTRACE_ON;
 	bool single_module = false;
 	FpOpt fp_opt = FP_STRICT;
 	switch (level)
@@ -172,6 +173,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			optsize = SIZE_OPTIMIZATION_TINY;
 			panic_level = PANIC_OFF;
 			safety_level = SAFETY_OFF;
+			show_backtrace = SHOW_BACKTRACE_OFF;
 			single_module = true;
 			slp_vectorization = VECTORIZATION_ON;
 			vectorization = VECTORIZATION_OFF;
@@ -182,6 +184,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	}
 	if (target->optsize == SIZE_OPTIMIZATION_NOT_SET) target->optsize = optsize;
 	if (target->optlevel == OPTIMIZATION_NOT_SET) target->optlevel = optlevel;
+	if (target->show_backtrace == SHOW_BACKTRACE_NOT_SET) target->show_backtrace = show_backtrace;
 	if (target->feature.safe_mode == SAFETY_NOT_SET) target->feature.safe_mode = safety_level;
 	if (target->feature.panic_level == PANIC_NOT_SET) target->feature.panic_level = panic_level;
 	if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = debug;
@@ -281,6 +284,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->strip_unused != STRIP_UNUSED_NOT_SET) target->strip_unused = options->strip_unused;
 	if (options->memory_environment != MEMORY_ENV_NOT_SET) target->memory_environment = options->memory_environment;
 	if (options->debug_info_override != DEBUG_INFO_NOT_SET) target->debug_info = options->debug_info_override;
+	if (options->show_backtrace != SHOW_BACKTRACE_NOT_SET) target->show_backtrace = options->show_backtrace;
 	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT) target->arch_os_target = options->arch_os_target_override;
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 	if (options->symtab_size) target->symtab_size = options->symtab_size;

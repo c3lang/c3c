@@ -14,6 +14,7 @@
 - Don't generate .o files on `compile` and `compile-run` if there is no `main`.
 - c3c init-lib does not create the directory with the .c3l suffix #1253
 - Permit foreach values to be optional.
+- Add `--show-backtrace` option to disable backtrace for even smaller binary.
 
 ### Fixes
 - Broken WASM library code.

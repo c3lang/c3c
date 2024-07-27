@@ -1109,6 +1109,7 @@ void compile()
 	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.optsize, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", active_target.debug_info == DEBUG_INFO_FULL);
+	setup_bool_define("BACKTRACE", active_target.show_backtrace != SHOW_BACKTRACE_OFF);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 	setup_bool_define("BENCHMARKING", active_target.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);

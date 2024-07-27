@@ -260,7 +260,7 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 
 static void assign_panicfn(void)
 {
-	if (!active_target.panicfn && no_stdlib())
+	if (active_target.feature.panic_level == PANIC_OFF || (!active_target.panicfn && no_stdlib()))
 	{
 		global_context.panic_var = NULL;
 		global_context.panicf = NULL;

@@ -194,6 +194,13 @@ typedef enum
 
 typedef enum
 {
+	SHOW_BACKTRACE_NOT_SET = -1,
+	SHOW_BACKTRACE_OFF = 0,
+	SHOW_BACKTRACE_ON = 1
+} ShowBacktrace;
+
+typedef enum
+{
 	SIZE_OPTIMIZATION_NOT_SET = -1,
 	SIZE_OPTIMIZATION_NONE = 0,     // None
 	SIZE_OPTIMIZATION_SMALL = 1,    // -Os
@@ -383,6 +390,7 @@ typedef struct BuildOptions_
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
 	OptimizationSetting optsetting;
 	DebugInfo debug_info_override;
+	ShowBacktrace show_backtrace;
 	ArchOsTarget arch_os_target_override;
 	SafetyLevel safety_level;
 	PanicLevel panic_level;
@@ -529,6 +537,7 @@ typedef struct
 	UseStdlib use_stdlib;
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
+	ShowBacktrace show_backtrace;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
 	MergeFunctions merge_functions;
@@ -603,6 +612,7 @@ static BuildTarget default_build_target = {
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 		.debug_info = DEBUG_INFO_NOT_SET,
+		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,

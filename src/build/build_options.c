@@ -99,9 +99,9 @@ static void usage(void)
 	PRINTF("  -O2                        - Unsafe, high optimization, emit debug info.");
 	PRINTF("  -O3                        - Unsafe, high optimization, single module, emit debug info.");
 	PRINTF("  -O4                        - Unsafe, highest optimization, relaxed maths, single module, emit debug info, no panic messages.");
-	PRINTF("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info, no panic messages.");
+	PRINTF("  -O5                        - Unsafe, highest optimization, fast maths, single module, emit debug info, no panic messages, no backtrace.");
 	PRINTF("  -Os                        - Unsafe, high optimization, small code, single module, no debug info, no panic messages.");
-	PRINTF("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info, no panic messages.");
+	PRINTF("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info, no panic messages, no backtrace.");
 	PRINTF("  -D <name>                  - Add feature flag <name>.");
 	PRINTF("  -U <name>                  - Remove feature flag <name>.");
 	PRINTF("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
@@ -123,6 +123,7 @@ static void usage(void)
 	PRINTF("  --optlevel=<option>        - Code optimization level: none, less, more, max.");
 	PRINTF("  --optsize=<option>         - Code size optimization: none, small, tiny.");
 	PRINTF("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
+	PRINTF("  --show-backtrace=<yes|no>  - Show detailed backtrace on segfaults.");
 	PRINTF("");
 	PRINTF("  -g                         - Emit debug info.");
 	PRINTF("  -g0                        - Emit no debug info.");
@@ -682,6 +683,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("safe")))
 			{
 				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("show-backtrace")))
+			{
+				options->show_backtrace = (ShowBacktrace) parse_multi_option(argopt, 2, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("panic-msg")))

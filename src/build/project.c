@@ -41,6 +41,7 @@ const char *project_default_keys[][2] = {
 		{"panic-msg", "Turn panic message output on or off."},
 		{"reloc", "Relocation model: none, pic, PIC, pie, PIE."},
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
+		{"show-backtrace", "Print backtrace on signals."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
 		{"soft-float", "Output soft-float functions."},
@@ -107,6 +108,7 @@ const char* project_target_keys[][2] = {
 		{"safe", "Set safety (contracts, runtime bounds checking, null pointer checks etc) on or off."},
 		{"script-dir", "The directory where 'exec' is run."},
 		{"single-module", "Compile all modules together, enables more inlining."},
+		{"show-backtrace", "Print backtrace on signals."},
 		{"soft-float", "Output soft-float functions."},
 		{"sources", "Additional paths to project sources for the target."},
 		{"sources-override", "Paths to project sources for this target, overriding global settings."},
@@ -208,6 +210,7 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 			[DEBUG_INFO_NONE] = "none",
 			[DEBUG_INFO_LINE_TABLES] = "line-tables"
 	};
+
 	DebugInfo info = GET_SETTING(DebugInfo, "debug-info", debug_infos, "one of 'full' 'line-table' or 'none'.");
 	if (info > -1) target->debug_info = info;
 
@@ -232,6 +235,9 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 
 	// Safety level
 	target->feature.safe_mode = (SafetyLevel)get_valid_bool(PROJECT_JSON, target_name, json, "safe", target->feature.safe_mode);
+
+	// Backtrace
+	target->show_backtrace = (ShowBacktrace) get_valid_bool(PROJECT_JSON, target_name, json, "show-backtrace", target->show_backtrace);
 
 	// Panic level
 	target->feature.panic_level = (PanicLevel)get_valid_bool(PROJECT_JSON, target_name, json, "panic-msg",
