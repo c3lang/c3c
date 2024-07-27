@@ -324,6 +324,13 @@ jobs:
           cd resources/testproject
           ../../build/c3c run --debug-log --linker=builtin
 
+      - name: Init a library & a project
+        run: |
+          ./build/c3c init-lib mylib
+          ls mylib.c3l
+          ./build/c3c init myproject
+          ls myproject
+
       - name: run compiler tests
         run: |
           cd test

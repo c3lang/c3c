@@ -185,6 +185,11 @@ static const char *module_name(BuildOptions *build_options);
 
 void create_library(BuildOptions *build_options)
 {
+	if (str_has_suffix(build_options->project_name, ".c3l"))
+	{
+		exit_fail("Please remove the '.c3l' suffix from the project name.");
+	}
+
 	if (!check_name(build_options->project_name))
 	{
 		exit_fail("'%s' is not a valid library name.", build_options->project_name);
@@ -194,12 +199,13 @@ void create_library(BuildOptions *build_options)
 		exit_fail("Can't open path %s", build_options->path);
 	}
 
-	if (!dir_make(build_options->project_name))
+	const char *dir = str_cat(build_options->project_name, ".c3l");
+	if (!dir_make(dir))
 	{
-		exit_fail("Could not create directory %s.", build_options->project_name);
+		exit_fail("Could not create directory %s.", dir);
 	}
 
-	chdir_or_fail(build_options, build_options->project_name);
+	chdir_or_fail(build_options, dir);
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", LIB_README, build_options->project_name);
 	mkdir_or_fail(build_options, "scripts");
@@ -215,6 +221,7 @@ void create_library(BuildOptions *build_options)
 		mkdir_or_fail(build_options, target);
 	}
 	create_file_or_fail(build_options, "manifest.json", MANIFEST_TEMPLATE, build_options->project_name, scratch_buffer_to_string());
+	printf("The '%s' library has been set up in the directory '%s'.\n", build_options->project_name, dir);
 }
 
 void create_project(BuildOptions *build_options)

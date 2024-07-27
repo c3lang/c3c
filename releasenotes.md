@@ -12,6 +12,7 @@
 - Made "add" the default for things like `sources`, `dependencies` and other keys in project and library files.
 - Give some symbol name suggestions when the path is matched.
 - Don't generate .o files on `compile` and `compile-run` if there is no `main`.
+- c3c init-lib does not create the directory with the .c3l suffix #1253
 
 ### Fixes
 - Broken WASM library code.
