@@ -42,7 +42,7 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\ls.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\load_world.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\process.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --test -g -O0 --threads 1 --target macos-x64 examples\constants.c3                  
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples\constants.c3                  
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run msvc_stack.c3
 
       - name: Build testproject
@@ -131,7 +131,7 @@ jobs:
           ../build/c3c compile-run --print-linking examples/fannkuch-redux.c3
           ../build/c3c compile-run --print-linking examples/contextfree/boolerr.c3
           ../build/c3c compile-run --print-linking examples/load_world.c3
-          ../build/c3c compile --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
+          ../build/c3c compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
 
       - name: Build testproject
         run: |
@@ -187,7 +187,7 @@ jobs:
           ../build/c3c compile-run examples/fannkuch-redux.c3
           ../build/c3c compile-run examples/contextfree/boolerr.c3
           ../build/c3c compile-run examples/load_world.c3
-          ../build/c3c compile --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
+          ../build/c3c compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples/constants.c3
       - name: Build testproject
         run: |
           cd resources/testproject
@@ -281,9 +281,9 @@ jobs:
           ../build/c3c compile examples/fasta.c3
           ../build/c3c compile examples/gameoflife.c3
           ../build/c3c compile examples/hash.c3
-          ../build/c3c compile examples/levenshtein.c3
+          ../build/c3c compile-only examples/levenshtein.c3
           ../build/c3c compile examples/load_world.c3
-          ../build/c3c compile examples/map.c3
+          ../build/c3c compile-only examples/map.c3
           ../build/c3c compile examples/mandelbrot.c3
           ../build/c3c compile examples/plus_minus.c3
           ../build/c3c compile examples/nbodies.c3
@@ -403,8 +403,8 @@ jobs:
         run: |
           cd resources
           ../build/c3c compile examples/gameoflife.c3
-          ../build/c3c compile examples/levenshtein.c3
-          ../build/c3c compile examples/map.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile-only examples/map.c3
           ../build/c3c compile examples/mandelbrot.c3
           ../build/c3c compile examples/plus_minus.c3
           ../build/c3c compile examples/spectralnorm.c3

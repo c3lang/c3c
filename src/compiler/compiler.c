@@ -435,6 +435,14 @@ void compiler_compile(void)
 			error_exit("Failed to create output directory '%s'.", active_target.object_file_dir);
 		}
 	}
+	if (active_target.type == TARGET_TYPE_EXECUTABLE && !global_context.main && !active_target.no_entry)
+	{
+		error_exit("The 'main' function for the executable could not found, did you forget to add it?\n\n"
+				   "- If you're using an alternative entry point you can suppress this message using '--no-entry'.\n"
+				   "- If you want to build a library, use 'static-lib' or 'dynamic-lib'.\n"
+				   "- If you just want to output object files for later linking, use 'compile-only'.");
+	}
+
 	switch (active_target.backend)
 	{
 		case BACKEND_LLVM:
@@ -466,14 +474,8 @@ void compiler_compile(void)
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:
-				if (!global_context.main && !active_target.no_entry)
-				{
-					puts("No main function was found, compilation only object files are generated.");
-				}
-				else
-				{
-					output_exe = exe_name();
-				}
+				assert(global_context.main || active_target.no_entry);
+				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_STATIC_LIB:
 				output_static = static_lib_name();

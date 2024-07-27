@@ -16,7 +16,7 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 		{
 			if (str_eq(key, deprecated_keys[j]))
 			{
-				eprintf("'%s' is using the deprecated parameter '%s'", target_name, key);
+				eprintf("Note: Target '%s' is using the deprecated parameter '%s'\n", target_name, key);
 				goto OK;
 			}
 		}

@@ -11,6 +11,7 @@
 - `*-add` keys in targets in `manifest.json` and `project.json` are deprecated.
 - Made "add" the default for things like `sources`, `dependencies` and other keys in project and library files.
 - Give some symbol name suggestions when the path is matched.
+- Don't generate .o files on `compile` and `compile-run` if there is no `main`.
 
 ### Fixes
 - Broken WASM library code.

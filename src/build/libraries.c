@@ -65,20 +65,12 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
                                         JSONObject *object)
 {
 	target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
-	if (target->link_flags)
-	{
-		eprintf("Library %s is using the deprecated `linkflags` parameter.", library->provides);
-	}
-	else
+	if (!target->link_flags)
 	{
 		target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
 	}
 	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
-	if (target->linked_libs)
-	{
-		eprintf("Library %s is using the deprecated `linked-libs` parameter.", library->provides);
-	}
-	else
+	if (!target->linked_libs)
 	{
 		target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
 	}

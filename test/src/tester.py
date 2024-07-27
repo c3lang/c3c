@@ -153,7 +153,7 @@ class Issues:
         self.current_file.close()
         print("- " + str(self.conf.numtests) + "/" + str(
             self.conf.numtests - self.conf.numsuccess - 1) + " " + self.sourcefile.filepath + ":", end="")
-        self.compile("--test compile " + self.current_file.filepath)
+        self.compile("--test compile-only " + self.current_file.filepath)
         if not self.has_errors:
             self.conf.numsuccess += 1
             print(" Passed.")
@@ -229,7 +229,7 @@ class Issues:
             if file.is_target:
                 files_to_compile += " " + file.filepath
 
-        self.compile("--test compile " + files_to_compile)
+        self.compile("--test compile-only " + files_to_compile)
         if self.has_errors:
             return
 
