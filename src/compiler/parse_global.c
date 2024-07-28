@@ -2029,6 +2029,10 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 	else if (method_type)
 	{
 		// 5d. A method type but no dot is also wrong.
+		if (method_type->kind == TYPE_INFO_IDENTIFIER && tok_is(c, TOKEN_LPAREN))
+		{
+			RETURN_PRINT_ERROR_AT(false, method_type, "A function name must start with lower case, as names starting with upper case are reserved for types.");
+		}
 		RETURN_PRINT_ERROR_AT(false, method_type, "There is unexpectedly a type after the return type, did you forget a '.'?");
 	}
 	RESULT:
