@@ -597,7 +597,7 @@ void compiler_compile(void)
 			default:
 				break;
 		}
-		if (use_system_linker || active_target.linker_type == LINKER_TYPE_BUILTIN)
+		if (use_system_linker || active_target.linker_type == LINKER_TYPE_CC)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
