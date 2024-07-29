@@ -166,7 +166,7 @@ static void usage(void)
 	PRINTF("  --list-operators           - List all operators.");
 	PRINTF("  --list-precedence          - List operator precedence order.");
 	PRINTF("  --list-project-properties  - List all available keys used in project.json files.");
-	PRINTF("  --list-manifest-properties  - List all available keys used in manifest.json files.");
+	PRINTF("  --list-manifest-properties - List all available keys used in manifest.json files.");
 	PRINTF("  --list-targets             - List all architectures the compiler supports.");
 	PRINTF("  --list-type-properties     - List all type properties.");
 	PRINTF("");
