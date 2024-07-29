@@ -84,19 +84,19 @@ macro void release_wargs(String[] list) @private
 	free(list.ptr);
 }
 
-macro int @win_to_err_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_err_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	if (catch #m()) return 1;
 	return 0;
 }
-macro int @win_to_int_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd) => #m();
-macro int @win_to_void_main_noargs(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_int_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd) => #m();
+macro int @win_to_void_main_noargs(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	#m();
 	return 0;
 }
 
-macro int @win_to_err_main_args(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_err_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
@@ -104,14 +104,14 @@ macro int @win_to_err_main_args(#m, void* handle, Char16* cmd_line, int show_cmd
 	return 0;
 }
 
-macro int @win_to_int_main_args(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_int_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
 	return #m(args);
 }
 
-macro int @win_to_void_main_args(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_void_main_args(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
@@ -119,26 +119,26 @@ macro int @win_to_void_main_args(#m, void* handle, Char16* cmd_line, int show_cm
 	return 0;
 }
 
-macro int @win_to_err_main(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_err_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	if (catch #m(handle, args, show_cmd)) return 1;
+	if (catch #m(handle, prev_handle, args, show_cmd)) return 1;
 	return 0;
 }
 
-macro int @win_to_int_main(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_int_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	return #m(handle, args, show_cmd);
+	return #m(handle, prev_handle, args, show_cmd);
 }
 
-macro int @win_to_void_main(#m, void* handle, Char16* cmd_line, int show_cmd)
+macro int @win_to_void_main(#m, void* handle, void* prev_handle, Char16* cmd_line, int show_cmd)
 {
 	String[] args = win_command_line_to_strings(cmd_line);
 	defer release_wargs(args);
-	#m(handle, args, show_cmd);
+	#m(handle, prev_handle, args, show_cmd);
 	return 0;
 }
 

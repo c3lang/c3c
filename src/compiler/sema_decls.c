@@ -2910,29 +2910,32 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 				return MAIN_TYPE_ERROR;
 			}
 			return MAIN_TYPE_RAW;
-		case 3:
+		case 4:
 			if (!is_win32 || !is_winmain) break;
-			arg_type = type_flatten(params[0]->type);
-			arg_type2 = type_flatten(params[1]->type);
-			if (arg_type != type_voidptr)
+			for (int i = 0; i < 2; i++)
 			{
-				SEMA_ERROR(params[0], "Expected a parameter of type 'void*' (HINSTANCE)");
-				return MAIN_TYPE_ERROR;
+				arg_type = type_flatten(params[i]->type);
+				if (arg_type != type_voidptr)
+				{
+					SEMA_ERROR(params[i], "Expected a parameter of type 'void*' (Win32_HINSTANCE)");
+					return MAIN_TYPE_ERROR;
+				}
 			}
+			arg_type2 = type_flatten(params[2]->type);
 			if (arg_type2 != type_get_slice(type_string))
 			{
 				SEMA_ERROR(params[1], "Expected a parameter of type 'String[]'.");
 				return MAIN_TYPE_ERROR;
 			}
-			if (type_flatten(params[2]->type) != type_cint)
+			if (type_flatten(params[3]->type) != type_cint)
 			{
-				SEMA_ERROR(params[2], "Expected a parameter of type %s for the 'showCmd' parameter.",
+				SEMA_ERROR(params[3], "Expected a parameter of type %s for the 'showCmd' parameter.",
 						   type_quoted_error_string(type_cint));
 				return MAIN_TYPE_ERROR;
 			}
 			if (!is_win32)
 			{
-				SEMA_ERROR(params[0], "'main(HINSTANCE, String[], int) is only valid for Windows.");
+				SEMA_ERROR(params[0], "'main(Win32_HINSTANCE, Win32_HINSTANCE, String[], int) is only valid for Windows.");
 				return MAIN_TYPE_ERROR;
 			}
 			return MAIN_TYPE_WIN;
@@ -2940,7 +2943,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 			break;
 	}
 	SEMA_ERROR(params[0], (is_win32 & is_winmain)
-		? "Expected zero, 1 or 3 parameters for main."
+		? "Expected zero, 1 or 4 parameters for main."
 		: "Expected zero or 1 parameters for main.");
 	return MAIN_TYPE_ERROR;
 
@@ -2956,37 +2959,37 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 	function->unit = decl->unit;
 
 	// Pick wWinMain, main or wmain
-	Decl *param1;
-	Decl *param2;
-	Decl *param3 = NULL;
-
+	Decl *params[4] = { NULL, NULL, NULL, NULL };
+	int param_count;
 	if (is_winmain)
 	{
 		function->extname = kw_winmain;
-		param1 = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
-		param2 = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
-		param3 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[0] = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+		params[1]  = decl_new_generated_var(type_voidptr, VARDECL_PARAM, decl->span);
+		params[2]  = decl_new_generated_var(type_get_ptr(type_ushort), VARDECL_PARAM, decl->span);
+		params[3]  = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		param_count = 4;
 	}
 	else if (is_wmain)
 	{
 		function->extname = kw_wmain;
-		param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+		param_count = 2;
 	}
 	else
 	{
 		function->extname = kw_main;
-		param1 = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
-		param2 = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+		param_count = 2;
 	}
 
 	function->has_extname = true;
 	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
-	function->func_decl.signature.vararg_index = is_winmain ? 3 : 2;
+	function->func_decl.signature.vararg_index = param_count;
 	Decl **main_params = NULL;
-	vec_add(main_params, param1);
-	vec_add(main_params, param2);
-	if (param3) vec_add(main_params, param3);
+	for (int i = 0; i < param_count; i++) vec_add(main_params, params[i]);
 	function->func_decl.signature.params = main_params;
 	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
 	AstId *next = &body->compound_stmt.first_stmt;
@@ -3070,13 +3073,13 @@ NEXT:;
 	Expr *call = expr_new(EXPR_CALL, decl->span);
 	Expr *fn_ref = expr_variable(decl);
 	vec_add(call->call_expr.arguments, fn_ref);
-	vec_add(call->call_expr.arguments, expr_variable(param1));
-	vec_add(call->call_expr.arguments, expr_variable(param2));
-	if (param3) vec_add(call->call_expr.arguments, expr_variable(param3));
+	for (int i = 0; i < param_count; i++)
+	{
+		Expr *arg = expr_variable(params[i]);
+		vec_add(call->call_expr.arguments, arg);
+	}
 	call->call_expr.function = exprid(invoker);
-	param1->resolve_status = RESOLVE_NOT_DONE;
-	param2->resolve_status = RESOLVE_NOT_DONE;
-	if (param3) param3->resolve_status = RESOLVE_NOT_DONE;
+	for (int i = 0; i < param_count; i++) params[i]->resolve_status = RESOLVE_NOT_DONE;
 	ast_append(&next, ret_stmt);
 	ret_stmt->return_stmt.expr = call;
 	function->func_decl.body = astid(body);
