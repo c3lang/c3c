@@ -84,5 +84,7 @@ jobs:
       - name: Compile and run Risc-V Example
         run: |
           cd resources/examples/embedded/riscv-qemu
+          riscv64-unknown-elf-as --verion
+          riscv64-unknown-elf-as --help
           make C3C_PATH=../../../../build/ run
 
