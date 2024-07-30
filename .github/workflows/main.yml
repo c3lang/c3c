@@ -323,7 +323,7 @@ jobs:
         run: |
           sudo apt-get install opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
 
-      - name: Compile and run Risc-V Example
+      - name: Compile and run Baremetal Risc-V Example
         run: |
           cd resources/examples/embedded/riscv-qemu
           make C3C_PATH=../../../../build/ run
