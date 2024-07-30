@@ -271,20 +271,6 @@ jobs:
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
 
-      - name: Test Xtensa
-        if: matrix.llvm_version > 18
-        run: |
-          cd resources
-          ../build/c3c compile-only --test --safe=no --single-module=yes --target elf-xtensa --emit-llvm -o foo --link-libc=no examples/levenshtein.c3          
-          ls
-          cat std.core.mem.ll
-
-      - name: Test Xtensa2
-        if: matrix.llvm_version > 18
-        run: |
-          cd resources
-          ../build/c3c compile-only --safe=no --target elf-xtensa --link-libc=no examples/levenshtein.c3
-
       - name: Compile and run some examples
         run: |
           cd resources            

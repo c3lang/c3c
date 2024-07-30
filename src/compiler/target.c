@@ -1057,7 +1057,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[ELF_RISCV32] = "riscv32-unknown-elf",
 		[LINUX_RISCV64] = "riscv64-unknown-linux",
 		[ELF_RISCV64] = "riscv64-unknown-elf",
-		[ELF_XTENSA] = "xtensa-unknown-unknown",
+		[ELF_XTENSA] = "xtensa-unknown-elf",
 		[WASM32] = "wasm32-unknown-unknown",
 		[WASM64] = "wasm64-unknown-unknown",
 };
@@ -1761,7 +1761,7 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
 	return scratch_buffer_to_string();
 }
 
-#if LLVM_VERSION_MAJOR > 18
+#if LLVM_VERSION_MAJOR > 19
 #define XTENSA_AVAILABLE 1
 #else
 #define XTENSA_AVAILABLE 0
