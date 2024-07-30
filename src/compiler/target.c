@@ -1028,6 +1028,8 @@ const char *arch_to_linker_arch(ArchType arch)
 			return "wasm32";
 		case ARCH_TYPE_WASM64:
 			return "wasm64";
+		case ARCH_TYPE_XTENSA:
+			return "xtensa";
 	}
 	UNREACHABLE;
 }
@@ -1055,6 +1057,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[ELF_RISCV32] = "riscv32-unknown-elf",
 		[LINUX_RISCV64] = "riscv64-unknown-linux",
 		[ELF_RISCV64] = "riscv64-unknown-elf",
+		[ELF_XTENSA] = "xtensa-unknown-unknown",
 		[WASM32] = "wasm32-unknown-unknown",
 		[WASM64] = "wasm64-unknown-unknown",
 };
@@ -1144,6 +1147,7 @@ static ArchType arch_from_llvm_string(StringSlice slice)
 	STRCASE("amd64", ARCH_TYPE_X86_64)
 	STRCASE("x86_64h", ARCH_TYPE_X86_64)
 	STRCASE("xcore", ARCH_TYPE_XCORE)
+	STRCASE("xtensa", ARCH_TYPE_XTENSA)
 	STRCASE("nvptx", ARCH_TYPE_NVPTX)
 	STRCASE("nvptx64", ARCH_TYPE_NVPTX64)
 	STRCASE("le32", ARCH_TYPE_LE32)
@@ -1297,6 +1301,7 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_X86:
 		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_XTENSA:
 			return 32;
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_AARCH64:
@@ -1310,9 +1315,8 @@ static unsigned arch_pointer_bit_width(OsType os, ArchType arch)
 		case ARCH_TYPE_X86_64:
 			if (os == OS_TYPE_NACL) return 32;
 			return 64;
-		default:
-			UNREACHABLE
 	}
+	UNREACHABLE
 }
 
 static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
@@ -1330,6 +1334,7 @@ static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
 		case ARCH_TYPE_THUMBEB:
 		case ARCH_TYPE_X86:
 		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_XTENSA:
 			return 32;
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_AARCH64:
@@ -1343,9 +1348,8 @@ static unsigned arch_int_register_bit_width(OsType os, ArchType arch)
 		case ARCH_TYPE_X86_64:
 			if (os == OS_TYPE_NACL) return 32;
 			return 64;
-		default:
-			UNREACHABLE
 	}
+	UNREACHABLE
 }
 
 static unsigned os_target_supports_float16(OsType os, ArchType arch)
@@ -1443,6 +1447,7 @@ static unsigned os_target_supports_int128(OsType os, ArchType arch)
 		case ARCH_TYPE_WASM64:
 			return true;
 		case ARCH_TYPE_PPC:
+		case ARCH_TYPE_XTENSA:
 		default:
 			return false;
 	}
@@ -1547,6 +1552,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_WASM32:
+		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
@@ -1578,6 +1584,7 @@ static unsigned arch_big_endian(ArchType arch)
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_XTENSA:
 			return false;
 		case ARCH_TYPE_ARMB:
 		case ARCH_TYPE_THUMBEB:
@@ -1615,6 +1622,7 @@ static AlignData os_target_alignment_of_float(OsType os, ArchType arch, uint32_t
 		case ARCH_TYPE_RISCV64:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:
+		case ARCH_TYPE_XTENSA:
 			return (AlignData) { bits , bits };
 		case ARCH_TYPE_ARM:
 		case ARCH_TYPE_THUMB:
@@ -1752,6 +1760,13 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
 	scratch_buffer_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor);
 	return scratch_buffer_to_string();
 }
+
+#if LLVM_VERSION_MAJOR > 18
+#define XTENSA_AVAILABLE 1
+#else
+#define XTENSA_AVAILABLE 0
+#endif
+
 void *llvm_target_machine_create(void)
 {
 	static bool llvm_initialized = false;
@@ -1759,6 +1774,9 @@ void *llvm_target_machine_create(void)
 	if (!llvm_initialized)
 	{
 		llvm_initialized = true;
+#if XTENSA_AVAILABLE
+		INITIALIZE_TARGET(Xtensa);
+#endif
 		INITIALIZE_TARGET(ARM);
 		INITIALIZE_TARGET(AArch64);
 		INITIALIZE_TARGET(RISCV);
@@ -1821,7 +1839,13 @@ void target_setup(BuildTarget *target)
 		error_exit("Unable to detect the default target, please set an explicit --target value.");
 	}
 
+	if (target->arch_os_target == ELF_XTENSA && !XTENSA_AVAILABLE)
+	{
+		error_exit("Xtensa support is not available with this LLVM version.");
+	}
+
 	platform_target.target_triple = arch_to_target_triple[target->arch_os_target];
+	assert(platform_target.target_triple);
 
 	platform_target.alloca_address_space = 0;
 
@@ -1856,7 +1880,7 @@ void target_setup(BuildTarget *target)
 	platform_target.arch = arch_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	if (!arch_is_supported(platform_target.arch))
 	{
-		printf("WARNING! This architecture is not supported.\n");
+		printf("WARNING! This architecture is unsupported.\n");
 	}
 	platform_target.vendor = vendor_from_llvm_string(slice_next_token(&target_triple_string, '-'));
 	platform_target.os = os_from_llvm_string(slice_next_token(&target_triple_string, '-'));
@@ -1923,6 +1947,9 @@ void target_setup(BuildTarget *target)
 			platform_target.aarch.is_darwin = os_is_apple(platform_target.os);
 			platform_target.aarch.is_win32 = platform_target.os == OS_TYPE_WIN32;
 			platform_target.abi = ABI_AARCH64;
+			break;
+		case ARCH_TYPE_XTENSA:
+			platform_target.abi = ABI_XTENSA;
 			break;
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_WASM64:

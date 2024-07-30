@@ -112,6 +112,7 @@ enum ArchType
 	WASM64,       // WebAssembly with 64-bit pointers
 	RSCRIPT32,    // 32-bit RenderScript
 	RSCRIPT64,    // 64-bit RenderScript
+	XTENSA,       // Xtensa
 }
 
 const OsType OS_TYPE = (OsType)$$OS_TYPE;
