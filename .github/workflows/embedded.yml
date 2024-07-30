@@ -1,4 +1,6 @@
-name: CI
+name: Embedded
+
+on: workflow_dispatch
 
 env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
@@ -6,8 +8,6 @@ env:
   LLVM_RELEASE_VERSION_LINUX: 18
   LLVM_DEV_VERSION: 20
 jobs:
-
-on: workflow_dispatch
 
   build-linux:
     runs-on: ubuntu-latest
