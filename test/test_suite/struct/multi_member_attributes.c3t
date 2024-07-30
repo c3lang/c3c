@@ -1,0 +1,22 @@
+// #target: macos-x64
+
+module test;
+
+char  x, y, z @align(64);
+
+struct Vector3
+{
+     char x, y, z @align(8); // Issue #1266
+}
+
+Vector3 a = { 6, 8, 16 };
+
+/* #expect: test.ll
+
+
+%Vector3 = type { i8, [7 x i8], i8, [7 x i8], i8, [7 x i8] }
+
+@test.x = local_unnamed_addr global i8 0, align 64
+@test.y = local_unnamed_addr global i8 0, align 64
+@test.z = local_unnamed_addr global i8 0, align 64
+@test.a = local_unnamed_addr global %Vector3 { i8 6, [7 x i8] undef, i8 8, [7 x i8] undef, i8 16, [7 x i8] undef }, align 8

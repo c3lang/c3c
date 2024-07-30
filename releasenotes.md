@@ -3,6 +3,7 @@
 ## 0.6.2 Change list
 
 ### Changes / improvements
+
 - Updated LLVM passes
 - Added `is_substruct` type property.
 - Scalar -> vector not implicit in call or assign.
@@ -17,12 +18,15 @@
 - Add `--show-backtrace` option to disable backtrace for even smaller binary.
 
 ### Fixes
+
 - Broken WASM library code.
 - Regression: Invalid is_random implementation due to changes in 0.6.
 - `dbghelp.lib` was linked even on nolibc on Windows.
 - Fix incorrect linker selection on some platforms.
+- Struct members declared in a single line declaration were not sharing attributes. #1266
 
 ### Stdlib changes
+
 None
 
 ## 0.6.1 Change list

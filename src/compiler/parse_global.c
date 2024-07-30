@@ -1495,6 +1495,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 		}
 		ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), false);
 
+		unsigned first_member_index = vec_size(parent->strukt.members);
 		while (1)
 		{
 			if (!tok_is(c, TOKEN_IDENT)) RETURN_PRINT_ERROR_HERE("A valid member name was expected here.");
@@ -1514,6 +1515,25 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			if (was_inline)
 			{
 				RETURN_PRINT_ERROR_AT(false, member, "'inline' can only be applied to a single member, so please define it on its own line.");
+			}
+		}
+		Decl **members = parent->strukt.members;
+		unsigned last_index = vec_size(members) - 1;
+		if (last_index != first_member_index)
+		{
+			Decl *last_member = members[last_index];
+			Attr **attributes = last_member->attributes;
+			if (attributes)
+			{
+				// Copy attributes
+				bool is_cond = last_member->is_cond;
+				for (unsigned i = first_member_index; i < last_index; i++)
+				{
+					Decl *member = members[i];
+					if (is_cond) member->is_cond = true;
+					assert(!member->attributes);
+					member->attributes = copy_attributes_single(attributes);
+				}
 			}
 		}
 		CONSUME_EOS_OR_RET(false);
