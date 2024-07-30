@@ -26,13 +26,21 @@ else
     CMAKE_BUILD_TYPE="$config"
 fi
 
-UBUNTU_VERSION="22.10"
-LLVM_VERSION="15"
+UBUNTU_VERSION="22.04"
+UBUNTU_CODENAME=$( \
+    if [ "${UBUNTU_VERSION}" = "22.04" ]; then echo "jammy"; \
+    elif [ "${UBUNTU_VERSION}" = "20.04" ]; then echo "focal"; \
+    elif [ "${UBUNTU_VERSION}" = "18.04" ]; then echo "bionic"; \
+    else echo "unknown"; fi)
+
+LLVM_VERSION="17"
 
 IMAGE="$IMAGE:22"
 
 cd docker && $DOCKER build -t $IMAGE\
-    --build-arg DEPS="llvm-$LLVM_VERSION-dev liblld-$LLVM_VERSION-dev clang-$LLVM_VERSION libllvm$LLVM_VERSION llvm-$LLVM_VERSION-runtime" \
+    --build-arg DEPS="llvm-$LLVM_VERSION-dev liblld-$LLVM_VERSION-dev clang-$LLVM_VERSION libllvm$LLVM_VERSION llvm-$LLVM_VERSION-runtime libpolly-$LLVM_VERSION-dev" \
+	--build-arg LLVM_VERSION="$LLVM_VERSION" \
+	--build-arg UBUNTU_CODENAME="$UBUNTU_CODENAME" \
     --build-arg UBUNTU_VERSION="$UBUNTU_VERSION" .
 cd ..
 
