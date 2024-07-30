@@ -69,7 +69,7 @@ int get_valid_bool(const char *file, const char *target, JSONObject *json, const
 	if (value->type != J_BOOL)
 	{
 		if (target) error_exit("In file '%s': '%s' had an invalid '%s' field that was not a boolean, please correct it.", file, target, key);
-		error_exit("In file '%s': An invalid '%s' field that was not a boolean, please correct it.", file, target, key);
+		error_exit("In file '%s': An invalid '%s' field that was not a boolean, please correct it.", file, key);
 	}
 	return value->b;
 }
