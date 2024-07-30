@@ -459,6 +459,8 @@ void init_asm(void)
 		case ARCH_TYPE_WASM32:
 			init_asm_wasm();
 			return;
+		case ARCH_TYPE_XTENSA:
+			error_exit("Xtensa asm support not yet available.");
 		case ARCH_TYPE_UNKNOWN:
 			error_exit("Unknown arch does not support asm.");
 			UNREACHABLE

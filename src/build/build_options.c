@@ -20,6 +20,7 @@ char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 	[ELF_RISCV64] = "elf-riscv64",
 	[ELF_X86] = "elf-x86",
 	[ELF_X64] = "elf-x64",
+	[ELF_XTENSA] = "elf-xtensa",
 	[FREEBSD_X86] = "freebsd-x86",
 	[FREEBSD_X64] = "freebsd-x64",
 	[LINUX_AARCH64] = "linux-aarch64",

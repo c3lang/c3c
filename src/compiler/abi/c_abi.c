@@ -197,25 +197,32 @@ void c_abi_func_create(FunctionPrototype *proto)
 	{
 		case ABI_X64:
 			c_abi_func_create_x64(proto);
-			break;
+			return;
 		case ABI_X86:
 			c_abi_func_create_x86(proto);
-			break;
+			return;
 		case ABI_WIN64:
 			c_abi_func_create_win64(proto);
-			break;
+			return;
 		case ABI_AARCH64:
 			c_abi_func_create_aarch64(proto);
-			break;
+			return;
 		case ABI_RISCV:
 			c_abi_func_create_riscv(proto);
-			break;
+			return;
 		case ABI_WASM:
 			c_abi_func_create_wasm(proto);
+			return;
+		case ABI_XTENSA:
+			c_abi_func_create_default(proto);
+			return;
+		case ABI_UNKNOWN:
+		case ABI_ARM:
+		case ABI_PPC32:
+		case ABI_PPC64_SVR4:
 			break;
-		default:
-			FATAL_ERROR("Unsupported ABI");
 	}
+	FATAL_ERROR("Unsupported ABI");
 }
 
 
@@ -242,3 +249,34 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 	return abi_arg_new_direct();
 }
 
+void c_abi_func_create_default(FunctionPrototype *prototype)
+{
+	prototype->ret_abi_info = c_abi_classify_return_type_default(prototype->abi_ret_type);
+	if (prototype->ret_by_ref)
+	{
+		prototype->ret_by_ref_abi_info = c_abi_classify_return_type_default(type_get_ptr(type_flatten(prototype->ret_by_ref_type)));
+	}
+
+	Type **params = prototype->param_types;
+	unsigned param_count = vec_size(prototype->param_types);
+	if (param_count)
+	{
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * param_count);
+		for (unsigned i = 0; i < param_count; i++)
+		{
+			args[i] = c_abi_classify_argument_type_default(params[i]);
+		}
+		prototype->abi_args = args;
+	}
+	Type **va_params = prototype->varargs;
+	unsigned va_param_count = vec_size(va_params);
+	if (va_param_count)
+	{
+		ABIArgInfo **args = MALLOC(sizeof(ABIArgInfo) * va_param_count);
+		for (unsigned i = 0; i < va_param_count; i++)
+		{
+			args[i] = c_abi_classify_argument_type_default(va_params[i]);
+		}
+		prototype->abi_varargs = args;
+	}
+}

@@ -53,7 +53,7 @@ void c_abi_func_create_x64(FunctionPrototype *prototype);
 void c_abi_func_create_aarch64(FunctionPrototype *prototype);
 void c_abi_func_create_riscv(FunctionPrototype *prototype);
 void c_abi_func_create_wasm(FunctionPrototype *prototype);
-
+void c_abi_func_create_default(FunctionPrototype *prototype);
 
 static inline AbiType abi_type_get(Type *type)
 {
