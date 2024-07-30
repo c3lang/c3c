@@ -79,7 +79,7 @@ jobs:
 
       - name: Install QEMU and Risc-V toolchain
         run: |
-          sudo apt-get install qemu gcc-riscv64-linux-gnu
+          sudo apt-get install qemu gcc-riscv64-unknown-elf
 
       - name: Compile and run Risc-V Example
         run: |
