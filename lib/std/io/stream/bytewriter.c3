@@ -11,7 +11,7 @@ struct ByteWriter (OutStream)
 /**
  * @param [&inout] self
  * @param [&inout] allocator
- * @require self.bytes.len == 0 "Init may not run on on already initialized data"
+ * @require self.bytes.len == 0 "Init may not run on already initialized data"
  * @ensure (bool)allocator, self.index == 0
  **/
 fn ByteWriter* ByteWriter.new_init(&self, Allocator allocator = allocator::heap())
@@ -22,7 +22,7 @@ fn ByteWriter* ByteWriter.new_init(&self, Allocator allocator = allocator::heap(
 
 /**
  * @param [&inout] self
- * @require self.bytes.len == 0 "Init may not run on on already initialized data"
+ * @require self.bytes.len == 0 "Init may not run on already initialized data"
  * @ensure self.index == 0
  **/
 fn ByteWriter* ByteWriter.temp_init(&self)
