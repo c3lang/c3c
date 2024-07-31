@@ -247,50 +247,54 @@ static const char *find_freebsd_crt(void)
 	return NULL;
 }
 
-static const char *find_linux_crt(void)
+static const char *find_arch_glob_path(const char *glob_path, int file_len)
 {
-	if (active_target.linuxpaths.crt) return active_target.linuxpaths.crt;
 #if PLATFORM_POSIX
 	glob_t globbuf;
-	if (!glob("/usr/lib/*/crt1.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
+	if (!glob(glob_path, 0, NULL, &globbuf))
 	{
-		const char *path = globbuf.gl_pathv[0];
-		INFO_LOG("Found crt at %s", path);
-		size_t len = strlen(path);
-		assert(len > 6);
-		const char *res = str_copy(path, len - 6);
+		for (int i = 0; i < globbuf.gl_pathc; i++)
+		{
+			const char *path = globbuf.gl_pathv[i];
+			// Avoid qemu problems
+			if (platform_target.arch != ARCH_TYPE_RISCV64
+			    && platform_target.arch != ARCH_TYPE_RISCV32
+			    && strstr(path, "riscv")) continue;
+			size_t len = strlen(path);
+			assert(len > file_len);
+			const char *res = str_copy(path, len - file_len);
+			globfree(&globbuf);
+			return res;
+		}
 		globfree(&globbuf);
-		return res;
-	}
-	else
-	{
-		INFO_LOG("No crt in /usr/lib/*/");
 	}
 #endif
 	return NULL;
+}
+static const char *find_linux_crt(void)
+{
+	if (active_target.linuxpaths.crt) return active_target.linuxpaths.crt;
+	const char *path = find_arch_glob_path("/usr/lib/*/crt1.o", 6);
+	if (!path)
+	{
+		INFO_LOG("No crt in /usr/lib/*/");
+		return NULL;
+	}
+	INFO_LOG("Found crt at %s", path);
+	return path;
 }
 
 static const char *find_linux_crt_begin(void)
 {
 	if (active_target.linuxpaths.crtbegin) return active_target.linuxpaths.crtbegin;
-#if PLATFORM_POSIX
-	glob_t globbuf;
-	if (!glob("/usr/lib/gcc/*/*/crtbegin.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
-	{
-		const char *path = globbuf.gl_pathv[0];
-		INFO_LOG("Found crtbegin at %s", path);
-		size_t len = strlen(path);
-		assert(len > 10);
-		const char *res = str_copy(path, len - 10);
-		globfree(&globbuf);
-		return res;
-	}
-	else
+	const char *path = find_arch_glob_path("/usr/lib/gcc/*/*/crtbegin.o", 10);
+	if (!path)
 	{
 		INFO_LOG("No crtbegin in /usr/lib/gcc/*/*/");
+		return NULL;
 	}
-#endif
-	return NULL;
+	INFO_LOG("Found crtbegin at %s", path);
+	return path;
 }
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type)
