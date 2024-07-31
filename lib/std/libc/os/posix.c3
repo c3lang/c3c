@@ -187,4 +187,4 @@ struct Termios {
         Cc[NCCS] c_cc;
         Speed c_ispeed;
         Speed c_ospeed;
-}
+
