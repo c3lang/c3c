@@ -166,12 +166,16 @@ const CInt IXOFF = 0010000;
 const CInt IMAXBEL = 0020000;
 const CInt IUTF8 = 0040000;
 
-extern fn CInt getAttr(Fd fd, Termios* self) @extern("tcgetattr");
-extern fn CInt setAttr(Fd fd, CInt optional_actions, Termios* self) @extern("tcsetattr");
-extern fn CInt sendBreak(Fd fd, CInt __duration) @extern("tcsendbreak");
-extern fn CInt drain(Fd fd) @extern("tcdrain");
-extern fn CInt flush(Fd fd, CInt queue_selector) @extern("tcflush");
-extern fn CInt flow(Fd fd, CInt action) @extern("tcflow");
+extern fn CInt tcgetattr(Fd fd, Termios* self);
+extern fn CInt tcsetattr(Fd fd, CInt optional_actions, Termios* self);
+extern fn CInt tcsendbreak(Fd fd, CInt duration);
+extern fn CInt tcdrain(Fd fd);
+extern fn CInt tcflush(Fd fd, CInt queue_selector);
+extern fn CInt tcflow(Fd fd, CInt action);
+extern fn Speed cfgetospeed(Termios* self);
+extern fn Speed cfgetispeed(Termios* self);
+extern fn CInt cfsetospeed(Termios* self, Speed speed);
+extern fn CInt cfsetispeed(Termios* self, Speed speed);
 
 const CInt NCCS = 32;
 struct Termios {
@@ -184,10 +188,3 @@ struct Termios {
         Speed c_ispeed;
         Speed c_ospeed;
 }
-
-extern fn Speed Termios.getOSpeed(Termios* self) @extern("cfgetospeed");
-extern fn Speed Termios.getISpeed(Termios* self) @extern("cfgetispeed");
-extern fn CInt Termios.setOSpeed(Termios* self, Speed speed) @extern("cfsetospeed");
-extern fn CInt Termios.setISpeed(Termios* self, Speed speed) @extern("cfsetispeed");
-macro CInt Termios.getAttr(Termios* self, Fd fd) => getAttr(fd, self);
-macro CInt Termios.setAttr(Termios* self, Fd fd, CInt optional_actions) => setAttr(fd, optional_actions, self);
