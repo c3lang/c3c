@@ -1,5 +1,20 @@
 module std::io @test;
 
+fn void printf_int()
+{
+	String s;
+	s = string::new_format("[%-10d]", 78);
+	assert(s == "[78        ]");
+	s = string::new_format("[%10d]", 78);
+	assert(s == "[        78]");
+	s = string::new_format("[%010d]", 78);
+	assert(s == "[0000000078]");
+	s = string::new_format("[%+10d]", 78);
+	assert(s == "[       +78]");
+	s = string::new_format("[%-+10d]", 78);
+	assert(s == "[+78       ]");
+}
+
 fn void printf_a()
 {
 	String s;

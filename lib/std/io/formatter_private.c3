@@ -628,15 +628,15 @@ fn usz! Formatter.out_reverse(&self, char[] buf) @private
 	usz buffer_start_idx = self.idx;
 	usz len = buf.len;
 	// pad spaces up to given width
-	if (!self.flags.zeropad)
+	if (!self.flags.zeropad && !self.flags.left)
 	{
-		n += self.adjust(len)!;
+    	n += self.pad(' ', self.width, len)!;
 	}
 	// reverse string
 	while (len) n += self.out(buf[--len])!;
 
 	// append pad spaces up to given width
-	n += self.adjust(self.idx - buffer_start_idx)!;
+	n += self.adjust(n)!;
 	return n;
 }
 
