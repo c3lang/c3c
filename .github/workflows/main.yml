@@ -9,7 +9,7 @@ on:
 env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
   LLVM_RELEASE_VERSION_MAC: 18
-  LLVM_RELEASE_VERSION_LINUX: 18
+  LLVM_RELEASE_VERSION_LINUX: 17
   LLVM_DEV_VERSION: 20
 jobs:
 
@@ -210,7 +210,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 20]
+        llvm_version: [17, 20]
 
     steps:
       - uses: actions/checkout@v4
@@ -368,7 +368,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18]
+        llvm_version: [17]
     steps:
       - uses: actions/checkout@v4
       - name: Install common deps
