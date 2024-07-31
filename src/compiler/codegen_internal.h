@@ -36,6 +36,11 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;
 				continue;
+			case TYPE_FUNC_PTR:
+				if (type->pointer->function.prototype->raw_type == type->pointer) return type;
+				return type_get_func_ptr(type->pointer->function.prototype->raw_type);
+			case TYPE_FUNC_RAW:
+				return type->function.prototype->raw_type;
 			case TYPE_INTERFACE:
 				return type_any;
 			case TYPE_ANYFAULT:
