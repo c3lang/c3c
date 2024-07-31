@@ -251,23 +251,23 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 {
 #if PLATFORM_POSIX
 	glob_t globbuf;
-	int flag = 0;
-	while (!glob(glob_path, flag, NULL, &globbuf))
+	if (!glob(glob_path, 0, NULL, &globbuf))
 	{
-		flag = GLOB_APPEND;
-		if (!globbuf.gl_pathc) break;
-		const char *path = globbuf.gl_pathv[0];
-		// Avoid qemu problems
-		if (platform_target.arch != ARCH_TYPE_RISCV64
-		    && platform_target.arch != ARCH_TYPE_RISCV32
-		    && strstr(path, "riscv")) continue;
-		size_t len = strlen(path);
-		assert(len > file_len);
-		const char *res = str_copy(path, len - file_len);
+		for (int i = 0; i < globbuf.gl_pathc; i++)
+		{
+			const char *path = globbuf.gl_pathv[0];
+			// Avoid qemu problems
+			if (platform_target.arch != ARCH_TYPE_RISCV64
+			    && platform_target.arch != ARCH_TYPE_RISCV32
+			    && strstr(path, "riscv")) continue;
+			size_t len = strlen(path);
+			assert(len > file_len);
+			const char *res = str_copy(path, len - file_len);
+			globfree(&globbuf);
+			return res;
+		}
 		globfree(&globbuf);
-		return res;
 	}
-	if (flag) globfree(&globbuf);
 #endif
 	return NULL;
 }
