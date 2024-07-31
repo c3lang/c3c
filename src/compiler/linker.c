@@ -252,20 +252,25 @@ static const char *find_linux_crt(void)
 	if (active_target.linuxpaths.crt) return active_target.linuxpaths.crt;
 #if PLATFORM_POSIX
 	glob_t globbuf;
-	if (!glob("/usr/lib/*/crt1.o", 0, NULL, &globbuf) && globbuf.gl_pathc)
+	int flag = 0;
+	while (!glob("/usr/lib/*/crt1.o", flag, NULL, &globbuf))
 	{
+		flag = GLOB_APPEND;
+		if (!globbuf.gl_pathc) break;
 		const char *path = globbuf.gl_pathv[0];
 		INFO_LOG("Found crt at %s", path);
+		// Avoid qemu problems
+		if (platform_target.arch != ARCH_TYPE_RISCV64
+			&& platform_target.arch != ARCH_TYPE_RISCV32
+			&& strstr(path, "riscv")) continue;
 		size_t len = strlen(path);
 		assert(len > 6);
 		const char *res = str_copy(path, len - 6);
 		globfree(&globbuf);
 		return res;
 	}
-	else
-	{
-		INFO_LOG("No crt in /usr/lib/*/");
-	}
+	if (flag) globfree(&globbuf);
+	INFO_LOG("No crt in /usr/lib/*/");
 #endif
 	return NULL;
 }
