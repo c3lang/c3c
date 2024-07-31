@@ -479,7 +479,7 @@ jobs:
       matrix:
         build_type: [Release, Debug]
         llvm_version: [17, 18]
-      steps:
+    steps:
         - uses: actions/checkout@v4
         - name: Install common deps
           run: |
@@ -491,16 +491,16 @@ jobs:
            wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
            if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
-          else
+           else
              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-          fi
-          sudo apt-get update      
-          sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-          sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
-          sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
-       - name: CMake Old
-         if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
-         run: |          
+           fi
+           sudo apt-get update      
+           sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
+           sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools 
+           sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
+        - name: CMake Old
+          if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
+          run: |          
            cmake -B build \
                  -G Ninja \
                  -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
@@ -512,9 +512,9 @@ jobs:
                  -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
                  -DC3_LLVM_VERSION=${{matrix.llvm_version}}
            cmake --build build
-       - name: CMake
-         if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
-         run: |
+        - name: CMake
+          if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
+          run: |
            cmake -B build \
                  -G Ninja \
                  -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
@@ -526,8 +526,8 @@ jobs:
                  -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
                  -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
            cmake --build build
-       - name: Compile and run some examples
-         run: |
+        - name: Compile and run some examples
+          run: |
            cd resources
            ../build/c3c compile examples/gameoflife.c3
            ../build/c3c compile-only examples/levenshtein.c3
@@ -556,41 +556,41 @@ jobs:
            ../build/c3c compile-run --linker=builtin linux_stack.c3
            ../build/c3c compile-run linux_stack.c3
 
-       - name: Compile run unit tests
-         run: |
+        - name: Compile run unit tests
+          run: |
            cd test
            ../build/c3c compile-test unit
 
-       - name: Build testproject
-         run: |
+        - name: Build testproject
+          run: |
            cd resources/testproject
            ../../build/c3c run --debug-log
 
-       - name: Build testproject direct linker
-         run: |
+        - name: Build testproject direct linker
+          run: |
            cd resources/testproject
            ../../build/c3c run --debug-log --linker=builtin
 
-       - name: run compiler tests
-         run: |
+        - name: run compiler tests
+          run: |
            cd test
            python3 src/tester.py ../build/c3c test_suite/
 
-       - name: bundle_output
-         if: matrix.llvm_version == 17
-         run: |
+        - name: bundle_output
+          if: matrix.llvm_version == 17
+          run: |
            mkdir c3
            cp -r lib c3
            cp msvc_build_libraries.py c3
            cp build/c3c c3
            tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz c3
 
-       - name: upload artifacts
-         if: matrix.llvm_version == 17
-         uses: actions/upload-artifact@v3
-         with:
-           name: c3-ubuntu-20-${{matrix.build_type}}
-           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
+        - name: upload artifacts
+          if: matrix.llvm_version == 17
+          uses: actions/upload-artifact@v3
+          with:
+            name: c3-ubuntu-20-${{matrix.build_type}}
+            path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
 
   build-mac:
     runs-on: macos-latest
