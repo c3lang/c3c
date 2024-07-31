@@ -11,7 +11,14 @@ fn int Termios.setISpeed(Termios* self, Speed speed) => cfsetispeed(self, speed)
 fn int Termios.getAttr(Termios* self, Fd fd) => tcgetattr(fd, self);
 fn int Termios.setAttr(Termios* self, Fd fd, int optional_actions) => tcsetattr(fd, optional_actions, self);
 
-module libc::termios @if($or(!env::LIBC, !env::POSIX))
+module libc::termios @if($or(!env::LIBC, !env::POSIX));
+
+distinct Cc = char;
+distinct Speed = CUInt;
+distinct Tcflags = CUInt;
+struct Termios {
+        void* dummy;
+}
 
 fn CInt tcgetattr(Fd fd, Termios* self)
 {
