@@ -132,6 +132,38 @@ Decl **parse_include_file(File *file, CompilationUnit *unit)
 	return list;
 }
 
+Ast *parse_include_file_stmts(File *file, CompilationUnit *unit)
+{
+	ParseContext parse_context = { .tok = TOKEN_INVALID_TOKEN };
+	ParseContext *c = &parse_context;
+	c->unit = unit;
+	parse_context.lexer = (Lexer){ .file = file, .context =  c };
+	lexer_init(&parse_context.lexer);
+	// Prime everything
+	advance(c);
+	advance(c);
+	Ast *first = NULL;
+	Ast *current = NULL;
+	while (!tok_is(c, TOKEN_EOF))
+	{
+		Ast *stmt = parse_stmt(c);
+		if (!stmt) continue;
+		if (!ast_ok(stmt))
+		{
+			ast_poison(stmt);
+			return poisoned_ast;
+		}
+		if (!first)
+		{
+			first = current = stmt;
+			continue;
+		}
+		current->next = astid(stmt);
+		current = stmt;
+	}
+	return first;
+}
+
 File stdin_file;
 
 /**

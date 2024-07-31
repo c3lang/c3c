@@ -206,6 +206,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_FNTYPE:
 			case DECL_CT_INCLUDE:
 			case DECL_CT_EXEC:
+			case DECL_CT_EXPAND:
 				continue;
 			case DECL_ATTRIBUTE:
 				break;

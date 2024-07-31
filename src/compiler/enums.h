@@ -69,6 +69,7 @@ typedef enum
 	AST_CT_ASSERT,
 	AST_CT_ECHO_STMT,
 	AST_CT_ELSE_STMT,
+	AST_CT_EXPAND_STMT,
 	AST_CT_FOREACH_STMT,
 	AST_CT_FOR_STMT,
 	AST_CT_IF_STMT,
@@ -91,6 +92,10 @@ typedef enum
 	AST_CONTRACT_FAULT,
 } AstKind;
 
+#define CT_AST \
+ AST_CT_ASSERT: case AST_CT_ECHO_STMT: case AST_CT_ELSE_STMT: \
+ case AST_CT_EXPAND_STMT: case AST_CT_FOREACH_STMT: case AST_CT_FOR_STMT: \
+ case AST_CT_IF_STMT: case AST_CT_SWITCH_STMT
 
 typedef enum
 {
@@ -147,6 +152,7 @@ typedef enum
 	DECL_CT_ASSERT,
 	DECL_CT_ECHO,
 	DECL_CT_EXEC,
+	DECL_CT_EXPAND,
 	DECL_CT_INCLUDE,
 	DECL_DECLARRAY,
 	DECL_DEFINE,
@@ -174,7 +180,7 @@ typedef enum
 	case DECL_DEFINE: case DECL_CT_ASSERT: case DECL_CT_EXEC: \
 	case DECL_CT_ECHO: case DECL_CT_INCLUDE: case DECL_GLOBALS: \
 	case DECL_BODYPARAM: case DECL_VAR: case DECL_ENUM_CONSTANT: case DECL_FAULTVALUE: \
-	case DECL_POISONED
+	case DECL_POISONED: case DECL_CT_EXPAND
 
 #define NON_RUNTIME_EXPR EXPR_DESIGNATOR: case EXPR_POISONED: \
 		case EXPR_CT_DEFINED: case EXPR_CT_AND_OR:\
@@ -601,6 +607,7 @@ typedef enum
 	TOKEN_CT_EVALTYPE,          // $evaltype
 	TOKEN_CT_ERROR,             // $error
 	TOKEN_CT_EXEC,              // $exec
+	TOKEN_CT_EXPAND,            // $expand
 	TOKEN_CT_EXTNAMEOF,         // $extnameof
 	TOKEN_CT_FEATURE,           // $feature
 	TOKEN_CT_FOR,               // $for

@@ -17,6 +17,7 @@
 - Permit foreach values to be optional.
 - Add `--show-backtrace` option to disable backtrace for even smaller binary.
 - Untested Xtensa support.
+- `$expand` macro, to expand a string into code.
 
 ### Fixes
 
@@ -25,6 +26,7 @@
 - `dbghelp.lib` was linked even on nolibc on Windows.
 - Fix incorrect linker selection on some platforms.
 - Struct members declared in a single line declaration were not sharing attributes. #1266
+- `opt` project setting now properly documented.
 
 ### Stdlib changes
 

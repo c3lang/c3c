@@ -113,6 +113,7 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_CT_ASSERT: return "a compile time assert";
 		case DECL_CT_ECHO: return "a compile time echo";
 		case DECL_CT_EXEC: return "compile time exec include";
+		case DECL_CT_EXPAND: return "compile time expand";
 		case DECL_CT_INCLUDE: return "an include";
 		case DECL_DECLARRAY: return "a declarray";
 		case DECL_DEFINE: case DECL_TYPEDEF: return "a define";

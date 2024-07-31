@@ -99,13 +99,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 	switch (ast->ast_kind)
 	{
 		case AST_POISONED:
-		case AST_CT_ECHO_STMT:
-		case AST_CT_ELSE_STMT:
-		case AST_CT_FOREACH_STMT:
-		case AST_CT_FOR_STMT:
-		case AST_CT_IF_STMT:
-		case AST_CT_ASSERT:
-		case AST_CT_SWITCH_STMT:
+		case CT_AST:
 		case AST_CONTRACT:
 		case AST_FOREACH_STMT:
 		case AST_CONTRACT_FAULT:
@@ -567,6 +561,7 @@ RETRY:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_IMPORT:
 		case DECL_CT_INCLUDE:
 		case DECL_LABEL:

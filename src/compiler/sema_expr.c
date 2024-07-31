@@ -779,6 +779,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
 		case DECL_ERASED:
+		case DECL_CT_EXPAND:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -7617,6 +7618,7 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
 			case DECL_CT_EXEC:
+			case DECL_CT_EXPAND:
 			case DECL_CT_INCLUDE:
 			case DECL_DECLARRAY:
 			case DECL_ERASED:

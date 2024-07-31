@@ -575,6 +575,9 @@ RETRY:
 		case AST_DECLS_STMT:
 			MACRO_COPY_DECL_LIST(ast->decls_stmt);
 			break;
+		case AST_CT_EXPAND_STMT:
+			MACRO_COPY_EXPR(ast->expr_stmt);
+			break;
 		case AST_CONTRACT_FAULT:
 			if (ast->contract_fault.resolved)
 			{
@@ -890,6 +893,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->interface_methods);
+			break;
+		case DECL_CT_EXPAND:
+			MACRO_COPY_EXPR(copy->expand_decl);
 			break;
 		case DECL_CT_EXEC:
 			MACRO_COPY_EXPR(copy->exec_decl.filename);

@@ -4277,6 +4277,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_GLOBALS:
 			UNREACHABLE
 	}

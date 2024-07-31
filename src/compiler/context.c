@@ -126,6 +126,7 @@ void decl_register(Decl *decl)
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
+		case DECL_CT_EXPAND:
 		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
@@ -233,6 +234,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			UNREACHABLE
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
+		case DECL_CT_EXPAND:
 			vec_add(unit->ct_includes, decl);
 			return;
 		case DECL_CT_ECHO:

@@ -739,6 +739,7 @@ typedef struct Decl_
 		DefineDecl define_decl;
 		EnumConstantDecl enum_constant;
 		ExecDecl exec_decl;
+		Expr* expand_decl;
 		Signature fntype_decl;
 		FuncDecl func_decl;
 		ImportDecl import;
@@ -1533,6 +1534,7 @@ typedef struct Ast_
 		Decl **decls_stmt;
 		AstDeferStmt defer_stmt;            // 8
 		Expr *expr_stmt;                    // 8
+		Expr *expand_stmt;                  // 8
 		AstForStmt for_stmt;                // 32
 		AstForeachStmt foreach_stmt;        // 40
 		AstIfStmt if_stmt;                  // 32
@@ -2329,6 +2331,7 @@ const char *module_create_object_file_name(Module *module);
 
 bool parse_file(File *file);
 Decl **parse_include_file(File *file, CompilationUnit *unit);
+Ast *parse_include_file_stmts(File *file, CompilationUnit *unit);
 bool parse_stdin(void);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
 
