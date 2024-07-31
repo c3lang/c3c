@@ -38,8 +38,19 @@ int main_real(int argc, const char *argv[])
 		return result;
 	}
 
+	// Memory must be handled here
+	long long max_mem = 0;
+	for (int i = 0; i < argc; i++)
+	{
+		if (str_eq(argv[i], "--max-mem") && i < argc - 1)
+		{
+			max_mem = atoll(argv[i + 1]);
+			if (max_mem) max_mem = next_highest_power_of_2(max_mem);
+			break;
+		}
+	}
 	// First setup memory
-	memory_init();
+	memory_init(max_mem);
 
 	// Parse arguments.
 	BuildOptions build_options = parse_arguments(argc, argv);

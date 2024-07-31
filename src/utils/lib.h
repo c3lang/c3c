@@ -91,7 +91,7 @@ const char *execute_cmd(const char *cmd, bool ignore_failure);
 bool execute_cmd_failable(const char *cmd, const char **result);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
-void memory_init(void);
+void memory_init(size_t max_mem);
 void memory_release();
 
 #define ptrid(ptr_) ((((uintptr_t)(ptr_)) - arena_zero) / 16)

@@ -59,8 +59,15 @@ static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 	return ptr;
 }
 
+size_t max = 0x10000000;
+void vmem_set_max_limit(size_t size_in_mb)
+{
+	max = size_in_mb;
+}
+
 void vmem_init(Vmem *vmem, size_t size_in_mb)
 {
+	if (size_in_mb > max) size_in_mb = max;
 	mmap_init(vmem, 1024 * 1024 * size_in_mb);
 }
 

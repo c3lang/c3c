@@ -14,8 +14,9 @@ static Vmem arena;
 uintptr_t arena_zero;
 static Vmem char_arena;
 
-void memory_init(void)
+void memory_init(size_t max_mem)
 {
+	if (max_mem) vmem_set_max_limit(max_mem);
 	vmem_init(&arena, 2048);
 	vmem_init(&char_arena, 512);
 	allocations_done = 0;
@@ -66,9 +67,9 @@ void run_arena_allocator_tests(void)
 {
 	printf("Begin arena allocator testing.\n");
 	bool was_init = arena.ptr != NULL;
-	if (!was_init) memory_init();
+	if (!was_init) memory_init(0);
 	memory_release();
-	memory_init();
+	memory_init(0);
 	ASSERT(calloc_arena(10) != calloc_arena(10), "Expected different values...");
 	printf("-- Tested basic allocation - OK.\n");
 	ASSERT(arena.allocated == 48, "Expected allocations rounded to next 16 bytes");
@@ -79,7 +80,7 @@ void run_arena_allocator_tests(void)
 	free_arena();
 	ASSERT(arena.allocated == 0, "Arena not freed?");
 	printf("-- Test freeing arena - OK.\n");
-	if (was_init) memory_init();
+	if (was_init) memory_init(0);
 }
 
 void *cmalloc(size_t size)

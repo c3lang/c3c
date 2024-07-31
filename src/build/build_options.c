@@ -89,6 +89,7 @@ static void usage(void)
 	PRINTF("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 	PRINTF("  --about                    - Prints a short description of C3.");
 	PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
+	PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -E                         - Lex only.");
 	PRINTF("  -P                         - Only parse and output the AST as JSON.");
@@ -650,6 +651,14 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("tb"))
 			{
 				options->backend = BACKEND_TB;
+				return;
+			}
+			if (match_longopt("max-mem"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --max-mem needs a valid integer.");
+				const char *maxmem_string = next_arg();
+				int maxmem = atoi(maxmem_string);
+				if (maxmem < 128) PRINTF("Expected a valid positive integer >= 128.");
 				return;
 			}
 			if (match_longopt("symtab"))

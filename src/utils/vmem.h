@@ -19,3 +19,4 @@ typedef struct
 void vmem_init(Vmem *vmem, size_t size_in_mb);
 void *vmem_alloc(Vmem *vmem, size_t alloc);
 void vmem_free(Vmem *vmem);
+void vmem_set_max_limit(size_t size_in_mb);
