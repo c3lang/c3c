@@ -990,6 +990,9 @@ static int jump_buffer_size()
 		case LINUX_RISCV32:
 			// Godbolt test
 			return 76;
+		case ELF_XTENSA:
+			// Godbolt 68 => 17 with 32 bit pointers
+			return 17;
 		case ELF_RISCV64:
 		case LINUX_RISCV64:
 			// Godbolt test

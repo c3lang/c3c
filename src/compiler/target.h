@@ -59,7 +59,8 @@ typedef enum
 	ARCH_TYPE_WASM64,       // WebAssembly with 64-bit pointers
 	ARCH_TYPE_RSCRIPT32,    // 32-bit RenderScript
 	ARCH_TYPE_RSCRIPT64,    // 64-bit RenderScript
-	ARCH_TYPE_LAST = ARCH_TYPE_RSCRIPT64
+	ARCH_TYPE_XTENSA,       // Xtensa
+	ARCH_TYPE_LAST = ARCH_TYPE_XTENSA
 
 } ArchType;
 
@@ -201,6 +202,7 @@ typedef enum
 	ABI_PPC32,
 	ABI_PPC64_SVR4,
 	ABI_RISCV,
+	ABI_XTENSA,
 } ABI;
 
 
