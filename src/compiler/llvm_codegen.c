@@ -950,7 +950,8 @@ static inline void llvm_optimize(GenContext *c)
 #ifndef NDEBUG
 	should_debug = debug_log;
 #endif
-	LLVMOptLevels level;
+	LLVMOptLevels level = LLVM_O0;
+
 	switch (active_target.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
