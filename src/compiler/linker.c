@@ -255,7 +255,7 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 	{
 		for (int i = 0; i < globbuf.gl_pathc; i++)
 		{
-			const char *path = globbuf.gl_pathv[0];
+			const char *path = globbuf.gl_pathv[i];
 			// Avoid qemu problems
 			if (platform_target.arch != ARCH_TYPE_RISCV64
 			    && platform_target.arch != ARCH_TYPE_RISCV32
