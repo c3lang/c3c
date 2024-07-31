@@ -10,6 +10,7 @@ env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
   LLVM_RELEASE_VERSION_MAC: 18
   LLVM_RELEASE_VERSION_LINUX: 17
+  LLVM_RELEASE_VERSION_UBUNTU20: 17
   LLVM_DEV_VERSION: 20
 jobs:
 
@@ -210,7 +211,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 20]
+        llvm_version: [17, 19, 20]
 
     steps:
       - uses: actions/checkout@v4
@@ -368,7 +369,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17]
+        llvm_version: [17, 19]
     steps:
       - uses: actions/checkout@v4
       - name: Install common deps
@@ -466,7 +467,7 @@ jobs:
           python3 src/tester.py ../build/c3c test_suite/
 
       - name: bundle_output
-        if: matrix.llvm_version == 17
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU20
         run: |
           mkdir c3
           cp -r lib c3
@@ -475,7 +476,7 @@ jobs:
           tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
-        if: matrix.llvm_version == 17
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU20
         uses: actions/upload-artifact@v3
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
