@@ -95,7 +95,6 @@ bool command_accepts_files(CompilerCommand command)
 
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level)
 {
-	if (level == OPT_SETTING_NOT_SET) level = OPT_SETTING_O0;
 	OptimizationLevel optlevel = OPTIMIZATION_NONE;
 	SizeOptimizationLevel optsize = SIZE_OPTIMIZATION_NONE;
 	DebugInfo debug = DEBUG_INFO_FULL;
@@ -274,6 +273,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->cc) target->cc = options->cc;
 	if (options->optlevel != OPTIMIZATION_NOT_SET) target->optlevel = options->optlevel;
 	if (options->optsize != SIZE_OPTIMIZATION_NOT_SET) target->optsize = options->optsize;
+	if (options->optsetting != OPT_SETTING_NOT_SET) target->optsetting = options->optsetting;
 	if (options->single_module != SINGLE_MODULE_NOT_SET) target->single_module = options->single_module;
 	if (options->unroll_loops != UNROLL_LOOPS_NOT_SET) target->unroll_loops = options->unroll_loops;
 	if (options->merge_functions != MERGE_FUNCTIONS_NOT_SET) target->merge_functions = options->merge_functions;
@@ -419,14 +419,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		vec_add(target->libs, options->libs[i]);
 	}
-	if (options->optsetting != OPT_SETTING_NOT_SET)
-	{
-		target->optsetting = options->optsetting;
-	}
-	else
-	{
-		if (target->optsetting == OPT_SETTING_NOT_SET) target->optsetting = OPT_SETTING_O0;
-	}
+	if (target->optsetting == OPT_SETTING_NOT_SET) target->optsetting = OPT_SETTING_O0;
 	update_build_target_with_opt_level(target, target->optsetting);
 }
 

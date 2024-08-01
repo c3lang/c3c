@@ -418,7 +418,6 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 	}
 	type = str_printf("%s %s", type, target->name);
 	load_into_build_target(json, type, target);
-	update_build_target_with_opt_level(target, target->optsetting);
 }
 
 static void project_add_targets(Project *project, JSONObject *project_data)
