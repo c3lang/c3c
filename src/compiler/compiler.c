@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #endif
 #include "c3_llvm.h"
+#include "subprocess.h"
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -649,39 +650,27 @@ void compiler_compile(void)
 				scratch_buffer_append(name);
 			}
 			name = scratch_buffer_to_string();
-			printf("Launching %s...\n", name);
+			const char **command_line = NULL;
+			vec_add(command_line, name);
+			printf("Launching %s", name);
+			for (uint32_t i = 0; i < vec_size(active_target.args); ++i) {
+				printf(" %s", active_target.args[i]);
+				vec_add(command_line, active_target.args[i]);
+			}
+			printf("\n");
 
-			int ret = system(name);
-
+			struct subprocess_s subprocess;
+			int ret = subprocess_create(command_line, subprocess_option_combined_stdout_stderr, &subprocess);
+			printf("Program completed with exit code %d.\n", ret);
+			char some_buffah[1024];
+			while (fgets(some_buffah, sizeof(some_buffah), subprocess_stdout(&subprocess))) {
+				fputs(some_buffah, stdout);
+			}
 			if (active_target.delete_after_run)
 			{
 				file_delete_file(name);
 			}
-
-#if PLATFORM_POSIX
-			if (WIFEXITED(ret))
-			{
-				int status = WEXITSTATUS(ret);
-				printf("Program completed with exit code %d.\n", status);
-				if (status != 0) exit(status);
-			}
-			else if (WIFSIGNALED(ret))
-			{
-				printf("Program interrupted by signal %d.\n", WTERMSIG(ret));
-				exit(EXIT_FAILURE);
-			}
-			else if (WIFSTOPPED(ret))
-			{
-				printf("Program stopped by signal %d.\n", WSTOPSIG(ret));
-			}
-			else
-			{
-				printf("Program finished with unexpected code %d.\n", ret);
-			}
-#else
-			printf("Program completed with exit code %d.\n", ret);
 			if (ret != 0) exit(ret);
-#endif
 		}
 	}
 	else if (output_static)

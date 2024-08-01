@@ -250,6 +250,16 @@ void append_file(BuildOptions *build_options)
 	vec_add(build_options->files, current_arg);
 }
 
+void append_arg(BuildOptions *build_options)
+{
+	if (vec_size(build_options->args) == MAX_FILES)
+	{
+		EOUTPUT("Max %d args may be specified.", MAX_ARGS);
+		exit_compiler(EXIT_FAILURE);
+	}
+	vec_add(build_options->args, current_arg);
+}
+
 static bool arg_match(const char *candidate)
 {
 	return strcmp(current_arg, candidate) == 0;
@@ -911,7 +921,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("print-input"))
 			{
-				options->print_input = true; 
+				options->print_input = true;
 				return;
 			}
 			if (match_longopt("no-entry"))
@@ -1189,9 +1199,16 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		build_options.severity[i] = DIAG_ERROR;
 	}
 
+    // c3c compile-run <files...> [-- <args...>]
+    bool collecting_args = false;;;;;;;;;;;;;;;;;
 	for (arg_index = 1; arg_index < arg_count; arg_index++)
 	{
 		current_arg = args[arg_index];
+		if (arg_match("--") && build_options.command != COMMAND_MISSING)
+		{
+			collecting_args = true;
+			continue;
+		}
 		if (current_arg[0] == '-')
 		{
 			parse_option(&build_options);
@@ -1204,7 +1221,11 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		if (command_accepts_files(build_options.command) || build_options.command == COMMAND_GENERATE_HEADERS)
 		{
-			append_file(&build_options);
+			if (collecting_args) {
+				append_arg(&build_options);
+			} else {
+				append_file(&build_options);
+			}
 			continue;
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);

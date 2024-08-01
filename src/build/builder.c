@@ -213,6 +213,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_CLEAN_RUN:
 			target->run_after_compile = true;
 			target->delete_after_run = options->run_once;
+			target->args = options->args;
 			break;
 		case COMMAND_COMPILE_ONLY:
 			target->type = TARGET_TYPE_OBJECT_FILES;

@@ -8,6 +8,7 @@
 
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
+#define MAX_ARGS 2048
 #define MAX_INCLUDES 2048
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
@@ -373,6 +374,7 @@ typedef struct BuildOptions_
 	int build_threads;
 	const char **libraries_to_fetch;
 	const char **files;
+	const char **args;
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
@@ -525,7 +527,7 @@ typedef struct
 	bool testing;
 	bool read_stdin;
 	bool print_output;
-	bool print_input; 
+	bool print_input;
 	bool print_linking;
 	bool no_entry;
 	bool kernel_build;
@@ -553,6 +555,7 @@ typedef struct
 	LinkerType linker_type;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
+	const char **args;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;

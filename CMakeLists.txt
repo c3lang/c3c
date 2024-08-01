@@ -44,9 +44,9 @@ if(MSVC)
     set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} /Od /Zi /EHa")
 else()
     if (true)
-        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O3 -fno-exceptions")
+        set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -O2 -fno-exceptions")
         set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} -gdwarf-3 -fno-exceptions")
-        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O3 -fno-exceptions")
+        set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_RELEASE} -gdwarf-3 -O2 -fno-exceptions")
         set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -gdwarf-3 -fno-exceptions")
     else()
         set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} -gdwarf-3 -O3 -fsanitize=undefined,address -fno-exceptions")
@@ -240,6 +240,9 @@ message(STATUS "Found lld libs ${lld_libs}")
 
 
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
+if (NOT LLVM_ENABLE_RTTI)
+    target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
+endif()
 add_library(miniz STATIC dependencies/miniz/miniz.c)
 
 add_executable(c3c
@@ -369,7 +372,9 @@ endif()
 
 
 target_include_directories(c3c PRIVATE
-        "${CMAKE_SOURCE_DIR}/src/" "${CMAKE_SOURCE_DIR}/wrapper/include/")
+        "${CMAKE_SOURCE_DIR}/src/"
+        "${CMAKE_SOURCE_DIR}/wrapper/include/"
+        "${CMAKE_SOURCE_DIR}/dependencies/")
 
 
 target_include_directories(c3c_wrappers PRIVATE
