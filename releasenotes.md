@@ -18,6 +18,7 @@
 - Add `--show-backtrace` option to disable backtrace for even smaller binary.
 - Untested Xtensa support.
 - `$expand` macro, to expand a string into code.
+- && doesn't work correctly with lambdas #1279.
 
 ### Fixes
 

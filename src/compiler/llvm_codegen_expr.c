@@ -6992,7 +6992,7 @@ static void llmv_emit_test_hook(GenContext *c, BEValue *value, Expr *expr)
 static void llvm_emit_lambda(GenContext *c, BEValue *value, Expr *expr)
 {
 	Decl *decl = expr->lambda_expr;
-	llvm_value_set(value, llvm_get_ref(c, decl), decl->type);
+	llvm_value_set(value, llvm_get_ref(c, decl), expr->type);
 }
 
 static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)

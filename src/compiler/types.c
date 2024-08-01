@@ -1635,7 +1635,7 @@ RETRY:
 		if (!sema_resolve_type_decl(context, from_pointee)) return TYPE_ERROR;
 		return to_pointee->function.prototype->raw_type == from_pointee->function.prototype->raw_type;
 	}
-	if (to_pointee->type_kind == TYPE_POINTER)
+	if (to_pointee->type_kind == TYPE_POINTER || to_pointee->type_kind == TYPE_FUNC_PTR)
 	{
 		to_pointer = to_pointee;
 		from_pointer = from_pointee;

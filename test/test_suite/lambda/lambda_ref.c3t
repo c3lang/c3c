@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+
+def FnA = fn void(int*);
+
+fn void func(int*) {  }
+fn void main()
+{
+    FnA* a = && &func;
+    a = &&(fn void(int*) {  });
+}
+
+/* #expect: test.ll
+
+define void @test.func(ptr %0) #0 {
+entry:
+  ret void
+}
+
+define void @test.main() #0 {
+entry:
+  %a = alloca ptr, align 8
+  %taddr = alloca ptr, align 8
+  %taddr1 = alloca ptr, align 8
+  store ptr @test.func, ptr %taddr, align 8
+  store ptr %taddr, ptr %a, align 8
+  store ptr @"test.main$lambda1", ptr %taddr1, align 8
+  store ptr %taddr1, ptr %a, align 8
+  ret void
+}
+
+define internal void @"test.main$lambda1"(ptr %0) #0 {
+entry:
+  ret void
+}
