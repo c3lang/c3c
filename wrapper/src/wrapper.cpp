@@ -136,7 +136,7 @@ extern "C" {
 bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 					 LLVMPasses *passes)
 {
-	llvm::TargetMachine *Machine = reinterpret_cast<llvm::TargetMachine *>(tm);
+	llvm::TargetMachine *Machine = (llvm::TargetMachine *)(tm);
 	llvm::Module *Mod = llvm::unwrap(m);
 	llvm::PassInstrumentationCallbacks PIC;
 	llvm::PipelineTuningOptions PTO{};
@@ -307,7 +307,7 @@ int llvm_version_major = LLVM_VERSION_MAJOR;
 
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array)
 {
-	auto machine = reinterpret_cast<llvm::TargetMachine *>(ref);
+	auto machine = (llvm::TargetMachine*)ref;
 	machine->Options.UseInitArray = use_init_array;
 }
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value)
