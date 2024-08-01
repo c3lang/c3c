@@ -20,6 +20,7 @@
 - `$expand` macro, to expand a string into code.
 - && doesn't work correctly with lambdas #1279.
 - Fix incorrect override of optimization levels when using projects.
+- Add experimental `@noalias` attribute.
 
 ### Fixes
 

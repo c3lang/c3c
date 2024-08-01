@@ -1069,7 +1069,8 @@ LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl)
 	return decl->var.optional_ref;
 }
 
-static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return, int index, int last_index)
+static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return,
+                                       int index, int last_index, Decl *decl)
 {
 	assert(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
 		   || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
@@ -1094,13 +1095,18 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 	}
 	switch (info->kind)
 	{
+		case ABI_ARG_DIRECT:
+			if (decl && decl->var.no_alias)
+			{
+				llvm_attribute_add(c, function, attribute_id.noalias, 1);
+			}
+			break;
 		case ABI_ARG_EXPAND:
 		case ABI_ARG_IGNORE:
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		case ABI_ARG_DIRECT_COERCE:
 		case ABI_ARG_DIRECT_COERCE_INT:
 		case ABI_ARG_DIRECT_PAIR:
-		case ABI_ARG_DIRECT:
 		case ABI_ARG_EXPAND_COERCE:
 			break;
 		case ABI_ARG_INDIRECT:
@@ -1127,7 +1133,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 
 	LLVMValueRef function = decl->backend_ref;
 	ABIArgInfo *ret_abi_info = prototype->ret_abi_info;
-	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0);
+	llvm_emit_param_attributes(c, function, ret_abi_info, true, 0, 0, NULL);
 	unsigned params = vec_size(prototype->param_types);
 	if (c->debug.enable_stacktrace)
 	{
@@ -1140,12 +1146,13 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	if (prototype->ret_by_ref)
 	{
 		ABIArgInfo *info = prototype->ret_by_ref_abi_info;
-		llvm_emit_param_attributes(c, function, prototype->ret_by_ref_abi_info, false, info->param_index_start + 1, info->param_index_end);
+		llvm_emit_param_attributes(c, function, prototype->ret_by_ref_abi_info, false, info->param_index_start + 1,
+		                           info->param_index_end, NULL);
 	}
 	for (unsigned i = 0; i < params; i++)
 	{
 		ABIArgInfo *info = prototype->abi_args[i];
-		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end);
+		llvm_emit_param_attributes(c, function, info, false, info->param_index_start + 1, info->param_index_end, decl->func_decl.signature.params[i]);
 	}
 	// We ignore decl->func_decl.attr_inline and place it in every call instead.
 	if (decl->func_decl.attr_noinline)

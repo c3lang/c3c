@@ -472,6 +472,7 @@ typedef struct VarDecl_
 	bool is_addr : 1;
 	bool is_threadlocal : 1;
 	bool no_init : 1;
+	bool no_alias : 1;
 	bool bit_is_expr : 1;
 	TypeInfoId type_info;
 	union

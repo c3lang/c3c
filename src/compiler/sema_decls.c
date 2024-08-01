@@ -1200,12 +1200,17 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
 			param->type = type_info->type;
 		}
+		if (type_info && param->var.no_alias && !type_is_pointer(param->type) && type_flatten(param->type)->type_kind != TYPE_SLICE)
+		{
+			SEMA_ERROR(param, "The parameter was set to @noalias, but it was neither a slice nor a pointer. You need to either remove '@noalias' or use pointer/slice type.");
+			return decl_poison(param);
+		}
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
 				if (type_info && !type_is_pointer(param->type))
 				{
-					RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
+					SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 							   type_quoted_error_string(type_get_ptr(param->type)));
 					return decl_poison(param);
 				}
@@ -2359,6 +2364,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_MAYDISCARD] = CALLABLE_TYPE,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
+			[ATTRIBUTE_NOALIAS] = ATTR_PARAM,
 			[ATTRIBUTE_NODISCARD] = CALLABLE_TYPE,
 			[ATTRIBUTE_NOINIT] = ATTR_GLOBAL | ATTR_LOCAL,
 			[ATTRIBUTE_NOINLINE] = ATTR_FUNC | ATTR_CALL,
@@ -2518,6 +2524,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			return true;
 		case ATTRIBUTE_NOSTRIP:
 			decl->no_strip = true;
+			return true;
+		case ATTRIBUTE_NOALIAS:
+			decl->var.no_alias = true;
 			return true;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");
