@@ -11,9 +11,9 @@
 
 #if PLATFORM_WINDOWS
 #include <windows.h>
-#define COMMIT_PAGE_SIZE 0x10000
 #endif
 
+#define COMMIT_PAGE_SIZE 0x10000
 
 static inline void mmap_init(Vmem *vmem, size_t size)
 {
@@ -26,7 +26,7 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 		FATAL_ERROR("Failed to map virtual memory block");
 	}
 #elif PLATFORM_POSIX
-	void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+	void* ptr = mmap(0, size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 	if ((ptr == MAP_FAILED) || !ptr)
 	{
 		FATAL_ERROR("Failed to map virtual memory block");
@@ -40,19 +40,24 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 
 static inline void* mmap_allocate(Vmem *vmem, size_t to_allocate)
 {
+	assert(to_allocate != 0);
 	size_t allocated_after = to_allocate + vmem->allocated;
-#if PLATFORM_WINDOWS
 	size_t blocks_committed = vmem->committed / COMMIT_PAGE_SIZE;
 	size_t end_block = (allocated_after + COMMIT_PAGE_SIZE - 1) / COMMIT_PAGE_SIZE;  // round up
 	size_t blocks_to_allocate = end_block - blocks_committed;
 	if (blocks_to_allocate > 0)
 	{
 		size_t to_commit = blocks_to_allocate * COMMIT_PAGE_SIZE;
-		void *res = VirtualAlloc(((char*)vmem->ptr) + vmem->committed, to_commit, MEM_COMMIT, PAGE_READWRITE);
+		void* ptr = (char*)vmem->ptr + vmem->committed;
+#if PLATFORM_WINDOWS
+		void *res = VirtualAlloc(ptr, to_commit, MEM_COMMIT, PAGE_READWRITE);
 		if (!res) FATAL_ERROR("Failed to allocate more memory.");
+#elif PLATFORM_POSIX
+		int res = mprotect(ptr, to_commit, PROT_READ | PROT_WRITE);
+		if (res) FATAL_ERROR("Failed to allocate more memory.");
+#endif
 		vmem->committed += to_commit;
 	}
-#endif
 	void *ptr = ((uint8_t *)vmem->ptr) + vmem->allocated;
 	vmem->allocated = allocated_after;
 	assert(vmem->size > vmem->allocated);
