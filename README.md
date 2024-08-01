@@ -253,7 +253,7 @@ A `c3c` executable will be found under `bin/`.
 #### Installing on OS X using Homebrew
 
 2. Install CMake: `brew install cmake`
-3. Install LLVM 15: `brew install llvm`
+3. Install LLVM 17+: `brew install llvm`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
@@ -308,7 +308,7 @@ You can try it out by running some sample code: `c3c.exe compile ../resources/ex
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
 2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 15 (or greater: C3C supports LLVM 15-17): `sudo apt-get install clang-15 zlib1g zlib1g-dev libllvm15 llvm-15 llvm-15-dev llvm-15-runtime liblld-15-dev liblld-15`
+3. Install LLVM 17+ (or greater: C3C supports LLVM 17+): `sudo apt-get install clang-17 zlib1g zlib1g-dev libllvm17 llvm-17 llvm-17-dev llvm-17-runtime liblld-17-dev liblld-17`
 4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 5. Enter the C3C directory `cd c3c`.
 6. Create a build directory `mkdir build`
@@ -323,7 +323,7 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 
 #### Compiling on Void Linux
 
-1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm15 lld-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
+1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm17 lld-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the directory: `cd c3c`
@@ -339,7 +339,7 @@ For a sytem-wide installation, run the following as root: `cmake --install .`
 #### Compiling on other Linux / Unix variants
 
 1. Install CMake.
-2. Install or compile LLVM and LLD *libraries* (version 15+ or higher)
+2. Install or compile LLVM and LLD *libraries* (version 17+ or higher)
 3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
 4. Enter the C3C directory `cd c3c`.
 5. Create a build directory `mkdir build`
