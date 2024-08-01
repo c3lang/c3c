@@ -29,6 +29,7 @@
 - `opt` project setting now properly documented.
 - Incorrect justify formatting of integers.
 - Assertion with duplicate function pointer signatures #1286
+- Distinct func type would not accept direct function address assign. #1287
 
 ### Stdlib changes
 

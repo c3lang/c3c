@@ -1193,7 +1193,17 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	assert(from_type == from_type->canonical);
 	Type *flat = type_flatten(cc->to);
 	ConvGroup flat_group = type_to_group(flat);
-	if (sema_cast_const(cc->expr))
+	Expr *expr = cc->expr;
+	bool is_const = sema_cast_const(expr);
+	// Allow DistinctFooFn a = &myfunc;
+	if (!is_const && from_type->type_kind == TYPE_FUNC_PTR
+		&& expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR
+		&& expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER
+		&& expr->unary_expr.expr->identifier_expr.decl->decl_kind == DECL_FUNC)
+	{
+		is_const = true;
+	}
+	if (is_const)
 	{
 		cc->to = flat;
 		cc->to_group = flat_group;

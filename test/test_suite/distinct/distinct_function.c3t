@@ -1,0 +1,14 @@
+module output;
+
+def FnA = fn void(int*);
+distinct FnB = FnA;
+
+fn void func(int*) {}
+
+fn void main()
+{
+    FnA a = &func;
+    FnB b = (FnB)&func;
+    FnB b2 = &func;
+    FnB b3 = fn (int* x) {};
+}
