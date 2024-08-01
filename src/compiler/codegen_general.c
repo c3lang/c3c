@@ -281,7 +281,7 @@ AlignSize type_alloca_alignment(Type *type)
 	AlignSize align = type_abi_alignment(type);
 	if (align < 16 && (platform_target.abi == ABI_X64 || platform_target.abi == ABI_WIN64))
 	{
-		type = type_lowering(type);
+		type = type_flatten(type);
 		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
 	}
 	return align;
