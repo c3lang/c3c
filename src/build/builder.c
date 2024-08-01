@@ -332,6 +332,20 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
 	if (options->linuxpaths.crt) target->linuxpaths.crt = options->linuxpaths.crt;
 	if (options->linuxpaths.crtbegin) target->linuxpaths.crtbegin = options->linuxpaths.crtbegin;
+	switch (options->sanitize_mode)
+	{
+		case SANITIZE_NOT_SET: break;
+		case SANITIZE_NONE:
+			target->feature.sanitize_address = false;
+			target->feature.sanitize_memory = false;
+			target->feature.sanitize_thread = false;
+			break;
+		case SANITIZE_ADDRESS: target->feature.sanitize_address = true; break;
+		case SANITIZE_MEMORY: target->feature.sanitize_memory = true; break;
+		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
+		default: UNREACHABLE;
+	}
+
 	if (options->fp_math != FP_DEFAULT)
 	{
 		target->feature.fp_math = options->fp_math;
@@ -453,5 +467,6 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 		if (!dir_make(target->build_dir)) error_exit("Failed to create build directory '%s'.", target->build_dir);
 		if (!file_is_dir(target->build_dir)) error_exit("Expected '%s' to be a directory.", target->build_dir);
 	}
+
 	load_library_files();
 }

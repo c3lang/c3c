@@ -27,20 +27,9 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 {
 	self.allocator = allocator;
 	self.size = 0;
-	if (initial_capacity > 0)
-	{
-		initial_capacity = math::next_power_of_2(initial_capacity);
-		$if type_is_overaligned():
-		self.entries = allocator::malloc_aligned(allocator, Type.sizeof * initial_capacity, .alignment = Type[1].alignof)!!;
-		$else
-		self.entries = allocator::malloc(allocator, Type.sizeof * initial_capacity);
-		$endif
-	}
-	else
-	{
-		self.entries = null;
-	}
-	self.capacity = initial_capacity;
+	self.capacity = 0;
+	self.entries = null;
+	self.reserve(initial_capacity);
 	return self;
 }
 
@@ -81,14 +70,14 @@ fn List* List.temp_init_with_array(&self, Type[] values)
 }
 
 /**
- * @require self.size == 0 "The List must be empty"
+ * @require self.capacity == 0 "The List must not be allocated"
  **/
 fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
-	self.size = types.len;
 	self.capacity = types.len;
 	self.entries = types.ptr;
+	self.set_size(types.len);
 }
 
 fn usz! List.to_format(&self, Formatter* formatter) @dynamic
@@ -124,18 +113,19 @@ fn String List.to_tstring(&self)
 fn void List.push(&self, Type element) @inline
 {
 	self.ensure_capacity();
-	self.entries[self.size++] = element;
+	self.entries[self.set_size(self.size + 1)] = element;
 }
 
 fn Type! List.pop(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
-	return self.entries[--self.size];
+	defer self.set_size(self.size - 1);
+	return self.entries[self.size - 1];
 }
 
 fn void List.clear(&self)
 {
-	self.size = 0;
+	self.set_size(0);
 }
 
 /**
@@ -153,7 +143,8 @@ fn Type! List.pop_first(&self)
  **/
 fn void List.remove_at(&self, usz index)
 {
-	if (!--self.size || index == self.size) return;
+	self.set_size(self.size - 1);
+	if (!self.size || index == self.size) return;
 	self.entries[index .. self.size - 1] = self.entries[index + 1 .. self.size];
 }
 
@@ -161,9 +152,11 @@ fn void List.add_all(&self, List* other_list)
 {
 	if (!other_list.size) return;
 	self.reserve(other_list.size);
+	usz index = self.size;
+	self.set_size(self.size + other_list.size);
 	foreach (&value : other_list)
 	{
-		self.entries[self.size++] = *value;
+		self.entries[index++] = *value;
 	}
 }
 
@@ -228,9 +221,10 @@ fn void List.add_array(&self, Type[] array)
 {
 	if (!array.len) return;
 	self.reserve(array.len);
+	usz index = self.set_size(self.size + array.len);
 	foreach (&value : array)
 	{
-		self.entries[self.size++] = *value;
+		self.entries[index++] = *value;
 	}
 }
 
@@ -249,7 +243,7 @@ fn void List.insert_at(&self, usz index, Type type)
 	{
 		self.entries[i] = self.entries[i - 1];
 	}
-	self.size++;
+	self.set_size(self.size + 1);
 	self.entries[index] = type;
 }
 
@@ -264,7 +258,7 @@ fn void List.set_at(&self, usz index, Type type)
 fn void! List.remove_last(&self) @maydiscard
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
-	self.size--;
+	self.set_size(self.size - 1);
 }
 
 fn void! List.remove_first(&self) @maydiscard
@@ -307,11 +301,14 @@ fn Type List.get(&self, usz index) @inline
 
 fn void List.free(&self)
 {
-	if (!self.allocator) return;
+	if (!self.allocator || !self.capacity) return;
+
+	self.pre_free(); // Remove sanitizer annotation
+
 	$if type_is_overaligned():
-	allocator::free_aligned(self.allocator, self.entries);
+		allocator::free_aligned(self.allocator, self.entries);
 	$else
-	allocator::free(self.allocator, self.entries);
+		allocator::free(self.allocator, self.entries);
 	$endif;
 	self.capacity = 0;
 	self.size = 0;
@@ -355,7 +352,7 @@ macro usz List._remove_if(&self, ElementPredicate filter, bool $invert) @local
 		// Remove the items from this index up to the one not to be deleted.
 		usz n = self.size - k;
 		self.entries[i:n] = self.entries[k:n];
-		self.size -= k - i;
+		self.set_size(self.size - (k - i));
 		// Find last index of item not to be deleted.
 		$if $invert:
 			while (i > 0 && filter(&self.entries[i - 1])) i--;
@@ -390,7 +387,7 @@ macro usz List._remove_using_test(&self, ElementTest filter, bool $invert, ctx) 
 		// Remove the items from this index up to the one not to be deleted.
 		usz n = self.size - k;
 		self.entries[i:n] = self.entries[k:n];
-		self.size -= k - i;
+		self.set_size(self.size - (k - i));
 		// Find last index of item not to be deleted.
 		$if $invert:
 			while (i > 0 && filter(&self.entries[i - 1], ctx)) i--;
@@ -409,13 +406,18 @@ fn void List.reserve(&self, usz min_capacity)
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
 	if (!self.allocator) self.allocator = allocator::heap();
+
+	self.pre_free(); // Remove sanitizer annotation
+
 	min_capacity = math::next_power_of_2(min_capacity);
 	$if type_is_overaligned():
-	self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof)!!;
+		self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof)!!;
 	$else
-	self.entries = allocator::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
+		self.entries = allocator::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
 	$endif;
 	self.capacity = min_capacity;
+
+	self.post_alloc(); // Add sanitizer annotation
 }
 
 macro Type List.@item_at(&self, usz index) @operator([])
@@ -442,6 +444,40 @@ fn void List.ensure_capacity(&self, usz added = 1) @inline @private
 	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
 	self.reserve(new_capacity);
+}
+
+/**
+ * @require new_size == 0 || self.capacity != 0
+ **/
+fn usz List.set_size(&self, usz new_size) @inline @private
+{
+	usz old_size = self.size;
+	sanitizer::annotate_contiguous_container(self.entries,
+	                                         &self.entries[self.capacity],
+	                                         &self.entries[old_size],
+	                                         &self.entries[new_size]);
+	self.size = new_size;
+	return old_size;
+}
+
+macro void List.pre_free(&self) @private
+{
+	if (!self.capacity) return;
+	sanitizer::annotate_contiguous_container(self.entries,
+	                                         &self.entries[self.capacity],
+	                                         &self.entries[self.size],
+	                                         &self.entries[self.capacity]);
+}
+
+/**
+ * @require self.capacity
+ **/
+macro void List.post_alloc(&self) @private
+{
+	sanitizer::annotate_contiguous_container(self.entries,
+	                                         &self.entries[self.capacity],
+	                                         &self.entries[self.capacity],
+	                                         &self.entries[self.size]);
 }
 
 // Functions for equatable types
@@ -526,7 +562,7 @@ fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 		{
 			self.entries[j - 1] = self.entries[j];
 		}
-		self.size--;
+		self.set_size(self.size - 1);
 	}
 	return size - self.size;
 }
@@ -560,7 +596,7 @@ fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 		{
 			self.entries[j - 1] = self.entries[j];
 		}
-		self.size--;
+		self.set_size(self.size - 1);
 	}
 	return size - self.size;
 }

@@ -1071,6 +1071,114 @@ static void execute_scripts(void)
 	dir_change(old_path);
 	free(old_path);
 }
+
+static void check_sanitizer_options(BuildTarget *target)
+{
+	if (target->feature.sanitize_address)
+	{
+		if (target->feature.sanitize_memory || target->feature.sanitize_thread)
+		{
+			error_exit("Address sanitizer cannot be used together with memory or thread sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case WINDOWS_X64:
+			{
+				WinCrtLinking crt_linking = active_target.win.crt_linking;
+				if (crt_linking == WIN_CRT_DEFAULT)
+				{
+					error_exit("Please specify `static` or `debug` wincrt when using address sanitizer.");
+				}
+
+				if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
+				{
+					// We currently don't have ASan runtime libraries linked against debug CRT.
+					error_exit("Address sanitizer cannot be used when using `static-debug` or `dynamic-debug` wincrt. Please use `static` or `debug` instead.");
+				}
+
+				if (target->single_module != SINGLE_MODULE_ON)
+				{
+					// TODO Temporary?
+					error_exit("Address sanitizer requires a single-module build.");
+				}
+				break;
+			}
+			case LINUX_X86:
+			case LINUX_X64:
+			// TODO enable again once supported
+			// case MACOS_AARCH64:
+			// case MACOS_X64:
+			case FREEBSD_X86:
+			case FREEBSD_X64:
+			case NETBSD_X86:
+			case NETBSD_X64:
+				break;
+			default:
+				// TODO enable again once supported
+				// error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
+				error_exit("Address sanitizer is currently only supported on Linux.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			eprintf("WARNING: Running benchmarks with address sanitizer enabled!\n");
+		}
+	}
+	if (target->feature.sanitize_memory)
+	{
+		if (target->feature.sanitize_address || target->feature.sanitize_thread)
+		{
+			error_exit("Memory sanitizer cannot be used together with address or thread sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_AARCH64:
+			case LINUX_X86:
+			case LINUX_X64:
+			case FREEBSD_X86:
+			case FREEBSD_X64:
+			case NETBSD_X86:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Memory sanitizer is only supported on Linux.");
+		}
+		if (target->reloc_model != RELOC_BIG_PIE)
+		{
+			error_exit("Memory sanitizer requires `PIE` relocation model.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			eprintf("WARNING: Running benchmarks with memory sanitizer enabled!\n");
+		}
+	}
+	if (target->feature.sanitize_thread)
+	{
+		if (target->feature.sanitize_address || target->feature.sanitize_memory)
+		{
+			error_exit("Thread sanitizer cannot be used together with address or memory sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_AARCH64:
+			case LINUX_X64:
+			// TODO enable again once supported
+			// case MACOS_AARCH64:
+			// case MACOS_X64:
+			case FREEBSD_X64:
+			case NETBSD_X64:
+				break;
+			default:
+				// TODO enable again once supported
+				// error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
+				error_exit("Thread sanitizer is currently only supported on 64-bit Linux.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			eprintf("WARNING: Running benchmarks with thread sanitizer enabled!\n");
+		}
+	}
+}
+
 void compile()
 {
 	symtab_init(active_target.symtab_size);
@@ -1081,6 +1189,7 @@ void compile()
 	global_context.string_type = NULL;
 	asm_target.initialized = false;
 	target_setup(&active_target);
+	check_sanitizer_options(&active_target);
 	resolve_libraries(&active_target);
 	global_context.sources = active_target.sources;
 	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
@@ -1117,6 +1226,9 @@ void compile()
 	setup_bool_define("BENCHMARKING", active_target.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", active_target.testing);
+	setup_bool_define("ADDRESS_SANITIZER", active_target.feature.sanitize_address);
+	setup_bool_define("MEMORY_SANITIZER", active_target.feature.sanitize_memory);
+	setup_bool_define("THREAD_SANITIZER", active_target.feature.sanitize_thread);
 
 	type_init_cint();
 

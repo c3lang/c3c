@@ -1,4 +1,5 @@
 #include "compiler_internal.h"
+#include "../utils/whereami.h"
 #include "c3_llvm.h"
 
 #if PLATFORM_POSIX
@@ -149,42 +150,61 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 	global_context_add_link("Ws2_32");
 	global_context_add_link("legacy_stdio_definitions");
 
-	if (active_target.win.crt_linking == WIN_CRT_STATIC)
-	{
-		if (is_debug)
-		{
-			global_context_add_link("libucrtd");
-			global_context_add_link("libvcruntimed");
-			global_context_add_link("libcmtd");
-			global_context_add_link("libcpmtd");
-		}
-		else
-		{
-			global_context_add_link("libucrt");
-			global_context_add_link("libvcruntime");
-			global_context_add_link("libcmt");
-			global_context_add_link("libcpmt");
-		}
-	}
-	else
+	WinCrtLinking crt_linking = active_target.win.crt_linking;
+	if (crt_linking == WIN_CRT_DEFAULT)
 	{
 		// When cross compiling we might not have the relevant debug libraries.
 		// if so, then exclude them.
-		if (is_debug && link_with_dynamic_debug_libc)
+		crt_linking = is_debug && link_with_dynamic_debug_libc ? WIN_CRT_DYNAMIC_DEBUG : WIN_CRT_DYNAMIC;
+	}
+
+	if (crt_linking == WIN_CRT_STATIC_DEBUG)
+	{
+		global_context_add_link("libucrtd");
+		global_context_add_link("libvcruntimed");
+		global_context_add_link("libcmtd");
+		global_context_add_link("libcpmtd");
+	}
+	else if (crt_linking == WIN_CRT_STATIC)
+	{
+		global_context_add_link("libucrt");
+		global_context_add_link("libvcruntime");
+		global_context_add_link("libcmt");
+		global_context_add_link("libcpmt");
+	}
+	else if (crt_linking == WIN_CRT_DYNAMIC_DEBUG)
+	{
+		global_context_add_link("ucrtd");
+		global_context_add_link("vcruntimed");
+		global_context_add_link("msvcrtd");
+		global_context_add_link("msvcprtd");
+	}
+	else
+	{
+		global_context_add_link("ucrt");
+		global_context_add_link("vcruntime");
+		global_context_add_link("msvcrt");
+		global_context_add_link("msvcprt");
+	}
+
+	if (active_target.feature.sanitize_address)
+	{
+		const char *compiler_path = find_executable_path();
+		if (active_target.win.crt_linking == WIN_CRT_STATIC)
 		{
-			global_context_add_link("ucrtd");
-			global_context_add_link("vcruntimed");
-			global_context_add_link("msvcrtd");
-			global_context_add_link("msvcprtd");
+			add_arg2(compiler_path, "c3c_rt/clang_rt.asan-x86_64.lib");
 		}
 		else
 		{
-			global_context_add_link("ucrt");
-			global_context_add_link("vcruntime");
-			global_context_add_link("msvcrt");
-			global_context_add_link("msvcprt");
+			add_arg2(compiler_path, "c3c_rt/clang_rt.asan_dynamic-x86_64.lib");
+			add_arg2(compiler_path, "c3c_rt/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib");
+			const char *dll_path = file_append_path(compiler_path, "c3c_rt/clang_rt.asan_dynamic-x86_64.dll");
+			const char *dst_path = file_append_path(active_target.output_dir, "clang_rt.asan_dynamic-x86_64.dll");
+			DEBUG_LOG("Copying %s to %s\n", dll_path, dst_path);
+			file_copy_file(dll_path, dst_path, true);
 		}
 	}
+
 	add_arg("/NOLOGO");
 }
 
@@ -524,6 +544,14 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_NONE:
 			break;
 	}
+
+	if (platform_target.os != OS_TYPE_WIN32)
+	{
+		if (active_target.feature.sanitize_address) add_arg("-fsanitize=address");
+		if (active_target.feature.sanitize_memory) add_arg("-fsanitize=memory");
+		if (active_target.feature.sanitize_thread) add_arg("-fsanitize=thread");
+	}
+
 	for (unsigned i = 0; i < file_count; i++)
 	{
 		add_arg(files_to_link[i]);
