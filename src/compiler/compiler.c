@@ -8,6 +8,9 @@
 #if PLATFORM_POSIX
 #include <sys/wait.h>
 #endif
+#if PLATFORM_WINDOWS
+#include <windows.h>
+#endif
 #include "c3_llvm.h"
 #include <errno.h>
 
@@ -381,7 +384,7 @@ static void create_output_dir(const char *dir)
 
 int run_subprocess(const char *name, const char **args)
 {
-#ifdef PLATFORM_WINDOWS
+#if PLATFORM_WINDOWS
 	// https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 
 	STARTUPINFO siStartInfo;
