@@ -381,7 +381,7 @@ static void create_output_dir(const char *dir)
 
 int run_subprocess(const char *name, const char **args)
 {
-#ifdef _WIN32
+#ifdef PLATFORM_WINDOWS
 	// https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 
 	STARTUPINFO siStartInfo;
