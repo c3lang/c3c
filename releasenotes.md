@@ -21,6 +21,7 @@
 - && doesn't work correctly with lambdas #1279.
 - Fix incorrect override of optimization levels when using projects.
 - Add experimental `@noalias` attribute.
+- Add a `--run-once` option to delete the output file after running it.
 
 ### Fixes
 
