@@ -652,6 +652,12 @@ void compiler_compile(void)
 			printf("Launching %s...\n", name);
 
 			int ret = system(name);
+
+			if (active_target.delete_after_run)
+			{
+				file_delete_file(name);
+			}
+
 #if PLATFORM_POSIX
 			if (WIFEXITED(ret))
 			{

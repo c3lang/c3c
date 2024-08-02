@@ -90,6 +90,7 @@ static void usage(void)
 	PRINTF("  --about                    - Prints a short description of C3.");
 	PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
 	PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
+	PRINTF("  --run-once                 - After running the file, delete it immediately");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -E                         - Lex only.");
 	PRINTF("  -P                         - Only parse and output the AST as JSON.");
@@ -129,7 +130,6 @@ static void usage(void)
 	PRINTF("");
 	PRINTF("  -g                         - Emit debug info.");
 	PRINTF("  -g0                        - Emit no debug info.");
-	PRINTF("");
 	PRINTF("");
 	PRINTF("  -l <library>               - Link with the library provided.");
 	PRINTF("  -L <library dir>           - Append the directory to the linker search paths.");
@@ -674,6 +674,10 @@ static void parse_option(BuildOptions *options)
 			{
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
+			}
+			if (match_longopt("run-once")) {
+				options->run_once = true;
+				return;
 			}
 			if ((argopt = match_argopt("fp-math")))
 			{
