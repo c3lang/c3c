@@ -120,20 +120,20 @@ macro bool is_slice_convertable($Type)
 	$endswitch
 }
 
-macro bool is_bool($Type) => $Type.kindof == TypeKind.BOOL;
-macro bool is_int($Type) => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
+macro bool is_bool($Type) @const => $Type.kindof == TypeKind.BOOL;
+macro bool is_int($Type) @const  => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
 
-macro bool is_indexable($Type)
+macro bool is_indexable($Type) @const
 {
 	return $defined($Type{}[0]);
 }
 
-macro bool is_ref_indexable($Type)
+macro bool is_ref_indexable($Type) @const
 {
 	return $defined(&$Type{}[0]);
 }
 
-macro bool is_intlike($Type)
+macro bool is_intlike($Type) @const
 {
 	$switch ($Type.kindof)
 		$case SIGNED_INT:
@@ -146,7 +146,7 @@ macro bool is_intlike($Type)
 	$endswitch
 }
 
-macro bool is_underlying_int($Type)
+macro bool is_underlying_int($Type) @const
 {
 	$switch ($Type.kindof)
 		$case SIGNED_INT:
@@ -159,9 +159,9 @@ macro bool is_underlying_int($Type)
 	$endswitch
 }
 
-macro bool is_float($Type) => $Type.kindof == TypeKind.FLOAT;
+macro bool is_float($Type) @const  => $Type.kindof == TypeKind.FLOAT;
 
-macro bool is_floatlike($Type)
+macro bool is_floatlike($Type) @const
 {
 	$switch ($Type.kindof)
 		$case FLOAT:
@@ -173,12 +173,12 @@ macro bool is_floatlike($Type)
 	$endswitch
 }
 
-macro bool is_vector($Type)
+macro bool is_vector($Type) @const
 {
 	return $Type.kindof == TypeKind.VECTOR;
 }
 
-macro TypeKind inner_kind($Type)
+macro TypeKind inner_kind($Type) @const
 {
 	$if $Type.kindof == TypeKind.DISTINCT:
 		return inner_kind($typefrom($Type.inner));
@@ -187,12 +187,12 @@ macro TypeKind inner_kind($Type)
 	$endif
 }
 
-macro bool is_same($TypeA, $TypeB)
+macro bool is_same($TypeA, $TypeB) @const
 {
 	return $TypeA.typeid == $TypeB.typeid;
 }
 
-macro bool @has_same(#a, #b, ...)
+macro bool @has_same(#a, #b, ...) @const
 {
 	var $type_a = @typeid(#a);
 	$if $type_a != @typeid(#b):
@@ -206,7 +206,7 @@ macro bool @has_same(#a, #b, ...)
 	return true;
 }
 
-macro bool may_load_atomic($Type)
+macro bool may_load_atomic($Type) @const
 {
 	$switch ($Type.kindof)
 	$case SIGNED_INT:
@@ -221,7 +221,7 @@ macro bool may_load_atomic($Type)
 	$endswitch
 }
 
-macro lower_to_atomic_compatible_type($Type) 
+macro lower_to_atomic_compatible_type($Type) @const
 {
 	$switch ($Type.kindof)
     $case SIGNED_INT:
@@ -247,10 +247,10 @@ macro lower_to_atomic_compatible_type($Type)
   $endswitch
 }
 
-macro bool is_promotable_to_floatlike($Type) => types::is_floatlike($Type) || types::is_int($Type);
-macro bool is_promotable_to_float($Type) => types::is_float($Type) || types::is_int($Type);
+macro bool is_promotable_to_floatlike($Type) @const  => types::is_floatlike($Type) || types::is_int($Type);
+macro bool is_promotable_to_float($Type) @const  => types::is_float($Type) || types::is_int($Type);
 
-macro bool is_same_vector_type($Type1, $Type2)
+macro bool is_same_vector_type($Type1, $Type2) @const
 {
 	$if $Type1.kindof != TypeKind.VECTOR:
 		return $Type2.kindof != TypeKind.VECTOR;
@@ -259,7 +259,7 @@ macro bool is_same_vector_type($Type1, $Type2)
 	$endif
 }
 
-macro bool is_equatable_type($Type)
+macro bool is_equatable_type($Type) @const
 {
 	$if $defined($Type.less) || $defined($Type.compare_to) || $defined($Type.equals):
 		return true;
@@ -271,17 +271,31 @@ macro bool is_equatable_type($Type)
 /**
  * Checks if a type implements the copy protocol.
  **/
-macro bool implements_copy($Type)
+macro bool implements_copy($Type) @const
 {
 	return $defined($Type.copy) && $defined($Type.free);
 }
 
-macro bool is_equatable_value(value)
+macro bool is_equatable_value(value) @deprecated
 {
 	return is_equatable_type($typeof(value));
 }
 
-macro bool is_comparable_value(value)
+macro bool @equatable_value(#value) @const
+{
+	return is_equatable_type($typeof(#value));
+}
+
+macro bool @comparable_value(#value) @const
+{
+	$if $defined(#value.less) || $defined(#value.compare_to):
+		return true;
+	$else
+		return $typeof(#value).is_ordered;
+	$endif
+}
+
+macro bool is_comparable_value(value) @deprecated
 {
 	$if $defined(value.less) || $defined(value.compare_to):
 		return true;

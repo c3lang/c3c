@@ -2351,6 +2351,7 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_COMPACT] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_CONST] = ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
@@ -2622,6 +2623,9 @@ static bool sema_analyse_attribute(SemaContext *context, Decl *decl, Attr *attr,
 			break;
 		case ATTRIBUTE_NOINIT:
 			decl->var.no_init = true;
+			break;
+		case ATTRIBUTE_CONST:
+			decl->func_decl.signature.attrs.always_const = true;
 			break;
 		case ATTRIBUTE_NODISCARD:
 			decl->func_decl.signature.attrs.nodiscard = true;
@@ -3398,22 +3402,78 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
 	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent,
-	                            false)) return decl_poison(decl);
+	                            false)) return false;
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{
-		SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
-		return decl_poison(decl);
+		RETURN_SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 	}
 	DeclId body_param = decl->func_decl.body_param;
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
-	if (!sema_analyse_macro_body(context, body_parameters)) return decl_poison(decl);
+	if (!sema_analyse_macro_body(context, body_parameters)) return false;
 	bool pure = false;
 	if (!sema_analyse_doc_header(context, decl->func_decl.docs, decl->func_decl.signature.params, body_parameters,
-	                             &pure)) return decl_poison(decl);
+	                             &pure)) return false;
 	if (decl->func_decl.type_parent)
 	{
-		if (!sema_analyse_macro_method(context, decl)) return decl_poison(decl);
+		if (!sema_analyse_macro_method(context, decl)) return false;
+	}
+	bool always_const = decl->func_decl.signature.attrs.always_const;
+	// Sanity check "always const"
+	if (always_const)
+	{
+		if (typeget(decl->func_decl.signature.rtype) == type_void) RETURN_SEMA_ERROR(decl, "'@const' macros may not return 'void', they should always return a constant value.");
+		if (body_parameters) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have body parameters.");
+		Ast *body = astptr(decl->func_decl.body);
+		assert(body->ast_kind == AST_COMPOUND_STMT);
+		body = astptrzero(body->compound_stmt.first_stmt);
+		if (!body) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have an empty body.");
+		while (body)
+		{
+			switch (body->ast_kind)
+			{
+				case AST_CT_ASSERT:
+				case AST_CT_ECHO_STMT:
+				case AST_CT_EXPAND_STMT:
+				case AST_CT_FOREACH_STMT:
+				case AST_CT_FOR_STMT:
+				case AST_CT_IF_STMT:
+				case AST_CT_SWITCH_STMT:
+				case AST_CT_ELSE_STMT:
+				case AST_DECLARE_STMT:
+				case AST_DECLS_STMT:
+				case AST_NOP_STMT:
+					body = astptrzero(body->next);
+					continue;
+				case AST_RETURN_STMT:
+					if (!body->return_stmt.expr) RETURN_SEMA_ERROR(body, "The 'return' in an `@const` must provide a value, e.g. 'return Foo.typeid;'");
+					if (body->next) RETURN_SEMA_ERROR(body, "There should not be any statements after 'return'.");
+					body = NULL;
+					continue;
+				case AST_POISONED:
+				case AST_ASM_STMT:
+				case AST_ASM_BLOCK_STMT:
+				case AST_ASSERT_STMT:
+				case AST_BREAK_STMT:
+				case AST_CASE_STMT:
+				case AST_COMPOUND_STMT:
+				case AST_CONTINUE_STMT:
+				case AST_DEFAULT_STMT:
+				case AST_DEFER_STMT:
+				case AST_EXPR_STMT:
+				case AST_FOR_STMT:
+				case AST_FOREACH_STMT:
+				case AST_IF_CATCH_SWITCH_STMT:
+				case AST_IF_STMT:
+				case AST_BLOCK_EXIT_STMT:
+				case AST_SWITCH_STMT:
+				case AST_NEXTCASE_STMT:
+				case AST_CONTRACT:
+				case AST_CONTRACT_FAULT:
+					RETURN_SEMA_ERROR(body, "Only 'return' and compile time statements are allowed in an '@const' macro.");
+			}
+			UNREACHABLE
+		}
 	}
 	decl->type = type_void;
 	return true;

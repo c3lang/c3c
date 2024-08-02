@@ -1979,6 +1979,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl,
                                   bool call_var_optional, bool *no_match_ref)
 {
+	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	assert(decl->decl_kind == DECL_MACRO);
 
 	if (context->macro_call_depth > 256)
@@ -2322,6 +2323,12 @@ EXIT:
 	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;
 	sema_context_destroy(&macro_context);
+	if (is_always_const && !expr_is_const(call_expr))
+	{
+		SEMA_ERROR(call_expr, "The macro failed to fold to a constant value, despite being '@const'.");
+		SEMA_NOTE(decl, "The macro was declared here.");
+		return false;
+	}
 	return true;
 EXIT_FAIL:
 	sema_context_destroy(&macro_context);

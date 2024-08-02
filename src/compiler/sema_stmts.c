@@ -2126,8 +2126,8 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	{
 		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
 		{
-			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
+			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			if (!sema_cast_const(from)) goto VARIABLE_JUMP;
 			ExprConst *const_expr = &from->const_expr;
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;

@@ -8,7 +8,7 @@ import std::math;
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
-macro bool @constant_is_power_of_2($x) @private
+macro bool @constant_is_power_of_2($x) @const @private
 {
 	return $x != 0 && ($x & ($x - 1)) == 0;
 }
