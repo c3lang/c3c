@@ -498,7 +498,7 @@ int run_subprocess(const char *name, const char **args)
 		}
 
 		if (WIFSIGNALED(wstatus)) {
-			eprintf("%s was terminated by %s", name, strsignal(WTERMSIG(wstatus)));
+			eprintf("Program interrupted by signal %d.\n", WTERMSIG(wstatus));
 			return -1;
 		}
 	}
@@ -789,7 +789,7 @@ void compiler_compile(void)
 			{
 				file_delete_file(name);
 			}
-			if (ret < 0) exit_compiler(1);
+			if (ret < 0) exit_compiler(EXIT_FAILURE);
 			printf("Program completed with exit code %d.\n", ret);
 			if (ret != 0) exit_compiler(ret);
 		}
