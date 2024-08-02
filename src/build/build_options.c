@@ -90,7 +90,7 @@ static void usage(void)
 	PRINTF("  --about                    - Prints a short description of C3.");
 	PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
 	PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
-	PRINTF("  --run-once                 - After running the file, delete it immediately");
+	PRINTF("  --run-once                 - After running the file, delete it immediately.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -E                         - Lex only.");
 	PRINTF("  -P                         - Only parse and output the AST as JSON.");
