@@ -463,6 +463,7 @@ typedef struct
 	ArchOsTarget arch_os;
 	const char *cc;
 	const char *cflags;
+	WinCrtLinking win_crt;
 	const char **csource_dirs;
 	const char **csources;
 	const char **execs;
@@ -480,6 +481,7 @@ typedef struct Library__
 	const char *cc;
 	const char *cflags;
 	const char **csource_dirs;
+	WinCrtLinking win_crt;
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;
