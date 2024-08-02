@@ -7,6 +7,8 @@
 
 #if PLATFORM_POSIX
 #include <sys/mman.h>
+#include <errno.h>
+
 #endif
 
 #if PLATFORM_WINDOWS
@@ -17,7 +19,6 @@
 
 static inline void mmap_init(Vmem *vmem, size_t size)
 {
-	vmem->size = size;
 #if PLATFORM_WINDOWS
 	void* ptr = VirtualAlloc(0, size, MEM_RESERVE, PAGE_NOACCESS);
 	vmem->committed = 0;
@@ -26,14 +27,29 @@ static inline void mmap_init(Vmem *vmem, size_t size)
 		FATAL_ERROR("Failed to map virtual memory block");
 	}
 #elif PLATFORM_POSIX
-	void* ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+	void* ptr = NULL;
+	size_t min_size = size / 16;
+	if (min_size < 1) min_size = size;
+	while (size >= min_size)
+	{
+		ptr = mmap(0, size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANON, -1, 0);
+		// It worked?
+		if (ptr != MAP_FAILED && ptr) break;
+		// Did it fail in a non-retriable way?
+		if (errno != ENOMEM && errno != EOVERFLOW && errno != EAGAIN) break;
+		// Try a smaller size
+		size /= 2;
+	}
+	// Check if we ended on a failure.
 	if ((ptr == MAP_FAILED) || !ptr)
 	{
-		FATAL_ERROR("Failed to map virtual memory block");
+		FATAL_ERROR("Failed to map a virtual memory block.");
 	}
+	// Otherwise, record the size and we're fine!
 #else
 	FATAL_ERROR("Unsupported platform.");
 #endif
+	vmem->size = size;
 	vmem->ptr = ptr;
 	vmem->allocated = 0;
 }
