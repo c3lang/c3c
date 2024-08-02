@@ -1035,6 +1035,29 @@ static bool rule_vecarr_to_infer(CastContext *cc, bool is_explicit, bool is_sile
 	return cast_is_allowed(cc, is_explicit, is_silent);
 }
 
+static inline bool type_implements_interface(CastContext *cc, Decl *decl, Type *interface)
+{
+RETRY:;
+	FOREACH(TypeInfo *, interface_type, decl->interfaces)
+	{
+		if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return false;
+		if (interface_type->type == interface) return true;
+	}
+	if (!decl->is_substruct) return false;
+	Type *inner;
+	if (decl->decl_kind == DECL_DISTINCT)
+	{
+		inner = decl->distinct->type->canonical;
+	}
+	else
+	{
+		assert(decl->decl_kind == DECL_STRUCT);
+		inner = decl->strukt.members[0]->type->canonical;
+	}
+	if (!type_may_implement_interface(inner)) return false;
+	decl = inner->decl;
+	goto RETRY;
+}
 static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
@@ -1044,11 +1067,7 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	{
 		Type *interface = cc->to;
 		Decl *pointee_decl = pointee->decl;
-		FOREACH(TypeInfo *, interface_type, pointee_decl->interfaces)
-		{
-			if (!sema_resolve_type_info(cc->context, interface_type, RESOLVE_TYPE_DEFAULT)) return false;
-			if (interface_type->type == interface) return true;
-		}
+		if (type_implements_interface(cc, pointee->decl, interface)) return true;
 	}
 	if (is_silent) return false;
 	RETURN_CAST_ERROR(cc->expr, "%s cannot be implicitly cast to %s, but you can use an explicit "
