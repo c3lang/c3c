@@ -373,8 +373,7 @@ endif()
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/"
-        "${CMAKE_SOURCE_DIR}/wrapper/include/"
-        "${CMAKE_SOURCE_DIR}/dependencies/")
+        "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
 
 target_include_directories(c3c_wrappers PRIVATE

@@ -9,7 +9,7 @@
 #include <sys/wait.h>
 #endif
 #include "c3_llvm.h"
-#include "subprocess.h"
+#include <errno.h>
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -379,6 +379,134 @@ static void create_output_dir(const char *dir)
 	if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
 }
 
+int run_subprocess(const char *name, const char **args)
+{
+#ifdef _WIN32
+	// https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
+
+	STARTUPINFO siStartInfo;
+	ZeroMemory(&siStartInfo, sizeof(siStartInfo));
+	siStartInfo.cb = sizeof(STARTUPINFO);
+	// NOTE: theoretically setting NULL to std handles should not be a problem
+	// https://docs.microsoft.com/en-us/windows/console/getstdhandle?redirectedfrom=MSDN#attachdetach-behavior
+	// TODO: check for errors in GetStdHandle
+	siStartInfo.hStdError = GetStdHandle(STD_ERROR_HANDLE);
+	siStartInfo.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+	siStartInfo.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+	siStartInfo.dwFlags |= STARTF_USESTDHANDLES;
+
+	PROCESS_INFORMATION piProcInfo;
+	ZeroMemory(&piProcInfo, sizeof(PROCESS_INFORMATION));
+
+	scratch_buffer_clear();
+	scratch_buffer_printf("%s", name);
+	for (uint32_t i = 0; i < vec_size(args); i++) {
+		scratch_buffer_append_char(' ');
+
+		bool need_quoting = strpbrk(args[i], "\t\v ") != NULL || args[i][0] == 0;
+		if (need_quoting) scratch_buffer_append_char('"');
+		for (int j = 0; '\0' != args[i][j]; j++) {
+			switch (args[i][j]) {
+			default:
+				break;
+			case '\\':
+				if (args[i][j + 1] == '"') {
+					scratch_buffer_append_char('\\');
+				}
+
+				break;
+			case '"':
+				scratch_buffer_append_char('\\');
+				break;
+			}
+
+			scratch_buffer_append_char(args[i][j]);
+		}
+
+		if (need_quoting) scratch_buffer_append_char('"');
+	}
+
+	BOOL bSuccess = CreateProcessA(
+		NULL,
+		scratch_buffer_to_string(),
+		NULL,
+		NULL,
+		TRUE,
+		0,
+		NULL,
+		NULL,
+		&siStartInfo,
+		&piProcInfo);
+
+	if (!bSuccess) {
+		eprintf("Could not create child process: %lu", GetLastError());
+		return -1;
+	}
+
+	CloseHandle(piProcInfo.hThread);
+
+	DWORD result = WaitForSingleObject(
+					   piProcInfo.hProcess, // HANDLE hHandle,
+					   INFINITE // DWORD  dwMilliseconds
+				   );
+
+	if (result == WAIT_FAILED) {
+		eprintf("Could not wait on child process: %lu", GetLastError());
+		return -1;
+	}
+
+	DWORD exit_status;
+	if (!GetExitCodeProcess(piProcInfo.hProcess, &exit_status)) {
+		eprintf("Could not get process exit code: %lu", GetLastError());
+		return -1;
+	}
+
+	CloseHandle(piProcInfo.hProcess);
+
+	return exit_status;
+#else
+	pid_t cpid = fork();
+	if (cpid < 0) {
+		eprintf("Could not fork child process %s: %s", name, strerror(errno));
+		return -1;
+	}
+
+	if (cpid == 0) {
+		const char **args_null = NULL;
+		vec_add(args_null, name);
+		for (uint32_t i = 0; i < vec_size(args); ++i) {
+			vec_add(args_null, args[i]);
+		}
+		vec_add(args_null, NULL);
+
+		if (execvp(name, (char * const*)args_null) < 0) {
+			eprintf("Could not exec child process %s: %s", name, strerror(errno));
+			exit(1);
+		}
+		UNREACHABLE
+	}
+
+	for (;;) {
+		int wstatus = 0;
+		if (waitpid(cpid, &wstatus, 0) < 0) {
+			eprintf("Could not wait on %s (pid %d): %s", name, cpid, strerror(errno));
+			return -1;
+		}
+
+		if (WIFEXITED(wstatus)) {
+			return WEXITSTATUS(wstatus);
+		}
+
+		if (WIFSIGNALED(wstatus)) {
+			eprintf("%s was terminated by %s", name, strsignal(WTERMSIG(wstatus)));
+			return -1;
+		}
+	}
+
+	return cpid;
+#endif
+}
+
 void compiler_compile(void)
 {
 	sema_analysis_run();
@@ -650,27 +778,20 @@ void compiler_compile(void)
 				scratch_buffer_append(name);
 			}
 			name = scratch_buffer_to_string();
-			const char **command_line = NULL;
-			vec_add(command_line, name);
 			printf("Launching %s", name);
 			for (uint32_t i = 0; i < vec_size(active_target.args); ++i) {
 				printf(" %s", active_target.args[i]);
-				vec_add(command_line, active_target.args[i]);
 			}
 			printf("\n");
 
-			struct subprocess_s subprocess;
-			int ret = subprocess_create(command_line, subprocess_option_combined_stdout_stderr, &subprocess);
-			printf("Program completed with exit code %d.\n", ret);
-			char some_buffah[1024];
-			while (fgets(some_buffah, sizeof(some_buffah), subprocess_stdout(&subprocess))) {
-				fputs(some_buffah, stdout);
-			}
+			int ret = run_subprocess(name, active_target.args);
 			if (active_target.delete_after_run)
 			{
 				file_delete_file(name);
 			}
-			if (ret != 0) exit(ret);
+			if (ret < 0) exit_compiler(1);
+			printf("Program completed with exit code %d.\n", ret);
+			if (ret != 0) exit_compiler(ret);
 		}
 	}
 	else if (output_static)
