@@ -653,6 +653,7 @@ static BuildTarget default_build_target = {
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
+bool command_passes_args(CompilerCommand command);
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);

@@ -58,26 +58,26 @@ static void usage(void)
 	PRINTF("");
 	PRINTF("Commands:");
 	PRINTF("");
-	PRINTF("  compile <file1> [<file2> ...]           Compile files without a project into an executable.");
-	PRINTF("  init <project name>                     Initialize a new project structure.");
-	PRINTF("  init-lib <library name>                 Initialize a new library structure.");
-	PRINTF("  build [<target>]                        Build the target in the current project.");
-	PRINTF("  benchmark                               Run the benchmarks in the current project.");
-	PRINTF("  test                                    Run the unit tests in the current project.");
-	PRINTF("  clean                                   Clean all build files.");
-	PRINTF("  run [<target>]                          Run (and build if needed) the target in the current project.");
-	PRINTF("  dist [<target>]                         Clean and build a target for distribution.");
-	PRINTF("  directives [<target>]                   Generate documentation for the target.");
-	PRINTF("  bench [<target>]                        Benchmark a target.");
-	PRINTF("  clean-run [<target>]                    Clean, then run the target.");
-	PRINTF("  compile-run <file1> [<file2> ...]       Compile files then immediately run the result.");
-	PRINTF("  compile-only <file1> [<file2> ...]      Compile files but do not perform linking.");
-	PRINTF("  compile-benchmark <file1> [<file2> ...] Compile files into an executable and run benchmarks.");
-	PRINTF("  compile-test <file1> [<file2> ...]      Compile files into an executable and run unit tests.");
-	PRINTF("  static-lib <file1> [<file2> ...]        Compile files without a project into a static library.");
-	PRINTF("  dynamic-lib <file1> [<file2> ...]       Compile files without a project into a dynamic library.");
-	PRINTF("  headers <file1> [<file2> ...]           Analyse files and generate C headers for public methods.");
-	PRINTF("  vendor-fetch <library> ...              Fetches one or more libraries from the vendor collection.");
+	PRINTF("  compile <file1> [<file2> ...]                       Compile files without a project into an executable.");
+	PRINTF("  init <project name>                                 Initialize a new project structure.");
+	PRINTF("  init-lib <library name>                             Initialize a new library structure.");
+	PRINTF("  build [<target>]                                    Build the target in the current project.");
+	PRINTF("  benchmark                                           Run the benchmarks in the current project.");
+	PRINTF("  test                                                Run the unit tests in the current project.");
+	PRINTF("  clean                                               Clean all build files.");
+	PRINTF("  run [<target>]                                      Run (and build if needed) the target in the current project.");
+	PRINTF("  dist [<target>]                                     Clean and build a target for distribution.");
+	PRINTF("  directives [<target>]                               Generate documentation for the target.");
+	PRINTF("  bench [<target>]                                    Benchmark a target.");
+	PRINTF("  clean-run [<target>]                                Clean, then run the target.");
+	PRINTF("  compile-run <file1> [<file2> ...] [-- [<arg1> ...]] Compile files then immediately run the result.");
+	PRINTF("  compile-only <file1> [<file2> ...]                  Compile files but do not perform linking.");
+	PRINTF("  compile-benchmark <file1> [<file2> ...]             Compile files into an executable and run benchmarks.");
+	PRINTF("  compile-test <file1> [<file2> ...]                  Compile files into an executable and run unit tests.");
+	PRINTF("  static-lib <file1> [<file2> ...]                    Compile files without a project into a static library.");
+	PRINTF("  dynamic-lib <file1> [<file2> ...]                   Compile files without a project into a dynamic library.");
+	PRINTF("  headers <file1> [<file2> ...]                       Analyse files and generate C headers for public methods.");
+	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
 	PRINTF("");
 	PRINTF("Options:");
 	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
@@ -1199,12 +1199,15 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		build_options.severity[i] = DIAG_ERROR;
 	}
 
-    // c3c compile-run <files...> [-- <args...>]
-    bool collecting_args = false;;;;;;;;;;;;;;;;;
+	bool collecting_args = false;
 	for (arg_index = 1; arg_index < arg_count; arg_index++)
 	{
 		current_arg = args[arg_index];
-		if (arg_match("--") && build_options.command != COMMAND_MISSING)
+		if (collecting_args) {
+			append_arg(&build_options);
+			continue;
+		}
+		if (command_passes_args(build_options.command) && arg_match("--"))
 		{
 			collecting_args = true;
 			continue;
@@ -1221,11 +1224,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		}
 		if (command_accepts_files(build_options.command) || build_options.command == COMMAND_GENERATE_HEADERS)
 		{
-			if (collecting_args) {
-				append_arg(&build_options);
-			} else {
-				append_file(&build_options);
-			}
+			append_file(&build_options);
 			continue;
 		}
 		FAIL_WITH_ERR("Found the unexpected argument \"%s\".", current_arg);
