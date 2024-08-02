@@ -410,6 +410,7 @@ typedef struct BuildOptions_
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
+	bool run_once;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -507,6 +508,7 @@ typedef struct
 	const char *asm_file_dir;
 	const char *script_dir;
 	bool run_after_compile;
+	bool delete_after_run;
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
 	bool benchmark_output;
