@@ -240,9 +240,6 @@ message(STATUS "Found lld libs ${lld_libs}")
 
 
 add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
-if (NOT LLVM_ENABLE_RTTI)
-    target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
-endif()
 add_library(miniz STATIC dependencies/miniz/miniz.c)
 
 add_executable(c3c
@@ -428,7 +425,7 @@ else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)
     if (NOT LLVM_ENABLE_RTTI)
-        target_compile_options(c3c_wrappers PUBLIC -fno-rtti)
+        target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
     endif()
     target_compile_options(c3c PRIVATE -pthread -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
