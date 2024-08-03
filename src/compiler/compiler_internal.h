@@ -9,6 +9,7 @@
 #include "enums.h"
 #include "target.h"
 #include "utils/malloc.h"
+#include "subprocess.h"
 #include <float.h>
 
 typedef double Real;

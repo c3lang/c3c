@@ -252,6 +252,8 @@ add_executable(c3c
         src/compiler/codegen_general.c
         src/compiler/compiler.c
         src/compiler/compiler.h
+        src/compiler/subprocess.c
+        src/compiler/subprocess.h
         src/compiler/context.c
         src/compiler/copying.c
         src/compiler/diagnostics.c
