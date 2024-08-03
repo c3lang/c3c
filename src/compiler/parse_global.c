@@ -1872,7 +1872,7 @@ static inline Decl *parse_def_ident(ParseContext *c)
 		}
 		else if (alias_type == TOKEN_TYPE_IDENT)
 		{
-			PRINT_ERROR_HERE("A variable, constant or attribute name was expected here. If you want to define a new type, use 'typedef' instead.");
+			PRINT_ERROR_HERE("A variable, constant or attribute name was expected here. If you want to define a new type, use 'def' instead.");
 		}
 		else
 		{
