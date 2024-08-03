@@ -1844,6 +1844,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional, bool *no_match_ref)
 {
 	Decl *decl = NULL;
+	func_ptr_type = type_flat_distinct_inline(func_ptr_type);
 	if (func_ptr_type->type_kind != TYPE_FUNC_PTR)
 	{
 		if (no_match_ref)
@@ -1851,7 +1852,7 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 			*no_match_ref = true;
 			return false;
 		}
-		RETURN_SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.",
+		RETURN_SEMA_ERROR(expr, "Only macros, functions and function pointers may be invoked, this is of type '%s'.",
 						  type_to_error_string(func_ptr_type));
 	}
 	Type *pointee = func_ptr_type->pointer;

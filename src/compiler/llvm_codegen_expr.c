@@ -6017,7 +6017,8 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		Expr *function = exprptr(expr->call_expr.function);
 
 		// 1a. Find the pointee type for the function pointer:
-		Type *type = function->type->canonical->pointer;
+		assert(type_flatten(function->type)->type_kind == TYPE_FUNC_PTR);
+		Type *type = type_flatten(function->type)->pointer;
 
 		// 1b. Find the type signature using the underlying pointer.
 		prototype = type_get_resolved_prototype(type);
