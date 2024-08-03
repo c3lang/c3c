@@ -230,6 +230,10 @@ typedef struct
 			AlignSize align;
 			Decl *decl;
 		} member;
+		struct
+		{
+			Decl *decl;
+		} method;
 	};
 } ExprConst;
 
@@ -1939,7 +1943,7 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyfault, *type_any, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_anyfault, *type_any, *type_typeinfo, *type_member, *type_method;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -2297,6 +2301,7 @@ INLINE bool expr_is_const_string(Expr *expr);
 INLINE bool expr_is_const_initializer(Expr *expr);
 INLINE bool expr_is_const_untyped_list(Expr *expr);
 INLINE bool expr_is_const_member(Expr *expr);
+INLINE bool expr_is_const_method(Expr *expr);
 
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b);
@@ -3848,6 +3853,11 @@ INLINE bool expr_is_const_int(Expr *expr)
 INLINE bool expr_is_const_member(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
+}
+
+INLINE bool expr_is_const_method(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_METHOD;
 }
 
 INLINE const char *section_from_id(SectionId id)

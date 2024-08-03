@@ -669,6 +669,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 				return;
 			case CONST_TYPEID:
 			case CONST_MEMBER:
+			case CONST_METHOD:
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_BYTES:

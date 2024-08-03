@@ -178,6 +178,7 @@ static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type 
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type);
 static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
 											   AlignSize offset);
+static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
 static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
@@ -214,6 +215,7 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 		case CONST_TYPEID:
 		case CONST_BYTES:
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			return true;
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
@@ -289,6 +291,7 @@ static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr)
 		case CONST_UNTYPED_LIST:
 			return vec_size(expr->const_expr.untyped_list);
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			return 1;
 	}
 	UNREACHABLE
@@ -3399,6 +3402,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_MEMBERSOF:
 			sema_create_const_membersof(context, expr, decl->type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
 			return true;
+		case TYPE_PROPERTY_METHODSOF:
+			sema_create_const_methodsof(context, expr, decl->type->canonical);
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
 			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
@@ -3447,6 +3452,88 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		.const_kind = CONST_MEMBER
 	};
 	expr->type = type_member;
+	return true;
+MISSING_REF:
+	*missing_ref = true;
+	return false;
+}
+
+
+static inline bool sema_expr_analyse_method_access(SemaContext *context, Expr *expr, Expr *parent, Expr *identifier, bool *missing_ref)
+{
+	assert(identifier->expr_kind == EXPR_IDENTIFIER);
+
+	Decl *decl = parent->const_expr.method.decl;
+	const char *name = identifier->identifier_expr.ident;
+	bool is_const = identifier->identifier_expr.is_const;
+
+	if (is_const)
+	{
+		if (missing_ref) goto MISSING_REF;
+		RETURN_SEMA_ERROR(expr, "There is no member '%s' for %s.", name, type_to_error_string(decl->type));
+	}
+
+	if (!sema_analyse_decl(context, decl)) return false;
+
+	TypeProperty type_property = type_property_by_name(name);
+	switch (type_property)
+	{
+		case TYPE_PROPERTY_NONE:
+			break;
+		case TYPE_PROPERTY_QNAMEOF:
+			break;
+		case TYPE_PROPERTY_NAMEOF:
+			expr_rewrite_to_string(expr, decl->name ? decl->name : "");
+			return true;
+		case TYPE_PROPERTY_ALIGNOF:
+		case TYPE_PROPERTY_MEMBERSOF:
+		case TYPE_PROPERTY_METHODSOF:
+		case TYPE_PROPERTY_KINDOF:
+		case TYPE_PROPERTY_SIZEOF:
+		case TYPE_PROPERTY_ELEMENTS:
+		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_RETURNS:
+		case TYPE_PROPERTY_INF:
+		case TYPE_PROPERTY_LEN:
+		case TYPE_PROPERTY_MAX:
+		case TYPE_PROPERTY_MIN:
+		case TYPE_PROPERTY_NAN:
+		case TYPE_PROPERTY_INNER:
+		case TYPE_PROPERTY_NAMES:
+		case TYPE_PROPERTY_VALUES:
+		case TYPE_PROPERTY_ASSOCIATED:
+		case TYPE_PROPERTY_PARENTOF:
+		case TYPE_PROPERTY_IS_EQ:
+		case TYPE_PROPERTY_IS_ORDERED:
+		case TYPE_PROPERTY_IS_SUBSTRUCT:
+			break;
+	}
+
+	Type *underlying_type = type_flatten(decl->type);
+
+	if (!type_is_union_or_strukt(underlying_type) && underlying_type->type_kind != TYPE_BITSTRUCT)
+	{
+		if (missing_ref) goto MISSING_REF;
+		RETURN_SEMA_ERROR(parent, "No member '%s' was found.", name);
+	}
+
+	Decl *underlying_type_decl = underlying_type->decl;
+	Decl *method = sema_decl_stack_find_decl_member(underlying_type_decl, name);
+	if (!method)
+	{
+		if (missing_ref) goto MISSING_REF;
+		RETURN_SEMA_ERROR(expr, "No member '%s' found.", name);
+	}
+
+	expr->expr_kind = EXPR_CONST;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->const_expr = (ExprConst) {
+		.method.decl = method,
+		.const_kind = CONST_METHOD
+	};
+	expr->type = type_method;
+
 	return true;
 MISSING_REF:
 	*missing_ref = true;
@@ -3696,6 +3783,39 @@ static inline void sema_create_const_membersof(SemaContext *context, Expr *expr,
 	expr_rewrite_const_untyped_list(expr, member_exprs);
 }
 
+
+static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type)
+{
+	Decl **methods = type->decl->methods;
+	unsigned method_count = vec_size(methods);
+	
+	if (!method_count)
+	{
+		expr_rewrite_const_untyped_list(expr, NULL);
+		return;
+	}
+
+	Expr **method_exprs = method_count ? VECNEW(Expr*, method_count) : NULL;
+	for (unsigned i = 0; i < method_count; i++)
+	{
+		Decl *method = methods[i];
+		if (method->decl_kind == DECL_FUNC)
+		{
+			Decl *decl = methods[i];
+			Expr *expr_element = expr_new(EXPR_CONST, expr->span);
+			expr_element->resolve_status = RESOLVE_DONE;
+			expr_element->type = type_method;
+			expr_element->const_expr = (ExprConst) {
+				.const_kind = CONST_METHOD,
+				.method.decl = decl,
+			};
+			vec_add(method_exprs, expr_element);
+		}
+	}
+	expr_rewrite_const_untyped_list(expr, method_exprs);
+}
+
+
 static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat)
 {
 	if (type_is_integer(flat))
@@ -3821,6 +3941,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_PARAMS:
 		case TYPE_PROPERTY_MEMBERSOF:
+		case TYPE_PROPERTY_METHODSOF:
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_NAMEOF:
 		case TYPE_PROPERTY_QNAMEOF:
@@ -4057,6 +4178,16 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 				default:
 					return false;
 			}
+		case TYPE_PROPERTY_METHODSOF:
+			switch (type->type_kind)
+			{
+				case TYPE_STRUCT:
+				case TYPE_UNION:
+				case TYPE_BITSTRUCT:
+					return true;
+				default:
+					return false;
+			}
 		case TYPE_PROPERTY_PARAMS:
 		case TYPE_PROPERTY_RETURNS:
 			return type_is_func_ptr(type);
@@ -4129,6 +4260,11 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			AlignSize align;
 			if (!sema_set_abi_alignment(context, parent_type, &align)) return false;
 			sema_create_const_membersof(context, expr, flat, align, 0);
+			return true;
+		}
+		case TYPE_PROPERTY_METHODSOF:
+		{
+			sema_create_const_methodsof(context, expr, flat);
 			return true;
 		}
 		case TYPE_PROPERTY_PARAMS:
@@ -4364,6 +4500,10 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (expr_is_const_member(parent))
 	{
 		return sema_expr_analyse_member_access(context, expr, parent, identifier, missing_ref);
+	}
+	if (expr_is_const_method(parent))
+	{
+		return sema_expr_analyse_method_access(context, expr, parent, identifier, missing_ref);
 	}
 
 	// 6. Copy failability
@@ -8655,6 +8795,7 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 					len = vec_size(single_expr->const_expr.untyped_list);
 					continue;
 				case CONST_MEMBER:
+				case CONST_METHOD:
 					RETURN_SEMA_ERROR(single_expr, "This can't be concatenated.");
 			}
 			if (expr_count == 1)
@@ -9238,6 +9379,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			return -1;
 		case CONST_BYTES:
 		case CONST_STRING:

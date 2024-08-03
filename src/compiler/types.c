@@ -13,7 +13,7 @@ static struct
 	Type bf16, f16, f32, f64, f128;
 	Type usz, isz, uptr, iptr;
 	Type string;
-	Type voidstar, typeid, anyfault, member, typeinfo, untyped_list;
+	Type voidstar, typeid, anyfault, member, method, typeinfo, untyped_list;
 	Type any, wildcard;
 } t;
 
@@ -46,6 +46,7 @@ Type *type_anyfault = &t.anyfault;
 Type *type_untypedlist = &t.untyped_list;
 Type *type_wildcard = &t.wildcard;
 Type *type_member = &t.member;
+Type *type_method = &t.method;
 Type *type_chars = NULL;
 Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;

@@ -131,6 +131,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_UNTYPED_LIST:
 			return false;
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			is_eq = left->member.decl == right->member.decl;
 			goto RETURN;
 	}
@@ -202,6 +203,7 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			UNREACHABLE;
 	}
 	UNREACHABLE;
@@ -233,6 +235,8 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return type_to_error_string(expr->typeid);
 		case CONST_MEMBER:
 			return "member";
+		case CONST_METHOD:
+			return "method";
 		case CONST_INITIALIZER:
 			return "constant list";
 		case CONST_UNTYPED_LIST:
