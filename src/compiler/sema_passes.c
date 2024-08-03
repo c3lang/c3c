@@ -184,33 +184,6 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	return parse_include_file(file, unit);
 }
 
-static Decl **sema_interpret_expand(CompilationUnit *unit, Decl *decl)
-{
-	SemaContext context;
-	sema_context_init(&context, unit);
-	FOREACH(Attr *, attr, decl->attributes)
-	{
-		if (attr->attr_kind != ATTRIBUTE_IF)
-		{
-			RETURN_PRINT_ERROR_AT(NULL, attr, "Invalid attribute for '$expand'.");
-		}
-	}
-	Expr *string = decl->expand_decl;
-	bool success = sema_analyse_ct_expr(&context, string);
-	sema_context_destroy(&context);
-	if (!success) return NULL;
-	if (!expr_is_const_string(string))
-	{
-		RETURN_PRINT_ERROR_AT(NULL, string, "Expected a constant string for '$expand'.");
-	}
-	scratch_buffer_clear();
-	scratch_buffer_printf("%s.%d", unit->file->full_path, string->span.row);
-	File *file = source_file_text_load(scratch_buffer_to_string(), string->const_expr.bytes.ptr);
-	ParseContext parse_context = { .tok = TOKEN_INVALID_TOKEN };
-	ParseContext *c = &parse_context;
-	c->unit = unit;
-	return parse_include_file(file, unit);
-}
 
 static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
@@ -336,9 +309,6 @@ INLINE void register_includes(CompilationUnit *unit, Decl **decls)
 				break;
 			case DECL_CT_INCLUDE:
 				include_decls = sema_load_include(unit, include);
-				break;
-			case DECL_CT_EXPAND:
-				include_decls = sema_interpret_expand(unit, include);
 				break;
 			default:
 				UNREACHABLE

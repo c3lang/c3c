@@ -9,6 +9,7 @@
 #include "enums.h"
 #include "target.h"
 #include "utils/malloc.h"
+#include "subprocess.h"
 #include <float.h>
 
 typedef double Real;
@@ -324,6 +325,7 @@ typedef struct
 	bool maydiscard : 1;
 	bool is_pure : 1;
 	bool noreturn : 1;
+	bool always_const : 1;
 } CalleeAttributes;
 
 typedef struct

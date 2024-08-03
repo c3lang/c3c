@@ -92,6 +92,38 @@ bool command_accepts_files(CompilerCommand command)
 	UNREACHABLE
 }
 
+bool command_passes_args(CompilerCommand command)
+{
+	switch (command)
+	{
+		case COMMAND_COMPILE_RUN:
+			return true;
+		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_STATIC_LIB:
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_COMPILE_TEST:
+		case COMMAND_UNIT_TEST:
+		case COMMAND_MISSING:
+		case COMMAND_GENERATE_HEADERS:
+		case COMMAND_INIT:
+		case COMMAND_INIT_LIB:
+		case COMMAND_BUILD:
+		case COMMAND_RUN:
+		case COMMAND_CLEAN_RUN:
+		case COMMAND_CLEAN:
+		case COMMAND_DIST:
+		case COMMAND_DOCS:
+		case COMMAND_BENCH:
+		case COMMAND_PRINT_SYNTAX:
+		case COMMAND_BENCHMARK:
+		case COMMAND_TEST:
+		case COMMAND_VENDOR_FETCH:
+			return false;
+	}
+	UNREACHABLE
+}
 
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level)
 {
@@ -212,6 +244,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_COMPILE_RUN:
 		case COMMAND_CLEAN_RUN:
 			target->run_after_compile = true;
+			target->delete_after_run = options->run_once;
+			target->args = options->args;
 			break;
 		case COMMAND_COMPILE_ONLY:
 			target->type = TARGET_TYPE_OBJECT_FILES;

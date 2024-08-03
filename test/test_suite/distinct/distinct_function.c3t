@@ -1,7 +1,8 @@
-module output;
+module test;
 
 def FnA = fn void(int*);
 distinct FnB = FnA;
+distinct FnC = inline FnA;
 
 fn void func(int*) {}
 
@@ -11,4 +12,22 @@ fn void main()
     FnB b = (FnB)&func;
     FnB b2 = &func;
     FnB b3 = fn (int* x) {};
+    FnC c = &func;
+    c(null);
 }
+
+/* #expect: test.ll
+
+  %a = alloca ptr, align 8
+  %b = alloca ptr, align 8
+  %b2 = alloca ptr, align 8
+  %b3 = alloca ptr, align 8
+  %c = alloca ptr, align 8
+  store ptr @test.func, ptr %a, align 8
+  store ptr @test.func, ptr %b, align 8
+  store ptr @test.func, ptr %b2, align 8
+  store ptr @"test.main$lambda1", ptr %b3, align 8
+  store ptr @test.func, ptr %c, align 8
+  %0 = load ptr, ptr %c, align 8
+  call void %0(ptr null)
+  ret void

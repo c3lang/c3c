@@ -8,6 +8,7 @@
 
 #define MAX_LIB_DIRS 1024
 #define MAX_FILES 2048
+#define MAX_ARGS 2048
 #define MAX_INCLUDES 2048
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
@@ -373,6 +374,7 @@ typedef struct BuildOptions_
 	int build_threads;
 	const char **libraries_to_fetch;
 	const char **files;
+	const char **args;
 	const char **feature_names;
 	const char **removed_feature_names;
 	const char *output_name;
@@ -410,6 +412,7 @@ typedef struct BuildOptions_
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
+	bool run_once;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -462,6 +465,7 @@ typedef struct
 	ArchOsTarget arch_os;
 	const char *cc;
 	const char *cflags;
+	WinCrtLinking win_crt;
 	const char **csource_dirs;
 	const char **csources;
 	const char **execs;
@@ -479,6 +483,7 @@ typedef struct Library__
 	const char *cc;
 	const char *cflags;
 	const char **csource_dirs;
+	WinCrtLinking win_crt;
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;
@@ -507,6 +512,7 @@ typedef struct
 	const char *asm_file_dir;
 	const char *script_dir;
 	bool run_after_compile;
+	bool delete_after_run;
 	bool generate_benchmark_runner;
 	bool generate_test_runner;
 	bool benchmark_output;
@@ -523,7 +529,7 @@ typedef struct
 	bool testing;
 	bool read_stdin;
 	bool print_output;
-	bool print_input; 
+	bool print_input;
 	bool print_linking;
 	bool no_entry;
 	bool kernel_build;
@@ -551,6 +557,7 @@ typedef struct
 	LinkerType linker_type;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
+	const char **args;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -648,6 +655,7 @@ static BuildTarget default_build_target = {
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
+bool command_passes_args(CompilerCommand command);
 void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);

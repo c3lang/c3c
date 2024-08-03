@@ -16,11 +16,11 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 		{
 			if (str_eq(key, deprecated_keys[j]))
 			{
-				eprintf("Note: Target '%s' is using the deprecated parameter '%s'\n", target_name, key);
+				WARNING("Target '%s' is using the deprecated parameter '%s'.", target_name, key);
 				goto OK;
 			}
 		}
-		eprintf("WARNING: Unknown parameter '%s' in '%s'.\n", key, target_name);
+		WARNING("Unknown parameter '%s' in '%s'", target_name, key);
 		failed = true;
 		OK:;
 	}

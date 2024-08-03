@@ -58,26 +58,26 @@ static void usage(void)
 	PRINTF("");
 	PRINTF("Commands:");
 	PRINTF("");
-	PRINTF("  compile <file1> [<file2> ...]           Compile files without a project into an executable.");
-	PRINTF("  init <project name>                     Initialize a new project structure.");
-	PRINTF("  init-lib <library name>                 Initialize a new library structure.");
-	PRINTF("  build [<target>]                        Build the target in the current project.");
-	PRINTF("  benchmark                               Run the benchmarks in the current project.");
-	PRINTF("  test                                    Run the unit tests in the current project.");
-	PRINTF("  clean                                   Clean all build files.");
-	PRINTF("  run [<target>]                          Run (and build if needed) the target in the current project.");
-	PRINTF("  dist [<target>]                         Clean and build a target for distribution.");
-	PRINTF("  directives [<target>]                   Generate documentation for the target.");
-	PRINTF("  bench [<target>]                        Benchmark a target.");
-	PRINTF("  clean-run [<target>]                    Clean, then run the target.");
-	PRINTF("  compile-run <file1> [<file2> ...]       Compile files then immediately run the result.");
-	PRINTF("  compile-only <file1> [<file2> ...]      Compile files but do not perform linking.");
-	PRINTF("  compile-benchmark <file1> [<file2> ...] Compile files into an executable and run benchmarks.");
-	PRINTF("  compile-test <file1> [<file2> ...]      Compile files into an executable and run unit tests.");
-	PRINTF("  static-lib <file1> [<file2> ...]        Compile files without a project into a static library.");
-	PRINTF("  dynamic-lib <file1> [<file2> ...]       Compile files without a project into a dynamic library.");
-	PRINTF("  headers <file1> [<file2> ...]           Analyse files and generate C headers for public methods.");
-	PRINTF("  vendor-fetch <library> ...              Fetches one or more libraries from the vendor collection.");
+	PRINTF("  compile <file1> [<file2> ...]                       Compile files without a project into an executable.");
+	PRINTF("  init <project name>                                 Initialize a new project structure.");
+	PRINTF("  init-lib <library name>                             Initialize a new library structure.");
+	PRINTF("  build [<target>]                                    Build the target in the current project.");
+	PRINTF("  benchmark                                           Run the benchmarks in the current project.");
+	PRINTF("  test                                                Run the unit tests in the current project.");
+	PRINTF("  clean                                               Clean all build files.");
+	PRINTF("  run [<target>]                                      Run (and build if needed) the target in the current project.");
+	PRINTF("  dist [<target>]                                     Clean and build a target for distribution.");
+	PRINTF("  directives [<target>]                               Generate documentation for the target.");
+	PRINTF("  bench [<target>]                                    Benchmark a target.");
+	PRINTF("  clean-run [<target>]                                Clean, then run the target.");
+	PRINTF("  compile-run <file1> [<file2> ...] [-- [<arg1> ...]] Compile files then immediately run the result.");
+	PRINTF("  compile-only <file1> [<file2> ...]                  Compile files but do not perform linking.");
+	PRINTF("  compile-benchmark <file1> [<file2> ...]             Compile files into an executable and run benchmarks.");
+	PRINTF("  compile-test <file1> [<file2> ...]                  Compile files into an executable and run unit tests.");
+	PRINTF("  static-lib <file1> [<file2> ...]                    Compile files without a project into a static library.");
+	PRINTF("  dynamic-lib <file1> [<file2> ...]                   Compile files without a project into a dynamic library.");
+	PRINTF("  headers <file1> [<file2> ...]                       Analyse files and generate C headers for public methods.");
+	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
 	PRINTF("");
 	PRINTF("Options:");
 	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
@@ -90,6 +90,7 @@ static void usage(void)
 	PRINTF("  --about                    - Prints a short description of C3.");
 	PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
 	PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
+	PRINTF("  --run-once                 - After running the output file, delete it immediately.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -E                         - Lex only.");
 	PRINTF("  -P                         - Only parse and output the AST as JSON.");
@@ -129,7 +130,6 @@ static void usage(void)
 	PRINTF("");
 	PRINTF("  -g                         - Emit debug info.");
 	PRINTF("  -g0                        - Emit no debug info.");
-	PRINTF("");
 	PRINTF("");
 	PRINTF("  -l <library>               - Link with the library provided.");
 	PRINTF("  -L <library dir>           - Append the directory to the linker search paths.");
@@ -248,6 +248,16 @@ void append_file(BuildOptions *build_options)
 		exit_compiler(EXIT_FAILURE);
 	}
 	vec_add(build_options->files, current_arg);
+}
+
+void append_arg(BuildOptions *build_options)
+{
+	if (vec_size(build_options->args) == MAX_ARGS)
+	{
+		EOUTPUT("Max %d args may be specified.", MAX_ARGS);
+		exit_compiler(EXIT_FAILURE);
+	}
+	vec_add(build_options->args, current_arg);
 }
 
 static bool arg_match(const char *candidate)
@@ -675,6 +685,10 @@ static void parse_option(BuildOptions *options)
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
+			if (match_longopt("run-once")) {
+				options->run_once = true;
+				return;
+			}
 			if ((argopt = match_argopt("fp-math")))
 			{
 				options->fp_math = (FpOpt)parse_multi_option(argopt, 3, fp_math);
@@ -907,7 +921,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("print-input"))
 			{
-				options->print_input = true; 
+				options->print_input = true;
 				return;
 			}
 			if (match_longopt("no-entry"))
@@ -1185,9 +1199,19 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		build_options.severity[i] = DIAG_ERROR;
 	}
 
+	bool collecting_args = false;
 	for (arg_index = 1; arg_index < arg_count; arg_index++)
 	{
 		current_arg = args[arg_index];
+		if (collecting_args) {
+			append_arg(&build_options);
+			continue;
+		}
+		if (command_passes_args(build_options.command) && arg_match("--"))
+		{
+			collecting_args = true;
+			continue;
+		}
 		if (current_arg[0] == '-')
 		{
 			parse_option(&build_options);

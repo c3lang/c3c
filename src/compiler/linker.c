@@ -88,6 +88,19 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 	// so we do not link with debug dll versions of libc.
 	link_with_dynamic_debug_libc = false;
 #endif
+	WinCrtLinking linking = active_target.win.crt_linking;
+	FOREACH(Library *, library, active_target.library_list)
+	{
+		WinCrtLinking wincrt = library->target_used->win_crt;
+		if (wincrt == WIN_CRT_DEFAULT) continue;
+		if (linking != WIN_CRT_DEFAULT)
+		{
+			WARNING("Mismatch between CRT linking in library %s and previously selected type.", library->dir);
+			continue;
+		}
+		linking = wincrt;
+	}
+
 	if (!active_target.win.sdk)
 	{
 		const char *path = windows_cross_compile_library();

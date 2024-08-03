@@ -2126,8 +2126,8 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	{
 		FOREACH(Ast *, case_stmt, parent->switch_stmt.cases)
 		{
-			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			if (case_stmt->ast_kind == AST_DEFAULT_STMT) continue;
+			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			if (!sema_cast_const(from)) goto VARIABLE_JUMP;
 			ExprConst *const_expr = &from->const_expr;
 			ExprConst *to_const_expr = case_stmt->case_stmt.to_expr ? &exprptr(case_stmt->case_stmt.to_expr)->const_expr : const_expr;
@@ -2851,21 +2851,6 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 	return true;
 }
 
-bool sema_analyse_ct_expand_stmt(SemaContext *context, Ast *stmt)
-{
-	Expr *string = stmt->expand_stmt;
-	if (!sema_analyse_ct_expr(context, string)) return false;
-	if (!expr_is_const_string(string)) RETURN_SEMA_ERROR(string, "Expected a constant string to '$expand'.");
-	scratch_buffer_clear();
-	scratch_buffer_printf("%s.%d", context->unit->file->full_path, string->span.row);
-	File *file = source_file_text_load(scratch_buffer_to_string(), string->const_expr.bytes.ptr);
-	Ast *result = parse_include_file_stmts(file, context->unit);
-	stmt->ast_kind = AST_NOP_STMT;
-	if (!result) return true;
-	if (!ast_ok(result)) return ast_poison(stmt);
-	return sema_analyse_then_overwrite(context, stmt, astid(result));
-}
-
 bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *message = statement->expr_stmt;
@@ -3028,8 +3013,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			return sema_analyse_ct_echo_stmt(context, statement);
 		case AST_DECLARE_STMT:
 			return sema_analyse_declare_stmt(context, statement);
-		case AST_CT_EXPAND_STMT:
-			return sema_analyse_ct_expand_stmt(context, statement);
 		case AST_DEFAULT_STMT:
 			RETURN_SEMA_ERROR(statement, "Unexpected 'default' outside of switch");
 		case AST_DEFER_STMT:

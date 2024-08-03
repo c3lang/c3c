@@ -10,7 +10,8 @@ const char *manifest_default_keys[][2] = {
 		{"dependencies", "List of C3 libraries to also include."},
 		{"exec", "Scripts run for all platforms."},
 		{"provides", "The library name"},
-		{"targets", "The map of supported platforms"}
+		{"targets", "The map of supported platforms"},
+		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
 
 const int manifest_default_keys_count = ELEMENTLEN(manifest_default_keys);
@@ -25,6 +26,7 @@ const char *manifest_target_keys[][2] = {
 		{"exec", "Scripts to also run for the target."},
 		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
 		{"link-args", "Linker arguments for this target."},
+		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
 
 
@@ -50,6 +52,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, member, key, "--list-library-properties");
 		LibraryTarget *library_target = CALLOCS(LibraryTarget);
 		library_target->parent = library;
+		library_target->win_crt = WIN_CRT_DEFAULT;
 		ArchOsTarget target = arch_os_target_from_string(key);
 		if (target == ARCH_OS_TARGET_DEFAULT)
 		{
@@ -58,6 +61,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		library_target->arch_os = target;
 		vec_add(*target_group, library_target);
 		parse_library_target(library, library_target, key, member);
+		if (library_target->win_crt == WIN_CRT_DEFAULT) library_target->win_crt = library->win_crt;
 	}
 }
 
@@ -79,6 +83,7 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
 	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
 	target->csource_dirs = library->csource_dirs;
+	target->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, target_name, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
 	get_list_append_strings(library->dir, target_name, object, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 }
 
@@ -100,6 +105,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 	library->dependencies = get_optional_string_array(library->dir, NULL, object, "dependencies");
 	library->cc = get_optional_string(dir, NULL, object, "cc");
 	library->cflags = get_cflags(library->dir, NULL, object, NULL);
+	library->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, NULL, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
 	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 	parse_library_type(library, &library->targets, json_obj_get(object, "targets"));
 	return library;

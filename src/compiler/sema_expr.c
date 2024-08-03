@@ -782,7 +782,11 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
 		case DECL_ERASED:
-		case DECL_CT_EXPAND:
+		case DECL_IMPORT:
+		case DECL_ATTRIBUTE:
+		case DECL_CT_ASSERT:
+		case DECL_DEFINE:
+		case DECL_CT_ECHO:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -807,12 +811,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_FAULT:
 			SEMA_ERROR(expr, "Expected fault name followed by '.' and a fault value.");
 			return expr_poison(expr);
-		case DECL_IMPORT:
-		case DECL_ATTRIBUTE:
-		case DECL_CT_ASSERT:
-		case DECL_DEFINE:
-		case DECL_CT_ECHO:
-			UNREACHABLE
 	}
 	switch (decl->var.kind)
 	{
@@ -1847,6 +1845,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type, bool optional, bool *no_match_ref)
 {
 	Decl *decl = NULL;
+	func_ptr_type = type_flat_distinct_inline(func_ptr_type);
 	if (func_ptr_type->type_kind != TYPE_FUNC_PTR)
 	{
 		if (no_match_ref)
@@ -1854,7 +1853,7 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 			*no_match_ref = true;
 			return false;
 		}
-		RETURN_SEMA_ERROR(expr, "Only macros, functions and function pointers maybe invoked, this is of type '%s'.",
+		RETURN_SEMA_ERROR(expr, "Only macros, functions and function pointers may be invoked, this is of type '%s'.",
 						  type_to_error_string(func_ptr_type));
 	}
 	Type *pointee = func_ptr_type->pointer;
@@ -1982,6 +1981,7 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl,
                                   bool call_var_optional, bool *no_match_ref)
 {
+	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	assert(decl->decl_kind == DECL_MACRO);
 
 	if (context->macro_call_depth > 256)
@@ -2325,6 +2325,12 @@ EXIT:
 	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;
 	sema_context_destroy(&macro_context);
+	if (is_always_const && !expr_is_const(call_expr))
+	{
+		SEMA_ERROR(call_expr, "The macro failed to fold to a constant value, despite being '@const'.");
+		SEMA_NOTE(decl, "The macro was declared here.");
+		return false;
+	}
 	return true;
 EXIT_FAIL:
 	sema_context_destroy(&macro_context);
@@ -7758,7 +7764,6 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
 			case DECL_CT_EXEC:
-			case DECL_CT_EXPAND:
 			case DECL_CT_INCLUDE:
 			case DECL_DECLARRAY:
 			case DECL_ERASED:

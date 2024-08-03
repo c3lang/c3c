@@ -149,7 +149,7 @@ const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool WASI = LIBC && OS_TYPE == WASI;
 const bool WASM_NOLIBC @builtin = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 
-macro bool os_is_darwin()
+macro bool os_is_darwin() @const
 {
 	$switch (OS_TYPE)
 	$case IOS:
@@ -162,7 +162,7 @@ macro bool os_is_darwin()
 	$endswitch
 }
 
-macro bool os_is_posix()
+macro bool os_is_posix() @const
 {
 	$switch (OS_TYPE)
 	$case IOS:

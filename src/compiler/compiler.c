@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #endif
 #include "c3_llvm.h"
+#include <errno.h>
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
@@ -649,33 +650,20 @@ void compiler_compile(void)
 				scratch_buffer_append(name);
 			}
 			name = scratch_buffer_to_string();
-			printf("Launching %s...\n", name);
+			printf("Launching %s", name);
+			for (uint32_t i = 0; i < vec_size(active_target.args); ++i) {
+				printf(" %s", active_target.args[i]);
+			}
+			printf("\n");
 
-			int ret = system(name);
-#if PLATFORM_POSIX
-			if (WIFEXITED(ret))
+			int ret = run_subprocess(name, active_target.args);
+			if (active_target.delete_after_run)
 			{
-				int status = WEXITSTATUS(ret);
-				printf("Program completed with exit code %d.\n", status);
-				if (status != 0) exit(status);
+				file_delete_file(name);
 			}
-			else if (WIFSIGNALED(ret))
-			{
-				printf("Program interrupted by signal %d.\n", WTERMSIG(ret));
-				exit(EXIT_FAILURE);
-			}
-			else if (WIFSTOPPED(ret))
-			{
-				printf("Program stopped by signal %d.\n", WSTOPSIG(ret));
-			}
-			else
-			{
-				printf("Program finished with unexpected code %d.\n", ret);
-			}
-#else
+			if (ret < 0) exit_compiler(EXIT_FAILURE);
 			printf("Program completed with exit code %d.\n", ret);
-			if (ret != 0) exit(ret);
-#endif
+			if (ret != 0) exit_compiler(ret);
 		}
 	}
 	else if (output_static)
