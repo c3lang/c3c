@@ -2636,18 +2636,6 @@ static Decl *parse_include(ParseContext *c)
 	return decl;
 }
 
-static Decl *parse_expand(ParseContext *c)
-{
-	SourceSpan loc = c->span;
-	Decl *decl = decl_new(DECL_CT_EXPAND, NULL, loc);
-	advance_and_verify(c, TOKEN_CT_EXPAND);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
-	ASSIGN_EXPR_OR_RET(decl->expand_decl, parse_constant_expr(c), poisoned_decl);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-	CONSUME_EOS_OR_RET(poisoned_decl);
-	return decl;
-}
 static Decl *parse_exec(ParseContext *c)
 {
 	SourceSpan loc = c->span;
@@ -2783,10 +2771,6 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 		case TOKEN_CT_EXEC:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_exec(c);
-			break;
-		case TOKEN_CT_EXPAND:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_expand(c);
 			break;
 		case TOKEN_BITSTRUCT:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;

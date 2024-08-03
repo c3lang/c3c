@@ -779,7 +779,11 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
 		case DECL_ERASED:
-		case DECL_CT_EXPAND:
+		case DECL_IMPORT:
+		case DECL_ATTRIBUTE:
+		case DECL_CT_ASSERT:
+		case DECL_DEFINE:
+		case DECL_CT_ECHO:
 			UNREACHABLE
 		case DECL_POISONED:
 			return expr_poison(expr);
@@ -804,12 +808,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_FAULT:
 			SEMA_ERROR(expr, "Expected fault name followed by '.' and a fault value.");
 			return expr_poison(expr);
-		case DECL_IMPORT:
-		case DECL_ATTRIBUTE:
-		case DECL_CT_ASSERT:
-		case DECL_DEFINE:
-		case DECL_CT_ECHO:
-			UNREACHABLE
 	}
 	switch (decl->var.kind)
 	{
@@ -7626,7 +7624,6 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_CT_ASSERT:
 			case DECL_CT_ECHO:
 			case DECL_CT_EXEC:
-			case DECL_CT_EXPAND:
 			case DECL_CT_INCLUDE:
 			case DECL_DECLARRAY:
 			case DECL_ERASED:

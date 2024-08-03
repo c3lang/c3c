@@ -1030,19 +1030,6 @@ static inline Ast *parse_return_stmt(ParseContext *c)
 }
 
 /**
- * ct_expand_stmt :: CT_EXPAND '(' expr ')'
- */
-static inline Ast* parse_ct_expand_stmt(ParseContext  *c)
-{
-	Ast *ast = ast_new_curr(c, AST_CT_EXPAND_STMT);
-	advance_and_verify(c, TOKEN_CT_EXPAND);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
-	ASSIGN_EXPR_OR_RET(ast->expand_stmt, parse_expr(c), poisoned_ast);
-	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	CONSUME_EOS_OR_RET(poisoned_ast);
-	return ast;
-}
-/**
  * ct_foreach_stmt ::= CT_FOREACH '(' CT_IDENT (',' CT_IDENT)? ':' expr ')' statement* CT_ENDFOREACH
  */
 static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
@@ -1292,8 +1279,6 @@ Ast *parse_stmt(ParseContext *c)
 			return parse_ct_if_stmt(c);
 		case TOKEN_CT_SWITCH:
 			return parse_ct_switch_stmt(c);
-		case TOKEN_CT_EXPAND:
-			return parse_ct_expand_stmt(c);
 		case TOKEN_CT_FOREACH:
 			return parse_ct_foreach_stmt(c);
 		case TOKEN_CT_FOR:

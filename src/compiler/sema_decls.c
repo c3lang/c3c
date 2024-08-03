@@ -3434,7 +3434,6 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 			{
 				case AST_CT_ASSERT:
 				case AST_CT_ECHO_STMT:
-				case AST_CT_EXPAND_STMT:
 				case AST_CT_FOREACH_STMT:
 				case AST_CT_FOR_STMT:
 				case AST_CT_IF_STMT:
@@ -4346,7 +4345,6 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
-		case DECL_CT_EXPAND:
 		case DECL_GLOBALS:
 			UNREACHABLE
 	}
