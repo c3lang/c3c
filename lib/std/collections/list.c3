@@ -123,7 +123,7 @@ fn String List.to_tstring(&self)
 
 fn void List.push(&self, Type element) @inline
 {
-	self.ensure_capacity();
+	self.reserve(1);
 	self.entries[self.size++] = element;
 }
 
@@ -244,7 +244,7 @@ fn void List.push_front(&self, Type type) @inline
  **/
 fn void List.insert_at(&self, usz index, Type type)
 {
-	self.ensure_capacity();
+	self.reserve(1);
 	for (usz i = self.size; i > index; i--)
 	{
 		self.entries[i] = self.entries[i - 1];
@@ -401,10 +401,7 @@ macro usz List._remove_using_test(&self, ElementTest filter, bool $invert, ctx) 
 	return size - self.size;
 }
 
-/**
- * Reserve at least min_capacity
- **/
-fn void List.reserve(&self, usz min_capacity)
+fn void List.ensure_capacity(&self, usz min_capacity) @local
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
@@ -433,7 +430,7 @@ fn void List.set(&self, usz index, Type value) @operator([]=)
 	self.entries[index] = value;
 }
 
-fn void List.ensure_capacity(&self, usz added = 1) @inline @private
+fn void List.reserve(&self, usz added)
 {
 	usz new_size = self.size + added;
 	if (self.capacity >= new_size) return;
@@ -441,7 +438,7 @@ fn void List.ensure_capacity(&self, usz added = 1) @inline @private
 	assert(new_size < usz.max / 2U);
 	usz new_capacity = self.capacity ? 2U * self.capacity : 16U;
 	while (new_capacity < new_size) new_capacity *= 2U;
-	self.reserve(new_capacity);
+	self.ensure_capacity(new_capacity);
 }
 
 // Functions for equatable types

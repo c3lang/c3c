@@ -99,38 +99,42 @@ int run_subprocess(const char *name, const char **args)
 	return exit_status;
 #else
 	pid_t cpid = fork();
-	if (cpid < 0) {
-		eprintf("Could not fork child process %s: %s", name, strerror(errno));
+	if (cpid < 0)
+	{
+		eprintf("Could not fork child process %s: %s\n", name, strerror(errno));
 		return -1;
 	}
 
-	if (cpid == 0) {
+	if (cpid == 0)
+	{
 		const char **args_null = NULL;
 		vec_add(args_null, name);
-		for (uint32_t i = 0; i < vec_size(args); ++i) {
+		for (uint32_t i = 0; i < vec_size(args); ++i)
+		{
 			vec_add(args_null, args[i]);
 		}
 		vec_add(args_null, NULL);
-
-		if (execvp(name, (char * const*)args_null) < 0) {
-			eprintf("Could not exec child process %s: %s", name, strerror(errno));
+		if (execvp(name, (char *const *)args_null) < 0)
+		{
+			eprintf("Could not exec child process %s: %s\n", name, strerror(errno));
 			exit(1);
 		}
-		UNREACHABLE
+		exit(0);
 	}
 
-	for (;;) {
+	for (;;)
+	{
 		int wstatus = 0;
-		if (waitpid(cpid, &wstatus, 0) < 0) {
-			eprintf("Could not wait on %s (pid %d): %s", name, cpid, strerror(errno));
+		if (waitpid(cpid, &wstatus, 0) < 0)
+		{
+			eprintf("Could not wait on %s (pid %d): %s\n", name, cpid, strerror(errno));
 			return -1;
 		}
 
-		if (WIFEXITED(wstatus)) {
-			return WEXITSTATUS(wstatus);
-		}
+		if (WIFEXITED(wstatus)) return WEXITSTATUS(wstatus);
 
-		if (WIFSIGNALED(wstatus)) {
+		if (WIFSIGNALED(wstatus))
+		{
 			eprintf("Program interrupted by signal %d.\n", WTERMSIG(wstatus));
 			return -1;
 		}
