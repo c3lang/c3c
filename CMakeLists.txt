@@ -252,6 +252,8 @@ add_executable(c3c
         src/compiler/codegen_general.c
         src/compiler/compiler.c
         src/compiler/compiler.h
+        src/compiler/subprocess.c
+        src/compiler/subprocess.h
         src/compiler/context.c
         src/compiler/copying.c
         src/compiler/diagnostics.c
@@ -369,7 +371,8 @@ endif()
 
 
 target_include_directories(c3c PRIVATE
-        "${CMAKE_SOURCE_DIR}/src/" "${CMAKE_SOURCE_DIR}/wrapper/include/")
+        "${CMAKE_SOURCE_DIR}/src/"
+        "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
 
 target_include_directories(c3c_wrappers PRIVATE
@@ -424,7 +427,7 @@ else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)
     if (NOT LLVM_ENABLE_RTTI)
-        target_compile_options(c3c_wrappers PUBLIC -fno-rtti)
+        target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
     endif()
     target_compile_options(c3c PRIVATE -pthread -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
