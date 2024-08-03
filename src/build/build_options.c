@@ -252,7 +252,7 @@ void append_file(BuildOptions *build_options)
 
 void append_arg(BuildOptions *build_options)
 {
-	if (vec_size(build_options->args) == MAX_FILES)
+	if (vec_size(build_options->args) == MAX_ARGS)
 	{
 		EOUTPUT("Max %d args may be specified.", MAX_ARGS);
 		exit_compiler(EXIT_FAILURE);
