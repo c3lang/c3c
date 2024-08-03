@@ -17,7 +17,7 @@ int run_subprocess(const char *name, const char **args)
 #if PLATFORM_WINDOWS
 	// https://docs.microsoft.com/en-us/windows/win32/procthread/creating-a-child-process-with-redirected-input-and-output
 
-	STARTUPINFO siStartInfo;
+	STARTUPINFOA siStartInfo;
 	ZeroMemory(&siStartInfo, sizeof(siStartInfo));
 	siStartInfo.cb = sizeof(STARTUPINFO);
 	// NOTE: theoretically setting NULL to std handles should not be a problem
