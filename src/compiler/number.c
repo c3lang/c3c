@@ -49,11 +49,87 @@ static inline bool compare_fps(Real left, Real right, BinaryOp op)
 			UNREACHABLE
 	}
 }
+void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
+{
+	if (expr_const->const_kind == CONST_POINTER)
+	{
+		*expr_const = (ExprConst) { .const_kind = contract_type };
+		return;
+	}
+	assert(expr_const->const_kind == CONST_INITIALIZER);
+	Type *type = type_flatten(expr_const->initializer->type);
+	assert(type_is_any_arraylike(type));
+	ArraySize len = type->array.len;
+	if (!len)
+	{
+		*expr_const = (ExprConst) { .const_kind = contract_type };
+		return;
+	}
+	char *arr = calloc_arena(len);
+	ConstInitializer *initializer = expr_const->initializer;
+	switch (initializer->kind)
+	{
+		case CONST_INIT_ZERO:
+			break;
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_VALUE:
+		case CONST_INIT_ARRAY_VALUE:
+			UNREACHABLE
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
+			{
+				assert(init->kind == CONST_INIT_ARRAY_VALUE);
+				arr[init->init_array_value.index] = (char) int_to_i64(init->init_array_value.element->init_value->const_expr.ixx);
+			}
+			break;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			FOREACH_IDX(i, ConstInitializer *, init, initializer->init_array_full)
+			{
+				assert(init->kind == CONST_INIT_VALUE);
+				arr[i] = (char)int_to_i64(init->init_value->const_expr.ixx);
+			}
+			break;
+		}
+	}
+	*expr_const = (ExprConst) { .const_kind = contract_type, .bytes.ptr = arr, .bytes.len = len };
+}
+
+INLINE bool const_is_bytes(ConstKind kind)
+{
+	return kind == CONST_BYTES || kind == CONST_STRING;
+}
 
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op)
 {
 	bool is_eq;
-	assert(left->const_kind == right->const_kind);
+	ConstKind left_kind = left->const_kind;
+	ConstKind right_kind = right->const_kind;
+	ExprConst replace;
+	if (left_kind != right_kind)
+	{
+		if (const_is_bytes(left_kind))
+		{
+			if (!const_is_bytes(right_kind))
+			{
+				replace = *right;
+				expr_contract_array(&replace, left_kind);
+				right = &replace;
+			}
+		}
+		else if (const_is_bytes(right_kind))
+		{
+			if (!const_is_bytes(left_kind))
+			{
+				replace = *left;
+				expr_contract_array(&replace, right_kind);
+				left = &replace;
+			}
+		}
+	}
 	switch (left->const_kind)
 	{
 		case CONST_BOOL:

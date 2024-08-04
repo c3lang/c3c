@@ -1,4 +1,4 @@
-module libc::termios @if($and(env::LIBC, env::POSIX));
+module libc::termios @if(env::LIBC &&& env::POSIX);
 
 fn int sendBreak(Fd fd, int duration) => tcsendbreak(fd, duration);
 fn int drain(Fd fd) => tcdrain(fd);
@@ -11,7 +11,7 @@ fn int Termios.setISpeed(Termios* self, Speed speed) => cfsetispeed(self, speed)
 fn int Termios.getAttr(Termios* self, Fd fd) => tcgetattr(fd, self);
 fn int Termios.setAttr(Termios* self, Fd fd, int optional_actions) => tcsetattr(fd, optional_actions, self);
 
-module libc::termios @if($or(!env::LIBC, !env::POSIX));
+module libc::termios @if(!env::LIBC ||| !env::POSIX);
 
 distinct Cc = char;
 distinct Speed = CUInt;

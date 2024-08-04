@@ -82,6 +82,12 @@ const char *token_type_to_string(TokenType type)
 			return "^=";
 		case TOKEN_BUILTIN:
 			return "$$";
+		case TOKEN_CT_AND:
+			return "&&&";
+		case TOKEN_CT_OR:
+			return "|||";
+		case TOKEN_CT_CONCAT:
+			return "+++";
 		case TOKEN_DIV_ASSIGN:
 			return "/=";
 		case TOKEN_DOTDOT:
@@ -326,7 +332,7 @@ const char *token_type_to_string(TokenType type)
 
 		case TOKEN_CT_ALIGNOF:
 			return "$alignof";
-		case TOKEN_CT_AND:
+		case TOKEN_CT_ANDFN:
 			return "$and";
 		case TOKEN_CT_APPEND:
 			return "$append";
@@ -336,7 +342,7 @@ const char *token_type_to_string(TokenType type)
 			return "$assignable";
 		case TOKEN_CT_CASE:
 			return "$case";
-		case TOKEN_CT_CONCAT:
+		case TOKEN_CT_CONCATFN:
 			return "$concat";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
@@ -394,7 +400,7 @@ const char *token_type_to_string(TokenType type)
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
 			return "$offsetof";
-		case TOKEN_CT_OR:
+		case TOKEN_CT_ORFN:
 			return "$or";
 		case TOKEN_CT_QNAMEOF:
 			return "$qnameof";

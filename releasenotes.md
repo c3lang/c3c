@@ -23,6 +23,7 @@
 - Add a `--run-once` option to delete the output file after running it.
 - Add `@const` attribute for macros, for better error messages with constant macros.
 - Add `wincrt` setting to libraries.
+- Add `+++` `&&&` `|||` as replacement for `$concat`, `$and` and `$or`.
 
 ### Fixes
 
@@ -38,6 +39,8 @@
 - Distinct inline would not implement protocol if the inlined implemented it. #1292
 - Distinct inline can now be called if it is aliasing a function pointer.
 - Bug in List add_array when reserving memory.
+- Fix issue where a compile time parameter is followed by "...".
+- Fix issue with some conversions to untyped list.
 
 ### Stdlib changes
 

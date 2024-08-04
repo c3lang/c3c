@@ -1273,7 +1273,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					// Did we get Foo... foo...
 					if (ellipsis)
 					{
-						PRINT_ERROR_HERE("Unexpected '...' following a vararg declaration.");
+						PRINT_ERROR_LAST("Unexpected '...' following a vararg declaration.");
 						return false;
 					}
 					ellipsis = true;
@@ -1285,7 +1285,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					// Did we get Foo foo...? If so then that's an error.
 					if (type)
 					{
-						PRINT_ERROR_HERE("For typed varargs '...', needs to appear after the type.");
+						PRINT_ERROR_LAST("For typed varargs '...', needs to appear after the type.");
 						return false;
 					}
 					// This is "foo..."
@@ -1299,9 +1299,9 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				name = symstr(c);
 				advance_and_verify(c, TOKEN_CT_IDENT);
 				// This will catch Type... $foo and $foo..., neither is allowed.
-				if (ellipsis || peek(c) == TOKEN_ELLIPSIS)
+				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_HERE("Compile time parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("Compile time parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_CT;
@@ -1316,9 +1316,9 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					return false;
 				}
 				// This will catch Type... &foo and &foo..., neither is allowed.
-				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
+				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_HERE("Reference parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("Reference parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				// Span includes the "&"
@@ -1333,9 +1333,9 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 				// expression #foo
 				name = symstr(c);
 				advance_and_verify(c, TOKEN_HASH_IDENT);
-				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
+				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_EXPR;
@@ -1344,9 +1344,9 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 			case TOKEN_CT_TYPE_IDENT:
 				name = symstr(c);
 				advance_and_verify(c, TOKEN_CT_TYPE_IDENT);
-				if (ellipsis || try_consume(c, TOKEN_ELLIPSIS))
+				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_HERE("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("Expression parameters may not be varargs, use untyped macro varargs '...' instead.");
 					return false;
 				}
 				param_kind = VARDECL_PARAM_CT_TYPE;

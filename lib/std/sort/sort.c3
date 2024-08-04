@@ -20,7 +20,7 @@ macro bool @is_sortable(#list)
 			return false;
 		$default:
 			return true;
-	$endswitch;
+	$endswitch
 }
 
 macro bool @is_valid_context(#cmp, #context)
@@ -34,7 +34,7 @@ macro bool @is_valid_cmp_fn(#cmp, #list, #context)
 	var $no_context = @is_empty_macro_slot(#context);
 	$switch
 		$case @is_empty_macro_slot(#cmp): return true;
-	    $case $or($Type.kindof != FUNC, $Type.returns.kindof != SIGNED_INT): return false;
+	    $case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
 		$case $defined(#cmp(#list[0], #list[0], #context)): return true;
 		$case $defined(#cmp(#list[0], #list[0])): return $no_context;
 		$case $defined(#cmp(&#list[0], &#list[0], #context)): return true;

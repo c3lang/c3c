@@ -1296,9 +1296,11 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BYTES:
 		case TOKEN_CHAR_LITERAL:
 		case TOKEN_CT_ALIGNOF:
+		case TOKEN_CT_ANDFN:
 		case TOKEN_CT_AND:
 		case TOKEN_CT_APPEND:
 		case TOKEN_CT_ASSIGNABLE:
+		case TOKEN_CT_CONCATFN:
 		case TOKEN_CT_CONCAT:
 		case TOKEN_CT_CONST_IDENT:
 		case TOKEN_CT_IS_CONST:
@@ -1310,6 +1312,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_IDENT:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_OFFSETOF:
+		case TOKEN_CT_ORFN:
 		case TOKEN_CT_OR:
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_SIZEOF:

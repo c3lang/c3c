@@ -4408,6 +4408,9 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		case BINARYOP_BIT_XOR_ASSIGN:
 		case BINARYOP_SHR_ASSIGN:
 		case BINARYOP_SHL_ASSIGN:
+		case BINARYOP_CT_AND:
+		case BINARYOP_CT_OR:
+		case BINARYOP_CT_CONCAT:
 			// Handled elsewhere.
 			UNREACHABLE
 	}
