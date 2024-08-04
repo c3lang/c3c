@@ -7092,7 +7092,7 @@ RETRY:;
 			expr_contract_array(&right->const_expr, left->const_expr.const_kind);
 			goto RETRY;
 	}
-
+	UNREACHABLE
 }
 static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool is_append)
 {
