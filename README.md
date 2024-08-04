@@ -212,7 +212,7 @@ More platforms will be supported in the future.
 3. Unzip executable and standard lib.
 4. Run `./c3c`.
 
-(*Note that there is a known issue with debug symbol generation on MacOS 13, see issue #1086)
+(*Note that there is a known issue with debug symbol generation on MacOS 13, see [issue #1086](https://github.com/c3lang/c3c/issues/1086))
 
 #### Installing on Arch Linux
 There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git).
