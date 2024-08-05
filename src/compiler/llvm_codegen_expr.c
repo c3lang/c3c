@@ -7043,6 +7043,12 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 	}
 }
 
+void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
+{
+	sema_cast_const(expr);
+	llvm_emit_expr(c, value, expr);
+	assert(!llvm_value_is_addr(value));
+}
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_LOC(c, expr);

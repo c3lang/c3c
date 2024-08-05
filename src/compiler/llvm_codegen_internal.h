@@ -502,6 +502,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 LLVMValueRef llvm_get_selector(GenContext *c, const char *name);
 
 // -- C3 Lowering --
+void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr);
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr);
 LLVMValueRef llvm_emit_expr_to_rvalue(GenContext *c, Expr *expr);
 LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id);

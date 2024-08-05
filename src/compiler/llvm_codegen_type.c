@@ -538,10 +538,8 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		for (unsigned i = 0; i < elements; i++)
 		{
 			BEValue value;
-			llvm_emit_expr(c, &value, enum_vals[i]->enum_constant.args[ai]);
-			assert(!llvm_value_is_addr(&value));
-			LLVMValueRef llvm_value = llvm_value_is_bool(&value) ? LLVMBuildZExt(c->builder, value.value, c->byte_type, "")
-																 : value.value;
+			llvm_emit_expr_global_value(c, &value, enum_vals[i]->enum_constant.args[ai]);
+			LLVMValueRef llvm_value = llvm_load_value_store(c, &value);
 			values[i] = llvm_value;
 			if (!val_type)
 			{

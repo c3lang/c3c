@@ -402,7 +402,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 		case CONST_INIT_VALUE:
 		{
 			BEValue value;
-			llvm_emit_expr(c, &value, const_init->init_value);
+			llvm_emit_expr_global_value(c, &value, const_init->init_value);
 			return llvm_load_value_store(c, &value);
 		}
 	}
@@ -497,7 +497,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		else
 		{
 			BEValue value;
-			llvm_emit_expr(c, &value, init_expr);
+			llvm_emit_expr_global_value(c, &value, init_expr);
 			init_value = llvm_load_value_store(c, &value);
 		}
 	}
@@ -558,7 +558,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		Expr *inner = init_expr->inner_expr;
 		assert(expr_is_const(inner) && inner->const_expr.const_kind == CONST_ERR);
 		BEValue value;
-		llvm_emit_expr(c, &value, inner);
+		llvm_emit_expr_global_value(c, &value, inner);
 		optional_value = llvm_load_value_store(c, &value);
 	}
 	if (!decl->is_extern)

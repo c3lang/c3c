@@ -45,6 +45,7 @@
 - Issue where a `if (catch e = ...)` in a defer would be incorrectly copied. Causing codegen error.
 - Variable in if-try / if-catch cannot be a reused variable name.
 - Vararg interfaces were broken.
+- LLVM codegen for constants in enums could fail.
 
 ### Stdlib changes
 
