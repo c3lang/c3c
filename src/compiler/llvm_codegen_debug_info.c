@@ -482,10 +482,10 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	Decl *decl = type->decl;
 
 	// Is this a primitive typedef? If so, we create it without reference.
-	if (!decl)
+	if (decl->unit == global_context.core_unit)
 	{
 		return LLVMDIBuilderCreateTypedef(c->debug.builder,
-										  llvm_get_debug_type(c, type->canonical),
+										  llvm_get_debug_type(c, type_lowering(type)),
 										  type->name, strlen(type->name),
 										  NULL, 0, NULL, 0);
 	}

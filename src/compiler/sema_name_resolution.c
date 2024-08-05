@@ -341,7 +341,7 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 	// There might just be a single match.
 	if (decls->decl_kind != DECL_DECLARRAY)
 	{
-		if (path && !matches_subpath(decl_module(decls)->name, path)) return true;
+		if (path && !matches_subpath(decls->unit->module->name, path)) return true;
 		if (!decl_is_visible(context->unit, decls))
 		{
 			name_resolve->maybe_decl = decls;
@@ -359,7 +359,7 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 	Decl *decl = NULL;
 	FOREACH(Decl *, candidate, decls->decl_list)
 	{
-		if (path && !matches_subpath(decl_module(candidate)->name, path)) continue;
+		if (path && !matches_subpath(candidate->unit->module->name, path)) continue;
 		if (!decl_is_visible(context->unit, candidate))
 		{
 			maybe_decl = candidate;
@@ -580,7 +580,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	if (!found && name_resolve->maybe_decl)
 	{
 		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
-		const char *module_name = decl_module(name_resolve->maybe_decl)->name->module;
+		const char *module_name = name_resolve->maybe_decl->unit->module->name->module;
 		if (path_name)
 		{
 			sema_error_at(context, span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
@@ -598,8 +598,8 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	{
 		assert(found);
 		const char *symbol_type = decl_to_name(found);
-		const char *found_path = decl_module(found)->name->module;
-		const char *other_path = decl_module(name_resolve->ambiguous_other_decl)->name->module;
+		const char *found_path = found->unit->module->name->module;
+		const char *other_path = name_resolve->ambiguous_other_decl->unit->module->name->module;
 		if (path_name)
 		{
 			sema_error_at(context, span,
@@ -1028,7 +1028,7 @@ BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol)
 	Decl *found = resolve.found;
 	if (!found) return BOOL_FALSE;
 	// Defined in the same module => defined
-	if (decl_module(found) == c->unit->module) return BOOL_TRUE;
+	if (found->unit->module == c->unit->module) return BOOL_TRUE;
 	// Not a variable or function => defined
 	if (found->decl_kind != DECL_VAR && found->decl_kind != DECL_FUNC) return BOOL_TRUE;
 	// Otherwise defined only if autoimport.
@@ -1114,8 +1114,7 @@ bool sema_add_local(SemaContext *context, Decl *decl)
 	if (is_var && decl->var.shadow) goto ADD_VAR;
 
 	Decl *other = sema_find_local(context, decl->name);
-	assert(!other || decl_module(other));
-	if (other && (decl_module(other) == current_unit->module || other->is_autoimport))
+	if (other && (other->unit->module == current_unit->module || other->is_autoimport))
 	{
 		sema_shadow_error(context, decl, other);
 		decl_poison(decl);

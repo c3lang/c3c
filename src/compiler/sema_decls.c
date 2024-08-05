@@ -1987,7 +1987,7 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 			vec_add(parent->methods, method);
 			break;
 		case VISIBLE_PRIVATE:
-			if (decl_module(parent) == unit->module && parent->visibility >= VISIBLE_PRIVATE)
+			if (parent->unit->module == unit->module && parent->visibility >= VISIBLE_PRIVATE)
 			{
 				vec_add(parent->methods, method);
 				break;
@@ -4114,7 +4114,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	if (!unit_resolve_parameterized_symbol(c, &name_resolve)) return poisoned_decl;
 	Decl *alias = name_resolve.found;
 	assert(alias);
-	Module *module = decl_module(alias);
+	Module *module = alias->unit->module;
 	unsigned parameter_count = vec_size(module->parameters);
 	assert(parameter_count > 0);
 	if (parameter_count != vec_size(params))
@@ -4237,8 +4237,6 @@ RETRY:
 		case TYPE_MEMBER:
 			return true;
 		case TYPE_FUNC_RAW:
-			if (!type->decl) return true;
-			FALLTHROUGH;
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:

@@ -1031,7 +1031,7 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
-	bool same_module = decl_module(decl) == c->code_module;
+	bool same_module = decl->unit->module == c->code_module;
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
 	if (same_module)
 	{
@@ -1165,7 +1165,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	}
 	if (decl->is_export && arch_is_wasm(platform_target.arch))
 	{
-		if (c->code_module == decl_module(decl))
+		if (c->code_module == decl->unit->module)
 		{
 			scratch_buffer_set_extern_decl_name(decl, true);
 			llvm_attribute_add_string(c, function, "wasm-export-name", scratch_buffer_to_string(), -1);
@@ -1236,7 +1236,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			if (decl_is_local(decl))
 			{
-				assert(decl_module(decl) == c->code_module);
+				assert(decl->unit->module == c->code_module);
 				llvm_set_internal_linkage(backend_ref);
 			}
 			return backend_ref;

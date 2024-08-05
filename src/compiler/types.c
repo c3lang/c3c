@@ -226,10 +226,11 @@ const char *type_to_error_string(Type *type)
 		case TYPE_INTERFACE:
 		{
 			Decl *decl = type->decl;
-			if (!decl || !decl_module(decl)->generic_suffix) return type->name;
+			const char *suffix = decl->unit->module->generic_suffix;
+			if (!suffix) return type->name;
 			scratch_buffer_clear();
 			scratch_buffer_append(decl->name);
-			scratch_buffer_append(decl_module(decl)->generic_suffix);
+			scratch_buffer_append(suffix);
 			return scratch_buffer_copy();
 		}
 		case TYPE_FUNC_PTR:
@@ -582,7 +583,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 			type = type->function.prototype->raw_type;
 			if (type->function.decl)
 			{
-				scratch_buffer_append_module(decl_module(type->function.decl), true);
+				scratch_buffer_append_module(type->function.decl->unit->module, true);
 				scratch_buffer_append("$");
 				scratch_buffer_append(type->name);
 			}
@@ -1046,7 +1047,7 @@ bool type_is_user_defined(Type *type)
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
 		case TYPE_INTERFACE:
-			return type->decl != NULL;
+			return true;
 		default:
 			return false;
 	}
@@ -1165,7 +1166,7 @@ bool type_is_valid_for_array(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_DISTINCT:
-			assert(!type->decl || type->decl->resolve_status == RESOLVE_DONE);
+			assert(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ANY:
@@ -1188,7 +1189,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
-			assert(!type->decl || type->decl->resolve_status == RESOLVE_DONE);
+			assert(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1260,11 +1261,18 @@ static void type_init(const char *name, Type *location, TypeKind kind, unsigned 
 
 static void type_create_alias(const char *name, Type *location, Type *canonical)
 {
+	Decl *decl = decl_new(DECL_TYPEDEF, name, INVALID_SPAN);
+	decl->resolve_status = RESOLVE_DONE;
+	decl->typedef_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
+	decl->unit = global_context.core_unit;
+	decl->is_export = true;
 	*location = (Type) {
+		.decl = decl,
 		.type_kind = TYPE_TYPEDEF,
 		.name = name,
 		.canonical = canonical
 	};
+	decl->type = location;
 	global_context_add_type(location);
 }
 
@@ -1338,6 +1346,7 @@ void type_setup(PlatformTarget *target)
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
+	string_decl->unit = global_context.core_unit;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
 	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
@@ -2097,7 +2106,7 @@ Module *type_base_module(Type *type)
 			type = type->pointer;
 			FALLTHROUGH;
 		case TYPE_FUNC_RAW:
-			return type->function.decl ? decl_module(type->function.decl) : NULL;
+			return type->function.decl ? type->function.decl->unit->module : NULL;
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:

@@ -36,6 +36,17 @@ File *source_file_text_load(const char *filename, const char *content)
 
 }
 
+File *source_file_generate(const char *filename)
+{
+	File *file = CALLOCS(File);
+	file->file_id = vec_size(global_context.loaded_sources);
+	file->full_path = "<generated>";
+	file->contents = "";
+	file->content_len = 0;
+	vec_add(global_context.loaded_sources, file);
+	return file;
+}
+
 File *source_file_load(const char *filename, bool *already_loaded, const char **error)
 {
 	if (already_loaded) *already_loaded = false;

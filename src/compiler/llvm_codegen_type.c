@@ -489,7 +489,7 @@ static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type 
 static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 {
 	Decl *decl = type->decl;
-	bool is_external = decl_module(decl) != c->code_module;
+	bool is_external = decl->unit->module != c->code_module;
 	bool is_dynamic = decl->is_dynamic;
 
 	Decl **enum_vals = decl->enums.values;

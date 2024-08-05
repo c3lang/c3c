@@ -1004,7 +1004,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	if (decl_needs_prefix(decl))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
-		if (decl_module(decl) != context->unit->module && !expr->identifier_expr.path)
+		if (decl->unit->module != context->unit->module && !expr->identifier_expr.path)
 		{
 			const char *message;
 			switch (decl->decl_kind)
@@ -1410,7 +1410,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				bool success;
 				SCOPE_START
 					new_context->original_inline_line = context->original_inline_line ? context->original_inline_line : call->span.row;
-					new_context->original_module = context->original_module ? context->original_module : context->core_module;
+					new_context->original_module = context->original_module;
 					success = sema_analyse_expr_rhs(new_context, param->type, arg, true, no_match_ref, false);
 				SCOPE_END;
 				sema_context_destroy(&default_context);
@@ -3333,7 +3333,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 		{
 			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
 									"it may refer to method defined in '%s' or one in '%s'",
-					   name, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
+					   name, member->unit->module->name->module, ambiguous->unit->module->name->module);
 		}
 	}
 	if (!member)
@@ -4537,7 +4537,7 @@ CHECK_DEEPER:
 		{
 			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
 									"it may refer to method defined in '%s' or one in '%s'",
-									kw, decl_module(method)->name->module, decl_module(ambiguous)->name->module);
+									kw, method->unit->module->name->module, ambiguous->unit->module->name->module);
 		}
 		if (!method)
 		{
@@ -4580,9 +4580,8 @@ CHECK_DEEPER:
 		}
 		if (ambiguous)
 		{
-			SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
-			return false;
+			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
+					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
 		}
 	}
 
@@ -7988,7 +7987,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		if (ambiguous)
 		{
 			sema_error_at(context, loc, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
-					   kw, decl_module(member)->name->module, decl_module(ambiguous)->name->module);
+					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
 			return false;
 		}
 		if (is_missing)
@@ -8170,7 +8169,7 @@ RETURN_CT:
 		return true;
 	}
 	scratch_buffer_clear();
-	scratch_buffer_append(decl_module(decl)->name->module);
+	scratch_buffer_append(decl->unit->module->name->module);
 	scratch_buffer_append("::");
 	scratch_buffer_append(decl->name);
 	expr_rewrite_to_string(expr, scratch_buffer_copy());

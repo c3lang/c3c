@@ -187,15 +187,10 @@ static void header_print_type(HeaderContext *c, Type *type)
 			header_print_type(c, type->decl->distinct->type);
 			return;
 		case TYPE_TYPEDEF:
-			if (!type->decl)
-			{
-				if (type == type_usz) { PRINTF("size_t"); return; }
-				if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
-				if (type == type_iptr) { PRINTF("intptr_t"); return; }
-				if (type == type_uptr) { PRINTF("uintptr_t"); return; }
-				header_print_type(c, type->canonical);
-				return;
-			}
+			if (type == type_usz) { PRINTF("size_t"); return; }
+			if (type == type_isz) { PRINTF("ptrdiff_t"); return; }
+			if (type == type_iptr) { PRINTF("intptr_t"); return; }
+			if (type == type_uptr) { PRINTF("uintptr_t"); return; }
 			if (type->decl->is_export)
 			{
 				PRINTF("%s", decl_get_extname(type->decl));
@@ -534,11 +529,6 @@ RETRY:
 		}
 		case TYPE_TYPEDEF:
 		{
-			if (!type->decl)
-			{
-				type = type->canonical;
-				goto RETRY;
-			}
 			if (!header_try_gen_both(c, type)) return;
 			Type *underlying_type = type->canonical;
 			header_gen_maybe_generate_type(c, underlying_type, is_pointer);

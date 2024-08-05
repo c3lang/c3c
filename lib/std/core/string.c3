@@ -1,6 +1,7 @@
 module std::core::string;
 import std::ascii;
 
+distinct String @if(!$defined(String)) = inline char[];
 distinct ZString = inline char*;
 distinct WString = inline Char16*;
 def Char32 = uint;

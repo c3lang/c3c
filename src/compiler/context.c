@@ -110,7 +110,7 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl)
 {
 	if (decl->is_external_visible) return;
 	Module *active_module = context->current_macro ? context->original_module : context->compilation_unit->module;
-	if (decl_module(decl) == active_module) return;
+	if (decl->unit->module == active_module) return;
 	decl->is_external_visible = true;
 }
 

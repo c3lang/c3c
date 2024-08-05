@@ -1068,6 +1068,16 @@ void compile()
 	global_context.main = NULL;
 	global_context.string_type = NULL;
 	asm_target.initialized = false;
+	// Create the core module if needed.
+	Path *core_path = MALLOCS(Path);
+	core_path->module = kw_std__core;
+	core_path->span = INVALID_SPAN;
+	core_path->len = strlen(kw_std__core);
+	global_context.core_module = compiler_find_or_create_module(core_path, NULL);
+	CompilationUnit *unit = CALLOCS(CompilationUnit);
+	unit->file = source_file_generate("core_internal.c3");
+	unit->module = global_context.core_module;
+	global_context.core_unit = unit;
 	target_setup(&active_target);
 	resolve_libraries(&active_target);
 	global_context.sources = active_target.sources;
