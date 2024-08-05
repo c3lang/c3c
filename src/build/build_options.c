@@ -299,7 +299,7 @@ static void parse_project_options(BuildOptions *options)
 		project_usage();
 		return;
 	}
-	++arg_index;
+	next_arg();
 	parse_project_subcommand(options);
 }
 
