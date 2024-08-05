@@ -3808,12 +3808,15 @@ static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr,
 		if (method->decl_kind == DECL_FUNC)
 		{
 			Decl *decl = methods[i];
+			size_t namestr_len = strlen(decl->name);
+			const char *namestr = str_copy(decl->name, namestr_len);
 			Expr *expr_element = expr_new(EXPR_CONST, expr->span);
 			expr_element->resolve_status = RESOLVE_DONE;
-			expr_element->type = type_method;
+			expr_element->type = type_string;
 			expr_element->const_expr = (ExprConst) {
-				.const_kind = CONST_METHOD,
-				.method.decl = decl,
+				.const_kind = CONST_STRING,
+				.bytes.ptr = namestr,
+				.bytes.len = namestr_len,
 			};
 			vec_add(method_exprs, expr_element);
 		}
