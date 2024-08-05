@@ -50,7 +50,7 @@ const char *get_mandatory_string(const char *file, const char *category, JSONObj
 	if (!value)
 	{
 		if (category) error_exit("In file '%s': The mandatory field '%s' was missing in '%s'.", file, key, category);
-		error_exit("In file '%s': The mandatory field '%s' was missing.", file);
+		error_exit("In file '%s': The mandatory field '%s' was missing.", file, key);
 	}
 	return value;
 }
