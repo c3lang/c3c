@@ -44,6 +44,36 @@ static void print_opt_setting(const char* header, int setting, const char** valu
 	PRINTFN("%s: %s", header, values[setting]);
 }
 
+static void print_opt_bool(const char* header, int b) {
+	if (b == -1) return;
+	PRINTF("%s: ", header);
+	if (b) {
+		PRINTFN("true");
+	} else {
+		PRINTFN("false");
+	}
+}
+
+static void print_opt_int(const char* header, long v) {
+	if (v < 0) return;
+	PRINTFN("%s: %ld", header, v);
+}
+
+static const char* generate_expected(const char** options, size_t n) {
+	scratch_buffer_clear();
+	for (size_t i = 0; i < n; i++) {
+		if (i > 0) {
+			scratch_buffer_append(", ");
+		}
+		if (i == n - 1) {
+			scratch_buffer_append(" or ");
+		}
+		scratch_buffer_printf("\"%s\"", options[i]);
+	}
+	return scratch_buffer_to_string();
+}
+
+
 const char* optimization_levels[] = {
 	[OPT_SETTING_O0] = "O0",
 	[OPT_SETTING_O1] = "O1",
@@ -51,43 +81,211 @@ const char* optimization_levels[] = {
 	[OPT_SETTING_O3] = "O3",
 	[OPT_SETTING_O4] = "O4",
 	[OPT_SETTING_O5] = "O5",
-	[OPT_SETTING_OSMALL] = "Small",
-	[OPT_SETTING_OTINY] = "Tiny" 
+	[OPT_SETTING_OSMALL] = "Os",
+	[OPT_SETTING_OTINY] = "Oz" 
 };
 
-const char* optimization_level_expected = "one of \"O0\", \"O1\", \"O2\", \"O3\", \"O4\", \"O5\", \"Os\", or \"Oz\"";
+const char* debug_levels[] = {
+	[DEBUG_INFO_NONE] = "none",
+	[DEBUG_INFO_LINE_TABLES] = "line-tables",
+	[DEBUG_INFO_FULL] = "full"
+};
+
+
+#define VIEW_MANDATORY_STRING_ARRAY(header, key) \
+do { \
+	const char** arr = get_string_array(PROJECT_JSON, NULL, project_json, key, true);\
+	print_vec(header, arr, false);\
+} while(0)
+
+#define VIEW_STRING_ARRAY(header, key) \
+do { \
+	const char** arr = get_optional_string_array(PROJECT_JSON, NULL, project_json, key);\
+	print_vec(header, arr, true);\
+} while(0)
+
+#define VIEW_MANDATORY_STRING(header, key) \
+do { \
+	const char* str = get_mandatory_string(PROJECT_JSON, NULL, project_json, key);\
+	print_opt_str(header, str);\
+} while(0)
+
+#define VIEW_STRING(header, key) \
+do { \
+	const char* str = get_optional_string(PROJECT_JSON, NULL, project_json, key);\
+	print_opt_str(header, str);\
+} while(0)
+
+#define VIEW_SETTING(header, key, expected_arr) \
+do { \
+	int setting = get_valid_string_setting(PROJECT_JSON, NULL, project_json, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
+ 	print_opt_setting(header, setting, expected_arr);\
+} while(0)
+
+#define VIEW_BOOL(header, key) \
+do {\
+    int val = get_valid_bool(PROJECT_JSON, NULL, project_json, key, -1);\
+	print_opt_bool(header, val);\
+} while(0)
+
+#define VIEW_INTEGER(header, key) \
+do {\
+	long v = get_valid_integer(project_json, key, PROJECT_JSON, false);\
+    print_opt_int(header, v);\
+} while(0);
+
+#define TARGET_VIEW_STRING_ARRAY(header, key) \
+do {\
+    const char** arr = get_optional_string_array(PROJECT_JSON, name, target, key);\
+	print_vec("\t" header, arr, true);\
+} while(0)
+
+#define TARGET_VIEW_MANDATORY_STRING(header, key) \
+do { \
+	const char* str = get_mandatory_string(PROJECT_JSON, name, target, key);\
+	print_opt_str("\t" header, str);\
+} while(0)
+
+#define TARGET_VIEW_STRING(header, key) \
+do { \
+	const char* str = get_optional_string(PROJECT_JSON, name, target, key);\
+	print_opt_str("\t" header, str);\
+} while(0)
+
+
+#define TARGET_VIEW_SETTING(header, key, expected_arr) \
+do { \
+	int setting = get_valid_string_setting(PROJECT_JSON, name, target, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
+ 	print_opt_setting("\t" header, setting, expected_arr);\
+} while(0)
+
+#define TARGET_VIEW_BOOL(header, key) \
+do {\
+    int val = get_valid_bool(PROJECT_JSON, name, target, key, -1);\
+	print_opt_bool("\t" header, val);\
+} while(0)
+
+#define TARGET_VIEW_INTEGER(header, key) \
+do {\
+	long v = get_valid_integer(target, key, name, false);\
+    print_opt_int("\t" header, v);\
+} while(0);
 
 static void view_target(const char* name, JSONObject* target) {
+	/* General target information */
 	PRINTFN("- %s",name);
 	print_opt_str("\tName", name);
-	const char* type = get_mandatory_string(PROJECT_JSON,name,target,"type");
-	print_opt_str("\tType",type);
+	TARGET_VIEW_MANDATORY_STRING("Type","type");
+	TARGET_VIEW_STRING("Target language target", "langrev");
+	TARGET_VIEW_STRING_ARRAY("Warnings used", "warnings");
+	TARGET_VIEW_STRING_ARRAY("Additional c3l library search paths", "dependency-search-paths");
+	TARGET_VIEW_STRING_ARRAY("c3l library search paths (override)", "dependency-search-paths-override");
+	TARGET_VIEW_STRING_ARRAY("Additional c3l library dependencies", "dependencies");
+	TARGET_VIEW_STRING_ARRAY("c3l library dependencies (override)", "dependencies-override");
+	TARGET_VIEW_STRING_ARRAY("Additional source folders", "sources");
+	TARGET_VIEW_STRING_ARRAY("Source folders (override)", "sources-override");
+	TARGET_VIEW_STRING_ARRAY("Additional C source folders", "c-sources");
+	TARGET_VIEW_STRING_ARRAY("C source folders (override)", "c-sources-override");
+	TARGET_VIEW_SETTING("Optimization level", "opt", optimization_levels);
+
+	/* Extended target information */
+	TARGET_VIEW_STRING("Benchmark function override", "benchfn");
+	TARGET_VIEW_STRING("C compiler", "cc");
+	TARGET_VIEW_STRING("Additional C compiler flags", "cflags");
+	TARGET_VIEW_STRING("C compiler flags (override)", "cflags-override");
+    TARGET_VIEW_STRING("CPU name", "cpu");
+	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec");
+	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec");
+	TARGET_VIEW_STRING_ARRAY("Enabled features", "features");
+	TARGET_VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);
+	TARGET_VIEW_STRING_ARRAY("Additional linked libraries", "linked-libraries");
+	TARGET_VIEW_STRING_ARRAY("Linked libraries (override)", "linked-libraries-override");
+	TARGET_VIEW_STRING("Linker","linker");
+	TARGET_VIEW_STRING_ARRAY("Additional linker search paths", "linker-search-paths");
+	TARGET_VIEW_STRING_ARRAY("Linker search paths (override)", "linker-search-paths-override");
+	TARGET_VIEW_STRING_ARRAY("Additional linker arguments", "link-args");
+	TARGET_VIEW_STRING_ARRAY("Linker arguments (override)", "link-args-override");
+	TARGET_VIEW_BOOL("Link libc", "link-libc");
+	TARGET_VIEW_STRING("MacOS SDK directory", "macossdk");
+	TARGET_VIEW_SETTING("Memory environment", "memory-env", memory_environment);
+	TARGET_VIEW_BOOL("Don't generate/require main function", "no-entry");
+	TARGET_VIEW_SETTING("Code optimization level", "optlevel", optlevels);
+	TARGET_VIEW_SETTING("Code size optimization", "optsize", optsizes);
+	TARGET_VIEW_STRING("Panic function override", "panicfn");
+	TARGET_VIEW_BOOL("Panic message output", "panic-msg");
+	TARGET_VIEW_SETTING("Relocation model", "reloc", reloc_models);
+	TARGET_VIEW_BOOL("Runtime safety checks enabled", "safe");
+	TARGET_VIEW_BOOL("Print backtrace on signals", "show-backtrace");
+	TARGET_VIEW_STRING("Script directory", "script-dir");
+	TARGET_VIEW_BOOL("Compile into single module", "single-module");
+	TARGET_VIEW_BOOL("Output soft-float functions", "soft-float");
+	TARGET_VIEW_BOOL("Strip unused code/globals", "strip-unused");
+	TARGET_VIEW_INTEGER("Preferred symtab size", "symtab");
+	TARGET_VIEW_STRING("Target", "target");
+	TARGET_VIEW_STRING("Test function override", "testfn");
+	TARGET_VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
+	TARGET_VIEW_BOOL("Include standard library", "use-stdlib");
+	TARGET_VIEW_SETTING("Windows CRT linking", "wincrt", wincrt_linking);
+	TARGET_VIEW_STRING("Windows SDK path", "winsdk");
+	TARGET_VIEW_SETTING("x64 CPU level", "x86cpu", x86_cpu_set);
+	TARGET_VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
+	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
 
 void view_project(BuildOptions *build_options) {
 	JSONObject* project_json = read_project();
 
 	/* General information */
-	const char** authors = get_string_array(PROJECT_JSON, NULL, project_json, "authors", true);
-	print_vec("Authors", authors, false);
-	const char* version = get_mandatory_string(PROJECT_JSON, NULL, project_json, "version");
-	print_opt_str("version", version);
-	const char* langrev = get_mandatory_string(PROJECT_JSON, NULL, project_json, "langrev");
-	PRINTFN("Project language target: %s", langrev);
-	const char** warnings = get_string_array(PROJECT_JSON, NULL, project_json, "warnings", true);
-	print_vec("Warnings used", warnings, false);
-	const char** search_paths = get_string_array(PROJECT_JSON, NULL, project_json, "dependency-search-paths", true);
-	print_vec("Search paths, .c3l files", search_paths, false);
-	const char** dependencies = get_string_array(PROJECT_JSON, NULL, project_json, "dependencies", true);
-	print_vec("Dependencies, .c3l", dependencies, false);
-	const char** sources = get_string_array(PROJECT_JSON, NULL, project_json, "sources", true);
-	print_vec("Source folders", sources, false);
-	const char** c_sources = get_string_array(PROJECT_JSON, NULL, project_json, "c-sources", false);
-	print_vec("Source folders, c files", c_sources, true);
-	const char* output = get_mandatory_string(PROJECT_JSON, NULL, project_json, "output");
-	print_opt_str("Output location", output);
-	int optimization_level = get_valid_string_setting(PROJECT_JSON, NULL, project_json, "opt", optimization_levels, 0, ELEMENTLEN(optimization_levels), optimization_level_expected);
-	print_opt_setting("Default optimization level", optimization_level, optimization_levels);
+	VIEW_MANDATORY_STRING_ARRAY("Authors","authors");
+	VIEW_MANDATORY_STRING("Version","version");
+	VIEW_MANDATORY_STRING("Project language target", "langrev");
+	VIEW_MANDATORY_STRING_ARRAY("Warnings used", "warnings");
+	VIEW_MANDATORY_STRING_ARRAY("c3l library search paths", "dependency-search-paths");
+	VIEW_MANDATORY_STRING_ARRAY("c3l library dependencies", "dependencies");
+	VIEW_MANDATORY_STRING_ARRAY("Source folders", "sources");
+	VIEW_STRING_ARRAY("C source folders", "c-sources");
+	VIEW_STRING("Output location", "output");
+	VIEW_SETTING("Default optimization level", "opt", optimization_levels);
+
+	/* Extended information */
+	VIEW_STRING("Benchmark function override", "benchfn");
+	VIEW_STRING("C compiler", "cc");
+	VIEW_STRING("C compiler flags", "cflags");
+	VIEW_STRING("CPU name", "cpu");
+	VIEW_SETTING("Debug level", "debug-info", debug_levels);
+	VIEW_STRING_ARRAY("Scripts to run", "exec");
+	VIEW_STRING_ARRAY("Enabled features", "features");
+	VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);
+	VIEW_STRING_ARRAY("Linked libraries", "linked-libraries");
+	VIEW_STRING("Linker","linker");
+	VIEW_STRING_ARRAY("Linker search paths", "linker-search-paths");
+	VIEW_STRING_ARRAY("Linker arguments", "link-args");
+	VIEW_BOOL("Link libc", "link-libc");
+	VIEW_STRING("MacOS SDK directory", "macossdk");
+	VIEW_SETTING("Memory environment", "memory-env", memory_environment);
+	VIEW_BOOL("Don't generate/require main function", "no-entry");
+	VIEW_SETTING("Code optimization level", "optlevel", optlevels);
+	VIEW_SETTING("Code size optimization", "optsize", optsizes);
+	VIEW_STRING("Panic function override", "panicfn");
+	VIEW_BOOL("Panic message output", "panic-msg");
+	VIEW_SETTING("Relocation model", "reloc", reloc_models);
+	VIEW_BOOL("Runtime safety checks enabled", "safe");
+	VIEW_BOOL("Print backtrace on signals", "show-backtrace");
+	VIEW_STRING("Script directory", "script-dir");
+	VIEW_BOOL("Compile into single module", "single-module");
+	VIEW_BOOL("Output soft-float functions", "soft-float");
+	VIEW_BOOL("Strip unused code/globals", "strip-unused");
+	VIEW_INTEGER("Preferred symtab size", "symtab");
+	VIEW_STRING("Target", "target");
+	VIEW_STRING("Test function override", "testfn");
+	VIEW_BOOL("Integers panic on wrapping", "trap-on-wrap");
+	VIEW_BOOL("Include standard library", "use-stdlib");
+	VIEW_SETTING("Windows CRT linking", "wincrt", wincrt_linking);
+	VIEW_STRING("Windows SDK path", "winsdk");
+	VIEW_SETTING("x64 CPU level", "x86cpu", x86_cpu_set);
+	VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
+	VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 
 	/* Target information */
 	PRINTFN("Targets: ");
