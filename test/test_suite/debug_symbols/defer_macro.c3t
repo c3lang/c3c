@@ -503,7 +503,7 @@ loop.exit26:                                      ; preds = %loop.cond
   %49 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !196
   store i32 %49, ptr %blockret, align 4, !dbg !196
   %50 = load ptr, ptr %list, align 8, !dbg !197
-  call void @std.core.mem.free(ptr %50) #4, !dbg !199
+  call void @std.core.mem.free(ptr %50)
   br label %expr_block.exit28, !dbg !199
 expr_block.exit28:                                ; preds = %loop.exit26
   %51 = load i32, ptr %blockret, align 4, !dbg !199
