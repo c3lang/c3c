@@ -30,7 +30,7 @@ static void print_vec(const char* header, const char** vec, bool opt)
 			{
 				PRINTF(", ");
 			}
-			PRINTF("%s",vec[i]);
+			PRINTF("%s",item);
 		}
 	} else {
 		PRINTFN("*none*");
