@@ -127,8 +127,11 @@ int run_subprocess(const char *name, const char **args)
 		int wstatus = 0;
 		if (waitpid(cpid, &wstatus, 0) < 0)
 		{
-			eprintf("Could not wait on %s (pid %d): %s\n", name, cpid, strerror(errno));
-			return -1;
+			if (errno != EINTR) {
+				eprintf("Could not wait on %s (pid %d): %s\n", name, cpid, strerror(errno));
+				return -1;
+			}
+			continue;
 		}
 
 		if (WIFEXITED(wstatus)) return WEXITSTATUS(wstatus);
