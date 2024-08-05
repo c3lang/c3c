@@ -79,6 +79,7 @@ static void usage(void)
 	PRINTF("  dynamic-lib <file1> [<file2> ...]                   Compile files without a project into a dynamic library.");
 	PRINTF("  headers <file1> [<file2> ...]                       Analyse files and generate C headers for public methods.");
 	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
+	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
 	PRINTF("Options:");
 	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
@@ -282,7 +283,7 @@ static void project_usage() {
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
 	PRINTF("Project Subcommands:");
-	PRINTF("    view            view the current projects structure");
+	PRINTF("  view              view the current projects structure");
 }
 
 static void parse_project_subcommand(BuildOptions *options) {
