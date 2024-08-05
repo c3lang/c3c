@@ -3,7 +3,7 @@
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
 static JSONObject* read_project() 
 {
-    size_t size;
+	size_t size;
 	char *read = file_read_all(PROJECT_JSON, &size);
 	JsonParser parser;
 	json_init_string(&parser, read, &malloc_arena);
@@ -16,24 +16,22 @@ static JSONObject* read_project()
 	{
 		error_exit("Expected a map of project information in '%s'.", PROJECT_JSON);
 	}
-    return json;
+	return json;
 }
 
 static void print_vec(const char* header, const char** vec, bool opt) 
 {
 	if (opt && !vec) return;
 	PRINTF("%s: ", header);
-	if (vec_size(vec) > 0) {
-		FOREACH_IDX(i, char *, item, vec) 
-		{
-			if (i > 0) 
-			{
-				PRINTF(", ");
-			}
-			PRINTF("%s",item);
-		}
-	} else {
+	if (!vec_size(vec)) 
+	{
 		PRINTFN("*none*");
+		return;
+	}	
+	FOREACH_IDX(i, char *, item, vec) 
+	{
+		if (i > 0) PRINTF(", ");
+		PRINTF("%s",item);
 	}
 }
 
@@ -53,12 +51,7 @@ static void print_opt_bool(const char* header, int b)
 {
 	if (b == -1) return;
 	PRINTF("%s: ", header);
-	if (b) 
-	{
-		PRINTFN("true");
-	} else {
-		PRINTFN("false");
-	}
+	PRINTFN(b ? "true" : "false");
 }
 
 static void print_opt_int(const char* header, long v) 
@@ -70,13 +63,10 @@ static void print_opt_int(const char* header, long v)
 static const char* generate_expected(const char** options, size_t n) 
 {
 	scratch_buffer_clear();
-	for (size_t i = 0; i < n; i++) {
-		if (i > 0) {
-			scratch_buffer_append(", ");
-		}
-		if (i == n - 1) {
-			scratch_buffer_append(" or ");
-		}
+	for (size_t i = 0; i < n; i++) 
+	{
+		if (i > 0) scratch_buffer_append(", ");
+		if (i == n - 1) scratch_buffer_append(" or ");
 		scratch_buffer_printf("\"%s\"", options[i]);
 	}
 	return scratch_buffer_to_string();
@@ -203,7 +193,7 @@ static void view_target(const char* name, JSONObject* target)
 	TARGET_VIEW_STRING("C compiler", "cc");
 	TARGET_VIEW_STRING("Additional C compiler flags", "cflags");
 	TARGET_VIEW_STRING("C compiler flags (override)", "cflags-override");
-    TARGET_VIEW_STRING("CPU name", "cpu");
+	TARGET_VIEW_STRING("CPU name", "cpu");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
 	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec");
 	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec");
