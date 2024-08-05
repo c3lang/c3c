@@ -669,3 +669,4 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
+void view_project(BuildOptions *build_options);
