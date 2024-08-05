@@ -945,6 +945,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		first->alignment = type_abi_alignment(type_voidptr);
 		vec_insert_first(method->func_decl.signature.params, first);
 		method->unit = context->unit;
+		method->func_decl.signature.vararg_index += 1;
 
 		// Now we analyse the function as a regular function.
 		if (!sema_analyse_func(context, method, &erase))

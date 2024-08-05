@@ -460,7 +460,7 @@ loop.body:                                        ; preds = %loop.cond
   %ptroffset = getelementptr inbounds [8 x i8], ptr %34, i64 %sext14, !dbg !175
   %36 = load ptr, ptr %ptroffset, align 8, !dbg !175
   store ptr %36, ptr %arg, align 8, !dbg !175
-  call void @llvm.dbg.declare(metadata ptr %len, metadata !176, metadata !DIExpression()), !dbg !177
+  !176
   store i64 0, ptr %len, align 8, !dbg !178
   %37 = load ptr, ptr %list5, align 8, !dbg !179
   %38 = load i32, ptr %i, align 4, !dbg !180
@@ -469,7 +469,7 @@ loop.body:                                        ; preds = %loop.cond
   %39 = load ptr, ptr %arg, align 8, !dbg !181
   %40 = load ptr, ptr %arg, align 8
   store ptr %40, ptr %ptr, align 8
-  call void @llvm.dbg.declare(metadata ptr %len18, metadata !182, metadata !DIExpression()), !dbg !184
+  !182
   store i64 0, ptr %len18, align 8, !dbg !186
   br label %loop.cond19, !dbg !187
 loop.cond19:                                      ; preds = %loop.body21, %loop.body
