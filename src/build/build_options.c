@@ -295,7 +295,7 @@ static void parse_project_subcommand(BuildOptions *options) {
 
 static void parse_project_options(BuildOptions *options)
 {
-	if (!at_end()) {
+	if (at_end()) {
 		project_usage();
 		return;
 	}
