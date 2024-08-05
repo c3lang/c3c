@@ -355,7 +355,6 @@ typedef enum
 	CONST_INITIALIZER,
 	CONST_UNTYPED_LIST,
 	CONST_MEMBER,
-	CONST_METHOD
 } ConstKind;
 
 typedef enum

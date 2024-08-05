@@ -254,9 +254,8 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 			case CONST_INITIALIZER:
 			case CONST_UNTYPED_LIST:
 			case CONST_MEMBER:
-			case CONST_METHOD:
 				RETURN_PRINT_ERROR_AT(NULL, arg,
-				                      "Bytes, initializers, member and method references may not be used as arguments.");
+				                      "Bytes, initializers and member references may not be used as arguments.");
 		}
 		UNREACHABLE
 	}

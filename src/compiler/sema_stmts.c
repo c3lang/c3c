@@ -2889,7 +2889,6 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			SEMA_ERROR(message, "Unsupported type for '$echo'");
 			break;
 	}

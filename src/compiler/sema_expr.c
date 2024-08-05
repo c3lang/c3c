@@ -215,7 +215,6 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 		case CONST_TYPEID:
 		case CONST_BYTES:
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			return true;
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
@@ -291,7 +290,6 @@ static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr)
 		case CONST_UNTYPED_LIST:
 			return vec_size(expr->const_expr.untyped_list);
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			return 1;
 	}
 	UNREACHABLE
@@ -3465,87 +3463,6 @@ MISSING_REF:
 }
 
 
-static inline bool sema_expr_analyse_method_access(SemaContext *context, Expr *expr, Expr *parent, Expr *identifier, bool *missing_ref)
-{
-	assert(identifier->expr_kind == EXPR_IDENTIFIER);
-
-	Decl *decl = parent->const_expr.method.decl;
-	const char *name = identifier->identifier_expr.ident;
-	bool is_const = identifier->identifier_expr.is_const;
-
-	if (is_const)
-	{
-		if (missing_ref) goto MISSING_REF;
-		RETURN_SEMA_ERROR(expr, "There is no member '%s' for %s.", name, type_to_error_string(decl->type));
-	}
-
-	if (!sema_analyse_decl(context, decl)) return false;
-
-	TypeProperty type_property = type_property_by_name(name);
-	switch (type_property)
-	{
-		case TYPE_PROPERTY_NONE:
-			break;
-		case TYPE_PROPERTY_QNAMEOF:
-			break;
-		case TYPE_PROPERTY_NAMEOF:
-			expr_rewrite_to_string(expr, decl->name ? decl->name : "");
-			return true;
-		case TYPE_PROPERTY_ALIGNOF:
-		case TYPE_PROPERTY_MEMBERSOF:
-		case TYPE_PROPERTY_METHODSOF:
-		case TYPE_PROPERTY_KINDOF:
-		case TYPE_PROPERTY_SIZEOF:
-		case TYPE_PROPERTY_ELEMENTS:
-		case TYPE_PROPERTY_EXTNAMEOF:
-		case TYPE_PROPERTY_PARAMS:
-		case TYPE_PROPERTY_RETURNS:
-		case TYPE_PROPERTY_INF:
-		case TYPE_PROPERTY_LEN:
-		case TYPE_PROPERTY_MAX:
-		case TYPE_PROPERTY_MIN:
-		case TYPE_PROPERTY_NAN:
-		case TYPE_PROPERTY_INNER:
-		case TYPE_PROPERTY_NAMES:
-		case TYPE_PROPERTY_VALUES:
-		case TYPE_PROPERTY_ASSOCIATED:
-		case TYPE_PROPERTY_PARENTOF:
-		case TYPE_PROPERTY_IS_EQ:
-		case TYPE_PROPERTY_IS_ORDERED:
-		case TYPE_PROPERTY_IS_SUBSTRUCT:
-			break;
-	}
-
-	Type *underlying_type = type_flatten(decl->type);
-
-	if (!type_is_union_or_strukt(underlying_type) && underlying_type->type_kind != TYPE_BITSTRUCT)
-	{
-		if (missing_ref) goto MISSING_REF;
-		RETURN_SEMA_ERROR(parent, "No member '%s' was found.", name);
-	}
-
-	Decl *underlying_type_decl = underlying_type->decl;
-	Decl *method = sema_decl_stack_find_decl_member(underlying_type_decl, name);
-	if (!method)
-	{
-		if (missing_ref) goto MISSING_REF;
-		RETURN_SEMA_ERROR(expr, "No member '%s' found.", name);
-	}
-
-	expr->expr_kind = EXPR_CONST;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->const_expr = (ExprConst) {
-		.method.decl = method,
-		.const_kind = CONST_METHOD
-	};
-	expr->type = type_method;
-
-	return true;
-MISSING_REF:
-	*missing_ref = true;
-	return false;
-}
-
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent)
 {
 	Module *module = global_context_find_module(kw_std__core__types);
@@ -4509,10 +4426,6 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (expr_is_const_member(parent))
 	{
 		return sema_expr_analyse_member_access(context, expr, parent, identifier, missing_ref);
-	}
-	if (expr_is_const_method(parent))
-	{
-		return sema_expr_analyse_method_access(context, expr, parent, identifier, missing_ref);
 	}
 
 	// 6. Copy failability
@@ -7220,7 +7133,6 @@ RETRY:;
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			RETURN_SEMA_ERROR(expr, "Concatenating %s with %s is not possible at compile time.",
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
 		case CONST_BYTES:
@@ -7419,7 +7331,6 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 			len = vec_size(left->const_expr.untyped_list);
 			break;
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			RETURN_SEMA_ERROR(left, "This can't be concatenated.");
 	}
 	switch (right->const_expr.const_kind)
@@ -7432,7 +7343,6 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			return sema_expr_const_append(context, concat_expr, left, right);
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -9308,7 +9218,6 @@ static inline bool sema_expr_analyse_ct_concatfn(SemaContext *context, Expr *con
 					len = vec_size(single_expr->const_expr.untyped_list);
 					continue;
 				case CONST_MEMBER:
-				case CONST_METHOD:
 					RETURN_SEMA_ERROR(single_expr, "This can't be concatenated.");
 			}
 			if (expr_count == 1)
@@ -9892,7 +9801,6 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
-		case CONST_METHOD:
 			return -1;
 		case CONST_BYTES:
 		case CONST_STRING:
