@@ -7217,6 +7217,7 @@ RETRY:;
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			RETURN_SEMA_ERROR(expr, "Concatenating %s with %s is not possible at compile time.",
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
 		case CONST_BYTES:
@@ -7415,6 +7416,7 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 			len = vec_size(left->const_expr.untyped_list);
 			break;
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			RETURN_SEMA_ERROR(left, "This can't be concatenated.");
 	}
 	switch (right->const_expr.const_kind)
@@ -7427,6 +7429,7 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_METHOD:
 			return sema_expr_const_append(context, concat_expr, left, right);
 		case CONST_BYTES:
 		case CONST_STRING:
