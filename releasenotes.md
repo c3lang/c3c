@@ -24,6 +24,7 @@
 - Add `@const` attribute for macros, for better error messages with constant macros.
 - Add `wincrt` setting to libraries.
 - Add `+++` `&&&` `|||` as replacement for `$concat`, `$and` and `$or`.
+- Add `methodsof` to type info for struct, union and bitstruct
 
 ### Fixes
 
