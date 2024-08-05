@@ -141,8 +141,9 @@ const char *build_base_name(void)
 	}
 	else
 	{
-		assert(vec_size(global_context.module_list));
-		Path *path = global_context.module_list[0]->name;
+		Module **modules = global_context.module_list;
+		Module *main_module = (modules[0] == global_context.core_module && vec_size(modules) > 1) ? modules[1] : modules[0];
+		Path *path = main_module->name;
 		size_t first = 0;
 		for (size_t i = path->len; i > 0; i--)
 		{
