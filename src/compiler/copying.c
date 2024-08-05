@@ -366,8 +366,19 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->try_unwrap_chain_expr);
 			return expr;
 		case EXPR_CATCH_UNWRAP:
+			if (expr->resolve_status == RESOLVE_DONE)
+			{
+				Decl *fix = expr->catch_unwrap_expr.decl;
+				fixup_decl(c, &fix);
+				if (fix == expr->catch_unwrap_expr.decl) MACRO_COPY_DECL(expr->catch_unwrap_expr.decl);
+				MACRO_COPY_EXPR(expr->catch_unwrap_expr.lhs);
+			}
+			else
+			{
+				MACRO_COPY_TYPE(expr->catch_unwrap_expr.type);
+				MACRO_COPY_EXPR(expr->catch_unwrap_expr.variable);
+			}
 			MACRO_COPY_EXPR_LIST(expr->catch_unwrap_expr.exprs);
-			MACRO_COPY_TYPE(expr->catch_unwrap_expr.type);
 			return expr;
 		case EXPR_IDENTIFIER:
 			if (expr->resolve_status == RESOLVE_DONE)

@@ -41,6 +41,7 @@
 - Bug in List add_array when reserving memory.
 - Fix issue where a compile time parameter is followed by "...".
 - Fix issue with some conversions to untyped list.
+- Issue where a `if (catch e = ...)` in a defer would be incorrectly copied. Causing codegen error.
 
 ### Stdlib changes
 
