@@ -182,10 +182,10 @@ static void view_target(const char* name, JSONObject* target) {
 	TARGET_VIEW_STRING_ARRAY("c3l library search paths (override)", "dependency-search-paths-override");
 	TARGET_VIEW_STRING_ARRAY("Additional c3l library dependencies", "dependencies");
 	TARGET_VIEW_STRING_ARRAY("c3l library dependencies (override)", "dependencies-override");
-	TARGET_VIEW_STRING_ARRAY("Additional source folders", "sources");
-	TARGET_VIEW_STRING_ARRAY("Source folders (override)", "sources-override");
-	TARGET_VIEW_STRING_ARRAY("Additional C source folders", "c-sources");
-	TARGET_VIEW_STRING_ARRAY("C source folders (override)", "c-sources-override");
+	TARGET_VIEW_STRING_ARRAY("Additional source paths", "sources");
+	TARGET_VIEW_STRING_ARRAY("Source paths (override)", "sources-override");
+	TARGET_VIEW_STRING_ARRAY("Additional C source paths", "c-sources");
+	TARGET_VIEW_STRING_ARRAY("C source paths (override)", "c-sources-override");
 	TARGET_VIEW_SETTING("Optimization level", "opt", optimization_levels);
 
 	/* Extended target information */
@@ -243,8 +243,8 @@ void view_project(BuildOptions *build_options) {
 	VIEW_MANDATORY_STRING_ARRAY("Warnings used", "warnings");
 	VIEW_MANDATORY_STRING_ARRAY("c3l library search paths", "dependency-search-paths");
 	VIEW_MANDATORY_STRING_ARRAY("c3l library dependencies", "dependencies");
-	VIEW_MANDATORY_STRING_ARRAY("Source folders", "sources");
-	VIEW_STRING_ARRAY("C source folders", "c-sources");
+	VIEW_MANDATORY_STRING_ARRAY("Source paths", "sources");
+	VIEW_STRING_ARRAY("C source paths", "c-sources");
 	VIEW_STRING("Output location", "output");
 	VIEW_SETTING("Default optimization level", "opt", optimization_levels);
 
