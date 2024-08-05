@@ -2322,6 +2322,7 @@ void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, Bina
 
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
+void expr_contract_array(ExprConst *expr_const, ConstKind contract_type);
 bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind);
 const char *expr_const_to_error_string(const ExprConst *expr);
 bool expr_const_float_fits_type(const ExprConst *expr_const, TypeKind kind);

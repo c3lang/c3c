@@ -2,16 +2,16 @@
 module test;
 macro foo()
 {
-	var c = $concat("hello", " world");
-	String[*] a = $concat(String[1] { "hello" }, String[1] { " world" });
+	var c = "hello" +++ " world";
+	String[*] a = String[1] { "hello" } +++ String[1] { " world" };
 	int[2] $a = { 1, 2 };
-	$a = $append($a, 100);
+	$a = $a +++ 100;
 	int z = $typeof($a).len;
 	var b = $a;
-	var d = $append(int[]{}, 1, 2, 3);
-	var e = $append(String[1] { "hello... " }, " there!");
-	var f = $concat("", "");
-	var g = $concat("bye");
+	var d = int[]{} +++ 1 +++ 2 +++ 3;
+	var e = String[1] { "hello... " } +++ " there!";
+	var f = "" +++ "";
+	var g = "bye";
 	var h = $$str_hash("helloworld");
 }
 fn int main()

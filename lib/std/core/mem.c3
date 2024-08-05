@@ -594,7 +594,7 @@ fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 
 /**
  * @require $vacount < 2 : "Too many arguments."
- * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ * @require $vacount == 0 ||| $assignable($vaexpr(0), $Type) : "The second argument must be an initializer for the type"
  * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  **/
 macro new($Type, ...) @nodiscard
@@ -612,7 +612,7 @@ macro new($Type, ...) @nodiscard
  * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  * @require $vacount < 2 : "Too many arguments."
- * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ * @require $vacount == 0 ||| $assignable($vaexpr(0), $Type) : "The second argument must be an initializer for the type"
  **/
 macro new_aligned($Type, ...) @nodiscard
 {
@@ -644,7 +644,7 @@ macro alloc_aligned($Type) @nodiscard
 
 /**
  * @require $vacount < 2 : "Too many arguments."
- * @require $or($vacount == 0, $assignable($vaexpr(0), $Type)) : "The second argument must be an initializer for the type"
+ * @require $vacount == 0 ||| $assignable($vaexpr(0), $Type) : "The second argument must be an initializer for the type"
  **/
 macro temp_new($Type, ...) @nodiscard
 {

@@ -443,6 +443,11 @@ RETRY:
 				case BINARYOP_EQ:
 					// This type is bool, so check should never happen.
 					UNREACHABLE
+				case BINARYOP_CT_OR:
+				case BINARYOP_CT_AND:
+				case BINARYOP_CT_CONCAT:
+					// This should be folded already.
+					UNREACHABLE
 			}
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:

@@ -54,7 +54,7 @@ struct Stack_t
 extern fn CInt sigaltstack(Stack_t* ss, Stack_t* old_ss);
 extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction);
 
-module libc::termios @if($and(env::LIBC, env::POSIX));
+module libc::termios @if(env::LIBC &&& env::POSIX);
 
 distinct Cc = char;
 distinct Speed = CUInt;

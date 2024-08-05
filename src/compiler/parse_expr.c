@@ -1135,7 +1135,7 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left)
 static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCAT) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
+	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCATFN) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
 	advance(c);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
@@ -1170,7 +1170,7 @@ static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_AND_OR);
-	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_AND);
+	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_ANDFN);
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	if (!parse_expr_list(c, &expr->ct_and_or_expr.args, TOKEN_RPAREN)) return poisoned_expr;
@@ -1956,7 +1956,10 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_STRING] = { parse_string_literal, NULL, PREC_NONE },
 		[TOKEN_REAL] = { parse_double, NULL, PREC_NONE },
 		[TOKEN_OR] = { NULL, parse_binary, PREC_OR },
+		[TOKEN_CT_OR] = { NULL, parse_binary, PREC_OR },
+		[TOKEN_CT_CONCAT] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
 		[TOKEN_AND] = { parse_unary_expr, parse_binary, PREC_AND },
+		[TOKEN_CT_AND] = { parse_unary_expr, parse_binary, PREC_AND },
 		[TOKEN_EQ] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_PLUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
 		[TOKEN_MINUS_ASSIGN] = { NULL, parse_binary, PREC_ASSIGNMENT },
@@ -1980,11 +1983,11 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
-		[TOKEN_CT_CONCAT] = { parse_ct_concat_append, NULL, PREC_NONE },
+		[TOKEN_CT_CONCATFN] = {parse_ct_concat_append, NULL, PREC_NONE },
 		[TOKEN_CT_APPEND] = { parse_ct_concat_append, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_AND] = {parse_ct_and_or, NULL, PREC_NONE },
+		[TOKEN_CT_ANDFN] = {parse_ct_and_or, NULL, PREC_NONE },
 		[TOKEN_CT_ASSIGNABLE] = { parse_ct_castable, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_IS_CONST] = {parse_ct_is_const, NULL, PREC_NONE },
@@ -1993,7 +1996,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_OR] = {parse_ct_and_or, NULL, PREC_NONE },
+		[TOKEN_CT_ORFN] = {parse_ct_and_or, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },

@@ -34,6 +34,9 @@ typedef enum
 	BINARYOP_AND,
 	BINARYOP_OR,
 	BINARYOP_ELSE,
+	BINARYOP_CT_AND,
+	BINARYOP_CT_OR,
+	BINARYOP_CT_CONCAT,
 	// Don't change the ordering for GT to EQ or things will break
 	BINARYOP_GT,
 	BINARYOP_GE,
@@ -488,7 +491,9 @@ typedef enum
 	TOKEN_ELLIPSIS,         // ...
 	TOKEN_SHL_ASSIGN,       // <<=
 	TOKEN_SHR_ASSIGN,       // >>=
-
+	TOKEN_CT_AND,           // &&&
+	TOKEN_CT_CONCAT,        // +++
+	TOKEN_CT_OR,            // |||
 	// Literals.
 	TOKEN_IDENT,            // Any normal ident.
 	TOKEN_CONST_IDENT,      // Any purely uppercase ident,
@@ -588,12 +593,12 @@ typedef enum
 	TOKEN_LAST_NON_CT_KEYWORD = TOKEN_WHILE,
 
 	TOKEN_CT_ALIGNOF,           // $alignof
-	TOKEN_CT_AND,               // $and
+	TOKEN_CT_ANDFN,             // $and
 	TOKEN_CT_APPEND,            // $append
 	TOKEN_CT_ASSERT,            // $assert
 	TOKEN_CT_ASSIGNABLE,        // $assignable
 	TOKEN_CT_CASE,              // $case
-	TOKEN_CT_CONCAT,            // $concat
+	TOKEN_CT_CONCATFN,          // $concat
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
@@ -616,7 +621,7 @@ typedef enum
 	TOKEN_CT_IS_CONST,          // $is_const
 	TOKEN_CT_NAMEOF,            // $nameof
 	TOKEN_CT_OFFSETOF,          // $offsetof
-	TOKEN_CT_OR,                // $or
+	TOKEN_CT_ORFN,              // $or
 	TOKEN_CT_QNAMEOF,           // $qnameof
 	TOKEN_CT_SIZEOF,            // $sizeof
 	TOKEN_CT_STRINGIFY,         // $stringify
@@ -700,6 +705,7 @@ typedef enum
 	TYPE_BITSTRUCT,
 	TYPE_FAULTTYPE,
 	TYPE_TYPEDEF,
+	TYPE_UNTYPED_LIST,
 	TYPE_SLICE,
 	TYPE_ARRAY,
 	TYPE_FIRST_ARRAYLIKE = TYPE_ARRAY,
@@ -708,7 +714,6 @@ typedef enum
 	TYPE_VECTOR,
 	TYPE_INFERRED_VECTOR,
 	TYPE_LAST_ARRAYLIKE = TYPE_INFERRED_VECTOR,
-	TYPE_UNTYPED_LIST,
 	TYPE_OPTIONAL,
 	TYPE_WILDCARD,
 	TYPE_TYPEINFO,

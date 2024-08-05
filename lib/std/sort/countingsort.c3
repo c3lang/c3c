@@ -32,7 +32,7 @@ def Indexs = char[256] @private;
 def ElementType = $typeof(Type{}[0]);
 
 const bool NO_KEY_FN @private = types::is_same(KeyFn, EmptySlot);
-const bool KEY_BY_VALUE @private = $or(NO_KEY_FN, $assignable(Type{}[0], $typefrom(KeyFn.params[0])));
+const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $assignable(Type{}[0], $typefrom(KeyFn.params[0]));
 const bool LIST_HAS_REF @private = $defined(&Type{}[0]);
 
 def KeyFnReturnType = $typefrom(KeyFn.returns) @if(!NO_KEY_FN);

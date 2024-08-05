@@ -68,7 +68,7 @@
 
 #if (defined(__GNUC__) && __GNUC__ >= 7) || defined(__clang__)
 #define PACK( __Declaration__ ) __Declaration__ __attribute__((__packed__))
-#define FALLTHROUGH __attribute__ ((fallthrough))
+#define FALLTHROUGH (void)1; __attribute__ ((fallthrough))
 #define UNUSED __attribute__((unused))
 #define NORETURN __attribute__((noreturn))
 #define INLINE __attribute__((always_inline)) static inline
