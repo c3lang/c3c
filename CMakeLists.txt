@@ -246,6 +246,7 @@ add_executable(c3c
         src/build/builder.c
         src/build/build_options.c
         src/build/project_creation.c
+        src/build/project_manipulation.c
         src/build/libraries.c
         src/compiler/ast.c
         src/compiler/bigint.c

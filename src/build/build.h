@@ -45,7 +45,15 @@ typedef enum
 	COMMAND_TEST,
 	COMMAND_UNIT_TEST,
 	COMMAND_PRINT_SYNTAX,
+	COMMAND_PROJECT,
 } CompilerCommand;
+
+
+typedef enum
+{
+	SUBCOMMAND_MISSING = 0,
+	SUBCOMMAND_VIEW
+} ProjectSubcommand;
 
 typedef enum
 {
@@ -388,6 +396,7 @@ typedef struct BuildOptions_
 	unsigned version;
 	CompilerBackend backend;
 	CompilerCommand command;
+	ProjectSubcommand subcommand;
 	CompileOption compile_option;
 	TrustLevel trust_level;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
@@ -660,3 +669,4 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
+void view_project(BuildOptions *build_options);

@@ -1,5 +1,6 @@
 #include "build_internal.h"
 #include "utils/common.h"
+#include <math.h>
 
 void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option)
 {
@@ -49,7 +50,7 @@ const char *get_mandatory_string(const char *file, const char *category, JSONObj
 	if (!value)
 	{
 		if (category) error_exit("In file '%s': The mandatory field '%s' was missing in '%s'.", file, key, category);
-		error_exit("In file '%s': The mandatory field '%s' was missing.", file);
+		error_exit("In file '%s': The mandatory field '%s' was missing.", file, key);
 	}
 	return value;
 }
@@ -175,4 +176,22 @@ int get_valid_string_setting(const char *file, const char *target, JSONObject *j
 		error_exit("In file '%s': '%s' had an invalid value for '%s', expected %s", file, target, key, expected);
 	}
 	error_exit("In file '%s': Invalid value for '%s', expected %s", file, key, expected);
+}
+
+long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory)
+{
+	JSONObject *value = json_obj_get(table, key);
+	if (!value)
+	{
+		if (mandatory)
+		{
+			error_exit("%s was missing a mandatory '%s' field, please add it.", category, key);
+		}
+		return -1;
+	}
+	if (value->type != J_NUMBER || trunc(value->f) != value->f)
+	{
+		error_exit("%s had an invalid mandatory '%s' field that was not an integer, please correct it.", category, key);
+	}
+	return (long)trunc(value->f);
 }

@@ -51,6 +51,7 @@ const char *trust_level[3] = {
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
+#define PROJECT_FAIL_WITH_ERR(string, ...) do { fprintf(stderr, "Error: " string "\n\n", ##__VA_ARGS__); project_usage(); exit_compiler(EXIT_FAILURE); } while (0) /* NOLINT */
 
 static void usage(void)
 {
@@ -78,6 +79,7 @@ static void usage(void)
 	PRINTF("  dynamic-lib <file1> [<file2> ...]                   Compile files without a project into a dynamic library.");
 	PRINTF("  headers <file1> [<file2> ...]                       Analyse files and generate C headers for public methods.");
 	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
+	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
 	PRINTF("Options:");
 	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
@@ -277,6 +279,35 @@ static void parse_optional_target(BuildOptions *options)
 	}
 }
 
+static void project_usage() 
+{
+	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
+	PRINTF("");
+	PRINTF("Project Subcommands:");
+	PRINTF("  view              view the current projects structure");
+}
+
+static void parse_project_subcommand(BuildOptions *options) 
+{
+	if (arg_match("view")) 
+	{
+		options->subcommand = SUBCOMMAND_VIEW;
+		return;
+	}
+	PROJECT_FAIL_WITH_ERR("Cannot process the unknown subcommand \"%s\".", current_arg);
+}
+
+static void parse_project_options(BuildOptions *options)
+{
+	if (at_end()) 
+	{
+		project_usage();
+		return;
+	}
+	next_arg();
+	parse_project_subcommand(options);
+}
+
 static void parse_command(BuildOptions *options)
 {
 	if (arg_match("init"))
@@ -402,6 +433,13 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_BENCH;
 		parse_optional_target(options);
+		return;
+	}
+	if (arg_match("project"))
+	{
+		options->command = COMMAND_PROJECT;
+		options->subcommand = SUBCOMMAND_MISSING;
+		parse_project_options(options);
 		return;
 	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);

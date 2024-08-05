@@ -87,6 +87,7 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_PROJECT:
 			return false;
 	}
 	UNREACHABLE
@@ -120,6 +121,7 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
 		case COMMAND_VENDOR_FETCH:
+		case COMMAND_PROJECT:
 			return false;
 	}
 	UNREACHABLE
