@@ -1,5 +1,6 @@
 #include "build_internal.h"
 #include "utils/common.h"
+#include <math.h>
 
 void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option)
 {
