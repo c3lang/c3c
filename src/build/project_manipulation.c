@@ -28,7 +28,7 @@ static void print_vec(const char* header, const char** vec, bool opt)
 		PRINTFN("*none*");
 		return;
 	}	
-	FOREACH_IDX(i, char *, item, vec) 
+	FOREACH_IDX(i, const char *, item, vec) 
 	{
 		if (i > 0) PRINTF(", ");
 		PRINTF("%s",item);
