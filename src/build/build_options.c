@@ -279,15 +279,18 @@ static void parse_optional_target(BuildOptions *options)
 	}
 }
 
-static void project_usage() {
+static void project_usage() 
+{
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
 	PRINTF("Project Subcommands:");
 	PRINTF("  view              view the current projects structure");
 }
 
-static void parse_project_subcommand(BuildOptions *options) {
-	if (arg_match("view")) {
+static void parse_project_subcommand(BuildOptions *options) 
+{
+	if (arg_match("view")) 
+	{
 		options->subcommand = SUBCOMMAND_VIEW;
 		return;
 	}
@@ -296,7 +299,8 @@ static void parse_project_subcommand(BuildOptions *options) {
 
 static void parse_project_options(BuildOptions *options)
 {
-	if (at_end()) {
+	if (at_end()) 
+	{
 		project_usage();
 		return;
 	}

@@ -1,7 +1,8 @@
 #include "build_internal.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
-static JSONObject* read_project() {
+static JSONObject* read_project() 
+{
     size_t size;
 	char *read = file_read_all(PROJECT_JSON, &size);
 	JsonParser parser;
@@ -18,48 +19,56 @@ static JSONObject* read_project() {
     return json;
 }
 
-static void print_vec(const char* header, const char** vec, bool opt) {
+static void print_vec(const char* header, const char** vec, bool opt) 
+{
 	if (opt && !vec) return;
 	PRINTF("%s: ", header);
 	if (vec_size(vec) > 0) {
-		for (int i = 0; i < vec_size(vec); ++i) {
-			if (i > 0) {
+		FOREACH_IDX(i, char *, item, vec) 
+		{
+			if (i > 0) 
+			{
 				PRINTF(", ");
 			}
 			PRINTF("%s",vec[i]);
 		}
-		PRINTFN("");
 	} else {
 		PRINTFN("*none*");
 	}
 }
 
-static void print_opt_str(const char* header, const char* str) {
+static void print_opt_str(const char* header, const char* str) 
+{
 	if (!str) return;
 	PRINTFN("%s: %s", header, str);
 }
 
-static void print_opt_setting(const char* header, int setting, const char** values) {
+static void print_opt_setting(const char* header, int setting, const char** values) 
+{
 	if (setting < 0) return;
 	PRINTFN("%s: %s", header, values[setting]);
 }
 
-static void print_opt_bool(const char* header, int b) {
+static void print_opt_bool(const char* header, int b) 
+{
 	if (b == -1) return;
 	PRINTF("%s: ", header);
-	if (b) {
+	if (b) 
+	{
 		PRINTFN("true");
 	} else {
 		PRINTFN("false");
 	}
 }
 
-static void print_opt_int(const char* header, long v) {
+static void print_opt_int(const char* header, long v) 
+{
 	if (v < 0) return;
 	PRINTFN("%s: %ld", header, v);
 }
 
-static const char* generate_expected(const char** options, size_t n) {
+static const char* generate_expected(const char** options, size_t n) 
+{
 	scratch_buffer_clear();
 	for (size_t i = 0; i < n; i++) {
 		if (i > 0) {
@@ -171,7 +180,8 @@ do {\
     print_opt_int("\t" header, v);\
 } while(0);
 
-static void view_target(const char* name, JSONObject* target) {
+static void view_target(const char* name, JSONObject* target) 
+{
 	/* General target information */
 	PRINTFN("- %s",name);
 	print_opt_str("\tName", name);
@@ -233,7 +243,8 @@ static void view_target(const char* name, JSONObject* target) {
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
 
-void view_project(BuildOptions *build_options) {
+void view_project(BuildOptions *build_options) 
+{
 	JSONObject* project_json = read_project();
 
 	/* General information */
@@ -299,7 +310,8 @@ void view_project(BuildOptions *build_options) {
 		error_exit("'targets' did not contain map of targets.");
 	}
 
-	for (unsigned i = 0; i < targets_json->member_len; i++) {
+	for (unsigned i = 0; i < targets_json->member_len; i++) 
+	{
 		JSONObject *object = targets_json->members[i];
 		const char *key = targets_json->keys[i];
 		if (object->type != J_OBJECT)

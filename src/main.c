@@ -99,7 +99,8 @@ int main_real(int argc, const char *argv[])
 			compile_file_list(&build_options);
 			break;
 		case COMMAND_PROJECT:
-			switch (build_options.subcommand) {
+			switch (build_options.subcommand) 
+			{
 				case SUBCOMMAND_VIEW:
 					view_project(&build_options);
 					break;
