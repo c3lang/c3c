@@ -33,6 +33,7 @@ static void print_vec(const char* header, const char** vec, bool opt)
 		if (i > 0) PRINTF(", ");
 		PRINTF("%s",item);
 	}
+	PRINTFN("");
 }
 
 static void print_opt_str(const char* header, const char* str) 
