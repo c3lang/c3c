@@ -368,9 +368,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CATCH_UNWRAP:
 			if (expr->resolve_status == RESOLVE_DONE)
 			{
-				Decl *fix = expr->catch_unwrap_expr.decl;
-				fixup_decl(c, &fix);
-				if (fix == expr->catch_unwrap_expr.decl) MACRO_COPY_DECL(expr->catch_unwrap_expr.decl);
+				MACRO_COPY_DECL(expr->catch_unwrap_expr.decl);
 				MACRO_COPY_EXPR(expr->catch_unwrap_expr.lhs);
 			}
 			else

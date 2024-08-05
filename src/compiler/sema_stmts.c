@@ -731,16 +731,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	}
 
 	// Case B. We are unwrapping to a variable that may or may not exist.
-	bool implicit_declaration = false;
 	TypeInfo *var_type = expr->try_unwrap_expr.type;
-
-	// 1. Check if we are doing an implicit declaration.
-	if (!var_type && ident->expr_kind == EXPR_IDENTIFIER)
-	{
-		BoolErr res = sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
-		if (res == BOOL_ERR) return false;
-		implicit_declaration = res == BOOL_FALSE;
-	}
 
 	// 2. If we have a type for the variable, resolve it.
 	if (var_type)
@@ -748,100 +739,47 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		if (!sema_resolve_type_info(context, var_type, RESOLVE_TYPE_DEFAULT)) return false;
 		if (IS_OPTIONAL(var_type))
 		{
-			SEMA_ERROR(var_type, "Only non-optional types may be used as types for 'try', please remove the '!'.");
-			return false;
+			RETURN_SEMA_ERROR(var_type, "Only non-optional types may be used as types for 'try', please remove the '!'.");
 		}
 	}
 
-	// 3. We interpret this as an assignment to an existing variable.
-	if (!var_type && !implicit_declaration)
+	// 3. We are creating a new variable
+
+	// 3a. If we had a variable type, then our expression must be an identifier.
+	if (ident->expr_kind != EXPR_IDENTIFIER) RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
+
+	assert(ident->resolve_status != RESOLVE_DONE);
+	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
+
+	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+
+	// 3b. Evaluate the expression
+	if (!sema_analyse_expr(context, optional)) return false;
+
+	if (!IS_OPTIONAL(optional))
 	{
-		// 3a. Resolve the identifier.
-		if (!sema_analyse_expr_lvalue(context, ident)) return false;
-
-		// 3b. Make sure it's assignable
-		if (!sema_expr_check_assign(context, ident)) return false;
-
-		// 3c. It can't be optional either.
-		if (IS_OPTIONAL(ident))
-		{
-			if (ident->expr_kind == EXPR_IDENTIFIER)
-			{
-				SEMA_ERROR(ident, "This is an optional variable, you should only have non-optional variables on the left side unless you use 'try' without '='.");
-			}
-			else
-			{
-				SEMA_ERROR(ident, "This is an optional expression, it can't go on the left hand side of a 'try'.");
-			}
-			return false;
-		}
-
-		// 3d. We can now analyse the expression using the variable type.
-		if (!sema_analyse_expr(context, optional)) return false;
-
-		if (!IS_OPTIONAL(optional))
-		{
-			SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
-			return false;
-		}
-
-		if (!cast_implicit(context, optional, ident->type, false)) return false;
-
-		expr->try_unwrap_expr.assign_existing = true;
-		expr->try_unwrap_expr.lhs = ident;
+		RETURN_SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
+		return false;
 	}
-	else
+
+	if (var_type)
 	{
-		// 4. We are creating a new variable
-
-		// 4a. If we had a variable type, then our expression must be an identifier.
-		if (ident->expr_kind != EXPR_IDENTIFIER)
-		{
-			SEMA_ERROR(ident, "A variable name was expected here.");
-			return false;
-		}
-
-		assert(ident->resolve_status != RESOLVE_DONE);
-		if (ident->identifier_expr.path)
-		{
-			SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
-			return false;
-		}
-
-		if (ident->identifier_expr.is_const)
-		{
-			SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
-			return false;
-		}
-
-		// 4b. Evaluate the expression
-		if (!sema_analyse_expr(context, optional)) return false;
-
-		if (!IS_OPTIONAL(optional))
-		{
-			SEMA_ERROR(optional, "Expected an optional expression to 'try' here. If it isn't an optional, remove 'try'.");
-			return false;
-		}
-
-		if (var_type)
-		{
-			if (!cast_implicit(context, optional, var_type->type, false)) return false;
-		}
-
-		// 4c. Create a type_info if needed.
-		if (!var_type)
-		{
-			var_type = type_info_new_base(optional->type->optional, optional->span);
-		}
-
-		// 4d. A new declaration is created.
-		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, var_type, VARDECL_LOCAL);
-
-		// 4e. Analyse it
-		if (!sema_analyse_var_decl(context, decl, true)) return false;
-
-		expr->try_unwrap_expr.decl = decl;
+		if (!cast_implicit(context, optional, var_type->type, false)) return false;
 	}
+
+	// 4c. Create a type_info if needed.
+	if (!var_type)
+	{
+		var_type = type_info_new_base(optional->type->optional, optional->span);
+	}
+
+	// 4d. A new declaration is created.
+	Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, var_type, VARDECL_LOCAL);
+
+	// 4e. Analyse it
+	if (!sema_analyse_var_decl(context, decl, true)) return false;
+
+	expr->try_unwrap_expr.decl = decl;
 
 	expr->try_unwrap_expr.optional = optional;
 	expr->type = type_bool;
@@ -875,7 +813,6 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 {
 	Expr *ident = expr->catch_unwrap_expr.variable;
 
-	bool implicit_declaration = false;
 	TypeInfo *type = expr->catch_unwrap_expr.type;
 
 	if (!type && !ident)
@@ -884,70 +821,34 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		expr->catch_unwrap_expr.decl = NULL;
 		goto RESOLVE_EXPRS;
 	}
-	if (!type && ident->expr_kind == EXPR_IDENTIFIER)
+	type = type ? type : type_info_new_base(type_anyfault, expr->span);
+
+	if (!sema_resolve_type_info(context, type, RESOLVE_TYPE_DEFAULT)) return false;
+
+	if (type->type->canonical != type_anyfault)
 	{
-		BoolErr res = sema_symbol_is_defined_in_scope(context, ident->identifier_expr.ident);
-		if (res == BOOL_ERR) return false;
-		implicit_declaration = res == BOOL_FALSE;
+		RETURN_SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyfault),
+		                  type_quoted_error_string(type->type));
+	}
+	if (ident->expr_kind != EXPR_IDENTIFIER)
+	{
+		RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
 	}
 
-	if (!type && !implicit_declaration)
-	{
-		if (!sema_analyse_expr_lvalue(context, ident)) return false;
+	assert(ident->resolve_status != RESOLVE_DONE);
+	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
+	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 
-		if (!sema_expr_check_assign(context, ident)) return false;
+	// 4d. A new declaration is created.
+	Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL);
+	decl->var.no_init = true;
 
-		if (ident->type->canonical != type_anyfault)
-		{
-			SEMA_ERROR(ident, "Expected the variable to have the type %s, not %s.", type_quoted_error_string(type_anyfault),
-					   type_quoted_error_string(ident->type));
-			return false;
-		}
+	// 4e. Analyse it
+	if (!sema_analyse_var_decl(context, decl, true)) return false;
 
-		expr->catch_unwrap_expr.lhs = ident;
-		expr->catch_unwrap_expr.decl = NULL;
-	}
-	else
-	{
-		type = type ? type : type_info_new_base(type_anyfault, expr->span);
+	expr->catch_unwrap_expr.decl = decl;
+	expr->catch_unwrap_expr.lhs = NULL;
 
-		if (!sema_resolve_type_info(context, type, RESOLVE_TYPE_DEFAULT)) return false;
-
-		if (type->type->canonical != type_anyfault)
-		{
-			SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyfault),
-					   type_quoted_error_string(type->type));
-			return false;
-		}
-		if (ident->expr_kind != EXPR_IDENTIFIER)
-		{
-			SEMA_ERROR(ident, "A variable name was expected here.");
-			return false;
-		}
-
-		assert(ident->resolve_status != RESOLVE_DONE);
-		if (ident->identifier_expr.path)
-		{
-			SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
-			return false;
-		}
-
-		if (ident->identifier_expr.is_const)
-		{
-			SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
-			return false;
-		}
-
-		// 4d. A new declaration is created.
-		Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL);
-		decl->var.no_init = true;
-
-		// 4e. Analyse it
-		if (!sema_analyse_var_decl(context, decl, true)) return false;
-
-		expr->catch_unwrap_expr.decl = decl;
-		expr->catch_unwrap_expr.lhs = NULL;
-	}
 RESOLVE_EXPRS:;
 	FOREACH(Expr *, fail, expr->catch_unwrap_expr.exprs)
 	{

@@ -87,7 +87,6 @@ fn void test9()
 {
     int! z = 234;
     int! w = 123;
-    anyfault e;
     if (catch e = z)
     {
     }
