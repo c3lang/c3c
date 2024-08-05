@@ -7,9 +7,8 @@ fn void test()
 fn void test2()
 {
     int! a;
-    int b;
     if (try b = a) {}
-    if (try test2 = a) {} // #error: You cannot assign a value to a function
+    if (try test2 = a) {}
 }
 
 const int BAZ = 1;
@@ -19,7 +18,7 @@ fn void test3()
 
     int! a;
     int b;
-    if (try BAZ = a) {} // #error: You cannot assign to a constant
+    if (try BAZ = a) {} // #error: lower case
 }
 
 
@@ -27,7 +26,6 @@ fn void test4()
 {
 
     int! a;
-    int b;
     if (try b = 1) {} // #error: remove 'try'
 }
 
@@ -36,7 +34,7 @@ fn void test5()
 
     int! a;
     int b;
-    if (try a = a) {} // #error: you use 'try' without '='
+    if (try a = a) {} // #error: if (try a)
 }
 
 fn void test6()
@@ -45,7 +43,7 @@ fn void test6()
     int! a;
     int b;
     int*! x;
-    if (try *x = a) {} // #error: You cannot assign to a dereferenced optional.
+    if (try *x = a) {} // #error: variable name
 }
 
 
@@ -60,10 +58,10 @@ fn void test7()
 fn void test8()
 {
     int! a;
-    int b;
-    if (b == 0, try b = a && try b = a && b > 0) {}
-    if (try b = a && try b = a && b > 0) {}
-    if (try c = a && try c = a) { c++; }
+    int e;
+    if (e == 0, try c = a && try d = a && e > 0) {}
+    if (try b = a && try c = a && e > 0) {}
+    if (try c = a && try d = a) { c++; }
 }
 
 fn void test9()

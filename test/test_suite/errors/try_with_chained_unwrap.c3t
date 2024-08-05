@@ -7,7 +7,6 @@ extern fn int printf(char* fmt, ...);
 
 fn void main()
 {
-    int val;
     if (try val = atoi(readLine()))
     {
             printf("You typed the number %d\n", val);

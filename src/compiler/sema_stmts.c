@@ -747,11 +747,17 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 	// 3a. If we had a variable type, then our expression must be an identifier.
 	if (ident->expr_kind != EXPR_IDENTIFIER) RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
-
 	assert(ident->resolve_status != RESOLVE_DONE);
 	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
-
 	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+	const char *ident_name = ident->identifier_expr.ident;
+
+	// Special check for `if (try a = a)`
+	if (optional->expr_kind == EXPR_IDENTIFIER && optional->resolve_status == RESOLVE_NOT_DONE
+		&& !optional->identifier_expr.path && optional->identifier_expr.ident == ident_name)
+	{
+		RETURN_SEMA_ERROR(ident, "If you want to unwrap the same variable, use 'if (try %s)' { ... } instead.", ident_name);
+	}
 
 	// 3b. Evaluate the expression
 	if (!sema_analyse_expr(context, optional)) return false;
