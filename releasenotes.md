@@ -49,6 +49,7 @@
 - Fixes to the socket functions.
 - Improved output when pointer is out of range.
 - Better error when casting to a distinct fails.
+- With single module, name the .o file after what `-o` provides. #1306
 
 ### Stdlib changes
 

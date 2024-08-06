@@ -43,6 +43,7 @@ void scratch_buffer_append_module(Module *module, bool is_export)
 
 const char *module_create_object_file_name(Module *module)
 {
+	if (active_target.single_module == SINGLE_MODULE_ON && active_target.name) return active_target.name;
 	scratch_buffer_clear();
 	char c;
 	const char *name = module->name->module;
