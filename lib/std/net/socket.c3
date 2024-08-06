@@ -15,7 +15,7 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 	while (ai)
 	{
 		NativeSocket sockfd = os::socket(ai.ai_family, ai.ai_socktype, ai.ai_protocol);
-		if (sockfd > 0)
+		if (sockfd.is_valid())
 		{
 			@body(sockfd, ai);
 		}
@@ -120,8 +120,12 @@ fn bool! Socket.get_option(&self, SocketOption option)
 
 fn usz! Socket.read(&self, char[] bytes) @dynamic
 {
-	isz n = libc::read((Fd)self.sock, bytes.ptr, bytes.len);
-	if (n < 0) return NetError.READ_FAILED?;
+$if env::WIN32:
+	isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, 0);
+$else
+	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, 0);
+$endif
+	if (n < 0) return os::socket_error()?;
 	return (usz)n;
 }
 
@@ -129,8 +133,12 @@ fn char! Socket.read_byte(&self) @dynamic => io::@read_byte_using_read(self);
 
 fn usz! Socket.write(&self, char[] bytes) @dynamic
 {
-	isz n = libc::write((Fd)self.sock, bytes.ptr, bytes.len);
-	if (n < 0) return NetError.WRITE_FAILED?;
+$if env::WIN32:
+	isz n = libc::send(self.sock, bytes.ptr, (int)bytes.len, 0);
+$else
+	isz n = libc::send(self.sock, bytes.ptr, bytes.len, 0);
+$endif
+	if (n < 0) return os::socket_error()?;
 	return (usz)n;
 }
 

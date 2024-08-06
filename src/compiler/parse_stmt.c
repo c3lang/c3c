@@ -170,7 +170,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 	Int i = value->const_expr.ixx;
 	if (i.i.high)
 	{
-		PRINT_ERROR_HERE("The value is too high for a scale: %s", int_to_str(i, 10));
+		PRINT_ERROR_HERE("The value is too high for a scale: %s", int_to_str(i, 10, false));
 		return false;
 	}
 	switch (i.i.low)

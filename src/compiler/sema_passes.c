@@ -227,7 +227,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 				scratch_buffer_append_double(arg->const_expr.fxx.f);
 				continue;
 			case CONST_INTEGER:
-				scratch_buffer_append(int_to_str(arg->const_expr.ixx, 10));
+				scratch_buffer_append(int_to_str(arg->const_expr.ixx, 10, false));
 				continue;
 			case CONST_BOOL:
 				scratch_buffer_append(arg->const_expr.b ? "true" : "false");

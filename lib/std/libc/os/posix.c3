@@ -1,5 +1,7 @@
 module libc @if(env::POSIX);
 
+extern fn isz recv(Fd socket, void *buffer, usz length, CInt flags);
+extern fn isz send(Fd socket, void *buffer, usz length, CInt flags);
 
 extern fn void* dlopen(ZString path, int flags);
 extern fn CInt dlclose(void*);
@@ -188,3 +190,4 @@ struct Termios {
         Speed c_ispeed;
         Speed c_ospeed;
 } 
+

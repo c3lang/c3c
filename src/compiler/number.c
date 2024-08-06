@@ -295,7 +295,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_BOOL:
 			return expr->b ? "true" : "false";
 		case CONST_INTEGER:
-			return int_to_str(expr->ixx, 10);
+			return int_to_str(expr->ixx, 10, false);
 		case CONST_FLOAT:
 			return str_printf("%g", expr->fxx.f);
 		case CONST_STRING:

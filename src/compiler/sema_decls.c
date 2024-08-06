@@ -1518,7 +1518,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			SEMA_ERROR(enum_value,
 					   "The enum value would implicitly be %s which does not fit in %s.",
-					   i128_to_string(value, 10, type_is_signed(flat_underlying_type)),
+					   i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
 					   type_quoted_error_string(type));
 			return false;
 		}
@@ -4011,7 +4011,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 				char *maybe_neg = &scratch_buffer.str[scratch_buffer.len];
 				if (type->type_kind == TYPE_I128 || type->type_kind == TYPE_U128)
 				{
-					char *str = int_to_str(param->const_expr.ixx, 10);
+					char *str = int_to_str(param->const_expr.ixx, 10, false);
 					scratch_buffer_append(str);
 				}
 				else

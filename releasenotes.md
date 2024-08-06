@@ -46,10 +46,13 @@
 - Variable in if-try / if-catch cannot be a reused variable name.
 - Vararg interfaces were broken.
 - LLVM codegen for constants in enums could fail.
+- Fixes to the socket functions.
+- Improved output when pointer is out of range.
+- Better error when casting to a distinct fails.
 
 ### Stdlib changes
 
-None
+- `send` and `recv` added to `libc` for Posix / Win32.
 
 ## 0.6.1 Change list
 

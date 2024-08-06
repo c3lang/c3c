@@ -12,7 +12,7 @@ const int FIONREAD = 1074030207;
 const int FIONBIO = -2147195266;
 const int FIOASYNC = -2147195267;
 
-distinct NativeSocket = uptr;
+distinct NativeSocket = inline Win32_SOCKET;
 
 extern fn CInt ioctlsocket(NativeSocket, CLong cmd, CULong *argp);
 extern fn WSAError closesocket(NativeSocket);
@@ -21,6 +21,11 @@ extern fn int connect(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int bind(NativeSocket, SockAddrPtr address, Socklen_t address_len);
 extern fn int listen(NativeSocket, int backlog);
 extern fn NativeSocket accept(NativeSocket, SockAddrPtr address, Socklen_t* address_len);
+
+macro bool NativeSocket.is_valid(self)
+{
+	return self != (NativeSocket)(uptr)-1;
+}
 
 fn void! NativeSocket.set_non_blocking(self, bool non_blocking)
 {

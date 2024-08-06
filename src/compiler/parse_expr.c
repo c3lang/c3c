@@ -1542,12 +1542,12 @@ EXIT:
 		if (type_bits)
 		{
 			PRINT_ERROR_HERE("'%s' does not fit in a '%c%d' literal.",
-			                 i128_to_string(i, radix, true), is_unsigned ? 'u' : 'i', type_bits);
+			                 i128_to_string(i, radix, true, false), is_unsigned ? 'u' : 'i', type_bits);
 		}
 		else
 		{
 			PRINT_ERROR_HERE("'%s' does not fit in an %s literal.",
-			                 i128_to_string(i, radix, true), is_unsigned ? "unsigned int" : "int");
+			                 i128_to_string(i, radix, true, false), is_unsigned ? "unsigned int" : "int");
 		}
 		return poisoned_expr;
 	}

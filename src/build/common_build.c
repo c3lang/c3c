@@ -21,7 +21,7 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 				goto OK;
 			}
 		}
-		WARNING("Unknown parameter '%s' in '%s'", target_name, key);
+		WARNING("Unknown parameter '%s' in '%s'", key, target_name);
 		failed = true;
 		OK:;
 	}

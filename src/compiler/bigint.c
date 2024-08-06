@@ -39,7 +39,7 @@ UNUSED static char digit_to_char(uint8_t digit, bool upper)
 #define LO32(_x) ((_x) & 0xffffffff)
 #define ISNEG(_x) (((uint64_t)_x) >> 63)
 
-char *i128_to_string(Int128 op, uint64_t base, bool is_signed)
+char *i128_to_string(Int128 op, uint64_t base, bool is_signed, bool use_prefix)
 {
 	assert(base >= 2 && base <= 16);
 	static char digits[16] = "0123456789ABCDEF";
@@ -54,9 +54,29 @@ char *i128_to_string(Int128 op, uint64_t base, bool is_signed)
 		*(loc++) = digits[rem.low];
 		op = i128_udiv(op, base_div);
 	} while (!i128_is_zero(op));
-	char *res = malloc_string((size_t)(loc - buffer + 2));
+	char *res = malloc_string((size_t)(loc - buffer + 4));
 	char *c = res;
 	if (add_minus) *(c++) = '-';
+	if (use_prefix)
+	{
+		switch (base)
+		{
+			case 2:
+				*(c++) = '0';
+				*(c++) = 'b';
+				break;
+			case 8:
+				*(c++) = '0';
+				*(c++) = 'o';
+				break;
+			case 16:
+				*(c++) = '0';
+				*(c++) = 'x';
+				break;
+			default:
+				break;
+		}
+	}
 	while (loc > buffer)
 	{
 		*(c++) = *(--loc);
@@ -65,9 +85,10 @@ char *i128_to_string(Int128 op, uint64_t base, bool is_signed)
 	return res;
 }
 
-char *int_to_str(Int i, int radix)
+
+char *int_to_str(Int i, int radix, bool use_prefix)
 {
-	return i128_to_string(i.i, (uint64_t)radix, type_kind_is_signed(i.type));
+	return i128_to_string(i.i, (uint64_t) radix, type_kind_is_signed(i.type), use_prefix);
 }
 
 
