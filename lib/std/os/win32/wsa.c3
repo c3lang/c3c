@@ -32,6 +32,8 @@ extern fn CInt win32_WSAPoll(Win32_LPWSAPOLLFD fdArray, Win32_ULONG fds, Win32_I
 extern fn WSAError win32_WSAGetLastError() @extern("WSAGetLastError") @builtin;
 extern fn void win32_WSASetLastError(WSAError error) @extern("WSASetLastError") @builtin;
 extern fn CInt win32_WSAStartup(Win32_WORD, void*) @extern("WSAStartup") @builtin;
+extern fn CInt win32_WSACleanup() @extern("WSACleanup") @builtin;
+
 const int FIONBIO = -2147195266;
 const int FIONREAD = 1074030207;
 const int SIOCATMARK = 1074033415;
