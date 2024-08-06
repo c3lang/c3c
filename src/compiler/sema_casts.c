@@ -573,7 +573,8 @@ static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr 
 				   expr->const_expr.enum_err_val->var.index,
 				   type_quoted_error_string(to_type));
 	}
-	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16) : expr_const_to_error_string(&expr->const_expr);
+	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16, true)
+	                                                  : expr_const_to_error_string(&expr->const_expr);
 	RETURN_CAST_ERROR(problem, "The value '%s' is out of range for %s, so you need an explicit cast to truncate the value.", error_value,
 			   type_quoted_error_string(to_type));
 }
@@ -727,11 +728,11 @@ static bool rule_int_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 		if (!is_explicit) return sema_cast_error(cc, true, is_silent);
 
 		// For if the type doesn't fit, insert an error.
-		if (!int_fits(expr->const_expr.ixx, type_uptr->canonical->type_kind))
+		Int i = expr->const_expr.ixx;
+		if (!int_fits(i, type_uptr->canonical->type_kind))
 		{
 			if (is_silent) return false;
-			RETURN_CAST_ERROR(expr, "'0x%s' does not fit in a pointer.", int_to_str(expr->const_expr.ixx, 16));
-			return false;
+			RETURN_CAST_ERROR(expr, "'%s' does not fit in a pointer.", int_to_str(i, 16, true));
 		}
 		return true;
 	}
@@ -1231,10 +1232,12 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	{
 		cc->to = flat;
 		cc->to_group = flat_group;
-		if (cast_is_allowed(cc, is_explicit, true)) return true;
-		if (is_silent) return false;
-		bool may_explicit = !is_explicit && cast_is_allowed(cc, true, true);
-		return sema_cast_error(cc, may_explicit, is_silent);
+
+		// If it's silent or explicit, just run it:
+		if (is_silent || is_explicit) return cast_is_allowed(cc, is_explicit, is_silent);
+		// Loud and implicit:
+		if (cast_is_allowed(cc, false, true)) return true;
+		return sema_cast_error(cc, cast_is_allowed(cc, true, true), is_silent);
 	}
 
 	cc->to = flat;

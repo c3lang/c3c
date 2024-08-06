@@ -153,10 +153,12 @@ void test128()
 	addres = i128_udiv(i128(UINT64_MAX, 0), i128(1, 0));
 	TEST_ASSERT(addres.low == UINT64_MAX && addres.high == 0, "Div failed");
 	addres = i128_sdiv(i128(UINT64_MAX - 1, UINT64_MAX - 1), i128(1, 0));
-	TEST_ASSERTF(addres.low == UINT64_MAX && addres.high == UINT64_MAX, "Div failed %s", i128_to_string(addres, 10, true));
+	TEST_ASSERTF(addres.low == UINT64_MAX && addres.high == UINT64_MAX, "Div failed %s", i128_to_string(addres, 10,
+	                                                                                                    true, false));
 	addres = i128_sdiv(i128(2, 0), i128(UINT64_MAX - 1, UINT64_MAX - 1));
 	printf("-- i128 Div okfefe %x.\n", (unsigned)-2);
-	TEST_ASSERTF(addres.low == UINT64_MAX && addres.high == UINT64_MAX, "Div failed: %s %llx, %llx", i128_to_string(addres, 10, true), (unsigned long long)addres.high, (unsigned long long)addres.low);
+	TEST_ASSERTF(addres.low == UINT64_MAX && addres.high == UINT64_MAX, "Div failed: %s %llx, %llx", i128_to_string(
+			addres, 10, true, false), (unsigned long long)addres.high, (unsigned long long)addres.low);
 	printf("-- i128 Div ok.\n");
 
 

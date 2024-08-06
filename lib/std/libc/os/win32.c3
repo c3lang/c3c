@@ -1,5 +1,5 @@
 module libc @if(env::WIN32);
-
+import std::os::win32;
 
 extern fn CFile __acrt_iob_func(CInt c);
 extern fn CInt _close(Fd fd); def close = _close;
@@ -15,11 +15,13 @@ extern fn Time_t _mkgmtime64(Tm* timeptr); def timegm = _mkgmtime64;
 extern fn Time_t _mktime64(Tm *timeptr); def mktime = _mktime64;
 extern fn usz _msize(void* ptr);
 extern fn CInt _read(Fd fd, void* buffer, CUInt buffer_size);
-extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer) @if(env::WIN32);
+extern fn CInt _setjmp(void* frameptr, JmpBuf* buffer);
 extern fn CFile _wfopen(WString, WString);
 extern fn CFile _wfreopen(WString, WString, CFile);
 extern fn CInt _write(Fd fd, void* buffer, CUInt count);
 extern fn CInt _wremove(WString);
+extern fn int recv(Win32_SOCKET s, void* buf, int len, int flags);
+extern fn int send(Win32_SOCKET s, void* buf, int len, int flags);
 
 struct SystemInfo
 {

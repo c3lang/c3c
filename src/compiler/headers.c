@@ -623,7 +623,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 		switch (init->const_expr.const_kind)
 		{
 			case CONST_INTEGER:
-				PRINTF("%s\n", int_to_str(init->const_expr.ixx, 10));
+				PRINTF("%s\n", int_to_str(init->const_expr.ixx, 10, false));
 				return;
 			case CONST_FLOAT:
 				PRINTF("%.15g\n", init->const_expr.fxx.f);
