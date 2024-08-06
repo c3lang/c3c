@@ -261,6 +261,17 @@ void resolve_libraries(BuildTarget *build_target)
 		Library *library = libraries[i];
 		LibraryTarget *target = library->target_used;
 		if (!target) continue;
+		if (target->win_crt != WIN_CRT_DEFAULT)
+		{
+			if (build_target->win.crt_linking == WIN_CRT_DEFAULT)
+			{
+				build_target->win.crt_linking = library->win_crt;
+			}
+			else if (library->win_crt != build_target->win.crt_linking)
+			{
+				WARNING("'wincrt' mismatch between resolved build setting and library '%s', library settings will be ignored.", library->dir);
+			}
+		}
 		if (vec_size(target->csource_dirs))
 		{
 			vec_add(build_target->ccompling_libraries, target);
