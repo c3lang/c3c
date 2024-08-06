@@ -134,11 +134,11 @@ const char *MANIFEST_TEMPLATE =
 const char *MANIFEST_TARGET =
 		"    \"%s\" : {\n"
 		"      // Extra flags to the linker for this target:\n"
-		"      \"linkflags\" : [],\n"
+		"      \"link-args\" : [],\n"
 		"      // C3 libraries this target depends on:\n"
 		"      \"dependencies\" : [],\n"
 		"      // The external libraries to link for this target:\n"
-		"      \"linked-libs\" : []\n"
+		"      \"linked-libraries\" : []\n"
 		"    },\n";
 
 const char *MAIN_TEMPLATE =
