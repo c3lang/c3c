@@ -45,6 +45,13 @@ fn TempAllocator*! new_temp_allocator(usz size, Allocator allocator)
 	return temp;
 }
 
+fn void TempAllocator.destroy(&self)
+{
+	self.reset(0);
+	if (self.last_page) (void)self._free_page(self.last_page);
+	allocator::free(self.backing_allocator, self);
+}
+
 fn usz TempAllocator.mark(&self) @dynamic => self.used;
 
 fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic

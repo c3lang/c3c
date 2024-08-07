@@ -54,6 +54,7 @@
 ### Stdlib changes
 
 - `send` and `recv` added to `libc` for Posix / Win32.
+- Add support to destroy temp allocators.
 
 ## 0.6.1 Change list
 

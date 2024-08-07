@@ -395,6 +395,23 @@ fn void init_default_temp_allocators() @private
 	thread_temp_allocator = temp_allocator_pair[0];
 }
 
+fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local
+{
+	destroy_temp_allocators();
+}
+
+/**
+ * Call this to destroy any memory used by the temp allocators. This will invalidate all temp memory.
+ **/
+fn void destroy_temp_allocators()
+{
+	if (!thread_temp_allocator) return;
+	temp_allocator_pair[0].destroy();
+	temp_allocator_pair[1].destroy();
+	temp_allocator_pair[..] = null;
+	thread_temp_allocator = null;
+}
+
 fn TempAllocator* temp_allocator_next() @private
 {
 	if (!thread_temp_allocator)
