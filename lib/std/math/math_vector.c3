@@ -25,11 +25,11 @@ macro Vec4.distance_sq(self, Vec4 v2) => (self - v2).length_sq();
 
 macro Vec2f.transform(self, Matrix4f mat) => transform2(self, mat);
 macro Vec2f.rotate(self, float angle) => rotate(self, angle);
-macro Vec2f.angle(self, Vec2f v2) => math::atan2(v2[1], v2[0]) - math::atan2(self[1], v2[0]);
+macro Vec2f.angle(self, Vec2f v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
 macro Vec2.transform(self, Matrix4 mat) => transform2(self, mat);
 macro Vec2.rotate(self, double angle) => rotate(self, angle);
-macro Vec2.angle(self, Vec2 v2) => math::atan2(v2[1], v2[0]) - math::atan2(self[1], v2[0]);
+macro Vec2.angle(self, Vec2 v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
 macro Vec2f.clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
 macro Vec3f.clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
