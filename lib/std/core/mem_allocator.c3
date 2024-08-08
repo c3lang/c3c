@@ -395,7 +395,7 @@ fn void init_default_temp_allocators() @private
 	thread_temp_allocator = temp_allocator_pair[0];
 }
 
-fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local
+fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC)
 {
 	destroy_temp_allocators();
 }
