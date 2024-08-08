@@ -1096,3 +1096,14 @@ macro overflow_mul_helper(x, y) @local
 	if ($$overflow_mul(x, y, &res)) return MathError.OVERFLOW?;
 	return res;
 }
+
+
+/**
+ * @require values::@is_int(number) `Number must be an integer`
+ * @require values::@is_int(mul) `Mul must be an integer`
+ * @require values::@is_int(div) `Div must be an integer`
+ **/
+macro safe_mul_div(number, mul, div)
+{
+	return mul * (number / div) + mul * (number % div) / div;
+}
