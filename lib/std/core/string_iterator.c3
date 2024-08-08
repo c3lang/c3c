@@ -27,6 +27,7 @@ fn Char32! StringIterator.peek(&self)
     Char32 res = conv::utf8_to_char32(&self.utf8[current], &read)!;
     return res;
 }
+
 fn bool StringIterator.has_next(&self)
 {
     return self.current < self.utf8.len;
@@ -37,6 +38,6 @@ fn Char32! StringIterator.get(&self)
     usz len = self.utf8.len;
     usz current = self.current;
     usz read = (len - current < 4 ? len - current : 4);
-    Char32 res = conv::utf8_to_char32(&self.utf8[current], &read)!;
+    Char32 res = conv::utf8_to_char32(&self.utf8[current - read > 0 ? current - read : 0], &read)!;
     return res;
 }
