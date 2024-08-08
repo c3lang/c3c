@@ -8,16 +8,23 @@ extern fn Win32_BOOL win32_QueryPerformanceCounter(Win32_LARGE_INTEGER* lpPerfor
 const ulong WINDOWS_TICK_US @local = 10;
 const ulong WIN_TO_UNIX_EPOCH_US @local = 116444736000000000u64 / WINDOWS_TICK_US;
 
+macro ulong safe_mul_div(ulong a, ulong b, ulong c)
+{
+	return b * (a / c) + b * (a % c) / c;
+}
+
 fn Clock native_clock()
 {
 	static Win32_LARGE_INTEGER freq;
+	static ulong div = 0;
+	ulong mult = 0;
 	if (!freq.quadPart)
 	{
 		if (!win32_QueryPerformanceFrequency(&freq)) return 0;
 	}
 	Win32_LARGE_INTEGER counter @noinit;
 	if (!win32_QueryPerformanceCounter(&counter)) return 0;
-	return (Clock)((counter.quadPart * 1_000_000_000) / freq.quadPart);
+	return (Clock)safe_mul_div(counter.quadPart, 1_000_000_000, freq.quadPart);
 }
 
 fn Time native_timestamp()
