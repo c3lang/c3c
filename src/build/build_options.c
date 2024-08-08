@@ -66,11 +66,11 @@ static void usage(void)
 	PRINTF("  benchmark                                           Run the benchmarks in the current project.");
 	PRINTF("  test                                                Run the unit tests in the current project.");
 	PRINTF("  clean                                               Clean all build files.");
-	PRINTF("  run [<target>]                                      Run (and build if needed) the target in the current project.");
+	PRINTF("  run [<target>] [-- [<arg1> ...]]                    Run (and build if needed) the target in the current project.");
 	PRINTF("  dist [<target>]                                     Clean and build a target for distribution.");
 	PRINTF("  directives [<target>]                               Generate documentation for the target.");
 	PRINTF("  bench [<target>]                                    Benchmark a target.");
-	PRINTF("  clean-run [<target>]                                Clean, then run the target.");
+	PRINTF("  clean-run [<target>] [-- [<arg1> ...]]              Clean, then run the target.");
 	PRINTF("  compile-run <file1> [<file2> ...] [-- [<arg1> ...]] Compile files then immediately run the result.");
 	PRINTF("  compile-only <file1> [<file2> ...]                  Compile files but do not perform linking.");
 	PRINTF("  compile-benchmark <file1> [<file2> ...]             Compile files into an executable and run benchmarks.");
@@ -82,7 +82,6 @@ static void usage(void)
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
 	PRINTF("Options:");
-	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
 	PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
 	PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
 	PRINTF("  --libdir <dir>             - Add this directory to the C3 library search paths.");
@@ -696,11 +695,6 @@ static void parse_option(BuildOptions *options)
 			}
 			break;
 		case '-':
-			if (match_longopt("tb"))
-			{
-				options->backend = BACKEND_TB;
-				return;
-			}
 			if (match_longopt("max-mem"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --max-mem needs a valid integer.");

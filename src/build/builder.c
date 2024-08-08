@@ -97,7 +97,9 @@ bool command_passes_args(CompilerCommand command)
 {
 	switch (command)
 	{
+		case COMMAND_CLEAN_RUN:
 		case COMMAND_COMPILE_RUN:
+		case COMMAND_RUN:
 			return true;
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
@@ -111,8 +113,6 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_INIT:
 		case COMMAND_INIT_LIB:
 		case COMMAND_BUILD:
-		case COMMAND_RUN:
-		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
 		case COMMAND_DOCS:
