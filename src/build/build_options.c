@@ -82,7 +82,6 @@ static void usage(void)
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
 	PRINTF("Options:");
-	PRINTF("  --tb                       - Use Tilde Backend for compilation.");
 	PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
 	PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
 	PRINTF("  --libdir <dir>             - Add this directory to the C3 library search paths.");
@@ -696,11 +695,6 @@ static void parse_option(BuildOptions *options)
 			}
 			break;
 		case '-':
-			if (match_longopt("tb"))
-			{
-				options->backend = BACKEND_TB;
-				return;
-			}
 			if (match_longopt("max-mem"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --max-mem needs a valid integer.");
