@@ -17,7 +17,7 @@ fn Clock native_clock()
 	}
 	Win32_LARGE_INTEGER counter @noinit;
 	if (!win32_QueryPerformanceCounter(&counter)) return 0;
-	return (Clock)counter.quadPart;
+	return (Clock)((counter.quadPart * 1_000_000_000) / freq.quadPart);
 }
 
 fn Time native_timestamp()
