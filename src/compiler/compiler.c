@@ -254,13 +254,13 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
-static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **out_files,
-                          const char *output_subdir)
+static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **include_dirs,
+                          const char **out_files, const char *output_subdir)
 {
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
-		out_files[total++] = cc_compiler(compiler, file, flags, output_subdir);
+		out_files[total++] = cc_compiler(compiler, file, flags, include_dirs, output_subdir);
 	}
 	return total;
 }
@@ -496,7 +496,7 @@ void compiler_compile(void)
 	uint32_t output_file_count = vec_size(gen_contexts);
 	unsigned cfiles = vec_size(active_target.csources);
 	unsigned cfiles_library = 0;
-	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
+	FOREACH(LibraryTarget *, lib, active_target.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
@@ -514,15 +514,16 @@ void compiler_compile(void)
 
 	if (cfiles)
 	{
-		int compiled = compile_cfiles(active_target.cc, active_target.csources, active_target.cflags, &obj_files[output_file_count], "tmp_c_compile");
+		int compiled = compile_cfiles(active_target.cc, active_target.csources,
+		                              active_target.cflags, active_target.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
 		assert(cfiles == compiled);
 		(void)compiled;
 	}
 	const char **obj_file_next = &obj_files[output_file_count + cfiles];
-	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
+	FOREACH(LibraryTarget *, lib, active_target.ccompiling_libraries)
 	{
 		obj_file_next += compile_cfiles(lib->cc ? lib->cc : active_target.cc, lib->csources,
-		                                lib->cflags, obj_file_next, lib->parent->provides);
+		                                lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
 	}
 
 	Task **tasks = NULL;
@@ -763,6 +764,16 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 		static const char* c_suffix_list[3] = { ".c" };
 		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, 1, false);
 	}
+}
+
+INLINE void expand_cinclude_dirs(const char *base_dir, const char **include_dirs, const char ***include_dirs_ref)
+{
+	const char **expanded_include_dirs = NULL;
+	FOREACH(const char *, include_dir, include_dirs)
+	{
+		vec_add(expanded_include_dirs, file_append_path(base_dir, include_dir));
+	}
+	*include_dirs_ref = expanded_include_dirs;
 }
 
 void compile_target(BuildOptions *options)
@@ -1081,9 +1092,10 @@ void compile()
 	target_setup(&active_target);
 	resolve_libraries(&active_target);
 	global_context.sources = active_target.sources;
-	FOREACH(LibraryTarget *, lib, active_target.ccompling_libraries)
+	FOREACH(LibraryTarget *, lib, active_target.ccompiling_libraries)
 	{
 		expand_csources(lib->parent->dir, lib->csource_dirs, &lib->csources);
+		expand_cinclude_dirs(lib->parent->dir, lib->cinclude_dirs, &lib->cinclude_dirs);
 	}
 	TokenType type = TOKEN_CONST_IDENT;
 	FOREACH(const char *, feature_flag, active_target.feature_list)

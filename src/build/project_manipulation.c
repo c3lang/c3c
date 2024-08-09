@@ -187,6 +187,8 @@ static void view_target(const char* name, JSONObject* target)
 	TARGET_VIEW_STRING_ARRAY("Source paths (override)", "sources-override");
 	TARGET_VIEW_STRING_ARRAY("Additional C source paths", "c-sources");
 	TARGET_VIEW_STRING_ARRAY("C source paths (override)", "c-sources-override");
+	TARGET_VIEW_STRING_ARRAY("Additional C source include directories", "c-include-dirs");
+	TARGET_VIEW_STRING_ARRAY("C source include directories (override)", "c-include-dirs-override");
 	TARGET_VIEW_SETTING("Optimization level", "opt", optimization_levels);
 
 	/* Extended target information */

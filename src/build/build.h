@@ -478,6 +478,7 @@ typedef struct
 	WinCrtLinking win_crt;
 	const char **csource_dirs;
 	const char **csources;
+	const char **cinclude_dirs;
 	const char **execs;
 	const char **link_flags;
 	const char **linked_libs;
@@ -493,6 +494,7 @@ typedef struct Library__
 	const char *cc;
 	const char *cflags;
 	const char **csource_dirs;
+	const char **cinclude_dirs;
 	WinCrtLinking win_crt;
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
@@ -503,7 +505,7 @@ typedef struct
 {
 	TargetType type;
 	Library **library_list;
-	LibraryTarget **ccompling_libraries;
+	LibraryTarget **ccompiling_libraries;
 	const char *name;
 	const char *version;
 	const char *langrev;
@@ -576,6 +578,7 @@ typedef struct
 	const char *cflags;
 	const char **csource_dirs;
 	const char **csources;
+	const char **cinclude_dirs;
 	const char **exec;
 	const char **feature_list;
 	const char *custom_linker_path;

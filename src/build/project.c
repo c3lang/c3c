@@ -15,6 +15,7 @@ const char *project_default_keys[][2] = {
 		{"authors", "Authors, optionally with email."},
 		{"benchfn", "Override the benchmark function."},
 		{"c-sources", "Set the C sources to be compiled."},
+		{"c-include-dirs", "Set the include directories for C sources."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "C compiler flags."},
 		{"cpu", "CPU name, used for optimizations in the compiler backend."},
@@ -73,6 +74,8 @@ const char* project_target_keys[][2] = {
 		{"benchfn", "Override the benchmark function."},
 		{"c-sources", "Additional C sources to be compiled for the target."},
 		{"c-sources-override", "C sources to be compiled, overriding global settings."},
+		{"c-include-dirs", "C sources include directories for the target."},
+		{"c-include-dirs-override", "Additional C sources include directories for the target, overriding global settings."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
@@ -158,6 +161,9 @@ static void load_into_build_target(JSONObject *json, const char *target_name, Bu
 	
 	// C source dirs.
 	get_list_append_strings(PROJECT_JSON, target_name, json, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+
+	// C include dirs.
+	get_list_append_strings(PROJECT_JSON, target_name, json, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 
 	// Sources
 	get_list_append_strings(PROJECT_JSON, target_name, json, &target->source_dirs, "sources", "sources-override", "sources-add");
