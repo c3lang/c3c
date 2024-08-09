@@ -16,6 +16,8 @@
   // C sources if the project also compiles C sources
   // relative to the project file.
   // "c-sources": [ "csource/**" ],
+  // Include directories for C sources relative to the project file.
+  // "c-include-dirs: [ "csource/include" ],
   // Output location, relative to project file.
   "output": "../build",
   // Architecture and OS target.

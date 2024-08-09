@@ -761,7 +761,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	printf("Program linked to executable '%s'.\n", output_file);
 }
 
-const char *cc_compiler(const char *cc, const char *file, const char *flags, const char *output_subdir)
+const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir)
 {
 	const char *dir = active_target.object_file_dir;
 	if (!dir) dir = active_target.build_dir;
@@ -788,6 +788,11 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	                      : str_printf("%s%s", filename, get_object_extension());;
 	const char **parts = NULL;
 	vec_add(parts, cc);
+
+	FOREACH(const char *, include_dir, include_dirs)
+	{
+		vec_add(parts, str_printf(is_cl_exe ? "/I\"%s\"" : "-I\"%s\"", include_dir));
+	}
 
 	const bool pie_set =
 			flags != NULL &&
