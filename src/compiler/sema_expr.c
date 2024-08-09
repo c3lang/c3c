@@ -5950,9 +5950,8 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 			expr->const_expr.fxx = float_rem(left->const_expr.fxx, right->const_expr.fxx);
 		}
 	}
-	else
+	else if (type_is_integer(flat))
 	{
-		assert(type_is_integer(flat));
 		// 3. a % 0 is not valid, so detect it.
 		if (sema_cast_const(right) && int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, "Cannot perform %% with a constant zero.");
 
