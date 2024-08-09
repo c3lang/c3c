@@ -24,10 +24,7 @@ typedef uint32_t AlignSize;
 typedef int32_t ScopeId;
 typedef uint32_t ArraySize;
 typedef uint64_t BitSize;
-typedef uint16_t SectionId;
 
-#define MAX_SECTIONS 0xFFFE
-#define SECTION_PREFIX_LEN 8
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
 #define INVALID_SPAN ((SourceSpan){ .row = 0 })
@@ -411,6 +408,7 @@ struct TypeInfo_
 };
 
 
+
 typedef struct
 {
 	Path *path;
@@ -420,6 +418,15 @@ typedef struct
 	bool is_custom : 1;
 	Expr **exprs;
 } Attr;
+
+typedef struct
+{
+	Attr **tags;
+	const char *deprecated;
+	const char **links;
+	const char *section;
+	SourceSpan overload;
+} ResolvedAttrData;
 
 typedef struct
 {
@@ -462,6 +469,8 @@ typedef struct
 
 typedef struct VarDecl_
 {
+	TypeInfoId type_info;
+	uint16_t va_index;
 	VarDeclKind kind : 8;
 	bool shadow : 1;
 	bool vararg : 1;
@@ -476,7 +485,6 @@ typedef struct VarDecl_
 	bool no_init : 1;
 	bool no_alias : 1;
 	bool bit_is_expr : 1;
-	TypeInfoId type_info;
 	union
 	{
 		Expr *init_expr;
@@ -619,7 +627,6 @@ typedef struct
 	};
 } TypedefDecl;
 
-
 typedef enum
 {
 	DEFINE_IDENT_ALIAS,
@@ -672,6 +679,7 @@ typedef struct Decl_
 	DeclKind decl_kind : 7;
 	ResolveStatus resolve_status : 3;
 	Visibility visibility : 3;
+	bool has_tag : 1;
 	bool is_packed : 1;
 	bool is_extern : 1;
 	bool is_substruct : 1;
@@ -690,12 +698,11 @@ typedef struct Decl_
 	bool is_export : 1;
 	bool is_live : 1;
 	bool no_strip : 1;
-	bool is_deprecated : 1;
 	bool is_cond : 1;
-	bool has_link : 1;
 	bool is_if : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
+	bool resolved_attributes : 1;
 	OperatorOverload operator : 4;
 	union
 	{
@@ -705,15 +712,14 @@ typedef struct Decl_
 		void *tb_symbol;
 	};
 	AlignSize alignment;
-	union
-	{
-		SectionId section_id;
-		uint16_t va_index;
-	};
 	AlignSize offset;
 	AlignSize padding;
 	struct CompilationUnit_ *unit;
-	Attr **attributes;
+	union
+	{
+		Attr **attributes;
+		ResolvedAttrData *attrs_resolved;
+	};
 	Type *type;
 	union
 	{
@@ -753,6 +759,7 @@ typedef struct Decl_
 	};
 } Decl;
 
+// static_assert(sizeof(void*) != 8 || sizeof(Decl) == 136, "Decl has unexpected size.");
 
 
 typedef struct
@@ -911,6 +918,11 @@ typedef struct
 	Expr *value;
 } ExprDesignator;
 
+typedef struct
+{
+	Decl *type;
+	TypeProperty property;
+} ExprTagOf;
 typedef struct
 {
 	union
@@ -1228,6 +1240,7 @@ struct Expr_
 		ExprSwizzle swizzle_expr;
 		ExprTernary ternary_expr;                   // 16
 		BuiltinDefine benchmark_hook_expr;
+		ExprTagOf tag_of_expr;
 		BuiltinDefine test_hook_expr;
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
@@ -1807,7 +1820,6 @@ typedef struct
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
-	const char **section_list;
 } GlobalContext;
 
 
@@ -2209,10 +2221,8 @@ void global_context_clear_errors(void);
 void global_context_add_type(Type *type);
 void global_context_add_decl(Decl *type_decl);
 void global_context_add_generic_decl(Decl *decl);
-SectionId global_context_register_section(const char *section);
-void global_context_add_link(const char *link);
 
-INLINE const char *section_from_id(SectionId id);
+void global_context_add_link(const char *link);
 
 Module *compiler_find_or_create_module(Path *module_name, const char **parameters);
 Module *global_context_find_module(const char *name);
@@ -3453,6 +3463,7 @@ INLINE void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
+		case EXPR_TAGOF:
 			break;
 	}
 }
@@ -3847,11 +3858,6 @@ INLINE bool expr_is_const_int(Expr *expr)
 INLINE bool expr_is_const_member(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
-}
-
-INLINE const char *section_from_id(SectionId id)
-{
-	return id ? global_context.section_list[id - 1] + SECTION_PREFIX_LEN : NULL;
 }
 
 INLINE bool check_module_name(Path *path)

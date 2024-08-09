@@ -248,33 +248,18 @@ RETRY:
 	sema_trace_type_liveness(expr->type);
 	switch (expr->expr_kind)
 	{
+		case NON_RUNTIME_EXPR:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_VASPLAT:
-		case EXPR_POISONED:
-		case EXPR_COMPILER_CONST:
-		case EXPR_CT_ARG:
-		case EXPR_CT_CALL:
-		case EXPR_CT_DEFINED:
-		case EXPR_CT_IS_CONST:
-		case EXPR_CT_EVAL:
-		case EXPR_CT_IDENT:
-		case EXPR_ANYSWITCH:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
-		case EXPR_CT_CASTABLE:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_CONCAT:
-		case EXPR_CT_APPEND:
 		case EXPR_MACRO_BODY:
 		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
 			return;
-		case EXPR_HASH_IDENT:
-		case EXPR_STRINGIFY:
-		case EXPR_TYPEINFO:
 		case EXPR_BUILTIN:
 			return;
 		case EXPR_ACCESS:
@@ -578,6 +563,8 @@ RETRY:
 		case DECL_VAR:
 			switch (decl->var.kind)
 			{
+				case VARDECL_PARAM_CT_TYPE:
+				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_REWRAPPED:
 				case VARDECL_UNWRAPPED:
 					break;

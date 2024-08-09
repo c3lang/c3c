@@ -620,9 +620,9 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	decl_append_links_to_global(decl);
 	LLVMValueRef function = llvm_get_ref(c, decl);
 	decl->backend_ref = function;
-	if (decl->section_id)
+	if (decl->attrs_resolved && decl->attrs_resolved->section)
 	{
-		LLVMSetSection(function, section_from_id(decl->section_id));
+		LLVMSetSection(function, decl->attrs_resolved->section);
 	}
 	if (llvm_use_debug(c))
 	{

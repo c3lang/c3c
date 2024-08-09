@@ -540,9 +540,9 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMSetUnnamedAddress(decl->backend_ref,
 							  decl_is_local(decl) ? LLVMGlobalUnnamedAddr : LLVMLocalUnnamedAddr);
 	}
-	if (decl->section_id)
+	if (decl->attrs_resolved && decl->attrs_resolved->section)
 	{
-		LLVMSetSection(global_ref, section_from_id(decl->section_id));
+		LLVMSetSection(global_ref, decl->attrs_resolved->section);
 	}
 	llvm_set_global_tls(decl);
 

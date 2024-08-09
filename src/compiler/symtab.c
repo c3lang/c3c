@@ -176,6 +176,8 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_QNAMEOF] = KW_DEF("qnameof");
 	type_property_list[TYPE_PROPERTY_RETURNS] = KW_DEF("returns");
 	type_property_list[TYPE_PROPERTY_SIZEOF] = KW_DEF("sizeof");
+	type_property_list[TYPE_PROPERTY_TAGOF] = KW_DEF("tagof");
+	type_property_list[TYPE_PROPERTY_HAS_TAGOF] = KW_DEF("has_tagof");
 	type_property_list[TYPE_PROPERTY_VALUES] = KW_DEF("values");
 
 	builtin_list[BUILTIN_ABS] = KW_DEF("abs");
@@ -347,6 +349,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_SAFEMACRO] = KW_DEF("@safemacro");
 	attribute_list[ATTRIBUTE_SECTION] = KW_DEF("@section");
 	attribute_list[ATTRIBUTE_TEST] = KW_DEF("@test");
+	attribute_list[ATTRIBUTE_TAG] = KW_DEF("@tag");
 	attribute_list[ATTRIBUTE_UNUSED] = KW_DEF("@unused");
 	attribute_list[ATTRIBUTE_USED] = KW_DEF("@used");
 	attribute_list[ATTRIBUTE_WASM] = KW_DEF("@wasm");

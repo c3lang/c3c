@@ -127,6 +127,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_LAST_FAULT:
+		case EXPR_DESIGNATOR:
 			return false;
 	}
 	UNREACHABLE
@@ -173,6 +174,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			return false;
 		case EXPR_BITASSIGN:
 			return false;
+		case EXPR_TAGOF:
+			return true;
 		case EXPR_BUILTIN_ACCESS:
 			switch (expr->builtin_access_expr.kind)
 			{
@@ -679,6 +682,7 @@ bool expr_is_pure(Expr *expr)
 			return exprid_is_pure(expr->pointer_offset_expr.ptr) && exprid_is_pure(expr->pointer_offset_expr.offset);
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
+		case EXPR_TAGOF:
 		case EXPR_CT_AND_OR:
 		case EXPR_CT_CONCAT:
 		case EXPR_CT_APPEND:

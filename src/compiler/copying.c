@@ -288,6 +288,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_TAGOF:
 		case EXPR_ANYSWITCH:
 			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:
@@ -762,19 +763,38 @@ Decl **copy_decl_list_single(Decl **decl_list)
 	return result;
 }
 
+INLINE Attr *copy_attribute(CopyStruct *c, Attr *attr)
+{
+	if (!attr) return NULL;
+	Attr *copy = MALLOCS(Attr);
+	*copy = *attr;
+	MACRO_COPY_EXPR_LIST(copy->exprs);
+	return copy;
+}
+
 static Attr **copy_attributes(CopyStruct *c, Attr** attr_list)
 {
 	if (!attr_list) return attr_list;
 	Attr** list = NULL;
 	FOREACH(Attr *, attribute, attr_list)
 	{
-
-		Attr *copy = MALLOCS(Attr);
-		*copy = *attribute;
-		MACRO_COPY_EXPR_LIST(copy->exprs);
-		vec_add(list, copy);
+		vec_add(list, copy_attribute(c, attribute));
 	}
 	return list;
+}
+
+
+static ResolvedAttrData *copy_attrs_resolved(CopyStruct *c, ResolvedAttrData *data)
+{
+	if (!data) return NULL;
+	ResolvedAttrData *copy = MALLOCS(ResolvedAttrData);
+	*copy = (ResolvedAttrData) {
+			.tags = copy_attributes(c, data->tags),
+			.deprecated = data->deprecated,
+			.links = data->links,
+			.section = data->section,
+	};
+	return copy;
 }
 
 Attr **copy_attributes_single(Attr** attr_list)
@@ -888,7 +908,14 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 	if (c->single_static && decl_is_resolved_static_var(decl)) return decl;
 	Decl *copy = decl_copy(decl);
 	copy_reg_ref(c, decl, copy);
-	copy->attributes = copy_attributes(c, copy->attributes);
+	if (decl->resolved_attributes)
+	{
+		copy->attrs_resolved = copy_attrs_resolved(c, copy->attrs_resolved);
+	}
+	else
+	{
+		copy->attributes = copy_attributes(c, copy->attributes);
+	}
 	switch (decl->decl_kind)
 	{
 		case DECL_POISONED:

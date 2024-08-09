@@ -528,9 +528,6 @@ macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
 	@body();
 }
 
-
-
-
 import libc;
 
 

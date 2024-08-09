@@ -1627,7 +1627,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			PRINT_ERROR_HERE("Expected a field name at this position.");
 			return false;
 		}
-		if (tok_is(c, TOKEN_EOS))
+		if (tok_is(c, TOKEN_EOS) || tok_is(c, TOKEN_AT_IDENT))
 		{
 			if (!is_consecutive)
 			{
@@ -1637,6 +1637,9 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 				}
 				is_consecutive = true;
 			}
+			bool is_cond = false;
+			if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond)) return false;
+			member_decl->is_cond = is_cond;
 			CONSUME_OR_RET(TOKEN_EOS, false);
 			unsigned index = vec_size(decl->bitstruct.members);
 			member_decl->var.start_bit = index;
@@ -1655,6 +1658,9 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		{
 			member_decl->var.end = NULL;
 		}
+		bool is_cond = false;
+		if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond)) return false;
+		member_decl->is_cond = is_cond;
 		CONSUME_EOS_OR_RET(false);
 		if (is_consecutive)
 		{

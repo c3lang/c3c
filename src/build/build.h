@@ -394,6 +394,7 @@ typedef struct BuildOptions_
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
+	bool silence_deprecation;
 	CompilerBackend backend;
 	CompilerCommand command;
 	ProjectSubcommand subcommand;
@@ -542,6 +543,7 @@ typedef struct
 	bool print_linking;
 	bool no_entry;
 	bool kernel_build;
+	bool silence_deprecation;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

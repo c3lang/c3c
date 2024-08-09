@@ -131,15 +131,17 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
 {
-	if (!decl->is_deprecated) return;
+	assert(decl->resolve_status == RESOLVE_DONE);
+	if (!decl->resolved_attributes || !decl->attrs_resolved || !decl->attrs_resolved->deprecated) return;
+	const char *msg = decl->attrs_resolved->deprecated;
+
 	// Prevent multiple reports
-	decl->is_deprecated = false;
-	Attr *attr = attr_find_kind(decl->attributes, ATTRIBUTE_DEPRECATED);
-	assert(attr);
-	if (attr->exprs)
+	decl->attrs_resolved->deprecated = NULL;
+
+	if (active_target.silence_deprecation) return;
+	if (msg[0])
 	{
-		const char *comment_string = attr->exprs[0]->const_expr.bytes.ptr;
-		sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, comment_string);
+		sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, msg);
 		return;
 	}
 	sema_warning_at(span, "'%s' is deprecated.", decl->name);

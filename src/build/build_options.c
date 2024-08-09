@@ -703,6 +703,11 @@ static void parse_option(BuildOptions *options)
 				if (maxmem < 128) PRINTF("Expected a valid positive integer >= 128.");
 				return;
 			}
+			if (match_longopt("silence-deprecation"))
+			{
+				options->silence_deprecation = true;
+				return;
+			}
 			if (match_longopt("symtab"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --symtab needs a valid integer.");
