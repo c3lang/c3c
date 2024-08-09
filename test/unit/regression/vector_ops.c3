@@ -1,5 +1,15 @@
 import std::io;
 
+fn void! test_int_mod() @test
+{
+	int[<2>] y = { 10, 99 };
+	int[<2>] z = { 3, 5 };
+	assert(y % z == { 1, 4 });
+	assert(y / z == { 3, 19 });
+	assert(int[<2>]{ 10, 99 } % int[<2>]{ 3, 5 } == { 1, 4 });
+	assert(int[<2>]{ 10, 99 } / int[<2>]{ 3, 5 } == { 3, 19 });
+}
+
 fn void! test_conv() @test
 {
     float[<4>] y = { 1, 2, 3, 4 };

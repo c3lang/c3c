@@ -52,6 +52,7 @@
 - Better error when casting to a distinct fails.
 - With single module, name the .o file after what `-o` provides. #1306
 - Bitstruct members can now have attributes.
+- `%` analysis was incorrect for int vectors.
 
 ### Stdlib changes
 
