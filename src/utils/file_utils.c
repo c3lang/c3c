@@ -243,10 +243,15 @@ char *file_read_all(const char *path, size_t *return_size)
 		error_exit("Failed to read file \"%s\".\n", path);
 	}
 	assert(bytes_read == file_size);
-
 	buffer[bytes_read] = '\0';
-	// Filter '\r' early.
+
 	size_t offset = 0;
+	// Filter BOM
+	if (buffer[0] == (char)0xEF && buffer[1] == (char)0xBB && buffer[2] == (char)0xBF)
+	{
+		offset += 3;
+	}
+	// Filter '\r' early.
 	for (size_t i = 0; i < file_size - offset; i++)
 	{
 		char c = buffer[i + offset];

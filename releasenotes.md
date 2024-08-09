@@ -27,6 +27,7 @@
 - Add `methodsof` to type info for struct, union and bitstruct.
 - Added `@tag` `tagof` and `has_tagof` to user defined types and members.
 - Added `c-include-dirs` project/manifest setting.
+- The compiler now skips UTF8 BOM.
 
 ### Fixes
 
