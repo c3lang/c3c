@@ -5,6 +5,7 @@
 
 const char *manifest_default_keys[][2] = {
 		{"c-sources", "Set the C sources to be compiled."},
+		{"c-include-dirs", "Set the include directories for C sources."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "C compiler flags."},
 		{"dependencies", "List of C3 libraries to also include."},
@@ -19,6 +20,8 @@ const int manifest_default_keys_count = ELEMENTLEN(manifest_default_keys);
 const char *manifest_target_keys[][2] = {
 		{"c-sources", "Additional C sources to be compiled for the target."},
 		{"c-sources-override", "C sources to be compiled, overriding global settings."},
+		{"c-include-dirs", "C source include directories for the target."},
+		{"c-include-dirs-override", "Additional C source include directories for the target, overriding global settings."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
 		{"cflags", "Additional C compiler flags for the target."},
 		{"cflags-override", "C compiler flags for the target, overriding global settings."},
@@ -33,7 +36,7 @@ const char *manifest_target_keys[][2] = {
 const int manifest_target_keys_count = ELEMENTLEN(manifest_target_keys);
 
 const char *manifest_deprecated_target_keys[] = {
-		"c-sources-add", "cflags-add", "linkflags", "linked-libs" };
+		"c-sources-add", "c-include-dirs-add", "cflags-add", "linkflags", "linked-libs" };
 
 const int manifest_deprecated_target_key_count = ELEMENTLEN(manifest_deprecated_target_keys);
 
@@ -49,7 +52,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 		JSONObject *member = object->members[i];
 		const char *key = object->keys[i];
 		if (member->type != J_OBJECT) error_exit("Expected a list of properties for a target in %s.", library->dir);
-		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, member, key, "--list-library-properties");
+		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, member, key, "--list-manifest-properties");
 		LibraryTarget *library_target = CALLOCS(LibraryTarget);
 		library_target->parent = library;
 		library_target->win_crt = WIN_CRT_DEFAULT;
@@ -83,13 +86,15 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
 	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
 	target->csource_dirs = library->csource_dirs;
+	target->cinclude_dirs = library->cinclude_dirs;
 	target->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, target_name, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
 	get_list_append_strings(library->dir, target_name, object, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+	get_list_append_strings(library->dir, target_name, object, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 }
 
 static Library *add_library(JSONObject *object, const char *dir)
 {
-	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, object, "library", "--list-library-properties");
+	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, object, "library", "--list-manifest-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
 	const char *provides = get_mandatory_string(dir, NULL, object, "provides");
@@ -107,6 +112,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 	library->cflags = get_cflags(library->dir, NULL, object, NULL);
 	library->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, NULL, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
 	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+	get_list_append_strings(library->dir, NULL, object, &library->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 	parse_library_type(library, &library->targets, json_obj_get(object, "targets"));
 	return library;
 }
@@ -274,7 +280,7 @@ void resolve_libraries(BuildTarget *build_target)
 		}
 		if (vec_size(target->csource_dirs))
 		{
-			vec_add(build_target->ccompling_libraries, target);
+			vec_add(build_target->ccompiling_libraries, target);
 		}
 		file_add_wildcard_files(&build_target->sources, library->dir, false, c3_suffix_list, 3);
 		vec_add(build_target->library_list, library);
