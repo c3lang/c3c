@@ -1,5 +1,5 @@
 module std::core::string::iterator;
-import std::io;
+
 struct StringIterator
 {
 	String utf8;
