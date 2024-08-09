@@ -1,5 +1,5 @@
 module std::core::test::string_iterator::tests @test;
-import std::io;
+
 fn void test_at_start()
 {
     String test = "abcd";
