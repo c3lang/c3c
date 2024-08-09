@@ -37,7 +37,7 @@ faultname_no:                                     ; preds = %entry
 
 faultname_ok:                                     ; preds = %entry
   %3 = inttoptr i64 %2 to ptr
-  %4 = getelementptr inbounds %.fault, ptr %3, i32 0, i32 1
+  %4 = getelementptr inbounds
   br label %faultname_exit
 
 faultname_exit:                                   ; preds = %faultname_ok, %faultname_no

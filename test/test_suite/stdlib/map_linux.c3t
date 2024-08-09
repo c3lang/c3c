@@ -273,13 +273,13 @@ entry:
   br label %dtable_check
 
 dtable_check:                                     ; preds = %dtable_next, %entry
-  %dtable_ref = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.test.Foo", i32 0, i32 2), %entry ], [ %next_dtable_ref, %dtable_next ]
+  %dtable_ref = phi ptr [ getelementptr inbounds
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
   %0 = icmp eq ptr %dtable_ptr, null
   br i1 %0, label %dtable_found, label %dtable_next
 
 dtable_next:                                      ; preds = %dtable_check
-  %next_dtable_ref = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr, i32 0, i32 2
+  %next_dtable_ref = getelementptr inbounds
   br label %dtable_check
 
 dtable_found:                                     ; preds = %dtable_check

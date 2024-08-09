@@ -37,7 +37,7 @@ entry:
   %error_var4 = alloca i64, align 8
   %error_var10 = alloca i64, align 8
   %zext = zext i32 %0 to i64
-  %ptroffset_any = getelementptr [16 x i8], ptr getelementptr inbounds (%.introspect, ptr @"$ct.test.Enum", i32 0, i32 6), i64 %zext
+  %ptroffset_any = getelementptr [16 x i8], ptr getelementptr inbounds
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x, ptr align 8 %ptroffset_any, i32 16, i1 false)
   %1 = call ptr @std.io.stdout()
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %x1, ptr align 8 %x, i32 16, i1 false)

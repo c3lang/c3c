@@ -156,7 +156,7 @@ check:                                            ; preds = %no_match, %entry
 missing_function:                                 ; preds = %check
   ret ptr null
 compare:                                          ; preds = %check
-  %4 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds
   %5 = load ptr, ptr %4, align 8
   %6 = icmp eq ptr %5, %1
   br i1 %6, label %match, label %no_match
@@ -164,7 +164,7 @@ match:                                            ; preds = %compare
   %7 = load ptr, ptr %2, align 8
   ret ptr %7
 no_match:                                         ; preds = %compare
-  %8 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 2
+  %8 = getelementptr inbounds
   %9 = load ptr, ptr %8, align 8
   br label %check
 }
@@ -172,23 +172,23 @@ define internal void @.c3_dynamic_register() align 8 {
 entry:
   br label %dtable_check
 dtable_check:                                     ; preds = %dtable_next, %entry
-  %dtable_ref = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.inherit.Test", i32 0, i32 2), %entry ], [ %next_dtable_ref, %dtable_next ]
+  %dtable_ref = phi ptr [ getelementptr inbounds
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
   %0 = icmp eq ptr %dtable_ptr, null
   br i1 %0, label %dtable_found, label %dtable_next
 dtable_next:                                      ; preds = %dtable_check
-  %next_dtable_ref = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr, i32 0, i32 2
+  %next_dtable_ref = getelementptr inbounds
   br label %dtable_check
 dtable_found:                                     ; preds = %dtable_check
   store ptr @"$ct.dyn.inherit.Test.tesT", ptr %dtable_ref, align 8
   br label %dtable_check1
 dtable_check1:                                    ; preds = %dtable_next4, %dtable_found
-  %dtable_ref2 = phi ptr [ getelementptr inbounds (%.introspect, ptr @"$ct.inherit.Test", i32 0, i32 2), %dtable_found ], [ %next_dtable_ref5, %dtable_next4 ]
+  %dtable_ref2 = phi ptr [ getelementptr inbounds
   %dtable_ptr3 = load ptr, ptr %dtable_ref2, align 8
   %1 = icmp eq ptr %dtable_ptr3, null
   br i1 %1, label %dtable_found6, label %dtable_next4
 dtable_next4:                                     ; preds = %dtable_check1
-  %next_dtable_ref5 = getelementptr inbounds { ptr, ptr, ptr }, ptr %dtable_ptr3, i32 0, i32 2
+  %next_dtable_ref5 = getelementptr inbounds
   br label %dtable_check1
 dtable_found6:                                    ; preds = %dtable_check1
   store ptr @"$ct.dyn.inherit.Test.hello", ptr %dtable_ref2, align 8

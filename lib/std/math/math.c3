@@ -1097,48 +1097,22 @@ macro overflow_mul_helper(x, y) @local
 	return res;
 }
 
-
-macro char char.mult_div(self, char mul, char div)
+macro mul_div_helper(val, mul, div) @private
 {
-	return mul * (self / div) + mul * (self % div) / div;
+	var $Type = $typeof(val);
+	return ($Type)(($Type)mul * (val / ($Type)div) + ($Type)mul * (val % ($Type)div) / ($Type)div);
 }
+macro char char.muldiv(self, char mul, char div) => mul_div_helper(self, mul, div);
+macro ichar ichar.muldiv(self, ichar mul, ichar div) => mul_div_helper(self, mul, div);
+macro short short.muldiv(self, short mul, short div) => mul_div_helper(self, mul, div);
+macro ushort ushort.muldiv(self, ushort mul, ushort div) => mul_div_helper(self, mul, div);
+macro int int.muldiv(self, int mul, int div) => mul_div_helper(self, mul, div);
+macro uint uint.muldiv(self, uint mul, uint div) => mul_div_helper(self, mul, div);
+macro long long.muldiv(self, long mul, long div) => mul_div_helper(self, mul, div);
+macro ulong ulong.muldiv(self, ulong mul, ulong div) => mul_div_helper(self, mul, div);
 
-macro ichar ichar.mult_div(self, ichar mul, ichar div)
+macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar) @private
 {
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro short short.mult_div(self, short mul, short div)
-{
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro ushort ushort.mult_div(self, ushort mul, ushort div)
-{
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro int int.mult_div(self, int mul, int div)
-{
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro uint uint.mult_div(self, uint mul, uint div)
-{
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro long long.mult_div(self, long mul, long div)
-{
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro ulong ulong.mult_div(self, ulong mul, ulong div)
-{
-	return mul * (self / div) + mul * (self % div) / div;
-}
-
-macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar) @private {
 	return (values::@is_vector(#vector_or_scalar) &&& values::@is_same_vector_type(#vector_value, #vector_or_scalar)) ||| values::@is_int(#vector_or_scalar);
 }
 
@@ -1146,62 +1120,46 @@ macro bool @is_same_vector_or_scalar(#vector_value, #vector_or_scalar) @private 
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro char[<*>] char[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro char[<*>] char[<*>].muldiv(self, mul, div)  => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro ichar[<*>] ichar[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro ichar[<*>] ichar[<*>].muldiv(self, mul, div)  => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro short[<*>] short[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro short[<*>] short[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro ushort[<*>] ushort[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro ushort[<*>] ushort[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro int[<*>] int[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro int[<*>] int[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro uint[<*>] uint[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro uint[<*>] uint[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro long[<*>] long[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro long[<*>] long[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
 
 /**
  * @require @is_same_vector_or_scalar(self, mul) `mul must be a vector of the same type as self, or be an integer scalar`
  * @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
  */
-macro ulong[<*>] ulong[<*>].mult_div(self, mul, div) {
-	return ($typeof(self))mul * (self / ($typeof(self))div) + ($typeof(self))mul * (self % ($typeof(self))div) / ($typeof(self))div;
-}
+macro ulong[<*>] ulong[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);

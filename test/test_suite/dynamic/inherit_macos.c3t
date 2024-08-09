@@ -149,7 +149,7 @@ check:                                            ; preds = %no_match, %entry
 missing_function:                                 ; preds = %check
   ret ptr null
 compare:                                          ; preds = %check
-  %4 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 1
+  %4 = getelementptr inbounds
   %5 = load ptr, ptr %4, align 8
   %6 = icmp eq ptr %5, %1
   br i1 %6, label %match, label %no_match
@@ -157,7 +157,7 @@ match:                                            ; preds = %compare
   %7 = load ptr, ptr %2, align 8
   ret ptr %7
 no_match:                                         ; preds = %compare
-  %8 = getelementptr inbounds { ptr, ptr, ptr }, ptr %2, i32 0, i32 2
+  %8 = getelementptr inbounds
   %9 = load ptr, ptr %8, align 8
   br label %check
 }
