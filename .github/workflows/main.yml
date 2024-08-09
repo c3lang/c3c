@@ -488,14 +488,10 @@ jobs:
 
       - name: Run build script for Release
         run: |
-          sudo chown -R ${{ runner.user }}:${{ runner.group }} build
-          sudo chmod -R 755 build
           echo "Release" | ./build-with-docker.sh
 
       - name: Run build script for Debug
         run: |
-          sudo chown -R ${{ runner.uder }}:${{ runner.group }} build
-          sudo chmod -R 755 build
           echo "Debug" | ./build-with-docker.sh
 
   build-mac:

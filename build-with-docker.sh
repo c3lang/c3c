@@ -46,6 +46,8 @@ cd ..
 
 rm -rf build bin
 mkdir -p build bin
+sudo chown -R $(id -u):$(id -g) build
+sudo chmod -R 755 build
 
 exec $DOCKER run -ti --rm --tmpfs=/tmp $DOCKER_RUN -v "$PWD":/home/c3c/source -w /home/c3c/source $IMAGE bash -c \
     "cd build && cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DC3_LLVM_VERSION=$LLVM_VERSION .. && cmake --build . && mv c3c lib ../bin/"
