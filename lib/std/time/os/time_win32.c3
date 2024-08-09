@@ -21,7 +21,7 @@ fn Clock native_clock()
 	}
 	Win32_LARGE_INTEGER counter @noinit;
 	if (!win32_QueryPerformanceCounter(&counter)) return 0;
-	return (Clock)math::safe_mul_div(counter.quadPart, 1_000_000_000, freq.quadPart);
+	return (Clock)counter.quadPart.mult_div(1_000_000_000, freq.quadPart);
 }
 
 fn Time native_timestamp()

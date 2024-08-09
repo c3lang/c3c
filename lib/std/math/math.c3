@@ -1098,12 +1098,42 @@ macro overflow_mul_helper(x, y) @local
 }
 
 
-/**
- * @require values::@is_int(number) `Number must be an integer`
- * @require values::@is_int(mul) `Mul must be an integer`
- * @require values::@is_int(div) `Div must be an integer`
- **/
-macro safe_mul_div(number, mul, div)
+macro char char.mult_div(self, char mul, char div)
 {
-	return mul * (number / div) + mul * (number % div) / div;
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro ichar ichar.mult_div(self, ichar mul, ichar div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro short short.mult_div(self, short mul, short div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro ushort ushort.mult_div(self, ushort mul, ushort div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro int int.mult_div(self, int mul, int div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro uint uint.mult_div(self, uint mul, uint div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro long long.mult_div(self, long mul, long div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
+}
+
+macro ulong ulong.mult_div(self, ulong mul, ulong div)
+{
+	return mul * (self / div) + mul * (self % div) / div;
 }
