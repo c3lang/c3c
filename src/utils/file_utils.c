@@ -246,6 +246,11 @@ char *file_read_all(const char *path, size_t *return_size)
 	buffer[bytes_read] = '\0';
 
 	size_t offset = 0;
+	// Simple UTF16 detection
+	if (buffer[0] == (char)0xFF || buffer[1] == (char)0xFE)
+	{
+		error_exit("The file \"%s\" does not seem to be an UTF8 file, is it perhaps UTF16?\n", path);
+	}
 	// Filter BOM
 	if (buffer[0] == (char)0xEF && buffer[1] == (char)0xBB && buffer[2] == (char)0xBF)
 	{
