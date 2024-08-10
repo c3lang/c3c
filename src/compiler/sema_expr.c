@@ -2497,8 +2497,8 @@ static inline bool sema_expr_analyse_tagof(SemaContext *context, Expr *expr)
 	}
 	assert(decl->resolved_attributes);
 	ResolvedAttrData *attrs = decl->attrs_resolved;
-	if (!attrs || !attrs->tags) goto NOT_FOUND;
 	const char *tagname = key->const_expr.bytes.ptr;
+	if (!attrs || !attrs->tags) goto NOT_FOUND;
 	Expr *value = NULL;
 	FOREACH(Attr *, attr, attrs->tags)
 	{
@@ -2518,7 +2518,7 @@ NOT_FOUND:
 		expr_rewrite_const_bool(expr, type_bool, false);
 		return true;
 	}
-	RETURN_SEMA_ERROR(expr, "The tag '%s' is not defined, always check with '.has_tagof'.");
+	RETURN_SEMA_ERROR(expr, "The tag '%s' is not defined, always check with '.has_tagof'.", tagname);
 }
 
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool *no_match_ref)
