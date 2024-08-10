@@ -371,18 +371,24 @@ fn void DString.insert_at(&self, usz index, String s)
 
 fn usz! DString.appendf(&self, String format, args...) @maydiscard
 {
-	Formatter formatter;
-	formatter.init(&out_string_append_fn, self);
-	return formatter.vprintf(format, args);
+	@pool(self.data().allocator)
+	{
+		Formatter formatter;
+		formatter.init(&out_string_append_fn, self);
+		return formatter.vprintf(format, args);
+	};
 }
 
 fn usz! DString.appendfn(&self, String format, args...) @maydiscard
 {
-	Formatter formatter;
-	formatter.init(&out_string_append_fn, self);
-	usz len = formatter.vprintf(format, args)!;
-	self.append('\n');
-	return len + 1;
+	@pool(self.data().allocator)
+	{
+		Formatter formatter;
+		formatter.init(&out_string_append_fn, self);
+		usz len = formatter.vprintf(format, args)!;
+		self.append('\n');
+		return len + 1;
+	};
 }
 
 fn DString new_join(String[] s, String joiner, Allocator allocator = allocator::heap())

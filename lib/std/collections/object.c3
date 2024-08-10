@@ -48,9 +48,9 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			return n;
 		case ObjectInternalMap:
 			usz n = formatter.printf("{")!;
-			@pool()
+			@stack_mem(1024; Allocator mem)
 			{
-				foreach (i, key : self.map.key_tlist())
+				foreach (i, key : self.map.key_new_list(mem))
 				{
 					if (i > 0) n += formatter.printf(",")!;
 					n += formatter.printf(`"%s":`, key)!;

@@ -15,11 +15,29 @@ fault JsonParsingError
 	INVALID_NUMBER,
 }
 
+fn Object*! parse_string(String s, Allocator allocator = allocator::heap())
+{
+	return parse(ByteReader{}.init(s), allocator);
+}
+
+fn Object*! temp_parse_string(String s)
+{
+	return parse(ByteReader{}.init(s), allocator::temp());
+}
+
 fn Object*! parse(InStream s, Allocator allocator = allocator::heap())
 {
 	JsonContext context = { .last_string = dstring::new_with_capacity(64, allocator), .stream = s, .allocator = allocator };
 	defer context.last_string.free();
-	return parse_any(&context);
+	@pool(allocator)
+	{
+		return parse_any(&context);
+	};
+}
+
+fn Object*! temp_parse(InStream s)
+{
+	return parse(s, allocator::temp());
 }
 
 // -- Implementation follows --
