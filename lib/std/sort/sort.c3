@@ -16,7 +16,7 @@ macro bool @is_sortable(#list)
 			return false;
 		$case !$defined(#list.len):
 			return false;
-		$case $and($defined(&#list[0]) && !types::is_same($typeof(&#list[0]), $typeof(#list[0])*)):
+		$case $defined(&#list[0]) &&& !types::is_same($typeof(&#list[0]), $typeof(#list[0])*):
 			return false;
 		$default:
 			return true;

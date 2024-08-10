@@ -159,7 +159,7 @@ macro atan2(x, y)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
- * @require $and(@typekind(y) == ARRAY || @typekind(y) == VECTOR, y.len == 2)
+ * @require (@typekind(y) == ARRAY || @typekind(y) == VECTOR) &&& y.len == 2
  * @require $assignable(x, $typeof(y[0]))
  **/
 macro sincos(x, y)

@@ -1136,6 +1136,7 @@ static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCATFN) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
+	if (!active_target.silence_deprecation) SEMA_NOTE(expr, "'%s' is deprecated in favour of '+++'.", symstr(c));
 	advance(c);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
@@ -1171,6 +1172,7 @@ static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_AND_OR);
 	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_ANDFN);
+	if (!active_target.silence_deprecation) SEMA_NOTE(expr, "The use of '%s' is deprecated in favour of '&&&'.", symstr(c));
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	if (!parse_expr_list(c, &expr->ct_and_or_expr.args, TOKEN_RPAREN)) return poisoned_expr;
