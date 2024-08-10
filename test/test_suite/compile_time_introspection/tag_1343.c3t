@@ -1,0 +1,17 @@
+struct Foo { int a; }
+struct Bar { int a; }
+fn void Bar.xyz(&self) @tag("footag", 123) {}
+macro void Foo.tags(&self, other)
+{
+    // inner to remove pointer
+    var $Type = $typefrom($typeof(other).inner);
+    var $methodcount = $Type.methodsof.len;
+    $for (var $i = 0; $i < $methodcount; $i++)
+        var $MethodType1 = $typeof($Type.$eval($Type.methodsof[$i]));
+        var $MethodType = $typeof(&$Type.$eval($Type.methodsof[$i]));
+		$MethodType a;
+		$MethodType1 b;
+        var $hasfootag = $MethodType.has_tagof("footag");
+    $endfor
+}
+fn void main() { Bar bar; Foo foo; foo.tags(&bar); }

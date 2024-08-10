@@ -4280,7 +4280,11 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
 			expr->expr_kind = EXPR_TAGOF;
-			expr->tag_of_expr = (ExprTagOf) { .type = type->decl, .property = property };
+			expr->tag_of_expr = (ExprTagOf) {
+				.type = type->type_kind == TYPE_FUNC_PTR
+						? type->pointer->function.decl
+						: type->decl,
+				.property = property };
 			return true;
 		case TYPE_PROPERTY_NONE:
 			return false;

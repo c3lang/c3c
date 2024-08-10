@@ -2939,6 +2939,7 @@ static inline StorageType type_storage_type(Type *type)
 		case TYPE_MEMBER:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
+		case TYPE_FUNC_RAW:
 			return STORAGE_COMPILE_TIME;
 		case TYPE_OPTIONAL:
 			type = type->optional;
