@@ -56,7 +56,7 @@ int main_real(int argc, const char *argv[])
 	BuildOptions build_options = parse_arguments(argc, argv);
 
 	// Init the compiler
-	compiler_init(build_options.std_lib_dir);
+	compiler_init(&build_options);
 
 	switch (build_options.command)
 	{

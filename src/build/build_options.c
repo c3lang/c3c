@@ -6,6 +6,7 @@
 #include "../utils/whereami.h"
 
 extern int llvm_version_major;
+bool silence_deprecation;
 
 static int arg_index;
 static int arg_count;
@@ -706,6 +707,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("silence-deprecation"))
 			{
 				options->silence_deprecation = true;
+				silence_deprecation = true;
 				return;
 			}
 			if (match_longopt("symtab"))

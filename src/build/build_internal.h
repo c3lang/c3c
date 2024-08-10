@@ -12,6 +12,8 @@ typedef struct
 	BuildTarget **targets;
 } Project;
 
+extern bool silence_deprecation;
+
 extern const char *trust_level[3];
 
 static const char *memory_environment[6] = {

@@ -1804,6 +1804,7 @@ typedef struct
 	unsigned includes_used;
 	Decl ***locals_list;
 	const char **links;
+	bool silence_deprecation;
 	HTable compiler_defines;
 	HTable features;
 	Module std_module;

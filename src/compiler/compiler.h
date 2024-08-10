@@ -5,7 +5,7 @@
 
 #include "../build/build.h"
 
-void compiler_init(const char *std_lib_dir);
+void compiler_init(BuildOptions *options);
 void compile();
 void compile_target(BuildOptions *options);
 void compile_file_list(BuildOptions *options);

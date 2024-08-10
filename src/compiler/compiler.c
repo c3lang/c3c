@@ -32,7 +32,7 @@ double compiler_link_time;
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
 
-void compiler_init(const char *std_lib_dir)
+void compiler_init(BuildOptions *build_options)
 {
 	compiler_init_time = -1;
 	compiler_parsing_time = -1;
@@ -65,9 +65,9 @@ void compiler_init(const char *std_lib_dir)
 	vmem_init(&type_info_arena, 256);
 	type_info_calloc();
 	// Create zero index value.
-	if (std_lib_dir)
+	if (build_options->std_lib_dir)
 	{
-		global_context.lib_dir = std_lib_dir;
+		global_context.lib_dir = build_options->std_lib_dir;
 	}
 	else
 	{
