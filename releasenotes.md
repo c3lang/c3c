@@ -30,6 +30,7 @@
 - The compiler now skips UTF8 BOM.
 - Printable values passed to the Formatter as pointers, will print as if passed by value.
 - Pointers are rendered with "0x" prefix when passed to '%s'.
+- Add temp allocator scribble.
 
 ### Fixes
 
