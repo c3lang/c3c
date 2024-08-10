@@ -85,6 +85,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
+		if (!arg) return self.out_substr("(null)");
 		return arg.to_format(self);
 	}
 	if (&arg.to_new_string)
@@ -98,6 +99,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 			self.width = old_width;
 			self.prec = old_prec;
 		}
+		if (!arg) return self.out_substr("(null)");
 		@stack_mem(1024; Allocator mem)
 		{
 			return self.out_substr(arg.to_new_string(mem));
@@ -150,17 +152,8 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		default:
 	}
 	usz! n = self.print_with_function((Printable)arg);
-	if (catch err = n)
-	{
-		case SearchResult.MISSING:
-			break;
-		default:
-			return err?;
-	}
-	else
-	{
-		return n;
-	}
+	if (try n) return n;
+	if (@catch(n) != SearchResult.MISSING) n!;
 	switch (arg.type.kindof)
 	{
 		case ENUM:
@@ -186,9 +179,14 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			return self.out_str(arg.as_inner());
 		case POINTER:
-			if (*(void**)arg == null)
+			typeid inner = arg.type.inner;
+			void** pointer = arg.ptr;
+			if (arg.type.inner != void.typeid)
 			{
-				return self.out_substr("(null)");
+				any deref = any_make(*pointer, inner);
+				n = self.print_with_function((Printable)deref);
+				if (try n) return n;
+				if (@catch(n) != SearchResult.MISSING) n!;
 			}
 			PrintFlags flags = self.flags;
 			uint width = self.width;
@@ -197,8 +195,8 @@ fn usz! Formatter.out_str(&self, any arg) @private
 				self.flags = flags;
 				self.width = width;
 			}
-			self.flags = {};
 			self.width = 0;
+			self.out_substr("0x")!;
 			return self.ntoa_any(arg, 16);
 		case ARRAY:
 			// this is SomeType[*] so grab the "SomeType"

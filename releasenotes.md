@@ -28,6 +28,8 @@
 - Added `@tag` `tagof` and `has_tagof` to user defined types and members.
 - Added `c-include-dirs` project/manifest setting.
 - The compiler now skips UTF8 BOM.
+- Printable values passed to the Formatter as pointers, will print as if passed by value.
+- Pointers are rendered with "0x" prefix when passed to '%s'.
 
 ### Fixes
 

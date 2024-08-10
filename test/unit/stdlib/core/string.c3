@@ -19,7 +19,7 @@ fn void test_print_null()
 	ZString w = "hello";
 	String s = string::new_format("%s %s %s", z, w, y);
 	defer free(s);
-	assert(s == "(null) hello (null)");
+	assert(s == "(null) hello 0x0");
 }
 
 fn void test_strip()
