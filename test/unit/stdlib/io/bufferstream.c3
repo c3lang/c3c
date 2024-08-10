@@ -15,7 +15,7 @@ fn void! readbuffer_large()
 
     assert(n == DATA.len, "large read failed: got %d; want %d", n, DATA.len);
     String got = (String)bytes[..];
-    assert(got == DATA, "large read failed: got %d; want %d", got, DATA);
+    assert(got == DATA, "large read failed: got %s; want %s", got, DATA);
 }
 
 fn void! readbuffer()
@@ -33,7 +33,7 @@ fn void! readbuffer()
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = bw.str_view();
-    assert(got == DATA, "got %d; want %d", got, DATA);
+    assert(got == DATA, "got %s; want %s", got, DATA);
 }
 
 fn void! writebuffer_large()
@@ -48,7 +48,7 @@ fn void! writebuffer_large()
 
     assert(n == DATA.len, "large write failed: got %d; want %d", n, DATA.len);
     String got = out.str_view();
-    assert(got == DATA, "large write failed: got %d; want %d", got, DATA);
+    assert(got == DATA, "large write failed: got %s; want %s", got, DATA);
 }
 
 fn void! writebuffer()
@@ -65,5 +65,5 @@ fn void! writebuffer()
 
     assert(n == DATA.len, "got %d; want %d", n, DATA.len);
     String got = out.str_view();
-    assert(got == DATA, "got %d; want %d", got, DATA);
+    assert(got == DATA, "got %s; want %s", got, DATA);
 }
