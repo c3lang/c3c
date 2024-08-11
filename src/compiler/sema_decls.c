@@ -2020,7 +2020,7 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
  * Find an interface name by searching through its own interfaces as well as any
  * parents to the interface.
  */
-static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
+static Decl *sema_interface_method_by_name(SemaContext *context, Decl *interface, const char *name)
 {
 	FOREACH(Decl *, method, interface->interface_methods)
 	{
@@ -2028,7 +2028,8 @@ static Decl *sema_interface_method_by_name(Decl *interface, const char *name)
 	}
 	FOREACH(TypeInfo *, parent_type, interface->interfaces)
 	{
-		Decl *res = sema_interface_method_by_name(parent_type->type->decl, name);
+		if (!sema_resolve_type_info(context, parent_type, RESOLVE_TYPE_DEFAULT)) return poisoned_decl;
+		Decl *res = sema_interface_method_by_name(context, parent_type->type->decl, name);
 		if (res) return res;
 	}
 	return NULL;
@@ -2069,8 +2070,10 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
 	// Walk through all implemented interfaces.
 	FOREACH(TypeInfo *, proto, parent_type->decl->interfaces)
 	{
+		if (!sema_resolve_type_info(context, proto, RESOLVE_TYPE_DEFAULT)) return poisoned_decl;
 		Decl *interface = proto->type->decl;
-		Decl *match = sema_interface_method_by_name(interface, name);
+		Decl *match = sema_interface_method_by_name(context, interface, name);
+		if (!decl_ok(match)) return poisoned_decl;
 		if (!match) continue;
 
 		// Is there a already a match?

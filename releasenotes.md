@@ -58,6 +58,7 @@
 - With single module, name the .o file after what `-o` provides. #1306
 - Bitstruct members can now have attributes.
 - `%` analysis was incorrect for int vectors.
+- When resolving inherited interfaces, the interface type wasn't always resolved.
 
 ### Stdlib changes
 
