@@ -63,6 +63,7 @@
 - Fix Vec2.angle
 - Update to libc::setjmp on Win32, to do no stack unwinding.
 - Recursively follow interfaces when looking up method.
+- Int128 alignment fixed on x64 Linux.
 
 ### Stdlib changes
 

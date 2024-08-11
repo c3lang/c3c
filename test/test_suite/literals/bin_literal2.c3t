@@ -26,5 +26,5 @@ const int128 I128 = 0b0100_0000_0000_0000_0000_0000_0000_0000_0000_0000_0000_000
 @test.I = local_unnamed_addr constant i32 1073741824, align 4
 @test.UL = local_unnamed_addr constant i64 -9223372036854775808, align 8
 @test.L = local_unnamed_addr constant i64 4611686018427387904, align 8
-@test.UI128 = local_unnamed_addr constant i128 -170141183460469231731687303715884105728, align 8
-@test.I128 = local_unnamed_addr constant i128 85070591730234615865843651857942052864, align 8
+@test.UI128 = local_unnamed_addr constant i128 -170141183460469231731687303715884105728, align 16
+@test.I128 = local_unnamed_addr constant i128 85070591730234615865843651857942052864, align 16

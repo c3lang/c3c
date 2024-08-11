@@ -1,0 +1,18 @@
+module abc;
+interface AstNode {
+    fn void free();
+    fn double get_span();
+    fn void dump(int depth);
+}
+
+interface AstBodyStatement : AstNode {
+}
+
+interface AstExpression : /* AstNode,*/ AstBodyStatement {
+}
+
+fn void main()
+{
+	AstExpression a = null;
+	a.dump(100);
+}

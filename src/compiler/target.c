@@ -1546,20 +1546,21 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_PPC64:
 		case ARCH_TYPE_PPC:
 		case ARCH_TYPE_PPC64LE:
-		case ARCH_TYPE_X86_64:
 		case ARCH_TYPE_WASM64:
 		case ARCH_TYPE_RISCV32:
 		case ARCH_TYPE_WASM32:
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
+		case ARCH_TYPE_X86_64:
 		case ARCH_TYPE_RISCV64:
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-			if (bits < 32 && !os_is_apple(os) && os != OS_TYPE_WIN32) return (AlignData){ bits, 32 };
+			if (bits < 32) return (AlignData){ bits, 32 };
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_X86:
-			if (bits < 32) return (AlignData) { bits, bits };
+			if (bits <= 32) return (AlignData) { bits, bits };
+			if (bits == 128) return (AlignData) { 128, 128 };
 			if (os == OS_TYPE_ELFIAMCU) return (AlignData) { 32, 32 };
 			if (os == OS_TYPE_WIN32 || os == OS_TYPE_NACL) return (AlignData) { 64, 64 };
 			return (AlignData) { 32, 64 };
