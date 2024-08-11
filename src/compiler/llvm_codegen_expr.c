@@ -329,7 +329,7 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size)
 
 static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
-	if (active_target.feature.trap_on_wrap)
+	if (compiler.build.feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
 		LLVMValueRef args[2] = { left, right };
@@ -418,7 +418,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 	// 4. Are int types not matching?
 	if (to_int_type != from)
 	{
-		if (platform_target.big_endian)
+		if (compiler.platform.big_endian)
 		{
 			// Big endian, preserve the high bits.
 			ByteSize to_size = llvm_abi_size(c, to_int_type);
@@ -565,7 +565,7 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 
 static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
-	if (active_target.feature.trap_on_wrap)
+	if (compiler.build.feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
@@ -2155,7 +2155,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 static bool bitstruct_requires_bitswap(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_BITSTRUCT);
-	bool big_endian = platform_target.big_endian;
+	bool big_endian = compiler.platform.big_endian;
 	if (decl->bitstruct.big_endian) return !big_endian;
 	if (decl->bitstruct.little_endian) return big_endian;
 	return false;
@@ -2710,7 +2710,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				return;
 			}
 			assert(type->canonical != type_bool);
-			if (active_target.feature.trap_on_wrap && !type_flat_is_vector(value->type))
+			if (compiler.build.feature.trap_on_wrap && !type_flat_is_vector(value->type))
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
 				LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
@@ -3570,7 +3570,7 @@ static void llvm_emit_struct_comparison(GenContext *c, BEValue *result, BEValue 
 
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
-	if (active_target.feature.trap_on_wrap)
+	if (compiler.build.feature.trap_on_wrap)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
@@ -4068,7 +4068,8 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_new_phi(c, be_value, "val", expr->type, real_value.value, success_end_block, else_value.value, else_block_exit);
 }
 
-typedef enum {
+typedef enum
+{
 	FMUL_NONE,
 	FMUL_LHS_MULT,
 	FMUL_LHS_NEG_MULT,
@@ -4078,7 +4079,7 @@ typedef enum {
 
 INLINE FmulTransformation llvm_get_fmul_transformation(Expr *lhs, Expr *rhs)
 {
-	if (active_target.feature.fp_math <= FP_STRICT) return FMUL_NONE;
+	if (compiler.build.feature.fp_math <= FP_STRICT) return FMUL_NONE;
 	// x * y + z
 	if (expr_is_mult(lhs)) return FMUL_LHS_MULT;
 	// -(x * y) + z

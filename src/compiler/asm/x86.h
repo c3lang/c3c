@@ -1,5 +1,4 @@
 
-
 typedef enum
 {
 	X86_CC,

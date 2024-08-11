@@ -8,13 +8,6 @@
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0);
 
-typedef enum
-{
-	SUBSCRIPT_EVAL_VALUE,
-	SUBSCRIPT_EVAL_REF,
-	SUBSCRIPT_EVAL_ASSIGN,
-	SUBSCRIPT_EVAL_VALID,
-} SubscriptEval;
 
 typedef struct
 {
@@ -7012,7 +7005,7 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr,
 	return true;
 }
 
-typedef enum ConcatType_
+typedef enum
 {
 	CONCAT_UNKNOWN,
 	CONCAT_JOIN_BYTES,
@@ -7894,7 +7887,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			UNREACHABLE
 		case BUILTIN_DEF_NONE:
 		{
-			Expr *value = htable_get(&global_context.compiler_defines, (void *)string);
+			Expr *value = htable_get(&compiler.context.compiler_defines, (void *)string);
 			if (!value)
 			{
 				if (report_missing)
@@ -7908,7 +7901,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 		}
 
 		case BUILTIN_DEF_BENCHMARK_NAMES:
-			if (!active_target.benchmarking)
+			if (!compiler.build.benchmarking)
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
@@ -7923,7 +7916,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
 		case BUILTIN_DEF_BENCHMARK_FNS:
-			if (!active_target.benchmarking)
+			if (!compiler.build.benchmarking)
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
@@ -7938,7 +7931,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_BENCHMARK_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_NAMES:
-			if (!active_target.testing)
+			if (!compiler.build.testing)
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
@@ -7953,7 +7946,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			expr->expr_kind = EXPR_TEST_HOOK;
 			return true;
 		case BUILTIN_DEF_TEST_FNS:
-			if (!active_target.testing)
+			if (!compiler.build.testing)
 			{
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
@@ -8545,7 +8538,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 	if (!content)
 	{
 		if (!allow_fail) RETURN_SEMA_ERROR(expr, "Failed to load '%s'.", string);
-		if (!global_context.io_error_file_not_found)
+		if (!compiler.context.io_error_file_not_found)
 		{
 			Module *module = global_context_find_module(kw_std__io);
 			Decl *io_error = module ? module_find_symbol(module, kw_IoError) : NULL;
@@ -8561,9 +8554,9 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 					}
 				}
 			}
-			global_context.io_error_file_not_found = fault;
+			compiler.context.io_error_file_not_found = fault;
 		}
-		if (!decl_ok(global_context.io_error_file_not_found))
+		if (!decl_ok(compiler.context.io_error_file_not_found))
 		{
 			RETURN_SEMA_ERROR(expr, "Cannot generate an optional result, no IoError.FILE_NOT_FOUND could be located.");
 		}
@@ -8572,7 +8565,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		filename->expr_kind = EXPR_CONST;
 		filename->const_expr.const_kind = CONST_ERR;
 		expr->type = type_wildcard_optional;
-		filename->const_expr.enum_err_val = global_context.io_error_file_not_found;
+		filename->const_expr.enum_err_val = compiler.context.io_error_file_not_found;
 		filename->resolve_status = RESOLVE_DONE;
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
@@ -8746,7 +8739,7 @@ static inline bool sema_expr_analyse_ct_feature(SemaContext *context, Expr *expr
 	if (!inner->identifier_expr.is_const) goto ERROR;
 
 	const char *name = inner->identifier_expr.ident;
-	void *value = htable_get(&global_context.features, (void *)name);
+	void *value = htable_get(&compiler.context.features, (void *)name);
 	assert(!value || value == name);
 	expr_rewrite_const_bool(expr, type_bool, value != NULL);
 	return true;

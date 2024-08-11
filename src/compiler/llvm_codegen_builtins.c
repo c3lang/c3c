@@ -285,13 +285,13 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 	LLVMTypeRef func_type = LLVMFunctionType(type, arg_types, arguments, false);
 	scratch_buffer_clear();
 	LLVMValueRef inline_asm;
-	switch (platform_target.arch)
+	switch (compiler.platform.arch)
 	{
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
 			scratch_buffer_append("={x0}");
 			assert(arguments < 8);
-			if (os_is_apple(platform_target.os))
+			if (os_is_apple(compiler.platform.os))
 			{
 				static char const *regs[] = { "x16", "x0", "x1", "x2", "x3", "x4", "x5" };
 				llvm_syscall_write_regs_to_scratch(regs, arguments);
@@ -961,7 +961,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_masked_load(c, result_value, expr);
 			return;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
-			if (active_target.optlevel == OPTIMIZATION_NONE)
+			if (compiler.build.optlevel == OPTIMIZATION_NONE)
 			{
 				Expr **args = expr->call_expr.arguments;
 				llvm_emit_expr(c, result_value, args[0]);
@@ -1068,7 +1068,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			return;
 		case BUILTIN_WASM_MEMORY_GROW:
 			// -1 on non-wasm
-			if (!arch_is_wasm(platform_target.arch))
+			if (!arch_is_wasm(compiler.platform.arch))
 			{
 				llvm_value_set(result_value, llvm_const_int(c, expr->type, -1), expr->type);
 				return;
@@ -1076,7 +1076,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			llvm_emit_builtin_args_types3(c, result_value, expr, intrinsic_id.wasm_memory_grow, expr->type, NULL, NULL);
 			return;
 		case BUILTIN_WASM_MEMORY_SIZE:
-			if (!arch_is_wasm(platform_target.arch))
+			if (!arch_is_wasm(compiler.platform.arch))
 			{
 				// 0 (no mem) on non-wasm.
 				llvm_value_set(result_value, llvm_const_int(c, expr->type, 0), expr->type);

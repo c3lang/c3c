@@ -54,7 +54,7 @@ static ABIArgInfo *x86_create_indirect_result(Regs *regs, Type *type, ByVal by_v
 		if (regs->int_regs)
 		{
 			regs->int_regs--;
-			if (!platform_target.x86.is_mcu_api) info->attributes.by_reg = true;
+			if (!compiler.platform.x86.is_mcu_api) info->attributes.by_reg = true;
 		}
 		return info;
 	}
@@ -84,7 +84,7 @@ static ABIArgInfo *create_indirect_return_x86(Type *type, Regs *regs)
 	if (!regs->int_regs) return info;
 	// Consume a register for the return.
 	regs->int_regs--;
-	if (platform_target.x86.is_mcu_api) return info;
+	if (compiler.platform.x86.is_mcu_api) return info;
 
 	info->attributes.by_reg = true;
 	return info;
@@ -97,7 +97,7 @@ static bool x86_should_return_type_in_reg(Type *type)
 	if (size > 8) return false;
 
 	// Require power of two for everything except mcu.
-	if (!platform_target.x86.is_mcu_api && !is_power_of_two(size)) return false;
+	if (!compiler.platform.x86.is_mcu_api && !is_power_of_two(size)) return false;
 
 	if (type->type_kind == TYPE_VECTOR)
 	{
@@ -259,7 +259,7 @@ static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 static bool x86_try_use_free_regs(Regs *regs, Type *type)
 {
 	// 1. Floats are not passed in regs on soft floats.
-	if (!platform_target.x86.use_soft_float && type_is_float(type)) return false;
+	if (!compiler.platform.x86.use_soft_float && type_is_float(type)) return false;
 
 	ByteSize size = type_size(type);
 
@@ -273,7 +273,7 @@ static bool x86_try_use_free_regs(Regs *regs, Type *type)
 	//    earlier parameters that are passed on the stack. Also,
 	//	  it does not allow passing >8-byte structs in-register,
 	//	  even if there are 3 free registers available.
-	if (platform_target.x86.is_mcu_api)
+	if (compiler.platform.x86.is_mcu_api)
 	{
 		// 4a. Just return if there are not enough registers.
 		if (size_in_regs > regs->int_regs) return false;
@@ -312,7 +312,7 @@ static bool x86_try_put_primitive_in_reg(CallABI call, Regs *regs, Type *type)
 	if (!x86_try_use_free_regs(regs, type)) return false;
 
 	// 2. On MCU, do not use the inreg attribute.
-	if (platform_target.x86.is_mcu_api) return false;
+	if (compiler.platform.x86.is_mcu_api) return false;
 
 	return true;
 }
@@ -401,7 +401,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 			info = abi_arg_new_direct_coerce_type(type_uint);
 		}
 		// Not in reg on MCU
-		if (!platform_target.x86.is_mcu_api) info->attributes.by_reg = true;
+		if (!compiler.platform.x86.is_mcu_api) info->attributes.by_reg = true;
 		return info;
 	}
 
@@ -411,7 +411,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 	// optimizations.
 	// Don't do this for the MCU if there are still free integer registers
 	// (see X86_64 ABI for full explanation).
-	if (size <= 16 && (!platform_target.x86.is_mcu_api || !regs->int_regs) &&
+	if (size <= 16 && (!compiler.platform.x86.is_mcu_api || !regs->int_regs) &&
 		x86_can_expand_indirect_aggregate_arg(type))
 	{
 		return abi_arg_new_expand();
@@ -502,13 +502,13 @@ void c_abi_func_create_x86(FunctionPrototype *prototype)
 	switch (prototype->call_abi)
 	{
 		case CALL_C:
-			regs.int_regs = platform_target.default_number_regs_x86;
+			regs.int_regs = compiler.platform.default_number_regs_x86;
 			break;
 		default:
 			UNREACHABLE
 	}
 	// 3. Special case for MCU:
-	if (platform_target.x86.is_mcu_api)
+	if (compiler.platform.x86.is_mcu_api)
 	{
 		regs.float_regs = 0;
 		regs.int_regs = 3;

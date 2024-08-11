@@ -2460,7 +2460,7 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 
 	// [inout] [in] [out]
 	bool is_ref = false;
-	InOutModifier mod = PARAM_ANY;
+	InOutModifier mod = INOUT_ANY;
 	if (try_consume(c, TOKEN_LBRACKET))
 	{
 		is_ref = try_consume(c, TOKEN_AMP);
@@ -2468,15 +2468,15 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 		if (modifier) advance(c);
 		if (modifier == kw_in)
 		{
-			mod = PARAM_IN;
+			mod = INOUT_IN;
 		}
 		else if (modifier == kw_inout)
 		{
-			mod = PARAM_INOUT;
+			mod = INOUT_INOUT;
 		}
 		else if (modifier == kw_out)
 		{
-			mod = PARAM_OUT;
+			mod = INOUT_OUT;
 		}
 		else
 		{

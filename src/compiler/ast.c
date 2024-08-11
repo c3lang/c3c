@@ -297,14 +297,14 @@ void decl_append_links_to_global(Decl *decl)
 	CompilationUnit *unit = decl->unit;
 	if (unit && unit->links)
 	{
-		FOREACH(const char *, link, unit->links) global_context_add_link(link);
+		FOREACH(const char *, link, unit->links) linking_add_link(&compiler.linking, link);
 		unit->links = NULL; // Don't register twice
 	}
 	if (decl->attrs_resolved && decl->attrs_resolved->links)
 	{
 		FOREACH(const char *, link, decl->attrs_resolved->links)
 		{
-			global_context_add_link(link);
+			linking_add_link(&compiler.linking, link);
 		}
 	}
 }

@@ -7,12 +7,6 @@
 
 
 
-typedef enum
-{
-	PRINT_TYPE_ERROR,
-	PRINT_TYPE_NOTE,
-	PRINT_TYPE_WARN
-} PrintType;
 
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
@@ -25,7 +19,7 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		return;
 	}
 	File *file = source_file_by_id(location.file_id);
-	if (active_target.test_output || active_target.benchmark_output)
+	if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
 		switch (print_type)
 		{
@@ -161,7 +155,7 @@ static void vprint_error(SourceSpan location, const char *message, va_list args)
 void sema_verror_range(SourceSpan location, const char *message, va_list args)
 {
 	vprint_error(location, message, args);
-	global_context.errors_found++;
+	compiler.context.errors_found++;
 }
 
 void sema_warning_at(SourceSpan loc, const char *message, ...)
@@ -210,7 +204,7 @@ void sema_error_prev_at(SourceSpan loc, const char *message, ...)
 
 void print_error(ParseContext *context, const char *message, ...)
 {
-	global_context.errors_found++;
+	compiler.context.errors_found++;
 	File *file = context->unit->file;
 	va_list list;
 	va_start(list, message);

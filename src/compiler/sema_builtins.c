@@ -276,7 +276,7 @@ static bool sema_expr_analyse_syscall(SemaContext *context, Expr *expr)
 		if (!sema_analyse_expr_rhs(context, type_uptr, arg, true, NULL, false)) return false;
 		optional = optional || type_is_optional(arg->type);
 	}
-	switch (platform_target.arch)
+	switch (compiler.platform.arch)
 	{
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:

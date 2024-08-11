@@ -133,14 +133,14 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 
 static inline void halt_on_error(void)
 {
-	if (global_context.errors_found > 0) exit_compiler(EXIT_FAILURE);
+	if (compiler.context.errors_found > 0) exit_compiler(EXIT_FAILURE);
 }
 
 void sema_analyze_stage(Module *module, AnalysisStage stage)
 {
 	while (module->stage < stage)
 	{
-		global_context.decl_stack_bottom = global_context.decl_stack_top = global_context.decl_stack;
+		compiler.context.decl_stack_bottom = compiler.context.decl_stack_top = compiler.context.decl_stack;
 		module->stage++;
 		switch (module->stage)
 		{
@@ -182,7 +182,7 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_FINALIZE:
 				break;
 		}
-		if (global_context.errors_found) return;
+		if (compiler.context.errors_found) return;
 	}
 }
 
@@ -246,12 +246,12 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 	if (stage <= ANALYSIS_MODULE_TOP)
 	{
 
-		FOREACH(Module *, module, global_context.generic_module_list)
+		FOREACH(Module *, module, compiler.context.generic_module_list)
 		{
 			sema_analyze_stage(module, stage);
 		}
 	}
-	FOREACH(Module *, module, global_context.module_list)
+	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		sema_analyze_stage(module, stage);
 	}
@@ -260,14 +260,14 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 
 static void assign_panicfn(void)
 {
-	if (active_target.feature.panic_level == PANIC_OFF || (!active_target.panicfn && no_stdlib()))
+	if (compiler.build.feature.panic_level == PANIC_OFF || (!compiler.build.panicfn && no_stdlib()))
 	{
-		global_context.panic_var = NULL;
-		global_context.panicf = NULL;
+		compiler.context.panic_var = NULL;
+		compiler.context.panicf = NULL;
 		return;
 	}
 
-	const char *panicfn = active_target.panicfn ? active_target.panicfn : "std::core::builtin::panic";
+	const char *panicfn = compiler.build.panicfn ? compiler.build.panicfn : "std::core::builtin::panic";
 	Path *path;
 	const char *ident;
 	TokenType type;
@@ -275,7 +275,7 @@ static void assign_panicfn(void)
 	{
 		error_exit("'%s' is not a valid panic function.", panicfn);
 	}
-	Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+	Decl *decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
 	if (!decl)
 	{
 		error_exit("Panic function pointer '%s::%s' could not be found.", path->module, ident);
@@ -289,7 +289,7 @@ static void assign_panicfn(void)
 	{
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint).");
 	}
-	global_context.panic_var = decl;
+	compiler.context.panic_var = decl;
 	decl->no_strip = true;
 
 	if (no_stdlib()) return;
@@ -299,10 +299,10 @@ static void assign_panicfn(void)
 	{
 		error_exit("'%s' is not a valid panicf function.", panicf);
 	}
-	Decl *panicf_decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+	Decl *panicf_decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
 	if (!panicf_decl)
 	{
-		global_context.panicf = NULL;
+		compiler.context.panicf = NULL;
 		return;
 	}
 
@@ -318,18 +318,18 @@ static void assign_panicfn(void)
 	{
 		error_exit("Expected panic function to have the signature fn void(String, String, String, uint, ...).");
 	}
-	global_context.panicf = panicf_decl;
+	compiler.context.panicf = panicf_decl;
 }
 
 static void assign_testfn(void)
 {
-	if (!active_target.testing) return;
-	if (!active_target.testfn && no_stdlib())
+	if (!compiler.build.testing) return;
+	if (!compiler.build.testfn && no_stdlib())
 	{
-		global_context.test_func = NULL;
+		compiler.context.test_func = NULL;
 		return;
 	}
-	const char *testfn = active_target.testfn ? active_target.testfn : "std::core::runtime::default_test_runner";
+	const char *testfn = compiler.build.testfn ? compiler.build.testfn : "std::core::runtime::default_test_runner";
 	Path *path;
 	const char *ident;
 	TokenType type;
@@ -337,7 +337,7 @@ static void assign_testfn(void)
 	{
 		error_exit("'%s' is not a valid test function.", testfn);
 	}
-	Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+	Decl *decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
 	if (!decl)
 	{
 		error_exit("Test function '%s::%s' could not be found.", path->module, ident);
@@ -350,19 +350,19 @@ static void assign_testfn(void)
 	{
 		error_exit("Expected test runner to have the signature fn void().");
 	}
-	global_context.test_func = decl;
+	compiler.context.test_func = decl;
 	decl->no_strip = true;
 }
 
 static void assign_benchfn(void)
 {
-	if (!active_target.benchmarking) return;
-	if (!active_target.benchfn && no_stdlib())
+	if (!compiler.build.benchmarking) return;
+	if (!compiler.build.benchfn && no_stdlib())
 	{
-		global_context.benchmark_func = NULL;
+		compiler.context.benchmark_func = NULL;
 		return;
 	}
-	const char *testfn = active_target.benchfn ? active_target.benchfn : "std::core::runtime::default_benchmark_runner";
+	const char *testfn = compiler.build.benchfn ? compiler.build.benchfn : "std::core::runtime::default_benchmark_runner";
 	Path *path;
 	const char *ident;
 	TokenType type;
@@ -370,7 +370,7 @@ static void assign_benchfn(void)
 	{
 		error_exit("'%s' is not a valid benchmark function.", testfn);
 	}
-	Decl *decl = sema_find_decl_in_modules(global_context.module_list, path, ident);
+	Decl *decl = sema_find_decl_in_modules(compiler.context.module_list, path, ident);
 	if (!decl)
 	{
 		error_exit("Benchmark function '%s::%s' could not be found.", path->module, ident);
@@ -383,7 +383,7 @@ static void assign_benchfn(void)
 	{
 		error_exit("Expected benchmark function to have the signature fn void().");
 	}
-	global_context.benchmark_func = decl;
+	compiler.context.benchmark_func = decl;
 	decl->no_strip = true;
 }
 
@@ -392,31 +392,30 @@ static void assign_benchfn(void)
  */
 void sema_analysis_run(void)
 {
-
 	compiler_parse();
 
 	// All global defines are added to the std module
-	global_context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
-	global_context.std_module = (Module){ .name = &global_context.std_module_path };
-	global_context.std_module.stage = ANALYSIS_LAST;
-	global_context.locals_list = NULL;
+	compiler.context.std_module_path = (Path) { .module = kw_std, .span = INVALID_SPAN, .len = (uint32_t) strlen(kw_std) };
+	compiler.context.std_module = (Module){ .name = &compiler.context.std_module_path };
+	compiler.context.std_module.stage = ANALYSIS_LAST;
+	compiler.context.locals_list = NULL;
 
 	// Set a maximum of symbols in the std_module and test module
-	htable_init(&global_context.std_module.symbols, 0x1000);
+	htable_init(&compiler.context.std_module.symbols, 0x1000);
 
 	// Set up the func prototype hash map
 	type_func_prototype_init(0x10000);
 
 	// Do we have zero modules?
-	if (!global_context.module_list)
+	if (!compiler.context.module_list)
 	{
-		if (global_context.errors_found) exit_compiler(EXIT_FAILURE);
+		if (compiler.context.errors_found) exit_compiler(EXIT_FAILURE);
 		error_exit("No modules to compile.");
 	}
 
 
 	// We parse the generic modules, just by storing the decls.
-	FOREACH(Module *, module, global_context.generic_module_list)
+	FOREACH(Module *, module, compiler.context.generic_module_list)
 	{
 		analyze_generic_module(module);
 	}
@@ -428,7 +427,7 @@ void sema_analysis_run(void)
 
 RESOLVE_LAMBDA:;
 	bool found_lambda = false;
-	FOREACH(Module *, module, global_context.module_list)
+	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		if (vec_size(module->lambdas_to_evaluate))
 		{
@@ -447,10 +446,6 @@ RESOLVE_LAMBDA:;
 	{
 		sema_trace_liveness();
 	}
-
-
-	compiler_sema_time = bench_mark();
-
 }
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit)
@@ -479,19 +474,19 @@ void sema_context_destroy(SemaContext *context)
 
 Decl **global_context_acquire_locals_list(void)
 {
-	if (!vec_size(global_context.locals_list))
+	if (!vec_size(compiler.context.locals_list))
 	{
 		return VECNEW(Decl*, 64);
 	}
-	Decl **result = VECLAST(global_context.locals_list);
-	vec_pop(global_context.locals_list);
+	Decl **result = VECLAST(compiler.context.locals_list);
+	vec_pop(compiler.context.locals_list);
 	vec_resize(result, 0);
 	return result;
 }
 
 void generic_context_release_locals_list(Decl **list)
 {
-	vec_add(global_context.locals_list, list);
+	vec_add(compiler.context.locals_list, list);
 }
 
 SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_context, CompilationUnit *eval_unit)

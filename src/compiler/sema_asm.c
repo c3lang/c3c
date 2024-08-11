@@ -182,7 +182,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 static inline bool sema_check_asm_arg_reg(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr)
 {
 	const char *name = expr->expr_asm_arg.reg.name;
-	AsmRegister *reg = expr->expr_asm_arg.reg.ref = asm_reg_by_name(name);
+	AsmRegister *reg = expr->expr_asm_arg.reg.ref = asm_reg_by_name(&compiler.platform, name);
 	if (!reg)
 	{
 		SEMA_ERROR(expr, "Expected a valid register name.");
@@ -477,13 +477,13 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 }
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt)
 {
-	if (platform_target.arch != ARCH_TYPE_X86_64 && platform_target.arch != ARCH_TYPE_AARCH64)
+	if (compiler.platform.arch != ARCH_TYPE_X86_64 && compiler.platform.arch != ARCH_TYPE_AARCH64)
 	{
 		SEMA_ERROR(asm_stmt, "Unsupported architecture for asm.");
 		return false;
 	}
-	init_asm();
-	AsmInstruction *instr = asm_instr_by_name(asm_stmt->asm_stmt.instruction);
+	init_asm(&compiler.platform);
+	AsmInstruction *instr = asm_instr_by_name(&compiler.platform, asm_stmt->asm_stmt.instruction);
 	if (!instr)
 	{
 		SEMA_ERROR(asm_stmt, "Unknown instruction");

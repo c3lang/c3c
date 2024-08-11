@@ -166,11 +166,11 @@ const char *codegen_create_asm(Ast *ast)
 	assert(ast->ast_kind == AST_ASM_BLOCK_STMT);
 	scratch_buffer_clear();
 	AsmInlineBlock *block = ast->asm_block_stmt.block;
-	if (platform_target.arch == ARCH_TYPE_X86_64 || platform_target.arch == ARCH_TYPE_X86)
+	if (compiler.platform.arch == ARCH_TYPE_X86_64 || compiler.platform.arch == ARCH_TYPE_X86)
 	{
 		return codegen_create_x86_att_asm(block);
 	}
-	if (platform_target.arch == ARCH_TYPE_AARCH64)
+	if (compiler.platform.arch == ARCH_TYPE_AARCH64)
 	{
 		return codegen_create_aarch64_asm(block);
 	}

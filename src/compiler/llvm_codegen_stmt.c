@@ -1205,7 +1205,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 
 static inline void add_target_clobbers_to_buffer(GenContext *c)
 {
-	switch (platform_target.arch)
+	switch (compiler.platform.arch)
 	{
 		case ARCH_TYPE_X86_64:
 		case ARCH_TYPE_X86:
@@ -1361,10 +1361,10 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 				mask <<= 1;
 			}
 		}
-		if (asm_target.extra_clobbers)
+		if (compiler.platform.extra_clobbers)
 		{
 			codegen_new_constraint(&clobber_list);
-			codegen_append_constraints(&clobber_list, asm_target.extra_clobbers);
+			codegen_append_constraints(&clobber_list, compiler.platform.extra_clobbers);
 		}
 	}
 	DEBUG_LOG("Asm: %s (%s)", data, clobbers);

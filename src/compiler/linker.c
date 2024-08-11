@@ -5,17 +5,6 @@
 #include <glob.h>
 #endif
 
-
-typedef enum
-{
-	LINKER_LINK_EXE,
-	LINKER_LD,
-	LINKER_LD64,
-	LINKER_WASM,
-	LINKER_CC,
-	LINKER_UNKNOWN
-} Linker;
-
 #define add_arg(arg_) vec_add(*args_ref, (arg_))
 #define add_arg2(arg_, arg_2) vec_add(*args_ref, str_cat((arg_), (arg_2)))
 
@@ -61,12 +50,12 @@ static const char *string_esc(const char *str)
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 {
-	add_arg(active_target.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
-	if (link_libc()) global_context_add_link("dbghelp");
+	add_arg(compiler.build.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
+	if (link_libc()) linking_add_link(&compiler.linking, "dbghelp");
 	if (linker_type == LINKER_CC) return;
 	//add_arg("/MACHINE:X64");
 	bool is_debug = false;
-	switch (active_target.debug_info)
+	switch (compiler.build.debug_info)
 	{
 		case DEBUG_INFO_NOT_SET:
 			break;
@@ -88,8 +77,8 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 	// so we do not link with debug dll versions of libc.
 	link_with_dynamic_debug_libc = false;
 #endif
-	WinCrtLinking linking = active_target.win.crt_linking;
-	FOREACH(Library *, library, active_target.library_list)
+	WinCrtLinking linking = compiler.build.win.crt_linking;
+	FOREACH(Library *, library, compiler.build.library_list)
 	{
 		WinCrtLinking wincrt = library->target_used->win_crt;
 		if (wincrt == WIN_CRT_DEFAULT) continue;
@@ -101,12 +90,12 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 		linking = wincrt;
 	}
 
-	if (!active_target.win.sdk)
+	if (!compiler.build.win.sdk)
 	{
 		const char *path = windows_cross_compile_library();
 		if (path)
 		{
-			switch (platform_target.arch)
+			switch (compiler.platform.arch)
 			{
 				case ARCH_TYPE_ARM:
 					scratch_buffer_append("/arm");
@@ -125,20 +114,20 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 			}
 			if (file_exists(scratch_buffer_to_string()))
 			{
-				active_target.win.sdk = scratch_buffer_copy();
+				compiler.build.win.sdk = scratch_buffer_copy();
 				// If we only use the msvc cross compile on windows, we
 				// avoid linking with dynamic debug dlls.
 				link_with_dynamic_debug_libc = false;
 			}
 		}
 	}
-	if (active_target.win.def)
+	if (compiler.build.win.def)
 	{
-		add_arg(str_printf("/def:%s", active_target.win.def));
+		add_arg(str_printf("/def:%s", compiler.build.win.def));
 	}
-	if (active_target.win.sdk)
+	if (compiler.build.win.sdk)
 	{
-		add_arg(str_printf("/LIBPATH:%s", active_target.win.sdk));
+		add_arg(str_printf("/LIBPATH:%s", compiler.build.win.sdk));
 	}
 	else
 	{
@@ -152,31 +141,31 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 		add_arg(str_printf("/LIBPATH:%s", windows_sdk->vs_library_path));
 	}
 	// Do not link any.
-	if (active_target.win.crt_linking == WIN_CRT_NONE) return;
+	if (compiler.build.win.crt_linking == WIN_CRT_NONE) return;
 
-	global_context_add_link("kernel32");
-	global_context_add_link("ntdll");
-	global_context_add_link("user32");
-	global_context_add_link("shell32");
-	global_context_add_link("Shlwapi");
-	global_context_add_link("Ws2_32");
-	global_context_add_link("legacy_stdio_definitions");
+	linking_add_link(&compiler.linking, "kernel32");
+	linking_add_link(&compiler.linking, "ntdll");
+	linking_add_link(&compiler.linking, "user32");
+	linking_add_link(&compiler.linking, "shell32");
+	linking_add_link(&compiler.linking, "Shlwapi");
+	linking_add_link(&compiler.linking, "Ws2_32");
+	linking_add_link(&compiler.linking, "legacy_stdio_definitions");
 
-	if (active_target.win.crt_linking == WIN_CRT_STATIC)
+	if (compiler.build.win.crt_linking == WIN_CRT_STATIC)
 	{
 		if (is_debug)
 		{
-			global_context_add_link("libucrtd");
-			global_context_add_link("libvcruntimed");
-			global_context_add_link("libcmtd");
-			global_context_add_link("libcpmtd");
+			linking_add_link(&compiler.linking, "libucrtd");
+			linking_add_link(&compiler.linking, "libvcruntimed");
+			linking_add_link(&compiler.linking, "libcmtd");
+			linking_add_link(&compiler.linking, "libcpmtd");
 		}
 		else
 		{
-			global_context_add_link("libucrt");
-			global_context_add_link("libvcruntime");
-			global_context_add_link("libcmt");
-			global_context_add_link("libcpmt");
+			linking_add_link(&compiler.linking, "libucrt");
+			linking_add_link(&compiler.linking, "libvcruntime");
+			linking_add_link(&compiler.linking, "libcmt");
+			linking_add_link(&compiler.linking, "libcpmt");
 		}
 	}
 	else
@@ -185,17 +174,17 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 		// if so, then exclude them.
 		if (is_debug && link_with_dynamic_debug_libc)
 		{
-			global_context_add_link("ucrtd");
-			global_context_add_link("vcruntimed");
-			global_context_add_link("msvcrtd");
-			global_context_add_link("msvcprtd");
+			linking_add_link(&compiler.linking, "ucrtd");
+			linking_add_link(&compiler.linking, "vcruntimed");
+			linking_add_link(&compiler.linking, "msvcrtd");
+			linking_add_link(&compiler.linking, "msvcprtd");
 		}
 		else
 		{
-			global_context_add_link("ucrt");
-			global_context_add_link("vcruntime");
-			global_context_add_link("msvcrt");
-			global_context_add_link("msvcprt");
+			linking_add_link(&compiler.linking, "ucrt");
+			linking_add_link(&compiler.linking, "vcruntime");
+			linking_add_link(&compiler.linking, "msvcrt");
+			linking_add_link(&compiler.linking, "msvcprt");
 		}
 	}
 	add_arg("/NOLOGO");
@@ -206,12 +195,12 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 	if (linker_type == LINKER_CC)
 	{
 		add_arg("-target");
-		add_arg(platform_target.target_triple);
+		add_arg(compiler.platform.target_triple);
 		return;
 	}
 	add_arg("-arch");
-	add_arg(arch_to_linker_arch(platform_target.arch));
-	if (strip_unused() && active_target.type == TARGET_TYPE_EXECUTABLE)
+	add_arg(arch_to_linker_arch(compiler.platform.arch));
+	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
 	{
 		add_arg("-no_exported_symbols");
 		add_arg("-dead_strip");
@@ -220,33 +209,33 @@ static void linker_setup_macos(const char ***args_ref, Linker linker_type)
 	// Skip if no libc.
 	if (!link_libc()) return;
 
-	if (!active_target.macos.sdk)
+	if (!compiler.build.macos.sdk)
 	{
 		error_exit("Cannot crosslink MacOS without providing --macossdk.");
 	}
-	global_context_add_link("System");
-	global_context_add_link("m");
+	linking_add_link(&compiler.linking, "System");
+	linking_add_link(&compiler.linking, "m");
 	add_arg("-syslibroot");
-	add_arg(active_target.macos.sysroot);
-	if (is_no_pie(platform_target.reloc_model)) add_arg("-no_pie");
-	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
+	add_arg(compiler.build.macos.sysroot);
+	if (is_no_pie(compiler.platform.reloc_model)) add_arg("-no_pie");
+	if (is_pie(compiler.platform.reloc_model)) add_arg("-pie");
 	add_arg("-platform_version");
 	add_arg("macos");
-	if (active_target.macos.min_version)
+	if (compiler.build.macos.min_version)
 	{
-		add_arg(active_target.macos.min_version);
+		add_arg(compiler.build.macos.min_version);
 	}
 	else
 	{
-		add_arg(str_printf("%d.%d.0", active_target.macos.sdk->macos_min_deploy_target.major, active_target.macos.sdk->macos_min_deploy_target.minor));
+		add_arg(str_printf("%d.%d.0", compiler.build.macos.sdk->macos_min_deploy_target.major, compiler.build.macos.sdk->macos_min_deploy_target.minor));
 	}
-	if (active_target.macos.sdk_version)
+	if (compiler.build.macos.sdk_version)
 	{
-		add_arg(active_target.macos.sdk_version);
+		add_arg(compiler.build.macos.sdk_version);
 	}
 	else
 	{
-		add_arg(str_printf("%d.%d", active_target.macos.sdk->macos_deploy_target.major, active_target.macos.sdk->macos_deploy_target.minor));
+		add_arg(str_printf("%d.%d", compiler.build.macos.sdk->macos_deploy_target.major, compiler.build.macos.sdk->macos_deploy_target.minor));
 	}
 }
 
@@ -270,8 +259,8 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 		{
 			const char *path = globbuf.gl_pathv[i];
 			// Avoid qemu problems
-			if (platform_target.arch != ARCH_TYPE_RISCV64
-			    && platform_target.arch != ARCH_TYPE_RISCV32
+			if (compiler.platform.arch != ARCH_TYPE_RISCV64
+			    && compiler.platform.arch != ARCH_TYPE_RISCV32
 			    && strstr(path, "riscv")) continue;
 			size_t len = strlen(path);
 			assert(len > file_len);
@@ -286,7 +275,7 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 }
 static const char *find_linux_crt(void)
 {
-	if (active_target.linuxpaths.crt) return active_target.linuxpaths.crt;
+	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
 	const char *path = find_arch_glob_path("/usr/lib/*/crt1.o", 6);
 	if (!path)
 	{
@@ -299,7 +288,7 @@ static const char *find_linux_crt(void)
 
 static const char *find_linux_crt_begin(void)
 {
-	if (active_target.linuxpaths.crtbegin) return active_target.linuxpaths.crtbegin;
+	if (compiler.build.linuxpaths.crtbegin) return compiler.build.linuxpaths.crtbegin;
 	const char *path = find_arch_glob_path("/usr/lib/gcc/*/*/crtbegin.o", 10);
 	if (!path)
 	{
@@ -312,7 +301,7 @@ static const char *find_linux_crt_begin(void)
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 {
-	global_context_add_link("dl");
+	linking_add_link(&compiler.linking, "dl");
 	if (linker_type == LINKER_CC)
 	{
 		if (!link_libc())
@@ -322,27 +311,27 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 		}
 		else
 		{
-			global_context_add_link("m");
+			linking_add_link(&compiler.linking, "m");
 		}
-		if (active_target.debug_info == DEBUG_INFO_FULL)
+		if (compiler.build.debug_info == DEBUG_INFO_FULL)
 		{
 			add_arg("-rdynamic");
 		}
 		add_arg("-pthread");
 		return;
 	}
-	if (active_target.debug_info == DEBUG_INFO_FULL)
+	if (compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
 		add_arg("-export-dynamic");
 	}
-	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
-	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
-	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
+	if (is_no_pie(compiler.platform.reloc_model)) add_arg("-no-pie");
+	if (is_pie(compiler.platform.reloc_model)) add_arg("-pie");
+	if (compiler.platform.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
 	if (!link_libc()) return;
 	const char *crt_begin_dir = find_linux_crt_begin();
 	const char *crt_dir = find_linux_crt();
 
-	if (strip_unused() && active_target.type == TARGET_TYPE_EXECUTABLE)
+	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
 	{
 		add_arg("--gc-sections");
 	}
@@ -351,7 +340,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
-	if (is_pie_pic(platform_target.reloc_model))
+	if (is_pie_pic(compiler.platform.reloc_model))
 	{
 		add_arg("-pie");
 		add_arg2(crt_dir, "Scrt1.o");
@@ -371,21 +360,21 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 	add_arg("-L");
 	add_arg("/usr/lib/x86_64-linux-gnu/libdl.so");
 	add_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
-	global_context_add_link("m");
-	global_context_add_link("pthread");
-	global_context_add_link("c");
+	linking_add_link(&compiler.linking, "m");
+	linking_add_link(&compiler.linking, "pthread");
+	linking_add_link(&compiler.linking, "c");
 	add_arg("-L/usr/lib/");
 	add_arg("-L/lib/");
 	add_arg("-m");
-	add_arg(ld_target(platform_target.arch));
+	add_arg(ld_target(compiler.platform.arch));
 }
 
 static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 {
 	if (linker_type == LINKER_CC) return;
-	if (is_no_pie(platform_target.reloc_model)) add_arg("-no-pie");
-	if (is_pie(platform_target.reloc_model)) add_arg("-pie");
-	if (platform_target.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
+	if (is_no_pie(compiler.platform.reloc_model)) add_arg("-no-pie");
+	if (is_pie(compiler.platform.reloc_model)) add_arg("-pie");
+	if (compiler.platform.arch == ARCH_TYPE_X86_64) add_arg("--eh-frame-hdr");
 
 	if (!link_libc()) return;
 
@@ -394,12 +383,12 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
-	if (strip_unused() && active_target.type == TARGET_TYPE_EXECUTABLE)
+	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
 	{
 		add_arg("--gc-sections");
 	}
 
-	if (is_pie_pic(platform_target.reloc_model))
+	if (is_pie_pic(compiler.platform.reloc_model))
 	{
 		add_arg("-pie");
 		add_arg2(crt_dir, "Scrt1.o");
@@ -417,14 +406,14 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 	add_arg2(crt_dir, "crtn.o");
 	add_arg2("-L", crt_dir);
 	add_arg("--dynamic-linker=/libexec/ld-elf.so.1");
-	global_context_add_link("c");
-	global_context_add_link("m");
-	global_context_add_link("gcc");
-	global_context_add_link("gcc_s");
+	linking_add_link(&compiler.linking, "c");
+	linking_add_link(&compiler.linking, "m");
+	linking_add_link(&compiler.linking, "gcc");
+	linking_add_link(&compiler.linking, "gcc_s");
 
 	add_arg("-L/usr/lib/");
 	add_arg("-m");
-	add_arg(ld_target(platform_target.arch));
+	add_arg(ld_target(compiler.platform.arch));
 }
 
 static void add_linked_libs(const char ***args_ref, const char **libs, bool is_win)
@@ -466,9 +455,9 @@ static void add_linked_libs(const char ***args_ref, const char **libs, bool is_w
 }
 
 static bool linker_setup(const char ***args_ref, const char **files_to_link, unsigned file_count,
-                         const char *output_file, Linker linker_type)
+                         const char *output_file, Linker linker_type, Linking *linking)
 {
-	bool is_dylib = active_target.type == TARGET_TYPE_DYNAMIC_LIB;
+	bool is_dylib = compiler.build.type == TARGET_TYPE_DYNAMIC_LIB;
 	bool use_win = linker_type == LINKER_LINK_EXE;
 	if (!use_win)
 	{
@@ -480,7 +469,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case LINKER_UNKNOWN:
 			break;
 		case LINKER_WASM:
-			if (!is_dylib && active_target.no_entry) add_arg("--no-entry");
+			if (!is_dylib && compiler.build.no_entry) add_arg("--no-entry");
 			break;
 		case LINKER_LD64:
 			if (is_dylib) vec_add(*args_ref, "-dylib");
@@ -496,7 +485,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			}
 			else
 			{
-				if (active_target.no_entry) add_arg("/NOENTRY");
+				if (compiler.build.no_entry) add_arg("/NOENTRY");
 			}
 		case LINKER_CC:
 			break;
@@ -505,7 +494,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 	}
 	const char *lib_path_opt = use_win ? "/LIBPATH:" : "-L";
 
-	switch (platform_target.os)
+	switch (compiler.platform.os)
 	{
 		case OS_UNSUPPORTED:
 			UNREACHABLE
@@ -542,22 +531,22 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		add_arg(files_to_link[i]);
 	}
 
-	FOREACH(const char *, dir, active_target.linker_libdirs)
+	FOREACH(const char *, dir, compiler.build.linker_libdirs)
 	{
 		add_arg2(lib_path_opt, dir);
 	}
-	FOREACH(const char *, arg, active_target.link_args)
+	FOREACH(const char *, arg, compiler.build.link_args)
 	{
 		add_arg(arg);
 	}
-	add_linked_libs(args_ref, active_target.linker_libs, use_win);
-	FOREACH(Library *, library, active_target.library_list)
+	add_linked_libs(args_ref, compiler.build.linker_libs, use_win);
+	FOREACH(Library *, library, compiler.build.library_list)
 	{
 		LibraryTarget *target = library->target_used;
 		FOREACH(const char *, flag, target->link_flags) add_arg(flag);
 		add_linked_libs(args_ref, target->linked_libs, use_win);
 	}
-	add_linked_libs(args_ref, global_context.links, use_win);
+	add_linked_libs(args_ref, linking->links, use_win);
 	return true;
 }
 #undef add_arg2
@@ -594,8 +583,8 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 
 Linker linker_find_linker_type(void)
 {
-	if (arch_is_wasm(platform_target.arch)) return LINKER_WASM;
-	switch (platform_target.os)
+	if (arch_is_wasm(compiler.platform.arch)) return LINKER_WASM;
+	switch (compiler.platform.os)
 	{
 		case OS_UNSUPPORTED:
 		case OS_TYPE_UNKNOWN:
@@ -623,7 +612,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
 	Linker linker_type = linker_find_linker_type();
-	linker_setup(&args, files_to_link, file_count, output_file, linker_type);
+	linker_setup(&args, files_to_link, file_count, output_file, linker_type, &compiler.linking);
 
 	const char *error = NULL;
 	// This isn't used in most cases, but its contents should get freed after linking.
@@ -635,10 +624,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		arg_list = str_cat(arg_list, " ");
 		arg_list = str_cat(arg_list, arg);
 	}
-	INFO_LOG("Linker arguments: %s to %d", arg_list, platform_target.object_format);
-	if (active_target.print_linking) puts(arg_list);
+	INFO_LOG("Linker arguments: %s to %d", arg_list, compiler.platform.object_format);
+	if (compiler.build.print_linking) puts(arg_list);
 
-	switch (platform_target.object_format)
+	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
 			success = llvm_link_coff(args, (int)vec_size(args), &error);
@@ -707,11 +696,11 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 {
 	const char **parts = NULL;
 	Linker linker_type = LINKER_CC;
-	if (active_target.linker_type == LINKER_TYPE_CUSTOM)
+	if (compiler.build.linker_type == LINKER_TYPE_CUSTOM)
 	{
-		INFO_LOG("Using linker %s.", active_target.custom_linker_path);
-		vec_add(parts, active_target.custom_linker_path);
-		switch (platform_target.object_format)
+		INFO_LOG("Using linker %s.", compiler.build.custom_linker_path);
+		vec_add(parts, compiler.build.custom_linker_path);
+		switch (compiler.platform.object_format)
 		{
 			case OBJ_FORMAT_UNSUPPORTED:
 			case OBJ_FORMAT_GOFF:
@@ -736,23 +725,23 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	else
 	{
 		INFO_LOG("Using cc linker.");
-		vec_add(parts, active_target.cc ? active_target.cc : "cc");
-		append_fpie_pic_options(platform_target.reloc_model, &parts);
+		vec_add(parts, compiler.build.cc ? compiler.build.cc : "cc");
+		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}
 
-	linker_setup(&parts, files, file_count, output_file, linker_type);
+	linker_setup(&parts, files, file_count, output_file, linker_type, &compiler.linking);
 	const char *output = concat_string_parts(parts);
-	if (active_target.print_linking) puts(output);
+	if (compiler.build.print_linking) puts(output);
 	if (system(output) != 0)
 	{
 		error_exit("Failed to link executable '%s' using command '%s'.\n", output_file, output);
 	}
-	if (os_is_apple(platform_target.os) && active_target.debug_info == DEBUG_INFO_FULL)
+	if (os_is_apple(compiler.platform.os) && compiler.build.debug_info == DEBUG_INFO_FULL)
 	{
 		// Create .dSYM
 		scratch_buffer_clear();
-		scratch_buffer_printf("dsymutil -arch %s %s", arch_to_linker_arch(platform_target.arch), output_file);
-		if (active_target.print_linking) puts(scratch_buffer_to_string());
+		scratch_buffer_printf("dsymutil -arch %s %s", arch_to_linker_arch(compiler.platform.arch), output_file);
+		if (compiler.build.print_linking) puts(scratch_buffer_to_string());
 		if (system(scratch_buffer_to_string()) != 0)
 		{
 			puts("Failed to create .dSYM files, debugging will be impacted.");
@@ -763,8 +752,8 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 
 const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir)
 {
-	const char *dir = active_target.object_file_dir;
-	if (!dir) dir = active_target.build_dir;
+	const char *dir = compiler.build.object_file_dir;
+	if (!dir) dir = compiler.build.build_dir;
 	if (output_subdir) dir = file_append_path(dir, output_subdir);
 	dir_make(dir);
 	bool is_cl_exe = str_eq(cc, "cl.exe");
@@ -802,7 +791,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 			 strstr(flags, "-fPIE")); // strcasestr is apparently nonstandard >:(
 	if (!pie_set && !is_cl_exe)
 	{
-		append_fpie_pic_options(platform_target.reloc_model, &parts);
+		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}
 
 	vec_add(parts, is_cl_exe ? "/c" : "-c");
@@ -831,14 +820,14 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 {
 	INFO_LOG("Using linker directly.");
 	const char **args = NULL;
-	if (active_target.linker_type == LINKER_TYPE_CUSTOM) vec_add(args, active_target.custom_linker_path);
+	if (compiler.build.linker_type == LINKER_TYPE_CUSTOM) vec_add(args, compiler.build.custom_linker_path);
 	Linker linker_type = linker_find_linker_type();
-	linker_setup(&args, files, file_count, output_file, linker_type);
+	linker_setup(&args, files, file_count, output_file, linker_type, &compiler.linking);
 
 	const char *command = concat_string_parts(args);
-	if (active_target.print_linking) puts(command);
-	DEBUG_LOG("Linker arguments: %s to %d", command, platform_target.object_format);
-	if (active_target.linker_type == LINKER_TYPE_CUSTOM)
+	if (compiler.build.print_linking) puts(command);
+	DEBUG_LOG("Linker arguments: %s to %d", command, compiler.platform.object_format);
+	if (compiler.build.linker_type == LINKER_TYPE_CUSTOM)
 	{
 		if (system(command) != 0)
 		{
@@ -848,7 +837,7 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 	}
 	bool success;
 	const char *error = NULL;
-	switch (platform_target.object_format)
+	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
 			success = llvm_link_coff(args, (int)vec_size(args), &error);
@@ -876,7 +865,7 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 bool static_lib_linker(const char *output_file, const char **files, unsigned file_count)
 {
 	ArFormat format;
-	switch (platform_target.os)
+	switch (compiler.platform.os)
 	{
 		case OS_DARWIN_TYPES:
 			format = AR_DARWIN;

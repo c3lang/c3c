@@ -2204,7 +2204,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 			return false;
 		}
 		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
-		Int128 max_range = { .low = active_target.switchrange_max_size };
+		Int128 max_range = { .low = compiler.build.switchrange_max_size };
 		if (i128_comp(range, max_range, type_i128) == CMP_GT)
 		{
 			*max_ranged = true;

@@ -451,18 +451,18 @@ RETRY:
 
 void sema_trace_liveness(void)
 {
-	if (global_context.main)
+	if (compiler.context.main)
 	{
-		sema_trace_decl_liveness(global_context.main);
+		sema_trace_decl_liveness(compiler.context.main);
 	}
-	bool keep_tests = active_target.testing;
-	bool keep_benchmarks = active_target.benchmarking;
-	FOREACH(Decl *, function, global_context.method_extensions)
+	bool keep_tests = compiler.build.testing;
+	bool keep_benchmarks = compiler.build.benchmarking;
+	FOREACH(Decl *, function, compiler.context.method_extensions)
 	{
 		if (function->func_decl.attr_dynamic) function->no_strip = true;
 		if (function->is_export || function->no_strip) sema_trace_decl_liveness(function);
 	}
-	FOREACH(Module *, module, global_context.module_list)
+	FOREACH(Module *, module, compiler.context.module_list)
 	{
 		FOREACH(CompilationUnit *, unit, module->units)
 		{

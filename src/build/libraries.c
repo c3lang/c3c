@@ -71,15 +71,16 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object)
 {
-	target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
+	target->link_flags = target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+
 	if (!target->link_flags)
 	{
-		target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+		target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
 	}
-	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
+	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
 	if (!target->linked_libs)
 	{
-		target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
+		target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
 	}
 	target->dependencies = get_string_array(library->dir, target_name, object, "dependencies", false);
 	target->execs = get_string_array(library->dir, target_name, object, "exec", false);
@@ -240,7 +241,7 @@ void resolve_libraries(BuildTarget *build_target)
 		DEBUG_LOG("Search '.'");
 		file_add_wildcard_files(&c3_libs, ".", false, &c3lib_suffix, 1);
 	}
-	Library *libraries[MAX_LIB_DIRS * 2];
+	Library *libraries[MAX_BUILD_LIB_DIRS * 2];
 	size_t lib_count = 0;
 	FOREACH(const char *, lib, c3_libs)
 	{
@@ -255,7 +256,7 @@ void resolve_libraries(BuildTarget *build_target)
 			size_t size;
 			json = read_manifest(lib, file_read_all(manifest_path, &size));
 		}
-		if (lib_count == MAX_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_LIB_DIRS * 2);
+		if (lib_count == MAX_BUILD_LIB_DIRS * 2) error_exit("Too many libraries added, exceeded %d.", MAX_BUILD_LIB_DIRS * 2);
 		libraries[lib_count++] = add_library(json, lib);
 	}
 	FOREACH(const char *, lib_name, build_target->libs)

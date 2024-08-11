@@ -13,21 +13,19 @@
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
-GlobalContext global_context;
-BuildTarget active_target;
-AsmTarget asm_target;
+CompilerState compiler;
 
 Vmem ast_arena;
 Vmem expr_arena;
 Vmem decl_arena;
 Vmem type_info_arena;
-double compiler_init_time;
-double compiler_parsing_time;
-double compiler_sema_time;
-double compiler_ir_gen_time;
-double compiler_codegen_time;
-double compiler_link_time;
 
+static double compiler_init_time;
+static double compiler_parsing_time;
+static double compiler_sema_time;
+static double compiler_ir_gen_time;
+static double compiler_codegen_time;
+static double compiler_link_time;
 
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
@@ -43,19 +41,19 @@ void compiler_init(BuildOptions *build_options)
 
 	INFO_LOG("Version: %s", COMPILER_VERSION);
 
-	global_context = (GlobalContext ){ .in_panic_mode = false };
+	compiler = (CompilerState) { .context.in_panic_mode = false };
 	// Skip library detection.
 	//compiler.lib_dir = find_lib_dir();
 	//DEBUG_LOG("Found std library: %s", compiler.lib_dir);
-	htable_init(&global_context.modules, 16 * 1024);
-	decltable_init(&global_context.symbols, INITIAL_SYMBOL_MAP);
-	decltable_init(&global_context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
+	htable_init(&compiler.context.modules, 16 * 1024);
+	decltable_init(&compiler.context.symbols, INITIAL_SYMBOL_MAP);
+	decltable_init(&compiler.context.generic_symbols, INITIAL_GENERIC_SYMBOL_MAP);
 
-	htable_init(&global_context.features, 1024);
-	htable_init(&global_context.compiler_defines, 16 * 1024);
-	global_context.module_list = NULL;
-	global_context.generic_module_list = NULL;
-	global_context.method_extensions = NULL;
+	htable_init(&compiler.context.features, 1024);
+	htable_init(&compiler.context.compiler_defines, 16 * 1024);
+	compiler.context.module_list = NULL;
+	compiler.context.generic_module_list = NULL;
+	compiler.context.method_extensions = NULL;
 	vmem_init(&ast_arena, 512);
 	ast_calloc();
 	vmem_init(&expr_arena, 512);
@@ -67,17 +65,17 @@ void compiler_init(BuildOptions *build_options)
 	// Create zero index value.
 	if (build_options->std_lib_dir)
 	{
-		global_context.lib_dir = build_options->std_lib_dir;
+		compiler.context.lib_dir = build_options->std_lib_dir;
 	}
 	else
 	{
-		global_context.lib_dir = find_lib_dir();
+		compiler.context.lib_dir = find_lib_dir();
 	}
 }
 
 static void compiler_lex(void)
 {
-	FOREACH(const char *, source, global_context.sources)
+	FOREACH(const char *, source, compiler.context.sources)
 	{
 		bool loaded = false;
 		const char *error;
@@ -134,14 +132,14 @@ void **tilde_gen(Module** modules, unsigned module_count)
 const char *build_base_name(void)
 {
 	const char *name;
-	if (active_target.name)
+	if (compiler.build.name)
 	{
-		name = active_target.name;
+		name = compiler.build.name;
 	}
 	else
 	{
-		Module **modules = global_context.module_list;
-		Module *main_module = (modules[0] == global_context.core_module && vec_size(modules) > 1) ? modules[1] : modules[0];
+		Module **modules = compiler.context.module_list;
+		Module *main_module = (modules[0] == compiler.context.core_module && vec_size(modules) > 1) ? modules[1] : modules[0];
 		Path *path = main_module->name;
 		size_t first = 0;
 		for (size_t i = path->len; i > 0; i--)
@@ -159,15 +157,15 @@ const char *build_base_name(void)
 
 static const char *exe_name(void)
 {
-	assert(global_context.main || active_target.no_entry);
+	assert(compiler.context.main || compiler.build.no_entry);
 	const char *name;
-	if (active_target.name || active_target.no_entry)
+	if (compiler.build.name || compiler.build.no_entry)
 	{
-		name = active_target.name ? active_target.name : "out";
+		name = compiler.build.name ? compiler.build.name : "out";
 	}
 	else
 	{
-		Path *path = global_context.main->unit->module->name;
+		Path *path = compiler.context.main->unit->module->name;
 		size_t first = 0;
 		for (size_t i = path->len; i > 0; i--)
 		{
@@ -179,14 +177,14 @@ static const char *exe_name(void)
 		}
 		name = &path->module[first];
 	}
-	switch (active_target.arch_os_target)
+	switch (compiler.build.arch_os_target)
 	{
 		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
 		case MINGW_X64:
 			return str_cat(name, ".exe");
 		default:
-			if (arch_is_wasm(platform_target.arch)) return str_cat(name, ".wasm");
+			if (arch_is_wasm(compiler.platform.arch)) return str_cat(name, ".wasm");
 			return name;
 	}
 }
@@ -194,7 +192,7 @@ static const char *exe_name(void)
 static const char *dynamic_lib_name(void)
 {
 	const char *name = build_base_name();
-	switch (active_target.arch_os_target)
+	switch (compiler.build.arch_os_target)
 	{
 		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
@@ -211,7 +209,7 @@ static const char *dynamic_lib_name(void)
 static const char *static_lib_name(void)
 {
 	const char *name = build_base_name();
-	switch (active_target.arch_os_target)
+	switch (compiler.build.arch_os_target)
 	{
 		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
@@ -297,9 +295,9 @@ static void compiler_print_bench(void)
 			if (compiler_codegen_time >= 0)
 			{
 				last = compiler_codegen_time;
-				if (active_target.build_threads > 1)
+				if (compiler.build.build_threads > 1)
 				{
-					printf("Codegen took:        %10.3f ms  %8.1f %%  (%d threads)\n", codegen_time * 1000, codegen_time * 100 / last, active_target.build_threads);
+					printf("Codegen took:        %10.3f ms  %8.1f %%  (%d threads)\n", codegen_time * 1000, codegen_time * 100 / last, compiler.build.build_threads);
 				}
 				else
 				{
@@ -336,18 +334,18 @@ void compiler_parse(void)
 	global_context_clear_errors();
 
 	// Add the standard library
-	if (global_context.lib_dir && !no_stdlib())
+	if (compiler.context.lib_dir && !no_stdlib())
 	{
-		file_add_wildcard_files(&global_context.sources, global_context.lib_dir, true, c3_suffix_list, 3);
+		file_add_wildcard_files(&compiler.context.sources, compiler.context.lib_dir, true, c3_suffix_list, 3);
 	}
 
 	// Load and parse all files.
 	bool has_error = false;
-	if (active_target.print_input)
+	if (compiler.build.print_input)
 	{
 		puts("# input-files-begin");
 	}
-	FOREACH(const char *, source, global_context.sources)
+	FOREACH(const char *, source, compiler.context.sources)
 	{
 		bool loaded = false;
 		const char *error;
@@ -355,13 +353,13 @@ void compiler_parse(void)
 		if (!file) error_exit(error);
 		if (loaded) continue;
 		if (!parse_file(file)) has_error = true;
-		if (active_target.print_input) puts(file->full_path);
+		if (compiler.build.print_input) puts(file->full_path);
 	}
-	if (active_target.print_input)
+	if (compiler.build.print_input)
 	{
 		puts("# input-files-end");
 	}
-	if (active_target.read_stdin)
+	if (compiler.build.read_stdin)
 	{
 		if (!parse_stdin()) has_error = true;
 	}
@@ -382,8 +380,8 @@ static void create_output_dir(const char *dir)
 void compiler_compile(void)
 {
 	sema_analysis_run();
-
-	Module **modules = global_context.module_list;
+	compiler_sema_time = bench_mark();
+	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
 	if (module_count > MAX_MODULES)
 	{
@@ -394,12 +392,12 @@ void compiler_compile(void)
 		error_exit("No module to compile.");
 	}
 
-	if (active_target.output_headers)
+	if (compiler.build.output_headers)
 	{
 		header_gen(modules, module_count);
 	}
 
-	if (active_target.check_only)
+	if (compiler.build.check_only)
 	{
 		free_arenas();
 		return;
@@ -408,35 +406,35 @@ void compiler_compile(void)
 	void **gen_contexts;
 	void (*task)(void *);
 
-	if (active_target.asm_file_dir || active_target.ir_file_dir || active_target.emit_object_files)
+	if (compiler.build.asm_file_dir || compiler.build.ir_file_dir || compiler.build.emit_object_files)
 	{
-		if (active_target.build_dir && !file_exists(active_target.build_dir) && !dir_make(active_target.build_dir))
+		if (compiler.build.build_dir && !file_exists(compiler.build.build_dir) && !dir_make(compiler.build.build_dir))
 		{
-			error_exit("Failed to create build directory '%s'.", active_target.build_dir);
+			error_exit("Failed to create build directory '%s'.", compiler.build.build_dir);
 		}
 	}
-	if (active_target.ir_file_dir && active_target.emit_llvm)
+	if (compiler.build.ir_file_dir && compiler.build.emit_llvm)
 	{
-		if (!file_exists(active_target.ir_file_dir) && !dir_make(active_target.ir_file_dir))
+		if (!file_exists(compiler.build.ir_file_dir) && !dir_make(compiler.build.ir_file_dir))
 		{
-			error_exit("Failed to create output directory '%s'.", active_target.ir_file_dir);
+			error_exit("Failed to create output directory '%s'.", compiler.build.ir_file_dir);
 		}
 	}
-	if (active_target.asm_file_dir && active_target.emit_asm)
+	if (compiler.build.asm_file_dir && compiler.build.emit_asm)
 	{
-		if (!file_exists(active_target.asm_file_dir) && !dir_make(active_target.asm_file_dir))
+		if (!file_exists(compiler.build.asm_file_dir) && !dir_make(compiler.build.asm_file_dir))
 		{
-			error_exit("Failed to create output directory '%s'.", active_target.asm_file_dir);
+			error_exit("Failed to create output directory '%s'.", compiler.build.asm_file_dir);
 		}
 	}
-	if (active_target.object_file_dir && active_target.emit_object_files)
+	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
 	{
-		if (!file_exists(active_target.object_file_dir) && !dir_make(active_target.object_file_dir))
+		if (!file_exists(compiler.build.object_file_dir) && !dir_make(compiler.build.object_file_dir))
 		{
-			error_exit("Failed to create output directory '%s'.", active_target.object_file_dir);
+			error_exit("Failed to create output directory '%s'.", compiler.build.object_file_dir);
 		}
 	}
-	if (active_target.type == TARGET_TYPE_EXECUTABLE && !global_context.main && !active_target.no_entry)
+	if (compiler.build.type == TARGET_TYPE_EXECUTABLE && !compiler.context.main && !compiler.build.no_entry)
 	{
 		error_exit("The 'main' function for the executable could not found, did you forget to add it?\n\n"
 				   "- If you're using an alternative entry point you can suppress this message using '--no-entry'.\n"
@@ -444,7 +442,7 @@ void compiler_compile(void)
 				   "- If you just want to output object files for later linking, use 'compile-only'.");
 	}
 
-	switch (active_target.backend)
+	switch (compiler.build.backend)
 	{
 		case BACKEND_LLVM:
 			gen_contexts = llvm_gen(modules, module_count);
@@ -462,20 +460,20 @@ void compiler_compile(void)
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
-	if (!active_target.test_output && !active_target.benchmark_output)
+	if (!compiler.build.test_output && !compiler.build.benchmark_output)
 	{
-		switch (active_target.type)
+		switch (compiler.build.type)
 		{
 			case TARGET_TYPE_BENCHMARK:
-				active_target.name = "benchmarkrun";
+				compiler.build.name = "benchmarkrun";
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_TEST:
-				active_target.name = "testrun";
+				compiler.build.name = "testrun";
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:
-				assert(global_context.main || active_target.no_entry);
+				assert(compiler.context.main || compiler.build.no_entry);
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_STATIC_LIB:
@@ -494,9 +492,9 @@ void compiler_compile(void)
 	free_arenas();
 
 	uint32_t output_file_count = vec_size(gen_contexts);
-	unsigned cfiles = vec_size(active_target.csources);
+	unsigned cfiles = vec_size(compiler.build.csources);
 	unsigned cfiles_library = 0;
-	FOREACH(LibraryTarget *, lib, active_target.ccompiling_libraries)
+	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
@@ -514,15 +512,15 @@ void compiler_compile(void)
 
 	if (cfiles)
 	{
-		int compiled = compile_cfiles(active_target.cc, active_target.csources,
-		                              active_target.cflags, active_target.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
+		int compiled = compile_cfiles(compiler.build.cc, compiler.build.csources,
+		                              compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
 		assert(cfiles == compiled);
 		(void)compiled;
 	}
 	const char **obj_file_next = &obj_files[output_file_count + cfiles];
-	FOREACH(LibraryTarget *, lib, active_target.ccompiling_libraries)
+	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
-		obj_file_next += compile_cfiles(lib->cc ? lib->cc : active_target.cc, lib->csources,
+		obj_file_next += compile_cfiles(lib->cc ? lib->cc : compiler.build.cc, lib->csources,
 		                                lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
 	}
 
@@ -535,7 +533,7 @@ void compiler_compile(void)
 	}
 
 #if USE_PTHREAD
-	INFO_LOG("Will use %d thread(s).\n", active_target.build_threads);
+	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
 #endif
 	unsigned task_count = vec_size(tasks);
 	if (task_count == 1)
@@ -544,23 +542,23 @@ void compiler_compile(void)
 	}
 	else if (task_count > 1)
 	{
-		taskqueue_run(active_target.build_threads > task_count ? task_count : active_target.build_threads, tasks);
+		taskqueue_run(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads, tasks);
 	}
 
-	if (active_target.print_output)
+	if (compiler.build.print_output)
 	{
 		puts("# output-files-begin");
 	}
 	for (unsigned i = 0; i < output_file_count; i++)
 	{
 		obj_files[i] = compile_data[i].object_name;
-		if (active_target.print_output)
+		if (compiler.build.print_output)
 		{
 			puts(obj_files[i]);
 		}
 		assert(obj_files[i] || !output_exe);
 	}
-	if (active_target.print_output)
+	if (compiler.build.print_output)
 	{
 		puts("# output-files-end");
 	}
@@ -571,19 +569,19 @@ void compiler_compile(void)
 
 	if (output_exe)
 	{
-		if (active_target.output_dir)
+		if (compiler.build.output_dir)
 		{
-			create_output_dir(active_target.output_dir);
-			output_exe = file_append_path(active_target.output_dir, output_exe);
+			create_output_dir(compiler.build.output_dir);
+			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
 		if (file_is_dir(output_exe))
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
 		}
 
-		bool system_linker_available = link_libc() && platform_target.os != OS_TYPE_WIN32;
-		bool use_system_linker = system_linker_available && active_target.arch_os_target == default_target;
-		switch (active_target.linker_type)
+		bool system_linker_available = link_libc() && compiler.platform.os != OS_TYPE_WIN32;
+		bool use_system_linker = system_linker_available && compiler.build.arch_os_target == default_target;
+		switch (compiler.build.linker_type)
 		{
 			case LINKER_TYPE_CC:
 				if (!system_linker_available)
@@ -599,7 +597,7 @@ void compiler_compile(void)
 			default:
 				break;
 		}
-		if (use_system_linker || active_target.linker_type == LINKER_TYPE_CC)
+		if (use_system_linker || compiler.build.linker_type == LINKER_TYPE_CC)
 		{
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
@@ -609,11 +607,11 @@ void compiler_compile(void)
 		else
 		{
 			compiler_print_bench();
-			if (!obj_format_linking_supported(platform_target.object_format) || !linker(output_exe, obj_files,
+			if (!obj_format_linking_supported(compiler.platform.object_format) || !linker(output_exe, obj_files,
 																						output_file_count))
 			{
 				eprintf("No linking is performed due to missing linker support.\n");
-				active_target.run_after_compile = false;
+				compiler.build.run_after_compile = false;
 			}
 			else
 			{
@@ -621,13 +619,13 @@ void compiler_compile(void)
 			}
 		}
 
-		if (active_target.run_after_compile)
+		if (compiler.build.run_after_compile)
 		{
 			DEBUG_LOG("Will run");
 			const char *name = output_exe;
 			while (name[0] == '.' && name[1] == '/') name += 2;
 			scratch_buffer_clear();
-			if (platform_target.os == OS_TYPE_WIN32)
+			if (compiler.platform.os == OS_TYPE_WIN32)
 			{
 				size_t len = strlen(name);
 				for (unsigned i = 0; i < len; i++)
@@ -652,13 +650,13 @@ void compiler_compile(void)
 			}
 			name = scratch_buffer_to_string();
 			printf("Launching %s", name);
-			for (uint32_t i = 0; i < vec_size(active_target.args); ++i) {
-				printf(" %s", active_target.args[i]);
+			for (uint32_t i = 0; i < vec_size(compiler.build.args); ++i) {
+				printf(" %s", compiler.build.args[i]);
 			}
 			printf("\n");
 
-			int ret = run_subprocess(name, active_target.args);
-			if (active_target.delete_after_run)
+			int ret = run_subprocess(name, compiler.build.args);
+			if (compiler.build.delete_after_run)
 			{
 				file_delete_file(name);
 			}
@@ -669,10 +667,10 @@ void compiler_compile(void)
 	}
 	else if (output_static)
 	{
-		if (active_target.output_dir)
+		if (compiler.build.output_dir)
 		{
-			create_output_dir(active_target.output_dir);
-			output_static = file_append_path(active_target.output_dir, output_static);
+			create_output_dir(compiler.build.output_dir);
+			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
 		if (file_is_dir(output_static))
 		{
@@ -689,10 +687,10 @@ void compiler_compile(void)
 	}
 	else if (output_dynamic)
 	{
-		if (active_target.output_dir)
+		if (compiler.build.output_dir)
 		{
-			create_output_dir(active_target.output_dir);
-			output_dynamic = file_append_path(active_target.output_dir, output_dynamic);
+			create_output_dir(compiler.build.output_dir);
+			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
 		}
 		if (file_is_dir(output_dynamic))
 		{
@@ -778,25 +776,25 @@ INLINE void expand_cinclude_dirs(const char *base_dir, const char **include_dirs
 
 void compile_target(BuildOptions *options)
 {
-	init_default_build_target(&active_target, options);
+	init_default_build_target(&compiler.build, options);
 	compile();
 }
 
 void clean_obj_files(void)
 {
-	file_delete_all_files_in_dir_with_suffix(active_target.ir_file_dir, ".ll");
-	file_delete_all_files_in_dir_with_suffix(active_target.asm_file_dir, ".s");
-	file_delete_all_files_in_dir_with_suffix(active_target.object_file_dir, ".obj");
-	file_delete_all_files_in_dir_with_suffix(active_target.object_file_dir, ".o");
+	file_delete_all_files_in_dir_with_suffix(compiler.build.ir_file_dir, ".ll");
+	file_delete_all_files_in_dir_with_suffix(compiler.build.asm_file_dir, ".s");
+	file_delete_all_files_in_dir_with_suffix(compiler.build.object_file_dir, ".obj");
+	file_delete_all_files_in_dir_with_suffix(compiler.build.object_file_dir, ".o");
 }
 void compile_clean(BuildOptions *options)
 {
-	init_build_target(&active_target, options);
+	init_build_target(&compiler.build, options);
 	clean_obj_files();
 }
 void compile_file_list(BuildOptions *options)
 {
-	init_build_target(&active_target, options);
+	init_build_target(&compiler.build, options);
 	if (options->command == COMMAND_CLEAN_RUN)
 	{
 		clean_obj_files();
@@ -816,7 +814,7 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 	{
 		error_exit("Integer define %s overflow.", id);
 	}
-	void *previous = htable_set(&global_context.compiler_defines, (void*)id, expr);
+	void *previous = htable_set(&compiler.context.compiler_defines, (void*)id, expr);
 	if (previous)
 	{
 		error_exit("Redefined ident %s", id);
@@ -828,7 +826,7 @@ static void setup_bool_define(const char *id, bool value)
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
 	Expr *expr = expr_new_const_bool(INVALID_SPAN, type_bool, value);
-	void *previous = htable_set(&global_context.compiler_defines, (void *)id, expr);
+	void *previous = htable_set(&compiler.context.compiler_defines, (void *)id, expr);
 	if (previous)
 	{
 		error_exit("Redefined ident %s", id);
@@ -981,7 +979,7 @@ void print_syntax(BuildOptions *options)
 
 static int jump_buffer_size()
 {
-	switch (active_target.arch_os_target)
+	switch (compiler.build.arch_os_target)
 	{
 		case ARCH_OS_TARGET_DEFAULT:
 			return 512;
@@ -1038,22 +1036,22 @@ static int jump_buffer_size()
 
 static void execute_scripts(void)
 {
-	if (!vec_size(active_target.exec)) return;
-	if (active_target.trust_level < TRUST_FULL)
+	if (!vec_size(compiler.build.exec)) return;
+	if (compiler.build.trust_level < TRUST_FULL)
 	{
 		error_exit("This target has 'exec' directives, to run it trust level must be set to '--trust=full'.");
 	}
 	char *old_path = NULL;
-	if (active_target.script_dir)
+	if (compiler.build.script_dir)
 	{
 		old_path = getcwd(NULL, 0);
-		if (!dir_change(active_target.script_dir))
+		if (!dir_change(compiler.build.script_dir))
 		{
 			free(old_path);
-			error_exit("Failed to open script dir '%s'", active_target.script_dir);
+			error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
-	FOREACH(const char *, exec, active_target.exec)
+	FOREACH(const char *, exec, compiler.build.exec)
 	{
 		StringSlice execs = slice_from_string(exec);
 		StringSlice call = slice_next_token(&execs, ' ');
@@ -1072,75 +1070,80 @@ static void execute_scripts(void)
 }
 void compile()
 {
-	symtab_init(active_target.symtab_size);
-	active_target.sources = target_expand_source_names(NULL, active_target.source_dirs, c3_suffix_list, 3, true);
-	expand_csources(NULL, active_target.csource_dirs, &active_target.csources);
+	symtab_init(compiler.build.symtab_size);
+	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, 3, true);
+	if (compiler.build.testing)
+	{
+		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, 3, true);
+		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);
+	}
+	expand_csources(NULL, compiler.build.csource_dirs, &compiler.build.csources);
 	execute_scripts();
-	global_context.main = NULL;
-	global_context.string_type = NULL;
-	asm_target.initialized = false;
+	compiler.context.main = NULL;
+	compiler.context.string_type = NULL;
+	compiler.platform.asm_initialized = false;
 	// Create the core module if needed.
 	Path *core_path = MALLOCS(Path);
 	core_path->module = kw_std__core;
 	core_path->span = INVALID_SPAN;
 	core_path->len = strlen(kw_std__core);
-	global_context.core_module = compiler_find_or_create_module(core_path, NULL);
+	compiler.context.core_module = compiler_find_or_create_module(core_path, NULL);
 	CompilationUnit *unit = CALLOCS(CompilationUnit);
 	unit->file = source_file_generate("core_internal.c3");
-	unit->module = global_context.core_module;
-	global_context.core_unit = unit;
-	target_setup(&active_target);
-	resolve_libraries(&active_target);
-	global_context.sources = active_target.sources;
-	FOREACH(LibraryTarget *, lib, active_target.ccompiling_libraries)
+	unit->module = compiler.context.core_module;
+	compiler.context.core_unit = unit;
+	target_setup(&compiler.build);
+	resolve_libraries(&compiler.build);
+	compiler.context.sources = compiler.build.sources;
+	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		expand_csources(lib->parent->dir, lib->csource_dirs, &lib->csources);
 		expand_cinclude_dirs(lib->parent->dir, lib->cinclude_dirs, &lib->cinclude_dirs);
 	}
 	TokenType type = TOKEN_CONST_IDENT;
-	FOREACH(const char *, feature_flag, active_target.feature_list)
+	FOREACH(const char *, feature_flag, compiler.build.feature_list)
 	{
 		feature_flag = symtab_preset(feature_flag, TOKEN_CONST_IDENT);
-		htable_set(&global_context.features, (void *) feature_flag, (void *) feature_flag);
+		htable_set(&compiler.context.features, (void *) feature_flag, (void *) feature_flag);
 	}
 
-	setup_int_define("C_SHORT_SIZE", platform_target.width_c_short, type_int);
-	setup_int_define("C_INT_SIZE", platform_target.width_c_int, type_int);
-	setup_int_define("C_LONG_SIZE", platform_target.width_c_long, type_int);
-	setup_int_define("C_LONG_LONG_SIZE", platform_target.width_c_long_long, type_int);
-	setup_int_define("REGISTER_SIZE", platform_target.width_register, type_int);
-	setup_bool_define("C_CHAR_IS_SIGNED", platform_target.signed_c_char);
-	setup_bool_define("PLATFORM_BIG_ENDIAN", platform_target.big_endian);
-	setup_bool_define("PLATFORM_I128_SUPPORTED", platform_target.int128);
-	setup_bool_define("PLATFORM_F128_SUPPORTED", platform_target.float128);
-	setup_bool_define("PLATFORM_F16_SUPPORTED", platform_target.float16);
-	setup_int_define("ARCH_TYPE", (uint64_t)platform_target.arch, type_int);
-	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)active_target.memory_environment, type_int);
+	setup_int_define("C_SHORT_SIZE", compiler.platform.width_c_short, type_int);
+	setup_int_define("C_INT_SIZE", compiler.platform.width_c_int, type_int);
+	setup_int_define("C_LONG_SIZE", compiler.platform.width_c_long, type_int);
+	setup_int_define("C_LONG_LONG_SIZE", compiler.platform.width_c_long_long, type_int);
+	setup_int_define("REGISTER_SIZE", compiler.platform.width_register, type_int);
+	setup_bool_define("C_CHAR_IS_SIGNED", compiler.platform.signed_c_char);
+	setup_bool_define("PLATFORM_BIG_ENDIAN", compiler.platform.big_endian);
+	setup_bool_define("PLATFORM_I128_SUPPORTED", compiler.platform.int128);
+	setup_bool_define("PLATFORM_F128_SUPPORTED", compiler.platform.float128);
+	setup_bool_define("PLATFORM_F16_SUPPORTED", compiler.platform.float16);
+	setup_int_define("ARCH_TYPE", (uint64_t)compiler.platform.arch, type_int);
+	setup_int_define("MEMORY_ENVIRONMENT", (uint64_t)compiler.build.memory_environment, type_int);
 	setup_bool_define("COMPILER_LIBC_AVAILABLE", link_libc());
-	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)active_target.optlevel, type_int);
-	setup_int_define("OS_TYPE", (uint64_t)platform_target.os, type_int);
-	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)active_target.optsize, type_int);
+	setup_int_define("COMPILER_OPT_LEVEL", (uint64_t)compiler.build.optlevel, type_int);
+	setup_int_define("OS_TYPE", (uint64_t)compiler.platform.os, type_int);
+	setup_int_define("COMPILER_SIZE_OPT_LEVEL", (uint64_t)compiler.build.optsize, type_int);
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
-	setup_bool_define("DEBUG_SYMBOLS", active_target.debug_info == DEBUG_INFO_FULL);
-	setup_bool_define("BACKTRACE", active_target.show_backtrace != SHOW_BACKTRACE_OFF);
+	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
+	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
 	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
-	setup_bool_define("BENCHMARKING", active_target.benchmarking);
+	setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
-	setup_bool_define("TESTING", active_target.testing);
+	setup_bool_define("TESTING", compiler.build.testing);
 
 	type_init_cint();
 
 	compiler_init_time = bench_mark();
 
-	if (!vec_size(active_target.sources) && !active_target.read_stdin) error_exit("No files to compile.");
+	if (!vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
 
-	if (active_target.lex_only)
+	if (compiler.build.lex_only)
 	{
 		compiler_lex();
 		compiler_parsing_time = bench_mark();
 		return;
 	}
-	if (active_target.parse_only)
+	if (compiler.build.parse_only)
 	{
 		compiler_parse();
 		compiler_parsing_time = bench_mark();
@@ -1157,40 +1160,40 @@ void compile()
 
 void global_context_add_decl(Decl *decl)
 {
-	decltable_set(&global_context.symbols, decl);
+	decltable_set(&compiler.context.symbols, decl);
 }
 
 void global_context_add_generic_decl(Decl *decl)
 {
-	decltable_set(&global_context.generic_symbols, decl);
+	decltable_set(&compiler.context.generic_symbols, decl);
 }
 
-void global_context_add_link(const char *link)
+void linking_add_link(Linking *linking, const char *link)
 {
-	FOREACH(const char *, existing_link, global_context.links)
+	FOREACH(const char *, existing_link, linking->links)
 	{
 		if (str_eq(link, existing_link)) return;
 	}
-	vec_add(global_context.links, link);
+	vec_add(linking->links, link);
 }
 
 void global_context_clear_errors(void)
 {
-	global_context.in_panic_mode = false;
-	global_context.errors_found = 0;
-	global_context.warnings_found = 0;
+	compiler.context.in_panic_mode = false;
+	compiler.context.errors_found = 0;
+	compiler.context.warnings_found = 0;
 }
 
 void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);
 	assert(type_ok(type));
-	vec_add(global_context.type, type);
+	vec_add(compiler.context.type, type);
 }
 
 const char *get_object_extension(void)
 {
-	switch (active_target.arch_os_target)
+	switch (compiler.build.arch_os_target)
 	{
 		case ANY_WINDOWS_ARCH_OS:
 			return ".obj";
@@ -1202,7 +1205,7 @@ const char *get_object_extension(void)
 Module *global_context_find_module(const char *name)
 {
 	assert(name);
-	return htable_get(&global_context.modules, (void *)name);
+	return htable_get(&compiler.context.modules, (void *)name);
 }
 
 Module *compiler_find_or_create_module(Path *module_name, const char **parameters)
@@ -1218,14 +1221,14 @@ Module *compiler_find_or_create_module(Path *module_name, const char **parameter
 	module->parameters = parameters;
 	module->is_generic = vec_size(parameters) > 0;
 	htable_init(&module->symbols, 0x1000);
-	htable_set(&global_context.modules, (void *)module_name->module, module);
+	htable_set(&compiler.context.modules, (void *)module_name->module, module);
 	if (parameters)
 	{
-		vec_add(global_context.generic_module_list, module);
+		vec_add(compiler.context.generic_module_list, module);
 	}
 	else
 	{
-		vec_add(global_context.module_list, module);
+		vec_add(compiler.context.module_list, module);
 	}
 
 	return module;

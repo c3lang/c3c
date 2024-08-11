@@ -33,24 +33,28 @@ int run_subprocess(const char *name, const char **args)
 
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s", name);
-	for (uint32_t i = 0; i < vec_size(args); i++) {
+	for (uint32_t i = 0; i < vec_size(args); i++)
+	{
 		scratch_buffer_append_char(' ');
 
 		bool need_quoting = strpbrk(args[i], "\t\v ") != NULL || args[i][0] == 0;
 		if (need_quoting) scratch_buffer_append_char('"');
-		for (int j = 0; '\0' != args[i][j]; j++) {
-			switch (args[i][j]) {
-			default:
-				break;
-			case '\\':
-				if (args[i][j + 1] == '"') {
-					scratch_buffer_append_char('\\');
-				}
+		for (int j = 0; '\0' != args[i][j]; j++)
+		{
+			switch (args[i][j])
+			{
+				default:
+					break;
+				case '\\':
+					if (args[i][j + 1] == '"')
+					{
+						scratch_buffer_append_char('\\');
+					}
 
-				break;
-			case '"':
-				scratch_buffer_append_char('\\');
-				break;
+					break;
+				case '"':
+					scratch_buffer_append_char('\\');
+					break;
 			}
 
 			scratch_buffer_append_char(args[i][j]);
@@ -71,7 +75,8 @@ int run_subprocess(const char *name, const char **args)
 		&siStartInfo,
 		&piProcInfo);
 
-	if (!bSuccess) {
+	if (!bSuccess)
+	{
 		eprintf("Could not create child process: %lu", GetLastError());
 		return -1;
 	}
@@ -79,17 +84,19 @@ int run_subprocess(const char *name, const char **args)
 	CloseHandle(piProcInfo.hThread);
 
 	DWORD result = WaitForSingleObject(
-					   piProcInfo.hProcess, // HANDLE hHandle,
-					   INFINITE // DWORD  dwMilliseconds
-				   );
+			piProcInfo.hProcess, // HANDLE hHandle,
+			INFINITE // DWORD  dwMilliseconds
+	);
 
-	if (result == WAIT_FAILED) {
+	if (result == WAIT_FAILED)
+	{
 		eprintf("Could not wait on child process: %lu", GetLastError());
 		return -1;
 	}
 
 	DWORD exit_status;
-	if (!GetExitCodeProcess(piProcInfo.hProcess, &exit_status)) {
+	if (!GetExitCodeProcess(piProcInfo.hProcess, &exit_status))
+	{
 		eprintf("Could not get process exit code: %lu", GetLastError());
 		return -1;
 	}

@@ -34,10 +34,10 @@ void sema_analyse_pass_module_hierarchy(Module *module)
 	if (!slice.len) return;
 
 
-	unsigned module_count = vec_size(global_context.module_list);
+	unsigned module_count = vec_size(compiler.context.module_list);
 	for (int i = 0; i < module_count; i++)
 	{
-		Module *checked = global_context.module_list[i];
+		Module *checked = compiler.context.module_list[i];
 		Path *checked_name = checked->name;
 		if (checked_name->len != slice.len) continue;
 		// Found the parent! We're done, we add this parent
@@ -119,7 +119,7 @@ NEXT:;
 		total_import_count += import_count;
 	}
 	(void)total_import_count; // workaround for clang 13.0
-	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, global_context.errors_found);
+	DEBUG_LOG("Pass finished processing %d import(s) with %d error(s).", total_import_count, compiler.context.errors_found);
 }
 
 INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
@@ -153,13 +153,13 @@ INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filena
 		print_error_at(span, "Failed to load file %s: %s", string, error);
 		return NULL;
 	}
-	if (global_context.errors_found) return NULL;
+	if (compiler.context.errors_found) return NULL;
 	return file;
 }
 
 static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 {
-	if (active_target.trust_level < TRUST_INCLUDE)
+	if (compiler.build.trust_level < TRUST_INCLUDE)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "'$include' not permitted, trust level must be set to '--trust=include' or '--trust=full' to permit it.");
 	}
@@ -177,9 +177,9 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	if (success) return NULL;
 	File *file = sema_load_file(unit, decl->span,  decl->include.filename, "$include", NULL);
 	if (!file) return NULL;
-	if (global_context.includes_used++ > MAX_INCLUDES)
+	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
 	{
-		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
+		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDE_DIRECTIVES);
 	}
 	return parse_include_file(file, unit);
 }
@@ -187,7 +187,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 
 static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
-	if (active_target.trust_level < TRUST_FULL)
+	if (compiler.build.trust_level < TRUST_FULL)
 	{
 		RETURN_PRINT_ERROR_AT(NULL, decl, "'$exec' not permitted, trust level must be set to '--trust=full' to permit it.");
 	}
@@ -262,13 +262,13 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	File *file;
 	// TODO fix Win32
 	char *old_path = NULL;
-	if (active_target.script_dir)
+	if (compiler.build.script_dir)
 	{
 		old_path = getcwd(NULL, 0);
-		if (!dir_change(active_target.script_dir))
+		if (!dir_change(compiler.build.script_dir))
 		{
 			free(old_path);
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", active_target.script_dir);
+			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
 	if (c3_script)
@@ -286,12 +286,12 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		free(old_path);
 		if (!success)
 		{
-			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", active_target.script_dir);
+			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", compiler.build.script_dir);
 		}
 	}
-	if (global_context.includes_used++ > MAX_INCLUDES)
+	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
 	{
-		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDES);
+		RETURN_PRINT_ERROR_AT(NULL, decl, "This $include would cause the maximum number of includes (%d) to be exceeded.", MAX_INCLUDE_DIRECTIVES);
 	}
 	return parse_include_file(file, unit);
 }
@@ -354,7 +354,7 @@ void sema_analysis_pass_register_global_declarations(Module *module)
 		assert(vec_size(unit->ct_includes) == 0);
 	}
 
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 void sema_analysis_pass_register_conditional_units(Module *module)
@@ -426,7 +426,7 @@ FAIL_CONTEXT:
 		sema_context_destroy(&context);
 		break;
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 void sema_analysis_pass_register_conditional_declarations(Module *module)
@@ -458,7 +458,7 @@ RETRY_INCLUDES:
 		// We might have gotten more declarations.
 		if (vec_size(unit->global_cond_decls) > 0) goto RETRY;
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 void sema_analysis_pass_ct_assert(Module *module)
@@ -480,7 +480,7 @@ void sema_analysis_pass_ct_assert(Module *module)
 		sema_context_destroy(&context);
 		if (!success) break;
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 void sema_analysis_pass_ct_echo(Module *module)
@@ -502,7 +502,7 @@ void sema_analysis_pass_ct_echo(Module *module)
 		sema_context_destroy(&context);
 		if (!success) break;
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 static inline bool analyse_func_body(SemaContext *context, Decl *decl)
@@ -514,10 +514,10 @@ static inline bool analyse_func_body(SemaContext *context, Decl *decl)
 		return decl_poison(decl);
 	}
 	// Don't analyse functions that are tests.
-	if (decl->func_decl.attr_test && !active_target.testing) return true;
+	if (decl->func_decl.attr_test && !compiler.build.testing) return true;
 
 	// Don't analyse functions that are benchmarks.
-	if (decl->func_decl.attr_benchmark && !active_target.benchmarking) return true;
+	if (decl->func_decl.attr_benchmark && !compiler.build.benchmarking) return true;
 
 	if (!sema_analyse_function_body(context, decl)) return decl_poison(decl);
 	return true;
@@ -589,7 +589,7 @@ void sema_analysis_pass_decls(Module *module)
 		}
 		sema_context_destroy(&context);
 	}
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 void sema_analysis_pass_lambda(Module *module)
@@ -610,7 +610,7 @@ void sema_analysis_pass_lambda(Module *module)
 		sema_context_destroy(&context);
 	}
 
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 static inline bool sema_check_interfaces(SemaContext *context, Decl *decl)
@@ -683,7 +683,7 @@ void sema_analysis_pass_interface(Module *module)
 		sema_context_destroy(&context);
 	}
 
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
 void sema_analysis_pass_functions(Module *module)
@@ -706,5 +706,5 @@ void sema_analysis_pass_functions(Module *module)
 		sema_context_destroy(&context);
 	}
 
-	DEBUG_LOG("Pass finished with %d error(s).", global_context.errors_found);
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }

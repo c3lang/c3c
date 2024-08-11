@@ -60,9 +60,9 @@ static bool x64_type_is_illegal_vector(Type *type)
 	if (type->type_kind != TYPE_VECTOR) return false;
 	ByteSize size = type_size(type);
 	// Less than 64 bits or larger than the avx native size => not allowed.
-	if (size <= 8 || size > platform_target.x64.native_vector_size_avx) return true;
+	if (size <= 8 || size > compiler.platform.x64.native_vector_size_avx) return true;
 	// If we pass i128 in mem, then check for that.
-	if (platform_target.x64.pass_int128_vector_in_mem)
+	if (compiler.platform.x64.pass_int128_vector_in_mem)
 	{
 		// Illegal if i128/u128
 		TypeKind kind = type->array.base->type_kind;
@@ -242,7 +242,7 @@ void x64_classify_struct_union(Type *type, ByteSize offset_base, X64Class *curre
 		// and fallback to memory.
 		if (size > 16 &&
 			((!is_union && size != type_size(member->type))
-			|| size > platform_target.x64.native_vector_size_avx))
+			|| size > compiler.platform.x64.native_vector_size_avx))
 		{
 			*lo_class = CLASS_MEMORY;
 			x64_classify_post_merge(size, lo_class, hi_class);
@@ -287,7 +287,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 	// The only case a 256-bit or a 512-bit wide vector could be used is when
 	// the struct contains a single 256-bit or 512-bit field. Early check
 	// and fallback to memory.
-	if (size > 16 && (size != type_size(element) || size > platform_target.x64.native_vector_size_avx))
+	if (size > 16 && (size != type_size(element) || size > compiler.platform.x64.native_vector_size_avx))
 	{
 		*lo_class = CLASS_MEMORY;
 		return;
@@ -343,9 +343,9 @@ void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X6
 		}
 		return;
 	}
-	if (size == 16 || (named_arg == NAMED && size <= platform_target.x64.native_vector_size_avx))
+	if (size == 16 || (named_arg == NAMED && size <= compiler.platform.x64.native_vector_size_avx))
 	{
-		if (platform_target.x64.pass_int128_vector_in_mem
+		if (compiler.platform.x64.pass_int128_vector_in_mem
 			&& size != 16 && type_is_int128(element)) return;
 
 		*lo_class = CLASS_SSE;
@@ -637,7 +637,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 	if (type->type_kind == TYPE_VECTOR)
 	{
 		Type *element = type->array.base->canonical;
-		if (platform_target.x64.pass_int128_vector_in_mem && type_is_int128(element))
+		if (compiler.platform.x64.pass_int128_vector_in_mem && type_is_int128(element))
 		{
 			// Convert to u64
 			return abi_type_get(type_get_vector(type_ulong, type_size(type) / 8));

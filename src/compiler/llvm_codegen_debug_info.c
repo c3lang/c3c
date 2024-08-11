@@ -104,7 +104,7 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 													true,
 													row,
 													flags,
-													active_target.optlevel != OPTIMIZATION_NONE);
+													compiler.build.optlevel != OPTIMIZATION_NONE);
 	LLVMSetSubprogram(decl->backend_ref, c->debug.function);
 
 }
@@ -161,7 +161,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 			c->debug.file.debug_file,
 			row,
 			llvm_get_debug_type(c, decl->type),
-			active_target.optlevel != OPTIMIZATION_NONE,
+			compiler.build.optlevel != OPTIMIZATION_NONE,
 			LLVMDIFlagZero,
 			decl->alignment);
 	decl->var.backend_debug_ref = var;
@@ -482,7 +482,7 @@ static LLVMMetadataRef llvm_debug_typedef_type(GenContext *c, Type *type)
 	Decl *decl = type->decl;
 
 	// Is this a primitive typedef? If so, we create it without reference.
-	if (decl->unit == global_context.core_unit)
+	if (decl->unit == compiler.context.core_unit)
 	{
 		return LLVMDIBuilderCreateTypedef(c->debug.builder,
 										  llvm_get_debug_type(c, type_lowering(type)),

@@ -70,7 +70,7 @@ static bool sema_check_section(SemaContext *context, Attr *attr)
 	Expr *expr = attr->exprs[0];
 	const char *section_string = expr->const_expr.bytes.ptr;
 	// No restrictions except for MACH-O
-	if (platform_target.object_format != OBJ_FORMAT_MACHO)
+	if (compiler.platform.object_format != OBJ_FORMAT_MACHO)
 	{
 		return true;
 	}
@@ -443,7 +443,7 @@ RETRY:;
 		case TYPE_FUNC_RAW:
 		case TYPE_FAULTTYPE:
 		case TYPE_SLICE:
-			return platform_target.align_pointer.align / 8;
+			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
@@ -1789,7 +1789,7 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Compilat
 	switch (method->visibility)
 	{
 		case VISIBLE_PUBLIC:
-			vec_add(global_context.method_extensions, method);
+			vec_add(compiler.context.method_extensions, method);
 			break;
 		case VISIBLE_PRIVATE:
 			vec_add(unit->module->private_method_extensions, method);
@@ -1954,7 +1954,7 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 	// Did we already define it externally?
 	Decl *other = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
 	if (!other) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
-	if (!other) sema_find_extension_method_in_list(global_context.method_extensions, parent_type, name);
+	if (!other) sema_find_extension_method_in_list(compiler.context.method_extensions, parent_type, name);
 	if (other)
 	{
 		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
@@ -2314,7 +2314,7 @@ static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *
 	// Check veccall
 	if (str_eq(str, "veccall"))
 	{
-		switch (platform_target.arch)
+		switch (compiler.platform.arch)
 		{
 			case ARCH_TYPE_X86_64:
 				return update_abi(decl, CALL_X64_VECTOR);
@@ -2334,7 +2334,7 @@ static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *
 	// Finally check stdcall.
 	if (strcmp(str, "stdcall") == 0)
 	{
-		if (platform_target.arch == ARCH_TYPE_ARM || platform_target.arch == ARCH_TYPE_ARMB)
+		if (compiler.platform.arch == ARCH_TYPE_ARM || compiler.platform.arch == ARCH_TYPE_ARMB)
 		{
 			return update_abi(decl, CALL_AAPCS);
 		}
@@ -2924,15 +2924,15 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 		}
 		switch (directive->contract_stmt.param.modifier)
 		{
-			case PARAM_ANY:
+			case INOUT_ANY:
 				goto ADDED;
-			case PARAM_IN:
+			case INOUT_IN:
 				param->var.in_param = true;
 				break;
-			case PARAM_OUT:
+			case INOUT_OUT:
 				param->var.out_param = true;
 				break;
-			case PARAM_INOUT:
+			case INOUT_INOUT:
 				break;
 		}
 		if (!may_be_pointer && type->type_kind != TYPE_SLICE)
@@ -2948,7 +2948,7 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 {
 	Decl **params = sig->params;
 	unsigned param_count = vec_size(params);
-	bool is_win32 = platform_target.os == OS_TYPE_WIN32;
+	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
 	Type *arg_type, *arg_type2;
 	switch (param_count)
 	{
@@ -3161,7 +3161,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 {
 	assert(decl != context->unit->main_function);
 	bool is_winmain = decl->func_decl.attr_winmain;
-	bool is_win32 = platform_target.os == OS_TYPE_WIN32;
+	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
 	if (decl->visibility != VISIBLE_PUBLIC)
 	{
 		SEMA_ERROR(decl, "A main function must be public.");
@@ -3192,9 +3192,9 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	// At this point the style is either MAIN_INT_VOID, MAIN_VOID_VOID or MAIN_ERR_VOID
 	MainType type = sema_find_main_type(context, signature, is_winmain);
 	if (type == MAIN_TYPE_ERROR) return false;
-	if (active_target.type == TARGET_TYPE_TEST || active_target.type == TARGET_TYPE_BENCHMARK) return true;
+	if (compiler.build.type == TARGET_TYPE_TEST || compiler.build.type == TARGET_TYPE_BENCHMARK) return true;
 	Decl *function;
-	if (active_target.no_entry)
+	if (compiler.build.no_entry)
 	{
 		function = decl;
 		goto REGISTER_MAIN;
@@ -3204,7 +3204,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		RETURN_SEMA_ERROR(rtype_info, "Int return is required for a C style main.");
 	}
 	// Suppress winmain on non-win32
-	if (platform_target.os != OS_TYPE_WIN32) is_winmain = false;
+	if (compiler.platform.os != OS_TYPE_WIN32) is_winmain = false;
 
 	if ((type == MAIN_TYPE_RAW || type == MAIN_TYPE_NO_ARGS) && is_int_return && !is_winmain)
 	{
@@ -3216,20 +3216,20 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		goto REGISTER_MAIN;
 	}
 	bool use_wmain = is_win32 && !is_winmain && type != MAIN_TYPE_NO_ARGS;
-	active_target.win.use_win_subsystem = is_winmain && is_win32;
+	compiler.build.win.use_win_subsystem = is_winmain && is_win32;
 	function = sema_create_synthetic_main(context, decl, type, is_int_return, is_err_return, is_winmain, use_wmain);
 	if (!decl_ok(function)) return false;
 REGISTER_MAIN:
 	context->unit->main_function = function;
-	if (global_context.main)
+	if (compiler.context.main)
 	{
 		SEMA_ERROR(function, "Duplicate main functions found.");
-		SEMA_NOTE(global_context.main, "The first one was found here.");
+		SEMA_NOTE(compiler.context.main, "The first one was found here.");
 		return false;
 	}
 	else
 	{
-		global_context.main = function;
+		compiler.context.main = function;
 	}
 	return true;
 }
@@ -4210,7 +4210,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 			sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
 		}
 	}
-	if (global_context.errors_found) return poisoned_decl;
+	if (compiler.context.errors_found) return poisoned_decl;
 	Decl *symbol = module_find_symbol(instantiated_module, name);
 	if (!symbol)
 	{

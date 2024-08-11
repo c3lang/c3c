@@ -67,8 +67,8 @@ Type *type_cuint;
 
 void type_init_cint(void)
 {
-	type_cint = type_int_signed_by_bitsize(platform_target.width_c_int);
-	type_cuint = type_int_unsigned_by_bitsize(platform_target.width_c_int);
+	type_cint = type_int_signed_by_bitsize(compiler.platform.width_c_int);
+	type_cuint = type_int_unsigned_by_bitsize(compiler.platform.width_c_int);
 }
 
 Type *type_int_signed_by_bitsize(BitSize bitsize)
@@ -1264,7 +1264,7 @@ static void type_create_alias(const char *name, Type *location, Type *canonical)
 	Decl *decl = decl_new(DECL_TYPEDEF, name, INVALID_SPAN);
 	decl->resolve_status = RESOLVE_DONE;
 	decl->typedef_decl.type_info = type_info_new_base(canonical, INVALID_SPAN);
-	decl->unit = global_context.core_unit;
+	decl->unit = compiler.context.core_unit;
 	decl->is_export = true;
 	*location = (Type) {
 		.decl = decl,
@@ -1289,13 +1289,13 @@ Type *type_new_func(Decl *decl, Signature *sig)
 static inline void type_init_int(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
 	unsigned actual_bits = bits ? (unsigned int)(8 << (bits - 1)) : 1;
-	type_init(name, type, kind, actual_bits, platform_target.integers[bits]);
+	type_init(name, type, kind, actual_bits, compiler.platform.integers[bits]);
 }
 
 static inline void type_create_float(const char *name, Type *type, TypeKind kind, BitSizes bits)
 {
 	unsigned actual_bits = bits ? (unsigned int)(8 << (bits - 1)) : 1;
-	type_init(name, type, kind, actual_bits, platform_target.floats[bits]);
+	type_init(name, type, kind, actual_bits, compiler.platform.floats[bits]);
 }
 
 void type_setup(PlatformTarget *target)
@@ -1346,7 +1346,7 @@ void type_setup(PlatformTarget *target)
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
-	string_decl->unit = global_context.core_unit;
+	string_decl->unit = compiler.context.core_unit;
 	string_decl->extname = string_decl->name;
 	string_decl->is_substruct = true;
 	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);

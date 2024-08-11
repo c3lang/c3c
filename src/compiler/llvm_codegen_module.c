@@ -61,8 +61,8 @@ void gencontext_begin_module(GenContext *c)
 
 	codegen_setup_object_names(c->code_module, &c->ir_filename, &c->asm_filename, &c->object_filename);
 
-	c->panic_var = global_context.panic_var;
-	c->panicf = global_context.panicf;
+	c->panic_var = compiler.context.panic_var;
+	c->panicf = compiler.context.panicf;
 	c->module = LLVMModuleCreateWithNameInContext(c->code_module->name->module, c->context);
 	c->machine = llvm_target_machine_create();
 
@@ -73,7 +73,7 @@ void gencontext_begin_module(GenContext *c)
 
 	static const char *pic_level = "PIC Level";
 	static const char *pie_level = "PIE Level";
-	switch (active_target.reloc_model)
+	switch (compiler.build.reloc_model)
 	{
 		case RELOC_BIG_PIE:
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorOverride, pie_level, (unsigned)2 /* PIE */, type_uint);
@@ -91,14 +91,14 @@ void gencontext_begin_module(GenContext *c)
 			break;
 	}
 
-	LLVMSetTarget(c->module, platform_target.target_triple);
+	LLVMSetTarget(c->module, compiler.platform.target_triple);
 
 	// Setup all types. Not thread-safe, but at this point in time we can assume a single context.
 	// We need to remove the context from the cache after this.
 	// This would seem to indicate that we should change Type / actual type.
 
-	c->ast_alloca_addr_space = target_alloca_addr_space();
-	FOREACH(Type *, type, global_context.type)
+	c->ast_alloca_addr_space = compiler.platform.alloca_address_space;
+	FOREACH(Type *, type, compiler.context.type)
 	{
 		type->backend_type = NULL;
 		type->backend_debug_type = NULL;
@@ -145,25 +145,26 @@ void gencontext_begin_module(GenContext *c)
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 	if (c->panicf) c->panicf->backend_ref = NULL;
 
-	if (active_target.debug_info != DEBUG_INFO_NONE)
+	if (compiler.build.debug_info != DEBUG_INFO_NONE)
 	{
-		if (active_target.arch_os_target == WINDOWS_X64 || active_target.arch_os_target == WINDOWS_AARCH64)
+		if (compiler.build.arch_os_target == WINDOWS_X64 || compiler.build.arch_os_target == WINDOWS_AARCH64)
 		{
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "CodeView", 1, type_uint);
 		}
 		else
 		{
+			unsigned frame_pointer = compiler.platform.arch == ARCH_TYPE_AARCH64 ? 1 : 2;
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 4, type_uint);
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 3, type_uint);
-			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "frame-pointer", FRAMEPOINTER, type_uint);
+			llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "frame-pointer", frame_pointer, type_uint);
 		}
 		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "uwtable", UWTABLE, type_uint);
 
 		c->debug.runtime_version = 0;
 		c->debug.builder = LLVMCreateDIBuilder(c->module);
-		if (active_target.debug_info == DEBUG_INFO_FULL && safe_mode_enabled())
+		if (compiler.build.debug_info == DEBUG_INFO_FULL && safe_mode_enabled())
 		{
-			c->debug.enable_stacktrace = os_supports_stacktrace(platform_target.os);
+			c->debug.enable_stacktrace = os_supports_stacktrace(compiler.platform.os);
 		}
 	}
 	c->global_builder = LLVMCreateBuilder();
@@ -172,16 +173,16 @@ void gencontext_begin_module(GenContext *c)
 
 void gencontext_init_file_emit(GenContext *c, CompilationUnit *unit)
 {
-	if (active_target.debug_info != DEBUG_INFO_NONE)
+	if (compiler.build.debug_info != DEBUG_INFO_NONE)
 	{
 		// Set runtime version here.
 		unit->llvm.debug_file = llvm_get_debug_file(c, unit->file->file_id);
 
-		bool is_optimized = active_target.optlevel != OPTIMIZATION_NONE;
+		bool is_optimized = compiler.build.optlevel != OPTIMIZATION_NONE;
 		const char *dwarf_flags = "";
 		unsigned runtime_version = 0;
 		LLVMDWARFEmissionKind emission_kind =
-				active_target.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
+				compiler.build.debug_info == DEBUG_INFO_FULL ? LLVMDWARFEmissionFull : LLVMDWARFEmissionLineTablesOnly;
 		const char *debug_output_file = "";
 		bool emit_debug_info_for_profiling = false;
 		bool split_debug_inlining = false;

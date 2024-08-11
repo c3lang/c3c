@@ -6,10 +6,9 @@
 #include "../version.h"
 #include "../utils/lib.h"
 
-#define MAX_LIB_DIRS 1024
-#define MAX_FILES 2048
-#define MAX_ARGS 2048
-#define MAX_INCLUDES 2048
+#define MAX_BUILD_LIB_DIRS 1024
+#define MAX_COMMAND_LINE_FILES 2048
+#define MAX_COMMAND_LINE_RUN_ARGS 2048
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
@@ -353,16 +352,16 @@ typedef enum
 
 typedef struct BuildOptions_
 {
-	const char *lib_dir[MAX_LIB_DIRS];
-	int lib_dir_count;
-	const char *libs[MAX_LIB_DIRS];
-	int lib_count;
-	const char* linker_args[MAX_LIB_DIRS];
-	int linker_arg_count;
-	const char* linker_lib_dir[MAX_LIB_DIRS];
-	int linker_lib_dir_count;
-	const char* linker_libs[MAX_LIB_DIRS];
-	int linker_lib_count;
+	const char *lib_dir[MAX_BUILD_LIB_DIRS];
+	size_t lib_dir_count;
+	const char *libs[MAX_BUILD_LIB_DIRS];
+	size_t lib_count;
+	const char* linker_args[MAX_BUILD_LIB_DIRS];
+	size_t linker_arg_count;
+	const char* linker_lib_dir[MAX_BUILD_LIB_DIRS];
+	size_t linker_lib_dir_count;
+	const char* linker_libs[MAX_BUILD_LIB_DIRS];
+	size_t linker_lib_count;
 	const char* std_lib_dir;
 	VectorConv vector_conv;
 	struct {
@@ -510,6 +509,7 @@ typedef struct
 	const char *version;
 	const char *langrev;
 	const char **source_dirs;
+	const char **test_source_dirs;
 	const char **sources;
 	const char **libdirs;
 	const char **libs;
@@ -665,6 +665,16 @@ static BuildTarget default_build_target = {
 		.win.def = NULL,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
 };
+
+extern const char *project_default_keys[][2];
+extern const int project_default_keys_count;
+extern const char *project_target_keys[][2];
+extern const int project_target_keys_count;
+extern const char *manifest_default_keys[][2];
+extern const int manifest_default_keys_count;
+extern const char *manifest_target_keys[][2];
+extern const int manifest_target_keys_count;
+extern char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);

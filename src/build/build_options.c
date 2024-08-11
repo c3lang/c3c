@@ -10,10 +10,10 @@ bool silence_deprecation;
 
 static int arg_index;
 static int arg_count;
-static const char** args;
-static const char* current_arg;
-extern const char* llvm_version;
-extern const char* llvm_target;
+static const char **args;
+static const char *current_arg;
+extern const char *llvm_version;
+extern const char *llvm_target;
 
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 	[ELF_AARCH64] = "elf-aarch64",
@@ -192,8 +192,7 @@ static void usage(void)
 }
 
 
-
-static const char* check_dir(const char *path)
+static const char *check_dir(const char *path)
 {
 	static char *original_path = NULL;
 	if (!original_path)
@@ -210,7 +209,7 @@ static inline bool at_end()
 	return arg_index == arg_count - 1;
 }
 
-static inline const char* next_arg()
+static inline const char *next_arg()
 {
 	assert(!at_end());
 	current_arg = args[++arg_index];
@@ -223,12 +222,12 @@ static inline bool next_is_opt()
 	return args[arg_index + 1][0] == '-';
 }
 
-INLINE bool match_longopt(const char* name)
+INLINE bool match_longopt(const char *name)
 {
 	return str_eq(&current_arg[2], name);
 }
 
-static inline const char *match_argopt(const char* name)
+static inline const char *match_argopt(const char *name)
 {
 	size_t len = strlen(name);
 	if (memcmp(&current_arg[2], name, len) != 0) return false;
@@ -236,7 +235,7 @@ static inline const char *match_argopt(const char* name)
 	return &current_arg[2 + len + 1];
 }
 
-static inline bool match_shortopt(const char* name)
+static inline bool match_shortopt(const char *name)
 {
 	return strcmp(&current_arg[1], name) == 0;
 }
@@ -244,9 +243,9 @@ static inline bool match_shortopt(const char* name)
 
 void append_file(BuildOptions *build_options)
 {
-	if (vec_size(build_options->files) == MAX_FILES)
+	if (vec_size(build_options->files) == MAX_COMMAND_LINE_FILES)
 	{
-		EOUTPUT("Max %d files may be specified.", MAX_FILES);
+		EOUTPUT("Max %d files may be specified.", MAX_COMMAND_LINE_FILES);
 		exit_compiler(EXIT_FAILURE);
 	}
 	vec_add(build_options->files, current_arg);
@@ -254,9 +253,9 @@ void append_file(BuildOptions *build_options)
 
 void append_arg(BuildOptions *build_options)
 {
-	if (vec_size(build_options->args) == MAX_ARGS)
+	if (vec_size(build_options->args) == MAX_COMMAND_LINE_RUN_ARGS)
 	{
-		EOUTPUT("Max %d args may be specified.", MAX_ARGS);
+		EOUTPUT("Max %d args may be specified.", MAX_COMMAND_LINE_RUN_ARGS);
 		exit_compiler(EXIT_FAILURE);
 	}
 	vec_add(build_options->args, current_arg);
@@ -279,7 +278,7 @@ static void parse_optional_target(BuildOptions *options)
 	}
 }
 
-static void project_usage() 
+static void project_usage()
 {
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
@@ -287,9 +286,9 @@ static void project_usage()
 	PRINTF("  view              view the current projects structure");
 }
 
-static void parse_project_subcommand(BuildOptions *options) 
+static void parse_project_subcommand(BuildOptions *options)
 {
-	if (arg_match("view")) 
+	if (arg_match("view"))
 	{
 		options->subcommand = SUBCOMMAND_VIEW;
 		return;
@@ -299,7 +298,7 @@ static void parse_project_subcommand(BuildOptions *options)
 
 static void parse_project_options(BuildOptions *options)
 {
-	if (at_end()) 
+	if (at_end())
 	{
 		project_usage();
 		return;
@@ -444,6 +443,7 @@ static void parse_command(BuildOptions *options)
 	}
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
 }
+
 static void print_all_targets(void)
 {
 	PRINTF("Available targets:");
@@ -463,9 +463,9 @@ static void print_version(void)
 
 static void add_linker_arg(BuildOptions *options, const char *arg)
 {
-	if (options->linker_arg_count == MAX_LIB_DIRS)
+	if (options->linker_arg_count == MAX_BUILD_LIB_DIRS)
 	{
-		error_exit("Too many linker arguments are given, more than %d\n", MAX_LIB_DIRS);
+		error_exit("Too many linker arguments are given, more than %d\n", MAX_BUILD_LIB_DIRS);
 	}
 	options->linker_args[options->linker_arg_count++] = arg;
 }
@@ -506,7 +506,7 @@ void update_feature_flags(const char ***flags, const char ***removed_flags, cons
 	vec_add(*to_add_to_ref, arg);
 }
 
-static int parse_multi_option(const char *start, unsigned count, const char** elements)
+static int parse_multi_option(const char *start, unsigned count, const char **elements)
 {
 	const char *arg = current_arg;
 	int select = str_findlist(start, count, elements);
@@ -724,7 +724,8 @@ static void parse_option(BuildOptions *options)
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
-			if (match_longopt("run-once")) {
+			if (match_longopt("run-once"))
+			{
 				options->run_once = true;
 				return;
 			}
@@ -1089,23 +1090,24 @@ static void parse_option(BuildOptions *options)
 					if (str_has_suffix(name, ".c3l"))
 					{
 						error_exit("When specifying libraries, the .c3l suffix should"
-								   " not be included, so rather than '--lib %s', try using '--lib %s' instead.",
-								   name, str_remove_suffix(name, ".c3l"));
+						           " not be included, so rather than '--lib %s', try using '--lib %s' instead.",
+						           name, str_remove_suffix(name, ".c3l"));
 					}
 					if (str_has_suffix(name, ".lib") || str_has_suffix(name, ".a")
-						|| str_has_suffix(name, ".dll") || str_has_suffix(name, ".so"))
+					    || str_has_suffix(name, ".dll") || str_has_suffix(name, ".so"))
 					{
 						error_exit("You tried to add '%s' as a C3 library, but from the name it appears to be a"
-								   " static/dynamic library. To link with such a library, use '-l <name>' instead.",
-								   name);
+						           " static/dynamic library. To link with such a library, use '-l <name>' instead.",
+						           name);
 					}
 					char *name_copy = strdup(name);
 					str_ellide_in_place(name_copy, 32);
 					if (strchr(name, '/') != NULL || (PLATFORM_WINDOWS && strchr(name, '\\') != NULL))
 					{
-						error_exit("There is a problem including the library '%s': a library name should never contain the path. Use '--libdir' to add the "
-						           "directory to the library search paths, then use the plain name for '--lib', "
-						           "e.g '--libdir my_project/libs --lib some_lib'.", name_copy);
+						error_exit(
+								"There is a problem including the library '%s': a library name should never contain the path. Use '--libdir' to add the "
+								"directory to the library search paths, then use the plain name for '--lib', "
+								"e.g '--libdir my_project/libs --lib some_lib'.", name_copy);
 					}
 					error_exit("Invalid library name '%s', it should be something like 'foo_lib'.", name_copy);
 				}
@@ -1115,7 +1117,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("libdir"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --libdir needs a directory.");
-				if (options->lib_dir_count == MAX_LIB_DIRS) error_exit("Max %d library directories may be specified.", MAX_LIB_DIRS);
+				if (options->lib_dir_count == MAX_BUILD_LIB_DIRS) error_exit("Max %d library directories may be specified.", MAX_BUILD_LIB_DIRS);
 				options->lib_dir[options->lib_dir_count++] = check_dir(next_arg());
 				return;
 			}
@@ -1242,7 +1244,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	for (arg_index = 1; arg_index < arg_count; arg_index++)
 	{
 		current_arg = args[arg_index];
-		if (collecting_args) {
+		if (collecting_args)
+		{
 			append_arg(&build_options);
 			continue;
 		}

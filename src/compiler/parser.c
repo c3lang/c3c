@@ -102,9 +102,9 @@ bool parse_file(File *file)
 	ParseContext parse_context = { .unit = unit };
 	parse_context.lexer = (Lexer) { .file = file, .context =  &parse_context };
 	lexer_init(&parse_context.lexer);
-	if (global_context.errors_found) return false;
+	if (compiler.context.errors_found) return false;
 	parse_translation_unit(&parse_context);
-	return !global_context.errors_found;
+	return !compiler.context.errors_found;
 }
 
 Decl **parse_include_file(File *file, CompilationUnit *unit)
@@ -175,7 +175,7 @@ bool parse_stdin(void)
 {
 	stdin_file = (File){
 			.name = "stdin",
-			.file_id = stdin_file_id,
+			.file_id = STDIN_FILE_ID,
 			.full_path = "<stdin>",
 	};
 #define BUF_SIZE 65536
@@ -211,9 +211,9 @@ bool parse_stdin(void)
 	ParseContext parse_context = { .unit = unit };
 	parse_context.lexer = (Lexer) { .file = &stdin_file, .context =  &parse_context };
 	lexer_init(&parse_context.lexer);
-	if (global_context.errors_found) return false;
+	if (compiler.context.errors_found) return false;
 	parse_translation_unit(&parse_context);
-	return !global_context.errors_found;
+	return !compiler.context.errors_found;
 }
 
 

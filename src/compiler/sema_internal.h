@@ -138,7 +138,7 @@ INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 	// Prevent multiple reports
 	decl->attrs_resolved->deprecated = NULL;
 
-	if (active_target.silence_deprecation) return;
+	if (compiler.build.silence_deprecation) return;
 	if (msg[0])
 	{
 		sema_warning_at(span, "'%s' is deprecated: %s.", decl->name, msg);

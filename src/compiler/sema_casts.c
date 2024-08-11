@@ -636,10 +636,10 @@ Type *cast_numeric_arithmetic_promotion(Type *type)
 	switch (canonical->type_kind)
 	{
 		case ALL_SIGNED_INTS:
-			if (canonical->builtin.bitsize < platform_target.width_c_int) return type_cint;
+			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cint;
 			return type;
 		case ALL_UNSIGNED_INTS:
-			if (canonical->builtin.bitsize < platform_target.width_c_int) return type_cuint;
+			if (canonical->builtin.bitsize < compiler.platform.width_c_int) return type_cuint;
 			return type;
 		case TYPE_BF16:
 		case TYPE_F16:
@@ -1298,7 +1298,7 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_expand_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	if (!is_explicit && active_target.vector_conv == VECTOR_CONV_DEFAULT && !cc->is_binary_conversion)
+	if (!is_explicit && compiler.build.vector_conv == VECTOR_CONV_DEFAULT && !cc->is_binary_conversion)
 	{
 		if (is_silent) return false;
 		bool explicit_works = rule_expand_to_vec(cc, true, true);

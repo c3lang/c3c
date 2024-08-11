@@ -28,11 +28,11 @@ static bool riscv_detect_fpcc_struct_internal(Type *type, unsigned current_offse
 {
 	bool is_int = type_is_integer_or_bool_kind(type);
 	bool is_float = type_is_float(type);
-	unsigned flen = platform_target.riscv.flen;
+	unsigned flen = compiler.platform.riscv.flen;
 	ByteSize size = type_size(type);
 	if (is_int || is_float)
 	{
-		if (is_int && size > platform_target.riscv.xlen) return false;
+		if (is_int && size > compiler.platform.riscv.xlen) return false;
 		// Can't be eligible if larger than the FP registers. Half precision isn't
 		// currently supported on RISC-V and the ABI hasn't been confirmed, so
 		// default to the integer ABI in that case.
@@ -134,19 +134,19 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 
 	assert(type == type->canonical);
 
-	unsigned xlen = platform_target.riscv.xlen;
+	unsigned xlen = compiler.platform.riscv.xlen;
 	assert(is_power_of_two(xlen));
 
 	ByteSize size = type_size(type);
 
 	// Pass floating point values via FPRs if possible.
-	if (is_fixed && type_is_float(type) && platform_target.riscv.flen >= size && *fprs)
+	if (is_fixed && type_is_float(type) && compiler.platform.riscv.flen >= size && *fprs)
 	{
 		(*fprs)--;
 		return abi_arg_new_direct();
 	}
 
-	if (is_fixed && platform_target.riscv.flen && type->type_kind == TYPE_STRUCT)
+	if (is_fixed && compiler.platform.riscv.flen && type->type_kind == TYPE_STRUCT)
 	{
 		AbiType field1, field2;
 		unsigned offset1 = 0;
@@ -216,7 +216,7 @@ static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsig
 		{
 			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 8));
 		}
-		if (alignment == 2 * platform_target.riscv.xlen)
+		if (alignment == 2 * compiler.platform.riscv.xlen)
 		{
 			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(xlen * 16));
 		}
@@ -231,7 +231,7 @@ static ABIArgInfo *riscv_classify_return(Type *return_type)
 	if (type_is_void(return_type)) return abi_arg_ignore();
 
 	unsigned arg_gpr_left = 2;
-	unsigned arg_fpr_left = platform_target.riscv.flen ? 2 : 0;
+	unsigned arg_fpr_left = compiler.platform.riscv.flen ? 2 : 0;
 
 	// The rules for return and argument types are the same, so defer to
 	// classifyArgumentType.
@@ -263,7 +263,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	// in LLVM IR, relying on the backend lowering code to rewrite the argument
 	// list and pass indirectly on RV32.
 	bool is_ret_indirect = abi_arg_is_indirect(ret_abi);
-	if (type_is_scalar(ret_type) && type_size(ret_type) > 2 * platform_target.riscv.xlen)
+	if (type_is_scalar(ret_type) && type_size(ret_type) > 2 * compiler.platform.riscv.xlen)
 	{
 		// Normal scalar > 2 * XLen, e.g. f128 on RV32
 		is_ret_indirect = true;
@@ -274,7 +274,7 @@ void c_abi_func_create_riscv(FunctionPrototype *prototype)
 	// different for variadic arguments, we must also track whether we are
 	// examining a vararg or not.
 	unsigned arg_gprs_left = is_ret_indirect ? gpr - 1 : gpr;
-	unsigned arg_fprs_left = platform_target.riscv.flen ? fpr : 0;
+	unsigned arg_fprs_left = compiler.platform.riscv.flen ? fpr : 0;
 
 	// If we have an optional, then the return type is a parameter.
 	if (prototype->ret_by_ref)

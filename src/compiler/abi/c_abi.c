@@ -193,7 +193,7 @@ void c_abi_func_create(FunctionPrototype *proto)
 {
 	assert(!proto->is_resolved);
 	proto->is_resolved = true;
-	switch (platform_target.abi)
+	switch (compiler.platform.abi)
 	{
 		case ABI_X64:
 			c_abi_func_create_x64(proto);
@@ -240,7 +240,7 @@ ABIArgInfo *c_abi_classify_argument_type_default(Type *type)
 	// Struct-likes are returned by sret
 	if (type_is_abi_aggregate(type)) return abi_arg_new_indirect_by_val(type);
 
-	if (type_is_int128(type) && !platform_target.int128) return abi_arg_new_indirect_by_val(type);
+	if (type_is_int128(type) && !compiler.platform.int128) return abi_arg_new_indirect_by_val(type);
 
 	// Otherwise do we have a type that needs promotion?
 	if (type_is_promotable_int_bool(type)) return abi_arg_new_direct_int_ext(type);

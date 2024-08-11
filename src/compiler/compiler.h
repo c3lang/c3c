@@ -18,11 +18,4 @@ void print_syntax(BuildOptions *options);
 void vendor_fetch(BuildOptions *options);
 int find_padding_length(const char** str, const int count);
 
-extern double compiler_init_time;
-extern double compiler_parsing_time;
-extern double compiler_sema_time;
-extern double compiler_ir_gen_time;
-extern double compiler_codegen_time;
-extern double compiler_link_time;
 extern const char* c3_suffix_list[3];
-extern char *arch_os_target[ARCH_OS_TARGET_LAST + 1];

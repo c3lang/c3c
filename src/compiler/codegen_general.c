@@ -45,17 +45,17 @@ Type *type_abi_find_single_struct_element(Type *type)
 bool type_is_homogenous_base_type(Type *type)
 {
 	type = type->canonical;
-	switch (platform_target.abi)
+	switch (compiler.platform.abi)
 	{
 		case ABI_PPC64_SVR4:
 			switch (type->type_kind)
 			{
 				case TYPE_F128:
-					if (!platform_target.float128) return false;
+					if (!compiler.platform.float128) return false;
 					FALLTHROUGH;
 				case TYPE_F32:
 				case TYPE_F64:
-					return !platform_target.ppc64.is_softfp;
+					return !compiler.platform.ppc64.is_softfp;
 				case TYPE_VECTOR:
 					return type_size(type) == 128 / 8;
 				default:
@@ -134,10 +134,10 @@ bool type_is_homogenous_base_type(Type *type)
 
 bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
 {
-	switch (platform_target.abi)
+	switch (compiler.platform.abi)
 	{
 		case ABI_PPC64_SVR4:
-			if (type->type_kind == TYPE_F128 && platform_target.float128) return members <= 8;
+			if (type->type_kind == TYPE_F128 && compiler.platform.float128) return members <= 8;
 			if (type->type_kind == TYPE_VECTOR) return members <= 8;
 			// Use max 8 registers.
 			return ((type_size(type) + 7) / 8) * members <= 8;
@@ -279,7 +279,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 AlignSize type_alloca_alignment(Type *type)
 {
 	AlignSize align = type_abi_alignment(type);
-	if (align < 16 && (platform_target.abi == ABI_X64 || platform_target.abi == ABI_WIN64))
+	if (align < 16 && (compiler.platform.abi == ABI_X64 || compiler.platform.abi == ABI_WIN64))
 	{
 		type = type_flatten(type);
 		if (type->type_kind == TYPE_ARRAY && type_size(type) >= 16) return 16;
@@ -291,13 +291,13 @@ AlignSize type_alloca_alignment(Type *type)
 void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename)
 {
 	const char *result = module_create_object_file_name(module);
-	*ir_filename = str_printf(active_target.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result);
-	if (active_target.ir_file_dir) *ir_filename = file_append_path(active_target.ir_file_dir, *ir_filename);
+	*ir_filename = str_printf(compiler.build.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result);
+	if (compiler.build.ir_file_dir) *ir_filename = file_append_path(compiler.build.ir_file_dir, *ir_filename);
 	*object_filename = str_printf("%s%s", result, get_object_extension());
-	if (active_target.emit_asm)
+	if (compiler.build.emit_asm)
 	{
 		*asm_filename = str_printf("%s.s", result);
-		if (active_target.asm_file_dir) *asm_filename = file_append_path(active_target.asm_file_dir, *asm_filename);
+		if (compiler.build.asm_file_dir) *asm_filename = file_append_path(compiler.build.asm_file_dir, *asm_filename);
 	}
-	if (active_target.object_file_dir) *object_filename = file_append_path(active_target.object_file_dir, *object_filename);
+	if (compiler.build.object_file_dir) *object_filename = file_append_path(compiler.build.object_file_dir, *object_filename);
 }

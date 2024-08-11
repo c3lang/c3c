@@ -12,6 +12,9 @@ typedef struct
 	BuildTarget **targets;
 } Project;
 
+#define COPY_IF_DEFAULT(target__, value__) \
+  do { if ((int)target__ == -1) target__ = value__; } while(0)
+
 extern bool silence_deprecation;
 
 extern const char *trust_level[3];

@@ -36,7 +36,7 @@ ABIArgInfo *win64_classify(Regs *regs, Type *type, bool is_return, bool is_vecto
 		// => to main handling.
 	}
 	ByteSize size = type_size(type);
-	bool type_is_vector_to_pass_as_array = active_target.feature.pass_win64_simd_as_arrays && type_flat_is_vector(type);
+	bool type_is_vector_to_pass_as_array = compiler.build.feature.pass_win64_simd_as_arrays && type_flat_is_vector(type);
 	if (type_is_vector_to_pass_as_array || type_is_abi_aggregate(type))
 	{
 		// Not 1, 2, 4, 8? Pass indirect.

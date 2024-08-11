@@ -18,14 +18,14 @@ static inline void emit_modules(FILE *file)
 {
 
 	fputs("\t\"modules\": [\n", file);
-	FOREACH_IDX(i, Module *, module, global_context.module_list)
+	FOREACH_IDX(i, Module *, module, compiler.context.module_list)
 	{
 		if (i != 0) fputs(",\n", file);
 		PRINTF("\t\t\"%s\"", module->name->module);
 	}
 	fputs("\n\t],\n", file);
 	fputs("\t\"generic_modules\": [\n", file);
-	FOREACH_IDX(j, Module *, module, global_context.generic_module_list)
+	FOREACH_IDX(j, Module *, module, compiler.context.generic_module_list)
 	{
 		if (j != 0) fputs(",\n", file);
 		PRINTF("\t\t\"%s\"", module->name->module);
@@ -215,7 +215,7 @@ static inline void emit_types(FILE *file)
 	fputs("\t\"types\": {\n", file);
 	{
 		bool first = true;
-		FOREACH_DECL(Decl *type, global_context.module_list)
+		FOREACH_DECL(Decl *type, compiler.context.module_list)
 					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPEDEF) continue;
 					if (decl_is_hidden(type)) continue;
 					INERT_COMMA;
@@ -227,7 +227,7 @@ static inline void emit_types(FILE *file)
 	fputs("\t\"generic_types\": {\n", file);
 	{
 		bool first = true;
-		FOREACH_DECL(Decl *type, global_context.generic_module_list)
+		FOREACH_DECL(Decl *type, compiler.context.generic_module_list)
 					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPEDEF) continue;
 					if (decl_is_hidden(type)) continue;
 					INERT_COMMA;
@@ -242,7 +242,7 @@ static inline void emit_functions(FILE *file)
 	fputs("\t\"functions\": {\n", file);
 	{
 		bool first = true;
-		FOREACH_DECL(Decl *func, global_context.module_list)
+		FOREACH_DECL(Decl *func, compiler.context.module_list)
 					if (func->decl_kind != DECL_FUNC) continue;
 					if (decl_is_hidden(func)) continue;
 					INERT_COMMA;
@@ -254,7 +254,7 @@ static inline void emit_functions(FILE *file)
 	fputs("\t\"generic_functions\": {\n", file);
 	{
 		bool first = true;
-		FOREACH_DECL(Decl *func, global_context.generic_module_list)
+		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
 					if (func->decl_kind != DECL_FUNC) continue;
 					if (decl_is_hidden(func)) continue;
 					INERT_COMMA;

@@ -61,7 +61,7 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 	TypeSize size = type_size(type);
 
 	// CLANG: Android promotes char[<2>] to ushort, not uint
-	if (platform_target.environment_type == ENV_TYPE_ANDROID && size <= 2)
+	if (compiler.platform.environment_type == ENV_TYPE_ANDROID && size <= 2)
 	{
 		return abi_arg_new_direct_coerce_type(type_ushort);
 	}
@@ -92,7 +92,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	{
 		// Over 128 bits should be indirect, but
 		// we don't have that (yet?)
-		if (type_is_promotable_int_bool(type) && platform_target.aarch64.is_darwin_pcs)
+		if (type_is_promotable_int_bool(type) && compiler.platform.aarch64.is_darwin_pcs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
@@ -120,7 +120,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	{
 		// For RenderScript <= 16 needs to be coerced.
 		AlignSize alignment = type_abi_alignment(type);
-		if (platform_target.aarch64.is_aapcs)
+		if (compiler.platform.aarch64.is_aapcs)
 		{
 			alignment = alignment < 16 ? 8 : 16;
 		}
@@ -167,7 +167,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 
 	if (!type_is_abi_aggregate(type))
 	{
-		if (type_is_promotable_int_bool(type) && platform_target.aarch64.is_darwin_pcs)
+		if (type_is_promotable_int_bool(type) && compiler.platform.aarch64.is_darwin_pcs)
 		{
 			return abi_arg_new_direct_int_ext(type);
 		}
@@ -182,7 +182,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 	Type *base = NULL;
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members) &&
-		!(platform_target.arch == ARCH_TYPE_AARCH64_32 && variadic))
+		!(compiler.platform.arch == ARCH_TYPE_AARCH64_32 && variadic))
 	{
 		return abi_arg_new_direct();
 	}
@@ -194,7 +194,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 		// this is case is ignored here but needs to be added
 		// in case it is to be supported.
 
-		if (size <= 8 && !platform_target.big_endian)
+		if (size <= 8 && !compiler.platform.big_endian)
 		{
 			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
 		}

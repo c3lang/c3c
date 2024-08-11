@@ -66,7 +66,7 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 	{
 		LLVMContextSetDiagnosticHandler(context->context, &diagnostics_handler, context);
 	}
-	if (!active_target.emit_llvm && !active_target.test_output && !active_target.benchmark_output ) LLVMContextSetDiscardValueNames(context->context, true);
+	if (!compiler.build.emit_llvm && !compiler.build.test_output && !compiler.build.benchmark_output ) LLVMContextSetDiscardValueNames(context->context, true);
 	context->code_module = module;
 }
 
@@ -83,7 +83,7 @@ static void gencontext_destroy(GenContext *context)
 LLVMBuilderRef llvm_create_builder(GenContext *c)
 {
 	LLVMBuilderRef builder = LLVMCreateBuilderInContext(c->context);
-	LLVMBuilderSetFastMathFlags(builder, (FastMathOption)active_target.feature.fp_math);
+	LLVMBuilderSetFastMathFlags(builder, (FastMathOption)compiler.build.feature.fp_math);
 	return builder;
 }
 
@@ -166,7 +166,7 @@ static LLVMValueRef llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, cons
 
 void llvm_emit_constructors_and_destructors(GenContext *c)
 {
-	if (platform_target.object_format == OBJ_FORMAT_MACHO)
+	if (compiler.platform.object_format == OBJ_FORMAT_MACHO)
 	{
 
 		LLVMValueRef c3_dynamic = LLVMGetNamedGlobal(c->module, "$c3_dynamic");
@@ -616,8 +616,8 @@ static void gencontext_verify_ir(GenContext *context)
 static void gencontext_emit_object_file(GenContext *context)
 {
 	char *err = "";
-	DEBUG_LOG("Target: %s", platform_target.target_triple);
-	LLVMSetTarget(context->module, platform_target.target_triple);
+	DEBUG_LOG("Target: %s", compiler.platform.target_triple);
+	LLVMSetTarget(context->module, compiler.platform.target_triple);
 	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);
@@ -642,8 +642,8 @@ static void gencontext_emit_object_file(GenContext *context)
 static void llvm_emit_asm_file(GenContext *context)
 {
 	char *err = "";
-	DEBUG_LOG("Target: %s", platform_target.target_triple);
-	LLVMSetTarget(context->module, platform_target.target_triple);
+	DEBUG_LOG("Target: %s", compiler.platform.target_triple);
+	LLVMSetTarget(context->module, compiler.platform.target_triple);
 	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
 	LLVMSetDataLayout(context->module, layout);
 	LLVMDisposeMessage(layout);
@@ -852,7 +852,7 @@ static void llvm_codegen_setup()
 
 void llvm_set_comdat(GenContext *c, LLVMValueRef global)
 {
-	if (!platform_target.use_comdat) return;
+	if (!compiler.platform.use_comdat) return;
 	LLVMComdatRef comdat = LLVMGetOrInsertComdat(c->module, LLVMGetValueName(global));
 	LLVMSetComdatSelectionKind(comdat, LLVMAnyComdatSelectionKind);
 	LLVMSetComdat(global, comdat);
@@ -952,7 +952,7 @@ static inline void llvm_optimize(GenContext *c)
 #endif
 	LLVMOptLevels level = LLVM_O0;
 
-	switch (active_target.optsize)
+	switch (compiler.build.optsize)
 	{
 		case SIZE_OPTIMIZATION_SMALL:
 			level = LLVM_Os;
@@ -961,7 +961,7 @@ static inline void llvm_optimize(GenContext *c)
 			level = LLVM_Oz;
 			break;
 		default:
-			switch (active_target.optlevel)
+			switch (compiler.build.optlevel)
 			{
 				case OPTIMIZATION_NONE:
 				case OPTIMIZATION_NOT_SET:
@@ -981,14 +981,14 @@ static inline void llvm_optimize(GenContext *c)
 	}
 	LLVMPasses passes = {
 			.opt_level = level,
-			.should_verify = active_target.emit_llvm,
+			.should_verify = compiler.build.emit_llvm,
 			.should_debug = should_debug,
-			.is_kernel = active_target.kernel_build,
-			.opt.vectorize_loops = active_target.loop_vectorization == VECTORIZATION_ON,
-			.opt.slp_vectorize = active_target.slp_vectorization == VECTORIZATION_ON,
-			.opt.unroll_loops = active_target.unroll_loops == UNROLL_LOOPS_ON,
-			.opt.interleave_loops = active_target.unroll_loops == UNROLL_LOOPS_ON,
-			.opt.merge_functions = active_target.merge_functions == MERGE_FUNCTIONS_ON
+			.is_kernel = compiler.build.kernel_build,
+			.opt.vectorize_loops = compiler.build.loop_vectorization == VECTORIZATION_ON,
+			.opt.slp_vectorize = compiler.build.slp_vectorization == VECTORIZATION_ON,
+			.opt.unroll_loops = compiler.build.unroll_loops == UNROLL_LOOPS_ON,
+			.opt.interleave_loops = compiler.build.unroll_loops == UNROLL_LOOPS_ON,
+			.opt.merge_functions = compiler.build.merge_functions == MERGE_FUNCTIONS_ON
 	};
 	if (!llvm_run_passes(c->module, c->machine, &passes))
 	{
@@ -1002,20 +1002,20 @@ const char *llvm_codegen(void *context)
 	llvm_optimize(c);
 
 	// Serialize the LLVM IR, if requested, also verify the IR in this case
-	if (active_target.emit_llvm)
+	if (compiler.build.emit_llvm)
 	{
 		gencontext_print_llvm_ir(c);
 		gencontext_verify_ir(c);
 	}
 
 	const char *object_name = NULL;
-	if (active_target.emit_object_files)
+	if (compiler.build.emit_object_files)
 	{
 		gencontext_emit_object_file(c);
 		object_name = c->object_filename;
 	}
 
-	if (active_target.emit_asm)
+	if (compiler.build.emit_asm)
 	{
 		llvm_emit_asm_file(context);
 	}
@@ -1163,7 +1163,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.noreturn, -1);
 	}
-	if (decl->is_export && arch_is_wasm(platform_target.arch))
+	if (decl->is_export && arch_is_wasm(compiler.platform.arch))
 	{
 		if (c->code_module == decl->unit->module)
 		{
@@ -1171,7 +1171,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 			llvm_attribute_add_string(c, function, "wasm-export-name", scratch_buffer_to_string(), -1);
 		}
 	}
-	if (decl->is_extern && arch_is_wasm(platform_target.arch))
+	if (decl->is_extern && arch_is_wasm(compiler.platform.arch))
 	{
 		scratch_buffer_set_extern_decl_name(decl, true);
 		llvm_attribute_add_string(c, function, "wasm-import-name", scratch_buffer_to_string(), -1);
@@ -1209,7 +1209,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
-			if (decl->is_export && platform_target.os == OS_TYPE_WIN32 && !active_target.win.def)
+			if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32 && !compiler.build.win.def)
 			{
 				LLVMSetDLLStorageClass(decl->backend_ref, LLVMDLLExportStorageClass);
 			}
@@ -1230,7 +1230,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			}
 			llvm_append_function_attributes(c, decl);
-			if (decl->is_export && platform_target.os == OS_TYPE_WIN32  && !active_target.win.def && decl->name != kw_main && decl->name != kw_mainstub)
+			if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32  && !compiler.build.win.def && decl->name != kw_main && decl->name != kw_mainstub)
 			{
 				LLVMSetDLLStorageClass(backend_ref, LLVMDLLExportStorageClass);
 			}
@@ -1277,13 +1277,13 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 
 static void llvm_gen_test_main(GenContext *c)
 {
-	Decl *test_runner = global_context.test_func;
+	Decl *test_runner = compiler.context.test_func;
 	if (!test_runner)
 	{
 		error_exit("No test runner found.");
 	}
-	assert(!global_context.main && "Main should not be set if a test main is generated.");
-	global_context.main = test_runner;
+	assert(!compiler.context.main && "Main should not be set if a test main is generated.");
+	compiler.context.main = test_runner;
 	LLVMTypeRef cint = llvm_get_type(c, type_cint);
 	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
 	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
@@ -1304,7 +1304,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	Module *test_module = compiler_find_or_create_module(test_path, NULL);
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	active_target.debug_info = DEBUG_INFO_NONE;
+	compiler.build.debug_info = DEBUG_INFO_NONE;
 	gencontext_init(c, test_module, shared_context);
 	gencontext_begin_module(c);
 
@@ -1361,7 +1361,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
 
-	if (active_target.type == TARGET_TYPE_TEST)
+	if (compiler.build.type == TARGET_TYPE_TEST)
 	{
 		llvm_gen_test_main(c);
 	}
@@ -1376,13 +1376,13 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 
 static void llvm_gen_benchmark_main(GenContext *c)
 {
-	Decl *benchmark_runner = global_context.benchmark_func;
+	Decl *benchmark_runner = compiler.context.benchmark_func;
 	if (!benchmark_runner)
 	{
 		error_exit("No benchmark runner found.");
 	}
-	assert(!global_context.main && "Main should not be set if a benchmark main is generated.");
-	global_context.main = benchmark_runner;
+	assert(!compiler.context.main && "Main should not be set if a benchmark main is generated.");
+	compiler.context.main = benchmark_runner;
 	LLVMTypeRef cint = llvm_get_type(c, type_cint);
 	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
 	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
@@ -1403,7 +1403,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	active_target.debug_info = DEBUG_INFO_NONE;
+	compiler.build.debug_info = DEBUG_INFO_NONE;
 	gencontext_init(c, benchmark_module, shared_context);
 	gencontext_begin_module(c);
 
@@ -1460,7 +1460,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
 
-	if (active_target.type == TARGET_TYPE_BENCHMARK)
+	if (compiler.build.type == TARGET_TYPE_BENCHMARK)
 	{
 		llvm_gen_benchmark_main(c);
 	}
@@ -1478,7 +1478,7 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	if (!module_count) return NULL;
 	GenContext **gen_contexts = NULL;
 	llvm_codegen_setup();
-	if (active_target.single_module == SINGLE_MODULE_ON)
+	if (compiler.build.single_module == SINGLE_MODULE_ON)
 	{
 		GenContext *first_context;
 		unsigned first_element;
@@ -1491,11 +1491,11 @@ void **llvm_gen(Module** modules, unsigned module_count)
 		}
 		if (!gen_contexts) return NULL;
 		GenContext *first = gen_contexts[0];
-		if (active_target.benchmarking)
+		if (compiler.build.benchmarking)
 		{
 			vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, context));
 		}
-		if (active_target.testing)
+		if (compiler.build.testing)
 		{
 			vec_add(gen_contexts, llvm_gen_tests(modules, module_count, context));
 		}
@@ -1515,11 +1515,11 @@ void **llvm_gen(Module** modules, unsigned module_count)
 			if (!result) continue;
 			vec_add(gen_contexts, result);
 	}
-	if (active_target.benchmarking)
+	if (compiler.build.benchmarking)
 	{
 		vec_add(gen_contexts, llvm_gen_benchmarks(modules, module_count, NULL));
 	}
-	if (active_target.testing)
+	if (compiler.build.testing)
 	{
 		vec_add(gen_contexts, llvm_gen_tests(modules, module_count, NULL));
 	}
@@ -1556,7 +1556,7 @@ static bool module_is_stdlib(Module *module)
 static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context)
 {
 	if (!vec_size(module->units)) return NULL;
-	if (active_target.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) return NULL;
+	if (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) return NULL;
 
 	assert(intrinsics_setup);
 
@@ -1596,12 +1596,12 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			if (only_used && !func->is_live) continue;
 			if (func->func_decl.attr_test)
 			{
-				if (!active_target.testing) continue;
+				if (!compiler.build.testing) continue;
 				vec_add(module->tests, func);
 			}
 			if (func->func_decl.attr_benchmark)
 			{
-				if (!active_target.benchmarking) continue;
+				if (!compiler.build.benchmarking) continue;
 				vec_add(module->benchmarks, func);
 			}
 			llvm_emit_function_decl(gen_context, func);
@@ -1615,7 +1615,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, func);
 		}
 
-		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
+		if (compiler.build.type != TARGET_TYPE_TEST && compiler.build.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, unit->main_function);
@@ -1646,8 +1646,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 
 		FOREACH(Decl *, decl, unit->functions)
 		{
-			if (decl->func_decl.attr_test && !active_target.testing) continue;
-			if (decl->func_decl.attr_benchmark && !active_target.benchmarking) continue;
+			if (decl->func_decl.attr_test && !compiler.build.testing) continue;
+			if (decl->func_decl.attr_benchmark && !compiler.build.benchmarking) continue;
 			if (only_used && !decl->is_live) continue;
 			if (decl->func_decl.body)
 			{
@@ -1663,7 +1663,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_body(gen_context, func);
 		}
 
-		if (active_target.type != TARGET_TYPE_TEST && active_target.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
+		if (compiler.build.type != TARGET_TYPE_TEST && compiler.build.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
 			llvm_emit_function_body(gen_context, unit->main_function);
@@ -1692,7 +1692,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	}
 
 	// If it's in test or benchmark, then we want to serialize the IR before it is optimized.
-	if (active_target.test_output || active_target.benchmark_output)
+	if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
 		gencontext_print_llvm_ir(gen_context);
 		gencontext_verify_ir(gen_context);

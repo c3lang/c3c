@@ -139,7 +139,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	AutoVectorization slp_vectorization = VECTORIZATION_OFF;
 	MergeFunctions merge_functions = MERGE_FUNCTIONS_OFF;
 	ShowBacktrace show_backtrace = SHOW_BACKTRACE_ON;
-	bool single_module = false;
+	SingleModule single_module = SINGLE_MODULE_OFF;
 	FpOpt fp_opt = FP_STRICT;
 	switch (level)
 	{
@@ -163,7 +163,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			merge_functions = MERGE_FUNCTIONS_ON;
 			optlevel = OPTIMIZATION_MORE;
 			safety_level = SAFETY_OFF;
-			single_module = true;
+			single_module = SINGLE_MODULE_ON;
 			slp_vectorization = VECTORIZATION_ON;
 			unroll_loops = UNROLL_LOOPS_ON;
 			vectorization = VECTORIZATION_ON;
@@ -174,7 +174,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			optlevel = OPTIMIZATION_AGGRESSIVE;
 			panic_level = PANIC_OFF;
 			safety_level = SAFETY_OFF;
-			single_module = true;
+			single_module = SINGLE_MODULE_ON;
 			slp_vectorization = VECTORIZATION_ON;
 			unroll_loops = UNROLL_LOOPS_ON;
 			vectorization = VECTORIZATION_ON;
@@ -185,7 +185,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			optlevel = OPTIMIZATION_AGGRESSIVE;
 			panic_level = PANIC_OFF;
 			safety_level = SAFETY_OFF;
-			single_module = true;
+			single_module = SINGLE_MODULE_ON;
 			slp_vectorization = VECTORIZATION_ON;
 			unroll_loops = UNROLL_LOOPS_ON;
 			vectorization = VECTORIZATION_ON;
@@ -207,7 +207,7 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 			panic_level = PANIC_OFF;
 			safety_level = SAFETY_OFF;
 			show_backtrace = SHOW_BACKTRACE_OFF;
-			single_module = true;
+			single_module = SINGLE_MODULE_ON;
 			slp_vectorization = VECTORIZATION_ON;
 			vectorization = VECTORIZATION_OFF;
 			break;
@@ -215,19 +215,21 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 		default:
 			UNREACHABLE
 	}
-	if (target->optsize == SIZE_OPTIMIZATION_NOT_SET) target->optsize = optsize;
-	if (target->optlevel == OPTIMIZATION_NOT_SET) target->optlevel = optlevel;
-	if (target->show_backtrace == SHOW_BACKTRACE_NOT_SET) target->show_backtrace = show_backtrace;
-	if (target->feature.safe_mode == SAFETY_NOT_SET) target->feature.safe_mode = safety_level;
-	if (target->feature.panic_level == PANIC_NOT_SET) target->feature.panic_level = panic_level;
-	if (target->debug_info == DEBUG_INFO_NOT_SET) target->debug_info = debug;
-	if (target->feature.fp_math == FP_DEFAULT) target->feature.fp_math = fp_opt;
-	if (target->single_module == SINGLE_MODULE_NOT_SET && single_module) target->single_module = SINGLE_MODULE_ON;
-	if (target->unroll_loops == UNROLL_LOOPS_NOT_SET) target->unroll_loops = unroll_loops;
-	if (target->merge_functions == MERGE_FUNCTIONS_NOT_SET) target->merge_functions = merge_functions;
-	if (target->slp_vectorization == VECTORIZATION_NOT_SET) target->slp_vectorization = slp_vectorization;
-	if (target->loop_vectorization == VECTORIZATION_NOT_SET) target->loop_vectorization = vectorization;
+	COPY_IF_DEFAULT(target->optsize, optsize);
+	COPY_IF_DEFAULT(target->optlevel, optlevel);
+	COPY_IF_DEFAULT(target->show_backtrace, show_backtrace);
+	COPY_IF_DEFAULT(target->feature.safe_mode, safety_level);
+	COPY_IF_DEFAULT(target->feature.panic_level, panic_level);
+	COPY_IF_DEFAULT(target->debug_info, debug);
+	COPY_IF_DEFAULT(target->feature.fp_math, fp_opt);
+	COPY_IF_DEFAULT(target->unroll_loops, unroll_loops);
+	COPY_IF_DEFAULT(target->merge_functions, merge_functions);
+	COPY_IF_DEFAULT(target->slp_vectorization, slp_vectorization);
+	COPY_IF_DEFAULT(target->loop_vectorization, vectorization);
+	COPY_IF_DEFAULT(target->single_module, single_module);
 }
+
+
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
 	switch (options->command)
@@ -327,15 +329,15 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->silence_deprecation) target->silence_deprecation = options->silence_deprecation;
 	target->print_linking = options->print_linking;
 
-	for (int i = 0; i < options->linker_arg_count; i++)
+	for (size_t i = 0; i < options->linker_arg_count; i++)
 	{
 		vec_add(target->link_args, options->linker_args[i]);
 	}
-	for (int i = 0; i < options->linker_lib_dir_count; i++)
+	for (size_t i = 0; i < options->linker_lib_dir_count; i++)
 	{
 		vec_add(target->linker_libdirs, options->linker_lib_dir[i]);
 	}
-	for (int i = 0; i < options->linker_lib_count; i++)
+	for (size_t i = 0; i < options->linker_lib_count; i++)
 	{
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
@@ -369,10 +371,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
 	if (options->linuxpaths.crt) target->linuxpaths.crt = options->linuxpaths.crt;
 	if (options->linuxpaths.crtbegin) target->linuxpaths.crtbegin = options->linuxpaths.crtbegin;
-	if (options->fp_math != FP_DEFAULT)
-	{
-		target->feature.fp_math = options->fp_math;
-	}
+	if (options->fp_math != FP_DEFAULT) target->feature.fp_math = options->fp_math;
 	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
 	{
 		target->feature.x86_vector_capability = options->x86_vector_capability;
