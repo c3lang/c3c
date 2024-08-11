@@ -1,16 +1,39 @@
+ARG UBUNTU_VERSION=22.04
+FROM ubuntu:${UBUNTU_VERSION}
 
-ARG UBUNTU_VERSION
-FROM ubuntu:$UBUNTU_VERSION
+ARG LLVM_VERSION
+ENV LLVM_DEV_VERSION=20
 
-ARG DEPS
+RUN apt-get update && apt-get install -y wget gnupg software-properties-common cmake zlib1g zlib1g-dev python3 ninja-build curl g++ && \
+    wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | apt-key add - && \
+    if [ "${LLVM_VERSION}" -lt 18 ]; then \
+        add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${LLVM_VERSION} main" && \
+        apt-get update && \
+        apt-get install -y -t llvm-toolchain-focal-${LLVM_VERSION} \
+          libpolly-${LLVM_VERSION}-dev \
+          clang-${LLVM_VERSION} llvm-${LLVM_VERSION} llvm-${LLVM_VERSION}-dev \
+          lld-${LLVM_VERSION} liblld-${LLVM_VERSION}-dev libmlir-${LLVM_VERSION} \
+          libmlir-${LLVM_VERSION}-dev mlir-${LLVM_VERSION}-tools; \
+    elif [ "${LLVM_VERSION}" -lt "${LLVM_DEV_VERSION}" ]; then \
+        add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${LLVM_VERSION} main" && \
+        apt-get update && \
+        apt-get install -y -t llvm-toolchain-focal-${LLVM_VERSION} \
+          libpolly-${LLVM_VERSION}-dev \
+          clang-${LLVM_VERSION} clang++-${LLVM_VERSION} llvm-${LLVM_VERSION} llvm-${LLVM_VERSION}-dev \
+          lld-${LLVM_VERSION} liblld-${LLVM_VERSION}-dev; \
+    else \
+        add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main" && \
+        apt-get update && \
+        apt-get install -y -t llvm-toolchain-focal \
+          libpolly-${LLVM_VERSION}-dev \
+          clang-${LLVM_VERSION} llvm-${LLVM_VERSION} llvm-${LLVM_VERSION}-dev \
+          lld-${LLVM_VERSION} liblld-${LLVM_VERSION}-dev; \
+    fi && \
+    rm -rf /var/lib/apt/lists/*
 
-RUN export DEBIAN_FRONTEND=noninteractive && export TERM=xterm && apt-get update && apt-get install -y build-essential cmake zlib1g zlib1g-dev  \
-        $DEPS && \
-	rm -rf /var/lib/apt/lists/*
-
-ARG GID=1000
-ARG UID=1000
-
-RUN groupadd -o --gid=$GID c3c && useradd --gid=$GID --uid=$GID --create-home --shell /bin/bash c3c
+RUN groupadd -g 1337 c3c && \
+    useradd -m -u 1337 -g c3c c3c
 
 USER c3c
+
+WORKDIR /home/c3c
