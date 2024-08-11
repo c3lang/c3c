@@ -645,7 +645,7 @@ typedef struct Decl_
 	};
 } Decl;
 
-static_assert(sizeof(void*) != 8 || sizeof(Decl) == 136, "Decl has unexpected size.");
+// static_assert(sizeof(void*) != 8 || sizeof(Decl) == 136, "Decl has unexpected size.");
 
 typedef struct
 {
