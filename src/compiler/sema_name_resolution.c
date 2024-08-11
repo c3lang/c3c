@@ -66,6 +66,15 @@ void sema_decl_stack_push(Decl *decl)
 	compiler.context.decl_stack_top = current;
 }
 
+static void add_interface_to_decl_stack(Decl *decl)
+{
+	FOREACH(TypeInfo *, parent_interface, decl->interfaces)
+	{
+		add_interface_to_decl_stack(parent_interface->type->decl);
+	}
+	FOREACH(Decl *, interface, decl->interface_methods) sema_decl_stack_push(interface);
+}
+
 static void add_members_to_decl_stack(Decl *decl)
 {
 	FOREACH(Decl *, func, decl->methods)
@@ -84,14 +93,7 @@ static void add_members_to_decl_stack(Decl *decl)
 	}
 	if (decl->decl_kind == DECL_INTERFACE)
 	{
-		FOREACH(TypeInfo *, parent_interface, decl->interfaces)
-		{
-			FOREACH(Decl *, interface, parent_interface->type->decl->interface_methods)
-			{
-				sema_decl_stack_push(interface);
-			}
-		}
-		FOREACH(Decl *, interface, decl->interface_methods) sema_decl_stack_push(interface);
+		add_interface_to_decl_stack(decl);
 	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{

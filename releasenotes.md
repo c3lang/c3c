@@ -62,6 +62,7 @@
 - Fix issues when checking methods and interfaces hasn't been resolved yet.
 - Fix Vec2.angle
 - Update to libc::setjmp on Win32, to do no stack unwinding.
+- Recursively follow interfaces when looking up method.
 
 ### Stdlib changes
 
