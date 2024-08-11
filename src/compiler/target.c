@@ -1661,10 +1661,11 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 				return ARCH_TYPE_X86_64 == arch ? RELOC_SMALL_PIC : RELOC_NONE;
 			case OS_TYPE_WASI:
 				return RELOC_NONE;
+			case OS_TYPE_LINUX:
+				return RELOC_SMALL_PIC;
 			case OS_TYPE_UNKNOWN:
 			case OS_TYPE_NONE:
 			case OS_TYPE_FREE_BSD:
-			case OS_TYPE_LINUX:
 			case OS_TYPE_NETBSD:
 				switch (arch)
 				{
@@ -1688,13 +1689,8 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 		case OS_TYPE_WASI:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_NETBSD:
-			return RELOC_SMALL_PIE;
 		case OS_TYPE_LINUX:
-			if (env == ENV_TYPE_MUSLEABI || env == ENV_TYPE_MUSLEABIHF || env == ENV_TYPE_ANDROID)
-			{
-				return RELOC_SMALL_PIE;
-			}
-			return RELOC_NONE;
+			return RELOC_SMALL_PIE;
 		case OS_UNSUPPORTED:
 			UNREACHABLE
 	}
@@ -2021,9 +2017,9 @@ void target_setup(BuildTarget *target)
 																 compiler.platform.arch,
 																 compiler.platform.environment_type);
 	compiler.platform.reloc_model = arch_os_reloc_default(compiler.platform.arch,
-														compiler.platform.os,
-														compiler.platform.environment_type,
-														compiler.build.type != TARGET_TYPE_EXECUTABLE);
+	                                                      compiler.platform.os,
+	                                                      compiler.platform.environment_type,
+	                                                      compiler.build.type != TARGET_TYPE_EXECUTABLE);
 	compiler.platform.pic_required = arch_os_pic_default_forced(compiler.platform.arch, compiler.platform.os);
 	// Override PIC, but only if the platform does not require PIC
 	if (target->reloc_model != RELOC_DEFAULT
