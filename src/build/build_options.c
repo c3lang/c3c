@@ -455,7 +455,13 @@ static void print_all_targets(void)
 
 static void print_version(void)
 {
-	PRINTF("C3 Compiler Version:       %s%s", COMPILER_VERSION, PRERELEASE ? " (prerelease)" : "");
+	static const char *BUILD_DATE = __DATE__;
+	static const char *BUILD_TIME = __TIME__;
+#if	PRERELEASE
+	PRINTF("C3 Compiler Version:       %s (Pre-release, %s %s)", COMPILER_VERSION, BUILD_DATE, BUILD_TIME);
+#else
+	PRINTF("C3 Compiler Version:       %s", COMPILER_VERSION);
+#endif
 	PRINTF("Installed directory:       %s", find_executable_path());
 	PRINTF("LLVM version:              %s", llvm_version);
 	PRINTF("LLVM default target:       %s", llvm_target);
