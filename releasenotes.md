@@ -59,6 +59,7 @@
 - Bitstruct members can now have attributes.
 - `%` analysis was incorrect for int vectors.
 - When resolving inherited interfaces, the interface type wasn't always resolved.
+- Fix issues when checking methods and interfaces hasn't been resolved yet.
 
 ### Stdlib changes
 

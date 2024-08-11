@@ -932,6 +932,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 			SEMA_ERROR(method, "Recursive definition of method, this is not allowed.");
 			return decl_poison(method);
 		}
+		method->unit = decl->unit;
 		method->resolve_status = RESOLVE_RUNNING;
 		if (method->decl_kind != DECL_FUNC)
 		{
@@ -2022,6 +2023,7 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
  */
 static Decl *sema_interface_method_by_name(SemaContext *context, Decl *interface, const char *name)
 {
+	if (!sema_analyse_decl(context, interface)) return poisoned_decl;
 	FOREACH(Decl *, method, interface->interface_methods)
 	{
 		if (method->name == name) return method;
@@ -2075,6 +2077,7 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
 		Decl *match = sema_interface_method_by_name(context, interface, name);
 		if (!decl_ok(match)) return poisoned_decl;
 		if (!match) continue;
+		assert(interface->resolve_status == RESOLVE_DONE);
 
 		// Is there a already a match?
 		if (first_match)
@@ -2230,6 +2233,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		// If it's implementing a method, check it.
 		if (implemented_method)
 		{
+			assert(implemented_method->resolve_status == RESOLVE_DONE);
 			if (!sema_compare_method_with_interface(context, decl, implemented_method)) return false;
 			decl->func_decl.interface_method = declid(implemented_method);
 		}
