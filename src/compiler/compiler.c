@@ -1072,7 +1072,7 @@ void compile()
 {
 	symtab_init(compiler.build.symtab_size);
 	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, 3, true);
-	if (compiler.build.testing)
+	if (compiler.build.testing && compiler.build.test_source_dirs)
 	{
 		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, 3, true);
 		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);

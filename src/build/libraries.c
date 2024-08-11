@@ -71,8 +71,7 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object)
 {
-	target->link_flags = target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
-
+	target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
 	if (!target->link_flags)
 	{
 		target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);

@@ -5,6 +5,7 @@
 
 #include "../version.h"
 #include "../utils/lib.h"
+#include <stdint.h>
 
 #define MAX_BUILD_LIB_DIRS 1024
 #define MAX_COMMAND_LINE_FILES 2048
@@ -617,7 +618,7 @@ typedef struct
 } BuildTarget;
 
 static const char *x86_cpu_set[8] = {
-	[X86CPU_BASELINE] = "baseline",
+	[X86CPU_BASELINE] = "baseline", // NOLINT
 	[X86CPU_SSSE3] = "ssse3",
 	[X86CPU_SSE4] = "sse4",
 	[X86CPU_AVX1] = "avx1",
