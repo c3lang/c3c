@@ -323,7 +323,7 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 
 #### Compiling on Void Linux
 
-1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm17 lld17-devel lld17-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
+1. As root, ensure that all project dependencies are installed: `xbps-install git cmake llvm17 lld17-devel libcurl-devel ncurses-devel zlib-devel libzstd-devel libxml2-devel`
 2. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
     - If you only need the latest commit, you may want to make a shallow clone instead: `git clone https://github.com/c3lang/c3c.git --depth=1`
 3. Enter the directory: `cd c3c`
