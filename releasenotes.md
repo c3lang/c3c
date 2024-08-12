@@ -66,6 +66,7 @@
 - Recursively follow interfaces when looking up method.
 - Int128 alignment change in LLVM fixed on x64.
 - Fix interface lazy resolution errors.
+- Interface resolution when part of generics #1348.
 
 ### Stdlib changes
 

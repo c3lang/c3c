@@ -68,9 +68,10 @@ void sema_decl_stack_push(Decl *decl)
 
 static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 {
+	if (!sema_analyse_decl(context, decl)) return false;
 	FOREACH(TypeInfo *, parent_interface, decl->interfaces)
 	{
-		if (!sema_resolve_type_info(context, parent_interface, RESOLVE_TYPE_DEFAULT)) return false;
+		assert(parent_interface->resolve_status == RESOLVE_DONE);
 		Decl *inf = parent_interface->type->decl;
 		if (!sema_analyse_decl(context, inf)) return false;
 		add_interface_to_decl_stack(context, inf);
@@ -97,7 +98,12 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl)
 	}
 	if (decl->decl_kind == DECL_INTERFACE)
 	{
-		if (!add_interface_to_decl_stack(context, decl)) return false;
+		FOREACH(TypeInfo *, parent_interface, decl->interfaces)
+		{
+			if (!sema_resolve_type_info(context, parent_interface, RESOLVE_TYPE_DEFAULT)) return false;
+			Decl *inf = parent_interface->type->decl;
+			if (!add_interface_to_decl_stack(context, inf)) return false;
+		}
 	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{
