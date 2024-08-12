@@ -419,22 +419,6 @@ static void project_add_target(Project *project, BuildTarget *default_target,  J
 static void project_add_targets(Project *project, JSONObject *project_data)
 {
 	assert(project_data->type == J_OBJECT);
-	static const char* targets[6] = {
-			[TARGET_TYPE_EXECUTABLE] = "executable",
-			[TARGET_TYPE_STATIC_LIB] = "static-lib",
-			[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
-			[TARGET_TYPE_BENCHMARK] = "benchmark",
-			[TARGET_TYPE_TEST] = "test",
-			[TARGET_TYPE_OBJECT_FILES] = "object-files"
-	};
-	static const char *target_desc[6] = {
-			[TARGET_TYPE_EXECUTABLE] = "Executable",
-			[TARGET_TYPE_STATIC_LIB] = "Static library",
-			[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
-			[TARGET_TYPE_BENCHMARK] = "benchmark suite",
-			[TARGET_TYPE_TEST] = "test suite",
-			[TARGET_TYPE_OBJECT_FILES] = "object files"
-	};
 
 	BuildTarget default_target = default_build_target;
 	load_into_build_target(project_data, NULL, &default_target);

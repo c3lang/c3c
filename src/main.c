@@ -1,8 +1,9 @@
-#include <compiler_tests/benchmark.h>
-#include "compiler/compiler.h"
 #include "build/build.h"
+#include "compiler/compiler.h"
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
+#include <compiler_tests/benchmark.h>
+
 
 bool debug_log = false;
 bool debug_stats = false;
@@ -34,7 +35,8 @@ int main_real(int argc, const char *argv[])
 	if (result)
 	{
 		cleanup();
-		if (result == COMPILER_SUCCESS_EXIT) result = EXIT_SUCCESS;
+		if (result == COMPILER_SUCCESS_EXIT)
+			result = EXIT_SUCCESS;
 		return result;
 	}
 
@@ -45,7 +47,8 @@ int main_real(int argc, const char *argv[])
 		if (str_eq(argv[i], "--max-mem") && i < argc - 1)
 		{
 			max_mem = atoll(argv[i + 1]);
-			if (max_mem) max_mem = next_highest_power_of_2(max_mem);
+			if (max_mem)
+				max_mem = next_highest_power_of_2(max_mem);
 			break;
 		}
 	}
@@ -60,56 +63,59 @@ int main_real(int argc, const char *argv[])
 
 	switch (build_options.command)
 	{
-		case COMMAND_PRINT_SYNTAX:
-			print_syntax(&build_options);
+	case COMMAND_PRINT_SYNTAX:
+		print_syntax(&build_options);
+		break;
+	case COMMAND_INIT:
+		create_project(&build_options);
+		break;
+	case COMMAND_INIT_LIB:
+		create_library(&build_options);
+		break;
+	case COMMAND_UNIT_TEST:
+		compiler_tests();
+		break;
+	case COMMAND_GENERATE_HEADERS:
+	case COMMAND_COMPILE:
+	case COMMAND_COMPILE_ONLY:
+	case COMMAND_COMPILE_RUN:
+	case COMMAND_DYNAMIC_LIB:
+	case COMMAND_STATIC_LIB:
+	case COMMAND_COMPILE_BENCHMARK:
+	case COMMAND_COMPILE_TEST:
+		compile_target(&build_options);
+		break;
+	case COMMAND_CLEAN:
+		compile_clean(&build_options);
+		break;
+	case COMMAND_VENDOR_FETCH:
+		vendor_fetch(&build_options);
+		break;
+	case COMMAND_CLEAN_RUN:
+	case COMMAND_BUILD:
+	case COMMAND_RUN:
+	case COMMAND_DIST:
+	case COMMAND_DOCS:
+	case COMMAND_BENCH:
+	case COMMAND_BENCHMARK:
+	case COMMAND_TEST:
+		compile_file_list(&build_options);
+		break;
+	case COMMAND_PROJECT:
+		switch (build_options.project_options.command)
+		{
+		case SUBCOMMAND_VIEW:
+			view_project(&build_options);
 			break;
-		case COMMAND_INIT:
-			create_project(&build_options);
+		case SUBCOMMAND_ADD:
+			add_target_project(&build_options);
 			break;
-		case COMMAND_INIT_LIB:
-			create_library(&build_options);
+		case SUBCOMMAND_MISSING:
 			break;
-		case COMMAND_UNIT_TEST:
-			compiler_tests();
-			break;
-		case COMMAND_GENERATE_HEADERS:
-		case COMMAND_COMPILE:
-		case COMMAND_COMPILE_ONLY:
-		case COMMAND_COMPILE_RUN:
-		case COMMAND_DYNAMIC_LIB:
-		case COMMAND_STATIC_LIB:
-		case COMMAND_COMPILE_BENCHMARK:
-		case COMMAND_COMPILE_TEST:
-			compile_target(&build_options);
-			break;
-		case COMMAND_CLEAN:
-			compile_clean(&build_options);
-			break;
-		case COMMAND_VENDOR_FETCH:
-			vendor_fetch(&build_options);
-			break;
-		case COMMAND_CLEAN_RUN:
-		case COMMAND_BUILD:
-		case COMMAND_RUN:
-		case COMMAND_DIST:
-		case COMMAND_DOCS:
-		case COMMAND_BENCH:
-		case COMMAND_BENCHMARK:
-		case COMMAND_TEST:
-			compile_file_list(&build_options);
-			break;
-		case COMMAND_PROJECT:
-			switch (build_options.subcommand) 
-			{
-				case SUBCOMMAND_VIEW:
-					view_project(&build_options);
-					break;
-				case SUBCOMMAND_MISSING:
-					UNREACHABLE
-			}
-			break;
-		case COMMAND_MISSING:
-			UNREACHABLE
+		}
+		break;
+	case COMMAND_MISSING:
+		UNREACHABLE
 	}
 
 	symtab_destroy();
@@ -121,7 +127,7 @@ int main_real(int argc, const char *argv[])
 
 int wmain(int argc, const uint16_t *argv[])
 {
-	char** args = malloc(sizeof(void*) * (unsigned)argc);
+	char **args = malloc(sizeof(void *) * (unsigned)argc);
 	for (unsigned i = 0; i < (unsigned)argc; i++)
 	{
 		args[i] = win_utf16to8(argv[i]);
@@ -131,9 +137,6 @@ int wmain(int argc, const uint16_t *argv[])
 
 #else
 
-int main(int argc, const char *argv[])
-{
-	return main_real(argc, argv);
-}
+int main(int argc, const char *argv[]) { return main_real(argc, argv); }
 
 #endif

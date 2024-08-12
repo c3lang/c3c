@@ -94,6 +94,7 @@ const char **get_string_array(const char *file, const char *category, JSONObject
 	for (unsigned i = 0; i < value->array_len; i++)
 	{
 		JSONObject *val = value->elements[i];
+		if (val->type == J_COMMENT_LINE) continue;
 		if (val->type != J_STRING) goto NOT_ARRAY;
 		vec_add(values, val->str);
 	}
@@ -178,6 +179,17 @@ int get_valid_string_setting(const char *file, const char *target, JSONObject *j
 		error_exit("In file '%s': '%s' had an invalid value for '%s', expected %s", file, target, key, expected);
 	}
 	error_exit("In file '%s': Invalid value for '%s', expected %s", file, key, expected);
+}
+
+int get_valid_enum_from_string(const char *str, const char *target, const char **values, int count, const char *expected)
+{
+	int res = str_findlist(str, count, values);
+	if (res >= 0) return res;
+	if (target)
+	{
+		error_exit("'%s' had an invalid value, expected %s", target, expected);
+	}
+	error_exit("Invalid value, expected %s", expected);
 }
 
 long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory)
