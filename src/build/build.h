@@ -100,7 +100,12 @@ typedef enum
 	LINKER_TYPE_CUSTOM = 2,
 } LinkerType;
 
-typedef enum { TRUST_NONE, TRUST_INCLUDE, TRUST_FULL } TrustLevel;
+typedef enum
+{
+	TRUST_NONE,
+	TRUST_INCLUDE,
+	TRUST_FULL
+} TrustLevel;
 
 typedef enum
 {
@@ -344,9 +349,7 @@ typedef enum
 	ARCH_OS_TARGET_LAST = WINDOWS_X64
 } ArchOsTarget;
 
-#define ANY_WINDOWS_ARCH_OS                                                    \
-  WINDOWS_AARCH64 : case WINDOWS_X64:                                          \
-  case MINGW_X64
+#define ANY_WINDOWS_ARCH_OS WINDOWS_AARCH64: case WINDOWS_X64: case MINGW_X64
 
 typedef enum
 {

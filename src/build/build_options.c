@@ -205,7 +205,10 @@ static const char *check_dir(const char *path)
 	return path;
 }
 
-static inline bool at_end() { return arg_index == arg_count - 1; }
+static inline bool at_end()
+{
+	return arg_index == arg_count - 1;
+}
 
 static inline const char *next_arg()
 {
@@ -214,7 +217,10 @@ static inline const char *next_arg()
 	return current_arg;
 }
 
-static inline bool next_is_opt() { return args[arg_index + 1][0] == '-'; }
+static inline bool next_is_opt()
+{
+	return args[arg_index + 1][0] == '-';
+}
 
 INLINE bool match_longopt(const char *name)
 {
@@ -283,7 +289,6 @@ static void project_usage()
 
 static void parse_project_subcommand(BuildOptions *options)
 {
-
 	if (arg_match("view"))
 	{
 		options->project_options.command = SUBCOMMAND_VIEW;
@@ -293,14 +298,10 @@ static void parse_project_subcommand(BuildOptions *options)
 	{
 		options->project_options.command = SUBCOMMAND_ADD;
 
-		if (at_end() || next_is_opt())
-			error_exit("Expected a target name");
-
+		if (at_end() || next_is_opt()) error_exit("Expected a target name");
 		options->project_options.target_name = next_arg();
 
-		if (at_end() || next_is_opt())
-			error_exit("Expected a target type like 'executable' or 'static-lib'");
-
+		if (at_end() || next_is_opt()) error_exit("Expected a target type like 'executable' or 'static-lib'");
 		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", targets, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 
 		return;
@@ -328,16 +329,14 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("init"))
 	{
 		options->command = COMMAND_INIT;
-		if (at_end() || next_is_opt())
-			error_exit("Expected a project name after init");
+		if (at_end() || next_is_opt()) error_exit("Expected a project name after init");
 		options->project_name = next_arg();
 		return;
 	}
 	if (arg_match("init-lib"))
 	{
 		options->command = COMMAND_INIT_LIB;
-		if (at_end() || next_is_opt())
-			error_exit("Expected a library name after init");
+		if (at_end() || next_is_opt()) error_exit("Expected a library name after init");
 		options->project_name = next_arg();
 		return;
 	}

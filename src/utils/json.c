@@ -21,38 +21,38 @@ static inline void json_skip_whitespace(JsonParser *parser)
 	RETRY:
 		switch (parser->current[0])
 		{
-		case '/':
-			c = parser->current[1];
-			if (c == '/')
-			{
-				parser->current++;
-				while ((c = (++parser->current)[0]) && c != '\n') { }
-				goto RETRY;
-			}
-			if (c == '*')
-			{
-				parser->current++;
-				while ((c = (++parser->current)[0]))
+			case '/':
+				c = parser->current[1];
+				if (c == '/')
 				{
-					if (c == '*' && parser->current[1] == '/')
-					{
-						parser->current += 2;
-						goto RETRY;
-					}
+					parser->current++;
+					while ((c = (++parser->current)[0]) && c != '\n') { }
+					goto RETRY;
 				}
-				goto RETRY;
-			}
-			return;
-		case '\n':
-			parser->line++;
-		case '\r':
-		case ' ':
-		case '\v':
-		case '\t':
-			parser->current++;
-			continue;
-		default:
-			return;
+				if (c == '*')
+				{
+					parser->current++;
+					while ((c = (++parser->current)[0]))
+					{
+						if (c == '*' && parser->current[1] == '/')
+						{
+							parser->current += 2;
+							goto RETRY;
+						}
+					}
+					goto RETRY;
+				}
+				return;
+			case '\n':
+				parser->line++;
+			case '\r':
+			case ' ':
+			case '\v':
+			case '\t':
+				parser->current++;
+				continue;
+			default:
+				return;
 		}
 	}
 }
@@ -136,42 +136,42 @@ static void json_parse_string(JsonParser *parser)
 		c = parser->current++[0];
 		switch (c)
 		{
-		case '\\':
-		case '"':
-		case '/':
-			break;
-		case 'b':
-			c = '\b';
-			break;
-		case 'n':
-			c = '\n';
-			break;
-		case 'f':
-			c = '\f';
-			break;
-		case 'r':
-			c = '\r';
-			break;
-		case 't':
-			c = '\t';
-			break;
-		case 'u':
-		{
-			char u1 = parser->current++[0];
-			char u2 = parser->current++[0];
-			char u3 = parser->current++[0];
-			char u4 = parser->current++[0];
-			if (!char_is_hex(u1) || !char_is_hex(u2) || !char_is_hex(u3) || !char_is_hex(u4))
+			case '\\':
+			case '"':
+			case '/':
+				break;
+			case 'b':
+				c = '\b';
+				break;
+			case 'n':
+				c = '\n';
+				break;
+			case 'f':
+				c = '\f';
+				break;
+			case 'r':
+				c = '\r';
+				break;
+			case 't':
+				c = '\t';
+				break;
+			case 'u':
 			{
-				json_error(parser, "Invalid hex in \\u escape sequence.");
-				return;
+				char u1 = parser->current++[0];
+				char u2 = parser->current++[0];
+				char u3 = parser->current++[0];
+				char u4 = parser->current++[0];
+				if (!char_is_hex(u1) || !char_is_hex(u2) || !char_is_hex(u3) || !char_is_hex(u4))
+				{
+					json_error(parser, "Invalid hex in \\u escape sequence.");
+					return;
+				}
+				c = (char_hex_to_nibble(u1) << 12) + (char_hex_to_nibble(u2) << 8) + (char_hex_to_nibble(u3) << 4) + char_hex_to_nibble(u4);
+				break;
 			}
-			c = (char_hex_to_nibble(u1) << 12) + (char_hex_to_nibble(u2) << 8) + (char_hex_to_nibble(u3) << 4) + char_hex_to_nibble(u4);
-			break;
-		}
-		default:
-			json_error(parser, "Invalid escape sequence.");
-			return;
+			default:
+				json_error(parser, "Invalid escape sequence.");
+				return;
 		}
 		str_current++[0] = c;
 	}
@@ -185,82 +185,83 @@ static inline void json_lexer_advance(JsonParser *parser)
 	json_skip_whitespace(parser);
 	switch (parser->current[0])
 	{
-	case '\0':
-		parser->current_token_type = T_EOF;
-		return;
-	case '{':
-		parser->current_token_type = T_LBRACE;
-		parser->current++;
-		return;
-	case '}':
-		parser->current_token_type = T_RBRACE;
-		parser->current++;
-		return;
-	case '[':
-		parser->current_token_type = T_LBRACKET;
-		parser->current++;
-		return;
-	case ']':
-		parser->current_token_type = T_RBRACKET;
-		parser->current++;
-		return;
-	case ':':
-		parser->current_token_type = T_COLON;
-		parser->current++;
-		return;
-	case ',':
-		parser->current_token_type = T_COMMA;
-		parser->current++;
-		return;
-	case '"':
-		json_parse_string(parser);
-		return;
-	case '-':
-	case '0':
-	case '1':
-	case '2':
-	case '3':
-	case '4':
-	case '5':
-	case '6':
-	case '7':
-	case '8':
-	case '9':
-		json_parse_number(parser);
-		return;
-	case 't':
-		if (!json_match(parser, "true"))
-		{
-			json_error(parser, "Unexpected symbol, I expected maybe 'true' here.");
+		case '\0':
+			parser->current_token_type = T_EOF;
 			return;
-		}
-		parser->current += 4;
-		parser->current_token_type = T_TRUE;
-		return;
-	case 'f':
-		if (!json_match(parser, "false"))
-		{
-			json_error(parser, "Unexpected symbol, I expected maybe 'false' here.");
+		case '{':
+			parser->current_token_type = T_LBRACE;
+			parser->current++;
 			return;
-		}
-		parser->current += 5;
-		parser->current_token_type = T_FALSE;
-		return;
-	case 'n':
-		if (!json_match(parser, "null"))
-		{
-			json_error(parser, "Unexpected symbol, I expected maybe 'null' here.");
+		case '}':
+			parser->current_token_type = T_RBRACE;
+			parser->current++;
 			return;
-		}
-		parser->current += 4;
-		parser->current_token_type = T_NULL;
-		return;
-	default:
-		json_error(parser, "Unexpected symbol found.");
-		return;
+		case '[':
+			parser->current_token_type = T_LBRACKET;
+			parser->current++;
+			return;
+		case ']':
+			parser->current_token_type = T_RBRACKET;
+			parser->current++;
+			return;
+		case ':':
+			parser->current_token_type = T_COLON;
+			parser->current++;
+			return;
+		case ',':
+			parser->current_token_type = T_COMMA;
+			parser->current++;
+			return;
+		case '"':
+			json_parse_string(parser);
+			return;
+		case '-':
+		case '0':
+		case '1':
+		case '2':
+		case '3':
+		case '4':
+		case '5':
+		case '6':
+		case '7':
+		case '8':
+		case '9':
+			json_parse_number(parser);
+			return;
+		case 't':
+			if (!json_match(parser, "true"))
+			{
+				json_error(parser, "Unexpected symbol, I expected maybe 'true' here.");
+				return;
+			}
+			parser->current += 4;
+			parser->current_token_type = T_TRUE;
+			return;
+		case 'f':
+			if (!json_match(parser, "false"))
+			{
+				json_error(parser, "Unexpected symbol, I expected maybe 'false' here.");
+				return;
+			}
+			parser->current += 5;
+			parser->current_token_type = T_FALSE;
+			return;
+		case 'n':
+			if (!json_match(parser, "null"))
+			{
+				json_error(parser, "Unexpected symbol, I expected maybe 'null' here.");
+				return;
+			}
+			parser->current += 4;
+			parser->current_token_type = T_NULL;
+			return;
+		default:
+			json_error(parser, "Unexpected symbol found.");
+			return;
 	}
 	UNREACHABLE
 }
+
 static inline bool consume(JsonParser *parser, JSONTokenType token)
 {
 	if (parser->current_token_type == token)
@@ -274,10 +275,8 @@ static inline bool consume(JsonParser *parser, JSONTokenType token)
 JSONObject *json_parse_array(JsonParser *parser)
 {
 	CONSUME(T_LBRACKET);
-	if (consume(parser, T_RBRACKET))
-	{
-		return &empty_array_val;
-	}
+	if (consume(parser, T_RBRACKET)) return &empty_array_val;
+
 	size_t capacity = 16;
 	JSONObject *array = json_new_object(parser->allocator, J_ARRAY);
 	JSONObject **elements = parser->allocator(sizeof(JSONObject *) * capacity);
@@ -330,7 +329,6 @@ JSONObject *json_parse_object(JsonParser *parser)
 
 		JSONObject *value = json_parse(parser);
 
-
 		if (parser->error_message) return NULL;
 		if (index >= capacity)
 		{
@@ -378,51 +376,51 @@ JSONObject *json_parse(JsonParser *parser)
 	if (parser->error_message) return &error;
 	switch (parser->current_token_type)
 	{
-	case T_EOF:
-		return NULL;
-	case T_ERROR:
-		UNREACHABLE
-	case T_LBRACE:
-		return json_parse_object(parser);
-	case T_LBRACKET:
-		return json_parse_array(parser);
-	case T_COMMA:
-	case T_RBRACE:
-	case T_RBRACKET:
-	case T_COLON:
-		json_error(parser, "Unexpected character.");
-		return NULL;
-	case T_STRING:
-	{
-		JSONObject *obj = json_new_object(parser->allocator, J_STRING);
-		obj->type = J_STRING;
-		obj->str = parser->last_string;
-		json_lexer_advance(parser);
-		return obj;
-	}
-	case T_NUMBER:
-	{
-		JSONObject *obj = NULL;
-		if (parser->last_number == 0)
+		case T_EOF:
+			return NULL;
+		case T_ERROR:
+			UNREACHABLE
+		case T_LBRACE:
+			return json_parse_object(parser);
+		case T_LBRACKET:
+			return json_parse_array(parser);
+		case T_COMMA:
+		case T_RBRACE:
+		case T_RBRACKET:
+		case T_COLON:
+			json_error(parser, "Unexpected character.");
+			return NULL;
+		case T_STRING:
 		{
+			JSONObject *obj = json_new_object(parser->allocator, J_STRING);
+			obj->type = J_STRING;
+			obj->str = parser->last_string;
 			json_lexer_advance(parser);
-			return &zero_val;
+			return obj;
 		}
-		obj = json_new_object(parser->allocator, J_NUMBER);
-		obj->type = J_NUMBER;
-		obj->f = parser->last_number;
-		json_lexer_advance(parser);
-		return obj;
-	}
-	case T_TRUE:
-		json_lexer_advance(parser);
-		return &true_val;
-	case T_FALSE:
-		json_lexer_advance(parser);
-		return &false_val;
-	case T_NULL:
-		json_lexer_advance(parser);
-		return NULL;
+		case T_NUMBER:
+		{
+			JSONObject *obj = NULL;
+			if (parser->last_number == 0)
+			{
+				json_lexer_advance(parser);
+				return &zero_val;
+			}
+			obj = json_new_object(parser->allocator, J_NUMBER);
+			obj->type = J_NUMBER;
+			obj->f = parser->last_number;
+			json_lexer_advance(parser);
+			return obj;
+		}
+		case T_TRUE:
+			json_lexer_advance(parser);
+			return &true_val;
+		case T_FALSE:
+			json_lexer_advance(parser);
+			return &false_val;
+		case T_NULL:
+			json_lexer_advance(parser);
+			return NULL;
 	}
 	UNREACHABLE
 }
@@ -498,71 +496,70 @@ static inline void print_json(JSONObject *obj, int indent_level, FILE *file)
 
 	switch (obj->type)
 	{
-	case J_BOOL:
-		PRINTF(file, "%s", obj->b ? "true" : "false");
-		break;
-	case J_STRING:
-		PRINTF(file, "\"%s\"", obj->str);
-		break;
-	case J_NUMBER:
-		PRINTF(file, "%f", obj->f);
-		break;
-	case J_ARRAY:
-
-		fputs(" [ ", file);
-
-		if (obj->array_len == 0)
-		{
-			fputs(" ]", file);
+		case J_BOOL:
+			PRINTF(file, "%s", obj->b ? "true" : "false");
 			break;
-		}
+		case J_STRING:
+			PRINTF(file, "\"%s\"", obj->str);
+			break;
+		case J_NUMBER:
+			PRINTF(file, "%f", obj->f);
+			break;
+		case J_ARRAY:
+			fputs(" [ ", file);
 
-		bool should_print_item_per_line = false;
-
-		for (size_t i = 0; i < obj->array_len; i++)
-		{
-			if (obj->elements[i]->type == J_OBJECT)
+			if (obj->array_len == 0)
 			{
-				should_print_item_per_line = true;
+				fputs(" ]", file);
 				break;
 			}
-		}
 
-		if (!should_print_item_per_line && obj->array_len < 5)
-		{
+			bool should_print_item_per_line = false;
+
 			for (size_t i = 0; i < obj->array_len; i++)
 			{
-				if (i != 0) fputs(", ", file);
-				print_json(obj->elements[i], indent_level, file);
+				if (obj->elements[i]->type == J_OBJECT)
+				{
+					should_print_item_per_line = true;
+					break;
+				}
 			}
+
+			if (!should_print_item_per_line && obj->array_len < 5)
+			{
+				for (size_t i = 0; i < obj->array_len; i++)
+				{
+					if (i != 0) fputs(", ", file);
+					print_json(obj->elements[i], indent_level, file);
+				}
+				fputs(" ]", file);
+				break;
+			}
+
+			fputs("\n", file);
+			for (size_t i = 0; i < obj->array_len; i++)
+			{
+				print_indent(indent_level + 1, file);
+				print_json(obj->elements[i], indent_level + 1, file);
+				fputs(",\n", file);
+			}
+
 			fputs(" ]", file);
 			break;
-		}
-
-		fputs("\n", file);
-		for (size_t i = 0; i < obj->array_len; i++)
-		{
-			print_indent(indent_level + 1, file);
-			print_json(obj->elements[i], indent_level + 1, file);
-			fputs(",\n", file);
-		}
-
-		fputs(" ]", file);
-		break;
-	case J_OBJECT:
-		fputs("{\n", file);
-		for (size_t i = 0; i < obj->member_len; i++)
-		{
-			print_indent(indent_level + 1, file);
-			PRINTF(file, "\"%s\": ", obj->keys[i]);
-			print_json(obj->members[i], indent_level + 1, file);
-			fputs(",\n", file);
-		}
-		print_indent(indent_level, file);
-		fputs("}", file);
-		break;
-	default:
-		break;
+		case J_OBJECT:
+			fputs("{\n", file);
+			for (size_t i = 0; i < obj->member_len; i++)
+			{
+				print_indent(indent_level + 1, file);
+				PRINTF(file, "\"%s\": ", obj->keys[i]);
+				print_json(obj->members[i], indent_level + 1, file);
+				fputs(",\n", file);
+			}
+			print_indent(indent_level, file);
+			fputs("}", file);
+			break;
+		default:
+			break;
 	}
 }
 

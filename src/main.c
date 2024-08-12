@@ -35,8 +35,7 @@ int main_real(int argc, const char *argv[])
 	if (result)
 	{
 		cleanup();
-		if (result == COMPILER_SUCCESS_EXIT)
-			result = EXIT_SUCCESS;
+		if (result == COMPILER_SUCCESS_EXIT) result = EXIT_SUCCESS;
 		return result;
 	}
 
@@ -47,8 +46,7 @@ int main_real(int argc, const char *argv[])
 		if (str_eq(argv[i], "--max-mem") && i < argc - 1)
 		{
 			max_mem = atoll(argv[i + 1]);
-			if (max_mem)
-				max_mem = next_highest_power_of_2(max_mem);
+			if (max_mem) max_mem = next_highest_power_of_2(max_mem);
 			break;
 		}
 	}
@@ -63,59 +61,59 @@ int main_real(int argc, const char *argv[])
 
 	switch (build_options.command)
 	{
-	case COMMAND_PRINT_SYNTAX:
-		print_syntax(&build_options);
-		break;
-	case COMMAND_INIT:
-		create_project(&build_options);
-		break;
-	case COMMAND_INIT_LIB:
-		create_library(&build_options);
-		break;
-	case COMMAND_UNIT_TEST:
-		compiler_tests();
-		break;
-	case COMMAND_GENERATE_HEADERS:
-	case COMMAND_COMPILE:
-	case COMMAND_COMPILE_ONLY:
-	case COMMAND_COMPILE_RUN:
-	case COMMAND_DYNAMIC_LIB:
-	case COMMAND_STATIC_LIB:
-	case COMMAND_COMPILE_BENCHMARK:
-	case COMMAND_COMPILE_TEST:
-		compile_target(&build_options);
-		break;
-	case COMMAND_CLEAN:
-		compile_clean(&build_options);
-		break;
-	case COMMAND_VENDOR_FETCH:
-		vendor_fetch(&build_options);
-		break;
-	case COMMAND_CLEAN_RUN:
-	case COMMAND_BUILD:
-	case COMMAND_RUN:
-	case COMMAND_DIST:
-	case COMMAND_DOCS:
-	case COMMAND_BENCH:
-	case COMMAND_BENCHMARK:
-	case COMMAND_TEST:
-		compile_file_list(&build_options);
-		break;
-	case COMMAND_PROJECT:
-		switch (build_options.project_options.command)
-		{
-		case SUBCOMMAND_VIEW:
-			view_project(&build_options);
+		case COMMAND_PRINT_SYNTAX:
+			print_syntax(&build_options);
 			break;
-		case SUBCOMMAND_ADD:
-			add_target_project(&build_options);
+		case COMMAND_INIT:
+			create_project(&build_options);
 			break;
-		case SUBCOMMAND_MISSING:
+		case COMMAND_INIT_LIB:
+			create_library(&build_options);
 			break;
-		}
-		break;
-	case COMMAND_MISSING:
-		UNREACHABLE
+		case COMMAND_UNIT_TEST:
+			compiler_tests();
+			break;
+		case COMMAND_GENERATE_HEADERS:
+		case COMMAND_COMPILE:
+		case COMMAND_COMPILE_ONLY:
+		case COMMAND_COMPILE_RUN:
+		case COMMAND_DYNAMIC_LIB:
+		case COMMAND_STATIC_LIB:
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_COMPILE_TEST:
+			compile_target(&build_options);
+			break;
+		case COMMAND_CLEAN:
+			compile_clean(&build_options);
+			break;
+		case COMMAND_VENDOR_FETCH:
+			vendor_fetch(&build_options);
+			break;
+		case COMMAND_CLEAN_RUN:
+		case COMMAND_BUILD:
+		case COMMAND_RUN:
+		case COMMAND_DIST:
+		case COMMAND_DOCS:
+		case COMMAND_BENCH:
+		case COMMAND_BENCHMARK:
+		case COMMAND_TEST:
+			compile_file_list(&build_options);
+			break;
+		case COMMAND_PROJECT:
+			switch (build_options.project_options.command)
+			{
+				case SUBCOMMAND_VIEW:
+					view_project(&build_options);
+					break;
+				case SUBCOMMAND_ADD:
+					add_target_project(&build_options);
+					break;
+				case SUBCOMMAND_MISSING:
+					break;
+			}
+			break;
+		case COMMAND_MISSING:
+			UNREACHABLE
 	}
 
 	symtab_destroy();

@@ -246,12 +246,7 @@ void add_target_project(BuildOptions *build_options)
 		JSONObject *object = targets_json->members[i];
 		const char *key = targets_json->keys[i];
 
-		if (key == NULL)
-		{
-			continue;
-		}
-
-		if (strcmp(key, build_options->project_options.target_name) == 0)
+		if (str_eq(key, build_options->project_options.target_name))
 		{
 			error_exit("Target with name '%s' already exists", key);
 		}
