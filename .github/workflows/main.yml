@@ -1,9 +1,8 @@
 name: CI
 
 on:
-  workflow_dispatch:
   push:
-    branches: [ master, dev, ci_testing, experiments ]
+    branches: [ master, dev, ci_testing, experiments, adapt-docker-build ]
   pull_request:
     branches: [ master, dev ]
 
@@ -509,7 +508,7 @@ jobs:
       - name: Run build scripts
         run: |
           LLVM_VERSION=${{ matrix.llvm_version }} UBUNTU_VERSION=${{ matrix.ubuntu_version }} CMAKE_BUILD_TYPE=${{ matrix.build_type }} ./build-with-docker.sh
-          
+
   build-mac:
     runs-on: macos-latest
     strategy:
