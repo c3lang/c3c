@@ -5,11 +5,13 @@
 : ${CMAKE_BUILD_TYPE:=Release}
 : ${LLVM_VERSION:=18}
 : ${UBUNTU_VERSION:="22.04"}
+: ${CMAKE_VERSION:="3.20.0"}
 
 cd docker || exit 1  # Exit if the 'docker' directory doesn't exist
 
 $DOCKER build \
     --build-arg LLVM_VERSION=$LLVM_VERSION \
+    --build-arg CMAKE_VERSION=$CMAKE_VERSION \
     --build-arg UBUNTU_VERSION=$UBUNTU_VERSION \
     -t $IMAGE .
 
@@ -39,4 +41,4 @@ exec $DOCKER run -ti --rm \
             -DCMAKE_DLLTOOL=llvm-dlltool-$LLVM_VERSION \
             -DC3_LLVM_VERSION=auto && \
     cmake --build build && \
-    mv build/c3c build/lib bin"
+    cp build/c3c build/lib bin"
