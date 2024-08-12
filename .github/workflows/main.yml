@@ -486,7 +486,30 @@ jobs:
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
+  
+  build-with-docker:
+      runs-on: ubuntu-latest
+      strategy:
+        matrix:
+            ubuntu_version: [20.04, 22.04]
+            build_type: [Release, Debug]
+            llvm_version: [17, 18, 19, 20]
+      strategy:
+        fail-fast: false
 
+      steps:
+        - uses: actions/checkout@v4
+
+        - name: Setup Docker Buildx
+          uses: docker/setup-buildx-action@v3
+
+        - name: Make script executable
+          run: chmod +x ./build-with-docker.sh
+
+        - name: Run build scripts
+          run: |
+            LLVM_VERSION=${{ matrix.llvm_version }} UBUNTU_VERSION=${{ matrix.ubuntu_version }} CMAKE_BUILD_TYPE=${{ matrix.build_type }} ./build-with-docker.sh
+  
   build-mac:
     runs-on: macos-latest
     strategy:
