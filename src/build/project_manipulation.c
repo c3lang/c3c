@@ -257,14 +257,11 @@ void add_target_project(BuildOptions *build_options)
 		}
 	}
 
-	JSONObject *target_type_obj = MALLOCS(JSONObject);
-	target_type_obj->type = J_STRING;
+	JSONObject *target_type_obj = json_new_object(&malloc_arena, J_STRING);
 	target_type_obj->str = targets[build_options->project_options.target_type];
 
 
-	JSONObject *new_target = MALLOCS(JSONObject);
-	new_target->type = J_OBJECT;
-
+	JSONObject *new_target = json_new_object(&malloc_arena, J_OBJECT);
 	new_target->members = malloc_arena(sizeof(JSONObject) * 16);
 	new_target->keys = malloc_arena(sizeof(JSONObject) * 16);
 
@@ -354,11 +351,6 @@ void view_project(BuildOptions *build_options)
 	{
 		JSONObject *object = targets_json->members[i];
 		const char *key = targets_json->keys[i];
-
-		if (object->type == J_COMMENT_LINE)
-		{
-			continue;
-		}
 
 		if (object->type != J_OBJECT)
 		{

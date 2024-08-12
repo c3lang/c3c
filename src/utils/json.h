@@ -6,8 +6,7 @@ typedef enum
 	J_ARRAY,
 	J_NUMBER,
 	J_BOOL,
-	J_ERROR,
-	J_COMMENT_LINE
+	J_ERROR
 } JSONType;
 
 
@@ -47,8 +46,7 @@ typedef enum JSONTokenType_
 	T_TRUE,
 	T_FALSE,
 	T_NULL,
-	T_EOF,
-	T_COMMENT
+	T_EOF
 } JSONTokenType;
 
 typedef void *(JsonAllocator)(size_t);

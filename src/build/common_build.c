@@ -94,7 +94,6 @@ const char **get_string_array(const char *file, const char *category, JSONObject
 	for (unsigned i = 0; i < value->array_len; i++)
 	{
 		JSONObject *val = value->elements[i];
-		if (val->type == J_COMMENT_LINE) continue;
 		if (val->type != J_STRING) goto NOT_ARRAY;
 		vec_add(values, val->str);
 	}
