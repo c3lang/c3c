@@ -66,16 +66,21 @@ void sema_decl_stack_push(Decl *decl)
 	compiler.context.decl_stack_top = current;
 }
 
-static void add_interface_to_decl_stack(Decl *decl)
+static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 {
+	if (!sema_analyse_decl(context, decl)) return false;
 	FOREACH(TypeInfo *, parent_interface, decl->interfaces)
 	{
-		add_interface_to_decl_stack(parent_interface->type->decl);
+		assert(parent_interface->resolve_status == RESOLVE_DONE);
+		Decl *inf = parent_interface->type->decl;
+		if (!sema_analyse_decl(context, inf)) return false;
+		add_interface_to_decl_stack(context, inf);
 	}
 	FOREACH(Decl *, interface, decl->interface_methods) sema_decl_stack_push(interface);
+	return true;
 }
 
-static void add_members_to_decl_stack(Decl *decl)
+static bool add_members_to_decl_stack(SemaContext *context, Decl *decl)
 {
 	FOREACH(Decl *, func, decl->methods)
 	{
@@ -93,7 +98,12 @@ static void add_members_to_decl_stack(Decl *decl)
 	}
 	if (decl->decl_kind == DECL_INTERFACE)
 	{
-		add_interface_to_decl_stack(decl);
+		FOREACH(TypeInfo *, parent_interface, decl->interfaces)
+		{
+			if (!sema_resolve_type_info(context, parent_interface, RESOLVE_TYPE_DEFAULT)) return false;
+			Decl *inf = parent_interface->type->decl;
+			if (!add_interface_to_decl_stack(context, inf)) return false;
+		}
 	}
 	if (decl_is_struct_type(decl) || decl->decl_kind == DECL_BITSTRUCT)
 	{
@@ -101,18 +111,19 @@ static void add_members_to_decl_stack(Decl *decl)
 		{
 			if (member->name == NULL)
 			{
-				add_members_to_decl_stack(member);
+				if (!add_members_to_decl_stack(context, member)) return false;
 				continue;
 			}
 			sema_decl_stack_push(member);
 		}
 	}
+	return true;
 }
 
-Decl *sema_decl_stack_find_decl_member(Decl *decl_owner, const char *symbol)
+Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, const char *symbol)
 {
 	Decl **state = sema_decl_stack_store();
-	add_members_to_decl_stack(decl_owner);
+	if (!add_members_to_decl_stack(context, decl_owner)) return poisoned_decl;
 	Decl *member = sema_decl_stack_resolve_symbol(symbol);
 	sema_decl_stack_restore(state);
 	return member;

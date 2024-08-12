@@ -31,6 +31,7 @@
 - Printable values passed to the Formatter as pointers, will print as if passed by value.
 - Pointers are rendered with "0x" prefix when passed to '%s'.
 - Add temp allocator scribble.
+- Use PIC by default on Linux.
 
 ### Fixes
 
@@ -63,7 +64,9 @@
 - Fix Vec2.angle
 - Update to libc::setjmp on Win32, to do no stack unwinding.
 - Recursively follow interfaces when looking up method.
-- Int128 alignment fixed on x64 Linux.
+- Int128 alignment change in LLVM fixed on x64.
+- Fix interface lazy resolution errors.
+- Interface resolution when part of generics #1348.
 
 ### Stdlib changes
 

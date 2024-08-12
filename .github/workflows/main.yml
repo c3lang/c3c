@@ -214,7 +214,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 19, 20]
+        llvm_version: [17, 18, 19, 20]
 
     steps:
       - uses: actions/checkout@v4
@@ -373,7 +373,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 19]
+        llvm_version: [17, 18, 19]
     steps:
       - uses: actions/checkout@v4
       - name: Install common deps

@@ -3357,7 +3357,8 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			UNREACHABLE
 	}
 
-	Decl *member = sema_decl_stack_find_decl_member(decl, name);
+	Decl *member = sema_decl_stack_find_decl_member(context, decl, name);
+	if (!decl_ok(member)) return false;
 	if (!member)
 	{
 		Decl *ambiguous = NULL;
@@ -3484,7 +3485,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	}
 
 	Decl *underlying_type_decl = underlying_type->decl;
-	Decl *member = sema_decl_stack_find_decl_member(underlying_type_decl, name);
+	Decl *member = sema_decl_stack_find_decl_member(context, underlying_type_decl, name);
+	if (!decl_ok(member)) return false;
 	if (!member || !(decl_is_struct_type(member) || member->decl_kind == DECL_VAR || member->decl_kind == DECL_BITSTRUCT))
 	{
 		if (missing_ref) goto MISSING_REF;
@@ -4667,7 +4669,8 @@ CHECK_DEEPER:
 	// 10. Dump all members and methods into a decl stack.
 	Decl *decl = type->decl;
 
-	Decl *member = sema_decl_stack_find_decl_member(decl, kw);
+	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw);
+	if (!decl_ok(member)) return false;
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
@@ -8090,7 +8093,8 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		}
 		return false;
 	}
-	Decl *member = sema_decl_stack_find_decl_member(actual_type->decl, kw);
+	Decl *member = sema_decl_stack_find_decl_member(context, actual_type->decl, kw);
+	if (!decl_ok(member)) return false;
 	if (!member)
 	{
 		Decl *ambiguous = NULL;
