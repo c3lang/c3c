@@ -27,7 +27,7 @@ mkdir -p build bin
 
 chmod -R 777 build bin
 
-exec $DOCKER run -ti --rm \
+exec $DOCKER run -i --rm \
     -v "$PWD":/home/c3c/source \
     -w /home/c3c/source $IMAGE bash -c \
     "cmake -S . -B build \
