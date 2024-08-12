@@ -147,6 +147,11 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			{
 				sema_trace_expr_liveness(e);
 			}
+			if (safe_mode_enabled())
+			{
+				sema_trace_exprid_liveness(ast->assert_stmt.message);
+				sema_trace_expr_list_liveness(ast->assert_stmt.args);
+			}
 			return;
 		}
 		case AST_DECLS_STMT:

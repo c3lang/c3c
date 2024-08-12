@@ -67,6 +67,7 @@
 - Int128 alignment change in LLVM fixed on x64.
 - Fix interface lazy resolution errors.
 - Interface resolution when part of generics #1348.
+- Assert not properly traced #1354.
 
 ### Stdlib changes
 
