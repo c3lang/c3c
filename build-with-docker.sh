@@ -41,4 +41,4 @@ exec $DOCKER run -i --rm \
             -DCMAKE_DLLTOOL=llvm-dlltool-$LLVM_VERSION \
             -DC3_LLVM_VERSION=auto && \
     cmake --build build && \
-    cp build/c3c build/lib bin"
+    cp -r build/c3c build/lib bin"
