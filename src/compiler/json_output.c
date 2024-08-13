@@ -236,7 +236,20 @@ static inline void emit_types(FILE *file)
 	}
 	fputs("\n\t}\n", file);
 }
-
+static inline void emit_globals(FILE *file)
+{
+	fputs("\t\"globals\": [\n", file);
+	{
+		bool first = true;
+		FOREACH_DECL(Decl *decl, compiler.context.module_list)
+					if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_GLOBAL) continue;
+					if (decl_is_hidden(decl)) continue;
+					INERT_COMMA;
+					PRINTF("\t\t\"%s::%s\"", module->name->module, decl->name);
+		FOREACH_DECL_END;
+	}
+	PRINTF("\n\t],");
+}
 static inline void emit_functions(FILE *file)
 {
 	fputs("\t\"functions\": {\n", file);
@@ -269,6 +282,7 @@ static inline void emit_json_to_file(FILE *file)
 	emit_modules(file);
 	emit_types(file);
 	emit_functions(file);
+	emit_globals(file);
 	fputs("\n}", file);
 }
 
