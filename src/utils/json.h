@@ -6,7 +6,7 @@ typedef enum
 	J_ARRAY,
 	J_NUMBER,
 	J_BOOL,
-	J_ERROR,
+	J_ERROR
 } JSONType;
 
 
@@ -46,11 +46,11 @@ typedef enum JSONTokenType_
 	T_TRUE,
 	T_FALSE,
 	T_NULL,
-	T_EOF,
+	T_EOF
 } JSONTokenType;
 
-typedef void*(JsonAllocator)(size_t);
-typedef void*(JsonDeallocator)(void*);
+typedef void *(JsonAllocator)(size_t);
+typedef void *(JsonDeallocator)(void *);
 
 typedef struct
 {
@@ -68,6 +68,7 @@ JSONObject *json_parse(JsonParser *parser);
 JSONObject *json_obj_get(JSONObject *obj, const char *key);
 INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type);
 void json_free(JsonDeallocator *deallocator, JSONObject **ptr);
+void print_json_to_file(JSONObject *obj, FILE *file);
 
 
 INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type)

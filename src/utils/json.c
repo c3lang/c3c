@@ -2,6 +2,8 @@
 #include "json.h"
 
 
+#define PRINTF(file, string, ...) fprintf(file, string, ##__VA_ARGS__) /* NOLINT */
+
 JSONObject error = { .type = J_ERROR };
 JSONObject true_val = { .type = J_BOOL, .b = true };
 JSONObject false_val = { .type = J_BOOL, .b = false };
@@ -16,7 +18,7 @@ static inline void json_skip_whitespace(JsonParser *parser)
 	char c;
 	while (1)
 	{
-		RETRY:
+	RETRY:
 		switch (parser->current[0])
 		{
 			case '/':
@@ -24,7 +26,7 @@ static inline void json_skip_whitespace(JsonParser *parser)
 				if (c == '/')
 				{
 					parser->current++;
-					while ((c = (++parser->current)[0]) && c != '\n') {}
+					while ((c = (++parser->current)[0]) && c != '\n') { }
 					goto RETRY;
 				}
 				if (c == '*')
@@ -259,6 +261,7 @@ static inline void json_lexer_advance(JsonParser *parser)
 	}
 	UNREACHABLE
 }
+
 static inline bool consume(JsonParser *parser, JSONTokenType token)
 {
 	if (parser->current_token_type == token)
@@ -272,27 +275,27 @@ static inline bool consume(JsonParser *parser, JSONTokenType token)
 JSONObject *json_parse_array(JsonParser *parser)
 {
 	CONSUME(T_LBRACKET);
-	if (consume(parser, T_RBRACKET))
-	{
-		return &empty_array_val;
-	}
+	if (consume(parser, T_RBRACKET)) return &empty_array_val;
+
 	size_t capacity = 16;
 	JSONObject *array = json_new_object(parser->allocator, J_ARRAY);
-	JSONObject** elements = parser->allocator(sizeof(JSONObject*) * capacity);
+	JSONObject **elements = parser->allocator(sizeof(JSONObject *) * capacity);
 	size_t index = 0;
 	while (1)
 	{
 		JSONObject *parsed = json_parse(parser);
+
 		if (parser->error_message) return &error;
 		if (index >= capacity)
 		{
 			JSONObject **elements_old = elements;
-			size_t copy_size = capacity * sizeof(JSONObject*);
+			size_t copy_size = capacity * sizeof(JSONObject *);
 			capacity *= 2;
-			elements = parser->allocator(sizeof(JSONObject*) * capacity);
+			elements = parser->allocator(sizeof(JSONObject *) * capacity);
 			memcpy(elements, elements_old, copy_size);
 		}
 		elements[index++] = parsed;
+
 		if (consume(parser, T_RBRACKET)) break;
 		CONSUME(T_COMMA);
 		// Allow trailing comma
@@ -306,35 +309,42 @@ JSONObject *json_parse_array(JsonParser *parser)
 JSONObject *json_parse_object(JsonParser *parser)
 {
 	CONSUME(T_LBRACE);
+
 	if (consume(parser, T_RBRACE))
 	{
 		return &empty_obj_val;
 	}
+
 	size_t capacity = 16;
 	JSONObject *obj = json_new_object(parser->allocator, J_OBJECT);
-	JSONObject** elements = parser->allocator(sizeof(JSONObject*) * capacity);
-	const char** keys = parser->allocator(sizeof(JSONObject*) * capacity);
+	JSONObject **elements = parser->allocator(sizeof(JSONObject *) * capacity);
+	const char **keys = parser->allocator(sizeof(JSONObject *) * capacity);
 	size_t index = 0;
 	while (1)
 	{
 		const char *key = parser->last_string;
+
 		CONSUME(T_STRING);
 		CONSUME(T_COLON);
+
 		JSONObject *value = json_parse(parser);
+
 		if (parser->error_message) return NULL;
 		if (index >= capacity)
 		{
 			JSONObject **elements_old = elements;
 			const char **keys_old = keys;
-			size_t copy_size = capacity * sizeof(void*);
+			size_t copy_size = capacity * sizeof(void *);
 			capacity *= 2;
-			elements = parser->allocator(sizeof(JSONObject*) * capacity);
-			keys = parser->allocator(sizeof(JSONObject*) * capacity);
+			elements = parser->allocator(sizeof(JSONObject *) * capacity);
+			keys = parser->allocator(sizeof(JSONObject *) * capacity);
 			memcpy(elements, elements_old, copy_size);
 			memcpy(keys, keys_old, copy_size);
 		}
+
 		keys[index] = key;
 		elements[index++] = value;
+
 		if (consume(parser, T_RBRACE)) break;
 		if (!consume(parser, T_COMMA))
 		{
@@ -391,7 +401,7 @@ JSONObject *json_parse(JsonParser *parser)
 		case T_NUMBER:
 		{
 			JSONObject *obj = NULL;
-			if (parser->last_number == 0) 
+			if (parser->last_number == 0)
 			{
 				json_lexer_advance(parser);
 				return &zero_val;
@@ -441,13 +451,13 @@ void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
 
 	if (!is_freable(obj)) return;
 
-	switch(obj->type)
+	switch (obj->type)
 	{
 		case J_OBJECT:
 			for (size_t i = 0; i < obj->member_len; i++)
 			{
 				json_free(deallocator, &obj->members[i]);
-				deallocator((char*)obj->keys[i]);
+				deallocator((char *)obj->keys[i]);
 			}
 			deallocator(obj->keys);
 			deallocator(obj->members);
@@ -460,7 +470,7 @@ void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
 			deallocator(obj->elements);
 			break;
 		case J_STRING:
-			deallocator((char*)obj->str);
+			deallocator((char *)obj->str);
 			break;
 		default:
 			break;
@@ -468,3 +478,93 @@ void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
 	deallocator(*ptr);
 	*ptr = NULL;
 }
+
+static inline void print_indent(int indent_level, FILE *file)
+{
+	for (int i = 0; i < indent_level; i++)
+	{
+		fputs("  ", file);
+	}
+}
+
+static inline void print_json(JSONObject *obj, int indent_level, FILE *file)
+{
+	if (obj == NULL)
+	{
+		return;
+	}
+
+	switch (obj->type)
+	{
+		case J_BOOL:
+			PRINTF(file, "%s", obj->b ? "true" : "false");
+			break;
+		case J_STRING:
+			PRINTF(file, "\"%s\"", obj->str);
+			break;
+		case J_NUMBER:
+			PRINTF(file, "%f", obj->f);
+			break;
+		case J_ARRAY:
+			fputs(" [ ", file);
+
+			if (obj->array_len == 0)
+			{
+				fputs(" ]", file);
+				break;
+			}
+
+			bool should_print_item_per_line = false;
+
+			for (size_t i = 0; i < obj->array_len; i++)
+			{
+				if (obj->elements[i]->type == J_OBJECT)
+				{
+					should_print_item_per_line = true;
+					break;
+				}
+			}
+
+			if (!should_print_item_per_line && obj->array_len < 5)
+			{
+				for (size_t i = 0; i < obj->array_len; i++)
+				{
+					if (i != 0) fputs(", ", file);
+					print_json(obj->elements[i], indent_level, file);
+				}
+				fputs(" ]", file);
+				break;
+			}
+
+			fputs("\n", file);
+			for (size_t i = 0; i < obj->array_len; i++)
+			{
+				print_indent(indent_level + 1, file);
+				print_json(obj->elements[i], indent_level + 1, file);
+				fputs(",\n", file);
+			}
+
+			fputs(" ]", file);
+			break;
+		case J_OBJECT:
+			fputs("{\n", file);
+			for (size_t i = 0; i < obj->member_len; i++)
+			{
+				print_indent(indent_level + 1, file);
+				PRINTF(file, "\"%s\": ", obj->keys[i]);
+				print_json(obj->members[i], indent_level + 1, file);
+				fputs(",\n", file);
+			}
+			print_indent(indent_level, file);
+			fputs("}", file);
+			break;
+		default:
+			break;
+	}
+}
+
+void print_json_to_file(JSONObject *obj, FILE *file)
+{
+	print_json(obj, 0, file);
+}
+

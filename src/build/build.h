@@ -3,8 +3,8 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "../version.h"
 #include "../utils/lib.h"
+#include "../version.h"
 #include <stdint.h>
 
 #define MAX_BUILD_LIB_DIRS 1024
@@ -48,16 +48,16 @@ typedef enum
 	COMMAND_PROJECT,
 } CompilerCommand;
 
-
 typedef enum
 {
 	SUBCOMMAND_MISSING = 0,
-	SUBCOMMAND_VIEW
+	SUBCOMMAND_VIEW,
+	SUBCOMMAND_ADD
 } ProjectSubcommand;
 
 typedef enum
 {
-	DIAG_NONE = 0, // Don't use!
+	DIAG_NONE = 0,     // Don't use!
 	DIAG_WARNING_TYPE, // Don't use!
 	DIAG_UNUSED,
 	DIAG_UNUSED_PARAMETER,
@@ -133,10 +133,10 @@ typedef enum
 typedef enum
 {
 	OPTIMIZATION_NOT_SET = -1,
-	OPTIMIZATION_NONE = 0,          // -O0
-	OPTIMIZATION_LESS = 1,          // -O1
-	OPTIMIZATION_MORE = 2,          // -O2
-	OPTIMIZATION_AGGRESSIVE = 3,    // -O3
+	OPTIMIZATION_NONE = 0,       // -O0
+	OPTIMIZATION_LESS = 1,       // -O1
+	OPTIMIZATION_MORE = 2,       // -O2
+	OPTIMIZATION_AGGRESSIVE = 3, // -O3
 } OptimizationLevel;
 
 typedef enum
@@ -149,7 +149,7 @@ typedef enum
 typedef enum
 {
 	SINGLE_MODULE_NOT_SET = -1,
-	SINGLE_MODULE_OFF = 0,          // NOLINT
+	SINGLE_MODULE_OFF = 0, // NOLINT
 	SINGLE_MODULE_ON = 1
 } SingleModule;
 
@@ -211,9 +211,9 @@ typedef enum
 typedef enum
 {
 	SIZE_OPTIMIZATION_NOT_SET = -1,
-	SIZE_OPTIMIZATION_NONE = 0,     // None
-	SIZE_OPTIMIZATION_SMALL = 1,    // -Os
-	SIZE_OPTIMIZATION_TINY = 2,     // -Oz
+	SIZE_OPTIMIZATION_NONE = 0,  // None
+	SIZE_OPTIMIZATION_SMALL = 1, // -Os
+	SIZE_OPTIMIZATION_TINY = 2,  // -Oz
 } SizeOptimizationLevel;
 
 typedef enum
@@ -233,7 +233,7 @@ typedef enum
 typedef enum
 {
 	STRUCT_RETURN_DEFAULT = -1,
-	STRUCT_RETURN_STACK = 0,        // NOLINT
+	STRUCT_RETURN_STACK = 0, // NOLINT
 	STRUCT_RETURN_REG = 1
 } StructReturn;
 
@@ -351,6 +351,34 @@ typedef enum
 
 #define ANY_WINDOWS_ARCH_OS WINDOWS_AARCH64: case WINDOWS_X64: case MINGW_X64
 
+typedef enum
+{
+	TARGET_TYPE_EXECUTABLE,
+	TARGET_TYPE_STATIC_LIB,
+	TARGET_TYPE_DYNAMIC_LIB,
+	TARGET_TYPE_OBJECT_FILES,
+	TARGET_TYPE_BENCHMARK,
+	TARGET_TYPE_TEST,
+} TargetType;
+
+static const char *targets[6] = {
+		[TARGET_TYPE_EXECUTABLE] = "executable",
+		[TARGET_TYPE_STATIC_LIB] = "static-lib",
+		[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
+		[TARGET_TYPE_BENCHMARK] = "benchmark",
+		[TARGET_TYPE_TEST] = "test",
+		[TARGET_TYPE_OBJECT_FILES] = "object-files"
+};
+static const char *target_desc[6] = {
+		[TARGET_TYPE_EXECUTABLE] = "Executable",
+		[TARGET_TYPE_STATIC_LIB] = "Static library",
+		[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
+		[TARGET_TYPE_BENCHMARK] = "benchmark suite",
+		[TARGET_TYPE_TEST] = "test suite",
+		[TARGET_TYPE_OBJECT_FILES] = "object files"
+};
+
+
 typedef struct BuildOptions_
 {
 	const char *lib_dir[MAX_BUILD_LIB_DIRS];
@@ -365,17 +393,20 @@ typedef struct BuildOptions_
 	size_t linker_lib_count;
 	const char* std_lib_dir;
 	VectorConv vector_conv;
-	struct {
+	struct
+	{
 		const char *sdk;
 		const char *def;
 		WinCrtLinking crt_linking;
 	} win;
-	struct {
+	struct
+	{
 		const char *sysroot;
 		const char *min_version;
 		const char *sdk_version;
 	} macos;
-	struct {
+	struct
+	{
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
@@ -397,7 +428,12 @@ typedef struct BuildOptions_
 	bool silence_deprecation;
 	CompilerBackend backend;
 	CompilerCommand command;
-	ProjectSubcommand subcommand;
+	struct
+	{
+		ProjectSubcommand command;
+		const char *target_name;
+		TargetType target_type;
+	} project_options;
 	CompileOption compile_option;
 	TrustLevel trust_level;
 	DiagnosticsSeverity severity[DIAG_END_SENTINEL];
@@ -459,16 +495,6 @@ typedef struct BuildOptions_
 	bool testing;
 } BuildOptions;
 
-typedef enum
-{
-	TARGET_TYPE_EXECUTABLE,
-	TARGET_TYPE_STATIC_LIB,
-	TARGET_TYPE_DYNAMIC_LIB,
-	TARGET_TYPE_OBJECT_FILES,
-	TARGET_TYPE_BENCHMARK,
-	TARGET_TYPE_TEST,
-} TargetType;
-
 typedef struct
 {
 	struct Library__ *parent;
@@ -499,7 +525,6 @@ typedef struct Library__
 	LibraryTarget *target_used;
 	LibraryTarget **targets;
 } Library;
-
 
 typedef struct
 {
@@ -681,8 +706,10 @@ BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);
 bool command_accepts_files(CompilerCommand command);
 bool command_passes_args(CompilerCommand command);
-void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting level);
+void update_build_target_with_opt_level(BuildTarget *target,
+	OptimizationSetting level);
 void create_project(BuildOptions *build_options);
 void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
 void view_project(BuildOptions *build_options);
+void add_target_project(BuildOptions *build_options);

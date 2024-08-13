@@ -1,7 +1,7 @@
 #include "build_internal.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
-static JSONObject* read_project() 
+static JSONObject *read_project()
 {
 	size_t size;
 	char *read = file_read_all(PROJECT_JSON, &size);
@@ -19,52 +19,52 @@ static JSONObject* read_project()
 	return json;
 }
 
-static void print_vec(const char* header, const char** vec, bool opt) 
+static void print_vec(const char *header, const char **vec, bool opt)
 {
 	if (opt && !vec) return;
 	PRINTF("%s: ", header);
-	if (!vec_size(vec)) 
+	if (!vec_size(vec))
 	{
 		PRINTFN("*none*");
 		return;
-	}	
-	FOREACH_IDX(i, const char *, item, vec) 
+	}
+	FOREACH_IDX(i, const char *, item, vec)
 	{
 		if (i > 0) PRINTF(", ");
-		PRINTF("%s",item);
+		PRINTF("%s", item);
 	}
 	PRINTFN("");
 }
 
-static void print_opt_str(const char* header, const char* str) 
+static void print_opt_str(const char *header, const char *str)
 {
 	if (!str) return;
 	PRINTFN("%s: %s", header, str);
 }
 
-static void print_opt_setting(const char* header, int setting, const char** values) 
+static void print_opt_setting(const char *header, int setting, const char **values)
 {
 	if (setting < 0) return;
 	PRINTFN("%s: %s", header, values[setting]);
 }
 
-static void print_opt_bool(const char* header, int b) 
+static void print_opt_bool(const char *header, int b)
 {
 	if (b == -1) return;
 	PRINTF("%s: ", header);
 	PRINTFN(b ? "true" : "false");
 }
 
-static void print_opt_int(const char* header, long v) 
+static void print_opt_int(const char *header, long v)
 {
 	if (v < 0) return;
 	PRINTFN("%s: %ld", header, v);
 }
 
-static const char* generate_expected(const char** options, size_t n) 
+static const char *generate_expected(const char **options, size_t n)
 {
 	scratch_buffer_clear();
-	for (size_t i = 0; i < n; i++) 
+	for (size_t i = 0; i < n; i++)
 	{
 		if (i > 0) scratch_buffer_append(", ");
 		if (i == n - 1) scratch_buffer_append(" or ");
@@ -74,7 +74,7 @@ static const char* generate_expected(const char** options, size_t n)
 }
 
 
-const char* optimization_levels[] = {
+const char *optimization_levels[] = {
 	[OPT_SETTING_O0] = "O0",
 	[OPT_SETTING_O1] = "O1",
 	[OPT_SETTING_O2] = "O2",
@@ -82,10 +82,10 @@ const char* optimization_levels[] = {
 	[OPT_SETTING_O4] = "O4",
 	[OPT_SETTING_O5] = "O5",
 	[OPT_SETTING_OSMALL] = "Os",
-	[OPT_SETTING_OTINY] = "Oz" 
+	[OPT_SETTING_OTINY] = "Oz"
 };
 
-const char* debug_levels[] = {
+const char *debug_levels[] = {
 	[DEBUG_INFO_NONE] = "none",
 	[DEBUG_INFO_LINE_TABLES] = "line-tables",
 	[DEBUG_INFO_FULL] = "full"
@@ -171,12 +171,12 @@ do {\
     print_opt_int("\t" header, v);\
 } while(0);
 
-static void view_target(const char* name, JSONObject* target) 
+static void view_target(const char *name, JSONObject *target)
 {
 	/* General target information */
-	PRINTFN("- %s",name);
+	PRINTFN("- %s", name);
 	print_opt_str("\tName", name);
-	TARGET_VIEW_MANDATORY_STRING("Type","type");
+	TARGET_VIEW_MANDATORY_STRING("Type", "type");
 	TARGET_VIEW_STRING("Target language target", "langrev");
 	TARGET_VIEW_STRING_ARRAY("Warnings used", "warnings");
 	TARGET_VIEW_STRING_ARRAY("Additional c3l library search paths", "dependency-search-paths");
@@ -204,7 +204,7 @@ static void view_target(const char* name, JSONObject* target)
 	TARGET_VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);
 	TARGET_VIEW_STRING_ARRAY("Additional linked libraries", "linked-libraries");
 	TARGET_VIEW_STRING_ARRAY("Linked libraries (override)", "linked-libraries-override");
-	TARGET_VIEW_STRING("Linker","linker");
+	TARGET_VIEW_STRING("Linker", "linker");
 	TARGET_VIEW_STRING_ARRAY("Additional linker search paths", "linker-search-paths");
 	TARGET_VIEW_STRING_ARRAY("Linker search paths (override)", "linker-search-paths-override");
 	TARGET_VIEW_STRING_ARRAY("Additional linker arguments", "link-args");
@@ -236,13 +236,52 @@ static void view_target(const char* name, JSONObject* target)
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
 
-void view_project(BuildOptions *build_options) 
+void add_target_project(BuildOptions *build_options)
 {
-	JSONObject* project_json = read_project();
+	JSONObject *project_json = read_project();
+	JSONObject *targets_json = json_obj_get(project_json, "targets");
+
+	for (unsigned i = 0; i < targets_json->member_len; i++)
+	{
+		JSONObject *object = targets_json->members[i];
+		const char *key = targets_json->keys[i];
+
+		if (str_eq(key, build_options->project_options.target_name))
+		{
+			error_exit("Target with name '%s' already exists", key);
+		}
+	}
+
+	JSONObject *target_type_obj = json_new_object(&malloc_arena, J_STRING);
+	target_type_obj->str = targets[build_options->project_options.target_type];
+
+
+	JSONObject *new_target = json_new_object(&malloc_arena, J_OBJECT);
+	new_target->members = malloc_arena(sizeof(JSONObject) * 16);
+	new_target->keys = malloc_arena(sizeof(JSONObject) * 16);
+
+	new_target->keys[0] = "type";
+	new_target->members[0] = target_type_obj;
+	new_target->member_len = 1;
+
+
+	size_t index = targets_json->member_len;
+	targets_json->members[index] = new_target;
+	targets_json->keys[index] = build_options->project_options.target_name;
+	targets_json->member_len++;
+
+	FILE *file = fopen(PROJECT_JSON, "w");
+	print_json_to_file(project_json, file);
+	fclose(file);
+}
+
+void view_project(BuildOptions *build_options)
+{
+	JSONObject *project_json = read_project();
 
 	/* General information */
-	VIEW_MANDATORY_STRING_ARRAY("Authors","authors");
-	VIEW_MANDATORY_STRING("Version","version");
+	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors");
+	VIEW_MANDATORY_STRING("Version", "version");
 	VIEW_MANDATORY_STRING("Project language target", "langrev");
 	VIEW_MANDATORY_STRING_ARRAY("Warnings used", "warnings");
 	VIEW_MANDATORY_STRING_ARRAY("c3l library search paths", "dependency-search-paths");
@@ -262,7 +301,7 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING_ARRAY("Enabled features", "features");
 	VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);
 	VIEW_STRING_ARRAY("Linked libraries", "linked-libraries");
-	VIEW_STRING("Linker","linker");
+	VIEW_STRING("Linker", "linker");
 	VIEW_STRING_ARRAY("Linker search paths", "linker-search-paths");
 	VIEW_STRING_ARRAY("Linker arguments", "link-args");
 	VIEW_BOOL("Link libc", "link-libc");
@@ -303,14 +342,15 @@ void view_project(BuildOptions *build_options)
 		error_exit("'targets' did not contain map of targets.");
 	}
 
-	for (unsigned i = 0; i < targets_json->member_len; i++) 
+	for (unsigned i = 0; i < targets_json->member_len; i++)
 	{
 		JSONObject *object = targets_json->members[i];
 		const char *key = targets_json->keys[i];
+
 		if (object->type != J_OBJECT)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		view_target(key,object);
+		view_target(key, object);
 	}
 }

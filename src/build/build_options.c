@@ -2,8 +2,9 @@
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
-#include "build_internal.h"
 #include "../utils/whereami.h"
+#include "build.h"
+#include "build_internal.h"
 
 extern int llvm_version_major;
 bool silence_deprecation;
@@ -216,7 +217,6 @@ static inline const char *next_arg()
 	return current_arg;
 }
 
-
 static inline bool next_is_opt()
 {
 	return args[arg_index + 1][0] == '-';
@@ -283,26 +283,43 @@ static void project_usage()
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
 	PRINTF("Project Subcommands:");
-	PRINTF("  view              view the current projects structure");
+	PRINTF("  view                                          view the current projects structure");
+	PRINTF("  add-target <name>  <target_type>              add a new target to the project");
 }
 
 static void parse_project_subcommand(BuildOptions *options)
 {
 	if (arg_match("view"))
 	{
-		options->subcommand = SUBCOMMAND_VIEW;
+		options->project_options.command = SUBCOMMAND_VIEW;
 		return;
 	}
-	PROJECT_FAIL_WITH_ERR("Cannot process the unknown subcommand \"%s\".", current_arg);
+	if (arg_match("add-target"))
+	{
+		options->project_options.command = SUBCOMMAND_ADD;
+
+		if (at_end() || next_is_opt()) error_exit("Expected a target name");
+		options->project_options.target_name = next_arg();
+
+		if (at_end() || next_is_opt()) error_exit("Expected a target type like 'executable' or 'static-lib'");
+		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", targets, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
+
+		return;
+	}
+
+	PROJECT_FAIL_WITH_ERR("Cannot process the unknown subcommand \"%s\".",
+		current_arg);
 }
 
 static void parse_project_options(BuildOptions *options)
 {
+	options->project_options.command = SUBCOMMAND_MISSING;
 	if (at_end())
 	{
 		project_usage();
 		return;
 	}
+
 	next_arg();
 	parse_project_subcommand(options);
 }
@@ -437,7 +454,6 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("project"))
 	{
 		options->command = COMMAND_PROJECT;
-		options->subcommand = SUBCOMMAND_MISSING;
 		parse_project_options(options);
 		return;
 	}
@@ -1185,7 +1201,6 @@ static void parse_option(BuildOptions *options)
 	FAIL_WITH_ERR("Cannot process the unknown option \"%s\".", current_arg);
 }
 
-
 BuildOptions parse_arguments(int argc, const char *argv[])
 {
 	arg_count = argc;
@@ -1283,7 +1298,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	}
 	return build_options;
 }
-
 
 ArchOsTarget arch_os_target_from_string(const char *target)
 {

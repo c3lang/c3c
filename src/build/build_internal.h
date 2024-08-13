@@ -104,7 +104,7 @@ BuildTarget *project_select_target(Project *project, const char *optional_target
 void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
 
 const char *get_string(const char *file, const char *category, JSONObject *table, const char *key,
-                       const char *default_value);
+	const char *default_value);
 int get_valid_bool(const char *file, const char *target, JSONObject *json, const char *key, int default_val);
 const char *get_optional_string(const char *file, const char *category, JSONObject *table, const char *key);
 const char *get_mandatory_string(const char *file, const char *category, JSONObject *object, const char *key);
@@ -112,7 +112,8 @@ const char **get_string_array(const char *file, const char *category, JSONObject
 const char **get_optional_string_array(const char *file, const char *target, JSONObject *table, const char *key);
 const char *get_cflags(const char *file, const char *target, JSONObject *json, const char *original_flags);
 void get_list_append_strings(const char *file, const char *target, JSONObject *json, const char ***list_ptr,
-                             const char *base, const char *override, const char *add);
-int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char** values, int first_result, int count, const char *expected);
-void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option);
+	const char *base, const char *override, const char *add);
+int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char **values, int first_result, int count, const char *expected);
+int get_valid_enum_from_string(const char *str, const char *target, const char **values, int count, const char *expected);
+void check_json_keys(const char *valid_keys[][2], size_t key_count, const char *deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option);
 long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory);

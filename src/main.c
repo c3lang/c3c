@@ -1,8 +1,9 @@
-#include <compiler_tests/benchmark.h>
-#include "compiler/compiler.h"
 #include "build/build.h"
+#include "compiler/compiler.h"
 #include "compiler_tests/tests.h"
 #include "utils/lib.h"
+#include <compiler_tests/benchmark.h>
+
 
 bool debug_log = false;
 bool debug_stats = false;
@@ -99,13 +100,16 @@ int main_real(int argc, const char *argv[])
 			compile_file_list(&build_options);
 			break;
 		case COMMAND_PROJECT:
-			switch (build_options.subcommand) 
+			switch (build_options.project_options.command)
 			{
 				case SUBCOMMAND_VIEW:
 					view_project(&build_options);
 					break;
+				case SUBCOMMAND_ADD:
+					add_target_project(&build_options);
+					break;
 				case SUBCOMMAND_MISSING:
-					UNREACHABLE
+					break;
 			}
 			break;
 		case COMMAND_MISSING:
@@ -121,7 +125,7 @@ int main_real(int argc, const char *argv[])
 
 int wmain(int argc, const uint16_t *argv[])
 {
-	char** args = malloc(sizeof(void*) * (unsigned)argc);
+	char **args = malloc(sizeof(void *) * (unsigned)argc);
 	for (unsigned i = 0; i < (unsigned)argc; i++)
 	{
 		args[i] = win_utf16to8(argv[i]);
@@ -131,9 +135,6 @@ int wmain(int argc, const uint16_t *argv[])
 
 #else
 
-int main(int argc, const char *argv[])
-{
-	return main_real(argc, argv);
-}
+int main(int argc, const char *argv[]) { return main_real(argc, argv); }
 
 #endif
