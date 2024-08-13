@@ -2,6 +2,14 @@ module std::core::dstring2 @test;
 
 const TEST_STRING = "hello world";
 
+fn void test_replace()
+{
+	DString hello = dstring::new("Hello world where are you? Are you here too?");
+	defer hello.free();
+	hello.replace("u", "ooo");
+	assert(hello.str_view() == "Hello world where are yoooo? Are yoooo here too?");
+}
+
 fn void test_delete()
 {
 	{

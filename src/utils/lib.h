@@ -87,8 +87,9 @@ bool file_has_suffix_in_list(const char *file_name, int name_len, const char **s
 void file_add_wildcard_files(const char ***files, const char *path, bool recursive, const char **suffix_list, int suffix_count);
 const char *file_append_path(const char *path, const char *name);
 
-const char *execute_cmd(const char *cmd, bool ignore_failure);
-bool execute_cmd_failable(const char *cmd, const char **result);
+const char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string);
+
+bool execute_cmd_failable(const char *cmd, const char **result, const char *stdin_string);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(size_t max_mem);

@@ -16,7 +16,7 @@ fn void! native_rmtree(Path dir)
 		{
 			String name = ((ZString)&entry.name).str_view();
 			if (!name || name == "." || name == "..") continue;
-			Path new_path = dir.tappend(name)!;
+			Path new_path = dir.temp_append(name)!;
 			if (entry.d_type == posix::DT_DIR)
 			{
 				native_rmtree(new_path)!;

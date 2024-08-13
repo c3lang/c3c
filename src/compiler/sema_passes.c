@@ -184,6 +184,46 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	return parse_include_file(file, unit);
 }
 
+static bool exec_arg_append_to_scratch(Expr *arg)
+{
+	assert(expr_is_const(arg));
+	switch (arg->const_expr.const_kind)
+	{
+		case CONST_FLOAT:
+			scratch_buffer_append_double(arg->const_expr.fxx.f);
+			return true;
+		case CONST_INTEGER:
+			scratch_buffer_append(int_to_str(arg->const_expr.ixx, 10, false));
+			return true;
+		case CONST_BOOL:
+			scratch_buffer_append(arg->const_expr.b ? "true" : "false");
+			return true;
+		case CONST_ENUM:
+		case CONST_ERR:
+			scratch_buffer_append(arg->const_expr.enum_err_val->name);
+			return true;
+		case CONST_TYPEID:
+			if (!arg->const_expr.typeid->name)
+			{
+				RETURN_PRINT_ERROR_AT(false, arg, "The type '%s' has no trivial name.",
+				                      type_quoted_error_string(arg->const_expr.typeid));
+			}
+			scratch_buffer_append(arg->const_expr.typeid->name);
+			return true;
+		case CONST_STRING:
+			scratch_buffer_append(arg->const_expr.bytes.ptr);
+			return true;
+		case CONST_POINTER:
+			scratch_buffer_append_unsigned_int(arg->const_expr.ptr);
+			return true;
+		case CONST_BYTES:
+		case CONST_INITIALIZER:
+		case CONST_UNTYPED_LIST:
+		case CONST_MEMBER:
+			return false;
+	}
+	UNREACHABLE
+}
 
 static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 {
@@ -203,11 +243,19 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	Expr *filename = decl->exec_decl.filename;
 	bool success = sema_analyse_ct_expr(&context, filename);
 	FOREACH(Expr *, arg, decl->exec_decl.args) success &= sema_analyse_ct_expr(&context, arg);
+	Expr *stdin_expr = decl->exec_decl.stdin_string;
+	if (stdin_expr) success &= sema_analyse_ct_expr(&context, stdin_expr);
 	sema_context_destroy(&context);
 	if (!success) return NULL;
 	if (!expr_is_const_string(filename))
 	{
 		RETURN_PRINT_ERROR_AT(NULL, filename, "A filename was expected as the first argument to '$exec'.");
+	}
+	const char *stdin_string = NULL;
+	if (stdin_expr)
+	{
+		if (!expr_is_const_string(stdin_expr)) RETURN_PRINT_ERROR_AT(NULL, stdin_expr, "Expected the stdin parameter to be a compile time string.");
+		stdin_string = stdin_expr->const_expr.bytes.ptr;
 	}
 	scratch_buffer_clear();
 	const char *file_str = filename->const_expr.bytes.ptr;
@@ -221,43 +269,10 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	{
 		if (i) scratch_buffer_append(" ");
 		assert(expr_is_const(arg));
-		switch (arg->const_expr.const_kind)
+		if (!exec_arg_append_to_scratch(arg))
 		{
-			case CONST_FLOAT:
-				scratch_buffer_append_double(arg->const_expr.fxx.f);
-				continue;
-			case CONST_INTEGER:
-				scratch_buffer_append(int_to_str(arg->const_expr.ixx, 10, false));
-				continue;
-			case CONST_BOOL:
-				scratch_buffer_append(arg->const_expr.b ? "true" : "false");
-				continue;
-			case CONST_ENUM:
-			case CONST_ERR:
-				scratch_buffer_append(arg->const_expr.enum_err_val->name);
-				continue;
-			case CONST_TYPEID:
-				if (!arg->const_expr.typeid->name)
-				{
-					RETURN_PRINT_ERROR_AT(NULL, arg, "The type '%s' has no trivial name.",
-					                      type_quoted_error_string(arg->const_expr.typeid));
-				}
-				scratch_buffer_append(arg->const_expr.typeid->name);
-				continue;
-			case CONST_STRING:
-				scratch_buffer_append(arg->const_expr.bytes.ptr);
-				continue;
-			case CONST_POINTER:
-				scratch_buffer_append_unsigned_int(arg->const_expr.ptr);
-				continue;
-			case CONST_BYTES:
-			case CONST_INITIALIZER:
-			case CONST_UNTYPED_LIST:
-			case CONST_MEMBER:
-				RETURN_PRINT_ERROR_AT(NULL, arg,
-				                      "Bytes, initializers and member references may not be used as arguments.");
+			RETURN_PRINT_ERROR_AT(NULL, arg, "Bytes, initializers and member references may not be used as arguments.");
 		}
-		UNREACHABLE
 	}
 	File *file;
 	// TODO fix Win32
@@ -273,11 +288,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	}
 	if (c3_script)
 	{
-		file = compile_and_invoke(file_str, scratch_buffer_copy());
+		file = compile_and_invoke(file_str, scratch_buffer_copy(), stdin_string);
 	}
 	else
 	{
-		const char *output = execute_cmd(scratch_buffer_to_string(), false);
+		const char *output = execute_cmd(scratch_buffer_to_string(), false, stdin_string);
 		file = source_file_text_load(scratch_buffer_to_string(), output);
 	}
 	if (old_path)

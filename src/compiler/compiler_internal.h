@@ -348,6 +348,7 @@ typedef struct
 {
 	Expr *filename;
 	Expr **args;
+	Expr *stdin_string;
 } ExecDecl;
 
 typedef struct
@@ -2251,7 +2252,7 @@ File *source_file_load(const char *filename, bool *already_loaded, const char **
 File *source_file_generate(const char *filename);
 File *source_file_text_load(const char *filename, const char *content);
 
-File *compile_and_invoke(const char *file, const char *args);
+File *compile_and_invoke(const char *file, const char *args, const char *stdin_data);
 void compiler_parse(void);
 void emit_json(void);
 

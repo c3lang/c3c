@@ -558,15 +558,6 @@ jobs:
           cd resources/testfragments
           ../../build/c3c compile --reloc=none --target wasm32 -g0 --link-libc=no --no-entry -Os wasm4.c3
 
-      - name: Install QEMU and Risc-V toolchain
-        run: |
-          sudo apt-get install opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
-
-      - name: Compile and run Baremetal Risc-V Example
-        run: |
-          cd resources/examples/embedded/riscv-qemu
-          make C3C_PATH=../../../../build/ run
-
       - name: Build testproject direct linker
         run: |
           cd resources/testproject

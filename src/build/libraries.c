@@ -295,12 +295,12 @@ void resolve_libraries(BuildTarget *build_target)
 		FOREACH(const char *, exec, library->execs)
 		{
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
-			puts(execute_cmd(exec, false));
+			puts(execute_cmd(exec, false, NULL));
 		}
 		FOREACH(const char *, exec, target->execs)
 		{
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
-			puts(execute_cmd(exec, false));
+			puts(execute_cmd(exec, false, NULL));
 		}
 	}
 }

@@ -5,8 +5,8 @@ fn void! test_dot()
 	Path p = path::new(".")!;
 	assert(@catch(p.parent()));
 	// It must be possible to form the absolute version.
-	Path p2 = p.absolute()!;
-	p2 = p.append("/hello/world")!;
+	Path p2 = p.new_absolute()!;
+	p2 = p.new_append("/hello/world")!;
 	if (p2.env == POSIX)
 	{
 		assert(p2.str_view() == "hello/world");
@@ -239,6 +239,36 @@ fn void! test_extension()
 
 }
 
+fn void! test_has_extension()
+{
+	assert(!path::new(`C:\temp\foo.bar\README`, .path_env = PathEnv.WIN32)!.has_extension(`bar\README`));
+
+	assert(path::new_windows("file.txt")!.has_extension("txt"));
+	assert(path::new_posix("file.txt")!.has_extension("txt"));
+
+	assert(path::new_windows("a/b/file.txt")!.has_extension("txt"));
+	assert(path::new_posix("a/b/file.txt")!.has_extension("txt"));
+
+	assert(path::new_windows("a\\b\\file.txt")!.has_extension("txt"));
+
+	assert(path::new_windows("a.b/file.txt")!.has_extension("txt"));
+	assert(path::new_posix("a.b/file.txt")!.has_extension("txt"));
+	assert(path::new_windows("a.b/file.txt")!.has_extension("txt"));
+	assert(path::new_posix("a.b/file.txt")!.has_extension("txt"));
+
+	assert(path::new_windows("a.b\\file.txt")!.has_extension("txt"));
+
+	assert(path::new_windows("domain.dot.com")!.has_extension("com"));
+	assert(path::new_posix("domain.dot.com")!.has_extension("com"));
+
+	assert(path::new_windows("image.jpeg")!.has_extension("jpeg"));
+	assert(path::new_posix("image.jpeg")!.has_extension("jpeg"));
+
+	assert(path::new_windows("../filename.ext")!.has_extension("ext"));
+	assert(path::new_posix("../filename.ext")!.has_extension("ext"));
+
+}
+
 fn void! test_basename()
 {
 	assert(path::new_windows("file.txt").basename()! == "file.txt");
@@ -335,7 +365,7 @@ fn void! test_path_absolute()
 $if env::WIN32:
 	assert(path::new_windows(`C:\abs`).absolute()!.str_view() == `C:\abs`);
 $else
-    assert(path::new_posix("/").absolute()!.str_view() == "/");
-    assert(path::new_posix(".").absolute()!.str_view() == path::getcwd(allocator::temp())!!.str_view());
+    assert(path::new_posix("/").new_absolute()!.str_view() == "/");
+    assert(path::new_posix(".").new_absolute()!.str_view() == path::temp_cwd()!!.str_view());
 $endif
 }

@@ -2649,12 +2649,22 @@ static Decl *parse_exec(ParseContext *c)
 	advance_and_verify(c, TOKEN_CT_EXEC);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_decl);
 	ASSIGN_EXPR_OR_RET(decl->exec_decl.filename, parse_constant_expr(c), poisoned_decl);
+	// We might just have `$exec("foo")`
+	if (try_consume(c, TOKEN_RPAREN)) goto END;
+	// Get the `,`
+	CONSUME_OR_RET(TOKEN_COMMA, poisoned_decl);
+	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 	while (try_consume(c, TOKEN_COMMA))
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_decl);
 		vec_add(decl->exec_decl.args, expr);
 	}
+	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+	if (try_consume(c, TOKEN_RPAREN)) goto END;
+	CONSUME_OR_RET(TOKEN_COMMA, poisoned_decl);
+	ASSIGN_EXPR_OR_RET(decl->exec_decl.stdin_string, parse_constant_expr(c), poisoned_decl);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
+END:
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;

@@ -48,6 +48,56 @@ fn DString new(String c = "", Allocator allocator = allocator::heap())
 
 fn DString temp_new(String s = "") => new(s, allocator::temp()) @inline;
 
+
+fn void DString.replace_char(self, char ch, char replacement)
+{
+	StringData* data = self.data();
+	foreach (&c : data.chars[:data.len])
+	{
+		if (*c == ch) *c = replacement;
+	}
+}
+
+fn void DString.replace(&self, String needle, String replacement)
+{
+	StringData* data = self.data();
+	usz needle_len = needle.len;
+	if (!data || data.len < needle_len) return;
+	usz replace_len = replacement.len;
+	if (needle_len == 1 && replace_len == 1)
+	{
+		self.replace_char(needle[0], replacement[0]);
+		return;
+	}
+	@pool(data.allocator) {
+		String str = self.tcopy_str();
+		self.clear();
+		usz len = str.len;
+		usz match = 0;
+		foreach (i, c : str)
+		{
+			if (c == needle[match])
+    	    {
+    	        match++;
+    		    if (match == needle_len)
+    		    {
+    			    self.append_chars(replacement);
+    			    match = 0;
+    			    continue;
+    		    }
+    		    continue;
+    		}
+    		if (match > 0)
+    		{
+    		    self.append_chars(str[i - match:match]);
+    		    match = 0;
+    		}
+    		self.append_char(c);
+    	}
+    	if (match > 0) self.append_chars(str[^match:match]);
+	};
+}
+
 fn DString DString.new_concat(self, DString b, Allocator allocator = allocator::heap())
 {
 	DString string;

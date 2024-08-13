@@ -32,6 +32,7 @@
 - Pointers are rendered with "0x" prefix when passed to '%s'.
 - Add temp allocator scribble.
 - Use PIC by default on Linux.
+- `$exec` may now provide a stdin parameter.
 
 ### Fixes
 
@@ -74,6 +75,10 @@
 
 - `send` and `recv` added to `libc` for Posix / Win32.
 - Add support to destroy temp allocators.
+- Deprecated `path.append`, `path.tappend`, `getcwd`, `tgetcwd`, `path.absolute`, `ls`.
+- Deprecated `env::get_config_dir`, replaced by `env::new_get_config_dir`.
+- Added `path.has_extension`, `path.new_append`, `path.temp_append`, `new_cwd`, `temp_cwd`, `path.new_absolute`, `new_ls`, `temp_ls`.
+- Added `dstring.replace`
 
 ## 0.6.1 Change list
 
