@@ -486,6 +486,117 @@ jobs:
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
+  
+  build-with-docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        ubuntu_version: [20.04, 22.04]
+        build_type: [Release, Debug]
+        llvm_version: [17, 18, 19, 20]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Make script executable
+        run: chmod +x ./build-with-docker.sh
+
+      - name: Run build
+        run: |
+          LLVM_VERSION=${{ matrix.llvm_version }} UBUNTU_VERSION=${{ matrix.ubuntu_version }} CMAKE_BUILD_TYPE=${{ matrix.build_type }} ./build-with-docker.sh
+      
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile examples/base64.c3
+          ../build/c3c compile examples/binarydigits.c3
+          ../build/c3c compile examples/brainfk.c3
+          ../build/c3c compile examples/factorial_macro.c3
+          ../build/c3c compile examples/fasta.c3
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile examples/hash.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile examples/load_world.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/nbodies.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/boolerr.c3
+          ../build/c3c compile examples/contextfree/dynscope.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile examples/contextfree/multi.c3
+          ../build/c3c compile examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run examples/ls.c3
+          ../build/c3c compile-run --linker=builtin linux_stack.c3
+          ../build/c3c compile-run linux_stack.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ../build/c3c compile-test unit
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log
+
+      - name: Test WASM
+        run: |
+          cd resources/testfragments
+          ../../build/c3c compile --reloc=none --target wasm32 -g0 --link-libc=no --no-entry -Os wasm4.c3
+
+      - name: Install QEMU and Risc-V toolchain
+        run: |
+          sudo apt-get install opensbi qemu-system-misc u-boot-qemu gcc-riscv64-unknown-elf
+
+      - name: Compile and run Baremetal Risc-V Example
+        run: |
+          cd resources/examples/embedded/riscv-qemu
+          make C3C_PATH=../../../../build/ run
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run --debug-log --linker=builtin
+
+      - name: Init a library & a project
+        run: |
+          ./build/c3c init-lib mylib
+          ls mylib.c3l
+          ./build/c3c init myproject
+          ls myproject
+
+      - name: run compiler tests
+        run: |
+          cd test
+          python3 src/tester.py ../build/c3c test_suite/
+
+      - name: bundle_output
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          tar czf c3-ubuntu-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: c3-ubuntu-${{ matrix.ubuntu_version }}-${{matrix.build_type}}
+          path: c3-ubuntu-${{matrix.build_type}}.tar.gz
 
   build-mac:
     runs-on: macos-latest

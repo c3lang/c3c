@@ -1,43 +1,44 @@
 #!/bin/bash
-## build-with-docker.sh
-## @author gdm85
-## @modified by Kenta
-##
-## Script to build c3c for Ubuntu 22
-##
-#
 
-read -p "Select Build Type: Debug/Release: " config
+: ${DOCKER:=docker}
+: ${IMAGE:="c3c-builder"}
+: ${CMAKE_BUILD_TYPE:=Release}
+: ${LLVM_VERSION:=18}
+: ${UBUNTU_VERSION:="22.04"}
+: ${CMAKE_VERSION:="3.20.0"}
 
-set -e
+cd docker || exit 1  # Exit if the 'docker' directory doesn't exist
 
-DOCKER=docker
-DOCKER_RUN=""
-IMAGE="c3c-builder"
-if type podman 2>/dev/null >/dev/null; then
-    DOCKER=podman
-    DOCKER_RUN="--userns=keep-id"
-    IMAGE="localhost/$IMAGE"
+$DOCKER build \
+    --build-arg LLVM_VERSION=$LLVM_VERSION \
+    --build-arg CMAKE_VERSION=$CMAKE_VERSION \
+    --build-arg UBUNTU_VERSION=$UBUNTU_VERSION \
+    -t $IMAGE .
+
+if [ $? -ne 0 ]; then
+    echo "Docker image build failed. Exiting."
+    exit 1
 fi
 
-if [ $config == "Debug" ]; then
-    CMAKE_BUILD_TYPE=Debug
-else
-    CMAKE_BUILD_TYPE="$config"
-fi
-
-UBUNTU_VERSION="22.10"
-LLVM_VERSION="15"
-
-IMAGE="$IMAGE:22"
-
-cd docker && $DOCKER build -t $IMAGE\
-    --build-arg DEPS="llvm-$LLVM_VERSION-dev liblld-$LLVM_VERSION-dev clang-$LLVM_VERSION libllvm$LLVM_VERSION llvm-$LLVM_VERSION-runtime" \
-    --build-arg UBUNTU_VERSION="$UBUNTU_VERSION" .
 cd ..
 
 rm -rf build bin
 mkdir -p build bin
 
-exec $DOCKER run -ti --rm --tmpfs=/tmp $DOCKER_RUN -v "$PWD":/home/c3c/source -w /home/c3c/source $IMAGE bash -c \
-    "cd build && cmake -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE -DC3_LLVM_VERSION=$LLVM_VERSION .. && cmake --build . && mv c3c lib ../bin/"
+chmod -R 777 build bin
+
+exec $DOCKER run -i --rm \
+    -v "$PWD":/home/c3c/source \
+    -w /home/c3c/source $IMAGE bash -c \
+    "cmake -S . -B build \
+            -G Ninja \
+            -DCMAKE_BUILD_TYPE=$CMAKE_BUILD_TYPE \
+            -DCMAKE_C_COMPILER=clang-$LLVM_VERSION \
+            -DCMAKE_CXX_COMPILER=clang++-$LLVM_VERSION \
+            -DCMAKE_LINKER=lld-$LLVM_VERSION \
+            -DCMAKE_OBJCOPY=llvm-objcopy-$LLVM_VERSION \
+            -DCMAKE_STRIP=llvm-strip-$LLVM_VERSION \
+            -DCMAKE_DLLTOOL=llvm-dlltool-$LLVM_VERSION \
+            -DC3_LLVM_VERSION=auto && \
+    cmake --build build && \
+    cp -r build/c3c build/lib bin"
