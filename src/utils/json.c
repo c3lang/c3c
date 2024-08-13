@@ -453,27 +453,27 @@ void json_free(JsonDeallocator *deallocator, JSONObject **ptr)
 
 	switch (obj->type)
 	{
-	case J_OBJECT:
-		for (size_t i = 0; i < obj->member_len; i++)
-		{
-			json_free(deallocator, &obj->members[i]);
-			deallocator((char *)obj->keys[i]);
-		}
-		deallocator(obj->keys);
-		deallocator(obj->members);
-		break;
-	case J_ARRAY:
-		for (size_t i = 0; i < obj->array_len; i++)
-		{
-			json_free(deallocator, &obj->elements[i]);
-		}
-		deallocator(obj->elements);
-		break;
-	case J_STRING:
-		deallocator((char *)obj->str);
-		break;
-	default:
-		break;
+		case J_OBJECT:
+			for (size_t i = 0; i < obj->member_len; i++)
+			{
+				json_free(deallocator, &obj->members[i]);
+				deallocator((char *)obj->keys[i]);
+			}
+			deallocator(obj->keys);
+			deallocator(obj->members);
+			break;
+		case J_ARRAY:
+			for (size_t i = 0; i < obj->array_len; i++)
+			{
+				json_free(deallocator, &obj->elements[i]);
+			}
+			deallocator(obj->elements);
+			break;
+		case J_STRING:
+			deallocator((char *)obj->str);
+			break;
+		default:
+			break;
 	}
 	deallocator(*ptr);
 	*ptr = NULL;
