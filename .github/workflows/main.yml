@@ -584,20 +584,6 @@ jobs:
           cd test
           python3 src/tester.py ../build/c3c test_suite/
 
-      - name: bundle_output
-        run: |
-          mkdir c3
-          cp -r lib c3
-          cp msvc_build_libraries.py c3
-          cp build/c3c c3
-          tar czf c3-ubuntu-${{matrix.build_type}}.tar.gz c3
-
-      - name: upload artifacts
-        uses: actions/upload-artifact@v3
-        with:
-          name: c3-ubuntu-${{ matrix.ubuntu_version }}-${{matrix.build_type}}
-          path: c3-ubuntu-${{matrix.build_type}}.tar.gz
-
   build-mac:
     runs-on: macos-latest
     strategy:
