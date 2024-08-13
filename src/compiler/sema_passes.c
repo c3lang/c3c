@@ -348,7 +348,17 @@ void sema_analysis_pass_register_global_declarations(Module *module)
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
 		register_global_decls(unit, unit->global_decls);
+	}
 
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
+}
+
+void sema_analysis_pass_process_includes(Module *module)
+{
+	DEBUG_LOG("Pass: Process includes for module '%s'.", module->name->module);
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
+		if (unit->if_attr) continue;
 		// Process all includes
 		sema_process_includes(unit);
 		assert(vec_size(unit->ct_includes) == 0);

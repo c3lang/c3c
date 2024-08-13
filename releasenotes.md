@@ -68,6 +68,7 @@
 - Fix interface lazy resolution errors.
 - Interface resolution when part of generics #1348.
 - Assert not properly traced #1354.
+- Ordering issues with `$include` / `$exec` fixed #1302.
 
 ### Stdlib changes
 

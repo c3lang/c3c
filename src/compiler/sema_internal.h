@@ -57,6 +57,7 @@ void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
 void sema_analysis_pass_register_global_declarations(Module *module);
+void sema_analysis_pass_process_includes(Module *module);
 void sema_analysis_pass_register_conditional_units(Module *module);
 void sema_analysis_pass_register_conditional_declarations(Module *module);
 void sema_analysis_pass_decls(Module *module);
