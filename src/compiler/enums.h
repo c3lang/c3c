@@ -1645,3 +1645,4 @@ case TYPE_POISONED: case TYPE_MEMBER: case TYPE_WILDCARD
 
 #define ALL_INTS TYPE_I8: case TYPE_I16: case TYPE_I32: case TYPE_I64: case TYPE_I128: \
 case TYPE_U8: case TYPE_U16: case TYPE_U32: case TYPE_U64: case TYPE_U128
+
