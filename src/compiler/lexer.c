@@ -4,13 +4,13 @@
 
 #include "compiler_internal.h"
 
-static inline uint16_t check_col(intptr_t col, uint32_t row)
+static inline uint16_t check_col(intptr_t col)
 {
 	if (col > 255) return 0;
 	return (uint16_t)col;
 }
 
-static inline unsigned check_row(intptr_t line, uint32_t row)
+static inline unsigned check_row(intptr_t line)
 {
 	return line > MAX_SOURCE_LOCATION_LEN ? 0 : (unsigned)line;
 }
@@ -96,14 +96,14 @@ static inline void set_generic_token(Lexer *lexer, TokenType type)
 	if (line == lexer->current_row)
 	{
 		// Col is simple difference.
-		col = check_col(lexer->lexing_start - lexer->line_start + 1, line);
+		col = check_col(lexer->lexing_start - lexer->line_start + 1);
 		// Length is diff between current and start.
-		length = check_row(lexer->current - lexer->lexing_start, line);
+		length = check_row(lexer->current - lexer->lexing_start);
 	}
 	else
 	{
 		// For multiline, we grab the diff from the starting line.
-		col = check_col(lexer->lexing_start - lexer->start_row_start + 1, line);
+		col = check_col(lexer->lexing_start - lexer->start_row_start + 1);
 		// But always set a single token length.
 		length = 1;
 	}
@@ -132,7 +132,7 @@ static bool add_error_token_at_start(Lexer *lexer, const char *message, ...)
 			.file_id = lexer->file->file_id,
 			.row = lexer->start_row,
 			.length = 1,
-			.col = check_col((lexer->lexing_start - lexer->start_row_start) + 1, lexer->start_row),
+			.col = check_col((lexer->lexing_start - lexer->start_row_start) + 1),
 	};
 	sema_verror_range(location, message, list);
 	va_end(list);
@@ -152,7 +152,7 @@ static bool add_error_token_at(Lexer *lexer, const char *loc, uint32_t len, cons
 			.file_id = lexer->file->file_id,
 			.row = current_line,
 			.length = len,
-			.col = check_col((loc - lexer->line_start) + 1, current_line),
+			.col = check_col((loc - lexer->line_start) + 1),
 	};
 	sema_verror_range(location, message, list);
 	va_end(list);
@@ -170,7 +170,7 @@ static bool add_error_token_at_current(Lexer *lexer, const char *message, ...)
 			.file_id = lexer->file->file_id,
 			.row = current_line,
 			.length = 1,
-			.col = check_col((lexer->current - lexer->line_start) + 1, current_line),
+			.col = check_col((lexer->current - lexer->line_start) + 1),
 	};
 	sema_verror_range(location, message, list);
 	va_end(list);
