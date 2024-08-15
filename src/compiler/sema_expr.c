@@ -472,7 +472,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
 			RETURN_SEMA_ERROR(expr, "This expression is a value and cannot be assigned to.");
-		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_CT_IDENT:
 			return true;
 		case EXPR_OTHER_CONTEXT:
@@ -525,20 +524,19 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			return true;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
-			return sema_binary_is_expr_lvalue(context, top_expr, expr->access_expr.parent);
+			if (!sema_binary_is_expr_lvalue(context, top_expr, expr->access_expr.parent)) return false;
+			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
+		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_SUBSCRIPT_ADDR:
-			if (IS_OPTIONAL(expr))
-			{
-				RETURN_SEMA_ERROR(top_expr, "You cannot assign to an optional value.");
-			}
-			return true;
+			goto CHECK_OPTIONAL;
 		case EXPR_HASH_IDENT:
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
 		case EXPR_EXPRESSION_LIST:
 			if (!vec_size(expr->expression_list)) return false;
 			return sema_binary_is_expr_lvalue(context, top_expr, VECLAST(expr->expression_list));
+			goto CHECK_OPTIONAL;
 		case EXPR_CONST:
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant expression.");
 		case EXPR_POISONED:
@@ -601,6 +599,13 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 ERR:
 	SEMA_ERROR(top_expr, "An assignable expression, like a variable, was expected here.");
 	return false;
+CHECK_OPTIONAL:
+	if (IS_OPTIONAL(expr))
+	{
+		RETURN_SEMA_ERROR(top_expr, "You cannot assign to an optional value.");
+	}
+	return true;
+
 }
 
 static bool expr_may_ref(Expr *expr)

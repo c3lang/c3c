@@ -72,6 +72,7 @@
 - Ordering issues with `$include` / `$exec` fixed #1302.
 - Issues with wincrt linking.
 - Debug info with recursive canonical type usage could cause segfault.
+- Missing check on optional left hand side for `s.x`.
 
 ### Stdlib changes
 
