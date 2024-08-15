@@ -36,17 +36,6 @@ static const char *ld_target(ArchType arch_type)
 	}
 
 }
-static const char *string_esc(const char *str)
-{
-	scratch_buffer_clear();
-	size_t len = strlen(str);
-	for (size_t i = 0; i < len; i++)
-	{
-		if (i > 3 && !char_is_alphanum_(str[i])) scratch_buffer_append_char('\\');
-		scratch_buffer_append_char(str[i]);
-	}
-	return strdup(scratch_buffer_to_string());
-}
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 {
@@ -673,22 +662,20 @@ bool obj_format_linking_supported(ObjectFormatType format_type)
 
 const char *concat_string_parts(const char **args)
 {
-	unsigned size_needed = 0;
+	scratch_buffer_clear();
 	FOREACH(const char *, arg, args)
 	{
-		size_needed += strlen(arg) + 1;
+		assert(arg != scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
+		if (PLATFORM_WINDOWS && arg == *args)
+		{
+			scratch_buffer_append(arg);
+		}
+		else 
+		{
+			scratch_buffer_append_argument(arg);
+		}
 	}
-	char *output = malloc_string(size_needed);
-	char *ptr = output;
-	FOREACH(const char *, arg, args)
-	{
-		unsigned len = (unsigned)strlen(arg);
-		memcpy(ptr, arg, len);
-		ptr += len;
-		*(ptr++) = ' ';
-	}
-	ptr[-1] = '\0';
-	return output;
+	return scratch_buffer_copy();
 }
 
 
@@ -780,7 +767,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 
 	FOREACH(const char *, include_dir, include_dirs)
 	{
-		vec_add(parts, str_printf(is_cl_exe ? "/I\"%s\"" : "-I\"%s\"", include_dir));
+		vec_add(parts, str_printf(is_cl_exe ? "/I%s" : "-I%s", include_dir));
 	}
 
 	const bool pie_set =
@@ -799,7 +786,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	vec_add(parts, file);
 	if (is_cl_exe)
 	{
-		vec_add(parts, str_printf("/Fo:\"%s\"", out_name));
+		vec_add(parts, str_printf("/Fo:%s", out_name));
 	}
 	else
 	{

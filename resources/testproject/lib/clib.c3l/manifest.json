@@ -1,6 +1,6 @@
 { 
   "provides" : "clib",
-  "c-sources" : ["hello2.c"],
+  "c-sources" : ["hello2.c", "whitespace test.c"],
   "targets" : {
     "macos-x64" : {
     },
