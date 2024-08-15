@@ -70,6 +70,7 @@
 - Interface resolution when part of generics #1348.
 - Assert not properly traced #1354.
 - Ordering issues with `$include` / `$exec` fixed #1302.
+- Issues with wincrt linking.
 
 ### Stdlib changes
 

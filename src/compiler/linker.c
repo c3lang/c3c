@@ -81,7 +81,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 	FOREACH(Library *, library, compiler.build.library_list)
 	{
 		WinCrtLinking wincrt = library->target_used->win_crt;
-		if (wincrt == WIN_CRT_DEFAULT) continue;
+		if (wincrt == WIN_CRT_DEFAULT || wincrt == linking) continue;
 		if (linking != WIN_CRT_DEFAULT)
 		{
 			WARNING("Mismatch between CRT linking in library %s and previously selected type.", library->dir);
@@ -140,9 +140,6 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 		add_arg(str_printf("/LIBPATH:%s", windows_sdk->windows_sdk_ucrt_library_path));
 		add_arg(str_printf("/LIBPATH:%s", windows_sdk->vs_library_path));
 	}
-	// Do not link any.
-	if (compiler.build.win.crt_linking == WIN_CRT_NONE) return;
-
 	linking_add_link(&compiler.linking, "kernel32");
 	linking_add_link(&compiler.linking, "ntdll");
 	linking_add_link(&compiler.linking, "user32");
@@ -150,6 +147,9 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 	linking_add_link(&compiler.linking, "Shlwapi");
 	linking_add_link(&compiler.linking, "Ws2_32");
 	linking_add_link(&compiler.linking, "legacy_stdio_definitions");
+
+	// Do not link any.
+	if (compiler.build.win.crt_linking == WIN_CRT_NONE) return;
 
 	if (compiler.build.win.crt_linking == WIN_CRT_STATIC)
 	{

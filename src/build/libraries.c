@@ -273,9 +273,13 @@ void resolve_libraries(BuildTarget *build_target)
 			{
 				build_target->win.crt_linking = library->win_crt;
 			}
-			else if (library->win_crt != build_target->win.crt_linking)
+			else if (target->win_crt != build_target->win.crt_linking)
 			{
-				WARNING("'wincrt' mismatch between resolved build setting and library '%s', library settings will be ignored.", library->dir);
+				WARNING("'wincrt' mismatch between resolved build setting ('%s') and library '%s' ('%s'), "
+						"library settings will be ignored.",
+						wincrt_linking[build_target->win.crt_linking],
+						library->dir,
+						wincrt_linking[target->win_crt]);
 			}
 		}
 		if (vec_size(target->csource_dirs))
