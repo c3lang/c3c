@@ -766,7 +766,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 
 	FOREACH(const char *, include_dir, include_dirs)
 	{
-		vec_add(parts, str_printf(is_cl_exe ? "/I\"%s\"" : "-I\"%s\"", include_dir));
+		vec_add(parts, str_printf(is_cl_exe ? "/I%s" : "-I%s", include_dir));
 	}
 
 	const bool pie_set =
@@ -785,7 +785,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	vec_add(parts, file);
 	if (is_cl_exe)
 	{
-		vec_add(parts, str_printf("/Fo:\"%s\"", out_name));
+		vec_add(parts, str_printf("/Fo:%s", out_name));
 	}
 	else
 	{
