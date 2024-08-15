@@ -2654,11 +2654,12 @@ static Decl *parse_exec(ParseContext *c)
 	// Get the `,`
 	CONSUME_OR_RET(TOKEN_COMMA, poisoned_decl);
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-	while (try_consume(c, TOKEN_COMMA))
+	do
 	{
+		if (tok_is(c, TOKEN_RBRACE)) break;
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_constant_expr(c), poisoned_decl);
 		vec_add(decl->exec_decl.args, expr);
-	}
+	} while (try_consume(c, TOKEN_COMMA));
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	if (try_consume(c, TOKEN_RPAREN)) goto END;
 	CONSUME_OR_RET(TOKEN_COMMA, poisoned_decl);
