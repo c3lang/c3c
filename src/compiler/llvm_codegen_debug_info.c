@@ -569,11 +569,9 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 
 static inline LLVMMetadataRef llvm_get_debug_type_internal(GenContext *c, Type *type, LLVMMetadataRef scope)
 {
-	if (type->backend_debug_type) return type->backend_debug_type;
-	Type *canonical = type->canonical;
-	if (canonical != type)
+	if (type->backend_debug_type)
 	{
-		return type->backend_debug_type = llvm_get_debug_type(c, canonical);
+		return type->backend_debug_type;
 	}
 	// Consider special handling of UTF8 arrays.
 	switch (type->type_kind)

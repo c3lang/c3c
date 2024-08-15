@@ -604,7 +604,7 @@ static void gencontext_verify_ir(GenContext *context)
 	{
 		if (*error)
 		{
-			puts("IR integrity failure.");
+			eprintf("----------------------------------IR integrity failure:\n");
 			LLVMDumpModule(context->module);
 			error_exit("Could not verify IR: %s", error);
 		}
@@ -1511,9 +1511,9 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	}
 	for (unsigned i = 0; i < module_count; i++)
 	{
-			GenContext *result = llvm_gen_module(modules[i], NULL);
-			if (!result) continue;
-			vec_add(gen_contexts, result);
+		GenContext *result = llvm_gen_module(modules[i], NULL);
+		if (!result) continue;
+		vec_add(gen_contexts, result);
 	}
 	if (compiler.build.benchmarking)
 	{
