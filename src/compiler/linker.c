@@ -665,6 +665,7 @@ const char *concat_string_parts(const char **args)
 	scratch_buffer_clear();
 	FOREACH(const char *, arg, args)
 	{
+		assert(arg != &scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
 		if (PLATFORM_WINDOWS && arg == *args)
 		{
 			scratch_buffer_append(arg);
