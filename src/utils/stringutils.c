@@ -320,28 +320,71 @@ void scratch_buffer_append_len(const char *string, size_t len)
 	scratch_buffer.len += (uint32_t)len;
 }
 
+#if PLATFORM_WINDOWS
+static bool contains_whitespace_or_quotes(const char *string)
+{
+	char c;
+	while ((c = *string++) != '\0')
+	{
+		switch (c)
+		{
+			case ' ':
+			case '\t':
+			case '\n':
+			case '\r':
+			case '"':
+				return true;
+		}
+	}
+	return false;
+}
+#endif
+
+void scratch_buffer_append_argument(const char *string)
+{
+	if (scratch_buffer.len != 0) scratch_buffer_append_char(' ');
+#if PLATFORM_WINDOWS
+	if (contains_whitespace_or_quotes(string))
+	{
+		scratch_buffer_append_double_quoted(string);
+	}
+	else
+	{
+		scratch_buffer_append(string);
+	}
+#else
+	scratch_buffer_append_shell_escaped(string);
+#endif
+}
+
 void scratch_buffer_append_double_quoted(const char *string)
 {
 	scratch_buffer_append_char('"');
-	char c;
-	while ((c = string++[0]) != '\0')
+	size_t len = strlen(string);
+	for (size_t i = 0; i < len; )
 	{
+		char c = string[i++];
 		switch (c)
 		{
 			case '"':
 				scratch_buffer_append("\\\"");
 				continue;
 			case '\\':
-				scratch_buffer_append("\\\\");
+			{
+				int backslash_count = 1;
+				for (; i < len && string[i] == '\\'; i++, backslash_count++) {}
+				if (i == len || string[i] == '"')
+				{
+					scratch_buffer_append_char_repeat('\\', backslash_count * 2);
+				}
+				else
+				{
+					scratch_buffer_append_char_repeat('\\', backslash_count);
+				}
 				continue;
-			case '\n':
-				scratch_buffer_append("\\n");
-				continue;
-			default:
-				scratch_buffer_append_char(c);
-				continue;
-
+			}
 		}
+		scratch_buffer_append_char(c);
 	}
 	scratch_buffer_append_char('"');
 }
@@ -424,6 +467,14 @@ void scratch_buffer_append_char(char c)
 	}
 
 	scratch_buffer.str[scratch_buffer.len++] = c;
+}
+
+void scratch_buffer_append_char_repeat(char c, size_t count)
+{
+	for (size_t i = 0; i < count; i++)
+	{
+		scratch_buffer_append_char(c);
+	}
 }
 
 char *scratch_buffer_to_string(void)

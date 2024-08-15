@@ -665,21 +665,16 @@ const char *concat_string_parts(const char **args)
 	scratch_buffer_clear();
 	FOREACH(const char *, arg, args)
 	{
-#if !PLATFORM_WINDOWS
-		scratch_buffer_append_shell_escaped(arg);
-#else
-		if (arg != *args)
-		{
-			scratch_buffer_append_double_quoted(arg);
-		}
-		else 
+		if (PLATFORM_WINDOWS && arg == *args)
 		{
 			scratch_buffer_append(arg);
 		}
-#endif
-		scratch_buffer_append_char(' ');
+		else 
+		{
+			scratch_buffer_append_argument(arg);
+		}
 	}
-	return strdup(scratch_buffer_to_string());
+	return scratch_buffer_copy();
 }
 
 
