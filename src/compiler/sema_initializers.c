@@ -498,6 +498,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 			SEMA_ERROR(expr, "Zero length arrays / vectors are not permitted.");
 			return false;
 		}
+		if (flattened == type_untypedlist)
+		{
+			expr_rewrite_const_untyped_list(expr, NULL);
+			return true;
+		}
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
 		initializer->type = flattened;

@@ -3440,6 +3440,7 @@ INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements)
 
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
+	assert(type != type_untypedlist);
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };

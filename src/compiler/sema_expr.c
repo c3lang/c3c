@@ -7451,7 +7451,7 @@ static inline bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *conca
 			ConstInitializer *init = single_expr->const_expr.initializer;
 			if (init->kind != CONST_INIT_ARRAY_FULL)
 			{
-				if (init->kind == CONST_INIT_ZERO && init->type == type_untypedlist) continue;
+				assert(init->type != type_untypedlist);
 				RETURN_SEMA_ERROR(single_expr, "Expected a full array here.");
 			}
 			FOREACH(ConstInitializer *, val, init->init_array_full)
@@ -9374,8 +9374,8 @@ static inline bool sema_expr_analyse_ct_append(SemaContext *context, Expr *appen
 	switch (list->const_expr.const_kind)
 	{
 		case CONST_INITIALIZER:
-			if (list->type != type_untypedlist) return sema_append_const_array(context, append_expr, list, exprs);
-			break;
+			assert(list->type != type_untypedlist);
+			return sema_append_const_array(context, append_expr, list, exprs);
 		case CONST_UNTYPED_LIST:
 			untyped_list = list->const_expr.untyped_list;
 			break;
