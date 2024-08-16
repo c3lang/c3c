@@ -2958,6 +2958,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		if (eval_type == SUBSCRIPT_EVAL_ASSIGN)
 		{
 			expr->expr_kind = EXPR_SUBSCRIPT_ASSIGN;
+			expr->type = index_type;
 			expr->subscript_assign_expr.expr = exprid(current_expr);
 			expr->subscript_assign_expr.index = exprid(index);
 			expr->subscript_assign_expr.method = declid(overload);

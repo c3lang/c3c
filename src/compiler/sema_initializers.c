@@ -466,6 +466,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	// Note at this point this we either have
 	// EXPR_DESIGNATED_INITIALIZER_LIST
 	// or EXPR_INITIALIZER_LIST
+	// or EXPR_CONST with a ConstInitializer
 
 	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
@@ -475,6 +476,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 
 	if (expr->expr_kind == EXPR_CONST)
 	{
+		assert(expr->const_expr.const_kind == CONST_INITIALIZER);
 		return cast_implicit(context, expr, assigned_type, false);
 	}
 	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);

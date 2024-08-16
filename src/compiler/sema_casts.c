@@ -806,6 +806,12 @@ static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_sile
 
 static bool rule_ulist_to_struct(CastContext *cc, bool is_explicit, bool is_silent)
 {
+	if (expr_is_const_initializer(cc->expr))
+	{
+		assert(cc->expr->const_expr.initializer->kind == CONST_INIT_ZERO);
+		return true;
+	}
+	assert(expr_is_const_untyped_list(cc->expr));
 	Expr **expressions = cc->expr->const_expr.untyped_list;
 	unsigned size = vec_size(expressions);
 	if (!size) return true;
@@ -848,6 +854,11 @@ static bool rule_ulist_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 
 static bool rule_ulist_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
+	if (cc->expr->const_expr.const_kind == CONST_INITIALIZER)
+	{
+		assert(cc->expr->const_expr.initializer->kind == CONST_INIT_ZERO);
+		return true;
+	}
 	Type *base = cc->to->array.base;
 	FOREACH(Expr *, expr, cc->expr->const_expr.untyped_list)
 	{
@@ -1790,8 +1801,19 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 
 static void cast_untyped_list_to_other(SemaContext *context, Expr *expr, Type *to_type)
 {
-	// Recursively set the type of all ConstInitializer inside.
-	expr_recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
+	if (expr->const_expr.const_kind == CONST_UNTYPED_LIST)
+	{
+		// Recursively set the type of all ConstInitializer inside.
+		expr_recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
+	}
+	if (expr_is_const_initializer(expr) && expr->const_expr.initializer->kind == CONST_INIT_ZERO)
+	{
+		expr->type = to_type;
+		expr->inner_expr->type = type_flatten(to_type);
+		expr->resolve_status = RESOLVE_DONE;
+		return;
+	}
+	expr->resolve_status = RESOLVE_NOT_DONE;
 	// We can now analyse the list (this is where the actual check happens)
 	bool success = sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr);
 	assert(success);
