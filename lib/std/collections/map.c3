@@ -369,6 +369,7 @@ fn void HashMap.free_internal(&map, void* ptr) @inline @private
 
 fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 {
+	if (!map.count) return false;
 	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
 	Entry* prev = map.table[i];
