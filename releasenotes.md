@@ -75,6 +75,7 @@
 - Issues with wincrt linking.
 - Debug info with recursive canonical type usage could cause segfault.
 - Missing check on optional left hand side for `s.x`.
+- Incorrect zero analysis on `foo["test"] = {}` #1360.
 
 ### Stdlib changes
 

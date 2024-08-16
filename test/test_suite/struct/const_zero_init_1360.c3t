@@ -1,0 +1,12 @@
+module test;
+import std::collections::map;
+
+fn void main()
+{
+    HashMap(<String, String>) map;
+    map["c3c"] = {};
+}
+
+/* #expect: test.ll
+
+main

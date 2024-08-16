@@ -473,6 +473,10 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr);
 	}
 
+	if (expr->expr_kind == EXPR_CONST)
+	{
+		return cast_implicit(context, expr, assigned_type, false);
+	}
 	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
 	// 2. Grab the expressions inside.
@@ -689,7 +693,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!to) to = type_untypedlist;
 	assert(to);
 	Type *flattened = type_flatten(to);
-	bool is_zero_init = expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list);
+	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) || sema_initializer_list_is_empty(expr);
+
 	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
 	switch (flattened->type_kind)
 	{
