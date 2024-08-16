@@ -133,7 +133,7 @@ macro bool is_signed($Type) @const
 		$case FLOAT:
 			return true;
 		$case VECTOR:
-			return is_signed($Type.inner);
+			return is_signed($typefrom($Type.inner));
 		$default:
 			return false;
 	$endswitch
@@ -148,7 +148,7 @@ macro bool is_unsigned($Type) @const
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
-			return is_unsigned($Type.inner);
+			return is_unsigned($typefrom($Type.inner));
 		$default:
 			return false;
 	$endswitch
