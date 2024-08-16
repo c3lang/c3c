@@ -40,7 +40,7 @@ fault NumberConversion
 macro String tformat(String fmt, ...)
 {
 	DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-	str.appendf(fmt, $vasplat());
+	str.appendf(fmt, $vasplat);
 	return str.str_view();
 }
 
@@ -52,7 +52,7 @@ macro String tformat(String fmt, ...)
 macro ZString tformat_zstr(String fmt, ...)
 {
 	DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-	str.appendf(fmt, $vasplat());
+	str.appendf(fmt, $vasplat);
 	return str.zstr_view();
 }
 
@@ -67,7 +67,7 @@ macro String new_format(String fmt, ..., Allocator allocator = allocator::heap()
 	@pool(allocator)
 	{
 		DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-		str.appendf(fmt, $vasplat());
+		str.appendf(fmt, $vasplat);
 		return str.copy_str(allocator);
 	};
 }
@@ -83,7 +83,7 @@ macro ZString new_format_zstr(String fmt, ..., Allocator allocator = allocator::
 	@pool(allocator)
 	{
 		DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-		str.appendf(fmt, $vasplat());
+		str.appendf(fmt, $vasplat);
 		return str.copy_zstr(allocator);
 	};
 }

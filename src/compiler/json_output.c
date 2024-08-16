@@ -110,7 +110,7 @@ void print_type(FILE *file, TypeInfo *type)
 			PRINTF("$typeof(%s)", scratch_buffer_to_string());
 			break;
 		case TYPE_INFO_VATYPE:
-			PRINTF("$vatype(...)");
+			PRINTF("$vatype[...]");
 			break;
 		case TYPE_INFO_EVALTYPE:
 			PRINTF("$evaltype(...)");

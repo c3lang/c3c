@@ -40,7 +40,6 @@ int comment_level = 0;
 
 
 "$alignof"      { count(); return(CT_ALIGNOF); }
-"$and"          { count(); return(CT_AND); }
 "$assert"       { count(); return(CT_ASSERT); }
 "$assignable"   { count(); return(CT_ASSIGNABLE); }
 "$case"         { count(); return(CT_CASE); }
@@ -55,6 +54,7 @@ int comment_level = 0;
 "$error"        { count(); return(CT_ERROR); }
 "$eval"         { count(); return(CT_EVAL); }
 "$evaltype"     { count(); return(CT_EVALTYPE); }
+"$exec"         { count(); return(CT_EXEC); }
 "$extnameof"    { count(); return(CT_EXTNAMEOF); }
 "$feature"      { count(); return(CT_FEATURE); }
 "$for"          { count(); return(CT_FOR); }
@@ -195,6 +195,9 @@ b64\`{B64}\` { count(); return(BYTES); }
 "!!"			{ count(); return(BANGBANG); }
 "..."			{ count(); return(ELLIPSIS); }
 ".."			{ count(); return(DOTDOT); }
+"&&&"           { count(); return(CT_AND_OP); }
+"|||"           { count(); return(CT_OR_OP); }
+"+++"           { count(); return(CT_CONCAT_OP); }
 ">>="			{ count(); return(SHR_ASSIGN); }
 "<<="			{ count(); return(SHL_ASSIGN); }
 "+="			{ count(); return(ADD_ASSIGN); }

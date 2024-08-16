@@ -19,7 +19,7 @@ macro @with_mode(String user, #action, ...)
 	@scope(context_user)
 	{
 		context_user = user;
-		return #action($vasplat());
+		return #action($vasplat);
 	};
 }
 

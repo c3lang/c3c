@@ -6,10 +6,10 @@ import std::io;
 macro print_type_info(...)
 {
     $for (var $i = 0; $i < $vacount; $i++)
-        io::printfn("type: %s", $vatype($i).nameof);
-        io::printfn("%s.sizeof = %d", $vatype($i).nameof, $vatype($i).sizeof);
-        io::printfn("%s.min = %s", $vatype($i).nameof, $vatype($i).min);
-        io::printfn("%s.max = %s\n", $vatype($i).nameof, $vatype($i).max);
+        io::printfn("type: %s", $vatype[$i].nameof);
+        io::printfn("%s.sizeof = %d", $vatype[$i].nameof, $vatype[$i].sizeof);
+        io::printfn("%s.min = %s", $vatype[$i].nameof, $vatype[$i].min);
+        io::printfn("%s.max = %s\n", $vatype[$i].nameof, $vatype[$i].max);
     $endfor;
 }
 

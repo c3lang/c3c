@@ -5,7 +5,7 @@ import std::io;
 macro test(start, ...)
 {
     $for (var $i = 0; $i < $vacount; $i++)
-        for ($vatype($i) i = ($vatype($i))start; i < 5; i+=2)
+        for ($vatype[$i] i = ($vatype[$i])start; i < 5; i+=2)
         {
 	    assert(math::is_even(i));
 	    assert(i.is_even());

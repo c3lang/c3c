@@ -199,7 +199,7 @@ macro bool @has_same(#a, #b, ...) @const
 		return false;
 	$endif
 	$for (var $i = 0; $i < $vacount; $i++)
-		$if @typeid($vaexpr($i)) != $type_a:
+		$if @typeid($vaexpr[$i]) != $type_a:
 			return false;
 		$endif
 	$endfor

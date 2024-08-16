@@ -591,7 +591,7 @@ fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 
 /**
  * @require $vacount < 2 : "Too many arguments."
- * @require $vacount == 0 ||| $assignable($vaexpr(0), $Type) : "The second argument must be an initializer for the type"
+ * @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
  * @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
  **/
 macro new($Type, ...) @nodiscard
@@ -600,7 +600,7 @@ macro new($Type, ...) @nodiscard
 		return ($Type*)calloc($Type.sizeof);
 	$else
 		$Type* val = malloc($Type.sizeof);
-		*val = $vaexpr(0);
+		*val = $vaexpr[0];
 		return val;
 	$endif
 }
@@ -609,7 +609,7 @@ macro new($Type, ...) @nodiscard
  * Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  * exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  * @require $vacount < 2 : "Too many arguments."
- * @require $vacount == 0 ||| $assignable($vaexpr(0), $Type) : "The second argument must be an initializer for the type"
+ * @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
  **/
 macro new_aligned($Type, ...) @nodiscard
 {
@@ -617,7 +617,7 @@ macro new_aligned($Type, ...) @nodiscard
 		return ($Type*)calloc_aligned($Type.sizeof, $Type.alignof);
 	$else
 		$Type* val = malloc_aligned($Type.sizeof, $Type.alignof);
-		*val = $vaexpr(0);
+		*val = $vaexpr[0];
 		return val;
 	$endif
 }
@@ -641,7 +641,7 @@ macro alloc_aligned($Type) @nodiscard
 
 /**
  * @require $vacount < 2 : "Too many arguments."
- * @require $vacount == 0 ||| $assignable($vaexpr(0), $Type) : "The second argument must be an initializer for the type"
+ * @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
  **/
 macro temp_new($Type, ...) @nodiscard
 {
@@ -649,7 +649,7 @@ macro temp_new($Type, ...) @nodiscard
 		return ($Type*)tcalloc($Type.sizeof) @inline;
 	$else
 		$Type* val = tmalloc($Type.sizeof) @inline;
-		*val = $vaexpr(0);
+		*val = $vaexpr[0];
 		return val;
 	$endif
 }

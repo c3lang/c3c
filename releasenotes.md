@@ -33,6 +33,8 @@
 - Add temp allocator scribble.
 - Use PIC by default on Linux.
 - `$exec` may now provide a stdin parameter.
+- Introduce `$vaarg[...]` syntax and deprecate the old `$vaarg(...)`.
+- Similar change to `$vasplat`: `$vasplat` and `$vasplat[1..]`.
 
 ### Fixes
 

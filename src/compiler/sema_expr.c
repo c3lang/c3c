@@ -4774,7 +4774,7 @@ static Expr **sema_vasplat_append(SemaContext *context, Expr **init_expressions,
 	{
 		if (!range->is_range)
 		{
-			SEMA_ERROR(expr, "$vasplat() expected a range.");
+			SEMA_ERROR(expr, "$vasplat expected a range.");
 			return NULL;
 		}
 		if (!sema_analyse_expr(context, start)) return NULL;

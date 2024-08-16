@@ -6,10 +6,10 @@ import std::io;
 
 macro @foo(...)
 {
-	int i = $vaarg(1) + $vaarg(1);
-	int j = $vaexpr(2) + $vaexpr(2);
+	int i = $vaarg[1] + $vaarg[1];
+	int j = $vaexpr[2] + $vaexpr[2];
 	$for (var $i = 0; $i < $vacount; $i++)
-		io::printfn("%d", $vaarg($i));
+		io::printfn("%d", $vaarg[$i]);
 	$endfor;
 }
 
@@ -17,9 +17,9 @@ macro foo2(...)
 {
 	$for (var $i = 0; $i < $vacount; $i++)
 		{
-			$vatype($i) x;
+			$vatype[$i] x;
 		}
-		io::printfn("%s", $vatype($i).nameof);
+		io::printfn("%s", $vatype[$i].nameof);
 	$endfor;
 }
 
@@ -34,9 +34,9 @@ macro foo3(...)
 
 macro @foo4(...)
 {
-	$typeof(*$varef(0)) a = *$varef(0);
-	*$varef(0) = *$varef(1);
-	*$varef(1) = a;
+	$typeof(*$varef[0]) a = *$varef[0];
+	*$varef[0] = *$varef[1];
+	*$varef[1] = a;
 }
 fn int ping(int val)
 {

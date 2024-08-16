@@ -421,10 +421,16 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 	if (try_consume(c, TOKEN_CT_VATYPE))
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_VATYPE, c->prev_span);
-		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_type_info);
+		bool is_lparen = try_consume(c, TOKEN_LPAREN);
+		if (!is_lparen) CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
-		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_type_info);
+		CONSUME_OR_RET(is_lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
+		// TODO remove in 0.7
+		if (is_lparen && !compiler.context.silence_deprecation)
+		{
+			SEMA_NOTE(type_info, "'$vatype(...)' is deprecated, use '$vatype[...]' instead.");
+		}
 		return type_info;
 	}
 	if (try_consume(c, TOKEN_CT_EVALTYPE))

@@ -449,18 +449,34 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 
 /**
  * vasplat ::= CT_VASPLAT '(' range_expr ')'
+ * -> TODO, this is the only one in 0.7
+ * vasplat ::= CT_VASPLAT ('[' range_expr ']')?
  */
 Expr *parse_vasplat(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
 	advance_and_verify(c, TOKEN_CT_VASPLAT);
-	TRY_CONSUME_OR_RET(TOKEN_LPAREN, "'$vasplat' must be followed by '()'.", poisoned_expr);
-	if (!try_consume(c, TOKEN_RPAREN))
+	bool lparen = try_consume(c, TOKEN_LPAREN);
+	if (lparen && try_consume(c, TOKEN_RPAREN)) goto END;
+	if (lparen || try_consume(c, TOKEN_LBRACKET))
 	{
 		if (!parse_range(c, &expr->vasplat_expr)) return poisoned_expr;
-		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+		CONSUME_OR_RET(lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
+END:
+	// TODO remove in 0.7
+	if (lparen && !compiler.context.silence_deprecation)
+	{
+		if (expr->vasplat_expr.end || expr->vasplat_expr.start)
+		{
+			SEMA_NOTE(expr, "'$vasplat(...)' is deprecated, use '$vasplat[...]' instead.");
+		}
+		else
+		{
+			SEMA_NOTE(expr, "'$vasplat()' is deprecated, use '$vasplat' instead.");
+		}
+	}
 	return expr;
 }
 /**
@@ -1207,9 +1223,17 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	advance(c);
 	if (type != TOKEN_CT_VACOUNT)
 	{
-		CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
+		// TODO remove in 0.7
+		bool is_lparen = try_consume(c, TOKEN_LPAREN);
+		if (!is_lparen) CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
-		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
+		CONSUME_OR_RET(is_lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_expr);
+		// TODO remove in 0.7
+		if (is_lparen && !compiler.context.silence_deprecation)
+		{
+			SEMA_NOTE(expr, "'%s(...)' is deprecated, use '%s[...]' instead.",
+			          token_type_to_string(type), token_type_to_string(type));
+		}
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;

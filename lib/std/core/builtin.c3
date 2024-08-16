@@ -135,7 +135,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
 {
 	$if env::COMPILER_SAFE_MODE:
-	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
+	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
 	$endif;
 	$$unreachable();
 }
@@ -146,7 +146,7 @@ macro void unreachable(String string = "Unreachable statement reached.", ...) @b
  **/
 macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
 {
-	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat());
+	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
 	$$unreachable();
 }
 
@@ -291,12 +291,12 @@ macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write =
 
 macro swizzle(v, ...) @builtin
 {
-	return $$swizzle(v, $vasplat());
+	return $$swizzle(v, $vasplat);
 }
 
 macro swizzle2(v, v2, ...) @builtin
 {
-	return $$swizzle2(v, v2, $vasplat());
+	return $$swizzle2(v, v2, $vasplat);
 }
 
 macro anyfault @catch(#expr) @builtin

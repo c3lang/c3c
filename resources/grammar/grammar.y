@@ -14,6 +14,7 @@ void yyerror(const char *s);
 %token TYPE_IDENT CT_TYPE_IDENT
 %token AT_TYPE_IDENT AT_IDENT CT_INCLUDE
 %token STRING_LITERAL INTEGER
+%token CT_AND_OP CT_OR_OP CT_CONCAT_OP CT_EXEC
 %token INC_OP DEC_OP SHL_OP SHR_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token LGENPAR RGENPAR
@@ -90,7 +91,7 @@ ct_analyse
 	| CT_IS_CONST
 	;
 
-ct_arg
+ct_vaarg
 	: CT_VACONST
 	| CT_VAARG
 	| CT_VAREF
@@ -146,11 +147,10 @@ base_expr_assignable
 	| '(' expr ')'
 	| expr_block
 	| ct_call '(' flat_path ')'
-	| ct_arg '(' expr ')'
+	| ct_vaarg '[' expr ']'
 	| ct_analyse '(' expression_list ')'
 	| CT_VACOUNT
 	| CT_FEATURE '(' CONST_IDENT ')'
-	| CT_AND '(' expression_list ')'
 	| ct_castable '(' expr ',' type ')'
 	| lambda_decl compound_statement
 	;
@@ -333,21 +333,25 @@ try_chain_expr
 and_expr
 	: relational_expr
 	| and_expr AND_OP relational_expr
+	| and_expr CT_AND_OP relational_expr
 	;
 
 and_stmt_expr
 	: relational_stmt_expr
 	| and_stmt_expr AND_OP relational_expr
+	| and_stmt_expr CT_AND_OP relational_expr
 	;
 
 or_expr
 	: and_expr
 	| or_expr OR_OP and_expr
+	| or_expr CT_OR_OP and_expr
 	;
 
 or_stmt_expr
 	: and_stmt_expr
 	| or_stmt_expr OR_OP and_expr
+	| or_stmt_expr CT_OR_OP and_expr
 	;
 
 suffix_expr
@@ -445,8 +449,7 @@ arg
 	| type
 	| param_path '=' type
 	| expr
-	| CT_VASPLAT '(' range_expr ')'
-	| CT_VASPLAT '(' ')'
+	| CT_VASPLAT '[' range_expr ']'
 	| ELLIPSIS expr
 	;
 
@@ -532,7 +535,7 @@ base_type
 	| CT_TYPE_IDENT
 	| CT_TYPEOF '(' expr ')'
 	| CT_TYPEFROM '(' constant_expr ')'
-	| CT_VATYPE '(' constant_expr ')'
+	| CT_VATYPE '[' constant_expr ']'
 	| CT_EVALTYPE '(' constant_expr ')'
 	;
 
@@ -1233,9 +1236,16 @@ opt_extern
 	| empty
 	;
 
+exec_decl
+	: CT_EXEC '(' expr ')' opt_attributes ';'
+	| CT_EXEC '(' expr ',' initializer_list ')' opt_attributes ';'
+	| CT_EXEC '(' expr ',' initializer_list ',' expr ')' opt_attributes ';'
+	;
+
 top_level
 	: module
 	| import_decl
+	| exec_decl
 	| opt_extern func_definition
 	| opt_extern const_declaration
 	| opt_extern global_declaration
