@@ -252,13 +252,13 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
-static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **include_dirs,
+static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
                           const char **out_files, const char *output_subdir)
 {
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
-		out_files[total++] = cc_compiler(compiler, file, flags, include_dirs, output_subdir);
+		out_files[total++] = cc_compiler(cc, file, flags, include_dirs, output_subdir);
 	}
 	return total;
 }
