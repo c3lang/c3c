@@ -112,23 +112,23 @@ fn Entry*! Map.get_entry(map, Key key)
  * Get the value or update and
  * @require $assignable(#expr, Value)
  **/
-macro Value Map.@get_or_set(&map, Key key, Value #expr)
+macro Value Map.@get_or_set(&self, Key key, Value #expr)
 {
-	MapImpl *map_impl = (MapImpl*)*map;
-	if (!map_impl || !map_impl.count)
+	MapImpl *map = (MapImpl*)*self;
+	if (!map || !map.count)
 	{
 		Value val = #expr;
 		map.set(key, val);
 		return val;
 	}
 	uint hash = rehash(key.hash());
-	uint index = index_for(hash, map_impl.table.len);
-	for (Entry *e = map_impl.table[index]; e != null; e = e.next)
+	uint index = index_for(hash, map.table.len);
+	for (Entry *e = map.table[index]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e.value;
 	}
 	Value val = #expr;
-	map_impl.add_entry(hash, key, val, index);
+	map.add_entry(hash, key, val, index);
 	return val;
 }
 
