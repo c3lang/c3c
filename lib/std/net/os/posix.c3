@@ -39,6 +39,7 @@ fn anyfault convert_error(Errno error)
 		case errno::EALREADY: return NetError.CONNECTION_ALREADY_IN_PROGRESS;
 		case errno::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR;
 		case errno::ECONNREFUSED: return NetError.CONNECTION_REFUSED;
+		case errno::ECONNRESET: return NetError.CONNECTION_RESET;
 		case errno::EISCONN: return NetError.ALREADY_CONNECTED;
 		case errno::ENETUNREACH: return NetError.NETWORK_UNREACHABLE;
 		case errno::ENOTSOCK: return NetError.NOT_A_SOCKET;

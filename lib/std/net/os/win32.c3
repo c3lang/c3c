@@ -81,6 +81,7 @@ fn anyfault convert_error(WSAError error)
         case wsa::ENOTSOCK: return NetError.NOT_A_SOCKET;
         case wsa::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET;
         case wsa::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
+        case wsa::ECONNRESET: return NetError.CONNECTION_RESET;
 		default: return IoError.GENERAL_ERROR;
 	}
 }
