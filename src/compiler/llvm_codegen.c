@@ -1304,7 +1304,6 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	Module *test_module = compiler_find_or_create_module(test_path, NULL);
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	compiler.build.debug_info = DEBUG_INFO_NONE;
 	gencontext_init(c, test_module, shared_context);
 	gencontext_begin_module(c);
 
@@ -1403,7 +1402,6 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
 
 	GenContext *c = cmalloc(sizeof(GenContext));
-	compiler.build.debug_info = DEBUG_INFO_NONE;
 	gencontext_init(c, benchmark_module, shared_context);
 	gencontext_begin_module(c);
 

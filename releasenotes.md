@@ -77,6 +77,7 @@
 - Missing check on optional left hand side for `s.x`.
 - Incorrect zero analysis on `foo["test"] = {}` #1360.
 - Bug converting untyped list #1360.
+- Benchmark / test no longer suppresses debug info. #1364.
 
 ### Stdlib changes
 
