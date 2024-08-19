@@ -91,6 +91,7 @@
 - Added `path.has_extension`, `path.new_append`, `path.temp_append`, `new_cwd`, `temp_cwd`, `path.new_absolute`, `new_ls`, `temp_ls`.
 - Added `dstring.replace`
 - New hashmap type, `Map`
+- Added `ElasticArray`.
 
 ## 0.6.1 Change list
 

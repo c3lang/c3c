@@ -2,7 +2,7 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::list(<Type>);
-import std::io,std::math;
+import std::io, std::math, std::collections::list_common;
 
 def ElementPredicate = fn bool(Type *type);
 def ElementTest = fn bool(Type *type, any context);
@@ -173,10 +173,7 @@ fn void List.add_all(&self, List* other_list)
  **/
 fn Type[] List.to_new_aligned_array(&self, Allocator allocator = allocator::heap())
 {
-	if (!self.size) return Type[] {};
-	Type[] result = allocator::alloc_array_aligned(allocator, Type, self.size);
-	result[..] = self.entries[:self.size];
-	return result;
+	return list_common::list_to_new_aligned_array(Type, self, allocator);
 }
 
 /**
@@ -184,10 +181,7 @@ fn Type[] List.to_new_aligned_array(&self, Allocator allocator = allocator::heap
  **/
 macro Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
 {
-	if (!self.size) return Type[] {};
-	Type[] result = allocator::alloc_array(allocator, Type, self.size);
-	result[..] = self.entries[:self.size];
-	return result;
+	return list_common::list_to_new_array(Type, self, allocator);
 }
 
 fn Type[] List.to_tarray(&self)
@@ -204,13 +198,7 @@ fn Type[] List.to_tarray(&self)
  **/
 fn void List.reverse(&self)
 {
-	if (self.size < 2) return;
-	usz half = self.size / 2U;
-	usz end = self.size - 1;
-	for (usz i = 0; i < half; i++)
-	{
-		@swap(self.entries[i], self.entries[end - i]);
-	}
+	list_common::list_reverse(self);
 }
 
 fn Type[] List.array_view(&self)
@@ -228,10 +216,8 @@ fn void List.add_array(&self, Type[] array)
 {
 	if (!array.len) return;
 	self.reserve(array.len);
-	foreach (&value : array)
-	{
-		self.entries[self.size++] = *value;
-	}
+	self.entries[self.size : array.len] = array[..];
+	self.size += array.len;
 }
 
 fn void List.push_front(&self, Type type) @inline
@@ -329,7 +315,7 @@ fn void List.swap(&self, usz i, usz j)
  **/
 fn usz List.remove_if(&self, ElementPredicate filter)
 {
-	return self._remove_if(filter, false);
+	return list_common::list_remove_if(self, filter, false);
 }
 
 /**
@@ -338,67 +324,17 @@ fn usz List.remove_if(&self, ElementPredicate filter)
  **/
 fn usz List.retain_if(&self, ElementPredicate selection)
 {
-	return self._remove_if(selection, true);
-}
-
-macro usz List._remove_if(&self, ElementPredicate filter, bool $invert) @local
-{
-	usz size = self.size;
-	for (usz i = size, usz k = size; k > 0; k = i)
-	{
-		// Find last index of item to be deleted.
-		$if $invert:
-			while (i > 0 && !filter(&self.entries[i - 1])) i--;
-		$else
-			while (i > 0 && filter(&self.entries[i - 1])) i--;
-		$endif
-		// Remove the items from this index up to the one not to be deleted.
-		usz n = self.size - k;
-		self.entries[i:n] = self.entries[k:n];
-		self.size -= k - i;
-		// Find last index of item not to be deleted.
-		$if $invert:
-			while (i > 0 && filter(&self.entries[i - 1])) i--;
-		$else
-			while (i > 0 && !filter(&self.entries[i - 1])) i--;
-		$endif
-	}
-	return size - self.size;
+	return list_common::list_remove_if(self, selection, true);
 }
 
 fn usz List.remove_using_test(&self, ElementTest filter, any context)
 {
-	return self._remove_using_test(filter, false, context);
+	return list_common::list_remove_using_test(self, filter, false, context);
 }
 
 fn usz List.retain_using_test(&self, ElementTest filter, any context)
 {
-	return self._remove_using_test(filter, true, context);
-}
-
-macro usz List._remove_using_test(&self, ElementTest filter, bool $invert, ctx) @local
-{
-	usz size = self.size;
-	for (usz i = size, usz k = size; k > 0; k = i)
-	{
-		// Find last index of item to be deleted.
-		$if $invert:
-			while (i > 0 && !filter(&self.entries[i - 1], ctx)) i--;
-		$else
-			while (i > 0 && filter(&self.entries[i - 1], ctx)) i--;
-		$endif
-		// Remove the items from this index up to the one not to be deleted.
-		usz n = self.size - k;
-		self.entries[i:n] = self.entries[k:n];
-		self.size -= k - i;
-		// Find last index of item not to be deleted.
-		$if $invert:
-			while (i > 0 && filter(&self.entries[i - 1], ctx)) i--;
-		$else
-			while (i > 0 && !filter(&self.entries[i - 1], ctx)) i--;
-		$endif
-	}
-	return size - self.size;
+	return list_common::list_remove_using_test(self, filter, true, context);
 }
 
 fn void List.ensure_capacity(&self, usz min_capacity) @local
@@ -515,17 +451,7 @@ fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
  **/
 fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
-	usz size = self.size;
-	for (usz i = size; i > 0; i--)
-	{
-		if (!equals(self.entries[i - 1], value)) continue;
-		for (usz j = i; j < self.size; j++)
-		{
-			self.entries[j - 1] = self.entries[j];
-		}
-		self.size--;
-	}
-	return size - self.size;
+	return list_common::list_remove_item(self, value);
 }
 
 
@@ -549,17 +475,7 @@ fn usz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 
 fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 {
-	usz size = self.size;
-	for (usz i = size; i > 0; i--)
-	{
-		if (self.entries[i - 1]) continue;
-		for (usz j = i; j < size; j++)
-		{
-			self.entries[j - 1] = self.entries[j];
-		}
-		self.size--;
-	}
-	return size - self.size;
+	return list_common::list_compact(self);
 }
 
 // --> Deprecated
