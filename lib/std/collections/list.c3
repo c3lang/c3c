@@ -240,7 +240,7 @@ fn void List.push_front(&self, Type type) @inline
 }
 
 /**
- * @require index < self.size
+ * @require index <= self.size
  **/
 fn void List.insert_at(&self, usz index, Type type)
 {

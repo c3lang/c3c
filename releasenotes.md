@@ -79,6 +79,7 @@
 - Bug converting untyped list #1360.
 - Benchmark / test no longer suppresses debug info. #1364.
 - Bug when compile time subtracting a distinct type.
+- `insert_at` incorrectly prevented inserts at the end of a list.
 
 ### Stdlib changes
 
