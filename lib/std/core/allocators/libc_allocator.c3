@@ -79,7 +79,7 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 	{
 		if (alignment > 0)
 		{
-			return win32::_aligned_recalloc(null, bytes, alignment) ?: AllocationFailure.OUT_OF_MEMORY?;
+			return win32::_aligned_recalloc(null, 1, bytes, alignment) ?: AllocationFailure.OUT_OF_MEMORY?;
 		}
 		return libc::calloc(1, bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
 	}
