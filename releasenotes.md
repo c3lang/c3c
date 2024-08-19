@@ -78,6 +78,7 @@
 - Incorrect zero analysis on `foo["test"] = {}` #1360.
 - Bug converting untyped list #1360.
 - Benchmark / test no longer suppresses debug info. #1364.
+- Bug when compile time subtracting a distinct type.
 
 ### Stdlib changes
 

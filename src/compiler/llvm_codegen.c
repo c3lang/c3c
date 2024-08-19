@@ -1303,6 +1303,9 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	Path *test_path = path_create_from_string("_$test", 5, INVALID_SPAN);
 	Module *test_module = compiler_find_or_create_module(test_path, NULL);
 
+	DebugInfo actual_debug_info = compiler.build.debug_info;
+	compiler.build.debug_info = DEBUG_INFO_NONE;
+
 	GenContext *c = cmalloc(sizeof(GenContext));
 	gencontext_init(c, test_module, shared_context);
 	gencontext_begin_module(c);
@@ -1365,11 +1368,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		llvm_gen_test_main(c);
 	}
 
-	if (llvm_use_debug(c))
-	{
-		LLVMDIBuilderFinalize(c->debug.builder);
-		LLVMDisposeDIBuilder(c->debug.builder);
-	}
+	compiler.build.debug_info = actual_debug_info;
 	return c;
 }
 
@@ -1401,6 +1400,8 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	Path *benchmark_path = path_create_from_string("$benchmark", 10, INVALID_SPAN);
 	Module *benchmark_module = compiler_find_or_create_module(benchmark_path, NULL);
 
+	DebugInfo actual_debug_info = compiler.build.debug_info;
+	compiler.build.debug_info = DEBUG_INFO_NONE;
 	GenContext *c = cmalloc(sizeof(GenContext));
 	gencontext_init(c, benchmark_module, shared_context);
 	gencontext_begin_module(c);
@@ -1463,11 +1464,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		llvm_gen_benchmark_main(c);
 	}
 
-	if (llvm_use_debug(c))
-	{
-		LLVMDIBuilderFinalize(c->debug.builder);
-		LLVMDisposeDIBuilder(c->debug.builder);
-	}
+	compiler.build.debug_info = actual_debug_info;
 	return c;
 }
 

@@ -5739,12 +5739,12 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 		Type *type = expr->type;
 		expr_replace(expr, left);
 		expr->type = type;
-		switch (left_type->type_kind)
+		switch (left->const_expr.const_kind)
 		{
-			case ALL_INTS:
+			case CONST_INTEGER:
 				expr->const_expr.ixx = int_sub(left->const_expr.ixx, right->const_expr.ixx);
 				break;
-			case ALL_FLOATS:
+			case CONST_FLOAT:
 				expr->const_expr.fxx = float_sub(left->const_expr.fxx, right->const_expr.fxx);
 				break;
 			default:
