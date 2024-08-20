@@ -118,6 +118,7 @@
 - Added `--list-manifest-properties` to list the available properties in `manifest.json`.
 - Indexing into a constant array / struct now works at compile time.
 - Improved error message when trying user foreach with an untyped list.
+- RISCV asm support.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
