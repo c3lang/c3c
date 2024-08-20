@@ -330,6 +330,10 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 				return poisoned_expr;
 			}
 			return expr;
+		case TOKEN_MINUS:
+			expr->expr_asm_arg.kind = ASM_ARG_VALUE;
+			ASSIGN_EXPRID_OR_RET(expr->expr_asm_arg.expr_id, parse_expr(c), poisoned_expr);
+			return expr;
 		case TOKEN_INTEGER:
 		case TOKEN_CONST_IDENT:
 		case TOKEN_REAL:

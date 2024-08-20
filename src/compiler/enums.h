@@ -142,6 +142,9 @@ typedef enum FLAG_ATTR
 	ARG_BITS_256 = 1 << 5,
 	ARG_BITS_512 = 1 << 6,
 	ARG_BITS_80 = 1 << 7,
+	ARG_BITS_5 = 1 << 8,
+	ARG_BITS_12 = 1 << 9,
+	ARG_BITS_20 = 1 << 10,
 } AsmArgBits;
 
 typedef enum

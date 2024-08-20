@@ -1,0 +1,19 @@
+// #target: elf-riscv32
+module test;
+
+fn void main(String[] args)
+{
+	int x = 0;
+	asm
+	{
+		add $t0, $t1, $t2;
+		add x, $t1, $t2;
+		sub $a0, $a1, $a2;
+		addi $s1, $s2, -2048;
+		neg $t3, $t4;
+	}
+}
+
+/* #expect: test.ll
+
+"add t0, t1, t2\0Aadd $0, t1, t2\0Asub a0, a1, a2\0Aaddi s1, s2, -2048\0Aneg t3, t4\0A", "=r,~{x5},~{x9},~{x10},~{x28}"()
