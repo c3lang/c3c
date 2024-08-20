@@ -24,6 +24,16 @@ typedef uint32_t ArraySize;
 typedef uint64_t BitSize;
 typedef uint16_t FileId;
 
+#define INT5_MAX         15
+#define INT12_MAX        2047
+#define INT20_MAX        524287
+#define INT5_MIN         -16
+#define INT12_MIN        -2048
+#define INT20_MIN        (-INT20_MAX-1)
+#define UINT5_MAX         31
+#define UINT12_MAX        4095
+#define UINT20_MAX        1048575U
+
 #define MAX_ARRAYINDEX INT32_MAX
 #define MAX_FIXUPS 0xFFFFF
 #define MAX_HASH_SIZE (512 * 1024 * 1024)
@@ -874,7 +884,11 @@ typedef struct
 			ExprId idx;
 			uint64_t offset;
 		};
-		uint64_t value;
+		struct {
+			uint64_t value;
+			unsigned bits;
+			bool is_neg;
+		};
 		union
 		{
 			const char *name;
@@ -3583,8 +3597,11 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 	if (limit >= 80 && (bits & ARG_BITS_80)) return 80;
 	if (limit >= 64 && (bits & ARG_BITS_64)) return 64;
 	if (limit >= 32 && (bits & ARG_BITS_32)) return 32;
+	if (limit >= 20 && (bits & ARG_BITS_20)) return 20;
 	if (limit >= 16 && (bits & ARG_BITS_16)) return 16;
+	if (limit >= 12 && (bits & ARG_BITS_12)) return 12;
 	if (limit >= 8 && (bits & ARG_BITS_8)) return 8;
+	if (limit >= 5 && (bits & ARG_BITS_5)) return 5;
 	return 0;
 }
 
@@ -3673,4 +3690,5 @@ INLINE bool check_module_name(Path *path)
 	}
 	return true;
 }
+
 

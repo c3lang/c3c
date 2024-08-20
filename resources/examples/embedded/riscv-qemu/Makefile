@@ -3,7 +3,7 @@ SRCS_C3 := $(wildcard *.c3)
 default: hello.elf
 
 hello.a: $(SRCS_C3)
-	$(C3C_PATH)c3c --use-stdlib=no --no-entry --target elf-riscv32 static-lib $(SRCS_C3)
+	$(C3C_PATH)c3c -g --use-stdlib=no --no-entry --target elf-riscv32 static-lib $(SRCS_C3)
 
 start.o: start.s
 	riscv64-unknown-elf-as -g -march=rv32i -mabi=ilp32 -misa-spec=20191213 -o start.o start.s
