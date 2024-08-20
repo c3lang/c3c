@@ -35,6 +35,7 @@
 - `$exec` may now provide a stdin parameter.
 - Introduce `$vaarg[...]` syntax and deprecate the old `$vaarg(...)`.
 - Similar change to `$vasplat`: `$vasplat` and `$vasplat[1..]`.
+- Add `$member.get(value)` to replace `value.$eval($member.nameof)`
 
 ### Fixes
 

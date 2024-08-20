@@ -74,7 +74,7 @@ fn void! TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 								.data = (String*)(data + $m.offsetof),
 							};
 						$default:
-							$if $defined(self.data.$eval($m.nameof).as_stream):
+							$if $defined($m.get(self.data).as_stream):
 								return TextTag{
 									.kind = TEMPLATE,
 									.template = self.data.$eval($m.nameof).as_stream(),

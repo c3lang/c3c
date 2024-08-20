@@ -79,6 +79,7 @@ bool expr_may_addr(Expr *expr)
 			return expr_may_addr(expr->access_expr.parent);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
+		case EXPR_MEMBER_GET:
 			return true;
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
@@ -226,6 +227,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_SLICE_COPY:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
+		case EXPR_MEMBER_GET:
 			return false;
 		case EXPR_IDENTIFIER:
 		{
@@ -704,6 +706,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
 		case EXPR_LAST_FAULT:
+		case EXPR_MEMBER_GET:
 			return true;
 		case EXPR_VASPLAT:
 			return true;

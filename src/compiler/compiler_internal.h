@@ -1090,7 +1090,8 @@ struct Expr_
 		Expr *inner_expr;                           // 8
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
-		ExprMacroBody macro_body_expr;              // 16;
+		ExprMacroBody macro_body_expr;              // 16
+		Decl *member_get_expr;                      // 8
 		OperatorOverload overload_expr;             // 4
 		ExprPointerOffset pointer_offset_expr;
 		ExprGuard rethrow_expr;                     // 16
@@ -3265,6 +3266,7 @@ INLINE void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TAGOF:
+		case EXPR_MEMBER_GET:
 			break;
 	}
 }

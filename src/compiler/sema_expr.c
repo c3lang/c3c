@@ -593,6 +593,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_GENERIC_IDENT:
 		case EXPR_MACRO_BODY:
 		case EXPR_LAST_FAULT:
+		case EXPR_MEMBER_GET:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -618,6 +619,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_EMBED:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TAGOF:
+		case EXPR_MEMBER_GET:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -2519,6 +2521,57 @@ NOT_FOUND:
 	RETURN_SEMA_ERROR(expr, "The tag '%s' is not defined, always check with '.has_tagof'.", tagname);
 }
 
+INLINE bool sema_call_may_not_have_attributes(SemaContext *context, Expr *expr)
+{
+	if (expr->call_expr.attr_force_inline)
+	{
+		RETURN_SEMA_ERROR(expr, "'@inline' is not allowed here.");
+	}
+	if (expr->call_expr.attr_force_inline)
+	{
+		RETURN_SEMA_ERROR(expr, "'@noinline' is not allowed here.");
+	}
+	if (expr->call_expr.attr_force_inline)
+	{
+		RETURN_SEMA_ERROR(expr, "'@pure' is not allowed here.");
+	}
+	return true;
+}
+static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr)
+{
+	if (vec_size(expr->call_expr.arguments) != 1)
+	{
+		RETURN_SEMA_ERROR(expr, "Expected a single argument to '.get'.");
+	}
+	if (!sema_call_may_not_have_attributes(context, expr)) return false;
+	Expr *get = exprptr(expr->call_expr.function);
+	Expr *inner = expr->call_expr.arguments[0];
+	if (!sema_analyse_expr(context, inner)) return false;
+	Decl *decl = get->member_get_expr;
+	Type *type = type_flatten(inner->type);
+	if (type->type_kind != TYPE_STRUCT && type->type_kind != TYPE_UNION)
+	{
+		RETURN_SEMA_ERROR(inner, "This value does not match the member.");
+	}
+	Decl **members = type->decl->strukt.members;
+	ArrayIndex index = -1;
+	FOREACH_IDX(i, Decl *, member, members)
+	{
+		if (member == decl)
+		{
+			index = i;
+			break;
+		}
+	}
+	if (index == -1)
+	{
+		RETURN_SEMA_ERROR(inner, "This value does not match the member.");
+	}
+	expr->expr_kind = EXPR_ACCESS;
+	expr->access_expr = (ExprAccess) { .parent = inner, .ref = decl };
+	expr->type = decl->type;
+	return true;
+}
 static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool *no_match_ref)
 {
 	if (no_match_ref) *no_match_ref = true;
@@ -2527,6 +2580,10 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 	if (func_expr->expr_kind == EXPR_MACRO_BODY_EXPANSION)
 	{
 		return sema_call_analyse_body_expansion(context, expr);
+	}
+	if (func_expr->expr_kind == EXPR_MEMBER_GET)
+	{
+		return sema_call_analyse_member_get(context, expr);
 	}
 	bool optional = func_expr->type && IS_OPTIONAL(func_expr);
 	Decl *decl;
@@ -3442,6 +3499,11 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			expr->expr_kind = EXPR_TAGOF;
 			expr->tag_of_expr = (ExprTagOf) { .type = decl, .property = type_property };
 			return true;
+		case TYPE_PROPERTY_GET:
+			expr->expr_kind = EXPR_MEMBER_GET;
+			expr->member_get_expr = decl;
+			expr->type = type_void;
+			return true;
 		case TYPE_PROPERTY_NONE:
 			break;
 		case TYPE_PROPERTY_QNAMEOF:
@@ -3910,25 +3972,26 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_NAMES:
 			return sema_expr_rewrite_typeid_call(expr, typeid, TYPEID_INFO_NAMES, type_get_slice(type_string));
 		case TYPE_PROPERTY_ALIGNOF:
-		case TYPE_PROPERTY_INF:
-		case TYPE_PROPERTY_MIN:
-		case TYPE_PROPERTY_MAX:
-		case TYPE_PROPERTY_NAN:
-		case TYPE_PROPERTY_ELEMENTS:
-		case TYPE_PROPERTY_VALUES:
-		case TYPE_PROPERTY_RETURNS:
-		case TYPE_PROPERTY_PARAMS:
-		case TYPE_PROPERTY_MEMBERSOF:
-		case TYPE_PROPERTY_METHODSOF:
-		case TYPE_PROPERTY_EXTNAMEOF:
-		case TYPE_PROPERTY_TAGOF:
-		case TYPE_PROPERTY_HAS_TAGOF:
-		case TYPE_PROPERTY_NAMEOF:
-		case TYPE_PROPERTY_QNAMEOF:
 		case TYPE_PROPERTY_ASSOCIATED:
+		case TYPE_PROPERTY_ELEMENTS:
+		case TYPE_PROPERTY_EXTNAMEOF:
+		case TYPE_PROPERTY_GET:
+		case TYPE_PROPERTY_HAS_TAGOF:
+		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_IS_EQ:
 		case TYPE_PROPERTY_IS_ORDERED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
+		case TYPE_PROPERTY_MAX:
+		case TYPE_PROPERTY_MEMBERSOF:
+		case TYPE_PROPERTY_METHODSOF:
+		case TYPE_PROPERTY_MIN:
+		case TYPE_PROPERTY_NAMEOF:
+		case TYPE_PROPERTY_NAN:
+		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_QNAMEOF:
+		case TYPE_PROPERTY_RETURNS:
+		case TYPE_PROPERTY_TAGOF:
+		case TYPE_PROPERTY_VALUES:
 			// Not supported by dynamic typeid
 		case TYPE_PROPERTY_NONE:
 			return false;
@@ -4096,6 +4159,8 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 	{
 		case TYPE_PROPERTY_NONE:
 			return false;
+		case TYPE_PROPERTY_GET:
+			return type == type_member;
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_NAN:
 			return type_is_float(type);
@@ -4237,6 +4302,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			expr->type = type;
 			expr->resolve_status = RESOLVE_DONE;
 			return true;
+		case TYPE_PROPERTY_GET:
+			UNREACHABLE
 		case TYPE_PROPERTY_MEMBERSOF:
 		{
 			AlignSize align;
@@ -8943,6 +9010,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_TYPEID:
 			case EXPR_TYPEID_INFO:
 			case EXPR_TAGOF:
+			case EXPR_MEMBER_GET:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
 		}
@@ -9599,6 +9667,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr)
 		case EXPR_SWIZZLE:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
+		case EXPR_MEMBER_GET:
 			UNREACHABLE
 		case EXPR_TAGOF:
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");
@@ -9900,6 +9969,8 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 	if (!expr_ok(expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_MEMBER_GET:
+			RETURN_SEMA_ERROR(expr, "Expected a parameter to 'get', e.g. '$member.get(value)'.");
 		case EXPR_MACRO_BODY_EXPANSION:
 			if (!expr->body_expansion_expr.first_stmt)
 			{
