@@ -24,12 +24,14 @@ fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator allocator)
 	self.backing_allocator = allocator;
 }
 
+import std::io;
 fn void DynamicArenaAllocator.free(&self)
 {
 	DynamicArenaPage* page = self.page;
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
+		allocator::free(self.backing_allocator, page.memory);
 		allocator::free(self.backing_allocator, page);
 		page = next_page;
 	}
@@ -37,6 +39,7 @@ fn void DynamicArenaAllocator.free(&self)
 	while (page)
 	{
 		DynamicArenaPage* next_page = page.prev_arena;
+		allocator::free(self.backing_allocator, page.memory);
 		allocator::free(self.backing_allocator, page);
 		page = next_page;
 	}
@@ -131,8 +134,8 @@ fn void DynamicArenaAllocator.reset(&self, usz mark = 0) @dynamic
 fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @local
 {
 	// First, make sure that we can align it, extending the page size if needed.
-	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof, alignment));
-
+	usz page_size = max(self.page_size, mem::aligned_offset(size + DynamicArenaChunk.sizeof + alignment, alignment));
+	assert(page_size > size + DynamicArenaChunk.sizeof);
 	// Grab the page without alignment (we do it ourselves)
 	void* mem = allocator::malloc_try(self.backing_allocator, page_size)!;
 	DynamicArenaPage*! page = allocator::new_try(self.backing_allocator, DynamicArenaPage);

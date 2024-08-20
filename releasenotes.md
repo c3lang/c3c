@@ -148,6 +148,7 @@
 - Reference parameter doesn't work with vector subscript #1250.
 - The msvc_sdk script failed to work properly on windows when run in folders with spaces.
 - Using winmain would call the wrong definition #1265.
+- DynamicArenaAllocator would not correctly free.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.
