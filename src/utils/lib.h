@@ -156,6 +156,7 @@ void scratch_buffer_clear(void);
 void scratch_buffer_append(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
+void scratch_buffer_append_in_quote(const char *string);
 void scratch_buffer_append_char_repeat(char c, size_t count);
 void scratch_buffer_append_signed_int(int64_t i);
 void scratch_buffer_append_double(double d);

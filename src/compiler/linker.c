@@ -704,7 +704,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 		if (arg == quote_arg)
 		{
 			scratch_buffer_append_char('"');
-			scratch_buffer_append(args[++i]);
+			scratch_buffer_append_in_quote(args[++i]);
 			scratch_buffer_append_char('"');
 			continue;
 		}
@@ -717,8 +717,8 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 		if (arg == quote_concat_arg)
 		{
 			scratch_buffer_append_char('"');
-			scratch_buffer_append(args[++i]);
-			scratch_buffer_append(args[++i]);
+			scratch_buffer_append_in_quote(args[++i]);
+			scratch_buffer_append_in_quote(args[++i]);
 			scratch_buffer_append_char('"');
 			continue;
 		}
@@ -726,7 +726,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 		{
 			scratch_buffer_append(args[++i]);
 			scratch_buffer_append_char('"');
-			scratch_buffer_append(args[++i]);
+			scratch_buffer_append_in_quote(args[++i]);
 			scratch_buffer_append_char('"');
 			continue;
 		}

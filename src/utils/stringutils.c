@@ -384,6 +384,25 @@ void scratch_buffer_printf(const char *format, ...)
 	scratch_buffer.len += len_needed;
 }
 
+void scratch_buffer_append_in_quote(const char *string)
+{
+	size_t len = strlen(string);
+	for (size_t i = 0; i < len; )
+	{
+		char c = string[i++];
+		switch (c)
+		{
+			case '"':
+				scratch_buffer_append("\\\"");
+				continue;
+			case '\\':
+				scratch_buffer_append("\\\\");
+				continue;
+		}
+		scratch_buffer_append_char(c);
+	}
+}
+
 void scratch_buffer_append_char(char c)
 {
 	if (scratch_buffer.len + 1 > MAX_STRING_BUFFER - 1)
