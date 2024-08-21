@@ -1009,12 +1009,14 @@ static int jump_buffer_size()
 		case OPENBSD_X64:
 			REMINDER("Guessing setjmp for platform.");
 			return 32;
+		case ANDROID_AARCH64:
 		case LINUX_AARCH64:
 		case ELF_AARCH64:
 			return 39;
 		case WINDOWS_AARCH64:
 			// Based on Godbolt
 			return 24;
+		case IOS_AARCH64:
 		case MACOS_AARCH64:
 			// Based on macOS headers
 			return 25;

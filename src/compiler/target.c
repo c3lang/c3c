@@ -113,15 +113,12 @@ static bool os_target_use_thread_local(OsType os)
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
 			return false;
+		case OS_DARWIN_TYPES:
 		case OS_TYPE_FREE_BSD:
-		case OS_TYPE_IOS:
 		case OS_TYPE_LINUX:
-		case OS_TYPE_MACOSX:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_WIN32:
-		case OS_TYPE_TVOS:
-		case OS_TYPE_WATCHOS:
 		case OS_TYPE_WASI:
 			return true;
 	}
@@ -253,10 +250,7 @@ static inline void target_setup_x86_abi(BuildTarget *target)
 	compiler.platform.x86.is_mcu_api = compiler.platform.os == OS_TYPE_ELFIAMCU;
 	switch (compiler.platform.os)
 	{
-		case OS_TYPE_MACOSX:
-		case OS_TYPE_IOS:
-		case OS_TYPE_WATCHOS:
-		case OS_TYPE_TVOS:
+		case OS_DARWIN_TYPES:
 		case OS_TYPE_DRAGON_FLY:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_ELFIAMCU:
@@ -1047,7 +1041,9 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[FREEBSD_X64] = "x86_64-pc-freebsd",
 		[OPENBSD_X64] = "x86_64-pc-openbsd",
 		[ELF_X64] = "x86_64-unknown-elf",
+		[ANDROID_AARCH64] = "aarch64-unknown-linux-android",
 		[LINUX_AARCH64] = "aarch64-unknown-linux-gnu",
+		[IOS_AARCH64] = "aarch64-apple-ios",
 		[MACOS_AARCH64] = "aarch64-apple-macosx",
 		[ELF_AARCH64] = "aarch64-unknown-elf",
 		[WINDOWS_AARCH64] = "aarch64-pc-windows-msvc",
@@ -1423,10 +1419,7 @@ static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type)
 		case OS_TYPE_OPENBSD:
 		case OS_TYPE_FREE_BSD:
 			return OBJ_FORMAT_ELF;
-		case OS_TYPE_MACOSX:
-		case OS_TYPE_IOS:
-		case OS_TYPE_TVOS:
-		case OS_TYPE_WATCHOS:
+		case OS_DARWIN_TYPES:
 			return OBJ_FORMAT_MACHO;
 		case OS_TYPE_WIN32:
 			return OBJ_FORMAT_COFF;
@@ -1475,7 +1468,7 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 			}
 			// Use default
 			break;
-		case OS_TYPE_MACOSX:
+		case OS_DARWIN_TYPES:
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NONE:
 		case OS_TYPE_FREE_BSD:
@@ -1492,21 +1485,6 @@ static unsigned os_target_c_type_bits(OsType os, ArchType arch, CType type)
 				case CTYPE_INT:
 				case CTYPE_LONG:
 					return 32;
-				case CTYPE_LONG_LONG:
-					return 64;
-				default:
-					UNREACHABLE
-			}
-		case OS_TYPE_IOS:
-		case OS_TYPE_TVOS:
-		case OS_TYPE_WATCHOS:
-			switch (type)
-			{
-				case CTYPE_SHORT:
-					return 16;
-				case CTYPE_INT:
-					return 32;
-				case CTYPE_LONG:
 				case CTYPE_LONG_LONG:
 					return 64;
 				default:
@@ -2035,6 +2013,10 @@ void target_setup(BuildTarget *target)
 		compiler.platform.reloc_model = target->reloc_model;
 	}
 
+	if (compiler.platform.os == OS_TYPE_IOS)
+	{
+		WARNING("iOS not properly supported yet.");
+	}
 	if (compiler.platform.os == OS_TYPE_MACOSX)
 	{
 		if (!compiler.build.macos.sysroot) compiler.build.macos.sysroot = macos_sysroot();

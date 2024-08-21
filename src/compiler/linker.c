@@ -594,10 +594,7 @@ Linker linker_find_linker_type(void)
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
 			return LINKER_LD;
-		case OS_TYPE_IOS:
-		case OS_TYPE_MACOSX:
-		case OS_TYPE_TVOS:
-		case OS_TYPE_WATCHOS:
+		case OS_DARWIN_TYPES:
 			return LINKER_LD64;
 		case OS_TYPE_WIN32:
 			return LINKER_LINK_EXE;
