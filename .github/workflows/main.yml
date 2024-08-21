@@ -36,7 +36,7 @@ jobs:
       - name: Compile and run some examples
         run: |
           cd resources
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\hello_world_many.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -L C:\ --print-linking examples\hello_world_many.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\time.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run --print-linking examples\fannkuch-redux.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile-run examples\contextfree\boolerr.c3

@@ -28,6 +28,7 @@
     },
     "hello_world_win32": {
       "type": "executable",
+      "c-include-dirs": [ "C:\\"],
       "c-sources-override": [
       ]
     },
