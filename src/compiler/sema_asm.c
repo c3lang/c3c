@@ -168,8 +168,17 @@ static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineB
 	Type *type = max_supported_imm_int(is_signed, arg_type);
 	if (!type)
 	{
-		SEMA_ERROR(expr, "'%s' does not support a direct integer constant here.", instr->name);
-		return false;
+		Type *unsigned_type = max_supported_imm_int(false, arg_type);
+		if (unsigned_type)
+		{
+			SEMA_ERROR(expr, "'%s' does not support a signed integer constant here.", instr->name);
+			return false;
+		}
+		else
+		{
+			SEMA_ERROR(expr, "'%s' does not support a direct integer constant here.", instr->name);
+			return false;
+		}
 	}
 	Int i = int_expr->const_expr.ixx;
 	unsigned max_bits = arg_bits_max(is_signed ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);

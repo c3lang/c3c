@@ -323,7 +323,7 @@ static void init_asm_riscv(PlatformTarget *target)
 			// load
 			reg_instr(target, "li", "w:r64/mem, immi64");
 			reg_instr(target, "lui", "w:r64, immu20");
-			reg_instr(target, "auipc", "w:r64, immi20");
+			reg_instr(target, "auipc", "w:r64, immu20");
 			reg_instr(target, "mv", "w:r64/mem, r64/mem");
 			reg_instr(target, "ld", "w:r64/mem, mem");
 			reg_instr(target, "lw", "w:r64/mem, mem");
@@ -394,7 +394,7 @@ static void init_asm_riscv(PlatformTarget *target)
 			// load
 			reg_instr(target, "li", "w:r32/mem, immi32");
 			reg_instr(target, "lui", "w:r32, immu20");
-			reg_instr(target, "auipc", "w:r32, immi20");
+			reg_instr(target, "auipc", "w:r32, immu20");
 			reg_instr(target, "mv", "w:r32/mem, r32/mem");
 			reg_instr(target, "lw", "w:r32/mem, mem");
 			reg_instr(target, "lh", "w:r32/mem, mem");
