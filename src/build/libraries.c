@@ -12,6 +12,7 @@ const char *manifest_default_keys[][2] = {
 		{"exec", "Scripts run for all platforms."},
 		{"provides", "The library name"},
 		{"targets", "The map of supported platforms"},
+		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
 
@@ -29,6 +30,7 @@ const char *manifest_target_keys[][2] = {
 		{"exec", "Scripts to also run for the target."},
 		{"linked-libraries", "Libraries linked by the linker for this target, overriding global settings."},
 		{"link-args", "Linker arguments for this target."},
+		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"wincrt", "Windows CRT linking: none, static, dynamic."}
 };
 
