@@ -93,6 +93,7 @@
 - Added `dstring.replace`
 - New hashmap type, `Map`
 - Added `ElasticArray`.
+- Added `types::is_signed`, `types::is_unsigned` and `types::inner_type`.
 
 ## 0.6.1 Change list
 
