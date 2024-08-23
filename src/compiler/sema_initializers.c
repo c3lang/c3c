@@ -466,6 +466,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 	// Note at this point this we either have
 	// EXPR_DESIGNATED_INITIALIZER_LIST
 	// or EXPR_INITIALIZER_LIST
+	// or EXPR_CONST with a ConstInitializer
 
 	// 1. Designated initializer is separately evaluated.
 	if (expr->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
@@ -473,6 +474,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		return sema_expr_analyse_designated_initializer(context, assigned_type, flattened, expr);
 	}
 
+	if (expr->expr_kind == EXPR_CONST)
+	{
+		assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+		return cast_implicit(context, expr, assigned_type, false);
+	}
 	assert(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
 	// 2. Grab the expressions inside.
@@ -491,6 +497,11 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 		{
 			SEMA_ERROR(expr, "Zero length arrays / vectors are not permitted.");
 			return false;
+		}
+		if (flattened == type_untypedlist)
+		{
+			expr_rewrite_const_untyped_list(expr, NULL);
+			return true;
 		}
 		ConstInitializer *initializer = CALLOCS(ConstInitializer);
 		initializer->kind = CONST_INIT_ZERO;
@@ -689,7 +700,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!to) to = type_untypedlist;
 	assert(to);
 	Type *flattened = type_flatten(to);
-	bool is_zero_init = expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list);
+	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) || sema_initializer_list_is_empty(expr);
+
 	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
 	switch (flattened->type_kind)
 	{

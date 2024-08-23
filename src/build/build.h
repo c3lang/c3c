@@ -291,7 +291,9 @@ typedef enum
 	WIN_CRT_DEFAULT = -1,
 	WIN_CRT_NONE = 0,
 	WIN_CRT_DYNAMIC = 1,
-	WIN_CRT_STATIC = 2,
+	WIN_CRT_DYNAMIC_DEBUG = 2,
+	WIN_CRT_STATIC = 3,
+	WIN_CRT_STATIC_DEBUG = 4,
 } WinCrtLinking;
 
 typedef enum
@@ -321,6 +323,7 @@ typedef enum
 typedef enum
 {
 	ARCH_OS_TARGET_DEFAULT = 0,
+	ANDROID_AARCH64,
 	ELF_AARCH64,
 	ELF_RISCV32,
 	ELF_RISCV64,
@@ -329,6 +332,7 @@ typedef enum
 	ELF_XTENSA,
 	FREEBSD_X86,
 	FREEBSD_X64,
+	IOS_AARCH64,
 	LINUX_AARCH64,
 	LINUX_RISCV32,
 	LINUX_RISCV64,
@@ -348,6 +352,15 @@ typedef enum
 	WINDOWS_X64,
 	ARCH_OS_TARGET_LAST = WINDOWS_X64
 } ArchOsTarget;
+
+typedef enum
+{
+	SANITIZE_NOT_SET = -1,
+	SANITIZE_NONE,
+	SANITIZE_ADDRESS,
+	SANITIZE_MEMORY,
+	SANITIZE_THREAD,
+} SanitizeMode;
 
 #define ANY_WINDOWS_ARCH_OS WINDOWS_AARCH64: case WINDOWS_X64: case MINGW_X64
 
@@ -482,6 +495,7 @@ typedef struct BuildOptions_
 	SizeOptimizationLevel optsize;
 	RiscvFloatCapability riscv_float_capability;
 	MemoryEnvironment memory_environment;
+	SanitizeMode sanitize_mode;
 	bool print_keywords;
 	bool print_attributes;
 	bool print_builtins;
@@ -614,8 +628,11 @@ typedef struct
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
 		RiscvFloatCapability riscv_float_capability : 4;
-		bool trap_on_wrap : 1;
 		Win64Simd pass_win64_simd_as_arrays : 3;
+		bool trap_on_wrap : 1;
+		bool sanitize_address : 1;
+		bool sanitize_memory : 1;
+		bool sanitize_thread : 1;
 		FpOpt fp_math;
 		SafetyLevel safe_mode;
 		PanicLevel panic_level;

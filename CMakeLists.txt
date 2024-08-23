@@ -116,12 +116,14 @@ if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         message("Loading Windows LLVM debug libraries, this may take a while...")
         FetchContent_MakeAvailable(LLVM_Windows_debug)
-        set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_debug_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
+        set(llvm_dir ${llvm_windows_debug_SOURCE_DIR})
     else()
         message("Loading Windows LLVM libraries, this may take a while...")
         FetchContent_MakeAvailable(LLVM_Windows)
-        set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_windows_SOURCE_DIR} ${CMAKE_SYSTEM_PREFIX_PATH})
+        set(llvm_dir ${llvm_windows_SOURCE_DIR})
     endif()
+    set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
+
     find_package(LLVM REQUIRED CONFIG)
     find_package(LLD REQUIRED CONFIG)
 else()
@@ -145,6 +147,9 @@ if(LLVM_ENABLE_RTTI)
 else()
     message(STATUS "LLVM was not built with RTTI")
 endif()
+
+string(REPLACE "." ";" VERSION_LIST ${LLVM_PACKAGE_VERSION})
+list(GET VERSION_LIST 0 LLVM_MAJOR_VERSION)
 
 include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
@@ -210,30 +215,30 @@ if (NOT(${CMAKE_BINARY_DIR} EQUAL ${CMAKE_SOURCE_DIR}))
     file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 endif()
 
-if (${LLVM_PACKAGE_VERSION} VERSION_GREATER_EQUAL 16)
-    find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    set(lld_libs
-        ${LLD_COFF}
-        ${LLD_COMMON}
-        ${LLD_WASM}
-        ${LLD_MINGW}
-        ${LLD_ELF}
-        ${LLD_MACHO}
-        )
-else()
-    set(lld_libs
-        ${LLD_COFF}
-        ${LLD_COMMON}
-        ${LLD_WASM}
-        ${LLD_MINGW}
-        ${LLD_ELF}
-        ${LLD_MACHO}
-        )
-endif()
+find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+set(lld_libs
+    ${LLD_COFF}
+    ${LLD_COMMON}
+    ${LLD_WASM}
+    ${LLD_MINGW}
+    ${LLD_ELF}
+    ${LLD_MACHO}
+    )
 
 if (APPLE)
     set(lld_libs ${lld_libs} xar)
-endif ()
+    find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+    set(sanitizer_runtime_libraries
+            ${RT_ASAN_DYNAMIC}
+            ${RT_TSAN_DYNAMIC}
+            # Unused
+            # ${RT_UBSAN_DYNAMIC}
+            # ${RT_LSAN_DYNAMIC}
+        )
+endif()
 
 message(STATUS "linking to llvm libs ${lld_libs}")
 message(STATUS "Found lld libs ${lld_libs}")
@@ -424,6 +429,12 @@ if(MSVC)
             target_compile_options(tilde-backend PUBLIC /MT)
         endif()
     endif()
+    set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
+    set(sanitizer_runtime_libraries
+        ${clang_lib_dir}/clang_rt.asan-x86_64.lib
+        ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
+        ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
+        ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
 else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)
@@ -434,8 +445,25 @@ else()
             -Wno-unused-function -Wno-unused-variable -Wno-unused-parameter)
 endif()
 
-
 install(TARGETS c3c DESTINATION bin)
 install(DIRECTORY lib/ DESTINATION lib/c3)
+
+if (DEFINED sanitizer_runtime_libraries)
+    add_custom_command(TARGET c3c POST_BUILD
+        COMMAND "${CMAKE_COMMAND}" -E rm -rf -- $<TARGET_FILE_DIR:c3c>/c3c_rt
+        COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:c3c>/c3c_rt
+        COMMAND "${CMAKE_COMMAND}" -E copy ${sanitizer_runtime_libraries} $<TARGET_FILE_DIR:c3c>/c3c_rt
+        VERBATIM
+        COMMENT "Copying sanitizer runtime libraries to output directory")
+
+    if (APPLE)
+        # Change LC_ID_DYLIB to be rpath-based instead of having an absolute path
+        add_custom_command(TARGET c3c POST_BUILD
+            COMMAND find $<TARGET_FILE_DIR:c3c>/c3c_rt -type f -name "*.dylib" -execdir ${LLVM_TOOLS_BINARY_DIR}/llvm-install-name-tool -id @rpath/{} {} $<SEMICOLON>
+            VERBATIM)
+    endif()
+
+    install(DIRECTORY $<TARGET_FILE_DIR:c3c>/c3c_rt/ DESTINATION bin/c3c_rt)
+endif()
 
 feature_summary(WHAT ALL)

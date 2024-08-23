@@ -73,6 +73,7 @@ const char* file_expand_path(const char* path);
 const char* find_lib_dir(void);
 const char *find_rel_exe_dir(const char *dir);
 
+void file_copy_file(const char *src_path, const char *dst_path, bool overwrite);
 void file_delete_all_files_in_dir_with_suffix(const char *dir, const char *suffix);
 bool file_delete_file(const char *path);
 bool file_is_dir(const char *file);
@@ -154,11 +155,9 @@ void slice_trim(StringSlice *slice);
 
 void scratch_buffer_clear(void);
 void scratch_buffer_append(const char *string);
-void scratch_buffer_append_argument(const char *string);
-void scratch_buffer_append_double_quoted(const char *string);
-void scratch_buffer_append_shell_escaped(const char *string);
 void scratch_buffer_append_len(const char *string, size_t len);
 void scratch_buffer_append_char(char c);
+void scratch_buffer_append_in_quote(const char *string);
 void scratch_buffer_append_char_repeat(char c, size_t count);
 void scratch_buffer_append_signed_int(int64_t i);
 void scratch_buffer_append_double(double d);

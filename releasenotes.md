@@ -35,6 +35,7 @@
 - `$exec` may now provide a stdin parameter.
 - Introduce `$vaarg[...]` syntax and deprecate the old `$vaarg(...)`.
 - Similar change to `$vasplat`: `$vasplat` and `$vasplat[1..]`.
+- Add `$member.get(value)` to replace `value.$eval($member.nameof)`
 
 ### Fixes
 
@@ -75,6 +76,12 @@
 - Issues with wincrt linking.
 - Debug info with recursive canonical type usage could cause segfault.
 - Missing check on optional left hand side for `s.x`.
+- Incorrect zero analysis on `foo["test"] = {}` #1360.
+- Bug converting untyped list #1360.
+- Benchmark / test no longer suppresses debug info. #1364.
+- Bug when compile time subtracting a distinct type.
+- `insert_at` incorrectly prevented inserts at the end of a list.
+- Fix aligned alloc for Win32 targets.
 
 ### Stdlib changes
 
@@ -84,6 +91,8 @@
 - Deprecated `env::get_config_dir`, replaced by `env::new_get_config_dir`.
 - Added `path.has_extension`, `path.new_append`, `path.temp_append`, `new_cwd`, `temp_cwd`, `path.new_absolute`, `new_ls`, `temp_ls`.
 - Added `dstring.replace`
+- New hashmap type, `Map`
+- Added `ElasticArray`.
 - Added `types::is_signed`, `types::is_unsigned` and `types::inner_type`.
 
 ## 0.6.1 Change list
@@ -110,6 +119,7 @@
 - Added `--list-manifest-properties` to list the available properties in `manifest.json`.
 - Indexing into a constant array / struct now works at compile time.
 - Improved error message when trying user foreach with an untyped list.
+- RISCV asm support.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.
@@ -140,6 +150,7 @@
 - Reference parameter doesn't work with vector subscript #1250.
 - The msvc_sdk script failed to work properly on windows when run in folders with spaces.
 - Using winmain would call the wrong definition #1265.
+- DynamicArenaAllocator would not correctly free.
 
 ### Stdlib changes
 - Added `remove_first_item` `remove_last_item` and `remove_item` as aliases for the `match` functions.

@@ -7,6 +7,16 @@
 
 #include "compiler_internal.h"
 
+#define INT5_MAX         15
+#define INT12_MAX        2047
+#define INT20_MAX        524287
+#define INT5_MIN         -16
+#define INT12_MIN        -2048
+#define INT20_MIN        (-INT20_MAX-1)
+#define UINT5_MAX         31
+#define UINT12_MAX        4095
+#define UINT20_MAX        1048575U
+
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 

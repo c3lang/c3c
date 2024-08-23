@@ -160,6 +160,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_ASSOCIATED] = KW_DEF("associated");
 	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
+	type_property_list[TYPE_PROPERTY_GET] = KW_DEF("get");
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
 	type_property_list[TYPE_PROPERTY_IS_EQ] = KW_DEF("is_eq");
@@ -336,6 +337,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("@noinline");
 	attribute_list[ATTRIBUTE_NOPADDING] = KW_DEF("@nopadding");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("@noreturn");
+	attribute_list[ATTRIBUTE_NOSANITIZE] = KW_DEF("@nosanitize");
 	attribute_list[ATTRIBUTE_NOSTRIP] = KW_DEF("@nostrip");
 	attribute_list[ATTRIBUTE_OBFUSCATE] = KW_DEF("@obfuscate");
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");

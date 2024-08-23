@@ -1,0 +1,17 @@
+// #target: elf-riscv32
+module test;
+
+fn void main(String[] args)
+{
+	int x = 2;
+	int y = 0;
+	asm
+	{
+		lw $a4, [&x];
+		sw $a4, [&y];
+	}
+}
+
+/* #expect: test.ll
+
+"lw a4, $1\0Asw a4, $0\0A", "=*m,*m,~{x14}"(ptr elementtype(i32) %y, ptr elementtype(i32) %x)

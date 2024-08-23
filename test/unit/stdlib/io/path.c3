@@ -363,7 +363,7 @@ fn void! test_path_is_absolute()
 fn void! test_path_absolute()
 {
 $if env::WIN32:
-	assert(path::new_windows(`C:\abs`).absolute()!.str_view() == `C:\abs`);
+	assert(path::new_windows(`C:\abs`).new_absolute()!.str_view() == `C:\abs`);
 $else
     assert(path::new_posix("/").new_absolute()!.str_view() == "/");
     assert(path::new_posix(".").new_absolute()!.str_view() == path::temp_cwd()!!.str_view());

@@ -252,13 +252,13 @@ static void free_arenas(void)
 	if (debug_stats) print_arena_status();
 }
 
-static int compile_cfiles(const char *compiler, const char **files, const char *flags, const char **include_dirs,
+static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
                           const char **out_files, const char *output_subdir)
 {
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
-		out_files[total++] = cc_compiler(compiler, file, flags, include_dirs, output_subdir);
+		out_files[total++] = cc_compiler(cc, file, flags, include_dirs, output_subdir);
 	}
 	return total;
 }
@@ -1009,12 +1009,14 @@ static int jump_buffer_size()
 		case OPENBSD_X64:
 			REMINDER("Guessing setjmp for platform.");
 			return 32;
+		case ANDROID_AARCH64:
 		case LINUX_AARCH64:
 		case ELF_AARCH64:
 			return 39;
 		case WINDOWS_AARCH64:
 			// Based on Godbolt
 			return 24;
+		case IOS_AARCH64:
 		case MACOS_AARCH64:
 			// Based on macOS headers
 			return 25;
@@ -1068,6 +1070,104 @@ static void execute_scripts(void)
 	dir_change(old_path);
 	free(old_path);
 }
+
+static void check_sanitizer_options(BuildTarget *target)
+{
+	if (target->feature.sanitize_address)
+	{
+		if (target->feature.sanitize_memory || target->feature.sanitize_thread)
+		{
+			error_exit("Address sanitizer cannot be used together with memory or thread sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case WINDOWS_X64:
+			{
+				WinCrtLinking crt_linking = target->win.crt_linking;
+				if (crt_linking == WIN_CRT_DEFAULT)
+				{
+					error_exit("Please specify `static` or `dynamic` for `wincrt` when using address sanitizer.");
+				}
+
+				if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
+				{
+					// We currently don't have ASan runtime libraries linked against debug CRT.
+					error_exit("Address sanitizer cannot be used when using `static-debug` or `dynamic-debug` for `wincrt`. Please use `static` or `dynamic` instead.");
+				}
+
+				WARNING("Using address sanitizer on Windows requires the sanitizer option `detect_odr_violation=0`, either set by returning it from `__asan_default_options`, or via an environment variable `ASAN_OPTIONS=detect_odr_violation=0`");
+				break;
+			}
+			case LINUX_X86:
+			case LINUX_X64:
+			case MACOS_AARCH64:
+			case MACOS_X64:
+			case FREEBSD_X86:
+			case FREEBSD_X64:
+			case NETBSD_X86:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			WARNING("Running benchmarks with address sanitizer enabled!");
+		}
+	}
+	if (target->feature.sanitize_memory)
+	{
+		if (target->feature.sanitize_address || target->feature.sanitize_thread)
+		{
+			error_exit("Memory sanitizer cannot be used together with address or thread sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_AARCH64:
+			case LINUX_X86:
+			case LINUX_X64:
+			case FREEBSD_X86:
+			case FREEBSD_X64:
+			case NETBSD_X86:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Memory sanitizer is only supported on Linux.");
+		}
+		if (target->reloc_model != RELOC_BIG_PIE)
+		{
+			error_exit("Memory sanitizer requires `PIE` relocation model.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			WARNING("Running benchmarks with memory sanitizer enabled!");
+		}
+	}
+	if (target->feature.sanitize_thread)
+	{
+		if (target->feature.sanitize_address || target->feature.sanitize_memory)
+		{
+			error_exit("Thread sanitizer cannot be used together with address or memory sanitizer.");
+		}
+		switch (target->arch_os_target)
+		{
+			case LINUX_AARCH64:
+			case LINUX_X64:
+			case MACOS_AARCH64:
+			case MACOS_X64:
+			case FREEBSD_X64:
+			case NETBSD_X64:
+				break;
+			default:
+				error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
+		}
+		if (target->type == TARGET_TYPE_BENCHMARK)
+		{
+			WARNING("Running benchmarks with thread sanitizer enabled!");
+		}
+	}
+}
+
 void compile()
 {
 	symtab_init(compiler.build.symtab_size);
@@ -1093,6 +1193,7 @@ void compile()
 	unit->module = compiler.context.core_module;
 	compiler.context.core_unit = unit;
 	target_setup(&compiler.build);
+	check_sanitizer_options(&compiler.build);
 	resolve_libraries(&compiler.build);
 	compiler.context.sources = compiler.build.sources;
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
@@ -1130,6 +1231,9 @@ void compile()
 	setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);
+	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);
+	setup_bool_define("MEMORY_SANITIZER", compiler.build.feature.sanitize_memory);
+	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
 
 	type_init_cint();
 

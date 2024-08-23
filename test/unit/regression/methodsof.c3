@@ -71,6 +71,8 @@ fn void methodsof()
     Foo foo = { .i = 4, .b = true };
     assert(Foo.$eval(Foo.methodsof[2])(&foo) == true); // Foo.xyz
     assert(Foo.$eval(Foo.methodsof[1])(&foo, 2) == 8); // Foo.bar
+    assert(Foo.$eval(Foo.methodsof[2])(&foo) == true); // Foo.xyz
+    assert(Foo.$eval(Foo.methodsof[1])(&foo, 2) == 8); // Foo.bar
 
     Foo foo2 = { .i = 2, .b = false };
     assert(foo2.$eval(Foo.methodsof[2])() == false); // Foo.xyz

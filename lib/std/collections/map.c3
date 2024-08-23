@@ -10,7 +10,9 @@ const float DEFAULT_LOAD_FACTOR = 0.75;
 const VALUE_IS_EQUATABLE = Value.is_eq;
 const bool COPY_KEYS = types::implements_copy(Key);
 
-struct HashMap
+distinct Map = void*;
+
+struct MapImpl
 {
 	Entry*[] table;
 	Allocator allocator;
@@ -20,77 +22,72 @@ struct HashMap
 }
 
 /**
- * @param [&inout] allocator "The allocator to use"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	capacity = math::next_power_of_2(capacity);
-	self.allocator = allocator;
-	self.load_factor = load_factor;
-	self.threshold = (uint)(capacity * load_factor);
-	self.table = allocator::new_array(allocator, Entry*, capacity);
-	return self;
+	MapImpl* map = allocator::alloc(allocator, MapImpl);
+	_init(map, capacity, load_factor, allocator);
+	return (Map)map;
 }
 
 /**
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.new_init(capacity, load_factor, allocator::temp()) @inline;
-}
-
-
-/**
- * Has this hash map been initialized yet?
- *
- * @param [&in] map "The hash map we are testing"
- * @return "Returns true if it has been initialized, false otherwise"
- **/
-fn bool HashMap.is_initialized(&map)
-{
-	return (bool)map.allocator;
-}
-
-/**
- * @param [&inout] allocator "The allocator to use"
- * @param [&in] other_map "The map to copy from."
- **/
-fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator allocator = allocator::heap())
-{
-	self.new_init(other_map.table.len, other_map.load_factor, allocator);
-	self.put_all_for_create(other_map);
-	return self;
+	MapImpl* map = mem::temp_alloc(MapImpl);
+	_init(map, capacity, load_factor, allocator::temp());
+	return (Map)map;
 }
 
 /**
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.temp_init_from_map(&map, HashMap* other_map)
+fn Map new_from_map(Map other_map, Allocator allocator = null)
 {
-	return map.new_init_from_map(other_map, allocator::temp()) @inline;
+	MapImpl* other_map_impl = (MapImpl*)other_map;
+	if (!other_map_impl)
+	{
+		if (allocator) return new(.allocator = allocator);
+		return null;
+	}
+	MapImpl* map = (MapImpl*)new(other_map_impl.table.len, other_map_impl.load_factor, allocator ?: allocator::heap());
+	if (!other_map_impl.count) return (Map)map;
+	foreach (Entry *e : other_map_impl.table)
+    {
+    	if (!e) continue;
+    	map._put_for_create(e.key, e.value);
+    }
+	return (Map)map;
 }
 
-fn bool HashMap.is_empty(&map) @inline
+/**
+ * @param [&in] other_map "The map to copy from."
+ **/
+fn Map temp_from_map(Map other_map)
 {
-	return !map.count;
+	return new_from_map(other_map, allocator::temp());
 }
 
-fn usz HashMap.len(&map) @inline
+fn bool Map.is_empty(map) @inline
 {
-	return map.count;
+	return !map || !((MapImpl*)map).count;
 }
 
-fn Value*! HashMap.get_ref(&map, Key key)
+fn usz Map.len(map) @inline
 {
-	if (!map.count) return SearchResult.MISSING?;
+	return map ? ((MapImpl*)map).count : 0;
+}
+
+fn Value*! Map.get_ref(self, Key key)
+{
+	MapImpl *map = (MapImpl*)self;
+	if (!map || !map.count) return SearchResult.MISSING?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
@@ -99,11 +96,12 @@ fn Value*! HashMap.get_ref(&map, Key key)
 	return SearchResult.MISSING?;
 }
 
-fn Entry*! HashMap.get_entry(&map, Key key)
+fn Entry*! Map.get_entry(map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING?;
+	MapImpl *map_impl = (MapImpl*)map;
+	if (!map_impl || !map_impl.count) return SearchResult.MISSING?;
 	uint hash = rehash(key.hash());
-	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
+	for (Entry *e = map_impl.table[index_for(hash, map_impl.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
 	}
@@ -114,9 +112,10 @@ fn Entry*! HashMap.get_entry(&map, Key key)
  * Get the value or update and
  * @require $assignable(#expr, Value)
  **/
-macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
+macro Value Map.@get_or_set(&self, Key key, Value #expr)
 {
-	if (!map.count)
+	MapImpl *map = (MapImpl*)*self;
+	if (!map || !map.count)
 	{
 		Value val = #expr;
 		map.set(key, val);
@@ -133,23 +132,27 @@ macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 	return val;
 }
 
-fn Value! HashMap.get(&map, Key key) @operator([])
+fn Value! Map.get(map, Key key) @operator([])
 {
 	return *map.get_ref(key) @inline;
 }
 
-fn bool HashMap.has_key(&map, Key key)
+fn bool Map.has_key(map, Key key)
 {
 	return @ok(map.get_ref(key));
 }
 
-fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
+macro Value Map.set_value_return(&map, Key key, Value value) @operator([]=)
+{
+	map.set(key, value);
+	return value;
+}
+
+fn bool Map.set(&self, Key key, Value value)
 {
 	// If the map isn't initialized, use the defaults to initialize it.
-	if (!map.allocator)
-	{
-		map.new_init();
-	}
+	if (!*self) *self = new();
+	MapImpl* map = (MapImpl*)*self;
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
@@ -160,18 +163,19 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 			return true;
 		}
 	}
-	map.add_entry(hash, key, value, index);
+	map._add_entry(hash, key, value, index);
 	return false;
 }
 
-fn void! HashMap.remove(&map, Key key) @maydiscard
+fn void! Map.remove(map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return SearchResult.MISSING?;
+	if (!map || !((MapImpl*)map)._remove_entry_for_key(key)) return SearchResult.MISSING?;
 }
 
-fn void HashMap.clear(&map)
+fn void Map.clear(self)
 {
-	if (!map.count) return;
+	MapImpl* map = (MapImpl*)self;
+	if (!map || !map.count) return;
 	foreach (Entry** &entry_ref : map.table)
 	{
 		Entry* entry = *entry_ref;
@@ -181,30 +185,33 @@ fn void HashMap.clear(&map)
 		{
 			Entry *to_delete = next;
 			next = next.next;
-			map.free_entry(to_delete);
+			map._free_entry(to_delete);
 		}
-		map.free_entry(entry);
+		map._free_entry(entry);
 		*entry_ref = null;
 	}
 	map.count = 0;
 }
 
-fn void HashMap.free(&map)
+fn void Map.free(self)
 {
-	if (!map.allocator) return;
-	map.clear();
-	map.free_internal(map.table.ptr);
+	if (!self) return;
+	MapImpl* map = (MapImpl*)self;
+	self.clear();
+	map._free_internal(map.table.ptr);
 	map.table = {};
+	allocator::free(map.allocator, map);
 }
 
-fn Key[] HashMap.key_tlist(&map)
+fn Key[] Map.temp_keys_list(map)
 {
-	return map.key_new_list(allocator::temp()) @inline;
+	return map.new_keys_list(allocator::temp()) @inline;
 }
 
-fn Key[] HashMap.key_new_list(&map, Allocator allocator = allocator::heap())
+fn Key[] Map.new_keys_list(self, Allocator allocator = allocator::heap())
 {
-	if (!map.count) return {};
+	MapImpl* map = (MapImpl*)self;
+	if (!map || !map.count) return {};
 
 	Key[] list = allocator::alloc_array(allocator, Key, map.count);
 	usz index = 0;
@@ -219,36 +226,36 @@ fn Key[] HashMap.key_new_list(&map, Allocator allocator = allocator::heap())
 	return list;
 }
 
-macro HashMap.@each(map; @body(key, value))
+macro Map.@each(map; @body(key, value))
 {
 	map.@each_entry(; Entry* entry) {
 		@body(entry.key, entry.value);
 	};
 }
 
-macro HashMap.@each_entry(map; @body(entry))
+macro Map.@each_entry(self; @body(entry))
 {
-	if (map.count)
+	MapImpl *map = (MapImpl*)self;
+	if (!map || !map.count) return;
+	foreach (Entry* entry : map.table)
 	{
-		foreach (Entry* entry : map.table)
+		while (entry)
 		{
-			while (entry)
-			{
-				@body(entry);
-				entry = entry.next;
-			}
+			@body(entry);
+			entry = entry.next;
 		}
 	}
 }
 
-fn Value[] HashMap.value_tlist(&map)
+fn Value[] Map.temp_values_list(map)
 {
-	return map.value_new_list(allocator::temp()) @inline;
+	return map.new_values_list(allocator::temp()) @inline;
 }
 
-fn Value[] HashMap.value_new_list(&map, Allocator allocator = allocator::heap())
+fn Value[] Map.new_values_list(self, Allocator allocator = allocator::heap())
 {
-	if (!map.count) return {};
+	MapImpl* map = (MapImpl*)self;
+	if (!map || !map.count) return {};
 	Value[] list = allocator::alloc_array(allocator, Value, map.count);
 	usz index = 0;
 	foreach (Entry* entry : map.table)
@@ -262,9 +269,10 @@ fn Value[] HashMap.value_new_list(&map, Allocator allocator = allocator::heap())
 	return list;
 }
 
-fn bool HashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
+fn bool Map.has_value(self, Value v) @if(VALUE_IS_EQUATABLE)
 {
-	if (!map.count) return false;
+	MapImpl* map = (MapImpl*)self;
+	if (!map || !map.count) return false;
 	foreach (Entry* entry : map.table)
 	{
 		while (entry)
@@ -278,7 +286,7 @@ fn bool HashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 
 // --- private methods
 
-fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
+fn void MapImpl._add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
 {
 	$if COPY_KEYS:
 	key = key.copy(map.allocator);
@@ -287,11 +295,11 @@ fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_ind
 	map.table[bucket_index] = entry;
 	if (map.count++ >= map.threshold)
 	{
-		map.resize(map.table.len * 2);
+		map._resize(map.table.len * 2);
 	}
 }
 
-fn void HashMap.resize(&map, uint new_capacity) @private
+fn void MapImpl._resize(&map, uint new_capacity) @private
 {
 	Entry*[] old_table = map.table;
 	uint old_capacity = old_table.len;
@@ -301,9 +309,9 @@ fn void HashMap.resize(&map, uint new_capacity) @private
 		return;
 	}
 	Entry*[] new_table = allocator::new_array(map.allocator, Entry*, new_capacity);
-	map.transfer(new_table);
+	map._transfer(new_table);
 	map.table = new_table;
-	map.free_internal(old_table.ptr);
+	map._free_internal(old_table.ptr);
 	map.threshold = (uint)(new_capacity * map.load_factor);
 }
 
@@ -318,7 +326,7 @@ macro uint index_for(uint hash, uint capacity) @private
 	return hash & (capacity - 1);
 }
 
-fn void HashMap.transfer(&map, Entry*[] new_table) @private
+fn void MapImpl._transfer(&map, Entry*[] new_table) @private
 {
 	Entry*[] src = map.table;
 	uint new_capacity = new_table.len;
@@ -337,17 +345,18 @@ fn void HashMap.transfer(&map, Entry*[] new_table) @private
 	}
 }
 
-fn void HashMap.put_all_for_create(&map, HashMap* other_map) @private
+fn void _init(MapImpl* impl, uint capacity, float load_factor, Allocator allocator) @private
 {
-	if (!other_map.count) return;
-	foreach (Entry *e : other_map.table)
-	{
-		if (!e) continue;
-		map.put_for_create(e.key, e.value);
-	}
+	capacity = math::next_power_of_2(capacity);
+	*impl = {
+		.allocator = allocator,
+    	.load_factor = load_factor,
+    	.threshold = (uint)(capacity * load_factor),
+    	.table = allocator::new_array(allocator, Entry*, capacity)
+	};
 }
 
-fn void HashMap.put_for_create(&map, Key key, Value value) @private
+fn void MapImpl._put_for_create(&map, Key key, Value value) @private
 {
 	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
@@ -359,16 +368,17 @@ fn void HashMap.put_for_create(&map, Key key, Value value) @private
 			return;
 		}
 	}
-	map.create_entry(hash, key, value, i);
+	map._create_entry(hash, key, value, i);
 }
 
-fn void HashMap.free_internal(&map, void* ptr) @inline @private
+fn void MapImpl._free_internal(&map, void* ptr) @inline @private
 {
 	allocator::free(map.allocator, ptr);
 }
 
-fn bool HashMap.remove_entry_for_key(&map, Key key) @private
+fn bool MapImpl._remove_entry_for_key(&map, Key key) @private
 {
+	if (!map.count) return false;
 	uint hash = rehash(key.hash());
 	uint i = index_for(hash, map.table.len);
 	Entry* prev = map.table[i];
@@ -387,7 +397,7 @@ fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 			{
 				prev.next = next;
 			}
-			map.free_entry(e);
+			map._free_entry(e);
 			return true;
 		}
 		prev = e;
@@ -396,7 +406,7 @@ fn bool HashMap.remove_entry_for_key(&map, Key key) @private
 	return false;
 }
 
-fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_index) @private
+fn void MapImpl._create_entry(&map, uint hash, Key key, Value value, int bucket_index) @private
 {
 	Entry *e = map.table[bucket_index];
 	$if COPY_KEYS:
@@ -407,12 +417,12 @@ fn void HashMap.create_entry(&map, uint hash, Key key, Value value, int bucket_i
 	map.count++;
 }
 
-fn void HashMap.free_entry(&self, Entry *entry) @local
+fn void MapImpl._free_entry(&self, Entry *entry) @local
 {
 	$if COPY_KEYS:
 	allocator::free(self.allocator, entry.key);
 	$endif
-	self.free_internal(entry);
+	self._free_internal(entry);
 }
 
 struct Entry

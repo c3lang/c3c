@@ -317,6 +317,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 				MACRO_COPY_DECL(expr->lambda_expr);
 			}
 			return expr;
+		case EXPR_MEMBER_GET:
+			fixup_decl(c, &source_expr->member_get_expr);
+			break;
 		case EXPR_SWIZZLE:
 			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
 			return expr;

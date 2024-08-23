@@ -340,81 +340,6 @@ static bool contains_whitespace_or_quotes(const char *string)
 }
 #endif
 
-void scratch_buffer_append_argument(const char *string)
-{
-	if (scratch_buffer.len != 0) scratch_buffer_append_char(' ');
-#if PLATFORM_WINDOWS
-	if (contains_whitespace_or_quotes(string))
-	{
-		scratch_buffer_append_double_quoted(string);
-	}
-	else
-	{
-		scratch_buffer_append(string);
-	}
-#else
-	scratch_buffer_append_shell_escaped(string);
-#endif
-}
-
-void scratch_buffer_append_double_quoted(const char *string)
-{
-	scratch_buffer_append_char('"');
-	size_t len = strlen(string);
-	for (size_t i = 0; i < len; )
-	{
-		char c = string[i++];
-		switch (c)
-		{
-			case '"':
-				scratch_buffer_append("\\\"");
-				continue;
-			case '\\':
-			{
-				int backslash_count = 1;
-				for (; i < len && string[i] == '\\'; i++, backslash_count++) {}
-				if (i == len || string[i] == '"')
-				{
-					scratch_buffer_append_char_repeat('\\', backslash_count * 2);
-				}
-				else
-				{
-					scratch_buffer_append_char_repeat('\\', backslash_count);
-				}
-				continue;
-			}
-		}
-		scratch_buffer_append_char(c);
-	}
-	scratch_buffer_append_char('"');
-}
-
-void scratch_buffer_append_shell_escaped(const char *string)
-{
-	char c;
-	while ((c = string++[0]) != '\0')
-	{
-		if ((unsigned)c < 0x80)
-		{
-			switch (c)
-			{
-				case LOWER_CHAR_CASE:
-				case UPPER_CHAR_CASE:
-				case NUMBER_CHAR_CASE:
-				case '_':
-				case '/':
-				case '.':
-				case ',':
-				case '-':
-					break;
-				default:
-					scratch_buffer_append_char('\\');
-					break;
-			}
-		}
-		scratch_buffer_append_char(c);
-	}
-}
 void scratch_buffer_append(const char *string)
 {
 	scratch_buffer_append_len(string, strlen(string));
@@ -457,6 +382,25 @@ void scratch_buffer_printf(const char *format, ...)
 	}
 	va_end(args);
 	scratch_buffer.len += len_needed;
+}
+
+void scratch_buffer_append_in_quote(const char *string)
+{
+	size_t len = strlen(string);
+	for (size_t i = 0; i < len; )
+	{
+		char c = string[i++];
+		switch (c)
+		{
+			case '"':
+				scratch_buffer_append("\\\"");
+				continue;
+			case '\\':
+				scratch_buffer_append("\\\\");
+				continue;
+		}
+		scratch_buffer_append_char(c);
+	}
 }
 
 void scratch_buffer_append_char(char c)

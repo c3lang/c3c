@@ -421,6 +421,7 @@ fn void DString.insert_at(&self, usz index, String s)
 
 fn usz! DString.appendf(&self, String format, args...) @maydiscard
 {
+	if (!self.data()) self.new_init(format.len + 20);
 	@pool(self.data().allocator)
 	{
 		Formatter formatter;
@@ -431,6 +432,7 @@ fn usz! DString.appendf(&self, String format, args...) @maydiscard
 
 fn usz! DString.appendfn(&self, String format, args...) @maydiscard
 {
+	if (!self.data()) self.new_init(format.len + 20);
 	@pool(self.data().allocator)
 	{
 		Formatter formatter;

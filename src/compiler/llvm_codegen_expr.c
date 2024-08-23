@@ -7064,6 +7064,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MACRO_BODY:
 		case EXPR_OTHER_CONTEXT:
 		case EXPR_DESIGNATOR:
+		case EXPR_MEMBER_GET:
 			UNREACHABLE
 		case EXPR_DEFAULT_ARG:
 			llvm_emit_default_arg(c, value, expr);

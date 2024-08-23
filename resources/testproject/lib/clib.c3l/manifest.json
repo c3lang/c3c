@@ -8,6 +8,8 @@
     "linux-x64" : {
       "cflags": "-fPIE"
     },
-	"windows-x64" : { }
+	"windows-x64" : {
+      "c-include-dirs": ["C:\\"]
+    }
   }
 }

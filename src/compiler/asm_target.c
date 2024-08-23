@@ -4,6 +4,7 @@
 #include "compiler_internal.h"
 #include "compiler/asm/x86.h"
 #include "compiler/asm/aarch64.h"
+#include "compiler/asm/riscv.h"
 
 #define ASM_PTR_HASH(name__) (uint32_t)(((uintptr_t)name__  * 31) ^ ((uintptr_t)name__ >> 15))
 
@@ -46,6 +47,11 @@ INLINE AsmArgBits parse_bits(const char **desc)
 		*desc += 2;
 		return ARG_BITS_16;
 	}
+	if (memcmp("20", *desc, 2) == 0)
+	{
+		*desc += 2;
+		return ARG_BITS_20;
+	}
 	if (memcmp("32", *desc, 2) == 0)
 	{
 		*desc += 2;
@@ -70,6 +76,16 @@ INLINE AsmArgBits parse_bits(const char **desc)
 	{
 		*desc += 3;
 		return ARG_BITS_512;
+	}
+	if (memcmp("5", *desc, 1) == 0)
+	{
+		*desc += 1;
+		return ARG_BITS_5;
+	}
+	if (memcmp("12", *desc, 2) == 0)
+	{
+		*desc += 2;
+		return ARG_BITS_12;
 	}
 	error_exit("Invalid bits: %s.", *desc);
 }
@@ -122,7 +138,7 @@ INLINE AsmArgType decode_arg_type(const char **desc)
 					}
 					if (c == 'u')
 					{
-						desc++;
+						(*desc)++;
 						arg_type.imm_arg_ubits |= parse_bits(desc);
 						goto NEXT;
 					}
@@ -279,7 +295,165 @@ static void init_asm_arm(PlatformTarget *target)
 
 static void init_asm_riscv(PlatformTarget *target)
 {
-	error_exit("RISCV asm not complete.");
+	target->clobber_name_list = RISCVClobberNames;
+	target->extra_clobbers = NULL;
+	unsigned int bits = 0;
+	switch(target->arch) {
+		case ARCH_TYPE_RISCV64:
+			// math
+			reg_instr(target, "add", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "sub", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "addi", "w:r64/mem, r64/mem, immi12");
+			reg_instr(target, "neg", "w:r64/mem, r64/mem");
+			// bit
+			reg_instr(target, "and", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "or", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "xor", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "not", "w:r64/mem, r64/mem");
+			reg_instr(target, "andi", "w:r64/mem, r64/mem, immi12");
+			reg_instr(target, "ori", "w:r64/mem, r64/mem, immi12");
+			reg_instr(target, "xori", "w:r64/mem, r64/mem, immi12");
+			// shift
+			reg_instr(target, "sll", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "srl", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "sra", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "slli", "w:r64/mem, r64/mem, immu5");
+			reg_instr(target, "srli", "w:r64/mem, r64/mem, immu5");
+			reg_instr(target, "srai", "w:r64/mem, r64/mem, immu5");
+			// load
+			reg_instr(target, "li", "w:r64/mem, immi64");
+			reg_instr(target, "lui", "w:r64, immu20");
+			reg_instr(target, "auipc", "w:r64, immi20");
+			reg_instr(target, "mv", "w:r64/mem, r64/mem");
+			reg_instr(target, "ld", "w:r64/mem, mem");
+			reg_instr(target, "lw", "w:r64/mem, mem");
+			reg_instr(target, "lh", "w:r64/mem, mem");
+			reg_instr(target, "lhu", "w:r64/mem, mem");
+			reg_instr(target, "lb", "w:r64/mem, mem");
+			reg_instr(target, "lbu", "w:r64/mem, mem");
+			// store
+			reg_instr(target, "sd", "r64/mem, w:mem");
+			reg_instr(target, "sw", "r64/mem, w:mem");
+			reg_instr(target, "sh", "r64/mem, w:mem");
+			reg_instr(target, "sb", "r64/mem, w:mem");
+			// Misc
+			reg_instr(target, "nop", NULL);
+			reg_instr(target, "ebreak", NULL);
+			reg_instr(target, "ecall", NULL);
+			reg_instr(target, "eret", NULL);
+			// Jump
+			reg_instr(target, "j", "immi20");
+			reg_instr(target, "jal", "w:r64/mem, immi20");
+			reg_instr(target, "jalr", "w:r64/mem, r64/mem, immi20");
+			reg_instr(target, "ret", NULL);
+			// Set
+			reg_instr(target, "slt", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "slti", "w:r64/mem, r64/mem, immi12");
+			reg_instr(target, "sltu", "w:r64/mem, r64/mem, r64/mem");
+			reg_instr(target, "sltiu", "w:r64/mem, r64/mem, immu12");
+			reg_instr(target, "seqz", "w:r64/mem, r64/mem");
+			reg_instr(target, "snez", "w:r64/mem, r64/mem");
+			reg_instr(target, "sltz", "w:r64/mem, r64/mem");
+			reg_instr(target, "sgtz", "w:r64/mem, r64/mem");
+			// CSR
+			reg_instr(target, "csrw", "w:r64, r64/mem");
+			reg_instr(target, "csrr", "w:r64/mem, r64");
+			reg_instr(target, "csrrw", "w:r64/mem, rw:r64, r64/mem");
+			reg_instr(target, "csrrs", "w:r64/mem, rw:r64, r64/mem");
+			reg_instr(target, "csrrc", "w:r64/mem, rw:r64, r64/mem");
+			reg_instr(target, "csrrwi", "w:r64/mem, rw:r64, immu5");
+			reg_instr(target, "csrrsi", "w:r64/mem, rw:r64, immu5");
+			reg_instr(target, "csrrci", "w:r64/mem, rw:r64, immu5");
+			// Interrupt
+			reg_instr(target, "wfi", NULL);
+			reg_instr(target, "mret", NULL);
+
+			bits = ARG_BITS_64;
+			break;
+		case ARCH_TYPE_RISCV32:
+			// math
+			reg_instr(target, "add", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "sub", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "addi", "w:r32/mem, r32/mem, immi12");
+			reg_instr(target, "neg", "w:r32/mem, r32/mem");
+			// bit
+			reg_instr(target, "and", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "or", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "xor", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "not", "w:r32/mem, r32/mem");
+			reg_instr(target, "andi", "w:r32/mem, r32/mem, immi12");
+			reg_instr(target, "ori", "w:r32/mem, r32/mem, immi12");
+			reg_instr(target, "xori", "w:r32/mem, r32/mem, immi12");
+			// shift
+			reg_instr(target, "sll", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "srl", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "sra", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "slli", "w:r32/mem, r32/mem, immu5");
+			reg_instr(target, "srli", "w:r32/mem, r32/mem, immu5");
+			reg_instr(target, "srai", "w:r32/mem, r32/mem, immu5");
+			// load
+			reg_instr(target, "li", "w:r32/mem, immi32");
+			reg_instr(target, "lui", "w:r32, immu20");
+			reg_instr(target, "auipc", "w:r32, immi20");
+			reg_instr(target, "mv", "w:r32/mem, r32/mem");
+			reg_instr(target, "lw", "w:r32/mem, mem");
+			reg_instr(target, "lh", "w:r32/mem, mem");
+			reg_instr(target, "lhu", "w:r32/mem, mem");
+			reg_instr(target, "lb", "w:r32/mem, mem");
+			reg_instr(target, "lbu", "w:r32/mem, mem");
+			// store
+			reg_instr(target, "sw", "r32/mem, w:mem");
+			reg_instr(target, "sh", "r32/mem, w:mem");
+			reg_instr(target, "sb", "r32/mem, w:mem");
+			// Misc
+			reg_instr(target, "nop", NULL);
+			reg_instr(target, "ebreak", NULL);
+			reg_instr(target, "ecall", NULL);
+			reg_instr(target, "eret", NULL);
+			// Jump
+			reg_instr(target, "j", "immi20");
+			reg_instr(target, "jal", "w:r32/mem, immi20");
+			reg_instr(target, "jalr", "w:r32/mem, r32/mem, immi20");
+			reg_instr(target, "ret", NULL);
+			// Set
+			reg_instr(target, "slt", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "slti", "w:r32/mem, r32/mem, immi12");
+			reg_instr(target, "sltu", "w:r32/mem, r32/mem, r32/mem");
+			reg_instr(target, "sltiu", "w:r32/mem, r32/mem, immu12");
+			reg_instr(target, "seqz", "w:r32/mem, r32/mem");
+			reg_instr(target, "snez", "w:r32/mem, r32/mem");
+			reg_instr(target, "sltz", "w:r32/mem, r32/mem");
+			reg_instr(target, "sgtz", "w:r32/mem, r32/mem");
+			// CSR
+			reg_instr(target, "csrw", "w:r32, r32/mem");
+			reg_instr(target, "csrr", "w:r32/mem, r32");
+			reg_instr(target, "csrrw", "w:r32/mem, rw:r32, r32/mem");
+			reg_instr(target, "csrrs", "w:r32/mem, rw:r32, r32/mem");
+			reg_instr(target, "csrrc", "w:r32/mem, rw:r32, r32/mem");
+			reg_instr(target, "csrrwi", "w:r32/mem, rw:r32, immu5");
+			reg_instr(target, "csrrsi", "w:r32/mem, rw:r32, immu5");
+			reg_instr(target, "csrrci", "w:r32/mem, rw:r32, immu5");
+			// Interrupt
+			reg_instr(target, "wfi", NULL);
+			reg_instr(target, "mret", NULL);
+
+			bits = ARG_BITS_32;
+			break;
+		default:
+			UNREACHABLE
+	}
+	reg_register_list(target, riscv_gp_integer_regs, 32, ASM_REG_INT, bits, RISCV_X0);
+	reg_register_list(target, riscv_arg_integer_regs, 8, ASM_REG_INT, bits, RISCV_X10);
+	reg_register_list(target, riscv_temp_integer_regs, 3, ASM_REG_INT, bits, RISCV_X5);
+	reg_register_list(target, &riscv_temp_integer_regs[3], 4, ASM_REG_INT, bits, RISCV_X28);
+	reg_register_list(target, riscv_save_integer_regs, 2, ASM_REG_INT, bits, RISCV_X8);
+	reg_register_list(target, &riscv_save_integer_regs[2], 10, ASM_REG_INT, bits, RISCV_X18);
+	reg_register_list(target, riscv_machine_integer_regs, 3, ASM_REG_INT, bits, RISCV_MIE);
+	reg_register(target, "$ra", ASM_REG_INT, bits, RISCV_X1);
+	reg_register(target, "$sp", ASM_REG_INT, bits, RISCV_X2);
+	reg_register(target, "$gp", ASM_REG_INT, bits, RISCV_X3);
+	reg_register(target, "$tp", ASM_REG_INT, bits, RISCV_X4);
+	reg_register(target, "$zero", ASM_REG_INT, bits, RISCV_X0);
 }
 
 static void init_asm_ppc(PlatformTarget *target)

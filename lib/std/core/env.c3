@@ -148,6 +148,10 @@ const bool FREEBSD = LIBC && OS_TYPE == FREEBSD;
 const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool WASI = LIBC && OS_TYPE == WASI;
 const bool WASM_NOLIBC @builtin = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
+const bool ADDRESS_SANITIZER = $$ADDRESS_SANITIZER;
+const bool MEMORY_SANITIZER = $$MEMORY_SANITIZER;
+const bool THREAD_SANITIZER = $$THREAD_SANITIZER;
+const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANITIZER;
 
 macro bool os_is_darwin() @const
 {
