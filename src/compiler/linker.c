@@ -673,13 +673,7 @@ static unsigned assemble_link_arguments(const char **arguments, unsigned len)
 	{
 		const char *arg = arguments[i];
 		if (arg == quote_arg) continue;
-		if (arg == concat_file_arg)
-		{
-			const char *a = arguments[++i];
-			const char *b = arguments[++i];
-			arguments[count++] = file_append_path(a, b);
-		}
-		if (arg == concat_arg || arg == concat_quote_arg)
+		if (arg == concat_arg || arg == concat_file_arg || arg == concat_quote_arg)
 		{
 			const char *a = arguments[++i];
 			const char *b = arguments[++i];
