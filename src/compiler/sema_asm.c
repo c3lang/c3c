@@ -133,7 +133,6 @@ static inline bool sema_check_npot_imm_fits(Int imm, AsmArgType arg_type)
 static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr, Expr *int_expr)
 {
 	bool is_signed = type_kind_is_signed(int_expr->const_expr.ixx.type);
-//	SEMA_ERROR(expr, "'%d' = is_signed", is_signed);
 	Type *type = max_supported_imm_int(is_signed, arg_type);
 	if (!type)
 	{
