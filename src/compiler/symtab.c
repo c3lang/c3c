@@ -337,6 +337,7 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_NOINLINE] = KW_DEF("@noinline");
 	attribute_list[ATTRIBUTE_NOPADDING] = KW_DEF("@nopadding");
 	attribute_list[ATTRIBUTE_NORETURN] = KW_DEF("@noreturn");
+	attribute_list[ATTRIBUTE_NOSANITIZE] = KW_DEF("@nosanitize");
 	attribute_list[ATTRIBUTE_NOSTRIP] = KW_DEF("@nostrip");
 	attribute_list[ATTRIBUTE_OBFUSCATE] = KW_DEF("@obfuscate");
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");

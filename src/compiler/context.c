@@ -20,6 +20,13 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 	if (!module)
 	{
 		module = unit->module = compiler_find_or_create_module(module_name, parameters);
+		if ((parameters == NULL) == module->is_generic)
+		{
+			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
+						   module_name->module);
+			SEMA_NOTE(module->name, "The definition here is different.");
+			return false;
+		}
 	}
 	else
 	{

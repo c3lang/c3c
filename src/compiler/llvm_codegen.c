@@ -840,6 +840,9 @@ static void llvm_codegen_setup()
 	attribute_id.optnone = lookup_attribute("optnone");
 	attribute_id.readonly = lookup_attribute("readonly");
 	attribute_id.reassoc = lookup_attribute("reassoc");
+	attribute_id.sanitize_address = lookup_attribute("sanitize_address");
+	attribute_id.sanitize_memory = lookup_attribute("sanitize_memory");
+	attribute_id.sanitize_thread = lookup_attribute("sanitize_thread");
 	attribute_id.sext = lookup_attribute("signext");
 	attribute_id.sret = lookup_attribute("sret");
 	attribute_id.ssp = lookup_attribute("ssp");
@@ -988,7 +991,10 @@ static inline void llvm_optimize(GenContext *c)
 			.opt.slp_vectorize = compiler.build.slp_vectorization == VECTORIZATION_ON,
 			.opt.unroll_loops = compiler.build.unroll_loops == UNROLL_LOOPS_ON,
 			.opt.interleave_loops = compiler.build.unroll_loops == UNROLL_LOOPS_ON,
-			.opt.merge_functions = compiler.build.merge_functions == MERGE_FUNCTIONS_ON
+			.opt.merge_functions = compiler.build.merge_functions == MERGE_FUNCTIONS_ON,
+			.sanitizer.address_sanitize = compiler.build.feature.sanitize_address,
+			.sanitizer.mem_sanitize = compiler.build.feature.sanitize_memory,
+			.sanitizer.thread_sanitize = compiler.build.feature.sanitize_thread
 	};
 	if (!llvm_run_passes(c->module, c->machine, &passes))
 	{
@@ -1187,6 +1193,20 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		llvm_attribute_add(c, function, attribute_id.naked, -1);
 	}
+
+	if (compiler.build.feature.sanitize_address && !decl->func_decl.attr_nosanitize_address)
+	{
+		llvm_attribute_add(c, function, attribute_id.sanitize_address, -1);
+	}
+	if (compiler.build.feature.sanitize_memory && !decl->func_decl.attr_nosanitize_memory)
+	{
+		llvm_attribute_add(c, function, attribute_id.sanitize_memory, -1);
+	}
+	if (compiler.build.feature.sanitize_thread && !decl->func_decl.attr_nosanitize_thread)
+	{
+		llvm_attribute_add(c, function, attribute_id.sanitize_thread, -1);
+	}
+
 	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 }
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)

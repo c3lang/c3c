@@ -1,4 +1,5 @@
 #include "compiler_internal.h"
+#include "../utils/whereami.h"
 #include "c3_llvm.h"
 
 #if PLATFORM_POSIX
@@ -8,12 +9,12 @@
 const char *quote_arg = "\"";
 const char *concat_arg = ":";
 const char *concat_quote_arg = "+";
-const char *quote_concat_arg = "++";
+const char *concat_file_arg = "/";
 #define add_quote_arg(arg_) vec_add(*args_ref, quote_arg); vec_add(*args_ref, (arg_))
 #define add_plain_arg(arg_) vec_add(*args_ref, (arg_))
+#define add_concat_file_arg(arg_, arg2_) vec_add(*args_ref, concat_file_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_))
 #define add_concat_arg(arg_, arg2_) vec_add(*args_ref, concat_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_))
 #define add_concat_quote_arg(arg_, arg2_) vec_add(*args_ref, concat_quote_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_))
-#define add_quote_concat_arg(arg_, arg2_) vec_add(*args_ref, quote_concat_arg); vec_add(*args_ref, (arg_)); vec_add(*args_ref, (arg2_))
 
 static char *assemble_linker_command(const char **args, bool extra_quote);
 static unsigned assemble_link_arguments(const char **arguments, unsigned len);
@@ -49,7 +50,7 @@ static const char *ld_target(ArchType arch_type)
 
 
 
-static void linker_setup_windows(const char ***args_ref, Linker linker_type)
+static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)
 {
 	add_plain_arg(compiler.build.win.use_win_subsystem ? "/SUBSYSTEM:WINDOWS" : "/SUBSYSTEM:CONSOLE");
 	if (link_libc()) linking_add_link(&compiler.linking, "dbghelp");
@@ -141,6 +142,37 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 		add_concat_quote_arg("/LIBPATH:", windows_sdk->windows_sdk_ucrt_library_path);
 		add_concat_quote_arg("/LIBPATH:", windows_sdk->vs_library_path);
 	}
+
+	// Link sanitizer runtime libraries
+	const char *compiler_path = find_executable_path();
+	const char *asan_dll_src_path = file_append_path(compiler_path, "c3c_rt/clang_rt.asan_dynamic-x86_64.dll");
+	const char *output_dir = "";
+	if (compiler.build.output_dir)
+	{
+		output_dir = compiler.build.output_dir;
+	}
+	else
+	{
+		char *filename;
+		file_namesplit(output_file, &filename, (char**)&output_dir);
+	}
+	const char *asan_dll_dst_path = file_append_path(output_dir, "clang_rt.asan_dynamic-x86_64.dll");
+	file_delete_file(asan_dll_dst_path);
+	if (compiler.build.feature.sanitize_address)
+	{
+		if (compiler.build.win.crt_linking == WIN_CRT_STATIC)
+		{
+			add_concat_file_arg(compiler_path, "c3c_rt/clang_rt.asan-x86_64.lib");
+		}
+		else
+		{
+			add_concat_file_arg(compiler_path, "c3c_rt/clang_rt.asan_dynamic-x86_64.lib");
+			add_concat_file_arg(compiler_path, "c3c_rt/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib");
+			DEBUG_LOG("Copying '%s' to '%s'\n", asan_dll_src_path, asan_dll_dst_path);
+			file_copy_file(asan_dll_src_path, asan_dll_dst_path, true);
+		}
+	}
+
 	linking_add_link(&compiler.linking, "kernel32");
 	linking_add_link(&compiler.linking, "ntdll");
 	linking_add_link(&compiler.linking, "user32");
@@ -149,45 +181,46 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type)
 	linking_add_link(&compiler.linking, "Ws2_32");
 	linking_add_link(&compiler.linking, "legacy_stdio_definitions");
 
+	WinCrtLinking crt_linking = compiler.build.win.crt_linking;
 	// Do not link any.
-	if (compiler.build.win.crt_linking == WIN_CRT_NONE) return;
+	if (crt_linking == WIN_CRT_NONE) return;
 
-	if (compiler.build.win.crt_linking == WIN_CRT_STATIC)
-	{
-		if (is_debug)
-		{
-			linking_add_link(&compiler.linking, "libucrtd");
-			linking_add_link(&compiler.linking, "libvcruntimed");
-			linking_add_link(&compiler.linking, "libcmtd");
-			linking_add_link(&compiler.linking, "libcpmtd");
-		}
-		else
-		{
-			linking_add_link(&compiler.linking, "libucrt");
-			linking_add_link(&compiler.linking, "libvcruntime");
-			linking_add_link(&compiler.linking, "libcmt");
-			linking_add_link(&compiler.linking, "libcpmt");
-		}
-	}
-	else
+	if (crt_linking == WIN_CRT_DEFAULT)
 	{
 		// When cross compiling we might not have the relevant debug libraries.
 		// if so, then exclude them.
-		if (is_debug && link_with_dynamic_debug_libc)
-		{
-			linking_add_link(&compiler.linking, "ucrtd");
-			linking_add_link(&compiler.linking, "vcruntimed");
-			linking_add_link(&compiler.linking, "msvcrtd");
-			linking_add_link(&compiler.linking, "msvcprtd");
-		}
-		else
-		{
-			linking_add_link(&compiler.linking, "ucrt");
-			linking_add_link(&compiler.linking, "vcruntime");
-			linking_add_link(&compiler.linking, "msvcrt");
-			linking_add_link(&compiler.linking, "msvcprt");
-		}
+		crt_linking = is_debug && link_with_dynamic_debug_libc ? WIN_CRT_DYNAMIC_DEBUG : WIN_CRT_DYNAMIC;
 	}
+
+	if (crt_linking == WIN_CRT_STATIC_DEBUG)
+	{
+		linking_add_link(&compiler.linking, "libucrtd");
+		linking_add_link(&compiler.linking, "libvcruntimed");
+		linking_add_link(&compiler.linking, "libcmtd");
+		linking_add_link(&compiler.linking, "libcpmtd");
+	}
+	else if (crt_linking == WIN_CRT_STATIC)
+	{
+		linking_add_link(&compiler.linking, "libucrt");
+		linking_add_link(&compiler.linking, "libvcruntime");
+		linking_add_link(&compiler.linking, "libcmt");
+		linking_add_link(&compiler.linking, "libcpmt");
+	}
+	else if (crt_linking == WIN_CRT_DYNAMIC_DEBUG)
+	{
+		linking_add_link(&compiler.linking, "ucrtd");
+		linking_add_link(&compiler.linking, "vcruntimed");
+		linking_add_link(&compiler.linking, "msvcrtd");
+		linking_add_link(&compiler.linking, "msvcprtd");
+	}
+	else
+	{
+		linking_add_link(&compiler.linking, "ucrt");
+		linking_add_link(&compiler.linking, "vcruntime");
+		linking_add_link(&compiler.linking, "msvcrt");
+		linking_add_link(&compiler.linking, "msvcprt");
+	}
+
 	add_plain_arg("/NOLOGO");
 }
 
@@ -344,19 +377,19 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 	if (is_pie_pic(compiler.platform.reloc_model))
 	{
 		add_plain_arg("-pie");
-		add_quote_concat_arg(crt_dir, "Scrt1.o");
-		add_quote_concat_arg(crt_begin_dir, "crtbeginS.o");
-		add_quote_concat_arg(crt_dir, "crti.o");
-		add_quote_concat_arg(crt_begin_dir, "crtendS.o");
+		add_concat_file_arg(crt_dir, "Scrt1.o");
+		add_concat_file_arg(crt_begin_dir, "crtbeginS.o");
+		add_concat_file_arg(crt_dir, "crti.o");
+		add_concat_file_arg(crt_begin_dir, "crtendS.o");
 	}
 	else
 	{
-		add_quote_concat_arg(crt_dir, "crt1.o");
-		add_quote_concat_arg(crt_begin_dir, "crtbegin.o");
-		add_quote_concat_arg(crt_dir, "crti.o");
-		add_quote_concat_arg(crt_begin_dir, "crtend.o");
+		add_concat_file_arg(crt_dir, "crt1.o");
+		add_concat_file_arg(crt_begin_dir, "crtbegin.o");
+		add_concat_file_arg(crt_dir, "crti.o");
+		add_concat_file_arg(crt_begin_dir, "crtend.o");
 	}
-	add_quote_concat_arg(crt_dir, "crtn.o");
+	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
 	add_plain_arg("-L/usr/lib/x86_64-linux-gnu/libdl.so");
 	add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
@@ -391,19 +424,19 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 	if (is_pie_pic(compiler.platform.reloc_model))
 	{
 		add_plain_arg("-pie");
-		add_quote_concat_arg(crt_dir, "Scrt1.o");
-		add_quote_concat_arg(crt_dir, "crtbeginS.o");
-		add_quote_concat_arg(crt_dir, "crti.o");
-		add_quote_concat_arg(crt_dir, "crtendS.o");
+		add_concat_file_arg(crt_dir, "Scrt1.o");
+		add_concat_file_arg(crt_dir, "crtbeginS.o");
+		add_concat_file_arg(crt_dir, "crti.o");
+		add_concat_file_arg(crt_dir, "crtendS.o");
 	}
 	else
 	{
-		add_quote_concat_arg(crt_dir, "crt1.o");
-		add_quote_concat_arg(crt_dir, "crtbegin.o");
-		add_quote_concat_arg(crt_dir, "crti.o");
-		add_quote_concat_arg(crt_dir, "crtend.o");
+		add_concat_file_arg(crt_dir, "crt1.o");
+		add_concat_file_arg(crt_dir, "crtbegin.o");
+		add_concat_file_arg(crt_dir, "crti.o");
+		add_concat_file_arg(crt_dir, "crtend.o");
 	}
-	add_quote_concat_arg(crt_dir, "crtn.o");
+	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
 	add_plain_arg("--dynamic-linker=/libexec/ld-elf.so.1");
 	linking_add_link(&compiler.linking, "c");
@@ -499,7 +532,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_UNSUPPORTED:
 			UNREACHABLE
 		case OS_TYPE_WIN32:
-			linker_setup_windows(args_ref, linker_type);
+			linker_setup_windows(args_ref, linker_type, output_file);
 			break;
 		case OS_TYPE_MACOSX:
 			linker_setup_macos(args_ref, linker_type);
@@ -526,6 +559,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_NONE:
 			break;
 	}
+
 	for (unsigned i = 0; i < file_count; i++)
 	{
 		add_quote_arg(files_to_link[i]);
@@ -533,7 +567,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 
 	FOREACH(const char *, dir, compiler.build.linker_libdirs)
 	{
-		add_quote_concat_arg(lib_path_opt, dir);
+		add_concat_file_arg(lib_path_opt, dir);
 	}
 	FOREACH(const char *, arg, compiler.build.link_args)
 	{
@@ -547,6 +581,34 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		add_linked_libs(args_ref, target->linked_libs, use_win);
 	}
 	add_linked_libs(args_ref, linking->links, use_win);
+
+	// Link sanitizer runtime libraries
+	if (compiler.platform.os == OS_TYPE_MACOSX)
+	{
+		if (compiler.build.feature.sanitize_address || compiler.build.feature.sanitize_thread)
+		{
+			const char *compiler_path = find_executable_path();
+			if (compiler.build.feature.sanitize_address)
+			{
+				add_concat_file_arg(compiler_path, "c3c_rt/libclang_rt.asan_osx_dynamic.dylib");
+			}
+			if (compiler.build.feature.sanitize_thread)
+			{
+				add_concat_file_arg(compiler_path, "c3c_rt/libclang_rt.tsan_osx_dynamic.dylib");
+			}
+
+			// Add rpath for sanitizer runtime libraries last, after user-provided link args have been added.
+			add_plain_arg("-rpath");
+			add_concat_file_arg(compiler_path, "c3c_rt");
+		}
+	}
+	else if (compiler.platform.os == OS_TYPE_LINUX)
+	{
+		if (compiler.build.feature.sanitize_address) add_plain_arg("-fsanitize=address");
+		if (compiler.build.feature.sanitize_memory) add_plain_arg("-fsanitize=memory");
+		if (compiler.build.feature.sanitize_thread) add_plain_arg("-fsanitize=thread");
+	}
+
 	return true;
 }
 #undef add_arg2
@@ -611,7 +673,7 @@ static unsigned assemble_link_arguments(const char **arguments, unsigned len)
 	{
 		const char *arg = arguments[i];
 		if (arg == quote_arg) continue;
-		if (arg == concat_arg || arg == quote_concat_arg || arg == concat_quote_arg)
+		if (arg == concat_arg || arg == concat_file_arg || arg == concat_quote_arg)
 		{
 			const char *a = arguments[++i];
 			const char *b = arguments[++i];
@@ -711,10 +773,17 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 			scratch_buffer_append(args[++i]);
 			continue;
 		}
-		if (arg == quote_concat_arg)
+		if (arg == concat_file_arg)
 		{
 			scratch_buffer_append_char('"');
-			scratch_buffer_append_in_quote(args[++i]);
+			const char *a = args[++i];
+			scratch_buffer_append_in_quote(a);
+			size_t len = strlen(a);
+			char c = len ? a[len - 1] : '/';
+			if (c != '/' && !(PLATFORM_WINDOWS && c == '\\'))
+			{
+				scratch_buffer_append(PLATFORM_WINDOWS ? "\\\\" : "/");
+			}
 			scratch_buffer_append_in_quote(args[++i]);
 			scratch_buffer_append_char('"');
 			continue;
@@ -783,7 +852,9 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	{
 		// Create .dSYM
 		scratch_buffer_clear();
-		scratch_buffer_printf("dsymutil -arch %s \"%s\"", arch_to_linker_arch(compiler.platform.arch), output_file);
+		scratch_buffer_printf("dsymutil -arch %s \"", arch_to_linker_arch(compiler.platform.arch));
+		scratch_buffer_append_in_quote(output_file);
+		scratch_buffer_append("\"");
 		if (compiler.build.print_linking) puts(scratch_buffer_to_string());
 		if (system(scratch_buffer_to_string()) != 0)
 		{

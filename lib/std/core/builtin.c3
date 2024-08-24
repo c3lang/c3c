@@ -19,6 +19,8 @@ fault SearchResult { MISSING }
  **/
 fault CastResult { TYPE_MISMATCH }
 
+def VoidFn = fn void();
+
 /**
  * Stores a variable on the stack, then restores it at the end of the
  * macro scope.

@@ -577,7 +577,8 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 {
 	expr->expr_kind = EXPR_CONST;
-	switch (type->canonical->type_kind)
+	Type *canonical = type->canonical;
+	switch (canonical->type_kind)
 	{
 		case TYPE_POISONED:
 		case TYPE_VOID:
@@ -604,8 +605,8 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
-			assert(type->decl->resolve_status == RESOLVE_DONE);
-			expr->const_expr.enum_err_val = type->decl->enums.values[0];
+			assert(canonical->decl->resolve_status == RESOLVE_DONE);
+			expr->const_expr.enum_err_val = canonical->decl->enums.values[0];
 			expr->resolve_status = RESOLVE_DONE;
 			break;
 		case TYPE_FUNC_RAW:
@@ -631,7 +632,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		}
 		case TYPE_DISTINCT:
-			expr_rewrite_to_const_zero(expr, type->decl->distinct->type);
+			expr_rewrite_to_const_zero(expr, canonical->decl->distinct->type);
 			break;
 	}
 	expr->type = type;

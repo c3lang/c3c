@@ -454,7 +454,7 @@ fn void! lex_uint()
         assert(kind == UINT, "got %s; want %s", kind, Kind.UINT);
     }
 }
-module lexer;
+module lexer2;
 import std::io;
 
 fn int main(String[] args)

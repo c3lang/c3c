@@ -82,6 +82,8 @@
 - Bug when compile time subtracting a distinct type.
 - `insert_at` incorrectly prevented inserts at the end of a list.
 - Fix aligned alloc for Win32 targets.
+- Compiler didn't detect when a module name was used both as a generic and regular module.
+- Assigning a const zero to an aliased distinct caused an error.
 
 ### Stdlib changes
 
@@ -93,6 +95,7 @@
 - Added `dstring.replace`
 - New hashmap type, `Map`
 - Added `ElasticArray`.
+- Added `types::is_signed`, `types::is_unsigned` and `types::inner_type`.
 
 ## 0.6.1 Change list
 
@@ -118,6 +121,7 @@
 - Added `--list-manifest-properties` to list the available properties in `manifest.json`.
 - Indexing into a constant array / struct now works at compile time.
 - Improved error message when trying user foreach with an untyped list.
+- RISCV asm support.
 
 ### Fixes
 - Error with unsigned compare in `@ensure` when early returning 0 #1207.

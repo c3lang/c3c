@@ -83,88 +83,51 @@ static inline bool sema_reg_float_suported_type(AsmArgType arg, Type *type)
 	return type_bit_size(type) == next_highest_power_of_2(arg_bits_max(arg.float_bits, 0));
 }
 
-static inline bool sema_check_imm_fits(Int imm, AsmArgType arg_type)
+static inline bool sema_check_npot_imm_fits(Int imm, AsmArgType arg_type)
 {
-	Int128 min = {0};
-	Int128 max = {0};
-	bool is_signed = false;
 	// Check if actually an immediate. If not, just move along.
-	if (arg_type.imm_arg_ibits == 0 && arg_type.imm_arg_ubits == 0) return true; 
+	if (arg_type.imm_arg_ibits == 0 && arg_type.imm_arg_ubits == 0) return true;
+	// See if we can do a direct comparison
+	bool direct_compare = int_fits(imm, TYPE_I64);
+	int64_t val = direct_compare ? int_to_i64(imm) : 0;
+
+	// The signed case
 	if (arg_type.imm_arg_ibits > 0)
 	{
 		if (arg_type.imm_arg_ibits & ARG_BITS_20)
 		{
-			min = i128_from_signed(INT20_MIN);
-			max = i128_from_signed(INT20_MAX);
-			is_signed = true;
-		} 
-		else if (arg_type.imm_arg_ibits & ARG_BITS_12)
-		{
-			min = i128_from_signed(INT12_MIN);
-			max = i128_from_signed(INT12_MAX);
-			is_signed = true;
+			if (!direct_compare) return false;
+			return val >= INT20_MIN && val <= INT20_MAX;
 		}
-		else if (arg_type.imm_arg_ibits & ARG_BITS_5)
+		if (arg_type.imm_arg_ibits & ARG_BITS_12)
 		{
-			min = i128_from_signed(INT5_MIN);
-			max = i128_from_signed(INT5_MAX);
-			is_signed = true;
+			if (!direct_compare) return false;
+			return val >= INT12_MIN && val <= INT12_MAX;
 		}
-		else if (arg_type.imm_arg_ibits & (ARG_BITS_8|ARG_BITS_16|ARG_BITS_32|ARG_BITS_64|ARG_BITS_128|ARG_BITS_256|ARG_BITS_512|ARG_BITS_80))
+		if (arg_type.imm_arg_ibits & ARG_BITS_5)
 		{
+			if (!direct_compare) return false;
+			return val >= INT5_MIN && val <= INT5_MAX;
 		}
-		else
-		{
-		 UNREACHABLE;
-		}
-	}
-	else 
-	{
-		if (arg_type.imm_arg_ubits > 0)
-		{
-			if (arg_type.imm_arg_ubits & ARG_BITS_20)
-			{
-				max = (Int128){ 0, UINT20_MAX };
-			}
-			else if (arg_type.imm_arg_ubits & ARG_BITS_12)
-			{
-				max = (Int128){ 0, UINT12_MAX };
-			}
-			else if (arg_type.imm_arg_ubits & ARG_BITS_5)
-			{
-				max = (Int128){ 0, UINT5_MAX };
-			}
-			else if (arg_type.imm_arg_ubits & (ARG_BITS_8|ARG_BITS_16|ARG_BITS_32|ARG_BITS_64|ARG_BITS_128|ARG_BITS_256|ARG_BITS_512|ARG_BITS_80))
-			{
-			}
-			else
-			{
-				UNREACHABLE;
-			}
-		}
-	}
-	// Not an immediate of these off-brand types, so just move along.
-	if (i128_is_zero(min) && i128_is_zero(max)) return true; 
-	bool op_is_signed = type_kind_is_signed(imm.type);
-	if (is_signed)
-	{
-		if (op_is_signed)
-		{
-			if (i128_scomp(imm.i, min) == CMP_LT) return false;
-			if (i128_scomp(imm.i, max) == CMP_GT) return false;
-			return true;
-		}
-		// In the unsigned case, we don't need to test the lower limit.
-		return i128_ucomp(imm.i, max) != CMP_GT;
-	}
-	if (op_is_signed)
-	{
-		if (i128_is_neg(imm.i)) return false;
-		if (i128_ucomp(imm.i, max) == CMP_GT) return false;
 		return true;
 	}
-	// In the unsigned case, we don't need to test the lower limit.
-	return i128_ucomp(imm.i, max) != CMP_GT;
+	assert(arg_type.imm_arg_ubits > 0);
+	if (arg_type.imm_arg_ubits & ARG_BITS_20)
+	{
+		if (!direct_compare) return false;
+		return val >= 0 && val <= UINT20_MAX;
+	}
+	if (arg_type.imm_arg_ubits & ARG_BITS_12)
+	{
+		if (!direct_compare) return false;
+		return val >= 0 && val <= UINT12_MAX;
+	}
+	if (arg_type.imm_arg_ubits & ARG_BITS_5)
+	{
+		if (!direct_compare) return false;
+		return val >= 0 && val <= UINT5_MAX;
+	}
+	return true;
 }
 
 static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineBlock *block, AsmInstruction *instr, AsmArgType arg_type, Expr *expr, Expr *int_expr)
@@ -179,7 +142,7 @@ static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineB
 	}
 	Int i = int_expr->const_expr.ixx;
 	unsigned max_bits = arg_bits_max(arg_type.imm_arg_ibits > arg_type.imm_arg_ubits ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);
-	if (!type || !int_fits(i, type->type_kind) || !sema_check_imm_fits(i, arg_type))
+	if (!type || !int_fits(i, type->type_kind) || !sema_check_npot_imm_fits(i, arg_type))
 	{
 		SEMA_ERROR(expr, "'%s' expected %s limited to %d bits.", instr->name, type_quoted_error_string(type), max_bits);
 		return false;

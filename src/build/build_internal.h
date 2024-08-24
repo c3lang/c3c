@@ -26,10 +26,12 @@ static const char *memory_environment[6] = {
 	[MEMORY_ENV_NONE] = "none",
 };
 
-static const char *wincrt_linking[3] = {
+static const char *wincrt_linking[5] = {
 	[WIN_CRT_NONE] = "none",
 	[WIN_CRT_DYNAMIC] = "dynamic",
+	[WIN_CRT_DYNAMIC_DEBUG] = "dynamic-debug",
 	[WIN_CRT_STATIC] = "static",
+	[WIN_CRT_STATIC_DEBUG] = "static-debug",
 };
 
 static const char *vector_conv[2] = {
@@ -97,6 +99,13 @@ static const char *reloc_models[5] = {
 	[RELOC_BIG_PIC] = "PIC",
 	[RELOC_SMALL_PIE] = "pie",
 	[RELOC_BIG_PIE] = "PIE",
+};
+
+static const char *sanitize_modes[4] = {
+	[SANITIZE_NONE] = "none",
+	[SANITIZE_ADDRESS] = "address",
+	[SANITIZE_MEMORY] = "memory",
+	[SANITIZE_THREAD] = "thread",
 };
 
 Project *project_load(void);
