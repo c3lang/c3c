@@ -486,8 +486,9 @@ void init_build_target(BuildTarget *target, BuildOptions *options)
 	// Locate the project.json
 	file_find_top_dir();
 	// Parse it
-	Project *project = project_load();
-	*target = *project_select_target(project, options->target_select);
+	const char *filename;
+	Project *project = project_load(&filename);
+	*target = *project_select_target(filename, project, options->target_select);
 
 	update_build_target_from_options(target, options);
 	if (target->build_dir && !file_exists(target->build_dir))

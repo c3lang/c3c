@@ -421,12 +421,13 @@ void file_find_top_dir()
 	while (1)
 	{
 		struct stat info;
-		int err = stat(PROJECT_JSON, &info);
+		const char *filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
+		int err = stat(filename, &info);
 
 		// Error and the it's not a "missing file"?
 		if (err && errno != ENOENT)
 		{
-			error_exit("Can't open %s: %s.", PROJECT_JSON, strerror(errno));
+			error_exit("Can't open %s: %s.", filename, strerror(errno));
 		}
 
 		// Everything worked and it's a regular file? We're done!

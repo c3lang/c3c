@@ -1,20 +1,23 @@
 #include "build_internal.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
-static JSONObject *read_project()
+
+static JSONObject *read_project(const char **file_used)
 {
 	size_t size;
-	char *read = file_read_all(PROJECT_JSON, &size);
+	const char *project_filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
+	*file_used = project_filename;
+	char *read = file_read_all(project_filename, &size);
 	JsonParser parser;
 	json_init_string(&parser, read, &malloc_arena);
 	JSONObject *json = json_parse(&parser);
 	if (parser.error_message)
 	{
-		error_exit("Error on line %d reading '%s':'%s'", parser.line, PROJECT_JSON, parser.error_message);
+		error_exit("Error on line %d reading '%s':'%s'", parser.line, project_filename, parser.error_message);
 	}
 	if (!json || json->type != J_OBJECT)
 	{
-		error_exit("Expected a map of project information in '%s'.", PROJECT_JSON);
+		error_exit("Expected a map of project information in '%s'.", project_filename);
 	}
 	return json;
 }
@@ -94,74 +97,74 @@ const char *debug_levels[] = {
 
 #define VIEW_MANDATORY_STRING_ARRAY(header, key) \
 do { \
-	const char** arr = get_string_array(PROJECT_JSON, NULL, project_json, key, true);\
+	const char** arr = get_string_array(filename, NULL, project_json, key, true);\
 	print_vec(header, arr, false);\
 } while(0)
 
 #define VIEW_STRING_ARRAY(header, key) \
 do { \
-	const char** arr = get_optional_string_array(PROJECT_JSON, NULL, project_json, key);\
+	const char** arr = get_optional_string_array(filename, NULL, project_json, key);\
 	print_vec(header, arr, true);\
 } while(0)
 
 #define VIEW_MANDATORY_STRING(header, key) \
 do { \
-	const char* str = get_mandatory_string(PROJECT_JSON, NULL, project_json, key);\
+	const char* str = get_mandatory_string(filename, NULL, project_json, key);\
 	print_opt_str(header, str);\
 } while(0)
 
 #define VIEW_STRING(header, key) \
 do { \
-	const char* str = get_optional_string(PROJECT_JSON, NULL, project_json, key);\
+	const char* str = get_optional_string(filename, NULL, project_json, key);\
 	print_opt_str(header, str);\
 } while(0)
 
 #define VIEW_SETTING(header, key, expected_arr) \
 do { \
-	int setting = get_valid_string_setting(PROJECT_JSON, NULL, project_json, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
+	int setting = get_valid_string_setting(filename, NULL, project_json, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
  	print_opt_setting(header, setting, expected_arr);\
 } while(0)
 
 #define VIEW_BOOL(header, key) \
 do {\
-    int val = get_valid_bool(PROJECT_JSON, NULL, project_json, key, -1);\
+    int val = get_valid_bool(filename, NULL, project_json, key, -1);\
 	print_opt_bool(header, val);\
 } while(0)
 
 #define VIEW_INTEGER(header, key) \
 do {\
-	long v = get_valid_integer(project_json, key, PROJECT_JSON, false);\
+	long v = get_valid_integer(project_json, key, filename, false);\
     print_opt_int(header, v);\
 } while(0);
 
 #define TARGET_VIEW_STRING_ARRAY(header, key) \
 do {\
-    const char** arr = get_optional_string_array(PROJECT_JSON, name, target, key);\
+    const char** arr = get_optional_string_array(filename, name, target, key);\
 	print_vec("\t" header, arr, true);\
 } while(0)
 
 #define TARGET_VIEW_MANDATORY_STRING(header, key) \
 do { \
-	const char* str = get_mandatory_string(PROJECT_JSON, name, target, key);\
+	const char* str = get_mandatory_string(filename, name, target, key);\
 	print_opt_str("\t" header, str);\
 } while(0)
 
 #define TARGET_VIEW_STRING(header, key) \
 do { \
-	const char* str = get_optional_string(PROJECT_JSON, name, target, key);\
+	const char* str = get_optional_string(filename, name, target, key);\
 	print_opt_str("\t" header, str);\
 } while(0)
 
 
 #define TARGET_VIEW_SETTING(header, key, expected_arr) \
 do { \
-	int setting = get_valid_string_setting(PROJECT_JSON, name, target, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
+	int setting = get_valid_string_setting(filename, name, target, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
  	print_opt_setting("\t" header, setting, expected_arr);\
 } while(0)
 
 #define TARGET_VIEW_BOOL(header, key) \
 do {\
-    int val = get_valid_bool(PROJECT_JSON, name, target, key, -1);\
+    int val = get_valid_bool(filename, name, target, key, -1);\
 	print_opt_bool("\t" header, val);\
 } while(0)
 
@@ -171,7 +174,7 @@ do {\
     print_opt_int("\t" header, v);\
 } while(0);
 
-static void view_target(const char *name, JSONObject *target)
+static void view_target(const char *filename, const char *name, JSONObject *target)
 {
 	/* General target information */
 	PRINTFN("- %s", name);
@@ -238,7 +241,8 @@ static void view_target(const char *name, JSONObject *target)
 
 void add_target_project(BuildOptions *build_options)
 {
-	JSONObject *project_json = read_project();
+	const char *filename;
+	JSONObject *project_json = read_project(&filename);
 	JSONObject *targets_json = json_obj_get(project_json, "targets");
 
 	for (unsigned i = 0; i < targets_json->member_len; i++)
@@ -270,14 +274,15 @@ void add_target_project(BuildOptions *build_options)
 	targets_json->keys[index] = build_options->project_options.target_name;
 	targets_json->member_len++;
 
-	FILE *file = fopen(PROJECT_JSON, "w");
+	FILE *file = fopen(filename, "w");
 	print_json_to_file(project_json, file);
 	fclose(file);
 }
 
 void view_project(BuildOptions *build_options)
 {
-	JSONObject *project_json = read_project();
+	const char *filename;
+	JSONObject *project_json = read_project(&filename);
 
 	/* General information */
 	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors");
@@ -351,6 +356,6 @@ void view_project(BuildOptions *build_options)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		view_target(key, object);
+		view_target(filename, key, object);
 	}
 }
