@@ -83,6 +83,7 @@
 - `insert_at` incorrectly prevented inserts at the end of a list.
 - Fix aligned alloc for Win32 targets.
 - Compiler didn't detect when a module name was used both as a generic and regular module.
+- Assigning a const zero to an aliased distinct caused an error.
 
 ### Stdlib changes
 
