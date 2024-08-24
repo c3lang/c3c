@@ -37,7 +37,7 @@ fn void test5()
 {
 	asm
 	{
-		lui $a0, -1; // #error: 'lui' does not support a signed integer constant here.
+		lui $a0, -1; // #error: 'lui' expected 'uint' limited to 20 bits.
 	}
 }
 
@@ -45,19 +45,11 @@ fn void test6()
 {
 	asm
 	{
-		auipc $a0, -1; // #error: 'auipc' does not support a signed integer constant here.
+		auipc $a0, -1; // #error: 'auipc' expected 'uint' limited to 20 bits.
 	}
 }
 
 fn void test7()
-{
-	asm
-	{
-		auipc $a0, 1; // #error: 'auipc' does not support a signed integer constant here.
-	}
-}
-
-fn void test8()
 {
 	asm
 	{
