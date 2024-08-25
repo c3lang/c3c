@@ -358,25 +358,24 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 	{
 		add_plain_arg("-export-dynamic");
 	}
-	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
-	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
+	bool is_exe = compiler.build.type == TARGET_TYPE_EXECUTABLE;
+	if (is_exe)
+	{
+		if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
+		if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
+	}
 	if (compiler.platform.arch == ARCH_TYPE_X86_64) add_plain_arg("--eh-frame-hdr");
 	if (!link_libc()) return;
 	const char *crt_begin_dir = find_linux_crt_begin();
 	const char *crt_dir = find_linux_crt();
 
-	if (strip_unused() && compiler.build.type == TARGET_TYPE_EXECUTABLE)
-	{
-		add_plain_arg("--gc-sections");
-	}
-
+	if (is_exe && strip_unused()) add_plain_arg("--gc-sections");
 	if (!crt_begin_dir || !crt_dir)
 	{
 		error_exit("Failed to find the C runtime at link time.");
 	}
 	if (is_pie_pic(compiler.platform.reloc_model))
 	{
-		add_plain_arg("-pie");
 		add_concat_file_arg(crt_dir, "Scrt1.o");
 		add_concat_file_arg(crt_begin_dir, "crtbeginS.o");
 		add_concat_file_arg(crt_dir, "crti.o");
@@ -673,11 +672,18 @@ static unsigned assemble_link_arguments(const char **arguments, unsigned len)
 	{
 		const char *arg = arguments[i];
 		if (arg == quote_arg) continue;
-		if (arg == concat_arg || arg == concat_file_arg || arg == concat_quote_arg)
+		if (arg == concat_arg || arg == concat_quote_arg)
 		{
 			const char *a = arguments[++i];
 			const char *b = arguments[++i];
 			arguments[count++] = str_cat(a, b);
+			continue;
+		}
+		if (arg == concat_file_arg)
+		{
+			const char *a = arguments[++i];
+			const char *b = arguments[++i];
+			arguments[count++] = file_append_path(a, b);
 			continue;
 		}
 		if (count != i)
