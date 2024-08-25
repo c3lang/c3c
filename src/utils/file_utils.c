@@ -476,8 +476,14 @@ const char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);
 	if (!path_len) return name;
+#if PLATFORM_WINDOWS
+	if (path[path_len - 1] == '\\') return str_cat(path, name);
+	if (path[path_len - 1] == '/') return str_cat(path, name);
+	return str_printf("%s\\%s", path, name);
+#else
 	if (path[path_len - 1] == '/') return str_cat(path, name);
 	return str_printf("%s/%s", path, name);
+#endif
 }
 
 #ifdef _MSC_VER
