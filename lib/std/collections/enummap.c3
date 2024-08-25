@@ -25,9 +25,14 @@ fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 	return n;
 }
 
-fn String EnumMap.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
+fn String EnumMap.to_string(&self, Allocator allocator) @dynamic
 {
-	return string::new_format("%s", *self, .allocator = allocator);
+	return string::format("%s", *self, .allocator = allocator);
+}
+
+fn String EnumMap.to_new_string(&self, Allocator allocator = null) @dynamic
+{
+	return string::format("%s", *self, .allocator = allocator ?: allocator::heap());
 }
 
 fn String EnumMap.to_tstring(&self) @dynamic

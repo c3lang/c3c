@@ -24,16 +24,24 @@ struct LinkedList
  * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
  * @return "the initialized list"
  **/
-fn LinkedList* LinkedList.new_init(&self, Allocator allocator = allocator::heap())
+fn LinkedList* LinkedList.init(&self, Allocator allocator)
 {
 	*self = { .allocator = allocator };
 	return self;
 }
 
+/**
+ * @return "the initialized list"
+ **/
+fn LinkedList* LinkedList.new_init(&self)
+{
+	return self.init(allocator::heap()) @inline;
+}
+
 
 fn LinkedList* LinkedList.temp_init(&self)
 {
-	return self.new_init(allocator::temp()) @inline;
+	return self.init(allocator::temp()) @inline;
 }
 
 /**

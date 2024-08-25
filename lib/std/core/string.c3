@@ -32,17 +32,6 @@ fault NumberConversion
 	FLOAT_OUT_OF_RANGE,
 }
 
-/**
- * Return a temporary String created using the formatting function.
- *
- * @param [in] fmt `The formatting string`
- **/
-macro String tformat(String fmt, ...)
-{
-	DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-	str.appendf(fmt, $vasplat);
-	return str.str_view();
-}
 
 /**
  * Return a temporary ZString created using the formatting function.
@@ -59,10 +48,10 @@ macro ZString tformat_zstr(String fmt, ...)
 /**
  * Return a new String created using the formatting function.
  *
- * @param [in] fmt `The formatting string`
  * @param [inout] allocator `The allocator to use`
+ * @param [in] fmt `The formatting string`
  **/
-macro String new_format(String fmt, ..., Allocator allocator = allocator::heap())
+macro String format(String fmt, ..., Allocator allocator)
 {
 	@pool(allocator)
 	{
@@ -70,6 +59,25 @@ macro String new_format(String fmt, ..., Allocator allocator = allocator::heap()
 		str.appendf(fmt, $vasplat);
 		return str.copy_str(allocator);
 	};
+}
+
+/**
+ * Return a heap allocated String created using the formatting function.
+ *
+ * @param [in] fmt `The formatting string`
+ **/
+macro String new_format(String fmt, ..., Allocator allocator = null) => format(fmt, $vasplat, .allocator = allocator ?: allocator::heap());
+
+/**
+ * Return a temporary String created using the formatting function.
+ *
+ * @param [in] fmt `The formatting string`
+ **/
+macro String tformat(String fmt, ...)
+{
+	DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
+	str.appendf(fmt, $vasplat);
+	return str.str_view();
 }
 
 /**
@@ -205,13 +213,12 @@ fn String String.strip_end(string, String needle)
 	return string[:(string.len - needle.len)];
 }
 
-
 /**
  * Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
  *
  * @param [in] s
  * @param [in] needle
- * @param [&inout] allocator "The allocator, defaults to the heap allocator"
+ * @param [&inout] allocator "The allocator to use for the String[]"
  * @param max "Max number of elements, 0 means no limit, defaults to 0"
  * @require needle.len > 0 "The needle must be at least 1 character long"
  * @ensure return.len > 0
@@ -247,6 +254,18 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator allocator = al
 }
 
 /**
+ * Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }, using the heap allocator
+ * to store the parts.
+ *
+ * @param [in] s
+ * @param [in] needle
+ * @param max "Max number of elements, 0 means no limit, defaults to 0"
+ * @require needle.len > 0 "The needle must be at least 1 character long"
+ * @ensure return.len > 0
+ **/
+fn String[] String.new_split(s, String needle, usz max = 0) => s.split(needle, max, allocator::heap()) @inline;
+
+/**
  * This function is identical to String.split, but implicitly uses the
  * temporary allocator.
  *
@@ -254,10 +273,7 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator allocator = al
  * @param [in] needle
  * @param max "Max number of elements, 0 means no limit, defaults to 0"
  **/
-fn String[] String.tsplit(s, String needle, usz max = 0)
-{
-	return s.split(needle, max, allocator::temp()) @inline;
-}
+fn String[] String.tsplit(s, String needle, usz max = 0) => s.split(needle, max, allocator::temp()) @inline;
 
 /**
  * Check if a substring is found in the string.
@@ -486,17 +502,15 @@ fn Char16[]! String.to_temp_utf16(s)
 	return s.to_new_utf16(allocator::temp());
 }
 
-fn WString! String.to_new_wstring(s, Allocator allocator = allocator::heap())
+fn WString! String.to_wstring(s, Allocator allocator)
 {
 	return (WString)s.to_new_utf16(allocator).ptr;
 }
 
-fn WString! String.to_temp_wstring(s)
-{
-	return (WString)s.to_temp_utf16().ptr;
-}
+fn WString! String.to_temp_wstring(s) => s.to_wstring(allocator::temp());
+fn WString! String.to_new_wstring(s) => s.to_wstring(allocator::heap());
 
-fn Char32[]! String.to_new_utf32(s, Allocator allocator = allocator::heap())
+fn Char32[]! String.to_utf32(s, Allocator allocator)
 {
 	usz codepoints = conv::utf8_codepoints(s);
 	Char32* data = allocator::alloc_array_try(allocator, Char32, codepoints + 1)!;
@@ -505,10 +519,8 @@ fn Char32[]! String.to_new_utf32(s, Allocator allocator = allocator::heap())
 	return data[:codepoints];
 }
 
-fn Char32[]! String.to_temp_utf32(s)
-{
-	return s.to_new_utf32(allocator::temp());
-}
+fn Char32[]! String.to_new_utf32(s) => s.to_utf32(allocator::heap()) @inline;
+fn Char32[]! String.to_temp_utf32(s) => s.to_utf32(allocator::temp()) @inline;
 
 /**
  * Convert a string to ASCII lower case.

@@ -292,7 +292,7 @@ fn void DString.append_chars(&self, String str)
 
 fn Char32[] DString.copy_utf32(&self, Allocator allocator = allocator::heap())
 {
-	return self.str_view().to_new_utf32(allocator) @inline!!;
+	return self.str_view().to_utf32(allocator) @inline!!;
 }
 
 fn void DString.append_string(&self, DString str)

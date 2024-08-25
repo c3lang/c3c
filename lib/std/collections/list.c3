@@ -102,7 +102,7 @@ fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 
 fn String List.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
-	return string::new_format("%s", *self, .allocator = allocator);
+	return string::format("%s", *self, .allocator = allocator);
 }
 
 fn String List.to_tstring(&self)

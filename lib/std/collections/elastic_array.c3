@@ -41,7 +41,12 @@ fn usz! ElasticArray.to_format(&self, Formatter* formatter) @dynamic
 
 fn String ElasticArray.to_string(&self, Allocator allocator) @dynamic
 {
-	return string::new_format("%s", *self, .allocator = allocator);
+	return string::format("%s", *self, .allocator = allocator);
+}
+
+fn String ElasticArray.to_new_string(&self, Allocator allocator = nul) @dynamic
+{
+	return string::format("%s", *self, .allocator = allocator ?: allocator::heap());
 }
 
 fn String ElasticArray.to_tstring(&self)
@@ -158,7 +163,15 @@ fn void ElasticArray.add_array(&self, Type[] array)
 /**
  * IMPORTANT The returned array must be freed using free_aligned.
  **/
-fn Type[] ElasticArray.to_new_aligned_array(&self, Allocator allocator = allocator::heap())
+fn Type[] ElasticArray.to_new_aligned_array(&self)
+{
+	return list_common::list_to_new_aligned_array(Type, self, allocator::heap());
+}
+
+/**
+ * IMPORTANT The returned array must be freed using free_aligned.
+ **/
+fn Type[] ElasticArray.to_aligned_array(&self, Allocator allocator)
 {
 	return list_common::list_to_new_aligned_array(Type, self, allocator);
 }
@@ -166,7 +179,15 @@ fn Type[] ElasticArray.to_new_aligned_array(&self, Allocator allocator = allocat
 /**
  * @require !type_is_overaligned() : "This function is not available on overaligned types"
  **/
-macro Type[] ElasticArray.to_new_array(&self, Allocator allocator = allocator::heap())
+macro Type[] ElasticArray.to_new_array(&self)
+{
+	return list_common::list_to_array(Type, self, allocator::heap());
+}
+
+/**
+ * @require !type_is_overaligned() : "This function is not available on overaligned types"
+ **/
+macro Type[] ElasticArray.to_array(&self, Allocator allocator)
 {
 	return list_common::list_to_new_array(Type, self, allocator);
 }
@@ -174,9 +195,9 @@ macro Type[] ElasticArray.to_new_array(&self, Allocator allocator = allocator::h
 fn Type[] ElasticArray.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_new_aligned_array(allocator::temp());
+	return self.to_aligned_array(allocator::temp());
 	$else
-	return self.to_new_array(allocator::temp());
+	return self.to_array(allocator::temp());
 	$endif;
 }
 

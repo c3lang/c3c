@@ -20,7 +20,19 @@ struct HashMap
  * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = null)
+{
+	return self.init(allocator ?: allocator::heap(), capacity, load_factor);
+}
+
+/**
+ * @param [&inout] allocator "The allocator to use"
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	capacity = math::next_power_of_2(capacity);
 	self.allocator = allocator;
@@ -38,7 +50,7 @@ fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, fl
  **/
 fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.new_init(capacity, load_factor, allocator::temp()) @inline;
+	return self.init(allocator::temp(), capacity, load_factor) @inline;
 }
 
 
@@ -54,10 +66,18 @@ fn bool HashMap.is_initialized(&map)
 }
 
 /**
+ * @param [&in] other_map "The map to copy from."
+ **/
+fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map)
+{
+	return self.init_from_map(other_map, allocator::heap()) @inline;
+}
+
+/**
  * @param [&inout] allocator "The allocator to use"
  * @param [&in] other_map "The map to copy from."
  **/
-fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator allocator = allocator::heap())
+fn HashMap* HashMap.init_from_map(&self, HashMap* other_map, Allocator allocator)
 {
 	self.new_init(other_map.table.len, other_map.load_factor, allocator);
 	self.put_all_for_create(other_map);
@@ -69,7 +89,7 @@ fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map, Allocator alloc
  **/
 fn HashMap* HashMap.temp_init_from_map(&map, HashMap* other_map)
 {
-	return map.new_init_from_map(other_map, allocator::temp()) @inline;
+	return map.init_from_map(other_map, allocator::temp()) @inline;
 }
 
 fn bool HashMap.is_empty(&map) @inline
@@ -191,12 +211,25 @@ fn void HashMap.free(&map)
 	map.table = {};
 }
 
-fn Key[] HashMap.key_tlist(&map)
+fn Key[] HashMap.tcopy_keys(&map)
 {
-	return map.key_new_list(allocator::temp()) @inline;
+	return map.copy_keys(allocator::temp()) @inline;
 }
 
+fn Key[] HashMap.key_tlist(&map) @deprecated("Use 'tcopy_keys'")
+{
+	return map.copy_keys(allocator::temp()) @inline;
+}
+
+/**
+ * @deprecated "use copy_keys"
+ **/
 fn Key[] HashMap.key_new_list(&map, Allocator allocator = allocator::heap())
+{
+	return map.copy_keys() @inline;
+}
+
+fn Key[] HashMap.copy_keys(&map, Allocator allocator = allocator::heap())
 {
 	if (!map.count) return {};
 
@@ -235,12 +268,28 @@ macro HashMap.@each_entry(map; @body(entry))
 	}
 }
 
+/**
+ * @deprecated `use tcopy_values`
+ **/
 fn Value[] HashMap.value_tlist(&map)
 {
-	return map.value_new_list(allocator::temp()) @inline;
+	return map.copy_values(allocator::temp()) @inline;
 }
 
+fn Value[] HashMap.tcopy_values(&map)
+{
+	return map.copy_values(allocator::temp()) @inline;
+}
+
+/**
+ * @deprecated `use copy_values`
+ **/
 fn Value[] HashMap.value_new_list(&map, Allocator allocator = allocator::heap())
+{
+	return map.copy_values(allocator);
+}
+
+fn Value[] HashMap.copy_values(&map, Allocator allocator = allocator::heap())
 {
 	if (!map.count) return {};
 	Value[] list = allocator::alloc_array(allocator, Value, map.count);

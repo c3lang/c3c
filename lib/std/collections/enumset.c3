@@ -143,7 +143,12 @@ fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 
 fn String EnumSet.to_new_string(&set, Allocator allocator = allocator::heap()) @dynamic
 {
-	return string::new_format("%s", *set, .allocator = allocator);
+	return string::format("%s", *set, .allocator = allocator);
+}
+
+fn String EnumSet.to_string(&set, Allocator allocator) @dynamic
+{
+	return string::format("%s", *set, .allocator = allocator);
 }
 
 fn String EnumSet.to_tstring(&set) @dynamic
