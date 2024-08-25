@@ -171,7 +171,7 @@ entry:
   store i64 %1, ptr %ptradd, align 8
   !48
   !50
-  %2 = call { i32, ptr } @attach.to_scope() #4, !dbg !56
+  %2 = call { i32, ptr } @attach.to_scope()
   store { i32, ptr } %2, ptr %result, align 8
   %lo = load i32, ptr %result, align 8, !dbg !57
   %ptradd1 = getelementptr inbounds i8, ptr %result, i64 8, !dbg !57
