@@ -21,7 +21,12 @@ static inline Type *max_supported_imm_int(bool is_signed, AsmArgType arg)
 	if (is_signed)
 	{
 		unsigned bits = arg_bits_max(arg.imm_arg_ibits, 64);
-		if (!bits) return NULL;
+		if (!bits)
+		{
+			bits = arg_bits_max(arg.imm_arg_ubits, 64);
+			if (!bits) return NULL;
+			return type_int_unsigned_by_bitsize(next_highest_power_of_2(bits));
+		}
 		return type_int_signed_by_bitsize(next_highest_power_of_2(bits));
 	}
 	unsigned bits = arg_bits_max(arg.imm_arg_ubits, 64);
@@ -135,7 +140,7 @@ static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineB
 		return false;
 	}
 	Int i = int_expr->const_expr.ixx;
-	unsigned max_bits = arg_bits_max(is_signed ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);
+	unsigned max_bits = arg_bits_max(arg_type.imm_arg_ibits > arg_type.imm_arg_ubits ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);
 	if (!type || !int_fits(i, type->type_kind) || !sema_check_npot_imm_fits(i, arg_type))
 	{
 		SEMA_ERROR(expr, "'%s' expected %s limited to %d bits.", instr->name, type_quoted_error_string(type), max_bits);

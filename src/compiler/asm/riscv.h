@@ -67,7 +67,11 @@ typedef enum
 	RISCV_F31,
 	RISCV_MIE,
 	RISCV_MSTATUS,
-	RISCV_MTVEC
+	RISCV_MTVEC,
+	RISCV_MCAUSE,
+	RISCV_MEPC,
+	RISCV_MTVAL,
+	RISCV_MSIP
 } RISCVClobbers;
 
 static const char *RISCVClobberNames[] = {
@@ -138,6 +142,10 @@ static const char *RISCVClobberNames[] = {
 		[RISCV_MIE] = "mie",
 		[RISCV_MSTATUS] = "mstatus",
 		[RISCV_MTVEC] = "mtvec",
+		[RISCV_MCAUSE] = "mcause",
+		[RISCV_MEPC] = "mepc",
+		[RISCV_MTVAL] = "mtval",
+		[RISCV_MSIP] = "msip",
 };
 
 static const char *riscv_gp_integer_regs[] = { "$x0", "$x1", "$x2", "$x3", "$x4",
@@ -160,5 +168,5 @@ static const char *riscv_float_regs[] = { "$f0", "$f1", "$f2", "$f3", "$f4",
 											"$f20", "$f21", "$f22", "$f23", "$f24",
 											"$f25", "$f26", "$f27", "$f28", "$f29",
 											"$f30", "$f31" };
-static const char *riscv_machine_integer_regs[] = { "$mie", "$mstatus", "$mtvec" };
+static const char *riscv_machine_integer_regs[] = { "$mie", "$mstatus", "$mtvec", "$mcause", "$mepc", "$mtval", "$msip" };
 
