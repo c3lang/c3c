@@ -73,7 +73,7 @@ void gencontext_begin_module(GenContext *c)
 
 	static const char *pic_level = "PIC Level";
 	static const char *pie_level = "PIE Level";
-	switch (compiler.build.reloc_model)
+	switch (compiler.platform.reloc_model)
 	{
 		case RELOC_BIG_PIE:
 			llvm_set_module_flag(c, LLVMModuleFlagBehaviorOverride, pie_level, (unsigned)2 /* PIE */, type_uint);

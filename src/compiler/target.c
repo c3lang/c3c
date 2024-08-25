@@ -1640,18 +1640,20 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 			case OS_UNSUPPORTED:
 				UNREACHABLE
 			case OS_TYPE_OPENBSD:
-			case OS_DARWIN_TYPES:
 				return RELOC_SMALL_PIC;
+			case OS_DARWIN_TYPES:
+				return RELOC_BIG_PIC;
 			case OS_TYPE_WIN32:
-				return ARCH_TYPE_X86_64 == arch ? RELOC_SMALL_PIC : RELOC_NONE;
+				if (arch == ARCH_TYPE_X86) return RELOC_NONE;
+				return RELOC_BIG_PIC;
+			case OS_TYPE_LINUX:
+				return RELOC_BIG_PIC;
 			case OS_TYPE_WASI:
 				return RELOC_NONE;
-			case OS_TYPE_LINUX:
-				return RELOC_SMALL_PIC;
-			case OS_TYPE_UNKNOWN:
-			case OS_TYPE_NONE:
 			case OS_TYPE_FREE_BSD:
 			case OS_TYPE_NETBSD:
+			case OS_TYPE_UNKNOWN:
+			case OS_TYPE_NONE:
 				switch (arch)
 				{
 					case ARCH_TYPE_MIPS64:
@@ -1667,14 +1669,26 @@ static RelocModel arch_os_reloc_default(ArchType arch, OsType os, EnvironmentTyp
 	{
 		case OS_TYPE_UNKNOWN:
 		case OS_TYPE_NONE:
-			return RELOC_NONE;
-		case OS_TYPE_OPENBSD:
-		case OS_TYPE_WIN32:
-		case OS_DARWIN_TYPES:
-		case OS_TYPE_WASI:
 		case OS_TYPE_FREE_BSD:
 		case OS_TYPE_NETBSD:
+			switch (arch)
+			{
+				case ARCH_TYPE_MIPS64:
+				case ARCH_TYPE_MIPS64EL:
+					return RELOC_SMALL_PIC;
+				default:
+					return RELOC_NONE;
+			}
+		case OS_DARWIN_TYPES:
+			return RELOC_BIG_PIC;
+		case OS_TYPE_WIN32:
+			if (arch == ARCH_TYPE_X86) return RELOC_NONE;
+			return RELOC_BIG_PIC;
+		case OS_TYPE_WASI:
+			return RELOC_NONE;
 		case OS_TYPE_LINUX:
+			return RELOC_BIG_PIE;
+		case OS_TYPE_OPENBSD:
 			return RELOC_SMALL_PIE;
 		case OS_UNSUPPORTED:
 			UNREACHABLE

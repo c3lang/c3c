@@ -26,8 +26,7 @@ fn void main()
 @.str = private unnamed_addr constant [3 x i8] c"%d\00", align 1
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 
-; Function Attrs:
-define void @test.main() #0 !dbg !6 {
+define void @test.main() #0 !dbg !7 {
 entry:
   %a = alloca i32, align 4
   %x = alloca i32, align 4
@@ -40,111 +39,107 @@ entry:
   %value6 = alloca i32, align 4
   %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
-    !12
-  store i32 111, ptr %a, align 4, !dbg !13
-    !15
+  store i32 111, ptr %a, align 4, !dbg !14
   store ptr %a, ptr %x1, align 8
-  %0 = load ptr, ptr %x1, align 8, !dbg !16
-  %1 = load atomic i32, ptr %0 seq_cst, align 4, !dbg !16
-  store i32 %1, ptr %x, align 4, !dbg !16
-    !21
+  %0 = load ptr, ptr %x1, align 8, !dbg !17
+  %1 = load atomic i32, ptr %0 seq_cst, align 4, !dbg !17
+  store i32 %1, ptr %x, align 4, !dbg !17
   store ptr %a, ptr %x2, align 8
-  %2 = load ptr, ptr %x2, align 8, !dbg !22
-  %3 = load atomic volatile i32, ptr %2 monotonic, align 4, !dbg !22
-  store i32 %3, ptr %y, align 4, !dbg !22
+  %2 = load ptr, ptr %x2, align 8, !dbg !23
+  %3 = load atomic volatile i32, ptr %2 monotonic, align 4, !dbg !23
+  store i32 %3, ptr %y, align 4, !dbg !23
   store ptr %a, ptr %x3, align 8
-  %4 = load i32, ptr %x, align 4, !dbg !25
-  %add = add i32 123, %4, !dbg !26
+  %4 = load i32, ptr %x, align 4, !dbg !26
+  %add = add i32 123, %4, !dbg !27
   store i32 %add, ptr %value, align 4
-  %5 = load ptr, ptr %x3, align 8, !dbg !27
-  %6 = load i32, ptr %value, align 4, !dbg !27
-  store atomic i32 %6, ptr %5 seq_cst, align 4, !dbg !27
+  %5 = load ptr, ptr %x3, align 8, !dbg !28
+  %6 = load i32, ptr %value, align 4, !dbg !28
+  store atomic i32 %6, ptr %5 seq_cst, align 4, !dbg !28
   store ptr %a, ptr %x4, align 8
-  %7 = load i32, ptr %y, align 4, !dbg !30
-  %add5 = add i32 33, %7, !dbg !31
+  %7 = load i32, ptr %y, align 4, !dbg !31
+  %add5 = add i32 33, %7, !dbg !32
   store i32 %add5, ptr %value6, align 4
-  %8 = load ptr, ptr %x4, align 8, !dbg !32
-  %9 = load i32, ptr %value6, align 4, !dbg !32
-  store atomic volatile i32 %9, ptr %8 monotonic, align 4, !dbg !32
-  %10 = insertvalue %any undef, ptr %a, 0, !dbg !35
-  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !35
-  store %any %11, ptr %varargslots, align 16, !dbg !35
-  %12 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !36
-  ret void, !dbg !36
+  %8 = load ptr, ptr %x4, align 8, !dbg !33
+  %9 = load i32, ptr %value6, align 4, !dbg !33
+  store atomic volatile i32 %9, ptr %8 monotonic, align 4, !dbg !33
+  %10 = insertvalue %any undef, ptr %a, 0, !dbg !36
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.int" to i64), 1, !dbg !36
+  store %any %11, ptr %varargslots, align 16, !dbg !36
+  %12 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1), !dbg !37
+  ret void, !dbg !37
 }
-; Function Attrs: nounwind uwtable
-define i32 @main(i32 %0, ptr %1) #0 !dbg !37 {
+
+define i32 @main(i32 %0, ptr %1) #0 !dbg !38 {
 entry:
   %.anon = alloca i32, align 4
   %.anon1 = alloca ptr, align 8
   %.anon2 = alloca i32, align 4
   %.anon3 = alloca ptr, align 8
   store i32 %0, ptr %.anon, align 4
-    !44
   store ptr %1, ptr %.anon1, align 8
-    !44
   %2 = load i32, ptr %.anon, align 4
   store i32 %2, ptr %.anon2, align 4
   %3 = load ptr, ptr %.anon1, align 8
   store ptr %3, ptr %.anon3, align 8
-  call void @test.main(), !dbg !46
-  ret i32 0, !dbg !49
+  call void @test.main(), !dbg !47
+  ret i32 0, !dbg !50
 }
-e
+
 declare i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
 
 declare i1 @llvm.expect.i1(i1, i1)
 
-!llvm.module.flags = !{!0, !1, !2, !3}
-!llvm.dbg.cu = !{!4}
+!llvm.module.flags = !{!0, !1, !2, !3, !4}
+!llvm.dbg.cu = !{!5}
 
-!0 = !{i32 2, !"Dwarf Version", i32 4}
-!1 = !{i32 2, !"Debug Info Version", i32 3}
-!2 = !{i32 2, !"frame-pointer", i32 2}
-!3 = !{i32 1, !"uwtable", i32 2}
-!4 = distinct !DICompileUnit(language: DW_LANG_C11, file: !5, producer: "c3c", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
-!5 = !DIFile(filename: "atomic_load_store_debug.c3"
-!6 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !5, file: !5, line: 10, type: !7, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !4, retainedNodes: !9)
-!7 = !DISubroutineType(types: !8)
-!8 = !{null}
-!9 = !{}
-!10 = !DILocalVariable(name: "a", scope: !6, file: !5, line: 12, type: !11, align: 4)
-!11 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
-!12 = !DILocation(line: 12, column: 6, scope: !6)
-!13 = !DILocation(line: 12, column: 10, scope: !6)
-!14 = !DILocalVariable(name: "x", scope: !6, file: !5, line: 13, type: !11, align: 4)
-!15 = !DILocation(line: 13, column: 6, scope: !6)
-!16 = !DILocation(line:
-!17 = distinct !DISubprogram(name: "@atomic_load",
-!18 = !DIFile(filename: "mem.c3",
-!19 = !DILocation(line: 13, column: 10, scope: !6)
-!20 = !DILocalVariable(name: "y", scope: !6, file: !5, line: 14, type: !11, align: 4)
-!21 = !DILocation(line: 14, column: 6, scope: !6)
-!22 = !DILocation(line:
-!23 = distinct !DISubprogram(name: "@atomic_load", linkageName: "@atomic_load", scope: !18
-!24 = !DILocation(line: 14, column: 10, scope: !6)
-!25 = !DILocation(line: 15, column: 25, scope: !6)
-!26 = !DILocation(line: 15, column: 19, scope: !6)
-!27 = !DILocation(
-!28 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !18
-!29 = !DILocation(line: 15, column: 2, scope: !6)
-!30 = !DILocation(line: 16, column: 24, scope: !6)
-!31 = !DILocation(line: 16, column: 19, scope: !6)
-!32 = !DILocation(
-!33 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !18
-!34 = !DILocation(line: 16, column: 2, scope: !6)
-!35 = !DILocation(line: 17, column: 20, scope: !6)
-!36 = !DILocation(line: 17, column: 6, scope: !6)
-!37 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !5, file: !5, line: 10, type: !38, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !4, retainedNodes: !9)
-!38 = !DISubroutineType(types: !39)
-!39 = !{!11, !11, !40}
-!40 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !41, size: 64, align: 64, dwarfAddressSpace: 0)
-!41 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !42, size: 64, align: 64, dwarfAddressSpace: 0)
-!42 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
-!43 = !DILocalVariable(name: ".anon", arg: 1, scope: !37, file: !5, line: 10, type: !11)
-!44 = !DILocation(line: 10, column: 9, scope: !37)
-!45 = !DILocalVariable(name: ".anon", arg: 2, scope: !37, file: !5, line: 10, type: !40)
-!46 = !DILocation(line: 18, column: 2, scope: !47, inlinedAt: !44)
-!47 = distinct !DISubprogram(name: "@main_to_void_main", linkageName: "@main_to_void_main", scope: !48, file: !48, line: 16, scopeLine: 16, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition
-!48 = !DIFile(filename: "main_stub.c3", directory:
-!49 = !DILocation(line: 19, column: 9, scope: !47, inlinedAt: !44)
+!0 = !{i32 4, !"PIC Level", i32 2}
+!1 = !{i32 2, !"Dwarf Version", i32 4}
+!2 = !{i32 2, !"Debug Info Version", i32 3}
+!3 = !{i32 2, !"frame-pointer", i32 2}
+!4 = !{i32 1, !"uwtable", i32 2}
+!5 = distinct !DICompileUnit(language: DW_LANG_C11, file: !6, producer: "c3c", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, splitDebugInlining: false)
+!6 = !DIFile(filename: "atomic_load_store_debug.c3"
+!7 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !6, file: !6, line: 10, type: !8, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !5, retainedNodes: !10)
+!8 = !DISubroutineType(types: !9)
+!9 = !{null}
+!10 = !{}
+!11 = !DILocalVariable(name: "a", scope: !7, file: !6, line: 12, type: !12, align: 4)
+!12 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
+!13 = !DILocation(line: 12, column: 6, scope: !7)
+!14 = !DILocation(line: 12, column: 10, scope: !7)
+!15 = !DILocalVariable(name: "x", scope: !7, file: !6, line: 13, type: !12, align: 4)
+!16 = !DILocation(line: 13, column: 6, scope: !7)
+!17 = !DILocation(
+!18 = distinct !DISubprogram(name: "@atomic_load",
+!19 = !DIFile(filename: "mem.c3",
+!20 = !DILocation(line: 13, column: 10, scope: !7)
+!21 = !DILocalVariable(name: "y", scope: !7, file: !6, line: 14, type: !12, align: 4)
+!22 = !DILocation(line: 14, column: 6, scope: !7)
+!23 = !DILocation(
+!24 = distinct !DISubprogram(name: "@atomic_load", linkageName: "@atomic_load", scope: !19, file: !19, line: 225, scopeLine: 225, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !5)
+!25 = !DILocation(line: 14, column: 10, scope: !7)
+!26 = !DILocation(line: 15, column: 25, scope: !7)
+!27 = !DILocation(line: 15, column: 19, scope: !7)
+!28 = !DILocation(
+!29 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !19, file: !19, line: 240, scopeLine: 240, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !5)
+!30 = !DILocation(line: 15, column: 2, scope: !7)
+!31 = !DILocation(line: 16, column: 24, scope: !7)
+!32 = !DILocation(line: 16, column: 19, scope: !7)
+!33 = !DILocation(
+!34 = distinct !DISubprogram(name: "@atomic_store", linkageName: "@atomic_store", scope: !19, file: !19, line: 240, scopeLine: 240, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !5)
+!35 = !DILocation(line: 16, column: 2, scope: !7)
+!36 = !DILocation(line: 17, column: 20, scope: !7)
+!37 = !DILocation(line: 17, column: 6, scope: !7)
+!38 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !6, file: !6, line: 10, type: !39, scopeLine: 10, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !5, retainedNodes: !10)
+!39 = !DISubroutineType(types: !40)
+!40 = !{!12, !12, !41}
+!41 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !42, size: 64, align: 64, dwarfAddressSpace: 0)
+!42 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !43, size: 64, align: 64, dwarfAddressSpace: 0)
+!43 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
+!44 = !DILocalVariable(name: ".anon", arg: 1, scope: !38, file: !6, line: 10, type: !12)
+!45 = !DILocation(line: 10, column: 9, scope: !38)
+!46 = !DILocalVariable(name: ".anon", arg: 2, scope: !38, file: !6, line: 10, type: !41)
+!47 = !DILocation(
+!48 = distinct !DISubprogram(name: "@main_to_void_main", linkageName: "@main_to_void_main", scope: !49, file: !49, line: 16, scopeLine: 16, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !5)
+!49 = !DIFile(filename: "main_stub.c3", directory:
+!50 = !DILocation(
