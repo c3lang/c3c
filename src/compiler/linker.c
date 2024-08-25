@@ -566,7 +566,7 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 
 	FOREACH(const char *, dir, compiler.build.linker_libdirs)
 	{
-		add_concat_file_arg(lib_path_opt, dir);
+		add_concat_quote_arg(lib_path_opt, dir);
 	}
 	FOREACH(const char *, arg, compiler.build.link_args)
 	{
