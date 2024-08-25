@@ -201,8 +201,8 @@ entry:
   store ptr %3, ptr %name, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %name, i64 8
   store i64 %4, ptr %ptradd1, align 8
-  !72
-  %5 = call ptr @std.core.mem.calloc(i64 8) #4, !dbg !74
+
+  %5 = call ptr @std.core.mem.calloc(i64 8)
   ret ptr %5, !dbg !74
 }
 
@@ -332,7 +332,7 @@ entry:
   %lo2 = load ptr, ptr %scratch, align 8, !dbg !131
   %ptradd3 = getelementptr inbounds i8, ptr %scratch, i64 8, !dbg !131
   %hi4 = load i64, ptr %ptradd3, align 8, !dbg !131
-  call void @arena_scratch_end(ptr %lo2, i64 %hi4) #4, !dbg !133
+  call void @arena_scratch_end(ptr %lo2, i64 %hi4)
   ret ptr %2, !dbg !133
 }
 
@@ -538,7 +538,7 @@ loop.exit26:                                      ; preds = %loop.cond
   %49 = call i32 @test.main(ptr %lo, i64 %hi), !dbg !198
   store i32 %49, ptr %blockret, align 4, !dbg !198
   %50 = load ptr, ptr %list, align 8, !dbg !199
-  call void @std.core.mem.free(ptr %50) #4, !dbg !201
+  call void @std.core.mem.free(ptr %50)
   br label %expr_block.exit28, !dbg !201
 
 expr_block.exit28:                                ; preds = %loop.exit26
