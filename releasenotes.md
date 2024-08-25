@@ -85,6 +85,7 @@
 - Compiler didn't detect when a module name was used both as a generic and regular module.
 - Assigning a const zero to an aliased distinct caused an error.
 - `--path` is now properly respected.
+- `--test` will now provide the full filename and the column.
 
 ### Stdlib changes
 

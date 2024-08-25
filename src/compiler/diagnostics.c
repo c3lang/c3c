@@ -24,13 +24,13 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		switch (print_type)
 		{
 			case PRINT_TYPE_ERROR:
-				eprintf("Error|%s|%d|%s\n", file->name, location.row, message);
+				eprintf("Error|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			case PRINT_TYPE_NOTE:
 				// Note should not be passed on.
 				return;
 			case PRINT_TYPE_WARN:
-				eprintf("Warning|%s|%d|%s\n", file->name, location.row, message);
+				eprintf("Warning|%s|%d|%d|%s\n", file->full_path, location.row, location.col, message);
 				return;
 			default:
 				UNREACHABLE

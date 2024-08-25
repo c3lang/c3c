@@ -79,7 +79,7 @@ class Issues:
             print(" Failed.")
         self.has_errors = True
 
-    def check_line(self, typ, file, line, message):
+    def check_line(self, typ, file, line, col, message):
         map_ = {}
         if typ == 'Error':
             map_ = self.errors
@@ -87,6 +87,7 @@ class Issues:
             map_ = self.warnings
         else:
             self.exit_error("Unknown type: " + typ)
+        file = os.path.basename(file)
         key = file + ":" + line
         value = map_.get(key)
         if value is None:
@@ -99,10 +100,10 @@ class Issues:
 
     def parse_result(self, lines):
         for line in lines:
-            parts = line.split('|', maxsplit=4)
-            if len(parts) != 4:
+            parts = line.split('|', maxsplit=5)
+            if len(parts) != 5:
                 self.exit_error("Illegal error result: " + line)
-            if not self.check_line(parts[0], parts[1], parts[2], parts[3]):
+            if not self.check_line(parts[0], parts[1], parts[2], parts[3], parts[4]):
                 self.set_failed()
                 print("Unexpected " + parts[0].lower() + " in " + parts[1] + " line " + parts[2] + ":", end="")
                 print('"' + parts[3] + '"')
