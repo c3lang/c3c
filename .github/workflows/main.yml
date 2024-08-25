@@ -71,9 +71,9 @@ jobs:
         run: |
           cd resources
           ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --wincrt=none examples\raylib\raylib_arkanoid.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --wincrt=none examples\raylib\raylib_snake.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --wincrt=none examples\raylib\raylib_tetris.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking --wincrt=none examples\raylib\raylib_arkanoid.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking --wincrt=none examples\raylib\raylib_snake.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib --print-linking --wincrt=none examples\raylib\raylib_tetris.c3
 
       - name: run compiler tests
         run: |
