@@ -373,13 +373,10 @@ const char *find_rel_exe_dir(const char *dir)
 		return scratch_buffer_to_string();
 	}
 	return NULL;
-
-
 }
 
 const char *find_lib_dir(void)
 {
-
 	char *path = find_executable_path();
 
 	INFO_LOG("Detected executable path at %s", path);

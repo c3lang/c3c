@@ -32,6 +32,12 @@ const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
 void compiler_init(BuildOptions *build_options)
 {
+	// Process --path
+	if (build_options->path && !dir_change(build_options->path))
+	{
+		error_exit("Failed to change path to '%s'.", build_options->path);
+	}
+
 	compiler_init_time = -1;
 	compiler_parsing_time = -1;
 	compiler_sema_time = -1;

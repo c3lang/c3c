@@ -84,6 +84,7 @@
 - Fix aligned alloc for Win32 targets.
 - Compiler didn't detect when a module name was used both as a generic and regular module.
 - Assigning a const zero to an aliased distinct caused an error.
+- `--path` is now properly respected.
 
 ### Stdlib changes
 
