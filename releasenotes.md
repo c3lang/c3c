@@ -86,6 +86,7 @@
 - Assigning a const zero to an aliased distinct caused an error.
 - `--path` is now properly respected.
 - `--test` will now provide the full filename and the column.
+- Fix of bug in `defer (catch err)` with a direct return error.
 
 ### Stdlib changes
 

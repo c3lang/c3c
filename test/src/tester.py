@@ -105,8 +105,8 @@ class Issues:
                 self.exit_error("Illegal error result: " + line)
             if not self.check_line(parts[0], parts[1], parts[2], parts[3], parts[4]):
                 self.set_failed()
-                print("Unexpected " + parts[0].lower() + " in " + parts[1] + " line " + parts[2] + ":", end="")
-                print('"' + parts[3] + '"')
+                print("Unexpected " + parts[0].lower() + " in " + os.path.basename(parts[1]) + " line " + parts[2] + ":", end="")
+                print('"' + parts[4] + '"')
         if len(self.errors) > 0:
             self.set_failed()
             print("Expected errors that never occurred:")

@@ -223,7 +223,11 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
+			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+			llvm_store_to_ptr(c, error_out, &be_value);
+			c->defer_error_var = error_out;
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
+			c->defer_error_var = NULL;
 		}
 		llvm_emit_return_abi(c, NULL, &be_value);
 		return;
