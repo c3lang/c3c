@@ -513,7 +513,7 @@ bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type)
 	}
 }
 
-bool expr_is_compile_time(Expr *expr)
+bool expr_is_compile_time(Expr *expr, ConstantEvalKind eval_kind)
 {
 	switch (expr->expr_kind)
 	{
@@ -524,7 +524,7 @@ bool expr_is_compile_time(Expr *expr)
 			AstId current = expr->macro_block.first_stmt;
 			while (current)
 			{
-				if (!ast_is_compile_time(ast_next(&current))) return false;
+				if (!ast_is_compile_time(ast_next(&current), eval_kind)) return false;
 			}
 			return true;
 		}

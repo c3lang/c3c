@@ -2288,7 +2288,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Ast *ret = macro_context.returns[0];
 		Expr *result = ret ? ret->return_stmt.expr : NULL;
 		if (!result) goto NOT_CT;
-		if (!expr_is_constant_eval(result, CONSTANT_EVAL_CONSTANT_VALUE)) goto NOT_CT;
+		if (!expr_is_constant_eval(result, CONSTANT_EVAL_GLOBAL_INIT)) goto NOT_CT;
 		bool only_ct_params = true;
 		FOREACH(Decl *, param, params)
 		{
@@ -2304,7 +2304,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 					goto NOT_CT;
 			}
 		}
-		if (ast_is_compile_time(body))
+		if (ast_is_compile_time(body, CONSTANT_EVAL_GLOBAL_INIT))
 		{
 			expr_replace(call_expr, result);
 			goto EXIT;

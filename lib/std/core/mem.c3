@@ -544,6 +544,7 @@ fn void initialize_wasm_mem() @init(1) @private
 	if (start > mem::DEFAULT_MEM_ALIGNMENT) allocator::wasm_memory.use = start;
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
 	allocator::thread_allocator = &wasm_allocator;
+	allocator::temp_base_allocator = &wasm_allocator;
 	allocator::init_default_temp_allocators();
 }
 

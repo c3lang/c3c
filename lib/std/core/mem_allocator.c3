@@ -358,10 +358,22 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 
 
 // All allocators
-tlocal Allocator thread_allocator @private = &allocator::LIBC_ALLOCATOR;
+
+
+tlocal Allocator thread_allocator @private = base_allocator();
+Allocator temp_base_allocator @private = base_allocator();
+
 tlocal TempAllocator* thread_temp_allocator @private = null;
 tlocal TempAllocator*[2] temp_allocator_pair @private;
-Allocator temp_base_allocator @private = &allocator::LIBC_ALLOCATOR;
+
+macro Allocator base_allocator() @private
+{
+	$if env::LIBC:
+		return &allocator::LIBC_ALLOCATOR;
+	$else
+		return &allocator::NULL_ALLOCATOR;
+	$endif
+}
 
 macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @local
 {
@@ -422,3 +434,21 @@ fn TempAllocator* temp_allocator_next() @private
 	usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
 	return thread_temp_allocator = temp_allocator_pair[index];
 }
+
+const NullAllocator NULL_ALLOCATOR = {};
+distinct NullAllocator (Allocator) = uptr;
+
+fn void*! NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
+{
+	return AllocationFailure.OUT_OF_MEMORY?;
+}
+
+fn void*! NullAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
+{
+	return AllocationFailure.OUT_OF_MEMORY?;
+}
+
+fn void NullAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
+{
+}
+

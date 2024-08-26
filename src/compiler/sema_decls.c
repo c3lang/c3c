@@ -3900,6 +3900,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (global_level_var && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
 		{
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
+			expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT);
 			return decl_poison(decl);
 		}
 		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);

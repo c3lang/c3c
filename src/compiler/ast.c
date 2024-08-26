@@ -329,7 +329,7 @@ int decl_count_elements(Decl *structlike)
 	return elements;
 }
 
-bool ast_is_compile_time(Ast *ast)
+bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind)
 {
 	switch (ast->ast_kind)
 	{
@@ -338,15 +338,15 @@ bool ast_is_compile_time(Ast *ast)
 		case AST_RETURN_STMT:
 		case AST_BLOCK_EXIT_STMT:
 			if (!ast->return_stmt.expr) return true;
-			return expr_is_constant_eval(ast->return_stmt.expr, CONSTANT_EVAL_CONSTANT_VALUE);
+			return expr_is_constant_eval(ast->return_stmt.expr, eval_kind);
 		case AST_EXPR_STMT:
-			return expr_is_compile_time(ast->expr_stmt);
+			return expr_is_compile_time(ast->expr_stmt, eval_kind);
 		case AST_COMPOUND_STMT:
 		{
 			AstId current = ast->compound_stmt.first_stmt;
 			while (current)
 			{
-				if (!ast_is_compile_time(ast_next(&current))) return false;
+				if (!ast_is_compile_time(ast_next(&current), eval_kind)) return false;
 			}
 			return true;
 		}

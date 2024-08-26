@@ -87,6 +87,8 @@
 - `--path` is now properly respected.
 - `--test` will now provide the full filename and the column.
 - Fix of bug in `defer (catch err)` with a direct return error.
+- Too restrictive compile time checks for @const.
+- Fixes to wasm nolibc in the standard library.
 
 ### Stdlib changes
 

@@ -1898,7 +1898,8 @@ INLINE bool no_stdlib(void)
 }
 
 bool ast_is_not_empty(Ast *ast);
-bool ast_is_compile_time(Ast *ast);
+
+bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind);
 bool ast_supports_continue(Ast *stmt);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
@@ -2124,7 +2125,8 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
-bool expr_is_compile_time(Expr *ast);
+
+bool expr_is_compile_time(Expr *ast, ConstantEvalKind eval_kind);
 bool range_is_const(Range *range);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
