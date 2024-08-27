@@ -89,6 +89,8 @@
 - Fix of bug in `defer (catch err)` with a direct return error.
 - Too restrictive compile time checks for @const.
 - Fixes to wasm nolibc in the standard library.
+- Fixed int128 div/mod.
+- Fix WASM memory init priority.
 
 ### Stdlib changes
 
