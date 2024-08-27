@@ -101,6 +101,19 @@ if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     endif()
 endif()
 
+if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
+    # Get git hash
+    execute_process(COMMAND git rev-parse HEAD
+            OUTPUT_VARIABLE GIT_HASH
+            RESULT_VARIABLE GIT_REVPARSE_RESULT
+            OUTPUT_STRIP_TRAILING_WHITESPACE)
+    if(GIT_REVPARSE_RESULT EQUAL "0")
+        add_compile_definitions(GIT_HASH="${GIT_HASH}")
+    else()
+        message(WARNING "Cannot to get Git Hash: git rev-parse failed with ${GIT_REVPARSE_RESULT}")
+    endif()
+endif()
+
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if (C3_LLVM_VERSION STREQUAL "auto")
         set(C3_LLVM_VERSION "18")
