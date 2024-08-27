@@ -141,7 +141,6 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
                                        Expr **args, unsigned func_param_count,
                                        Variadic variadic, unsigned vararg_index, bool *optional,
                                        Expr ***varargs_ref, Expr **vararg_splat_ref, bool *no_match_ref);
-static inline int sema_call_find_index_of_named_parameter(SemaContext *context, Decl **func_params, Expr *expr);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
@@ -567,6 +566,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MACRO_BODY:
 		case EXPR_LAST_FAULT:
 		case EXPR_MEMBER_GET:
+		case EXPR_NAMED_ARGUMENT:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -641,8 +641,9 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 			if (!vec_size(expr->expression_list)) return false;
 			return expr_may_ref(VECLAST(expr->expression_list));
-		case EXPR_POISONED:
+		case EXPR_ANYSWITCH:
 		case EXPR_ASM:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
 		case EXPR_BUILTIN:
@@ -654,27 +655,32 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CONST:
-		case EXPR_CT_ARG:
-		case EXPR_CT_CASTABLE:
 		case EXPR_CT_AND_OR:
+		case EXPR_CT_APPEND:
+		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
+		case EXPR_CT_CASTABLE:
 		case EXPR_CT_CONCAT:
 		case EXPR_CT_DEFINED:
-		case EXPR_CT_IS_CONST:
-		case EXPR_CT_APPEND:
 		case EXPR_CT_EVAL:
+		case EXPR_CT_IS_CONST:
 		case EXPR_DECL:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
-		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_GENERIC_IDENT:
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_OPTIONAL:
 		case EXPR_POINTER_OFFSET:
+		case EXPR_POISONED:
 		case EXPR_POST_UNARY:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
@@ -682,18 +688,13 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_SLICE_COPY:
 		case EXPR_STRINGIFY:
 		case EXPR_TERNARY:
+		case EXPR_TEST_HOOK:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
-		case EXPR_BENCHMARK_HOOK:
-		case EXPR_TEST_HOOK:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_MACRO_BODY:
-		case EXPR_LAST_FAULT:
 			return false;
 	}
 	UNREACHABLE
@@ -1161,50 +1162,16 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 	return sema_binary_arithmetic_promotion(context, left, right, left_type, right_type, expr, error, bool_and_bitstruct_is_allowed);
 }
 
-
 static inline int sema_call_find_index_of_named_parameter(SemaContext *context, Decl **func_params, Expr *expr)
 {
-	if (vec_size(expr->designator_expr.path) != 1)
-	{
-		SEMA_ERROR(expr, "Expected the name of a function parameter here, this looks like a member path.");
-		return -1;
-	}
-	DesignatorElement *element = expr->designator_expr.path[0];
-	if (element->kind != DESIGNATOR_FIELD)
-	{
-		SEMA_ERROR(expr, "Expected the name of a function parameter here, this looks like an array path field.");
-		return -1;
-	}
-	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL);
-	if (!field) return false;
-
-	const char *name;
-	switch (field->expr_kind)
-	{
-		case EXPR_IDENTIFIER:
-			name = field->identifier_expr.ident;
-			break;
-		case EXPR_CT_IDENT:
-			name = field->ct_ident_expr.identifier;
-			break;
-		case EXPR_TYPEINFO:
-			name = field->type_expr->unresolved.name;
-			break;
-		default:
-			SEMA_ERROR(expr, "A name was expected here.");
-			return -1;
-	}
+	const char *name = expr->named_argument_expr.name;
 	FOREACH_IDX(i, Decl *, func_param, func_params)
 	{
-		if (func_param && func_param->name == name) return (int) i;
+		if (func_param && func_param->name == name) return (int)i;
 	}
 	SEMA_ERROR(expr, "There's no parameter with the name '%s'.", name);
 	return -1;
 }
-
-
-
-
 
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee)
 {
@@ -1277,13 +1244,14 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 	// 2. Loop through the parameters.
 	bool has_named = false;
 	bool found_splat = false;
+	ArrayIndex last_index = -1;
+	Expr *last_named_arg;
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
 		assert(expr_ok(arg));
 
-		// 3. Handle named parameters
-		if (arg->expr_kind == EXPR_DESIGNATOR)
+		if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
 		{
 			// Find the location of the parameter.
 			int index = sema_call_find_index_of_named_parameter(context, params, arg);
@@ -1299,7 +1267,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 			if (params[index]->var.vararg)
 			{
 				RETURN_SEMA_FUNC_ERROR(callee->definition, arg, "Vararg parameters may not be named parameters, "
-				                "use normal parameters instead.", params[index]->name);
+				                                                "use normal parameters instead.", params[index]->name);
 			}
 
 			// 8e. We might have already set this parameter, that is not allowed.
@@ -1308,12 +1276,16 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				RETURN_SEMA_ERROR(arg, "The parameter '%s' was already set.", params[index]->name);
 			}
 
-			// 8g. Set the parameter
-			if (!arg->designator_expr.value)
+			if (last_index > index)
 			{
-				RETURN_SEMA_ERROR(arg, "Expected a value for this argument.");
+
+				SEMA_ERROR(arg, "Named arguments must always be declared in order.");
+				SEMA_NOTE(last_named_arg, "Place it before this argument.");
+				return false;
 			}
-			actual_args[index] = arg->designator_expr.value;
+			last_index = index;
+			last_named_arg = arg;
+			actual_args[index] = arg->named_argument_expr.value;
 			continue;
 		}
 		if (*vararg_splat_ref)
@@ -1443,7 +1415,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 					print_error_after(args[num_args - 1]->span, "Argument #%d is not set.", i);
 					RETURN_NOTE_FUNC_DEFINITION;
 				}
-				print_error_after(args[num_args - 1]->span, "Expected '.%s = ...' after this argument.", param->name);
+				print_error_after(args[num_args - 1]->span, "Expected '%s: ...' after this argument.", param->name);
 				RETURN_NOTE_FUNC_DEFINITION;
 			}
 			if (num_args > (callee->struct_var ? 1 : 0))
@@ -8396,6 +8368,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_DECL:
 			case EXPR_LAST_FAULT:
 			case EXPR_DEFAULT_ARG:
+			case EXPR_NAMED_ARGUMENT:
 				UNREACHABLE
 			case EXPR_CT_ARG:
 				FALLTHROUGH;
@@ -8888,6 +8861,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_MEMBER_GET:
+		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_TAGOF:
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");

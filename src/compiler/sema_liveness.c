@@ -262,6 +262,7 @@ RETRY:
 		case EXPR_MACRO_BODY:
 		case EXPR_OTHER_CONTEXT:
 		case EXPR_MEMBER_GET:
+		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);

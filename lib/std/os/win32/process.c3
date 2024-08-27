@@ -193,10 +193,10 @@ fn Backtrace! resolve_backtrace(void* addr, Win32_HANDLE process, Allocator allo
 	ZString zname = (ZString)&name;
 	if (!symGetLineFromAddr64(process, (Win32_ULONG64)addr - 1, &offset, &line))
 	{
-		backtrace.init((uptr)addr, zname.str_view(), module_name.str_view(), .allocator = allocator);
+		backtrace.init((uptr)addr, zname.str_view(), module_name.str_view(), allocator: allocator);
 		return backtrace;
 	}
 	String filename = ((ZString)line.fileName).str_view();
-	backtrace.init((uptr)addr, zname.str_view(), module_name.str_view(), .file = filename, .line = line.lineNumber, .allocator = allocator);
+	backtrace.init((uptr)addr, zname.str_view(), module_name.str_view(), file: filename, line: line.lineNumber, allocator: allocator);
 	return backtrace;
 }

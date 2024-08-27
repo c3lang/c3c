@@ -3,7 +3,7 @@
 ## 0.6.3 Change list
 
 ### Changes / improvements
-*None yet*
+- Introduce `arg: x` named arguments instead of `.arg = x`, deprecate old style.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

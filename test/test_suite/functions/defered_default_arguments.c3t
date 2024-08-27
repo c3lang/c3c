@@ -29,8 +29,8 @@ import std::io;
 fn void main()
 {
 	test::test(1, 2);
-	test::test(.a = 3);
-	test::test(1, .b = 32);
+	test::test(a: 3);
+	test::test(1, b: 32);
 	test::test();
 	test::test();
 }

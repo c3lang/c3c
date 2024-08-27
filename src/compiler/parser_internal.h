@@ -113,6 +113,19 @@ INLINE bool expect(ParseContext *c, TokenType token_type)
 	return false;
 }
 
+INLINE bool token_is_param_name(TokenType token_type)
+{
+	switch (token_type)
+	{
+		case TOKEN_CT_IDENT:
+		case TOKEN_IDENT:
+		case TOKEN_HASH_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+			return true;
+		default:
+			return false;
+	}
+}
 INLINE bool token_is_some_ident(TokenType token_type)
 {
 	switch (token_type)

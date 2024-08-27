@@ -15,7 +15,7 @@ fn void main()
 {
 	Func a = &test;
 	Func b = &test2;
-	io::printfn("%d", a(.y = 123));
+	io::printfn("%d", a(y: 123));
 	io::printfn("%d", (&test2)());
 	FuncSame z = &test2;
 	io::printfn("%d", z());

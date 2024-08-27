@@ -102,7 +102,7 @@ fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 
 fn String List.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
-	return string::format("%s", *self, .allocator = allocator);
+	return string::format("%s", *self, allocator: allocator);
 }
 
 fn String List.to_tstring(&self)
@@ -352,7 +352,7 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 
 	min_capacity = math::next_power_of_2(min_capacity);
 	$if type_is_overaligned():
-		self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, .alignment = Type[1].alignof)!!;
+		self.entries = allocator::realloc_aligned(self.allocator, self.entries, Type.sizeof * min_capacity, alignment: Type[1].alignof)!!;
 	$else
 		self.entries = allocator::realloc(self.allocator, self.entries, Type.sizeof * min_capacity);
 	$endif;
