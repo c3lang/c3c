@@ -14,8 +14,8 @@ fn void test2(int x, y..., int z = 2)
 
 fn void main()
 {
-	test(3, 4, 5, .z = 123);
-	test2(3, 4, 5, .z = 123);
+	test(3, 4, 5, z: 123);
+	test2(3, 4, 5, z: 123);
 	test(3, 4, 5);
 	test2(3, 4, 5);
 }

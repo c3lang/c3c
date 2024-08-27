@@ -161,7 +161,7 @@ fn void! main()
 
 	String foo_tmpl = "<<{{foo}} | {{bar}}>>";
 	FooTmpl ft;
-	ft.init(foo_tmpl, .using = allocator::temp())!;
+	ft.init(foo_tmpl, using: allocator::temp())!;
 	defer ft.free()!!;
 
 

@@ -78,13 +78,13 @@ fn usz! AnyList.to_format(&self, Formatter* formatter) @dynamic
 
 fn String AnyList.to_new_string(&self, Allocator allocator = null) @dynamic
 {
-	return string::format("%s", *self, .allocator = allocator ?: allocator::heap());
+	return string::format("%s", *self, allocator: allocator ?: allocator::heap());
 }
 
 
 fn String AnyList.to_string(&self, Allocator allocator) @dynamic
 {
-	return string::format("%s", *self, .allocator = allocator);
+	return string::format("%s", *self, allocator: allocator);
 }
 
 fn String AnyList.to_tstring(&self) => string::tformat("%s", *self);

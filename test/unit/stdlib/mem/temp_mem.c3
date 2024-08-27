@@ -11,7 +11,7 @@ fn String add(String s, Allocator a, int x)
     };
     ulong* y = mem::temp_alloc(ulong);
     *y = 0xAAAA_AAAA_AAAA_AAAA;
-    return tmp.concat("a", .allocator = a);
+    return tmp.concat("a", allocator: a);
 }
 
 fn String breakit(String s, Allocator a)

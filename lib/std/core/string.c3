@@ -66,7 +66,7 @@ macro String format(String fmt, ..., Allocator allocator)
  *
  * @param [in] fmt `The formatting string`
  **/
-macro String new_format(String fmt, ..., Allocator allocator = null) => format(fmt, $vasplat, .allocator = allocator ?: allocator::heap());
+macro String new_format(String fmt, ..., Allocator allocator = null) => format(fmt, $vasplat, allocator: allocator ?: allocator::heap());
 
 /**
  * Return a temporary String created using the formatting function.

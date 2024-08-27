@@ -141,7 +141,7 @@ fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap()
 {
 	@pool(allocator)
 	{
-		return path::new(string::temp_from_wstring(path)!, .allocator = allocator);
+		return path::new(string::temp_from_wstring(path)!, allocator: allocator);
 	};
 }
 
@@ -520,7 +520,7 @@ fn bool! Path.walk(self, PathWalker w, void* data)
 	@stack_mem(PATH_MAX; Allocator allocator)
 	{
 		Path abs = self.new_absolute(allocator)!;
-		PathList files = new_ls(abs, .allocator = allocator)!;
+		PathList files = new_ls(abs, allocator: allocator)!;
 		foreach (f : files)
 		{
 			if (f.str_view() == "." || f.str_view() == "..") continue;

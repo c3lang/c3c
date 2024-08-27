@@ -53,7 +53,7 @@ fn Map new_from_map(Map other_map, Allocator allocator = null)
 	MapImpl* other_map_impl = (MapImpl*)other_map;
 	if (!other_map_impl)
 	{
-		if (allocator) return new(.allocator = allocator);
+		if (allocator) return new(allocator: allocator);
 		return null;
 	}
 	MapImpl* map = (MapImpl*)new(other_map_impl.table.len, other_map_impl.load_factor, allocator ?: allocator::heap());

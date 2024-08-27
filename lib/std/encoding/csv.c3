@@ -22,7 +22,7 @@ fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator allocator = a
 {
 	@pool(allocator)
 	{
-		return io::treadline(self.stream).split(self.separator, .allocator = allocator);
+		return io::treadline(self.stream).split(self.separator, allocator: allocator);
 	};
 }
 
@@ -56,7 +56,7 @@ macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 					if (err == IoError.EOF) return;
 					return err?;
 				}
-				parts = s.split(sep, .allocator = mem);
+				parts = s.split(sep, allocator: mem);
 			};
 			@body(parts);
 		};

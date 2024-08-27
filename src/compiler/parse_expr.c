@@ -493,6 +493,79 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 		Expr *expr = NULL;
 		DesignatorElement **path;
 		SourceSpan start_span = c->span;
+
+		if (peek(c) == TOKEN_COLON && token_is_param_name(c->tok))
+		{
+			// Create the parameter expr
+			expr = expr_new(EXPR_NAMED_ARGUMENT, start_span);
+			expr->named_argument_expr.name = symstr(c);
+			expr->named_argument_expr.name_span = c->span;
+			advance(c);
+			advance(c);
+			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
+			RANGE_EXTEND_PREV(expr);
+			goto DONE;
+		}
+		if (tok_is(c, TOKEN_DOT) && token_is_param_name(peek(c)))
+		{
+			// Create the parameter expr
+			expr = expr_new(EXPR_NAMED_ARGUMENT, start_span);
+			advance(c);
+			expr->named_argument_expr.name = symstr(c);
+			expr->named_argument_expr.name_span = c->span;
+			advance(c);
+			CONSUME_OR_RET(TOKEN_EQ, false);
+			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
+			RANGE_EXTEND_PREV(expr);
+			if (!compiler.context.silence_deprecation)
+			{
+				SEMA_NOTE(expr, "Named arguments using the '.foo = expr' style are deprecated, please use 'foo: expr' instead.");
+			}
+			goto DONE;
+		}
+		if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
+		{
+			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
+			goto DONE;
+		}
+		if (splat)
+		{
+			if (*splat)
+			{
+				PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
+				return false;
+			}
+			*splat = try_consume(c, TOKEN_ELLIPSIS);
+		}
+		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+DONE:
+		vec_add(*result, expr);
+		if (!try_consume(c, TOKEN_COMMA))
+		{
+			return true;
+		}
+		if (tok_is(c, param_end)) return true;
+		if (splat && *splat)
+		{
+		}
+	}
+}
+
+/**
+ * param_list ::= ('...' arg | arg (',' arg)*)?
+ *
+ * parameter ::= ((param_path '=')? expr) | param_path
+ */
+bool parse_init_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
+{
+	*result = NULL;
+	if (splat) *splat = false;
+	while (1)
+	{
+		Expr *expr = NULL;
+		DesignatorElement **path;
+		SourceSpan start_span = c->span;
+
 		if (!parse_param_path(c, &path)) return false;
 		if (path != NULL)
 		{
@@ -500,29 +573,29 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			expr = expr_new(EXPR_DESIGNATOR, start_span);
 			expr->designator_expr.path = path;
 
-			if (try_consume(c, TOKEN_EQ)) {
+			if (try_consume(c, TOKEN_EQ))
+			{
 				ASSIGN_EXPR_OR_RET(expr->designator_expr.value, parse_expr(c), false);
 			}
-
 			RANGE_EXTEND_PREV(expr);
+			goto DONE;
 		}
-		else if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
+		if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
 		{
 			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
+			goto DONE;
 		}
-		else
+		if (splat)
 		{
-			if (splat)
+			if (*splat)
 			{
-				if (*splat)
-				{
-					PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
-					return false;
-				}
-				*splat = try_consume(c, TOKEN_ELLIPSIS);
+				PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
+				return false;
 			}
-			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+			*splat = try_consume(c, TOKEN_ELLIPSIS);
 		}
+		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+		DONE:
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
@@ -809,7 +882,7 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 	if (!try_consume(c, TOKEN_RBRACE))
 	{
 		Expr **exprs = NULL;
-		if (!parse_arg_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
+		if (!parse_init_list(c, &exprs, TOKEN_RBRACE, NULL, true)) return poisoned_expr;
 		int designated = -1;
 		FOREACH(Expr *, expr, exprs)
 		{

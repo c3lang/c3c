@@ -143,7 +143,7 @@ macro void free_aligned(Allocator allocator, void* ptr)
 	$if env::TESTING:
 	((char*)ptr)[0] = 0xBA;
 	$endif
-	allocator.release(ptr, .aligned = true);
+	allocator.release(ptr, aligned: true);
 }
 
 /**

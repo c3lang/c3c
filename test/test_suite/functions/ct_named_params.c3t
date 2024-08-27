@@ -9,7 +9,7 @@ macro foo($bar, $Type)
 
 fn void bar()
 {
-  int x = foo(.$bar = 167, .$Type = int);
+  int x = foo($bar: 167, $Type: int);
 }
 
 /* #expect: test.ll

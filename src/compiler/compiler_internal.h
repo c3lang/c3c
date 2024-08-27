@@ -611,9 +611,9 @@ typedef struct Decl_
 		void *backend_value;
 		void *tb_symbol;
 	};
-	AlignSize alignment;
 	AlignSize offset;
 	AlignSize padding;
+	AlignSize alignment;
 	struct CompilationUnit_ *unit;
 	union
 	{
@@ -806,6 +806,13 @@ typedef struct
 	DesignatorElement **path;
 	Expr *value;
 } ExprDesignator;
+
+typedef struct
+{
+	const char *name;
+	SourceSpan name_span;
+	Expr *value;
+} ExprNamedArgument;
 
 typedef struct
 {
@@ -1093,6 +1100,7 @@ struct Expr_
 		Decl *decl_expr;                            // 8
 		Expr** designated_init_list;                // 8
 		ExprDesignator designator_expr;             // 16
+		ExprNamedArgument named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr** exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
@@ -3147,7 +3155,7 @@ INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->res
 
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
-INLINE void expr_set_span(Expr *expr, SourceSpan loc);
+static inline void expr_set_span(Expr *expr, SourceSpan loc);
 
 static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 {
@@ -3191,11 +3199,15 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 
-INLINE void expr_set_span(Expr *expr, SourceSpan loc)
+static inline void expr_set_span(Expr *expr, SourceSpan loc)
 {
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
+		case EXPR_NAMED_ARGUMENT:
+			expr->named_argument_expr.name_span = loc;
+			expr_set_span(expr->named_argument_expr.value, loc);
+			return;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)
 			{
