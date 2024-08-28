@@ -225,9 +225,9 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 			llvm_value_rvalue(c, &be_value);
 			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
 			llvm_store_to_ptr(c, error_out, &be_value);
-			c->defer_error_var = error_out;
+			PUSH_DEFER_ERROR(error_out);
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
-			c->defer_error_var = NULL;
+			POP_DEFER_ERROR();
 		}
 		llvm_emit_return_abi(c, NULL, &be_value);
 		return;
@@ -276,9 +276,9 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
 	{
 		llvm_emit_block(c, error_return_block);
-		c->defer_error_var = error_out;
+		PUSH_DEFER_ERROR(error_out);
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
-		c->defer_error_var = NULL;
+		POP_DEFER_ERROR();
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
 		llvm_emit_return_abi(c, NULL, &value);
@@ -325,9 +325,9 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	{
 		llvm_emit_br(c, exit->block_return_exit);
 		llvm_emit_block(c, err_cleanup_block);
-		c->defer_error_var = exit->block_error_var;
+		PUSH_DEFER_ERROR(exit->block_error_var);
 		llvm_emit_statement_chain(c, err_cleanup);
-		c->defer_error_var = NULL;
+		POP_DEFER_ERROR();
 		llvm_emit_jmp(c, exit->block_optional_exit);
 	}
 	else

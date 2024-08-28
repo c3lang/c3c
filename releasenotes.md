@@ -91,6 +91,7 @@
 - Fixes to wasm nolibc in the standard library.
 - Fixed int128 div/mod.
 - Fix WASM memory init priority.
+- Fix bug with `defer (catch err)` when used together with regular defer.
 
 ### Stdlib changes
 

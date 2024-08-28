@@ -5,6 +5,7 @@
 #include "llvm_codegen_internal.h"
 #include <math.h>
 
+
 static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment);
 static bool bitstruct_requires_bitswap(Decl *decl);
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
@@ -4516,9 +4517,9 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	// Ensure we are on a branch that is non-empty.
 	if (llvm_emit_check_block_branch(c))
 	{
-		c->defer_error_var = error_var;
+		PUSH_DEFER_ERROR(error_var);
 		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
-		c->defer_error_var = NULL;
+		POP_DEFER_ERROR();
 		BEValue value;
 		llvm_value_set_address_abi_aligned(&value, error_var, type_anyfault);
 		if (expr->rethrow_expr.in_block)
