@@ -510,7 +510,16 @@ void compiler_compile(void)
 	}
 	if (!output_file_count)
 	{
-		error_exit("No output files found.");
+		if (output_exe)
+		{
+			error_exit("No output files were generated. This may happen if the program is not "
+					   "linked with anything and all the code is optimized away.");
+		}
+		else
+		{
+			error_exit("No output files were generated. This may happen if there were no exported functions "
+					   "and all the other code was optimized away.");
+		}
 	}
 
 	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
