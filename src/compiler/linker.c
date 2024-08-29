@@ -79,17 +79,17 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	// so we do not link with debug dll versions of libc.
 	link_with_dynamic_debug_libc = false;
 #endif
-	WinCrtLinking linking = compiler.build.win.crt_linking;
+	WinCrtLinking crt_linking = compiler.build.win.crt_linking;
 	FOREACH(Library *, library, compiler.build.library_list)
 	{
 		WinCrtLinking wincrt = library->target_used->win_crt;
-		if (wincrt == WIN_CRT_DEFAULT || wincrt == linking) continue;
-		if (linking != WIN_CRT_DEFAULT)
+		if (wincrt == WIN_CRT_DEFAULT || wincrt == crt_linking) continue;
+		if (crt_linking != WIN_CRT_DEFAULT)
 		{
 			WARNING("Mismatch between CRT linking in library %s and previously selected type.", library->dir);
 			continue;
 		}
-		linking = wincrt;
+		crt_linking = wincrt;
 	}
 
 	if (!compiler.build.win.sdk)
@@ -160,7 +160,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	file_delete_file(asan_dll_dst_path);
 	if (compiler.build.feature.sanitize_address)
 	{
-		if (compiler.build.win.crt_linking == WIN_CRT_STATIC)
+		if (crt_linking == WIN_CRT_STATIC)
 		{
 			add_concat_file_arg(compiler_path, "c3c_rt/clang_rt.asan-x86_64.lib");
 		}
@@ -181,7 +181,6 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	linking_add_link(&compiler.linking, "Ws2_32");
 	linking_add_link(&compiler.linking, "legacy_stdio_definitions");
 
-	WinCrtLinking crt_linking = compiler.build.win.crt_linking;
 	// Do not link any.
 	if (crt_linking == WIN_CRT_NONE) return;
 
