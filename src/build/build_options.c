@@ -1230,6 +1230,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.debug_info_override = DEBUG_INFO_NOT_SET,
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
+		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),
