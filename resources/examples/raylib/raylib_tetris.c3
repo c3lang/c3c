@@ -1,5 +1,5 @@
 module tetris;
-import raylib;
+import raylib5;
 /**
  *   raylib - classic game: tetris
  *
@@ -83,15 +83,15 @@ fn void main()
 {
     // Initialization (Note windowTitle is unused on Android)
     //---------------------------------------------------------
-    raylib::init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "classic game: tetris");
+    rl::initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "classic game: tetris");
 
     init_game();
 
-    raylib::set_target_fps(60);
+    rl::setTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
     // Main game loop
-    while (!raylib::window_should_close())    // Detect window close button or ESC key
+    while (!rl::windowShouldClose())    // Detect window close button or ESC key
     {
         // Update and Draw
         //----------------------------------------------------------------------------------
@@ -102,7 +102,7 @@ fn void main()
     //--------------------------------------------------------------------------------------
     unload_game();         // Unload loaded data (textures, sounds, models...)
 
-    raylib::close_window();        // Close window and OpenGL context
+    rl::closeWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 
 }
@@ -118,7 +118,7 @@ fn void init_game()
     level = 1;
     lines = 0;
 
-    fading_color = raylib::GRAY;
+    fading_color = rl::GRAY;
 
     piece_position_x = 0;
     piece_position_y = 0;
@@ -170,14 +170,14 @@ fn void update_game()
 {
 	if (game_over)
 	{
-        if (raylib::is_key_pressed(keyboard::ENTER))
+        if (rl::isKeyPressed(rl::KEY_ENTER))
         {
             init_game();
             game_over = false;
         }
 		return;
 	}
-    if (raylib::is_key_pressed((KeyboardKey)'P')) pause = !pause;
+    if (rl::isKeyPressed((KeyboardKey)'P')) pause = !pause;
 
 	if (pause) return;
 	if (line_to_delete)
@@ -185,7 +185,7 @@ fn void update_game()
         // Animation when deleting lines
         fade_line_counter++;
 
-		fading_color = fade_line_counter % 8 < 4 ? raylib::MAROON : raylib::GRAY;
+		fading_color = fade_line_counter % 8 < 4 ? rl::MAROON : rl::GRAY;
 
         if (fade_line_counter >= FADING_TIME)
         {
@@ -213,11 +213,11 @@ fn void update_game()
         turn_movement_counter++;
 
         // We make sure to move if we've pressed the key this frame
-        if (raylib::is_key_pressed(keyboard::LEFT) || raylib::is_key_pressed(keyboard::RIGHT)) lateral_movement_counter = LATERAL_SPEED;
-        if (raylib::is_key_pressed(keyboard::UP)) turn_movement_counter = TURNING_SPEED;
+        if (rl::isKeyPressed(rl::KEY_LEFT) || rl::isKeyPressed(rl::KEY_RIGHT)) lateral_movement_counter = LATERAL_SPEED;
+        if (rl::isKeyPressed(rl::KEY_UP)) turn_movement_counter = TURNING_SPEED;
 
         // Fall down
-        if (raylib::is_key_down(keyboard::DOWN) && (fast_fall_movement_counter >= FAST_FALL_AWAIT_COUNTER))
+        if (rl::isKeyDown(rl::KEY_DOWN) && (fast_fall_movement_counter >= FAST_FALL_AWAIT_COUNTER))
         {
             // We make sure the piece is going to fall this frame
             gravity_movement_counter += gravity_speed;
@@ -268,14 +268,13 @@ fn void update_game()
 // Draw game (one frame)
 fn void draw_game()
 {
-    raylib::begin_drawing();
-
-    raylib::clear_background(raylib::RAYWHITE);
+    rl::beginDrawing();
+	defer rl::endDrawing();
+    rl::clearBackground(rl::RAYWHITE);
 
 	if (game_over)
 	{
-		raylib::draw_text("PRESS [ENTER] TO PLAY AGAIN", raylib::get_screen_width() / 2 - raylib::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20) / 2, raylib::get_screen_height() / 2 - 50, 20, raylib::GRAY);
-		raylib::end_drawing();
+		rl::drawText("PRESS [ENTER] TO PLAY AGAIN", rl::getScreenWidth() / 2 - rl::measureText("PRESS [ENTER] TO PLAY AGAIN", 20) / 2, rl::getScreenHeight() / 2 - 50, 20, rl::GRAY);
 		return;
 	}
 
@@ -296,22 +295,22 @@ fn void draw_game()
             switch (grid[i][j])
             {
                 case EMPTY:
-	                raylib::draw_line(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, raylib::LIGHTGRAY );
-	                raylib::draw_line(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, raylib::LIGHTGRAY );
-	                raylib::draw_line(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, raylib::LIGHTGRAY );
-	                raylib::draw_line(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, raylib::LIGHTGRAY );
+	                rl::drawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, rl::LIGHTGRAY );
+	                rl::drawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, rl::LIGHTGRAY );
+	                rl::drawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, rl::LIGHTGRAY );
+	                rl::drawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, rl::LIGHTGRAY );
 	                offset.x += SQUARE_SIZE;
 	            case FULL:
-	                raylib::draw_rectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, raylib::GRAY);
+	                rl::drawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, rl::GRAY);
                     offset.x += SQUARE_SIZE;
                 case MOVING:
-	                raylib::draw_rectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, raylib::DARKGRAY);
+	                rl::drawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, rl::DARKGRAY);
 	                offset.x += SQUARE_SIZE;
 	            case BLOCK:
-	                raylib::draw_rectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, raylib::LIGHTGRAY);
+	                rl::drawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, rl::LIGHTGRAY);
 	                offset.x += SQUARE_SIZE;
 	            case FADING:
-	                raylib::draw_rectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, fading_color);
+	                rl::drawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, fading_color);
                     offset.x += SQUARE_SIZE;
                 default:
             }
@@ -334,13 +333,13 @@ fn void draw_game()
             switch (incoming_piece[i][j])
             {
                 case EMPTY:
-	                raylib::draw_line(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, raylib::LIGHTGRAY);
-	                raylib::draw_line(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, raylib::LIGHTGRAY);
-	                raylib::draw_line(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, raylib::LIGHTGRAY);
-	                raylib::draw_line(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, raylib::LIGHTGRAY);
+	                rl::drawLine(offset.x, offset.y, offset.x + SQUARE_SIZE, offset.y, rl::LIGHTGRAY);
+	                rl::drawLine(offset.x, offset.y, offset.x, offset.y + SQUARE_SIZE, rl::LIGHTGRAY);
+	                rl::drawLine(offset.x + SQUARE_SIZE, offset.y, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, rl::LIGHTGRAY);
+	                rl::drawLine(offset.x, offset.y + SQUARE_SIZE, offset.x + SQUARE_SIZE, offset.y + SQUARE_SIZE, rl::LIGHTGRAY);
 	                offset.x += SQUARE_SIZE;
 	            case MOVING:
-	                raylib::draw_rectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, raylib::GRAY);
+	                rl::drawRectangle(offset.x, offset.y, SQUARE_SIZE, SQUARE_SIZE, rl::GRAY);
                     offset.x += SQUARE_SIZE;
                 default:
                     break;
@@ -351,14 +350,13 @@ fn void draw_game()
         offset.y += SQUARE_SIZE;
     }
 
-    raylib::draw_text("INCOMING:", offset.x, offset.y - 100, 10, raylib::GRAY);
-    raylib::draw_text(raylib::text_format("LINES:      %04i", lines), offset.x, offset.y + 20, 10, raylib::GRAY);
+    rl::drawText("INCOMING:", offset.x, offset.y - 100, 10, rl::GRAY);
+    rl::drawText(rl::textFormat("LINES:      %04i", lines), offset.x, offset.y + 20, 10, rl::GRAY);
 
     if (pause)
     {
-        raylib::draw_text("GAME PAUSED", SCREEN_WIDTH / 2 - raylib::measure_text("GAME PAUSED", 40)/2, SCREEN_HEIGHT/2 - 40, 40, raylib::GRAY);
+        rl::drawText("GAME PAUSED", SCREEN_WIDTH / 2 - rl::measureText("GAME PAUSED", 40)/2, SCREEN_HEIGHT/2 - 40, 40, rl::GRAY);
     }
-	raylib::end_drawing();
 }
 
 // Unload game variables
@@ -415,7 +413,7 @@ fn bool create_piece()
 
 fn void get_random_piece()
 {
-    int random = raylib::get_random_value(0, 6);
+    int random = rl::getRandomValue(0, 6);
 
     for (int i = 0; i < 4; i++)
     {
@@ -508,7 +506,7 @@ fn bool resolve_lateral_movement()
     bool collision = false;
 
     // Piece movement
-    if (raylib::is_key_down(keyboard::LEFT))        // Move left
+    if (rl::isKeyDown(rl::KEY_LEFT))        // Move left
     {
         // Check if is possible to move to left
         for (int j = GRID_VERTICAL_SIZE - 2; j >= 0; j--)
@@ -542,7 +540,7 @@ fn bool resolve_lateral_movement()
             piece_position_x--;
         }
     }
-    else if (raylib::is_key_down(keyboard::RIGHT))  // Move right
+    else if (rl::isKeyDown(rl::KEY_RIGHT))  // Move right
     {
         // Check if is possible to move to right
         for (int j = GRID_VERTICAL_SIZE - 2; j >= 0; j--)
@@ -587,7 +585,7 @@ fn bool resolve_lateral_movement()
 fn bool resolve_turn_movement()
 {
     // Input for turning the piece
-    if (raylib::is_key_down(keyboard::UP))
+    if (rl::isKeyDown(rl::KEY_UP))
     {
         GridSquare aux;
         bool checker = false;
@@ -791,4 +789,3 @@ fn int delete_complete_lines()
     }
     return lines_to_erase;
 }
-

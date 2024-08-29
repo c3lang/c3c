@@ -1,5 +1,5 @@
 module snake;
-import raylib;
+import raylib5;
 /**
  *
  *   raylib - classic game: snake
@@ -53,18 +53,18 @@ int counter_tail = 0;
 
 fn void main()
 {
-	raylib::init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "classic game: snake");
+	rl::initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "classic game: snake");
 	init_game();
-    raylib::set_target_fps(60);
+    rl::setTargetFPS(60);
 
-    while (!raylib::window_should_close())    // Detect window close button or ESC key
+    while (!rl::windowShouldClose())    // Detect window close button or ESC key
     {
         update_draw_frame();
     }
 
     unload_game();
 
-	raylib::close_window();
+	rl::closeWindow();
 }
 
 // Initialize game variables
@@ -87,11 +87,11 @@ fn void init_game()
 
         if (i == 0)
         {
-            snake[i].color = raylib::DARKBLUE;
+            snake[i].color = rl::DARKBLUE;
         }
         else
         {
-            snake[i].color = raylib::BLUE;
+            snake[i].color = rl::BLUE;
         }
     }
 
@@ -101,7 +101,7 @@ fn void init_game()
     }
 
     fruit.size = { SQUARE_SIZE, SQUARE_SIZE };
-    fruit.color = raylib::SKYBLUE;
+    fruit.color = rl::SKYBLUE;
     fruit.active = false;
 }
 
@@ -110,7 +110,7 @@ fn void update_game()
 {
 	if (game_over)
 	{
-		if (raylib::is_key_pressed(keyboard::ENTER))
+		if (rl::isKeyPressed(rl::KEY_ENTER))
         {
             init_game();
             game_over = false;
@@ -118,16 +118,16 @@ fn void update_game()
 		return;
 	}
 
-    if (raylib::is_key_pressed((KeyboardKey)'P')) pause = !pause;
+    if (rl::isKeyPressed((KeyboardKey)'P')) pause = !pause;
 
 	if (pause) return;
 
-    if (raylib::is_key_pressed(keyboard::RIGHT) && allow_move)
+    if (rl::isKeyPressed(rl::KEY_RIGHT) && allow_move)
     {
         snake_direction = (SnakeDirection)((snake_direction.ordinal + 1) % 4);
         allow_move = false;
     }
-    if (raylib::is_key_pressed(keyboard::LEFT) && allow_move)
+    if (rl::isKeyPressed(rl::KEY_LEFT) && allow_move)
     {
         snake_direction = (SnakeDirection)((snake_direction.ordinal + 3) % 4);
         allow_move = false;
@@ -179,13 +179,13 @@ fn void update_game()
     if (!fruit.active)
     {
         fruit.active = true;
-        fruit.position = { (float)raylib::get_random_value(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x / 2, (float)raylib::get_random_value(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
+        fruit.position = { (float)rl::getRandomValue(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x / 2, (float)rl::getRandomValue(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
 
         for (int i = 0; i < counter_tail; i++)
         {
             while ((fruit.position.x == snake[i].position.x) && (fruit.position.y == snake[i].position.y))
             {
-                fruit.position = { (float)raylib::get_random_value(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x/2, (float)raylib::get_random_value(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
+                fruit.position = { (float)rl::getRandomValue(0, (SCREEN_WIDTH / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.x/2, (float)rl::getRandomValue(0, (SCREEN_HEIGHT / SQUARE_SIZE) - 1) * SQUARE_SIZE + offset.y / 2 };
                 i = 0;
             }
         }
@@ -204,37 +204,37 @@ fn void update_game()
 // Draw game (one frame)
 fn void draw_game()
 {
-	raylib::begin_drawing();
+	rl::beginDrawing();
 
-    raylib::clear_background(raylib::RAYWHITE);
+    rl::clearBackground(rl::RAYWHITE);
 
     if (!game_over)
     {
         // Draw grid lines
         for (int i = 0; i < SCREEN_WIDTH / SQUARE_SIZE + 1; i++)
         {
-            raylib::draw_line_v({(float)SQUARE_SIZE * i + offset.x/2, offset.y/2}, {(float)SQUARE_SIZE * i + offset.x/2, SCREEN_HEIGHT - offset.y/2}, raylib::LIGHTGRAY);
+            rl::drawLineV({(float)SQUARE_SIZE * i + offset.x/2, offset.y/2}, {(float)SQUARE_SIZE * i + offset.x/2, SCREEN_HEIGHT - offset.y/2}, rl::LIGHTGRAY);
         }
 
             for (int i = 0; i < SCREEN_HEIGHT/SQUARE_SIZE + 1; i++)
             {
-                raylib::draw_line_v({offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, { SCREEN_WIDTH - offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, raylib::LIGHTGRAY);
+                rl::drawLineV({offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, { SCREEN_WIDTH - offset.x/2, (float)SQUARE_SIZE * i + offset.y / 2 }, rl::LIGHTGRAY);
             }
 
             // Draw snake
-            for (int i = 0; i < counter_tail; i++) raylib::draw_rectangle_v(snake[i].position, snake[i].size, snake[i].color);
+            for (int i = 0; i < counter_tail; i++) rl::drawRectangleV(snake[i].position, snake[i].size, snake[i].color);
 
             // Draw fruit to pick
-            raylib::draw_rectangle_v(fruit.position, fruit.size, fruit.color);
+            rl::drawRectangleV(fruit.position, fruit.size, fruit.color);
 
-            if (pause) raylib::draw_text("GAME PAUSED", SCREEN_WIDTH/2 - raylib::measure_text("GAME PAUSED", 40)/2, SCREEN_HEIGHT / 2 - 40, 40, raylib::GRAY);
+            if (pause) rl::drawText("GAME PAUSED", SCREEN_WIDTH/2 - rl::measureText("GAME PAUSED", 40)/2, SCREEN_HEIGHT / 2 - 40, 40, rl::GRAY);
         }
         else
         {
-            raylib::draw_text("PRESS [ENTER] TO PLAY AGAIN", raylib::get_screen_width()/2 - raylib::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20)/2, raylib::get_screen_height()/2 - 50, 20, raylib::GRAY);
+            rl::drawText("PRESS [ENTER] TO PLAY AGAIN", rl::getScreenWidth()/2 - rl::measureText("PRESS [ENTER] TO PLAY AGAIN", 20)/2, rl::getScreenHeight()/2 - 50, 20, rl::GRAY);
         }
 
-    raylib::end_drawing();
+    rl::endDrawing();
 }
 
 // Unload game variables

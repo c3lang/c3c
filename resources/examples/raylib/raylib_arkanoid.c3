@@ -1,5 +1,5 @@
 module arkanoid;
-import raylib;
+import raylib5;
 import std::math;
 /**
  *
@@ -72,15 +72,15 @@ fn void main()
 {
     // Initialization (Note windowTitle is unused on Android)
     //---------------------------------------------------------
-    raylib::init_window(SCREEN_WIDTH, SCREEN_HEIGHT, "classic game: arkanoid");
+    rl::initWindow(SCREEN_WIDTH, SCREEN_HEIGHT, "classic game: arkanoid");
 
 	init_game();
 
-    raylib::set_target_fps(60);
+    rl::setTargetFPS(60);
     //--------------------------------------------------------------------------------------
 
     // Main game loop
-    while (!raylib::window_should_close())    // Detect window close button or ESC key
+    while (!rl::windowShouldClose())    // Detect window close button or ESC key
     {
         // Update and Draw
         //----------------------------------------------------------------------------------
@@ -91,7 +91,7 @@ fn void main()
     //--------------------------------------------------------------------------------------
     unload_game();         // Unload loaded data (textures, sounds, models...)
 
-    raylib::close_window();        // Close window and OpenGL context
+    rl::closeWindow();        // Close window and OpenGL context
     //--------------------------------------------------------------------------------------
 
 }
@@ -103,7 +103,7 @@ fn void main()
 // Initialize game variables
 fn void init_game()
 {
-    brick_size = { (float)raylib::get_screen_width() / BRICKS_PER_LINE, 40 };
+    brick_size = { (float)rl::getScreenWidth() / BRICKS_PER_LINE, 40 };
 
     // Initialize player
     player.position = { SCREEN_WIDTH/2, SCREEN_HEIGHT * 7 / 8 };
@@ -134,25 +134,25 @@ fn void update_game()
 {
 	if (game_over)
 	{
-		if (raylib::is_key_pressed(keyboard::ENTER))
+		if (rl::isKeyPressed(rl::KEY_ENTER))
         {
             init_game();
             game_over = false;
         }
 	}
-    if (raylib::is_key_pressed((KeyboardKey)'P')) pause = !pause;
+    if (rl::isKeyPressed((KeyboardKey)'P')) pause = !pause;
 
 	if (pause) return;
     // Player movement logic
-    if (raylib::is_key_down(keyboard::LEFT)) player.position.x -= 5;
+    if (rl::isKeyDown(rl::KEY_LEFT)) player.position.x -= 5;
     if ((player.position.x - player.size.x/2) <= 0) player.position.x = player.size.x/2;
-    if (raylib::is_key_down(keyboard::RIGHT)) player.position.x += 5;
+    if (rl::isKeyDown(rl::KEY_RIGHT)) player.position.x += 5;
     if ((player.position.x + player.size.x/2) >= SCREEN_WIDTH) player.position.x = SCREEN_WIDTH - player.size.x/2;
 
     // Ball launching logic
     if (!ball.active)
     {
-        if (raylib::is_key_pressed(keyboard::SPACE))
+        if (rl::isKeyPressed(rl::KEY_SPACE))
         {
             ball.active = true;
             ball.speed = { 0, -5 };
@@ -182,7 +182,7 @@ fn void update_game()
     }
 
     // Collision logic: ball vs player
-    if (raylib::check_collision_circle_rec(ball.position, ball.radius,
+    if (rl::checkCollisionCircleRec(ball.position, ball.radius,
         Rectangle{ player.position.x - player.size.x / 2, player.position.y - player.size.y / 2, player.size.x, player.size.y}))
     {
         if (ball.speed.y > 0)
@@ -256,20 +256,20 @@ fn void update_game()
 // Draw game (one frame)
 fn void draw_game()
 {
-    raylib::begin_drawing();
-
-    raylib::clear_background(raylib::RAYWHITE);
+    rl::beginDrawing();
+	defer rl::endDrawing();
+    rl::clearBackground(rl::RAYWHITE);
 
     if (!game_over)
     {
         // Draw player bar
-        raylib::draw_rectangle((int)(player.position.x - player.size.x/2), (int)(player.position.y - player.size.y/2), (int)player.size.x, (int)player.size.y, raylib::BLACK);
+        rl::drawRectangle((int)(player.position.x - player.size.x/2), (int)(player.position.y - player.size.y/2), (int)player.size.x, (int)player.size.y, rl::BLACK);
 
         // Draw player lives
-        for (int i = 0; i < player.life; i++) raylib::draw_rectangle(20 + 40*i, SCREEN_HEIGHT - 30, 35, 10, raylib::LIGHTGRAY);
+        for (int i = 0; i < player.life; i++) rl::drawRectangle(20 + 40*i, SCREEN_HEIGHT - 30, 35, 10, rl::LIGHTGRAY);
 
         // Draw ball
-        raylib::draw_circle_v(ball.position, ball.radius, raylib::MAROON);
+        rl::drawCircleV(ball.position, ball.radius, rl::MAROON);
 
         // Draw bricks
         for (int i = 0; i < LINES_OF_BRICKS; i++)
@@ -280,24 +280,22 @@ fn void draw_game()
                 {
                     if ((i + j) % 2 == 0)
                     {
-                        raylib::draw_rectangle((int)(brick[i][j].position.x - brick_size.x/2), (int)(brick[i][j].position.y - brick_size.y/2), (int)brick_size.x, (int)brick_size.y, raylib::GRAY);
+                        rl::drawRectangle((int)(brick[i][j].position.x - brick_size.x/2), (int)(brick[i][j].position.y - brick_size.y/2), (int)brick_size.x, (int)brick_size.y, rl::GRAY);
                     }
                     else
                     {
-                        raylib::draw_rectangle((int)(brick[i][j].position.x - brick_size.x/2), (int)(brick[i][j].position.y - brick_size.y/2), (int)brick_size.x, (int)brick_size.y, raylib::DARKGRAY);
+                        rl::drawRectangle((int)(brick[i][j].position.x - brick_size.x/2), (int)(brick[i][j].position.y - brick_size.y/2), (int)brick_size.x, (int)brick_size.y, rl::DARKGRAY);
                     }
                 }
             }
         }
 
-        if (pause) raylib::draw_text("GAME PAUSED", SCREEN_WIDTH/2 - raylib::measure_text("GAME PAUSED", 40)/2, SCREEN_HEIGHT/2 - 40, 40, raylib::GRAY);
+        if (pause) rl::drawText("GAME PAUSED", SCREEN_WIDTH/2 - rl::measureText("GAME PAUSED", 40)/2, SCREEN_HEIGHT/2 - 40, 40, rl::GRAY);
     }
     else
     {
-        raylib::draw_text("PRESS [ENTER] TO PLAY AGAIN", raylib::get_screen_width()/2 - raylib::measure_text("PRESS [ENTER] TO PLAY AGAIN", 20)/2, raylib::get_screen_height()/2 - 50, 20, raylib::GRAY);
+        rl::drawText("PRESS [ENTER] TO PLAY AGAIN", rl::getScreenWidth()/2 - rl::measureText("PRESS [ENTER] TO PLAY AGAIN", 20)/2, rl::getScreenHeight()/2 - 50, 20, rl::GRAY);
     }
-
-    raylib::end_drawing();
 }
 
 // Unload game variables
