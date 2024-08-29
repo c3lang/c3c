@@ -101,19 +101,6 @@ if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     endif()
 endif()
 
-if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
-    # Get git hash
-    execute_process(COMMAND git rev-parse HEAD
-            OUTPUT_VARIABLE GIT_HASH
-            RESULT_VARIABLE GIT_REVPARSE_RESULT
-            OUTPUT_STRIP_TRAILING_WHITESPACE)
-    if(GIT_REVPARSE_RESULT EQUAL "0")
-        add_compile_definitions(GIT_HASH="${GIT_HASH}")
-    else()
-        message(WARNING "Cannot to get Git Hash: git rev-parse failed with ${GIT_REVPARSE_RESULT}")
-    endif()
-endif()
-
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if (C3_LLVM_VERSION STREQUAL "auto")
         set(C3_LLVM_VERSION "18")
@@ -349,8 +336,14 @@ add_executable(c3c
         src/utils/time.c
         src/utils/http.c
         src/compiler/sema_liveness.c
-        src/build/common_build.c)
+        src/build/common_build.c
+        ${CMAKE_BINARY_DIR}/git_hash.h)
 
+add_custom_target(
+        generate_git_hash
+        ALL
+        COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_LIST_DIR}/git_hash.cmake"
+        BYPRODUCTS ${CMAKE_BINARY_DIR}/git_hash.h)
 
 if (C3_USE_TB)
     file(GLOB tilde-sources
@@ -391,7 +384,8 @@ endif()
 
 target_include_directories(c3c PRIVATE
         "${CMAKE_SOURCE_DIR}/src/"
-        "${CMAKE_SOURCE_DIR}/wrapper/include/")
+        "${CMAKE_SOURCE_DIR}/wrapper/include/"
+        "${CMAKE_BINARY_DIR}")
 
 
 target_include_directories(c3c_wrappers PRIVATE
