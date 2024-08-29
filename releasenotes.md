@@ -37,6 +37,7 @@
 - Similar change to `$vasplat`: `$vasplat` and `$vasplat[1..]`.
 - Add `$member.get(value)` to replace `value.$eval($member.nameof)`
 - Improve the error message when the compilation does not produce any files #1390.
+- Add `fmod` implementation for nolibc.
 
 ### Fixes
 
