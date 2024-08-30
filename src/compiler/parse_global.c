@@ -1895,7 +1895,6 @@ static inline Decl *parse_def_ident(ParseContext *c)
 
 	// 3. Set up the "define".
 	Decl *decl = decl_new(DECL_DEFINE, symstr(c), c->span);
-	decl->define_decl.define_kind = DEFINE_IDENT_ALIAS;
 
 	if (decl->name == kw_main)
 	{
@@ -1905,50 +1904,13 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	advance(c);
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
-	// 5. Here we may an (optional) path, we just check if it starts
-	//    with IDENT '::'
-	Path *path = NULL;
-	if (context_next_is_path_prefix_start(c))
+	if (tok_is(c, TOKEN_FN))
 	{
-		if (!parse_path_prefix(c, &path)) return poisoned_decl;
+		RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "This looks like you're declaring a function type alias, and such an alias must have a valid type name, like 'Callback'.");
 	}
 
-	decl->define_decl.path = path;
+	ASSIGN_EXPR_OR_RET(decl->define_decl.alias_expr, parse_expr(c), poisoned_decl);
 
-	// 6. Check that the token after the path is of the same type.
-	if (c->tok != alias_type)
-	{
-		if (token_is_any_type(c->tok) || tok_is(c, TOKEN_TYPE_IDENT))
-		{
-			RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "A type alias must start with an uppercase letter and contain at least one lower case letter.");
-		}
-		if (alias_type == TOKEN_CONST_IDENT)
-		{
-			PRINT_ERROR_HERE("Expected a constant name here.");
-			return poisoned_decl;
-		}
-		if (alias_type == TOKEN_IDENT && c->tok == TOKEN_AT_IDENT)
-		{
-			RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "A name with '@' prefix cannot be aliased to a name without '@', try adding a '@' before '%s'.", decl->name);
-		}
-		if (alias_type == TOKEN_AT_IDENT && c->tok == TOKEN_IDENT)
-		{
-			RETURN_PRINT_ERROR_AT(poisoned_decl, decl, "An alias cannot use '@' if the aliased identifier doesn't, please remove the '@' symbol.");
-		}
-		PRINT_ERROR_HERE("Expected a function or variable name here.");
-		return poisoned_decl;
-	}
-
-	// 7. Consume the identifier
-	decl->define_decl.ident = symstr(c);
-	decl->define_decl.span = c->span;
-	advance(c);
-
-	if (tok_is(c, TOKEN_LGENPAR))
-	{
-		decl->define_decl.define_kind = DEFINE_IDENT_GENERIC;
-		if (!parse_generic_parameters(c, &decl->define_decl.generic_params)) return poisoned_decl;
-	}
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);

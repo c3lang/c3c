@@ -94,6 +94,7 @@
 - Fixed int128 div/mod.
 - Fix WASM memory init priority.
 - Fix bug with `defer (catch err)` when used together with regular defer.
+- Methods can now properly be aliased using `def` #1393.
 
 ### Stdlib changes
 

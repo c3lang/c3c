@@ -1,9 +1,8 @@
 
-def int = int; // #error: 'int' is a reserved keyword, try another name
-def main = foo; // #error: 'main' is reserved and cannot be used as an alias.
+def Foo = int;
 
-def hello = int; // #error: uppercase letter
-def hello = Foo; // #error: uppercase letter
+def hello1 = int; // #error: To alias a type, the alias
+def hello2 = Foo; // #error: To alias a type, the alias
 
-def HELLO = int; // #error: uppercase letter
-def HELLO = Foo; // #error: uppercase letter
+def HELLO1 = int; // #error: To alias a type, the alias
+def HELLO2 = Foo; // #error: To alias a type, the alias

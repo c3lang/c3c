@@ -1041,14 +1041,12 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			decl->attr_decl.attrs = copy_attributes(c, decl->attr_decl.attrs);
 			break;
 		case DECL_DEFINE:
-			switch (decl->define_decl.define_kind)
+			if (decl->resolve_status == RESOLVE_DONE)
 			{
-				case DEFINE_IDENT_GENERIC:
-					MACRO_COPY_EXPR_LIST(decl->define_decl.generic_params);
-					break;
-				case DEFINE_IDENT_ALIAS:
-					break;
+				fixup_decl(c, &decl->define_decl.alias);
+				break;
 			}
+			MACRO_COPY_EXPR(decl->define_decl.alias_expr);
 			break;
 	}
 	return copy;

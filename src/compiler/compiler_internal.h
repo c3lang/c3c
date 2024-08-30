@@ -535,23 +535,9 @@ typedef struct
 
 typedef struct
 {
-	DefineType define_kind: 5;
 	union
 	{
-		struct
-		{
-			union
-			{
-				TypeInfo *type_info;
-				struct
-				{
-					Path *path;
-					const char *ident;
-					SourceSpan span;
-				};
-			};
-			Expr **generic_params;
-		};
+		Expr *alias_expr;
 		Decl *alias;
 	};
 } DefineDecl;
@@ -3051,9 +3037,7 @@ INLINE bool decl_poison(Decl *decl)
 
 static inline Decl *decl_raw(Decl *decl)
 {
-	while (decl->decl_kind == DECL_DEFINE
-		&& (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS
-		|| decl->define_decl.define_kind == DEFINE_IDENT_GENERIC))
+	while (decl->decl_kind == DECL_DEFINE)
 	{
 		decl = decl->define_decl.alias;
 	}

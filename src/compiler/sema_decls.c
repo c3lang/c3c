@@ -53,11 +53,11 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
-static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_decl);
+static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
-static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl);
+
 static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
 										  SourceSpan from);
 
@@ -4166,35 +4166,6 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 }
 
 
-static bool sema_analyse_parameterized_define(SemaContext *c, Decl *decl)
-{
-	Path *decl_path;
-	const char *name;
-	SourceSpan span;
-	switch (decl->define_decl.define_kind)
-	{
-		case DEFINE_IDENT_GENERIC:
-			decl_path = decl->define_decl.path;
-			name = decl->define_decl.ident;
-			span = decl->define_decl.span;
-			break;
-		default:
-			UNREACHABLE
-	}
-	Expr **params = decl->define_decl.generic_params;
-	Decl *symbol = sema_analyse_parameterized_identifier(c, decl_path, name, span, params);
-	if (!decl_ok(symbol)) return decl_poison(decl);
-	switch (decl->define_decl.define_kind)
-	{
-		case DEFINE_IDENT_GENERIC:
-			decl->define_decl.alias = symbol;
-			decl->type = symbol->type;
-			return true;
-		default:
-			UNREACHABLE
-	}
-}
-
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params)
 {
 	NameResolve name_resolve = {
@@ -4289,24 +4260,48 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	return true;
 }
 
-static inline bool sema_analyse_define(SemaContext *c, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 
-	// 1. The plain define
-	if (decl->define_decl.define_kind == DEFINE_IDENT_ALIAS)
+	Expr *expr = decl->define_decl.alias_expr;
+	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
+	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
-		Decl *symbol = sema_resolve_symbol(c, decl->define_decl.ident, decl->define_decl.path, decl->define_decl.span);
-		if (!symbol) return false;
-		if (!sema_analyse_decl(c, symbol)) return false;
-		decl->type = symbol->type;
-		decl->define_decl.alias = symbol;
-		return true;
+		RETURN_SEMA_ERROR(decl, "To alias a type, the alias name must start with uppercase and contain at least one lowercase letter.");
 	}
-
-	// 2. Handle type generics.
-	return sema_analyse_parameterized_define(c, decl);
+	if (expr->expr_kind != EXPR_IDENTIFIER)
+	{
+		RETURN_SEMA_ERROR(expr, "A global variable or function name was expected here.");
+	}
+	Decl *symbol = expr->identifier_expr.decl;
+	bool should_be_const = char_is_upper(decl->name[0]);
+	if (should_be_const)
+	{
+		if (!char_is_upper(symbol->name[0]))
+		{
+			RETURN_SEMA_ERROR(decl, "An uppercase alias is expected to alias a constant. "
+									"If you want to alias a non-constant, make sure the alias name "
+									"starts with a lower case letter.");
+		}
+	}
+	else
+	{
+		if (char_is_upper(symbol->name[0]))
+		{
+			RETURN_SEMA_ERROR(expr, "An alias starting with a lowercase letter is expected to alias a non-constant. "
+			                        "If you want to alias a constant, make sure the "
+									"alias name is all uppercase letters.", decl->name);
+		}
+	}
+	if (symbol->name[0] == '@' && decl->name[0] != '@')
+	{
+		RETURN_SEMA_ERROR(expr, "An at-macro like '%s' must be aliased with an identifier also starting with '@'.", symbol->name);
+	}
+	decl->type = symbol->type;
+	decl->define_decl.alias = symbol;
+	return true;
 }
 
 bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span)
