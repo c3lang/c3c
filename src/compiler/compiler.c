@@ -419,7 +419,7 @@ void compiler_compile(void)
 			error_exit("Failed to create build directory '%s'.", compiler.build.build_dir);
 		}
 	}
-	if (compiler.build.ir_file_dir && compiler.build.emit_llvm)
+	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output))
 	{
 		if (!file_exists(compiler.build.ir_file_dir) && !dir_make(compiler.build.ir_file_dir))
 		{
