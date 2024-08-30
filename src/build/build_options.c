@@ -5,6 +5,7 @@
 #include "../utils/whereami.h"
 #include "build.h"
 #include "build_internal.h"
+#include "git_hash.h"
 
 extern int llvm_version_major;
 bool silence_deprecation;
@@ -482,9 +483,7 @@ static void print_version(void)
 	PRINTF("C3 Compiler Version:       %s", COMPILER_VERSION);
 #endif
 	PRINTF("Installed directory:       %s", find_executable_path());
-#ifdef GIT_HASH
 	PRINTF("Git Hash:                  %s", GIT_HASH);
-#endif
 	PRINTF("LLVM version:              %s", llvm_version);
 	PRINTF("LLVM default target:       %s", llvm_target);
 }
