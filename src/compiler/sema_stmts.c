@@ -712,8 +712,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 		Decl *decl = ident->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR)
 		{
-			SEMA_ERROR(ident, "Expected this to be the name of an optional variable, but it isn't. Did you mistype?");
-			return false;
+			RETURN_SEMA_ERROR(ident, "Expected this to be the name of an optional variable, but it isn't. Did you mistype?");
 		}
 		if (!IS_OPTIONAL(decl))
 		{

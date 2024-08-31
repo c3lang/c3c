@@ -350,6 +350,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_TRY_UNWRAP:
 			if (expr->resolve_status != RESOLVE_DONE)
 			{
+				MACRO_COPY_EXPR(expr->try_unwrap_expr.variable);
 				MACRO_COPY_EXPR(expr->try_unwrap_expr.init);
 				MACRO_COPY_TYPE(expr->try_unwrap_expr.type);
 			}
@@ -982,7 +983,8 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			switch (copy->var.kind)
 			{
 				case VARDECL_UNWRAPPED:
-					MACRO_COPY_DECL(copy->var.alias);
+				case VARDECL_REWRAPPED:
+					fixup_decl(c, &copy->var.alias);
 					break;
 				case VARDECL_BITMEMBER:
 					if (copy->var.bit_is_expr)
