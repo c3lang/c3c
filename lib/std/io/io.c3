@@ -256,7 +256,7 @@ fn usz! printfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
-	usz len = formatter.vprintf(format, args)!;
+	usz! len = formatter.vprintf(format, args);
 	putchar('\n');
 	io::stdout().flush()!;
 	return len + 1;
@@ -290,10 +290,10 @@ fn usz! eprintfn(String format, args...) @maydiscard
 	Formatter formatter;
 	OutStream stream = stderr();
 	formatter.init(&out_putstream_fn, &stream);
-	usz len = formatter.vprintf(format, args)! + 1;
+	usz! len = formatter.vprintf(format, args);
 	stderr().write_byte('\n')!;
 	stderr().flush()!;
-	return len;
+	return len + 1;
 }
 
 /**

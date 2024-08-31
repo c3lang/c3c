@@ -15,23 +15,13 @@ fault PrintFault
 {
 	BUFFER_EXCEEDED,
 	INTERNAL_BUFFER_EXCEEDED,
-	INVALID_FORMAT_STRING,
-	MISSING_ARG,
-	INVALID_ARGUMENT_TYPE,
-}
-
-fault FormattingFault
-{
-	UNTERMINATED_FORMAT,
-	MISSING_ARG,
-	INVALID_WIDTH_ARG,
-	INVALID_FORMAT_TYPE,
+	INVALID_FORMAT,
+	NOT_ENOUGH_ARGUMENTS,
+	INVALID_ARGUMENT,
 }
 
 def OutputFn = fn void!(void* buffer, char c);
 def FloatType = double;
-
-
 
 fn usz! Formatter.printf(&self, String format, args...)
 {
@@ -48,6 +38,7 @@ struct Formatter
 		uint width;
 		uint prec;
 		usz idx;
+		anyfault first_fault;
 	}
 }
 
@@ -69,7 +60,12 @@ fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
 
 fn usz! Formatter.out(&self, char c) @private
 {
-	self.out_fn(self.data, c)!;
+	if (catch err = self.out_fn(self.data, c))
+	{
+		if (self.first_fault) return self.first_fault?;
+		self.first_fault = err;
+		return err?;
+	}
 	return 1;
 }
 
@@ -136,7 +132,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			self.flags = {};
 			self.width = 0;
-			return self.ntoa_any(arg, 10);
+			return self.ntoa_any(arg, 10) ?? self.out_substr("<INVALID>");
 		case FLOAT:
 			PrintFlags flags = self.flags;
 			uint width = self.width;
@@ -147,7 +143,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			self.flags = {};
 			self.width = 0;
-			return self.ftoa(float_from_any(arg)!!);
+			return self.ftoa(float_from_any(arg)) ?? self.out_substr("ERR");
 		case BOOL:
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
@@ -292,10 +288,31 @@ fn void! out_null_fn(void* data @unused, char c @unused) @private
 {
 }
 
+macro usz! @report_fault(Formatter* f, $fault)
+{
+	(void)f.out_substr($fault);
+	return PrintFault.INVALID_FORMAT?;
+}
 
+macro usz! @wrap_bad(Formatter* f, #action)
+{
+	usz! len = #action;
+	if (catch err = len)
+	{
+		case PrintFault.BUFFER_EXCEEDED:
+        case PrintFault.INTERNAL_BUFFER_EXCEEDED:
+            return f.first_err(err)?;
+        default:
+            err = f.first_err(PrintFault.INVALID_ARGUMENT);
+            f.out_substr("<INVALID>")!;
+            return err?;
+	}
+	return len;
+}
 
 fn usz! Formatter.vprintf(&self, String format, any[] anys)
 {
+	self.first_fault = {};
 	if (!self.out_fn)
 	{
 		// use null output function
@@ -315,7 +332,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 			continue;
 		}
 		i++;
-		if (i >= format_len) return PrintFault.INVALID_FORMAT_STRING?;
+		if (i >= format_len) return @report_fault(self, "%ERR");
 		c = format[i];
 		if (c == '%')
 		{
@@ -335,11 +352,12 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				case '#': self.flags.hash = true;
 				default: break FLAG_EVAL;
 			}
-			if (++i >= format_len) return PrintFault.INVALID_FORMAT_STRING?;
+			if (++i >= format_len) return @report_fault(self, "%ERR");
 			c = format[i];
 		}
 		// evaluate width field
-		int w = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i)!;
+		int! w = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
+		if (catch w) return @report_fault(self, "%ERR");
 		c = format[i];
 		if (w < 0)
 		{
@@ -352,15 +370,21 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		if (c == '.')
 		{
 			self.flags.precision = true;
-			if (++i >= format_len) return PrintFault.INVALID_FORMAT_STRING?;
-			int prec = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i)!;
+			if (++i >= format_len) return @report_fault(self, "<BAD FORMAT>");
+			int! prec = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
+			if (catch prec) return @report_fault(self, "<BAD FORMAT>");
 			self.prec = prec < 0 ? 0 : prec;
 			c = format[i];
 		}
 
 		// evaluate specifier
 		uint base = 0;
-		if (variant_index >= anys.len) return PrintFault.MISSING_ARG?;
+		if (variant_index >= anys.len)
+		{
+			self.first_err(PrintFault.NOT_ENOUGH_ARGUMENTS);
+			total_len += self.out_substr("<MISSING>")!;
+			continue;
+		}
 		any current = anys[variant_index++];
 		switch (c)
 		{
@@ -386,25 +410,25 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.uppercase = true;
 				nextcase;
 			case 'a':
-				total_len += self.atoa(float_from_any(current)!!)!;
+				total_len += @wrap_bad(self, self.atoa(float_from_any(current)))!;
 				continue;
 			case 'F' :
 				self.flags.uppercase = true;
 				nextcase;
 			case 'f':
-				total_len += self.ftoa(float_from_any(current)!!)!;
+				total_len += @wrap_bad(self, self.ftoa(float_from_any(current)))!;
 				continue;
 			case 'E':
 				self.flags.uppercase = true;
 				nextcase;
 			case 'e':
-				total_len += self.etoa(float_from_any(current)!!)!;
+				total_len += @wrap_bad(self, self.etoa(float_from_any(current)))!;
 				continue;
 			case 'G':
 				self.flags.uppercase = true;
 				nextcase;
 			case 'g':
-				total_len += self.gtoa(float_from_any(current)!!)!;
+				total_len += @wrap_bad(self, self.gtoa(float_from_any(current)))!;
 				continue;
 			case 'c':
 				total_len += self.out_char(current)!;
@@ -429,7 +453,9 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.hash = true;
 				base = 16;
 			default:
-				return PrintFault.INVALID_FORMAT_STRING?;
+				self.first_err(PrintFault.INVALID_FORMAT);
+				total_len += self.out_substr("<BAD FORMAT>")!;
+				continue;
 		}
 		if (base != 10)
 		{
@@ -440,14 +466,13 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		if (self.flags.precision) self.flags.zeropad = false;
 
 		bool is_neg;
-		uint128 v = int_from_any(current, &is_neg)!!;
-
-		total_len += self.ntoa(v, is_neg, base)!;
+		total_len += @wrap_bad(self, self.ntoa(int_from_any(current, &is_neg), is_neg, base))!;
 	}
 	// termination
 	//	out((char)0, buffer, idx < maxlen ? idx : maxlen - 1U, maxlen);
 
 	// return written chars without terminating \0
+	if (self.first_fault) return self.first_fault?;
 	return total_len;
 }
 

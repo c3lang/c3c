@@ -97,6 +97,7 @@
 - Methods can now properly be aliased using `def` #1393.
 - Memory leak in Object when not using temp allocators.
 - Tracking allocator would double the allocations in the report.
+- `printf` will now show errors in the output when there are errors.
 
 ### Stdlib changes
 

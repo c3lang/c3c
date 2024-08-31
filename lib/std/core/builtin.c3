@@ -104,13 +104,29 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 
 }
+
+macro void abort(String string = "Unrecoverable error reached", ...) @builtin @noreturn
+{
+	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
+	$$trap();
+}
+
+bool in_panic @local = false;
+
 fn void default_panic(String message, String file, String function, uint line) @if(!env::NATIVE_STACKTRACE)
 {
+	if (in_panic)
+	{
+		io::eprintn("Panic inside of panic.");
+		return;
+	}
+	in_panic = true;
 	$if $defined(io::stderr):
 	io::eprint("\nERROR: '");
 	io::eprint(message);
 	io::eprintfn("', in %s (%s:%d)", function, file, line);
 	$endif
+	in_panic = false;
 	$$trap();
 }
 
@@ -120,11 +136,19 @@ PanicFn panic = &default_panic;
 
 fn void panicf(String fmt, String file, String function, uint line, args...)
 {
+	if (in_panic)
+	{
+		io::eprint("Panic inside of panic: ");
+		io::eprintn(fmt);
+		return;
+	}
+	in_panic = true;
 	@stack_mem(512; Allocator allocator)
 	{
 		DString s;
 		s.new_init(.allocator = allocator);
 		s.appendf(fmt, ...args);
+		in_panic = false;
 		panic(s.str_view(), file, function, line);
 	};
 }
