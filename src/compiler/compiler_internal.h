@@ -3063,7 +3063,7 @@ INLINE bool decl_is_user_defined_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT) | (kind == DECL_BITSTRUCT)
-			| (kind == DECL_ENUM) | (kind == DECL_DISTINCT);
+			| (kind == DECL_ENUM) | (kind == DECL_TYPEDEF) || (kind == DECL_DISTINCT);
 }
 
 INLINE Decl *decl_flatten(Decl *decl)

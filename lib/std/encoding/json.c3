@@ -27,11 +27,13 @@ fn Object*! temp_parse_string(String s)
 
 fn Object*! parse(InStream s, Allocator allocator = allocator::heap())
 {
-	JsonContext context = { .last_string = dstring::new_with_capacity(64, allocator), .stream = s, .allocator = allocator };
-	defer context.last_string.free();
-	@pool(allocator)
+	@stack_mem(512; Allocator mem)
 	{
-		return parse_any(&context);
+		JsonContext context = { .last_string = dstring::new_with_capacity(64, mem), .stream = s, .allocator = allocator };
+		@pool(allocator)
+		{
+			return parse_any(&context);
+		};
 	};
 }
 
@@ -102,9 +104,9 @@ fn Object*! parse_any(JsonContext* context) @local
 
 fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 {
-	@pool()
+	@stack_mem(256; Allocator mem)
 	{
-		DString t = dstring::temp_with_capacity(32);
+		DString t = dstring::new_with_capacity(32, .allocator = mem);
 		bool negate = c == '-';
 		if (negate)
 		{
@@ -152,32 +154,34 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 fn Object*! parse_map(JsonContext* context) @local
 {
 	Object* map = object::new_obj(context.allocator);
-	JsonTokenType token = advance(context)!;
 	defer catch map.free();
+	JsonTokenType token = advance(context)!;
 
-	DString temp_key = dstring::new_with_capacity(32, context.allocator);
-	defer temp_key.free();
-	while (token != JsonTokenType.RBRACE)
+	@stack_mem(256; Allocator mem)
 	{
-		if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
-		DString string = context.last_string;
-		if (map.has_key(string.str_view())) return JsonParsingError.DUPLICATE_MEMBERS?;
-		// Copy the key to our temp holder. We do this to work around the issue
-		// if the temp allocator should be used as the default allocator.
-		temp_key.clear();
-		temp_key.append(string);
-		parse_expected(context, COLON)!;
-		Object* element = parse_any(context)!;
-		map.set(temp_key.str_view(), element);
-		token = advance(context)!;
-		if (token == JsonTokenType.COMMA)
+		DString temp_key = dstring::new_with_capacity(32, mem);
+		while (token != JsonTokenType.RBRACE)
 		{
+			if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
+			DString string = context.last_string;
+			if (map.has_key(string.str_view())) return JsonParsingError.DUPLICATE_MEMBERS?;
+			// Copy the key to our temp holder, since our
+			// last_string may be used in parse_any
+			temp_key.clear();
+			temp_key.append(string);
+			parse_expected(context, COLON)!;
+			Object* element = parse_any(context)!;
+			map.set(temp_key.str_view(), element);
 			token = advance(context)!;
-			continue;
+			if (token == JsonTokenType.COMMA)
+			{
+				token = advance(context)!;
+				continue;
+			}
+			if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER?;
 		}
-		if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER?;
-	}
-	return map;
+		return map;
+	};
 }
 
 fn Object*! parse_array(JsonContext* context) @local

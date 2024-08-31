@@ -128,9 +128,9 @@ fn void Object.free(&self)
 			self.array.free();
 		case ObjectInternalMap:
 			self.map.@each_entry(; ObjectInternalMapEntry* entry) {
-				allocator::free(self.allocator, entry.key);
 				entry.value.free();
 			};
+			self.map.free();
 		default:
 			break;
 	}
@@ -181,10 +181,9 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 	ObjectInternalMapEntry*! entry = self.map.get_entry(key);
 	defer
 	{
-		(void)allocator::free(self.allocator, entry.key);
 		(void)entry.value.free();
 	}
-	self.map.set(key.copy(self.map.allocator), new_object);
+	self.map.set(key, new_object);
 }
 
 macro Object* Object.object_from_value(&self, value) @private

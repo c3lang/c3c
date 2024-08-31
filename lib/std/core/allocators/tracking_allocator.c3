@@ -87,7 +87,6 @@ fn void*! TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, us
 	backtrace::capture_current(&bt);
 	self.map.set((uptr)data, { data, size, bt });
     self.mem_total += size;
-	self.allocs_total++;
 	return data;
 }
 

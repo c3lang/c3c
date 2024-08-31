@@ -95,6 +95,8 @@
 - Fix WASM memory init priority.
 - Fix bug with `defer (catch err)` when used together with regular defer.
 - Methods can now properly be aliased using `def` #1393.
+- Memory leak in Object when not using temp allocators.
+- Tracking allocator would double the allocations in the report.
 
 ### Stdlib changes
 
