@@ -110,7 +110,7 @@ fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
 	libc::free(old_ptr);
 }
 
-module std::core::mem::allocator @if(!env::WIN32 && !env::POSIX && !env::WASM_NOLIBC);
+module std::core::mem::allocator @if(!env::WIN32 && !env::POSIX && env::LIBC);
 import libc;
 
 fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
