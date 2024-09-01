@@ -16,6 +16,5 @@ void symtab_init(uint32_t max_size);
 void symtab_destroy();
 void print_syntax(BuildOptions *options);
 void vendor_fetch(BuildOptions *options);
-int find_padding_length(const char** str, const int count);
 
 extern const char* c3_suffix_list[3];

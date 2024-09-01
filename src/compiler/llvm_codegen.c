@@ -667,6 +667,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 
 LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
+	assert(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
 	assert(!llvm_is_global_eval(c));
 	assert(alignment > 0);
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(c->builder);

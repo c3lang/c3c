@@ -1434,15 +1434,3 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	return source_file_text_load(file, out);
 }
 
-int find_padding_length(const char** arr, const int count)
-{
-	int width = 0;
-	for (int i = 0; i < count; i++)
-	{
-		const char* str = arr[i];
-		int len = strlen(str);
-		if (width < len) width = len;
-	}
-	width += 2;
-	return width;
-}

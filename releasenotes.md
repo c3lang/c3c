@@ -99,6 +99,7 @@
 - Tracking allocator would double the allocations in the report.
 - `printf` will now show errors in the output when there are errors.
 - Bug where `if try` would work incorrectly in a macro.
+- Prevent loading / storing large structs with LLVM.
 
 ### Stdlib changes
 

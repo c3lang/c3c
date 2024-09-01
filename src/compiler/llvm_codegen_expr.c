@@ -4022,10 +4022,16 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	// Store catch/opt var
 	PUSH_CATCH_VAR_BLOCK(NULL, else_block);
 
-	// Emit the real value, this will cause an implicit jump to the else block on failure.
+	// Fold the real value, this will cause an implicit jump to the else block on failure.
 	BEValue real_value;
 	llvm_emit_exprid(c, &real_value, expr->binary_expr.left);
-	llvm_value_rvalue(c, &real_value);
+	bool was_address = llvm_value_is_addr(&real_value);
+	llvm_value_fold_optional(c, &real_value);
+	if (was_address && !llvm_temp_as_address(c, real_value.type))
+	{
+		was_address = false;
+		llvm_value_rvalue(c, &real_value);
+	}
 
 	// Restore.
 	POP_CATCH();
@@ -4043,26 +4049,49 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	// Emit the value here
 	BEValue else_value;
 	llvm_emit_exprid(c, &else_value, expr->binary_expr.right);
-	llvm_value_rvalue(c, &else_value);
+	llvm_value_fold_optional(c, &else_value);
+
+	// If else is a non-void, then fold as needed
+	if (else_value.type != type_void)
+	{
+		if (was_address)
+		{
+			llvm_value_addr(c, &else_value);
+		}
+		else
+		{
+			llvm_value_rvalue(c, &else_value);
+		}
+	}
 
 	LLVMBasicBlockRef else_block_exit = llvm_get_current_block_if_in_use(c);
 
 	// While the value may not be an optional, we may get a jump
 	// from this construction: foo() ?? (bar()?)
 	// In this case the else block is empty.
-	if (else_block_exit) llvm_emit_br(c, phi_block);
-
-	llvm_emit_block(c, phi_block);
-
 	if (!else_block_exit)
 	{
+		llvm_emit_block(c, phi_block);
 		*be_value = real_value;
 		return;
 	}
 
+	llvm_emit_br(c, phi_block);
+	llvm_emit_block(c, phi_block);
+
+	// Was there never a success, if so the result is the be_value.
 	if (!success_end_block)
 	{
 		*be_value = else_value;
+		return;
+	}
+
+	// Emit an address if the phi is was by address
+	if (was_address)
+	{
+		llvm_new_phi(c, be_value, "val", type_get_ptr(else_value.type), real_value.value, success_end_block, else_value.value, else_block_exit);
+		be_value->kind = BE_ADDRESS;
+		be_value->type = else_value.type;
 		return;
 	}
 

@@ -455,6 +455,7 @@ LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef poi
 void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *type);
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
 TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);
+bool llvm_temp_as_address(GenContext *c, Type *type);
 
 /// -- Aggregates --
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);

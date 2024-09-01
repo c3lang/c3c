@@ -18,6 +18,12 @@ void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *typ
 	llvm_store_to_ptr_raw_aligned(context, pointer, llvm_get_zero(context, type), type_abi_alignment(type));
 }
 
+bool llvm_temp_as_address(GenContext *c, Type *type)
+{
+	if (type_size(type) <= compiler.platform.width_pointer * 2 / 8) return false;
+	return type_is_abi_aggregate(type);
+}
+
 LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
 {
 	// If we have an address but not an aggregate, do a load.

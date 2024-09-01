@@ -257,7 +257,19 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 
 	if (ast->return_stmt.cleanup || ast->return_stmt.cleanup_fail)
 	{
-		if (has_return_value) llvm_value_rvalue(c, &return_value);
+		if (has_return_value)
+		{
+			if (llvm_temp_as_address(c, return_value.type))
+			{
+				LLVMValueRef temp = llvm_emit_alloca_aligned(c, return_value.type, "ret$temp");
+				llvm_store_to_ptr(c, temp, &return_value);
+				llvm_value_set_address_abi_aligned(&return_value, temp, return_value.type);
+			}
+			else
+			{
+				llvm_value_rvalue(c, &return_value);
+			}
+		}
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
 	}
 

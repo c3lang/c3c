@@ -5,7 +5,6 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-static bool context_next_is_path_prefix_start(ParseContext *c);
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
@@ -19,11 +18,6 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref);
 INLINE Decl *decl_new_var_current(ParseContext *c, TypeInfo *type, VarDeclKind kind)
 {
 	return decl_new_var(symstr(c), c->span, type, kind);
-}
-
-static bool context_next_is_path_prefix_start(ParseContext *c)
-{
-	return tok_is(c, TOKEN_IDENT) && peek(c) == TOKEN_SCOPE;
 }
 
 /**
