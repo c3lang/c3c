@@ -4556,7 +4556,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	PUSH_CATCH_VAR_BLOCK(error_var, panic_block);
 
 	llvm_emit_expr(c, be_value, expr->inner_expr);
-	llvm_value_rvalue(c, be_value);
+	llvm_value_fold_optional(c, be_value);
 
 	// Restore.
 	POP_CATCH();
