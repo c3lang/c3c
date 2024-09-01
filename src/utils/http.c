@@ -62,6 +62,19 @@ const char *download_file(const char *url, const char *resource, const char *fil
 	bool success = false;
 	if (!result || !WinHttpReceiveResponse(request, NULL)) goto END;
 
+	DWORD dwStatusCode = 0;
+	DWORD dwSize = sizeof(dwStatusCode);
+	if (!WinHttpQueryHeaders(request,
+							 WINHTTP_QUERY_STATUS_CODE | WINHTTP_QUERY_FLAG_NUMBER,
+							 WINHTTP_HEADER_NAME_BY_INDEX,
+							 &dwStatusCode, &dwSize, WINHTTP_NO_HEADER_INDEX))
+	{
+		error_exit("Failed to get status code when requesting 'http%s://%s%s'\n",
+				   (is_https ? "s": ""), url, resource);
+	}
+
+	if (dwStatusCode != 200) goto END;
+
 	char buffer[8192];
 	while (1)
 	{
@@ -80,7 +93,7 @@ END:
 	if (!success)
 	{
 		remove(file_path);
-		return str_printf("Failed to retrieve '%s%s'.", url, resource);
+		return str_printf("Failed to retrieve '%s%s' (Status code %d).", url, resource, dwStatusCode);
 	}
 	return NULL;
 }
