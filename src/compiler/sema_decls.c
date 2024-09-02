@@ -2393,6 +2393,8 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_OPTIONAL] = ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
+			[ATTRIBUTE_PARAM_IN] = ATTR_PARAM,
+			[ATTRIBUTE_PARAM_OUT] = ATTR_PARAM,
 			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
@@ -2577,6 +2579,12 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			return true;
 		case ATTRIBUTE_NOALIAS:
 			decl->var.no_alias = true;
+			return true;
+		case ATTRIBUTE_PARAM_IN:
+			decl->var.in_param = true;
+			return true;
+		case ATTRIBUTE_PARAM_OUT:
+			decl->var.out_param = true;
 			return true;
 		case ATTRIBUTE_IF:
 			if (!expr) RETURN_SEMA_ERROR(attr, "'@if' requires a boolean argument.");

@@ -344,6 +344,8 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_OPTIONAL] = KW_DEF("@optional");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
 	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("@packed");
+	attribute_list[ATTRIBUTE_PARAM_IN] = KW_DEF("@in");
+	attribute_list[ATTRIBUTE_PARAM_OUT] = KW_DEF("@out");
 	attribute_list[ATTRIBUTE_PRIVATE] = KW_DEF("@private");
 	attribute_list[ATTRIBUTE_PURE] = kw_at_pure;
 	attribute_list[ATTRIBUTE_PUBLIC] = KW_DEF("@public");
