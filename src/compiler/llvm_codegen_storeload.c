@@ -20,8 +20,17 @@ void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *typ
 
 bool llvm_temp_as_address(GenContext *c, Type *type)
 {
-	if (type_size(type) <= compiler.platform.width_pointer * 2 / 8) return false;
-	return type_is_abi_aggregate(type);
+	if (type_size(type) <= 2) return false;
+	switch (type_lowering(type)->type_kind)
+	{
+		case TYPE_SLICE:
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+			// Ok by value.
+			return false;
+		default:
+			return type_is_abi_aggregate(type);
+	}
 }
 
 LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
