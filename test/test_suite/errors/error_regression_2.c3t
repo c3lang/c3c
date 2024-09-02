@@ -530,7 +530,6 @@ entry:
   %retparam = alloca %Doc, align 8
   %result = alloca %Summary, align 8
   %literal = alloca %Summary, align 8
-  %taddr = alloca %Summary, align 8
   store ptr %0, ptr %url, align 8
   %ptradd = getelementptr inbounds i8, ptr %url, i64 8
   store i64 %1, ptr %ptradd, align 8
@@ -546,19 +545,16 @@ after_check:                                      ; preds = %entry
   %4 = load ptr, ptr %retparam, align 8
   %5 = call { ptr, i8 } @test.buildSummary(ptr %4)
   store { ptr, i8 } %5, ptr %result, align 8
-  %6 = load %Summary, ptr %result, align 8
   br label %phi_block
 
 else_block:                                       ; preds = %entry
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %literal, ptr align 8 @.__const.9, i32 16, i1 false)
-  %7 = load %Summary, ptr %literal, align 8
   br label %phi_block
 
 phi_block:                                        ; preds = %else_block, %after_check
-  %val = phi %Summary [ %6, %after_check ], [ %7, %else_block ]
-  store %Summary %val, ptr %taddr, align 8
-  %8 = load { ptr, i8 }, ptr %taddr, align 8
-  ret { ptr, i8 } %8
+  %val = phi ptr [ %result, %after_check ], [ %literal, %else_block ]
+  %6 = load { ptr, i8 }, ptr %val, align 8
+  ret { ptr, i8 } %6
 }
 
 ; Function Attrs:
