@@ -6,7 +6,7 @@
 *None yet*
 
 ### Fixes
-*None yet*
+- Issue where a lambda wasn't correctly registered as external. #1408
 
 ### Stdlib changes
 *None yet*

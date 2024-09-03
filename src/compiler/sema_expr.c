@@ -8772,7 +8772,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->alignment = type_alloca_alignment(decl->type);
 	// We will actually compile this into any module using it (from a macro) by necessity,
 	// so we'll declare it as weak and externally visible.
-	if (context->compilation_unit != decl->unit) decl->is_external_visible = true;
+	unit_register_external_symbol(context, decl);
 
 	// Before function analysis, lambda evaluation is deferred
 	if (unit->module->stage < ANALYSIS_FUNCTIONS)
