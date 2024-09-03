@@ -3527,6 +3527,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAMNAMES:
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_LEN:
@@ -3767,6 +3768,33 @@ static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Ty
 	return true;
 }
 
+static inline bool sema_create_const_param_names(SemaContext *context, Expr *expr, Type *type)
+{
+	assert(type->type_kind == TYPE_FUNC_PTR);
+	type = type->pointer;
+	Signature *sig = type->function.signature;
+	unsigned params = vec_size(sig->params);
+
+	Expr **name_exprs = params ? VECNEW(Expr*, params) : NULL;
+	for (unsigned i = 0; i < params; i++)
+	{
+		Decl *decl = sig->params[i];
+		size_t namestr_len = strlen(decl->name);
+		const char *namestr = str_copy(decl->name, namestr_len);
+		Expr *expr_element = expr_new(EXPR_CONST, expr->span);
+		expr_element->resolve_status = RESOLVE_DONE;
+		expr_element->type = type_string;
+		expr_element->const_expr = (ExprConst) {
+			.const_kind = CONST_STRING,
+			.bytes.ptr = namestr,
+			.bytes.len = namestr_len,
+		};
+		vec_add(name_exprs, expr_element);
+	}
+	expr_rewrite_const_untyped_list(expr, name_exprs);
+	return true;
+}
+
 static inline bool sema_create_const_associated(SemaContext *context, Expr *expr, Type *type)
 {
 	assert(type->type_kind == TYPE_ENUM);
@@ -3988,6 +4016,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_NAMEOF:
 		case TYPE_PROPERTY_NAN:
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAMNAMES:
 		case TYPE_PROPERTY_QNAMEOF:
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_TAGOF:
@@ -4234,6 +4263,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 					return false;
 			}
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAMNAMES:
 		case TYPE_PROPERTY_RETURNS:
 			return type_is_func_ptr(type);
 		case TYPE_PROPERTY_TAGOF:
@@ -4318,6 +4348,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		}
 		case TYPE_PROPERTY_PARAMS:
 			return sema_create_const_params(context, expr, flat);
+		case TYPE_PROPERTY_PARAMNAMES:
+			return sema_create_const_param_names(context, expr, flat);
 		case TYPE_PROPERTY_RETURNS:
 			expr_rewrite_const_typeid(expr, type_infoptr(flat->pointer->function.signature->rtype)->type);
 			return true;
