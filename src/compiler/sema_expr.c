@@ -4435,6 +4435,25 @@ static bool sema_expr_flatten_assign(Expr *expr)
 			return true;
 
 		}
+		case EXPR_SLICE:
+		{
+			if (!range_is_const(&expr->subscript_expr.range)) return false;
+			Expr *parent = exprptr(expr->subscript_expr.expr);
+			Type *flat_type = type_flatten(parent->type);
+			if (flat_type->type_kind != TYPE_SLICE) return false;
+			if (!sema_expr_flatten_assign(parent)) return false;
+			if (!expr_is_const_string(parent)) return false;
+
+			Range range = expr->subscript_expr.range;
+			assert(!range.start_from_end);
+			ArrayIndex start = exprptr(range.start)->const_expr.ixx.i.low;
+			int len = range_const_len(&range);
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_STRING;
+			expr->const_expr.bytes.ptr = parent->const_expr.bytes.ptr + start;
+			expr->const_expr.bytes.len = len;
+			return true;
+		}
 		case EXPR_SUBSCRIPT:
 		{
 			if (!range_is_const(&expr->subscript_expr.range)) return false;
