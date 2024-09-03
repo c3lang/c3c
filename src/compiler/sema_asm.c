@@ -1,12 +1,17 @@
+// Copyright (c) 2022-2024 Christoffer Lerno and contributors. All rights reserved.
+// Use of this source code is governed by a LGPLv3.0
+// a copy of which can be found in the LICENSE file.
+
 #include "sema_internal.h"
 #include "compiler/asm/x86.h"
 
-
+// Add a single clobber to a block.
 static inline void sema_add_clobber(AsmInlineBlock *block, unsigned index)
 {
 	clobbers_add(&block->clobbers, index);
 }
 
+// Add a full clobber mask to the clobbers.
 static inline void sema_add_clobbers(AsmInlineBlock *block, Clobbers *clobbers)
 {
 	for (unsigned i = 0; i < CLOBBER_FLAG_ELEMENTS; i++)
@@ -543,39 +548,33 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 	}
 	UNREACHABLE
 }
+
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt)
 {
-	if (compiler.platform.arch != ARCH_TYPE_X86_64 && 
-		compiler.platform.arch != ARCH_TYPE_AARCH64 && 
-		compiler.platform.arch != ARCH_TYPE_RISCV32 && 
-		compiler.platform.arch != ARCH_TYPE_RISCV64)
-	{
-		SEMA_ERROR(asm_stmt, "Unsupported architecture for asm.");
-		return false;
-	}
-	init_asm(&compiler.platform);
-	AsmInstruction *instr = asm_instr_by_name(&compiler.platform, asm_stmt->asm_stmt.instruction);
-	if (!instr)
-	{
-		SEMA_ERROR(asm_stmt, "Unknown instruction");
-		return false;
-	}
+	assert(compiler.platform.asm_initialized);
+
+	AsmInstruction *instr = asm_instr_by_name(asm_stmt->asm_stmt.instruction);
+	if (!instr) RETURN_SEMA_ERROR(asm_stmt, "Unknown instruction");
+
+	// Check arguments
 	Expr **args = asm_stmt->asm_stmt.args;
 	unsigned expected_params = instr->param_count;
 	unsigned arg_count = vec_size(args);
 	if (expected_params != arg_count)
 	{
-		SEMA_ERROR(asm_stmt, "Too %s arguments to instruction '%s', expected %d.",
-				   expected_params > arg_count ? "few" : "many",
-				   instr->name, expected_params);
-		return false;
+		RETURN_SEMA_ERROR(asm_stmt, "Too %s arguments to instruction '%s', expected %d.",
+						  expected_params > arg_count ? "few" : "many",
+						  instr->name, expected_params);
 	}
+
+	// Sema check each argument.
 	for (unsigned i = arg_count; i > 0; i--)
 	{
 		if (!sema_check_asm_arg(context, block, instr, instr->param[i - 1], args[i - 1])) return false;
 	}
+
+	// Add clobbers
 	sema_add_clobbers(block, &instr->mask);
-	//const char *variant = asm_stmt->asm_stmt.variant;
 	return true;
 }
 

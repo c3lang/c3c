@@ -219,13 +219,13 @@ INLINE void reg_register_list(PlatformTarget *target, const char **names, unsign
 	for (unsigned i = 0; i < count; i++) reg_register(target, names[i], param, bitsize, i + first_clobber);
 }
 
-AsmInstruction *asm_instr_by_name(PlatformTarget *target, const char *name)
+AsmInstruction *asm_instr_by_name(const char *name)
 {
 	uint32_t hash = ASM_PTR_HASH(name);
 	uint32_t slot = hash & ASM_INSTRUCTION_MASK;
 	while (1)
 	{
-		AsmInstruction *inst = &target->instructions[slot];
+		AsmInstruction *inst = &compiler.platform.instructions[slot];
 		if (inst->name == name) return inst;
 		if (inst->name == NULL) return NULL;
 		slot = (slot + 1) & ASM_INSTRUCTION_MASK;
@@ -608,13 +608,28 @@ static void init_asm_x86(PlatformTarget* target)
 		reg_register_list(target, x86_zmm_regs, 16, ASM_REF_FVEC, ARG_BITS_512, X86_XMM0);
 	}
 }
+
+bool asm_is_supported(ArchType arch)
+{
+	switch (arch)
+	{
+		case ARCH_TYPE_X86:
+		case ARCH_TYPE_X86_64:
+		case ARCH_TYPE_RISCV32:
+		case ARCH_TYPE_RISCV64:
+		case ARCH_TYPE_AARCH64:
+			return true;
+		default:
+			return false;
+	}
+}
+
 void init_asm(PlatformTarget *target)
 {
 	if (target->asm_initialized) return;
 	target->asm_initialized = true;
 	switch (target->arch)
 	{
-		case ARCH_UNSUPPORTED:
 		case ARCH_TYPE_X86_64:
 		case ARCH_TYPE_X86:
 			init_asm_x86(target);
@@ -647,6 +662,8 @@ void init_asm(PlatformTarget *target)
 		case ARCH_TYPE_RISCV64:
 			init_asm_riscv(target);
 			return;
+		case ARCH_UNSUPPORTED:
+			error_exit("Arch is unsupported and does not support inline asm.");
 	}
 	UNREACHABLE
 }

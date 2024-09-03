@@ -54,6 +54,13 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
 static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
 	if (stmt->asm_block_stmt.is_string) return sema_analyse_asm_string_stmt(context, stmt);
+	// Check for support
+	if (!asm_is_supported(compiler.platform.arch))
+	{
+		RETURN_SEMA_ERROR(stmt, "This architecture does not support inline asm.");
+	}
+	// Init as needed.
+	init_asm(&compiler.platform);
 	AsmInlineBlock *block = stmt->asm_block_stmt.block;
 	AstId ast_id = block->asm_stmt;
 	scratch_buffer_clear();
@@ -67,11 +74,9 @@ static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 }
 
 /**
- * assert(foo), assert(foo, message), assert(try foo), assert(try foo, message)
+ * assert(foo), assert(foo, message, ...)
  *
- * - Using the try construct we implicitly unpack the variable if present.
- * - assert(false) will implicitly make the rest of the code marked as unreachable.
- * - assert might also be used for 'ensure' and in this case violating it is a compile time error.
+ * - assert(false) is a compile time error.
  */
 static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement)
 {
@@ -86,7 +91,8 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		FOREACH(Expr *, e, statement->assert_stmt.args)
 		{
 			if (!sema_analyse_expr(context, e)) return false;
-			if (IS_OPTIONAL(e)) RETURN_SEMA_ERROR(e, "Optionals cannot be used as assert arguments, use '?" "?', '!' or '!!' to fix this.");
+			if (IS_OPTIONAL(e)) RETURN_SEMA_ERROR(e, "Optionals cannot be used as assert arguments, use '?"
+													 "?', '!' or '!!' to fix this.");
 			if (type_is_void(e->type)) RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
 		}
 	}
@@ -102,41 +108,42 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	if (!sema_analyse_cond_expr(context, expr, &result)) return false;
 
 	// If it's constant, we process it differently.
-	if (result != COND_MISSING)
+	switch (result)
 	{
-		// It's true, then replace the statement with a nop.
-		if (expr->const_expr.b)
-		{
+		case COND_TRUE:
+			// It's true, then replace the statement with a nop.
 			statement->ast_kind = AST_NOP_STMT;
 			return true;
-		}
-		// Was this 'assert(false)'?
-		if (result_no_resolve == COND_FALSE)
-		{
-			assert(result == COND_FALSE);
-			// If this is a test, then assert(false) is permitted.
-			if (context->call_env.current_function && context->call_env.current_function->func_decl.attr_test)
+		case COND_FALSE:
+			// Was this 'assert(false)'?
+			if (result_no_resolve == COND_FALSE)
 			{
-				context->active_scope.jump_end = true;
-				return true;
+				// If this is a test, then assert(false) is permitted.
+				if (context->call_env.current_function && context->call_env.current_function->func_decl.attr_test)
+				{
+					context->active_scope.jump_end = true;
+					return true;
+				}
+				// Otherwise, require unreachable.
+				RETURN_SEMA_ERROR(expr, "Use 'unreachable' instead of 'assert(false)'.");
 			}
-			// Otherwise, require unreachable.
-			RETURN_SEMA_ERROR(expr, "Use 'unreachable' instead of 'assert(false)'.");
-		}
-
-		// If it's ensure (and an error) we print an error.
-		if (!context->active_scope.jump_end && !context->active_scope.is_dead)
-		{
-			if (message_expr && sema_cast_const(message_expr) && vec_size(statement->assert_stmt.args))
+			// Otherwise we print an error.
+			if (!context->active_scope.jump_end && !context->active_scope.is_dead)
 			{
-				RETURN_SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
+				if (message_expr && sema_cast_const(message_expr) && vec_size(statement->assert_stmt.args))
+				{
+					RETURN_SEMA_ERROR(expr, "%.*s", EXPAND_EXPR_STRING(message_expr));
+				}
+				if (statement->assert_stmt.is_ensure) RETURN_SEMA_ERROR(expr, "Contract violated.");
+				RETURN_SEMA_ERROR(expr, "This expression will always be 'false'.");
 			}
-			if (statement->assert_stmt.is_ensure) RETURN_SEMA_ERROR(expr, "Contract violated.");
-			RETURN_SEMA_ERROR(expr, "This expression will always be 'false'.");
-		}
-		// Otherwise, continue, this is fine as it can't be reached.
+			// Otherwise, continue, this is fine as it can't be reached.
+			return true;
+		case COND_MISSING:
+			// If the assert isn't compile time resolvable, we keep the assert.
+			return true;
 	}
-	return true;
+	UNREACHABLE
 }
 
 /**
