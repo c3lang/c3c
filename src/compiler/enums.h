@@ -1016,13 +1016,6 @@ typedef enum
 	STORAGE_UNKNOWN
 } StorageType;
 
-typedef enum
-{
-	SUBSCRIPT_EVAL_VALUE,
-	SUBSCRIPT_EVAL_REF,
-	SUBSCRIPT_EVAL_ASSIGN,
-	SUBSCRIPT_EVAL_VALID,
-} SubscriptEval;
 
 typedef enum
 {

@@ -19,7 +19,13 @@
 
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
-
+#ifdef NDEBUG
+#define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
+#define ASSERT_SPAN(node__, check__) do { } while(0)
+#else
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); assert(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); assert(check__); } } while(0)
+#endif
 #define SCOPE_OUTER_START do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE);
 #define SCOPE_OUTER_END assert(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
 #define SCOPE_START SCOPE_START_WITH_FLAGS(SCOPE_NONE)
@@ -81,8 +87,10 @@ void sema_analyze_stage(Module *module, AnalysisStage stage);
 void sema_trace_liveness(void);
 
 Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing);
+bool sema_analyse_expr_address(SemaContext *context, Expr *expr);
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr);
-bool sema_analyse_expr_lvalue_fold_const(SemaContext *context, Expr *expr);
+
+bool sema_analyse_expr_value(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
 Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload operator_overload);
@@ -112,6 +120,18 @@ INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right);
+
+INLINE void assert_print_line(SourceSpan span)
+{
+	if (span.row == 0)
+	{
+		eprintf("Assert analysing code at unknown location:\n");
+		return;
+	}
+	File *file = source_file_by_id(span.file_id);
+	eprintf("Assert analysing '%s' at row %d, col %d.\n", file->name, span.row, span.col);
+}
+
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
