@@ -230,7 +230,10 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				break;
 		}
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
-		if (decl->visibility == VISIBLE_PUBLIC) global_context_add_generic_decl(decl);
+		if (decl->visibility == VISIBLE_PUBLIC && decl->decl_kind != DECL_MACRO)
+		{
+			global_context_add_generic_decl(decl);
+		}
 	}
 }
 
