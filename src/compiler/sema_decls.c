@@ -3646,7 +3646,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			if ((init = decl->var.init_expr))
 			{
 				// Try to fold any constant into an lvalue.
-				if (!sema_analyse_expr_lvalue_fold_const(context, init)) goto FAIL;
+				if (!sema_analyse_expr_value(context, init)) goto FAIL;
 
 				// If this isn't a type, it's an error.
 				if (init->expr_kind != EXPR_TYPEINFO)
@@ -4266,7 +4266,7 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 	if (*erase_decl) return true;
 
 	Expr *expr = decl->define_decl.alias_expr;
-	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
+	if (!sema_analyse_expr_value(context, expr)) return false;
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		RETURN_SEMA_ERROR(decl, "To alias a type, the alias name must start with uppercase and contain at least one lowercase letter.");
