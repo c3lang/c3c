@@ -215,12 +215,10 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_BODYPARAM:
 			case DECL_GLOBALS:
 				UNREACHABLE
-			case DECL_MACRO:
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
 			case DECL_FAULT:
-			case DECL_FUNC:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:
 			case DECL_UNION:
@@ -228,9 +226,13 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_BITSTRUCT:
 			case DECL_INTERFACE:
 				break;
+			case DECL_MACRO:
+			case DECL_FUNC:
+				if (decl->func_decl.type_parent) continue;
+				break;
 		}
 		htable_set(&unit->module->symbols, (void *)decl->name, decl);
-		if (decl->visibility == VISIBLE_PUBLIC && decl->decl_kind != DECL_MACRO)
+		if (decl->visibility == VISIBLE_PUBLIC)
 		{
 			global_context_add_generic_decl(decl);
 		}
