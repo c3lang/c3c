@@ -337,7 +337,9 @@ add_executable(c3c
         src/utils/http.c
         src/compiler/sema_liveness.c
         src/build/common_build.c
-        ${CMAKE_BINARY_DIR}/git_hash.h)
+        src/compiler/sema_const.c
+        ${CMAKE_BINARY_DIR}/git_hash.h
+        )
 
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     # We are inside of a git repository so rebuilding the hash every time something changes.

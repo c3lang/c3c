@@ -64,7 +64,7 @@ typedef uint16_t FileId;
 #define RETURN_PRINT_ERROR_HERE(...) do { print_error_at(c->span, __VA_ARGS__); return false; } while (0)
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
-#define SEMA_NOTE(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
+#define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 
@@ -2245,7 +2245,7 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTy
 
 void print_error_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
-void sema_error_prev_at(SourceSpan loc, const char *message, ...);
+void sema_note_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
 void print_error(ParseContext *context, const char *message, ...);
 

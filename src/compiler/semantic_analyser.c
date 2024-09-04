@@ -513,7 +513,7 @@ void sema_print_inline(SemaContext *context)
 	InliningSpan *inlined_at = context->inlined_at;
 	while (inlined_at)
 	{
-		sema_error_prev_at(inlined_at->span, "Inlined from here.");
+		sema_note_prev_at(inlined_at->span, "Inlined from here.");
 		inlined_at = inlined_at->prev;
 	}
 }

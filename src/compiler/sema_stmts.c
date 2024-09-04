@@ -23,7 +23,7 @@ static inline bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *stateme
 static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
-static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr);
+static inline bool sema_check_return_matches_opt_returns(SemaContext *context, Expr *ret_expr);
 static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom);
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
@@ -366,14 +366,26 @@ static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, As
 	stmt->return_stmt.cleanup_fail = stmt->return_stmt.cleanup ? astid(copy_ast_defer(astptr(stmt->return_stmt.cleanup))) : 0;
 }
 
-static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr)
+/**
+ * Check that an optional returned actually matches the "returns!" declared
+ * by the contract.
+ */
+static inline bool sema_check_return_matches_opt_returns(SemaContext *context, Expr *ret_expr)
 {
 	if (!IS_OPTIONAL(ret_expr) || !context->call_env.opt_returns) return true;
+
+	// TODO if this is a call, then we should check against
+	// the "return!" in that call.
+	// But for now we
 	if (ret_expr->expr_kind != EXPR_OPTIONAL) return true;
 	Expr *inner = ret_expr->inner_expr;
 	if (!sema_cast_const(inner)) return true;
+
+	// Here we have a const optional return.
 	assert(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
 	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
+
+	// Check that we find it.
 	FOREACH(Decl *, opt, context->call_env.opt_returns)
 	{
 		if (opt->decl_kind == DECL_FAULT)
@@ -383,6 +395,7 @@ static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *con
 		}
 		if (opt == fault) return true;
 	}
+	// No match
 	RETURN_SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
 }
 
@@ -465,7 +478,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		{
 			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
-		if (is_macro && !sema_return_optional_check_is_valid_in_scope(context, ret_expr)) return false;
+		if (is_macro && !sema_check_return_matches_opt_returns(context, ret_expr)) return false;
 
 	}
 	else
@@ -571,7 +584,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	{
 		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype), NULL, false)) return false;
 		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
-		if (!sema_return_optional_check_is_valid_in_scope(context, return_expr)) return false;
+		if (!sema_check_return_matches_opt_returns(context, return_expr)) return false;
 	}
 	else
 	{

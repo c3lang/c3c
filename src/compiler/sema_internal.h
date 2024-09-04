@@ -111,6 +111,7 @@ Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
+bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right);
 
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result)
 {
@@ -158,3 +159,18 @@ INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 	sema_warning_at(span, "'%s' is deprecated.", decl->name);
 }
 
+static inline IndexDiff range_const_len(Range *range)
+{
+	Expr *start = exprptr(range->start);
+	Expr *end = exprptrzero(range->end);
+	if (!end || !expr_is_const_int(end)) return -1;
+	if (!int_fits(end->const_expr.ixx, TYPE_I32)) return -1;
+	IndexDiff end_val = (IndexDiff)int_to_i64(end->const_expr.ixx);
+	if (range->is_len) return end_val;
+	if (!expr_is_const_int(start)) return -1;
+	if (!int_fits(start->const_expr.ixx, TYPE_I32)) return -1;
+	IndexDiff start_val = (IndexDiff)int_to_i64(start->const_expr.ixx);
+	if (range->start_from_end && range->end_from_end) return start_val - end_val + 1;
+	if (range->start_from_end != range->end_from_end) return -1;
+	return end_val - start_val + 1;
+}
