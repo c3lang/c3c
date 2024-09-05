@@ -296,6 +296,7 @@ struct TypeInfo_
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool optional : 1;
+	bool in_def : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;

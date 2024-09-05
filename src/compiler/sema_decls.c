@@ -1382,6 +1382,7 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 		return true;
 	}
 	TypeInfo *info = decl->typedef_decl.type_info;
+	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 	decl->type->canonical = info->type->canonical;
 	// Do we need anything else?
@@ -1404,6 +1405,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 	// Infer the underlying type normally.
 	TypeInfo *info = decl->distinct;
+	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 
 	// Optional isn't allowed of course.

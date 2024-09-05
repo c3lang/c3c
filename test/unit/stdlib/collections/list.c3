@@ -9,9 +9,10 @@ struct Overalign
 	float[<4>] x @align(128);
 }
 
+def OveralignList = List(<Overalign>);
 fn void overaligned_type()
 {
-	List(<Overalign>) l;
+	OveralignList l;
 	Overalign y;
 	for (int i = 0; i < 1000; i++) l.push(y);
 	assert((usz)l.get_ref(2) - (usz)l.get_ref(1) == Overalign.sizeof);

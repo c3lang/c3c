@@ -2,8 +2,10 @@ import std::thread;
 import std::io;
 import std::atomic::types;
 
-Atomic(<uint>) a;
-Atomic(<float>) fa;
+def AtomicUint = Atomic(<uint>);
+def AtomicFloat = Atomic(<float>);
+AtomicUint a;
+AtomicFloat fa;
 
 fn void! add() @test
 {

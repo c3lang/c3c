@@ -8,6 +8,8 @@
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
 - Generic methods were incorrectly registered as functions, leading to naming collisions. #1402
+- Deprecated inline generic types.
+- Deprecated tuple / triple types.
 
 ### Stdlib changes
 *None yet*
