@@ -288,7 +288,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		{
 			if (str_eq(feature, remove_feature))
 			{
-				vec_erase_ptr_at(target->feature_list, i);
+				vec_erase_at(target->feature_list, i);
 				break;
 			}
 		}

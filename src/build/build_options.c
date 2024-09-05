@@ -516,7 +516,7 @@ void update_feature_flags(const char ***flags, const char ***removed_flags, cons
 	{
 		if (str_eq(value, arg))
 		{
-			vec_erase_ptr_at(*to_remove_from, i);
+			vec_erase_at(*to_remove_from, i);
 			break;
 		}
 	}

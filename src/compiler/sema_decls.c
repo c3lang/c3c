@@ -332,7 +332,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		// If we need to erase it then do so.
 		if (erase_decl)
 		{
-			vec_erase_ptr_at(members, i);
+			vec_erase_at(members, i);
 			member_count--;
 			// Go back and take the next one.
 			if (i < member_count) goto AGAIN;
@@ -503,7 +503,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		// If we should erase it, do so.
 		if (erase_decl)
 		{
-			vec_erase_ptr_at(struct_members, i);
+			vec_erase_at(struct_members, i);
 			member_count--;
 			if (i < member_count) goto AGAIN;
 			break;
@@ -963,14 +963,14 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		{
 			// This is necessary in order to allow this check to run again.
 			decl_poison(method);
-			vec_erase_ptr_at(method->func_decl.signature.params, 0);
+			vec_erase_at(method->func_decl.signature.params, 0);
 			return false;
 		}
 
 		// We might need to erase the function.
 		if (erase)
 		{
-			vec_erase_ptr_at(functions, i);
+			vec_erase_at(functions, i);
 			count--;
 			if (i >= count) break;
 			goto RETRY;
@@ -1071,7 +1071,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 		if (!sema_analyse_bitstruct_member(context, decl, member, i, decl->bitstruct.overlap, &erase_decl_member)) goto ERROR;
 		if (erase_decl_member)
 		{
-			vec_erase_ptr_at(members, i);
+			vec_erase_at(members, i);
 			member_count--;
 			if (i < member_count) goto AGAIN;
 			break;
@@ -1508,7 +1508,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
 				return decl_poison(decl);
 			}
-			vec_erase_ptr_at(enum_values, i);
+			vec_erase_at(enum_values, i);
 			enums--;
 			i--;
 			continue;

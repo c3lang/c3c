@@ -196,7 +196,7 @@ static inline uint32_t fnv1a(const char *key, uint32_t len);
 INLINE uint32_t vec_size(const void *vec);
 static inline void vec_resize(void *vec, uint32_t new_size);
 static inline void vec_pop(void *vec);
-static inline void vec_erase_ptr_at(void *vec, unsigned i);
+static inline void vec_erase_at(void *vec, unsigned i);
 
 #define NUMBER_CHAR_CASE '0': case '1': case '2': case '3': case '4': case '5': case '6': case '7': case '8': case '9'
 #define UPPER_CHAR_CASE 'A': case 'B': case 'C': case 'D': case 'E': case 'F': case 'G': case 'H': case 'I': case 'J': \
@@ -272,7 +272,7 @@ static inline void vec_pop(void *vec)
 	header[-1].size--;
 }
 
-static inline void vec_erase_ptr_at(void *vec, unsigned i)
+static inline void vec_erase_at(void *vec, unsigned i)
 {
 	assert(vec);
 	unsigned size = vec_size(vec);
