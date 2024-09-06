@@ -7069,6 +7069,7 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 	else
 	{
 		llvm_emit_expr(c, value, expr->default_arg_expr.inner);
+		llvm_value_fold_optional(c, value);
 	}
 }
 
