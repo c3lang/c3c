@@ -2049,7 +2049,7 @@ bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool
 
 void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
 
-bool cast_to_index(SemaContext *context, Expr *index);
+bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);

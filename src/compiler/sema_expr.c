@@ -1940,7 +1940,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
 
-	if (context->macro_call_depth > 256)
+	if (context->macro_call_depth > 200)
 	{
 		decl->decl_kind = DECL_POISONED;
 		RETURN_SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached, "
@@ -2980,7 +2980,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 
 	// Cast to an appropriate type for index.
-	if (!cast_to_index(context, index)) return false;
+	if (!cast_to_index(context, index, subscripted->type)) return false;
 
 	// Check range
 	bool remove_from_back = false;
@@ -3090,8 +3090,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	if (type == type_voidptr) inner_type = type_char;
 	if (!inner_type || !type_is_valid_for_array(inner_type))
 	{
-		SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
-		return false;
+		RETURN_SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 	}
 	expr->subscript_expr.expr = exprid(current_expr);
 
@@ -3099,8 +3098,8 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	if (end && !sema_analyse_expr(context, end)) return false;
 
 	// Fix index sizes
-	if (!cast_to_index(context, start)) return false;
-	if (end && !cast_to_index(context, end)) return false;
+	if (!cast_to_index(context, start, subscripted->type)) return false;
+	if (end && !cast_to_index(context, end, subscripted->type)) return false;
 	if (end && end->type != start->type)
 	{
 		Type *common = type_find_max_type(start->type, end->type);

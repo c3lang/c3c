@@ -1239,7 +1239,7 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 	}
 
 	// Unless we already have type_usz, cast to type_isz;
-	if (!cast_to_index(context, index))
+	if (!cast_to_index(context, index, NULL))
 	{
 		return -1;
 	}
