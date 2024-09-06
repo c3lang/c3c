@@ -53,6 +53,80 @@ fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, f
 	return self.init(allocator::temp(), capacity, load_factor) @inline;
 }
 
+/**
+ * @param [&inout] allocator "The allocator to use"
+ * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+macro HashMap* HashMap.new_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+{
+	self.new_init(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
+	$for (var $i = 0; $i < $vacount; $i += 2)
+		self.set($vaarg[$i], $vaarg[$i+1]);
+	$endfor
+	return self;
+}
+
+/**
+ * @param [in] keys "The keys for the HashMap entries"
+ * @param [in] values "The values for the HashMap entries"
+ * @param [&inout] allocator "The allocator to use"
+ * @require keys.len == values.len "Both keys and values arrays must be the same length"
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+fn HashMap* HashMap.new_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+{
+	assert(keys.len == values.len);
+	self.new_init(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
+	for (usz i = 0; i < keys.len; i++)
+	{
+		self.set(keys[i], values[i]);
+	}
+	return self;
+}
+
+/**
+ * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+macro HashMap* HashMap.temp_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+{
+	self.temp_init(.capacity = capacity, .load_factor = load_factor);
+	$for (var $i = 0; $i < $vacount; $i += 2)
+		self.set($vaarg[$i], $vaarg[$i+1]);
+	$endfor
+	return self;
+}
+
+/**
+ * @param [in] keys "The keys for the HashMap entries"
+ * @param [in] values "The values for the HashMap entries"
+ * @param [&inout] allocator "The allocator to use"
+ * @require keys.len == values.len "Both keys and values arrays must be the same length"
+ * @require capacity > 0 "The capacity must be 1 or higher"
+ * @require load_factor > 0.0 "The load factor must be higher than 0"
+ * @require !self.allocator "Map was already initialized"
+ * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ **/
+fn HashMap* HashMap.temp_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+{
+	assert(keys.len == values.len);
+	self.temp_init(.capacity = capacity, .load_factor = load_factor);
+	for (usz i = 0; i < keys.len; i++)
+	{
+		self.set(keys[i], values[i]);
+	}
+	return self;
+}
 
 /**
  * Has this hash map been initialized yet?
