@@ -131,15 +131,13 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
                                               bool optional, bool *no_match_ref);
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl,
                                                Expr *struct_var, bool optional, bool *no_match_ref);
-static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee,
-                                                bool *optional, bool *no_match_ref);
+
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl, Type *type, Expr *expr,
                                                      Expr *struct_var,
                                                      bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
-INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, unsigned func_param_count,
-                                       Variadic variadic, unsigned vaarg_index, bool *optional, Expr ***varargs_ref,
-                                       Expr **vararg_splat_ref, bool *no_match_ref);
+INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
+                                         bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
@@ -1226,293 +1224,6 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 	return true;
 }
 
-
-INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, unsigned func_param_count,
-                                       Variadic variadic, unsigned vaarg_index, bool *optional, Expr ***varargs_ref,
-                                       Expr **vararg_splat_ref, bool *no_match_ref)
-{
-	Expr **args = call->call_expr.arguments;
-	unsigned num_args = vec_size(args);
-	Decl **params = callee->params;
-
-	assert(func_param_count < MAX_PARAMS);
-	Expr **actual_args = VECNEW(Expr*, func_param_count);
-	for (unsigned i = 0; i < func_param_count; i++)
-	{
-		vec_add(actual_args, NULL);
-	}
-
-	// 2. Loop through the parameters.
-	bool has_named = false;
-	bool found_splat = false;
-	ArrayIndex last_index = -1;
-	Expr *last_named_arg;
-	for (unsigned i = 0; i < num_args; i++)
-	{
-		Expr *arg = args[i];
-		assert(expr_ok(arg));
-		if (arg->expr_kind == EXPR_VASPLAT)
-		{
-			// If it was the last element then just append.
-			if (i == num_args - 1)
-			{
-				vec_pop(args);
-				args = sema_vasplat_append(context, args, arg);
-				if (!args) return false;
-				num_args = vec_size(args);
-				i--;
-				continue;
-			}
-			// Otherwise append to the end.
-			args = sema_vasplat_append(context, args, arg);
-			if (!args) return false;
-			unsigned new_size = vec_size(args);
-			// Same after size => then just remove the $vasplat
-			if (new_size == num_args)
-			{
-				vec_erase_at(args, i);
-				i--;
-				continue;
-			}
-			unsigned added_elements = new_size - num_args;
-			// Copy those elements
-			for (unsigned j = 0; j < added_elements; j++)
-			{
-				unsigned dest = i + j;
-				unsigned source = num_args + j;
-				// Copy the next element to the index position.
-				args[dest] = args[source];
-				// Copy the following into the place of the index.
-				args[source] = args[dest + 1];
-			}
-			vec_pop(args);
-			num_args = new_size - 1;
-			i--;
-			continue;
-		}
-		if (arg->expr_kind == EXPR_SPLAT)
-		{
-			if (variadic == VARIADIC_NONE)
-			{
-				RETURN_SEMA_ERROR(arg, "Splat is only possible with variadic functions.");
-			}
-			if (i != vaarg_index)
-			{
-				RETURN_SEMA_ERROR(arg, "Expected a splat only in the vaarg slot.");
-			}
-			call->call_expr.va_is_splat = true;
-			*vararg_splat_ref = args[i] = arg->inner_expr;
-			continue;
-		}
-		if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
-		{
-			// Find the location of the parameter.
-			int index = sema_call_find_index_of_named_parameter(context, params, arg);
-
-			// If it's not found then this is an error. Let's not invoke nomatch
-			if (index < 0) return false;
-
-			// We have named parameters, that will add some restrictions.
-			has_named = true;
-
-			// 8d. We might actually be finding the typed vararg at the end,
-			//     this is an error.
-			if (params[index]->var.vararg)
-			{
-				RETURN_SEMA_FUNC_ERROR(callee->definition, arg, "Vararg parameters may not be named parameters, "
-				                                                "use normal parameters instead.", params[index]->name);
-			}
-
-			// 8e. We might have already set this parameter, that is not allowed.
-			if (actual_args[index])
-			{
-				RETURN_SEMA_ERROR(arg, "The parameter '%s' was already set.", params[index]->name);
-			}
-
-			if (last_index > index)
-			{
-				SEMA_ERROR(arg, "Named arguments must always be declared in order.");
-				SEMA_NOTE(last_named_arg, "Place it before this argument.");
-				return false;
-			}
-			last_index = index;
-			last_named_arg = arg;
-			actual_args[index] = arg->named_argument_expr.value;
-			continue;
-		}
-		if (*vararg_splat_ref)
-		{
-			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
-			                       "This looks like an argument after a splatted variable, which "
-			                       "isn't allowed. Did you add too many arguments?");
-		}
-		if (has_named)
-		{
-			RETURN_SEMA_FUNC_ERROR(callee->definition, args[i - 1],
-								   "Named arguments must be placed after positional arguments.");
-		}
-
-		// 11. We might have a typed variadic argument.
-		if (variadic == VARIADIC_NONE && i >= func_param_count)
-		{
-			// 15. We have too many parameters...
-			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
-								   "This argument would exceed the number of parameters, "
-								   "did you add too many arguments?");
-		}
-
-		// 10. If we exceed the function parameter count (remember we reduced this by one
-		//     in the case of typed vararg) we're now in a variadic list.
-		if (variadic != VARIADIC_NONE && i >= vaarg_index)
-		{
-			if (variadic == VARIADIC_ANY)
-			{
-				if (!sema_analyse_expr(context, arg)) return false;
-				Type *type = arg->type;
-				if (type_storage_type(type) != STORAGE_NORMAL)
-				{
-					RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
-					                  type_quoted_error_string(type));
-				}
-				expr_insert_addr(arg);
-			}
-			vec_add(*varargs_ref, arg);
-			continue;
-		}
-		actual_args[i] = arg;
-	}
-
-	call->call_expr.arguments = args;
-	// 17. Set default values.
-	for (unsigned i = 0; i < func_param_count; i++)
-	{
-		// 17a. Assigned a value - skip
-		if (actual_args[i]) continue;
-		if (i == vaarg_index && variadic != VARIADIC_NONE) continue;
-
-		// 17b. Set the init expression.
-		Decl *param = params[i];
-		Expr *init_expr = param->var.init_expr;
-		if (init_expr)
-		{
-			Expr *arg = copy_expr_single(init_expr);
-			if (arg->resolve_status != RESOLVE_DONE)
-			{
-
-				SemaContext default_context;
-				Type *rtype = NULL;
-				SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
-				bool success;
-				SCOPE_START
-					new_context->original_inline_line = context->original_inline_line ? context->original_inline_line : call->span.row;
-					new_context->original_module = context->original_module;
-					success = sema_analyse_expr_rhs(new_context, param->type, arg, true, no_match_ref, false);
-				SCOPE_END;
-				sema_context_destroy(&default_context);
-				if (!success)
-				{
-					RETURN_NOTE_FUNC_DEFINITION;
-				}
-			}
-			if (sema_cast_const(arg))
-			{
-				switch (param->var.kind)
-				{
-					case VARDECL_PARAM_CT:
-					case VARDECL_PARAM_CT_TYPE:
-						actual_args[i] = arg;
-						continue;
-					default:
-						break;
-				}
-			}
-			Expr *function_scope_arg = expr_new(EXPR_DEFAULT_ARG, arg->span);
-			function_scope_arg->resolve_status = RESOLVE_DONE;
-			function_scope_arg->type = arg->type;
-			function_scope_arg->default_arg_expr.inner = arg;
-			function_scope_arg->default_arg_expr.loc = callee->call_location;
-			actual_args[i] = function_scope_arg;
-			continue;
-		}
-
-		// 17c. Vararg not set? That's fine.
-		if (param->var.vararg) continue;
-
-		// 17d. Argument missing, that's bad.
-		if (!has_named || !param->name)
-		{
-			if (no_match_ref) goto NO_MATCH_REF;
-			if (func_param_count == 1)
-			{
-				if (param->type)
-				{
-					RETURN_SEMA_FUNC_ERROR(callee->definition, call,
-										   "This call expected a parameter of type %s, did you forget it?",
-									  type_quoted_error_string(param->type));
-				}
-				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "This call expected a parameter, did you forget it?");
-			}
-			if (variadic != VARIADIC_NONE && i > vaarg_index)
-			{
-				if (!param)
-				{
-					print_error_after(args[num_args - 1]->span, "Argument #%d is not set.", i);
-					RETURN_NOTE_FUNC_DEFINITION;
-				}
-				print_error_after(args[num_args - 1]->span, "Expected '%s: ...' after this argument.", param->name);
-				RETURN_NOTE_FUNC_DEFINITION;
-			}
-			if (num_args > (callee->struct_var ? 1 : 0))
-			{
-				unsigned needed = func_param_count - num_args;
-				RETURN_SEMA_FUNC_ERROR(callee->definition, args[num_args - 1],
-				                  "Expected %d more %s after this one, did you forget %s?",
-				                  needed, needed == 1 ? "argument" : "arguments", needed == 1 ? "it" : "them");
-			}
-			RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
-							  callee->name, callee->struct_var ? func_param_count - 1 : func_param_count);
-		}
-		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
-	}
-	call->call_expr.arguments = actual_args;
-	return true;
-NO_MATCH_REF:
-	*no_match_ref = true;
-	return false;
-}
-
-static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr)
-{
-	if (param->var.not_null && expr_is_const_pointer(expr) && !expr->const_expr.ptr)
-	{
-		SEMA_ERROR(expr, "You may not pass null to a '&' parameter.");
-		return false;
-	}
-	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER)
-	{
-		if (expr->unary_expr.expr->identifier_expr.decl->var.kind == VARDECL_CONST && param->var.out_param)
-		{
-			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' argument.");
-			return false;
-		}
-	}
-	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
-	Decl *ident = expr->identifier_expr.decl;
-	if (ident->decl_kind != DECL_VAR) return true;
-	if (ident->var.out_param && param->var.in_param)
-	{
-		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' argument.");
-		return false;
-	}
-	if (ident->var.in_param && param->var.out_param)
-	{
-		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' argument.");
-		return false;
-	}
-	return true;
-}
 INLINE bool sema_arg_is_pass_through_ref(Expr *expr)
 {
 	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
@@ -1656,28 +1367,79 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 	}
 	return true;
 }
-static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee,
-												bool *optional, bool *no_match_ref)
-{
-	// Check body arguments (for macro calls, or possibly broken )
-	if (!sema_call_check_invalid_body_arguments(context, call, &callee)) return false;
 
-	// 2. Pick out all the arguments and parameters.
-	Signature *sig = callee.signature;
-	unsigned vararg_index = sig->vararg_index;
+INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, Expr *call, Decl *param,
+                                      bool *no_match_ref, Expr **expr_ref, Variadic variadic, bool has_named,
+                                      bool after_vaarg, int needed, Expr *prev, bool *optional)
+{
+	Expr *init_expr = param->var.init_expr;
+	if (!init_expr) return true;
+	Expr *arg = copy_expr_single(init_expr);
+	if (arg->resolve_status != RESOLVE_DONE)
+	{
+		SemaContext default_context;
+		Type *rtype = NULL;
+		SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
+		bool success;
+		SCOPE_START
+			new_context->original_inline_line = context->original_inline_line ? context->original_inline_line
+			                                                                  : call->span.row;
+			new_context->original_module = context->original_module;
+			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
+			                                 callee->macro);
+		SCOPE_END;
+		sema_context_destroy(&default_context);
+		if (no_match_ref && *no_match_ref) return true;
+		if (!success)
+		{
+			RETURN_NOTE_FUNC_DEFINITION;
+		}
+	}
+	if (sema_cast_const(arg))
+	{
+		switch (param->var.kind)
+		{
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_CT_TYPE:
+			case VARDECL_PARAM_EXPR:
+				*expr_ref = arg;
+				return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
+				                              callee->macro);
+			default:
+				break;
+		}
+	}
+	Expr *function_scope_arg = expr_new(EXPR_DEFAULT_ARG, arg->span);
+	function_scope_arg->resolve_status = RESOLVE_DONE;
+	function_scope_arg->type = arg->type;
+	function_scope_arg->default_arg_expr.inner = arg;
+	function_scope_arg->default_arg_expr.loc = callee->call_location;
+	*expr_ref = function_scope_arg;
+	return sema_analyse_parameter(context, function_scope_arg, param, callee->definition, optional, no_match_ref,
+	                              callee->macro);
+}
+
+INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
+                                         bool *no_match_ref)
+{
+	// Check body arguments (for macro calls, or possibly broken
+	if (!sema_call_check_invalid_body_arguments(context, call, callee)) return false;
+	// Pick out all the arguments and parameters.
+	Signature *sig = callee->signature;
+	unsigned vaarg_index = sig->vararg_index;
 	Variadic variadic = sig->variadic;
-	Decl **decl_params = callee.params;
+	Decl **decl_params = callee->params;
 
 	// If this is a type call, then we have an implicit first argument.
-	if (callee.struct_var)
+	if (callee->struct_var)
 	{
-		vec_insert_first(call->call_expr.arguments, callee.struct_var);
+		vec_insert_first(call->call_expr.arguments, callee->struct_var);
 		call->call_expr.is_type_method = true;
 		ASSERT_SPAN(call, !call->call_expr.is_pointer_call);
 	}
 
 	// Zero out all argument slots.
-	unsigned param_count = vec_size(decl_params);
+	unsigned func_param_count = vec_size(decl_params);
 
 	// We might have a typed variadic call e.g. foo(int, double...)
 	// get that type.
@@ -1685,94 +1447,308 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	if (variadic == VARIADIC_TYPED || variadic == VARIADIC_ANY)
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
-		Type *vararg_slot_type = decl_params[vararg_index]->type;
+		Type *vararg_slot_type = decl_params[vaarg_index]->type;
 		ASSERT_SPAN(call, vararg_slot_type->type_kind == TYPE_SLICE);
 		variadic_type = vararg_slot_type->array.base;
 	}
 
-	Expr **varargs = NULL;
-	Expr *vararg_splat = NULL;
-	if (!sema_call_expand_arguments(context, &callee, call, param_count, variadic, vararg_index,
-	                                optional, &varargs, &vararg_splat, no_match_ref)) return false;
-
 	Expr **args = call->call_expr.arguments;
 	unsigned num_args = vec_size(args);
+	Decl **params = callee->params;
 
-	call->call_expr.varargs = NULL;
-	if (varargs)
+	assert(func_param_count < MAX_PARAMS);
+	Expr **actual_args = VECNEW(Expr*, func_param_count);
+	for (unsigned i = 0; i < func_param_count; i++)
 	{
-		if (variadic == VARIADIC_RAW)
-		{
-			FOREACH(Expr*, val, varargs)
-			{
-				// 12a. Analyse the expression.
-				if (callee.macro)
-				{
-					// Just keep as lvalues
-//					if (!sema_analyse_expr_lvalue_fold_const(context, val)) return false;
-				}
-				else
-				{
-					if (!sema_analyse_expr(context, val)) return false;
-					if (type_storage_type(val->type) != STORAGE_NORMAL)
-					{
-						SEMA_ERROR(val, "A value of type %s cannot be passed as a variadic argument.",
-								   type_quoted_error_string(val->type));
-						return false;
-					}
-					cast_promote_vararg(context, val);
-				}
-
-				// Set the argument at the location.
-				*optional |= IS_OPTIONAL(val);
-			}
-		}
-		else
-		{
-			FOREACH(Expr*, val, varargs)
-			{
-				// 11e. A simple variadic value:
-				if (!sema_analyse_expr_rhs(context, variadic_type, val, true, no_match_ref, false)) return false;
-				*optional |= IS_OPTIONAL(val);
-			}
-		}
-		call->call_expr.varargs = varargs;
+		vec_add(actual_args, NULL);
 	}
-	if (vararg_splat)
-	{
-		// 11c. Analyse the expression. We don't use any type inference here since
-		//      foo(...{ 1, 2, 3 }) is a fairly worthless thing.
-		if (!sema_analyse_expr(context, vararg_splat)) return false;
 
-		// 11d. If it is allowed.
-		if (!variadic_type)
-		{
-			RETURN_SEMA_ERROR(vararg_splat, "Splat may not be used with raw varargs.");
-		}
-		if (!expr_may_splat_as_vararg(vararg_splat, variadic_type))
-		{
-			SEMA_ERROR(vararg_splat, "It's not possible to splat %s as vararg of type %s",
-					   type_quoted_error_string(vararg_splat->type),
-					   type_quoted_error_string(variadic_type));
-			return false;
-		}
-		*optional |= IS_OPTIONAL(vararg_splat);
-		call->call_expr.vasplat = vararg_splat;
-	}
-	// 7. Loop through the parameters.
+	// 2. Loop through the parameters.
+	bool has_named = false;
+	bool found_splat = false;
+	ArrayIndex last_index = -1;
+	Expr *last_named_arg;
+	Expr *last = NULL;
+	int needed = func_param_count - (callee->struct_var ? 1 : 0);
 	for (unsigned i = 0; i < num_args; i++)
 	{
 		Expr *arg = args[i];
+		if (i > 0) last = args[i - 1];
+		assert(expr_ok(arg));
+		if (arg->expr_kind == EXPR_VASPLAT)
+		{
+			// If it was the last element then just append.
+			if (i == num_args - 1)
+			{
+				vec_pop(args);
+				args = sema_vasplat_append(context, args, arg);
+				if (!args) return false;
+				num_args = vec_size(args);
+				i--;
+				continue;
+			}
+			// Otherwise append to the end.
+			args = sema_vasplat_append(context, args, arg);
+			if (!args) return false;
+			unsigned new_size = vec_size(args);
+			// Same after size => then just remove the $vasplat
+			if (new_size == num_args)
+			{
+				vec_erase_at(args, i);
+				i--;
+				continue;
+			}
+			unsigned added_elements = new_size - num_args;
+			// Copy those elements
+			for (unsigned j = 0; j < added_elements; j++)
+			{
+				unsigned dest = i + j;
+				unsigned source = num_args + j;
+				// Copy the next element to the index position.
+				args[dest] = args[source];
+				// Copy the following into the place of the index.
+				args[source] = args[dest + 1];
+			}
+			vec_pop(args);
+			num_args = new_size - 1;
+			i--;
+			continue;
+		}
+		if (arg->expr_kind == EXPR_SPLAT)
+		{
+			if (variadic == VARIADIC_NONE)
+			{
+				RETURN_SEMA_ERROR(arg, "Splat is only possible with variadic functions.");
+			}
+			if (!variadic_type)
+			{
+				RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs.");
+			}
+			if (i != vaarg_index)
+			{
+				RETURN_SEMA_ERROR(arg, "Expected a splat only in the vaarg slot.");
+			}
+			call->call_expr.va_is_splat = true;
+			Expr *inner = arg->inner_expr;
+			// Potentially should be inferred
+			if (!sema_analyse_expr(context, inner)) return false;
+
+			if (!expr_may_splat_as_vararg(inner, variadic_type))
+			{
+				RETURN_SEMA_ERROR(inner, "It's not possible to splat %s as vararg of type %s",
+				                  type_quoted_error_string(inner->type),
+				                  type_quoted_error_string(variadic_type));
+			}
+			*optional |= IS_OPTIONAL(inner);
+			call->call_expr.vasplat = inner;
+			continue;
+		}
+		if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
+		{
+			// Find the location of the parameter.
+			int index = sema_call_find_index_of_named_parameter(context, params, arg);
+
+			// If it's not found then this is an error. Let's not invoke nomatch
+			if (index < 0) return false;
+
+			// We have named parameters, that will add some restrictions.
+			has_named = true;
+
+			Decl *param = params[index];
+			// 8d. We might actually be finding the typed vararg at the end,
+			//     this is an error.
+			if (param->var.vararg)
+			{
+				RETURN_SEMA_FUNC_ERROR(callee->definition, arg, "Vararg parameters may not be named parameters, "
+				                                                "use normal parameters instead.", param->name);
+			}
+
+			// 8e. We might have already set this parameter, that is not allowed.
+			if (actual_args[index] && actual_args[index]->expr_kind != EXPR_DEFAULT_ARG)
+			{
+				RETURN_SEMA_ERROR(arg, "The parameter '%s' was already set.", param->name);
+			}
+
+			if (last_index > index)
+			{
+				SEMA_ERROR(arg, "Named arguments must always be declared in order.");
+				SEMA_NOTE(last_named_arg, "Place it before this argument.");
+				return false;
+			}
+
+			for (int j = i; j < index; j++)
+			{
+				if (!sema_set_default_argument(context, callee, call,
+				                               params[j], no_match_ref,
+				                               &actual_args[j],
+				                               variadic, has_named,
+				                               j > vaarg_index, needed, last, optional))
+				{
+					return false;
+				}
+			}
+			last_index = index;
+			last_named_arg = arg;
+
+			actual_args[index] = arg->named_argument_expr.value;
+			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref, callee->macro)) return false;
+			continue;
+		}
+		if (call->call_expr.va_is_splat)
+		{
+			if (no_match_ref) goto NO_MATCH_REF;
+			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
+			                       "This looks like an argument after a splatted variable, which "
+			                       "isn't allowed. Did you add too many arguments?");
+		}
+		if (has_named)
+		{
+			RETURN_SEMA_FUNC_ERROR(callee->definition, args[i - 1],
+								   "Named arguments must be placed after positional arguments.");
+		}
+
+		// 11. We might have a typed variadic argument.
+		if (variadic == VARIADIC_NONE && i >= func_param_count)
+		{
+			// 15. We have too many parameters...
+			if (no_match_ref) goto NO_MATCH_REF;
+			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
+								   "This argument would exceed the number of parameters, "
+								   "did you add too many arguments?");
+		}
 
 		// 10. If we exceed the function parameter count (remember we reduced this by one
 		//     in the case of typed vararg) we're now in a variadic list.
-		if (i == vararg_index && variadic != VARIADIC_NONE)
+		if (variadic != VARIADIC_NONE && i >= vaarg_index)
 		{
-			ASSERT_SPAN(call, arg == NULL);
+			switch (variadic)
+			{
+				case VARIADIC_RAW:
+					// Only analyse for non-macro
+					if (!callee->macro)
+					{
+						if (!sema_analyse_expr(context, arg)) return false;
+						if (type_storage_type(arg->type) != STORAGE_NORMAL)
+						{
+							RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a raw variadic argument.",
+							                  type_quoted_error_string(arg->type));
+						}
+						cast_promote_vararg(context, arg);
+					}
+					// Set the argument at the location.
+					*optional |= IS_OPTIONAL(arg);
+					break;
+				case VARIADIC_ANY:
+					if (!sema_analyse_expr(context, arg)) return false;
+					Type *type = arg->type;
+					if (type_storage_type(type) != STORAGE_NORMAL)
+					{
+						RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
+						                  type_quoted_error_string(type));
+					}
+					expr_insert_addr(arg);
+					FALLTHROUGH;
+				case VARIADIC_TYPED:
+					if (!sema_analyse_expr_rhs(context, variadic_type, arg, true, no_match_ref, false)) return false;
+					*optional |= IS_OPTIONAL(arg);
+					break;
+				case VARIADIC_NONE:
+					UNREACHABLE
+			}
+			vec_add(call->call_expr.varargs, arg);
 			continue;
 		}
-		if (!sema_analyse_parameter(context, arg, decl_params[i], callee.definition,
-									optional, no_match_ref, callee.macro)) return false;
+		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro)) return false;
+		actual_args[i] = arg;
+	}
+
+	call->call_expr.arguments = args;
+	// 17. Set default values.
+	for (unsigned i = 0; i < func_param_count; i++)
+	{
+		// 17a. Assigned a value - skip
+		if (actual_args[i]) continue;
+		if (i == vaarg_index && variadic != VARIADIC_NONE) continue;
+
+		if (!sema_set_default_argument(context, callee, call, params[i], no_match_ref, &actual_args[i],
+		                               variadic, has_named, i > vaarg_index, needed,
+		                               last, optional)) return false;
+	}
+	for (int i = 0; i < func_param_count; i++)
+	{
+		if (i == vaarg_index) continue;
+		if (actual_args[i]) continue;
+		// Argument missing, that's bad.
+		Decl *param = params[i];
+		if (no_match_ref)
+		{
+			*no_match_ref = true;
+			return true;
+		}
+		if (!has_named || !param->name)
+		{
+			if (vec_size(callee->params) == 1)
+			{
+				if (param->type)
+				{
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call,
+					                       "This call expected a parameter of type %s, did you forget it?",
+					                       type_quoted_error_string(param->type));
+				}
+				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "This call expected a parameter, did you forget it?");
+			}
+			if (variadic != VARIADIC_NONE && i > vaarg_index)
+			{
+				print_error_after(last->span, "Expected '%s: ...' after this argument.", param->name);
+				RETURN_NOTE_FUNC_DEFINITION;
+			}
+			if (!num_args)
+			{
+				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
+				                       callee->name, needed);
+			}
+			if (!last) last = args[0];
+			int more_needed = needed - i;
+			RETURN_SEMA_FUNC_ERROR(callee->definition, last,
+			                       "Expected %d more %s after this one, did you forget %s?",
+			                       more_needed, more_needed == 1 ? "argument" : "arguments", more_needed == 1 ? "it" : "them");
+		}
+		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
+	}
+	call->call_expr.arguments = actual_args;
+	return true;
+NO_MATCH_REF:
+	*no_match_ref = true;
+	return false;
+}
+
+static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr)
+{
+	if (param->var.not_null && expr_is_const_pointer(expr) && !expr->const_expr.ptr)
+	{
+		SEMA_ERROR(expr, "You may not pass null to a '&' parameter.");
+		return false;
+	}
+	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		if (expr->unary_expr.expr->identifier_expr.decl->var.kind == VARDECL_CONST && param->var.out_param)
+		{
+			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' argument.");
+			return false;
+		}
+	}
+	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
+	Decl *ident = expr->identifier_expr.decl;
+	if (ident->decl_kind != DECL_VAR) return true;
+	if (ident->var.out_param && param->var.in_param)
+	{
+		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' argument.");
+		return false;
+	}
+	if (ident->var.in_param && param->var.out_param)
+	{
+		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' argument.");
+		return false;
 	}
 	return true;
 }
@@ -1800,7 +1776,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 
 	if (sig->attrs.noreturn) expr->call_expr.no_return = true;
 
-	if (!sema_call_analyse_invocation(context, expr, callee, &optional, no_match_ref)) return false;
+	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
 
 	Type *rtype = type->function.prototype->rtype;
 
@@ -1987,7 +1963,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	};
 
 	bool has_optional_arg = call_var_optional;
-	if (!sema_call_analyse_invocation(context, call_expr, callee, &has_optional_arg, no_match_ref)) return false;
+	if (!sema_call_evaluate_arguments(context, &callee, call_expr, &has_optional_arg, no_match_ref)) return false;
 
 	unsigned vararg_index = sig->vararg_index;
 	Expr **args = call_expr->call_expr.arguments;
@@ -8595,67 +8571,6 @@ static inline bool sema_expr_analyse_ct_and_or_fn(SemaContext *context, Expr *ex
 	expr_rewrite_const_bool(expr, type_bool, is_and);
 	return true;
 }
-
-bool sema_concat_join_arrays(SemaContext *context, Expr *expr, Expr **exprs, Type *type, ArraySize len)
-{
-	ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-	FOREACH(Expr *, element, exprs)
-	{
-		ASSERT_SPAN(expr, element->const_expr.const_kind == CONST_INITIALIZER);
-		ConstInitType init_type = element->const_expr.initializer->kind;
-		switch (init_type)
-		{
-			case CONST_INIT_ARRAY_FULL:
-				break;
-			case CONST_INIT_ZERO:
-				if (type_flatten(element->type)->type_kind == TYPE_SLICE) continue;
-			default:
-				RETURN_SEMA_ERROR(element, "Only fully initialized arrays may be concatenated.");
-		}
-		FOREACH(ConstInitializer *, init, element->const_expr.initializer->init_array_full)
-		{
-			vec_add(inits, init);
-		}
-	}
-	expr->expr_kind = EXPR_CONST;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = type;
-	ConstInitializer *new_init = CALLOCS(ConstInitializer);
-	new_init->init_array_full = inits;
-	new_init->type = type;
-	new_init->kind = CONST_INIT_ARRAY_FULL;
-	expr->const_expr = (ExprConst) {
-		.const_kind = CONST_INITIALIZER,
-		.initializer = new_init
-	};
-	return true;
-}
-
-
-bool sema_concat_join_bytes(Expr *expr, Expr **exprs, ArraySize len)
-{
-	bool is_bytes = exprs[0]->const_expr.const_kind == CONST_BYTES;
-	char *data = malloc_arena(len + 1);
-	char *current = data;
-	FOREACH(Expr *, element, exprs)
-	{
-		size_t str_len = element->const_expr.bytes.len;
-		if (!str_len) continue;
-		memcpy(current, element->const_expr.bytes.ptr, str_len);
-		current += str_len;
-	}
-	*current = '\0';
-	expr->expr_kind = EXPR_CONST;
-	expr->const_expr = (ExprConst) {
-			.const_kind = exprs[0]->const_expr.const_kind,
-			.bytes.ptr = data,
-			.bytes.len = len
-	};
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = exprs[0]->type;
-	return true;
-}
-
 
 static inline bool sema_expr_analyse_ct_append(SemaContext *context, Expr *append_expr)
 {
