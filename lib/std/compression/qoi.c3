@@ -1,9 +1,5 @@
 module std::compression::qoi;
 
-import std::io;
-import std::bits;
-
-
 const uint PIXELS_MAX = 400000000;
 
 /**
@@ -56,6 +52,10 @@ fault QOIError
 }
 
 
+// Let the user decide if they want to use std::io
+module std::compression::qoi @if(!$feature(QOI_NO_STDIO));
+import std::io;
+
 /**
  * Encode raw RGB or RGBA pixels into a QOI image and write it to the
  * file system.
@@ -71,7 +71,7 @@ fault QOIError
  * @param [in] input `The raw RGB or RGBA pixels to encode`
  * @param [&in] desc `The descriptor of the image`
  */
-fn usz! write(String filename, char[] input, Desc* desc) @if(!$feature(QOI_NO_STDIO))
+fn usz! write(String filename, char[] input, Desc* desc)
 {
 	@pool() {
 		// encode data
@@ -112,7 +112,7 @@ fn usz! write(String filename, char[] input, Desc* desc) @if(!$feature(QOI_NO_ST
  * @param [&out] desc `The descriptor to fill with the image's info`
  * @param channels `The channels to be used`
  */
-fn char[]! read(String filename, Desc* desc, Channels channels = AUTO) @if(!$feature(QOI_NO_STDIO))
+fn char[]! read(String filename, Desc* desc, Channels channels = AUTO, Allocator allocator = allocator::heap())
 {
 	// read file
 	char[]! data = file::load_new(filename);
@@ -120,9 +120,13 @@ fn char[]! read(String filename, Desc* desc, Channels channels = AUTO) @if(!$fea
 	defer mem::free(data);
 
 	// pass data to decode function
-	return decode(data, desc, channels);
+	return decode(data, desc, channels, allocator);
 }
 
+
+// Back to basic non-stdio mode
+module std::compression::qoi;
+import std::bits;
 
 /**
  * Encode raw RGB or RGBA pixels into a QOI image in memory.
@@ -137,7 +141,7 @@ fn char[]! read(String filename, Desc* desc, Channels channels = AUTO) @if(!$fea
  * @param [in] input `The raw RGB or RGBA pixels to encode`
  * @param [&in] desc `The descriptor of the image`
  */
-fn char[]! encode(char[] input, Desc* desc) // int *out_len is replaced by .len
+fn char[]! encode(char[] input, Desc* desc, Allocator allocator = allocator::heap())
 {
 	// check info in desc
 	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_PARAMETERS?;
@@ -152,8 +156,8 @@ fn char[]! encode(char[] input, Desc* desc) // int *out_len is replaced by .len
 	// allocate memory for encoded data (output)
 	// header + chunk tag and RGB(A) data for each pixel + end of stream
 	uint max_size = Header.sizeof + pixels + image_size + END_OF_STREAM.len;
-	char[] output = mem::alloc_array(char, max_size); // no need to init
-	defer catch mem::free(output);
+	char[] output = allocator::alloc_array(allocator, char, max_size); // no need to init
+	defer catch allocator::free(allocator, output);
 
 	// write header
 	*(Header*)output.ptr = {
@@ -283,7 +287,7 @@ fn char[]! encode(char[] input, Desc* desc) // int *out_len is replaced by .len
  * @param [&out] desc `The descriptor to fill with the image's info`
  * @param channels `The channels to be used`
  */
-fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO)
+fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO, Allocator allocator = allocator::heap())
 {
 	// check input data
 	if (data.len < Header.sizeof + END_OF_STREAM.len) return QOIError.INVALID_DATA?;
@@ -320,8 +324,8 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO)
 	
 	// allocate memory for image data
 	ulong image_size = pixels * channels.id;
-	char[] image = mem::alloc_array(char, image_size);
-	defer catch mem::free(image);
+	char[] image = allocator::alloc_array(allocator, char, image_size);
+	defer catch allocator::free(allocator, image);
 
 	for (loc = 0; loc < image_size; loc += channels.id)
 	{
@@ -383,7 +387,7 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO)
 // ***        From here on, helper functions and types are defined.        ***
 // ***                                                                     ***
 // ***************************************************************************
-module qoi @private;
+module std::compression::qoi @private;
 
 // 8-bit opcodes
 const OP_RGB = 0b11111110;
