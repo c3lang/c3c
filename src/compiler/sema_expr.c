@@ -136,8 +136,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
                                                      Expr *struct_var,
                                                      bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
-INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
-                                         bool *no_match_ref);
+static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
@@ -1419,6 +1418,44 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	                              callee->macro);
 }
 
+INLINE bool sema_call_splat_vasplat(SemaContext *context, Expr *arg, Expr ***args_ref, int index)
+{
+	// If it was the last element then just append.
+	Expr **args = *args_ref;
+	unsigned num_args = vec_size(args);
+	if (index == num_args - 1)
+	{
+		vec_pop(args);
+		args = sema_vasplat_append(context, args, arg);
+		if (!args) return false;
+		*args_ref = args;
+		return true;
+	}
+	// Otherwise append to the end.
+	args = sema_vasplat_append(context, args, arg);
+	if (!args) return false;
+	unsigned new_size = vec_size(args);
+	// Same after size => then just remove the $vasplat
+	if (new_size == num_args)
+	{
+		vec_erase_at(args, index);
+		return true;
+	}
+	unsigned added_elements = new_size - num_args;
+	// Copy those elements
+	for (unsigned j = 0; j < added_elements; j++)
+	{
+		unsigned dest = index + j;
+		unsigned source = num_args + j;
+		// Copy the next element to the index position.
+		args[dest] = args[source];
+		// Copy the following into the place of the index.
+		args[source] = args[dest + 1];
+	}
+	vec_pop(args);
+	*args_ref = args;
+	return true;
+}
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
                                          bool *no_match_ref)
 {
@@ -1477,41 +1514,9 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		assert(expr_ok(arg));
 		if (arg->expr_kind == EXPR_VASPLAT)
 		{
-			// If it was the last element then just append.
-			if (i == num_args - 1)
-			{
-				vec_pop(args);
-				args = sema_vasplat_append(context, args, arg);
-				if (!args) return false;
-				num_args = vec_size(args);
-				i--;
-				continue;
-			}
-			// Otherwise append to the end.
-			args = sema_vasplat_append(context, args, arg);
-			if (!args) return false;
-			unsigned new_size = vec_size(args);
-			// Same after size => then just remove the $vasplat
-			if (new_size == num_args)
-			{
-				vec_erase_at(args, i);
-				i--;
-				continue;
-			}
-			unsigned added_elements = new_size - num_args;
-			// Copy those elements
-			for (unsigned j = 0; j < added_elements; j++)
-			{
-				unsigned dest = i + j;
-				unsigned source = num_args + j;
-				// Copy the next element to the index position.
-				args[dest] = args[source];
-				// Copy the following into the place of the index.
-				args[source] = args[dest + 1];
-			}
-			vec_pop(args);
-			num_args = new_size - 1;
+			if (!sema_call_splat_vasplat(context, arg, &args, i)) return false;
 			i--;
+			num_args = vec_size(args);
 			continue;
 		}
 		if (arg->expr_kind == EXPR_SPLAT)
