@@ -63,7 +63,7 @@ fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, f
  **/
 macro HashMap* HashMap.new_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	self.new_init(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
+	self.new_init(capacity, load_factor, allocator);
 	$for (var $i = 0; $i < $vacount; $i += 2)
 		self.set($vaarg[$i], $vaarg[$i+1]);
 	$endfor
@@ -83,7 +83,7 @@ macro HashMap* HashMap.new_init_with_key_values(&self, ..., uint capacity = DEFA
 fn HashMap* HashMap.new_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
-	self.new_init(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
+	self.new_init(capacity, load_factor, allocator);
 	for (usz i = 0; i < keys.len; i++)
 	{
 		self.set(keys[i], values[i]);
@@ -100,7 +100,7 @@ fn HashMap* HashMap.new_init_from_keys_and_values(&self, Key[] keys, Value[] val
  **/
 macro HashMap* HashMap.temp_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	self.temp_init(.capacity = capacity, .load_factor = load_factor);
+	self.temp_init(capacity, load_factor);
 	$for (var $i = 0; $i < $vacount; $i += 2)
 		self.set($vaarg[$i], $vaarg[$i+1]);
 	$endfor
@@ -120,7 +120,7 @@ macro HashMap* HashMap.temp_init_with_key_values(&self, ..., uint capacity = DEF
 fn HashMap* HashMap.temp_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
-	self.temp_init(.capacity = capacity, .load_factor = load_factor);
+	self.temp_init(capacity, load_factor);
 	for (usz i = 0; i < keys.len; i++)
 	{
 		self.set(keys[i], values[i]);

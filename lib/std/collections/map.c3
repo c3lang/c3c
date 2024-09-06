@@ -54,7 +54,7 @@ fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAUL
  **/
 macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	Map map = new(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
+	Map map = new(capacity, load_factor, allocator);
 	$for (var $i = 0; $i < $vacount; $i += 2)
 		map.set($vaarg[$i], $vaarg[$i+1]);
 	$endfor
@@ -73,7 +73,7 @@ macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY
 fn Map new_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
-	Map map = new(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
+	Map map = new(capacity, load_factor, allocator);
 	for (usz i = 0; i < keys.len; i++)
 	{
 		map.set(keys[i], values[i]);
