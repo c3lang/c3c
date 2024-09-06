@@ -344,18 +344,18 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO)
 				p = { op.red, op.green, op.blue, op.alpha };
 				palette[p.hash()] = p;
 				
-			case (tag >> 6) == OP_INDEX:
+			case tag >> 6 == OP_INDEX:
 				OpIndex* op = @extract(OpIndex, data, &pos);
 				p = palette[op.index];
 
-			case (tag >> 6) == OP_DIFF:
+			case tag >> 6 == OP_DIFF:
 				OpDiff* op = @extract(OpDiff, data, &pos);
 				p.r += op.diff_red - 2;
 				p.g += op.diff_green - 2;
 				p.b += op.diff_blue - 2;
 				palette[p.hash()] = p;
 
-			case (tag >> 6) == OP_LUMA:
+			case tag >> 6 == OP_LUMA:
 				OpLuma* op = @extract(OpLuma, data, &pos);
 				int diff_green = op.diff_green - 32;
 				p.r += (char)(op.diff_red_minus_green - 8 + diff_green);
@@ -363,7 +363,7 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO)
 				p.b += (char)(op.diff_blue_minus_green - 8 + diff_green);
 				palette[p.hash()] = p;
 
-			case (tag >> 6) == OP_RUN:
+			case tag >> 6 == OP_RUN:
 				OpRun* op = @extract(OpRun, data, &pos);
 				run_length = op.run;
 		}
