@@ -10,6 +10,7 @@
 - Generic methods were incorrectly registered as functions, leading to naming collisions. #1402
 - Deprecated inline generic types.
 - Deprecated tuple / triple types.
+- Converting a slice to a vector/array would copy too little data.
 
 ### Stdlib changes
 *None yet*

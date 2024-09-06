@@ -1277,9 +1277,7 @@ void llvm_emit_slice_to_vec_array_cast(GenContext *c, BEValue *value, Type *to_t
 	LLVMTypeRef type = llvm_get_type(c, to_type);
 	AlignSize alignment = llvm_abi_alignment(c, type);
 	LLVMValueRef temp = llvm_emit_alloca(c, type, alignment, ".temp");
-	unsigned elements = LLVMGetTypeKind(type) == LLVMVectorTypeKind
-			? LLVMGetVectorSize(type) : LLVMGetArrayLength(type);
-	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, elements);
+	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, llvm_abi_size(c, type));
 	llvm_value_set_address(value, temp, to_type, alignment);
 }
 
