@@ -14,7 +14,7 @@
 - Crash when reading an empty 'manifest.json'.
 
 ### Stdlib changes
-*None yet*
+- Additional init functions for hashmap.
 
 ## 0.6.2 Change list
 
