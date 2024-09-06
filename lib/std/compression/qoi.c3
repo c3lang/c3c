@@ -177,8 +177,8 @@ fn char[]! encode(char[] input, Desc* desc, Allocator allocator = allocator::hea
 	Pixel prev = { 0, 0, 0, 255 };
 	Pixel p = { 0, 0, 0, 255 };
 
-	short[<3>] diff; // pre-allocate for diff
-	short[<3>] luma; // ...and luma
+	ichar[<3>] diff; // pre-allocate for diff
+	ichar[<3>] luma; // ...and luma
 
 	// write chunks
 	for (loc = 0; loc < image_size; loc += desc.channels.id)
@@ -215,7 +215,7 @@ fn char[]! encode(char[] input, Desc* desc, Allocator allocator = allocator::hea
 				// check if we can use diff or luma
 				case (prev != p && prev.a == p.a):
 					// diff the pixels
-					diff = (short[<3>])p.rgb - (short[<3>])prev.rgb;
+					diff = p.rgb - prev.rgb;
 					if (
 						diff.r > -3 && diff.r < 2 &&
 						diff.g > -3 && diff.g < 2 &&
