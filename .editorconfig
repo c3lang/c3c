@@ -1,0 +1,28 @@
+# EditorConfig is awesome: https://editorconfig.org
+
+root = true
+
+[*]
+charset = utf-8
+end_of_line = lf
+
+[CMakeLists.txt]
+indent_style = space
+indent_size = 4
+
+[*.{c,cc,h}]
+indent_style = space
+indent_size = 4
+
+[*.{c3}]
+indent_style = space
+indent_size = 4
+
+[*.{json,toml,yml,gyp}]
+indent_style = space
+indent_size = 2
+
+[*.{py,pyi}]
+indent_style = space
+indent_size = 2
+
