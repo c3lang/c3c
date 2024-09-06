@@ -425,6 +425,11 @@ if (WIN32)
     target_link_libraries(c3c Winhttp.lib)
 endif()
 
+if(MINGW)
+    message("Increase stack for msys")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,8388608")
+endif ()
+
 if (CURL_FOUND)
     target_link_libraries(c3c ${CURL_LIBRARIES})
     target_include_directories(c3c PRIVATE ${CURL_INCLUDES})
@@ -432,6 +437,7 @@ if (CURL_FOUND)
 else()
     target_compile_definitions(c3c PUBLIC CURL_FOUND=0)
 endif()
+
 
 if(MSVC)
     message("Adding MSVC options")

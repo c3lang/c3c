@@ -1940,7 +1940,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
 
-	if (context->macro_call_depth > 200)
+	if (context->macro_call_depth > 256)
 	{
 		decl->decl_kind = DECL_POISONED;
 		RETURN_SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached, "
