@@ -172,6 +172,10 @@ INLINE JSONObject* read_manifest(const char *lib, const char *manifest_data)
 	{
 		error_exit("Error on line %d reading '%s':'%s'", parser.line, lib, parser.error_message);
 	}
+	if (!json)
+	{
+		error_exit("Empty 'manifest.json' for library '%s'.", lib);
+	}
 	return json;
 }
 
