@@ -139,7 +139,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
 INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call,
                                        Expr **args, unsigned func_param_count,
-                                       Variadic variadic, unsigned vararg_index, bool *optional,
+                                       Variadic variadic, unsigned vaarg_index, bool *optional,
                                        Expr ***varargs_ref, Expr **vararg_splat_ref, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
@@ -550,6 +550,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_RETVAL:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_TAGOF:
 		case EXPR_TERNARY:
@@ -686,6 +687,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_RETVAL:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_TERNARY:
 		case EXPR_TEST_HOOK:
@@ -1227,7 +1229,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 
 
 INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args,
-									   unsigned func_param_count, Variadic variadic, unsigned vararg_index,
+									   unsigned func_param_count, Variadic variadic, unsigned vaarg_index,
 									   bool *optional, Expr ***varargs_ref, Expr **vararg_splat_ref,
 									   bool *no_match_ref)
 {
@@ -1251,6 +1253,20 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 		Expr *arg = args[i];
 		assert(expr_ok(arg));
 
+		if (arg->expr_kind == EXPR_SPLAT)
+		{
+			if (variadic == VARIADIC_NONE)
+			{
+				RETURN_SEMA_ERROR(arg, "Splat is only possible with variadic functions.");
+			}
+			if (i != vaarg_index)
+			{
+				RETURN_SEMA_ERROR(arg, "Expected a splat only in the vaarg slot.");
+			}
+			call->call_expr.va_is_splat = true;
+			*vararg_splat_ref = args[i] = arg->inner_expr;
+			continue;
+		}
 		if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
 		{
 			// Find the location of the parameter.
@@ -1278,7 +1294,6 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 
 			if (last_index > index)
 			{
-
 				SEMA_ERROR(arg, "Named arguments must always be declared in order.");
 				SEMA_NOTE(last_named_arg, "Place it before this argument.");
 				return false;
@@ -1313,16 +1328,9 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 
 		// 10. If we exceed the function parameter count (remember we reduced this by one
 		//     in the case of typed vararg) we're now in a variadic list.
-		if (variadic != VARIADIC_NONE && i >= vararg_index)
+		if (variadic != VARIADIC_NONE && i >= vaarg_index)
 		{
-
-			// 11a. Look if we did a splat
-			if (call->call_expr.splat_vararg)
-			{
-				*vararg_splat_ref = arg;
-				continue;
-			}
-			else if (variadic == VARIADIC_ANY)
+			if (variadic == VARIADIC_ANY)
 			{
 				if (!sema_analyse_expr(context, arg)) return false;
 				Type *type = arg->type;
@@ -1344,7 +1352,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 	{
 		// 17a. Assigned a value - skip
 		if (actual_args[i]) continue;
-		if (i == vararg_index && variadic != VARIADIC_NONE) continue;
+		if (i == vaarg_index && variadic != VARIADIC_NONE) continue;
 
 		// 17b. Set the init expression.
 		Decl *param = params[i];
@@ -1408,7 +1416,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 				}
 				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "This call expected a parameter, did you forget it?");
 			}
-			if (variadic != VARIADIC_NONE && i > vararg_index)
+			if (variadic != VARIADIC_NONE && i > vaarg_index)
 			{
 				if (!param)
 				{
@@ -1646,7 +1654,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 	}
 
 	// 4. Check for splat of the variadic argument.
-	bool splat = call->call_expr.splat_vararg;
+	bool splat = call->call_expr.va_is_splat;
 	if (splat)
 	{
 		// 4a. Is this *not* a variadic function/macro? - Then that's an error.
@@ -1739,7 +1747,7 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 			return false;
 		}
 		*optional |= IS_OPTIONAL(vararg_splat);
-		call->call_expr.splat = vararg_splat;
+		call->call_expr.vasplat = vararg_splat;
 	}
 	// 7. Loop through the parameters.
 	for (unsigned i = 0; i < num_args; i++)
@@ -1979,9 +1987,9 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		{
 			if (!param) continue;
 			// Splat? That's the simple case.
-			if (call_expr->call_expr.splat_vararg)
+			if (call_expr->call_expr.va_is_splat)
 			{
-				if (!sema_analyse_expr(context, args[i] = call_expr->call_expr.splat)) return false;
+				if (!sema_analyse_expr(context, args[i] = call_expr->call_expr.vasplat)) return false;
 			}
 			else
 			{
@@ -2309,7 +2317,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		PRINT_ERROR_AT(call, "Nested expansion is not possible.");
 		return false;
 	}
-	if (call_expr->splat_vararg)
+	if (call_expr->va_is_splat)
 	{
 		PRINT_ERROR_AT(call, "Expanding parameters is not allowed for macro invocations.");
 	}
@@ -8383,6 +8391,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_SLICE:
 			case EXPR_SLICE_ASSIGN:
 			case EXPR_SLICE_COPY:
+			case EXPR_SPLAT:
 			case EXPR_SWIZZLE:
 			case EXPR_SUBSCRIPT_ADDR:
 			case EXPR_SUBSCRIPT_ASSIGN:
@@ -8844,24 +8853,25 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 {
 	switch (expr->expr_kind)
 	{
-		case EXPR_COND:
-		case EXPR_DESIGNATOR:
-		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_NOP:
-		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_TRY_UNWRAP:
-		case EXPR_CATCH_UNWRAP:
 		case EXPR_ANYSWITCH:
-		case EXPR_TYPEID_INFO:
 		case EXPR_ASM:
-		case EXPR_OPERATOR_CHARS:
 		case EXPR_BENCHMARK_HOOK:
-		case EXPR_TEST_HOOK:
-		case EXPR_SWIZZLE:
-		case EXPR_MACRO_BODY:
+		case EXPR_CATCH_UNWRAP:
+		case EXPR_COND:
 		case EXPR_DEFAULT_ARG:
+		case EXPR_DESIGNATOR:
+		case EXPR_MACRO_BODY:
+		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_NOP:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_SPLAT:
+		case EXPR_SWIZZLE:
+		case EXPR_TEST_HOOK:
+		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TYPEID_INFO:
 			UNREACHABLE
 		case EXPR_TAGOF:
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");

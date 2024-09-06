@@ -6091,9 +6091,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 	Expr *vararg_splat = NULL;
 	Expr **varargs = NULL;
-	if (expr->call_expr.splat_vararg)
+	if (expr->call_expr.va_is_splat)
 	{
-		vararg_splat = expr->call_expr.splat;
+		vararg_splat = expr->call_expr.vasplat;
 	}
 	else
 	{

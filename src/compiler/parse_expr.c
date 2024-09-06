@@ -484,10 +484,10 @@ END:
  *
  * parameter ::= ((param_path '=')? expr) | param_path
  */
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat)
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool vasplat)
 {
 	*result = NULL;
-	if (splat) *splat = false;
+	bool has_splat = false;
 	while (1)
 	{
 		Expr *expr = NULL;
@@ -528,16 +528,16 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *
 			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
 			goto DONE;
 		}
-		if (splat)
+		if (try_consume(c, TOKEN_ELLIPSIS))
 		{
-			if (*splat)
-			{
-				PRINT_ERROR_HERE("'...' is only allowed on the last argument in a call.");
-				return false;
-			}
-			*splat = try_consume(c, TOKEN_ELLIPSIS);
+			expr = expr_new(EXPR_SPLAT, start_span);
+			ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), false);
+			RANGE_EXTEND_PREV(expr);
 		}
-		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+		else
+		{
+			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
+		}
 DONE:
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))
@@ -545,9 +545,6 @@ DONE:
 			return true;
 		}
 		if (tok_is(c, param_end)) return true;
-		if (splat && *splat)
-		{
-		}
 	}
 }
 
@@ -971,13 +968,12 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 
 	Expr **params = NULL;
 	advance_and_verify(c, TOKEN_LPAREN);
-	bool splat = false;
 	Decl **body_args = NULL;
 	if (!tok_is(c, TOKEN_RPAREN) && !tok_is(c, TOKEN_EOS))
 	{
 		// Pick a modest guess.
-		params = VECNEW(Expr*, 4);
-		if (!parse_arg_list(c, &params, TOKEN_RPAREN, &splat, true)) return poisoned_expr;
+		params = VECNEW(Expr*, 8);
+		if (!parse_arg_list(c, &params, TOKEN_RPAREN, true)) return poisoned_expr;
 	}
 	if (try_consume(c, TOKEN_EOS))
 	{
@@ -998,7 +994,6 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 	Expr *call = expr_new_expr(EXPR_CALL, left);
 	call->call_expr.function = exprid(left);
 	call->call_expr.arguments = params;
-	call->call_expr.splat_vararg = splat;
 	RANGE_EXTEND_PREV(call);
 	if (body_args && !tok_is(c, TOKEN_LBRACE))
 	{

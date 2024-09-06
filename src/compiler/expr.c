@@ -226,6 +226,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
 		case EXPR_MEMBER_GET:
@@ -765,6 +766,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_FORCE_UNWRAP:

@@ -693,7 +693,6 @@ typedef struct
 	ExprId macro_body;
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
-	bool splat_vararg : 1;
 	bool attr_force_inline : 1;
 	bool attr_force_noinline : 1;
 	bool is_builtin : 1;
@@ -704,11 +703,11 @@ typedef struct
 	bool has_optional_arg : 1;
 	bool must_use : 1;
 	bool is_optional_return : 1;
+	bool va_is_splat : 1;
 	Expr **arguments;
-	union
-	{
+	union {
 		Expr **varargs;
-		Expr *splat;
+		Expr *vasplat;
 	};
 } ExprCall;
 
@@ -3216,6 +3215,9 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			expr_list_set_span(expr->designated_init_list, loc);
+			return;
+		case EXPR_SPLAT:
+			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS:

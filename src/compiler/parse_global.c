@@ -2213,7 +2213,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 			else
 			{
 				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, NULL, false)) return poisoned_decl;
+				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, 0)) return poisoned_decl;
 				CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 			}
 		}
