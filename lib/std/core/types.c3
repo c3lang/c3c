@@ -128,7 +128,7 @@ macro bool is_int($Type) @const  => $Type.kindof == TypeKind.SIGNED_INT || $Type
  **/
 macro bool is_signed($Type) @const
 {
-	$switch (inner_kind($Type))
+	$switch (remove_distinct_kind($Type))
 		$case SIGNED_INT:
 		$case FLOAT:
 			return true;
@@ -144,7 +144,7 @@ macro bool is_signed($Type) @const
  **/
 macro bool is_unsigned($Type) @const
 {
-	$switch (inner_kind($Type))
+	$switch (remove_distinct_kind($Type))
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
@@ -209,19 +209,28 @@ macro bool is_vector($Type) @const
 	return $Type.kindof == TypeKind.VECTOR;
 }
 
-macro typeid inner_type($Type) @const
+/**
+ * Recursively remove distinct to get the innermost type.
+ **/
+macro typeid remove_distinct($Type) @const
 {
 	$if $Type.kindof == TypeKind.DISTINCT:
-		return inner_type($typefrom($Type.inner));
+		return remove_distinct($typefrom($Type.inner));
 	$else
 		return $Type.typeid;
 	$endif
 }
 
-macro TypeKind inner_kind($Type) @const
+/**
+ * Recursively remove distinct to get the innermost TypeKind.
+ **/
+macro TypeKind remove_distinct_kind($Type) @const
 {
-	return inner_type($Type).kindof;
+	return remove_distinct($Type).kindof;
 }
+
+macro typeid inner_type($Type) @const @deprecated("Use remove_distinct") => remove_distinct($Type);
+macro TypeKind inner_kind($Type) @const @deprecated("Use remove_distinct_kind") => remove_distinct_kind($Type);
 
 macro bool is_same($TypeA, $TypeB) @const
 {

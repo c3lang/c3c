@@ -42,5 +42,6 @@ macro promote_int_same(x, y)
 	$endif
 }
 
-macro TypeKind @inner_kind(#value) @const => types::inner_kind($typeof(#value));
-
+macro typeid @remove_distinct(#value) @const => types::remove_distinct($typeof(#value));
+macro TypeKind @remove_distinct_kind(#value) @const => types::remove_distinct_kind($typeof(#value));
+macro TypeKind @inner_kind(#value) @const @deprecated("Use @remove_distinct_kind") => @remove_distinct_kind(#value);

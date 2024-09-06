@@ -14,7 +14,8 @@
 - Crash when reading an empty 'manifest.json'.
 
 ### Stdlib changes
-*None yet*
+- Added `types::remove_distinct`, `types::remove_distinct_kind`, `values::@remove_distinct`, `values::@remove_distinct_kind`.
+- Deprecated `types::inner_kind`, `types::inner_type`, `values::@inner_kind`.
 
 ## 0.6.2 Change list
 
