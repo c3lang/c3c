@@ -137,10 +137,9 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
                                                      Expr *struct_var,
                                                      bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
-INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call,
-                                       Expr **args, unsigned func_param_count,
-                                       Variadic variadic, unsigned vaarg_index, bool *optional,
-                                       Expr ***varargs_ref, Expr **vararg_splat_ref, bool *no_match_ref);
+INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, unsigned func_param_count,
+                                       Variadic variadic, unsigned vaarg_index, bool *optional, Expr ***varargs_ref,
+                                       Expr **vararg_splat_ref, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
@@ -1228,11 +1227,11 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 }
 
 
-INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, Expr **args,
-									   unsigned func_param_count, Variadic variadic, unsigned vaarg_index,
-									   bool *optional, Expr ***varargs_ref, Expr **vararg_splat_ref,
-									   bool *no_match_ref)
+INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee, Expr *call, unsigned func_param_count,
+                                       Variadic variadic, unsigned vaarg_index, bool *optional, Expr ***varargs_ref,
+                                       Expr **vararg_splat_ref, bool *no_match_ref)
 {
+	Expr **args = call->call_expr.arguments;
 	unsigned num_args = vec_size(args);
 	Decl **params = callee->params;
 
@@ -1252,7 +1251,45 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 	{
 		Expr *arg = args[i];
 		assert(expr_ok(arg));
-
+		if (arg->expr_kind == EXPR_VASPLAT)
+		{
+			// If it was the last element then just append.
+			if (i == num_args - 1)
+			{
+				vec_pop(args);
+				args = sema_vasplat_append(context, args, arg);
+				if (!args) return false;
+				num_args = vec_size(args);
+				i--;
+				continue;
+			}
+			// Otherwise append to the end.
+			args = sema_vasplat_append(context, args, arg);
+			if (!args) return false;
+			unsigned new_size = vec_size(args);
+			// Same after size => then just remove the $vasplat
+			if (new_size == num_args)
+			{
+				vec_erase_at(args, i);
+				i--;
+				continue;
+			}
+			unsigned added_elements = new_size - num_args;
+			// Copy those elements
+			for (unsigned j = 0; j < added_elements; j++)
+			{
+				unsigned dest = i + j;
+				unsigned source = num_args + j;
+				// Copy the next element to the index position.
+				args[dest] = args[source];
+				// Copy the following into the place of the index.
+				args[source] = args[dest + 1];
+			}
+			vec_pop(args);
+			num_args = new_size - 1;
+			i--;
+			continue;
+		}
 		if (arg->expr_kind == EXPR_SPLAT)
 		{
 			if (variadic == VARIADIC_NONE)
@@ -1347,6 +1384,7 @@ INLINE bool sema_call_expand_arguments(SemaContext *context, CalledDecl *callee,
 		actual_args[i] = arg;
 	}
 
+	call->call_expr.arguments = args;
 	// 17. Set default values.
 	for (unsigned i = 0; i < func_param_count; i++)
 	{
@@ -1621,56 +1659,28 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call, CalledDecl callee,
 												bool *optional, bool *no_match_ref)
 {
-	// 1. Check body arguments (for macro calls, or possibly broken )
+	// Check body arguments (for macro calls, or possibly broken )
 	if (!sema_call_check_invalid_body_arguments(context, call, &callee)) return false;
 
 	// 2. Pick out all the arguments and parameters.
-	Expr **args = call->call_expr.arguments;
 	Signature *sig = callee.signature;
 	unsigned vararg_index = sig->vararg_index;
 	Variadic variadic = sig->variadic;
 	Decl **decl_params = callee.params;
 
-	if (args) args = call->call_expr.arguments = sema_expand_vasplat_exprs(context, args);
-
-	unsigned num_args = vec_size(args);
-
-	// 3. If this is a type call, then we have an implicit first argument.
+	// If this is a type call, then we have an implicit first argument.
 	if (callee.struct_var)
 	{
-		// 3a. Insert an argument first, by adding null to the end and then moving all arguments
-		//     by one step.
-		vec_add(args, NULL);
-		for (unsigned i = num_args; i > 0; i--)
-		{
-			args[i] = args[i - 1];
-		}
-		// 3b. Then insert the argument.
-		args[0] = callee.struct_var;
-		num_args++;
-		call->call_expr.arguments = args;
+		vec_insert_first(call->call_expr.arguments, callee.struct_var);
 		call->call_expr.is_type_method = true;
 		ASSERT_SPAN(call, !call->call_expr.is_pointer_call);
 	}
 
-	// 4. Check for splat of the variadic argument.
-	bool splat = call->call_expr.va_is_splat;
-	if (splat)
-	{
-		// 4a. Is this *not* a variadic function/macro? - Then that's an error.
-		if (variadic == VARIADIC_NONE)
-		{
-			ASSERT_SPAN(call, call->call_expr.arguments);
-			RETURN_SEMA_ERROR(call->call_expr.arguments[num_args - 1],
-			                  "Using the splat operator is only allowed on vararg parameters.");
-		}
-	}
-
-	// 5. Zero out all argument slots.
+	// Zero out all argument slots.
 	unsigned param_count = vec_size(decl_params);
 
-	// 6. We might have a typed variadic call e.g. foo(int, double...)
-	//    get that type.
+	// We might have a typed variadic call e.g. foo(int, double...)
+	// get that type.
 	Type *variadic_type = NULL;
 	if (variadic == VARIADIC_TYPED || variadic == VARIADIC_ANY)
 	{
@@ -1682,11 +1692,11 @@ static inline bool sema_call_analyse_invocation(SemaContext *context, Expr *call
 
 	Expr **varargs = NULL;
 	Expr *vararg_splat = NULL;
-	if (!sema_call_expand_arguments(context, &callee, call, args, param_count, variadic, vararg_index,
+	if (!sema_call_expand_arguments(context, &callee, call, param_count, variadic, vararg_index,
 	                                optional, &varargs, &vararg_splat, no_match_ref)) return false;
 
-	args = call->call_expr.arguments;
-	num_args = vec_size(args);
+	Expr **args = call->call_expr.arguments;
+	unsigned num_args = vec_size(args);
 
 	call->call_expr.varargs = NULL;
 	if (varargs)
