@@ -323,7 +323,7 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO, Allocator a
 	if (channels == AUTO) channels = desc.channels;
 	
 	// allocate memory for image data
-	usz image_size = pixels * channels.id;
+	usz image_size = (usz)pixels * channels.id;
 	char[] image = allocator::alloc_array(allocator, char, image_size);
 	defer catch allocator::free(allocator, image);
 
