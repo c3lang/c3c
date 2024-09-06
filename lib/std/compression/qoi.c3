@@ -409,9 +409,9 @@ const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 // inefficient, but it's only run once at a time
 macro @enumcast($Type, raw)
 {
-	foreach (value : $Type.values)
+	foreach (value : $Type.values) {
 		if (value.id == raw) return value;
-	
+	}
 	return QOIError.INVALID_DATA?;
 }
 
