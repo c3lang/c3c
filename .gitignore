@@ -70,3 +70,8 @@ out/
 
 # Emacs files
 TAGS
+
+# Clangd LSP files
+/.cache/
+/compile_commands.json
+

@@ -101,6 +101,17 @@ if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     endif()
 endif()
 
+# Clangd LSP support
+option(C3_ENABLE_CLANGD_LSP "Enable/Disable output of compile commands during generation." OFF)
+if(C3_ENABLE_CLANGD_LSP)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+            ${CMAKE_BINARY_DIR}/compile_commands.json
+            ${CMAKE_SOURCE_DIR}/compile_commands.json
+    )
+endif(C3_ENABLE_CLANGD_LSP)
+
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if (C3_LLVM_VERSION STREQUAL "auto")
         set(C3_LLVM_VERSION "18")
