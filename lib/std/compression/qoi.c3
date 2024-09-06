@@ -415,7 +415,7 @@ macro @enumcast($Type, raw)
 	return QOIError.INVALID_DATA?;
 }
 
-def Pixel = char[<4>];
+distinct Pixel = inline char[<4>];
 macro char Pixel.hash(Pixel p) {
 	return (p.r * 3 + p.g * 5 + p.b * 7 + p.a * 11) % 64;
 }
