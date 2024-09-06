@@ -47,11 +47,12 @@ fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAUL
 
 /**
  * @param [&inout] allocator "The allocator to use"
+ * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-macro Map new_with_keyvalues(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	Map map = new(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
 	$for (var $i = 0; $i < $vacount; $i += 2)
@@ -64,11 +65,12 @@ macro Map new_with_keyvalues(..., uint capacity = DEFAULT_INITIAL_CAPACITY, floa
  * @param [in] keys "Array of keys for the Map entries"
  * @param [in] values "Array of values for the Map entries"
  * @param [&inout] allocator "The allocator to use"
+ * @require keys.len == values.len "Both keys and values arrays must be the same length"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn Map new_with_arrays(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn Map new_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
 	Map map = new(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
@@ -80,11 +82,12 @@ fn Map new_with_arrays(Key[] keys, Value[] values, uint capacity = DEFAULT_INITI
 }
 
 /**
+ * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-macro Map temp_with_keyvalues(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro Map temp_new_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	Map map = temp(capacity, load_factor);
 	$for (var $i = 0; $i < $vacount; $i += 2)
@@ -97,11 +100,12 @@ macro Map temp_with_keyvalues(..., uint capacity = DEFAULT_INITIAL_CAPACITY, flo
  * @param [in] keys "The keys for the HashMap entries"
  * @param [in] values "The values for the HashMap entries"
  * @param [&inout] allocator "The allocator to use"
+ * @require keys.len == values.len "Both keys and values arrays must be the same length"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn Map temp_with_arrays(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn Map temp_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
 	Map map = temp(capacity, load_factor);

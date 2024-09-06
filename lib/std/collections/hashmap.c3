@@ -55,12 +55,13 @@ fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, f
 
 /**
  * @param [&inout] allocator "The allocator to use"
+ * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-macro HashMap* HashMap.new_init_with_keyvalues(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+macro HashMap* HashMap.new_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	self.new_init(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
 	$for (var $i = 0; $i < $vacount; $i += 2)
@@ -73,12 +74,13 @@ macro HashMap* HashMap.new_init_with_keyvalues(&self, ..., uint capacity = DEFAU
  * @param [in] keys "The keys for the HashMap entries"
  * @param [in] values "The values for the HashMap entries"
  * @param [&inout] allocator "The allocator to use"
+ * @require keys.len == values.len "Both keys and values arrays must be the same length"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.new_init_with_arrays(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn HashMap* HashMap.new_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
 	self.new_init(.capacity = capacity, .load_factor = load_factor, .allocator = allocator);
@@ -90,12 +92,13 @@ fn HashMap* HashMap.new_init_with_arrays(&self, Key[] keys, Value[] values, uint
 }
 
 /**
+ * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-macro HashMap* HashMap.temp_init_with_keyvalues(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro HashMap* HashMap.temp_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.temp_init(.capacity = capacity, .load_factor = load_factor);
 	$for (var $i = 0; $i < $vacount; $i += 2)
@@ -108,12 +111,13 @@ macro HashMap* HashMap.temp_init_with_keyvalues(&self, ..., uint capacity = DEFA
  * @param [in] keys "The keys for the HashMap entries"
  * @param [in] values "The values for the HashMap entries"
  * @param [&inout] allocator "The allocator to use"
+ * @require keys.len == values.len "Both keys and values arrays must be the same length"
  * @require capacity > 0 "The capacity must be 1 or higher"
  * @require load_factor > 0.0 "The load factor must be higher than 0"
  * @require !self.allocator "Map was already initialized"
  * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
  **/
-fn HashMap* HashMap.temp_init_with_arrays(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn HashMap* HashMap.temp_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
 	self.temp_init(.capacity = capacity, .load_factor = load_factor);
