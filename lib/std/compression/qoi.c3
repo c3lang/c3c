@@ -329,7 +329,8 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO)
 		tag = data[pos];
 
 		// check for chunk type
-		switch {
+		switch
+		{
 			case run_length > 0:
 				run_length--;
 
