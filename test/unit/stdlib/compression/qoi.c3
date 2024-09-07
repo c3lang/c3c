@@ -11,7 +11,7 @@ fn void! test_qoi_all()
 {
     @pool() {
         // create a test descriptor
-        qoi::Desc test_desc;
+        QOIDesc test_desc;
 
         // decode the test data
         char[] decoded = qoi::decode(TEST_QOI_DATA[..], &test_desc)!;

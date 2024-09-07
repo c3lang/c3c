@@ -7,7 +7,7 @@ const uint PIXELS_MAX = 400000000;
  * Purely informative. It will be saved to the file header,
  * but does not affect how chunks are en-/decoded.
  */
-enum Colorspace : char (char id)
+enum QOIColorspace : char (char id)
 {
     SRGB = 0, 	// sRGB with linear alpha
     LINEAR = 1 	// all channels linear
@@ -19,7 +19,7 @@ enum Colorspace : char (char id)
  * AUTO can be used when decoding to automatically determine
  * the channels from the file's header.
  */
-enum Channels : char (char id)
+enum QOIChannels : char (char id)
 {
 	AUTO = 0,
     RGB = 3,
@@ -30,12 +30,12 @@ enum Channels : char (char id)
  * Descriptor.
  * Contains information about an image.
  */
-struct Desc
+struct QOIDesc
 {
 	uint width;
 	uint height;
-	Channels channels;
-	Colorspace colorspace;
+	QOIChannels channels;
+	QOIColorspace colorspace;
 }
 
 /**
@@ -61,8 +61,8 @@ import std::io;
  * file system.
  * 
  * The desc struct must be filled with the image width, height, the
- * used channels (qoi::Channels.RGB or RGBA) and the colorspace
- * (qoi::Colorspace.SRGB or LINEAR).
+ * used channels (QOIChannels.RGB or RGBA) and the colorspace
+ * (QOIColorspace.SRGB or LINEAR).
  * 
  * The function returns an optional, which can either be a QOIError
  * or the number of bytes written on success.
@@ -71,7 +71,7 @@ import std::io;
  * @param [in] input `The raw RGB or RGBA pixels to encode`
  * @param [&in] desc `The descriptor of the image`
  */
-fn usz! write(String filename, char[] input, Desc* desc)
+fn usz! write(String filename, char[] input, QOIDesc* desc)
 {
 	@pool() {
 		// encode data
@@ -94,7 +94,7 @@ fn usz! write(String filename, char[] input, Desc* desc)
 /**
  * Read and decode a QOI image from the file system.
  * 
- * If channels is set to qoi::Channels.AUTO, the function will
+ * If channels is set to QOIChannels.AUTO, the function will
  * automatically determine the channels from the file's header.
  * However, if channels is RGB or RGBA, the output format will be
  * forced into this number of channels.
@@ -112,7 +112,7 @@ fn usz! write(String filename, char[] input, Desc* desc)
  * @param [&out] desc `The descriptor to fill with the image's info`
  * @param channels `The channels to be used`
  */
-fn char[]! read(String filename, Desc* desc, Channels channels = AUTO, Allocator allocator = allocator::heap())
+fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
 {
 	// read file
 	char[]! data = file::load_new(filename);
@@ -141,7 +141,7 @@ import std::bits;
  * @param [in] input `The raw RGB or RGBA pixels to encode`
  * @param [&in] desc `The descriptor of the image`
  */
-fn char[]! encode(char[] input, Desc* desc, Allocator allocator = allocator::heap())
+fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap())
 {
 	// check info in desc
 	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_PARAMETERS?;
@@ -269,7 +269,7 @@ fn char[]! encode(char[] input, Desc* desc, Allocator allocator = allocator::hea
 /**
  * Decode a QOI image from memory.
  * 
- * If channels is set to qoi::Channels.AUTO, the function will
+ * If channels is set to QOIChannels.AUTO, the function will
  * automatically determine the channels from the file's header.
  * However, if channels is RGB or RGBA, the output format will be
  * forced into this number of channels.
@@ -287,7 +287,7 @@ fn char[]! encode(char[] input, Desc* desc, Allocator allocator = allocator::hea
  * @param [&out] desc `The descriptor to fill with the image's info`
  * @param channels `The channels to be used`
  */
-fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO, Allocator allocator = allocator::heap())
+fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
 {
 	// check input data
 	if (data.len < Header.sizeof + END_OF_STREAM.len) return QOIError.INVALID_DATA?;
@@ -301,9 +301,9 @@ fn char[]! decode(char[] data, Desc* desc, Channels channels = AUTO, Allocator a
 	// copy header data to desc
 	desc.width = bswap(header.be_width);
 	desc.height = bswap(header.be_height);
-	desc.channels = @enumcast(Channels, header.channels)!; 			// Rethrow if invalid
-	desc.colorspace = @enumcast(Colorspace, header.colorspace)!;	// Rethrow if invalid
-	if (desc.channels == Channels.AUTO) return QOIError.INVALID_DATA?; // Channels must be specified in the header
+	desc.channels = @enumcast(QOIChannels, header.channels)!; 			// Rethrow if invalid
+	desc.colorspace = @enumcast(QOIColorspace, header.colorspace)!;	// Rethrow if invalid
+	if (desc.channels == AUTO) return QOIError.INVALID_DATA?; // Channels must be specified in the header
 
 	// check width and height
 	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_DATA?;
