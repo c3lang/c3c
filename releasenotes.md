@@ -18,6 +18,7 @@
 
 ### Stdlib changes
 - Additional init functions for hashmap.
+- `format` functions are now functions and work better with splat.
 
 ## 0.6.2 Change list
 
