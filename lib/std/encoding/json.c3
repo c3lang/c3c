@@ -106,7 +106,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 {
 	@stack_mem(256; Allocator mem)
 	{
-		DString t = dstring::new_with_capacity(32, .allocator = mem);
+		DString t = dstring::new_with_capacity(32, allocator: mem);
 		bool negate = c == '-';
 		if (negate)
 		{

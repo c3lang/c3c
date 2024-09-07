@@ -219,7 +219,7 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	target->optlevel = GET_SETTING(OptimizationLevel, "optlevel", optlevels, "`none`, `less`, `more`, `max`.");
 
 	// Size optimization
-	target->optsize = GET_SETTING(SizeOptimizationLevel, "optsize", optlevels, "`none`, `small`, `tiny`.");
+	target->optsize = GET_SETTING(SizeOptimizationLevel, "optsize", optsizes, "`none`, `small`, `tiny`.");
 
 	static const char *opt_settings[8] = {
 			[OPT_SETTING_O0] = "O0",

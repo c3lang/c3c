@@ -4,7 +4,7 @@ import std::io, std::os;
 fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
-	list.new_init(.allocator = allocator);
+	list.new_init(allocator: allocator);
 	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) posix::closedir(directory);
 	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
@@ -27,7 +27,7 @@ import std::time, std::os, std::io;
 fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
-	list.new_init(.allocator = allocator);
+	list.new_init(allocator: allocator);
 
 	@pool(allocator)
 	{

@@ -2,6 +2,7 @@ module test;
 import std::io;
 import std::collections::map;
 
+def IntMap = HashMap(<String, int>);
 fn void! copy_map() @test
 {
 	TrackingAllocator alloc;
@@ -9,7 +10,7 @@ fn void! copy_map() @test
 	assert(alloc.allocated() == 0);
     mem::@scoped(&alloc)
 	{
-		HashMap(<String, int>) x;
+		IntMap x;
 		x.new_init();
 		DString y;
 		y.append("hello");

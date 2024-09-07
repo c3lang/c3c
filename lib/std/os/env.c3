@@ -105,7 +105,7 @@ fn Path! new_get_config_dir(Allocator allocator = allocator::heap())
 			String s = get_var_temp("XDG_CONFIG_HOME") ?? get_var_temp("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::temp_new(s).new_append(DIR, .allocator = allocator);
+		return path::temp_new(s).new_append(DIR, allocator: allocator);
 	$endif
 	};
 }

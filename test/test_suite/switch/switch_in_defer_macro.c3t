@@ -492,7 +492,7 @@ struct TrieNode
 fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::heap())
 {
     *self = {};
-    self.nodes.new_init(initial_capacity, .allocator = using);
+    self.nodes.new_init(initial_capacity, allocator: using);
     self.nodes.push(TrieNode{});
 }
 

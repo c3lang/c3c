@@ -23,8 +23,8 @@ static inline bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *stateme
 static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement);
 
-static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr);
-static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom);
+static inline bool sema_check_return_matches_opt_returns(SemaContext *context, Expr *ret_expr);
+static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom);
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_defer_stmt_body(SemaContext *context, Ast *statement);
 static inline bool sema_analyse_for_cond(SemaContext *context, ExprId *cond_ref, bool *infinite);
@@ -157,13 +157,9 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 	{
 		if (context_labels_exist_in_scope(context))
 		{
-			SEMA_ERROR(statement, "Unlabelled 'break' is not allowed here.");
+			RETURN_SEMA_ERROR(statement, "Unlabelled 'break' is not allowed here.");
 		}
-		else
-		{
-			SEMA_ERROR(statement, "There is no valid target for 'break', did you make a mistake?");
-		}
-		return false;
+		RETURN_SEMA_ERROR(statement, "There is no valid target for 'break', did you make a mistake?");
 	}
 
 	// Is jump, and set it as resolved.
@@ -221,8 +217,7 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 	// If we have a plain continue and no continue label, we just failed.
 	if (!context->continue_target && !statement->contbreak_stmt.label.name)
 	{
-		SEMA_ERROR(statement, "'continue' is not allowed here.");
-		return false;
+		RETURN_SEMA_ERROR(statement, "'continue' is not allowed here.");
 	}
 
 	AstId defer_id;
@@ -233,11 +228,11 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 		ASSIGN_DECL_OR_RET(Decl *target, sema_analyse_label(context, statement), false);
 		defer_id = target->label.defer;
 		parent = astptr(target->label.parent);
+
 		// Continue can only be used with "for" statements, skipping the "do {  };" statement
 		if (!ast_supports_continue(parent))
 		{
-			SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
-			return false;
+			RETURN_SEMA_ERROR(statement, "'continue' may only be used with 'for', 'while' and 'do-while' statements.");
 		}
 	}
 	else
@@ -256,23 +251,36 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 	return true;
 }
 
+/**
+ * If we have "if (catch x)", then we want to unwrap x in the else clause.
+ **/
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 {
-	assert(cond->expr_kind == EXPR_COND);
+	assert(cond->expr_kind == EXPR_COND && "Assumed cond");
 
 	Expr *last = VECLAST(cond->cond_expr);
+	assert(last);
+
+	// Dive into any cast, because it might have been cast into boolean.
 	while (last->expr_kind == EXPR_CAST)
 	{
 		last = exprptr(last->cast_expr.expr);
 	}
-	if (!last || last->expr_kind != EXPR_CATCH_UNWRAP) return;
+	// Skip any non-unwraps
+	if (last->expr_kind != EXPR_CATCH_UNWRAP) return;
 
+	// If we have "if (catch x)" then this will unwrap x in the
+	// else branch.
 	FOREACH(Expr *, expr, last->catch_unwrap_expr.exprs)
 	{
 		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
+
 		Decl *decl = expr->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR) continue;
 		assert(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be optional at this point.");
+
+		// Note that we could possibly have "if (catch x, x)" and in this case we'd
+		// unwrap twice, but that isn't really a problem.
 
 		// 5. Locals and globals may be unwrapped
 		switch (decl->var.kind)
@@ -284,14 +292,15 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 			default:
 				continue;
 		}
-
 	}
-}
 
+}
 
 // --- Sema analyse stmts
 
-
+/**
+ * Turn a "require" or "ensure" into a contract in the callee.
+ */
 static inline bool assert_create_from_contract(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan evaluation_location)
 {
 	directive = copy_ast_single(directive);
@@ -300,21 +309,21 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
-		if (expr->expr_kind == EXPR_DECL)
-		{
-			SEMA_ERROR(expr, "Only expressions are allowed.");
-			return false;
-		}
+		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
 		CondResult result = COND_MISSING;
 		if (!sema_analyse_cond_expr(context, expr, &result)) return false;
 
 		const char *comment = directive->contract_stmt.contract.comment;
 		if (!comment) comment = directive->contract_stmt.contract.expr_string;
-		if (result == COND_TRUE) continue;
-		if (result == COND_FALSE)
+		switch (result)
 		{
-			sema_error_at(context, evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
-			return false;
+			case COND_TRUE:
+				continue;
+			case COND_FALSE:
+				sema_error_at(context, evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
+				return false;
+			case COND_MISSING:
+				break;
 		}
 		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
 		assert->assert_stmt.is_ensure = true;
@@ -327,7 +336,8 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 	return true;
 }
 
-static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom)
+// Check whether a defer chain contains a try or a catch.
+static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom)
 {
 	AstId first = 0;
 	while (defer_bottom != defer_top)
@@ -339,27 +349,43 @@ static inline bool sema_defer_by_result(AstId defer_top, AstId defer_bottom)
 	return false;
 }
 
+// Print defers at return (from macro/block or from function)
 static inline void sema_inline_return_defers(SemaContext *context, Ast *stmt, AstId defer_top, AstId defer_bottom)
 {
+	// Store the cleanup defers, which will happen on try.
 	stmt->return_stmt.cleanup = context_get_defers(context, defer_top, defer_bottom, true);
-	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr) && sema_defer_by_result(context->active_scope.defer_last, context->block_return_defer))
+
+	// If we have an optional return, then we create a cleanup_fail
+	if (stmt->return_stmt.expr && IS_OPTIONAL(stmt->return_stmt.expr)
+		&& sema_defer_has_try_or_catch(context->active_scope.defer_last, context->block_return_defer))
 	{
 		stmt->return_stmt.cleanup_fail = context_get_defers(context, context->active_scope.defer_last, context->block_return_defer, false);
+		return;
 	}
-	else
-	{
-		stmt->return_stmt.cleanup_fail = stmt->return_stmt.cleanup ? astid(copy_ast_defer(astptr(stmt->return_stmt.cleanup))) : 0;
-	}
+	// Otherwise we make the cleanup fail be the same as the cleanup.
+	stmt->return_stmt.cleanup_fail = stmt->return_stmt.cleanup ? astid(copy_ast_defer(astptr(stmt->return_stmt.cleanup))) : 0;
 }
 
-static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *context, Expr *ret_expr)
+/**
+ * Check that an optional returned actually matches the "returns!" declared
+ * by the contract.
+ */
+static inline bool sema_check_return_matches_opt_returns(SemaContext *context, Expr *ret_expr)
 {
 	if (!IS_OPTIONAL(ret_expr) || !context->call_env.opt_returns) return true;
+
+	// TODO if this is a call, then we should check against
+	// the "return!" in that call.
+	// But for now we
 	if (ret_expr->expr_kind != EXPR_OPTIONAL) return true;
 	Expr *inner = ret_expr->inner_expr;
 	if (!sema_cast_const(inner)) return true;
+
+	// Here we have a const optional return.
 	assert(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
 	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
+
+	// Check that we find it.
 	FOREACH(Decl *, opt, context->call_env.opt_returns)
 	{
 		if (opt->decl_kind == DECL_FAULT)
@@ -369,6 +395,7 @@ static inline bool sema_return_optional_check_is_valid_in_scope(SemaContext *con
 		}
 		if (opt == fault) return true;
 	}
+	// No match
 	RETURN_SEMA_ERROR(ret_expr, "This value does not match declared optional returns, it needs to be declared with the other optional returns.");
 }
 
@@ -451,7 +478,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 		{
 			if (!sema_analyse_expr(context, ret_expr)) return false;
 		}
-		if (is_macro && !sema_return_optional_check_is_valid_in_scope(context, ret_expr)) return false;
+		if (is_macro && !sema_check_return_matches_opt_returns(context, ret_expr)) return false;
 
 	}
 	else
@@ -537,8 +564,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 {
 	if (context->active_scope.in_defer)
 	{
-		SEMA_ERROR(statement, "Return is not allowed inside of a defer.");
-		return false;
+		RETURN_SEMA_ERROR(statement, "Return is not allowed inside of a defer.");
 	}
 
 	// This might be a return in a function block or a macro which must be treated differently.
@@ -546,6 +572,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	{
 		return sema_analyse_block_exit_stmt(context, statement);
 	}
+
 	// 1. We mark that the current scope ends with a jump.
 	context->active_scope.jump_end = true;
 
@@ -553,12 +580,11 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	assert(expected_rtype && "We should always have known type from a function return.");
 
 	Expr *return_expr = statement->return_stmt.expr;
-
 	if (return_expr)
 	{
 		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype), NULL, false)) return false;
 		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
-		if (!sema_return_optional_check_is_valid_in_scope(context, return_expr)) return false;
+		if (!sema_check_return_matches_opt_returns(context, return_expr)) return false;
 	}
 	else
 	{
@@ -630,6 +656,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
+		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_BINARY:
 		case EXPR_POINTER_OFFSET:
@@ -671,6 +698,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_SLICE:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_SUBSCRIPT:
 		case EXPR_SWIZZLE:

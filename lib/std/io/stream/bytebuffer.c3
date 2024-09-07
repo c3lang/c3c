@@ -131,7 +131,7 @@ fn usz! ByteBuffer.available(&self) @inline @dynamic
 fn void! ByteBuffer.grow(&self, usz n)
 {
 	n = math::next_power_of_2(n);
-	char* p = allocator::realloc_aligned(self.allocator, self.bytes, n, .alignment = char.alignof)!;
+	char* p = allocator::realloc_aligned(self.allocator, self.bytes, n, alignment: char.alignof)!;
 	self.bytes = p[:n];
 }
 

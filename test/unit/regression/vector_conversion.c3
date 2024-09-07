@@ -16,6 +16,13 @@ fn void vector_array_inferred()
 	assert(w == int[<2>] { 4, 7 });
 }
 
+fn void vector_convert_slice()
+{
+	int[<2>] x = { 1, 2 };
+	int[2] y = { 4, 4 };
+	x *= y[:2];
+	assert(x == { 4, 8 });
+}
 fn void vector_convert_bool()
 {
 	bool[<2>] a = { true, false };

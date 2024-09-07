@@ -12,7 +12,7 @@ fn void test2()
 
 fn void test3()
 {
-	baz(test3()); // #error: A value of type 'void' cannot be passed as a variadic argumen
+	baz(test3()); // #error: A value of type 'void' cannot be passed as a raw variadic argumen
 }
 
 fn void test4()

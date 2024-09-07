@@ -262,6 +262,7 @@ RETRY:
 		case EXPR_MACRO_BODY:
 		case EXPR_OTHER_CONTEXT:
 		case EXPR_MEMBER_GET:
+		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
@@ -298,9 +299,9 @@ RETRY:
 			sema_trace_expr_list_liveness(expr->call_expr.arguments);
 			if (expr->call_expr.varargs)
 			{
-				if (expr->call_expr.splat_vararg)
+				if (expr->call_expr.va_is_splat)
 				{
-					sema_trace_expr_liveness(expr->call_expr.splat);
+					sema_trace_expr_liveness(expr->call_expr.vasplat);
 				}
 				else
 				{

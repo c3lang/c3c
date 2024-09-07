@@ -97,16 +97,24 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_COND:
 		case EXPR_CONST:
 		case EXPR_DECL:
+		case EXPR_DEFAULT_ARG:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
+		case EXPR_DESIGNATOR:
+		case EXPR_EMBED:
 		case EXPR_EXPRESSION_LIST:
-		case EXPR_INITIALIZER_LIST:
 		case EXPR_EXPR_BLOCK:
-		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_GENERIC_IDENT:
+		case EXPR_INITIALIZER_LIST:
+		case EXPR_LAMBDA:
+		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_OPTIONAL:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_POST_UNARY:
 		case EXPR_RETHROW:
@@ -115,20 +123,13 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SLICE_COPY:
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_SUBSCRIPT_ASSIGN:
+		case EXPR_SWIZZLE:
 		case EXPR_TERNARY:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_VASPLAT:
-		case EXPR_SWIZZLE:
-		case EXPR_LAMBDA:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_EMBED:
-		case EXPR_MACRO_BODY:
-		case EXPR_DEFAULT_ARG:
-		case EXPR_LAST_FAULT:
-		case EXPR_DESIGNATOR:
 			return false;
 	}
 	UNREACHABLE
@@ -225,6 +226,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
 		case EXPR_MEMBER_GET:
@@ -340,6 +342,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_MACRO_BODY:
+		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_NOP:
 			return true;
@@ -757,11 +760,13 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:
 		case EXPR_MACRO_BLOCK:
+		case EXPR_NAMED_ARGUMENT:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
+		case EXPR_SPLAT:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_FORCE_UNWRAP:

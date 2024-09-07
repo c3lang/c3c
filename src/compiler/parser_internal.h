@@ -60,7 +60,7 @@ bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref);
 bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 
-bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool *splat, bool vasplat);
+bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);
 
 INLINE void add_decl_to_list(Decl ***list, Decl *decl)
@@ -113,6 +113,19 @@ INLINE bool expect(ParseContext *c, TokenType token_type)
 	return false;
 }
 
+INLINE bool token_is_param_name(TokenType token_type)
+{
+	switch (token_type)
+	{
+		case TOKEN_CT_IDENT:
+		case TOKEN_IDENT:
+		case TOKEN_HASH_IDENT:
+		case TOKEN_CT_TYPE_IDENT:
+			return true;
+		default:
+			return false;
+	}
+}
 INLINE bool token_is_some_ident(TokenType token_type)
 {
 	switch (token_type)

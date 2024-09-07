@@ -31,12 +31,12 @@ fn Type Range.get(&self, usz index) @operator([])
 
 fn String Range.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic @deprecated
 {
-	return string::format("[%s..%s]", self.start, self.end, .allocator = allocator);
+	return string::format("[%s..%s]", self.start, self.end, allocator: allocator);
 }
 
 fn String Range.to_string(&self, Allocator allocator) @dynamic
 {
-	return string::format("[%s..%s]", self.start, self.end, .allocator = allocator);
+	return string::format("[%s..%s]", self.start, self.end, allocator: allocator);
 }
 
 fn String Range.to_tstring(&self)
@@ -78,7 +78,7 @@ fn String ExclusiveRange.to_new_string(&self, Allocator allocator = null) @dynam
 
 fn String ExclusiveRange.to_string(&self, Allocator allocator) @dynamic
 {
-	return string::format("[%s..<%s]", self.start, self.end, .allocator = allocator);
+	return string::format("[%s..<%s]", self.start, self.end, allocator: allocator);
 }
 
 fn String ExclusiveRange.to_tstring(&self)

@@ -443,11 +443,19 @@ param_path
 	| param_path param_path_element
 	;
 
+arg_name
+	: IDENT
+	| CT_TYPE_IDENT
+	| HASH_IDENT
+	| CT_IDENT
+	;
 arg
 	: param_path '=' expr
-	| param_path
-	| type
 	| param_path '=' type
+	| param_path
+	| arg_name ':' expr
+	| arg_name ':' type
+	| type
 	| expr
 	| CT_VASPLAT '[' range_expr ']'
 	| ELLIPSIS expr

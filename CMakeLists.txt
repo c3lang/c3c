@@ -101,6 +101,17 @@ if(C3_USE_TB AND GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     endif()
 endif()
 
+# Clangd LSP support
+option(C3_ENABLE_CLANGD_LSP "Enable/Disable output of compile commands during generation." OFF)
+if(C3_ENABLE_CLANGD_LSP)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    execute_process(
+        COMMAND ${CMAKE_COMMAND} -E create_symlink
+            ${CMAKE_BINARY_DIR}/compile_commands.json
+            ${CMAKE_SOURCE_DIR}/compile_commands.json
+    )
+endif(C3_ENABLE_CLANGD_LSP)
+
 if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
     if (C3_LLVM_VERSION STREQUAL "auto")
         set(C3_LLVM_VERSION "18")
@@ -337,7 +348,9 @@ add_executable(c3c
         src/utils/http.c
         src/compiler/sema_liveness.c
         src/build/common_build.c
-        ${CMAKE_BINARY_DIR}/git_hash.h)
+        src/compiler/sema_const.c
+        ${CMAKE_BINARY_DIR}/git_hash.h
+        )
 
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     # We are inside of a git repository so rebuilding the hash every time something changes.
@@ -412,6 +425,11 @@ if (WIN32)
     target_link_libraries(c3c Winhttp.lib)
 endif()
 
+if(MINGW)
+    message("Increase stack for msys")
+    set(CMAKE_EXE_LINKER_FLAGS "${CMAKE_EXE_LINKER_FLAGS} -Wl,--stack,8388608")
+endif ()
+
 if (CURL_FOUND)
     target_link_libraries(c3c ${CURL_LIBRARIES})
     target_include_directories(c3c PRIVATE ${CURL_INCLUDES})
@@ -419,6 +437,7 @@ if (CURL_FOUND)
 else()
     target_compile_definitions(c3c PUBLIC CURL_FOUND=0)
 endif()
+
 
 if(MSVC)
     message("Adding MSVC options")

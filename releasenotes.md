@@ -3,12 +3,23 @@
 ## 0.6.3 Change list
 
 ### Changes / improvements
-*None yet*
+- Introduce `arg: x` named arguments instead of `.arg = x`, deprecate old style.
+- Support splat for varargs #1352.
 
 ### Fixes
-*None yet*
+- Issue where a lambda wasn't correctly registered as external. #1408
+- Generic methods were incorrectly registered as functions, leading to naming collisions. #1402
+- Deprecated inline generic types.
+- Deprecated tuple / triple types.
+- Converting a slice to a vector/array would copy too little data.
+- Crash when reading an empty 'manifest.json'.
+- "optsize" did not work correctly in project.json.
+- `l[0].a = 1` now supported for overloads due to better lvalue handling #1357.
+- Asserts are retained regardless of optimization when running tests.
 
 ### Stdlib changes
+- Additional init functions for hashmap.
+- `format` functions are now functions and work better with splat.
 - Add support for the QOI format.
 
 ## 0.6.2 Change list

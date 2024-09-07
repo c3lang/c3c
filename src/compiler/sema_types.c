@@ -303,7 +303,7 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
+	if (!sema_analyse_expr_value(context, expr)) return false;
 	Type *expr_type = expr->type;
 	if (expr_type->type_kind == TYPE_FUNC_RAW) expr_type = type_get_func_ptr(expr_type);
 	switch (type_storage_type(expr_type))
@@ -342,7 +342,7 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 	}
 	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL,
 	                                                                  true), false);
-	if (!sema_analyse_expr_lvalue(context, arg_expr)) return false;
+	if (!sema_analyse_expr_value(context, arg_expr)) return false;
 	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
 	type_info->type = arg_expr->type_expr->type;
 	return true;
@@ -362,6 +362,12 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name, inner->span, type_info->generic.params);
 	if (!decl_ok(type)) return false;
 	type_info->type = type->type;
+	if (!context->current_macro && !type_info->in_def)
+	{
+		if (!compiler.context.silence_deprecation) SEMA_NOTE(type_info, "Direct generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
+		// TODO, completely disallow
+		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
+	}
 	return true;
 }
 

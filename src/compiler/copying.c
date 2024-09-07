@@ -294,6 +294,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_OTHER_CONTEXT:
 			MACRO_COPY_EXPR(expr->expr_other_context.inner);
 			return expr;
+		case EXPR_NAMED_ARGUMENT:
+			MACRO_COPY_EXPR(expr->named_argument_expr.value);
+			return expr;
 		case EXPR_EMBED:
 			MACRO_COPY_EXPR(expr->embed_expr.len);
 			MACRO_COPY_EXPR(expr->embed_expr.filename);
@@ -444,11 +447,12 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CT_AND_OR:
 			MACRO_COPY_EXPR_LIST(expr->ct_and_or_expr.args);
 			return expr;
-		case EXPR_FORCE_UNWRAP:
-		case EXPR_OPTIONAL:
-		case EXPR_STRINGIFY:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:
+		case EXPR_FORCE_UNWRAP:
+		case EXPR_OPTIONAL:
+		case EXPR_SPLAT:
+		case EXPR_STRINGIFY:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
 		case EXPR_DEFAULT_ARG:
@@ -513,9 +517,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
 			if (expr->call_expr.varargs)
 			{
-				if (expr->call_expr.splat_vararg)
+				if (expr->call_expr.va_is_splat)
 				{
-					MACRO_COPY_EXPR(expr->call_expr.splat);
+					MACRO_COPY_EXPR(expr->call_expr.vasplat);
 				}
 				else
 				{

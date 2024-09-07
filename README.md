@@ -137,7 +137,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.6.1**.
+The current stable version of the compiler is **version 0.6.2**.
 
 The upcoming 0.6.x releases will focus on expanding the standard library.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).

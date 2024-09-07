@@ -1277,9 +1277,7 @@ void llvm_emit_slice_to_vec_array_cast(GenContext *c, BEValue *value, Type *to_t
 	LLVMTypeRef type = llvm_get_type(c, to_type);
 	AlignSize alignment = llvm_abi_alignment(c, type);
 	LLVMValueRef temp = llvm_emit_alloca(c, type, alignment, ".temp");
-	unsigned elements = LLVMGetTypeKind(type) == LLVMVectorTypeKind
-			? LLVMGetVectorSize(type) : LLVMGetArrayLength(type);
-	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, elements);
+	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, llvm_abi_size(c, type));
 	llvm_value_set_address(value, temp, to_type, alignment);
 }
 
@@ -6091,9 +6089,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 	Expr *vararg_splat = NULL;
 	Expr **varargs = NULL;
-	if (expr->call_expr.splat_vararg)
+	if (expr->call_expr.va_is_splat)
 	{
-		vararg_splat = expr->call_expr.splat;
+		vararg_splat = expr->call_expr.vasplat;
 	}
 	else
 	{
@@ -7071,6 +7069,7 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 	else
 	{
 		llvm_emit_expr(c, value, expr->default_arg_expr.inner);
+		llvm_value_fold_optional(c, value);
 	}
 }
 
@@ -7095,6 +7094,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_OTHER_CONTEXT:
 		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_GET:
+		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_DEFAULT_ARG:
 			llvm_emit_default_arg(c, value, expr);

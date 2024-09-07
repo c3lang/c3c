@@ -38,10 +38,10 @@ fault NumberConversion
  *
  * @param [in] fmt `The formatting string`
  **/
-macro ZString tformat_zstr(String fmt, ...)
+fn ZString tformat_zstr(String fmt, args...)
 {
-	DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-	str.appendf(fmt, $vasplat);
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
+	str.appendf(fmt, ...args);
 	return str.zstr_view();
 }
 
@@ -51,12 +51,12 @@ macro ZString tformat_zstr(String fmt, ...)
  * @param [inout] allocator `The allocator to use`
  * @param [in] fmt `The formatting string`
  **/
-macro String format(String fmt, ..., Allocator allocator)
+fn String format(String fmt, args..., Allocator allocator)
 {
 	@pool(allocator)
 	{
-		DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-		str.appendf(fmt, $vasplat);
+		DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
+		str.appendf(fmt, ...args);
 		return str.copy_str(allocator);
 	};
 }
@@ -66,17 +66,17 @@ macro String format(String fmt, ..., Allocator allocator)
  *
  * @param [in] fmt `The formatting string`
  **/
-macro String new_format(String fmt, ..., Allocator allocator = null) => format(fmt, $vasplat, .allocator = allocator ?: allocator::heap());
+fn String new_format(String fmt, args..., Allocator allocator = null) => format(fmt, ...args, allocator: allocator ?: allocator::heap());
 
 /**
  * Return a temporary String created using the formatting function.
  *
  * @param [in] fmt `The formatting string`
  **/
-macro String tformat(String fmt, ...)
+fn String tformat(String fmt, args...)
 {
-	DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-	str.appendf(fmt, $vasplat);
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
+	str.appendf(fmt, ...args);
 	return str.str_view();
 }
 
@@ -86,12 +86,12 @@ macro String tformat(String fmt, ...)
  * @param [in] fmt `The formatting string`
  * @param [inout] allocator `The allocator to use`
  **/
-macro ZString new_format_zstr(String fmt, ..., Allocator allocator = allocator::heap())
+fn ZString new_format_zstr(String fmt, args..., Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
 	{
-		DString str = dstring::temp_with_capacity(fmt.len + $vacount * 8);
-		str.appendf(fmt, $vasplat);
+		DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
+		str.appendf(fmt, ...args);
 		return str.copy_zstr(allocator);
 	};
 }

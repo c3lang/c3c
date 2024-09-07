@@ -597,7 +597,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list)
 }
 
 
-bool cast_to_index(SemaContext *context, Expr *index)
+bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type)
 {
 	Type *type = index->type;
 	RETRY:
@@ -624,8 +624,14 @@ bool cast_to_index(SemaContext *context, Expr *index)
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		default:
-			SEMA_ERROR(index, "Cannot implicitly convert '%s' to an index.", type_to_error_string(index->type));
-			return false;
+			if (!subscripted_type)
+			{
+				RETURN_SEMA_ERROR(index, "Cannot implicitly convert %s to an index.",
+				                  type_quoted_error_string(index->type));
+			}
+			RETURN_SEMA_ERROR(index, "Cannot implicitly convert %s to index %s.",
+			                  type_quoted_error_string(index->type),
+			                  type_quoted_error_string(subscripted_type));
 	}
 }
 

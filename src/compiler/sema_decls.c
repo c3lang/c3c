@@ -332,7 +332,7 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		// If we need to erase it then do so.
 		if (erase_decl)
 		{
-			vec_erase_ptr_at(members, i);
+			vec_erase_at(members, i);
 			member_count--;
 			// Go back and take the next one.
 			if (i < member_count) goto AGAIN;
@@ -503,7 +503,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		// If we should erase it, do so.
 		if (erase_decl)
 		{
-			vec_erase_ptr_at(struct_members, i);
+			vec_erase_at(struct_members, i);
 			member_count--;
 			if (i < member_count) goto AGAIN;
 			break;
@@ -963,14 +963,14 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		{
 			// This is necessary in order to allow this check to run again.
 			decl_poison(method);
-			vec_erase_ptr_at(method->func_decl.signature.params, 0);
+			vec_erase_at(method->func_decl.signature.params, 0);
 			return false;
 		}
 
 		// We might need to erase the function.
 		if (erase)
 		{
-			vec_erase_ptr_at(functions, i);
+			vec_erase_at(functions, i);
 			count--;
 			if (i >= count) break;
 			goto RETRY;
@@ -1071,7 +1071,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 		if (!sema_analyse_bitstruct_member(context, decl, member, i, decl->bitstruct.overlap, &erase_decl_member)) goto ERROR;
 		if (erase_decl_member)
 		{
-			vec_erase_ptr_at(members, i);
+			vec_erase_at(members, i);
 			member_count--;
 			if (i < member_count) goto AGAIN;
 			break;
@@ -1382,6 +1382,7 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 		return true;
 	}
 	TypeInfo *info = decl->typedef_decl.type_info;
+	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 	decl->type->canonical = info->type->canonical;
 	// Do we need anything else?
@@ -1404,6 +1405,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 	// Infer the underlying type normally.
 	TypeInfo *info = decl->distinct;
+	info->in_def = true;
 	if (!sema_resolve_type_info(context, info, RESOLVE_TYPE_DEFAULT)) return false;
 
 	// Optional isn't allowed of course.
@@ -1506,7 +1508,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
 				return decl_poison(decl);
 			}
-			vec_erase_ptr_at(enum_values, i);
+			vec_erase_at(enum_values, i);
 			enums--;
 			i--;
 			continue;
@@ -3646,7 +3648,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			if ((init = decl->var.init_expr))
 			{
 				// Try to fold any constant into an lvalue.
-				if (!sema_analyse_expr_lvalue_fold_const(context, init)) goto FAIL;
+				if (!sema_analyse_expr_value(context, init)) goto FAIL;
 
 				// If this isn't a type, it's an error.
 				if (init->expr_kind != EXPR_TYPEINFO)
@@ -4266,7 +4268,7 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 	if (*erase_decl) return true;
 
 	Expr *expr = decl->define_decl.alias_expr;
-	if (!sema_analyse_expr_lvalue_fold_const(context, expr)) return false;
+	if (!sema_analyse_expr_value(context, expr)) return false;
 	if (expr->expr_kind == EXPR_TYPEINFO)
 	{
 		RETURN_SEMA_ERROR(decl, "To alias a type, the alias name must start with uppercase and contain at least one lowercase letter.");

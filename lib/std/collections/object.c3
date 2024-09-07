@@ -156,7 +156,7 @@ fn void Object.init_map_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalMap.typeid;
-		self.map.new_init(.allocator = self.allocator);
+		self.map.new_init(allocator: self.allocator);
 	}
 }
 
@@ -168,7 +168,7 @@ fn void Object.init_array_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalList.typeid;
-		self.array.new_init(.allocator = self.allocator);
+		self.array.new_init(allocator: self.allocator);
 	}
 }
 

@@ -64,7 +64,7 @@ typedef uint16_t FileId;
 #define RETURN_PRINT_ERROR_HERE(...) do { print_error_at(c->span, __VA_ARGS__); return false; } while (0)
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
-#define SEMA_NOTE(_node, ...) sema_error_prev_at((_node)->span, __VA_ARGS__)
+#define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 
@@ -296,6 +296,7 @@ struct TypeInfo_
 	ResolveStatus resolve_status : 3;
 	TypeInfoKind kind : 6;
 	bool optional : 1;
+	bool in_def : 1;
 	TypeInfoCompressedKind subtype : 4;
 	Type *type;
 	SourceSpan span;
@@ -597,9 +598,9 @@ typedef struct Decl_
 		void *backend_value;
 		void *tb_symbol;
 	};
-	AlignSize alignment;
 	AlignSize offset;
 	AlignSize padding;
+	AlignSize alignment;
 	struct CompilationUnit_ *unit;
 	union
 	{
@@ -692,7 +693,6 @@ typedef struct
 	ExprId macro_body;
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
-	bool splat_vararg : 1;
 	bool attr_force_inline : 1;
 	bool attr_force_noinline : 1;
 	bool is_builtin : 1;
@@ -703,11 +703,11 @@ typedef struct
 	bool has_optional_arg : 1;
 	bool must_use : 1;
 	bool is_optional_return : 1;
+	bool va_is_splat : 1;
 	Expr **arguments;
-	union
-	{
+	union {
 		Expr **varargs;
-		Expr *splat;
+		Expr *vasplat;
 	};
 } ExprCall;
 
@@ -792,6 +792,13 @@ typedef struct
 	DesignatorElement **path;
 	Expr *value;
 } ExprDesignator;
+
+typedef struct
+{
+	const char *name;
+	SourceSpan name_span;
+	Expr *value;
+} ExprNamedArgument;
 
 typedef struct
 {
@@ -1079,6 +1086,7 @@ struct Expr_
 		Decl *decl_expr;                            // 8
 		Expr** designated_init_list;                // 8
 		ExprDesignator designator_expr;             // 16
+		ExprNamedArgument named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr** exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
@@ -2041,7 +2049,7 @@ bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool
 
 void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
 
-bool cast_to_index(SemaContext *context, Expr *index);
+bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
 CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
@@ -2245,7 +2253,7 @@ bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTy
 
 void print_error_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
-void sema_error_prev_at(SourceSpan loc, const char *message, ...);
+void sema_note_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
 void print_error(ParseContext *context, const char *message, ...);
 
@@ -3132,7 +3140,7 @@ INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->res
 
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
-INLINE void expr_set_span(Expr *expr, SourceSpan loc);
+static inline void expr_set_span(Expr *expr, SourceSpan loc);
 
 static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 {
@@ -3176,11 +3184,15 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 
-INLINE void expr_set_span(Expr *expr, SourceSpan loc)
+static inline void expr_set_span(Expr *expr, SourceSpan loc)
 {
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
+		case EXPR_NAMED_ARGUMENT:
+			expr->named_argument_expr.name_span = loc;
+			expr_set_span(expr->named_argument_expr.value, loc);
+			return;
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)
 			{
@@ -3203,6 +3215,9 @@ INLINE void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			expr_list_set_span(expr->designated_init_list, loc);
+			return;
+		case EXPR_SPLAT:
+			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_ACCESS:

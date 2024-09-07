@@ -185,7 +185,7 @@ void print_error_after(SourceSpan loc, const char *message, ...)
 	va_end(list);
 }
 
-void sema_error_prev_at(SourceSpan loc, const char *message, ...)
+void sema_note_prev_at(SourceSpan loc, const char *message, ...)
 {
 	va_list args;
 	va_start(args, message);
