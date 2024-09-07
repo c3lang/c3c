@@ -9,7 +9,7 @@
 *None yet*
 
 ### Stdlib changes
-*None yet*
+- Add support for the QOI format.
 
 ## 0.6.2 Change list
 
