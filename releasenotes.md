@@ -13,6 +13,7 @@
 - Converting a slice to a vector/array would copy too little data.
 - Crash when reading an empty 'manifest.json'.
 - "optsize" did not work correctly in project.json.
+- `l[0].a = 1` now supported for overloads due to better lvalue handling #1357.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

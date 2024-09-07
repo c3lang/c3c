@@ -4449,7 +4449,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	if (missing_ref) *missing_ref = false;
 
 	// 1. Resolve the left hand
-	if (!sema_analyse_expr_check(context, parent, check)) return false;
+	if (!sema_analyse_expr_check(context, parent, check != CHECK_VALUE ? CHECK_ADDRESS : CHECK_VALUE)) return false;
 
 	// 2. The right hand side may be a @ident or ident
 	Expr *child = expr->access_expr.child;
