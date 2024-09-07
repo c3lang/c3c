@@ -1,0 +1,39 @@
+// #target: macos-x64
+module test;
+import std;
+fn void main()
+{
+	var $a = { 1, 2, "abc" };
+	io::printfn("Hello %s %s %s %s", 1, ...$a);
+}
+
+/* #expect: test.ll
+
+  %varargslots = alloca [4 x %any], align 16
+  %taddr = alloca i32, align 4
+  %taddr1 = alloca i32, align 4
+  %taddr2 = alloca i32, align 4
+  %taddr4 = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  store i32 1, ptr %taddr, align 4
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  store i32 1, ptr %taddr1, align 4
+  %2 = insertvalue %any undef, ptr %taddr1, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd, align 16
+  store i32 2, ptr %taddr2, align 4
+  %4 = insertvalue %any undef, ptr %taddr2, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 32
+  store %any %5, ptr %ptradd3, align 16
+  store %"char[]" { ptr @.str.1, i64 3 }, ptr %taddr4, align 8
+  %6 = insertvalue %any undef, ptr %taddr4, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %ptradd5 = getelementptr inbounds i8, ptr %varargslots, i64 48
+  store %any %7, ptr %ptradd5, align 16
+  %8 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 17, ptr %varargslots, i64 4)
+  ret void
+}

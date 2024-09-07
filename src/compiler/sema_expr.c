@@ -1460,6 +1460,18 @@ INLINE bool sema_call_splat_vasplat(SemaContext *context, Expr *arg, Expr ***arg
 
 INLINE Expr **sema_splat_arraylike_append(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len)
 {
+	if (expr_is_const(arg))
+	{
+		for (ArrayIndex i = 0; i < len; i++)
+		{
+			Expr *expr = expr_copy(arg);
+			Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, expr);
+			subscript->subscript_expr.range.start = exprid(expr_new_const_int(arg->span, type_usz, i));
+			subscript->subscript_expr.expr = exprid(expr);
+			vec_add(args, subscript);
+		}
+		return args;
+	}
 	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->span);
 	Expr *decl_expr = expr_generate_decl(temp, arg);
 	Expr *list = expr_new_expr(EXPR_EXPRESSION_LIST, arg);
