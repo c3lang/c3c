@@ -1456,6 +1456,89 @@ INLINE bool sema_call_splat_vasplat(SemaContext *context, Expr *arg, Expr ***arg
 	*args_ref = args;
 	return true;
 }
+
+
+INLINE Expr **sema_splat_arraylike_append(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len)
+{
+	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->span);
+	Expr *decl_expr = expr_generate_decl(temp, arg);
+	Expr *list = expr_new_expr(EXPR_EXPRESSION_LIST, arg);
+	vec_add(list->expression_list, decl_expr);
+	Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
+	subscript->subscript_expr.range.start = exprid(expr_new_const_int(arg->span, type_usz, 0));
+	subscript->subscript_expr.expr = exprid(expr_variable(temp));
+	vec_add(list->expression_list, subscript);
+	if (!sema_analyse_expr(context, list)) return NULL;
+	vec_add(args, list);
+	for (ArrayIndex i = 1; i < len; i++)
+	{
+		subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
+		subscript->subscript_expr.range.start = exprid(expr_new_const_int(arg->span, type_usz, i));
+		subscript->subscript_expr.expr = exprid(expr_variable(temp));
+		vec_add(args, subscript);
+	}
+	return args;
+}
+INLINE bool sema_call_splat_arraylike(SemaContext *context, Expr *arg, Expr ***args_ref, int index, ArrayIndex len)
+{
+	ASSERT_SPAN(arg, len > 0);
+
+	// If it was the last element then just append.
+	Expr **args = *args_ref;
+	unsigned num_args = vec_size(args);
+	if (index == num_args - 1)
+	{
+		vec_pop(args);
+		args = sema_splat_arraylike_append(context, args, arg, len);
+		if (!args) return false;
+		*args_ref = args;
+		return true;
+	}
+	// Otherwise append to the end.
+	args = sema_splat_arraylike_append(context, args, arg, len);
+	if (!args) return false;
+	unsigned new_size = vec_size(args);
+	// Same after size => then just remove the $vasplat
+	ASSERT_SPAN(arg, new_size != num_args);
+	unsigned added_elements = new_size - num_args;
+	// Copy those elements
+	for (unsigned j = 0; j < added_elements; j++)
+	{
+		unsigned dest = index + j;
+		unsigned source = num_args + j;
+		// Copy the next element to the index position.
+		args[dest] = args[source];
+		// Copy the following into the place of the index.
+		args[source] = args[dest + 1];
+	}
+	vec_pop(args);
+	*args_ref = args;
+	return true;
+}
+
+static inline ArrayIndex sema_len_from_expr(Expr *expr)
+{
+	Type *type = type_flatten(expr->type);
+	switch (type->type_kind)
+	{
+		case TYPE_VECTOR:
+		case TYPE_ARRAY:
+			return type->array.len;
+		case TYPE_UNTYPED_LIST:
+			return sema_len_from_const(expr);
+		case TYPE_SLICE:
+			break;
+		default:
+			return -1;
+	}
+	if (sema_cast_const(expr))
+	{
+		return sema_len_from_const(expr);
+	}
+	if (expr->expr_kind != EXPR_SLICE) return -1;
+	return range_const_len(&expr->subscript_expr.range);
+}
+
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
                                          bool *no_match_ref)
 {
@@ -1481,12 +1564,13 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	// We might have a typed variadic call e.g. foo(int, double...)
 	// get that type.
 	Type *variadic_type = NULL;
+	Type *variadic_slot_type = NULL;
 	if (variadic == VARIADIC_TYPED || variadic == VARIADIC_ANY)
 	{
 		// 7a. The parameter type is <type>[], so we get the <type>
-		Type *vararg_slot_type = decl_params[vaarg_index]->type;
-		ASSERT_SPAN(call, vararg_slot_type->type_kind == TYPE_SLICE);
-		variadic_type = vararg_slot_type->array.base;
+		variadic_slot_type = decl_params[vaarg_index]->type;
+		ASSERT_SPAN(call, variadic_slot_type->type_kind == TYPE_SLICE);
+		variadic_type = variadic_slot_type->array.base;
 	}
 
 	Expr **args = call->call_expr.arguments;
@@ -1525,27 +1609,56 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 			{
 				RETURN_SEMA_ERROR(arg, "Splat is only possible with variadic functions.");
 			}
-			if (!variadic_type)
-			{
-				RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs.");
-			}
-			if (i != vaarg_index)
-			{
-				RETURN_SEMA_ERROR(arg, "Expected a splat only in the vaarg slot.");
-			}
-			call->call_expr.va_is_splat = true;
+
 			Expr *inner = arg->inner_expr;
-			// Potentially should be inferred
+
 			if (!sema_analyse_expr(context, inner)) return false;
 
-			if (!expr_may_splat_as_vararg(inner, variadic_type))
+			// Let's try fit up a slice to the in the vaslot
+			if (variadic_type && i == vaarg_index)
 			{
-				RETURN_SEMA_ERROR(inner, "It's not possible to splat %s as vararg of type %s",
-				                  type_quoted_error_string(inner->type),
-				                  type_quoted_error_string(variadic_type));
+				// Is it not the last and not a named argument, then we do a normal splat.
+				if (i + 1 < num_args && args[i + 1]->expr_kind != EXPR_NAMED_ARGUMENT) goto SPLAT_NORMAL;
+
+				// Convert an array/vector to an address of an array.
+				Expr *inner_new = inner;
+				if (type_is_arraylike(inner->type))
+				{
+					inner_new = expr_copy(inner);
+					expr_insert_addr(inner_new);
+				}
+				if (!cast_implicit_silent(context, inner_new, variadic_slot_type, false)) goto SPLAT_NORMAL;
+				if (inner != inner_new) expr_replace(inner, inner_new);
+				// We splat it in the right spot!
+				call->call_expr.va_is_splat = true;
+				*optional |= IS_OPTIONAL(inner);
+				call->call_expr.vasplat = inner;
+				continue;
 			}
-			*optional |= IS_OPTIONAL(inner);
-			call->call_expr.vasplat = inner;
+SPLAT_NORMAL:;
+			Type *flat = type_flatten(inner->type);
+			switch (flat->type_kind)
+			{
+				case TYPE_VECTOR:
+				case TYPE_ARRAY:
+				case TYPE_SLICE:
+				case TYPE_UNTYPED_LIST:
+					// These may be splatted
+					break;
+				default:
+					RETURN_SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
+					                  type_quoted_error_string(inner->type));
+			}
+			// This is the fallback: just splat like vasplat:
+			ArrayIndex len = sema_len_from_expr(inner);
+			if (len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known.");
+			if (len == 0 && !expr_is_const(arg))
+			{
+				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
+			}
+			if (!sema_call_splat_arraylike(context, inner, &args, i, len)) return false;
+			i--;
+			num_args = vec_size(args);
 			continue;
 		}
 		if (arg->expr_kind == EXPR_NAMED_ARGUMENT)
@@ -4950,10 +5063,6 @@ Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs)
 	} while (expand);
 	return exprs;
 }
-
-
-
-
 
 static inline bool sema_expr_analyse_expr_list(SemaContext *context, Expr *expr)
 {

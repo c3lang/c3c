@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Introduce `arg: x` named arguments instead of `.arg = x`, deprecate old style.
+- Support splat for varargs #1352.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
