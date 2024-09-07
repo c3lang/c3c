@@ -64,6 +64,11 @@ const char *module_create_object_file_name(Module *module)
 				break;
 		}
 	}
+	if (scratch_buffer.len > 128)
+	{
+		scratch_buffer.len = 128;
+		scratch_buffer_printf("@%X", module);
+	}
 	return scratch_buffer_to_string();
 }
 
