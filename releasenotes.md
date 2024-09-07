@@ -20,6 +20,7 @@
 ### Stdlib changes
 - Additional init functions for hashmap.
 - `format` functions are now functions and work better with splat.
+- Add support for the QOI format.
 
 ## 0.6.2 Change list
 
