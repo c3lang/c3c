@@ -15,6 +15,7 @@
 - Crash when reading an empty 'manifest.json'.
 - "optsize" did not work correctly in project.json.
 - `l[0].a = 1` now supported for overloads due to better lvalue handling #1357.
+- Asserts are retained regardless of optimization when running tests.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
