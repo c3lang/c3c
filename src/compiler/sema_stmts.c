@@ -2823,7 +2823,7 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 			printf("%.*s\n", EXPAND_EXPR_STRING(message));
 			break;
 		case CONST_POINTER:
-			printf("%p\n", (void*)message->const_expr.ptr);
+			printf("%p\n", (void*)(intptr_t)message->const_expr.ptr);
 			break;
 		case CONST_TYPEID:
 			puts(type_to_error_string(message->const_expr.typeid));

@@ -291,7 +291,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 	{
 		case CONST_POINTER:
 			if (!expr->ptr) return "null";
-			return str_printf("%p", (void*)expr->ptr);
+			return str_printf("%p", (void*)(intptr_t)expr->ptr);
 		case CONST_BOOL:
 			return expr->b ? "true" : "false";
 		case CONST_INTEGER:
