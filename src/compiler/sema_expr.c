@@ -1705,9 +1705,10 @@ SPLAT_NORMAL:;
 				SEMA_NOTE(last_named_arg, "Place it before this argument.");
 				return false;
 			}
-
-			for (int j = i; j < index; j++)
+			if (last_index == -1) last_index = i - 1;
+			for (int j = last_index + 1; j < index; j++)
 			{
+				if (j == vaarg_index) continue;
 				if (!sema_set_default_argument(context, callee, call,
 				                               params[j], no_match_ref,
 				                               &actual_args[j],
