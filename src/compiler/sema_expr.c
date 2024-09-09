@@ -141,8 +141,7 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_len_is_in_range(SemaContext *context, Type *type, Expr *len_expr, bool from_end, bool *remove_from_end);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
-static Expr **sema_vasplat_append(SemaContext *context, Expr **init_expressions, Expr *expr);
-INLINE Expr **sema_expand_vasplat(SemaContext *c, Expr **list, unsigned index);
+static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, CheckType check);
 
@@ -188,6 +187,7 @@ static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, Range range
 static inline void sema_expr_flatten_const_ident(Expr *expr);
 static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, CheckType check);
 
+static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point);
 static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead);
 
 // -- implementations
@@ -1418,48 +1418,10 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	                              callee->macro);
 }
 
-INLINE bool sema_call_splat_vasplat(SemaContext *context, Expr *arg, Expr ***args_ref, int index)
-{
-	// If it was the last element then just append.
-	Expr **args = *args_ref;
-	unsigned num_args = vec_size(args);
-	if (index == num_args - 1)
-	{
-		vec_pop(args);
-		args = sema_vasplat_append(context, args, arg);
-		if (!args) return false;
-		*args_ref = args;
-		return true;
-	}
-	// Otherwise append to the end.
-	args = sema_vasplat_append(context, args, arg);
-	if (!args) return false;
-	unsigned new_size = vec_size(args);
-	// Same after size => then just remove the $vasplat
-	if (new_size == num_args)
-	{
-		vec_erase_at(args, index);
-		return true;
-	}
-	unsigned added_elements = new_size - num_args;
-	// Copy those elements
-	for (unsigned j = 0; j < added_elements; j++)
-	{
-		unsigned dest = index + j;
-		unsigned source = num_args + j;
-		// Copy the next element to the index position.
-		args[dest] = args[source];
-		// Copy the following into the place of the index.
-		args[source] = args[dest + 1];
-	}
-	vec_pop(args);
-	*args_ref = args;
-	return true;
-}
 
-
-INLINE Expr **sema_splat_arraylike_append(SemaContext *context, Expr **args, Expr *arg, ArrayIndex len)
+INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Expr *arg, ArraySize len, ArrayIndex index)
 {
+	args = sema_prepare_splat_insert(args, len, index);
 	if (expr_is_const(arg))
 	{
 		for (ArrayIndex i = 0; i < len; i++)
@@ -1468,7 +1430,7 @@ INLINE Expr **sema_splat_arraylike_append(SemaContext *context, Expr **args, Exp
 			Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, expr);
 			subscript->subscript_expr.range.start = exprid(expr_new_const_int(arg->span, type_usz, i));
 			subscript->subscript_expr.expr = exprid(expr);
-			vec_add(args, subscript);
+			args[i + index] = subscript;
 		}
 		return args;
 	}
@@ -1481,51 +1443,15 @@ INLINE Expr **sema_splat_arraylike_append(SemaContext *context, Expr **args, Exp
 	subscript->subscript_expr.expr = exprid(expr_variable(temp));
 	vec_add(list->expression_list, subscript);
 	if (!sema_analyse_expr(context, list)) return NULL;
-	vec_add(args, list);
+	args[index] = list;
 	for (ArrayIndex i = 1; i < len; i++)
 	{
 		subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
 		subscript->subscript_expr.range.start = exprid(expr_new_const_int(arg->span, type_usz, i));
 		subscript->subscript_expr.expr = exprid(expr_variable(temp));
-		vec_add(args, subscript);
+		args[index + i] = subscript;
 	}
 	return args;
-}
-INLINE bool sema_call_splat_arraylike(SemaContext *context, Expr *arg, Expr ***args_ref, int index, ArrayIndex len)
-{
-	ASSERT_SPAN(arg, len > 0);
-
-	// If it was the last element then just append.
-	Expr **args = *args_ref;
-	unsigned num_args = vec_size(args);
-	if (index == num_args - 1)
-	{
-		vec_pop(args);
-		args = sema_splat_arraylike_append(context, args, arg, len);
-		if (!args) return false;
-		*args_ref = args;
-		return true;
-	}
-	// Otherwise append to the end.
-	args = sema_splat_arraylike_append(context, args, arg, len);
-	if (!args) return false;
-	unsigned new_size = vec_size(args);
-	// Same after size => then just remove the $vasplat
-	ASSERT_SPAN(arg, new_size != num_args);
-	unsigned added_elements = new_size - num_args;
-	// Copy those elements
-	for (unsigned j = 0; j < added_elements; j++)
-	{
-		unsigned dest = index + j;
-		unsigned source = num_args + j;
-		// Copy the next element to the index position.
-		args[dest] = args[source];
-		// Copy the following into the place of the index.
-		args[source] = args[dest + 1];
-	}
-	vec_pop(args);
-	*args_ref = args;
-	return true;
 }
 
 static inline ArrayIndex sema_len_from_expr(Expr *expr)
@@ -1610,7 +1536,9 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		assert(expr_ok(arg));
 		if (arg->expr_kind == EXPR_VASPLAT)
 		{
-			if (!sema_call_splat_vasplat(context, arg, &args, i)) return false;
+			Expr **new_args = sema_vasplat_insert(context, args, arg, i);
+			if (!new_args) return false;
+			args = new_args;
 			i--;
 			num_args = vec_size(args);
 			continue;
@@ -1668,7 +1596,9 @@ SPLAT_NORMAL:;
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
 			}
-			if (!sema_call_splat_arraylike(context, inner, &args, i, len)) return false;
+			Expr **new_args = sema_splat_arraylike_insert(context, args, inner, len, i);
+			if (!new_args) return false;
+			args = new_args;
 			i--;
 			num_args = vec_size(args);
 			continue;
@@ -4908,7 +4838,27 @@ MISSING_REF:
 	return false;
 }
 
-static Expr **sema_vasplat_append(SemaContext *context, Expr **init_expressions, Expr *expr)
+static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point)
+{
+	if (added == 0)
+	{
+		vec_erase_at(exprs, insert_point);
+		return exprs;
+	}
+	unsigned size = vec_size(exprs);
+	assert(size);
+	for (unsigned i = 1; i < added; i++)
+	{
+		vec_add(exprs, NULL);
+	}
+	// Move everything upwards.
+	for (unsigned i = size - 1; i > insert_point; i--)
+	{
+		exprs[i + added - 1] = exprs[i];
+	}
+	return exprs;
+}
+static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point)
 {
 	Expr **args = context->macro_varargs;
 	unsigned param_count = vec_size(args);
@@ -5004,52 +4954,22 @@ static Expr **sema_vasplat_append(SemaContext *context, Expr **init_expressions,
 			return NULL;
 		}
 	}
+
+	unsigned added = end_idx - start_idx;
+
+	// Zero splat
+	if (!added)
+	{
+		vec_erase_at(init_expressions, insert_point);
+		return init_expressions;
+	}
+
+	init_expressions = sema_prepare_splat_insert(init_expressions, added, insert_point);
 	for (unsigned i = start_idx; i < end_idx; i++)
 	{
-		vec_add(init_expressions, copy_expr_single(args[i]));
+		init_expressions[insert_point + i - start_idx] = copy_expr_single(args[i]);
 	}
 	return init_expressions;
-}
-
-
-INLINE Expr **sema_expand_vasplat(SemaContext *c, Expr **list, unsigned index)
-{
-	unsigned size = vec_size(list);
-
-	// If it was the last element then just append.
-	if (index == size - 1)
-	{
-		vec_pop(list);
-		return sema_vasplat_append(c, list, list[index]);
-	}
-	// Otherwise append to the end.
-	list = sema_vasplat_append(c, list, list[index]);
-	if (!list) return NULL;
-	unsigned new_size = vec_size(list);
-	unsigned added_elements = new_size - size;
-
-	if (added_elements == 0)
-	{
-		for (unsigned i = index + 1; i < size; i++)
-		{
-			list[i - 1] = list[i];
-		}
-		vec_pop(list);
-		return list;
-	}
-
-	// Copy those elements
-	for (unsigned i = 0; i < added_elements; i++)
-	{
-		unsigned dest = index + i;
-		unsigned source = size + i;
-		// Copy the next element to the index position.
-		list[dest] = list[source];
-		// Copy the following into the place of the index.
-		list[source] = list[dest + 1];
-	}
-	vec_pop(list);
-	return list;
 }
 
 Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs)
@@ -5065,7 +4985,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs)
 		{
 			if (exprs[i]->expr_kind == EXPR_VASPLAT)
 			{
-				exprs = sema_expand_vasplat(c, exprs, i);
+				exprs = sema_vasplat_insert(c, exprs, exprs[i], i);
 				// If we have null back it failed.
 				if (!exprs) return NULL;
 				count = vec_size(exprs);

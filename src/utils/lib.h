@@ -264,6 +264,7 @@ static inline void vec_resize(void *vec, uint32_t new_size)
 	header[-1].size = new_size;
 }
 
+
 static inline void vec_pop(void *vec)
 {
 	assert(vec);
