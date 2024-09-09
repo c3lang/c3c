@@ -3788,7 +3788,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
 			return decl_poison(decl);
 		}
-		if (kind == VARDECL_LOCAL && !context->current_macro)
+		if (kind == VARDECL_LOCAL && !context_is_macro(context))
 		{
 			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro.", decl->name);
 			return decl_poison(decl);

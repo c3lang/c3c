@@ -3123,7 +3123,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->call_env = (CallEnv) {
 		.current_function = func,
 		.kind = CALL_ENV_FUNCTION,
-		.pure = func->func_decl.signature.attrs.is_pure
+		.pure = func->func_decl.signature.attrs.is_pure,
 	};
 	context->rtype = prototype->rtype;
 	context->macro_call_depth = 0;

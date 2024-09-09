@@ -8290,6 +8290,10 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	}
 	decl->func_decl.lambda_ct_parameters = ct_lambda_parameters;
 	decl->func_decl.is_lambda = true;
+	if (context_is_macro(context) || !context->call_env.current_function)
+	{
+		decl->func_decl.in_macro = true;
+	}
 	decl->alignment = type_alloca_alignment(decl->type);
 	// We will actually compile this into any module using it (from a macro) by necessity,
 	// so we'll declare it as weak and externally visible.

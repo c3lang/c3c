@@ -5,11 +5,12 @@
 ### Changes / improvements
 - Introduce `arg: x` named arguments instead of `.arg = x`, deprecate old style.
 - Support splat for varargs #1352.
+- Allow `var` in lambdas in macros.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
 - Generic methods were incorrectly registered as functions, leading to naming collisions. #1402
-- Deprecated inline generic types.
+- Deprecated inline generic types outside of struct definitions and macros.
 - Deprecated tuple / triple types.
 - Converting a slice to a vector/array would copy too little data.
 - Crash when reading an empty 'manifest.json'.

@@ -362,9 +362,10 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name, inner->span, type_info->generic.params);
 	if (!decl_ok(type)) return false;
 	type_info->type = type->type;
-	if (!context->current_macro && !type_info->in_def)
+	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
+		&& !context->call_env.current_function->func_decl.in_macro)
 	{
-		if (!compiler.context.silence_deprecation) SEMA_NOTE(type_info, "Direct generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
+		if (!compiler.build.silence_deprecation) SEMA_NOTE(type_info, "Direct generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
 		// TODO, completely disallow
 		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
 	}

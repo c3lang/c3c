@@ -499,6 +499,7 @@ typedef struct
 			bool attr_nosanitize_memory : 1;
 			bool attr_nosanitize_thread : 1;
 			bool is_lambda : 1;
+			bool in_macro : 1;
 			union
 			{
 				uint32_t priority;
@@ -1762,7 +1763,6 @@ typedef struct
 	unsigned warnings_found;
 	unsigned includes_used;
 	Decl ***locals_list;
-	bool silence_deprecation;
 	HTable compiler_defines;
 	HTable features;
 	Module std_module;
@@ -2079,6 +2079,7 @@ void unit_register_external_symbol(SemaContext *context, Decl *decl);
 bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import);
 bool context_set_module_from_filename(ParseContext *context);
 bool context_set_module(ParseContext *context, Path *path, const char **generic_parameters);
+bool context_is_macro(SemaContext *context);
 
 // --- Decl functions
 

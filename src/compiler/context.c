@@ -112,6 +112,11 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 	return create_module_or_check_name(context->unit, path, generic_parameters);
 }
 
+bool context_is_macro(SemaContext *context)
+{
+	if (context->current_macro != NULL) return true;
+	return context->call_env.current_function && context->call_env.current_function->func_decl.in_macro;
+}
 
 void unit_register_external_symbol(SemaContext *context, Decl *decl)
 {
