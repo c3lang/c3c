@@ -3129,6 +3129,201 @@ static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *
 	return true;
 }
 
+typedef enum RangeEnv
+{
+	RANGE_ARRAY,
+	RANGE_SLICE,
+	RANGE_PTR,
+	RANGE_FLEXIBLE,
+} RangeEnv;
+
+INLINE bool sema_expre_analyse_range_internal(SemaContext *context, Range *range, Type *indexed_type, ArrayIndex len, RangeEnv env)
+{
+	Expr *start = exprptr(range->start);
+	assert(start);
+	Expr *end = exprptrzero(range->end);
+
+	if (!sema_analyse_expr(context, start)) return false;
+	if (end && !sema_analyse_expr(context, end)) return false;
+
+	if (!cast_to_index(context, start, indexed_type)) return false;
+	if (end && !cast_to_index(context, end, indexed_type)) return false;
+	if (end && end->type != start->type)
+	{
+		Type *common = type_find_max_type(start->type, end->type);
+		if (!common)
+		{
+			SourceSpan span = start->span;
+			span = extend_span_with_token(span, end->span);
+			sema_error_at(context, span, "No common type can be found between start and end index.");
+			return false;
+		}
+		if (!cast_implicit(context, start, common, false) || !cast_implicit(context, end, common, false)) return false;
+	}
+	// Check range
+	if (env != RANGE_ARRAY && env != RANGE_SLICE)
+	{
+		if (range->start_from_end)
+		{
+			RETURN_SEMA_ERROR(start, "Indexing from the end is not allowed for pointers or flexible array members.");
+		}
+		if (!end)
+		{
+			RETURN_SEMA_ERROR(start, "Omitting end index is not allowed for pointers or flexible array members.");
+		}
+		if (end && range->end_from_end)
+		{
+			RETURN_SEMA_ERROR(end, "Indexing from the end is not allowed for pointers or flexible array members.");
+		}
+	}
+	bool end_is_const = !end || sema_cast_const(end);
+	if (end && sema_cast_const(end))
+	{
+		// Only ArrayIndex sized
+		if (!int_fits(end->const_expr.ixx, TYPE_I64))
+		{
+			RETURN_SEMA_ERROR(end, "The index cannot be stored in a 64-signed integer, which isn't supported.");
+		}
+
+		int64_t end_index = int_to_i64(end->const_expr.ixx);
+
+		if (range->end_from_end)
+		{
+			if (end_index < 0) RETURN_SEMA_ERROR(end, "Negative numbers are not allowed when indexing from the end.");
+			// Something like  1 .. ^4 with an unknown length.
+			if (len < 0) return true;
+			// Otherwise we fold the "from end"
+			end_index = len - end_index;
+			if (end_index < 0)
+			{
+				RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", end_index);
+			}
+			range->end_from_end = false;
+		}
+		if (end_index < 0 && env != RANGE_PTR)
+		{
+			RETURN_SEMA_ERROR(end, "An index may only be negative for pointers (it was: %lld).", end_index);
+		}
+		// No more analysis
+		if (end_index > MAX_ARRAYINDEX || end_index < -MAX_ARRAYINDEX) return true;
+		range->const_end = end_index;
+		range->range_type = range->is_len ? RANGE_CONST_LEN : RANGE_CONST_END;
+	}
+	else if (!end && len > 0)
+	{
+		range->is_len = false;
+		range->const_end = len - 1;
+		range->range_type = RANGE_CONST_END;
+	}
+
+	if (sema_cast_const(start))
+	{
+		// Only ArrayIndex sized
+		if (!int_fits(start->const_expr.ixx, TYPE_I64))
+		{
+			RETURN_SEMA_ERROR(end, "The index cannot be stored in a 64-signed integer, which isn't supported.");
+		}
+		// Only ArrayIndex sized
+		int64_t start_index = int_to_i64(start->const_expr.ixx);
+		if (range->start_from_end)
+		{
+			if (start_index < 0) RETURN_SEMA_ERROR(end, "Negative numbers are not allowed when indexing from the end.");
+			// Something like  ^1 .. 4 with an unknown length.
+			if (len < 0) return true;
+			// Otherwise we fold the "from end"
+			start_index = len - start_index;
+			if (start_index < 0)
+			{
+				RETURN_SEMA_ERROR(start, "An index may only be negative for pointers (it was: %lld).", start_index);
+			}
+			if (start_index > MAX_ARRAYINDEX || start_index < -MAX_ARRAYINDEX) return true;
+			range->start_from_end = false;
+		}
+		if (start_index < 0 && env != RANGE_PTR)
+		{
+			RETURN_SEMA_ERROR(start, "An index may only be negative for pointers (it was: %lld).", start_index);
+		}
+		if (len > -1 && start_index >= len)
+		{
+			RETURN_SEMA_ERROR(start, "Index out of bounds: the start index was %lld, exceeding the maximum (%lld)",
+							  start_index, len - 1);
+		}
+		if (range->range_type == RANGE_CONST_END)
+		{
+			int64_t end_index = range->const_end;
+			if (end_index < start_index) RETURN_SEMA_ERROR(start, "The start index (%lld) should not be greater than the end index (%lld).",
+														   start_index, end_index);
+			if (start_index > MAX_ARRAYINDEX) return true;
+			range->const_end = end_index + 1 - start_index;
+			range->range_type = RANGE_CONST_LEN;
+			range->is_len = true;
+		}
+		if (range->range_type == RANGE_CONST_LEN)
+		{
+			int64_t end_index = range->const_end;
+			range->range_type = RANGE_CONST_RANGE;
+			range->start_index = start_index;
+			range->len_index = end_index;
+		}
+	}
+	if (len > -1)
+	{
+		switch (range->range_type)
+		{
+			case RANGE_CONST_END:
+				if (range->const_end >= len)
+				{
+					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %d, exceeding max index %d.", range->const_end, len - 1);
+				}
+				break;
+			case RANGE_CONST_LEN:
+				if (range->const_end > len)
+				{
+					RETURN_SEMA_ERROR(end ? end : start, "Length out of bounds, was %d, exceeding max length %d.", range->const_end, len);
+				}
+				break;
+			case RANGE_CONST_RANGE:
+				if (range->len_index > len)
+				{
+					RETURN_SEMA_ERROR(end ? end : start, "End index out of bounds, was %d, exceeding max index %d.", range->len_index - 1, len - 1);
+				}
+				break;
+			default:
+				break;
+		}
+	}
+	return true;
+}
+
+
+static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, Type *indexed_type, ArrayIndex len, RangeEnv env)
+{
+	switch (range->status)
+	{
+		case RESOLVE_DONE:
+			return true;
+		case RESOLVE_NOT_DONE:
+			range->status = RESOLVE_RUNNING;
+			if (!sema_expre_analyse_range_internal(context, range, indexed_type, len, env))
+			{
+				range->status = RESOLVE_NOT_DONE;
+				return false;
+			}
+			range->status = RESOLVE_DONE;
+			return true;
+		case RESOLVE_RUNNING:
+		{
+			SourceSpan span = exprptr(range->start)->span;
+			if (range->end) span = extend_span_with_token(span, exprptr(range->end)->span);
+			sema_error_at(context, span, "Recursive definition of range.");
+			range->status = RESOLVE_NOT_DONE;
+			return false;
+		}
+		default:
+			UNREACHABLE
+	}
+
+}
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 {
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_SLICE);
@@ -3137,113 +3332,40 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr)
 	bool optional = IS_OPTIONAL(subscripted);
 	Type *type = type_flatten(subscripted->type);
 	Type *original_type = type_no_optional(subscripted->type);
-	Expr *start = exprptr(expr->subscript_expr.range.start);
-	Expr *end = exprptrzero(expr->subscript_expr.range.end);
+	RangeEnv env;
+	switch (type->type_kind)
+	{
+		case TYPE_POINTER:
+			env = RANGE_PTR;
+			break;
+		case TYPE_FLEXIBLE_ARRAY:
+			env = RANGE_FLEXIBLE;
+			break;
+		case TYPE_SLICE:
+			env = RANGE_SLICE;
+			break;
+		default:
+			env = RANGE_ARRAY;
+			break;
+	}
+	ArrayIndex length = sema_len_from_expr(subscripted);
+	if (!sema_expr_analyse_range(context, &expr->subscript_expr.range, subscripted->type, length, env)) return false;
 
 	Expr *current_expr = subscripted;
-
 	Type *inner_type = sema_subscript_find_indexable_type_recursively(&type, &current_expr);
+
 	if (type == type_voidptr) inner_type = type_char;
+
 	if (!inner_type || !type_is_valid_for_array(inner_type))
 	{
 		RETURN_SEMA_ERROR(subscripted, "Cannot index '%s'.", type_to_error_string(subscripted->type));
 	}
-	expr->subscript_expr.expr = exprid(current_expr);
-
-	if (!sema_analyse_expr(context, start)) return false;
-	if (end && !sema_analyse_expr(context, end)) return false;
 
 	// Fix index sizes
-	if (!cast_to_index(context, start, subscripted->type)) return false;
-	if (end && !cast_to_index(context, end, subscripted->type)) return false;
-	if (end && end->type != start->type)
-	{
-		Type *common = type_find_max_type(start->type, end->type);
-		if (!common)
-		{
-			SEMA_ERROR(expr, "No common type can be found between start and end index.");
-			return false;
-		}
-		if (!cast_implicit(context, start, common, false) || !cast_implicit(context, end, common, false)) return false;
-	}
-
 	bool start_from_end = expr->subscript_expr.range.start_from_end;
 	bool end_from_end = expr->subscript_expr.range.end_from_end;
 
-	// Check range
-	if (type->type_kind == TYPE_POINTER || type->type_kind == TYPE_FLEXIBLE_ARRAY)
-	{
-		if (start_from_end)
-		{
-			SEMA_ERROR(start, "Indexing from the end is not allowed for pointers or flexible array members.");
-			return false;
-		}
-		if (!end)
-		{
-			SEMA_ERROR(expr, "Omitting end index is not allowed for pointers or flexible array members.");
-			return false;
-		}
-		if (end && end_from_end)
-		{
-			SEMA_ERROR(end, "Indexing from the end is not allowed for pointers or flexible array members.");
-			return false;
-		}
-	}
 	bool is_lenrange = expr->subscript_expr.range.is_len;
-	bool remove_from_end = false;
-	if (!sema_slice_index_is_in_range(context, type, start, false, start_from_end, &remove_from_end)) return false;
-	if (remove_from_end)
-	{
-		start_from_end = expr->subscript_expr.range.start_from_end = false;
-	}
-	remove_from_end = false;
-	if (end)
-	{
-		if (is_lenrange)
-		{
-			if (!sema_slice_len_is_in_range(context, type, end, end_from_end, &remove_from_end)) return false;
-		}
-		else
-		{
-			if (!sema_slice_index_is_in_range(context, type, end, true, end_from_end, &remove_from_end)) return false;
-		}
-	}
-	if (remove_from_end)
-	{
-		end_from_end = expr->subscript_expr.range.end_from_end = false;
-	}
-
-	if (start && end && sema_cast_const(start) && sema_cast_const(end))
-	{
-		if (!is_lenrange && start_from_end && end_from_end)
-		{
-			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_LT))
-			{
-				SEMA_ERROR(start, "Start index greater than end index.");
-				return false;
-			}
-		}
-		else if (!is_lenrange && !start_from_end && !end_from_end)
-		{
-			if (expr_const_compare(&start->const_expr, &end->const_expr, BINARYOP_GT))
-			{
-				SEMA_ERROR(start, "Start index greater than end index.");
-				return false;
-			}
-		}
-		// If both are
-		if (type->type_kind == TYPE_ARRAY || type->type_kind == TYPE_VECTOR)
-		{
-			ASSERT_SPAN(expr, !start_from_end);
-			ASSERT_SPAN(expr, !end_from_end);
-			if (!is_lenrange)
-			{
-				end->const_expr.ixx = int_sub(int_add64(end->const_expr.ixx, 1), start->const_expr.ixx);
-				is_lenrange = expr->subscript_expr.range.is_len = true;
-				(void)is_lenrange;
-			}
-		}
-	}
 
 	// Retain the original type when doing distinct slices.
 	Type *result_type = type_get_slice(inner_type);

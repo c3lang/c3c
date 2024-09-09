@@ -31,13 +31,13 @@ fn void main()
   %2 = load %"int[]", ptr %slice, align 8
   %3 = extractvalue %"int[]" %2, 0
   %4 = extractvalue %"int[]" %2, 1
-  %gt = icmp ugt i64 2, %4
+  %gt = icmp sgt i64 2, %4
   %5 = call i1 @llvm.expect.i1(i1 %gt, i1 false)
   br i1 %5, label %panic, label %checkok
 
 checkok:                                          ; preds = %entry
-  %ge = icmp uge i64 5, %4
-  %6 = call i1 @llvm.expect.i1(i1 %ge, i1 false)
+  %lt = icmp slt i64 %4, 6
+  %6 = call i1 @llvm.expect.i1(i1 %lt, i1 false)
   br i1 %6, label %panic5, label %checkok12
 
 checkok12:                                        ; preds = %checkok
@@ -48,7 +48,7 @@ checkok12:                                        ; preds = %checkok
   %9 = load %"int[]", ptr %slice, align 8
   %10 = extractvalue %"int[]" %9, 0
   %11 = extractvalue %"int[]" %9, 1
-  %gt14 = icmp ugt i64 6, %11
+  %gt14 = icmp sgt i64 6, %11
   %12 = call i1 @llvm.expect.i1(i1 %gt14, i1 false)
   br i1 %12, label %panic15, label %checkok22
 
@@ -61,13 +61,13 @@ checkok22:                                        ; preds = %checkok12
   %15 = load %"int[]", ptr %slice, align 8
   %16 = extractvalue %"int[]" %15, 0
   %17 = extractvalue %"int[]" %15, 1
-  %gt24 = icmp ugt i64 0, %17
+  %gt24 = icmp sgt i64 0, %17
   %18 = call i1 @llvm.expect.i1(i1 %gt24, i1 false)
   br i1 %18, label %panic25, label %checkok32
 
 checkok32:                                        ; preds = %checkok22
-  %ge33 = icmp uge i64 9, %17
-  %19 = call i1 @llvm.expect.i1(i1 %ge33, i1 false)
+  %lt33 = icmp slt i64 %17, 10
+  %19 = call i1 @llvm.expect.i1(i1 %lt33, i1 false)
   br i1 %19, label %panic34, label %checkok41
 
 checkok41:                                        ; preds = %checkok32
@@ -77,13 +77,13 @@ checkok41:                                        ; preds = %checkok32
   %22 = load %"int[]", ptr %slice, align 8
   %23 = extractvalue %"int[]" %22, 0
   %24 = extractvalue %"int[]" %22, 1
-  %gt42 = icmp ugt i64 5, %24
+  %gt42 = icmp sgt i64 5, %24
   %25 = call i1 @llvm.expect.i1(i1 %gt42, i1 false)
   br i1 %25, label %panic43, label %checkok50
 
 checkok50:                                        ; preds = %checkok41
-  %gt51 = icmp ugt i64 15, %24
-  %26 = call i1 @llvm.expect.i1(i1 %gt51, i1 false)
+  %lt51 = icmp slt i64 %24, 15
+  %26 = call i1 @llvm.expect.i1(i1 %lt51, i1 false)
   br i1 %26, label %panic52, label %checkok59
 
 checkok59:                                        ; preds = %checkok50
@@ -94,13 +94,13 @@ checkok59:                                        ; preds = %checkok50
   %29 = load %"int[]", ptr %slice, align 8
   %30 = extractvalue %"int[]" %29, 0
   %31 = extractvalue %"int[]" %29, 1
-  %gt61 = icmp ugt i64 1, %31
+  %gt61 = icmp sgt i64 1, %31
   %32 = call i1 @llvm.expect.i1(i1 %gt61, i1 false)
   br i1 %32, label %panic62, label %checkok69
 
 checkok69:                                        ; preds = %checkok59
-  %ge70 = icmp uge i64 3, %31
-  %33 = call i1 @llvm.expect.i1(i1 %ge70, i1 false)
+  %lt70 = icmp slt i64 %31, 4
+  %33 = call i1 @llvm.expect.i1(i1 %lt70, i1 false)
   br i1 %33, label %panic71, label %checkok78
 
 checkok78:                                        ; preds = %checkok69
@@ -111,13 +111,13 @@ checkok78:                                        ; preds = %checkok69
   %36 = load %"int[]", ptr %slice, align 8
   %37 = extractvalue %"int[]" %36, 0
   %38 = extractvalue %"int[]" %36, 1
-  %gt80 = icmp ugt i64 2, %38
+  %gt80 = icmp sgt i64 2, %38
   %39 = call i1 @llvm.expect.i1(i1 %gt80, i1 false)
   br i1 %39, label %panic81, label %checkok88
 
 checkok88:                                        ; preds = %checkok78
-  %gt89 = icmp ugt i64 12, %38
-  %40 = call i1 @llvm.expect.i1(i1 %gt89, i1 false)
+  %lt89 = icmp slt i64 %38, 12
+  %40 = call i1 @llvm.expect.i1(i1 %lt89, i1 false)
   br i1 %40, label %panic90, label %checkok97
 
 checkok97:                                        ; preds = %checkok88

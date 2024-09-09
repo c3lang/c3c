@@ -649,14 +649,39 @@ typedef struct Decl_
 
 // static_assert(sizeof(void*) != 8 || sizeof(Decl) == 136, "Decl has unexpected size.");
 
+typedef enum RangeType
+{
+	RANGE_DYNAMIC,
+	RANGE_CONST_END,
+	RANGE_CONST_LEN,
+	RANGE_CONST_RANGE,
+} RangeType;
+
 typedef struct
 {
+	ResolveStatus status : 3;
+	RangeType range_type;
 	bool start_from_end : 1;
 	bool end_from_end : 1;
 	bool is_len : 1;
 	bool is_range : 1;
-	ExprId start;
-	ExprId end;
+	union
+	{
+		struct
+		{
+			ExprId start;
+			union
+			{
+				ExprId end;
+				ArrayIndex const_end;
+			};
+		};
+		struct
+		{
+			ArrayIndex start_index;
+			ArrayIndex len_index;
+		};
+	};
 } Range;
 
 typedef struct

@@ -58,7 +58,7 @@ slice_cmp_values:                                 ; preds = %entry
 
 slice_loop_start:                                 ; preds = %slice_loop_comparison, %slice_cmp_values
   %3 = load i64, ptr %cmp.idx, align 8
-  %lt = icmp ult i64 %3, %1
+  %lt = icmp slt i64 %3, %1
   br i1 %lt, label %slice_loop_comparison, label %slice_cmp_exit
 
 slice_loop_comparison:                            ; preds = %slice_loop_start
@@ -95,7 +95,7 @@ slice_cmp_values4:                                ; preds = %if.exit
 
 slice_loop_start6:                                ; preds = %slice_loop_comparison8, %slice_cmp_values4
   %13 = load i64, ptr %cmp.idx5, align 8
-  %lt7 = icmp ult i64 %13, %9
+  %lt7 = icmp slt i64 %13, %9
   br i1 %lt7, label %slice_loop_comparison8, label %slice_cmp_exit12
 
 slice_loop_comparison8:                           ; preds = %slice_loop_start6
@@ -133,7 +133,7 @@ slice_cmp_values17:                               ; preds = %switch.entry
 
 slice_loop_start19:                               ; preds = %slice_loop_comparison21, %slice_cmp_values17
   %20 = load i64, ptr %cmp.idx18, align 8
-  %lt20 = icmp ult i64 %20, 4
+  %lt20 = icmp slt i64 %20, 4
   br i1 %lt20, label %slice_loop_comparison21, label %slice_cmp_exit25
 
 slice_loop_comparison21:                          ; preds = %slice_loop_start19
@@ -166,7 +166,7 @@ slice_cmp_values28:                               ; preds = %next_if
 
 slice_loop_start30:                               ; preds = %slice_loop_comparison32, %slice_cmp_values28
   %26 = load i64, ptr %cmp.idx29, align 8
-  %lt31 = icmp ult i64 %26, 5
+  %lt31 = icmp slt i64 %26, 5
   br i1 %lt31, label %slice_loop_comparison32, label %slice_cmp_exit36
 
 slice_loop_comparison32:                          ; preds = %slice_loop_start30
@@ -199,7 +199,7 @@ slice_cmp_values41:                               ; preds = %next_if39
 
 slice_loop_start43:                               ; preds = %slice_loop_comparison45, %slice_cmp_values41
   %32 = load i64, ptr %cmp.idx42, align 8
-  %lt44 = icmp ult i64 %32, 4
+  %lt44 = icmp slt i64 %32, 4
   br i1 %lt44, label %slice_loop_comparison45, label %slice_cmp_exit49
 
 slice_loop_comparison45:                          ; preds = %slice_loop_start43

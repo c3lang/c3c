@@ -2875,8 +2875,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	assert(slice->expr_kind == EXPR_SLICE);
 
 	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
-	Expr *start = exprptr(slice->subscript_expr.range.start);
-	Expr *end = exprptrzero(slice->subscript_expr.range.end);
 
 	Type *parent_type = type_flatten(parent_expr->type);
 	BEValue parent_addr_x;
@@ -2906,16 +2904,31 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 
 	// Emit the start and end
-	Type *start_type = start->type->canonical;
+
+	Type *start_type;
+	Range range = slice->subscript_expr.range;
 	BEValue start_index;
-	llvm_emit_expr(c, &start_index, start);
-	llvm_value_rvalue(c, &start_index);
+	switch (range.range_type)
+	{
+		case RANGE_DYNAMIC:
+		case RANGE_CONST_LEN:
+		case RANGE_CONST_END:
+			llvm_emit_exprid(c, &start_index, range.start);
+			llvm_value_rvalue(c, &start_index);
+			start_type = start_index.type;
+			break;
+		case RANGE_CONST_RANGE:
+			start_type = type_isz;
+			llvm_value_set_int(c, &start_index, type_isz, range.start_index);
+			break;
+	}
 
 	BEValue len = { .value = NULL };
 	bool check_end = true;
-	bool start_from_end = slice->subscript_expr.range.start_from_end;
-	bool end_from_end = slice->subscript_expr.range.end_from_end;
-	if (!end || start_from_end || end_from_end || safe_mode_enabled())
+	bool start_from_end = range.start_from_end;
+	bool end_from_end = range.end_from_end;
+	bool has_end = range.range_type != RANGE_DYNAMIC || range.end;
+	if (!has_end || start_from_end || end_from_end || safe_mode_enabled())
 	{
 		switch (parent_type->type_kind)
 		{
@@ -2926,11 +2939,11 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				break;
 			case TYPE_SLICE:
 				assert(parent_load_value);
-				llvm_value_set(&len, llvm_emit_extract_value(c, parent_load_value, 1), type_usz);
+				llvm_value_set(&len, llvm_emit_extract_value(c, parent_load_value, 1), start_type);
 				break;
 			case TYPE_ARRAY:
 			case TYPE_VECTOR:
-				llvm_value_set_int(c, &len, type_usz, parent_type->array.len);
+				llvm_value_set_int(c, &len, start_type, parent_type->array.len);
 				break;
 			default:
 				UNREACHABLE
@@ -2953,24 +2966,41 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 
 	// Insert trap for negative start offset for non pointers.
-	if (parent_type->type_kind != TYPE_POINTER)
+	if (parent_type->type_kind != TYPE_POINTER && range.range_type != RANGE_CONST_RANGE)
 	{
-		llvm_emit_trap_negative(c, start, start_index.value, "Negative indexing (%d)", &start_index);
+		llvm_emit_trap_negative(c, exprptr(range.start), start_index.value, "Negative indexing (%d)", &start_index);
 	}
 
-	Type *end_type;
 	BEValue end_index;
 	bool is_len_range = *is_exclusive = slice->subscript_expr.range.is_len;
-	if (end)
+	Type *end_type = start_type;
+	if (has_end)
 	{
 		// Get the index.
-		llvm_emit_expr(c, &end_index, end);
-		llvm_value_rvalue(c, &end_index);
-		end_type = end->type->canonical;
+		switch (range.range_type)
+		{
+			case RANGE_DYNAMIC:
+				llvm_emit_exprid(c, &end_index, range.end);
+				llvm_value_rvalue(c, &end_index);
+				end_type = end_index.type;
+				break;
+			case RANGE_CONST_LEN:
+				assert(range.is_len);
+				llvm_value_set_int(c, &end_index, end_type, range.const_end);
+				break;
+			case RANGE_CONST_END:
+				assert(!range.is_len);
+				llvm_value_set_int(c, &end_index, end_type, range.const_end);
+				break;
+			case RANGE_CONST_RANGE:
+				llvm_value_set_int(c, &end_index, end_type, range.len_index);
+				break;
+		}
 
 		// Reverse if it is "from back"
 		if (end_from_end)
 		{
+			assert(range.range_type == RANGE_DYNAMIC);
 			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
 		}
@@ -2989,7 +3019,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 					BEValue excess;
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
 					BEValue actual_end_index = end_index;
-					actual_end_index.value = llvm_emit_sub_int(c, end_type, end_index.value, llvm_const_int(c, end_type, 1), slice->span);
+					actual_end_index.value = llvm_emit_sub_int(c, end_type, end_index.value, llvm_const_int(c, type_isz, 1), slice->span);
 					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->span, "End index out of bounds (end index of %d exceeds size of %d)", &actual_end_index, &len);
 				}
 			}
@@ -3011,13 +3041,13 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	{
 		assert(len.value && "Pointer should never end up here.");
 		end_index.value = len.value;
-		end_type = type_usz;
+		end_type = start_type;
 		// Use "len-range" when implicit, this avoids len - 1 here.
 		*is_exclusive = true;
 	}
 
 	llvm_value_set(end_ref, end_index.value, end_type);
-	llvm_value_set(start_ref, start_index.value, start_type);
+	llvm_value_set(start_ref, start_index.value, end_type);
 	llvm_value_set_address(parent_ref, parent_base, parent_type, type_abi_alignment(parent_type));
 }
 
@@ -3610,8 +3640,8 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	llvm_value_rvalue(c, rhs);
 	BEValue lhs_len;
 	BEValue rhs_len;
-	llvm_value_set(&lhs_len, llvm_emit_extract_value(c, lhs->value, 1), type_usz);
-	llvm_value_set(&rhs_len, llvm_emit_extract_value(c, rhs->value, 1), type_usz);
+	llvm_value_set(&lhs_len, llvm_emit_extract_value(c, lhs->value, 1), type_isz);
+	llvm_value_set(&rhs_len, llvm_emit_extract_value(c, rhs->value, 1), type_isz);
 	BEValue lhs_value;
 	BEValue rhs_value;
 	llvm_value_set(&lhs_value, llvm_emit_extract_value(c, lhs->value, 0), array_base_pointer);
@@ -3624,9 +3654,9 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 
 	llvm_emit_block(c, value_cmp);
 	BEValue index_var;
-	llvm_value_set_address_abi_aligned(&index_var, llvm_emit_alloca_aligned(c, type_usz, "cmp.idx"), type_usz);
-	LLVMValueRef one = llvm_const_int(c, type_usz, 1);
-	llvm_store_raw(c, &index_var, llvm_get_zero(c, type_usz));
+	llvm_value_set_address_abi_aligned(&index_var, llvm_emit_alloca_aligned(c, type_isz, "cmp.idx"), type_isz);
+	LLVMValueRef one = llvm_const_int(c, type_isz, 1);
+	llvm_store_raw(c, &index_var, llvm_get_zero(c, type_isz));
 	llvm_emit_br(c, loop_begin);
 
 	llvm_emit_block(c, loop_begin);
@@ -3852,11 +3882,11 @@ MEMCMP:
 	LLVMBasicBlockRef comparison = llvm_basic_block_new(c, "array_loop_comparison");
 	LLVMBasicBlockRef comparison_phi;
 	LLVMBasicBlockRef loop_begin_phi;
-	LLVMValueRef len_val = llvm_const_int(c, type_usz, len);
-	LLVMValueRef one = llvm_const_int(c, type_usz, 1);
+	LLVMValueRef len_val = llvm_const_int(c, type_isz, len);
+	LLVMValueRef one = llvm_const_int(c, type_isz, 1);
 	BEValue index_var;
-	llvm_value_set_address_abi_aligned(&index_var, llvm_emit_alloca_aligned(c, type_usz, "cmp.idx"), type_usz);
-	llvm_store_raw(c, &index_var, llvm_get_zero(c, type_usz));
+	llvm_value_set_address_abi_aligned(&index_var, llvm_emit_alloca_aligned(c, type_isz, "cmp.idx"), type_isz);
+	llvm_store_raw(c, &index_var, llvm_get_zero(c, type_isz));
 
 	llvm_emit_br(c, loop_begin);
 	llvm_emit_block(c, loop_begin);
@@ -3879,7 +3909,7 @@ MEMCMP:
 
 	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index_copy.value, one, "inc");
 	llvm_store_raw(c, &index_var, new_index);
-	llvm_emit_int_comp_raw(c, &comp, type_usz, type_usz, new_index, len_val, BINARYOP_LT);
+	llvm_emit_int_comp_raw(c, &comp, type_isz, type_isz, new_index, len_val, BINARYOP_LT);
 	comparison_phi = c->current_block;
 	llvm_emit_cond_br(c, &comp, loop_begin, exit);
 	llvm_emit_block(c, exit);

@@ -181,6 +181,17 @@ INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *d
 
 static inline IndexDiff range_const_len(Range *range)
 {
+	switch (range->range_type)
+	{
+		case RANGE_CONST_LEN:
+			return range->const_end;
+		case RANGE_CONST_END:
+			return -1;
+		case RANGE_CONST_RANGE:
+			return range->len_index;
+		case RANGE_DYNAMIC:
+			break;
+	}
 	Expr *start = exprptr(range->start);
 	Expr *end = exprptrzero(range->end);
 	if (!end || !expr_is_const_int(end)) return -1;

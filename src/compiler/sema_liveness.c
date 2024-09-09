@@ -415,9 +415,20 @@ RETRY:
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
 			sema_trace_expr_liveness(exprptr(expr->subscript_expr.expr));
-			sema_trace_expr_liveness(exprptr(expr->subscript_expr.range.start));
-			sema_trace_expr_liveness(exprptrzero(expr->subscript_expr.range.end));
-			return;
+			switch (expr->subscript_expr.range.range_type)
+			{
+				case RANGE_CONST_RANGE:
+					return;
+				case RANGE_DYNAMIC:
+					sema_trace_expr_liveness(exprptr(expr->subscript_expr.range.start));
+					sema_trace_expr_liveness(exprptrzero(expr->subscript_expr.range.end));
+					return;
+				case RANGE_CONST_END:
+				case RANGE_CONST_LEN:
+					sema_trace_expr_liveness(exprptr(expr->subscript_expr.range.start));
+					return;
+			}
+			UNREACHABLE
 		case EXPR_SWIZZLE:
 			sema_trace_expr_liveness(exprptr(expr->swizzle_expr.parent));
 			return;

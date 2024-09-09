@@ -192,8 +192,20 @@ Expr *copy_expr_single(Expr *source_expr)
 
 void copy_range(CopyStruct *c, Range *range)
 {
-	MACRO_COPY_EXPRID(range->start);
-	MACRO_COPY_EXPRID(range->end);
+	switch (range->range_type)
+	{
+		case RANGE_CONST_LEN:
+		case RANGE_CONST_END:
+			MACRO_COPY_EXPRID(range->start);
+			return;
+		case RANGE_CONST_RANGE:
+			return;
+		case RANGE_DYNAMIC:
+			MACRO_COPY_EXPRID(range->start);
+			MACRO_COPY_EXPRID(range->end);
+			return;
+	}
+	UNREACHABLE
 }
 
 INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitializer **initializer_list)
