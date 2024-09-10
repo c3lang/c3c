@@ -18,6 +18,7 @@
 - `l[0].a = 1` now supported for overloads due to better lvalue handling #1357.
 - Asserts are retained regardless of optimization when running tests.
 - Limit object filename lengths. #1415
+- Fix regression for `$include`.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

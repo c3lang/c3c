@@ -150,7 +150,7 @@ INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filena
 	if (!file)
 	{
 		if (no_file) return no_file;
-		print_error_at(span, "Failed to load file %s: %s", string, error);
+		print_error_at(filename->span, "Failed to load file '%s': %s.", filename->const_expr.bytes.ptr, error);
 		return NULL;
 	}
 	if (compiler.context.errors_found) return NULL;
@@ -174,7 +174,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	}
 	bool success = sema_analyse_ct_expr(&context, decl->include.filename);
 	sema_context_destroy(&context);
-	if (success) return NULL;
+	if (!success) return NULL;
 	File *file = sema_load_file(unit, decl->span,  decl->include.filename, "$include", NULL);
 	if (!file) return NULL;
 	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
