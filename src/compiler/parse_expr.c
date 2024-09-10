@@ -1066,11 +1066,22 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 
 	Expr *subs_expr = expr_new_expr(EXPR_SUBSCRIPT, left);
 	subs_expr->subscript_expr.expr = exprid(left);
-	if (!parse_range(c, &subs_expr->subscript_expr.range)) return poisoned_expr;
+
+	Range range = { .range_type = RANGE_DYNAMIC };
+	if (!parse_range(c, &range)) return poisoned_expr;
 	CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
-	if (subs_expr->subscript_expr.range.is_range)
+	if (!range.is_range)
+	{
+		subs_expr->subscript_expr.index = (SubscriptIndex) {
+				.expr = range.start,
+				.start_from_end = range.start_from_end
+		};
+	}
+	else
 	{
 		subs_expr->expr_kind = EXPR_SLICE;
+		subs_expr->slice_expr.expr = exprid(left);
+		subs_expr->slice_expr.range = range;
 	}
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;

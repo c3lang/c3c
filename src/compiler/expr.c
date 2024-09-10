@@ -266,17 +266,14 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			return expr_list_is_constant_eval(expr->designated_init_list, eval_kind);
 		case EXPR_SLICE:
-			return false;
-			/*
-			if (expr->slice_expr.start && !exprid_is_constant_eval(expr->slice_expr.start, eval_kind)) return false;
-			if (expr->slice_expr.end && !exprid_is_constant_eval(expr->slice_expr.end, CONSTANT_EVAL_FOLDABLE)) return false;
-			return exprid_is_constant_eval(expr->slice_expr.expr, eval_kind);*/
+			if (!exprid_is_constant_eval(expr->slice_expr.expr, eval_kind)) return false;
+			return expr->slice_expr.range.range_type == RANGE_CONST_RANGE;
 		case EXPR_SUBSCRIPT:
-			if (!range_is_const(&expr->subscript_expr.range)) return false;
+			if (!exprid_is_constant_eval(expr->subscript_expr.index.expr, eval_kind)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			goto RETRY;
 		case EXPR_SUBSCRIPT_ADDR:
-			if (!exprid_is_constant_eval(expr->subscript_expr.range.start, eval_kind)) return false;
+			if (!exprid_is_constant_eval(expr->subscript_expr.index.expr, eval_kind)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			if (expr->expr_kind == EXPR_IDENTIFIER)
 			{
@@ -785,13 +782,23 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_TYPEID_INFO:
 			return exprid_is_pure(expr->typeid_info_expr.parent);
 		case EXPR_SLICE:
-			return exprid_is_pure(expr->subscript_expr.expr)
-				   && exprid_is_pure(expr->subscript_expr.range.start)
-				   && exprid_is_pure(expr->subscript_expr.range.end);
+			if (!exprid_is_pure(expr->slice_expr.expr)) return false;
+			switch (expr->slice_expr.range.range_type)
+			{
+				case RANGE_CONST_RANGE:
+					return true;
+				case RANGE_CONST_END:
+				case RANGE_CONST_LEN:
+					return exprid_is_pure(expr->slice_expr.range.start);
+				case RANGE_DYNAMIC:
+					return exprid_is_pure(expr->slice_expr.range.start)
+					       && exprid_is_pure(expr->slice_expr.range.end);
+			}
+			UNREACHABLE
 		case EXPR_SUBSCRIPT:
 		case EXPR_SUBSCRIPT_ADDR:
 			return exprid_is_pure(expr->subscript_expr.expr)
-				   && exprid_is_pure(expr->subscript_expr.range.start);
+				   && exprid_is_pure(expr->subscript_expr.index.expr);
 		case EXPR_TERNARY:
 			return exprid_is_pure(expr->ternary_expr.cond)
 				   && exprid_is_pure(expr->ternary_expr.else_expr)

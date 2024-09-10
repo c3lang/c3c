@@ -598,6 +598,7 @@ typedef struct Decl_
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
+		bool in_init;
 	};
 	AlignSize offset;
 	AlignSize padding;
@@ -743,11 +744,22 @@ typedef struct
 	Decl **body_arguments;
 } ExprMacroBody;
 
+typedef struct {
+	bool start_from_end : 1;
+	ExprId expr;
+} SubscriptIndex;
+
+typedef struct
+{
+	ExprId expr;
+	SubscriptIndex index;
+} ExprSubscript;
+
 typedef struct
 {
 	ExprId expr;
 	Range range;
-} ExprSubscript;
+} ExprSlice;
 
 typedef struct
 {
@@ -1135,6 +1147,7 @@ struct Expr_
 		ExprSliceAssign slice_assign_expr;          // 8
 		ExprSubscriptAssign subscript_assign_expr;
 		ExprSubscript subscript_expr;               // 12
+		ExprSlice slice_expr;
 		ExprSwizzle swizzle_expr;
 		ExprTernary ternary_expr;                   // 16
 		BuiltinDefine benchmark_hook_expr;

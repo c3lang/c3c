@@ -653,10 +653,10 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	assert(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
-	llvm_emit_exprid(c, value, expr->subscript_expr.range.start);
+	llvm_emit_exprid(c, value, expr->subscript_expr.index.expr);
 	llvm_value_rvalue(c, value);
 	LLVMValueRef index = value->value;
-	if (expr->subscript_expr.range.start_from_end)
+	if (expr->subscript_expr.index.start_from_end)
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
@@ -671,7 +671,7 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr *expr)
 {
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
-	Expr *index_expr = exprptr(expr->subscript_expr.range.start);
+	Expr *index_expr = exprptr(expr->subscript_expr.index.expr);
 	Type *parent_type = type_lowering(parent_expr->type);
 	BEValue ref;
 	// First, get thing being subscripted.
@@ -681,15 +681,16 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 
 	// See if we need the length.
 	bool needs_len = false;
+	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (parent_type_kind == TYPE_SLICE)
 	{
-		needs_len = safe_mode_enabled() || expr->subscript_expr.range.start_from_end;
+		needs_len = safe_mode_enabled() || start_from_end;
 	}
 	else if (parent_type_kind == TYPE_ARRAY)
 	{
 		// From back should always be folded.
-		assert(!expr_is_const(expr) || !expr->subscript_expr.range.start_from_end);
-		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || expr->subscript_expr.range.start_from_end;
+		assert(!expr_is_const(expr) || !start_from_end);
+		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || start_from_end;
 	}
 	if (needs_len)
 	{
@@ -705,7 +706,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	// It needs to be an rvalue.
 	llvm_value_rvalue(c, &index);
 
-	if (expr->subscript_expr.range.start_from_end)
+	if (start_from_end)
 	{
 		assert(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
@@ -2482,10 +2483,11 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	LLVMValueRef vector = value->value;
 
 	// Now let's get the subscript and store it in value
-	llvm_emit_exprid(c, value, expr->subscript_expr.range.start);
+	bool start_from_end = expr->subscript_expr.index.start_from_end;
+	llvm_emit_exprid(c, value, expr->subscript_expr.index.expr);
 	llvm_value_rvalue(c, value);
 	LLVMValueRef index = value->value;
-	if (expr->subscript_expr.range.start_from_end)
+	if (start_from_end)
 	{
 		index = LLVMBuildNUWSub(c->builder, llvm_const_int(c, value->type, vec->array.len), index, "");
 	}
@@ -2906,7 +2908,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	// Emit the start and end
 
 	Type *start_type;
-	Range range = slice->subscript_expr.range;
+	Range range = slice->slice_expr.range;
 	BEValue start_index;
 	switch (range.range_type)
 	{
@@ -2972,7 +2974,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 
 	BEValue end_index;
-	bool is_len_range = *is_exclusive = slice->subscript_expr.range.is_len;
+	bool is_len_range = *is_exclusive = range.is_len;
 	Type *end_type = start_type;
 	if (has_end)
 	{
@@ -4656,7 +4658,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	LLVMValueRef vector_value = llvm_load_value_store(c, &addr);
 
 	// Emit the index
-	llvm_emit_exprid(c, &index, left->subscript_expr.range.start);
+	llvm_emit_exprid(c, &index, left->subscript_expr.index.expr);
 	LLVMValueRef index_val = llvm_load_value_store(c, &index);
 
 	if (binary_op > BINARYOP_ASSIGN)

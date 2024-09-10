@@ -3884,11 +3884,13 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 
 		CallEnvKind env_kind = context->call_env.kind;
 		if (is_static) context->call_env.kind = CALL_ENV_FUNCTION_STATIC;
+		decl->in_init = true;
 		if (!sema_expr_analyse_assign_right_side(context, NULL, decl->type, init, false, true))
 		{
 			context->call_env.kind = env_kind;
 			return decl_poison(decl);
 		}
+		decl->in_init = false;
 		context->call_env.kind = env_kind;
 
 		if (infer_len)

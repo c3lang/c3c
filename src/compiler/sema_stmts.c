@@ -1718,11 +1718,11 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	subscript->subscript_expr.expr = exprid(enum_val);
 	if (array_len == 1)
 	{
-		subscript->subscript_expr.range.start = exprid(expr_new_const_int(var->span, idx_decl->type, 0));
+		subscript->subscript_expr.index.expr = exprid(expr_new_const_int(var->span, idx_decl->type, 0));
 	}
 	else
 	{
-		subscript->subscript_expr.range.start = exprid(expr_variable(idx_decl));
+		subscript->subscript_expr.index.expr = exprid(expr_variable(idx_decl));
 	}
 	if (value_by_ref)
 	{

@@ -412,23 +412,26 @@ RETRY:
 			sema_trace_expr_liveness(exprptr(expr->slice_assign_expr.right));
 			return;
 		case EXPR_SLICE:
-		case EXPR_SUBSCRIPT:
-		case EXPR_SUBSCRIPT_ADDR:
-			sema_trace_expr_liveness(exprptr(expr->subscript_expr.expr));
-			switch (expr->subscript_expr.range.range_type)
+			sema_trace_expr_liveness(exprptr(expr->slice_expr.expr));
+			switch (expr->slice_expr.range.range_type)
 			{
 				case RANGE_CONST_RANGE:
 					return;
 				case RANGE_DYNAMIC:
-					sema_trace_expr_liveness(exprptr(expr->subscript_expr.range.start));
-					sema_trace_expr_liveness(exprptrzero(expr->subscript_expr.range.end));
+					sema_trace_expr_liveness(exprptr(expr->slice_expr.range.start));
+					sema_trace_expr_liveness(exprptrzero(expr->slice_expr.range.end));
 					return;
 				case RANGE_CONST_END:
 				case RANGE_CONST_LEN:
-					sema_trace_expr_liveness(exprptr(expr->subscript_expr.range.start));
+					sema_trace_expr_liveness(exprptr(expr->slice_expr.range.start));
 					return;
 			}
 			UNREACHABLE
+		case EXPR_SUBSCRIPT:
+		case EXPR_SUBSCRIPT_ADDR:
+			sema_trace_expr_liveness(exprptr(expr->subscript_expr.expr));
+			sema_trace_expr_liveness(exprptr(expr->subscript_expr.index.expr));
+			return;
 		case EXPR_SWIZZLE:
 			sema_trace_expr_liveness(exprptr(expr->swizzle_expr.parent));
 			return;

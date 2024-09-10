@@ -428,10 +428,13 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_SUBSCRIPT_ASSIGN:
 			UNREACHABLE
 		case EXPR_SLICE:
-		case EXPR_SUBSCRIPT:
+			MACRO_COPY_EXPRID(expr->slice_expr.expr);
+			copy_range(c, &expr->slice_expr.range);
+			return expr;
 		case EXPR_SUBSCRIPT_ADDR:
+		case EXPR_SUBSCRIPT:
 			MACRO_COPY_EXPRID(expr->subscript_expr.expr);
-			copy_range(c, &expr->subscript_expr.range);
+			MACRO_COPY_EXPRID(expr->subscript_expr.index.expr);
 			return expr;
 		case EXPR_ASM:
 			switch (expr->expr_asm_arg.kind)

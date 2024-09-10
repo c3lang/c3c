@@ -53,7 +53,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		if (type_flatten(expr->type)->type_kind != TYPE_SLICE) return -1;
 		if (expr->expr_kind == EXPR_SLICE)
 		{
-			return range_const_len(&expr->subscript_expr.range);
+			return range_const_len(&expr->slice_expr.range);
 		}
 		if (expr->expr_kind != EXPR_CAST) return -1;
 		if (expr->cast_expr.kind != CAST_APTSA) return -1;
