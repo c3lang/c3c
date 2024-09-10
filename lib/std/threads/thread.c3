@@ -67,7 +67,7 @@ macro bool Thread.equals(thread, Thread other) => NativeThread.equals((NativeThr
 macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
 
 macro void yield() => os::native_thread_yield();
-macro Thread current() => os::native_thread_current();
+macro Thread current() => (Thread)os::native_thread_current();
 macro void exit(int result) => os::native_thread_exit(result);
 macro void! sleep(Duration d) @maydiscard => os::native_sleep_nano(d.to_nano());
 macro void! sleep_ms(ulong ms) @maydiscard  => sleep(time::ms(ms));
