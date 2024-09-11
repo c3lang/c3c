@@ -66,8 +66,8 @@ fn Vec3 Vec3.refract(self, Vec3 n, double r) => refract3(self, n, r);
 fn void ortho_normalize(Vec3f* v1, Vec3f* v2) => ortho_normalize3(v1, v2);
 fn void ortho_normalized(Vec3* v1, Vec3* v2) => ortho_normalize3(v1, v2);
 
-fn Matrix4f matrix4f_look_at(Vec3f eye, Vec3f target, Vec3f up) => matrix_look_at(Matrix4f, eye, target, up);
-fn Matrix4 matrix4_look_at(Vec3 eye, Vec3 target, Vec3 up) => matrix_look_at(Matrix4, eye, target, up);
+fn Matrix4f matrix4f_look_at(Vec3f eye, Vec3f target, Vec3f up) @deprecated => matrix::look_at(<float>)(eye, target, up);
+fn Matrix4 matrix4_look_at(Vec3 eye, Vec3 target, Vec3 up) @deprecated => matrix::look_at(<double>)(eye, target, up);
 
 fn Vec3f Vec3f.rotate_quat(self, Quaternionf q) => rotate_by_quat3(self, q);
 fn Vec3 Vec3.rotate_quat(self, Quaternion q) => rotate_by_quat3(self, q);
@@ -194,20 +194,6 @@ macro rotate_axis_angle(v, axis, angle) @private
 	wwv *= 2;
 
 	return v + wv + wwv;
-}
-
-macro matrix_look_at($Type, eye, target, up) @private
-{
-	var vz = (eye - target).normalize();
-	var vx = up.cross(vz).normalize();
-	var vy = vz.cross(vx);
-
-	return $Type {
-		vx[0], vx[1], vx[2], - vx.dot(eye),
-		vy[0], vy[1], vy[2], - vy.dot(eye),
-		vz[0], vz[1], vz[2], - vz.dot(eye),
-		0.0, 0.0, 0.0, 1
-	};
 }
 
 macro unproject3(v, m1, m2) @private

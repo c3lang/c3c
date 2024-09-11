@@ -1,4 +1,5 @@
 module std::math::matrix(<Real>);
+import std::math::vector;
 
 struct Matrix2x2
 {
@@ -132,6 +133,7 @@ fn Matrix2x2 Matrix2x2.sub(&self, Matrix2x2 mat2) => matrix_sub(self, mat2);
 fn Matrix3x3 Matrix3x3.sub(&self, Matrix3x3 mat2) => matrix_sub(self, mat2);
 fn Matrix4x4 Matrix4x4.sub(&self, Matrix4x4 mat2) => matrix_sub(self, mat2);
 
+fn Matrix4x4 look_at(Real[<3>] eye, Real[<3>] target, Real[<3>] up) => matrix_look_at(Matrix4x4, eye, target, up);
 
 
 fn Matrix2x2 Matrix2x2.transpose(&self)
@@ -431,4 +433,18 @@ macro matrix_sub(mat, mat2) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
 	return $typeof(*mat) { .m = ($Type)mat.m - ($Type)mat2.m };
+}
+
+macro matrix_look_at($Type, eye, target, up) @private
+{
+	var vz = (eye - target).normalize();
+	var vx = up.cross(vz).normalize();
+	var vy = vz.cross(vx);
+
+	return $Type {
+		vx[0], vx[1], vx[2], - (Real)vx.dot(eye),
+		vy[0], vy[1], vy[2], - (Real)vy.dot(eye),
+		vz[0], vz[1], vz[2], - (Real)vz.dot(eye),
+		0.0, 0.0, 0.0, 1
+	};
 }
