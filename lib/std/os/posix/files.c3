@@ -7,15 +7,17 @@ distinct DIRPtr = void*;
 struct Posix_dirent
 {
 	Ino_t d_fileno;
-	Off_t d_off;
+	Off_t d_off @if(!env::OPENBSD && !env::NETBSD);
 	ushort d_reclen;
 	ushort d_namelen @if(env::DARWIN);
 	char d_type;
-	char d_namelen @if(env::FREEBSD || env::OPENBSD);
 	uint d_pad0 @if(env::FREEBSD);
+	char d_namelen @if(env::FREEBSD || env::OPENBSD || env::NETBSD);
+	uint d_pad1 @if(env::FREEBSD);
 	char[4] d_pad0 @if(env::OPENBSD);
+	char[255+1] name @if(env::FREEBSD || env::NETBSD);
 	char[1024] name @if(env::DARWIN);
-	char[*] name @if(!env::DARWIN);
+	char[*] name @if(!env::DARWIN && !env::FREEBSD);
 }
 
 extern fn int rmdir(ZString);
@@ -41,4 +43,3 @@ const DT_WHT     = 14;
 
 const USE_DARWIN_INODE64 = env::DARWIN && env::X86_64;
 extern fn Posix_dirent* readdir(DIRPtr) @extern("readdir$INODE64") @if(USE_DARWIN_INODE64);
-

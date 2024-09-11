@@ -402,7 +402,11 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type)
 
 static void linker_setup_freebsd(const char ***args_ref, Linker linker_type)
 {
-	if (linker_type == LINKER_CC) return;
+	if (linker_type == LINKER_CC) {
+		linking_add_link(&compiler.linking, "m");
+		linking_add_link(&compiler.linking, "pthread");
+		return;
+	}
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	if (compiler.platform.arch == ARCH_TYPE_X86_64) add_plain_arg("--eh-frame-hdr");

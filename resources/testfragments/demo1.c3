@@ -34,7 +34,7 @@ fn void testStruct()
     foo = { 11, 12 };
 
     // Named arguments
-    foo = createFoo(.b = 13, .a = 14);
+    foo = createFoo(a: 14, b: 13);
     printf("Foo a:%d b:%d\n", foo.a, foo.b);
 
     Bar bar = bitcast(foo, Bar);

@@ -1,11 +1,13 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX)
+const BSDS = env::FREEBSD || env::OPENBSD || env::NETBSD;
+
+fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || BSDS)
 {
 	@pool()
 	{
-		$if env::DARWIN || env::LINUX:
+		$if env::DARWIN || env::LINUX || BSDS:
 			int res = libc::stat(path.zstr_tcopy(), stat);
 		$else
 			unreachable("Stat unimplemented");
@@ -71,6 +73,9 @@ fn bool native_file_or_dir_exists(String path)
 {
 	$switch
 		$case env::DARWIN:
+		$case env::FREEBSD:
+		$case env::NETBSD:
+		$case env::OPENBSD:
 		$case env::LINUX:
 			Stat stat;
 			return @ok(native_stat(&stat, path));
@@ -93,6 +98,9 @@ fn bool native_is_file(String path)
 {
 	$switch
 		$case env::DARWIN:
+		$case env::FREEBSD:
+		$case env::NETBSD:
+		$case env::OPENBSD:
 		$case env::LINUX:
 			Stat stat;
 			return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFREG);
@@ -105,7 +113,7 @@ fn bool native_is_file(String path)
 
 fn bool native_is_dir(String path)
 {
-	$if env::DARWIN || env::LINUX:
+	$if env::DARWIN || env::LINUX || BSDS:
 		Stat stat;
 		return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFDIR);
 	$else
