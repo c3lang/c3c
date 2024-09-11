@@ -3,8 +3,6 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module libc;
 
-const BSDS = env::FREEBSD || env::OPENBSD || env::NETBSD;
-
 // Constants need to be per os/arch
 const int EXIT_FAILURE = 1;
 const int EXIT_SUCCESS = 0;
@@ -204,7 +202,7 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
-module libc @if(env::DARWIN || BSDS);
+module libc @if(env::DARWIN || env::BSD_FAMILY);
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
@@ -220,7 +218,7 @@ macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
-module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::DARWIN && !BSDS);
+module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::DARWIN && !env::BSD_FAMILY);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }

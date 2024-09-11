@@ -7,17 +7,22 @@ distinct DIRPtr = void*;
 struct Posix_dirent
 {
 	Ino_t d_fileno;
-	Off_t d_off @if(!env::OPENBSD && !env::NETBSD);
+	Off_t d_off @if(!env::NETBSD);
 	ushort d_reclen;
-	ushort d_namelen @if(env::DARWIN);
+	ushort d_namelen @if(env::DARWIN || env::NETBSD);
 	char d_type;
-	uint d_pad0 @if(env::FREEBSD);
-	char d_namelen @if(env::FREEBSD || env::OPENBSD || env::NETBSD);
-	uint d_pad1 @if(env::FREEBSD);
+
+	char d_namelen @if(env::OPENBSD);
 	char[4] d_pad0 @if(env::OPENBSD);
-	char[255+1] name @if(env::FREEBSD || env::NETBSD);
+
+	char d_pad0 @if(env::FREEBSD);
+	ushort d_namelen @if(env::FREEBSD);
+	ushort d_pad1 @if(env::FREEBSD);
+
+	char[255+1] name @if(env::FREEBSD || env::OPENBSD);
+	char[511+1] name @if(env::NETBSD);
 	char[1024] name @if(env::DARWIN);
-	char[*] name @if(!env::DARWIN && !env::FREEBSD);
+	char[*] name @if(!env::DARWIN && !env::BSD_FAMILY);
 }
 
 extern fn int rmdir(ZString);

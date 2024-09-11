@@ -1,13 +1,11 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-const BSDS = env::FREEBSD || env::OPENBSD || env::NETBSD;
-
-fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || BSDS)
+fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::BSD_FAMILY)
 {
 	@pool()
 	{
-		$if env::DARWIN || env::LINUX || BSDS:
+		$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
 			int res = libc::stat(path.zstr_tcopy(), stat);
 		$else
 			unreachable("Stat unimplemented");
@@ -113,7 +111,7 @@ fn bool native_is_file(String path)
 
 fn bool native_is_dir(String path)
 {
-	$if env::DARWIN || env::LINUX || BSDS:
+	$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
 		Stat stat;
 		return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFDIR);
 	$else
