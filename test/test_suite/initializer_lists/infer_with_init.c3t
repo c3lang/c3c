@@ -1,0 +1,20 @@
+// #target: windows-x64
+module test;
+const int[*] X = int[*] { 1, 2, 3 };
+int[*] y = int[*] { 1, 2, 3 };
+
+fn void main()
+{
+	int x = $typeof(int[*] { 1, 2, 3}).len;
+	int z = X.len;
+	int w = y.len;
+}
+
+/* #expect: test.ll
+
+@test.X = local_unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
+@test.y = local_unnamed_addr global [3 x i32] [i32 1, i32 2, i32 3], align 4
+
+  store i32 3, ptr %x, align 4
+  store i32 3, ptr %z, align 4
+  store i32 3, ptr %w, align 4

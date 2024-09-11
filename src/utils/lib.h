@@ -9,6 +9,7 @@
 
 #if PLATFORM_WINDOWS
 #include "direct.h"
+#include "intrin.h"
 #endif
 
 #if FETCH_AVAILABLE
@@ -410,6 +411,22 @@ INLINE uint32_t vec_size(const void *vec)
 static inline bool is_power_of_two(uint64_t x)
 {
 	return x != 0 && (x & (x - 1)) == 0;
+}
+
+static int clz(uint64_t num)
+{
+#if IS_CLANG || IS_GCC
+	return (int)__builtin_ctzll(num);
+#else
+	unsigned long index;
+	_BitScanReverse64(&index, (__int64)num);
+	return (int)index;
+#endif
+}
+
+static inline unsigned char power_of_2(uint64_t pot_value)
+{
+	return 64 - clz(pot_value);
 }
 
 static inline uint32_t next_highest_power_of_2(uint32_t v)

@@ -8913,17 +8913,15 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 	return true;
 }
 
-
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr)
 {
 	TypeInfo *type_info = expr->expr_compound_literal.type_info;
-	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+	// We allow infering the size of arrays.
+	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) return false;
 	Type *type = type_info->type;
 	if (type_is_optional(type))
 	{
-		SEMA_ERROR(type_info,
-				   "The type here should always be written as a plain type and not an optional, please remove the '!'.");
-		return false;
+		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '!'.");
 	}
 	if (!sema_resolve_type_structure(context, type, type_info->span)) return false;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
@@ -8970,8 +8968,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_EMBED:
 			return sema_expr_analyse_embed(context, expr, false);
 		case EXPR_VASPLAT:
-			SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "'$vasplat' can only be used inside of macros.");
 		case EXPR_GENERIC_IDENT:
 			return sema_expr_analyse_generic_ident(context, expr);
 		case EXPR_LAMBDA:

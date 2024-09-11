@@ -6,6 +6,7 @@
 - Introduce `arg: x` named arguments instead of `.arg = x`, deprecate old style.
 - Support splat for varargs #1352.
 - Allow `var` in lambdas in macros.
+- Support `int[*] { 1, 2, 3 }` expressions.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
