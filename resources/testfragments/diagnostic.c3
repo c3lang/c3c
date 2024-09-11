@@ -4,9 +4,11 @@ struct Overalign
 	double[<33>] x;
 }
 
+def Olist = List(<Overalign>);
+
 fn void main()
 {
-	List(<Overalign>) l;
+	Olist l;
 	Overalign y;
 	for (int i = 0; i < 1000; i++)
 	 {
