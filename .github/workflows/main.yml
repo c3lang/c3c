@@ -701,7 +701,7 @@ jobs:
       - run: zip -r c3-windows-Debug.zip c3-windows-Debug
 
       - id: create_release
-        uses: actions/create-release@v1
+        uses: softprops/action-gh-release@v2
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
@@ -709,84 +709,12 @@ jobs:
           release_name: latest
           draft: false
           prerelease: true
-
-      - name: upload windows
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-windows-Release.zip
-          asset_name: c3-windows.zip
-          asset_content_type: application/zip
-
-      - name: upload windows debug
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-windows-Debug.zip
-          asset_name: c3-windows-debug.zip
-          asset_content_type: application/zip
-
-      - name: upload linux
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-linux-Release/c3-linux-Release.tar.gz
-          asset_name: c3-linux.tar.gz
-          asset_content_type: application/gzip
-
-      - name: upload linux debug
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-linux-Debug/c3-linux-Debug.tar.gz
-          asset_name: c3-linux-debug.tar.gz
-          asset_content_type: application/gzip
-
-      - name: upload ubuntu 20
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-
-          asset_path: c3-ubuntu-20-Release/c3-ubuntu-20-Release.tar.gz
-          asset_name: c3-ubuntu-20.tar.gz
-          asset_content_type: application/gzip
-
-      - name: upload ubuntu 20 debug
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz
-          asset_name: c3-ubuntu-20-debug.tar.gz
-          asset_content_type: application/gzip
-
-      - name: upload macos
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-macos-Release/c3-macos-Release.zip
-          asset_name: c3-macos.zip
-          asset_content_type: application/zip
-
-      - name: upload macos debug
-        uses: actions/upload-release-asset@v1
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          upload_url: ${{ steps.create_release.outputs.upload_url }}
-          asset_path: c3-macos-Debug/c3-macos-Debug.zip
-          asset_name: c3-macos-debug.zip
-          asset_content_type: application/zip
+          files: |
+            c3-windows-Release.zip
+            c3-windows-Debug.zip
+            c3-linux-Release/c3-linux-Release.tar.gz
+            c3-linux-Debug/c3-linux-Debug.tar.gz
+            c3-ubuntu-20-Release/c3-ubuntu-20-Release.tar.gz
+            c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz
+            c3-macos-Release/c3-macos-Release.zip
+            c3-macos-Debug/c3-macos-Debug.zip
