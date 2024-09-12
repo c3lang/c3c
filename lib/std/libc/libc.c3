@@ -218,12 +218,12 @@ extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
 macro int setjmp(void* ptr) => _setjmp(ptr);
 extern fn int _longjmp(void*, int);
-macro usz longjmp(void* ptr, CInt) => _longjmp(ptr, int);
+macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
-macro CFile stdin() { return fdopen(0, "r"); };
-macro CFile stdout() { return fdopen(1, "w"); };
-macro CFile stderr() { return fdopen(2, "w"); };
+macro CFile stdin() { return fdopen(0, "r"); }
+macro CFile stdout() { return fdopen(1, "w"); }
+macro CFile stderr() { return fdopen(2, "w"); }
 
 module libc @if(env::DARWIN);
 extern CFile __stdinp;
