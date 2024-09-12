@@ -25,7 +25,7 @@ const CLOCK_THREAD_CPUTIME_ID = 4;
 const CLOCK_UPTIME = 5;
 const CLOCK_BOOTTIME = 6;
 
-module std::time::os @if(env::FREEBSD);
+module std::time::os @if(env::BSD_FAMILY);
 const CLOCK_REALTIME = 0;
 const CLOCK_VIRTUAL = 1;
 const CLOCK_PROF = 2;

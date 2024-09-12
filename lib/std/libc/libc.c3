@@ -58,7 +58,7 @@ const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;
 const CInt SIGCONT = BSD_FLAVOR_SIG ? 19 : 18;
 const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
 
-const bool BSD_FLAVOR_SIG @local = env::OPENBSD || env::DARWIN || env::FREEBSD || env::NETBSD;
+const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
 def Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 def Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
@@ -202,7 +202,28 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
-module libc @if(env::DARWIN || env::BSD_FAMILY);
+module libc @if(env::FREEBSD);
+extern CFile __stdinp;
+extern CFile __stdoutp;
+extern CFile __stderrp;
+extern fn usz malloc_usable_size(void* ptr);
+macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
+extern fn void* aligned_alloc(usz align, usz size);
+macro CFile stdin() => __stdinp;
+macro CFile stdout() => __stdoutp;
+macro CFile stderr() => __stderrp;
+
+module libc @if(env::NETBSD || env::OPENBSD);
+extern CFile __stdin @extern("stdin");
+extern CFile __stdout @extern("stdout");
+extern CFile __stderr @extern("stderr");
+extern fn usz malloc_size(void* ptr);
+extern fn void* aligned_alloc(usz align, usz size);
+macro CFile stdin() => __stdin;
+macro CFile stdout() => __stdout;
+macro CFile stderr() => __stderr;
+
+module libc @if(env::DARWIN);
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
