@@ -485,14 +485,16 @@ static void print_version(void)
 	PRINTF("Installed directory:       %s", find_executable_path());
 	PRINTF("Git Hash:                  %s", GIT_HASH);
 
-    PRINTF("Backends:                  "
-#if LLVM_AVAILABLE
-                                        "LLVM; "
-#endif 
-#if TB_AVAILABLE
-                                        "TildeBackend; "
+#if LLVM_AVAILABLE && TB_AVAILABLE
+    PRINTF("Backends:                  LLVM; TB");
+#elif LLVM_AVAILABLE
+    PRINTF("Backends:                  LLVM");
+#elif TB_AVAILABLE
+    PRINTF("Backends:                  TB");
+#else 
+
+    PRINTF("No backends available");
 #endif
-            );
 
 #if LLVM_AVAILABLE
 	PRINTF("LLVM version:              %s", llvm_version);
