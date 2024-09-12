@@ -340,7 +340,7 @@ bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind)
 			if (!ast->return_stmt.expr) return true;
 			return expr_is_constant_eval(ast->return_stmt.expr, eval_kind);
 		case AST_EXPR_STMT:
-			return expr_is_compile_time(ast->expr_stmt, eval_kind);
+			return expr_is_const(ast->expr_stmt);
 		case AST_COMPOUND_STMT:
 		{
 			AstId current = ast->compound_stmt.first_stmt;

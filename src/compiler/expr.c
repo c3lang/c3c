@@ -496,44 +496,6 @@ Expr *expr_generate_decl(Decl *decl, Expr *assign)
 	return expr_decl;
 }
 
-bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type)
-{
-	Type *base_type = variadic_base_type->canonical;
-	Type *canonical = expr->type->canonical;
-	switch (canonical->type_kind)
-	{
-		case TYPE_ARRAY:
-		case TYPE_SLICE:
-			return canonical->array.base == base_type;
-		case TYPE_POINTER:
-			if (canonical->pointer->type_kind == TYPE_ARRAY) return canonical->pointer->array.base == base_type;
-			return false;
-		default:
-			return false;
-	}
-}
-
-bool expr_is_compile_time(Expr *expr, ConstantEvalKind eval_kind)
-{
-	switch (expr->expr_kind)
-	{
-		case EXPR_CONST:
-			return true;
-		case EXPR_MACRO_BLOCK:
-		{
-			AstId current = expr->macro_block.first_stmt;
-			while (current)
-			{
-				if (!ast_is_compile_time(ast_next(&current), eval_kind)) return false;
-			}
-			return true;
-		}
-		default:
-			return false;
-	}
-	UNREACHABLE
-}
-
 static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back)
 {
 	switch (initializer->kind)

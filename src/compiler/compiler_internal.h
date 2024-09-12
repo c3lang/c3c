@@ -2159,9 +2159,6 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
-
-bool expr_is_compile_time(Expr *ast, ConstantEvalKind eval_kind);
-
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_rewrite_insert_deref(Expr *original);
@@ -2171,7 +2168,6 @@ Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
 bool expr_is_unwrapped_ident(Expr *expr);
-bool expr_may_splat_as_vararg(Expr *expr, Type *variadic_base_type);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE void expr_resolve_ident(Expr *expr, Decl *decl);
