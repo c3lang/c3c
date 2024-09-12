@@ -214,14 +214,12 @@ macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
 
 module libc @if(env::NETBSD || env::OPENBSD);
-extern CFile __stdin @extern("stdin");
-extern CFile __stdout @extern("stdout");
-extern CFile __stderr @extern("stderr");
+extern fn int fcntl(NativeSocket socket, int cmd, ...);
 extern fn usz malloc_size(void* ptr);
 extern fn void* aligned_alloc(usz align, usz size);
-macro CFile stdin() => __stdin;
-macro CFile stdout() => __stdout;
-macro CFile stderr() => __stderr;
+macro CFile stdin() => fcntl(0,0,0);
+macro CFile stdout() => fcntl(1,0,0);
+macro CFile stderr() => fcntl(2,0,0);
 
 module libc @if(env::DARWIN);
 extern CFile __stdinp;
