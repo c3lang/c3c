@@ -65,7 +65,9 @@ typedef struct
 typedef struct
 {
 	const char *target_triple;
-	int llvm_opt_level;
+#if LLVM_AVAILABLE
+    int llvm_opt_level;
+#endif
 	const char *cpu;
 	const char *features;
 	ArchType arch;

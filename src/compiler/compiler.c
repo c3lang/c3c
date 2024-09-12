@@ -7,8 +7,10 @@
 #include "../utils/whereami.h"
 #if PLATFORM_POSIX
 #include <sys/wait.h>
-#endif
+#endif 
+#if LLVM_AVAILABLE
 #include "c3_llvm.h"
+#endif 
 #include <errno.h>
 
 #define MAX_OUTPUT_FILES 1000000
@@ -111,11 +113,18 @@ typedef struct CompileData_
 	Task task;
 } CompileData;
 
+#if LLVM_AVAILABLE
 void thread_compile_task_llvm(void *compile_data)
 {
 	CompileData *data = compile_data;
 	data->object_name = llvm_codegen(data->context);
 }
+#else 
+void thread_compile_task_llvm(void *compile_data)
+{
+    error_exit("LLVM backend not available.");
+}
+#endif 
 
 void thread_compile_task_tb(void *compile_data)
 {
@@ -451,9 +460,13 @@ void compiler_compile(void)
 	switch (compiler.build.backend)
 	{
 		case BACKEND_LLVM:
+#if LLVM_AVAILABLE
 			gen_contexts = llvm_gen(modules, module_count);
 			task = &thread_compile_task_llvm;
-			break;
+#else 
+            error_exit("C3C compiled without LLVM!");
+#endif
+            break;
 		case BACKEND_TB:
 			gen_contexts = tilde_gen(modules, module_count);
 			task = &thread_compile_task_tb;
@@ -1242,8 +1255,14 @@ void compile()
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
-	setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
-	setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
+	
+#if LLVM_AVAILABLE
+    setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
+#else 
+    setup_int_define("LLVM_VERSION", 0, type_int);
+#endif
+
+    setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);
 	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);

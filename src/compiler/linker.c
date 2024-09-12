@@ -1,6 +1,8 @@
 #include "compiler_internal.h"
 #include "../utils/whereami.h"
+#if LLVM_AVAILABLE
 #include "c3_llvm.h"
+#endif
 
 #if PLATFORM_POSIX
 #include <glob.h>
@@ -714,6 +716,7 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 	// This isn't used in most cases, but its contents should get freed after linking.
 
 	bool success;
+#if LLVM_AVAILABLE
 	unsigned count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
@@ -732,6 +735,10 @@ static bool link_exe(const char *output_file, const char **files_to_link, unsign
 		default:
 			UNREACHABLE
 	}
+#else 
+    success = false;
+    error = "linking (.exe) is not implemented for C3C compiled without LLVM";
+#endif 
 	if (!success)
 	{
 		error_exit("Failed to create an executable: %s", error);
@@ -960,8 +967,9 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		return true;
 	}
 	bool success;
-	const char *error = NULL;
-	unsigned count = assemble_link_arguments(args, vec_size(args));
+    const char *error = NULL;
+#if LLVM_AVAILABLE
+    unsigned count = assemble_link_arguments(args, vec_size(args));
 	switch (compiler.platform.object_format)
 	{
 		case OBJ_FORMAT_COFF:
@@ -979,6 +987,10 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 		default:
 			UNREACHABLE
 	}
+#else 
+    success = false;
+    error = "linking not implemented for c3c compiled without llvm";
+#endif 
 	if (!success)
 	{
 		error_exit("Failed to create a dynamic library: %s", error);
@@ -989,6 +1001,7 @@ bool dynamic_lib_linker(const char *output_file, const char **files, unsigned fi
 
 bool static_lib_linker(const char *output_file, const char **files, unsigned file_count)
 {
+#if LLVM_AVAILABLE
 	ArFormat format;
 	switch (compiler.platform.os)
 	{
@@ -1009,6 +1022,9 @@ bool static_lib_linker(const char *output_file, const char **files, unsigned fil
 			break;
 	}
 	return llvm_ar(output_file, files, file_count, format);
+#else 
+    return false;
+#endif 
 }
 
 bool linker(const char *output_file, const char **files, unsigned file_count)
