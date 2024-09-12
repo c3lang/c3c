@@ -484,8 +484,20 @@ static void print_version(void)
 #endif
 	PRINTF("Installed directory:       %s", find_executable_path());
 	PRINTF("Git Hash:                  %s", GIT_HASH);
+
+    PRINTF("Backends:                  "
+#if LLVM_AVAILABLE
+                                        "LLVM; "
+#endif 
+#if TB_AVAILABLE
+                                        "TildeBackend; "
+#endif
+            );
+
+#if LLVM_AVAILABLE
 	PRINTF("LLVM version:              %s", llvm_version);
 	PRINTF("LLVM default target:       %s", llvm_target);
+#endif 
 }
 
 static void add_linker_arg(BuildOptions *options, const char *arg)

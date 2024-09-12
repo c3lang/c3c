@@ -63,6 +63,7 @@ set(C3_LLVM_VERSION "auto" CACHE STRING "Use LLVM version [default: auto]")
 option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
 option(C3_USE_TB "Use TB" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
+option(C3_WITH_LLVM "Build with LLVM" ON)
 
 set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
@@ -80,9 +81,11 @@ endif()
 if (NOT WIN32)
     find_package(CURL)
 endif()
-if (NOT C3_LLVM_VERSION STREQUAL "auto")
-    if (${C3_LLVM_VERSION} VERSION_LESS 17 OR ${C3_LLVM_VERSION} VERSION_GREATER 20)
-        message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
+if(C3_WITH_LLVM)
+    if (NOT C3_LLVM_VERSION STREQUAL "auto")
+        if (${C3_LLVM_VERSION} VERSION_LESS 17 OR ${C3_LLVM_VERSION} VERSION_GREATER 20)
+            message(FATAL_ERROR "LLVM ${C3_LLVM_VERSION} is not supported!")
+        endif()
     endif()
 endif()
 
@@ -112,113 +115,115 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     )
 endif(C3_ENABLE_CLANGD_LSP)
 
-if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
-    if (C3_LLVM_VERSION STREQUAL "auto")
-        set(C3_LLVM_VERSION "18")
-    endif()
-    FetchContent_Declare(
-            LLVM_Windows
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8_with_rt/llvm-18.1.8-windows-amd64-msvc17-libcmt.7z
-    )
-    FetchContent_Declare(
-            LLVM_Windows_debug
-            URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8_with_rt/llvm-18.1.8-windows-amd64-msvc17-libcmt-dbg.7z
-    )
-    if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-        message("Loading Windows LLVM debug libraries, this may take a while...")
-        FetchContent_MakeAvailable(LLVM_Windows_debug)
-        set(llvm_dir ${llvm_windows_debug_SOURCE_DIR})
-    else()
-        message("Loading Windows LLVM libraries, this may take a while...")
-        FetchContent_MakeAvailable(LLVM_Windows)
-        set(llvm_dir ${llvm_windows_SOURCE_DIR})
-    endif()
-    set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
+if(C3_WITH_LLVM)
+    if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
+        if (C3_LLVM_VERSION STREQUAL "auto")
+            set(C3_LLVM_VERSION "18")
+        endif()
+        FetchContent_Declare(
+                LLVM_Windows
+                URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8_with_rt/llvm-18.1.8-windows-amd64-msvc17-libcmt.7z
+        )
+        FetchContent_Declare(
+                LLVM_Windows_debug
+                URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8_with_rt/llvm-18.1.8-windows-amd64-msvc17-libcmt-dbg.7z
+        )
+        if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+            message("Loading Windows LLVM debug libraries, this may take a while...")
+            FetchContent_MakeAvailable(LLVM_Windows_debug)
+            set(llvm_dir ${llvm_windows_debug_SOURCE_DIR})
+        else()
+            message("Loading Windows LLVM libraries, this may take a while...")
+            FetchContent_MakeAvailable(LLVM_Windows)
+            set(llvm_dir ${llvm_windows_SOURCE_DIR})
+        endif()
+        set(CMAKE_SYSTEM_PREFIX_PATH ${llvm_dir} ${CMAKE_SYSTEM_PREFIX_PATH})
 
-    find_package(LLVM REQUIRED CONFIG)
-    find_package(LLD REQUIRED CONFIG)
-else()
-    if (NOT C3_LLVM_VERSION STREQUAL "auto")
-        find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
-    else()
         find_package(LLVM REQUIRED CONFIG)
+        find_package(LLD REQUIRED CONFIG)
+    else()
+        if (NOT C3_LLVM_VERSION STREQUAL "auto")
+            find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
+        else()
+            find_package(LLVM REQUIRED CONFIG)
+        endif()
     endif()
-endif()
 
-message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
-message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
-message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
+    message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
+    message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
+    message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
 
-if (NOT LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 15.0)
-    message(FATAL_ERROR "LLVM version 15.0 or later is required.")
-endif()
+    if (NOT LLVM_PACKAGE_VERSION VERSION_GREATER_EQUAL 15.0)
+        message(FATAL_ERROR "LLVM version 15.0 or later is required.")
+    endif()
 
-if(LLVM_ENABLE_RTTI)
-    message(STATUS "LLVM was built with RTTI")
-else()
-    message(STATUS "LLVM was not built with RTTI")
-endif()
+    if(LLVM_ENABLE_RTTI)
+        message(STATUS "LLVM was built with RTTI")
+    else()
+        message(STATUS "LLVM was not built with RTTI")
+    endif()
 
-string(REPLACE "." ";" VERSION_LIST ${LLVM_PACKAGE_VERSION})
-list(GET VERSION_LIST 0 LLVM_MAJOR_VERSION)
+    string(REPLACE "." ";" VERSION_LIST ${LLVM_PACKAGE_VERSION})
+    list(GET VERSION_LIST 0 LLVM_MAJOR_VERSION)
 
-include_directories(${LLVM_INCLUDE_DIRS})
-link_directories(${LLVM_LIBRARY_DIRS})
-add_definitions(${LLVM_DEFINITIONS})
+    include_directories(${LLVM_INCLUDE_DIRS})
+    link_directories(${LLVM_LIBRARY_DIRS})
+    add_definitions(${LLVM_DEFINITIONS})
 
-if(NOT C3_LINK_DYNAMIC)
-    set(LLVM_LINK_COMPONENTS
-	    AllTargetsAsmParsers
-	    AllTargetsCodeGens
-	    AllTargetsDescs
-	    AllTargetsDisassemblers
-	    AllTargetsInfos
-	    Analysis
-	    AsmPrinter
-	    BitReader
-	    Core
-	    DebugInfoPDB
-	    InstCombine
-	    IrReader
-	    LibDriver
-	    Linker
-	    LTO
-	    MC
-	    MCDisassembler
-	    native
-	    nativecodegen
-	    Object
-	    Option
-	    ScalarOpts
-	    Support
-	    Target
-	    TransformUtils
-	    WindowsManifest
-	    WindowsDriver
-    )
+    if(NOT C3_LINK_DYNAMIC)
+        set(LLVM_LINK_COMPONENTS
+            AllTargetsAsmParsers
+            AllTargetsCodeGens
+            AllTargetsDescs
+            AllTargetsDisassemblers
+            AllTargetsInfos
+            Analysis
+            AsmPrinter
+            BitReader
+            Core
+            DebugInfoPDB
+            InstCombine
+            IrReader
+            LibDriver
+            Linker
+            LTO
+            MC
+            MCDisassembler
+            native
+            nativecodegen
+            Object
+            Option
+            ScalarOpts
+            Support
+            Target
+            TransformUtils
+            WindowsManifest
+            WindowsDriver
+        )
 
-    llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
+        llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
-    # These don't seem to be reliable on windows.
-    message(STATUS "using find_library")
-    find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_MINGW NAMES lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_WASM NAMES lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-else()
-    find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    set(llvm_libs ${LLVM})
+        # These don't seem to be reliable on windows.
+        message(STATUS "using find_library")
+        find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_MINGW NAMES lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_WASM NAMES lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    else()
+        find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        set(llvm_libs ${LLVM})
 
-    # These don't seem to be reliable on windows.
-    message(STATUS "using find_library")
-    find_library(LLD_COFF NAMES liblldCOFF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_COMMON NAMES liblldCommon.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_ELF NAMES liblldELF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_MINGW NAMES liblldMinGW.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-    find_library(LLD_WASM NAMES liblldWasm.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        # These don't seem to be reliable on windows.
+        message(STATUS "using find_library")
+        find_library(LLD_COFF NAMES liblldCOFF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_COMMON NAMES liblldCommon.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_ELF NAMES liblldELF.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_MACHO NAMES liblldMachO.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_MINGW NAMES liblldMinGW.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_WASM NAMES liblldWasm.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    endif()
 endif()
 
 if (NOT(${CMAKE_BINARY_DIR} EQUAL ${CMAKE_SOURCE_DIR}))
@@ -226,36 +231,36 @@ if (NOT(${CMAKE_BINARY_DIR} EQUAL ${CMAKE_SOURCE_DIR}))
     file(COPY ${CMAKE_SOURCE_DIR}/lib DESTINATION ${CMAKE_BINARY_DIR})
 endif()
 
-find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-set(lld_libs
-    ${LLD_COFF}
-    ${LLD_COMMON}
-    ${LLD_WASM}
-    ${LLD_MINGW}
-    ${LLD_ELF}
-    ${LLD_MACHO}
-    )
-
-if (APPLE)
-    set(lld_libs ${lld_libs} xar)
-    find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-    find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-    find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-    find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-    set(sanitizer_runtime_libraries
-            ${RT_ASAN_DYNAMIC}
-            ${RT_TSAN_DYNAMIC}
-            # Unused
-            # ${RT_UBSAN_DYNAMIC}
-            # ${RT_LSAN_DYNAMIC}
+if(C3_WITH_LLVM)
+    find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+    set(lld_libs
+        ${LLD_COFF}
+        ${LLD_COMMON}
+        ${LLD_WASM}
+        ${LLD_MINGW}
+        ${LLD_ELF}
+        ${LLD_MACHO}
         )
+
+    if (APPLE)
+        set(lld_libs ${lld_libs} xar)
+        find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        set(sanitizer_runtime_libraries
+                ${RT_ASAN_DYNAMIC}
+                ${RT_TSAN_DYNAMIC}
+                # Unused
+                # ${RT_UBSAN_DYNAMIC}
+                # ${RT_LSAN_DYNAMIC}
+            )
+    endif()
+
+    message(STATUS "linking to llvm libs ${lld_libs}")
+    message(STATUS "Found lld libs ${lld_libs}")
 endif()
 
-message(STATUS "linking to llvm libs ${lld_libs}")
-message(STATUS "Found lld libs ${lld_libs}")
-
-
-add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 add_library(miniz STATIC dependencies/miniz/miniz.c)
 
 add_executable(c3c
@@ -279,7 +284,6 @@ add_executable(c3c
         src/compiler/json_output.c
         src/compiler/lexer.c
         src/compiler/linker.c
-        src/compiler/llvm_codegen.c
         src/compiler/abi/c_abi_aarch64.c
         src/compiler/abi/c_abi.c
         src/compiler/abi/c_abi_riscv.c
@@ -287,14 +291,6 @@ add_executable(c3c
         src/compiler/abi/c_abi_win64.c
         src/compiler/abi/c_abi_x64.c
         src/compiler/abi/c_abi_x86.c
-        src/compiler/llvm_codegen_debug_info.c
-        src/compiler/llvm_codegen_expr.c
-        src/compiler/llvm_codegen_function.c
-        src/compiler/llvm_codegen_instr.c
-        src/compiler/llvm_codegen_module.c
-        src/compiler/llvm_codegen_stmt.c
-        src/compiler/llvm_codegen_type.c
-        src/compiler/llvm_codegen_value.c
         src/compiler/module.c
         src/compiler/number.c
         src/compiler/parse_expr.c
@@ -337,12 +333,10 @@ add_executable(c3c
         src/utils/cpus.c
         src/utils/unzipper.c
         src/compiler/decltable.c
-        src/compiler/mac_support.c
-        src/compiler/llvm_codegen_storeload.c
+        src/compiler/mac_support.c 
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
-        src/compiler/asm_target.c
-        src/compiler/llvm_codegen_builtins.c
+        src/compiler/asm_target.c 
         src/compiler/expr.c
         src/utils/time.c
         src/utils/http.c
@@ -364,6 +358,36 @@ else()
             OUTPUT ${CMAKE_BINARY_DIR}/git_hash.h
             COMMAND ${CMAKE_COMMAND} -P "${CMAKE_CURRENT_LIST_DIR}/git_hash.cmake")
 endif()
+
+if(C3_WITH_LLVM)
+    target_sources(c3c PRIVATE 
+        src/compiler/llvm_codegen.c
+        src/compiler/llvm_codegen_debug_info.c
+        src/compiler/llvm_codegen_expr.c
+        src/compiler/llvm_codegen_function.c
+        src/compiler/llvm_codegen_instr.c
+        src/compiler/llvm_codegen_module.c
+        src/compiler/llvm_codegen_stmt.c
+        src/compiler/llvm_codegen_type.c
+        src/compiler/llvm_codegen_value.c
+        src/compiler/llvm_codegen_storeload.c
+        src/compiler/llvm_codegen_builtins.c)
+
+    target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=1)
+
+    add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
+else()
+    target_sources(c3c PRIVATE src/utils/hostinfo.c)
+
+    target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
+endif()
+
+target_include_directories(c3c PRIVATE
+        "${CMAKE_SOURCE_DIR}/src/"
+        "${CMAKE_BINARY_DIR}")
+
+target_include_directories(miniz PUBLIC
+        "${CMAKE_SOURCE_DIR}/dependencies/miniz/")
 
 if (C3_USE_TB)
     file(GLOB tilde-sources
@@ -397,25 +421,29 @@ if (C3_USE_TB)
 
     target_include_directories(c3c PRIVATE
             "${CMAKE_SOURCE_DIR}/tilde-backend/include/")
+
 else()
+
     target_compile_definitions(c3c PUBLIC TB_AVAILABLE=0)
+
 endif()
 
+if(C3_WITH_LLVM)
+    target_link_libraries(c3c ${llvm_libs} miniz c3c_wrappers ${lld_libs})
 
-target_include_directories(c3c PRIVATE
-        "${CMAKE_SOURCE_DIR}/src/"
-        "${CMAKE_SOURCE_DIR}/wrapper/include/"
-        "${CMAKE_BINARY_DIR}")
+    target_include_directories(c3c PRIVATE
+            "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
+    target_include_directories(c3c_wrappers PRIVATE
+            "${CMAKE_SOURCE_DIR}/wrapper/include/")
 
-target_include_directories(c3c_wrappers PRIVATE
-        "${CMAKE_SOURCE_DIR}/wrapper/include/")
+    target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
 
-target_include_directories(miniz PUBLIC
-        "${CMAKE_SOURCE_DIR}/dependencies/miniz/")
+else() 
 
-target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
-target_link_libraries(c3c ${llvm_libs} miniz c3c_wrappers ${lld_libs})
+    target_link_libraries(c3c ${llvm_libs} miniz ${lld_libs})
+
+endif()
 
 if(C3_USE_MIMALLOC)
     target_link_libraries(c3c mimalloc-static)
@@ -442,36 +470,44 @@ endif()
 if(MSVC)
     message("Adding MSVC options")
     target_compile_options(c3c PRIVATE /wd4068 /wd4090 /WX /Wv:18)
-    target_compile_options(c3c_wrappers PUBLIC /wd4624 /wd4267 /wd4244 /WX /Wv:18)
-    if (NOT LLVM_ENABLE_RTTI)
-        target_compile_options(c3c_wrappers PUBLIC /GR-)
+    if(C3_WITH_LLVM)
+        target_compile_options(c3c_wrappers PUBLIC /wd4624 /wd4267 /wd4244 /WX /Wv:18)
+        if(NOT LLVM_ENABLE_RTTI)
+            target_compile_options(c3c_wrappers PUBLIC /GR-)
+        endif()
+        target_link_options(c3c_wrappers PUBLIC /ignore:4099)
     endif()
-    target_link_options(c3c_wrappers PUBLIC /ignore:4099)
     if(CMAKE_BUILD_TYPE STREQUAL "Debug")
         target_compile_options(c3c PUBLIC /MTd)
-        target_compile_options(c3c_wrappers PUBLIC /MTd)
+        if (C3_WITH_LLVM)
+            target_compile_options(c3c_wrappers PUBLIC /MTd)
+        endif()
         target_compile_options(miniz PUBLIC /MTd)
         if (C3_USE_TB)
             target_compile_options(tilde-backend PUBLIC /MTd)
         endif()
     else()
         target_compile_options(c3c PUBLIC /MT)
-        target_compile_options(c3c_wrappers PUBLIC /MT)
+        if (C3_WITH_LLVM)
+            target_compile_options(c3c_wrappers PUBLIC /MT)
+        endif()
         target_compile_options(miniz PUBLIC /MT)
         if (C3_USE_TB)
             target_compile_options(tilde-backend PUBLIC /MT)
         endif()
     endif()
-    set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
-    set(sanitizer_runtime_libraries
-        ${clang_lib_dir}/clang_rt.asan-x86_64.lib
-        ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
-        ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
-        ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+    if(C3_WITH_LLVM)
+        set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
+        set(sanitizer_runtime_libraries
+            ${clang_lib_dir}/clang_rt.asan-x86_64.lib
+            ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
+            ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
+            ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+    endif()
 else()
     message(STATUS "using gcc/clang warning switches")
     target_link_options(c3c PRIVATE -pthread)
-    if (NOT LLVM_ENABLE_RTTI)
+    if (C3_WITH_LLVM AND NOT LLVM_ENABLE_RTTI)
         target_compile_options(c3c_wrappers PRIVATE -fno-rtti)
     endif()
     target_compile_options(c3c PRIVATE -pthread -Wall -Werror -Wno-unknown-pragmas -Wno-unused-result
@@ -481,7 +517,7 @@ endif()
 install(TARGETS c3c DESTINATION bin)
 install(DIRECTORY lib/ DESTINATION lib/c3)
 
-if (DEFINED sanitizer_runtime_libraries)
+if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
     add_custom_command(TARGET c3c POST_BUILD
         COMMAND "${CMAKE_COMMAND}" -E rm -rf -- $<TARGET_FILE_DIR:c3c>/c3c_rt
         COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:c3c>/c3c_rt

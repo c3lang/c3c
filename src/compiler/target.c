@@ -1,8 +1,14 @@
+#if LLVM_AVAILABLE
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Core.h>
+#endif 
 #include "compiler_internal.h"
+#if LLVM_AVAILABLE
 #include "c3_llvm.h"
+#else 
+#include "utils/hostinfo.h"
+#endif
 
 static bool x64features_contains(X86Features *cpu_features, X86Feature feature);
 static ObjectFormatType object_format_from_os(OsType os, ArchType arch_type);
@@ -782,17 +788,24 @@ static const char *x86_cpu_from_set(X86CpuSet set)
 		case X86CPU_AVX512:
 			return "x86-64-v4";
 		case X86CPU_NATIVE:
+#if LLVM_AVAILABLE
 			return LLVMGetHostCPUName();
-	}
+#else 
+            return hostinfo_x86_cpu_name();
+#endif
+    }
 	UNREACHABLE
 }
 
 static void x86_features_from_host(X86Features *cpu_features)
 {
+#if LLVM_AVAILABLE
 	char *features = LLVMGetHostCPUFeatures();
 	INFO_LOG("Detected the following host features: %s", features);
-	INFO_LOG("For %s", LLVMGetHostCPUName());
-	char *tok = strtok(features, ",");
+    INFO_LOG("For %s", 
+             LLVMGetHostCPUName());
+
+    char *tok = strtok(features, ",");
 	*cpu_features = x86_feature_zero;
 	while (tok != NULL)
 	{
@@ -822,6 +835,9 @@ static void x86_features_from_host(X86Features *cpu_features)
 		tok = strtok(NULL, ",");
 	}
 	LLVMDisposeMessage(features);
+#else 
+    hostinfo_x86_features(cpu_features);
+#endif
 }
 
 static void x86features_from_cpu(X86Features *cpu_features, X86CpuSet cpu_set)
@@ -1530,7 +1546,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
-#if LLVM_VERSION_MAJOR < 18
+#if !LLVM_AVAILABLE || LLVM_VERSION_MAJOR < 18
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 #else
 			FALLTHROUGH;
@@ -1543,7 +1559,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 			return (AlignData) { bits, bits };
 		case ARCH_TYPE_X86:
 			if (bits <= 32) return (AlignData) { bits, bits };
-#if LLVM_VERSION_MAJOR > 17
+#if !LLVM_AVAILABLE || LLVM_VERSION_MAJOR > 17
 			if (bits == 128) return (AlignData) { 128, 128 };
 #endif
 			if (os == OS_TYPE_ELFIAMCU) return (AlignData) { 32, 32 };
@@ -1718,19 +1734,6 @@ static bool arch_os_pic_default_forced(ArchType arch, OsType os)
 	UNREACHABLE
 }
 
-
-
-
-#define INITIALIZE_TARGET(X) do { \
-  DEBUG_LOG("Initialize target: %s.", #X); \
-  LLVMInitialize ## X ## AsmParser(); \
-  LLVMInitialize ## X ## AsmPrinter(); \
-  LLVMInitialize ## X ## TargetInfo(); \
-  LLVMInitialize ## X ## Target(); \
-  LLVMInitialize ## X ## Disassembler(); \
-  LLVMInitialize ## X ## TargetMC(); \
- } while(0)
-
 INLINE const char *llvm_macos_target_triple(const char *triple)
 {
 	if (compiler.build.macos.min_version)
@@ -1754,6 +1757,17 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
 	scratch_buffer_printf("%d.%d.0", mac_sdk->macos_min_deploy_target.major, mac_sdk->macos_min_deploy_target.minor);
 	return scratch_buffer_to_string();
 }
+
+#if LLVM_AVAILABLE
+#define INITIALIZE_TARGET(X) do { \
+  DEBUG_LOG("Initialize target: %s.", #X); \
+  LLVMInitialize ## X ## AsmParser(); \
+  LLVMInitialize ## X ## AsmPrinter(); \
+  LLVMInitialize ## X ## TargetInfo(); \
+  LLVMInitialize ## X ## Target(); \
+  LLVMInitialize ## X ## Disassembler(); \
+  LLVMInitialize ## X ## TargetMC(); \
+ } while(0)
 
 #if LLVM_VERSION_MAJOR > 19
 #define XTENSA_AVAILABLE 1
@@ -1815,7 +1829,11 @@ void *llvm_target_machine_create(void)
 	return result;
 }
 
+#else 
 
+#define XTENSA_AVAILABLE 1
+
+#endif
 
 
 void target_setup(BuildTarget *target)
@@ -1843,6 +1861,7 @@ void target_setup(BuildTarget *target)
 
 	compiler.platform.alloca_address_space = 0;
 
+#if LLVM_AVAILABLE
 	// Create a specific target machine
 	LLVMCodeGenOptLevel level;
 
@@ -1867,8 +1886,15 @@ void target_setup(BuildTarget *target)
 	}
 
 	compiler.platform.llvm_opt_level = (int)level;
+#endif
+
 	INFO_LOG("Triple picked was %s.", compiler.platform.target_triple);
-	INFO_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
+
+#if LLVM_AVAILABLE
+    INFO_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
+#else 
+    INFO_LOG("Default was %s.", hostinfo_default_triple());
+#endif
 
 	StringSlice target_triple_string = slice_from_string(compiler.platform.target_triple);
 	compiler.platform.arch = arch_from_llvm_string(slice_next_token(&target_triple_string, '-'));
