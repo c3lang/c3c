@@ -668,11 +668,11 @@ AlignSize type_abi_alignment(Type *type)
 			if (!len) len = 1;
 			ByteSize width = type_size(type->array.base) * len;
 			AlignSize alignment = (AlignSize)(int32_t)width;
-			if (alignment & (alignment - 1))
+			if (max_alignment_vector && alignment > max_alignment_vector) return max_alignment_vector;
+			if (!is_power_of_two(alignment))
 			{
 				alignment = (AlignSize)next_highest_power_of_2((uint32_t)alignment);
 			}
-			if (max_alignment_vector && alignment > max_alignment_vector) alignment = max_alignment_vector;
 			return alignment;
 		}
 		case TYPE_VOID:
