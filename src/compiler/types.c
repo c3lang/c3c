@@ -49,6 +49,8 @@ Type *type_member = &t.member;
 Type *type_chars = NULL;
 Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;
+Type *type_cint;
+Type *type_cuint;
 
 static unsigned size_slice;
 static AlignSize alignment_slice;
@@ -62,8 +64,7 @@ static AlignSize max_alignment_vector;
 #define OPTIONAL_OFFSET 5
 #define ARRAY_OFFSET 6
 
-Type *type_cint;
-Type *type_cuint;
+static void type_append_func_to_scratch(FunctionPrototype *prototype);
 
 void type_init_cint(void)
 {
@@ -104,8 +105,6 @@ const char *type_quoted_error_string(Type *type)
 	}
 	return str_printf("'%s'", type_to_error_string(type));
 }
-
-static void type_append_func_to_scratch(FunctionPrototype *prototype);
 
 void type_append_name_to_scratch(Type *type)
 {
@@ -294,11 +293,7 @@ RETRY:
 		case TYPE_VECTOR:
 		{
 			TypeSize width = type_size(type->array.base) * type->array.len;
-			if (width & (width - 1))
-			{
-				AlignSize alignment = next_highest_power_of_2((uint32_t) width);
-				width = aligned_offset((AlignSize)width, alignment);
-			}
+			if (!is_power_of_two(width)) return next_highest_power_of_2(width);
 			return width;
 		}
 		case CT_TYPES:
@@ -392,9 +387,6 @@ bool type_is_int128(Type *type)
 	return kind == TYPE_U128 || kind == TYPE_I128;
 }
 
-
-
-
 bool type_is_abi_aggregate(Type *type)
 {
 	RETRY:
@@ -409,6 +401,9 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_TYPEDEF:
 			type = type->canonical;
 			goto RETRY;
+		case CT_TYPES:
+		case TYPE_FLEXIBLE_ARRAY:
+			return false;
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case TYPE_VOID:
@@ -430,15 +425,9 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return true;
-		case CT_TYPES:
-		case TYPE_FLEXIBLE_ARRAY:
-			return false;
 	}
 	UNREACHABLE
 }
-
-
-
 
 Type *type_find_largest_union_element(Type *type)
 {
@@ -689,8 +678,6 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ENUM:
 			type = type->decl->enums.type_info->type->canonical;
 			goto RETRY;
-		case TYPE_FAULTTYPE:
-			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
@@ -707,6 +694,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ANY:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
+		case TYPE_FAULTTYPE:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:

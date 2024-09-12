@@ -208,7 +208,7 @@ static const char *dynamic_lib_name(void)
 		case MACOS_AARCH64:
 			return str_cat(name, ".dylib");
 		default:
-			return str_cat(name, ".a");
+			return str_cat(name, ".so");
 	}
 }
 

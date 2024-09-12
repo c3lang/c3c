@@ -20,6 +20,7 @@
 - Asserts are retained regardless of optimization when running tests.
 - Limit object filename lengths. #1415
 - Fix regression for `$include`.
+- Correct '.so' suffix on dynamic libraries on Linux.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
