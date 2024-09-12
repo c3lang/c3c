@@ -99,7 +99,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional,
                                   bool *no_match_ref);
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref, bool report_error);
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref);
 Expr *sema_ct_eval_expr(SemaContext *context, bool is_type, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 

@@ -374,11 +374,9 @@ if(C3_WITH_LLVM)
         src/compiler/llvm_codegen_builtins.c)
 
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=1)
-
     add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
 else()
     target_sources(c3c PRIVATE src/utils/hostinfo.c)
-
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=0)
 endif()
 

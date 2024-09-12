@@ -168,6 +168,7 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
  */
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 {
+	assert(base && type && elements);
 	assert(type_lowering(type) == type);
 	*elements = 0;
 	switch (type->type_kind)

@@ -3,14 +3,16 @@
 #include "hostinfo.h"
 #include <stdlib.h>
 
-static int is_le(void) {
+static int is_le(void)
+{
     unsigned int i = 1;
     char *c;
     c = (char *) &i;
     return (*c == 1);
 }
 
-ArchType hostinfo_arch_type(void) {
+ArchType hostinfo_arch_type(void)
+{
 #if defined(__x86_64__) || defined(_M_X64)
     return ARCH_TYPE_X86_64;
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86)
@@ -36,12 +38,14 @@ ArchType hostinfo_arch_type(void) {
 #elif defined(__sparc__) || defined(__sparc)
     return ARCH_UNSUPPORTED 
 #else
-    return ARCH_UNSUPPORTED
+    return ARCH_TYPE_UNKNOWN;
 #endif
 }
 
-static const char * llvm_arch_name(ArchType ty) {
-    switch (ty) {
+static const char *llvm_arch_name(ArchType ty)
+{
+    switch (ty)
+	{
         case ARCH_TYPE_X86_64: return "x86_64";
         case ARCH_TYPE_X86: return "x86";
         case ARCH_TYPE_ARM: return "arm";
@@ -58,55 +62,60 @@ static const char * llvm_arch_name(ArchType ty) {
         case ARCH_TYPE_PPC64LE: return "ppc64le";
         case ARCH_TYPE_RISCV32: return "riscv32";
         case ARCH_TYPE_RISCV64: return "riscv64";
-        default:
+		case ARCH_UNSUPPORTED:
         case ARCH_TYPE_UNKNOWN: return "unknown";
     }
+	UNREACHABLE
 }
 
-void hostinfo_x86_features(X86Features *cpu_features) {
+void hostinfo_x86_features(X86Features *cpu_features)
+{
 #if defined(__x86_64__) || defined(_M_X64)
     // TODO
 #endif 
 }
 
-EnvironmentType hostinfo_env_type(void) {
+EnvironmentType hostinfo_env_type(void)
+{
     return ENV_TYPE_UNKNOWN;
 }
 
-OsType hostinfo_os_type(void) {
-    if (system("freebsd-version -k") == 0) {
-        return OS_TYPE_FREE_BSD;
-    }
-
-    if (system("uname -r") == 0) {
-        return OS_TYPE_LINUX;
-    }
-
-    if (system("cd C:/Windows") == 0) {
-        return OS_TYPE_WIN32;
-    }
-
+OsType hostinfo_os_type(void)
+{
+#if __APPLE__
+	return OS_TYPE_MACOSX;
+#else
+    if (system("freebsd-version -k") == 0) return OS_TYPE_FREE_BSD;
+    if (system("uname -r") == 0) return OS_TYPE_LINUX;
+    if (system("cd C:/Windows") == 0) return OS_TYPE_WIN32;
     return OS_TYPE_UNKNOWN;
+#endif
 }
 
-static const char * llvm_os_name(OsType os) {
-    switch (os) {
-        case OS_TYPE_FREE_BSD: return "frebsd";
-        case OS_TYPE_LINUX:    return "linux";
-        case OS_TYPE_WIN32:    return "win32";
-        default: return "unknown";
-    }
+static const char *llvm_os_name(OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_FREE_BSD: return "freebsd";
+		case OS_TYPE_LINUX: return "linux";
+		case OS_TYPE_WIN32: return "win32";
+		case OS_TYPE_MACOSX: return "darwin";
+		default: return "unknown";
+	}
 }
 
-VendorType hostinfo_vendor_type(void) {
+VendorType hostinfo_vendor_type(void)
+{
     return VENDOR_UNKNOWN;
 }
 
 static char triple[128];
 static int  triple_init = 0;
 
-const char * hostinfo_default_triple(void) {
-    if (!triple_init) {
+const char * hostinfo_default_triple(void)
+{
+    if (!triple_init)
+	{
         sprintf(triple, "%s-unknown-unknown-%s",
                 llvm_arch_name(hostinfo_arch_type()),
                 llvm_os_name(hostinfo_os_type()));
@@ -116,6 +125,7 @@ const char * hostinfo_default_triple(void) {
     return triple;
 }
 
-const char * hostinfo_x86_cpu_name(void) {
+const char *hostinfo_x86_cpu_name(void)
+{
     return "x86"; 
 }

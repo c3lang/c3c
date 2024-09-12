@@ -2161,7 +2161,7 @@ bool expr_is_pure(Expr *expr);
 bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
 
 bool expr_is_compile_time(Expr *ast, ConstantEvalKind eval_kind);
-bool range_is_const(Range *range);
+
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_rewrite_insert_deref(Expr *original);

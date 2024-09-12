@@ -340,8 +340,7 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 	{
 		RETURN_SEMA_ERROR(type_info, "'%s' can only be used inside of a macro.", token_type_to_string(TOKEN_CT_VATYPE));
 	}
-	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL,
-	                                                                  true), false);
+	ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL), false);
 	if (!sema_analyse_expr_value(context, arg_expr)) return false;
 	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
 	type_info->type = arg_expr->type_expr->type;
@@ -600,9 +599,9 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 	scratch_buffer_append("fn ");
 	type_append_name_to_scratch(proto->rtype);
 	scratch_buffer_append_char('(');
-	FOREACH_IDX(index, Type *, val, proto->param_types)
+	FOREACH_IDX(idx, Type *, val, proto->param_types)
 	{
-		if (index != 0) scratch_buffer_append(", ");
+		if (idx != 0) scratch_buffer_append(", ");
 		type_append_name_to_scratch(val);
 	}
 	scratch_buffer_append_char(')');

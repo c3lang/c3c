@@ -256,7 +256,7 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 	}
 }
 
-Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref, bool report_error)
+Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref)
 {
 	unsigned args = vec_size(context->macro_varargs);
 	uint64_t index;
@@ -264,24 +264,24 @@ Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, uns
 	if (!sema_analyse_expr(context, index_expr)) return poisoned_expr;
 	if (!type_is_integer(index_expr->type))
 	{
-		if (report_error) SEMA_ERROR(index_expr, "Expected the argument index here, but found a value of type %s.", type_quoted_error_string(index_expr->type));
+		SEMA_ERROR(index_expr, "Expected the argument index here, but found a value of type %s.", type_quoted_error_string(index_expr->type));
 		return poisoned_expr;
 	}
 	if (!sema_cast_const(index_expr))
 	{
-		if (report_error) SEMA_ERROR(index_expr, "Vararg functions need a constant argument, but this is a runtime value.");
+		SEMA_ERROR(index_expr, "Vararg functions need a constant argument, but this is a runtime value.");
 		return poisoned_expr;
 	}
 	Int index_val = index_expr->const_expr.ixx;
 	if (int_is_neg(index_val))
 	{
-		if (report_error) SEMA_ERROR(index_expr, "The index cannot be negative.");
+		SEMA_ERROR(index_expr, "The index cannot be negative.");
 		return poisoned_expr;
 	}
 	Int int_max = { .i = { .low = args }, .type = TYPE_U32 };
 	if (int_comp(index_val, int_max, BINARYOP_GE))
 	{
-		if (report_error) SEMA_ERROR(index_expr, "Only %u vararg%s exist.", args, args == 1 ? "" : "s");
+		SEMA_ERROR(index_expr, "Only %u vararg%s exist.", args, args == 1 ? "" : "s");
 		return poisoned_expr;
 	}
 	if (index_ref) *index_ref = (unsigned)index_val.i.low;
@@ -4877,6 +4877,7 @@ CHECK_DEEPER:
 		}
 		if (ambiguous)
 		{
+			assert(member);
 			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
 					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
 		}
@@ -5140,15 +5141,6 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 		if (!cast_explicit(context, inner, target_type)) return expr_poison(expr);
 	}
 	expr_replace(expr, inner);
-	return true;
-}
-
-bool range_is_const(Range *range)
-{
-	Expr *start = exprptr(range->start);
-	Expr *end = exprptrzero(range->end);
-	if (end && !expr_is_const(end)) return false;
-	if (start && !expr_is_const(start)) return false;
 	return true;
 }
 
@@ -7973,8 +7965,8 @@ RETRY:
 		case TYPE_INFO_VATYPE:
 		{
 			if (!context->current_macro) return NULL;
-			Expr *arg_expr = sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL, false);
-			if (!expr_ok(arg_expr)) return NULL;
+			Expr *arg_expr = sema_expr_analyse_ct_arg_index(context, type_info->unresolved_type_expr, NULL);
+			if (!expr_ok(arg_expr)) return poisoned_type;
 			if (!sema_analyse_expr_value(context, arg_expr)) return poisoned_type;
 			if (arg_expr->expr_kind != EXPR_TYPEINFO) return NULL;
 			return arg_expr->type_expr->type->canonical;
@@ -8311,7 +8303,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
 	if (!sema_analyse_function_signature(context, decl, sig->abi, sig)) return false;
-	if (target_type && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
+	if (flat && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
 	{
 		RETURN_SEMA_ERROR(expr, "The lambda has type %s, which doesn't match the required type %s.",
 		                  type_quoted_error_string(decl->type),
@@ -8594,8 +8586,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 		{
 			unsigned index = 0;
 			// A normal argument, this means we only evaluate it once.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg),
-			                                                                  &index, true), false);
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), &index), false);
 
 			index++;
 			ASSERT_SPAN(expr, index < 0x10000);
@@ -8632,22 +8623,19 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 		case TOKEN_CT_VAEXPR:
 		{
 			// An expr argument, this means we copy and evaluate.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg),
-			                                                                  NULL, true), false);
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
 			expr_replace(expr, copy_expr_single(arg_expr));
 			return sema_analyse_inferred_expr(context, infer_type, expr);
 		}
 		case TOKEN_CT_VACONST:
 		{
 			// An expr argument, this means we copy and evaluate.
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg),
-			                                                                  NULL, true), false);
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), NULL), false);
 			arg_expr = copy_expr_single(arg_expr);
 			if (!sema_analyse_inferred_expr(context, infer_type, arg_expr)) return false;
 			if (!expr_is_constant_eval(arg_expr, CONSTANT_EVAL_CONSTANT_VALUE))
 			{
-				SEMA_ERROR(arg_expr, "This argument needs to be a compile time constant.");
-				return false;
+				RETURN_SEMA_ERROR(arg_expr, "This argument needs to be a compile time constant.");
 			}
 			expr_replace(expr, arg_expr);
 			return true;
@@ -8655,10 +8643,8 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 		case TOKEN_CT_VAREF:
 		{
 			// A normal argument, this means we only evaluate it once.
-			unsigned index;
-			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg),
-			                                                                  &index, true), false);
-
+			unsigned index = 0;
+			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), &index), false);
 			index++;
 			ASSERT_SPAN(expr, index < 0x10000);
 
