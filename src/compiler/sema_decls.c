@@ -1560,7 +1560,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			Expr *arg = args[j];
 
 			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false, NULL, false)) return false;
-			if (!expr_is_constant_eval(arg, CONSTANT_EVAL_GLOBAL_INIT))
+			if (!expr_is_runtime_const(arg))
 			{
 				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
 				return false;
@@ -2479,7 +2479,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			if (!sema_analyse_expr(context, string)) return false;
 			if (!sema_cast_const(string) || !expr_is_const_string(string)) RETURN_SEMA_ERROR(string, "Expected a constant string here, usage is: '@tag(name, value)'.");
 			if (!sema_analyse_expr(context, val)) return false;
-			if (!sema_cast_const(val) || !expr_is_const(val)) RETURN_SEMA_ERROR(val, "Expected a constant value here, usage is: '@tag(name, value)'.");
+			if (!sema_cast_const(val)) RETURN_SEMA_ERROR(val, "Expected a constant value here, usage is: '@tag(name, value)'.");
 			const char *name = string->const_expr.bytes.ptr;
 			FOREACH_IDX(i, Attr *, tag, attr_data->tags)
 			{
@@ -3678,7 +3678,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL, false)) goto FAIL;
 
 				// Check that it is constant.
-				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
+				if (!expr_is_runtime_const(init))
 				{
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
@@ -3690,7 +3690,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			{
 				if (!sema_analyse_expr(context, init)) goto FAIL;
 				// Check it is constant.
-				if (!expr_is_constant_eval(init, CONSTANT_EVAL_CONSTANT_VALUE))
+				if (!sema_cast_const(init))
 				{
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;
@@ -3798,7 +3798,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		{
 			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
 			if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
-			if (global_level_var && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
+			if (global_level_var && !expr_is_runtime_const(init_expr))
 			{
 				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
 				return decl_poison(decl);
@@ -3901,10 +3901,10 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		Expr *init_expr = decl->var.init_expr;
 
 		// 2. Check const-ness
-		if (global_level_var && !expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT))
+		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
 			SEMA_ERROR(init_expr, "The expression must be a constant value.");
-			expr_is_constant_eval(init_expr, CONSTANT_EVAL_GLOBAL_INIT);
+			expr_is_runtime_const(init_expr);
 			return decl_poison(decl);
 		}
 		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);

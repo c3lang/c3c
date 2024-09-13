@@ -146,6 +146,8 @@ typedef struct
 			const char *ptr;
 			ArraySize len;
 		} bytes;
+		Expr *expr_ref;
+		Decl *global_ref;
 		Decl *enum_err_val;
 		Type *typeid;
 		ConstInitializer *initializer;
@@ -1931,7 +1933,7 @@ INLINE bool no_stdlib(void)
 
 bool ast_is_not_empty(Ast *ast);
 
-bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind);
+bool ast_is_compile_time(Ast *ast);
 bool ast_supports_continue(Ast *stmt);
 INLINE void ast_append(AstId **succ, Ast *next);
 INLINE void ast_prepend(AstId *first, Ast *ast);
@@ -2147,6 +2149,7 @@ bool decl_needs_prefix(Decl *decl);
 AlignSize decl_find_member_offset(Decl *decl, Decl *member);
 bool decl_is_externally_visible(Decl *decl);
 bool decl_is_local(Decl *decl);
+bool decl_is_global(Decl *decl);
 void scratch_buffer_set_extern_decl_name(Decl *decl, bool clear);
 
 // --- Expression functions
@@ -2158,7 +2161,7 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
-bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
+bool expr_is_runtime_const(Expr *expr);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
 void expr_insert_addr(Expr *original);
 void expr_rewrite_insert_deref(Expr *original);
@@ -2176,7 +2179,7 @@ INLINE bool exprid_is_pure(ExprId expr_id);
 INLINE Type *exprtype(ExprId expr_id);
 INLINE void expr_replace(Expr *expr, Expr *replacement);
 INLINE bool expr_poison(Expr *expr);
-INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind);
+INLINE bool exprid_is_runtime_const(ExprId expr);
 INLINE bool expr_is_init_list(Expr *expr);
 INLINE bool expr_is_neg(Expr *expr);
 INLINE bool expr_is_mult(Expr *expr);
@@ -2198,6 +2201,7 @@ INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
+void expr_rewrite_to_const_ref(Expr *expr_to_rewrite, Decl *decl);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
 bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back);
 
@@ -3166,9 +3170,9 @@ INLINE bool expr_is_init_list(Expr *expr)
 	return kind == EXPR_DESIGNATED_INITIALIZER_LIST || kind == EXPR_INITIALIZER_LIST;
 }
 
-INLINE bool exprid_is_constant_eval(ExprId expr, ConstantEvalKind eval_kind)
+INLINE bool exprid_is_runtime_const(ExprId expr)
 {
-	return expr ? expr_is_constant_eval(exprptr(expr), eval_kind) : true;
+	return expr ? expr_is_runtime_const(exprptr(expr)) : true;
 }
 
 INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->resolve_status = RESOLVE_DONE; return false; }
@@ -3176,6 +3180,8 @@ INLINE bool expr_poison(Expr *expr) { expr->expr_kind = EXPR_POISONED; expr->res
 static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 static inline void expr_set_span(Expr *expr, SourceSpan loc);
+
+bool const_init_local_init_may_be_global(ConstInitializer *init);
 
 static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 {
@@ -3644,6 +3650,7 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 	if (limit >= 5 && (bits & ARG_BITS_5)) return 5;
 	return 0;
 }
+
 
 INLINE bool expr_is_const(Expr *expr)
 {

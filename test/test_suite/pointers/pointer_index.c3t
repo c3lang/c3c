@@ -1,3 +1,4 @@
+// #target: macos-x64
 module pointer_index;
 
 fn void test1(int* x)

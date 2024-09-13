@@ -329,7 +329,7 @@ int decl_count_elements(Decl *structlike)
 	return elements;
 }
 
-bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind)
+bool ast_is_compile_time(Ast *ast)
 {
 	switch (ast->ast_kind)
 	{
@@ -338,15 +338,15 @@ bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind)
 		case AST_RETURN_STMT:
 		case AST_BLOCK_EXIT_STMT:
 			if (!ast->return_stmt.expr) return true;
-			return expr_is_constant_eval(ast->return_stmt.expr, eval_kind);
+			return expr_is_runtime_const(ast->return_stmt.expr);
 		case AST_EXPR_STMT:
-			return expr_is_const(ast->expr_stmt);
+			return expr_is_runtime_const(ast->expr_stmt);
 		case AST_COMPOUND_STMT:
 		{
 			AstId current = ast->compound_stmt.first_stmt;
 			while (current)
 			{
-				if (!ast_is_compile_time(ast_next(&current), eval_kind)) return false;
+				if (!ast_is_compile_time(ast_next(&current))) return false;
 			}
 			return true;
 		}
@@ -358,6 +358,31 @@ bool ast_is_compile_time(Ast *ast, ConstantEvalKind eval_kind)
 bool decl_is_externally_visible(Decl *decl)
 {
 	return decl->is_external_visible || decl->visibility == VISIBLE_PUBLIC || decl->is_export;
+}
+
+bool decl_is_global(Decl *ident)
+{
+	switch (ident->var.kind)
+	{
+		case VARDECL_LOCAL:
+			return ident->var.is_static;
+		case VARDECL_CONST:
+		case VARDECL_GLOBAL:
+			return true;
+		case VARDECL_PARAM:
+		case VARDECL_MEMBER:
+		case VARDECL_BITMEMBER:
+		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_EXPR:
+		case VARDECL_UNWRAPPED:
+		case VARDECL_ERASE:
+		case VARDECL_REWRAPPED:
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_LOCAL_CT:
+		case VARDECL_LOCAL_CT_TYPE:
+			return false;
+	}
 }
 
 bool decl_is_local(Decl *decl)

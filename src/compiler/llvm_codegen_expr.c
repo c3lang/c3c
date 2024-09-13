@@ -1739,8 +1739,11 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 	// In case of small const initializers, or full arrays - use copy.
 	if (const_init->kind == CONST_INIT_ARRAY_FULL || type_size(const_init->type) <= 32)
 	{
-		llvm_emit_initialize_reference_temporary_const(c, ref, const_init);
-		return;
+		if (const_init_local_init_may_be_global(const_init))
+		{
+			llvm_emit_initialize_reference_temporary_const(c, ref, const_init);
+			return;
+		}
 	}
 
 	// Make sure we have an address.
@@ -2562,6 +2565,13 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	if (safe_mode_enabled())
 	{
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
+		assert(!LLVMIsPoison(check));
+		if (llvm_is_const(check))
+		{
+			LLVMDumpValue(check);
+			printf("-- %lld value\n", LLVMConstIntGetSExtValue(check));
+
+		}
 		scratch_buffer_clear();
 		scratch_buffer_append("Dereference of null pointer, '");
 		span_to_scratch(inner->span);
@@ -4945,6 +4955,13 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	bool is_bytes = false;
 	switch (expr->const_expr.const_kind)
 	{
+		case CONST_REF:
+		{
+			Decl *decl = expr->const_expr.global_ref;
+			LLVMValueRef backend_ref = llvm_get_ref(c, decl);
+			llvm_value_set(be_value, backend_ref, expr->type);
+			return;
+		}
 		case CONST_INTEGER:
 		{
 			LLVMValueRef value;
@@ -7054,11 +7071,6 @@ static void llmv_emit_test_hook(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set_address_abi_aligned(value, get_global, expr->type);
 }
 
-static void llvm_emit_lambda(GenContext *c, BEValue *value, Expr *expr)
-{
-	Decl *decl = expr->lambda_expr;
-	llvm_value_set(value, llvm_get_ref(c, decl), expr->type);
-}
 
 static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)
 {
@@ -7117,6 +7129,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case NON_RUNTIME_EXPR:
+		case EXPR_LAMBDA:
 		case EXPR_COND:
 		case EXPR_ASM:
 		case EXPR_VASPLAT:
@@ -7130,9 +7143,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_DEFAULT_ARG:
 			llvm_emit_default_arg(c, value, expr);
-			return;
-		case EXPR_LAMBDA:
-			llvm_emit_lambda(c, value, expr);
 			return;
 		case EXPR_SWIZZLE:
 			llvm_emit_swizzle(c, value, expr);

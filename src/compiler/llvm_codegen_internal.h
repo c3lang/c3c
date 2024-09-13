@@ -82,6 +82,7 @@ typedef struct OptionalCatch_
 typedef struct GenContext_
 {
 	bool shared_context;
+	bool in_init_ref;
 	LLVMModuleRef module;
 	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;

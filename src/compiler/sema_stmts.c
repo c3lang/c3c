@@ -2815,6 +2815,9 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		case CONST_BOOL:
 			puts(message->const_expr.b ? "true" : "false");
 			break;
+		case CONST_REF:
+			puts(message->const_expr.global_ref->name);
+			break;
 		case CONST_ENUM:
 		case CONST_ERR:
 			puts(message->const_expr.enum_err_val->name);

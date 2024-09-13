@@ -1,0 +1,25 @@
+// #target: macos-x64
+module test;
+const int[*] X = int[*] { 1, 2, 3 };
+int[*] y = int[*] { 1, 2, 3 };
+
+fn int main()
+{
+	var $z = { &y, "hello" };
+	(*$z[0])[1] = 4;
+	assert(y[1] == 4);
+	return 0;
+}
+/* #expect: test.ll
+
+@test.X = local_unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 3], align 4
+@test.y = global [3 x i32] [i32 1, i32 2, i32 3], align 4
+
+define i32 @main() #0 {
+entry:
+  store i32 4, ptr getelementptr inbounds (i8, ptr @test.y, i64 4), align 4
+  %0 = load i32, ptr getelementptr inbounds (i8, ptr @test.y, i64 4), align 4
+  %eq = icmp eq i32 %0, 4
+  call void @llvm.assume(i1 %eq)
+  ret i32 0
+}

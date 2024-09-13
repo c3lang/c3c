@@ -4,10 +4,9 @@
 
 #include "compiler_internal.h"
 
-static inline bool expr_binary_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
-static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
-static inline bool expr_list_is_constant_eval(Expr **exprs, ConstantEvalKind eval_kind);
-static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind);
+static inline bool expr_cast_is_runtime_const(Expr *expr);
+static inline bool expr_list_is_constant_eval(Expr **exprs);
+static inline bool expr_unary_addr_is_constant_eval(Expr *expr);
 static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back);
 
 Expr *expr_negate_expr(Expr *expr)
@@ -135,19 +134,8 @@ bool expr_may_addr(Expr *expr)
 	UNREACHABLE
 }
 
-static inline bool expr_binary_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
-{
-	if (expr->binary_expr.operator >= BINARYOP_ASSIGN) return false;
-	// Pointer add is already handled.
-	if (eval_kind == CONSTANT_EVAL_GLOBAL_INIT) return false;
-	Expr *left = exprptr(expr->binary_expr.left);
-	Expr *right = exprptr(expr->binary_expr.right);
-	if (!expr_is_constant_eval(left, eval_kind)) return false;
-	if (!expr_is_constant_eval(right, eval_kind)) return false;
-	return true;
-}
 
-bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
+bool expr_is_runtime_const(Expr *expr)
 {
 	assert(expr->resolve_status == RESOLVE_DONE);
 	RETRY:
@@ -156,49 +144,20 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_OTHER_CONTEXT:
 			expr = expr->expr_other_context.inner;
 			goto RETRY;
-		case EXPR_SWIZZLE:
-			return false;
 		case EXPR_POINTER_OFFSET:
-			return exprid_is_constant_eval(expr->pointer_offset_expr.ptr, eval_kind) && exprid_is_constant_eval(expr->pointer_offset_expr.offset, eval_kind);
+			return exprid_is_runtime_const(expr->pointer_offset_expr.ptr) && exprid_is_runtime_const(
+					expr->pointer_offset_expr.offset);
+		case EXPR_SWIZZLE:
 		case EXPR_RETVAL:
-			return false;
 		case EXPR_BUILTIN:
 		case EXPR_CT_EVAL:
 		case EXPR_VASPLAT:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
-			return false;
-		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-			expr = expr->access_expr.parent;
-			goto RETRY;
 		case EXPR_ANYSWITCH:
-			return false;
 		case EXPR_BITASSIGN:
-			return false;
 		case EXPR_TAGOF:
-			return true;
-		case EXPR_BUILTIN_ACCESS:
-			switch (expr->builtin_access_expr.kind)
-			{
-				case ACCESS_ENUMNAME:
-				case ACCESS_FAULTNAME:
-				case ACCESS_LEN:
-				case ACCESS_PTR:
-				case ACCESS_FAULTORDINAL:
-					break;
-				case ACCESS_TYPEOFANYFAULT:
-				case ACCESS_TYPEOFANY:
-					if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
-					break;
-			}
-			return exprid_is_constant_eval(expr->builtin_access_expr.inner, eval_kind);
 		case EXPR_BINARY:
-			return expr_binary_is_constant_eval(expr, eval_kind);
-		case EXPR_CAST:
-			return expr_cast_is_constant_eval(expr, eval_kind);
-		case EXPR_CONST:
-			return true;
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
 		case EXPR_CT_AND_OR:
@@ -209,13 +168,6 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_CT_IS_CONST:
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
-			return true;
-		case EXPR_COND:
-			return expr_list_is_constant_eval(expr->cond_expr, eval_kind);
-		case EXPR_DESIGNATOR:
-			expr = expr->designator_expr.value;
-			if (!expr) return true;
-			goto RETRY;
 		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
 		case EXPR_CALL:
@@ -230,7 +182,34 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 		case EXPR_MACRO_BLOCK:
 		case EXPR_RETHROW:
 		case EXPR_MEMBER_GET:
+		case EXPR_BITACCESS:
+		case EXPR_COND:
 			return false;
+		case EXPR_ACCESS:
+			expr = expr->access_expr.parent;
+			goto RETRY;
+		case EXPR_BUILTIN_ACCESS:
+			switch (expr->builtin_access_expr.kind)
+			{
+				case ACCESS_ENUMNAME:
+				case ACCESS_FAULTNAME:
+				case ACCESS_LEN:
+				case ACCESS_PTR:
+				case ACCESS_FAULTORDINAL:
+					break;
+				case ACCESS_TYPEOFANYFAULT:
+				case ACCESS_TYPEOFANY:
+					break;
+			}
+			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
+		case EXPR_CAST:
+			return expr_cast_is_runtime_const(expr);
+		case EXPR_CONST:
+			return true;
+		case EXPR_DESIGNATOR:
+			expr = expr->designator_expr.value;
+			if (!expr) return true;
+			goto RETRY;
 		case EXPR_IDENTIFIER:
 		{
 			Decl *ident = expr->identifier_expr.decl;
@@ -251,7 +230,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			}
 		}
 		case EXPR_EXPRESSION_LIST:
-			return expr_list_is_constant_eval(expr->expression_list, eval_kind);
+			return expr_list_is_constant_eval(expr->expression_list);
 		case EXPR_TYPEID_INFO:
 			expr = exprptr(expr->typeid_info_expr.parent);
 			goto RETRY;
@@ -262,18 +241,18 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			expr = expr->default_arg_expr.inner;
 			goto RETRY;
 		case EXPR_INITIALIZER_LIST:
-			return expr_list_is_constant_eval(expr->initializer_list, eval_kind);
+			return expr_list_is_constant_eval(expr->initializer_list);
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			return expr_list_is_constant_eval(expr->designated_init_list, eval_kind);
+			return expr_list_is_constant_eval(expr->designated_init_list);
 		case EXPR_SLICE:
-			if (!exprid_is_constant_eval(expr->slice_expr.expr, eval_kind)) return false;
+			if (!exprid_is_runtime_const(expr->slice_expr.expr)) return false;
 			return expr->slice_expr.range.range_type == RANGE_CONST_RANGE;
 		case EXPR_SUBSCRIPT:
-			if (!exprid_is_constant_eval(expr->subscript_expr.index.expr, eval_kind)) return false;
+			if (!exprid_is_runtime_const(expr->subscript_expr.index.expr)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			goto RETRY;
 		case EXPR_SUBSCRIPT_ADDR:
-			if (!exprid_is_constant_eval(expr->subscript_expr.index.expr, eval_kind)) return false;
+			if (!exprid_is_runtime_const(expr->subscript_expr.index.expr)) return false;
 			expr = exprptr(expr->subscript_expr.expr);
 			if (expr->expr_kind == EXPR_IDENTIFIER)
 			{
@@ -295,13 +274,13 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 			}
 			goto RETRY;
 		case EXPR_TERNARY:
-			assert(!exprid_is_constant_eval(expr->ternary_expr.cond, eval_kind));
+			assert(!exprid_is_runtime_const(expr->ternary_expr.cond));
 			return false;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_LAST_FAULT:
 			return false;
 		case EXPR_TYPEID:
-			return eval_kind != CONSTANT_EVAL_CONSTANT_VALUE;
+			return true;
 		case EXPR_UNARY:
 			switch (expr->unary_expr.operator)
 			{
@@ -309,9 +288,8 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 				case UNARYOP_ERROR:
 					return false;
 				case UNARYOP_ADDR:
-					return expr_unary_addr_is_constant_eval(expr, eval_kind);
+					return expr_unary_addr_is_constant_eval(expr);
 				case UNARYOP_TADDR:
-					if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE || eval_kind == CONSTANT_EVAL_LOCAL_INIT) return false;
 					expr = expr->unary_expr.expr;
 					goto RETRY;
 				case UNARYOP_PLUS:
@@ -347,7 +325,7 @@ bool expr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
 	UNREACHABLE
 }
 
-static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
+static inline bool expr_cast_is_runtime_const(Expr *expr)
 {
 	switch (expr->cast_expr.kind)
 	{
@@ -375,8 +353,7 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_ARRVEC:
 		case CAST_BOOLVECINT:
 		case CAST_INTINT:
-			if (eval_kind != CONSTANT_EVAL_NO_SIDE_EFFECTS) return false;
-			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_INTPTR:
 		case CAST_PTRPTR:
 		case CAST_APTSA:
@@ -388,56 +365,50 @@ static inline bool expr_cast_is_constant_eval(Expr *expr, ConstantEvalKind eval_
 		case CAST_IDPTR:
 		case CAST_IDBOOL:
 		case CAST_EXPVEC:
-			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_PTRANY:
-			if (eval_kind == CONSTANT_EVAL_LOCAL_INIT || eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
-			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_ERINT:
 		case CAST_PTRINT:
 		case CAST_IDINT:
 		case CAST_INTARRBS:
 		case CAST_BSINTARR:
 		case CAST_SLARR:
-			if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
-			return exprid_is_constant_eval(expr->cast_expr.expr, eval_kind);
+			return exprid_is_runtime_const(expr->cast_expr.expr);
 
 	}
 	UNREACHABLE
 }
 
-static inline bool expr_list_is_constant_eval(Expr **exprs, ConstantEvalKind eval_kind)
+static inline bool expr_list_is_constant_eval(Expr **exprs)
 {
 	FOREACH(Expr *, expr, exprs)
 	{
-		if (!expr_is_constant_eval(expr, eval_kind)) return false;
+		if (!expr_is_runtime_const(expr)) return false;
 	}
 	return true;
 }
 
-static inline bool expr_unary_addr_is_constant_eval(Expr *expr, ConstantEvalKind eval_kind)
+static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 {
 	// An address is never a constant value.
-	if (eval_kind == CONSTANT_EVAL_CONSTANT_VALUE) return false;
 	Expr *inner = expr->unary_expr.expr;
-	if (eval_kind == CONSTANT_EVAL_GLOBAL_INIT && IS_OPTIONAL(inner)) return false;
+	if (IS_OPTIONAL(inner)) return false;
 	switch (inner->expr_kind)
 	{
 		case EXPR_ACCESS:
-			return expr_is_constant_eval(inner, eval_kind);
+			return expr_is_runtime_const(inner);
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			// We can't create temporaries as const locally or making them into compile time constants.
-			if (eval_kind == CONSTANT_EVAL_LOCAL_INIT) return false;
-			return expr_is_constant_eval(inner, eval_kind);
+			return expr_is_runtime_const(inner);
 		case EXPR_IDENTIFIER:
 		{
 			// The address of an identifier is side effect free.
-			if (eval_kind == CONSTANT_EVAL_NO_SIDE_EFFECTS) return true;
 			Decl *decl = inner->identifier_expr.decl;
 			if (decl->decl_kind == DECL_FUNC) return true;
 			if (decl->decl_kind != DECL_VAR) return false;
-			assert(eval_kind == CONSTANT_EVAL_LOCAL_INIT || eval_kind == CONSTANT_EVAL_GLOBAL_INIT);
 			switch (decl->var.kind)
 			{
 				case VARDECL_CONST:
@@ -941,6 +912,15 @@ void expr_rewrite_insert_deref(Expr *original)
 		Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;
 		original->type = type_add_optional(pointee, IS_OPTIONAL(inner));
 	}
+}
+
+void expr_rewrite_to_const_ref(Expr *expr_to_rewrite, Decl *decl)
+{
+	expr_to_rewrite->const_expr = (ExprConst) {
+			.global_ref = decl,
+			.const_kind = CONST_REF
+	};
+	expr_to_rewrite->expr_kind = EXPR_CONST;
 }
 
 void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)

@@ -631,6 +631,9 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 			case CONST_BOOL:
 				PRINTF("%s\n", init->const_expr.b ? "true" : "false");
 				return;
+			case CONST_REF:
+				PRINTF("&%s\n", decl_get_extname(init->const_expr.global_ref));
+				return;
 			case CONST_POINTER:
 				if (!init->const_expr.ptr)
 				{

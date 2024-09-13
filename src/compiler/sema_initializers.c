@@ -41,14 +41,47 @@ static inline void sema_update_const_initializer_with_designator(
 		DesignatorElement **curr,
 		DesignatorElement **end,
 		Expr *value);
-static inline ConstantEvalKind env_eval_type(SemaContext *context);
 
-
-
-static inline ConstantEvalKind env_eval_type(SemaContext *context)
+bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 {
-	if (context->call_env.kind == CALL_ENV_FUNCTION) return CONSTANT_EVAL_LOCAL_INIT;
-	return CONSTANT_EVAL_GLOBAL_INIT;
+	ConstInitializer **list;
+	unsigned len;
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return top;
+		case CONST_INIT_STRUCT:
+			list = init->init_struct;
+			len = vec_size(type_flatten(init->type)->decl->strukt.members);
+			break;
+		case CONST_INIT_UNION:
+			return const_init_local_init_may_be_global_inner(init->init_union.element, false);
+		case CONST_INIT_VALUE:
+			if (!expr_is_const(init->init_value)) return false;
+			if (top && expr_is_const_pointer(init->init_value) && !init->init_value->const_expr.ptr) return false;
+			return true;
+		case CONST_INIT_ARRAY:
+			list = init->init_array.elements;
+			len = vec_size(list);
+			break;
+		case CONST_INIT_ARRAY_FULL:
+			list = init->init_array_full;
+			len = vec_size(list);
+			break;
+		case CONST_INIT_ARRAY_VALUE:
+			return const_init_local_init_may_be_global_inner(init->init_array_value.element, false);
+	}
+	for (unsigned i = 0; i < len; i++)
+	{
+		ConstInitializer *subinit = list[i];
+		if (!const_init_local_init_may_be_global_inner(subinit, false)) return false;
+	}
+	return true;
+}
+
+bool const_init_local_init_may_be_global(ConstInitializer *init)
+{
+	return const_init_local_init_may_be_global_inner(init, true);
 }
 
 static inline void sema_not_enough_elements_error(SemaContext *context, Expr *initializer, int element)
@@ -172,7 +205,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
 	assert(elements_needed <= size);
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_constant_eval(initializer, env_eval_type(context)))
+	if (expr_is_runtime_const(initializer))
 	{
 		bool is_union = type_flatten(initializer->type)->type_kind == TYPE_UNION;
 		assert(!is_union || vec_size(elements) == 1);
@@ -352,7 +385,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	}
 
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_constant_eval(initializer, env_eval_type(context)))
+	if (expr_is_runtime_const(initializer))
 	{
 		ConstInitializer *const_init = CALLOCS(ConstInitializer);
 		const_init->kind = CONST_INIT_ARRAY_FULL;
@@ -451,7 +484,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 	}
 	initializer->type = type_add_optional(type, optional);
 	initializer->resolve_status = RESOLVE_DONE;
-	if (expr_is_constant_eval(initializer, env_eval_type(context)))
+	if (expr_is_runtime_const(initializer))
 	{
 		ConstInitializer *const_init = MALLOCS(ConstInitializer);
 		sema_create_const_initializer_from_designated_init(const_init, initializer);

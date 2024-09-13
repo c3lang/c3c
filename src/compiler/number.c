@@ -137,6 +137,10 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_INTEGER:
 			assert(right->const_kind != CONST_ENUM);
 			return int_comp(left->ixx, right->ixx, op);
+		case CONST_REF:
+			assert(right->const_kind == CONST_POINTER || right->const_kind == CONST_REF);
+			if (right->const_kind == CONST_POINTER) return false;
+			return decl_flatten(right->global_ref) == decl_flatten(left->global_ref);
 		case CONST_FLOAT:
 			return compare_fps(left->fxx.f, right->fxx.f, op);
 		case CONST_POINTER:
@@ -278,6 +282,7 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
+		case CONST_REF:
 			UNREACHABLE;
 	}
 	UNREACHABLE;
@@ -302,6 +307,8 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return str_printf("\"%*.s\"", expr->bytes.len, expr->bytes.ptr);
 		case CONST_BYTES:
 			return "<binary data>";
+		case CONST_REF:
+			return expr->global_ref->name;
 		case CONST_ENUM:
 		case CONST_ERR:
 			return expr->enum_err_val->name;

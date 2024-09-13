@@ -1903,10 +1903,13 @@ static void cast_float_to_bool(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_ptr_to_int(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_PTRINT, type)) return;
-
-	// Revisit this to support pointers > 64 bits.
-	expr_rewrite_const_int(expr, type, expr->const_expr.ptr);
+	if (sema_cast_const(expr) && expr_is_const_pointer(expr))
+	{
+		// Revisit this to support pointers > 64 bits.
+		expr_rewrite_const_int(expr, type, expr->const_expr.ptr);
+		return;
+	}
+	insert_runtime_cast(expr, CAST_PTRINT, type);
 }
 
 /**
@@ -1917,11 +1920,18 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 	if (insert_runtime_cast_unless_const(expr, CAST_PTRBOOL, type)) return;
 
 	// It may be a pointer
-	if (expr->const_expr.const_kind == CONST_POINTER)
+	switch (expr->const_expr.const_kind)
 	{
-		expr_rewrite_const_bool(expr, type, expr->const_expr.ptr != 0);
-		return;
+		case CONST_POINTER:
+			expr_rewrite_const_bool(expr, type, expr->const_expr.ptr != 0);
+			return;
+		case CONST_REF:
+			expr_rewrite_const_bool(expr, type, true);
+			return;
+		default:
+			break;
 	}
+
 
 	// Or it's a string, in which case it is always true.
 	assert(expr->const_expr.const_kind == CONST_STRING);

@@ -1563,7 +1563,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_name, SourceSpan loc, const char *fmt, BEValue *value_1,
 							 BEValue *value_2)
 {
-	if (llvm_is_const(value->value))
+	if (LLVMIsAConstantInt(value->value))
 	{
 		assert(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
 		return;

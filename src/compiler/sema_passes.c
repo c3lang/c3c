@@ -198,6 +198,9 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 		case CONST_BOOL:
 			scratch_buffer_append(arg->const_expr.b ? "true" : "false");
 			return true;
+		case CONST_REF:
+			scratch_buffer_append(arg->const_expr.global_ref->name);
+			return true;
 		case CONST_ENUM:
 		case CONST_ERR:
 			scratch_buffer_append(arg->const_expr.enum_err_val->name);

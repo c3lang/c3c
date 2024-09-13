@@ -73,7 +73,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
-			return -1;
+		case CONST_REF:
 		case CONST_BYTES:
 		case CONST_STRING:
 			return expr->const_expr.bytes.len;
@@ -208,6 +208,7 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_REF:
 			RETURN_SEMA_ERROR(expr, "Concatenating %s with %s is not possible at compile time.",
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
 		case CONST_BYTES:
@@ -258,6 +259,7 @@ static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Exp
 	return true;
 }
 
+// TODO there is also another const_len... look at that.
 static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr)
 {
 	switch (expr->const_expr.const_kind)
@@ -269,6 +271,7 @@ static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr)
 		case CONST_ERR:
 		case CONST_POINTER:
 		case CONST_TYPEID:
+		case CONST_REF:
 			return 1;
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -369,6 +372,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_ENUM:
 		case CONST_ERR:
 		case CONST_TYPEID:
+		case CONST_REF:
 			RETURN_SEMA_ERROR(left, "Only bytes, strings and list-like constants can be concatenated.");
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -421,6 +425,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
+		case CONST_REF:
 			return sema_expr_const_append(context, concat_expr, left, right);
 		case CONST_BYTES:
 		case CONST_STRING:

@@ -345,11 +345,29 @@ RETRY:
 			return;
 		}
 		case EXPR_CONST:
-			if (expr->const_expr.const_kind != CONST_INITIALIZER) return;
+			switch (expr->const_expr.const_kind)
 			{
-				sema_trace_const_initializer_liveness(expr->const_expr.initializer);
+				case CONST_FLOAT:
+				case CONST_INTEGER:
+				case CONST_BOOL:
+				case CONST_BYTES:
+				case CONST_STRING:
+				case CONST_POINTER:
+				case CONST_TYPEID:
+				case CONST_UNTYPED_LIST:
+				case CONST_MEMBER:
+					return;
+				case CONST_ENUM:
+				case CONST_ERR:
+					sema_trace_decl_liveness(expr->const_expr.enum_err_val);
+					return;
+				case CONST_REF:
+					sema_trace_decl_liveness(expr->const_expr.global_ref);
+					return;
+				case CONST_INITIALIZER:
+					sema_trace_const_initializer_liveness(expr->const_expr.initializer);
+					return;
 			}
-			return;
 		case EXPR_COMPOUND_LITERAL:
 			sema_trace_expr_liveness(expr->expr_compound_literal.initializer);
 			return;
@@ -376,8 +394,7 @@ RETRY:
 			return;
 		}
 		case EXPR_LAMBDA:
-			sema_trace_decl_liveness(expr->lambda_expr);
-			return;
+			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
 		{
 			FOREACH(Decl *, val, expr->macro_block.params) sema_trace_decl_liveness(val);
