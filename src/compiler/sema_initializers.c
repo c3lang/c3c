@@ -14,7 +14,7 @@ static inline void sema_not_enough_elements_error(SemaContext *context, Expr *in
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
 static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
-static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index);
+static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index, bool is_substruct);
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
 static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr);
@@ -1163,9 +1163,9 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		return NULL;
 	}
 	Decl *member = sema_resolve_element_for_name(context,
-												 type_flattened->decl->strukt.members,
-												 elements_ref,
-												 curr_index);
+	                                             type_flattened->decl->strukt.members,
+	                                             elements_ref,
+	                                             curr_index, type_flattened->decl->is_substruct);
 	*member_ptr = member;
 	if (!member) return NULL;
 	return member->type;
@@ -1296,7 +1296,8 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 }
 
 
-static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index)
+static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref,
+                                           unsigned *index, bool is_substruct)
 {
 	DesignatorElement *element = (*elements_ref)[*index];
 
@@ -1320,9 +1321,9 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 		}
 		if (!decl->name)
 		{
-			assert(type_is_union_or_strukt(decl->type) || decl->decl_kind == DECL_BITSTRUCT);
+			ASSERT_SPAN(decl, type_is_union_or_strukt(decl->type) || decl->decl_kind == DECL_BITSTRUCT);
 			// Anonymous struct
-			Decl *found = sema_resolve_element_for_name(context, decl->strukt.members, elements_ref, index);
+			Decl *found = sema_resolve_element_for_name(context, decl->strukt.members, elements_ref, index, false);
 			// No match, continue...
 			if (!found) continue;
 
@@ -1336,5 +1337,23 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 			return found;
 		}
 	}
-	return NULL;
+	if (!is_substruct) return NULL;
+	Decl *first = decls[0];
+	Type *flat = type_flatten(first->type);
+	if (!type_is_union_or_strukt(flat) && flat->type_kind != TYPE_BITSTRUCT) return NULL;
+	if (first->decl_kind == DECL_VAR)
+	{
+		first = flat->decl;
+	}
+
+	Decl *found = sema_resolve_element_for_name(context, first->strukt.members, elements_ref, index, true);
+	if (!found) return NULL;
+	// Create our ref field.
+	DesignatorElement *anon_element = CALLOCS(DesignatorElement);
+	anon_element->kind = DESIGNATOR_FIELD;
+	anon_element->index = 0;
+	vec_insert_at(*elements_ref, old_index, anon_element);
+	// Advance
+	(*index)++;
+	return found;
 }

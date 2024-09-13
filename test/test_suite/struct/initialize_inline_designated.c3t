@@ -1,0 +1,30 @@
+// #target: macos-x64
+module test;
+import std;
+struct Abc
+{
+	int a;
+	int b;
+}
+
+struct Bcd
+{
+	inline Abc x;
+	int y;
+}
+fn void main()
+{
+	Bcd z = { .x.b = 333, .a = 123 };
+}
+/* #expect: test.ll
+
+%Abc = type { i32, i32 }
+%Bcd = type { %Abc, i32 }
+@.__const = private unnamed_addr constant %Abc { i32 123, i32 333 }, align 4
+
+  %z = alloca %Bcd, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %z, ptr align 4 @.__const, i32 8, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 8
+  store i32 0, ptr %ptradd, align 4
+  ret void
+}

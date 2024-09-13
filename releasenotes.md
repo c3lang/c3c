@@ -7,6 +7,7 @@
 - Support splat for varargs #1352.
 - Allow `var` in lambdas in macros.
 - Support `int[*] { 1, 2, 3 }` expressions.
+- Support inline struct designated init as if inline was anonymous.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
