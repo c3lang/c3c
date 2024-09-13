@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
+#include "../build/project.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
 #if PLATFORM_POSIX
@@ -848,23 +849,43 @@ static void setup_bool_define(const char *id, bool value)
 	}
 }
 #if FETCH_AVAILABLE
+
+const char * vendor_fetch_single(const char* lib, const char* path) 
+{
+	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
+	const char *destination = file_append_path(path, str_printf("%s.c3l", lib));
+	const char *error = download_file("https://github.com", resource, destination);
+	return error;	
+}
+
 void vendor_fetch(BuildOptions *options)
 {
 	unsigned count = 0;
+	if (options->path == DEFAULT_PATH)
+	{
+		const char** lib_dirs =  proj_lib_dirs_get();
+		int num_lib = vec_size(lib_dirs); 
+		if (num_lib > 0) options->vendor_download_path = lib_dirs[0];
+
+	}
 	FOREACH(const char *, lib, options->libraries_to_fetch)
 	{
-		const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
+		//TODO : Implement progress bar in the download_file function.
 		printf("Fetching library '%s'...", lib);
 		fflush(stdout);
-		const char *error = download_file("https://github.com", resource, str_printf("%s.c3l", lib));
+
+		const char *error = vendor_fetch_single(lib, options->vendor_download_path);
+
 		if (!error)
 		{
-			puts("ok.");
+			puts("finished.");
+			//TODO! add_library_to_project
+			// add option options->vendor-target for specific dependency
 			count++;
 		}
 		else
 		{
-			printf("FAILED: '%s'\n", error);
+			printf("Failed: '%s'\n", error);
 		}
 	}
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");

@@ -1,4 +1,5 @@
 #include "build_internal.h"
+#include "project.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
 
@@ -20,6 +21,15 @@ static JSONObject *read_project(const char **file_used)
 		error_exit("Expected a map of project information in '%s'.", project_filename);
 	}
 	return json;
+}
+
+const char** proj_lib_dirs_get() {
+	const char *filename;
+		JSONObject *json = read_project(&filename);
+		JSONObject *libdirs_json = json_obj_get(json, "dependency-search-paths");
+		char **libdirs = NULL;
+		get_list_append_strings(filename, NULL, json, &libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+		return libdirs;
 }
 
 static void print_vec(const char *header, const char **vec, bool opt)
