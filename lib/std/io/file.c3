@@ -76,7 +76,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
  */
 fn void! File.write_byte(&self, char c) @dynamic
 {
-	if (!libc::fputc(c, self.file)) return IoError.EOF?;
+	return os::native_fputc(c, self.file);
 }
 
 /**

@@ -75,6 +75,11 @@ fn usz! native_fwrite(CFile file, char[] buffer) @inline
 	return libc::fwrite(buffer.ptr, 1, buffer.len, file);
 }
 
+fn void! native_fputc(CInt c, CFile stream) @inline
+{
+	if (!libc::fputc(c, stream)) return IoError.EOF?;
+}
+
 fn usz! native_fread(CFile file, char[] buffer) @inline
 {
 	return libc::fread(buffer.ptr, 1, buffer.len, file);

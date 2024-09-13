@@ -9,6 +9,7 @@ def FtellFn = fn usz!(void*);
 def FwriteFn = fn usz!(void*, char[] buffer);
 def FreadFn = fn usz!(void*, char[] buffer);
 def RemoveFn = fn void!(String);
+def FputcFn = fn void!(int, void*);
 
 FopenFn native_fopen_fn @weak @if(!$defined(native_fopen_fn));
 FcloseFn native_fclose_fn @weak @if(!$defined(native_fclose_fn));
@@ -18,6 +19,7 @@ FtellFn native_ftell_fn @weak @if(!$defined(native_ftell_fn));
 FwriteFn native_fwrite_fn @weak @if(!$defined(native_fwrite_fn));
 FreadFn native_fread_fn @weak @if(!$defined(native_fread_fn));
 RemoveFn native_remove_fn @weak @if(!$defined(native_remove_fn));
+FputcFn native_fputc_fn @weak @if(!$defined(native_fputc_fn));
 
 /**
  * @require mode.len > 0
@@ -71,5 +73,11 @@ fn usz! native_fwrite(CFile file, char[] buffer) @inline
 fn usz! native_fread(CFile file, char[] buffer) @inline
 {
 	if (native_fread_fn) return native_fread_fn(file, buffer);
+	return IoError.UNSUPPORTED_OPERATION?;
+}
+
+fn void! native_fputc(CInt c, CFile stream) @inline
+{
+	if (native_fputc_fn) return native_fputc_fn(c, stream);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
