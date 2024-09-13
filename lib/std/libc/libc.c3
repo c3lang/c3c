@@ -58,7 +58,7 @@ const CInt SIGTSTP = BSD_FLAVOR_SIG ? 18 : 20;
 const CInt SIGCONT = BSD_FLAVOR_SIG ? 19 : 18;
 const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
 
-const bool BSD_FLAVOR_SIG @local = env::OPENBSD || env::DARWIN || env::FREEBSD || env::NETBSD;
+const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
 def Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 def Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
@@ -118,7 +118,7 @@ extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
 extern fn Tm* localtime_r(Time_t* timer, Tm* result) @if(!env::WIN32);
-extern fn void longjmp(JmpBuf* buffer, CInt value);
+extern fn void longjmp(JmpBuf* buffer, CInt value) @if(!env::NETBSD && !env::OPENBSD);
 extern fn void* malloc(usz size);
 extern fn void* memchr(void* str, CInt c, usz n);
 extern fn CInt memcmp(void* buf1, void* buf2, usz count);
@@ -142,7 +142,7 @@ extern fn void rewind(CFile stream);
 extern fn CInt scanf(ZString format, ...);
 extern fn void setbuf(CFile stream, char* buffer);
 extern fn int setenv(ZString name, ZString value, CInt overwrite);
-extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32);
+extern fn CInt setjmp(JmpBuf* buffer) @if(!env::WIN32 && !env::NETBSD && !env::OPENBSD);
 extern fn void setvbuf(CFile stream, char* buf, CInt type, usz size);
 extern fn SignalFunction signal(CInt sig, SignalFunction function);
 extern fn CInt snprintf(char* buffer, usz size, ZString format, ...);
@@ -202,15 +202,31 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
-module libc @if(env::DARWIN || env::BSD_FAMILY);
+module libc @if(env::NETBSD || env::OPENBSD);
+extern fn int fcntl(CInt socket, int cmd, ...);
+extern fn int _setjmp(void*);
+macro int setjmp(void* ptr) => _setjmp(ptr);
+extern fn int _longjmp(void*, int);
+macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
+extern fn usz malloc_size(void* ptr);
+extern fn void* aligned_alloc(usz align, usz size);
+macro CFile stdin() { return fdopen(0, "r"); }
+macro CFile stdout() { return fdopen(1, "w"); }
+macro CFile stderr() { return fdopen(2, "w"); }
+
+module libc @if(env::DARWIN || env::FREEBSD);
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
-extern fn usz malloc_size(void* ptr);
+extern fn usz malloc_size(void* ptr) @if(!env::FREEBSD);
 extern fn void* aligned_alloc(usz align, usz size);
 macro CFile stdin() => __stdinp;
 macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
+
+module libc @if(env::FREEBSD);
+extern fn usz malloc_usable_size(void* ptr);
+macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
 
 module libc @if(env::WIN32);
 macro usz malloc_size(void* ptr) => _msize(ptr);

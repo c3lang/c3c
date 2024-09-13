@@ -543,12 +543,12 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 			break;
 		case OS_TYPE_WATCHOS:
 		case OS_TYPE_IOS:
-		case OS_TYPE_OPENBSD:
-		case OS_TYPE_NETBSD:
 		case OS_TYPE_TVOS:
 		case OS_TYPE_WASI:
 			break;
 		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_OPENBSD:
+		case OS_TYPE_NETBSD:
 			linker_setup_freebsd(args_ref, linker_type);
 			break;
 		case OS_TYPE_LINUX:

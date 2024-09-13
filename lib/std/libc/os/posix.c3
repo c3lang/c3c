@@ -32,9 +32,9 @@ struct Sigaction
     	SignalFunction      sa_handler;
     	SigActionFunction   sa_sigaction;
     }
-	CInt                    sa_flags @if(env::FREEBSD);
+	CInt                    sa_flags @if(env::BSD_FAMILY);
 	Sigset_t                sa_mask; // 128
-	CInt                    sa_flags @if(!env::FREEBSD);
+	CInt                    sa_flags @if(!env::BSD_FAMILY);
 	void*                   sa_restorer @if(env::LINUX);
 }
 
