@@ -202,17 +202,6 @@ macro CFile stdin() => __stdin;
 macro CFile stdout() => __stdout;
 macro CFile stderr() => __stderr;
 
-module libc @if(env::FREEBSD);
-extern CFile __stdinp;
-extern CFile __stdoutp;
-extern CFile __stderrp;
-extern fn usz malloc_usable_size(void* ptr);
-macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
-extern fn void* aligned_alloc(usz align, usz size);
-macro CFile stdin() => __stdinp;
-macro CFile stdout() => __stdoutp;
-macro CFile stderr() => __stderrp;
-
 module libc @if(env::NETBSD || env::OPENBSD);
 extern fn int fcntl(CInt socket, int cmd, ...);
 extern fn int _setjmp(void*);
@@ -225,15 +214,19 @@ macro CFile stdin() { return fdopen(0, "r"); }
 macro CFile stdout() { return fdopen(1, "w"); }
 macro CFile stderr() { return fdopen(2, "w"); }
 
-module libc @if(env::DARWIN);
+module libc @if(env::DARWIN || env::FREEBSD);
 extern CFile __stdinp;
 extern CFile __stdoutp;
 extern CFile __stderrp;
-extern fn usz malloc_size(void* ptr);
+extern fn usz malloc_size(void* ptr) @if(!env::FREEBSD);
 extern fn void* aligned_alloc(usz align, usz size);
 macro CFile stdin() => __stdinp;
 macro CFile stdout() => __stdoutp;
 macro CFile stderr() => __stderrp;
+
+module libc @if(env::FREEBSD);
+extern fn usz malloc_usable_size(void* ptr);
+macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
 
 module libc @if(env::WIN32);
 macro usz malloc_size(void* ptr) => _msize(ptr);
