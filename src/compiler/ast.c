@@ -383,6 +383,7 @@ bool decl_is_global(Decl *ident)
 		case VARDECL_LOCAL_CT_TYPE:
 			return false;
 	}
+	UNREACHABLE
 }
 
 bool decl_is_local(Decl *decl)
