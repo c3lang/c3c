@@ -31,8 +31,7 @@ fn void shutdown() @finalizer
 
 /* #expect: test.ll
 
-@llvm.global_ctors = appending global [4 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 300, ptr @test.startup2, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @test.start_main, ptr null }, { i32, ptr, ptr } { i32 200, ptr @test.startup1, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @test.empty_startup, ptr null }]
-@llvm.global_dtors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 65535, ptr @test.shutdown, ptr null }]
+@llvm.global_ctors = appending global [5 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 300, ptr @test.startup2, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @test.start_main, ptr null }, { i32, ptr, ptr } { i32 200, ptr @test.startup1, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @test.empty_startup, ptr null }, { i32, ptr, ptr } { i32 65535, ptr @.__c3_atexit_test.shutdown, ptr null }]
 
 define void @test.startup2() #0 {
 entry:
@@ -59,5 +58,11 @@ entry:
 define void @test.shutdown() #0 {
 entry:
   call void @puts(ptr @.str.4)
+  ret void
+}
+
+define void @.__c3_atexit_test.shutdown() {
+entry:
+  call void @atexit(ptr @test.shutdown)
   ret void
 }

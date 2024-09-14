@@ -97,6 +97,7 @@ typedef struct GenContext_
 	LLVMTypeRef bool_type;
 	LLVMTypeRef byte_type;
 	LLVMTypeRef introspect_type;
+	LLVMTypeRef atexit_type;
 	LLVMTypeRef fault_type;
 	LLVMTypeRef size_type;
 	LLVMTypeRef typeid_type;

@@ -2,6 +2,12 @@ module test;
 import std::io;
 import std::collections::map;
 import std::os;
+import libc;
+
+fn void bye() @finalizer
+{
+	libc::puts("Bye from finalizer!");
+}
 
 fn void test1()
 {

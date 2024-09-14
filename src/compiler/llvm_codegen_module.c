@@ -131,13 +131,15 @@ void gencontext_begin_module(GenContext *c)
 	c->ptr_type = LLVMPointerType(c->byte_type, 0);
 	c->size_type = llvm_get_type(c, type_usz);
 	c->typeid_type = llvm_get_type(c, type_typeid);
+	LLVMTypeRef void_type = LLVMVoidTypeInContext(c->context);
 	LLVMTypeRef dtable_type[3] = { c->ptr_type, c->ptr_type, c->ptr_type };
 	c->dtable_type = LLVMStructTypeInContext(c->context, dtable_type, 3, false);
 	c->chars_type = llvm_get_type(c, type_chars);
 	LLVMTypeRef ctor_type[3] = { LLVMInt32TypeInContext(c->context), c->ptr_type, c->ptr_type };
 	c->xtor_entry_type = LLVMStructTypeInContext(c->context, ctor_type, 3, false);
-	c->xtor_func_type = LLVMFunctionType(LLVMVoidTypeInContext(c->context), NULL, 0, false);
+	c->xtor_func_type = LLVMFunctionType(void_type, NULL, 0, false);
 	c->introspect_type = create_introspection_type(c);
+	c->atexit_type = LLVMFunctionType(void_type, &c->ptr_type, 1, false);
 	c->fault_type = create_fault_type(c);
 	c->memcmp_function = NULL;
 	LLVMTypeRef memcmp_types[3] = {c->ptr_type, c->ptr_type, c->size_type };
