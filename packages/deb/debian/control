@@ -13,4 +13,4 @@ Package: c3c
 Architecture: amd64
 Multi-Arch: foreign
 Depends: ${misc:Depends}, ${shlibs:Depends}
-Description: "Compiler for C3: A evolution, not a revolution."
+Description: "C3 is an evolution of C enabling the same paradigms and retaining the same syntax as far as possible."
