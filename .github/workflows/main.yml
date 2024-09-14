@@ -493,6 +493,7 @@ jobs:
     runs-on: ubuntu-latest
     # still working on this
     if: github.ref == 'refs/heads/ci_testing'
+    needs: [build-linux]
     strategy:
       matrix:
         package_format: [deb, rpm]
