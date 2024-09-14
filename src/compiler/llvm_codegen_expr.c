@@ -2565,13 +2565,6 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	if (safe_mode_enabled())
 	{
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
-		assert(!LLVMIsPoison(check));
-		if (llvm_is_const(check))
-		{
-			LLVMDumpValue(check);
-			printf("-- %lld value\n", LLVMConstIntGetSExtValue(check));
-
-		}
 		scratch_buffer_clear();
 		scratch_buffer_append("Dereference of null pointer, '");
 		span_to_scratch(inner->span);

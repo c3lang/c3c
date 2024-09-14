@@ -1176,7 +1176,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 {
 	ExprId exprid = ast->assert_stmt.expr;
 	Expr *assert_expr = exprptr(exprid);
-	if (safe_mode_enabled() || compiler.build.testing)
+	if (compile_asserts())
 	{
 		BEValue value;
 		llvm_emit_expr(c, &value, assert_expr);

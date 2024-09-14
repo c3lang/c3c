@@ -1931,6 +1931,11 @@ INLINE bool no_stdlib(void)
 	return compiler.build.use_stdlib == USE_STDLIB_OFF;
 }
 
+INLINE bool compile_asserts(void)
+{
+	return safe_mode_enabled() || compiler.build.testing;
+}
+
 bool ast_is_not_empty(Ast *ast);
 
 bool ast_is_compile_time(Ast *ast);

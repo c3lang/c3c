@@ -143,11 +143,11 @@ static void sema_trace_stmt_liveness(Ast *ast)
 		case AST_ASSERT_STMT:
 		{
 			Expr *e = exprptr(ast->assert_stmt.expr);
-			if (safe_mode_enabled() || expr_is_pure(e))
+			if (compile_asserts() || expr_is_pure(e))
 			{
 				sema_trace_expr_liveness(e);
 			}
-			if (safe_mode_enabled())
+			if (compile_asserts())
 			{
 				sema_trace_exprid_liveness(ast->assert_stmt.message);
 				sema_trace_expr_list_liveness(ast->assert_stmt.args);
