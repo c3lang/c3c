@@ -330,7 +330,7 @@ LLVMValueRef llvm_emit_const_padding(GenContext *c, AlignSize size)
 
 static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
-	if (compiler.build.feature.trap_on_wrap)
+	if (compiler.build.feature.trap_on_wrap && type->type_kind != TYPE_VECTOR)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
 		LLVMValueRef args[2] = { left, right };
@@ -566,11 +566,11 @@ void llvm_emit_convert_value_from_coerced(GenContext *c, BEValue *result, LLVMTy
 
 static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
-	if (compiler.build.feature.trap_on_wrap)
+	if (compiler.build.feature.trap_on_wrap && type->type_kind != TYPE_VECTOR)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
-		assert(type->canonical == type);
+		assert(type_lowering(type) == type);
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
@@ -2369,8 +2369,8 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 				       : LLVMBuildNUWSub(c->builder, original->value, diff_value, "subnuw");
 			}
 			return diff > 0
-			       ? llvm_emit_add_int(c, type, original->value, diff_value, span)
-			       : llvm_emit_sub_int(c, type, original->value, diff_value, span);
+			       ? llvm_emit_add_int(c, original->type, original->value, diff_value, span)
+			       : llvm_emit_sub_int(c, original->type, original->value, diff_value, span);
 		}
 		case TYPE_VECTOR:
 		{
@@ -2394,8 +2394,8 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 			if (is_integer)
 			{
 				return diff > 0
-					   ? llvm_emit_add_int(c, type, original->value, val, span)
-					   : llvm_emit_sub_int(c, type, original->value, val, span);
+					   ? llvm_emit_add_int(c, original->type, original->value, val, span)
+					   : llvm_emit_sub_int(c, original->type, original->value, val, span);
 			}
 			else
 			{
@@ -2958,7 +2958,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	// Walk from end if it is a slice from the back.
 	if (start_from_end)
 	{
-		start_index.value = llvm_emit_sub_int(c, start_type, len.value, start_index.value, slice->span);
+		start_index.value = llvm_emit_sub_int(c, start_index.type, len.value, start_index.value, slice->span);
 	}
 
 	// Check that index does not extend beyond the length.
@@ -3006,12 +3006,12 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		if (end_from_end)
 		{
 			assert(range.range_type == RANGE_DYNAMIC);
-			end_index.value = llvm_emit_sub_int(c, end_type, len.value, end_index.value, slice->span);
+			end_index.value = llvm_emit_sub_int(c, end_index.type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
 		}
 		if (is_len_range)
 		{
-			end_index.value = llvm_emit_add_int(c, end_type, start_index.value, end_index.value, slice->span);
+			end_index.value = llvm_emit_add_int(c, end_index.type, start_index.value, end_index.value, slice->span);
 		}
 
 		// This will trap any bad negative index, so we're fine.
@@ -3024,7 +3024,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 					BEValue excess;
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
 					BEValue actual_end_index = end_index;
-					actual_end_index.value = llvm_emit_sub_int(c, end_type, end_index.value, llvm_const_int(c, type_isz, 1), slice->span);
+					actual_end_index.value = llvm_emit_sub_int(c, end_index.type, end_index.value, llvm_const_int(c, type_isz, 1), slice->span);
 					llvm_emit_panic_if_true(c, &excess, "End index out of bounds", slice->span, "End index out of bounds (end index of %d exceeds size of %d)", &actual_end_index, &len);
 				}
 			}
@@ -3246,12 +3246,20 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 
 	// Create the new offset
 	LLVMValueRef next_offset = llvm_emit_add_int(c, start.type, offset, llvm_const_int(c, start.type, 1), expr->span);
+	LLVMBasicBlockRef assign_block_end = llvm_get_current_block_if_in_use(c);
 
 	// And jump back
 	llvm_emit_br(c, cond_block);
 
 	// Finally set up our phi
-	llvm_set_phi(offset, start.value, start_block, next_offset, assign_block);
+	if (!assign_block_end)
+	{
+		offset = start.value;
+	}
+	else
+	{
+		llvm_set_phi(offset, start.value, start_block, next_offset, assign_block_end);
+	}
 
 	// And emit the exit block.
 	llvm_emit_block(c, exit_block);
@@ -3604,7 +3612,7 @@ static void llvm_emit_struct_comparison(GenContext *c, BEValue *result, BEValue 
 
 static inline LLVMValueRef llvm_emit_mult_int(GenContext *c, Type *type, LLVMValueRef left, LLVMValueRef right, SourceSpan loc)
 {
-	if (compiler.build.feature.trap_on_wrap)
+	if (compiler.build.feature.trap_on_wrap && type->type_kind != TYPE_VECTOR)
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };

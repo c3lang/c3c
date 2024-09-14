@@ -25,6 +25,7 @@
 - Fix bug where inline index access to array in a struct would crash the compiler.
 - Asserts are now correctly included and traced in when running tests.
 - Use atexit to fix finalizers on Windows #1361.
+- Fix bugs in "trap-on-wrap" #1434.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
