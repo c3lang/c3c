@@ -1,14 +1,15 @@
 %{
 
 #include <stdio.h>
+#include "grammar.tab.h"
+#include "lex.yy.h"
 #define YYERROR_VERBOSE
-int yydebug = 1;
-extern char yytext[];
-extern int column, yylineno;
-int yylex(void);
-void yyerror(const char *s);
+void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %}
 %locations
+%pure-parser
+%lex-param {void  *scanner}
+%parse-param {void *scanner}
 
 %token IDENT HASH_IDENT CT_IDENT CONST_IDENT
 %token TYPE_IDENT CT_TYPE_IDENT
@@ -289,6 +290,7 @@ bit_stmt_expr
 additive_op
 	: '+'
 	| '-'
+	| CT_CONCAT_OP
 	;
 
 additive_expr
@@ -1273,15 +1275,25 @@ top_level
 
 %%
 
-void yyerror(const char *s)
+void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp)
 {
 	fflush(stdout);
-	printf(":%d:%d:\n%*s\n%*s\n", yylineno, column, column, "^", column, s);
+	printf(":%d:%d:\n%*s\n%*s\n", yylloc_param->first_line,
+		yylloc_param->first_column,
+		yylloc_param->first_column, "^", yylloc_param->first_column, yymsgp);
 }
 
 int main(int argc, char *argv[])
 {
-	int rc = yyparse();
+	int rc;
+	yyscan_t scanner;
+	rc = yylex_init (&scanner);
+	if(rc) {
+		printf(" Failed to initialize the scanner: %d\n", rc);
+		return rc;
+	}
+	rc = yyparse (scanner);
+	yylex_destroy (scanner);
 	printf(" -> yyparse return %d\n", rc);
 	return rc;
 }
