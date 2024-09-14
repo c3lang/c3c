@@ -406,9 +406,25 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 	DEBUG_LOG("Generating function %s.", decl->name);
 	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
 	assert(decl->backend_ref);
-	if (decl->func_decl.attr_init || decl->func_decl.attr_finalizer)
+	if (decl->func_decl.attr_init || (decl->func_decl.attr_finalizer && compiler.platform.object_format == OBJ_FORMAT_MACHO))
 	{
 		llvm_append_xxlizer(c, decl->func_decl.priority, decl->func_decl.attr_init, decl->backend_ref);
+	}
+	if (decl->func_decl.attr_finalizer && compiler.platform.object_format != OBJ_FORMAT_MACHO)
+	{
+		LLVMValueRef atexit = LLVMGetNamedFunction(c->module, "atexit");
+		if (!atexit) atexit = LLVMAddFunction(c->module, "atexit", c->atexit_type);
+		scratch_buffer_clear();
+		scratch_buffer_append(".__c3_atexit_");
+		scratch_buffer_set_extern_decl_name(decl, false);
+		LLVMValueRef func = LLVMAddFunction(c->module, scratch_buffer_to_string(), c->xtor_func_type);
+
+		LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
+		LLVMValueRef args[1] = { decl->backend_ref };
+		LLVMBuildCall2(builder, c->atexit_type, atexit, args, 1, "");
+		LLVMBuildRetVoid(builder);
+		LLVMDisposeBuilder(builder);
+		llvm_append_xxlizer(c, decl->func_decl.priority, true, func);
 	}
 	llvm_emit_body(c,
 	               decl->backend_ref,
