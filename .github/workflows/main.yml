@@ -488,7 +488,21 @@ jobs:
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
-  
+
+  package-deb:
+    runs-on: ubuntu-latest
+    # still working on this
+    if: false
+    strategy:
+      matrix:
+        package_format: [deb, rpm]
+        build_type: [Release, Debug]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v3
+      - name: Build package
+        run: cd packages/scripts && ./package.sh build/${{matrix.build_type}} ${{matrix.package_format}}
+
   build-with-docker:
     runs-on: ubuntu-latest
     strategy:
