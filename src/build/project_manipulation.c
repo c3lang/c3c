@@ -249,6 +249,53 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
 
+void add_libraries_project(const char** libs, const char* target) {
+	
+	const char *filename;
+	JSONObject *project_json = read_project(&filename);
+	char **dependencies = NULL;
+	const char* target_name = NULL;
+	
+	// TODO! check if target is specified and exists
+
+	get_list_append_strings(filename, target_name, project_json, &dependencies, "dependencies", "dependencies-override", "dependencies-add");
+	char **libraries_to_add = NULL;
+	
+	// check if libraries are already present 
+	FOREACH(const char*, lib, libs)
+	{
+		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
+		vec_add(dependencies, lib);
+	}
+
+	JSONObject* json_new_deps = json_new_object(&malloc_arena, J_ARRAY);
+	JSONObject** elements = NULL;
+	
+	FOREACH(const char*, dep, dependencies)
+	{
+		JSONObject* obj = malloc(sizeof(JSONObject)*16);
+		obj->type = J_STRING;
+		obj->str = dep;
+		vec_add(elements, obj);
+	}
+	
+	// TODO! fancy functions for altering JSON file (quite cumbersome at the moment)
+	// TODO! check if "dependency" entry exists in the project.json file.
+	// Create one if needed
+	
+	// TODO! modify libraries
+
+	JSONObject *libraries_json = json_obj_get(project_json, "dependencies");
+	libraries_json->elements = elements;
+	libraries_json->array_len = vec_size(dependencies);
+
+	// write to project json file
+	FILE *file = fopen(filename, "w");
+	print_json_to_file(project_json, file);
+	fclose(file);
+	
+}
+
 void add_target_project(BuildOptions *build_options)
 {
 	const char *filename;

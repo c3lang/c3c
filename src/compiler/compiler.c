@@ -868,6 +868,8 @@ void vendor_fetch(BuildOptions *options)
 		if (num_lib > 0) options->vendor_download_path = lib_dirs[0];
 
 	}
+
+	char** fetched_libraries = NULL;
 	FOREACH(const char *, lib, options->libraries_to_fetch)
 	{
 		//TODO : Implement progress bar in the download_file function.
@@ -879,8 +881,7 @@ void vendor_fetch(BuildOptions *options)
 		if (!error)
 		{
 			puts("finished.");
-			//TODO! add_library_to_project
-			// add option options->vendor-target for specific dependency
+			vec_add(fetched_libraries, lib);
 			count++;
 		}
 		else
@@ -888,6 +889,9 @@ void vendor_fetch(BuildOptions *options)
 			printf("Failed: '%s'\n", error);
 		}
 	}
+	
+	//TODO! add_library_to_project
+	add_libraries_project(fetched_libraries, NULL);
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
 }
