@@ -492,7 +492,7 @@ jobs:
   package-deb:
     runs-on: ubuntu-latest
     # still working on this
-    if: false
+    if: github.ref == 'refs/heads/ci_testing'
     strategy:
       matrix:
         package_format: [deb, rpm]
