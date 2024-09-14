@@ -1,0 +1,4 @@
+#
+# ### gbp-buildpackage(1) user may like this. ###
+#abort-on-upstream-changes
+#unapply-patches

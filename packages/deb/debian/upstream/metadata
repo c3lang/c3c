@@ -1,0 +1,16 @@
+#
+# DEP-12: Per-package machine-readable metadata about Upstream
+#        Please check * https://dep-team.pages.debian.net/deps/dep12/
+#                     * https://wiki.debian.org/UpstreamMetadata
+Reference:
+  Author: <please use full names and separate multiple author by the keyword "and">
+  Title:
+  Journal:
+  Year:
+  Volume:
+  Number:
+  Pages:
+  DOI:
+  PMID:
+  URL:
+  eprint:
