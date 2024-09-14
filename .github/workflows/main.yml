@@ -8,7 +8,7 @@ on:
 
 env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
-  LLVM_RELEASE_VERSION_MAC: 18
+  LLVM_RELEASE_VERSION_MAC: 17
   LLVM_RELEASE_VERSION_LINUX: 17
   LLVM_RELEASE_VERSION_UBUNTU20: 17
   LLVM_DEV_VERSION: 20
@@ -715,8 +715,14 @@ jobs:
       - run: cp -r lib c3-windows-Debug
       - run: cp msvc_build_libraries.py c3-windows-Release
       - run: cp msvc_build_libraries.py c3-windows-Debug
-      - run: zip -r c3-windows-Release.zip c3-windows-Release
-      - run: zip -r c3-windows-Debug.zip c3-windows-Debug
+      - run: zip -r c3-windows.zip c3-windows-Release
+      - run: zip -r c3-windows-debug.zip c3-windows-Debug
+      - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
+      - run: mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-Debug/c3-linux-debug.tar.gz
+      - run: mv c3-ubuntu-20-Release/c3-ubuntu-20-Release.tar.gz c3-ubuntu-20-Release/c3-ubuntu-20.tar.gz
+      - run: mv c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz c3-ubuntu-20-Debug/c3-ubuntu-20-debug.tar.gz
+      - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
+      - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
 
       - id: create_release
         uses: softprops/action-gh-release@v2
@@ -728,11 +734,11 @@ jobs:
           draft: false
           prerelease: true
           files: |
-            c3-windows-Release.zip
-            c3-windows-Debug.zip
-            c3-linux-Release/c3-linux-Release.tar.gz
-            c3-linux-Debug/c3-linux-Debug.tar.gz
-            c3-ubuntu-20-Release/c3-ubuntu-20-Release.tar.gz
-            c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz
-            c3-macos-Release/c3-macos-Release.zip
-            c3-macos-Debug/c3-macos-Debug.zip
+            c3-windows.zip
+            c3-windows-debug.zip
+            c3-linux-Release/c3-linux.tar.gz
+            c3-linux-Debug/c3-linux-debug.tar.gz
+            c3-ubuntu-20-Release/c3-ubuntu-20.tar.gz
+            c3-ubuntu-20-Debug/c3-ubuntu-20-debug.tar.gz
+            c3-macos-Release/c3-macos.zip
+            c3-macos-Debug/c3-macos-debug.zip
