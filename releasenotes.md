@@ -22,6 +22,7 @@
 - Limit object filename lengths. #1415
 - Fix regression for `$include`.
 - Correct '.so' suffix on dynamic libraries on Linux.
+- Fix bug where inline index access to array in a struct would crash the compiler.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

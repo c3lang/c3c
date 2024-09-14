@@ -2682,6 +2682,7 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 		return false;
 	}
 	ArrayIndex idx = (ArrayIndex)index.i.low;
+RETRY:;
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
@@ -2731,6 +2732,13 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 				return false;
 			}
 			return true;
+		case TYPE_STRUCT:
+		{
+			Decl *decl = type->decl;
+			ASSERT_SPAN(index_expr, decl->is_substruct);
+			type = decl->strukt.members[0]->type->canonical;
+			goto RETRY;
+		}
 		default:
 			UNREACHABLE
 	}
