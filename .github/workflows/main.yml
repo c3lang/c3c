@@ -489,7 +489,7 @@ jobs:
           name: c3-ubuntu-20-${{matrix.build_type}}
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
 
-  package-deb:
+  package-linux:
     runs-on: ubuntu-latest
     # still working on this
     if: github.ref == 'refs/heads/ci_testing'
