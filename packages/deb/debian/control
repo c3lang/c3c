@@ -10,7 +10,7 @@ Vcs-Git: htps://github.com/c3lang/c3c.git
 Vcs-Browser: htps://github.com/c3lang/c3c
 
 Package: c3c
-Architecture: any
+Architecture: amd64
 Multi-Arch: foreign
 Depends: ${misc:Depends}, ${shlibs:Depends}
 Description: "Compiler for C3: A evolution, not a revolution."
