@@ -495,6 +495,8 @@ jobs:
     if: github.ref == 'refs/heads/ci_testing'
     needs: [build-linux]
     strategy:
+      # don't fail all if one of them fails.
+      fail-fast: false
       matrix:
         package_format: [deb, rpm]
         build_type: [release, debug]
