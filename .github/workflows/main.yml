@@ -91,7 +91,7 @@ jobs:
           dir msvc_sdk
 
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: c3-windows-${{ matrix.build_type }}
           path: |
@@ -363,7 +363,7 @@ jobs:
 
       - name: upload artifacts
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
@@ -484,7 +484,7 @@ jobs:
 
       - name: upload artifacts
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU20
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
@@ -657,7 +657,7 @@ jobs:
 
       - name: upload artifacts
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: c3-macos-${{matrix.build_type}}
           path: c3-macos-${{matrix.build_type}}.zip
@@ -692,7 +692,7 @@ jobs:
               sha: context.sha
             })
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
       - run: cp -r lib c3-windows-Release
       - run: cp -r lib c3-windows-Debug
       - run: cp msvc_build_libraries.py c3-windows-Release
