@@ -85,7 +85,6 @@ ct_castable
 
 ct_analyse
 	: CT_EVAL
-	| CT_DEFINED
 	| CT_SIZEOF
 	| CT_STRINGIFY
 	| CT_IS_CONST
@@ -149,6 +148,7 @@ base_expr_assignable
 	| ct_call '(' flat_path ')'
 	| ct_vaarg '[' expr ']'
 	| ct_analyse '(' expression_list ')'
+	| CT_DEFINED '(' arg_list ')'
 	| CT_VACOUNT
 	| CT_FEATURE '(' CONST_IDENT ')'
 	| ct_castable '(' expr ',' type ')'
@@ -457,6 +457,7 @@ arg
 	| arg_name ':' type
 	| type
 	| expr
+	| CT_VASPLAT
 	| CT_VASPLAT '[' range_expr ']'
 	| ELLIPSIS expr
 	;
@@ -1222,7 +1223,7 @@ module
 
 import_paths
 	: path_ident
-	| path_ident ',' path_ident
+	| import_paths ',' path_ident
 	;
 
 import_decl
