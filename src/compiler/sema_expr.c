@@ -1723,7 +1723,7 @@ SPLAT_NORMAL:;
 		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro)) return false;
 		actual_args[i] = arg;
 	}
-
+	if (num_args) last = args[num_args - 1];
 	call->call_expr.arguments = args;
 	// 17. Set default values.
 	for (unsigned i = 0; i < func_param_count; i++)
