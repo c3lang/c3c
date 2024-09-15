@@ -8,6 +8,7 @@
 - Allow `var` in lambdas in macros.
 - Support `int[*] { 1, 2, 3 }` expressions.
 - Support inline struct designated init as if inline was anonymous.
+- Introduce the `.paramsof` property.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

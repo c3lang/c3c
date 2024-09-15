@@ -3601,6 +3601,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_EXTNAMEOF:
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAMSOF:
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_INF:
 		case TYPE_PROPERTY_LEN:
@@ -3634,6 +3635,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "No member '%s' found.", name);
 	}
+
 
 	expr->expr_kind = EXPR_CONST;
 	expr->resolve_status = RESOLVE_DONE;
@@ -3836,6 +3838,29 @@ static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Ty
 		Decl *decl = sig->params[i];
 		Expr *expr_element = expr_new_const_typeid(expr->span, decl->type->canonical);
 		vec_add(param_exprs, expr_element);
+	}
+	expr_rewrite_const_untyped_list(expr, param_exprs);
+	return true;
+}
+
+static inline bool sema_create_const_paramsof(SemaContext *context, Expr *expr, Type *type)
+{
+	ASSERT_SPAN(expr, type->type_kind == TYPE_FUNC_PTR);
+	type = type->pointer;
+	Signature *sig = type->function.signature;
+	unsigned params = vec_size(sig->params);
+	Expr **param_exprs = params ? VECNEW(Expr*, params) : NULL;
+	SourceSpan span = expr->span;
+	for (unsigned i = 0; i < params; i++)
+	{
+		Decl *decl = sig->params[i];
+		Expr *name_expr = expr_new(EXPR_CONST, span);
+		expr_rewrite_to_string(name_expr, decl->name ? decl->name : "");
+		Expr *type_expr = expr_new(EXPR_CONST, span);
+		expr_rewrite_const_typeid(type_expr, decl->type->canonical);
+		Expr *values[] = { name_expr, type_expr };
+		Expr *struct_value = sema_create_struct_from_expressions(type_reflect_method->decl, expr->span, values);
+		vec_add(param_exprs, struct_value);
 	}
 	expr_rewrite_const_untyped_list(expr, param_exprs);
 	return true;
@@ -4062,6 +4087,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_NAMEOF:
 		case TYPE_PROPERTY_NAN:
 		case TYPE_PROPERTY_PARAMS:
+		case TYPE_PROPERTY_PARAMSOF:
 		case TYPE_PROPERTY_QNAMEOF:
 		case TYPE_PROPERTY_RETURNS:
 		case TYPE_PROPERTY_TAGOF:
@@ -4350,6 +4376,7 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 				default:
 					return false;
 			}
+		case TYPE_PROPERTY_PARAMSOF:
 		case TYPE_PROPERTY_PARAMS:
 		case TYPE_PROPERTY_RETURNS:
 			return type_is_func_ptr(type);
@@ -4433,6 +4460,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			sema_create_const_methodsof(context, expr, flat);
 			return true;
 		}
+		case TYPE_PROPERTY_PARAMSOF:
+			return sema_create_const_paramsof(context, expr, flat);
 		case TYPE_PROPERTY_PARAMS:
 			return sema_create_const_params(context, expr, flat);
 		case TYPE_PROPERTY_RETURNS:
