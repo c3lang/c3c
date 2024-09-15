@@ -867,9 +867,9 @@ void vendor_fetch(BuildOptions *options)
 		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
 		{
 
-			const char** lib_dirs =  proj_lib_dirs_get();
-			int num_lib = vec_size(lib_dirs); 
-			if (num_lib > 0) options->vendor_download_path = lib_dirs[0];
+			const char** deps_dirs =  get_project_dependency_directories();
+			int num_lib = vec_size(deps_dirs); 
+			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 
 		}
 
@@ -896,8 +896,9 @@ void vendor_fetch(BuildOptions *options)
 		}
 	}
 	
-	//TODO! add_library_to_project
-	add_libraries_project(fetched_libraries, options->project_options.target_name);
+	// add fetched library to the dependency list
+	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
 }

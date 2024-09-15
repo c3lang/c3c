@@ -23,13 +23,15 @@ static JSONObject *read_project(const char **file_used)
 	return json;
 }
 
-const char** proj_lib_dirs_get() {
+const char** get_project_dependency_directories()
+{
 	const char *filename;
-		JSONObject *json = read_project(&filename);
-		JSONObject *libdirs_json = json_obj_get(json, "dependency-search-paths");
-		char **libdirs = NULL;
-		get_list_append_strings(filename, NULL, json, &libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
-		return libdirs;
+	JSONObject *json = read_project(&filename);
+
+	char **deps_dirs = NULL;
+	get_list_append_strings(filename, NULL, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	
+	return deps_dirs;
 }
 
 static void print_vec(const char *header, const char **vec, bool opt)
@@ -249,19 +251,19 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
 
-void add_libraries_project(const char** libs, const char* target) {
-	
+void add_libraries_to_project_file(const char** libs, const char* target_name) {
+	//TODO! Target name option not implemented
+
 	const char *filename;
 	JSONObject *project_json = read_project(&filename);
-	char **dependencies = NULL;
-	const char* target_name = NULL;
 	
-	// TODO! check if target is specified and exists
 
-	get_list_append_strings(filename, target_name, project_json, &dependencies, "dependencies", "dependencies-override", "dependencies-add");
-	char **libraries_to_add = NULL;
+	// TODO! check if target is specified and exists (NULL at the moment)
+	char **dependencies = NULL;
+	get_list_append_strings(filename, NULL, project_json, &dependencies, "dependencies", "dependencies-override", "dependencies-add");
 	
 	// check if libraries are already present 
+	char **libraries_to_add = NULL;
 	FOREACH(const char*, lib, libs)
 	{
 		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
@@ -279,7 +281,8 @@ void add_libraries_project(const char** libs, const char* target) {
 		vec_add(elements, obj);
 	}
 	
-	// TODO! fancy functions for altering JSON file (quite cumbersome at the moment)
+	// TODO fancy functions for altering JSON file (quite cumbersome at the moment)
+
 	// TODO! check if "dependency" entry exists in the project.json file.
 	// Create one if needed
 	
@@ -293,7 +296,7 @@ void add_libraries_project(const char** libs, const char* target) {
 	FILE *file = fopen(filename, "w");
 	print_json_to_file(project_json, file);
 	fclose(file);
-	
+
 }
 
 void add_target_project(BuildOptions *build_options)
