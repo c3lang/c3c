@@ -27,6 +27,7 @@
 - Use atexit to fix finalizers on Windows #1361.
 - Fix bugs in "trap-on-wrap" #1434.
 - Bug with casting anyfault to error.
+- Lambda / function type would accidentally be processed as a method.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

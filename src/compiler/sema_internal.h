@@ -106,7 +106,7 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member);
 CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr);
 bool sema_expr_check_assign(SemaContext *context, Expr *expr);
-bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature);
+bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, TypeInfo *parent, CallABI abi, Signature *signature);
 ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs, ConstInitializer *rhs, BinaryOp op);
 void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer);
 ArrayIndex sema_len_from_const(Expr *expr);

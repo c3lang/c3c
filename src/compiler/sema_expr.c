@@ -8299,7 +8299,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	decl->name = scratch_buffer_copy();
 	decl->extname = decl->name;
 	decl->type = type_new_func(decl, sig);
-	if (!sema_analyse_function_signature(context, decl, sig->abi, sig)) return false;
+	if (!sema_analyse_function_signature(context, decl, NULL, sig->abi, sig)) return false;
 	if (flat && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
 	{
 		RETURN_SEMA_ERROR(expr, "The lambda has type %s, which doesn't match the required type %s.",
