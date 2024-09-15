@@ -517,12 +517,6 @@ void htable_init(HTable *table, uint32_t initial_size)
 	size_t mem_size = initial_size * sizeof(HTEntry);
 	table->entries = calloc_arena(mem_size);
 
-	// Tap all pages
-	char *data = (char *)table->entries;
-	for (int i = 0; i < mem_size; i += 4096)
-	{
-		data[0] = 0;
-	}
 	table->mask = size - 1;
 }
 
