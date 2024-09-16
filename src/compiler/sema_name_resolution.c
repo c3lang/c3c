@@ -687,10 +687,22 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			{
 				if (matches_subpath(module->name, name_resolve->path))
 				{
-					module_with_path = module;
-					break;
+					FOREACH(Decl *, import, context->unit->imports)
+					{
+						Module *mod = module;
+						while (mod)
+						{
+							if (import->import.module == mod)
+							{
+								module_with_path = module;
+								goto MOD_FOUND;
+							}
+							mod = mod->parent_module;
+						}
+					}
 				}
 			}
+MOD_FOUND:
 			if (!module_with_path)
 			{
 				FOREACH(Module *, module, compiler.context.generic_module_list)
@@ -707,7 +719,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 			{
 				RETURN_SEMA_ERROR(name_resolve, "'%s' could not be found in %s.", name_resolve->symbol, module_with_path->name->module);
 			}
-			RETURN_SEMA_ERROR(name_resolve->path, "Unknown module '%.*s', did you type it right?", name_resolve->path->len, name_resolve->path->module);
+			RETURN_SEMA_ERROR(name_resolve->path, "No '%.*s' module was imported, did you type it right?", name_resolve->path->len, name_resolve->path->module);
 		}
 	}
 	else

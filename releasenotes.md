@@ -29,6 +29,7 @@
 - Fix bugs in "trap-on-wrap" #1434.
 - Bug with casting anyfault to error.
 - Lambda / function type would accidentally be processed as a method.
+- Fix error message when not finding a particular function.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
