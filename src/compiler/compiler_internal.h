@@ -65,6 +65,9 @@ typedef uint16_t FileId;
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
+#define SEMA_DEPRECATED(_node, ...) do { if (!compiler.build.silence_deprecation) \
+ sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
+
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 
@@ -1850,7 +1853,7 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
-extern Type *type_reflect_method;
+extern Type *type_reflected_param;
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];

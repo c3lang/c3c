@@ -3859,7 +3859,7 @@ static inline bool sema_create_const_paramsof(SemaContext *context, Expr *expr, 
 		Expr *type_expr = expr_new(EXPR_CONST, span);
 		expr_rewrite_const_typeid(type_expr, decl->type->canonical);
 		Expr *values[] = { name_expr, type_expr };
-		Expr *struct_value = sema_create_struct_from_expressions(type_reflect_method->decl, expr->span, values);
+		Expr *struct_value = sema_create_struct_from_expressions(type_reflected_param->decl, expr->span, values);
 		vec_add(param_exprs, struct_value);
 	}
 	expr_rewrite_const_untyped_list(expr, param_exprs);

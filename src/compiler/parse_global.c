@@ -421,9 +421,9 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		CONSUME_OR_RET(is_lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
 		// TODO remove in 0.7
-		if (is_lparen && !compiler.build.silence_deprecation)
+		if (is_lparen)
 		{
-			SEMA_NOTE(type_info, "'$vatype(...)' is deprecated, use '$vatype[...]' instead.");
+			SEMA_DEPRECATED(type_info, "'$vatype(...)' is deprecated, use '$vatype[...]' instead.");
 		}
 		return type_info;
 	}
