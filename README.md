@@ -10,7 +10,8 @@ Precompiled binaries for the following operating systems are available:
  
 - Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
-- MacOS x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
+- Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
+- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -34,7 +35,7 @@ whole new language.
 
 The following code shows [generic modules](https://c3-lang.org/references/docs/generics/) (more examples can be found at https://c3-lang.org/references/docs/examples/). 
 
-```c++
+```cpp
 module stack (<Type>);
 // Above: the parameterized type is applied to the entire module.
 
@@ -205,7 +206,13 @@ More platforms will be supported in the future.
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
-#### Installing on Mac with precompiled binaries
+#### Installing on Ubuntu with precompiled binaries
+1. Download tar file: [https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz)
+   (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20-debug.tar.gz))
+2. Unpack executable and standard lib.
+3. Run `./c3c`.
+
+#### Installing on MacOS with precompiled binaries
 1. Make sure you have XCode with command line tools installed.
 2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-macos-debug.zip))
@@ -216,8 +223,6 @@ More platforms will be supported in the future.
 
 #### Installing on Arch Linux
 There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git).
-
-Due to some issues with the LLVM packaged for Arch Linux, the AUR package will download and use LLVM 16 for Ubuntu-23.04 to compile the c3c compiler.
 
 You can use your AUR package manager:
 ```sh
@@ -304,17 +309,16 @@ You can try it out by running some sample code: `c3c.exe compile ../resources/ex
 *Note that if you run into linking issues when building, make sure that you are using the latest version of VS17.*
 
 
-#### Compiling on Ubuntu 20.10
+#### Compiling on Ubuntu 24.04 LTS
 
 1. Make sure you have a C compiler that handles C11 and a C++ compiler, such as GCC or Clang. Git also needs to be installed.
-2. Install CMake: `sudo apt install cmake`
-3. Install LLVM 17+ (or greater: C3C supports LLVM 17+): `sudo apt-get install clang-17 zlib1g zlib1g-dev libllvm17 llvm-17 llvm-17-dev llvm-17-runtime liblld-17-dev liblld-17`
-4. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
-5. Enter the C3C directory `cd c3c`.
-6. Create a build directory `mkdir build`
-7. Change directory to the build directory `cd build`
-8. Set up CMake build: `cmake ..`
-9. Build: `cmake --build .`
+2. Install LLVM 18 `sudo apt-get install cmake git clang zlib1g zlib1g-dev libllvm18 llvm llvm-dev llvm-runtime liblld-dev liblld-18 libpolly-18-dev`
+3. Clone the C3C github repository: `git clone https://github.com/c3lang/c3c.git`
+4. Enter the C3C directory `cd c3c`.
+5. Create a build directory `mkdir build`
+6. Change directory to the build directory `cd build`
+7. Set up CMake build: `cmake ..`
+8. Build: `cmake --build .`
 
 You should now have a `c3c` executable.
 
