@@ -32,6 +32,7 @@
 - Bug with casting anyfault to error.
 - Lambda / function type would accidentally be processed as a method.
 - Fix error message when not finding a particular function.
+- Crash invoking a `@body` argument with the wrong number of parameters.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

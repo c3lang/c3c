@@ -2374,6 +2374,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	if (expressions != vec_size(body_parameters))
 	{
 		PRINT_ERROR_AT(call, "Expected %d parameter(s) to %s.", vec_size(body_parameters), body_decl->name);
+		return false;
 	}
 	Expr **args = call_expr->arguments;
 
