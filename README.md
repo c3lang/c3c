@@ -10,7 +10,8 @@ Precompiled binaries for the following operating systems are available:
  
 - Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
-- MacOS x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
+- Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
+- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -34,7 +35,7 @@ whole new language.
 
 The following code shows [generic modules](https://c3-lang.org/references/docs/generics/) (more examples can be found at https://c3-lang.org/references/docs/examples/). 
 
-```c++
+```cpp
 module stack (<Type>);
 // Above: the parameterized type is applied to the entire module.
 
@@ -211,7 +212,7 @@ More platforms will be supported in the future.
 2. Unpack executable and standard lib.
 3. Run `./c3c`.
 
-#### Installing on Mac with precompiled binaries
+#### Installing on MacOS with precompiled binaries
 1. Make sure you have XCode with command line tools installed.
 2. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip)
    (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-macos-debug.zip))
@@ -222,8 +223,6 @@ More platforms will be supported in the future.
 
 #### Installing on Arch Linux
 There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git).
-
-Due to some issues with the LLVM packaged for Arch Linux, the AUR package will download and use LLVM 16 from Ubuntu-23.04 to compile the c3c compiler.
 
 You can use your AUR package manager:
 ```sh
