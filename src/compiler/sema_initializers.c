@@ -12,7 +12,6 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 													 Expr *initializer);
 static inline void sema_not_enough_elements_error(SemaContext *context, Expr *initializer, int element);
 static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *assigned_type, Type *flattened, Expr *expr);
-static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value);
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer);
 static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, DesignatorElement ***elements_ref, unsigned *index, bool is_substruct);
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
@@ -248,6 +247,30 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	// 7. Done!
 	return true;
 
+}
+
+Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs)
+{
+	Expr *expr_element = expr_calloc();
+	expr_element->expr_kind = EXPR_CONST;
+	expr_element->span = span;
+	expr_element->type = struct_decl->type;
+	expr_element->const_expr.const_kind = CONST_INITIALIZER;
+	expr_element->resolve_status = RESOLVE_DONE;
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	expr_element->const_expr.initializer = init;
+	init->kind = CONST_INIT_STRUCT;
+	init->type = struct_decl->type;
+	unsigned params = vec_size(struct_decl->strukt.members);
+	ConstInitializer **struct_values = MALLOC(params * sizeof(ConstInitializer*));
+	init->init_struct = struct_values;
+	for (unsigned i = 0; i < params; i++)
+	{
+		ConstInitializer *member_init = MALLOCS(ConstInitializer);
+		sema_create_const_initializer_value(member_init, exprs[i]);
+		struct_values[i] = member_init;
+	}
+	return expr_element;
 }
 
 /**
@@ -799,8 +822,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	return false;
 }
 
-
-static void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value)
+void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value)
 {
 	// Possibly this is already a const initializers, in that case
 	// overwrite what is inside, eg [1] = { .a = 1 }

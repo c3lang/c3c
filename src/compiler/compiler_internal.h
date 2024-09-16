@@ -1794,7 +1794,7 @@ typedef struct
 	Module **module_list;
 	Module **generic_module_list;
 	Type **type;
-	Decl** method_extensions;
+	Decl **method_extensions;
 	const char *lib_dir;
 	const char **sources;
 	File **loaded_sources;
@@ -1850,6 +1850,7 @@ extern Type *type_cuint;
 extern Type *type_chars;
 extern Type *type_wildcard_optional;
 extern Type *type_string;
+extern Type *type_reflect_method;
 extern File stdin_file;
 
 extern const char *attribute_list[NUMBER_OF_ATTRIBUTES];

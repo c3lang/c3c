@@ -4,6 +4,12 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
+struct ReflectedParam @if(!$defined(ReflectedParam))
+{
+	String name;
+	typeid type;
+}
+
 struct AnyRaw
 {
 	void* ptr;

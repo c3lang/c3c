@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent, bool is_export);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -1084,7 +1084,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfoId type_parent, bool is_export)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1133,7 +1133,6 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 											  "consider using varargs.", MAX_PARAMS);
 	}
 
-	TypeInfo *method_parent = type_infoptrzero(type_parent);
 	if (method_parent)
 	{
 		if (!sema_resolve_type_info(context, method_parent,
@@ -1233,7 +1232,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
 				}
-				if (!is_macro_at_name && (!type_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
+				if (!is_macro_at_name && (!method_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
 				{
 					SEMA_ERROR(param, "Ref and expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
@@ -1324,12 +1323,12 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	return true;
 }
 
-bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, CallABI abi, Signature *signature)
+bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, TypeInfo *parent, CallABI abi, Signature *signature)
 {
 	// Get param count and variadic type
 	Decl **params = signature->params;
 
-	if (!sema_analyse_signature(context, signature, func_decl->func_decl.type_parent, func_decl->is_export)) return false;
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -1363,7 +1362,7 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	Signature *sig = &decl->fntype_decl;
-	return sema_analyse_function_signature(context, decl, sig->abi, sig);
+	return sema_analyse_function_signature(context, decl, NULL, sig->abi, sig);
 }
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -3325,7 +3324,7 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	}
 
 	decl->type = type_new_func(decl, sig);
-	if (!sema_analyse_function_signature(context, decl, sig->abi, sig)) return decl_poison(decl);
+	if (!sema_analyse_function_signature(context, decl, type_infoptrzero(decl->func_decl.type_parent), sig->abi, sig)) return decl_poison(decl);
 	TypeInfo *rtype_info = type_infoptr(sig->rtype);
 	assert(rtype_info);
 	Type *rtype = rtype_info->type->canonical;
@@ -3493,7 +3492,8 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
-	if (!sema_analyse_signature(context, &decl->func_decl.signature, decl->func_decl.type_parent,
+	if (!sema_analyse_signature(context, &decl->func_decl.signature,
+	                            type_infoptrzero(decl->func_decl.type_parent),
 	                            false)) return false;
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
