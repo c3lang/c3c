@@ -853,7 +853,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	else
 	{
 		INFO_LOG("Using cc linker.");
-		vec_add(parts, compiler.build.cc ? compiler.build.cc : "cc");
+		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
 		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}
 

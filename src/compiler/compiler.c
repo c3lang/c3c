@@ -270,6 +270,7 @@ static void free_arenas(void)
 static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
                           const char **out_files, const char *output_subdir)
 {
+	if (!cc) cc = default_c_compiler();
 	int total = 0;
 	FOREACH(const char *, file, files)
 	{
@@ -1453,3 +1454,20 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	return source_file_text_load(file, out);
 }
 
+const char *default_c_compiler(void)
+{
+	static const char *cc = NULL;
+	if (cc) return cc;
+	const char *cc_env = getenv("C3C_CC");
+	if (cc_env && strlen(cc_env) > 0)
+	{
+		INFO_LOG("Setting CC to %s from environment variable 'C3C_CC'.", cc_env);
+		cc = strdup(cc);
+		return cc;
+	}
+#if PLATFORM_WINDOWS
+	return cc = "cl.exe";
+#else
+	return cc = "cc";
+#endif
+}

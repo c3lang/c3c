@@ -3747,4 +3747,4 @@ INLINE bool check_module_name(Path *path)
 	return true;
 }
 
-
+const char *default_c_compiler(void);

@@ -9,6 +9,8 @@
 - Support `int[*] { 1, 2, 3 }` expressions.
 - Support inline struct designated init as if inline was anonymous.
 - Introduce the `.paramsof` property.
+- Support environment variable 'C3C_LIB' to find the standard library.
+- Support environment variable 'C3C_CC' to find the default C compiler.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

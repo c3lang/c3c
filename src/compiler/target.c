@@ -1931,10 +1931,6 @@ void target_setup(BuildTarget *target)
 		default:
 			break;
 	}
-	if (!target->cc)
-	{
-		target->cc = compiler.platform.os == OS_TYPE_WIN32 ? "cl.exe" : "cc";
-	}
 
 	compiler.platform.int128 = os_target_supports_int128(compiler.platform.os, compiler.platform.arch);
 	compiler.platform.vec128f = os_target_supports_vec(compiler.platform.os, compiler.platform.arch, 128, false);

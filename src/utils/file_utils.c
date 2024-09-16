@@ -184,8 +184,6 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	return true;
 }
 
-
-
 const char *file_expand_path(const char *path)
 {
 	if (path[0] == '~' && path[1] == '/')
@@ -377,6 +375,16 @@ const char *find_rel_exe_dir(const char *dir)
 
 const char *find_lib_dir(void)
 {
+	char *lib_dir_env = getenv("C3C_LIB");
+	if (lib_dir_env && strlen(lib_dir_env) > 0)
+	{
+		INFO_LOG("Using stdlib library from env 'C3C_LIB': %s.", lib_dir_env);
+		if (!file_exists(lib_dir_env))
+		{
+			error_exit("Library path from 'C3C_LIB' environment variable: '%s', could not be resolved.", lib_dir_env);
+		}
+		return strdup(lib_dir_env);
+	}
 	char *path = find_executable_path();
 
 	INFO_LOG("Detected executable path at %s", path);
