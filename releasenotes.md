@@ -8,6 +8,7 @@
 - Allow `var` in lambdas in macros.
 - Support `int[*] { 1, 2, 3 }` expressions.
 - Support inline struct designated init as if inline was anonymous.
+- Introduce the `.paramsof` property.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
@@ -26,6 +27,8 @@
 - Asserts are now correctly included and traced in when running tests.
 - Use atexit to fix finalizers on Windows #1361.
 - Fix bugs in "trap-on-wrap" #1434.
+- Bug with casting anyfault to error.
+- Lambda / function type would accidentally be processed as a method.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

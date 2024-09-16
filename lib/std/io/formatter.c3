@@ -158,6 +158,12 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);
 			return self.out_substr(arg.type.names[i]);
 		case STRUCT:
+			if (arg.type == ReflectedParam.typeid)
+			{
+				ReflectedParam* param = arg.ptr;
+				return self.out_substr("[Parameter '")
+					+  self.out_substr(param.name) + self.out_substr("']");
+			}
 			return self.out_substr("<struct>");
 		case UNION:
 			return self.out_substr("<union>");

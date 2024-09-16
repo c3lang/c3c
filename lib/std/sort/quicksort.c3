@@ -31,7 +31,7 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);
-	var $cmp_by_value = $has_cmp &&& $assignable(list[0], $typefrom(CmpFn.params[0]));
+	var $cmp_by_value = $has_cmp &&& $assignable(list[0], $typefrom(CmpFn.paramsof[0].type));
 
 	if (low >= 0 && high >= 0 && low < high)
 	{

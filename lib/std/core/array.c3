@@ -55,7 +55,7 @@ macro rindex_of(array, element)
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  * @ensure result.len == arr1.len + arr2.len
  **/
-macro concat_new(arr1, arr2, Allocator allocator = allocator::heap())
+macro concat(arr1, arr2, Allocator allocator) @nodiscard
 {
 	var $Type = $typeof(arr1[0]);
 	$Type[] result = allocator::alloc_array(allocator, $Type, arr1.len + arr2.len);
@@ -69,6 +69,21 @@ macro concat_new(arr1, arr2, Allocator allocator = allocator::heap())
 	}
 	return result;
 }
+/**
+ * Concatenate two arrays or slices, returning a slice containing the concatenation of them.
+ *
+ * @param [in] arr1
+ * @param [in] arr2
+ * @param [&inout] allocator "The allocator to use, default is the heap allocator"
+ * @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
+ * @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ * @ensure result.len == arr1.len + arr2.len
+ **/
+macro concat_new(arr1, arr2, Allocator allocator = allocator::heap()) @nodiscard
+{
+	return concat(arr1, arr2, allocator);
+}
 
 /**
  * Concatenate two arrays or slices, returning a slice containing the concatenation of them,
@@ -81,7 +96,7 @@ macro concat_new(arr1, arr2, Allocator allocator = allocator::heap())
  * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  * @ensure result.len == arr1.len + arr2.len
  **/
-macro tconcat(arr1, arr2) => concat(arr1, arr2, allocator::temp());
+macro tconcat(arr1, arr2) @nodiscard => concat(arr1, arr2, allocator::temp());
 
 module std::core::array::slice(<Type>);
 

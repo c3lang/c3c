@@ -173,6 +173,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_NAMES] = KW_DEF("names");
 	type_property_list[TYPE_PROPERTY_NAN] = KW_DEF("nan");
 	type_property_list[TYPE_PROPERTY_PARAMS] = KW_DEF("params");
+	type_property_list[TYPE_PROPERTY_PARAMSOF] = KW_DEF("paramsof");
 	type_property_list[TYPE_PROPERTY_PARENTOF] = KW_DEF("parentof");
 	type_property_list[TYPE_PROPERTY_QNAMEOF] = KW_DEF("qnameof");
 	type_property_list[TYPE_PROPERTY_RETURNS] = KW_DEF("returns");
@@ -517,12 +518,6 @@ void htable_init(HTable *table, uint32_t initial_size)
 	size_t mem_size = initial_size * sizeof(HTEntry);
 	table->entries = calloc_arena(mem_size);
 
-	// Tap all pages
-	char *data = (char *)table->entries;
-	for (int i = 0; i < mem_size; i += 4096)
-	{
-		data[0] = 0;
-	}
 	table->mask = size - 1;
 }
 

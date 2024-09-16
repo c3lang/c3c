@@ -49,6 +49,7 @@ Type *type_member = &t.member;
 Type *type_chars = NULL;
 Type *type_wildcard_optional = NULL;
 Type *type_string = &t.string;
+Type *type_reflect_method;
 Type *type_cint;
 Type *type_cuint;
 
@@ -1286,6 +1287,34 @@ static inline void type_create_float(const char *name, Type *type, TypeKind kind
 	type_init(name, type, kind, actual_bits, compiler.platform.floats[bits]);
 }
 
+Type *type_create_struct(const char *name, Type **types, const char **names, int count)
+{
+	Decl *decl = decl_new_with_type(symtab_preset(name, TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_STRUCT);
+	decl->unit = compiler.context.core_unit;
+	decl->extname = decl->name;
+	AlignSize offset = 0;
+	AlignSize max_align = 0;
+	for (int i = 0; i < count; i++)
+	{
+		Type *member_type = types[i];
+		Decl *member = decl_new_var(symtab_preset(names[i], TOKEN_IDENT), INVALID_SPAN, type_info_new_base(member_type, INVALID_SPAN), VARDECL_MEMBER);
+		member->unit = compiler.context.core_unit;
+		member->type = member_type;
+		member->resolve_status = RESOLVE_DONE;
+		AlignSize align = type_abi_alignment(member_type);
+		if (align > max_align) max_align = align;
+		member->offset = aligned_offset(offset, align);
+		offset = member->offset + type_size(member_type);
+		member->alignment = align;
+		vec_add(decl->strukt.members, member);
+	}
+	decl->strukt.size = aligned_offset(offset, max_align);
+	decl->alignment = max_align;
+	decl->resolve_status = RESOLVE_DONE;
+	global_context_add_type(decl->type);
+	global_context_add_decl(decl);
+	return decl->type;
+}
 void type_setup(PlatformTarget *target)
 {
 	max_alignment_vector = (AlignSize)target->align_max_vector;
@@ -1340,8 +1369,13 @@ void type_setup(PlatformTarget *target)
 	string_decl->distinct = type_info_new_base(type_chars, INVALID_SPAN);
 	string_decl->resolve_status = RESOLVE_DONE;
 	type_string = string_decl->type;
+
 	global_context_add_type(string_decl->type);
 	global_context_add_decl(string_decl);
+
+	Type* types[2] = { type_string, type_typeid };
+	const char* names[2] = { "name", "type" };
+	type_reflect_method = type_create_struct("ReflectedParam", types, names, 2);
 }
 
 int type_kind_bitsize(TypeKind kind)

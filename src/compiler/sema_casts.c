@@ -1127,6 +1127,22 @@ static bool rule_explicit_ok(CastContext *cc, bool is_explicit, bool silent)
 }
 
 
+static bool rule_anyfault_to_fault(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	if (!is_explicit)
+	{
+		if (is_silent) return false;
+		return sema_cast_error(cc, rule_anyfault_to_fault(cc, true, true), false);
+	}
+	Expr *expr = cc->expr;
+	if (!expr_is_const_fault(expr)) return true;
+	if (type_flatten(cc->to) == expr->const_expr.enum_err_val->type) return true;
+	if (is_silent) return false;
+	RETURN_CAST_ERROR(expr, "This expression is known at compile time to be a fault of type %s, so it cannot be cast to %s.",
+	                  type_quoted_error_string(expr->const_expr.enum_err_val->type),
+	                  type_quoted_error_string(cc->to_type));
+}
+
 static bool rule_int_to_float(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
@@ -1810,14 +1826,9 @@ static void cast_untyped_list_to_other(SemaContext *context, Expr *expr, Type *t
 
 static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_EUER, type) && expr->const_expr.const_kind == CONST_ERR) return;
+	if (insert_runtime_cast_unless_const(expr, CAST_EUER, type) || !expr_is_const_fault(expr)) return;
 	Decl *value = expr->const_expr.enum_err_val;
-	if (value->type != type)
-	{
-		expr->const_expr.const_kind = CONST_POINTER;
-		expr->const_expr.ptr = 0;
-	}
-	assert(value->type == type);
+	assert(value->type != type);
 	expr->type = type;
 }
 
@@ -2134,6 +2145,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RWIDE &rule_widen_narrow          /* Widen / narrow conversion of int/float                                                            */
 #define RINFL &rule_int_to_float          /* Simple expressions, check sizes                                                                   */
 #define ROKOK &rule_all_ok                /* Always works                                                                                      */
+#define RAFFA &rule_anyfault_to_fault     /* Runtime check that it's valid, otherwise ok if explicit                                           */
 #define RINPT &rule_int_to_ptr            /* Int -> ptr (explicit + size match)                                                                */
 #define RPTIN &rule_ptr_to_int            /* Ptr -> int (explicit + size match)                                                                */
 #define RINBS &rule_int_to_bits           /* Int -> bits (explicit + int + size match)                                                         */
@@ -2185,7 +2197,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // ENUM
  {REXPL, _NO__, REXPL, RPTIN, _NO__, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RPTPT, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__}, // FUNC
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
- {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RAFFA, _NO__, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
