@@ -253,6 +253,8 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 }
 
 void add_libraries_to_project_file(const char** libs, const char* target_name) {
+
+	if (!file_exists(PROJECT_JSON5) || !file_exists(PROJECT_JSON)) return;
 	//TODO! Target name option not implemented
 
 	const char *filename;
@@ -260,36 +262,36 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 	
 
 	// TODO! check if target is specified and exists (NULL at the moment)
-	const char **dependencies = NULL;
-	get_list_append_strings(filename, NULL, project_json, &dependencies, "dependencies", "dependencies-override", "dependencies-add");
+	JSONObject *libraries_json = json_obj_get(project_json, "dependencies");
 	
-	// check if libraries are already present 
-	const char **libraries_to_add = NULL;
+	const char** dependencies = NULL;
+	for(int i = 0; i < libraries_json->array_len; i++)
+	{
+		vec_add(dependencies, libraries_json->elements[i]->str);
+	}
+	
+	// check if libraries are already present
 	FOREACH(const char*, lib, libs)
 	{
 		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
+		 
 		vec_add(dependencies, lib);
 	}
 
-	JSONObject* json_new_deps = json_new_object(&malloc_arena, J_ARRAY);
 	JSONObject** elements = NULL;
 	
 	FOREACH(const char*, dep, dependencies)
 	{
-		JSONObject* obj = malloc(sizeof(JSONObject)*16);
-		obj->type = J_STRING;
+		JSONObject* obj = json_new_object(&malloc_arena, J_STRING);
 		obj->str = dep;
 		vec_add(elements, obj);
 	}
-	
-	// TODO fancy functions for altering JSON file (quite cumbersome at the moment)
 
+	// TODO fancier functions for altering JSON file (quite cumbersome at the moment)
 	// TODO! check if "dependency" entry exists in the project.json file.
-	// Create one if needed
 	
-	// TODO! modify libraries
+	// Apply changes to JSON object
 
-	JSONObject *libraries_json = json_obj_get(project_json, "dependencies");
 	libraries_json->elements = elements;
 	libraries_json->array_len = vec_size(dependencies);
 

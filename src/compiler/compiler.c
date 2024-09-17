@@ -866,11 +866,14 @@ void vendor_fetch(BuildOptions *options)
 		// check if there is a project JSON file
 		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
 		{
-
 			const char** deps_dirs =  get_project_dependency_directories();
 			int num_lib = vec_size(deps_dirs); 
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 
+		}
+		else 
+		{
+			error_exit("No project file found, use --path to specify custom destination.\n");
 		}
 
 	}
