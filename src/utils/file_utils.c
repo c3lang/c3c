@@ -480,6 +480,31 @@ bool file_exists(const char *path)
 	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
 }
 
+#define PATH_BUFFER_SIZE 16384
+static char path_buffer[PATH_BUFFER_SIZE];
+
+const char *file_append_path_temp(const char *path, const char *name)
+{
+	size_t path_len = strlen(path);
+	if (!path_len) return name;
+	size_t name_len = strlen(name);
+	if (path_len + name_len + 1 >= PATH_BUFFER_SIZE) error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
+#if PLATFORM_WINDOWS
+	if (path[path_len - 1] == '\\') goto CONCAT;
+	if (path[path_len - 1] == '/') goto CONCAT;
+	sprintf(path_buffer, "%s\\%s", path, name);
+	path_buffer[name_len + path_len + 1] = 0;
+	return path_buffer;
+#else
+	if (path[path_len - 1] == '/') goto CONCAT;
+	sprintf(path_buffer, "%s/%s", path, name);
+	path_buffer[name_len + path_len + 1] = 0;
+#endif
+CONCAT:
+	sprintf(path_buffer, "%s%s", path, name);
+	path_buffer[name_len + path_len] = 0;
+	return path_buffer;
+}
 const char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);
