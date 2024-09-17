@@ -28,8 +28,9 @@ const char** get_project_dependency_directories()
 	const char *filename;
 	JSONObject *json = read_project(&filename);
 
-	char **deps_dirs = NULL;
-	get_list_append_strings(filename, NULL, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	const char *target = NULL;
+	const char **deps_dirs = NULL;
+	get_list_append_strings(filename, target, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
 	
 	return deps_dirs;
 }
@@ -259,11 +260,11 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 	
 
 	// TODO! check if target is specified and exists (NULL at the moment)
-	char **dependencies = NULL;
+	const char **dependencies = NULL;
 	get_list_append_strings(filename, NULL, project_json, &dependencies, "dependencies", "dependencies-override", "dependencies-add");
 	
 	// check if libraries are already present 
-	char **libraries_to_add = NULL;
+	const char **libraries_to_add = NULL;
 	FOREACH(const char*, lib, libs)
 	{
 		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
