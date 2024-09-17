@@ -118,7 +118,7 @@ bool str_is_identifier(const char *string)
 
 bool str_eq(const char *str1, const char *str2)
 {
-	return str1 == str2 || strcmp(str1, str2) == 0;
+	return str1 == str2 || (str1 && str2 && strcmp(str1, str2) == 0);
 }
 
 bool str_is_integer(const char *string)
