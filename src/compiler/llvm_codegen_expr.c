@@ -94,7 +94,7 @@ LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true)
 	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
 }
 
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional)
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init)
 {
 	assert(llvm_value_is_addr(ref));
 
@@ -103,7 +103,6 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	// Special optimization of handling of optional
 	if (expr->expr_kind == EXPR_OPTIONAL)
 	{
-
 		PUSH_CLEAR_CATCH();
 
 		BEValue result;
@@ -163,7 +162,19 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	}
 	else if (expr_is_init_list(expr))
 	{
-		llvm_emit_initialize_reference(c, ref, expr);
+		if (is_init)
+		{
+			llvm_emit_initialize_reference(c, ref, expr);
+		}
+		else
+		{
+			BEValue val;
+			AlignSize alignment = type_alloca_alignment(ref->type);
+			LLVMValueRef temp = llvm_emit_alloca(c, llvm_get_type(c, ref->type), alignment, ".assign_list");
+			llvm_value_set_address(&val, temp, ref->type, alignment);
+			llvm_emit_initialize_reference(c, &val, expr);
+			llvm_store(c, ref, &val);
+		}
 		value = *ref;
 	}
 	else
@@ -4737,7 +4748,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		}
 
 		// Emit the result.
-		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref);
+		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref, false);
 		return;
 	}
 

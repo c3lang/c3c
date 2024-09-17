@@ -33,6 +33,7 @@
 - Lambda / function type would accidentally be processed as a method.
 - Fix error message when not finding a particular function.
 - Crash invoking a `@body` argument with the wrong number of parameters.
+- Fix reordering semantics in struct assignment.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
