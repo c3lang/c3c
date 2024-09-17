@@ -254,7 +254,7 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 
 void add_libraries_to_project_file(const char** libs, const char* target_name) {
 
-	if (!file_exists(PROJECT_JSON5) || !file_exists(PROJECT_JSON)) return;
+	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
 	//TODO! Target name option not implemented
 
 	const char *filename;

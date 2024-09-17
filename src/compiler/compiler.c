@@ -861,7 +861,7 @@ const char * vendor_fetch_single(const char* lib, const char* path)
 void vendor_fetch(BuildOptions *options)
 {
 	unsigned count = 0;
-	if (options->path == DEFAULT_PATH)
+	if (strcmp(options->path, DEFAULT_PATH) == 0)
 	{
 		// check if there is a project JSON file
 		if (file_exists(PROJECT_JSON5) || file_exists(PROJECT_JSON))
@@ -871,14 +871,10 @@ void vendor_fetch(BuildOptions *options)
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 
 		}
-		else 
-		{
-			error_exit("No project file found, use --path to specify custom destination.\n");
-		}
 
 	}
 
-	char** fetched_libraries = NULL;
+	const char** fetched_libraries = NULL;
 	FOREACH(const char *, lib, options->libraries_to_fetch)
 	{
 		//TODO : Implement progress bar in the download_file function.
