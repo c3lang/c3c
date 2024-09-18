@@ -358,6 +358,8 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 			return CAST_ANYBOOL;
+		case TYPE_BITSTRUCT:
+			return CAST_BSBOOL;
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_INFERRED_VECTOR:
 			// These should never be here, type should already be known.
@@ -371,7 +373,6 @@ CastKind cast_to_bool_kind(Type *type)
 		case TYPE_TYPEID:
 		case TYPE_TYPEINFO:
 		case TYPE_VECTOR:
-		case TYPE_BITSTRUCT:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_FLEXIBLE_ARRAY:
 		case TYPE_ENUM:
@@ -1648,6 +1649,42 @@ static void cast_bitstruct_to_int_arr(SemaContext *context, Expr *expr, Type *ty
 	insert_runtime_cast(expr, CAST_BSINTARR, type);
 }
 
+static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
+{
+	if (expr_is_const(expr))
+	{
+		if (!expr_is_const_initializer(expr) || expr->const_expr.initializer->kind == CONST_INIT_ZERO)
+		{
+			expr_rewrite_const_bool(expr, type, false);
+			return;
+		}
+		assert(expr->const_expr.initializer->kind == CONST_INIT_STRUCT);
+		unsigned elements = vec_size(type_flatten(expr->type)->decl->strukt.members);
+		for (unsigned i = 0; i < elements; i++)
+		{
+			ConstInitializer *in = expr->const_expr.initializer->init_struct[i];
+			if (in->kind == CONST_INIT_ZERO) continue;
+			Expr *e = in->init_value;
+			if (expr_is_const_bool(e))
+			{
+				if (!e->const_expr.b) continue;
+				expr_rewrite_const_bool(expr, type, true);
+				return;
+			}
+			if (expr_is_const_int(e))
+			{
+				if (int_is_zero(e->const_expr.ixx)) continue;
+				expr_rewrite_const_bool(expr, type, true);
+				return;
+			}
+			UNREACHABLE
+		}
+		expr_rewrite_const_bool(expr, type, false);
+		return;
+	}
+	insert_runtime_cast(expr, CAST_BSBOOL, type);
+}
+
 static void cast_int_arr_to_bitstruct(SemaContext *context, Expr *expr, Type *type)
 {
 	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_BSINTARR)
@@ -2095,6 +2132,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 
 #define XX2XX &cast_retype
 #define BS2IA &cast_bitstruct_to_int_arr
+#define BS2BO &cast_bitstruct_to_bool
 #define IA2BS &cast_int_arr_to_bitstruct
 #define EX2VC &cast_expand_to_vec
 #define BO2IN &cast_bool_to_int          
@@ -2186,7 +2224,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
- {REXPL, _NO__, _NO__, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
+ {REXPL, _NO__, REXPL, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
  {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIDI, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // ARRAY
  {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__, _NO__}, // STRUCT
@@ -2214,7 +2252,7 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,    0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
  {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,    0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
  {XX2VO,      0,     0,     0,     0,     0,     0, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // VECTOR
- {XX2VO,      0,     0, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // BITSTRUCT
+ {XX2VO,      0, BS2BO, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // BITSTRUCT
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // DISTINCT
  {XX2VO,      0,     0,     0,     0,     0,     0, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // ARRAY
  {XX2VO,      0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,ST2LN, ST2LN, ST2LN, ST2LN,     0,     0     }, // STRUCT

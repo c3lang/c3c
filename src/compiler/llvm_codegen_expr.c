@@ -1402,6 +1402,31 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 
 }
 
+static LLVMValueRef llvm_emit_char_array_zero(GenContext *c, BEValue *value, bool find_zero)
+{
+	llvm_value_addr(c, value);
+	unsigned len = type_size(value->type);
+	assert(len > 0);
+	LLVMValueRef total = NULL;
+	for (int i = 0; i < len; i++)
+	{
+		LLVMValueRef ref = llvm_emit_const_ptradd_inbounds_raw(c, value->value, i);
+		LLVMValueRef val = llvm_zext_trunc(c, llvm_load(c, c->byte_type, ref, 1, ""), llvm_get_type(c, type_cint));
+		total = total ? LLVMBuildAdd(c->builder, total, val, "") : val;
+	}
+	return LLVMBuildICmp(c->builder, find_zero ? LLVMIntEQ : LLVMIntNE, total, llvm_get_zero(c, type_cint), "");
+}
+static void llvm_emit_bitstruct_to_bool(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	Type *base_type = type_flatten(from_type->decl->bitstruct.base_type->type);
+	if (base_type->type_kind != TYPE_ARRAY)
+	{
+		llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
+		return;
+	}
+	llvm_value_set(value, llvm_emit_char_array_zero(c, value, false), to_type);
+}
+
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
 {
 	Type *to_type_original = to_type;
@@ -1410,6 +1435,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
+		case CAST_BSBOOL:
+			llvm_emit_bitstruct_to_bool(c, value, to_type, from_type);
+			return;
 		case CAST_SLARR:
 			llvm_emit_slice_to_vec_array_cast(c, value, to_type, from_type);
 			return;
@@ -2694,6 +2722,14 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
 					break;
+				case TYPE_ARRAY:
+					// Handle the bitstruct to bool case.
+					if (type->array.base == type_char)
+					{
+						llvm_value = llvm_emit_char_array_zero(c, value, true);
+						break;
+					}
+					FALLTHROUGH;
 				default:
 					DEBUG_LOG("Unexpectedly tried to not %s", type_quoted_error_string(inner->type));
 					UNREACHABLE

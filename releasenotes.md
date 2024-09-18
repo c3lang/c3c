@@ -11,6 +11,7 @@
 - Introduce the `.paramsof` property.
 - Support environment variable 'C3C_LIB' to find the standard library.
 - Support environment variable 'C3C_CC' to find the default C compiler.
+- Support casting bitstructs to bool.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
