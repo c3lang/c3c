@@ -24,7 +24,6 @@ fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator allocator)
 	self.backing_allocator = allocator;
 }
 
-import std::io;
 fn void DynamicArenaAllocator.free(&self)
 {
 	DynamicArenaPage* page = self.page;
