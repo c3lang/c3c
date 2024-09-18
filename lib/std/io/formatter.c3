@@ -117,6 +117,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case ANYFAULT:
 		case FAULT:
 			return self.out_substr((*(anyfault*)arg.ptr).nameof);
+		case INTERFACE:
 		case ANY:
 			return self.out_str(*(any*)arg);
 		case OPTIONAL:
@@ -282,6 +283,9 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			len += self.out(']')!;
 			return len;
+		case ANY:
+		case INTERFACE:
+			unreachable("Already handled");
 		default:
 	}
 	return self.out_substr("Invalid type");
