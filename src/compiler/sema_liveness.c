@@ -607,6 +607,8 @@ RETRY:
 				case VARDECL_UNWRAPPED:
 					break;
 				case VARDECL_PARAM_EXPR:
+					// These are never traced, they are folded in use.
+					break;
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_REF:
 				case VARDECL_PARAM:

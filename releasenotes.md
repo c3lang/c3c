@@ -34,6 +34,7 @@
 - Fix error message when not finding a particular function.
 - Crash invoking a `@body` argument with the wrong number of parameters.
 - Fix reordering semantics in struct assignment.
+- Regression when passing types as `#expr` arguments. #1461
 
 ### Stdlib changes
 - Additional init functions for hashmap.
