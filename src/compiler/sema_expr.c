@@ -1770,7 +1770,7 @@ SPLAT_NORMAL:;
 				                       callee->name, needed);
 			}
 			if (!last) last = args[0];
-			int more_needed = needed - i;
+			int more_needed = func_param_count - i;
 			RETURN_SEMA_FUNC_ERROR(callee->definition, last,
 			                       "Expected %d more %s after this one, did you forget %s?",
 			                       more_needed, more_needed == 1 ? "argument" : "arguments", more_needed == 1 ? "it" : "them");
