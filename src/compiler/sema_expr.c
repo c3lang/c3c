@@ -1546,11 +1546,6 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		}
 		if (arg->expr_kind == EXPR_SPLAT)
 		{
-			if (variadic == VARIADIC_NONE)
-			{
-				RETURN_SEMA_ERROR(arg, "Splat is only possible with variadic functions.");
-			}
-
 			Expr *inner = arg->inner_expr;
 
 			if (!sema_analyse_expr(context, inner)) return false;
@@ -1592,7 +1587,7 @@ SPLAT_NORMAL:;
 			}
 			// This is the fallback: just splat like vasplat:
 			ArrayIndex len = sema_len_from_expr(inner);
-			if (len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known.");
+			if (len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
 			if (len == 0 && !expr_is_const(arg))
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
