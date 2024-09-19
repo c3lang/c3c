@@ -37,6 +37,7 @@
 - Fix reordering semantics in struct assignment.
 - Regression when passing types as `#expr` arguments. #1461
 - Temp allocator overwrites data when doing reset on extra allocated pages. #1462
+- User defined attributes could not have more than 1 parameter due to bug.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

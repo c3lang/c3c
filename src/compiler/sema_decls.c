@@ -4255,7 +4255,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 		param->resolve_status = RESOLVE_DONE;
 		for (int j = 0; j < i; j++)
 		{
-			if (param[j].name == param->name)
+			if (params[j]->name == param->name)
 			{
 				RETURN_SEMA_ERROR(param, "Duplicate parameter name '%s'.", param->name);
 			}
