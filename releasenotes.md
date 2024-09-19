@@ -9,6 +9,9 @@
 - Support `int[*] { 1, 2, 3 }` expressions.
 - Support inline struct designated init as if inline was anonymous.
 - Introduce the `.paramsof` property.
+- Support environment variable 'C3C_LIB' to find the standard library.
+- Support environment variable 'C3C_CC' to find the default C compiler.
+- Support casting bitstructs to bool.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
@@ -29,6 +32,10 @@
 - Fix bugs in "trap-on-wrap" #1434.
 - Bug with casting anyfault to error.
 - Lambda / function type would accidentally be processed as a method.
+- Fix error message when not finding a particular function.
+- Crash invoking a `@body` argument with the wrong number of parameters.
+- Fix reordering semantics in struct assignment.
+- Regression when passing types as `#expr` arguments. #1461
 
 ### Stdlib changes
 - Additional init functions for hashmap.

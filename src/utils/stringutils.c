@@ -118,7 +118,7 @@ bool str_is_identifier(const char *string)
 
 bool str_eq(const char *str1, const char *str2)
 {
-	return str1 == str2 || strcmp(str1, str2) == 0;
+	return str1 == str2 || (str1 && str2 && strcmp(str1, str2) == 0);
 }
 
 bool str_is_integer(const char *string)
@@ -286,6 +286,7 @@ void str_trim_end(char *str)
 		}
 	}
 }
+
 char *str_cat(const char *a, const char *b)
 {
 	unsigned a_len = (unsigned)strlen(a);
@@ -320,6 +321,38 @@ void scratch_buffer_append_len(const char *string, size_t len)
 	scratch_buffer.len += (uint32_t)len;
 }
 
+static void scratch_buffer_append_double_quoted(const char *string)
+{
+	scratch_buffer_append_char('"');
+	size_t len = strlen(string);
+	for (size_t i = 0; i < len; )
+	{
+		char c = string[i++];
+		switch (c)
+		{
+			case '"':
+				scratch_buffer_append("\\\"");
+				continue;
+			case '\\':
+			{
+				int backslash_count = 1;
+				for (; i < len && string[i] == '\\'; i++, backslash_count++) {}
+				if (i == len || string[i] == '"')
+				{
+					scratch_buffer_append_char_repeat('\\', backslash_count * 2);
+				}
+				else
+				{
+					scratch_buffer_append_char_repeat('\\', backslash_count);
+				}
+				continue;
+			}
+		}
+		scratch_buffer_append_char(c);
+	}
+	scratch_buffer_append_char('"');
+}
+
 #if PLATFORM_WINDOWS
 static bool contains_whitespace_or_quotes(const char *string)
 {
@@ -340,6 +373,49 @@ static bool contains_whitespace_or_quotes(const char *string)
 }
 #endif
 
+void scratch_buffer_append_cmd_argument(const char *string)
+{
+#if PLATFORM_WINDOWS
+	if (contains_whitespace_or_quotes(string))
+	{
+		scratch_buffer_append_double_quoted(string);
+	}
+	else
+	{
+		scratch_buffer_append(string);
+	}
+#else
+	scratch_buffer_append_shell_escaped(string);
+#endif
+}
+
+
+void scratch_buffer_append_shell_escaped(const char *string)
+{
+	char c;
+	while ((c = string++[0]) != '\0')
+	{
+		if ((unsigned)c < 0x80)
+		{
+			switch (c)
+			{
+				case LOWER_CHAR_CASE:
+				case UPPER_CHAR_CASE:
+				case NUMBER_CHAR_CASE:
+				case '_':
+				case '/':
+				case '.':
+				case ',':
+				case '-':
+					break;
+				default:
+					scratch_buffer_append_char('\\');
+					break;
+			}
+		}
+		scratch_buffer_append_char(c);
+	}
+}
 void scratch_buffer_append(const char *string)
 {
 	scratch_buffer_append_len(string, strlen(string));

@@ -1,0 +1,40 @@
+// #target: macos-x64
+module test;
+import std;
+struct Abc
+{
+	int a;
+	int b;
+}
+
+fn void print(Abc* x)
+{
+	io::printfn("%d %d", x.a, x.b);
+}
+fn void main()
+{
+	Abc x = { 1, 4};
+	print(&x) @noinline;
+	x = Abc { x.b, x.a };
+	print(&x) @noinline;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %x = alloca %Abc, align 4
+  %.assign_list = alloca %Abc, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  call void @test.print(ptr %x) #3
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  %0 = load i32, ptr %ptradd, align 4
+  store i32 %0, ptr %.assign_list, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %.assign_list, i64 4
+  %1 = load i32, ptr %x, align 4
+  store i32 %1, ptr %ptradd1, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 %.assign_list, i32 8, i1 false)
+  call void @test.print(ptr %x) #3
+  ret void
+}
+

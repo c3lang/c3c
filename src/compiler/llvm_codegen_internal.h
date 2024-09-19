@@ -531,7 +531,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *context, Decl *decl);
 void llvm_emit_dynamic_functions(GenContext *context, Decl **funcs);
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional);
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
 INLINE void llvm_emit_statement_chain(GenContext *c, AstId current);
 void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, ConstInitializer *initializer);

@@ -778,9 +778,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 		assert(arg != scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
 		if (arg == quote_arg)
 		{
-			scratch_buffer_append_char('"');
-			scratch_buffer_append_in_quote(args[++i]);
-			scratch_buffer_append_char('"');
+			scratch_buffer_append_cmd_argument(args[++i]);
 			continue;
 		}
 		if (arg == concat_arg)
@@ -791,25 +789,15 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 		}
 		if (arg == concat_file_arg)
 		{
-			scratch_buffer_append_char('"');
 			const char *a = args[++i];
-			scratch_buffer_append_in_quote(a);
-			size_t len = strlen(a);
-			char c = len ? a[len - 1] : '/';
-			if (c != '/' && !(PLATFORM_WINDOWS && c == '\\'))
-			{
-				scratch_buffer_append(PLATFORM_WINDOWS ? "\\\\" : "/");
-			}
-			scratch_buffer_append_in_quote(args[++i]);
-			scratch_buffer_append_char('"');
+			const char *path = file_append_path_temp(a, args[++i]);
+			scratch_buffer_append_cmd_argument(path);
 			continue;
 		}
 		if (arg == concat_quote_arg)
 		{
 			scratch_buffer_append(args[++i]);
-			scratch_buffer_append_char('"');
-			scratch_buffer_append_in_quote(args[++i]);
-			scratch_buffer_append_char('"');
+			scratch_buffer_append_cmd_argument(args[++i]);
 			continue;
 		}
 		scratch_buffer_append(arg);
@@ -853,7 +841,7 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	else
 	{
 		INFO_LOG("Using cc linker.");
-		vec_add(parts, compiler.build.cc ? compiler.build.cc : "cc");
+		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
 		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}
 

@@ -373,6 +373,7 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_IDINT:
 		case CAST_INTARRBS:
 		case CAST_BSINTARR:
+		case CAST_BSBOOL:
 		case CAST_SLARR:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 

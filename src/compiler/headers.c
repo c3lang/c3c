@@ -497,13 +497,7 @@ RETRY:
 	if (type_is_optional(type)) return;
 	switch (type->type_kind)
 	{
-		case TYPE_POISONED:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_TYPEINFO:
-		case TYPE_MEMBER:
-		case TYPE_INFERRED_VECTOR:
-		case TYPE_WILDCARD:
+		case CT_TYPES:
 		case TYPE_OPTIONAL:
 			UNREACHABLE
 		case TYPE_VOID:

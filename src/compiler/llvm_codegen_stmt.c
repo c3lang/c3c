@@ -133,7 +133,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	{
 		llvm_value_set_decl_address(c, value, decl);
 		value->kind = BE_ADDRESS;
-		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.optional_ref);
+		BEValue res = llvm_emit_assign_expr(c, value, decl->var.init_expr, decl->var.optional_ref, true);
 		if (!is_optional) *value = res;
 		return;
 	}

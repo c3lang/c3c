@@ -3438,9 +3438,9 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	}
 	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical, false)) return false;
 
-	if (first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
+	if (first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
-		RETURN_SEMA_ERROR(first_param, "The first parameter must be a regular or ref (&) type.");
+		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
 	return unit_add_method(context, parent_type->canonical, decl);
 }

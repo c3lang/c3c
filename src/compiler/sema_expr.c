@@ -1546,11 +1546,6 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		}
 		if (arg->expr_kind == EXPR_SPLAT)
 		{
-			if (variadic == VARIADIC_NONE)
-			{
-				RETURN_SEMA_ERROR(arg, "Splat is only possible with variadic functions.");
-			}
-
 			Expr *inner = arg->inner_expr;
 
 			if (!sema_analyse_expr(context, inner)) return false;
@@ -1592,7 +1587,7 @@ SPLAT_NORMAL:;
 			}
 			// This is the fallback: just splat like vasplat:
 			ArrayIndex len = sema_len_from_expr(inner);
-			if (len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known.");
+			if (len == -1) RETURN_SEMA_ERROR(arg, "Splat may not be used with raw varargs if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
 			if (len == 0 && !expr_is_const(arg))
 			{
 				RETURN_SEMA_ERROR(arg, "A non-constant zero size splat cannot be used with raw varargs.");
@@ -1770,7 +1765,7 @@ SPLAT_NORMAL:;
 				                       callee->name, needed);
 			}
 			if (!last) last = args[0];
-			int more_needed = needed - i;
+			int more_needed = func_param_count - i;
 			RETURN_SEMA_FUNC_ERROR(callee->definition, last,
 			                       "Expected %d more %s after this one, did you forget %s?",
 			                       more_needed, more_needed == 1 ? "argument" : "arguments", more_needed == 1 ? "it" : "them");
@@ -2374,6 +2369,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	if (expressions != vec_size(body_parameters))
 	{
 		PRINT_ERROR_AT(call, "Expected %d parameter(s) to %s.", vec_size(body_parameters), body_decl->name);
+		return false;
 	}
 	Expr **args = call_expr->arguments;
 
@@ -3859,7 +3855,7 @@ static inline bool sema_create_const_paramsof(SemaContext *context, Expr *expr, 
 		Expr *type_expr = expr_new(EXPR_CONST, span);
 		expr_rewrite_const_typeid(type_expr, decl->type->canonical);
 		Expr *values[] = { name_expr, type_expr };
-		Expr *struct_value = sema_create_struct_from_expressions(type_reflect_method->decl, expr->span, values);
+		Expr *struct_value = sema_create_struct_from_expressions(type_reflected_param->decl, expr->span, values);
 		vec_add(param_exprs, struct_value);
 	}
 	expr_rewrite_const_untyped_list(expr, param_exprs);

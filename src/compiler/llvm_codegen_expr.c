@@ -94,7 +94,7 @@ LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true)
 	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
 }
 
-BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional)
+BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init)
 {
 	assert(llvm_value_is_addr(ref));
 
@@ -103,7 +103,6 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	// Special optimization of handling of optional
 	if (expr->expr_kind == EXPR_OPTIONAL)
 	{
-
 		PUSH_CLEAR_CATCH();
 
 		BEValue result;
@@ -163,7 +162,19 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	}
 	else if (expr_is_init_list(expr))
 	{
-		llvm_emit_initialize_reference(c, ref, expr);
+		if (is_init)
+		{
+			llvm_emit_initialize_reference(c, ref, expr);
+		}
+		else
+		{
+			BEValue val;
+			AlignSize alignment = type_alloca_alignment(ref->type);
+			LLVMValueRef temp = llvm_emit_alloca(c, llvm_get_type(c, ref->type), alignment, ".assign_list");
+			llvm_value_set_address(&val, temp, ref->type, alignment);
+			llvm_emit_initialize_reference(c, &val, expr);
+			llvm_store(c, ref, &val);
+		}
 		value = *ref;
 	}
 	else
@@ -1391,6 +1402,31 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 
 }
 
+static LLVMValueRef llvm_emit_char_array_zero(GenContext *c, BEValue *value, bool find_zero)
+{
+	llvm_value_addr(c, value);
+	unsigned len = type_size(value->type);
+	assert(len > 0);
+	LLVMValueRef total = NULL;
+	for (int i = 0; i < len; i++)
+	{
+		LLVMValueRef ref = llvm_emit_const_ptradd_inbounds_raw(c, value->value, i);
+		LLVMValueRef val = llvm_zext_trunc(c, llvm_load(c, c->byte_type, ref, 1, ""), llvm_get_type(c, type_cint));
+		total = total ? LLVMBuildAdd(c->builder, total, val, "") : val;
+	}
+	return LLVMBuildICmp(c->builder, find_zero ? LLVMIntEQ : LLVMIntNE, total, llvm_get_zero(c, type_cint), "");
+}
+static void llvm_emit_bitstruct_to_bool(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
+{
+	Type *base_type = type_flatten(from_type->decl->bitstruct.base_type->type);
+	if (base_type->type_kind != TYPE_ARRAY)
+	{
+		llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
+		return;
+	}
+	llvm_value_set(value, llvm_emit_char_array_zero(c, value, false), to_type);
+}
+
 void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
 {
 	Type *to_type_original = to_type;
@@ -1399,6 +1435,9 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 
 	switch (cast_kind)
 	{
+		case CAST_BSBOOL:
+			llvm_emit_bitstruct_to_bool(c, value, to_type, from_type);
+			return;
 		case CAST_SLARR:
 			llvm_emit_slice_to_vec_array_cast(c, value, to_type, from_type);
 			return;
@@ -2683,6 +2722,14 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 					llvm_value_rvalue(c, value);
 					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
 					break;
+				case TYPE_ARRAY:
+					// Handle the bitstruct to bool case.
+					if (type->array.base == type_char)
+					{
+						llvm_value = llvm_emit_char_array_zero(c, value, true);
+						break;
+					}
+					FALLTHROUGH;
 				default:
 					DEBUG_LOG("Unexpectedly tried to not %s", type_quoted_error_string(inner->type));
 					UNREACHABLE
@@ -4737,7 +4784,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		}
 
 		// Emit the result.
-		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref);
+		*be_value = llvm_emit_assign_expr(c, be_value, exprptr(expr->binary_expr.right), optional_ref, false);
 		return;
 	}
 

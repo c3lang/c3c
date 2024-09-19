@@ -3,14 +3,19 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 
 module std::core::mem::allocator @if(env::LIBC);
+import std::io;
 import libc;
 
 const LibcAllocator LIBC_ALLOCATOR = {};
-distinct LibcAllocator (Allocator) = uptr;
+distinct LibcAllocator (Allocator, Printable) = uptr;
+
+fn String LibcAllocator.to_string(&self, Allocator allocator) @dynamic => "Libc allocator".copy(allocator);
+fn usz! LibcAllocator.to_format(&self, Formatter *format) @dynamic => format.print("Libc allocator");
 
 module std::core::mem::allocator @if(env::POSIX);
 import std::os;
 import libc;
+
 
 fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {

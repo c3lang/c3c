@@ -184,8 +184,6 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	return true;
 }
 
-
-
 const char *file_expand_path(const char *path)
 {
 	if (path[0] == '~' && path[1] == '/')
@@ -377,6 +375,16 @@ const char *find_rel_exe_dir(const char *dir)
 
 const char *find_lib_dir(void)
 {
+	char *lib_dir_env = getenv("C3C_LIB");
+	if (lib_dir_env && strlen(lib_dir_env) > 0)
+	{
+		INFO_LOG("Using stdlib library from env 'C3C_LIB': %s.", lib_dir_env);
+		if (!file_exists(lib_dir_env))
+		{
+			error_exit("Library path from 'C3C_LIB' environment variable: '%s', could not be resolved.", lib_dir_env);
+		}
+		return strdup(lib_dir_env);
+	}
 	char *path = find_executable_path();
 
 	INFO_LOG("Detected executable path at %s", path);
@@ -472,6 +480,31 @@ bool file_exists(const char *path)
 	return S_ISDIR(st.st_mode) || S_ISREG(st.st_mode) || S_ISREG(st.st_mode);
 }
 
+#define PATH_BUFFER_SIZE 16384
+static char path_buffer[PATH_BUFFER_SIZE];
+
+const char *file_append_path_temp(const char *path, const char *name)
+{
+	size_t path_len = strlen(path);
+	if (!path_len) return name;
+	size_t name_len = strlen(name);
+	if (path_len + name_len + 1 >= PATH_BUFFER_SIZE) error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
+#if PLATFORM_WINDOWS
+	if (path[path_len - 1] == '\\') goto CONCAT;
+	if (path[path_len - 1] == '/') goto CONCAT;
+	sprintf(path_buffer, "%s\\%s", path, name);
+	path_buffer[name_len + path_len + 1] = 0;
+	return path_buffer;
+#else
+	if (path[path_len - 1] == '/') goto CONCAT;
+	sprintf(path_buffer, "%s/%s", path, name);
+	path_buffer[name_len + path_len + 1] = 0;
+#endif
+CONCAT:
+	sprintf(path_buffer, "%s%s", path, name);
+	path_buffer[name_len + path_len] = 0;
+	return path_buffer;
+}
 const char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);

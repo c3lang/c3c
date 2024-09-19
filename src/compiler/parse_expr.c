@@ -466,15 +466,15 @@ Expr *parse_vasplat(ParseContext *c)
 	RANGE_EXTEND_PREV(expr);
 END:
 	// TODO remove in 0.7
-	if (lparen && !compiler.build.silence_deprecation)
+	if (lparen)
 	{
 		if (expr->vasplat_expr.end || expr->vasplat_expr.start)
 		{
-			SEMA_NOTE(expr, "'$vasplat(...)' is deprecated, use '$vasplat[...]' instead.");
+			SEMA_DEPRECATED(expr, "'$vasplat(...)' is deprecated, use '$vasplat[...]' instead.");
 		}
 		else
 		{
-			SEMA_NOTE(expr, "'$vasplat()' is deprecated, use '$vasplat' instead.");
+			SEMA_DEPRECATED(expr, "'$vasplat()' is deprecated, use '$vasplat' instead.");
 		}
 	}
 	return expr;
@@ -517,10 +517,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			CONSUME_OR_RET(TOKEN_EQ, false);
 			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
 			RANGE_EXTEND_PREV(expr);
-			if (!compiler.build.silence_deprecation)
-			{
-				SEMA_NOTE(expr, "Named arguments using the '.foo = expr' style are deprecated, please use 'foo: expr' instead.");
-			}
+			SEMA_DEPRECATED(expr, "Named arguments using the '.foo = expr' style are deprecated, please use 'foo: expr' instead.");
 			goto DONE;
 		}
 		if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
@@ -1231,7 +1228,7 @@ static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
 {
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCATFN) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
-	if (!compiler.build.silence_deprecation) SEMA_NOTE(expr, "'%s' is deprecated in favour of '+++'.", symstr(c));
+	SEMA_DEPRECATED(expr, "'%s' is deprecated in favour of '+++'.", symstr(c));
 	advance(c);
 
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
@@ -1267,7 +1264,8 @@ static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
 	assert(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_AND_OR);
 	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_ANDFN);
-	if (!compiler.build.silence_deprecation) SEMA_NOTE(expr, "The use of '%s' is deprecated in favour of '&&&'.", symstr(c));
+	SEMA_DEPRECATED(expr, "The use of '%s' is deprecated in favour of '%s'.", symstr(c),
+					expr->ct_and_or_expr.is_and ? "&&&" :  "|||");
 	advance(c);
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
 	if (!parse_expr_list(c, &expr->ct_and_or_expr.args, TOKEN_RPAREN)) return poisoned_expr;
@@ -1308,10 +1306,10 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
 		CONSUME_OR_RET(is_lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_expr);
 		// TODO remove in 0.7
-		if (is_lparen && !compiler.build.silence_deprecation)
+		if (is_lparen)
 		{
-			SEMA_NOTE(expr, "'%s(...)' is deprecated, use '%s[...]' instead.",
-			          token_type_to_string(type), token_type_to_string(type));
+			SEMA_DEPRECATED(expr, "'%s(...)' is deprecated, use '%s[...]' instead.",
+			                token_type_to_string(type), token_type_to_string(type));
 		}
 	}
 	RANGE_EXTEND_PREV(expr);

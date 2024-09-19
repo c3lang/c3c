@@ -364,7 +364,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 		&& !context->call_env.current_function->func_decl.in_macro)
 	{
-		if (!compiler.build.silence_deprecation) SEMA_NOTE(type_info, "Direct generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
+		SEMA_DEPRECATED(type_info, "Direct generic type declarations outside of macros and type declarations is a deprecated feature, please use 'def' to create an alias.");
 		// TODO, completely disallow
 		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
 	}
