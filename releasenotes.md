@@ -40,6 +40,7 @@
 - Temp allocator overwrites data when doing reset on extra allocated pages. #1462
 - User defined attributes could not have more than 1 parameter due to bug.
 - Folding a constant array of structs at compile time would cause an assert.
+- Enum attributes would be overwritten by enum value attributes.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

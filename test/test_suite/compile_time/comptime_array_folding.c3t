@@ -59,5 +59,5 @@ fn void main()
 @test.BAZ2 = local_unnamed_addr constant i32 2, align 4
 @test.ABC = local_unnamed_addr constant [1 x %TestUnion] [%TestUnion { i32 112 }], align 4
 @test.BCD = local_unnamed_addr constant %TestUnion { i32 112 }, align 4
-@test.MY_VALUE_1 = local_unnamed_addr constant i32 -1, align 4
+@test.MY_VALUE_1 = local_unnamed_addr constant i32 32, align 4
 @test.MY_VALUE_2 = local_unnamed_addr constant i32 32, align 4

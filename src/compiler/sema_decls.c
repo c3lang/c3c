@@ -1498,7 +1498,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		Decl *enum_value = enum_values[i];
 
 		bool erase_val = false;
-		if (!sema_analyse_attributes(context, decl, enum_value->attributes, ATTR_ENUM, &erase_val)) return decl_poison(decl);
+		if (!sema_analyse_attributes(context, enum_value, enum_value->attributes, ATTR_ENUM_VALUE, &erase_val)) return decl_poison(decl);
 
 		if (erase_val)
 		{
