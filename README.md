@@ -222,7 +222,16 @@ More platforms will be supported in the future.
 (*Note that there is a known issue with debug symbol generation on MacOS 13, see [issue #1086](https://github.com/c3lang/c3c/issues/1086))
 
 #### Installing on Arch Linux
-There is an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git).
+Arch includes c3c in the official 'extra' repo. It can be easily installed the usual way:
+
+```sh
+sudo pacman -S c3c
+# or paru -S c3c
+# or yay -S c3c
+# or aura -A c3c
+```
+
+There is also an AUR package for the c3c compiler : [c3c-git](https://aur.archlinux.org/packages/c3c-git).
 
 You can use your AUR package manager:
 ```sh
