@@ -12,6 +12,7 @@
 - Support environment variable 'C3C_LIB' to find the standard library.
 - Support environment variable 'C3C_CC' to find the default C compiler.
 - Support casting bitstructs to bool.
+- Allow user-defined attributes to have typed parameters.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
@@ -38,6 +39,7 @@
 - Regression when passing types as `#expr` arguments. #1461
 - Temp allocator overwrites data when doing reset on extra allocated pages. #1462
 - User defined attributes could not have more than 1 parameter due to bug.
+- Folding a constant array of structs at compile time would cause an assert.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

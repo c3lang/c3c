@@ -2843,9 +2843,24 @@ static inline bool sema_analyse_custom_attribute(SemaContext *context, ResolvedA
 	// First we need to analyse each expression in the current scope
 	for (int j = 0; j < param_count; j++)
 	{
-		if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
-
-		params[j]->var.init_expr = args[j];
+		Decl *param = params[j];
+		Expr *expr = args[j];
+		if (param->var.type_info)
+		{
+			Type *type = typeget(param->var.type_info);
+			if (!sema_analyse_inferred_expr(context, type, expr)) goto ERR;
+			if (!cast_implicit(context, expr, type, false)) goto ERR;
+			if (!sema_cast_const(expr))
+			{
+				SEMA_ERROR(expr, "Expected a compile time value.");
+				goto ERR;
+			}
+		}
+		else
+		{
+			if (!sema_analyse_ct_expr(context, args[j])) goto ERR;
+		}
+		params[j]->var.init_expr = expr;
 		params[j]->var.kind = VARDECL_CONST;
 		// Then add them to the evaluation context.
 		// (Yes this is messy)
@@ -4250,8 +4265,8 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 	{
 		Decl *param = params[i];
 		if (param->var.kind != VARDECL_PARAM) RETURN_SEMA_ERROR(param, "Expected a simple replacement parameter e.g. 'val' here.");
-		if (param->var.type_info) RETURN_SEMA_ERROR(param, "Type is not allowed on attribute parameters.");
 		if (param->var.init_expr) RETURN_SEMA_ERROR(param, "Attribute parameters may not have default values.");
+		if (param->var.type_info && !sema_resolve_type_info(c, type_infoptr(param->var.type_info), RESOLVE_TYPE_DEFAULT)) return false;
 		param->resolve_status = RESOLVE_DONE;
 		for (int j = 0; j < i; j++)
 		{

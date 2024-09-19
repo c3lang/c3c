@@ -4218,14 +4218,14 @@ static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIn
 			break;
 		case CONST_INIT_ARRAY:
 		case CONST_INIT_ARRAY_FULL:
-			expr->expr_kind = EXPR_CONST;
-			expr->const_expr.const_kind = CONST_INITIALIZER;
-			expr->const_expr.initializer = init;
-			expr->type = init->type;
-			break;
-		case CONST_INIT_ARRAY_VALUE:
 		case CONST_INIT_STRUCT:
 		case CONST_INIT_UNION:
+			expr->expr_kind = EXPR_CONST;
+			expr->const_expr.const_kind = CONST_INITIALIZER;
+			expr->const_expr.initializer = result;
+			expr->type = result->type;
+			break;
+		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 		case CONST_INIT_VALUE:
 			expr_replace(expr, result->init_value);
