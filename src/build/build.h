@@ -13,6 +13,7 @@
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
+#define DEFAULT_PATH "."
 
 typedef enum
 {
@@ -433,6 +434,7 @@ typedef struct BuildOptions_
 	const char *project_name;
 	const char *target_select;
 	const char *path;
+	const char *vendor_download_path;
 	const char *template;
 	LinkerType linker_type;
 	const char *custom_linker_path;

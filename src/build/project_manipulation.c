@@ -1,4 +1,5 @@
 #include "build_internal.h"
+#include "project.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
 
@@ -20,6 +21,18 @@ static JSONObject *read_project(const char **file_used)
 		error_exit("Expected a map of project information in '%s'.", project_filename);
 	}
 	return json;
+}
+
+const char** get_project_dependency_directories()
+{
+	const char *filename;
+	JSONObject *json = read_project(&filename);
+
+	const char *target = NULL;
+	const char **deps_dirs = NULL;
+	get_list_append_strings(filename, target, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	
+	return deps_dirs;
 }
 
 static void print_vec(const char *header, const char **vec, bool opt)
@@ -237,6 +250,56 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	TARGET_VIEW_SETTING("x64 CPU level", "x86cpu", x86_cpu_set);
 	TARGET_VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
+}
+
+void add_libraries_to_project_file(const char** libs, const char* target_name) {
+
+	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON)) return;
+	//TODO! Target name option not implemented
+
+	const char *filename;
+	JSONObject *project_json = read_project(&filename);
+	
+
+	// TODO! check if target is specified and exists (NULL at the moment)
+	JSONObject *libraries_json = json_obj_get(project_json, "dependencies");
+	
+	const char** dependencies = NULL;
+	for(int i = 0; i < libraries_json->array_len; i++)
+	{
+		vec_add(dependencies, libraries_json->elements[i]->str);
+	}
+	
+	// check if libraries are already present
+	FOREACH(const char*, lib, libs)
+	{
+		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
+		 
+		vec_add(dependencies, lib);
+	}
+
+	JSONObject** elements = NULL;
+	
+	FOREACH(const char*, dep, dependencies)
+	{
+		JSONObject* obj = json_new_object(&malloc_arena, J_STRING);
+		obj->str = dep;
+		vec_add(elements, obj);
+	}
+
+	// TODO fancier functions for altering JSON file (quite cumbersome at the moment)
+	// TODO! check if "dependency" entry exists in the project.json file.
+	
+	// Apply changes to JSON object
+
+	libraries_json->elements = elements;
+	libraries_json->array_len = vec_size(dependencies);
+
+	// write to project json file
+	FILE *file = fopen(filename, "w");
+	print_json_to_file(project_json, file);
+	fclose(file);
+
 }
 
 void add_target_project(BuildOptions *build_options)

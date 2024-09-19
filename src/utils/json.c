@@ -8,7 +8,6 @@ JSONObject error = { .type = J_ERROR };
 JSONObject true_val = { .type = J_BOOL, .b = true };
 JSONObject false_val = { .type = J_BOOL, .b = false };
 JSONObject zero_val = { .type = J_NUMBER, .f = 0.0 };
-JSONObject empty_array_val = { .type = J_ARRAY, .array_len = 0 };
 JSONObject empty_obj_val = { .type = J_OBJECT, .member_len = 0 };
 
 #define CONSUME(token_) do { if (!consume(parser, token_)) { json_error(parser, "Unexpected character encountered."); return &error; } } while(0)
@@ -275,7 +274,12 @@ static inline bool consume(JsonParser *parser, JSONTokenType token)
 JSONObject *json_parse_array(JsonParser *parser)
 {
 	CONSUME(T_LBRACKET);
-	if (consume(parser, T_RBRACKET)) return &empty_array_val;
+	if (consume(parser, T_RBRACKET))
+	{
+		JSONObject *array = json_new_object(parser->allocator, J_ARRAY);
+		array->array_len = 0;
+		return array;
+	}
 
 	size_t capacity = 16;
 	JSONObject *array = json_new_object(parser->allocator, J_ARRAY);
@@ -440,7 +444,6 @@ bool is_freable(JSONObject *obj)
 	if (obj == &true_val) return false;
 	if (obj == &false_val) return false;
 	if (obj == &zero_val) return false;
-	if (obj == &empty_array_val) return false;
 	if (obj == &empty_obj_val) return false;
 	return true;
 }

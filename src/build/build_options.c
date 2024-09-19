@@ -1237,7 +1237,8 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	}
 
 	BuildOptions build_options = {
-		.path = ".",
+		.path = DEFAULT_PATH,
+		.vendor_download_path = DEFAULT_PATH,
 		.emit_llvm = false,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.debug_info_override = DEBUG_INFO_NOT_SET,
