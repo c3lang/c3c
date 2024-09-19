@@ -169,20 +169,20 @@ static void test_json(void)
 {
 	printf("Begin json testing.\n");
 	JsonParser parser;
-	json_init_string(&parser, "123", &malloc);
+	json_init_string(&parser, "123");
 	JSONObject *obj = json_parse(&parser);
 	TEST_ASSERT(obj->type == J_NUMBER, "Expected number");
 	TEST_ASSERT(obj->f == 123.0, "Expected number match");
-	json_init_string(&parser, "[123, 23.123]", &malloc);
+	json_init_string(&parser, "[123, 23.123]");
 	JSONObject *array = json_parse(&parser);
 	TEST_ASSERT(array->type == J_ARRAY, "Expected array");
-	TEST_ASSERT(array->array_len == 2, "Expected 2 elements");
+	TEST_ASSERT(vec_size(array->elements) == 2, "Expected 2 elements");
 	TEST_ASSERT(array->elements[0]->f == 123.0, "Matching element 1");
 	TEST_ASSERT(array->elements[1]->f == 23.123, "Matching element 1");
-	json_init_string(&parser, "[\"hello\\nworld\\t.\", 123]", &malloc);
+	json_init_string(&parser, "[\"hello\\nworld\\t.\", 123]");
 	array = json_parse(&parser);
 	TEST_ASSERT(array->type == J_ARRAY, "Expected array");
-	TEST_ASSERT(array->array_len == 2, "Expected 2 elements");
+	TEST_ASSERT(vec_size(array->elements) == 2, "Expected 2 elements");
 	TEST_ASSERT(array->elements[1]->f == 123.0, "Matching element 1");
 	TEST_ASSERT(array->elements[0]->type == J_STRING, "Matching element 0");
 	TEST_ASSERT(strcmp(array->elements[0]->str, "hello\nworld\t.") == 0, "Mismatching string");

@@ -448,7 +448,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 
 	BuildTarget default_target = default_build_target;
 	load_into_build_target(filename, project_data, NULL, &default_target);
-	JSONObject *targets_json = json_obj_get(project_data, "targets");
+	JSONObject *targets_json = json_map_get(project_data, "targets");
 	if (!targets_json)
 	{
 		error_exit("No targets found in project.");
@@ -457,9 +457,8 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	{
 		error_exit("'targets' did not contain map of targets.");
 	}
-	for (unsigned i = 0; i < targets_json->member_len; i++)
+	FOREACH_IDX(i, JSONObject *, object, targets_json->members)
 	{
-		JSONObject *object = targets_json->members[i];
 		const char *key = targets_json->keys[i];
 		if (object->type != J_OBJECT)
 		{
@@ -519,7 +518,7 @@ Project *project_load(const char **filename_ref)
 	const char *filename = *filename_ref = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
 	char *read = file_read_all(filename, &size);
 	JsonParser parser;
-	json_init_string(&parser, read, &malloc_arena);
+	json_init_string(&parser, read);
 	JSONObject *json = json_parse(&parser);
 	if (parser.error_message)
 	{

@@ -30,16 +30,16 @@ MacSDK *macos_sysroot_sdk_information(const char *sdk_path)
 	const char *settings_json_path = scratch_buffer_to_string();
 	if (!file_exists(settings_json_path)) error_exit("Invalid MacOS SDK path: '%s'.", sdk_path);
 	const char *file = file_read_all(settings_json_path, &len);
-	json_init_string(&parser, file, &malloc_arena);
+	json_init_string(&parser, file);
 	MacSDK *sdk = CALLOCS(MacSDK);
 	JSONObject *top_object = json_parse(&parser);
-	JSONObject *supported_targets = json_obj_get(top_object, "SupportedTargets");
-	JSONObject *macosx_target = json_obj_get(supported_targets, "macosx");
+	JSONObject *supported_targets = json_map_get(top_object, "SupportedTargets");
+	JSONObject *macosx_target = json_map_get(supported_targets, "macosx");
 
-	const char *default_deploy_target = json_obj_get(macosx_target, "DefaultDeploymentTarget")->str;
+	const char *default_deploy_target = json_map_get(macosx_target, "DefaultDeploymentTarget")->str;
 	parse_version(default_deploy_target, &sdk->macos_deploy_target);
 
-	const char *min_deploy_target = json_obj_get(macosx_target, "MinimumDeploymentTarget")->str;
+	const char *min_deploy_target = json_map_get(macosx_target, "MinimumDeploymentTarget")->str;
 	parse_version(min_deploy_target, &sdk->macos_min_deploy_target);
 
 	return sdk;

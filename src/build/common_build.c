@@ -7,9 +7,8 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 {
 	static bool failed_shown = false;
 	bool failed = false;
-	for (size_t i = 0; i < json->member_len; i++)
+	FOREACH(const char *, key, json->keys)
 	{
-		const char *key = json->keys[i];
 		for (size_t j = 0; j < key_count; j++)
 		{
 			if (str_eq(key, valid_keys[j][0])) goto OK;
@@ -36,7 +35,7 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 
 const char *get_optional_string(const char *file, const char *category, JSONObject *table, const char *key)
 {
-	JSONObject *value = json_obj_get(table, key);
+	JSONObject *value = json_map_get(table, key);
 	if (!value) return NULL;
 	if (value->type != J_STRING)
 	{
@@ -67,7 +66,7 @@ const char *get_string(const char *file, const char *category, JSONObject *table
 
 int get_valid_bool(const char *file, const char *target, JSONObject *json, const char *key, int default_val)
 {
-	JSONObject *value = json_obj_get(json, key);
+	JSONObject *value = json_map_get(json, key);
 	if (!value) return default_val;
 	if (value->type != J_BOOL)
 	{
@@ -79,7 +78,7 @@ int get_valid_bool(const char *file, const char *target, JSONObject *json, const
 
 const char **get_string_array(const char *file, const char *category, JSONObject *table, const char *key, bool mandatory)
 {
-	JSONObject *value = json_obj_get(table, key);
+	JSONObject *value = json_map_get(table, key);
 	if (!value)
 	{
 		if (mandatory)
@@ -91,9 +90,8 @@ const char **get_string_array(const char *file, const char *category, JSONObject
 	}
 	if (value->type != J_ARRAY) goto NOT_ARRAY;
 	const char **values = NULL;
-	for (unsigned i = 0; i < value->array_len; i++)
+	FOREACH(JSONObject *, val, value->elements)
 	{
-		JSONObject *val = value->elements[i];
 		if (val->type != J_STRING) goto NOT_ARRAY;
 		vec_add(values, val->str);
 	}
@@ -163,7 +161,7 @@ void get_list_append_strings(const char *file, const char *target, JSONObject *j
 
 int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char** values, int first_result, int count, const char *expected)
 {
-	JSONObject *value = json_obj_get(json, key);
+	JSONObject *value = json_map_get(json, key);
 	if (!value)
 	{
 		return -1;
@@ -193,7 +191,7 @@ int get_valid_enum_from_string(const char *str, const char *target, const char *
 
 long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory)
 {
-	JSONObject *value = json_obj_get(table, key);
+	JSONObject *value = json_map_get(table, key);
 	if (!value)
 	{
 		if (mandatory)

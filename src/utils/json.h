@@ -21,13 +21,11 @@ typedef struct JSONObject_
 		struct
 		{
 			struct JSONObject_ **elements;
-			size_t array_len;
 		};
 		struct
 		{
 			struct JSONObject_ **members;
 			const char **keys;
-			size_t member_len;
 		};
 	};
 } JSONObject;
@@ -49,31 +47,40 @@ typedef enum JSONTokenType_
 	T_EOF
 } JSONTokenType;
 
-typedef void *(JsonAllocator)(size_t);
-typedef void *(JsonDeallocator)(void *);
-
 typedef struct
 {
 	unsigned line;
 	const char *current;
 	JSONTokenType current_token_type;
 	const char *error_message;
-	JsonAllocator *allocator;
 	const char *last_string;
 	double last_number;
 } JsonParser;
 
-void json_init_string(JsonParser *parser, const char *str, JsonAllocator *allocator);
+void json_init_string(JsonParser *parser, const char *str);
 JSONObject *json_parse(JsonParser *parser);
-JSONObject *json_obj_get(JSONObject *obj, const char *key);
-INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type);
-void json_free(JsonDeallocator *deallocator, JSONObject **ptr);
+JSONObject *json_map_get(JSONObject *obj, const char *key);
+void json_map_set(JSONObject *obj, const char *key, JSONObject *value);
+INLINE JSONObject *json_new_object(JSONType type);
 void print_json_to_file(JSONObject *obj, FILE *file);
 
-
-INLINE JSONObject *json_new_object(JsonAllocator *allocator, JSONType type)
+INLINE JSONObject *json_new_string(const char *str)
 {
-	JSONObject *obj = allocator(sizeof(JSONObject));
-	obj->type = type;
+	JSONObject *obj = malloc_arena(sizeof(JSONObject));
+	*obj = (JSONObject) { .type = J_STRING, .str = str };
+	return obj;
+}
+
+INLINE JSONObject *json_new_map(void)
+{
+	JSONObject *obj = malloc_arena(sizeof(JSONObject));
+	*obj = (JSONObject) { .type = J_OBJECT };
+	return obj;
+}
+
+INLINE JSONObject *json_new_object(JSONType type)
+{
+	JSONObject *obj = malloc_arena(sizeof(JSONObject));
+	*obj = (JSONObject) { .type = type };
 	return obj;
 }

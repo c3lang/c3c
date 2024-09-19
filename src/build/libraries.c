@@ -49,9 +49,8 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 {
 	if (!object) return;
 	if (object->type != J_OBJECT) error_exit("Expected a set of targets in %s.", library->dir);
-	for (size_t i = 0; i < object->member_len; i++)
+	FOREACH_IDX(i, JSONObject *, member, object->members)
 	{
-		JSONObject *member = object->members[i];
 		const char *key = object->keys[i];
 		if (member->type != J_OBJECT) error_exit("Expected a list of properties for a target in %s.", library->dir);
 		check_json_keys(manifest_target_keys, manifest_target_keys_count, manifest_deprecated_target_keys, manifest_deprecated_target_key_count, member, key, "--list-manifest-properties");
@@ -115,7 +114,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 	library->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, NULL, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
 	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 	get_list_append_strings(library->dir, NULL, object, &library->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
-	parse_library_type(library, &library->targets, json_obj_get(object, "targets"));
+	parse_library_type(library, &library->targets, json_map_get(object, "targets"));
 	return library;
 }
 
@@ -166,7 +165,7 @@ INLINE void zip_check_err(const char *lib, const char *error)
 INLINE JSONObject* read_manifest(const char *lib, const char *manifest_data)
 {
 	JsonParser parser;
-	json_init_string(&parser, manifest_data, &malloc_arena);
+	json_init_string(&parser, manifest_data);
 	JSONObject *json = json_parse(&parser);
 	if (parser.error_message)
 	{

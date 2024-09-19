@@ -10,7 +10,7 @@ static JSONObject *read_project(const char **file_used)
 	*file_used = project_filename;
 	char *read = file_read_all(project_filename, &size);
 	JsonParser parser;
-	json_init_string(&parser, read, &malloc_arena);
+	json_init_string(&parser, read);
 	JSONObject *json = json_parse(&parser);
 	if (parser.error_message)
 	{
@@ -259,41 +259,31 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 
 	const char *filename;
 	JSONObject *project_json = read_project(&filename);
-	
 
 	// TODO! check if target is specified and exists (NULL at the moment)
-	JSONObject *libraries_json = json_obj_get(project_json, "dependencies");
+	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
 	
 	const char** dependencies = NULL;
-	for(int i = 0; i < libraries_json->array_len; i++)
+	FOREACH(JSONObject *, element, libraries_json->elements)
 	{
-		vec_add(dependencies, libraries_json->elements[i]->str);
+		vec_add(dependencies, element->str);
 	}
 	
 	// check if libraries are already present
 	FOREACH(const char*, lib, libs)
 	{
 		if (str_findlist(lib, vec_size(dependencies), dependencies)!=-1) continue;
-		 
 		vec_add(dependencies, lib);
 	}
 
 	JSONObject** elements = NULL;
-	
 	FOREACH(const char*, dep, dependencies)
 	{
-		JSONObject* obj = json_new_object(&malloc_arena, J_STRING);
-		obj->str = dep;
-		vec_add(elements, obj);
+		vec_add(elements, json_new_string(dep));
 	}
 
-	// TODO fancier functions for altering JSON file (quite cumbersome at the moment)
-	// TODO! check if "dependency" entry exists in the project.json file.
-	
 	// Apply changes to JSON object
-
 	libraries_json->elements = elements;
-	libraries_json->array_len = vec_size(dependencies);
 
 	// write to project json file
 	FILE *file = fopen(filename, "w");
@@ -306,36 +296,19 @@ void add_target_project(BuildOptions *build_options)
 {
 	const char *filename;
 	JSONObject *project_json = read_project(&filename);
-	JSONObject *targets_json = json_obj_get(project_json, "targets");
+	JSONObject *targets_json = json_map_get(project_json, "targets");
 
-	for (unsigned i = 0; i < targets_json->member_len; i++)
+	if (json_map_get(targets_json, build_options->project_options.target_name) != NULL)
 	{
-		JSONObject *object = targets_json->members[i];
-		const char *key = targets_json->keys[i];
-
-		if (str_eq(key, build_options->project_options.target_name))
-		{
-			error_exit("Target with name '%s' already exists", key);
-		}
+		error_exit("Target with name '%s' already exists", build_options->project_options.target_name);
 	}
 
-	JSONObject *target_type_obj = json_new_object(&malloc_arena, J_STRING);
-	target_type_obj->str = targets[build_options->project_options.target_type];
+	JSONObject *target_type_obj = json_new_string(targets[build_options->project_options.target_type]);
 
+	JSONObject *new_target = json_new_map();
+	json_map_set(new_target, "type", target_type_obj);
 
-	JSONObject *new_target = json_new_object(&malloc_arena, J_OBJECT);
-	new_target->members = malloc_arena(sizeof(JSONObject) * 16);
-	new_target->keys = malloc_arena(sizeof(JSONObject) * 16);
-
-	new_target->keys[0] = "type";
-	new_target->members[0] = target_type_obj;
-	new_target->member_len = 1;
-
-
-	size_t index = targets_json->member_len;
-	targets_json->members[index] = new_target;
-	targets_json->keys[index] = build_options->project_options.target_name;
-	targets_json->member_len++;
+	json_map_set(targets_json, build_options->project_options.target_name, new_target);
 
 	FILE *file = fopen(filename, "w");
 	print_json_to_file(project_json, file);
@@ -400,7 +373,7 @@ void view_project(BuildOptions *build_options)
 
 	/* Target information */
 	PRINTFN("Targets: ");
-	JSONObject *targets_json = json_obj_get(project_json, "targets");
+	JSONObject *targets_json = json_map_get(project_json, "targets");
 	if (!targets_json)
 	{
 		error_exit("No targets found in project.");
@@ -410,11 +383,9 @@ void view_project(BuildOptions *build_options)
 		error_exit("'targets' did not contain map of targets.");
 	}
 
-	for (unsigned i = 0; i < targets_json->member_len; i++)
+	FOREACH_IDX(i, JSONObject *, object, targets_json->members)
 	{
-		JSONObject *object = targets_json->members[i];
 		const char *key = targets_json->keys[i];
-
 		if (object->type != J_OBJECT)
 		{
 			error_exit("Invalid data in target '%s'", key);
