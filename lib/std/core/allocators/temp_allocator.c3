@@ -68,6 +68,7 @@ fn void TempAllocator.reset(&self, usz mark) @dynamic
 	TempAllocatorPage *last_page = self.last_page;
 	while (last_page && last_page.mark > mark)
 	{
+		self.used = last_page.mark;
 		TempAllocatorPage *to_free = last_page;
 		last_page = last_page.prev_page;
 		self._free_page(to_free)!!;

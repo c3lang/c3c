@@ -36,6 +36,7 @@
 - Crash invoking a `@body` argument with the wrong number of parameters.
 - Fix reordering semantics in struct assignment.
 - Regression when passing types as `#expr` arguments. #1461
+- Temp allocator overwrites data when doing reset on extra allocated pages. #1462
 
 ### Stdlib changes
 - Additional init functions for hashmap.
