@@ -108,6 +108,9 @@ int main_real(int argc, const char *argv[])
 				case SUBCOMMAND_ADD:
 					add_target_project(&build_options);
 					break;
+				case SUBCOMMAND_FETCH:
+					fetch_project(&build_options);
+					break;
 				case SUBCOMMAND_MISSING:
 					break;
 			}

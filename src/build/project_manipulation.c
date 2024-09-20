@@ -52,6 +52,21 @@ static void print_vec(const char *header, const char **vec, bool opt)
 	PRINTFN("");
 }
 
+const char** get_project_dependencies()
+{
+	const char *filename;
+	const char** dependencies = NULL;
+
+	JSONObject *project_json = read_project(&filename);
+	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
+
+	FOREACH(JSONObject *, element, dependencies_json->elements)
+	{
+		vec_add(dependencies, element->str);
+	}
+	return dependencies;
+}
+
 static void print_opt_str(const char *header, const char *str)
 {
 	if (!str) return;
@@ -251,6 +266,64 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	TARGET_VIEW_SETTING("Max vector use type", "x86vec", x86_vector_capability);
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
+
+void fetch_project(BuildOptions* options) 
+{
+	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON))
+	{
+		error_exit("Failed: no project file found.");
+	}
+
+	if (str_eq(options->path, DEFAULT_PATH))
+	{
+		{
+			const char** deps_dirs =  get_project_dependency_directories();
+			int num_lib = vec_size(deps_dirs); 
+			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
+
+		}
+
+	}
+
+	const char** libdirs = get_project_dependency_directories();
+	
+
+	const char** deps = get_project_dependencies();
+
+	// dependency check tree
+	while (vec_size(deps) > 0)
+	{
+	
+		FOREACH(const char*, dir, libdirs)
+		{
+			
+			const char* dep = deps[vec_size(deps)-1];
+			if(file_exists(file_append_path(dir, str_printf("%s.c3l", dep)))) 
+			{
+				vec_pop(deps);
+				break;
+			};
+			
+			printf("Fetching missing library '%s'...", dep);
+			fflush(stdout);
+
+			const char *error = vendor_fetch_single(dep, options->vendor_download_path);
+
+			if (!error)
+			{
+				puts(" finished.");
+			}
+			else
+			{
+				printf("Failed: '%s'\n", error);
+			}
+
+			vec_pop(deps);
+
+		}
+	}
+}
+
 
 void add_libraries_to_project_file(const char** libs, const char* target_name) {
 

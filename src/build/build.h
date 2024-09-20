@@ -53,7 +53,8 @@ typedef enum
 {
 	SUBCOMMAND_MISSING = 0,
 	SUBCOMMAND_VIEW,
-	SUBCOMMAND_ADD
+	SUBCOMMAND_ADD,
+	SUBCOMMAND_FETCH
 } ProjectSubcommand;
 
 typedef enum
@@ -733,3 +734,4 @@ void create_library(BuildOptions *build_options);
 void resolve_libraries(BuildTarget *build_target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
+void fetch_project(BuildOptions* options);
