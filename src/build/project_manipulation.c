@@ -286,8 +286,6 @@ void fetch_project(BuildOptions* options)
 	}
 
 	const char** libdirs = get_project_dependency_directories();
-	
-
 	const char** deps = get_project_dependencies();
 
 	// dependency check tree
