@@ -115,6 +115,8 @@ enum ArchType
 	XTENSA,       // Xtensa
 }
 
+const String COMPILER_BUILD_HASH = $$BUILD_HASH;
+const String COMPILER_BUILD_DATE = $$BUILD_DATE;
 const OsType OS_TYPE = (OsType)$$OS_TYPE;
 const ArchType ARCH_TYPE = (ArchType)$$ARCH_TYPE;
 const bool ARCH_32_BIT = $$REGISTER_SIZE == 32;

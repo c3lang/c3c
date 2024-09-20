@@ -863,6 +863,19 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	return expr;
 }
 
+Expr *expr_new_const_string(SourceSpan span, const char *string)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type_string;
+	expr->const_expr.const_kind = CONST_STRING;
+	expr->const_expr.bytes.ptr = string;
+	expr->const_expr.bytes.len = strlen(string);
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type)
 {
 	expr->expr_kind = EXPR_BUILTIN_ACCESS;
@@ -915,7 +928,7 @@ void expr_rewrite_insert_deref(Expr *original)
 	}
 }
 
-void expr_rewrite_to_const_ref(Expr *expr_to_rewrite, Decl *decl)
+void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl)
 {
 	expr_to_rewrite->const_expr = (ExprConst) {
 			.global_ref = decl,
@@ -924,7 +937,7 @@ void expr_rewrite_to_const_ref(Expr *expr_to_rewrite, Decl *decl)
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 }
 
-void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string)
+void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string)
 {
 	expr_to_rewrite->expr_kind = EXPR_CONST;
 	expr_to_rewrite->const_expr.const_kind = CONST_STRING;

@@ -11,7 +11,8 @@
 #endif 
 #if LLVM_AVAILABLE
 #include "c3_llvm.h"
-#endif 
+#endif
+#include "git_hash.h"
 #include <errno.h>
 
 #define MAX_OUTPUT_FILES 1000000
@@ -832,10 +833,18 @@ void compile_file_list(BuildOptions *options)
 	compile();
 }
 
-static void setup_int_define(const char *id, uint64_t i, Type *type)
+static inline void setup_define(const char *id, Expr *expr)
 {
 	TokenType token_type = TOKEN_CONST_IDENT;
 	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
+	void *previous = htable_set(&compiler.context.compiler_defines, (void*)id, expr);
+	if (previous)
+	{
+		error_exit("Redefined ident %s", id);
+	}
+}
+static void setup_int_define(const char *id, uint64_t i, Type *type)
+{
 	Type *flat = type_flatten(type);
 	assert(type_is_integer(flat));
 	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i);
@@ -844,23 +853,17 @@ static void setup_int_define(const char *id, uint64_t i, Type *type)
 	{
 		error_exit("Integer define %s overflow.", id);
 	}
-	void *previous = htable_set(&compiler.context.compiler_defines, (void*)id, expr);
-	if (previous)
-	{
-		error_exit("Redefined ident %s", id);
-	}
+	setup_define(id, expr);
+}
+
+static void setup_string_define(const char *id, const char *value)
+{
+	setup_define(id, expr_new_const_string(INVALID_SPAN, value));
 }
 
 static void setup_bool_define(const char *id, bool value)
 {
-	TokenType token_type = TOKEN_CONST_IDENT;
-	id = symtab_add(id, (uint32_t) strlen(id), fnv1a(id, (uint32_t) strlen(id)), &token_type);
-	Expr *expr = expr_new_const_bool(INVALID_SPAN, type_bool, value);
-	void *previous = htable_set(&compiler.context.compiler_defines, (void *)id, expr);
-	if (previous)
-	{
-		error_exit("Redefined ident %s", id);
-	}
+	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
 }
 #if FETCH_AVAILABLE
 
@@ -1228,6 +1231,59 @@ static void check_sanitizer_options(BuildTarget *target)
 	}
 }
 
+const char *compiler_date_to_iso(void)
+{
+	const char *comp_date = __DATE__;
+	static char iso[11] = "2000-01-01";
+	iso[2] = comp_date[9];
+	iso[3] = comp_date[10];
+	int month;
+	switch (comp_date[0])
+	{
+		case 'O':
+			month = 10;
+			break;
+		case 'D':
+			month = 12;
+			break;
+		case 'N':
+			month = 11;
+			break;
+		case 'J':
+			if (comp_date[1] == 'a')
+			{
+				month = 1;
+				break;
+			}
+			if (comp_date[2] == 'n')
+			{
+				month = 6;
+				break;
+			}
+			month = 7;
+			break;
+		case 'F':
+			month = 2;
+			break;
+		case 'A':
+			month = comp_date[2] == 'p' ? 4 : 8;
+			break;
+		case 'M':
+			month = comp_date[2] == 'r' ? 3 : 5;
+			break;
+		case 'S':
+			month = 9;
+			break;
+		default:
+			UNREACHABLE
+	}
+	iso[5] = month / 10 + '0';
+	iso[6] = month % 10 + '0';
+	iso[8] = comp_date[4] == ' ' ? '0' : comp_date[4];
+	iso[9] = comp_date[5];
+	return iso;
+}
+
 void compile()
 {
 	symtab_init(compiler.build.symtab_size);
@@ -1300,9 +1356,10 @@ void compile()
 	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);
 	setup_bool_define("MEMORY_SANITIZER", compiler.build.feature.sanitize_memory);
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);
+	setup_string_define("BUILD_HASH", GIT_HASH);
+	setup_string_define("BUILD_DATE", compiler_date_to_iso());
 
 	type_init_cint();
-
 	compiler_init_time = bench_mark();
 
 	if (!vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");

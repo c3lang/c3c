@@ -2168,6 +2168,7 @@ Expr *expr_new(ExprKind kind, SourceSpan start);
 Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v);
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
+Expr *expr_new_const_string(SourceSpan span, const char *string);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
@@ -2207,10 +2208,10 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v);
 INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type);
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer);
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements);
+void expr_rewrite_const_string(Expr *expr_to_rewrite, const char *string);
+void expr_rewrite_const_ref(Expr *expr_to_rewrite, Decl *decl);
 
 void expr_rewrite_to_builtin_access(Expr *expr, Expr *parent, BuiltinAccessKind kind, Type *type);
-void expr_rewrite_to_string(Expr *expr_to_rewrite, const char *string);
-void expr_rewrite_to_const_ref(Expr *expr_to_rewrite, Decl *decl);
 void expr_rewrite_to_const_zero(Expr *expr, Type *type);
 bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back);
 

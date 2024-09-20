@@ -328,8 +328,7 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
 		assert->assert_stmt.is_ensure = true;
 		assert->assert_stmt.expr = exprid(expr);
-		Expr *comment_expr = expr_new(EXPR_CONST, expr->span);
-		expr_rewrite_to_string(comment_expr, comment);
+		Expr *comment_expr = expr_new_const_string(expr->span, comment);
 		assert->assert_stmt.message = exprid(comment_expr);
 		ast_append(asserts, assert);
 	}

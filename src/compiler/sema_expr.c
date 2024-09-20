@@ -3418,7 +3418,7 @@ static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, 
 	{
 		Decl *decl = values[i];
 		Expr *expr = expr_new(EXPR_CONST, span);
-		expr_rewrite_to_string(expr, decl->name);
+		expr_rewrite_const_string(expr, decl->name);
 		vec_add(element_values, expr);
 	}
 	initializer->initializer_list = element_values;
@@ -3579,7 +3579,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_QNAMEOF:
 			break;
 		case TYPE_PROPERTY_NAMEOF:
-			expr_rewrite_to_string(expr, decl->name ? decl->name : "");
+			expr_rewrite_const_string(expr, decl->name ? decl->name : "");
 			return true;
 		case TYPE_PROPERTY_ALIGNOF:
 			expr_rewrite_const_int(expr, type_usz,
@@ -3850,8 +3850,7 @@ static inline bool sema_create_const_paramsof(SemaContext *context, Expr *expr, 
 	for (unsigned i = 0; i < params; i++)
 	{
 		Decl *decl = sig->params[i];
-		Expr *name_expr = expr_new(EXPR_CONST, span);
-		expr_rewrite_to_string(name_expr, decl->name ? decl->name : "");
+		Expr *name_expr = expr_new_const_string(span, decl->name ? decl->name : "");
 		Expr *type_expr = expr_new(EXPR_CONST, span);
 		expr_rewrite_const_typeid(type_expr, decl->type->canonical);
 		Expr *values[] = { name_expr, type_expr };
@@ -4787,7 +4786,7 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
+				expr_rewrite_const_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
 			}
 			else
@@ -4800,7 +4799,7 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_to_string(expr, current_parent->const_expr.enum_err_val->name);
+				expr_rewrite_const_string(expr, current_parent->const_expr.enum_err_val->name);
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);
@@ -6737,7 +6736,7 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 		Decl *ident = inner->identifier_expr.decl;
 		if (decl_is_global(ident))
 		{
-			expr_rewrite_to_const_ref(expr, ident);
+			expr_rewrite_const_ref(expr, ident);
 			return true;
 		}
 	}
@@ -7437,35 +7436,35 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 	switch (def)
 	{
 		case BUILTIN_DEF_TIME:
-			expr_rewrite_to_string(expr, time_get());
+			expr_rewrite_const_string(expr, time_get());
 			return true;
 		case BUILTIN_DEF_DATE:
-			expr_rewrite_to_string(expr, date_get());
+			expr_rewrite_const_string(expr, date_get());
 			return true;
 		case BUILTIN_DEF_FILE:
 			if (context->call_env.current_function)
 			{
-				expr_rewrite_to_string(expr, context->call_env.current_function->unit->file->name);
+				expr_rewrite_const_string(expr, context->call_env.current_function->unit->file->name);
 				return true;
 			}
-			expr_rewrite_to_string(expr, context->compilation_unit->file->name);
+			expr_rewrite_const_string(expr, context->compilation_unit->file->name);
 			return true;
 		case BUILTIN_DEF_FILEPATH:
 			if (context->call_env.current_function)
 			{
-				expr_rewrite_to_string(expr, context->call_env.current_function->unit->file->full_path);
+				expr_rewrite_const_string(expr, context->call_env.current_function->unit->file->full_path);
 				return true;
 			}
-			expr_rewrite_to_string(expr, context->compilation_unit->file->full_path);
+			expr_rewrite_const_string(expr, context->compilation_unit->file->full_path);
 			return true;
 		case BUILTIN_DEF_MODULE:
 			if (context->original_module)
 			{
-				expr_rewrite_to_string(expr, context->original_module->name->module);
+				expr_rewrite_const_string(expr, context->original_module->name->module);
 			}
 			else
 			{
-				expr_rewrite_to_string(expr, context->compilation_unit->module->name->module);
+				expr_rewrite_const_string(expr, context->compilation_unit->module->name->module);
 			}
 			return true;
 		case BUILTIN_DEF_LINE:
@@ -7502,7 +7501,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 			switch (context->call_env.kind)
 			{
 				case CALL_ENV_GLOBAL_INIT:
-					expr_rewrite_to_string(expr, "<GLOBAL>");
+					expr_rewrite_const_string(expr, "<GLOBAL>");
 					return true;
 				case CALL_ENV_FUNCTION_STATIC:
 				case CALL_ENV_FUNCTION:
@@ -7515,14 +7514,14 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 						scratch_buffer_append(func_type->type->name);
 						scratch_buffer_append_char('.');
 						scratch_buffer_append(current_func->name);
-						expr_rewrite_to_string(expr, scratch_buffer_copy());
+						expr_rewrite_const_string(expr, scratch_buffer_copy());
 						return true;
 					}
-					expr_rewrite_to_string(expr, current_func->name);
+					expr_rewrite_const_string(expr, current_func->name);
 					return true;
 				}
 				case CALL_ENV_ATTR:
-					expr_rewrite_to_string(expr, "<attribute>");
+					expr_rewrite_const_string(expr, "<attribute>");
 					return true;
 			}
 			UNREACHABLE
@@ -7815,18 +7814,18 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, Toke
 		if (type_is_user_defined(type))
 		{
 			scratch_buffer_set_extern_decl_name(type->decl, true);
-			expr_rewrite_to_string(expr, scratch_buffer_copy());
+			expr_rewrite_const_string(expr, scratch_buffer_copy());
 		}
 		else
 		{
-			expr_rewrite_to_string(expr, type->name);
+			expr_rewrite_const_string(expr, type->name);
 		}
 		return;
 	}
 
 	if (name_type == TOKEN_CT_NAMEOF || type_is_builtin(type->type_kind))
 	{
-		expr_rewrite_to_string(expr, type->name);
+		expr_rewrite_const_string(expr, type->name);
 		return;
 	}
 	scratch_buffer_clear();
@@ -7838,7 +7837,7 @@ static inline void sema_expr_rewrite_to_type_nameof(Expr *expr, Type *type, Toke
 		scratch_buffer_append("::");
 	}
 	scratch_buffer_append(type->name);
-	expr_rewrite_to_string(expr, scratch_buffer_copy());
+	expr_rewrite_const_string(expr, scratch_buffer_copy());
 }
 
 static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
@@ -7914,19 +7913,19 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 		}
 RETURN_CT:
 		scratch_buffer_set_extern_decl_name(decl, true);
-		expr_rewrite_to_string(expr, scratch_buffer_to_string());
+		expr_rewrite_const_string(expr, scratch_buffer_to_string());
 		return true;
 	}
 	if (!decl->unit || name_type == TOKEN_CT_NAMEOF || decl_is_var_local(decl))
 	{
-		expr_rewrite_to_string(expr, decl->name);
+		expr_rewrite_const_string(expr, decl->name);
 		return true;
 	}
 	scratch_buffer_clear();
 	scratch_buffer_append(decl->unit->module->name->module);
 	scratch_buffer_append("::");
 	scratch_buffer_append(decl->name);
-	expr_rewrite_to_string(expr, scratch_buffer_copy());
+	expr_rewrite_const_string(expr, scratch_buffer_copy());
 	return true;
 }
 
@@ -8267,7 +8266,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		if (decl_cached)
 		{
 			expr->type = type_get_func_ptr(decl_cached->type);
-			expr_rewrite_to_const_ref(expr, decl_cached);
+			expr_rewrite_const_ref(expr, decl_cached);
 			return true;
 		}
 	}
@@ -8367,7 +8366,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 		vec_add(original->func_decl.generated_lambda, decl);
 	}
 	decl->resolve_status = RESOLVE_DONE;
-	expr_rewrite_to_const_ref(expr, decl);
+	expr_rewrite_const_ref(expr, decl);
 	return true;
 FAIL_NO_INFER:
 	SEMA_ERROR(expr, "Inferred lambda expressions cannot be used unless the type can be determined.");
@@ -8778,7 +8777,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 		SEMA_ERROR(expr, "Failed to stringify hash variable contents - they must be a single line and not exceed 255 characters.");
 		return false;
 	}
-	expr_rewrite_to_string(expr, desc);
+	expr_rewrite_const_string(expr, desc);
 	return true;
 }
 
