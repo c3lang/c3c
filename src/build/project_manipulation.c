@@ -267,6 +267,9 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	TARGET_VIEW_BOOL("Return structs on the stack", "x86-stack-struct-return");
 }
 
+
+
+#if FETCH_AVAILABLE
 void fetch_project(BuildOptions* options) 
 {
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON))
@@ -305,7 +308,7 @@ void fetch_project(BuildOptions* options)
 			printf("Fetching missing library '%s'...", dep);
 			fflush(stdout);
 
-			const char *error = vendor_fetch_single(dep, options->vendor_download_path);
+			const char* error = vendor_fetch_single(dep, options->vendor_download_path);
 
 			if (!error)
 			{
@@ -321,6 +324,12 @@ void fetch_project(BuildOptions* options)
 		}
 	}
 }
+#else
+void vendor_fetch(BuildOptions *options)
+{
+	error_exit("Error: project fetch only available when compiled with cURL.");
+}
+#endif
 
 
 void add_libraries_to_project_file(const char** libs, const char* target_name) {
