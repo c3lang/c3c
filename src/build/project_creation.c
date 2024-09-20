@@ -387,4 +387,6 @@ static void mkdir_or_fail(BuildOptions *build_options, const char *name)
 	{
 		delete_dir_and_exit(build_options, "Failed to create directory '%s'.", name);
 	}
+	const char *path = file_append_path_temp(name, ".gitkeep");
+	file_touch(path);
 }

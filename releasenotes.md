@@ -13,6 +13,7 @@
 - Support environment variable 'C3C_CC' to find the default C compiler.
 - Support casting bitstructs to bool.
 - Allow user-defined attributes to have typed parameters.
+- Add `.gitkeep` files to project subfolders.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

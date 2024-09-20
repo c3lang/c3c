@@ -17,6 +17,19 @@ static const char *current_arg;
 extern const char *llvm_version;
 extern const char *llvm_target;
 
+static const char *check_dir(const char *path);
+static inline bool at_end();
+static inline const char *next_arg();
+static inline bool next_is_opt();
+INLINE bool match_longopt(const char *name);
+static inline const char *match_argopt(const char *name);
+static inline bool match_shortopt(const char *name);
+void append_file(BuildOptions *build_options);
+static inline const char *match_argopt(const char *name);
+void append_arg(BuildOptions *build_options);
+static bool arg_match(const char *candidate);
+static void parse_optional_target(BuildOptions *options);
+
 char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 	[ANDROID_AARCH64] = "android-aarch64",
 	[ELF_AARCH64] = "elf-aarch64",
@@ -196,92 +209,6 @@ static void usage(void)
 	PRINTF("  --sanitize=<option>        - Enable sanitizer: address, memory, thread.");
 }
 
-
-static const char *check_dir(const char *path)
-{
-	static char *original_path = NULL;
-	if (!original_path)
-	{
-		original_path = getcwd(NULL, 0);
-	}
-	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory.", path);
-	if (!dir_change(original_path)) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
-	return path;
-}
-
-static inline bool at_end()
-{
-	return arg_index == arg_count - 1;
-}
-
-static inline const char *next_arg()
-{
-	assert(!at_end());
-	current_arg = args[++arg_index];
-	return current_arg;
-}
-
-static inline bool next_is_opt()
-{
-	return args[arg_index + 1][0] == '-';
-}
-
-INLINE bool match_longopt(const char *name)
-{
-	return str_eq(&current_arg[2], name);
-}
-
-static inline const char *match_argopt(const char *name)
-{
-	size_t len = strlen(name);
-	if (memcmp(&current_arg[2], name, len) != 0) return false;
-	if (current_arg[2 + len] != '=') return false;
-	return &current_arg[2 + len + 1];
-}
-
-static inline bool match_shortopt(const char *name)
-{
-	return strcmp(&current_arg[1], name) == 0;
-}
-
-
-void append_file(BuildOptions *build_options)
-{
-	if (vec_size(build_options->files) == MAX_COMMAND_LINE_FILES)
-	{
-		EOUTPUT("Max %d files may be specified.", MAX_COMMAND_LINE_FILES);
-		exit_compiler(EXIT_FAILURE);
-	}
-	vec_add(build_options->files, current_arg);
-}
-
-void append_arg(BuildOptions *build_options)
-{
-	if (vec_size(build_options->args) == MAX_COMMAND_LINE_RUN_ARGS)
-	{
-		EOUTPUT("Max %d args may be specified.", MAX_COMMAND_LINE_RUN_ARGS);
-		exit_compiler(EXIT_FAILURE);
-	}
-	vec_add(build_options->args, current_arg);
-}
-
-static bool arg_match(const char *candidate)
-{
-	return strcmp(current_arg, candidate) == 0;
-}
-
-static void parse_optional_target(BuildOptions *options)
-{
-	if (at_end() || next_is_opt())
-	{
-		options->target_select = NULL;
-	}
-	else
-	{
-		options->target_select = next_arg();
-	}
-}
-
 static void project_usage()
 {
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
@@ -311,8 +238,7 @@ static void parse_project_subcommand(BuildOptions *options)
 		return;
 	}
 
-	PROJECT_FAIL_WITH_ERR("Cannot process the unknown subcommand \"%s\".",
-		current_arg);
+	PROJECT_FAIL_WITH_ERR("Cannot process the unknown subcommand \"%s\".", current_arg);
 }
 
 static void parse_project_options(BuildOptions *options)
@@ -323,7 +249,6 @@ static void parse_project_options(BuildOptions *options)
 		project_usage();
 		return;
 	}
-
 	next_arg();
 	parse_project_subcommand(options);
 }
@@ -1335,4 +1260,90 @@ ArchOsTarget arch_os_target_from_string(const char *target)
 		}
 	}
 	return ARCH_OS_TARGET_DEFAULT;
+}
+
+// -- helpers
+
+static const char *check_dir(const char *path)
+{
+	static char *original_path = NULL;
+	if (!original_path)
+	{
+		original_path = getcwd(NULL, 0);
+	}
+	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory.", path);
+	if (!dir_change(original_path)) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
+	return path;
+}
+
+static inline bool at_end()
+{
+	return arg_index == arg_count - 1;
+}
+
+static inline const char *next_arg()
+{
+	assert(!at_end());
+	current_arg = args[++arg_index];
+	return current_arg;
+}
+
+static inline bool next_is_opt()
+{
+	return args[arg_index + 1][0] == '-';
+}
+
+INLINE bool match_longopt(const char *name)
+{
+	return str_eq(&current_arg[2], name);
+}
+
+static inline bool match_shortopt(const char *name)
+{
+	return str_eq(&current_arg[1], name);
+}
+
+void append_file(BuildOptions *build_options)
+{
+	if (vec_size(build_options->files) == MAX_COMMAND_LINE_FILES)
+	{
+		EOUTPUT("Max %d files may be specified.", MAX_COMMAND_LINE_FILES);
+		exit_compiler(EXIT_FAILURE);
+	}
+	vec_add(build_options->files, current_arg);
+}
+
+static inline const char *match_argopt(const char *name)
+{
+	size_t len = strlen(name);
+	if (memcmp(&current_arg[2], name, len) != 0) return false;
+	if (current_arg[2 + len] != '=') return false;
+	return &current_arg[2 + len + 1];
+}
+
+void append_arg(BuildOptions *build_options)
+{
+	if (vec_size(build_options->args) == MAX_COMMAND_LINE_RUN_ARGS)
+	{
+		EOUTPUT("Max %d args may be specified.", MAX_COMMAND_LINE_RUN_ARGS);
+		exit_compiler(EXIT_FAILURE);
+	}
+	vec_add(build_options->args, current_arg);
+}
+
+static bool arg_match(const char *candidate)
+{
+	return str_eq(current_arg, candidate);
+}
+
+static void parse_optional_target(BuildOptions *options)
+{
+	if (at_end() || next_is_opt())
+	{
+		options->target_select = NULL;
+	}
+	else
+	{
+		options->target_select = next_arg();
+	}
 }

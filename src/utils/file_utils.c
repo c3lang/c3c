@@ -499,6 +499,7 @@ const char *file_append_path_temp(const char *path, const char *name)
 	if (path[path_len - 1] == '/') goto CONCAT;
 	sprintf(path_buffer, "%s/%s", path, name);
 	path_buffer[name_len + path_len + 1] = 0;
+	return path_buffer;
 #endif
 CONCAT:
 	sprintf(path_buffer, "%s%s", path, name);
