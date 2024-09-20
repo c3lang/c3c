@@ -45,6 +45,7 @@
 - User defined attributes could not have more than 1 parameter due to bug.
 - Folding a constant array of structs at compile time would cause an assert.
 - Enum attributes would be overwritten by enum value attributes.
+- LLVM issue with try when bool is combined #1467
 
 ### Stdlib changes
 - Additional init functions for hashmap.

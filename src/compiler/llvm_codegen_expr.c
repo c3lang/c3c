@@ -6908,6 +6908,7 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 			Expr *link = exprs[i];
 			BEValue res;
 			llvm_emit_expr(c, &res, link);
+			llvm_value_rvalue(c, &res);
 			assert(llvm_value_is_bool(&res));
 			llvm_emit_cond_br(c, &res, next_block, fail_block);
 		}
