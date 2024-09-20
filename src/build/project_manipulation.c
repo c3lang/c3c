@@ -344,7 +344,7 @@ void fetch_project(BuildOptions* options)
 			}
 
 			vec_pop(deps);
-
+			break;
 		}
 	}
 }
