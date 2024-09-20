@@ -8,7 +8,7 @@
 #include <stdint.h>
 
 #define MAX_BUILD_LIB_DIRS 1024
-#define MAX_COMMAND_LINE_FILES 2048
+#define MAX_COMMAND_LINE_FILES 4096
 #define MAX_COMMAND_LINE_RUN_ARGS 2048
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
@@ -553,6 +553,7 @@ typedef struct
 	const char **source_dirs;
 	const char **test_source_dirs;
 	const char **sources;
+	const char **object_files;
 	const char **libdirs;
 	const char **libs;
 	const char **linker_libdirs;
@@ -719,7 +720,7 @@ extern const char *manifest_default_keys[][2];
 extern const int manifest_default_keys_count;
 extern const char *manifest_target_keys[][2];
 extern const int manifest_target_keys_count;
-extern char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
+extern const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 
 BuildOptions parse_arguments(int argc, const char *argv[]);
 ArchOsTarget arch_os_target_from_string(const char *target);

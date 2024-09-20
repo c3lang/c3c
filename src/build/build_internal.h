@@ -110,7 +110,6 @@ static const char *sanitize_modes[4] = {
 
 Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target);
-void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
 
 const char *get_string(const char *file, const char *category, JSONObject *table, const char *key,
 	const char *default_value);

@@ -405,7 +405,7 @@ void compiler_compile(void)
 	{
 		error_exit("Too many modules.");
 	}
-	if (module_count < 1)
+	if (module_count < 1 && !compiler.build.object_files)
 	{
 		error_exit("No module to compile.");
 	}
@@ -514,17 +514,19 @@ void compiler_compile(void)
 	free_arenas();
 
 	uint32_t output_file_count = vec_size(gen_contexts);
+	unsigned objfiles = vec_size(compiler.build.object_files);
 	unsigned cfiles = vec_size(compiler.build.csources);
 	unsigned cfiles_library = 0;
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
-	if (output_file_count + cfiles + cfiles_library > MAX_OUTPUT_FILES)
+	unsigned total_output = output_file_count + cfiles + cfiles_library + objfiles;
+	if (total_output > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
 	}
-	if (!output_file_count)
+	if (!total_output)
 	{
 		if (output_exe)
 		{
@@ -539,7 +541,7 @@ void compiler_compile(void)
 	}
 
 	CompileData *compile_data = ccalloc(sizeof(CompileData), output_file_count);
-	const char **obj_files = cmalloc(sizeof(char*) * (output_file_count + cfiles + cfiles_library));
+	const char **obj_files = cmalloc(sizeof(char*) * total_output);
 
 	if (cfiles)
 	{
@@ -553,6 +555,11 @@ void compiler_compile(void)
 	{
 		obj_file_next += compile_cfiles(lib->cc ? lib->cc : compiler.build.cc, lib->csources,
 		                                lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
+	}
+	for (unsigned i = 0; i < objfiles; i++)
+	{
+		obj_file_next[0] = compiler.build.object_files[i];
+		obj_file_next++;
 	}
 
 	Task **tasks = NULL;
@@ -594,7 +601,7 @@ void compiler_compile(void)
 		puts("# output-files-end");
 	}
 
-	output_file_count += cfiles + cfiles_library;
+	output_file_count += cfiles + cfiles_library + objfiles;
 	free(compile_data);
 	compiler_codegen_time = bench_mark();
 
@@ -743,7 +750,7 @@ void compiler_compile(void)
 	free(obj_files);
 }
 
-static const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, int suffix_count, bool error_on_mismatch)
+static const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch)
 {
 	const char **files = NULL;
 	FOREACH(const char *, name, dirs)
@@ -752,6 +759,16 @@ static const char **target_expand_source_names(const char *base_dir, const char*
 		INFO_LOG("Searching for sources in %s", name);
 		size_t name_len = strlen(name);
 		if (name_len < 1) goto INVALID_NAME;
+		if (object_list_ref && (str_has_suffix(name, ".o") || str_has_suffix(name, ".obj")))
+		{
+			if (!file_exists(name))
+			{
+				if (!error_on_mismatch) continue;
+				error_exit("The object file '%s' could not be found.", name);
+			}
+			vec_add(*object_list_ref, name);
+			continue;
+		}
 		if (name[name_len - 1] == '*')
 		{
 			if (name_len == 1 || name[name_len - 2] == '/')
@@ -791,7 +808,7 @@ INLINE void expand_csources(const char *base_dir, const char **source_dirs, cons
 	if (source_dirs)
 	{
 		static const char* c_suffix_list[3] = { ".c" };
-		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, 1, false);
+		*sources_ref = target_expand_source_names(base_dir, source_dirs, c_suffix_list, NULL, 1, false);
 	}
 }
 
@@ -1287,10 +1304,10 @@ const char *compiler_date_to_iso(void)
 void compile()
 {
 	symtab_init(compiler.build.symtab_size);
-	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, 3, true);
+	compiler.build.sources = target_expand_source_names(NULL, compiler.build.source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
 	if (compiler.build.testing && compiler.build.test_source_dirs)
 	{
-		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, 3, true);
+		const char **test_sources = target_expand_source_names(NULL, compiler.build.test_source_dirs, c3_suffix_list, &compiler.build.object_files, 3, true);
 		FOREACH(const char *, file, test_sources) vec_add(compiler.build.sources, file);
 	}
 	expand_csources(NULL, compiler.build.csource_dirs, &compiler.build.csources);
@@ -1362,7 +1379,7 @@ void compile()
 	type_init_cint();
 	compiler_init_time = bench_mark();
 
-	if (!vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
+	if (!vec_size((compiler.build.object_files)) && !vec_size(compiler.build.sources) && !compiler.build.read_stdin) error_exit("No files to compile.");
 
 	if (compiler.build.lex_only)
 	{

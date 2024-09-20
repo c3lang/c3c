@@ -29,42 +29,13 @@ static inline const char *match_argopt(const char *name);
 void append_arg(BuildOptions *build_options);
 static bool arg_match(const char *candidate);
 static void parse_optional_target(BuildOptions *options);
+static void add_linker_arg(BuildOptions *options, const char *arg);
+static void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
+static void print_all_targets(void);
+static int parse_multi_option(const char *start, unsigned count, const char **elements);
 
-char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
-	[ANDROID_AARCH64] = "android-aarch64",
-	[ELF_AARCH64] = "elf-aarch64",
-	[ELF_RISCV32] = "elf-riscv32",
-	[ELF_RISCV64] = "elf-riscv64",
-	[ELF_X86] = "elf-x86",
-	[ELF_X64] = "elf-x64",
-	[ELF_XTENSA] = "elf-xtensa",
-	[FREEBSD_X86] = "freebsd-x86",
-	[FREEBSD_X64] = "freebsd-x64",
-	[IOS_AARCH64] = "ios-aarch64",
-	[LINUX_AARCH64] = "linux-aarch64",
-	[LINUX_RISCV32] = "linux-riscv32",
-	[LINUX_RISCV64] = "linux-riscv64",
-	[LINUX_X86] = "linux-x86",
-	[LINUX_X64] = "linux-x64",
-	[MACOS_AARCH64] = "macos-aarch64",
-	[MACOS_X64] = "macos-x64",
-	[MCU_X86] = "mcu-x86",
-	[MINGW_X64] = "mingw-x64",
-	[NETBSD_X86] = "netbsd-x86",
-	[NETBSD_X64] = "netbsd-x64",
-	[OPENBSD_X86] = "openbsd-x86",
-	[OPENBSD_X64] = "openbsd-x64",
-	[WASM32] = "wasm32",
-	[WASM64] = "wasm64",
-	[WINDOWS_AARCH64] = "windows-aarch64",
-	[WINDOWS_X64] = "windows-x64",
-};
-
-const char *trust_level[3] = {
-	[TRUST_NONE] = "none",
-	[TRUST_INCLUDE] = "include",
-	[TRUST_FULL] = "full",
-};
+const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
+const char *trust_level[3];
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
@@ -389,14 +360,6 @@ static void parse_command(BuildOptions *options)
 	FAIL_WITH_ERR("Cannot process the unknown command \"%s\".", current_arg);
 }
 
-static void print_all_targets(void)
-{
-	PRINTF("Available targets:");
-	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
-	{
-		PRINTF("   %s", arch_os_target[i]);
-	}
-}
 
 static void print_version(void)
 {
@@ -425,59 +388,6 @@ static void print_version(void)
 	PRINTF("LLVM version:              %s", llvm_version);
 	PRINTF("LLVM default target:       %s", llvm_target);
 #endif 
-}
-
-static void add_linker_arg(BuildOptions *options, const char *arg)
-{
-	if (options->linker_arg_count == MAX_BUILD_LIB_DIRS)
-	{
-		error_exit("Too many linker arguments are given, more than %d\n", MAX_BUILD_LIB_DIRS);
-	}
-	options->linker_args[options->linker_arg_count++] = arg;
-}
-
-/**
- * Update feature flags, adding to one list and removing it from the other.
- * @param flags the "add" flags
- * @param removed_flags the "undef" flags
- * @param arg the argument to add or undef
- * @param add true if we add, false to undef
- */
-void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add)
-{
-	// We keep two lists "remove" and "add" lists:
-	const char ***to_remove_from = add ? removed_flags : flags;
-
-	// Remove from opposite list using string equality
-	// More elegant would be using a Set or Map, but that's overkill
-	// for something that's likely just 1-2 values.
-	FOREACH_IDX(i, const char *, value, *to_remove_from)
-	{
-		if (str_eq(value, arg))
-		{
-			vec_erase_at(*to_remove_from, i);
-			break;
-		}
-	}
-
-	// First we check that it's not in the list
-	const char ***to_add_to_ref = add ? flags : removed_flags;
-	FOREACH(const char *, value, *to_add_to_ref)
-	{
-		// If we have a match, we don't add it.
-		if (str_eq(value, arg)) return;
-	}
-
-	// No match, so add it.
-	vec_add(*to_add_to_ref, arg);
-}
-
-static int parse_multi_option(const char *start, unsigned count, const char **elements)
-{
-	const char *arg = current_arg;
-	int select = str_findlist(start, count, elements);
-	if (select < 0) error_exit("error: %.*s invalid option '%s' given.", (int)(start - arg), start, arg);
-	return select;
 }
 
 static void parse_option(BuildOptions *options)
@@ -1347,3 +1257,102 @@ static void parse_optional_target(BuildOptions *options)
 		options->target_select = next_arg();
 	}
 }
+
+static void add_linker_arg(BuildOptions *options, const char *arg)
+{
+	if (options->linker_arg_count == MAX_BUILD_LIB_DIRS)
+	{
+		error_exit("Too many linker arguments are given, more than %d\n", MAX_BUILD_LIB_DIRS);
+	}
+	options->linker_args[options->linker_arg_count++] = arg;
+}
+
+/**
+ * Update feature flags, adding to one list and removing it from the other.
+ * @param flags the "add" flags
+ * @param removed_flags the "undef" flags
+ * @param arg the argument to add or undef
+ * @param add true if we add, false to undef
+ */
+static void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add)
+{
+	// We keep two lists "remove" and "add" lists:
+	const char ***to_remove_from = add ? removed_flags : flags;
+
+	// Remove from opposite list using string equality
+	// More elegant would be using a Set or Map, but that's overkill
+	// for something that's likely just 1-2 values.
+	FOREACH_IDX(i, const char *, value, *to_remove_from)
+	{
+		if (str_eq(value, arg))
+		{
+			vec_erase_at(*to_remove_from, i);
+			break;
+		}
+	}
+
+	// First we check that it's not in the list
+	const char ***to_add_to_ref = add ? flags : removed_flags;
+	FOREACH(const char *, value, *to_add_to_ref)
+	{
+		// If we have a match, we don't add it.
+		if (str_eq(value, arg)) return;
+	}
+
+	// No match, so add it.
+	vec_add(*to_add_to_ref, arg);
+}
+
+static void print_all_targets(void)
+{
+	PRINTF("Available targets:");
+	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+	{
+		PRINTF("   %s", arch_os_target[i]);
+	}
+}
+
+static int parse_multi_option(const char *start, unsigned count, const char **elements)
+{
+	const char *arg = current_arg;
+	int select = str_findlist(start, count, elements);
+	if (select < 0) error_exit("error: %.*s invalid option '%s' given.", (int)(start - arg), start, arg);
+	return select;
+}
+
+const char *trust_level[3] = {
+		[TRUST_NONE] = "none",
+		[TRUST_INCLUDE] = "include",
+		[TRUST_FULL] = "full",
+};
+
+const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
+		[ANDROID_AARCH64] = "android-aarch64",
+		[ELF_AARCH64] = "elf-aarch64",
+		[ELF_RISCV32] = "elf-riscv32",
+		[ELF_RISCV64] = "elf-riscv64",
+		[ELF_X86] = "elf-x86",
+		[ELF_X64] = "elf-x64",
+		[ELF_XTENSA] = "elf-xtensa",
+		[FREEBSD_X86] = "freebsd-x86",
+		[FREEBSD_X64] = "freebsd-x64",
+		[IOS_AARCH64] = "ios-aarch64",
+		[LINUX_AARCH64] = "linux-aarch64",
+		[LINUX_RISCV32] = "linux-riscv32",
+		[LINUX_RISCV64] = "linux-riscv64",
+		[LINUX_X86] = "linux-x86",
+		[LINUX_X64] = "linux-x64",
+		[MACOS_AARCH64] = "macos-aarch64",
+		[MACOS_X64] = "macos-x64",
+		[MCU_X86] = "mcu-x86",
+		[MINGW_X64] = "mingw-x64",
+		[NETBSD_X86] = "netbsd-x86",
+		[NETBSD_X64] = "netbsd-x64",
+		[OPENBSD_X86] = "openbsd-x86",
+		[OPENBSD_X64] = "openbsd-x64",
+		[WASM32] = "wasm32",
+		[WASM64] = "wasm64",
+		[WINDOWS_AARCH64] = "windows-aarch64",
+		[WINDOWS_X64] = "windows-x64",
+};
+
