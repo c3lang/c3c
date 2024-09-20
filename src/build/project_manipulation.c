@@ -290,6 +290,30 @@ void fetch_project(BuildOptions* options)
 
 	const char** libdirs = get_project_dependency_directories();
 	const char** deps = get_project_dependencies();
+	const char *filename;
+	JSONObject *project_json = read_project(&filename);
+
+	JSONObject *targets_json = json_map_get(project_json, "targets");
+
+	if (targets_json && targets_json->type == J_OBJECT)
+	{
+
+		FOREACH_IDX(i, JSONObject *, target, targets_json->members)
+		{
+			const char *key = targets_json->keys[i];
+			if (target->type != J_OBJECT)
+			{
+				error_exit("Invalid data in target '%s'", key);
+			}
+
+			const char** target_deps = get_optional_string_array(filename, key, target, "dependencies");
+
+			FOREACH(const char*, dep, target_deps) {
+				vec_add(deps, dep);
+			}
+		}
+		
+	}
 
 	// dependency check tree
 	while (vec_size(deps) > 0)
