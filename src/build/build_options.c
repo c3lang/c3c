@@ -188,6 +188,7 @@ static void project_usage()
 	PRINTF("Project Subcommands:");
 	PRINTF("  view                                          view the current projects structure");
 	PRINTF("  add-target <name>  <target_type>              add a new target to the project");
+	PRINTF("  fetch              							fetch missing project libraries");
 }
 
 static void parse_project_subcommand(BuildOptions *options)
