@@ -5,7 +5,7 @@ const char** get_project_dependency_directories();
 
 const char** get_project_dependencies();
 
-void print_vec(const char *header, const char **vec, bool opt);
+static void print_vec(const char *header, const char **vec, bool opt);
 
 void add_libraries_to_project_file(const char** libs, const char* target_name);
 
