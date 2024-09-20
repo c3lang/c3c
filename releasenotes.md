@@ -46,6 +46,7 @@
 - Folding a constant array of structs at compile time would cause an assert.
 - Enum attributes would be overwritten by enum value attributes.
 - LLVM issue with try when bool is combined #1467
+- Segfault using ternary with no assignment #1468
 
 ### Stdlib changes
 - Additional init functions for hashmap.
