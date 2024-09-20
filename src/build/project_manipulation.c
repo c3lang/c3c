@@ -325,7 +325,7 @@ void fetch_project(BuildOptions* options)
 	}
 }
 #else
-void vendor_fetch(BuildOptions *options)
+void fetch_project(BuildOptions* options) 
 {
 	error_exit("Error: project fetch only available when compiled with cURL.");
 }
