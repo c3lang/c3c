@@ -16,7 +16,8 @@
 - Add `.gitkeep` files to project subfolders.
 - Add `env::COMPILER_BUILD_HASH` and `env::COMPILER_BUILD_DATE`
 - Support linking .o files in compilation command. #1417
- 
+- Slicing constant strings at compile time works.
+
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
 - Generic methods were incorrectly registered as functions, leading to naming collisions. #1402

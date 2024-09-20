@@ -33,7 +33,6 @@ static inline bool sema_constant_fold_ops(Expr *expr);
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool check_valid);
 static inline bool sema_expr_analyse_pointer_offset(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, CheckType check);
-
 static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref, CheckType check);
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error);
@@ -3296,8 +3295,23 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 			break;
 	}
 	ArrayIndex length = sema_len_from_expr(subscripted);
-	if (!sema_expr_analyse_range(context, &expr->slice_expr.range, subscripted->type, length, env)) return false;
+	Range *range = &expr->slice_expr.range;
+	if (!sema_expr_analyse_range(context, range, subscripted->type, length, env)) return false;
 
+	if (check == CHECK_VALUE && sema_cast_const(subscripted) && range->range_type == RANGE_CONST_RANGE)
+	{
+		switch (subscripted->const_expr.const_kind)
+		{
+			case CONST_STRING:
+			{
+				const char *data = str_copy(subscripted->const_expr.bytes.ptr + range->start_index, range->len_index);
+				expr_rewrite_const_string(expr, data);
+				return true;
+			}
+			default:
+				break;
+		}
+	}
 	Expr *current_expr = subscripted;
 	Type *inner_type = sema_subscript_find_indexable_type_recursively(&type, &current_expr);
 
