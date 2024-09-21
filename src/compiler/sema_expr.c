@@ -3273,8 +3273,9 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, T
 		default:
 			UNREACHABLE
 	}
-
 }
+
+
 static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, CheckType check)
 {
 	ASSERT_SPAN(expr, expr->expr_kind == EXPR_SLICE);
@@ -3314,7 +3315,43 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 				expr_rewrite_const_string(expr, data);
 				return true;
 			}
-			default:
+			case CONST_BYTES:
+			{
+				char *data = range->len_index ? malloc_arena(range->len_index) : NULL;
+				if (data)
+				{
+					memcpy(data, subscripted->const_expr.bytes.ptr + range->start_index, range->len_index);
+				}
+				subscripted->const_expr.bytes.ptr = data;
+				subscripted->const_expr.bytes.len = range->len_index;
+				if (type->type_kind != TYPE_SLICE)
+				{
+					Type *index = type_get_indexed_type(type);
+					assert(index);
+					original_type = type_get_slice(index);
+				}
+				subscripted->type = original_type;
+				expr_replace(expr, subscripted);
+				return true;
+			}
+			case CONST_UNTYPED_LIST:
+				assert(!type_is_arraylike(subscripted->type));
+				vec_erase_front(subscripted->const_expr.untyped_list, range->start_index);
+				vec_resize(subscripted->const_expr.untyped_list, range->len_index);
+				expr_replace(expr, subscripted);
+				return true;
+			case CONST_INITIALIZER:
+			case CONST_POINTER:
+				// TODO slice
+				break;
+			case CONST_FLOAT:
+			case CONST_INTEGER:
+			case CONST_BOOL:
+			case CONST_ENUM:
+			case CONST_ERR:
+			case CONST_TYPEID:
+			case CONST_REF:
+			case CONST_MEMBER:
 				break;
 		}
 	}

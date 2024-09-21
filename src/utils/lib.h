@@ -277,6 +277,21 @@ static inline void vec_pop(void *vec)
 	header[-1].size--;
 }
 
+static inline void vec_erase_front(void  *vec, unsigned to_erase)
+{
+	if (!to_erase) return;
+	assert(vec);
+	unsigned size = vec_size(vec);
+	assert(size >= to_erase);
+	void **vecptr = (void**)vec;
+	for (int i = to_erase; i < size; i++)
+	{
+		vecptr[i - to_erase] = vecptr[i];
+	}
+	VHeader_ *header = vec;
+	header[-1].size -= to_erase;
+}
+
 static inline void vec_erase_at(void *vec, unsigned i)
 {
 	assert(vec);
