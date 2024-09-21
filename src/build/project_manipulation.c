@@ -323,7 +323,7 @@ void fetch_project(BuildOptions* options)
 		{
 			
 			const char* dep = deps[vec_size(deps)-1];
-			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep)))) 
+			if(file_exists(file_append_path(dir, str_printf("%s.c3l", dep)))) 
 			{
 				vec_pop(deps);
 				break;
