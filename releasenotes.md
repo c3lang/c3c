@@ -17,6 +17,7 @@
 - Add `env::COMPILER_BUILD_HASH` and `env::COMPILER_BUILD_DATE`
 - Support linking .o files in compilation command. #1417
 - Slicing constant strings at compile time works.
+- Allow the "self" parameter to be $/# for macro methods.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
@@ -48,6 +49,7 @@
 - LLVM issue with try when bool is combined #1467.
 - Segfault using ternary with no assignment #1468.
 - Inner types make some errors misleading #1471.
+- Fix bug when passing a type as a compile time value.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

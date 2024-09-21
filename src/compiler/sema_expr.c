@@ -1231,7 +1231,8 @@ INLINE bool sema_arg_is_pass_through_ref(Expr *expr)
 	return decl->var.kind == VARDECL_PARAM_REF;
 }
 
-static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param, Decl *definition, bool *optional_ref, bool *no_match_ref, bool macro)
+static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param, Decl *definition, bool *optional_ref,
+                                   bool *no_match_ref, bool macro, bool is_method_target)
 {
 	VarDeclKind kind = param->var.kind;
 	Type *type = param->type;
@@ -1337,7 +1338,11 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			}
 			if (!sema_cast_const(arg) && !expr_is_runtime_const(arg))
 			{
-				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal paramter?");
+				if (is_method_target)
+				{
+					RETURN_SEMA_FUNC_ERROR(definition, arg, "This method is only valid on a compile time constant value.");
+				}
+				RETURN_SEMA_FUNC_ERROR(definition, arg, "A compile time parameter must always be a constant, did you mistake it for a normal parameter?");
 			}
 			break;
 		case VARDECL_PARAM_CT_TYPE:
@@ -1385,7 +1390,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 			                                                                  : call->span.row;
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
-			                                 callee->macro);
+			                                 callee->macro, false);
 		SCOPE_END;
 		sema_context_destroy(&default_context);
 		if (no_match_ref && *no_match_ref) return true;
@@ -1403,7 +1408,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 			case VARDECL_PARAM_EXPR:
 				*expr_ref = arg;
 				return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
-				                              callee->macro);
+				                              callee->macro, false);
 			default:
 				break;
 		}
@@ -1415,7 +1420,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	function_scope_arg->default_arg_expr.loc = callee->call_location;
 	*expr_ref = function_scope_arg;
 	return sema_analyse_parameter(context, function_scope_arg, param, callee->definition, optional, no_match_ref,
-	                              callee->macro);
+	                              callee->macro, false);
 }
 
 
@@ -1647,7 +1652,8 @@ SPLAT_NORMAL:;
 			last_named_arg = arg;
 
 			actual_args[index] = arg->named_argument_expr.value;
-			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref, callee->macro)) return false;
+			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref,
+			                            callee->macro, false)) return false;
 			continue;
 		}
 		if (call->call_expr.va_is_splat)
@@ -1714,7 +1720,7 @@ SPLAT_NORMAL:;
 			vec_add(call->call_expr.varargs, arg);
 			continue;
 		}
-		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro)) return false;
+		if (!sema_analyse_parameter(context, arg, params[i], callee->definition, optional, no_match_ref, callee->macro, callee->struct_var && i == 0)) return false;
 		actual_args[i] = arg;
 	}
 	if (num_args) last = args[num_args - 1];
@@ -2381,7 +2387,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	{
 		Decl *param = params[i];
 		Expr *expr = args[i];
-		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, NULL, true))
+		if (!sema_analyse_parameter(macro_context, expr, param, body_decl, &has_optional_arg, NULL, true, false))
 		{
 			return false;
 		}
@@ -9131,6 +9137,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	{
 		if (!sema_analyse_inferred_expr(context, to, expr)) return false;
 	}
+	if (!sema_cast_rvalue(context, expr)) return false;
 	Type *to_canonical = to ? to->canonical : NULL;
 	Type *rhs_type = expr->type;
 	Type *rhs_type_canonical = rhs_type->canonical;
@@ -9145,7 +9152,6 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 		}
 	}
 	// Let's see if we have a fixed slice.
-
 	if (to && type_is_arraylike(to_canonical) && expr->expr_kind == EXPR_SLICE && rhs_type_canonical->type_kind == TYPE_SLICE)
 	{
 		Type *element = type_get_indexed_type(rhs_type_canonical)->canonical;

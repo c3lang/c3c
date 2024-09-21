@@ -1150,15 +1150,17 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				if (!is_macro) param->var.kind = VARDECL_PARAM;
 				break;
 			case VARDECL_PARAM:
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
 				inferred_type = method_parent->type;
 				break;
+			case VARDECL_PARAM_CT_TYPE:
+				RETURN_SEMA_ERROR(param, "Expected a parameter of type %s here.", method_parent->type);
 			default:
-				goto CHECK_PARAMS;
+				UNREACHABLE
 		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 	}
-
-	CHECK_PARAMS:
 
 	// Check parameters
 	for (unsigned i = 0; i < param_count; i++)
@@ -3448,12 +3450,12 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	Decl *first_param = decl->func_decl.signature.params[0];
 	if (!first_param)
 	{
-		SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
+		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
 		return false;
 	}
 	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical, false)) return false;
 
-	if (first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
+	if (first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
