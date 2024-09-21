@@ -70,10 +70,13 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_BOOL:
 		case CONST_ENUM:
 		case CONST_ERR:
-		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
 		case CONST_REF:
+			return -1;
+		case CONST_POINTER:
+			if (type_flatten(expr->type)->type_kind == TYPE_SLICE) return 0;
+			return -1;
 		case CONST_BYTES:
 		case CONST_STRING:
 			return expr->const_expr.bytes.len;

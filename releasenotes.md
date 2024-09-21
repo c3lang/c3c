@@ -16,7 +16,7 @@
 - Add `.gitkeep` files to project subfolders.
 - Add `env::COMPILER_BUILD_HASH` and `env::COMPILER_BUILD_DATE`
 - Support linking .o files in compilation command. #1417
-- Slicing constant strings at compile time works.
+- Slicing constant strings and bytes at compile time works.
 - Allow the "self" parameter to be $/# for macro methods.
 - Support compile time slicing of untyped lists.
 
