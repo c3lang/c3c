@@ -369,24 +369,30 @@ typedef struct
 
 typedef struct
 {
-	TypeSize size;
 	Decl **members;
-	DeclId padded_decl_id;
-	StructIndex union_rep;
-	AlignSize padding : 16;
+	DeclId parent;
+	union
+	{
+		struct
+		{
+			TypeSize size;
+			DeclId padded_decl_id;
+			StructIndex union_rep;
+			AlignSize padding : 16;
+		};
+		struct
+		{
+			TypeInfo *container_type;
+			bool msb0 : 1;
+			bool big_endian : 1;
+			bool little_endian : 1;
+			bool overlap : 1;
+			bool consecutive : 1;
+		};
+	};
 } StructDecl;
 
 
-typedef struct
-{
-	TypeInfo *base_type;
-	Decl **members;
-	bool msb0 : 1;
-	bool big_endian : 1;
-	bool little_endian : 1;
-	bool overlap : 1;
-	bool consecutive : 1;
-} BitStructDecl;
 
 typedef struct VarDecl_
 {
@@ -624,11 +630,10 @@ typedef struct Decl_
 			Decl **methods;
 			union
 			{
-				BitStructDecl bitstruct;
 				// Enums and Fault
 				EnumDecl enums;
 				TypeInfo *distinct;
-				// Unions, Struct use strukt
+				// Unions, Struct, Bitstruct use strukt
 				StructDecl strukt;
 				Decl **interface_methods;
 			};
@@ -2413,6 +2418,7 @@ void type_append_name_to_scratch(Type *type);
 TypeCmpResult type_is_pointer_equivalent(SemaContext *context, Type *to_pointer, Type *from_pointer, bool flatten_distinct);
 TypeCmpResult type_array_element_is_equivalent(SemaContext *context, Type *element1, Type *element2, bool is_explicit);
 FunctionPrototype *type_get_resolved_prototype(Type *type);
+bool type_is_inner_type(Type *type);
 const char *type_to_error_string(Type *type);
 const char *type_quoted_error_string(Type *type);
 INLINE bool type_may_negate(Type *type);

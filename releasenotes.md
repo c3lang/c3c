@@ -20,6 +20,7 @@
 - Add `project fetch` subcommand to fetch missing project dependencies (general and target specific)
 - Ability of `vendor-fetch` to download the dependencies in the first specified path `dependencies-search-path`
 - Ability of `vendor-fetch` to register the fetched dependencies in the project file.
+- Allow the "self" parameter to be $/# for macro methods.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
@@ -48,7 +49,11 @@
 - User defined attributes could not have more than 1 parameter due to bug.
 - Folding a constant array of structs at compile time would cause an assert.
 - Enum attributes would be overwritten by enum value attributes.
-- LLVM issue with try when bool is combined #1467
+- LLVM issue with try when bool is combined #1467.
+- Segfault using ternary with no assignment #1468.
+- Inner types make some errors misleading #1471.
+- Fix bug when passing a type as a compile time value.
+- Fix bug due to enum associated values not being checked for liveness.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

@@ -1456,10 +1456,11 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				member = decl_new_with_type(symstr(c), c->span, decl_kind);
 				advance_and_verify(c, TOKEN_IDENT);
 			}
+			member->strukt.parent = declid(parent);
 			if (decl_kind == DECL_BITSTRUCT)
 			{
 				TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
-				ASSIGN_TYPE_OR_RET(member->bitstruct.base_type, parse_type(c), poisoned_decl);
+				ASSIGN_TYPE_OR_RET(member->strukt.container_type, parse_type(c), poisoned_decl);
 				if (!parse_attributes_for_global(c, member)) return decl_poison(parent);
 				if (!parse_bitstruct_body(c, member)) return decl_poison(parent);
 			}
@@ -1631,7 +1632,7 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		{
 			if (!is_consecutive)
 			{
-				if (decl->bitstruct.members)
+				if (decl->strukt.members)
 				{
 					RETURN_PRINT_ERROR_AT(false, member_decl, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either add a range to this member or remove ranges from the other member(s).");
 				}
@@ -1641,10 +1642,10 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 			if (!parse_attributes(c, &member_decl->attributes, NULL, NULL, &is_cond)) return false;
 			member_decl->is_cond = is_cond;
 			CONSUME_OR_RET(TOKEN_EOS, false);
-			unsigned index = vec_size(decl->bitstruct.members);
+			unsigned index = vec_size(decl->strukt.members);
 			member_decl->var.start_bit = index;
 			member_decl->var.end_bit = index;
-			vec_add(decl->bitstruct.members, member_decl);
+			vec_add(decl->strukt.members, member_decl);
 			continue;
 		}
 		CONSUME_OR_RET(TOKEN_COLON, false);
@@ -1666,9 +1667,9 @@ static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl)
 		{
 			RETURN_PRINT_ERROR_AT(false, member_decl->var.start, "Bitstructs either have bit ranges for all members, or no members have ranges – mixing is not permitted. Either remove this range, or add ranges to all other members.");
 		}
-		vec_add(decl->bitstruct.members, member_decl);
+		vec_add(decl->strukt.members, member_decl);
 	}
-	decl->bitstruct.consecutive = is_consecutive;
+	decl->strukt.consecutive = is_consecutive;
 	return true;
 }
 
@@ -1720,7 +1721,7 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
 
-	ASSIGN_TYPE_OR_RET(decl->bitstruct.base_type, parse_type(c), poisoned_decl);
+	ASSIGN_TYPE_OR_RET(decl->strukt.container_type, parse_type(c), poisoned_decl);
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 

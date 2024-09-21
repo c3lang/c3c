@@ -459,7 +459,7 @@ RETRY:;
 			return max;
 		}
 		case TYPE_BITSTRUCT:
-			type = type->decl->bitstruct.base_type->type;
+			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -744,7 +744,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		if (member->name) sema_decl_stack_push(member);
 	}
 
-	bool is_consecutive = parent->bitstruct.consecutive;
+	bool is_consecutive = parent->strukt.consecutive;
 
 	// Resolve the type.
 	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
@@ -762,11 +762,11 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 	}
 
 	// Grab the underlying bit type size.
-	BitSize bits = type_size(parent->bitstruct.base_type->type) * (BitSize)8;
+	BitSize bits = type_size(parent->strukt.container_type->type) * (BitSize)8;
 
 	if (bits > MAX_BITSTRUCT)
 	{
-		SEMA_ERROR(parent->bitstruct.base_type, "Bitstruct size may not exceed %d bits.", MAX_BITSTRUCT);
+		SEMA_ERROR(parent->strukt.container_type, "Bitstruct size may not exceed %d bits.", MAX_BITSTRUCT);
 		return false;
 	}
 	Int max_bits = (Int) { .type = TYPE_I64, .i = { .low =  bits } };
@@ -877,7 +877,7 @@ AFTER_BIT_CHECK:
 	// Check for overlap
 	if (!allow_overlap)
 	{
-		Decl **members = parent->bitstruct.members;
+		Decl **members = parent->strukt.members;
 		for (unsigned i = 0; i < index; i++)
 		{
 			Decl *other_member = members[i];
@@ -1049,16 +1049,16 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	DEBUG_LOG("Beginning analysis of %s.", decl->name ? decl->name : ".anon");
-	if (!sema_resolve_type_info(context, decl->bitstruct.base_type, RESOLVE_TYPE_DEFAULT)) return false;
-	Type *type = decl->bitstruct.base_type->type->canonical;
+	if (!sema_resolve_type_info(context, decl->strukt.container_type, RESOLVE_TYPE_DEFAULT)) return false;
+	Type *type = decl->strukt.container_type->type->canonical;
 	Type *base_type = type->type_kind == TYPE_ARRAY ? type->array.base : type;
 	if (!type_is_integer(base_type))
 	{
-		SEMA_ERROR(decl->bitstruct.base_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
-				   type_quoted_error_string(decl->bitstruct.base_type->type));
+		SEMA_ERROR(decl->strukt.container_type, "The type of the bitstruct cannot be %s but must be an integer or an array of integers.",
+		           type_quoted_error_string(decl->strukt.container_type->type));
 		return false;
 	}
-	Decl **members = decl->bitstruct.members;
+	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
 
 	Decl **state = decl->name ? sema_decl_stack_store() : NULL;
@@ -1068,7 +1068,7 @@ static bool sema_analyse_bitstruct(SemaContext *context, Decl *decl, bool *erase
 		Decl *member = members[i];
 		if (!decl_ok(member)) goto ERROR;
 		bool erase_decl_member = false;
-		if (!sema_analyse_bitstruct_member(context, decl, member, i, decl->bitstruct.overlap, &erase_decl_member)) goto ERROR;
+		if (!sema_analyse_bitstruct_member(context, decl, member, i, decl->strukt.overlap, &erase_decl_member)) goto ERROR;
 		if (erase_decl_member)
 		{
 			vec_erase_at(members, i);
@@ -1150,15 +1150,17 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				if (!is_macro) param->var.kind = VARDECL_PARAM;
 				break;
 			case VARDECL_PARAM:
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
 				inferred_type = method_parent->type;
 				break;
+			case VARDECL_PARAM_CT_TYPE:
+				RETURN_SEMA_ERROR(param, "Expected a parameter of type %s here.", method_parent->type);
 			default:
-				goto CHECK_PARAMS;
+				UNREACHABLE
 		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 	}
-
-	CHECK_PARAMS:
 
 	// Check parameters
 	for (unsigned i = 0; i < param_count; i++)
@@ -2735,26 +2737,26 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_naked = true;
 			break;
 		case ATTRIBUTE_OVERLAP:
-			decl->bitstruct.overlap = true;
+			decl->strukt.overlap = true;
 			break;
 		case ATTRIBUTE_DYNAMIC:
 			decl->func_decl.attr_dynamic = true;
 			break;
 		case ATTRIBUTE_BIGENDIAN:
-			if (decl->bitstruct.little_endian)
+			if (decl->strukt.little_endian)
 			{
 				SEMA_ERROR(attr, "Attribute cannot be combined with @littleendian");
 				return decl_poison(decl);
 			}
-			decl->bitstruct.big_endian = true;
+			decl->strukt.big_endian = true;
 			break;
 		case ATTRIBUTE_LITTLEENDIAN:
-			if (decl->bitstruct.big_endian)
+			if (decl->strukt.big_endian)
 			{
 				SEMA_ERROR(attr, "Attribute cannot be combined with @bigendian");
 				return decl_poison(decl);
 			}
-			decl->bitstruct.little_endian = true;
+			decl->strukt.little_endian = true;
 			break;
 		case ATTRIBUTE_PACKED:
 			decl->is_packed = true;
@@ -3448,12 +3450,12 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	Decl *first_param = decl->func_decl.signature.params[0];
 	if (!first_param)
 	{
-		SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
+		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
 		return false;
 	}
 	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical, false)) return false;
 
-	if (first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
+	if (first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}

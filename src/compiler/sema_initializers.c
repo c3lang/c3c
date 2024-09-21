@@ -121,7 +121,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	bool optional = false;
 
 	bool is_bitstruct = assigned->decl_kind == DECL_BITSTRUCT;
-	if (is_bitstruct && assigned->bitstruct.overlap)
+	if (is_bitstruct && assigned->strukt.overlap)
 	{
 		if (vec_size(assigned->strukt.members) > 1 && vec_size(elements) > 1)
 		{

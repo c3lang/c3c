@@ -111,6 +111,10 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 	if (!rule)
 	{
 		if (is_silent) return false;
+		if (type_is_inner_type(cc->to_type))
+		{
+			RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to the inner type %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
+		}
 		RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 	}
 
@@ -663,6 +667,24 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 {
 	Expr *expr = cc->expr;
 	Type *to = cc->to_type;
+	if (type_is_inner_type(to))
+	{
+		if (may_cast_explicit)
+		{
+			RETURN_CAST_ERROR(expr,
+			                  "Implicitly casting %s to the inner type %s is not permitted, but you may do an explicit cast by placing '($typefrom(%s.typeid))' before the expression.",
+			                  type_quoted_error_string(type_no_optional(expr->type)),
+			                  type_quoted_error_string(to),
+			                  type_to_error_string(type_no_optional(to)));
+		}
+		else
+		{
+			RETURN_CAST_ERROR(expr,
+			                  "It is not possible to cast %s to the inner type %s.",
+			                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
+		}
+
+	}
 	if (may_cast_explicit)
 	{
 		RETURN_CAST_ERROR(expr,
@@ -1335,7 +1357,7 @@ static bool rule_expand_to_vec(CastContext *cc, bool is_explicit, bool is_silent
 
 static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *base_type = cc->to->decl->bitstruct.base_type->type;
+	Type *base_type = cc->to->decl->strukt.container_type->type;
 	Type *from_type = cc->from;
 	bool success = type_is_integer(base_type) && type_size(from_type) == type_size(base_type);
 	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
@@ -1344,7 +1366,7 @@ static bool rule_int_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_arr_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	Type *base_type = cc->to->decl->bitstruct.base_type->type;
+	Type *base_type = cc->to->decl->strukt.container_type->type;
 	Type *from_type = cc->from;
 	bool success = from_type == base_type;
 	if (!is_explicit || !success) return sema_cast_error(cc, success, is_silent);
@@ -1383,7 +1405,7 @@ static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_silent && !is_explicit) return false;
-	Type *base_type = cc->from->decl->bitstruct.base_type->type->canonical;
+	Type *base_type = cc->from->decl->strukt.container_type->type->canonical;
 	Type *to = cc->to;
 	if (base_type != to) return sema_cast_error(cc, false, is_silent);
 	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
@@ -1393,7 +1415,7 @@ static bool rule_bits_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_silent && !is_explicit) return false;
-	Type *base_type = cc->from->decl->bitstruct.base_type->type->canonical;
+	Type *base_type = cc->from->decl->strukt.container_type->type->canonical;
 	Type *to = cc->to;
 	if (base_type != to)
 	{
@@ -1589,7 +1611,7 @@ static inline Type *type_flatten_to_int(Type *type)
 				type = type->optional;
 				break;
 			case TYPE_BITSTRUCT:
-				type = type->decl->bitstruct.base_type->type;
+				type = type->decl->strukt.container_type->type;
 				break;
 			case TYPE_ENUM:
 				type = type->decl->enums.type_info->type;

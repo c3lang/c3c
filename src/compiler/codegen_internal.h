@@ -50,7 +50,7 @@ static inline Type *type_lowering(Type *type)
 			case TYPE_FAULTTYPE:
 				return type_iptr->canonical;
 			case TYPE_BITSTRUCT:
-				type = type->decl->bitstruct.base_type->type;
+				type = type->decl->strukt.container_type->type;
 				continue;
 			case TYPE_WILDCARD:
 				type = type_void;
