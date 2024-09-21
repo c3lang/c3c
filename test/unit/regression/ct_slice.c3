@@ -14,3 +14,16 @@ fn void! slice_string()
 	assert(d == "bc");
 	assert($a[..] == "abcd");
 }
+
+fn void slice_untyped()
+{
+	var $v = { 1, "hello", 3 };
+	int[1] v = $v[0:1];
+	assert(v == int[1] { 1 });
+	int[1] v2 = $v[2:1];
+	assert(v2 == int[1] { 3 });
+	String[1] v3 = $v[1:1];
+	assert(v3 == String[1] { "hello" });
+	int[] v4 = $v[0:1];
+	assert(v4 == int[] { 1 });
+}

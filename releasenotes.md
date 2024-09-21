@@ -18,6 +18,7 @@
 - Support linking .o files in compilation command. #1417
 - Slicing constant strings at compile time works.
 - Allow the "self" parameter to be $/# for macro methods.
+- Support compile time slicing of untyped lists.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

@@ -3314,6 +3314,12 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 				expr_rewrite_const_string(expr, data);
 				return true;
 			}
+			case CONST_UNTYPED_LIST:
+				assert(!type_is_arraylike(subscripted->type));
+				vec_erase_front(subscripted->const_expr.untyped_list, range->start_index);
+				vec_resize(subscripted->const_expr.untyped_list, range->len_index);
+				expr_replace(expr, subscripted);
+				return true;
 			default:
 				break;
 		}
