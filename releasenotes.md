@@ -17,6 +17,9 @@
 - Add `env::COMPILER_BUILD_HASH` and `env::COMPILER_BUILD_DATE`
 - Support linking .o files in compilation command. #1417
 - Slicing constant strings at compile time works.
+- Add `project fetch` subcommand to fetch missing project dependencies (general and target specific)
+- Ability of `vendor-fetch` to download the dependencies in the first specified path `dependencies-search-path`
+- Ability of `vendor-fetch` to register the fetched dependencies in the project file.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
