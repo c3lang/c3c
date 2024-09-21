@@ -421,8 +421,6 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 	switch (decl->decl_kind)
 	{
 		case DECL_BITSTRUCT:
-			members = decl->bitstruct.members;
-			break;
 		case DECL_STRUCT:
 		case DECL_UNION:
 			members = decl->strukt.members;

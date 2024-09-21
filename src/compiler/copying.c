@@ -966,6 +966,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_UNION:
 		case DECL_STRUCT:
 			copy_decl_type(copy);
+			fixup_declid(c, &copy->strukt.parent);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->strukt.members);
 			MACRO_COPY_DECLID(copy->strukt.padded_decl_id);
@@ -976,9 +977,10 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			copy_decl_type(copy);
+			fixup_declid(c, &copy->strukt.parent);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
-			MACRO_COPY_DECL_LIST(copy->bitstruct.members);
-			MACRO_COPY_TYPE(copy->bitstruct.base_type);
+			MACRO_COPY_DECL_LIST(copy->strukt.members);
+			MACRO_COPY_TYPE(copy->strukt.container_type);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_ENUM:

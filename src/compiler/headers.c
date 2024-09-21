@@ -172,7 +172,7 @@ static void header_print_type(HeaderContext *c, Type *type)
 				PRINTF("%s", decl_get_extname(type->decl));
 				return;
 			}
-			header_print_type(c, type->decl->bitstruct.base_type->type);
+			header_print_type(c, type->decl->strukt.container_type->type);
 			return;
 		case TYPE_ANYFAULT:
 		case TYPE_FAULTTYPE:
@@ -362,7 +362,7 @@ static void header_gen_members(HeaderContext *c, int indent, Decl **members)
 				break;
 			case DECL_BITSTRUCT:
 				INDENT();
-				header_print_type(c, member->bitstruct.base_type->type->canonical);
+				header_print_type(c, member->strukt.container_type->type->canonical);
 				if (member->name)
 				{
 					PRINTF(" %s;\n", member->name);
@@ -534,7 +534,7 @@ RETRY:
 		case TYPE_BITSTRUCT:
 			{
 				if (!header_try_gen_both(c, type)) return;
-				Type *underlying_type = type->decl->bitstruct.base_type->type;
+				Type *underlying_type = type->decl->strukt.container_type->type;
 				header_gen_maybe_generate_type(c, underlying_type, is_pointer);
 				PRINTF("typedef ");
 				header_print_type(c, underlying_type);
@@ -601,7 +601,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 		}
 	}
 	// Flatten bitstructs.
-	if (type->type_kind == TYPE_BITSTRUCT) type = type->decl->bitstruct.base_type->type->canonical;
+	if (type->type_kind == TYPE_BITSTRUCT) type = type->decl->strukt.container_type->type->canonical;
 	// We will lower some consts to defines, if they are:
 	// 1. Not an address
 	// 2. Not user defined (i.e. struct or union)

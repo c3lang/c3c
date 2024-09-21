@@ -3744,7 +3744,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 			inner = type->decl->enums.type_info->type->canonical;
 			break;
 		case TYPE_BITSTRUCT:
-			inner = type->decl->bitstruct.base_type->type->canonical;
+			inner = type->decl->strukt.container_type->type->canonical;
 			break;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -3902,7 +3902,7 @@ static inline void sema_create_const_membersof(SemaContext *context, Expr *expr,
 	}
 	else if (type->type_kind == TYPE_BITSTRUCT)
 	{
-		members = type->decl->bitstruct.members;
+		members = type->decl->strukt.members;
 	}
 	else
 	{

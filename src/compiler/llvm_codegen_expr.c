@@ -1418,7 +1418,7 @@ static LLVMValueRef llvm_emit_char_array_zero(GenContext *c, BEValue *value, boo
 }
 static void llvm_emit_bitstruct_to_bool(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
 {
-	Type *base_type = type_flatten(from_type->decl->bitstruct.base_type->type);
+	Type *base_type = type_flatten(from_type->decl->strukt.container_type->type);
 	if (base_type->type_kind != TYPE_ARRAY)
 	{
 		llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
@@ -1903,7 +1903,7 @@ INLINE void llvm_emit_initialize_reference_bitstruct_array(GenContext *c, BEValu
 	// Now walk through the elements.
 	FOREACH_IDX(i, Expr *, init, elements)
 	{
-		Decl *member = bitstruct->bitstruct.members[i];
+		Decl *member = bitstruct->strukt.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
 		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, type, is_bitswap, member,
@@ -1926,7 +1926,7 @@ static inline void llvm_emit_initialize_reference_bitstruct(GenContext *c, BEVal
 	// Now walk through the elements.
 	FOREACH_IDX(i, Expr *, init, elements)
 	{
-		Decl *member = bitstruct->bitstruct.members[i];
+		Decl *member = bitstruct->strukt.members[i];
 		BEValue val;
 		llvm_emit_expr(c, &val, init);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
@@ -2075,7 +2075,7 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 			if (type->type_kind == TYPE_BITSTRUCT && last == current + 1)
 			{
 				assert(llvm_value_is_addr(&value));
-				Decl *member = type->decl->bitstruct.members[last[0]->index];
+				Decl *member = type->decl->strukt.members[last[0]->index];
 				// Special handling of bitstructs.
 				Type *underlying_type = value.type;
 				assert(!emitted_value);
@@ -2129,7 +2129,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 		assert(vec_size(designator->designator_expr.path) == 1);
 		DesignatorElement *element = designator->designator_expr.path[0];
 		assert(element->kind == DESIGNATOR_FIELD);
-		Decl *member = bitstruct->bitstruct.members[element->index];
+		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
 		llvm_emit_update_bitstruct_array(c, array_ptr, alignment, type, is_bitswap, member, llvm_load_value_store(c, &val));
@@ -2154,7 +2154,7 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 		assert(vec_size(designator->designator_expr.path) == 1);
 		DesignatorElement *element = designator->designator_expr.path[0];
 		assert(element->kind == DESIGNATOR_FIELD);
-		Decl *member = bitstruct->bitstruct.members[element->index];
+		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
 		data = llvm_emit_bitstruct_value_update(c, data, bits, type, member, llvm_load_value_store(c, &val));
@@ -2198,15 +2198,15 @@ static bool bitstruct_requires_bitswap(Decl *decl)
 {
 	assert(decl->decl_kind == DECL_BITSTRUCT);
 	bool big_endian = compiler.platform.big_endian;
-	if (decl->bitstruct.big_endian) return !big_endian;
-	if (decl->bitstruct.little_endian) return big_endian;
+	if (decl->strukt.big_endian) return !big_endian;
+	if (decl->strukt.little_endian) return big_endian;
 	return false;
 }
 
 LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *initializer)
 {
 	Decl *decl = initializer->type->decl;
-	Type *base_type = decl->bitstruct.base_type->type;
+	Type *base_type = decl->strukt.container_type->type;
 	unsigned elements = base_type->array.len;
 	LLVMValueRef stack_data[MAX_AGG];
 	LLVMValueRef* slots = elements > MAX_AGG ? MALLOC(elements * sizeof(LLVMValueRef)) : stack_data;
@@ -2283,7 +2283,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer)
 {
 	Decl *decl = initializer->type->decl;
-	Type *base_type = decl->bitstruct.base_type->type;
+	Type *base_type = decl->strukt.container_type->type;
 	if (initializer->kind == CONST_INIT_ZERO) return llvm_get_zero(c, base_type);
 	bool char_array = base_type->type_kind == TYPE_ARRAY;
 	if (char_array)

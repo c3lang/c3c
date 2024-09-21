@@ -200,6 +200,39 @@ static void type_append_func_to_scratch(FunctionPrototype *prototype)
 	scratch_buffer_append_char(')');
 }
 
+bool type_is_inner_type(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_BITSTRUCT:
+			return type->decl->strukt.parent != 0;
+		default:
+			return false;
+	}
+}
+
+static void type_add_parent_to_scratch(Decl *decl)
+{
+	switch (decl->decl_kind)
+	{
+		case DECL_STRUCT:
+		case DECL_UNION:
+		case DECL_BITSTRUCT:
+			if (decl->strukt.parent)
+			{
+				Decl *parent = declptr(decl->strukt.parent);
+				type_add_parent_to_scratch(parent);
+				if (!parent->name) return;
+				scratch_buffer_append(parent->name);
+				scratch_buffer_append_char('.');
+			}
+			return;
+		default:
+			return;
+	}
+}
 const char *type_to_error_string(Type *type)
 {
 	switch (type->type_kind)
@@ -227,10 +260,11 @@ const char *type_to_error_string(Type *type)
 		{
 			Decl *decl = type->decl;
 			const char *suffix = decl->unit->module->generic_suffix;
-			if (!suffix) return type->name;
+			if (!suffix && !type_is_inner_type(type)) return type->name;
 			scratch_buffer_clear();
+			type_add_parent_to_scratch(decl);
 			scratch_buffer_append(decl->name);
-			scratch_buffer_append(suffix);
+			if (suffix) scratch_buffer_append(suffix);
 			return scratch_buffer_copy();
 		}
 		case TYPE_FUNC_PTR:
@@ -285,7 +319,7 @@ RETRY:
 	{
 		case TYPE_BITSTRUCT:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
-			type = type->decl->bitstruct.base_type->type;
+			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_DISTINCT:
 			assert(type->decl->resolve_status == RESOLVE_DONE);
@@ -487,7 +521,7 @@ bool type_is_comparable(Type *type)
 		case TYPE_STRUCT:
 			return type->decl->attr_compact;
 		case TYPE_BITSTRUCT:
-			type = type->decl->bitstruct.base_type->type;
+			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
@@ -649,7 +683,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_WILDCARD:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
-			type = type->decl->bitstruct.base_type->type;
+			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_INFERRED_VECTOR:
 		case TYPE_VECTOR:
@@ -1435,7 +1469,7 @@ bool type_is_scalar(Type *type)
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_BITSTRUCT:
-			type = type->decl->bitstruct.base_type->type;
+			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_DISTINCT:
 			type = type->decl->distinct->type;

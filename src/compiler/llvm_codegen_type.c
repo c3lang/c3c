@@ -20,7 +20,7 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		case DECL_INTERFACE:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
-			return llvm_get_type(c, decl->bitstruct.base_type->type);
+			return llvm_get_type(c, decl->strukt.container_type->type);
 		case DECL_FUNC:
 			UNREACHABLE
 		case DECL_TYPEDEF:
@@ -661,7 +661,7 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 		case TYPE_BITSTRUCT:
 		{
 			LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, type->decl->bitstruct.base_type->type, 0, NULL, false);
+			return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_BITSTRUCT, type->decl->strukt.container_type->type, 0, NULL, false);
 		}
 		case TYPE_TYPEDEF:
 			return llvm_get_typeid(c, type->canonical);
