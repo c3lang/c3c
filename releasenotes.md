@@ -50,6 +50,7 @@
 - Segfault using ternary with no assignment #1468.
 - Inner types make some errors misleading #1471.
 - Fix bug when passing a type as a compile time value.
+- Fix bug due to enum associated values not being checked for liveness.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

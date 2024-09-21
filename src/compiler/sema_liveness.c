@@ -528,7 +528,14 @@ void sema_trace_liveness(void)
 	}
 }
 
-
+INLINE void sema_trace_enum_associated(Decl *decl)
+{
+	sema_trace_type_liveness(decl->enums.type_info->type);
+	FOREACH(Decl *, enum_constant, decl->enums.values)
+	{
+		sema_trace_decl_liveness(enum_constant);
+	}
+}
 INLINE void sema_trace_decl_dynamic_methods(Decl *decl)
 {
 	Decl **methods = decl->methods;
@@ -565,10 +572,13 @@ RETRY:
 		case DECL_DEFINE:
 			decl = decl->define_decl.alias;
 			goto RETRY;
+		case DECL_ENUM:
+			sema_trace_decl_dynamic_methods(decl);
+			sema_trace_enum_associated(decl);
+			return;
 		case DECL_DISTINCT:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
-		case DECL_ENUM:
 		case DECL_BITSTRUCT:
 		case DECL_FAULT:
 		case DECL_STRUCT:
@@ -576,9 +586,11 @@ RETRY:
 		case DECL_INTERFACE:
 			sema_trace_decl_dynamic_methods(decl);
 			return;
+		case DECL_ENUM_CONSTANT:
+			sema_trace_expr_list_liveness(decl->enum_constant.args);
+			return;
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
-		case DECL_ENUM_CONSTANT:
 		case DECL_FAULTVALUE:
 			return;
 		case DECL_CT_ASSERT:
