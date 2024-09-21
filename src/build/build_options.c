@@ -4,6 +4,7 @@
 
 #include "../utils/whereami.h"
 #include "build.h"
+#include "project.h"
 #include "build_internal.h"
 #include "git_hash.h"
 
@@ -187,6 +188,9 @@ static void project_usage()
 	PRINTF("Project Subcommands:");
 	PRINTF("  view                                          view the current projects structure");
 	PRINTF("  add-target <name>  <target_type>              add a new target to the project");
+	#if FETCH_AVAILABLE
+		PRINTF("  fetch              							fetch missing project libraries");
+	#endif
 }
 
 static void parse_project_subcommand(BuildOptions *options)
@@ -206,6 +210,11 @@ static void parse_project_subcommand(BuildOptions *options)
 		if (at_end() || next_is_opt()) error_exit("Expected a target type like 'executable' or 'static-lib'");
 		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", targets, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 
+		return;
+	}
+	if (arg_match("fetch"))
+	{
+		options->project_options.command = SUBCOMMAND_FETCH;
 		return;
 	}
 
