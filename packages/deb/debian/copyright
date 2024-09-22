@@ -1,0 +1,11 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: c3c
+# TODO: replace this with an email address
+Upstream-Contact: https://github.com/c3lang/c3c
+Source: https://github.com/c3lang/c3c
+#
+# Please double check copyright with the licensecheck(1) command.
+
+#----------------------------------------------------------------------------
+# Files marked as NO_LICENSE_TEXT_FOUND may be covered by the following
+# license/copyright files.

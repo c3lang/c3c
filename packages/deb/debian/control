@@ -1,0 +1,16 @@
+Source: c3c
+Section: unknown
+Priority: optional
+Maintainer: C3C Contributors <https://github.com/c3lang/c3c>
+Build-Depends: debhelper-compat (= 13)
+Standards-Version: 4.6.1
+Homepage: htps://github.com/c3lang/c3c
+Rules-Requires-Root: no
+Vcs-Git: htps://github.com/c3lang/c3c.git
+Vcs-Browser: htps://github.com/c3lang/c3c
+
+Package: c3c
+Architecture: amd64
+Multi-Arch: foreign
+Depends: ${misc:Depends}, ${shlibs:Depends}
+Description: "C3 is an evolution of C enabling the same paradigms and retaining the same syntax as far as possible."

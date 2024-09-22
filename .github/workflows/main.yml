@@ -488,7 +488,28 @@ jobs:
         with:
           name: c3-ubuntu-20-${{matrix.build_type}}
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
-  
+
+  package-linux:
+    runs-on: ubuntu-latest
+    # still working on this
+    if: github.ref == 'refs/heads/ci_testing'
+    needs: [build-linux]
+    strategy:
+      # don't fail all if one of them fails.
+      fail-fast: false
+      matrix:
+        package_format: [deb, rpm]
+        build_type: [release, debug]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v3
+      - name: Create build directory
+        run: mkdir build
+      - name: Copy Linux artifacts to build directory
+        run: cp c3-linux-${{matrix.build_type}}.tar.gz build/linux-${{matrix.build_type}}.tar.gz
+      - name: Build package
+        run: cd packages/scripts && ./package.sh build/${{matrix.build_type}} ${{matrix.package_format}}
+
   build-with-docker:
     runs-on: ubuntu-latest
     strategy:
