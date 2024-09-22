@@ -321,17 +321,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	in->kind = CONST_INIT_VALUE;
 	in->init_value = element;
 	vec_add(inits, in);
-	expr->expr_kind = EXPR_CONST;
-	expr->resolve_status = RESOLVE_DONE;
-	expr->type = new_type;
-	ConstInitializer *new_init = CALLOCS(ConstInitializer);
-	new_init->init_array_full = inits;
-	new_init->type = new_type;
-	new_init->kind = CONST_INIT_ARRAY_FULL;
-	expr->const_expr = (ExprConst) {
-			.const_kind = CONST_INITIALIZER,
-			.initializer = new_init
-	};
+	expr_rewrite_const_initializer(expr, new_type, const_init_new_array_full(new_type, inits));
 	return true;
 }
 
@@ -511,16 +501,8 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			vec_add(inits, init);
 		}
 	}
-	concat_expr->expr_kind = EXPR_CONST;
-	concat_expr->resolve_status = RESOLVE_DONE;
-	concat_expr->type = use_array ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, len);
-	ConstInitializer *new_init = CALLOCS(ConstInitializer);
-	new_init->init_array_full = inits;
-	new_init->type = concat_expr->type;
-	new_init->kind = CONST_INIT_ARRAY_FULL;
-	concat_expr->const_expr = (ExprConst) {
-			.const_kind = CONST_INITIALIZER,
-			.initializer = new_init
-	};
+	Type *type = use_array ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, len);
+	expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+
 	return true;
 }

@@ -548,23 +548,18 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_ARRAY:
 		case TYPE_SLICE:
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_UNTYPED_LIST:
 		case TYPE_VECTOR:
-		{
-			ConstInitializer *init = CALLOCS(ConstInitializer);
-			init->kind = CONST_INIT_ZERO;
-			init->type = type;
-			expr_rewrite_const_initializer(expr, type, init);
+		case TYPE_ARRAY:
+			expr_rewrite_const_initializer(expr, type, const_init_new_zero(type));
 			return;
-		}
 		case TYPE_DISTINCT:
 			expr_rewrite_to_const_zero(expr, canonical->decl->distinct->type);
 			break;

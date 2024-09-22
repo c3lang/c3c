@@ -3198,6 +3198,13 @@ static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 static inline void expr_set_span(Expr *expr, SourceSpan loc);
 
 bool const_init_local_init_may_be_global(ConstInitializer *init);
+ConstInitializer *const_init_new_zero(Type *type);
+ConstInitializer *const_init_new_value(Expr *value);
+ConstInitializer *const_init_new_array(Type *type, ConstInitializer **elements);
+ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **elements);
+ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index);
+void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
+void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
 static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 {

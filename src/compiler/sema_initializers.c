@@ -78,6 +78,46 @@ bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 	return true;
 }
 
+void const_init_rewrite_to_zero(ConstInitializer *init, Type *type)
+{
+	init->kind = CONST_INIT_ZERO;
+	init->type = type;
+}
+
+ConstInitializer *const_init_new_array(Type *type, ConstInitializer **elements)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->kind = CONST_INIT_ARRAY;
+	init->type = type;
+	init->init_array.elements = elements;
+	return init;
+}
+
+ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **elements)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->kind = CONST_INIT_ARRAY_FULL;
+	init->type = type;
+	init->init_array_full = elements;
+	return init;
+}
+
+ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->type = type;
+	init->kind = CONST_INIT_ARRAY_VALUE;
+	init->init_array_value.index = index;
+	init->init_array_value.element = const_init_new_zero(type);
+	return init;
+}
+ConstInitializer *const_init_new_zero(Type *type)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->kind = CONST_INIT_ZERO;
+	init->type = type;
+	return init;
+}
 bool const_init_local_init_may_be_global(ConstInitializer *init)
 {
 	return const_init_local_init_may_be_global_inner(init, true);
@@ -156,10 +196,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 					initializer->initializer_list[j] = initializer->initializer_list[j - 1];
 				}
 				Expr *new_initializer = expr_new(EXPR_CONST, initializer->span);
-				ConstInitializer *empty = CALLOCS(ConstInitializer);
-				empty->kind = CONST_INIT_ZERO;
-				empty->type = type_flatten(member->type);
-				expr_rewrite_const_initializer(new_initializer, member->type, empty);
+				expr_rewrite_const_initializer(new_initializer, member->type, const_init_new_zero(type_flatten(member->type)));
 				initializer->initializer_list[i] = new_initializer;
 				size += 1;
 				continue;
@@ -221,9 +258,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			}
 			else
 			{
-				ConstInitializer *element_init = MALLOCS(ConstInitializer);
-				sema_create_const_initializer_value(element_init, expr);
-				const_init->init_union.element = element_init;
+				const_init->init_union.element = const_init_new_value(expr);
 			}
 			expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 			return true;
@@ -236,9 +271,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 				inits[i] = expr->const_expr.initializer;
 				continue;
 			}
-			ConstInitializer *element_init = MALLOCS(ConstInitializer);
-			sema_create_const_initializer_value(element_init, expr);
-			inits[i] = element_init;
+			inits[i] = const_init_new_value(expr);
 		}
 		const_init->init_struct = inits;
 		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
@@ -266,9 +299,7 @@ Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Ex
 	init->init_struct = struct_values;
 	for (unsigned i = 0; i < params; i++)
 	{
-		ConstInitializer *member_init = MALLOCS(ConstInitializer);
-		sema_create_const_initializer_value(member_init, exprs[i]);
-		struct_values[i] = member_init;
+		struct_values[i] = const_init_new_value(exprs[i]);
 	}
 	return expr_element;
 }
@@ -410,9 +441,6 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	initializer->resolve_status = RESOLVE_DONE;
 	if (expr_is_runtime_const(initializer))
 	{
-		ConstInitializer *const_init = CALLOCS(ConstInitializer);
-		const_init->kind = CONST_INIT_ARRAY_FULL;
-		const_init->type = type_flatten(initializer->type);
 		ConstInitializer **inits = VECNEW(ConstInitializer*, vec_size(elements));
 		FOREACH(Expr *, expr, elements)
 		{
@@ -421,11 +449,9 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 				vec_add(inits, expr->const_expr.initializer);
 				continue;
 			}
-			ConstInitializer *element_init = MALLOCS(ConstInitializer);
-			sema_create_const_initializer_value(element_init, expr);
-			vec_add(inits, element_init);
+			vec_add(inits, const_init_new_value(expr));
 		}
-		const_init->init_array_full = inits;
+		ConstInitializer *const_init = const_init_new_array_full(type_flatten(initializer->type), inits);
 		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 	}
 
@@ -559,10 +585,7 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 			expr_rewrite_const_untyped_list(expr, NULL);
 			return true;
 		}
-		ConstInitializer *initializer = CALLOCS(ConstInitializer);
-		initializer->kind = CONST_INIT_ZERO;
-		initializer->type = flattened;
-		expr_rewrite_const_initializer(expr, assigned_type, initializer);
+		expr_rewrite_const_initializer(expr, assigned_type, const_init_new_zero(flattened));
 		return true;
 	}
 
@@ -592,9 +615,8 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
  */
 static void sema_create_const_initializer_from_designated_init(ConstInitializer *const_init, Expr *initializer)
 {
-	const_init->kind = CONST_INIT_ZERO;
 	// Flatten the type since the external type might be typedef or a distinct type.
-	const_init->type = type_flatten(initializer->type);
+	const_init_rewrite_to_zero(const_init, type_flatten(initializer->type));
 
 	// Loop through the initializers.
 	FOREACH(Expr *, expr, initializer->initializer_list)
@@ -617,9 +639,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 		ConstInitializer **initializers = MALLOC(sizeof(ConstInitializer*) * len);
 		for (unsigned i = 0; i < len; i++)
 		{
-			initializers[i] = MALLOCS(ConstInitializer);
-			initializers[i]->kind = CONST_INIT_ZERO;
-			initializers[i]->type = type_flatten(members[i]->type);
+			initializers[i] = const_init_new_zero(type_flatten(members[i]->type));
 		}
 		initializer->init_struct = initializers;
 		initializer->kind = CONST_INIT_STRUCT;
@@ -634,8 +654,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 		{
 			if (init->kind == CONST_INIT_ZERO)
 			{
-				init->init_value = expr_new_const_bool(INVALID_SPAN, init->type, true);
-				init->kind = CONST_INIT_VALUE;
+				const_init_rewrite_to_value(init, expr_new_const_bool(INVALID_SPAN, init->type, true));
 				continue;
 			}
 			init->init_value->const_expr.b = !init->init_value->const_expr.b;
@@ -645,8 +664,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 		unsigned bits = member->var.end_bit - member->var.start_bit;
 		if (init->kind == CONST_INIT_ZERO)
 		{
-			init->init_value = expr_new_const_int(INVALID_SPAN, init->type, 0);
-			init->kind = CONST_INIT_VALUE;
+			const_init_rewrite_to_value(init, expr_new_const_int(INVALID_SPAN, init->type, 0));
 		}
 		Int res = init->init_value->const_expr.ixx;
 		res = int_not(res);
@@ -822,7 +840,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	return false;
 }
 
-void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *value)
+void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 {
 	// Possibly this is already a const initializers, in that case
 	// overwrite what is inside, eg [1] = { .a = 1 }
@@ -837,12 +855,19 @@ void sema_create_const_initializer_value(ConstInitializer *const_init, Expr *val
 		Decl *ident = decl_flatten(value->identifier_expr.decl);
 		assert(ident->decl_kind == DECL_VAR);
 		assert(ident->var.kind == VARDECL_CONST);
-		sema_create_const_initializer_value(const_init, expr_copy(ident->var.init_expr));
+		const_init_rewrite_to_value(const_init, expr_copy(ident->var.init_expr));
 		return;
 	}
 	const_init->init_value = value;
 	const_init->type = type_flatten(value->type);
 	const_init->kind = CONST_INIT_VALUE;
+}
+
+ConstInitializer *const_init_new_value(Expr *value)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	const_init_rewrite_to_value(init, value);
+	return init;
 }
 
 /**
@@ -899,7 +924,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	}
 
 	// Otherwise we update the value in that particular element.
-	sema_create_const_initializer_value(sub_element, value);
+	const_init_rewrite_to_value(sub_element, value);
 }
 
 /**
@@ -960,7 +985,7 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 	}
 
 	// Otherwise just set the current type.
-	sema_create_const_initializer_value(sub_element, value);
+	const_init_rewrite_to_value(sub_element, value);
 }
 
 /**
@@ -1009,14 +1034,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 		// Create and append:
 		if (!initializer)
 		{
-			initializer = MALLOCS(ConstInitializer);
-			initializer->type = element_type;
-			initializer->kind = CONST_INIT_ARRAY_VALUE;
-			initializer->init_array_value.index = index;
-			inner_value = MALLOCS(ConstInitializer);
-			inner_value->type = element_type;
-			inner_value->kind = CONST_INIT_ZERO;
-			initializer->init_array_value.element = inner_value;
+			initializer = const_init_new_zero_array_value(element_type, index);
 			vec_add(array_elements, initializer);
 			array_count++;
 		}
@@ -1037,14 +1055,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 					array_elements[i] = array_elements[i - 1];
 				}
 				// Then we create our new entry.
-				initializer = MALLOCS(ConstInitializer);
-				initializer->type = element_type;
-				initializer->kind = CONST_INIT_ARRAY_VALUE;
-				initializer->init_array_value.index = index;
-				inner_value = MALLOCS(ConstInitializer);
-				inner_value->type = element_type;
-				inner_value->kind = CONST_INIT_ZERO;
-				initializer->init_array_value.element = inner_value;
+				initializer = const_init_new_zero_array_value(element_type, index);
 				// And assign it to the location.
 				array_elements[insert_index] = initializer;
 			}
@@ -1059,7 +1070,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 			sema_update_const_initializer_with_designator(inner_value, next_element, end, value);
 			continue;
 		}
-		sema_create_const_initializer_value(inner_value, value);
+		const_init_rewrite_to_value(inner_value, value);
 	}
 }
 

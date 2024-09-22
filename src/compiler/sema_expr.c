@@ -4183,16 +4183,9 @@ static inline bool sema_expr_fold_to_range(Expr *expr, Expr *parent, Range range
 				if (index < start || index >= end) continue;
 				vec_add(new, e->init_array_value.element);
 			}
-			result = CALLOCS(ConstInitializer);
-			if (new)
-			{
-				result->kind = CONST_INIT_ARRAY;
-				result->init_array.elements = new;
-			}
-			else
-			{
-				result->kind = CONST_INIT_ZERO;
-			}
+
+			result = new ? const_init_new_array(resulting_type, new)
+						: const_init_new_zero(resulting_type);
 			break;
 		}
 		case CONST_INIT_ARRAY_FULL:
@@ -4202,10 +4195,8 @@ static inline bool sema_expr_fold_to_range(Expr *expr, Expr *parent, Range range
 			{
 				vec_add(new, init->init_array_full[i]);
 			}
-			result = CALLOCS(ConstInitializer);
 			ASSERT_SPAN(expr, new);
-			result->kind = CONST_INIT_ARRAY_FULL;
-			result->init_array_full = new;
+			result = const_init_new_array_full(resulting_type, new);
 			break;
 		}
 	}
@@ -7603,9 +7594,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
 				expr->resolve_status = RESOLVE_DONE;
-				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
-				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_slice(type_string);
+				expr->const_expr.initializer = const_init_new_zero(expr->type = type_get_slice(type_string));
 				return true;
 			}
 			expr->type = type_get_slice(type_string);
@@ -7618,9 +7607,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
 				expr->resolve_status = RESOLVE_DONE;
-				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
-				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_slice(type_voidptr);
+				expr->const_expr.initializer = const_init_new_zero(expr->type = type_get_slice(type_voidptr));
 				return true;
 			}
 			expr->type = type_get_slice(type_voidptr);
@@ -7633,9 +7620,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
 				expr->resolve_status = RESOLVE_DONE;
-				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
-				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_slice(type_string);
+				expr->const_expr.initializer = const_init_new_zero(expr->type = type_get_slice(type_string));
 				return true;
 			}
 			expr->type = type_get_slice(type_string);
@@ -7648,9 +7633,7 @@ static inline bool sema_expr_analyse_compiler_const(SemaContext *context, Expr *
 				expr->const_expr.const_kind = CONST_INITIALIZER;
 				expr->expr_kind = EXPR_CONST;
 				expr->resolve_status = RESOLVE_DONE;
-				ConstInitializer *init = expr->const_expr.initializer = CALLOCS(ConstInitializer);
-				init->kind = CONST_INIT_ZERO;
-				init->type = expr->type = type_get_slice(type_voidptr);
+				expr->const_expr.initializer = const_init_new_zero(expr->type = type_get_slice(type_voidptr));
 				return true;
 			}
 			expr->type = type_get_slice(type_voidptr);
