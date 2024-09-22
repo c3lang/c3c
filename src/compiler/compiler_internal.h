@@ -2174,6 +2174,7 @@ Expr *expr_new_const_int(SourceSpan span, Type *type, uint64_t v);
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 Expr *expr_new_const_string(SourceSpan span, const char *string);
+Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
@@ -3215,10 +3216,9 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 			return;
 		case CONST_INIT_STRUCT:
 		{
-			uint32_t members = vec_size(type_flatten(init->type)->decl->strukt.members);
-			for (uint32_t i = 0; i < members; i++)
+			FOREACH(ConstInitializer *, init_val, init->init_struct)
 			{
-				const_init_set_span(init->init_struct[i], loc);
+				const_init_set_span(init_val, loc);
 			}
 			return;
 		}

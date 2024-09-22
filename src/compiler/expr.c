@@ -845,6 +845,18 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type)
 	return expr;
 }
 
+Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type;
+	expr->const_expr.initializer = initializer;
+	expr->const_expr.const_kind = CONST_INITIALIZER;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
 Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 {
 	Expr *expr = expr_calloc();

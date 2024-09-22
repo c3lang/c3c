@@ -3908,8 +3908,7 @@ static inline bool sema_create_const_paramsof(SemaContext *context, Expr *expr, 
 	{
 		Decl *decl = sig->params[i];
 		Expr *name_expr = expr_new_const_string(span, decl->name ? decl->name : "");
-		Expr *type_expr = expr_new(EXPR_CONST, span);
-		expr_rewrite_const_typeid(type_expr, decl->type->canonical);
+		Expr *type_expr = expr_new_const_typeid(span, decl->type->canonical);
 		Expr *values[] = { name_expr, type_expr };
 		Expr *struct_value = sema_create_struct_from_expressions(type_reflected_param->decl, expr->span, values);
 		vec_add(param_exprs, struct_value);

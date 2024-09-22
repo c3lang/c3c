@@ -9,7 +9,6 @@ static inline void *fixup(CopyStruct *c, void *original);
 INLINE void fixup_decl(CopyStruct *c, Decl **decl_ref);
 INLINE void fixup_declid(CopyStruct *c, DeclId *declid_ref);
 INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitializer **initializer_list);
-INLINE ConstInitializer **copy_const_initializer_array(CopyStruct *c, ConstInitializer **initializer_list, unsigned len);
 
 static Expr **copy_expr_list(CopyStruct *c, Expr **expr_list);
 static Expr *copy_expr(CopyStruct *c, Expr *source_expr);
@@ -219,18 +218,6 @@ INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitia
 	return initializer;
 }
 
-INLINE ConstInitializer **copy_const_initializer_array(CopyStruct *c, ConstInitializer **initializer_list, unsigned len)
-{
-	ConstInitializer **initializer = MALLOC(sizeof(ConstInitializer*) * len);
-	for (unsigned i = 0; i < len; i++)
-	{
-		ConstInitializer *element = initializer_list[i];
-		copy_const_initializer(c, &element);
-		initializer[i] = element;
-	}
-	return initializer;
-}
-
 static inline void copy_const_initializer(CopyStruct *c, ConstInitializer **initializer_ref)
 {
 	ConstInitializer *copy = MALLOCS(ConstInitializer);
@@ -242,7 +229,7 @@ static inline void copy_const_initializer(CopyStruct *c, ConstInitializer **init
 		case CONST_INIT_ZERO:
 			return;
 		case CONST_INIT_STRUCT:
-			copy->init_struct = copy_const_initializer_array(c, copy->init_struct, vec_size(type_flatten(copy->type)->decl->strukt.members));
+			copy->init_struct = copy_const_initializer_list(c, copy->init_struct);
 			return;
 		case CONST_INIT_UNION:
 			copy_const_initializer(c, &copy->init_union.element);

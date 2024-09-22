@@ -51,7 +51,8 @@ bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 			return top;
 		case CONST_INIT_STRUCT:
 			list = init->init_struct;
-			len = vec_size(type_flatten(init->type)->decl->strukt.members);
+			assert(vec_size(type_flatten(init->type)->decl->strukt.members) == vec_size(list));
+			len = vec_size(list);
 			break;
 		case CONST_INIT_UNION:
 			return const_init_local_init_may_be_global_inner(init->init_union.element, false);
@@ -263,17 +264,16 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 			return true;
 		}
-		ConstInitializer **inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
-		FOREACH_IDX(i, Expr *, expr, elements)
+		const_init->init_struct = NULL;
+		FOREACH(Expr *, expr, elements)
 		{
 			if (expr_is_const_initializer(expr))
 			{
-				inits[i] = expr->const_expr.initializer;
+				vec_add(const_init->init_struct, expr->const_expr.initializer);
 				continue;
 			}
-			inits[i] = const_init_new_value(expr);
+			vec_add(const_init->init_struct, const_init_new_value(expr));
 		}
-		const_init->init_struct = inits;
 		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
 	}
 
@@ -284,24 +284,15 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 
 Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs)
 {
-	Expr *expr_element = expr_calloc();
-	expr_element->expr_kind = EXPR_CONST;
-	expr_element->span = span;
-	expr_element->type = struct_decl->type;
-	expr_element->const_expr.const_kind = CONST_INITIALIZER;
-	expr_element->resolve_status = RESOLVE_DONE;
 	ConstInitializer *init = CALLOCS(ConstInitializer);
-	expr_element->const_expr.initializer = init;
 	init->kind = CONST_INIT_STRUCT;
 	init->type = struct_decl->type;
 	unsigned params = vec_size(struct_decl->strukt.members);
-	ConstInitializer **struct_values = MALLOC(params * sizeof(ConstInitializer*));
-	init->init_struct = struct_values;
 	for (unsigned i = 0; i < params; i++)
 	{
-		struct_values[i] = const_init_new_value(exprs[i]);
+		vec_add(init->init_struct, const_init_new_value(exprs[i]));
 	}
-	return expr_element;
+	return expr_new_const_initializer(span, struct_decl->type, init);
 }
 
 /**
@@ -636,19 +627,17 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 	// Expand
 	if (initializer->kind == CONST_INIT_ZERO)
 	{
-		ConstInitializer **initializers = MALLOC(sizeof(ConstInitializer*) * len);
+		initializer->kind = CONST_INIT_STRUCT;
+		initializer->init_struct = NULL;
 		for (unsigned i = 0; i < len; i++)
 		{
-			initializers[i] = const_init_new_zero(type_flatten(members[i]->type));
+			vec_add(initializer->init_struct, const_init_new_zero(type_flatten(members[i]->type)));
 		}
-		initializer->init_struct = initializers;
-		initializer->kind = CONST_INIT_STRUCT;
 	}
 
-	ConstInitializer **initializers = initializer->init_struct;
-	for (unsigned i = 0; i < len; i++)
+	assert(vec_size(initializer->init_struct) == len);
+	FOREACH_IDX(i, ConstInitializer *, init, initializer->init_struct)
 	{
-		ConstInitializer *init = initializers[i];
 		Type *type = type_flatten(init->type);
 		if (type == type_bool)
 		{
@@ -895,18 +884,14 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	// Convert a zero struct and expand it into all its parts.
 	if (const_init->kind == CONST_INIT_ZERO)
 	{
+		const_init->init_struct = NULL;
 		// Allocate array containing all elements { a, b, c ... }
-		ConstInitializer **const_inits = MALLOC(sizeof(ConstInitializer *) * vec_size(elements));
 		FOREACH_IDX(i, Decl *, el, elements)
 		{
 			// Create zero initializers for each of those { a: zeroinit, b: zeroinit, ... }
-			ConstInitializer *element_init = MALLOCS(ConstInitializer);
-			element_init->type = type_flatten(el->type);
-			element_init->kind = CONST_INIT_ZERO;
-			const_inits[i] = element_init;
+			vec_add(const_init->init_struct, const_init_new_zero(type_flatten(el->type)));
 		}
 		// Change type to CONST_INIT_STRUCT since we expanded.
-		const_init->init_struct = const_inits;
 		const_init->kind = CONST_INIT_STRUCT;
 	}
 

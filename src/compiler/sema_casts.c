@@ -1681,10 +1681,8 @@ static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
 			return;
 		}
 		assert(expr->const_expr.initializer->kind == CONST_INIT_STRUCT);
-		unsigned elements = vec_size(type_flatten(expr->type)->decl->strukt.members);
-		for (unsigned i = 0; i < elements; i++)
+		FOREACH(ConstInitializer *, in, expr->const_expr.initializer->init_struct)
 		{
-			ConstInitializer *in = expr->const_expr.initializer->init_struct[i];
 			if (in->kind == CONST_INIT_ZERO) continue;
 			Expr *e = in->init_value;
 			if (expr_is_const_bool(e))

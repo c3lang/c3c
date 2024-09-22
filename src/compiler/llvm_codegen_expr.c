@@ -1856,13 +1856,12 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 		case CONST_INIT_STRUCT:
 		{
 			Decl *decl = const_init->type->decl;
-			Decl **members = decl->strukt.members;
-			ArrayIndex count = (ArrayIndex)vec_size(members);
-			for (ArrayIndex i = 0; i < count; i++)
+			assert(vec_size(decl->strukt.members) == vec_size(const_init->init_struct));
+			FOREACH_IDX(i, ConstInitializer *, init, const_init->init_struct)
 			{
 				BEValue value;
 				llvm_value_struct_gep(c, &value, ref, (unsigned)i);
-				llvm_emit_const_init_ref(c, &value, const_init->init_struct[i]);
+				llvm_emit_const_init_ref(c, &value, init);
 			}
 			return;
 		}
@@ -2215,14 +2214,13 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		slots[i] = llvm_get_zero_raw(c->byte_type);
 	}
 	Decl **members = decl->strukt.members;
-	ArrayIndex count = (ArrayIndex)vec_size(members);
-	for (ArrayIndex i = 0; i < count; i++)
+	assert(vec_size(members) == vec_size(initializer->init_struct));
+	FOREACH_IDX(i, ConstInitializer *, init, initializer->init_struct)
 	{
 		Decl *member = members[i];
 		unsigned start_bit = member->var.start_bit;
 		unsigned end_bit = member->var.end_bit;
 		Type *member_type = type_flatten(member->type);
-		ConstInitializer *init = initializer->init_struct[i];
 		if (init->kind == CONST_INIT_ZERO) continue;
 		assert(init->kind == CONST_INIT_VALUE);
 		Expr *expr = init->init_value;
@@ -2245,7 +2243,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		unsigned bit_size = end_bit - start_bit + 1;
 		assert(bit_size > 0 && bit_size <= 128);
 		BEValue val;
-		llvm_emit_const_expr(c, &val, initializer->init_struct[i]->init_value);
+		llvm_emit_const_expr(c, &val, init->init_value);
 		assert(val.kind == BE_VALUE);
 		LLVMValueRef value = val.value;
 		int start_byte = start_bit / 8;
@@ -2293,12 +2291,11 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 	LLVMTypeRef llvm_base_type = llvm_get_type(c, base_type);
 	LLVMValueRef result = llvm_get_zero_raw(llvm_base_type);
 	Decl **members = decl->strukt.members;
-	ArrayIndex count = (ArrayIndex)vec_size(members);
 	TypeSize base_type_size = type_size(base_type);
 	TypeSize base_type_bitsize = base_type_size * 8;
-	for (ArrayIndex i = 0; i < count; i++)
+	assert(vec_size(members) == vec_size(initializer->init_struct));
+	FOREACH_IDX(i, ConstInitializer *, val, initializer->init_struct)
 	{
-		ConstInitializer *val = initializer->init_struct[i];
 		Decl *member = members[i];
 		unsigned start_bit = member->var.start_bit;
 		unsigned end_bit = member->var.end_bit;
@@ -2312,8 +2309,8 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 		else
 		{
 			BEValue entry;
-			assert(initializer->init_struct[i]->kind == CONST_INIT_VALUE);
-			llvm_emit_const_expr(c, &entry, initializer->init_struct[i]->init_value);
+			assert(val->kind == CONST_INIT_VALUE);
+			llvm_emit_const_expr(c, &entry, val->init_value);
 			value = llvm_load_value_store(c, &entry);
 		}
 		value = llvm_zext_trunc(c, value, llvm_base_type);
