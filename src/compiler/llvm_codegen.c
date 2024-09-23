@@ -221,6 +221,7 @@ static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, Inde
 
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init)
 {
+	assert(const_init->type == type_flatten(const_init->type));
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:

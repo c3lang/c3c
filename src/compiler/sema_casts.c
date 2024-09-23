@@ -1493,7 +1493,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 		case CONST_INIT_VALUE:
 		{
 			Type *to_flat = type_flatten(to_type);
-			bool is_neg_conversion = to_flat && type_flatten(initializer->type) == type_bool;
+			bool is_neg_conversion = to_flat && initializer->type == type_bool;
 			if (is_neg_conversion)
 			{
 				bool is_true = initializer->init_value->const_expr.b;
@@ -1519,7 +1519,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 			vector_const_initializer_convert_to_type(context, initializer->init_array_value.element, to_type);
 			break;
 	}
-	initializer->type = to_type;
+	initializer->type = type_flatten(to_type);
 }
 
 /**
@@ -1759,7 +1759,7 @@ static void cast_vec_to_arr(SemaContext *context, Expr *expr, Type *to_type)
 
 	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
 	ConstInitializer *list = expr->const_expr.initializer;
-	list->type = to_type;
+	list->type = type_flatten(to_type);
 	expr->type = to_type;
 }
 
@@ -2115,7 +2115,7 @@ static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 		// For the array -> vector this is always a simple rewrite of type.
 		assert(expr->const_expr.const_kind == CONST_INITIALIZER);
 		ConstInitializer *list = expr->const_expr.initializer;
-		list->type = to_temp;
+		list->type = type_flatten(to_temp);
 		expr->type = to_temp;
 	}
 	else

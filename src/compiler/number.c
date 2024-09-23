@@ -57,7 +57,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 		return;
 	}
 	assert(expr_const->const_kind == CONST_INITIALIZER);
-	Type *type = type_flatten(expr_const->initializer->type);
+	Type *type = expr_const->initializer->type;
 	assert(type_is_any_arraylike(type));
 	ArraySize len = type->array.len;
 	if (!len)

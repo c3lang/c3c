@@ -55,6 +55,7 @@
 - Inner types make some errors misleading #1471.
 - Fix bug when passing a type as a compile time value.
 - Fix bug due to enum associated values not being checked for liveness.
+- Regression when compile time accessing a union field not last assigned to.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

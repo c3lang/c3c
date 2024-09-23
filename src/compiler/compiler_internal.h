@@ -108,7 +108,7 @@ typedef struct
 struct ConstInitializer_
 {
 	ConstInitType kind;
-	// Type initialized
+	// Type, should always be flattened
 	Type *type;
 	union
 	{

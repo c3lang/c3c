@@ -51,7 +51,7 @@ bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 			return top;
 		case CONST_INIT_STRUCT:
 			list = init->init_struct;
-			assert(vec_size(type_flatten(init->type)->decl->strukt.members) == vec_size(list));
+			assert(vec_size(init->type->decl->strukt.members) == vec_size(list));
 			len = vec_size(list);
 			break;
 		case CONST_INIT_UNION:
@@ -82,14 +82,14 @@ bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type)
 {
 	init->kind = CONST_INIT_ZERO;
-	init->type = type;
+	init->type = type_flatten(type);
 }
 
 ConstInitializer *const_init_new_array(Type *type, ConstInitializer **elements)
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);
 	init->kind = CONST_INIT_ARRAY;
-	init->type = type;
+	init->type = type_flatten(type);
 	init->init_array.elements = elements;
 	return init;
 }
@@ -98,7 +98,7 @@ ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **eleme
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);
 	init->kind = CONST_INIT_ARRAY_FULL;
-	init->type = type;
+	init->type = type_flatten(type);
 	init->init_array_full = elements;
 	return init;
 }
@@ -106,7 +106,7 @@ ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **eleme
 ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index)
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);
-	init->type = type;
+	init->type = type_flatten(type);
 	init->kind = CONST_INIT_ARRAY_VALUE;
 	init->init_array_value.index = index;
 	init->init_array_value.element = const_init_new_zero(type);
@@ -116,7 +116,7 @@ ConstInitializer *const_init_new_zero(Type *type)
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);
 	init->kind = CONST_INIT_ZERO;
-	init->type = type;
+	init->type = type_flatten(type);
 	return init;
 }
 bool const_init_local_init_may_be_global(ConstInitializer *init)
@@ -638,7 +638,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 	assert(vec_size(initializer->init_struct) == len);
 	FOREACH_IDX(i, ConstInitializer *, init, initializer->init_struct)
 	{
-		Type *type = type_flatten(init->type);
+		Type *type = init->type;
 		if (type == type_bool)
 		{
 			if (init->kind == CONST_INIT_ZERO)
@@ -721,7 +721,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 		// We know switch happened, init_lhs == init_lhs[i]
 		Expr *lhs_expr = init_lhs->init_value;
 		Expr *rhs_expr = init_rhs->init_value;
-		if (type_flatten(init_lhs->type) == type_bool)
+		if (init_lhs->type == type_bool)
 		{
 			switch (op)
 			{

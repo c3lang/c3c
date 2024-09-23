@@ -4199,7 +4199,7 @@ static inline bool sema_expr_fold_to_range(Expr *expr, Expr *parent, Range range
 			break;
 		}
 	}
-	result->type = resulting_type;
+	result->type = type_flatten(resulting_type);
 	switch (result->kind)
 	{
 		case CONST_INIT_ZERO:
@@ -4269,6 +4269,7 @@ static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIn
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_INITIALIZER;
 			expr->const_expr.initializer = result;
+			// TODO fix?
 			expr->type = result->type;
 			break;
 		case CONST_INIT_ARRAY_VALUE:
@@ -4291,7 +4292,7 @@ static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *memb
 			goto EVAL;
 		case CONST_INIT_STRUCT:
 		{
-			FOREACH_IDX(i, Decl *, other_member, init->type->decl->strukt.members)
+			FOREACH_IDX(i, Decl *, other_member, type_flatten(parent->type)->decl->strukt.members)
 			{
 				if (other_member == member)
 				{
@@ -4302,7 +4303,7 @@ static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *memb
 			UNREACHABLE
 		}
 		case CONST_INIT_UNION:
-			if (init->type->decl->strukt.members[init->init_union.index] != member) return false;
+			if (type_flatten(parent->type)->decl->strukt.members[init->init_union.index] != member) return false;
 			result = init->init_union.element;
 			goto EVAL;
 		case CONST_INIT_VALUE:
@@ -4316,7 +4317,7 @@ EVAL:
 	switch (result->kind)
 	{
 		case CONST_INIT_ZERO:
-			expr_rewrite_to_const_zero(expr, result->type);
+			expr_rewrite_to_const_zero(expr, member->type);
 			break;
 		case CONST_INIT_STRUCT:
 		case CONST_INIT_UNION:
@@ -4325,7 +4326,7 @@ EVAL:
 			expr->expr_kind = EXPR_CONST;
 			expr->const_expr.const_kind = CONST_INITIALIZER;
 			expr->const_expr.initializer = result;
-			expr->type = result->type;
+			expr->type = member->type;
 			break;
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
@@ -4962,7 +4963,10 @@ CHECK_DEEPER:
 		}
 		else if (member->var.kind == VARDECL_MEMBER && expr_is_const_initializer(current_parent))
 		{
-			sema_expr_fold_to_member(expr, current_parent, member);
+			if (!sema_expr_fold_to_member(expr, current_parent, member))
+			{
+				RETURN_SEMA_ERROR(expr, "Could not fold to member '%s' – it wasn't the last assigned member.", member->name);
+			}
 			return true;
 		}
 	}
