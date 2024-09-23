@@ -317,10 +317,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 
 	assert(element->resolve_status == RESOLVE_DONE);
 	if (!cast_implicit(context, element, indexed, false)) return false;
-	ConstInitializer *in = CALLOCS(ConstInitializer);
-	in->kind = CONST_INIT_VALUE;
-	in->init_value = element;
-	vec_add(inits, in);
+	vec_add(inits, const_init_new_value(element));
 	expr_rewrite_const_initializer(expr, new_type, const_init_new_array_full(new_type, inits));
 	return true;
 }
