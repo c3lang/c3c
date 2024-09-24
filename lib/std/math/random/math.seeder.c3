@@ -100,6 +100,11 @@ fn char[8 * 4] entropy() @if(env::WASM_NOLIBC)
 		hash($$TIME),
 		hash(&entropy),
 		random_int,
+		hash($$TIME),
+		hash(&entropy),
+		random_int,
+		hash($$TIME),
+		hash(&entropy),
     };
     return bitcast(entropy_data, char[8 * 4]);
 }
