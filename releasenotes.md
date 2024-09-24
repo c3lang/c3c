@@ -56,6 +56,7 @@
 - Fix bug when passing a type as a compile time value.
 - Fix bug due to enum associated values not being checked for liveness.
 - Regression when compile time accessing a union field not last assigned to.
+- Safer seed of rand() for WASM without libc.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
