@@ -2419,10 +2419,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 
 	// No attribute has more than one argument right now.
 	unsigned args = vec_size(attr->exprs);
-	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG)
+	if (args > 1 && type != ATTRIBUTE_LINK && type != ATTRIBUTE_TAG && type != ATTRIBUTE_WASM)
 	{
-		SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
-		return false;
+		RETURN_SEMA_ERROR(attr->exprs[1], "Too many arguments for the attribute.");
 	}
 	Expr *expr = args ? attr->exprs[0] : NULL;
 
@@ -2554,6 +2553,41 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				decl->alignment = (AlignSize)align;
 				return true;
 			}
+		case ATTRIBUTE_WASM:
+			if (args > 2) RETURN_SEMA_ERROR(attr->exprs[2], "Too many arguments to '@wasm', expected 0, 1 or 2 arguments");
+			decl->is_export = true;
+			if (context->unit->module->is_generic)
+			{
+				RETURN_SEMA_ERROR(attr, "'@wasm' is not allowed in generic modules.");
+			}
+			if (args == 0) return true;
+			if (decl->has_extname)
+			{
+				RETURN_SEMA_ERROR(expr, "An external name is already defined, please use '@wasm` without an argument.");
+			}
+			if (args == 2)
+			{
+				if (!decl->is_extern)
+				{
+					RETURN_SEMA_ERROR(expr, "Specifying a wasm import module name is only valid for extern declarations.");
+				}
+				Expr *module = expr;
+				expr = attr->exprs[1];
+				if (!sema_analyse_expr(context, module)) return false;
+				if (!expr_is_const_string(module))
+				{
+					RETURN_SEMA_ERROR(module, "Expected a constant string value as argument.");
+				}
+				attr_data->wasm_module = module->const_expr.bytes.ptr;
+				if (!sema_analyse_expr(context, expr)) return false;
+				if (!expr_is_const_string(expr))
+				{
+					RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
+				}
+				decl->extname = expr->const_expr.bytes.ptr;
+				decl->has_extname = true;
+			}
+			return true;
 		case ATTRIBUTE_EXPORT:
 			if (context->unit->module->is_generic)
 			{
@@ -2728,9 +2762,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				}
 			}
 			decl->is_weak = true;
-			break;
-		case ATTRIBUTE_WASM:
-			decl->is_export = true;
 			break;
 		case ATTRIBUTE_NAKED:
 			assert(domain == ATTR_FUNC);
@@ -2915,7 +2946,7 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 	if (!sema_analyse_attributes_inner(context, &data, decl, attrs, domain, NULL, erase_decl)) return false;
 	if (*erase_decl) return true;
 	decl->resolved_attributes = true;
-	if (data.tags || data.deprecated || data.links || data.section || data.overload.row)
+	if (data.tags || data.deprecated || data.links || data.section || data.overload.row || data.wasm_module )
 	{
 		ResolvedAttrData *copy = MALLOCS(ResolvedAttrData);
 		*copy = data;

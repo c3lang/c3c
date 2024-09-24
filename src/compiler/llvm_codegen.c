@@ -1183,6 +1183,10 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 	{
 		scratch_buffer_set_extern_decl_name(decl, true);
 		llvm_attribute_add_string(c, function, "wasm-import-name", scratch_buffer_to_string(), -1);
+		if (decl->attrs_resolved && decl->attrs_resolved->wasm_module)
+		{
+			llvm_attribute_add_string(c, function, "wasm-import-module", decl->attrs_resolved->wasm_module, -1);
+		}
 	}
 	if (decl->alignment != type_abi_alignment(decl->type))
 	{

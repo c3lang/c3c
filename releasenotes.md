@@ -22,6 +22,7 @@
 - Ability of `vendor-fetch` to register the fetched dependencies in the project file.
 - Allow the "self" parameter to be $/# for macro methods.
 - Support compile time slicing of untyped lists.
+- Allow specifying an import module using `@wasm` #1305.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

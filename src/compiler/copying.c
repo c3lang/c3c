@@ -806,6 +806,7 @@ static ResolvedAttrData *copy_attrs_resolved(CopyStruct *c, ResolvedAttrData *da
 			.deprecated = data->deprecated,
 			.links = data->links,
 			.section = data->section,
+			.wasm_module = data->wasm_module
 	};
 	return copy;
 }

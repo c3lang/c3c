@@ -345,6 +345,7 @@ typedef struct
 	const char *deprecated;
 	const char **links;
 	const char *section;
+	const char *wasm_module;
 	SourceSpan overload;
 } ResolvedAttrData;
 
