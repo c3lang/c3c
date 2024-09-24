@@ -32,27 +32,43 @@ macro void seed_entropy(random)
  * Get the next value between 0 and max (not including max).
  *
  * @require is_random(random)
+ * @require max > 0
  **/
 macro int next(random, int max)
 {
-	return (int)(next_double(random) * max);
+	if (max == 1) return 0;
+	return (int)(random.next_long() % (uint)max);
 }
 
 def DefaultRandom = Sfc64Random;
+
+tlocal Sfc64Random default_random @private;
+tlocal bool default_random_initialized @private = false;
+
+/**
+ * Seed the default random function.
+ */
+fn void srand(ulong seed) @builtin
+{
+	default_random.set_seed(@as_char_view(seed));
+	default_random_initialized = true;
+}
 
 /**
  * Get a default random value between 0 and max (not including max)
  **/
 fn int rand(int max) @builtin
 {
-	tlocal Sfc64Random default_random;
-	tlocal bool initialized = false;
-	if (!initialized)
-	{
-		seed_entropy(&default_random);
-		initialized = true;
-	}
+	init_default_random();
 	return next(&default_random, max);
+}
+
+
+fn double rnd() @builtin
+{
+	init_default_random();
+	ulong val = default_random.next_long() & (1UL << 53 - 1);
+	return val * 0x1.0p-53;
 }
 
 /**
@@ -126,4 +142,13 @@ interface Random
 	fn ulong next_long();
 	fn uint128 next_int128();
 	fn void next_bytes(char[] buffer);
+}
+
+macro init_default_random() @local
+{
+	if (!default_random_initialized)
+	{
+		seed_entropy(&default_random);
+		default_random_initialized = true;
+	}
 }

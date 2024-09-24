@@ -64,6 +64,7 @@
 - Add support for the QOI format.
 - Add `io::read_new_fully` for reading to the end of a stream.
 - Add `io::wrap_bytes` for reading bytes with `io` functions.
+- Add `rnd` default random function.
 
 ## 0.6.2 Change list
 
