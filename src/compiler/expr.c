@@ -156,7 +156,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_TEST_HOOK:
 		case EXPR_ANYSWITCH:
 		case EXPR_BITASSIGN:
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_BINARY:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
@@ -614,7 +614,7 @@ bool expr_is_pure(Expr *expr)
 			return exprid_is_pure(expr->pointer_offset_expr.ptr) && exprid_is_pure(expr->pointer_offset_expr.offset);
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_CT_AND_OR:
 		case EXPR_CT_CONCAT:
 		case EXPR_CT_APPEND:

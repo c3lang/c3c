@@ -29,15 +29,35 @@ macro void seed_entropy(random)
 }
 
 /**
- * Get the next value between 0 and max (not including max).
+ * Get the next value between 0 and range (not including range).
  *
  * @require is_random(random)
- * @require max > 0
+ * @require range > 0
  **/
-macro int next(random, int max)
+macro int next(random, uint range)
 {
-	if (max == 1) return 0;
-	return (int)(random.next_long() % (uint)max);
+	if (range == 1) return 0;
+	uint mask = ~0U;
+	range--;
+    mask >>= range.clz();
+    uint x @noinit;
+	do
+	{
+		x = random.next_int() & mask;
+	}
+	while (x > range);
+	return x;
+}
+
+/**
+ * Get a random in the range [min, max], both included.
+ *
+ * @require is_random(random)
+ * @require max >= min
+ **/
+macro int next_in_range(random, int min, int max)
+{
+	return next(random, max - min + 1) + min;
 }
 
 def DefaultRandom = Sfc64Random;
@@ -55,14 +75,23 @@ fn void srand(ulong seed) @builtin
 }
 
 /**
- * Get a default random value between 0 and max (not including max)
+ * Get a default random value between 0 and range (not including range)
  **/
-fn int rand(int max) @builtin
+fn int rand(int range) @builtin
 {
 	init_default_random();
-	return next(&default_random, max);
+	return next(&default_random, range);
 }
 
+/**
+ * Get a random in the range, both included.
+ * @require max >= min
+ **/
+fn int rand_in_range(int min, int max) @builtin
+{
+	init_default_random();
+	return next_in_range(&default_random, min, max);
+}
 
 fn double rnd() @builtin
 {

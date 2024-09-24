@@ -664,7 +664,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_POST_UNARY:
 		case EXPR_TERNARY:
 		case EXPR_LAST_FAULT:
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 			return false;
 		case EXPR_BITACCESS:

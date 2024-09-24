@@ -853,7 +853,7 @@ typedef struct
 {
 	Decl *type;
 	TypeProperty property;
-} ExprTagOf;
+} ExprTypeCall;
 
 typedef struct
 {
@@ -1162,7 +1162,7 @@ struct Expr_
 		ExprSwizzle swizzle_expr;
 		ExprTernary ternary_expr;                   // 16
 		BuiltinDefine benchmark_hook_expr;
-		ExprTagOf tag_of_expr;
+		ExprTypeCall type_call_expr;
 		BuiltinDefine test_hook_expr;
 		Expr** try_unwrap_chain_expr;               // 8
 		ExprTryUnwrap try_unwrap_expr;              // 24
@@ -3350,7 +3350,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 			break;
 	}

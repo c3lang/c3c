@@ -548,7 +548,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_SLICE_COPY:
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_TERNARY:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
@@ -588,7 +588,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_CT_IDENT:
 		case EXPR_EMBED:
 		case EXPR_DEFAULT_ARG:
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 			return false;
 		case EXPR_OTHER_CONTEXT:
@@ -2492,14 +2492,14 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 	}
 }
 
-static inline bool sema_expr_analyse_tagof(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments);
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
 	Expr *tag = exprptr(expr->call_expr.function);
-	Decl *decl = tag->tag_of_expr.type;
-	bool is_has = tag->tag_of_expr.property == TYPE_PROPERTY_HAS_TAGOF;
+	Decl *decl = tag->type_call_expr.type;
+	bool is_has = tag->type_call_expr.property == TYPE_PROPERTY_HAS_TAGOF;
 	const char *name = is_has ? "has_tagof" : "tagof";
 	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single string argument to '%s'.", name);
 	Expr *key = args[0];
@@ -2603,8 +2603,8 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 	Expr *struct_var = NULL;
 	switch (func_expr->expr_kind)
 	{
-		case EXPR_TAGOF:
-			return sema_expr_analyse_tagof(context, expr);
+		case EXPR_TYPECALL:
+			return sema_expr_analyse_typecall(context, expr);
 		case EXPR_BUILTIN:
 			return sema_expr_analyse_builtin_call(context, expr);
 		case EXPR_IDENTIFIER:
@@ -3623,8 +3623,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	{
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
-			expr->expr_kind = EXPR_TAGOF;
-			expr->tag_of_expr = (ExprTagOf) { .type = decl, .property = type_property };
+			expr->expr_kind = EXPR_TYPECALL;
+			expr->type_call_expr = (ExprTypeCall) { .type = decl, .property = type_property };
 			return true;
 		case TYPE_PROPERTY_GET:
 			expr->expr_kind = EXPR_MEMBER_GET;
@@ -3647,7 +3647,6 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 			sema_create_const_membersof(context, expr, decl->type->canonical, parent->const_expr.member.align, parent->const_expr.member.offset);
 			return true;
 		case TYPE_PROPERTY_METHODSOF:
-			sema_create_const_methodsof(context, expr, decl->type->canonical);
 		case TYPE_PROPERTY_KINDOF:
 		case TYPE_PROPERTY_SIZEOF:
 			return sema_expr_rewrite_to_type_property(context, expr, decl->type->canonical, type_property, decl->type->canonical);
@@ -4414,12 +4413,19 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 		case TYPE_PROPERTY_METHODSOF:
 			switch (type->type_kind)
 			{
-				case TYPE_STRUCT:
-				case TYPE_UNION:
-				case TYPE_BITSTRUCT:
-					return true;
-				default:
+				case TYPE_POISONED:
+				case TYPE_VOID:
+				case TYPE_FUNC_RAW:
+				case TYPE_TYPEDEF:
+				case TYPE_UNTYPED_LIST:
+				case TYPE_FLEXIBLE_ARRAY:
+				case TYPE_OPTIONAL:
+				case TYPE_WILDCARD:
+				case TYPE_TYPEINFO:
+				case TYPE_MEMBER:
 					return false;
+				default:
+					return true;
 			}
 		case TYPE_PROPERTY_PARAMSOF:
 		case TYPE_PROPERTY_PARAMS:
@@ -4501,10 +4507,12 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		}
 		case TYPE_PROPERTY_METHODSOF:
-		{
+			if (context->compilation_unit->module->stage <= ANALYSIS_DECLS)
+			{
+				RETURN_SEMA_ERROR(expr, "'methodsof' is not available until after declaration analysis is complete.");
+			}
 			sema_create_const_methodsof(context, expr, flat);
 			return true;
-		}
 		case TYPE_PROPERTY_PARAMSOF:
 			return sema_create_const_paramsof(context, expr, flat);
 		case TYPE_PROPERTY_PARAMS:
@@ -4538,8 +4546,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
-			expr->expr_kind = EXPR_TAGOF;
-			expr->tag_of_expr = (ExprTagOf) {
+			expr->expr_kind = EXPR_TYPECALL;
+			expr->type_call_expr = (ExprTypeCall) {
 				.type = type->type_kind == TYPE_FUNC_PTR
 						? type->pointer->function.decl
 						: type->decl,
@@ -8624,7 +8632,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_POST_UNARY:
 			case EXPR_TYPEID:
 			case EXPR_TYPEID_INFO:
-			case EXPR_TAGOF:
+			case EXPR_TYPECALL:
 			case EXPR_MEMBER_GET:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
@@ -9007,7 +9015,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");
 		case EXPR_OTHER_CONTEXT:
 			context = expr->expr_other_context.context;
@@ -9248,7 +9256,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 				return false;
 			}
 			break;
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 			RETURN_SEMA_ERROR(expr, "A tag name must be given.");
 		case EXPR_BUILTIN:
 			RETURN_SEMA_ERROR(expr, "A builtin must be followed by ().");

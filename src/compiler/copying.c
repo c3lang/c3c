@@ -290,7 +290,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
-		case EXPR_TAGOF:
+		case EXPR_TYPECALL:
 		case EXPR_ANYSWITCH:
 			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:
