@@ -3707,7 +3707,7 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			{
 				if (!sema_analyse_expr(context, init)) goto FAIL;
 				// Check it is constant.
-				if (!sema_cast_const(init))
+				if (!expr_is_runtime_const(init))
 				{
 					SEMA_ERROR(init, "Expected a constant expression assigned to %s.", decl->name);
 					goto FAIL;

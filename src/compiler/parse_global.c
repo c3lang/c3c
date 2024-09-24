@@ -652,6 +652,68 @@ TypeInfo *parse_type(ParseContext *c)
 	return parse_type_with_base(c, base);
 }
 
+typedef enum DiscardedSubscript_
+{
+	DISCARD_ERR,
+	DISCARD_WILDCARD,
+	DISCARD_SLICE,
+	DISCARD_EXPR
+} DiscardedSubscript;
+
+static DiscardedSubscript parse_discarded_subscript(ParseContext *c, TokenType end)
+{
+	if (end == TOKEN_RBRACKET && try_consume(c, end)) return DISCARD_SLICE;
+	if (try_consume(c, TOKEN_STAR))
+	{
+		CONSUME_OR_RET(end, DISCARD_ERR);
+		return DISCARD_WILDCARD;
+	}
+	ASSIGN_EXPR_OR_RET(Expr *ex, parse_expr(c), DISCARD_ERR);
+	(void)ex;
+	CONSUME_OR_RET(end, DISCARD_ERR);
+	return DISCARD_EXPR;
+}
+
+INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
+{
+	if (try_consume(c, TOKEN_LBRACKET))
+	{
+		switch (parse_discarded_subscript(c, TOKEN_RBRACKET))
+		{
+			case DISCARD_ERR:
+				return false;
+			case DISCARD_WILDCARD:
+				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[*]' should appear before the '!', e.g 'Foo[*]!'.");
+				return false;
+			case DISCARD_SLICE:
+				print_error_at(extend_span_with_token(start, c->prev_span),
+				               "When declaring an optional slice the '[]' should appear before the '!', e.g 'Foo[]!'.");
+				return false;
+			case DISCARD_EXPR:
+				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[...]' should appear before the '!', e.g 'Foo[4]!'.");
+				return false;
+		}
+		UNREACHABLE
+	}
+	if (try_consume(c, TOKEN_LVEC))
+	{
+		switch (parse_discarded_subscript(c, TOKEN_RVEC))
+		{
+			case DISCARD_ERR:
+				return false;
+			case DISCARD_WILDCARD:
+				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<*>]' should appear before the '!', e.g 'Foo[<*>]!'.");
+				return false;
+			case DISCARD_SLICE:
+				UNREACHABLE
+			case DISCARD_EXPR:
+				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<...>]' should appear before the '!', e.g 'Foo[<4>]!'.");
+				return false;
+		}
+		UNREACHABLE
+	}
+	return true;
+}
 /**
  * optional_type ::= type '!'?
  * @param c
@@ -663,6 +725,7 @@ TypeInfo *parse_optional_type(ParseContext *c)
 	ASSIGN_TYPE_OR_RET(info, parse_type_with_base(c, info), poisoned_type_info);
 	if (try_consume(c, TOKEN_BANG))
 	{
+		if (!parse_rethrow_bracket(c, info->span)) return poisoned_type_info;
 		assert(!info->optional);
 		info->optional = true;
 		if (info->resolve_status == RESOLVE_DONE)

@@ -103,6 +103,42 @@ ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **eleme
 	return init;
 }
 
+ConstInitializer *const_init_new_struct(Type *type, Expr **elements)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->kind = CONST_INIT_STRUCT;
+	init->type = type_flatten(type);
+	ConstInitializer **values = NULL;
+	FOREACH(Expr *, expr, elements)
+	{
+		if (expr_is_const_initializer(expr))
+		{
+			vec_add(values, expr->const_expr.initializer);
+			continue;
+		}
+		vec_add(values, const_init_new_value(expr));
+	}
+	init->init_struct = values;
+	return init;
+}
+
+ConstInitializer *const_init_new_union(Type *type, ArrayIndex index, Expr *value)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->type = type_flatten(type);
+	init->kind = CONST_INIT_UNION;
+	init->init_union.index = index;
+	if (expr_is_const_initializer(value))
+	{
+		init->init_union.element = value->const_expr.initializer;
+	}
+	else
+	{
+		init->init_union.element = const_init_new_value(value);
+	}
+	return init;
+}
+
 ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index)
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);
@@ -246,35 +282,17 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	{
 		bool is_union = type_flatten(initializer->type)->type_kind == TYPE_UNION;
 		assert(!is_union || vec_size(elements) == 1);
-		ConstInitializer *const_init = CALLOCS(ConstInitializer);
-		const_init->kind = is_union ? CONST_INIT_UNION : CONST_INIT_STRUCT;
-		const_init->type = type_flatten(initializer->type);
+		ConstInitializer *init;
 		if (is_union)
 		{
 			Expr *expr = elements[0];
-			const_init->init_union.index = 0;
-			if (expr_is_const_initializer(expr))
-			{
-				const_init->init_union.element = expr->const_expr.initializer;
-			}
-			else
-			{
-				const_init->init_union.element = const_init_new_value(expr);
-			}
-			expr_rewrite_const_initializer(initializer, initializer->type, const_init);
-			return true;
+			init = const_init_new_union(initializer->type, 0, expr);
 		}
-		const_init->init_struct = NULL;
-		FOREACH(Expr *, expr, elements)
+		else
 		{
-			if (expr_is_const_initializer(expr))
-			{
-				vec_add(const_init->init_struct, expr->const_expr.initializer);
-				continue;
-			}
-			vec_add(const_init->init_struct, const_init_new_value(expr));
+			init = const_init_new_struct(initializer->type, elements);
 		}
-		expr_rewrite_const_initializer(initializer, initializer->type, const_init);
+		expr_rewrite_const_initializer(initializer, initializer->type, init);
 	}
 
 	// 7. Done!
@@ -284,15 +302,8 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 
 Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs)
 {
-	ConstInitializer *init = CALLOCS(ConstInitializer);
-	init->kind = CONST_INIT_STRUCT;
-	init->type = struct_decl->type;
-	unsigned params = vec_size(struct_decl->strukt.members);
-	for (unsigned i = 0; i < params; i++)
-	{
-		vec_add(init->init_struct, const_init_new_value(exprs[i]));
-	}
-	return expr_new_const_initializer(span, struct_decl->type, init);
+	return expr_new_const_initializer(span, struct_decl->type,
+	                                  const_init_new_struct(struct_decl->type, exprs));
 }
 
 /**
@@ -899,7 +910,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	assert(const_init->kind == CONST_INIT_STRUCT);
 
 	// Find the ConstInitializer to change
-	ConstInitializer *sub_element = const_init->init_struct[element->index];
+	ConstInitializer *sub_element = const_init->init_struct[element->index]; // NOLINT
 
 	// If this isn't the last element, we recurse.
 	if (!is_last_path_element)

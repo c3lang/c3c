@@ -6,6 +6,7 @@
 #include "parser_internal.h"
 
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
+static Expr *parse_subscript_expr(ParseContext *c, Expr *left);
 
 typedef struct
 {
@@ -110,11 +111,10 @@ static Expr *parse_rethrow_expr(ParseContext *c, Expr *left_side)
 {
 	assert(expr_ok(left_side));
 	advance_and_verify(c, TOKEN_BANG);
-	Expr *expr_ternary = expr_new_expr(EXPR_RETHROW, left_side);
-	expr_ternary->rethrow_expr.inner = left_side;
-	RANGE_EXTEND_PREV(expr_ternary);
-
-	return expr_ternary;
+	Expr *expr = expr_new_expr(EXPR_RETHROW, left_side);
+	expr->rethrow_expr.inner = left_side;
+	RANGE_EXTEND_PREV(expr);
+	return expr;
 }
 
 /**

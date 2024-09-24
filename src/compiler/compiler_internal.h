@@ -3202,6 +3202,7 @@ bool const_init_local_init_may_be_global(ConstInitializer *init);
 ConstInitializer *const_init_new_zero(Type *type);
 ConstInitializer *const_init_new_value(Expr *value);
 ConstInitializer *const_init_new_array(Type *type, ConstInitializer **elements);
+ConstInitializer *const_init_new_struct(Type *type, Expr **elements);
 ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **elements);
 ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index);
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
