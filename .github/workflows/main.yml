@@ -324,7 +324,7 @@ jobs:
       - name: Test WASM
         run: |
           cd resources/testfragments
-          ../../build/c3c compile --reloc=none --target wasm32 -g0 --link-libc=no --no-entry -Os wasm4.c3
+          ../../build/c3c compile --target wasm32 -g0 --no-entry -Os wasm4.c3
 
       - name: Install QEMU and Risc-V toolchain
         run: |
@@ -558,7 +558,7 @@ jobs:
       - name: Test WASM
         run: |
           cd resources/testfragments
-          ../../build/c3c compile --reloc=none --target wasm32 -g0 --link-libc=no --no-entry -Os wasm4.c3
+          ../../build/c3c compile --reloc=none --target wasm32 -g0 --no-entry -Os wasm4.c3
 
       - name: Build testproject direct linker
         run: |

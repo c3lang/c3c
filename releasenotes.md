@@ -26,6 +26,7 @@
 - Deprecated inline generic types outside of struct definitions and macros unless marked `@adhoc`.
 - Improved method detection in earlier stages of checking.
 - Allow `^` suffix for non-recursive imports #1480.
+- wasm32 / wasm64 targets are use-libc=no by default.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408

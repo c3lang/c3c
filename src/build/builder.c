@@ -229,6 +229,43 @@ void update_build_target_with_opt_level(BuildTarget *target, OptimizationSetting
 	COPY_IF_DEFAULT(target->single_module, single_module);
 }
 
+static LinkLibc libc_from_arch_os(ArchOsTarget target)
+{
+	switch (target)
+	{
+		case ANDROID_AARCH64:
+		case FREEBSD_X86:
+		case FREEBSD_X64:
+		case IOS_AARCH64:
+		case LINUX_AARCH64:
+		case LINUX_RISCV32:
+		case LINUX_RISCV64:
+		case LINUX_X86:
+		case LINUX_X64:
+		case MACOS_AARCH64:
+		case MACOS_X64:
+		case MINGW_X64:
+		case NETBSD_X86:
+		case NETBSD_X64:
+		case OPENBSD_X86:
+		case OPENBSD_X64:
+		case WINDOWS_AARCH64:
+		case WINDOWS_X64:
+			return LINK_LIBC_ON;
+		case WASM32:
+		case WASM64:
+		case MCU_X86:
+		case ARCH_OS_TARGET_DEFAULT:
+		case ELF_AARCH64:
+		case ELF_RISCV32:
+		case ELF_RISCV64:
+		case ELF_X86:
+		case ELF_X64:
+		case ELF_XTENSA:
+			return LINK_LIBC_OFF;
+	}
+	UNREACHABLE
+}
 
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
@@ -470,6 +507,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	if (target->optsetting == OPT_SETTING_NOT_SET) target->optsetting = OPT_SETTING_O0;
 	update_build_target_with_opt_level(target, target->optsetting);
+	if (target->link_libc == LINK_LIBC_NOT_SET)
+	{
+		target->link_libc = libc_from_arch_os(target->arch_os_target);
+	}
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)
