@@ -30,6 +30,7 @@ enum X86Feature
 	AMX_FP16,
 	AMX_INT8,
 	AMX_TILE,
+	APXF,
 	AVX,
 	AVX10_1_256,
 	AVX10_1_512,
@@ -156,6 +157,7 @@ fn void x86_initialize_cpu_features()
 	add_feature_if_bit(AMX_FP16, leaf7s1.eax, 21);
 	add_feature_if_bit(AMX_INT8, leaf7.edx, 25);
 	add_feature_if_bit(AMX_TILE, leaf7.edx, 24);
+	add_feature_if_bit(APXF, leaf7s1.edx, 21);
 	add_feature_if_bit(AVX, feat.ecx, 28);
 	add_feature_if_bit(AVX10_1_256, leaf7s1.edx, 19);
 	add_feature_if_bit(AVX10_1_512, leaf_24.ebx, 18);
