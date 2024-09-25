@@ -298,7 +298,15 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_SSSE3] = "ssse3",
 		[X86_FEAT_SSE4_1] = "sse4.1",
 		[X86_FEAT_SSE4_2] = "sse4.2",
-		[X86_FEAT_AVX] = "avx",
+		[X86_FEAT_APX_EGPR] = "egpr",
+        [X86_FEAT_APX_PUSH2POP2] = "push2pop2",
+        [X86_FEAT_APX_PPX] = "ppx",
+        [X86_FEAT_APX_NDD] = "ndd",
+        [X86_FEAT_APX_CCMP] = "ccmp",
+        [X86_FEAT_APX_NF] = "nf",
+        [X86_FEAT_APX_CF] = "cf",
+        [X86_FEAT_APX_ZU] = "zu",
+        [X86_FEAT_AVX] = "avx",
 		[X86_FEAT_AVX2] = "avx2",
 		[X86_FEAT_AVX10_1_512] = "avx10.1-512",
 		[X86_FEAT_AVX10_1_256] = "avx10.1-256",
@@ -667,6 +675,14 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_XSAVE:
 		case X86_FEAT_EVEX512:
 		case X86_FEAT_USERMSR:
+        case X86_FEAT_APX_EGPR:
+        case X86_FEAT_APX_PUSH2POP2:
+        case X86_FEAT_APX_PPX:
+        case X86_FEAT_APX_NDD:
+        case X86_FEAT_APX_CCMP:
+        case X86_FEAT_APX_NF:
+        case X86_FEAT_APX_CF:
+        case X86_FEAT_APX_ZU:
 			return;
 		case X86_FEAT_AVX10_1_512:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_1_256);
