@@ -1901,8 +1901,28 @@ static inline Decl *parse_def_type(ParseContext *c)
 	}
 
 	// 2. Now parse the type which we know is here.
-	ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_type(c), poisoned_decl);
 
+	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_decl);
+	TypeInfo *type_info;
+	switch (expr->expr_kind)
+	{
+		case EXPR_TYPEINFO:
+			type_info = expr->type_expr;
+			break;
+		case EXPR_IDENTIFIER:
+			if (expr->identifier_expr.is_const)
+			{
+				print_error_at(decl->span, "A constant may not have a type name alias, it must have an all caps name.");
+			}
+			else
+			{
+				print_error_at(decl->span, "An identifier may not be aliased with type name, it must start with a lower case letter.");
+			}
+			return poisoned_decl;
+		default:
+			PRINT_ERROR_HERE("Expected a type to alias here.");
+			return poisoned_decl;
+	}
 	assert(!tok_is(c, TOKEN_LGENPAR));
 
 	decl->typedef_decl.type_info = type_info;

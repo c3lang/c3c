@@ -61,6 +61,7 @@
 - Fix bug due to enum associated values not being checked for liveness.
 - Regression when compile time accessing a union field not last assigned to.
 - Safer seed of rand() for WASM without libc.
+- Bad error message aliasing an ident with a path. #1481.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
