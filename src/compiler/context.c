@@ -270,7 +270,7 @@ ERR:
 }
 
 
-bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
+bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import, bool is_non_recursive)
 {
 	DEBUG_LOG("SEMA: Add import of '%s'.", path->module);
 
@@ -281,7 +281,7 @@ bool unit_add_import(CompilationUnit *unit, Path *path, bool private_import)
 	import->decl_kind = DECL_IMPORT;
 	import->import.path = path;
 	import->import.import_private_as_public = private_import;
-
+	import->import.is_non_recurse = is_non_recursive;
 	vec_add(unit->imports, import);
 	DEBUG_LOG("Added import %s", path->module);
 	return true;

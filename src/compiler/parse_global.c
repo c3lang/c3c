@@ -2388,6 +2388,7 @@ static inline bool parse_import(ParseContext *c)
 		is_not_first = true;
 		Path *path = parse_module_path(c);
 		if (!path) return false;
+		bool is_nonrecurse = try_consume(c, TOKEN_BIT_XOR);
 		bool private = false;
 		if (tok_is(c, TOKEN_AT_IDENT))
 		{
@@ -2399,7 +2400,7 @@ static inline bool parse_import(ParseContext *c)
 			private = true;
 			advance_and_verify(c, TOKEN_AT_IDENT);
 		}
-		unit_add_import(c->unit, path, private);
+		unit_add_import(c->unit, path, private, is_nonrecurse);
 		if (tok_is(c, TOKEN_COLON) && peek(c) == TOKEN_IDENT)
 		{
 			PRINT_ERROR_HERE("'::' was expected here, did you make a mistake?");

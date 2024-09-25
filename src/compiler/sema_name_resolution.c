@@ -235,6 +235,7 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	{
 		Module *import_module = import->import.module;
 		if (import_module == module) return true;
+		if (import->import.is_non_recurse) continue;
 		if (module_inclusion_match(import_module, module)) return true;
 	}
 	return false;
