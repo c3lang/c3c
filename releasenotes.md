@@ -23,11 +23,12 @@
 - Allow the "self" parameter to be $/# for macro methods.
 - Support compile time slicing of untyped lists.
 - Allow specifying an import module using `@wasm` #1305.
+- Deprecated inline generic types outside of struct definitions and macros unless marked `@adhoc`.
+- Improved method detection in earlier stages of checking.
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
 - Generic methods were incorrectly registered as functions, leading to naming collisions. #1402
-- Deprecated inline generic types outside of struct definitions and macros.
 - Deprecated tuple / triple types.
 - Converting a slice to a vector/array would copy too little data.
 - Crash when reading an empty 'manifest.json'.

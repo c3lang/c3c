@@ -2129,7 +2129,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			                  type_quoted_error_string(type_get_ptr(type_info->type)));
 		}
 		body_arg->type = type;
-		if (type_info && type_storage_type(type_info->type))
+		if (type_info && type_storage_type(type_info->type) == STORAGE_NORMAL)
 		{
 			if (!sema_set_alloca_alignment(context, body_arg->type, &body_arg->alignment)) return false;
 		}
@@ -3547,6 +3547,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			UNREACHABLE
 	}
 
+
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, name);
 	if (!decl_ok(member)) return false;
 	if (!member)
@@ -4507,10 +4508,6 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 			return true;
 		}
 		case TYPE_PROPERTY_METHODSOF:
-			if (context->compilation_unit->module->stage <= ANALYSIS_DECLS)
-			{
-				RETURN_SEMA_ERROR(expr, "'methodsof' is not available until after declaration analysis is complete.");
-			}
 			sema_create_const_methodsof(context, expr, flat);
 			return true;
 		case TYPE_PROPERTY_PARAMSOF:

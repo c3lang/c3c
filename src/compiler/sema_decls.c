@@ -1780,15 +1780,6 @@ INLINE SourceSpan method_find_overload_span(Decl *method)
 
 static inline bool unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type *parent_type, Decl *method)
 {
-	// We don't support operator overloading on base types, because
-	// there seems little use for it frankly.
-	if (method->operator)
-	{
-		sema_error_at(context, method_find_overload_span(method),
-					  "Only user-defined types support operator oveloading.");
-		return false;
-	}
-
 	// Add it to the right list of extensions.
 	switch (method->visibility)
 	{
@@ -1841,10 +1832,20 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	// Check it's valid for the operator type.
 	if (!sema_check_operator_method_validity(context, method)) return false;
 
+	// We don't support operator overloading on base types, because
+	// there seems little use for it frankly.
+	if (!type_is_user_defined(parent_type))
+	{
+		sema_error_at(context, method_find_overload_span(method),
+		              "Only user-defined types support operator oveloading.");
+		return false;
+	}
+
 	// See if the operator has already been defined.
 	OperatorOverload operator = method->operator;
+
 	Decl *other = sema_find_operator(context, parent_type, operator);
-	if (other)
+	if (other != method)
 	{
 		SourceSpan span = method_find_overload_span(method);
 		sema_error_at(context, span, "This operator is already defined for '%s'.", parent_type->name);
@@ -1920,6 +1921,11 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	// So compare the value
 	if (this_value != value)
 	{
+		if (operator == OVERLOAD_ELEMENT_REF)
+		{
+			value = type_get_ptr(value);
+			this_value = type_get_ptr(this_value);
+		}
 		SEMA_ERROR(method, "There is a mismatch of the 'value' type compared to that of another operator: expected %s but got %s.",
 		           type_quoted_error_string(value), type_quoted_error_string(this_value));
 		SEMA_NOTE(other, "The other definition is here.");
@@ -1966,6 +1972,7 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 		return false;
 	}
 
+
 	// Is it a base extension?
 	if (!type_is_user_defined(parent_type)) return unit_add_base_extension_method(context, unit, parent_type, method);
 
@@ -1982,12 +1989,6 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 		           method_name_by_decl(method), parent_type->name);
 		SEMA_NOTE(other, "The previous definition was here.");
 		return false;
-	}
-
-	// Is it an operator?
-	if (method->operator)
-	{
-		if (!sema_analyse_operator_method(context, parent_type, method)) return false;
 	}
 
 	DEBUG_LOG("Method-like '%s.%s' analysed.", parent->name, method->name);
@@ -2178,13 +2179,12 @@ static inline bool sema_compare_method_with_interface(SemaContext *context, Decl
  *
  * 1. Check that it has no init/finalizer attributes.
  * 2. Check that it has no test/benchmark attributes.
- * 3. Resolve the parent type.
- * 4. Resolve the declaration of the parent (as needed).
- * 5. Check that it has at least one parameter.
- * 6. Check that this parameter is correct.
- * 7. If it is dynamic, the type may not be an interface or any
- * 8. If it is dynamic, make sure that it implements an interface correctly if available
- * 9. Try adding the method
+ * 3. Resolve the declaration of the parent (as needed).
+ * 4. Check that it has at least one parameter.
+ * 5. Check that this parameter is correct.
+ * 6. If it is dynamic, the type may not be an interface or any
+ * 7. If it is dynamic, make sure that it implements an interface correctly if available
+ * 8. Try adding the method
  */
 static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 {
@@ -2202,7 +2202,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 
 	// Resolve the parent type.
 	TypeInfo *parent_type = type_infoptr(decl->func_decl.type_parent);
-	if (!sema_resolve_type_info(context, parent_type, RESOLVE_TYPE_FUNC_METHOD)) return false;
+	assert(parent_type->resolve_status == RESOLVE_DONE);
 	Type *par_type = parent_type->type->canonical;
 
 	// Resolve declaration of parent as needed.
@@ -2245,7 +2245,13 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			decl->func_decl.interface_method = 0;
 		}
 	}
-	return unit_add_method(context, par_type, decl);
+	// Is it an operator?
+	if (decl->operator)
+	{
+		if (!sema_analyse_operator_method(context, par_type, decl)) return false;
+	}
+
+	return true;
 }
 
 static const char *attribute_domain_to_string(AttributeDomain domain)
@@ -2363,6 +2369,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	assert(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	// NOLINTBEGIN(*.EnumCastOutOfRange)
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
+			[ATTRIBUTE_ADHOC] = USER_DEFINED_TYPES,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
@@ -2526,6 +2533,9 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			FAILED_OP_TYPE:
 			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
 		}
+		case ATTRIBUTE_ADHOC:
+			decl->is_adhoc = true;
+			return true;
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
 			{
@@ -3462,20 +3472,8 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 {
 	// Resolve the type of the method.
 	TypeInfo *parent_type_info = type_infoptr(decl->func_decl.type_parent);
-	if (!sema_resolve_type_info(context, parent_type_info, RESOLVE_TYPE_MACRO_METHOD)) return false;
-
-	// Can the type have methods?
-	Type *parent_type = parent_type_info->type;
-	if (!type_may_have_method(parent_type))
-	{
-		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
-	}
-
-	// We need at least one argument (the parent type)
-	if (!vec_size(decl->func_decl.signature.params))
-	{
-		RETURN_SEMA_ERROR(decl, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
-	}
+	assert(parent_type_info->resolve_status == RESOLVE_DONE);
+	Type *parent_type = parent_type_info->type->canonical;
 
 	// Check the first argument.
 	Decl *first_param = decl->func_decl.signature.params[0];
@@ -3484,13 +3482,19 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
 		return false;
 	}
-	if (!sema_is_valid_method_param(context, first_param, parent_type->canonical, false)) return false;
+	if (!sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
 
 	if (first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
-	return unit_add_method(context, parent_type->canonical, decl);
+	// Is it an operator?
+	if (decl->operator)
+	{
+		if (!sema_analyse_operator_method(context, parent_type, decl)) return false;
+	}
+
+	return true;
 }
 
 INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters)
@@ -4406,6 +4410,31 @@ RETRY:
 			goto RETRY;
 	}
 	UNREACHABLE
+}
+
+bool sema_analyse_method_register(SemaContext *context, Decl *method)
+{
+	TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
+	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
+
+	// Can the type have methods?
+	Type *parent_type = parent_type_info->type;
+	if (!type_may_have_method(parent_type))
+	{
+		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
+	}
+
+	// We need at least one argument (the parent type)
+	if (!vec_size(method->func_decl.signature.params))
+	{
+		RETURN_SEMA_ERROR(method, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
+	}
+
+	// Check the first argument.
+	Decl *first_param = method->func_decl.signature.params[0];
+	if (!first_param) RETURN_SEMA_ERROR(method, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
+
+	return unit_add_method(context, parent_type->canonical, method);
 }
 
 bool sema_analyse_decl(SemaContext *context, Decl *decl)

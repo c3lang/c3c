@@ -367,7 +367,6 @@ void sema_analysis_pass_register_global_declarations(Module *module)
 		DEBUG_LOG("Processing %s.", unit->file->name);
 		register_global_decls(unit, unit->global_decls);
 	}
-
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
 }
 
@@ -380,6 +379,33 @@ void sema_analysis_pass_process_includes(Module *module)
 		// Process all includes
 		sema_process_includes(unit);
 		assert(vec_size(unit->ct_includes) == 0);
+	}
+
+	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
+}
+
+
+void sema_analysis_pass_process_methods(Module *module)
+{
+	DEBUG_LOG("Pass: Process methods register for module '%s'.", module->name->module);
+	FOREACH(CompilationUnit *, unit, module->units)
+	{
+		SemaContext context;
+		sema_context_init(&context, unit);
+		FOREACH(Decl *, method, unit->methods_to_register)
+		{
+			sema_analyse_method_register(&context, method);
+			if (method->decl_kind == DECL_MACRO)
+			{
+				vec_add(unit->macro_methods, method);
+			}
+			else
+			{
+				vec_add(unit->methods, method);
+			}
+		}
+		sema_context_destroy(&context);
+		vec_resize(unit->methods_to_register, 0);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);

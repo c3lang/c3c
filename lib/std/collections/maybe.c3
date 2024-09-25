@@ -1,6 +1,6 @@
 module std::collections::maybe(<Type>);
 
-struct Maybe
+struct Maybe @adhoc
 {
 	Type value;
 	bool has_value;

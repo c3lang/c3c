@@ -181,7 +181,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			assert(decl->name);
 			if (decl->func_decl.type_parent)
 			{
-				vec_add(unit->macro_methods, decl);
+				vec_add(unit->methods_to_register, decl);
 				return;
 			}
 			else
@@ -194,7 +194,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			assert(decl->name);
 			if (decl->func_decl.type_parent)
 			{
-				vec_add(unit->methods, decl);
+				vec_add(unit->methods_to_register, decl);
 				return;
 			}
 			else
@@ -233,7 +233,6 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->attributes, decl);
 			decl_register(decl);
 			break;
-
 		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:

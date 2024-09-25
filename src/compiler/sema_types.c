@@ -192,7 +192,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 }
 
 
-static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info)
+static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
 {
 	if (type_info->unresolved.name == type_string->name && !type_info->unresolved.path)
 	{
@@ -224,8 +224,15 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
 			return true;
-		case DECL_TYPEDEF:
 		case DECL_DISTINCT:
+			if (resolve_type_kind & RESOLVE_TYPE_NO_CHECK_DISTINCT)
+			{
+				type_info->type = decl->type;
+				type_info->resolve_status = RESOLVE_DONE;
+				return true;
+			}
+			FALLTHROUGH;
+		case DECL_TYPEDEF:
 			if (!sema_analyse_decl(context, decl)) return type_info_poison(type_info);
 			type_info->type = decl->type;
 			type_info->resolve_status = RESOLVE_DONE;
@@ -361,10 +368,11 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name, inner->span, type_info->generic.params);
 	if (!decl_ok(type)) return false;
 	type_info->type = type->type;
-	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
+	if (!type->is_adhoc && !context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 		&& !context->call_env.current_function->func_decl.in_macro)
 	{
-		SEMA_DEPRECATED(type_info, "Direct generic type declarations outside of macros and type declarations is a deprecated feature, please use 'def' to create an alias.");
+
+		SEMA_DEPRECATED(type_info, "Direct generic type declarations not marked '@adhoc' outside of macros and type declarations is a deprecated feature, please use 'def' to create an alias.");
 		// TODO, completely disallow
 		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
 	}
@@ -411,7 +419,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			// $Type or Foo
-			if (!sema_resolve_type_identifier(context, type_info)) return type_info_poison(type_info);
+			if (!sema_resolve_type_identifier(context, type_info, resolve_type_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_EVALTYPE:
 			if (!sema_resolve_evaltype(context, type_info, resolve_type_kind)) return type_info_poison(type_info);

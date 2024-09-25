@@ -1,6 +1,6 @@
 module std::collections::tuple(<Type1, Type2>);
 
-struct Tuple @deprecated
+struct Tuple @adhoc
 {
 	Type1 first;
 	Type2 second;
@@ -8,7 +8,7 @@ struct Tuple @deprecated
 
 module std::collections::triple(<Type1, Type2, Type3>);
 
-struct Triple @deprecated
+struct Triple @adhoc
 {
 	Type1 first;
 	Type2 second;

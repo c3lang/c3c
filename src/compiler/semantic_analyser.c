@@ -158,14 +158,25 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 			case ANALYSIS_REGISTER_GLOBAL_DECLARATIONS:
 				sema_analysis_pass_register_global_declarations(module);
 				break;
+			case ANALYSIS_METHODS_REGISTER:
+				sema_analysis_pass_process_methods(module);
+				break;
 			case ANALYSIS_INCLUDES:
 				sema_analysis_pass_process_includes(module);
+				break;
+			case ANALYSIS_METHODS_INCLUDES:
+				sema_analysis_pass_process_methods(module);
 				break;
 			case ANALYSIS_REGISTER_CONDITIONAL_UNITS:
 				sema_analysis_pass_register_conditional_units(module);
 				break;
 			case ANALYSIS_REGISTER_CONDITIONAL_DECLARATIONS:
 				sema_analysis_pass_register_conditional_declarations(module);
+				break;
+			case ANALYSIS_METHODS_CONDITIONAL:
+				sema_analysis_pass_process_methods(module);
+				break;
+			case ANALYSIS_POST_REGISTER:
 				break;
 			case ANALYSIS_DECLS:
 				sema_analysis_pass_decls(module);

@@ -600,6 +600,7 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
+	bool is_adhoc : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
@@ -1604,6 +1605,7 @@ struct CompilationUnit_
 	Decl **ct_includes;
 	Decl **vars;
 	Decl **macros;
+	Decl **methods_to_register;
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **global_decls;
@@ -2273,6 +2275,7 @@ bool sema_cast_const(Expr *expr);
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
