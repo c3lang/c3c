@@ -31,6 +31,7 @@ enum X86Feature
 	AMX_INT8,
 	AMX_TILE,
 	APXF,
+	AVX,
 	AVX10_1_256,
 	AVX10_1_512,
 	AVX2,
