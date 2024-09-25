@@ -251,11 +251,11 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 		case OPENBSD_X64:
 		case WINDOWS_AARCH64:
 		case WINDOWS_X64:
+		case ARCH_OS_TARGET_DEFAULT:
 			return LINK_LIBC_ON;
 		case WASM32:
 		case WASM64:
 		case MCU_X86:
-		case ARCH_OS_TARGET_DEFAULT:
 		case ELF_AARCH64:
 		case ELF_RISCV32:
 		case ELF_RISCV64:
