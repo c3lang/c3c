@@ -17,7 +17,6 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 static Type *sema_expr_analyse_designator(SemaContext *context, Type *current, Expr *expr, ArrayIndex *max_index, Decl **member_ptr);
 INLINE bool sema_initializer_list_is_empty(Expr *value);
 static Type *sema_find_type_of_element(SemaContext *context, Type *type, DesignatorElement ***elements_ref, unsigned *curr_index, bool *is_constant, bool *did_report_error, ArrayIndex *max_index, Decl **member_ptr);
-ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
 static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index);
 static void sema_update_const_initializer_with_designator(ConstInitializer *const_init,
 														  DesignatorElement **curr,
@@ -57,9 +56,12 @@ bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 		case CONST_INIT_UNION:
 			return const_init_local_init_may_be_global_inner(init->init_union.element, false);
 		case CONST_INIT_VALUE:
-			if (!expr_is_const(init->init_value)) return false;
-			if (top && expr_is_const_pointer(init->init_value) && !init->init_value->const_expr.ptr) return false;
+		{
+			Expr *val = init->init_value;
+			if (!expr_is_const(val)) return false;
+			if (expr_is_const_slice(val)) return false;
 			return true;
+		}
 		case CONST_INIT_ARRAY:
 			list = init->init_array.elements;
 			len = vec_size(list);
@@ -136,6 +138,16 @@ ConstInitializer *const_init_new_union(Type *type, ArrayIndex index, Expr *value
 	{
 		init->init_union.element = const_init_new_value(value);
 	}
+	return init;
+}
+
+ConstInitializer *const_init_new_array_value(Expr *expr, ArrayIndex index)
+{
+	ConstInitializer *init = CALLOCS(ConstInitializer);
+	init->type = type_flatten(expr->type);
+	init->kind = CONST_INIT_ARRAY_VALUE;
+	init->init_array_value.index = index;
+	init->init_array_value.element = const_init_new_value(expr);
 	return init;
 }
 
@@ -619,7 +631,7 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 {
 	// Flatten the type since the external type might be typedef or a distinct type.
 	const_init_rewrite_to_zero(const_init, type_flatten(initializer->type));
-
+	assert(type_flatten(initializer->type)->type_kind != TYPE_SLICE);
 	// Loop through the initializers.
 	FOREACH(Expr *, expr, initializer->initializer_list)
 	{
@@ -795,20 +807,27 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		{
 			if (is_zero_init)
 			{
-				expr->expr_kind = EXPR_CONST;
-				expr->const_expr.const_kind = CONST_POINTER;
-				expr->const_expr.ptr = 0;
-				expr->type = to;
-				expr->resolve_status = RESOLVE_DONE;
+				expr_rewrite_const_empty_slice(expr, to);
 				return true;
 			}
 			// Resolve this as an inferred array.
 			Type *type = type_get_inferred_array(flattened->array.base);
 			if (!sema_expr_analyse_initializer(context, type, type, expr)) return false;
-			expr->resolve_status = RESOLVE_DONE;
-			expr_insert_addr(expr);
-			if (!sema_analyse_expr(context, expr)) return false;
-			return cast_explicit(context, expr, to);
+			if (expr_is_const_initializer(expr))
+			{
+				ConstInitializer *init = expr->const_expr.initializer;
+				expr->const_expr.slice_init = init;
+				expr->const_expr.const_kind = CONST_SLICE;
+				expr->type = to;
+				return true;
+			}
+			else
+			{
+				expr->resolve_status = RESOLVE_DONE;
+				expr_insert_addr(expr);
+				if (!sema_analyse_expr(context, expr)) return false;
+				return cast_explicit(context, expr, to);
+			}
 		}
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
@@ -848,6 +867,7 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 	{
 		*const_init = *value->const_expr.initializer;
 		value->const_expr.initializer = const_init;
+		assert(type_flatten(value->type)->type_kind != TYPE_SLICE);
 		return;
 	}
 	if (value->expr_kind == EXPR_IDENTIFIER)
@@ -888,6 +908,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	if (is_last_path_element && sema_initializer_list_is_empty(value))
 	{
 		const_init->kind = CONST_INIT_ZERO;
+		assert(type_flatten(value->type)->type_kind != TYPE_SLICE);
 		return;
 	}
 	Decl **elements = const_init->type->decl->strukt.members;
@@ -966,7 +987,6 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 
 	// Update of the sub element.
 	sub_element->type = type_flatten(const_init->type->decl->strukt.members[element->index]->type);
-
 	// And the index
 	const_init->init_union.index = element->index;
 
@@ -1198,99 +1218,6 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 	*member_ptr = member;
 	if (!member) return NULL;
 	return member->type;
-}
-
-ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size)
-{
-	if (expr_is_const(initializer))
-	{
-		assert(initializer->const_expr.const_kind == CONST_INITIALIZER);
-		ConstInitializer *init = initializer->const_expr.initializer;
-		Type *type = type_flatten(initializer->type);
-		*is_const_size = true;
-		switch (init->kind)
-		{
-			case CONST_INIT_ZERO:
-				if (type->type_kind == TYPE_ARRAY)
-				{
-					*may_be_array = true;
-					return (ArrayIndex)type->array.len;
-				}
-				if (type->type_kind == TYPE_SLICE)
-				{
-					*may_be_array = true;
-					return 0;
-				}
-				*may_be_array = false;
-				return 0;
-			case CONST_INIT_ARRAY:
-				*may_be_array = true;
-				return vectail(init->init_array.elements)->init_array_value.index + 1;
-			case CONST_INIT_ARRAY_FULL:
-				*may_be_array = true;
-				return (ArrayIndex)vec_size(init->init_array_full);
-			case CONST_INIT_ARRAY_VALUE:
-				UNREACHABLE;
-			case CONST_INIT_STRUCT:
-			case CONST_INIT_UNION:
-			case CONST_INIT_VALUE:
-				*may_be_array = false;
-				return 0;
-		}
-		UNREACHABLE
-	}
-	switch (initializer->expr_kind)
-	{
-		case EXPR_INITIALIZER_LIST:
-			*may_be_array = true;
-			*is_const_size = true;
-			return (ArrayIndex)vec_size(initializer->initializer_list);
-		case EXPR_DESIGNATED_INITIALIZER_LIST:
-			break;
-		default:
-			UNREACHABLE
-	}
-	Expr **initializers = initializer->designated_init_list;
-	ArrayIndex size = 0;
-	// Otherwise we assume everything's a designator.
-	FOREACH(Expr *, sub_initializer, initializers)
-	{
-		assert(sub_initializer->expr_kind == EXPR_DESIGNATOR);
-
-		DesignatorElement *element = sub_initializer->designator_expr.path[0];
-		switch (element->kind)
-		{
-			case DESIGNATOR_FIELD:
-				// Struct, abandon!
-				*may_be_array = false;
-				return -1;
-			case DESIGNATOR_ARRAY:
-			{
-				ArrayIndex index = sema_analyse_designator_index(context, element->index_expr);
-				if (index < 0 || element->index_expr->expr_kind != EXPR_CONST)
-				{
-					*is_const_size = false;
-					return -1;
-				}
-				if (index + 1 > size) size = index + 1;
-				break;
-			}
-			case DESIGNATOR_RANGE:
-			{
-				ArrayIndex index = sema_analyse_designator_index(context, element->index_end_expr);
-				if (index < 0 || element->index_end_expr->expr_kind != EXPR_CONST)
-				{
-					*is_const_size = false;
-					return -1;
-				}
-				if (index + 1 > size) size = index + 1;
-				break;
-			}
-			default:
-				UNREACHABLE
-		}
-	}
-	return size;
 }
 
 static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *index)

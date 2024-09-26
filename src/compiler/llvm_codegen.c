@@ -225,11 +225,13 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
+			assert(const_init->type->type_kind != TYPE_SLICE);
 			return llvm_get_zero(c, const_init->type);
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_FULL:
 		{
+			assert(const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
@@ -258,6 +260,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 		case CONST_INIT_ARRAY:
 		{
+			assert(const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
@@ -492,6 +495,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		if (expr_is_const_initializer(init_expr))
 		{
+			assert(type_flatten(init_expr->type)->type_kind != TYPE_SLICE);
 			ConstInitializer *list = init_expr->const_expr.initializer;
 			init_value = llvm_emit_const_initializer(c, list);
 		}

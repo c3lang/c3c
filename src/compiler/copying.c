@@ -220,6 +220,7 @@ INLINE ConstInitializer **copy_const_initializer_list(CopyStruct *c, ConstInitia
 
 static inline void copy_const_initializer(CopyStruct *c, ConstInitializer **initializer_ref)
 {
+	if (!*initializer_ref) return;
 	ConstInitializer *copy = MALLOCS(ConstInitializer);
 	*copy = **initializer_ref;
 	*initializer_ref = copy;
@@ -271,6 +272,9 @@ INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
 			break;
 		case CONST_POINTER:
 		case CONST_TYPEID:
+			break;
+		case CONST_SLICE:
+			copy_const_initializer(c, &expr->const_expr.slice_init);
 			break;
 		case CONST_INITIALIZER:
 			copy_const_initializer(c, &expr->const_expr.initializer);

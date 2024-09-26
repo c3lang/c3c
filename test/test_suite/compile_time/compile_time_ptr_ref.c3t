@@ -12,8 +12,9 @@ int ptr = 0;
 /* #expect: test.ll
 
 %"int*[]" = type { ptr, i64 }
-@.taddr = private global [5 x ptr] [ptr @test.ptr, ptr @test.ptr, ptr getelementptr (i8, ptr @test.ptr, i64 4), ptr getelementptr (i8, ptr @test.ptr, i64 -4), ptr getelementptr (i8, ptr @test.ptr, i64 -4)], align 8
-@test.blurp = local_unnamed_addr global %"int*[]" { ptr @.taddr, i64 5 }, align 8
+
+@.__const_slice = private unnamed_addr global [5 x ptr] [ptr @test.ptr, ptr @test.ptr, ptr getelementptr (i8, ptr @test.ptr, i64 4), ptr getelementptr (i8, ptr @test.ptr, i64 -4), ptr getelementptr (i8, ptr @test.ptr, i64 -4)], align 16
+@test.blurp = local_unnamed_addr global %"int*[]" { ptr @.__const_slice, i64 5 }, align 8
 @test.c = local_unnamed_addr global ptr getelementptr (i8, ptr @test.ptr, i64 -4), align 8
 @test.c2 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.ptr, i64 4), align 8
 @test.c3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.ptr, i64 4), align 8

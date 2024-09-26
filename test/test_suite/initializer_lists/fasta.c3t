@@ -110,7 +110,6 @@ fn int main(int argc, char **argv)
 
 %"char[]" = type { ptr, i64 }
 %"double[]" = type { ptr, i64 }
-
 @fasta.IM = local_unnamed_addr constant i32 139968, align 4
 @fasta.IA = local_unnamed_addr constant i32 3877, align 4
 @fasta.IC = local_unnamed_addr constant i32 29573, align 4
@@ -120,12 +119,12 @@ fn int main(int argc, char **argv)
 @fasta.alu = internal unnamed_addr global %"char[]" { ptr @.str, i64 287 }, align 8
 @.str.11 = private unnamed_addr constant [16 x i8] c"acgtBDHKMNRSVWY\00", align 1
 @fasta.iub = local_unnamed_addr global %"char[]" { ptr @.str.11, i64 15 }, align 8
-@.taddr = private global [15 x double] [double 2.700000e-01, double 1.200000e-01, double 1.200000e-01, double 2.700000e-01, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02], align 8
-@fasta.iub_p = local_unnamed_addr global %"double[]" { ptr @.taddr, i64 15 }, align 8
+@.__const_slice = private unnamed_addr global [15 x double] [double 2.700000e-01, double 1.200000e-01, double 1.200000e-01, double 2.700000e-01, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02, double 2.000000e-02], align 16
+@fasta.iub_p = local_unnamed_addr global %"double[]" { ptr @.__const_slice, i64 15 }, align 8
 @.str.12 = private unnamed_addr constant [5 x i8] c"acgt\00", align 1
 @fasta.homosapiens = local_unnamed_addr global %"char[]" { ptr @.str.12, i64 4 }, align 8
-@.taddr.13 = private global [4 x double] [double 0x3FD3639D20BAEB5B, double 0x3FC957AE3DCD561B, double 0x3FC9493AEAB6C2BF, double 0x3FD34BEE4B030838], align 8
-@fasta.homosapiens_p = local_unnamed_addr global %"double[]" { ptr @.taddr.13, i64 4 }, align 8
+@.__const_slice.13 = private unnamed_addr global [4 x double] [double 0x3FD3639D20BAEB5B, double 0x3FC957AE3DCD561B, double 0x3FC9493AEAB6C2BF, double 0x3FD34BEE4B030838], align 16
+@fasta.homosapiens_p = local_unnamed_addr global %"double[]" { ptr @.__const_slice.13, i64 4 }, align 8
 @fasta.LINELEN = local_unnamed_addr constant i32 60, align 4
 @.str.14 = private unnamed_addr constant [23 x i8] c">ONE Homo sapiens alu\0A\00", align 1
 @.str.15 = private unnamed_addr constant [26 x i8] c">TWO IUB ambiguity codes\0A\00", align 1
@@ -169,12 +168,10 @@ entry:
   store i64 %3, ptr %len, align 8
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %if.exit, %entry
   %4 = load i32, ptr %i, align 4
   %lt = icmp slt i32 %4, %2
   br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %5 = load ptr, ptr %seq, align 8
   %6 = load i32, ptr %i, align 4
@@ -189,27 +186,22 @@ loop.body:                                        ; preds = %loop.cond
   %smod3 = srem i32 %9, 60
   %eq = icmp eq i32 %smod3, 59
   br i1 %eq, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %loop.body
   call void @putchar(i32 10)
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %loop.body
   %10 = load i32, ptr %i, align 4
   %add = add i32 %10, 1
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %11 = load i32, ptr %i, align 4
   %smod4 = srem i32 %11, 60
   %neq = icmp ne i32 %smod4, 0
   br i1 %neq, label %if.then5, label %if.exit6
-
 if.then5:                                         ; preds = %loop.exit
   call void @putchar(i32 10)
   br label %if.exit6
-
 if.exit6:                                         ; preds = %if.then5, %loop.exit
   ret void
 }
@@ -241,26 +233,22 @@ entry:
   store i32 %trunc, ptr %len, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %if.exit13, %entry
   %8 = load i32, ptr %i, align 4
   %lt = icmp slt i32 %8, %4
   br i1 %lt, label %loop.body, label %loop.exit15
-
 loop.body:                                        ; preds = %loop.cond
   %9 = call float @fasta.fasta_rand(float 1.000000e+00)
   %fpfpext = fpext float %9 to double
   store double %fpfpext, ptr %v, align 8
   store i32 0, ptr %j, align 4
   br label %loop.cond5
-
 loop.cond5:                                       ; preds = %if.exit, %loop.body
   %10 = load i32, ptr %j, align 4
   %11 = load i32, ptr %len, align 4
   %sub = sub i32 %11, 1
   %lt6 = icmp slt i32 %10, %sub
   br i1 %lt6, label %loop.body7, label %loop.exit
-
 loop.body7:                                       ; preds = %loop.cond5
   %12 = load double, ptr %v, align 8
   %13 = load ptr, ptr %probability, align 8
@@ -273,16 +261,13 @@ loop.body7:                                       ; preds = %loop.cond5
   %16 = load double, ptr %v, align 8
   %lt8 = fcmp olt double %16, 0.000000e+00
   br i1 %lt8, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %loop.body7
   br label %loop.exit
-
 if.exit:                                          ; preds = %loop.body7
   %17 = load i32, ptr %j, align 4
   %add = add i32 %17, 1
   store i32 %add, ptr %j, align 4
   br label %loop.cond5
-
 loop.exit:                                        ; preds = %if.then, %loop.cond5
   %18 = load ptr, ptr %symb, align 8
   %19 = load i32, ptr %j, align 4
@@ -295,27 +280,22 @@ loop.exit:                                        ; preds = %if.then, %loop.cond
   %smod = srem i32 %21, 60
   %eq11 = icmp eq i32 %smod, 59
   br i1 %eq11, label %if.then12, label %if.exit13
-
 if.then12:                                        ; preds = %loop.exit
   call void @putchar(i32 10)
   br label %if.exit13
-
 if.exit13:                                        ; preds = %if.then12, %loop.exit
   %22 = load i32, ptr %i, align 4
   %add14 = add i32 %22, 1
   store i32 %add14, ptr %i, align 4
   br label %loop.cond
-
 loop.exit15:                                      ; preds = %loop.cond
   %23 = load i32, ptr %i, align 4
   %smod16 = srem i32 %23, 60
   %neq = icmp ne i32 %smod16, 0
   br i1 %neq, label %if.then17, label %if.exit18
-
 if.then17:                                        ; preds = %loop.exit15
   call void @putchar(i32 10)
   br label %if.exit18
-
 if.exit18:                                        ; preds = %if.then17, %loop.exit15
   ret void
 }
@@ -327,14 +307,12 @@ entry:
   store i32 1000, ptr %n, align 4
   %gt = icmp sgt i32 %0, 1
   br i1 %gt, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %1, i64 8
   %2 = load ptr, ptr %ptradd, align 8
   %3 = call i32 @atoi(ptr %2)
   store i32 %3, ptr %n, align 4
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %entry
   %4 = call i32 (ptr, ...) @printf(ptr @.str.14)
   %5 = load i32, ptr %n, align 4

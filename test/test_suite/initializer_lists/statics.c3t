@@ -38,8 +38,8 @@ fn int main()
 @"$ct.statics.Baz" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @"$ct.statics.Bar" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
-@.taddr = private global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 8
-@test.c = internal unnamed_addr global %"Bar[]" { ptr @.taddr, i64 1 }, align 8
+@.__const_slice = private unnamed_addr global [1 x %Bar] [%Bar { i32 1, i32 2 }], align 4
+@test.c = internal unnamed_addr global %"Bar[]" { ptr @.__const_slice, i64 1 }, align 8
 @.str = private unnamed_addr constant [7 x i8] c"%d %d\0A\00", align 1
 
 ; Function Attrs:

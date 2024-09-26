@@ -82,7 +82,7 @@ fn void main()
   store i32 0, ptr %z14, align 4
   %ptradd15 = getelementptr inbounds i8, ptr %z14, i64 4
   store i32 0, ptr %ptradd15, align 4
-  call void @llvm.memset.p0.i64(ptr align 8 %z16, i8 0, i64 16, i1 false)
+  store %"int[]" zeroinitializer, ptr %z16, align 8
   store float 0.000000e+00, ptr %taddr, align 4
   %0 = insertvalue %any undef, ptr %taddr, 0
   %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.float" to i64), 1

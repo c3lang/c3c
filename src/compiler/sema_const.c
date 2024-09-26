@@ -3,47 +3,9 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "sema_internal.h"
-static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr);
+
 static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element);
-static ArrayIndex len_from_const_initializer(ConstInitializer *init);
 static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool is_append);
-
-
-typedef enum
-{
-	CONCAT_UNKNOWN,
-	CONCAT_JOIN_BYTES,
-	CONCAT_JOIN_ARRAYS,
-	CONCAT_JOIN_LISTS,
-} ConcatType;
-
-
-static ArrayIndex len_from_const_initializer(ConstInitializer *init)
-{
-	switch (init->kind)
-	{
-		case CONST_INIT_ZERO:
-			return 0;
-		case CONST_INIT_STRUCT:
-		case CONST_INIT_UNION:
-		case CONST_INIT_VALUE:
-		case CONST_INIT_ARRAY_VALUE:
-			return -1;
-		case CONST_INIT_ARRAY:
-		{
-			ArrayIndex max = 0;
-			FOREACH(ConstInitializer *, element, init->init_array.elements)
-			{
-				assert(element->kind == CONST_INIT_ARRAY_VALUE);
-				if (element->init_array_value.index > max) max = element->init_array_value.index;
-			}
-			return max;
-		}
-		case CONST_INIT_ARRAY_FULL:
-			return vec_size(init->init_array_full);
-	}
-	UNREACHABLE
-}
 
 ArrayIndex sema_len_from_const(Expr *expr)
 {
@@ -63,6 +25,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		if (!sema_cast_const(inner)) return -1;
 		expr = inner;
 	}
+	ConstInitializer *init;
 	switch (expr->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
@@ -75,17 +38,24 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_REF:
 			return -1;
 		case CONST_POINTER:
-			if (type_flatten(expr->type)->type_kind == TYPE_SLICE) return 0;
 			return -1;
 		case CONST_BYTES:
 		case CONST_STRING:
 			return expr->const_expr.bytes.len;
+		case CONST_SLICE:
+			if (!expr->const_expr.slice_init) return 0;
+			init = expr->const_expr.slice_init;
+			goto ARRAY_LEN;
 		case CONST_INITIALIZER:
-			return len_from_const_initializer(expr->const_expr.initializer);
+			init = expr->const_expr.initializer;
+			goto ARRAY_LEN;
 		case CONST_UNTYPED_LIST:
 			return vec_size(expr->const_expr.untyped_list);
 	}
 	UNREACHABLE
+ARRAY_LEN:
+	if (type_is_arraylike(init->type)) return init->type->array.len;
+	return -1;
 }
 
 static inline bool sema_expr_const_append(SemaContext *context, Expr *append_expr, Expr *list, Expr *element)
@@ -94,17 +64,13 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 	switch (list->const_expr.const_kind)
 	{
 		case CONST_INITIALIZER:
+		case CONST_SLICE:
 			assert(list->type != type_untypedlist);
 			return sema_append_const_array_one(context, append_expr, list, element);
 		case CONST_UNTYPED_LIST:
 			untyped_list = list->const_expr.untyped_list;
 			break;
 		case CONST_POINTER:
-			if (list->type->canonical->type_kind == TYPE_SLICE)
-			{
-				return sema_append_const_array_one(context, append_expr, list, element);
-			}
-			FALLTHROUGH;
 		case CONST_BYTES:
 		case CONST_STRING:
 			return sema_append_concat_const_bytes(context, append_expr, list, element, true);
@@ -222,6 +188,7 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 		case CONST_UNTYPED_LIST:
 			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
 			goto RETRY;
+		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
 			expr_contract_array(&right->const_expr, left->const_expr.const_kind);
@@ -262,63 +229,63 @@ static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Exp
 	return true;
 }
 
-// TODO there is also another const_len... look at that.
-static inline ArraySize sema_get_const_len(SemaContext *context, Expr *expr)
-{
-	switch (expr->const_expr.const_kind)
-	{
-		case CONST_FLOAT:
-		case CONST_INTEGER:
-		case CONST_BOOL:
-		case CONST_ENUM:
-		case CONST_ERR:
-		case CONST_POINTER:
-		case CONST_TYPEID:
-		case CONST_REF:
-			return 1;
-		case CONST_BYTES:
-		case CONST_STRING:
-			return expr->const_expr.bytes.len;
-		case CONST_INITIALIZER:
-		{
-			bool may_be_array;
-			bool is_const_size;
-			ArrayIndex len = (ArraySize) sema_get_initializer_const_array_size(context, expr, &may_be_array,
-			                                                                   &is_const_size);
-			assert(is_const_size);
-			return (ArraySize) len;
-		}
-		case CONST_UNTYPED_LIST:
-			return vec_size(expr->const_expr.untyped_list);
-		case CONST_MEMBER:
-			return 1;
-	}
-	UNREACHABLE
-}
-
 static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element)
 {
-	bool is_empty_slice = list->const_expr.const_kind == CONST_POINTER;
-	if (!is_empty_slice && list->const_expr.initializer->kind != CONST_INIT_ARRAY_FULL)
-	{
-		RETURN_SEMA_ERROR(list, "Only fully initialized arrays may be appended to.");
-	}
 	Type *array_type = type_flatten(list->type);
-	bool is_vector = array_type->type_kind == TYPE_VECTOR || array_type->type_kind == TYPE_INFERRED_VECTOR;
-	unsigned len = (is_empty_slice ? 0 : sema_get_const_len(context, list)) + 1;
-	Type *indexed = type_get_indexed_type(list->type);
-	Type *new_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
-	ConstInitializer *init = list->const_expr.initializer;
-	ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-	if (!is_empty_slice)
+	if (expr_is_empty_const_slice(list))
 	{
-		FOREACH(ConstInitializer *, i, init->init_array_full) vec_add(inits, i);
+		// Create a single length array
+		ConstInitializer *first_element = const_init_new_value(element);
+		ConstInitializer **list_of_elements = NULL;
+		vec_add(list_of_elements, first_element);
+		list->const_expr.slice_init = const_init_new_array_full(type_get_array(array_type->array.base, 1), list_of_elements);
+		expr_replace(expr, list);
+		return true;
 	}
-
-	assert(element->resolve_status == RESOLVE_DONE);
-	if (!cast_implicit(context, element, indexed, false)) return false;
-	vec_add(inits, const_init_new_value(element));
-	expr_rewrite_const_initializer(expr, new_type, const_init_new_array_full(new_type, inits));
+	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
+	assert(!type_is_inferred(array_type));
+	bool is_vector = array_type->type_kind == TYPE_VECTOR;
+	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
+	unsigned len = sema_len_from_const(list) + 1;
+	Type *indexed = type_get_indexed_type(init->type);
+	Type *new_inner_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
+	Type *new_outer_type = list->type;
+	if (!is_slice)
+	{
+		Type *outer_indexed = type_get_indexed_type(init->type);
+		new_outer_type = is_vector ? type_get_vector(outer_indexed, len) : type_get_array(outer_indexed, len);
+	}
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+		{
+			init->kind = CONST_INIT_ARRAY;
+			init->type = new_inner_type;
+			ConstInitializer **inits = NULL;
+			vec_add(inits, const_init_new_array_value(element, len - 1));
+			init->init_array.elements = inits;
+			expr_replace(expr, list);
+			expr->type = new_outer_type;
+			break;
+		}
+		case CONST_INIT_ARRAY:
+			init->type = new_inner_type;
+			vec_add(init->init_array.elements, const_init_new_array_value(element, len - 1));
+			expr_replace(expr, list);
+			expr->type = new_outer_type;
+			break;
+		case CONST_INIT_ARRAY_FULL:
+			init->type = new_inner_type;
+			vec_add(init->init_array_full, const_init_new_value(element));
+			expr_replace(expr, list);
+			expr->type = new_outer_type;
+			break;
+		case CONST_INIT_ARRAY_VALUE:
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_UNION:
+		case CONST_INIT_VALUE:
+			UNREACHABLE
+	}
 	return true;
 }
 
@@ -345,17 +312,9 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
 	Type *element_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
-	ConstKind right_kind = right->const_expr.const_kind;
 	switch (left->const_expr.const_kind)
 	{
 		case CONST_POINTER:
-			if (element_type->type_kind == TYPE_SLICE)
-			{
-				len = 0;
-				indexed_type = type_get_indexed_type(element_type);
-				break;
-			}
-			FALLTHROUGH;
 		case CONST_FLOAT:
 		case CONST_INTEGER:
 		case CONST_BOOL:
@@ -363,47 +322,36 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_ERR:
 		case CONST_TYPEID:
 		case CONST_REF:
+		case CONST_MEMBER:
 			RETURN_SEMA_ERROR(left, "Only bytes, strings and list-like constants can be concatenated.");
 		case CONST_BYTES:
 		case CONST_STRING:
 			return sema_concat_bytes_and_other(context, concat_expr, left, right);
+		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			switch (type_flatten(element_type)->type_kind)
 			{
 				case TYPE_VECTOR:
-				case TYPE_INFERRED_VECTOR:
 					use_array = false;
-					FALLTHROUGH;
+					break;
+				case TYPE_INFERRED_VECTOR:
+				case TYPE_INFERRED_ARRAY:
+					UNREACHABLE
 				case TYPE_SLICE:
 				case TYPE_ARRAY:
-				case TYPE_INFERRED_ARRAY:
-				{
-					switch (left->const_expr.initializer->kind)
-					{
-						case CONST_INIT_ARRAY_FULL:
-							break;
-						case CONST_INIT_ZERO:
-							if (type_flatten(element_type)->type_kind == TYPE_SLICE) break;
-							FALLTHROUGH;
-						default:
-							RETURN_SEMA_ERROR(left, "Only fully initialized arrays may be concatenated.");
-					}
-					indexed_type = type_get_indexed_type(element_type);
-					assert(indexed_type);
-					len = sema_get_const_len(context, left);
 					break;
-				}
-				case TYPE_UNTYPED_LIST:
-					UNREACHABLE
-				default:
+				case TYPE_STRUCT:
+				case TYPE_UNION:
 					RETURN_SEMA_ERROR(left, "Only bytes, strings and array-like constants can be concatenated.");
+				default:
+					UNREACHABLE
 			}
+			len = sema_len_from_const(left);
+			indexed_type = type_get_indexed_type(element_type);
 			break;
 		case CONST_UNTYPED_LIST:
 			len = vec_size(left->const_expr.untyped_list);
 			break;
-		case CONST_MEMBER:
-			RETURN_SEMA_ERROR(left, "This can't be concatenated.");
 	}
 	switch (right->const_expr.const_kind)
 	{
@@ -430,6 +378,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			return sema_concat_bytes_and_other(context, concat_expr, left, right);
 		case CONST_UNTYPED_LIST:
 			break;
+		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			if (indexed_type && cast_implicit_silent(context, right, indexed_type, false))
 			{
@@ -441,7 +390,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	{
 		indexed_type = NULL;
 	}
-	len += sema_get_const_len(context, right);
+	len += sema_len_from_const(right);
 	if (!indexed_type)
 	{
 		Expr **untyped_exprs = VECNEW(Expr*, len + 1);

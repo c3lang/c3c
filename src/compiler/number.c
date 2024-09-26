@@ -51,22 +51,20 @@ static inline bool compare_fps(Real left, Real right, BinaryOp op)
 }
 void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 {
-	if (expr_const->const_kind == CONST_POINTER)
+	if (expr_const->const_kind == CONST_SLICE && !expr_const->slice_init)
 	{
 		*expr_const = (ExprConst) { .const_kind = contract_type };
 		return;
 	}
-	assert(expr_const->const_kind == CONST_INITIALIZER);
-	Type *type = expr_const->initializer->type;
+	assert(expr_const->const_kind == CONST_INITIALIZER || expr_const->const_kind == CONST_SLICE);
+	ConstInitializer *initializer = expr_const->const_kind == CONST_SLICE
+			? expr_const->slice_init
+			: expr_const->initializer;
+	Type *type = initializer->type;
 	assert(type_is_any_arraylike(type));
 	ArraySize len = type->array.len;
-	if (!len)
-	{
-		*expr_const = (ExprConst) { .const_kind = contract_type };
-		return;
-	}
+	assert(len > 0);
 	char *arr = calloc_arena(len);
-	ConstInitializer *initializer = expr_const->initializer;
 	switch (initializer->kind)
 	{
 		case CONST_INIT_ZERO:
@@ -206,6 +204,8 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			}
 			is_eq = !memcmp(left->bytes.ptr, right->bytes.ptr, left->bytes.len);
 			goto RETURN;
+		case CONST_SLICE:
+			return false;
 		case CONST_INITIALIZER:
 			return false;
 		case CONST_UNTYPED_LIST:
@@ -279,6 +279,7 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 		case CONST_STRING:
 		case CONST_POINTER:
 		case CONST_TYPEID:
+		case CONST_SLICE:
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
@@ -316,6 +317,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return type_to_error_string(expr->typeid);
 		case CONST_MEMBER:
 			return "member";
+		case CONST_SLICE:
 		case CONST_INITIALIZER:
 			return "constant list";
 		case CONST_UNTYPED_LIST:

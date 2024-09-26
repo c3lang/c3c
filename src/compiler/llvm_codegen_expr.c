@@ -1432,7 +1432,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 	Type *to_type_original = to_type;
 	to_type = type_flatten(to_type);
 	from_type = type_flatten(from_type);
-
 	switch (cast_kind)
 	{
 		case CAST_BSBOOL:
@@ -1756,7 +1755,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
-static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init)
+static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializer *const_init, bool top)
 {
 	if (const_init->type->type_kind == TYPE_VECTOR)
 	{
@@ -1778,7 +1777,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 	// In case of small const initializers, or full arrays - use copy.
 	if (const_init->kind == CONST_INIT_ARRAY_FULL || type_size(const_init->type) <= 32)
 	{
-		if (const_init_local_init_may_be_global(const_init))
+		if (top && const_init_local_init_may_be_global(const_init))
 		{
 			llvm_emit_initialize_reference_temporary_const(c, ref, const_init);
 			return;
@@ -1814,7 +1813,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)i, ref->alignment, &alignment);
 				BEValue value;
 				llvm_value_set_address(&value, array_pointer, element_type, alignment);
-				llvm_emit_const_init_ref(c, &value, const_init->init_array_full[i]);
+				llvm_emit_const_init_ref(c, &value, const_init->init_array_full[i], false);
 			}
 			return;
 		}
@@ -1836,7 +1835,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)element_index, ref->alignment, &alignment);
 				BEValue value;
 				llvm_value_set_address(&value, array_pointer, element_type, alignment);
-				llvm_emit_const_init_ref(c, &value, element->init_array_value.element);
+				llvm_emit_const_init_ref(c, &value, element->init_array_value.element, false);
 			}
 			return;
 		}
@@ -1850,7 +1849,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			llvm_value_bitcast(c, &value, type);
 //			llvm_value_set_address_abi_aligned(&value, llvm_emit_bitcast_ptr(c, ref->value, type), type);
 			// Emit our value.
-			llvm_emit_const_init_ref(c, &value, const_init->init_union.element);
+			llvm_emit_const_init_ref(c, &value, const_init->init_union.element, false);
 			return;
 		}
 		case CONST_INIT_STRUCT:
@@ -1861,7 +1860,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			{
 				BEValue value;
 				llvm_value_struct_gep(c, &value, ref, (unsigned)i);
-				llvm_emit_const_init_ref(c, &value, init);
+				llvm_emit_const_init_ref(c, &value, init, false);
 			}
 			return;
 		}
@@ -1941,6 +1940,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 {
 	Type *type = type_flatten(expr->type);
 	Expr **elements = expr->initializer_list;
+	assert(type->type_kind != TYPE_SLICE);
 
 	if (type->type_kind == TYPE_BITSTRUCT)
 	{
@@ -2169,8 +2169,8 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 {
 	Expr **elements = expr->designated_init_list;
 	assert(vec_size(elements));
-
 	Type *type = type_flatten(expr->type);
+	assert(type->type_kind != TYPE_SLICE);
 	if (type->type_kind == TYPE_BITSTRUCT)
 	{
 		llvm_emit_initialize_reference_designated_bitstruct(c, ref, type->decl, elements);
@@ -2339,7 +2339,8 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
 	assert(expr_is_const_initializer(expr));
-	llvm_emit_const_init_ref(c, ref, expr->const_expr.initializer);
+	assert(type_flatten(expr->type)->type_kind != TYPE_SLICE);
+	llvm_emit_const_init_ref(c, ref, expr->const_expr.initializer, true);
 	return;
 }
 
@@ -4992,6 +4993,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 {
 	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten(expr->type)->type_kind == TYPE_BITSTRUCT)
 	{
+		assert(type_flatten(expr->type)->type_kind != TYPE_SLICE);
 		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer), expr->type);
 		return;
 	}
@@ -5037,6 +5039,39 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		case CONST_FLOAT:
 			llvm_value_set(be_value, llvm_emit_real(llvm_get_type(c, type), expr->const_expr.fxx), type);
+			return;
+		case CONST_SLICE:
+			if (!expr->const_expr.slice_init)
+			{
+				llvm_value_set(be_value, llvm_get_zero(c, type), type);
+				return;
+			}
+			else
+			{
+				ConstInitializer *init = expr->const_expr.slice_init;
+				if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten(expr->type)->type_kind == TYPE_BITSTRUCT)
+				{
+					LLVMValueRef value = llvm_emit_const_initializer(c, init);
+					AlignSize alignment = type_alloca_alignment(init->type);
+					LLVMTypeRef val_type = llvm_get_type(c, init->type);
+					LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const_slice", val_type, alignment);
+					LLVMSetInitializer(global_copy, value);
+					llvm_set_private_linkage(global_copy);
+					LLVMSetUnnamedAddress(global_copy, LLVMGlobalUnnamedAddr);
+					assert(type_is_arraylike(init->type));
+					LLVMValueRef val = llvm_emit_aggregate_two(c, type, global_copy,
+					                                           llvm_const_int(c, type_usz, init->type->array.len));
+					llvm_value_set(be_value, val, type);
+				}
+				else
+				{
+					assert(type_is_arraylike(init->type));
+					llvm_value_set_address_abi_aligned(be_value, llvm_emit_alloca_aligned(c, init->type, "literal"), init->type);
+					llvm_emit_const_init_ref(c, be_value, init, true);
+					LLVMValueRef val = llvm_emit_aggregate_two(c, type, be_value->value, llvm_const_int(c, type_usz, init->type->array.len));
+					llvm_value_set(be_value, val, type);
+				}
+			}
 			return;
 		case CONST_POINTER:
 			if (!expr->const_expr.ptr)
