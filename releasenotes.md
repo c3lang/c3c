@@ -70,6 +70,7 @@
 - Add `io::read_new_fully` for reading to the end of a stream.
 - Add `io::wrap_bytes` for reading bytes with `io` functions.
 - Add `rnd` and `rand_in_range` default random functions.
+- Additional timezone related functions for `datetime`.
 
 ## 0.6.2 Change list
 

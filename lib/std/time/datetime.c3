@@ -20,6 +20,19 @@ fn DateTime from_date(int year, Month month = JANUARY, int day = 1, int hour = 0
 	return dt;
 }
 
+/**
+ * @require day >= 1 && day < 32
+ * @require hour >= 0 && hour < 24
+ * @require min >= 0 && min < 60
+ * @require sec >= 0 && sec < 60
+ * @require us >= 0 && us < 999_999
+ * @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
+ **/
+fn TzDateTime from_date_tz(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0, int gmt_offset = 0)
+{
+	return from_date(year, month, day, hour, min, sec, us).with_gmt_offset(gmt_offset);
+}
+
 fn TzDateTime DateTime.to_local(&self)
 {
 	Tm tm @noinit;
@@ -45,6 +58,57 @@ fn TzDateTime DateTime.to_local(&self)
 		dt.gmt_offset = (int)-timezone;
 	$endif
 	return dt;
+}
+
+/**
+ * Update timestamp to gmt_offset while keeping the date and time
+ * values unchanged.
+ *
+ * @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
+ **/
+fn TzDateTime DateTime.with_gmt_offset(self, int gmt_offset)
+{
+	TzDateTime dt = { self, 0 };
+	return dt.with_gmt_offset(gmt_offset);
+}
+
+/**
+ * Update timestamp to gmt_offset while keeping the date and time
+ * values unchanged.
+ *
+ * @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
+ **/
+fn TzDateTime TzDateTime.with_gmt_offset(self, int gmt_offset)
+{
+	self.time -= (Time)(gmt_offset - self.gmt_offset) * (Time)time::SEC;
+	return { self.date_time, gmt_offset };
+}
+
+/**
+ * Update the date and time values to gmt_offset while keeping the
+ * timestamp unchanged.
+ *
+ * @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
+ * @ensure self.time == return.time
+ **/
+fn TzDateTime DateTime.to_gmt_offset(self, int gmt_offset)
+{
+	TzDateTime dt = { self, 0 };
+	return dt.to_gmt_offset(gmt_offset);
+}
+
+/**
+ * Update the date and time values to gmt_offset while keeping the
+ * timestamp unchanged.
+ *
+ * @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
+ * @ensure self.time == return.time
+ **/
+fn TzDateTime TzDateTime.to_gmt_offset(self, int gmt_offset) {
+	Time time = self.time + (Time)(gmt_offset - self.gmt_offset) * (Time)time::SEC;
+	DateTime dt = from_time(time);
+	dt.time = self.time;
+	return { dt, gmt_offset };
 }
 
 /**
@@ -121,11 +185,30 @@ fn DateTime DateTime.add_months(&self, int months)
 	return from_date(year, (Month)month, self.day, self.hour, self.min, self.sec, self.usec);
 }
 
+
+fn TzDateTime TzDateTime.add_seconds(&self, int seconds) => self.date_time.add_seconds(seconds).to_gmt_offset(self.gmt_offset);
+fn TzDateTime TzDateTime.add_minutes(&self, int minutes) => self.date_time.add_minutes(minutes).to_gmt_offset(self.gmt_offset);
+fn TzDateTime TzDateTime.add_hours(&self, int hours) => self.date_time.add_hours(hours).to_gmt_offset(self.gmt_offset);
+fn TzDateTime TzDateTime.add_days(&self, int days) => self.date_time.add_days(days).to_gmt_offset(self.gmt_offset);
+fn TzDateTime TzDateTime.add_weeks(&self, int weeks) => self.date_time.add_weeks(weeks).to_gmt_offset(self.gmt_offset);
+
+fn TzDateTime TzDateTime.add_years(&self, int years) => self.date_time.add_years(years).with_gmt_offset(self.gmt_offset);
+fn TzDateTime TzDateTime.add_months(&self, int months) => self.date_time.add_months(months).with_gmt_offset(self.gmt_offset);
+
 fn DateTime from_time(Time time)
 {
 	DateTime dt @noinit;
 	dt.set_time(time) @inline;
 	return dt;
+}
+
+/**
+ * @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
+ * @ensure time == return.time
+ **/
+fn TzDateTime from_time_tz(Time time, int gmt_offset)
+{
+	return from_time(time).to_gmt_offset(gmt_offset);
 }
 
 fn Time DateTime.to_time(&self) @inline
