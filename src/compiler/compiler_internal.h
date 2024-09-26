@@ -154,6 +154,7 @@ typedef struct
 		Decl *enum_err_val;
 		Type *typeid;
 		ConstInitializer *initializer;
+		ConstInitializer *slice_init;
 		Expr **untyped_list;
 		struct
 		{
@@ -2269,7 +2270,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
                            bool as_binary);
-ArrayIndex sema_get_initializer_const_array_size(SemaContext *context, Expr *initializer, bool *may_be_array, bool *is_const_size);
+
 bool sema_analyse_expr(SemaContext *context, Expr *expr);
 bool sema_cast_const(Expr *expr);
 
@@ -3206,10 +3207,11 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc);
 bool const_init_local_init_may_be_global(ConstInitializer *init);
 ConstInitializer *const_init_new_zero(Type *type);
 ConstInitializer *const_init_new_value(Expr *value);
-ConstInitializer *const_init_new_array(Type *type, ConstInitializer **elements);
+ConstInitializer *const_init_new_array(Type *type, ConstInitializer **elements) UNUSED;
 ConstInitializer *const_init_new_struct(Type *type, Expr **elements);
 ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **elements);
 ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index);
+ConstInitializer *const_init_new_array_value(Expr *expr, ArrayIndex index);
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
@@ -3521,6 +3523,15 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
+INLINE void expr_rewrite_const_empty_slice(Expr *expr, Type *type)
+{
+	assert(type_flatten(type)->type_kind == TYPE_SLICE);
+	expr->const_expr = (ExprConst) { .const_kind = CONST_SLICE, .initializer = NULL };
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+}
+
 INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements)
 {
 	expr->expr_kind = EXPR_CONST;
@@ -3531,10 +3542,21 @@ INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements)
 
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
+	assert(type_flatten(type)->type_kind != TYPE_SLICE);
 	assert(type != type_untypedlist);
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_const_slice(Expr *expr, Type *type, ConstInitializer *initializer)
+{
+	assert(type_flatten(type)->type_kind == TYPE_SLICE);
+	assert(type != type_untypedlist);
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type;
+	expr->const_expr = (ExprConst) { .slice_init = initializer, .const_kind = CONST_SLICE };
 	expr->resolve_status = RESOLVE_DONE;
 }
 
@@ -3680,6 +3702,12 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 	return 0;
 }
 
+INLINE bool expr_is_empty_const_slice(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST
+		&& expr->const_expr.const_kind == CONST_SLICE
+		&& expr->const_expr.slice_init == NULL;
+}
 
 INLINE bool expr_is_const(Expr *expr)
 {
@@ -3736,6 +3764,11 @@ INLINE bool expr_is_const_bool(Expr *expr)
 INLINE bool expr_is_const_initializer(Expr *expr)
 {
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
+}
+
+INLINE bool expr_is_const_slice(Expr *expr)
+{
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_SLICE;
 }
 
 INLINE bool expr_is_const_bytes(Expr *expr)

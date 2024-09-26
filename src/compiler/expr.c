@@ -552,10 +552,12 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
 			UNREACHABLE
+		case TYPE_SLICE:
+			expr_rewrite_const_empty_slice(expr, type);
+			return;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_SLICE:
 		case TYPE_VECTOR:
 		case TYPE_ARRAY:
 			expr_rewrite_const_initializer(expr, type, const_init_new_zero(type));

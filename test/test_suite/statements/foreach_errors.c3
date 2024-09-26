@@ -44,7 +44,7 @@ fn void test6()
 fn void test7()
 {
     foreach (int a : { 1, 2, 3 }) foo();
-    foreach (a : { 1, 2, 3 }) foo(); // #error: Add the type of your variable here if you want to iterate over
+    foreach (a : { 1, 2, 3 }) foo(); // #error: Add an explicit type to the variable
 }
 
 fn void test8()

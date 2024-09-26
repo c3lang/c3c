@@ -173,6 +173,10 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case FUNC:
 			return self.out_substr("<function>");
 		case DISTINCT:
+			if (arg.type == String.typeid)
+			{
+				return self.out_substr(*(String*)arg);
+			}
 			if (arg.type == ZString.typeid)
 			{
 				return self.out_substr(*(ZString*)arg ? ((ZString*)arg).str_view() : "(null)");
@@ -255,10 +259,6 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case SLICE:
 			// this is SomeType[] so grab the "SomeType"
 			typeid inner = arg.type.inner;
-			if (inner == char.typeid)
-			{
-				return self.out_substr(*(String*)arg);
-			}
 			if (inner == void.typeid) inner = char.typeid;
 			PrintFlags flags = self.flags;
 			uint width = self.width;

@@ -1,5 +1,17 @@
 # C3C Release Notes
 
+## 0.6.4 Change list
+
+### Changes / improvements
+- Const vector -> const slice implicit conversion.
+- Slicing arrays, slices and bytes at compile time #1466.
+
+### Fixes
+- `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
+
+### Stdlib changes
+- Remove unintended print of `char[]` as String
+
 ## 0.6.3 Change list
 
 ### Changes / improvements

@@ -1372,80 +1372,53 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	bool is_reverse = statement->foreach_stmt.is_reverse;
 	bool value_by_ref = statement->foreach_stmt.value_by_ref;
 	bool success = true;
-
 	bool iterator_based = false;
+	bool iterator_was_initializer = enumerator->expr_kind == EXPR_INITIALIZER_LIST;
+	// Check the type if needed
+	TypeInfo *variable_type_info = vartype(var);
+	if (variable_type_info && !sema_resolve_type_info(context, variable_type_info, RESOLVE_TYPE_DEFAULT)) return false;
 
 	// Conditional scope start
 	SCOPE_START
 
+
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
-		Type *inferred_type = NULL;
+		Type *inferred_type = variable_type_info ? type_get_inferred_array(type_no_optional(variable_type_info->type)) : NULL;
 
-		// We may have an initializer list, in this case we rely on an inferred type.
-		if (expr_is_init_list(enumerator) || expr_is_const_initializer(enumerator))
+		if (variable_type_info)
 		{
-			bool may_be_array;
-			bool is_const_size;
-			ArrayIndex size = sema_get_initializer_const_array_size(context, enumerator, &may_be_array, &is_const_size);
-			if (!may_be_array)
-			{
-				SEMA_ERROR(enumerator,
-						   "This initializer appears to be a struct initializer when, an array initializer was expected.");
-				return SCOPE_POP_ERROR();
-			}
-			if (!is_const_size)
-			{
-				SEMA_ERROR(enumerator, "Only constant sized initializers may be implicitly initialized.");
-				return SCOPE_POP_ERROR();
-			}
-			if (size < 0)
-			{
-				SEMA_ERROR(enumerator, "The initializer mixes designated initialization with array initialization.");
-				return SCOPE_POP_ERROR();
-			}
-			assert(size >= 0);
-
-			TypeInfo *variable_type_info = vartype(var);
-
-			if (!variable_type_info)
-			{
-				SEMA_ERROR(var, "Add the type of your variable here if you want to iterate over an initializer list.");
-				return SCOPE_POP_ERROR();
-			}
-			// First infer the type of the variable.
-			if (!sema_resolve_type_info(context, variable_type_info, RESOLVE_TYPE_DEFAULT)) return false;
-			// And create the inferred type:
-			inferred_type = type_get_array(variable_type_info->type, (ArraySize)size);
+			if (!sema_analyse_inferred_expr(context, inferred_type, enumerator)) return SCOPE_POP_ERROR();
 		}
-
-		// because we don't want the index + variable to move into the internal scope
-		if (!sema_analyse_inferred_expr(context, inferred_type, enumerator))
+		else
 		{
-			// Exit early here, because semantic checking might be messed up otherwise.
-			return SCOPE_POP_ERROR();
+			if (!sema_analyse_expr(context, enumerator)) return SCOPE_POP_ERROR();
 		}
-
 		// And pop the cond scope.
 	SCOPE_END;
 
 	if (IS_OPTIONAL(enumerator))
 	{
-		SEMA_ERROR(enumerator, "The expression may not be optional.");
-		return false;
+		RETURN_SEMA_ERROR(enumerator, "The foreach iterable expression may not be optional.");
 	}
 
 	if (statement->foreach_stmt.index_by_ref)
 	{
 		assert(index);
-		SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
-		return false;
+		RETURN_SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
 	}
 
 	// Insert a single deref as needed.
 	Type *canonical = enumerator->type->canonical;
 	if (canonical->type_kind == TYPE_UNTYPED_LIST)
 	{
-		RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate a compile time 'untyped' list at runtime, but you can use the compile time `$foreach` with the list.");
+		if (variable_type_info || !iterator_was_initializer)
+		{
+			RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate a compile time 'untyped' list at runtime, but you can use the compile time `$foreach` with the list.");
+		}
+		else
+		{
+			RETURN_SEMA_ERROR(var, "Add an explicit type to the variable if you want to iterate over an initializer list.");
+		}
 	}
 	if (canonical->type_kind == TYPE_POINTER)
 	{
@@ -2833,11 +2806,11 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 			puts(type_to_error_string(message->const_expr.typeid));
 			break;
 		case CONST_BYTES:
+		case CONST_SLICE:
 		case CONST_INITIALIZER:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
-			SEMA_ERROR(message, "Unsupported type for '$echo'");
-			break;
+			RETURN_SEMA_ERROR(message, "Unsupported type for '$echo'");
 	}
 	statement->ast_kind = AST_NOP_STMT;
 	return true;

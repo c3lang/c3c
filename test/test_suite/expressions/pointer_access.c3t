@@ -63,7 +63,7 @@ entry:
   %ptradd4 = getelementptr inbounds i8, ptr %ptradd1, i64 24
   store double 0.000000e+00, ptr %ptradd4, align 8
   %ptradd5 = getelementptr inbounds i8, ptr %ptradd1, i64 32
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %ptradd5, ptr align 8 @.__const, i32 8, i1 false)
+  store double 3.300000e+00, ptr %ptradd5, align 8
   %ptradd6 = getelementptr inbounds i8, ptr %a, i64 48
   store i32 0, ptr %ptradd6, align 8
   %ptradd7 = getelementptr inbounds i8, ptr %ptradd6, i64 4

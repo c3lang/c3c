@@ -18,13 +18,14 @@ fn void main()
 }
 /* #expect: test.ll
 
-%Abc = type { i32, i32 }
 %Bcd = type { %Abc, i32 }
-@.__const = private unnamed_addr constant %Abc { i32 123, i32 333 }, align 4
+%Abc = type { i32, i32 }
 
   %z = alloca %Bcd, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %z, ptr align 4 @.__const, i32 8, i1 false)
-  %ptradd = getelementptr inbounds i8, ptr %z, i64 8
-  store i32 0, ptr %ptradd, align 4
+  store i32 123, ptr %z, align 4
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 4
+  store i32 333, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %z, i64 8
+  store i32 0, ptr %ptradd1, align 4
   ret void
 }

@@ -199,6 +199,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 
 static void sema_trace_const_initializer_liveness(ConstInitializer *const_init)
 {
+	if (!const_init) return;
 	RETRY:
 	switch (const_init->kind)
 	{
@@ -363,6 +364,9 @@ RETRY:
 					return;
 				case CONST_REF:
 					sema_trace_decl_liveness(expr->const_expr.global_ref);
+					return;
+				case CONST_SLICE:
+					sema_trace_const_initializer_liveness(expr->const_expr.slice_init);
 					return;
 				case CONST_INITIALIZER:
 					sema_trace_const_initializer_liveness(expr->const_expr.initializer);

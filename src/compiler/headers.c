@@ -654,6 +654,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 			case CONST_ERR:
 				PRINTF("%s\n", decl_get_extname(init->const_expr.enum_err_val));
 				return;
+			case CONST_SLICE:
 			case CONST_TYPEID:
 			case CONST_MEMBER:
 			case CONST_INITIALIZER:

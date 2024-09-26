@@ -3716,13 +3716,18 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			// Resolve the type if it's present.
 			if (type_info)
 			{
-				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) goto FAIL;
+				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) goto FAIL;
 				// Set the type of the declaration.
-				decl->type = type_info->type->canonical;
+				decl->type = type_info->type;
 				init = decl->var.init_expr;
 				// If there is no init, set it to zero.
 				if (!init)
 				{
+					if (type_is_inferred(decl->type))
+					{
+						SEMA_ERROR(type_info, "No size could be inferred.");
+						goto FAIL;
+					}
 					decl->var.init_expr = init = expr_new(EXPR_POISONED, decl->span);
 					expr_rewrite_to_const_zero(init, decl->type);
 				}
@@ -3730,6 +3735,10 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 				// Analyse the expression.
 				if (!sema_analyse_expr_rhs(context, decl->type, init, false, NULL, false)) goto FAIL;
 
+				if (type_is_inferred(decl->type))
+				{
+					decl->type = init->type;
+				}
 				// Check that it is constant.
 				if (!expr_is_runtime_const(init))
 				{

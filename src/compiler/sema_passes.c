@@ -221,6 +221,7 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 			return true;
 		case CONST_BYTES:
 		case CONST_INITIALIZER:
+		case CONST_SLICE:
 		case CONST_UNTYPED_LIST:
 		case CONST_MEMBER:
 			return false;

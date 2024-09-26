@@ -968,6 +968,11 @@ static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silen
 
 static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
+	if (type_flatten(cc->to)->array.len != type_flatten(cc->from)->array.len)
+	{
+		if (is_silent) return false;
+		RETURN_CAST_ERROR(cc->expr, "Arrays of different lengths may not be converted.");
+	}
 	if (type_size(cc->from) != type_size(cc->to))
 	{
 		if (is_silent) return false;
@@ -1008,6 +1013,18 @@ static bool rule_vec_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 	Type *base = cc->from->array.base;
 	cast_context_set_from(cc, type_get_array(base, len));
 	return cast_is_allowed(cc, is_explicit, is_silent);
+}
+
+static bool rule_vecarr_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	Expr *expr = cc->expr;
+	if (expr_is_const(expr))
+	{
+		cast_context_set_to(cc, type_get_inferred_array(type_get_indexed_type(cc->to_type)));
+		return cast_is_allowed(cc, is_explicit, is_silent);
+	}
+	if (is_silent) return false;
+	RETURN_CAST_ERROR(expr, "Conversions from arrays or vectors to slices are only permitted on constant arrays, use `&arr` or `arr[..]` instead.");
 }
 
 static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
@@ -2009,26 +2026,10 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 
 static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
-	if (expr_is_const_initializer(expr))
+	if (expr_is_const_slice(expr))
 	{
-		ConstInitializer *list = expr->const_expr.initializer;
-		switch (list->kind)
-		{
-			case CONST_INIT_ZERO:
-				expr_rewrite_const_bool(expr, type, false);
-				return;
-			case CONST_INIT_ARRAY:
-				expr_rewrite_const_bool(expr, type, vec_size(list->init_array.elements) > 0);
-				return;
-			case CONST_INIT_ARRAY_FULL:
-				expr_rewrite_const_bool(expr, type, vec_size(list->init_array_full) > 0);
-				return;
-			case CONST_INIT_STRUCT:
-			case CONST_INIT_UNION:
-			case CONST_INIT_VALUE:
-			case CONST_INIT_ARRAY_VALUE:
-				break;
-		}
+		expr_rewrite_const_bool(expr, type, expr->const_expr.slice_init != NULL);
+		return;
 	}
 	insert_runtime_cast(expr, CAST_SLBOOL, type);
 }
@@ -2050,6 +2051,40 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 	insert_runtime_cast(expr, CAST_SLSL, to_type);
 }
 
+static void cast_vecarr_to_slice(SemaContext *context, Expr *expr, Type *to_type)
+{
+	if (!sema_cast_const(expr))
+	{
+		UNREACHABLE
+	}
+	assert(expr_is_const(expr));
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_ERR:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_SLICE:
+		case CONST_UNTYPED_LIST:
+		case CONST_REF:
+		case CONST_MEMBER:
+			UNREACHABLE
+		case CONST_BYTES:
+		case CONST_STRING:
+			expr->type = to_type;
+			return;
+		case CONST_INITIALIZER:
+		{
+			ConstInitializer *init = expr->const_expr.slice_init;
+			expr_rewrite_const_slice(expr, to_type, init);
+			return;
+		}
+	}
+	UNREACHABLE
+}
 static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
@@ -2073,6 +2108,10 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 		}
 		assert(expr->expr_kind == EXPR_CAST);
 		return;
+	}
+	if (expr_is_const_slice(expr))
+	{
+		expr->const_expr.const_kind = CONST_INITIALIZER;
 	}
 	assert(expr_is_const(expr));
 	expr->type = to_type;
@@ -2190,6 +2229,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define AF2BO &cast_anyfault_to_bool     
 #define AF2FA &cast_anyfault_to_fault    
 #define SL2VA &cast_slice_to_vecarr
+#define VA2SL &cast_vecarr_to_slice
 #define XX2VO &cast_all_to_void          
 #define SL2FE &cast_slice_to_infer
 #define VA2FE &cast_vecarr_to_infer
@@ -2227,6 +2267,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RSTDI &rule_to_struct_to_distinct /* Struct -> inline (struct inline = distinct, distinct inline = struct if explicit flatten)         */
 #define RSLFE &rule_slice_to_infer        /* Slice -> infer (only if slice is constant or can infer)                                           */
 #define RVAFE &rule_vecarr_to_infer       /* Vec/arr -> infer (if base matches)                                                                */
+#define RVASL &rule_vecarr_to_slice       /* Vec/arr -> slice (if base matches)                                                                */
 #define RPTFE &rule_ptr_to_infer          /* Ptr -> infer (if pointee may infer)                                                               */
 #define RPTIF &rule_ptr_to_interface      /* Ptr -> Interface if the pointee implements it                                                     */
 #define RIFIF &rule_interface_to_interface/* Interface -> Interface if the latter implements all of the former                                 */
@@ -2243,10 +2284,10 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, RVASL, RVCVC, _NO__, RXXDI, RVCAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // VECTOR
  {REXPL, _NO__, REXPL, RBSIN, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, RBSAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BITSTRUCT
  {REXPL, _NO__, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIDI, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, RDIXX, _NO__}, // DISTINCT
- {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // ARRAY
+ {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, RVASL, RARVC, RARBS, RXXDI, RARAR, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RVAFE, _NO__}, // ARRAY
  {REXPL, _NO__, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTDI, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, RSTST, _NO__, _NO__}, // STRUCT
  {REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // UNION
  {REXPL, _NO__, REXPL, _NO__, _NO__, REXPL, _NO__, _NO__, _NO__, RXXDI, _NO__, _NO__, _NO__, _NA__, REXPL, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, REXPL, _NO__, _NO__}, // ANY
@@ -2271,10 +2312,10 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {XX2VO,      0, FP2BO, FP2IN, FP2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // FLOAT
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,    0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
  {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,    0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE
- {XX2VO,      0,     0,     0,     0,     0,     0, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // VECTOR
+ {XX2VO,      0,     0,     0,     0,     0, VA2SL, VC2VC,     0,     0, VC2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // VECTOR
  {XX2VO,      0, BS2BO, BS2IA,     0,     0,     0,     0,     0,     0, BS2IA,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // BITSTRUCT
  {    0,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // DISTINCT
- {XX2VO,      0,     0,     0,     0,     0,     0, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // ARRAY
+ {XX2VO,      0,     0,     0,     0,     0, VA2SL, AR2VC, IA2BS,     0, AR2AR,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0, VA2FE,     0     }, // ARRAY
  {XX2VO,      0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,     0, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN, ST2LN,ST2LN, ST2LN, ST2LN, ST2LN,     0,     0     }, // STRUCT
  {XX2VO,      0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,    0,     0,     0,     0,     0,     0     }, // UNION
  {XX2VO,      0, AY2BO,     0,     0, AY2PT,     0,     0,     0,     0,     0,     0,     0,     PT2PT, PT2PT, 0,     0,     0,    0,     0, AY2PT, AY2PT,     0,     0     }, // ANY
