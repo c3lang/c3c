@@ -1,0 +1,28 @@
+{
+  "version": "0.1.0",
+  "authors": [
+    "John Doe <john.doe@example.com>"
+  ],
+  "langrev": "1",
+  "warnings": [
+    "no-unused"
+  ],
+  "sources": [
+    "./**"
+  ],
+  "dependency-search-paths": [],
+  "dependencies": [],
+  "cc": "cc",
+  "c-sources": [],
+  "targets": {
+    "build/triangle": {
+      "type": "executable"
+    }
+  },
+  "linked-libraries": [
+    "glfw",
+    "GL"
+  ],
+  "cpu": "generic",
+  "opt": "O0"
+}
