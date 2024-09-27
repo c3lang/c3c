@@ -62,6 +62,7 @@
 - Regression when compile time accessing a union field not last assigned to.
 - Safer seed of rand() for WASM without libc.
 - Bad error message aliasing an ident with a path. #1481.
+- Error when slicing a struct with an inline array #1488.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

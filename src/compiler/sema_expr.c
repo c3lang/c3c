@@ -3357,12 +3357,15 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 	}
 	Expr *current_expr = subscripted;
 	Type *inner_type = sema_subscript_find_indexable_type_recursively(&type, &current_expr);
-
 	if (type == type_voidptr) inner_type = type_char;
 
 	if (!inner_type || !type_is_valid_for_array(inner_type))
 	{
 		RETURN_SEMA_ERROR(subscripted, "Cannot index %s.", type_quoted_error_string(subscripted->type));
+	}
+	if (current_expr != subscripted)
+	{
+		expr->slice_expr.expr = exprid(current_expr);
 	}
 	// Retain the original type when doing distinct slices.
 	Type *result_type = type_get_slice(inner_type);
