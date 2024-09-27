@@ -109,7 +109,7 @@ macro void! FixedThreadPool.@shutdown(&self, #stop) @private
  */
 fn void! FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
-	mu.in_lock()!;
+	self.mu.lock()!;
 	defer self.mu.unlock()!!;
 	if (self.qindex == self.queue.len) return ThreadPoolResult.QUEUE_FULL?;
 	any[] data;
