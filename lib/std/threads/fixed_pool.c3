@@ -109,7 +109,7 @@ macro void! FixedThreadPool.@shutdown(&self, #stop) @private
  */
 fn void! FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
-	self.mu.lock()!;
+	mu.in_lock()!;
 	defer self.mu.unlock()!!;
 	if (self.qindex == self.queue.len) return ThreadPoolResult.QUEUE_FULL?;
 	any[] data;
@@ -120,6 +120,10 @@ fn void! FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 	}
 	self.queue[self.qindex] = { .func = func, .args = data };
 	self.qindex++;
+	defer catch
+	{
+		free_qitem(self.queue[--self.qindex]);
+	}
 	// Notify the threads that work is available.
 	self.notify.broadcast()!;
 }
