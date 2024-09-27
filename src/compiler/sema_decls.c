@@ -1837,7 +1837,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	if (!type_is_user_defined(parent_type))
 	{
 		sema_error_at(context, method_find_overload_span(method),
-		              "Only user-defined types support operator oveloading.");
+		              "Only user-defined types support operator overloading.");
 		return false;
 	}
 
