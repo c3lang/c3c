@@ -17,7 +17,7 @@ struct ThreadPool
 	ConditionVariable notify;
 }
 
-struct QueueItem
+struct QueueItem @private
 {
 	ThreadFn func;
 	void* arg;
