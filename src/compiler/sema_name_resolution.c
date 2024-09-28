@@ -220,6 +220,9 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	// 1. Same module as unit -> ok
 	if (module == unit->module) return true;
 
+	// This never matches a generic module.
+	if (module->generic_module) return false;
+
 	// 2. Module inclusion: a is submodule of b or b of a.
 	if (module_inclusion_match(module, unit->module)) return true;
 
@@ -589,6 +592,13 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 	if (!found && name_resolve->maybe_decl)
 	{
 		const char *maybe_name = decl_to_name(name_resolve->maybe_decl);
+		if (name_resolve->maybe_decl->unit->module->generic_module)
+		{
+			const char *module_name = name_resolve->maybe_decl->unit->module->generic_module->name->module;
+			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s(<...>)' instead.",
+			              maybe_name, symbol, module_name, symbol);
+			return;
+		}
 		const char *module_name = name_resolve->maybe_decl->unit->module->name->module;
 		if (path_name)
 		{
