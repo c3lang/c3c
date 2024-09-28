@@ -49,6 +49,9 @@ fn void test_timezone()
 	int offset_hours = 7;
 	int offset = offset_hours * 3600;
 
+	int target_offset_hours = -4;
+	int target_offset = target_offset_hours * 3600;
+
 	DateTime d1 = datetime::from_date(2022, OCTOBER, 15);
 	TzDateTime d2 = datetime::from_date_tz(2022, OCTOBER, 15, gmt_offset: offset);
 
@@ -126,5 +129,23 @@ fn void test_timezone()
 	assert(tz.month == NOVEMBER);
 	assert(tz.day == 15);
 	assert(tz.hour == 0);
+	assert(tz.gmt_offset == offset);
+
+	// Conversion from GMT+7 to GMT-4
+	tz = d2.to_gmt_offset(target_offset);
+	assert(tz.year == d2.year);
+	assert(tz.month == d2.month);
+	assert(tz.day == d2.day - 1);
+	assert(tz.hour == 24 - (offset_hours - target_offset_hours));
+	assert(tz.time == t2);
+	assert(tz.gmt_offset == target_offset);
+
+	// Conversion with the same offset
+	tz = d2.to_gmt_offset(offset);
+	assert(tz.year == d2.year);
+	assert(tz.month == d2.month);
+	assert(tz.day == d2.day);
+	assert(tz.hour == d2.hour);
+	assert(tz.time == t2);
 	assert(tz.gmt_offset == offset);
 }
