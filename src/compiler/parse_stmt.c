@@ -15,9 +15,14 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	ast->span = type->span;
 	ast->ast_kind = AST_DECLARE_STMT;
 	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_local_decl_after_type(c, type), poisoned_ast);
+	Decl *decl = ast->declare_stmt;
+	if (tok_is(c, TOKEN_LBRACE) && decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_IDENTIFIER)
+	{
+		print_error_at(decl->var.init_expr->span, "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
+		return poisoned_ast;
+	}
 
 	if (tok_is(c, TOKEN_EOS)) return ast;
-	Decl *decl = ast->declare_stmt;
 	if (decl->attributes || decl->var.init_expr)
 	{
 		if (tok_is(c, TOKEN_COMMA) && peek(c) == TOKEN_IDENT)

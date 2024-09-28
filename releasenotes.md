@@ -63,6 +63,7 @@
 - Safer seed of rand() for WASM without libc.
 - Bad error message aliasing an ident with a path. #1481.
 - Error when slicing a struct with an inline array #1488.
+- Improved error messages on `Foo a = foo { 1 };` #1496
 
 ### Stdlib changes
 - Additional init functions for hashmap.
