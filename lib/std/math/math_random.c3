@@ -173,7 +173,8 @@ interface Random
 	fn void next_bytes(char[] buffer);
 }
 
-macro init_default_random() @local
+
+macro init_default_random() @private
 {
 	if (!default_random_initialized)
 	{
