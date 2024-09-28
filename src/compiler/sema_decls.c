@@ -2438,6 +2438,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		case ATTRIBUTE_PUBLIC:
 		case ATTRIBUTE_LOCAL:
 		case ATTRIBUTE_BUILTIN:
+		case ATTRIBUTE_NORECURSE:
 			// These are pseudo-attributes and are processed separately.
 			UNREACHABLE;
 		case ATTRIBUTE_DEPRECATED:

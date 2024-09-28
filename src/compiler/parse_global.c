@@ -2408,19 +2408,27 @@ static inline bool parse_import(ParseContext *c)
 		is_not_first = true;
 		Path *path = parse_module_path(c);
 		if (!path) return false;
-		bool is_nonrecurse = try_consume(c, TOKEN_BIT_XOR);
 		bool private = false;
+		bool is_norecurse = false;
 		if (tok_is(c, TOKEN_AT_IDENT))
 		{
-			if (symstr(c) != attribute_list[ATTRIBUTE_PUBLIC])
+			const char *name = symstr(c);
+			if (name == attribute_list[ATTRIBUTE_PUBLIC])
 			{
-				PRINT_ERROR_HERE("Only '@public' is a valid attribute here.");
+				private = true;
+			}
+			else if (name == attribute_list[ATTRIBUTE_NORECURSE])
+			{
+				is_norecurse = true;
+			}
+			else
+			{
+				PRINT_ERROR_HERE("Only '@public' and '@norecurse' are valid attributes here.");
 				return false;
 			}
-			private = true;
 			advance_and_verify(c, TOKEN_AT_IDENT);
 		}
-		unit_add_import(c->unit, path, private, is_nonrecurse);
+		unit_add_import(c->unit, path, private, is_norecurse);
 		if (tok_is(c, TOKEN_COLON) && peek(c) == TOKEN_IDENT)
 		{
 			PRINT_ERROR_HERE("'::' was expected here, did you make a mistake?");
