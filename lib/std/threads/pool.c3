@@ -1,7 +1,7 @@
 module std::thread::pool(<SIZE>);
 import std::thread;
 
-struct ThreadPool
+struct ThreadPool @adhoc
 {
 	Mutex mu;
 	QueueItem[SIZE] queue;

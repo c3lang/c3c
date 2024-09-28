@@ -1,6 +1,8 @@
 module std::thread::threadpool @if (env::POSIX || env::WIN32);
 import std::thread;
 
+// Please do not use this one in production.
+
 fault ThreadPoolResult
 {
 	QUEUE_FULL
