@@ -1,4 +1,4 @@
-module std::thread::threadpool;
+module std::thread::threadpool @if (env::POSIX || env::WIN32);
 import std::thread;
 
 fault ThreadPoolResult
