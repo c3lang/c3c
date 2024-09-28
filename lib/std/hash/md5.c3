@@ -1,5 +1,9 @@
 module std::hash::md5;
+import std::hash::hmac;
 import std::bits;
+
+const BLOCK_BYTES = 64;
+const HASH_BYTES = 16;
 
 struct Md5
 {
@@ -9,7 +13,10 @@ struct Md5
 	uint[16] block;
 }
 
-fn char[16] hash(char[] data)
+def HmacMd5 = Hmac(<Md5, HASH_BYTES, BLOCK_BYTES>);
+def hmac = hmac::hash(<Md5, HASH_BYTES, BLOCK_BYTES>);
+
+fn char[HASH_BYTES] hash(char[] data)
 {
 	Md5 md5;
 	md5.init();
@@ -58,7 +65,7 @@ fn void Md5.update(&ctx, char[] data)
 	ctx.buffer[:data.len] = data[..];
 }
 
-fn char[16] Md5.final(&ctx)
+fn char[HASH_BYTES] Md5.final(&ctx)
 {
 	usz used = (usz)ctx.lo & 0x3f;
 	ctx.buffer[used++] = 0x80;

@@ -73,6 +73,7 @@
 - Add `rnd` and `rand_in_range` default random functions.
 - Additional timezone related functions for `datetime`.
 - Added MD5 and crypto::safe_compare.
+- Added generic HMAC.
 
 ## 0.6.2 Change list
 

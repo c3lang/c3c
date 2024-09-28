@@ -5,13 +5,28 @@
 // Implementation was off Steve Reid's SHA-1 C implementation
 
 module std::hash::sha1;
+import std::hash::hmac;
 import std::bits;
+
+const BLOCK_BYTES = 64;
+const HASH_BYTES = 20;
 
 struct Sha1
 {
 	uint[5] state;
 	uint[2] count;
-	char[64] buffer;
+	char[BLOCK_BYTES] buffer;
+}
+
+def HmacSha1 = Hmac(<Sha1, HASH_BYTES, BLOCK_BYTES>);
+def hmac = hmac::hash(<Sha1, HASH_BYTES, BLOCK_BYTES>);
+
+fn char[HASH_BYTES] hash(char[] data)
+{
+	Sha1 sha1 @noinit;
+	sha1.init();
+	sha1.update(data);
+	return sha1.final();
 }
 
 fn void Sha1.init(&self)
@@ -55,7 +70,7 @@ fn void Sha1.update(&self, char[] data)
 }
 
 
-fn char[20] Sha1.final(&self)
+fn char[HASH_BYTES] Sha1.final(&self)
 {
 	char[8] finalcount;
 	for (uint i = 0; i < 8; i++)
@@ -69,21 +84,21 @@ fn char[20] Sha1.final(&self)
 	}
 
 	self.update(&finalcount);
-	char[20] digest;
-	for (uint i = 0; i < 20; i++)
+	char[HASH_BYTES] digest;
+	for (uint i = 0; i < HASH_BYTES; i++)
 	{
 		digest[i] = (char)((self.state[i >> 2] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
 
 	// Clear mem
-	mem::clear(self, Sha1.sizeof);
+	*self = {};
 	finalcount = {};
 	return digest;
 }
 
 union Long16 @local
 {
-	char[64] c;
+	char[BLOCK_BYTES] c;
 	uint[16] l;
 }
 
