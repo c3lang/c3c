@@ -105,7 +105,8 @@ fn TzDateTime DateTime.to_gmt_offset(self, int gmt_offset)
  * @ensure self.time == return.time
  **/
 fn TzDateTime TzDateTime.to_gmt_offset(self, int gmt_offset) {
-	Time time = self.time + (Time)(gmt_offset - self.gmt_offset) * (Time)time::SEC;
+	if (self.gmt_offset == gmt_offset) return self;
+	Time time = self.time + (Time)gmt_offset * (Time)time::SEC;
 	DateTime dt = from_time(time);
 	dt.time = self.time;
 	return { dt, gmt_offset };
