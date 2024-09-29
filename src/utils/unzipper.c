@@ -174,7 +174,8 @@ const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr)
 	const char *error = zip_prepare_zip_for_read(zip, file);
 	if (error) return error;
 
-	unsigned char *bytes = MALLOC(file->uncompressed_size);
+	unsigned char *bytes = MALLOC(file->uncompressed_size + 1);
+	bytes[file->uncompressed_size] = 0;
 	*buffer_ptr = bytes;
 
 	// Uncompressed

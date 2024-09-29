@@ -65,6 +65,7 @@
 - Error when slicing a struct with an inline array #1488.
 - Improved error messages on `Foo a = foo { 1 };` #1496
 - Bug in json decoder escape handling.
+- Fix bug when reading zip manifest, that would not return a zero terminated string. #1490
 
 ### Stdlib changes
 - Additional init functions for hashmap.
