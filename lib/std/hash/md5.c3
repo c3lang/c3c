@@ -15,6 +15,7 @@ struct Md5
 
 def HmacMd5 = Hmac(<Md5, HASH_BYTES, BLOCK_BYTES>);
 def hmac = hmac::hash(<Md5, HASH_BYTES, BLOCK_BYTES>);
+def pbkdf2 = hmac::pbkdf2(<Md5, HASH_BYTES, BLOCK_BYTES>);
 
 fn char[HASH_BYTES] hash(char[] data)
 {

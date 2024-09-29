@@ -17,6 +17,37 @@ fn void test_sha1_longer()
 	assert(sha.final() == x"84983E44 1C3BD26E BAAE4AA1 F95129E5 E54670F1");
 }
 
+fn void test_pbkdf2()
+{
+	char[] pw = "password";
+	char[] s = "salt";
+	char[20] out;
+	sha1::pbkdf2(pw, s, 1, &out);
+	assert(out == x'0c60c80f961f0e71f3a9b524af6012062fe037a6');
+	sha1::pbkdf2(pw, s, 2, &out);
+	assert(out == x'ea6c014dc72d6f8ccd1ed92ace1d41f0d8de8957');
+	sha1::pbkdf2(pw, s, 4096, &out);
+	assert(out == x'4b007901b765489abead49d926f721d065a429c1');
+}
+
+fn void test_pbkdf2_2()
+{
+	char[] pw = "passwordPASSWORDpassword";
+	char[] s = "saltSALTsaltSALTsaltSALTsaltSALTsalt";
+	char[25] out;
+	sha1::pbkdf2(pw, s, 4096, &out);
+	assert(out == x'3d2eec4fe41c849b80c8d83662c0e44a8b291a964cf2f07038');
+}
+
+fn void test_pbkdf2_3()
+{
+	char[] pw = "pass\0word";
+	char[] salt = "sa\0lt";
+	char[16] out;
+	sha1::pbkdf2(pw, salt, 4096, &out);
+	assert(out == x'56fa6aa75548099dcc37d7f03425e0c3');
+}
+
 fn void test_sha1_million_a()
 {
 	Sha1 sha;

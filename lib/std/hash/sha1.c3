@@ -20,6 +20,7 @@ struct Sha1
 
 def HmacSha1 = Hmac(<Sha1, HASH_BYTES, BLOCK_BYTES>);
 def hmac = hmac::hash(<Sha1, HASH_BYTES, BLOCK_BYTES>);
+def pbkdf2 = hmac::pbkdf2(<Sha1, HASH_BYTES, BLOCK_BYTES>);
 
 fn char[HASH_BYTES] hash(char[] data)
 {
