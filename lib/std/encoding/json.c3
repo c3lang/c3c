@@ -386,6 +386,7 @@ fn JsonTokenType! lex_string(JsonContext* context)
 			default:
 				 return JsonParsingError.INVALID_ESCAPE_SEQUENCE?;
 		}
+		context.last_string.append(c);
 	}
 	return STRING;
 }
