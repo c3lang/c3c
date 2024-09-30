@@ -533,6 +533,14 @@ fn void String.convert_ascii_to_lower(s)
 	foreach (&c : s) if (c.is_upper() @pure) *c += 'a' - 'A';
 }
 
+/**
+ * Returns a string converted to ASCII lower case.
+ *
+ * @param [in] s
+ * @param [inout] allocator
+ *
+ * @return `a new String converted to ASCII lower case.`
+ **/
 fn String String.new_ascii_to_lower(s, Allocator allocator = allocator::heap())
 {
 	String copy = s.copy(allocator);
@@ -540,6 +548,11 @@ fn String String.new_ascii_to_lower(s, Allocator allocator = allocator::heap())
 	return copy;
 }
 
+/**
+ * @param [in] s
+ * @param [inout] allocator
+ * @return `a temporary String converted to ASCII lower case.`
+ **/
 fn String String.temp_ascii_to_lower(s, Allocator allocator = allocator::temp())
 {
 	return s.new_ascii_to_lower(allocator);
