@@ -68,6 +68,7 @@
 - Fix bug when reading zip manifest, that would not return a zero terminated string. #1490
 - Fix thread tests.
 - Detect recursion errors on non-recursive mutexes in safe mode.
+- Foreach over distinct pointer failed to be caught as error #1506.
 
 ### Stdlib changes
 - Additional init functions for hashmap.

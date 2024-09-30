@@ -1442,15 +1442,15 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 
 	// Insert a single deref as needed.
-	Type *flattened_type = enumerator->type->canonical;
-	if (flattened_type->type_kind == TYPE_UNTYPED_LIST)
+	Type *canonical = enumerator->type->canonical;
+	if (canonical->type_kind == TYPE_UNTYPED_LIST)
 	{
 		RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate a compile time 'untyped' list at runtime, but you can use the compile time `$foreach` with the list.");
 	}
-	if (flattened_type->type_kind == TYPE_POINTER)
+	if (canonical->type_kind == TYPE_POINTER)
 	{
 		// Something like Foo** will not be dereferenced, only Foo*
-		if (flattened_type->pointer->type_kind == TYPE_POINTER)
+		if (canonical->pointer->type_kind == TYPE_POINTER)
 		{
 			RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 		}
@@ -1463,6 +1463,15 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	// Check that we can even index this expression.
 
 	Type *value_type = type_get_indexed_type(enumerator->type);
+	// Special case, we might have "distinct Foo = char*" in which case the
+	// deref didn't happen above, but it will get a value_type.
+	// However, that would make the code later assume it's possible
+	// To use foreach on it.
+	if (canonical->type_kind == TYPE_DISTINCT && type_flatten(canonical)->type_kind == TYPE_POINTER)
+	{
+		value_type = NULL;
+	}
+
 	if (value_type && value_by_ref) value_type = type_get_ptr(value_type);
 
 	Decl *len = NULL;
