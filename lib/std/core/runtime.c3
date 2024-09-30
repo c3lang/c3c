@@ -221,6 +221,7 @@ fn bool run_tests(TestUnit[] tests)
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
+		(void)io::stdout().flush();
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			if (catch err = unit.func())

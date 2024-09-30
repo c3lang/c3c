@@ -5,6 +5,7 @@ import std::os;
 
 const TEST_MAGNITUDE = 10;
 
+
 fn void! lock_control_test() @test
 {
     Mutex m;

@@ -79,9 +79,9 @@ fn void! NativeMutex.lock(&mtx)
 
 		}
 	}
-	if (!mtx.recursive)
+	if (!mtx.recursive && mtx.already_locked)
 	{
-		while (mtx.already_locked) win32::sleep(1);
+		return ThreadFault.LOCK_FAILED?;
 	}
 	mtx.already_locked = true;
 }
@@ -103,20 +103,11 @@ fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
 		default:
 			return ThreadFault.LOCK_FAILED?;
 	}
-	if (!mtx.recursive)
+	if (!mtx.recursive && mtx.already_locked)
 	{
-		usz left_timeout = ms - 1;
-		while (mtx.already_locked)
-		{
-			if (left_timeout-- == 0)
-			{
-				win32::releaseMutex(mtx.handle);
-				return ThreadFault.LOCK_TIMEOUT?;
-			}
-			win32::sleep(1);
-		}
-		mtx.already_locked = true;
+		return ThreadFault.LOCK_FAILED?;
 	}
+	mtx.already_locked = true;
 }
 
 fn bool NativeMutex.try_lock(&mtx)

@@ -24,6 +24,12 @@ fn void! NativeMutex.init(&self, MutexType type)
 	{
 		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return ThreadFault.INIT_FAILED?;
 	}
+	else
+	{
+		$if env::COMPILER_SAFE_MODE:
+			if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_ERRORCHECK)) return ThreadFault.INIT_FAILED?;
+		$endif
+	}
 	if (posix::pthread_mutex_init(&self.mutex, &attr)) return ThreadFault.INIT_FAILED?;
 	self.initialized = true;
 }
