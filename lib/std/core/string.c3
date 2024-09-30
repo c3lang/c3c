@@ -578,11 +578,12 @@ fn StringIterator String.iterator(s)
 
 /**
  * @param [in] s
+ * @param [inout] allocator
  * @return `a temporary String converted to ASCII upper case.`
  **/
-fn String String.temp_ascii_to_upper(s)
+fn String String.temp_ascii_to_upper(s, Allocator allocator = allocator::temp())
 {
-	return s.new_ascii_to_upper(allocator::temp());
+	return s.new_ascii_to_upper(allocator);
 }
 
 fn String! new_from_utf32(Char32[] utf32, Allocator allocator = allocator::heap())
