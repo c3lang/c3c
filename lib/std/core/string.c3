@@ -540,7 +540,7 @@ fn String String.new_ascii_to_lower(s, Allocator allocator = allocator::heap())
 	return copy;
 }
 
-fn String String.temp_ascii_to_lower(s, Allocator allocator = allocator::heap())
+fn String String.temp_ascii_to_lower(s)
 {
 	return s.new_ascii_to_lower(allocator::temp());
 }
