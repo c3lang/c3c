@@ -1,4 +1,5 @@
 module comments;
+#!/bin/c3
 /* Span *//* style */
 
 /* Nested /* Errors // Inside */ */

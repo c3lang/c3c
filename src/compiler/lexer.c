@@ -250,6 +250,14 @@ static void skip_whitespace(Lexer *lexer)
 	{
 		switch (peek(lexer))
 		{
+            //Case for shebang line #!
+            case '#':
+                if(peek_next(lexer) == '!')
+                {
+                    skip(lexer, 2);
+                    parse_line_comment(lexer);
+                    continue;
+                }
 			case '/':
 				if (lexer->mode == LEX_DOCS) return;
 				// The '//' case
