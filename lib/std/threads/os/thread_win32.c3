@@ -12,7 +12,7 @@ struct NativeMutex
 	}
 	// Size is less than a Win32_HANDLE so due to alignment
 	// there is no benefit to pack these into a bitstruct.
-	bool already_locked;
+	uint locks;
 	bool recursive;
 	bool timed;
 }
@@ -40,7 +40,7 @@ struct NativeConditionVariable
 
 fn void! NativeMutex.init(&mtx, MutexType type)
 {
-	mtx.already_locked = false;
+	mtx.locks = 0;
 	mtx.recursive = (bool)(type & thread::MUTEX_RECURSIVE);
 	mtx.timed = (bool)(type & thread::MUTEX_TIMED);
 	if (!mtx.timed)
@@ -53,6 +53,7 @@ fn void! NativeMutex.init(&mtx, MutexType type)
 
 fn void! NativeMutex.destroy(&mtx)
 {
+	mtx.locks = 0;
 	if (!mtx.timed)
 	{
 		win32::deleteCriticalSection(&mtx.critical_section);
@@ -79,11 +80,11 @@ fn void! NativeMutex.lock(&mtx)
 
 		}
 	}
-	if (!mtx.recursive)
+	if (!mtx.recursive && mtx.locks)
 	{
-		while (mtx.already_locked) win32::sleep(1);
+		return ThreadFault.LOCK_FAILED?;
 	}
-	mtx.already_locked = true;
+	mtx.locks++;
 }
 
 
@@ -103,20 +104,11 @@ fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
 		default:
 			return ThreadFault.LOCK_FAILED?;
 	}
-	if (!mtx.recursive)
+	if (!mtx.recursive && mtx.locks)
 	{
-		usz left_timeout = ms - 1;
-		while (mtx.already_locked)
-		{
-			if (left_timeout-- == 0)
-			{
-				win32::releaseMutex(mtx.handle);
-				return ThreadFault.LOCK_TIMEOUT?;
-			}
-			win32::sleep(1);
-		}
-		mtx.already_locked = true;
+		return ThreadFault.LOCK_FAILED?;
 	}
+	mtx.locks++;
 }
 
 fn bool NativeMutex.try_lock(&mtx)
@@ -128,7 +120,7 @@ fn bool NativeMutex.try_lock(&mtx)
 	if (!success) return false;
 	if (!mtx.recursive)
 	{
-		if (mtx.already_locked)
+		if (mtx.locks)
 		{
 			if (mtx.timed)
 			{
@@ -140,14 +132,15 @@ fn bool NativeMutex.try_lock(&mtx)
 			}
 			return false;
 		}
-		mtx.already_locked = true;
 	}
+	mtx.locks++;
 	return true;
 }
 
 fn void! NativeMutex.unlock(&mtx)
 {
-	mtx.already_locked = false;
+	if (!mtx.locks) return ThreadFault.UNLOCK_FAILED?;
+	mtx.locks--;
 	if (!mtx.timed)
 	{
 		win32::leaveCriticalSection(&mtx.critical_section);
