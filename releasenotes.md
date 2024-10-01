@@ -82,6 +82,7 @@
 - Added MD5 and crypto::safe_compare.
 - Added generic HMAC.
 - Added generic PBKDF2 implementation.
+- `DString.insert_at` now has variants for other types.
 
 ## 0.6.2 Change list
 
