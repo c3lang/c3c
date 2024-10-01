@@ -69,6 +69,7 @@
 - Fix thread tests.
 - Detect recursion errors on non-recursive mutexes in safe mode.
 - Foreach over distinct pointer failed to be caught as error #1506.
+- Foreach over distinct iterable would ignore operator(len).
 
 ### Stdlib changes
 - Additional init functions for hashmap.

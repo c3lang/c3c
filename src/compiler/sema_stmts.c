@@ -1463,10 +1463,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	// Check that we can even index this expression.
 
 	Type *value_type = type_get_indexed_type(enumerator->type);
-	// Special case, we might have "distinct Foo = char*" in which case the
-	// deref didn't happen above, but it will get a value_type.
-	// However, that would make the code later assume it's possible
-	// To use foreach on it.
 	if (canonical->type_kind == TYPE_DISTINCT && type_flatten(canonical)->type_kind == TYPE_POINTER)
 	{
 		value_type = NULL;
@@ -1478,20 +1474,19 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Decl *index_macro = NULL;
 	Type *index_type = type_usz;
 
-	if (!value_type)
+	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
 	{
 		len = sema_find_operator(context, enumerator->type, OVERLOAD_LEN);
 		Decl *by_val = sema_find_operator(context, enumerator->type, OVERLOAD_ELEMENT_AT);
 		Decl *by_ref = sema_find_operator(context, enumerator->type, OVERLOAD_ELEMENT_REF);
 		if (!len || (!by_val && !by_ref))
 		{
-			SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
-			return false;
+			if (value_type) goto SKIP_OVERLOAD;
+			RETURN_SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 		}
 		if (!by_ref && value_by_ref)
 		{
-			SEMA_ERROR(enumerator, "%s does not support 'foreach' by reference, but you iterate by value.", type_quoted_error_string(enumerator->type));
-			return false;
+			RETURN_SEMA_ERROR(enumerator, "%s does not support 'foreach' by reference, but you iterate by value.", type_quoted_error_string(enumerator->type));
 		}
 		if (!decl_ok(len) || !decl_ok(by_val) || !decl_ok(by_ref)) return false;
 		index_macro = value_by_ref ? by_ref : by_val;
@@ -1499,13 +1494,13 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		index_type = index_macro->func_decl.signature.params[1]->type;
 		if (!type_is_integer(index_type))
 		{
-			SEMA_ERROR(enumerator, "Only integer indexed types may be used with foreach.");
-			return false;
+			RETURN_SEMA_ERROR(enumerator, "Only integer indexed types may be used with foreach.");
 		}
 		TypeInfoId rtype = index_macro->func_decl.signature.rtype;
 		value_type = rtype ? type_infoptr(rtype)->type : NULL;
 	}
 
+SKIP_OVERLOAD:;
 
 	TypeInfo *type_info = vartype(var);
 	// Set up the value, assigning the type as needed.
@@ -1531,15 +1526,13 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		index_var_type = idx_type_info->type;
 		if (type_is_optional(index_var_type))
 		{
-			SEMA_ERROR(idx_type_info, "The index may not be an optional.");
-			return false;
+			RETURN_SEMA_ERROR(idx_type_info, "The index may not be an optional.");
 		}
 		if (!type_is_integer(type_flatten(index_var_type)))
 		{
-			SEMA_ERROR(idx_type_info,
-					   "Index must be an integer type, '%s' is not valid.",
-					   type_to_error_string(index_var_type));
-			return false;
+			RETURN_SEMA_ERROR(idx_type_info,
+			                  "Index must be an integer type, '%s' is not valid.",
+			                  type_to_error_string(index_var_type));
 		}
 	}
 
