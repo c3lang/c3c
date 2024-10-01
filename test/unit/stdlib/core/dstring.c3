@@ -10,6 +10,20 @@ fn void test_replace()
 	assert(hello.str_view() == "Hello world where are yoooo? Are yoooo here too?");
 }
 
+fn void test_reverse()
+{
+	DString a;
+	a.append("abcd");
+	a.reverse();
+	assert(a.str_view() == "dcba");
+	a.reverse();
+	assert(a.str_view() == "abcd");
+	a.append("e");
+	assert(a.str_view() == "abcde");
+	a.reverse();
+	assert(a.str_view() == "edcba");
+}
+
 fn void test_delete()
 {
 	{

@@ -467,6 +467,19 @@ fn void! out_string_append_fn(void* data, char c) @private
 	s.append_char(c);
 }
 
+fn void DString.reverse(self)
+{
+	StringData *data = self.data();
+	if (!data) return;
+	isz mid = data.len / 2;
+	for (isz i = 0; i < mid; i++)
+	{
+		char temp = data.chars[i];
+		isz reverse_index = data.len - 1 - i;
+		data.chars[i] = data.chars[reverse_index];
+		data.chars[reverse_index] = temp;
+	}
+}
 
 fn StringData* DString.data(self) @inline @private
 {
