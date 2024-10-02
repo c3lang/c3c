@@ -872,8 +872,8 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 {
 	const char *dir = compiler.build.object_file_dir;
 	if (!dir) dir = compiler.build.build_dir;
-	if (output_subdir) dir = file_append_path(dir, output_subdir);
-	dir_make(dir);
+	if (output_subdir) dir = dir ? file_append_path(dir, output_subdir) : output_subdir;
+	if (dir) dir_make(dir);
 	bool is_cl_exe = str_eq(cc, "cl.exe");
 	char *filename = NULL;
 	bool split_worked = file_namesplit(file, &filename, NULL);

@@ -71,6 +71,7 @@
 - Detect recursion errors on non-recursive mutexes in safe mode.
 - Foreach over distinct pointer failed to be caught as error #1506.
 - Foreach over distinct iterable would ignore operator(len).
+- Compiler crash when compiling c code in a library without --obj-out #1503.
 
 ### Stdlib changes
 - Additional init functions for hashmap.
