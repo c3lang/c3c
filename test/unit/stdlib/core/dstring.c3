@@ -184,6 +184,23 @@ fn void test_insert_at()
 	str.insert_at(5, " shiny");
 	s = str.str_view();
 	assert(s == "hello shiny world", "got '%s'; want 'hello shiny world'", s);
+
+	str.insert_at(0, '[');
+	s = str.str_view();
+	assert(s == "[hello shiny world", "got '%s'; want '[hello shiny world'", s);
+
+	str.insert_at(18, ']');
+	s = str.str_view();
+	assert(s == "[hello shiny world]", "got '%s'; want 'hello shiny world]'", s);
+
+	str.insert_at(0, 'ꫩ');
+	s = str.str_view();
+	assert(s == "ꫩ[hello shiny world]", "got '%s'; want 'ꫩ[hello shiny world]'", s);
+
+	// ꫩ is 3 bytes long
+	str.insert_utf32_at(4, {'寃', 't', 'e', 'x', 't', '￥'});
+	s = str.str_view();
+	assert(s == "ꫩ[寃text￥hello shiny world]", "got '%s'; want 'ꫩ[寃text￥hello shiny world]'", s);
 }
 
 fn void test_insert_at_overlaps()

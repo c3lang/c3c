@@ -154,13 +154,15 @@ fn String DString.str_view(self)
 	return (String)data.chars[:data.len];
 }
 
-fn void DString.append_utf32(&self, Char32[] chars)
+fn usz DString.append_utf32(&self, Char32[] chars)
 {
 	self.reserve(chars.len);
+	usz end = self.len();
 	foreach (Char32 c : chars)
 	{
 		self.append_char32(c);
 	}
+	return self.data().len - end;
 }
 
 /**
@@ -185,7 +187,7 @@ fn void DString.append_repeat(&self, char c, usz times)
 /**
  * @require c <= 0x10ffff
  */
-fn void DString.append_char32(&self, Char32 c)
+fn usz DString.append_char32(&self, Char32 c)
 {
 	char[4] buffer @noinit;
 	char* p = &buffer;
@@ -194,6 +196,7 @@ fn void DString.append_char32(&self, Char32 c)
 	StringData* data = self.data();
 	data.chars[data.len:n] = buffer[:n];
 	data.len += n;
+	return n;
 }
 
 fn DString DString.tcopy(&self) => self.copy(allocator::temp());
@@ -387,7 +390,10 @@ macro void DString.append(&self, value)
 	$endswitch
 }
 
-fn void DString.insert_at(&self, usz index, String s)
+/**
+ * @require index <= self.len()
+ **/
+fn void DString.insert_chars_at(&self, usz index, String s)
 {
 	if (s.len == 0) return;
 	self.reserve(s.len);
@@ -417,6 +423,103 @@ fn void DString.insert_at(&self, usz index, String s)
 		default:
 			mem::move(start, s, s.len);
 	}
+}
+
+/**
+ * @require index <= self.len()
+ **/
+fn void DString.insert_string_at(&self, usz index, DString str)
+{
+	StringData* other = str.data();
+	if (!other) return;
+	self.insert_at(index, str.str_view());
+}
+
+/**
+ * @require index <= self.len()
+ **/
+fn void DString.insert_char_at(&self, usz index, char c)
+{
+	self.reserve(1);
+	StringData* data = self.data();
+
+	char* start = &data.chars[index];
+	mem::move(start + 1, start, self.len() - index);
+	data.chars[index] = c;
+	data.len++;
+}
+
+/**
+ * @require index <= self.len()
+ **/
+fn usz DString.insert_char32_at(&self, usz index, Char32 c)
+{
+	char[4] buffer @noinit;
+	char* p = &buffer;
+	usz n = conv::char32_to_utf8_unsafe(c, &p);
+
+	self.reserve(n);
+	StringData* data = self.data();
+
+	char* start = &data.chars[index];
+	mem::move(start + n, start, self.len() - index);
+	data.chars[index:n] = buffer[:n];
+	data.len += n;
+
+	return n;
+}
+
+/**
+ * @require index <= self.len()
+ **/
+fn usz DString.insert_utf32_at(&self, usz index, Char32[] chars)
+{
+	usz n = conv::utf8len_for_utf32(chars);
+	
+	self.reserve(n);
+	StringData* data = self.data();
+
+	char* start = &data.chars[index];
+	mem::move(start + n, start, self.len() - index);
+
+	char[4] buffer @noinit;
+
+	foreach(c : chars)
+	{
+		char* p = &buffer;
+		usz m = conv::char32_to_utf8_unsafe(c, &p);
+		data.chars[index:m] = buffer[:m];
+		index += m;
+	}
+
+	data.len += n;
+
+	return n;
+}
+
+macro void DString.insert_at(&self, usz index, value)
+{
+	var $Type = $typeof(value);
+	$switch ($Type)
+		$case char:
+		$case ichar:
+			self.insert_char_at(index, value);
+		$case DString:
+			self.insert_string_at(index, value);
+		$case String:
+			self.insert_chars_at(index, value);
+		$case Char32:
+			self.insert_char32_at(index, value);
+		$default:
+			$switch
+				$case $defined((Char32)value):
+					self.insert_char32_at(index, (Char32)value);
+				$case $defined((String)value):
+					self.insert_chars_at(index, (String)value);
+				$default:
+					$error "Unsupported type for insert";
+			$endswitch
+	$endswitch
 }
 
 fn usz! DString.appendf(&self, String format, args...) @maydiscard

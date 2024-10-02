@@ -83,6 +83,7 @@
 - Added generic HMAC.
 - Added generic PBKDF2 implementation.
 - DString `reverse`.
+- `DString.insert_at` now has variants for other types.
 
 ## 0.6.2 Change list
 
