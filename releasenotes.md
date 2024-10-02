@@ -27,6 +27,7 @@
 - Improved method detection in earlier stages of checking.
 - Allow `@norecurse` attribute for non-recursive imports #1480.
 - wasm32 / wasm64 targets are use-libc=no by default.
+- Add hash/sha256 module 
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
