@@ -242,3 +242,204 @@ macro usz! write_varint(stream, x)
 	buffer[i] = (char)x;
 	return write_all(stream, buffer[:i + 1]);
 }
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro ushort! read_be_ushort(stream)
+{
+	char hi_byte = stream.read_byte()!;
+    char lo_byte = stream.read_byte()!;
+    return (ushort)(hi_byte << 8 | lo_byte);
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro short! read_be_short(stream)
+{
+	return read_be_ushort(stream);
+}
+
+/**
+ * @require @is_outstream(stream)
+ **/
+macro void! write_be_short(stream, ushort s)
+{
+	stream.write_byte((char)(s >> 8))!;
+	stream.write_byte((char)s)!;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro uint! read_be_uint(stream)
+{
+	uint val = stream.read_byte()! << 24;
+	val += stream.read_byte()! << 16;
+	val += stream.read_byte()! << 8;
+	return val + stream.read_byte()!;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro int! read_be_int(stream)
+{
+	return read_be_uint(stream);
+}
+
+/**
+ * @require @is_outstream(stream)
+ **/
+macro void! write_be_int(stream, uint s)
+{
+	stream.write_byte((char)(s >> 24))!;
+	stream.write_byte((char)(s >> 16))!;
+	stream.write_byte((char)(s >> 8))!;
+	stream.write_byte((char)s)!;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro ulong! read_be_ulong(stream)
+{
+	ulong val = (ulong)stream.read_byte()! << 56;
+	val += (ulong)stream.read_byte()! << 48;
+	val += (ulong)stream.read_byte()! << 40;
+	val += (ulong)stream.read_byte()! << 32;
+	val += (ulong)stream.read_byte()! << 24;
+	val += (ulong)stream.read_byte()! << 16;
+	val += (ulong)stream.read_byte()! << 8;
+	return val + stream.read_byte()!;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro long! read_be_long(stream)
+{
+	return read_be_ulong(stream);
+}
+
+/**
+ * @require @is_outstream(stream)
+ **/
+macro void! write_be_long(stream, ulong s)
+{
+	stream.write_byte((char)(s >> 56))!;
+	stream.write_byte((char)(s >> 48))!;
+	stream.write_byte((char)(s >> 40))!;
+	stream.write_byte((char)(s >> 32))!;
+	stream.write_byte((char)(s >> 24))!;
+	stream.write_byte((char)(s >> 16))!;
+	stream.write_byte((char)(s >> 8))!;
+	stream.write_byte((char)s)!;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro uint128! read_be_uint128(stream)
+{
+	uint128 val = (uint128)stream.read_byte()! << 120;
+	val += (uint128)stream.read_byte()! << 112;
+	val += (uint128)stream.read_byte()! << 104;
+	val += (uint128)stream.read_byte()! << 96;
+	val += (uint128)stream.read_byte()! << 88;
+	val += (uint128)stream.read_byte()! << 80;
+	val += (uint128)stream.read_byte()! << 72;
+	val += (uint128)stream.read_byte()! << 64;
+	val += (uint128)stream.read_byte()! << 56;
+	val += (uint128)stream.read_byte()! << 48;
+	val += (uint128)stream.read_byte()! << 40;
+	val += (uint128)stream.read_byte()! << 32;
+	val += (uint128)stream.read_byte()! << 24;
+	val += (uint128)stream.read_byte()! << 16;
+	val += (uint128)stream.read_byte()! << 8;
+	return val + stream.read_byte()!;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro int128! read_be_int128(stream)
+{
+	return read_be_uint128(stream);
+}
+
+/**
+ * @require @is_outstream(stream)
+ **/
+macro void! write_be_int128(stream, uint128 s)
+{
+	stream.write_byte((char)(s >> 120))!;
+	stream.write_byte((char)(s >> 112))!;
+	stream.write_byte((char)(s >> 104))!;
+	stream.write_byte((char)(s >> 96))!;
+	stream.write_byte((char)(s >> 88))!;
+	stream.write_byte((char)(s >> 80))!;
+	stream.write_byte((char)(s >> 72))!;
+	stream.write_byte((char)(s >> 64))!;
+	stream.write_byte((char)(s >> 56))!;
+	stream.write_byte((char)(s >> 48))!;
+	stream.write_byte((char)(s >> 40))!;
+	stream.write_byte((char)(s >> 32))!;
+	stream.write_byte((char)(s >> 24))!;
+	stream.write_byte((char)(s >> 16))!;
+	stream.write_byte((char)(s >> 8))!;
+	stream.write_byte((char)s)!;
+}
+
+/**
+ * @require @is_outstream(stream)
+ * @require data.len < 256 "Data exceeded 255"
+ **/
+macro usz! write_tiny_bytearray(stream, char[] data)
+{
+	stream.write_byte((char)data.len)!;
+	return stream.write(data) + 1;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro char[]! read_tiny_bytearray(stream, Allocator allocator)
+{
+	int len = stream.read_byte()!;
+	if (!len) return {};
+	char[] data = allocator::alloc_array(allocator, char, len);
+	io::read_all(stream, data)!;
+	return data;
+}
+
+/**
+ * @require @is_outstream(stream)
+ * @require data.len < 0x1000 "Data exceeded 65535"
+ **/
+macro usz! write_short_bytearray(stream, char[] data)
+{
+	io::write_be_short(stream, (ushort)data.len)!;
+	return stream.write(data) + 2;
+}
+
+/**
+ * @require @is_instream(stream)
+ **/
+macro char[]! read_short_bytearray(stream, Allocator allocator)
+{
+	int len = io::read_be_ushort(stream)!;
+	if (!len) return {};
+	char[] data = allocator::alloc_array(allocator, char, len);
+	io::read_all(stream, data)!;
+	return data;
+}
+
+/**
+ * Wrap bytes for reading using io functions.
+ **/
+fn ByteReader wrap_bytes(char[] bytes)
+{
+	return { bytes, 0 };
+}

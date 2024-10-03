@@ -402,10 +402,3 @@ fn File* stdin()
 	return &stdin_file;
 }
 
-/**
- * Wrap bytes for reading using io functions.
- **/
-fn ByteReader wrap_bytes(char[] bytes)
-{
-	return { bytes, 0 };
-}

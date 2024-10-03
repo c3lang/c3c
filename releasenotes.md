@@ -11,6 +11,8 @@
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
+- Add read/write to stream with big endian ints.
+- Move accidently hidden "wrap_bytes".
 
 ## 0.6.3 Change list
 
