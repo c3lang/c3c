@@ -1134,6 +1134,14 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 		{
 			if (token_is_some_ident(c->tok))
 			{
+				if ((c->tok == TOKEN_TYPE_IDENT || c->tok == TOKEN_CONST_IDENT) &&
+					c->lexer.token_type == TOKEN_LPAREN)
+				{
+					PRINT_ERROR_HERE("This looks like the beginning of a C style function declaration. "
+												 "Unfortunately it seems to be missing the initial 'fn' and "
+												 "the function name does not start with a lower case.");
+					return poisoned_decl;
+				}
 				PRINT_ERROR_HERE("I expected a variable name here, but global variables need to start with lower case.");
 				return poisoned_decl;
 			}
