@@ -264,7 +264,7 @@ macro clamp(x, lower, upper) => $$max(($typeof(x))lower, $$min(x, ($typeof(x))up
 
 /**
  * @require values::@is_promotable_to_floatlike(mag) `The input must be a number value or float vector`
- * @require values::@assign_to(sgn, values::promote_int(mag))
+ * @require $defined(($typeof(values::promote_int(mag)))mag) `It's not possible to cast the sign to the type of the magnitude`
  **/
 macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typeof(values::promote_int_same(mag, sgn)))sgn);
 

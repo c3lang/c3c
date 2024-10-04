@@ -9,6 +9,7 @@
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
+- Unexpected compile error using a typed constant with `copysign` #1517
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
