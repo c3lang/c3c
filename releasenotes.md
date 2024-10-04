@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Const vector -> const slice implicit conversion.
 - Slicing arrays, slices and bytes at compile time #1466.
+- Better error for `int a[4] = ...`. #1518
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

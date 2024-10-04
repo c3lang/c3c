@@ -16,13 +16,32 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	ast->ast_kind = AST_DECLARE_STMT;
 	ASSIGN_DECL_OR_RET(ast->declare_stmt, parse_local_decl_after_type(c, type), poisoned_ast);
 	Decl *decl = ast->declare_stmt;
-	if (tok_is(c, TOKEN_LBRACE) && decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_IDENTIFIER)
+	switch (c->tok)
 	{
-		print_error_at(decl->var.init_expr->span, "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
-		return poisoned_ast;
+		case TOKEN_LBRACE:
+			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_IDENTIFIER)
+			{
+				print_error_at(decl->var.init_expr->span,
+				               "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
+				return poisoned_ast;
+			}
+			break;
+		case TOKEN_LBRACKET:
+			if (!decl->var.init_expr)
+			{
+				SourceSpan span = extend_span_with_token(type->span, c->span);
+				print_error_at(span, "This looks like the beginning of a declaration with the format 'int %s[4]' "
+				                 "which is a c-style array declaration. In C3, you need to use something like 'int[4] %s' instead.",
+				                 decl->name, decl->name);
+				return poisoned_ast;
+			}
+			break;
+		case TOKEN_EOS:
+			return ast;
+		default:
+			break;
 	}
 
-	if (tok_is(c, TOKEN_EOS)) return ast;
 	if (decl->attributes || decl->var.init_expr)
 	{
 		if (tok_is(c, TOKEN_COMMA) && peek(c) == TOKEN_IDENT)
