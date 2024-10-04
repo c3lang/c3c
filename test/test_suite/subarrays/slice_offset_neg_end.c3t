@@ -1,4 +1,4 @@
-
+// #target: macos-x64
 fn void test()
 {
     int[3] x = { 1, 2, 3 };

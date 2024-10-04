@@ -2846,13 +2846,40 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// 3. Check failability due to value.
 	bool optional = IS_OPTIONAL(subscripted);
 
-	Type *underlying_type = type_flatten(subscripted->type);
+	Decl *overload = NULL;
+	Type *index_type = NULL;
+	Expr *current_expr;
+	Type *current_type = subscripted->type->canonical;
+	if (current_type == type_untypedlist)
+	{
+		current_expr = subscripted;
+	}
+	else
+	{
+		current_expr = sema_expr_find_index_type_or_overload_for_subscript(context, subscripted, check, &index_type, &overload);
+		if (!overload && !index_type && is_eval_ref)
+		{
+			// Maybe there is a [] overload?
+			if (sema_expr_find_index_type_or_overload_for_subscript(context, subscripted, check, &index_type, &overload))
+			{
+				if (check_valid) goto VALID_FAIL_POISON;
+				RETURN_SEMA_ERROR(expr, "A function or macro with '@operator(&[])' is not defined for %s, "
+				                        "so you need && to take the address of the temporary.",
+				                  type_quoted_error_string(subscripted->type));
+			}
+		}
+		if (!index_type)
+		{
+			if (check_valid) goto VALID_FAIL_POISON;
+			RETURN_SEMA_ERROR(expr, "Indexing a value of type %s is not possible.", type_quoted_error_string(subscripted->type));
+		}
+		if (!overload) current_type = type_flatten(current_expr->type);
+	}
 
-	Type *current_type = underlying_type;
 	assert(current_type == current_type->canonical);
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
-	if (start_from_end && (underlying_type->type_kind == TYPE_POINTER || underlying_type->type_kind == TYPE_FLEXIBLE_ARRAY))
+	if (start_from_end && (current_type->type_kind == TYPE_POINTER || current_type->type_kind == TYPE_FLEXIBLE_ARRAY))
 	{
 		if (check_valid) goto VALID_FAIL_POISON;
 		RETURN_SEMA_ERROR(index, "Indexing from the end is not allowed for pointers "
@@ -2897,8 +2924,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			                  (long long) size - 1);
 		}
 	}
+
 	// 4. If we are indexing into a complist
-	if (underlying_type == type_untypedlist)
+	if (current_type == type_untypedlist)
 	{
 		if (is_eval_ref)
 		{
@@ -2906,7 +2934,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			RETURN_SEMA_ERROR(subscripted, "You need to use && to take the address of a temporary.");
 		}
 		// 4a. This may either be an initializer list or a CT value
-		Expr *current_expr = subscripted;
 		while (subscripted->expr_kind == EXPR_CT_IDENT) current_expr = current_expr->ct_ident_expr.decl->var.init_expr;
 
 		// 4b. Now we need to check that we actually have a valid type.
@@ -2921,29 +2948,6 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 	if (!sema_cast_rvalue(context, subscripted)) return false;
 
-	Decl *overload = NULL;
-	Type *index_type = NULL;
-	Expr *current_expr = sema_expr_find_index_type_or_overload_for_subscript(context, subscripted, check, &index_type, &overload);
-	if (!index_type)
-	{
-		if (!overload && is_eval_ref)
-		{
-			// Maybe there is a [] overload?
-			if (sema_expr_find_index_type_or_overload_for_subscript(context,
-			                                                        subscripted,
-																	check,
-			                                                        &index_type,
-			                                                        &overload))
-			{
-				if (check_valid) goto VALID_FAIL_POISON;
-				RETURN_SEMA_ERROR(expr, "A function or macro with '@operator(&[])' is not defined for %s, "
-										"so you need && to take the address of the temporary.",
-										type_quoted_error_string(subscripted->type));
-			}
-		}
-		if (check_valid) goto VALID_FAIL_POISON;
-		RETURN_SEMA_ERROR(subscripted, "Cannot index %s.", type_quoted_error_string(subscripted->type));
-	}
 	if (overload)
 	{
 		if (start_from_end)

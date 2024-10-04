@@ -1079,6 +1079,7 @@ bool type_is_user_defined(Type *type)
 Type *type_get_indexed_type(Type *type)
 {
 	RETRY:
+	if (type == type_voidptr) return NULL;
 	switch (type->type_kind)
 	{
 		case TYPE_POINTER:
