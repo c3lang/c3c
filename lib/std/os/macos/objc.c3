@@ -1,45 +1,53 @@
 module std::os::macos::objc @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 
-distinct Class = void*;
-distinct Method = void*;
-distinct Ivar = void*;
-distinct Selector = void*;
+distinct ObjcClass = void*;
+distinct ObjcMethod = void*;
+distinct ObjcIvar = void*;
+distinct ObjcSelector = void*;
+def ObjcId = void*;
 
 fault ObjcFailure
 {
 	CLASS_NOT_FOUND
 }
 
-macro ZString Class.name(Class cls) => macos_class_getName(cls);
-macro Class Class.superclass(Class cls) => macos_class_getSuperclass(cls);
-macro bool Class.responds_to(Class cls, Selector sel) => macos_class_respondsToSelector(cls, sel);
-macro Method Class.method(Class cls, Selector name) => macos_class_getClassMethod(cls, name);
+macro ZString ObjcClass.name(ObjcClass cls) => class_getName(cls);
+macro ObjcClass ObjcClass.superclass(ObjcClass cls) => class_getSuperclass(cls);
+macro bool ObjcClass.responds_to(ObjcClass cls, ObjcSelector sel) => class_respondsToSelector(cls, sel);
+macro ObjcMethod ObjcClass.method(ObjcClass cls, ObjcSelector name) => class_getClassMethod(cls, name);
 
-macro bool Selector.equals(Selector a, Selector b) => a == b;
-macro bool Class.equals(Class a, Class b) => a == b;
+macro bool ObjcSelector.equals(ObjcSelector a, ObjcSelector b) => a == b;
+macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
 
-macro Class! class_by_name(ZString c)
+macro ObjcClass! class_by_name(ZString c)
 {
-	Class cls = macos_objc_lookUpClass(c);
+	ObjcClass cls = objc::lookUpClass(c);
 	return cls ?: ObjcFailure.CLASS_NOT_FOUND?;
 }
 
-macro Class[] class_get_list(Allocator allocator = allocator::heap())
+macro ObjcClass[] class_get_list(Allocator allocator = allocator::heap())
 {
-	int num_classes = macos_objc_getClassList(null, 0);
+	int num_classes = objc::getClassList(null, 0);
 	if (!num_classes) return {};
-	Class[] entries = allocator.new_array(Class, num_classes);
-	macos_objc_getClassList(entries.ptr, entries.len);
+	ObjcClass[] entries = allocator.new_array(ObjcClass, num_classes);
+	objc::getClassList(entries.ptr, entries.len);
 	return entries;
 }
 
-extern fn Class macos_objc_getClass(ZString name) @extern("objc_getClass") @builtin;
-extern fn int macos_objc_getClassList(Class* buffer, int buffer_count) @extern("objc_getClassList") @builtin;
-extern fn ZString macos_class_getName(Class cls) @extern("class_getName") @builtin;
-extern fn Class macos_class_getSuperclass(Class cls) @extern("class_getSuperclass") @builtin;
-extern fn Method macos_class_getClassMethod(Class cls, Selector name) @extern("class_getClassMethod") @builtin;
-extern fn bool macos_class_respondsToSelector(Class cls, Selector name) @extern("class_respondsToSelector") @builtin;
-extern fn Selector macos_sel_registerName(ZString str) @extern("sel_registerName") @builtin;
-extern fn Class macos_objc_lookUpClass(ZString name) @extern("objc_lookUpClass") @builtin;
+extern fn void msgSend(...) @extern("objc_msgSend") @builtin;
+extern fn ObjcSelector sel_getUid(ZString);
 
+macro msg_send(id, $FunctionType, ZString $selector, ...)
+{
+	return (($FunctionType)&msgSend)((ObjcId)id, sel_getUid($selector), $vasplat);
+}
 
+extern fn ObjcClass getClass(ZString name) @extern("objc_getClass");
+extern fn int getClassList(ObjcClass* buffer, int buffer_count) @extern("objc_getClassList");
+extern fn ObjcClass lookUpClass(ZString name) @extern("objc_lookUpClass") @builtin;
+
+extern fn ZString class_getName(ObjcClass cls);
+extern fn ObjcClass class_getSuperclass(ObjcClass cls);
+extern fn ObjcMethod class_getClassMethod(ObjcClass cls, ObjcSelector name);
+extern fn bool class_respondsToSelector(ObjcClass cls, ObjcSelector name);
+extern fn ObjcSelector sel_registerName(ZString str);
