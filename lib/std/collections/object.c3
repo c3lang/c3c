@@ -63,7 +63,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			switch (self.type.kindof)
 			{
 				case SIGNED_INT:
-					return formatter.printf("%d", self.i)!;
+					return formatter.printf("%d", (int128)self.i)!;
 				case UNSIGNED_INT:
 					return formatter.printf("%d", (uint128)self.i)!;
 				case FLOAT:
