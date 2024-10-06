@@ -177,6 +177,7 @@ bool parse_stdin(void)
 			.name = "stdin",
 			.file_id = STDIN_FILE_ID,
 			.full_path = "<stdin>",
+			.dir_path = "",
 	};
 #define BUF_SIZE 65536
 	char buffer[BUF_SIZE];

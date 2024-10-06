@@ -46,6 +46,12 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 
 static bool filename_to_module_in_buffer(const char *path)
 {
+	if (str_eq("<stdin>", path))
+	{
+		scratch_buffer_clear();
+		scratch_buffer_append("stdin_file");
+		return true;
+	}
 	int len = (int)strlen(path);
 	int last_slash = 0;
 	int last_dot = -1;
