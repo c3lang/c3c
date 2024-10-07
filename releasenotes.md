@@ -7,6 +7,7 @@
 - Slicing arrays, slices and bytes at compile time #1466.
 - Better error for `int a[4] = ...`. #1518
 - Better error for `int Foo(int a)` declarations #1516
+- Improve error message in the case of `MyInterface x = foo;` #1522
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

@@ -695,6 +695,21 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 	}
 	else
 	{
+		if (to->type_kind == TYPE_INTERFACE)
+		{
+			if (expr->type->canonical->type_kind != TYPE_POINTER)
+			{
+				RETURN_CAST_ERROR(expr,
+				                  "You can only convert pointers to an interface like %s. "
+								  "Try passing the address of the expression instead.",
+				                  type_quoted_error_string(to));
+			}
+		}
+		else if (to->type_kind == TYPE_ANY && expr->type->canonical->type_kind != TYPE_POINTER)
+		{
+			RETURN_CAST_ERROR(expr,  "You can only convert pointers to 'any'. "
+									 "Try passing the address of the expression instead.");
+		}
 		RETURN_CAST_ERROR(expr,
 		           "It is not possible to cast %s to %s.",
 		           type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
