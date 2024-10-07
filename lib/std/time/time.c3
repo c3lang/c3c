@@ -13,7 +13,7 @@ const Duration MIN = 60 * SEC;
 const Duration HOUR = 60 * MIN;
 const Duration DAY = 24 * HOUR;
 const Duration WEEK = 7 * DAY;
-const Duration MONTH = 30 * WEEK;
+const Duration MONTH = 30 * DAY;
 const Duration YEAR = 36525 * DAY / 100;
 
 fn Duration us(long l) @inline => (Duration)l * US;
