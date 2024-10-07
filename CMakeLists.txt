@@ -244,10 +244,10 @@ if(C3_WITH_LLVM)
 
     if (APPLE)
         set(lld_libs ${lld_libs} xar)
-        find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-        find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-        find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
-        find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIRS}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+        find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
         set(sanitizer_runtime_libraries
                 ${RT_ASAN_DYNAMIC}
                 ${RT_TSAN_DYNAMIC}
