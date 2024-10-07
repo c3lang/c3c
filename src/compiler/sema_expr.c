@@ -2618,16 +2618,18 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 				case DECL_MACRO:
 					struct_var = func_expr->access_expr.parent;
 					if (decl->func_decl.signature.params[0]->var.kind == VARDECL_PARAM_REF) break;
-					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
+					if (decl->func_decl.signature.params[0]->type->canonical != struct_var->type->canonical
+						&& decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
 					{
 						expr_insert_addr(struct_var);
 					}
 					break;
 				case DECL_FUNC:
 					struct_var = func_expr->access_expr.parent;
-					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER)
+					if (decl->func_decl.signature.params[0]->type->type_kind == TYPE_POINTER )
 					{
-						if (!decl->func_decl.attr_interface_method)
+						if (decl->func_decl.signature.params[0]->type->canonical != struct_var->type->canonical
+							&& !decl->func_decl.attr_interface_method)
 						{
 							expr_insert_addr(struct_var);
 						}

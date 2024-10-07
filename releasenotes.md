@@ -14,6 +14,7 @@
 - Incorrect subscript resolution #1519.
 - Segfault with passing a program with `-` using stdin.
 - Using no module with `-` would reject the program.
+- Unintended deref of pointers with methods caused regression with hash function.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
