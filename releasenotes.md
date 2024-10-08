@@ -8,6 +8,7 @@
 - Better error for `int a[4] = ...`. #1518
 - Better error for `int Foo(int a)` declarations #1516
 - Improve error message in the case of `MyInterface x = foo;` #1522
+- Deprecate `@adhoc`, allow non-nested ad hoc generic types.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

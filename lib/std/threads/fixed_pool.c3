@@ -10,7 +10,7 @@ fault ThreadPoolResult
 
 def ThreadPoolFn = fn void(any[] args);
 
-struct FixedThreadPool @adhoc
+struct FixedThreadPool
 {
 	Mutex mu;
 	QueueItem[] queue;

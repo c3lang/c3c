@@ -360,19 +360,20 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	TypeInfo *inner = type_info->generic.base;
 	if (inner->kind != TYPE_INFO_IDENTIFIER && inner->subtype != TYPE_COMPRESSED_NONE && !inner->optional)
 	{
-		SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
-		return false;
+		RETURN_SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
 	}
 	assert(inner->resolve_status == RESOLVE_NOT_DONE);
 
-	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name, inner->span, type_info->generic.params);
+	bool was_recursive = false;
+	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
+	                                                   inner->span, type_info->generic.params, &was_recursive);
 	if (!decl_ok(type)) return false;
 	type_info->type = type->type;
-	if (!type->is_adhoc && !context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
-		&& !context->call_env.current_function->func_decl.in_macro)
+	if (!was_recursive) return true;
+	if (!context->current_macro)
 	{
 
-		SEMA_DEPRECATED(type_info, "Direct generic type declarations not marked '@adhoc' outside of macros and type declarations is a deprecated feature, please use 'def' to create an alias.");
+		SEMA_DEPRECATED(type_info, "Nested generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
 		// TODO, completely disallow
 		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
 	}

@@ -8252,7 +8252,9 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 		SEMA_ERROR(parent, "Expected an identifier to parameterize.");
 		return false;
 	}
-	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->identifier_expr.path, parent->identifier_expr.ident, parent->span, expr->generic_ident_expr.parmeters);
+	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->identifier_expr.path,
+	                                                     parent->identifier_expr.ident, parent->span,
+	                                                     expr->generic_ident_expr.parmeters, NULL);
 	if (!decl_ok(symbol)) return false;
 	expr->expr_kind = EXPR_IDENTIFIER;
 	expr_resolve_ident(expr, symbol);

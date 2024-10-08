@@ -116,7 +116,8 @@ void cast_promote_vararg(SemaContext *context, Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
 void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
-Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span, Expr **params);
+Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
+                                            Expr **params, bool *was_recursive_ref);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);

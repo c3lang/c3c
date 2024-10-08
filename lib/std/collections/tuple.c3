@@ -1,6 +1,6 @@
 module std::collections::tuple(<Type1, Type2>);
 
-struct Tuple @adhoc
+struct Tuple
 {
 	Type1 first;
 	Type2 second;
@@ -8,7 +8,7 @@ struct Tuple @adhoc
 
 module std::collections::triple(<Type1, Type2, Type3>);
 
-struct Triple @adhoc
+struct Triple
 {
 	Type1 first;
 	Type2 second;

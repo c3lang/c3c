@@ -602,7 +602,6 @@ typedef struct Decl_
 	bool no_strip : 1;
 	bool is_cond : 1;
 	bool is_if : 1;
-	bool is_adhoc : 1;
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
