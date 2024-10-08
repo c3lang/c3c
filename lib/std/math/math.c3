@@ -159,16 +159,35 @@ macro atan2(x, y)
 
 /**
  * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
- * @require (@typekind(y) == ARRAY || @typekind(y) == VECTOR) &&& y.len == 2
- * @require $assignable(x, $typeof(y[0]))
+ * @require @typekind(sinp) == POINTER "Expected sinp to be a pointer"
+ * @require values::@is_same_type(sinp, cosp) "Expected sinp and cosp to have the same type"
+ * @require $assignable(x, $typeof(*sinp)) "Expected x and sinp/cosp to have the same type"
  **/
-macro sincos(x, y)
+macro sincos_ref(x, sinp, cosp)
 {
-	$if @typeid(y[0]) == float.typeid:
-		return _sincosf(x, y);
+	$if @typeid(*sinp) == float.typeid:
+		return _sincosf(x, sinp, cosp);
 	$else
-		return _sincos(x, y);
+		return _sincos(x, sinp, cosp);
 	$endif
+}
+
+/**
+ * Return a vector with sin / cos of the given angle.
+ *
+ * @param x `the angle in radians`
+ * @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ **/
+macro sincos(x)
+{
+	$if @typeid(x) == float.typeid:
+		float[<2>] v @noinit;
+		_sincosf(x, &v[0], &v[1]);
+	$else
+		double[<2>] v @noinit;
+		_sincos(x, &v[0], &v[1]);
+	$endif
+	return v;
 }
 
 /**
@@ -1008,8 +1027,8 @@ extern fn double _atan(double x) @extern("atan");
 extern fn float _atanf(float x) @extern("atanf");
 extern fn double _atan2(double, double) @extern("atan2");
 extern fn float _atan2f(float, float) @extern("atan2f");
-extern fn void _sincos(double, double*) @extern("sincos");
-extern fn void _sincosf(float, float*) @extern("sincosf");
+extern fn void _sincos(double, double*, double*) @extern("__sincos") @link("m");
+extern fn void _sincosf(float, float*, float*) @extern("__sincosf") @link("m");
 extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
 extern fn double _scalbn(double x, int n) @extern("scalbn");

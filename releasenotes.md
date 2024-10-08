@@ -17,6 +17,7 @@
 - Segfault with passing a program with `-` using stdin.
 - Using no module with `-` would reject the program.
 - Unintended deref of pointers with methods caused regression with hash function.
+- Fix broken sincos function.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
