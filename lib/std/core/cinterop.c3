@@ -29,6 +29,12 @@ def CUChar = char;
 
 def CChar = $typefrom($$C_CHAR_IS_SIGNED ? ichar.typeid : char.typeid);
 
+enum CBool : CInt
+{
+	FALSE,
+	TRUE
+}
+
 // Helper macros
 macro typeid signed_int_from_bitsize(usz $bitsize) @private
 {

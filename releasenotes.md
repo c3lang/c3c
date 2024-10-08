@@ -23,6 +23,7 @@
 - Remove unintended print of `char[]` as String
 - Add read/write to stream with big endian ints.
 - Move accidently hidden "wrap_bytes".
+- Added CBool #1530.
 
 ## 0.6.3 Change list
 
