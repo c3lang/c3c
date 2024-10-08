@@ -34,7 +34,7 @@ macro bool @is_valid_cmp_fn(#cmp, #list, #context)
 	var $no_context = @is_empty_macro_slot(#context);
 	$switch
 		$case @is_empty_macro_slot(#cmp): return true;
-	    $case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
+		$case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
 		$case $defined(#cmp(#list[0], #list[0], #context)): return true;
 		$case $defined(#cmp(#list[0], #list[0])): return $no_context;
 		$case $defined(#cmp(&#list[0], &#list[0], #context)): return true;
@@ -47,8 +47,8 @@ macro bool @is_cmp_key_fn(#key_fn, #list)
 {
 	$switch
 		$case @is_empty_macro_slot(#key_fn): return true;
-	    $case $typeof(#key_fn).kindof != FUNC: return false;
-	    $case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;
+		$case $typeof(#key_fn).kindof != FUNC: return false;
+		$case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;
 		$case $defined(#key_fn(#list[0])): return true;
 		$case $defined(#key_fn(&&(#list[0]))): return true;
 		$default: return false;

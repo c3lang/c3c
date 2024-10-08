@@ -29,9 +29,9 @@ fn bool last_error_is_delayed_connect()
 			case wsa::EINPROGRESS: return true;
 			default: return false;
 		}
-    	$default:
-    	Errno err = libc::errno();
-    	return err == errno::EINPROGRESS || err == errno::EAGAIN || err == errno::EWOULDBLOCK;
+		$default:
+		Errno err = libc::errno();
+		return err == errno::EINPROGRESS || err == errno::EAGAIN || err == errno::EWOULDBLOCK;
 	$endswitch
 }
 

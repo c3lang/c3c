@@ -753,7 +753,7 @@ fn void free_aligned(void* ptr) @builtin @inline
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-    if (!ptr) return tmalloc(size, alignment);
+	if (!ptr) return tmalloc(size, alignment);
 	return allocator::temp().resize(ptr, size, alignment)!!;
 }
 

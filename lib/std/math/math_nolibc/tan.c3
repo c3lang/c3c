@@ -30,13 +30,13 @@ fn double tan(double x) @extern("tan") @weak @nostrip
 			}
 			return __tan(x, 0.0, 0);
 		// tan(Inf or NaN) is NaN
-    	case ix >= 0x7ff00000:
-    		return x - x;
+		case ix >= 0x7ff00000:
+			return x - x;
 		default:
 			// argument reduction
 			double[2] y;
 			uint n = __rem_pio2(x, &y);
-            return __tan(y[0], y[1], n & 1);
+			return __tan(y[0], y[1], n & 1);
 
 	}
 }

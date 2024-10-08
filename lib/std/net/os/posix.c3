@@ -44,7 +44,7 @@ fn anyfault convert_error(Errno error)
 		case errno::ENETUNREACH: return NetError.NETWORK_UNREACHABLE;
 		case errno::ENOTSOCK: return NetError.NOT_A_SOCKET;
 		case errno::EINTR: return IoError.INTERRUPTED;
-        case errno::EWOULDBLOCK: return IoError.WOULD_BLOCK;
+		case errno::EWOULDBLOCK: return IoError.WOULD_BLOCK;
 		case errno::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET;
 		case errno::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
 		default: return IoError.GENERAL_ERROR;

@@ -9,8 +9,8 @@ const uint PIXELS_MAX = 400000000;
  */
 enum QOIColorspace : char (char id)
 {
-    SRGB = 0, 	// sRGB with linear alpha
-    LINEAR = 1 	// all channels linear
+	SRGB = 0, 	// sRGB with linear alpha
+	LINEAR = 1 	// all channels linear
 }
 
 /**
@@ -22,8 +22,8 @@ enum QOIColorspace : char (char id)
 enum QOIChannels : char (char id)
 {
 	AUTO = 0,
-    RGB = 3,
-    RGBA = 4
+	RGB = 3,
+	RGBA = 4
 }
 
 /**

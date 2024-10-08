@@ -28,10 +28,10 @@ def SigActionFunction =  fn void(CInt, void*, void*);
 struct Sigaction
 {
 	union
-    {
-    	SignalFunction      sa_handler;
-    	SigActionFunction   sa_sigaction;
-    }
+	{
+		SignalFunction      sa_handler;
+		SigActionFunction   sa_sigaction;
+	}
 	CInt                    sa_flags @if(env::BSD_FAMILY);
 	Sigset_t                sa_mask; // 128
 	CInt                    sa_flags @if(!env::BSD_FAMILY);
@@ -181,13 +181,13 @@ extern fn CInt cfsetispeed(Termios* self, Speed speed);
 
 const CInt NCCS = 32;
 struct Termios {
-        Tcflags c_iflag;
-        Tcflags c_oflag;
-        Tcflags c_cflag;
-        Tcflags c_lflag;
-        Cc c_line;
-        Cc[NCCS] c_cc;
-        Speed c_ispeed;
-        Speed c_ospeed;
+		Tcflags c_iflag;
+		Tcflags c_oflag;
+		Tcflags c_cflag;
+		Tcflags c_lflag;
+		Cc c_line;
+		Cc[NCCS] c_cc;
+		Speed c_ispeed;
+		Speed c_ospeed;
 } 
 

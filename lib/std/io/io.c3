@@ -65,29 +65,29 @@ macro String! readline(stream = io::stdin(), Allocator allocator = allocator::he
 		char val = stream.read_byte()!;
 	$endif
 
-    if (val == '\n') return "";
-    @pool(allocator)
-    {
-        DString str = dstring::temp_with_capacity(256);
-    	if (val != '\r') str.append(val);
-    	while (1)
-    	{
-    	    $if $is_stream:
-    	        char! c = func((void*)stream);
-    	    $else
-    	        char! c = stream.read_byte();
-    	    $endif
-    		if (catch err = c)
-    		{
-    			if (err == IoError.EOF) break;
-    			return err?;
-    		}
-    		if (c == '\r') continue;
-    		if (c == '\n') break;
-    		str.append_char(c);
-    	}
-    	return str.copy_str(allocator);
-    };
+	if (val == '\n') return "";
+	@pool(allocator)
+	{
+		DString str = dstring::temp_with_capacity(256);
+		if (val != '\r') str.append(val);
+		while (1)
+		{
+			$if $is_stream:
+				char! c = func((void*)stream);
+			$else
+				char! c = stream.read_byte();
+			$endif
+			if (catch err = c)
+			{
+				if (err == IoError.EOF) break;
+				return err?;
+			}
+			if (c == '\r') continue;
+			if (c == '\n') break;
+			str.append_char(c);
+		}
+		return str.copy_str(allocator);
+	};
 }
 
 /**

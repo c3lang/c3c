@@ -71,17 +71,17 @@ fn anyfault convert_error(WSAError error)
 		case wsa::EACCESS: return IoError.NO_PERMISSION;
 		case wsa::EINPROGRESS: return NetError.STILL_PROCESSING_CALLBACK;
 		case wsa::EADDRINUSE: return NetError.ADDRESS_IN_USE;
-        case wsa::EALREADY: return NetError.CONNECTION_ALREADY_IN_PROGRESS;
-        case wsa::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR;
-        case wsa::EINTR: return IoError.INTERRUPTED;
-        case wsa::EWOULDBLOCK: return IoError.WOULD_BLOCK;
-        case wsa::ECONNREFUSED: return NetError.CONNECTION_REFUSED;
-        case wsa::EISCONN: return NetError.ALREADY_CONNECTED;
-        case wsa::ENETUNREACH: return NetError.NETWORK_UNREACHABLE;
-        case wsa::ENOTSOCK: return NetError.NOT_A_SOCKET;
-        case wsa::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET;
-        case wsa::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
-        case wsa::ECONNRESET: return NetError.CONNECTION_RESET;
+		case wsa::EALREADY: return NetError.CONNECTION_ALREADY_IN_PROGRESS;
+		case wsa::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR;
+		case wsa::EINTR: return IoError.INTERRUPTED;
+		case wsa::EWOULDBLOCK: return IoError.WOULD_BLOCK;
+		case wsa::ECONNREFUSED: return NetError.CONNECTION_REFUSED;
+		case wsa::EISCONN: return NetError.ALREADY_CONNECTED;
+		case wsa::ENETUNREACH: return NetError.NETWORK_UNREACHABLE;
+		case wsa::ENOTSOCK: return NetError.NOT_A_SOCKET;
+		case wsa::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET;
+		case wsa::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
+		case wsa::ECONNRESET: return NetError.CONNECTION_RESET;
 		default: return IoError.GENERAL_ERROR;
 	}
 }

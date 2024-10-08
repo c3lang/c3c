@@ -71,23 +71,23 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 		if (catch backtrace) return false;
 		if (backtrace.len() <= backtraces_to_ignore) return false;
 		io::eprint("\nERROR: '");
-        io::eprint(message);
-        io::eprintn("'");
+		io::eprint(message);
+		io::eprintn("'");
 		foreach (i, &trace : backtrace)
-        {
-            if (i < backtraces_to_ignore) continue;
-            String inline_suffix = trace.is_inline ? " [inline]" : "";
-            if (trace.is_unknown())
-            {
+		{
+			if (i < backtraces_to_ignore) continue;
+			String inline_suffix = trace.is_inline ? " [inline]" : "";
+			if (trace.is_unknown())
+			{
 				io::eprintfn("  in ???%s", inline_suffix);
 				continue;
 			}
 			if (trace.has_file())
-            {
-                io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-                continue;
-            }
-            io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
+			{
+				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+				continue;
+			}
+			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
 		}
 		return true;
 	};
@@ -243,14 +243,14 @@ macro enum_by_name($Type, String enum_name) @builtin
  **/
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
-    $switch
-    $case env::BUILTIN_EXPECT_IS_DISABLED:
+	$switch
+	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value;
-    $case $probability == 1.0:
+	$case $probability == 1.0:
 	return $$expect(#value, true);
-    $default:
+	$default:
 	return $$expect_with_probability(#value, true, $probability);
-    $endswitch
+	$endswitch
 }
 
 /**
@@ -262,14 +262,14 @@ macro bool @likely(bool #value, $probability = 1.0) @builtin
  **/
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
-    $switch
-    $case env::BUILTIN_EXPECT_IS_DISABLED:
+	$switch
+	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value;
-    $case $probability == 1.0:
+	$case $probability == 1.0:
 	return $$expect(#value, false);
-    $default:
+	$default:
 	return $$expect_with_probability(#value, false, $probability);
-    $endswitch
+	$endswitch
 }
 
 /**
@@ -279,14 +279,14 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
  **/
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
-    $switch
-    $case env::BUILTIN_EXPECT_IS_DISABLED:
+	$switch
+	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value == expected;
-    $case $probability == 1.0:
+	$case $probability == 1.0:
 	return $$expect(#value, ($typeof(#value))expected);
-    $default:
+	$default:
 	return $$expect_with_probability(#value, expected, $probability);
-    $endswitch
+	$endswitch
 }
 
 /**

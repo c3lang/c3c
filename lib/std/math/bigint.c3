@@ -109,7 +109,7 @@ fn BigInt*! BigInt.init_string_radix(&self, String value, int radix)
 	switch
 	{
 		case limit && !self.is_negative():
-		    return NumberConversion.INTEGER_OVERFLOW?;
+			return NumberConversion.INTEGER_OVERFLOW?;
 		case !limit && self.is_negative():
 			return NumberConversion.INTEGER_OVERFLOW?;
 	}
@@ -503,8 +503,8 @@ fn BigInt BigInt.abs(&self)
 fn usz! BigInt.to_format(&self, Formatter* format) @dynamic
 {
 	@stack_mem(4100; Allocator mem)
-    {
-       return format.print(self.to_string_with_radix(10, mem));
+	{
+	   return format.print(self.to_string_with_radix(10, mem));
 	};
 }
 
@@ -1105,13 +1105,6 @@ fn int shift_right(uint* data, int len, int shift_val) @inline
 	}
 	return find_length(data, buf_len);
 }
-
-
-
-
-
-
-
 
 
 

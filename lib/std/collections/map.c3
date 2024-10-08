@@ -130,10 +130,10 @@ fn Map new_from_map(Map other_map, Allocator allocator = null)
 	MapImpl* map = (MapImpl*)new(other_map_impl.table.len, other_map_impl.load_factor, allocator ?: allocator::heap());
 	if (!other_map_impl.count) return (Map)map;
 	foreach (Entry *e : other_map_impl.table)
-    {
-    	if (!e) continue;
-    	map._put_for_create(e.key, e.value);
-    }
+	{
+		if (!e) continue;
+		map._put_for_create(e.key, e.value);
+	}
 	return (Map)map;
 }
 
@@ -421,9 +421,9 @@ fn void _init(MapImpl* impl, uint capacity, float load_factor, Allocator allocat
 	capacity = math::next_power_of_2(capacity);
 	*impl = {
 		.allocator = allocator,
-    	.load_factor = load_factor,
-    	.threshold = (uint)(capacity * load_factor),
-    	.table = allocator::new_array(allocator, Entry*, capacity)
+		.load_factor = load_factor,
+		.threshold = (uint)(capacity * load_factor),
+		.table = allocator::new_array(allocator, Entry*, capacity)
 	};
 }
 

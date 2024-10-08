@@ -21,21 +21,21 @@ interface Allocator
 	fn void reset(usz mark) @optional;
 	fn usz mark() @optional;
 	/**
-     * @require !alignment || math::is_power_of_2(alignment)
-     * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
-     * @require size > 0
-     **/
+	 * @require !alignment || math::is_power_of_2(alignment)
+	 * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+	 * @require size > 0
+	 **/
 	fn void*! acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	/**
-     * @require !alignment || math::is_power_of_2(alignment)
-     * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
-     * @require ptr != null
-     * @require new_size > 0
-     **/
+	 * @require !alignment || math::is_power_of_2(alignment)
+	 * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+	 * @require ptr != null
+	 * @require new_size > 0
+	 **/
 	fn void*! resize(void* ptr, usz new_size, usz alignment = 0);
 	/**
-     * @require ptr != null
-     **/
+	 * @require ptr != null
+	 **/
 	fn void release(void* ptr, bool aligned);
 }
 

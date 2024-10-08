@@ -62,124 +62,124 @@ macro uint128 @__udivmodti4(uint128 a, uint128 b, bool $return_rem)
 			$else
 				return (uint128)(n.high >> $$ctz(d.high));
 			$endif
-        }
-        sr = (uint)$$clz(d.high) - (uint)$$clz(n.high);
-        // 0 <= sr <= n_udword_bits - 2 or sr large
-        if (sr > 64 - 2)
-        {
-            $if $return_rem:
-                return n.all;
-            $else
-                return 0;
-            $endif
-        }
-        sr++;
-        // 1 <= sr <= n_udword_bits - 1
-        // q.all = n.all << (n_utword_bits - sr);
-        q.low = 0;
-        q.high = n.low << (64 - sr);
-        r.high = n.high >> sr;
-        r.low = (n.high << (64 - sr)) | (n.low >> sr);
-    }
-    else // d.s.low != 0
-    {
-        if (d.high == 0)
-        {
-            if (d.low & (d.low - 1) == 0) // if d is a power of 2
-            {
-                $if $return_rem:
-                    return (uint128)(n.low & (d.low - 1));
-                $else
-                    if (d.low == 1) return n.all;
-                    sr = (uint)$$ctz(d.low);
-                    q.high = n.high >> sr;
-                    q.low = (n.high << (64 - sr)) | (n.low >> sr);
-                    return q.all;
-               $endif
-            }
-            sr = 1 + 64 + (uint)$$clz(d.low) - (uint)$$clz(n.high);
-            // 2 <= sr <= n_utword_bits - 1
-            // q.all = n.all << (n_utword_bits - sr);
-            // r.all = n.all >> sr;
-            switch
-            {
-                case sr == 64:
+		}
+		sr = (uint)$$clz(d.high) - (uint)$$clz(n.high);
+		// 0 <= sr <= n_udword_bits - 2 or sr large
+		if (sr > 64 - 2)
+		{
+			$if $return_rem:
+				return n.all;
+			$else
+				return 0;
+			$endif
+		}
+		sr++;
+		// 1 <= sr <= n_udword_bits - 1
+		// q.all = n.all << (n_utword_bits - sr);
+		q.low = 0;
+		q.high = n.low << (64 - sr);
+		r.high = n.high >> sr;
+		r.low = (n.high << (64 - sr)) | (n.low >> sr);
+	}
+	else // d.s.low != 0
+	{
+		if (d.high == 0)
+		{
+			if (d.low & (d.low - 1) == 0) // if d is a power of 2
+			{
+				$if $return_rem:
+					return (uint128)(n.low & (d.low - 1));
+				$else
+					if (d.low == 1) return n.all;
+					sr = (uint)$$ctz(d.low);
+					q.high = n.high >> sr;
+					q.low = (n.high << (64 - sr)) | (n.low >> sr);
+					return q.all;
+			   $endif
+			}
+			sr = 1 + 64 + (uint)$$clz(d.low) - (uint)$$clz(n.high);
+			// 2 <= sr <= n_utword_bits - 1
+			// q.all = n.all << (n_utword_bits - sr);
+			// r.all = n.all >> sr;
+			switch
+			{
+				case sr == 64:
 					q.low = 0;
 					q.high = n.low;
 					r.high = 0;
 					r.low = n.high;
 				case sr < 64:
-                    q.low = 0;
-                    q.high = n.low << (64 - sr);
-                    r.high = n.high >> sr;
-                    r.low = (n.high << (64 - sr)) | (n.low >> sr);
-                default: // n_udword_bits + 1 <= sr <= n_utword_bits - 1
-                    q.low = n.low << (128 - sr);
-                    q.high = (n.high << (128 - sr)) | (n.low >> (sr - 64));
-                    r.high = 0;
-                    r.low = n.high >> (sr - 64);
-            }
-        }
-        else
-        {
+					q.low = 0;
+					q.high = n.low << (64 - sr);
+					r.high = n.high >> sr;
+					r.low = (n.high << (64 - sr)) | (n.low >> sr);
+				default: // n_udword_bits + 1 <= sr <= n_utword_bits - 1
+					q.low = n.low << (128 - sr);
+					q.high = (n.high << (128 - sr)) | (n.low >> (sr - 64));
+					r.high = 0;
+					r.low = n.high >> (sr - 64);
+			}
+		}
+		else
+		{
 			sr = (uint)$$clz(d.high) - (uint)$$clz(n.high);
-            // 0 <= sr <= n_udword_bits - 1 or sr large
-            if (sr > 64 - 1)
-            {
-                $if $return_rem:
-                    return n.all;
-                $else
-                    return 0;
-                $endif
-            }
+			// 0 <= sr <= n_udword_bits - 1 or sr large
+			if (sr > 64 - 1)
+			{
+				$if $return_rem:
+					return n.all;
+				$else
+					return 0;
+				$endif
+			}
 
-            sr++;
+			sr++;
 			// 1 <= sr <= n_udword_bits
 			// q.all = n.all << (n_utword_bits - sr);
 			// r.all = n.all >> sr;
 			q.low = 0;
-            if (sr == 64)
-            {
-                q.high = n.low;
-                r.high = 0;
-                r.low = n.high;
+			if (sr == 64)
+			{
+				q.high = n.low;
+				r.high = 0;
+				r.low = n.high;
 			}
 			else
 			{
 				r.high = n.high >> sr;
 				r.low = (n.high << (64 - sr)) | (n.low >> sr);
 				q.high = n.low << (64 - sr);
-            }
-        }
-    }
-    // Not a special case
-    // q and r are initialized with:
-    // q.all = n.all << (128 - sr);
-    // r.all = n.all >> sr;
-    // 1 <= sr <= n_utword_bits - 1
-    uint carry = 0;
-    for (; sr > 0; sr--)
-    {
-        // r:q = ((r:q)  << 1) | carry
-        r.high = (r.high << 1) | (r.low  >> (64 - 1));
-        r.low  = (r.low  << 1) | (q.high >> (64 - 1));
-        q.high = (q.high << 1) | (q.low  >> (64 - 1));
-        q.low  = (q.low  << 1) | carry;
-        // carry = 0;
-        // if (r.all >= d.all)
-        // {
-        //     r.all -= d.all;
-        //      carry = 1;
-        // }
-        int128 s = (int128)(d.all - r.all - 1) >> (128 - 1);
-        carry = (uint)(s & 1);
-        r.all -= d.all & s;
-    }
-    $if $return_rem:
+			}
+		}
+	}
+	// Not a special case
+	// q and r are initialized with:
+	// q.all = n.all << (128 - sr);
+	// r.all = n.all >> sr;
+	// 1 <= sr <= n_utword_bits - 1
+	uint carry = 0;
+	for (; sr > 0; sr--)
+	{
+		// r:q = ((r:q)  << 1) | carry
+		r.high = (r.high << 1) | (r.low  >> (64 - 1));
+		r.low  = (r.low  << 1) | (q.high >> (64 - 1));
+		q.high = (q.high << 1) | (q.low  >> (64 - 1));
+		q.low  = (q.low  << 1) | carry;
+		// carry = 0;
+		// if (r.all >= d.all)
+		// {
+		//     r.all -= d.all;
+		//      carry = 1;
+		// }
+		int128 s = (int128)(d.all - r.all - 1) >> (128 - 1);
+		carry = (uint)(s & 1);
+		r.all -= d.all & s;
+	}
+	$if $return_rem:
 		return r.all;
-    $else
+	$else
 		return (q.all << 1) | carry;
-    $endif
+	$endif
 }
 
 fn uint128 __umodti3(uint128 n, uint128 d) @extern("__umodti3") @weak @nostrip

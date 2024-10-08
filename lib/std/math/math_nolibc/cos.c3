@@ -61,14 +61,14 @@ fn double _cos(double x) @weak @nostrip
 	{
 		// |x| ~< pi/4
 		case ix <= 0x3fe921fb:
-		    if (ix < 0x3e46a09e)
-		    {
-		        // |x| < 2**-27 * sqrt(2)
-			    // raise inexact if x!=0
-			    force_eval_add(x, 0x1p120f);
-			    return 1.0;
-		    }
-		    return __cos(x, 0);
+			if (ix < 0x3e46a09e)
+			{
+				// |x| < 2**-27 * sqrt(2)
+				// raise inexact if x!=0
+				force_eval_add(x, 0x1p120f);
+				return 1.0;
+			}
+			return __cos(x, 0);
 		case ix >= 0x7ff00000:
 			// cos(Inf or NaN) is NaN
 			return x - x;

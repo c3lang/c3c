@@ -38,11 +38,11 @@ fn double _atan(double x) @weak @extern("atan") @nostrip
 	{
 		case ix >= 0x44100000:
 			/* if |x| >= 2^66 */
-            if (math::is_nan(x)) return x;
-            double z = ATANHI[3] + 0x1p-120f;
-            return sign ? -z : z;
-        case ix < 0x3fdc0000:
-            /* |x| < 0.4375 */
+			if (math::is_nan(x)) return x;
+			double z = ATANHI[3] + 0x1p-120f;
+			return sign ? -z : z;
+		case ix < 0x3fdc0000:
+			/* |x| < 0.4375 */
 			if (ix < 0x3e400000)
 			{
 				/* |x| < 2^-27 */
@@ -55,8 +55,8 @@ fn double _atan(double x) @weak @extern("atan") @nostrip
 			}
 			id = -1;
 		case ix < 0x3ff30000:
-		    /* |x| < 1.1875 */
-		    x = math::abs(x);
+			/* |x| < 1.1875 */
+			x = math::abs(x);
 			if (ix < 0x3fe60000)
 			{
 				/*  7/16 <= |x| < 11/16 */
@@ -128,32 +128,32 @@ fn float _atanf(float x) @weak @extern("atanf") @nostrip
 	{
 		case ix < 0x3ee00000:
 			/* |x| < 0.4375 */
-            if (ix < 0x39800000)
-            {
-                /* |x| < 2**-12 */
-                if (ix < 0x00800000)
-                {
-                    /* raise underflow for subnormal x */
+			if (ix < 0x39800000)
+			{
+				/* |x| < 2**-12 */
+				if (ix < 0x00800000)
+				{
+					/* raise underflow for subnormal x */
 					float f = @volatile_load(x);
-                    f = f * f;
-                }
-            	return x;
-            }
-            id = -1;
-        case ix < 0x3f980000:
-            /* |x| < 1.1875 */
+					f = f * f;
+				}
+				return x;
+			}
+			id = -1;
+		case ix < 0x3f980000:
+			/* |x| < 1.1875 */
 			x = math::abs(x);
-	        if (ix < 0x3f300000)
-	        {
-	            /*  7/16 <= |x| < 11/16 */
-            	id = 0;
-            	x = (2.0f * x - 1.0f) / (2.0f + x);
-            	break;
-            }
-            /* 11/16 <= |x| < 19/16 */
-            id = 1;
-            x = (x - 1.0f) / (x + 1.0f);
-        case ix < 0x401c0000:
+			if (ix < 0x3f300000)
+			{
+				/*  7/16 <= |x| < 11/16 */
+				id = 0;
+				x = (2.0f * x - 1.0f) / (2.0f + x);
+				break;
+			}
+			/* 11/16 <= |x| < 19/16 */
+			id = 1;
+			x = (x - 1.0f) / (x + 1.0f);
+		case ix < 0x401c0000:
 			x = math::abs(x);
 			/* |x| < 2.4375 */
 			id = 2;
@@ -161,8 +161,8 @@ fn float _atanf(float x) @weak @extern("atanf") @nostrip
 		default:
 			/* 2.4375 <= |x| < 2**26 */
 			x = math::abs(x);
-        	id = 3;
-        	x = -1.0f / x;
+			id = 3;
+			x = -1.0f / x;
 	}
 	/* end of argument reduction */
 	float z = x * x;

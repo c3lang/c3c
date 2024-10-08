@@ -43,34 +43,34 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 		isz h;
 		while (i >= 0)
 		{
-		    l = stack[i].low;
-		    h = stack[i].high;
+			l = stack[i].low;
+			h = stack[i].high;
 
-		    if (l < h)
-		    {
+			if (l < h)
+			{
 				ElementType pivot = list[l];
 				while (l < h)
 				{
 					$switch
 						$case $cmp_by_value && $has_context:
 							while (cmp(list[h], pivot, context) >= 0 && l < h) h--;
-		  					if (l < h) list[l++] = list[h];
+							if (l < h) list[l++] = list[h];
 							while (cmp(list[l], pivot, context) <= 0 && l < h) l++;
 						$case $cmp_by_value:
 							while (cmp(list[h], pivot) >= 0 && l < h) h--;
-		  					if (l < h) list[l++] = list[h];
+							if (l < h) list[l++] = list[h];
 							while (cmp(list[l], pivot) <= 0 && l < h) l++;
 						$case $has_cmp && $has_context:
 							while (cmp(&list[h], &pivot, context) >= 0 && l < h) h--;
-		  					if (l < h) list[l++] = list[h];
+							if (l < h) list[l++] = list[h];
 							while (cmp(&list[l], &pivot, context) <= 0 && l < h) l++;
 						$case $has_cmp:
 							while (cmp(&list[h], &pivot) >= 0 && l < h) h--;
-		  					if (l < h) list[l++] = list[h];
+							if (l < h) list[l++] = list[h];
 							while (cmp(&list[l], &pivot) <= 0 && l < h) l++;
 						$default:
 							while (greater_eq(list[h], pivot) && l < h) h--;
-		  					if (l < h) list[l++] = list[h];
+							if (l < h) list[l++] = list[h];
 							while (less_eq(list[l], pivot) && l < h) l++;
 					$endswitch
 					if (l < h) list[h--] = list[l];
@@ -83,11 +83,11 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 				{
 					@swap(stack[i], stack[i - 1]);
 				}
-		    }
-		    else
-		    {
+			}
+			else
+			{
 				i--;
-		    }
+			}
 		}
 	}
 }

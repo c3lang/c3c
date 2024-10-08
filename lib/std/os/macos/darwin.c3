@@ -81,7 +81,7 @@ fn uptr! load_address() @local
 	Darwin_segment_command_64* cmd = darwin::getsegbyname("__TEXT");
 	if (!cmd) return BacktraceFault.SEGMENT_NOT_FOUND?;
 	String path = env::new_executable_path(allocator::temp()) ?? BacktraceFault.EXECUTABLE_PATH_NOT_FOUND?!;
-    uint dyld_count = darwin::_dyld_image_count();
+	uint dyld_count = darwin::_dyld_image_count();
 	for (uint i = 0; i < dyld_count; i++)
 	{
 		ZString image_name = darwin::_dyld_get_image_name(i);
@@ -111,11 +111,11 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 				String[] path_parts = parts[3].tsplit(":");
 				return {
 					.offset = (uptr)buffer,
-                    .function = parts[0].copy(allocator),
-                    .object_file = parts[2][..^2].copy(allocator),
-                    .file = path_parts[0][1..].copy(allocator),
-                    .line = path_parts[1][..^2].to_uint()!,
-                    .allocator = allocator
+					.function = parts[0].copy(allocator),
+					.object_file = parts[2][..^2].copy(allocator),
+					.file = path_parts[0][1..].copy(allocator),
+					.line = path_parts[1][..^2].to_uint()!,
+					.allocator = allocator
 				};
 			}
 		}

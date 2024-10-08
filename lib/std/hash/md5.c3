@@ -119,7 +119,7 @@ fn char* body(Md5* ctx, void* data, usz size)
 	char* ptr;
 	uint a, b, c, d;
 	uint saved_a, saved_b, saved_c, saved_d;
-    ptr = data;
+	ptr = data;
 	a = ctx.a;
 	b = ctx.b;
 	c = ctx.c;

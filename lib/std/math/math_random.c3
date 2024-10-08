@@ -39,8 +39,8 @@ macro int next(random, uint range)
 	if (range == 1) return 0;
 	uint mask = ~0U;
 	range--;
-    mask >>= range.clz();
-    uint x @noinit;
+	mask >>= range.clz();
+	uint x @noinit;
 	do
 	{
 		x = random.next_int() & mask;

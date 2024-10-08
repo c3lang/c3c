@@ -126,10 +126,10 @@ fn double _exp2(double x) @extern("exp2") @weak @nostrip
 	/* Evaluation is optimized assuming superscalar pipelined execution.  */
 	double r2 = r * r;
 	const C1 = __EXP2_DATA.exp2_poly[0];
-    const C2 = __EXP2_DATA.exp2_poly[1];
-    const C3 = __EXP2_DATA.exp2_poly[2];
-    const C4 = __EXP2_DATA.exp2_poly[3];
-    const C5 = __EXP2_DATA.exp2_poly[4];
+	const C2 = __EXP2_DATA.exp2_poly[1];
+	const C3 = __EXP2_DATA.exp2_poly[2];
+	const C4 = __EXP2_DATA.exp2_poly[3];
+	const C5 = __EXP2_DATA.exp2_poly[4];
 	/* Without fma the worst case error is 0.5/N ulp larger.  */
 	/* Worst case error is less than 0.5+0.86/N+(abs poly error * 2^53) ulp.  */
 	double tmp = tail + r * C1 + r2 * (C2 + r * C3) + r2 * r2 * (C4 + r * C5);

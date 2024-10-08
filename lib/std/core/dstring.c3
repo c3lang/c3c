@@ -77,24 +77,24 @@ fn void DString.replace(&self, String needle, String replacement)
 		foreach (i, c : str)
 		{
 			if (c == needle[match])
-    	    {
-    	        match++;
-    		    if (match == needle_len)
-    		    {
-    			    self.append_chars(replacement);
-    			    match = 0;
-    			    continue;
-    		    }
-    		    continue;
-    		}
-    		if (match > 0)
-    		{
-    		    self.append_chars(str[i - match:match]);
-    		    match = 0;
-    		}
-    		self.append_char(c);
-    	}
-    	if (match > 0) self.append_chars(str[^match:match]);
+			{
+				match++;
+				if (match == needle_len)
+				{
+					self.append_chars(replacement);
+					match = 0;
+					continue;
+				}
+				continue;
+			}
+			if (match > 0)
+			{
+				self.append_chars(str[i - match:match]);
+				match = 0;
+			}
+			self.append_char(c);
+		}
+		if (match > 0) self.append_chars(str[^match:match]);
 	};
 }
 

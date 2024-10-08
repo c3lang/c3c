@@ -31,18 +31,18 @@ const Exp2fData __EXP2F_DATA @private = {
 		0x3feeace5422aa0db, 0x3feeb737b0cdc5e5, 0x3feec49182a3f090, 0x3feed503b23e255d,
 		0x3feee89f995ad3ad, 0x3feeff76f2fb5e47, 0x3fef199bdd85529c, 0x3fef3720dcef9069,
 		0x3fef5818dcfba487, 0x3fef7c97337b9b5f, 0x3fefa4afa2a490da, 0x3fefd0765b6e4540,
-    },
-    .shift_scaled = 0x1.8p+52 / (1 <<  5),
-    .poly = {
-        0x1.c6af84b912394p-5, 0x1.ebfce50fac4f3p-3, 0x1.62e42ff0c52d6p-1,
-    },
-    .shift = 0x1.8p+52,
-    .invln2_scaled = 0x1.71547652b82fep+0 * (1 << 5),
-    .poly_scaled = {
-        0x1.c6af84b912394p-5 / (1 <<  5) / (1 <<  5) / (1 <<  5),
-        0x1.ebfce50fac4f3p-3 / (1 <<  5) / (1 <<  5),
-        0x1.62e42ff0c52d6p-1 / (1 <<  5),
-    },
+	},
+	.shift_scaled = 0x1.8p+52 / (1 <<  5),
+	.poly = {
+		0x1.c6af84b912394p-5, 0x1.ebfce50fac4f3p-3, 0x1.62e42ff0c52d6p-1,
+	},
+	.shift = 0x1.8p+52,
+	.invln2_scaled = 0x1.71547652b82fep+0 * (1 << 5),
+	.poly_scaled = {
+		0x1.c6af84b912394p-5 / (1 <<  5) / (1 <<  5) / (1 <<  5),
+		0x1.ebfce50fac4f3p-3 / (1 <<  5) / (1 <<  5),
+		0x1.62e42ff0c52d6p-1 / (1 <<  5),
+	},
 };
 
 const EXP_TABLE_BITS = 7;

@@ -260,9 +260,9 @@ macro bool may_load_atomic($Type) @const
 macro lower_to_atomic_compatible_type($Type) @const
 {
 	$switch ($Type.kindof)
-    $case SIGNED_INT:
+	$case SIGNED_INT:
 	  $case UNSIGNED_INT:
-      return $Type.typeid;
+	  return $Type.typeid;
 		$case DISTINCT:
 			return lower_to_atomic_compatible_type($Type.inner);
 		$case FLOAT:

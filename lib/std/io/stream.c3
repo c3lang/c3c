@@ -249,8 +249,8 @@ macro usz! write_varint(stream, x)
 macro ushort! read_be_ushort(stream)
 {
 	char hi_byte = stream.read_byte()!;
-    char lo_byte = stream.read_byte()!;
-    return (ushort)(hi_byte << 8 | lo_byte);
+	char lo_byte = stream.read_byte()!;
+	return (ushort)(hi_byte << 8 | lo_byte);
 }
 
 /**
