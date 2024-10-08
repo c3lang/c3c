@@ -247,6 +247,7 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 
 	// Link the parent and add the defers.
 	statement->contbreak_stmt.ast = astid(parent);
+	statement->contbreak_stmt.is_resolved = true;
 	statement->contbreak_stmt.defers = context_get_defers(context, context->active_scope.defer_last, defer_id, true);
 	return true;
 }

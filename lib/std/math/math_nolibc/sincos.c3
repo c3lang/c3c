@@ -16,7 +16,7 @@ module std::math::nolibc @if(env::NO_LIBC);
  * ====================================================
  */
 
-fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak @nostrip
+fn void sincosf(float x, float *sin, float *cos) @extern("__sincosf") @weak @nostrip
 {
 
 	uint ix = bitcast(x, uint);
@@ -105,7 +105,7 @@ fn void sincosf(float x, float *sin, float *cos) @extern("sincosf") @weak @nostr
 
 }
 
-fn void sincos(double x, double *sin, double *cos) @extern("sincos") @weak @nostrip
+fn void sincos(double x, double *sin, double *cos) @extern("__sincos") @weak @nostrip
 {
 	// High word of x.
 	uint ix = (uint)(bitcast(x, ulong) >> 32);

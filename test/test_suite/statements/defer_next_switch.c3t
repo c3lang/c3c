@@ -1,4 +1,4 @@
-
+// #target: macos-aarch64
 fn void test1()
 {}
 

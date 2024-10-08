@@ -18,6 +18,7 @@
 - Using no module with `-` would reject the program.
 - Unintended deref of pointers with methods caused regression with hash function.
 - Fix broken sincos function.
+- Bug when a continue is copied in a defer.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String

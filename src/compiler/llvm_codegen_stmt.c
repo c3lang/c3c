@@ -1071,6 +1071,7 @@ void llvm_emit_break(GenContext *c, Ast *ast)
 
 void llvm_emit_continue(GenContext *c, Ast *ast)
 {
+	assert(ast->contbreak_stmt.is_resolved);
 	llvm_emit_statement_chain(c, ast->contbreak_stmt.defers);
 	Ast *jump_target = astptr(ast->contbreak_stmt.ast);
 	LLVMBasicBlockRef jump;
