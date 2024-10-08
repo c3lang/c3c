@@ -466,7 +466,7 @@ fn void String.free(&s, Allocator allocator = allocator::heap())
 
 fn String String.tcopy(s) => s.copy(allocator::temp()) @inline;
 
-fn String ZString.copy(z, Allocator allocator = allocator::temp())
+fn String ZString.copy(z, Allocator allocator = allocator::heap())
 {
 	return z.str_view().copy(allocator) @inline;
 }
