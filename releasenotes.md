@@ -9,6 +9,7 @@
 - Better error for `int Foo(int a)` declarations #1516
 - Improve error message in the case of `MyInterface x = foo;` #1522
 - Deprecate `@adhoc`, allow non-nested ad hoc generic types.
+- Constant bytes <=> char[] conversion should work #1514.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

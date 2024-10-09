@@ -119,21 +119,21 @@ static inline bool sema_binary_analyse_arithmetic_subexpr(SemaContext *context, 
 static bool sema_binary_check_unclear_op_precedence(Expr *left_side, Expr * main_expr, Expr *right_side);
 static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *expr, Expr *left);
 static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, Expr *right, Type *left_type, Type *right_type,
-                                 Expr *parent, const char *error_message, bool allow_bool_vec);
+								 Expr *parent, const char *error_message, bool allow_bool_vec);
 static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right,
-                                                           Type *lhs_type, Type *rhs_type);
+														   Type *lhs_type, Type *rhs_type);
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr);
 static void sema_binary_unify_voidptr(SemaContext *context, Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref);
 
 // -- function helper functions
 static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, Type *func_ptr_type,
-                                              bool optional, bool *no_match_ref);
+											  bool optional, bool *no_match_ref);
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl,
-                                               Expr *struct_var, bool optional, bool *no_match_ref);
+											   Expr *struct_var, bool optional, bool *no_match_ref);
 
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl, Type *type, Expr *expr,
-                                                     Expr *struct_var,
-                                                     bool optional, const char *name, bool *no_match_ref);
+													 Expr *struct_var,
+													 bool optional, const char *name, bool *no_match_ref);
 static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, Expr *call, CalledDecl *callee);
 static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
@@ -886,7 +886,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 		}
 		Type *no_fail_max = type_no_optional(max);
 		if (!cast_implicit_binary(context, left, no_fail_max, false) || !cast_implicit_binary(context, right, no_fail_max,
-		                                                                                      false)) return false;
+																							  false)) return false;
 	}
 
 	if (path != COND_MISSING)
@@ -1233,7 +1233,7 @@ INLINE bool sema_arg_is_pass_through_ref(Expr *expr)
 }
 
 static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param, Decl *definition, bool *optional_ref,
-                                   bool *no_match_ref, bool macro, bool is_method_target)
+								   bool *no_match_ref, bool macro, bool is_method_target)
 {
 	VarDeclKind kind = param->var.kind;
 	Type *type = param->type;
@@ -1307,11 +1307,11 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 					RETURN_SEMA_ERROR(arg, "A 'void' value cannot be passed as a parameter.");
 				case STORAGE_COMPILE_TIME:
 					RETURN_SEMA_ERROR(arg, "It is only possible to use %s as a compile time parameter.",
-					                  type_invalid_storage_type_name(arg->type));
+									  type_invalid_storage_type_name(arg->type));
 				case STORAGE_UNKNOWN:
 					RETURN_SEMA_ERROR(arg, "A value of type '%s' has no known size so cannot be "
-					                       "passed as a parameter, you can pass a pointer to it though.",
-					                  type_quoted_error_string(arg->type));
+										   "passed as a parameter, you can pass a pointer to it though.",
+									  type_quoted_error_string(arg->type));
 			}
 			if (!sema_call_check_contract_param_match(context, param, arg))
 			{
@@ -1374,8 +1374,8 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 }
 
 INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, Expr *call, Decl *param,
-                                      bool *no_match_ref, Expr **expr_ref, Variadic variadic, bool has_named,
-                                      bool after_vaarg, int needed, Expr *prev, bool *optional)
+									  bool *no_match_ref, Expr **expr_ref, Variadic variadic, bool has_named,
+									  bool after_vaarg, int needed, Expr *prev, bool *optional)
 {
 	Expr *init_expr = param->var.init_expr;
 	if (!init_expr) return true;
@@ -1388,10 +1388,10 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		bool success;
 		SCOPE_START
 			new_context->original_inline_line = context->original_inline_line ? context->original_inline_line
-			                                                                  : call->span.row;
+																			  : call->span.row;
 			new_context->original_module = context->original_module;
 			success = sema_analyse_parameter(new_context, arg, param, callee->definition, optional, no_match_ref,
-			                                 callee->macro, false);
+											 callee->macro, false);
 		SCOPE_END;
 		sema_context_destroy(&default_context);
 		if (no_match_ref && *no_match_ref) return true;
@@ -1409,7 +1409,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 			case VARDECL_PARAM_EXPR:
 				*expr_ref = arg;
 				return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
-				                              callee->macro, false);
+											  callee->macro, false);
 			default:
 				break;
 		}
@@ -1421,7 +1421,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	function_scope_arg->default_arg_expr.loc = callee->call_location;
 	*expr_ref = function_scope_arg;
 	return sema_analyse_parameter(context, function_scope_arg, param, callee->definition, optional, no_match_ref,
-	                              callee->macro, false);
+								  callee->macro, false);
 }
 
 
@@ -1484,7 +1484,7 @@ static inline ArrayIndex sema_len_from_expr(Expr *expr)
 }
 
 INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional,
-                                         bool *no_match_ref)
+										 bool *no_match_ref)
 {
 	// Check body arguments (for macro calls, or possibly broken
 	if (!sema_call_check_invalid_body_arguments(context, call, callee)) return false;
@@ -1588,7 +1588,7 @@ SPLAT_NORMAL:;
 					break;
 				default:
 					RETURN_SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
-					                  type_quoted_error_string(inner->type));
+									  type_quoted_error_string(inner->type));
 			}
 			// This is the fallback: just splat like vasplat:
 			ArrayIndex len = sema_len_from_expr(inner);
@@ -1621,7 +1621,7 @@ SPLAT_NORMAL:;
 			if (param->var.vararg)
 			{
 				RETURN_SEMA_FUNC_ERROR(callee->definition, arg, "Vararg parameters may not be named parameters, "
-				                                                "use normal parameters instead.", param->name);
+																"use normal parameters instead.", param->name);
 			}
 
 			// 8e. We might have already set this parameter, that is not allowed.
@@ -1641,10 +1641,10 @@ SPLAT_NORMAL:;
 			{
 				if (j == vaarg_index) continue;
 				if (!sema_set_default_argument(context, callee, call,
-				                               params[j], no_match_ref,
-				                               &actual_args[j],
-				                               variadic, has_named,
-				                               j > vaarg_index, needed, last, optional))
+											   params[j], no_match_ref,
+											   &actual_args[j],
+											   variadic, has_named,
+											   j > vaarg_index, needed, last, optional))
 				{
 					return false;
 				}
@@ -1654,15 +1654,15 @@ SPLAT_NORMAL:;
 
 			actual_args[index] = arg->named_argument_expr.value;
 			if (!sema_analyse_parameter(context, actual_args[index], param, callee->definition, optional, no_match_ref,
-			                            callee->macro, false)) return false;
+										callee->macro, false)) return false;
 			continue;
 		}
 		if (call->call_expr.va_is_splat)
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			RETURN_SEMA_FUNC_ERROR(callee->definition, arg,
-			                       "This looks like an argument after a splatted variable, which "
-			                       "isn't allowed. Did you add too many arguments?");
+								   "This looks like an argument after a splatted variable, which "
+								   "isn't allowed. Did you add too many arguments?");
 		}
 		if (has_named)
 		{
@@ -1694,7 +1694,7 @@ SPLAT_NORMAL:;
 						if (type_storage_type(arg->type) != STORAGE_NORMAL)
 						{
 							RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a raw variadic argument.",
-							                  type_quoted_error_string(arg->type));
+											  type_quoted_error_string(arg->type));
 						}
 						cast_promote_vararg(context, arg);
 					}
@@ -1707,7 +1707,7 @@ SPLAT_NORMAL:;
 					if (type_storage_type(type) != STORAGE_NORMAL)
 					{
 						RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
-						                  type_quoted_error_string(type));
+										  type_quoted_error_string(type));
 					}
 					expr_insert_addr(arg);
 					FALLTHROUGH;
@@ -1734,8 +1734,8 @@ SPLAT_NORMAL:;
 		if (i == vaarg_index && variadic != VARIADIC_NONE) continue;
 
 		if (!sema_set_default_argument(context, callee, call, params[i], no_match_ref, &actual_args[i],
-		                               variadic, has_named, i > vaarg_index, needed,
-		                               last, optional)) return false;
+									   variadic, has_named, i > vaarg_index, needed,
+									   last, optional)) return false;
 	}
 	for (int i = 0; i < func_param_count; i++)
 	{
@@ -1755,8 +1755,8 @@ SPLAT_NORMAL:;
 				if (param->type)
 				{
 					RETURN_SEMA_FUNC_ERROR(callee->definition, call,
-					                       "This call expected a parameter of type %s, did you forget it?",
-					                       type_quoted_error_string(param->type));
+										   "This call expected a parameter of type %s, did you forget it?",
+										   type_quoted_error_string(param->type));
 				}
 				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "This call expected a parameter, did you forget it?");
 			}
@@ -1768,13 +1768,13 @@ SPLAT_NORMAL:;
 			if (!num_args)
 			{
 				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
-				                       callee->name, needed);
+									   callee->name, needed);
 			}
 			if (!last) last = args[0];
 			int more_needed = func_param_count - i;
 			RETURN_SEMA_FUNC_ERROR(callee->definition, last,
-			                       "Expected %d more %s after this one, did you forget %s?",
-			                       more_needed, more_needed == 1 ? "argument" : "arguments", more_needed == 1 ? "it" : "them");
+								   "Expected %d more %s after this one, did you forget %s?",
+								   more_needed, more_needed == 1 ? "argument" : "arguments", more_needed == 1 ? "it" : "them");
 		}
 		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
 	}
@@ -1872,8 +1872,8 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 	Type *pointee = func_ptr_type->pointer;
 	expr->call_expr.is_pointer_call = true;
 	return sema_call_analyse_func_invocation(context, pointee->function.decl, pointee, expr, NULL, optional,
-	                                         func_ptr_type->pointer->name,
-	                                         no_match_ref);
+											 func_ptr_type->pointer->name,
+											 no_match_ref);
 }
 
 // Unify returns in a macro or expression block.
@@ -1983,16 +1983,16 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 	if (struct_var && decl->func_decl.attr_interface_method) expr->call_expr.is_dynamic_dispatch = true;
 
 	return sema_call_analyse_func_invocation(context, decl,
-	                                         decl->type,
-	                                         expr,
-	                                         struct_var,
-	                                         optional,
-	                                         decl->name, no_match_ref);
+											 decl->type,
+											 expr,
+											 struct_var,
+											 optional,
+											 decl->name, no_match_ref);
 }
 
 
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl,
-                                  bool call_var_optional, bool *no_match_ref)
+								  bool call_var_optional, bool *no_match_ref)
 {
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
@@ -2001,7 +2001,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		decl->decl_kind = DECL_POISONED;
 		RETURN_SEMA_ERROR(call_expr, "Failure evaluating macro, max call depth reached, "
-		                             "possibly due non-terminating macro recursion.");
+									 "possibly due non-terminating macro recursion.");
 	}
 
 	sema_display_deprecated_warning_on_use(context, decl, call_expr->span);
@@ -2121,13 +2121,13 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			RETURN_SEMA_ERROR(type_info, "This parameter should be %s but was %s",
-				                  type_quoted_error_string(expected_type_info->type),
-				                  type_quoted_error_string(type));
+								  type_quoted_error_string(expected_type_info->type),
+								  type_quoted_error_string(type));
 		}
 		if (type && kind_of_expected == VARDECL_PARAM_REF && !type_is_pointer(type_info->type))
 		{
 			RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
-			                  type_quoted_error_string(type_get_ptr(type_info->type)));
+							  type_quoted_error_string(type_get_ptr(type_info->type)));
 		}
 		body_arg->type = type;
 		if (type_info && type_storage_type(type_info->type) == STORAGE_NORMAL)
@@ -2276,7 +2276,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			if (flat != type_void)
 			{
 				RETURN_SEMA_ERROR(decl, "Macro implicitly returns 'void' at the end, which cannot be cast to the inferred %s.",
-				                  type_quoted_error_string(rtype));
+								  type_quoted_error_string(rtype));
 			}
 		}
 	}
@@ -2457,14 +2457,14 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 }
 
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
-                                    bool *no_match_ref)
+									bool *no_match_ref)
 {
 	expr->call_expr.is_type_method = struct_var != NULL;
 	if (decl == NULL)
 	{
 		return sema_expr_analyse_var_call(context, expr,
-		                                  type_flatten(exprptr(expr->call_expr.function)->type), optional,
-		                                  no_match_ref);
+										  type_flatten(exprptr(expr->call_expr.function)->type), optional,
+										  no_match_ref);
 	}
 	if (!sema_analyse_decl(context, decl)) return false;
 	switch (decl->decl_kind)
@@ -2476,7 +2476,7 @@ bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl
 		case DECL_VAR:
 			ASSERT_SPAN(expr, struct_var == NULL);
 			return sema_expr_analyse_var_call(context, expr, decl->type->canonical, optional || IS_OPTIONAL(decl),
-			                                  no_match_ref);
+											  no_match_ref);
 		case DECL_FUNC:
 			expr->call_expr.func_ref = declid(decl);
 			expr->call_expr.is_func_ref = true;
@@ -2780,8 +2780,8 @@ static bool sema_subscript_rewrite_index_const_list(Expr *const_list, ArraySize 
  * Find index type or overload for subscript.
  */
 static Expr *sema_expr_find_index_type_or_overload_for_subscript(SemaContext *context, Expr *current_expr,
-                                                                 CheckType check, Type **index_type_ptr,
-                                                                 Decl **overload_ptr)
+																 CheckType check, Type **index_type_ptr,
+																 Decl **overload_ptr)
 {
 	Decl *overload = NULL;
 	switch (check)
@@ -2824,7 +2824,7 @@ static Expr *sema_expr_find_index_type_or_overload_for_subscript(SemaContext *co
 	{
 		Expr *embedded_struct = expr_access_inline_member(current_expr, current_expr->type->decl);
 		return sema_expr_find_index_type_or_overload_for_subscript(context, embedded_struct, check, index_type_ptr,
-		                                                           overload_ptr);
+																   overload_ptr);
 	}
 	return NULL;
 }
@@ -2866,8 +2866,8 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			{
 				if (check_valid) goto VALID_FAIL_POISON;
 				RETURN_SEMA_ERROR(expr, "A function or macro with '@operator(&[])' is not defined for %s, "
-				                        "so you need && to take the address of the temporary.",
-				                  type_quoted_error_string(subscripted->type));
+										"so you need && to take the address of the temporary.",
+								  type_quoted_error_string(subscripted->type));
 			}
 		}
 		if (!index_type)
@@ -2912,18 +2912,18 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			if (start_from_end)
 			{
 				RETURN_SEMA_ERROR(index,
-				                  size > 1
-				                  ? "An index of '%lld' from the end is out of range, a value between 1 and %lld was expected."
-				                  : "An index of '%lld' from the end is out of range, a value of %lld was expected.",
-				                  (long long) (size - index_value),
-				                  (long long) size);
+								  size > 1
+								  ? "An index of '%lld' from the end is out of range, a value between 1 and %lld was expected."
+								  : "An index of '%lld' from the end is out of range, a value of %lld was expected.",
+								  (long long) (size - index_value),
+								  (long long) size);
 			}
 			RETURN_SEMA_ERROR(index,
-			                  size > 1
-			                  ? "An index of '%lld' is out of range, a value between 0 and %lld was expected."
-			                  : "An index of '%lld' is out of range, a value of %lld was expected.",
-			                  (long long) index_value,
-			                  (long long) size - 1);
+							  size > 1
+							  ? "An index of '%lld' is out of range, a value between 0 and %lld was expected."
+							  : "An index of '%lld' is out of range, a value of %lld was expected.",
+							  (long long) index_value,
+							  (long long) size - 1);
 		}
 	}
 
@@ -3031,9 +3031,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 					{
 						if (check_valid) goto VALID_FAIL_POISON;
 						RETURN_SEMA_ERROR(index, "The index (%s%llu) is out of range, the length is just %llu.",
-						                  start_from_end ? "^" : "",
-						                  (unsigned long long)idx,
-						                  (unsigned long long)current_expr->const_expr.bytes.len);
+										  start_from_end ? "^" : "",
+										  (unsigned long long)idx,
+										  (unsigned long long)current_expr->const_expr.bytes.len);
 					}
 					if (start_from_end) idx = len - idx;
 					unsigned char c = current_expr->const_expr.bytes.ptr[idx];
@@ -5300,11 +5300,11 @@ SLICE_COPY:;
 	return true;
 EXPECTED:
 	RETURN_SEMA_ERROR(right, "Expected an array, vector or slice with element type %s.",
-	                  type_quoted_error_string(base));
+					  type_quoted_error_string(base));
 }
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,
-                                         bool is_unwrapped, bool is_declaration)
+										 bool is_unwrapped, bool is_declaration)
 {
 	if (expr && exprptr(expr->binary_expr.left)->expr_kind == EXPR_SLICE)
 	{
@@ -5635,7 +5635,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 		return false;
 	}
 	return cast_implicit_binary(context, left, max, false) &&
-	       cast_implicit_binary(context, right, max, false);
+		   cast_implicit_binary(context, right, max, false);
 }
 
 static void sema_binary_unify_voidptr(SemaContext *context, Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref)
@@ -5865,12 +5865,12 @@ static bool sema_expr_analyse_sub(SemaContext *context, Expr *expr, Expr *left, 
 
 	// 7. Attempt arithmetic promotion, to promote both to a common type.
 	if (!sema_binary_arithmetic_promotion(context,
-	                                      left,
-	                                      right,
-	                                      left_type,
-	                                      right_type,
-	                                      expr,
-	                                      "The subtraction %s - %s is not possible.", false))
+										  left,
+										  right,
+										  left_type,
+										  right_type,
+										  expr,
+										  "The subtraction %s - %s is not possible.", false))
 	{
 		return false;
 	}
@@ -5948,8 +5948,8 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 			if (!left_is_vec || !right_is_vec || !type_is_integer(right_type->array.base))
 			{
 				RETURN_SEMA_ERROR(right, "A value of type '%s' cannot be added to '%s', an integer was expected here.",
-				                  type_to_error_string(right->type),
-				                  type_to_error_string(left->type));
+								  type_to_error_string(right->type),
+								  type_to_error_string(left->type));
 			}
 		}
 
@@ -6009,12 +6009,12 @@ static bool sema_expr_analyse_add(SemaContext *context, Expr *expr, Expr *left, 
 	ASSERT_SPAN(expr, !cast_to_iptr);
 	// 4. Do a binary arithmetic promotion
 	if (!sema_binary_arithmetic_promotion(context,
-	                                      left,
-	                                      right,
-	                                      left_type,
-	                                      right_type,
-	                                      expr,
-	                                      "Cannot do the addition %s + %s.", false))
+										  left,
+										  right,
+										  left_type,
+										  right_type,
+										  expr,
+										  "Cannot do the addition %s + %s.", false))
 	{
 		return false;
 	}
@@ -6224,7 +6224,7 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 		else if (is_bitstruct)
 		{
 			ConstInitializer *merged = sema_merge_bitstruct_const_initializers(left->const_expr.initializer,
-			                                                                   right->const_expr.initializer, op);
+																			   right->const_expr.initializer, op);
 			expr->const_expr.initializer = merged;
 		}
 		else
@@ -6388,7 +6388,7 @@ static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *lef
 
 
 static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right,
-                                                           Type *lhs_type, Type *rhs_type)
+														   Type *lhs_type, Type *rhs_type)
 {
 	if (context->active_scope.flags & (SCOPE_MACRO | SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) return true;
 	if (!sema_cast_const(left) && !sema_cast_const(right)) return true;
@@ -6405,16 +6405,16 @@ static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context,
 		{
 			case BINARYOP_GT:
 				RETURN_SEMA_ERROR(right,
-				                  "Comparing '0 > unsigned expression' can never be true, and is only allowed inside of macro expansions.");
+								  "Comparing '0 > unsigned expression' can never be true, and is only allowed inside of macro expansions.");
 				return false;
 			case BINARYOP_GE:
 				RETURN_SEMA_ERROR(right,
-				                  "Comparing '0 >= unsigned expression' is the same as 0 == expr and is a common bug, "
-				                  "for this reason it is only allowed inside of macro expansions.");
+								  "Comparing '0 >= unsigned expression' is the same as 0 == expr and is a common bug, "
+								  "for this reason it is only allowed inside of macro expansions.");
 			case BINARYOP_LE:
 				RETURN_SEMA_ERROR(right,
-				                  "Comparing '0 <= unsigned expression' is always true and is a common bug, "
-				                  "for this reason it is only allowed inside of macro expansions.");
+								  "Comparing '0 <= unsigned expression' is always true and is a common bug, "
+								  "for this reason it is only allowed inside of macro expansions.");
 			default:
 				return true;
 		}
@@ -6434,12 +6434,12 @@ static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context,
 			return false;
 		case BINARYOP_LE:
 			RETURN_SEMA_ERROR(right,
-			                  "Comparing 'unsigned expression <= 0' is the same as expr == 0 and is a common bug, "
-			                  "for this reason it is only allowed inside of macro expansions.");
+							  "Comparing 'unsigned expression <= 0' is the same as expr == 0 and is a common bug, "
+							  "for this reason it is only allowed inside of macro expansions.");
 		case BINARYOP_GE:
 			RETURN_SEMA_ERROR(right,
-			                  "Comparing 'unsigned expression >= 0' is always true and is a common bug, "
-			                  "for this reason it is only allowed inside of macro expansions.");
+							  "Comparing 'unsigned expression >= 0' is always true and is a common bug, "
+							  "for this reason it is only allowed inside of macro expansions.");
 		default:
 			return true;
 	}
@@ -6480,7 +6480,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 	if (!max)
 	{
 		RETURN_SEMA_ERROR(expr, "%s and %s are different types and cannot be compared.",
-		                  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
+						  type_quoted_error_string(left->type), type_quoted_error_string(right->type));
 	}
 
 	max = max->canonical;
@@ -6495,11 +6495,11 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		if (type_is_user_defined(max))
 		{
 			RETURN_SEMA_ERROR(expr,
-			                  "%s does not support comparisons, you need to manually implement a comparison if you need it.",
-			                  type_quoted_error_string(left->type));
+							  "%s does not support comparisons, you need to manually implement a comparison if you need it.",
+							  type_quoted_error_string(left->type));
 		}
 		RETURN_SEMA_ERROR(expr, "%s does not support comparisons.",
-		                  type_quoted_error_string(left->type));
+						  type_quoted_error_string(left->type));
 	}
 
 	if (!is_equality_type_op)
@@ -6507,8 +6507,8 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 		if (!type_is_ordered(max))
 		{
 			RETURN_SEMA_ERROR(expr, "%s can only be compared using '!=' and '==' it "
-			                        "cannot be ordered, did you make a mistake?",
-			                  type_quoted_error_string(left->type));
+									"cannot be ordered, did you make a mistake?",
+							  type_quoted_error_string(left->type));
 		}
 		if (type_is_pointer_type(max))
 		{
@@ -6517,7 +6517,7 @@ static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left,
 			if (left_type != right_type && left_type != type_voidptr && right_type != type_voidptr)
 			{
 				RETURN_SEMA_ERROR(expr, "You are not allowed to compare pointers of different types, "
-				                        "if you need to do, first convert all pointers to void*.");
+										"if you need to do, first convert all pointers to void*.");
 			}
 		}
 	}
@@ -7037,7 +7037,7 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 			return false;
 		}
 		RETURN_SEMA_ERROR(expr, "It is not possible to take the address from a value of type %s.",
-		                  type_quoted_error_string(type));
+						  type_quoted_error_string(type));
 	}
 	// 2. The type is the resulting type of the expression.
 	expr->type = type_get_ptr_recurse(inner->type);
@@ -7992,8 +7992,8 @@ RETRY:
 			if (!type_is_valid_for_array(type))
 			{
 				SEMA_ERROR(type_info->array.base,
-				           "You cannot form an array with elements of type %s.",
-				           type_quoted_error_string(type));
+						   "You cannot form an array with elements of type %s.",
+						   type_quoted_error_string(type));
 				return poisoned_type;
 			}
 			return type_get_array(type, size);
@@ -8107,7 +8107,7 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 			case VARDECL_LOCAL_CT_TYPE:
 			case VARDECL_PARAM_CT_TYPE:
 				if (ct_param->var.init_expr->type_expr->type->canonical !=
-				    param->var.init_expr->type_expr->type->canonical)
+					param->var.init_expr->type_expr->type->canonical)
 					return false;
 				break;
 			case VARDECL_LOCAL_CT:
@@ -8115,7 +8115,7 @@ INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 				if (!expr_is_const(ct_param->var.init_expr)) return false;
 				if (!expr_is_const(param->var.init_expr)) return false;
 				if (!expr_const_compare(&ct_param->var.init_expr->const_expr,
-				                        &param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
+										&param->var.init_expr->const_expr, BINARYOP_EQ)) return false;
 				break;
 			default:
 				UNREACHABLE
@@ -8136,7 +8136,7 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 		FOREACH(Decl *, candidate, original->func_decl.generated_lambda)
 		{
 			if (raw == candidate->type->function.prototype->raw_type &&
-			    lambda_parameter_match(ct_lambda_parameters, candidate))
+				lambda_parameter_match(ct_lambda_parameters, candidate))
 				return candidate;
 		}
 		return NULL;
@@ -8160,7 +8160,7 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 	FOREACH(Decl *, candidate, original->func_decl.generated_lambda)
 	{
 		if (sema_may_reuse_lambda(context, candidate, types) &&
-		    lambda_parameter_match(ct_lambda_parameters, candidate))
+			lambda_parameter_match(ct_lambda_parameters, candidate))
 			return candidate;
 	}
 	return NULL;
@@ -8253,8 +8253,8 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 		return false;
 	}
 	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->identifier_expr.path,
-	                                                     parent->identifier_expr.ident, parent->span,
-	                                                     expr->generic_ident_expr.parmeters, NULL);
+														 parent->identifier_expr.ident, parent->span,
+														 expr->generic_ident_expr.parmeters, NULL);
 	if (!decl_ok(symbol)) return false;
 	expr->expr_kind = EXPR_IDENTIFIER;
 	expr_resolve_ident(expr, symbol);
@@ -8352,7 +8352,7 @@ static inline bool sema_expr_analyse_lambda(SemaContext *context, Type *target_t
 	if (flat && flat->pointer->function.prototype->raw_type != decl->type->function.prototype->raw_type)
 	{
 		RETURN_SEMA_ERROR(expr, "The lambda has type %s, which doesn't match the required type %s.",
-		                  type_quoted_error_string(decl->type),
+						  type_quoted_error_string(decl->type),
 						  type_quoted_error_string(target_type));
 	}
 	decl->func_decl.lambda_ct_parameters = ct_lambda_parameters;
@@ -9127,7 +9127,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 
 
 bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allow_optional, bool *no_match_ref,
-                           bool as_binary)
+						   bool as_binary)
 {
 	if (to && type_is_optional(to))
 	{
@@ -9192,7 +9192,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	{
 		if (no_match_ref) goto NO_MATCH_REF;
 		RETURN_SEMA_ERROR(expr, "It is not possible to cast from %s to %s.", type_quoted_error_string(expr->type),
-		           type_quoted_error_string(type_no_optional(expr->type)));
+				   type_quoted_error_string(type_no_optional(expr->type)));
 	}
 	return true;
 NO_MATCH_REF:
@@ -9373,9 +9373,9 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 			if (expr->macro_block.is_optional_return)
 			{
 				RETURN_SEMA_ERROR(expr, "The macro returns %s, which is an optional and must be handled. "
-				                        "You can either assign it to a variable, rethrow it using '!', "
-				                        "panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
-				                  type_quoted_error_string(expr->type));
+										"You can either assign it to a variable, rethrow it using '!', "
+										"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
+								  type_quoted_error_string(expr->type));
 			}
 			RETURN_SEMA_ERROR(expr, "The called macro is marked `@nodiscard` meaning the result should be kept. You can still discard it using a void cast (e.g. '(void)the_call()') if you want.");
 		}
@@ -9389,7 +9389,7 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 			if (expr->call_expr.is_optional_return)
 			{
 				RETURN_SEMA_ERROR(expr, "The function returns %s, which is an optional and must be handled. "
-				                        "You can either assign it to a variable, rethrow it using '!', "
+										"You can either assign it to a variable, rethrow it using '!', "
 										"panic with '!!', use if-catch etc. You can also silence the error using a void cast (e.g. '(void)the_call()') to ignore the error.",
 										type_quoted_error_string(expr->type));
 			}
@@ -9648,7 +9648,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	}
 	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,
-	                                    NULL)) return expr_poison(method_call);
+										NULL)) return expr_poison(method_call);
 	method_call->resolve_status = RESOLVE_DONE;
 	return true;
 }

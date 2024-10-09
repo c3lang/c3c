@@ -2038,11 +2038,16 @@ RETRY_DISTINCT:
 			return NULL;
 		case TYPE_TYPEDEF:
 			UNREACHABLE
-		case TYPE_ARRAY:
-			// array + [slice, other array, vector] => no
-			return NULL;
 		case TYPE_SLICE:
-			// slice + [other slice, vector] => no
+			// slice + [array, vector of the same type] => yes
+			if (type_is_arraylike(other) && (other->array.base->canonical == type->array.base->canonical))
+			{
+				return type;
+			}
+			// otherwise no
+			return NULL;
+		case TYPE_ARRAY:
+			// array + [other array, vector] => no
 			return NULL;
 		case TYPE_VECTOR:
 			// No implicit conversion between vectors
