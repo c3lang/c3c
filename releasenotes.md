@@ -19,6 +19,7 @@
 - Unintended deref of pointers with methods caused regression with hash function.
 - Fix broken sincos function.
 - Bug when a continue is copied in a defer.
+- Compiler error when any/interface initialized using {} #1533.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String

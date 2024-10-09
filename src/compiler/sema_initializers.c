@@ -793,7 +793,12 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	{
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
-			UNREACHABLE
+			if (is_zero_init)
+			{
+				expr_rewrite_to_const_zero(expr, to);
+				return true;
+			}
+			break;
 		case TYPE_UNTYPED_LIST:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
