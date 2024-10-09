@@ -13,10 +13,11 @@ struct ArenaAllocator (Allocator)
 /**
  * Initialize a memory arena for use using the provided bytes.
  **/
-fn void ArenaAllocator.init(&self, char[] data)
+fn ArenaAllocator* ArenaAllocator.init(&self, char[] data)
 {
 	self.data = data;
 	self.used = 0;
+	return self;
 }
 
 fn void ArenaAllocator.clear(&self)
