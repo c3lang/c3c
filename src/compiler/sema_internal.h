@@ -19,6 +19,7 @@
 
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
+#define RETURN_SEMA_ERROR_AT(span__, ...) do { sema_error_at(context, span__, __VA_ARGS__); return false; } while (0)
 #ifdef NDEBUG
 #define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
 #define ASSERT_SPAN(node__, check__) do { } while(0)

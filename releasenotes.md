@@ -11,7 +11,6 @@
 - Deprecate `@adhoc`, allow non-nested ad hoc generic types.
 - Constant bytes <=> char[] conversion should work #1514.
 - Infer now works across ternary.
-- Improved error message on invalid subscript index type #1535.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
@@ -26,6 +25,8 @@
 - Bug when defers and $if were combined in a macro, which would cause miscompilation.
 - Fixes to the CSV reader.
 - Crash returning struct or vector from function using ternary expression #1537.
+- Improved error message on invalid subscript index type #1535.
+- Improved error message when declaring a variable `void!`.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String

@@ -3659,21 +3659,17 @@ static bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan 
 		case STORAGE_WILDCARD:
 			if (type_is_optional(type))
 			{
-				sema_error_at(context, span, "The use of 'void!' as a variable type is not permitted, use %s instead.",
-				              type_quoted_error_string(type_anyfault));
-			} else
-			{
-				sema_error_at(context, span, "The use of 'void' as a variable type is not permitted.");
+				RETURN_SEMA_ERROR_AT(span, "The use of 'void!' as a variable type is not permitted, "
+				                           "catch the error using 'if (catch err = foo) { ... }',"
+										   " or use '@catch(foo)' to convert it to an 'anyfault'.");
 			}
-			return false;
+			RETURN_SEMA_ERROR_AT(span, "The use of 'void' as a variable type is not permitted.");
 		case STORAGE_COMPILE_TIME:
-			sema_error_at(context, span, "The variable cannot have an compile time %s type.",
-			              type_quoted_error_string(type));
-			return false;
+			RETURN_SEMA_ERROR_AT(span, "The variable cannot have an compile time %s type.",
+			                     type_quoted_error_string(type));
 		case STORAGE_UNKNOWN:
-			sema_error_at(context, span, "%s has unknown size, and so it cannot be a variable type.",
-			              type_quoted_error_string(type));
-			return false;
+			RETURN_SEMA_ERROR_AT(span, "%s has unknown size, and so it cannot be a variable type.",
+			                     type_quoted_error_string(type));
 	}
 	UNREACHABLE
 }
