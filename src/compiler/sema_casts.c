@@ -629,14 +629,8 @@ bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type)
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		default:
-			if (!subscripted_type)
-			{
-				RETURN_SEMA_ERROR(index, "Cannot implicitly convert %s to an index.",
-				                  type_quoted_error_string(index->type));
-			}
-			RETURN_SEMA_ERROR(index, "Cannot implicitly convert %s to index %s.",
-			                  type_quoted_error_string(index->type),
-			                  type_quoted_error_string(subscripted_type));
+			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer index.",
+			                  type_quoted_error_string(index->type));
 	}
 }
 

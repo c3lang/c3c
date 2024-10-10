@@ -11,6 +11,7 @@
 - Deprecate `@adhoc`, allow non-nested ad hoc generic types.
 - Constant bytes <=> char[] conversion should work #1514.
 - Infer now works across ternary.
+- Improved error message on invalid subscript index type #1535.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
