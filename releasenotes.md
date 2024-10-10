@@ -22,6 +22,7 @@
 - Bug when a continue is copied in a defer.
 - Compiler error when any/interface initialized using {} #1533.
 - Bug when defers and $if were combined in a macro, which would cause miscompilation.
+- Fixes to the CSV reader.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
