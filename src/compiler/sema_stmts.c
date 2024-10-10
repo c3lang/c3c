@@ -2148,7 +2148,7 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 			all_ok = false;
 		}
 	}
-	AstId *next = ast ? &ast->next : &compound_statement->compound_stmt.first_stmt;
+	AstId *next = ast ? &ast_last(ast)->next : &compound_statement->compound_stmt.first_stmt;
 	context_pop_defers(context, next);
 	return all_ok;
 }

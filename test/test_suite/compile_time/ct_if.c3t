@@ -1,3 +1,4 @@
+// #target: macos-x64
 int x @if(false) = 1;
 
 int d @if(true) = 5;
