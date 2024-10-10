@@ -41,7 +41,7 @@ static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr, C
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr);
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr, CheckType check);
 static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type *infer_type, Expr *expr);
-static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool *invalid_cast_ref);
 static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
@@ -187,7 +187,7 @@ static inline void sema_expr_flatten_const_ident(Expr *expr);
 static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, CheckType check);
 
 static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point);
-static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead);
+static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead, Type *infer_type);
 
 // -- implementations
 
@@ -836,7 +836,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 	UNREACHABLE
 }
 
-static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr)
 {
 	Expr *left = exprptrzero(expr->ternary_expr.then_expr);
 	Expr *cond = exprptr(expr->ternary_expr.cond);
@@ -845,7 +845,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	if (left)
 	{
 		if (!sema_analyse_cond_expr(context, cond, &path)) return expr_poison(expr);
-		if (!sema_analyse_maybe_dead_expr(context, left, path == COND_FALSE)) return expr_poison(expr);
+		if (!sema_analyse_maybe_dead_expr(context, left, path == COND_FALSE, infer_type)) return expr_poison(expr);
 	}
 	else
 	{
@@ -869,7 +869,7 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 	}
 
 	Expr *right = exprptr(expr->ternary_expr.else_expr);
-	if (!sema_analyse_maybe_dead_expr(context, right, path == COND_TRUE)) return expr_poison(expr);
+	if (!sema_analyse_maybe_dead_expr(context, right, path == COND_TRUE, infer_type)) return expr_poison(expr);
 
 	bool is_optional = false;
 	Type *left_canonical = left->type->canonical;
@@ -889,6 +889,14 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Expr *expr)
 																							  false)) return false;
 	}
 
+	if (type_storage_type(left->type) == STORAGE_COMPILE_TIME)
+	{
+		if (left->type == type_untypedlist)
+		{
+			RETURN_SEMA_ERROR(expr, "The ternary would be an 'untyped list', you need to explicitly type one or both branches to a runtime type.");
+		}
+		RETURN_SEMA_ERROR(expr, "A ternary must always return a runtime type, but it was %s.", type_quoted_error_string(left_canonical));
+	}
 	if (path != COND_MISSING)
 	{
 		expr_replace(expr, path == COND_TRUE ? left : right);
@@ -4601,11 +4609,14 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	return true;
 }
 
-static inline bool sema_analyse_maybe_dead_expr(SemaContext *context, Expr *expr, bool is_dead)
+static inline bool sema_analyse_maybe_dead_expr(SemaContext *context, Expr *expr, bool is_dead, Type *infer_type)
 {
-	if (!is_dead || context->active_scope.is_dead) return sema_analyse_expr(context, expr);
+	if (!is_dead || context->active_scope.is_dead)
+	{
+		return infer_type ? sema_analyse_inferred_expr(context, infer_type, expr) : sema_analyse_expr(context, expr);
+	}
 	context->active_scope.is_dead = true;
-	bool success = sema_analyse_expr(context, expr);
+	bool success = infer_type ? sema_analyse_inferred_expr(context, infer_type, expr) : sema_analyse_expr(context, expr);
 	context->active_scope.is_dead = false;
 	return success;
 }
@@ -9073,7 +9084,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_BINARY:
 			return sema_expr_analyse_binary(context, expr);
 		case EXPR_TERNARY:
-			return sema_expr_analyse_ternary(context, expr);
+			return sema_expr_analyse_ternary(context, NULL, expr);
 		case EXPR_UNARY:
 		case EXPR_POST_UNARY:
 			return sema_expr_analyse_unary(context, expr, NULL, check);
@@ -9527,6 +9538,9 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			break;
 		case EXPR_LAMBDA:
 			if (!sema_expr_analyse_lambda(context, infer_type, expr)) return expr_poison(expr);
+			break;
+		case EXPR_TERNARY:
+			if (!sema_expr_analyse_ternary(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		case EXPR_HASH_IDENT:
 			if (!sema_expr_analyse_hash_identifier(context, infer_type, expr)) return expr_poison(expr);

@@ -10,6 +10,7 @@
 - Improve error message in the case of `MyInterface x = foo;` #1522
 - Deprecate `@adhoc`, allow non-nested ad hoc generic types.
 - Constant bytes <=> char[] conversion should work #1514.
+- Infer now works across ternary.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
@@ -23,6 +24,7 @@
 - Compiler error when any/interface initialized using {} #1533.
 - Bug when defers and $if were combined in a macro, which would cause miscompilation.
 - Fixes to the CSV reader.
+- Crash returning struct or vector from function using ternary expression #1537.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
