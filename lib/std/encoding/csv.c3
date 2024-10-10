@@ -13,9 +13,9 @@ fn void CsvReader.init(&self, InStream stream, String separator = ",")
 	self.separator = separator;
 }
 
-fn String[]! CsvReader.read_new_row(self, Allocator allocator = allocator::heap())
+fn String[]! CsvReader.read_new_row(self)
 {
-	return self.read_new_row_with_allocator(allocator::temp()) @inline;
+	return self.read_new_row_with_allocator(allocator::heap()) @inline;
 }
 
 fn String[]! CsvReader.read_new_row_with_allocator(self, Allocator allocator = allocator::heap())
@@ -41,7 +41,7 @@ fn void! CsvReader.skip_row(self) @maydiscard
 
 macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 {
-	InputStream* stream = self.stream;
+	InStream stream = self.stream;
 	String sep = self.separator;
 	while (rows--)
 	{
@@ -50,7 +50,8 @@ macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
 			String[] parts;
 			@pool()
 			{
-				String! s = stream.treadline();
+				String! s = io::treadline(stream);
+				
 				if (catch err = s)
 				{
 					if (err == IoError.EOF) return;
