@@ -30,6 +30,7 @@
 - Improved error message when declaring a variable `void!`.
 - Cannot use void as a generic parameter #1546
 - Interfaces not correctly copied with generics #1545
+- Memory leak in keys.new_list fixed.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
