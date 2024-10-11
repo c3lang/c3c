@@ -30,7 +30,7 @@ static inline void emit_modules(FILE *file)
 		if (j != 0) fputs(",\n", file);
 		PRINTF("\t\t\"%s\"", module->name->module);
 	}
-	fputs("\n\t]\n", file);
+	fputs("\n\t],\n", file);
 }
 
 static inline const char *decl_type_to_string(Decl *type)
@@ -74,13 +74,20 @@ static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
 	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
 	{
-		fputs(",\n\t\t\t\"members\": {\n", file);
+		fputs(",\n\t\t\t\"members\": [\n", file);
 		FOREACH_IDX(i, Decl *, member, type->strukt.members)
 		{
 			if (i != 0) fputs(",\n", file);
-			PRINTF("\t\t\t\t\"%s\"", member->name);
+			PRINTF("\t\t\t\t{\n");
+			if (member->name)
+			{
+				PRINTF("\t\t\t\t\t\"name:\": \"%s\",\n", member->name);
+			}
+			// TODO, extend this
+			PRINTF("\t\t\t\t\t\"type:\": \"%s\"\n", type->name);
+			PRINTF("\t\t\t\t}");
 		}
-		fputs("\n\t\t\t}", file);
+		fputs("\n\t\t\t]", file);
 	}
 	fputs("\n\t\t}", file);
 }
