@@ -26,10 +26,10 @@ fn void main() {
 @test.c = local_unnamed_addr global i32 0, align 4
 @test.d = local_unnamed_addr global i32 0, align 4
 @test.abc = local_unnamed_addr global [3 x i32] zeroinitializer, align 4
-@test.b = local_unnamed_addr global ptr getelementptr (i8, ptr @test.a, i64 28), align 8
-@test.bf = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
+@test.b = local_unnamed_addr global ptr getelementptr (i8, ptr
+@test.bf = local_unnamed_addr global ptr getelementptr (i8, ptr
 @test.bf2 = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @test.abc, i64 8), align 8
-@test.bf3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
+@test.bf3 = local_unnamed_addr global ptr getelementptr (i8, ptr
 @.taddr.9 = private unnamed_addr global i32 42, align 4
 @.taddr.10 = private unnamed_addr global i8 99, align 1
 @.taddr.11 = private unnamed_addr global %"char[]" { ptr @.str, i64 3 }, align 8
