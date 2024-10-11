@@ -29,6 +29,7 @@
 - Improved error message on invalid subscript index type #1535.
 - Improved error message when declaring a variable `void!`.
 - Cannot use void as a generic parameter #1546
+- Interfaces not correctly copied with generics #1545
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String

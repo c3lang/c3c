@@ -941,6 +941,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ERASED:
 			break;
 		case DECL_INTERFACE:
+			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			MACRO_COPY_DECL_LIST(copy->interface_methods);

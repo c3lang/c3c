@@ -1,3 +1,4 @@
+// #target: macos-aarch64
 module gen(<Type>);
 
 fn Type mult(Type x)
