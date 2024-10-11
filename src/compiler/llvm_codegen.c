@@ -49,14 +49,18 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 	LLVMDisposeMessage(message);
 }
 
+bool module_should_weaken(Module *module)
+{
+	return str_eq("std", module->top_module->name->module);
+}
+
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
 	assert(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
-	if ((module->name->len == 3 && str_eq("std", module->name->module))
-		|| (module->name->len > 5 && memcmp("std::", module->name->module, 5) == 0))
+	if (compiler.build.type == TARGET_TYPE_DYNAMIC_LIB || compiler.build.type == TARGET_TYPE_STATIC_LIB)
 	{
-		context->weaken = true;
+		context->weaken = module_should_weaken(module);
 	}
 
 	if (shared_context)
@@ -591,8 +595,12 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	else if (decl_is_externally_visible(decl) && !decl->var.is_static)
 	{
 		LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
-		if (optional_ref) LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
 		if (c->weaken) llvm_set_linkonce(c, global_ref);
+		if (optional_ref)
+		{
+			if (c->weaken) llvm_set_linkonce(c, optional_ref);
+			LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
+		}
 	}
 	else
 	{
