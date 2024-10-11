@@ -50,7 +50,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			usz n = formatter.printf("{")!;
 			@stack_mem(1024; Allocator mem)
 			{
-				foreach (i, key : self.map.key_new_list(mem))
+				foreach (i, key : self.map.copy_keys(mem))
 				{
 					if (i > 0) n += formatter.printf(",")!;
 					n += formatter.printf(`"%s":`, key)!;

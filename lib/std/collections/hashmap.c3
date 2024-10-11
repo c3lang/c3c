@@ -300,7 +300,7 @@ fn Key[] HashMap.key_tlist(&map) @deprecated("Use 'tcopy_keys'")
  **/
 fn Key[] HashMap.key_new_list(&map, Allocator allocator = allocator::heap())
 {
-	return map.copy_keys() @inline;
+	return map.copy_keys(allocator) @inline;
 }
 
 fn Key[] HashMap.copy_keys(&map, Allocator allocator = allocator::heap())
