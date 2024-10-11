@@ -548,16 +548,11 @@ expr_block.exit28:                                ; preds = %loop.exit26
 
 declare { i32, ptr } @attach.to_scope() #0
 
-declare ptr @std.core.mem.calloc(i64) #0
-
-declare ptr @std.io.stdout() #0
-
-declare i64 @std.io.fprintf(ptr, i64, ptr, ptr, i64, ptr byval(%"any[]") align 8) #0
-
-declare i64 @std.io.File.write_byte(ptr, i8 zeroext) #0
-
-declare i64 @std.io.File.flush(ptr) #0
-
+declare extern_weak ptr @std.core.mem.calloc(i64) #0
+declare extern_weak ptr @std.io.stdout() #0
+declare extern_weak i64 @std.io.fprintf(ptr, i64, ptr, ptr, i64, ptr byval(%"any[]") align 8) #0
+declare extern_weak i64 @std.io.File.write_byte(ptr, i8 zeroext) #0
+declare extern_weak i64 @std.io.File.flush(ptr) #0
 declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
 
 declare void @arena_scratch_end(ptr, i64) #0

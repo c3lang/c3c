@@ -51,17 +51,15 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 
 bool module_should_weaken(Module *module)
 {
-	return str_eq("std", module->top_module->name->module);
+	Module *top = module->top_module;
+	return top && top->name->module == kw_std;
 }
 
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
 	assert(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
-	if (compiler.build.type == TARGET_TYPE_DYNAMIC_LIB || compiler.build.type == TARGET_TYPE_STATIC_LIB)
-	{
-		context->weaken = module_should_weaken(module);
-	}
+	context->weaken = module_should_weaken(module);
 
 	if (shared_context)
 	{
@@ -131,8 +129,7 @@ LLVMValueRef llvm_get_selector(GenContext *c, const char *name)
 	LLVMValueRef selector = llvm_add_global_raw(c, sel_name, char_array_type, 0);
 	LLVMSetGlobalConstant(selector, 1);
 	LLVMSetInitializer(selector, llvm_get_zstring(c, name, name_len));
-	LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
-	llvm_set_comdat(c, selector);
+	llvm_set_selector_linkage(c, selector);
 	return selector;
 }
 
@@ -469,16 +466,76 @@ void llvm_set_global_tls(Decl *decl)
 		LLVMSetThreadLocalMode(optional_ref, thread_local_mode);
 	}
 }
+
+static void llvm_set_weak(GenContext *c, LLVMValueRef global)
+{
+	LLVMSetLinkage(global, LLVMWeakAnyLinkage);
+	LLVMSetVisibility(global, LLVMDefaultVisibility);
+	llvm_set_comdat(c, global);
+}
+
+static void llvm_set_external_reference(GenContext *c, LLVMValueRef ref, bool is_weak)
+{
+	LLVMSetLinkage(ref, is_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
+	LLVMSetVisibility(ref, LLVMDefaultVisibility);
+}
+
+void llvm_set_decl_linkage(GenContext *c, Decl *decl)
+{
+	bool is_var = decl->decl_kind == DECL_VAR;
+	bool is_weak = decl->is_weak;
+	bool should_weaken = is_weak || (!decl->is_extern && module_should_weaken(decl->unit->module));
+	LLVMValueRef ref = decl->backend_ref;
+	LLVMValueRef opt_ref = is_var ? decl->var.optional_ref : NULL;
+	bool is_static = is_var && decl->var.is_static;
+	// Static variables in a different modules should be copied to the current module.
+	bool same_module = is_static || decl->unit->module == c->code_module;
+	if (decl->is_extern || !same_module)
+	{
+		llvm_set_external_reference(c, ref, should_weaken);
+		if (opt_ref) llvm_set_external_reference(c, opt_ref, should_weaken);
+		return;
+	}
+	if (decl_is_externally_visible(decl) && !is_static)
+	{
+		if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32  && !compiler.build.win.def && decl->name != kw_main && decl->name != kw_mainstub)
+		{
+			LLVMSetDLLStorageClass(ref, LLVMDLLExportStorageClass);
+		}
+		if (is_weak)
+		{
+			llvm_set_weak(c, ref);
+			if (opt_ref) llvm_set_weak(c, opt_ref);
+			return;
+		}
+		if (should_weaken)
+		{
+			llvm_set_linkonce(c, ref);
+			if (opt_ref) llvm_set_linkonce(c, opt_ref);
+			return;
+		}
+		LLVMSetVisibility(ref, LLVMDefaultVisibility);
+		if (opt_ref) LLVMSetVisibility(opt_ref, LLVMDefaultVisibility);
+		return;
+	}
+
+	LLVMSetLinkage(ref, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
+	if (opt_ref) LLVMSetLinkage(opt_ref, LLVMInternalLinkage);
+}
+
 void llvm_set_internal_linkage(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMInternalLinkage);
 	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
 }
-void llvm_set_private_linkage(LLVMValueRef alloc)
+
+void llvm_set_private_declaration(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMPrivateLinkage);
 	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
+	LLVMSetUnnamedAddress(alloc, LLVMGlobalUnnamedAddr);
 }
+
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 {
 	assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST || decl->var.is_static);
@@ -587,33 +644,14 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 
 	LLVMSetGlobalConstant(global_ref, decl->var.kind == VARDECL_CONST);
 
-	if (decl->is_extern)
-	{
-		LLVMSetLinkage(global_ref, LLVMExternalLinkage);
-		if (optional_ref) LLVMSetLinkage(optional_ref, LLVMExternalLinkage);
-	}
-	else if (decl_is_externally_visible(decl) && !decl->var.is_static)
-	{
-		LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
-		if (c->weaken) llvm_set_linkonce(c, global_ref);
-		if (optional_ref)
-		{
-			if (c->weaken) llvm_set_linkonce(c, optional_ref);
-			LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
-		}
-	}
-	else
-	{
-		LLVMSetLinkage(global_ref, LLVMInternalLinkage);
-		if (optional_ref) LLVMSetLinkage(optional_ref, LLVMInternalLinkage);
-	}
-
 	decl->backend_ref = global_ref;
 	if (old)
 	{
 		LLVMReplaceAllUsesWith(old, global_ref);
 		LLVMDeleteGlobal(old);
 	}
+
+	llvm_set_decl_linkage(c, decl);
 
 }
 static void gencontext_verify_ir(GenContext *context)
@@ -882,6 +920,13 @@ void llvm_set_comdat(GenContext *c, LLVMValueRef global)
 	LLVMSetComdat(global, comdat);
 }
 
+void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector)
+{
+	LLVMSetVisibility(selector, LLVMDefaultVisibility);
+	LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
+	llvm_set_comdat(c, selector);
+}
+
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global)
 {
 	LLVMSetLinkage(global, LLVMLinkOnceAnyLinkage);
@@ -889,12 +934,6 @@ void llvm_set_linkonce(GenContext *c, LLVMValueRef global)
 	llvm_set_comdat(c, global);
 }
 
-void llvm_set_weak(GenContext *c, LLVMValueRef global)
-{
-	LLVMSetLinkage(global, LLVMWeakAnyLinkage);
-	LLVMSetVisibility(global, LLVMDefaultVisibility);
-	llvm_set_comdat(c, global);
-}
 
 
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i)
@@ -1070,10 +1109,6 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 		scratch_buffer_set_extern_decl_name(decl, true);
 		decl->backend_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), type, decl->alignment);
 	}
-	if (!same_module)
-	{
-		LLVMSetLinkage(decl->backend_ref, LLVMExternalLinkage);
-	}
 	if (decl->var.kind == VARDECL_CONST)
 	{
 		LLVMSetGlobalConstant(decl->backend_ref, true);
@@ -1085,6 +1120,7 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 		scratch_buffer_append(".f");
 		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), anyfault, 0);
 	}
+	llvm_set_decl_linkage(c, decl);
 	llvm_set_global_tls(decl);
 }
 
@@ -1254,10 +1290,6 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			assert(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
-			if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32 && !compiler.build.win.def)
-			{
-				LLVMSetDLLStorageClass(decl->backend_ref, LLVMDLLExportStorageClass);
-			}
 			return decl->backend_ref;
 		case DECL_FUNC:
 			if (decl->func_decl.attr_interface_method)
@@ -1275,15 +1307,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			}
 			llvm_append_function_attributes(c, decl);
-			if (decl->is_export && compiler.platform.os == OS_TYPE_WIN32  && !compiler.build.win.def && decl->name != kw_main && decl->name != kw_mainstub)
-			{
-				LLVMSetDLLStorageClass(backend_ref, LLVMDLLExportStorageClass);
-			}
-			if (decl_is_local(decl))
-			{
-				assert(decl->unit->module == c->code_module);
-				llvm_set_internal_linkage(backend_ref);
-			}
+			llvm_set_decl_linkage(c, decl);
 			return backend_ref;
 		case DECL_DEFINE:
 			return llvm_get_ref(c, decl->define_decl.alias);

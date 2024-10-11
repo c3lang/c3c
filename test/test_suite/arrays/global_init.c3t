@@ -20,22 +20,21 @@ fn void main() {
 
 /* #expect: test.ll
 
-@.taddr = private global i32 3, align 4
+@.taddr = private unnamed_addr global i32 3, align 4
 @test.foo = local_unnamed_addr global ptr @.taddr, align 8
 @test.a = global i32 0, align 4
 @test.c = local_unnamed_addr global i32 0, align 4
 @test.d = local_unnamed_addr global i32 0, align 4
 @test.abc = local_unnamed_addr global [3 x i32] zeroinitializer, align 4
-@test.b = local_unnamed_addr global ptr getelementptr
-@test.bf = local_unnamed_addr global ptr getelementptr
+@test.b = local_unnamed_addr global ptr getelementptr (i8, ptr @test.a, i64 28), align 8
+@test.bf = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
 @test.bf2 = local_unnamed_addr global ptr getelementptr inbounds (i8, ptr @test.abc, i64 8), align 8
-@test.bf3 = local_unnamed_addr global ptr getelementptr
-@.taddr.9 = private global i32 42, align 4
-@.taddr.10 = private global i8 99, align 1
-@.taddr.11 = private global %"char[]" { ptr @.str, i64 3 }, align 8
+@test.bf3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.abc, i64 16), align 8
+@.taddr.9 = private unnamed_addr global i32 42, align 4
+@.taddr.10 = private unnamed_addr global i8 99, align 1
+@.taddr.11 = private unnamed_addr global %"char[]" { ptr @.str, i64 3 }, align 8
 @main.x = internal unnamed_addr global [3 x %any] [%any { ptr @.taddr.9, i64 ptrtoint (ptr @"$ct.int" to i64) }, %any { ptr @.taddr.10, i64 ptrtoint (ptr @"$ct.char" to i64) }, %any { ptr @.taddr.11, i64 ptrtoint (ptr @"$ct.String" to i64) }], align 16
 
-; Function Attrs:
 define void @test.main() #0 {
 entry:
   %bf34 = alloca ptr, align 8

@@ -66,13 +66,12 @@ fn void test6(int a)
 
 /* #expect: simple_jump.ll
 
-@jumptable = private constant [3 x ptr] [ptr blockaddress(@simple_jump.test1, %switch.case1), ptr blockaddress(@simple_jump.test1, %switch.case), ptr blockaddress(@simple_jump.test1, %switch.case1)], align 4
-@jumptable.1 = private constant [2 x ptr] [ptr blockaddress(@simple_jump.test2, %switch.case), ptr blockaddress(@simple_jump.test2, %switch.case1)], align 4
-@jumptable.2 = private constant [3 x ptr] [ptr blockaddress(@simple_jump.test3, %switch.case), ptr blockaddress(@simple_jump.test3, %switch.exit), ptr blockaddress(@simple_jump.test3, %switch.case1)], align 4
-@jumptable.3 = private constant [1 x ptr] [ptr blockaddress(@simple_jump.test4, %switch.case)], align 4
-@jumptable.4 = private constant [4 x ptr] [ptr blockaddress(@simple_jump.test5, %switch.case), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.case1)], align 4
-@jumptable.5 = private constant [5 x ptr] [ptr blockaddress(@simple_jump.test6, %switch.case), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.case1), ptr blockaddress(@simple_jump.test6, %switch.case2)], align 4
-
+@jumptable = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@simple_jump.test1, %switch.case1), ptr blockaddress(@simple_jump.test1, %switch.case), ptr blockaddress(@simple_jump.test1, %switch.case1)], align 4
+@jumptable.1 = private unnamed_addr constant [2 x ptr] [ptr blockaddress(@simple_jump.test2, %switch.case), ptr blockaddress(@simple_jump.test2, %switch.case1)], align 4
+@jumptable.2 = private unnamed_addr constant [3 x ptr] [ptr blockaddress(@simple_jump.test3, %switch.case), ptr blockaddress(@simple_jump.test3, %switch.exit), ptr blockaddress(@simple_jump.test3, %switch.case1)], align 4
+@jumptable.3 = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@simple_jump.test4, %switch.case)], align 4
+@jumptable.4 = private unnamed_addr constant [4 x ptr] [ptr blockaddress(@simple_jump.test5, %switch.case), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.default), ptr blockaddress(@simple_jump.test5, %switch.case1)], align 4
+@jumptable.5 = private unnamed_addr constant [5 x ptr] [ptr blockaddress(@simple_jump.test6, %switch.case), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.default), ptr blockaddress(@simple_jump.test6, %switch.case1), ptr blockaddress(@simple_jump.test6, %switch.case2)], align 4
 
 after_check12:                                    ; preds = %noerr_block8
   br label %noerr_block14

@@ -709,7 +709,7 @@ fn void test()
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@std.core.mem.allocator.thread_allocator = external thread_local global %any, align 8
+@std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
 
 ; Function Attrs:
 define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {

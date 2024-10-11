@@ -19,10 +19,9 @@ fn void test(int x)
 /* #expect: test.ll
 
 @test.zfok = local_unnamed_addr global i32 0, align 4
-@.taddr = private global [2 x i32] [i32 0, i32 1], align 4
+@.taddr = private unnamed_addr global [2 x i32] [i32 0, i32 1], align 4
 @test.zw = local_unnamed_addr global %"int[]" { ptr @.taddr, i64 2 }, align 8
 
-; Function Attrs:
 define void @test.test(i32 %0) #0 {
 entry:
   %zonk = alloca i32, align 4

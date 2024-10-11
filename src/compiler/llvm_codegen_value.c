@@ -60,7 +60,7 @@ void llvm_value_addr(GenContext *c, BEValue *value)
 	{
 		LLVMValueRef val = llvm_load_value_store(c, value);
 		LLVMValueRef ref = llvm_add_global_raw(c, ".taddr", LLVMTypeOf(val), 0);
-		llvm_set_private_linkage(ref);
+		llvm_set_private_declaration(ref);
 		LLVMSetInitializer(ref, val);
 		llvm_value_set_address_abi_aligned(value, ref, value->type);
 	}

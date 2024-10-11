@@ -1730,8 +1730,7 @@ void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref,
 	AlignSize alignment = type_alloca_alignment(initializer->type);
 	LLVMTypeRef type = LLVMTypeOf(value);
 	LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const", type, alignment);
-	llvm_set_private_linkage(global_copy);
-	LLVMSetUnnamedAddress(global_copy, LLVMGlobalUnnamedAddr);
+	llvm_set_private_declaration(global_copy);
 
 	// Set the value and make it constant
 	LLVMSetInitializer(global_copy, value);
@@ -5056,8 +5055,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 					LLVMTypeRef val_type = llvm_get_type(c, init->type);
 					LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const_slice", val_type, alignment);
 					LLVMSetInitializer(global_copy, value);
-					llvm_set_private_linkage(global_copy);
-					LLVMSetUnnamedAddress(global_copy, LLVMGlobalUnnamedAddr);
+					llvm_set_private_declaration(global_copy);
 					assert(type_is_arraylike(init->type));
 					LLVMValueRef val = llvm_emit_aggregate_two(c, type, global_copy,
 					                                           llvm_const_int(c, type_usz, init->type->array.len));
@@ -5131,8 +5129,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			if (!is_bytes) size++;
 			if (is_array && type->array.len > size) size = type->array.len;
 			LLVMValueRef global_name = llvm_add_global_raw(c, is_bytes ? ".bytes" : ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
-			llvm_set_private_linkage(global_name);
-			LLVMSetUnnamedAddress(global_name, LLVMGlobalUnnamedAddr);
+			llvm_set_private_declaration(global_name);
 			LLVMSetGlobalConstant(global_name, 1);
 			LLVMValueRef data = is_bytes
 					? llvm_get_bytes(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len)

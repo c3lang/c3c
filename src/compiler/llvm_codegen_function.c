@@ -644,29 +644,6 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 	{
 		llvm_emit_debug_function(c, decl);
 	}
-
-	if (decl->is_extern)
-	{
-		if (decl->is_weak)
-		{
-			LLVMSetLinkage(function, LLVMExternalWeakLinkage);
-			llvm_set_comdat(c, function);
-		}
-		else
-		{
-			LLVMSetLinkage(function, LLVMExternalLinkage);
-		}
-		LLVMSetVisibility(function, LLVMDefaultVisibility);
-		return;
-	}
-	if (decl_is_local(decl))
-	{
-		LLVMSetLinkage(function, decl->is_weak ? LLVMLinkerPrivateWeakLinkage : LLVMInternalLinkage);
-		LLVMSetVisibility(function, LLVMDefaultVisibility);
-		return;
-	}
-	if (c->weaken) llvm_set_linkonce(c, function);
-	if (decl->is_weak) llvm_set_weak(c, function);
 }
 
 
