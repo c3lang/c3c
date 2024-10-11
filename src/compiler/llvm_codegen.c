@@ -476,7 +476,6 @@ static void llvm_set_weak(GenContext *c, LLVMValueRef global)
 
 static void llvm_set_external_reference(GenContext *c, LLVMValueRef ref, bool is_weak)
 {
-	if (compiler.platform.os == OS_TYPE_WIN32) is_weak = false;
 	LLVMSetLinkage(ref, is_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
 	LLVMSetVisibility(ref, LLVMDefaultVisibility);
 }
@@ -503,16 +502,10 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 		{
 			LLVMSetDLLStorageClass(ref, LLVMDLLExportStorageClass);
 		}
-		if (is_weak)
+		if (should_weaken)
 		{
 			llvm_set_weak(c, ref);
 			if (opt_ref) llvm_set_weak(c, opt_ref);
-			return;
-		}
-		if (should_weaken)
-		{
-			llvm_set_linkonce(c, ref);
-			if (opt_ref) llvm_set_linkonce(c, opt_ref);
 			return;
 		}
 		LLVMSetVisibility(ref, LLVMDefaultVisibility);
