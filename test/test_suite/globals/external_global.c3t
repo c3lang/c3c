@@ -1,3 +1,4 @@
+// #target: macos-x64
 module test;
 
 struct MinInfo
