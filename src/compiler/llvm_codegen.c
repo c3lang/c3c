@@ -476,6 +476,7 @@ static void llvm_set_weak(GenContext *c, LLVMValueRef global)
 
 static void llvm_set_external_reference(GenContext *c, LLVMValueRef ref, bool is_weak)
 {
+	if (compiler.platform.os == OS_TYPE_WIN32) is_weak = false;
 	LLVMSetLinkage(ref, is_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
 	LLVMSetVisibility(ref, LLVMDefaultVisibility);
 }
