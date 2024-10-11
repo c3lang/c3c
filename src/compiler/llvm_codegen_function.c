@@ -665,6 +665,7 @@ void llvm_emit_function_decl(GenContext *c, Decl *decl)
 		LLVMSetVisibility(function, LLVMDefaultVisibility);
 		return;
 	}
+	if (c->weaken) llvm_set_linkonce(c, function);
 	if (decl->is_weak) llvm_set_weak(c, function);
 }
 

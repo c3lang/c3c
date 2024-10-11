@@ -53,6 +53,12 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 {
 	assert(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
+	if ((module->name->len == 3 && str_eq("std", module->name->module))
+		|| (module->name->len > 5 && memcmp("std::", module->name->module, 5) == 0))
+	{
+		context->weaken = true;
+	}
+
 	if (shared_context)
 	{
 		context->shared_context = true;
@@ -586,6 +592,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		LLVMSetVisibility(global_ref, LLVMDefaultVisibility);
 		if (optional_ref) LLVMSetVisibility(optional_ref, LLVMDefaultVisibility);
+		if (c->weaken) llvm_set_linkonce(c, global_ref);
 	}
 	else
 	{
