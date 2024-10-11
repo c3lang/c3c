@@ -2584,6 +2584,17 @@ INLINE bool type_is_wildcard(Type *type)
 	return type == type_wildcard || type == type_wildcard_optional;
 }
 
+INLINE bool type_is_fault_raw(Type *type)
+{
+	switch (type->type_kind)
+	{
+		case TYPE_FAULTTYPE:
+		case TYPE_ANYFAULT:
+			return true;
+		default:
+			return false;
+	}
+}
 INLINE bool type_is_any_raw(Type *type)
 {
 	switch (type->type_kind)

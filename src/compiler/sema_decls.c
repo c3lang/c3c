@@ -4080,9 +4080,8 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			switch (type_storage_type(type))
 			{
 				case STORAGE_NORMAL:
-					break;
 				case STORAGE_VOID:
-					RETURN_SEMA_ERROR(type_info, "A 'void' type cannot be used as a parameter type.");
+					break;
 				case STORAGE_WILDCARD:
 					RETURN_SEMA_ERROR(type_info, "The type is undefined and cannot be used as a parameter type.");
 				case STORAGE_COMPILE_TIME:

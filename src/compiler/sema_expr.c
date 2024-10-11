@@ -4749,7 +4749,7 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	const char *kw = identifier->identifier_expr.ident;
 	if (kw_type == kw)
 	{
-		if (flat_type->type_kind == TYPE_ANY)
+		if (type_is_any_raw(flat_type))
 		{
 			expr_rewrite_to_builtin_access(expr, parent, ACCESS_TYPEOFANY, type_typeid);
 			return true;
@@ -4816,7 +4816,7 @@ CHECK_DEEPER:
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
 			return true;
 		}
-		if (flat_type->type_kind == TYPE_ANY)
+		if (type_is_any_raw(flat_type))
 		{
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_voidptr);
 			return true;
@@ -4864,7 +4864,7 @@ CHECK_DEEPER:
 				return true;
 			}
 		}
-		if (flat_type->type_kind == TYPE_FAULTTYPE || flat_type->type_kind == TYPE_ANYFAULT)
+		if (type_is_fault_raw(flat_type))
 		{
 			if (sema_cast_const(current_parent))
 			{
@@ -7461,7 +7461,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 
 	Type *type = inner->type->canonical;
 
-	if (type->type_kind != TYPE_FAULTTYPE && type->type_kind != TYPE_ANYFAULT)
+	if (!type_is_fault_raw(type))
 	{
 		if (failed_ref) goto ON_FAILED;
 		RETURN_SEMA_ERROR(inner, "You cannot use the '?' operator on expressions of type %s",
@@ -7726,6 +7726,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 				*member_ref = NULL;
 				*return_type = actual_type->array.base;
 				return true;
+			case TYPE_INTERFACE:
 			case TYPE_ANY:
 				*member_ref = NULL;
 				*return_type = type_voidptr;
@@ -9160,7 +9161,7 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical->type_kind == TYPE_FAULTTYPE)
 	{
 		Type *flat = type_flatten(to);
-		if (flat != type_anyfault && flat->type_kind != TYPE_FAULTTYPE && sema_cast_const(expr))
+		if (!type_is_fault_raw(flat) && sema_cast_const(expr))
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			print_error_after(expr->span, "You need to add a trailing '?' here to make this an optional.");

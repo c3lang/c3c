@@ -11,6 +11,7 @@
 - Deprecate `@adhoc`, allow non-nested ad hoc generic types.
 - Constant bytes <=> char[] conversion should work #1514.
 - Infer now works across ternary.
+- Interfaces now support .ptr and .type directly without casting to `any`.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
@@ -27,6 +28,7 @@
 - Crash returning struct or vector from function using ternary expression #1537.
 - Improved error message on invalid subscript index type #1535.
 - Improved error message when declaring a variable `void!`.
+- Cannot use void as a generic parameter #1546
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
