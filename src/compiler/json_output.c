@@ -12,7 +12,7 @@
 	a__ = unit->global_decls[k_];
 #define PRINTF(string, ...) fprintf(file, string, ##__VA_ARGS__) /* NOLINT */
 #define FOREACH_DECL_END } } }
-#define INERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
+#define INSERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
 static inline void emit_modules(FILE *file)
 {
@@ -67,29 +67,6 @@ static inline const char *decl_type_to_string(Decl *type)
 			UNREACHABLE
 	}
 	UNREACHABLE
-}
-static inline void emit_type_data(FILE *file, Module *module, Decl *type)
-{
-	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
-	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
-	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
-	{
-		fputs(",\n\t\t\t\"members\": [\n", file);
-		FOREACH_IDX(i, Decl *, member, type->strukt.members)
-		{
-			if (i != 0) fputs(",\n", file);
-			PRINTF("\t\t\t\t{\n");
-			if (member->name)
-			{
-				PRINTF("\t\t\t\t\t\"name:\": \"%s\",\n", member->name);
-			}
-			// TODO, extend this
-			PRINTF("\t\t\t\t\t\"type:\": \"%s\"\n", type->name);
-			PRINTF("\t\t\t\t}");
-		}
-		fputs("\n\t\t\t]", file);
-	}
-	fputs("\n\t\t}", file);
 }
 
 void print_type(FILE *file, TypeInfo *type)
@@ -182,6 +159,39 @@ void print_type(FILE *file, TypeInfo *type)
 			break;
 	}
 }
+
+static inline void emit_type_data(FILE *file, Module *module, Decl *type)
+{
+	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
+	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
+	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
+	{
+		fputs(",\n\t\t\t\"members\": [\n", file);
+		FOREACH_IDX(i, Decl *, member, type->strukt.members)
+		{
+			if (i != 0) fputs(",\n", file);
+			PRINTF("\t\t\t\t{\n");
+			if (member->name)
+			{
+				PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", member->name);
+			}
+			// TODO, extend this
+			PRINTF("\t\t\t\t\t\"type\": \"");
+			if (member->var.type_info)
+			{
+				print_type(file, type_infoptr(member->var.type_info));
+			}
+			else
+			{
+				fputs("", file);
+			}
+			PRINTF("\"\n\t\t\t\t}");
+		}
+		fputs("\n\t\t\t]", file);
+	}
+	fputs("\n\t\t}", file);
+}
+
 static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
 	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, func->name);
@@ -191,8 +201,8 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 	fputs("\t\t\t\"params\": [\n", file);
 	FOREACH_IDX(i, Decl *, decl, func->func_decl.signature.params)
 	{
-		if (i != 0) fputs(",\n", file);
 		if (!decl) continue;
+		if (i != 0) fputs(",\n", file);
 		fputs("\t\t\t\t{\n", file);
 		PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
 		PRINTF("\t\t\t\t\t\"type\": \"");
@@ -225,7 +235,7 @@ static inline void emit_types(FILE *file)
 		FOREACH_DECL(Decl *type, compiler.context.module_list)
 					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPEDEF) continue;
 					if (decl_is_hidden(type)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_type_data(file, module, type);
 		FOREACH_DECL_END;
 	}
@@ -237,11 +247,11 @@ static inline void emit_types(FILE *file)
 		FOREACH_DECL(Decl *type, compiler.context.generic_module_list)
 					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPEDEF) continue;
 					if (decl_is_hidden(type)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_type_data(file, module, type);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t}\n", file);
+	fputs("\n\t},\n", file);
 }
 static inline void emit_globals(FILE *file)
 {
@@ -251,11 +261,11 @@ static inline void emit_globals(FILE *file)
 		FOREACH_DECL(Decl *decl, compiler.context.module_list)
 					if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_GLOBAL) continue;
 					if (decl_is_hidden(decl)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					PRINTF("\t\t\"%s::%s\"", module->name->module, decl->name);
 		FOREACH_DECL_END;
 	}
-	PRINTF("\n\t],");
+	PRINTF("\n\t]");
 }
 static inline void emit_functions(FILE *file)
 {
@@ -265,7 +275,7 @@ static inline void emit_functions(FILE *file)
 		FOREACH_DECL(Decl *func, compiler.context.module_list)
 					if (func->decl_kind != DECL_FUNC) continue;
 					if (decl_is_hidden(func)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_func_data(file, module, func);
 		FOREACH_DECL_END;
 	}
@@ -277,7 +287,7 @@ static inline void emit_functions(FILE *file)
 		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
 					if (func->decl_kind != DECL_FUNC) continue;
 					if (decl_is_hidden(func)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_func_data(file, module, func);
 		FOREACH_DECL_END;
 	}
