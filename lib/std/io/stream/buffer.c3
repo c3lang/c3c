@@ -8,12 +8,12 @@ struct ReadBuffer (InStream)
 	usz write_idx;
 }
 
-/**
- * Buffer reads from a stream.
- * @param [inout] self
- * @require bytes.len > 0
- * @require self.bytes.len == 0 "Init may not run on already initialized data"
- **/
+<*
+ Buffer reads from a stream.
+ @param [inout] self
+ @require bytes.len > 0
+ @require self.bytes.len == 0 "Init may not run on already initialized data"
+*>
 fn ReadBuffer* ReadBuffer.init(&self, InStream wrapped_stream, char[] bytes)
 {
 	*self = { .wrapped_stream = wrapped_stream, .bytes = bytes };
@@ -68,12 +68,12 @@ struct WriteBuffer (OutStream)
 	usz index;
 }
 
-/**
- * Buffer writes to a stream. Call `flush` when done writing to the buffer.
- * @param [inout] self
- * @require bytes.len > 0 "Non-empty buffer required"
- * @require self.bytes.len == 0 "Init may not run on already initialized data"
- **/
+<*
+ Buffer writes to a stream. Call `flush` when done writing to the buffer.
+ @param [inout] self
+ @require bytes.len > 0 "Non-empty buffer required"
+ @require self.bytes.len == 0 "Init may not run on already initialized data"
+*>
 fn WriteBuffer* WriteBuffer.init(&self, OutStream wrapped_stream, char[] bytes)
 {
 	*self = { .wrapped_stream = wrapped_stream, .bytes = bytes };

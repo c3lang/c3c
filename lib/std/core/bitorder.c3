@@ -87,10 +87,10 @@ bitstruct UInt128LE : uint128 @littleendian
 	uint128 val : 0..127;
 }
 
-/**
- * @require is_array_or_slice_of_char(bytes) "argument must be an array, a pointer to an array or a slice of char"
- * @require is_bitorder($Type) "type must be a bitorder integer"
- **/
+<*
+ @require is_array_or_slice_of_char(bytes) "argument must be an array, a pointer to an array or a slice of char"
+ @require is_bitorder($Type) "type must be a bitorder integer"
+*>
 macro read(bytes, $Type)
 {
 	char[] s;
@@ -103,10 +103,10 @@ macro read(bytes, $Type)
 	return bitcast(*(char[$Type.sizeof]*)s.ptr, $Type).val;
 }
 
-/**
- * @require is_arrayptr_or_slice_of_char(bytes) "argument must be a pointer to an array or a slice of char"
- * @require is_bitorder($Type) "type must be a bitorder integer"
- **/
+<*
+ @require is_arrayptr_or_slice_of_char(bytes) "argument must be a pointer to an array or a slice of char"
+ @require is_bitorder($Type) "type must be a bitorder integer"
+*>
 macro write(x, bytes, $Type)
 {
 	char[] s;

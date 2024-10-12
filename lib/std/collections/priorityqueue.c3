@@ -66,9 +66,9 @@ fn void PrivatePriorityQueue.push(&self, Type element)
 	}
 }
 
-/**
-* @require self != null
-*/
+<*
+ @require self != null
+*>
 fn Type! PrivatePriorityQueue.pop(&self)
 {
 	usz i = 0;
@@ -128,9 +128,9 @@ fn bool PrivatePriorityQueue.is_empty(&self)
 	return self.heap.is_empty();
 }
 
-/**
- * @require index < self.len()
- */
+<*
+ @require index < self.len()
+*>
 fn Type PrivatePriorityQueue.get(&self, usz index) @operator([])
 {
 	return self.heap[index];

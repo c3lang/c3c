@@ -2,9 +2,9 @@
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
-/**
- * @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enumset"
- **/
+<*
+ @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enumset"
+*>
 module std::collections::enumset(<Enum>);
 import std::io;
 

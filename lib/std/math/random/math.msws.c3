@@ -35,9 +35,9 @@ fn uint128 Msws128Random.next_int128(&self) @dynamic
 	return s0 + s1;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Msws128Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int128, bytes);
 fn ulong Msws128Random.next_long(&self) @dynamic => (ulong)self.next_int128();
 fn uint Msws128Random.next_int(&self) @dynamic => (uint)self.next_int128();
@@ -72,9 +72,9 @@ fn ulong Msws64Random.next_long(&self) @dynamic
 	return s0 + s1;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Msws64Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_long, bytes);
 fn uint128 Msws64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn uint Msws64Random.next_int(&self) @dynamic => (uint)self.next_long();
@@ -109,9 +109,9 @@ fn uint Msws32Random.next_int(&self) @dynamic
 	return s0 + s1;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Msws32Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
 fn uint128 Msws32Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Msws32Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
@@ -147,9 +147,9 @@ fn ushort Msws16Random.next_short(&self) @dynamic
 	return s0 + s1;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Msws16Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_short, bytes);
 fn uint128 Msws16Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Msws16Random.next_long(&self) @dynamic => @int_to_long(self.next_int());

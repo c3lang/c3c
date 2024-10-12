@@ -21,11 +21,11 @@ struct MapImpl
 	float load_factor;
 }
 
-/**
- * @require capacity > 0 "The capacity must be 1 or higher"
- * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- **/
+<*
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
 fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	MapImpl* map = allocator::alloc(allocator, MapImpl);
@@ -33,11 +33,11 @@ fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT
 	return (Map)map;
 }
 
-/**
- * @require capacity > 0 "The capacity must be 1 or higher"
- * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- **/
+<*
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
 fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	MapImpl* map = mem::temp_alloc(MapImpl);
@@ -45,13 +45,13 @@ fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAUL
 	return (Map)map;
 }
 
-/**
- * @param [&inout] allocator "The allocator to use"
- * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
- * @require capacity > 0 "The capacity must be 1 or higher"
- * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- **/
+<*
+ @param [&inout] allocator "The allocator to use"
+ @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
 macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	Map map = new(capacity, load_factor, allocator);
@@ -61,15 +61,15 @@ macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY
 	return map;
 }
 
-/**
- * @param [in] keys "Array of keys for the Map entries"
- * @param [in] values "Array of values for the Map entries"
- * @param [&inout] allocator "The allocator to use"
- * @require keys.len == values.len "Both keys and values arrays must be the same length"
- * @require capacity > 0 "The capacity must be 1 or higher"
- * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- **/
+<*
+ @param [in] keys "Array of keys for the Map entries"
+ @param [in] values "Array of values for the Map entries"
+ @param [&inout] allocator "The allocator to use"
+ @require keys.len == values.len "Both keys and values arrays must be the same length"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
 fn Map new_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
@@ -81,12 +81,12 @@ fn Map new_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity =
 	return map;
 }
 
-/**
- * @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
- * @require capacity > 0 "The capacity must be 1 or higher"
- * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- **/
+<*
+ @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
 macro Map temp_new_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	Map map = temp(capacity, load_factor);
@@ -96,15 +96,15 @@ macro Map temp_new_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY
 	return map;
 }
 
-/**
- * @param [in] keys "The keys for the HashMap entries"
- * @param [in] values "The values for the HashMap entries"
- * @param [&inout] allocator "The allocator to use"
- * @require keys.len == values.len "Both keys and values arrays must be the same length"
- * @require capacity > 0 "The capacity must be 1 or higher"
- * @require load_factor > 0.0 "The load factor must be higher than 0"
- * @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
- **/
+<*
+ @param [in] keys "The keys for the HashMap entries"
+ @param [in] values "The values for the HashMap entries"
+ @param [&inout] allocator "The allocator to use"
+ @require keys.len == values.len "Both keys and values arrays must be the same length"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
 fn Map temp_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	assert(keys.len == values.len);
@@ -116,9 +116,9 @@ fn Map temp_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity 
 	return map;
 }
 
-/**
- * @param [&in] other_map "The map to copy from."
- **/
+<*
+ @param [&in] other_map "The map to copy from."
+*>
 fn Map new_from_map(Map other_map, Allocator allocator = null)
 {
 	MapImpl* other_map_impl = (MapImpl*)other_map;
@@ -137,9 +137,9 @@ fn Map new_from_map(Map other_map, Allocator allocator = null)
 	return (Map)map;
 }
 
-/**
- * @param [&in] other_map "The map to copy from."
- **/
+<*
+ @param [&in] other_map "The map to copy from."
+*>
 fn Map temp_from_map(Map other_map)
 {
 	return new_from_map(other_map, allocator::temp());
@@ -179,10 +179,10 @@ fn Entry*! Map.get_entry(map, Key key)
 	return SearchResult.MISSING?;
 }
 
-/**
- * Get the value or update and
- * @require $assignable(#expr, Value)
- **/
+<*
+ Get the value or update and
+ @require $assignable(#expr, Value)
+*>
 macro Value Map.@get_or_set(&self, Key key, Value #expr)
 {
 	MapImpl *map = (MapImpl*)*self;

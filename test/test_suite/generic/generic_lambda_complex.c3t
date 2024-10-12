@@ -1,8 +1,6 @@
 // #target: macos-x64
 
-/**
- * @require Type.kindof == STRUCT
- **/
+<* @require Type.kindof == STRUCT *>
 module abc(<Type>);
 import std::io;
 import std::collections::list;
@@ -42,10 +40,10 @@ struct TextTag
 	}
 }
 
-/**
- * @require self.tags.len == 0 "template already initialized"
- * @require tag_start != tag_end
- **/
+<*
+ @require self.tags.len == 0 "template already initialized"
+ @require tag_start != tag_end
+ *>
 fn void! TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())
 {
 

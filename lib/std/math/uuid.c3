@@ -4,18 +4,18 @@ import std::io;
 
 distinct Uuid (Printable) = char[16];
 
-/**
- * Generate a version 4 UUID from the default random.
- **/
+<*
+Generate a version 4 UUID from the default random.
+*>
 fn Uuid generate()
 {
 	random::init_default_random();
 	return generate_from_random(&random::default_random);
 }
 
-/**
- * Generate a version 4 UUID from the given random.
- **/
+<*
+Generate a version 4 UUID from the given random.
+*>
 fn Uuid generate_from_random(Random random)
 {
 	Uuid uuid;

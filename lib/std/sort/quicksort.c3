@@ -1,12 +1,12 @@
 module std::sort;
 import std::sort::qs;
 
-/**
- * Sort list using the quick sort algorithm.
- * @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- * @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
- * @require @is_valid_context(cmp, context) "Expected a valid context"
- **/
+<*
+Sort list using the quick sort algorithm.
+ @require @is_sortable(list) "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
+ @require @is_valid_context(cmp, context) "Expected a valid context"
+*>
 macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::@len_from_list(list);

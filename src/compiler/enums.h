@@ -869,7 +869,7 @@ typedef enum
 typedef enum
 {
 	LEX_NORMAL,
-	LEX_DOCS,
+	LEX_CONTRACTS,
 } LexMode;
 
 typedef enum
@@ -1241,7 +1241,7 @@ typedef enum
 	TOKEN_LAST_KEYWORD = TOKEN_CT_VASPLAT,
 	TOKEN_DOCS_START,       // /**
 	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
-	TOKEN_DOC_DIRECTIVE,    // Any doc directive
+	TOKEN_DOCS_EOL,
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.
 

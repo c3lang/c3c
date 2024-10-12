@@ -1,10 +1,10 @@
 module std::io::os @if(env::LIBC);
 import libc;
 
-/**
- * @require mode.len > 0
- * @require filename.len > 0
- **/
+<*
+ @require mode.len > 0
+ @require filename.len > 0
+*>
 fn void*! native_fopen(String filename, String mode) @inline
 {
 	@pool()
@@ -41,10 +41,10 @@ fn void! native_remove(String filename)
 	};
 }
 
-/**
- * @require mode.len > 0
- * @require filename.len > 0
- **/
+<*
+ @require mode.len > 0
+ @require filename.len > 0
+*>
 fn void*! native_freopen(void* file, String filename, String mode) @inline
 {
 	@pool()

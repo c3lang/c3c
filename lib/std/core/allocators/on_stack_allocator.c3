@@ -16,10 +16,11 @@ struct OnStackAllocatorExtraChunk @local
 	void* data;
 }
 
-/**
- * @param [&inout] allocator
- * Initialize a memory arena for use using the provided bytes.
- **/
+<*
+ Initialize a memory arena for use using the provided bytes.
+
+ @param [&inout] allocator
+*>
 fn void OnStackAllocator.init(&self, char[] data, Allocator allocator)
 {
 	self.data = data;
@@ -54,9 +55,9 @@ struct OnStackAllocatorHeader
 	char[*] data;
 }
 
-/**
- * @require old_pointer
- **/
+<*
+ @require old_pointer
+*>
 fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {
 	if (allocation_in_stack_mem(self, old_pointer)) return;
@@ -98,11 +99,11 @@ fn OnStackAllocatorExtraChunk* on_stack_allocator_find_chunk(OnStackAllocator* a
 	return null;
 }
 
-/**
- * @require size > 0
- * @require old_pointer != null
- * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
- **/
+<*
+ @require size > 0
+ @require old_pointer != null
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+*>
 fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	if (!allocation_in_stack_mem(self, old_pointer))
@@ -119,10 +120,10 @@ fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignm
 	return mem;
 }
 
-/**
- * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
- * @require size > 0
- **/
+<*
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+ @require size > 0
+*>
 fn void*! OnStackAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	bool aligned = alignment > 0;

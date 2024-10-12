@@ -324,12 +324,9 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_UPTR:
 			return "uptr";
 		case TOKEN_DOCS_START:
-			return "/**";
+			return "<*";
 		case TOKEN_DOCS_END:
-			return "*/";
-		case TOKEN_DOC_DIRECTIVE:
-			return "DOC_DIRECTIVE";
-
+			return "*>";
 		case TOKEN_CT_ALIGNOF:
 			return "$alignof";
 		case TOKEN_CT_ANDFN:
@@ -416,6 +413,8 @@ const char *token_type_to_string(TokenType type)
 			return "$stringify";
 		case TOKEN_CT_ECHO:
 			return "$echo";
+		case TOKEN_DOCS_EOL:
+			return "<EOL>";
 		case TOKEN_EOF:
 			return "EOF";
 

@@ -213,7 +213,7 @@ fn double _atan2(double y, double x) @weak @extern("atan2") @nostrip
 			case 3: return -math::PI; /* atan(-0,-anything) =-pi */
 		}
 	}
-	// when x = 0 */
+	// when x = 0
 	if (ix | lx == 0) return m & 1 ? -math::PI_2 : math::PI_2;
 	/* when x is INF */
 	if (ix == 0x7ff00000)

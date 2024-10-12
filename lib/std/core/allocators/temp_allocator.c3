@@ -32,9 +32,9 @@ struct TempAllocatorPage
 macro usz TempAllocatorPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
 macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED == PAGE_IS_ALIGNED;
 
-/**
- * @require size >= 16
- **/
+<*
+ @require size >= 16
+*>
 fn TempAllocator*! new_temp_allocator(usz size, Allocator allocator)
 {
 	TempAllocator* temp = allocator::alloc_with_padding(allocator, TempAllocator, size)!;
@@ -134,11 +134,11 @@ fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 	return data;
 }
 
-/**
- * @require size > 0
- * @require !alignment || math::is_power_of_2(alignment)
- * @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
- **/
+<*
+ @require size > 0
+ @require !alignment || math::is_power_of_2(alignment)
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+*>
 fn void*! TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);

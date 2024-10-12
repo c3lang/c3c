@@ -930,8 +930,6 @@ void llvm_set_linkonce(GenContext *c, LLVMValueRef global)
 	llvm_set_comdat(c, global);
 }
 
-
-
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i)
 {
 	llvm_value_set(value, llvm_const_int(c, type, i), type);

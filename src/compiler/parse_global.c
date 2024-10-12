@@ -2484,6 +2484,13 @@ INLINE void append_docs(AstId **next, AstId *first, Ast *new_doc)
 	*next = &new_doc->next;
 }
 
+INLINE bool parse_doc_to_eol(ParseContext *c)
+{
+	if (try_consume(c, TOKEN_DOCS_EOL)) return true;
+	if (tok_is(c, TOKEN_DOCS_END)) return true;
+	return false;
+}
+
 /**
  * contract ::= expression_list (':'? STRING)?
  */
@@ -2644,78 +2651,65 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 	if (!try_consume(c, TOKEN_DOCS_START)) return true;
 
 	AstId **next = &contracts_ref;
-	uint32_t row_last_row = c->span.row;
-	while (1)
+	while (!try_consume(c, TOKEN_DOCS_END))
 	{
-		uint32_t row = c->span.row;
-		// Spin past the lines and line ends
-		switch (c->tok)
+		// Skip empty lines.
+		if (try_consume(c, TOKEN_DOCS_EOL)) continue;
+
+		if (!tok_is(c, TOKEN_AT_IDENT))
 		{
-			case TOKEN_DOC_DIRECTIVE:
-			{
-				const char *name = symstr(c);
-				if (name == kw_at_param)
-				{
-					if (!parse_contract_param(c, contracts_ref, next)) return false;
-					break;
-				}
-				else if (name == kw_at_return)
-				{
-					advance(c);
-					if (tok_is(c, TOKEN_BANG))
-					{
-						if (!parse_doc_optreturn(c, contracts_ref, next)) return false;
-						break;
-					}
-					if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
-					break;
-				}
-				else if (name == kw_at_deprecated)
-				{
-					advance(c);
-					(void)try_consume(c, TOKEN_STRING);
-					REMINDER("Implement @deprecated tracking");
-					break;
-				}
-				else if (name == kw_at_require)
-				{
-					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_REQUIRE)) return false;
-					break;
-				}
-				else if (name == kw_at_ensure)
-				{
-					if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_ENSURE)) return false;
-					break;
-				}
-				else if (name == kw_at_pure)
-				{
-					Ast *ast = ast_new_curr(c, AST_CONTRACT);
-					ast->contract_stmt.kind = CONTRACT_PURE;
-					append_docs(next, contracts_ref, ast);
-					advance(c);
-					break;
-				}
-				else
-				{
-					advance(c);
-					// Ignore
-					break;
-				}
-			}
-			case TOKEN_DOCS_END:
-				advance(c);
-				return true;
-			default:
-				if (row_last_row == row)
-				{
-					PRINT_ERROR_HERE("Expected end of line.");
-					return false;
-				}
-				PRINT_ERROR_HERE("Expected a directive or a comment.");
-				return false;
+			PRINT_ERROR_HERE("Expected a directive starting with '@' here, like '@param' or `@require`");
+			return false;
 		}
-		row_last_row = row;
+		const char *name = symstr(c);
+		if (name == kw_at_param)
+		{
+			if (!parse_contract_param(c, contracts_ref, next)) return false;
+		}
+		else if (name == kw_at_return)
+		{
+			advance(c);
+			if (tok_is(c, TOKEN_BANG))
+			{
+				if (!parse_doc_optreturn(c, contracts_ref, next)) return false;
+			}
+			else
+			{
+				if (!consume(c, TOKEN_STRING, "Expected a string description.")) return false;
+			}
+		}
+		else if (name == kw_at_deprecated)
+		{
+			advance(c);
+			(void)try_consume(c, TOKEN_STRING);
+			REMINDER("Implement @deprecated tracking");
+		}
+		else if (name == kw_at_require)
+		{
+			if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_REQUIRE)) return false;
+		}
+		else if (name == kw_at_ensure)
+		{
+			if (!parse_doc_contract(c, contracts_ref, next, CONTRACT_ENSURE)) return false;
+		}
+		else if (name == kw_at_pure)
+		{
+			Ast *ast = ast_new_curr(c, AST_CONTRACT);
+			ast->contract_stmt.kind = CONTRACT_PURE;
+			append_docs(next, contracts_ref, ast);
+			advance(c);
+		}
+		else
+		{
+			advance(c);
+			if (parse_doc_to_eol(c)) continue;
+			if (!consume(c, TOKEN_STRING, "Expected a string description for the custom contract '%s'.", name)) return false;
+		}
+		if (parse_doc_to_eol(c)) continue;
+		PRINT_ERROR_HERE("Expected end of line here.");
+		return false;
 	}
+	return true;
 }
 
 static Decl *parse_include(ParseContext *c)

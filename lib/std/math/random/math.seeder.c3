@@ -13,10 +13,10 @@ macro make_seed($Type, char[] input)
 }
 
 // TODO: Make endian independent
-/**
- * @param [in] input
- * @param [inout] out_buffer
- **/
+<*
+ @param [in] input
+ @param [inout] out_buffer
+*>
 fn void seeder(char[] input, char[] out_buffer)
 {
 	$if env::BIG_ENDIAN:

@@ -23,7 +23,7 @@ fn double tan(double x) @extern("tan") @weak @nostrip
 		case ix <= 0x3fe921fb:
 			if (ix < 0x3e400000)
 			{
-				// |x| < 2**-27 */
+				// |x| < 2**-27
 				/* raise inexact if x!=0 and underflow if subnormal */
 				force_eval_add(ix < 0x00100000 ? x / 0x1p120f : x + 0x1p120f, 0);
 				return x;
@@ -83,7 +83,7 @@ fn float tanf(float x) @extern("tanf") @weak @nostrip
 				: __tandf(sign ? x + S2PI2 : x - S2PI2, 0);
 		// |x| ~<= 9*pi/4
 		case ix <= 0x40e231d5:
-			// |x| ~<= 7*pi/4 */
+			// |x| ~<= 7*pi/4
 			return ix <= 0x40afeddf
 				? __tandf(sign ? x + S3PI2 : x - S3PI2, 1)
 				: __tandf(sign ? x + S4PI2 : x - S4PI2, 0);

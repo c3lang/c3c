@@ -21,31 +21,31 @@ FreadFn native_fread_fn @weak @if(!$defined(native_fread_fn));
 RemoveFn native_remove_fn @weak @if(!$defined(native_remove_fn));
 FputcFn native_fputc_fn @weak @if(!$defined(native_fputc_fn));
 
-/**
- * @require mode.len > 0
- * @require filename.len > 0
- **/
+<*
+ @require mode.len > 0
+ @require filename.len > 0
+*>
 fn void*! native_fopen(String filename, String mode) @inline
 {
 	if (native_fopen_fn) return native_fopen_fn(filename, mode);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-/**
- * Delete a file.
- *
- * @require filename.len > 0
- **/
+<*
+ Delete a file.
+
+ @require filename.len > 0
+*>
 fn void! native_remove(String filename) @inline
 {
 	if (native_remove_fn) return native_remove_fn(filename);
 	return IoError.UNSUPPORTED_OPERATION?;
 }
 
-/**
- * @require mode.len > 0
- * @require filename.len > 0
- **/
+<*
+ @require mode.len > 0
+ @require filename.len > 0
+*>
 fn void*! native_freopen(void* file, String filename, String mode) @inline
 {
 	if (native_freopen_fn) return native_freopen_fn(file, filename, mode);

@@ -600,29 +600,57 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_copy(), c->dtable_type, 0);
 		Decl *proto = declptrzero(decl->func_decl.interface_method);
 		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
-		LLVMValueRef vals[3] = {llvm_get_ref(c, decl), proto_ref, LLVMConstNull(c->ptr_type)};
+
+		LLVMValueRef all_one_ptr = LLVMConstAllOnes(llvm_get_type(c, type_uptr));
+		all_one_ptr = LLVMBuildIntToPtr(builder, all_one_ptr, c->ptr_type, "");
+		LLVMValueRef vals[3] = {llvm_get_ref(c, decl), proto_ref, all_one_ptr};
 		LLVMSetInitializer(global, LLVMConstNamedStruct(c->dtable_type, vals, 3));
-		LLVMValueRef type_id_ptr = LLVMBuildIntToPtr(builder, llvm_get_typeid(c, type), c->ptr_type, "");
-		LLVMValueRef dtable_ref = LLVMBuildStructGEP2(builder, c->introspect_type, type_id_ptr, INTROSPECT_INDEX_DTABLE,
-		                                              "");
-		LLVMBasicBlockRef check = LLVMAppendBasicBlockInContext(c->context, initializer, "dtable_check");
-		LLVMBuildBr(builder, check);
+
+		LLVMBasicBlockRef check = llvm_basic_block_new(c, "dtable_check");
+		LLVMBasicBlockRef skip = llvm_basic_block_new(c, "dtable_skip");
+
+		LLVMValueRef check_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, global, 2, "check_dtable_ref");
+		LLVMValueRef load_check = LLVMBuildLoad2(builder, c->ptr_type, check_ptr, "next_val");
+		LLVMBuildCondBr(builder, LLVMBuildICmp(builder, LLVMIntEQ, load_check, all_one_ptr, ""), check, skip);
+
+		LLVMAppendExistingBasicBlock(initializer, check);
 		LLVMPositionBuilderAtEnd(builder, check);
+
+		// Pointer to table
+		LLVMValueRef type_id_ptr = LLVMBuildIntToPtr(builder, llvm_get_typeid(c, type), c->ptr_type, "");
+		LLVMValueRef dtable_ref = LLVMBuildStructGEP2(builder, c->introspect_type, type_id_ptr, INTROSPECT_INDEX_DTABLE, "introspect_index");
+
+		// Phi is dtable**
 		LLVMValueRef phi = LLVMBuildPhi(builder, c->ptr_type, "dtable_ref");
+		LLVMAddIncoming(phi, &dtable_ref, &last_block, 1);
+
+		// Load Phi to dtable*
 		LLVMValueRef load_dtable = LLVMBuildLoad2(builder, c->ptr_type, phi, "dtable_ptr");
-		LLVMValueRef is_not_null = LLVMBuildICmp(builder, LLVMIntEQ, load_dtable, LLVMConstNull(c->ptr_type), "");
-		LLVMBasicBlockRef after_check = llvm_basic_block_new(c, "dtable_found");
-		LLVMBasicBlockRef next = llvm_basic_block_new(c, "dtable_next");
-		LLVMBuildCondBr(builder, is_not_null, after_check, next);
-		LLVMAppendExistingBasicBlock(initializer, next);
-		LLVMPositionBuilderAtEnd(builder, next);
+
+		// Check if null
+		LLVMValueRef is_null = LLVMBuildICmp(builder, LLVMIntEQ, load_dtable, LLVMConstNull(c->ptr_type), "");
 		LLVMValueRef next_ptr = LLVMBuildStructGEP2(builder, c->dtable_type, load_dtable, 2, "next_dtable_ref");
-		llvm_set_phi(phi, dtable_ref, last_block, next_ptr, next);
-		LLVMBuildBr(builder, check);
+		// Grab new pointer
+		LLVMAddIncoming(phi, &next_ptr, &check, 1);
+
+		LLVMBasicBlockRef after_check = llvm_basic_block_new(c, "dtable_found");
+		LLVMBuildCondBr(builder, is_null, after_check, check);
+
+		// We have a dtable** which points to a null
 		LLVMAppendExistingBasicBlock(initializer, after_check);
 		LLVMPositionBuilderAtEnd(builder, after_check);
+
+		// Store the global (dtable*) to the phi (dtable**)
 		LLVMBuildStore(builder, global, phi);
-		last_block = after_check;
+
+		// Clear the -1
+		LLVMBuildStore(builder, LLVMConstNull(c->ptr_type), check_ptr);
+
+		// Goto the skip
+		LLVMBuildBr(builder, skip);
+		LLVMAppendExistingBasicBlock(initializer, skip);
+		LLVMPositionBuilderAtEnd(builder, skip);
+		last_block = skip;
 	}
 
 	LLVMBuildRet(builder, NULL);

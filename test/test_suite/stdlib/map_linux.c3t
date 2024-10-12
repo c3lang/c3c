@@ -278,19 +278,22 @@ if.exit:                                          ; preds = %if.then, %after_che
 
 define internal void @.c3_dynamic_register() align 8 {
 entry:
-  br label %dtable_check
+  %next_val = load ptr, ptr getelementptr
+  %0 = icmp eq ptr %next_val, inttoptr (i64 -1 to ptr)
+  br i1 %0, label %dtable_check, label %dtable_skip
 
-dtable_check:                                     ; preds = %dtable_next, %entry
+dtable_check:                                     ; preds = %dtable_check, %entry
   %dtable_ref = phi ptr [ getelementptr inbounds
   %dtable_ptr = load ptr, ptr %dtable_ref, align 8
-  %0 = icmp eq ptr %dtable_ptr, null
-  br i1 %0, label %dtable_found, label %dtable_next
-
-dtable_next:                                      ; preds = %dtable_check
+  %1 = icmp eq ptr %dtable_ptr, null
   %next_dtable_ref = getelementptr inbounds
-  br label %dtable_check
+  br i1 %1, label %dtable_found, label %dtable_check
 
 dtable_found:                                     ; preds = %dtable_check
   store ptr @"$ct.dyn.test.Foo.to_new_string", ptr %dtable_ref, align 8
+  store ptr null, ptr getelementptr inbounds
+  br label %dtable_skip
+
+dtable_skip:                                      ; preds = %dtable_found, %entry
   ret void
 }

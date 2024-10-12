@@ -145,7 +145,7 @@ entry:
   ret i32 0
 }
 
-define weak_odr ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
+define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
 entry:
   br label %check
 

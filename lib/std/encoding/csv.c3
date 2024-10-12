@@ -25,9 +25,9 @@ fn usz CsvRow.len(&self) @operator(len)
 	return self.list.len;
 }
 
-/**
- * @require col < self.list.len
- **/
+<*
+ @require col < self.list.len
+*>
 fn String CsvRow.get_col(&self, usz col) @operator([])
 {
 	return self.list[col];
@@ -44,9 +44,9 @@ fn CsvRow! CsvReader.read_new_row(self)
 	return self.read_row(allocator::heap()) @inline;
 }
 
-/**
- * @param [&inout] allocator
- **/
+<*
+ @param [&inout] allocator
+*>
 fn CsvRow! CsvReader.read_row(self, Allocator allocator)
 {
 	String row = io::readline(self.stream, allocator: allocator)!;
@@ -60,9 +60,9 @@ fn CsvRow! CsvReader.read_temp_row(self)
 	return self.read_row(allocator::temp()) @inline;
 }
 
-/**
- * @require self.allocator `Row already freed`
- **/
+<*
+ @require self.allocator `Row already freed`
+*>
 fn void CsvRow.free(&self)
 {
 	allocator::free(self.allocator, self.list);

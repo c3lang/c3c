@@ -20,19 +20,19 @@ struct LinkedList
 	Node *_last;
 }
 
-/**
- * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
- * @return "the initialized list"
- **/
+<*
+ @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ @return "the initialized list"
+*>
 fn LinkedList* LinkedList.init(&self, Allocator allocator)
 {
 	*self = { .allocator = allocator };
 	return self;
 }
 
-/**
- * @return "the initialized list"
- **/
+<*
+ @return "the initialized list"
+*>
 fn LinkedList* LinkedList.new_init(&self)
 {
 	return self.init(allocator::heap()) @inline;
@@ -44,9 +44,9 @@ fn LinkedList* LinkedList.temp_init(&self)
 	return self.init(allocator::temp()) @inline;
 }
 
-/**
- * @require self.allocator
- **/
+<*
+ @require self.allocator
+*>
 macro void LinkedList.free_node(&self, Node* node) @private
 {
 	allocator::free(self.allocator, node);
@@ -124,9 +124,9 @@ fn void LinkedList.clear(&self)
 
 fn usz LinkedList.len(&self) @inline => self.size;
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 macro Node* LinkedList.node_at_index(&self, usz index)
 {
 	if (index * 2 >= self.size)
@@ -140,33 +140,33 @@ macro Node* LinkedList.node_at_index(&self, usz index)
 	while (index--) node = node.next;
 	return node;
 }
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn Type LinkedList.get(&self, usz index)
 {
 	return self.node_at_index(index).value;
 }
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn void LinkedList.set(&self, usz index, Type element)
 {
 	self.node_at_index(index).value = element;
 }
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn void LinkedList.remove_at(&self, usz index)
 {
 	self.unlink(self.node_at_index(index));
 }
 
-/**
- * @require index <= self.size
- **/
+<*
+ @require index <= self.size
+*>
 fn void LinkedList.insert_at(&self, usz index, Type element)
 {
 	switch (index)
@@ -179,9 +179,9 @@ fn void LinkedList.insert_at(&self, usz index, Type element)
 			self.link_before(self.node_at_index(index), element);
 	}
 }
-/**
- * @require succ != null
- **/
+<*
+ @require succ != null
+*>
 fn void LinkedList.link_before(&self, Node *succ, Type value) @private
 {
 	Node* pred = succ.prev;
@@ -199,9 +199,9 @@ fn void LinkedList.link_before(&self, Node *succ, Type value) @private
 	self.size++;
 }
 
-/**
- * @require self._first
- **/
+<*
+ @require self._first
+*>
 fn void LinkedList.unlink_first(&self) @private
 {
 	Node* f = self._first;
@@ -290,9 +290,9 @@ fn bool LinkedList.remove_last_match(&self, Type t)  @if(ELEMENT_IS_EQUATABLE)
 	}
 	return false;
 }
-/**
- * @require self._last
- **/
+<*
+ @require self._last
+*>
 fn void LinkedList.unlink_last(&self) @inline @private
 {
 	Node* l = self._last;
@@ -310,9 +310,9 @@ fn void LinkedList.unlink_last(&self) @inline @private
 	self.size--;
 }
 
-/**
- * @require x != null
- **/
+<*
+ @require x != null
+*>
 fn void LinkedList.unlink(&self, Node* x) @private
 {
 	Node* next = x.next;

@@ -31,9 +31,9 @@ const MASK = KMAX - 1;
 const B1B_DIG = 2;
 const uint[2] B1B_MAX = { 9007199, 254740991 };
 
-/**
- * @require chars.len > 0
- **/
+<*
+ @require chars.len > 0
+*>
 macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 {
 	uint[KMAX] x;
@@ -266,7 +266,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 	y *= sign;
 
 	bool denormal;
-	/* Limit precision for denormal results */
+	// Limit precision for denormal results
 	uint bits = $bits;
 	if (bits > math::DOUBLE_MANT_DIG + e2 - $emin)
 	{

@@ -11,11 +11,11 @@ struct ByteBuffer (InStream, OutStream)
 	bool has_last;
 }
 
-/**
- * ByteBuffer provides a streamable read/write buffer.
- * max_read defines how many bytes might be kept before its internal buffer is shrinked.
- * @require self.bytes.len == 0 "Buffer already initialized."
- **/
+<*
+ ByteBuffer provides a streamable read/write buffer.
+ max_read defines how many bytes might be kept before its internal buffer is shrinked.
+ @require self.bytes.len == 0 "Buffer already initialized."
+*>
 fn ByteBuffer*! ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	*self = { .allocator = allocator, .max_read = max_read };
@@ -29,10 +29,10 @@ fn ByteBuffer*! ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity =
 	return self.new_init(max_read, initial_capacity, allocator::temp());
 }
 
-/**
- * @require buf.len > 0
- * @require self.bytes.len == 0 "Buffer already initialized."
- **/
+<*
+ @require buf.len > 0
+ @require self.bytes.len == 0 "Buffer already initialized."
+*>
 fn ByteBuffer*! ByteBuffer.init_with_buffer(&self, char[] buf)
 {
 	*self = { .max_read = buf.len, .bytes = buf };
@@ -93,9 +93,9 @@ fn char! ByteBuffer.read_byte(&self) @dynamic
 	return c;
 }
 
-/*
- * Only the last byte of a successful read can be pushed back.
- */
+<*
+ Only the last byte of a successful read can be pushed back.
+*>
 fn void! ByteBuffer.pushback_byte(&self) @dynamic
 {
 	if (!self.has_last) return IoError.EOF?;

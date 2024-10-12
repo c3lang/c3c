@@ -11,9 +11,9 @@ fn void Abc.update(Abc* a, int ab)
 	a.a = ab;
 }
 
-/**
- * @param [out] a
- **/
+<*
+ @param [out] a
+*>
 fn void Abc.update_fail(Abc* a, int ab)
 {
 	a.a = ab;

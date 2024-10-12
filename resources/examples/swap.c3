@@ -1,9 +1,9 @@
 module test;
 import libc;
 
-/**
- * @require values::@assign_to(*b, *a) && values::@assign_to(*a, *b)
- */
+<*
+ @require values::@assign_to(*b, *a) && values::@assign_to(*a, *b)
+*>
 macro void @swap(&a, &b)
 {
     var temp = *a;

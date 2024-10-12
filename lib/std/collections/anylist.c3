@@ -16,19 +16,20 @@ struct AnyList (Printable)
 }
 
 
-/**
- * @param initial_capacity "The initial capacity to reserve"
- * Use `init` for to use a custom allocator.
- **/
+<*
+ Use `init` for to use a custom allocator.
+
+ @param initial_capacity "The initial capacity to reserve"
+*>
 fn AnyList* AnyList.new_init(&self, usz initial_capacity = 16, Allocator allocator = null)
 {
 	return self.init(allocator ?: allocator::heap(), initial_capacity) @inline;
 }
 
-/**
- * @param [&inout] allocator "The allocator to use"
- * @param initial_capacity "The initial capacity to reserve"
- **/
+<*
+ @param [&inout] allocator "The allocator to use"
+ @param initial_capacity "The initial capacity to reserve"
+*>
 fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 {
 	self.allocator = allocator;
@@ -46,11 +47,11 @@ fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 	return self;
 }
 
-/**
- * Initialize the list using the temp allocator.
- *
- * @param initial_capacity "The initial capacity to reserve"
- **/
+<*
+ Initialize the list using the temp allocator.
+
+ @param initial_capacity "The initial capacity to reserve"
+*>
 fn AnyList* AnyList.temp_init(&self, usz initial_capacity = 16)
 {
 	return self.init(allocator::temp(), initial_capacity) @inline;
@@ -89,9 +90,9 @@ fn String AnyList.to_string(&self, Allocator allocator) @dynamic
 
 fn String AnyList.to_tstring(&self) => string::tformat("%s", *self);
 
-/**
- * Push an element on the list by cloning it.
- **/
+<*
+ Push an element on the list by cloning it.
+*>
 macro void AnyList.push(&self, element)
 {
 	if (!self.allocator) self.allocator = allocator::heap();
@@ -104,20 +105,20 @@ fn void AnyList.append_internal(&self, any element) @local
 	self.entries[self.size++] = element;
 }
 
-/**
- * Free a retained element removed using *_retained.
- **/
+<*
+ Free a retained element removed using *_retained.
+*>
 fn void AnyList.free_element(&self, any element) @inline
 {
 	allocator::free(self.allocator, element.ptr);
 }
 
-/**
- * Pop a value who's type is known. If the type is incorrect, this
- * will still pop the element.
- *
- * @return! CastResult.TYPE_MISMATCH, IteratorResult.NO_MORE_ELEMENT
- **/
+<*
+ Pop a value who's type is known. If the type is incorrect, this
+ will still pop the element.
+
+ @return! CastResult.TYPE_MISMATCH, IteratorResult.NO_MORE_ELEMENT
+*>
 macro AnyList.pop(&self, $Type)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -125,10 +126,10 @@ macro AnyList.pop(&self, $Type)
 	return *anycast(self.entries[--self.size], $Type);
 }
 
-/**
- * Pop the last value and allocate the copy using the given allocator.
- * @return! IteratorResult.NO_MORE_ELEMENT
- **/
+<*
+ Pop the last value and allocate the copy using the given allocator.
+ @return! IteratorResult.NO_MORE_ELEMENT
+*>
 fn any! AnyList.copy_pop(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -136,33 +137,33 @@ fn any! AnyList.copy_pop(&self, Allocator allocator = allocator::heap())
 	return allocator::clone_any(allocator, self.entries[--self.size]);
 }
 
-/**
- * Pop the last value and allocate the copy using the given allocator.
- * @return! IteratorResult.NO_MORE_ELEMENT
- * @deprecated `use copy_pop`
- **/
+<*
+ Pop the last value and allocate the copy using the given allocator.
+ @return! IteratorResult.NO_MORE_ELEMENT
+ @deprecated `use copy_pop`
+*>
 fn any! AnyList.new_pop(&self, Allocator allocator = allocator::heap())
 {
 	return self.copy_pop(allocator);
 }
 
-/**
- * Pop the last value and allocate the copy using the temp allocator
- * @return! IteratorResult.NO_MORE_ELEMENT
- * @deprecated `use tcopy_pop`
- **/
+<*
+ Pop the last value and allocate the copy using the temp allocator
+ @return! IteratorResult.NO_MORE_ELEMENT
+ @deprecated `use tcopy_pop`
+*>
 fn any! AnyList.temp_pop(&self) => self.copy_pop(allocator::temp());
 
-/**
- * Pop the last value and allocate the copy using the temp allocator
- * @return! IteratorResult.NO_MORE_ELEMENT
- **/
+<*
+ Pop the last value and allocate the copy using the temp allocator
+ @return! IteratorResult.NO_MORE_ELEMENT
+*>
 fn any! AnyList.tcopy_pop(&self) => self.copy_pop(allocator::temp());
 
-/**
- * Pop the last value. It must later be released using list.free_element()
- * @return! IteratorResult.NO_MORE_ELEMENT
- **/
+<*
+ Pop the last value. It must later be released using list.free_element()
+ @return! IteratorResult.NO_MORE_ELEMENT
+*>
 fn any! AnyList.pop_retained(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -178,9 +179,9 @@ fn void AnyList.clear(&self)
 	self.size = 0;
 }
 
-/**
- * Same as pop() but pops the first value instead.
- **/
+<*
+ Same as pop() but pops the first value instead.
+*>
 macro AnyList.pop_first(&self, $Type)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -188,9 +189,9 @@ macro AnyList.pop_first(&self, $Type)
 	return *anycast(self.entries[0], $Type);
 }
 
-/**
- * Same as pop_retained() but pops the first value instead.
- **/
+<*
+ Same as pop_retained() but pops the first value instead.
+*>
 fn any! AnyList.pop_first_retained(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -198,18 +199,18 @@ fn any! AnyList.pop_first_retained(&self)
 	return self.entries[0];
 }
 
-/**
- * Same as new_pop() but pops the first value instead.
- * @deprecated `use copy_pop_first`
- **/
+<*
+ Same as new_pop() but pops the first value instead.
+ @deprecated `use copy_pop_first`
+*>
 fn any! AnyList.new_pop_first(&self, Allocator allocator = allocator::heap())
 {
 	return self.copy_pop_first(allocator) @inline;
 }
 
-/**
- * Same as new_pop() but pops the first value instead.
- **/
+<*
+ Same as new_pop() but pops the first value instead.
+*>
 fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -218,20 +219,20 @@ fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 	return allocator::clone_any(allocator, self.entries[0]);
 }
 
-/**
- * Same as temp_pop() but pops the first value instead.
- **/
+<*
+ Same as temp_pop() but pops the first value instead.
+*>
 fn any! AnyList.tcopy_pop_first(&self) => self.copy_pop_first(allocator::temp());
 
-/**
- * Same as temp_pop() but pops the first value instead.
- * @deprecated `use tcopy_pop_first`
- **/
+<*
+ Same as temp_pop() but pops the first value instead.
+ @deprecated `use tcopy_pop_first`
+*>
 fn any! AnyList.temp_pop_first(&self) => self.new_pop_first(allocator::temp());
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn void AnyList.remove_at(&self, usz index)
 {
 	if (!--self.size || index == self.size) return;
@@ -249,9 +250,9 @@ fn void AnyList.add_all(&self, AnyList* other_list)
 	}
 }
 
-/**
- * Reverse the elements in a list.
- **/
+<*
+ Reverse the elements in a list.
+*>
 fn void AnyList.reverse(&self)
 {
 	if (self.size < 2) return;
@@ -268,26 +269,26 @@ fn any[] AnyList.array_view(&self)
 	return self.entries[:self.size];
 }
 
-/**
- * Push an element to the front of the list.
- **/
+<*
+ Push an element to the front of the list.
+*>
 macro void AnyList.push_front(&self, type)
 {
 	self.insert_at(0, type);
 }
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 macro void AnyList.insert_at(&self, usz index, type) @local
 {
 	any value = allocator::copy(self.allocator, type);
 	self.insert_at_internal(self, index, value);
 }
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn void AnyList.insert_at_internal(&self, usz index, any value) @local
 {
 	self.ensure_capacity();
@@ -300,17 +301,17 @@ fn void AnyList.insert_at_internal(&self, usz index, any value) @local
 }
 
 
-/**
- * @require self.size > 0
- **/
+<*
+ @require self.size > 0
+*>
 fn void AnyList.remove_last(&self)
 {
 	self.free_element(self.entries[--self.size]);
 }
 
-/**
- * @require self.size > 0
- **/
+<*
+ @require self.size > 0
+*>
 fn void AnyList.remove_first(&self)
 {
 	self.remove_at(0);
@@ -346,17 +347,17 @@ fn usz AnyList.len(&self) @operator(len) @inline
 	return self.size;
 }
 
-/**
- * @require index < self.size "Index out of range"
- **/
+<*
+ @require index < self.size "Index out of range"
+*>
 macro AnyList.get(&self, usz index, $Type)
 {
 	return *anycast(self.entries[index], $Type);
 }
 
-/**
- * @require index < self.size "Index out of range"
- **/
+<*
+ @require index < self.size "Index out of range"
+*>
 fn any AnyList.get_any(&self, usz index) @inline
 {
 	return self.entries[index];
@@ -378,19 +379,19 @@ fn void AnyList.swap(&self, usz i, usz j)
 	self.entries[j] = temp;
 }
 
-/**
- * @param filter "The function to determine if it should be removed or not"
- * @return "the number of deleted elements"
- **/
+<*
+ @param filter "The function to determine if it should be removed or not"
+ @return "the number of deleted elements"
+*>
 fn usz AnyList.remove_if(&self, AnyPredicate filter)
 {
 	return self._remove_if(filter, false);
 }
 
-/**
- * @param selection "The function to determine if it should be kept or not"
- * @return "the number of deleted elements"
- **/
+<*
+ @param selection "The function to determine if it should be kept or not"
+ @return "the number of deleted elements"
+*>
 fn usz AnyList.retain_if(&self, AnyPredicate selection)
 {
 	return self._remove_if(selection, true);
@@ -458,9 +459,9 @@ macro usz AnyList._remove_using_test(&self, AnyTest filter, bool $invert, ctx) @
 	return size - self.size;
 }
 
-/**
- * Reserve at least min_capacity
- **/
+<*
+ Reserve at least min_capacity
+*>
 fn void AnyList.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
@@ -476,9 +477,9 @@ macro any AnyList.@item_at(&self, usz index) @operator([])
 	return self.entries[index];
 }
 
-/**
- * @require index <= self.size "Index out of range"
- **/
+<*
+ @require index <= self.size "Index out of range"
+*>
 macro void AnyList.set(&self, usz index, value)
 {
 	if (index == self.size)

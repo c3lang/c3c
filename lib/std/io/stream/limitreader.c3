@@ -6,10 +6,10 @@ struct LimitReader (InStream)
 	usz limit;
 }
 
-/**
- * @param [&inout] wrapped_stream "The stream to read from"
- * @param limit "The max limit to read"
- **/
+<*
+ @param [&inout] wrapped_stream "The stream to read from"
+ @param limit "The max limit to read"
+*>
 fn LimitReader* LimitReader.init(&self, InStream wrapped_stream, usz limit)
 {
 	*self = { .wrapped_stream = wrapped_stream, .limit = limit };

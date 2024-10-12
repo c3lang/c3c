@@ -1,6 +1,6 @@
-/**
- * Untested new big int implementation, missing unit tests. Etc
- */
+<*
+Untested new big int implementation, missing unit tests. Etc
+*>
 module std::math::bigint;
 import std::math::random;
 import std::io;
@@ -58,9 +58,9 @@ fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 	return self;
 }
 
-/**
- * @require values.len <= MAX_LEN
- **/
+<*
+ @require values.len <= MAX_LEN
+*>
 fn BigInt* BigInt.init_with_array(&self, uint[] values)
 {
 	self.data[..] = 0;
@@ -513,9 +513,9 @@ fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 	return self.to_string_with_radix(10, allocator);
 }
 
-/**
- * @require radix > 1 && radix <= 36 "Radix must be 2-36"
- **/
+<*
+ @require radix > 1 && radix <= 36 "Radix must be 2-36"
+*>
 fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 {
 	if (self.is_zero()) return "0".copy(allocator);
@@ -555,9 +555,9 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 	};
 }
 
-/**
- * @require !exp.is_negative() "Positive exponents only"
- **/
+<*
+ @require !exp.is_negative() "Positive exponents only"
+*>
 fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 {
 	BigInt result_num = ONE;
@@ -624,11 +624,11 @@ fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 	return result_num;
 }
 
-/*
- * Fast calculation of modular reduction using Barrett's reduction.
- * Requires x < b^(2k), where b is the base.  In this case, base is
- * 2^32 (uint).
- */
+<*
+ Fast calculation of modular reduction using Barrett's reduction.
+ Requires x < b^(2k), where b is the base.  In this case, base is
+ 2^32 (uint).
+*>
 fn BigInt barrett_reduction(BigInt x, BigInt n, BigInt constant)
 {
 	int k = n.len;
@@ -831,9 +831,9 @@ fn BigInt BigInt.gcd(&self, BigInt other)
 	return g;
 }
 
-/**
- * @require bits >> 5 < MAX_LEN "Required bits > maxlength"
- **/
+<*
+ @require bits >> 5 < MAX_LEN "Required bits > maxlength"
+*>
 fn void BigInt.randomize_bits(&self, Random random, int bits)
 {
 	int dwords = bits >> 5;
@@ -878,11 +878,11 @@ fn void BigInt.randomize_bits(&self, Random random, int bits)
 module std::math::bigint @private;
 
 
-/**
- * @param [&out] quotient
- * @param [&in] bi2
- * @param [&out] remainder
- **/
+<*
+ @param [&out] quotient
+ @param [&in] bi2
+ @param [&out] remainder
+*>
 fn void BigInt.single_byte_divide(&self, BigInt* bi2, BigInt* quotient, BigInt* remainder)
 {
 	uint[MAX_LEN] result;
@@ -930,11 +930,11 @@ fn void BigInt.single_byte_divide(&self, BigInt* bi2, BigInt* quotient, BigInt* 
 	remainder.reduce_len();
 }
 
-/**
- * @param [&out] quotient
- * @param [&in] other
- * @param [&out] remainder
- **/
+<*
+ @param [&out] quotient
+ @param [&in] other
+ @param [&out] remainder
+*>
 fn void BigInt.multi_byte_divide(&self, BigInt* other, BigInt* quotient, BigInt* remainder)
 {
 	uint[MAX_LEN] result;
@@ -1105,9 +1105,3 @@ fn int shift_right(uint* data, int len, int shift_val) @inline
 	}
 	return find_length(data, buf_len);
 }
-
-
-
-
-
-

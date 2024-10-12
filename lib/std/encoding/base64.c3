@@ -25,24 +25,24 @@ fault Base64Error
 	INVALID_CHARACTER,
 }
 
-/**
- * @param alphabet "The alphabet used for encoding."
- * @param padding "Set to a negative value to disable padding."
- * @require alphabet.len == 64
- * @require padding < 256
- * @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
- **/
+<*
+ @param alphabet "The alphabet used for encoding."
+ @param padding "Set to a negative value to disable padding."
+ @require alphabet.len == 64
+ @require padding < 256
+ @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
+*>
 fn void! Base64Encoder.init(&self, String alphabet, int padding = '=')
 {
 	check_alphabet(alphabet, padding)!;
 	*self = { .padding = padding, .alphabet = alphabet };
 }
 
-/**
- * Calculate the size of the encoded data.
- * @param n "Size of the input to be encoded."
- * @return "The size of the input once encoded."
- **/
+<*
+ Calculate the size of the encoded data.
+ @param n "Size of the input to be encoded."
+ @return "The size of the input once encoded."
+*>
 fn usz Base64Encoder.encode_len(&self, usz n)
 {
 	if (self.padding >= 0) return (n + 2) / 3 * 4;
@@ -50,13 +50,13 @@ fn usz Base64Encoder.encode_len(&self, usz n)
 	return n / 3 * 4 + (trailing * 4 + 2) / 3;
 }
 
-/**
- * Encode the content of src into dst, which must be properly sized.
- * @param src "The input to be encoded."
- * @param dst "The encoded input."
- * @return "The encoded size."
- * @return! Base64Error.DESTINATION_TOO_SMALL
- **/
+<*
+ Encode the content of src into dst, which must be properly sized.
+ @param src "The input to be encoded."
+ @param dst "The encoded input."
+ @return "The encoded size."
+ @return! Base64Error.DESTINATION_TOO_SMALL
+*>
 fn usz! Base64Encoder.encode(&self, char[] src, char[] dst)
 {
 	if (src.len == 0) return 0;
@@ -112,13 +112,13 @@ struct Base64Decoder
 	char invalid;
 }
 
-/**
- * @param alphabet "The alphabet used for encoding."
- * @param padding "Set to a negative value to disable padding."
- * @require alphabet.len == 64
- * @require padding < 256
- * @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
- **/
+<*
+ @param alphabet "The alphabet used for encoding."
+ @param padding "Set to a negative value to disable padding."
+ @require alphabet.len == 64
+ @require padding < 256
+ @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
+*>
 fn void! Base64Decoder.init(&self, String alphabet, int padding = '=')
 {
 	check_alphabet(alphabet, padding)!;
@@ -147,12 +147,12 @@ fn void! Base64Decoder.init(&self, String alphabet, int padding = '=')
 	}
 }
 
-/**
- * Calculate the size of the decoded data.
- * @param n "Size of the input to be decoded."
- * @return "The size of the input once decoded."
- * @return! Base64Error.INVALID_PADDING
- **/
+<*
+ Calculate the size of the decoded data.
+ @param n "Size of the input to be decoded."
+ @return "The size of the input once decoded."
+ @return! Base64Error.INVALID_PADDING
+*>
 fn usz! Base64Decoder.decode_len(&self, usz n)
 {
 	usz dn = n / 4 * 3;
@@ -170,13 +170,13 @@ fn usz! Base64Decoder.decode_len(&self, usz n)
 	return dn;
 }
 
-/**
- * Decode the content of src into dst, which must be properly sized.
- * @param src "The input to be decoded."
- * @param dst "The decoded input."
- * @return "The decoded size."
- * @return! Base64Error.DESTINATION_TOO_SMALL, Base64Error.INVALID_PADDING, Base64Error.INVALID_CHARACTER
- **/
+<*
+ Decode the content of src into dst, which must be properly sized.
+ @param src "The input to be decoded."
+ @param dst "The decoded input."
+ @return "The decoded size."
+ @return! Base64Error.DESTINATION_TOO_SMALL, Base64Error.INVALID_PADDING, Base64Error.INVALID_CHARACTER
+*>
 fn usz! Base64Decoder.decode(&self, char[] src, char[] dst)
 {
 	if (src.len == 0) return 0;

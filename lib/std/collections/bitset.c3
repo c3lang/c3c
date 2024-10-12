@@ -1,6 +1,6 @@
-/**
- * @require SIZE > 0
- **/
+<*
+ @require SIZE > 0
+*>
 module std::collections::bitset(<SIZE>);
 
 def Type = uint;
@@ -23,9 +23,9 @@ fn usz BitSet.cardinality(&self)
 	return n;
 }
 
-/**
- * @require i < SIZE
- **/
+<*
+ @require i < SIZE
+*>
 fn void BitSet.set(&self, usz i)
 {
 	usz q = i / BITS;
@@ -33,9 +33,9 @@ fn void BitSet.set(&self, usz i)
 	self.data[q] |= 1 << r;
 }
 
-/**
- * @require i < SIZE
- **/
+<*
+ @require i < SIZE
+*>
 fn void BitSet.unset(&self, usz i)
 {
 	usz q = i / BITS;
@@ -43,9 +43,9 @@ fn void BitSet.unset(&self, usz i)
 	self.data[q] &= ~(1 << r);
 }
 
-/**
- * @require i < SIZE
- **/
+<*
+ @require i < SIZE
+*>
 fn bool BitSet.get(&self, usz i) @operator([]) @inline
 {
 	usz q = i / BITS;
@@ -58,18 +58,18 @@ fn usz BitSet.len(&self) @operator(len) @inline
 	return SZ * BITS;
 }
 
-/**
- * @require i < SIZE
- **/
+<*
+ @require i < SIZE
+*>
 fn void BitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
 {
 	if (value) return self.set(i);
 	self.unset(i);
 }
 
-/**
- * @require Type.kindof == UNSIGNED_INT
- **/
+<*
+ @require Type.kindof == UNSIGNED_INT
+*>
 module std::collections::growablebitset(<Type>);
 import std::collections::list;
 
@@ -82,10 +82,10 @@ struct GrowableBitSet
 	GrowableBitSetList data;
 }
 
-/**
- * @param initial_capacity
- * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
- **/
+<*
+ @param initial_capacity
+ @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+*>
 fn GrowableBitSet* GrowableBitSet.new_init(&self, usz initial_capacity = 1, Allocator allocator = allocator::heap())
 {
 	self.data.new_init(initial_capacity, allocator);

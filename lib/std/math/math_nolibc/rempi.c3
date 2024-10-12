@@ -23,11 +23,11 @@ import std::math;
  * use __rem_pio2_large() for large x
  */
 
-/*
+<*
  * invpio2:  53 bits of 2/pi
  * pio2_1:   first 25 bits of pi/2
  * pio2_1t:  pi/2 - pio2_1
- */
+ *>
 fn int __rem_pio2f(float x, double *y)
 {
 	const double PIO4 = 0x1.921fb6p-1;
@@ -62,7 +62,7 @@ fn int __rem_pio2f(float x, double *y)
 	}
 	if (ix >= 0x7f800000)
 	{
-		// x is inf or NaN */
+		// x is inf or NaN
 		*y = x - (double)x;
 		return 0;
 	}
@@ -365,7 +365,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
  * pio2_3t:  pi/2 - (pio2_1+pio2_2+pio2_3)
  */
 
-/* caller must handle the case when reduction is not needed: |x| ~<= pi/4 */
+<* caller must handle the case when reduction is not needed: |x| ~<= pi/4 *>
 fn int __rem_pio2(double x, double *y)
 {
 	const double PIO4 = 0x1.921fb54442d18p-1;
@@ -452,7 +452,7 @@ fn int __rem_pio2(double x, double *y)
 		case ix < 0x413921fb:
 			break; // medium
 		case ix >= 0x7ff00000:
-			// x is inf or NaN */
+			// x is inf or NaN
 			y[0] = y[1] = x - x;
 			return 0;
 		default:
@@ -512,7 +512,7 @@ fn int __rem_pio2(double x, double *y)
 	int ex = (int)(ix >> 20);
 	if (ex - ey > 16)
 	{
-		// 2nd round, good to 118 bits */
+		// 2nd round, good to 118 bits
 		double t = r;
 		w = fnn * PIO2_2;
 		r = t - w;

@@ -165,11 +165,11 @@ fn Path! Path.append(self, String filename, Allocator allocator = allocator::hea
 	return self.new_append(filename, allocator) @inline;
 }
 
-/**
- * Append the string to the current path.
- *
- * @param [in] filename
- **/
+<*
+ Append the string to the current path.
+
+ @param [in] filename
+*>
 fn Path! Path.new_append(self, String filename, Allocator allocator = allocator::heap())
 {
 	if (!self.path_string.len) return new(filename, allocator, self.env)!;
@@ -226,9 +226,9 @@ fn Path! Path.absolute(self, Allocator allocator = allocator::heap()) @deprecate
 	return self.new_absolute(allocator) @inline;
 }
 
-/**
- * @require self.env == DEFAULT_PATH_ENV : "This method is only available on native paths"
- **/
+<*
+ @require self.env == DEFAULT_PATH_ENV : "This method is only available on native paths"
+*>
 fn Path! Path.new_absolute(self, Allocator allocator = allocator::heap())
 {
 	String path_str = self.str_view();
@@ -283,14 +283,14 @@ fn String Path.dirname(self)
 	return path_str[:basename_start - 1];
 }
 
-/**
- * Test if the path has the given extension, so given the path /foo/bar.c3
- * this would be true matching the extension "c3"
- *
- * @param [in] extension `The extension name (not including the leading '.')`
- * @require extension.len > 0 : `The extension cannot be empty`
- * @return `true if the extension matches`
- **/
+<*
+ Test if the path has the given extension, so given the path /foo/bar.c3
+ this would be true matching the extension "c3"
+
+ @param [in] extension `The extension name (not including the leading '.')`
+ @require extension.len > 0 : `The extension cannot be empty`
+ @return `true if the extension matches`
+*>
 fn bool Path.has_extension(self, String extension)
 {
 	String basename = self.basename();
@@ -509,11 +509,11 @@ fn String Path.root_directory(self)
 
 def PathWalker = fn bool! (Path, bool is_dir, void*);
 
-/*
- * Walk the path recursively. PathWalker is run on every file and
- * directory found. Return true to abort the walk.
- * @require self.env == DEFAULT_PATH_ENV : "This method is only available on native paths"
- */
+<*
+ Walk the path recursively. PathWalker is run on every file and
+ directory found. Return true to abort the walk.
+ @require self.env == DEFAULT_PATH_ENV : "This method is only available on native paths"
+*>
 fn bool! Path.walk(self, PathWalker w, void* data)
 {
 	const PATH_MAX = 512;

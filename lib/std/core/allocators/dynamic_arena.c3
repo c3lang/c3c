@@ -12,10 +12,10 @@ struct DynamicArenaAllocator (Allocator)
 	usz page_size;
 }
 
-/**
- * @param [&inout] allocator
- * @require page_size >= 128
- **/
+<*
+ @param [&inout] allocator
+ @require page_size >= 128
+*>
 fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator allocator)
 {
 	self.page = null;
@@ -60,10 +60,10 @@ struct DynamicArenaChunk @local
 	usz size;
 }
 
-/**
- * @require ptr
- * @require self.page `tried to free pointer on invalid allocator`
- */
+<*
+ @require ptr
+ @require self.page `tried to free pointer on invalid allocator`
+*>
 fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
 {
 	DynamicArenaPage* current_page = self.page;
@@ -74,11 +74,11 @@ fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
 	current_page.current_stack_ptr = null;
 }
 
-/**
- * @require size > 0 `Resize doesn't support zeroing`
- * @require old_pointer != null `Resize doesn't handle null pointers`
- * @require self.page `tried to realloc pointer on invalid allocator`
- */
+<*
+ @require size > 0 `Resize doesn't support zeroing`
+ @require old_pointer != null `Resize doesn't handle null pointers`
+ @require self.page `tried to realloc pointer on invalid allocator`
+*>
 fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	DynamicArenaPage* current_page = self.page;
@@ -126,10 +126,10 @@ fn void DynamicArenaAllocator.reset(&self, usz mark = 0) @dynamic
 	self.page = page;
 }
 
-/**
- * @require math::is_power_of_2(alignment)
- * @require size > 0
- */
+<*
+ @require math::is_power_of_2(alignment)
+ @require size > 0
+*>
 fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @local
 {
 	// First, make sure that we can align it, extending the page size if needed.
@@ -156,10 +156,10 @@ fn void*! DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @loca
 	return mem_start;
 }
 
-/**
- * @require size > 0 `acquire expects size > 0`
- * @require !alignment || math::is_power_of_2(alignment)
- */
+<*
+ @require size > 0 `acquire expects size > 0`
+ @require !alignment || math::is_power_of_2(alignment)
+*>
 fn void*! DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);

@@ -63,6 +63,12 @@ jobs:
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log build hello_world_win32_lib
 
+      - name: Compile and run dynlib-test
+        run: |
+          cd resources/examples/dynlib-test
+          ..\..\..\build\${{ matrix.build_type }}\c3c.exe dynamic-lib add.c3
+          ..\..\..\build\${{ matrix.build_type }}\c3c.exe compile-run test.c3 -l ./add.lib          
+
       - name: Vendor-fetch
         run: |
           build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib5
@@ -310,6 +316,15 @@ jobs:
           ../build/c3c compile-run --linker=builtin linux_stack.c3
           ../build/c3c compile-run linux_stack.c3
           ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+
+      - name: Compile and run dynlib-test
+        run: |
+          cd resources/examples/dynlib-test
+          ../../../build/c3c dynamic-lib add.c3
+          mv add.so libadd.so
+          cc test.c -L. -ladd -Wl,-rpath=.         
+          ./a.out
+          ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.           
 
       - name: Compile run unit tests
         run: |
@@ -620,6 +635,12 @@ jobs:
           ../build/c3c compile-run examples/load_world.c3
           ../build/c3c compile-run -O5 examples/load_world.c3
           ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+
+      - name: Compile and run dynlib-test
+        run: |
+          cd resources/examples/dynlib-test
+          ../../../build/c3c dynamic-lib add.c3
+          ../../../build/c3c compile-run test.c3 -l ./add.dylib          
 
       - name: Compile run unit tests
         run: |

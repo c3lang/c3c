@@ -88,9 +88,9 @@ fn void! NativeMutex.lock(&mtx)
 }
 
 
-/**
- * @require mtx.timed "Only available for timed locks"
- **/
+<*
+ @require mtx.timed "Only available for timed locks"
+*>
 fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
 {
 	if (ms > uint.max) ms = uint.max;

@@ -31,11 +31,11 @@ struct QueueItem @private
 	any[] args;
 }
 
-/**
- * @require !self.initialized "ThreadPool must not be already initialized"
- * @require threads > 0 && threads < 0x1000 `Threads should be greater than 0 and less than 0x1000`
- * @require queue_size < 0x10000 `Queue size must be less than 65536`
- **/
+<*
+ @require !self.initialized "ThreadPool must not be already initialized"
+ @require threads > 0 && threads < 0x1000 `Threads should be greater than 0 and less than 0x1000`
+ @require queue_size < 0x10000 `Queue size must be less than 65536`
+*>
 fn void! FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 {
 	if (queue_size == 0) queue_size = threads * 32;
@@ -57,19 +57,19 @@ fn void! FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 	}
 }
 
-/*
- * Stop all the threads and cleanup the pool.
- * Any pending work will be dropped.
- */
+<*
+ Stop all the threads and cleanup the pool.
+ Any pending work will be dropped.
+*>
 fn void! FixedThreadPool.destroy(&self)
 {
 	return self.@shutdown(stop_now);
 }
 
-/*
- * Stop all the threads and cleanup the pool.
- * Any pending work will be processed.
- */
+<*
+ Stop all the threads and cleanup the pool.
+ Any pending work will be processed.
+*>
 fn void! FixedThreadPool.stop_and_destroy(&self)
 {
 	return self.@shutdown(stop);
@@ -105,10 +105,10 @@ macro void! FixedThreadPool.@shutdown(&self, #stop) @private
 	}
 }
 
-/*
- * Push a new job to the pool.
- * Returns whether the queue is full, in which case the job is ignored.
- */
+<*
+ Push a new job to the pool.
+ return Excuse if the queue is full, in which case the job is ignored.
+*>
 fn void! FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
 	self.mu.lock()!;

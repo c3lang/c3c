@@ -14,21 +14,21 @@ module std::core::sanitizer::asan;
 
 def ErrorCallback = fn void (ZString);
 
-/**
- * Marks a memory region ([addr, addr+size)) as unaddressable.
- *
- * This memory must be previously allocated by your program. Instrumented
- * code is forbidden from accessing addresses in this region until it is
- * unpoisoned. This function is not guaranteed to poison the entire region -
- * it could poison only a subregion of [addr, addr+size) due to ASan
- * alignment restrictions.
- *
- * NOTE This function is not thread-safe because no two threads can poison or
- * unpoison memory in the same memory region simultaneously.
- *
- * @param addr "Start of memory region."
- * @param size "Size of memory region."
- **/
+<*
+ Marks a memory region ([addr, addr+size)) as unaddressable.
+
+ This memory must be previously allocated by your program. Instrumented
+ code is forbidden from accessing addresses in this region until it is
+ unpoisoned. This function is not guaranteed to poison the entire region -
+ it could poison only a subregion of [addr, addr+size) due to ASan
+ alignment restrictions.
+
+ NOTE This function is not thread-safe because no two threads can poison or
+ unpoison memory in the same memory region simultaneously.
+
+ @param addr "Start of memory region."
+ @param size "Size of memory region."
+*>
 macro poison_memory_region(void* addr, usz size)
 {
 	$if env::ADDRESS_SANITIZER: 
@@ -36,20 +36,20 @@ macro poison_memory_region(void* addr, usz size)
 	$endif 
 }
 
-/**
- * Marks a memory region ([addr, addr+size)) as addressable.
- *
- * This memory must be previously allocated by your program. Accessing
- * addresses in this region is allowed until this region is poisoned again.
- * This function could unpoison a super-region of [addr, addr+size) due
- * to ASan alignment restrictions.
- *
- * NOTE This function is not thread-safe because no two threads can
- * poison or unpoison memory in the same memory region simultaneously.
- *
- * @param addr "Start of memory region."
- * @param size "Size of memory region."
- **/
+<*
+ Marks a memory region ([addr, addr+size)) as addressable.
+
+ This memory must be previously allocated by your program. Accessing
+ addresses in this region is allowed until this region is poisoned again.
+ This function could unpoison a super-region of [addr, addr+size) due
+ to ASan alignment restrictions.
+
+ NOTE This function is not thread-safe because no two threads can
+ poison or unpoison memory in the same memory region simultaneously.
+
+ @param addr "Start of memory region."
+ @param size "Size of memory region."
+*>
 macro unpoison_memory_region(void* addr, usz size)
 {
 	$if env::ADDRESS_SANITIZER: 
@@ -57,11 +57,11 @@ macro unpoison_memory_region(void* addr, usz size)
 	$endif 
 }
 
-/**
- * Checks if an address is poisoned.
- * @return "True if 'addr' is poisoned (that is, 1-byte read/write access to this address would result in an error report from ASan). Otherwise returns false."
- * @param addr "Address to check."
- **/
+<*
+ Checks if an address is poisoned.
+ @return "True if 'addr' is poisoned (that is, 1-byte read/write access to this address would result in an error report from ASan). Otherwise returns false."
+ @param addr "Address to check."
+*>
 macro bool address_is_poisoned(void* addr)
 {
 	$if env::ADDRESS_SANITIZER:
@@ -71,16 +71,16 @@ macro bool address_is_poisoned(void* addr)
 	$endif
 }
 
-/**
- * Checks if a region is poisoned.
- *
- * If at least one byte in [beg, beg+size) is poisoned, returns the
- * address of the first such byte. Otherwise returns 0.
- *
- * @param beg "Start of memory region."
- * @param size "Start of memory region."
- * @return "Address of first poisoned byte."
- **/
+<*
+ Checks if a region is poisoned.
+
+ If at least one byte in [beg, beg+size) is poisoned, returns the
+ address of the first such byte. Otherwise returns 0.
+
+ @param beg "Start of memory region."
+ @param size "Start of memory region."
+ @return "Address of first poisoned byte."
+*>
 macro void* region_is_poisoned(void* beg, usz size)
 {
 	$if env::ADDRESS_SANITIZER:
@@ -90,9 +90,9 @@ macro void* region_is_poisoned(void* beg, usz size)
 	$endif
 }
 
-/**
- * Sets the callback function to be called during ASan error reporting.
- **/
+<*
+ Sets the callback function to be called during ASan error reporting.
+*>
 fn void set_error_report_callback(ErrorCallback callback)
 {
 	$if env::ADDRESS_SANITIZER:

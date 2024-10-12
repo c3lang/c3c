@@ -1,6 +1,6 @@
-/**
- * @param [in] x
- **/
+<*
+ @param [in] x
+*>
 fn void test(int* x)
 {
 	x[1] = 123; // #error: 'in' parameters may not be assigned to

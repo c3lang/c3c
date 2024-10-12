@@ -119,14 +119,14 @@ fn FloatType! float_from_any(any arg) @private
 }
 
 
-/**
- * Read a simple integer value, typically for formatting.
- *
- * @param [inout] len_ptr "the length remaining."
- * @param [in] buf "the buf to read from."
- * @param maxlen "the maximum len that can be read."
- * @return "The result of the atoi."
- **/
+<*
+ Read a simple integer value, typically for formatting.
+
+ @param [inout] len_ptr "the length remaining."
+ @param [in] buf "the buf to read from."
+ @param maxlen "the maximum len that can be read."
+ @return "The result of the atoi."
+*>
 fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
 {
 	uint i = 0;

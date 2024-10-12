@@ -1,9 +1,11 @@
 module libc;
 import std::time;
 
-/**
- * @require self >= 0
- **/
+<*
+ Return a "timespec" from a duration.
+
+ @require self >= 0
+*>
 fn TimeSpec NanoDuration.to_timespec(self) @inline
 {
 	CLong ns = (CLong)(self % 1000_000_000);
@@ -11,9 +13,11 @@ fn TimeSpec NanoDuration.to_timespec(self) @inline
 	return { .s = sec, .ns = ns };
 }
 
-/**
- * @require self >= 0
- **/
+<*
+ Convert a duration to a timespec.
+
+ @require self >= 0
+*>
 fn TimeSpec Duration.to_timespec(self) @inline
 {
 	CLong ns = (CLong)(1000 * (self % time::SEC));

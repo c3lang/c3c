@@ -44,10 +44,10 @@ fn void Sha1.init(&self)
 	};
 }
 
-/**
- * @param [in] data
- * @require data.len <= uint.max
- **/
+<*
+ @param [in] data
+ @require data.len <= uint.max
+*>
 fn void Sha1.update(&self, char[] data)
 {
 	uint j = self.count[0];
@@ -154,10 +154,10 @@ macro @r4(&block, v, &wref, x, y, &z, i) @local
 	*wref = w.rotl(30);
 }
 
-/**
- * @param [&inout] state
- * @param [&in] buffer
- **/
+<*
+ @param [&inout] state
+ @param [&in] buffer
+*>
 fn void sha1_transform(uint* state, char* buffer) @local
 {
 	Long16 block;

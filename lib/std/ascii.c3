@@ -53,9 +53,9 @@ fn bool char.is_blank(char c) => is_blank_m(c);
 fn bool char.is_cntrl(char c) => is_cntrl_m(c);
 fn char char.to_lower(char c) => (char)to_lower_m(c);
 fn char char.to_upper(char c) => (char)to_upper_m(c);
-/**
- * @require c.is_xdigit()
- **/
+<*
+ @require c.is_xdigit()
+*>
 fn char char.from_hex(char c) => c.is_digit() ? c - '0' : 10 + (c | 0x20) - 'a';
 
 fn bool uint.in_range(uint c, uint start, uint len) => in_range_m(c, start, len);
