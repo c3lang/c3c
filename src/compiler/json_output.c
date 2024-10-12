@@ -12,7 +12,7 @@
 	a__ = unit->global_decls[k_];
 #define PRINTF(string, ...) fprintf(file, string, ##__VA_ARGS__) /* NOLINT */
 #define FOREACH_DECL_END } } }
-#define INERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
+#define INSERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
 static inline void emit_modules(FILE *file)
 {
@@ -225,7 +225,7 @@ static inline void emit_types(FILE *file)
 		FOREACH_DECL(Decl *type, compiler.context.module_list)
 					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPEDEF) continue;
 					if (decl_is_hidden(type)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_type_data(file, module, type);
 		FOREACH_DECL_END;
 	}
@@ -237,7 +237,7 @@ static inline void emit_types(FILE *file)
 		FOREACH_DECL(Decl *type, compiler.context.generic_module_list)
 					if (!decl_is_user_defined_type(type) && type->decl_kind != DECL_TYPEDEF) continue;
 					if (decl_is_hidden(type)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_type_data(file, module, type);
 		FOREACH_DECL_END;
 	}
@@ -251,7 +251,7 @@ static inline void emit_globals(FILE *file)
 		FOREACH_DECL(Decl *decl, compiler.context.module_list)
 					if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_GLOBAL) continue;
 					if (decl_is_hidden(decl)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					PRINTF("\t\t\"%s::%s\"", module->name->module, decl->name);
 		FOREACH_DECL_END;
 	}
@@ -265,7 +265,7 @@ static inline void emit_functions(FILE *file)
 		FOREACH_DECL(Decl *func, compiler.context.module_list)
 					if (func->decl_kind != DECL_FUNC) continue;
 					if (decl_is_hidden(func)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_func_data(file, module, func);
 		FOREACH_DECL_END;
 	}
@@ -277,7 +277,7 @@ static inline void emit_functions(FILE *file)
 		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
 					if (func->decl_kind != DECL_FUNC) continue;
 					if (decl_is_hidden(func)) continue;
-					INERT_COMMA;
+					INSERT_COMMA;
 					emit_func_data(file, module, func);
 		FOREACH_DECL_END;
 	}
