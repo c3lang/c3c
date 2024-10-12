@@ -11,6 +11,7 @@ const int RTLD_LAZY = 0x1;
 const int RTLD_NOW = 0x2;
 const int RTLD_LOCAL = 0x4;
 const int RTLD_GLOBAL = 0x8;
+const int RTLD_NODELETE = 0x1000;
 
 def Pid_t = int;
 def Uid_t = uint;
