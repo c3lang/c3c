@@ -2,23 +2,23 @@ module std::compression::qoi;
 
 const uint PIXELS_MAX = 400000000;
 
-/**
- * Colorspace.
- * Purely informative. It will be saved to the file header,
- * but does not affect how chunks are en-/decoded.
- */
+<*
+ Colorspace.
+ Purely informative. It will be saved to the file header,
+ but does not affect how chunks are en-/decoded.
+*>
 enum QOIColorspace : char (char id)
 {
 	SRGB = 0, 	// sRGB with linear alpha
 	LINEAR = 1 	// all channels linear
 }
 
-/**
- * Channels.
- * The channels used in an image.
- * AUTO can be used when decoding to automatically determine
- * the channels from the file's header.
- */
+<*
+ Channels.
+ The channels used in an image.
+ AUTO can be used when decoding to automatically determine
+ the channels from the file's header.
+*>
 enum QOIChannels : char (char id)
 {
 	AUTO = 0,
@@ -26,10 +26,10 @@ enum QOIChannels : char (char id)
 	RGBA = 4
 }
 
-/**
- * Descriptor.
- * Contains information about an image.
- */
+<*
+ Descriptor.
+ Contains information about an image.
+*>
 struct QOIDesc
 {
 	uint width;
@@ -38,10 +38,10 @@ struct QOIDesc
 	QOIColorspace colorspace;
 }
 
-/**
- * QOI Errors.
- * These are all the possible bad outcomes.
- */
+<*
+ QOI Errors.
+ These are all the possible bad outcomes.
+*>
 fault QOIError
 {
 	INVALID_PARAMETERS,
@@ -56,21 +56,21 @@ fault QOIError
 module std::compression::qoi @if(!$feature(QOI_NO_STDIO));
 import std::io;
 
-/**
- * Encode raw RGB or RGBA pixels into a QOI image and write it to the
- * file system.
- * 
- * The desc struct must be filled with the image width, height, the
- * used channels (QOIChannels.RGB or RGBA) and the colorspace
- * (QOIColorspace.SRGB or LINEAR).
- * 
- * The function returns an optional, which can either be a QOIError
- * or the number of bytes written on success.
- * 
- * @param [in] filename `The file's name to write the image to`
- * @param [in] input `The raw RGB or RGBA pixels to encode`
- * @param [&in] desc `The descriptor of the image`
- */
+<*
+ Encode raw RGB or RGBA pixels into a QOI image and write it to the
+ file system.
+
+ The desc struct must be filled with the image width, height, the
+ used channels (QOIChannels.RGB or RGBA) and the colorspace
+ (QOIColorspace.SRGB or LINEAR).
+
+ The function returns an optional, which can either be a QOIError
+ or the number of bytes written on success.
+
+ @param [in] filename `The file's name to write the image to`
+ @param [in] input `The raw RGB or RGBA pixels to encode`
+ @param [&in] desc `The descriptor of the image`
+*>
 fn usz! write(String filename, char[] input, QOIDesc* desc)
 {
 	@pool() {
@@ -91,27 +91,27 @@ fn usz! write(String filename, char[] input, QOIDesc* desc)
 }
 
 
-/**
- * Read and decode a QOI image from the file system.
- * 
- * If channels is set to QOIChannels.AUTO, the function will
- * automatically determine the channels from the file's header.
- * However, if channels is RGB or RGBA, the output format will be
- * forced into this number of channels.
- * 
- * The desc struct will be filled with the width, height,
- * channels and colorspace of the image.
- * 
- * The function returns an optional, which can either be a QOIError
- * or a char[] pointing to the decoded pixels on success.
- * 
- * The returned pixel data should be free()d after use, or the decoding
- * and use of the data should be wrapped in a @pool() { ... }; block.
- * 
- * @param [in] filename `The file's name to read the image from`
- * @param [&out] desc `The descriptor to fill with the image's info`
- * @param channels `The channels to be used`
- */
+<*
+ Read and decode a QOI image from the file system.
+
+ If channels is set to QOIChannels.AUTO, the function will
+ automatically determine the channels from the file's header.
+ However, if channels is RGB or RGBA, the output format will be
+ forced into this number of channels.
+
+ The desc struct will be filled with the width, height,
+ channels and colorspace of the image.
+
+ The function returns an optional, which can either be a QOIError
+ or a char[] pointing to the decoded pixels on success.
+
+ The returned pixel data should be free()d after use, or the decoding
+ and use of the data should be wrapped in a @pool() { ... }; block.
+
+ @param [in] filename `The file's name to read the image from`
+ @param [&out] desc `The descriptor to fill with the image's info`
+ @param channels `The channels to be used`
+*>
 fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
 {
 	// read file
@@ -128,19 +128,19 @@ fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, All
 module std::compression::qoi;
 import std::bits;
 
-/**
- * Encode raw RGB or RGBA pixels into a QOI image in memory.
- * 
- * The function returns an optional, which can either be a QOIError
- * or a char[] pointing to the encoded data on success.
- * 
- * The returned qoi data should be free()d after use, or the encoding
- * and use of the data should be wrapped in a @pool() { ... }; block.
- * See the write() function for an example.
- * 
- * @param [in] input `The raw RGB or RGBA pixels to encode`
- * @param [&in] desc `The descriptor of the image`
- */
+<*
+ Encode raw RGB or RGBA pixels into a QOI image in memory.
+
+ The function returns an optional, which can either be a QOIError
+ or a char[] pointing to the encoded data on success.
+
+ The returned qoi data should be free()d after use, or the encoding
+ and use of the data should be wrapped in a @pool() { ... }; block.
+ See the write() function for an example.
+
+ @param [in] input `The raw RGB or RGBA pixels to encode`
+ @param [&in] desc `The descriptor of the image`
+*>
 fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap())
 {
 	// check info in desc
@@ -266,27 +266,27 @@ fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::
 }
 
 
-/**
- * Decode a QOI image from memory.
- * 
- * If channels is set to QOIChannels.AUTO, the function will
- * automatically determine the channels from the file's header.
- * However, if channels is RGB or RGBA, the output format will be
- * forced into this number of channels.
- * 
- * The desc struct will be filled with the width, height,
- * channels and colorspace of the image.
- * 
- * The function returns an optional, which can either be a QOIError
- * or a char[] pointing to the decoded pixels on success.
- * 
- * The returned pixel data should be free()d after use, or the decoding
- * and use of the data should be wrapped in a @pool() { ... }; block.
- * 
- * @param [in] data `The QOI image data to decode`
- * @param [&out] desc `The descriptor to fill with the image's info`
- * @param channels `The channels to be used`
- */
+<*
+ Decode a QOI image from memory.
+
+ If channels is set to QOIChannels.AUTO, the function will
+ automatically determine the channels from the file's header.
+ However, if channels is RGB or RGBA, the output format will be
+ forced into this number of channels.
+
+ The desc struct will be filled with the width, height,
+ channels and colorspace of the image.
+
+ The function returns an optional, which can either be a QOIError
+ or a char[] pointing to the decoded pixels on success.
+
+ The returned pixel data should be free()d after use, or the decoding
+ and use of the data should be wrapped in a @pool() { ... }; block.
+
+ @param [in] data `The QOI image data to decode`
+ @param [&out] desc `The descriptor to fill with the image's info`
+ @param channels `The channels to be used`
+*>
 fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
 {
 	// check input data

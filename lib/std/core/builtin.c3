@@ -4,29 +4,29 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
-/**
- * Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
- **/
+<*
+ Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
+*>
 fault IteratorResult { NO_MORE_ELEMENT }
 
-/**
- * Use `SearchResult` when trying to return a value from some collection but the element is missing.
- **/
+<*
+ Use `SearchResult` when trying to return a value from some collection but the element is missing.
+*>
 fault SearchResult { MISSING }
 
-/**
- * Use `CastResult` when an attempt at conversion fails.
- **/
+<*
+ Use `CastResult` when an attempt at conversion fails.
+*>
 fault CastResult { TYPE_MISMATCH }
 
 def VoidFn = fn void();
 
-/**
- * Stores a variable on the stack, then restores it at the end of the
- * macro scope.
- *
- * @param variable `the variable to store and restore`
- **/
+<*
+ Stores a variable on the stack, then restores it at the end of the
+ macro scope.
+
+ @param variable `the variable to store and restore`
+*>
 macro void @scope(&variable; @body) @builtin
 {
 	var temp = *variable;
@@ -34,10 +34,10 @@ macro void @scope(&variable; @body) @builtin
 	@body();
 }
 
-/**
- * Swap two variables
- * @require $assignable(*b, $typeof(*a)) && $assignable(*a, $typeof(*b))
- **/
+<*
+ Swap two variables
+ @require $assignable(*b, $typeof(*a)) && $assignable(*a, $typeof(*b))
+*>
 macro void @swap(&a, &b) @builtin
 {
 	var temp = *a;
@@ -45,15 +45,15 @@ macro void @swap(&a, &b) @builtin
 	*b = temp;
 }
 
-/**
- * Convert an `any` type to a type, returning an failure if there is a type mismatch.
- *
- * @param v `the any to convert to the given type.`
- * @param $Type `the type to convert to`
- * @return `The any.ptr converted to its type.`
- * @ensure @typeis(return, $Type*)
- * @return! CastResult.TYPE_MISMATCH
- **/
+<*
+ Convert an `any` type to a type, returning an failure if there is a type mismatch.
+
+ @param v `the any to convert to the given type.`
+ @param $Type `the type to convert to`
+ @return `The any.ptr converted to its type.`
+ @ensure @typeis(return, $Type*)
+ @return! CastResult.TYPE_MISMATCH
+*>
 macro anycast(any v, $Type) @builtin
 {
 	if (v.type != $Type.typeid) return CastResult.TYPE_MISMATCH?;
@@ -153,11 +153,11 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 	};
 }
 
-/**
- * Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
- * never happens.
- * @param [in] string "The panic message or format string"
- **/
+<*
+ Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
+ never happens.
+ @param [in] string "The panic message or format string"
+*>
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
 {
 	$if env::COMPILER_SAFE_MODE:
@@ -166,19 +166,19 @@ macro void unreachable(String string = "Unreachable statement reached.", ...) @b
 	$$unreachable();
 }
 
-/**
- * Marks the path as unsupported, this is similar to unreachable.
- * @param [in] string "The error message"
- **/
+<*
+ Marks the path as unsupported, this is similar to unreachable.
+ @param [in] string "The error message"
+*>
 macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
 {
 	panicf(string, $$FILE, $$FUNC, $$LINE, $vasplat);
 	$$unreachable();
 }
 
-/**
- * Unconditionally break into an attached debugger when reached.
- **/
+<*
+ Unconditionally break into an attached debugger when reached.
+*>
 macro void breakpoint() @builtin
 {
 	$$breakpoint();
@@ -199,13 +199,13 @@ macro any.as_inner(&self)
 	return $$any_make(self.ptr, self.type.inner);
 }
 
-/**
- * @param expr "the expression to cast"
- * @param $Type "the type to cast to"
- *
- * @require $sizeof(expr) == $Type.sizeof  "Cannot bitcast between types of different size."
- * @ensure @typeis(return, $Type)
- **/
+<*
+ @param expr "the expression to cast"
+ @param $Type "the type to cast to"
+
+ @require $sizeof(expr) == $Type.sizeof  "Cannot bitcast between types of different size."
+ @ensure @typeis(return, $Type)
+*>
 macro bitcast(expr, $Type) @builtin
 {
 	$if $Type.alignof <= $alignof(expr):
@@ -217,13 +217,13 @@ macro bitcast(expr, $Type) @builtin
 	$endif
 }
 
-/**
- * @param $Type `The type of the enum`
- * @param [in] enum_name `The name of the enum to search for`
- * @require $Type.kindof == ENUM `Only enums may be used`
- * @ensure @typeis(return, $Type)
- * @return! SearchResult.MISSING
- **/
+<*
+ @param $Type `The type of the enum`
+ @param [in] enum_name `The name of the enum to search for`
+ @require $Type.kindof == ENUM `Only enums may be used`
+ @ensure @typeis(return, $Type)
+ @return! SearchResult.MISSING
+*>
 macro enum_by_name($Type, String enum_name) @builtin
 {
 	typeid x = $Type.typeid;
@@ -234,13 +234,13 @@ macro enum_by_name($Type, String enum_name) @builtin
 	return SearchResult.MISSING?;
 }
 
-/**
- * Mark an expression as likely to be true
- *
- * @param #value "expression to be marked likely"
- * @param $probability "in the range 0 - 1"
- * @require $probability >= 0 && $probability <= 1.0
- **/
+<*
+ Mark an expression as likely to be true
+
+ @param #value "expression to be marked likely"
+ @param $probability "in the range 0 - 1"
+ @require $probability >= 0 && $probability <= 1.0
+*>
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
 	$switch
@@ -253,13 +253,13 @@ macro bool @likely(bool #value, $probability = 1.0) @builtin
 	$endswitch
 }
 
-/**
- * Mark an expression as unlikely to be true
- *
- * @param #value "expression to be marked unlikely"
- * @param $probability "in the range 0 - 1"
- * @require $probability >= 0 && $probability <= 1.0
- **/
+<*
+ Mark an expression as unlikely to be true
+
+ @param #value "expression to be marked unlikely"
+ @param $probability "in the range 0 - 1"
+ @require $probability >= 0 && $probability <= 1.0
+*>
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
 	$switch
@@ -272,11 +272,11 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 	$endswitch
 }
 
-/**
- * @require values::@is_int(#value) || values::@is_bool(#value)
- * @require $assignable(expected, $typeof(#value))
- * @require $probability >= 0 && $probability <= 1.0
- **/
+<*
+ @require values::@is_int(#value) || values::@is_bool(#value)
+ @require $assignable(expected, $typeof(#value))
+ @require $probability >= 0 && $probability <= 1.0
+*>
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
 	$switch
@@ -289,10 +289,10 @@ macro @expect(#value, expected, $probability = 1.0) @builtin
 	$endswitch
 }
 
-/**
- * Locality for prefetch, levels 0 - 3, corresponding
- * to "extremely local" to "no locality"
- **/
+<*
+ Locality for prefetch, levels 0 - 3, corresponding
+ to "extremely local" to "no locality"
+*>
 enum PrefetchLocality
 {
 	NO_LOCALITY,
@@ -301,13 +301,13 @@ enum PrefetchLocality
 	VERY_NEAR,
 }
 
-/**
- * Prefetch a pointer.
+<*
+ Prefetch a pointer.
 
- * @param [in] ptr `Pointer to prefetch`
- * @param $locality `Locality ranging from none to extremely local`
- * @param $write `Prefetch for write, otherwise prefetch for read.`
- **/
+ @param [in] ptr `Pointer to prefetch`
+ @param $locality `Locality ranging from none to extremely local`
+ @param $write `Prefetch for write, otherwise prefetch for read.`
+*>
 macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
 {
 	$if !env::BUILTIN_PREFETCH_IS_DISABLED:
@@ -369,9 +369,9 @@ macro @is_empty_macro_slot(#arg) @builtin => @typeis(#arg, EmptySlot);
 macro @is_valid_macro_slot(#arg) @builtin => !@typeis(#arg, EmptySlot);
 
 const MAX_FRAMEADDRESS = 128;
-/**
- * @require n >= 0
- **/
+<*
+ @require n >= 0
+*>
 macro void* get_frameaddress(int n)
 {
 	if (n > MAX_FRAMEADDRESS) return null;
@@ -510,9 +510,9 @@ macro void* get_frameaddress(int n)
 	}
 }
 
-/**
- * @require n >= 0
- **/
+<*
+ @require n >= 0
+*>
 macro void* get_returnaddress(int n)
 {
 	if (n > MAX_FRAMEADDRESS) return null;

@@ -1,8 +1,8 @@
 module inlineme;
 
-/**
- * @pure
- */
+<*
+ @pure
+ *>
 fn void test()
 {
 	int x = 123;
@@ -18,9 +18,7 @@ fn void test2()
 	abc = 1233;
 }
 
-/**
- * @pure
- */
+<* @pure *>
 fn void test3()
 {
 }

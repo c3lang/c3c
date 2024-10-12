@@ -17,10 +17,10 @@ fn void BitReader.clear(&self) @inline
 	self.len = 0;
 }
 
-/**
- * @require nbits <= 8
- * @require self.len + nbits <= uint.sizeof * 8
- **/
+<*
+ @require nbits <= 8
+ @require self.len + nbits <= uint.sizeof * 8
+*>
 fn char! BitReader.read_bits(&self, uint nbits)
 {
 	uint bits = self.bits;
@@ -61,9 +61,9 @@ fn void! BitWriter.flush(&self)
 	self.len = 0;
 }
 
-/**
- * @require nbits <= 8
- **/
+<*
+ @require nbits <= 8
+*>
 fn void! BitWriter.write_bits(&self, uint bits, uint nbits)
 {
 	if (nbits == 0) return;

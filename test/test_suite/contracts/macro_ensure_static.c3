@@ -1,9 +1,7 @@
 module debugstuff;
 
 
-/**
- * @ensure return > 0
- **/
+<* @ensure return > 0 *>
 macro check(int a)
 {
 	if (a > 0) return 1;

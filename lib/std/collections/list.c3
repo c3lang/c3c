@@ -19,10 +19,10 @@ struct List (Printable)
 	Type *entries;
 }
 
-/**
- * @param initial_capacity "The initial capacity to reserve"
- * @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
- **/
+<*
+ @param initial_capacity "The initial capacity to reserve"
+ @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+*>
 fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
@@ -33,22 +33,22 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 	return self;
 }
 
-/**
- * Initialize the list using the temp allocator.
- *
- * @param initial_capacity "The initial capacity to reserve"
- **/
+<*
+ Initialize the list using the temp allocator.
+
+ @param initial_capacity "The initial capacity to reserve"
+*>
 fn List* List.temp_init(&self, usz initial_capacity = 16)
 {
 	return self.new_init(initial_capacity, allocator::temp()) @inline;
 }
 
-/**
- * Initialize a new list with an array.
- *
- * @param [in] values `The values to initialize the list with.`
- * @require self.size == 0 "The List must be empty"
- **/
+<*
+ Initialize a new list with an array.
+
+ @param [in] values `The values to initialize the list with.`
+ @require self.size == 0 "The List must be empty"
+*>
 fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap())
 {
 	self.new_init(values.len, allocator) @inline;
@@ -56,12 +56,12 @@ fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = al
 	return self;
 }
 
-/**
- * Initialize a temporary list with an array.
- *
- * @param [in] values `The values to initialize the list with.`
- * @require self.size == 0 "The List must be empty"
- **/
+<*
+ Initialize a temporary list with an array.
+
+ @param [in] values `The values to initialize the list with.`
+ @require self.size == 0 "The List must be empty"
+*>
 fn List* List.temp_init_with_array(&self, Type[] values)
 {
 	self.temp_init(values.len) @inline;
@@ -69,9 +69,9 @@ fn List* List.temp_init_with_array(&self, Type[] values)
 	return self;
 }
 
-/**
- * @require self.capacity == 0 "The List must not be allocated"
- **/
+<*
+ @require self.capacity == 0 "The List must not be allocated"
+*>
 fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
@@ -128,9 +128,9 @@ fn void List.clear(&self)
 	self.set_size(0);
 }
 
-/**
- * @require self.size > 0
- **/
+<*
+ @require self.size > 0
+*>
 fn Type! List.pop_first(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
@@ -138,9 +138,9 @@ fn Type! List.pop_first(&self)
 	return self.entries[0];
 }
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn void List.remove_at(&self, usz index)
 {
 	self.set_size(self.size - 1);
@@ -160,17 +160,17 @@ fn void List.add_all(&self, List* other_list)
 }
 
 
-/**
- * IMPORTANT The returned array must be freed using free_aligned.
- **/
+<*
+ IMPORTANT The returned array must be freed using free_aligned.
+*>
 fn Type[] List.to_new_aligned_array(&self, Allocator allocator = allocator::heap())
 {
 	return list_common::list_to_new_aligned_array(Type, self, allocator);
 }
 
-/**
- * @require !type_is_overaligned() : "This function is not available on overaligned types"
- **/
+<*
+ @require !type_is_overaligned() : "This function is not available on overaligned types"
+*>
 macro Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
 {
 	return list_common::list_to_new_array(Type, self, allocator);
@@ -185,9 +185,9 @@ fn Type[] List.to_tarray(&self)
 	$endif;
 }
 
-/**
- * Reverse the elements in a list.
- **/
+<*
+ Reverse the elements in a list.
+*>
 fn void List.reverse(&self)
 {
 	list_common::list_reverse(self);
@@ -198,12 +198,12 @@ fn Type[] List.array_view(&self)
 	return self.entries[:self.size];
 }
 
-/**
- * Add the values of an array to this list.
- *
- * @param [in] array
- * @ensure self.size >= array.len
- **/
+<*
+ Add the values of an array to this list.
+
+ @param [in] array
+ @ensure self.size >= array.len
+*>
 fn void List.add_array(&self, Type[] array)
 {
 	if (!array.len) return;
@@ -217,9 +217,9 @@ fn void List.push_front(&self, Type type) @inline
 	self.insert_at(0, type);
 }
 
-/**
- * @require index <= self.size
- **/
+<*
+ @require index <= self.size
+*>
 fn void List.insert_at(&self, usz index, Type type)
 {
 	self.reserve(1);
@@ -231,9 +231,9 @@ fn void List.insert_at(&self, usz index, Type type)
 	self.entries[index] = type;
 }
 
-/**
- * @require index < self.size
- **/
+<*
+ @require index < self.size
+*>
 fn void List.set_at(&self, usz index, Type type)
 {
 	self.entries[index] = type;
@@ -304,19 +304,19 @@ fn void List.swap(&self, usz i, usz j)
 	@swap(self.entries[i], self.entries[j]);
 }
 
-/**
- * @param filter "The function to determine if it should be removed or not"
- * @return "the number of deleted elements"
- **/
+<*
+ @param filter "The function to determine if it should be removed or not"
+ @return "the number of deleted elements"
+*>
 fn usz List.remove_if(&self, ElementPredicate filter)
 {
 	return list_common::list_remove_if(self, filter, false);
 }
 
-/**
- * @param selection "The function to determine if it should be kept or not"
- * @return "the number of deleted elements"
- **/
+<*
+ @param selection "The function to determine if it should be kept or not"
+ @return "the number of deleted elements"
+*>
 fn usz List.retain_if(&self, ElementPredicate selection)
 {
 	return list_common::list_remove_if(self, selection, true);
@@ -395,9 +395,9 @@ fn void List._update_size_change(&self,usz old_size, usz new_size)
 	                                         &self.entries[old_size],
 	                                         &self.entries[new_size]);
 }
-/**
- * @require new_size == 0 || self.capacity != 0
- **/
+<*
+ @require new_size == 0 || self.capacity != 0
+*>
 fn usz List.set_size(&self, usz new_size) @inline @private
 {
 	usz old_size = self.size;
@@ -412,9 +412,9 @@ macro void List.pre_free(&self) @private
 	self._update_size_change(self.size, self.capacity);
 }
 
-/**
- * @require self.capacity
- **/
+<*
+ @require self.capacity
+*>
 macro void List.post_alloc(&self) @private
 {
 	self._update_size_change(self.capacity, self.size);
@@ -451,13 +451,13 @@ fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)
 	return true;
 }
 
-/**
- * Check for presence of a value in a list.
- *
- * @param [&in] self "the list to find elements in"
- * @param value "The value to search for"
- * @return "True if the value is found, false otherwise"
- **/
+<*
+ Check for presence of a value in a list.
+
+ @param [&in] self "the list to find elements in"
+ @param value "The value to search for"
+ @return "True if the value is found, false otherwise"
+*>
 fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
@@ -467,30 +467,30 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 	return false;
 }
 
-/**
- * @param [&inout] self "The list to remove elements from"
- * @param value "The value to remove"
- * @return "true if the value was found"
- **/
+<*
+ @param [&inout] self "The list to remove elements from"
+ @param value "The value to remove"
+ @return "true if the value was found"
+*>
 fn bool List.remove_last_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	return @ok(self.remove_at(self.rindex_of(value)));
 }
 
-/**
- * @param [&inout] self "The list to remove elements from"
- * @param value "The value to remove"
- * @return "true if the value was found"
- **/
+<*
+ @param [&inout] self "The list to remove elements from"
+ @param value "The value to remove"
+ @return "true if the value was found"
+*>
 fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	return @ok(self.remove_at(self.index_of(value)));
 }
-/**
- * @param [&inout] self "The list to remove elements from"
- * @param value "The value to remove"
- * @return "the number of deleted elements."
- **/
+<*
+ @param [&inout] self "The list to remove elements from"
+ @param value "The value to remove"
+ @return "the number of deleted elements."
+*>
 fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 {
 	usz old_size = self.size;
@@ -512,10 +512,10 @@ fn void List.remove_all_from(&self, List* other_list) @if(ELEMENT_IS_EQUATABLE)
 	foreach (v : other_list) self.remove_item(v);
 }
 
-/**
- * @param [&in] self
- * @return "The number non-null values in the list"
- **/
+<*
+ @param [&in] self
+ @return "The number non-null values in the list"
+*>
 fn usz List.compact_count(&self) @if(ELEMENT_IS_POINTER)
 {
 	usz vals = 0;
@@ -534,32 +534,32 @@ fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 
 // --> Deprecated
 
-/**
- * @param [&inout] self "The list to remove elements from"
- * @param value "The value to remove"
- * @return "true if the value was found"
- **/
+<*
+ @param [&inout] self "The list to remove elements from"
+ @param value "The value to remove"
+ @return "true if the value was found"
+*>
 fn bool List.remove_last_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
 {
 	return self.remove_last_item(value) @inline;
 }
 
-/**
- * @param [&inout] self "The list to remove elements from"
- * @param value "The value to remove"
- * @return "true if the value was found"
- **/
+<*
+ @param [&inout] self "The list to remove elements from"
+ @param value "The value to remove"
+ @return "true if the value was found"
+*>
 fn bool List.remove_first_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
 {
 	return self.remove_first_item(value) @inline;
 }
 
 
-/**
- * @param [&inout] self "The list to remove elements from"
- * @param value "The value to remove"
- * @return "the number of deleted elements."
- **/
+<*
+ @param [&inout] self "The list to remove elements from"
+ @param value "The value to remove"
+ @return "the number of deleted elements."
+*>
 fn usz List.remove_all_matches(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
 {
 	return self.remove_item(value) @inline;

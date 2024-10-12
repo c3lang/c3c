@@ -3,9 +3,9 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::builtin;
 
-/**
- * @require types::@comparable_value(a) && types::@comparable_value(b)
- **/
+<*
+ @require types::@comparable_value(a) && types::@comparable_value(b)
+*>
 macro less(a, b) @builtin
 {
 	$switch
@@ -18,9 +18,9 @@ macro less(a, b) @builtin
 	$endswitch
 }
 
-/**
- * @require types::@comparable_value(a) && types::@comparable_value(b)
- **/
+<*
+ @require types::@comparable_value(a) && types::@comparable_value(b)
+*>
 macro less_eq(a, b) @builtin
 {
 	$switch
@@ -33,9 +33,9 @@ macro less_eq(a, b) @builtin
 	$endswitch
 }
 
-/**
- * @require types::@comparable_value(a) && types::@comparable_value(b)
- **/
+<*
+ @require types::@comparable_value(a) && types::@comparable_value(b)
+*>
 macro greater(a, b) @builtin
 {
 	$switch
@@ -48,9 +48,9 @@ macro greater(a, b) @builtin
 	$endswitch
 }
 
-/**
- * @require types::@comparable_value(a) && types::@comparable_value(b)
- **/
+<*
+ @require types::@comparable_value(a) && types::@comparable_value(b)
+*>
 macro int compare_to(a, b) @builtin
 {
 	$switch
@@ -62,9 +62,9 @@ macro int compare_to(a, b) @builtin
 		return (int)(a > b) - (int)(a < b);
 	$endswitch
 }
-/**
- * @require types::@comparable_value(a) && types::@comparable_value(b)
- **/
+<*
+ @require types::@comparable_value(a) && types::@comparable_value(b)
+*>
 macro greater_eq(a, b) @builtin
 {
 	$switch
@@ -77,9 +77,9 @@ macro greater_eq(a, b) @builtin
 	$endswitch
 }
 
-/**
- * @require types::@equatable_value(a) && types::@equatable_value(b) `values must be equatable`
- **/
+<*
+ @require types::@equatable_value(a) && types::@equatable_value(b) `values must be equatable`
+*>
 macro bool equals(a, b) @builtin
 {
 	$switch

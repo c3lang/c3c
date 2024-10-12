@@ -8,23 +8,23 @@ struct ByteWriter (OutStream)
 	Allocator allocator;
 }
 
-/**
- * @param [&inout] self
- * @param [&inout] allocator
- * @require self.bytes.len == 0 "Init may not run on already initialized data"
- * @ensure (bool)allocator, self.index == 0
- **/
+<*
+ @param [&inout] self
+ @param [&inout] allocator
+ @require self.bytes.len == 0 "Init may not run on already initialized data"
+ @ensure (bool)allocator, self.index == 0
+*>
 fn ByteWriter* ByteWriter.new_init(&self, Allocator allocator = allocator::heap())
 {
 	*self = { .bytes = {}, .allocator = allocator };
 	return self;
 }
 
-/**
- * @param [&inout] self
- * @require self.bytes.len == 0 "Init may not run on already initialized data"
- * @ensure self.index == 0
- **/
+<*
+ @param [&inout] self
+ @require self.bytes.len == 0 "Init may not run on already initialized data"
+ @ensure self.index == 0
+*>
 fn ByteWriter* ByteWriter.temp_init(&self)
 {
 	return self.new_init(allocator::temp()) @inline;
@@ -72,10 +72,10 @@ fn void! ByteWriter.write_byte(&self, char c) @dynamic
 	self.bytes[self.index++] = c;
 }
 
-/**
- * @param [&inout] self
- * @param reader
- **/
+<*
+ @param [&inout] self
+ @param reader
+*>
 fn usz! ByteWriter.read_from(&self, InStream reader) @dynamic
 {
 	usz start_index = self.index;

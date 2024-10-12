@@ -12,6 +12,7 @@
 - Constant bytes <=> char[] conversion should work #1514.
 - Infer now works across ternary.
 - Interfaces now support .ptr and .type directly without casting to `any`.
+- Switch to `<* *>` docs.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

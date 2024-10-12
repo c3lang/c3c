@@ -26,29 +26,29 @@ struct TrackingAllocator (Allocator)
 	usz allocs_total;
 }
 
-/**
- * Initialize a tracking allocator to wrap (and track) another allocator.
- *
- * @param [&inout] allocator "The allocator to track"
- **/
+<*
+ Initialize a tracking allocator to wrap (and track) another allocator.
+
+ @param [&inout] allocator "The allocator to track"
+*>
 fn void TrackingAllocator.init(&self, Allocator allocator)
 {
 	*self = { .inner_allocator = allocator };
 	self.map.new_init(allocator: allocator);
 }
 
-/**
- * Free this tracking allocator.
- **/
+<*
+ Free this tracking allocator.
+*>
 fn void TrackingAllocator.free(&self)
 {
 	self.map.free();
 	*self = {};
 }
 
-/**
- * @return "the total allocated memory not yet freed."
- **/
+<*
+ @return "the total allocated memory not yet freed."
+*>
 fn usz TrackingAllocator.allocated(&self)
 {
 	usz allocated = 0;
@@ -59,14 +59,14 @@ fn usz TrackingAllocator.allocated(&self)
 	return allocated;
 }
 
-/**
- * @return "the total memory allocated (freed or not)."
- **/
+<*
+ @return "the total memory allocated (freed or not)."
+*>
 fn usz TrackingAllocator.total_allocated(&self) => self.mem_total;
 
-/**
- * @return "the total number of allocations (freed or not)."
- **/
+<*
+ @return "the total number of allocations (freed or not)."
+*>
 fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
 fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
@@ -74,9 +74,9 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 	return self.map.value_tlist();
 }
 
-/**
- * @return "the number of non-freed allocations."
- **/
+<*
+ @return "the number of non-freed allocations."
+*>
 fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
 fn void*! TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic

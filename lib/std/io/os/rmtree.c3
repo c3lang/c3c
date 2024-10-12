@@ -1,9 +1,9 @@
 module std::io::os @if(env::POSIX);
 import std::io, std::os, libc;
 
-/**
- * @require dir.str_view()
- **/
+<*
+ @require dir.str_view()
+*>
 fn void! native_rmtree(Path dir)
 {
 	DIRPtr directory = posix::opendir(dir.as_zstr());

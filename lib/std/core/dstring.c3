@@ -5,9 +5,9 @@ distinct DString (OutStream) = void*;
 
 const usz MIN_CAPACITY @private = 16;
 
-/**
- * @require !self.data() "String already initialized"
- **/
+<*
+ @require !self.data() "String already initialized"
+*>
 fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator allocator = allocator::heap())
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
@@ -18,9 +18,9 @@ fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator alloca
 	return *self = (DString)data;
 }
 
-/**
- * @require !self.data() "String already initialized"
- **/
+<*
+ @require !self.data() "String already initialized"
+*>
 fn DString DString.temp_init(&self, usz capacity = MIN_CAPACITY)
 {
 	self.new_init(capacity, allocator::temp()) @inline;
@@ -138,9 +138,9 @@ fn usz DString.len(&self) @dynamic
 	return self.data().len;
 }
 
-/**
- * @require new_size <= self.len()
- */
+<*
+ @require new_size <= self.len()
+*>
 fn void DString.chop(self, usz new_size)
 {
 	if (!self) return;
@@ -165,9 +165,9 @@ fn usz DString.append_utf32(&self, Char32[] chars)
 	return self.data().len - end;
 }
 
-/**
- * @require index < self.len()
- **/
+<*
+ @require index < self.len()
+*>
 fn void DString.set(self, usz index, char c)
 {
 	self.data().chars[index] = c;
@@ -184,9 +184,9 @@ fn void DString.append_repeat(&self, char c, usz times)
 	}
 }
 
-/**
- * @require c <= 0x10ffff
- */
+<*
+ @require c <= 0x10ffff
+*>
 fn usz DString.append_char32(&self, Char32 c)
 {
 	char[4] buffer @noinit;
@@ -333,20 +333,20 @@ fn void DString.append_char(&self, char c)
 	data.chars[data.len++] = c;
 }
 
-/**
- * @require start < self.len()
- * @require end < self.len()
- * @require end >= start "End must be same or equal to the start"
- **/
+<*
+ @require start < self.len()
+ @require end < self.len()
+ @require end >= start "End must be same or equal to the start"
+*>
 fn void DString.delete_range(&self, usz start, usz end)
 {
 	self.delete(start, end - start + 1);
 }
 
-/**
- * @require start < self.len()
- * @require start + len <= self.len()
- **/
+<*
+ @require start < self.len()
+ @require start + len <= self.len()
+*>
 fn void DString.delete(&self, usz start, usz len = 1)
 {
 	if (!len) return;
@@ -390,9 +390,9 @@ macro void DString.append(&self, value)
 	$endswitch
 }
 
-/**
- * @require index <= self.len()
- **/
+<*
+ @require index <= self.len()
+*>
 fn void DString.insert_chars_at(&self, usz index, String s)
 {
 	if (s.len == 0) return;
@@ -425,9 +425,9 @@ fn void DString.insert_chars_at(&self, usz index, String s)
 	}
 }
 
-/**
- * @require index <= self.len()
- **/
+<*
+ @require index <= self.len()
+*>
 fn void DString.insert_string_at(&self, usz index, DString str)
 {
 	StringData* other = str.data();
@@ -435,9 +435,9 @@ fn void DString.insert_string_at(&self, usz index, DString str)
 	self.insert_at(index, str.str_view());
 }
 
-/**
- * @require index <= self.len()
- **/
+<*
+ @require index <= self.len()
+*>
 fn void DString.insert_char_at(&self, usz index, char c)
 {
 	self.reserve(1);
@@ -449,9 +449,9 @@ fn void DString.insert_char_at(&self, usz index, char c)
 	data.len++;
 }
 
-/**
- * @require index <= self.len()
- **/
+<*
+ @require index <= self.len()
+*>
 fn usz DString.insert_char32_at(&self, usz index, Char32 c)
 {
 	char[4] buffer @noinit;
@@ -469,9 +469,9 @@ fn usz DString.insert_char32_at(&self, usz index, Char32 c)
 	return n;
 }
 
-/**
- * @require index <= self.len()
- **/
+<*
+ @require index <= self.len()
+*>
 fn usz DString.insert_utf32_at(&self, usz index, Char32[] chars)
 {
 	usz n = conv::utf8len_for_utf32(chars);

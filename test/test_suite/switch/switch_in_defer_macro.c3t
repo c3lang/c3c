@@ -1,10 +1,10 @@
 // #target: macos-x64
 
-/**
- * @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
- * @require $defined(((Token)0).token)
- * @require $defined(((Comment)0).start) && $defined(((Comment)0).end)
- **/
+<*
+ @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
+ @require $defined(((Token)0).token)
+ @require $defined(((Comment)0).start) && $defined(((Comment)0).end)
+ *>
 module lexer(<Token, Comment>);
 import std::io;
 import trie;
@@ -462,9 +462,9 @@ fn int main(String[] args)
 	io::printn("Hello, World!");
 	return 0;
 }
-/**
- * @require Index.kindof == TypeKind.UNSIGNED_INT
- **/
+<*
+ @require Index.kindof == TypeKind.UNSIGNED_INT
+ *>
 module trie(<Value, Index>);
 import std::collections::list;
 import trie::bitmap;
@@ -496,17 +496,17 @@ fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::
     self.nodes.push(TrieNode{});
 }
 
-/**
- * @require self.nodes.len() > 0
- **/
+<*
+ @require self.nodes.len() > 0
+ *>
 fn Value! Trie.get(&self, char[] key)
 {
     return self.nodes[0].get(self, key);
 }
 
-/**
- * @require self.nodes.len() > 0
- **/
+<*
+  @require self.nodes.len() > 0
+ *>
 fn Value! Trie.get_best(&self, char[] key)
 {
     TrieNode* root = &self.nodes[0];
@@ -514,17 +514,17 @@ fn Value! Trie.get_best(&self, char[] key)
     return root.get_best(self, key, 0);
 }
 
-/**
- * @require self.nodes.len() > 0
- **/
+<*
+ @require self.nodes.len() > 0
+ *>
 fn void! Trie.set(&self, char[] key, Value value)
 {
     self.nodes[0].set(self, key, value)!!;
 }
 
-/**
- * @require self.nodes.len() > 0
- **/
+<*
+ @require self.nodes.len() > 0
+ *>
 fn void! Trie.del(&self, char[] key)
 {
     if (key.len == 0)

@@ -8,9 +8,9 @@ fault ConversionResult
 	VALUE_OUT_OF_RANGE,
 	VALUE_OUT_OF_UNSIGNED_RANGE,
 }
-/**
- * @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
- **/
+<*
+ @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
+*>
 macro any_to_int(any v, $Type)
 {
 	typeid any_type = v.type;
@@ -123,9 +123,9 @@ macro bool is_slice_convertable($Type)
 macro bool is_bool($Type) @const => $Type.kindof == TypeKind.BOOL;
 macro bool is_int($Type) @const  => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
 
-/**
- * @require is_numerical($Type) "Expected a numerical type"
- **/
+<*
+ @require is_numerical($Type) "Expected a numerical type"
+*>
 macro bool is_signed($Type) @const
 {
 	$switch (inner_kind($Type))
@@ -139,9 +139,9 @@ macro bool is_signed($Type) @const
 	$endswitch
 }
 
-/**
- * @require is_numerical($Type) "Expected a numerical type"
- **/
+<*
+ @require is_numerical($Type) "Expected a numerical type"
+*>
 macro bool is_unsigned($Type) @const
 {
 	$switch (inner_kind($Type))
@@ -304,9 +304,9 @@ macro bool is_equatable_type($Type) @const
 	$endif
 }
 
-/**
- * Checks if a type implements the copy protocol.
- **/
+<*
+ Checks if a type implements the copy protocol.
+*>
 macro bool implements_copy($Type) @const
 {
 	return $defined($Type.copy) && $defined($Type.free);

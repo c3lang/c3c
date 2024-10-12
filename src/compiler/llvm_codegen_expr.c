@@ -5823,7 +5823,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		func = c->dyn_find_function = LLVMAddFunction(c->module, ".dyn_search", c->dyn_find_function_type);
 
 		LLVMSetUnnamedAddress(func, LLVMGlobalUnnamedAddr);
-		LLVMSetLinkage(func, LLVMWeakODRLinkage);
+		LLVMSetLinkage(func, LLVMWeakAnyLinkage);
 		llvm_set_comdat(c, func);
 
 		LLVMBasicBlockRef entry;

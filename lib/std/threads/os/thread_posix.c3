@@ -11,10 +11,10 @@ def NativeConditionVariable = Pthread_cond_t;
 def NativeThread = Pthread_t;
 def NativeOnceFlag = Pthread_once_t;
 
-/**
- * @require !self.is_initialized() : "Mutex is already initialized"
- * @ensure self.is_initialized()
- **/
+<*
+ @require !self.is_initialized() : "Mutex is already initialized"
+ @ensure self.is_initialized()
+*>
 fn void! NativeMutex.init(&self, MutexType type)
 {
 	Pthread_mutexattr_t attr;
@@ -39,27 +39,27 @@ fn bool NativeMutex.is_initialized(&self)
 	return self.initialized;
 }
 
-/**
- * @require self.is_initialized() : "Mutex was not initialized"
- * @ensure !self.is_initialized()
- **/
+<*
+ @require self.is_initialized() : "Mutex was not initialized"
+ @ensure !self.is_initialized()
+*>
 fn void! NativeMutex.destroy(&self)
 {
 	if (posix::pthread_mutex_destroy(&self.mutex)) return ThreadFault.DESTROY_FAILED?;
 	*self = {};
 }
 
-/**
- * @require self.is_initialized() : "Mutex was not initialized"
- **/
+<*
+ @require self.is_initialized() : "Mutex was not initialized"
+*>
 fn void! NativeMutex.lock(&self)
 {
 	if (posix::pthread_mutex_lock(&self.mutex)) return ThreadFault.LOCK_FAILED?;
 }
 
-/**
- * @require self.is_initialized() : "Mutex was not initialized"
- **/
+<*
+ @require self.is_initialized() : "Mutex was not initialized"
+*>
 fn void! NativeMutex.lock_timeout(&self, ulong ms)
 {
 	/* Try to acquire the lock and, if we fail, sleep for 5ms. */
@@ -83,17 +83,17 @@ fn void! NativeMutex.lock_timeout(&self, ulong ms)
 	}
 }
 
-/**
- * @require self.is_initialized() : "Mutex was not initialized"
- **/
+<*
+ @require self.is_initialized() : "Mutex was not initialized"
+*>
 fn bool NativeMutex.try_lock(&self)
 {
 	return !posix::pthread_mutex_trylock(&self.mutex);
 }
 
-/**
- * @require self.is_initialized() : "Mutex was not initialized"
- **/
+<*
+ @require self.is_initialized() : "Mutex was not initialized"
+*>
 fn void! NativeMutex.unlock(&self)
 {
 	if (posix::pthread_mutex_unlock(&self.mutex)) return ThreadFault.UNLOCK_FAILED?;
@@ -119,17 +119,17 @@ fn void! NativeConditionVariable.broadcast(&cond)
 	if (posix::pthread_cond_broadcast(cond)) return ThreadFault.SIGNAL_FAILED?;
 }
 
-/**
- * @require mtx.is_initialized()
- **/
+<*
+ @require mtx.is_initialized()
+*>
 fn void! NativeConditionVariable.wait(&cond, NativeMutex* mtx)
 {
 	if (posix::pthread_cond_wait(cond, &mtx.mutex)) return ThreadFault.WAIT_FAILED?;
 }
 
-/**
- * @require mtx.is_initialized()
- **/
+<*
+ @require mtx.is_initialized()
+*>
 fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 {
 	TimeSpec now;

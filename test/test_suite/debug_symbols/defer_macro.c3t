@@ -557,7 +557,7 @@ declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
 
 declare void @arena_scratch_end(ptr, i64) #0
 
-define weak_odr ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
+define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
 entry:
   br label %check
 

@@ -1,12 +1,12 @@
 module std::core::array;
 import std::core::array::slice;
 
-/**
- * @param [in] array
- * @param [in] element
- * @return "the first index of the element"
- * @return! SearchResult.MISSING
- **/
+<*
+ @param [in] array
+ @param [in] element
+ @return "the first index of the element"
+ @return! SearchResult.MISSING
+*>
 macro index_of(array, element)
 {
 	foreach (i, &e : array)
@@ -16,10 +16,10 @@ macro index_of(array, element)
 	return SearchResult.MISSING?;
 }
 
-/**
- * @require @typekind(array) == VECTOR || @typekind(array) == ARRAY
- * @require @typekind(array[0]) == VECTOR || @typekind(array[0]) == ARRAY
- **/
+<*
+ @require @typekind(array) == VECTOR || @typekind(array) == ARRAY
+ @require @typekind(array[0]) == VECTOR || @typekind(array[0]) == ARRAY
+*>
 macro slice2d(array, x = 0, xlen = 0, y = 0, ylen = 0)
 {
 	if (xlen < 1) xlen = $typeof(array[0]).len + xlen;
@@ -29,12 +29,12 @@ macro slice2d(array, x = 0, xlen = 0, y = 0, ylen = 0)
 }
 
 
-/**
- * @param [in] array
- * @param [in] element
- * @return "the last index of the element"
- * @return! SearchResult.MISSING
- **/
+<*
+ @param [in] array
+ @param [in] element
+ @return "the last index of the element"
+ @return! SearchResult.MISSING
+*>
 macro rindex_of(array, element)
 {
 	foreach_r (i, &e : array)
@@ -44,17 +44,17 @@ macro rindex_of(array, element)
 	return SearchResult.MISSING?;
 }
 
-/**
- * Concatenate two arrays or slices, returning a slice containing the concatenation of them.
- *
- * @param [in] arr1
- * @param [in] arr2
- * @param [&inout] allocator "The allocator to use, default is the heap allocator"
- * @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- * @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
- * @ensure result.len == arr1.len + arr2.len
- **/
+<*
+ Concatenate two arrays or slices, returning a slice containing the concatenation of them.
+
+ @param [in] arr1
+ @param [in] arr2
+ @param [&inout] allocator "The allocator to use, default is the heap allocator"
+ @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
+ @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ @ensure result.len == arr1.len + arr2.len
+*>
 macro concat(arr1, arr2, Allocator allocator) @nodiscard
 {
 	var $Type = $typeof(arr1[0]);
@@ -69,33 +69,33 @@ macro concat(arr1, arr2, Allocator allocator) @nodiscard
 	}
 	return result;
 }
-/**
- * Concatenate two arrays or slices, returning a slice containing the concatenation of them.
- *
- * @param [in] arr1
- * @param [in] arr2
- * @param [&inout] allocator "The allocator to use, default is the heap allocator"
- * @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- * @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
- * @ensure result.len == arr1.len + arr2.len
- **/
+<*
+ Concatenate two arrays or slices, returning a slice containing the concatenation of them.
+
+ @param [in] arr1
+ @param [in] arr2
+ @param [&inout] allocator "The allocator to use, default is the heap allocator"
+ @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
+ @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ @ensure result.len == arr1.len + arr2.len
+*>
 macro concat_new(arr1, arr2, Allocator allocator = allocator::heap()) @nodiscard
 {
 	return concat(arr1, arr2, allocator);
 }
 
-/**
- * Concatenate two arrays or slices, returning a slice containing the concatenation of them,
- * allocated using the temp allocator.
- *
- * @param [in] arr1
- * @param [in] arr2
- * @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- * @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- * @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
- * @ensure result.len == arr1.len + arr2.len
- **/
+<*
+ Concatenate two arrays or slices, returning a slice containing the concatenation of them,
+ allocated using the temp allocator.
+
+ @param [in] arr1
+ @param [in] arr2
+ @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
+ @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
+ @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ @ensure result.len == arr1.len + arr2.len
+*>
 macro tconcat(arr1, arr2) @nodiscard => concat(arr1, arr2, allocator::temp());
 
 module std::core::array::slice(<Type>);
@@ -142,18 +142,18 @@ macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
 	}
 }
 
-/**
- * @require idy >= 0 && idy < self.ylen
- **/
+<*
+ @require idy >= 0 && idy < self.ylen
+*>
 macro Type[] Slice2d.get(self, usz idy) @operator([])
 {
 	return (self.ptr + self.inner_len * (idy + self.ystart))[self.xstart:self.xlen];
 }
 
-/**
- * @require y >= 0 && y < self.ylen
- * @require x >= 0 && x < self.xlen
- **/
+<*
+ @require y >= 0 && y < self.ylen
+ @require x >= 0 && x < self.xlen
+*>
 fn Slice2d Slice2d.slice(&self, isz x = 0, isz xlen = 0, isz y = 0, isz ylen = 0)
 {
 	if (xlen < 1) xlen = self.xlen + xlen;

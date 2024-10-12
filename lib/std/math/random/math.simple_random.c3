@@ -20,9 +20,9 @@ fn uint SimpleRandom.next_int(&self) @dynamic
 	return (uint)(nextseed >> (48 - 32));
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void SimpleRandom.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
 fn uint128 SimpleRandom.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong SimpleRandom.next_long(&self) @dynamic => @int_to_long(self.next_int());

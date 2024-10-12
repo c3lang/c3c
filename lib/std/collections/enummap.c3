@@ -1,6 +1,6 @@
-/**
- * @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enummap"
- **/
+<*
+ @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enummap"
+*>
 module std::collections::enummap(<Enum, ValueType>);
 import std::io;
 struct EnumMap (Printable)
@@ -43,18 +43,18 @@ fn String EnumMap.to_tstring(&self) @dynamic
 	return string::tformat("%s", *self);
 }
 
-/**
- * @return "The total size of this map, which is the same as the number of enum values"
- * @pure
- **/
+<*
+ @return "The total size of this map, which is the same as the number of enum values"
+ @pure
+*>
 fn usz EnumMap.len(&self) @operator(len) @inline
 {
 	return self.values.len;
 }
 
-/**
- * @return "Retrieve a value given the underlying enum, if there is no entry, then the zero value for the value is returned."
- **/
+<*
+ @return "Retrieve a value given the underlying enum, if there is no entry, then the zero value for the value is returned."
+*>
 fn ValueType EnumMap.get(&self, Enum key) @operator([]) @inline
 {
 	return self.values[key.ordinal];

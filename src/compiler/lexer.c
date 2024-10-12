@@ -251,7 +251,7 @@ static void skip_whitespace(Lexer *lexer)
 		switch (peek(lexer))
 		{
 			case '/':
-				if (lexer->mode == LEX_DOCS) return;
+				if (lexer->mode == LEX_CONTRACTS) return;
 				// The '//' case
 				if (peek_next(lexer) == '/')
 				{
@@ -259,8 +259,8 @@ static void skip_whitespace(Lexer *lexer)
 					parse_line_comment(lexer);
 					continue;
 				}
-				// '/*' but not '/**'
-				if (peek_next(lexer) == '*' && lexer->current[2] != '*')
+				// '/*'
+				if (peek_next(lexer) == '*')
 				{
 					skip(lexer, 2);
 					parse_multiline_comment(lexer);
@@ -268,8 +268,8 @@ static void skip_whitespace(Lexer *lexer)
 				}
 				return;
 			case '\n':
-				// Doc lexing sees '\n' as a token.
-				if (lexer->mode == LEX_DOCS) return;
+				// Contract lexing sees '\n' as a token.
+				if (lexer->mode == LEX_CONTRACTS) return;
 				FALLTHROUGH;
 			case ' ':
 			case '\t':
@@ -352,7 +352,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 	switch (type)
 	{
 		case TOKEN_RETURN:
-			if (lexer->mode == LEX_DOCS) type = TOKEN_IDENT;
+			if (lexer->mode == LEX_CONTRACTS) type = TOKEN_IDENT;
 			break;
 		default:
 			break;
@@ -1174,99 +1174,54 @@ INLINE void skip_to_doc_line_end(Lexer *lexer)
 }
 
 
-static bool lex_doc_directive(Lexer *lexer)
-{
-	begin_new_token(lexer);
-	next(lexer);
-	// Then our keyword
-	if (!scan_ident(lexer, TOKEN_AT_IDENT, TOKEN_AT_CONST_IDENT, TOKEN_AT_TYPE_IDENT, '@'))
-	{
-		return false;
-	}
-
-	if (lexer->token_type != TOKEN_AT_IDENT)
-	{
-		add_error_token_at_current(lexer, "A doc directive was expected.");
-		return false;
-	}
-	lexer->token_type = TOKEN_DOC_DIRECTIVE;
-	return true;
-}
-
-static bool scan_doc_line(Lexer *lexer)
-{
-	assert(lexer->mode == LEX_DOCS);
-RETRY:;
-	char c = peek(lexer);
-	// Go through any initial line whitespace
-	while (c == ' ' || c == '\t')
-	{
-		if (reached_end(lexer)) goto EOF_REACHED;
-		c = next(lexer);
-	}
-	// Skip over all stars
-	while (c == '*')
-	{
-		if (reached_end(lexer)) goto EOF_REACHED;
-		c = next(lexer);
-	}
-	// We might have gotten to the end.
-	if (c == '/' && prev(lexer) == '*')
-	{
-		lexer->mode = LEX_NORMAL;
-		next(lexer);
-		return new_token(lexer, TOKEN_DOCS_END, "*/");
-	}
-
-	// We need to skip any space afterwards
-	while (c == ' ' || c == '\t')
-	{
-		if (reached_end(lexer)) goto EOF_REACHED;
-		c = next(lexer);
-	}
-
-	// If we have '@' [_A-Za-z] then parse the directive
-	if (c == '@')
-	{
-		return lex_doc_directive(lexer);
-	}
-
-	// Otherwise scan to the end of the line
-	while (1)
-	{
-		if (reached_end(lexer)) goto EOF_REACHED;
-		// We might find the end of the docs
-		if (c == '*' && peek_next(lexer) == '/')
-		{
-			next(lexer);
-			lexer->mode = LEX_NORMAL;
-			return new_token(lexer, TOKEN_DOCS_END, "*/");
-		}
-		// If we find the end of the line we start from the beginning.
-		if (c == '\n')
-		{
-			next(lexer);
-			goto RETRY;
-		}
-		c = next(lexer);
-	}
-EOF_REACHED:
-	return add_error_token_at_start(lexer, "Missing '*/' to end the doc comment.");
-}
-
-
-
 /**
- *
- * Parse the / **  * / directives comments
+ * Parse the <* *> directives comments
  **/
 static bool parse_doc_start(Lexer *lexer)
 {
-	// Add the doc start token.
-	new_token(lexer, TOKEN_DOCS_START, lexer->lexing_start);
-	skip_to_doc_line_end(lexer);
-	lexer->mode = LEX_DOCS;
-	return true;
+	bool may_have_contract = true;
+	// Let's loop until we find the end or the contract.
+	while (!reached_end(lexer))
+	{
+		char c = peek(lexer);
+		switch (c)
+		{
+			case '\n':
+				may_have_contract = true;
+				next(lexer);
+				continue;
+			case ' ':
+			case '\t':
+				next(lexer);
+				continue;
+			case '*':
+				// We might have <* Hello *>
+				if (peek_next(lexer) == '>') goto EXIT;
+				may_have_contract = false;
+				next(lexer);
+				continue;
+			case '@':
+				if (may_have_contract && char_is_lower(peek_next(lexer)))
+				{
+					// Found a contract
+					goto EXIT;
+				}
+				FALLTHROUGH;
+			default:
+				may_have_contract = false;
+				next(lexer);
+				continue;
+		}
+	}
+EXIT:;
+	// Now we either found:
+	// 1. "<* foo \n @param"
+	// 2. "<* foo *>"
+	// 3. "<* foo <eof>"
+	//
+	// In any case we can consider this having reached "the contracts"
+	lexer->mode = LEX_CONTRACTS;
+	return new_token(lexer, TOKEN_DOCS_START, lexer->lexing_start);
 }
 
 static bool lexer_scan_token_inner(Lexer *lexer)
@@ -1284,7 +1239,8 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 	switch (c)
 	{
 		case '\n':
-			return scan_doc_line(lexer);
+			assert(lexer->mode == LEX_CONTRACTS);
+			return new_token(lexer, TOKEN_DOCS_EOL, "<eol>");
 		case '@':
 			if (char_is_letter_(peek(lexer)))
 			{
@@ -1341,15 +1297,13 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			if (match(lexer, '!')) return new_token(lexer, TOKEN_BANGBANG, "!!");
 			return match(lexer, '=') ? new_token(lexer, TOKEN_NOT_EQUAL, "!=") : new_token(lexer, TOKEN_BANG, "!");
 		case '/':
-			// We can't get any directives comments here.
-			if (lexer->mode != LEX_DOCS && match(lexer, '*'))
-			{
-				assert(peek(lexer) == '*');
-				next(lexer);
-				return parse_doc_start(lexer);
-			}
 			return match(lexer, '=') ? new_token(lexer, TOKEN_DIV_ASSIGN, "/=") : new_token(lexer, TOKEN_DIV, "/");
 		case '*':
+			if (lexer->mode == LEX_CONTRACTS && match(lexer, '>'))
+			{
+				lexer->mode = LEX_NORMAL;
+				return new_token(lexer, TOKEN_DOCS_END, "*>");
+			}
 			return match(lexer, '=') ? new_token(lexer, TOKEN_MULT_ASSIGN, "*=") : new_token(lexer, TOKEN_STAR, "*");
 		case '=':
 			if (match(lexer, '>')) return new_token(lexer, TOKEN_IMPLIES, "=>");
@@ -1364,6 +1318,10 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			{
 				if (match(lexer, '=')) return new_token(lexer, TOKEN_SHL_ASSIGN, "<<=");
 				return new_token(lexer, TOKEN_SHL, "<<");
+			}
+			if (lexer->mode == LEX_NORMAL && match(lexer, '*'))
+			{
+				return parse_doc_start(lexer);
 			}
 			return match(lexer, '=') ? new_token(lexer, TOKEN_LESS_EQ, "<=") : new_token(lexer, TOKEN_LESS, "<");
 		case '>':

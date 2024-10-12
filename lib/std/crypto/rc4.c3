@@ -9,12 +9,12 @@ struct Rc4
 	char[256] state;
 }
 
-/**
- * Initialize the RC4 state.
- *
- * @param [in] key "The key to use"
- * @require key.len > 0 "The key must be at least 1 byte long"
- **/
+<*
+ Initialize the RC4 state.
+
+ @param [in] key "The key to use"
+ @require key.len > 0 "The key must be at least 1 byte long"
+*>
 fn void Rc4.init(&self, char[] key)
 {
 	// Init the state matrix
@@ -28,11 +28,11 @@ fn void Rc4.init(&self, char[] key)
 	self.j = 0;
 }
 
-/**
- * Run a single pass of en/decryption using a particular key.
- * @param [in] key
- * @param [inout] data
- **/
+<*
+ Run a single pass of en/decryption using a particular key.
+ @param [in] key
+ @param [inout] data
+*>
 fn void crypt(char[] key, char[] data)
 {
 	Rc4 rc4;
@@ -40,13 +40,13 @@ fn void crypt(char[] key, char[] data)
 	rc4.crypt(data, data);
 }
 
-/**
- * Encrypt or decrypt a sequence of bytes.
- *
- * @param [in] in "The input"
- * @param [out] out "The output"
- * @require in.len <= out.len "Output would overflow"
- **/
+<*
+ Encrypt or decrypt a sequence of bytes.
+
+ @param [in] in "The input"
+ @param [out] out "The output"
+ @require in.len <= out.len "Output would overflow"
+*>
 fn void Rc4.crypt(&self, char[] in, char[] out)
 {
 	uint i = self.i;
@@ -64,11 +64,11 @@ fn void Rc4.crypt(&self, char[] in, char[] out)
 	self.j = j;
 }
 
-/**
- * Clear the rc4 state.
- *
- * @param [&out] self "The RC4 State"
- **/
+<*
+ Clear the rc4 state.
+
+ @param [&out] self "The RC4 State"
+*>
 fn void Rc4.destroy(&self)
 {
 	*self = {};

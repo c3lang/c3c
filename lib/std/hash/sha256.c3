@@ -63,10 +63,10 @@ fn void Sha256.init(&self)
     };
 }
 
-/**
- * @param [in] data
- * @require data.len <= uint.max
- **/
+<*
+ @param [in] data
+ @require data.len <= uint.max
+*>
 fn void Sha256.update(&self, char[] data) {
     uint i = 0;
     uint len = data.len;
@@ -120,10 +120,10 @@ fn char[HASH_SIZE] Sha256.final(&self) {
     return hash;
 }
 
-/**
- * @param [&inout] state
- * @param [&in] buffer
- **/
+<*
+ @param [&inout] state
+ @param [&in] buffer
+*>
 fn void sha256_transform(uint* state, char* buffer) @local {
     uint a, b, c, d, e, f, g, h, t1, t2;
     uint[64] m;

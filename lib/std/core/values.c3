@@ -3,9 +3,9 @@ module std::core::values;
 macro typeid @typeid(#value) @const @builtin => $typeof(#value).typeid;
 macro TypeKind @typekind(#value) @const @builtin => $typeof(#value).kindof;
 macro bool @typeis(#value, $Type) @const @builtin => $typeof(#value).typeid == $Type.typeid;
-/**
- * Return true if two values have the same type before any conversions.
- **/
+<*
+ Return true if two values have the same type before any conversions.
+*>
 macro bool @is_same_type(#value1, #value2) @const => $typeof(#value1).typeid == $typeof(#value2).typeid;
 macro bool @is_bool(#value) @const => types::is_bool($typeof(#value));
 macro bool @is_int(#value) @const => types::is_int($typeof(#value));

@@ -33,9 +33,9 @@ fn ulong Pcg128Random.next_long(&self) @dynamic
 	return ((ulong)(xor >> ROT_SHIFT)).rotr(rot);
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Pcg128Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_long, bytes);
 fn uint128 Pcg128Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn uint Pcg128Random.next_int(&self) @dynamic => (uint)self.next_long();
@@ -61,9 +61,9 @@ fn uint Pcg64Random.next_int(&self) @dynamic
 	return ((uint)(xor >> ROT_SHIFT)).rotr(rot);
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Pcg64Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
 fn uint128 Pcg64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Pcg64Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
@@ -90,9 +90,9 @@ fn ushort Pcg32Random.next_short(&self) @dynamic
 	return ((ushort)(xor >> ROT_SHIFT)).rotr(rot);
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Pcg32Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_short, bytes);
 fn uint128 Pcg32Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Pcg32Random.next_long(&self) @dynamic => @int_to_long(self.next_int());

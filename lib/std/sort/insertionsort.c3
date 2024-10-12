@@ -1,11 +1,11 @@
 module std::sort;
 import std::sort::is;
 
-/**
- * Sort list using the quick sort algorithm.
- * @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- * @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
- **/
+<*
+Sort list using the quick sort algorithm.
+ @require @is_sortable(list) "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
+*>
 macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::@len_from_list(list);

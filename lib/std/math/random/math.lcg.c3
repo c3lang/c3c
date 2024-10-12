@@ -29,9 +29,9 @@ fn ulong Lcg128Random.next_long(&self) @dynamic
 	return result;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Lcg128Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_long, bytes);
 fn uint128 Lcg128Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn uint Lcg128Random.next_int(&self) @dynamic => (uint)self.next_long();
@@ -56,9 +56,9 @@ fn uint Lcg64Random.next_int(&self) @dynamic
 	return result;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Lcg64Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
 fn uint128 Lcg64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Lcg64Random.next_long(&self) @dynamic => @int_to_long(self.next_int());

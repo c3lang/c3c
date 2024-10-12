@@ -28,9 +28,9 @@ fn uint128 Sfc128Random.next_int128(&self) @dynamic // TODO: Find good constant
 	return result;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Sfc128Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int128, bytes);
 fn ulong Sfc128Random.next_long(&self) @dynamic => (uint)self.next_int128();
 fn uint Sfc128Random.next_int(&self) @dynamic => (uint)self.next_int128();
@@ -58,9 +58,9 @@ fn ulong Sfc64Random.next_long(&self) @dynamic
 	return result;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Sfc64Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_long, bytes);
 fn uint128 Sfc64Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn uint Sfc64Random.next_int(&self) @dynamic => (uint)self.next_long();
@@ -87,9 +87,9 @@ fn uint Sfc32Random.next_int(&sfc) @dynamic
 	return result;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Sfc32Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_int, bytes);
 fn uint128 Sfc32Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Sfc32Random.next_long(&self) @dynamic => @int_to_long(self.next_int());
@@ -117,9 +117,9 @@ fn ushort Sfc16Random.next_short(&seed) @dynamic
 	return result;
 }
 
-/**
- * @require bytes.len > 0
- **/
+<*
+ @require bytes.len > 0
+*>
 fn void Sfc16Random.next_bytes(&self, char[] bytes) @dynamic => @random_value_to_bytes(self.next_short, bytes);
 fn uint128 Sfc16Random.next_int128(&self) @dynamic => @long_to_int128(self.next_long());
 fn ulong Sfc16Random.next_long(&self) @dynamic => @int_to_long(self.next_int());

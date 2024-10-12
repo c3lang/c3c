@@ -9,10 +9,10 @@ const uint UTF16_SURROGATE_BITS @private = 10;
 const uint UTF16_SURROGATE_LOW_VALUE @private = 0xDC00;
 const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
 
-/**
- * @param c `The utf32 codepoint to convert`
- * @param [out] output `the resulting buffer`
- **/
+<*
+ @param c `The utf32 codepoint to convert`
+ @param [out] output `the resulting buffer`
+*>
 fn usz! char32_to_utf8(Char32 c, char[] output)
 {
 	if (!output.len) return UnicodeResult.CONVERSION_FAILED?;
@@ -45,12 +45,12 @@ fn usz! char32_to_utf8(Char32 c, char[] output)
 	}
 }
 
-/**
- * Convert a code pointer into 1-2 UTF16 characters.
- *
- * @param c `The character to convert.`
- * @param [inout] output `the resulting UTF16 buffer to write to.`
- **/
+<*
+ Convert a code pointer into 1-2 UTF16 characters.
+
+ @param c `The character to convert.`
+ @param [inout] output `the resulting UTF16 buffer to write to.`
+*>
 fn void char32_to_utf16_unsafe(Char32 c, Char16** output)
 {
 	if (c < UTF16_SURROGATE_OFFSET)
@@ -66,13 +66,13 @@ fn void char32_to_utf16_unsafe(Char32 c, Char16** output)
 	(*output)++[0] = (Char16)low;
 }
 
-/**
- * Convert 1-2 UTF16 data points into UTF8.
- *
- * @param [in] ptr `The UTF16 data to convert.`
- * @param [inout] available `amount of UTF16 data available.`
- * @param [inout] output `the resulting utf8 buffer to write to.`
- **/
+<*
+ Convert 1-2 UTF16 data points into UTF8.
+
+ @param [in] ptr `The UTF16 data to convert.`
+ @param [inout] available `amount of UTF16 data available.`
+ @param [inout] output `the resulting utf8 buffer to write to.`
+*>
 fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 {
 	Char16 high = *ptr;
@@ -100,10 +100,10 @@ fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 	char32_to_utf8_unsafe(uc, output);
 	*available = 2;
 }
-/**
- * @param c `The utf32 codepoint to convert`
- * @param [inout] output `the resulting buffer`
- **/
+<*
+ @param c `The utf32 codepoint to convert`
+ @param [inout] output `the resulting buffer`
+*>
 fn usz char32_to_utf8_unsafe(Char32 c, char** output)
 {
 	switch
@@ -129,11 +129,11 @@ fn usz char32_to_utf8_unsafe(Char32 c, char** output)
 	}
 }
 
-/**
- * @param [in] ptr `pointer to the first character to parse`
- * @param [inout] size `Set to max characters to read, set to characters read`
- * @return `the parsed 32 bit codepoint`
- **/
+<*
+ @param [in] ptr `pointer to the first character to parse`
+ @param [inout] size `Set to max characters to read, set to characters read`
+ @return `the parsed 32 bit codepoint`
+*>
 fn Char32! utf8_to_char32(char* ptr, usz* size)
 {
 	usz max_size = *size;
@@ -184,10 +184,10 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 	return uc + c & 0x3F;
 }
 
-/**
- * @param utf8 `An UTF-8 encoded slice of bytes`
- * @return `the number of encoded code points`
- **/
+<*
+ @param utf8 `An UTF-8 encoded slice of bytes`
+ @return `the number of encoded code points`
+*>
 fn usz utf8_codepoints(String utf8)
 {
 	usz len = 0;
@@ -198,11 +198,11 @@ fn usz utf8_codepoints(String utf8)
 	return len;
 }
 
-/**
- * Calculate the UTF8 length required to encode an UTF32 array.
- * @param [in] utf32 `the utf32 data to calculate from`
- * @return `the length of the resulting UTF8 array`
- **/
+<*
+ Calculate the UTF8 length required to encode an UTF32 array.
+ @param [in] utf32 `the utf32 data to calculate from`
+ @return `the length of the resulting UTF8 array`
+*>
 fn usz utf8len_for_utf32(Char32[] utf32)
 {
 	usz len = 0;
@@ -223,11 +223,11 @@ fn usz utf8len_for_utf32(Char32[] utf32)
 	return len;
 }
 
-/**
- * Calculate the UTF8 length required to encode an UTF16 array.
- * @param [in] utf16 `the utf16 data to calculate from`
- * @return `the length of the resulting UTF8 array`
- **/
+<*
+ Calculate the UTF8 length required to encode an UTF16 array.
+ @param [in] utf16 `the utf16 data to calculate from`
+ @return `the length of the resulting UTF8 array`
+*>
 fn usz utf8len_for_utf16(Char16[] utf16)
 {
 	usz len = 0;
@@ -255,11 +255,11 @@ fn usz utf8len_for_utf16(Char16[] utf16)
 	return len;
 }
 
-/**
- * Calculate the UTF16 length required to encode a UTF8 array.
- * @param utf8 `the utf8 data to calculate from`
- * @return `the length of the resulting UTF16 array`
- **/
+<*
+ Calculate the UTF16 length required to encode a UTF8 array.
+ @param utf8 `the utf8 data to calculate from`
+ @return `the length of the resulting UTF16 array`
+*>
 fn usz utf16len_for_utf8(String utf8)
 {
 	usz len = utf8.len;
@@ -279,10 +279,10 @@ fn usz utf16len_for_utf8(String utf8)
 	return len16;
 }
 
-/**
- * @param [in] utf32 `the UTF32 array to check the length for`
- * @return `the required length of an UTF16 array to hold the UTF32 data.`
- **/
+<*
+ @param [in] utf32 `the UTF32 array to check the length for`
+ @return `the required length of an UTF16 array to hold the UTF32 data.`
+*>
 fn usz utf16len_for_utf32(Char32[] utf32)
 {
 	usz len = utf32.len;
@@ -293,13 +293,13 @@ fn usz utf16len_for_utf32(Char32[] utf32)
 	return len;
 }
 
-/**
- * Convert an UTF32 array to an UTF8 array.
- *
- * @param [in] utf32
- * @param [out] utf8_buffer
- * @return `the number of bytes written.`
- **/
+<*
+ Convert an UTF32 array to an UTF8 array.
+
+ @param [in] utf32
+ @param [out] utf8_buffer
+ @return `the number of bytes written.`
+*>
 fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
 {
 	char[] buffer = utf8_buffer;
@@ -313,13 +313,13 @@ fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
 	return utf8_buffer.len - buffer.len;
 }
 
-/**
- * Convert an UTF8 array to an UTF32 array.
- *
- * @param [in] utf8
- * @param [out] utf32_buffer
- * @return `the number of Char32s written.`
- **/
+<*
+ Convert an UTF8 array to an UTF32 array.
+
+ @param [in] utf8
+ @param [out] utf32_buffer
+ @return `the number of Char32s written.`
+*>
 fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
 {
 	usz len = utf8.len;
@@ -339,14 +339,14 @@ fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
 	return len32;
 }
 
-/**
- * Copy an array of UTF16 data into an UTF8 buffer without bounds
- * checking. This will assume the buffer is sufficiently large to hold
- * the converted data.
- *
- * @param [in] utf16 `The UTF16 array containing the data to convert.`
- * @param [out] utf8_buffer `the (sufficiently large) buffer to hold the UTF16 data.`
- **/
+<*
+ Copy an array of UTF16 data into an UTF8 buffer without bounds
+ checking. This will assume the buffer is sufficiently large to hold
+ the converted data.
+
+ @param [in] utf16 `The UTF16 array containing the data to convert.`
+ @param [out] utf8_buffer `the (sufficiently large) buffer to hold the UTF16 data.`
+*>
 fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
 {
 	usz len16 = utf16.len;
@@ -358,14 +358,14 @@ fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
 	}
 }
 
-/**
- * Copy an array of UTF8 data into an UTF32 buffer without bounds
- * checking. This will assume the buffer is sufficiently large to hold
- * the converted data.
- *
- * @param [in] utf8 `The UTF8 buffer containing the data to convert.`
- * @param [out] utf32_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
- **/
+<*
+ Copy an array of UTF8 data into an UTF32 buffer without bounds
+ checking. This will assume the buffer is sufficiently large to hold
+ the converted data.
+
+ @param [in] utf8 `The UTF8 buffer containing the data to convert.`
+ @param [out] utf32_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
+*>
 fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
 {
 	usz len = utf8.len;
@@ -378,14 +378,14 @@ fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
 	}
 }
 
-/**
- * Copy an array of UTF8 data into an UTF16 buffer without bounds
- * checking. This will assume the buffer is sufficiently large to hold
- * the converted data.
- *
- * @param [in] utf8 `The UTF8 buffer containing the data to convert.`
- * @param [out] utf16_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
- **/
+<*
+ Copy an array of UTF8 data into an UTF16 buffer without bounds
+ checking. This will assume the buffer is sufficiently large to hold
+ the converted data.
+
+ @param [in] utf8 `The UTF8 buffer containing the data to convert.`
+ @param [out] utf16_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
+*>
 fn void! utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 {
 	usz len = utf8.len;
@@ -398,14 +398,14 @@ fn void! utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 	}
 }
 
-/**
- * Copy an array of UTF32 code points into an UTF8 buffer without bounds
- * checking. This will assume the buffer is sufficiently large to hold
- * the converted data.
- *
- * @param [in] utf32 `The UTF32 buffer containing the data to convert.`
- * @param [out] utf8_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
- **/
+<*
+ Copy an array of UTF32 code points into an UTF8 buffer without bounds
+ checking. This will assume the buffer is sufficiently large to hold
+ the converted data.
+
+ @param [in] utf32 `The UTF32 buffer containing the data to convert.`
+ @param [out] utf8_buffer `the (sufficiently large) buffer to hold the UTF8 data.`
+*>
 fn void utf32to8_unsafe(Char32[] utf32, char* utf8_buffer)
 {
 	char* start = utf8_buffer;

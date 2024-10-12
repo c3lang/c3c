@@ -4,11 +4,11 @@
 module std::os::env;
 import std::io::path, libc, std::os;
 
-/**
- * @param [in] name
- * @require name.len > 0
- * @return! SearchResult.MISSING
- **/
+<*
+ @param [in] name
+ @require name.len > 0
+ @return! SearchResult.MISSING
+*>
 fn String! get_var(String name, Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
@@ -41,11 +41,11 @@ fn String! get_var_temp(String name)
 	return get_var(name, allocator::temp());
 }
 
-/**
- * @param [in] name
- * @param [in] value
- * @require name.len > 0
- **/
+<*
+ @param [in] name
+ @param [in] value
+ @require name.len > 0
+*>
 fn bool set_var(String name, String value, bool overwrite = true)
 {
 	@pool()
@@ -69,9 +69,9 @@ fn bool set_var(String name, String value, bool overwrite = true)
 
 }
 
-/**
- * Returns the current user's home directory.
- **/
+<*
+Returns the current user's home directory.
+*>
 fn String! get_home_dir(Allocator using = allocator::heap())
 {
 	String home;
@@ -88,9 +88,9 @@ fn Path! get_config_dir(Allocator allocator = allocator::heap()) @deprecated("us
 	return new_get_config_dir(allocator) @inline;
 }
 
-/**
- * Returns the current user's config directory.
- **/
+<*
+Returns the current user's config directory.
+*>
 fn Path! new_get_config_dir(Allocator allocator = allocator::heap())
 {
 	@pool(allocator)
@@ -111,10 +111,10 @@ fn Path! new_get_config_dir(Allocator allocator = allocator::heap())
 }
 
 
-/**
- * @param [in] name
- * @require name.len > 0
- **/
+<*
+ @param [in] name
+ @require name.len > 0
+*>
 fn bool clear_var(String name)
 {
 	@pool()

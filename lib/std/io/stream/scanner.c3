@@ -8,23 +8,23 @@ struct Scanner (InStream)
 	usz read_idx;
 }
 
-/**
- * Scanner provides a way to read delimited data (with newlines as the default).
- * The supplied buffer must be at least as large as the expected data length
- * including its pattern.
- *
- * @param [&in] stream "The stream to read data from."
- * @require buffer.len > 0 "Non-empty buffer required."
- **/
+<*
+ Scanner provides a way to read delimited data (with newlines as the default).
+ The supplied buffer must be at least as large as the expected data length
+ including its pattern.
+
+ @param [&in] stream "The stream to read data from."
+ @require buffer.len > 0 "Non-empty buffer required."
+*>
 fn void Scanner.init(&self, InStream stream, char[] buffer)
 {
 	*self = { .wrapped_stream = stream, .buf = buffer };
 }
 
 
-/**
- * Return and clear any remaining unscanned data.
- **/
+<*
+ Return and clear any remaining unscanned data.
+*>
 fn char[] Scanner.flush(&self) @dynamic
 {
 	assert(self.read_idx >= self.pattern_idx);
@@ -40,11 +40,11 @@ fn void! Scanner.close(&self) @dynamic
 	if (&self.wrapped_stream.close) return self.wrapped_stream.close();
 }
 
-/**
- * Scan the stream for the next split character and return data up to the match.
- * @require pattern.len > 0 "Non-empty pattern required."
- * @require self.buf.len > pattern.len "Pattern too large."
- **/
+<*
+ Scan the stream for the next split character and return data up to the match.
+ @require pattern.len > 0 "Non-empty pattern required."
+ @require self.buf.len > pattern.len "Pattern too large."
+*>
 fn char[]! Scanner.scan(&self, String pattern = "\n")
 {
 	if (self.read_idx == 0)

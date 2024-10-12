@@ -1462,8 +1462,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_EOF:
 			PRINT_ERROR_HERE("Reached the end of the file when expecting a statement.");
 			return poisoned_ast;
-		case TOKEN_DOC_DIRECTIVE:
-			PRINT_ERROR_HERE("Unexpectedly encountered doc directives.");
+		case TOKEN_DOCS_EOL:
+			PRINT_ERROR_HERE("Unexpectedly reached end of line.");
 			return poisoned_ast;
 	}
 	UNREACHABLE

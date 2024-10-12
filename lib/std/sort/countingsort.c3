@@ -3,11 +3,11 @@ import std::sort::is;
 import std::sort::cs;
 import std::sort::qs;
 
-/**
- * Sort list using the counting sort algorithm.
- * @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- * @require @is_cmp_key_fn(key_fn, list) "Expected a transformation function which returns an unsigned integer."
- **/
+<*
+Sort list using the counting sort algorithm.
+ @require @is_sortable(list) "The list must be indexable and support .len or .len()"
+ @require @is_cmp_key_fn(key_fn, list) "Expected a transformation function which returns an unsigned integer."
+*>
 macro countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::@len_from_list(list);

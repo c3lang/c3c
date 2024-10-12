@@ -10,24 +10,20 @@ fault Foo
 {
 	XYZ
 }
-/**
- *
- * @return! Abc.DEF "if x is blurb"
- * @return! Foo, Abc.ABC, Abc
- * @return! Foo, Abc.ABC
- * hello world
- **/
+<*
+
+ hello world
+ @return! Foo, Abc.ABC
+ *>
 fn void! abc(int a, int b, int z)
 {
 	return Abc.ZED?; // #error: This value does not match declared optional returns
 }
 
-/**
- * @return! Abc.DEF "if x is blurb"
- * @return! Foo, Abc.ABC, Abc
- * @return! Foo, Abc.ABC
- * hello world
- **/
+<*
+hello world
+ @return! Foo, Abc.ABC
+ *>
 macro void! @abc(int a, int b, int z)
 {
 	return Abc.ZED?; // #error: This value does not match declared optional returns

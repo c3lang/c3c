@@ -114,9 +114,9 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 	return str.str_view().to_temp_wstring()!!;
 }
 
-/**
- * @require !environment || !options.inherit_environment
- **/
+<*
+ @require !environment || !options.inherit_environment
+*>
 fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::WIN32)
 {
 	void* rd, wr;
@@ -241,9 +241,9 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 	};
 }
 
-/**
- * @require command_line.len > 0
- **/
+<*
+ @require command_line.len > 0
+*>
 fn ZString* tcopy_command_line(String[] command_line) @local @inline @if(env::POSIX)
 {
 	ZString* copy = mem::temp_alloc_array(ZString, command_line.len + 1);
@@ -276,9 +276,9 @@ fn String! execute_stdout_to_buffer(char[] buffer, String[] command_line, SubPro
 	return (String)buffer[:len - 1];
 }
 
-/**
- * @require !environment || !options.inherit_environment
- **/
+<*
+ @require !environment || !options.inherit_environment
+*>
 fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, String[] environment = {}) @if(env::POSIX)
 {
 	CInt[2] stdinfd;
@@ -405,9 +405,9 @@ fn void! SubProcess.terminate(&self)
 	$endif
 }
 
-/**
- * @require size <= Win32_DWORD.max
- **/
+<*
+ @require size <= Win32_DWORD.max
+*>
 fn usz! read_from_file_win32(CFile file, Win32_HANDLE event_handle, char* buffer, usz size) @if(env::WIN32) @local
 {
 	CInt fd = libc::fileno(file);

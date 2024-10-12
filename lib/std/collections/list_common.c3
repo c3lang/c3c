@@ -1,8 +1,8 @@
 module std::collections::list_common;
 
-/**
- * IMPORTANT The returned array must be freed using free_aligned.
- **/
+<*
+ IMPORTANT The returned array must be freed using free_aligned.
+*>
 macro list_to_new_aligned_array($Type, self, Allocator allocator)
 {
 	if (!self.size) return $Type[] {};

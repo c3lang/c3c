@@ -37,17 +37,17 @@ fn usz! get_size(String path)
 fn void! delete(String filename) => os::native_remove(filename) @inline;
 
 
-/**
- * @require self.file != null
- **/
+<*
+ @require self.file != null
+*>
 fn void! File.reopen(&self, String filename, String mode)
 {
 	self.file = os::native_freopen(self.file, filename, mode)!;
 }
 
-/**
- * @require self.file != null
- **/
+<*
+ @require self.file != null
+*>
 fn usz! File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
 {
 	os::native_fseek(self.file, offset, seek_mode)!;
@@ -57,9 +57,9 @@ fn usz! File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
 
 /*
 Implement later
-/**
- * @require self.file == null
- **/
+<*
+ @require self.file == null
+*>
 fn void! File.memopen(File* file, char[] data, String mode)
 {
 	@pool()
@@ -71,17 +71,17 @@ fn void! File.memopen(File* file, char[] data, String mode)
 */
 
 
-/**
- * @require self.file != null
- */
+<*
+ @require self.file != null
+*>
 fn void! File.write_byte(&self, char c) @dynamic
 {
 	return os::native_fputc(c, self.file);
 }
 
-/**
- * @param [&inout] self
- */
+<*
+ @param [&inout] self
+*>
 fn void! File.close(&self) @inline @dynamic
 {
 	if (self.file && libc::fclose(self.file))
@@ -105,26 +105,26 @@ fn void! File.close(&self) @inline @dynamic
 	self.file = null;
 }
 
-/**
- * @require self.file
- */
+<*
+ @require self.file
+*>
 fn bool File.eof(&self) @inline
 {
 	return libc::feof(self.file) != 0;
 }
 
-/**
- * @param [in] buffer
- */
+<*
+ @param [in] buffer
+*>
 fn usz! File.read(&self, char[] buffer) @dynamic
 {
 	return os::native_fread(self.file, buffer);
 }
 
-/**
- * @param [out] buffer
- * @require self.file `File must be initialized`
- */
+<*
+ @param [out] buffer
+ @require self.file `File must be initialized`
+*>
 fn usz! File.write(&self, char[] buffer) @dynamic
 {
 	return os::native_fwrite(self.file, buffer);
@@ -138,13 +138,13 @@ fn char! File.read_byte(&self) @dynamic
 	return (char)c;
 }
 
-/**
- * Load up to buffer.len characters. Returns IoError.OVERFLOW if the file is longer
- * than the buffer.
- *
- * @param filename "The path to the file to read"
- * @param [in] buffer "The buffer to read to"
- **/
+<*
+ Load up to buffer.len characters. Returns IoError.OVERFLOW if the file is longer
+ than the buffer.
+
+ @param filename "The path to the file to read"
+ @param [in] buffer "The buffer to read to"
+*>
 fn char[]! load_buffer(String filename, char[] buffer)
 {
 	File file = open(filename, "rb")!;
@@ -182,9 +182,9 @@ fn char[]! load_temp(String filename)
 	return load_new(filename, allocator::temp());
 }
 
-/**
- * @require self.file `File must be initialized`
- */
+<*
+ @require self.file `File must be initialized`
+*>
 fn void! File.flush(&self) @dynamic
 {
 	libc::fflush(self.file);

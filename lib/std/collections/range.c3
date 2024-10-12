@@ -1,6 +1,6 @@
-/**
- * @require Type.is_ordered : "The type must be ordered"
- **/
+<*
+ @require Type.is_ordered : "The type must be ordered"
+*>
 module std::collections::range(<Type>);
 import std::io;
 
@@ -21,9 +21,9 @@ fn bool Range.contains(&self, Type value) @inline
 	return value >= self.start && value <= self.end;
 }
 
-/**
- * @require index < self.len() : "Can't index into an empty range"
- **/
+<*
+ @require index < self.len() : "Can't index into an empty range"
+*>
 fn Type Range.get(&self, usz index) @operator([])
 {
 	return (Type)(self.start + (usz)index);
@@ -86,9 +86,9 @@ fn String ExclusiveRange.to_tstring(&self)
 	return self.to_new_string(allocator::temp());
 }
 
-/**
- * @require index < self.len() : "Can't index into an empty range"
- **/
+<*
+ @require index < self.len() : "Can't index into an empty range"
+*>
 fn Type ExclusiveRange.get(&self, usz index) @operator([])
 {
 	return (Type)(self.start + index);

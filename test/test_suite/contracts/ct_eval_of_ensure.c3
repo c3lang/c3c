@@ -1,7 +1,7 @@
 module test;
-/**
- * @ensure return > 100
- */
+<*
+ @ensure return > 100
+ *>
 fn int test(int baz)
 {
 	return 1; // #error: @ensure "return > 100" violated.
