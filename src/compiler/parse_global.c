@@ -5,7 +5,15 @@
 #include "compiler_internal.h"
 #include "parser_internal.h"
 
-static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface);
+typedef enum FunctionParse_
+{
+	FUNC_PARSE_REGULAR,
+	FUNC_PARSE_C3I,
+	FUNC_PARSE_EXTERN,
+	FUNC_PARSE_INTERFACE,
+} FunctionParse;
+
+static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_type);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
 static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
 static Decl *parse_include(ParseContext *c);
@@ -1479,7 +1487,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
 /**
  * fn_parameter_list ::= '(' parameters ')'
  */
-static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature, bool is_interface)
+static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature)
 {
 	Decl **decls = NULL;
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
@@ -1762,7 +1770,7 @@ INLINE bool parse_interface_body(ParseContext *c, Decl *interface)
 	{
 		AstId contracts = 0;
 		if (!parse_contracts(c, &contracts)) return poisoned_decl;
-		ASSIGN_DECL_OR_RET(Decl *interface_fn, parse_func_definition(c, contracts, true), false);
+		ASSIGN_DECL_OR_RET(Decl *interface_fn, parse_func_definition(c, contracts, FUNC_PARSE_INTERFACE), false);
 		vec_add(fns, interface_fn);
 	}
 	interface->interface_methods = fns;
@@ -1907,7 +1915,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 		decl->typedef_decl.decl = decl_type;
 		ASSIGN_TYPE_OR_RET(TypeInfo *type_info, parse_optional_type(c), poisoned_decl);
 		decl_type->fntype_decl.rtype = type_infoid(type_info);
-		if (!parse_fn_parameter_list(c, &(decl_type->fntype_decl), true))
+		if (!parse_fn_parameter_list(c, &(decl_type->fntype_decl)))
 		{
 			return poisoned_decl;
 		}
@@ -2338,7 +2346,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
  * func_body ::= ('=>' short_body) | compound_stmt
  *
  */
-static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool is_interface)
+static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind)
 {
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
@@ -2349,21 +2357,27 @@ static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, bool
 	{
 		RETURN_PRINT_ERROR_AT(false, func, "Function names may not use '@'.");
 	}
-	if (!parse_fn_parameter_list(c, &(func->func_decl.signature), is_interface)) return poisoned_decl;
+	if (!parse_fn_parameter_list(c, &(func->func_decl.signature))) return poisoned_decl;
 	if (!parse_attributes_for_global(c, func)) return poisoned_decl;
-	if (is_interface)
+	if (parse_kind != FUNC_PARSE_REGULAR)
 	{
 		if (tok_is(c, TOKEN_LBRACE) || tok_is(c, TOKEN_IMPLIES))
 		{
-			if (c->unit->is_interface_file)
+			switch (parse_kind)
 			{
-				PRINT_ERROR_HERE("An interface file may not contain function bodies.");
+				case FUNC_PARSE_REGULAR:
+					UNREACHABLE
+				case FUNC_PARSE_C3I:
+					PRINT_ERROR_HERE("An interface file may not contain function bodies.");
+					return poisoned_decl;
+				case FUNC_PARSE_EXTERN:
+					PRINT_ERROR_HERE("An 'extern' function may not have a body.");
+					return poisoned_decl;
+				case FUNC_PARSE_INTERFACE:
+					PRINT_ERROR_HERE("An interface method cannot have a body.");
+					return poisoned_decl;
 			}
-			else
-			{
-				PRINT_ERROR_HERE("An 'extern' function may not have a body.");
-			}
-			return poisoned_decl;
+			UNREACHABLE
 		}
 		TRY_CONSUME_OR_RET(TOKEN_EOS, "Expected ';' after the function declaration.", poisoned_decl);
 		return func;
@@ -2775,7 +2789,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			switch (tok)
 			{
 				case TOKEN_FN:
-					decl = parse_func_definition(c, contracts, true);
+					decl = parse_func_definition(c, contracts, FUNC_PARSE_EXTERN);
 					break;
 				case TOKEN_CONST:
 					if (contracts) goto CONTRACT_NOT_ALLOWED;
@@ -2819,7 +2833,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			decl = parse_def(c);
 			break;
 		case TOKEN_FN:
-			decl = parse_func_definition(c, contracts, c->unit->is_interface_file);
+			decl = parse_func_definition(c, contracts, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
 			break;
 		case TOKEN_CT_ASSERT:
 			{

@@ -32,6 +32,7 @@
 - Interfaces not correctly copied with generics #1545
 - Memory leak in keys.new_list fixed.
 - Standard library is now correctly weakly linked, fixing the use of C3 .so together with executable. #1549, #1107.
+- Wrong error message for interface methods with body #1536.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
