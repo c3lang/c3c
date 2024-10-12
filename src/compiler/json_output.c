@@ -81,10 +81,10 @@ static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 			PRINTF("\t\t\t\t{\n");
 			if (member->name)
 			{
-				PRINTF("\t\t\t\t\t\"name:\": \"%s\",\n", member->name);
+				PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", member->name);
 			}
 			// TODO, extend this
-			PRINTF("\t\t\t\t\t\"type:\": \"%s\"\n", type->name);
+			PRINTF("\t\t\t\t\t\"type\": \"%s\"\n", type->name);
 			PRINTF("\t\t\t\t}");
 		}
 		fputs("\n\t\t\t]", file);
@@ -191,8 +191,8 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 	fputs("\t\t\t\"params\": [\n", file);
 	FOREACH_IDX(i, Decl *, decl, func->func_decl.signature.params)
 	{
-		if (i != 0) fputs(",\n", file);
 		if (!decl) continue;
+		if (i != 0) fputs(",\n", file);
 		fputs("\t\t\t\t{\n", file);
 		PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
 		PRINTF("\t\t\t\t\t\"type\": \"");
@@ -241,7 +241,7 @@ static inline void emit_types(FILE *file)
 					emit_type_data(file, module, type);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t}\n", file);
+	fputs("\n\t},\n", file);
 }
 static inline void emit_globals(FILE *file)
 {
@@ -255,7 +255,7 @@ static inline void emit_globals(FILE *file)
 					PRINTF("\t\t\"%s::%s\"", module->name->module, decl->name);
 		FOREACH_DECL_END;
 	}
-	PRINTF("\n\t],");
+	PRINTF("\n\t]");
 }
 static inline void emit_functions(FILE *file)
 {
