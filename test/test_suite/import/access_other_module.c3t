@@ -9,7 +9,7 @@ fn void main()
 
 /* #expect: foo.ll
 
-@libc.EXIT_SUCCESS = external constant i32, align 4
+@libc.EXIT_SUCCESS = extern_weak constant i32, align 4
 
 define void @foo.main() #0 {
 entry:

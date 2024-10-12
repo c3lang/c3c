@@ -50,6 +50,7 @@ const char *kw_at_jump;
 const char *kw_in;
 const char *kw_inout;
 const char *kw_len;
+const char *kw_libc;
 const char *kw_main;
 const char *kw_memcmp;
 const char *kw_mainstub;
@@ -134,6 +135,7 @@ void symtab_init(uint32_t capacity)
 	type = TOKEN_IDENT;
 	kw_in = KW_DEF("in");
 	kw_inout = KW_DEF("inout");
+	kw_libc = KW_DEF("libc");
 	kw_mainstub = KW_DEF("_$main");
 	kw_main = KW_DEF("main");
 	kw_memcmp = KW_DEF("memcmp");

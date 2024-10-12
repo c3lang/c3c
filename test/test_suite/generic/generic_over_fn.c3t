@@ -205,5 +205,5 @@ loop.exit:                                        ; preds = %loop.cond
   ret void
 }
 
+declare extern_weak void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr, i64, i64, i64, ptr) #0
 
-declare void @"test_generic$sa$int$fn$int$int$$int$$.sort"(ptr, i64, i64, i64, ptr) #0

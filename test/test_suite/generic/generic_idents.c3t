@@ -29,13 +29,13 @@ fn double getIt2(double i)
 
 /* #expect: gen.int.ll
 
-define i32 @"gen$int$.mult"(i32 %0) #0 {
+define weak i32 @"gen$int$.mult"(i32 %0) #0 {
 entry:
   %mul = mul i32 %0, %0
   ret i32 %mul
 }
 
-define i32 @"gen$int$.addMult"(i32 %0, i32 %1, i32 %2) #0 {
+define weak i32 @"gen$int$.addMult"(i32 %0, i32 %1, i32 %2) #0 {
 entry:
   %mul = mul i32 %0, %1
   %add = add i32 %mul, %2
@@ -58,14 +58,14 @@ entry:
   ret double %1
 }
 
-declare i32 @"gen$int$.mult"(i32)
+declare extern_weak i32 @"gen$int$.mult"(i32)
 
-declare double @"gen$double$.addMult"(double, double, double)
+declare extern_weak double @"gen$double$.addMult"(double, double, double)
 
 // #expect: gen.double.ll
 
 
-define double @"gen$double$.addMult"(double %0, double %1, double %2)
+define weak double @"gen$double$.addMult"(double %0, double %1, double %2)
 entry:
   %fmul = fmul double %0, %1
   %fadd = fadd double %fmul, %2

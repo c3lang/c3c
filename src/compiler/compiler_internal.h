@@ -1886,6 +1886,7 @@ extern const char *kw_at_jump;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;
+extern const char *kw_libc;
 extern const char *kw_main;
 extern const char *kw_mainstub;
 extern const char *kw_memcmp;

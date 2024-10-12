@@ -51,8 +51,9 @@ static void diagnostics_handler(LLVMDiagnosticInfoRef ref, void *context)
 
 bool module_should_weaken(Module *module)
 {
+	if (module->generic_module) return true;
 	Module *top = module->top_module;
-	return top && top->name->module == kw_std;
+	return top && (top->name->module == kw_std || top->name->module == kw_libc);
 }
 
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
