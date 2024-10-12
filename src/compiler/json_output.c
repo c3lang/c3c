@@ -68,29 +68,6 @@ static inline const char *decl_type_to_string(Decl *type)
 	}
 	UNREACHABLE
 }
-static inline void emit_type_data(FILE *file, Module *module, Decl *type)
-{
-	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
-	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
-	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
-	{
-		fputs(",\n\t\t\t\"members\": [\n", file);
-		FOREACH_IDX(i, Decl *, member, type->strukt.members)
-		{
-			if (i != 0) fputs(",\n", file);
-			PRINTF("\t\t\t\t{\n");
-			if (member->name)
-			{
-				PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", member->name);
-			}
-			// TODO, extend this
-			PRINTF("\t\t\t\t\t\"type\": \"%s\"\n", type->name);
-			PRINTF("\t\t\t\t}");
-		}
-		fputs("\n\t\t\t]", file);
-	}
-	fputs("\n\t\t}", file);
-}
 
 void print_type(FILE *file, TypeInfo *type)
 {
@@ -182,6 +159,39 @@ void print_type(FILE *file, TypeInfo *type)
 			break;
 	}
 }
+
+static inline void emit_type_data(FILE *file, Module *module, Decl *type)
+{
+	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
+	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
+	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
+	{
+		fputs(",\n\t\t\t\"members\": [\n", file);
+		FOREACH_IDX(i, Decl *, member, type->strukt.members)
+		{
+			if (i != 0) fputs(",\n", file);
+			PRINTF("\t\t\t\t{\n");
+			if (member->name)
+			{
+				PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", member->name);
+			}
+			// TODO, extend this
+			PRINTF("\t\t\t\t\t\"type\": \"");
+			if (member->var.type_info)
+			{
+				print_type(file, type_infoptr(member->var.type_info));
+			}
+			else
+			{
+				fputs("", file);
+			}
+			PRINTF("\"\n\t\t\t\t}");
+		}
+		fputs("\n\t\t\t]", file);
+	}
+	fputs("\n\t\t}", file);
+}
+
 static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
 	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, func->name);
