@@ -33,7 +33,7 @@
 - Memory leak in keys.new_list fixed.
 - Standard library is now correctly weakly linked, fixing the use of C3 .so together with executable. #1549, #1107.
 - Wrong error message for interface methods with body #1536.
-
+- Empty expression block would crash compiler with debug on #1554.
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
 - Add read/write to stream with big endian ints.

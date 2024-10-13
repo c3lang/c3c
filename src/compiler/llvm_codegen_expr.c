@@ -6484,8 +6484,14 @@ DONE:
 
 static inline void llvm_emit_expr_block(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	DEBUG_PUSH_LEXICAL_SCOPE(c, astptr(expr->expr_block.first_stmt)->span);
-	llvm_emit_return_block(c, be_value, expr->type, expr->expr_block.first_stmt, expr->expr_block.block_exit_ref);
+	AstId first_stmt = expr->expr_block.first_stmt;
+	if (!first_stmt)
+	{
+		llvm_emit_return_block(c, be_value, expr->type, first_stmt, expr->expr_block.block_exit_ref);
+		return;
+	}
+	DEBUG_PUSH_LEXICAL_SCOPE(c, astptr(first_stmt)->span);
+	llvm_emit_return_block(c, be_value, expr->type, first_stmt, expr->expr_block.block_exit_ref);
 	DEBUG_POP_LEXICAL_SCOPE(c);
 }
 
