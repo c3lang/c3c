@@ -64,6 +64,7 @@ option(C3_USE_MIMALLOC "Use built-in mimalloc" OFF)
 option(C3_USE_TB "Use TB" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
 option(C3_WITH_LLVM "Build with LLVM" ON)
+option(C3_LLD_DIR "Use custom LLD directory" "")
 
 set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
@@ -203,14 +204,23 @@ if(C3_WITH_LLVM)
 
         llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
+        if(NOT ${C3_LLD_DIR} EQUAL "" AND EXISTS ${C3_LLD_DIR}) 
+            message("C3_LLD_DIR: " ${C3_LLD_DIR})
+            set(LLVM_LIBRARY_DIRS
+            "${LLVM_LIBRARY_DIRS}"
+            "${C3_LLD_DIR}"
+            )
+            list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
+        endif()
+
         # These don't seem to be reliable on windows.
         message(STATUS "using find_library")
-        find_library(LLD_COFF NAMES lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_COMMON NAMES lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_ELF NAMES lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_MACHO NAMES lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_MINGW NAMES lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
-        find_library(LLD_WASM NAMES lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_COFF NAMES liblldCOFF.dylib lldCOFF.lib lldCOFF.a liblldCOFF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_COMMON NAMES liblldCommon.dylib lldCommon.lib lldCommon.a liblldCommon.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_ELF NAMES liblldELF.dylib lldELF.lib lldELF.a liblldELF.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_MACHO NAMES liblldMachO.dylib lldMachO.lib lldMachO.a liblldMachO.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_MINGW NAMES liblldMinGW.dylib lldMinGW.lib lldMinGW.a liblldMinGW.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
+        find_library(LLD_WASM NAMES liblldWasm.dylib lldWasm.lib lldWasm.a liblldWasm.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     else()
         find_library(LLVM NAMES libLLVM.so PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
         set(llvm_libs ${LLVM})
