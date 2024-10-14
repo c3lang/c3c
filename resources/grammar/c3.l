@@ -29,7 +29,7 @@ HINT        {H}(_?{H})*
 OINT        {O}(_?{O})*
 BINT        {B}(_?{B})*
 
-%x COMMENT RAW_STRING
+%x COMMENT CONTRACT_DOC RAW_STRING
 
 %{
 #include <stdio.h>
@@ -104,6 +104,12 @@ typedef struct {
 	[^/*\n]+    { }
 	[/]         { }
 	\n          { }
+}
+"<*"			{ BEGIN(CONTRACT_DOC); }
+<CONTRACT_DOC>{
+	"*>"        { BEGIN(INITIAL); }
+	"*"         { }
+	[^*]+       { }
 }
 \/\/.*          { }
 "any"           { return(ANY); }
