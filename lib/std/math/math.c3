@@ -173,8 +173,8 @@ macro sincos_ref(x, sinp, cosp)
 }
 
 <*
-Return a vector with sin / cos of the given angle.
- *
+ Return a vector with sin / cos of the given angle.
+
  @param x `the angle in radians`
  @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
 *>
