@@ -3746,6 +3746,11 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 			// If we don't have a type, resolve the expression.
 			if ((init = decl->var.init_expr))
 			{
+				if (init->expr_kind == EXPR_TYPEINFO)
+				{
+					SEMA_ERROR(init, "You can't assign a type to a regular compile time variable like '%s', but it would be allowed if the variable was a compile time type variable. Such a variable needs to have a type-like name, e.g. '$MyType'.", decl->name);
+					goto FAIL;
+				}
 				if (!sema_analyse_expr(context, init)) goto FAIL;
 				// Check it is constant.
 				if (!expr_is_runtime_const(init))
