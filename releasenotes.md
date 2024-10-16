@@ -14,6 +14,8 @@
 - Interfaces now support .ptr and .type directly without casting to `any`.
 - Switch to `<* *>` docs.
 - Improve error messages on expressions like `var $type = int;` #1553.
+- Disallow casting a `void*` to `any` or an interface, unless it is `null`.
+- Defer resolution of declarations when looked up in `def` aliased #1559.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

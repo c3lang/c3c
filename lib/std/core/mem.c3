@@ -505,10 +505,10 @@ struct TempState
 	TempAllocator* old;
 	TempAllocator* current;
 	usz mark;
-}/*
-/+++
+}
+<*
  Push the current temp allocator. A push must always be balanced with a pop using the current state.
-+++/                                                          */
+*>
 fn TempState temp_push(TempAllocator* other = null)
 {
 	TempAllocator* current = allocator::temp();

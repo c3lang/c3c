@@ -4299,7 +4299,16 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 			return poisoned_decl;
 		}
 	}
-	if (!sema_analyse_decl(c, symbol)) return poisoned_decl;
+
+	CompilationUnit *unit = symbol->unit;
+	if (unit->module->stage < ANALYSIS_POST_REGISTER)
+	{
+		vec_add(unit->global_decls, symbol);
+	}
+	else
+	{
+		if (!sema_analyse_decl(c, symbol)) return poisoned_decl;
+	}
 	unit_register_external_symbol(c, symbol);
 	return symbol;
 }
@@ -4345,6 +4354,7 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 		RETURN_SEMA_ERROR(expr, "A global variable or function name was expected here.");
 	}
 	Decl *symbol = expr->identifier_expr.decl;
+	if (!sema_analyse_decl(context, symbol)) return false;
 	bool should_be_const = char_is_upper(decl->name[0]);
 	if (should_be_const)
 	{

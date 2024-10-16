@@ -724,6 +724,14 @@ static TypeCmpResult match_pointers(CastContext *cc, Type *to_ptr, Type *from_pt
 	return type_is_pointer_equivalent(cc->context, to_ptr, from_ptr, flatten);
 }
 
+static bool rule_voidptr_to_any(CastContext *cc, bool is_explicit, bool is_silent)
+{
+	if (expr_is_const_pointer(cc->expr) && !cc->expr->const_expr.ptr) return true;
+	RETURN_CAST_ERROR(cc->expr,
+	                  "Casting a 'void*' to %s is not permitted (except when the 'void*' is a constant null).",
+	                  type_quoted_error_string(cc->to));
+}
+
 static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (is_explicit) return true;
@@ -1129,7 +1137,6 @@ static bool rule_ptr_to_interface(CastContext *cc, bool is_explicit, bool is_sil
 	if (type_may_implement_interface(pointee))
 	{
 		Type *interface = cc->to;
-		Decl *pointee_decl = pointee->decl;
 		if (type_implements_interface(cc, pointee->decl, interface)) return true;
 	}
 	if (is_silent) return false;
@@ -2283,7 +2290,9 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RULST &rule_ulist_to_struct       /* Untyped list -> bitstruct or union                                                                */
 #define RULAR &rule_ulist_to_vecarr       /* Untyped list -> vector or array                                                                   */
 #define RULFE &rule_ulist_to_inferred     /* Untyped list -> inferred vector or array                                                          */
-#define RULSL &rule_ulist_to_slice        /* Untyped list -> slice                                                                          */
+#define RULSL &rule_ulist_to_slice        /* Untyped list -> slice                                                                             */
+#define RVPAN &rule_voidptr_to_any        /* void* -> interface/any                                                                            */
+
 CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
 // void, wildc,  bool,   int, float,   ptr, slice,   vec, bitst, distc, array, strct, union,   any,  infc, fault,  enum, func,  typid, afaul, voidp, arrpt, infer, ulist (to)
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
@@ -2306,7 +2315,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {REXPL, _NO__, REXPL, RPTIN, _NO__, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RPTPT, _NO__, _NO__, ROKOK, _NO__, _NO__, _NO__}, // FUNC
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NA__, _NO__, REXPL, REXPL, _NO__, _NO__}, // TYPEID
  {REXPL, _NO__, REXPL, RPTIN, _NO__, REXPL, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RAFFA, _NO__, _NO__, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__}, // ANYFAULT
- {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
+ {REXPL, _NO__, REXPL, RPTIN, _NO__, ROKOK, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, RVPAN, RVPAN, _NO__, _NO__, ROKOK, _NO__, _NO__, _NA__, ROKOK, _NO__, _NO__}, // VOIDPTR
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, RAPSL, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, ROKOK, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // ARRPTR
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // INFERRED
  {_NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULSL, RULAR, RULST, RXXDI, RULAR, RULST, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RULFE, _NO__}, // UNTYPED_LIST

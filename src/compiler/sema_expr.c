@@ -729,7 +729,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 {
 	Decl *decl = expr->identifier_expr.decl;
 	decl = decl_flatten(decl);
-
 	switch (decl->decl_kind)
 	{
 		case DECL_FNTYPE:
