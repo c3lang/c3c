@@ -639,9 +639,8 @@ err_retblock:                                     ; preds = %assign_optional4, %
 define ptr @test.bool_to_string(i8 zeroext %0) #0 {
 entry:
   %1 = trunc i8 %0 to i1
-  %ternary = select i1 %1, %"char[]" { ptr @.str.10, i64 4 }, %"char[]" { ptr @.str.11, i64 5 }
-  %2 = extractvalue %"char[]" %ternary, 0
-  ret ptr %2
+  %ternary = select i1 %1, ptr @.str.10, ptr @.str.11
+  ret ptr %ternary
 }
 
 ; Function Attrs:

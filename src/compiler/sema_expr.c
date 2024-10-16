@@ -9507,6 +9507,10 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			SEMA_ERROR(expr, "Recursive resolution of list.");
 			return expr_poison(expr);
 		case RESOLVE_DONE:
+			if (infer_type && expr->type != infer_type)
+			{
+				cast_implicit_silent(context, expr, infer_type, false);
+			}
 			return expr_ok(expr);
 		default:
 			UNREACHABLE
