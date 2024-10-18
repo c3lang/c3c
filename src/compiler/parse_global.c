@@ -1770,6 +1770,10 @@ INLINE bool parse_interface_body(ParseContext *c, Decl *interface)
 	{
 		AstId contracts = 0;
 		if (!parse_contracts(c, &contracts)) return poisoned_decl;
+		if (!tok_is(c, TOKEN_FN))
+		{
+			RETURN_PRINT_ERROR_HERE("Interfaces can only have function declarations, and they must start with 'fn' as usual.");
+		}
 		ASSIGN_DECL_OR_RET(Decl *interface_fn, parse_func_definition(c, contracts, FUNC_PARSE_INTERFACE), false);
 		vec_add(fns, interface_fn);
 	}

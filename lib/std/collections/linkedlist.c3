@@ -245,6 +245,11 @@ fn Type! LinkedList.pop(&self)
 	return self._last.value;
 }
 
+fn bool LinkedList.is_empty(&self)
+{
+	return !self._first;
+}
+
 fn Type! LinkedList.pop_front(&self)
 {
 	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;

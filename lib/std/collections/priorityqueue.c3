@@ -46,6 +46,7 @@ fn void PrivatePriorityQueue.temp_init(&self, usz initial_capacity = 16) @inline
 	self.heap.new_init(initial_capacity, allocator::temp()) @inline;
 }
 
+
 fn void PrivatePriorityQueue.push(&self, Type element)
 {
 	self.heap.push(element);
@@ -66,6 +67,15 @@ fn void PrivatePriorityQueue.push(&self, Type element)
 	}
 }
 
+fn void PrivatePriorityQueue.remove_at(&self, usz index)
+{
+	if (index == 0)
+	{
+		self.pop()!!;
+		return;
+	}
+	self.heap.remove_at(index);
+}
 <*
  @require self != null
 *>

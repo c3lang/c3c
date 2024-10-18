@@ -6,6 +6,8 @@ distinct Duration = long;
 distinct Clock = ulong;
 distinct NanoDuration (Printable) = long;
 
+const Time FAR_FUTURE = long.max;
+const Time FAR_PAST = long.min;
 const Duration US = 1;
 const Duration MS = 1_000;
 const Duration SEC = 1_000_000;
@@ -15,6 +17,7 @@ const Duration DAY = 24 * HOUR;
 const Duration WEEK = 7 * DAY;
 const Duration MONTH = 30 * DAY;
 const Duration YEAR = 36525 * DAY / 100;
+const Duration FOREVER = long.max;
 
 fn Duration us(long l) @inline => (Duration)l * US;
 fn Duration ms(long l) @inline => (Duration)l * MS;
@@ -86,6 +89,13 @@ fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)HOUR);
 fn Time Time.add_days(time, long days) => time + (Time)(days * (long)DAY);
 fn Time Time.add_weeks(time, long weeks) => time + (Time)(weeks * (long)WEEK);
 fn Time Time.add_duration(time, Duration duration) => time + (Time)duration;
+
+fn int Time.compare_to(time, Time other)
+{
+	if (time == other) return 0;
+	return time > other ? 1 : -1;
+}
+
 fn double Time.to_seconds(time) => (long)time / (double)SEC;
 fn Duration Time.diff_us(time, Time other) => (Duration)(time - other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
