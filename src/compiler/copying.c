@@ -372,7 +372,14 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 				}
 				else
 				{
-					MACRO_COPY_DECL(expr->try_unwrap_expr.decl);
+					if (expr->try_unwrap_expr.optional)
+					{
+						MACRO_COPY_DECL(expr->try_unwrap_expr.decl);
+					}
+					else
+					{
+						fixup_decl(c, &expr->try_unwrap_expr.decl);
+					}
 				}
 			}
 			return expr;

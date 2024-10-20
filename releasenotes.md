@@ -40,6 +40,7 @@
 - Empty expression block would crash compiler with debug on #1554.
 - Improve infer conversions on constants, e.g. `ZString a = foo ? "a" : "b";` #1561
 - Show error when declarations do not start with `fn` in interfaces. #1565
+- `if (try foo)` was handled incorrectly inside a defer.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
