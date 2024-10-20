@@ -1147,6 +1147,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		{
 			case VARDECL_PARAM_REF:
 				inferred_type = type_get_ptr(method_parent->type);
+				param->var.not_null = true;
 				if (!is_macro) param->var.kind = VARDECL_PARAM;
 				break;
 			case VARDECL_PARAM:
