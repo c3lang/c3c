@@ -888,13 +888,19 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 																							  false)) return false;
 	}
 
-	if (type_storage_type(left->type) == STORAGE_COMPILE_TIME)
+	switch (sema_resolve_storage_type(context, left->type))
 	{
-		if (left->type == type_untypedlist)
-		{
-			RETURN_SEMA_ERROR(expr, "The ternary would be an 'untyped list', you need to explicitly type one or both branches to a runtime type.");
-		}
-		RETURN_SEMA_ERROR(expr, "A ternary must always return a runtime type, but it was %s.", type_quoted_error_string(left_canonical));
+		case STORAGE_ERROR:
+			return false;
+		case STORAGE_COMPILE_TIME:
+			if (left->type == type_untypedlist)
+			{
+				RETURN_SEMA_ERROR(expr, "The ternary would be an 'untyped list', you need to explicitly type one or both branches to a runtime type.");
+			}
+			RETURN_SEMA_ERROR(expr, "A ternary must always return a runtime type, but it was %s.", type_quoted_error_string(left_canonical));
+			break;
+		default:
+			break;
 	}
 	if (path != COND_MISSING)
 	{
@@ -1278,9 +1284,14 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				SEMA_NOTE(definition, "The definition is here.");
 				return false;
 			}
-			if (type_storage_type(type) != STORAGE_NORMAL)
+			switch (sema_resolve_storage_type(context, type))
 			{
-				RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
+				case STORAGE_ERROR:
+					return false;
+				case STORAGE_NORMAL:
+					break;
+				default:
+					RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed by reference.", type_quoted_error_string(type));
 			}
 			if (type && type->canonical != arg->type->canonical)
 			{
@@ -1305,8 +1316,10 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			// foo
 			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false)) return false;
 			if (IS_OPTIONAL(arg)) *optional_ref = true;
-			switch (type_storage_type(arg->type))
+			switch (sema_resolve_storage_type(context, arg->type))
 			{
+				case STORAGE_ERROR:
+					return false;
 				case STORAGE_NORMAL:
 					break;
 				case STORAGE_VOID:
@@ -1698,10 +1711,15 @@ SPLAT_NORMAL:;
 					if (!callee->macro)
 					{
 						if (!sema_analyse_expr(context, arg)) return false;
-						if (type_storage_type(arg->type) != STORAGE_NORMAL)
+						switch (sema_resolve_storage_type(context, arg->type))
 						{
-							RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a raw variadic argument.",
-											  type_quoted_error_string(arg->type));
+							case STORAGE_ERROR:
+								return false;
+							case STORAGE_NORMAL:
+								break;
+							default:
+								RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a raw variadic argument.",
+								                  type_quoted_error_string(arg->type));
 						}
 						cast_promote_vararg(context, arg);
 					}
@@ -1711,10 +1729,15 @@ SPLAT_NORMAL:;
 				case VARIADIC_ANY:
 					if (!sema_analyse_expr(context, arg)) return false;
 					Type *type = arg->type;
-					if (type_storage_type(type) != STORAGE_NORMAL)
+					switch (sema_resolve_storage_type(context, arg->type))
 					{
-						RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
-										  type_quoted_error_string(type));
+						case STORAGE_ERROR:
+							return false;
+						case STORAGE_NORMAL:
+							break;
+						default:
+							RETURN_SEMA_ERROR(arg, "A value of type %s cannot be passed as a variadic argument.",
+							                  type_quoted_error_string(type));
 					}
 					expr_insert_addr(arg);
 					FALLTHROUGH;
@@ -2137,9 +2160,19 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 							  type_quoted_error_string(type_get_ptr(type_info->type)));
 		}
 		body_arg->type = type;
-		if (type_info && type_storage_type(type_info->type) == STORAGE_NORMAL)
+
+		if (type_info)
 		{
-			if (!sema_set_alloca_alignment(context, body_arg->type, &body_arg->alignment)) return false;
+			switch (sema_resolve_storage_type(context, type_info->type))
+			{
+				case STORAGE_ERROR:
+					return false;
+				case STORAGE_NORMAL:
+					if (!sema_set_alloca_alignment(context, body_arg->type, &body_arg->alignment)) return false;
+					break;
+				default:
+					break;
+			}
 		}
 	}
 
@@ -7039,15 +7072,21 @@ static inline bool sema_expr_analyse_taddr(SemaContext *context, Expr *expr, boo
 	if (!sema_analyse_expr(context, inner)) return false;
 
 	Type *type = inner->type;
-	if (type_storage_type(type) != STORAGE_NORMAL)
+
+	switch (sema_resolve_storage_type(context, type))
 	{
-		if (failed_ref)
-		{
-			*failed_ref = true;
+		case STORAGE_ERROR:
 			return false;
-		}
-		RETURN_SEMA_ERROR(expr, "It is not possible to take the address from a value of type %s.",
-						  type_quoted_error_string(type));
+		case STORAGE_NORMAL:
+			break;
+		default:
+			if (failed_ref)
+			{
+				*failed_ref = true;
+				return false;
+			}
+			RETURN_SEMA_ERROR(expr, "It is not possible to take the address from a value of type %s.",
+							  type_quoted_error_string(type));
 	}
 	// 2. The type is the resulting type of the expression.
 	expr->type = type_get_ptr_recurse(inner->type);
@@ -7797,10 +7836,14 @@ static inline bool sema_expr_analyse_ct_alignof(SemaContext *context, Expr *expr
 	Decl *decl = sema_expr_analyse_var_path(context, main_var);
 	if (!decl) return false;
 	Type *type = decl->type;
-	if (type_storage_type(type) != STORAGE_NORMAL)
+	switch (sema_resolve_storage_type(context, type))
 	{
-		SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
-		return false;
+		case STORAGE_ERROR:
+			return false;
+		case STORAGE_NORMAL:
+			break;
+		default:
+			RETURN_SEMA_ERROR(main_var, "Cannot use '$alignof' on type %s.", type_quoted_error_string(type));
 	}
 	AlignSize align;
 	if (decl && !decl_is_user_defined_type(decl))
@@ -8663,9 +8706,14 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 			if (!decl)
 			{
 				if (!sema_analyse_inferred_expr(context, infer_type, arg_expr)) return false;
-				if (type_storage_type(arg_expr->type) != STORAGE_NORMAL)
+				switch (sema_resolve_storage_type(context, arg_expr->type))
 				{
-					RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
+					case STORAGE_ERROR:
+						return false;
+					case STORAGE_NORMAL:
+						break;
+					default:
+						RETURN_SEMA_ERROR(expr, "The vararg doesn't have a valid runtime type.");
 				}
 				decl = decl_new_generated_var(arg_expr->type, VARDECL_PARAM, arg_expr->span);
 				decl->var.init_expr = arg_expr;

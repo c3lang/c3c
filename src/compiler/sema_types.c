@@ -291,8 +291,10 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 	}
 	TypeInfo *inner_type = inner->type_expr;
 	if (!sema_resolve_type(context, inner_type, resolve_kind)) return false;
-	switch (type_storage_type(inner_type->type))
+	switch (sema_resolve_storage_type(context, inner_type->type))
 	{
+		case STORAGE_ERROR:
+			return false;
 		case STORAGE_VOID:
 		case STORAGE_UNKNOWN:
 		case STORAGE_NORMAL:
@@ -313,8 +315,10 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 	if (!sema_analyse_expr_value(context, expr)) return false;
 	Type *expr_type = expr->type;
 	if (expr_type->type_kind == TYPE_FUNC_RAW) expr_type = type_get_func_ptr(expr_type);
-	switch (type_storage_type(expr_type))
+	switch (sema_resolve_storage_type(context, expr_type))
 	{
+		case STORAGE_ERROR:
+			return false;
 		case STORAGE_NORMAL:
 		case STORAGE_VOID:
 		case STORAGE_UNKNOWN:

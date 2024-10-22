@@ -52,7 +52,7 @@ static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
-static bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span);
+static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span);
 static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl);
 
@@ -243,8 +243,10 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
 			Type *type = type_info->type;
-			switch (type_storage_type(type))
+			switch (sema_resolve_storage_type(context, type))
 			{
+				case STORAGE_ERROR:
+					return false;
 				case STORAGE_NORMAL:
 					break;
 				case STORAGE_VOID:
@@ -1693,8 +1695,10 @@ static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *
 	TypeInfo *rtype;
 	Decl **params;
 	if (!sema_analyse_operator_common(context, method, &rtype, &params, 2)) return false;
-	switch (type_storage_type(rtype->type))
+	switch (sema_resolve_storage_type(context, rtype->type))
 	{
+		case STORAGE_ERROR:
+			return false;
 		case STORAGE_NORMAL:
 			break;
 		case STORAGE_VOID:
@@ -3650,10 +3654,12 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 	return true;
 }
 
-static bool sema_analyse_decl_type(SemaContext *context, Type *type, SourceSpan span)
+static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span)
 {
-	switch (type_storage_type(type))
+	switch (sema_resolve_storage_type(context, type))
 	{
+		case STORAGE_ERROR:
+			return false;
 		case STORAGE_NORMAL:
 			return true;
 		case STORAGE_VOID:
@@ -3868,8 +3874,10 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 				return decl_poison(decl);
 			}
 			decl->type = init_expr->type;
-			switch (type_storage_type(init_expr->type))
+			switch (sema_resolve_storage_type(context, init_expr->type))
 			{
+				case STORAGE_ERROR:
+					return decl_poison(decl);
 				case STORAGE_NORMAL:
 					break;
 				case STORAGE_WILDCARD:
@@ -3900,7 +3908,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			{
 				if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
 			}
-			if (!sema_analyse_decl_type(context, decl->type, init_expr->span)) return decl_poison(decl);
+			if (!sema_analyse_variable_type(context, decl->type, init_expr->span)) return decl_poison(decl);
 			// Skip further evaluation.
 			goto EXIT_OK;
 		}
@@ -3911,7 +3919,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	                                                : RESOLVE_TYPE_DEFAULT)) return decl_poison(decl);
 
 	Type *type = decl->type = type_info->type;
-	if (!sema_analyse_decl_type(context, type, type_info->span)) return decl_poison(decl);
+	if (!sema_analyse_variable_type(context, type, type_info->span)) return decl_poison(decl);
 
 	type = type_no_optional(type);
 	if (type_is_user_defined(type) && type->decl)
@@ -4083,8 +4091,10 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 			Type *type = type_info->type->canonical;
 			if (type->type_kind == TYPE_OPTIONAL) RETURN_SEMA_ERROR(type_info, "Expected a non-optional type.");
-			switch (type_storage_type(type))
+			switch (sema_resolve_storage_type(context, type))
 			{
+				case STORAGE_ERROR:
+					return false;
 				case STORAGE_NORMAL:
 				case STORAGE_VOID:
 					break;

@@ -1,0 +1,37 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+
+struct Foo
+{
+    int a;
+    float b;
+}
+
+macro @offset_buggy($Type, #member)
+{
+    $Type *t = null;
+    return (usz)(uptr)&t.#member;
+}
+
+fn int main()
+{
+	usz a = @offset_buggy(Foo, b);
+	return (int)a;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %a = alloca i64, align 8
+  %t = alloca ptr, align 8
+  store ptr null, ptr %t, align 8
+  %0 = load ptr, ptr %t, align 8
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 4
+  %ptrxi = ptrtoint ptr %ptradd to i64
+  store i64 %ptrxi, ptr %a, align 8
+  %1 = load i64, ptr %a, align 8
+  %trunc = trunc i64 %1 to i32
+  ret i32 %trunc
+}

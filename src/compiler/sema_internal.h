@@ -209,3 +209,37 @@ static inline IndexDiff range_const_len(Range *range)
 	if (range->start_from_end != range->end_from_end) return -1;
 	return end_val - start_val + 1;
 }
+
+static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *type)
+{
+	if (!type) return STORAGE_NORMAL;
+	bool is_distinct = false;
+	RETRY:
+	if (type == type_wildcard_optional) return STORAGE_WILDCARD;
+	switch (type->type_kind)
+	{
+		case TYPE_VOID:
+			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
+		case TYPE_WILDCARD:
+			return STORAGE_WILDCARD;
+		case TYPE_MEMBER:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_TYPEINFO:
+		case TYPE_FUNC_RAW:
+			return STORAGE_COMPILE_TIME;
+		case TYPE_OPTIONAL:
+			type = type->optional;
+			goto RETRY;
+		case TYPE_TYPEDEF:
+			if (!sema_analyse_decl(context, type->decl)) return false;
+			type = type->canonical;
+			goto RETRY;
+		case TYPE_DISTINCT:
+			is_distinct = true;
+			if (!sema_analyse_decl(context, type->decl)) return false;
+			type = type->decl->distinct->type;
+			goto RETRY;
+		default:
+			return STORAGE_NORMAL;
+	}
+}

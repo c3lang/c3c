@@ -2811,37 +2811,6 @@ INLINE const char *type_invalid_storage_type_name(Type *type)
 	}
 }
 
-static inline StorageType type_storage_type(Type *type)
-{
-	if (!type) return STORAGE_NORMAL;
-	bool is_distinct = false;
-	RETRY:
-	if (type == type_wildcard_optional) return STORAGE_WILDCARD;
-	switch (type->type_kind)
-	{
-		case TYPE_VOID:
-			return is_distinct ? STORAGE_UNKNOWN : STORAGE_VOID;
-		case TYPE_WILDCARD:
-			return STORAGE_WILDCARD;
-		case TYPE_MEMBER:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_TYPEINFO:
-		case TYPE_FUNC_RAW:
-			return STORAGE_COMPILE_TIME;
-		case TYPE_OPTIONAL:
-			type = type->optional;
-			goto RETRY;
-		case TYPE_TYPEDEF:
-			type = type->canonical;
-			goto RETRY;
-		case TYPE_DISTINCT:
-			is_distinct = true;
-			type = type->decl->distinct->type;
-			goto RETRY;
-		default:
-			return STORAGE_NORMAL;
-	}
-}
 
 INLINE TypeInfo *type_info_new(TypeInfoKind kind, SourceSpan span)
 {

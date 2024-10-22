@@ -795,6 +795,7 @@ static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, D
 {
 	assert(member->resolve_status == RESOLVE_DONE);
 	Decl *found = NULL;
+
 	do
 	{
 		ArrayIndex index = find_member_index(parent, member);
@@ -1191,12 +1192,12 @@ static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *e
 static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *parent = expr->access_expr.parent;
-	llvm_emit_expr(c, be_value, parent);
-	Decl *member = expr->access_expr.ref;
-
 	Type *flat_type = type_flatten(parent->type);
 	if (flat_type->type_kind == TYPE_ENUM)
 	{
+		llvm_emit_expr(c, be_value, parent);
+		Decl *member = expr->access_expr.ref;
+
 		llvm_value_rvalue(c, be_value);
 		if (!flat_type->decl->backend_ref) llvm_get_typeid(c, parent->type);
 		assert(member->backend_ref);
@@ -1207,6 +1208,18 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 		llvm_value_set_address(be_value, ptr, member->type, alignment);
 		return;
 	}
+	if (expr_is_deref(parent))
+	{
+		llvm_emit_expr(c, be_value, parent->unary_expr.expr);
+		llvm_value_rvalue(c, be_value);
+		llvm_value_set_address_abi_aligned(be_value, be_value->value, parent->type);
+	}
+	else
+	{
+		llvm_emit_expr(c, be_value, parent);
+	}
+	Decl *member = expr->access_expr.ref;
+
 	llvm_emit_member_addr(c, be_value, type_lowering(parent->type)->decl, member);
 }
 

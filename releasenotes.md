@@ -42,6 +42,7 @@
 - Show error when declarations do not start with `fn` in interfaces. #1565
 - `if (try foo)` was handled incorrectly inside a defer.
 - `&self` argument not implicitly null checked. #1556.
+- `(uptr)&((Foo*)null).a` incorrectly inserts a null check. #1544
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
