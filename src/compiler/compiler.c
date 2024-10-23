@@ -1145,7 +1145,7 @@ static void execute_scripts(void)
 		}
 		scratch_buffer_clear();
 		scratch_buffer_append_len(call.ptr, call.len);
-		(void) compile_and_invoke(scratch_buffer_to_string(), execs.len ? execs.ptr : "", NULL);
+		(void) compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL);
 	}
 	dir_change(old_path);
 	free(old_path);
@@ -1524,6 +1524,7 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	}
 	const char *compiler_path = file_append_path(find_executable_path(), name);
 
+	scratch_buffer_clear();
 	if (PLATFORM_WINDOWS) scratch_buffer_append_char('"');
 	scratch_buffer_append_native_safe_path(compiler_path, strlen(compiler_path));
 	const char *output = "__c3exec__";
