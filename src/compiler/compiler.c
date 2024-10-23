@@ -1517,6 +1517,8 @@ void scratch_buffer_append_native_safe_path(const char *data, int len)
 
 File *compile_and_invoke(const char *file, const char *args, const char *stdin_data)
 {
+  scratch_buffer_clear();
+
 	char *name;
 	if (!file_namesplit(compiler_exe_name, &name, NULL))
 	{
