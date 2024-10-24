@@ -313,7 +313,11 @@ fn Key[] HashMap.copy_keys(&map, Allocator allocator = allocator::heap())
 	{
 		while (entry)
 		{
-			list[index++] = entry.key;
+			$if COPY_KEYS:
+				list[index++] = entry.key.copy(allocator);
+			$else
+				list[index++] = entry.key;
+			$endif
 			entry = entry.next;
 		}
 	}
