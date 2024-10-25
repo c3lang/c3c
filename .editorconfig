@@ -11,18 +11,15 @@ indent_style = space
 indent_size = 4
 
 [*.{c,cc,h}]
-indent_style = space
-indent_size = 4
+indent_style = tab
 
 [*.{c3}]
-indent_style = space
-indent_size = 4
+indent_style = tab
 
 [*.{json,toml,yml,gyp}]
 indent_style = space
 indent_size = 2
 
 [*.{py,pyi}]
-indent_style = space
-indent_size = 2
+indent_style = tab
 
