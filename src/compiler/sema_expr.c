@@ -8077,7 +8077,7 @@ RETRY:
 		case TYPE_INFO_EVALTYPE:
 		{
 			Expr *expr = type_info->unresolved_type_expr;
-			expr = sema_ct_eval_expr(context, "$evaltype", expr, false);
+			expr = sema_ct_eval_expr(context, true, expr, false);
 			if (!expr) return NULL;
 			if (expr->expr_kind != EXPR_TYPEINFO)
 			{
@@ -8869,7 +8869,7 @@ static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr, C
 {
 	TokenType type;
 	Path *path = NULL;
-	Expr *result = sema_ct_eval_expr(context, "$eval", expr->inner_expr, true);
+	Expr *result = sema_ct_eval_expr(context, false, expr->inner_expr, true);
 	if (!result) return false;
 	if (result->expr_kind == EXPR_TYPEINFO)
 	{

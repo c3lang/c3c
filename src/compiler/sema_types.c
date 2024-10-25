@@ -282,7 +282,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	Expr *inner = sema_ct_eval_expr(context, "$evaltype", expr, true);
+	Expr *inner = sema_ct_eval_expr(context, true, expr, true);
 	if (!inner) return type_info_poison(type_info);
 	if (inner->expr_kind != EXPR_TYPEINFO)
 	{

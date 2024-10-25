@@ -45,6 +45,7 @@
 - `if (try foo)` was handled incorrectly inside a defer.
 - `&self` argument not implicitly null checked. #1556.
 - `(uptr)&((Foo*)null).a` incorrectly inserts a null check. #1544
+- Incorrect error message when `$eval` is provided an invalid string. #1570
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
