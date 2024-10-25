@@ -31,8 +31,8 @@ fn void! copy_map() @test
 }
 
 /*
-	Some Keys (including Strings) are copied into the hashmap on insertion.
-	When copying keys out, the keys themselves must also be copied out.
+	Some Keys (including Strings) are deep_copied into the hashmap on insertion.
+	When copying keys out, the keys themselves must also be deep-copied out.
 	Otherwise when the map is freed, the copied-in keys will also be freed,
 	resulting in use-after-free.
 */
