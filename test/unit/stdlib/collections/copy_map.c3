@@ -29,3 +29,22 @@ fn void! copy_map() @test
 		assert(alloc.allocated() == 0);
 	};
 }
+
+/*
+	Some Keys (including Strings) are copied into the hashmap on insertion.
+	When copying keys out, the keys themselves must also be copied out.
+	Otherwise when the map is freed, the copied-in keys will also be freed,
+	resulting in use-after-free.
+*/
+fn void! copy_keys() @test
+{
+	String[] y;
+	@pool() {
+		IntMap x;
+		x.temp_init();
+		x.set("hello", 0); // keys copied into temp hashmap
+		y = x.copy_keys(); // keys copied out
+		// end of pool: hashmap and its copied-in keys dropped
+	};
+	assert(y == {"hello"});
+}
