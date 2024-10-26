@@ -17,6 +17,8 @@ entry:
   %0 = load <2 x i32>, ptr @test.foo, align 1
   %elemset = insertelement <2 x i32> %0, i32 2, i64 1
   store <2 x i32> %elemset, ptr @test.foo, align 1
-  store i32 4, ptr getelementptr inbounds (i8, ptr @test.foo, i64 4), align 1
+  %1 = load <2 x i32>, ptr @test.foo, align 1
+  %elemset1 = insertelement <2 x i32> %1, i32 4, i64 1
+  store <2 x i32> %elemset1, ptr @test.foo, align 1
   ret void
 }

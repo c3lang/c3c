@@ -4599,7 +4599,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 	UNREACHABLE
 }
 
-static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type, const char *kw, unsigned len)
+static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type, const char *kw, unsigned len, CheckType check)
 {
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
@@ -4624,15 +4624,12 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	index &= 0xF;
 	if (len == 1)
 	{
-		expr->expr_kind = EXPR_SUBSCRIPT_ADDR;
+		expr->expr_kind = EXPR_SUBSCRIPT;
 		expr->subscript_expr = (ExprSubscript) {
 				.index.expr = exprid(expr_new_const_int(expr->span, type_usz, index)),
 				.expr = exprid(parent)
 		};
-		expr->resolve_status = RESOLVE_DONE;
-		expr->type = type_get_ptr(indexed_type);
-		expr_rewrite_insert_deref(expr);
-		return true;
+		return sema_expr_analyse_subscript(context, expr, check, false);
 	}
 	Type *result = type_get_vector(indexed_type, len);
 	expr->expr_kind = EXPR_SWIZZLE;
@@ -4836,7 +4833,7 @@ CHECK_DEEPER:
 				if (!swizzle[(int)kw[i]]) goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
-			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len);
+			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len, check);
 			NOT_SWIZZLE:;
 		}
 	}

@@ -9,3 +9,14 @@ fn void! swizzle_test()
 
 }
 
+
+
+fn int main()
+{
+  int[<2>] $test = {3, 3};
+  int[<2>] $test2 = {4, 4};
+  $if ($test2.x != $test.x):
+  y++; // #error: did you spell it
+  $endif
+  return 0;
+}

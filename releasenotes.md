@@ -47,6 +47,7 @@
 - `(uptr)&((Foo*)null).a` incorrectly inserts a null check. #1544
 - Incorrect error message when `$eval` is provided an invalid string. #1570
 - `HashMap.copy_keys` did not properly copy keys which needed to be allocated #1569
+- Named vector component access would not fold at compile time. #1574
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
