@@ -18,6 +18,7 @@
 - Defer resolution of declarations when looked up in `def` aliased #1559.
 - Adding constants to the Json AST #1540
 - Adding info to the globals inside Json AST #1541
+- Null-check function pointer invocation #1573.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

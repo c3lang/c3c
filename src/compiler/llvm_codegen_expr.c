@@ -6206,6 +6206,16 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		// 1d. Load it as a value
 		func = llvm_load_value_store(c, &func_value);
 
+		if (safe_mode_enabled())
+		{
+			LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, func, LLVMConstNull(c->ptr_type), "checknull");
+			scratch_buffer_clear();
+			scratch_buffer_append("Calling null function pointer, '");
+			span_to_scratch(function->span);
+			scratch_buffer_append("' was null.");
+			llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), function->span, NULL, NULL, NULL);
+		}
+
 		// 1e. Calculate the function type
 		func_type = llvm_get_type(c, type);
 	}
