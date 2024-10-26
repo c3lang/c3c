@@ -122,7 +122,13 @@ macro usz! fprint(out, x)
 			$if $assignable(x, String):
 				return out.write((String)x);
 			$else
-				return fprintf(out, "%s", x);
+				$if is_struct_with_default_print($Type):
+					Formatter formatter;
+                    formatter.init(&out_putstream_fn, &&(OutStream)out);
+                    return struct_to_format(x, &formatter, false);
+				$else
+					return fprintf(out, "%s", x);
+				$endif
 			$endif
 	$endswitch
 }

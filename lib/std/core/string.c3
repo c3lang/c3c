@@ -1,5 +1,6 @@
 module std::core::string;
 import std::ascii;
+import std::io;
 
 distinct String @if(!$defined(String)) = inline char[];
 distinct ZString = inline char*;
@@ -749,4 +750,15 @@ fn String! Splitter.next(&self)
 	return remaining;
 }
 
+macro String new_struct_to_str(x, Allocator allocator = allocator::heap())
+{
+	DString s;
+	@stack_mem(512; Allocator mem)
+	{
+		s.new_init(allocator: mem);
+		io::fprint(&s, x)!!;
+	};
+	return s.copy_str(allocator);
+}
 
+macro String temp_struct_to_str(x) => new_struct_to_str(x, allocator::temp());

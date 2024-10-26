@@ -23,6 +23,45 @@ fault PrintFault
 def OutputFn = fn void!(void* buffer, char c);
 def FloatType = double;
 
+
+macro bool is_struct_with_default_print($Type)
+{
+	return $Type.kindof == STRUCT
+		&&& !$defined($Type.to_format)
+		&&& !$defined($Type.to_new_string);
+}
+
+<*
+ Introspect a struct and print it to a formatter
+
+ @require @typekind(value) == STRUCT `This macro is only valid on macros`
+*>
+macro usz! struct_to_format(value, Formatter* f, bool $force_dump)
+{
+    var $Type = $typeof(value);
+    usz total = f.print("{ ")!;
+    $foreach ($i, $member : $Type.membersof)
+        $if $i > 0:
+            total += f.print(", ")!;
+        $endif
+        $if $member.nameof != "":
+            total += f.printf("%s: ", $member.nameof)!;
+		$endif
+		$if ($force_dump &&& $member.typeid.kindof == STRUCT) |||
+			is_struct_with_default_print($typefrom($member.typeid)):
+			total += struct_to_format($member.get(value), f, $force_dump)!;
+		$else
+			total += f.printf("%s", $member.get(value))!;
+		$endif
+	$endforeach
+	return total + f.print(" }");
+}
+
+fn usz! ReflectedParam.to_format(&self, Formatter* f) @dynamic
+{
+	return f.printf("[Parameter '%s']", self.name);
+}
+
 fn usz! Formatter.printf(&self, String format, args...)
 {
 	return self.vprintf(format, args) @inline;
@@ -159,12 +198,6 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);
 			return self.out_substr(arg.type.names[i]);
 		case STRUCT:
-			if (arg.type == ReflectedParam.typeid)
-			{
-				ReflectedParam* param = arg.ptr;
-				return self.out_substr("[Parameter '")
-					+  self.out_substr(param.name) + self.out_substr("']");
-			}
 			return self.out_substr("<struct>");
 		case UNION:
 			return self.out_substr("<union>");

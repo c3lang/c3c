@@ -4,7 +4,7 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
-struct ReflectedParam @if(!$defined(ReflectedParam))
+struct ReflectedParam (Printable) @if(!$defined(ReflectedParam))
 {
 	String name;
 	typeid type;

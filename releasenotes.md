@@ -19,6 +19,8 @@
 - Adding constants to the Json AST #1540
 - Adding info to the globals inside Json AST #1541
 - Null-check function pointer invocation #1573.
+- `string::new_struct_to_str` and `io::struct_to_format` to dump struct data.
+- `io::print` will now print structs.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
