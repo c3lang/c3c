@@ -96,6 +96,13 @@ enum MkdirPermissions
 	USER_AND_ADMIN
 }
 
+<*
+ Create a directory on a given path, optionally recursive.
+
+ @param path `The path to create`
+ @param recursive `If directories in between should be created if they're missing, defaults to false`
+ @param permissions `The permissions to set on the directory`
+*>
 fn bool! mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL)
 {
 	if (!path.path_string.len) return PathResult.INVALID_PATH?;
@@ -111,12 +118,22 @@ fn bool! mkdir(Path path, bool recursive = false, MkdirPermissions permissions =
 	return os::native_mkdir(path, permissions);
 }
 
+<*
+ Tries to delete directory, which must be empty.
+
+ @param path `The path to delete`
+ @return `true if there was a directory to delete, false otherwise`
+ @return! PathResult.INVALID_PATH `if the path was invalid`
+*>
 fn bool! rmdir(Path path)
 {
 	if (!path.path_string.len) return PathResult.INVALID_PATH?;
 	return os::native_rmdir(path);
 }
 
+<*
+ Like [rmdir] but deletes a directory even if it contains items.
+*>
 fn void! rmtree(Path path)
 {
 	if (!path.path_string.len) return PathResult.INVALID_PATH?;
@@ -127,11 +144,21 @@ fn void! rmtree(Path path)
 	$endif
 }
 
+<*
+ Creates a new path.
+
+ @return! PathResult.INVALID_PATH `if the path was invalid`
+*>
 fn Path! new(String path, Allocator allocator = allocator::heap(), PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	return { normalize(path.copy(allocator), path_env), path_env };
 }
 
+<*
+ Creates a new path using the temp allocator.
+
+ @return! PathResult.INVALID_PATH `if the path was invalid`
+*>
 fn Path! temp_new(String path, PathEnv path_env = DEFAULT_PATH_ENV)
 {
 	return new(path, allocator::temp(), path_env);
@@ -352,6 +379,13 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
 	}
 }
 
+<*
+ Get the path of the parent. This does not allocate, but returns a slice
+ of the path itself.
+
+ @return `The parent of the path as a non-allocated path`
+ @return! PathResult.NO_PARENT `if this path does not have a parent`
+*>
 fn Path! Path.parent(self)
 {
 	if (self.path_string.len == 1 && is_separator(self.path_string[0], self.env)) return PathResult.NO_PARENT?;

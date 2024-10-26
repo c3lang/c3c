@@ -385,6 +385,6 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 ## Thank yous
 
-A huge "thank you" goes out to all contributors and sponsors.
+A huge **THANK YOU** goes out to all contributors and sponsors.
 
-A special thank you to sponsor [Caleb-o](https://github.com/Caleb-o) for going the extra mile.
+A special thank you to sponsors [Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad) for going the extra mile.
