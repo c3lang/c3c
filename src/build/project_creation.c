@@ -182,6 +182,8 @@ const char* DEFAULT_TARGETS[] = {
 const char *LIB_README = "Welcome to the %s library.\n";
 
 static bool check_name(const char *name);
+static char* get_proj_name();
+static inline bool current_dir(const char *name);
 static void exit_fail(const char *fmt, ...);
 static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...);
 static void mkdir_or_fail(BuildOptions *build_options, const char *name);
@@ -250,7 +252,7 @@ void create_project(BuildOptions *build_options)
 		size_t len;
 		template = file_read_all(build_options->template, &len);
 	}
-	if (!check_name(build_options->project_name))
+	if (!current_dir(build_options->project_name) && !check_name(build_options->project_name))
 	{
 		error_exit("'%s' is not a valid project name.", build_options->project_name);
 	}
@@ -260,12 +262,19 @@ void create_project(BuildOptions *build_options)
 		error_exit("Can't open path '%s'.", build_options->path);
 	}
 
-	if (!dir_make(build_options->project_name))
+	if (current_dir(build_options->project_name))
 	{
-		error_exit("Could not create directory '%s'.", build_options->project_name);
+		build_options->project_name = get_proj_name();
+	}
+	else
+	{
+		if (!dir_make(build_options->project_name))
+		{
+			error_exit("Could not create directory '%s'.", build_options->project_name);
+		}
+		chdir_or_fail(build_options, build_options->project_name);
 	}
 
-	chdir_or_fail(build_options, build_options->project_name);
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", NULL);
 	create_file_or_fail(build_options, "project.json", template, build_options->project_name);
@@ -347,6 +356,21 @@ static bool check_name(const char *name)
 		if (!char_is_alphanum_(c)) return false;
 	}
 	return true;
+}
+
+static inline bool current_dir(const char *name)
+{
+	return (name[0] == '.' && name[1] == '\0');
+}
+
+static char* get_proj_name()
+{
+	char* full_path = getcwd(NULL, 0);
+	int end = 0;
+	while (full_path[end] != '\0') end++;
+	int begin = end;
+	while (begin > 0 && full_path[begin] != '/') begin--;
+	return full_path+begin+1;
 }
 
 static void chdir_or_fail(BuildOptions *build_options, const char *name)
