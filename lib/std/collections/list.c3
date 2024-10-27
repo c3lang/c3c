@@ -128,9 +128,6 @@ fn void List.clear(&self)
 	self.set_size(0);
 }
 
-<*
- @require self.size > 0
-*>
 fn Type! List.pop_first(&self)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
