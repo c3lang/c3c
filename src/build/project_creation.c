@@ -370,7 +370,8 @@ static char* get_proj_name()
 	while (full_path[end] != '\0') end++;
 	int begin = end;
 	while (begin > 0 && full_path[begin] != '/') begin--;
-	return full_path+begin+1;
+	if (full_path[begin] == '/') begin++;
+	return full_path+begin;
 }
 
 static void chdir_or_fail(BuildOptions *build_options, const char *name)
