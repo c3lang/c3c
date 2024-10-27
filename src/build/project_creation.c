@@ -301,27 +301,35 @@ static const char *module_name(BuildOptions *build_options)
 	scratch_buffer_clear();
 	size_t len = strlen(build_options->project_name);
 	bool has_char = false;
+	bool appended_underscore = false;
 	for (size_t i = 0; i < len; i++)
 	{
 		char c = build_options->project_name[i];
 		if (c >= '0' && c <= '9')
 		{
 			if (!has_char) scratch_buffer_append("m_");
-			has_char = true;
 			scratch_buffer_append_char(c);
+			has_char = true;
+			appended_underscore=false;
 			continue;
 		}
 		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
 		{
 			scratch_buffer_append_char(c | 0x20);
 			has_char = true;
+			appended_underscore=false;
 			continue;
 		}
-		scratch_buffer_append_char('_');
+		if (!appended_underscore)
+		{
+			scratch_buffer_append_char('_');
+			appended_underscore = true;
+		}
 	}
 	if (!has_char) scratch_buffer_append("module");
 	return scratch_buffer_to_string();
 }
+
 static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...)
 {
 	if (!fmt)
