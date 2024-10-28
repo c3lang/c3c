@@ -1,0 +1,552 @@
+.TH "c3c" "1" "2024-10-27" "C3 Compiler" "User Commands"
+.SH NAME
+c3c \- Compiler for the C3 programming language
+
+.SH SYNOPSIS
+.B c3c
+[\fIoptions\fR ...] \fIcommand\fR [\fIargs\fR ...]
+
+.SH DESCRIPTION
+.B c3c
+is the compiler for the C3 language, providing commands for compilation, project
+management, testing, and distribution. The available commands allow users to 
+compile files, initialize projects, build targets, run benchmarks, clean build 
+files, and more.
+
+.SH COMMANDS
+.PP
+.B c3c compile 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Compile files without a project into an executable.
+.RE
+.PP
+.B c3c init 
+\fIproject name\fR
+.RS
+Initialize a new project structure.
+.RE
+.PP
+.B c3c init-lib 
+\fIlibrary name\fR
+.RS
+Initialize a new library structure.
+.RE
+.PP
+.B c3c build 
+[\fItarget\fR]
+.RS
+Build the target in the current project.
+.RE
+.PP
+.B c3c benchmark
+.RS
+Run the benchmarks in the current project.
+.RE
+.PP
+.B c3c test
+.RS
+Run the unit tests in the current project.
+.RE
+.PP
+.B c3c clean
+.RS
+Clean all build files.
+.RE
+.PP
+.B c3c run 
+[\fItarget\fR] [-- [\fIarg1\fR ...]]
+.RS
+Run (and build if needed) the target in the current project.
+.RE
+.PP
+.B c3c dist 
+[\fItarget\fR]
+.RS
+Clean and build a target for distribution.
+.RE
+.PP
+.B c3c directives 
+[\fItarget\fR]
+.RS
+Generate documentation for the target.
+.RE
+.PP
+.B c3c bench 
+[\fItarget\fR]
+.RS
+Benchmark a target.
+.RE
+.PP
+.B c3c clean-run 
+[\fItarget\fR] [-- [\fIarg1\fR ...]]
+.RS
+Clean, then run the target.
+.RE
+.PP
+.B c3c compile-run 
+\fIfile1\fR [\fIfile2\fR ...] [-- [\fIarg1\fR ...]]
+.RS
+Compile files then immediately run the result.
+.RE
+.PP
+.B c3c compile-only 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Compile files but do not perform linking.
+.RE
+.PP
+.B c3c compile-benchmark 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Compile files into an executable and run benchmarks.
+.RE
+.PP
+.B c3c compile-test 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Compile files into an executable and run unit tests.
+.RE
+.PP
+.B c3c static-lib 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Compile files without a project into a static library.
+.RE
+.PP
+.B c3c dynamic-lib 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Compile files without a project into a dynamic library.
+.RE
+.PP
+.B c3c headers 
+\fIfile1\fR [\fIfile2\fR ...]
+.RS
+Analyze files and generate C headers for public methods.
+.RE
+.PP
+.B c3c vendor-fetch 
+\fIlibrary\fR ...
+.RS
+Fetch one or more libraries from the vendor collection.
+.RE
+.PP
+.B c3c project 
+\fIsubcommand\fR ...
+.RS
+Manipulate or view project files.
+.RE
+
+.SH OPTIONS
+.PP
+.B --stdlib 
+\fIdir\fR
+.RS
+Use this directory as the C3 standard library path.
+.RE
+.PP
+.B --no-entry
+.RS
+Do not generate (or require) a main function.
+.RE
+.PP
+.B --libdir 
+\fIdir\fR
+.RS
+Add this directory to the C3 library search paths.
+.RE
+.PP
+.B --lib 
+\fIname\fR
+.RS
+Add this library to the compilation.
+.RE
+.PP
+.B --path 
+\fIdir\fR
+.RS
+Use this as the base directory for the current command.
+.RE
+.PP
+.B --template 
+\fItemplate\fR
+.RS
+Select template for 'init': "exe", "static-lib", "dynamic-lib" or a path.
+.RE
+.PP
+.B --about
+Prints a short description of C3.
+.PP
+.B --symtab 
+\fIvalue\fR
+.RS
+Sets the preferred symtab size.
+.RE
+.PP
+.B --max-mem 
+\fIvalue\fR
+.RS
+Sets the preferred max memory size.
+.RE
+.PP
+.B --run-once
+.RS
+After running the output file, delete it immediately.
+.RE
+.PP
+.B -V, --version
+Print version information.
+.PP
+.B -E
+Lex only.
+.PP
+.B -P
+Only parse and output the AST as JSON.
+.PP
+.B -C
+Only lex, parse and check.
+.PP
+.B -
+\fIcode\fR...
+.RS
+Read code from standard in.
+.RE
+.PP
+.B -o 
+\fIfile\fR
+.RS
+Write output to \fIfile\fR.
+.RE
+.PP
+.B -O0
+Safe, no optimizations, emit debug info.
+.PP
+.B -O1
+Safe, high optimization, emit debug info.
+.PP
+.B -O2
+Unsafe, high optimization, emit debug info.
+.PP
+.B -O3
+Unsafe, high optimization, single module, emit debug info.
+.PP
+.B -O4
+Unsafe, highest optimization, relaxed maths, single module, emit debug info, no panic messages.
+.PP
+.B -O5
+Unsafe, highest optimization, fast maths, single module, emit debug info, no panic messages, no backtrace.
+.PP
+.B -Os
+Unsafe, high optimization, small code, single module, no debug info, no panic messages.
+.PP
+.B -Oz
+Unsafe, high optimization, tiny code, single module, no debug info, no panic messages, no backtrace.
+.PP
+.B -D 
+\fIname\fR
+.RS
+Add feature flag \fIname\fR.
+.RE
+.PP
+.B -U 
+\fIname\fR
+.RS
+Remove feature flag \fIname\fR.
+.RE
+.PP
+.B --trust=
+\fIoption\fR
+.RS
+Trust level: none (default), include ($include allowed), full ($exec / exec allowed).
+.RE
+.PP
+.B --output-dir 
+\fIdir\fR
+.RS
+Override general output directory.
+.RE
+.PP
+.B --threads 
+\fInumber\fR
+.RS
+Set the number of threads to use for compilation.
+.RE
+.PP
+.B --show-backtrace=
+\fIyes|no\fR
+.RS
+Show detailed backtrace on segfaults.
+.RE
+
+.PP
+.B -g
+Emit debug info.
+.PP
+.B -g0
+Emit no debug info.
+
+
+.PP
+.B -l 
+\fIlibrary\fR
+.RS
+Link with the library provided.
+.RE
+.PP
+.B -L 
+\fIlibrary\fR \fIdir\fR
+.RS
+Append the directory to the linker search paths.
+.RE
+.PP
+.B -z 
+\fIargument\fR
+.RS
+Send the \fIargument\fR as a parameter to the linker.
+.RE
+.PP
+.B --cc 
+\fIpath\fR
+.RS
+Set C compiler (for C files in projects and use as system linker).
+.RE
+.PP
+.B --linker=
+\fIoption\fR [\fIpath\fR]
+.RS
+Specify the linker: builtin, cc, custom (default is 'cc'). 'Custom' requires a path.
+.RE
+
+.PP
+.B --use-stdlib=
+\fIyes|no\fR
+.RS
+Include the standard library (default: yes).
+.RE
+.PP
+.B --link-libc=
+\fIyes|no\fR
+.RS
+Link libc and other default libraries (default: yes).
+.RE
+.PP
+.B --emit-stdlib=
+\fIyes|no\fR
+.RS
+Output files for the standard library (default: yes).
+.RE
+.PP
+.B --panicfn 
+\fIname\fR
+.RS
+Override the panic function name.
+.RE
+.PP
+.B --testfn 
+\fIname\fR
+.RS
+Override the test runner function name.
+.RE
+.PP
+.B --benchfn 
+\fIname\fR
+.RS
+Override the benchmark runner function name.
+.RE
+
+.PP
+.B --reloc=
+\fIoption\fR
+.RS
+Specify the relocation model: none, pic, PIC, pie, PIE.
+.RE
+.PP
+.B --x86cpu=
+\fIoption\fR
+.RS
+Set general level of x64 CPU: baseline, ssse3, sse4, avx1, avx2-v1, avx2-v2 (Skylake/Zen1+), avx512 (Icelake/Zen4+), native.
+.RE
+.PP
+.B --x86vec=
+\fIoption\fR
+.RS
+Set maximum type of vector use: none, mmx, sse, avx, avx512, default.
+.RE
+.PP
+.B --riscvfloat=
+\fIoption\fR
+.RS
+Set type of RISC-V float support: none, float, double.
+.RE
+.PP
+.B --memory-env=
+\fIoption\fR
+.RS
+Set the memory environment: normal, small, tiny, none.
+.RE
+.PP
+.B --strip-unused=
+\fIyes|no\fR
+.RS
+Strip unused code and globals from the output (default: yes).
+.RE
+.PP
+.B --fp-math=
+\fIoption\fR
+.RS
+Specify floating-point math behavior: strict, relaxed, fast.
+.RE
+.PP
+.B --win64-simd=
+\fIoption\fR
+.RS
+Windows SIMD ABI: array, full.
+.RE
+
+.PP
+.B --debug-stats
+Print debug statistics.
+.PP
+.B --print-linking
+Print linker arguments.
+.PP
+.B --debug-log
+Print debug logging to stdout.
+
+
+.PP
+.B --benchmarking
+Run built-in benchmarks.
+.PP
+.B --testing
+Run built-in tests.
+
+
+.PP
+.B --list-attributes
+List all attributes.
+.PP
+.B --list-builtins
+List all builtins.
+.PP
+.B --list-keywords
+List all keywords.
+.PP
+.B --list-operators
+List all operators.
+.PP
+.B --list-precedence
+List operator precedence order.
+.PP
+.B --list-project-properties
+List all available keys used in project.json files.
+.PP
+.B --list-manifest-properties
+List all available keys used in manifest.json files.
+.PP
+.B --list-targets
+List all architectures the compiler supports.
+.PP
+.B --list-type-properties
+List all type properties.
+
+
+.PP
+.B --print-output
+Print the object files created to stdout.
+.PP
+.B --print-input
+Print inputted C3 files to stdout.
+
+
+.PP
+.B --winsdk 
+\fIdir\fR
+.RS
+Set the directory for Windows system library files for cross-compilation.
+.RE
+.PP
+.B --wincrt=
+\fIoption\fR
+.RS
+Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).
+.RE
+.PP
+.B --windef 
+\fIfile\fR
+.RS
+Use Windows 'def' file for function exports instead of 'dllexport'.
+.RE
+
+.PP
+.B --macossdk 
+\fIdir\fR
+.RS
+Set the directory for the MacOS SDK for cross-compilation.
+.RE
+.PP
+.B --macos-min-version 
+\fIver\fR
+.RS
+Set the minimum MacOS version to compile for.
+.RE
+.PP
+.B --macos-sdk-version 
+\fIver\fR
+.RS
+Set the MacOS SDK version to compile for.
+.RE
+
+.PP
+.B --linux-crt 
+\fIdir\fR
+.RS
+Set the directory to use for finding crt1.o and related files.
+.RE
+.PP
+.B --linux-crtbegin 
+\fIdir\fR
+.RS
+Set the directory to use for finding crtbegin.o and related files.
+.RE
+
+.PP
+.B --vector-conv=
+\fIoption\fR
+.RS
+Set vector conversion behavior: default, old.
+.RE
+.PP
+.B --sanitize=
+\fIoption\fR
+.RS
+Enable a sanitizer: address, memory, thread.
+.RE
+
+.SH EXAMPLES
+.PP
+Create a project:
+.RS
+.B c3c init new_project
+.RE
+.PP
+Create a library project:
+.RS
+.B c3c init-lib new_library
+.RE
+.PP
+Compile a file:
+.RS
+.B c3c compile main.c3
+.RE
+.PP
+Build the current project:
+.RS
+.B c3c build
+.RE
+.PP
+Run tests for the current project:
+.RS
+.B c3c test
+.RE
