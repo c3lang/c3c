@@ -2650,9 +2650,11 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 			return sema_expr_analyse_builtin_call(context, expr);
 		case EXPR_IDENTIFIER:
 			decl = func_expr->identifier_expr.decl;
+			if (!sema_analyse_decl(context, decl)) return false;
 			break;
 		case EXPR_ACCESS:
 			decl = func_expr->access_expr.ref;
+			if (!sema_analyse_decl(context, decl)) return false;
 			switch (decl->decl_kind)
 			{
 				case DECL_MACRO:
@@ -5002,6 +5004,8 @@ CHECK_DEEPER:
 		if (missing_ref) goto MISSING_REF;
 		RETURN_SEMA_ERROR(expr, "There is no field or method '%s.%s'.", type_to_error_string(parent->type), kw);
 	}
+
+	if (!sema_analyse_decl(context, member)) return false;
 
 	ASSERT_SPAN(expr, member->type);
 	if (member->decl_kind == DECL_VAR)
