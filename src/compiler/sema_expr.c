@@ -933,6 +933,11 @@ static inline bool sema_identifier_find_possible_inferred(SemaContext *context, 
 {
 	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_FAULTTYPE) return false;
 	Decl *parent_decl = to->canonical->decl;
+	if (!decl_ok(parent_decl))
+	{
+		expr_poison(expr);
+		return true;
+	}
 	switch (parent_decl->decl_kind)
 	{
 		case DECL_ENUM:
@@ -973,7 +978,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	// Just start with inference
 	if (!expr->identifier_expr.path && to)
 	{
-		if (sema_identifier_find_possible_inferred(context, to, expr)) return true;
+		if (sema_identifier_find_possible_inferred(context, to, expr)) return expr_ok(expr);
 	}
 
 	Decl *decl = sema_find_path_symbol(context, expr->identifier_expr.ident, expr->identifier_expr.path);
@@ -3635,6 +3640,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
 				{
 					if (missing_ref) goto MISSING_REF;
+					if (!decl_ok(decl)) return false;
 					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
 					return false;
 				}
@@ -3648,6 +3654,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
 				{
 					if (missing_ref) goto MISSING_REF;
+					if (decl_poison(decl)) return false;
 					SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
 					return false;
 				}
