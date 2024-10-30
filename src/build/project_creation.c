@@ -182,6 +182,7 @@ const char* DEFAULT_TARGETS[] = {
 const char *LIB_README = "Welcome to the %s library.\n";
 
 static bool check_name(const char *name);
+static char* get_cwd_project_name();
 static void exit_fail(const char *fmt, ...);
 static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...);
 static void mkdir_or_fail(BuildOptions *build_options, const char *name);
@@ -250,6 +251,18 @@ void create_project(BuildOptions *build_options)
 		size_t len;
 		template = file_read_all(build_options->template, &len);
 	}
+
+	// Special case, a '.' is given
+	if (str_eq(build_options->project_name, "."))
+	{
+		build_options->project_name = get_cwd_project_name();
+		if (!check_name(build_options->project_name))
+		{
+			error_exit("The parent directory (which is '%s') is not a valid project name.", build_options->project_name);
+		}
+		goto CREATE;
+	}
+
 	if (!check_name(build_options->project_name))
 	{
 		error_exit("'%s' is not a valid project name.", build_options->project_name);
@@ -264,8 +277,9 @@ void create_project(BuildOptions *build_options)
 	{
 		error_exit("Could not create directory '%s'.", build_options->project_name);
 	}
-
 	chdir_or_fail(build_options, build_options->project_name);
+
+CREATE:
 	create_file_or_fail(build_options, "LICENSE", NULL);
 	create_file_or_fail(build_options, "README.md", NULL);
 	create_file_or_fail(build_options, "project.json", template, build_options->project_name);
@@ -292,27 +306,35 @@ static const char *module_name(BuildOptions *build_options)
 	scratch_buffer_clear();
 	size_t len = strlen(build_options->project_name);
 	bool has_char = false;
+	bool appended_underscore = false;
 	for (size_t i = 0; i < len; i++)
 	{
 		char c = build_options->project_name[i];
 		if (c >= '0' && c <= '9')
 		{
 			if (!has_char) scratch_buffer_append("m_");
-			has_char = true;
 			scratch_buffer_append_char(c);
+			has_char = true;
+			appended_underscore = false;
 			continue;
 		}
 		if ((c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z'))
 		{
 			scratch_buffer_append_char(c | 0x20);
 			has_char = true;
+			appended_underscore = false;
 			continue;
 		}
-		scratch_buffer_append_char('_');
+		if (!appended_underscore)
+		{
+			scratch_buffer_append_char('_');
+			appended_underscore = true;
+		}
 	}
 	if (!has_char) scratch_buffer_append("module");
 	return scratch_buffer_to_string();
 }
+
 static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...)
 {
 	if (!fmt)
@@ -347,6 +369,24 @@ static bool check_name(const char *name)
 		if (!char_is_alphanum_(c)) return false;
 	}
 	return true;
+}
+
+static char* get_cwd_project_name()
+{
+	char *full_path = getcwd(NULL, 0);
+	size_t len = strlen(full_path);
+	for (size_t i = len; i > 0; i--)
+	{
+		switch (full_path[i])
+		{
+			case '/':
+#if PLATFORM_WINDOWS
+			case '\\':
+#endif
+			return &full_path[i + 1];
+		}
+	}
+	return full_path;
 }
 
 static void chdir_or_fail(BuildOptions *build_options, const char *name)
