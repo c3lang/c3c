@@ -11,11 +11,6 @@ fn void! main(String[] args) {
 }
 /* #expect: boom.ll
 
-
-
-
----------------------------------------------------> boom.ll
-
 @.enum.BOOM = internal constant [5 x i8] c"BOOM\00", align 1
 @"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
 @"$ct.boom.Boom" = linkonce global { i8, i64, ptr, i64, i64, i64, [1 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 1, [1 x %"char[]"] [%"char[]" { ptr @.enum.BOOM, i64 4 }] }, align 8
