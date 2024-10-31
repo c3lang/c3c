@@ -420,6 +420,10 @@ static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c
 static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLVMValueRef original_global, Type *type, IntrospectType introspect_type,
 															  Type *inner, size_t len, LLVMValueRef additional, bool is_external)
 {
+	// Push the builder
+	void *builder = c->builder;
+	c->builder = c->global_builder;
+
 	if (original_global)
 	{
 		assert(type->backend_typeid);
@@ -478,6 +482,7 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	{
 		type->backend_typeid = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
 	}
+	c->builder = builder;
 	return type->backend_typeid;
 }
 static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type *type, IntrospectType introspect_type, int bits)
@@ -488,6 +493,10 @@ static LLVMValueRef llvm_get_introspection_for_builtin_type(GenContext *c, Type 
 
 static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 {
+
+	void *builder = c->builder;
+	c->builder = c->global_builder;
+
 	Decl *decl = type->decl;
 	bool is_external = decl->unit->module != c->code_module;
 	bool is_dynamic = decl->is_dynamic;
@@ -563,11 +572,15 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 		LLVMSetGlobalConstant(global_ref, true);
 		associated_value->backend_ref = global_ref;
 	}
+	c->builder = builder;
 	return val;
 }
 
 static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type *type)
 {
+	void *builder = c->builder;
+	c->builder = c->global_builder;
+
 	Decl *decl = type->decl;
 	Decl **decls = decl->strukt.members;
 	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
@@ -579,6 +592,7 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 		}
 	}
 
+	c->builder = builder;
 	return llvm_generate_introspection_global(c, ref, type, decl->decl_kind == DECL_UNION ? INTROSPECT_TYPE_UNION : INTROSPECT_TYPE_STRUCT,
 											  NULL,
 											  vec_size(decls), NULL, false);
@@ -586,6 +600,9 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 
 static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 {
+	void *builder = c->builder;
+	c->builder = c->global_builder;
+
 	Decl *decl = type->decl;
 	Decl **fault_vals = decl->enums.values;
 	unsigned elements = vec_size(fault_vals);
@@ -613,6 +630,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	{
 		values[i] = fault_vals[i]->backend_ref;
 	}
+	c->builder = builder;
 	return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FAULT, NULL, elements, NULL, false);
 }
 

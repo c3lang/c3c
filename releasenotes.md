@@ -53,6 +53,7 @@
 - Named vector component access would not fold at compile time. #1574
 - `$define` would occasionally not properly evaluate declarations it encountered.
 - Fixes with error handling recursive `@tag` #1583.
+- Sometimes generating introspection info would not be in the global scope causing a crash #1586.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
