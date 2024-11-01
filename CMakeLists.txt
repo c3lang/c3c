@@ -526,14 +526,8 @@ install(TARGETS c3c DESTINATION bin)
 install(DIRECTORY lib/ DESTINATION lib/c3)
 
 # Man page install (OSX/Linux only)
-set(MAN_PAGE_DIR "/usr/local/share/man/man1")
-message(STATUS "installing man page to ${MAN_PAGE_DIR}")
-
-if (NOT WIN32 AND EXISTS "${MAN_PAGE_DIR}")
-    install(FILES c3c.1 DESTINATION ${MAN_PAGE_DIR})
-elseif (NOT WIN32)
-    # won't create MAN_PAGE_DIR if it doesn't already exist
-    message(WARNING "Man page directory ${MAN_PAGE_DIR} does not exist, skipping man page installation")
+if (NOT WIN32)
+    install(FILES c3c.1 DESTINATION "share/man/man1")
 endif()
 
 if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
