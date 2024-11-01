@@ -3666,11 +3666,12 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 		case STORAGE_WILDCARD:
 			if (type_is_optional(type))
 			{
-				RETURN_SEMA_ERROR_AT(span, "The use of 'void!' as a variable type is not permitted, "
+				RETURN_SEMA_ERROR_AT(span, "The use of %s as a variable type is not permitted, "
 				                           "catch the error using 'if (catch err = foo) { ... }',"
-										   " or use '@catch(foo)' to convert it to an 'anyfault'.");
+										   " or use '@catch(foo)' to convert it to an 'anyfault'.",
+				                     type_quoted_error_string(type));
 			}
-			RETURN_SEMA_ERROR_AT(span, "The use of 'void' as a variable type is not permitted.");
+			RETURN_SEMA_ERROR_AT(span, "The use of %s as a variable type is not permitted.", type_quoted_error_string(type));
 		case STORAGE_COMPILE_TIME:
 			RETURN_SEMA_ERROR_AT(span, "The variable cannot have an compile time %s type.",
 			                     type_quoted_error_string(type));

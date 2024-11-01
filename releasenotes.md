@@ -21,6 +21,7 @@
 - Null-check function pointer invocation #1573.
 - `string::new_struct_to_str` and `io::struct_to_format` to dump struct data.
 - `io::print` will now print structs.
+- Improve error message when using `void` aliases as variable storage type.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
