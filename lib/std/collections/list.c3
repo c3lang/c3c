@@ -136,7 +136,7 @@ fn Type! List.pop_first(&self)
 }
 
 <*
- @require index < self.size
+ @require index < self.size `Removed element out of bounds`
 *>
 fn void List.remove_at(&self, usz index)
 {
@@ -215,7 +215,7 @@ fn void List.push_front(&self, Type type) @inline
 }
 
 <*
- @require index <= self.size
+ @require index <= self.size `Insert was out of bounds`
 *>
 fn void List.insert_at(&self, usz index, Type type)
 {
@@ -275,6 +275,9 @@ fn usz List.len(&self) @operator(len) @inline
 	return self.size;
 }
 
+<*
+ @require index < self.size `Access out of bounds`
+*>
 fn Type List.get(&self, usz index) @inline
 {
 	return self.entries[index];
@@ -296,6 +299,9 @@ fn void List.free(&self)
 	self.entries = null;
 }
 
+<*
+ @require i < self.size && j < self.size `Access out of bounds`
+*>
 fn void List.swap(&self, usz i, usz j)
 {
 	@swap(self.entries[i], self.entries[j]);
@@ -358,16 +364,25 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 	self.post_alloc(); // Add sanitizer annotation
 }
 
+<*
+ @require index < self.size `Access out of bounds`
+*>
 macro Type List.@item_at(&self, usz index) @operator([])
 {
 	return self.entries[index];
 }
 
+<*
+ @require index < self.size `Access out of bounds`
+*>
 fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
 {
 	return &self.entries[index];
 }
 
+<*
+ @require index < self.size `Access out of bounds`
+*>
 fn void List.set(&self, usz index, Type value) @operator([]=)
 {
 	self.entries[index] = value;
