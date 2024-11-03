@@ -4280,7 +4280,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIndex index_expr)
 {
 	ConstInitializer *init = parent->const_expr.initializer;
-	ConstInitializer *result = NULL;
+	ConstInitializer *result = INVALID_PTR;
 	ASSERT_SPAN(expr, !index_expr.start_from_end);
 	ArrayIndex index = exprptr(index_expr.expr)->const_expr.ixx.i.low;
 	switch (init->kind)
