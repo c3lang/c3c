@@ -71,6 +71,8 @@ typedef uint16_t FileId;
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
 
+#define INVALID_PTR ((void*)(uintptr_t)0xAAAAAAAAAAAAAAAA)
+
 typedef struct Ast_ Ast;
 typedef struct Decl_ Decl;
 typedef struct TypeInfo_ TypeInfo;

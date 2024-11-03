@@ -1557,7 +1557,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	bool has_named = false;
 	bool found_splat = false;
 	ArrayIndex last_index = -1;
-	Expr *last_named_arg = NULL;
+	Expr *last_named_arg = INVALID_PTR;
 	Expr *last = NULL;
 	int needed = func_param_count - (callee->struct_var ? 1 : 0);
 	for (unsigned i = 0; i < num_args; i++)
