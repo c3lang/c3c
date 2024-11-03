@@ -2485,6 +2485,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			break;
 		case ATTRIBUTE_TAG:
 		{
+			if (decl->decl_kind == DECL_MACRO) { RETURN_SEMA_ERROR(attr, "'@tag' is not allowed on macros."); }
 			decl->has_tag = true;
 			if (args != 2) RETURN_SEMA_ERROR(attr, "'@tag' requires two arguments.");
 			Expr *string = attr->exprs[0];
