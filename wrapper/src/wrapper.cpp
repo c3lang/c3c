@@ -191,8 +191,11 @@ bool llvm_run_passes(LLVMModuleRef m, LLVMTargetMachineRef tm,
 		default:
 			exit(-1);
 	}
+#if LLVM_VERSION_MAJOR > 19
+	llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(level, llvm::ThinOrFullLTOPhase::None);
+#else
 	llvm::ModulePassManager MPM = PB.buildPerModuleDefaultPipeline(level, false);
-
+#endif
 	if (passes->should_verify)
 	{
 		MPM.addPass(llvm::VerifierPass());
