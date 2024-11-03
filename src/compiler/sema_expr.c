@@ -1557,7 +1557,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	bool has_named = false;
 	bool found_splat = false;
 	ArrayIndex last_index = -1;
-	Expr *last_named_arg;
+	Expr *last_named_arg = INVALID_PTR;
 	Expr *last = NULL;
 	int needed = func_param_count - (callee->struct_var ? 1 : 0);
 	for (unsigned i = 0; i < num_args; i++)
@@ -4280,7 +4280,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIndex index_expr)
 {
 	ConstInitializer *init = parent->const_expr.initializer;
-	ConstInitializer *result;
+	ConstInitializer *result = INVALID_PTR;
 	ASSERT_SPAN(expr, !index_expr.start_from_end);
 	ArrayIndex index = exprptr(index_expr.expr)->const_expr.ixx.i.low;
 	switch (init->kind)

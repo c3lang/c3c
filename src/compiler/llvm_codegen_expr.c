@@ -2967,7 +2967,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 
 	// Emit the start and end
 
-	Type *start_type;
+	Type *start_type = (Type*)INVALID_PTR;
 	Range range = slice->slice_expr.range;
 	BEValue start_index;
 	switch (range.range_type)

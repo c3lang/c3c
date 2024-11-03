@@ -42,8 +42,8 @@ static inline void sema_update_const_initializer_with_designator(
 
 bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 {
-	ConstInitializer **list;
-	unsigned len;
+	ConstInitializer **list = INVALID_PTR;
+	unsigned len = (unsigned)-1;
 	switch (init->kind)
 	{
 		case CONST_INIT_ZERO:
@@ -1318,3 +1318,4 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 	(*index)++;
 	return found;
 }
+
