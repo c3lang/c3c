@@ -9,7 +9,7 @@ fn Speed Termios.getISpeed(Termios* self) => cfgetispeed(self);
 fn int Termios.setOSpeed(Termios* self, Speed speed) => cfsetospeed(self, speed);
 fn int Termios.setISpeed(Termios* self, Speed speed) => cfsetispeed(self, speed);
 fn int Termios.getAttr(Termios* self, Fd fd) => tcgetattr(fd, self);
-fn int Termios.setAttr(Termios* self, Fd fd, int optional_actions) => tcsetattr(fd, optional_actions, self);
+fn int Termios.setAttr(Termios* self, Fd fd, Tcactions optional_actions) => tcsetattr(fd, optional_actions, self);
 
 module libc::termios @if(!env::LIBC ||| !env::POSIX);
 
