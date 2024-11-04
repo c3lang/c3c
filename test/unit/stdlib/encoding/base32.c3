@@ -29,7 +29,8 @@ TestCase[*] hex_tests = {
    { "foobar", "CPNMUOJ1E8======" },
 };
 
-macro encode_tests(tests, alphabet, padding) {
+macro encode_tests(tests, alphabet, padding)
+{
     foreach (t : tests)
     {
 	Base32Encoder b;
@@ -41,7 +42,8 @@ macro encode_tests(tests, alphabet, padding) {
 
 	char[] want = t.enc;
 	usz! pad_idx = array::index_of(want, '=');
-	if (try pad_idx && padding < 0) {
+	if (try pad_idx && padding < 0)
+	{
 		want = want[:pad_idx];
 	}
 
@@ -62,7 +64,8 @@ fn void encode_nopadding()
 	encode_tests(hex_tests, base32::HEX_ALPHABET, -1);
 }
 
-macro decode_tests(tests, alphabet, padding) {
+macro decode_tests(tests, alphabet, padding)
+{
     foreach (t : tests)
     {
 	Base32Decoder b;
@@ -70,7 +73,8 @@ macro decode_tests(tests, alphabet, padding) {
 
 	char[] input = t.enc[..];
 	usz! pad_idx = array::index_of(input, '=');
-	if (try pad_idx && padding < 0) {
+	if (try pad_idx && padding < 0)
+	{
 		input = input[:pad_idx];
 	}
 

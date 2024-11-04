@@ -52,10 +52,13 @@ fn void! Base32Encoder.init(&self, Alphabet encoder = STD_ALPHABET, int padding 
 fn usz Base32Encoder.encode_len(&self, usz n)
 {
 	// A character is encoded into 8 x 5-bit blocks.
-	if (self.padding >= 0) {
+	if (self.padding >= 0)
+	{
 		// with padding
 		return (n + 4) / 5 * 8;
-	} else {
+	}
+	else
+	{
 		// no padding
 		usz trailing = n % 5;
 		return n / 5 * 8 + (trailing * 8 + 4) / 5;
@@ -103,7 +106,8 @@ fn usz! Base32Encoder.encode(&self, char[] src, char[] dst)
 	if (trailing == 0) return dn;
 
 	msb = 0;
-	switch (trailing) {
+	switch (trailing)
+	{
 		case 4:
 			msb |= (uint)src[n+3];
 			lsb = msb << 8;
@@ -126,9 +130,11 @@ fn usz! Base32Encoder.encode(&self, char[] src, char[] dst)
 	}
 
 	// add the padding
-	if (self.padding >= 0) {
+	if (self.padding >= 0)
+	{
 		char pad = (char)self.padding;
-		for (usz i = (trailing * 8 / 5) + 1; i < 8; i++) {
+		for (usz i = (trailing * 8 / 5) + 1; i < 8; i++)
+		{
 			dst[i] = pad;
 		}
 	}
@@ -154,7 +160,8 @@ fn void! Base32Decoder.init(&self, Alphabet decoder = STD_ALPHABET, int padding 
 	*self = { .alphabet = decoder, .padding = padding };
 
 	self.reverse[..] = INVALID;
-	foreach (char i, c : decoder) {
+	foreach (char i, c : decoder)
+	{
 		self.reverse[c] = i;
 	}
 }
@@ -166,10 +173,13 @@ fn void! Base32Decoder.init(&self, Alphabet decoder = STD_ALPHABET, int padding 
 *>
 fn usz Base32Decoder.decode_len(&self, usz n)
 {
-	if (self.padding >= 0) {
+	if (self.padding >= 0)
+	{
 		// with padding
 		return (n / 8) * 5;
-	} else {
+	}
+	else
+	{
 		// no padding
 		usz trailing = n % 8;
 		return n / 8 * 5 + (trailing * 5 ) / 8;
@@ -191,28 +201,35 @@ fn usz! Base32Decoder.decode(&self, char[] src, char[] dst)
 
 	usz j, n;
 	char[8] buf;
-	while (src.len > 0 && dst.len > 0) {
+	while (src.len > 0 && dst.len > 0)
+	{
 
 		// load 8 bytes into buffer
-		for (j = 0; j < 8; j++) {
-			if (src.len == 0) {
-				if (self.padding >= 0) {
+		for (j = 0; j < 8; j++)
+		{
+			if (src.len == 0)
+			{
+				if (self.padding >= 0)
+				{
 					return Base32Error.CORRUPT_INPUT?;
 				}
 				break;
 			}
-			if (src[0] == (char)self.padding) {
+			if (src[0] == (char)self.padding)
+			{
 				break;
 			}
 			buf[j] = self.reverse[src[0]];
-			if (buf[j] == INVALID) {
+			if (buf[j] == INVALID)
+			{
 				return Base32Error.CORRUPT_INPUT?;
 			}
 			src = src[1..];
 		}
 
 		// extract 5-bytes from the buffer which contains 8 x 5 bit chunks
-		switch (j) {
+		switch (j)
+		{
 			case 8:
 				// |66677777|  dst[4]
 				// |   77777|  buf[7]
@@ -266,21 +283,27 @@ fn usz! Base32Decoder.decode(&self, char[] src, char[] dst)
 fn void! Alphabet.validate(&self, int padding)
 {
 	bool[256] checked;
-	foreach (c : self) {
-		if (checked[c]) {
+	foreach (c : self)
+	{
+		if (checked[c])
+		{
 			return Base32Error.DUPLICATE_IN_ALPHABET?;
 		}
 		checked[c] = true;
-		if (c == '\r' || c == '\n') {
+		if (c == '\r' || c == '\n')
+		{
 			return Base32Error.INVALID_CHARACTER_IN_ALPHABET?;
 		}
 	}
-	if (padding >= 0) {
+	if (padding >= 0)
+	{
 		char pad = (char)padding;
-		if (pad == '\r' || pad == '\n') {
+		if (pad == '\r' || pad == '\n')
+		{
 			return Base32Error.INVALID_PADDING?;
 		}
-		if (checked[pad]) {
+		if (checked[pad])
+		{
 			return Base32Error.PADDING_IN_ALPHABET?;
 		}
 	}
