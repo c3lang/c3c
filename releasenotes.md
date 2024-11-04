@@ -61,6 +61,7 @@
 - Add read/write to stream with big endian ints.
 - Move accidently hidden "wrap_bytes".
 - Added CBool #1530.
+- Added encoding/base32 module.
 
 ## 0.6.3 Change list
 
