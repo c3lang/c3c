@@ -3608,6 +3608,32 @@ static inline bool sema_expr_replace_with_enum_name_array(SemaContext *context, 
 	return sema_analyse_expr(context, enum_array_expr);
 }
 
+static inline bool sema_analyse_macro_func_access(SemaContext *context, Expr *expr, Decl *parent, Expr *identifier, const char *kw, bool *missing_ref)
+{
+	 if (kw == type_property_list[TYPE_PROPERTY_HAS_TAGOF])
+	 {
+		 expr->expr_kind = EXPR_TYPECALL;
+		 expr->type_call_expr = (ExprTypeCall) { .type = parent, .property = TYPE_PROPERTY_HAS_TAGOF };
+		 return true;
+	 }
+	if (kw == type_property_list[TYPE_PROPERTY_TAGOF])
+	{
+		expr->expr_kind = EXPR_TYPECALL;
+		expr->type_call_expr = (ExprTypeCall) { .type = parent, .property = TYPE_PROPERTY_TAGOF };
+		return true;
+	}
+	if (parent->decl_kind == DECL_MACRO)
+	{
+		if (missing_ref)
+		{
+			*missing_ref = true;
+			return false;
+		}
+		RETURN_SEMA_ERROR(identifier, "The property '%s' is not valid on the macro '%s'.", kw, parent->name);
+	}
+	return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
+}
+
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, Expr *identifier, bool *missing_ref)
 {
 	ASSERT_SPAN(expr, identifier->expr_kind == EXPR_IDENTIFIER);
@@ -4749,15 +4775,28 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 	SourceSpan span;
 	Expr *identifier = sema_expr_resolve_access_child(context, child, missing_ref);
 	if (!identifier) return false;
+	const char *kw = identifier->identifier_expr.ident;
 
 	// 2. If our left-hand side is a type, e.g. MyInt.abc, handle this here.
 	if (parent->expr_kind == EXPR_TYPEINFO)
 	{
 		return sema_expr_analyse_type_access(context, expr, parent->type_expr->type, identifier, missing_ref);
 	}
-	if (parent->expr_kind == EXPR_IDENTIFIER && parent->type->type_kind == TYPE_FUNC_RAW)
+	if (parent->expr_kind == EXPR_IDENTIFIER)
 	{
-		return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
+		Decl *decl = parent->identifier_expr.decl;
+		switch (decl->decl_kind)
+		{
+			case DECL_FUNC:
+			case DECL_MACRO:
+				return sema_analyse_macro_func_access(context, expr, decl, identifier, kw, missing_ref);
+			default:
+				break;
+		}
+		if (parent->type->type_kind == TYPE_FUNC_RAW)
+		{
+			return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
+		}
 	}
 	if (expr_is_const_member(parent))
 	{
@@ -4784,7 +4823,6 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
 
 	Type *type = type_no_optional(parent->type)->canonical;
 	Type *flat_type = type_flatten(type);
-	const char *kw = identifier->identifier_expr.ident;
 	if (kw_type == kw)
 	{
 		if (type_is_any_raw(flat_type))
