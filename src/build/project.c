@@ -121,7 +121,7 @@ const char* project_target_keys[][2] = {
 		{"target", "Compile for a particular architecture + OS target."},
 		{"testfn", "Override the test function."},
 		{"trap-on-wrap", "Make signed and unsigned integer overflow generate a panic rather than wrapping."},
-		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files'." },
+		{"type", "Type of output, one of 'executable', 'static-lib', 'dynamic-lib', 'benchmark', 'test', 'object-files' and 'prepare'." },
 		{"use-stdlib", "Include the standard library (default: true)."},
 		{"vendor", "Vendor specific extensions, ignored by c3c."},
 		{"version", "Version using semantic versioning."},

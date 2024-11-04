@@ -22,6 +22,7 @@
 - `string::new_struct_to_str` and `io::struct_to_format` to dump struct data.
 - `io::print` will now print structs.
 - Improve error message when using `void` aliases as variable storage type.
+- Add a target type: "prepare" which doesn't compile anything (but may run `exec`)
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

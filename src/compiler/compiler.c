@@ -506,6 +506,8 @@ void compiler_compile(void)
 				break;
 			case TARGET_TYPE_OBJECT_FILES:
 				break;
+			case TARGET_TYPE_PREPARE:
+				break;
 			default:
 				UNREACHABLE
 		}
@@ -843,6 +845,17 @@ void compile_clean(BuildOptions *options)
 void compile_file_list(BuildOptions *options)
 {
 	init_build_target(&compiler.build, options);
+	if (compiler.build.type == TARGET_TYPE_PREPARE)
+	{
+		if (options->command != COMMAND_BUILD)
+		{
+			error_exit("The target is a 'prepare' target, and only 'build' can be used with it.");
+		}
+		printf("] Running prepare target '%s'.\n", options->target_select);
+		execute_scripts();
+		printf("] Completed.\n.");
+		return;
+	}
 	if (options->command == COMMAND_CLEAN_RUN)
 	{
 		clean_obj_files();
@@ -1116,7 +1129,7 @@ static int jump_buffer_size()
 	UNREACHABLE
 }
 
-static void execute_scripts(void)
+void execute_scripts(void)
 {
 	if (!vec_size(compiler.build.exec)) return;
 	if (compiler.build.trust_level < TRUST_FULL)

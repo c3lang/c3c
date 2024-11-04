@@ -374,23 +374,27 @@ typedef enum
 	TARGET_TYPE_OBJECT_FILES,
 	TARGET_TYPE_BENCHMARK,
 	TARGET_TYPE_TEST,
+	TARGET_TYPE_PREPARE,
 } TargetType;
 
-static const char *targets[6] = {
+static const char *targets[7] = {
 		[TARGET_TYPE_EXECUTABLE] = "executable",
 		[TARGET_TYPE_STATIC_LIB] = "static-lib",
 		[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
 		[TARGET_TYPE_BENCHMARK] = "benchmark",
 		[TARGET_TYPE_TEST] = "test",
-		[TARGET_TYPE_OBJECT_FILES] = "object-files"
+		[TARGET_TYPE_OBJECT_FILES] = "object-files",
+		[TARGET_TYPE_PREPARE] = "prepare",
 };
-static const char *target_desc[6] = {
+static const char *target_desc[7] = {
 		[TARGET_TYPE_EXECUTABLE] = "Executable",
 		[TARGET_TYPE_STATIC_LIB] = "Static library",
 		[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
 		[TARGET_TYPE_BENCHMARK] = "benchmark suite",
 		[TARGET_TYPE_TEST] = "test suite",
-		[TARGET_TYPE_OBJECT_FILES] = "object files"
+		[TARGET_TYPE_OBJECT_FILES] = "object files",
+		[TARGET_TYPE_PREPARE] = "prepare"
+
 };
 
 

@@ -283,13 +283,11 @@ void fetch_project(BuildOptions* options)
 			const char** deps_dirs =  get_project_dependency_directories();
 			int num_lib = vec_size(deps_dirs); 
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-
 		}
-
 	}
 
-	const char** libdirs = get_project_dependency_directories();
-	const char** deps = get_project_dependencies();
+	const char **libdirs = get_project_dependency_directories();
+	const char **deps = get_project_dependencies();
 	const char *filename;
 	JSONObject *project_json = read_project(&filename);
 
@@ -306,23 +304,21 @@ void fetch_project(BuildOptions* options)
 				error_exit("Invalid data in target '%s'", key);
 			}
 
-			const char** target_deps = get_optional_string_array(filename, key, target, "dependencies");
+			const char **target_deps = get_optional_string_array(filename, key, target, "dependencies");
 
-			FOREACH(const char*, dep, target_deps) {
+			FOREACH(const char*, dep, target_deps)
+			{
 				vec_add(deps, dep);
 			}
 		}
-		
 	}
 
 	// dependency check tree
 	while (vec_size(deps) > 0)
 	{
-	
 		FOREACH(const char*, dir, libdirs)
 		{
-			
-			const char* dep = deps[vec_size(deps)-1];
+			const char *dep = VECLAST(deps);
 			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep)))) 
 			{
 				vec_pop(deps);
@@ -332,7 +328,7 @@ void fetch_project(BuildOptions* options)
 			printf("Fetching missing library '%s'...", dep);
 			fflush(stdout);
 
-			const char* error = vendor_fetch_single(dep, options->vendor_download_path);
+			const char *error = vendor_fetch_single(dep, options->vendor_download_path);
 
 			if (!error)
 			{
