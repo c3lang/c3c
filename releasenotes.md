@@ -57,6 +57,7 @@
 - Fixes with error handling recursive `@tag` #1583.
 - Sometimes generating introspection info would not be in the global scope causing a crash #1586.
 - @tag on macros cannot be retrieved with tagof #1582
+- Taking the $typeof of a wildcard optional returns `void!`.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String

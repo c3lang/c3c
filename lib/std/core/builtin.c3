@@ -324,13 +324,24 @@ macro swizzle2(v, v2, ...) @builtin
 {
 	return $$swizzle2(v, v2, $vasplat);
 }
+<*
+ Return the excuse in the Optional if it is Empty, otherwise
+ return a null fault.
 
+ @require @typekind(#expr) == OPTIONAL : `@catch expects an Optional value`
+*>
 macro anyfault @catch(#expr) @builtin
 {
 	if (catch f = #expr) return f;
 	return anyfault {};
 }
 
+<*
+ Check if an Optional expression holds a value or is empty, returning true
+ if it has a value.
+
+ @require @typekind(#expr) == OPTIONAL : `@ok expects an Optional value`
+*>
 macro bool @ok(#expr) @builtin
 {
 	if (catch #expr) return false;

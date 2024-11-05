@@ -325,6 +325,11 @@ INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 			type_info->type = expr_type;
 			return true;
 		case STORAGE_WILDCARD:
+			if (expr_type->type_kind == TYPE_OPTIONAL)
+			{
+				type_info->type = type_get_optional(type_void);
+				return true;
+			}
 			RETURN_SEMA_ERROR(expr, "This %sexpression lacks a concrete type.", type_is_optional(expr_type) ? "optional " : "");
 		case STORAGE_COMPILE_TIME:
 			RETURN_SEMA_ERROR(expr, "This expression has a compile time type %s.", type_quoted_error_string(expr_type));
