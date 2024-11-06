@@ -67,7 +67,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 				case UNSIGNED_INT:
 					return formatter.printf("%d", (uint128)self.i)!;
 				case FLOAT:
-					return formatter.printf("%d", self.f)!;
+					return formatter.printf("%g", self.f)!;
 				case ENUM:
 					return formatter.printf("%d", self.i)!;
 				default:
