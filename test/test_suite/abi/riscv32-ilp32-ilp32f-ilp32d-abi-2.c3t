@@ -300,7 +300,7 @@ entry:
 define i32 @test.f_vec_tiny_v1i32_ret() #0 {
 entry:
   %taddr = alloca <1 x i32>, align 4
-  store <1 x i32> <i32 1>, ptr %taddr, align 4
+  store <1 x i32>
   %0 = load i32, ptr %taddr, align 4
   ret i32 %0
 }
@@ -367,7 +367,7 @@ entry:
 define i64 @test.f_vec_small_v1i64_ret() #0 {
 entry:
   %taddr = alloca <1 x i64>, align 8
-  store <1 x i64> <i64 1>, ptr %taddr, align 8
+  store <1 x i64>
   %0 = load i64, ptr %taddr, align 8
   ret i64 %0
 }

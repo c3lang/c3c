@@ -16,7 +16,7 @@ define double @test.foo(i32 %0) #0 {
 entry:
   %taddr = alloca <2 x i32>, align 8
   %gt = icmp sgt i32 %0, 0
-  %ternary = select i1 %gt, <2 x i32> zeroinitializer, <2 x i32> <i32 255, i32 255>
+  %ternary = select i1 %gt, <2 x i32> zeroinitializer, <2 x i32>
   store <2 x i32> %ternary, ptr %taddr, align 8
   %1 = load double, ptr %taddr, align 8
   ret double %1

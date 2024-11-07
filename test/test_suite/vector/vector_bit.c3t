@@ -108,7 +108,7 @@ entry:
   %31 = extractelement <4 x i32> %30, i64 3
   %32 = call i32 (ptr, ...) @printf(ptr @.str.3, i32 %25, i32 %27, i32 %29, i32 %31)
   %33 = load <4 x i32>, ptr %y, align 16
-  %bnot = xor <4 x i32> %33, <i32 -1, i32 -1, i32 -1, i32 -1>
+  %bnot = xor <4 x i32> %33,
   store <4 x i32> %bnot, ptr %w, align 16
   %34 = load <4 x i32>, ptr %w, align 16
   %35 = extractelement <4 x i32> %34, i64 0
