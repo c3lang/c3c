@@ -253,8 +253,8 @@ typedef struct
 
 static inline VHeader_* vec_new_(size_t element_size, size_t capacity)
 {
-	assert(capacity < UINT32_MAX);
-	assert(element_size < UINT32_MAX / 100);
+	ASSERT0(capacity < UINT32_MAX);
+	ASSERT0(element_size < UINT32_MAX / 100);
 	VHeader_ *header = CALLOC(element_size * capacity + sizeof(VHeader_));
 	header->capacity = (uint32_t)capacity;
 	return header;
@@ -271,8 +271,8 @@ static inline void vec_resize(void *vec, uint32_t new_size)
 
 static inline void vec_pop(void *vec)
 {
-	assert(vec);
-	assert(vec_size(vec) > 0);
+	ASSERT0(vec);
+	ASSERT0(vec_size(vec) > 0);
 	VHeader_ *header = vec;
 	header[-1].size--;
 }
@@ -280,9 +280,9 @@ static inline void vec_pop(void *vec)
 static inline void vec_erase_front(void  *vec, unsigned to_erase)
 {
 	if (!to_erase) return;
-	assert(vec);
+	ASSERT0(vec);
 	unsigned size = vec_size(vec);
-	assert(size >= to_erase);
+	ASSERT0(size >= to_erase);
 	void **vecptr = (void**)vec;
 	for (int i = to_erase; i < size; i++)
 	{
@@ -294,9 +294,9 @@ static inline void vec_erase_front(void  *vec, unsigned to_erase)
 
 static inline void vec_erase_at(void *vec, unsigned i)
 {
-	assert(vec);
+	ASSERT0(vec);
 	unsigned size = vec_size(vec);
-	assert(size > i);
+	ASSERT0(size > i);
 	void **vecptr = (void**)vec;
 	for (int j = i + 1; j < size; j++)
 	{
@@ -712,3 +712,4 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator);
 const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file);
 const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr);
 const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overwrite);
+

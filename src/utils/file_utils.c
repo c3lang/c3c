@@ -240,7 +240,7 @@ char *file_read_all(const char *path, size_t *return_size)
 	{
 		error_exit("Failed to read file \"%s\".\n", path);
 	}
-	assert(bytes_read == file_size);
+	ASSERT0(bytes_read == file_size);
 	buffer[bytes_read] = '\0';
 
 	size_t offset = 0;
@@ -527,8 +527,8 @@ extern int _chdrive(int drive);
 
 void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
 {
-	assert(src_path);
-	assert(dst_path);
+	ASSERT0(src_path);
+	ASSERT0(dst_path);
 #if (_MSC_VER)
 	CopyFileW(win_utf8to16(src_path), win_utf8to16(dst_path), !overwrite);
 #else
@@ -539,7 +539,7 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
 
 bool file_delete_file(const char *path)
 {
-	assert(path);
+	ASSERT0(path);
 #if (_MSC_VER)
 	return DeleteFileW(win_utf8to16(path));
 #else
@@ -549,7 +549,7 @@ bool file_delete_file(const char *path)
 
 void file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
-	assert(path);
+	ASSERT0(path);
 #if (_MSC_VER)
 	const char *cmd = "del /q \"%s\\*%s\" >nul 2>&1";
 #else

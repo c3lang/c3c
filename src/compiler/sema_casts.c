@@ -97,7 +97,7 @@ bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit,
 static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *from_type = cc->from;
-	assert(from_type == from_type->canonical);
+	ASSERT0(from_type == from_type->canonical);
 	// Check simple equality.
 	from_type = from_type->canonical;
 	if (from_type == cc->to) return true;
@@ -154,7 +154,7 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 	unsigned bit_size_left = left_type->builtin.bitsize;
 	unsigned bit_size_right = right_type->builtin.bitsize;
 
-	assert(bit_size_left && bit_size_right);
+	ASSERT0(bit_size_left && bit_size_right);
 
 	// Simple case they are the same size, just return.
 	if (bit_size_left == bit_size_right) return;
@@ -245,7 +245,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	Type *actual = type_get_indexed_type(actual_type);
 
 	// We should always have indexed types.
-	assert(indexed && actual);
+	ASSERT0(indexed && actual);
 
 	// The underlying type may also be inferred.
 	// In this case, infer it.
@@ -265,10 +265,10 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 			// The case of int[*][2] x = ...
 			return type_add_optional(type_get_array(indexed, to_infer->array.len), is_optional);
 		case TYPE_INFERRED_ARRAY:
-			assert(type_is_arraylike(type_flatten(actual_type)));
+			ASSERT0(type_is_arraylike(type_flatten(actual_type)));
 			return type_add_optional(type_get_array(indexed, type_flatten(actual_type)->array.len), is_optional);
 		case TYPE_INFERRED_VECTOR:
-			assert(type_is_arraylike(type_flatten(actual_type)));
+			ASSERT0(type_is_arraylike(type_flatten(actual_type)));
 			return type_add_optional(type_get_vector(indexed, type_flatten(actual_type)->array.len), is_optional);
 		case TYPE_SLICE:
 			return type_add_optional(type_get_slice(indexed), is_optional);
@@ -510,15 +510,15 @@ RETRY:
 			// For constants, just check that they will fit.
 			if (type_is_integer(type))
 			{
-				assert(expr->const_expr.const_kind == CONST_INTEGER || expr->const_expr.const_kind == CONST_ENUM);
+				ASSERT0(expr->const_expr.const_kind == CONST_INTEGER || expr->const_expr.const_kind == CONST_ENUM);
 				if (expr_const_will_overflow(&expr->const_expr, type_flatten(type)->type_kind))
 				{
 					return expr;
 				}
 				return NULL;
 			}
-			assert(type_is_float(type));
-			assert(expr->const_expr.const_kind == CONST_FLOAT);
+			ASSERT0(type_is_float(type));
+			ASSERT0(expr->const_expr.const_kind == CONST_FLOAT);
 			if (!expr_const_float_fits_type(&expr->const_expr, type_flatten(type)->type_kind))
 			{
 				return expr;
@@ -567,7 +567,7 @@ CHECK_SIZE:
 
 static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr *problem, Type *to_type)
 {
-	assert(expr_is_const(expr));
+	ASSERT0(expr_is_const(expr));
 	if (expr->const_expr.is_character && expr->type->type_kind != TYPE_U128)
 	{
 		RETURN_CAST_ERROR(problem, "The unicode character U+%04x cannot fit in a %s.", (uint32_t)expr->const_expr.ixx.i.low, type_quoted_error_string(to_type));
@@ -743,7 +743,7 @@ static bool rule_ptr_to_ptr(CastContext *cc, bool is_explicit, bool is_silent)
 			return false;
 		case TYPE_ALIGNMENT_INCREASE:
 			if (is_explicit) return false;
-			assert(!is_explicit);
+			ASSERT0(!is_explicit);
 			RETURN_CAST_ERROR(cc->expr,
 			                  "Implicitly casting %s (alignment %d) to %s (alignment %d) is not permitted, "
 							  "it would require an explicit cast. Before using an explicit cast, please make "
@@ -852,7 +852,7 @@ static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_sile
 
 static bool rule_ulist_to_struct(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	assert(expr_is_const_untyped_list(cc->expr));
+	ASSERT0(expr_is_const_untyped_list(cc->expr));
 	Expr **expressions = cc->expr->const_expr.untyped_list;
 	unsigned size = vec_size(expressions);
 	if (!size) return true;
@@ -895,7 +895,7 @@ static bool rule_ulist_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 
 static bool rule_ulist_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	assert(expr_is_const_untyped_list(cc->expr));
+	ASSERT0(expr_is_const_untyped_list(cc->expr));
 	Type *base = cc->to->array.base;
 	FOREACH(Expr *, expr, cc->expr->const_expr.untyped_list)
 	{
@@ -1103,7 +1103,7 @@ RETRY:;
 	}
 	else
 	{
-		assert(decl->decl_kind == DECL_STRUCT);
+		ASSERT0(decl->decl_kind == DECL_STRUCT);
 		inner = decl->strukt.members[0]->type->canonical;
 	}
 	if (!type_may_implement_interface(inner)) return false;
@@ -1256,7 +1256,7 @@ static bool rule_not_applicable(CastContext *cc, bool is_explicit, bool is_silen
 static bool rule_from_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *from_type = cc->from;
-	assert(from_type == from_type->canonical);
+	ASSERT0(from_type == from_type->canonical);
 
 	// Explicit just flattens and tries again.
 	if (is_explicit)
@@ -1276,7 +1276,7 @@ static bool rule_from_distinct(CastContext *cc, bool is_explicit, bool is_silent
 static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	Type *from_type = cc->from;
-	assert(from_type == from_type->canonical);
+	ASSERT0(from_type == from_type->canonical);
 	Type *flat = type_flatten(cc->to);
 	ConvGroup flat_group = type_to_group(flat);
 	Expr *expr = cc->expr;
@@ -1449,8 +1449,8 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
  */
 static inline bool insert_runtime_cast(Expr *expr, CastKind kind, Type *type)
 {
-	assert(expr->resolve_status == RESOLVE_DONE);
-	assert(expr->type);
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT0(expr->type);
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_CAST;
 	expr->cast_expr.kind = kind;
@@ -1562,7 +1562,7 @@ static void cast_ptr_to_ptr(SemaContext *context, Expr *expr, Type *type)
 static void cast_float_to_float(SemaContext *context, Expr *expr, Type *type)
 {
 	// Change to same type should never enter here.
-	assert(type_flatten(type) != type_flatten(expr->type));
+	ASSERT0(type_flatten(type) != type_flatten(expr->type));
 
 	// Insert runtime cast if needed.
 	if (insert_runtime_cast_unless_const(expr, CAST_FPFP, type)) return;
@@ -1596,14 +1596,14 @@ static void cast_float_to_int(SemaContext *context, Expr *expr, Type *type)
 static void cast_int_to_enum(SemaContext *context, Expr *expr, Type *type)
 {
 	Type *canonical = type_flatten(type);
-	assert(canonical->type_kind == TYPE_ENUM);
+	ASSERT0(canonical->type_kind == TYPE_ENUM);
 	if (insert_runtime_cast_unless_const(expr, CAST_INTENUM, type)) return;
 
 	Decl *enum_decl = canonical->decl;
 	// Fold the const into the actual enum.
 	// Check is already done.
 	Decl *decl = enum_decl->enums.values[expr->const_expr.ixx.i.low];
-	assert(decl->resolve_status == RESOLVE_DONE);
+	ASSERT0(decl->resolve_status == RESOLVE_DONE);
 	expr->const_expr = (ExprConst) {
 			.enum_err_val = decl,
 			.const_kind = CONST_ENUM
@@ -1633,7 +1633,7 @@ static inline Type *type_flatten_to_int(Type *type)
 			case TYPE_TYPEDEF:
 				UNREACHABLE
 			default:
-				assert(type_is_integer(type));
+				ASSERT0(type_is_integer(type));
 				return type;
 		}
 	}
@@ -1694,7 +1694,7 @@ static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
 			expr_rewrite_const_bool(expr, type, false);
 			return;
 		}
-		assert(expr->const_expr.initializer->kind == CONST_INIT_STRUCT);
+		ASSERT0(expr->const_expr.initializer->kind == CONST_INIT_STRUCT);
 		FOREACH(ConstInitializer *, in, expr->const_expr.initializer->init_struct)
 		{
 			if (in->kind == CONST_INIT_ZERO) continue;
@@ -1748,11 +1748,11 @@ static void cast_int_to_float(SemaContext *context, Expr *expr, Type *type)
 
 static void cast_enum_to_int(SemaContext *context, Expr* expr, Type *to_type)
 {
-	assert(type_flatten(expr->type)->type_kind == TYPE_ENUM);
+	ASSERT0(type_flatten(expr->type)->type_kind == TYPE_ENUM);
 	Type *underlying_type = type_base(expr->type);
 	if (sema_cast_const(expr))
 	{
-		assert(expr->const_expr.const_kind == CONST_ENUM);
+		ASSERT0(expr->const_expr.const_kind == CONST_ENUM);
 		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
 	}
 	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_INTENUM)
@@ -1771,7 +1771,7 @@ static void cast_vec_to_arr(SemaContext *context, Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return;
 
-	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ASSERT0(expr->const_expr.const_kind == CONST_INITIALIZER);
 	ConstInitializer *list = expr->const_expr.initializer;
 	list->type = type_flatten(to_type);
 	expr->type = to_type;
@@ -1874,7 +1874,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 		}
 	}
 
-	assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+	ASSERT0(expr->const_expr.const_kind == CONST_INITIALIZER);
 
 	// For the const initializer we need to change the internal type
 	ConstInitializer *list = expr->const_expr.initializer;
@@ -1885,12 +1885,12 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 
 static void cast_untyped_list_to_other(SemaContext *context, Expr *expr, Type *to_type)
 {
-	assert(expr_is_const_untyped_list(expr));
+	ASSERT0(expr_is_const_untyped_list(expr));
 	// Recursively set the type of all ConstInitializer inside.
 	expr_recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
 	// We can now analyse the list (this is where the actual check happens)
 	bool success = sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr);
-	assert(success);
+	ASSERT0(success);
 	// And set the type.
 	expr->type = type_infer_len_from_actual_type(to_type, expr->type);
 }
@@ -1899,7 +1899,7 @@ static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_EUER, type) || !expr_is_const_fault(expr)) return;
 	Decl *value = expr->const_expr.enum_err_val;
-	assert(value->type != type);
+	ASSERT0(value->type != type);
 	expr->type = type;
 }
 
@@ -1919,7 +1919,7 @@ static void cast_slice_to_ptr(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
 {
-	assert(type_bit_size(type_uptr) <= 64 && "For > 64 bit pointers, this code needs updating.");
+	ASSERT0(type_bit_size(type_uptr) <= 64 && "For > 64 bit pointers, this code needs updating.");
 
 	// Handle const:
 	if (sema_cast_const(expr))
@@ -1954,7 +1954,7 @@ static void cast_bool_to_float(SemaContext *context, Expr *expr, Type *type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return;
 
-	assert(expr->const_expr.const_kind == CONST_BOOL);
+	ASSERT0(expr->const_expr.const_kind == CONST_BOOL);
 	expr_rewrite_const_float(expr, type, expr->const_expr.b ? 1.0 : 0.0);
 }
 
@@ -2016,7 +2016,7 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 
 
 	// Or it's a string, in which case it is always true.
-	assert(expr->const_expr.const_kind == CONST_STRING);
+	ASSERT0(expr->const_expr.const_kind == CONST_STRING);
 	expr_rewrite_const_bool(expr, type, true);
 }
 
@@ -2054,7 +2054,7 @@ static void cast_vecarr_to_slice(SemaContext *context, Expr *expr, Type *to_type
 	{
 		UNREACHABLE
 	}
-	assert(expr_is_const(expr));
+	ASSERT0(expr_is_const(expr));
 	switch (expr->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
@@ -2103,14 +2103,14 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 			default:
 				UNREACHABLE;
 		}
-		assert(expr->expr_kind == EXPR_CAST);
+		ASSERT0(expr->expr_kind == EXPR_CAST);
 		return;
 	}
 	if (expr_is_const_slice(expr))
 	{
 		expr->const_expr.const_kind = CONST_INITIALIZER;
 	}
-	assert(expr_is_const(expr));
+	ASSERT0(expr_is_const(expr));
 	expr->type = to_type;
 	return;
 }
@@ -2118,7 +2118,7 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 static void cast_slice_to_infer(SemaContext *context, Expr *expr, Type *to_type)
 {
 	ArraySize len = sema_len_from_const(expr);
-	assert(len > 0);
+	ASSERT0(len > 0);
 	Type *indexed = type_get_indexed_type(expr->type);
 	to_type = type_infer_len_from_actual_type(to_type, type_get_array(indexed, len));
 	cast_no_check(context, expr, to_type, false);
@@ -2149,7 +2149,7 @@ static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 	if (sema_cast_const(expr))
 	{
 		// For the array -> vector this is always a simple rewrite of type.
-		assert(expr->const_expr.const_kind == CONST_INITIALIZER);
+		ASSERT0(expr->const_expr.const_kind == CONST_INITIALIZER);
 		ConstInitializer *list = expr->const_expr.initializer;
 		list->type = type_flatten(to_temp);
 		expr->type = to_temp;
@@ -2166,7 +2166,7 @@ static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 
 static void cast_arr_to_arr(SemaContext *context, Expr *expr, Type *to_type)
 {
-	assert(type_size(to_type) == type_size(expr->type));
+	ASSERT0(type_size(to_type) == type_size(expr->type));
 	expr->type = to_type;
 }
 
@@ -2174,7 +2174,7 @@ static void cast_anyfault_to_bool(SemaContext *context, Expr *expr, Type *to_typ
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_EUBOOL, to_type)) return;
 
-	assert(expr->const_expr.const_kind == CONST_ERR);
+	ASSERT0(expr->const_expr.const_kind == CONST_ERR);
 	expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
 }
 
@@ -2182,7 +2182,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 {
 	if (insert_runtime_cast_unless_const(expr, CAST_IDBOOL, to_type)) return;
 
-	assert(expr->const_expr.const_kind == CONST_TYPEID);
+	ASSERT0(expr->const_expr.const_kind == CONST_TYPEID);
 	expr_rewrite_const_bool(expr, type_bool, expr->const_expr.typeid != NULL);
 }
 

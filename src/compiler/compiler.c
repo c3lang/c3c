@@ -174,7 +174,7 @@ const char *build_base_name(void)
 
 static const char *exe_name(void)
 {
-	assert(compiler.context.main || compiler.build.no_entry);
+	ASSERT0(compiler.context.main || compiler.build.no_entry);
 	const char *name;
 	if (compiler.build.name || compiler.build.no_entry)
 	{
@@ -495,7 +495,7 @@ void compiler_compile(void)
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:
-				assert(compiler.context.main || compiler.build.no_entry);
+				ASSERT0(compiler.context.main || compiler.build.no_entry);
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_STATIC_LIB:
@@ -549,7 +549,7 @@ void compiler_compile(void)
 	{
 		int compiled = compile_cfiles(compiler.build.cc, compiler.build.csources,
 		                              compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
-		assert(cfiles == compiled);
+		ASSERT0(cfiles == compiled);
 		(void)compiled;
 	}
 	const char **obj_file_next = &obj_files[output_file_count + cfiles];
@@ -596,7 +596,7 @@ void compiler_compile(void)
 		{
 			puts(obj_files[i]);
 		}
-		assert(obj_files[i] || !output_exe);
+		ASSERT0(obj_files[i] || !output_exe);
 	}
 	if (compiler.build.print_output)
 	{
@@ -876,7 +876,7 @@ static inline void setup_define(const char *id, Expr *expr)
 static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	Type *flat = type_flatten(type);
-	assert(type_is_integer(flat));
+	ASSERT0(type_is_integer(flat));
 	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i);
 	expr->type = type;
 	if (expr_const_will_overflow(&expr->const_expr, flat->type_kind))
@@ -1444,7 +1444,7 @@ void global_context_clear_errors(void)
 void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);
-	assert(type_ok(type));
+	ASSERT0(type_ok(type));
 	vec_add(compiler.context.type, type);
 }
 
@@ -1461,7 +1461,7 @@ const char *get_object_extension(void)
 
 Module *global_context_find_module(const char *name)
 {
-	assert(name);
+	ASSERT0(name);
 	return htable_get(&compiler.context.modules, (void *)name);
 }
 

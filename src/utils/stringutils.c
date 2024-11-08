@@ -68,7 +68,7 @@ static const char *scan_past_underscore(const char *string)
 
 const char *str_unescape(char *string)
 {
-    assert(string[0] == '"');
+    ASSERT0(string[0] == '"');
     char c;
     size_t index = 0;
     while ((c = string++[0]) != '"')
@@ -169,7 +169,7 @@ char *str_vprintf(const char *var, va_list list)
 	}
 	char *buffer = malloc_string((uint32_t)len + 1);
 	int new_len = vsnprintf(buffer, len + 1, var, list);
-	assert(len == new_len);
+	ASSERT0(len == new_len);
 	(void)new_len;
 	return buffer;
 }

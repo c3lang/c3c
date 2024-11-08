@@ -242,7 +242,7 @@ static inline char *codegen_create_riscv_asm(AsmInlineBlock *block)
 
 const char *codegen_create_asm(Ast *ast)
 {
-	assert(ast->ast_kind == AST_ASM_BLOCK_STMT);
+	ASSERT0(ast->ast_kind == AST_ASM_BLOCK_STMT);
 	scratch_buffer_clear();
 	AsmInlineBlock *block = ast->asm_block_stmt.block;
 	if (compiler.platform.arch == ARCH_TYPE_X86_64 || compiler.platform.arch == ARCH_TYPE_X86)

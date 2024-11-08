@@ -345,7 +345,7 @@ void json_map_set(JSONObject *obj, const char *key, JSONObject *value)
 
 JSONObject *json_map_get(JSONObject *obj, const char *key)
 {
-	assert(obj->type == J_OBJECT);
+	ASSERT0(obj->type == J_OBJECT);
 	FOREACH_IDX(i, const char *, a_key, obj->keys)
 	{
 		if (str_eq(a_key, key)) return obj->members[i];

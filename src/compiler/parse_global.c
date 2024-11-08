@@ -93,7 +93,7 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
  */
 static inline Path *parse_module_path(ParseContext *c)
 {
-	assert(tok_is(c, TOKEN_IDENT));
+	ASSERT0(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceSpan span = c->span;
 	while (1)
@@ -236,7 +236,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 		{
 			Ast *current = astptr(contracts);
 			contracts = current->next;
-			assert(current->ast_kind == AST_CONTRACT);
+			ASSERT0(current->ast_kind == AST_CONTRACT);
 			switch (current->contract_stmt.kind)
 			{
 				case CONTRACT_UNKNOWN:
@@ -495,7 +495,7 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
  */
 static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 {
-	assert(type_info_ok(type));
+	ASSERT0(type_info_ok(type));
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
 	if (!parse_generic_parameters(c, &generic_type->generic.params)) return poisoned_type_info;
 	generic_type->generic.base = type;
@@ -510,7 +510,7 @@ static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
  */
 static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 {
-	assert(type_info_ok(type));
+	ASSERT0(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LBRACKET);
 	if (try_consume(c, TOKEN_STAR))
@@ -568,7 +568,7 @@ DIRECT_SLICE:;
  */
 static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 {
-	assert(type_info_ok(type));
+	ASSERT0(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LVEC);
 	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
@@ -625,7 +625,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 						default:
 						{
 							TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER, type_info->span);
-							assert(type_info);
+							ASSERT0(type_info);
 							ptr_type->pointer = type_info;
 							type_info = ptr_type;
 							RANGE_EXTEND_PREV(type_info);
@@ -634,7 +634,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 					}
 					if (type_info->resolve_status == RESOLVE_DONE)
 					{
-						assert(type_info->type);
+						ASSERT0(type_info->type);
 						type_info->type = type_get_ptr(type_info->type);
 					}
 					RANGE_EXTEND_PREV(type_info);
@@ -734,7 +734,7 @@ TypeInfo *parse_optional_type(ParseContext *c)
 	if (try_consume(c, TOKEN_BANG))
 	{
 		if (!parse_rethrow_bracket(c, info->span)) return poisoned_type_info;
-		assert(!info->optional);
+		ASSERT0(!info->optional);
 		info->optional = true;
 		if (info->resolve_status == RESOLVE_DONE)
 		{
@@ -1525,7 +1525,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 
-	assert(decl_is_struct_type(parent));
+	ASSERT0(decl_is_struct_type(parent));
 	ArrayIndex index = 0;
 	while (!tok_is(c, TOKEN_RBRACE))
 	{
@@ -1621,7 +1621,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				{
 					Decl *member = members[i];
 					if (is_cond) member->is_cond = true;
-					assert(!member->attributes);
+					ASSERT0(!member->attributes);
 					member->attributes = copy_attributes_single(attributes);
 				}
 			}
@@ -1662,7 +1662,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
 
-	assert(!tok_is(c, TOKEN_LGENPAR));
+	ASSERT0(!tok_is(c, TOKEN_LGENPAR));
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -1953,7 +1953,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 			PRINT_ERROR_HERE("Expected a type to alias here.");
 			return poisoned_decl;
 	}
-	assert(!tok_is(c, TOKEN_LGENPAR));
+	ASSERT0(!tok_is(c, TOKEN_LGENPAR));
 
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;
@@ -2250,7 +2250,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	{
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
-		assert(last_parameter);
+		ASSERT0(last_parameter);
 		last_parameter->var.index = vec_size(*parameters_ref) - 1; // NOLINT
 		if (!try_consume(c, TOKEN_COMMA))
 		{
@@ -2939,7 +2939,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			return poisoned_decl;
 	}
 	if (!decl_ok(decl)) return decl;
-	assert(decl);
+	ASSERT0(decl);
 	return decl;
 CONTRACT_NOT_ALLOWED:
 	RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");

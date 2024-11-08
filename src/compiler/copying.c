@@ -168,7 +168,7 @@ TypeInfo *copy_type_info_single(TypeInfo *type_info)
 
 Ast *copy_ast_macro(Ast *source_ast)
 {
-	assert(copy_struct.copy_in_use);
+	ASSERT0(copy_struct.copy_in_use);
 	return ast_copy_deep(&copy_struct, source_ast);
 }
 
@@ -407,7 +407,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			return expr;
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
-			assert(expr->resolve_status != RESOLVE_DONE);
+			ASSERT0(expr->resolve_status != RESOLVE_DONE);
 			return expr;
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
@@ -762,20 +762,20 @@ Ast **copy_ast_list(CopyStruct *c, Ast **to_copy)
 void copy_begin(void)
 {
 	copy_struct.current_fixup = copy_struct.fixups;
-	assert(!copy_struct.copy_in_use);
+	ASSERT0(!copy_struct.copy_in_use);
 	copy_struct.copy_in_use = true;
 	copy_struct.single_static = false;
 }
 
 void copy_end(void)
 {
-	assert(copy_struct.copy_in_use);
+	ASSERT0(copy_struct.copy_in_use);
 	copy_struct.copy_in_use = false;
 }
 
 Decl **copy_decl_list_macro(Decl **decl_list)
 {
-	assert(copy_struct.copy_in_use);
+	ASSERT0(copy_struct.copy_in_use);
 	return copy_decl_list(&copy_struct, decl_list);
 }
 
@@ -879,19 +879,19 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 		case TYPE_INFO_EVALTYPE:
 		case TYPE_INFO_TYPEOF:
 		case TYPE_INFO_VATYPE:
-			assert(source->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT0(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(c, source->unresolved_type_expr);
 			return copy;
 		case TYPE_INFO_VECTOR:
 		case TYPE_INFO_ARRAY:
-			assert(source->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT0(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.len = copy_expr(c, source->array.len);
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_SLICE:
 		case TYPE_INFO_INFERRED_VECTOR:
-			assert(source->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT0(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;
 		case TYPE_INFO_POINTER:

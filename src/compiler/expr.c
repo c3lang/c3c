@@ -22,7 +22,7 @@ Expr *expr_negate_expr(Expr *expr)
 
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high)
 {
-	assert(expr_is_const(expr) && expr->const_expr.const_kind == CONST_INTEGER);
+	ASSERT0(expr_is_const(expr) && expr->const_expr.const_kind == CONST_INTEGER);
 	Int val = expr->const_expr.ixx;
 	if (!int_fits(val, TYPE_I64)) return false;
 	int64_t value = int_to_i64(val);
@@ -137,7 +137,7 @@ bool expr_may_addr(Expr *expr)
 
 bool expr_is_runtime_const(Expr *expr)
 {
-	assert(expr->resolve_status == RESOLVE_DONE);
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	RETRY:
 	switch (expr->expr_kind)
 	{
@@ -274,7 +274,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			goto RETRY;
 		case EXPR_TERNARY:
-			assert(!exprid_is_runtime_const(expr->ternary_expr.cond));
+			ASSERT0(!exprid_is_runtime_const(expr->ternary_expr.cond));
 			return false;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_LAST_FAULT:
@@ -442,7 +442,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 
 void expr_insert_addr(Expr *original)
 {
-	assert(original->resolve_status == RESOLVE_DONE);
+	ASSERT0(original->resolve_status == RESOLVE_DONE);
 	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_DEREF)
 	{
 		*original = *original->unary_expr.expr;
@@ -459,8 +459,8 @@ void expr_insert_addr(Expr *original)
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
-	assert(decl->decl_kind == DECL_VAR);
-	assert(decl->var.init_expr == NULL);
+	ASSERT0(decl->decl_kind == DECL_VAR);
+	ASSERT0(decl->var.init_expr == NULL);
 	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
 	expr_decl->decl_expr = decl;
 	if (!assign) decl->var.no_init = true;
@@ -497,7 +497,7 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 			}
 			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
 			{
-				assert(init->kind == CONST_INIT_ARRAY_VALUE);
+				ASSERT0(init->kind == CONST_INIT_ARRAY_VALUE);
 				if (init->init_array_value.index == index) return init->init_array_value.element;
 			}
 			return NULL;
@@ -539,7 +539,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
-			assert(canonical->decl->resolve_status == RESOLVE_DONE);
+			ASSERT0(canonical->decl->resolve_status == RESOLVE_DONE);
 			expr->const_expr.enum_err_val = canonical->decl->enums.values[0];
 			expr->resolve_status = RESOLVE_DONE;
 			break;
@@ -865,7 +865,7 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	expr->expr_kind = EXPR_CONST;
 	expr->span = span;
 	expr->type = type;
-	assert(type_flatten(type)->type_kind == TYPE_BOOL);
+	ASSERT0(type_flatten(type)->type_kind == TYPE_BOOL);
 	expr->const_expr.b = value;
 	expr->const_expr.const_kind = CONST_BOOL;
 	expr->resolve_status = RESOLVE_DONE;
@@ -929,7 +929,7 @@ void expr_rewrite_insert_deref(Expr *original)
 	if (original->resolve_status == RESOLVE_DONE)
 	{
 		Type *no_fail  = type_no_optional(inner->type);
-		assert(no_fail->canonical->type_kind == TYPE_POINTER);
+		ASSERT0(no_fail->canonical->type_kind == TYPE_POINTER);
 
 		// Only fold to the canonical type if it wasn't a pointer.
 		Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;

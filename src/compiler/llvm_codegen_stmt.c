@@ -9,13 +9,13 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 // Emit a regular compound statement.
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 {
-	assert(ast->ast_kind == AST_COMPOUND_STMT);
+	ASSERT0(ast->ast_kind == AST_COMPOUND_STMT);
 
 	DebugScope *old_block = NULL;
 	if (ast->compound_stmt.parent_defer && llvm_use_debug(c))
 	{
 		old_block = c->debug.block_stack;
-		assert(ast->compound_stmt.parent_defer);
+		ASSERT0(ast->compound_stmt.parent_defer);
 		c->debug.block_stack = astptr(ast->compound_stmt.parent_defer)->defer_stmt.scope;
 	}
 	// Push the lexical scope if in debug.
@@ -112,7 +112,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	LLVMTypeRef alloc_type = llvm_get_type(c, var_type);
 
 	// Create a local alloca
-	assert(!decl->backend_ref);
+	ASSERT0(!decl->backend_ref);
 	llvm_emit_local_var_alloca(c, decl);
 
 	// Create optional storage
@@ -174,7 +174,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
  */
 static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bool_cast)
 {
-	assert(expr->expr_kind == EXPR_COND);
+	ASSERT0(expr->expr_kind == EXPR_COND);
 	ByteSize size = vec_size(expr->cond_expr);
 
 	// First emit everything up to the last element.
@@ -313,7 +313,7 @@ static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 	{
 		if (ast->return_stmt.cleanup_fail && IS_OPTIONAL(ret_expr))
 		{
-			assert(c->catch.block);
+			ASSERT0(c->catch.block);
 			err_cleanup_block = llvm_basic_block_new(c, "opt_block_cleanup");
 			c->catch.block = err_cleanup_block;
 		}
@@ -412,7 +412,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 
 	llvm_value_rvalue(c, &be_value);
 
-	assert(llvm_value_is_bool(&be_value));
+	ASSERT0(llvm_value_is_bool(&be_value));
 
 	if (llvm_value_is_const(&be_value) && then_block != else_block)
 	{
@@ -493,7 +493,7 @@ static inline LoopType loop_type_for_cond(Expr *cond, bool do_while)
 	// Do we have a constant cond?
 	if (expr_is_const(cond))
 	{
-		assert(cond->const_expr.const_kind == CONST_BOOL);
+		ASSERT0(cond->const_expr.const_kind == CONST_BOOL);
 		// The result is either infinite or no loop
 		return cond->const_expr.b ? LOOP_INFINITE : LOOP_NONE;
 	}
@@ -550,7 +550,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		return;
 	}
 
-	assert(loop_start_block != NULL);
+	ASSERT0(loop_start_block != NULL);
 
 	LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "loop.exit");
 
@@ -586,7 +586,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		// Emit the block
 		llvm_emit_block(c, cond_block);
 		BEValue be_value;
-		assert(cond);
+		ASSERT0(cond);
 		if (cond->expr_kind == EXPR_COND)
 		{
 			llvm_emit_cond(c, &be_value, cond, true);
@@ -596,7 +596,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 			llvm_emit_expr(c, &be_value, cond);
 		}
 		llvm_value_rvalue(c, &be_value);
-		assert(llvm_value_is_bool(&be_value));
+		ASSERT0(llvm_value_is_bool(&be_value));
 
 		// If we have a body, conditionally jump to it.
 		LLVMBasicBlockRef cond_success = body_block ? body_block : inc_block;
@@ -711,7 +711,7 @@ static void llvm_emit_switch_body_if_chain(GenContext *c,
 		Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 		if (to_expr)
 		{
-			assert(!is_type_switch);
+			ASSERT0(!is_type_switch);
 			BEValue to_value;
 			llvm_emit_expr(c, &to_value, to_expr);
 			llvm_value_rvalue(c, &to_value);
@@ -769,7 +769,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	unsigned case_count = vec_size(cases);
 	BEValue min_val;
 	llvm_emit_expr(c, &min_val, exprptr(cases[min_index]->case_stmt.expr));
-	assert(llvm_value_is_const(&min_val));
+	ASSERT0(llvm_value_is_const(&min_val));
 	llvm_value_rvalue(c, switch_value);
 	llvm_value_rvalue(c, &min_val);
 	LLVMValueRef min = min_val.value;
@@ -816,7 +816,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		}
 		Expr *from = exprptr(case_ast->case_stmt.expr);
 		Expr *to = exprptrzero(case_ast->case_stmt.to_expr);
-		assert(type_is_integer(from->type) && expr_is_const(from));
+		ASSERT0(type_is_integer(from->type) && expr_is_const(from));
 		Int value = from->const_expr.ixx;
 		Int to_value = to ? to->const_expr.ixx : value;
 		if (min.type == TYPE_VOID)
@@ -838,9 +838,9 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	switch_ast->switch_stmt.codegen.jump.default_index = default_index;
 	switch_ast->switch_stmt.codegen.jump.min_index = min_index;
 	max = int_sub(max, min);
-	assert(max.i.low <= 0xFFFF);
+	ASSERT0(max.i.low <= 0xFFFF);
 	uint64_t count = switch_ast->switch_stmt.codegen.jump.count = max.i.low + 1;
-	assert(!max.i.high && "Should never exceed 64 bytes");
+	ASSERT0(!max.i.high && "Should never exceed 64 bytes");
 
 	Type *goto_array_type = type_get_array(type_voidptr, count);
 	LLVMTypeRef llvm_array_type = llvm_get_type(c, goto_array_type);
@@ -857,7 +857,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	static LLVMValueRef refs[DEFAULT_SWITCHRANGE_MAX_SIZE];
 	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
-	assert(count < DEFAULT_SWITCHRANGE_MAX_SIZE);
+	ASSERT0(count < DEFAULT_SWITCHRANGE_MAX_SIZE);
 	memset(refs, 0, sizeof(LLVMValueRef) * count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
@@ -867,7 +867,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		{
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
 			Expr *to = exprptrzero(case_stmt->case_stmt.to_expr);
-			assert(type_is_integer(from->type) && expr_is_const(from));
+			ASSERT0(type_is_integer(from->type) && expr_is_const(from));
 			Int value = int_sub(from->const_expr.ixx, min);
 			Int to_value = to ? int_sub(to->const_expr.ixx, min) : value;
 			uint64_t from_val = value.i.low;
@@ -977,7 +977,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 		llvm_emit_switch_jump_table(c, switch_ast, cases, default_case, &switch_current_val, exit_block);
 		return;
 	}
-	assert(!is_typeid);
+	ASSERT0(!is_typeid);
 
 	LLVMValueRef switch_stmt = LLVMBuildSwitch(c->builder, switch_current_val.value, default_case ? default_case->case_stmt.backend_block : exit_block, case_count);
 	c->current_block = NULL;
@@ -990,7 +990,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 			LLVMValueRef case_value;
 			BEValue be_value;
 			Expr *from = exprptr(case_stmt->case_stmt.expr);
-			assert(expr_is_const(from));
+			ASSERT0(expr_is_const(from));
 			llvm_emit_expr(c, &be_value, from);
 			llvm_value_rvalue(c, &be_value);
 			case_value = be_value.value;
@@ -1002,7 +1002,7 @@ static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *swi
 				llvm_emit_expr(c, &to_value, to_expr);
 				llvm_value_rvalue(c, &to_value);
 				LLVMValueRef to = to_value.value;
-				assert(LLVMIsAConstant(to));
+				ASSERT0(LLVMIsAConstant(to));
 				LLVMValueRef one = llvm_const_int(c, to_value.type, 1);
 				while (LLVMConstIntGetZExtValue(LLVMBuildICmp(c->builder, LLVMIntEQ, to, case_value, "")) != 1)
 				{
@@ -1070,7 +1070,7 @@ void llvm_emit_break(GenContext *c, Ast *ast)
 
 void llvm_emit_continue(GenContext *c, Ast *ast)
 {
-	assert(ast->contbreak_stmt.is_resolved);
+	ASSERT0(ast->contbreak_stmt.is_resolved);
 	llvm_emit_statement_chain(c, ast->contbreak_stmt.defers);
 	Ast *jump_target = astptr(ast->contbreak_stmt.ast);
 	LLVMBasicBlockRef jump;
@@ -1166,7 +1166,7 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 		BEValue value;
 		llvm_emit_expr(c, &value, expr);
 		llvm_value_rvalue(c, &value);
-		assert(value.kind == BE_BOOLEAN);
+		ASSERT0(value.kind == BE_BOOLEAN);
 		EMIT_LOC(c, expr);
 		llvm_emit_assume_true(c, &value);
 	}
@@ -1183,7 +1183,7 @@ static inline void llvm_emit_assert_stmt(GenContext *c, Ast *ast)
 		llvm_value_rvalue(c, &value);
 		LLVMBasicBlockRef on_fail = llvm_basic_block_new(c, "assert_fail");
 		LLVMBasicBlockRef on_ok = llvm_basic_block_new(c, "assert_ok");
-		assert(value.kind == BE_BOOLEAN);
+		ASSERT0(value.kind == BE_BOOLEAN);
 		llvm_emit_cond_br(c, &value, on_ok, on_fail);
 		llvm_emit_block(c, on_fail);
 		SourceSpan loc = assert_expr->span;
@@ -1304,7 +1304,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 				args[param_count++] = value.value;
 				continue;
 			}
-			assert(var->kind == ASM_ARG_REGVAR);
+			ASSERT0(var->kind == ASM_ARG_REGVAR);
 			if (var->ident.early_clobber)
 			{
 				codegen_append_constraints(&clobber_list, "=&r");
@@ -1330,7 +1330,7 @@ static inline void llvm_emit_asm_block_stmt(GenContext *c, Ast *ast)
 					value.kind = BE_VALUE;
 					pointer_type[param_count] = llvm_get_type(c, value.type);
 					value.type = type_get_ptr(value.type);
-					assert(!val->ident.copy_output);
+					ASSERT0(!val->ident.copy_output);
 					codegen_append_constraints(&clobber_list, "*m");
 					break;
 				case ASM_ARG_REGVAR:
@@ -1565,7 +1565,7 @@ void llvm_emit_panic_if_true(GenContext *c, BEValue *value, const char *panic_na
 {
 	if (LLVMIsAConstantInt(value->value))
 	{
-		assert(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
+		ASSERT0(!LLVMConstIntGetZExtValue(value->value) && "Unexpected bounds check failed.");
 		return;
 	}
 	LLVMBasicBlockRef panic_block = llvm_basic_block_new(c, "panic");

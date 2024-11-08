@@ -424,7 +424,7 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 static void project_add_target(const char *filename, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *name, const char *type, TargetType target_type)
 {
-	assert(json->type == J_OBJECT);
+	ASSERT0(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
 	*target = *default_target;
 	vec_add(project->targets, target);
@@ -444,7 +444,7 @@ static void project_add_target(const char *filename, Project *project, BuildTarg
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
 {
-	assert(project_data->type == J_OBJECT);
+	ASSERT0(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
 	load_into_build_target(filename, project_data, NULL, &default_target);

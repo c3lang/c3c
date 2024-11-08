@@ -277,7 +277,7 @@ LLVMTypeRef llvm_func_type(GenContext *context, FunctionPrototype *prototype)
 LLVMTypeRef llvm_get_pointee_type(GenContext *c, Type *any_type)
 {
 	any_type = any_type->canonical;
-	assert(any_type->type_kind == TYPE_POINTER);
+	ASSERT0(any_type->type_kind == TYPE_POINTER);
 	if (any_type == type_voidptr) return llvm_get_type(c, type_char);
 	return llvm_get_type(c, any_type->pointer);
 }
@@ -300,7 +300,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 {
 	if (any_type->backend_type)
 	{
-		assert(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
+		ASSERT0(LLVMGetTypeContext(any_type->backend_type) == c->context && "Should have been purged");
 		return any_type->backend_type;
 	}
 	Type *type = type_lowering(any_type);
@@ -337,7 +337,7 @@ LLVMTypeRef llvm_get_type(GenContext *c, Type *any_type)
 			return any_type->backend_type = LLVMIntTypeInContext(c->context, 8U);
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
-			assert(c->ptr_type);
+			ASSERT0(c->ptr_type);
 			return any_type->backend_type = c->ptr_type;
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -370,7 +370,7 @@ LLVMTypeRef llvm_get_coerce_type(GenContext *c, ABIArgInfo *arg_info)
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			LLVMTypeRef coerce_type = llvm_get_type(c, type_uint);
-			assert(arg_info->direct_struct_expand > 1U && arg_info->direct_struct_expand < 10);
+			ASSERT0(arg_info->direct_struct_expand > 1U && arg_info->direct_struct_expand < 10);
 			LLVMTypeRef refs[10];
 			for (unsigned i = 0; i < arg_info->direct_struct_expand; i++)
 			{
@@ -411,7 +411,7 @@ LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type)
 
 static inline LLVMValueRef llvm_generate_temp_introspection_global(GenContext *c, Type *type)
 {
-	assert(!type->backend_typeid);
+	ASSERT0(!type->backend_typeid);
 	LLVMValueRef temp = LLVMAddGlobal(c->module, c->introspect_type, "tempid");
 	type->backend_typeid = LLVMBuildPtrToInt(c->builder, temp, c->typeid_type, "");
 	return temp;
@@ -426,9 +426,9 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 
 	if (original_global)
 	{
-		assert(type->backend_typeid);
+		ASSERT0(type->backend_typeid);
 	}
-	assert(type == type->canonical);
+	ASSERT0(type == type->canonical);
 	Type *parent_type = type_find_parent_type(type);
 	LLVMValueRef parent_typeid;
 	LLVMValueRef global_name = NULL;

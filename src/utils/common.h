@@ -104,9 +104,14 @@
   } while (0)
 #endif
 
-#define FATAL_ERROR(_string, ...) do { error_exit("FATAL ERROR %s -> in %s @ in %s:%d ", _string, __func__, __FILE__, __LINE__, ##__VA_ARGS__); } while(0)
+#define FATAL_ERROR(_string, ...) do { error_exit("\xe2\x9a\xa0\xef\xb8\x8f The compiler encountered an unexpected error: \"%s\".\n\n" \
+ "- Function: %s(...)\n" \
+ "- Source file: %s:%d\n\n" \
+ "\xf0\x9f\x99\x8f Please consider taking the time to file an issue on GitHub, so that we can get it fixed:\n\n" \
+ "https://github.com/c3lang/c3c/issues/new so that we can get it fixed.", _string, __func__, __FILE__, __LINE__, ##__VA_ARGS__); } while(0)
 
-#define ASSERT(_condition, _string, ...) while (!(_condition)) { FATAL_ERROR(_string, ##__VA_ARGS__); }
+#define ASSERT(_condition, _string) while (!(_condition)) { FATAL_ERROR(_string); }
+#define ASSERT0(_condition) while (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); }
 #define WARNING(_string, ...) do { eprintf("WARNING: "); eprintf(_string, ##__VA_ARGS__); eprintf("\n"); } while(0)
 #define UNREACHABLE FATAL_ERROR("Should be unreachable");
 

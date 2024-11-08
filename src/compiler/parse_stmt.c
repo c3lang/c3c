@@ -53,7 +53,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 			}
 			if (decl->attributes)
 			{
-				assert(VECLAST(decl->attributes));
+				ASSERT0(VECLAST(decl->attributes));
 				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
@@ -76,7 +76,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 		{
 			if (tok_is(c, TOKEN_COMMA))
 			{
-				assert(VECLAST(decl->attributes));
+				ASSERT0(VECLAST(decl->attributes));
 				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
@@ -171,7 +171,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 		return false;
 	}
 	Expr *offset = parse_integer(c, NULL);
-	assert(expr_is_const_int(offset));
+	ASSERT0(expr_is_const_int(offset));
 	Int i = offset->const_expr.ixx;
 	if (i.i.high)
 	{
@@ -190,7 +190,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 		return false;
 	}
 	Expr *value = parse_integer(c, NULL);
-	assert(expr_is_const_int(value));
+	ASSERT0(expr_is_const_int(value));
 	Int i = value->const_expr.ixx;
 	if (i.i.high)
 	{

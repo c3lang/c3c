@@ -41,11 +41,11 @@ static inline void decltable_resize(DeclTable *table)
 
 void decltable_set(DeclTable *table, Decl *decl)
 {
-	assert(decl && "Cannot insert NULL");
+	ASSERT0(decl && "Cannot insert NULL");
 	DeclId *entry = declentry_find(table->entries, table->capacity, decl->name);
 	DeclId decl_id = declid(decl);
 	DeclId old_id = *entry;
-	assert(old_id != decl_id);
+	ASSERT0(old_id != decl_id);
 	// Simple case, a new decl
 	if (!old_id)
 	{
@@ -81,7 +81,7 @@ DeclId decltable_get(DeclTable *table, const char *name)
 
 void decltable_init(DeclTable *table, uint32_t initial_size)
 {
-	assert(initial_size && "Size must be larger than 0");
+	ASSERT0(initial_size && "Size must be larger than 0");
 	assert (is_power_of_two(initial_size) && "Must be a power of two");
 
 	DeclId *entries = CALLOC(initial_size * sizeof(DeclId));

@@ -19,13 +19,13 @@ INLINE LLVMValueRef llvm_zext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRe
 {
 	LLVMTypeRef current_type = LLVMTypeOf(data);
 	if (current_type == type) return data;
-	assert(llvm_is_int_or_vector_int(type));
-	assert(llvm_is_int_or_vector_int(current_type));
+	ASSERT0(llvm_is_int_or_vector_int(type));
+	ASSERT0(llvm_is_int_or_vector_int(current_type));
 	if (llvm_bitsize(c, current_type) < llvm_bitsize(c, type))
 	{
 		return LLVMBuildZExt(c->builder, data, type, "zext");
 	}
-	assert(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
+	ASSERT0(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
 	return LLVMBuildTrunc(c->builder, data, type, "trunc");
 }
 
@@ -33,13 +33,13 @@ INLINE LLVMValueRef llvm_sext_trunc(GenContext *c, LLVMValueRef data, LLVMTypeRe
 {
 	LLVMTypeRef current_type = LLVMTypeOf(data);
 	if (current_type == type) return data;
-	assert(llvm_is_int_or_vector_int(type));
-	assert(llvm_is_int_or_vector_int(current_type));
+	ASSERT0(llvm_is_int_or_vector_int(type));
+	ASSERT0(llvm_is_int_or_vector_int(current_type));
 	if (llvm_bitsize(c, current_type) < llvm_bitsize(c, type))
 	{
 		return LLVMBuildSExt(c->builder, data, type, "sext");
 	}
-	assert(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
+	ASSERT0(llvm_bitsize(c, current_type) > llvm_bitsize(c, type));
 	return LLVMBuildTrunc(c->builder, data, type, "trunc");
 }
 
@@ -59,7 +59,7 @@ INLINE void llvm_value_ext_trunc(GenContext *c, BEValue *value, Type *type)
 	ByteSize size = type_size(from_type);
 	ByteSize to_size = type_size(type);
 
-	assert(type_is_intlike(type) && type_is_intlike(from_type));
+	ASSERT0(type_is_intlike(type) && type_is_intlike(from_type));
 	if (size == to_size) return;
 
 	llvm_value_rvalue(c, value);
@@ -84,20 +84,20 @@ INLINE LLVMValueRef llvm_store_decl(GenContext *c, Decl *decl, BEValue *value)
 {
 	BEValue ref;
 	llvm_value_set_decl(c, &ref, decl);
-	assert(llvm_value_is_addr(&ref));
+	ASSERT0(llvm_value_is_addr(&ref));
 	return llvm_store(c, &ref, value);
 }
 
 INLINE LLVMValueRef llvm_store_raw(GenContext *c, BEValue *destination, LLVMValueRef raw_value)
 {
-	assert(llvm_value_is_addr(destination));
+	ASSERT0(llvm_value_is_addr(destination));
 	return llvm_store_to_ptr_raw_aligned(c, destination->value, raw_value, destination->alignment);
 }
 
 
 INLINE LLVMValueRef llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMValueRef value)
 {
-	assert(!decl->is_value);
+	ASSERT0(!decl->is_value);
 	return llvm_store_to_ptr_raw_aligned(context, decl->backend_ref, value, decl->alignment);
 }
 
@@ -122,7 +122,7 @@ INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, L
 
 INLINE void llvm_value_bitcast(GenContext *c UNUSED, BEValue *value, Type *type)
 {
-	assert(llvm_value_is_addr(value));
+	ASSERT0(llvm_value_is_addr(value));
 	type = type_lowering(type);
 	value->type = type;
 }
@@ -279,25 +279,25 @@ INLINE bool llvm_is_const(LLVMValueRef value)
 
 INLINE LLVMValueRef llvm_get_zstring(GenContext *c, const char *str, size_t len)
 {
-	assert(len == (unsigned)len);
+	ASSERT0(len == (unsigned)len);
 	return LLVMConstStringInContext(c->context, str, (unsigned)len, 0);
 }
 
 INLINE LLVMValueRef llvm_get_bytes(GenContext *c, const char *str, size_t len)
 {
-	assert(len == (unsigned)len);
+	ASSERT0(len == (unsigned)len);
 	return LLVMConstStringInContext(c->context, str, (unsigned)len, 1);
 }
 
 INLINE LLVMValueRef llvm_get_struct(GenContext *c, LLVMValueRef *vals, size_t len)
 {
-	assert(len == (unsigned)len);
+	ASSERT0(len == (unsigned)len);
 	return LLVMConstStructInContext(c->context, vals, (unsigned)len, false);
 }
 
 INLINE LLVMValueRef llvm_get_packed_struct(GenContext *c, LLVMValueRef *vals, size_t len)
 {
-	assert(len == (unsigned)len);
+	ASSERT0(len == (unsigned)len);
 	return LLVMConstStructInContext(c->context, vals, (unsigned)len, true);
 }
 
@@ -324,7 +324,7 @@ INLINE LLVMValueRef llvm_get_struct_of_type(GenContext *c, Type *type, LLVMValue
 INLINE LLVMValueRef llvm_const_int(GenContext *c, Type *type, uint64_t val)
 {
 	type = type_lowering(type);
-	assert(type_is_integer(type) || type->type_kind == TYPE_BOOL);
+	ASSERT0(type_is_integer(type) || type->type_kind == TYPE_BOOL);
 	return LLVMConstInt(llvm_get_type(c, type), val, type_is_integer_signed(type));
 }
 
@@ -342,14 +342,14 @@ INLINE LLVMValueRef llvm_add_global_raw(GenContext *c, const char *name, LLVMTyp
 
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr)
 {
-	assert(expr);
+	ASSERT0(expr);
 	llvm_emit_expr(c, value, exprptr(expr));
 }
 
 
 INLINE void llvm_set_alignment(LLVMValueRef alloca, AlignSize alignment)
 {
-	assert(alignment > 0);
+	ASSERT0(alignment > 0);
 	LLVMSetAlignment(alloca, (unsigned)alignment);
 }
 

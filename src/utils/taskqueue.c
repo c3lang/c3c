@@ -34,7 +34,7 @@ SHUTDOWN:
 
 void taskqueue_run(int threads, Task **task_list)
 {
-	assert(threads > 0);
+	ASSERT0(threads > 0);
 	pthread_t *pthreads = malloc(sizeof(pthread_t) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
 	if (pthread_mutex_init(&queue.lock, NULL)) error_exit("Failed to set up mutex");
@@ -82,7 +82,7 @@ SHUTDOWN:
 
 void taskqueue_run(int threads, Task **task_list)
 {
-	assert(threads > 0);
+	ASSERT0(threads > 0);
 	HANDLE *handles = malloc(sizeof(HANDLE) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
 	InitializeCriticalSection(&queue.lock);

@@ -56,14 +56,14 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 		*expr_const = (ExprConst) { .const_kind = contract_type };
 		return;
 	}
-	assert(expr_const->const_kind == CONST_INITIALIZER || expr_const->const_kind == CONST_SLICE);
+	ASSERT0(expr_const->const_kind == CONST_INITIALIZER || expr_const->const_kind == CONST_SLICE);
 	ConstInitializer *initializer = expr_const->const_kind == CONST_SLICE
 			? expr_const->slice_init
 			: expr_const->initializer;
 	Type *type = initializer->type;
-	assert(type_is_any_arraylike(type));
+	ASSERT0(type_is_any_arraylike(type));
 	ArraySize len = type->array.len;
-	assert(len > 0);
+	ASSERT0(len > 0);
 	char *arr = calloc_arena(len);
 	switch (initializer->kind)
 	{
@@ -78,7 +78,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 		{
 			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
 			{
-				assert(init->kind == CONST_INIT_ARRAY_VALUE);
+				ASSERT0(init->kind == CONST_INIT_ARRAY_VALUE);
 				arr[init->init_array_value.index] = (char) int_to_i64(init->init_array_value.element->init_value->const_expr.ixx);
 			}
 			break;
@@ -87,7 +87,7 @@ void expr_contract_array(ExprConst *expr_const, ConstKind contract_type)
 		{
 			FOREACH_IDX(i, ConstInitializer *, init, initializer->init_array_full)
 			{
-				assert(init->kind == CONST_INIT_VALUE);
+				ASSERT0(init->kind == CONST_INIT_VALUE);
 				arr[i] = (char)int_to_i64(init->init_value->const_expr.ixx);
 			}
 			break;
@@ -133,10 +133,10 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_BOOL:
 			return compare_bool(left->b, right->b, op);
 		case CONST_INTEGER:
-			assert(right->const_kind != CONST_ENUM);
+			ASSERT0(right->const_kind != CONST_ENUM);
 			return int_comp(left->ixx, right->ixx, op);
 		case CONST_REF:
-			assert(right->const_kind == CONST_POINTER || right->const_kind == CONST_REF);
+			ASSERT0(right->const_kind == CONST_POINTER || right->const_kind == CONST_REF);
 			if (right->const_kind == CONST_POINTER) return false;
 			return decl_flatten(right->global_ref) == decl_flatten(left->global_ref);
 		case CONST_FLOAT:
@@ -168,7 +168,7 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		{
 			Decl *left_decl = left->enum_err_val;
 			// The error case
-			assert(right->const_kind == left->const_kind);
+			ASSERT0(right->const_kind == left->const_kind);
 			Decl *right_decl = right->enum_err_val;
 			// Non-matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
@@ -255,7 +255,7 @@ bool expr_const_float_fits_type(const ExprConst *expr_const, TypeKind kind)
 		default:
 			UNREACHABLE
 	}
-	assert(expr_const->const_kind == CONST_FLOAT);
+	ASSERT0(expr_const->const_kind == CONST_FLOAT);
 	return expr_const->fxx.f >= -lo_limit && expr_const->fxx.f <= hi_limit;
 }
 

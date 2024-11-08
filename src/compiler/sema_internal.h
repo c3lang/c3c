@@ -24,15 +24,15 @@
 #define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
 #define ASSERT_SPAN(node__, check__) do { } while(0)
 #else
-#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); assert(check__); } } while(0)
-#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); assert(check__); } } while(0)
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT0(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT0(check__); } } while(0)
 #endif
 #define SCOPE_OUTER_START do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE);
-#define SCOPE_OUTER_END assert(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
+#define SCOPE_OUTER_END ASSERT0(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
 #define SCOPE_START SCOPE_START_WITH_FLAGS(SCOPE_NONE)
 #define SCOPE_START_WITH_FLAGS(flags) do { DynamicScope old_scope = context->active_scope; context_change_scope_with_flags(context, flags);
 #define SCOPE_START_WITH_LABEL(label) do { DynamicScope old_scope = context->active_scope; context_change_scope_for_label(context, label);
-#define SCOPE_END assert(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
+#define SCOPE_END ASSERT0(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = old_scope; } while(0)
 #define SCOPE_POP_ERROR() ((bool)(context->active_scope = old_scope, false))
 #define SCOPE_ERROR_END_OUTER() do { context->active_scope = stored_scope; } while(0)
 #define PUSH_X(ast, X) AstId _old_##X##_defer = context->X##_defer; Ast *_old_##X = context->X##_target; context->X##_target = ast; context->X##_defer = context->active_scope.defer_last
@@ -167,7 +167,7 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 
 INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
 {
-	assert(decl->resolve_status == RESOLVE_DONE);
+	ASSERT0(decl->resolve_status == RESOLVE_DONE);
 	if (!decl->resolved_attributes || !decl->attrs_resolved || !decl->attrs_resolved->deprecated) return;
 	const char *msg = decl->attrs_resolved->deprecated;
 

@@ -33,7 +33,7 @@ void memory_release()
 
 void *calloc_string(size_t len)
 {
-	assert(len > 0);
+	ASSERT0(len > 0);
 	allocations_done++;
 	return vmem_alloc(&char_arena, len);
 }
@@ -42,7 +42,7 @@ void *calloc_string(size_t len)
 // Simple bump allocator with buckets.
 void *calloc_arena(size_t mem)
 {
-	assert(mem > 0);
+	ASSERT0(mem > 0);
 	// Round to multiple of 16
 	mem = (mem + 15U) & ~15ULL;
 	allocations_done++;

@@ -184,7 +184,7 @@ static inline bool sema_analyse_break_stmt(SemaContext *context, Ast *statement)
 		defer_begin = context->break_defer;
 	}
 
-	assert(parent);
+	ASSERT0(parent);
 	parent->flow.has_break = true;
 	statement->contbreak_stmt.ast = astid(parent);
 
@@ -257,10 +257,10 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
  **/
 static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 {
-	assert(cond->expr_kind == EXPR_COND && "Assumed cond");
+	ASSERT0(cond->expr_kind == EXPR_COND && "Assumed cond");
 
 	Expr *last = VECLAST(cond->cond_expr);
-	assert(last);
+	ASSERT0(last);
 
 	// Dive into any cast, because it might have been cast into boolean.
 	while (last->expr_kind == EXPR_CAST)
@@ -278,7 +278,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 		Decl *decl = expr->identifier_expr.decl;
 		if (decl->decl_kind != DECL_VAR) continue;
-		assert(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be optional at this point.");
+		ASSERT0(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be optional at this point.");
 
 		// Note that we could possibly have "if (catch x, x)" and in this case we'd
 		// unwrap twice, but that isn't really a problem.
@@ -306,7 +306,7 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 {
 	directive = copy_ast_single(directive);
 	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
-	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
+	ASSERT0(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
@@ -382,7 +382,7 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 	if (!sema_cast_const(inner)) return true;
 
 	// Here we have a const optional return.
-	assert(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
+	ASSERT0(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
 	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
 
 	// Check that we find it.
@@ -401,7 +401,7 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 
 static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_expr)
 {
-	assert(context->current_macro);
+	ASSERT0(context->current_macro);
 	// This is a per return check, so we don't do it if the return expression is missing,
 	// or if it is optional, or – obviously - if there are no '@ensure'.
 	if (!ret_expr || !context->macro_has_ensures || IS_OPTIONAL(ret_expr)) return true;
@@ -423,7 +423,7 @@ static bool sema_analyse_macro_constant_ensures(SemaContext *context, Expr *ret_
 			doc_directive = directive->next;
 			if (directive->contract_stmt.kind != CONTRACT_ENSURE) continue;
 			Expr *checks = copy_expr_single(directive->contract_stmt.contract.decl_exprs);
-			assert(checks->expr_kind == EXPR_EXPRESSION_LIST);
+			ASSERT0(checks->expr_kind == EXPR_EXPRESSION_LIST);
 			Expr **exprs = checks->expression_list;
 			FOREACH(Expr *, expr, exprs)
 			{
@@ -463,7 +463,7 @@ END:
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
 	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
-	assert(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
+	ASSERT0(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
 	Type *block_type = context->expected_block_type;
@@ -577,7 +577,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	context->active_scope.jump_end = true;
 
 	Type *expected_rtype = context->rtype;
-	assert(expected_rtype && "We should always have known type from a function return.");
+	ASSERT0(expected_rtype && "We should always have known type from a function return.");
 
 	Expr *return_expr = statement->return_stmt.expr;
 	if (return_expr)
@@ -634,7 +634,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	}
 SKIP_ENSURE:;
 
-	assert(type_no_optional(statement->return_stmt.expr->type)->canonical == type_no_optional(expected_rtype)->canonical);
+	ASSERT0(type_no_optional(statement->return_stmt.expr->type)->canonical == type_no_optional(expected_rtype)->canonical);
 	return true;
 }
 
@@ -723,7 +723,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 }
 static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 {
-	assert(expr->expr_kind == EXPR_TRY_UNWRAP);
+	ASSERT0(expr->expr_kind == EXPR_TRY_UNWRAP);
 	Expr *ident = expr->try_unwrap_expr.variable;
 	Expr *optional = expr->try_unwrap_expr.init;
 
@@ -783,7 +783,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 	// 3a. If we had a variable type, then our expression must be an identifier.
 	if (ident->expr_kind != EXPR_IDENTIFIER) RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
-	assert(ident->resolve_status != RESOLVE_DONE);
+	ASSERT0(ident->resolve_status != RESOLVE_DONE);
 	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
 	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 	const char *ident_name = ident->identifier_expr.ident;
@@ -832,9 +832,9 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
-	assert(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
+	ASSERT0(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
 
-	assert(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
+	ASSERT0(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
 
 	FOREACH(Expr *, chain_element, expr->try_unwrap_chain_expr)
 	{
@@ -877,7 +877,7 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
 	}
 
-	assert(ident->resolve_status != RESOLVE_DONE);
+	ASSERT0(ident->resolve_status != RESOLVE_DONE);
 	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
 	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 
@@ -907,7 +907,7 @@ RESOLVE_EXPRS:;
 
 static void sema_remove_unwraps_from_try(SemaContext *c, Expr *cond)
 {
-	assert(cond->expr_kind == EXPR_COND);
+	ASSERT0(cond->expr_kind == EXPR_COND);
 	Expr *last = VECLAST(cond->cond_expr);
 	if (!last || last->expr_kind != EXPR_TRY_UNWRAP_CHAIN) return;
 	FOREACH(Expr *, expr, last->try_unwrap_chain_expr)
@@ -1014,7 +1014,7 @@ NORMAL_EXPR:;
  */
 static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
-	assert(expr->expr_kind == EXPR_COND);
+	ASSERT0(expr->expr_kind == EXPR_COND);
 
 	Expr **dexprs = expr->cond_expr;
 	unsigned entries = vec_size(dexprs);
@@ -1055,7 +1055,7 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
 static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
 	bool cast_to_bool = cond_type == COND_TYPE_UNWRAP_BOOL;
-	assert(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
+	ASSERT0(expr->expr_kind == EXPR_COND && "Conditional expressions should always be of type EXPR_DECL_LIST");
 
 	// 1. Analyse the declaration list.
 	ScopeFlags current_flags = context->active_scope.flags;
@@ -1274,7 +1274,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 	bool is_infinite = false;
 
 	Ast *body = astptr(statement->for_stmt.body);
-	assert(body);
+	ASSERT0(body);
 	if (body->ast_kind == AST_DEFER_STMT)
 	{
 		RETURN_SEMA_ERROR(body, "Looping over a raw 'defer' is not allowed, was this a mistake?");
@@ -1327,7 +1327,7 @@ static inline bool sema_analyse_for_stmt(SemaContext *context, Ast *statement)
 			// Rewrite do { } while(true) to while(true) { }
 			if (is_infinite)
 			{
-				assert(!statement->for_stmt.cond);
+				ASSERT0(!statement->for_stmt.cond);
 				statement->for_stmt.flow.skip_first = false;
 			}
 		}
@@ -1404,7 +1404,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (statement->foreach_stmt.index_by_ref)
 	{
-		assert(index);
+		ASSERT0(index);
 		RETURN_SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
 	}
 
@@ -1432,7 +1432,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 
 	// At this point we should have dereferenced any pointer or bailed.
-	assert(!type_is_pointer(enumerator->type));
+	ASSERT0(!type_is_pointer(enumerator->type));
 
 	// Check that we can even index this expression.
 
@@ -1464,7 +1464,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		if (!decl_ok(len) || !decl_ok(by_val) || !decl_ok(by_ref)) return false;
 		index_macro = value_by_ref ? by_ref : by_val;
-		assert(index_macro);
+		ASSERT0(index_macro);
 		index_type = index_macro->func_decl.signature.params[1]->type;
 		if (!type_is_integer(index_type))
 		{
@@ -1513,7 +1513,7 @@ SKIP_OVERLOAD:;
 
 	// We either have "foreach (x : some_var)" or "foreach (x : some_call())"
 	// So we grab the former by address (implicit &) and the latter as the value.
-	assert(enumerator->resolve_status == RESOLVE_DONE);
+	ASSERT0(enumerator->resolve_status == RESOLVE_DONE);
 	bool is_addr = false;
 	bool is_variable = false;
 	if (enumerator->expr_kind == EXPR_IDENTIFIER)
@@ -1995,7 +1995,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 	statement->nextcase_stmt.switch_expr = NULL;
 	if (!value)
 	{
-		assert(context->next_target);
+		ASSERT0(context->next_target);
 		statement->nextcase_stmt.defer_id = context_get_defers(context, context->active_scope.defer_last, parent->switch_stmt.defer, true);
 		statement->nextcase_stmt.case_switch_stmt = astid(context->next_target);
 		return true;
@@ -2077,7 +2077,7 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 	AstId next = statement->next;
 	*statement = *astptr(replacement);
 	AstId current = astid(statement);
-	assert(current);
+	ASSERT0(current);
 	while (current)
 	{
 		Ast *ast = ast_next(&current);
@@ -2115,7 +2115,7 @@ static inline bool sema_analyse_ct_if_stmt(SemaContext *context, Ast *statement)
 			if (sema_analyse_then_overwrite(context, statement, elif->ct_else_stmt)) goto SUCCESS;
 			goto FAILED;
 		}
-		assert(elif->ast_kind == AST_CT_IF_STMT);
+		ASSERT0(elif->ast_kind == AST_CT_IF_STMT);
 
 		res = sema_check_comp_time_bool(context, elif->ct_if_stmt.expr);
 		if (res == COND_MISSING) goto FAILED;
@@ -2179,7 +2179,7 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
 {
-	assert(switch_type);
+	ASSERT0(switch_type);
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
 	Expr *to_expr = exprptrzero(case_stmt->case_stmt.to_expr);
 
@@ -2256,7 +2256,7 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned ca
 		for (unsigned i = 0; i < case_count; i++)
 		{
 			Expr *e = exprptr(cases[i]->case_stmt.expr);
-			assert(expr_is_const_enum(e));
+			ASSERT0(expr_is_const_enum(e));
 			if (e->const_expr.enum_err_val == decl) goto CONTINUE;
 		}
 		if (++printed != 1)
@@ -2296,7 +2296,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool if_chain = !is_enum_switch && !type_kind_is_any_integer(flat_switch_type_kind);
 
 	Ast *default_case = NULL;
-	assert(context->active_scope.defer_start == context->active_scope.defer_last);
+	ASSERT0(context->active_scope.defer_start == context->active_scope.defer_last);
 
 	bool exhaustive = false;
 	unsigned case_count = vec_size(cases);
@@ -2437,7 +2437,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			if (expr_is_const_string(cond)) break;
 			FALLTHROUGH;
 		default:
-			assert(cond);
+			ASSERT0(cond);
 			SEMA_ERROR(cond, "Only types, strings, enums, integers, floats and booleans may be used with '$switch'."); // NOLINT
 			goto FAILED;
 	}
@@ -2446,7 +2446,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 	Ast **cases = statement->ct_switch_stmt.body;
 
 	unsigned case_count = vec_size(cases);
-	assert(case_count <= INT32_MAX);
+	ASSERT0(case_count <= INT32_MAX);
 	int matched_case = (int)case_count;
 	int default_case = (int)case_count;
 
@@ -2526,7 +2526,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 				}
 				if (is_type)
 				{
-					assert(const_expr == const_to_expr);
+					ASSERT0(const_expr == const_to_expr);
 					Type *switch_type = switch_expr_const->typeid;
 					Type *case_type = const_expr->typeid;
 					if (matched_case > i && type_is_subtype(case_type->canonical, switch_type->canonical))
@@ -2828,7 +2828,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	if ((init = statement->for_stmt.init))
 	{
 		Expr *init_expr = exprptr(init);
-		assert(init_expr->expr_kind == EXPR_EXPRESSION_LIST);
+		ASSERT0(init_expr->expr_kind == EXPR_EXPRESSION_LIST);
 
 		// Check the list of expressions.
 		FOREACH(Expr *, expr, init_expr->expression_list)
@@ -2855,7 +2855,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 	AstId start = 0;
 	AstId *current = &start;
 	Expr **incr_list = incr ? exprptr(incr)->expression_list : NULL;
-	assert(condition);
+	ASSERT0(condition);
 	// We set a maximum of macro iterations.
 	// we might consider reducing this.
 	unsigned current_ct_scope = sema_context_push_ct_stack(context);
@@ -3001,7 +3001,7 @@ static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **a
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 {
 	Expr *declexpr = directive->contract_stmt.contract.decl_exprs;
-	assert(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
+	ASSERT0(declexpr->expr_kind == EXPR_EXPRESSION_LIST);
 
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
@@ -3054,7 +3054,7 @@ NEXT:;
 
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt)
 {
-	assert(compound_stmt->ast_kind == AST_COMPOUND_STMT);
+	ASSERT0(compound_stmt->ast_kind == AST_COMPOUND_STMT);
 	if (!assert_first) return;
 	Ast *ast = new_ast(AST_COMPOUND_STMT, compound_stmt->span);
 	ast->compound_stmt.first_stmt = assert_first;
@@ -3096,7 +3096,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 
 	Signature *signature = &func->func_decl.signature;
 	FunctionPrototype *prototype = func->type->function.prototype;
-	assert(prototype);
+	ASSERT0(prototype);
 	context->original_inline_line = 0;
 	context->original_module = NULL;
 	context->call_env = (CallEnv) {
@@ -3121,11 +3121,11 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	context->next_target = 0;
 	context->next_switch = 0;
 	context->break_target = 0;
-	assert(func->func_decl.body);
+	ASSERT0(func->func_decl.body);
 	Ast *body = astptr(func->func_decl.body);
 	Decl **lambda_params = NULL;
 	SCOPE_START
-		assert(context->active_scope.depth == 1);
+		ASSERT0(context->active_scope.depth == 1);
 		FOREACH(Decl *, param, signature->params)
 		{
 			if (!sema_add_local(context, param)) return false;
@@ -3148,7 +3148,7 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		if (!is_naked) sema_append_contract_asserts(assert_first, body);
 		Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
 		if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
-		assert(context->active_scope.depth == 1);
+		ASSERT0(context->active_scope.depth == 1);
 		if (!context->active_scope.jump_end && canonical_rtype != type_void)
 		{
 			SEMA_ERROR(func, "Missing return statement at the end of the function.");
