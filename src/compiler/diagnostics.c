@@ -237,7 +237,7 @@ void span_to_scratch(SourceSpan span)
 				break;
 		}
 	}
-	assert(row == row_to_find);
+	ASSERT0(row == row_to_find);
 	const char *start = current + col - 1;
 	bool last_was_whitespace = false;
 	for (uint32_t i = 0; i < length; i++)
@@ -277,7 +277,7 @@ const char *span_to_string(SourceSpan span)
 				break;
 		}
 	}
-	assert(row == row_to_find);
+	ASSERT0(row == row_to_find);
 	const char *start = current + col - 1;
 	return str_copy(start, length);
 }

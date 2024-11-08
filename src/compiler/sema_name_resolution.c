@@ -71,7 +71,7 @@ static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 	if (!sema_analyse_decl(context, decl)) return false;
 	FOREACH(TypeInfo *, parent_interface, decl->interfaces)
 	{
-		assert(parent_interface->resolve_status == RESOLVE_DONE);
+		ASSERT0(parent_interface->resolve_status == RESOLVE_DONE);
 		Decl *inf = parent_interface->type->decl;
 		if (!sema_analyse_decl(context, inf)) return false;
 		add_interface_to_decl_stack(context, inf);
@@ -149,7 +149,7 @@ static bool sema_find_decl_in_private_imports(SemaContext *context, NameResolve 
 		// No match, so continue
 		if (!found) continue;
 
-		assert(found->visibility != VISIBLE_LOCAL);
+		ASSERT0(found->visibility != VISIBLE_LOCAL);
 
 		// Did we already have a match?
 		if (decl)
@@ -393,7 +393,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	Decl *decl = NULL;
 	name_resolve->path_found = NULL;
 	name_resolve->found = NULL;
-	assert(name_resolve->path && "Expected path.");
+	ASSERT0(name_resolve->path && "Expected path.");
 
 	const char *symbol = name_resolve->symbol;
 	// 0. std module special handling.
@@ -464,7 +464,7 @@ static inline Decl *sema_find_local(SemaContext *context, const char *symbol)
 static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
 	const char *symbol = name_resolve->symbol;
-	assert(name_resolve->path == NULL);
+	ASSERT0(name_resolve->path == NULL);
 
 	Decl *decl;
 
@@ -569,7 +569,7 @@ static int module_closest_ident_names(Module *module, const char *name, Decl* ma
 }
 static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_resolve)
 {
-	assert(!name_resolve->suppress_error);
+	ASSERT0(!name_resolve->suppress_error);
 	const char *symbol = name_resolve->symbol;
 	SourceSpan span = name_resolve->span;
 	Decl *found = name_resolve->found;
@@ -615,7 +615,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 
 	if (name_resolve->ambiguous_other_decl)
 	{
-		assert(found);
+		ASSERT0(found);
 		const char *symbol_type = decl_to_name(found);
 		const char *found_path = found->unit->module->name->module;
 		const char *other_path = name_resolve->ambiguous_other_decl->unit->module->name->module;
@@ -643,7 +643,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		}
 		return;
 	}
-	assert(!found);
+	ASSERT0(!found);
 	if (path_name)
 	{
 		// A common mistake is to type println and printfln
@@ -778,7 +778,7 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 		*private_found = found;
 		found = NULL;
 	}
-	assert(!found || found->visibility != VISIBLE_LOCAL);
+	ASSERT0(!found || found->visibility != VISIBLE_LOCAL);
 	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
 	// We are now searching submodules, so hide the private ones.
 	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
@@ -843,7 +843,7 @@ UNUSED bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_
 		}
 		break;
 	}
-	assert(type->type_kind == TYPE_STRUCT);
+	ASSERT0(type->type_kind == TYPE_STRUCT);
 	if (type->decl->has_variable_array)
 	{
 		SEMA_ERROR(type_info, "Arrays of structs with flexible array members is not allowed.");
@@ -903,7 +903,7 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 
 Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *method_name, Decl **ambiguous_ref, Decl **private_ref)
 {
-	assert(type == type->canonical);
+	ASSERT0(type == type->canonical);
 	Decl *private = NULL;
 	Decl *ambiguous = NULL;
 	Decl *found = sema_find_extension_method_in_list(unit->local_method_extensions, type, method_name);
@@ -911,7 +911,7 @@ Decl *sema_resolve_type_method(CompilationUnit *unit, Type *type, const char *me
 	if (ambiguous)
 	{
 		*ambiguous_ref = ambiguous;
-		assert(found);
+		ASSERT0(found);
 		return found;
 	}
 
@@ -1083,7 +1083,7 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 	};
 	if (!sema_resolve_symbol_common(context, &resolve)) return NULL;
 	Decl *found = resolve.found;
-	assert(found);
+	ASSERT0(found);
 	if (!decl_ok(found)) return NULL;
 	return resolve.found;
 }
@@ -1091,7 +1091,7 @@ Decl *sema_resolve_symbol(SemaContext *context, const char *symbol, Path *path, 
 
 static inline void sema_append_local(SemaContext *context, Decl *decl)
 {
-	assert(!decl_is_ct_var(decl));
+	ASSERT0(!decl_is_ct_var(decl));
 	Decl ***locals = &context->locals;
 	size_t locals_size = vec_size(*locals);
 	size_t current_local = context->active_scope.current_local;
@@ -1112,7 +1112,7 @@ static inline void sema_append_local(SemaContext *context, Decl *decl)
 
 INLINE bool sema_add_ct_local(SemaContext *context, Decl *decl)
 {
-	assert(decl_is_ct_var(decl));
+	ASSERT0(decl_is_ct_var(decl));
 
 	Decl *other = sema_find_ct_local(context, decl->name);
 	if (other)
@@ -1164,7 +1164,7 @@ void sema_unwrap_var(SemaContext *context, Decl *decl)
 
 void sema_rewrap_var(SemaContext *context, Decl *decl)
 {
-	assert(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_OPTIONAL);
+	ASSERT0(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_UNWRAPPED && decl->var.alias->type->type_kind == TYPE_OPTIONAL);
 	sema_append_local(context, decl->var.alias);
 }
 
@@ -1179,7 +1179,7 @@ void sema_erase_var(SemaContext *context, Decl *decl)
 
 void sema_erase_unwrapped(SemaContext *context, Decl *decl)
 {
-	assert(IS_OPTIONAL(decl));
+	ASSERT0(IS_OPTIONAL(decl));
 	Decl *rewrapped = decl_copy(decl);
 	rewrapped->var.kind = VARDECL_REWRAPPED;
 	rewrapped->var.alias = decl;

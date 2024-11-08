@@ -6,22 +6,22 @@
 
 void llvm_emit_cond_br_raw(GenContext *context, LLVMValueRef b, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block)
 {
-	assert(context->current_block);
+	ASSERT0(context->current_block);
 	LLVMBuildCondBr(context->builder, b, then_block, else_block);
 	context->current_block = NULL;
 }
 
 void llvm_emit_cond_br(GenContext *context, BEValue *value, LLVMBasicBlockRef then_block, LLVMBasicBlockRef else_block)
 {
-	assert(context->current_block);
-	assert(value->kind == BE_BOOLEAN);
+	ASSERT0(context->current_block);
+	ASSERT0(value->kind == BE_BOOLEAN);
 	LLVMBuildCondBr(context->builder, value->value, then_block, else_block);
 	context->current_block = NULL;
 }
 
 LLVMValueRef llvm_emit_lshr_fixed(GenContext *c, LLVMValueRef data, int shift)
 {
-	assert(shift >= 0);
+	ASSERT0(shift >= 0);
 	if (shift == 0) return data;
 	LLVMTypeRef type = LLVMTypeOf(data);
 	BitSize bit_width = llvm_bitsize(c, type);
@@ -31,7 +31,7 @@ LLVMValueRef llvm_emit_lshr_fixed(GenContext *c, LLVMValueRef data, int shift)
 
 LLVMValueRef llvm_emit_ashr_fixed(GenContext *c, LLVMValueRef data, int shift)
 {
-	assert(shift >= 0);
+	ASSERT0(shift >= 0);
 	if (shift == 0) return data;
 	LLVMTypeRef type = LLVMTypeOf(data);
 	BitSize bit_width = llvm_bitsize(c, type);
@@ -41,7 +41,7 @@ LLVMValueRef llvm_emit_ashr_fixed(GenContext *c, LLVMValueRef data, int shift)
 
 LLVMValueRef llvm_emit_shl_fixed(GenContext *c, LLVMValueRef data, int shift)
 {
-	assert(shift >= 0);
+	ASSERT0(shift >= 0);
 	if (shift == 0) return data;
 	LLVMTypeRef type = LLVMTypeOf(data);
 	BitSize bit_width = llvm_bitsize(c, type);

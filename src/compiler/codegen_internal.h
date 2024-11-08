@@ -115,7 +115,7 @@ UNUSED static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 		return type.type->builtin.bitsize < compiler.platform.width_c_int;
 	}
 	// We should only get npot or > big ints here.
-	assert(!is_power_of_two(type.int_bits_plus_1 - 1) || type.int_bits_plus_1 < compiler.platform.width_c_int);
+	ASSERT0(!is_power_of_two(type.int_bits_plus_1 - 1) || type.int_bits_plus_1 < compiler.platform.width_c_int);
 	return false;
 }
 

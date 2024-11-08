@@ -2532,16 +2532,16 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 	switch (flattened->type_kind)
 	{
 		case TYPE_POINTER:
-			assert(count == 0);
+			ASSERT0(count == 0);
 			return type_get_ptr(element_type);
 		case TYPE_VECTOR:
-			assert(flattened->array.len == count);
+			ASSERT0(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_VECTOR:
 			return type_get_vector(element_type, count);
 			break;
 		case TYPE_ARRAY:
-			assert(flattened->array.len == count);
+			ASSERT0(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_ARRAY:
 			return type_get_array(element_type, count);
@@ -2843,7 +2843,7 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 {
 	Type *type = CALLOCS(Type);
 	type->type_kind = kind;
-	assert(name);
+	ASSERT0(name);
 	type->name = name;
 	global_context_add_type(type);
 	return type;
@@ -2852,8 +2852,8 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 
 INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 {
-	assert(type_flat_is_vector(destination) || type_is_builtin(destination->canonical->type_kind));
-	assert(type_flat_is_vector(destination) || type_is_builtin(source->canonical->type_kind));
+	ASSERT0(type_flat_is_vector(destination) || type_is_builtin(destination->canonical->type_kind));
+	ASSERT0(type_flat_is_vector(destination) || type_is_builtin(source->canonical->type_kind));
 	return type_size(destination) < type_size(source);
 }
 
@@ -2862,7 +2862,7 @@ INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 // Useful sanity check function.
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type)
 {
-	assert(context->tok == token_type);
+	ASSERT0(context->tok == token_type);
 	advance(context);
 }
 
@@ -3096,7 +3096,7 @@ static inline Decl *decl_raw(Decl *decl)
 	}
 	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED) return decl;
 	decl = decl->var.alias;
-	assert(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED);
+	ASSERT0(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED);
 	return decl;
 }
 
@@ -3371,7 +3371,7 @@ INLINE void expr_resolve_ident(Expr *expr, Decl *decl)
 
 INLINE Type *exprtype(ExprId expr_id)
 {
-	assert(expr_id);
+	ASSERT0(expr_id);
 	return exprptr(expr_id)->type;
 }
 
@@ -3507,7 +3507,7 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_const_empty_slice(Expr *expr, Type *type)
 {
-	assert(type_flatten(type)->type_kind == TYPE_SLICE);
+	ASSERT0(type_flatten(type)->type_kind == TYPE_SLICE);
 	expr->const_expr = (ExprConst) { .const_kind = CONST_SLICE, .initializer = NULL };
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
@@ -3524,8 +3524,8 @@ INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements)
 
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
-	assert(type_flatten(type)->type_kind != TYPE_SLICE);
-	assert(type != type_untypedlist);
+	ASSERT0(type_flatten(type)->type_kind != TYPE_SLICE);
+	ASSERT0(type != type_untypedlist);
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };
@@ -3534,8 +3534,8 @@ INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitiali
 
 INLINE void expr_rewrite_const_slice(Expr *expr, Type *type, ConstInitializer *initializer)
 {
-	assert(type_flatten(type)->type_kind == TYPE_SLICE);
-	assert(type != type_untypedlist);
+	ASSERT0(type_flatten(type)->type_kind == TYPE_SLICE);
+	ASSERT0(type != type_untypedlist);
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->const_expr = (ExprConst) { .slice_init = initializer, .const_kind = CONST_SLICE };
@@ -3625,7 +3625,7 @@ INLINE AsmRegister *asm_reg_by_index(unsigned index)
 
 INLINE void clobbers_add(Clobbers *clobbers, unsigned index)
 {
-	assert(index < MAX_CLOBBER_FLAGS);
+	ASSERT0(index < MAX_CLOBBER_FLAGS);
 	unsigned bit = index % 64;
 	unsigned element = index / 64;
 	clobbers->mask[element] |= (1ull << bit);
@@ -3638,7 +3638,7 @@ static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
 	int i;
 	while ((i = va_arg(list, int)) > -1)
 	{
-		assert(i < MAX_CLOBBER_FLAGS);
+		ASSERT0(i < MAX_CLOBBER_FLAGS);
 		unsigned bit = i % 64;
 		unsigned element = i / 64;
 		clobbers.mask[element] |= (1ull << bit);
@@ -3650,7 +3650,7 @@ static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
 static inline Clobbers clobbers_make(unsigned index, ...)
 {
 	Clobbers clobbers = { .mask[0] = 0 };
-	assert(index < MAX_CLOBBER_FLAGS);
+	ASSERT0(index < MAX_CLOBBER_FLAGS);
 	unsigned bit = index % 64;
 	unsigned element = index / 64;
 	clobbers.mask[element] |= (1ull << bit);
@@ -3659,7 +3659,7 @@ static inline Clobbers clobbers_make(unsigned index, ...)
 	int i;
 	while ((i = va_arg(list, int)) > -1)
 	{
-		assert(i < MAX_CLOBBER_FLAGS);
+		ASSERT0(i < MAX_CLOBBER_FLAGS);
 		bit = i % 64;
 		element = i / 64;
 		clobbers.mask[element] |= (1ull << bit);

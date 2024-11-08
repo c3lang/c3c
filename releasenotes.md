@@ -1,5 +1,13 @@
 # C3C Release Notes
 
+## 0.6.5 Change list
+
+### Changes / improvements
+
+### Fixes
+
+### Stdlib changes
+
 ## 0.6.4 Change list
 
 ### Changes / improvements

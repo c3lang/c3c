@@ -106,8 +106,8 @@ void symtab_init(uint32_t capacity)
 			default:
 				break;
 		}
-		assert(type == i);
-		assert(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
+		ASSERT0(type == i);
+		ASSERT0(symtab_add(name, (uint32_t)strlen(name), fnv1a(name, len), &type) == interned);
 	}
 
 	// Init some constant idents
@@ -292,17 +292,17 @@ void symtab_init(uint32_t capacity)
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
-		assert(builtin_list[i] && "Missing builtin");
+		ASSERT0(builtin_list[i] && "Missing builtin");
 	}
 
 	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
 	{
-		assert(type_property_list[i] && "Missing type property");
+		ASSERT0(type_property_list[i] && "Missing type property");
 	}
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTIN_DEFINES; i++)
 	{
-		assert(builtin_defines[i] && "Missing builtin define");
+		ASSERT0(builtin_defines[i] && "Missing builtin define");
 	}
 
 	type = TOKEN_AT_IDENT;
@@ -365,7 +365,7 @@ void symtab_init(uint32_t capacity)
 
 	for (unsigned i = 0; i < NUMBER_OF_ATTRIBUTES; i++)
 	{
-		assert(attribute_list[i] && "Missing attributes");
+		ASSERT0(attribute_list[i] && "Missing attributes");
 	}
 
 }
@@ -392,7 +392,7 @@ const char *symtab_preset(const char *data, TokenType type)
 	uint32_t len = (uint32_t)strlen(data);
 	TokenType result = type;
 	const char *res = symtab_add(data, len, fnv1a(data, len), &result);
-	assert(result == type);
+	ASSERT0(result == type);
 	return res;
 }
 
@@ -432,7 +432,7 @@ const char *symtab_add(const char *data, uint32_t len, uint32_t fnv1hash, TokenT
 
 void stable_init(STable *table, uint32_t initial_size)
 {
-	assert(initial_size && "Size must be larger than 0");
+	ASSERT0(initial_size && "Size must be larger than 0");
 	assert (is_power_of_two(initial_size) && "Must be a power of two");
 
 	SEntry *entries = CALLOC(initial_size * sizeof(Entry));
@@ -487,7 +487,7 @@ static inline void stable_resize(STable *table)
 
 void *stable_set(STable *table, const char *key, void *value)
 {
-	assert(value && "Cannot insert NULL");
+	ASSERT0(value && "Cannot insert NULL");
 	SEntry *entry = sentry_find(table->entries, table->capacity, key);
 	void *old = entry->value;
 	if (old == value) return old;
@@ -516,7 +516,7 @@ void *stable_get(STable *table, const char *key)
 
 void htable_init(HTable *table, uint32_t initial_size)
 {
-	assert(initial_size && "Size must be larger than 0");
+	ASSERT0(initial_size && "Size must be larger than 0");
 	size_t size = next_highest_power_of_2(initial_size);
 
 	size_t mem_size = initial_size * sizeof(HTEntry);
@@ -527,7 +527,7 @@ void htable_init(HTable *table, uint32_t initial_size)
 
 void *htable_set(HTable *table, void *key, void *value)
 {
-	assert(value && "Cannot insert NULL");
+	ASSERT0(value && "Cannot insert NULL");
 	uint32_t idx = (((uintptr_t)key) ^ ((uintptr_t)key) >> 8) & table->mask;
 	HTEntry **entry_ref = &table->entries[idx];
 	HTEntry *entry = *entry_ref;

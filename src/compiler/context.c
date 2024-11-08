@@ -174,7 +174,7 @@ void decl_register(Decl *decl)
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
-	assert(!decl->unit || decl->unit->module->is_generic);
+	ASSERT0(!decl->unit || decl->unit->module->is_generic);
 	decl->unit = unit;
 
 	switch (decl->decl_kind)
@@ -184,7 +184,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_POISONED:
 			break;
 		case DECL_MACRO:
-			assert(decl->name);
+			ASSERT0(decl->name);
 			if (decl->func_decl.type_parent)
 			{
 				vec_add(unit->methods_to_register, decl);
@@ -197,7 +197,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_register(decl);
 			break;
 		case DECL_FUNC:
-			assert(decl->name);
+			ASSERT0(decl->name);
 			if (decl->func_decl.type_parent)
 			{
 				vec_add(unit->methods_to_register, decl);
@@ -210,7 +210,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_register(decl);
 			break;
 		case DECL_VAR:
-			assert(decl->name);
+			ASSERT0(decl->name);
 			vec_add(unit->vars, decl);
 			decl_register(decl);
 			break;
@@ -221,17 +221,17 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_FAULT:
 		case DECL_BITSTRUCT:
-			assert(decl->name);
+			ASSERT0(decl->name);
 			vec_add(unit->types, decl);
 			decl_register(decl);
 			break;
 		case DECL_DEFINE:
-			assert(decl->name);
+			ASSERT0(decl->name);
 			vec_add(unit->generic_defines, decl);
 			decl_register(decl);
 			break;
 		case DECL_ENUM:
-			assert(decl->name);
+			ASSERT0(decl->name);
 			vec_add(unit->enums, decl);
 			decl_register(decl);
 			break;
@@ -269,7 +269,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	}
 	return;
 ERR:
-	assert(decl != old);
+	ASSERT0(decl != old);
 	sema_shadow_error(NULL, decl, old);
 	decl_poison(decl);
 	decl_poison(old);

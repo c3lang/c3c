@@ -122,7 +122,7 @@ ABIArgInfo *x64_indirect_result(Type *type, unsigned free_int_regs)
  */
 ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *needed_registers)
 {
-	assert(x64_type_is_structure(type));
+	ASSERT0(x64_type_is_structure(type));
 
 	// These are all passed in two registers.
 	if (type->type_kind == TYPE_SLICE || type->type_kind == TYPE_ANY)
@@ -132,7 +132,7 @@ ABIArgInfo *x64_classify_reg_call_struct_type_check(Type *type, Registers *neede
 	}
 
 	// Struct, err type handled =>
-	assert(type->type_kind == TYPE_STRUCT);
+	ASSERT0(type->type_kind == TYPE_STRUCT);
 
 	// Variable array structs are always passed by pointer.
 	if (type->decl->has_variable_array) return x64_indirect_return_result(type);
@@ -175,7 +175,7 @@ static X64Class x64_merge(X64Class accum, X64Class field)
 	// 6. SSE
 
 	// Accum should never be memory (we should have returned) or
-	assert(accum != CLASS_MEMORY);
+	ASSERT0(accum != CLASS_MEMORY);
 	if (accum == field) return accum;
 
 	// Swap
@@ -305,7 +305,7 @@ void x64_classify_array(Type *type, ByteSize offset_base, X64Class *current, X64
 		if (*lo_class == CLASS_MEMORY || *hi_class == CLASS_MEMORY) break;
 	}
 	x64_classify_post_merge(size, lo_class, hi_class);
-	assert(*hi_class != CLASS_SSEUP || *lo_class == CLASS_SSE);
+	ASSERT0(*hi_class != CLASS_SSEUP || *lo_class == CLASS_SSE);
 }
 
 void x64_classify_vector(Type *type, ByteSize offset_base, X64Class *current, X64Class *lo_class, X64Class *hi_class,
@@ -365,7 +365,7 @@ static Decl *x64_get_member_at_offset(Decl *decl, unsigned offset)
 		if (member->offset > (ArrayIndex)offset) break;
 		last_match = member;
 	}
-	assert(last_match);
+	ASSERT0(last_match);
 	return last_match;
 }
 
@@ -616,7 +616,7 @@ AbiType x64_get_int_type_at_offset(Type *type, unsigned offset, Type *source_typ
 			break;
 	}
 	ByteSize size = type_size(source_type);
-	assert(size != source_offset);
+	ASSERT0(size != source_offset);
 	if (size - source_offset > 8) return abi_type_get(type_ulong);
 	return abi_type_get_int_bits((size - source_offset) * 8);
 }
@@ -649,7 +649,7 @@ static AbiType x64_get_byte_vector_type(Type *type)
 
 	unsigned size = type_size(type);
 
-	assert(size == 16 || size == 32 || size == 64);
+	ASSERT0(size == 16 || size == 32 || size == 64);
 
 	// Return a vector type based on the size.
 	return abi_type_get(type_get_vector(type_double, size / 8));
@@ -659,7 +659,7 @@ static ABIArgInfo *x64_get_argument_pair_return(AbiType low_type, AbiType high_t
 {
 	TypeSize low_size = abi_type_size(low_type);
 	unsigned hi_start = aligned_offset(low_size, abi_type_abi_alignment(high_type));
-	assert(hi_start == 8 && "Expected aligned with C-style structs.");
+	ASSERT0(hi_start == 8 && "Expected aligned with C-style structs.");
 	return abi_arg_new_direct_pair(low_type, high_type);
 }
 
@@ -673,8 +673,8 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 	x64_classify(return_type, 0, &lo_class, &hi_class, NAMED);
 
 	// Invariants
-	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
-	assert(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
+	ASSERT0(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
+	ASSERT0(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
 
 	AbiType result_type = ABI_TYPE_EMPTY;
 	switch (lo_class)
@@ -685,7 +685,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 				return abi_arg_ignore();
 			}
 			// If low part is padding, keep type null
-			assert(hi_class == CLASS_SSE || hi_class == CLASS_INTEGER);
+			ASSERT0(hi_class == CLASS_SSE || hi_class == CLASS_INTEGER);
 			break;
 		case CLASS_SSEUP:
 			UNREACHABLE
@@ -717,11 +717,11 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			// Previously handled.
 			break;
 		case CLASS_INTEGER:
-			assert(lo_class != CLASS_NO_CLASS);
+			ASSERT0(lo_class != CLASS_NO_CLASS);
 			high_part = x64_get_int_type_at_offset(return_type, 8, return_type, 8);
 			break;
 		case CLASS_SSE:
-			assert(lo_class != CLASS_NO_CLASS);
+			ASSERT0(lo_class != CLASS_NO_CLASS);
 			high_part = abi_type_get(x64_get_sse_type_at_offset(return_type, 8, return_type, 8));
 			break;
 		case CLASS_SSEUP:
@@ -730,7 +730,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 			// vector register.
 			//
 			// SSEUP should always be preceded by SSE, just widen.
-			assert(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
+			ASSERT0(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
 			result_type = x64_get_byte_vector_type(return_type);
 			break;
 	}
@@ -748,7 +748,7 @@ ABIArgInfo *x64_classify_return(Type *return_type)
 		}
 		return abi_arg_new_direct_coerce_type(result_type.type->canonical);
 	}
-	assert(result_type.int_bits_plus_1 - 1 == type_size(return_type) * 8);
+	ASSERT0(result_type.int_bits_plus_1 - 1 == type_size(return_type) * 8);
 	return abi_arg_new_direct_coerce_int();
 }
 
@@ -764,14 +764,14 @@ ABIArgInfo *x64_classify_return(Type *return_type)
  */
 static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs, Registers *needed_registers, NamedArgument is_named)
 {
-	assert(type == type_lowering(type));
+	ASSERT0(type == type_lowering(type));
 	X64Class hi_class;
 	X64Class lo_class;
 	x64_classify(type, 0, &lo_class, &hi_class, is_named);
 
 	// Invariants
-	assert(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
-	assert(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
+	ASSERT0(hi_class != CLASS_MEMORY || lo_class == CLASS_MEMORY);
+	ASSERT0(hi_class != CLASS_SSEUP || lo_class == CLASS_SSE);
 
 	AbiType result_type;
 	*needed_registers = (Registers) { 0, 0 };
@@ -781,7 +781,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 	{
 		case CLASS_NO_CLASS:
 			// Only C++ would leave 8 bytes of padding, so we can ignore that case.
-			assert(hi_class == CLASS_NO_CLASS);
+			ASSERT0(hi_class == CLASS_NO_CLASS);
 			return abi_arg_ignore();
 		case CLASS_SSEUP:
 			UNREACHABLE
@@ -792,7 +792,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			result_type = x64_get_int_type_at_offset(type, 0, type, 0);
 			if (hi_class == CLASS_NO_CLASS && type_is_promotable_int_bool(type))
 			{
-				assert(abi_type_is_type(result_type));
+				ASSERT0(abi_type_is_type(result_type));
 				return abi_arg_new_direct_coerce_int_ext(result_type.type);
 			}
 			break;
@@ -814,15 +814,15 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 			needed_registers->int_registers++;
 			high_part = x64_get_int_type_at_offset(type, 8, type, 8);
 			// Return directly into high part.
-			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff.");
+			ASSERT0(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff.");
 			break;
 		case CLASS_SSE:
 			needed_registers->sse_registers++;
 			high_part = abi_type_get(x64_get_sse_type_at_offset(type, 8, type, 8));
-			assert(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff");
+			ASSERT0(lo_class != CLASS_NO_CLASS && "empty first 8 bytes not allowed, this is C++ stuff");
 			break;
 		case CLASS_SSEUP:
-			assert(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
+			ASSERT0(lo_class == CLASS_SSE && "Unexpected SSEUp classification.");
 			result_type = x64_get_byte_vector_type(type);
 			break;
 	}
@@ -843,7 +843,7 @@ static ABIArgInfo *x64_classify_argument_type(Type *type, unsigned free_int_regs
 		}
 		return abi_arg_new_direct_coerce_type(result);
 	}
-	assert(result_type.int_bits_plus_1 - 1 == type_size(type) * 8);
+	ASSERT0(result_type.int_bits_plus_1 - 1 == type_size(type) * 8);
 	return abi_arg_new_direct_coerce_int();
 }
 

@@ -168,8 +168,8 @@ bool type_homogenous_aggregate_small_enough(Type *type, unsigned members)
  */
 bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 {
-	assert(base && type && elements);
-	assert(type_lowering(type) == type);
+	ASSERT0(base && type && elements);
+	ASSERT0(type_lowering(type) == type);
 	*elements = 0;
 	switch (type->type_kind)
 	{
@@ -196,7 +196,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 					// Go down deep into  a nester array.
 					while (member_type->type_kind == TYPE_ARRAY)
 					{
-						assert(member_type->array.len && "Zero length arrays not allowed");
+						ASSERT0(member_type->array.len && "Zero length arrays not allowed");
 						member_mult *= member_type->array.len;
 						member_type = member_type->array.base;
 					}
@@ -215,7 +215,7 @@ bool type_is_homogenous_aggregate(Type *type, Type **base, unsigned *elements)
 						*elements += member_members;
 					}
 				}
-				assert(base);
+				ASSERT0(base);
 				if (!*base) return false;
 
 				// Ensure no padding

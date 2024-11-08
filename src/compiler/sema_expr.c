@@ -1064,7 +1064,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr, CheckType check)
 {
-	assert(expr && expr->ct_ident_expr.identifier);
+	ASSERT0(expr && expr->ct_ident_expr.identifier);
 
 	DEBUG_LOG("Resolving identifier '%s'", expr->ct_ident_expr.identifier);
 	Decl *decl = sema_resolve_symbol(context, expr->ct_ident_expr.identifier, NULL, expr->span);
@@ -1089,7 +1089,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 
 static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type *infer_type, Expr *expr)
 {
-	assert(expr && expr->hash_ident_expr.identifier);
+	ASSERT0(expr && expr->hash_ident_expr.identifier);
 	DEBUG_LOG("Resolving identifier '%s'", expr->hash_ident_expr.identifier);
 	Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
 
@@ -1345,7 +1345,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			}
 			if (!param->alignment)
 			{
-				assert(macro && "Only in the macro case should we need to insert the alignment.");
+				ASSERT0(macro && "Only in the macro case should we need to insert the alignment.");
 				if (!sema_set_alloca_alignment(context, arg->type, &param->alignment)) return false;
 			}
 			break;
@@ -1356,7 +1356,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			break;
 		case VARDECL_PARAM_CT:
 			// $foo
-			assert(macro);
+			ASSERT0(macro);
 			if (!sema_analyse_expr_rhs(context, type, arg, true, no_match_ref, false))
 			{
 				SEMA_NOTE(definition, "The definition is here.");
@@ -1546,7 +1546,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	unsigned num_args = vec_size(args);
 	Decl **params = callee->params;
 
-	assert(func_param_count < MAX_PARAMS);
+	ASSERT0(func_param_count < MAX_PARAMS);
 	Expr **actual_args = VECNEW(Expr*, func_param_count);
 	for (unsigned i = 0; i < func_param_count; i++)
 	{
@@ -1564,7 +1564,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	{
 		Expr *arg = args[i];
 		if (i > 0) last = args[i - 1];
-		assert(expr_ok(arg));
+		ASSERT0(expr_ok(arg));
 		if (arg->expr_kind == EXPR_VASPLAT)
 		{
 			Expr **new_args = sema_vasplat_insert(context, args, arg, i);
@@ -1956,11 +1956,11 @@ static inline Type *context_unify_returns(SemaContext *context)
 		// 5. No match -> error.
 		if (!max)
 		{
-			assert(return_stmt);
+			ASSERT0(return_stmt);
 			SEMA_ERROR(return_stmt, "Cannot find a common parent type of %s and %s",
 					   type_quoted_error_string(rtype), type_quoted_error_string(common_type));
 			Ast *prev = context->returns[i - 1];
-			assert(prev);
+			ASSERT0(prev);
 			SEMA_NOTE(prev, "The previous return was here.");
 			return NULL;
 		}
@@ -1970,12 +1970,12 @@ static inline Type *context_unify_returns(SemaContext *context)
 		all_returns_need_casts = true;
 	}
 
-	assert(common_type);
+	ASSERT0(common_type);
 
 	// 7. Insert casts.
 	if (all_returns_need_casts)
 	{
-		assert(common_type != type_wildcard);
+		ASSERT0(common_type != type_wildcard);
 		FOREACH(Ast *, return_stmt, context->returns)
 		{
 			if (!return_stmt) continue;
@@ -2844,7 +2844,7 @@ static Expr *sema_expr_find_index_type_or_overload_for_subscript(SemaContext *co
 			if (overload)
 			{
 				*overload_ptr = overload;
-				assert(vec_size(overload->func_decl.signature.params) == 3);
+				ASSERT0(vec_size(overload->func_decl.signature.params) == 3);
 				*index_type_ptr = overload->func_decl.signature.params[2]->type;
 				return current_expr;
 			}
@@ -2855,7 +2855,7 @@ static Expr *sema_expr_find_index_type_or_overload_for_subscript(SemaContext *co
 	if (overload)
 	{
 		*overload_ptr = overload;
-		assert(overload->func_decl.signature.rtype);
+		ASSERT0(overload->func_decl.signature.rtype);
 		*index_type_ptr = type_infoptr(overload->func_decl.signature.rtype)->type;
 		return current_expr;
 	}
@@ -2878,7 +2878,7 @@ static Expr *sema_expr_find_index_type_or_overload_for_subscript(SemaContext *co
 
 static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr, CheckType check, bool check_valid)
 {
-	assert(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
+	ASSERT0(expr->expr_kind == EXPR_SUBSCRIPT || expr->expr_kind == EXPR_SUBSCRIPT_ADDR);
 	bool is_eval_ref = expr->expr_kind == EXPR_SUBSCRIPT_ADDR;
 
 	// Evaluate the expression to index.
@@ -2925,7 +2925,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		if (!overload) current_type = type_flatten(current_expr->type);
 	}
 
-	assert(current_type == current_type->canonical);
+	ASSERT0(current_type == current_type->canonical);
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (start_from_end && (current_type->type_kind == TYPE_POINTER || current_type->type_kind == TYPE_FLEXIBLE_ARRAY))
@@ -3145,7 +3145,7 @@ typedef enum RangeEnv
 INLINE bool sema_expre_analyse_range_internal(SemaContext *context, Range *range, Type *indexed_type, ArrayIndex len, RangeEnv env)
 {
 	Expr *start = exprptr(range->start);
-	assert(start);
+	ASSERT0(start);
 	Expr *end = exprptrzero(range->end);
 
 	if (!sema_analyse_expr(context, start)) return false;
@@ -3332,7 +3332,7 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, T
 static inline void sema_slice_initializer(SemaContext *context, Expr *expr, Expr *subscripted, Range *range)
 {
 	ConstInitializer *initializer = subscripted->const_expr.initializer;
-	assert(type_is_arraylike(initializer->type));
+	ASSERT0(type_is_arraylike(initializer->type));
 	Type *new_type = type_get_slice(type_get_indexed_type(subscripted->type));
 	// Turn zero length into an untyped list.
 	if (range->len_index == 0)
@@ -3437,7 +3437,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 				if (type->type_kind != TYPE_SLICE)
 				{
 					Type *index = type_get_indexed_type(type);
-					assert(index);
+					ASSERT0(index);
 					original_type = type_get_slice(index);
 				}
 				subscripted->type = original_type;
@@ -3445,7 +3445,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 				return true;
 			}
 			case CONST_UNTYPED_LIST:
-				assert(!type_is_arraylike(subscripted->type));
+				ASSERT0(!type_is_arraylike(subscripted->type));
 				vec_erase_front(subscripted->const_expr.untyped_list, range->start_index);
 				vec_resize(subscripted->const_expr.untyped_list, range->len_index);
 				expr_replace(expr, subscripted);
@@ -3456,7 +3456,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 			case CONST_SLICE:
 				if (!subscripted->const_expr.slice_init)
 				{
-					assert(range->len_index == 0);
+					ASSERT0(range->len_index == 0);
 					expr_replace(expr, subscripted);
 					return true;
 				}
@@ -5011,7 +5011,7 @@ CHECK_DEEPER:
 		}
 		if (ambiguous)
 		{
-			assert(member);
+			ASSERT0(member);
 			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, it may refer to method defined in '%s' or one in '%s'",
 					   kw, member->unit->module->name->module, ambiguous->unit->module->name->module);
 		}
@@ -5087,7 +5087,7 @@ static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, uns
 		return exprs;
 	}
 	unsigned size = vec_size(exprs);
-	assert(size);
+	ASSERT0(size);
 	for (unsigned i = 1; i < added; i++)
 	{
 		vec_add(exprs, NULL);
@@ -8194,14 +8194,14 @@ static inline Type *sema_evaluate_type_copy(SemaContext *context, TypeInfo *type
 INLINE bool lambda_parameter_match(Decl **ct_lambda_params, Decl *candidate)
 {
 	unsigned param_count = vec_size(ct_lambda_params);
-	assert(vec_size(candidate->func_decl.lambda_ct_parameters) == param_count);
+	ASSERT0(vec_size(candidate->func_decl.lambda_ct_parameters) == param_count);
 	if (!param_count) return true;
 	FOREACH_IDX(i, Decl *, param, candidate->func_decl.lambda_ct_parameters)
 	{
 		Decl *ct_param = ct_lambda_params[i];
 		if (!param->var.is_read) continue;
-		assert(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
-		assert(ct_param->var.kind == param->var.kind);
+		ASSERT0(ct_param->resolve_status == RESOLVE_DONE || param->resolve_status == RESOLVE_DONE);
+		ASSERT0(ct_param->var.kind == param->var.kind);
 		switch (ct_param->var.kind)
 		{
 			case VARDECL_LOCAL_CT_TYPE:
@@ -8253,7 +8253,7 @@ static inline Decl *sema_find_cached_lambda(SemaContext *context, Type *func_typ
 		if (!info) return NULL;
 		Type *type = sema_evaluate_type_copy(context, info);
 		if (!type) return NULL;
-		assert(i < 198);
+		ASSERT0(i < 198);
 		types[i + 1] = type;
 	}
 
@@ -9404,7 +9404,7 @@ bool sema_analyse_ct_expr(SemaContext *context, Expr *expr)
 
 bool sema_analyse_expr_value(SemaContext *context, Expr *expr)
 {
-	assert(expr);
+	ASSERT0(expr);
 	switch (expr->resolve_status)
 	{
 		case RESOLVE_NOT_DONE:
@@ -9424,7 +9424,7 @@ bool sema_analyse_expr_value(SemaContext *context, Expr *expr)
 
 static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, CheckType check)
 {
-	assert(expr);
+	ASSERT0(expr);
 	switch (expr->resolve_status)
 	{
 		case RESOLVE_NOT_DONE:
@@ -9449,7 +9449,7 @@ bool sema_analyse_expr_address(SemaContext *context, Expr *expr)
 
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 {
-	assert(expr);
+	ASSERT0(expr);
 	return sema_analyse_expr_check(context, expr, CHECK_LVALUE);
 }
 

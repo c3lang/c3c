@@ -63,31 +63,31 @@ UNUSED static int min_exponent(TypeKind kind)
 
 Float float_add(Float op1, Float op2)
 {
-	assert(op1.type == op2.type);
+	ASSERT0(op1.type == op2.type);
 	return (Float){ op1.f + op2.f, op1.type };
 }
 
 Float float_sub(Float op1, Float op2)
 {
-	assert(op1.type == op2.type);
+	ASSERT0(op1.type == op2.type);
 	return (Float){ op1.f - op2.f, op1.type };
 }
 
 Float float_mul(Float op1, Float op2)
 {
-	assert(op1.type == op2.type);
+	ASSERT0(op1.type == op2.type);
 	return (Float){ op1.f * op2.f, op1.type };
 }
 
 Float float_div(Float op1, Float op2)
 {
-	assert(op1.type == op2.type);
+	ASSERT0(op1.type == op2.type);
 	return (Float){ op1.f / op2.f, op1.type };
 }
 
 Float float_rem(Float op1, Float op2)
 {
-	assert(op1.type == op2.type);
+	ASSERT0(op1.type == op2.type);
 	return (Float){fmod(op1.f, op2.f), op1.type };
 }
 

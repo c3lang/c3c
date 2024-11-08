@@ -12,7 +12,7 @@ jmp_buf on_error_jump;
 
 NORETURN void exit_compiler(int exit_value)
 {
-	assert(exit_value != 0);
+	ASSERT0(exit_value != 0);
 	longjmp(on_error_jump, exit_value);
 }
 
