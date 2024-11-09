@@ -5,6 +5,7 @@
 ### Changes / improvements
 
 ### Fixes
+- Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.
 
 ### Stdlib changes
 

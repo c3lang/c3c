@@ -4979,11 +4979,12 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 		return;
 	}
 
-	if (expr->type == type_void)
+	if (type_lowering(expr->type) == type_void)
 	{
 		llvm_value_set(value, NULL, expr->type);
 		return;
 	}
+
 	llvm_new_phi(c, value, "val", expr->type, lhs_value, lhs_exit, rhs_value, rhs_exit);
 }
 static LLVMValueRef llvm_emit_real(LLVMTypeRef type, Float f)
