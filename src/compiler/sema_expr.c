@@ -9350,7 +9350,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr)
 			sema_expr_flatten_const_ident(expr->access_expr.parent);
 			return true;
 		case EXPR_TYPEINFO:
-			RETURN_SEMA_ERROR(expr, "A type must be followed by either (...) or '.'.");
+			RETURN_SEMA_ERROR(expr, "A type must be followed by either (...) or '.' unless passed as a macro type argument or assigned to a compile time type variable.");
 		case EXPR_CT_IDENT:
 			if (!sema_cast_ct_ident_rvalue(context, expr)) return false;
 			break;
