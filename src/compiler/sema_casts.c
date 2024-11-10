@@ -949,53 +949,34 @@ static bool rule_slice_to_slice(CastContext *cc, bool is_explicit, bool is_silen
 	Type *from_base = from_type->array.base;
 	Type *array_base = cc->to->array.base;
 
-	if (is_explicit)
-	{
-		array_base = type_flatten(array_base);
-		from_base = type_flatten(from_base);
-	}
 	// Same base type? Ok
-	if (from_base == array_base) return true;
+	if (from_base->canonical == array_base->canonical) return true;
 
-	// This is allowed: void*[] -> int*[] and int*[] -> void*[]
-	if ((from_base == type_voidptr && type_is_pointer_type(array_base)) || (array_base == type_voidptr && type_is_pointer_type(from_base))) return true;
-
-	if (is_silent) return false;
-
-	// Allow converting to any type with the same size (and a smaller or same alignment)
-	if (type_size(array_base) != type_size(from_base))
+	switch (type_array_element_is_equivalent(cc->context, array_base, from_base, is_explicit))
 	{
-		if (!is_explicit) return sema_cast_error(cc, false, is_silent);
-		if (is_silent) return false;
-		RETURN_CAST_ERROR(cc->expr, "%s cannot be cast to %s as its elements have different size.",
-		                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
+		case TYPE_ERROR:
+			return false;
+		case TYPE_MISMATCH:
+		case TYPE_ALIGNMENT_INCREASE:
+			if (is_silent) return false;
+			return sema_cast_error(cc, is_explicit ? false : rule_slice_to_slice(cc, true, true), is_silent);
+		case TYPE_SAME:
+		case TYPE_SAME_INT_SIZE:
+			return true;
 	}
-	if (type_abi_alignment(from_base) < type_abi_alignment(array_base))
-	{
-		if (!is_explicit) return sema_cast_error(cc, false, is_silent);
-		if (is_silent) return false;
-		RETURN_CAST_ERROR(cc->expr,
-		                  "%s cannot be cast to %s as its elements has a greater default alignment, but you can use a bitcast.",
-		                  type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
-	}
-	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
-	return true;
+	UNREACHABLE
 }
 
 
 static bool rule_arr_to_arr(CastContext *cc, bool is_explicit, bool is_silent)
 {
+	if (!rule_slice_to_slice(cc, is_explicit, is_silent)) return false;
 	if (type_flatten(cc->to)->array.len != type_flatten(cc->from)->array.len)
 	{
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(cc->expr, "Arrays of different lengths may not be converted.");
 	}
-	if (type_size(cc->from) != type_size(cc->to))
-	{
-		if (is_silent) return false;
-		RETURN_CAST_ERROR(cc->expr, "Arrays of different size may not be converted.");
-	}
-	return rule_slice_to_slice(cc, is_explicit, is_silent);
+	return true;
 }
 
 static bool rule_arr_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
