@@ -75,3 +75,6 @@ TAGS
 /.cache/
 /compile_commands.json
 
+# 'nix build' resulting symlink
+result
+
