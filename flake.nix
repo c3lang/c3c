@@ -8,17 +8,20 @@
 
   outputs = { self, ... } @ inputs: inputs.flake-utils.lib.eachDefaultSystem 
   (system: 
-    let pkgs = import inputs.nixpkgs { inherit system; };
-        c3c  = pkgs.callPackage ./nix/default.nix {}; 
-    in {
+    let pkgs = import inputs.nixpkgs { inherit system; }; in 
+    {
       packages = {
         default = self.packages.${system}.c3c;
-        inherit c3c;
+        c3c = pkgs.callPackage ./nix/default.nix {};
+        c3c-debug = pkgs.callPackage ./nix/default.nix { debug = true; };
+        c3c-nochecks = pkgs.callPackage ./nix/default.nix { debug = true; checks = false; };
       };
-
-      devShells.default = pkgs.mkShell {
-        buildInputs = [ c3c ];
-      };
+      # devShells.default = pkgs.mkShell {
+      #   packages = [ 
+      #     self.packages.${system}.c3c-nochecks
+      #     pkgs.clang-tools 
+      #   ];
+      # };
     }
   );
 }

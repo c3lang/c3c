@@ -7,27 +7,23 @@
   libxml2,
   libffi,
   xar,
-  versionCheckHook,
+  debug ? false,
+  checks ? true,
 }: let 
-  inherit (builtins) baseNameOf toString readFile split elemAt;
+  inherit (builtins) baseNameOf toString readFile elemAt;
   inherit (lib.sources) cleanSourceWith cleanSource; 
-  inherit (lib.lists) findSingle findFirst;
+  inherit (lib.lists) findFirst;
   inherit (lib.asserts) assertMsg;
-  inherit (lib.strings) hasInfix hasSuffix splitString removeSuffix removePrefix concatMapStringsSep;
+  inherit (lib.strings) hasInfix hasSuffix splitString removeSuffix removePrefix optionalString;
 in 
 llvmPackages.stdenv.mkDerivation (finalAttrs: {
-  pname = "c3c";
+  pname = "c3c${optionalString debug "-debug"}";
   version = let
-    versionFile = readFile ../src/version.h;
-    splitted = splitString "\n" versionFile;
     findLine = findFirst (x: hasInfix "COMPILER_VERSION" x) "none";
-    foundLine = findLine splitted;
-    foundLineSplitted = splitString " " foundLine;
-    unformattedVersion = elemAt foundLineSplitted 2;
-    version = removeSuffix "\"" ( removePrefix "\"" unformattedVersion );
-    dumpStrList = concatMapStringsSep " " (x: "\""+x+"\"");
+    foundLine = findLine ( splitString "\n" ( readFile ../src/version.h ) );
+    version = removeSuffix "\"" ( removePrefix "\"" ( elemAt ( splitString " " foundLine ) 2 ) );
   in 
-    assert assertMsg (foundLine != "none") "No COMPILER_VERSION substring was found in version.h. Lines: [${dumpStrList splitted}]";
+    assert assertMsg (foundLine != "none") "No COMPILER_VERSION substring was found in version.h";
     version;
 
   src = cleanSourceWith {
@@ -39,6 +35,10 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
     substituteInPlace CMakeLists.txt \
       --replace-fail "\''${LLVM_LIBRARY_DIRS}" "${llvmPackages.lld.lib}/lib ${llvmPackages.llvm.lib}/lib"
   '';
+
+  cmakeFlags = [
+    "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}" 
+  ];
 
   nativeBuildInputs = [ cmake ];
 
@@ -52,7 +52,7 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
 
   nativeCheckInputs = [ python3 ];
 
-  doCheck = llvmPackages.stdenv.system == "x86_64-linux";
+  doCheck = llvmPackages.stdenv.system == "x86_64-linux" && checks;
 
   checkPhase = ''
     runHook preCheck
@@ -60,9 +60,6 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
     ( cd ../test; python src/tester.py ../build/c3c test_suite )
     runHook postCheck
   '';
-
-  nativeInstallCheckInputs = [ versionCheckHook ];
-  doInstallCheck = true;
 
   meta = with lib; {
     description = "Compiler for the C3 language";
