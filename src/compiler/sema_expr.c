@@ -5213,10 +5213,10 @@ static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions,
 	return init_expressions;
 }
 
-Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs)
+Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs)
 {
-	if (!c || !c->current_macro) return exprs;
-
+	if (!context) return exprs;
+	bool in_macro = context->current_macro;
 	unsigned count = vec_size(exprs);
 	bool expand;
 	do
@@ -5224,10 +5224,49 @@ Expr **sema_expand_vasplat_exprs(SemaContext *c, Expr **exprs)
 		expand = false;
 		for (unsigned i = 0; i < count; i++)
 		{
-			if (exprs[i]->expr_kind == EXPR_VASPLAT)
+			Expr *arg = exprs[i];
+			ExprKind kind = arg->expr_kind;
+			if (in_macro && kind == EXPR_VASPLAT)
 			{
-				exprs = sema_vasplat_insert(c, exprs, exprs[i], i);
+				exprs = sema_vasplat_insert(context, exprs, arg, i);
 				// If we have null back it failed.
+				if (!exprs) return NULL;
+				count = vec_size(exprs);
+				expand = true;
+				break;
+			}
+			if (kind == EXPR_SPLAT)
+			{
+				Expr *inner = arg->inner_expr;
+				if (!sema_analyse_expr(context, inner)) return false;
+				Type *flat = type_flatten(inner->type);
+				switch (flat->type_kind)
+				{
+					case TYPE_VECTOR:
+					case TYPE_ARRAY:
+					case TYPE_SLICE:
+					case TYPE_UNTYPED_LIST:
+						// These may be splatted
+						break;
+					default:
+						SEMA_ERROR(arg, "An argument of type %s cannot be splatted.",
+						           type_quoted_error_string(inner->type));
+						return NULL;
+				}
+				ArrayIndex len = sema_len_from_expr(inner);
+				if (len == -1)
+				{
+					SEMA_ERROR(arg,
+					           "Splat may not be used with if the length is not known, but if you slice it to a constant length it will work (e.g '...val[:2]')");
+					return NULL;
+				}
+				if (len == 0 && !expr_is_const(arg))
+				{
+					SEMA_ERROR(arg, "A non-constant zero size splat is not allowed.");
+					return NULL;
+				}
+				Expr **new_args = sema_splat_arraylike_insert(context, exprs, inner, len, i);
+				if (!new_args) return false;
 				if (!exprs) return NULL;
 				count = vec_size(exprs);
 				expand = true;

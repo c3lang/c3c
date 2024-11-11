@@ -3,6 +3,7 @@
 ## 0.6.5 Change list
 
 ### Changes / improvements
+- Allow splat in initializers.
 
 ### Fixes
 - Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.
