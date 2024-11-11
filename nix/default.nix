@@ -37,10 +37,16 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
   '';
 
   cmakeFlags = [
-    "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}" 
+    "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"
+    "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
   ];
 
   nativeBuildInputs = [ cmake ];
+
+  postBuild = optionalString debug ''
+    mkdir $out
+    cp compile_commands.json $out/compile_commands.json
+  '';
 
   buildInputs = [
     llvmPackages.llvm

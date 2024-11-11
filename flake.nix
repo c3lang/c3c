@@ -16,12 +16,16 @@
         c3c-debug = pkgs.callPackage ./nix/default.nix { debug = true; };
         c3c-nochecks = pkgs.callPackage ./nix/default.nix { debug = true; checks = false; };
       };
-      # devShells.default = pkgs.mkShell {
-      #   packages = [ 
-      #     self.packages.${system}.c3c-nochecks
-      #     pkgs.clang-tools 
-      #   ];
-      # };
+
+      devShells.default = let 
+        c3c = self.packages.${system}.c3c-nochecks; 
+      in pkgs.mkShell {
+          packages = [ 
+            pkgs.clang-tools 
+            c3c
+          ];
+          shellHook = ''ln -sf ${c3c}/compile_commands.json compile_commands.json'';
+        };
     }
   );
 }
