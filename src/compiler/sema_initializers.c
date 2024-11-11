@@ -214,8 +214,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	{
 		if (vec_size(assigned->strukt.members) > 1 && vec_size(elements) > 1)
 		{
-			SEMA_ERROR(elements[0], "Bitstructs with @overlap must use designated initialization.");
-			return false;
+			RETURN_SEMA_ERROR(elements[0], "Bitstructs with @overlap must use designated initialization.");
 		}
 	}
 
@@ -229,8 +228,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		if (i >= elements_needed)
 		{
 			ASSERT0(i < size);
-			SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", elements_needed);
-			return false;
+			RETURN_SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", elements_needed);
 		}
 		// 5. We might have anonymous members
 		Decl *member = members[i];
