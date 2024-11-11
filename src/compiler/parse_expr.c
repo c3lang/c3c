@@ -525,16 +525,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			ASSIGN_EXPR_OR_RET(expr, parse_vasplat(c), false);
 			goto DONE;
 		}
-		if (try_consume(c, TOKEN_ELLIPSIS))
-		{
-			expr = expr_new(EXPR_SPLAT, start_span);
-			ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), false);
-			RANGE_EXTEND_PREV(expr);
-		}
-		else
-		{
-			ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
-		}
+		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
 DONE:
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))
@@ -659,10 +650,19 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
  * @param left must be null.
  * @return Expr*
  */
-static Expr *parse_type_identifier(ParseContext *context, Expr *left)
+static Expr *parse_type_identifier(ParseContext *c, Expr *left)
 {
 	ASSERT0(!left && "Unexpected left hand side");
-	return parse_type_expression_with_path(context, NULL);
+	return parse_type_expression_with_path(c, NULL);
+}
+
+static Expr *parse_splat(ParseContext *c, Expr *left)
+{
+	ASSERT0(!left && "Unexpected left hand side");
+	Expr *expr = expr_new(EXPR_SPLAT, c->span);
+	advance_and_verify(c, TOKEN_ELLIPSIS);
+	ASSIGN_EXPR_OR_RET(expr->inner_expr, parse_expr(c), poisoned_expr);
+	return expr;
 }
 
 /**
@@ -2084,7 +2084,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_HASH_IDENT] = { parse_hash_ident, NULL, PREC_NONE },
 		[TOKEN_AT_IDENT] = { parse_identifier, NULL, PREC_NONE },
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
-
+		[TOKEN_ELLIPSIS] = { parse_splat, NULL, PREC_NONE },
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
 		[TOKEN_CT_CONCATFN] = {parse_ct_concat_append, NULL, PREC_NONE },
 		[TOKEN_CT_APPEND] = { parse_ct_concat_append, NULL, PREC_NONE },

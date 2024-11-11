@@ -667,6 +667,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_LAST_FAULT:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
+		case EXPR_SPLAT:
 			return false;
 		case EXPR_BITACCESS:
 		case EXPR_BUILTIN:
@@ -698,7 +699,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_SLICE:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
-		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_SUBSCRIPT:
 		case EXPR_SWIZZLE:

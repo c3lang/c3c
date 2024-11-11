@@ -8674,7 +8674,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_SLICE:
 			case EXPR_SLICE_ASSIGN:
 			case EXPR_SLICE_COPY:
-			case EXPR_SPLAT:
 			case EXPR_SWIZZLE:
 			case EXPR_SUBSCRIPT_ADDR:
 			case EXPR_SUBSCRIPT_ASSIGN:
@@ -8706,6 +8705,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_TYPEID_INFO:
 			case EXPR_TYPECALL:
 			case EXPR_MEMBER_GET:
+			case EXPR_SPLAT:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
 		}
@@ -9085,13 +9085,14 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
-		case EXPR_SPLAT:
 		case EXPR_SWIZZLE:
 		case EXPR_TEST_HOOK:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
+		case EXPR_SPLAT:
+			RETURN_SEMA_ERROR(expr, "Splat ('...') may only appear in initializers and calls.");
 		case EXPR_TYPECALL:
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");
 		case EXPR_OTHER_CONTEXT:
