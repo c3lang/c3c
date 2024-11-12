@@ -36,8 +36,9 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
       --replace-fail "\''${LLVM_LIBRARY_DIRS}" "${llvmPackages.lld.lib}/lib ${llvmPackages.llvm.lib}/lib"
   '';
 
+  cmakeBuildType = if debug then "Debug" else "Release";
+
   cmakeFlags = [
-    "-DCMAKE_BUILD_TYPE=${if debug then "Debug" else "Release"}"
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
   ];
 
@@ -45,6 +46,8 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
 
   postBuild = optionalString debug ''
     mkdir $out
+    substituteInPlace compile_commands.json \
+      --replace "/build/source/" "$src/"
     cp compile_commands.json $out/compile_commands.json
   '';
 
