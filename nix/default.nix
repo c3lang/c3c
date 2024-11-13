@@ -47,7 +47,7 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
   postBuild = optionalString debug ''
     mkdir $out
     substituteInPlace compile_commands.json \
-      --replace "/build/source/" "$src/"
+      --replace-quiet "/build/source/" "$src/"
     cp compile_commands.json $out/compile_commands.json
   '';
 
