@@ -1,4 +1,4 @@
-func1 a = 1;    // #error: A type name was expected
+func1 a = 1;    // #error: The name of a type
 
 fn void func1() {}
 

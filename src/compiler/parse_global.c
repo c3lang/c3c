@@ -477,7 +477,14 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		default:
 			if (c->tok == TOKEN_IDENT)
 			{
-				PRINT_ERROR_HERE("A type name was expected, but this looks a variable or function name (as it doesn't start with an uppercase letter).");
+				if (peek(c) == TOKEN_IDENT)
+				{
+					PRINT_ERROR_HERE("The name of a type must start with uppercase and contain at least one lowercase letter.");
+				}
+				else
+				{
+					PRINT_ERROR_HERE("A type name was expected, but this looks a variable or function name (as it doesn't start with an uppercase letter).");
+				}
 			}
 			else
 			{
