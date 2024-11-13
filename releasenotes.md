@@ -8,6 +8,7 @@
 
 ### Fixes
 - Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.
+- `@builtin` was not respected for generic modules #1617.
 
 ### Stdlib changes
 

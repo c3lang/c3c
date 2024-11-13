@@ -992,7 +992,7 @@ bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_r
 		sema_report_error_on_decl(context, name_resolve);
 		return false;
 	}
-	if (!decl_is_user_defined_type(name_resolve->found) && !name_resolve->path)
+	if (!decl_is_user_defined_type(name_resolve->found) && !name_resolve->path && !name_resolve->found->is_autoimport)
 	{
 		if (name_resolve->suppress_error) return false;
 		RETURN_SEMA_ERROR(name_resolve, "Function and variables must be prefixed with a path, e.g. 'foo::%s'.", name_resolve->symbol);
