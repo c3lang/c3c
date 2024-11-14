@@ -120,7 +120,7 @@ fn usz! WriteBuffer.write(&self, char[] bytes) @dynamic
 
 fn void! WriteBuffer.write_byte(&self, char c) @dynamic
 {
-	usz n = self.bytes.len - self.index - 1;
+	usz n = self.bytes.len - self.index;
 	if (n == 0)
 	{
 		self.write_pending()!;

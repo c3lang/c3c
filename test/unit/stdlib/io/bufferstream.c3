@@ -67,3 +67,28 @@ fn void! writebuffer()
     String got = out.str_view();
     assert(got == DATA, "got %s; want %s", got, DATA);
 }
+
+fn void! writebuffer_write_byte()
+{
+    ByteWriter out;
+    out.temp_init();
+    char[2] buf;
+    WriteBuffer write_buf;
+    write_buf.init(&out, buf[..]);
+
+	write_buf.write_byte('a')!;
+	assert(write_buf.str_view() == "a");
+    assert(out.str_view() == "");
+
+	write_buf.write_byte('b')!;
+	assert(write_buf.str_view() == "ab");
+    assert(out.str_view() == "");
+
+	write_buf.write_byte('c')!;
+	assert(write_buf.str_view() == "c");
+    assert(out.str_view() == "ab");
+
+	write_buf.flush()!;
+	assert(write_buf.str_view() == "");
+    assert(out.str_view() == "abc");
+}
