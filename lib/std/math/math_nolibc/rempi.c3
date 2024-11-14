@@ -23,11 +23,11 @@ import std::math;
  * use __rem_pio2_large() for large x
  */
 
-<*
+/*
  * invpio2:  53 bits of 2/pi
  * pio2_1:   first 25 bits of pi/2
  * pio2_1t:  pi/2 - pio2_1
- *>
+ */
 fn int __rem_pio2f(float x, double *y)
 {
 	const double PIO4 = 0x1.921fb6p-1;
