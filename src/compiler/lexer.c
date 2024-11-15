@@ -1159,21 +1159,6 @@ static inline bool scan_base64(Lexer *lexer)
 
 // --- Lexer doc lexing
 
-
-INLINE void skip_to_doc_line_end(Lexer *lexer)
-{
-	// Let's skip to either EOF, EOL or */
-	char c = peek(lexer);
-	while (1)
-	{
-		if (reached_end(lexer)) return;
-		if (c == '\n') return;
-		if (c == '*' && peek_next(lexer) == '/') return;
-		c = next(lexer);
-	}
-}
-
-
 /**
  * Parse the <* *> directives comments
  **/

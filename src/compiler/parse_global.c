@@ -2526,7 +2526,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 			scratch_buffer_append("@require \"");
 			break;
 	}
-	scratch_buffer_append_len(start, end - start);
+	scratch_buffer_append_remove_space(start, end - start);
 	scratch_buffer_append("\" violated");
 	if (try_consume(c, TOKEN_COLON))
 	{

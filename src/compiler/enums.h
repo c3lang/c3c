@@ -1240,8 +1240,8 @@ typedef enum
 	TOKEN_CT_VAEXPR,            // $vaexpr,
 	TOKEN_CT_VASPLAT,           // $vasplat,
 	TOKEN_LAST_KEYWORD = TOKEN_CT_VASPLAT,
-	TOKEN_DOCS_START,       // /**
-	TOKEN_DOCS_END,         // */ (may start with an arbitrary number of `*`
+	TOKEN_DOCS_START,       // <*
+	TOKEN_DOCS_END,         // *>
 	TOKEN_DOCS_EOL,
 
 	TOKEN_EOF,              // \n - SHOULD ALWAYS BE THE LAST TOKEN.

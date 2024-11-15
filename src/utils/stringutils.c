@@ -479,6 +479,22 @@ void scratch_buffer_append_in_quote(const char *string)
 	}
 }
 
+void scratch_buffer_append_remove_space(const char *start, int len)
+{
+	char clast = ' ';
+	int printed = 0;
+	for (int i = 0; i < len; i++)
+	{
+		char ch = start[i];
+		if (ch == '\n' || ch == '\t') ch = ' ';
+		if (ch == ' ' && clast == ch) continue;
+		scratch_buffer_append_char(ch);
+		clast = ch;
+		printed++;
+	}
+	if (clast == ' ' && printed > 0) scratch_buffer.len--;
+}
+
 void scratch_buffer_append_char(char c)
 {
 	if (scratch_buffer.len + 1 > MAX_STRING_BUFFER - 1)
