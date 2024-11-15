@@ -12,7 +12,7 @@ struct TeeReader (InStream)
  @param [&inout] r "Stream r to read from."
  @param [&inout] w "Stream w to write to what it reads from r."
 *>
-fn TeeReader tee_reader(InStream r, OutStream w) => { r, w };
+macro TeeReader tee_reader(InStream r, OutStream w) => { r, w };
 
 <*
  @param [&inout] self
