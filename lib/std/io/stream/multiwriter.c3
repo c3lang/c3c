@@ -17,10 +17,9 @@ struct MultiWriter (OutStream)
 *>
 fn MultiWriter* MultiWriter.new_init(&self, OutStream... writers, Allocator allocator = allocator::heap())
 {
-	usz n = writers.len;
-	OutStream *ptr =  allocator::new_array(allocator, OutStream, n);
-	ptr[:n] = writers[:n];
-	*self = { .writers = ptr[:n], .allocator = allocator };
+	OutStream[] copy = allocator::new_array(allocator, OutStream, writers.len);
+	copy[..] = writers[..];
+	*self = { .writers = copy, .allocator = allocator };
 	return self;
 }
 
@@ -37,7 +36,7 @@ fn MultiWriter* MultiWriter.temp_init(&self, OutStream... writers)
 fn void MultiWriter.free(&self)
 {
 	if (!self.allocator) return;
-	if (void* ptr = self.writers.ptr) allocator::free(self.allocator, ptr);
+	allocator::free(self.allocator, self.writers);
 	*self = {};
 }
 
@@ -47,7 +46,7 @@ fn usz! MultiWriter.write(&self, char[] bytes) @dynamic
 	foreach (w : self.writers) 
 	{
 		n = w.write(bytes)!;
-		if (n != bytes.len) return IoError.SHORT_WRITE?;
+		if (n != bytes.len) return IoError.INCOMPLETE_WRITE?;
 	}
 	return bytes.len;
 }
