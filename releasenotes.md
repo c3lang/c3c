@@ -12,6 +12,7 @@
 - Fix issue writing a single byte in the WriteBuffer
 
 ### Stdlib changes
+- Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
 
 ## 0.6.4 Change list
 
