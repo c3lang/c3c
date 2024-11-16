@@ -2698,10 +2698,25 @@ INLINE CanonicalType *type_pointer_type(Type *type)
 	return res->pointer;
 }
 
+static inline Type *type_flat_distinct_inline(Type *type);
+
 INLINE bool type_is_pointer_like(Type *type)
 {
 	TypeKind kind = type->type_kind;
-	return kind == TYPE_POINTER || (kind == TYPE_VECTOR && type->array.base->canonical->type_kind == TYPE_POINTER);
+	if (kind == TYPE_DISTINCT)
+	{
+		type = type_flat_distinct_inline(type);
+		kind = type->type_kind;
+	}
+	switch (kind)
+	{
+		case TYPE_POINTER:
+			return true;
+		case TYPE_VECTOR:
+			return type_is_pointer_like(type->array.base->canonical);
+		default:
+			return false;
+	}
 }
 
 INLINE bool type_is_pointer_vector(Type *type)

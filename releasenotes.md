@@ -10,6 +10,7 @@
 - Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.
 - `@builtin` was not respected for generic modules #1617.
 - Fix issue writing a single byte in the WriteBuffer
+- A distinct inline pointer type can now participate in pointer arithmetics.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
