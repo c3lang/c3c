@@ -2700,7 +2700,7 @@ INLINE CanonicalType *type_pointer_type(Type *type)
 
 static inline Type *type_flat_distinct_inline(Type *type);
 
-INLINE bool type_is_pointer_like(Type *type)
+static inline bool type_is_pointer_like(Type *type)
 {
 	TypeKind kind = type->type_kind;
 	if (kind == TYPE_DISTINCT)

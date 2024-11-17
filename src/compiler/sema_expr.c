@@ -3093,7 +3093,14 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 		}
 	}
 	expr->subscript_expr.expr = exprid(current_expr);
-	expr->type = type_add_optional(index_type, optional);
+	if (is_eval_ref && type_flatten(subscripted->type)->type_kind == TYPE_POINTER)
+	{
+		expr->type = type_add_optional(subscripted->type, optional);
+	}
+	else
+	{
+		expr->type = type_add_optional(index_type, optional);
+	}
 	return true;
 VALID_FAIL_POISON:
 	expr_poison(expr);
