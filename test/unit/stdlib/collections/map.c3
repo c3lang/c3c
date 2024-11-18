@@ -59,7 +59,7 @@ fn void map_remove()
 {
 	Map m;
 	assert(!@ok(m.remove("A")));
-	m.init(allocator::temp());
+	m.temp_init();
 	assert(!@ok(m.remove("A")));
 	m.set("A", 0);
 	assert(@ok(m.remove("A")));
