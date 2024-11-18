@@ -4,6 +4,7 @@
 #define MANIFEST_FILE "manifest.json"
 
 const char *manifest_default_keys[][2] = {
+		{"sources", "Paths to library sources for targets."},
 		{"c-sources", "Set the C sources to be compiled."},
 		{"c-include-dirs", "Set the include directories for C sources."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
@@ -19,6 +20,7 @@ const char *manifest_default_keys[][2] = {
 const int manifest_default_keys_count = ELEMENTLEN(manifest_default_keys);
 
 const char *manifest_target_keys[][2] = {
+		{"sources-override", "Paths to library sources for this target, overriding global settings."},
 		{"c-sources", "Additional C sources to be compiled for the target."},
 		{"c-sources-override", "C sources to be compiled, overriding global settings."},
 		{"c-include-dirs", "C source include directories for the target."},
@@ -86,9 +88,11 @@ static inline void parse_library_target(Library *library, LibraryTarget *target,
 	target->execs = get_string_array(library->dir, target_name, object, "exec", false);
 	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
 	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
+	target->source_dirs = library->source_dirs;
 	target->csource_dirs = library->csource_dirs;
 	target->cinclude_dirs = library->cinclude_dirs;
 	target->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, target_name, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	get_list_append_strings(library->dir, target_name, object, &target->source_dirs, "sources", "sources-override", "sources-add");
 	get_list_append_strings(library->dir, target_name, object, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 	get_list_append_strings(library->dir, target_name, object, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 }
@@ -112,6 +116,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 	library->cc = get_optional_string(dir, NULL, object, "cc");
 	library->cflags = get_cflags(library->dir, NULL, object, NULL);
 	library->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, NULL, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	get_list_append_strings(library->dir, NULL, object, &library->source_dirs, "sources", "sources-override", "sources-add");
 	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 	get_list_append_strings(library->dir, NULL, object, &library->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 	parse_library_type(library, &library->targets, json_map_get(object, "targets"));
@@ -291,7 +296,11 @@ void resolve_libraries(BuildTarget *build_target)
 		{
 			vec_add(build_target->ccompiling_libraries, target);
 		}
-		file_add_wildcard_files(&build_target->sources, library->dir, false, c3_suffix_list, 3);
+		const char **files = target_expand_source_names(library->dir, target->source_dirs, c3_suffix_list, &build_target->object_files, 3, true);
+		FOREACH(const char *, file, files)
+		{
+			vec_add(build_target->sources, file);
+		}
 		vec_add(build_target->library_list, library);
 		const char *libdir = file_append_path(library->dir, arch_os_target[build_target->arch_os_target]);
 		if (file_is_dir(libdir)) vec_add(build_target->linker_libdirs, libdir);
