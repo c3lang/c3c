@@ -54,3 +54,13 @@ fn void map()
         assert(tc.value == list[i].value);
     }
 }
+
+fn void map_remove()
+{
+	Map m;
+	assert(!@ok(m.remove("A")));
+	m.init(allocator::temp());
+	assert(!@ok(m.remove("A")));
+	m.set("A", 0);
+	assert(@ok(m.remove("A")));
+}
