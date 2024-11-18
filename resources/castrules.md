@@ -12,6 +12,54 @@ Some short names:
 11. edist - explicit to anything underlying type can convert to, if inline as underlying 
 12. arve - if array or vec ptr
 
+### Bool
+
+1. Explicitly convert to float, int, bool vector
+2. Implicitly convert to bool vector init
+3. Implicitly convert to distinct bool if constant value.
+
+### Int
+
+1. Implicitly convert to unsigned counterpart
+2. Implicitly convert to float / wider int for simple expressions.
+3. Implicitly convert to same int vector init (or any?)
+4. Explicitly convert to pointer if pointer sized
+5. Explicitly convert to same size int vector, enum with same backing size, bitstruct with same backing size.
+6. Explicitly convert to bool, any int or float.
+7. Implicitly convert to bool in conditionals.
+8. Implicitly convert to any distinct integer. (Same size only?)
+9. Implicitly convert to any float/int/distinct float/int if constant value that fits.
+
+### Float
+
+1. Implicitly convert to wider float for simple expressions.
+2. Implicitly convert to same float vector init (or any?)
+3. Explicitly convert to bool, any int or float.
+4. Explicitly convert to any distinct float. (Same size only?)
+5. Implicitly convert to any float / distinct float constant value that fits.
+
+### Non void* pointer
+
+1. Implicitly convert to void* and `any`.
+2. Implicitly convert to an interface if the pointee implements the interface.
+3. Explicitly convert to pointer sized int.
+4. Implicitly convert to slice if it is a pointer to a vector or array.
+5. Explicitly convert to any other pointer.
+6. Explicitly convert to any distinct pointer.
+
+### void* pointer
+
+1. Implicitly convert to a pointer sized int.
+2. Implicitly convert to any other pointer.
+3. Explicitly convert to any distinct pointer.
+4. Implicitly convert to any distinct pointer if constant value.
+
+### Slice
+
+1. Implicitly convert to a pointer of the same type.
+2. 
+
+
 | from, to | bool   | int      | float  | pointer | subarr | vec      | bits     | distc | array    | struct | union  | any    | fault  | enum   | typeid |
 |----------|--------|----------|--------|---------|--------|----------|----------|-------|----------|--------|--------|--------|--------|--------|--------|
 | bool     | n/a    | expl     | expl   | no      | no     | expand   | no       | edist | no       | no     | no     | no     | no     | no     | no     |

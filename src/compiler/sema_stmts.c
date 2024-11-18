@@ -741,6 +741,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			expr->try_unwrap_expr.optional = ident;
 			expr->try_unwrap_expr.lhs = NULL;
 			expr->try_unwrap_expr.assign_existing = true;
+			expr->resolve_status = RESOLVE_DONE;
 			expr->type = type_bool;
 			return true;
 		}
