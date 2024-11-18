@@ -1,79 +1,196 @@
-Some short names:
-1. expl - explicit
-2. sw/sn - simple widening + subexpression narrowing
-3. yes - always allowed
-4. explptr - explicit if pointer sized
-5. ptrconv - to/from void* is fine, other cast must be explicit
-6. saconv - explicit if same element size
-7. explbase - explicit to base disregaring sign
-8. distel - explicit to same element disregarding distinct 
-9. inline - implicit if type subtype 
-10. cond - implicit in cond, explicit otherwise 
-11. edist - explicit to anything underlying type can convert to, if inline as underlying 
-12. arve - if array or vec ptr
+## Special rules for distinct types
+
+1. Implicit conversion will happen from constant values that can be implicitly converted to the underlying type.
+2. Implicit conversion will happen to the underlying type if inline.
+
+## Special rules for vectors
+
+1. Implicit conversion will happen for non-vector numeric types, bools and pointers for init only.
+2. Explicit conversion is available in all other cases.
+
+## Special rules for bool conversion in conditionals
+
+Types that may convert to a bool, will implicitly do so in a conditional.
 
 ### Bool
 
-1. Explicitly convert to float, int, bool vector
-2. Implicitly convert to bool vector init
-3. Implicitly convert to distinct bool if constant value.
+#### Implicit conversion
+None
+
+#### Explicit conversion
+
+1. To float => 0.0 and 1.0
+2. To int => 0 and 1 (note, there is an argument for ~0 instead)
 
 ### Int
 
-1. Implicitly convert to unsigned counterpart
-2. Implicitly convert to float / wider int for simple expressions.
-3. Implicitly convert to same int vector init (or any?)
-4. Explicitly convert to pointer if pointer sized
-5. Explicitly convert to same size int vector, enum with same backing size, bitstruct with same backing size.
-6. Explicitly convert to bool, any int or float.
-7. Implicitly convert to bool in conditionals.
-8. Implicitly convert to any distinct integer. (Same size only?)
-9. Implicitly convert to any float/int/distinct float/int if constant value that fits.
+#### Implicit conversion
+
+1. To float if simple expression
+2. To wider int if simple expression
+
+#### Explicit conversion
+
+1. To bool/float/int always works
+2. To pointer if the int is pointer sized
+3. To enum (const will be range checked)
+4. To bitstruct if size matches
+5. To bool
 
 ### Float
 
-1. Implicitly convert to wider float for simple expressions.
-2. Implicitly convert to same float vector init (or any?)
-3. Explicitly convert to bool, any int or float.
-4. Explicitly convert to any distinct float. (Same size only?)
-5. Implicitly convert to any float / distinct float constant value that fits.
+#### Implicit conversion
 
-### Non void* pointer
+1. To wider float if simple expression 
 
-1. Implicitly convert to void* and `any`.
-2. Implicitly convert to an interface if the pointee implements the interface.
-3. Explicitly convert to pointer sized int.
-4. Implicitly convert to slice if it is a pointer to a vector or array.
-5. Explicitly convert to any other pointer.
-6. Explicitly convert to any distinct pointer.
+#### Explicit conversion
 
-### void* pointer
+1. To int / float
+2. To bool
 
-1. Implicitly convert to a pointer sized int.
-2. Implicitly convert to any other pointer.
-3. Explicitly convert to any distinct pointer.
-4. Implicitly convert to any distinct pointer if constant value.
+### Non "void\*" pointer
+
+#### Implicit conversion
+
+1. To void*
+2. To `any`
+3. To slice if it is a pointer to a vector or array
+4. To an interface if the pointee implements the interface.
+
+#### Explicit conversion
+
+1. To any pointer
+2. To any interface
+3. To an int size pointer
+4. To bool
+
+### "void\*" pointer
+
+#### Implicit conversion
+
+1. To any pointer
+
+#### Explicit conversion
+
+1. To a pointer sized int.
+2. To bool
 
 ### Slice
 
-1. Implicitly convert to a pointer of the same type.
-2. 
+#### Implicit conversion
 
+1. To a pointer of the same base pointer. For constant strings the ichar and char are equivalent.
+2. To an array or vector of the same compile time known length if the array/vector conversion exists.
 
-| from, to | bool   | int      | float  | pointer | subarr | vec      | bits     | distc | array    | struct | union  | any    | fault  | enum   | typeid |
-|----------|--------|----------|--------|---------|--------|----------|----------|-------|----------|--------|--------|--------|--------|--------|--------|
-| bool     | n/a    | expl     | expl   | no      | no     | expand   | no       | edist | no       | no     | no     | no     | no     | no     | no     |
-| int      | cond   | sw/sn    | always | explptr | no     | expand   | explbase | edist | no       | no     | no     | no     | no     | edist  | no     |
-| float    | cond   | expl     | sw/sn  | no      | no     | expand   | no       | edist | no       | no     | no     | no     | no     | no     | no     |
-| pointer  | cond   | explptr  | no     | ptrconv | arve   | expand   | no       | edist | no       | no     | no     | yes    | expl   | no     | expl   |
-| slice    | cond   | no       | no     | no      | saconv | no       | no       | edist | no?      | no     | no     | no     | no     | no     | no     |
-| vec      | cond   | no       | no     | no      | no     | as base  | no       | edist | expl     | no     | no     | no     | no     | no     | no     |
-| bits     | no     | explbase | no     | no      | no     | no       | no?      | edist | explbase | no     | no     | no     | no     | no     | no     |
-| distc    | edist  | edist    | edist  | edist   | edist  | edist    | edist    | edist | edist    | edist  | edist  | edist  | edist  | edist  | edist  |
-| array    | no     | no       | no     | no      | no     | explbase | explbase | edist | distel   | no     | no     | no     | no     | no     | no     |
-| struct   | inline | inline   | inline | inline  | inline | inline   | inline   | edist | inline   | inline | inline | inline | inline | inline | inline |
-| union    | no     | no       | no     | no      | no     | no       | no       | edist | no       | no     | no     | no     | no     | no     | no     |
-| any      | cond   | no       | no     | expl    | no     | no       | no       | edist | no       | no     | no     | n/a    | no     | no     | no     |
-| fault    | cond   | explptr  | no     | expl    | no     | no       | no       | edist | no       | no     | no     | no     | anyf   | no     | no     |
-| enum     | no     | expl     | no     | no      | no     | expand   | no       | edist | no       | no     | no     | no     | no     | no     | no     |
-| typeid   | cond   | no       | no     | expl    | no     | no       | no       | edist | no       | no     | no     | no     | no     | no     | n/a    |
+#### Explicit conversion
+
+1. To a pointer of the same structure.
+2. To a slice of the same structure.
+3. To an array of the vector of the same compile time known length if the explicit array/vector conversion exists.
+
+### Vector
+
+#### Implicit conversion
+
+1. To a slice of the same type *if* the vector is constant.
+2. To another vector if the base type conversion is implicit
+3. To an array if the conversion would work if this was an array -> array conversion.
+
+#### Explicit conversion
+
+1. To a slice of the same structural equivalent type *if* the vector is constant.
+2. To another vector if the base type conversion is valid.
+3. To an array if the conversion would work if this was an explicit array -> array conversion.
+
+### Array
+
+#### Implicit conversion
+
+1. To a slice of the same type *if* the array is constant.
+2. To another array of the same length but with compatible types.
+3. To a vector if the conversion would work if this was an array -> array conversion.
+
+#### Explicit conversion
+
+1. To a slice of the same structural equivalent type *if* the array is constant.
+2. To another array of the same length with structurally equivalent elements.
+3. To a vector if the conversion would work if this was an explicit array -> array conversion.
+
+### Bitstruct
+
+#### Implicit conversion
+None
+
+#### Explicit conversion
+
+1. To the underlying type (integer or char array).
+2. To bool
+
+### Struct
+
+#### Implicit conversion
+
+1. To inline member
+
+#### Explicit conversion
+
+None
+
+### Union
+
+No conversions
+
+### "any"
+
+#### Implicit conversion
+
+1. To `void*`
+
+#### Explicit conversion
+
+1. To any interface
+2. To any pointer
+3. To bool
+
+### Interface
+
+#### Implicit conversion
+
+1. To `void*`
+2. To `any`
+2. To a parent interface
+
+#### Explicit conversion
+
+1. To any other interface
+2. To any pointer
+3. To bool
+
+### Fault
+
+#### Implicit conversion
+
+1. To `anyfault`
+
+#### Explicit conversion
+
+1. To a pointer sized int
+2. To bool
+3. To pointer
+
+### "anyfault"
+
+#### Explicit conversion
+
+1. To a pointer sized int
+2. To bool
+3. To pointer
+4. To a `fault`
+
+### "typeid"
+
+#### Explicit conversion
+
+1. To a pointer size int
+2. To bool
+3. To pointer
