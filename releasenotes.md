@@ -12,6 +12,7 @@
 - Fix issue writing a single byte in the WriteBuffer
 - A distinct inline pointer type can now participate in pointer arithmetics.
 - Support &a[0] returning the distinct type when applying it to a distinct of a pointer.
+- Fix error when calling `HashMap.remove` on uninitialized `HashMap`.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
