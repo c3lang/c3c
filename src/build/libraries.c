@@ -20,6 +20,7 @@ const char *manifest_default_keys[][2] = {
 const int manifest_default_keys_count = ELEMENTLEN(manifest_default_keys);
 
 const char *manifest_target_keys[][2] = {
+		{"sources", "Additional library sources to be compiled for this target."},
 		{"sources-override", "Paths to library sources for this target, overriding global settings."},
 		{"c-sources", "Additional C sources to be compiled for the target."},
 		{"c-sources-override", "C sources to be compiled, overriding global settings."},
