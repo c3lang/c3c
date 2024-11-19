@@ -735,8 +735,7 @@ void print_var_expr(FILE *file, Expr *expr)
             fputs("TODO: EXPR_SUBSCRIPT_ADDR", file);
             break;
         case EXPR_SUBSCRIPT_ASSIGN:
-            fputs("TODO: EXPR_SUBSCRIPT_ASSIGN", file);
-            break;
+			UNREACHABLE
         case EXPR_SWIZZLE:
             fputs("TODO: EXPR_SWIZZLE", file);
             break;

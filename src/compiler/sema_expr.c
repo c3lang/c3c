@@ -7146,10 +7146,72 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	// 5. We can only inc/dec numbers or pointers.
 	if (!type_underlying_may_add_sub(type) && type->type_kind != TYPE_POINTER)
 	{
-		SEMA_ERROR(inner, "The expression must be a number or a pointer.");
-		return false;
+		RETURN_SEMA_ERROR(inner, "The expression must be a number or a pointer.");
 	}
 
+	if (inner->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
+	{
+		Expr *increased = exprptr(inner->subscript_assign_expr.expr);
+		Type *type_check = increased->type->canonical;
+		Expr *index = exprptr(inner->subscript_assign_expr.index);
+		Decl *operator = sema_find_operator(context, type_check, OVERLOAD_ELEMENT_REF);
+		Expr **args = NULL;
+		if (operator)
+		{
+			vec_add(args, exprptr(inner->subscript_assign_expr.index));
+			if (!sema_insert_method_call(context, inner, operator, exprptr(inner->subscript_assign_expr.expr), args)) return false;
+			expr_rewrite_insert_deref(inner);
+			goto OK;
+		}
+		operator = sema_find_operator(context, type_check, OVERLOAD_ELEMENT_AT);
+		if (!operator)
+		{
+			RETURN_SEMA_ERROR(expr, "There is no overload for [] for %s.", type_quoted_error_string(increased->type));
+		}
+		Type *return_type = typeget(operator->func_decl.signature.rtype);
+		if (return_type->canonical != type->canonical)
+		{
+			RETURN_SEMA_ERROR(expr, "There is a type mismatch between overload for [] and []= for %s.", type_quoted_error_string(increased->type));
+		}
+		expr_insert_addr(increased);
+		Decl *temp_val = decl_new_generated_var(increased->type, VARDECL_LOCAL, increased->span);
+		Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->span);
+		Decl *value_val = decl_new_generated_var(inner->type, VARDECL_LOCAL, expr->span);
+		Decl *result_val = decl_new_generated_var(inner->type, VARDECL_LOCAL, expr->span);
+		Expr *decl_expr = expr_generate_decl(temp_val, increased);
+		Expr *decl_index_expr = expr_generate_decl(index_val, index);
+		Expr *unary = expr_new_expr(expr->expr_kind, expr);
+		unary->unary_expr.expr = expr_variable(value_val);
+		unary->unary_expr.operator = expr->unary_expr.operator;
+		unary->unary_expr.no_wrap = expr->unary_expr.no_wrap;
+		expr->expr_kind = EXPR_EXPRESSION_LIST;
+		expr->expression_list = NULL;
+		// temp = indexed
+		vec_add(expr->expression_list, decl_expr);
+		// temp_index = index
+		vec_add(expr->expression_list, decl_index_expr);
+		Expr *get_expr = expr_new(EXPR_ACCESS, increased->span);
+		vec_add(args, expr_variable(index_val));
+		Expr *temp_val_1 = expr_variable(temp_val);
+		expr_rewrite_insert_deref(temp_val_1);
+		if (!sema_insert_method_call(context, get_expr, operator, temp_val_1, args)) return false;
+		Expr *value_val_expr = expr_generate_decl(value_val, get_expr);
+		// temp_value = func(temp, temp_index)
+		vec_add(expr->expression_list, value_val_expr);
+		// temp_result = temp_value++
+		vec_add(expr->expression_list, expr_generate_decl(result_val, unary));
+
+		args = NULL;
+		vec_add(args, expr_variable(index_val));
+		vec_add(args, expr_variable(value_val));
+		Expr *temp_val_2 = expr_variable(temp_val);
+		expr_rewrite_insert_deref(temp_val_2);
+		if (!sema_insert_method_call(context, inner, declptr(inner->subscript_assign_expr.method), temp_val_2, args)) return false;
+		vec_add(expr->expression_list, inner);
+		vec_add(expr->expression_list, expr_variable(result_val));
+		return sema_expr_analyse_expr_list(context, expr);
+	}
+OK:
 	// 6. Done, the result is same as the inner type.
 	expr->type = inner->type;
 	return true;

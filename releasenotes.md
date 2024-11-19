@@ -14,6 +14,7 @@
 - Support &a[0] returning the distinct type when applying it to a distinct of a pointer.
 - Fix error when calling `HashMap.remove` on uninitialized `HashMap`.
 - Fix issue with resolved try-unwrap in defer.
+- Fix issue with overloaded subscript and ++/--.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
