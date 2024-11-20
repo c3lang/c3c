@@ -120,7 +120,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	if (is_optional)
 	{
 		scratch_buffer_clear();
-		scratch_buffer_append(decl->name);
+		scratch_buffer_append(decl->name ? decl->name : "anon");
 		scratch_buffer_append(".f");
 		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_anyfault, scratch_buffer_to_string());
 		// Only clear out the result if the assignment isn't an optional.

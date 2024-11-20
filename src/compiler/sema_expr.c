@@ -7169,15 +7169,17 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 			RETURN_SEMA_ERROR(expr, "There is no overload for [] for %s.", type_quoted_error_string(increased->type));
 		}
 		Type *return_type = typeget(operator->func_decl.signature.rtype);
-		if (return_type->canonical != type->canonical)
+		if (type_no_optional(return_type->canonical) != type->canonical)
 		{
 			RETURN_SEMA_ERROR(expr, "There is a type mismatch between overload for [] and []= for %s.", type_quoted_error_string(increased->type));
 		}
+		bool is_optional_result = type_is_optional(increased->type) || type_is_optional(return_type);
+		Type *result_type = type_add_optional(inner->type, is_optional_result);
 		expr_insert_addr(increased);
 		Decl *temp_val = decl_new_generated_var(increased->type, VARDECL_LOCAL, increased->span);
 		Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->span);
-		Decl *value_val = decl_new_generated_var(inner->type, VARDECL_LOCAL, expr->span);
-		Decl *result_val = decl_new_generated_var(inner->type, VARDECL_LOCAL, expr->span);
+		Decl *value_val = decl_new_generated_var(return_type, VARDECL_LOCAL, expr->span);
+		Decl *result_val = decl_new_generated_var(result_type, VARDECL_LOCAL, expr->span);
 		Expr *decl_expr = expr_generate_decl(temp_val, increased);
 		Expr *decl_index_expr = expr_generate_decl(index_val, index);
 		Expr *unary = expr_new_expr(expr->expr_kind, expr);
@@ -7207,6 +7209,8 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 		Expr *temp_val_2 = expr_variable(temp_val);
 		expr_rewrite_insert_deref(temp_val_2);
 		if (!sema_insert_method_call(context, inner, declptr(inner->subscript_assign_expr.method), temp_val_2, args)) return false;
+		ASSERT0(inner->expr_kind == EXPR_CALL);
+		inner->call_expr.has_optional_arg = false;
 		vec_add(expr->expression_list, inner);
 		vec_add(expr->expression_list, expr_variable(result_val));
 		return sema_expr_analyse_expr_list(context, expr);
@@ -9572,8 +9576,20 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 		}
 		return true;
 	}
+	if (expr->expr_kind == EXPR_DECL) return true;
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ASSIGN || expr->expr_kind == EXPR_SLICE_ASSIGN) return true;
 	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator >= BINARYOP_ASSIGN) return true;
+	if (expr->expr_kind == EXPR_UNARY || expr->expr_kind == EXPR_POST_UNARY)
+	{
+		switch (expr->unary_expr.operator)
+		{
+			case UNARYOP_DEC:
+			case UNARYOP_INC:
+				return true;
+			default:
+				break;
+		}
+	}
 	if (expr->expr_kind == EXPR_EXPR_BLOCK)
 	{
 		if (type_is_void(expr->type)) return true;

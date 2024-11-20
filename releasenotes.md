@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Allow splat in initializers.
 - Init command will now add `test-sources` to `project.json` #1520
+- `a++` may be discarded if `a` is optional and ++/-- works for overloaded operators.
 
 ### Fixes
 - Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.
