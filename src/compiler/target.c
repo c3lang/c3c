@@ -2,11 +2,11 @@
 #include <llvm-c/Target.h>
 #include <llvm-c/TargetMachine.h>
 #include <llvm-c/Core.h>
-#endif 
+#endif
 #include "compiler_internal.h"
 #if LLVM_AVAILABLE
 #include "c3_llvm.h"
-#else 
+#else
 #include "utils/hostinfo.h"
 #endif
 
@@ -299,17 +299,19 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_SSE4_1] = "sse4.1",
 		[X86_FEAT_SSE4_2] = "sse4.2",
 		[X86_FEAT_APX_EGPR] = "egpr",
-        [X86_FEAT_APX_PUSH2POP2] = "push2pop2",
-        [X86_FEAT_APX_PPX] = "ppx",
-        [X86_FEAT_APX_NDD] = "ndd",
-        [X86_FEAT_APX_CCMP] = "ccmp",
-        [X86_FEAT_APX_NF] = "nf",
-        [X86_FEAT_APX_CF] = "cf",
-        [X86_FEAT_APX_ZU] = "zu",
-        [X86_FEAT_AVX] = "avx",
+		[X86_FEAT_APX_PUSH2POP2] = "push2pop2",
+		[X86_FEAT_APX_PPX] = "ppx",
+		[X86_FEAT_APX_NDD] = "ndd",
+		[X86_FEAT_APX_CCMP] = "ccmp",
+		[X86_FEAT_APX_NF] = "nf",
+		[X86_FEAT_APX_CF] = "cf",
+		[X86_FEAT_APX_ZU] = "zu",
+		[X86_FEAT_AVX] = "avx",
 		[X86_FEAT_AVX2] = "avx2",
 		[X86_FEAT_AVX10_1_512] = "avx10.1-512",
 		[X86_FEAT_AVX10_1_256] = "avx10.1-256",
+		[X86_FEAT_AVX10_2_512] = "avx10.2-512",
+		[X86_FEAT_AVX10_2_256] = "avx10.2-256",
 		[X86_FEAT_SSE4_A] = "sse4a",
 		[X86_FEAT_FMA4] = "fma4",
 		[X86_FEAT_XOP] = "xop",
@@ -341,6 +343,12 @@ static char *x86_feature_name[] = {
 		[X86_FEAT_AMX_BF16] = "amx-bf16",
 		[X86_FEAT_AMX_INT8] = "amx-int8",
 		[X86_FEAT_AMX_TILE] = "amx-tile",
+		[X86_FEAT_AMX_AVX512] = "amx-avx512",
+		[X86_FEAT_AMX_FP8] = "amx-fp8",
+		[X86_FEAT_AMX_MOVRS] = "amx-movrs",
+		[X86_FEAT_AMX_TF32] = "amx-tf32",
+		[X86_FEAT_AMX_TRANSPOSE] = "amx-transpose",
+		[X86_FEAT_MOVRS] = "movrs",
 		[X86_FEAT_CLDEMOTE] = "cldemote",
 		[X86_FEAT_CLFLUSHOPT] = "clflushopt",
 		[X86_FEAT_CLWB] = "clwb",
@@ -591,8 +599,13 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 			return;
 		case X86_FEAT_AMX_BF16:
 		case X86_FEAT_AMX_FP16:
+		case X86_FEAT_AMX_FP8:
 		case X86_FEAT_AMX_INT8:
 		case X86_FEAT_AMX_COMPLEX:
+		case X86_FEAT_AMX_TRANSPOSE:
+		case X86_FEAT_AMX_TF32:
+		case X86_FEAT_AMX_MOVRS:
+		case X86_FEAT_AMX_AVX512:
 			x86_features_add_feature(cpu_features, X86_FEAT_AMX_TILE);
 			return;
 		case X86_FEAT_AVXVNNIINT8:
@@ -647,6 +660,7 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_MOVBE:
 		case X86_FEAT_MOVDIR64B:
 		case X86_FEAT_MOVDIRI:
+		case X86_FEAT_MOVRS:
 		case X86_FEAT_PCONFIG:
 		case X86_FEAT_POPCNT:
 		case X86_FEAT_PKU:
@@ -675,20 +689,24 @@ static void x86_features_add_feature(X86Features *cpu_features, X86Feature featu
 		case X86_FEAT_XSAVE:
 		case X86_FEAT_EVEX512:
 		case X86_FEAT_USERMSR:
-        case X86_FEAT_APX_EGPR:
-        case X86_FEAT_APX_PUSH2POP2:
-        case X86_FEAT_APX_PPX:
-        case X86_FEAT_APX_NDD:
-        case X86_FEAT_APX_CCMP:
-        case X86_FEAT_APX_NF:
-        case X86_FEAT_APX_CF:
-        case X86_FEAT_APX_ZU:
+		case X86_FEAT_APX_EGPR:
+		case X86_FEAT_APX_PUSH2POP2:
+		case X86_FEAT_APX_PPX:
+		case X86_FEAT_APX_NDD:
+		case X86_FEAT_APX_CCMP:
+		case X86_FEAT_APX_NF:
+		case X86_FEAT_APX_CF:
+		case X86_FEAT_APX_ZU:
 			return;
 		case X86_FEAT_AVX10_1_512:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_1_256);
 			x86_features_add_feature(cpu_features, X86_FEAT_EVEX512);
+		case X86_FEAT_AVX10_2_512:
+			x86_features_add_feature(cpu_features, X86_FEAT_AVX10_1_256);
+			x86_features_add_feature(cpu_features, X86_FEAT_EVEX512);
 			return;
 		case X86_FEAT_AVX10_1_256:
+		case X86_FEAT_AVX10_2_256:
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512CD);
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512VBMI);
 			x86_features_add_feature(cpu_features, X86_FEAT_AVX512VBMI2);
@@ -806,10 +824,10 @@ static const char *x86_cpu_from_set(X86CpuSet set)
 		case X86CPU_NATIVE:
 #if LLVM_AVAILABLE
 			return LLVMGetHostCPUName();
-#else 
-            return hostinfo_x86_cpu_name();
+#else
+			return hostinfo_x86_cpu_name();
 #endif
-    }
+	}
 	UNREACHABLE
 }
 
@@ -818,10 +836,10 @@ static void x86_features_from_host(X86Features *cpu_features)
 #if LLVM_AVAILABLE
 	char *features = LLVMGetHostCPUFeatures();
 	INFO_LOG("Detected the following host features: %s", features);
-    INFO_LOG("For %s", 
-             LLVMGetHostCPUName());
+	INFO_LOG("For %s",
+			 LLVMGetHostCPUName());
 
-    char *tok = strtok(features, ",");
+	char *tok = strtok(features, ",");
 	*cpu_features = x86_feature_zero;
 	while (tok != NULL)
 	{
@@ -851,8 +869,8 @@ static void x86_features_from_host(X86Features *cpu_features)
 		tok = strtok(NULL, ",");
 	}
 	LLVMDisposeMessage(features);
-#else 
-    hostinfo_x86_features(cpu_features);
+#else
+	hostinfo_x86_features(cpu_features);
 #endif
 }
 
@@ -1845,7 +1863,7 @@ void *llvm_target_machine_create(void)
 	return result;
 }
 
-#else 
+#else
 
 #define XTENSA_AVAILABLE 1
 
@@ -1907,9 +1925,9 @@ void target_setup(BuildTarget *target)
 	INFO_LOG("Triple picked was %s.", compiler.platform.target_triple);
 
 #if LLVM_AVAILABLE
-    INFO_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
-#else 
-    INFO_LOG("Default was %s.", hostinfo_default_triple());
+	INFO_LOG("Default was %s.", LLVM_DEFAULT_TARGET_TRIPLE);
+#else
+	INFO_LOG("Default was %s.", hostinfo_default_triple());
 #endif
 
 	StringSlice target_triple_string = slice_from_string(compiler.platform.target_triple);
@@ -2054,9 +2072,9 @@ void target_setup(BuildTarget *target)
 																 compiler.platform.arch,
 																 compiler.platform.environment_type);
 	compiler.platform.reloc_model = arch_os_reloc_default(compiler.platform.arch,
-	                                                      compiler.platform.os,
-	                                                      compiler.platform.environment_type,
-	                                                      compiler.build.type != TARGET_TYPE_EXECUTABLE);
+														  compiler.platform.os,
+														  compiler.platform.environment_type,
+														  compiler.build.type != TARGET_TYPE_EXECUTABLE);
 	compiler.platform.pic_required = arch_os_pic_default_forced(compiler.platform.arch, compiler.platform.os);
 	// Override PIC, but only if the platform does not require PIC
 	if (target->reloc_model != RELOC_DEFAULT
