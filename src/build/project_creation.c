@@ -138,7 +138,7 @@ const char* JSON_DYNAMIC =
 const char *MANIFEST_TEMPLATE =
 		"{\n"
 		"  \"provides\" : \"%s\",\n"
-		"  \"sources\" : [ \"src/**\" ],\n"
+		"  // \"sources\" : [ \"src/**\" ],\n"
 		"  \"targets\" : {\n"
 		"%s"
 		"  }\n"

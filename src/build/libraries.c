@@ -297,10 +297,15 @@ void resolve_libraries(BuildTarget *build_target)
 		{
 			vec_add(build_target->ccompiling_libraries, target);
 		}
-		const char **files = target_expand_source_names(library->dir, target->source_dirs, c3_suffix_list, &build_target->object_files, 3, true);
-		FOREACH(const char *, file, files)
-		{
-			vec_add(build_target->sources, file);
+		if (target->source_dirs) {
+			const char **files = target_expand_source_names(library->dir, target->source_dirs, c3_suffix_list, &build_target->object_files, 3, true);
+			FOREACH(const char *, file, files)
+			{
+				vec_add(build_target->sources, file);
+			}
+		} else {
+			// fallback if sources doesn't exist
+			file_add_wildcard_files(&build_target->sources, library->dir, false, c3_suffix_list, 3);
 		}
 		vec_add(build_target->library_list, library);
 		const char *libdir = file_append_path(library->dir, arch_os_target[build_target->arch_os_target]);
