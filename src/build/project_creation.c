@@ -225,14 +225,11 @@ void create_library(BuildOptions *build_options)
 	create_file_or_fail(build_options, "README.md", LIB_README, build_options->project_name);
 	mkdir_or_fail(build_options, "scripts");
 
-	mkdir_or_fail(build_options, "src");
-	chdir_or_fail(build_options, "src");
 	scratch_buffer_clear();
 	scratch_buffer_printf("%s.c3i", build_options->project_name);
 	const char *interface_file = scratch_buffer_copy();
 	create_file_or_fail(build_options, interface_file, MAIN_INTERFACE_TEMPLATE, module_name(build_options));
 	scratch_buffer_clear();
-	chdir_or_fail(build_options, "..");
 	for (int i = 0; i < sizeof(DEFAULT_TARGETS) / sizeof(char*); i++)
 	{
 		const char *target = DEFAULT_TARGETS[i];
