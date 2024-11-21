@@ -47,10 +47,7 @@ static const char *ld_target(ArchType arch_type)
 		default:
 			error_exit("Architecture currently not available for cross linking.");
 	}
-
 }
-
-
 
 static void linker_setup_windows(const char ***args_ref, Linker linker_type, const char *output_file)
 {
@@ -179,8 +176,8 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	linking_add_link(&compiler.linking, "ntdll");
 	linking_add_link(&compiler.linking, "user32");
 	linking_add_link(&compiler.linking, "shell32");
-	linking_add_link(&compiler.linking, "Shlwapi");
-	linking_add_link(&compiler.linking, "Ws2_32");
+	linking_add_link(&compiler.linking, "shlwapi");
+	linking_add_link(&compiler.linking, "ws2_32");
 	linking_add_link(&compiler.linking, "legacy_stdio_definitions");
 
 	// Do not link any.
