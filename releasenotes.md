@@ -18,6 +18,7 @@
 - Fix issue with overloaded subscript and ++/--.
 - Fix issue with properties in different targets not being respected #1633.
 - Indexing an Optional slice would crash in codegen #1636.
+- SimpleHeapAllocator bug when splitting blocks allowed memory overrun.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

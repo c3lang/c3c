@@ -98,7 +98,7 @@ fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
 				return current + 1;
 			case current.size > aligned_bytes:
 				Header* unallocated = (Header*)((char*)current + aligned_bytes + Header.sizeof);
-				unallocated.size = current.size - aligned_bytes;
+				unallocated.size = current.size - aligned_bytes - Header.sizeof;
 				unallocated.next = current.next;
 				if (current == self.free_list)
 				{
