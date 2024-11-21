@@ -16,6 +16,7 @@
 - Fix error when calling `HashMap.remove` on uninitialized `HashMap`.
 - Fix issue with resolved try-unwrap in defer.
 - Fix issue with overloaded subscript and ++/--.
+- Fix issue with properties in different targets not being respected #1633.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

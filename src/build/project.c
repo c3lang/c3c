@@ -424,12 +424,37 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	                                                           target->feature.pass_win64_simd_as_arrays);
 }
 
+static void duplicate_prop(const char ***prop_ref)
+{
+	if (!*prop_ref) return;
+	const char **copy = NULL;
+	FOREACH(const char *, str, *prop_ref)
+	{
+		vec_add(copy, str);
+	}
+	*prop_ref = copy;
+}
 static void project_add_target(const char *filename, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *name, const char *type, TargetType target_type)
 {
 	ASSERT0(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
 	*target = *default_target;
+	duplicate_prop(&target->args);
+	duplicate_prop(&target->csource_dirs);
+	duplicate_prop(&target->csources);
+	duplicate_prop(&target->cinclude_dirs);
+	duplicate_prop(&target->exec);
+	duplicate_prop(&target->feature_list);
+	duplicate_prop(&target->sources);
+	duplicate_prop(&target->source_dirs);
+	duplicate_prop(&target->test_source_dirs);
+	duplicate_prop(&target->libdirs);
+	duplicate_prop(&target->libs);
+	duplicate_prop(&target->linker_libdirs);
+	duplicate_prop(&target->linker_libs);
+	duplicate_prop(&target->link_args);
+
 	vec_add(project->targets, target);
 	target->name = name;
 	target->type = target_type;
