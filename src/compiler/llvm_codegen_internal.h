@@ -529,7 +529,7 @@ LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true);
 LLVMValueRef llvm_emit_expect_false(GenContext *c, BEValue *expect_false);
 void llvm_emit_any_from_value(GenContext *c, BEValue *value, Type *type);
 void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len);
-void llvm_emit_slice_pointer(GenContext *context, BEValue *slice, BEValue *pointer);
+void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
 void llvm_emit_function_body(GenContext *context, Decl *decl);

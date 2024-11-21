@@ -5399,18 +5399,19 @@ void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len)
 	llvm_value_set_address(len, len_addr, type_usz, alignment);
 }
 
-void llvm_emit_slice_pointer(GenContext *context, BEValue *slice, BEValue *pointer)
+void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer)
 {
 	ASSERT0(slice->type->type_kind == TYPE_SLICE);
 	Type *ptr_type = type_get_ptr(slice->type->array.base);
+	llvm_value_fold_optional(c, slice);
 	if (slice->kind == BE_ADDRESS)
 	{
 		AlignSize alignment;
-		LLVMValueRef ptr = llvm_emit_struct_gep_raw(context, slice->value, llvm_get_type(context, slice->type), 0, slice->alignment, &alignment);
+		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, slice->value, llvm_get_type(c, slice->type), 0, slice->alignment, &alignment);
 		llvm_value_set_address(pointer, ptr, ptr_type, alignment);
 		return;
 	}
-	LLVMValueRef ptr = llvm_emit_extract_value(context, slice->value, 0);
+	LLVMValueRef ptr = llvm_emit_extract_value(c, slice->value, 0);
 	llvm_value_set(pointer, ptr, ptr_type);
 }
 
