@@ -11,7 +11,7 @@ fn void main2()
 
 fn void main3()
 {
-    $evaltype("int").extnameof; // #error: 'int' does not have a property 'extnameof'
+    $evaltype("int").extnameof; // #error: 'int' does not have a property or method 'extnameof'
 }
 
 fn void main4()

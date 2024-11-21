@@ -3641,6 +3641,34 @@ static inline bool sema_analyse_macro_func_access(SemaContext *context, Expr *ex
 	return sema_expr_analyse_type_access(context, expr, parent->type, identifier, missing_ref);
 }
 
+static inline Decl *sema_check_for_type_method(SemaContext *context, Expr *expr, Type *parent_type, const char *name, bool *missing_ref)
+{
+	ASSERT0(parent_type == parent_type->canonical);
+	Decl *ambiguous = NULL;
+	Decl *private = NULL;
+	Decl *member = sema_resolve_type_method(context->unit, parent_type, name, &ambiguous, &private);
+	if (private)
+	{
+		if (missing_ref)
+		{
+			*missing_ref = true;
+		}
+		else
+		{
+			SEMA_ERROR(expr, "The method '%s' has private visibility.", name);
+		}
+		return poisoned_decl;
+	}
+	if (ambiguous)
+	{
+		SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
+		                 "it may refer to method defined in '%s' or one in '%s'",
+		           name, member->unit->module->name->module, ambiguous->unit->module->name->module);
+		return poisoned_decl;
+	}
+	return member;
+}
+
 static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *expr, Type *parent_type, Expr *identifier, bool *missing_ref)
 {
 	ASSERT_SPAN(expr, identifier->expr_kind == EXPR_IDENTIFIER);
@@ -3659,9 +3687,16 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 
 	if (!type_may_have_sub_elements(canonical))
 	{
-		if (missing_ref) goto MISSING_REF;
-		SEMA_ERROR(expr, "'%s' does not have a property '%s'.", type_to_error_string(parent_type), name);
-		return false;
+		Decl *member = sema_check_for_type_method(context, expr, parent_type->canonical, name, missing_ref);
+		if (!decl_ok(member)) return false;
+		if (!member)
+		{
+			if (missing_ref) goto MISSING_REF;
+			RETURN_SEMA_ERROR(expr, "'%s' does not have a property or method '%s'.", type_to_error_string(parent_type), name);
+		}
+		expr->expr_kind = EXPR_IDENTIFIER;
+		expr_resolve_ident(expr, member);
+		return true;
 	}
 	Decl *decl = canonical->decl;
 	if (!decl_ok(decl)) return false;
@@ -3704,26 +3739,12 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			UNREACHABLE
 	}
 
-
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, name);
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
-		Decl *ambiguous = NULL;
-		Decl *private = NULL;
-		member = sema_resolve_type_method(context->unit, decl->type, name, &ambiguous, &private);
-		if (private)
-		{
-			if (missing_ref) goto MISSING_REF;
-			SEMA_ERROR(expr, "The method '%s' has private visibility.", name);
-			return false;
-		}
-		if (ambiguous)
-		{
-			RETURN_SEMA_ERROR(expr, "'%s' is an ambiguous name and so cannot be resolved, "
-									"it may refer to method defined in '%s' or one in '%s'",
-					   name, member->unit->module->name->module, ambiguous->unit->module->name->module);
-		}
+		member = sema_check_for_type_method(context, expr, decl->type, name, missing_ref);
+		if (!decl_ok(member)) return false;
 	}
 	if (!member)
 	{

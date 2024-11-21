@@ -19,6 +19,7 @@
 - Fix issue with properties in different targets not being respected #1633.
 - Indexing an Optional slice would crash in codegen #1636.
 - SimpleHeapAllocator bug when splitting blocks allowed memory overrun.
+- Not possible to alias or take reference for extension methods on non-user defined types. #1637
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

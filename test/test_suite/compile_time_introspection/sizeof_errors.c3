@@ -29,12 +29,12 @@ fn void g()
 
 fn void k()
 {
-    int v = $evaltype("int").x.sizeof; // #error: 'int' does not have a property 'x'.
+    int v = $evaltype("int").x.sizeof; // #error: 'x'.
 }
 
 fn void l()
 {
-    int v = $sizeof(int[].len); // #error:  'int[]' does not have a property 'len'
+    int v = $sizeof(int[].len); // #error: 'len'
 }
 
 fn void m()
