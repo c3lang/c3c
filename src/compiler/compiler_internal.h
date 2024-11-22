@@ -2255,9 +2255,15 @@ bool parse_stdin(void);
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span);
 
 
+typedef enum FindMember
+{
+	METHODS_AND_FIELDS,
+	FIELDS_ONLY
+} FindMember;
+
 void sema_analysis_run(void);
 Decl **sema_decl_stack_store(void);
-Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, const char *symbol);
+Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, const char *symbol, FindMember find);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 void sema_decl_stack_restore(Decl **state);
 void sema_decl_stack_push(Decl *decl);

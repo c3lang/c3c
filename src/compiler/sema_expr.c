@@ -3739,7 +3739,7 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 			UNREACHABLE
 	}
 
-	Decl *member = sema_decl_stack_find_decl_member(context, decl, name);
+	Decl *member = sema_decl_stack_find_decl_member(context, decl, name, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
@@ -3859,7 +3859,7 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 	}
 
 	Decl *underlying_type_decl = underlying_type->decl;
-	Decl *member = sema_decl_stack_find_decl_member(context, underlying_type_decl, name);
+	Decl *member = sema_decl_stack_find_decl_member(context, underlying_type_decl, name, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
 	if (!member || !(decl_is_struct_type(member) || member->decl_kind == DECL_VAR || member->decl_kind == DECL_BITSTRUCT))
 	{
@@ -5012,7 +5012,7 @@ CHECK_DEEPER:
 	// 10. Dump all members and methods into a decl stack.
 	Decl *decl = type->decl;
 
-	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw);
+	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
 	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
@@ -7982,7 +7982,7 @@ static inline bool sema_expr_analyse_decl_element(SemaContext *context, Designat
 		}
 		return false;
 	}
-	Decl *member = sema_decl_stack_find_decl_member(context, actual_type->decl, kw);
+	Decl *member = sema_decl_stack_find_decl_member(context, actual_type->decl, kw, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
 	if (!member)
 	{
@@ -9134,14 +9134,6 @@ static inline BuiltinFunction builtin_by_name(const char *name)
 	return BUILTIN_NONE;
 }
 
-static inline TypeProperty type_property_by_name(const char *name)
-{
-	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
-	{
-		if (type_property_list[i] == name) return (TypeProperty)i;
-	}
-	return TYPE_PROPERTY_NONE;
-}
 
 static inline bool sema_expr_analyse_retval(SemaContext *context, Expr *expr)
 {

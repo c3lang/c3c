@@ -243,3 +243,12 @@ static inline StorageType sema_resolve_storage_type(SemaContext *context, Type *
 			return STORAGE_NORMAL;
 	}
 }
+
+static inline TypeProperty type_property_by_name(const char *name)
+{
+	for (unsigned i = 0; i < NUMBER_OF_TYPE_PROPERTIES; i++)
+	{
+		if (type_property_list[i] == name) return (TypeProperty)i;
+	}
+	return TYPE_PROPERTY_NONE;
+}

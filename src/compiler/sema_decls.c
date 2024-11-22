@@ -2212,6 +2212,103 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 
 	// Resolve declaration of parent as needed.
 	if (!sema_resolve_type_decl(context, par_type)) return false;
+	const char *kw = decl->name;
+	const char *errname = NULL;
+	switch (par_type->canonical->type_kind)
+	{
+		case TYPE_ENUM:
+			if (kw == kw_ordinal || kw == kw_nameof)
+			{
+				errname = "an enum";
+				goto NOT_VALID_NAME;
+			}
+			FALLTHROUGH;
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		{
+			Decl *d = sema_decl_stack_find_decl_member(context, par_type->canonical->decl, kw, FIELDS_ONLY);
+			if (!decl_ok(d)) return false;
+			if (d) RETURN_SEMA_ERROR(decl, "%s already has a field with the same name.", type_quoted_error_string(par_type));
+			break;
+		}
+		case TYPE_FAULTTYPE:
+			if (kw == kw_ordinal || kw == kw_nameof)
+			{
+				errname = "a fault";
+				goto NOT_VALID_NAME;
+			}
+			break;
+		case TYPE_ANYFAULT:
+			if (kw == kw_type || kw == kw_nameof)
+			{
+				errname = "'anyfault'";
+				goto NOT_VALID_NAME;
+			}
+			break;
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+			if (kw == kw_ptr || kw == kw_type)
+			{
+				errname = "an interface or 'any'";
+				goto NOT_VALID_NAME;
+			}
+			break;
+		case TYPE_SLICE:
+			if (kw == kw_ptr || kw == kw_len)
+			{
+				errname = "a slice";
+				goto NOT_VALID_NAME;
+			}
+			break;
+		case TYPE_VECTOR:
+		case TYPE_INFERRED_VECTOR:
+		{
+			unsigned len = strlen(decl->name);
+			if (len <= 4)
+			{
+				for (unsigned i = 0; i < len; i++)
+				{
+					if (!swizzle[(int) decl->name[i]]) goto NEXT;
+				}
+				RETURN_SEMA_ERROR(decl, "\"%s\" is not a valid method name for a vector, since it matches a swizzle combination.", kw);
+			}
+		}
+		NEXT:;
+			FALLTHROUGH;
+		case TYPE_ARRAY:
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_FLEXIBLE_ARRAY:
+			if (kw == kw_len)
+			{
+				errname = "a vector or array";
+				goto NOT_VALID_NAME;
+			}
+			break;
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case ALL_FLOATS:
+		case ALL_INTS:
+		case TYPE_BOOL:
+		case TYPE_FUNC_PTR:
+		case TYPE_POINTER:
+		case TYPE_FUNC_RAW:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_BITSTRUCT:
+		case TYPE_DISTINCT:
+			break;
+		case TYPE_TYPEID:
+			if (type_property_by_name(kw) != TYPE_PROPERTY_NONE)
+			{
+				RETURN_SEMA_ERROR(decl, "\"%s\" is not a valid method name for a typeid as this is the name of a type property.", decl->name);
+			}
+			break;
+		case TYPE_TYPEDEF:
+		case TYPE_OPTIONAL:
+		case TYPE_WILDCARD:
+		case TYPE_TYPEINFO:
+		case TYPE_MEMBER:
+			UNREACHABLE
+	}
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 
@@ -2257,6 +2354,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	}
 
 	return true;
+NOT_VALID_NAME:
+	RETURN_SEMA_ERROR(decl, "\"%s\" is not a valid method name for %s, as this would shadow the built-in property '.%s'.", kw, errname, kw);
 }
 
 static const char *attribute_domain_to_string(AttributeDomain domain)

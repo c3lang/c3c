@@ -80,11 +80,14 @@ static bool add_interface_to_decl_stack(SemaContext *context, Decl *decl)
 	return true;
 }
 
-static bool add_members_to_decl_stack(SemaContext *context, Decl *decl)
+static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMember find)
 {
-	FOREACH(Decl *, func, decl->methods)
+	if (find != FIELDS_ONLY)
 	{
-		sema_decl_stack_push(func);
+		FOREACH(Decl *, func, decl->methods)
+		{
+			sema_decl_stack_push(func);
+		}
 	}
 	while (decl->decl_kind == DECL_DISTINCT)
 	{
@@ -96,7 +99,7 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl)
 	{
 		FOREACH(Decl *, member, decl->enums.parameters) sema_decl_stack_push(member);
 	}
-	if (decl->decl_kind == DECL_INTERFACE)
+	if (decl->decl_kind == DECL_INTERFACE && find != FIELDS_ONLY)
 	{
 		if (!add_interface_to_decl_stack(context, decl)) return false;
 	}
@@ -106,7 +109,7 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl)
 		{
 			if (member->name == NULL)
 			{
-				if (!add_members_to_decl_stack(context, member)) return false;
+				if (!add_members_to_decl_stack(context, member, find)) return false;
 				continue;
 			}
 			sema_decl_stack_push(member);
@@ -115,10 +118,10 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl)
 	return true;
 }
 
-Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, const char *symbol)
+Decl *sema_decl_stack_find_decl_member(SemaContext *context, Decl *decl_owner, const char *symbol, FindMember find)
 {
 	Decl **state = sema_decl_stack_store();
-	if (!add_members_to_decl_stack(context, decl_owner)) return poisoned_decl;
+	if (!add_members_to_decl_stack(context, decl_owner, find)) return poisoned_decl;
 	Decl *member = sema_decl_stack_resolve_symbol(symbol);
 	sema_decl_stack_restore(state);
 	return member;
