@@ -17,10 +17,10 @@ struct Stat
 	Gid_t st_gid;
 	Dev_t st_rdev;
 
-	Timespec st_atimespec; // time of last access
-	Timespec st_mtimespec; // time of last data modification
-	Timespec st_ctimespec; // time of last status change
-	Timespec st_birthtimespec; // time of file creation(birth)
+	TimeSpec st_atimespec; // time of last access
+	TimeSpec st_mtimespec; // time of last data modification
+	TimeSpec st_ctimespec; // time of last status change
+	TimeSpec st_birthtimespec; // time of file creation(birth)
 	Off_t st_size; // file size, in bytes
 	Blkcnt_t st_blocks; // blocks allocated for file
 	Blksize_t st_blocksize; // optimal blocksize for I/O

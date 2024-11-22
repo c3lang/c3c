@@ -63,12 +63,6 @@ const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 def Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
 def Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
 
-struct Timespec
-{
-	Time_t tv_sec;
-	CLong tv_nsec;
-}
-
 module libc @if(env::LIBC);
 
 extern fn void abort();
