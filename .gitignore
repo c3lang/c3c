@@ -19,6 +19,7 @@
 
 # Libraries
 *.lib
+*.tlb
 *.a
 *.la
 *.lo
