@@ -23,12 +23,16 @@ fn void encode()
     };
     foreach (tc : tcases)
     {
-        Base64Encoder b;
-        b.init(base64::STD_ALPHABET)!;
-        usz n = b.encode_len(tc.in.len);
-        char[64] buf;
-        b.encode(tc.in, buf[:n])!;
-        assert(buf[:n] == tc.out);
+        @pool()
+        {
+            Base64Encoder b;
+            b.init(base64::STD_ALPHABET)!;
+            usz n = b.encode_len(tc.in.len);
+            char[64] buf;
+            b.encode(tc.in, buf[:n])!;
+            assert(buf[:n] == tc.out);
+            assert(base64::encode_temp(tc.in) == tc.out);
+        };
     }
 }
 

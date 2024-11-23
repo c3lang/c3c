@@ -8,6 +8,73 @@ import std::core::bitorder;
 const STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
+fn String! encode_buffer(char[] code, char[] buffer)
+{
+	@check_coder(std_encoder);
+	return (String)buffer[:std_encoder.encode(code, buffer)!];
+}
+
+fn char[]! decode_buffer(char[] code, char[] buffer)
+{
+	@check_coder(std_decoder);
+	return buffer[:std_decoder.decode(code, buffer)!];
+}
+
+fn String encode(char[] code, Allocator allocator)
+{
+	@check_coder(std_encoder);
+	char[] data = allocator::alloc_array(allocator, char, std_encoder.encode_len(code.len));
+	std_encoder.encode(code, data)!!;
+	return (String)data;
+}
+
+fn char[]! decode(char[] code, Allocator allocator)
+{
+	@check_coder(std_decoder);
+	char[] data = allocator::alloc_array(allocator, char, std_decoder.decode_len(code.len))!;
+	std_decoder.decode(code, data)!;
+	return data;
+}
+
+fn String encode_new(char[] code) @inline => encode(code, allocator::heap());
+fn String encode_temp(char[] code) @inline => encode(code, allocator::temp());
+fn char[]! decode_new(char[] code) @inline => decode(code, allocator::heap());
+fn char[]! decode_temp(char[] code) @inline => decode(code, allocator::temp());
+
+fn String urlencode(char[] code, Allocator allocator)
+{
+	@check_coder(url_encoder);
+	char[] data = allocator::alloc_array(allocator, char, url_encoder.encode_len(code.len));
+	url_encoder.encode(code, data)!!;
+	return (String)data;
+}
+
+fn char[]! urldecode(char[] code, Allocator allocator)
+{
+	@check_coder(url_decoder);
+	char[] data = allocator::alloc_array(allocator, char, url_decoder.decode_len(code.len))!;
+	url_decoder.decode(code, data)!;
+	return data;
+}
+
+fn String! urlencode_buffer(char[] code, char[] buffer)
+{
+	@check_coder(url_encoder);
+	return (String)buffer[:std_encoder.encode(code, buffer)!];
+}
+
+fn char[]! urldecode_buffer(char[] code, char[] buffer)
+{
+	@check_coder(url_decoder);
+	return buffer[:url_decoder.decode(code, buffer)!];
+}
+
+fn String! urlencode_new(char[] code) @inline => urlencode(code, allocator::heap());
+fn String! urlencode_temp(char[] code) @inline => urlencode(code, allocator::temp());
+fn char[]! urldecode_new(char[] code) @inline => decode(code, allocator::heap());
+fn char[]! urldecode_temp(char[] code) @inline => decode(code, allocator::temp());
+
+
 const MASK @private = 0b111111;
 
 struct Base64Encoder
@@ -32,10 +99,11 @@ fault Base64Error
  @require padding < 256
  @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
 *>
-fn void! Base64Encoder.init(&self, String alphabet, int padding = '=')
+fn Base64Encoder*! Base64Encoder.init(&self, String alphabet, int padding = '=')
 {
 	check_alphabet(alphabet, padding)!;
 	*self = { .padding = padding, .alphabet = alphabet };
+	return self;
 }
 
 <*
@@ -271,4 +339,16 @@ fn void! check_alphabet(String alphabet, int padding) @local
 		if (checked[c]) return Base64Error.DUPLICATE_IN_ALPHABET?;
 		checked[c] = true;
 	}
+}
+
+tlocal Base64Encoder std_encoder @local;
+tlocal Base64Encoder url_encoder @local;
+tlocal Base64Decoder std_decoder @local;
+tlocal Base64Decoder url_decoder @local;
+
+
+macro @check_coder(#coder) @local
+{
+	if (#coder.alphabet) return;
+	#coder.init(STD_ALPHABET, '=')!!;
 }
