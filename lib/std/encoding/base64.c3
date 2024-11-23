@@ -124,26 +124,12 @@ fn void! Base64Decoder.init(&self, String alphabet, int padding = '=')
 	check_alphabet(alphabet, padding)!;
 	*self = { .padding = padding, .alphabet = alphabet };
 
-	bool[256] checked;
+	self.invalid = 0xff;
+	self.reverse[..] = self.invalid;
+
 	foreach (i, c : alphabet)
 	{
-		checked[c] = true;
 		self.reverse[c] = (char)i;
-	}
-	if (padding < 0)
-	{
-		self.invalid = 255;
-		return;
-	}
-	// Find a character for invalid neither in the alphabet nor equal to the padding.
-	char pad = (char)padding;
-	foreach (i, ok : checked)
-	{
-		if (!ok && (char)i != pad)
-		{
-			self.invalid = (char)i;
-			break;
-		}
 	}
 }
 
