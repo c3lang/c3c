@@ -235,7 +235,13 @@ lib = list((OUTPUT / "VC/Tools/MSVC/").glob("*/lib"))[0]
 SDK_OUTPUT.mkdir(exist_ok=True)
 
 def copy(src, dst):
-	shutil.copy(src, dst.lower())
+	low = dst.lower()
+	base = os.path.basename(low)
+	if base == "msvcrt.lib" or base == "oldnames.lib":
+		base = base[:-3].upper() + "lib"
+		path = os.path.join(os.path.dirname(low), base);
+		shutil.copy(src, path)
+	shutil.copy(src, low)
 
 for arch in archs:
 	out_dir = SDK_OUTPUT / arch
