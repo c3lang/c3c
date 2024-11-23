@@ -1612,6 +1612,7 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 		case AST_FOREACH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:
+		case AST_ASM_LABEL:
 		case AST_CONTRACT_FAULT:
 		case AST_CASE_STMT:
 		case AST_DEFAULT_STMT:

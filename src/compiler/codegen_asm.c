@@ -7,6 +7,13 @@
 #define CAST_AND_EXTEND(x, n) \
     (((int64_t)((x) << (64 - (n)))) >> (64 - (n)))
 
+INLINE bool codegen_asm_label(Ast *ast)
+{
+	if (ast->ast_kind != AST_ASM_LABEL) return false;
+	scratch_buffer_printf("${:private}%s.${:uid}:\n", ast->asm_label);
+	return true;
+}
+
 static inline void codegen_create_x86att_arg(AsmInlineBlock *block, unsigned input_offset, Expr *expr)
 {
 	ExprAsmArg *arg = &expr->expr_asm_arg;
@@ -177,6 +184,7 @@ static inline char *codegen_create_x86_att_asm(AsmInlineBlock *block)
 	{
 		Ast *ast = astptr(next);
 		next = ast->next;
+		if (codegen_asm_label(ast)) continue;
 		scratch_buffer_append(ast->asm_stmt.instruction);
 		Expr** args = ast->asm_stmt.args;
 		unsigned arg_count = vec_size(args);
@@ -201,6 +209,7 @@ static inline char *codegen_create_aarch64_asm(AsmInlineBlock *block)
 	{
 		Ast *ast = astptr(next);
 		next = ast->next;
+		if (codegen_asm_label(ast)) continue;
 		scratch_buffer_append(ast->asm_stmt.instruction);
 		Expr** args = ast->asm_stmt.args;
 		unsigned arg_count = vec_size(args);
@@ -225,6 +234,7 @@ static inline char *codegen_create_riscv_asm(AsmInlineBlock *block)
 	{
 		Ast *ast = astptr(next);
 		next = ast->next;
+		if (codegen_asm_label(ast)) continue;
 		scratch_buffer_append(ast->asm_stmt.instruction);
 		Expr** args = ast->asm_stmt.args;
 		unsigned arg_count = vec_size(args);

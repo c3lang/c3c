@@ -111,6 +111,7 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			sema_trace_stmt_liveness(astptr(ast->defer_stmt.body));
 			return;
 		case AST_NOP_STMT:
+		case AST_ASM_LABEL:
 			return;
 		case AST_COMPOUND_STMT:
 			sema_trace_stmt_chain_liveness(ast->compound_stmt.first_stmt);
