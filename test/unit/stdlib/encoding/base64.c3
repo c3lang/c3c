@@ -19,6 +19,7 @@ fn void encode()
         { "foob", "Zm9vYg==" },
         { "fooba", "Zm9vYmE=" },
         { "foobar", "Zm9vYmFy" },
+        { "test", "dGVzdA==" },
     };
     foreach (tc : tcases)
     {
@@ -41,6 +42,7 @@ fn void encode_nopadding()
         { "foob", "Zm9vYg" },
         { "fooba", "Zm9vYmE" },
         { "foobar", "Zm9vYmFy" },
+        { "test", "dGVzdA" },
     };
     foreach (tc : tcases)
     {
@@ -63,6 +65,8 @@ fn void decode()
         { "Zm9vYg==", "foob" },
         { "Zm9vYmE=", "fooba" },
         { "Zm9vYmFy", "foobar" },
+        { "Zm9vYmFy", "foobar" },
+        { "dGVzdA==", "test" },
     };
     foreach (tc : tcases)
     {
@@ -85,6 +89,7 @@ fn void decode_nopadding()
         { "Zm9vYg", "foob" },
         { "Zm9vYmE", "fooba" },
         { "Zm9vYmFy", "foobar" },
+        { "dGVzdA", "test" },
     };
     foreach (tc : tcases)
     {
