@@ -4,7 +4,7 @@
 #define MANIFEST_FILE "manifest.json"
 
 const char *manifest_default_keys[][2] = {
-		{"sources", "Paths to library sources for targets."},
+		{"sources", "Paths to library sources for targets, such as interface files."},
 		{"c-sources", "Set the C sources to be compiled."},
 		{"c-include-dirs", "Set the include directories for C sources."},
 		{"cc", "Set C compiler (defaults to 'cc')."},
@@ -297,13 +297,16 @@ void resolve_libraries(BuildTarget *build_target)
 		{
 			vec_add(build_target->ccompiling_libraries, target);
 		}
-		if (target->source_dirs) {
+		if (target->source_dirs)
+		{
 			const char **files = target_expand_source_names(library->dir, target->source_dirs, c3_suffix_list, &build_target->object_files, 3, true);
 			FOREACH(const char *, file, files)
 			{
 				vec_add(build_target->sources, file);
 			}
-		} else {
+		}
+		else
+		{
 			// fallback if sources doesn't exist
 			file_add_wildcard_files(&build_target->sources, library->dir, false, c3_suffix_list, 3);
 		}
