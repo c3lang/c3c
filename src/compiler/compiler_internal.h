@@ -1376,8 +1376,8 @@ typedef struct
 typedef struct
 {
 	Clobbers clobbers;
-	const char *asm_block;
 	AstId asm_stmt;
+	Ast **labels;
 	ExprAsmArg **output_vars;
 	ExprAsmArg **input;
 } AsmInlineBlock;
@@ -1454,8 +1454,10 @@ typedef struct Ast_
 	union
 	{
 		FlowCommon flow;                    // Shared struct
+
 		AstAsmBlock asm_block_stmt;
 		AstAsmStmt asm_stmt;
+		const char *asm_label;
 		AstAssertStmt assert_stmt;          // 16
 		AstCaseStmt case_stmt;              // 32
 		AstCompoundStmt compound_stmt;      // 12

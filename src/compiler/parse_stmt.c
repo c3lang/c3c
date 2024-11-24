@@ -380,6 +380,14 @@ static inline Expr *parse_asm_expr(ParseContext *c)
 static inline Ast *parse_asm_stmt(ParseContext *c)
 {
 	Ast *asm_stmt = ast_new_curr(c, AST_ASM_STMT);
+	if (tok_is(c, TOKEN_CONST_IDENT))
+	{
+		asm_stmt->asm_label = symstr(c);
+		advance_and_verify(c, TOKEN_CONST_IDENT);
+		asm_stmt->ast_kind = AST_ASM_LABEL;
+		TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected a ':' to terminate the label.", poisoned_ast);
+		return asm_stmt;
+	}
 	if (!tok_is(c, TOKEN_IDENT) && !tok_is(c, TOKEN_INT))
 	{
 		PRINT_ERROR_HERE("Expected an asm instruction here.");

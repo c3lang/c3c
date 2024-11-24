@@ -727,6 +727,7 @@ RETRY:
 			MACRO_COPY_EXPRID(ast->nextcase_stmt.expr);
 			break;
 		case AST_NOP_STMT:
+		case AST_ASM_LABEL:
 			break;
 		case AST_BLOCK_EXIT_STMT:
 		case AST_RETURN_STMT:

@@ -184,8 +184,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 {
 	if (!arg_type.is_address)
 	{
-		SEMA_ERROR(expr, "An address cannot appear in this slot.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "An address cannot appear in this slot.");
 	}
 	ExprAsmArg *asm_arg = &expr->expr_asm_arg;
 	Expr *base = exprptr(asm_arg->base);
@@ -207,8 +206,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 			TODO
 			break;
 		default:
-			SEMA_ERROR(expr, "Expected a register here.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "Expected a register here.");
 	}
 	Expr *index = exprptrzero(asm_arg->idx);
 
@@ -232,8 +230,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 		}
 		if (bit_size != index_size)
 		{
-			SEMA_ERROR(index, "Expected the same register size as for the base value.");
-			return false;
+			RETURN_SEMA_ERROR(index, "Expected the same register size as for the base value.");
 		}
 	}
 	if ((compiler.platform.arch == ARCH_TYPE_RISCV32 || 
@@ -243,8 +240,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 		if ((asm_arg->neg_offset && asm_arg->offset > abs(INT12_MIN)) ||
 			(!asm_arg->neg_offset && asm_arg->offset > INT12_MAX))
 		{
-			SEMA_ERROR(expr, "RISC-V offset limited to 12-bits signed.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "RISC-V offset limited to 12-bits signed.");
 		}
 	}
 
@@ -256,15 +252,10 @@ static inline bool sema_check_asm_arg_reg(SemaContext *context, AsmInlineBlock *
 {
 	const char *name = expr->expr_asm_arg.reg.name;
 	AsmRegister *reg = expr->expr_asm_arg.reg.ref = asm_reg_by_name(&compiler.platform, name);
-	if (!reg)
-	{
-		SEMA_ERROR(expr, "Expected a valid register name.");
-		return false;
-	}
+	if (!reg) RETURN_SEMA_ERROR(expr, "Expected a valid register name.");
 	if (!sema_reg_is_valid_in_slot(reg, arg_type))
 	{
-		SEMA_ERROR(expr, "'%s' is not valid in this slot.", reg->name);
-		return false;
+		RETURN_SEMA_ERROR(expr, "'%s' is not valid in this slot.", reg->name);
 	}
 	if (arg_type.is_write)
 	{

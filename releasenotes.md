@@ -7,6 +7,7 @@
 - Init command will now add `test-sources` to `project.json` #1520
 - `a++` may be discarded if `a` is optional and ++/-- works for overloaded operators.
 - Improve support for Windows cross compilation on targets with case sensitive file systems.
+- Add "sources" support to library `manifest.json`, defaults to root folder if unspecified.
 
 ### Fixes
 - Fix bug where `a > 0 ? f() : g()` could cause a compiler crash if both returned `void!`.

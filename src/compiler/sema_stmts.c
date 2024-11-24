@@ -51,6 +51,22 @@ static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **a
 static bool sema_analyse_ensure(SemaContext *context, Ast *directive);
 static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive);
 
+static inline bool sema_analyse_asm_label(SemaContext *context, AsmInlineBlock *block, Ast *label)
+{
+	const char *name = label->asm_label;
+	FOREACH(Ast *, other, block->labels)
+	{
+		if (name == other->asm_label)
+		{
+			SEMA_ERROR(label, "Duplicate ASM label '%s'.", name);
+			SEMA_NOTE(other, "The previous definition was here.");
+			return false;
+		}
+	}
+	vec_add(block->labels, label);
+	return true;
+}
+
 static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 {
 	if (stmt->asm_block_stmt.is_string) return sema_analyse_asm_string_stmt(context, stmt);
@@ -68,6 +84,11 @@ static inline bool sema_analyse_asm_stmt(SemaContext *context, Ast *stmt)
 	{
 		Ast *ast = astptr(ast_id);
 		ast_id = ast->next;
+		if (ast->ast_kind == AST_ASM_LABEL)
+		{
+			sema_analyse_asm_label(context, block, ast);
+			continue;
+		}
 		if (!sema_analyse_asm(context, block, ast)) return false;
 	}
 	return true;
@@ -2910,6 +2931,7 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:
+		case AST_ASM_LABEL:
 		case AST_CONTRACT_FAULT:
 			UNREACHABLE
 		case AST_DECLS_STMT:

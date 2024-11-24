@@ -90,6 +90,8 @@ void file_add_wildcard_files(const char ***files, const char *path, bool recursi
 const char *file_append_path(const char *path, const char *name);
 const char *file_append_path_temp(const char *path, const char *name);
 
+const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
+
 const char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string);
 
 bool execute_cmd_failable(const char *cmd, const char **result, const char *stdin_string);
@@ -713,4 +715,3 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator);
 const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file);
 const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr);
 const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overwrite);
-

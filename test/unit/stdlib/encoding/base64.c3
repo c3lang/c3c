@@ -19,15 +19,20 @@ fn void encode()
         { "foob", "Zm9vYg==" },
         { "fooba", "Zm9vYmE=" },
         { "foobar", "Zm9vYmFy" },
+        { "test", "dGVzdA==" },
     };
     foreach (tc : tcases)
     {
-        Base64Encoder b;
-        b.init(base64::STD_ALPHABET)!;
-        usz n = b.encode_len(tc.in.len);
-        char[64] buf;
-        b.encode(tc.in, buf[:n])!;
-        assert(buf[:n] == tc.out);
+        @pool()
+        {
+            Base64Encoder b;
+            b.init(base64::STD_ALPHABET)!;
+            usz n = b.encode_len(tc.in.len);
+            char[64] buf;
+            b.encode(tc.in, buf[:n])!;
+            assert(buf[:n] == tc.out);
+            assert(base64::encode_temp(tc.in) == tc.out);
+        };
     }
 }
 
@@ -41,6 +46,7 @@ fn void encode_nopadding()
         { "foob", "Zm9vYg" },
         { "fooba", "Zm9vYmE" },
         { "foobar", "Zm9vYmFy" },
+        { "test", "dGVzdA" },
     };
     foreach (tc : tcases)
     {
@@ -63,6 +69,8 @@ fn void decode()
         { "Zm9vYg==", "foob" },
         { "Zm9vYmE=", "fooba" },
         { "Zm9vYmFy", "foobar" },
+        { "Zm9vYmFy", "foobar" },
+        { "dGVzdA==", "test" },
     };
     foreach (tc : tcases)
     {
@@ -85,6 +93,7 @@ fn void decode_nopadding()
         { "Zm9vYg", "foob" },
         { "Zm9vYmE", "fooba" },
         { "Zm9vYmFy", "foobar" },
+        { "dGVzdA", "test" },
     };
     foreach (tc : tcases)
     {

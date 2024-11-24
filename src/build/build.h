@@ -523,6 +523,7 @@ typedef struct
 	const char *cc;
 	const char *cflags;
 	WinCrtLinking win_crt;
+	const char **source_dirs;
 	const char **csource_dirs;
 	const char **csources;
 	const char **cinclude_dirs;
@@ -540,6 +541,7 @@ typedef struct Library__
 	const char **execs;
 	const char *cc;
 	const char *cflags;
+	const char **source_dirs;
 	const char **csource_dirs;
 	const char **cinclude_dirs;
 	WinCrtLinking win_crt;

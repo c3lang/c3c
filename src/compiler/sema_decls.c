@@ -3700,6 +3700,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 					continue;
 				case AST_POISONED:
 				case AST_ASM_STMT:
+				case AST_ASM_LABEL:
 				case AST_ASM_BLOCK_STMT:
 				case AST_ASSERT_STMT:
 				case AST_BREAK_STMT:
