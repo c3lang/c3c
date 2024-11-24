@@ -31,7 +31,7 @@ fn void encode()
             char[64] buf;
             b.encode(tc.in, buf[:n])!;
             assert(buf[:n] == tc.out);
-            assert(base64::encode_temp(tc.in) == tc.out);
+            assert(base64::encode_temp(tc.in)! == tc.out);
         };
     }
 }
@@ -104,4 +104,35 @@ fn void decode_nopadding()
         usz nn = b.decode(tc.in, buf[:n])!;
         assert(buf[:nn] == tc.out);
     }
+}
+
+fn void! urlencode() {
+	TestCase[] tcases = {
+		{ x"14fb9c03d97e", "FPucA9l-"},
+	};
+
+	@pool()
+	{
+		usz n;
+		char[] got;
+		char[64] buf;
+		foreach (t : tcases)
+		{
+			Base64Encoder enc;
+			enc.init(base64::URL_ALPHABET)!;
+			n = enc.encode(t.in, buf[..])!;
+			assert (buf[:n] == t.out, "got: %s, want: %s", (String)buf[:n], (String)t.out);
+
+			got = base64::urlencode_temp(t.in)!;
+			assert (got == t.out, "got: %s, want: %s", got, (String)t.out);
+
+			Base64Decoder dec;
+			dec.init(base64::URL_ALPHABET)!;
+			n = dec.decode(t.out, buf[..])!;
+			assert (buf[:n] == t.in, "got: %s, want: %s", (String)buf[:n], (String)t.in);
+
+			got = base64::urldecode_temp(t.out)!;
+			assert (got == t.in, "got: %s, want: %s", got, (String)t.in);
+		}
+	};
 }
