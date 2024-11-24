@@ -20,59 +20,55 @@ fn char[]! decode_buffer(char[] code, char[] buffer)
 	return buffer[:std_decoder.decode(code, buffer)!];
 }
 
-fn String encode(char[] code, Allocator allocator)
+fn String! encode(char[] code, Allocator allocator)
 {
 	@check_coder(std_encoder);
 	char[] data = allocator::alloc_array(allocator, char, std_encoder.encode_len(code.len));
-	std_encoder.encode(code, data)!!;
-	return (String)data;
+	return (String)data[:std_encoder.encode(code, data)!];
 }
 
 fn char[]! decode(char[] code, Allocator allocator)
 {
 	@check_coder(std_decoder);
 	char[] data = allocator::alloc_array(allocator, char, std_decoder.decode_len(code.len))!;
-	std_decoder.decode(code, data)!;
-	return data;
+	return data[:std_decoder.decode(code, data)!];
 }
 
-fn String encode_new(char[] code) @inline => encode(code, allocator::heap());
-fn String encode_temp(char[] code) @inline => encode(code, allocator::temp());
+fn String! encode_new(char[] code) @inline => encode(code, allocator::heap());
+fn String! encode_temp(char[] code) @inline => encode(code, allocator::temp());
 fn char[]! decode_new(char[] code) @inline => decode(code, allocator::heap());
 fn char[]! decode_temp(char[] code) @inline => decode(code, allocator::temp());
 
-fn String urlencode(char[] code, Allocator allocator)
+fn String! urlencode(char[] code, Allocator allocator)
 {
-	@check_coder(url_encoder);
+	@check_coder(url_encoder, URL_ALPHABET);
 	char[] data = allocator::alloc_array(allocator, char, url_encoder.encode_len(code.len));
-	url_encoder.encode(code, data)!!;
-	return (String)data;
+	return (String)data[:url_encoder.encode(code, data)!];
 }
 
 fn char[]! urldecode(char[] code, Allocator allocator)
 {
-	@check_coder(url_decoder);
+	@check_coder(url_decoder, URL_ALPHABET);
 	char[] data = allocator::alloc_array(allocator, char, url_decoder.decode_len(code.len))!;
-	url_decoder.decode(code, data)!;
-	return data;
+	return data[:url_decoder.decode(code, data)!];
 }
 
 fn String! urlencode_buffer(char[] code, char[] buffer)
 {
-	@check_coder(url_encoder);
-	return (String)buffer[:std_encoder.encode(code, buffer)!];
+	@check_coder(url_encoder, URL_ALPHABET);
+	return (String)buffer[:url_encoder.encode(code, buffer)!];
 }
 
 fn char[]! urldecode_buffer(char[] code, char[] buffer)
 {
-	@check_coder(url_decoder);
+	@check_coder(url_decoder, URL_ALPHABET);
 	return buffer[:url_decoder.decode(code, buffer)!];
 }
 
 fn String! urlencode_new(char[] code) @inline => urlencode(code, allocator::heap());
 fn String! urlencode_temp(char[] code) @inline => urlencode(code, allocator::temp());
-fn char[]! urldecode_new(char[] code) @inline => decode(code, allocator::heap());
-fn char[]! urldecode_temp(char[] code) @inline => decode(code, allocator::temp());
+fn char[]! urldecode_new(char[] code) @inline => urldecode(code, allocator::heap());
+fn char[]! urldecode_temp(char[] code) @inline => urldecode(code, allocator::temp());
 
 
 const MASK @private = 0b111111;
@@ -347,8 +343,8 @@ tlocal Base64Decoder std_decoder @local;
 tlocal Base64Decoder url_decoder @local;
 
 
-macro @check_coder(#coder) @local
+macro @check_coder(#coder, alphabet = STD_ALPHABET) @local
 {
-	if (#coder.alphabet) return;
-	#coder.init(STD_ALPHABET, '=')!!;
+	if (#coder.alphabet == alphabet) return;
+	#coder.init(alphabet, '=')!!;
 }
