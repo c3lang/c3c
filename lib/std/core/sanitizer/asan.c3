@@ -84,7 +84,7 @@ macro bool address_is_poisoned(void* addr)
 macro void* region_is_poisoned(void* beg, usz size)
 {
 	$if env::ADDRESS_SANITIZER:
-		return __asan_region_is_poisoned(addr);
+		return __asan_region_is_poisoned(beg, size);
 	$else
 		return null;
 	$endif
