@@ -11,6 +11,37 @@ const Alphabet STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 // Extended Hex Alphabet
 const Alphabet HEX_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
 
+fn String! encode_buffer(char[] code, char[] buffer)
+{
+	@check_coder(std_encoder);
+	return (String)buffer[:std_encoder.encode(code, buffer)!];
+}
+
+fn char[]! decode_buffer(char[] code, char[] buffer)
+{
+	@check_coder(std_decoder);
+	return buffer[:std_decoder.decode(code, buffer)!];
+}
+
+fn String! encode(char[] code, Allocator allocator)
+{
+	@check_coder(std_encoder);
+	char[] data = allocator::alloc_array(allocator, char, std_encoder.encode_len(code.len));
+	return (String)data[:std_encoder.encode(code, data)!];
+}
+
+fn char[]! decode(char[] code, Allocator allocator)
+{
+	@check_coder(std_decoder);
+	char[] data = allocator::alloc_array(allocator, char, std_decoder.decode_len(code.len));
+	return data[:std_decoder.decode(code, data)!];
+}
+
+fn String! encode_new(char[] code) @inline => encode(code, allocator::heap());
+fn String! encode_temp(char[] code) @inline => encode(code, allocator::temp());
+fn char[]! decode_new(char[] code) @inline => decode(code, allocator::heap());
+fn char[]! decode_temp(char[] code) @inline => decode(code, allocator::temp());
+
 const uint MASK @private = 0b11111;
 const char INVALID @private = 0xff;
 
@@ -307,4 +338,13 @@ fn void! Alphabet.validate(&self, int padding)
 			return Base32Error.PADDING_IN_ALPHABET?;
 		}
 	}
+}
+
+tlocal Base32Encoder std_encoder @local;
+tlocal Base32Decoder std_decoder @local;
+
+macro @check_coder(#coder) @local
+{
+	if (#coder.alphabet == STD_ALPHABET) return;
+	#coder.init(STD_ALPHABET, '=')!!;
 }
