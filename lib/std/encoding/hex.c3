@@ -1,10 +1,11 @@
 module std::encoding::hex;
+import std::encoding @norecurse;
 
 // The implementation is based on https://www.rfc-editor.org/rfc/rfc4648
 
-fn String! encode_buffer(char[] code, char[] buffer)
+fn String encode_buffer(char[] code, char[] buffer)
 {
-	return (String)buffer[:encode_bytes(code, buffer)!];
+	return (String)buffer[:encode_bytes(code, buffer)];
 }
 
 fn char[]! decode_buffer(char[] code, char[] buffer)
@@ -12,10 +13,10 @@ fn char[]! decode_buffer(char[] code, char[] buffer)
 	return buffer[:decode_bytes(code, buffer)!];
 }
 
-fn String! encode(char[] code, Allocator allocator)
+fn String encode(char[] code, Allocator allocator)
 {
 	char[] data = allocator::alloc_array(allocator, char, encode_len(code.len));
-	return (String)data[:encode_bytes(code, data)!];
+	return (String)data[:encode_bytes(code, data)];
 }
 
 fn char[]! decode(char[] code, Allocator allocator)
@@ -24,15 +25,10 @@ fn char[]! decode(char[] code, Allocator allocator)
 	return data[:decode_bytes(code, data)!];
 }
 
-fn String! encode_new(char[] code) @inline => encode(code, allocator::heap());
-fn String! encode_temp(char[] code) @inline => encode(code, allocator::temp());
+fn String encode_new(char[] code) @inline => encode(code, allocator::heap());
+fn String encode_temp(char[] code) @inline => encode(code, allocator::temp());
 fn char[]! decode_new(char[] code) @inline => decode(code, allocator::heap());
 fn char[]! decode_temp(char[] code) @inline => decode(code, allocator::temp());
-
-fault Errors
-{
-	INVALID_CHARACTER,
-}
 
 <*
  Calculate the size of the encoded data.
@@ -48,10 +44,11 @@ fn usz encode_len(usz n) => n * 2;
  @return "The encoded size."
  @require dst.len >= encode_len(src.len) "Destination array is not large enough"
 *>
-fn usz! encode_bytes(char[] src, char[] dst)
+fn usz encode_bytes(char[] src, char[] dst)
 {
 	usz j = 0;
-	foreach (v : src) {
+	foreach (v : src)
+	{
 		dst[j] = HEXALPHABET[v >> 4];
 		dst[j + 1] = HEXALPHABET[v & 0x0f];
 		j = j + 2;
@@ -64,7 +61,7 @@ fn usz! encode_bytes(char[] src, char[] dst)
  @param n "Size of the input to be decoded."
  @return "The size of the input once decoded."
 *>
-fn usz decode_len(usz n) => n / 2;
+macro usz decode_len(usz n) => n / 2;
 
 <*
  Decodes src into bytes. Returns the actual number of bytes written to dst.
@@ -76,21 +73,16 @@ fn usz decode_len(usz n) => n / 2;
  @param dst "The decoded input."
  @require src.len % 2 == 0 "src is not of even length"
  @require dst.len >= decode_len(src.len) "Destination array is not large enough"
- @return! Errors.INVALID_CHARACTER
+ @return! DecodingFailure.INVALID_CHARACTER
 *>
 fn usz! decode_bytes(char[] src, char[] dst)
 {
-	usz i, j;
-	char a, b;
-	for (j = 1; j < src.len; j += 2) {
-		a = HEXREVERSE[src[j-1]];
-		b = HEXREVERSE[src[j]];
-		if (a > 0x0f) {
-			return Errors.INVALID_CHARACTER?;
-		}
-		if (b > 0x0f) {
-			return Errors.INVALID_CHARACTER?;
-		}
+	usz i;
+	for (usz j = 1; j < src.len; j += 2)
+	{
+		char a = HEXREVERSE[src[j - 1]];
+		char b = HEXREVERSE[src[j]];
+		if (a > 0x0f || b > 0x0f) return DecodingFailure.INVALID_CHARACTER?;
 		dst[i] = (a << 4) | b;
 		i++;
 	}
@@ -99,19 +91,19 @@ fn usz! decode_bytes(char[] src, char[] dst)
 
 const char[*] HEXALPHABET @private = "0123456789abcdef";
 const char[*] HEXREVERSE @private =
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"00010203040506070809ffffffffffff"
-x"ff0a0b0c0d0e0fffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ff0a0b0c0d0e0fffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff"
-x"ffffffffffffffffffffffffffffffff";
+x`ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  00010203040506070809ffffffffffff
+  ff0a0b0c0d0e0fffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ff0a0b0c0d0e0fffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff
+  ffffffffffffffffffffffffffffffff`;

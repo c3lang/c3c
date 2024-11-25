@@ -1033,7 +1033,7 @@ static inline bool scan_raw_string(Lexer *lexer)
 static inline bool scan_hex_array(Lexer *lexer)
 {
 	char start_char = peek(lexer);
-	next(lexer); // Step past ' or "
+	next(lexer); // Step past ' or " `
 	char c;
 	uint64_t len = 0;
 	while (1)
@@ -1081,7 +1081,7 @@ static inline bool scan_base64(Lexer *lexer)
 	next(lexer); // Step past 6
 	next(lexer); // Step past 4
 	char start_char = peek(lexer);
-	next(lexer); // Step past ' or "
+	next(lexer); // Step past ' or " or `
 	char c;
 	unsigned end_len = 0;
 	uint64_t len = 0;
@@ -1348,13 +1348,13 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			if (match(lexer, '=')) return new_token(lexer, TOKEN_MINUS_ASSIGN, "-=");
 			return new_token(lexer, TOKEN_MINUS, "-");
 		case 'x':
-			if ((peek(lexer) == '"' || peek(lexer) == '\''))
+			if ((peek(lexer) == '"' || peek(lexer) == '\'' || peek(lexer) == '`'))
 			{
 				return scan_hex_array(lexer);
 			}
 			goto IDENT;
 		case 'b':
-			if (peek(lexer) == '6' && peek_next(lexer) == '4' && (lexer->current[2] == '\'' || lexer->current[2] == '"'))
+			if (peek(lexer) == '6' && peek_next(lexer) == '4' && (lexer->current[2] == '\'' || lexer->current[2] == '"' || lexer->current[2] == '`'))
 			{
 				return scan_base64(lexer);
 			}
