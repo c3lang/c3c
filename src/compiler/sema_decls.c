@@ -4375,10 +4375,13 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
 
-	bool was_initiated = false;
+	AnalysisStage stage = c->unit->module->generic_module
+			? c->unit->module->stage
+			: c->unit->module->stage - 1;
+	bool instatiation = false;
 	if (!instantiated_module)
 	{
-		was_initiated = true;
+		instatiation = true;
 		Path *path = CALLOCS(Path);
 		path->module = path_string;
 		path->span = module->name->span;
@@ -4387,14 +4390,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
 		if (!instantiated_module) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
-		if (c->unit->module->generic_module)
-		{
-			sema_analyze_stage(instantiated_module, c->unit->module->stage);
-		}
-		else
-		{
-			sema_analyze_stage(instantiated_module, c->unit->module->stage - 1);
-		}
+		sema_analyze_stage(instantiated_module, stage > ANALYSIS_POST_REGISTER ? ANALYSIS_POST_REGISTER : stage);
 	}
 	if (compiler.context.errors_found) return poisoned_decl;
 	Decl *symbol = module_find_symbol(instantiated_module, name);
@@ -4403,12 +4399,19 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		sema_error_at(c, span, "The generic module '%s' does not have '%s' for this parameterization.", module->name->module, name);
 		return poisoned_decl;
 	}
-	if (was_initiated && instantiated_module->contracts)
+	if (instatiation)
 	{
-		SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
-		if (!sema_analyse_generic_module_contracts(c, instantiated_module, error_span))
+		if (instantiated_module->contracts)
 		{
-			return poisoned_decl;
+			SourceSpan error_span = extend_span_with_token(params[0]->span, params[parameter_count - 1]->span);
+			if (!sema_analyse_generic_module_contracts(c, instantiated_module, error_span))
+			{
+				return poisoned_decl;
+			}
+		}
+		if (stage > ANALYSIS_POST_REGISTER)
+		{
+			sema_analyze_stage(instantiated_module, stage);
 		}
 	}
 

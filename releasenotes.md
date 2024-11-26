@@ -24,10 +24,12 @@
 - Not possible to alias or take reference for extension methods on non-user defined types. #1637
 - Prevent methods from using names of properties or fields. #1638
 - b64 / hex data strings can now be used with \` as well.
+- Contracts on generic modules would evaluate too late, sometimes not catching the error until it already occurred elsewhere.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
 - Updated Base32 API.
+- Add `file::save`.
 
 ## 0.6.4 Change list
 

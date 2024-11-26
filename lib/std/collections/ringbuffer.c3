@@ -1,3 +1,6 @@
+<*
+ @require values::@is_int(SIZE) &&& SIZE > 0 "The size must be positive integer"
+*>
 module std::collections::ringbuffer(<Type, SIZE>);
 
 struct RingBuffer

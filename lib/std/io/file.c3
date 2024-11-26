@@ -182,6 +182,17 @@ fn char[]! load_temp(String filename)
 	return load_new(filename, allocator::temp());
 }
 
+fn void! save(String filename, char[] data)
+{
+	File file = open(filename, "wb")!;
+	defer (void)file.close();
+	while (data.len)
+	{
+		usz written = file.write(data)!;
+		data = data[written..];
+	}
+}
+
 <*
  @require self.file `File must be initialized`
 *>
