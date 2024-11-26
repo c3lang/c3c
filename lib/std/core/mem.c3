@@ -455,19 +455,23 @@ macro void @scoped(Allocator allocator; @body())
 <*
  Run the tracking allocator in the scope, then
  print out stats.
+
+ @param $enabled "Set to false to disable tracking"
 *>
-macro void @report_heap_allocs_in_scope(;@body())
+macro void @report_heap_allocs_in_scope($enabled = true; @body())
 {
-	TrackingAllocator tracker;
-	tracker.init(allocator::thread_allocator);
-	Allocator old_allocator = allocator::thread_allocator;
-	allocator::thread_allocator = &tracker;
-	defer
-	{
-		allocator::thread_allocator = old_allocator;
-		tracker.print_report();
-		tracker.free();
-	}
+	$if $enabled:
+		TrackingAllocator tracker;
+		tracker.init(allocator::thread_allocator);
+		Allocator old_allocator = allocator::thread_allocator;
+		allocator::thread_allocator = &tracker;
+		defer
+		{
+			allocator::thread_allocator = old_allocator;
+			tracker.print_report();
+			tracker.free();
+		}
+	$endif
 	@body();
 }
 
