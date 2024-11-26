@@ -33,70 +33,64 @@ macro encode_tests(tests, alphabet, padding)
 {
     foreach (t : tests)
     {
-	Base32Encoder b;
-	b.init(alphabet, padding)!!;
+		char[64] buf;
+		usz n = base32::encode_len(t.dec.len, padding > 0);
+		base32::encode_buffer(t.dec, buf[:n], padding, alphabet)!!;
 
-	char[64] buf;
-	usz n = b.encode_len(t.dec.len);
-	b.encode(t.dec, buf[:n])!!;
+		char[] want = t.enc;
+		usz! pad_idx = array::index_of(want, '=');
+		if (try pad_idx && !padding)
+		{
+			want = want[:pad_idx];
+		}
 
-	char[] want = t.enc;
-	usz! pad_idx = array::index_of(want, '=');
-	if (try pad_idx && padding < 0)
-	{
-		want = want[:pad_idx];
-	}
-
-	assert(buf[:n] == want, "got: %s, want: %s",
-		(String)buf[:n], (String)want);
+		assert(buf[:n] == want, "got: %s, want: %s",
+			(String)buf[:n], (String)want);
     }
 }
 
 fn void encode()
 {
-	encode_tests(std_tests, base32::STD_ALPHABET, '=');
-	encode_tests(hex_tests, base32::HEX_ALPHABET, '=');
+	encode_tests(std_tests, &base32::STANDARD, '=');
+	encode_tests(hex_tests, &base32::HEX, '=');
 }
 
 fn void encode_nopadding()
 {
-	encode_tests(std_tests, base32::STD_ALPHABET, -1);
-	encode_tests(hex_tests, base32::HEX_ALPHABET, -1);
+	encode_tests(std_tests, &base32::STANDARD, base32::NO_PAD);
+	encode_tests(hex_tests, &base32::HEX, base32::NO_PAD);
 }
 
 macro decode_tests(tests, alphabet, padding)
 {
     foreach (t : tests)
     {
-	Base32Decoder b;
-	b.init(alphabet, padding)!!;
+		char[] input = t.enc[..];
+		usz! pad_idx = array::index_of(input, '=');
+		if (try pad_idx && !padding)
+		{
+			input = input[:pad_idx];
+		}
 
-	char[] input = t.enc[..];
-	usz! pad_idx = array::index_of(input, '=');
-	if (try pad_idx && padding < 0)
-	{
-		input = input[:pad_idx];
-	}
+		char[64] buf;
+		usz n = base32::decode_len(input.len, padding > 0);
+		char[] buf2 = base32::decode_buffer(input, buf[:n], padding, alphabet)!!;
 
-	char[64] buf;
-	usz n = b.decode_len(input.len);
-	n = b.decode(input, buf[:n])!!;
-
-	assert(buf[:n] == t.dec, "got: %s, want: %s",
-		(String)buf[:n], (String)t.dec);
+		assert(buf2 == t.dec, "got: %s, want: %s",
+		(String)buf2, (String)t.dec);
     }
 }
 
 fn void decode()
 {
-	decode_tests(std_tests, base32::STD_ALPHABET, '=');
-	decode_tests(hex_tests, base32::HEX_ALPHABET, '=');
+	decode_tests(std_tests, &base32::STANDARD, '=');
+	decode_tests(hex_tests, &base32::HEX, '=');
 }
 
 fn void decode_nopadding()
 {
-	decode_tests(std_tests, base32::STD_ALPHABET, -1);
-	decode_tests(hex_tests, base32::HEX_ALPHABET, -1);
+	decode_tests(std_tests, &base32::STANDARD, base32::NO_PAD);
+	decode_tests(hex_tests, &base32::HEX, base32::NO_PAD);
 }
 
 fn void! base32_api()

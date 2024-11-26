@@ -27,6 +27,7 @@
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
+- Updated Base32 API.
 
 ## 0.6.4 Change list
 

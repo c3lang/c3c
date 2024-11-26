@@ -3,263 +3,106 @@ module std::encoding::base32;
 // This module implements base32 encoding according to RFC 4648
 // (https://www.rfc-editor.org/rfc/rfc4648)
 
-distinct Alphabet = inline char[32];
-
-// Standard base32 Alphabet
-const Alphabet STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
-
-// Extended Hex Alphabet
-const Alphabet HEX_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
-
-fn String! encode_buffer(char[] code, char[] buffer)
+struct Base32Alphabet
 {
-	@check_coder(std_encoder);
-	return (String)buffer[:std_encoder.encode(code, buffer)!];
+	char[32] encoding;
+	char[256] reverse;
 }
 
-fn char[]! decode_buffer(char[] code, char[] buffer)
+const char NO_PAD = 0;
+const char DEFAULT_PAD = '=';
+
+fn String! encode_buffer(char[] code, char[] buffer, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
-	@check_coder(std_decoder);
-	return buffer[:std_decoder.decode(code, buffer)!];
+	return (String)encode_data(alphabet, code, buffer, padding);
 }
 
-fn String! encode(char[] code, Allocator allocator)
+fn char[]! decode_buffer(char[] code, char[] buffer, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
-	@check_coder(std_encoder);
-	char[] data = allocator::alloc_array(allocator, char, std_encoder.encode_len(code.len));
-	return (String)data[:std_encoder.encode(code, data)!];
+	return decode_data(alphabet, code, buffer, padding)!;
 }
 
-fn char[]! decode(char[] code, Allocator allocator)
+fn String! encode(char[] code, Allocator allocator, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
-	@check_coder(std_decoder);
-	char[] data = allocator::alloc_array(allocator, char, std_decoder.decode_len(code.len));
-	return data[:std_decoder.decode(code, data)!];
+	char[] data = allocator::alloc_array(allocator, char, encode_len(code.len, padding > 0));
+	return (String)encode_buffer(code, data, padding, alphabet);
 }
 
-fn String! encode_new(char[] code) @inline => encode(code, allocator::heap());
-fn String! encode_temp(char[] code) @inline => encode(code, allocator::temp());
-fn char[]! decode_new(char[] code) @inline => decode(code, allocator::heap());
-fn char[]! decode_temp(char[] code) @inline => decode(code, allocator::temp());
-
-const uint MASK @private = 0b11111;
-const char INVALID @private = 0xff;
-
-const int STD_PADDING = '=';
-const int NO_PADDING = -1;
-
-fault Base32Error
+fn char[]! decode(char[] code, Allocator allocator, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
-	DUPLICATE_IN_ALPHABET,
-	PADDING_IN_ALPHABET,
-	INVALID_CHARACTER_IN_ALPHABET,
-	DESTINATION_TOO_SMALL,
-	INVALID_PADDING,
-	CORRUPT_INPUT
+	char[] data = allocator::alloc_array(allocator, char, decode_len(code.len, padding > 0));
+	return decode_buffer(code, data, padding, alphabet);
 }
 
-struct Base32Encoder
-{
-	Alphabet alphabet;
-	int padding;
-}
+fn String! encode_new(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(code, allocator::heap(), padding, alphabet);
+fn String! encode_temp(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(code, allocator::temp(), padding, alphabet);
+fn char[]! decode_new(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(code, allocator::heap(), padding, alphabet);
+fn char[]! decode_temp(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(code, allocator::temp(), padding, alphabet);
 
 <*
- @param encoder "The 32-character alphabet for encoding."
- @param padding "Set to a negative value to disable padding."
- @require padding < 256
+ Calculate the length in bytes of the decoded data.
+ @param n "Length in bytes of input."
+ @param use_padding "Whether padding characters are used or not"
+ @return "Length in bytes of the decoded data."
 *>
-fn void! Base32Encoder.init(&self, Alphabet encoder = STD_ALPHABET, int padding = STD_PADDING)
+fn usz decode_len(usz n, bool use_padding = true)
 {
-	encoder.validate(padding)!;
-	*self = { .alphabet = encoder, .padding = padding };
+	if (use_padding) return (n / 8) * 5;
+	// no padding
+	usz trailing = n % 8;
+	return n / 8 * 5 + (trailing * 5 ) / 8;
 }
 
 <*
  Calculate the length in bytes of the encoded data.
  @param n "Length in bytes on input."
+ @param use_padding "Whether padding characters are used or not"
  @return "Length in bytes of the encoded data."
 *>
-fn usz Base32Encoder.encode_len(&self, usz n)
+fn usz encode_len(usz n, bool use_padding = true)
 {
 	// A character is encoded into 8 x 5-bit blocks.
-	if (self.padding >= 0)
-	{
-		// with padding
-		return (n + 4) / 5 * 8;
-	}
-	else
-	{
-		// no padding
-		usz trailing = n % 5;
-		return n / 5 * 8 + (trailing * 8 + 4) / 5;
-	}
-}
+	if (use_padding) return (n + 4) / 5 * 8;
 
-<*
- Encode the content of src into dst, which must be properly sized.
- @param [in] src "The input to be encoded."
- @param [inout] dst "The encoded input."
- @return "The encoded size."
- @return! Base32Error.DESTINATION_TOO_SMALL
-*>
-fn usz! Base32Encoder.encode(&self, char[] src, char[] dst)
-{
-	if (src.len == 0) return 0;
-
-	usz n = (src.len / 5) * 5;
-	usz dn = self.encode_len(src.len);
-	if (dst.len < dn) return Base32Error.DESTINATION_TOO_SMALL?;
-
-	uint msb, lsb;
-	for (usz i = 0; i < n; i += 5)
-	{
-		// to fit 40 bits we need two 32-bit uints
-		msb = (uint)src[i] << 24 | (uint)src[i+1] << 16
-				| (uint)src[i+2] << 8 | (uint)src[i+3];
-		lsb = msb << 8 | (uint)src[i+4];
-
-		// now slice them into 5-bit chunks and translate to the
-		// alphabet.
-		dst[0] = self.alphabet[(msb >> 27) & MASK];
-		dst[1] = self.alphabet[(msb >> 22) & MASK];
-		dst[2] = self.alphabet[(msb >> 17) & MASK];
-		dst[3] = self.alphabet[(msb >> 12) & MASK];
-		dst[4] = self.alphabet[(msb >> 7) & MASK];
-		dst[5] = self.alphabet[(msb >> 2) & MASK];
-		dst[6] = self.alphabet[(lsb >> 5) & MASK];
-		dst[7] = self.alphabet[lsb & MASK];
-
-		dst = dst[8..];
-	}
-
-	usz trailing = src.len - n;
-	if (trailing == 0) return dn;
-
-	msb = 0;
-	switch (trailing)
-	{
-		case 4:
-			msb |= (uint)src[n+3];
-			lsb = msb << 8;
-			dst[6] = self.alphabet[(lsb >> 5) & MASK];
-			dst[5] = self.alphabet[(msb >> 2) & MASK];
-			nextcase 3;
-		case 3:
-			msb |= (uint)src[n+2] << 8;
-			dst[4] = self.alphabet[(msb >> 7) & MASK];
-			nextcase 2;
-		case 2:
-			msb |= (uint)src[n+1] << 16;
-			dst[3] = self.alphabet[(msb >> 12) & MASK];
-			dst[2] = self.alphabet[(msb >> 17) & MASK];
-			nextcase 1;
-		case 1:
-			msb |= (uint)src[n] << 24;
-			dst[1] = self.alphabet[(msb >> 22) & MASK];
-			dst[0] = self.alphabet[(msb >> 27) & MASK];
-	}
-
-	// add the padding
-	if (self.padding >= 0)
-	{
-		char pad = (char)self.padding;
-		for (usz i = (trailing * 8 / 5) + 1; i < 8; i++)
-		{
-			dst[i] = pad;
-		}
-	}
-
-	return dn;
-}
-
-struct Base32Decoder
-{
-	Alphabet alphabet;
-	int padding;
-	char[256] reverse;
-}
-
-<*
- @param decoder "The alphabet used for decoding."
- @param padding "Set to a negative value to disable padding."
- @require padding < 256
-*>
-fn void! Base32Decoder.init(&self, Alphabet decoder = STD_ALPHABET, int padding = STD_PADDING)
-{
-	decoder.validate(padding)!;
-	*self = { .alphabet = decoder, .padding = padding };
-
-	self.reverse[..] = INVALID;
-	foreach (char i, c : decoder)
-	{
-		self.reverse[c] = i;
-	}
-}
-
-<*
- Calculate the length in bytes of the decoded data.
- @param n "Length in bytes of input."
- @return "Length in bytes of the decoded data."
-*>
-fn usz Base32Decoder.decode_len(&self, usz n)
-{
-	if (self.padding >= 0)
-	{
-		// with padding
-		return (n / 8) * 5;
-	}
-	else
-	{
-		// no padding
-		usz trailing = n % 8;
-		return n / 8 * 5 + (trailing * 5 ) / 8;
-	}
+	// no padding
+	usz trailing = n % 5;
+	return n / 5 * 8 + (trailing * 8 + 4) / 5;
 }
 
 <*
  Decode the content of src into dst, which must be properly sized.
  @param src "The input to be decoded."
  @param dst "The decoded input."
- @return "The decoded size."
- @return! Base32Error.DESTINATION_TOO_SMALL, Base32Error.CORRUPT_INPUT
+ @require dst.len >= decode_len(src.len, padding > 0) "Destination buffer too small"
+ @return "The resulting dst buffer"
+ @return! DecodingFailure
 *>
-fn usz! Base32Decoder.decode(&self, char[] src, char[] dst)
+fn char[]! decode_data(Base32Alphabet* alphabet, char[] src, char[] dst, char padding) @private
 {
-	if (src.len == 0) return 0;
-	usz dn = self.decode_len(src.len);
-	if (dst.len < dn) return Base32Error.DESTINATION_TOO_SMALL?;
-
-	usz j, n;
+	if (src.len == 0) return dst[:0];
+	char* dst_ptr = dst;
+	usz dn = decode_len(src.len, padding > 0);
+	usz n;
 	char[8] buf;
 	while (src.len > 0 && dst.len > 0)
 	{
-
+		usz i @noinit;
 		// load 8 bytes into buffer
-		for (j = 0; j < 8; j++)
+		for (i = 0; i < 8; i++)
 		{
 			if (src.len == 0)
 			{
-				if (self.padding >= 0)
-				{
-					return Base32Error.CORRUPT_INPUT?;
-				}
+				if (padding > 0) return DecodingFailure.INVALID_PADDING?;
 				break;
 			}
-			if (src[0] == (char)self.padding)
-			{
-				break;
-			}
-			buf[j] = self.reverse[src[0]];
-			if (buf[j] == INVALID)
-			{
-				return Base32Error.CORRUPT_INPUT?;
-			}
+			if (src[0] == padding) break;
+			buf[i] = alphabet.reverse[src[0]];
+			if (buf[i] == INVALID) return DecodingFailure.INVALID_CHARACTER?;
 			src = src[1..];
 		}
 
 		// extract 5-bytes from the buffer which contains 8 x 5 bit chunks
-		switch (j)
+		switch (i)
 		{
 			case 8:
 				// |66677777|  dst[4]
@@ -298,14 +141,193 @@ fn usz! Base32Decoder.decode(&self, char[] src, char[] dst)
 				dst[0] = buf[1] >> 2 | buf[0] << 3;
 				n++;
 			default:
-				return Base32Error.CORRUPT_INPUT?;
+				return DecodingFailure.INVALID_CHARACTER?;
 		}
-
 		if (dst.len < 5) break;
 		dst = dst[5..];
 	}
+	return dst_ptr[:n];
+}
 
-	return n;
+<*
+ Encode the content of src into dst, which must be properly sized.
+ @param [in] src "The input to be encoded."
+ @param [inout] dst "The encoded input."
+ @require dst.len >= encode_len(src.len, padding > 0) "Destination buffer too small"
+ @return "The encoded size."
+*>
+fn char[] encode_data(Base32Alphabet* alphabet, char[] src, char[] dst, char padding = DEFAULT_PADDING)
+{
+	if (src.len == 0) return dst[:0];
+
+	char* dst_ptr = dst;
+	usz n = (src.len / 5) * 5;
+	usz dn = encode_len(src.len, padding > 0);
+
+	uint msb, lsb;
+	for (usz i = 0; i < n; i += 5)
+	{
+		// to fit 40 bits we need two 32-bit uints
+		msb = (uint)src[i] << 24 | (uint)src[i+1] << 16
+				| (uint)src[i+2] << 8 | (uint)src[i+3];
+		lsb = msb << 8 | (uint)src[i+4];
+
+		// now slice them into 5-bit chunks and translate to the
+		// alphabet.
+		dst[0] = alphabet.encoding[(msb >> 27) & MASK];
+		dst[1] = alphabet.encoding[(msb >> 22) & MASK];
+		dst[2] = alphabet.encoding[(msb >> 17) & MASK];
+		dst[3] = alphabet.encoding[(msb >> 12) & MASK];
+		dst[4] = alphabet.encoding[(msb >> 7) & MASK];
+		dst[5] = alphabet.encoding[(msb >> 2) & MASK];
+		dst[6] = alphabet.encoding[(lsb >> 5) & MASK];
+		dst[7] = alphabet.encoding[lsb & MASK];
+
+		dst = dst[8..];
+	}
+
+	usz trailing = src.len - n;
+	if (trailing == 0) return dst_ptr[:dn];
+
+	msb = 0;
+	switch (trailing)
+	{
+		case 4:
+			msb |= (uint)src[n+3];
+			lsb = msb << 8;
+			dst[6] = alphabet.encoding[(lsb >> 5) & MASK];
+			dst[5] = alphabet.encoding[(msb >> 2) & MASK];
+			nextcase 3;
+		case 3:
+			msb |= (uint)src[n+2] << 8;
+			dst[4] = alphabet.encoding[(msb >> 7) & MASK];
+			nextcase 2;
+		case 2:
+			msb |= (uint)src[n+1] << 16;
+			dst[3] = alphabet.encoding[(msb >> 12) & MASK];
+			dst[2] = alphabet.encoding[(msb >> 17) & MASK];
+			nextcase 1;
+		case 1:
+			msb |= (uint)src[n] << 24;
+			dst[1] = alphabet.encoding[(msb >> 22) & MASK];
+			dst[0] = alphabet.encoding[(msb >> 27) & MASK];
+	}
+
+	// add the padding
+	if (padding > 0)
+	{
+		for (usz i = (trailing * 8 / 5) + 1; i < 8; i++)
+		{
+			dst[i] = padding;
+		}
+	}
+	return dst_ptr[:dn];
+}
+
+
+const uint MASK @private = 0b11111;
+const char INVALID @private = 0xff;
+
+const int STD_PADDING = '=';
+const int NO_PADDING = -1;
+
+fault Base32Error
+{
+	DUPLICATE_IN_ALPHABET,
+	PADDING_IN_ALPHABET,
+	INVALID_CHARACTER_IN_ALPHABET,
+	DESTINATION_TOO_SMALL,
+	INVALID_PADDING,
+	CORRUPT_INPUT
+}
+
+struct Base32Encoder @deprecated
+{
+	Base32Alphabet alphabet;
+	int padding;
+}
+
+<*
+ @param encoder "The 32-character alphabet for encoding."
+ @param padding "Set to a negative value to disable padding."
+ @require padding < 256
+*>
+fn void! Base32Encoder.init(&self, Alphabet encoder = STD_ALPHABET, int padding = STD_PADDING)
+{
+	encoder.validate(padding)!;
+	*self = { .alphabet = { .encoding = (char[32])encoder }, .padding = padding };
+}
+
+<*
+ Calculate the length in bytes of the encoded data.
+ @param n "Length in bytes on input."
+ @return "Length in bytes of the encoded data."
+*>
+fn usz Base32Encoder.encode_len(&self, usz n)
+{
+	return encode_len(n, self.padding >= 0);
+}
+
+<*
+ Encode the content of src into dst, which must be properly sized.
+ @param [in] src "The input to be encoded."
+ @param [inout] dst "The encoded input."
+ @return "The encoded size."
+ @return! Base32Error.DESTINATION_TOO_SMALL
+*>
+fn usz! Base32Encoder.encode(&self, char[] src, char[] dst)
+{
+	usz dn = self.encode_len(src.len);
+	if (dst.len < dn) return Base32Error.DESTINATION_TOO_SMALL?;
+	return encode_data(&self.alphabet, src, dst, self.padding < 0 ? 0 : (char)self.padding).len;
+}
+
+struct Base32Decoder @deprecated
+{
+	Base32Alphabet alphabet;
+	int padding;
+}
+
+<*
+ @param decoder "The alphabet used for decoding."
+ @param padding "Set to a negative value to disable padding."
+ @require padding < 256
+*>
+fn void! Base32Decoder.init(&self, Alphabet decoder = STD_ALPHABET, int padding = STD_PADDING)
+{
+	decoder.validate(padding)!;
+	*self = { .alphabet = { .encoding = (char[32])decoder }, .padding = padding };
+
+	self.alphabet.reverse[..] = INVALID;
+	foreach (char i, c : decoder)
+	{
+		self.alphabet.reverse[c] = i;
+	}
+}
+
+<*
+ Calculate the length in bytes of the decoded data.
+ @param n "Length in bytes of input."
+ @return "Length in bytes of the decoded data."
+*>
+fn usz Base32Decoder.decode_len(&self, usz n)
+{
+	return decode_len(n, self.padding >= 0);
+}
+
+<*
+ Decode the content of src into dst, which must be properly sized.
+ @param src "The input to be decoded."
+ @param dst "The decoded input."
+ @return "The decoded size."
+ @return! Base32Error.DESTINATION_TOO_SMALL, Base32Error.CORRUPT_INPUT
+*>
+fn usz! Base32Decoder.decode(&self, char[] src, char[] dst)
+{
+	if (src.len == 0) return 0;
+	usz dn = self.decode_len(src.len);
+	if (dst.len < dn) return Base32Error.DESTINATION_TOO_SMALL?;
+	return decode_data(&self.alphabet, src, dst, self.padding < 0 ? 0 : (char)self.padding).len;
 }
 
 
@@ -340,11 +362,32 @@ fn void! Alphabet.validate(&self, int padding)
 	}
 }
 
-tlocal Base32Encoder std_encoder @local;
-tlocal Base32Decoder std_decoder @local;
+distinct Alphabet = char[32];
+// Standard base32 Alphabet
+const Alphabet STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+// Extended Hex Alphabet
+const Alphabet HEX_ALPHABET = "0123456789ABCDEFGHIJKLMNOPQRSTUV";
 
-macro @check_coder(#coder) @local
-{
-	if (#coder.alphabet == STD_ALPHABET) return;
-	#coder.init(STD_ALPHABET, '=')!!;
-}
+const Base32Alphabet STANDARD = {
+	.encoding = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567",
+	.reverse = x`ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffff1a1b1c1d1e1fffffffffffffffff
+                 ff000102030405060708090a0b0c0d0e0f10111213141516171819ffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`
+};
+
+const Base32Alphabet HEX = {
+	.encoding = "0123456789ABCDEFGHIJKLMNOPQRSTUV",
+	.reverse = x`ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffff00010203040506070809ffffffffffff
+                 ff0a0b0c0d0e0f101112131415161718191a1b1c1d1e1fffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                 ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff`
+};
