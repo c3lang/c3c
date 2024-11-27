@@ -1,4 +1,4 @@
-module encoding::base64 @test;
+module encoding::base64_test @test;
 import std::encoding::base64;
 
 // https://www.rfc-editor.org/rfc/rfc4648#section-10
@@ -8,6 +8,7 @@ struct TestCase
     char[] in;
     char[] out;
 }
+import std;
 
 fn void encode()
 {
@@ -25,13 +26,11 @@ fn void encode()
     {
         @pool()
         {
-            Base64Encoder b;
-            b.init(base64::STD_ALPHABET)!;
-            usz n = b.encode_len(tc.in.len);
+
+            usz n = base64::encode_len(tc.in.len, base64::DEFAULT_PAD);
             char[64] buf;
-            b.encode(tc.in, buf[:n])!;
-            assert(buf[:n] == tc.out);
-            assert(base64::encode_temp(tc.in)! == tc.out);
+            char[] res = base64::encode_buffer(tc.in, buf[:n]);
+            assert(res == tc.out);
         };
     }
 }
@@ -50,11 +49,9 @@ fn void encode_nopadding()
     };
     foreach (tc : tcases)
     {
-        Base64Encoder b;
-        b.init(base64::STD_ALPHABET, -1)!;
-        usz n = b.encode_len(tc.in.len);
+        usz n = base64::encode_len(tc.in.len, base64::NO_PAD);
         char[64] buf;
-        b.encode(tc.in, buf[:n])!;
+        base64::encode_buffer(tc.in, buf[:n], padding: base64::NO_PAD);
         assert(buf[:n] == tc.out);
     }
 }
@@ -74,12 +71,10 @@ fn void decode()
     };
     foreach (tc : tcases)
     {
-        Base64Decoder b;
-        b.init(base64::STD_ALPHABET)!;
-        usz n = b.decode_len(tc.in.len)!;
+        usz n = base64::decode_len(tc.in.len, base64::DEFAULT_PAD)!;
         char[64] buf;
-        usz nn = b.decode(tc.in, buf[:n])!;
-        assert(buf[:nn] == tc.out);
+        char[] res = base64::decode_buffer(tc.in, buf[:n])!;
+        assert(res == tc.out);
     }
 }
 
@@ -97,12 +92,10 @@ fn void decode_nopadding()
     };
     foreach (tc : tcases)
     {
-        Base64Decoder b;
-        b.init(base64::STD_ALPHABET, -1)!;
-        usz n = b.decode_len(tc.in.len)!;
+        usz n = base64::decode_len(tc.in.len, base64::NO_PAD)!;
         char[64] buf;
-        usz nn = b.decode(tc.in, buf[:n])!;
-        assert(buf[:nn] == tc.out);
+        char[] res = base64::decode_buffer(tc.in, buf[:n], base64::NO_PAD)!;
+        assert(res == tc.out);
     }
 }
 
@@ -118,21 +111,12 @@ fn void! urlencode() {
 		char[64] buf;
 		foreach (t : tcases)
 		{
-			Base64Encoder enc;
-			enc.init(base64::URL_ALPHABET)!;
-			n = enc.encode(t.in, buf[..])!;
-			assert (buf[:n] == t.out, "got: %s, want: %s", (String)buf[:n], (String)t.out);
+			char[] res = base64::encode_buffer(t.in, buf[..], alphabet: &base64::URL);
+			assert (res == t.out, "got: %s, want: %s", (String)res, (String)t.out);
 
-			got = base64::urlencode_temp(t.in)!;
-			assert (got == t.out, "got: %s, want: %s", got, (String)t.out);
+			res = base64::decode_buffer(t.out, buf[..], alphabet: &base64::URL)!;
+			assert (res == t.in, "got: %s, want: %s", (String)res, (String)t.in);
 
-			Base64Decoder dec;
-			dec.init(base64::URL_ALPHABET)!;
-			n = dec.decode(t.out, buf[..])!;
-			assert (buf[:n] == t.in, "got: %s, want: %s", (String)buf[:n], (String)t.in);
-
-			got = base64::urldecode_temp(t.out)!;
-			assert (got == t.in, "got: %s, want: %s", got, (String)t.in);
 		}
 	};
 }
