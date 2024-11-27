@@ -607,6 +607,7 @@ bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type)
 	Type *type = index->type;
 	RETRY:
 	type = type_flat_distinct_inline(type);
+	type = type_no_optional(type);
 	switch (type->type_kind)
 	{
 		case TYPE_I8:

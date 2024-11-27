@@ -681,6 +681,7 @@ typedef struct
 	bool end_from_end : 1;
 	bool is_len : 1;
 	bool is_range : 1;
+	bool is_optional : 1;
 	union
 	{
 		struct

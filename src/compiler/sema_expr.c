@@ -3043,6 +3043,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	// Cast to an appropriate type for index.
 	if (!cast_to_index(context, index, subscripted->type)) return false;
 
+	optional |= IS_OPTIONAL(index);
 	// Check range
 	bool remove_from_back = false;
 	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back)) return false;
@@ -3149,7 +3150,7 @@ typedef enum RangeEnv
 	RANGE_FLEXIBLE,
 } RangeEnv;
 
-INLINE bool sema_expre_analyse_range_internal(SemaContext *context, Range *range, Type *indexed_type, ArrayIndex len, RangeEnv env)
+INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, Type *indexed_type, ArrayIndex len, RangeEnv env)
 {
 	Expr *start = exprptr(range->start);
 	ASSERT0(start);
@@ -3160,9 +3161,13 @@ INLINE bool sema_expre_analyse_range_internal(SemaContext *context, Range *range
 
 	if (!cast_to_index(context, start, indexed_type)) return false;
 	if (end && !cast_to_index(context, end, indexed_type)) return false;
-	if (end && end->type != start->type)
+	Type *end_type = end ? type_no_optional(end->type) : NULL;
+	Type *start_type = type_no_optional(start->type);
+	if (end && IS_OPTIONAL(end)) range->is_optional = true;
+	if (IS_OPTIONAL(start)) range->is_optional = true;
+	if (end && end_type != start_type)
 	{
-		Type *common = type_find_max_type(start->type, end->type);
+		Type *common = type_find_max_type(start_type, end_type);
 		if (!common)
 		{
 			SourceSpan span = start->span;
@@ -3316,7 +3321,7 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, T
 			return true;
 		case RESOLVE_NOT_DONE:
 			range->status = RESOLVE_RUNNING;
-			if (!sema_expre_analyse_range_internal(context, range, indexed_type, len, env))
+			if (!sema_expr_analyse_range_internal(context, range, indexed_type, len, env))
 			{
 				range->status = RESOLVE_NOT_DONE;
 				return false;
@@ -3421,7 +3426,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 	ArrayIndex length = sema_len_from_expr(subscripted);
 	Range *range = &expr->slice_expr.range;
 	if (!sema_expr_analyse_range(context, range, subscripted->type, length, env)) return false;
-
+	if (range->is_optional) optional = true;
 	if (check == CHECK_VALUE && sema_cast_const(subscripted) && range->range_type == RANGE_CONST_RANGE)
 	{
 		switch (subscripted->const_expr.const_kind)
