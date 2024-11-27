@@ -30,6 +30,7 @@
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
 - Updated Base32 API.
 - Add `file::save`.
+- Add `memcpy` / `memset` / `memcmp` to nolibc.
 
 ## 0.6.4 Change list
 
