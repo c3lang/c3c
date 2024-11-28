@@ -132,7 +132,7 @@ fn usz DString.capacity(self)
 	return self.data().capacity;
 }
 
-fn usz DString.len(&self) @dynamic
+fn usz DString.len(&self) @dynamic @operator(len)
 {
 	if (!*self) return 0;
 	return self.data().len;
@@ -154,6 +154,24 @@ fn String DString.str_view(self)
 	return (String)data.chars[:data.len];
 }
 
+<*
+ @require index < self.len()
+ @require self.data() "Empty string"
+*>
+fn char DString.char_at(self, usz index) @operator([])
+{
+	return self.data().chars[index];
+}
+
+<*
+ @require index < self.len()
+ @require self.data() "Empty string"
+*>
+fn char* DString.char_ref(&self, usz index) @operator(&[])
+{
+	return &self.data().chars[index];
+}
+
 fn usz DString.append_utf32(&self, Char32[] chars)
 {
 	self.reserve(chars.len);
@@ -168,7 +186,7 @@ fn usz DString.append_utf32(&self, Char32[] chars)
 <*
  @require index < self.len()
 *>
-fn void DString.set(self, usz index, char c)
+fn void DString.set(self, usz index, char c) @operator([]=)
 {
 	self.data().chars[index] = c;
 }
