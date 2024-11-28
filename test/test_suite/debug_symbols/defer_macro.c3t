@@ -169,9 +169,9 @@ entry:
   store ptr %0, ptr %args, align 8
   %ptradd = getelementptr inbounds i8, ptr %args, i64 8
   store i64 %1, ptr %ptradd, align 8
-  !50
-  !56
-  %2 = call { i32, ptr } @attach.to_scope() #4, !dbg !57
+    !50
+    !56
+  %2 = call { i32, ptr } @attach.to_scope()
   store { i32, ptr } %2, ptr %result, align 8
   %lo = load i32, ptr %result, align 8, !dbg !58
   %ptradd1 = getelementptr inbounds i8, ptr %result, i64 8, !dbg !58
@@ -203,7 +203,7 @@ entry:
   %ptradd1 = getelementptr inbounds i8, ptr %name, i64 8
   store i64 %4, ptr %ptradd1, align 8
   !74
-  %5 = call ptr @std.core.mem.calloc(i64 8) #4, !dbg !75
+  %5 = call ptr @std.core.mem.calloc(i64 8)
   ret ptr %5, !dbg !75
 }
 
@@ -333,7 +333,7 @@ entry:
   %lo2 = load ptr, ptr %scratch, align 8, !dbg !132
   %ptradd3 = getelementptr inbounds i8, ptr %scratch, i64 8, !dbg !132
   %hi4 = load i64, ptr %ptradd3, align 8, !dbg !132
-  call void @arena_scratch_end(ptr %lo2, i64 %hi4) #4, !dbg !134
+  call void @arena_scratch_end(ptr %lo2, i64 %hi4)
   ret ptr %2, !dbg !134
 }
 

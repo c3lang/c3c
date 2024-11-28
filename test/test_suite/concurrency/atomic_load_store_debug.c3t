@@ -88,7 +88,7 @@ entry:
 
 declare extern_weak i64 @std.io.printfn(ptr, ptr, i64, ptr, i64) #0
 
-declare i1 @llvm.expect.i1(i1, i1) #2
+declare i1 @llvm.expect.i1(i1, i1)
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4, !5}
 !llvm.dbg.cu = !{!6}
