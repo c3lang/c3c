@@ -247,3 +247,28 @@ fn void test_insert_at_overlaps()
 	s = str.str_view();
 	assert(s == "def", "got '%s'; want 'def'", s);
 }
+
+fn void test_char_at()
+{
+	DString str = dstring::new("hello");
+	defer str.free();
+
+	char c = str.char_at(1);
+	assert(c == 'e');
+
+	char c_with_operator = str[4];
+	assert(c_with_operator == 'o');
+}
+
+fn void test_operators()
+{
+	DString str = dstring::new("hello");
+	defer str.free();
+
+	str[0] = 'p';
+	assert(str.str_view() == "pello");
+
+	char* c = &str[1];
+	assert(*c == 'e');
+}
+
