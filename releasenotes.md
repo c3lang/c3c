@@ -26,6 +26,7 @@
 - b64 / hex data strings can now be used with \` as well.
 - Contracts on generic modules would evaluate too late, sometimes not catching the error until it already occurred elsewhere.
 - Fix bug preventing optionals from being used in ranges or as indices.
+- Crash compiling for arm64 when returning 16 byte and smaller structs by value not a power of 2 #1649.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

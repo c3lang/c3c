@@ -94,7 +94,7 @@ Type *type_int_unsigned_by_bitsize(BitSize bit_size)
 		case 32: return type_uint;
 		case 64: return type_ulong;
 		case 128: return type_u128;
-		default: FATAL_ERROR("Illegal bitsize %d", bit_size);
+		default: FATAL_ERROR("Illegal bitsize");
 	}
 }
 

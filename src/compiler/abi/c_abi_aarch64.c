@@ -196,7 +196,7 @@ ABIArgInfo *aarch64_classify_return_type(Type *type, bool variadic)
 
 		if (size <= 8 && !compiler.platform.big_endian)
 		{
-			return abi_arg_new_direct_coerce_type(type_int_unsigned_by_bitsize(size * 8));
+			return abi_arg_new_direct_coerce_int();
 		}
 
 		unsigned alignment = type_abi_alignment(type);
