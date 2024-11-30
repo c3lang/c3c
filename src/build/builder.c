@@ -297,6 +297,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			break;
 		case COMMAND_STATIC_LIB:
 			target->type = TARGET_TYPE_STATIC_LIB;
+			target->single_module = true;
 			break;
 		default:
 			target->run_after_compile = false;
