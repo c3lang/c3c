@@ -174,7 +174,7 @@ const char *build_base_name(void)
 
 static const char *exe_name(void)
 {
-	ASSERT0(compiler.context.main || compiler.build.no_entry);
+	ASSERT0(compiler.build.name || compiler.context.main || compiler.build.no_entry);
 	const char *name;
 	if (compiler.build.name || compiler.build.no_entry)
 	{

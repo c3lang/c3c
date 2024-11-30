@@ -318,6 +318,7 @@ static void parse_command(BuildOptions *options)
 	{
 		options->command = COMMAND_TEST;
 		options->testing = true;
+		parse_optional_target(options);
 		return;
 	}
 	if (arg_match("run"))
