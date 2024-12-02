@@ -13,6 +13,21 @@ macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @built
 	qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, cmp, context);
 }
 
+<*
+Select the (k+1)th smallest element in an unordered list using Hoare's
+selection algorithm (Quickselect). k should be between 0 and len-1. The data
+list will be partially sorted.
+
+ @require @is_sortable(list) "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(cmp, list, context) "expected a comparison function which compares values"
+ @require @is_valid_context(cmp, context) "Expected a valid context"
+*>
+macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
+{
+	usz len = sort::@len_from_list(list);
+	return qs::qselect(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, k, cmp, context);
+}
+
 module std::sort::qs(<Type, CmpFn, Context>);
 
 def ElementType = $typeof(Type{}[0]);
@@ -59,6 +74,36 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 			}
 		}
 	}
+}
+
+<*
+@require low <= k "kth smalles element is smaller than lower bounds"
+@require k <= high "kth smalles element is larger than upper bounds"
+*>
+fn ElementType! qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context context)
+{
+	if (low >= 0 && high >= 0 && low < high)
+	{
+		isz l = low;
+		isz h = high;
+		isz pivot;
+
+		usz max_retries = 64;
+		while (l <= h && max_retries--)
+		{
+			pivot = @partition(list, l, h, cmp, context);
+			if (k == pivot) return list[k];
+			if (k < pivot)
+			{
+				h = pivot - 1;
+			}
+			else
+			{
+				l = pivot + 1;
+			}
+		}
+	}
+	return SearchResult.MISSING?;
 }
 
 macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
