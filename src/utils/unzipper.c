@@ -275,6 +275,7 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 				fclose(f);
 				return "Failed to write";
 			}
+			left_to_read -= written;
 		}
 		return NULL;
 	}
