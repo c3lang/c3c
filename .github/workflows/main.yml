@@ -51,7 +51,7 @@ jobs:
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           cd resources/testproject
-          ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log --emit-llvm run hello_world_win32
+          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv --emit-llvm run hello_world_win32
           dir build\llvm_ir
           ..\..\build\${{ matrix.build_type }}\c3c.exe clean
           dir build\llvm_ir
@@ -61,7 +61,7 @@ jobs:
         run: |
           cd resources/testproject
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          ..\..\build\${{ matrix.build_type }}\c3c.exe --debug-log build hello_world_win32_lib
+          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv build hello_world_win32_lib
 
       - name: Compile and run dynlib-test
         run: |
@@ -147,7 +147,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log
+          ../../build/c3c run -vvv
 
       - name: Vendor-fetch
         run: |
@@ -156,7 +156,7 @@ jobs:
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib --cc cc --debug-log
+          ../../build/c3c build hello_world_lib --cc cc -vvv
 
       - name: run compiler tests
         run: |
@@ -203,12 +203,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log
+          ../../build/c3c run -vvv
 
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib --debug-log
+          ../../build/c3c build hello_world_lib -vvv
 
       - name: run compiler tests
         run: |
@@ -334,7 +334,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log
+          ../../build/c3c run -vvv
 
       - name: Test WASM
         run: |
@@ -353,7 +353,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin
 
       - name: Init a library & a project
         run: |
@@ -476,12 +476,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log
+          ../../build/c3c run -vvv
 
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin
 
       - name: run compiler tests
         run: |
@@ -568,7 +568,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log
+          ../../build/c3c run -vvv
 
       - name: Test WASM
         run: |
@@ -578,7 +578,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin
 
       - name: Init a library & a project
         run: |
@@ -650,17 +650,17 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log
+          ../../build/c3c run -vvv
 
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run --debug-log --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin
 
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib --debug-log
+          ../../build/c3c build hello_world_lib -vvv
 
       - name: run compiler tests
         run: |
