@@ -859,10 +859,10 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 		if (compiler.build.print_linking) puts(scratch_buffer_to_string());
 		if (system(scratch_buffer_to_string()) != 0)
 		{
-			puts("Failed to create .dSYM files, debugging will be impacted.");
+			OUTN("Failed to create .dSYM files, debugging will be impacted.");
 		}
 	}
-	printf("Program linked to executable '%s'.\n", output_file);
+	OUTF("Program linked to executable '%s'.\n", output_file);
 }
 
 const char *cc_compiler(const char *cc, const char *file, const char *flags, const char **include_dirs, const char *output_subdir)

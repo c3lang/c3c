@@ -479,6 +479,7 @@ typedef struct BuildOptions_
 	bool print_output;
 	bool print_input;
 	bool run_once;
+	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
 	const char *testfn;
@@ -589,6 +590,7 @@ typedef struct
 	bool emit_object_files;
 	bool benchmarking;
 	bool testing;
+	bool silent;
 	bool read_stdin;
 	bool print_output;
 	bool print_input;
@@ -596,6 +598,7 @@ typedef struct
 	bool no_entry;
 	bool kernel_build;
 	bool silence_deprecation;
+	bool print_stats;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

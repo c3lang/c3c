@@ -17,6 +17,8 @@
 
 #define MAX_OUTPUT_FILES 1000000
 #define MAX_MODULES 100000
+
+
 CompilerState compiler;
 
 Vmem ast_arena;
@@ -94,14 +96,14 @@ static void compiler_lex(void)
 		if (loaded) continue;
 		Lexer lexer = { .file = file };
 		lexer_init(&lexer);
-		printf("# %s\n", file->full_path);
+		OUTF("# %s\n", file->full_path);
 		while (lexer_next_token(&lexer))
 		{
 			TokenType token_type = lexer.token_type;
-			printf("%s ", token_type_to_string(token_type));
+			OUTF("%s ", token_type_to_string(token_type));
 			if (token_type == TOKEN_EOF) break;
 		}
-		printf("\n");
+		OUTN("");
 	}
 	exit_compiler(COMPILER_SUCCESS_EXIT);
 }
@@ -239,7 +241,7 @@ static const char *static_lib_name(void)
 
 static void free_arenas(void)
 {
-	if (debug_stats)
+	if (compiler.build.print_stats)
 	{
 		printf("-- AST/EXPR/TYPE INFO -- \n");
 		printf(" * Ast size: %u bytes\n", (unsigned)sizeof(Ast));
@@ -266,7 +268,7 @@ static void free_arenas(void)
 	expr_arena_free();
 	type_info_arena_free();
 
-	if (debug_stats) print_arena_status();
+	if (compiler.build.print_stats) print_arena_status();
 }
 
 static int compile_cfiles(const char *cc, const char **files, const char *flags, const char **include_dirs,
@@ -283,7 +285,7 @@ static int compile_cfiles(const char *cc, const char **files, const char *flags,
 
 static void compiler_print_bench(void)
 {
-	if (debug_stats)
+	if (compiler.build.print_stats)
 	{
 		puts("--------- Compilation time statistics --------\n");
 		double last = compiler_init_time;
@@ -700,11 +702,11 @@ void compiler_compile(void)
 				scratch_buffer_append(name);
 			}
 			name = scratch_buffer_to_string();
-			printf("Launching %s", name);
+			OUTF("Launching %s", name);
 			for (uint32_t i = 0; i < vec_size(compiler.build.args); ++i) {
-				printf(" %s", compiler.build.args[i]);
+				OUTF(" %s", compiler.build.args[i]);
 			}
-			printf("\n");
+			OUTN("");
 
 			int ret = run_subprocess(name, compiler.build.args);
 			if (compiler.build.delete_after_run)
@@ -712,7 +714,7 @@ void compiler_compile(void)
 				file_delete_file(name);
 			}
 			if (ret < 0) exit_compiler(EXIT_FAILURE);
-			printf("Program completed with exit code %d.\n", ret);
+			OUTF("Program completed with exit code %d.\n", ret);
 			if (ret != 0) exit_compiler(ret);
 		}
 	}
@@ -734,7 +736,7 @@ void compiler_compile(void)
 		delete_object_files(obj_files, output_file_count);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
-		printf("Static library '%s' created.\n", output_static);
+		OUTF("Static library '%s' created.\n", output_static);
 	}
 	else if (output_dynamic)
 	{
@@ -752,7 +754,7 @@ void compiler_compile(void)
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
 		delete_object_files(obj_files, output_file_count);
-		printf("Dynamic library '%s' created.\n", output_dynamic);
+		OUTF("Dynamic library '%s' created.\n", output_dynamic);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 	}
@@ -808,9 +810,9 @@ void compile_file_list(BuildOptions *options)
 		{
 			error_exit("The target is a 'prepare' target, and only 'build' can be used with it.");
 		}
-		printf("] Running prepare target '%s'.\n", options->target_select);
+		OUTF("] Running prepare target '%s'.\n", options->target_select);
 		execute_scripts();
-		printf("] Completed.\n.");
+		OUTF("] Completed.\n.");
 		return;
 	}
 	if (options->command == COMMAND_CLEAN_RUN)

@@ -49,7 +49,7 @@ NORETURN void exit_compiler(int exit_value);
 extern jmp_buf on_err_jump;
 
 extern bool debug_log;
-extern bool debug_stats;
+
 extern uintptr_t arena_zero;
 struct ScratchBuf { char str[MAX_STRING_BUFFER]; uint32_t len; };
 extern struct ScratchBuf scratch_buffer;

@@ -83,6 +83,8 @@ static void usage(void)
 	PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
 	PRINTF("  --run-once                 - After running the output file, delete it immediately.");
 	PRINTF("  -V --version               - Print version information.");
+	PRINTF("  -q --quiet                 - Silence unnecessary output.");
+	PRINTF("  -v -vv -vvv                - Verbose output, -v for default, -vv and -vvv gives more information.");
 	PRINTF("  -E                         - Lex only.");
 	PRINTF("  -P                         - Only parse and output the AST as JSON.");
 	PRINTF("  -C                         - Only lex, parse and check.");
@@ -144,11 +146,7 @@ static void usage(void)
 	PRINTF("  --fp-math=<option>         - FP math behaviour: strict, relaxed, fast.");
 	PRINTF("  --win64-simd=<option>      - Win64 SIMD ABI: array, full.");
 	PRINTF("");
-	PRINTF("  --debug-stats              - Print debug statistics.");
 	PRINTF("  --print-linking            - Print linker arguments.");
-#ifndef NDEBUG
-	PRINTF("  --debug-log                - Print debug logging to stdout.");
-#endif
 	PRINTF("");
 	PRINTF("  --benchmarking             - Run built-in benchmarks.");
 	PRINTF("  --testing                  - Run built-in tests.");
@@ -415,6 +413,30 @@ static void parse_option(BuildOptions *options)
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
 			break;
+		case 'q':
+			if (match_shortopt("q"))
+			{
+				options->verbosity_level = -1;
+				return;
+			}
+			break;
+		case 'v':
+			if (match_shortopt("vvv"))
+			{
+				options->verbosity_level = 3;
+				return;
+			}
+			if (match_shortopt("vv"))
+			{
+				options->verbosity_level = 2;
+				return;
+			}
+			if (match_shortopt("v"))
+			{
+				options->verbosity_level = 1;
+				return;
+			}
+			break;
 		case 'V':
 			if (match_shortopt("V"))
 			{
@@ -605,6 +627,11 @@ static void parse_option(BuildOptions *options)
 				options->symtab_size = next_highest_power_of_2(symtab);
 				return;
 			}
+			if (match_longopt("quiet"))
+			{
+				options->verbosity_level = -1;
+				return;
+			}
 			if (match_longopt("version"))
 			{
 				print_version();
@@ -613,6 +640,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("run-once"))
 			{
 				options->run_once = true;
+				if (!options->verbosity_level) options->verbosity_level = -1;
 				return;
 			}
 			if ((argopt = match_argopt("fp-math")))
@@ -730,17 +758,6 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("no-headers"))
 			{
 				options->no_headers = true;
-				return;
-			}
-			if (match_longopt("debug-log"))
-			{
-				debug_log = true;
-				debug_stats = true;
-				return;
-			}
-			if (match_longopt("debug-stats"))
-			{
-				debug_stats = true;
 				return;
 			}
 			if (match_longopt("print-linking"))
@@ -1167,6 +1184,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
+	debug_log = build_options.verbosity_level > 2;
 	return build_options;
 }
 

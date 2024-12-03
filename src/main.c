@@ -6,7 +6,6 @@
 
 
 bool debug_log = false;
-bool debug_stats = false;
 
 jmp_buf on_error_jump;
 

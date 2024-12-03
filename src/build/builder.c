@@ -364,8 +364,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT) target->arch_os_target = options->arch_os_target_override;
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 	if (options->symtab_size) target->symtab_size = options->symtab_size;
-	if (options->silence_deprecation) target->silence_deprecation = options->silence_deprecation;
-	target->print_linking = options->print_linking;
+	if (options->silence_deprecation) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
+	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
 	for (size_t i = 0; i < options->linker_arg_count; i++)
 	{
@@ -395,12 +395,14 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
+	target->print_stats = options->verbosity_level >= 2;
 	if (options->output_dir) target->output_dir = options->output_dir;
 	if (options->panicfn) target->panicfn = options->panicfn;
 	if (options->testfn) target->testfn = options->testfn;
 	if (options->benchfn) target->benchfn = options->benchfn;
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
+	target->silent = options->verbosity_level < 0;
 	target->vector_conv = options->vector_conv;
 	if (options->macos.sysroot) target->macos.sysroot = options->macos.sysroot;
 	if (options->win.sdk) target->win.sdk = options->win.sdk;

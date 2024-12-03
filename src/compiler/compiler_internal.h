@@ -70,6 +70,8 @@ typedef uint16_t FileId;
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
 #define TABLE_MAX_LOAD 0.5
+#define OUTF(...) do { if (!compiler.build.silent) printf(__VA_ARGS__); } while(0)
+#define OUTN(str__) do { if (!compiler.build.silent) puts(str__); } while(0)
 
 #define INVALID_PTR ((void*)(uintptr_t)0xAAAAAAAAAAAAAAAA)
 
