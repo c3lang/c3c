@@ -424,6 +424,7 @@ void compiler_compile(void)
 	void **gen_contexts;
 	void (*task)(void *);
 
+
 	if (compiler.build.asm_file_dir || compiler.build.ir_file_dir || compiler.build.emit_object_files)
 	{
 		if (compiler.build.build_dir && !file_exists(compiler.build.build_dir) && !dir_make(compiler.build.build_dir))
@@ -589,14 +590,16 @@ void compiler_compile(void)
 	{
 		puts("# output-files-begin");
 	}
-	for (unsigned i = 0; i < output_file_count; i++)
+	int index = 0;
+	for (unsigned i = output_file_count; i > 0; i--)
 	{
-		obj_files[i] = compile_data[i].object_name;
+		const char *name = compile_data[i - 1].object_name;
+		if (!name) output_file_count--;
+		obj_files[index++] = name;
 		if (compiler.build.print_output)
 		{
-			puts(obj_files[i]);
+			puts(name);
 		}
-		ASSERT0(obj_files[i] || !output_exe);
 	}
 	if (compiler.build.print_output)
 	{
@@ -607,6 +610,14 @@ void compiler_compile(void)
 	free(compile_data);
 	compiler_codegen_time = bench_mark();
 
+	if ((output_static || output_dynamic || output_exe) && !output_file_count)
+	{
+		if (!compiler.build.object_files)
+		{
+			error_exit("Compilation could not complete due to --no-obj, please try removing it.");
+		}
+		error_exit("Compilation produced no object files, maybe there was no code?");
+	}
 	if (output_exe)
 	{
 		if (compiler.build.output_dir)
