@@ -32,6 +32,7 @@
 - Crash compiling for arm64 when returning 16 byte and smaller structs by value not a power of 2 #1649.
 - Enforce single module compilation for static libraries to make constructors run properly.
 - Crash when using --no-obj without compile-only. #1653
+- Do not produce expression locations for windows.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

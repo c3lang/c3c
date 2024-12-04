@@ -127,10 +127,13 @@ void gencontext_begin_module(GenContext *c)
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 	if (c->panicf) c->panicf->backend_ref = NULL;
 	bool is_win = compiler.build.arch_os_target == WINDOWS_X64 || compiler.build.arch_os_target == WINDOWS_AARCH64;
-	llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 4, type_uint);
 	if (is_win)
 	{
 		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "CodeView", 1, type_uint);
+	}
+	else
+	{
+		llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Dwarf Version", 4, type_uint);
 	}
 	llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "Debug Info Version", 3, type_uint);
 	llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "wchar_size", is_win ? 2 : 4, type_uint);
@@ -156,7 +159,7 @@ void gencontext_begin_module(GenContext *c)
 	llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "uwtable", UWTABLE, type_uint);
 	if (is_win)
 	{
-		llvm_set_module_flag(c, LLVMModuleFlagBehaviorWarning, "MaxTLSAlign", 65536, type_uint);
+		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "MaxTLSAlign", 65536, type_uint);
 	}
 	else
 	{
@@ -172,6 +175,7 @@ void gencontext_begin_module(GenContext *c)
 		{
 			c->debug.enable_stacktrace = os_supports_stacktrace(compiler.platform.os);
 		}
+		c->debug.emit_expr_loc = !is_win;
 	}
 	c->global_builder = LLVMCreateBuilder();
 	c->builder = c->global_builder;

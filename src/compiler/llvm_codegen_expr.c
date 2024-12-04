@@ -1397,7 +1397,7 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 		PUSH_CATCH_VAR_BLOCK(NULL, discard_fail);
 		llvm_emit_expr(c, &value, expr);
 		llvm_value_fold_optional(c, &value);
-		EMIT_LOC(c, expr);
+		EMIT_EXPR_LOC(c, expr);
 		// We only optimize if there is no instruction the current block
 		if (!LLVMGetFirstInstruction(c->current_block))
 		{
@@ -2458,7 +2458,7 @@ static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan spa
 static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before,
 											Expr *expr, int diff, bool allow_wrap)
 {
-	EMIT_LOC(c, expr);
+	EMIT_EXPR_LOC(c, expr);
 
 	// Copy the address and make it a value.
 	BEValue value = *addr;
@@ -3278,7 +3278,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 
 	// We emit a phi here: value is either the start value (start_offset) or the next value (next_offset)
 	// but we haven't generated the latter yet, so we defer that.
-	EMIT_LOC(c, expr);
+	EMIT_EXPR_LOC(c, expr);
 	LLVMValueRef offset = LLVMBuildPhi(c->builder, llvm_get_type(c, start.type), "");
 	BEValue offset_val;
 	llvm_value_set(&offset_val, offset, start.type);
@@ -3289,7 +3289,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_int_comp_raw(c, &value, start.type, end.type, offset, end.value, op);
 
 	// If jump to the assign block if we're not at the end index.
-	EMIT_LOC(c, expr);
+	EMIT_EXPR_LOC(c, expr);
 	llvm_emit_cond_br(c, &value, assign_block, exit_block);
 
 	// Emit the assign.
@@ -4377,7 +4377,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 	BEValue rhs;
 	llvm_emit_expr(c, &rhs, exprptr(expr->binary_expr.right));
 	llvm_fold_for_compare(c, &rhs);
-	EMIT_LOC(c, expr);
+	EMIT_EXPR_LOC(c, expr);
 	// Comparison <=>
 	if (binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ)
 	{
@@ -4709,7 +4709,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		llvm_emit_panic(c, "Force unwrap failed!", loc, "Unexpected fault '%s' was unwrapped!", varargs);
 	}
 	llvm_emit_block(c, no_err_block);
-	EMIT_LOC(c, expr);
+	EMIT_EXPR_LOC(c, expr);
 }
 
 
@@ -6349,7 +6349,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		scratch_buffer_printf("No method '%s' could be found on target", dyn_fn->name);
 		llvm_emit_panic(c, scratch_buffer_to_string(), expr->span, NULL, NULL);
 		llvm_emit_block(c, match);
-		EMIT_LOC(c, expr);
+		EMIT_EXPR_LOC(c, expr);
 		values[0] = result;
 
 	}
@@ -6861,7 +6861,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				}
 				llvm_emit_panic(c, "Attempted to access 'inner' on non composite type", expr->span, NULL, NULL);
 				llvm_emit_block(c, exit);
-				EMIT_LOC(c, expr);
+				EMIT_EXPR_LOC(c, expr);
 			}
 			{
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_INNER, align, &alignment);
@@ -6890,7 +6890,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				}
 				llvm_emit_panic(c, "Attempted to access 'names' on non enum/fault type.", expr->span, NULL, NULL);
 				llvm_emit_block(c, exit);
-				EMIT_LOC(c, expr);
+				EMIT_EXPR_LOC(c, expr);
 			}
 			{
 				LLVMValueRef len = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
@@ -6923,7 +6923,7 @@ static inline void llvm_emit_typeid_info(GenContext *c, BEValue *value, Expr *ex
 				}
 				llvm_emit_panic(c, "Attempted to access 'len' on non array type", expr->span, NULL, NULL);
 				llvm_emit_block(c, exit);
-				EMIT_LOC(c, expr);
+				EMIT_EXPR_LOC(c, expr);
 			}
 			{
 				LLVMValueRef val = llvm_emit_struct_gep_raw(c, ref, c->introspect_type, INTROSPECT_INDEX_LEN, align, &alignment);
@@ -7239,7 +7239,7 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 }
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	EMIT_LOC(c, expr);
+	EMIT_EXPR_LOC(c, expr);
 	switch (expr->expr_kind)
 	{
 		case NON_RUNTIME_EXPR:

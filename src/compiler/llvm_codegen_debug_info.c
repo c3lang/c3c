@@ -145,7 +145,7 @@ static void llvm_emit_debug_declare(GenContext *c, LLVMValueRef var, LLVMMetadat
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 {
 	ASSERT0(llvm_is_local_eval(c));
-	EMIT_LOC(c, decl);
+	EMIT_EXPR_LOC(c, decl);
 	uint32_t row = decl->span.row;
 	uint32_t col = decl->span.col;
 	if (!row) row = 1;

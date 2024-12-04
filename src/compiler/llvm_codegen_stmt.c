@@ -1167,7 +1167,7 @@ static inline void llvm_emit_assume(GenContext *c, Expr *expr)
 		llvm_emit_expr(c, &value, expr);
 		llvm_value_rvalue(c, &value);
 		ASSERT0(value.kind == BE_BOOLEAN);
-		EMIT_LOC(c, expr);
+		EMIT_EXPR_LOC(c, expr);
 		llvm_emit_assume_true(c, &value);
 	}
 }

@@ -52,9 +52,11 @@ typedef struct DebugScope_
 
 typedef struct
 {
-	unsigned runtime_version : 8;
-	bool enable_stacktrace : 1;
+	bool enable_stacktrace;
+	bool emit_expr_loc;
+	unsigned runtime_version;
 	LLVMDIBuilderRef builder;
+
 	DebugFile *debug_files;
 	DebugFile file;
 	LLVMMetadataRef compile_unit;
@@ -574,7 +576,8 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *var);
 
 #define UWTABLE (compiler.build.arch_os_target == MACOS_AARCH64 ? 1 : 2)
 #define EMIT_LOC(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x->span); } while (0)
-#define EMIT_SPAN(c, x) do { if (c->debug.builder) llvm_emit_debug_location(c, x); } while (0)
+#define EMIT_EXPR_LOC(c, x) do { if (c->debug.emit_expr_loc) llvm_emit_debug_location(c, x->span); } while (0)
+#define EMIT_SPAN(c, x) do { if (c->debug.emit_expr_loc) llvm_emit_debug_location(c, x); } while (0)
 #define PUSH_DEFER_ERROR(val__) LLVMValueRef def_err__ = c->defer_error_var; c->defer_error_var = val__
 #define POP_DEFER_ERROR() c->defer_error_var = def_err__
 
