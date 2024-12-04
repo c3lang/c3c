@@ -119,7 +119,7 @@ endif(C3_ENABLE_CLANGD_LSP)
 if(C3_WITH_LLVM)
     if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         if (C3_LLVM_VERSION STREQUAL "auto")
-            set(C3_LLVM_VERSION "18")
+            set(C3_LLVM_VERSION "19")
         endif()
         FetchContent_Declare(
                 LLVM_Windows
