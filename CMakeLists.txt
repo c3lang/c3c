@@ -73,9 +73,9 @@ if(C3_USE_MIMALLOC)
     option(MI_PADDING OFF)
     option(MI_DEBUG_FULL OFF)
     FetchContent_Declare(
-    mimalloc
-    GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
-    GIT_TAG ${C3_MIMALLOC_TAG}
+            mimalloc
+            GIT_REPOSITORY https://github.com/microsoft/mimalloc.git
+            GIT_TAG ${C3_MIMALLOC_TAG}
     )
     FetchContent_MakeAvailable(mimalloc)
 endif()
@@ -108,9 +108,9 @@ endif()
 # Clangd LSP support
 option(C3_ENABLE_CLANGD_LSP "Enable/Disable output of compile commands during generation." OFF)
 if(C3_ENABLE_CLANGD_LSP)
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E create_symlink
+            COMMAND ${CMAKE_COMMAND} -E create_symlink
             ${CMAKE_BINARY_DIR}/compile_commands.json
             ${CMAKE_SOURCE_DIR}/compile_commands.json
     )
@@ -119,15 +119,15 @@ endif(C3_ENABLE_CLANGD_LSP)
 if(C3_WITH_LLVM)
     if(CMAKE_C_COMPILER_ID STREQUAL "MSVC")
         if (C3_LLVM_VERSION STREQUAL "auto")
-            set(C3_LLVM_VERSION "18")
+            set(C3_LLVM_VERSION "19")
         endif()
         FetchContent_Declare(
                 LLVM_Windows
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8_with_rt/llvm-18.1.8-windows-amd64-msvc17-libcmt.7z
+                URL https://github.com/c3lang/win-llvm/releases/download/llvm_19_1_4/llvm-19.1.4-windows-amd64-msvc17-libcmt.7z
         )
         FetchContent_Declare(
                 LLVM_Windows_debug
-                URL https://github.com/c3lang/win-llvm/releases/download/llvm_18_1_8_with_rt/llvm-18.1.8-windows-amd64-msvc17-libcmt-dbg.7z
+                URL https://github.com/c3lang/win-llvm/releases/download/llvm_19_1_4/llvm-19.1.4-windows-amd64-msvc17-libcmt-dbg.7z
         )
         if(CMAKE_BUILD_TYPE STREQUAL "Debug")
             message("Loading Windows LLVM debug libraries, this may take a while...")
@@ -173,42 +173,42 @@ if(C3_WITH_LLVM)
 
     if(NOT C3_LINK_DYNAMIC)
         set(LLVM_LINK_COMPONENTS
-            AllTargetsAsmParsers
-            AllTargetsCodeGens
-            AllTargetsDescs
-            AllTargetsDisassemblers
-            AllTargetsInfos
-            Analysis
-            AsmPrinter
-            BitReader
-            Core
-            DebugInfoPDB
-            InstCombine
-            IrReader
-            LibDriver
-            Linker
-            LTO
-            MC
-            MCDisassembler
-            native
-            nativecodegen
-            Object
-            Option
-            ScalarOpts
-            Support
-            Target
-            TransformUtils
-            WindowsManifest
-            WindowsDriver
+                AllTargetsAsmParsers
+                AllTargetsCodeGens
+                AllTargetsDescs
+                AllTargetsDisassemblers
+                AllTargetsInfos
+                Analysis
+                AsmPrinter
+                BitReader
+                Core
+                DebugInfoPDB
+                InstCombine
+                IrReader
+                LibDriver
+                Linker
+                LTO
+                MC
+                MCDisassembler
+                native
+                nativecodegen
+                Object
+                Option
+                ScalarOpts
+                Support
+                Target
+                TransformUtils
+                WindowsManifest
+                WindowsDriver
         )
 
         llvm_map_components_to_libnames(llvm_libs ${LLVM_LINK_COMPONENTS})
 
-        if(NOT ${C3_LLD_DIR} EQUAL "" AND EXISTS ${C3_LLD_DIR}) 
+        if(NOT ${C3_LLD_DIR} EQUAL "" AND EXISTS ${C3_LLD_DIR})
             message("C3_LLD_DIR: " ${C3_LLD_DIR})
             set(LLVM_LIBRARY_DIRS
-            "${LLVM_LIBRARY_DIRS}"
-            "${C3_LLD_DIR}"
+                    "${LLVM_LIBRARY_DIRS}"
+                    "${C3_LLD_DIR}"
             )
             list(REMOVE_DUPLICATES LLVM_LIBRARY_DIRS)
         endif()
@@ -244,13 +244,13 @@ endif()
 if(C3_WITH_LLVM)
     find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     set(lld_libs
-        ${LLD_COFF}
-        ${LLD_COMMON}
-        ${LLD_WASM}
-        ${LLD_MINGW}
-        ${LLD_ELF}
-        ${LLD_MACHO}
-        )
+            ${LLD_COFF}
+            ${LLD_COMMON}
+            ${LLD_WASM}
+            ${LLD_MINGW}
+            ${LLD_ELF}
+            ${LLD_MACHO}
+    )
 
     if (APPLE)
         set(lld_libs ${lld_libs} xar)
@@ -264,7 +264,7 @@ if(C3_WITH_LLVM)
                 # Unused
                 # ${RT_UBSAN_DYNAMIC}
                 # ${RT_LSAN_DYNAMIC}
-            )
+        )
     endif()
 
     message(STATUS "linking to llvm libs ${lld_libs}")
@@ -343,10 +343,10 @@ add_executable(c3c
         src/utils/cpus.c
         src/utils/unzipper.c
         src/compiler/decltable.c
-        src/compiler/mac_support.c 
+        src/compiler/mac_support.c
         src/compiler/windows_support.c
         src/compiler/codegen_asm.c
-        src/compiler/asm_target.c 
+        src/compiler/asm_target.c
         src/compiler/expr.c
         src/utils/time.c
         src/utils/http.c
@@ -354,7 +354,7 @@ add_executable(c3c
         src/build/common_build.c
         src/compiler/sema_const.c
         ${CMAKE_BINARY_DIR}/git_hash.h
-        )
+)
 
 if(GIT_FOUND AND EXISTS "${CMAKE_SOURCE_DIR}/.git")
     # We are inside of a git repository so rebuilding the hash every time something changes.
@@ -370,18 +370,18 @@ else()
 endif()
 
 if(C3_WITH_LLVM)
-    target_sources(c3c PRIVATE 
-        src/compiler/llvm_codegen.c
-        src/compiler/llvm_codegen_debug_info.c
-        src/compiler/llvm_codegen_expr.c
-        src/compiler/llvm_codegen_function.c
-        src/compiler/llvm_codegen_instr.c
-        src/compiler/llvm_codegen_module.c
-        src/compiler/llvm_codegen_stmt.c
-        src/compiler/llvm_codegen_type.c
-        src/compiler/llvm_codegen_value.c
-        src/compiler/llvm_codegen_storeload.c
-        src/compiler/llvm_codegen_builtins.c)
+    target_sources(c3c PRIVATE
+            src/compiler/llvm_codegen.c
+            src/compiler/llvm_codegen_debug_info.c
+            src/compiler/llvm_codegen_expr.c
+            src/compiler/llvm_codegen_function.c
+            src/compiler/llvm_codegen_instr.c
+            src/compiler/llvm_codegen_module.c
+            src/compiler/llvm_codegen_stmt.c
+            src/compiler/llvm_codegen_type.c
+            src/compiler/llvm_codegen_value.c
+            src/compiler/llvm_codegen_storeload.c
+            src/compiler/llvm_codegen_builtins.c)
 
     target_compile_definitions(c3c PUBLIC LLVM_AVAILABLE=1)
     add_library(c3c_wrappers STATIC wrapper/src/wrapper.cpp)
@@ -409,7 +409,7 @@ if (C3_USE_TB)
             tilde-backend/src/tb/x64/*.c
             tilde-backend/src/tb/wasm/*.c
             tilde-backend/src/tb/aarch64/*.c
-            )
+    )
     target_sources(c3c PRIVATE
             src/compiler/tilde_codegen.c
             src/compiler/tilde_codegen_instr.c
@@ -447,7 +447,7 @@ if(C3_WITH_LLVM)
 
     target_link_libraries(c3c_wrappers ${llvm_libs} ${lld_libs})
 
-else() 
+else()
 
     target_link_libraries(c3c ${llvm_libs} miniz ${lld_libs})
 
@@ -507,10 +507,10 @@ if(MSVC)
     if(C3_WITH_LLVM)
         set(clang_lib_dir ${llvm_dir}/lib/clang/${C3_LLVM_VERSION}/lib/windows)
         set(sanitizer_runtime_libraries
-            ${clang_lib_dir}/clang_rt.asan-x86_64.lib
-            ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
-            ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
-            ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
+                ${clang_lib_dir}/clang_rt.asan-x86_64.lib
+                ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.lib
+                ${clang_lib_dir}/clang_rt.asan_dynamic-x86_64.dll
+                ${clang_lib_dir}/clang_rt.asan_dynamic_runtime_thunk-x86_64.lib)
     endif()
 else()
     message(STATUS "using gcc/clang warning switches")
@@ -532,17 +532,17 @@ endif()
 
 if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
     add_custom_command(TARGET c3c POST_BUILD
-        COMMAND "${CMAKE_COMMAND}" -E rm -rf -- $<TARGET_FILE_DIR:c3c>/c3c_rt
-        COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:c3c>/c3c_rt
-        COMMAND "${CMAKE_COMMAND}" -E copy ${sanitizer_runtime_libraries} $<TARGET_FILE_DIR:c3c>/c3c_rt
-        VERBATIM
-        COMMENT "Copying sanitizer runtime libraries to output directory")
+            COMMAND "${CMAKE_COMMAND}" -E rm -rf -- $<TARGET_FILE_DIR:c3c>/c3c_rt
+            COMMAND "${CMAKE_COMMAND}" -E make_directory $<TARGET_FILE_DIR:c3c>/c3c_rt
+            COMMAND "${CMAKE_COMMAND}" -E copy ${sanitizer_runtime_libraries} $<TARGET_FILE_DIR:c3c>/c3c_rt
+            VERBATIM
+            COMMENT "Copying sanitizer runtime libraries to output directory")
 
     if (APPLE)
         # Change LC_ID_DYLIB to be rpath-based instead of having an absolute path
         add_custom_command(TARGET c3c POST_BUILD
-            COMMAND find $<TARGET_FILE_DIR:c3c>/c3c_rt -type f -name "*.dylib" -execdir ${LLVM_TOOLS_BINARY_DIR}/llvm-install-name-tool -id @rpath/{} {} $<SEMICOLON>
-            VERBATIM)
+                COMMAND find $<TARGET_FILE_DIR:c3c>/c3c_rt -type f -name "*.dylib" -execdir ${LLVM_TOOLS_BINARY_DIR}/llvm-install-name-tool -id @rpath/{} {} $<SEMICOLON>
+                VERBATIM)
     endif()
 
     install(DIRECTORY $<TARGET_FILE_DIR:c3c>/c3c_rt/ DESTINATION bin/c3c_rt)
