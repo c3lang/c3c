@@ -24,6 +24,7 @@ static LLVMMetadataRef llvm_debug_enum_type(GenContext *c, Type *type, LLVMMetad
 
 INLINE LLVMMetadataRef llvm_create_debug_location_with_inline(GenContext *c, unsigned row, unsigned col, LLVMMetadataRef scope)
 {
+	if (!c->debug.emit_expr_loc) col = 0;
 	return LLVMDIBuilderCreateDebugLocation(c->context, row, col,
 	                                 scope, c->debug.block_stack->inline_loc ? c->debug.block_stack->inline_loc : NULL);
 }
@@ -223,6 +224,7 @@ void llvm_emit_debug_location(GenContext *c, SourceSpan location)
 	LLVMMetadataRef oldloc = LLVMGetCurrentDebugLocation2(c->builder);
 	if (oldloc && c->last_emitted_loc.a == location.a) return;
 	LLVMMetadataRef loc = c->last_loc = llvm_create_debug_location(c, location);
+	if (!c->debug.emit_expr_loc) location.col = 0;
 	c->last_emitted_loc.a = location.a;
 	LLVMSetCurrentDebugLocation2(c->builder, loc);
 
