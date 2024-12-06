@@ -33,6 +33,8 @@
 - Enforce single module compilation for static libraries to make constructors run properly.
 - Crash when using --no-obj without compile-only. #1653
 - Do not produce expression locations for windows.
+- Issue where multiple methods were accepted for the same type.
+- Issue where a method was linked to a type alias instead of the underlying type.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

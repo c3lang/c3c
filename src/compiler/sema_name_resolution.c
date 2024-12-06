@@ -760,10 +760,11 @@ MOD_FOUND:
 
 Decl *sema_find_extension_method_in_list(Decl **extensions, Type *type, const char *method_name)
 {
+	ASSERT0(type == type->canonical);
 	FOREACH(Decl *, extension, extensions)
 	{
 		if (extension->name != method_name) continue;
-		if (type_infoptr(extension->func_decl.type_parent)->type->canonical == type) return extension;
+		if (typeget(extension->func_decl.type_parent) == type) return extension;
 	}
 	return NULL;
 }

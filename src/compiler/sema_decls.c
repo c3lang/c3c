@@ -1968,8 +1968,8 @@ static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl
 
 	// Did we already define it externally?
 	Decl *other = sema_find_extension_method_in_list(unit->local_method_extensions, parent_type, name);
-	if (!other) sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
-	if (!other) sema_find_extension_method_in_list(compiler.context.method_extensions, parent_type, name);
+	if (!other) other = sema_find_extension_method_in_list(unit->module->private_method_extensions, parent_type, name);
+	if (!other) other = sema_find_extension_method_in_list(compiler.context.method_extensions, parent_type, name);
 	if (other)
 	{
 		SEMA_ERROR(method, "This %s is already defined.", method_name_by_decl(method));
@@ -4556,11 +4556,12 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 	if (!sema_resolve_type_info(context, parent_type_info, method->decl_kind == DECL_MACRO ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 
 	// Can the type have methods?
-	Type *parent_type = parent_type_info->type;
+	Type *parent_type = parent_type_info->type = parent_type_info->type->canonical;
 	if (!type_may_have_method(parent_type))
 	{
 		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
+
 
 	// We need at least one argument (the parent type)
 	if (!vec_size(method->func_decl.signature.params))
