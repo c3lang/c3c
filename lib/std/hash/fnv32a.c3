@@ -8,7 +8,7 @@ distinct Fnv32a = uint;
 const FNV32A_START @private = 0x811c9dc5;
 const FNV32A_MUL @private = 0x01000193;
 
-macro void @update(uint* &h, char x) @private => *h = (*h * FNV32A_MUL) ^ x;
+macro void @update(uint* &h, char x) @private => *h = (*h ^ x) * FNV32A_MUL;
 
 fn void Fnv32a.init(&self)
 {
@@ -27,7 +27,9 @@ fn void Fnv32a.update(&self, char[] data)
 
 macro void Fnv32a.update_char(&self, char c)
 {
-	@update(*self, x);
+	uint h = (uint)*self;
+	@update(h, c);
+	*self = (Fnv32a)h;
 }
 
 fn uint encode(char[] data)
