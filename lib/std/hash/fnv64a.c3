@@ -8,7 +8,7 @@ distinct Fnv64a = ulong;
 const FNV64A_START @private = 0xcbf29ce484222325;
 const FNV64A_MUL @private = 0x00000100000001b3;
 
-macro void @update(ulong* &h, char x) @private => *h = (*h ^ x) * FNV64A_MUL;
+macro void @update(&h, char x) @private => *h = (*h ^ ($typeof(*h))x) * FNV64A_MUL;
 
 fn void Fnv64a.init(&self)
 {
@@ -17,19 +17,17 @@ fn void Fnv64a.init(&self)
 
 fn void Fnv64a.update(&self, char[] data)
 {
-	ulong h = (ulong)*self;
+	Fnv64a h = *self;
 	foreach (char x : data)
 	{
 		@update(h, x);
 	}
-	*self = (Fnv64a)h;
+	*self = h;
 }
 
 macro void Fnv64a.update_char(&self, char c)
 {
-	ulong h = (ulong)*self;
-	@update(h, c);
-	*self = (Fnv64a)h;
+	@update(*self, c);
 }
 
 fn ulong encode(char[] data)
