@@ -1184,3 +1184,61 @@ macro long[<*>] long[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, di
  @require @is_same_vector_or_scalar(self, div) `div must be a vector of the same type as self, or be an integer scalar`
 *>
 macro ulong[<*>] ulong[<*>].muldiv(self, mul, div) => mul_div_helper(self, mul, div);
+
+<*
+@require types::is_int($typeof(a)) `The input must be an integer`
+@require types::is_int($typeof(b)) `The input must be an integer`
+*>
+macro _gcd(a, b) @private
+{
+	if (a == 0) return b;
+	if (b == 0) return a;
+
+	var $Type = $typeof(a);
+	$Type r, aa, ab;
+	aa = abs(a);
+	ab = abs(b);
+	while (ab != 0)
+	{
+		r = aa % ab;
+		aa = ab;
+		ab = r;
+	}
+	return aa;
+}
+
+<*
+Calculate the least common multiple for the provided arguments.
+
+@require $vacount >= 2 `At least two arguments are required.`
+*>
+macro lcm(...)
+{
+	$typeof($vaarg[0]) result = $vaarg[0];
+	$for (var $i = 1; $i < $vacount; $i++)
+		$if $defined(result.lcm):
+			result = result.lcm($vaarg[$i]);
+		$else
+			result = (abs($vaarg[$i]) * abs(result)) / (_gcd($vaarg[$i], result));
+		$endif
+	$endfor
+	return result;
+}
+
+<*
+Calculate the greatest common divisor for the provided arguments.
+
+@require $vacount >= 2 `At least two arguments are required.`
+*>
+macro gcd(...)
+{
+	$typeof($vaarg[0]) result = $vaarg[0];
+	$for (var $i = 1; $i < $vacount; $i++)
+		$if $defined(result.gcd):
+			result = result.gcd($vaarg[$i]);
+		$else
+			result = _gcd($vaarg[$i], result);
+		$endif
+	$endfor
+	return result;
+}

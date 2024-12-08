@@ -43,3 +43,19 @@ fn void test_init_string_radix()
 	a.init_string_radix("123", 16)!!;
 	assert(a.equals(bigint::from_int(0x123)));
 }
+
+fn void test_gcd()
+{
+	BigInt a = bigint::from_int(15);
+	BigInt b = bigint::from_int(20);
+	assert(a.gcd(b).equals(bigint::from_int(5)));
+	assert(math::gcd(a,b).equals(bigint::from_int(5)));
+}
+
+fn void test_lcm()
+{
+	BigInt a = bigint::from_int(11);
+	BigInt b = bigint::from_int(17);
+	assert(a.lcm(b).equals(bigint::from_int(11*17)));
+	assert(math::lcm(a,b).equals(bigint::from_int(11*17)));
+}
