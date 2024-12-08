@@ -2883,7 +2883,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
-	if (!sema_analyse_expr_check(context, subscripted, check)) return false;
+	if (!sema_analyse_expr_check(context, subscripted, CHECK_VALUE)) return false;
 
 	// If it is an lvalue then check that it is assignable.
 	if (check == CHECK_LVALUE && !sema_expr_check_assign(context, expr)) return false;

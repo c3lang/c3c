@@ -1,0 +1,61 @@
+// #target: macos-x64
+module test;
+import std::io;
+import std::collections::list;
+
+List(<int[3]>) x;
+
+struct Map
+{
+	char[20][] data;
+	int width;
+}
+fn int Map.len(self) @inline @operator(len) => self.width;
+fn char[] Map.get(self, int i) @inline @operator([]) => self.data[i][:self.width];
+
+fn void main ()
+{
+  x.temp_init();
+  int[3] y = { 1, 2, 3 };
+  x.push(y);
+  x[0][0] = 4;
+  char[20][20] z;
+  Map foo = { z[:10], 10 };
+  foo[3][4] = 123;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %y = alloca [3 x i32], align 4
+  %coerce = alloca [3 x i32], align 8
+  %z = alloca [20 x [20 x i8]], align 16
+  %foo = alloca %Map, align 8
+  %result = alloca %"char[]", align 8
+  %0 = call ptr @"std_collections_list$a3$int$.List.temp_init"(ptr @test.x, i64 16)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %y, i32 12, i1 false)
+  %lo = load i64, ptr %coerce, align 8
+  %ptradd = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load i32, ptr %ptradd, align 8
+  call void @"std_collections_list$a3$int$.List.push"(ptr @test.x, i64 %lo, i32 %hi) #4
+  %1 = load i64, ptr @test.x, align 8
+  %lt = icmp ult i64 0, %1
+  call void @llvm.assume(i1 %lt)
+  %2 = load ptr, ptr getelementptr inbounds (i8, ptr @test.x, i64 32), align 8
+  store i32 4, ptr %2, align 4
+  call void @llvm.memset.p0.i64(ptr align 16 %z, i8 0, i64 400, i1 false)
+  %3 = insertvalue %"char[20][]" undef, ptr %z, 0
+  %4 = insertvalue %"char[20][]" %3, i64 10, 1
+  store %"char[20][]" %4, ptr %foo, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %foo, i64 16
+  store i32 10, ptr %ptradd1, align 8
+  %5 = call { ptr, i64 } @test.Map.get(ptr byval(%Map) align 8 %foo, i32 3) #4
+  store { ptr, i64 } %5, ptr %result, align 8
+  %6 = load ptr, ptr %result, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %6, i64 4
+  store i8 123, ptr %ptradd2, align 1
+  ret void
+}
+
