@@ -1679,27 +1679,29 @@ RETRY:
 	if (to_pointee == from_pointee) return TYPE_SAME;
 	if (type_is_subtype(to_pointee, from_pointee)) return TYPE_SAME;
 
-	if (to_pointee->type_kind != from_pointee->type_kind)
+	if (type_is_matching_int(to_pointee, from_pointee)) return TYPE_SAME_INT_SIZE;
+
+	if (type_is_any_arraylike(from_pointee))
 	{
 		TypeCmpResult res_current = TYPE_SAME;
 		if (type_abi_alignment(to_pointee) > type_abi_alignment(from_pointee)) res_current = TYPE_ALIGNMENT_INCREASE;
-		if (type_is_matching_int(to_pointee, from_pointee)) return TYPE_SAME_INT_SIZE;
 
-		if (type_is_any_arraylike(from_pointee))
+		// Try array equivalence.
+		if (type_is_any_arraylike(to_pointee))
 		{
-			// Try array equivalence.
-			if (type_is_any_arraylike(to_pointee))
+			TypeCmpResult res = type_array_is_equivalent(context, from_pointee, to_pointee, flatten_distinct);
+			if (res != TYPE_MISMATCH) return res == TYPE_SAME ? res_current : res;
+			if (to_pointee->array.len == from_pointee->array.len && to_pointee->array.base->canonical == from_pointee->array.base->canonical)
 			{
-				TypeCmpResult res = type_array_is_equivalent(context, to_pointee, from_pointee, flatten_distinct);
-				if (res != TYPE_MISMATCH) return res == TYPE_SAME ? res_current : res;
+				return res_current;
 			}
-			// A possible int[4]* -> int* decay?
-			TypeCmpResult res = type_is_pointer_equivalent(context, type_get_ptr(from_pointee->array.base), to_pointer, flatten_distinct);
-			return res == TYPE_SAME ? res_current : res;
 		}
-		// Not arraylike and no array decay. Failure.
-		return TYPE_MISMATCH;
+		// A possible int[4]* -> int* decay?
+		TypeCmpResult res = type_is_pointer_equivalent(context, to_pointer, type_get_ptr(from_pointee->array.base), flatten_distinct);
+		if (res == TYPE_SAME) return res_current;
 	}
+
+	if (to_pointee->type_kind != from_pointee->type_kind) return TYPE_MISMATCH;
 
 	if (to_pointee->type_kind == TYPE_FUNC_RAW && from_pointee->type_kind == TYPE_FUNC_RAW)
 	{

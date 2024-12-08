@@ -37,6 +37,7 @@
 - Issue where a method was linked to a type alias instead of the underlying type.
 - Fix Fnv1a encoding.
 - Fix issue with accessing arrays in access-overloaded types, e.g. `list[1][2]` #1665.
+- Cast removing arbitrary array indices and converting them to pointers should always be fine #1664
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
