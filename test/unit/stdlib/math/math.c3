@@ -195,3 +195,27 @@ fn void! test_muldiv()
 	ichar[<4>] k = {20, 30, 40, 50};
 	assert(k.muldiv(20,-10) == ichar[<4>]{-40,-60,-80,-100});
 }
+
+fn void! test_gcd() @test
+{
+	assert(math::gcd(20,15) == 5);
+	assert(math::gcd(15,20) == 5);
+	assert(math::gcd(-15,20) == 5);
+	assert(math::gcd(15,-20) == 5);
+	assert(math::gcd(-15,-20) == 5);
+	assert(math::gcd(5,15,20) == 5);
+	assert(math::gcd(1,2,3) == 1);
+	assert(math::gcd(2,4,6,8) == 2);
+}
+
+fn void! test_lcm() @test
+{
+	assert(math::lcm(4,5) == 20);
+	assert(math::lcm(6,10) == 30);
+	assert(math::lcm(-8,20) == 40);
+	assert(math::lcm(8,-20) == 40);
+	assert(math::lcm(-8,-20) == 40);
+	assert(math::lcm(11,17) == 11*17);
+	assert(math::lcm(11,17,227,263) == 11*17*227*263);
+}
+

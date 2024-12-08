@@ -328,7 +328,7 @@ fn BigInt BigInt.unary_minus(&self)
 }
 
 
-macro void BigInt.div(self, BigInt other)
+macro BigInt BigInt.div(self, BigInt other)
 {
 	self.div_this(other);
 	return self;
@@ -829,6 +829,14 @@ fn BigInt BigInt.gcd(&self, BigInt other)
 		y = g;
 	}
 	return g;
+}
+
+fn BigInt BigInt.lcm(&self, BigInt other)
+{
+	BigInt x = self.abs();
+	BigInt y = other.abs();
+	BigInt g = y.mult(x);
+	return g.div(x.gcd(y));
 }
 
 <*
