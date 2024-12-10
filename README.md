@@ -55,7 +55,7 @@ fn void Stack.push(Stack* this, Type element)
     if (this.capacity == this.size)
     {
         this.capacity *= 2;
-		if (this.capacity < 16) this.capacity = 16;
+        if (this.capacity < 16) this.capacity = 16;
         this.elems = realloc(this.elems, Type.sizeof * this.capacity);
     }
     this.elems[this.size++] = element;
