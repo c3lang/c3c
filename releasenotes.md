@@ -20,7 +20,7 @@
 - Support &a[0] returning the distinct type when applying it to a distinct of a pointer.
 - Fix error when calling `HashMap.remove` on uninitialized `HashMap`.
 - Fix issue with resolved try-unwrap in defer.
-- Fix issue with overloaded subscript and ++/--.
+- Fix issue with overloaded subscript and ++/-- and assign ops (e.g. `*=`)
 - Fix issue with properties in different targets not being respected #1633.
 - Indexing an Optional slice would crash in codegen #1636.
 - SimpleHeapAllocator bug when splitting blocks allowed memory overrun.

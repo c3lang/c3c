@@ -3072,7 +3072,7 @@ INLINE bool type_underlying_is_numeric(Type *type)
 INLINE bool type_underlying_may_add_sub(Type *type)
 {
 	type = type_flatten(type);
-	return type->type_kind == TYPE_ENUM || type_is_numeric(type_flatten(type));
+	return type->type_kind == TYPE_ENUM || type->type_kind == TYPE_POINTER || type_is_numeric(type_flatten(type));
 }
 
 INLINE bool type_flat_is_vector(Type *type)
