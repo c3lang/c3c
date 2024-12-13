@@ -106,6 +106,15 @@ fn void test_mat2()
 		assert(calc.m == value.m);
 }
 
+fn void! test_mat2_inverse()
+{
+		Matrix2 a = { 3, 5, 6, 2 };
+		Matrix2 a_inv = a.inverse()!;
+		double sum = ((double[<4>])a_inv.mul(a).m).sum();
+		assert(math::abs(sum - 2.0) < math::FLOAT_EPSILON,
+			"wrong inverse: sum of all elements should be 2, but got: %g", sum);
+}
+
 fn void test_vec3()
 {
 	Vec3 cross = Vec3{2,3,4}.cross(Vec3{5,6,7});
