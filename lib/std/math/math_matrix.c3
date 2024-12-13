@@ -197,7 +197,7 @@ fn Real Matrix4x4.determinant(&self)
 
 fn Matrix2x2 Matrix2x2.adjoint(&self)
 {
-	return { self.m00, -self.m01, -self.m10, self.m11 };
+	return { self.m11, -self.m01, -self.m10, self.m00 };
 }
 
 fn Matrix3x3 Matrix3x3.adjoint(&self)

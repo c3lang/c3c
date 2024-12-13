@@ -39,6 +39,7 @@
 - Fix issue with accessing arrays in access-overloaded types, e.g. `list[1][2]` #1665.
 - Cast removing arbitrary array indices and converting them to pointers should always be fine #1664
 - Incorrect "no-libc" definition of `cos`, making it unavailable for wasm.
+- Fix issue with the adjoint and inverse calculations for `Matrix2x2`.
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.
