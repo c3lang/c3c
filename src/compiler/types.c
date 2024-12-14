@@ -1154,6 +1154,7 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 
 Type *type_get_array(Type *arr_type, ArraySize len)
 {
+	ASSERT(len > 0, "Created a zero length array");
 	ASSERT0(type_is_valid_for_array(arr_type));
 	return type_create_array(arr_type, len, false, false);
 }

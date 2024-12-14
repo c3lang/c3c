@@ -1751,6 +1751,11 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 		len = new_len;
 		advance(c);
 	}
+	if (len == 0)
+	{
+		PRINT_ERROR_LAST("A byte array must be at least 1 byte long. While an array cannot be zero length, you can initialize a zero length slice using '{}'.");
+		return poisoned_expr;
+	}
 	Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST);
 	expr_bytes->const_expr.bytes.ptr = data;
 	expr_bytes->const_expr.bytes.len = len;
