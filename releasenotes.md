@@ -41,6 +41,7 @@
 - Incorrect "no-libc" definition of `cos`, making it unavailable for wasm.
 - Fix issue with the adjoint and inverse calculations for `Matrix2x2`.
 - It was possible to create 0 length arrays using byte literals. #1678
+- Crash when a constant null typeid is checked for properties. #1679
 
 ### Stdlib changes
 - Add `io::MultiReader`, `io::MultiWriter`, and `io::TeeReader` structs.

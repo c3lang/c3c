@@ -4289,6 +4289,7 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 	if (sema_cast_const(typeid))
 	{
 		Type *type = typeid->const_expr.typeid;
+		if (type == NULL) return false;
 		if (!sema_type_property_is_valid_for_type(type, property)) return false;
 		*was_error = !sema_expr_rewrite_to_type_property(context, expr, type, property, type);
 		return true;
