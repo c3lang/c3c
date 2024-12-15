@@ -239,13 +239,15 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	// And from the actual type.
 	actual_type = type_no_optional(actual_type);
 
+	Type *actual = type_get_indexed_type(actual_type);
+	if (!actual) return actual_type;
+
 	// Grab the underlying indexed type,
 	// because we can only have [*] [] [<*>] [<>] * here
 	Type *indexed = type_get_indexed_type(to_infer);
-	Type *actual = type_get_indexed_type(actual_type);
 
 	// We should always have indexed types.
-	ASSERT0(indexed && actual);
+	ASSERT0(indexed);
 
 	// The underlying type may also be inferred.
 	// In this case, infer it.

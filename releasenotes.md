@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.6.6 Change list
+
+### Changes / improvements
+None
+
+### Fixes
+- Fix case trying to initialize a `char[*]*` from a String.
+
+### Stdlib changes
+None
+
 ## 0.6.5 Change list
 
 ### Changes / improvements
