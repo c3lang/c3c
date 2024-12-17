@@ -131,8 +131,11 @@ fn Map new_from_map(Map other_map, Allocator allocator = null)
 	if (!other_map_impl.count) return (Map)map;
 	foreach (Entry *e : other_map_impl.table)
 	{
-		if (!e) continue;
-		map._put_for_create(e.key, e.value);
+		while (e)
+		{
+			map._put_for_create(e.key, e.value);
+			e = e.next;
+		}
 	}
 	return (Map)map;
 }

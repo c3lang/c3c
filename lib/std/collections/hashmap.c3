@@ -455,8 +455,11 @@ fn void HashMap.put_all_for_create(&map, HashMap* other_map) @private
 	if (!other_map.count) return;
 	foreach (Entry *e : other_map.table)
 	{
-		if (!e) continue;
-		map.put_for_create(e.key, e.value);
+		while (e)
+		{
+			map.put_for_create(e.key, e.value);
+			e = e.next;
+		}
 	}
 }
 

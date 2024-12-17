@@ -7,6 +7,7 @@ None
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
+- Fix Map & HashMap `put_all_for_create` not copying all elements, causing `init_from_map` to create incomplete copy.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
