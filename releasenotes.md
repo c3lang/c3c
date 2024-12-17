@@ -9,7 +9,7 @@ None
 - Fix case trying to initialize a `char[*]*` from a String.
 
 ### Stdlib changes
-None
+- Increase BitWriter.write_bits limit up to 32 bits.
 
 ## 0.6.5 Change list
 
