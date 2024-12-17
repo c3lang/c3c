@@ -45,6 +45,10 @@ struct BitWriter
 	uint len;
 }
 
+// c3 doesn't allow to shift more than bit width of a variable,
+// so use closest byte boundary of 24 instead of 32
+const int WRITER_BITS = 24;
+
 fn void BitWriter.init(&self, OutStream byte_writer)
 {
 	*self = { .writer = byte_writer };
@@ -53,7 +57,9 @@ fn void BitWriter.init(&self, OutStream byte_writer)
 fn void! BitWriter.flush(&self)
 {
 	if (self.len == 0) return;
-	uint bits = self.bits << (32 - self.len);
+
+	int padding = ($sizeof(self.bits) * 8 - self.len);
+	uint bits = self.bits << padding;
 	uint n = (self.len + 7) / 8;
 	char[4] buffer;
 	bitorder::write(bits, &buffer, UIntBE);
@@ -62,24 +68,27 @@ fn void! BitWriter.flush(&self)
 }
 
 <*
- @require nbits <= 8
+ @require nbits <= 32
 *>
 fn void! BitWriter.write_bits(&self, uint bits, uint nbits)
 {
 	if (nbits == 0) return;
-	uint n = self.len + nbits;
-	uint to_write = n / 8;
-	uint left = n % 8;
-	if (to_write > 0)
+	while (self.len + nbits > WRITER_BITS)
 	{
-		ulong lbits;
-		if (self.len > 0) lbits = (ulong)self.bits << (64 - self.len);
-		lbits |= (ulong)(bits >> left) << (64 - (n - left));
-		char[8] buffer;
-		bitorder::write(lbits, &buffer, ULongBE);
-		io::write_all(self.writer, buffer[:to_write])!;
+		uint to_push = WRITER_BITS - self.len;
+		uint bits_to_push = (bits >> (nbits - to_push)) & ((1 << to_push) - 1);
+
+		self.bits <<= to_push;
+		self.bits |= bits_to_push;
+		self.len += to_push;
+		nbits -= to_push;
+
+		self.flush()!;
 	}
-	self.bits <<= left;
-	self.bits |= bits & ((1 << left) - 1);
-	self.len = left;
+
+	if (nbits == 0) return;
+
+	self.bits <<= nbits;
+	self.bits |= bits & ((1 << nbits) - 1);
+	self.len += nbits;
 }
