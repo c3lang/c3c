@@ -17,15 +17,16 @@ macro index_of(array, element)
 }
 
 <*
- @require @typekind(array) == VECTOR || @typekind(array) == ARRAY
- @require @typekind(array[0]) == VECTOR || @typekind(array[0]) == ARRAY
+ @require @typekind(array_ptr) == POINTER
+ @require @typekind(*array_ptr) == VECTOR || @typekind(*array_ptr) == ARRAY
+ @require @typekind((*array_ptr)[0]) == VECTOR || @typekind((*array_ptr)[0]) == ARRAY
 *>
-macro slice2d(array, x = 0, xlen = 0, y = 0, ylen = 0)
+macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 {
-	if (xlen < 1) xlen = $typeof(array[0]).len + xlen;
-	if (ylen < 1) ylen = $typeof(array).len + ylen;
-	var $ElementType = $typeof(array[0][0]);
-	return Slice2d(<$ElementType>) { ($ElementType*)&array, $typeof(array[0]).len, y, ylen, x, xlen };
+	if (xlen < 1) xlen = $typeof((*array_ptr)[0]).len + xlen;
+	if (ylen < 1) ylen = $typeof((*array_ptr)).len + ylen;
+	var $ElementType = $typeof((*array_ptr)[0][0]);
+	return Slice2d(<$ElementType>) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
 }
 
 
@@ -145,9 +146,39 @@ macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
 <*
  @require idy >= 0 && idy < self.ylen
 *>
-macro Type[] Slice2d.get(self, usz idy) @operator([])
+macro Type[] Slice2d.get_row(self, usz idy) @operator([])
 {
 	return (self.ptr + self.inner_len * (idy + self.ystart))[self.xstart:self.xlen];
+}
+
+macro Type Slice2d.get_coord(self, usz[<2>] coord)
+{
+	return *self.get_coord_ref(coord);
+}
+
+macro Type Slice2d.get_xy(self, x, y)
+{
+	return *self.get_xy_ref(x, y);
+}
+
+macro Type* Slice2d.get_xy_ref(self, x, y)
+{
+	return self.ptr + self.inner_len * (y + self.ystart) + self.xstart + x;
+}
+
+macro Type* Slice2d.get_coord_ref(self, usz[<2>] coord)
+{
+	return self.get_xy_ref(coord.x, coord.y);
+}
+
+macro void Slice2d.set_coord(self, usz[<2>] coord, Type value)
+{
+	*self.get_coord_ref(coord) = value;
+}
+
+macro void Slice2d.set_xy(self, x, y, Type value)
+{
+	*self.get_xy_ref(x, y) = value;
 }
 
 <*

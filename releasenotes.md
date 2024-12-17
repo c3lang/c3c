@@ -10,6 +10,7 @@ None
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
+- Updates to `Slice2d`, like `get_xy` and others.
 
 ## 0.6.5 Change list
 
