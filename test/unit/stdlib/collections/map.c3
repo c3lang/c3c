@@ -4,7 +4,8 @@ import std::collections::map;
 import std::sort;
 import std::io;
 
-def Map = HashMap(<String, usz>);
+def TestHashMap = HashMap(<String, usz>);
+def TestMap = Map(<String, usz>);
 
 struct MapTest
 {
@@ -15,7 +16,7 @@ def List = List(<MapTest>);
 
 fn void map()
 {
-    Map m;
+    TestHashMap m;
     assert(!m.is_initialized());
     m.temp_init();
     assert(m.is_initialized());
@@ -57,10 +58,35 @@ fn void map()
 
 fn void map_remove()
 {
-	Map m;
+	TestHashMap m;
 	assert(!@ok(m.remove("A")));
 	m.temp_init();
 	assert(!@ok(m.remove("A")));
 	m.set("A", 0);
 	assert(@ok(m.remove("A")));
+}
+
+fn void map_copy()
+{
+	TestHashMap hash_map;
+	hash_map.temp_init();
+
+	hash_map.set("aa", 1);
+	hash_map.set("b", 2);
+	hash_map.set("bb", 1);
+
+	TestHashMap hash_map_copy;
+	hash_map_copy.temp_init_from_map(&hash_map);
+
+	assert(hash_map_copy.len() == hash_map.len());
+
+	TestMap map = map::temp(<String, usz>)();
+
+	map.set("aa", 1);
+	map.set("b", 2);
+	map.set("bb", 1);
+
+	TestMap map_copy = map::temp_from_map(<String, usz>)(map);
+
+	assert(map_copy.len() == map.len());
 }
