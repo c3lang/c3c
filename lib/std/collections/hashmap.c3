@@ -400,6 +400,21 @@ fn bool HashMap.has_value(&map, Value v) @if(VALUE_IS_EQUATABLE)
 	return false;
 }
 
+fn HashMapIterator HashMap.iter(&self)
+{
+	return { .map = self, .index = -1 };
+}
+
+fn HashMapValueIterator HashMap.value_iter(&self)
+{
+	return { .map = self, .index = -1 };
+}
+
+fn HashMapKeyIterator HashMap.key_iter(&self)
+{
+	return { .map = self, .index = -1 };
+}
+
 // --- private methods
 
 fn void HashMap.add_entry(&map, uint hash, Key key, Value value, uint bucket_index) @private
@@ -529,3 +544,54 @@ fn void HashMap.free_entry(&self, Entry *entry) @local
 	self.free_internal(entry);
 }
 
+
+struct HashMapIterator
+{
+	HashMap* map;
+	int top_index;
+	int index;
+	Entry* current_entry;
+}
+
+distinct HashMapValueIterator = HashMapIterator;
+distinct HashMapKeyIterator = HashMapIterator;
+
+
+<*
+ @require idx < self.map.count
+*>
+fn Entry HashMapIterator.get(&self, usz idx) @operator([])
+{
+	if (idx < self.index)
+	{
+		self.top_index = 0;
+		self.current_entry = null;
+		self.index = -1;
+	}
+	while (self.index != idx)
+	{
+		if (self.current_entry)
+		{
+			self.current_entry = self.current_entry.next;
+			if (self.current_entry) self.index++;
+			continue;
+		}
+		self.current_entry = self.map.table[self.top_index++];
+		if (self.current_entry) self.index++;
+	}
+	return *self.current_entry;
+}
+
+fn Value HashMapValueIterator.get(&self, usz idx) @operator([])
+{
+	return ((HashMapIterator*)self).get(idx).value;
+}
+
+fn Key HashMapKeyIterator.get(&self, usz idx) @operator([])
+{
+	return ((HashMapIterator*)self).get(idx).key;
+}
+
+fn usz HashMapValueIterator.len(self) @operator(len) => self.map.count;
+fn usz HashMapKeyIterator.len(self) @operator(len) => self.map.count;
+fn usz HashMapIterator.len(self) @operator(len) => self.map.count;
