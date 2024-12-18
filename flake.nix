@@ -14,20 +14,24 @@
         default = self.packages.${system}.c3c;
 
         c3c = pkgs.callPackage ./nix/default.nix {};
+        
+        c3c-checks = pkgs.callPackage ./nix/default.nix { 
+          checks = true; 
+        };
 
         c3c-debug = pkgs.callPackage ./nix/default.nix { 
           debug = true; 
         };
 
-        c3c-nochecks = pkgs.callPackage ./nix/default.nix { 
+        c3c-debug-checks = pkgs.callPackage ./nix/default.nix { 
           debug = true; 
-          checks = false; 
+          checks = true; 
         };
       };
 
       devShells = {
         default = pkgs.callPackage ./nix/shell.nix {
-          c3c = self.packages.${system}.c3c-nochecks; 
+          c3c = self.packages.${system}.c3c-debug; 
         };
       };
     }

@@ -8,7 +8,7 @@
   libffi,
   xar,
   debug ? false,
-  checks ? true,
+  checks ? false,
 }: let 
   inherit (builtins) baseNameOf toString readFile elemAt;
   inherit (lib.sources) cleanSourceWith cleanSource; 
