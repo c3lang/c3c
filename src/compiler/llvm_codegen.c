@@ -1298,7 +1298,12 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			}
 			else
 			{
-				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
+				const char *name = scratch_buffer_to_string();
+				if (decl->is_extern && (backend_ref = LLVMGetNamedFunction(c->module, name)))
+				{
+					return decl->backend_ref = backend_ref;
+				}
+				backend_ref = decl->backend_ref = LLVMAddFunction(c->module, name, type);
 			}
 			llvm_append_function_attributes(c, decl);
 			llvm_set_decl_linkage(c, decl);
