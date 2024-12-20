@@ -719,7 +719,12 @@ fn float! String.to_float(s) => s.to_real(float);
 
 fn Splitter String.splitter(self, String split)
 {
-	return Splitter { self, split, 0 };
+	return { .string = self, .split = split };
+}
+
+fn Splitter String.tokenize(self, String split)
+{
+	return { .string = self, .split = split, .tokenize = true };
 }
 
 struct Splitter
@@ -727,6 +732,8 @@ struct Splitter
 	String string;
 	String split;
 	usz current;
+	bool tokenize;
+	int last_index;
 }
 
 fn void Splitter.reset(&self)
@@ -736,18 +743,22 @@ fn void Splitter.reset(&self)
 
 fn String! Splitter.next(&self)
 {
-	usz len = self.string.len;
-	usz current = self.current;
-	if (current >= len) return IteratorResult.NO_MORE_ELEMENT?;
-	String remaining = self.string[current..];
-	usz! next = remaining.index_of(self.split);
-	if (try next)
+	while (true)
 	{
-		defer self.current = current + next + self.split.len;
-		return remaining[:next];
+		usz len = self.string.len;
+		usz current = self.current;
+		if (current >= len) return IteratorResult.NO_MORE_ELEMENT?;
+		String remaining = self.string[current..];
+		usz! next = remaining.index_of(self.split);
+		if (try next)
+		{
+			self.current = current + next + self.split.len;
+			if (!next && self.tokenize) continue;
+			return remaining[:next];
+		}
+		self.current = len;
+		return remaining;
 	}
-	self.current = len;
-	return remaining;
 }
 
 macro String new_struct_to_str(x, Allocator allocator = allocator::heap())
