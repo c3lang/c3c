@@ -167,6 +167,40 @@ fn void! test_ceil() @test
 	assert(math::ceil(vec) == double[<5>] { -123, 124, 1, 0, 0 });
 }
 
+fn void! test_cos() @test
+{
+	int [<5>] in = { 231, 1, 0, -1, -231 };
+	double [<5>] out = { 0.09280621889587707, 0.54030230586813972 , 1., 0.54030230586813972, 0.09280621889587707 };
+	assert(@typeis(math::cos(in[0]), double));
+	assert(@typeis(math::cos((float)in[0]), float));
+	assert(@typeis(math::cos((double)in[0]), double));
+	for (int i = 0; i < 5; i++)
+	{	
+		assert(math::cos(in[i]) == out[i], "cos(%d) is not equal to %f", in[i], out[i]);
+		assert(math::cos((float)in[i]) == (float)out[i], "cos(%f) is not equal to %f", in[i], out[i]);
+		assert(math::cos((double)in[i]) == out[i], "cos(%f) is not equal to %f", in[i], out[i]);
+	}
+	assert(math::cos(double[<2>] { math::PI, 0. }) == double[<2>] { -1., 1. });
+	assert(math::cos(float[<2>] { math::PI, 0. }) == float[<2>] { -1.f, 1.f });
+}
+
+fn void! test_exp() @test
+{
+	int [<5>] in = { 2, 1, 0, -1, -2 };
+	double [<5>] out = { 7.389056098930650, math::E , 1., 0.36787944117144233, 0.1353352832366127 };
+	assert(@typeis(math::exp(in[0]), double));
+	assert(@typeis(math::exp((float)in[0]), float));
+	assert(@typeis(math::exp((double)in[0]), double));
+	for (int i = 0; i < 5; i++)
+	{	
+		assert(math::exp(in[i]) == out[i], "exp(%d) is not equal to %f", in[i], out[i]);
+		assert(math::exp((float)in[i]) == (float)out[i], "exp(%f) is not equal to %f", in[i], out[i]);
+		assert(math::exp((double)in[i]) == out[i], "exp(%f) is not equal to %f", in[i], out[i]);
+	}
+	assert(math::exp(double[<2>] { 1., 0. }) == double[<2>] { math::E, 1. });
+	assert(math::exp(float[<2>] { 1., 0. }) == float[<2>] { math::E, 1.f });
+}
+
 fn void! test_floor() @test
 {
 	double d = -123.1;
@@ -219,6 +253,41 @@ fn void! test_sign() @test
 	y = (uint)-21;
 	assert(math::sign(y) == 1);
 	assert(@typeis(math::sign(y), uint));
+}
+
+
+fn void! test_sin() @test
+{
+	int [<5>] in = { 231, 1, 0, -1, -231 };
+	double [<5>] out = { -0.99568418975810324, 0.84147098480789651 , 0., -0.84147098480789651, 0.99568418975810324 };
+	assert(@typeis(math::sin(in[0]), double));
+	assert(@typeis(math::sin((float)in[0]), float));
+	assert(@typeis(math::sin((double)in[0]), double));
+	for (int i = 0; i < 5; i++)
+	{	
+		assert(math::sin(in[i]) == out[i], "sin(%d) is not equal to %f", in[i], out[i]);
+		assert(math::sin((float)in[i]) == (float)out[i], "sin(%f) is not equal to %f", in[i], out[i]);
+		assert(math::sin((double)in[i]) == out[i], "sin(%f) is not equal to %f", in[i], out[i]);
+	}
+	assert(math::sin(double[<2>] { math::PI_2, -math::PI_2 }) == double[<2>] { 1., -1. });
+	assert(math::sin(float[<2>] { math::PI_2, -math::PI_2 }) == float[<2>] { 1.f, -1.f });
+}
+
+fn void! test_tan() @test
+{
+	int [<5>] in = { 231, 1, 0, -1, -231 };
+	double [<5>] out = { -10.728636524619113, 1.5574077246549022 , 0., -1.5574077246549022, 10.728636524619113 };
+	assert(@typeis(math::tan(in[0]), double));
+	assert(@typeis(math::tan((float)in[0]), float));
+	assert(@typeis(math::tan((double)in[0]), double));
+	for (int i = 0; i < 5; i++)
+	{	
+		assert(math::tan(in[i]) == out[i], "tan(%d) is not equal to %f", in[i], out[i]);
+		assert(math::tan((float)in[i]) == (float)out[i], "tan(%f) is not equal to %f", in[i], out[i]);
+		assert(math::tan((double)in[i]) == out[i], "tan(%f) is not equal to %f", in[i], out[i]);
+	}
+	assert(math::tan(double[<2>] { 0., 0. }) == double[<2>] { 0., 0. });
+	assert(math::tan(float[<2>] { 0., 0. }) == float[<2>] { 0.f, 0.f });
 }
 
 fn void! test_trunc() @test
