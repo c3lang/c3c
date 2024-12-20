@@ -16,10 +16,92 @@ fn void! test_abs() @test
 	assert(math::abs(yy) == double[<3>] { 1, 0.5, 1000 });
 }
 
+fn void! test_acos() @test
+{
+	int [<5>] in = { 231, -231, 1, 0, -1 };
+	double [<3>] out = { 0., math::PI_2, math::PI };
+	assert(@typeis(math::acos(in[0]), double));
+	assert(@typeis(math::acos((float)in[0]), float));
+	assert(@typeis(math::acos((double)in[0]), double));
+	for (int i = 0; i < 2; i++)
+	{
+		assert(math::is_nan(math::acos(in[i])), "acos(%d)=%f is not nan", in[i]);
+		assert(math::is_nan(math::acos((float)in[i])), "acos(%f) is not nan", in[i]);
+		assert(math::is_nan(math::acos((double)in[i])), "acos(%f) is not nan", in[i]);
+	}
+	for (int i = 2; i < 5; i++)
+	{
+		int ii = i-2;
+		assert(math::acos(in[i]) == out[ii], "acos(%d) is not equal to %f", in[i], out[ii]);
+		assert(math::acos((float)in[i]) == (float)out[ii], "acos(%f) is not equal to %f", in[i], out[ii]);
+		assert(math::acos((double)in[i]) == out[ii], "acos(%f) is not equal to %f", in[i], out[ii]);
+	}
+}
+
+
+fn void! test_acosh() @test
+{
+	int [<5>] in = { 0, -1, 1, 2, 231 };
+	double [<3>] out = { 0., 1.3169578969248166, 6.135560205979194 };
+	assert(@typeis(math::acosh(in[0]), double));
+	assert(@typeis(math::acosh((float)in[0]), float));
+	assert(@typeis(math::acosh((double)in[0]), double));
+	for (int i = 0; i < 2; i++)
+	{
+		assert(math::is_nan(math::acosh(in[i])), "acosh(%d)=%f is not nan", in[i]);
+		assert(math::is_nan(math::acosh((float)in[i])), "acosh(%f) is not nan", in[i]);
+		assert(math::is_nan(math::acosh((double)in[i])), "acosh(%f) is not nan", in[i]);
+	}
+	for (int i = 2; i < 5; i++)
+	{
+		int ii = i-2;
+		assert(math::acosh(in[i]) == out[ii], "acosh(%d) is not equal to %f", in[i], out[ii]);
+		assert(math::acosh((float)in[i]) == (float)out[ii], "acosh(%f) is not equal to %f", in[i], out[ii]);
+		assert(math::acosh((double)in[i]) == out[ii], "acosh(%f) is not equal to %f", in[i], out[ii]);
+	}
+}
+
+fn void! test_asin() @test
+{
+	int [<5>] in = { 231, -231, 1, 0, -1 };
+	double [<3>] out = { math::PI_2, 0., -math::PI_2 };
+	assert(@typeis(math::asin(in[0]), double));
+	assert(@typeis(math::asin((float)in[0]), float));
+	assert(@typeis(math::asin((double)in[0]), double));
+	for (int i = 0; i < 2; i++)
+	{
+		assert(math::is_nan(math::asin(in[i])), "asin(%d)=%f is not nan", in[i]);
+		assert(math::is_nan(math::asin((float)in[i])), "asin(%f) is not nan", in[i]);
+		assert(math::is_nan(math::asin((double)in[i])), "asin(%f) is not nan", in[i]);
+	}
+	for (int i = 2; i < 5; i++)
+	{
+		int ii = i-2;
+		assert(math::asin(in[i]) == out[ii], "asin(%d) is not equal to %f", in[i], out[ii]);
+		assert(math::asin((float)in[i]) == (float)out[ii], "asin(%f) is not equal to %f", in[i], out[ii]);
+		assert(math::asin((double)in[i]) == out[ii], "asin(%f) is not equal to %f", in[i], out[ii]);
+	}
+}
+
+fn void! test_asinh() @test
+{
+	int [<5>] in = { 231, 1, 0, -1, -231 };
+	double [<5>] out = { 6.135569576118435, 0.881373587019543, 0., -0.881373587019543, -6.135569576118435 };
+	assert(@typeis(math::asinh(in[0]), double));
+	assert(@typeis(math::asinh((float)in[0]), float));
+	assert(@typeis(math::asinh((double)in[0]), double));
+	for (int i = 0; i < 5; i++)
+	{	
+		assert(math::asinh(in[i]) == out[i], "asinh(%d) is not equal to %f", in[i], out[i]);
+		assert(math::asinh((float)in[i]) == (float)out[i], "asinh(%f) is not equal to %f", in[i], out[i]);
+		assert(math::asinh((double)in[i]) == out[i], "asinh(%f) is not equal to %f", in[i], out[i]);
+	}
+}
+
 fn void! test_atan() @test
 {
-	int [<5>] in = {231, 1, 0, -1, -231};
-	double [<5>] out = { 1.5664673495078371, math::PI_4, 0.f, -math::PI_4, -1.5664673495078371 };
+	int [<5>] in = { 231, 1, 0, -1, -231 };
+	double [<5>] out = { 1.5664673495078372, math::PI_4, 0., -math::PI_4, -1.5664673495078372 };
 	assert(@typeis(math::atan(in[0]), double));
 	assert(@typeis(math::atan((float)in[0]), float));
 	assert(@typeis(math::atan((double)in[0]), double));
@@ -28,6 +110,36 @@ fn void! test_atan() @test
 		assert(math::atan(in[i]) == out[i], "atan(%d) is not equal to %f", in[i], out[i]);
 		assert(math::atan((float)in[i]) == (float)out[i], "atan(%f) is not equal to %f", in[i], out[i]);
 		assert(math::atan((double)in[i]) == out[i], "atan(%f) is not equal to %f", in[i], out[i]);
+	}
+}
+
+fn void! test_atanh() @test
+{
+	int [<4>] in = { 231, -231, 1, -1 };
+	double [<2>] in2 = { 0.5, -0.5 };
+	double [<2>] out = { 0.5493061443340548, -0.5493061443340548 };
+	assert(@typeis(math::atanh(in[0]), double));
+	assert(@typeis(math::atanh((float)in[0]), float));
+	assert(@typeis(math::atanh((double)in[0]), double));
+	for (int i = 0; i < 2; i++)
+	{
+		assert(math::is_nan(math::atanh(in[i])), "atanh(%d)=%f is not nan", in[i]);
+		assert(math::is_nan(math::atanh((float)in[i])), "atanh(%f) is not nan", in[i]);
+		assert(math::is_nan(math::atanh((double)in[i])), "atanh(%f) is not nan", in[i]);
+	}
+	for (int i = 2; i < 4; i++)
+	{
+		assert(math::is_inf(math::atanh(in[i])), "atanh(%d)=%f is not inf", in[i]);
+		assert(math::is_inf(math::atanh((float)in[i])), "atanh(%f) is not inf", in[i]);
+		assert(math::is_inf(math::atanh((double)in[i])), "atanh(%f) is not inf", in[i]);
+	}
+	assert(math::atanh(0) == 0., "atanh(%d) is not equal to %f", 0, 0.);
+	assert(math::atanh(0.f) == 0.f, "atanh(%f) is not equal to %f", 0.f, 0.f);
+	assert(math::atanh(0.) == 0., "atanh(%f) is not equal to %f", 0., 0.);
+	for (int i = 0; i < 2; i++)
+	{
+		assert(math::atanh((float)in2[i]) == (float)out[i], "atanh(%f) is not equal to %f", in2[i], out[i]);
+		assert(math::atanh(in2[i]) == out[i], "atanh(%f) is not equal to %f", in2[i], out[i]);
 	}
 }
 
