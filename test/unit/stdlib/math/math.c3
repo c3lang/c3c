@@ -18,30 +18,17 @@ fn void! test_abs() @test
 
 fn void! test_atan() @test
 {
-	int x = 231;
-	assert(math::atan(x) == 1.5664673495078372);
-	x = 1;
-	assert(math::atan(x) == 0.7853981633974483);
-	x = 0;
-	assert(math::atan(x) == 0.0);
-	x = -1;
-	assert(math::atan(x) == -0.7853981633974483);
-	x = -231;
-	assert(math::atan(x) == -1.5664673495078372);
-	float f = 0;
-	assert(math::atan(f) == 0.0f);
-	f = 1;
-	assert(math::atan(f) == 0.7853981633974483f);
-	f = -1;
-	assert(math::atan(f) == -0.7853981633974483f);
-	assert(@typeis(math::atan(f), float));
-	double d = 0;
-	assert(math::atan(d) == 0.0);
-	d = 1;
-	assert(math::atan(d) == 0.7853981633974483);
-	d = -1;
-	assert(math::atan(d) == -0.7853981633974483);
-	assert(@typeis(math::atan(d), double));
+	int [<5>] in = {231, 1, 0, -1, -231};
+	double [<5>] out = { 1.5664673495078371, math::PI_4, 0.f, -math::PI_4, -1.5664673495078371 };
+	assert(@typeis(math::atan(in[0]), double));
+	assert(@typeis(math::atan((float)in[0]), float));
+	assert(@typeis(math::atan((double)in[0]), double));
+	for (int i = 0; i < 5; i++)
+	{	
+		assert(math::atan(in[i]) == out[i], "atan(%d) is not equal to %f", in[i], out[i]);
+		assert(math::atan((float)in[i]) == (float)out[i], "atan(%f) is not equal to %f", in[i], out[i]);
+		assert(math::atan((double)in[i]) == out[i], "atan(%f) is not equal to %f", in[i], out[i]);
+	}
 }
 
 fn void! test_ceil() @test
