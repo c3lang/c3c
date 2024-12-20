@@ -290,7 +290,7 @@ macro copysign(mag, sgn) => $$copysign(values::promote_int_same(mag, sgn), ($typ
 <*
  @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
 *>
-macro cos(x) => $$cos(x);
+macro cos(x) => $$cos(values::promote_int(x));
 
 <*
  @require values::@is_promotable_to_floatlike(x) `The input must be a number value or float vector`
