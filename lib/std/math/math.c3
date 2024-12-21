@@ -132,6 +132,28 @@ macro deg_to_rad(x) {
 macro abs(x) => $$abs(x);
 
 <*
+ @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ @require values::@is_int(y) || values::@is_float(y) "Expected an integer or floating point value"
+*>
+macro is_approx(x, y, eps)
+{
+	if (x == y) return true;
+	if (is_nan(x) || is_nan(y)) return false;
+	return abs(x-y) <= eps; 
+}
+
+<*
+ @require values::@is_int(x) || values::@is_float(x) "Expected an integer or floating point value"
+ @require values::@is_int(y) || values::@is_float(y) "Expected an integer or floating point value"
+*>
+macro is_approx_rel(x, y, eps)
+{
+	if (x == y) return true;
+	if (is_nan(x) || is_nan(y)) return false;
+	return abs(x-y) <= eps * max(abs(x), abs(y)); 
+}
+
+<*
  @require values::@is_int(x) `The input must be an integer`
 *>
 macro sign(x)
