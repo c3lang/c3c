@@ -1,5 +1,6 @@
 #include "compiler_internal.h"
 #include "../utils/whereami.h"
+#include "../utils/lib.h"
 #if LLVM_AVAILABLE
 #include "c3_llvm.h"
 #endif
@@ -308,6 +309,13 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 static const char *find_linux_crt(void)
 {
 	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
+	const char *archLinuxCrt1Path = "/usr/lib/crt1.o";
+	if (file_exists(archLinuxCrt1Path))
+	{
+		const char *archLinuxPath = "/usr/lib";
+		INFO_LOG("Found crt at %s", archLinuxPath);
+		return archLinuxPath;
+	}
 	const char *path = find_arch_glob_path("/usr/lib/*/crt1.o", 6);
 	if (!path)
 	{
