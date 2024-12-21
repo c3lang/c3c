@@ -370,12 +370,12 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
  */
 static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
-	char c = peek(lexer);
 	if (prev(lexer) == '_')
 	{
 		backtrack(lexer);
 		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
 	}
+	char c = peek(lexer);
 	if (!char_is_alphanum_(c)) return true;
 	switch (c | 32)
 	{
