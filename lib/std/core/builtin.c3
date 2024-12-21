@@ -4,20 +4,21 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
-<*
+/*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
-*>
+*/
 fault IteratorResult { NO_MORE_ELEMENT }
 
-<*
+/*
  Use `SearchResult` when trying to return a value from some collection but the element is missing.
-*>
+*/
 fault SearchResult { MISSING }
 
-<*
+/*
  Use `CastResult` when an attempt at conversion fails.
-*>
+*/
 fault CastResult { TYPE_MISMATCH }
+
 
 def VoidFn = fn void();
 

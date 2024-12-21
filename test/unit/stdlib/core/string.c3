@@ -85,6 +85,54 @@ fn void test_split()
 	assert(strings[1] == "b||c|");
 }
 
+fn void test_split_skip_empty()
+{
+	String test = "abc|b||c|";
+	String[] strings = test.split("|", skip_empty: true);
+	assert(strings.len == 3);
+	assert(strings[0] == "abc");
+	assert(strings[1] == "b");
+	assert(strings[2] == "c");
+	strings = test.split("|", 2, skip_empty: true);
+	assert(strings.len == 2);
+	assert(strings[0] == "abc");
+	assert(strings[1] == "b||c|");
+}
+
+fn void! test_split_to_buffer_skip_empty()
+{
+	String[10] buffer;
+	String test = "abc|b||c|";
+	String[] strings = test.split_to_buffer("|", &buffer, skip_empty: true)!;
+	assert(strings.len == 3);
+	assert(strings[0] == "abc");
+	assert(strings[1] == "b");
+	assert(strings[2] == "c");
+	strings = test.split("|", 2, skip_empty: true);
+	assert(strings.len == 2);
+	assert(strings[0] == "abc");
+	assert(strings[1] == "b||c|");
+}
+
+fn void! test_split_to_buffer()
+{
+	String[5] b;
+	String test = "abc|b||c|";
+	String[] strings = test.split_to_buffer("|", &b)!;
+	assert(strings.len == 5);
+	assert(strings[0] == "abc");
+	assert(strings[1] == "b");
+	assert(strings[2] == "");
+	assert(strings[3] == "c");
+	assert(strings[4] == "");
+	String[4] c;
+	assert(@catch(test.split_to_buffer("|", &c)) == SplitResult.BUFFER_EXCEEDED);
+	strings = test.split("|", 2);
+	assert(strings.len == 2);
+	assert(strings[0] == "abc");
+	assert(strings[1] == "b||c|");
+}
+
 fn void! test_index_of()
 {
 	String test = "hello world hello";

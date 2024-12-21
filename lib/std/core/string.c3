@@ -219,12 +219,14 @@ fn String String.strip_end(string, String needle)
 
  @param [in] s
  @param [in] needle
- @param [&inout] allocator "The allocator to use for the String[]"
  @param max "Max number of elements, 0 means no limit, defaults to 0"
+ @param skip_empty "True to skip empty elements"
+ @param [&inout] allocator "The allocator to use for the String[]"
+
  @require needle.len > 0 "The needle must be at least 1 character long"
  @ensure return.len > 0
 *>
-fn String[] String.split(s, String needle, usz max = 0, Allocator allocator = allocator::heap())
+fn String[] String.split(s, String needle, usz max = 0, Allocator allocator = allocator::heap(), bool skip_empty = false)
 {
 	usz capacity = 16;
 	usz i = 0;
@@ -244,6 +246,11 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator allocator = al
 			res = s;
 			no_more = true;
 		}
+		if (!res.len && skip_empty)
+        {
+        	continue;
+        }
+
 		if (i == capacity)
 		{
 			capacity *= 2;
@@ -261,10 +268,11 @@ fn String[] String.split(s, String needle, usz max = 0, Allocator allocator = al
  @param [in] s
  @param [in] needle
  @param max "Max number of elements, 0 means no limit, defaults to 0"
+ @param skip_empty "True to skip empty elements"
  @require needle.len > 0 "The needle must be at least 1 character long"
  @ensure return.len > 0
 *>
-fn String[] String.new_split(s, String needle, usz max = 0) => s.split(needle, max, allocator::heap()) @inline;
+fn String[] String.new_split(s, String needle, usz max = 0, bool skip_empty) => s.split(needle, max, allocator::heap(), skip_empty) @inline;
 
 <*
  This function is identical to String.split, but implicitly uses the
@@ -273,8 +281,54 @@ fn String[] String.new_split(s, String needle, usz max = 0) => s.split(needle, m
  @param [in] s
  @param [in] needle
  @param max "Max number of elements, 0 means no limit, defaults to 0"
+ @param skip_empty "True to skip empty elements"
 *>
-fn String[] String.tsplit(s, String needle, usz max = 0) => s.split(needle, max, allocator::temp()) @inline;
+fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(needle, max, allocator::temp(), skip_empty) @inline;
+
+fault SplitResult { BUFFER_EXCEEDED }
+
+<*
+ Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
+
+ @param [in] s
+ @param [in] needle
+ @param [inout] buffer
+ @param max "Max number of elements, 0 means no limit, defaults to 0"
+ @require needle.len > 0 "The needle must be at least 1 character long"
+ @ensure return.len > 0
+ @return! SplitResult.BUFFER_EXCEEDED `If there are more elements than would fit the buffer`
+*>
+fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max = 0, bool skip_empty = false)
+{
+	usz max_capacity = buffer.len;
+	usz i = 0;
+	bool no_more = false;
+	while (!no_more)
+	{
+		usz! index = i == max - 1 ? SearchResult.MISSING? : s.index_of(needle);
+		String res @noinit;
+		if (try index)
+		{
+			res = s[:index];
+			s = s[index + needle.len..];
+		}
+		else
+		{
+			res = s;
+			no_more = true;
+		}
+		if (!res.len && skip_empty)
+		{
+			continue;
+		}
+		if (i == max_capacity)
+		{
+			return SplitResult.BUFFER_EXCEEDED?;
+		}
+		buffer[i++] = res;
+	}
+	return buffer[:i];
+}
 
 <*
  Check if a substring is found in the string.

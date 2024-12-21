@@ -15,6 +15,7 @@ None
 - Updates to `Slice2d`, like `get_xy` and others.
 - Added `iter()` `value_iter()` and `key_iter()` to HashMap.
 - Add "tokenizer" to String.
+- Add "skip_empty" to split methods. Add split_to_buffer method.
 
 ## 0.6.5 Change list
 
