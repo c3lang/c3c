@@ -3,7 +3,7 @@
 ## 0.6.6 Change list
 
 ### Changes / improvements
-None
+- Split help into normal and "full" help, #1703
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
