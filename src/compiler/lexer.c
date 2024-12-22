@@ -581,12 +581,6 @@ static inline bool scan_dec(Lexer *lexer)
 		is_float = true;
 		if (!scan_exponent(lexer)) return false;
 	}
-
-	if (prev(lexer) == '_')
-	{
-		backtrack(lexer);
-		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
-	}
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	return new_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
