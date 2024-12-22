@@ -73,7 +73,6 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_UNIT_TEST:
 			return true;
 		case COMMAND_MISSING:
-		case COMMAND_GENERATE_HEADERS:
 		case COMMAND_INIT:
 		case COMMAND_INIT_LIB:
 		case COMMAND_BUILD:
@@ -109,7 +108,6 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
 		case COMMAND_MISSING:
-		case COMMAND_GENERATE_HEADERS:
 		case COMMAND_INIT:
 		case COMMAND_INIT_LIB:
 		case COMMAND_BUILD:
@@ -309,7 +307,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_BUILD:
 			target->output_headers = (target->type == TARGET_TYPE_DYNAMIC_LIB || target->type == TARGET_TYPE_STATIC_LIB) && !options->no_headers;
 			break;
-		case COMMAND_GENERATE_HEADERS:
+		case COMMAND_STATIC_LIB:
+		case COMMAND_DYNAMIC_LIB:
 			target->output_headers = true;
 			break;
 		default:

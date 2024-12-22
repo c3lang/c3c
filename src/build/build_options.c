@@ -289,11 +289,6 @@ static void parse_command(BuildOptions *options)
 		options->command = COMMAND_COMPILE_ONLY;
 		return;
 	}
-	if (arg_match("headers"))
-	{
-		options->command = COMMAND_GENERATE_HEADERS;
-		return;
-	}
 	if (arg_match("static-lib"))
 	{
 		options->command = COMMAND_STATIC_LIB;
@@ -1191,7 +1186,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 			parse_command(&build_options);
 			continue;
 		}
-		if (command_accepts_files(build_options.command) || build_options.command == COMMAND_GENERATE_HEADERS)
+		if (command_accepts_files(build_options.command))
 		{
 			append_file(&build_options);
 			continue;
