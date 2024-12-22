@@ -1,6 +1,5 @@
 #include "compiler_internal.h"
 #include "../utils/whereami.h"
-#include "../utils/lib.h"
 #if LLVM_AVAILABLE
 #include "c3_llvm.h"
 #endif
