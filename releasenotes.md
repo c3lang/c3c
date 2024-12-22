@@ -9,6 +9,7 @@
 - Fix case trying to initialize a `char[*]*` from a String.
 - Fix Map & HashMap `put_all_for_create` not copying all elements, causing `init_from_map` to create incomplete copy.
 - Fix bug when a macro calling an extern function was called in another module also declaring and calling the same function. #1690
+- Fix CRT detection on Arch Linux.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
