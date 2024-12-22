@@ -308,12 +308,12 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 static const char *find_linux_crt(void)
 {
 	if (compiler.build.linuxpaths.crt) return compiler.build.linuxpaths.crt;
-	const char *archLinuxCrt1Path = "/usr/lib/crt1.o";
-	if (file_exists(archLinuxCrt1Path))
+	const char *arch_linux_crt1_path = "/usr/lib/crt1.o";
+	if (file_exists(arch_linux_crt1_path))
 	{
-		const char *archLinuxPath = "/usr/lib";
-		INFO_LOG("Found crt at %s", archLinuxPath);
-		return archLinuxPath;
+		const char *arch_linux_path = "/usr/lib";
+		INFO_LOG("Found crt at %s", arch_linux_path);
+		return arch_linux_path;
 	}
 	const char *path = find_arch_glob_path("/usr/lib/*/crt1.o", 6);
 	if (!path)
