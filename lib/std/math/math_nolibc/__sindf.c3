@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC);
+module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 /* origin: FreeBSD /usr/src/lib/msun/src/k_sinf.c */
 /*

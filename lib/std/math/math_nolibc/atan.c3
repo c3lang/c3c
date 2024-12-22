@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC);
+module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 const double[*] ATANHI @private = {
   4.63647609000806093515e-01, /* atan(0.5)hi 0x3FDDAC67, 0x0561BB4F */

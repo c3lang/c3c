@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC);
+module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 fn double _round(double x) @extern("round") @weak @nostrip
 {

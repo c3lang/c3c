@@ -1,4 +1,4 @@
-module std::math::nolibc @if(env::NO_LIBC);
+module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 fn float powf_broken(float x, float f) @extern("powf") @weak @nostrip
 {
