@@ -347,7 +347,6 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 		}
 		AlignSize member_alignment;
 		if (!sema_set_abi_alignment(context, member->type, &member_alignment)) return false;
-
 		if (!sema_check_struct_holes(context, decl, member)) return false;
 
 		ByteSize member_size = type_size(member->type);

@@ -371,6 +371,7 @@ endif()
 
 if(C3_WITH_LLVM)
     target_sources(c3c PRIVATE
+            src/compiler/c_codegen.c
             src/compiler/llvm_codegen.c
             src/compiler/llvm_codegen_debug_info.c
             src/compiler/llvm_codegen_expr.c
