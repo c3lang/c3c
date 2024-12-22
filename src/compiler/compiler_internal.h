@@ -439,6 +439,7 @@ typedef struct VarDecl_
 			{
 				// Variable
 				void *optional_ref;
+				int optional_id;
 				int tb_optional_reg;
 			};
 		};
@@ -613,6 +614,7 @@ typedef struct Decl_
 	union
 	{
 		void *backend_ref;
+		int backend_id;
 		int tb_register;
 		void *backend_value;
 		void *tb_symbol;
@@ -2120,6 +2122,7 @@ CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
+void **c_gen(Module** modules, unsigned module_count);
 void **llvm_gen(Module** modules, unsigned module_count);
 void **tilde_gen(Module** modules, unsigned module_count);
 

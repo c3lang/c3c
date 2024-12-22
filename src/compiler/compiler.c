@@ -468,6 +468,9 @@ void compiler_compile(void)
 
 	switch (compiler.build.backend)
 	{
+		case BACKEND_C:
+			gen_contexts = c_gen(modules, module_count);
+			error_exit("Unfinished C backend!");
 		case BACKEND_LLVM:
 #if LLVM_AVAILABLE
 			gen_contexts = llvm_gen(modules, module_count);

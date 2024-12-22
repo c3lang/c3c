@@ -208,15 +208,16 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		decl->unit = unit;
 		switch (decl->decl_kind)
 		{
-			case DECL_POISONED:
 			case DECL_ENUM_CONSTANT:
 			case DECL_FAULTVALUE:
-			case DECL_IMPORT:
-			case DECL_LABEL:
-			case DECL_CT_ASSERT:
-			case DECL_CT_ECHO:
 			case DECL_DECLARRAY:
 			case DECL_ERASED:
+			case DECL_LABEL:
+				UNREACHABLE
+			case DECL_POISONED:
+			case DECL_IMPORT:
+			case DECL_CT_ASSERT:
+			case DECL_CT_ECHO:
 			case DECL_FNTYPE:
 			case DECL_CT_INCLUDE:
 			case DECL_CT_EXEC:

@@ -654,6 +654,11 @@ static void parse_option(BuildOptions *options)
 				print_version();
 				exit_compiler(COMPILER_SUCCESS_EXIT);
 			}
+			if ((argopt = match_argopt("backend")))
+			{
+				options->backend = (CompilerBackend)parse_multi_option(argopt, 3, backends);
+				return;
+			}
 			if (match_longopt("run-once"))
 			{
 				options->run_once = true;

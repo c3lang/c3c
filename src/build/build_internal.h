@@ -88,6 +88,12 @@ static const char *optlevels[4] = {
 	[OPTIMIZATION_AGGRESSIVE] = "max",
 };
 
+static const char *backends[3] = {
+		[BACKEND_LLVM] = "llvm",
+		[BACKEND_TB] = "tb",
+		[BACKEND_C] = "c",
+};
+
 static const char *backtrace_levels[2] = {
 	[SHOW_BACKTRACE_OFF] = "off",
 	[SHOW_BACKTRACE_ON] = "on",

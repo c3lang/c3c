@@ -17,8 +17,9 @@
 
 typedef enum
 {
-	BACKEND_LLVM = 1,
-	BACKEND_TB = 2
+	BACKEND_LLVM = 0,
+	BACKEND_TB = 1,
+	BACKEND_C = 2,
 } CompilerBackend;
 
 typedef enum
