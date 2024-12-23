@@ -66,8 +66,8 @@ jobs:
       - name: Compile and run dynlib-test
         run: |
           cd resources/examples/dynlib-test
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe dynamic-lib add.c3
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe compile-run test.c3 -l ./add.lib          
+          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv dynamic-lib add.c3
+          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
 
       - name: Vendor-fetch
         run: |
@@ -320,7 +320,7 @@ jobs:
       - name: Compile and run dynlib-test
         run: |
           cd resources/examples/dynlib-test
-          ../../../build/c3c dynamic-lib add.c3
+          ../../../build/c3c -vv dynamic-lib add.c3
           mv add.so libadd.so
           cc test.c -L. -ladd -Wl,-rpath=.         
           ./a.out
@@ -639,7 +639,7 @@ jobs:
       - name: Compile and run dynlib-test
         run: |
           cd resources/examples/dynlib-test
-          ../../../build/c3c dynamic-lib add.c3
+          ../../../build/c3c -vv dynamic-lib add.c3
           ../../../build/c3c compile-run test.c3 -l ./add.dylib          
 
       - name: Compile run unit tests
