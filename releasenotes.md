@@ -12,6 +12,8 @@
 - Fix bug when a macro calling an extern function was called in another module also declaring and calling the same function. #1690
 - `static-lib` and `dynamic-lib` options from the command line now produces headers.
 - Fix bug outputting exported functions without predefined extname.
+- Fix lexer allowing a trailing underscore (_) with hex and binary literals.
+- Fix `--list-operators` CLI command printing underscore (_) and hash (#).
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
