@@ -230,7 +230,7 @@ macro enum_by_name($Type, String enum_name) @builtin
 	typeid x = $Type.typeid;
 	foreach (i, name : x.names)
 	{
-		if (name == enum_name) return ($Type)i;
+		if (name == enum_name) return $Type.from_ordinal(i);
 	}
 	return SearchResult.MISSING?;
 }

@@ -1498,11 +1498,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_ANYPTR:
 			llvm_emit_any_pointer(c, value, value);
 			break;
-		case CAST_INTERR:
-			to_type = type_lowering(to_type);
-			llvm_value_rvalue(c, value);
-			value->value = llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type));
-			break;
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_STRPTR:

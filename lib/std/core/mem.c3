@@ -224,7 +224,7 @@ enum AtomicOrdering : int
 *>
 macro @atomic_load(&x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	return $$atomic_load(x, $volatile, (int)$ordering);
+	return $$atomic_load(x, $volatile, $ordering.ordinal);
 }
 
 <*
@@ -239,7 +239,7 @@ macro @atomic_load(&x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = fa
 *>
 macro void @atomic_store(&x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	$$atomic_store(x, value, $volatile, (int)$ordering);
+	$$atomic_store(x, value, $volatile, $ordering.ordinal);
 }
 
 <*

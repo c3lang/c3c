@@ -162,6 +162,7 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_ASSOCIATED] = KW_DEF("associated");
 	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
+	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
 	type_property_list[TYPE_PROPERTY_GET] = KW_DEF("get");
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");

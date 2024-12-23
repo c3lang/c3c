@@ -336,7 +336,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_EUBOOL:
 		case CAST_EUER:
 		case CAST_EREU:
-		case CAST_INTERR:
 		case CAST_STRPTR:
 		case CAST_PTRBOOL:
 		case CAST_BOOLINT:

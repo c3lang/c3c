@@ -275,7 +275,8 @@ static void header_gen_function_ptr(HeaderContext *c, Type *type)
 static void header_gen_function(HeaderContext *c, Decl *decl, bool print_fn, bool* fn_found)
 {
 	if (!decl->is_export) return;
-	if (decl->extname[0] == '_' && decl->extname[1] == '_') return;
+	const char *ext_name = decl_get_extname(decl);
+	if (ext_name[0] == '_' && ext_name[1] == '_') return;
 	if (print_fn && !*fn_found)
 	{
 		*fn_found = true;

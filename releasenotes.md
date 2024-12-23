@@ -4,11 +4,18 @@
 
 ### Changes / improvements
 - Split help into normal and "full" help, #1703
+- Removed 'headers' command line option.
+- Add `enum.from_ordinal` and `fault.from_ordinal`
+- Deprecate cast-style conversion from integer to enum.
+- Make deprecation an error in test mode.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
 - Fix Map & HashMap `put_all_for_create` not copying all elements, causing `init_from_map` to create incomplete copy.
 - Fix bug when a macro calling an extern function was called in another module also declaring and calling the same function. #1690
+- `static-lib` and `dynamic-lib` options from the command line now produces headers.
+- Fix bug outputting exported functions without predefined extname.
+- Fix problem where crt1 was linked for dynamic libraries on Linux and BSD. #1710
 - Fix CRT detection on Arch Linux.
 
 ### Stdlib changes

@@ -44,9 +44,9 @@ fn TzDateTime DateTime.to_local(&self)
 	dt.min = (char)tm.tm_min;
 	dt.hour = (char)tm.tm_hour;
 	dt.day = (char)tm.tm_mday;
-	dt.month = (Month)tm.tm_mon;
+	dt.month = Month.from_ordinal(tm.tm_mon);
 	dt.year = tm.tm_year + 1900;
-	dt.weekday = !tm.tm_wday ? Weekday.SUNDAY : (Weekday)tm.tm_wday - 1;
+	dt.weekday = !tm.tm_wday ? Weekday.SUNDAY : Weekday.from_ordinal(tm.tm_wday - 1);
 	dt.year_day = (ushort)tm.tm_yday;
 	dt.time = self.time;
 	$if $defined(tm.tm_gmtoff):
@@ -142,9 +142,9 @@ fn void DateTime.set_time(&self, Time time)
 	self.min = (char)tm.tm_min;
 	self.hour = (char)tm.tm_hour;
 	self.day = (char)tm.tm_mday;
-	self.month = (Month)tm.tm_mon;
+	self.month = Month.from_ordinal(tm.tm_mon);
 	self.year = tm.tm_year + 1900;
-	self.weekday = !tm.tm_wday ? Weekday.SUNDAY : (Weekday)tm.tm_wday - 1;
+	self.weekday = !tm.tm_wday ? Weekday.SUNDAY : Weekday.from_ordinal(tm.tm_wday - 1);
 	self.year_day = (ushort)tm.tm_yday;
 	self.time = time;
 }
@@ -183,7 +183,7 @@ fn DateTime DateTime.add_months(&self, int months)
 			year += month / 12;
 			month %= 12;
 	}
-	return from_date(year, (Month)month, self.day, self.hour, self.min, self.sec, self.usec);
+	return from_date(year, Month.from_ordinal(month), self.day, self.hour, self.min, self.sec, self.usec);
 }
 
 
