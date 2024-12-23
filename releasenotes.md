@@ -17,6 +17,8 @@
 - Fix bug outputting exported functions without predefined extname.
 - Fix problem where crt1 was linked for dynamic libraries on Linux and BSD. #1710
 - Fix CRT detection on Arch Linux.
+- Fix lexer allowing a trailing underscore (_) with hex and binary literals.
+- Fix `--list-operators` CLI command printing underscore (_) and hash (#).
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

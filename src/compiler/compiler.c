@@ -939,7 +939,7 @@ void print_syntax(BuildOptions *options)
 			if (i == TOKEN_DOCS_START || i == TOKEN_DOCS_END) continue;
 			const char *name = token_type_to_string((TokenType)i);
 			char first_char = name[0];
-			if (first_char == '$' || first_char == '@'
+			if (first_char == '$' || first_char == '@' || first_char == '_' || first_char == '#'
 				|| (first_char >= 'a' && first_char <= 'z')
 				|| (first_char >= 'A' && first_char <= 'Z'))
 			{

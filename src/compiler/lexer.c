@@ -370,6 +370,11 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
  */
 static bool scan_number_suffix(Lexer *lexer, bool *is_float)
 {
+	if (prev(lexer) == '_')
+	{
+		backtrack(lexer);
+		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
+	}
 	char c = peek(lexer);
 	if (!char_is_alphanum_(c)) return true;
 	switch (c | 32)
@@ -535,11 +540,6 @@ static inline bool scan_hex(Lexer *lexer)
 		is_float = true;
 		if (!scan_exponent(lexer)) return false;
 	}
-	if (prev(lexer) == '_')
-	{
-		backtrack(lexer);
-		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
-	}
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	return new_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
 }
@@ -580,12 +580,6 @@ static inline bool scan_dec(Lexer *lexer)
 	{
 		is_float = true;
 		if (!scan_exponent(lexer)) return false;
-	}
-
-	if (prev(lexer) == '_')
-	{
-		backtrack(lexer);
-		return add_error_token_at_current(lexer, "The number ended with '_', which isn't allowed, please remove it.");
 	}
 	if (!scan_number_suffix(lexer, &is_float)) return false;
 	return new_token(lexer, is_float ? TOKEN_REAL : TOKEN_INTEGER, lexer->lexing_start);
