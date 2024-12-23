@@ -28,9 +28,9 @@ fn void test_check_nums()
     Foo f = A;
     switch (f)
     {
-        case (Foo)(1):
+        case Foo.from_ordinal(1):
             break;
-        case (Foo)(0):
+        case Foo.from_ordinal(0):
             break;
     }
 }
@@ -66,7 +66,7 @@ fn void test_duplicate_case2(Foo i)
     {
         case A:
             break;
-        case (Foo)(1):
+        case Foo.from_ordinal(1):
             break;
         case A:     // #error: same case value appears
             break;
@@ -79,7 +79,7 @@ fn void test_duplicate_case3(Foo i)
     {
         case A:
             break;
-        case (Foo)(0):     // #error: same case value appears
+        case Foo.from_ordinal(0):     // #error: same case value appears
             break;
     }
 }

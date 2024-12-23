@@ -60,7 +60,7 @@ fn void*! native_freopen(void* file, String filename, String mode) @inline
 
 fn void! native_fseek(void* file, isz offset, Seek seek_mode) @inline
 {
-	if (libc::fseek(file, (SeekIndex)offset, (CInt)seek_mode)) return file_seek_errno()?;
+	if (libc::fseek(file, (SeekIndex)offset, seek_mode.ordinal)) return file_seek_errno()?;
 }
 
 

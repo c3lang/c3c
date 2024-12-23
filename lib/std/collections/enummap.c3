@@ -22,7 +22,7 @@ fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 	foreach (i, &value : self.values)
 	{
 		if (i != 0) formatter.print(", ")!;
-		n += formatter.printf("%s: %s", (Enum)i, *value)!;
+		n += formatter.printf("%s: %s", Enum.from_ordinal(i), *value)!;
 	}
 	n += formatter.print(" }")!;
 	return n;

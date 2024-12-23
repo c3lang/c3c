@@ -10,7 +10,7 @@ macro elements($Type)
 {
 	int x;
     $foreach ($x : $Type.values)
-        x = (int)$x;
+        x = $x.ordinal;
     $endforeach;
 }
 
