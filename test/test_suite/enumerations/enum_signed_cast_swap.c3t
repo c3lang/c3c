@@ -14,7 +14,7 @@ fn void foo(Mouse_Button button)
 
 fn int main() {
   uint x = 1;
-  foo((Mouse_Button)x);
+  foo(Mouse_Button.from_ordinal(x));
   return 0;
 }
 

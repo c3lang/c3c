@@ -5,6 +5,9 @@
 ### Changes / improvements
 - Split help into normal and "full" help, #1703
 - Removed 'headers' command line option.
+- Add `enum.from_ordinal` and `fault.from_ordinal`
+- Deprecate cast-style conversion from integer to enum.
+- Make deprecation an error in test mode.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

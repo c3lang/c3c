@@ -626,7 +626,7 @@ bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type)
 			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 			return false;
 		case TYPE_I128:
-			SEMA_ERROR(index, "index->type->canonical this to an int or long.");
+			SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
 			return false;
 		case TYPE_ENUM:
 			type = type->decl->enums.type_info->type;
@@ -1598,6 +1598,7 @@ static void cast_float_to_int(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_int_to_enum(SemaContext *context, Expr *expr, Type *type)
 {
+	SEMA_DEPRECATED(expr, "Using casts to convert integers to enums is deprecated in favour of using 'MyEnum.from_ordinal(i)`.");
 	Type *canonical = type_flatten(type);
 	ASSERT0(canonical->type_kind == TYPE_ENUM);
 	if (insert_runtime_cast_unless_const(expr, CAST_INTENUM, type)) return;
@@ -1751,18 +1752,7 @@ static void cast_int_to_float(SemaContext *context, Expr *expr, Type *type)
 
 static void cast_enum_to_int(SemaContext *context, Expr* expr, Type *to_type)
 {
-	ASSERT0(type_flatten(expr->type)->type_kind == TYPE_ENUM);
-	Type *underlying_type = type_base(expr->type);
-	if (sema_cast_const(expr))
-	{
-		ASSERT0(expr->const_expr.const_kind == CONST_ENUM);
-		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
-	}
-	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_INTENUM)
-	{
-		*expr = *exprptr(expr->cast_expr.expr);
-	}
-	expr->type = type_add_optional(underlying_type, IS_OPTIONAL(expr));
+	sema_expr_convert_enum_to_int(context, expr);
 	cast_int_to_int(context, expr, to_type);
 }
 

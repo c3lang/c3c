@@ -2,8 +2,8 @@
 
 <*
  @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
- @require $defined(((Token)0).token)
- @require $defined(((Comment)0).start) && $defined(((Comment)0).end)
+ @require $defined(Token{}.token)
+ @require $defined(Comment{}.start) && $defined(Comment{}.end)
  *>
 module lexer(<Token, Comment>);
 import std::io;
@@ -58,7 +58,7 @@ fn void! Lexer.init(&self, InStream reader, Ident ident, Allocator using = alloc
     {
         String name = tok.token;
         assert(name.len > 0 && name.len <= ushort.max);
-        trie.set(name, (Token)i)!;
+        trie.set(name, Token.from_ordinal(i))!;
         max_token = max(max_token, (ushort)name.len);
     }
     foreach (tok : Comment.values)

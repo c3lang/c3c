@@ -2,7 +2,7 @@ module test;
 import std::collections::map;
 
 def Foo = HashMap(<String, HashMap(<String, String>)>);
-fn void main()
+macro test()
 {
     HashMap(<String, String>) map0;
     map0["c3c"] = {};
@@ -15,6 +15,10 @@ fn void main()
     map2["c3c"] = {};
     map2["c3c"] = { {}, null, 1 ,2 ,2 };
 
+}
+fn void main()
+{
+	test();
 }
 
 /* #expect: test.ll

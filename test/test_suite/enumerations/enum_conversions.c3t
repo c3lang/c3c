@@ -6,13 +6,13 @@ enum Abc : char { ABC }
 fn void main()
 {
 	int a;
-	Abc x = (Abc)a;
+	Abc x = Abc.from_ordinal(a);
 	long z;
-	Abc y = (Abc)z;
+	Abc y = Abc.from_ordinal(z);
 	a = 256;
-	y = (Abc)a;
+	y = Abc.from_ordinal(a);
 	a = -1;
-	y = (Abc)a;
+	y = Abc.from_ordinal(a);
 }
 
 /* #expect: test.ll
