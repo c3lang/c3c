@@ -72,19 +72,6 @@ static void usage(bool full)
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
 	PRINTF(full ? "Options:" : "Common options:");
-	PRINTF("  --about                    - Prints a short description of C3.");
-	PRINTF("  --libdir <dir>             - Add this directory to the C3 library search paths.");
-	PRINTF("  --lib <name>               - Add this library to the compilation.");
-	if (full)
-	{
-		PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
-		PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
-		PRINTF("  --path <dir>               - Use this as the base directory for the current command.");
-		PRINTF("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
-		PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
-		PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
-		PRINTF("  --run-once                 - After running the output file, delete it immediately.");
-	}
 	PRINTF("  -h -hh --help              - Print the help, -h for the normal options, -hh for the full help.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -q --quiet                 - Silence unnecessary output.");
@@ -104,8 +91,19 @@ static void usage(bool full)
 	PRINTF("  -Oz                        - Unsafe, high optimization, tiny code, single module, no debug info, no panic messages, no backtrace.");
 	PRINTF("  -D <name>                  - Add feature flag <name>.");
 	PRINTF("  -U <name>                  - Remove feature flag <name>.");
+	PRINTF("");
+	PRINTF("  --about                    - Prints a short description of C3.");
+	PRINTF("  --libdir <dir>             - Add this directory to the c3l library search paths.");
+	PRINTF("  --lib <name>               - Add this c3l library to the compilation.");
 	if (full)
 	{
+		PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
+		PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
+		PRINTF("  --path <dir>               - Use this as the base directory for the current command.");
+		PRINTF("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
+		PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
+		PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
+		PRINTF("  --run-once                 - After running the output file, delete it immediately.");
 		PRINTF("  --trust=<option>           - Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		PRINTF("  --output-dir <dir>         - Override general output directory.");
 		PRINTF("  --build-dir <dir>          - Override build output directory.");
