@@ -135,7 +135,7 @@ static char *find_windows_kit_root(void)
 
 	free(root);
 	free(best_file);
-	return scratch_buffer_to_copy();
+	return scratch_buffer_copy();
 
 SEARCH_FAILED:
 	free(root);
