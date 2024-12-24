@@ -72,15 +72,15 @@ static void usage(bool full)
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
 	PRINTF(full ? "Options:" : "Common options:");
+	PRINTF("  --about                    - Prints a short description of C3.");
+	PRINTF("  --libdir <dir>             - Add this directory to the C3 library search paths.");
+	PRINTF("  --lib <name>               - Add this library to the compilation.");
 	if (full)
 	{
 		PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
 		PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
-		PRINTF("  --libdir <dir>             - Add this directory to the C3 library search paths.");
-		PRINTF("  --lib <name>               - Add this library to the compilation.");
 		PRINTF("  --path <dir>               - Use this as the base directory for the current command.");
 		PRINTF("  --template <template>      - Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
-		PRINTF("  --about                    - Prints a short description of C3.");
 		PRINTF("  --symtab <value>           - Sets the preferred symtab size.");
 		PRINTF("  --max-mem <value>          - Sets the preferred max memory size.");
 		PRINTF("  --run-once                 - After running the output file, delete it immediately.");
