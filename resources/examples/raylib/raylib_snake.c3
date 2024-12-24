@@ -124,12 +124,12 @@ fn void update_game()
 
     if (rl::isKeyPressed(rl::KEY_RIGHT) && allow_move)
     {
-        snake_direction = (SnakeDirection)((snake_direction.ordinal + 1) % 4);
+        snake_direction = SnakeDirection.from_ordinal((snake_direction.ordinal + 1) % 4);
         allow_move = false;
     }
     if (rl::isKeyPressed(rl::KEY_LEFT) && allow_move)
     {
-        snake_direction = (SnakeDirection)((snake_direction.ordinal + 3) % 4);
+        snake_direction = SnakeDirection.from_ordinal((snake_direction.ordinal + 3) % 4);
         allow_move = false;
     }
 
