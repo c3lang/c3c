@@ -335,6 +335,9 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	if (riscv_float != RISCVFLOAT_DEFAULT) target->feature.riscv_float_capability = riscv_float;
 
 	// winsdk
+	target->win.vs_dirs = get_string(filename, target_name, json, "win-vs-dirs", target->win.vs_dirs);
+
+	// winsdk
 	target->win.sdk = get_string(filename, target_name, json, "winsdk", target->win.sdk);
 
 	// windef

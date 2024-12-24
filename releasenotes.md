@@ -8,6 +8,7 @@
 - Add `enum.from_ordinal` and `fault.from_ordinal`
 - Deprecate cast-style conversion from integer to enum.
 - Make deprecation an error in test mode.
+- Add `--win-vs-dirs` to override VS detection dirs.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

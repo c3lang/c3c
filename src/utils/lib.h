@@ -38,8 +38,7 @@ typedef struct
 } MacSDK;
 
 typedef struct {
-	char* windows_sdk_um_library_path;
-	char* windows_sdk_ucrt_library_path;
+	char* windows_sdk_path;
 	char* vs_library_path;
 } WindowsSDK;
 

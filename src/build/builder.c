@@ -405,6 +405,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->vector_conv = options->vector_conv;
 	if (options->macos.sysroot) target->macos.sysroot = options->macos.sysroot;
 	if (options->win.sdk) target->win.sdk = options->win.sdk;
+	if (options->win.vs_dirs) target->win.vs_dirs = options->win.vs_dirs;
 	if (options->macos.min_version) target->macos.min_version = options->macos.min_version;
 	if (options->macos.sdk_version) target->macos.sdk_version = options->macos.sdk_version;
 	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;

@@ -415,6 +415,7 @@ typedef struct BuildOptions_
 	{
 		const char *sdk;
 		const char *def;
+		const char *vs_dirs;
 		WinCrtLinking crt_linking;
 	} win;
 	struct
@@ -661,6 +662,7 @@ typedef struct
 	{
 		const char *sdk;
 		const char *def;
+		const char *vs_dirs;
 		WinCrtLinking crt_linking;
 		bool use_win_subsystem;
 	} win;

@@ -91,7 +91,7 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 		crt_linking = wincrt;
 	}
 
-	if (!compiler.build.win.sdk)
+	if (!compiler.build.win.sdk && !compiler.build.win.vs_dirs)
 	{
 		const char *path = windows_cross_compile_library();
 		if (path)
@@ -132,14 +132,36 @@ static void linker_setup_windows(const char ***args_ref, Linker linker_type, con
 	}
 	else
 	{
-		WindowsSDK *windows_sdk = windows_get_sdk();
-		if (!windows_sdk) error_exit("Windows applications cannot be cross compiled without --winsdk.");
+		if (compiler.build.win.vs_dirs)
+		{
+			char *c = strstr(compiler.build.win.vs_dirs, ";");
+			int len = c - compiler.build.win.vs_dirs;
+			if (!c || !len) error_exit("''win-vs-dirs' override was invalid.");
+			char *um = str_printf("%.*s\\um\\x64", len, compiler.build.win.vs_dirs);
+			char *ucrt = str_printf("%.*s\\ucrt\\x64", len, compiler.build.win.vs_dirs);
+			c++;
+			if (!file_is_dir(um) || !file_is_dir(ucrt) || !file_is_dir(c))
+			{
+				error_exit("''win-vs-dirs' override paths were not valid.");
+			}
+			add_concat_quote_arg("/LIBPATH:", um);
+			add_concat_quote_arg("/LIBPATH:", ucrt);
+			add_concat_quote_arg("/LIBPATH:", c);
+		}
+		else
+		{
+			WindowsSDK *windows_sdk = windows_get_sdk();
+			if (!windows_sdk) error_exit("Windows applications cannot be cross compiled without --winsdk.");
 
-		if (!file_is_dir(windows_sdk->vs_library_path)) error_exit("Failed to find windows sdk.");
+			if (!file_is_dir(windows_sdk->vs_library_path)) error_exit("Failed to find windows sdk.");
 
-		add_concat_quote_arg("/LIBPATH:", windows_sdk->windows_sdk_um_library_path);
-		add_concat_quote_arg("/LIBPATH:", windows_sdk->windows_sdk_ucrt_library_path);
-		add_concat_quote_arg("/LIBPATH:", windows_sdk->vs_library_path);
+			char *um = str_printf("%s\\um\\x64", windows_sdk->windows_sdk_path);
+			char *ucrt = str_printf("%s\\ucrt\\x64", windows_sdk->windows_sdk_path);
+
+			add_concat_quote_arg("/LIBPATH:", um);
+			add_concat_quote_arg("/LIBPATH:", ucrt);
+			add_concat_quote_arg("/LIBPATH:", windows_sdk->vs_library_path);
+		}
 	}
 
 	// Link sanitizer runtime libraries

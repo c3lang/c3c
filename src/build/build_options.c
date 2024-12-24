@@ -174,6 +174,7 @@ static void usage(bool full)
 		PRINTF("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
 		PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		PRINTF("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
+		PRINTF("  --win-vs-dirs <dir>;<dir> - Override Windows VS detection.");
 		PRINTF("");
 		PRINTF("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
 		PRINTF("  --macos-min-version <ver>  - Set the minimum MacOS version to compile for.");
@@ -922,6 +923,10 @@ static void parse_option(BuildOptions *options)
 			}
 			if (match_longopt("winsdk"))
 			{
+				if (options->win.vs_dirs)
+				{
+					error_exit("error: --winsdk cannot be combined with --win-vs-dirs.");
+				}
 				if (at_end() || next_is_opt()) error_exit("error: --winsdk needs a directory.");
 				options->win.sdk = check_dir(next_arg());
 				return;
@@ -945,6 +950,16 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 5, wincrt_linking);
+				return;
+			}
+			if (match_longopt("win-vs-dirs"))
+			{
+				if (options->win.sdk)
+				{
+					error_exit("error: --win-vs-dirs cannot be combined with --winsdk.");
+				}
+				if (at_end() || next_is_opt()) error_exit("error: --win-vs-dirs needs to followed by the directories.");
+				options->win.vs_dirs = next_arg();
 				return;
 			}
 			if ((argopt = match_argopt("sanitize")))

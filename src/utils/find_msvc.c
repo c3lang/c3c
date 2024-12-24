@@ -22,8 +22,7 @@ WindowsSDK get_windows_link_paths()
 		error_exit("Failed to find windows kit root.");
 	}
 
-	out.windows_sdk_um_library_path = str_printf("%s\\um\\x64", path);
-	out.windows_sdk_ucrt_library_path = str_printf("%s\\ucrt\\x64", path);
+	out.windows_sdk_path = path;
 	out.vs_library_path = find_visual_studio();
 
 	return out;
@@ -136,7 +135,7 @@ static char *find_windows_kit_root(void)
 
 	free(root);
 	free(best_file);
-	return scratch_buffer_to_string();
+	return scratch_buffer_to_copy();
 
 SEARCH_FAILED:
 	free(root);
