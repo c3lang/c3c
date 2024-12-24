@@ -20,6 +20,8 @@ fn void! test_acos() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
 	double [<3>] out = { 0., math::PI_2, math::PI };
+	double [<6>] in2 = { 0.9, 0.6, 0.1, -0.1, -0.6, -0.9 };
+	double [<6>] out2 = { 0.45102681179626236, 0.9272952180016123, 1.4706289056333368, 1.6709637479564565, 2.214297435588181, 2.6905658417935308 };
 	assert(@typeis(math::acos(in[0]), double));
 	assert(@typeis(math::acos((float)in[0]), float));
 	assert(@typeis(math::acos((double)in[0]), double));
@@ -41,6 +43,13 @@ fn void! test_acos() @test
 		assert(math::is_approx_rel(f, (float)out[ii], 1e-6), "acos(%f)=%f is not equal to %f", in[i], f, out[ii]);
 		x = math::acos((double)in[i]);
 		assert(math::is_approx_rel(x, out[ii], 1e-12), "acos(%f)=%f is not equal to %f", in[i], x, out[ii]);
+	}
+	for (int i = 0; i < 6; i++)
+	{
+		float f = math::acos((float)in2[i]);
+		assert(math::is_approx(f, (float)out2[i], 1e-6), "acos(%f)=%f is not equal to %f", (float)in2[i], f, (float)out2[i]);
+		double x = math::acos(in2[i]);
+		assert(math::is_approx(x, out2[i], 1e-12), "acos(%f)=%f is not equal to %f", in2[i], x, out2[i]);
 	}
 }
 
@@ -74,6 +83,8 @@ fn void! test_asin() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
 	double [<3>] out = { math::PI_2, 0., -math::PI_2 };
+	double [<6>] in2 = { 0.98, 0.6, 0.1, -0.1, -0.6, -0.98 };
+	double [<6>] out2 = { 1.3704614844717768, 0.6435011087932844, 0.1001674211615598, -0.1001674211615598, -0.6435011087932844, -1.3704614844717768 };
 	assert(@typeis(math::asin(in[0]), double));
 	assert(@typeis(math::asin((float)in[0]), float));
 	assert(@typeis(math::asin((double)in[0]), double));
@@ -92,6 +103,13 @@ fn void! test_asin() @test
 		assert(math::is_approx_rel(f, (float)out[ii], 1e-6), "asin(%f)=%f is not equal to %f", in[i], f, out[ii]);
 		x = math::asin((double)in[i]);
 		assert(math::is_approx_rel(x, out[ii], 1e-12), "asin(%f)=%f is not equal to %f", in[i], x, out[ii]);
+	}
+	for (int i = 0; i < 6; i++)
+	{
+		float f = math::asin((float)in2[i]);
+		assert(math::is_approx(f, (float)out2[i], 1e-6), "asin(%f)=%f is not equal to %f", (float)in2[i], f, (float)out2[i]);
+		double x = math::asin(in2[i]);
+		assert(math::is_approx(x, out2[i], 1e-12), "asin(%f)=%f is not equal to %f", in2[i], x, out2[i]);
 	}
 }
 
@@ -115,12 +133,14 @@ fn void! test_asinh() @test
 
 fn void! test_atan() @test
 {
-	int [<5>] in = { 231, 1, 0, -1, -231 };
-	double [<5>] out = { 1.5664673495078372, math::PI_4, 0., -math::PI_4, -1.5664673495078372 };
+	int [<9>] in = { 231, 3, 2, 1, 0, -1, -2, -3, -231 };
+	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::PI_4, 0., -math::PI_4, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
+	double [<6>] in2 = { 0.6, 0.4, 0.1, -0.1, -0.4, -0.6 };
+	double [<6>] out2 = { 0.5404195002705842, 0.3805063771123649, 0.09966865249116204, -0.09966865249116204, -0.3805063771123649, -0.5404195002705842 };
 	assert(@typeis(math::atan(in[0]), double));
 	assert(@typeis(math::atan((float)in[0]), float));
 	assert(@typeis(math::atan((double)in[0]), double));
-	for (int i = 0; i < 5; i++)
+	for (int i = 0; i < 9; i++)
 	{
 		double x = math::atan(in[i]);
 		assert(math::is_approx_rel(x, out[i], 1e-12), "atan(%d)=%f is not equal to %f", in[i], x, out[i]);
@@ -128,6 +148,13 @@ fn void! test_atan() @test
 		assert(math::is_approx_rel(f, (float)out[i], 1e-6), "atan(%f)=%f is not equal to %f", in[i], f, out[i]);
 		x = math::atan((double)in[i]);
 		assert(math::is_approx_rel(x, out[i], 1e-12), "atan(%f)=%f is not equal to %f", in[i], x, out[i]);
+	}
+	for (int i = 0; i < 6; i++)
+	{
+		float f = math::atan((float)in2[i]);
+		assert(math::is_approx(f, (float)out2[i], 1e-6), "atan(%f)=%f is not equal to %f", (float)in2[i], f, (float)out2[i]);
+		double x = math::atan(in2[i]);
+		assert(math::is_approx(x, out2[i], 1e-12), "atan(%f)=%f is not equal to %f", in2[i], x, out2[i]);
 	}
 }
 
