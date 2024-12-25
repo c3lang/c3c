@@ -4,7 +4,7 @@ enum Foo
 {
 	ABC
 }
-distinct Abc = Foo;
+distinct Abc = inline Foo;
 distinct BarInt = int;
 enum Bar : BarInt
 {
