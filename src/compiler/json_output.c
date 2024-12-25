@@ -400,6 +400,29 @@ void print_var_expr(FILE *file, Expr *expr)
                     fputs("TODO: CONST_ERR", file);
                     break;
                 case CONST_BYTES:
+                    {
+                        fputs("x\\\"", file);
+                        ArraySize len = expr->const_expr.bytes.len;
+                        const unsigned char *ptr = expr->const_expr.bytes.ptr;
+                        char *res = malloc_string((size_t)(len * 3 + 1));
+                        char *c = res;
+                        for (ArraySize i = 0; i < len; ++i)
+                        {
+                            unsigned char curr = ptr[i];
+                            char h = (curr & 0xF0) >> 4;
+                            if (h > 0x09) *(c++) = h - 10 + 'A';
+                            else *(c++) = h + '0';
+                            char l = curr & 0x0F;
+                            if (l > 0x09) *(c++) = l - 10 + 'A';
+                            else *(c++) = l + '0';
+                            *(c++) = ' ';
+                        }
+                        *(c - 1) = '\\';
+                        *c = 0;
+                        fputs(res, file);
+                        fputs("\"", file);
+                    }
+                    break;
                 case CONST_STRING:
                     {
                         fputs("\\\"", file);
