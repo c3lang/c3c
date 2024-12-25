@@ -403,6 +403,11 @@ void print_var_expr(FILE *file, Expr *expr)
                     {
                         fputs("x\\\"", file);
                         ArraySize len = expr->const_expr.bytes.len;
+                        if (len == 0)
+                        {
+                            fputs("\\\"", file);
+                            break;
+                        }
                         const unsigned char *ptr = expr->const_expr.bytes.ptr;
                         char *res = malloc_string((size_t)(len * 3 + 1));
                         char *c = res;
@@ -410,12 +415,9 @@ void print_var_expr(FILE *file, Expr *expr)
                         {
                             unsigned char curr = ptr[i];
                             char h = (curr & 0xF0) >> 4;
-                            if (h > 0x09) *(c++) = h - 10 + 'A';
-                            else *(c++) = h + '0';
+                            *(c++) = h > 0x09 ? h - 10 + 'A' : h + '0';
                             char l = curr & 0x0F;
-                            if (l > 0x09) *(c++) = l - 10 + 'A';
-                            else *(c++) = l + '0';
-                            *(c++) = ' ';
+                            *(c++) = l > 0x09 ? l - 10 + 'A' : l + '0';
                         }
                         *(c - 1) = '\\';
                         *c = 0;
@@ -441,8 +443,7 @@ void print_var_expr(FILE *file, Expr *expr)
                                 *(c++) = '0';
                                 *(c++) = ((curr & 0x10) >> 4) + '0';
                                 char b = curr & 0x0F;
-                                if (b > 0x09) *(c++) = b - 10 + 'A';
-                                else *(c++) = b + '0';
+                                *(c++) = b > 0x09 ? b - 10 + 'A' : b + '0';
                             }
                             else
                             {
