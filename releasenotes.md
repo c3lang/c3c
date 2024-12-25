@@ -20,6 +20,7 @@
 - Fix CRT detection on Arch Linux.
 - Fix lexer allowing a trailing underscore (_) with hex and binary literals.
 - Fix `--list-operators` CLI command printing underscore (_) and hash (#).
+- Fix bug in temp allocator when temp memory is exhausted and allocation needs overaligned mem. #1715
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

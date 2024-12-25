@@ -179,8 +179,10 @@ fn void*! TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 		{
 			mem = allocator::malloc_aligned(self.backing_allocator, total_alloc_size, alignment)!;
 		}
+		void* start = mem;
+		mem += mem::aligned_offset(TempAllocatorPage.sizeof, alignment);
 		page = (TempAllocatorPage*)mem - 1;
-		page.start = mem;
+		page.start = start;
 		page.size = size | PAGE_IS_ALIGNED;
 	}
 	else
