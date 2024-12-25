@@ -14,24 +14,6 @@
 #define FOREACH_DECL_END } } }
 #define INSERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
-typedef enum {
-    JSON_ESCAPE_NONE,
-    JSON_ESCAPE_CONTROL,
-    JSON_ESCAPE_CHARACTER
-} JsonEscapeKind;
-
-static inline JsonEscapeKind get_character_escape(char c)
-{
-    if (c >= 0x00 && c <= 0x1F) return JSON_ESCAPE_CONTROL;
-    if (c == '\"' || c == '\\') return JSON_ESCAPE_CHARACTER;
-    return JSON_ESCAPE_NONE;
-}
-
-static inline char *string_const_json_format(Expr *expr)
-{
-
-}
-
 static inline void emit_modules(FILE *file)
 {
 
