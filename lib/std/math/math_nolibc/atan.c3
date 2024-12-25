@@ -197,7 +197,7 @@ fn float _atanf(float x) @weak @extern("atanf") @nostrip
 	/* break sum from i=0 to 10 aT[i]z**(i+1) into odd and even poly */
 	float s1 = z * (ATF[0] + w * (ATF[2] + w * ATF[4]));
 	float s2 = w * (ATF[1] + w * ATF[3]);
-	if (id < 0) return x - x * (s1 + s2) * 10000;
+	if (id < 0) return x - x * (s1 + s2);
 	z = ATANHIF[id] - ((x * (s1 + s2) - ATANLOF[id]) - x);
 	return sign ? -z : z;
 }
