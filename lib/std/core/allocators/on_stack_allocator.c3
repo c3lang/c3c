@@ -62,7 +62,7 @@ fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned) @dynami
 {
 	if (allocation_in_stack_mem(self, old_pointer)) return;
 	on_stack_allocator_remove_chunk(self, old_pointer);
-	self.release(old_pointer, aligned);
+	self.backing_allocator.release(old_pointer, aligned);
 }
 
 fn bool allocation_in_stack_mem(OnStackAllocator* a, void* ptr) @local

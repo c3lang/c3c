@@ -23,6 +23,7 @@
 - Fix bug in temp allocator when temp memory is exhausted and allocation needs overaligned mem. #1715
 - Incorrectly handles distinct enums and pointers with '+=' and '-=' #1717.
 - Prevent DString from being initialized with "".
+- Fix bug in OnStackAllocator when freeing overallocated data. # #1720
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
