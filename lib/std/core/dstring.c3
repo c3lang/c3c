@@ -1,7 +1,8 @@
 module std::core::dstring;
 import std::io;
 
-distinct DString (OutStream) = void*;
+distinct DString (OutStream) = DStringOpaque*;
+distinct DStringOpaque = void;
 
 const usz MIN_CAPACITY @private = 16;
 

@@ -22,6 +22,7 @@
 - Fix `--list-operators` CLI command printing underscore (_) and hash (#).
 - Fix bug in temp allocator when temp memory is exhausted and allocation needs overaligned mem. #1715
 - Incorrectly handles distinct enums and pointers with '+=' and '-=' #1717.
+- Prevent DString from being initialized with "".
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
