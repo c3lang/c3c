@@ -14,6 +14,24 @@
 #define FOREACH_DECL_END } } }
 #define INSERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
+typedef enum {
+    JSON_ESCAPE_NONE,
+    JSON_ESCAPE_CONTROL,
+    JSON_ESCAPE_CHARACTER
+} JsonEscapeKind;
+
+static inline JsonEscapeKind get_character_escape(char c)
+{
+    if (c >= 0x00 && c <= 0x1F) return JSON_ESCAPE_CONTROL;
+    if (c == '\"' || c == '\\') return JSON_ESCAPE_CHARACTER;
+    return JSON_ESCAPE_NONE;
+}
+
+static inline char *string_const_json_format(Expr *expr)
+{
+
+}
+
 static inline void emit_modules(FILE *file)
 {
 
@@ -401,7 +419,36 @@ void print_var_expr(FILE *file, Expr *expr)
                     break;
                 case CONST_BYTES:
                 case CONST_STRING:
-                    PRINTF("\\\"%.*s\\\"", expr->const_expr.bytes.len, expr->const_expr.bytes.ptr);
+                    {
+                        fputs("\\\"", file);
+                        ArraySize len = expr->const_expr.bytes.len;
+                        const char *ptr = expr->const_expr.bytes.ptr;
+                        char *res = malloc_string((size_t)(len * 6 + 1));
+                        char *c = res;
+                        for (ArraySize i = 0; i < len; ++i)
+                        {
+                            char curr = ptr[i];
+                            if (curr <= 0x1F && curr >= 0x00)
+                            {
+                                *(c++) = '\\';
+                                *(c++) = 'u';
+                                *(c++) = '0';
+                                *(c++) = '0';
+                                *(c++) = ((curr & 0x10) >> 4) + '0';
+                                char b = curr & 0x0F;
+                                if (b > 0x09) *(c++) = b - 10 + 'A';
+                                else *(c++) = b + '0';
+                            }
+                            else
+                            {
+                                if (curr == '\\' || curr == '\"') *(c++) = '\\';
+                                *(c++) = curr;
+                            }
+                        }
+                        *c = 0;
+                        fputs(res, file);
+                        fputs("\\\"", file);
+                    }
                     break;
                 case CONST_POINTER:
                     PRINTF("%llu", (unsigned long long) expr->const_expr.ptr);
@@ -883,7 +930,7 @@ static inline void emit_types(FILE *file)
 
 static inline void emit_globals(FILE *file)
 {
-	fputs("\t\"globals\": [\n", file);
+	fputs("\t\"globals\": {\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *decl, compiler.context.module_list)
@@ -906,12 +953,12 @@ static inline void emit_globals(FILE *file)
                     fputs("\"\n\t\t}", file);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t],\n", file);
+	fputs("\n\t},\n", file);
 }
 
 static inline void emit_constants(FILE *file)
 {
-	fputs("\t\"constants\": [\n", file);
+	fputs("\t\"constants\": {\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *decl, compiler.context.module_list)
@@ -934,7 +981,7 @@ static inline void emit_constants(FILE *file)
                     fputs("\"\n\t\t}", file);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t]", file);
+	fputs("\n\t}", file);
 }
 
 static inline void emit_functions(FILE *file)
