@@ -16,20 +16,20 @@ fn void test2()
 
 fn void test()
 {
-    char b = (char)MyEnum.FOO;
-    int z = (int)MyEnum.BAR;
-    var $foo = (int)MyEnum.FOO;
+    char b = (char)MyEnum.FOO.ordinal;
+    int z = (int)MyEnum.BAR.ordinal;
+    var $foo = (int)MyEnum.FOO.ordinal;
     var $baz = MyEnum.BAR;
     MyEnum x = MyEnum.BAR;
-    char b2 = (char)x;
-    int z2 = (int)x;
-    float d = (float)(char)MyEnum.FOO;
-    bool hello = (bool)(char)MyEnum.FOO;
-    var $d = (float)(char)MyEnum.FOO;
-    var $hello = (bool)(char)MyEnum.FOO;
+    char b2 = x.ordinal;
+    int z2 = (int)x.ordinal;
+    float d = (float)MyEnum.FOO.ordinal;
+    bool hello = (bool)MyEnum.FOO.ordinal;
+    var $d = (float)MyEnum.FOO.ordinal;
+    var $hello = (bool)MyEnum.FOO.ordinal;
     MyEnum! xf = MyEnum.BAR;
-    float! e = (float)(char)x;
-    e = (float)(char)xf;
+    float! e = (float)x.ordinal;
+    e = (float)xf.ordinal;
 
 }
 

@@ -1752,6 +1752,7 @@ static void cast_int_to_float(SemaContext *context, Expr *expr, Type *type)
 
 static void cast_enum_to_int(SemaContext *context, Expr* expr, Type *to_type)
 {
+	SEMA_DEPRECATED(expr, "Using casts to convert enums to integers is deprecated in favour of using 'the_enum.ordinal`.");
 	sema_expr_convert_enum_to_int(context, expr);
 	cast_int_to_int(context, expr, to_type);
 }

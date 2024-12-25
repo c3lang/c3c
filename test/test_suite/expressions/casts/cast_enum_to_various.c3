@@ -18,8 +18,8 @@ def Func = fn void(Enum);
 fn void test1(Enum e)
 {
     bool a = (bool)e; // #error: bool
-    char b = (char)e;
-    uint c = (uint)e;
+    char b = (char)e.ordinal;
+    uint c = (uint)e.ordinal;
     float d = (float)e; // #error: float
     uint* f = (uint*)e;         // #error: 'uint*'
 }

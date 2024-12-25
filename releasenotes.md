@@ -6,7 +6,7 @@
 - Split help into normal and "full" help, #1703
 - Removed 'headers' command line option.
 - Add `enum.from_ordinal` and `fault.from_ordinal`
-- Deprecate cast-style conversion from integer to enum.
+- Deprecate cast-style conversion from integer <-> enum.
 - Make deprecation an error in test mode.
 - Add `--win-vs-dirs` to override VS detection dirs.
 

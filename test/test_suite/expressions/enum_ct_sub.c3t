@@ -7,11 +7,8 @@ distinct Abc = int;
 fn void main()
 {
 	$assert (Foo.ABC - Foo.BCD) == 255;
-	$assert (Foo.ABC + Foo.BCD) == 1;
 	char c = Foo.ABC - Foo.BCD;
-	char d = Foo.ABC + Foo.BCD;
 	$assert $typeof(Foo.ABC - Foo.BCD).typeid == char.typeid;
-	$assert $typeof(Foo.ABC + Foo.BCD).typeid == char.typeid;
 	$assert Foo.BCD - 1 == Foo.ABC;
 	$assert Foo.ABC + 1 == Foo.BCD;
 	$assert $typeof(Foo.BCD - 1).typeid == Foo.typeid;
