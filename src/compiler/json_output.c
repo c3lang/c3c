@@ -408,7 +408,7 @@ void print_var_expr(FILE *file, Expr *expr)
                             fputs("\\\"", file);
                             break;
                         }
-                        const unsigned char *ptr = expr->const_expr.bytes.ptr;
+                        const unsigned char *ptr = (unsigned char *)expr->const_expr.bytes.ptr;
                         char *res = malloc_string((size_t)(len * 3 + 1));
                         char *c = res;
                         for (ArraySize i = 0; i < len; ++i)
