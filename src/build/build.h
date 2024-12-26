@@ -556,6 +556,7 @@ typedef struct
 	Library **library_list;
 	LibraryTarget **ccompiling_libraries;
 	const char *name;
+	const char *output_name;
 	const char *version;
 	const char *langrev;
 	const char **source_dirs;

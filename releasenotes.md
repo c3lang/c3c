@@ -9,6 +9,7 @@
 - Deprecate cast-style conversion from integer <-> enum.
 - Make deprecation an error in test mode.
 - Add `--win-vs-dirs` to override VS detection dirs.
+- Add `"name"` project property to override the name of the resulting binary. #1719
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

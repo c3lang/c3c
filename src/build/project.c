@@ -101,6 +101,7 @@ const char* project_target_keys[][2] = {
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
+		{"name", "Set the name to be different from the target name."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
 		{"optlevel", "Code optimization level: none, less, more, max."},
@@ -246,6 +247,9 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	// Panic level
 	target->feature.panic_level = (PanicLevel)get_valid_bool(filename, target_name, json, "panic-msg",
 	                                                         target->feature.panic_level);
+
+	// Overridden name
+	target->output_name = get_optional_string(filename, target_name, json, "name");
 
 	// Single module
 	target->single_module = (SingleModule) get_valid_bool(filename, target_name, json, "single-module", target->single_module);

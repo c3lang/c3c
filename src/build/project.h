@@ -2,7 +2,6 @@
 #include "../utils/json.h"
 
 const char** get_project_dependency_directories();
-
 const char** get_project_dependencies();
 
 static void print_vec(const char *header, const char **vec, bool opt);

@@ -209,6 +209,7 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	print_opt_str("\tName", name);
 	TARGET_VIEW_MANDATORY_STRING("Type", "type");
 	TARGET_VIEW_STRING("Target language target", "langrev");
+	TARGET_VIEW_STRING("Target output name", "name");
 	TARGET_VIEW_STRING_ARRAY("Warnings used", "warnings");
 	TARGET_VIEW_STRING_ARRAY("Additional c3l library search paths", "dependency-search-paths");
 	TARGET_VIEW_STRING_ARRAY("c3l library search paths (override)", "dependency-search-paths-override");

@@ -36,6 +36,13 @@ static double compiler_link_time;
 const char* c3_suffix_list[3] = { ".c3", ".c3t", ".c3i" };
 
 
+static const char *out_name(void)
+{
+	if (compiler.build.output_name) return compiler.build.output_name;
+	if (compiler.build.name) return compiler.build.name;
+	return NULL;
+}
+
 void compiler_init(BuildOptions *build_options)
 {
 	// Process --path
@@ -150,12 +157,8 @@ void **tilde_gen(Module** modules, unsigned module_count)
 
 const char *build_base_name(void)
 {
-	const char *name;
-	if (compiler.build.name)
-	{
-		name = compiler.build.name;
-	}
-	else
+	const char *name = out_name();
+	if (!name)
 	{
 		Module **modules = compiler.context.module_list;
 		Module *main_module = (modules[0] == compiler.context.core_module && vec_size(modules) > 1) ? modules[1] : modules[0];
@@ -176,13 +179,9 @@ const char *build_base_name(void)
 
 static const char *exe_name(void)
 {
-	ASSERT0(compiler.build.name || compiler.context.main || compiler.build.no_entry);
-	const char *name;
-	if (compiler.build.name || compiler.build.no_entry)
-	{
-		name = compiler.build.name ? compiler.build.name : "out";
-	}
-	else
+	ASSERT0(compiler.build.output_name || compiler.build.name || compiler.context.main || compiler.build.no_entry);
+	const char *name = out_name();
+	if (!name)
 	{
 		Path *path = compiler.context.main->unit->module->name;
 		size_t first = 0;
