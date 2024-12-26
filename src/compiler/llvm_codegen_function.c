@@ -418,7 +418,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 		scratch_buffer_append(".__c3_atexit_");
 		scratch_buffer_set_extern_decl_name(decl, false);
 		LLVMValueRef func = LLVMAddFunction(c->module, scratch_buffer_to_string(), c->xtor_func_type);
-
+		llvm_set_weak(c, func);
 		LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
 		LLVMValueRef args[1] = { decl->backend_ref };
 		LLVMBuildCall2(builder, c->atexit_type, atexit, args, 1, "");
@@ -598,6 +598,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		scratch_buffer_append("$ct.dyn.");
 		scratch_buffer_set_extern_decl_name(decl, false);
 		LLVMValueRef global = llvm_add_global_raw(c, scratch_buffer_copy(), c->dtable_type, 0);
+		llvm_set_weak(c, global);
 		Decl *proto = declptrzero(decl->func_decl.interface_method);
 		LLVMValueRef proto_ref = proto ? llvm_get_ref(c, proto) : llvm_get_selector(c, decl->name);
 

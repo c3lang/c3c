@@ -50,8 +50,8 @@ $"$sel.hello" = comdat any
 @.panic_msg = internal constant [42 x i8] c"No method 'tesT' could be found on target\00", align 1
 @.func = internal constant [5 x i8] c"main\00", align 1
 @std.core.builtin.panic = extern_weak global ptr, align 8
-@"$ct.dyn.inherit.Test.tesT" = global { ptr, ptr, ptr } { ptr @inherit.Test.tesT, ptr @"$sel.tesT", ptr inttoptr (i64 -1 to ptr) }, align 8
-@"$ct.dyn.inherit.Test.hello" = global { ptr, ptr, ptr } { ptr @inherit.Test.hello, ptr @"$sel.hello", ptr inttoptr (i64 -1 to ptr) }, align 8
+@"$ct.dyn.inherit.Test.tesT" = weak global { ptr, ptr, ptr } { ptr @inherit.Test.tesT, ptr @"$sel.tesT", ptr inttoptr (i64 -1 to ptr) }, comdat, align 8
+@"$ct.dyn.inherit.Test.hello" = weak global { ptr, ptr, ptr } { ptr @inherit.Test.hello, ptr @"$sel.hello", ptr inttoptr (i64 -1 to ptr) }, comdat, align 8
 @"$sel.hello" = linkonce_odr constant [6 x i8] c"hello\00", comdat, align 1
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.c3_dynamic_register, ptr null }]
 define void @inherit.Test.tesT(ptr %0) #0 {

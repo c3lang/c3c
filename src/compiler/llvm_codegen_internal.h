@@ -371,6 +371,7 @@ void llvm_set_linkonce(GenContext *c, LLVMValueRef global);
 void llvm_set_comdat(GenContext *c, LLVMValueRef global);
 void llvm_set_private_declaration(LLVMValueRef alloc);
 void llvm_set_decl_linkage(GenContext *c, Decl *decl);
+void llvm_set_weak(GenContext *c, LLVMValueRef global);
 
 void llvm_set_internal_linkage(LLVMValueRef alloc);
 void llvm_set_global_tls(Decl *decl);

@@ -26,6 +26,7 @@
 - Prevent DString from being initialized with "".
 - Fix bug in OnStackAllocator when freeing overallocated data. #1720
 - Use `weak_odr` rather than `weak` on Windows which seems to prevent issues such as #1704.
+- Use `weak` on dyn-symbols on Linux.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
