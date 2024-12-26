@@ -60,8 +60,7 @@ entry:
   call void @puts(ptr @.str.4)
   ret void
 }
-
-define void @.__c3_atexit_test.shutdown() {
+define weak void @.__c3_atexit_test.shutdown() comdat {
 entry:
   call void @atexit(ptr @test.shutdown)
   ret void
