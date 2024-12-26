@@ -468,7 +468,7 @@ void llvm_set_global_tls(Decl *decl)
 	}
 }
 
-static void llvm_set_weak(GenContext *c, LLVMValueRef global)
+void llvm_set_weak(GenContext *c, LLVMValueRef global)
 {
 	LLVMSetLinkage(global, compiler.platform.os == OS_TYPE_WIN32 ? LLVMWeakODRLinkage : LLVMWeakAnyLinkage);
 	LLVMSetVisibility(global, LLVMDefaultVisibility);

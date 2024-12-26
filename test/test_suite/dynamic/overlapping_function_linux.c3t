@@ -41,8 +41,8 @@ fn void main()
 @.file = internal constant [30 x i8] c"overlapping_function_linux.c3\00", align 1
 @.func = internal constant [5 x i8] c"main\00", align 1
 @std.core.builtin.panic = extern_weak global ptr, align 8
-@"$ct.dyn.overlap.Test.tesT" = global { ptr, ptr, ptr } { ptr @overlap.Test.tesT, ptr @"$sel.tesT", ptr inttoptr (i64 -1 to ptr) }, align 8
-@"$ct.dyn.overlap.Test.foo" = global { ptr, ptr, ptr } { ptr @overlap.Test.foo, ptr @"$sel.foo", ptr inttoptr (i64 -1 to ptr) }, align 8
+@"$ct.dyn.overlap.Test.tesT" = weak global { ptr, ptr, ptr } { ptr @overlap.Test.tesT, ptr @"$sel.tesT", ptr inttoptr (i64 -1 to ptr) }, comdat, align 8
+@"$ct.dyn.overlap.Test.foo" = weak global { ptr, ptr, ptr } { ptr @overlap.Test.foo, ptr @"$sel.foo", ptr inttoptr (i64 -1 to ptr) }, comdat, align 8
 @"$sel.foo" = linkonce_odr constant [4 x i8] c"foo\00", comdat, align 1
 @llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.c3_dynamic_register, ptr null }]
 ; Function Attrs: nounwind uwtable
@@ -134,8 +134,6 @@ entry:
   call void @overlap.main()
   ret i32 0
 }
-
-
 define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr comdat {
 entry:
   br label %check
