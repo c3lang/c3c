@@ -326,6 +326,15 @@ jobs:
           ./a.out
           ../../../build/c3c compile-run test.c3 -L . -l add -z -Wl,-rpath=.           
 
+      - name: Compile and run staticlib-test
+        run: |
+          cd resources/examples/staticlib-test
+          ../../../build/c3c -vv static-lib add.c3
+          mv add.a libadd.a
+          cc test.c -L. -ladd         
+          ./a.out
+          ../../../build/c3c compile-run test.c3 -L . -l add           
+
       - name: Compile run unit tests
         run: |
           cd test
