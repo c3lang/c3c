@@ -181,6 +181,10 @@ static const char *exe_name(void)
 {
 	ASSERT0(compiler.build.output_name || compiler.build.name || compiler.context.main || compiler.build.no_entry);
 	const char *name = out_name();
+	if (!name && compiler.build.no_entry)
+	{
+		name = "out";
+	}
 	if (!name)
 	{
 		Path *path = compiler.context.main->unit->module->name;
