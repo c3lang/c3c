@@ -222,7 +222,8 @@ static void parse_project_subcommand(BuildOptions *options)
 		if (at_end() || next_is_opt()) error_exit("Expected a target type like 'executable' or 'static-lib'");
 		options->project_options.target_type = (TargetType)get_valid_enum_from_string(next_arg(), "type", targets, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 
-		while (!at_end() && !next_is_opt()) {
+		while (!at_end() && !next_is_opt())
+		{
 			vec_add(options->project_options.sources, next_arg());
 		}
 

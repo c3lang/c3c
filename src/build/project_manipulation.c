@@ -9,13 +9,16 @@ static JSONObject *read_project(const char **file_used, bool assume_empty_if_not
 	const char *project_filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
 	*file_used = project_filename;
 	char *read;
-	if (assume_empty_if_not_exists) {
+	if (assume_empty_if_not_exists)
+	{
 		// If project file does not exist assume the project simply being empty instead of
 		// failing. This is useful for such commands as `project add-target`. It enables
 		// them to update otherwise non-existing project files reducing the friction.
 		read = "{}";
 		if (file_exists(project_filename)) read = file_read_all(project_filename, &size);
-	} else {
+	}
+	else
+	{
 		read = file_read_all(project_filename, &size);
 	}
 	JsonParser parser;
@@ -424,7 +427,8 @@ void add_target_project(BuildOptions *build_options)
 	JSONObject *new_target = json_new_map();
 	json_map_set(new_target, "type", target_type_obj);
 	JSONObject *target_sources = json_new_object(J_ARRAY);
-	FOREACH(const char *, source, build_options->project_options.sources) {
+	FOREACH(const char *, source, build_options->project_options.sources)
+	{
 		vec_add(target_sources->elements, json_new_string(source));
 	}
 	json_map_set(new_target, "sources", target_sources);
