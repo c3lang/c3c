@@ -45,7 +45,7 @@ fn TcpSocket! accept(TcpServerSocket* server_socket)
 	TcpSocket socket;
 	socket.ai_addrlen = socket.ai_addr_storage.len;
 	socket.sock = os::accept(server_socket.sock, (SockAddrPtr)&socket.ai_addr_storage, &socket.ai_addrlen);
-	if (!socket.sock.is_valid()) return NetError.ACCEPT_FAILED?;
+	if (!socket.sock.is_valid()) return os::socket_error()?;
 	return socket;
 }
 
