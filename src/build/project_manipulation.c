@@ -299,7 +299,7 @@ void fetch_project(BuildOptions* options)
 	const char **libdirs = get_project_dependency_directories();
 	const char **deps = get_project_dependencies();
 	const char *filename;
-	JSONObject *project_json = read_project(&filename);
+	JSONObject *project_json = read_project(&filename, false);
 
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
