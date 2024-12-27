@@ -69,6 +69,12 @@ jobs:
           ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv dynamic-lib add.c3
           ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
 
+      - name: Compile and run staticlib-test
+        run: |
+          cd resources/examples/staticlib-test
+          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv static-lib add.c3
+          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib          
+
       - name: Vendor-fetch
         run: |
           build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib5
