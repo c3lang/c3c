@@ -453,6 +453,7 @@ typedef struct BuildOptions_
 		ProjectSubcommand command;
 		const char *target_name;
 		TargetType target_type;
+		const char **sources;
 	} project_options;
 	CompileOption compile_option;
 	TrustLevel trust_level;
