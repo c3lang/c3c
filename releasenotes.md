@@ -36,6 +36,7 @@
 - Added `iter()` `value_iter()` and `key_iter()` to HashMap.
 - Add "tokenizer" to String.
 - Add "skip_empty" to split methods. Add split_to_buffer method.
+- Add `@enum_from_value`.
 
 ## 0.6.5 Change list
 

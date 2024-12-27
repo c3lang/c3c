@@ -236,6 +236,24 @@ macro enum_by_name($Type, String enum_name) @builtin
 }
 
 <*
+ @param $Type `The type of the enum`
+ @require $Type.kindof == ENUM `Only enums may be used`
+ @require $defined($Type.#value1) `Expected '#value' to match an enum associated value`
+ @require $assignable(value, $typeof($Type{}.#value)) `Expected the value to match the type of the associated value`
+ @ensure @typeis(return, $Type)
+ @return! SearchResult.MISSING
+*>
+macro @enum_from_value($Type, #value, value) @builtin
+{
+	usz elements = $Type.elements;
+	foreach (e : $Type.values)
+	{
+		if (e.#value == value) return e;
+	}
+	return SearchResult.MISSING?;
+}
+
+<*
  Mark an expression as likely to be true
 
  @param #value "expression to be marked likely"
