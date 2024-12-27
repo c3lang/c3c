@@ -10,6 +10,7 @@
 - Make deprecation an error in test mode.
 - Add `--win-vs-dirs` to override VS detection dirs.
 - Add `"name"` project property to override the name of the resulting binary. #1719
+- Improved `add-project` to take arguments.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -27,6 +28,7 @@
 - Fix bug in OnStackAllocator when freeing overallocated data. #1720
 - Use `weak_odr` rather than `weak` on Windows which seems to prevent issues such as #1704.
 - Use `weak` on dyn-symbols on Linux.
+- Fix crash on project.json not having an empty set of targets.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
