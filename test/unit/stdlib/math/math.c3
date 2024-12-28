@@ -161,14 +161,14 @@ fn void! test_atan() @test
 fn void! test_atanh() @test
 {
 	int [<4>] in = { 231, -231, 1, -1 };
-	double [<2>] in2 = { 0.5, -0.5 };
-	double [<2>] out = { 0.5493061443340548, -0.5493061443340548 };
+	double [<6>] in2 = {0.8, 0.5, 0.3, -0.3, -0.5, -0.8 };
+	double [<6>] out = { 1.0986122886681098, 0.5493061443340548, 0.30951960420311175, -0.30951960420311175, -0.5493061443340548, -1.0986122886681098 };
 	assert(@typeis(math::atanh(in[0]), double));
 	assert(@typeis(math::atanh((float)in[0]), float));
 	assert(@typeis(math::atanh((double)in[0]), double));
 	for (int i = 0; i < 2; i++)
 	{
-		assert(math::is_nan(math::atanh(in[i])), "atanh(%d)=%f is not nan", in[i]);
+		assert(math::is_nan(math::atanh(in[i])), "atanh(%d) is not nan", in[i]);
 		assert(math::is_nan(math::atanh((float)in[i])), "atanh(%f) is not nan", in[i]);
 		assert(math::is_nan(math::atanh((double)in[i])), "atanh(%f) is not nan", in[i]);
 	}
@@ -181,7 +181,7 @@ fn void! test_atanh() @test
 	assert(math::atanh(0) == 0., "atanh(%d) is not equal to %f", 0, 0.);
 	assert(math::atanh(0.f) == 0.f, "atanh(%f) is not equal to %f", 0.f, 0.f);
 	assert(math::atanh(0.) == 0., "atanh(%f) is not equal to %f", 0., 0.);
-	for (int i = 0; i < 2; i++)
+	for (int i = 0; i < 6; i++)
 	{
 		float f = math::atanh((float)in2[i]);
 		assert(math::is_approx(f, (float)out[i], 1e-6), "atanh(%f)=%f is not equal to %f", in2[i], f, out[i]);

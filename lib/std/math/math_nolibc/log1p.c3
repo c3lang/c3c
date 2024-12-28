@@ -93,10 +93,13 @@ fn double _log1p(double x) @weak @extern("log1p") @nostrip
 			c = (k >= 2) ? 1. - (u - x) : x - (u - 1.);
 			c /= u;
 		}
-		else c = 0;
+		else
+		{
+			c = 0;
+		}
 		/* reduce u into [sqrt(2)/2, sqrt(2)] */
 		hu = (hu & 0x000fffff) + 0x3fe6a09e;
-		u = bitcast((ulong)hu << 32 | bitcast(u, ulong) & 0xffffffff , double);
+		u = bitcast(((ulong)hu << 32) | (bitcast(u, ulong) & 0xffffffff) , double);
 		f = u - 1.;
 	}
 	double hfsq = 0.5 * f * f;
@@ -195,7 +198,7 @@ fn float _log1pf(float x) @weak @extern("log1pf") @nostrip
 	}
 	if (k)
 	{
-		double u = 1 + x;
+		float u = 1 + x;
 		uint iu = u.word();
 		iu += 0x3f800000 - 0x3f3504f3;
 		k = (int)(iu >> 23) - 0x7f;
@@ -205,12 +208,15 @@ fn float _log1pf(float x) @weak @extern("log1pf") @nostrip
 			c = (k >= 2) ? 1.f - (u - x) : x - (u - 1.f);
 			c /= u;
 		}
-		else c = 0;
+		else
+		{
+			c = 0;
+		}
 		/* reduce u into [sqrt(2)/2, sqrt(2)] */
 		iu = (iu & 0x007fffff) + 0x3f3504f3;
 		f = bitcast(iu, float) - 1.f;
 	}
-	float hfdq = 0.5f * f * f;
+	float hfsq = 0.5f * f * f;
 	float s = f / (2.f + f);
 	float z = s * s;
 	float w = z * z;
