@@ -26,7 +26,7 @@ struct MapImpl
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
 *>
-fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn Map new_init(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
 	MapImpl* map = allocator::alloc(allocator, MapImpl);
 	_init(map, capacity, load_factor, allocator);
@@ -38,7 +38,7 @@ fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
 *>
-fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+fn Map temp_init(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	MapImpl* map = mem::temp_alloc(MapImpl);
 	_init(map, capacity, load_factor, allocator::temp());
@@ -54,7 +54,7 @@ fn Map temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAUL
 *>
 macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	Map map = new(capacity, load_factor, allocator);
+	Map map = new_init(capacity, load_factor, allocator);
 	$for (var $i = 0; $i < $vacount; $i += 2)
 		map.set($vaarg[$i], $vaarg[$i+1]);
 	$endfor
@@ -72,8 +72,7 @@ macro Map new_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY
 *>
 fn Map new_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	assert(keys.len == values.len);
-	Map map = new(capacity, load_factor, allocator);
+	Map map = new_init(capacity, load_factor, allocator);
 	for (usz i = 0; i < keys.len; i++)
 	{
 		map.set(keys[i], values[i]);
@@ -87,9 +86,9 @@ fn Map new_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity =
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
 *>
-macro Map temp_new_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
+macro Map temp_init_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	Map map = temp(capacity, load_factor);
+	Map map = temp_init(capacity, load_factor);
 	$for (var $i = 0; $i < $vacount; $i += 2)
 		map.set($vaarg[$i], $vaarg[$i+1]);
 	$endfor
@@ -107,8 +106,7 @@ macro Map temp_new_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY
 *>
 fn Map temp_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	assert(keys.len == values.len);
-	Map map = temp(capacity, load_factor);
+	Map map = temp_init(capacity, load_factor);
 	for (usz i = 0; i < keys.len; i++)
 	{
 		map.set(keys[i], values[i]);
@@ -119,15 +117,15 @@ fn Map temp_init_from_keys_and_values(Key[] keys, Value[] values, uint capacity 
 <*
  @param [&in] other_map "The map to copy from."
 *>
-fn Map new_from_map(Map other_map, Allocator allocator = null)
+fn Map new_init_from_map(Map other_map, Allocator allocator = null)
 {
 	MapImpl* other_map_impl = (MapImpl*)other_map;
 	if (!other_map_impl)
 	{
-		if (allocator) return new(allocator: allocator);
+		if (allocator) return new_init(allocator: allocator);
 		return null;
 	}
-	MapImpl* map = (MapImpl*)new(other_map_impl.table.len, other_map_impl.load_factor, allocator ?: allocator::heap());
+	MapImpl* map = (MapImpl*)new_init(other_map_impl.table.len, other_map_impl.load_factor, allocator ?: allocator::heap());
 	if (!other_map_impl.count) return (Map)map;
 	foreach (Entry *e : other_map_impl.table)
 	{
@@ -143,9 +141,9 @@ fn Map new_from_map(Map other_map, Allocator allocator = null)
 <*
  @param [&in] other_map "The map to copy from."
 *>
-fn Map temp_from_map(Map other_map)
+fn Map temp_init_from_map(Map other_map)
 {
-	return new_from_map(other_map, allocator::temp());
+	return new_init_from_map(other_map, allocator::temp());
 }
 
 fn bool Map.is_empty(map) @inline
@@ -225,7 +223,7 @@ macro Value Map.set_value_return(&map, Key key, Value value) @operator([]=)
 fn bool Map.set(&self, Key key, Value value)
 {
 	// If the map isn't initialized, use the defaults to initialize it.
-	if (!*self) *self = new();
+	if (!*self) *self = new_init();
 	MapImpl* map = (MapImpl*)*self;
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
