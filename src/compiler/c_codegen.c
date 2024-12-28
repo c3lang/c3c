@@ -686,6 +686,102 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 	//llvm_store_zero(c, value);
 	//llvm_value_set(value, llvm_get_zero(c, var_type), var_type);
 }
+
+static void c_emit_return(GenContext *c, Ast *stmt)
+{
+	Expr *expr = stmt->return_stmt.expr;
+	if (expr && expr->expr_kind == EXPR_OPTIONAL)
+	{
+		PRINT("/* RETURN */\n");
+		/*
+		BEValue be_value;
+		llvm_emit_expr(c, &be_value, expr->inner_expr);
+		if (ast->return_stmt.cleanup_fail)
+		{
+			llvm_value_rvalue(c, &be_value);
+			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+			llvm_store_to_ptr(c, error_out, &be_value);
+			PUSH_DEFER_ERROR(error_out);
+			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
+			POP_DEFER_ERROR();
+		}
+		llvm_emit_return_abi(c, NULL, &be_value);
+		 */
+		return;
+	}
+
+	PUSH_CATCH();
+
+	int error_return_block = 0;
+	int error_out = 0;
+
+	if (!stmt->return_stmt.expr)
+	{
+		PRINT("return;\n");
+		return;
+	}
+	TODO
+	/*
+	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
+	{
+		error_return_block = llvm_basic_block_new(c, "err_retblock");
+		error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+		c->catch = (OptionalCatch) { error_out, error_return_block };
+	}
+
+	bool has_return_value = ast->return_stmt.expr != NULL;
+	BEValue return_value = { 0 };
+	if (has_return_value)
+	{
+		llvm_emit_expr(c, &return_value, ast->return_stmt.expr);
+		llvm_value_fold_optional(c, &return_value);
+		c->retval = return_value;
+	}
+
+	POP_CATCH();
+
+	if (ast->return_stmt.cleanup || ast->return_stmt.cleanup_fail)
+	{
+		if (has_return_value)
+		{
+			if (llvm_temp_as_address(c, return_value.type))
+			{
+				LLVMValueRef temp = llvm_emit_alloca_aligned(c, return_value.type, "ret$temp");
+				llvm_store_to_ptr(c, temp, &return_value);
+				llvm_value_set_address_abi_aligned(&return_value, temp, return_value.type);
+			}
+			else
+			{
+				llvm_value_rvalue(c, &return_value);
+			}
+		}
+		llvm_emit_statement_chain(c, ast->return_stmt.cleanup);
+	}
+
+	if (llvm_get_current_block_if_in_use(c))
+	{
+		// Are we in an expression block?
+		if (!has_return_value)
+		{
+			llvm_emit_return_implicit(c);
+		}
+		else
+		{
+			llvm_emit_return_abi(c, &return_value, NULL);
+		}
+	}
+	if (error_return_block && LLVMGetFirstUse(LLVMBasicBlockAsValue(error_return_block)))
+	{
+		llvm_emit_block(c, error_return_block);
+		PUSH_DEFER_ERROR(error_out);
+		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
+		POP_DEFER_ERROR();
+		BEValue value;
+		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
+		llvm_emit_return_abi(c, NULL, &value);
+	}*/
+}
+
 static void c_emit_stmt(GenContext *c, Ast *stmt)
 {
 	if (!stmt) return;
@@ -751,7 +847,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			PRINT(";\n");
 			return;
 		case AST_RETURN_STMT:
-			PRINT("/* RETURN */\n");
+			c_emit_return(c, stmt);
 			return;
 		case AST_BLOCK_EXIT_STMT:
 			break;
