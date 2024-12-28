@@ -1,5 +1,6 @@
 #include "c_codegen_internal.h"
 
+#include <inttypes.h>
 
 typedef struct OptionalCatch_
 {
@@ -346,11 +347,11 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			}
 			if (type_is_unsigned(t))
 			{
-				PRINTF("%s ___var_%d = %llu;\n", c_type_name(c, t), c_emit_temp(c, value, t), expr->const_expr.ixx.i.low);
+				PRINTF("%s ___var_%d = %" PRIu64 ";\n", c_type_name(c, t), c_emit_temp(c, value, t), expr->const_expr.ixx.i.low);
 			}
 			else
 			{
-				PRINTF("%s ___var_%d = %lld;\n", c_type_name(c, t), c_emit_temp(c, value, t), expr->const_expr.ixx.i.low);
+				PRINTF("%s ___var_%d = %" PRId64 ";\n", c_type_name(c, t), c_emit_temp(c, value, t), (int64_t)expr->const_expr.ixx.i.low);
 			}
 			return;
 		case CONST_BOOL:
