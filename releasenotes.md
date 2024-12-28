@@ -29,6 +29,7 @@
 - Use `weak_odr` rather than `weak` on Windows which seems to prevent issues such as #1704.
 - Use `weak` on dyn-symbols on Linux.
 - Fix crash on project.json not having an empty set of targets.
+- Miscompile when indexing an array with small unsigned types for enums.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

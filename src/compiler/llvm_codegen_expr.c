@@ -5292,10 +5292,9 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVM
 	LLVMTypeRef element_type = LLVMGetElementType(array_type);
 	Type *index_type = index->type;
 	ASSERT0(type_is_integer(index_type));
-	LLVMTypeRef idx_type = llvm_get_type(c, index_type);
 	if (type_is_unsigned(index_type) && type_size(index_type) < type_size(type_usz))
 	{
-		index_val = llvm_zext_trunc(c, index_val, idx_type);
+		index_val = llvm_zext_trunc(c, index_val, llvm_get_type(c, type_usz));
 	}
 	*alignment = type_min_alignment(llvm_abi_size(c, element_type), array_alignment);
 	return llvm_emit_pointer_inbounds_gep_raw(c, element_type, ptr, index_val);

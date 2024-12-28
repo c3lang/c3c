@@ -41,17 +41,21 @@ entry:
   store i32 1, ptr %f, align 4
   store i32 0, ptr %g, align 4
   %0 = load i32, ptr %f, align 4
-  %ptroffset = getelementptr inbounds [4 x i8], ptr @"test.Foo$val", i32 %0
+  %zext = zext i32 %0 to i64
+  %ptroffset = getelementptr inbounds [4 x i8], ptr @"test.Foo$val", i64 %zext
   %1 = load i32, ptr %f, align 4
-  %ptroffset1 = getelementptr inbounds [8 x i8], ptr @"test.Foo$testme", i32 %1
+  %zext1 = zext i32 %1 to i64
+  %ptroffset2 = getelementptr inbounds [8 x i8], ptr @"test.Foo$testme", i64 %zext1
   %2 = load i32, ptr %g, align 4
-  %ptroffset2 = getelementptr inbounds [4 x i8], ptr @"test.Foo$val", i32 %2
+  %zext3 = zext i32 %2 to i64
+  %ptroffset4 = getelementptr inbounds [4 x i8], ptr @"test.Foo$val", i64 %zext3
   %3 = load i32, ptr %g, align 4
-  %ptroffset3 = getelementptr inbounds [8 x i8], ptr @"test.Foo$testme", i32 %3
+  %zext5 = zext i32 %3 to i64
+  %ptroffset6 = getelementptr inbounds [8 x i8], ptr @"test.Foo$testme", i64 %zext5
   %4 = load i32, ptr %ptroffset, align 4
-  %5 = load ptr, ptr %ptroffset1, align 8
-  %6 = load i32, ptr %ptroffset2, align 4
-  %7 = load ptr, ptr %ptroffset3, align 8
+  %5 = load ptr, ptr %ptroffset2, align 8
+  %6 = load i32, ptr %ptroffset4, align 4
+  %7 = load ptr, ptr %ptroffset6, align 8
   %8 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %4, ptr %5, i32 %6, ptr %7)
   ret void
 }
