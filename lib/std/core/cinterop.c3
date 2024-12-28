@@ -29,7 +29,7 @@ def CUChar = char;
 
 def CChar = $typefrom($$C_CHAR_IS_SIGNED ? ichar.typeid : char.typeid);
 
-enum CBool : CInt
+enum CBool : char
 {
 	FALSE,
 	TRUE
