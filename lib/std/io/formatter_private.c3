@@ -606,6 +606,10 @@ fn usz! Formatter.ntoa_any(&self, any arg, uint base) @private
 
 fn usz! Formatter.out_char(&self, any arg) @private
 {
+	if (!arg.type.kindof.is_int())
+	{
+		return self.out_substr("<NOT CHAR>");
+	}
 	usz len = 1;
 	uint l = 1;
 	// pre padding

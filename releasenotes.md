@@ -31,6 +31,8 @@
 - Fix crash on project.json not having an empty set of targets.
 - Miscompile when indexing an array with small unsigned types for enums.
 - Change CBool to be 1 byte.
+- `any_to_int` checks value to be int and no longer works with enum.
+- Add check in formatter printing "%c".
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

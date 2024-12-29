@@ -8,18 +8,24 @@ fault ConversionResult
 	VALUE_OUT_OF_RANGE,
 	VALUE_OUT_OF_UNSIGNED_RANGE,
 }
+
 <*
- @require $Type.kindof.is_int() || $Type.kindof == TypeKind.ENUM "Argument was not an integer"
+ @require $Type.kindof.is_int() "Type was not an integer"
+ @require v.type.kindof == ENUM "Value was not an enum"
+*>
+macro any_to_enum_ordinal(any v, $Type)
+{
+	return any_to_int(v.as_inner(), $Type);
+}
+
+<*
+ @require $Type.kindof.is_int() "Type was not an integer"
+ @require v.type.kindof.is_int() "Value was not an integer"
 *>
 macro any_to_int(any v, $Type)
 {
 	typeid any_type = v.type;
 	TypeKind kind = any_type.kindof;
-	if (kind == TypeKind.ENUM)
-	{
-		any_type = any_type.inner;
-		kind = any_type.kindof;
-	}
 	bool is_mixed_signed = $Type.kindof != any_type.kindof;
 	$Type max = $Type.max;
 	$Type min = $Type.min;
