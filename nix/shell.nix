@@ -1,20 +1,22 @@
 {
+  lib,
   mkShell,
   clang-tools,
   c3c,
-}:
+}: 
+mkShell.override { 
+  inherit (c3c) stdenv; 
+} {
+  name = "c3c-shell";
 
-mkShell {
   inputsFrom = [
     c3c
   ];
 
   packages = [ 
     clang-tools 
-    c3c
   ];
 
-  shellHook = ''
-    ln -sf ${c3c}/compile_commands.json compile_commands.json
-  '';
+  # Usage: 'cmake . -Bbuild $C3_CMAKE_FLAGS' or 'cmake . -Bbuild $=C3_CMAKE_FLAGS' on zsh
+  C3_CMAKE_FLAGS = lib.concatStringsSep " " c3c.cmakeFlags;
 }
