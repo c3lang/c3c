@@ -15,45 +15,35 @@
   inherit (lib.lists) findFirst;
   inherit (lib.asserts) assertMsg;
   inherit (lib.strings) hasInfix hasSuffix splitString removeSuffix removePrefix optionalString;
-in 
-llvmPackages.stdenv.mkDerivation (finalAttrs: {
+in llvmPackages.stdenv.mkDerivation (finalAttrs: {
+
   pname = "c3c${optionalString debug "-debug"}";
+
   version = let
-    findLine = findFirst (x: hasInfix "COMPILER_VERSION" x) "none";
-    foundLine = findLine ( splitString "\n" ( readFile ../src/version.h ) );
-    version = removeSuffix "\"" ( removePrefix "\"" ( elemAt ( splitString " " foundLine ) 2 ) );
+    foundLine = findFirst (x: hasInfix "COMPILER_VERSION" x) "none" ( splitString "\n" ( readFile ../src/version.h ) );
   in 
     assert assertMsg (foundLine != "none") "No COMPILER_VERSION substring was found in version.h";
-    version;
+    removeSuffix "\"" ( removePrefix "\"" ( elemAt ( splitString " " foundLine ) 2 ) );
 
   src = cleanSourceWith {
     filter = _path: _type: !(hasSuffix ".nix" (baseNameOf(toString _path)));
     src = cleanSource ../.;
   };
 
-  postPatch = ''
-    substituteInPlace CMakeLists.txt \
-      --replace-fail "\''${LLVM_LIBRARY_DIRS}" "${llvmPackages.lld.lib}/lib ${llvmPackages.llvm.lib}/lib"
-  '';
-
   cmakeBuildType = if debug then "Debug" else "Release";
 
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
+    "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
   ];
 
-  nativeBuildInputs = [ cmake ];
-
-  postBuild = optionalString debug ''
-    mkdir $out
-    substituteInPlace compile_commands.json \
-      --replace "/build/source/" "$src/"
-    cp compile_commands.json $out/compile_commands.json
-  '';
+  nativeBuildInputs = [ 
+    cmake 
+    llvmPackages.llvm
+    llvmPackages.lld 
+  ];
 
   buildInputs = [
-    llvmPackages.llvm
-    llvmPackages.lld
     curl
     libxml2
     libffi
@@ -77,6 +67,7 @@ llvmPackages.stdenv.mkDerivation (finalAttrs: {
     maintainers = with maintainers; [
       luc65r
       anas
+      vssukharev
     ];
     platforms = platforms.all;
     mainProgram = "c3c";
