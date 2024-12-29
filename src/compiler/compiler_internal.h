@@ -1116,6 +1116,12 @@ typedef struct
 	SemaContext *context;
 } ExprOtherContext;
 
+typedef struct
+{
+	Expr *inner;
+	bool is_signed;
+} ExprExtTrunc;
+
 struct Expr_
 {
 	Type *type;
@@ -1142,15 +1148,16 @@ struct Expr_
 		ExprCtCall ct_call_expr;                    // 24
 		ExprIdentifierRaw ct_ident_expr;            // 24
 		Decl *decl_expr;                            // 8
-		Expr** designated_init_list;                // 8
+		Expr **designated_init_list;                // 8
 		ExprDesignator designator_expr;             // 16
 		ExprNamedArgument named_argument_expr;
 		ExprEmbedExpr embed_expr;                   // 16
-		Expr** exec_expr;                           // 8
+		Expr **exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
 		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
-		Expr** expression_list;                     // 8
+		Expr **expression_list;                     // 8
+		ExprExtTrunc ext_trunc_expr;
 		ExprGenericIdent generic_ident_expr;
 		ExprDefaultArg default_arg_expr;
 		ExprIdentifierRaw hash_ident_expr;          // 24
@@ -3273,6 +3280,9 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
+		case EXPR_EXT_TRUNC:
+			expr_set_span(expr->ext_trunc_expr.inner, loc);
+			return;
 		case EXPR_NAMED_ARGUMENT:
 			expr->named_argument_expr.name_span = loc;
 			expr_set_span(expr->named_argument_expr.value, loc);
@@ -3579,6 +3589,14 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 	expr->const_expr.typeid = type->canonical;
 	expr->type = type_typeid;
 	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_EXT_TRUNC;
+	expr->ext_trunc_expr = (ExprExtTrunc) { .inner = inner, .is_signed = is_signed };
+	expr->type = type;
 }
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)

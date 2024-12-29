@@ -1467,9 +1467,16 @@ static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type) { 
 static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_PTRANY, type); }
 static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_STINLINE, type); }
 static void cast_fault_to_anyfault(SemaContext *context, Expr *expr, Type *type) { expr->type = type; };
-static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ERINT, type); }
 static void cast_fault_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ERPTR, type); }
-static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDINT, type); }
+static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type)
+{
+	expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten(type)));
+}
+
+static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type)
+{
+	return cast_typeid_to_int(context, expr, type);
+}
 static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDPTR, type); }
 static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ANYBOOL, type); }
 static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ANYPTR, type); }
@@ -1810,7 +1817,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 			// Special conversion to retain the sign.
 			if (type_is_integer(to_element))
 			{
-				insert_runtime_cast(expr, CAST_BOOLVECINT, to_type);
+				expr_rewrite_ext_trunc(expr, to_type, true);
 				return;
 			}
 			if (type_is_float(to_element))
@@ -1934,7 +1941,11 @@ static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_bool_to_int(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_BOOLINT, type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr_rewrite_ext_trunc(expr, type, false);
+		return;
+	}
 
 	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0);
 }

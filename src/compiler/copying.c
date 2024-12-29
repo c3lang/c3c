@@ -332,6 +332,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_SWIZZLE:
 			MACRO_COPY_EXPRID(expr->swizzle_expr.parent);
 			return expr;
+		case EXPR_EXT_TRUNC:
+			MACRO_COPY_EXPR(expr->ext_trunc_expr.inner);
+			return expr;
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:

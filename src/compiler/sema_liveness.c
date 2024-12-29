@@ -485,6 +485,9 @@ RETRY:
 		case EXPR_TRY_UNWRAP_CHAIN:
 			sema_trace_expr_list_liveness(expr->try_unwrap_chain_expr);
 			return;
+		case EXPR_EXT_TRUNC:
+			sema_trace_expr_liveness(expr->ext_trunc_expr.inner);
+			return;
 		case EXPR_TYPEID:
 		case EXPR_LAST_FAULT:
 			return;

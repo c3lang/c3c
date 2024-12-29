@@ -250,6 +250,8 @@ void print_var_expr(FILE *file, Expr *expr)
             fputs(".", file);
             print_var_expr(file, expr->access_expr.child);
             break;
+		case EXPR_EXT_TRUNC:
+			TODO
         case EXPR_BINARY:
             print_var_expr(file, exprptr(expr->binary_expr.left));
             switch (expr->binary_expr.operator)

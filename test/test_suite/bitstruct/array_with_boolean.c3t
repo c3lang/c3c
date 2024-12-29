@@ -58,12 +58,12 @@ entry:
   %7 = load i8, ptr %ptradd14, align 1
   %lshrl15 = lshr i8 %7, 3
   %8 = trunc i8 %lshrl15 to i1
-  %boolsi = zext i1 %8 to i32
-  %ptradd16 = getelementptr inbounds i8, ptr %xx, i64 2
-  %9 = load i8, ptr %ptradd16, align 1
-  %lshrl17 = lshr i8 %9, 4
-  %10 = trunc i8 %lshrl17 to i1
-  %boolsi18 = zext i1 %10 to i32
-  call void (ptr, ...) @printf(ptr @.str, i32 %ashr, i32 %ashr5, i32 %ashr13, i32 %boolsi, i32 %boolsi18)
+  %zext16 = zext i1 %8 to i32
+  %ptradd17 = getelementptr inbounds i8, ptr %xx, i64 2
+  %9 = load i8, ptr %ptradd17, align 1
+  %lshrl18 = lshr i8 %9, 4
+  %10 = trunc i8 %lshrl18 to i1
+  %zext19 = zext i1 %10 to i32
+  call void (ptr, ...) @printf(ptr @.str, i32 %ashr, i32 %ashr5, i32 %ashr13, i32 %zext16, i32 %zext19)
   ret void
 }

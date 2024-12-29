@@ -317,18 +317,18 @@ entry:
   %67 = and i64 1, %lshrl
   %trunc92 = trunc i64 %67 to i8
   %68 = trunc i8 %trunc92 to i1
-  %boolsi = zext i1 %68 to i32
-  call void (ptr, ...) @printf(ptr @.str.9, i32 %boolsi)
+  %zext93 = zext i1 %68 to i32
+  call void (ptr, ...) @printf(ptr @.str.9, i32 %zext93)
   %69 = load i64, ptr %xx, align 8
   %70 = and i64 %69, -1048577
   store i64 %70, ptr %xx, align 8
   %71 = load i64, ptr %xx, align 8
-  %lshrl93 = lshr i64 %71, 20
-  %72 = and i64 1, %lshrl93
-  %trunc94 = trunc i64 %72 to i8
-  %73 = trunc i8 %trunc94 to i1
-  %boolsi95 = zext i1 %73 to i32
-  call void (ptr, ...) @printf(ptr @.str.10, i32 %boolsi95)
+  %lshrl94 = lshr i64 %71, 20
+  %72 = and i64 1, %lshrl94
+  %trunc95 = trunc i64 %72 to i8
+  %73 = trunc i8 %trunc95 to i1
+  %zext96 = zext i1 %73 to i32
+  call void (ptr, ...) @printf(ptr @.str.10, i32 %zext96)
   ret void
 }
 
@@ -668,29 +668,29 @@ entry:
   %116 = load i8, ptr %ptradd175, align 1
   %lshrl176 = lshr i8 %116, 4
   %117 = trunc i8 %lshrl176 to i1
-  %boolsi = zext i1 %117 to i32
-  call void (ptr, ...) @printf(ptr @.str.20, i32 %boolsi)
-  %ptradd177 = getelementptr inbounds i8, ptr %xx, i64 2
-  %118 = load i8, ptr %ptradd177, align 1
+  %zext177 = zext i1 %117 to i32
+  call void (ptr, ...) @printf(ptr @.str.20, i32 %zext177)
+  %ptradd178 = getelementptr inbounds i8, ptr %xx, i64 2
+  %118 = load i8, ptr %ptradd178, align 1
   %119 = and i8 %118, -17
   %120 = or i8 %119, 16
-  store i8 %120, ptr %ptradd177, align 1
-  %ptradd178 = getelementptr inbounds i8, ptr %xx, i64 2
-  %121 = load i8, ptr %ptradd178, align 1
-  %lshrl179 = lshr i8 %121, 4
-  %122 = trunc i8 %lshrl179 to i1
-  %boolsi180 = zext i1 %122 to i32
-  call void (ptr, ...) @printf(ptr @.str.21, i32 %boolsi180)
-  %ptradd181 = getelementptr inbounds i8, ptr %xx, i64 2
-  %123 = load i8, ptr %ptradd181, align 1
-  %124 = and i8 %123, -17
-  store i8 %124, ptr %ptradd181, align 1
+  store i8 %120, ptr %ptradd178, align 1
+  %ptradd179 = getelementptr inbounds i8, ptr %xx, i64 2
+  %121 = load i8, ptr %ptradd179, align 1
+  %lshrl180 = lshr i8 %121, 4
+  %122 = trunc i8 %lshrl180 to i1
+  %zext181 = zext i1 %122 to i32
+  call void (ptr, ...) @printf(ptr @.str.21, i32 %zext181)
   %ptradd182 = getelementptr inbounds i8, ptr %xx, i64 2
-  %125 = load i8, ptr %ptradd182, align 1
-  %lshrl183 = lshr i8 %125, 4
-  %126 = trunc i8 %lshrl183 to i1
-  %boolsi184 = zext i1 %126 to i32
-  call void (ptr, ...) @printf(ptr @.str.22, i32 %boolsi184)
+  %123 = load i8, ptr %ptradd182, align 1
+  %124 = and i8 %123, -17
+  store i8 %124, ptr %ptradd182, align 1
+  %ptradd183 = getelementptr inbounds i8, ptr %xx, i64 2
+  %125 = load i8, ptr %ptradd183, align 1
+  %lshrl184 = lshr i8 %125, 4
+  %126 = trunc i8 %lshrl184 to i1
+  %zext185 = zext i1 %126 to i32
+  call void (ptr, ...) @printf(ptr @.str.22, i32 %zext185)
   ret void
 }
 
@@ -1042,28 +1042,28 @@ entry:
   %116 = load i8, ptr %ptradd187, align 1
   %lshrl188 = lshr i8 %116, 5
   %117 = trunc i8 %lshrl188 to i1
-  %boolsi = zext i1 %117 to i32
-  call void (ptr, ...) @printf(ptr @.str.32, i32 %boolsi)
-  %ptradd189 = getelementptr inbounds i8, ptr %xx, i64 2
-  %118 = load i8, ptr %ptradd189, align 1
+  %zext189 = zext i1 %117 to i32
+  call void (ptr, ...) @printf(ptr @.str.32, i32 %zext189)
+  %ptradd190 = getelementptr inbounds i8, ptr %xx, i64 2
+  %118 = load i8, ptr %ptradd190, align 1
   %119 = and i8 %118, -33
   %120 = or i8 %119, 32
-  store i8 %120, ptr %ptradd189, align 1
-  %ptradd190 = getelementptr inbounds i8, ptr %xx, i64 2
-  %121 = load i8, ptr %ptradd190, align 1
-  %lshrl191 = lshr i8 %121, 5
-  %122 = trunc i8 %lshrl191 to i1
-  %boolsi192 = zext i1 %122 to i32
-  call void (ptr, ...) @printf(ptr @.str.33, i32 %boolsi192)
-  %ptradd193 = getelementptr inbounds i8, ptr %xx, i64 2
-  %123 = load i8, ptr %ptradd193, align 1
-  %124 = and i8 %123, -33
-  store i8 %124, ptr %ptradd193, align 1
+  store i8 %120, ptr %ptradd190, align 1
+  %ptradd191 = getelementptr inbounds i8, ptr %xx, i64 2
+  %121 = load i8, ptr %ptradd191, align 1
+  %lshrl192 = lshr i8 %121, 5
+  %122 = trunc i8 %lshrl192 to i1
+  %zext193 = zext i1 %122 to i32
+  call void (ptr, ...) @printf(ptr @.str.33, i32 %zext193)
   %ptradd194 = getelementptr inbounds i8, ptr %xx, i64 2
-  %125 = load i8, ptr %ptradd194, align 1
-  %lshrl195 = lshr i8 %125, 5
-  %126 = trunc i8 %lshrl195 to i1
-  %boolsi196 = zext i1 %126 to i32
-  call void (ptr, ...) @printf(ptr @.str.34, i32 %boolsi196)
+  %123 = load i8, ptr %ptradd194, align 1
+  %124 = and i8 %123, -33
+  store i8 %124, ptr %ptradd194, align 1
+  %ptradd195 = getelementptr inbounds i8, ptr %xx, i64 2
+  %125 = load i8, ptr %ptradd195, align 1
+  %lshrl196 = lshr i8 %125, 5
+  %126 = trunc i8 %lshrl196 to i1
+  %zext197 = zext i1 %126 to i32
+  call void (ptr, ...) @printf(ptr @.str.34, i32 %zext197)
   ret void
 }

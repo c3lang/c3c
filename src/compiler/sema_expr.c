@@ -445,6 +445,8 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			RETURN_SEMA_ERROR(expr, "This expression is a value and cannot be assigned to.");
 		case EXPR_CT_IDENT:
 			return true;
+		case EXPR_EXT_TRUNC:
+			return false;
 		case EXPR_OTHER_CONTEXT:
 			return sema_binary_is_expr_lvalue(context, top_expr, expr->expr_other_context.inner);
 		case EXPR_IDENTIFIER:
@@ -593,6 +595,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
+		case EXPR_EXT_TRUNC:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -8925,6 +8928,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_TYPECALL:
 			case EXPR_MEMBER_GET:
 			case EXPR_SPLAT:
+			case EXPR_EXT_TRUNC:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
 		}
@@ -9302,6 +9306,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
+		case EXPR_EXT_TRUNC:
+			return sema_analyse_expr(context, expr->ext_trunc_expr.inner);
 		case EXPR_SPLAT:
 			RETURN_SEMA_ERROR(expr, "Splat ('...') may only appear in initializers and calls.");
 		case EXPR_TYPECALL:

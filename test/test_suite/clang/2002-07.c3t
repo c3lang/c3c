@@ -460,8 +460,8 @@ or.rhs:                                           ; preds = %entry
 
 or.phi:                                           ; preds = %or.rhs, %entry
   %val = phi i1 [ true, %entry ], [ %lt1, %or.rhs ]
-  %boolsi = zext i1 %val to i32
-  ret i32 %boolsi
+  %zext = zext i1 %val to i32
+  ret i32 %zext
 }
 
 ; Function Attrs:
@@ -473,7 +473,6 @@ entry:
   %ptrxi = ptrtoint ptr %0 to i64
   store i64 %ptrxi, ptr %dstp, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i64, ptr %dstp, align 8
   %smod = srem i64 %3, 4
@@ -492,7 +491,6 @@ loop.body:                                        ; preds = %loop.cond
   %sub = sub i32 %6, 1
   store i32 %sub, ptr %len, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   ret ptr %0
 }
@@ -557,14 +555,11 @@ entry:
   %0 = load ptr, ptr @foo.ext, align 8
   %ptrbool = icmp ne ptr %0, null
   br i1 %ptrbool, label %cond.lhs, label %cond.rhs
-
 cond.lhs:                                         ; preds = %entry
   %1 = load ptr, ptr @foo.ext, align 8
   br label %cond.phi
-
 cond.rhs:                                         ; preds = %entry
   br label %cond.phi
-
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %val = phi ptr [ %1, %cond.lhs ], [ @.str, %cond.rhs ]
   %2 = call i32 @fp(i32 12, ptr %val)
@@ -619,13 +614,11 @@ entry:
   %r = alloca %Quad, align 8
   %intbool = icmp ne i32 %1, 0
   br i1 %intbool, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   %ptradd = getelementptr inbounds i8, ptr %r, i64 4
   %ptradd1 = getelementptr inbounds i8, ptr %0, i64 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %ptradd, ptr align 4 %ptradd1, i32 4, i1 false)
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %entry
   %ptradd2 = getelementptr inbounds i8, ptr %0, i64 8
   %ptradd3 = getelementptr inbounds i8, ptr %r, i64 4
@@ -656,11 +649,9 @@ entry:
   %r = alloca %Quad, align 8
   %intbool = icmp ne i32 %1, 0
   br i1 %intbool, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %r, ptr align 8 %0, i32 24, i1 false)
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %entry
   %ptradd = getelementptr inbounds i8, ptr %0, i64 20
   %ptradd1 = getelementptr inbounds i8, ptr %0, i64 16
@@ -689,11 +680,9 @@ entry:
   %fpfpext = fpext float %0 to double
   %gt = fcmp ogt double %fpfpext, 1.234500e+01
   br i1 %gt, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %entry
   store i32 4, ptr %result, align 4
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %entry
   %1 = load i32, ptr %result, align 4
   ret i32 %1
@@ -751,18 +740,15 @@ entry:
   store i32 %0, ptr %i, align 4
   store i32 %1, ptr %j, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load i32, ptr %i, align 4
   %neq = icmp ne i32 %2, 20
   br i1 %neq, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %3 = load i32, ptr %i, align 4
   %add = add i32 %3, 2
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %4 = load i32, ptr %j, align 4
   %5 = load i32, ptr %i, align 4
@@ -787,12 +773,10 @@ entry:
   store i32 0, ptr %result, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load i32, ptr %i, align 4
   %lt = icmp slt i32 %2, %1
   br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %3 = load i32, ptr %result, align 4
   %4 = load i32, ptr %i, align 4
@@ -805,7 +789,6 @@ loop.body:                                        ; preds = %loop.cond
   %add1 = add i32 %6, 1
   store i32 %add1, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %7 = load i32, ptr %result, align 4
   ret i32 %7
@@ -831,12 +814,10 @@ entry:
   store i32 0, ptr %i, align 4
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %0 = load i32, ptr %i, align 4
   %lt = icmp slt i32 %0, 100
   br i1 %lt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %1 = load i32, ptr %i, align 4
   %sext = sext i32 %1 to i64
@@ -848,7 +829,6 @@ loop.body:                                        ; preds = %loop.cond
   %add = add i32 %3, 1
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %4 = load i32, ptr %a, align 4
   %sext1 = sext i32 %4 to i64
@@ -869,12 +849,10 @@ entry:
   %3 = call i32 @externFunc(i64 -1, ptr null, i16 signext %trunc, i8 zeroext 2)
   store i32 0, ptr %i, align 4
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %4 = load i32, ptr %i, align 4
   %gt = icmp ugt i32 10, %4
   br i1 %gt, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   %ptradd = getelementptr inbounds i8, ptr %1, i64 24
   %5 = load ptr, ptr %ptradd, align 8
@@ -883,7 +861,6 @@ loop.body:                                        ; preds = %loop.cond
   %add = add i32 %7, 1
   store i32 %add, ptr %i, align 4
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   ret i32 0
 }
@@ -918,7 +895,6 @@ entry:
   store ptr %0, ptr %s1, align 8
   store ptr %1, ptr %s2, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
   %ptradd_any = getelementptr i8, ptr %2, i8 1
@@ -930,10 +906,8 @@ loop.cond:                                        ; preds = %loop.body, %entry
   store i8 %4, ptr %2, align 1
   %intbool = icmp ne i8 %4, 0
   br i1 %intbool, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   ret void
 }
@@ -946,7 +920,6 @@ entry:
   store ptr %0, ptr %s1, align 8
   store ptr %1, ptr %s2, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
   %ptradd_any = getelementptr i8, ptr %2, i8 1
@@ -954,16 +927,13 @@ loop.cond:                                        ; preds = %loop.body, %entry
   %3 = load i8, ptr %2, align 1
   %intbool = icmp ne i8 %3, 0
   br i1 %intbool, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %4 = load ptr, ptr %s1, align 8
   %ptradd_any1 = getelementptr i8, ptr %4, i8 -1
   store ptr %ptradd_any1, ptr %s1, align 8
   br label %loop.cond2
-
 loop.cond2:                                       ; preds = %loop.body6, %loop.exit
   %5 = load ptr, ptr %s1, align 8
   %ptradd_any3 = getelementptr i8, ptr %5, i8 1
@@ -975,10 +945,8 @@ loop.cond2:                                       ; preds = %loop.body6, %loop.e
   store i8 %7, ptr %5, align 1
   %intbool5 = icmp ne i8 %7, 0
   br i1 %intbool5, label %loop.body6, label %loop.exit7
-
 loop.body6:                                       ; preds = %loop.cond2
   br label %loop.cond2
-
 loop.exit7:                                       ; preds = %loop.cond2
   ret void
 }
@@ -991,7 +959,6 @@ entry:
   store ptr %0, ptr %s1, align 8
   store ptr %1, ptr %s2, align 8
   br label %loop.cond
-
 loop.cond:                                        ; preds = %loop.body, %entry
   %2 = load ptr, ptr %s1, align 8
   %ptradd_any = getelementptr i8, ptr %2, i8 1
@@ -1003,40 +970,32 @@ loop.cond:                                        ; preds = %loop.body, %entry
   %5 = load i8, ptr %4, align 1
   %eq = icmp eq i8 %3, %5
   br i1 %eq, label %loop.body, label %loop.exit
-
 loop.body:                                        ; preds = %loop.cond
   br label %loop.cond
-
 loop.exit:                                        ; preds = %loop.cond
   %6 = load ptr, ptr %s1, align 8
   %7 = load i8, ptr %6, align 1
   %zext = zext i8 %7 to i32
   %eq2 = icmp eq i32 0, %zext
   br i1 %eq2, label %if.then, label %if.else6
-
 if.then:                                          ; preds = %loop.exit
   %8 = load ptr, ptr %s2, align 8
   %9 = load i8, ptr %8, align 1
   %zext3 = zext i8 %9 to i32
   %eq4 = icmp eq i32 0, %zext3
   br i1 %eq4, label %if.then5, label %if.else
-
 if.then5:                                         ; preds = %if.then
   ret i32 0
-
 if.else:                                          ; preds = %if.then
   ret i32 -1
-
 if.else6:                                         ; preds = %loop.exit
   %10 = load ptr, ptr %s2, align 8
   %11 = load i8, ptr %10, align 1
   %zext7 = zext i8 %11 to i32
   %eq8 = icmp eq i32 0, %zext7
   br i1 %eq8, label %if.then9, label %if.else10
-
 if.then9:                                         ; preds = %if.else6
   ret i32 1
-
 if.else10:                                        ; preds = %if.else6
   %12 = load ptr, ptr %s1, align 8
   %ptradd_any11 = getelementptr i8, ptr %12, i8 -1

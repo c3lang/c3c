@@ -129,6 +129,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_VASPLAT:
+		case EXPR_EXT_TRUNC:
 			return false;
 	}
 	UNREACHABLE
@@ -204,6 +205,8 @@ bool expr_is_runtime_const(Expr *expr)
 			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
 		case EXPR_CAST:
 			return expr_cast_is_runtime_const(expr);
+		case EXPR_EXT_TRUNC:
+			return expr_is_runtime_const(expr->ext_trunc_expr.inner);
 		case EXPR_CONST:
 			return true;
 		case EXPR_DESIGNATOR:
@@ -338,7 +341,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_EREU:
 		case CAST_STRPTR:
 		case CAST_PTRBOOL:
-		case CAST_BOOLINT:
 		case CAST_BOOLFP:
 		case CAST_BOOLBOOL:
 		case CAST_FPBOOL:
@@ -350,7 +352,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_STINLINE:
 		case CAST_VECARR:
 		case CAST_ARRVEC:
-		case CAST_BOOLVECINT:
 		case CAST_INTINT:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_INTPTR:
@@ -367,9 +368,7 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_PTRANY:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
-		case CAST_ERINT:
 		case CAST_PTRINT:
-		case CAST_IDINT:
 		case CAST_INTARRBS:
 		case CAST_BSINTARR:
 		case CAST_BSBOOL:
@@ -605,6 +604,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
+		case EXPR_EXT_TRUNC:
+			return expr_is_pure(expr->ext_trunc_expr.inner);
 		case EXPR_OTHER_CONTEXT:
 			return expr_is_pure(expr->expr_other_context.inner);
 		case EXPR_SWIZZLE:

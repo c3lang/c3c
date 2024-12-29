@@ -1319,13 +1319,6 @@ void llvm_emit_expand_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, 
 	llvm_value_set(value, res, to_type);
 }
 
-static void llvm_emit_bool_to_intvec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
-{
-	llvm_value_rvalue(c, value);
-	LLVMTypeRef type = llvm_get_type(c, to_type);
-	LLVMValueRef res = LLVMBuildSExt(c->builder, value->value, type, "");
-	llvm_value_set(value, res, to_type);
-}
 
 // Prune the common occurrence where the optional is not used.
 static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
@@ -1456,9 +1449,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EXPVEC:
 			llvm_emit_expand_to_vec_cast(c, value, to_type, from_type);
 			return;
-		case CAST_BOOLVECINT:
-			llvm_emit_bool_to_intvec_cast(c, value, to_type, from_type);
-			return;
 		case CAST_ARRVEC:
 			llvm_emit_array_to_vector_cast(c, value, to_type, from_type);
 			return;
@@ -1472,23 +1462,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		}
 		case CAST_VOID:
 			UNREACHABLE;
-		case CAST_ERINT:
-		case CAST_IDINT:
-			to_type = type_lowering(to_type);
-			from_type = type_lowering(from_type);
-			llvm_value_rvalue(c, value);
-			if (type_convert_will_trunc(to_type, from_type))
-			{
-				value->value = LLVMBuildTrunc(c->builder, value->value, llvm_get_type(c, to_type), "errinttrunc");
-			}
-			else
-			{
-				value->value = type_is_signed(to_type)
-						? LLVMBuildSExt(c->builder, value->value, llvm_get_type(c, to_type), "errsiext")
-						: LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "erruiext");
-
-			}
-			break;
 		case CAST_ANYBOOL:
 			llvm_emit_any_pointer(c, value, value);
 			llvm_value_rvalue(c, value);
@@ -1540,11 +1513,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_BSINTARR:
 		case CAST_INTARRBS:
-			break;
-		case CAST_BOOLINT:
-			llvm_value_rvalue(c, value);
-			value->value =  LLVMBuildZExt(c->builder, value->value, llvm_get_type(c, to_type), "boolsi");
-			value->kind = BE_VALUE;
 			break;
 		case CAST_FPBOOL:
 			llvm_value_rvalue(c, value);
@@ -7231,6 +7199,18 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_expr(c, value, expr);
 	ASSERT0(!llvm_value_is_addr(value));
 }
+
+static void llvm_emit_ext_trunc(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->ext_trunc_expr.inner);
+	llvm_value_rvalue(c, value);
+	Type *to_type = type_lowering(expr->type);
+	LLVMTypeRef to = llvm_get_type(c, to_type);
+	llvm_value_set(value, expr->ext_trunc_expr.is_signed
+	                      ? llvm_sext_trunc(c, value->value, to)
+	                      : llvm_zext_trunc(c, value->value, to), to_type);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_EXPR_LOC(c, expr);
@@ -7249,6 +7229,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
+		case EXPR_EXT_TRUNC:
+			llvm_emit_ext_trunc(c, value, expr);
+			return;
 		case EXPR_DEFAULT_ARG:
 			llvm_emit_default_arg(c, value, expr);
 			return;
