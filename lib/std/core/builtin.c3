@@ -238,7 +238,7 @@ macro enum_by_name($Type, String enum_name) @builtin
 <*
  @param $Type `The type of the enum`
  @require $Type.kindof == ENUM `Only enums may be used`
- @require $defined($Type.#value1) `Expected '#value' to match an enum associated value`
+ @require $defined($Type.#value) `Expected '#value' to match an enum associated value`
  @require $assignable(value, $typeof($Type{}.#value)) `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
