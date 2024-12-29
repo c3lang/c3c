@@ -7,14 +7,15 @@
   libxml2,
   libffi,
   xar,
+  rev ? "unknown",
   debug ? false,
   checks ? false,
 }: let 
-  inherit (builtins) baseNameOf toString readFile elemAt;
-  inherit (lib.sources) cleanSourceWith cleanSource; 
+  inherit (builtins) readFile elemAt;
+  # inherit (lib.sources) cleanSourceWith cleanSource; 
   inherit (lib.lists) findFirst;
   inherit (lib.asserts) assertMsg;
-  inherit (lib.strings) hasInfix hasSuffix splitString removeSuffix removePrefix optionalString;
+  inherit (lib.strings) hasInfix splitString removeSuffix removePrefix optionalString;
 in llvmPackages.stdenv.mkDerivation (finalAttrs: {
 
   pname = "c3c${optionalString debug "-debug"}";
@@ -25,12 +26,14 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
     assert assertMsg (foundLine != "none") "No COMPILER_VERSION substring was found in version.h";
     removeSuffix "\"" ( removePrefix "\"" ( elemAt ( splitString " " foundLine ) 2 ) );
 
-  src = cleanSourceWith {
-    filter = _path: _type: !(hasSuffix ".nix" (baseNameOf(toString _path)));
-    src = cleanSource ../.;
-  };
-
+  src = ../.;
+  
   cmakeBuildType = if debug then "Debug" else "Release";
+  
+  postPatch = ''
+    substituteInPlace git_hash.cmake \
+      --replace-fail "\''${GIT_HASH}" "${rev}"
+  '';
 
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
@@ -59,6 +62,7 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
     ( cd ../test; python src/tester.py ../build/c3c test_suite )
     runHook postCheck
   '';
+
 
   meta = with lib; {
     description = "Compiler for the C3 language";

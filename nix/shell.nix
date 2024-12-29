@@ -16,7 +16,7 @@ mkShell.override {
   packages = [ 
     clang-tools 
   ];
-  
+
   # Usage: 'cmake . -Bbuild $C3_CMAKE_FLAGS' or 'cmake . -Bbuild $=C3_CMAKE_FLAGS' on zsh
   C3_CMAKE_FLAGS = lib.concatStringsSep " " c3c.cmakeFlags;
 }
