@@ -151,8 +151,7 @@ fn String Url.to_string(Url* self, Allocator allocator = allocator::temp()) @dyn
 {
     @pool(allocator)
 	{
-        DString builder = dstring::new("", allocator);
-        defer builder.free();
+        DString builder = dstring::temp_new();
 
         // Add scheme if it exists
         if (self.scheme != "")
@@ -201,7 +200,7 @@ fn String Url.to_string(Url* self, Allocator allocator = allocator::temp()) @dyn
             builder.append_chars(self.fragment);
         }
 
-        return builder.str_view();
+        return builder.copy_str(allocator);
     };
 }
 
