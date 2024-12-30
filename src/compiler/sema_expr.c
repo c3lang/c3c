@@ -2474,7 +2474,7 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 	bool success;
 	bool ends_in_jump;
 	SCOPE_START
-
+		unsigned ct_context = sema_context_push_ct_stack(context);
 		if (macro_defer)
 		{
 			Ast *macro_defer_ast = astptr(macro_defer);
@@ -2488,11 +2488,19 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 		}
 		FOREACH(Decl *, param, params)
 		{
-			if (!sema_add_local(context, param)) return SCOPE_POP_ERROR();
+			if (!sema_add_local(context, param))
+			{
+				sema_context_pop_ct_stack(context, ct_context);
+				return SCOPE_POP_ERROR();
+			}
 		}
 		Ast *ast = copy_ast_single(macro_context->yield_body);
 		call->body_expansion_expr.first_stmt = astid(ast);
-		if (!sema_analyse_statement(context, ast)) return SCOPE_POP_ERROR();
+		if (!sema_analyse_statement(context, ast))
+		{
+			sema_context_pop_ct_stack(context, ct_context);
+			return SCOPE_POP_ERROR();
+		}
 		ASSERT_SPAN(call, ast->ast_kind == AST_COMPOUND_STMT);
 		if (context->active_scope.jump_end)
 		{
@@ -2503,9 +2511,11 @@ static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *c
 			first_defer->defer_stmt.prev_defer = 0;
 			context->active_scope.defer_last = last_defer;
 		}
+		sema_context_pop_ct_stack(context, ct_context);
 	SCOPE_END;
 
 	return true;
+
 }
 
 void sema_expr_convert_enum_to_int(SemaContext *context, Expr *expr)

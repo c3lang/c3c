@@ -34,6 +34,7 @@
 - `any_to_int` checks value to be int and no longer works with enum.
 - Add check in formatter printing "%c".
 - Fix bug where `!!` and `!` was not recognized to jump out of the current scope.
+- Fix bug when including compile time parameters in trailing body more than once.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
