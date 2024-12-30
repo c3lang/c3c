@@ -1479,7 +1479,11 @@ static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type)
 }
 static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDPTR, type); }
 static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ANYBOOL, type); }
-static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ANYPTR, type); }
+static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type)
+{
+	expr_rewrite_ptr_access(expr, type);
+}
+
 static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { insert_runtime_cast(expr, CAST_VOID, type_void); }
 static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr->type = to_type; }
 
@@ -1911,7 +1915,8 @@ static void cast_slice_to_ptr(SemaContext *context, Expr *expr, Type *type)
 		expr->type = type;
 		return;
 	}
-	insert_runtime_cast(expr, CAST_SAPTR, type);
+
+	expr_rewrite_ptr_access(expr, type);
 }
 
 /**

@@ -325,6 +325,7 @@ RETRY:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_RETHROW:
 		case EXPR_OPTIONAL:
+		case EXPR_PTR_ACCESS:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_DEFAULT_ARG:

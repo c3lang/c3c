@@ -569,6 +569,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_LAST_FAULT:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_PTR_ACCESS:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -596,6 +597,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
+		case EXPR_PTR_ACCESS:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -7650,7 +7652,6 @@ static inline bool sema_expr_analyse_rethrow(SemaContext *context, Expr *expr)
 									"but the function does not allow optional results. Did you mean to use '!!' instead?");
 		}
 	}
-
 	return true;
 }
 
@@ -8929,6 +8930,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_MEMBER_GET:
 			case EXPR_SPLAT:
 			case EXPR_EXT_TRUNC:
+			case EXPR_PTR_ACCESS:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
 		}
@@ -9306,6 +9308,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
+		case EXPR_PTR_ACCESS:
+			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_EXT_TRUNC:
 			return sema_analyse_expr(context, expr->ext_trunc_expr.inner);
 		case EXPR_SPLAT:

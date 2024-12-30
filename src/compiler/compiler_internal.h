@@ -3380,6 +3380,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
+		case EXPR_PTR_ACCESS:
 			break;
 	}
 }
@@ -3590,6 +3591,15 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 	expr->type = type_typeid;
 	expr->resolve_status = RESOLVE_DONE;
 }
+
+INLINE void expr_rewrite_ptr_access(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_PTR_ACCESS;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
+
 
 INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
 {

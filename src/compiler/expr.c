@@ -82,6 +82,7 @@ bool expr_may_addr(Expr *expr)
 			return true;
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
+		case EXPR_PTR_ACCESS:
 			return false;
 		case NON_RUNTIME_EXPR:
 		case EXPR_ASM:
@@ -185,6 +186,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_BITACCESS:
 		case EXPR_COND:
+		case EXPR_PTR_ACCESS:
 			return false;
 		case EXPR_ACCESS:
 			expr = expr->access_expr.parent;
@@ -335,7 +337,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_INTENUM:
-		case CAST_ANYPTR:
 		case CAST_EUBOOL:
 		case CAST_EUER:
 		case CAST_EREU:
@@ -357,7 +358,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_INTPTR:
 		case CAST_PTRPTR:
 		case CAST_APTSA:
-		case CAST_SAPTR:
 		case CAST_SLSL:
 		case CAST_VOID:
 		case CAST_ANYBOOL:
@@ -604,6 +604,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
+		case EXPR_PTR_ACCESS:
+			return expr_is_pure(expr->inner_expr);
 		case EXPR_EXT_TRUNC:
 			return expr_is_pure(expr->ext_trunc_expr.inner);
 		case EXPR_OTHER_CONTEXT:

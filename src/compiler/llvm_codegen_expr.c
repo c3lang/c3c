@@ -1468,9 +1468,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "anybool");
 			value->kind = BE_BOOLEAN;
 			break;
-		case CAST_ANYPTR:
-			llvm_emit_any_pointer(c, value, value);
-			break;
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_STRPTR:
@@ -1483,10 +1480,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_APTSA:
 			llvm_emit_arr_to_slice_cast(c, value, to_type);
-			break;
-		case CAST_SAPTR:
-			llvm_value_fold_optional(c, value);
-			llvm_emit_slice_pointer(c, value, value);
 			break;
 		case CAST_EREU:
 			// This is a no op.
@@ -6147,8 +6140,8 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	{
 		ASSERT0(arg_count);
 		Expr *any_val = args[0];
-		ASSERT0(any_val->expr_kind == EXPR_CAST);
-		args[0] = exprptr(any_val->cast_expr.expr);
+		ASSERT0(any_val->expr_kind == EXPR_PTR_ACCESS);
+		args[0] = any_val->inner_expr;
 	}
 
 	if (!expr->call_expr.is_func_ref)
@@ -7200,6 +7193,21 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 	ASSERT0(!llvm_value_is_addr(value));
 }
 
+static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_fold_optional(c, value);
+	if (value->kind == BE_ADDRESS)
+	{
+		AlignSize alignment;
+		LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, value->value, llvm_get_type(c, value->type), 0, value->alignment, &alignment);
+		llvm_value_set_address(value, ptr, expr->type, alignment);
+		return;
+	}
+	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
+	llvm_value_set(value, ptr, expr->type);
+}
+
 static void llvm_emit_ext_trunc(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->ext_trunc_expr.inner);
@@ -7229,6 +7237,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
+		case EXPR_PTR_ACCESS:
+			llvm_emit_ptr_access(c, value, expr);
+			return;
 		case EXPR_EXT_TRUNC:
 			llvm_emit_ext_trunc(c, value, expr);
 			return;

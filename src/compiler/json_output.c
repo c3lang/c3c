@@ -243,13 +243,17 @@ void print_var_expr(FILE *file, Expr *expr)
 
     switch (expr->expr_kind)
     {
-        case EXPR_BITASSIGN:
+		case EXPR_BITASSIGN:
         case EXPR_BITACCESS:
         case EXPR_ACCESS:
             print_var_expr(file, expr->access_expr.parent);
             fputs(".", file);
             print_var_expr(file, expr->access_expr.child);
             break;
+	    case EXPR_PTR_ACCESS:
+		    print_var_expr(file, expr->access_expr.parent);
+		    fputs(".ptr", file);
+		    break;
 		case EXPR_EXT_TRUNC:
 			TODO
         case EXPR_BINARY:

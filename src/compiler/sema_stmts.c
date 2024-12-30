@@ -739,6 +739,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_ASM:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_EXT_TRUNC:
+		case EXPR_PTR_ACCESS:
 			return true;
 	}
 	UNREACHABLE
@@ -1189,6 +1190,24 @@ static inline bool sema_analyse_expr_stmt(SemaContext *context, Ast *statement)
 	if (!sema_expr_check_discard(context, expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_RETHROW:
+			if (expr->rethrow_expr.inner->expr_kind == EXPR_OPTIONAL)
+			{
+				context->active_scope.jump_end = true;
+			}
+			break;
+		case EXPR_FORCE_UNWRAP:
+			if (expr->inner_expr->expr_kind == EXPR_OPTIONAL)
+			{
+				context->active_scope.jump_end = true;
+			}
+			break;
+		case EXPR_POST_UNARY:
+			if (expr->rethrow_expr.inner->expr_kind == EXPR_OPTIONAL)
+			{
+				context->active_scope.jump_end = true;
+			}
+			break;
 		case EXPR_CALL:
 			if (expr->call_expr.no_return) context->active_scope.jump_end = true;
 			break;
