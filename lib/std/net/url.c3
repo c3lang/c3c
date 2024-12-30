@@ -18,19 +18,6 @@ struct Url(Printable) {
     String fragment;
 }
 
-fn usz! String.index_of_chars(String s, char[] needle)
-{
-    foreach (i, c : s)
-    {
-        foreach (j, pin : needle)
-        {
-            if (c == pin) return i;
-        }
-    }
-
-    return SearchResult.MISSING?;
-}
-
 fn Url! parse(String url_string) {
     Url url = Url{};
     url_string = url_string.trim();
