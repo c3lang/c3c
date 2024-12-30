@@ -8,8 +8,11 @@ struct NativeMutex
 }
 
 def NativeConditionVariable = Pthread_cond_t;
-def NativeThread = Pthread_t;
 def NativeOnceFlag = Pthread_once_t;
+struct NativeThread {
+	Pthread_t pthread;
+	PosixThreadData* data;
+}
 
 <*
  @require !self.is_initialized() : "Mutex is already initialized"
@@ -157,19 +160,27 @@ fn void* callback(void* arg) @private
 
 fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
-
+	Pthread_t pthread;
 	PosixThreadData *thread_data = mem::new(PosixThreadData, { .thread_fn = thread_fn, .arg = arg });
-	if (posix::pthread_create(thread, null, &callback, thread_data) != 0)
+	if (posix::pthread_create(&pthread, null, &callback, thread_data) != 0)
 	{
-		*thread = null;
+		pthread = null;
 		free(thread_data);
 		return ThreadFault.INIT_FAILED?;
 	}
+	thread.pthread = pthread;
+	thread.data = thread_data;
+}
+
+fn void NativeThread.destroy(thread)
+{
+	mem::free(thread.data);
+	//free((void*)thread.pthread);
 }
 
 fn void! NativeThread.detach(thread)
 {
-	if (posix::pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
+	if (posix::pthread_detach(thread.pthread)) return ThreadFault.DETACH_FAILED?;
 }
 
 fn void native_thread_exit(int result)
@@ -177,20 +188,20 @@ fn void native_thread_exit(int result)
 	posix::pthread_exit((void*)(iptr)result);
 }
 
-fn NativeThread native_thread_current()
+fn Pthread_t native_thread_current()
 {
-	return (NativeThread)posix::pthread_self();
+	return (Pthread_t)posix::pthread_self();
 }
 
 fn bool NativeThread.equals(thread, NativeThread other)
 {
-	return (bool)posix::pthread_equal(thread, other);
+	return (bool)posix::pthread_equal(thread.pthread, other.pthread);
 }
 
 fn int! NativeThread.join(thread)
 {
 	void *pres;
-	if (posix::pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED?;
+	if (posix::pthread_join(thread.pthread, &pres)) return ThreadFault.JOIN_FAILED?;
 	return (int)(iptr)pres;
 }
 

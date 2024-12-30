@@ -249,6 +249,12 @@ fn void! NativeThread.create(&thread, ThreadFn func, void* args)
 	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return ThreadFault.INIT_FAILED?;
 }
 
+fn void NativeThread.destroy(&thread)
+{
+	// No allocations happen in create() for Windows threads
+	return;
+}
+
 fn void! NativeThread.detach(thread) @inline
 {
 	if (!win32::closeHandle(thread)) return ThreadFault.DETACH_FAILED?;

@@ -60,6 +60,7 @@ macro void! ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong ms)
 
 
 macro void! Thread.create(&thread, ThreadFn thread_fn, void* arg) => NativeThread.create((NativeThread*)thread, thread_fn, arg);
+macro void Thread.destroy(thread) => NativeThread.destroy((NativeThread)thread);
 macro void! Thread.detach(thread) => NativeThread.detach((NativeThread)thread);
 macro int! Thread.join(thread) => NativeThread.join((NativeThread)thread);
 macro bool Thread.equals(thread, Thread other) => NativeThread.equals((NativeThread)thread, (NativeThread)other);
