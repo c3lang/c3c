@@ -1475,7 +1475,7 @@ static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type)
 
 static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type)
 {
-	return cast_typeid_to_int(context, expr, type);
+	cast_typeid_to_int(context, expr, type);
 }
 static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDPTR, type); }
 static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ANYBOOL, type); }
