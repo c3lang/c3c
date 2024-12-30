@@ -349,6 +349,20 @@ Your c3c executable should have compiled properly. You may want to test it: `./c
 For a sytem-wide installation, run the following as root: `cmake --install .`
 
 
+#### Compiling on Fedora
+
+1. Install required project dependencies: `dnf install cmake clang git llvm llvm-devel lld lld-devel ncurses-devel`
+2. Optionally, install additional dependencies: `dnf install libcurl-devel zlib-devel libzstd-devel libxml2-devel libffi-devel`
+3. Clone the C3C repository: `git clone https://github.com/c3lang/c3c.git`
+    - If you only need the latest commit, you may want to make a shallow clone: `git clone https://github.com/c3lang/c3c.git --depth=1`
+4. Enter the C3C directory: `cd c3c`
+5. Create a build directory and navigate into it: `mkdir build && cd build`
+6. Create the CMake build cache. The Fedora repositories provide `.so` libraries for lld, so you need to set the C3_LINK_DYNAMIC flag: `cmake .. -DC3_LINK_DYNAMIC=1`
+7. Build the project: `cmake --build .`
+
+The c3c binary should be created in the build directory. You can try it out by running some sample code: `./c3c compile ../resources/examples/hash.c3`
+
+
 #### Compiling on other Linux / Unix variants
 
 1. Install CMake.
