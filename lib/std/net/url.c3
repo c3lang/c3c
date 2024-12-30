@@ -215,10 +215,11 @@ fn String Url.to_string(Url* self, Allocator allocator = allocator::temp()) @dyn
 fn Values Url.query_values(Url* self, Allocator allocator = allocator::heap())
 {
     Values vals;
-    String[] raw_vals = self.query.split("&");
-    defer free(raw_vals);
+	vals.init(allocator);
 
-    foreach (rv : raw_vals)
+    Splitter raw_vals = self.query.tokenize("&");
+
+	while (try String rv = raw_vals.next())
     {
         String[] parts = rv.split("=", 2);
         defer free(parts);

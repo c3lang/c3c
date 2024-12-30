@@ -287,8 +287,6 @@ fn void! test_query_values1()
 
 fn void! test_query_values2()
 {
-@pool()
-{
     Url url = url::parse("foo://example.com:8042/over/there?name=ferret&age=99&age=11#nose")!;
 
     Values vals = url.query_values(allocator::temp());
@@ -303,5 +301,13 @@ fn void! test_query_values2()
     assert(l_age.len() == 2);
     assert(l_age[0] == "99");
     assert(l_age[1] == "11");
-};
+}
+
+fn void! test_query_values_withempty()
+{
+    Url url = url::parse("foo://example.com:8042/over/there?name=ferret&&&age=99&age=11")!;
+
+    Values vals = url.query_values(allocator::temp());
+    defer vals.free();
+    assert(vals.len() == 2);
 }
