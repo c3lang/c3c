@@ -366,7 +366,7 @@ fn usz! String.index_of_char(s, char needle)
  Find the index of the first incidence of a one of the chars.
 
  @param [in] s
- @param needle "The characters to look for"
+ @param [in] needle "The characters to look for"
  @pure
  @ensure return < s.len
  @return "the index of the needle"
