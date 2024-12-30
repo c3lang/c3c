@@ -504,8 +504,15 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ANY_MAKE:
 			ASSERT0(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_TYPEID}, 2)) return false;
-			rtype = type_any;
-			break;
+			{
+				expr->expr_kind = EXPR_MAKE_ANY;
+				expr->make_any_expr = (ExprMakeAny) {
+					.inner = args[0],
+					.typeid = args[1]
+				};
+				expr->type = type_add_optional(type_any, optional);
+				return true;
+			}
 		case BUILTIN_EXACT_NEG:
 			ASSERT0(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE}, 1)) return false;

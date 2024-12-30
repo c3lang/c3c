@@ -21,8 +21,8 @@ fn void test()
 /* #expect: test.ll
 
   %0 = load ptr, ptr %a, align 8
-  %not = icmp eq ptr %0, null
-  br i1 %not, label %cond.lhs, label %cond.rhs
+  %i2nb = icmp eq ptr %0, null
+  br i1 %i2nb, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
   %1 = load ptr, ptr %a, align 8
@@ -30,8 +30,8 @@ cond.lhs:                                         ; preds = %entry
 
 cond.rhs:                                         ; preds = %entry
   %2 = load ptr, ptr %a, align 8
-  %not1 = icmp eq ptr %2, null
-  br i1 %not1, label %cond.lhs2, label %cond.rhs3
+  %i2nb1 = icmp eq ptr %2, null
+  br i1 %i2nb1, label %cond.lhs2, label %cond.rhs3
 
 cond.lhs2:                                        ; preds = %cond.rhs
   %3 = load ptr, ptr %b, align 8
@@ -51,8 +51,8 @@ cond.phi4:                                        ; preds = %cond.phi, %cond.lhs
   store i64 0, ptr %x.f, align 8
   store ptr null, ptr %x, align 8
   %5 = load ptr, ptr %a, align 8
-  %not6 = icmp eq ptr %5, null
-  br i1 %not6, label %cond.lhs7, label %cond.rhs8
+  %i2nb6 = icmp eq ptr %5, null
+  br i1 %i2nb6, label %cond.lhs7, label %cond.rhs8
 
 cond.lhs7:                                        ; preds = %cond.phi4
   %optval = load i64, ptr %x.f, align 8
@@ -80,8 +80,8 @@ cond.phi9:                                        ; preds = %cond.rhs8, %after_c
 
 after_assign:                                     ; preds = %cond.phi9, %assign_optional
   %9 = load ptr, ptr %a, align 8
-  %not11 = icmp eq ptr %9, null
-  br i1 %not11, label %cond.lhs12, label %cond.rhs13
+  %i2nb11 = icmp eq ptr %9, null
+  br i1 %i2nb11, label %cond.lhs12, label %cond.rhs13
 
 cond.lhs12:                                       ; preds = %after_assign
   %10 = load ptr, ptr %b, align 8
@@ -109,8 +109,8 @@ cond.phi18:                                       ; preds = %after_check17, %con
 
 after_assign20:                                   ; preds = %cond.phi18, %assign_optional16
   %13 = load ptr, ptr %a, align 8
-  %not21 = icmp eq ptr %13, null
-  br i1 %not21, label %cond.lhs22, label %cond.rhs27
+  %i2nb21 = icmp eq ptr %13, null
+  br i1 %i2nb21, label %cond.lhs22, label %cond.rhs27
 
 cond.lhs22:                                       ; preds = %after_assign20
   %optval23 = load i64, ptr %x.f, align 8
@@ -148,8 +148,8 @@ cond.phi32:                                       ; preds = %after_check31, %aft
 
 after_assign34:                                   ; preds = %cond.phi32, %assign_optional30, %assign_optional25
   %18 = load ptr, ptr %a, align 8
-  %not35 = icmp eq ptr %18, null
-  br i1 %not35, label %cond.lhs36, label %cond.rhs41
+  %i2nb35 = icmp eq ptr %18, null
+  br i1 %i2nb35, label %cond.lhs36, label %cond.rhs41
 
 cond.lhs36:                                       ; preds = %after_assign34
   %optval37 = load i64, ptr %x.f, align 8
@@ -176,8 +176,8 @@ cond.phi42:                                       ; preds = %after_check40
 
 after_assign43:                                   ; preds = %cond.phi42, %cond.rhs41, %assign_optional39
   %21 = load ptr, ptr %a, align 8
-  %not44 = icmp eq ptr %21, null
-  br i1 %not44, label %cond.lhs45, label %cond.rhs46
+  %i2nb44 = icmp eq ptr %21, null
+  br i1 %i2nb44, label %cond.lhs45, label %cond.rhs46
 
 cond.lhs45:                                       ; preds = %after_assign43
   store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %y.f, align 8
@@ -204,8 +204,8 @@ cond.phi51:                                       ; preds = %after_check50
 
 after_assign52:                                   ; preds = %cond.phi51, %assign_optional49, %cond.lhs45
   %24 = load ptr, ptr %a, align 8
-  %not53 = icmp eq ptr %24, null
-  br i1 %not53, label %cond.lhs54, label %cond.rhs55
+  %i2nb53 = icmp eq ptr %24, null
+  br i1 %i2nb53, label %cond.lhs54, label %cond.rhs55
 
 cond.lhs54:                                       ; preds = %after_assign52
   store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %y.f, align 8

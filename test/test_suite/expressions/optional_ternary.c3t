@@ -81,8 +81,8 @@ target triple = "x86_64-apple
 define i64 @test.test(i32* %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
-  %intbool = icmp ne i32 %1, 0
-  br i1 %intbool, label %cond.phi, label %cond.rhs
+  %i2b = icmp ne i32 %1, 0
+  br i1 %i2b, label %cond.phi, label %cond.rhs
 
 cond.rhs:                                         ; preds = %entry
   store i64 ptrtoint (%.fault* @"test.Foo$X" to i64), i64* %reterr, align 8
@@ -101,8 +101,8 @@ err_retblock:                                     ; preds = %cond.rhs
 define i64 @test.test2(i32* %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
-  %intbool = icmp ne i32 %1, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne i32 %1, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
   store i64 ptrtoint (%.fault* @"test.Foo$X" to i64), i64* %reterr, align 8
@@ -125,8 +125,8 @@ err_retblock:                                     ; preds = %cond.rhs, %cond.lhs
 define i64 @test.test3(i32* %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
-  %intbool = icmp ne i32 %1, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne i32 %1, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
   br label %cond.phi
@@ -170,8 +170,8 @@ guard_block:                                      ; preds = %assign_optional
 
 noerr_block:                                      ; preds = %after_check
   %3 = load i32, i32* %y, align 4
-  %intbool = icmp ne i32 %3, 0
-  br i1 %intbool, label %cond.phi, label %cond.rhs
+  %i2b = icmp ne i32 %3, 0
+  br i1 %i2b, label %cond.phi, label %cond.rhs
 
 cond.rhs:                                         ; preds = %noerr_block
   store i64 ptrtoint (%.fault* @"test.Foo$X" to i64), i64* %reterr, align 8
@@ -212,8 +212,8 @@ guard_block:                                      ; preds = %assign_optional
 
 noerr_block:                                      ; preds = %after_check
   %3 = load i32, i32* %y, align 4
-  %intbool = icmp ne i32 %3, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne i32 %3, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %noerr_block
   store i64 ptrtoint (%.fault* @"test.Foo$X" to i64), i64* %reterr, align 8
@@ -258,8 +258,8 @@ guard_block:                                      ; preds = %assign_optional
 
 noerr_block:                                      ; preds = %after_check
   %3 = load i32, i32* %y, align 4
-  %intbool = icmp ne i32 %3, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne i32 %3, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %noerr_block
   br label %cond.phi
@@ -303,8 +303,8 @@ guard_block:                                      ; preds = %assign_optional
 
 noerr_block:                                      ; preds = %after_check
   %3 = load i32, i32* %y, align 4
-  %intbool = icmp ne i32 %3, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne i32 %3, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %noerr_block
   store i64 ptrtoint (%.fault* @"test.Foo$X" to i64), i64* %reterr, align 8

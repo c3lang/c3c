@@ -1122,6 +1122,17 @@ typedef struct
 	bool is_signed;
 } ExprExtTrunc;
 
+typedef struct
+{
+	Expr *inner;
+	bool negate;
+} ExprIntToBool;
+
+typedef struct
+{
+	Expr *inner;
+	Expr *typeid;
+} ExprMakeAny;
 struct Expr_
 {
 	Type *type;
@@ -1157,6 +1168,7 @@ struct Expr_
 		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr **expression_list;                     // 8
+		ExprIntToBool int_to_bool_expr;
 		ExprExtTrunc ext_trunc_expr;
 		ExprGenericIdent generic_ident_expr;
 		ExprDefaultArg default_arg_expr;
@@ -1164,6 +1176,7 @@ struct Expr_
 		ExprIdentifier identifier_expr;             // 24
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
+		ExprMakeAny make_any_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
 		ExprMacroBody macro_body_expr;              // 16
@@ -2125,7 +2138,6 @@ bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool
 void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
-CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
@@ -2956,6 +2968,37 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	return type;
 }
 
+static inline Type *type_flatten_to_int(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_DISTINCT:
+				type = type->decl->distinct->type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			case TYPE_BITSTRUCT:
+				type = type->decl->strukt.container_type->type;
+				break;
+			case TYPE_ENUM:
+				type = type->decl->enums.type_info->type;
+				break;
+			case TYPE_VECTOR:
+				ASSERT0(type_is_integer(type->array.base));
+				return type;
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			default:
+				ASSERT0(type_is_integer(type));
+				return type;
+		}
+	}
+}
+
 static inline Type *type_flatten(Type *type)
 {
 	while (1)
@@ -3280,6 +3323,9 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
+		case EXPR_INT_TO_BOOL:
+			expr_set_span(expr->int_to_bool_expr.inner, loc);
+			return;
 		case EXPR_EXT_TRUNC:
 			expr_set_span(expr->ext_trunc_expr.inner, loc);
 			return;
@@ -3309,6 +3355,10 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			expr_list_set_span(expr->designated_init_list, loc);
+			return;
+		case EXPR_MAKE_ANY:
+			expr_set_span(expr->make_any_expr.inner, loc);
+			expr_set_span(expr->make_any_expr.typeid, loc);
 			return;
 		case EXPR_SPLAT:
 			expr_set_span(expr->inner_expr, loc);
@@ -3600,6 +3650,45 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Type *type)
 	expr->type = type;
 }
 
+INLINE void expr_rewrite_int_to_bool(Expr *expr, bool negate)
+{
+	if (expr_is_const(expr))
+	{
+		switch (expr->const_expr.const_kind)
+		{
+			case CONST_FLOAT:
+			case CONST_BOOL:
+			case CONST_ENUM:
+			case CONST_BYTES:
+			case CONST_STRING:
+			case CONST_SLICE:
+			case CONST_INITIALIZER:
+			case CONST_UNTYPED_LIST:
+			case CONST_MEMBER:
+				UNREACHABLE
+			case CONST_ERR:
+				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
+				return;
+			case CONST_INTEGER:
+				expr_rewrite_const_bool(expr, type_bool, !int_is_zero(expr->const_expr.ixx));
+				return;
+			case CONST_POINTER:
+				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.ptr != 0);
+				return;
+			case CONST_TYPEID:
+				expr_rewrite_const_bool(expr, type_bool, expr->type != NULL);
+				return;
+			case CONST_REF:
+				expr_rewrite_const_bool(expr, type_bool, true);
+				return;
+		}
+		UNREACHABLE
+	}
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_INT_TO_BOOL;
+	expr->int_to_bool_expr = (ExprIntToBool) { .inner = inner, .negate = negate };
+	expr->type = type_bool;
+}
 
 INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
 {

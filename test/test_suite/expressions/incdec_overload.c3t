@@ -218,8 +218,8 @@ after_check:                                      ; preds = %testblock
 
 end_block:                                        ; preds = %after_check, %assign_optional
   %4 = load i64, ptr %temp_err, align 8
-  %neq = icmp ne i64 %4, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %4, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   store i32 1, ptr %blockret, align 4

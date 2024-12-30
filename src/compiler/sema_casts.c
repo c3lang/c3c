@@ -333,63 +333,6 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 }
 
 
-
-
-/**
- * For implicit casts to bool, in a conditional, return the type of cast to
- * insert.
- */
-CastKind cast_to_bool_kind(Type *type)
-{
-	switch (type_flatten(type)->type_kind)
-	{
-		case FLATTENED_TYPES:
-			// These are not possible due to flattening.
-			UNREACHABLE
-		case TYPE_WILDCARD:
-		case TYPE_BOOL:
-			return CAST_BOOLBOOL;
-		case TYPE_FAULTTYPE:
-		case TYPE_ANYFAULT:
-			return CAST_EUBOOL;
-		case TYPE_SLICE:
-			return CAST_SLBOOL;
-		case ALL_INTS:
-			return CAST_INTBOOL;
-		case ALL_FLOATS:
-			return CAST_FPBOOL;
-		case TYPE_POINTER:
-		case TYPE_FUNC_PTR:
-			return CAST_PTRBOOL;
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
-			return CAST_ANYBOOL;
-		case TYPE_BITSTRUCT:
-			return CAST_BSBOOL;
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-			// These should never be here, type should already be known.
-			UNREACHABLE
-		case TYPE_POISONED:
-		case TYPE_VOID:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_FUNC_RAW:
-		case TYPE_ARRAY:
-		case TYPE_TYPEID:
-		case TYPE_TYPEINFO:
-		case TYPE_VECTOR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_ENUM:
-		case TYPE_MEMBER:
-			// Everything else is an error
-			return CAST_ERROR;
-	}
-	UNREACHABLE
-}
-
-
 /**
  * Check whether an expression may narrow.
  * 1. If it has an intrinsic type, then compare it against the type. If the bitwidth is smaller or same => ok
@@ -490,10 +433,17 @@ RETRY:
 			expr = exprptr(expr->ternary_expr.else_expr);
 			goto RETRY;
 		}
+		case EXPR_EXT_TRUNC:
+			if (type_size(type) >= type_size(expr->type))
+			{
+				return NULL;
+			}
+			// Otherwise just look through it.
+			expr = expr->ext_trunc_expr.inner;
+			goto RETRY;
 		case EXPR_CAST:
 			switch (expr->cast_expr.kind)
 			{
-				case CAST_INTINT:
 				case CAST_FPFP:
 					// If this is a narrowing cast that makes it smaller that then target type
 					// we're done.
@@ -1464,26 +1414,26 @@ static inline bool insert_runtime_cast(Expr *expr, CastKind kind, Type *type)
 }
 
 static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_APTSA, type); }
-static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_PTRANY, type); }
+static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	Expr *typeid = expr_copy(expr);
+	expr_rewrite_const_typeid(typeid, type_no_optional(expr->type)->canonical->pointer);
+	expr->expr_kind = EXPR_MAKE_ANY;
+	expr->make_any_expr = (ExprMakeAny) { .inner = inner, .typeid = typeid };
+	expr->type = type;
+}
 static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_STINLINE, type); }
 static void cast_fault_to_anyfault(SemaContext *context, Expr *expr, Type *type) { expr->type = type; };
 static void cast_fault_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ERPTR, type); }
-static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type)
-{
-	expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten(type)));
-}
-
-static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type)
-{
-	cast_typeid_to_int(context, expr, type);
-}
+static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
+static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type) { cast_typeid_to_int(context, expr, type); }
 static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDPTR, type); }
-static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ANYBOOL, type); }
-static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type)
-{
-	expr_rewrite_ptr_access(expr, type);
+static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) {
+	expr_rewrite_ptr_access(expr, type_voidptr);
+	expr_rewrite_int_to_bool(expr, false);
 }
-
+static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, type); }
 static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { insert_runtime_cast(expr, CAST_VOID, type_void); }
 static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr->type = to_type; }
 
@@ -1626,33 +1576,6 @@ static void cast_int_to_enum(SemaContext *context, Expr *expr, Type *type)
 	expr->type = type;
 }
 
-static inline Type *type_flatten_to_int(Type *type)
-{
-	while (1)
-	{
-		type = type->canonical;
-		switch (type->type_kind)
-		{
-			case TYPE_DISTINCT:
-				type = type->decl->distinct->type;
-				break;
-			case TYPE_OPTIONAL:
-				type = type->optional;
-				break;
-			case TYPE_BITSTRUCT:
-				type = type->decl->strukt.container_type->type;
-				break;
-			case TYPE_ENUM:
-				type = type->decl->enums.type_info->type;
-				break;
-			case TYPE_TYPEDEF:
-				UNREACHABLE
-			default:
-				ASSERT0(type_is_integer(type));
-				return type;
-		}
-	}
-}
 
 /**
  * Convert between integers: CAST_INTINT
@@ -1669,7 +1592,11 @@ static void cast_int_to_int(SemaContext *context, Expr *expr, Type *type)
 	}
 
 	// Insert runtime casts on non-const.
-	if (insert_runtime_cast_unless_const(expr, CAST_INTINT, type)) return;
+	if (!expr_is_const(expr))
+	{
+		expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(expr->type)));
+		return;
+	}
 
 	Type *flat = type_flatten_to_int(type);
 	// Hand this off to the int conversion.
@@ -1843,7 +1770,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 					insert_runtime_cast(expr, CAST_INTBOOL, to_type);
 					return;
 				case ALL_INTS:
-					insert_runtime_cast(expr, CAST_INTINT, to_type);
+					expr_rewrite_ext_trunc(expr, to_type, type_is_signed(type_flatten_to_int(expr->type)));
 					return;
 				case TYPE_POINTER:
 				case TYPE_FUNC_PTR:
@@ -1974,7 +1901,12 @@ static void cast_bool_to_float(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_int_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_INTBOOL, type)) return;
+	if (!expr_is_const(expr))
+	{
+		expr_rewrite_int_to_bool(expr, false);
+		expr->type = type;
+		return;
+	}
 
 	expr_rewrite_const_bool(expr, type, !int_is_zero(expr->const_expr.ixx));
 }
@@ -2009,7 +1941,12 @@ static void cast_ptr_to_int(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_PTRBOOL, type)) return;
+	if (!expr_is_const(expr))
+	{
+		expr_rewrite_int_to_bool(expr, false);
+		expr->type = type;
+		return;
+	}
 
 	// It may be a pointer
 	switch (expr->const_expr.const_kind)
@@ -2182,19 +2119,10 @@ static void cast_arr_to_arr(SemaContext *context, Expr *expr, Type *to_type)
 
 static void cast_anyfault_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_EUBOOL, to_type)) return;
-
-	ASSERT0(expr->const_expr.const_kind == CONST_ERR);
-	expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
+	expr_rewrite_int_to_bool(expr, false);
+	expr->type = to_type;
 }
-
-static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
-{
-	if (insert_runtime_cast_unless_const(expr, CAST_IDBOOL, to_type)) return;
-
-	ASSERT0(expr->const_expr.const_kind == CONST_TYPEID);
-	expr_rewrite_const_bool(expr, type_bool, expr->const_expr.typeid != NULL);
-}
+static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type) { expr_rewrite_int_to_bool(expr, false); expr->type = to_type; }
 
 #define XX2XX &cast_retype
 #define BS2IA &cast_bitstruct_to_int_arr

@@ -446,6 +446,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_CT_IDENT:
 			return true;
 		case EXPR_EXT_TRUNC:
+		case EXPR_INT_TO_BOOL:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return sema_binary_is_expr_lvalue(context, top_expr, expr->expr_other_context.inner);
@@ -570,6 +571,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_MAKE_ANY:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -598,6 +600,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
+		case EXPR_INT_TO_BOOL:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -701,6 +704,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
 		case EXPR_VASPLAT:
+		case EXPR_MAKE_ANY:
 			return false;
 	}
 	UNREACHABLE
@@ -859,10 +863,9 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 		if (!sema_analyse_expr(context, cond)) return expr_poison(expr);
 		ASSERT_SPAN(expr, cond && cond->type);
 		Type *type = cond->type->canonical;
-		if (type->type_kind != TYPE_BOOL && cast_to_bool_kind(type) == CAST_ERROR)
+		if (type->type_kind != TYPE_BOOL && !may_cast(context, cond, type_bool, true, true))
 		{
-			SEMA_ERROR(cond, "Cannot convert expression to boolean.");
-			return false;
+			RETURN_SEMA_ERROR(cond, "Cannot convert expression to boolean.");
 		}
 		if (expr_is_const(cond))
 		{
@@ -7171,24 +7174,30 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 		}
 	}
 
-	if (cast_to_bool_kind(type_flatten(type)) == CAST_ERROR)
+	if (!cast_explicit_silent(context, inner, type_add_optional(type_bool, IS_OPTIONAL(inner))))
 	{
-		SEMA_ERROR(expr, "The %s can't be converted to a boolean value.", type_quoted_error_string(inner->type));
-		return false;
+		RETURN_SEMA_ERROR(expr, "The %s can't be converted to a boolean value.", type_quoted_error_string(inner->type));
 	}
 
 	expr->type = type_add_optional(type_bool, IS_OPTIONAL(inner));
 
+	if (inner->expr_kind == EXPR_INT_TO_BOOL)
+	{
+		inner->int_to_bool_expr.negate = !inner->int_to_bool_expr.negate;
+		expr_replace(expr, inner);
+		return true;
+	}
+
 	if (sema_cast_const(inner))
 	{
-		bool success = cast_explicit(context, inner, expr->type);
-		ASSERT_SPAN(expr, success);
 		ASSERT_SPAN(expr, inner->const_expr.const_kind == CONST_BOOL);
 		expr->const_expr.const_kind = CONST_BOOL;
 		expr->expr_kind = EXPR_CONST;
 		expr->resolve_status = RESOLVE_DONE;
 		expr->const_expr.b = !inner->const_expr.b;
+		return true;
 	}
+
 	return true;
 }
 
@@ -8940,7 +8949,9 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_MEMBER_GET:
 			case EXPR_SPLAT:
 			case EXPR_EXT_TRUNC:
+			case EXPR_INT_TO_BOOL:
 			case EXPR_PTR_ACCESS:
+			case EXPR_MAKE_ANY:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
 		}
@@ -9318,8 +9329,13 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 			UNREACHABLE
+		case EXPR_MAKE_ANY:
+			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
+			return sema_analyse_expr(context, expr->make_any_expr.inner);
 		case EXPR_PTR_ACCESS:
 			return sema_analyse_expr(context, expr->inner_expr);
+		case EXPR_INT_TO_BOOL:
+			return sema_analyse_expr(context, expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
 			return sema_analyse_expr(context, expr->ext_trunc_expr.inner);
 		case EXPR_SPLAT:

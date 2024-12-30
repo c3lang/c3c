@@ -182,8 +182,8 @@ entry:
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
   %0 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  %not = icmp eq ptr %0, null
-  br i1 %not, label %if.then, label %if.exit
+  %i2nb = icmp eq ptr %0, null
+  br i1 %i2nb, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
   call void @std.core.mem.allocator.init_default_temp_allocators()

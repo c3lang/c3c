@@ -79,8 +79,8 @@ entry:
   store i32 0, ptr %asa, align 4
   store double 0.000000e+00, ptr %val, align 8
   store i32 0, ptr %lLS, align 4
-  %intbool = icmp ne i32 %1, 0
-  br i1 %intbool, label %if.then, label %if.exit
+  %i2b = icmp ne i32 %1, 0
+  br i1 %i2b, label %if.then, label %if.exit
 if.then:                                          ; preds = %entry
   %2 = load i32, ptr %lLS, align 4
   %3 = load i32, ptr %asa, align 4

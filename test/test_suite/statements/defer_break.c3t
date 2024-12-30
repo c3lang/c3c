@@ -68,8 +68,8 @@ loop.exit:                                        ; preds = %if.exit, %if.then
 
 loop.cond:                                        ; preds = %if.exit3, %loop.exit
   %3 = load i32, ptr %a, align 4
-  %intbool = icmp ne i32 %3, 0
-  br i1 %intbool, label %loop.body, label %loop.exit4
+  %i2b = icmp ne i32 %3, 0
+  br i1 %i2b, label %loop.body, label %loop.exit4
 
 loop.body:                                        ; preds = %loop.cond
   %eq1 = icmp eq i32 %0, 1
@@ -90,8 +90,8 @@ loop.exit4:                                       ; preds = %if.then2, %loop.con
 
 loop.cond5:                                       ; preds = %loop.exit4
   %4 = load i32, ptr %a, align 4
-  %intbool6 = icmp ne i32 %4, 0
-  br i1 %intbool6, label %loop.body7, label %loop.exit11
+  %i2b6 = icmp ne i32 %4, 0
+  br i1 %i2b6, label %loop.body7, label %loop.exit11
 
 loop.body7:                                       ; preds = %loop.cond5
   %eq8 = icmp eq i32 %0, 1

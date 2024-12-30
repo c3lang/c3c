@@ -87,8 +87,8 @@ after_check:                                      ; preds = %testblock
 
 end_block:                                        ; preds = %after_check, %assign_optional
   %1 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %1, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %1, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %2 = insertvalue %any undef, ptr %err, 0
@@ -116,8 +116,8 @@ after_check8:                                     ; preds = %testblock4
 
 end_block9:                                       ; preds = %after_check8, %assign_optional7
   %6 = load i64, ptr %err3, align 8
-  %neq10 = icmp ne i64 %6, 0
-  br i1 %neq10, label %if.then11, label %if.exit16
+  %i2b10 = icmp ne i64 %6, 0
+  br i1 %i2b10, label %if.then11, label %if.exit16
 
 if.then11:                                        ; preds = %end_block9
   %7 = insertvalue %any undef, ptr %err3, 0
@@ -226,8 +226,8 @@ after_check5:                                     ; preds = %testblock
 
 end_block:                                        ; preds = %after_check5, %assign_optional4
   %3 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %3, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %3, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %4 = insertvalue %any undef, ptr %err, 0
@@ -255,8 +255,8 @@ after_check13:                                    ; preds = %testblock9
 
 end_block14:                                      ; preds = %after_check13, %assign_optional12
   %8 = load i64, ptr %err8, align 8
-  %neq15 = icmp ne i64 %8, 0
-  br i1 %neq15, label %if.then16, label %if.exit21
+  %i2b15 = icmp ne i64 %8, 0
+  br i1 %i2b15, label %if.then16, label %if.exit21
 
 if.then16:                                        ; preds = %end_block14
   %9 = insertvalue %any undef, ptr %err8, 0
@@ -366,8 +366,8 @@ after_check5:                                     ; preds = %testblock
 
 end_block:                                        ; preds = %after_check5, %assign_optional4
   %3 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %3, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %3, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %4 = insertvalue %any undef, ptr %err, 0
@@ -395,8 +395,8 @@ after_check13:                                    ; preds = %testblock9
 
 end_block14:                                      ; preds = %after_check13, %assign_optional12
   %8 = load i64, ptr %err8, align 8
-  %neq15 = icmp ne i64 %8, 0
-  br i1 %neq15, label %if.then16, label %if.exit21
+  %i2b15 = icmp ne i64 %8, 0
+  br i1 %i2b15, label %if.then16, label %if.exit21
 
 if.then16:                                        ; preds = %end_block14
   %9 = insertvalue %any undef, ptr %err8, 0

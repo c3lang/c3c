@@ -273,6 +273,29 @@ static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *stateme
 	return true;
 }
 
+
+static inline Expr *sema_dive_into_expression(Expr *expr)
+{
+	// Dive into any cast, because it might have been cast into boolean.
+	while (true)
+	{
+		switch (expr->expr_kind)
+		{
+			case EXPR_MAKE_ANY:
+				expr = expr->make_any_expr.inner;
+				continue;
+			case EXPR_INT_TO_BOOL:
+				expr = expr->int_to_bool_expr.inner;
+				continue;
+			case EXPR_CAST:
+				expr = exprptr(expr->cast_expr.expr);
+				continue;
+			default:
+				return expr;
+		}
+	}
+
+}
 /**
  * If we have "if (catch x)", then we want to unwrap x in the else clause.
  **/
@@ -282,12 +305,8 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 
 	Expr *last = VECLAST(cond->cond_expr);
 	ASSERT0(last);
+	last = sema_dive_into_expression(last);
 
-	// Dive into any cast, because it might have been cast into boolean.
-	while (last->expr_kind == EXPR_CAST)
-	{
-		last = exprptr(last->cast_expr.expr);
-	}
 	// Skip any non-unwraps
 	if (last->expr_kind != EXPR_CATCH_UNWRAP) return;
 
@@ -525,7 +544,7 @@ static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *state
 INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *expr)
 {
 	Expr *outer = expr;
-	while (expr->expr_kind == EXPR_CAST) expr = exprptr(expr->cast_expr.expr);
+	expr = sema_dive_into_expression(expr);
 	// We only want && and &
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
 	{
@@ -535,8 +554,7 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 	if (expr->expr_kind != EXPR_UNARY) return true;
 	if (expr->unary_expr.operator == UNARYOP_TADDR)
 	{
-		SEMA_ERROR(outer, "A pointer to a temporary value will be invalid once the function returns. Try copying the value to the heap or the temp memory instead.");
-		return false;
+		RETURN_SEMA_ERROR(outer, "A pointer to a temporary value will be invalid once the function returns. Try copying the value to the heap or the temp memory instead.");
 	}
 	if (expr->unary_expr.operator != UNARYOP_ADDR) return true;
 	expr = expr->unary_expr.expr;
@@ -689,6 +707,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 		case EXPR_SPLAT:
+		case EXPR_MAKE_ANY:
 			return false;
 		case EXPR_BITACCESS:
 		case EXPR_BUILTIN:
@@ -739,6 +758,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_ASM:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_EXT_TRUNC:
+		case EXPR_INT_TO_BOOL:
 		case EXPR_PTR_ACCESS:
 			return true;
 	}
@@ -1115,12 +1135,10 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		if (IS_OPTIONAL(init))
 		{
 			return sema_error_failed_cast(context, last, last->type, cast_to_bool ? type_bool : init->type);
-			return false;
 		}
-		if (cast_to_bool && cast_to_bool_kind(typeget(decl->var.type_info)) == CAST_ERROR)
+		if (cast_to_bool && !may_cast(context, init, type_bool, true, true))
 		{
-			SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
-			return false;
+			RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
 		}
 		if (cast_to_bool && expr_is_const_bool(init))
 		{

@@ -241,8 +241,11 @@ void print_var_expr(FILE *file, Expr *expr)
         return;
     }
 
-    switch (expr->expr_kind)
+    switch ( expr->expr_kind)
     {
+		case EXPR_MAKE_ANY:
+			fputs("TODO: MAKE_ANY", file);
+			break;
 		case EXPR_BITASSIGN:
         case EXPR_BITACCESS:
         case EXPR_ACCESS:
@@ -253,6 +256,10 @@ void print_var_expr(FILE *file, Expr *expr)
 	    case EXPR_PTR_ACCESS:
 		    print_var_expr(file, expr->access_expr.parent);
 		    fputs(".ptr", file);
+		    break;
+		case EXPR_INT_TO_BOOL:
+			fputs(expr->int_to_bool_expr.negate ? "!" : "!!", file);
+		    print_var_expr(file, expr->inner_expr);
 		    break;
 		case EXPR_EXT_TRUNC:
 			TODO

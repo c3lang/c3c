@@ -758,29 +758,6 @@ static void llvm_emit_veccomp(GenContext *c, BEValue *value, Expr *expr, Builtin
 
 }
 
-static inline void llvm_emit_any_make(GenContext *c, BEValue *value, Expr *expr)
-{
-	Expr **args = expr->call_expr.arguments;
-	Expr *typeid = args[1];
-	if (expr_is_const(typeid) && typeid->const_expr.typeid == type_void)
-	{
-		llvm_value_set(value, llvm_get_zero(c, type_any), type_any);
-		return;
-	}
-	BEValue ptr;
-	llvm_emit_expr(c, &ptr, args[0]);
-	llvm_value_rvalue(c, &ptr);
-	BEValue typeid_value;
-	llvm_emit_expr(c, &typeid_value, typeid);
-	llvm_value_rvalue(c, &typeid_value);
-	LLVMValueRef var = llvm_get_undef(c, type_any);
-	var = llvm_emit_insert_value(c, var, ptr.value, 0);
-	var = llvm_emit_insert_value(c, var, typeid_value.value, 1);
-	ASSERT0(!LLVMIsConstant(ptr.value) || !LLVMIsConstant(typeid_value.value) || LLVMIsConstant(var));
-	llvm_value_set(value, var, type_any);
-}
-
-
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
@@ -789,8 +766,8 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 	switch (func)
 	{
 		case BUILTIN_ANY_MAKE:
-			llvm_emit_any_make(c, result_value, expr);
-			return;
+			// Folded in the frontend.
+			UNREACHABLE
 		case BUILTIN_UNREACHABLE:
 			llvm_emit_unreachable_stmt(c, result_value, expr);
 			return;

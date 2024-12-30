@@ -51,8 +51,8 @@ entry:
 
 loop.cond:                                        ; preds = %switch.exit, %entry
   %0 = call i32 @foo()
-  %intbool = icmp ne i32 %0, 0
-  br i1 %intbool, label %loop.body, label %loop.exit
+  %i2b = icmp ne i32 %0, 0
+  br i1 %i2b, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
   %1 = call i32 @foo()

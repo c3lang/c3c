@@ -176,8 +176,8 @@ testblock:                                        ; preds = %phi_block38
 
 end_block:                                        ; preds = %testblock
   %27 = load i64, ptr %f, align 8
-  %neq = icmp ne i64 %27, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %27, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %28 = load i64, ptr %f, align 8
@@ -206,8 +206,8 @@ testblock56:                                      ; preds = %expr_block.exit
 
 end_block57:                                      ; preds = %testblock56
   %35 = load i64, ptr %f55, align 8
-  %neq58 = icmp ne i64 %35, 0
-  br i1 %neq58, label %if.then59, label %if.exit60
+  %i2b58 = icmp ne i64 %35, 0
+  br i1 %i2b58, label %if.then59, label %if.exit60
 
 if.then59:                                        ; preds = %end_block57
   %36 = load i64, ptr %f55, align 8
@@ -234,8 +234,8 @@ phi_block70:                                      ; preds = %testblock68
 
 end_block71:                                      ; preds = %phi_block70
   %40 = load i64, ptr %f67, align 8
-  %neq72 = icmp ne i64 %40, 0
-  br i1 %neq72, label %if.then73, label %if.exit74
+  %i2b72 = icmp ne i64 %40, 0
+  br i1 %i2b72, label %if.then73, label %if.exit74
 
 if.then73:                                        ; preds = %end_block71
   %41 = load i64, ptr %f67, align 8
@@ -265,8 +265,8 @@ define i64 @test.get_a(ptr %0, i32 %1) #0 {
 entry:
   %reterr = alloca i64, align 8
   %smod = srem i32 %1, 2
-  %intbool = icmp ne i32 %smod, 0
-  br i1 %intbool, label %if.then, label %if.exit
+  %i2b = icmp ne i32 %smod, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
   ret i64 ptrtoint (ptr @"test.Foo$ABC" to i64)

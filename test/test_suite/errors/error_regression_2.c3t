@@ -154,8 +154,8 @@ define void @test.Summary.print(ptr %0, ptr %1) #0 {
 entry:
   %title = alloca %"char[]", align 8
   %2 = load ptr, ptr %0, align 8
-  %ptrbool = icmp ne ptr %2, null
-  br i1 %ptrbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne ptr %2, null
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
   %3 = load ptr, ptr %0, align 8
@@ -210,8 +210,8 @@ if.then:                                          ; preds = %entry
 
 if.exit:                                          ; preds = %entry
   %8 = load i64, ptr %needle_len, align 8
-  %not = icmp eq i64 %8, 0
-  br i1 %not, label %if.then4, label %if.exit5
+  %i2nb = icmp eq i64 %8, 0
+  br i1 %i2nb, label %if.then4, label %if.exit5
 
 if.then4:                                         ; preds = %if.exit
   ret i8 1
@@ -326,8 +326,8 @@ if.then10:                                        ; preds = %if.exit6
   %9 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %9, ptr %temp, align 8
   %10 = load ptr, ptr %temp, align 8
-  %not = icmp eq ptr %10, null
-  br i1 %not, label %if.then14, label %if.exit15
+  %i2nb = icmp eq ptr %10, null
+  br i1 %i2nb, label %if.then14, label %if.exit15
 
 if.then14:                                        ; preds = %if.then10
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var, align 8
@@ -362,8 +362,8 @@ if.then20:                                        ; preds = %if.exit16
   %16 = call ptr @std.core.mem.malloc(i64 16) #3
   store ptr %16, ptr %temp27, align 8
   %17 = load ptr, ptr %temp27, align 8
-  %not28 = icmp eq ptr %17, null
-  br i1 %not28, label %if.then29, label %if.exit30
+  %i2nb28 = icmp eq ptr %17, null
+  br i1 %i2nb28, label %if.then29, label %if.exit30
 
 if.then29:                                        ; preds = %if.then20
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var25, align 8
@@ -385,8 +385,8 @@ noerr_block32:                                    ; preds = %if.exit30
   %21 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %21, ptr %temp34, align 8
   %22 = load ptr, ptr %temp34, align 8
-  %not35 = icmp eq ptr %22, null
-  br i1 %not35, label %if.then36, label %if.exit37
+  %i2nb35 = icmp eq ptr %22, null
+  br i1 %i2nb35, label %if.then36, label %if.exit37
 
 if.then36:                                        ; preds = %noerr_block32
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var23, align 8
@@ -420,8 +420,8 @@ if.exit40:                                        ; preds = %if.exit16
   %30 = call ptr @std.core.mem.malloc(i64 %add) #3
   store ptr %30, ptr %str, align 8
   %31 = load ptr, ptr %str, align 8
-  %not42 = icmp eq ptr %31, null
-  br i1 %not42, label %if.then43, label %if.exit44
+  %i2nb42 = icmp eq ptr %31, null
+  br i1 %i2nb42, label %if.then43, label %if.exit44
 
 if.then43:                                        ; preds = %if.exit40
   ret i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64)
@@ -447,8 +447,8 @@ if.exit44:                                        ; preds = %if.exit40
   %42 = call ptr @std.core.mem.malloc(i64 16) #3
   store ptr %42, ptr %temp54, align 8
   %43 = load ptr, ptr %temp54, align 8
-  %not55 = icmp eq ptr %43, null
-  br i1 %not55, label %if.then56, label %if.exit57
+  %i2nb55 = icmp eq ptr %43, null
+  br i1 %i2nb55, label %if.then56, label %if.exit57
 
 if.then56:                                        ; preds = %if.exit44
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var52, align 8
@@ -470,8 +470,8 @@ noerr_block59:                                    ; preds = %if.exit57
   %47 = call ptr @std.core.mem.malloc(i64 8) #3
   store ptr %47, ptr %temp61, align 8
   %48 = load ptr, ptr %temp61, align 8
-  %not62 = icmp eq ptr %48, null
-  br i1 %not62, label %if.then63, label %if.exit64
+  %i2nb62 = icmp eq ptr %48, null
+  br i1 %i2nb62, label %if.then63, label %if.exit64
 
 if.then63:                                        ; preds = %noerr_block59
   store i64 ptrtoint (ptr @"test.ReadError$OUT_OF_MEMORY" to i64), ptr %error_var50, align 8
@@ -503,8 +503,8 @@ entry:
   %ptradd = getelementptr inbounds i8, ptr %literal, i64 8
   store i8 0, ptr %ptradd, align 8
   %1 = load ptr, ptr %doc, align 8
-  %ptrbool = icmp ne ptr %1, null
-  br i1 %ptrbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne ptr %1, null
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
   %2 = load ptr, ptr %doc, align 8
@@ -565,8 +565,8 @@ entry:
   %reterr = alloca i64, align 8
   store ptr %1, ptr %doc, align 8
   %2 = load ptr, ptr %doc, align 8
-  %not = icmp eq ptr %2, null
-  br i1 %not, label %if.then, label %if.exit
+  %i2nb = icmp eq ptr %2, null
+  br i1 %i2nb, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
   ret i64 ptrtoint (ptr @"test.TitleResult$TITLE_MISSING" to i64)
@@ -576,8 +576,8 @@ if.exit:                                          ; preds = %entry
   %4 = load ptr, ptr %3, align 8
   store ptr %4, ptr %head, align 8
   %5 = load ptr, ptr %head, align 8
-  %not1 = icmp eq ptr %5, null
-  br i1 %not1, label %if.then2, label %if.exit3
+  %i2nb1 = icmp eq ptr %5, null
+  br i1 %i2nb1, label %if.then2, label %if.exit3
 
 if.then2:                                         ; preds = %if.exit
   ret i64 ptrtoint (ptr @"test.TitleResult$TITLE_MISSING" to i64)
@@ -698,7 +698,7 @@ entry:
   store i64 0, ptr %.anon1, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %phi_block19, %entry
+loop.cond:
   %1 = load i64, ptr %.anon1, align 8
   %2 = load i64, ptr %.anon, align 8
   %lt = icmp ult i64 %1, %2
@@ -725,8 +725,8 @@ loop.body:                                        ; preds = %loop.cond
   call void @test.Summary.print(ptr %summary, ptr %10)
   %11 = call i32 (ptr, ...) @printf(ptr @.str.23)
   %12 = load ptr, ptr %summary, align 8
-  %ptrbool = icmp ne ptr %12, null
-  br i1 %ptrbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne ptr %12, null
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %loop.body
   %13 = load ptr, ptr %summary, align 8
@@ -792,8 +792,8 @@ after_check13:                                    ; preds = %testblock
 
 end_block:                                        ; preds = %after_check13, %assign_optional12
   %25 = load i64, ptr %f, align 8
-  %neq = icmp ne i64 %25, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b14 = icmp ne i64 %25, 0
+  br i1 %i2b14, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %26 = load i64, ptr %f, align 8
@@ -810,24 +810,24 @@ expr_block.exit:                                  ; preds = %if.exit, %if.then
   br label %phi_block
 
 phi_block:                                        ; preds = %expr_block.exit, %after_check9
-  %val14 = phi ptr [ %23, %after_check9 ], [ %28, %expr_block.exit ]
-  %optval15 = load i64, ptr %has_title.f, align 8
-  %not_err16 = icmp eq i64 %optval15, 0
-  %29 = call i1 @llvm.expect.i1(i1 %not_err16, i1 true)
-  br i1 %29, label %after_check17, label %else_block18
+  %val15 = phi ptr [ %23, %after_check9 ], [ %28, %expr_block.exit ]
+  %optval16 = load i64, ptr %has_title.f, align 8
+  %not_err17 = icmp eq i64 %optval16, 0
+  %29 = call i1 @llvm.expect.i1(i1 %not_err17, i1 true)
+  br i1 %29, label %after_check18, label %else_block19
 
-after_check17:                                    ; preds = %phi_block
+after_check18:                                    ; preds = %phi_block
   %30 = load i8, ptr %has_title, align 1
   %31 = trunc i8 %30 to i1
-  br label %phi_block19
+  br label %phi_block20
 
-else_block18:                                     ; preds = %phi_block
-  br label %phi_block19
+else_block19:                                     ; preds = %phi_block
+  br label %phi_block20
 
-phi_block19:                                      ; preds = %else_block18, %after_check17
-  %val20 = phi i1 [ %31, %after_check17 ], [ false, %else_block18 ]
-  %ternary = select i1 %val20, ptr @.str.26, ptr @.str.27
-  %32 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val14, ptr %ternary)
+phi_block20:                                      ; preds = %else_block19, %after_check18
+  %val21 = phi i1 [ %31, %after_check18 ], [ false, %else_block19 ]
+  %ternary = select i1 %val21, ptr @.str.26, ptr @.str.27
+  %32 = call i32 (ptr, ...) @printf(ptr @.str.25, ptr %val15, ptr %ternary)
   %33 = load i64, ptr %.anon1, align 8
   %addnuw = add nuw i64 %33, 1
   store i64 %addnuw, ptr %.anon1, align 8
