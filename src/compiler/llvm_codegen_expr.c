@@ -7251,7 +7251,10 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 {
 	sema_cast_const(expr);
+	LLVMBuilderRef b = c->builder;
+	c->builder = c->global_builder;
 	llvm_emit_expr(c, value, expr);
+	c->builder = b;
 	ASSERT0(!llvm_value_is_addr(value));
 }
 

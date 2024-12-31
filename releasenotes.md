@@ -35,6 +35,7 @@
 - Add check in formatter printing "%c".
 - Fix bug where `!!` and `!` was not recognized to jump out of the current scope.
 - Fix bug when including compile time parameters in trailing body more than once.
+- Fix issue with compiling a constant struct containing a string array in a local context.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
