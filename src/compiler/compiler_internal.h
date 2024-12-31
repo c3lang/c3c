@@ -419,6 +419,7 @@ typedef struct VarDecl_
 	bool no_init : 1;
 	bool no_alias : 1;
 	bool bit_is_expr : 1;
+	bool is_self : 1;
 	union
 	{
 		Expr *init_expr;
@@ -1913,6 +1914,7 @@ extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_jump;
+extern const char *kw_construct;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;

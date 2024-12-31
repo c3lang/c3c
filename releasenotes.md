@@ -13,6 +13,7 @@
 - Improved `add-project` to take arguments.
 - Improve error reporting when using type names as the function argument #1750.
 - Improve ordering of method registration to support adding methods to generic modules with method constraints #1746
+- Support experimental `@operator(construct)` operator overload.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
