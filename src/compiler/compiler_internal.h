@@ -1636,6 +1636,7 @@ struct CompilationUnit_
 	Decl **vars;
 	Decl **macros;
 	Decl **methods_to_register;
+	Decl **generic_methods_to_register;
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **global_decls;
@@ -2312,6 +2313,7 @@ bool sema_cast_const(Expr *expr);
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
@@ -2347,6 +2349,7 @@ BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
 
 bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind);
+bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 void print_error_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);

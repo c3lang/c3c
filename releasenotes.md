@@ -12,6 +12,7 @@
 - Add `"name"` project property to override the name of the resulting binary. #1719
 - Improved `add-project` to take arguments.
 - Improve error reporting when using type names as the function argument #1750.
+- Improve ordering of method registration to support adding methods to generic modules with method constraints #1746
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

@@ -363,6 +363,21 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 	return true;
 }
 
+bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
+{
+	RETRY:
+	if (type_info->kind == TYPE_INFO_GENERIC) return true;
+	if (type_info->resolve_status == RESOLVE_DONE) return false;
+	if (type_info->kind != TYPE_INFO_IDENTIFIER) return false;
+	if (type_info->subtype != TYPE_COMPRESSED_NONE) return false;
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
+	if (decl->decl_kind != DECL_TYPEDEF) return false;
+	if (decl->resolve_status == RESOLVE_DONE) return false;
+	if (decl->typedef_decl.is_func) return false;
+	type_info = decl->typedef_decl.type_info;
+	goto RETRY;
+}
+
 // Foo(<...>)
 INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 {
