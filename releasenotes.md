@@ -11,6 +11,7 @@
 - Add `--win-vs-dirs` to override VS detection dirs.
 - Add `"name"` project property to override the name of the resulting binary. #1719
 - Improved `add-project` to take arguments.
+- Improve error reporting when using type names as the function argument #1750.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
