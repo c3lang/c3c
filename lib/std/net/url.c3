@@ -52,17 +52,17 @@ fn Url! parse(String url_string)
 	// Parse host, port
 	if (url.scheme != "urn")
 	{
-		usz! authorityEnd = url_string.index_of_chars("/?#");
-		if (catch authorityEnd)
+		usz! authority_end = url_string.index_of_chars("/?#");
+		if (catch authority_end)
 		{
-			authorityEnd = url_string.len;
+			authority_end = url_string.len;
 		}
 
-		String authority = url_string[:authorityEnd]!;
+		String authority = url_string[:authority_end]!;
 
-		if (try usz userInfoEnd = url_string.index_of_char('@'))
+		if (try usz userInfo_end = url_string.index_of_char('@'))
 		{
-			String userinfo = authority[:userInfoEnd];
+			String userinfo = authority[:userInfo_end];
 			String[] userpass = userinfo.split(":");
 			defer free(userpass);
 			url.username = userpass[0];
@@ -70,44 +70,44 @@ fn Url! parse(String url_string)
 			{
 				url.password = userpass[1];
 			}
-			authority = authority[userInfoEnd + 1 ..];
+			authority = authority[userInfo_end + 1 ..];
 		}
 
 		// Check for IPv6 address in square brackets
 		if (authority.starts_with("[") && authority.contains("]"))
 		{
-			usz ipv6End = authority.index_of("]")!;
-			url.host = authority[0 .. ipv6End];  // Includes closing bracket
-			if ((ipv6End + 1) < authority.len && authority[.. ipv6End] == ":")
+			usz ipv6_end = authority.index_of("]")!;
+			url.host = authority[0 .. ipv6_end];  // Includes closing bracket
+			if ((ipv6_end + 1) < authority.len && authority[.. ipv6_end] == ":")
 			{
-				url.port = authority[.. ipv6End + 1].to_uint()!;
+				url.port = authority[.. ipv6_end + 1].to_uint()!;
 			}
 		}
 		else
 		{
-			String[] hostPort = authority.split(":");
-			defer mem::free(hostPort);
-			if (hostPort.len > 1)
+			String[] host_port = authority.split(":");
+			defer mem::free(host_port);
+			if (host_port.len > 1)
 			{
-				url.host = hostPort[0];
-				url.port = hostPort[1].to_uint()!;
+				url.host = host_port[0];
+				url.port = host_port[1].to_uint()!;
 			}
 			else
 			{
 				url.host = authority;
 			}
 		}
-		url_string = url_string[authorityEnd ..]!;
+		url_string = url_string[authority_end ..]!;
 	}
 
 	// Parse path
-	long queryIndex = (long)url_string.index_of_char('?') ?? -1;
-	long fragmentIndex = (long)url_string.index_of_char('#') ?? -1;
+	long query_index = (long)url_string.index_of_char('?') ?? -1;
+	long fragment_index = (long)url_string.index_of_char('#') ?? -1;
 
-	if (queryIndex != -1 || fragmentIndex != -1)
+	if (query_index != -1 || fragment_index != -1)
 	{
-		long pathEnd = min(queryIndex == -1 ? url_string.len : queryIndex,
-						   fragmentIndex == -1 ? url_string.len : fragmentIndex,
+		long pathEnd = min(query_index == -1 ? url_string.len : query_index,
+						   fragment_index == -1 ? url_string.len : fragment_index,
 						   url_string.len);
 		url.path = url_string[:pathEnd];
 	}
@@ -122,13 +122,13 @@ fn Url! parse(String url_string)
 	// Parse query
 	if (url_string.starts_with("?"))
 	{
-		fragmentIndex = (long)url_string.index_of_char('#') ?? -1;
-		if (fragmentIndex == -1)
+		fragment_index = (long)url_string.index_of_char('#') ?? -1;
+		if (fragment_index == -1)
 		{
-			fragmentIndex = url_string.len;
+			fragment_index = url_string.len;
 		}
-		url.query = url_string[1 .. fragmentIndex - 1];
-		url_string = url_string[fragmentIndex ..];
+		url.query = url_string[1 .. fragment_index - 1];
+		url_string = url_string[fragment_index ..];
 	}
 
 	// Parse fragment
