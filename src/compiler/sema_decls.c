@@ -4005,60 +4005,60 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
 			return decl_poison(decl);
 		}
-		if (kind == VARDECL_LOCAL && !context_is_macro(context))
+		ASSERT0(!decl->var.no_init);
+		if (kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA)
 		{
-			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro.", decl->name);
+			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda.", decl->name);
 			return decl_poison(decl);
 		}
-		ASSERT0(!decl->var.no_init);
-		if (!type_info)
+		if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
+		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
-			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
-			if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
-			if (global_level_var && !expr_is_runtime_const(init_expr))
-			{
-				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
-				return decl_poison(decl);
-			}
-			decl->type = init_expr->type;
-			switch (sema_resolve_storage_type(context, init_expr->type))
-			{
-				case STORAGE_ERROR:
-					return decl_poison(decl);
-				case STORAGE_NORMAL:
-					break;
-				case STORAGE_WILDCARD:
-					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
-					return decl_poison(decl);
-				case STORAGE_VOID:
-					SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
-					return decl_poison(decl);
-				case STORAGE_COMPILE_TIME:
-					if (init_expr->type == type_untypedlist)
-					{
-						SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
-						return decl_poison(decl);
-					}
-					if (decl->var.kind == VARDECL_CONST)
-					{
-						SEMA_ERROR(init_expr, "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.", type_invalid_storage_type_name(init_expr->type));
-						return decl_poison(decl);
-					}
-					SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
-					return decl_poison(decl);
-				case STORAGE_UNKNOWN:
-					SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
-					           type_quoted_error_string(init_expr->type));
-					return decl_poison(decl);
-			}
-			if (!decl->alignment)
-			{
-				if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
-			}
-			if (!sema_analyse_variable_type(context, decl->type, init_expr->span)) return decl_poison(decl);
-			// Skip further evaluation.
-			goto EXIT_OK;
+			SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
+			return decl_poison(decl);
 		}
+		decl->type = init_expr->type;
+		switch (sema_resolve_storage_type(context, init_expr->type))
+		{
+			case STORAGE_ERROR:
+				return decl_poison(decl);
+			case STORAGE_NORMAL:
+				break;
+			case STORAGE_WILDCARD:
+				SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
+				return decl_poison(decl);
+			case STORAGE_VOID:
+				SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
+				return decl_poison(decl);
+			case STORAGE_COMPILE_TIME:
+				if (init_expr->type == type_untypedlist)
+				{
+					SEMA_ERROR(init_expr,
+					           "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
+					return decl_poison(decl);
+				}
+				if (decl->var.kind == VARDECL_CONST)
+				{
+					SEMA_ERROR(init_expr,
+					           "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.",
+					           type_invalid_storage_type_name(init_expr->type));
+					return decl_poison(decl);
+				}
+				SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
+				return decl_poison(decl);
+			case STORAGE_UNKNOWN:
+				SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
+				           type_quoted_error_string(init_expr->type));
+				return decl_poison(decl);
+		}
+		if (!decl->alignment)
+		{
+			if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+		}
+		if (!sema_analyse_variable_type(context, decl->type, init_expr->span)) return decl_poison(decl);
+		// Skip further evaluation.
+		goto EXIT_OK;
 	}
 
 	if (!sema_resolve_type_info(context, type_info,
