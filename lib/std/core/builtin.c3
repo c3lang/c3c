@@ -99,7 +99,6 @@ fn void default_panic(String message, String file, String function, uint line) @
 	if (!print_backtrace(message, 2))
 	{
 		io::eprintfn("\nERROR: '%s', in %s (%s:%d)", message, function, file, line);
-		return;
 	}
 	$endif
 	$$trap();
