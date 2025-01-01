@@ -41,6 +41,7 @@
 - Fix bug when including compile time parameters in trailing body more than once.
 - Fix issue with compiling a constant struct containing a string array in a local context.
 - Fix error where panic would not properly stop the program when stacktrace couldn't be printed #1751.
+- Macros with default arguments to `&`, `#` and type parameters didn't work as expected. #1754.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

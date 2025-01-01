@@ -1267,7 +1267,6 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 {
 	VarDeclKind kind = param->var.kind;
 	Type *type = param->type;
-
 	// 16. Analyse a regular argument.
 	switch (kind)
 	{
@@ -1403,7 +1402,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 		case VARDECL_ERASE:
 			UNREACHABLE
 	}
-	if (param && type_len_is_inferred(type))
+	if (type_len_is_inferred(type))
 	{
 		param->type = type_no_optional(arg->type);
 	}
@@ -1417,6 +1416,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	Expr *init_expr = param->var.init_expr;
 	if (!init_expr) return true;
 	Expr *arg = copy_expr_single(init_expr);
+	bool parameter_checked = false;
 	if (arg->resolve_status != RESOLVE_DONE)
 	{
 		SemaContext default_context;
@@ -1436,20 +1436,20 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 		{
 			RETURN_NOTE_FUNC_DEFINITION;
 		}
+		if (!success) return false;
+		parameter_checked = true;
 	}
-	if (sema_cast_const(arg))
+	switch (param->var.kind)
 	{
-		switch (param->var.kind)
-		{
-			case VARDECL_PARAM_CT:
-			case VARDECL_PARAM_CT_TYPE:
-			case VARDECL_PARAM_EXPR:
-				*expr_ref = arg;
-				return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
-											  callee->macro, false);
-			default:
-				break;
-		}
+		case VARDECL_PARAM_CT:
+		case VARDECL_PARAM_CT_TYPE:
+		case VARDECL_PARAM_EXPR:
+			*expr_ref = arg;
+			if (parameter_checked) return true;
+			return sema_analyse_parameter(context, arg, param, callee->definition, optional, no_match_ref,
+			                              callee->macro, false);
+		default:
+			break;
 	}
 	Expr *function_scope_arg = expr_new(EXPR_DEFAULT_ARG, arg->span);
 	function_scope_arg->resolve_status = RESOLVE_DONE;
@@ -1457,6 +1457,7 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	function_scope_arg->default_arg_expr.inner = arg;
 	function_scope_arg->default_arg_expr.loc = callee->call_location;
 	*expr_ref = function_scope_arg;
+	if (parameter_checked) return true;
 	return sema_analyse_parameter(context, function_scope_arg, param, callee->definition, optional, no_match_ref,
 								  callee->macro, false);
 }
@@ -9784,6 +9785,10 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr)
 
 bool sema_cast_const(Expr *expr)
 {
+	if (expr->resolve_status != RESOLVE_DONE)
+	{
+		puts("Tesst");
+	}
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	switch (expr->expr_kind)
 	{
