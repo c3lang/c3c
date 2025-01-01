@@ -1456,9 +1456,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			UNREACHABLE;
 		case CAST_ERROR:
 			UNREACHABLE
-		case CAST_PTRPTR:
-			llvm_value_rvalue(c, value);
-			break;
 		case CAST_PTRINT:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, to_type), "ptrxi");
@@ -7327,6 +7324,11 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			llvm_emit_make_any(c, value, expr);
+			return;
+		case EXPR_RVALUE:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			value->type = type_lowering(expr->type);
 			return;
 		case EXPR_PTR_ACCESS:
 			llvm_emit_ptr_access(c, value, expr);

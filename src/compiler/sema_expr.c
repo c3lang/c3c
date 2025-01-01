@@ -571,6 +571,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 		case EXPR_MAKE_ANY:
 			goto ERR;
 	}
@@ -601,6 +602,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
 		case EXPR_INT_TO_BOOL:
+		case EXPR_RVALUE:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -5894,8 +5896,11 @@ static Type *defer_iptr_cast(Expr *maybe_pointer, Expr *maybe_diff)
 		&& maybe_pointer->cast_expr.kind == CAST_PTRINT
 		&& type_flatten(maybe_pointer->type) == type_flatten(type_iptr))
 	{
+
+		Expr *inner = exprptr(maybe_pointer->cast_expr.expr);
+		maybe_pointer->expr_kind = EXPR_RVALUE;
+		maybe_pointer->inner_expr = inner;
 		Type *cast_to_iptr = maybe_pointer->type;
-		maybe_pointer->cast_expr.kind = CAST_PTRPTR;
 		maybe_pointer->type = type_get_ptr(type_char);
 		return cast_to_iptr;
 	}
@@ -8951,6 +8956,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
 			case EXPR_PTR_ACCESS:
+			case EXPR_RVALUE:
 			case EXPR_MAKE_ANY:
 				if (!sema_analyse_expr(active_context, main_expr)) return false;
 				break;
@@ -9332,6 +9338,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
 			return sema_analyse_expr(context, expr->make_any_expr.inner);
+		case EXPR_RVALUE:
+			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_INT_TO_BOOL:

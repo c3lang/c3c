@@ -3436,6 +3436,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			break;
 	}
 }
@@ -3583,7 +3584,13 @@ INLINE Ast *ast_next(AstId *current_ptr)
 }
 
 
-
+INLINE void expr_rewrite_rvalue(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_RVALUE;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
 
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b)
 {

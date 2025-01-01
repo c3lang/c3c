@@ -281,6 +281,9 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 	{
 		switch (expr->expr_kind)
 		{
+			case EXPR_RVALUE:
+				expr = expr->inner_expr;
+				continue;
 			case EXPR_MAKE_ANY:
 				expr = expr->make_any_expr.inner;
 				continue;
@@ -760,6 +763,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			return true;
 	}
 	UNREACHABLE

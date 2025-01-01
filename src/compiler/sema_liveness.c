@@ -330,6 +330,7 @@ RETRY:
 		case EXPR_RETHROW:
 		case EXPR_OPTIONAL:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_DEFAULT_ARG:

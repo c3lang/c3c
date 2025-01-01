@@ -1505,12 +1505,9 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
  */
 static void cast_ptr_to_ptr(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_PTRPTR, type)) return;
-
-	// Strings cannot be compile-time folded, so insert a runtime cast.
-	if (expr->const_expr.const_kind == CONST_STRING)
+	if (!sema_cast_const(expr) || expr->const_expr.const_kind == CONST_STRING)
 	{
-		insert_runtime_cast(expr, CAST_PTRPTR, type);
+		expr_rewrite_rvalue(expr, type);
 		return;
 	}
 
@@ -1799,7 +1796,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 			case TYPE_TYPEID:
 			case TYPE_ANYFAULT:
 			case TYPE_FAULTTYPE:
-				insert_runtime_cast(expr, CAST_PTRPTR, to_type);
+				expr_rewrite_rvalue(expr, to_type);
 				return;
 			default:
 				UNREACHABLE;

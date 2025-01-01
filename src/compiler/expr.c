@@ -83,6 +83,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			return false;
 		case NON_RUNTIME_EXPR:
 		case EXPR_ASM:
@@ -190,6 +191,8 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_COND:
 		case EXPR_PTR_ACCESS:
 			return false;
+		case EXPR_RVALUE:
+			return expr_is_runtime_const(expr->inner_expr);
 		case EXPR_MAKE_ANY:
 			if (!expr_is_runtime_const(expr->make_any_expr.typeid)) return false;
 			expr = expr->make_any_expr.inner;
@@ -361,7 +364,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_ARRVEC:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_INTPTR:
-		case CAST_PTRPTR:
 		case CAST_APTSA:
 		case CAST_SLSL:
 		case CAST_VOID:
@@ -608,6 +610,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MAKE_ANY:
 			return expr_is_pure(expr->make_any_expr.inner) && expr_is_pure(expr->make_any_expr.typeid);
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			return expr_is_pure(expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
 			return expr_is_pure(expr->int_to_bool_expr.inner);
