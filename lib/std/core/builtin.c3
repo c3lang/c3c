@@ -383,7 +383,9 @@ macro @generic_hash_core(h, value)
 	h ^= h >> 16; // diffuse them down
 	return h;
 }
-macro @generic_hash(value) {
+
+macro @generic_hash(value)
+{
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
 	$for (var $cnt = 4; $cnt < $sizeof(value); $cnt += 4)
 		value >>= 32; // reduce value
@@ -392,21 +394,21 @@ macro @generic_hash(value) {
 	return h;
 }
 
-macro uint int.hash(int i) => @generic_hash(i);
-macro uint uint.hash(uint i) => @generic_hash(i);
-macro uint short.hash(short s) => @generic_hash(s);
-macro uint ushort.hash(ushort s) => @generic_hash(s);
-macro uint char.hash(char c) => @generic_hash(c);
-macro uint ichar.hash(ichar c) => @generic_hash(c);
-macro uint long.hash(long i) => @generic_hash(i);
-macro uint ulong.hash(ulong i) => @generic_hash(i);
-macro uint int128.hash(int128 i) => @generic_hash(i);
-macro uint uint128.hash(uint128 i) => @generic_hash(i);
-macro uint bool.hash(bool b) => @generic_hash(b);
-macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)fnv32a::encode(c);
-macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
-macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
+fn uint int.hash(int i) @inline => @generic_hash(i);
+fn uint uint.hash(uint i) @inline => @generic_hash(i);
+fn uint short.hash(short s) @inline => @generic_hash(s);
+fn uint ushort.hash(ushort s) @inline => @generic_hash(s);
+fn uint char.hash(char c) @inline => @generic_hash(c);
+fn uint ichar.hash(ichar c) @inline => @generic_hash(c);
+fn uint long.hash(long i) @inline => @generic_hash(i);
+fn uint ulong.hash(ulong i) @inline => @generic_hash(i);
+fn uint int128.hash(int128 i) @inline => @generic_hash(i);
+fn uint uint128.hash(uint128 i) @inline => @generic_hash(i);
+fn uint bool.hash(bool b) @inline => @generic_hash(b);
+fn uint typeid.hash(typeid t) @inline => @generic_hash(((ulong)(uptr)t));
+fn uint String.hash(String c) @inline => (uint)fnv32a::encode(c);
+fn uint char[].hash(char[] c) @inline => (uint)fnv32a::encode(c);
+fn uint void*.hash(void* ptr) @inline => @generic_hash(((ulong)(uptr)ptr));
 
 distinct EmptySlot = void*;
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
