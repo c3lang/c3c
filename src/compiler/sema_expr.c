@@ -2324,6 +2324,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		rtype = context_unify_returns(&macro_context);
 		if (!rtype) goto EXIT_FAIL;
+		optional_return = type_is_optional(rtype);
 	}
 
 	// Handle the implicit return.

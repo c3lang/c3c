@@ -43,6 +43,7 @@
 - Fix error where panic would not properly stop the program when stacktrace couldn't be printed #1751.
 - Macros with default arguments to `&`, `#` and type parameters didn't work as expected. #1754.
 - `net::poll()` with negative timeout behaved incorrectly.
+- Return type inference bugs with macros #1757
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
