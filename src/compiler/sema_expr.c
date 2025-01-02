@@ -8795,24 +8795,29 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 	{
 		Expr *main_expr = list[i];
 		SemaContext *active_context = context;
+		bool in_no_eval = active_context->call_env.in_no_eval;
+		active_context->call_env.in_no_eval = true;
 	RETRY:
 		switch (main_expr->expr_kind)
 		{
 			case EXPR_OTHER_CONTEXT:
+				active_context->call_env.in_no_eval = in_no_eval;
 				active_context = expr->expr_other_context.context;
+				in_no_eval = active_context->call_env.in_no_eval;
+				active_context->call_env.in_no_eval = true;
 				main_expr = expr->expr_other_context.inner;
 				goto RETRY;
 			case EXPR_ACCESS:
 				if (!sema_expr_analyse_access(active_context, main_expr, &failed, CHECK_VALUE))
 				{
-					if (!failed) return false;
+					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
 			case EXPR_IDENTIFIER:
 			{
 				Decl *decl = sema_find_path_symbol(active_context, main_expr->identifier_expr.ident, main_expr->identifier_expr.path);
-				if (!decl_ok(decl)) return false;
+				if (!decl_ok(decl)) goto FAIL;
 				success = decl != NULL;
 				break;
 			}
@@ -8826,14 +8831,14 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				main_expr->resolve_status = RESOLVE_RUNNING;
 				if (!sema_expr_analyse_unary(active_context, main_expr, &failed, CHECK_VALUE))
 				{
-					if (!failed) return false;
+					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
 			case EXPR_TYPEINFO:
 			{
 				Type *type = sema_expr_check_type_exists(active_context, main_expr->type_expr);
-				if (!type_ok(type)) return false;
+				if (!type_ok(type)) goto FAIL;
 				success = type != NULL;
 				break;
 			}
@@ -8843,7 +8848,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_HASH_IDENT:
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->hash_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) return false;
+				if (!decl) goto FAIL;
 				main_expr = copy_expr_single(decl->var.init_expr);
 				goto RETRY;
 			}
@@ -8851,7 +8856,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			{
 				if (!sema_expr_analyse_subscript(active_context, main_expr, CHECK_VALUE, true))
 				{
-					return false;
+					goto FAIL;
 				}
 				if (!expr_ok(main_expr))
 				{
@@ -8862,14 +8867,14 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_CAST:
 				if (!sema_expr_analyse_cast(active_context, main_expr, &failed))
 				{
-					if (!failed) return false;
+					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
 			case EXPR_CT_IDENT:
 			{
 				Decl *decl = sema_resolve_symbol(active_context, main_expr->ct_ident_expr.identifier, NULL, main_expr->span);
-				if (!decl) return false;
+				if (!decl) goto FAIL;
 				break;
 			}
 			case EXPR_CALL:
@@ -8877,23 +8882,23 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				bool no_match;
 				if (!sema_expr_analyse_call(active_context, main_expr, &no_match))
 				{
-					if (!no_match) return false;
+					if (!no_match) goto FAIL;
 					success = false;
 				}
 				break;
 			}
 			case EXPR_FORCE_UNWRAP:
-				if (!sema_analyse_expr(active_context, main_expr->inner_expr)) return false;
+				if (!sema_analyse_expr(active_context, main_expr->inner_expr)) goto FAIL;
 				success = IS_OPTIONAL(main_expr->inner_expr);
 				break;
 			case EXPR_RETHROW:
-				if (!sema_analyse_expr(active_context, main_expr->rethrow_expr.inner)) return false;
+				if (!sema_analyse_expr(active_context, main_expr->rethrow_expr.inner)) goto FAIL;
 				success = IS_OPTIONAL(main_expr->rethrow_expr.inner);
 				break;
 			case EXPR_OPTIONAL:
 				if (!sema_expr_analyse_optional(active_context, main_expr, &failed))
 				{
-					if (!failed) return false;
+					if (!failed) goto FAIL;
 					success = false;
 				}
 				break;
@@ -8966,10 +8971,15 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_PTR_ACCESS:
 			case EXPR_RVALUE:
 			case EXPR_MAKE_ANY:
-				if (!sema_analyse_expr(active_context, main_expr)) return false;
+				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
 		}
-		if (!success) break;
+		active_context->call_env.in_no_eval = in_no_eval;
+		if (success) continue;
+		break;
+FAIL:
+		active_context->call_env.in_no_eval = in_no_eval;
+		return false;
 	}
 	expr_rewrite_const_bool(expr, type_bool, success);
 	return true;

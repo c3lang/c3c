@@ -44,6 +44,7 @@
 - Macros with default arguments to `&`, `#` and type parameters didn't work as expected. #1754.
 - `net::poll()` with negative timeout behaved incorrectly.
 - Return type inference bugs with macros #1757
+- `$defined` in a global scope should accept testing normal macros.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
@@ -52,6 +53,7 @@
 - Add "tokenizer" to String.
 - Add "skip_empty" to split methods. Add split_to_buffer method.
 - Add `@enum_from_value`.
+- Updated hash function.
 
 ## 0.6.5 Change list
 

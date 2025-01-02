@@ -312,7 +312,11 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr_value(context, expr)) return false;
+	bool in_no_eval = context->call_env.in_no_eval;
+	context->call_env.in_no_eval = true;
+	bool success = sema_analyse_expr_value(context, expr);
+	context->call_env.in_no_eval = in_no_eval;
+	if (!success) return false;
 	Type *expr_type = expr->type;
 	if (expr_type->type_kind == TYPE_FUNC_RAW) expr_type = type_get_func_ptr(expr_type);
 	switch (sema_resolve_storage_type(context, expr_type))

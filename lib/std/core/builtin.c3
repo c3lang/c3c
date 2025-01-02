@@ -376,21 +376,39 @@ macro String @str_upper(String $str) @builtin => $$str_upper($str);
 macro String @str_lower(String $str) @builtin => $$str_lower($str);
 macro uint @str_hash(String $str) @builtin => $$str_hash($str);
 
-macro uint int.hash(int i) => i;
-macro uint uint.hash(uint i) => i;
-macro uint short.hash(short s) => s;
-macro uint ushort.hash(ushort s) => s;
-macro uint char.hash(char c) => c;
-macro uint ichar.hash(ichar c) => c;
-macro uint long.hash(long i) => (uint)((i >> 32) ^ i);
-macro uint ulong.hash(ulong i) => (uint)((i >> 32) ^ i);
-macro uint int128.hash(int128 i) => (uint)((i >> 96) ^ (i >> 64) ^ (i >> 32) ^ i);
-macro uint uint128.hash(uint128 i) => (uint)((i >> 96) ^ (i >> 64) ^ (i >> 32) ^ i);
-macro uint bool.hash(bool b) => (uint)b;
-macro uint typeid.hash(typeid t) => ((ulong)(uptr)t).hash();
+macro @generic_hash_core(h, value)
+{
+	h ^= (uint)value; // insert lowest 32 bits
+	h *= 0x96f59e5b; // diffuse them up
+	h ^= h >> 16; // diffuse them down
+	return h;
+}
+
+macro @generic_hash(value)
+{
+	uint h = @generic_hash_core((uint)0x3efd4391, value);
+	$for (var $cnt = 4; $cnt < $sizeof(value); $cnt += 4)
+		value >>= 32; // reduce value
+		h = @generic_hash_core(h, value);
+	$endfor
+	return h;
+}
+
+macro uint int.hash(int i) => @generic_hash(i);
+macro uint uint.hash(uint i) => @generic_hash(i);
+macro uint short.hash(short s) => @generic_hash(s);
+macro uint ushort.hash(ushort s) => @generic_hash(s);
+macro uint char.hash(char c) => @generic_hash(c);
+macro uint ichar.hash(ichar c) => @generic_hash(c);
+macro uint long.hash(long i) => @generic_hash(i);
+macro uint ulong.hash(ulong i) => @generic_hash(i);
+macro uint int128.hash(int128 i) => @generic_hash(i);
+macro uint uint128.hash(uint128 i) => @generic_hash(i);
+macro uint bool.hash(bool b) => @generic_hash(b);
+macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
 macro uint String.hash(String c) => (uint)fnv32a::encode(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
-macro uint void*.hash(void* ptr) => ((ulong)(uptr)ptr).hash();
+macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 distinct EmptySlot = void*;
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
