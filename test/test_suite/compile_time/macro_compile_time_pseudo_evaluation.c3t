@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+import std;
+macro foo(int a)
+{
+	int h = a;
+	return a;
+}
+
+$typeof(baz(2)) y;
+const ABC = $sizeof(baz(2));
+
+macro baz(int x) => foo(x);
+
+fn void main()
+{
+	int x = ABC;
+	int a = baz(3);
+}
+
+/* #expect: test.ll
+
+
+@test.y = local_unnamed_addr global i32 0, align 4
+@test.ABC = local_unnamed_addr constant i64 4, align 8
+
+entry:
+  %x = alloca i32, align 4
+  %a = alloca i32, align 4
+  %h = alloca i32, align 4
+  store i32 4, ptr %x, align 4
+  store i32 3, ptr %h, align 4
+  store i32 3, ptr %a, align 4
+  ret void
+}

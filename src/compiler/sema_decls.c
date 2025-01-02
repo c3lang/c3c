@@ -3962,7 +3962,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	}
 	else
 	{
-		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT)
+		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT && !context->call_env.in_no_eval)
 		{
 			if (context->current_macro)
 			{
