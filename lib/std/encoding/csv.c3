@@ -78,7 +78,7 @@ fn void! CsvReader.skip_row(self) @maydiscard
 	};
 }
 
-macro CsvReader.@each_row(self, int rows = int.max; @body(String[] row))
+macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard
 {
 	InStream stream = self.stream;
 	String sep = self.separator;

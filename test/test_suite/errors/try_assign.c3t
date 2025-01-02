@@ -141,8 +141,8 @@ after_check22:                                    ; preds = %testblock
 
 end_block:                                        ; preds = %after_check22, %assign_optional
   %13 = load i64, ptr %e, align 8
-  %neq = icmp ne i64 %13, 0
-  br i1 %neq, label %if.then23, label %if.exit24
+  %i2b = icmp ne i64 %13, 0
+  br i1 %i2b, label %if.then23, label %if.exit24
 
 if.then23:                                        ; preds = %end_block
   %14 = call i32 (ptr, ...) @printf(ptr @.str.2)

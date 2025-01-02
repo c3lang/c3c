@@ -409,7 +409,7 @@ static void print_version(void)
 #if LLVM_AVAILABLE
 	PRINTF("LLVM version:              %s", llvm_version);
 	PRINTF("LLVM default target:       %s", llvm_target);
-#endif 
+#endif
 }
 
 static void parse_option(BuildOptions *options)

@@ -312,7 +312,11 @@ INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, Res
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info)
 {
 	Expr *expr = type_info->unresolved_type_expr;
-	if (!sema_analyse_expr_value(context, expr)) return false;
+	bool in_no_eval = context->call_env.in_no_eval;
+	context->call_env.in_no_eval = true;
+	bool success = sema_analyse_expr_value(context, expr);
+	context->call_env.in_no_eval = in_no_eval;
+	if (!success) return false;
 	Type *expr_type = expr->type;
 	if (expr_type->type_kind == TYPE_FUNC_RAW) expr_type = type_get_func_ptr(expr_type);
 	switch (sema_resolve_storage_type(context, expr_type))
@@ -361,6 +365,21 @@ INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info)
 	if (arg_expr->expr_kind != EXPR_TYPEINFO) RETURN_SEMA_ERROR(arg_expr, "The argument was not a type.");
 	type_info->type = arg_expr->type_expr->type;
 	return true;
+}
+
+bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
+{
+	RETRY:
+	if (type_info->kind == TYPE_INFO_GENERIC) return true;
+	if (type_info->resolve_status == RESOLVE_DONE) return false;
+	if (type_info->kind != TYPE_INFO_IDENTIFIER) return false;
+	if (type_info->subtype != TYPE_COMPRESSED_NONE) return false;
+	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
+	if (decl->decl_kind != DECL_TYPEDEF) return false;
+	if (decl->resolve_status == RESOLVE_DONE) return false;
+	if (decl->typedef_decl.is_func) return false;
+	type_info = decl->typedef_decl.type_info;
+	goto RETRY;
 }
 
 // Foo(<...>)

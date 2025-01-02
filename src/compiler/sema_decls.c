@@ -1162,6 +1162,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				UNREACHABLE
 		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
+		param->var.is_self = true;
 	}
 
 	// Check parameters
@@ -1688,6 +1689,31 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 	return NULL;
 }
 
+static inline bool sema_analyse_operator_construct(SemaContext *context, Decl *method)
+{
+	Signature *signature = &method->func_decl.signature;
+	Decl **params = signature->params;
+	uint32_t param_count = vec_size(params);
+	if (param_count && params[0]->var.is_self)
+	{
+		RETURN_SEMA_ERROR(method, "'construct' methods cannot have 'self' parameters.");
+	}
+	if (!signature->rtype)
+	{
+		RETURN_SEMA_ERROR(method, "A 'construct' macro method should always have an explicitly typed return value.");
+	}
+	Type *rtype = typeget(signature->rtype)->canonical;
+	Type *parent = typeget(method->func_decl.type_parent);
+	if (parent->canonical != rtype && type_get_ptr(parent->canonical) != rtype)
+	{
+		RETURN_SEMA_ERROR(type_infoptr(signature->rtype),
+		                  "The return type of a 'construct' method must be the method type, or a pointer to it."
+		                  " In this case %s or %s was expected.",
+		                  type_quoted_error_string(parent), type_quoted_error_string(type_get_ptr(parent)));
+	}
+	return true;
+}
+
 
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method)
 {
@@ -1741,6 +1767,8 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 {
 	switch (method->operator)
 	{
+		case OVERLOAD_CONSTRUCT:
+			return sema_analyse_operator_construct(context, method);
 		case OVERLOAD_ELEMENT_SET:
 			return sema_analyse_operator_element_set(context, method);
 		case OVERLOAD_ELEMENT_AT:
@@ -1847,6 +1875,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 
 	// See if the operator has already been defined.
 	OperatorOverload operator = method->operator;
+	if (operator == OVERLOAD_CONSTRUCT) return true;
 
 	Decl *other = sema_find_operator(context, parent_type, operator);
 	if (other != method)
@@ -1913,6 +1942,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 				break;
 			}
 			return true;
+		case OVERLOAD_CONSTRUCT:
 		default:
 			UNREACHABLE
 	}
@@ -2311,13 +2341,19 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 
+	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
+
 	// Ensure it has at least one parameter.
-	if (!vec_size(params)) RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
-												   "it is a method of, e.g. 'fn void %s.%s(%s* self)'.",
-	                                         type_to_error_string(par_type), decl->name, type_to_error_string(par_type));
+	if (!vec_size(params) && !is_constructor)
+	{
+		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
+								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
+								"unless it is a 'construct' method,",
+		                  type_to_error_string(par_type), decl->name, type_to_error_string(par_type));
+	}
 
 	// Ensure that the first parameter is valid.
-	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
+	if (!is_constructor && !sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
 	// Make dynamic checks.
 	if (is_dynamic)
@@ -2329,6 +2365,10 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		if (par_type == type_any)
 		{
 			RETURN_SEMA_ERROR(decl, "'any' may not implement '@dynamic' methods, only regular methods.");
+		}
+		if (is_constructor)
+		{
+			RETURN_SEMA_ERROR(decl, "A 'construct' method may not be '@dynamic'.");
 		}
 		// Retrieve the implemented method.
 		Decl *implemented_method = sema_find_interface_for_method(context, par_type, decl);
@@ -2619,6 +2659,11 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				case EXPR_IDENTIFIER:
 					if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
+					if (expr->identifier_expr.ident == kw_construct)
+					{
+						decl->operator = OVERLOAD_CONSTRUCT;
+						break;
+					}
 					if (expr->identifier_expr.ident != kw_len) goto FAILED_OP_TYPE;
 					decl->operator = OVERLOAD_LEN;
 					break;
@@ -3579,16 +3624,18 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	ASSERT0(parent_type_info->resolve_status == RESOLVE_DONE);
 	Type *parent_type = parent_type_info->type->canonical;
 
+	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
+
 	// Check the first argument.
-	Decl *first_param = decl->func_decl.signature.params[0];
-	if (!first_param)
+	Decl *first_param = is_constructor ? NULL : decl->func_decl.signature.params[0];
+	if (!is_constructor && !first_param)
 	{
 		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
-		return false;
 	}
-	if (!sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
 
-	if (first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
+	if (!is_constructor && !sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
+
+	if (!is_constructor && first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
@@ -3915,7 +3962,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	}
 	else
 	{
-		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT)
+		if (context->call_env.kind == CALL_ENV_GLOBAL_INIT && !context->call_env.in_no_eval)
 		{
 			if (context->current_macro)
 			{
@@ -3958,60 +4005,60 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			SEMA_ERROR(decl, "Constants need to have an initial value.");
 			return decl_poison(decl);
 		}
-		if (kind == VARDECL_LOCAL && !context_is_macro(context))
+		ASSERT0(!decl->var.no_init);
+		if (kind == VARDECL_LOCAL && !context_is_macro(context) && init_expr->expr_kind != EXPR_LAMBDA)
 		{
-			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro.", decl->name);
+			SEMA_ERROR(decl, "Defining a variable using 'var %s = ...' is only allowed inside a macro, or when defining a lambda.", decl->name);
 			return decl_poison(decl);
 		}
-		ASSERT0(!decl->var.no_init);
-		if (!type_info)
+		if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
+		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
+		if (global_level_var && !expr_is_runtime_const(init_expr))
 		{
-			if (!sema_analyse_expr(context, init_expr)) return decl_poison(decl);
-			if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
-			if (global_level_var && !expr_is_runtime_const(init_expr))
-			{
-				SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
-				return decl_poison(decl);
-			}
-			decl->type = init_expr->type;
-			switch (sema_resolve_storage_type(context, init_expr->type))
-			{
-				case STORAGE_ERROR:
-					return decl_poison(decl);
-				case STORAGE_NORMAL:
-					break;
-				case STORAGE_WILDCARD:
-					SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
-					return decl_poison(decl);
-				case STORAGE_VOID:
-					SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
-					return decl_poison(decl);
-				case STORAGE_COMPILE_TIME:
-					if (init_expr->type == type_untypedlist)
-					{
-						SEMA_ERROR(init_expr, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
-						return decl_poison(decl);
-					}
-					if (decl->var.kind == VARDECL_CONST)
-					{
-						SEMA_ERROR(init_expr, "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.", type_invalid_storage_type_name(init_expr->type));
-						return decl_poison(decl);
-					}
-					SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
-					return decl_poison(decl);
-				case STORAGE_UNKNOWN:
-					SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
-					           type_quoted_error_string(init_expr->type));
-					return decl_poison(decl);
-			}
-			if (!decl->alignment)
-			{
-				if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
-			}
-			if (!sema_analyse_variable_type(context, decl->type, init_expr->span)) return decl_poison(decl);
-			// Skip further evaluation.
-			goto EXIT_OK;
+			SEMA_ERROR(init_expr, "This expression cannot be evaluated at compile time.");
+			return decl_poison(decl);
 		}
+		decl->type = init_expr->type;
+		switch (sema_resolve_storage_type(context, init_expr->type))
+		{
+			case STORAGE_ERROR:
+				return decl_poison(decl);
+			case STORAGE_NORMAL:
+				break;
+			case STORAGE_WILDCARD:
+				SEMA_ERROR(init_expr, "No type can be inferred from the optional result.");
+				return decl_poison(decl);
+			case STORAGE_VOID:
+				SEMA_ERROR(init_expr, "You cannot initialize a value to 'void'.");
+				return decl_poison(decl);
+			case STORAGE_COMPILE_TIME:
+				if (init_expr->type == type_untypedlist)
+				{
+					SEMA_ERROR(init_expr,
+					           "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
+					return decl_poison(decl);
+				}
+				if (decl->var.kind == VARDECL_CONST)
+				{
+					SEMA_ERROR(init_expr,
+					           "You cannot initialize a constant to %s, but you can assign the expression to a compile time variable.",
+					           type_invalid_storage_type_name(init_expr->type));
+					return decl_poison(decl);
+				}
+				SEMA_ERROR(init_expr, "You can't store a compile time type in a variable.");
+				return decl_poison(decl);
+			case STORAGE_UNKNOWN:
+				SEMA_ERROR(init_expr, "You cannot initialize a value to %s as it has unknown size.",
+				           type_quoted_error_string(init_expr->type));
+				return decl_poison(decl);
+		}
+		if (!decl->alignment)
+		{
+			if (!sema_set_alloca_alignment(context, decl->type, &decl->alignment)) return false;
+		}
+		if (!sema_analyse_variable_type(context, decl->type, init_expr->span)) return decl_poison(decl);
+		// Skip further evaluation.
+		goto EXIT_OK;
 	}
 
 	if (!sema_resolve_type_info(context, type_info,

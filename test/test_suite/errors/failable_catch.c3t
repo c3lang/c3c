@@ -70,8 +70,8 @@ else_block:                                       ; preds = %after_assign
 
 phi_block:                                        ; preds = %else_block, %after_check
   %val = phi i32 [ %add, %after_check ], [ 2, %else_block ]
-  %intbool = icmp ne i32 %val, 0
-  br i1 %intbool, label %if.then2, label %if.exit
+  %i2b = icmp ne i32 %val, 0
+  br i1 %i2b, label %if.then2, label %if.exit
 
 if.then2:                                         ; preds = %phi_block
   store i32 %val, ptr %blockret1, align 4
@@ -146,40 +146,40 @@ after_check22:                                    ; preds = %testblock
 
 end_block:                                        ; preds = %after_check22, %assign_optional
   %11 = load i64, ptr %f, align 8
-  %neq = icmp ne i64 %11, 0
-  br i1 %neq, label %if.then23, label %if.exit24
+  %i2b23 = icmp ne i64 %11, 0
+  br i1 %i2b23, label %if.then24, label %if.exit25
 
-if.then23:                                        ; preds = %end_block
+if.then24:                                        ; preds = %end_block
   %12 = load i64, ptr %f, align 8
   store i64 %12, ptr %blockret19, align 8
-  br label %expr_block.exit25
+  br label %expr_block.exit26
 
-if.exit24:                                        ; preds = %end_block
+if.exit25:                                        ; preds = %end_block
   store i64 0, ptr %blockret19, align 8
-  br label %expr_block.exit25
+  br label %expr_block.exit26
 
-expr_block.exit25:                                ; preds = %if.exit24, %if.then23
+expr_block.exit26:                                ; preds = %if.exit25, %if.then24
   %13 = load i64, ptr %blockret19, align 8
-  %neq26 = icmp ne i64 %13, 0
-  br i1 %neq26, label %if.then27, label %if.exit28
+  %i2b27 = icmp ne i64 %13, 0
+  br i1 %i2b27, label %if.then28, label %if.exit29
 
-if.then27:                                        ; preds = %expr_block.exit25
+if.then28:                                        ; preds = %expr_block.exit26
   call void (ptr, ...) @printf(ptr @.str.3)
-  br label %if.exit28
+  br label %if.exit29
 
-if.exit28:                                        ; preds = %if.then27, %expr_block.exit25
+if.exit29:                                        ; preds = %if.then28, %expr_block.exit26
   store i32 3, ptr %c, align 4
   store i64 0, ptr %c.f, align 8
-  %optval29 = load i64, ptr %c.f, align 8
-  %not_err30 = icmp eq i64 %optval29, 0
-  %14 = call i1 @llvm.expect.i1(i1 %not_err30, i1 true)
-  br i1 %14, label %after_check31, label %voiderr32
+  %optval30 = load i64, ptr %c.f, align 8
+  %not_err31 = icmp eq i64 %optval30, 0
+  %14 = call i1 @llvm.expect.i1(i1 %not_err31, i1 true)
+  br i1 %14, label %after_check32, label %voiderr33
 
-after_check31:                                    ; preds = %if.exit28
+after_check32:                                    ; preds = %if.exit29
   %15 = load i32, ptr %c, align 4
   call void (ptr, ...) @printf(ptr @.str.4, i32 %15)
-  br label %voiderr32
+  br label %voiderr33
 
-voiderr32:                                        ; preds = %after_check31, %if.exit28
+voiderr33:                                        ; preds = %after_check32, %if.exit29
   ret i32 0
 }

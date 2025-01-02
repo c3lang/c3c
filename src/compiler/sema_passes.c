@@ -386,15 +386,21 @@ void sema_analysis_pass_process_includes(Module *module)
 }
 
 
-void sema_analysis_pass_process_methods(Module *module)
+void sema_analysis_pass_process_methods(Module *module, bool process_generic)
 {
 	DEBUG_LOG("Pass: Process methods register for module '%s'.", module->name->module);
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		SemaContext context;
 		sema_context_init(&context, unit);
-		FOREACH(Decl *, method, unit->methods_to_register)
+		FOREACH(Decl *, method, process_generic ? unit->generic_methods_to_register : unit->methods_to_register)
 		{
+			TypeInfo *parent_type_info = type_infoptr(method->func_decl.type_parent);
+			if (!process_generic && sema_unresolved_type_is_generic(&context, parent_type_info))
+			{
+				vec_add(unit->generic_methods_to_register, method);
+				continue;
+			}
 			sema_analyse_method_register(&context, method);
 			if (method->decl_kind == DECL_MACRO)
 			{
@@ -406,7 +412,14 @@ void sema_analysis_pass_process_methods(Module *module)
 			}
 		}
 		sema_context_destroy(&context);
-		vec_resize(unit->methods_to_register, 0);
+		if (process_generic)
+		{
+			vec_resize(unit->generic_methods_to_register, 0);
+		}
+		else
+		{
+			vec_resize(unit->methods_to_register, 0);
+		}
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);

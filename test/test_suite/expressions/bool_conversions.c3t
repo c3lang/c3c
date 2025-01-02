@@ -12,8 +12,8 @@ fn bool f1() { return (bool){| Test x @noinit; return x = (Test)0; |}; }
 
 define internal zeroext i8 @bool_conversions.f0_0(ptr %0) #0 {
 entry:
-  %ptrbool = icmp ne ptr %0, null
-  %1 = zext i1 %ptrbool to i8
+  %i2b = icmp ne ptr %0, null
+  %1 = zext i1 %i2b to i8
   ret i8 %1
 }
 

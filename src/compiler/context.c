@@ -187,6 +187,11 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			ASSERT0(decl->name);
 			if (decl->func_decl.type_parent)
 			{
+				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
+				{
+					vec_add(unit->generic_methods_to_register, decl);
+					return;
+				}
 				vec_add(unit->methods_to_register, decl);
 				return;
 			}
@@ -200,6 +205,11 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			ASSERT0(decl->name);
 			if (decl->func_decl.type_parent)
 			{
+				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
+				{
+					vec_add(unit->generic_methods_to_register, decl);
+					return;
+				}
 				vec_add(unit->methods_to_register, decl);
 				return;
 			}

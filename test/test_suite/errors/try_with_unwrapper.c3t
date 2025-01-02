@@ -160,8 +160,8 @@ phi_try_catch:                                    ; preds = %catch_landing, %aft
 chain_next:                                       ; preds = %phi_try_catch
   %2 = load i32, ptr %b, align 4
   %3 = call i32 @try_with_unwrapper.hello(i32 %2)
-  %intbool = icmp ne i32 %3, 0
-  br i1 %intbool, label %chain_next1, label %fail_chain
+  %i2b = icmp ne i32 %3, 0
+  br i1 %i2b, label %chain_next1, label %fail_chain
 
 chain_next1:                                      ; preds = %chain_next
   br label %end_chain

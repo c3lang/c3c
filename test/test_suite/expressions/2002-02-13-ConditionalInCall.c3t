@@ -11,6 +11,6 @@ fn void bar(int x)
 
 /* #expect: test.ll
 
-  %intbool = icmp ne i32 %0, 0
-  %ternary = select i1 %intbool, double 1.000000e+00, double 1.250000e+01
+  %i2b = icmp ne i32 %0, 0
+  %ternary = select i1 %i2b, double 1.000000e+00, double 1.250000e+01
   call void @foo(i32 %0, double %ternary, float 1.000000e+00)

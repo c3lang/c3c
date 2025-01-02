@@ -11,6 +11,10 @@
 - Add `--win-vs-dirs` to override VS detection dirs.
 - Add `"name"` project property to override the name of the resulting binary. #1719
 - Improved `add-project` to take arguments.
+- Improve error reporting when using type names as the function argument #1750.
+- Improve ordering of method registration to support adding methods to generic modules with method constraints #1746
+- Support experimental `@operator(construct)` operator overload.
+- Allow using 'var' to declare lambdas in functions.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -34,6 +38,13 @@
 - `any_to_int` checks value to be int and no longer works with enum.
 - Add check in formatter printing "%c".
 - Fix bug where `!!` and `!` was not recognized to jump out of the current scope.
+- Fix bug when including compile time parameters in trailing body more than once.
+- Fix issue with compiling a constant struct containing a string array in a local context.
+- Fix error where panic would not properly stop the program when stacktrace couldn't be printed #1751.
+- Macros with default arguments to `&`, `#` and type parameters didn't work as expected. #1754.
+- `net::poll()` with negative timeout behaved incorrectly.
+- Return type inference bugs with macros #1757
+- `$defined` in a global scope should accept testing normal macros.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
@@ -42,6 +53,7 @@
 - Add "tokenizer" to String.
 - Add "skip_empty" to split methods. Add split_to_buffer method.
 - Add `@enum_from_value`.
+- Updated hash function.
 - Added URL parser.
 
 ## 0.6.5 Change list

@@ -419,6 +419,7 @@ typedef struct VarDecl_
 	bool no_init : 1;
 	bool no_alias : 1;
 	bool bit_is_expr : 1;
+	bool is_self : 1;
 	union
 	{
 		Expr *init_expr;
@@ -1122,6 +1123,17 @@ typedef struct
 	bool is_signed;
 } ExprExtTrunc;
 
+typedef struct
+{
+	Expr *inner;
+	bool negate;
+} ExprIntToBool;
+
+typedef struct
+{
+	Expr *inner;
+	Expr *typeid;
+} ExprMakeAny;
 struct Expr_
 {
 	Type *type;
@@ -1157,6 +1169,7 @@ struct Expr_
 		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr **expression_list;                     // 8
+		ExprIntToBool int_to_bool_expr;
 		ExprExtTrunc ext_trunc_expr;
 		ExprGenericIdent generic_ident_expr;
 		ExprDefaultArg default_arg_expr;
@@ -1164,6 +1177,7 @@ struct Expr_
 		ExprIdentifier identifier_expr;             // 24
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
+		ExprMakeAny make_any_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
 		ExprMacroBody macro_body_expr;              // 16
@@ -1623,6 +1637,7 @@ struct CompilationUnit_
 	Decl **vars;
 	Decl **macros;
 	Decl **methods_to_register;
+	Decl **generic_methods_to_register;
 	Decl **methods;
 	Decl **macro_methods;
 	Decl **global_decls;
@@ -1654,6 +1669,7 @@ typedef struct
 	CallEnvKind kind : 8;
 	bool ensures : 1;
 	bool pure : 1;
+	bool in_no_eval : 1;
 	SourceSpan in_if_resolution;
 	Decl **opt_returns;
 	union
@@ -1709,6 +1725,7 @@ struct SemaContext_
 	Decl** locals;
 	DynamicScope active_scope;
 	Expr *return_expr;
+	bool is_temp;
 };
 
 typedef struct
@@ -1899,6 +1916,7 @@ extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_jump;
+extern const char *kw_construct;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;
@@ -2125,7 +2143,6 @@ bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool
 void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
-CastKind cast_to_bool_kind(Type *type);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
@@ -2300,6 +2317,7 @@ bool sema_cast_const(Expr *expr);
 bool sema_expr_check_discard(SemaContext *context, Expr *expr);
 bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
+
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
 bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
@@ -2335,6 +2353,7 @@ BoolErr sema_symbol_is_defined_in_scope(SemaContext *c, const char *symbol);
 bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, ArraySize *len_ref);
 
 bool sema_resolve_type_info(SemaContext *context, TypeInfo *type_info, ResolveTypeKind kind);
+bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info);
 
 void print_error_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
@@ -2956,6 +2975,37 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	return type;
 }
 
+static inline Type *type_flatten_to_int(Type *type)
+{
+	while (1)
+	{
+		type = type->canonical;
+		switch (type->type_kind)
+		{
+			case TYPE_DISTINCT:
+				type = type->decl->distinct->type;
+				break;
+			case TYPE_OPTIONAL:
+				type = type->optional;
+				break;
+			case TYPE_BITSTRUCT:
+				type = type->decl->strukt.container_type->type;
+				break;
+			case TYPE_ENUM:
+				type = type->decl->enums.type_info->type;
+				break;
+			case TYPE_VECTOR:
+				ASSERT0(type_is_integer(type->array.base));
+				return type;
+			case TYPE_TYPEDEF:
+				UNREACHABLE
+			default:
+				ASSERT0(type_is_integer(type));
+				return type;
+		}
+	}
+}
+
 static inline Type *type_flatten(Type *type)
 {
 	while (1)
@@ -3280,6 +3330,9 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
+		case EXPR_INT_TO_BOOL:
+			expr_set_span(expr->int_to_bool_expr.inner, loc);
+			return;
 		case EXPR_EXT_TRUNC:
 			expr_set_span(expr->ext_trunc_expr.inner, loc);
 			return;
@@ -3309,6 +3362,10 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			expr_list_set_span(expr->designated_init_list, loc);
+			return;
+		case EXPR_MAKE_ANY:
+			expr_set_span(expr->make_any_expr.inner, loc);
+			expr_set_span(expr->make_any_expr.typeid, loc);
 			return;
 		case EXPR_SPLAT:
 			expr_set_span(expr->inner_expr, loc);
@@ -3381,6 +3438,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			break;
 	}
 }
@@ -3528,7 +3586,13 @@ INLINE Ast *ast_next(AstId *current_ptr)
 }
 
 
-
+INLINE void expr_rewrite_rvalue(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_RVALUE;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
 
 INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b)
 {
@@ -3600,6 +3664,45 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Type *type)
 	expr->type = type;
 }
 
+INLINE void expr_rewrite_int_to_bool(Expr *expr, bool negate)
+{
+	if (expr_is_const(expr))
+	{
+		switch (expr->const_expr.const_kind)
+		{
+			case CONST_FLOAT:
+			case CONST_BOOL:
+			case CONST_ENUM:
+			case CONST_BYTES:
+			case CONST_STRING:
+			case CONST_SLICE:
+			case CONST_INITIALIZER:
+			case CONST_UNTYPED_LIST:
+			case CONST_MEMBER:
+				UNREACHABLE
+			case CONST_ERR:
+				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
+				return;
+			case CONST_INTEGER:
+				expr_rewrite_const_bool(expr, type_bool, !int_is_zero(expr->const_expr.ixx));
+				return;
+			case CONST_POINTER:
+				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.ptr != 0);
+				return;
+			case CONST_TYPEID:
+				expr_rewrite_const_bool(expr, type_bool, expr->type != NULL);
+				return;
+			case CONST_REF:
+				expr_rewrite_const_bool(expr, type_bool, true);
+				return;
+		}
+		UNREACHABLE
+	}
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_INT_TO_BOOL;
+	expr->int_to_bool_expr = (ExprIntToBool) { .inner = inner, .negate = negate };
+	expr->type = type_bool;
+}
 
 INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
 {

@@ -148,17 +148,26 @@ fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 	}
 }
 
+tlocal PosixThreadData *_thread_data @private;
 
+fn void free_thread_data() @private
+{
+	if (_thread_data)
+	{
+		allocator::free(_thread_data.allocator, _thread_data);
+		_thread_data = null;
+	}
+}
 fn void* callback(void* arg) @private
 {
-	PosixThreadData *data = arg;
-	return (void*)(iptr)data.thread_fn(data.arg);
+	_thread_data = arg;
+	defer free_thread_data();
+	return (void*)(iptr)_thread_data.thread_fn(_thread_data.arg);
 }
 
 fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
-
-	PosixThreadData *thread_data = mem::new(PosixThreadData, { .thread_fn = thread_fn, .arg = arg });
+	PosixThreadData *thread_data = mem::new(PosixThreadData, { .thread_fn = thread_fn, .arg = arg, .allocator = allocator::heap() });
 	if (posix::pthread_create(thread, null, &callback, thread_data) != 0)
 	{
 		*thread = null;
@@ -174,6 +183,7 @@ fn void! NativeThread.detach(thread)
 
 fn void native_thread_exit(int result)
 {
+	free_thread_data();
 	posix::pthread_exit((void*)(iptr)result);
 }
 
@@ -208,6 +218,7 @@ struct PosixThreadData @private
 {
 	ThreadFn thread_fn;
 	void* arg;
+	Allocator allocator;
 }
 
 fn void! native_sleep_nano(NanoDuration nano)

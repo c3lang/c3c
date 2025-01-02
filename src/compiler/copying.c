@@ -335,6 +335,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_EXT_TRUNC:
 			MACRO_COPY_EXPR(expr->ext_trunc_expr.inner);
 			return expr;
+		case EXPR_INT_TO_BOOL:
+			MACRO_COPY_EXPR(expr->int_to_bool_expr.inner);
+			return expr;
 		case EXPR_NOP:
 		case EXPR_BUILTIN:
 		case EXPR_RETVAL:
@@ -473,7 +476,12 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			MACRO_COPY_EXPR(expr->inner_expr);
+			return expr;
+		case EXPR_MAKE_ANY:
+			MACRO_COPY_EXPR(expr->make_any_expr.inner);
+			MACRO_COPY_EXPR(expr->make_any_expr.typeid);
 			return expr;
 		case EXPR_DEFAULT_ARG:
 			MACRO_COPY_EXPR(expr->default_arg_expr.inner);

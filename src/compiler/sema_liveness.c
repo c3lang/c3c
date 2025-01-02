@@ -271,6 +271,10 @@ RETRY:
 			return;
 		case EXPR_BUILTIN:
 			return;
+		case EXPR_MAKE_ANY:
+			sema_trace_expr_liveness(expr->make_any_expr.typeid);
+			expr = expr->make_any_expr.inner;
+			goto RETRY;
 		case EXPR_ACCESS:
 		case EXPR_BITACCESS:
 			sema_trace_decl_liveness(expr->access_expr.ref);
@@ -326,6 +330,7 @@ RETRY:
 		case EXPR_RETHROW:
 		case EXPR_OPTIONAL:
 		case EXPR_PTR_ACCESS:
+		case EXPR_RVALUE:
 			expr = expr->inner_expr;
 			goto RETRY;
 		case EXPR_DEFAULT_ARG:
@@ -485,6 +490,9 @@ RETRY:
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			sema_trace_expr_list_liveness(expr->try_unwrap_chain_expr);
+			return;
+		case EXPR_INT_TO_BOOL:
+			sema_trace_expr_liveness(expr->int_to_bool_expr.inner);
 			return;
 		case EXPR_EXT_TRUNC:
 			sema_trace_expr_liveness(expr->ext_trunc_expr.inner);

@@ -240,8 +240,8 @@ after_check19:                                    ; preds = %entry, %after_check
   store %any %48, ptr %varargslots61, align 16
   %49 = call i64 @std.io.printfn(ptr %retparam65, ptr @.str.12, i64 2, ptr %varargslots61, i64 1)
   %50 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  %not = icmp eq ptr %50, null
-  br i1 %not, label %if.then, label %if.exit
+  %i2nb = icmp eq ptr %50, null
+  br i1 %i2nb, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %after_check19
   call void @std.core.mem.allocator.init_default_temp_allocators()

@@ -1452,28 +1452,10 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_ARRVEC:
 			llvm_emit_array_to_vector_cast(c, value, to_type, from_type);
 			return;
-		case CAST_PTRANY:
-		{
-			llvm_value_rvalue(c, value);
-			BEValue typeid;
-			llvm_emit_typeid(c, &typeid, from_type->pointer);
-			llvm_value_aggregate_two(c, value, to_type, value->value, typeid.value);
-			return;
-		}
 		case CAST_VOID:
 			UNREACHABLE;
-		case CAST_ANYBOOL:
-			llvm_emit_any_pointer(c, value, value);
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildIsNotNull(c->builder, value->value, "anybool");
-			value->kind = BE_BOOLEAN;
-			break;
 		case CAST_ERROR:
 			UNREACHABLE
-		case CAST_STRPTR:
-		case CAST_PTRPTR:
-			llvm_value_rvalue(c, value);
-			break;
 		case CAST_PTRINT:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, to_type), "ptrxi");
@@ -1491,14 +1473,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EUER:
 			REMINDER("Improve fault to err comparison");
 			break;
-		case CAST_EUBOOL:
-		case CAST_IDBOOL:
-		{
-			BEValue zero;
-			llvm_value_set_int(c, &zero, type_iptr, 0);
-			llvm_emit_int_comp(c, value, value, &zero, BINARYOP_NE);
-			break;
-		}
 		case CAST_PTRBOOL:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
@@ -1540,9 +1514,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 				break;
 			}
 			value->value = LLVMBuildFPToUI(c->builder, value->value, llvm_get_type(c, to_type), "fpui");
-			break;
-		case CAST_INTINT:
-			llvm_value_ext_trunc(c, value, to_type);
 			break;
 		case CAST_INTFP:
 			llvm_value_rvalue(c, value);
@@ -1617,6 +1588,96 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 	}
 	value->type = type_lowering(to_type);
+}
+
+void llvm_emit_bool_cast(GenContext *c, Expr *expr, BEValue *value)
+{
+	switch (value->type->type_kind)
+	{
+		case FLATTENED_TYPES:
+			// These are not possible due to flattening.
+			UNREACHABLE
+		case TYPE_WILDCARD:
+		case TYPE_BOOL:
+			value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "boolbool");
+			value->kind = BE_BOOLEAN;
+			return;
+		case TYPE_FAULTTYPE:
+		case TYPE_ANYFAULT:
+		{
+			BEValue zero;
+			llvm_value_set_int(c, &zero, type_iptr, 0);
+			llvm_emit_int_comp(c, value, value, &zero, BINARYOP_NE);
+			return;
+		}
+		case TYPE_SLICE:
+			llvm_value_fold_optional(c, value);
+			if (llvm_value_is_addr(value))
+			{
+				value->value = llvm_emit_struct_gep_raw(c,
+				                                        value->value,
+				                                        llvm_get_type(c, value->type),
+				                                        1,
+				                                        value->alignment,
+				                                        &value->alignment);
+			}
+			else
+			{
+				value->value = llvm_emit_extract_value(c, value->value, 1);
+			}
+			value->type = type_lowering(type_usz);
+			llvm_value_rvalue(c, value);
+			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
+			return;
+		case ALL_INTS:
+		{
+			llvm_value_rvalue(c, value);
+			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, value->type), "intbool");
+			value->kind = type_kind_is_any_vector(value->type->type_kind) ? BE_BOOLVECTOR : BE_BOOLEAN;
+			return;
+		}
+		case ALL_FLOATS:
+			llvm_value_rvalue(c, value);
+			value->value =  LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, value->type), "fpbool");
+			value->kind = BE_BOOLEAN;
+			return;
+		case TYPE_POINTER:
+		case TYPE_FUNC_PTR:
+			llvm_value_rvalue(c, value);
+			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
+			value->kind = BE_BOOLEAN;
+			return;
+		case TYPE_ANY:
+		case TYPE_INTERFACE:
+			llvm_emit_any_pointer(c, value, value);
+			llvm_value_rvalue(c, value);
+			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
+			value->kind = BE_BOOLEAN;
+			return;
+		case TYPE_BITSTRUCT:
+			llvm_emit_bitstruct_to_bool(c, value, type_bool, value->type);
+			return;
+		case TYPE_INFERRED_ARRAY:
+		case TYPE_INFERRED_VECTOR:
+			// These should never be here, type should already be known.
+			UNREACHABLE
+		case TYPE_POISONED:
+		case TYPE_VOID:
+		case TYPE_STRUCT:
+		case TYPE_UNION:
+		case TYPE_FUNC_RAW:
+		case TYPE_ARRAY:
+		case TYPE_TYPEID:
+		case TYPE_TYPEINFO:
+		case TYPE_VECTOR:
+		case TYPE_UNTYPED_LIST:
+		case TYPE_FLEXIBLE_ARRAY:
+		case TYPE_ENUM:
+		case TYPE_MEMBER:
+			// Everything else is an error
+			UNREACHABLE
+	}
+	UNREACHABLE
 }
 
 static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)
@@ -4769,8 +4830,7 @@ static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *exp
 	LLVMValueRef lhs_value = value->value;
 	if (value->kind != BE_BOOLEAN)
 	{
-		CastKind cast = cast_to_bool_kind(value->type);
-		llvm_emit_cast(c, cast, cond, value, type_bool, value->type);
+		llvm_emit_bool_cast(c, cond, value);
 	}
 
 	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
@@ -4841,8 +4901,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	if (value->kind != BE_BOOLEAN)
 	{
 		ASSERT0(is_elvis);
-		CastKind cast = cast_to_bool_kind(value->type);
-		llvm_emit_cast(c, cast, cond, value, type_bool, value->type);
+		llvm_emit_bool_cast(c, cond, value);
 	}
 
 	Expr *else_expr;
@@ -6532,6 +6591,10 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 
 	c->debug.block_stack = &updated;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
+	if (!c->current_block && !expr->macro_block.is_noreturn)
+	{
+		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
+	}
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)
 	{
@@ -7189,8 +7252,22 @@ static void llvm_emit_default_arg(GenContext *c, BEValue *value, Expr *expr)
 void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 {
 	sema_cast_const(expr);
+	LLVMBuilderRef b = c->builder;
+	c->builder = c->global_builder;
 	llvm_emit_expr(c, value, expr);
+	c->builder = b;
 	ASSERT0(!llvm_value_is_addr(value));
+}
+
+static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->int_to_bool_expr.inner);
+	llvm_value_rvalue(c, value);
+	llvm_value_set(value,
+	               expr->int_to_bool_expr.negate
+	               ? LLVMBuildIsNull(c->builder, value->value, "i2nb")
+	               : LLVMBuildIsNotNull(c->builder, value->value, "i2b"),
+				   expr->type);
 }
 
 static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
@@ -7206,6 +7283,18 @@ static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
 	}
 	LLVMValueRef ptr = llvm_emit_extract_value(c, value->value, 0);
 	llvm_value_set(value, ptr, expr->type);
+}
+
+static void llvm_emit_make_any(GenContext *c, BEValue *value, Expr *expr)
+{
+
+	llvm_emit_expr(c, value, expr->make_any_expr.inner);
+	llvm_value_rvalue(c, value);
+	BEValue typeid_val;
+	Expr *typeid = expr->make_any_expr.typeid;
+	llvm_emit_expr(c, &typeid_val, typeid);
+	llvm_value_rvalue(c, &typeid_val);
+	llvm_value_aggregate_two(c, value, expr->type, value->value, typeid_val.value);
 }
 
 static void llvm_emit_ext_trunc(GenContext *c, BEValue *value, Expr *expr)
@@ -7237,8 +7326,19 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
+		case EXPR_MAKE_ANY:
+			llvm_emit_make_any(c, value, expr);
+			return;
+		case EXPR_RVALUE:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			value->type = type_lowering(expr->type);
+			return;
 		case EXPR_PTR_ACCESS:
 			llvm_emit_ptr_access(c, value, expr);
+			return;
+		case EXPR_INT_TO_BOOL:
+			llvm_emit_int_to_bool(c, value, expr);
 			return;
 		case EXPR_EXT_TRUNC:
 			llvm_emit_ext_trunc(c, value, expr);

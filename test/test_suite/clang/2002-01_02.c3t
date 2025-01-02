@@ -169,8 +169,8 @@ declare void @foo2(i32, double, float) #0
 ; Function Attrs:
 define void @test.bar(i32 %0) #0 {
 entry:
-  %intbool = icmp ne i32 %0, 0
-  %ternary = select i1 %intbool, double 1.000000e+00, double 1.250000e+01
+  %i2b = icmp ne i32 %0, 0
+  %ternary = select i1 %i2b, double 1.000000e+00, double 1.250000e+01
   call void @foo2(i32 %0, double %ternary, float 1.000000e+00)
   ret void
 }
@@ -223,8 +223,8 @@ entry:
 
 loop.body:                                        ; preds = %if.exit, %entry
   %2 = load i32, ptr %lvalid, align 4
-  %not = icmp eq i32 %2, 0
-  br i1 %not, label %if.then, label %if.exit
+  %i2nb = icmp eq i32 %2, 0
+  br i1 %i2nb, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %loop.body
   %3 = load ptr, ptr %basel, align 8

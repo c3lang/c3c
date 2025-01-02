@@ -94,8 +94,8 @@ after_check4:                                     ; preds = %testblock1
 
 end_block:                                        ; preds = %after_check4, %assign_optional3, %assign_optional
   %4 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %4, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %4, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %5 = insertvalue %any undef, ptr %err, 0
@@ -136,8 +136,8 @@ after_check17:                                    ; preds = %testblock14
 
 end_block18:                                      ; preds = %after_check17, %assign_optional16, %assign_optional12
   %12 = load i64, ptr %err8, align 8
-  %neq19 = icmp ne i64 %12, 0
-  br i1 %neq19, label %if.then20, label %if.exit25
+  %i2b19 = icmp ne i64 %12, 0
+  br i1 %i2b19, label %if.then20, label %if.exit25
 
 if.then20:                                        ; preds = %end_block18
   %13 = insertvalue %any undef, ptr %err8, 0
@@ -178,8 +178,8 @@ after_check34:                                    ; preds = %testblock31
 
 end_block35:                                      ; preds = %after_check34, %assign_optional33, %assign_optional29
   %20 = load i64, ptr %temp_err, align 8
-  %neq36 = icmp ne i64 %20, 0
-  br i1 %neq36, label %if.then37, label %if.exit55
+  %i2b36 = icmp ne i64 %20, 0
+  br i1 %i2b36, label %if.then37, label %if.exit55
 
 if.then37:                                        ; preds = %end_block35
   %21 = call ptr @std.io.stdout()
@@ -272,8 +272,8 @@ after_check65:                                    ; preds = %testblock62
 
 end_block66:                                      ; preds = %after_check65, %assign_optional64, %assign_optional60
   %34 = load i64, ptr %err56, align 8
-  %neq67 = icmp ne i64 %34, 0
-  br i1 %neq67, label %if.then68, label %if.exit73
+  %i2b67 = icmp ne i64 %34, 0
+  br i1 %i2b67, label %if.then68, label %if.exit73
 
 if.then68:                                        ; preds = %end_block66
   %35 = insertvalue %any undef, ptr %err56, 0

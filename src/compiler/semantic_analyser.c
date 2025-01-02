@@ -159,13 +159,19 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				sema_analysis_pass_register_global_declarations(module);
 				break;
 			case ANALYSIS_METHODS_REGISTER:
-				sema_analysis_pass_process_methods(module);
+				sema_analysis_pass_process_methods(module, false);
+				break;
+			case ANALYSIS_METHODS_REGISTER_GENERIC:
+				sema_analysis_pass_process_methods(module, true);
 				break;
 			case ANALYSIS_INCLUDES:
 				sema_analysis_pass_process_includes(module);
 				break;
 			case ANALYSIS_METHODS_INCLUDES:
-				sema_analysis_pass_process_methods(module);
+				sema_analysis_pass_process_methods(module, false);
+				break;
+			case ANALYSIS_METHODS_INCLUDES_GENERIC:
+				sema_analysis_pass_process_methods(module, true);
 				break;
 			case ANALYSIS_REGISTER_CONDITIONAL_UNITS:
 				sema_analysis_pass_register_conditional_units(module);
@@ -174,7 +180,10 @@ void sema_analyze_stage(Module *module, AnalysisStage stage)
 				sema_analysis_pass_register_conditional_declarations(module);
 				break;
 			case ANALYSIS_METHODS_CONDITIONAL:
-				sema_analysis_pass_process_methods(module);
+				sema_analysis_pass_process_methods(module, false);
+				break;
+			case ANALYSIS_METHODS_CONDITIONAL_GENERIC:
+				sema_analysis_pass_process_methods(module, true);
 				break;
 			case ANALYSIS_POST_REGISTER:
 				break;
@@ -265,7 +274,6 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 {
 	if (stage <= ANALYSIS_MODULE_TOP)
 	{
-
 		FOREACH(Module *, module, compiler.context.generic_module_list)
 		{
 			sema_analyze_stage(module, stage);
@@ -521,6 +529,7 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	temp_context->compilation_unit = context->compilation_unit;
 	temp_context->call_env = context->call_env;
 	temp_context->current_macro = context->current_macro;
+	temp_context->is_temp = true;
 	return temp_context;
 }
 

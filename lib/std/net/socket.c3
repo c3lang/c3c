@@ -63,7 +63,7 @@ fn ulong! poll_ms(Poll[] polls, long timeout_ms)
 *>
 fn ulong! poll(Poll[] polls, Duration timeout)
 {
-	long time_ms = timeout.to_ms();
+	long time_ms = (timeout < 0) ? (long)POLL_FOREVER : timeout.to_ms();
 	if (time_ms > CInt.max) time_ms = CInt.max;
 	$if env::WIN32:
 		CInt result = win32_WSAPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)time_ms);

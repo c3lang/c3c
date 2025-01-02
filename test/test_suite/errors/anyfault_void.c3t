@@ -60,8 +60,8 @@ after_check:                                      ; preds = %testblock
   br label %end_block
 end_block:                                        ; preds = %after_check, %assign_optional
   %2 = load i64, ptr %f, align 8
-  %neq = icmp ne i64 %2, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %2, 0
+  br i1 %i2b, label %if.then, label %if.exit
 if.then:                                          ; preds = %end_block
   %3 = load i64, ptr %f, align 8
   store i64 %3, ptr %blockret, align 8
@@ -90,8 +90,8 @@ after_check6:                                     ; preds = %testblock3
   br label %end_block7
 end_block7:                                       ; preds = %after_check6, %assign_optional5
   %8 = load i64, ptr %f2, align 8
-  %neq8 = icmp ne i64 %8, 0
-  br i1 %neq8, label %if.then9, label %if.exit10
+  %i2b8 = icmp ne i64 %8, 0
+  br i1 %i2b8, label %if.then9, label %if.exit10
 if.then9:                                         ; preds = %end_block7
   %9 = load i64, ptr %f2, align 8
   store i64 %9, ptr %blockret1, align 8

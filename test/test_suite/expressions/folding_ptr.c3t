@@ -19,8 +19,8 @@ fn int f()
 define i32 @test.f() #0 {
 entry:
   %0 = load ptr, ptr @cfun, align 8
-  %not = icmp eq ptr %0, null
-  br i1 %not, label %if.then, label %if.exit
+  %i2nb = icmp eq ptr %0, null
+  br i1 %i2nb, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
   ret i32 0

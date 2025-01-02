@@ -27,8 +27,8 @@ entry:
   %taddr = alloca %Event, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 4, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %bar, ptr align 4 @.__const.1, i32 4, i1 false)
-  %intbool = icmp ne i32 %0, 0
-  br i1 %intbool, label %cond.lhs, label %cond.rhs
+  %i2b = icmp ne i32 %0, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
   %1 = load %Event, ptr %foo, align 4

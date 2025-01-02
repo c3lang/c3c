@@ -54,8 +54,8 @@ cond.phi:                                         ; preds = %after_check3, %afte
 
 end_block:                                        ; preds = %cond.phi, %assign_optional2, %assign_optional
   %5 = load i64, ptr %f, align 8
-  %neq = icmp ne i64 %5, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %5, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %end_block
   %6 = load i64, ptr %f, align 8
