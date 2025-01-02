@@ -276,10 +276,11 @@ fn void! test_query_values1()
 {
 	Url url = url::parse("foo://example.com:8042/over/there?name=ferret=ok#nose")!;
 
-	Values vals = url.query_values();
+	UrlQueryValues vals = url.new_query_values();
+	defer vals.free();
 
 	assert(vals.len() == 1);
-	StringList l = vals["name"]!;
+	UrlQueryValueList l = vals["name"]!;
 
 	assert(l.len() == 1);
 	assert(l[0] == "ferret=ok");
@@ -289,15 +290,15 @@ fn void! test_query_values2()
 {
 	Url url = url::parse("foo://example.com:8042/over/there?name=ferret&age=99&age=11#nose")!;
 
-	Values vals = url.query_values(allocator::temp());
+	UrlQueryValues vals = url.new_query_values();
 	defer vals.free();
 	assert(vals.len() == 2);
 
-	StringList l_name = vals["name"]!;
+	UrlQueryValueList l_name = vals["name"]!;
 	assert(l_name.len() == 1);
 	assert(l_name[0] == "ferret");
 
-	StringList l_age = vals["age"]!;
+	UrlQueryValueList l_age = vals["age"]!;
 	assert(l_age.len() == 2);
 	assert(l_age[0] == "99");
 	assert(l_age[1] == "11");
@@ -307,7 +308,7 @@ fn void! test_query_values_withempty()
 {
 	Url url = url::parse("foo://example.com:8042/over/there?name=ferret&&&age=99&age=11")!;
 
-	Values vals = url.query_values(allocator::temp());
+	UrlQueryValues vals = url.new_query_values();
 	defer vals.free();
 	assert(vals.len() == 2);
 }

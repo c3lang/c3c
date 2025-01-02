@@ -2,8 +2,12 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-def StringList = List(<String>);
-def Values = HashMap(<String, StringList>);
+def UrlQueryValueList = List(<String>);
+
+struct UrlQueryValues
+{
+	inline HashMap(<String, UrlQueryValueList>) map;
+}
 
 struct Url(Printable)
 {
@@ -147,7 +151,7 @@ fn Url! parse(String url_string)
  @param [inout] allocator
  @return "Url as a string"
 *>
-fn String Url.to_string(Url* self, Allocator allocator = allocator::temp()) @dynamic
+fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 {
 	@pool(allocator)
 	{
@@ -205,36 +209,69 @@ fn String Url.to_string(Url* self, Allocator allocator = allocator::temp()) @dyn
 }
 
 <*
- Parse the query parameters of the Url into a Values HashMap.
+ Parse the query parameters of the Url into a UrlQueryValues map.
 
  @param [in] self
  @param [inout] allocator
- @return "a Values HashMap"
+ @return "a UrlQueryValues HashMap"
 *>
-fn Values Url.query_values(Url* self, Allocator allocator = allocator::heap())
+fn UrlQueryValues Url.query_values(&self, Allocator allocator)
 {
-	Values vals;
+	UrlQueryValues vals;
 	vals.init(allocator);
 
 	Splitter raw_vals = self.query.tokenize("&");
 
 	while (try String rv = raw_vals.next())
 	{
-		String[] parts = rv.split("=", 2);
-		defer free(parts);
-
-		if (try existing = vals[parts[0]])
+		@pool(allocator)
 		{
-			existing.push(parts[1]);
-			vals[parts[0]] = existing;
-		}
-		else
-		{
-			StringList new_list;
-			new_list.new_init_with_array({parts[1]}, allocator);
-			vals[parts[0]] = new_list;
-		}
+			String[] parts = rv.tsplit("=", 2);
+			if (try existing = vals.get_ref(parts[0]))
+			{
+				existing.push(parts[1]);
+			}
+			else
+			{
+				UrlQueryValueList new_list;
+				new_list.new_init_with_array({ parts[1] }, allocator);
+				vals[parts[0]] = new_list;
+			}
+		};
 	}
-
 	return vals;
 }
+
+<*
+ Parse the query parameters of the Url into a UrlQueryValues map,
+ to be freed using values.free()
+
+ @param [in] self
+ @return "a UrlQueryValues map"
+*>
+fn UrlQueryValues Url.new_query_values(&self)
+{
+	return self.query_values(allocator::heap()) @inline;
+}
+
+<*
+ Parse the query parameters of the Url into a UrlQueryValues map.
+ stored on the temp allocator.
+
+ @param [in] self
+ @return "a UrlQueryValues map"
+*>
+fn UrlQueryValues Url.temp_query_values(&self)
+{
+	return self.query_values(allocator::temp()) @inline;
+}
+
+fn void UrlQueryValues.free(&self)
+{
+	self.map.@each(;String key, UrlQueryValueList value)
+	{
+		value.free();
+	};
+	self.map.free();
+}
+
