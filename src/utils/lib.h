@@ -343,7 +343,7 @@ static inline void* expand_(void *vec, size_t element_size)
 #define CONCAT(a, b) CONCAT_INNER(a, b)
 
 #define FOREACH(type__, name__, vec__) \
-type__* CONCAT(foreach_vec_, __LINE__) = (vec__); type__* CONCAT(foreach_vecend_, __LINE__) = CONCAT(foreach_vec_, __LINE__) + vec_size(CONCAT(foreach_vec_, __LINE__)); \
+type__* CONCAT(foreach_vec_, __LINE__) = (vec__); type__* CONCAT(foreach_vecend_, __LINE__) = CONCAT(foreach_vec_, __LINE__) ? CONCAT(foreach_vec_, __LINE__) + vec_size(CONCAT(foreach_vec_, __LINE__)) : NULL; \
 type__* CONCAT(foreach_it_, __LINE__) = CONCAT(foreach_vec_, __LINE__); \
 for (type__ name__ ; CONCAT(foreach_it_, __LINE__) < CONCAT(foreach_vecend_, __LINE__) ? (name__ = *CONCAT(foreach_it_, __LINE__), true) : false; CONCAT(foreach_it_, __LINE__)++)
 

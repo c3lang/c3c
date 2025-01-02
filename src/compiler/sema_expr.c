@@ -1362,6 +1362,12 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			break;
 		case VARDECL_PARAM_EXPR:
 			// #foo
+			if (context->is_temp)
+			{
+				SemaContext *temp = context;
+				context = MALLOCS(SemaContext);
+				*context = *temp;
+			}
 			param->var.hash_var.context = context;
 			param->var.hash_var.span = arg->span;
 			break;

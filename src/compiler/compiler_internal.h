@@ -1724,6 +1724,7 @@ struct SemaContext_
 	Decl** locals;
 	DynamicScope active_scope;
 	Expr *return_expr;
+	bool is_temp;
 };
 
 typedef struct
