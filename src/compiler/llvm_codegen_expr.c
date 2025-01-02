@@ -6591,6 +6591,10 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 
 	c->debug.block_stack = &updated;
 	llvm_emit_return_block(c, be_value, expr->type, expr->macro_block.first_stmt, expr->macro_block.block_exit);
+	if (!c->current_block && !expr->macro_block.is_noreturn)
+	{
+		llvm_emit_block(c, llvm_basic_block_new(c, "after_macro"));
+	}
 	bool is_unreachable = expr->macro_block.is_noreturn && c->current_block;
 	if (is_unreachable)
 	{

@@ -529,6 +529,7 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 	temp_context->compilation_unit = context->compilation_unit;
 	temp_context->call_env = context->call_env;
 	temp_context->current_macro = context->current_macro;
+	temp_context->is_temp = true;
 	return temp_context;
 }
 

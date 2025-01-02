@@ -1362,6 +1362,12 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			break;
 		case VARDECL_PARAM_EXPR:
 			// #foo
+			if (context->is_temp)
+			{
+				SemaContext *temp = context;
+				context = MALLOCS(SemaContext);
+				*context = *temp;
+			}
 			param->var.hash_var.context = context;
 			param->var.hash_var.span = arg->span;
 			break;
@@ -2318,6 +2324,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	{
 		rtype = context_unify_returns(&macro_context);
 		if (!rtype) goto EXIT_FAIL;
+		optional_return = type_is_optional(rtype);
 	}
 
 	// Handle the implicit return.
