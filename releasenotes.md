@@ -54,6 +54,7 @@
 - Add "skip_empty" to split methods. Add split_to_buffer method.
 - Add `@enum_from_value`.
 - Updated hash function.
+- Added URL parser.
 
 ## 0.6.5 Change list
 

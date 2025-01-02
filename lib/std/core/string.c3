@@ -363,6 +363,29 @@ fn usz! String.index_of_char(s, char needle)
 }
 
 <*
+ Find the index of the first incidence of a one of the chars.
+
+ @param [in] s
+ @param [in] needle "The characters to look for"
+ @pure
+ @ensure return < s.len
+ @return "the index of the needle"
+ @return! SearchResult.MISSING "if the needle cannot be found"
+*>
+fn usz! String.index_of_chars(String s, char[] needle)
+{
+    foreach (i, c : s)
+    {
+        foreach (j, pin : needle)
+        {
+            if (c == pin) return i;
+        }
+    }
+
+    return SearchResult.MISSING?;
+}
+
+<*
  Find the index of the first incidence of a character.
 
  @param [in] s
