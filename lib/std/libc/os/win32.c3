@@ -10,6 +10,7 @@ extern fn CInt _fseeki64(CFile, long, int); def fseek = _fseeki64;
 extern fn CLong _ftelli64(CFile); def ftell = _ftelli64;
 extern fn Errno _get_timezone(CLong *timezone);
 extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
+extern fn CInt _isatty(Fd fd); def isatty = _isatty;
 extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
 extern fn Time_t _mkgmtime64(Tm* timeptr); def timegm = _mkgmtime64;
 extern fn Time_t _mktime64(Tm *timeptr); def mktime = _mktime64;

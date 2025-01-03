@@ -109,6 +109,7 @@ extern fn ZString getenv(ZString name);
 extern fn ZString gets(char* buffer);
 extern fn Tm* gmtime(Time_t* timer);
 extern fn Tm* gmtime_r(Time_t *timer, Tm* buf) @if(!env::WIN32);
+extern fn CInt isatty(Fd fd) @if(!env::WIN32);
 extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
 extern fn Tm* localtime(Time_t* timer);
