@@ -97,6 +97,7 @@ static void usage(bool full)
 	PRINTF("  --lib <name>               - Add this c3l library to the compilation.");
 	if (full)
 	{
+		PRINTF("  --warnings=<option>        - How to treat warnings: normal (default), error (treat as errors), obnoxious (more errors)");
 		PRINTF("  --stdlib <dir>             - Use this directory as the C3 standard library path.");
 		PRINTF("  --no-entry                 - Do not generate (or require) a main function.");
 		PRINTF("  --path <dir>               - Use this as the base directory for the current command.");
@@ -621,6 +622,11 @@ static void parse_option(BuildOptions *options)
 			}
 			break;
 		case '-':
+			if ((argopt = match_argopt("warnings")))
+			{
+				options->warning_level = (WarningLevel)parse_multi_option(argopt, 3, warnings);
+				return;
+			}
 			if (match_longopt("max-mem"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --max-mem needs a valid integer.");
@@ -1160,6 +1166,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.linker_type = LINKER_TYPE_NOT_SET,
+		.warning_level = WARNING_NOT_SET,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,

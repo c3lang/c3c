@@ -2359,6 +2359,7 @@ void print_error_at(SourceSpan loc, const char *message, ...);
 void print_error_after(SourceSpan loc, const char *message, ...);
 void sema_note_prev_at(SourceSpan loc, const char *message, ...);
 void sema_verror_range(SourceSpan location, const char *message, va_list args);
+void sema_vwarn_range(SourceSpan location, const char *message, va_list args);
 void print_error(ParseContext *context, const char *message, ...);
 
 void sema_warning_at(SourceSpan loc, const char *message, ...);

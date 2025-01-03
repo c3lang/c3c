@@ -15,6 +15,7 @@
 - Improve ordering of method registration to support adding methods to generic modules with method constraints #1746
 - Support experimental `@operator(construct)` operator overload.
 - Allow using 'var' to declare lambdas in functions.
+- Add 'warnings' setting and make dead code a warning.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

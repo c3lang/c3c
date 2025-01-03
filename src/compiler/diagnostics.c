@@ -146,16 +146,21 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 
 }
 
-static void vprint_error(SourceSpan location, const char *message, va_list args)
+static void vprint_msg(SourceSpan location, const char *message, va_list args, PrintType type)
 {
-	print_error_type_at(location, str_vprintf(message, args), PRINT_TYPE_ERROR);
+	print_error_type_at(location, str_vprintf(message, args), type);
 }
 
 
 void sema_verror_range(SourceSpan location, const char *message, va_list args)
 {
-	vprint_error(location, message, args);
+	vprint_msg(location, message, args, PRINT_TYPE_ERROR);
 	compiler.context.errors_found++;
+}
+
+void sema_vwarn_range(SourceSpan location, const char *message, va_list args)
+{
+	vprint_msg(location, message, args, PRINT_TYPE_WARN);
 }
 
 void sema_warning_at(SourceSpan loc, const char *message, ...)
@@ -201,6 +206,22 @@ void sema_note_prev_at(SourceSpan loc, const char *message, ...)
 	return;
 }
 
+
+void sema_warn_prev_at(SourceSpan loc, const char *message, ...)
+{
+	va_list args;
+	va_start(args, message);
+#define MAX_ERROR_LEN 4096
+	char buffer[MAX_ERROR_LEN];
+	size_t written = vsnprintf(buffer, MAX_ERROR_LEN - 1, message, args);
+	// Ignore errors
+	if (written <= MAX_ERROR_LEN - 2)
+	{
+		print_error_type_at(loc, buffer, PRINT_TYPE_WARN);
+	}
+	va_end(args);
+	return;
+}
 
 void print_error(ParseContext *context, const char *message, ...)
 {

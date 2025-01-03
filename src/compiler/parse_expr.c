@@ -1351,6 +1351,10 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 		{
 			Expr *expr = parse_identifier(c, NULL);
 			expr->identifier_expr.path = path;
+			if (path)
+			{
+				expr->span = extend_span_with_token(path->span, expr->span);
+			}
 			return expr;
 		}
 		case TOKEN_TYPE_IDENT:

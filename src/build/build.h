@@ -150,6 +150,14 @@ typedef enum
 
 typedef enum
 {
+	WARNING_NOT_SET = -1,
+	WARNING_NORMAL = 0,
+	WARNING_ERROR = 1,
+	WARNING_OBNOXIOUS = 2,
+} WarningLevel;
+
+typedef enum
+{
 	SINGLE_MODULE_NOT_SET = -1,
 	SINGLE_MODULE_OFF = 0, // NOLINT
 	SINGLE_MODULE_ON = 1
@@ -443,6 +451,7 @@ typedef struct BuildOptions_
 	const char *vendor_download_path;
 	const char *template;
 	LinkerType linker_type;
+	WarningLevel warning_level;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -610,6 +619,7 @@ typedef struct
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
+	WarningLevel warning_level;
 	UseStdlib use_stdlib;
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
@@ -699,6 +709,7 @@ static BuildTarget default_build_target = {
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.linker_type = LINKER_TYPE_NOT_SET,
+		.warning_level = WARNING_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.unroll_loops = UNROLL_LOOPS_NOT_SET,
 		.merge_functions = MERGE_FUNCTIONS_NOT_SET,

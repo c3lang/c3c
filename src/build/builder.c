@@ -354,6 +354,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->merge_functions != MERGE_FUNCTIONS_NOT_SET) target->merge_functions = options->merge_functions;
 	if (options->loop_vectorization != VECTORIZATION_NOT_SET) target->loop_vectorization = options->loop_vectorization;
 	if (options->slp_vectorization != VECTORIZATION_NOT_SET) target->slp_vectorization = options->slp_vectorization;
+	if (options->warning_level != WARNING_NORMAL) target->warning_level = options->warning_level;
 	if (options->safety_level != SAFETY_NOT_SET) target->feature.safe_mode = options->safety_level;
 	if (options->panic_level != PANIC_NOT_SET) target->feature.panic_level = options->panic_level;
 	if (options->strip_unused != STRIP_UNUSED_NOT_SET) target->strip_unused = options->strip_unused;

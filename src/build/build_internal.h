@@ -94,6 +94,12 @@ static const char *backends[3] = {
 		[BACKEND_C] = "c",
 };
 
+static const char *warnings[3] = {
+	[WARNING_NORMAL] = "normal",
+	[WARNING_ERROR] = "error",
+	[WARNING_OBNOXIOUS] = "obnoxious",
+};
+
 static const char *backtrace_levels[2] = {
 	[SHOW_BACKTRACE_OFF] = "off",
 	[SHOW_BACKTRACE_ON] = "on",

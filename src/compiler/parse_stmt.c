@@ -37,7 +37,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 			}
 			break;
 		case TOKEN_EOS:
-			return ast;
+			goto DONE;
 		default:
 			break;
 	}
@@ -58,8 +58,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 				return poisoned_ast;
 			}
 		}
-		RANGE_EXTEND_PREV(ast);
-		return ast;
+		goto DONE;
 	}
 	Decl **decls = NULL;
 	vec_add(decls, decl);
@@ -94,6 +93,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	}
 	ast->decls_stmt = decls;
 	ast->ast_kind = AST_DECLS_STMT;
+DONE:
 	RANGE_EXTEND_PREV(ast);
 	return ast;
 

@@ -115,6 +115,14 @@ class Issues:
 				pos = key.split(":", 2)
 				print(str(num) + ". " + pos[0] + " line: " + pos[1] + " expected: \"" + value + "\"")
 				num += 1
+		if len(self.warnings) > 0:
+			self.set_failed()
+			print("Expected warnings that never occurred:")
+			num = 1
+			for key, value in self.warnings.items():
+				pos = key.split(":", 2)
+				print(str(num) + ". " + pos[0] + " line: " + pos[1] + " expected: \"" + value + "\"")
+				num += 1
 
 	def compile(self, args):
 		os.chdir(TEST_DIR)
@@ -193,8 +201,8 @@ class Issues:
 	def parse_trailing_directive(self, line):
 		line = line.split('// #', 2)[1].strip()
 		if line.startswith("warning:"):
-			print("TODO" + line)
-			exit(-1)
+			line = line[8:].strip()
+			self.warnings[self.current_file.filename + ":%d" % (self.line + self.current_file.line_offset)] = line
 		elif line.startswith("target:"):
 			self.arch = line[7:].strip()
 		elif line.startswith("error:"):

@@ -1605,6 +1605,7 @@ void llvm_emit_panic_on_true(GenContext *c, LLVMValueRef value, const char *pani
 
 void llvm_emit_stmt(GenContext *c, Ast *ast)
 {
+	if (!c->current_block) return;
 	if (ast->ast_kind != AST_COMPOUND_STMT) EMIT_LOC(c, ast);
 	switch (ast->ast_kind)
 	{

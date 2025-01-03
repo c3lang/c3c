@@ -17,6 +17,7 @@
 #define UINT12_MAX        4095
 #define UINT20_MAX        1048575U
 
+#define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
 #define RETURN_SEMA_ERROR_AT(span__, ...) do { sema_error_at(context, span__, __VA_ARGS__); return false; } while (0)
@@ -60,6 +61,7 @@ SemaContext *context_transform_for_eval(SemaContext *context, SemaContext *temp_
 TokenType sema_splitpathref(const char *string, ArraySize len, Path **path_ref, const char **ident_ref);
 void sema_print_inline(SemaContext *context);
 void sema_error_at(SemaContext *context, SourceSpan span, const char *message, ...);
+bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...);
 
 void sema_context_init(SemaContext *context, CompilationUnit *unit);
 void sema_context_destroy(SemaContext *context);

@@ -552,3 +552,21 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 	va_end(list);
 	sema_print_inline(context);
 }
+
+bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)
+{
+	bool is_warn = compiler.build.warning_level < WARNING_ERROR;
+	va_list list;
+	va_start(list, message);
+	if (is_warn)
+	{
+		sema_vwarn_range(span, message, list);
+	}
+	else
+	{
+		sema_verror_range(span, message, list);
+	}
+	va_end(list);
+	sema_print_inline(context);
+	return is_warn;
+}

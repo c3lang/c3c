@@ -1841,8 +1841,10 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 		}
 		if (context->active_scope.jump_end && !context->active_scope.allow_dead_code)
 		{
-			SEMA_ERROR(then, "This code can never be executed.");
-			success = false;
+			if (!SEMA_WARN(then, "This code will never execute."))
+			{
+				success = false;
+			}
 		}
 
 		if (then->ast_kind == AST_IF_CATCH_SWITCH_STMT)
@@ -3048,8 +3050,10 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			// If we start with an don't start with an assert AND the scope is a macro, then it's bad.
 			if (statement->ast_kind != AST_ASSERT_STMT && statement->ast_kind != AST_NOP_STMT && !(context->active_scope.flags & SCOPE_MACRO))
 			{
-				SEMA_ERROR(statement, "This code will never execute.");
-				return ast_poison(statement);
+				if (!SEMA_WARN(statement, "This code will never execute."))
+				{
+					return ast_poison(statement);
+				}
 			}
 			// Remove it
 			statement->ast_kind = AST_NOP_STMT;
