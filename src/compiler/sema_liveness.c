@@ -356,13 +356,15 @@ RETRY:
 		case EXPR_CONST:
 			switch (expr->const_expr.const_kind)
 			{
+				case CONST_TYPEID:
+					sema_trace_type_liveness(expr->const_expr.typeid);
+					return;
 				case CONST_FLOAT:
 				case CONST_INTEGER:
 				case CONST_BOOL:
 				case CONST_BYTES:
 				case CONST_STRING:
 				case CONST_POINTER:
-				case CONST_TYPEID:
 				case CONST_UNTYPED_LIST:
 				case CONST_MEMBER:
 					return;
@@ -499,6 +501,8 @@ RETRY:
 			sema_trace_expr_liveness(expr->ext_trunc_expr.inner);
 			return;
 		case EXPR_TYPEID:
+			sema_trace_type_liveness(expr->typeid_expr->type);
+			return;
 		case EXPR_LAST_FAULT:
 			return;
 	}

@@ -46,6 +46,7 @@
 - Return type inference bugs with macros #1757
 - `$defined` in a global scope should accept testing normal macros.
 - Assert on add to uninitialized ct variable #1765.
+- Dynamic function lookup fails after changing type without dummy anycast #1761
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

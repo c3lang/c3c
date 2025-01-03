@@ -1,0 +1,66 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+interface IFoo {
+  fn void foo();
+}
+
+struct Aa(IFoo) {
+    int dummy;
+}
+
+fn void Aa.foo(&this) @dynamic {
+    io::printfn("@dynamic: Aa.foo");
+}
+
+struct Ba(IFoo) {
+    int dummy;
+}
+
+fn void Ba.foo(&this) @dynamic {
+    io::printfn("@dynamic: Ba.foo");
+}
+
+struct Ca(IFoo) {
+    int dummy;
+}
+
+fn void Ca.foo(&this) @dynamic {
+    io::printfn("@dynamic: Ca.foo");
+}
+
+
+macro @patch(IFoo *x, $Type) {
+    usz *y = (usz *) x;
+    y[1] = (usz) $Type.typeid;
+}
+
+fn void main() {
+    IFoo foo = @clone(Ba{});
+
+    io::printfn("Aa.typeid: %p, Ba.typeid: %p", (usz) Aa.typeid, (usz) Ba.typeid);
+    io::printfn("foo.type: %p", (usz) foo.type);
+
+	@patch(&foo, Aa);
+
+    io::printfn("foo.type: %p", (usz) foo.type);
+
+    foo.foo();
+
+	foo = (IFoo)any_make(foo.ptr, Ca.typeid);
+
+    io::printfn("foo.type: %p", (usz) foo.type);
+
+    foo.foo();
+
+}
+
+/* #expect: test.ll
+
+@"$ct.test.Aa" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Ba" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Ca" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$sel.foo" = linkonce_odr constant [4 x i8] c"foo\00", align 1
+@"$c3_dynamic" = internal global [3 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @test.Aa.foo, ptr @"$sel.foo", i64 ptrtoint (ptr @"$ct.test.Aa" to i64) }, { ptr, ptr, i64 } { ptr @test.Ba.foo, ptr @"$sel.foo", i64 ptrtoint (ptr @"$ct.test.Ba" to i64) }, { ptr, ptr, i64 } { ptr @test.Ca.foo, ptr @"$sel.foo", i64 ptrtoint (ptr @"$ct.test.Ca" to i64) }], section "__DATA,__c3_dynamic", align 8
+@llvm.global_ctors = appending global [1 x { i32, ptr, ptr }] [{ i32, ptr, ptr } { i32 1, ptr @.c3_dynamic_retain, ptr null }]
