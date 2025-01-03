@@ -1,7 +1,7 @@
 import std;
 
 def IList = List(<int>);
-fn IList IList.new(...) @operator(construct)
+fn IList IList.new() @operator(construct)
 {
   IList l;
   l.new_init($vasplat); // #error: can only be used inside

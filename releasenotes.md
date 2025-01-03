@@ -48,6 +48,7 @@
 - Assert on add to uninitialized ct variable #1765.
 - Dynamic function lookup fails after changing type without dummy anycast #1761
 - $vasplat was allowed inside of a function when passed as an argument to a function.
+- Prohibit raw vaargs in regular functions with a function body.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

@@ -3161,6 +3161,12 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 	if (!decl_ok(func)) return false;
 
 	Signature *signature = &func->func_decl.signature;
+	if (signature->variadic == VARIADIC_RAW)
+	{
+		RETURN_SEMA_ERROR(func, "C-style variadic arguments '...' are not supported for regular functions,"
+						  " please use typed vaargs on the form 'int... args' or "
+						  "untyped vaargs on the form 'args...' instead.");
+	}
 	FunctionPrototype *prototype = func->type->function.prototype;
 	ASSERT0(prototype);
 	context->original_inline_line = 0;
