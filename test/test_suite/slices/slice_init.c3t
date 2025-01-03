@@ -25,21 +25,13 @@ entry:
   %0 = insertvalue %"float[]" undef, ptr %ptradd, 0
   %1 = insertvalue %"float[]" %0, i64 4, 1
   %2 = extractvalue %"float[]" %1, 0
-  %3 = load [4 x float], ptr %2, align 4
-  %4 = extractvalue [4 x float] %3, 0
-  %5 = insertelement <4 x float> undef, float %4, i64 0
-  %6 = extractvalue [4 x float] %3, 1
-  %7 = insertelement <4 x float> %5, float %6, i64 1
-  %8 = extractvalue [4 x float] %3, 2
-  %9 = insertelement <4 x float> %7, float %8, i64 2
-  %10 = extractvalue [4 x float] %3, 3
-  %11 = insertelement <4 x float> %9, float %10, i64 3
-  store <4 x float> %11, ptr %x, align 16
+  %3 = load <4 x float>, ptr %2, align 4
+  store <4 x float> %3, ptr %x, align 16
   call void @foo.get(ptr sret([20 x float]) align 4 %sretparam1)
   %ptradd2 = getelementptr inbounds i8, ptr %sretparam1, i64 8
-  %12 = insertvalue %"float[]" undef, ptr %ptradd2, 0
-  %13 = insertvalue %"float[]" %12, i64 4, 1
-  %14 = extractvalue %"float[]" %13, 0
-  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 4 %14, i32 16, i1 false)
+  %4 = insertvalue %"float[]" undef, ptr %ptradd2, 0
+  %5 = insertvalue %"float[]" %4, i64 4, 1
+  %6 = extractvalue %"float[]" %5, 0
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 4 %6, i32 16, i1 false)
   ret void
 }

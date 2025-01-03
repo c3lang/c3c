@@ -258,6 +258,8 @@ void print_var_expr(FILE *file, Expr *expr)
 			print_var_expr(file, expr->access_expr.parent);
 		    fputs(")", file);
 		    break;
+	    case EXPR_VECTOR_FROM_ARRAY:
+			TODO
 	    case EXPR_PTR_ACCESS:
 		    print_var_expr(file, expr->access_expr.parent);
 		    fputs(".ptr", file);

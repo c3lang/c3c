@@ -82,6 +82,7 @@ bool expr_may_addr(Expr *expr)
 			return true;
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
+		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_PTR_ACCESS:
 		case EXPR_RVALUE:
 			return false;
@@ -191,6 +192,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_COND:
 		case EXPR_PTR_ACCESS:
 			return false;
+		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 			return expr_is_runtime_const(expr->inner_expr);
 		case EXPR_MAKE_ANY:
@@ -361,11 +363,9 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_SLBOOL:
 		case CAST_STINLINE:
 		case CAST_VECARR:
-		case CAST_ARRVEC:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_INTPTR:
 		case CAST_APTSA:
-		case CAST_SLSL:
 		case CAST_VOID:
 		case CAST_ERPTR:
 		case CAST_IDPTR:
@@ -610,6 +610,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MAKE_ANY:
 			return expr_is_pure(expr->make_any_expr.inner) && expr_is_pure(expr->make_any_expr.typeid);
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 			return expr_is_pure(expr->inner_expr);
 		case EXPR_INT_TO_BOOL:

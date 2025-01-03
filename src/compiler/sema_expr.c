@@ -571,6 +571,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_MAKE_ANY:
 			goto ERR;
@@ -601,6 +602,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
 			return false;
@@ -8969,6 +8971,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
 			case EXPR_PTR_ACCESS:
+			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
 			case EXPR_MAKE_ANY:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
@@ -9359,6 +9362,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_RVALUE:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_FROM_ARRAY:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
 			return sema_analyse_expr(context, expr->int_to_bool_expr.inner);

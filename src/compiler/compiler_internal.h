@@ -3368,6 +3368,8 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			expr_set_span(expr->make_any_expr.typeid, loc);
 			return;
 		case EXPR_SPLAT:
+		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_FROM_ARRAY:
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3437,7 +3439,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
-		case EXPR_PTR_ACCESS:
 		case EXPR_RVALUE:
 			break;
 	}

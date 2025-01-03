@@ -1989,7 +1989,7 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 		expr->type = to_type;
 		return;
 	}
-	insert_runtime_cast(expr, CAST_SLSL, to_type);
+	expr_rewrite_rvalue(expr, to_type);
 }
 
 static void cast_vecarr_to_slice(SemaContext *context, Expr *expr, Type *to_type)
@@ -2100,7 +2100,10 @@ static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 	}
 	else
 	{
-		insert_runtime_cast(expr, CAST_ARRVEC, to_temp);
+		Expr *inner = expr_copy(expr);
+		expr->expr_kind = EXPR_VECTOR_FROM_ARRAY;
+		expr->inner_expr = inner;
+		expr->type = to_temp;
 	}
 	if (to_temp != to_type)
 	{

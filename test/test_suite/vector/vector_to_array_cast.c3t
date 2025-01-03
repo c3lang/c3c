@@ -30,18 +30,10 @@ entry:
   %3 = extractelement <2 x i32> %0, i64 1
   %4 = insertvalue [2 x i32] %2, i32 %3, 1
   store [2 x i32] %4, ptr %y, align 4
-  %5 = load [2 x i32], ptr %y, align 4
-  %6 = extractvalue [2 x i32] %5, 0
-  %7 = insertelement <2 x i32> undef, i32 %6, i64 0
-  %8 = extractvalue [2 x i32] %5, 1
-  %9 = insertelement <2 x i32> %7, i32 %8, i64 1
-  %sifp = sitofp <2 x i32> %9 to <2 x double>
+  %5 = load <2 x i32>, ptr %y, align 4
+  %sifp = sitofp <2 x i32> %5 to <2 x double>
   store <2 x double> %sifp, ptr %zz, align 16
-  %10 = load [2 x i32], ptr %y, align 4
-  %11 = extractvalue [2 x i32] %10, 0
-  %12 = insertelement <2 x i32> undef, i32 %11, i64 0
-  %13 = extractvalue [2 x i32] %10, 1
-  %14 = insertelement <2 x i32> %12, i32 %13, i64 1
-  store <2 x i32> %14, ptr %x, align 8
+  %6 = load <2 x i32>, ptr %y, align 4
+  store <2 x i32> %6, ptr %x, align 8
   ret void
 }

@@ -1279,17 +1279,6 @@ void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type
 	llvm_value_set(value, array, to_type);
 }
 
-void llvm_emit_array_to_vector_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
-{
-	llvm_value_rvalue(c, value);
-	LLVMValueRef vector = llvm_get_undef(c, to_type);
-	for (unsigned i = 0; i < to_type->array.len; i++)
-	{
-		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
-		vector = llvm_emit_insert_value(c, vector, element, i);
-	}
-	llvm_value_set(value, vector, to_type);
-}
 
 
 void llvm_emit_slice_to_vec_array_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
@@ -1449,9 +1438,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EXPVEC:
 			llvm_emit_expand_to_vec_cast(c, value, to_type, from_type);
 			return;
-		case CAST_ARRVEC:
-			llvm_emit_array_to_vector_cast(c, value, to_type, from_type);
-			return;
 		case CAST_VOID:
 			UNREACHABLE;
 		case CAST_ERROR:
@@ -1529,9 +1515,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_INTPTR:
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "intptr");
-			break;
-		case CAST_SLSL:
-			// Improve this
 			break;
 		case CAST_STINLINE:
 			llvm_value_addr(c, value);
@@ -7270,6 +7253,28 @@ static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 				   expr->type);
 }
 
+static void llvm_emit_vector_from_array(GenContext *c, BEValue *value, Expr *expr)
+{
+	Expr *inner = expr->inner_expr;
+	llvm_emit_expr(c, value, inner);
+	llvm_value_fold_optional(c, value);
+
+	Type *to_type = type_lowering(expr->type);
+	if (llvm_value_is_addr(value))
+	{
+		// Unaligned load
+		value->type = to_type;
+		llvm_value_rvalue(c, value);
+		return;
+	}
+	LLVMValueRef vector = llvm_get_undef(c, to_type);
+	for (unsigned i = 0; i < to_type->array.len; i++)
+	{
+		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		vector = llvm_emit_insert_value(c, vector, element, i);
+	}
+	llvm_value_set(value, vector, to_type);
+}
 static void llvm_emit_ptr_access(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
@@ -7333,6 +7338,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
 			value->type = type_lowering(expr->type);
+			return;
+		case EXPR_VECTOR_FROM_ARRAY:
+			llvm_emit_vector_from_array(c, value, expr);
 			return;
 		case EXPR_PTR_ACCESS:
 			llvm_emit_ptr_access(c, value, expr);

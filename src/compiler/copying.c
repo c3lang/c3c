@@ -476,6 +476,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 			MACRO_COPY_EXPR(expr->inner_expr);
 			return expr;
