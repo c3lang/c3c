@@ -56,16 +56,16 @@ struct Poll
  @param [inout] polls
  @param timeout "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
 *>
-fn ulong! poll_ms(Poll[] polls, Duration timeout)
+fn ulong! poll(Poll[] polls, Duration timeout)
 {
-	return poll(polls, timeout.to_ms()) @inline;
+	return poll_ms(polls, timeout.to_ms()) @inline;
 }
 
 <*
  @param [inout] polls
  @param timeout_ms "duration to poll in ms or -1. Clamped to CInt.max"
 *>
-fn ulong! poll(Poll[] polls, long timeout_ms)
+fn ulong! poll_ms(Poll[] polls, long timeout_ms)
 {
 	if (timeout_ms > CInt.max) timeout_ms = CInt.max;
 	$if env::WIN32:
