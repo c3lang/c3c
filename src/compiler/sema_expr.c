@@ -1586,7 +1586,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 		Expr *arg = args[i];
 		if (i > 0) last = args[i - 1];
 		ASSERT0(expr_ok(arg));
-		if (arg->expr_kind == EXPR_VASPLAT)
+		if (arg->expr_kind == EXPR_VASPLAT && context->current_macro)
 		{
 			Expr **new_args = sema_vasplat_insert(context, args, arg, i);
 			if (!new_args) return false;
