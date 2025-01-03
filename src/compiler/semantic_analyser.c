@@ -555,7 +555,7 @@ void sema_error_at(SemaContext *context, SourceSpan span, const char *message, .
 
 bool sema_warn_at(SemaContext *context, SourceSpan span, const char *message, ...)
 {
-	bool is_warn = compiler.build.warning_level < WARNING_ERROR;
+	bool is_warn = compiler.build.validation_level < VALIDATION_STRICT;
 	va_list list;
 	va_start(list, message);
 	if (is_warn)

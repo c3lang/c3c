@@ -94,10 +94,10 @@ static const char *backends[3] = {
 		[BACKEND_C] = "c",
 };
 
-static const char *warnings[3] = {
-	[WARNING_NORMAL] = "normal",
-	[WARNING_ERROR] = "error",
-	[WARNING_OBNOXIOUS] = "obnoxious",
+static const char *validation_levels[3] = {
+	[VALIDATION_LENIENT] = "lenient",
+	[VALIDATION_STRICT] = "strict",
+	[VALIDATION_OBNOXIOUS] = "obnoxious",
 };
 
 static const char *backtrace_levels[2] = {
