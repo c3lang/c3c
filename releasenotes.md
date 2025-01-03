@@ -16,6 +16,7 @@
 - Support experimental `@operator(construct)` operator overload.
 - Allow using 'var' to declare lambdas in functions.
 - Add 'validation' setting and make dead code a warning.
+- Allow compile time `$foreach` iteration over constant Strings and bytes.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

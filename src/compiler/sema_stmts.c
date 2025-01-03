@@ -2648,7 +2648,8 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	unsigned ct_context = sema_context_push_ct_stack(context);
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
-	if (!expr_is_const_untyped_list(collection) && !expr_is_const_initializer(collection))
+	if (!expr_is_const_untyped_list(collection) && !expr_is_const_initializer(collection)
+		&& !expr_is_const_string(collection) && !expr_is_const_bytes(collection))
 	{
 		SEMA_ERROR(collection, "Expected a list to iterate over");
 		goto FAILED;
@@ -2657,6 +2658,8 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	ConstInitializer *initializer = NULL;
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
+	const char *bytes = NULL;
+	Type *bytes_type;
 	if (expr_is_const_initializer(collection))
 	{
 		initializer = collection->const_expr.initializer;
@@ -2683,10 +2686,16 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			count = vec_size(initializer->init_array_full);
 		}
 	}
-	else
+	else if (expr_is_const_untyped_list(collection))
 	{
 		expressions = collection->const_expr.untyped_list;
 		count = vec_size(expressions);
+	}
+	else
+	{
+		bytes = collection->const_expr.bytes.ptr;
+		count = collection->const_expr.bytes.len;
+		bytes_type = type_get_indexed_type(collection->type);
 	}
 	Decl *index = declptrzero(statement->ct_foreach_stmt.index);
 
@@ -2709,6 +2718,11 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		if (expressions)
 		{
 			value->var.init_expr = expressions[i];
+		}
+		else if (bytes)
+		{
+			value->var.init_expr = expr_new(EXPR_CONST, collection->span);
+			expr_rewrite_const_int(value->var.init_expr, bytes_type, bytes[i]);
 		}
 		else
 		{
