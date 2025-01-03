@@ -3630,7 +3630,8 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	Decl *first_param = is_constructor ? NULL : decl->func_decl.signature.params[0];
 	if (!is_constructor && !first_param)
 	{
-		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
+		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type %s or %s.", type_quoted_error_string(parent_type),
+		                  type_quoted_error_string(type_get_ptr(parent_type)));
 	}
 
 	if (!is_constructor && !sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
