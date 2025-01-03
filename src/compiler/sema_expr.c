@@ -5609,6 +5609,7 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 
 	left->ct_ident_expr.decl->var.init_expr = right;
 	expr_replace(expr, right);
+	left->ct_ident_expr.decl->type = right->type;
 	return true;
 }
 
@@ -5696,11 +5697,7 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 	if (!sema_analyse_expr_lvalue(context, left)) return false;
 
 	Decl *left_var = left->ct_ident_expr.decl;
-	Expr *left_value = left_var->var.init_expr;
-	ASSERT_SPAN(expr, left_value);
-	ASSERT_SPAN(expr, !IS_OPTIONAL(left_value));
-
-	expr->binary_expr.left = exprid(left_value);
+	if (!sema_cast_ct_ident_rvalue(context, left)) return false;
 
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
@@ -5711,8 +5708,8 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 		RETURN_SEMA_ERROR(exprptr(expr->binary_expr.right), "Expected a constant expression.");
 	}
 
-	left->ct_ident_expr.decl->var.init_expr = expr;
-
+	left_var->var.init_expr = expr;
+	left->type = expr->type;
 	return true;
 }
 

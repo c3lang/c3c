@@ -4608,17 +4608,6 @@ bool sema_analyse_method_register(SemaContext *context, Decl *method)
 		RETURN_SEMA_ERROR(parent_type_info, "Methods can not be associated with '%s'", type_to_error_string(parent_type));
 	}
 
-
-	// We need at least one argument (the parent type)
-	if (!vec_size(method->func_decl.signature.params))
-	{
-		RETURN_SEMA_ERROR(method, "Expected at least one parameter - of type '%s'.", type_to_error_string(parent_type));
-	}
-
-	// Check the first argument.
-	Decl *first_param = method->func_decl.signature.params[0];
-	if (!first_param) RETURN_SEMA_ERROR(method, "The first parameter to this method must be of type '%s'.", type_to_error_string(parent_type));
-
 	return unit_add_method(context, parent_type->canonical, method);
 }
 
