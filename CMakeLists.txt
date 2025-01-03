@@ -150,6 +150,13 @@ if(C3_WITH_LLVM)
         endif()
     endif()
 
+    if (NOT WIN32)
+        # Some systems (such as Alpine Linux) seem to put some of the relevant
+        # LLVM files in /usr/lib, but this doesn't seem to be included in the
+        # value of LLVM_LIBRARY_DIRS.
+        list(APPEND LLVM_LIBRARY_DIRS /usr/lib)
+    endif()
+
     message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
     message(STATUS "Using LLVMConfig.cmake in: ${LLVM_DIR}")
     message(STATUS "Libraries located in: ${LLVM_LIBRARY_DIRS}")
