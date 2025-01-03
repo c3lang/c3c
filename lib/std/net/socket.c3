@@ -52,6 +52,10 @@ struct Poll
 	PollEvents revents;
 }
 
+<*
+ @param [inout] polls
+ @param timeout "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
+*>
 fn ulong! poll_ms(Poll[] polls, long timeout_ms)
 {
 	return poll(polls, time::ms(timeout_ms)) @inline;
@@ -59,16 +63,15 @@ fn ulong! poll_ms(Poll[] polls, long timeout_ms)
 
 <*
  @param [inout] polls
- @param timeout "duration to poll."
+ @param timeout_ms "duration to poll in ms or -1. Clamped to CInt.max"
 *>
-fn ulong! poll(Poll[] polls, Duration timeout)
+fn ulong! poll(Poll[] polls, long timeout_ms)
 {
-	long time_ms = (timeout < 0) ? (long)POLL_FOREVER : timeout.to_ms();
-	if (time_ms > CInt.max) time_ms = CInt.max;
+	if (timeout_ms > CInt.max) time_ms = CInt.max;
 	$if env::WIN32:
-		CInt result = win32_WSAPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)time_ms);
+		CInt result = win32_WSAPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)timeout_ms);
 	$else
-		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)time_ms);
+		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)timeout_ms);
 	$endif
 	return result < 0 ? os::socket_error()? : (ulong)result;
 }
