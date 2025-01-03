@@ -1694,7 +1694,7 @@ static inline bool sema_analyse_operator_construct(SemaContext *context, Decl *m
 	Signature *signature = &method->func_decl.signature;
 	Decl **params = signature->params;
 	uint32_t param_count = vec_size(params);
-	if (param_count && params[0]->var.is_self)
+	if (param_count && params[0] && params[0]->var.is_self)
 	{
 		RETURN_SEMA_ERROR(method, "'construct' methods cannot have 'self' parameters.");
 	}
