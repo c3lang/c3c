@@ -17,6 +17,7 @@
 - Allow using 'var' to declare lambdas in functions.
 - Add 'validation' setting and make dead code a warning.
 - Allow compile time `$foreach` iteration over constant Strings and bytes.
+- Improved error message when accessing `@private` from other modules #1769.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -62,6 +63,7 @@
 - Add `@enum_from_value`.
 - Updated hash function.
 - Added URL parser.
+- Added convenience functions to `Maybe`.
 
 ## 0.6.5 Change list
 

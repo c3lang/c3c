@@ -9,7 +9,7 @@ import foo;
 
 fn void test()
 {
-    foo::hidden(); // #error: 'foo::hidden' could not be found,
+    foo::hidden(); // #error: 'foo::hidden' is '@private'
 }
 
 module baz;

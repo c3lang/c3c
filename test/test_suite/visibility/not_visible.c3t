@@ -4,7 +4,7 @@ import bar;
 
 fn void runBar()
 {
-    bar::notVisible(); // #error: 'bar::notVisible' could not be found
+    bar::notVisible(); // #error: 'bar::notVisible' is '@private'
 }
 
 // #file: file2.c3

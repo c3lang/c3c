@@ -22,6 +22,6 @@ import test;
 
 fn void abc()
 {
-	test::bar(); // #error: could not be found
+	test::bar(); // #error: is '@private'
 	test::bar2(); // #error: could not be found
 }

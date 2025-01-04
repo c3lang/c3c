@@ -136,7 +136,7 @@ static inline Decl *sema_find_decl_in_module(Module *module, Path *path, const c
 	return module_find_symbol(module, symbol);
 }
 
-static bool sema_find_decl_in_private_imports(SemaContext *context, NameResolve *name_resolve, bool want_generic)
+static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_resolve, bool want_generic)
 {
 	Decl *decl = NULL;
 	// 1. Loop over imports.
@@ -145,7 +145,8 @@ static bool sema_find_decl_in_private_imports(SemaContext *context, NameResolve 
 	FOREACH(Decl *, import, context->unit->imports)
 	{
 		if (import->import.module->is_generic != want_generic) continue;
-		if (!import->import.import_private_as_public) continue;
+		bool is_private_import = import->import.import_private_as_public;
+		if (!path && (decl || !is_private_import)) continue;
 		// Is the decl in the import.
 		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
 
@@ -153,6 +154,16 @@ static bool sema_find_decl_in_private_imports(SemaContext *context, NameResolve 
 		if (!found) continue;
 
 		ASSERT0(found->visibility != VISIBLE_LOCAL);
+
+		if (found->visibility != VISIBLE_PUBLIC)
+		{
+			if (decl) continue;
+			if (!is_private_import)
+			{
+				name_resolve->private_decl = found;
+				continue;
+			}
+		}
 
 		// Did we already have a match?
 		if (decl)
@@ -418,7 +429,7 @@ static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_res
 	}
 
 	// 3. Loop over imports.
-	if (!sema_find_decl_in_private_imports(context, name_resolve, false)) return false;
+	if (!sema_find_decl_in_imports(context, name_resolve, false)) return false;
 
 	// 4. Go to global search
 	if (name_resolve->found) return true;
@@ -493,7 +504,7 @@ static bool sema_resolve_no_path_symbol(SemaContext *context, NameResolve *name_
 		return true;
 	}
 
-	if (!sema_find_decl_in_private_imports(context, name_resolve, false)) return false;
+	if (!sema_find_decl_in_imports(context, name_resolve, false)) return false;
 	if (name_resolve->found) return true;
 
 	return sema_find_decl_in_global(context, &compiler.context.symbols, NULL, name_resolve, false);
@@ -582,12 +593,12 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		const char *private_name = decl_to_name(name_resolve->private_decl);
 		if (path_name)
 		{
-			sema_error_at(context, span, "The %s '%s::%s' is not visible from this module.",
+			sema_error_at(context, span, "The %s '%s::%s' is '@private' and not visible from other modules.",
 			              private_name, path_name,
 			              symbol);
 		} else
 		{
-			sema_error_at(context, span, "The %s '%s' is not visible from this module.",
+			sema_error_at(context, span, "The %s '%s' is '@private' and not visible from other modules.",
 			              private_name, symbol);
 		}
 		return;
@@ -982,7 +993,7 @@ bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_r
 	name_resolve->private_decl = NULL;
 	name_resolve->path_found = NULL;
 
-	if (!sema_find_decl_in_private_imports(context, name_resolve, true)) return false;
+	if (!sema_find_decl_in_imports(context, name_resolve, true)) return false;
 	if (!name_resolve->found)
 	{
 		if (!sema_find_decl_in_global(context, &compiler.context.generic_symbols,
