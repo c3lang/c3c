@@ -515,10 +515,12 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_CONST:
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant expression.");
 		case EXPR_POISONED:
+		case EXPR_ADDR_CONVERSION:
+		case EXPR_ANYSWITCH:
 		case EXPR_ASM:
+		case EXPR_BENCHMARK_HOOK:
 		case EXPR_BINARY:
 		case EXPR_BITASSIGN:
-		case EXPR_DEFAULT_ARG:
 		case EXPR_BUILTIN:
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
@@ -527,56 +529,54 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CT_ARG:
-		case EXPR_CT_CALL:
 		case EXPR_CT_AND_OR:
 		case EXPR_CT_APPEND:
+		case EXPR_CT_ARG:
+		case EXPR_CT_CALL:
+		case EXPR_CT_CASTABLE:
 		case EXPR_CT_CONCAT:
 		case EXPR_CT_DEFINED:
-		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
-		case EXPR_CT_CASTABLE:
+		case EXPR_CT_IS_CONST:
 		case EXPR_DECL:
+		case EXPR_DEFAULT_ARG:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
-		case EXPR_MACRO_BLOCK:
-		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
+		case EXPR_GENERIC_IDENT:
 		case EXPR_INITIALIZER_LIST:
+		case EXPR_LAST_FAULT:
+		case EXPR_MACRO_BLOCK:
+		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
+		case EXPR_MAKE_ANY:
+		case EXPR_MEMBER_GET:
+		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
+		case EXPR_OPTIONAL:
 		case EXPR_POINTER_OFFSET:
 		case EXPR_POST_UNARY:
+		case EXPR_PTR_ACCESS:
+		case EXPR_RECAST:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
+		case EXPR_RVALUE:
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
-		case EXPR_TYPECALL:
 		case EXPR_TERNARY:
+		case EXPR_TEST_HOOK:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
+		case EXPR_TYPECALL:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
-		case EXPR_BENCHMARK_HOOK:
-		case EXPR_TEST_HOOK:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_MACRO_BODY:
-		case EXPR_LAST_FAULT:
-		case EXPR_MEMBER_GET:
-		case EXPR_NAMED_ARGUMENT:
-		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_RVALUE:
-		case EXPR_RECAST:
-		case EXPR_MAKE_ANY:
-		case EXPR_ADDR_CONVERSION:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -7586,6 +7586,13 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 		case BINARYOP_BIT_XOR:
 		case BINARYOP_BIT_AND:
 			return sema_expr_analyse_bit(context, expr, left, right);
+		case BINARYOP_VEC_NE:
+		case BINARYOP_VEC_EQ:
+		case BINARYOP_VEC_GT:
+		case BINARYOP_VEC_GE:
+		case BINARYOP_VEC_LT:
+		case BINARYOP_VEC_LE:
+			UNREACHABLE
 		case BINARYOP_NE:
 		case BINARYOP_EQ:
 		case BINARYOP_GT:
@@ -8934,16 +8941,16 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_COMPOUND_LITERAL:
 			case EXPR_EMBED:
 			case EXPR_GENERIC_IDENT:
+			case EXPR_MACRO_BODY:
 			case EXPR_POINTER_OFFSET:
 			case EXPR_RETVAL:
 			case EXPR_SLICE:
 			case EXPR_SLICE_ASSIGN:
 			case EXPR_SLICE_COPY:
-			case EXPR_SWIZZLE:
 			case EXPR_SUBSCRIPT_ADDR:
 			case EXPR_SUBSCRIPT_ASSIGN:
+			case EXPR_SWIZZLE:
 			case EXPR_VASPLAT:
-			case EXPR_MACRO_BODY:
 				REMINDER("Check if these should be analysed");
 				FALLTHROUGH;
 				// Above needs to be analysed

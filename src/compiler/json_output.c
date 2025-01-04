@@ -379,6 +379,13 @@ void print_var_expr(FILE *file, Expr *expr)
                 case BINARYOP_SUB_ASSIGN:
                     fputs(" -= ", file);
                     break;
+	            case BINARYOP_VEC_GT:
+	            case BINARYOP_VEC_GE:
+	            case BINARYOP_VEC_LT:
+	            case BINARYOP_VEC_LE:
+	            case BINARYOP_VEC_NE:
+	            case BINARYOP_VEC_EQ:
+					TODO
             }
             print_var_expr(file, exprptr(expr->binary_expr.right));
             break;

@@ -1144,6 +1144,7 @@ struct Expr_
 		ExprAccess access_expr;                     // 16
 		ExprAnySwitch any_switch;                   // 32
 		ExprBinary binary_expr;                     // 12
+		ExprBinary veccomp_expr;
 		ExprBodyExpansion body_expansion_expr;      // 24
 		ExprBuiltinAccess builtin_access_expr;      // 8
 		ExprBuiltin builtin_expr;                   // 16

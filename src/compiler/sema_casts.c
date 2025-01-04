@@ -398,6 +398,15 @@ RETRY:
 				case BINARYOP_CT_CONCAT:
 					// This should be folded already.
 					UNREACHABLE
+				case BINARYOP_VEC_GT:
+				case BINARYOP_VEC_GE:
+				case BINARYOP_VEC_LT:
+				case BINARYOP_VEC_LE:
+				case BINARYOP_VEC_NE:
+				case BINARYOP_VEC_EQ:
+					// Functions
+					return false;
+
 			}
 			UNREACHABLE
 		case EXPR_BUILTIN_ACCESS:
@@ -1893,7 +1902,18 @@ static void cast_int_to_bool(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_float_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_FPBOOL, type)) return;
+	if (!expr_is_const(expr))
+	{
+		Expr *left = expr_copy(expr);
+		Expr *right = expr_new_expr(EXPR_CONST, expr);
+		expr_rewrite_const_float(right, left->type, 0);
+		expr->expr_kind = EXPR_BINARY;
+		expr->binary_expr.left = exprid(left);
+		expr->binary_expr.right = exprid(right);
+		expr->binary_expr.operator = BINARYOP_NE;
+		expr->type = type;
+		return;
+	}
 
 	expr_rewrite_const_bool(expr, type, expr->const_expr.fxx.f != 0.0);
 }

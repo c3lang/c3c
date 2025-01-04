@@ -369,6 +369,19 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 	return true;
 }
 
+INLINE BinaryOp operator_from_builtin(BuiltinFunction fn)
+{
+	switch (fn)
+	{
+		case BUILTIN_VECCOMPLT: return BINARYOP_VEC_LT;
+		case BUILTIN_VECCOMPLE: return BINARYOP_VEC_LE;
+		case BUILTIN_VECCOMPGT: return BINARYOP_VEC_GT;
+		case BUILTIN_VECCOMPGE: return BINARYOP_VEC_GE;
+		case BUILTIN_VECCOMPEQ: return BINARYOP_VEC_EQ;
+		case BUILTIN_VECCOMPNE: return BINARYOP_VEC_NE;
+		default: UNREACHABLE
+	}
+}
 
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 {
@@ -466,6 +479,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			Type *vec_type = type_flatten(args[0]->type);
 			rtype = type_get_vector(type_bool, vec_type->array.len);
+			expr->expr_kind = EXPR_BINARY;
+			expr->binary_expr = (ExprBinary) {
+				.left = exprid(args[0]),
+				.right = exprid(args[1]),
+				.operator = operator_from_builtin(func)
+			};
 			break;
 		}
 		case BUILTIN_SELECT:

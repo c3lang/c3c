@@ -681,82 +681,6 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 	llvm_value_set(result_value, res, expr->type);
 }
 
-static void llvm_emit_veccomp(GenContext *c, BEValue *value, Expr *expr, BuiltinFunction fn)
-{
-	Expr **args = expr->call_expr.arguments;
-	unsigned count = vec_size(args);
-	(void)count;
-	ASSERT0(count == 2);
-
-	LLVMValueRef mask;
-	llvm_emit_expr(c, value, args[0]);
-	llvm_value_rvalue(c, value);
-	LLVMValueRef lhs_value = value->value;
-	llvm_emit_expr(c, value, args[1]);
-	llvm_value_rvalue(c, value);
-	LLVMValueRef rhs_value = value->value;
-	LLVMValueRef res;
-	if (type_flat_is_floatlike(args[0]->type))
-	{
-		switch (fn)
-		{
-			case BUILTIN_VECCOMPEQ:
-				// Unordered?
-				res = LLVMBuildFCmp(c->builder, LLVMRealOEQ, lhs_value, rhs_value, "eq");
-				break;
-			case BUILTIN_VECCOMPNE:
-				// Unordered?
-				res = LLVMBuildFCmp(c->builder, LLVMRealONE, lhs_value, rhs_value, "neq");
-				break;
-			case BUILTIN_VECCOMPGE:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOGE, lhs_value, rhs_value, "ge");
-				break;
-			case BUILTIN_VECCOMPGT:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOGT, lhs_value, rhs_value, "gt");
-				break;
-			case BUILTIN_VECCOMPLE:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOLE, lhs_value, rhs_value, "le");
-				break;
-			case BUILTIN_VECCOMPLT:
-				res = LLVMBuildFCmp(c->builder, LLVMRealOLT, lhs_value, rhs_value, "lt");
-				break;
-			default:
-				UNREACHABLE
-		}
-	}
-	else
-	{
-		bool is_signed = type_is_signed(args[0]->type->array.base);
-		switch (fn)
-		{
-			case BUILTIN_VECCOMPEQ:
-				// Unordered?
-				res = LLVMBuildICmp(c->builder, LLVMIntEQ, lhs_value, rhs_value, "eq");
-				break;
-			case BUILTIN_VECCOMPNE:
-				// Unordered?
-				res = LLVMBuildICmp(c->builder, LLVMIntNE, lhs_value, rhs_value, "neq");
-				break;
-			case BUILTIN_VECCOMPGE:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSGE : LLVMIntUGE, lhs_value, rhs_value, "ge");
-				break;
-			case BUILTIN_VECCOMPGT:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSGT : LLVMIntUGT, lhs_value, rhs_value, "gt");
-				break;
-			case BUILTIN_VECCOMPLE:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLE : LLVMIntULE, lhs_value, rhs_value, "le");
-				break;
-			case BUILTIN_VECCOMPLT:
-				res = LLVMBuildICmp(c->builder, is_signed ? LLVMIntSLT : LLVMIntULT, lhs_value, rhs_value, "lt");
-				break;
-			default:
-				UNREACHABLE
-		}
-	}
-	llvm_value_set(value, res, expr->type);
-	return;
-
-}
 
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
@@ -806,8 +730,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_VECCOMPEQ:
 		case BUILTIN_VECCOMPGT:
 		case BUILTIN_VECCOMPGE:
-			llvm_emit_veccomp(c, result_value, expr, func);
-			return;
+			UNREACHABLE
 		case BUILTIN_REVERSE:
 			llvm_emit_reverse(c, result_value, expr);
 			return;

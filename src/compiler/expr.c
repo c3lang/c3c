@@ -787,6 +787,12 @@ bool expr_is_simple(Expr *expr, bool to_float)
 				case BINARYOP_LE:
 				case BINARYOP_NE:
 				case BINARYOP_EQ:
+				case BINARYOP_VEC_GT:
+				case BINARYOP_VEC_GE:
+				case BINARYOP_VEC_LT:
+				case BINARYOP_VEC_LE:
+				case BINARYOP_VEC_NE:
+				case BINARYOP_VEC_EQ:
 				case BINARYOP_ASSIGN:
 				case BINARYOP_ADD_ASSIGN:
 				case BINARYOP_BIT_AND_ASSIGN:
