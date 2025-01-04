@@ -545,7 +545,6 @@ typedef enum
 typedef enum
 {
 	CAST_APTSA,
-	CAST_BOOLBOOL,
 	CAST_BOOLFP,
 	CAST_BSBOOL,
 	CAST_ERPTR,
