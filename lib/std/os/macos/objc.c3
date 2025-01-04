@@ -60,7 +60,7 @@ extern fn bool class_addIvar(ObjcClass cls, ZString name, int size, double align
 extern fn bool class_addMethod(ObjcClass cls, ObjcSelector name, void* imp, ZString types);
 
 extern fn ObjcIvar getInstanceVariable(ObjcId id, ZString name, void* outValue) @extern("object_getInstanceVariable");
-extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @etern("object_setInstanceVariable");
+extern fn ObjcIvar setInstanceVariable(ObjcId id, ZString name, void* value) @extern("object_setInstanceVariable");
 extern fn ObjcClass allocateClassPair(ObjcClass cls, ZString name, uint extraBytes) @extern("objc_allocateClassPair");
 
 enum StatusItemLength : (double val)
