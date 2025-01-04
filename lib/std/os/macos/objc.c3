@@ -21,8 +21,8 @@ macro ObjcMethod ObjcClass.method(ObjcClass cls, ObjcSelector name) => class_get
 macro bool ObjcSelector.equals(ObjcSelector a, ObjcSelector b) => a == b;
 macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
 
-fn ObjcClass* alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
-fn void release(ObjcId id) => objc::msg_send(ud, SendVoid, "release"); 
+fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
+fn void release(ObjcId id) => objc::msg_send(id, SendVoid, "release"); 
 
 macro ObjcClass! class_by_name(ZString c)
 {
