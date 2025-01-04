@@ -53,6 +53,7 @@
 - $vasplat was allowed inside of a function when passed as an argument to a function.
 - Prohibit raw vaargs in regular functions with a function body.
 - Assert on certain slice to slice casts. #1768.
+- Fix vector float -> bool conversion.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

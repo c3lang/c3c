@@ -1717,8 +1717,14 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 					insert_runtime_cast(expr, CAST_FPFP, to_type);
 					return;
 				case TYPE_BOOL:
-					insert_runtime_cast(expr, CAST_FPBOOL, to_type);
+				{
+					Expr *left = expr_copy(expr);
+					Expr *right = expr_new_expr(EXPR_CONST, expr);
+					expr_rewrite_to_const_zero(right, left->type);
+					expr_rewrite_to_binary(expr, left, right, BINARYOP_VEC_NE);
+					expr->type = to_type;
 					return;
+				}
 				case ALL_INTS:
 					insert_runtime_cast(expr, CAST_FPINT, to_type);
 					return;

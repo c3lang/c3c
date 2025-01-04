@@ -1471,11 +1471,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
 			value->kind = BE_BOOLEAN;
 			break;
-		case CAST_FPBOOL:
-			llvm_value_rvalue(c, value);
-			value->value =  LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, from_type), "fpbool");
-			value->kind = BE_BOOLEAN;
-			break;
 		case CAST_BOOLBOOL:
 			value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "boolbool");
 			value->kind = BE_BOOLEAN;

@@ -360,7 +360,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_PTRBOOL:
 		case CAST_BOOLFP:
 		case CAST_BOOLBOOL:
-		case CAST_FPBOOL:
 		case CAST_INTBOOL:
 		case CAST_FPFP:
 		case CAST_FPINT:

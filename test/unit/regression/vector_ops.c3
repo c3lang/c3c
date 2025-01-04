@@ -37,6 +37,8 @@ fn void! test_conv() @test
 
 fn void! testf() @test
 {
+	float[<4>] x = { 4, 0, -1, 33 };
+	assert({ true, false, true, true} == (bool[<4>])x);
     float[<4>] y = { 1, 2, 3, 4 };
     float[<4>] z = { 2, 2, 2, -100 };
     float[<4>] w = y + z;
