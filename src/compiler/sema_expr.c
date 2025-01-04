@@ -574,6 +574,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_MAKE_ANY:
 		case EXPR_ADDR_CONVERSION:
 			goto ERR;
@@ -607,6 +608,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
 			return false;
@@ -8974,6 +8976,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_PTR_ACCESS:
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
+			case EXPR_RECAST:
 			case EXPR_MAKE_ANY:
 			case EXPR_DISCARD:
 			case EXPR_ADDR_CONVERSION:
@@ -9363,6 +9366,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
 			return sema_analyse_expr(context, expr->make_any_expr.inner);
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_DISCARD:
 			return sema_analyse_expr(context, expr->inner_expr);

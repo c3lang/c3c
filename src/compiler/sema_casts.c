@@ -1614,15 +1614,8 @@ static void cast_expand_to_vec(SemaContext *context, Expr *expr, Type *type)
 	insert_runtime_cast(expr, CAST_EXPVEC, type);
 }
 
-static void cast_bitstruct_to_int_arr(SemaContext *context, Expr *expr, Type *type)
-{
-	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_INTARRBS)
-	{
-		expr_replace(expr, exprptr(expr->cast_expr.expr));
-		return;
-	}
-	insert_runtime_cast(expr, CAST_BSINTARR, type);
-}
+static void cast_bitstruct_to_int_arr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
+static void cast_int_arr_to_bitstruct(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
 
 static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
@@ -1658,20 +1651,6 @@ static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
 	insert_runtime_cast(expr, CAST_BSBOOL, type);
 }
 
-static void cast_int_arr_to_bitstruct(SemaContext *context, Expr *expr, Type *type)
-{
-	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_BSINTARR)
-	{
-		Expr *inner = exprptr(expr->cast_expr.expr);
-		if (type_flatten(inner->type) == type_flatten(type))
-		{
-			expr_replace(expr, inner);
-			expr->type = type;
-			return;
-		}
-	}
-	insert_runtime_cast(expr, CAST_INTARRBS, type);
-}
 
 /**
  * Cast a signed or unsigned integer -> floating point, using CAST_INTFP
@@ -1984,12 +1963,12 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 {
 	Type *to_type_base = type_flatten(type_flatten(to_type)->array.base);
 	Type *from_type_base = type_flatten(type_flatten(expr->type)->array.base);
-	if (sema_cast_const(expr) || to_type_base == from_type_base || (type_is_pointer(to_type_base) && type_is_pointer(from_type_base)))
+	if (sema_cast_const(expr))
 	{
 		expr->type = to_type;
 		return;
 	}
-	expr_rewrite_rvalue(expr, to_type);
+	expr_rewrite_recast(expr, to_type);
 }
 
 static void cast_vecarr_to_slice(SemaContext *context, Expr *expr, Type *to_type)

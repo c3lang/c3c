@@ -1458,9 +1458,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
 			value->kind = BE_BOOLEAN;
 			break;
-		case CAST_BSINTARR:
-		case CAST_INTARRBS:
-			break;
 		case CAST_FPBOOL:
 			llvm_value_rvalue(c, value);
 			value->value =  LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, from_type), "fpbool");
@@ -7325,6 +7322,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_ADDR_CONVERSION:
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_addr(c, value);
+			value->type = type_lowering(expr->type);
+			return;
+		case EXPR_RECAST:
+			llvm_emit_expr(c, value, expr->inner_expr);
 			value->type = type_lowering(expr->type);
 			return;
 		case EXPR_RVALUE:

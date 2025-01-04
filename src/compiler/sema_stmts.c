@@ -282,6 +282,7 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 		switch (expr->expr_kind)
 		{
 			case EXPR_RVALUE:
+			case EXPR_RECAST:
 				expr = expr->inner_expr;
 				continue;
 			case EXPR_MAKE_ANY:
@@ -766,6 +767,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 			return true;
 	}

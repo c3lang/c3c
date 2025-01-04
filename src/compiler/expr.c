@@ -85,6 +85,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_PTR_ACCESS:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
 			return false;
@@ -196,6 +197,7 @@ bool expr_is_runtime_const(Expr *expr)
 			return false;
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_DISCARD:
 			return expr_is_runtime_const(expr->inner_expr);
@@ -373,8 +375,6 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_EXPVEC:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_PTRINT:
-		case CAST_INTARRBS:
-		case CAST_BSINTARR:
 		case CAST_BSBOOL:
 		case CAST_SLARR:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
@@ -614,6 +614,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 			return expr_is_pure(expr->inner_expr);
 		case EXPR_INT_TO_BOOL:

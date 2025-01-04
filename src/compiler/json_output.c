@@ -261,6 +261,7 @@ void print_var_expr(FILE *file, Expr *expr)
             print_var_expr(file, expr->access_expr.child);
             break;
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 			fputs("(", file);
 			print_var_expr(file, expr->access_expr.parent);
 		    fputs(")", file);

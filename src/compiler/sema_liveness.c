@@ -332,6 +332,7 @@ RETRY:
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
+		case EXPR_RECAST:
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
 			expr = expr->inner_expr;

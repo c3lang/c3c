@@ -3373,6 +3373,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
+		case EXPR_RECAST:
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3589,6 +3590,25 @@ INLINE Ast *ast_next(AstId *current_ptr)
 	return ast;
 }
 
+
+INLINE void expr_rewrite_recast(Expr *expr, Type *type)
+{
+	if (expr->expr_kind == EXPR_RECAST)
+	{
+		Expr *inner = expr->inner_expr;
+		if (type_flatten(inner->type) == type_flatten(type))
+		{
+			expr_replace(expr, inner);
+			expr->type = type;
+			return;
+		}
+	}
+
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_RECAST;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
 
 INLINE void expr_rewrite_rvalue(Expr *expr, Type *type)
 {
