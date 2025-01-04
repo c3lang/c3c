@@ -22,18 +22,15 @@ bitstruct Foo : ushort
 
   %e = alloca i8, align 1
   %x = alloca i16, align 2
-  %literal = alloca i16, align 2
   %z = alloca i16, align 2
   store i8 0, ptr %e, align 1
   %0 = load i8, ptr %e, align 1
   %zext = zext i8 %0 to i16
   %1 = and i16 %zext, 255
-  store i16 %1, ptr %literal, align 2
-  %2 = load i16, ptr %literal, align 2
-  store i16 %2, ptr %x, align 2
-  %3 = load i8, ptr %e, align 1
-  %zext1 = zext i8 %3 to i16
-  %4 = and i16 %zext1, 255
-  store i16 %4, ptr %z, align 2
+  store i16 %1, ptr %x, align 2
+  %2 = load i8, ptr %e, align 1
+  %zext1 = zext i8 %2 to i16
+  %3 = and i16 %zext1, 255
+  store i16 %3, ptr %z, align 2
   ret i64 0
 }

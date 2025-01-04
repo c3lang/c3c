@@ -3593,15 +3593,10 @@ INLINE Ast *ast_next(AstId *current_ptr)
 
 INLINE void expr_rewrite_recast(Expr *expr, Type *type)
 {
-	if (expr->expr_kind == EXPR_RECAST)
+	if (expr->expr_kind == EXPR_RECAST || expr->expr_kind == EXPR_ADDR_CONVERSION || expr->expr_kind == EXPR_RVALUE)
 	{
-		Expr *inner = expr->inner_expr;
-		if (type_flatten(inner->type) == type_flatten(type))
-		{
-			expr_replace(expr, inner);
-			expr->type = type;
-			return;
-		}
+		expr->type = type;
+		return;
 	}
 
 	Expr *inner = expr_copy(expr);
@@ -3612,6 +3607,18 @@ INLINE void expr_rewrite_recast(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_rvalue(Expr *expr, Type *type)
 {
+	switch (expr->expr_kind)
+	{
+		case EXPR_RECAST:
+			expr->expr_kind = EXPR_RVALUE;
+			expr->type = type;
+			return;
+		case EXPR_RVALUE:
+			expr->type = type;
+			return;
+		default:
+			break;
+	}
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_RVALUE;
 	expr->inner_expr = inner;
@@ -3620,6 +3627,18 @@ INLINE void expr_rewrite_rvalue(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_addr_conversion(Expr *expr, Type *type)
 {
+	switch (expr->expr_kind)
+	{
+		case EXPR_RECAST:
+			expr->expr_kind = EXPR_ADDR_CONVERSION;
+			expr->type = type;
+			return;
+		case EXPR_ADDR_CONVERSION:
+			expr->type = type;
+			return;
+		default:
+			break;
+	}
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_ADDR_CONVERSION;
 	expr->inner_expr = inner;

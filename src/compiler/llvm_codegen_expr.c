@@ -94,11 +94,23 @@ LLVMValueRef llvm_emit_expect_raw(GenContext *c, LLVMValueRef expect_true)
 	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
 }
 
+Expr *expr_remove_recast(Expr *expr)
+{
+	Type *main_type = type_lowering(expr->type);
+	while (expr->expr_kind == EXPR_RECAST && main_type == type_lowering(expr->inner_expr->type))
+	{
+		expr = expr->inner_expr;
+	}
+	return expr;
+}
+
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init)
 {
 	ASSERT0(llvm_value_is_addr(ref));
 
 	assert((optional || !IS_OPTIONAL(expr)) && "Assumed an optional address if it's an optional expression.");
+
+	expr = expr_remove_recast(expr);
 
 	// Special optimization of handling of optional
 	if (expr->expr_kind == EXPR_OPTIONAL)
