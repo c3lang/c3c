@@ -126,6 +126,7 @@
 - Add `memcpy` / `memset` / `memcmp` to nolibc.
 - Add `sort::quickselect` to find the k-th smallest element in an unordered list.
 - Add `sort::is_sorted` to determine if a list is sorted.
+- Implement RFC 3986 for url encoding and decoding.
 
 ## 0.6.4 Change list
 
