@@ -1438,8 +1438,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EXPVEC:
 			llvm_emit_expand_to_vec_cast(c, value, to_type, from_type);
 			return;
-		case CAST_VOID:
-			UNREACHABLE;
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_PTRINT:
@@ -1448,10 +1446,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			break;
 		case CAST_APTSA:
 			llvm_emit_arr_to_slice_cast(c, value, to_type);
-			break;
-		case CAST_EREU:
-			// This is a no op.
-			ASSERT0(type_lowering(to_type) == type_lowering(from_type));
 			break;
 		case CAST_VECARR:
 			llvm_emit_vector_to_array_cast(c, value, to_type, from_type);
@@ -1516,10 +1510,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			llvm_value_rvalue(c, value);
 			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "intptr");
 			break;
-		case CAST_STINLINE:
-			llvm_value_addr(c, value);
-			value->type = to_type;
-			return;
 		case CAST_INTENUM:
 			if (safe_mode_enabled() && c->builder != c->global_builder)
 			{
@@ -1665,12 +1655,6 @@ void llvm_emit_bool_cast(GenContext *c, Expr *expr, BEValue *value)
 
 static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)
 {
-	if (expr->cast_expr.kind == CAST_VOID)
-	{
-		llvm_value_set(be_value, NULL, type_void);
-		llvm_emit_ignored_expr(context, exprptr(expr->cast_expr.expr));
-		return;
-	}
 	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
 	llvm_emit_cast(context,
 				   expr->cast_expr.kind,
@@ -7333,6 +7317,15 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			llvm_emit_make_any(c, value, expr);
+			return;
+		case EXPR_DISCARD:
+			llvm_value_set(value, NULL, type_void);
+			llvm_emit_ignored_expr(c, expr->inner_expr);
+			return;
+		case EXPR_ADDR_CONVERSION:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_addr(c, value);
+			value->type = type_lowering(expr->type);
 			return;
 		case EXPR_RVALUE:
 			llvm_emit_expr(c, value, expr->inner_expr);

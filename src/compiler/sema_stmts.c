@@ -711,6 +711,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_SPLAT:
 		case EXPR_MAKE_ANY:
+		case EXPR_DISCARD:
 			return false;
 		case EXPR_BITACCESS:
 		case EXPR_BUILTIN:
@@ -765,6 +766,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
+		case EXPR_ADDR_CONVERSION:
 			return true;
 	}
 	UNREACHABLE

@@ -447,6 +447,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			return true;
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
+		case EXPR_DISCARD:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return sema_binary_is_expr_lvalue(context, top_expr, expr->expr_other_context.inner);
@@ -574,6 +575,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_MAKE_ANY:
+		case EXPR_ADDR_CONVERSION:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -605,6 +607,8 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
+		case EXPR_DISCARD:
+		case EXPR_ADDR_CONVERSION:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -8971,6 +8975,8 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
 			case EXPR_MAKE_ANY:
+			case EXPR_DISCARD:
+			case EXPR_ADDR_CONVERSION:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
 		}
@@ -9357,6 +9363,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
 			return sema_analyse_expr(context, expr->make_any_expr.inner);
 		case EXPR_RVALUE:
+		case EXPR_ADDR_CONVERSION:
+		case EXPR_DISCARD:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_FROM_ARRAY:

@@ -243,9 +243,16 @@ void print_var_expr(FILE *file, Expr *expr)
 
     switch ( expr->expr_kind)
     {
-		case EXPR_MAKE_ANY:
+	    case EXPR_ADDR_CONVERSION:
+		    print_var_expr(file, expr->inner_expr);
+		    break;
+	    case EXPR_MAKE_ANY:
 			fputs("TODO: MAKE_ANY", file);
 			break;
+		case EXPR_DISCARD:
+			fputs("(void)", file);
+			print_var_expr(file, expr->access_expr.parent);
+		    break;
 		case EXPR_BITASSIGN:
         case EXPR_BITACCESS:
         case EXPR_ACCESS:

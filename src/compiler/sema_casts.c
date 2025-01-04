@@ -306,7 +306,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 
 	if (is_void_silence && from_type != type_untypedlist)
 	{
-		insert_runtime_cast(expr, CAST_VOID, type_void);
+		expr_rewrite_discard(expr);
 		return true;
 	}
 
@@ -1423,7 +1423,7 @@ static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type)
 	expr->make_any_expr = (ExprMakeAny) { .inner = inner, .typeid = typeid };
 	expr->type = type;
 }
-static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_STINLINE, type); }
+static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
 static void cast_fault_to_anyfault(SemaContext *context, Expr *expr, Type *type) { expr->type = type; };
 static void cast_fault_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ERPTR, type); }
 static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
@@ -1434,7 +1434,7 @@ static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) {
 	expr_rewrite_int_to_bool(expr, false);
 }
 static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, type); }
-static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { insert_runtime_cast(expr, CAST_VOID, type_void); }
+static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { expr_rewrite_discard(expr); }
 static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr->type = to_type; }
 
 /**
