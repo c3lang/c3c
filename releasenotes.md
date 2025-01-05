@@ -19,6 +19,7 @@
 - Allow compile time `$foreach` iteration over constant Strings and bytes.
 - Improved error message when accessing `@private` from other modules #1769.
 - Include `@name` when searching for possible matches to `name` in the error message. #1779
+- Improve `@param` parse errors #1777
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

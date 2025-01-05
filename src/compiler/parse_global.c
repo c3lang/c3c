@@ -2621,7 +2621,21 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 	}
 	else
 	{
-		try_consume(c, TOKEN_STRING);
+		if (!try_consume(c, TOKEN_STRING))
+		{
+			if (!tok_is(c, TOKEN_DOCS_EOL) && !tok_is(c, TOKEN_DOCS_END))
+			{
+				if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
+				{
+					PRINT_ERROR_HERE("A string containing the parameter description was expected, did you forget enclosing the description in \"\" or ``?");
+				}
+				else
+				{
+					PRINT_ERROR_HERE("A string containing the description was expected after the parameter name.");
+				}
+				return false;
+			}
+		}
 	}
 	append_docs(docs_next, docs, ast);
 	return true;
