@@ -363,9 +363,7 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 			UNREACHABLE
 		case CAST_INTENUM:
 		case CAST_EUER:
-		case CAST_PTRBOOL:
 		case CAST_FPFP:
-		case CAST_SLBOOL:
 		case CAST_VECARR:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_APTSA:

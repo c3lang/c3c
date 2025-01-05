@@ -1795,8 +1795,13 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 				UNREACHABLE
 				return;
 			case TYPE_BOOL:
-				insert_runtime_cast(expr, CAST_PTRBOOL, to_type);
+			{
+				Expr *inner = expr_copy(expr);
+				expr->expr_kind = EXPR_INT_TO_BOOL;
+				expr->int_to_bool_expr = (ExprIntToBool) { .inner = inner, .negate = false };
+				expr->type = to_type;
 				return;
+			}
 			case ALL_INTS:
 				expr_rewrite_to_int_to_ptr(expr, to_type);
 				return;
@@ -1996,7 +2001,11 @@ static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
 		expr_rewrite_const_bool(expr, type, expr->const_expr.slice_init != NULL);
 		return;
 	}
-	insert_runtime_cast(expr, CAST_SLBOOL, type);
+	Expr *inner = expr_copy(expr);
+	Expr *len = expr_copy(expr);
+	expr_rewrite_slice_len(len, inner, type_usz);
+	expr_rewrite_to_binary(expr, len, expr_new_const_int(expr->span, type_usz, 0), BINARYOP_NE);
+	expr->type = type;
 }
 
 /**

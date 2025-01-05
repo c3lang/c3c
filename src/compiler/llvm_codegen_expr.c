@@ -1470,11 +1470,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EUER:
 			REMINDER("Improve fault to err comparison");
 			break;
-		case CAST_PTRBOOL:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
-			value->kind = BE_BOOLEAN;
-			break;
 		case CAST_FPFP:
 			llvm_value_rvalue(c, value);
 			value->value = type_convert_will_trunc(to_type, from_type)
@@ -1511,10 +1506,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			}
 			value->type = type_lowering(to_type);
 			return;
-		case CAST_SLBOOL:
-			llvm_emit_slice_len(c, value, value);
-			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
-			break;
 	}
 	value->type = type_lowering(to_type);
 }
