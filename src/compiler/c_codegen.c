@@ -397,6 +397,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 	{
 		case EXPR_PTR_ACCESS:
 		case EXPR_INT_TO_FLOAT:
+		case EXPR_INT_TO_PTR:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:

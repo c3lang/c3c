@@ -1481,12 +1481,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 				   ? LLVMBuildFPTrunc(c->builder, value->value, llvm_get_type(c, to_type), "fpfptrunc")
 				   : LLVMBuildFPExt(c->builder, value->value, llvm_get_type(c, to_type), "fpfpext");
 			break;
-		case CAST_IDPTR:
-		case CAST_ERPTR:
-		case CAST_INTPTR:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, to_type), "intptr");
-			break;
 		case CAST_INTENUM:
 			if (safe_mode_enabled() && c->builder != c->global_builder)
 			{
@@ -7293,6 +7287,11 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_DISCARD:
 			llvm_value_set(value, NULL, type_void);
 			llvm_emit_ignored_expr(c, expr->inner_expr);
+			return;
+		case EXPR_INT_TO_PTR:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			llvm_value_set(value, LLVMBuildIntToPtr(c->builder, value->value, llvm_get_type(c, expr->type), "intptr"), expr->type);
 			return;
 		case EXPR_ADDR_CONVERSION:
 			llvm_emit_expr(c, value, expr->inner_expr);

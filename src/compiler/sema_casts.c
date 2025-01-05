@@ -1435,10 +1435,10 @@ static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type)
 }
 static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
 static void cast_fault_to_anyfault(SemaContext *context, Expr *expr, Type *type) { expr->type = type; };
-static void cast_fault_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_ERPTR, type); }
+static void cast_fault_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
 static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
 static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type) { cast_typeid_to_int(context, expr, type); }
-static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDPTR, type); }
+static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
 static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) {
 	expr_rewrite_ptr_access(expr, expr_copy(expr), type_voidptr);
 	expr_rewrite_int_to_bool(expr, false);
@@ -1783,7 +1783,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 				case TYPE_TYPEID:
 				case TYPE_ANYFAULT:
 				case TYPE_FAULTTYPE:
-					insert_runtime_cast(expr, CAST_INTPTR, to_type);
+					expr_rewrite_to_int_to_ptr(expr, to_type);
 				default:
 					UNREACHABLE;
 			}
@@ -1798,7 +1798,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 				insert_runtime_cast(expr, CAST_PTRBOOL, to_type);
 				return;
 			case ALL_INTS:
-				insert_runtime_cast(expr, CAST_INTPTR, to_type);
+				expr_rewrite_to_int_to_ptr(expr, to_type);
 				return;
 			case TYPE_POINTER:
 			case TYPE_FUNC_PTR:
@@ -1870,7 +1870,7 @@ static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
 	}
 	// This may be a narrowing
 	cast_no_check(context, expr, type_uptr, IS_OPTIONAL(expr));
-	insert_runtime_cast(expr, CAST_INTPTR, type);
+	expr_rewrite_to_int_to_ptr(expr, type);
 }
 
 /**

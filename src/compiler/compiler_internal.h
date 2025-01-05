@@ -3372,6 +3372,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
 		case EXPR_INT_TO_FLOAT:
+		case EXPR_INT_TO_PTR:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
@@ -3825,6 +3826,14 @@ INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_FLOAT;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
+
+INLINE void expr_rewrite_to_int_to_ptr(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_INT_TO_PTR;
 	expr->inner_expr = inner;
 	expr->type = type;
 }
