@@ -83,6 +83,9 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_PTR_ACCESS:
 		case EXPR_ENUM_FROM_ORD:
 		case EXPR_FLOAT_TO_INT:
@@ -212,6 +215,9 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_ENUM_FROM_ORD:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 			return expr_is_runtime_const(expr->inner_expr);
 		case EXPR_MAKE_ANY:
 			if (!expr_is_runtime_const(expr->make_any_expr.typeid)) return false;
@@ -366,13 +372,8 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_EUER:
-		case CAST_VECARR:
-			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_APTSA:
-		case CAST_EXPVEC:
-			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case CAST_BSBOOL:
-		case CAST_SLARR:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
 
 	}
@@ -607,6 +608,9 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MAKE_ANY:
 			return expr_is_pure(expr->make_any_expr.inner) && expr_is_pure(expr->make_any_expr.typeid);
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:

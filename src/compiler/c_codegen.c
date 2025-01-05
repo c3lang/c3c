@@ -395,6 +395,9 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
 		case EXPR_PTR_ACCESS:
 		case EXPR_INT_TO_FLOAT:

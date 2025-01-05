@@ -476,6 +476,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_SPLAT:
 		case EXPR_STRINGIFY:
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:

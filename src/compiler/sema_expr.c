@@ -583,6 +583,9 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_TYPEINFO:
 		case EXPR_VASPLAT:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -611,6 +614,9 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_ENUM_FROM_ORD:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
@@ -8991,6 +8997,9 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_SPLAT:
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
+			case EXPR_VECTOR_TO_ARRAY:
+			case EXPR_SLICE_TO_VEC_ARRAY:
+			case EXPR_SCALAR_TO_VECTOR:
 			case EXPR_PTR_ACCESS:
 			case EXPR_ENUM_FROM_ORD:
 			case EXPR_SLICE_LEN:
@@ -9390,6 +9399,9 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_ENUM_FROM_ORD:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;

@@ -1284,46 +1284,6 @@ static void llvm_emit_arr_to_slice_cast(GenContext *c, BEValue *value, Type *to_
 }
 
 
-void llvm_emit_vector_to_array_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
-{
-	llvm_value_rvalue(c, value);
-	LLVMValueRef array = llvm_get_undef(c, to_type);
-	for (unsigned i = 0; i < to_type->array.len; i++)
-	{
-		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
-		array = llvm_emit_insert_value(c, array, element, i);
-	}
-	llvm_value_set(value, array, to_type);
-}
-
-
-
-void llvm_emit_slice_to_vec_array_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
-{
-	BEValue pointer;
-	Type *base = type_lowering(from_type)->array.base;
-	AlignSize element_alignment = type_abi_alignment(base);
-	llvm_emit_slice_pointer(c, value, &pointer);
-	llvm_value_rvalue(c, &pointer);
-	LLVMTypeRef type = llvm_get_type(c, to_type);
-	AlignSize alignment = llvm_abi_alignment(c, type);
-	LLVMValueRef temp = llvm_emit_alloca(c, type, alignment, ".temp");
-	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, llvm_abi_size(c, type));
-	llvm_value_set_address(value, temp, to_type, alignment);
-}
-
-void llvm_emit_expand_to_vec_cast(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
-{
-	llvm_value_rvalue(c, value);
-	LLVMTypeRef type = llvm_get_type(c, to_type);
-	unsigned elements = LLVMGetVectorSize(type);
-	LLVMValueRef res = LLVMGetUndef(type);
-	for (unsigned i = 0; i < elements; i++)
-	{
-		res = LLVMBuildInsertElement(c->builder, res, value->value, llvm_const_int(c, type_usz, i), "");
-	}
-	llvm_value_set(value, res, to_type);
-}
 
 
 // Prune the common occurrence where the optional is not used.
@@ -1449,19 +1409,10 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_BSBOOL:
 			llvm_emit_bitstruct_to_bool(c, value, to_type, from_type);
 			return;
-		case CAST_SLARR:
-			llvm_emit_slice_to_vec_array_cast(c, value, to_type, from_type);
-			return;
-		case CAST_EXPVEC:
-			llvm_emit_expand_to_vec_cast(c, value, to_type, from_type);
-			return;
 		case CAST_ERROR:
 			UNREACHABLE
 		case CAST_APTSA:
 			llvm_emit_arr_to_slice_cast(c, value, to_type);
-			break;
-		case CAST_VECARR:
-			llvm_emit_vector_to_array_cast(c, value, to_type, from_type);
 			break;
 		case CAST_EUER:
 			REMINDER("Improve fault to err comparison");
@@ -1560,16 +1511,6 @@ void llvm_emit_bool_cast(GenContext *c, Expr *expr, BEValue *value)
 	UNREACHABLE
 }
 
-static inline void llvm_emit_cast_expr(GenContext *context, BEValue *be_value, Expr *expr)
-{
-	llvm_emit_exprid(context, be_value, expr->cast_expr.expr);
-	llvm_emit_cast(context,
-				   expr->cast_expr.kind,
-				   expr,
-				   be_value,
-				   expr->type,
-				   exprtype(expr->cast_expr.expr));
-}
 
 
 static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **current_element_ptr, LLVMValueRef parent, DesignatorElement **last_element_ptr, Expr *value)
@@ -7238,6 +7179,51 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 	value->type = type_lowering(to_type);
 }
 
+void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_rvalue(c, value);
+	LLVMTypeRef type = llvm_get_type(c, expr->type);
+	unsigned elements = LLVMGetVectorSize(type);
+	LLVMValueRef res = LLVMGetUndef(type);
+	for (unsigned i = 0; i < elements; i++)
+	{
+		res = LLVMBuildInsertElement(c->builder, res, value->value, llvm_const_int(c, type_usz, i), "");
+	}
+	llvm_value_set(value, res, expr->type);
+}
+
+static inline void llvm_emit_vector_to_array(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_rvalue(c, value);
+	Type *to_type = type_lowering(expr->type);
+	LLVMValueRef array = llvm_get_undef(c, to_type);
+	for (unsigned i = 0; i < to_type->array.len; i++)
+	{
+		LLVMValueRef element = llvm_emit_extract_value(c, value->value, i);
+		array = llvm_emit_insert_value(c, array, element, i);
+	}
+	llvm_value_set(value, array, to_type);
+}
+
+void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+	llvm_value_rvalue(c, value);
+	BEValue pointer;
+	Type *base = value->type->array.base;
+	AlignSize element_alignment = type_abi_alignment(base);
+	llvm_emit_slice_pointer(c, value, &pointer);
+	llvm_value_rvalue(c, &pointer);
+	Type *to_type = type_lowering(expr->type);
+	LLVMTypeRef type = llvm_get_type(c, to_type);
+	AlignSize alignment = llvm_abi_alignment(c, type);
+	LLVMValueRef temp = llvm_emit_alloca(c, type, alignment, ".temp");
+	llvm_emit_memcpy(c, temp, alignment, pointer.value, element_alignment, llvm_abi_size(c, type));
+	llvm_value_set_address(value, temp, to_type, alignment);
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_EXPR_LOC(c, expr);
@@ -7256,6 +7242,15 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
+		case EXPR_VECTOR_TO_ARRAY:
+			llvm_emit_vector_to_array(c, value, expr);
+			return;
+		case EXPR_SLICE_TO_VEC_ARRAY:
+			llvm_emit_slice_to_vec_array(c, value, expr);
+			return;
+		case EXPR_SCALAR_TO_VECTOR:
+			llvm_emit_scalar_to_vector(c, value, expr);
+			return;
 		case EXPR_ENUM_FROM_ORD:
 			llvm_emit_enum_from_ord(c, value, expr);
 			return;
@@ -7451,7 +7446,13 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_expression_list_expr(c, value, expr);
 			return;
 		case EXPR_CAST:
-			llvm_emit_cast_expr(c, value, expr);
+			llvm_emit_exprid(c, value, expr->cast_expr.expr);
+			llvm_emit_cast(c,
+			               expr->cast_expr.kind,
+			               expr,
+			               value,
+			               expr->type,
+			               exprtype(expr->cast_expr.expr));
 			return;
 		case EXPR_BITACCESS:
 			llvm_emit_bitaccess(c, value, expr);

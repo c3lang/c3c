@@ -1623,7 +1623,11 @@ static void cast_expand_to_vec(SemaContext *context, Expr *expr, Type *type)
 	// Fold pointer casts if narrowing
 	Type *base = type_get_indexed_type(type);
 	cast_no_check(context, expr, base, IS_OPTIONAL(expr));
-	insert_runtime_cast(expr, CAST_EXPVEC, type);
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_SCALAR_TO_VECTOR;
+	expr->inner_expr = inner;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
 }
 
 static void cast_bitstruct_to_int_arr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
@@ -1693,7 +1697,14 @@ static void cast_enum_to_int(SemaContext *context, Expr* expr, Type *to_type)
  */
 static void cast_vec_to_arr(SemaContext *context, Expr *expr, Type *to_type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_VECARR, to_type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr->inner_expr = expr_copy(expr);
+		expr->expr_kind = EXPR_VECTOR_TO_ARRAY;
+		expr->type = to_type;
+		expr->resolve_status = RESOLVE_DONE;
+		return;
+	}
 
 	ASSERT0(expr->const_expr.const_kind == CONST_INITIALIZER);
 	ConstInitializer *list = expr->const_expr.initializer;
@@ -2070,7 +2081,10 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 			}
 			case EXPR_SLICE:
 			{
-				insert_runtime_cast(expr, CAST_SLARR, to_type);
+				expr->inner_expr = expr_copy(expr);
+				expr->expr_kind = EXPR_SLICE_TO_VEC_ARRAY;
+				expr->type = to_type;
+				expr->resolve_status = RESOLVE_DONE;
 				return;
 			}
 			default:
