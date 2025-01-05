@@ -59,6 +59,7 @@ fn void test_ends_with()
 	assert(s.ends_with(""));
 	assert(!s.ends_with("e"));
 }
+
 fn void test_trim()
 {
 	String s = " \t\nabc ";
@@ -67,6 +68,29 @@ fn void test_trim()
 	assert("  \n\tok".trim() == "ok");
 	assert("!! \n\t ".trim() == "!!");
 	assert(s.trim("c \t") == "\nab");
+	assert("".trim() == "");
+
+
+}
+
+fn void test_trim_left()
+{
+	String s = " \t\nabc ";
+	assert(s.trim_left() == "abc ");
+	assert("\n\t".trim_left() == "");
+	assert("  \n\tok".trim_left() == "ok");
+	assert("!! \n\t ".trim_left() == "!! \n\t ");
+	assert("".trim_left() == "");
+}
+
+fn void test_trim_right()
+{
+	String s = " \t\nabc ";
+	assert(s.trim_right() == " \t\nabc");
+	assert("\n\t".trim_right() == "");
+	assert("  \n\tok".trim_right() == "  \n\tok");
+	assert("!! \n\t ".trim_right() == "!!");
+	assert("".trim_right() == "");
 }
 
 fn void test_split()

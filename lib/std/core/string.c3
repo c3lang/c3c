@@ -146,13 +146,39 @@ fn String join_new(String[] s, String joiner, Allocator allocator = allocator::h
 *>
 fn String String.trim(string, String to_trim = "\t\n\r ")
 {
+    return string.trim_left(to_trim).trim_right(to_trim);
+}
+
+<*
+ Remove characters from the front of a string.
+
+ @param [in] string `The string to trim`
+ @param [in] to_trim `The set of characters to trim, defaults to whitespace`
+ @pure
+ @return `a substring of the string passed in`
+*>
+fn String String.trim_left(string, String to_trim = "\t\n\r ")
+{
 	usz start = 0;
 	usz len = string.len;
 	while (start < len && char_in_set(string[start], to_trim)) start++;
 	if (start == len) return string[:0];
-	usz end = len - 1;
-	while (end > start && char_in_set(string[end], to_trim)) end--;
-	return string[start..end];
+	return string[start..];
+}
+
+<*
+ Remove characters from the end of a string.
+
+ @param [in] string `The string to trim`
+ @param [in] to_trim `The set of characters to trim, defaults to whitespace`
+ @pure
+ @return `a substring of the string passed in`
+*>
+fn String String.trim_right(string, String to_trim = "\t\n\r ")
+{
+	usz len = string.len;
+	while (len > 0 && char_in_set(string[len - 1], to_trim)) len--;
+	return string[:len];
 }
 
 <*
