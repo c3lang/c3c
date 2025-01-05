@@ -590,7 +590,7 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 	unsigned row = c->prev_span.row;
 	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
-	if (body->ast_kind != AST_COMPOUND_STMT && row != c->prev_span.row)
+	if (body->ast_kind != AST_COMPOUND_STMT && row != body->span.row)
 	{
 		PRINT_ERROR_AT(body, "A single statement after 'while' must be placed on the same line, or be enclosed in {}.");
 		return poisoned_ast;
@@ -1465,8 +1465,11 @@ Ast *parse_stmt(ParseContext *c)
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_EOS:
+		{
+			Ast *nop = ast_new_curr(c, AST_NOP_STMT);
 			advance(c);
-			return ast_new_curr(c, AST_NOP_STMT);
+			return nop;
+		}
 		case TOKEN_EOF:
 			PRINT_ERROR_HERE("Reached the end of the file when expecting a statement.");
 			return poisoned_ast;
