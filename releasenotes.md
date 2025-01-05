@@ -66,6 +66,7 @@
 - Updated hash function.
 - Added URL parser.
 - Added convenience functions to `Maybe`.
+- Added `String.trim_left()` and `.trim_right()`.
 
 ## 0.6.5 Change list
 
