@@ -550,7 +550,7 @@ bool file_delete_file(const char *path)
 void file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
 	ASSERT0(path);
-#if (_MSC_VER)
+#if (_WIN32)
 	const char *cmd = "del /q \"%s\\*%s\" >nul 2>&1";
 #else
 	const char *cmd = "rm -f %s/*%s";
