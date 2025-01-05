@@ -559,10 +559,12 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_POINTER_OFFSET:
 		case EXPR_POST_UNARY:
 		case EXPR_PTR_ACCESS:
+		case EXPR_ENUM_FROM_ORD:
 		case EXPR_SLICE_LEN:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_RECAST:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
@@ -609,9 +611,11 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
+		case EXPR_ENUM_FROM_ORD:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_INT_TO_BOOL:
@@ -2556,9 +2560,9 @@ void sema_expr_convert_enum_to_int(SemaContext *context, Expr *expr)
 		ASSERT0(expr->const_expr.const_kind == CONST_ENUM);
 		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
 	}
-	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_INTENUM)
+	if (expr->expr_kind == EXPR_ENUM_FROM_ORD)
 	{
-		*expr = *exprptr(expr->cast_expr.expr);
+		*expr = *expr->inner_expr;
 	}
 	expr->type = type_add_optional(underlying_type, IS_OPTIONAL(expr));
 }
@@ -2636,10 +2640,8 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	}
 	if (decl->decl_kind == DECL_FAULT) RETURN_SEMA_ERROR(key, "For faults you can only use 'from_ordinal' with constant arguments.", decl->name);
 
-	expr->expr_kind = EXPR_CAST;
-	expr->cast_expr.kind = CAST_INTENUM;
-	expr->cast_expr.expr = exprid(key);
-	expr->cast_expr.type_info = 0;
+	expr->expr_kind = EXPR_ENUM_FROM_ORD;
+	expr->inner_expr = key;
 	expr->type = decl->type;
 	return true;
 }
@@ -5913,14 +5915,10 @@ static Type *defer_iptr_cast(Expr *maybe_pointer, Expr *maybe_diff)
 {
 	// Do we have (iptr)(ptr) +- rhs? If so we change it to
 	// (iptr)((char*)(ptr) +- 1)
-	if (maybe_pointer->expr_kind == EXPR_CAST
-		&& maybe_pointer->cast_expr.kind == CAST_PTRINT
+	if (maybe_pointer->expr_kind == EXPR_PTR_TO_INT
 		&& type_flatten(maybe_pointer->type) == type_flatten(type_iptr))
 	{
-
-		Expr *inner = exprptr(maybe_pointer->cast_expr.expr);
 		maybe_pointer->expr_kind = EXPR_RVALUE;
-		maybe_pointer->inner_expr = inner;
 		Type *cast_to_iptr = maybe_pointer->type;
 		maybe_pointer->type = type_get_ptr(type_char);
 		return cast_to_iptr;
@@ -8994,6 +8992,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
 			case EXPR_PTR_ACCESS:
+			case EXPR_ENUM_FROM_ORD:
 			case EXPR_SLICE_LEN:
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
@@ -9004,6 +9003,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_FLOAT_TO_INT:
 			case EXPR_INT_TO_FLOAT:
 			case EXPR_INT_TO_PTR:
+			case EXPR_PTR_TO_INT:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
 		}
@@ -9388,6 +9388,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
+		case EXPR_ENUM_FROM_ORD:
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;

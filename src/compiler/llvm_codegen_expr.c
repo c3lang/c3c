@@ -1457,10 +1457,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			return;
 		case CAST_ERROR:
 			UNREACHABLE
-		case CAST_PTRINT:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, to_type), "ptrxi");
-			break;
 		case CAST_APTSA:
 			llvm_emit_arr_to_slice_cast(c, value, to_type);
 			break;
@@ -1470,42 +1466,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 		case CAST_EUER:
 			REMINDER("Improve fault to err comparison");
 			break;
-		case CAST_FPFP:
-			llvm_value_rvalue(c, value);
-			value->value = type_convert_will_trunc(to_type, from_type)
-				   ? LLVMBuildFPTrunc(c->builder, value->value, llvm_get_type(c, to_type), "fpfptrunc")
-				   : LLVMBuildFPExt(c->builder, value->value, llvm_get_type(c, to_type), "fpfpext");
-			break;
-		case CAST_INTENUM:
-			if (safe_mode_enabled() && c->builder != c->global_builder)
-			{
-				llvm_value_rvalue(c, value);
-				BEValue check;
-				Decl *decl = to_type_original->canonical->decl;
-				unsigned max = vec_size(decl->enums.values);
-				if (type_is_signed(value->type))
-				{
-					scratch_buffer_clear();
-					scratch_buffer_printf("Attempt to convert a negative value (%%d) to enum '%s' failed.", decl->name);
-					llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
-					BEValue val;
-					llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_copy(), value, NULL);
-				}
-				scratch_buffer_clear();
-				scratch_buffer_printf("Attempting to convert %%d to enum '%s' failed as the value exceeds the max ordinal (%u).", decl->name, max - 1);
-				LLVMValueRef val = llvm_const_int(c, value->type, max);
-				llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
-				llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->span, scratch_buffer_copy(), value, NULL);
-			}
-			// We might need to extend or truncate.
-			if (type_size(to_type) != type_size(from_type))
-			{
-				llvm_value_rvalue(c, value);
-				llvm_value_set(value, llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type)), to_type);
-				return;
-			}
-			value->type = type_lowering(to_type);
-			return;
 	}
 	value->type = type_lowering(to_type);
 }
@@ -7227,9 +7187,55 @@ static void llvm_emit_ext_trunc(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_rvalue(c, value);
 	Type *to_type = type_lowering(expr->type);
 	LLVMTypeRef to = llvm_get_type(c, to_type);
-	llvm_value_set(value, expr->ext_trunc_expr.is_signed
-	                      ? llvm_sext_trunc(c, value->value, to)
-	                      : llvm_zext_trunc(c, value->value, to), to_type);
+	LLVMValueRef val;
+	if (type_is_floatlike(to_type))
+	{
+		val = type_convert_will_trunc(to_type, value->type)
+		      ? LLVMBuildFPTrunc(c->builder, value->value, llvm_get_type(c, to_type), "fpfptrunc")
+		      : LLVMBuildFPExt(c->builder, value->value, llvm_get_type(c, to_type), "fpfpext");
+
+	}
+	else
+	{
+		val = expr->ext_trunc_expr.is_signed
+				? llvm_sext_trunc(c, value->value, to)
+				: llvm_zext_trunc(c, value->value, to);
+	}
+	llvm_value_set(value, val, to_type);
+}
+void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
+{
+	llvm_emit_expr(c, value, expr->inner_expr);
+
+	if (safe_mode_enabled() && c->builder != c->global_builder)
+	{
+		llvm_value_rvalue(c, value);
+		BEValue check;
+		Decl *decl = type_flatten(expr->type)->decl;
+		unsigned max = vec_size(decl->enums.values);
+		if (type_is_signed(value->type))
+		{
+			scratch_buffer_clear();
+			scratch_buffer_printf("Attempt to convert a negative value (%%d) to enum '%s' failed.", decl->name);
+			llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
+			BEValue val;
+			llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_copy(), value, NULL);
+		}
+		scratch_buffer_clear();
+		scratch_buffer_printf("Attempting to convert %%d to enum '%s' failed as the value exceeds the max ordinal (%u).", decl->name, max - 1);
+		LLVMValueRef val = llvm_const_int(c, value->type, max);
+		llvm_emit_int_comp_raw(c, &check, value->type, value->type, value->value, val, BINARYOP_GE);
+		llvm_emit_panic_on_true(c, check.value, "Failed integer to enum conversion", expr->span, scratch_buffer_copy(), value, NULL);
+	}
+	// We might need to extend or truncate.
+	Type *to_type = type_lowering(expr->type);
+	if (type_size(to_type) != type_size(value->type))
+	{
+		llvm_value_rvalue(c, value);
+		llvm_value_set(value, llvm_zext_trunc(c, value->value, llvm_get_type(c, to_type)), to_type);
+		return;
+	}
+	value->type = type_lowering(to_type);
 }
 
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
@@ -7250,6 +7256,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
+		case EXPR_ENUM_FROM_ORD:
+			llvm_emit_enum_from_ord(c, value, expr);
+			return;
 		case EXPR_MAKE_ANY:
 			llvm_emit_make_any(c, value, expr);
 			return;
@@ -7278,6 +7287,11 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_DISCARD:
 			llvm_value_set(value, NULL, type_void);
 			llvm_emit_ignored_expr(c, expr->inner_expr);
+			return;
+		case EXPR_PTR_TO_INT:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			llvm_value_set(value, LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, expr->type), "ptrxi"), expr->type);
 			return;
 		case EXPR_INT_TO_PTR:
 			llvm_emit_expr(c, value, expr->inner_expr);

@@ -275,6 +275,8 @@ void print_var_expr(FILE *file, Expr *expr)
 	    case EXPR_FLOAT_TO_INT:
 	    case EXPR_INT_TO_FLOAT:
 	    case EXPR_INT_TO_PTR:
+	    case EXPR_PTR_TO_INT:
+	    case EXPR_ENUM_FROM_ORD:
 			TODO
 		    break;
 	    case EXPR_PTR_ACCESS:

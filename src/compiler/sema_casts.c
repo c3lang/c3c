@@ -454,16 +454,6 @@ RETRY:
 		case EXPR_CAST:
 			switch (expr->cast_expr.kind)
 			{
-				case CAST_FPFP:
-					// If this is a narrowing cast that makes it smaller that then target type
-					// we're done.
-					if (type_size(type) >= type_size(expr->type))
-					{
-						return NULL;
-					}
-					// Otherwise just look through it.
-					expr = exprptr(expr->cast_expr.expr);
-					goto RETRY;
 				default:
 					// For all other casts we regard them as opaque.
 					goto CHECK_SIZE;
@@ -1536,7 +1526,11 @@ static void cast_float_to_float(SemaContext *context, Expr *expr, Type *type)
 	ASSERT0(type_flatten(type) != type_flatten(expr->type));
 
 	// Insert runtime cast if needed.
-	if (insert_runtime_cast_unless_const(expr, CAST_FPFP, type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr_rewrite_ext_trunc(expr, type, true);
+		return;
+	}
 
 	// Otherwise rewrite the const, which may cause rounding.
 	expr_rewrite_const_float(expr, type, expr->const_expr.fxx.f);
@@ -1573,7 +1567,11 @@ static void cast_int_to_enum(SemaContext *context, Expr *expr, Type *type)
 	SEMA_DEPRECATED(expr, "Using casts to convert integers to enums is deprecated in favour of using 'MyEnum.from_ordinal(i)`.");
 	Type *canonical = type_flatten(type);
 	ASSERT0(canonical->type_kind == TYPE_ENUM);
-	if (insert_runtime_cast_unless_const(expr, CAST_INTENUM, type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr_rewrite_enum_from_ord(expr, type);
+		return;
+	}
 
 	Decl *enum_decl = canonical->decl;
 	// Fold the const into the actual enum.
@@ -1595,7 +1593,7 @@ static void cast_int_to_int(SemaContext *context, Expr *expr, Type *type)
 {
 	// Fold pointer casts if narrowing
 	// So (int)(uptr)&x => (int)&x in the backend.
-	if (expr->expr_kind == EXPR_CAST && expr->cast_expr.kind == CAST_PTRINT
+	if (expr->expr_kind == EXPR_PTR_TO_INT
 	    && type_size(type) <= type_size(expr->type))
 	{
 		expr->type = type;
@@ -1723,7 +1721,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 			switch (to_element->type_kind)
 			{
 				case ALL_FLOATS:
-					insert_runtime_cast(expr, CAST_FPFP, to_type);
+					expr_rewrite_ext_trunc(expr, to_type, true);
 					return;
 				case TYPE_BOOL:
 				{
@@ -1959,7 +1957,7 @@ static void cast_ptr_to_int(SemaContext *context, Expr *expr, Type *type)
 		expr_rewrite_const_int(expr, type, expr->const_expr.ptr);
 		return;
 	}
-	insert_runtime_cast(expr, CAST_PTRINT, type);
+	expr_rewrite_to_ptr_to_int(expr, type);
 }
 
 /**

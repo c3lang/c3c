@@ -3371,8 +3371,10 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_ENUM_FROM_ORD:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
@@ -3730,6 +3732,16 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
+INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	assert(inner->resolve_status == RESOLVE_DONE);
+	expr->expr_kind = EXPR_ENUM_FROM_ORD;
+	expr->inner_expr = inner;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+}
+
 
 INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
 {
@@ -3834,6 +3846,14 @@ INLINE void expr_rewrite_to_int_to_ptr(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_PTR;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
+
+INLINE void expr_rewrite_to_ptr_to_int(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_PTR_TO_INT;
 	expr->inner_expr = inner;
 	expr->type = type;
 }
