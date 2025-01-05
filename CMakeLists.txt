@@ -150,7 +150,7 @@ if(C3_WITH_LLVM)
         endif()
     endif()
 
-    if (NOT WIN32)
+    if (EXISTS /usr/lib)
         # Some systems (such as Alpine Linux) seem to put some of the relevant
         # LLVM files in /usr/lib, but this doesn't seem to be included in the
         # value of LLVM_LIBRARY_DIRS.
