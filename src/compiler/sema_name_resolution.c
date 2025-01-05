@@ -546,10 +546,18 @@ static void find_closest(const char *name, int name_len, Decl **decls, int *coun
 {
 	int best_distance = *best_distance_ref;
 	int count = *count_ref;
+	bool starts_at = name[0] == '@';
+	Decl *at_match = NULL;
 	FOREACH(Decl *, decl, decls)
 	{
 		if (decl->visibility != VISIBLE_PUBLIC) continue;
-		int dist = damerau_levenshtein_distance(name, name_len, decl->name, strlen(decl->name));
+		const char *decl_name = decl->name;
+		if (!starts_at && decl_name[0] == '@' && str_eq(&decl_name[1], name))
+		{
+			at_match = decl;
+			continue;
+		}
+		int dist = damerau_levenshtein_distance(name, name_len, decl_name, strlen(decl_name));
 		if (dist < best_distance)
 		{
 			matches[0] = decl;
@@ -560,6 +568,17 @@ static void find_closest(const char *name, int name_len, Decl **decls, int *coun
 		if (dist == best_distance && count < 3)
 		{
 			matches[count++] = decl;
+		}
+	}
+	if (at_match)
+	{
+		if (count == 3)
+		{
+			matches[0] = at_match;
+		}
+		else
+		{
+			matches[count++] = at_match;
 		}
 	}
 	*count_ref = count;

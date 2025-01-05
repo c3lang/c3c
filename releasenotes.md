@@ -18,6 +18,7 @@
 - Add 'validation' setting and make dead code a warning.
 - Allow compile time `$foreach` iteration over constant Strings and bytes.
 - Improved error message when accessing `@private` from other modules #1769.
+- Include `@name` when searching for possible matches to `name` in the error message. #1779
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
