@@ -177,7 +177,7 @@ fn String String.trim_left(string, String to_trim = "\t\n\r ")
 fn String String.trim_right(string, String to_trim = "\t\n\r ")
 {
 	usz len = string.len;
-	while (len > 0 && char_in_set(string[len-1], to_trim)) len--;
+	while (len > 0 && char_in_set(string[len - 1], to_trim)) len--;
 	return string[:len];
 }
 
