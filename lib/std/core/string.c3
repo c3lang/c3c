@@ -529,9 +529,8 @@ fn ZString String.zstr_tcopy(s) => s.zstr_copy(allocator::temp()) @inline;
 fn String String.copy(s, Allocator allocator = allocator::heap())
 {
 	usz len = s.len;
-	char* str = allocator::malloc(allocator, len + 1);
+	char* str = allocator::malloc(allocator, len);
 	mem::copy(str, s.ptr, len);
-	str[len] = 0;
 	return (String)str[:len];
 }
 
