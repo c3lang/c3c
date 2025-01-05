@@ -560,6 +560,8 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_POST_UNARY:
 		case EXPR_PTR_ACCESS:
 		case EXPR_SLICE_LEN:
+		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_FLOAT:
 		case EXPR_RECAST:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
@@ -606,6 +608,8 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
+		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_FLOAT:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_INT_TO_BOOL:
@@ -8995,6 +8999,8 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_MAKE_ANY:
 			case EXPR_DISCARD:
 			case EXPR_ADDR_CONVERSION:
+			case EXPR_FLOAT_TO_INT:
+			case EXPR_INT_TO_FLOAT:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
 		}
@@ -9376,6 +9382,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
+		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_FLOAT:
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;

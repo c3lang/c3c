@@ -765,6 +765,8 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_PTR_ACCESS:
+		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_FLOAT:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:

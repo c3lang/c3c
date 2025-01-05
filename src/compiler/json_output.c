@@ -272,6 +272,10 @@ void print_var_expr(FILE *file, Expr *expr)
 		    print_var_expr(file, expr->access_expr.parent);
 		    fputs(".len", file);
 		    break;
+	    case EXPR_FLOAT_TO_INT:
+	    case EXPR_INT_TO_FLOAT:
+			TODO
+		    break;
 	    case EXPR_PTR_ACCESS:
 		    print_var_expr(file, expr->access_expr.parent);
 		    fputs(".ptr", file);

@@ -1475,34 +1475,11 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
 			value->kind = BE_BOOLEAN;
 			break;
-		case CAST_BOOLFP:
-			llvm_value_rvalue(c, value);
-			value->value =  LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "boolfp");
-			value->kind = BE_VALUE;
-			break;
 		case CAST_FPFP:
 			llvm_value_rvalue(c, value);
 			value->value = type_convert_will_trunc(to_type, from_type)
 				   ? LLVMBuildFPTrunc(c->builder, value->value, llvm_get_type(c, to_type), "fpfptrunc")
 				   : LLVMBuildFPExt(c->builder, value->value, llvm_get_type(c, to_type), "fpfpext");
-			break;
-		case CAST_FPINT:
-			llvm_value_rvalue(c, value);
-			if (type_is_signed(to_type))
-			{
-				value->value = LLVMBuildFPToSI(c->builder, value->value, llvm_get_type(c, to_type), "fpsi");
-				break;
-			}
-			value->value = LLVMBuildFPToUI(c->builder, value->value, llvm_get_type(c, to_type), "fpui");
-			break;
-		case CAST_INTFP:
-			llvm_value_rvalue(c, value);
-			if (type_is_signed(value->type))
-			{
-				value->value = LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, to_type), "sifp");
-				break;
-			}
-			value->value = LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "uifp");
 			break;
 		case CAST_IDPTR:
 		case CAST_ERPTR:
@@ -7290,6 +7267,28 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			llvm_emit_make_any(c, value, expr);
+			return;
+		case EXPR_FLOAT_TO_INT:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			if (type_is_signed(type_lowering(expr->type)))
+			{
+				llvm_value_set(value, LLVMBuildFPToSI(c->builder, value->value, llvm_get_type(c, expr->type), "fpsi"), expr->type);
+				return;
+			}
+			llvm_value_set(value, LLVMBuildFPToUI(c->builder, value->value, llvm_get_type(c, expr->type), "fpui"), expr->type);
+			return;
+		case EXPR_INT_TO_FLOAT:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			if (type_is_signed(value->type))
+			{
+				llvm_value_set(value, LLVMBuildSIToFP(c->builder, value->value, llvm_get_type(c, expr->type), "sifp"), expr->type);
+			}
+			else
+			{
+				llvm_value_set(value, LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, expr->type), "uifp"), expr->type);
+			}
 			return;
 		case EXPR_DISCARD:
 			llvm_value_set(value, NULL, type_void);

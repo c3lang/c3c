@@ -1548,7 +1548,11 @@ static void cast_float_to_float(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_float_to_int(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_FPINT, type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr_rewrite_to_float_to_int(expr, type);
+		return;
+	}
 
 	// Run the int->real to and rewrite.
 	Real d = expr->const_expr.fxx.f;
@@ -1668,7 +1672,11 @@ static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_int_to_float(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_INTFP, type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr_rewrite_to_int_to_float(expr, type);
+		return;
+	}
 
 	Real f = int_to_real(expr->const_expr.ixx);
 	expr_rewrite_const_float(expr, type, f);
@@ -1727,7 +1735,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 					return;
 				}
 				case ALL_INTS:
-					insert_runtime_cast(expr, CAST_FPINT, to_type);
+					expr_rewrite_to_float_to_int(expr, to_type);
 					return;
 				default:
 					UNREACHABLE;
@@ -1745,7 +1753,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 			}
 			if (type_is_float(to_element))
 			{
-				insert_runtime_cast(expr, CAST_BOOLFP, to_type);
+				expr_rewrite_to_int_to_float(expr, to_type);
 				return;
 			}
 			UNREACHABLE;
@@ -1756,7 +1764,7 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 			switch (to_element->type_kind)
 			{
 				case ALL_FLOATS:
-					insert_runtime_cast(expr, CAST_INTFP, to_type);
+					expr_rewrite_to_int_to_float(expr, to_type);
 					return;
 				case TYPE_BOOL:
 				{
@@ -1887,7 +1895,11 @@ static void cast_bool_to_int(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_bool_to_float(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_BOOLFP, type)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr_rewrite_to_int_to_float(expr, type);
+		return;
+	}
 
 	ASSERT0(expr->const_expr.const_kind == CONST_BOOL);
 	expr_rewrite_const_float(expr, type, expr->const_expr.b ? 1.0 : 0.0);

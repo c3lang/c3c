@@ -3371,6 +3371,8 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_INT_TO_FLOAT:
+		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
@@ -3817,6 +3819,22 @@ INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
 	(&expr->const_expr)->ixx.type = kind;
 	(&expr->const_expr)->is_character = false;
 	(&expr->const_expr)->const_kind = CONST_INTEGER;
+}
+
+INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_INT_TO_FLOAT;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
+
+INLINE void expr_rewrite_to_float_to_int(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_FLOAT_TO_INT;
+	expr->inner_expr = inner;
+	expr->type = type;
 }
 
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)

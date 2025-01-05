@@ -84,6 +84,8 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_TEST_HOOK:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_PTR_ACCESS:
+		case EXPR_FLOAT_TO_INT:
+		case EXPR_INT_TO_FLOAT:
 		case EXPR_SLICE_LEN:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -195,6 +197,8 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_BITACCESS:
 		case EXPR_COND:
 		case EXPR_PTR_ACCESS:
+		case EXPR_INT_TO_FLOAT:
+		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 			return false;
 		case EXPR_VECTOR_FROM_ARRAY:
@@ -358,10 +362,7 @@ static inline bool expr_cast_is_runtime_const(Expr *expr)
 		case CAST_INTENUM:
 		case CAST_EUER:
 		case CAST_PTRBOOL:
-		case CAST_BOOLFP:
 		case CAST_FPFP:
-		case CAST_FPINT:
-		case CAST_INTFP:
 		case CAST_SLBOOL:
 		case CAST_VECARR:
 			return exprid_is_runtime_const(expr->cast_expr.expr);
@@ -608,6 +609,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MAKE_ANY:
 			return expr_is_pure(expr->make_any_expr.inner) && expr_is_pure(expr->make_any_expr.typeid);
 		case EXPR_PTR_ACCESS:
+		case EXPR_INT_TO_FLOAT:
+		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
