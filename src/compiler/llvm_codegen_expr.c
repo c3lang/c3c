@@ -3083,7 +3083,6 @@ static void gencontext_emit_slice(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_value_rvalue(c, &start);
 	llvm_value_rvalue(c, &end);
 
-
 	// Calculate the size
 	LLVMValueRef size;
 	if (is_exclusive)
@@ -3268,11 +3267,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_br(c, cond_block);
 
 	// Finally set up our phi
-	if (!assign_block_end)
-	{
-		offset = start.value;
-	}
-	else
+	if (assign_block_end)
 	{
 		llvm_set_phi(offset, start.value, start_block, next_offset, assign_block_end);
 	}

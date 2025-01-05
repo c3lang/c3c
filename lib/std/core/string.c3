@@ -526,6 +526,11 @@ fn String String.tconcat(s1, String s2) => s1.concat(s2, allocator::temp());
 
 fn ZString String.zstr_tcopy(s) => s.zstr_copy(allocator::temp()) @inline;
 
+<*
+ Copy this string, by duplicating the string, always adding a zero byte
+ sentinel, so that it safely can be converted to a ZString by a
+ cast.
+*>
 fn String String.copy(s, Allocator allocator = allocator::heap())
 {
 	usz len = s.len;
@@ -537,7 +542,7 @@ fn String String.copy(s, Allocator allocator = allocator::heap())
 
 fn void String.free(&s, Allocator allocator = allocator::heap())
 {
-	if (!s.len) return;
+	if (!s.ptr) return;
 	allocator::free(allocator, s.ptr);
 	*s = "";
 }

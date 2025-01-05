@@ -55,6 +55,7 @@
 - Assert on certain slice to slice casts. #1768.
 - Fix vector float -> bool conversion.
 - Fix `+a = 1` erronously being accepted.
+- Fix not freeing a zero length String
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
