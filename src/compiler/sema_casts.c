@@ -345,6 +345,9 @@ Expr *recursive_may_narrow(Expr *expr, Type *type)
 RETRY:
 	switch (expr->expr_kind)
 	{
+		case EXPR_RECAST:
+			expr = expr->inner_expr;
+			goto RETRY;
 		case EXPR_BITASSIGN:
 		case EXPR_BINARY:
 			switch (expr->binary_expr.operator)
@@ -409,14 +412,12 @@ RETRY:
 
 			}
 			UNREACHABLE
+		case EXPR_SLICE_LEN:
+			if (type_size(type) < type_size(type_cint)) return expr;
+			return NULL;
 		case EXPR_BUILTIN_ACCESS:
 			switch (expr->builtin_access_expr.kind)
 			{
-				case ACCESS_LEN:
-					// Special: we may resize this, but not smaller than cint.
-					if (type_size(type) < type_size(type_cint)) return expr;
-					return NULL;
-				case ACCESS_PTR:
 				case ACCESS_TYPEOFANYFAULT:
 				case ACCESS_TYPEOFANY:
 				case ACCESS_ENUMNAME:
@@ -1439,10 +1440,10 @@ static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type) { e
 static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type) { cast_typeid_to_int(context, expr, type); }
 static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_IDPTR, type); }
 static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) {
-	expr_rewrite_ptr_access(expr, type_voidptr);
+	expr_rewrite_ptr_access(expr, expr_copy(expr), type_voidptr);
 	expr_rewrite_int_to_bool(expr, false);
 }
-static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, type); }
+static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, expr_copy(expr), type); }
 static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { expr_rewrite_discard(expr); }
 static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr->type = to_type; }
 
@@ -1758,8 +1759,14 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 					insert_runtime_cast(expr, CAST_INTFP, to_type);
 					return;
 				case TYPE_BOOL:
-					insert_runtime_cast(expr, CAST_INTBOOL, to_type);
+				{
+					Expr *left = expr_copy(expr);
+					Expr *right = expr_new_expr(EXPR_CONST, expr);
+					expr_rewrite_to_const_zero(right, left->type);
+					expr_rewrite_to_binary(expr, left, right, BINARYOP_VEC_NE);
+					expr->type = to_type;
 					return;
+				}
 				case ALL_INTS:
 					expr_rewrite_ext_trunc(expr, to_type, type_is_signed(type_flatten_to_int(expr->type)));
 					return;
@@ -1834,7 +1841,7 @@ static void cast_slice_to_ptr(SemaContext *context, Expr *expr, Type *type)
 		return;
 	}
 
-	expr_rewrite_ptr_access(expr, type);
+	expr_rewrite_ptr_access(expr, expr_copy(expr), type);
 }
 
 /**
@@ -1987,8 +1994,6 @@ static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
  */
 static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 {
-	Type *to_type_base = type_flatten(type_flatten(to_type)->array.base);
-	Type *from_type_base = type_flatten(type_flatten(expr->type)->array.base);
 	if (sema_cast_const(expr))
 	{
 		expr->type = to_type;

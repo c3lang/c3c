@@ -396,6 +396,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_PTR_ACCESS:
+		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:

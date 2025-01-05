@@ -709,17 +709,21 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	if (parent_type_kind == TYPE_SLICE)
 	{
 		needs_len = safe_mode_enabled() || start_from_end;
+		if (needs_len)
+		{
+			llvm_emit_slice_len(c, value, &len);
+			llvm_value_rvalue(c, &len);
+		}
 	}
-	else if (parent_type_kind == TYPE_ARRAY)
+	else if (parent_type_kind == TYPE_ARRAY || parent_type_kind == TYPE_VECTOR)
 	{
 		// From back should always be folded.
 		ASSERT0(!expr_is_const(expr) || !start_from_end);
 		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || start_from_end;
-	}
-	if (needs_len)
-	{
-		llvm_emit_len_for_expr(c, &len, value);
-		llvm_value_rvalue(c, &len);
+		if (needs_len)
+		{
+			llvm_value_set_int(c, &len, type_isz, value->type->array.len);
+		}
 	}
 
 	llvm_emit_ptr_from_array(c, value);
@@ -1476,11 +1480,6 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->value =  LLVMBuildUIToFP(c->builder, value->value, llvm_get_type(c, to_type), "boolfp");
 			value->kind = BE_VALUE;
 			break;
-		case CAST_INTBOOL:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, from_type), "intbool");
-			value->kind = type_kind_is_any_vector(value->type->type_kind) ? BE_BOOLVECTOR : BE_BOOLEAN;
-			break;
 		case CAST_FPFP:
 			llvm_value_rvalue(c, value);
 			value->value = type_convert_will_trunc(to_type, from_type)
@@ -1542,22 +1541,7 @@ void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *valu
 			value->type = type_lowering(to_type);
 			return;
 		case CAST_SLBOOL:
-			llvm_value_fold_optional(c, value);
-			if (llvm_value_is_addr(value))
-			{
-				value->value = llvm_emit_struct_gep_raw(c,
-														value->value,
-														llvm_get_type(c, value->type),
-														1,
-														value->alignment,
-														&value->alignment);
-			}
-			else
-			{
-				value->value = llvm_emit_extract_value(c, value->value, 1);
-			}
-			value->type = type_lowering(type_usz);
-			llvm_value_rvalue(c, value);
+			llvm_emit_slice_len(c, value, value);
 			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
 			break;
 	}
@@ -2749,54 +2733,8 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				llvm_value_set(value, llvm_value, res_type);
 				return;
 			}
-			switch (type->type_kind)
-			{
-				case ALL_FLOATS:
-					llvm_value_rvalue(c, value);
-					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, llvm_get_zero(c, type), "not");
-					break;
-				case TYPE_BOOL:
-					llvm_value_rvalue(c, value);
-					llvm_value = LLVMBuildNot(c->builder, value->value, "not");
-					break;
-				case TYPE_SLICE:
-					if (value->kind != BE_VALUE)
-					{
-						llvm_emit_len_for_expr(c, value, value);
-						llvm_value_rvalue(c, value);
-						llvm_value = value->value;
-					}
-					else
-					{
-						llvm_value = llvm_emit_extract_value(c, value->value, 1);
-					}
-					llvm_value = LLVMBuildIsNull(c->builder, llvm_value, "not");
-					break;
-				case ALL_INTS:
-				case TYPE_FUNC_PTR:
-				case TYPE_POINTER:
-					llvm_value_rvalue(c, value);
-					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
-					break;
-				case TYPE_ANY:
-				case TYPE_INTERFACE:
-					llvm_emit_any_pointer(c, value, value);
-					llvm_value_rvalue(c, value);
-					llvm_value = LLVMBuildIsNull(c->builder, value->value, "not");
-					break;
-				case TYPE_ARRAY:
-					// Handle the bitstruct to bool case.
-					if (type->array.base == type_char)
-					{
-						llvm_value = llvm_emit_char_array_zero(c, value, true);
-						break;
-					}
-					FALLTHROUGH;
-				default:
-					DEBUG_LOG("Unexpectedly tried to not %s", type_quoted_error_string(inner->type));
-					UNREACHABLE
-			}
-			llvm_value_set(value, llvm_value, type_bool);
+			llvm_value_rvalue(c, value);
+			value->value = LLVMBuildNot(c->builder, value->value, "not");
 			return;
 		case UNARYOP_BITNEG:
 			llvm_emit_expr(c, value, inner);
@@ -2865,37 +2803,6 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 	UNREACHABLE
 }
 
-void llvm_emit_len_for_expr(GenContext *c, BEValue *be_value, BEValue *expr_to_len)
-{
-	switch (expr_to_len->type->type_kind)
-	{
-		case TYPE_SLICE:
-			llvm_value_fold_optional(c, be_value);
-			if (expr_to_len->kind == BE_VALUE)
-			{
-				llvm_value_set(be_value, llvm_emit_extract_value(c, expr_to_len->value, 1), type_usz);
-			}
-			else
-			{
-				LLVMTypeRef slice_type = llvm_get_type(c, expr_to_len->type);
-				AlignSize alignment;
-				LLVMValueRef len_addr = llvm_emit_struct_gep_raw(c,
-				                                                 expr_to_len->value,
-				                                                 slice_type,
-				                                                 1,
-				                                                 expr_to_len->alignment,
-				                                                 &alignment);
-				llvm_value_set_address(be_value, len_addr, type_usz, alignment);
-			}
-			break;
-		case TYPE_ARRAY:
-		case TYPE_VECTOR:
-			llvm_value_set(be_value, llvm_const_int(c, type_usz, expr_to_len->type->array.len), type_usz);
-			break;
-		default:
-			UNREACHABLE
-	}
-}
 
 static void llvm_emit_trap_negative(GenContext *c, Expr *expr, LLVMValueRef value, const char *error,
 									BEValue *index_val)
@@ -5448,7 +5355,11 @@ LLVMValueRef llvm_emit_const_ptradd_inbounds_raw(GenContext *c, LLVMValueRef ptr
 
 void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len)
 {
-	llvm_value_addr(c, slice);
+	if (!llvm_value_is_addr(slice))
+	{
+		llvm_value_set(len, llvm_emit_extract_value(c, slice->value, 1), type_usz);
+		return;
+	}
 	AlignSize alignment = 0;
 	LLVMValueRef len_addr = llvm_emit_struct_gep_raw(c,
 	                                                 slice->value,
@@ -7092,18 +7003,6 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	llvm_value_fold_optional(c, be_value);
 	switch (expr->builtin_access_expr.kind)
 	{
-		case ACCESS_LEN:
-			llvm_emit_len_for_expr(c, be_value, be_value);
-			return;
-		case ACCESS_PTR:
-			if (type_is_any(be_value->type))
-			{
-				llvm_emit_any_pointer(c, be_value, be_value);
-				return;
-			}
-			ASSERT0(be_value->type->type_kind == TYPE_SLICE);
-			llvm_emit_slice_pointer(c, be_value, be_value);
-			return;
 		case ACCESS_FAULTORDINAL:
 		{
 			LLVMBasicBlockRef current_block = llvm_get_current_block_if_in_use(c);
@@ -7417,6 +7316,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_VECTOR_FROM_ARRAY:
 			llvm_emit_vector_from_array(c, value, expr);
+			return;
+		case EXPR_SLICE_LEN:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_emit_slice_len(c, value, value);
 			return;
 		case EXPR_PTR_ACCESS:
 			llvm_emit_ptr_access(c, value, expr);

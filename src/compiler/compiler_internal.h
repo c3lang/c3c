@@ -3371,6 +3371,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
@@ -3606,6 +3607,7 @@ INLINE void expr_rewrite_recast(Expr *expr, Type *type)
 	expr->type = type;
 }
 
+
 INLINE void expr_rewrite_rvalue(Expr *expr, Type *type)
 {
 	switch (expr->expr_kind)
@@ -3716,12 +3718,23 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-INLINE void expr_rewrite_ptr_access(Expr *expr, Type *type)
+INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 {
-	Expr *inner = expr_copy(expr);
+	assert(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_PTR_ACCESS;
 	expr->inner_expr = inner;
 	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+
+INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
+{
+	assert(inner->resolve_status == RESOLVE_DONE);
+	expr->expr_kind = EXPR_SLICE_LEN;
+	expr->inner_expr = inner;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
+	expr->resolve_status = RESOLVE_DONE;
 }
 
 INLINE void expr_rewrite_int_to_bool(Expr *expr, bool negate)

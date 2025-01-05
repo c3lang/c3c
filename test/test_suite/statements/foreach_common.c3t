@@ -76,22 +76,17 @@ entry:
   %.anon38 = alloca i64, align 8
   %a42 = alloca double, align 8
   %.anon47 = alloca i64, align 8
-  %.anon48 = alloca i64, align 8
   %a51 = alloca float, align 4
   %.anon55 = alloca i64, align 8
-  %.anon56 = alloca i64, align 8
-  %a60 = alloca ptr, align 8
-  %.anon66 = alloca i64, align 8
-  %.anon67 = alloca i64, align 8
-  %i71 = alloca i64, align 8
-  %a72 = alloca float, align 4
-  %.anon76 = alloca i64, align 8
-  %.anon77 = alloca i64, align 8
-  %i81 = alloca i8, align 1
-  %a83 = alloca double, align 8
-  %.anon88 = alloca i64, align 8
-  %.anon89 = alloca i64, align 8
-  %a93 = alloca double, align 8
+  %a59 = alloca ptr, align 8
+  %.anon65 = alloca i64, align 8
+  %i69 = alloca i64, align 8
+  %a70 = alloca float, align 4
+  %.anon74 = alloca i64, align 8
+  %i78 = alloca i8, align 1
+  %a80 = alloca double, align 8
+  %.anon85 = alloca i64, align 8
+  %a89 = alloca double, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %foo, ptr align 4 @.__const, i32 12, i1 false)
   store <3 x float> <float 2.000000e+00, float 4.500000e+00, float 8.000000e+00>, ptr %foo2, align 16
   store i64 0, ptr %.anon, align 8
@@ -238,137 +233,127 @@ loop.body41:                                      ; preds = %loop.cond39
   br label %loop.cond39
 
 loop.exit46:                                      ; preds = %loop.cond39
-  store i64 3, ptr %.anon47, align 8
-  store i64 0, ptr %.anon48, align 8
-  br label %loop.cond49
+  store i64 0, ptr %.anon47, align 8
+  br label %loop.cond48
 
-loop.cond49:                                      ; preds = %loop.body50, %loop.exit46
-  %36 = load i64, ptr %.anon48, align 8
-  %37 = load i64, ptr %.anon47, align 8
-  %lt = icmp ult i64 %36, %37
-  br i1 %lt, label %loop.body50, label %loop.exit54
+loop.cond48:                                      ; preds = %loop.body50, %loop.exit46
+  %36 = load i64, ptr %.anon47, align 8
+  %gt49 = icmp ugt i64 3, %36
+  br i1 %gt49, label %loop.body50, label %loop.exit54
 
-loop.body50:                                      ; preds = %loop.cond49
-  %38 = load <3 x float>, ptr %foo2, align 16
-  %39 = load i64, ptr %.anon48, align 8
-  %40 = extractelement <3 x float> %38, i64 %39
-  store float %40, ptr %a51, align 4
-  %41 = load float, ptr %a51, align 4
-  %fpfpext52 = fpext float %41 to double
+loop.body50:                                      ; preds = %loop.cond48
+  %37 = load <3 x float>, ptr %foo2, align 16
+  %38 = load i64, ptr %.anon47, align 8
+  %39 = extractelement <3 x float> %37, i64 %38
+  store float %39, ptr %a51, align 4
+  %40 = load float, ptr %a51, align 4
+  %fpfpext52 = fpext float %40 to double
   call void (ptr, ...) @printf(ptr @.str.6, double %fpfpext52)
-  %42 = load i64, ptr %.anon48, align 8
-  %addnuw53 = add nuw i64 %42, 1
-  store i64 %addnuw53, ptr %.anon48, align 8
-  br label %loop.cond49
+  %41 = load i64, ptr %.anon47, align 8
+  %addnuw53 = add nuw i64 %41, 1
+  store i64 %addnuw53, ptr %.anon47, align 8
+  br label %loop.cond48
 
-loop.exit54:                                      ; preds = %loop.cond49
-  store i64 3, ptr %.anon55, align 8
-  store i64 0, ptr %.anon56, align 8
-  br label %loop.cond57
+loop.exit54:                                      ; preds = %loop.cond48
+  store i64 0, ptr %.anon55, align 8
+  br label %loop.cond56
 
-loop.cond57:                                      ; preds = %loop.body59, %loop.exit54
-  %43 = load i64, ptr %.anon56, align 8
-  %44 = load i64, ptr %.anon55, align 8
-  %lt58 = icmp ult i64 %43, %44
-  br i1 %lt58, label %loop.body59, label %loop.exit65
+loop.cond56:                                      ; preds = %loop.body58, %loop.exit54
+  %42 = load i64, ptr %.anon55, align 8
+  %gt57 = icmp ugt i64 3, %42
+  br i1 %gt57, label %loop.body58, label %loop.exit64
 
-loop.body59:                                      ; preds = %loop.cond57
-  %45 = load i64, ptr %.anon56, align 8
-  %ptroffset61 = getelementptr inbounds [4 x i8], ptr %foo2, i64 %45
-  store ptr %ptroffset61, ptr %a60, align 8
-  %46 = load ptr, ptr %a60, align 8
+loop.body58:                                      ; preds = %loop.cond56
+  %43 = load i64, ptr %.anon55, align 8
+  %ptroffset60 = getelementptr inbounds [4 x i8], ptr %foo2, i64 %43
+  store ptr %ptroffset60, ptr %a59, align 8
+  %44 = load ptr, ptr %a59, align 8
+  %45 = load float, ptr %44, align 4
+  %fmul61 = fmul float %45, 2.000000e+00
+  store float %fmul61, ptr %44, align 4
+  %46 = load ptr, ptr %a59, align 8
   %47 = load float, ptr %46, align 4
-  %fmul62 = fmul float %47, 2.000000e+00
-  store float %fmul62, ptr %46, align 4
-  %48 = load ptr, ptr %a60, align 8
-  %49 = load float, ptr %48, align 4
-  %fpfpext63 = fpext float %49 to double
-  call void (ptr, ...) @printf(ptr @.str.7, double %fpfpext63)
-  %50 = load i64, ptr %.anon56, align 8
-  %addnuw64 = add nuw i64 %50, 1
-  store i64 %addnuw64, ptr %.anon56, align 8
-  br label %loop.cond57
+  %fpfpext62 = fpext float %47 to double
+  call void (ptr, ...) @printf(ptr @.str.7, double %fpfpext62)
+  %48 = load i64, ptr %.anon55, align 8
+  %addnuw63 = add nuw i64 %48, 1
+  store i64 %addnuw63, ptr %.anon55, align 8
+  br label %loop.cond56
 
-loop.exit65:                                      ; preds = %loop.cond57
-  store i64 3, ptr %.anon66, align 8
-  store i64 0, ptr %.anon67, align 8
-  br label %loop.cond68
+loop.exit64:                                      ; preds = %loop.cond56
+  store i64 0, ptr %.anon65, align 8
+  br label %loop.cond66
 
-loop.cond68:                                      ; preds = %loop.body70, %loop.exit65
-  %51 = load i64, ptr %.anon67, align 8
-  %52 = load i64, ptr %.anon66, align 8
-  %lt69 = icmp ult i64 %51, %52
-  br i1 %lt69, label %loop.body70, label %loop.exit75
+loop.cond66:                                      ; preds = %loop.body68, %loop.exit64
+  %49 = load i64, ptr %.anon65, align 8
+  %gt67 = icmp ugt i64 3, %49
+  br i1 %gt67, label %loop.body68, label %loop.exit73
 
-loop.body70:                                      ; preds = %loop.cond68
-  %53 = load i64, ptr %.anon67, align 8
-  store i64 %53, ptr %i71, align 8
-  %54 = load <3 x float>, ptr %foo2, align 16
-  %55 = load i64, ptr %.anon67, align 8
-  %56 = extractelement <3 x float> %54, i64 %55
-  store float %56, ptr %a72, align 4
-  %57 = load float, ptr %a72, align 4
-  %fpfpext73 = fpext float %57 to double
-  %58 = load i64, ptr %i71, align 8
-  call void (ptr, ...) @printf(ptr @.str.8, i64 %58, double %fpfpext73)
-  %59 = load i64, ptr %.anon67, align 8
-  %addnuw74 = add nuw i64 %59, 1
-  store i64 %addnuw74, ptr %.anon67, align 8
-  br label %loop.cond68
+loop.body68:                                      ; preds = %loop.cond66
+  %50 = load i64, ptr %.anon65, align 8
+  store i64 %50, ptr %i69, align 8
+  %51 = load <3 x float>, ptr %foo2, align 16
+  %52 = load i64, ptr %.anon65, align 8
+  %53 = extractelement <3 x float> %51, i64 %52
+  store float %53, ptr %a70, align 4
+  %54 = load float, ptr %a70, align 4
+  %fpfpext71 = fpext float %54 to double
+  %55 = load i64, ptr %i69, align 8
+  call void (ptr, ...) @printf(ptr @.str.8, i64 %55, double %fpfpext71)
+  %56 = load i64, ptr %.anon65, align 8
+  %addnuw72 = add nuw i64 %56, 1
+  store i64 %addnuw72, ptr %.anon65, align 8
+  br label %loop.cond66
 
-loop.exit75:                                      ; preds = %loop.cond68
-  store i64 3, ptr %.anon76, align 8
-  store i64 0, ptr %.anon77, align 8
-  br label %loop.cond78
+loop.exit73:                                      ; preds = %loop.cond66
+  store i64 0, ptr %.anon74, align 8
+  br label %loop.cond75
 
-loop.cond78:                                      ; preds = %loop.body80, %loop.exit75
-  %60 = load i64, ptr %.anon77, align 8
-  %61 = load i64, ptr %.anon76, align 8
-  %lt79 = icmp ult i64 %60, %61
-  br i1 %lt79, label %loop.body80, label %loop.exit87
+loop.cond75:                                      ; preds = %loop.body77, %loop.exit73
+  %57 = load i64, ptr %.anon74, align 8
+  %gt76 = icmp ugt i64 3, %57
+  br i1 %gt76, label %loop.body77, label %loop.exit84
 
-loop.body80:                                      ; preds = %loop.cond78
-  %62 = load i64, ptr %.anon77, align 8
-  %trunc82 = trunc i64 %62 to i8
-  store i8 %trunc82, ptr %i81, align 1
-  %63 = load <3 x float>, ptr %foo2, align 16
-  %64 = load i64, ptr %.anon77, align 8
-  %65 = extractelement <3 x float> %63, i64 %64
-  %fpfpext84 = fpext float %65 to double
-  store double %fpfpext84, ptr %a83, align 8
-  %66 = load i8, ptr %i81, align 1
-  %zext85 = zext i8 %66 to i32
-  %67 = load double, ptr %a83, align 8
-  call void (ptr, ...) @printf(ptr @.str.9, i32 %zext85, double %67)
-  %68 = load i64, ptr %.anon77, align 8
-  %addnuw86 = add nuw i64 %68, 1
-  store i64 %addnuw86, ptr %.anon77, align 8
-  br label %loop.cond78
+loop.body77:                                      ; preds = %loop.cond75
+  %58 = load i64, ptr %.anon74, align 8
+  %trunc79 = trunc i64 %58 to i8
+  store i8 %trunc79, ptr %i78, align 1
+  %59 = load <3 x float>, ptr %foo2, align 16
+  %60 = load i64, ptr %.anon74, align 8
+  %61 = extractelement <3 x float> %59, i64 %60
+  %fpfpext81 = fpext float %61 to double
+  store double %fpfpext81, ptr %a80, align 8
+  %62 = load i8, ptr %i78, align 1
+  %zext82 = zext i8 %62 to i32
+  %63 = load double, ptr %a80, align 8
+  call void (ptr, ...) @printf(ptr @.str.9, i32 %zext82, double %63)
+  %64 = load i64, ptr %.anon74, align 8
+  %addnuw83 = add nuw i64 %64, 1
+  store i64 %addnuw83, ptr %.anon74, align 8
+  br label %loop.cond75
 
-loop.exit87:                                      ; preds = %loop.cond78
-  store i64 3, ptr %.anon88, align 8
-  store i64 0, ptr %.anon89, align 8
-  br label %loop.cond90
+loop.exit84:                                      ; preds = %loop.cond75
+  store i64 0, ptr %.anon85, align 8
+  br label %loop.cond86
 
-loop.cond90:                                      ; preds = %loop.body92, %loop.exit87
-  %69 = load i64, ptr %.anon89, align 8
-  %70 = load i64, ptr %.anon88, align 8
-  %lt91 = icmp ult i64 %69, %70
-  br i1 %lt91, label %loop.body92, label %loop.exit96
+loop.cond86:                                      ; preds = %loop.body88, %loop.exit84
+  %65 = load i64, ptr %.anon85, align 8
+  %gt87 = icmp ugt i64 3, %65
+  br i1 %gt87, label %loop.body88, label %loop.exit92
 
-loop.body92:                                      ; preds = %loop.cond90
-  %71 = load <3 x float>, ptr %foo2, align 16
-  %72 = load i64, ptr %.anon89, align 8
-  %73 = extractelement <3 x float> %71, i64 %72
-  %fpfpext94 = fpext float %73 to double
-  store double %fpfpext94, ptr %a93, align 8
-  %74 = load double, ptr %a93, align 8
-  call void (ptr, ...) @printf(ptr @.str.10, double %74)
-  %75 = load i64, ptr %.anon89, align 8
-  %addnuw95 = add nuw i64 %75, 1
-  store i64 %addnuw95, ptr %.anon89, align 8
-  br label %loop.cond90
+loop.body88:                                      ; preds = %loop.cond86
+  %66 = load <3 x float>, ptr %foo2, align 16
+  %67 = load i64, ptr %.anon85, align 8
+  %68 = extractelement <3 x float> %66, i64 %67
+  %fpfpext90 = fpext float %68 to double
+  store double %fpfpext90, ptr %a89, align 8
+  %69 = load double, ptr %a89, align 8
+  call void (ptr, ...) @printf(ptr @.str.10, double %69)
+  %70 = load i64, ptr %.anon85, align 8
+  %addnuw91 = add nuw i64 %70, 1
+  store i64 %addnuw91, ptr %.anon85, align 8
+  br label %loop.cond86
 
-loop.exit96:                                      ; preds = %loop.cond90
+loop.exit92:                                      ; preds = %loop.cond86
   ret void
 }

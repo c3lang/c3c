@@ -765,6 +765,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_PTR_ACCESS:
+		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -1622,19 +1623,20 @@ SKIP_OVERLOAD:;
 	}
 	else
 	{
-		if (enumerator_type->type_kind == TYPE_ARRAY)
+		switch (enumerator_type->type_kind)
 		{
-			array_len = enumerator_type->array.len;
-			len_call = NULL;
-		}
-		else
-		{
-			len_call = expr_new(EXPR_BUILTIN_ACCESS, enumerator->span);
-			if (!sema_analyse_expr(context, enum_val)) return false;
-			len_call->builtin_access_expr.inner = exprid(enum_val);
-			len_call->builtin_access_expr.kind = ACCESS_LEN;
-			len_call->resolve_status = RESOLVE_DONE;
-			len_call->type = type_isz;
+			case TYPE_ARRAY:
+			case TYPE_VECTOR:
+				array_len = enumerator_type->array.len;
+				len_call = NULL;
+				break;
+			case TYPE_SLICE:
+				if (!sema_analyse_expr(context, enum_val)) return false;
+				len_call = expr_new_expr(EXPR_SLICE_LEN, enumerator);
+				expr_rewrite_slice_len(len_call, enum_val, type_isz);
+				break;
+			default:
+				UNREACHABLE
 		}
 	}
 	bool is_single_pass = array_len == 1;

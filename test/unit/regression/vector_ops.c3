@@ -83,6 +83,8 @@ fn void! testb() @test
 
 fn void! testi() @test
 {
+	int[<4>] x = { 4, 0, -1, 33 };
+	assert({ true, false, true, true} == (bool[<4>])x);
     int[<4>] y = { 1, 2, 3, 4 };
     int[<4>] z = { 2, 2, 2, -100 };
     int[<4>] w = y + z;

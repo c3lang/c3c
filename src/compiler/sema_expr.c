@@ -559,6 +559,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_POINTER_OFFSET:
 		case EXPR_POST_UNARY:
 		case EXPR_PTR_ACCESS:
+		case EXPR_SLICE_LEN:
 		case EXPR_RECAST:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
@@ -605,6 +606,7 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_MEMBER_GET:
 		case EXPR_EXT_TRUNC:
 		case EXPR_PTR_ACCESS:
+		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
@@ -4997,7 +4999,7 @@ CHECK_DEEPER:
 				expr_rewrite_const_int(expr, type_isz, parent->const_expr.bytes.len);
 				return true;
 			}
-			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_LEN, type_usz);
+			expr_rewrite_slice_len(expr, parent, type_usz);
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
@@ -5035,12 +5037,12 @@ CHECK_DEEPER:
 	{
 		if (flat_type->type_kind == TYPE_SLICE)
 		{
-			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_get_ptr(flat_type->array.base));
+			expr_rewrite_ptr_access(expr, current_parent, type_get_ptr(flat_type->array.base));
 			return true;
 		}
 		if (type_is_any_raw(flat_type))
 		{
-			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_PTR, type_voidptr);
+			expr_rewrite_ptr_access(expr, current_parent, type_voidptr);
 			return true;
 		}
 	}
@@ -7064,20 +7066,25 @@ static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
 	{
 		if (is_plus)
 		{
-			SEMA_ERROR(expr, "Cannot use '+' with an expression of type %s.", type_quoted_error_string(no_fail));
-			return false;
+			RETURN_SEMA_ERROR(expr, "Cannot use '+' with an expression of type %s.", type_quoted_error_string(no_fail));
 		}
-		SEMA_ERROR(expr, "Cannot negate an expression of type %s.", type_quoted_error_string(no_fail));
-		return false;
+		RETURN_SEMA_ERROR(expr, "Cannot negate an expression of type %s.", type_quoted_error_string(no_fail));
 	}
 	// 3. Promote the type
 	Type *result_type = cast_numeric_arithmetic_promotion(no_fail);
 	if (!cast_implicit(context, inner, result_type, false)) return false;
 
-	// If it's a plus, we simply replace the inner with the outer.
+	// If it's a plus, we simply replace the inner with the outer or with a recast.
 	if (is_plus)
 	{
-		expr_replace(expr, inner);
+		if (expr_is_const(expr))
+		{
+			expr_replace(expr, inner);
+			return true;
+		}
+		expr->expr_kind = EXPR_RECAST;
+		expr->inner_expr = inner;
+		expr->type = inner->type;
 		return true;
 	}
 	// 4. If it's non-const, we're done.
@@ -8981,6 +8988,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_EXT_TRUNC:
 			case EXPR_INT_TO_BOOL:
 			case EXPR_PTR_ACCESS:
+			case EXPR_SLICE_LEN:
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
@@ -9378,6 +9386,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_DISCARD:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
+		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
@@ -9822,13 +9831,16 @@ bool sema_analyse_expr(SemaContext *context, Expr *expr)
 
 bool sema_cast_const(Expr *expr)
 {
-	if (expr->resolve_status != RESOLVE_DONE)
-	{
-		puts("Tesst");
-	}
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	switch (expr->expr_kind)
 	{
+		case EXPR_RECAST:
+			if (sema_cast_const(expr->inner_expr))
+			{
+				expr_replace(expr, expr->inner_expr);
+				return true;
+			}
+			return false;
 		case EXPR_ACCESS:
 		case EXPR_BITACCESS:
 		{

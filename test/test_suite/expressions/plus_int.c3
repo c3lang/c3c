@@ -18,3 +18,10 @@ fn void test3()
     @ok(+a);
     long b = +a; // #error: 'long!' to 'long'
 }
+
+
+fn void test4()
+{
+	int a = 1;
+	+a = 3; // #error: An assignable expression
+}
