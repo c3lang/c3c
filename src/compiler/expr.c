@@ -640,6 +640,8 @@ bool expr_is_pure(Expr *expr)
 	if (!expr) return true;
 	switch (expr->expr_kind)
 	{
+		case EXPR_CAST:
+			UNREACHABLE
 		case EXPR_BUILTIN:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
@@ -703,10 +705,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_LAST_FAULT:
 		case EXPR_MEMBER_GET:
 			return true;
-		case EXPR_VASPLAT:
-			return true;
 		case EXPR_BITASSIGN:
-			return false;
+		case EXPR_VASPLAT:
 		case EXPR_ANYSWITCH:
 			return false;
 		case EXPR_BINARY:
@@ -763,8 +763,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_SUBSCRIPT_ASSIGN:
 			return false;
-		case EXPR_CAST:
-			return exprid_is_pure(expr->cast_expr.expr);
 		case EXPR_EXPRESSION_LIST:
 		{
 			FOREACH(Expr *, e, expr->expression_list)

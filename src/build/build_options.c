@@ -175,7 +175,7 @@ static void usage(bool full)
 		PRINTF("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
 		PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		PRINTF("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
-		PRINTF("  --win-vs-dirs <dir>;<dir> - Override Windows VS detection.");
+		PRINTF("  --win-vs-dirs <dir>;<dir>  - Override Windows VS detection.");
 		PRINTF("");
 		PRINTF("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
 		PRINTF("  --macos-min-version <ver>  - Set the minimum MacOS version to compile for.");

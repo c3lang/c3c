@@ -7035,6 +7035,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_BUILTIN:
+		case EXPR_COMPOUND_LITERAL:
+		case EXPR_OPERATOR_CHARS:
+		case EXPR_CAST:
 			UNREACHABLE
 		case EXPR_VECTOR_TO_ARRAY:
 			llvm_emit_vector_to_array(c, value, expr);
@@ -7162,8 +7166,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_TYPEID_INFO:
 			llvm_emit_typeid_info(c, value, expr);
 			return;
-		case EXPR_BUILTIN:
-			UNREACHABLE;
 		case EXPR_DECL:
 			llvm_emit_local_decl(c, expr->decl_expr, value);
 			return;
@@ -7188,9 +7190,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_EXPR_BLOCK:
 			llvm_emit_expr_block(c, value, expr);
 			return;
-		case EXPR_COMPOUND_LITERAL:
-		case EXPR_OPERATOR_CHARS:
-			UNREACHABLE
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			llvm_emit_initializer_list_expr(c, value, expr);
@@ -7248,8 +7247,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 			llvm_emit_expression_list_expr(c, value, expr);
 			return;
-		case EXPR_CAST:
-			UNREACHABLE
 		case EXPR_BITACCESS:
 			llvm_emit_bitaccess(c, value, expr);
 			return;
