@@ -815,4 +815,3 @@ fn void* __memcpy(void* dst, void* src, usz n) @weak @export("memcpy")
 	}
 	return dst;
 }
-
