@@ -1323,6 +1323,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			switch (arg->expr_kind)
 			{
 				case EXPR_SUBSCRIPT:
+					if (type) break;
 					arg->expr_kind = EXPR_SUBSCRIPT_ADDR;
 					is_subscript = true;
 					break;

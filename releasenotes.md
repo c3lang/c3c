@@ -59,6 +59,7 @@
 - Fix `+a = 1` erronously being accepted.
 - Fix not freeing a zero length String
 - Macros with trailing bodys aren't allowed as the single statement after a while loop with no body #1772.
+- Deref subscripts as needed for macro ref method arguments. #1789
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
