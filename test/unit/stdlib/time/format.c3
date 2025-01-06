@@ -1,6 +1,6 @@
 module timeformat_test @test;
 
-import std::time::datetime, std::collections::list, std::collections::triple, std::time;
+import std::time::datetime, std::collections::list, std::collections::triple;
 
 def FormatTzTestSpec = Triple(<TzDateTime, FormatSpec, String>);
 def FormatTestSpec = Triple(<DateTime, FormatSpec, String>);

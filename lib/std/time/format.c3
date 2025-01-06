@@ -1,4 +1,4 @@
-module std::time;
+module std::time::datetime @if(env::LIBC);
 
 
 enum FormatSpec : char
