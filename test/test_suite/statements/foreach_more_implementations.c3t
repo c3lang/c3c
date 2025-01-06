@@ -44,89 +44,83 @@ define void @test.main() #0 {
 entry:
   %x = alloca [2 x i32], align 4
   %v = alloca %Vector, align 8
-  %.anon = alloca i64, align 8
   %vector = alloca %Vector, align 8
-  %.anon1 = alloca i64, align 8
+  %.anon = alloca i64, align 8
   %ref = alloca ptr, align 8
   %element = alloca i64, align 8
   %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
+  %vector2 = alloca %Vector, align 8
   %.anon3 = alloca i64, align 8
-  %vector4 = alloca %Vector, align 8
-  %.anon5 = alloca i64, align 8
   %i = alloca i32, align 4
-  %element9 = alloca i64, align 8
-  %varargslots12 = alloca [1 x %any], align 16
-  %retparam13 = alloca i64, align 8
+  %element7 = alloca i64, align 8
+  %varargslots10 = alloca [1 x %any], align 16
+  %retparam11 = alloca i64, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
   store i64 2, ptr %v, align 8
   %ptradd = getelementptr inbounds i8, ptr %v, i64 8
   store ptr %x, ptr %ptradd, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %vector, ptr align 8 %v, i32 16, i1 false)
   %0 = load i64, ptr %vector, align 8
-  store i64 %0, ptr %.anon, align 8
-  store i64 0, ptr %.anon1, align 8
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %1 = load i64, ptr %.anon1, align 8
-  %2 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %2
+  %1 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %3 = load i64, ptr %.anon1, align 8
-  store i64 %3, ptr %element, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %v, i64 8
-  %4 = load ptr, ptr %ptradd2, align 8
-  %5 = load i64, ptr %element, align 8
-  %ptroffset = getelementptr inbounds [4 x i8], ptr %4, i64 %5
+  %2 = load i64, ptr %.anon, align 8
+  store i64 %2, ptr %element, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %v, i64 8
+  %3 = load ptr, ptr %ptradd1, align 8
+  %4 = load i64, ptr %element, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %3, i64 %4
   store ptr %ptroffset, ptr %ref, align 8
-  %6 = load ptr, ptr %ref, align 8
-  %7 = insertvalue %any undef, ptr %6, 0
-  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %8, ptr %varargslots, align 16
-  %9 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 3, ptr %varargslots, i64 1)
-  %10 = load ptr, ptr %ref, align 8
-  %11 = load i32, ptr %10, align 4
-  %add = add i32 %11, 2
-  store i32 %add, ptr %10, align 4
-  %12 = load i64, ptr %.anon1, align 8
-  %addnuw = add nuw i64 %12, 1
-  store i64 %addnuw, ptr %.anon1, align 8
+  %5 = load ptr, ptr %ref, align 8
+  %6 = insertvalue %any undef, ptr %5, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %7, ptr %varargslots, align 16
+  %8 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 3, ptr %varargslots, i64 1)
+  %9 = load ptr, ptr %ref, align 8
+  %10 = load i32, ptr %9, align 4
+  %add = add i32 %10, 2
+  store i32 %add, ptr %9, align 4
+  %11 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %11, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %vector4, ptr align 8 %v, i32 16, i1 false)
-  %13 = load i64, ptr %vector4, align 8
-  store i64 %13, ptr %.anon3, align 8
-  store i64 0, ptr %.anon5, align 8
-  br label %loop.cond6
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %vector2, ptr align 8 %v, i32 16, i1 false)
+  %12 = load i64, ptr %vector2, align 8
+  store i64 0, ptr %.anon3, align 8
+  br label %loop.cond4
 
-loop.cond6:                                       ; preds = %loop.body8, %loop.exit
-  %14 = load i64, ptr %.anon5, align 8
-  %15 = load i64, ptr %.anon3, align 8
-  %lt7 = icmp ult i64 %14, %15
-  br i1 %lt7, label %loop.body8, label %loop.exit15
+loop.cond4:                                       ; preds = %loop.body6, %loop.exit
+  %13 = load i64, ptr %.anon3, align 8
+  %lt5 = icmp ult i64 %13, %12
+  br i1 %lt5, label %loop.body6, label %loop.exit13
 
-loop.body8:                                       ; preds = %loop.cond6
-  %16 = load i64, ptr %.anon5, align 8
-  store i64 %16, ptr %element9, align 8
-  %ptradd10 = getelementptr inbounds i8, ptr %v, i64 8
-  %17 = load ptr, ptr %ptradd10, align 8
-  %18 = load i64, ptr %element9, align 8
-  %ptroffset11 = getelementptr inbounds [4 x i8], ptr %17, i64 %18
-  %19 = load i32, ptr %ptroffset11, align 4
-  store i32 %19, ptr %i, align 4
-  %20 = insertvalue %any undef, ptr %i, 0
-  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %21, ptr %varargslots12, align 16
-  %22 = call i64 @std.io.printf(ptr %retparam13, ptr @.str.1, i64 3, ptr %varargslots12, i64 1)
-  %23 = load i64, ptr %.anon5, align 8
-  %addnuw14 = add nuw i64 %23, 1
-  store i64 %addnuw14, ptr %.anon5, align 8
-  br label %loop.cond6
+loop.body6:                                       ; preds = %loop.cond4
+  %14 = load i64, ptr %.anon3, align 8
+  store i64 %14, ptr %element7, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %v, i64 8
+  %15 = load ptr, ptr %ptradd8, align 8
+  %16 = load i64, ptr %element7, align 8
+  %ptroffset9 = getelementptr inbounds [4 x i8], ptr %15, i64 %16
+  %17 = load i32, ptr %ptroffset9, align 4
+  store i32 %17, ptr %i, align 4
+  %18 = insertvalue %any undef, ptr %i, 0
+  %19 = insertvalue %any %18, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %19, ptr %varargslots10, align 16
+  %20 = call i64 @std.io.printf(ptr %retparam11, ptr @.str.1, i64 3, ptr %varargslots10, i64 1)
+  %21 = load i64, ptr %.anon3, align 8
+  %addnuw12 = add nuw i64 %21, 1
+  store i64 %addnuw12, ptr %.anon3, align 8
+  br label %loop.cond4
 
-loop.exit15:                                      ; preds = %loop.cond6
+loop.exit13:                                      ; preds = %loop.cond4
   ret void
 }

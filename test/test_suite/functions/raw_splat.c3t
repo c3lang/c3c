@@ -33,12 +33,10 @@ entry:
   %.anon12 = alloca i32, align 4
   %.anon14 = alloca i32, align 4
   %z = alloca %"int[]", align 8
-  %.anon22 = alloca %"int[]", align 8
-  %.anon24 = alloca i32, align 4
-  %.anon26 = alloca i32, align 4
-  %.anon31 = alloca %"int[]", align 8
+  %.anon23 = alloca i32, align 4
+  %.anon25 = alloca i32, align 4
+  %.anon31 = alloca i32, align 4
   %.anon33 = alloca i32, align 4
-  %.anon35 = alloca i32, align 4
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon, ptr align 4 %y, i32 12, i1 false)
   %0 = load i32, ptr %.anon, align 4
@@ -96,55 +94,53 @@ entry:
   store %"int[]" %20, ptr %z, align 8
   %21 = load %"int[]", ptr %z, align 8
   %22 = extractvalue %"int[]" %21, 0
-  %ptradd23 = getelementptr inbounds i8, ptr %22, i64 4
-  %23 = insertvalue %"int[]" undef, ptr %ptradd23, 0
+  %ptradd22 = getelementptr inbounds i8, ptr %22, i64 4
+  %23 = insertvalue %"int[]" undef, ptr %ptradd22, 0
   %24 = insertvalue %"int[]" %23, i64 2, 1
-  store %"int[]" %24, ptr %.anon22, align 8
-  %25 = load ptr, ptr %.anon22, align 8
+  %25 = extractvalue %"int[]" %24, 0
   %26 = load i32, ptr %25, align 4
-  store i32 %26, ptr %.anon24, align 4
-  %27 = load ptr, ptr %.anon22, align 8
-  %ptradd25 = getelementptr inbounds i8, ptr %27, i64 4
-  %28 = load i32, ptr %ptradd25, align 4
-  store i32 %28, ptr %.anon26, align 4
+  store i32 %26, ptr %.anon23, align 4
+  %27 = extractvalue %"int[]" %24, 0
+  %ptradd24 = getelementptr inbounds i8, ptr %27, i64 4
+  %28 = load i32, ptr %ptradd24, align 4
+  store i32 %28, ptr %.anon25, align 4
   %29 = load i32, ptr @rawsplat.x, align 4
-  %30 = load i32, ptr %.anon24, align 4
-  %mul27 = mul i32 %30, 0
-  %add28 = add i32 %29, %mul27
-  store i32 %add28, ptr @rawsplat.x, align 4
+  %30 = load i32, ptr %.anon23, align 4
+  %mul26 = mul i32 %30, 0
+  %add27 = add i32 %29, %mul26
+  store i32 %add27, ptr @rawsplat.x, align 4
   %31 = load i32, ptr @rawsplat.x, align 4
-  %32 = load i32, ptr %.anon26, align 4
-  %mul29 = mul i32 %32, 1
-  %add30 = add i32 %31, %mul29
-  store i32 %add30, ptr @rawsplat.x, align 4
+  %32 = load i32, ptr %.anon25, align 4
+  %mul28 = mul i32 %32, 1
+  %add29 = add i32 %31, %mul28
+  store i32 %add29, ptr @rawsplat.x, align 4
   %33 = load %"int[]", ptr %z, align 8
   %34 = extractvalue %"int[]" %33, 0
-  %ptradd32 = getelementptr inbounds i8, ptr %34, i64 4
-  %35 = insertvalue %"int[]" undef, ptr %ptradd32, 0
+  %ptradd30 = getelementptr inbounds i8, ptr %34, i64 4
+  %35 = insertvalue %"int[]" undef, ptr %ptradd30, 0
   %36 = insertvalue %"int[]" %35, i64 2, 1
-  store %"int[]" %36, ptr %.anon31, align 8
-  %37 = load ptr, ptr %.anon31, align 8
+  %37 = extractvalue %"int[]" %36, 0
   %38 = load i32, ptr %37, align 4
-  store i32 %38, ptr %.anon33, align 4
-  %39 = load ptr, ptr %.anon31, align 8
-  %ptradd34 = getelementptr inbounds i8, ptr %39, i64 4
-  %40 = load i32, ptr %ptradd34, align 4
-  store i32 %40, ptr %.anon35, align 4
+  store i32 %38, ptr %.anon31, align 4
+  %39 = extractvalue %"int[]" %36, 0
+  %ptradd32 = getelementptr inbounds i8, ptr %39, i64 4
+  %40 = load i32, ptr %ptradd32, align 4
+  store i32 %40, ptr %.anon33, align 4
   %41 = load i32, ptr @rawsplat.x, align 4
-  %add36 = add i32 %41, 0
-  store i32 %add36, ptr @rawsplat.x, align 4
+  %add34 = add i32 %41, 0
+  store i32 %add34, ptr @rawsplat.x, align 4
   %42 = load i32, ptr @rawsplat.x, align 4
-  %43 = load i32, ptr %.anon33, align 4
-  %mul37 = mul i32 %43, 1
-  %add38 = add i32 %42, %mul37
-  store i32 %add38, ptr @rawsplat.x, align 4
+  %43 = load i32, ptr %.anon31, align 4
+  %mul35 = mul i32 %43, 1
+  %add36 = add i32 %42, %mul35
+  store i32 %add36, ptr @rawsplat.x, align 4
   %44 = load i32, ptr @rawsplat.x, align 4
-  %45 = load i32, ptr %.anon35, align 4
-  %mul39 = mul i32 %45, 2
-  %add40 = add i32 %44, %mul39
-  store i32 %add40, ptr @rawsplat.x, align 4
+  %45 = load i32, ptr %.anon33, align 4
+  %mul37 = mul i32 %45, 2
+  %add38 = add i32 %44, %mul37
+  store i32 %add38, ptr @rawsplat.x, align 4
   %46 = load i32, ptr @rawsplat.x, align 4
-  %add41 = add i32 %46, 15
-  store i32 %add41, ptr @rawsplat.x, align 4
+  %add39 = add i32 %46, 15
+  store i32 %add39, ptr @rawsplat.x, align 4
   ret void
 }

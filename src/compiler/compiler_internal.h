@@ -420,6 +420,7 @@ typedef struct VarDecl_
 	bool no_alias : 1;
 	bool bit_is_expr : 1;
 	bool is_self : 1;
+	bool is_temp : 1;
 	union
 	{
 		Expr *init_expr;
