@@ -1257,34 +1257,6 @@ void llvm_new_phi(GenContext *c, BEValue *value, const char *name, Type *type, L
 
 static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *value, Expr *expr);
 
-/**
- * Here we are converting an array to a slice.
- * int[] x = &the_array;
- * @param c
- * @param value
- * @param to_type
- * @param from_type
- */
-static void llvm_emit_arr_to_slice_cast(GenContext *c, BEValue *value, Type *to_type)
-{
-	ByteSize size = value->type->pointer->array.len;
-	LLVMValueRef pointer;
-	Type *array_type = value->type->pointer->array.base;
-	if (size)
-	{
-		llvm_value_rvalue(c, value);
-		pointer = value->value;
-	}
-	else
-	{
-		pointer = llvm_get_zero(c, type_get_ptr(array_type));
-	}
-	LLVMValueRef len = llvm_const_int(c, type_usz, size);
-	llvm_value_aggregate_two(c, value, to_type, pointer, len);
-}
-
-
-
 
 // Prune the common occurrence where the optional is not used.
 static void llvm_prune_optional(GenContext *c, LLVMBasicBlockRef discard_fail)
@@ -1399,28 +1371,6 @@ static void llvm_emit_bitstruct_to_bool(GenContext *c, BEValue *value, Type *to_
 	llvm_value_set(value, llvm_emit_char_array_zero(c, value, false), to_type);
 }
 
-void llvm_emit_cast(GenContext *c, CastKind cast_kind, Expr *expr, BEValue *value, Type *to_type, Type *from_type)
-{
-	Type *to_type_original = to_type;
-	to_type = type_flatten(to_type);
-	from_type = type_flatten(from_type);
-	switch (cast_kind)
-	{
-		case CAST_BSBOOL:
-			llvm_emit_bitstruct_to_bool(c, value, to_type, from_type);
-			return;
-		case CAST_ERROR:
-			UNREACHABLE
-		case CAST_APTSA:
-			llvm_emit_arr_to_slice_cast(c, value, to_type);
-			break;
-		case CAST_EUER:
-			REMINDER("Improve fault to err comparison");
-			break;
-	}
-	value->type = type_lowering(to_type);
-}
-
 void llvm_emit_bool_cast(GenContext *c, Expr *expr, BEValue *value)
 {
 	switch (value->type->type_kind)
@@ -1486,6 +1436,7 @@ void llvm_emit_bool_cast(GenContext *c, Expr *expr, BEValue *value)
 			value->kind = BE_BOOLEAN;
 			return;
 		case TYPE_BITSTRUCT:
+
 			llvm_emit_bitstruct_to_bool(c, value, type_bool, value->type);
 			return;
 		case TYPE_INFERRED_ARRAY:
@@ -7065,6 +7016,24 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->int_to_bool_expr.inner);
+	Type *inner_type = value->type;
+	if (inner_type->type_kind == TYPE_ARRAY)
+	{
+		assert(inner_type->array.base == type_char || inner_type->array.base == type_ichar);
+		llvm_value_addr(c, value);
+		unsigned len = type_size(value->type);
+		ASSERT0(len > 0);
+		LLVMValueRef total = NULL;
+		for (int i = 0; i < len; i++)
+		{
+			LLVMValueRef ref = llvm_emit_const_ptradd_inbounds_raw(c, value->value, i);
+			LLVMValueRef val = llvm_zext_trunc(c, llvm_load(c, c->byte_type, ref, 1, ""), llvm_get_type(c, type_cint));
+			total = total ? LLVMBuildAdd(c->builder, total, val, "") : val;
+		}
+		LLVMValueRef val = LLVMBuildICmp(c->builder, expr->int_to_bool_expr.negate ? LLVMIntEQ : LLVMIntNE, total, llvm_get_zero(c, type_cint), "");
+		llvm_value_set(value, val, expr->type);
+		return;
+	}
 	llvm_value_rvalue(c, value);
 	llvm_value_set(value,
 	               expr->int_to_bool_expr.negate
@@ -7224,6 +7193,24 @@ void llvm_emit_slice_to_vec_array(GenContext *c, BEValue *value, Expr *expr)
 	llvm_value_set_address(value, temp, to_type, alignment);
 }
 
+static inline void llvm_emit_make_slice(GenContext *c, BEValue *value, Expr *expr)
+{
+	ArraySize size = expr->make_slice_expr.len;
+	LLVMValueRef pointer;
+	if (size)
+	{
+		llvm_emit_expr(c, value, expr->make_slice_expr.ptr);
+		llvm_value_rvalue(c, value);
+		pointer = value->value;
+	}
+	else
+	{
+		assert(!expr->make_slice_expr.ptr);
+		pointer = llvm_get_zero(c, type_voidptr);
+	}
+	llvm_value_aggregate_two(c, value, expr->type, pointer, llvm_const_int(c, type_usz, size));
+}
+
 void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	EMIT_EXPR_LOC(c, expr);
@@ -7250,6 +7237,9 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_SCALAR_TO_VECTOR:
 			llvm_emit_scalar_to_vector(c, value, expr);
+			return;
+		case EXPR_MAKE_SLICE:
+			llvm_emit_make_slice(c, value, expr);
 			return;
 		case EXPR_ENUM_FROM_ORD:
 			llvm_emit_enum_from_ord(c, value, expr);
@@ -7303,6 +7293,12 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			value->type = type_lowering(expr->type);
 			return;
 		case EXPR_RVALUE:
+			llvm_emit_expr(c, value, expr->inner_expr);
+			llvm_value_rvalue(c, value);
+			value->type = type_lowering(expr->type);
+			return;
+		case EXPR_ANYFAULT_TO_FAULT:
+			REMINDER("Improve anyfault -> fault");
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
 			value->type = type_lowering(expr->type);
@@ -7446,14 +7442,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_expression_list_expr(c, value, expr);
 			return;
 		case EXPR_CAST:
-			llvm_emit_exprid(c, value, expr->cast_expr.expr);
-			llvm_emit_cast(c,
-			               expr->cast_expr.kind,
-			               expr,
-			               value,
-			               expr->type,
-			               exprtype(expr->cast_expr.expr));
-			return;
+			UNREACHABLE
 		case EXPR_BITACCESS:
 			llvm_emit_bitaccess(c, value, expr);
 			return;

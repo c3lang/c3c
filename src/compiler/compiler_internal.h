@@ -968,7 +968,6 @@ typedef struct
 
 typedef struct
 {
-	CastKind kind : 8;
 	ExprId expr;
 	TypeInfoId type_info;
 } ExprCast;
@@ -1134,6 +1133,13 @@ typedef struct
 	Expr *inner;
 	Expr *typeid;
 } ExprMakeAny;
+
+typedef struct
+{
+	Expr *ptr;
+	ArraySize len;
+} ExprMakeSlice;
+
 struct Expr_
 {
 	Type *type;
@@ -1179,6 +1185,7 @@ struct Expr_
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
+		ExprMakeSlice make_slice_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
 		ExprMacroBody macro_body_expr;              // 16
@@ -1322,7 +1329,6 @@ typedef struct
 	bool value_by_ref : 1;
 	bool iterator : 1;
 	bool is_reverse : 1;
-	CastKind cast : 8;
 	ExprId enumeration;
 	AstId body;
 	DeclId index;
@@ -2227,6 +2233,7 @@ Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
 bool expr_is_unwrapped_ident(Expr *expr);
+bool expr_is_zero(Expr *expr);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE void expr_resolve_ident(Expr *expr, Decl *decl);
@@ -3283,6 +3290,7 @@ ConstInitializer *const_init_new_struct(Type *type, Expr **elements);
 ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **elements);
 ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index);
 ConstInitializer *const_init_new_array_value(Expr *expr, ArrayIndex index);
+bool const_init_is_zero(ConstInitializer *init);
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
@@ -3369,6 +3377,9 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			expr_set_span(expr->make_any_expr.inner, loc);
 			expr_set_span(expr->make_any_expr.typeid, loc);
 			return;
+		case EXPR_MAKE_SLICE:
+			if (expr->make_slice_expr.ptr) expr_set_span(expr->make_slice_expr.ptr, loc);
+			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
 		case EXPR_VECTOR_TO_ARRAY:
@@ -3384,6 +3395,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_RECAST:
+		case EXPR_ANYFAULT_TO_FAULT:
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3759,35 +3771,9 @@ INLINE void expr_rewrite_int_to_bool(Expr *expr, bool negate)
 {
 	if (expr_is_const(expr))
 	{
-		switch (expr->const_expr.const_kind)
-		{
-			case CONST_FLOAT:
-			case CONST_BOOL:
-			case CONST_ENUM:
-			case CONST_BYTES:
-			case CONST_STRING:
-			case CONST_SLICE:
-			case CONST_INITIALIZER:
-			case CONST_UNTYPED_LIST:
-			case CONST_MEMBER:
-				UNREACHABLE
-			case CONST_ERR:
-				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
-				return;
-			case CONST_INTEGER:
-				expr_rewrite_const_bool(expr, type_bool, !int_is_zero(expr->const_expr.ixx));
-				return;
-			case CONST_POINTER:
-				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.ptr != 0);
-				return;
-			case CONST_TYPEID:
-				expr_rewrite_const_bool(expr, type_bool, expr->type != NULL);
-				return;
-			case CONST_REF:
-				expr_rewrite_const_bool(expr, type_bool, true);
-				return;
-		}
-		UNREACHABLE
+		bool is_zero = expr_is_zero(expr);
+		expr_rewrite_const_bool(expr, type_bool, negate ? is_zero : !is_zero);
+		return;
 	}
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_BOOL;

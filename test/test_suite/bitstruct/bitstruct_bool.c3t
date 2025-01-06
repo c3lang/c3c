@@ -37,8 +37,8 @@ fn void main()
   %1 = load i32, ptr %a, align 4
   %2 = load i32, ptr %b, align 4
   %and = and i32 %1, %2
-  %neq = icmp ne i32 %and, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i32 %and, 0
+  br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
   ret void
@@ -56,9 +56,8 @@ if.exit:                                          ; preds = %entry
   %6 = load i8, ptr %ptradd, align 1
   %zext2 = zext i8 %6 to i32
   %7 = add i32 %zext, %zext2
-  %8 = icmp ne i32 %7, 0
-  %not = xor i1 %8, true
-  br i1 %not, label %if.then3, label %if.exit4
+  %8 = icmp eq i32 %7, 0
+  br i1 %8, label %if.then3, label %if.exit4
 
 if.then3:                                         ; preds = %if.exit
   ret void

@@ -271,6 +271,9 @@ RETRY:
 			return;
 		case EXPR_BUILTIN:
 			return;
+		case EXPR_MAKE_SLICE:
+			expr = expr->make_slice_expr.ptr;
+			goto RETRY;
 		case EXPR_MAKE_ANY:
 			sema_trace_expr_liveness(expr->make_any_expr.typeid);
 			expr = expr->make_any_expr.inner;
@@ -339,6 +342,7 @@ RETRY:
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:

@@ -486,6 +486,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -495,6 +496,9 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_MAKE_ANY:
 			MACRO_COPY_EXPR(expr->make_any_expr.inner);
 			MACRO_COPY_EXPR(expr->make_any_expr.typeid);
+			return expr;
+		case EXPR_MAKE_SLICE:
+			MACRO_COPY_EXPR(expr->make_slice_expr.ptr);
 			return expr;
 		case EXPR_DEFAULT_ARG:
 			MACRO_COPY_EXPR(expr->default_arg_expr.inner);

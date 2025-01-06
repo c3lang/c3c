@@ -886,6 +886,47 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 	const_init->kind = CONST_INIT_VALUE;
 }
 
+bool const_init_is_zero(ConstInitializer *init)
+{
+	RETRY:
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return true;
+		case CONST_INIT_STRUCT:
+		{
+			FOREACH(ConstInitializer *, i, init->init_struct)
+			{
+				if (!const_init_is_zero(i)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_UNION:
+			init = init->init_union.element;
+			goto RETRY;
+		case CONST_INIT_VALUE:
+			return expr_is_zero(init->init_value);
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH(ConstInitializer *, i, init->init_array.elements)
+			{
+				if (!const_init_is_zero(i)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			FOREACH(ConstInitializer *, i, init->init_array_full)
+			{
+				if (!const_init_is_zero(i)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			return const_init_is_zero(init->init_array_value.element);
+	}
+	UNREACHABLE
+}
 ConstInitializer *const_init_new_value(Expr *value)
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);

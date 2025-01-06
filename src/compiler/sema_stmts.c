@@ -285,6 +285,9 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 			case EXPR_RECAST:
 				expr = expr->inner_expr;
 				continue;
+			case EXPR_MAKE_SLICE:
+				expr = expr->make_slice_expr.ptr;
+				continue;
 			case EXPR_MAKE_ANY:
 				expr = expr->make_any_expr.inner;
 				continue;
@@ -766,6 +769,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_INT_TO_BOOL:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_MAKE_SLICE:
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_PTR_ACCESS:
 		case EXPR_FLOAT_TO_INT:
@@ -773,6 +777,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:

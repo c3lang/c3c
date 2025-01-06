@@ -25,10 +25,8 @@ typedef struct
 static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);
 static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list);
-static inline bool insert_runtime_cast(Expr *expr, CastKind kind, Type *type);
 static void vector_const_initializer_convert_to_type(SemaContext *context, ConstInitializer *initializer, Type *to_type);
 static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent);
-INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type);
 
 static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
                           bool is_binary_conversion);
@@ -452,12 +450,7 @@ RETRY:
 			expr = expr->ext_trunc_expr.inner;
 			goto RETRY;
 		case EXPR_CAST:
-			switch (expr->cast_expr.kind)
-			{
-				default:
-					// For all other casts we regard them as opaque.
-					goto CHECK_SIZE;
-			}
+			UNREACHABLE
 		case EXPR_CONST:
 			// For constants, just check that they will fit.
 			if (type_is_integer(type))
@@ -1397,23 +1390,20 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 
 // CASTS ----
 
-/**
- * Insert a cast. This will assume that the cast is valid. No typeinfo will be registered.
- */
-static inline bool insert_runtime_cast(Expr *expr, CastKind kind, Type *type)
+
+static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
-	ASSERT0(expr->type);
+	Type *flat = type_flatten(expr->type);
+	ASSERT0(flat->type_kind == TYPE_POINTER);
+	flat = flat->pointer;
+	ASSERT0(flat->array.len > 0);
 	Expr *inner = expr_copy(expr);
-	expr->expr_kind = EXPR_CAST;
-	expr->cast_expr.kind = kind;
-	expr->cast_expr.expr = exprid(inner);
-	expr->cast_expr.type_info = 0;
+	expr->make_slice_expr = (ExprMakeSlice) {.ptr = inner, .len = flat->array.len};
+	expr->expr_kind = EXPR_MAKE_SLICE;
+	expr->resolve_status = RESOLVE_DONE;
 	expr->type = type;
-	return true;
 }
 
-static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type) { insert_runtime_cast(expr, CAST_APTSA, type); }
 static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
@@ -1436,15 +1426,6 @@ static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) {
 static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, expr_copy(expr), type); }
 static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { expr_rewrite_discard(expr); }
 static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr->type = to_type; }
-
-/**
- * Insert a cast on non-const only
- */
-INLINE bool insert_runtime_cast_unless_const(Expr *expr, CastKind kind, Type *type)
-{
-	if (sema_cast_const(expr) && expr->const_expr.const_kind != CONST_TYPEID) return false;
-	return insert_runtime_cast(expr, kind, type);
-}
 
 static void vector_const_initializer_convert_to_type(SemaContext *context, ConstInitializer *initializer, Type *to_type)
 {
@@ -1635,36 +1616,8 @@ static void cast_int_arr_to_bitstruct(SemaContext *context, Expr *expr, Type *ty
 
 static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
-	if (expr_is_const(expr))
-	{
-		if (!expr_is_const_initializer(expr) || expr->const_expr.initializer->kind == CONST_INIT_ZERO)
-		{
-			expr_rewrite_const_bool(expr, type, false);
-			return;
-		}
-		ASSERT0(expr->const_expr.initializer->kind == CONST_INIT_STRUCT);
-		FOREACH(ConstInitializer *, in, expr->const_expr.initializer->init_struct)
-		{
-			if (in->kind == CONST_INIT_ZERO) continue;
-			Expr *e = in->init_value;
-			if (expr_is_const_bool(e))
-			{
-				if (!e->const_expr.b) continue;
-				expr_rewrite_const_bool(expr, type, true);
-				return;
-			}
-			if (expr_is_const_int(e))
-			{
-				if (int_is_zero(e->const_expr.ixx)) continue;
-				expr_rewrite_const_bool(expr, type, true);
-				return;
-			}
-			UNREACHABLE
-		}
-		expr_rewrite_const_bool(expr, type, false);
-		return;
-	}
-	insert_runtime_cast(expr, CAST_BSBOOL, type);
+	expr_rewrite_int_to_bool(expr, false);
+	expr->type = type;
 }
 
 
@@ -1849,7 +1802,15 @@ static void cast_untyped_list_to_other(SemaContext *context, Expr *expr, Type *t
 
 static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
 {
-	if (insert_runtime_cast_unless_const(expr, CAST_EUER, type) || !expr_is_const_fault(expr)) return;
+	if (!sema_cast_const(expr))
+	{
+		expr->inner_expr = expr_copy(expr);
+		expr->expr_kind = EXPR_ANYFAULT_TO_FAULT;
+		expr->type = type;
+		expr->resolve_status = RESOLVE_DONE;
+		return;
+	}
+	assert(expr_is_const_fault(expr));
 	Decl *value = expr->const_expr.enum_err_val;
 	ASSERT0(value->type != type);
 	expr->type = type;
@@ -2072,13 +2033,6 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 	{
 		switch (expr->expr_kind)
 		{
-			case EXPR_CAST:
-			{
-				Expr *inner = exprptr(expr->cast_expr.expr)->unary_expr.expr;
-				expr_replace(expr, inner);
-				cast_no_check(context, expr, to_type, false);
-				return;
-			}
 			case EXPR_SLICE:
 			{
 				expr->inner_expr = expr_copy(expr);
@@ -2090,8 +2044,6 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 			default:
 				UNREACHABLE;
 		}
-		ASSERT0(expr->expr_kind == EXPR_CAST);
-		return;
 	}
 	if (expr_is_const_slice(expr))
 	{

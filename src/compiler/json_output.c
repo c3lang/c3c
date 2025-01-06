@@ -246,6 +246,8 @@ void print_var_expr(FILE *file, Expr *expr)
 	    case EXPR_ADDR_CONVERSION:
 		    print_var_expr(file, expr->inner_expr);
 		    break;
+		case EXPR_MAKE_SLICE:
+			TODO
 	    case EXPR_MAKE_ANY:
 			fputs("TODO: MAKE_ANY", file);
 			break;
@@ -266,6 +268,7 @@ void print_var_expr(FILE *file, Expr *expr)
 			print_var_expr(file, expr->access_expr.parent);
 		    fputs(")", file);
 		    break;
+	    case EXPR_ANYFAULT_TO_FAULT:
 	    case EXPR_VECTOR_FROM_ARRAY:
 			TODO
 	    case EXPR_SLICE_LEN:
@@ -417,11 +420,7 @@ void print_var_expr(FILE *file, Expr *expr)
             }
             break;
         case EXPR_CAST:
-            fputs("(", file);
-            print_type(file, type_infoptr(expr->cast_expr.type_info));
-            fputs(")", file);
-            print_var_expr(file, exprptr(expr->cast_expr.expr));
-            break;
+			UNREACHABLE
         case EXPR_BUILTIN:
         case EXPR_COMPILER_CONST:
             PRINTF("$$%s", expr->builtin_expr.ident);

@@ -17,13 +17,8 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		{
 			return range_const_len(&expr->slice_expr.range);
 		}
-		if (expr->expr_kind != EXPR_CAST) return -1;
-		if (expr->cast_expr.kind != CAST_APTSA) return -1;
-		Expr *inner = exprptr(expr->cast_expr.expr);
-		if (inner->expr_kind != EXPR_UNARY || inner->unary_expr.operator != UNARYOP_ADDR) return -1;
-		inner = inner->unary_expr.expr;
-		if (!sema_cast_const(inner)) return -1;
-		expr = inner;
+		if (expr->expr_kind != EXPR_MAKE_SLICE) return -1;
+		return expr->make_slice_expr.len;
 	}
 	ConstInitializer *init;
 	switch (expr->const_expr.const_kind)

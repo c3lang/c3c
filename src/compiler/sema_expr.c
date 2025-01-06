@@ -551,6 +551,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_MAKE_ANY:
+		case EXPR_MAKE_SLICE:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
@@ -582,6 +583,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
 		case EXPR_VASPLAT:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
@@ -624,11 +626,13 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
+		case EXPR_MAKE_SLICE:
 			return false;
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_ref(expr->expr_other_context.inner);
@@ -9003,6 +9007,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_PTR_ACCESS:
 			case EXPR_ENUM_FROM_ORD:
 			case EXPR_SLICE_LEN:
+			case EXPR_ANYFAULT_TO_FAULT:
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
@@ -9013,6 +9018,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_INT_TO_FLOAT:
 			case EXPR_INT_TO_PTR:
 			case EXPR_PTR_TO_INT:
+			case EXPR_MAKE_SLICE:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
 		}
@@ -9402,6 +9408,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_MAKE_SLICE:
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
@@ -9413,6 +9420,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
 		case EXPR_SLICE_LEN:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_INT_TO_BOOL:

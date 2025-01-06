@@ -4,7 +4,6 @@
 
 #include "compiler_internal.h"
 
-static inline bool expr_cast_is_runtime_const(Expr *expr);
 static inline bool expr_list_is_constant_eval(Expr **exprs);
 static inline bool expr_unary_addr_is_constant_eval(Expr *expr);
 static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back);
@@ -29,6 +28,53 @@ bool expr_in_int_range(Expr *expr, int64_t low, int64_t high)
 	return value >= low && value <= high;
 }
 
+bool expr_is_zero(Expr *expr)
+{
+	if (!sema_cast_const(expr)) return false;
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_FLOAT:
+			return !expr->const_expr.fxx.f;
+		case CONST_INTEGER:
+			return int_is_zero(expr->const_expr.ixx);
+		case CONST_BOOL:
+			return !expr->const_expr.b;
+		case CONST_ENUM:
+		case CONST_ERR:
+			return !expr->const_expr.enum_err_val->enum_constant.ordinal;
+		case CONST_BYTES:
+		case CONST_STRING:
+		{
+			size_t len = expr->const_expr.bytes.len;
+			for (size_t i = 0; i < len; i++)
+			{
+				if (expr->const_expr.bytes.ptr[i]) return false;
+			}
+			return true;
+		}
+		case CONST_POINTER:
+			return !expr->const_expr.ptr;
+		case CONST_TYPEID:
+			return !expr->const_expr.typeid;
+		case CONST_SLICE:
+			return const_init_is_zero(expr->const_expr.slice_init);
+		case CONST_INITIALIZER:
+			return const_init_is_zero(expr->const_expr.initializer);
+		case CONST_UNTYPED_LIST:
+		{
+			FOREACH(Expr *, e, expr->const_expr.untyped_list)
+			{
+				if (!expr_is_zero(e)) return false;
+			}
+			return true;
+		}
+		case CONST_REF:
+			return !expr->const_expr.global_ref;
+		case CONST_MEMBER:
+			return false;
+	}
+	UNREACHABLE
+}
 bool expr_is_unwrapped_ident(Expr *expr)
 {
 	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
@@ -83,6 +129,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
@@ -147,6 +194,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_VASPLAT:
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
+		case EXPR_MAKE_SLICE:
 			return false;
 	}
 	UNREACHABLE
@@ -208,6 +256,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_SLICE_LEN:
 			return false;
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
@@ -219,6 +268,10 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
 			return expr_is_runtime_const(expr->inner_expr);
+		case EXPR_MAKE_SLICE:
+			expr = expr->make_slice_expr.ptr;
+			if (!expr) return true;
+			goto RETRY;
 		case EXPR_MAKE_ANY:
 			if (!expr_is_runtime_const(expr->make_any_expr.typeid)) return false;
 			expr = expr->make_any_expr.inner;
@@ -239,7 +292,7 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
 		case EXPR_CAST:
-			return expr_cast_is_runtime_const(expr);
+			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case EXPR_INT_TO_BOOL:
 			return expr_is_runtime_const(expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
@@ -365,20 +418,6 @@ bool expr_is_runtime_const(Expr *expr)
 	UNREACHABLE
 }
 
-static inline bool expr_cast_is_runtime_const(Expr *expr)
-{
-	switch (expr->cast_expr.kind)
-	{
-		case CAST_ERROR:
-			UNREACHABLE
-		case CAST_EUER:
-		case CAST_APTSA:
-		case CAST_BSBOOL:
-			return exprid_is_runtime_const(expr->cast_expr.expr);
-
-	}
-	UNREACHABLE
-}
 
 static inline bool expr_list_is_constant_eval(Expr **exprs)
 {
@@ -605,6 +644,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 			return false;
+		case EXPR_MAKE_SLICE:
+			return expr_is_pure(expr->make_slice_expr.ptr);
 		case EXPR_MAKE_ANY:
 			return expr_is_pure(expr->make_any_expr.inner) && expr_is_pure(expr->make_any_expr.typeid);
 		case EXPR_PTR_ACCESS:
@@ -619,6 +660,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
