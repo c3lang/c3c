@@ -1159,14 +1159,19 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		{
 			return sema_error_failed_cast(context, last, last->type, cast_to_bool ? type_bool : init->type);
 		}
-		if (cast_to_bool && !may_cast(context, init, type_bool, true, true))
+		if (cast_to_bool)
 		{
-			RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
+			if (!may_cast(context, init, type_bool, true, true))
+			{
+				RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
+			}
+			cast_no_check(context, last, type_bool, false);
 		}
 		if (cast_to_bool && expr_is_const_bool(init))
 		{
 			*result = init->const_expr.b ? COND_TRUE : COND_FALSE;
 		}
+
 		return true;
 	}
 

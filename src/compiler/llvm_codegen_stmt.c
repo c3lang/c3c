@@ -196,13 +196,7 @@ static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bo
 	}
 
 	// Cast the result to bool if needed.
-	if (bool_cast && be_value->type != type_bool)
-	{
-		Type *type = be_value->type;
-		llvm_emit_bool_cast(c, last, be_value);
-
-//		llvm_emit_cast(c, cast, last, be_value, type_bool, type);
-	}
+	ASSERT0(!bool_cast || be_value->type == type_bool);
 }
 
 void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)

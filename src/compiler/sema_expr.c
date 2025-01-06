@@ -905,8 +905,24 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 			cast_no_check(context, copy, type_bool, false);
 			ASSERT_SPAN(expr, expr_is_const_bool(copy));
 			path = copy->const_expr.b ? COND_TRUE : COND_FALSE;
+			expr->ternary_expr.then_expr = exprid(cond);
+			expr->ternary_expr.cond = exprid(copy);
+			left = cond;
 		}
-		left = cond;
+		else
+		{
+			// From foo :? bar
+			// (bool)($temp = foo) ? $temp : bar
+			Decl *temp = decl_new_generated_var(cond->type, VARDECL_LOCAL, cond->span);
+			temp->var.init_expr = expr_copy(cond);
+			cond->expr_kind = EXPR_DECL;
+			cond->decl_expr = temp;
+			cond->resolve_status = RESOLVE_NOT_DONE;
+			if (!sema_analyse_expr(context, cond)) return false;
+			if (!cast_explicit(context, cond, type_bool)) return false;
+			expr->ternary_expr.then_expr = exprid(left = expr_variable(temp));
+			if (!sema_analyse_expr(context, left)) return false;
+		}
 	}
 
 	Expr *right = exprptr(expr->ternary_expr.else_expr);

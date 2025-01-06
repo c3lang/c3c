@@ -1371,99 +1371,6 @@ static void llvm_emit_bitstruct_to_bool(GenContext *c, BEValue *value, Type *to_
 	llvm_value_set(value, llvm_emit_char_array_zero(c, value, false), to_type);
 }
 
-void llvm_emit_bool_cast(GenContext *c, Expr *expr, BEValue *value)
-{
-	switch (value->type->type_kind)
-	{
-		case FLATTENED_TYPES:
-			// These are not possible due to flattening.
-			UNREACHABLE
-		case TYPE_WILDCARD:
-		case TYPE_BOOL:
-			value->value = LLVMBuildTrunc(c->builder, value->value, c->bool_type, "boolbool");
-			value->kind = BE_BOOLEAN;
-			return;
-		case TYPE_FAULTTYPE:
-		case TYPE_ANYFAULT:
-		{
-			BEValue zero;
-			llvm_value_set_int(c, &zero, type_iptr, 0);
-			llvm_emit_int_comp(c, value, value, &zero, BINARYOP_NE);
-			return;
-		}
-		case TYPE_SLICE:
-			llvm_value_fold_optional(c, value);
-			if (llvm_value_is_addr(value))
-			{
-				value->value = llvm_emit_struct_gep_raw(c,
-				                                        value->value,
-				                                        llvm_get_type(c, value->type),
-				                                        1,
-				                                        value->alignment,
-				                                        &value->alignment);
-			}
-			else
-			{
-				value->value = llvm_emit_extract_value(c, value->value, 1);
-			}
-			value->type = type_lowering(type_usz);
-			llvm_value_rvalue(c, value);
-			llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
-			return;
-		case ALL_INTS:
-		{
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildICmp(c->builder, LLVMIntNE, value->value, llvm_get_zero(c, value->type), "intbool");
-			value->kind = type_kind_is_any_vector(value->type->type_kind) ? BE_BOOLVECTOR : BE_BOOLEAN;
-			return;
-		}
-		case ALL_FLOATS:
-			llvm_value_rvalue(c, value);
-			value->value =  LLVMBuildFCmp(c->builder, LLVMRealUNE, value->value, llvm_get_zero(c, value->type), "fpbool");
-			value->kind = BE_BOOLEAN;
-			return;
-		case TYPE_POINTER:
-		case TYPE_FUNC_PTR:
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
-			value->kind = BE_BOOLEAN;
-			return;
-		case TYPE_ANY:
-		case TYPE_INTERFACE:
-			llvm_emit_any_pointer(c, value, value);
-			llvm_value_rvalue(c, value);
-			value->value = LLVMBuildIsNotNull(c->builder, value->value, "ptrbool");
-			value->kind = BE_BOOLEAN;
-			return;
-		case TYPE_BITSTRUCT:
-
-			llvm_emit_bitstruct_to_bool(c, value, type_bool, value->type);
-			return;
-		case TYPE_INFERRED_ARRAY:
-		case TYPE_INFERRED_VECTOR:
-			// These should never be here, type should already be known.
-			UNREACHABLE
-		case TYPE_POISONED:
-		case TYPE_VOID:
-		case TYPE_STRUCT:
-		case TYPE_UNION:
-		case TYPE_FUNC_RAW:
-		case TYPE_ARRAY:
-		case TYPE_TYPEID:
-		case TYPE_TYPEINFO:
-		case TYPE_VECTOR:
-		case TYPE_UNTYPED_LIST:
-		case TYPE_FLEXIBLE_ARRAY:
-		case TYPE_ENUM:
-		case TYPE_MEMBER:
-			// Everything else is an error
-			UNREACHABLE
-	}
-	UNREACHABLE
-}
-
-
-
 static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **current_element_ptr, LLVMValueRef parent, DesignatorElement **last_element_ptr, Expr *value)
 {
 	DesignatorElement *current_element = current_element_ptr[0];
@@ -4581,120 +4488,29 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_binary(c, be_value, expr, NULL, binary_op);
 }
 
-static inline void llvm_emit_elvis_expr(GenContext *c, BEValue *value, Expr *expr)
-{
-
-	// Generate condition and conditional branch
-	Expr *cond = exprptr(expr->ternary_expr.cond);
-	llvm_emit_expr(c, value, cond);
-	llvm_value_rvalue(c, value);
-
-	LLVMValueRef lhs_value = value->value;
-	if (value->kind != BE_BOOLEAN)
-	{
-		llvm_emit_bool_cast(c, cond, value);
-	}
-
-	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
-	if (!IS_OPTIONAL(expr) && expr_is_const(else_expr))
-	{
-		BEValue right;
-		llvm_emit_expr(c, &right, else_expr);
-		llvm_value_rvalue(c, &right);
-		LLVMValueRef val = LLVMBuildSelect(c->builder, value->value, lhs_value, right.value, "elvis");
-		llvm_value_set(value, val, right.type);
-		return;
-	}
-
-	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
-	if (!lhs_exit) return;
-
-	// Set up basic blocks, following Cone
-	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
-	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
-
-	llvm_emit_cond_br(c, value, phi_block, rhs_block);
-	llvm_emit_block(c, rhs_block);
-	BEValue rhs;
-	llvm_emit_expr(c, &rhs, else_expr);
-	llvm_value_rvalue(c, &rhs);
-	LLVMValueRef rhs_value = rhs.value;
-	if (rhs.type == type_bool && LLVMTypeOf(rhs_value) != c->bool_type)
-	{
-		llvm_emit_trunc_bool(c, rhs_value);
-	}
-	LLVMBasicBlockRef rhs_exit = llvm_get_current_block_if_in_use(c);
-	if (rhs_exit) llvm_emit_br(c, phi_block);
-
-	// Generate phi
-	llvm_emit_block(c, phi_block);
-	if (!rhs_exit)
-	{
-		if (!lhs_value) lhs_value = LLVMGetUndef(llvm_get_type(c, expr->type));
-		llvm_value_set(value, lhs_value, expr->type);
-		return;
-	}
-	if (!lhs_exit)
-	{
-		if (!rhs_value) rhs_value = LLVMGetUndef(llvm_get_type(c, expr->type));
-		llvm_value_set(value, rhs_value, expr->type);
-		return;
-	}
-	llvm_new_phi(c, value, "val", expr->type, lhs_value, lhs_exit, rhs_value, rhs_exit);
-}
 
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (!expr->ternary_expr.then_expr)
-	{
-		llvm_emit_elvis_expr(c, value, expr);
-		return;
-	}
-
-
-	bool is_elvis = false;
+	ASSERT0(expr->ternary_expr.then_expr);
 
 	// Generate condition and conditional branch
 	Expr *cond = exprptr(expr->ternary_expr.cond);
 	llvm_emit_expr(c, value, cond);
 	llvm_value_rvalue(c, value);
 
-	LLVMValueRef lhs_value = is_elvis ? value->value : NULL;
-	if (value->kind != BE_BOOLEAN)
-	{
-		ASSERT0(is_elvis);
-		llvm_emit_bool_cast(c, cond, value);
-	}
-
-	Expr *else_expr;
-	Expr *then_expr;
-
-	if (is_elvis)
-	{
-		then_expr = NULL;
-		else_expr = exprptr(expr->ternary_expr.else_expr);
-	}
-	else
-	{
-		else_expr = exprptr(expr->ternary_expr.else_expr);
-		then_expr = exprptr(expr->ternary_expr.then_expr);
-
-	}
+	Expr *else_expr = exprptr(expr->ternary_expr.else_expr);
+	Expr *then_expr = exprptr(expr->ternary_expr.then_expr);
 
 	if (!IS_OPTIONAL(expr) && expr_is_const(else_expr)
-		&& (is_elvis || expr_is_const(then_expr)))
+		&& expr_is_const(then_expr))
 	{
-		if (!lhs_value)
-		{
-			BEValue left;
-			llvm_emit_expr(c, &left, then_expr);
-			llvm_value_rvalue(c, &left);
-			lhs_value = left.value;
-		}
+		BEValue left;
+		llvm_emit_expr(c, &left, then_expr);
+		llvm_value_rvalue(c, &left);
 		BEValue right;
 		llvm_emit_expr(c, &right, else_expr);
 		llvm_value_rvalue(c, &right);
-		LLVMValueRef val = LLVMBuildSelect(c->builder, value->value, lhs_value, right.value, "ternary");
+		LLVMValueRef val = LLVMBuildSelect(c->builder, value->value, left.value, right.value, "ternary");
 		llvm_value_set(value, val, right.type);
 		return;
 	}
@@ -4704,28 +4520,19 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
 	LLVMBasicBlockRef lhs_exit;
-	if (is_elvis)
+	LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
+	llvm_emit_cond_br(c, value, lhs_block, rhs_block);
+	llvm_emit_block(c, lhs_block);
+	BEValue lhs;
+	llvm_emit_expr(c, &lhs, then_expr);
+	llvm_value_rvalue(c, &lhs);
+	LLVMValueRef lhs_value = lhs.value;
+	lhs_exit = llvm_get_current_block_if_in_use(c);
+	if (lhs.type == type_bool && LLVMTypeOf(lhs_value) != c->bool_type)
 	{
-		lhs_exit = llvm_get_current_block_if_in_use(c);
-		if (!lhs_exit) return;
-		llvm_emit_cond_br(c, value, phi_block, rhs_block);
+		llvm_emit_trunc_bool(c, lhs_value);
 	}
-	else
-	{
-		LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
-		llvm_emit_cond_br(c, value, lhs_block, rhs_block);
-		llvm_emit_block(c, lhs_block);
-		BEValue lhs;
-		llvm_emit_expr(c, &lhs, then_expr);
-		llvm_value_rvalue(c, &lhs);
-		lhs_value = lhs.value;
-		lhs_exit = llvm_get_current_block_if_in_use(c);
-		if (lhs.type == type_bool && LLVMTypeOf(lhs_value) != c->bool_type)
-		{
-			llvm_emit_trunc_bool(c, lhs_value);
-		}
-		if (lhs_exit) llvm_emit_br(c, phi_block);
-	}
+	if (lhs_exit) llvm_emit_br(c, phi_block);
 
 	llvm_emit_block(c, rhs_block);
 	BEValue rhs;
