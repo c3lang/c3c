@@ -374,7 +374,8 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	if (type_info->resolve_status == RESOLVE_DONE) return false;
 	if (type_info->kind != TYPE_INFO_IDENTIFIER) return false;
 	if (type_info->subtype != TYPE_COMPRESSED_NONE) return false;
-	Decl *decl = sema_resolve_symbol(context, type_info->unresolved.name, type_info->unresolved.path, type_info->span);
+	Decl *decl = sema_find_path_symbol(context, type_info->unresolved.name, type_info->unresolved.path);
+	if (!decl) return false;
 	if (decl->decl_kind != DECL_TYPEDEF) return false;
 	if (decl->resolve_status == RESOLVE_DONE) return false;
 	if (decl->typedef_decl.is_func) return false;
