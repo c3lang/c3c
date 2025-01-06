@@ -113,6 +113,17 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 
 	// Create a local alloca
 	ASSERT0(!decl->backend_ref);
+	Type *type_low = type_lowering(decl->type);
+	if (decl->var.is_temp && !IS_OPTIONAL(decl) && !decl->var.is_addr && !decl->var.is_written && !type_is_user_defined(
+			type_low) && type_low->type_kind != TYPE_ARRAY)
+	{
+		assert(decl->var.init_expr);
+		llvm_emit_expr(c, value, decl->var.init_expr);
+		llvm_value_rvalue(c, value);
+		decl->backend_value = value->value;
+		decl->is_value = true;
+		return;
+	}
 	llvm_emit_local_var_alloca(c, decl);
 
 	// Create optional storage

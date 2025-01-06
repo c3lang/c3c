@@ -16,7 +16,6 @@ entry:
   %b = alloca i32, align 4
   %c = alloca i8, align 1
   %d = alloca i32, align 4
-  %.anon = alloca i32, align 4
   store i8 1, ptr %a, align 1
   store i32 2, ptr %b, align 4
   %0 = load i32, ptr %b, align 4
@@ -28,19 +27,17 @@ entry:
   %ternary = select i1 %siui-gt, i8 1, i8 0
   store i8 %ternary, ptr %c, align 1
   %2 = load i32, ptr %b, align 4
-  store i32 %2, ptr %.anon, align 4
   %i2b = icmp ne i32 %2, 0
   br i1 %i2b, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
-  %3 = load i32, ptr %.anon, align 4
   br label %cond.phi
 
 cond.rhs:                                         ; preds = %entry
   br label %cond.phi
 
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
-  %val = phi i32 [ %3, %cond.lhs ], [ 1, %cond.rhs ]
+  %val = phi i32 [ %2, %cond.lhs ], [ 1, %cond.rhs ]
   store i32 %val, ptr %d, align 4
   ret void
 }

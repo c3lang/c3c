@@ -33,102 +33,96 @@ entry:
   %literal = alloca [4 x i32], align 16
   %x = alloca %"int[]", align 8
   %.anon = alloca i64, align 8
-  %.anon1 = alloca i64, align 8
   %i = alloca i32, align 4
   %varargslots = alloca [1 x %any], align 16
   %retparam = alloca i64, align 8
-  %literal2 = alloca [4 x %any], align 16
+  %literal1 = alloca [4 x %any], align 16
   %taddr = alloca i32, align 4
-  %taddr4 = alloca i32, align 4
-  %taddr6 = alloca i32, align 4
-  %taddr8 = alloca i32, align 4
-  %x9 = alloca %"any[]", align 8
+  %taddr3 = alloca i32, align 4
+  %taddr5 = alloca i32, align 4
+  %taddr7 = alloca i32, align 4
+  %x8 = alloca %"any[]", align 8
   %.anon10 = alloca i64, align 8
-  %.anon12 = alloca i64, align 8
-  %i16 = alloca %any, align 8
-  %varargslots18 = alloca [1 x %any], align 16
-  %retparam19 = alloca i64, align 8
+  %i14 = alloca %any, align 8
+  %varargslots16 = alloca [1 x %any], align 16
+  %retparam17 = alloca i64, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 16 @.__const, i32 16, i1 false)
   %0 = insertvalue %"int[]" undef, ptr %literal, 0
   %1 = insertvalue %"int[]" %0, i64 4, 1
   store %"int[]" %1, ptr %x, align 8
   %ptradd = getelementptr inbounds i8, ptr %x, i64 8
   %2 = load i64, ptr %ptradd, align 8
-  store i64 %2, ptr %.anon, align 8
-  store i64 0, ptr %.anon1, align 8
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %loop.body, %entry
-  %3 = load i64, ptr %.anon1, align 8
-  %4 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %3, %4
+  %3 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %3, %2
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %5 = load ptr, ptr %x, align 8
-  %6 = load i64, ptr %.anon1, align 8
-  %ptroffset = getelementptr inbounds [4 x i8], ptr %5, i64 %6
-  %7 = load i32, ptr %ptroffset, align 4
-  store i32 %7, ptr %i, align 4
-  %8 = insertvalue %any undef, ptr %i, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %9, ptr %varargslots, align 16
-  %10 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
-  %11 = load i64, ptr %.anon1, align 8
-  %addnuw = add nuw i64 %11, 1
-  store i64 %addnuw, ptr %.anon1, align 8
+  %4 = load ptr, ptr %x, align 8
+  %5 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %4, i64 %5
+  %6 = load i32, ptr %ptroffset, align 4
+  store i32 %6, ptr %i, align 4
+  %7 = insertvalue %any undef, ptr %i, 0
+  %8 = insertvalue %any %7, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %8, ptr %varargslots, align 16
+  %9 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
+  %10 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %10, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
   store i32 1, ptr %taddr, align 4
-  %12 = insertvalue %any undef, ptr %taddr, 0
-  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %13, ptr %literal2, align 8
-  %ptradd3 = getelementptr inbounds i8, ptr %literal2, i64 16
-  store i32 -1, ptr %taddr4, align 4
-  %14 = insertvalue %any undef, ptr %taddr4, 0
-  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %15, ptr %ptradd3, align 8
-  %ptradd5 = getelementptr inbounds i8, ptr %literal2, i64 32
-  store i32 3141, ptr %taddr6, align 4
-  %16 = insertvalue %any undef, ptr %taddr6, 0
-  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %17, ptr %ptradd5, align 8
-  %ptradd7 = getelementptr inbounds i8, ptr %literal2, i64 48
-  store i32 1000, ptr %taddr8, align 4
-  %18 = insertvalue %any undef, ptr %taddr8, 0
-  %19 = insertvalue %any %18, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %19, ptr %ptradd7, align 8
-  %20 = insertvalue %"any[]" undef, ptr %literal2, 0
-  %21 = insertvalue %"any[]" %20, i64 4, 1
-  store %"any[]" %21, ptr %x9, align 8
-  %ptradd11 = getelementptr inbounds i8, ptr %x9, i64 8
-  %22 = load i64, ptr %ptradd11, align 8
-  store i64 %22, ptr %.anon10, align 8
-  store i64 0, ptr %.anon12, align 8
-  br label %loop.cond13
+  %11 = insertvalue %any undef, ptr %taddr, 0
+  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %12, ptr %literal1, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %literal1, i64 16
+  store i32 -1, ptr %taddr3, align 4
+  %13 = insertvalue %any undef, ptr %taddr3, 0
+  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %14, ptr %ptradd2, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %literal1, i64 32
+  store i32 3141, ptr %taddr5, align 4
+  %15 = insertvalue %any undef, ptr %taddr5, 0
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %16, ptr %ptradd4, align 8
+  %ptradd6 = getelementptr inbounds i8, ptr %literal1, i64 48
+  store i32 1000, ptr %taddr7, align 4
+  %17 = insertvalue %any undef, ptr %taddr7, 0
+  %18 = insertvalue %any %17, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %18, ptr %ptradd6, align 8
+  %19 = insertvalue %"any[]" undef, ptr %literal1, 0
+  %20 = insertvalue %"any[]" %19, i64 4, 1
+  store %"any[]" %20, ptr %x8, align 8
+  %ptradd9 = getelementptr inbounds i8, ptr %x8, i64 8
+  %21 = load i64, ptr %ptradd9, align 8
+  store i64 0, ptr %.anon10, align 8
+  br label %loop.cond11
 
-loop.cond13:                                      ; preds = %loop.body15, %loop.exit
-  %23 = load i64, ptr %.anon12, align 8
+loop.cond11:                                      ; preds = %loop.body13, %loop.exit
+  %22 = load i64, ptr %.anon10, align 8
+  %lt12 = icmp ult i64 %22, %21
+  br i1 %lt12, label %loop.body13, label %loop.exit19
+
+loop.body13:                                      ; preds = %loop.cond11
+  %23 = load ptr, ptr %x8, align 8
   %24 = load i64, ptr %.anon10, align 8
-  %lt14 = icmp ult i64 %23, %24
-  br i1 %lt14, label %loop.body15, label %loop.exit21
+  %ptroffset15 = getelementptr inbounds [16 x i8], ptr %23, i64 %24
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %i14, ptr align 8 %ptroffset15, i32 16, i1 false)
+  %25 = load ptr, ptr %i14, align 8
+  %26 = insertvalue %any undef, ptr %25, 0
+  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %27, ptr %varargslots16, align 16
+  %28 = call i64 @std.io.printfn(ptr %retparam17, ptr @.str.1, i64 2, ptr %varargslots16, i64 1)
+  %29 = load i64, ptr %.anon10, align 8
+  %addnuw18 = add nuw i64 %29, 1
+  store i64 %addnuw18, ptr %.anon10, align 8
+  br label %loop.cond11
 
-loop.body15:                                      ; preds = %loop.cond13
-  %25 = load ptr, ptr %x9, align 8
-  %26 = load i64, ptr %.anon12, align 8
-  %ptroffset17 = getelementptr inbounds [16 x i8], ptr %25, i64 %26
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %i16, ptr align 8 %ptroffset17, i32 16, i1 false)
-  %27 = load ptr, ptr %i16, align 8
-  %28 = insertvalue %any undef, ptr %27, 0
-  %29 = insertvalue %any %28, i64 ptrtoint (ptr @"$ct.int" to i64), 1
-  store %any %29, ptr %varargslots18, align 16
-  %30 = call i64 @std.io.printfn(ptr %retparam19, ptr @.str.1, i64 2, ptr %varargslots18, i64 1)
-  %31 = load i64, ptr %.anon12, align 8
-  %addnuw20 = add nuw i64 %31, 1
-  store i64 %addnuw20, ptr %.anon12, align 8
-  br label %loop.cond13
-
-loop.exit21:                                      ; preds = %loop.cond13
+loop.exit19:                                      ; preds = %loop.cond11
   ret void
 }

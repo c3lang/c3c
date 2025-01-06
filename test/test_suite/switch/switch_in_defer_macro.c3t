@@ -750,89 +750,86 @@ define i64 @lexer_test.lex_uint() #0 {
 entry:
   %tcases = alloca %"UintTest[]", align 8
   %.anon = alloca i64, align 8
-  %.anon1 = alloca i64, align 8
   %tc = alloca %UintTest, align 8
   %br = alloca %ByteReader, align 8
   %lex = alloca %Lexer, align 8
   %error_var = alloca i64, align 8
   %taddr = alloca %any, align 8
   %kind = alloca i8, align 1
-  %error_var8 = alloca i64, align 8
+  %error_var7 = alloca i64, align 8
   %retparam = alloca i8, align 1
   store %"UintTest[]" zeroinitializer, ptr %tcases, align 8
   %ptradd = getelementptr inbounds i8, ptr %tcases, i64 8
   %0 = load i64, ptr %ptradd, align 8
-  store i64 %0, ptr %.anon, align 8
-  store i64 0, ptr %.anon1, align 8
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
-loop.cond:                                        ; preds = %noerr_block13, %entry
-  %1 = load i64, ptr %.anon1, align 8
-  %2 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %1, %2
+loop.cond:                                        ; preds = %noerr_block12, %entry
+  %1 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %1, %0
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %3 = load ptr, ptr %tcases, align 8
-  %4 = load i64, ptr %.anon1, align 8
-  %ptroffset = getelementptr inbounds [24 x i8], ptr %3, i64 %4
+  %2 = load ptr, ptr %tcases, align 8
+  %3 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [24 x i8], ptr %2, i64 %3
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 24, i1 false)
   call void @llvm.memset.p0.i64(ptr align 8 %br, i8 0, i64 24, i1 false)
   call void @llvm.memset.p0.i64(ptr align 8 %lex, i8 0, i64 128, i1 false)
   %lo = load ptr, ptr %tc, align 8
-  %ptradd2 = getelementptr inbounds i8, ptr %tc, i64 8
-  %hi = load i64, ptr %ptradd2, align 8
-  %5 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
-  %6 = insertvalue %any undef, ptr %5, 0
-  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
-  store %any %7, ptr %taddr, align 8
-  %lo3 = load i64, ptr %taddr, align 8
-  %ptradd4 = getelementptr inbounds i8, ptr %taddr, i64 8
-  %hi5 = load ptr, ptr %ptradd4, align 8
-  %lo6 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
-  %hi7 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %8 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, i64 %lo3, ptr %hi5, ptr @lexer_test.is_ident_char, i64 %lo6, ptr %hi7)
-  %not_err = icmp eq i64 %8, 0
-  %9 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
-  br i1 %9, label %after_check, label %assign_optional
+  %ptradd1 = getelementptr inbounds i8, ptr %tc, i64 8
+  %hi = load i64, ptr %ptradd1, align 8
+  %4 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
+  %5 = insertvalue %any undef, ptr %4, 0
+  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
+  store %any %6, ptr %taddr, align 8
+  %lo2 = load i64, ptr %taddr, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %taddr, i64 8
+  %hi4 = load ptr, ptr %ptradd3, align 8
+  %lo5 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi6 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
+  %7 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi6)
+  %not_err = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %8, label %after_check, label %assign_optional
 
 assign_optional:                                  ; preds = %loop.body
-  store i64 %8, ptr %error_var, align 8
+  store i64 %7, ptr %error_var, align 8
   br label %guard_block
 
 after_check:                                      ; preds = %loop.body
   br label %noerr_block
 
 guard_block:                                      ; preds = %assign_optional
-  %10 = load i64, ptr %error_var, align 8
-  ret i64 %10
+  %9 = load i64, ptr %error_var, align 8
+  ret i64 %9
 
 noerr_block:                                      ; preds = %after_check
-  %11 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
-  %not_err9 = icmp eq i64 %11, 0
-  %12 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
-  br i1 %12, label %after_check11, label %assign_optional10
+  %10 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
+  %not_err8 = icmp eq i64 %10, 0
+  %11 = call i1 @llvm.expect.i1(i1 %not_err8, i1 true)
+  br i1 %11, label %after_check10, label %assign_optional9
 
-assign_optional10:                                ; preds = %noerr_block
-  store i64 %11, ptr %error_var8, align 8
-  br label %guard_block12
+assign_optional9:                                 ; preds = %noerr_block
+  store i64 %10, ptr %error_var7, align 8
+  br label %guard_block11
 
-after_check11:                                    ; preds = %noerr_block
-  br label %noerr_block13
+after_check10:                                    ; preds = %noerr_block
+  br label %noerr_block12
 
-guard_block12:                                    ; preds = %assign_optional10
-  %13 = load i64, ptr %error_var8, align 8
-  ret i64 %13
+guard_block11:                                    ; preds = %assign_optional9
+  %12 = load i64, ptr %error_var7, align 8
+  ret i64 %12
 
-noerr_block13:                                    ; preds = %after_check11
-  %14 = load i8, ptr %retparam, align 1
-  store i8 %14, ptr %kind, align 1
-  %15 = load i8, ptr %kind, align 1
-  %eq = icmp eq i8 %15, 1
+noerr_block12:                                    ; preds = %after_check10
+  %13 = load i8, ptr %retparam, align 1
+  store i8 %13, ptr %kind, align 1
+  %14 = load i8, ptr %kind, align 1
+  %eq = icmp eq i8 %14, 1
   call void @llvm.assume(i1 %eq)
-  %16 = load i64, ptr %.anon1, align 8
-  %addnuw = add nuw i64 %16, 1
-  store i64 %addnuw, ptr %.anon1, align 8
+  %15 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %15, 1
+  store i64 %addnuw, ptr %.anon, align 8
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond

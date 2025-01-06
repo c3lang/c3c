@@ -172,6 +172,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	decl->span = span;
 	decl->name = NULL;
 	decl->var.kind = kind;
+	decl->var.is_temp = true;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
 	ASSERT0(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);

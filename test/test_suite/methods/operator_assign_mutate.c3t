@@ -28,16 +28,10 @@ fn void main() {
 define void @test.main() #0 {
 entry:
   %z = alloca %Foo, align 4
-  %.anon = alloca ptr, align 8
-  %.anon3 = alloca i32, align 4
-  %.anon4 = alloca i32, align 4
+  %.anon = alloca i32, align 4
   %coerce = alloca %Foo, align 8
-  %.anon6 = alloca i32, align 4
-  %.anon9 = alloca ptr, align 8
-  %.anon10 = alloca i32, align 4
-  %.anon11 = alloca i32, align 4
-  %coerce13 = alloca %Foo, align 8
-  %.anon17 = alloca i32, align 4
+  %.anon5 = alloca i32, align 4
+  %coerce6 = alloca %Foo, align 8
   call void @"std_collections_list$long$.List.push"(ptr @test.stones, i64 1) #2
   call void @"std_collections_list$long$.List.push"(ptr @test.stones, i64 100) #2
   %0 = call ptr @"std_collections_list$long$.List.get_ref"(ptr @test.stones, i64 0) #2
@@ -57,45 +51,27 @@ entry:
   store i32 0, ptr %ptradd, align 4
   %ptradd2 = getelementptr inbounds i8, ptr %z, i64 8
   store i32 0, ptr %ptradd2, align 4
-  store ptr %z, ptr %.anon, align 8
-  store i32 1, ptr %.anon3, align 4
-  %6 = load ptr, ptr %.anon, align 8
-  %7 = load i32, ptr %.anon3, align 4
-  %sext = sext i32 %7 to i64
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %6, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %z, i32 12, i1 false)
   %lo = load i64, ptr %coerce, align 8
-  %ptradd5 = getelementptr inbounds i8, ptr %coerce, i64 8
-  %hi = load i32, ptr %ptradd5, align 8
-  %8 = call i32 @test.Foo.get(i64 %lo, i32 %hi, i64 %sext)
-  store i32 %8, ptr %.anon4, align 4
-  %9 = load i32, ptr %.anon4, align 4
-  %add7 = add i32 %9, 5
-  store i32 %add7, ptr %.anon4, align 4
-  store i32 %add7, ptr %.anon6, align 4
-  %10 = load i32, ptr %.anon3, align 4
-  %sext8 = sext i32 %10 to i64
-  %11 = load ptr, ptr %.anon, align 8
-  %12 = load i32, ptr %.anon4, align 4
-  call void @test.Foo.set(ptr %11, i64 %sext8, i32 %12)
-  store ptr %z, ptr %.anon9, align 8
-  store i32 1, ptr %.anon10, align 4
-  %13 = load ptr, ptr %.anon9, align 8
-  %14 = load i32, ptr %.anon10, align 4
-  %sext12 = sext i32 %14 to i64
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce13, ptr align 4 %13, i32 12, i1 false)
-  %lo14 = load i64, ptr %coerce13, align 8
-  %ptradd15 = getelementptr inbounds i8, ptr %coerce13, i64 8
-  %hi16 = load i32, ptr %ptradd15, align 8
-  %15 = call i32 @test.Foo.get(i64 %lo14, i32 %hi16, i64 %sext12)
-  store i32 %15, ptr %.anon11, align 4
-  %16 = load i32, ptr %.anon11, align 4
-  %mul18 = mul i32 %16, 3
-  store i32 %mul18, ptr %.anon11, align 4
-  store i32 %mul18, ptr %.anon17, align 4
-  %17 = load i32, ptr %.anon10, align 4
-  %sext19 = sext i32 %17 to i64
-  %18 = load ptr, ptr %.anon9, align 8
-  %19 = load i32, ptr %.anon11, align 4
-  call void @test.Foo.set(ptr %18, i64 %sext19, i32 %19)
+  %ptradd3 = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load i32, ptr %ptradd3, align 8
+  %6 = call i32 @test.Foo.get(i64 %lo, i32 %hi, i64 1)
+  store i32 %6, ptr %.anon, align 4
+  %7 = load i32, ptr %.anon, align 4
+  %add4 = add i32 %7, 5
+  store i32 %add4, ptr %.anon, align 4
+  %8 = load i32, ptr %.anon, align 4
+  call void @test.Foo.set(ptr %z, i64 1, i32 %8)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce6, ptr align 4 %z, i32 12, i1 false)
+  %lo7 = load i64, ptr %coerce6, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %coerce6, i64 8
+  %hi9 = load i32, ptr %ptradd8, align 8
+  %9 = call i32 @test.Foo.get(i64 %lo7, i32 %hi9, i64 1)
+  store i32 %9, ptr %.anon5, align 4
+  %10 = load i32, ptr %.anon5, align 4
+  %mul10 = mul i32 %10, 3
+  store i32 %mul10, ptr %.anon5, align 4
+  %11 = load i32, ptr %.anon5, align 4
+  call void @test.Foo.set(ptr %z, i64 1, i32 %11)
   ret void
 }
