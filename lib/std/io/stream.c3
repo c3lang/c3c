@@ -104,7 +104,7 @@ macro usz! write_all(stream, char[] buffer)
 	return n;
 }
 
-macro usz! @read_using_read_byte(&s, char[] buffer)
+macro usz! @read_using_read_byte(&s, char[] buffer) @deprecated
 {
 	return read_using_read_byte(*s, buffer);
 }
@@ -137,7 +137,7 @@ macro void! @write_byte_using_write(&s, char c) @deprecated
 	return write_byte_using_write(*s, c);
 }
 
-macro char! @read_byte_using_read(&s)
+macro char! @read_byte_using_read(&s) @deprecated
 {
 	return read_byte_using_read(*s);
 }

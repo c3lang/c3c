@@ -21,6 +21,7 @@
 - Include `@name` when searching for possible matches to `name` in the error message. #1779
 - Improve `@param` parse errors #1777
 - Improved `#foo` resolution inside of the compiler.
+- Deprecated '&' macro arguments.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

@@ -36,7 +36,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bool *missing_ref, CheckType check);
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error);
-static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr, CheckType check);
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr);
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr, CheckType check);
@@ -77,7 +77,7 @@ static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, E
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only,
                                         bool allow_bitstruct, bool is_add_sub);
@@ -124,7 +124,7 @@ static bool sema_binary_arithmetic_promotion(SemaContext *context, Expr *left, E
 								 Expr *parent, const char *error_message, bool allow_bool_vec);
 static bool sema_binary_is_unsigned_always_same_comparison(SemaContext *context, Expr *expr, Expr *left, Expr *right,
 														   Type *lhs_type, Type *rhs_type);
-static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr);
+static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref);
 static void sema_binary_unify_voidptr(SemaContext *context, Expr *left, Expr *right, Type **left_type_ref, Type **right_type_ref);
 
 // -- function helper functions
@@ -436,40 +436,45 @@ CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 }
 
 
-static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr)
+static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref)
 {
 	switch (expr->expr_kind)
 	{
 		case EXPR_SWIZZLE:
+			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(expr, "You cannot use swizzling to assign to multiple elements, use element-wise assign instead.");
 		case EXPR_LAMBDA:
 		case EXPR_EMBED:
+			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(expr, "This expression is a value and cannot be assigned to.");
 		case EXPR_CT_IDENT:
 			return true;
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_DISCARD:
-			return false;
+			if (failed_ref) goto FAILED_REF;
+			goto ERR;
 		case EXPR_OTHER_CONTEXT:
-			return sema_binary_is_expr_lvalue(context, top_expr, expr->expr_other_context.inner);
+			return sema_binary_is_expr_lvalue(context, top_expr, expr->expr_other_context.inner, failed_ref);
 		case EXPR_IDENTIFIER:
 		{
 			Decl *decl = expr->identifier_expr.decl;
 			if (decl->decl_kind != DECL_VAR)
 			{
+				if (failed_ref) goto FAILED_REF;
 				RETURN_SEMA_ERROR(top_expr, "You cannot assign a value to %s.", decl_to_a_name(decl));
 			}
 			if (decl->var.kind == VARDECL_CONST)
 			{
+				if (failed_ref) goto FAILED_REF;
 				RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant.");
 			}
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
 			{
 				case VARDECL_PARAM_REF:
-					SEMA_ERROR(top_expr, "You cannot assign to a ref parameter.");
-					return false;
+					if (failed_ref) goto FAILED_REF;
+					RETURN_SEMA_ERROR(top_expr, "You cannot assign to a ref parameter.");
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
 				case VARDECL_LOCAL:
@@ -495,13 +500,13 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			if (expr->unary_expr.operator != UNARYOP_DEREF) goto ERR;
 			if (IS_OPTIONAL(expr))
 			{
-				SEMA_ERROR(top_expr, "You cannot assign to a dereferenced optional.");
-				return false;
+				if (failed_ref) goto FAILED_REF;
+				RETURN_SEMA_ERROR(top_expr, "You cannot assign to a dereferenced optional.");
 			}
 			return true;
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS:
-			if (!sema_binary_is_expr_lvalue(context, top_expr, expr->access_expr.parent)) return false;
+			if (!sema_binary_is_expr_lvalue(context, top_expr, expr->access_expr.parent, failed_ref)) return false;
 			goto CHECK_OPTIONAL;
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
@@ -509,12 +514,13 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_SUBSCRIPT_ADDR:
 			goto CHECK_OPTIONAL;
 		case EXPR_HASH_IDENT:
+			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to an unevaluated expression.");
 		case EXPR_EXPRESSION_LIST:
-			if (!vec_size(expr->expression_list)) return false;
-			return sema_binary_is_expr_lvalue(context, top_expr, VECLAST(expr->expression_list));
-			goto CHECK_OPTIONAL;
+			if (!vec_size(expr->expression_list)) goto ERR;
+			return sema_binary_is_expr_lvalue(context, top_expr, VECLAST(expr->expression_list), failed_ref);
 		case EXPR_CONST:
+			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(top_expr, "You cannot assign to a constant expression.");
 		case EXPR_POISONED:
 		case EXPR_ADDR_CONVERSION:
@@ -594,15 +600,18 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 	}
 	UNREACHABLE
 ERR:
-	SEMA_ERROR(top_expr, "An assignable expression, like a variable, was expected here.");
-	return false;
+	if (failed_ref) goto FAILED_REF;
+	RETURN_SEMA_ERROR(top_expr, "An assignable expression, like a variable, was expected here.");
 CHECK_OPTIONAL:
 	if (IS_OPTIONAL(expr))
 	{
+		if (failed_ref) goto FAILED_REF;
 		RETURN_SEMA_ERROR(top_expr, "You cannot assign to an optional value.");
 	}
 	return true;
-
+FAILED_REF:
+	*failed_ref = true;
+	return false;
 }
 
 static bool expr_may_ref(Expr *expr)
@@ -744,10 +753,10 @@ static bool expr_may_ref(Expr *expr)
 	UNREACHABLE
 }
 
-bool sema_expr_check_assign(SemaContext *context, Expr *expr)
+bool sema_expr_check_assign(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	Expr *inner;
-	if (!sema_binary_is_expr_lvalue(context, expr, expr)) return false;
+	if (!sema_binary_is_expr_lvalue(context, expr, expr, failed_ref)) return false;
 	if (expr->expr_kind == EXPR_SUBSCRIPT)
 	{
 		inner = exprptr(expr->subscript_expr.expr);
@@ -766,8 +775,7 @@ CHECK_INNER:
 	Decl *decl = inner->identifier_expr.decl;
 	if (decl->decl_kind != DECL_VAR) return true;
 	if (!decl->var.in_param) return true;
-	SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
-	return false;
+	RETURN_SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
 }
 
 static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
@@ -1309,7 +1317,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 					break;
 			}
 			if (!sema_analyse_expr_address(context, arg)) return false;
-			if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg))
+			if (sema_arg_is_pass_through_ref(arg) && !sema_expr_check_assign(context, arg, NULL))
 			{
 				SEMA_NOTE(definition, "The definition is here.");
 				return false;
@@ -3003,7 +3011,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	if (!sema_analyse_expr_check(context, subscripted, CHECK_VALUE)) return false;
 
 	// If it is an lvalue then check that it is assignable.
-	if (check == CHECK_LVALUE && !sema_expr_check_assign(context, expr)) return false;
+	if (check == CHECK_LVALUE && !sema_expr_check_assign(context, expr, NULL)) return false;
 
 	// 2. Evaluate the index.
 	Expr *index = exprptr(expr->subscript_expr.index.expr);
@@ -5677,7 +5685,7 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
  * Analyse a = b
  * @return true if analysis works
  */
-static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
 	if (!sema_expr_fold_hash(context, left)) return false;
 	// 1. Evaluate left side
@@ -5698,7 +5706,7 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 			break;
 	}
 	// 2. Check assignability
-	if (!sema_expr_check_assign(context, left)) return false;
+	if (!sema_expr_check_assign(context, left, failed_ref)) return false;
 
 	bool is_unwrapped_var = expr_is_unwrapped_ident(left);
 
@@ -5742,7 +5750,7 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
-	if (!sema_expr_analyse_binary(context, expr)) return false;
+	if (!sema_expr_analyse_binary(context, expr, NULL)) return false;
 
 	if (!sema_cast_const(expr))
 	{
@@ -5771,7 +5779,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	if (!sema_analyse_expr_lvalue(context, left)) return false;
 
 	// 2. Verify that the left side is assignable.
-	if (!sema_expr_check_assign(context, left)) return false;
+	if (!sema_expr_check_assign(context, left, NULL)) return false;
 
 	Type *left_type_canonical = left->type->canonical;
 
@@ -6620,7 +6628,7 @@ static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Exp
 	bool optional = IS_OPTIONAL(left) || IS_OPTIONAL(right);
 
 	// 2. Ensure the lhs side is assignable
-	if (!sema_expr_check_assign(context, left)) return false;
+	if (!sema_expr_check_assign(context, left, NULL)) return false;
 
 	// 3. Only integers may be shifted.
 	if (!expr_both_any_integer_or_integer_vector(left, right)) return sema_type_error_on_binop(context, expr);
@@ -7397,7 +7405,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	if (!sema_analyse_expr_lvalue(context, inner)) return false;
 
 	// 2. Assert it's an l-value
-	if (!sema_expr_check_assign(context, inner)) return false;
+	if (!sema_expr_check_assign(context, inner, NULL)) return false;
 
 	// 3. This might be a $foo, if to handle it.
 	if (inner->expr_kind == EXPR_CT_IDENT)
@@ -7587,7 +7595,7 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr,
 	return true;
 }
 
-static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 	if (expr->binary_expr.operator == BINARYOP_ELSE) return sema_expr_analyse_or_error(context, expr);
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
@@ -7609,7 +7617,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr)
 		case BINARYOP_CT_AND:
 			return sema_expr_analyse_ct_and_or(context, expr, left, right);
 		case BINARYOP_ASSIGN:
-			return sema_expr_analyse_assign(context, expr, left, right);
+			return sema_expr_analyse_assign(context, expr, left, right, failed_ref);
 		case BINARYOP_MULT:
 			return sema_expr_analyse_mult(context, expr, left, right);
 		case BINARYOP_ADD:
@@ -8986,9 +8994,15 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_DEFAULT_ARG:
 			case EXPR_NAMED_ARGUMENT:
 				UNREACHABLE
-			case EXPR_CT_ARG:
-				FALLTHROUGH;
 			case EXPR_BINARY:
+				main_expr->resolve_status = RESOLVE_RUNNING;
+				if (!sema_expr_analyse_binary(context, main_expr, &failed))
+				{
+					if (!failed) goto FAIL;
+					success = false;
+				}
+				break;
+			case EXPR_CT_ARG:
 			case EXPR_BITACCESS:
 			case EXPR_BITASSIGN:
 			case EXPR_COMPOUND_LITERAL:
@@ -9546,7 +9560,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_CT_EVAL:
 			return sema_expr_analyse_ct_eval(context, expr, check);
 		case EXPR_BINARY:
-			return sema_expr_analyse_binary(context, expr);
+			return sema_expr_analyse_binary(context, expr, NULL);
 		case EXPR_TERNARY:
 			return sema_expr_analyse_ternary(context, NULL, expr);
 		case EXPR_UNARY:

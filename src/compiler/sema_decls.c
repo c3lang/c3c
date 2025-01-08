@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -1085,7 +1085,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1149,7 +1149,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			case VARDECL_PARAM_REF:
 				inferred_type = type_get_ptr(method_parent->type);
 				param->var.not_null = true;
-				if (!is_macro) param->var.kind = VARDECL_PARAM;
+				param->var.kind = VARDECL_PARAM;
 				break;
 			case VARDECL_PARAM:
 			case VARDECL_PARAM_EXPR:
@@ -1224,6 +1224,10 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
+				if ((i != 0 || !method_parent) && !is_deprecated)
+				{
+					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated.");
+				}
 				if (type_info && !type_is_pointer(param->type))
 				{
 					SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
@@ -1239,7 +1243,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				}
 				if (!is_macro_at_name && (!method_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
 				{
-					SEMA_ERROR(param, "Ref and expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
+					SEMA_ERROR(param, "Expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
 				}
 				FALLTHROUGH;
@@ -1333,7 +1337,9 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 	// Get param count and variadic type
 	Decl **params = signature->params;
 
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export)) return false;
+	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
+
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -3696,9 +3702,12 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
+
+	bool deprecated = decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->deprecated;
+
 	if (!sema_analyse_signature(context, &decl->func_decl.signature,
 	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false)) return false;
+	                            false, deprecated)) return false;
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{
