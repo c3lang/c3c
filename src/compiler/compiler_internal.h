@@ -431,11 +431,6 @@ typedef struct VarDecl_
 		int32_t index;
 		struct
 		{
-			SemaContext *context;
-			SourceSpan span;
-		} hash_var;
-		struct
-		{
 			void *backend_debug_ref;
 			union
 			{
@@ -1115,6 +1110,7 @@ typedef struct
 {
 	Expr *inner;
 	SemaContext *context;
+	SourceSpan inline_at;
 } ExprOtherContext;
 
 typedef struct
@@ -3741,7 +3737,7 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 {
-	assert(inner->resolve_status == RESOLVE_DONE);
+	ASSERT0(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_PTR_ACCESS;
 	expr->inner_expr = inner;
 	expr->type = type;
@@ -3751,7 +3747,7 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
-	assert(inner->resolve_status == RESOLVE_DONE);
+	ASSERT0(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = inner;
 	expr->type = type;
@@ -3761,7 +3757,7 @@ INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
 {
-	assert(inner->resolve_status == RESOLVE_DONE);
+	ASSERT0(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_SLICE_LEN;
 	expr->inner_expr = inner;
 	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
@@ -3957,6 +3953,7 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 
 INLINE bool expr_is_empty_const_slice(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST
 		&& expr->const_expr.const_kind == CONST_SLICE
 		&& expr->const_expr.slice_init == NULL;
@@ -3991,56 +3988,67 @@ static inline bool decl_is_var_local(Decl *decl)
 
 INLINE bool expr_is_const_string(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
 
 INLINE bool expr_is_const_enum(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM;
 }
 
 INLINE bool expr_is_const_fault(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ERR;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
 INLINE bool expr_is_const_bool(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BOOL;
 }
 
 INLINE bool expr_is_const_initializer(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
 }
 
 INLINE bool expr_is_const_slice(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_SLICE;
 }
 
 INLINE bool expr_is_const_bytes(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BYTES;
 }
 
 INLINE bool expr_is_const_untyped_list(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
 }
 
 INLINE bool expr_is_const_int(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
 }
 
 INLINE bool expr_is_const_member(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
 }
 

@@ -9,7 +9,7 @@ Sort list using the quick sort algorithm.
 *>
 macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = sort::@len_from_list(list);
+	usz len = sort::len_from_list(list);
 	qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, cmp, context);
 }
 
@@ -24,7 +24,7 @@ list will be partially sorted.
 *>
 macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = sort::@len_from_list(list);
+	usz len = sort::len_from_list(list);
 	return qs::qselect(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, k, cmp, context);
 }
 

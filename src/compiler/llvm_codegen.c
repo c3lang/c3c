@@ -377,7 +377,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				LLVMTypeRef expected_type = llvm_get_type(c, const_init->init_struct[i]->type);
 				LLVMValueRef element = llvm_emit_const_initializer(c, const_init->init_struct[i]);
 				LLVMTypeRef element_type = LLVMTypeOf(element);
-				//assert(LLVMIsConstant(element));
+				//ASSERT0(LLVMIsConstant(element));
 				if (expected_type != element_type)
 				{
 					was_modified = true;

@@ -516,7 +516,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_OPTIONAL:
 			break;
 		case EXPR_OTHER_CONTEXT:
-			break;
+			UNREACHABLE
 		case EXPR_POINTER_OFFSET:
 			break;
 		case EXPR_POISONED:

@@ -40,7 +40,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr, CheckType check);
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr);
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr, CheckType check);
-static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type *infer_type, Expr *expr);
+
 static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool *invalid_cast_ref);
 static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr);
@@ -184,12 +184,14 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *expr, Expr *parent, Expr *identifier, bool *missing_ref);
 static inline bool sema_expr_fold_to_member(Expr *expr, Expr *parent, Decl *member);
 static inline bool sema_expr_fold_to_index(Expr *expr, Expr *parent, SubscriptIndex index);
+static inline bool sema_expr_fold_hash(SemaContext *context, Expr *expr);
 
 static inline void sema_expr_flatten_const_ident(Expr *expr);
 static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, CheckType check);
 
 static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point);
 static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead, Type *infer_type);
+
 
 // -- implementations
 
@@ -1145,34 +1147,6 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 	return true;
 }
 
-static inline bool sema_expr_analyse_hash_identifier(SemaContext *context, Type *infer_type, Expr *expr)
-{
-	ASSERT0(expr && expr->hash_ident_expr.identifier);
-	DEBUG_LOG("Resolving identifier '%s'", expr->hash_ident_expr.identifier);
-	Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
-
-	// Already handled
-	if (!decl) return expr_poison(expr);
-
-	ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
-	expr_replace(expr, copy_expr_single(decl->var.init_expr));
-	SemaContext *hash_context = decl->var.hash_var.context;
-	InliningSpan *old_span = hash_context->inlined_at;
-	hash_context->inlined_at = context->inlined_at;
-	bool success;
-	if (infer_type)
-	{
-		success = sema_analyse_inferred_expr(decl->var.hash_var.context, infer_type, expr);
-	}
-	else
-	{
-		success = sema_analyse_expr_value(decl->var.hash_var.context, expr);
-	}
-	hash_context->inlined_at = old_span;
-	if (!success) return decl_poison(decl);
-	return true;
-}
-
 
 static inline bool sema_binary_analyse_subexpr(SemaContext *context, Expr *binary, Expr *left, Expr *right)
 {
@@ -1415,8 +1389,11 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				context = MALLOCS(SemaContext);
 				*context = *temp;
 			}
-			param->var.hash_var.context = context;
-			param->var.hash_var.span = arg->span;
+			{
+				Expr *inner = expr_copy(arg);
+				arg->expr_kind = EXPR_OTHER_CONTEXT;
+				arg->expr_other_context = (ExprOtherContext) { .context = context, .inner = inner };
+			}
 			break;
 		case VARDECL_PARAM_CT:
 			// $foo
@@ -3667,8 +3644,15 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
  Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
 {
 RETRY:
+	if (!sema_expr_fold_hash(context, child)) return false;
 	switch (child->expr_kind)
 	{
+		case EXPR_OTHER_CONTEXT:
+		{
+			Expr *inner = child->expr_other_context.inner;
+			SemaContext *c2 = child->expr_other_context.context;
+			return sema_expr_resolve_access_child(c2, inner, missing);
+		}
 		case EXPR_IDENTIFIER:
 			// A path is not allowed.
 			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
@@ -3681,13 +3665,7 @@ RETRY:
 			if (child->type_expr->kind == TYPE_INFO_CT_IDENTIFIER) return child;
 			break;
 		case EXPR_HASH_IDENT:
-		{
-			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
-			Decl *decl = sema_resolve_symbol(context, child->hash_ident_expr.identifier, NULL, child->span);
-			if (!decl) return NULL;
-			Expr *expr = copy_expr_single(decl->var.init_expr);
-			return sema_expr_resolve_access_child(decl->var.hash_var.context, expr, missing);
-		}
+			UNREACHABLE
 		case EXPR_CT_EVAL:
 		{
 			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
@@ -5676,12 +5654,32 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 	return true;
 }
 
+static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
+{
+	if (expr->expr_kind == EXPR_HASH_IDENT)
+	{
+		ASSERT0(expr && expr->hash_ident_expr.identifier);
+		DEBUG_LOG("Resolving identifier '%s'", expr->hash_ident_expr.identifier);
+		Decl *decl = sema_resolve_symbol(context, expr->hash_ident_expr.identifier, NULL, expr->span);
+
+		// Already handled
+		if (!decl) return expr_poison(expr);
+
+		ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
+		expr_replace(expr, copy_expr_single(decl->var.init_expr));
+		ASSERT0(expr->expr_kind == EXPR_OTHER_CONTEXT);
+		REMINDER("Handle inlining at");
+		return true;
+	}
+	return true;
+}
 /**
  * Analyse a = b
  * @return true if analysis works
  */
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
+	if (!sema_expr_fold_hash(context, left)) return false;
 	// 1. Evaluate left side
 	switch (left->expr_kind)
 	{
@@ -7014,10 +7012,27 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 {
 	// 1. Evaluate the expression
 	Expr *inner = expr->unary_expr.expr;
+	if (!sema_expr_fold_hash(context, inner)) return false;
 	switch (inner->expr_kind)
 	{
 		case EXPR_POISONED:
 			return false;
+		case EXPR_OTHER_CONTEXT:
+		{
+			Expr *inner_c = inner->expr_other_context.inner;
+			SemaContext *c2 = inner->expr_other_context.context;
+			expr_replace(inner, inner_c);
+			return sema_expr_analyse_addr(c2, expr, failed_ref, check);
+		}
+		case EXPR_HASH_IDENT:
+		{
+			Decl *decl = sema_resolve_symbol(context, inner->hash_ident_expr.identifier, NULL, inner->span);
+			if (!decl) return expr_poison(expr);
+			ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
+			expr_replace(inner, copy_expr_single(decl->var.init_expr));
+			if (!sema_expr_analyse_addr(context, expr, failed_ref, check)) return decl_poison(decl);
+			return true;
+		}
 		case EXPR_SUBSCRIPT:
 			inner->expr_kind = EXPR_SUBSCRIPT_ADDR;
 			if (failed_ref)
@@ -9236,7 +9251,7 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 	ASSERT_SPAN(expr, inner->expr_kind == EXPR_HASH_IDENT);
 	Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
 	if (!decl) return false;
-	const char *desc = span_to_string(decl->var.hash_var.span);
+	const char *desc = span_to_string(decl->var.init_expr->span);
 	if (!desc)
 	{
 		SEMA_ERROR(expr, "Failed to stringify hash variable contents - they must be a single line and not exceed 255 characters.");
@@ -9493,7 +9508,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_CT_CALL:
 			return sema_expr_analyse_ct_call(context, expr);
 		case EXPR_HASH_IDENT:
-			return sema_expr_analyse_hash_identifier(context, NULL, expr);
+			if (!sema_expr_fold_hash(context, expr)) return false;
+			return sema_analyse_expr_dispatch(context, expr, check);
 		case EXPR_CT_IDENT:
 			return sema_expr_analyse_ct_identifier(context, expr, check);
 		case EXPR_OPTIONAL:
@@ -9983,6 +9999,7 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			UNREACHABLE
 	}
 
+	if (!sema_expr_fold_hash(context, expr)) return false;
 	expr->resolve_status = RESOLVE_RUNNING;
 	switch (expr->expr_kind)
 	{
@@ -10014,8 +10031,7 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			if (!sema_expr_analyse_ternary(context, infer_type, expr)) return expr_poison(expr);
 			break;
 		case EXPR_HASH_IDENT:
-			if (!sema_expr_analyse_hash_identifier(context, infer_type, expr)) return expr_poison(expr);
-			break;
+			UNREACHABLE
 		case EXPR_CT_ARG:
 			if (!sema_expr_analyse_ct_arg(context, infer_type, expr)) return expr_poison(expr);
 			break;

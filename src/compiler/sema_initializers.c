@@ -784,7 +784,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!to) to = type_untypedlist;
 	ASSERT0(to);
 	Type *flattened = type_flatten(to);
-	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) || sema_initializer_list_is_empty(expr);
+	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) ||
+			(expr->resolve_status == RESOLVE_DONE && sema_initializer_list_is_empty(expr));
 
 	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
 	switch (flattened->type_kind)

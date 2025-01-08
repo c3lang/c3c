@@ -119,7 +119,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	}
 
 	CondResult result_no_resolve = COND_MISSING;
-	if (expr_is_const_bool(expr) && expr->resolve_status == RESOLVE_DONE)
+	if (expr->resolve_status == RESOLVE_DONE && expr_is_const_bool(expr))
 	{
 		result_no_resolve = expr->const_expr.b ? COND_TRUE : COND_FALSE;
 	}

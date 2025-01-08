@@ -20,6 +20,7 @@
 - Improved error message when accessing `@private` from other modules #1769.
 - Include `@name` when searching for possible matches to `name` in the error message. #1779
 - Improve `@param` parse errors #1777
+- Improved `#foo` resolution inside of the compiler.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -73,6 +74,7 @@
 - Added URL parser.
 - Added convenience functions to `Maybe`.
 - Added `String.trim_left()` and `.trim_right()`.
+- Deprecation of several `&` macros.
 
 ## 0.6.5 Change list
 

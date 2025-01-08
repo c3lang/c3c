@@ -445,13 +445,13 @@ fn BigInt BigInt.shl(self, int shift)
 	return self;
 }
 
-macro bool BigInt.equals(&self, BigInt* &other) @safemacro
+macro bool BigInt.equals(&self, BigInt other)
 {
 	if (self.len != other.len) return false;
 	return self.data[:self.len] == other.data[:self.len];
 }
 
-macro bool BigInt.greater_than(&self, BigInt* &other) @safemacro
+macro bool BigInt.greater_than(&self, BigInt other)
 {
 	if (self.is_negative() && !other.is_negative()) return false;
 	if (!self.is_negative() && other.is_negative()) return true;
@@ -461,7 +461,7 @@ macro bool BigInt.greater_than(&self, BigInt* &other) @safemacro
 	for (pos = len - 1; pos >= 0 && self.data[pos] == other.data[pos]; pos--);
 	return pos >= 0 && self.data[pos] > other.data[pos];
 }
-macro bool BigInt.less_than(&self, BigInt* &other) @safemacro
+macro bool BigInt.less_than(&self, BigInt other)
 {
 	if (self.is_negative() && !other.is_negative()) return true;
 	if (!self.is_negative() && other.is_negative()) return false;
@@ -485,14 +485,14 @@ fn bool BigInt.is_one(&self)
 }
 
 
-macro bool BigInt.greater_or_equal(&self, BigInt* &other) @safemacro
+macro bool BigInt.greater_or_equal(&self, BigInt other)
 {
-	return self.greater_than(*other) || self.equals(*other);
+	return self.greater_than(other) || self.equals(other);
 }
 
-macro bool BigInt.less_or_equal(&self, BigInt* &other) @safemacro
+macro bool BigInt.less_or_equal(&self, BigInt)
 {
-	return self.less_than(*other) || self.equals(*other);
+	return self.less_than(other) || self.equals(other);
 }
 
 fn BigInt BigInt.abs(&self)
