@@ -9158,6 +9158,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 		}
 		case TOKEN_CT_VAREF:
 		{
+			SEMA_DEPRECATED(expr, "'$varef' is deprecated together with '&' arguments.");
 			// A normal argument, this means we only evaluate it once.
 			unsigned index = 0;
 			ASSIGN_EXPR_OR_RET(Expr *arg_expr, sema_expr_analyse_ct_arg_index(context, exprptr(expr->ct_arg_expr.arg), &index), false);
