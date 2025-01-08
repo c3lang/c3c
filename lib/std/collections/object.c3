@@ -50,7 +50,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			usz n = formatter.printf("{")!;
 			@stack_mem(1024; Allocator mem)
 			{
-				foreach (i, key : self.map.copy_keys(mem))
+				foreach (i, key : self.map.new_keys_array(mem))
 				{
 					if (i > 0) n += formatter.printf(",")!;
 					n += formatter.printf(`"%s":`, key)!;
@@ -462,7 +462,7 @@ fn Object* Object.get_or_create_obj(&self, String key)
 	return container;
 }
 
-def ObjectInternalMap = HashMap(<String, Object*>) @private;
+def ObjectInternalMap = Map(<String, Object*>) @private;
 def ObjectInternalList = List(<Object*>) @private;
 def ObjectInternalMapEntry = Entry(<String, Object*>) @private;
 

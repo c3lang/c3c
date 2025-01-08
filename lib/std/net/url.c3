@@ -6,7 +6,7 @@ def UrlQueryValueList = List(<String>);
 
 struct UrlQueryValues
 {
-	inline HashMap(<String, UrlQueryValueList>) map;
+	inline Map(<String, UrlQueryValueList>) map;
 }
 
 struct Url(Printable)
@@ -218,7 +218,7 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 fn UrlQueryValues Url.query_values(&self, Allocator allocator)
 {
 	UrlQueryValues vals;
-	vals.init(allocator);
+	vals.new_init(allocator: allocator);
 
 	Splitter raw_vals = self.query.tokenize("&");
 
@@ -234,7 +234,7 @@ fn UrlQueryValues Url.query_values(&self, Allocator allocator)
 			else
 			{
 				UrlQueryValueList new_list;
-				new_list.new_init_with_array({ parts[1] }, allocator);
+				new_list.new_init_from_array({ parts[1] }, allocator);
 				vals[parts[0]] = new_list;
 			}
 		};

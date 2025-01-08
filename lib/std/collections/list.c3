@@ -49,7 +49,7 @@ fn List* List.temp_init(&self, usz initial_capacity = 16)
  @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
 *>
-fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap())
+fn List* List.new_init_from_array(&self, Type[] values, Allocator allocator = allocator::heap())
 {
 	self.new_init(values.len, allocator) @inline;
 	self.add_array(values) @inline;
@@ -62,7 +62,7 @@ fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = al
  @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
 *>
-fn List* List.temp_init_with_array(&self, Type[] values)
+fn List* List.temp_init_from_array(&self, Type[] values)
 {
 	self.temp_init(values.len) @inline;
 	self.add_array(values) @inline;
@@ -72,7 +72,7 @@ fn List* List.temp_init_with_array(&self, Type[] values)
 <*
  @require self.capacity == 0 "The List must not be allocated"
 *>
-fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
+fn void List.wrap_array(&self, Type[] types, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
 	self.capacity = types.len;

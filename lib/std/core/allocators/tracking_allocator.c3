@@ -13,7 +13,7 @@ struct Allocation
 	void*[MAX_BACKTRACE] backtrace;
 }
 
-def AllocMap = HashMap(<uptr, Allocation>);
+def AllocMap = Map(<uptr, Allocation>);
 
 // A simple tracking allocator.
 // It tracks allocations using a hash map but
@@ -54,7 +54,7 @@ fn usz TrackingAllocator.allocated(&self)
 	usz allocated = 0;
 	@pool()
 	{
-		foreach (&allocation : self.map.value_tlist()) allocated += allocation.size;
+		foreach (&allocation : self.map.temp_vals_array()) allocated += allocation.size;
 	};
 	return allocated;
 }
@@ -71,7 +71,7 @@ fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
 fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 {
-	return self.map.value_tlist();
+	return self.map.temp_vals_array();
 }
 
 <*
@@ -126,7 +126,7 @@ fn void! TrackingAllocator.fprint_report(&self, OutStream out)
 	bool leaks = false;
 	@pool()
 	{
-		Allocation[] allocs = self.map.value_tlist();
+		Allocation[] allocs = self.map.temp_vals_array();
 		if (allocs.len)
 		{
 			if (!allocs[0].backtrace[0])
