@@ -3423,11 +3423,12 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		if (rtype->optional->type_kind != TYPE_VOID)
 		{
-			SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
+			RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
 			return false;
 		}
 		is_int_return = false;
 		is_err_return = true;
+		SEMA_DEPRECATED(rtype_info, "Main functions with 'void!' returns is deprecated, use 'int' or 'void' instead.");
 	}
 
 	if (type_is_void(rtype)) is_int_return = false;
@@ -3669,16 +3670,20 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		VarDeclKind kind = param->var.kind;
 		switch (kind)
 		{
-			case VARDECL_PARAM:
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
-			case VARDECL_PARAM_CT_TYPE:
+				// DEPRECATED
 				if (!type_info) break;
 				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 				if (kind != VARDECL_PARAM_REF || type_is_pointer(type_info->type)) break;
 				RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 				                  type_quoted_error_string(type_get_ptr(type_info->type)));
+			case VARDECL_PARAM:
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_CT_TYPE:
+				if (!type_info) break;
+				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+				break;
 			case VARDECL_CONST:
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:
@@ -3797,7 +3802,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 			domain = ATTR_GLOBAL;
 			break;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM_CT_TYPE:
 		case VARDECL_PARAM_CT:
 			domain = ATTR_PARAM;

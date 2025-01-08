@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-fn void! main()
+fn void main()
 {
 	int a;
 	switch (a)
@@ -17,7 +17,6 @@ fn void! main()
 
 /* #expect: test.ll
 
-define i64 @test.main() #0 {
 entry:
   %a = alloca i32, align 4
   %switch = alloca i32, align 4
@@ -51,5 +50,3 @@ switch.default:                                   ; preds = %next_if4
   store i32 %sub, ptr %a, align 4
   br label %switch.exit
 switch.exit:                                      ; preds = %switch.default
-  ret i64 0
-}

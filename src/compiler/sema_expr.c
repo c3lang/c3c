@@ -10134,6 +10134,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	// Deref / addr as needed.
 	if (first_param->var.kind == VARDECL_PARAM_REF)
 	{
+		// DEPRECATED
 		ASSERT_SPAN(method_call, first->type_kind == TYPE_POINTER);
 		first = first->pointer;
 	}
@@ -10150,6 +10151,7 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	}
 	else if (first_param->var.kind == VARDECL_PARAM_REF || !expr_may_ref(parent))
 	{
+		// DEPRECATED
 		Expr *inner = expr_copy(parent);
 		parent->expr_kind = EXPR_UNARY;
 		Type *inner_type = inner->type;

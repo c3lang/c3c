@@ -3980,7 +3980,7 @@ static inline bool decl_is_var_local(Decl *decl)
 		   || kind == VARDECL_LOCAL
 		   || kind == VARDECL_LOCAL_CT_TYPE
 		   || kind == VARDECL_LOCAL_CT
-		   || kind == VARDECL_PARAM_REF
+		   || kind == VARDECL_PARAM_REF // DEPRECATED
 		   || kind == VARDECL_PARAM_EXPR
 		   || kind == VARDECL_BITMEMBER
 		   || kind == VARDECL_MEMBER;

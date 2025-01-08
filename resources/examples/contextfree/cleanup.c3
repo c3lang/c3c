@@ -44,9 +44,9 @@ fn Resource! prep_out(String out_name, String[] prep_names)
 	return writer;
 }
 
-fn void! main()
+fn void main()
 {
-	Resource writer = prep_out("out", String[] { "a", "b"})!;
+	Resource writer = prep_out("out", String[] { "a", "b"});
     defer writer.deinit();
     io::printn("use out");
 }

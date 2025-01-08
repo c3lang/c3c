@@ -22,6 +22,7 @@
 - Improve `@param` parse errors #1777
 - Improved `#foo` resolution inside of the compiler.
 - Deprecated '&' macro arguments.
+- Deprecate `fn void! main() type main functions.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

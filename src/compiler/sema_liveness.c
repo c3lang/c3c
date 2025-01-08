@@ -659,8 +659,8 @@ RETRY:
 				case VARDECL_PARAM_EXPR:
 					// These are never traced, they are folded in use.
 					break;
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_CT:
-				case VARDECL_PARAM_REF:
 				case VARDECL_PARAM:
 					sema_trace_type_liveness(decl->type);
 					if (decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE)

@@ -6142,7 +6142,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			case VARDECL_PARAM_CT_TYPE:
 			case VARDECL_PARAM_EXPR:
 				continue;
-			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_REF: // DEPRECATED
 			case VARDECL_PARAM:
 				break;
 		}

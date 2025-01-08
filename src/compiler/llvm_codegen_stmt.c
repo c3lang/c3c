@@ -82,8 +82,8 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
 			UNREACHABLE;
+		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF:
 		{
 			Expr *init_expr = decl->var.init_expr;
 			llvm_emit_expr(c, value, init_expr);

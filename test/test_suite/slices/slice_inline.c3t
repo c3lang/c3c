@@ -10,7 +10,7 @@ fn void Data.not_working(self) {
 fn void Data.working(self) {
     self.data[:self.data.len];
 }
-fn void! main(String[] args) {
+fn void main(String[] args) {
     Data d;
     d.not_working();
     d.working();

@@ -2,7 +2,7 @@
 // #safe: yes
 module main;
 
-fn void! main()
+fn void main()
 {
 	for (usz i = 0; i < 100000000; i++)
 	{
@@ -12,8 +12,6 @@ fn void! main()
 
 /* #expect: main.ll
 
-define i64 @main.main() #0 {
-entry:
   %i = alloca i64, align 8
   %taddr = alloca i64, align 8
   %varargslots = alloca [2 x %any], align 16
@@ -50,6 +48,4 @@ assert_ok:                                        ; preds = %loop.body
   store i64 %add, ptr %i, align 8
   br label %loop.cond
 loop.exit:                                        ; preds = %loop.cond
-  ret i64 0
-}
 
