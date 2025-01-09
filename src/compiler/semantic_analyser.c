@@ -133,7 +133,15 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 
 static inline void halt_on_error(void)
 {
-	if (compiler.context.errors_found > 0) exit_compiler(EXIT_FAILURE);
+	if (compiler.context.errors_found > 0)
+	{
+		if (compiler.build.lsp_output)
+		{
+			eprintf("> ENDLSP-ERROR\n");
+			exit_compiler(COMPILER_SUCCESS_EXIT);
+		}
+		exit_compiler(EXIT_FAILURE);
+	}
 }
 
 void sema_analyze_stage(Module *module, AnalysisStage stage)

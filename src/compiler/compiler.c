@@ -402,7 +402,16 @@ static void create_output_dir(const char *dir)
 
 void compiler_compile(void)
 {
+	if (compiler.build.lsp_output)
+	{
+		eprintf("> BEGINLSP\n");
+	}
 	sema_analysis_run();
+	if (compiler.build.lsp_output)
+	{
+		eprintf("< ENDLSP-OK\n");
+		exit_compiler(0);
+	}
 	compiler_sema_time = bench_mark();
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
@@ -437,7 +446,7 @@ void compiler_compile(void)
 			error_exit("Failed to create build directory '%s'.", compiler.build.build_dir);
 		}
 	}
-	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output))
+	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
 		if (!file_exists(compiler.build.ir_file_dir) && !dir_make(compiler.build.ir_file_dir))
 		{

@@ -491,6 +491,13 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		target->emit_asm = false;
 		target->emit_object_files = false;
 	}
+	if (options->lsp_mode)
+	{
+		target->lsp_output = true;
+		target->emit_llvm = false;
+		target->emit_asm = false;
+		target->emit_object_files = false;
+	}
 	if (options->test_mode)
 	{
 		target->test_output = true;

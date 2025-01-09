@@ -491,6 +491,7 @@ typedef struct BuildOptions_
 	bool emit_asm;
 	bool benchmark_mode;
 	bool test_mode;
+	bool lsp_mode;
 	bool no_entry;
 	bool no_obj;
 	bool no_headers;
@@ -600,6 +601,7 @@ typedef struct
 	bool generate_test_runner;
 	bool benchmark_output;
 	bool test_output;
+	bool lsp_output;
 	bool output_headers;
 	bool output_ast;
 	bool lex_only;
