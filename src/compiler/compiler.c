@@ -409,8 +409,8 @@ void compiler_compile(void)
 	sema_analysis_run();
 	if (compiler.build.lsp_output)
 	{
-		eprintf("< ENDLSP-OK\n");
-		exit_compiler(0);
+		eprintf("> ENDLSP-OK\n");
+		exit_compiler(COMPILER_SUCCESS_EXIT);
 	}
 	compiler_sema_time = bench_mark();
 	Module **modules = compiler.context.module_list;
