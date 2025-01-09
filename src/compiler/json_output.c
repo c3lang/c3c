@@ -175,6 +175,9 @@ void print_var_expr(FILE *file, Expr *expr)
 		{
 			case '\r':
 				break;
+			case '\\':
+				fputs("\\\\", file);
+				break;
 			case '\n':
 				fputs("\\n", file);
 				break;
