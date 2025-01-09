@@ -125,6 +125,7 @@ static void usage(bool full)
 		PRINTF("  --optsize=<option>         - Code size optimization: none, small, tiny.");
 		PRINTF("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
 		PRINTF("  --show-backtrace=<yes|no>  - Show detailed backtrace on segfaults.");
+		PRINTF("  --old-test-bench=<yes|no>  - Allow benchmarks and tests to use the deprecated 'void!' returns.");
 	}
 	PRINTF("");
 	PRINTF("  -g                         - Emit debug info.");
@@ -691,6 +692,11 @@ static void parse_option(BuildOptions *options)
 				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("old-test-bench")))
+			{
+				options->old_test = (OldTest) parse_multi_option(argopt, 2, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("show-backtrace")))
 			{
 				options->show_backtrace = (ShowBacktrace) parse_multi_option(argopt, 2, on_off);
@@ -1149,6 +1155,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
+		.old_test = OLD_TEST_NOT_SET,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),

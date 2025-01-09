@@ -22,7 +22,8 @@ struct SliceRaw
 	usz len;
 }
 
-def BenchmarkFn = fn void!();
+def BenchmarkFn = fn void!() @if($$OLD_TEST);
+def BenchmarkFn = fn void() @if(!$$OLD_TEST);
 
 struct BenchmarkUnit
 {
@@ -59,7 +60,7 @@ fn void set_benchmark_max_iterations(uint value) @builtin
     benchmark_max_iterations = value;
 }
 
-fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
+fn bool run_benchmarks(BenchmarkUnit[] benchmarks) @if($$OLD_TEST)
 {
 	int benchmarks_passed = 0;
 	int benchmark_count = benchmarks.len;
@@ -132,6 +133,62 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 	return benchmark_count == benchmarks_passed;
 }
 
+fn bool run_benchmarks(BenchmarkUnit[] benchmarks) @if(!$$OLD_TEST)
+{
+	usz max_name;
+
+	foreach (&unit : benchmarks)
+	{
+		if (max_name < unit.name.len) max_name = unit.name.len;
+	}
+
+	usz len = max_name + 9;
+
+	DString name = dstring::temp_with_capacity(64);
+	name.append_repeat('-', len / 2);
+	name.append(" BENCHMARKS ");
+	name.append_repeat('-', len - len / 2);
+
+	io::printn(name);
+
+	name.clear();
+
+	long sys_clock_started;
+	long sys_clock_finished;
+	long sys_clocks;
+	Clock clock;
+
+	foreach(unit : benchmarks)
+	{
+		defer name.clear();
+		name.appendf("Benchmarking %s ", unit.name);
+		name.append_repeat('.', max_name - unit.name.len + 2);
+		io::printf("%s ", name.str_view());
+
+		for (uint i = 0; i < benchmark_warmup_iterations; i++)
+		{
+			unit.func() @inline;
+		}
+
+		clock = std::time::clock::now();
+		sys_clock_started = $$sysclock();
+
+		for (uint i = 0; i < benchmark_max_iterations; i++)
+		{
+			unit.func() @inline;
+		}
+
+		sys_clock_finished = $$sysclock();
+		NanoDuration nano_seconds = clock.mark();
+		sys_clocks = sys_clock_finished - sys_clock_started;
+
+		io::printfn("[COMPLETE] %.2f ns, %.2f CPU's clocks", (float)nano_seconds / benchmark_max_iterations, (float)sys_clocks / benchmark_max_iterations);
+	}
+
+	io::printfn("\n%d benchmark%s run.\n", benchmarks.len, benchmarks.len > 1 ? "s" : "");
+	return true;
+}
+
 fn bool default_benchmark_runner()
 {
 	@pool()
@@ -140,7 +197,8 @@ fn bool default_benchmark_runner()
 	};
 }
 
-def TestFn = fn void!();
+def TestFn = fn void!() @if($$OLD_TEST);
+def TestFn = fn void() @if(!$$OLD_TEST);
 
 struct TestUnit
 {
@@ -191,7 +249,7 @@ fn void test_panic(String message, String file, String function, uint line)
 	libc::longjmp(&test_context.buf, 1);
 }
 
-fn bool run_tests(TestUnit[] tests)
+fn bool run_tests(TestUnit[] tests) @if($$OLD_TEST)
 {
 	usz max_name;
 	foreach (&unit : tests)
@@ -229,6 +287,50 @@ fn bool run_tests(TestUnit[] tests)
 				io::printfn("[failed] Failed due to: %s", err);
 				continue;
 			}
+			io::printn("[ok]");
+			tests_passed++;
+		}
+	}
+	io::printfn("\n%d test%s run.\n", test_count, test_count > 1 ? "s" : "");
+	io::printfn("Test Result: %s. %d passed, %d failed.",
+		tests_passed < test_count ? "FAILED" : "ok", tests_passed, test_count - tests_passed);
+	return test_count == tests_passed;
+}
+
+fn bool run_tests(TestUnit[] tests) @if(!$$OLD_TEST)
+{
+	usz max_name;
+	foreach (&unit : tests)
+	{
+		if (max_name < unit.name.len) max_name = unit.name.len;
+	}
+	quicksort(tests, &cmp_test_unit);
+
+	TestContext context;
+	test_context = &context;
+
+	PanicFn old_panic = builtin::panic;
+	defer builtin::panic = old_panic;
+	builtin::panic = &test_panic;
+	int tests_passed = 0;
+	int test_count = tests.len;
+	DString name = dstring::temp_with_capacity(64);
+	usz len = max_name + 9;
+	name.append_repeat('-', len / 2);
+	name.append(" TESTS ");
+	name.append_repeat('-', len - len / 2);
+	io::printn(name);
+	name.clear();
+	foreach(unit : tests)
+	{
+		defer name.clear();
+		name.appendf("Testing %s ", unit.name);
+		name.append_repeat('.', max_name - unit.name.len + 2);
+		io::printf("%s ", name.str_view());
+		(void)io::stdout().flush();
+		if (libc::setjmp(&context.buf) == 0)
+		{
+			unit.func();
 			io::printn("[ok]");
 			tests_passed++;
 		}

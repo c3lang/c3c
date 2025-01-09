@@ -8,7 +8,7 @@ def List = List(<usz>);
 
 def BitSet = BitSet(<2048>);
 
-fn void! set_get()
+fn void set_get()
 {
 	BitSet bs;
 	assert(bs.cardinality() == 0);
@@ -47,7 +47,7 @@ fn void! set_get()
 }
 
 def GrowableBitSet = GrowableBitSet(<char>);
-fn void! growable_set_get()
+fn void growable_set_get()
 {
 	GrowableBitSet bs;
 	bs.temp_init();

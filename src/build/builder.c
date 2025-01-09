@@ -361,6 +361,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (options->memory_environment != MEMORY_ENV_NOT_SET) target->memory_environment = options->memory_environment;
 	if (options->debug_info_override != DEBUG_INFO_NOT_SET) target->debug_info = options->debug_info_override;
 	if (options->show_backtrace != SHOW_BACKTRACE_NOT_SET) target->show_backtrace = options->show_backtrace;
+	if (options->old_test != OLD_TEST_NOT_SET) target->old_test = options->old_test;
 	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT) target->arch_os_target = options->arch_os_target_override;
 	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
 	if (options->symtab_size) target->symtab_size = options->symtab_size;

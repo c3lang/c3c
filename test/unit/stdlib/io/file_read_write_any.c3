@@ -34,7 +34,7 @@ struct Data {
   }
 }
 
-fn void! read_write_any()
+fn void read_write_any()
 {
     Data data;
     data.boolean = false;
@@ -58,7 +58,7 @@ fn void! read_write_any()
     File file = file::open("__file_read_write_any_test_file", "wb")!!;
 
     io::write_any(&file, &data)!!;
-    file.flush()!;
+    file.flush()!!;
     file.close()!!;
 
     file = file::open("__file_read_write_any_test_file", "rb")!!;

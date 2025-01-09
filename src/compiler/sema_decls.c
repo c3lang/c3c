@@ -3509,34 +3509,41 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	if (is_test || is_benchmark || is_init_finalizer)
 	{
 		ASSERT0(!is_interface_method);
-		if (vec_size(sig->params))
+		unsigned params = vec_size(sig->params);
+		if (params)
 		{
 			RETURN_SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
-			           is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
+							  is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
 		if (!sema_resolve_type_info(context, rtype_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Type *rtype = rtype_info->type;
 		if (is_init_finalizer)
 		{
-			if (rtype->canonical != type_void)
+			if (!type_is_void(rtype))
 			{
 				RETURN_SEMA_ERROR(rtype_info, "'@init' and '@finalizer' functions may only return 'void'.");
 			}
+			goto CHECK_DONE;
 		}
-		else
+		if (compiler.build.old_test != OLD_TEST_ON)
 		{
-			if (type_no_optional(rtype) != type_void)
+			if (!type_is_void(rtype))
 			{
-				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
+				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' you can allow 'void!' by passing in '--old-test-bench=yes'.");
 			}
-			if (type_is_void(rtype))
-			{
-				rtype_info->type = type_get_optional(rtype);
-			}
+			goto CHECK_DONE;
+		}
+		if (!type_is_void(type_no_optional(rtype)))
+		{
+			RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' or 'void!'.");
+		}
+		if (!type_is_optional(rtype))
+		{
+			rtype_info->type = type_get_optional(rtype);
 		}
 	}
-
+CHECK_DONE:
 	decl->type = type_new_func(decl, sig);
 	if (!sema_analyse_function_signature(context, decl, type_infoptrzero(decl->func_decl.type_parent), sig->abi, sig)) return decl_poison(decl);
 	TypeInfo *rtype_info = type_infoptr(sig->rtype);

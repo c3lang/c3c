@@ -4,7 +4,7 @@ import std::collections::range;
 def IntRange = Range(<int>);
 def IntExRange = ExclusiveRange(<int>);
 
-fn void! test_range()
+fn void test_range()
 {
 	IntRange range = { -4, 2 };
 	int sum = 0;
@@ -19,7 +19,7 @@ fn void! test_range()
 	assert(!range.contains(3));
 }
 
-fn void! test_exrange()
+fn void test_exrange()
 {
 	IntExRange range = { -4, 2 };
 	int sum = 0;

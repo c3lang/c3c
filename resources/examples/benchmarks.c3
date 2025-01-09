@@ -1,21 +1,21 @@
 import std::thread;
 
-fn void! bench1() @benchmark
+fn void bench1() @benchmark
 {
-    return std::thread::sleep_ms(1);
+    std::thread::sleep_ms(1)!!;
 }
 
-fn void! bench123456789() @benchmark
+fn void bench123456789() @benchmark
 {
-    return std::thread::sleep_ms(2);
+    std::thread::sleep_ms(2)!!;
 }
 
-fn void! long_name_bench() @benchmark
+fn void long_name_bench() @benchmark
 {
-    return std::thread::sleep_ms(3);
+    std::thread::sleep_ms(3)!!;
 }
 
-fn void! very_long_name_bench() @benchmark
+fn void very_long_name_bench() @benchmark
 {
     return std::thread::sleep_ms(10);
 }

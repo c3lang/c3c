@@ -23,6 +23,7 @@
 - Improved `#foo` resolution inside of the compiler.
 - Deprecated '&' macro arguments.
 - Deprecate `fn void! main() type main functions.
+- Deprecate old `void!` @benchmark and @test functions.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

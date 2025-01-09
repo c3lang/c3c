@@ -14,7 +14,7 @@ bitstruct Bar : char[13]
 	bool gh : 25;
 }
 
-fn void! test_bitops() @test
+fn void test_bitops() @test
 {
 	Foo f1 = { true, true };
 	Foo f2 = { true, false };
