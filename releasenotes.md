@@ -26,6 +26,7 @@
 - Deprecate old `void!` @benchmark and @test functions.
 - Allow test runners to take String[] arguments.
 - Added `--lsp` output.
+- Improve the error message when running out of memory.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
