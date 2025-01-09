@@ -3266,6 +3266,69 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 
 }
 
+Decl *sema_create_runner_main(SemaContext *context, Decl *decl)
+{
+	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
+	function->is_export = true;
+	function->has_extname = true;
+	function->extname = kw_mainstub;
+	function->name = kw_mainstub;
+	function->unit = decl->unit;
+
+	// Pick wWinMain, main or wmain
+	Decl *params[4] = { NULL, NULL, NULL, NULL };
+	int param_count;
+	if (is_win32)
+	{
+		function->extname = kw_wmain;
+		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+		param_count = 2;
+	}
+	else
+	{
+		function->extname = kw_main;
+		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+		param_count = 2;
+	}
+
+	function->has_extname = true;
+	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.vararg_index = param_count;
+	Decl **main_params = NULL;
+	for (int i = 0; i < param_count; i++) vec_add(main_params, params[i]);
+	function->func_decl.signature.params = main_params;
+	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	AstId *next = &body->compound_stmt.first_stmt;
+	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
+	const char *kw_main_invoker = symtab_preset(is_win32 ? "@_wmain_runner" : "@_main_runner", TOKEN_AT_IDENT);
+	Decl *d = sema_find_symbol(context, kw_main_invoker);
+	if (!d)
+	{
+		SEMA_ERROR(decl, "Missing main forwarding function '%s'.", kw_main_invoker);
+		return poisoned_decl;
+	}
+	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->span);
+	expr_resolve_ident(invoker, d);
+	Expr *call = expr_new(EXPR_CALL, decl->span);
+	Expr *fn_ref = expr_variable(decl);
+	vec_add(call->call_expr.arguments, fn_ref);
+	for (int i = 0; i < param_count; i++)
+	{
+		Expr *arg = expr_variable(params[i]);
+		vec_add(call->call_expr.arguments, arg);
+	}
+	call->call_expr.function = exprid(invoker);
+	for (int i = 0; i < param_count; i++) params[i]->resolve_status = RESOLVE_NOT_DONE;
+	ast_append(&next, ret_stmt);
+	ret_stmt->return_stmt.expr = call;
+	function->func_decl.body = astid(body);
+	function->is_synthetic = true;
+	return function;
+}
+
 static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return, bool is_winmain, bool is_wmain)
 {
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
@@ -3377,7 +3440,7 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 		default:
 			UNREACHABLE;
 	}
-NEXT:;
+	NEXT:;
 	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
 	Decl *d = sema_find_symbol(context, kw_main_invoker);
 	if (!d)

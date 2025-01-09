@@ -24,6 +24,7 @@
 - Deprecated '&' macro arguments.
 - Deprecate `fn void! main() type main functions.
 - Deprecate old `void!` @benchmark and @test functions.
+- Allow test runners to take String[] arguments.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

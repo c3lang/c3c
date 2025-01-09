@@ -47,6 +47,13 @@ macro int @main_to_int_main_args(#m, int argc, char** argv)
 	return #m(list);
 }
 
+macro int @_main_runner(#m, int argc, char** argv)
+{
+	String[] list = args_to_strings(argc, argv);
+	defer free(list.ptr);
+	return #m(list) ? 0 : 1;
+}
+
 macro int @main_to_void_main_args(#m, int argc, char** argv)
 {
 	String[] list = args_to_strings(argc, argv);
@@ -155,6 +162,13 @@ macro int @wmain_to_int_main_args(#m, int argc, Char16** argv)
 	String[] args = wargs_strings(argc, argv);
 	defer release_wargs(args);
 	return #m(args);
+}
+
+macro int @_wmain_runner(#m, int argc, Char16** argv)
+{
+	String[] args = wargs_strings(argc, argv);
+	defer release_wargs(args);
+	return #m(args) ? 0 : 1;
 }
 
 macro int @wmain_to_void_main_args(#m, int argc, Char16** argv)

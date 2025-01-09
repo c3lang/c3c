@@ -1863,8 +1863,6 @@ typedef struct
 	Decl *panicf;
 	Decl *io_error_file_not_found;
 	Decl *main;
-	Decl *test_func;
-	Decl *benchmark_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;

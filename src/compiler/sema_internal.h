@@ -72,6 +72,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func);
 bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan span, bool *has_ensures);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
+Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
+
 void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
