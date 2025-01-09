@@ -34,7 +34,7 @@ static char *find_visual_studio(void)
 	// Let's locate vswhere.exe
 	char *path = win_utf16to8(_wgetenv(L"ProgramFiles(x86)"));
 	scratch_buffer_clear();
-	scratch_buffer_printf("\"%s\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -prerelease -property installationPath", path);
+	scratch_buffer_printf("\"%s\\Microsoft Visual Studio\\Installer\\vswhere.exe\" -latest -prerelease -property installationPath -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -products *", path);
 	const char *install_path = NULL;
 
 	// Call vswhere.exe
