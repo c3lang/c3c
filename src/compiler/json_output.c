@@ -247,7 +247,8 @@ void print_var_expr(FILE *file, Expr *expr)
 		    print_var_expr(file, expr->inner_expr);
 		    break;
 		case EXPR_MAKE_SLICE:
-			TODO
+			fputs("TODO: MAKE_SLICE", file);
+		    break;
 	    case EXPR_MAKE_ANY:
 			fputs("TODO: MAKE_ANY", file);
 			break;
@@ -269,8 +270,11 @@ void print_var_expr(FILE *file, Expr *expr)
 		    fputs(")", file);
 		    break;
 	    case EXPR_ANYFAULT_TO_FAULT:
+		    fputs("TODO: ANYFAULT TO FAULT", file);
+		    break;
 	    case EXPR_VECTOR_FROM_ARRAY:
-			TODO
+		    fputs("TODO: VEC FROM ARRAY", file);
+		    break;
 	    case EXPR_SLICE_LEN:
 		    print_var_expr(file, expr->access_expr.parent);
 		    fputs(".len", file);
@@ -283,7 +287,8 @@ void print_var_expr(FILE *file, Expr *expr)
 	    case EXPR_VECTOR_TO_ARRAY:
 	    case EXPR_SLICE_TO_VEC_ARRAY:
 	    case EXPR_SCALAR_TO_VECTOR:
-			TODO
+	    case EXPR_EXT_TRUNC:
+		    fputs("TODO: MISSING IMPL", file);
 		    break;
 	    case EXPR_PTR_ACCESS:
 		    print_var_expr(file, expr->access_expr.parent);
@@ -293,8 +298,6 @@ void print_var_expr(FILE *file, Expr *expr)
 			fputs(expr->int_to_bool_expr.negate ? "!" : "!!", file);
 		    print_var_expr(file, expr->inner_expr);
 		    break;
-		case EXPR_EXT_TRUNC:
-			TODO
         case EXPR_BINARY:
             print_var_expr(file, exprptr(expr->binary_expr.left));
             switch (expr->binary_expr.operator)
@@ -402,7 +405,8 @@ void print_var_expr(FILE *file, Expr *expr)
 	            case BINARYOP_VEC_LE:
 	            case BINARYOP_VEC_NE:
 	            case BINARYOP_VEC_EQ:
-					TODO
+		            fputs("/*VEC COMPARE TODO*/", file);
+		            break;
             }
             print_var_expr(file, exprptr(expr->binary_expr.right));
             break;
