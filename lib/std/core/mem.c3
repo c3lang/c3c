@@ -550,19 +550,21 @@ fn void temp_pop(TempState old_state)
 	allocator::thread_temp_allocator = old_state.old;
 }
 
-macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
+<*
+ @require @is_empty_macro_slot(#other_temp) ||| $assignable(#other_temp, Allocator) "Must be an allocator"
+ *>
+macro void @pool(#other_temp = EMPTY_MACRO_SLOT; @body) @builtin
 {
 	TempAllocator* current = allocator::temp();
-	var $has_arg = !$is_const(#other_temp);
-	$if $has_arg:
+	$if @is_valid_macro_slot(#other_temp):
 		TempAllocator* original = current;
-		if (current == (void*)#other_temp) current = allocator::temp_allocator_next();
+		if (current == #other_temp.ptr) current = allocator::temp_allocator_next();
 	$endif
 	usz mark = current.used;
 	defer
 	{
 		current.reset(mark);
-		$if $has_arg:
+		$if @is_valid_macro_slot(#other_temp):
 			allocator::thread_temp_allocator = original;
 		$endif;
 	}

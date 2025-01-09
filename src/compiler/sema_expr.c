@@ -1390,6 +1390,14 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 			}
 			break;
 		case VARDECL_PARAM_EXPR:
+			if (param->type)
+			{
+				if (!sema_analyse_expr_rhs(context, param->type, arg, true, NULL, false))
+				{
+					SEMA_NOTE(definition, "The definition is here.");
+					return false;
+				}
+			}
 			// #foo
 			if (context->is_temp)
 			{
@@ -2137,6 +2145,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 		}
 		param->var.init_expr = args[i];
+		// Ref arguments doesn't affect optional arg.
+		if (param->var.kind == VARDECL_PARAM_EXPR) continue;
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
 	}
 
@@ -5751,6 +5761,7 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
 	if (!sema_expr_analyse_binary(context, expr, NULL)) return false;
+	expr->resolve_status = RESOLVE_DONE;
 
 	if (!sema_cast_const(expr))
 	{

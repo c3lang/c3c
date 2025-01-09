@@ -357,7 +357,6 @@ INLINE void llvm_emit_statement_chain(GenContext *c, AstId current)
 {
 	while (current)
 	{
-
 		llvm_emit_stmt(c, ast_next(&current));
 	}
 }

@@ -4132,19 +4132,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			decl->type = type_add_optional(init->type, IS_OPTIONAL(decl));
 		}
 
-		Expr *init_expr = decl->var.init_expr;
-
 		// 2. Check const-ness
-		if (global_level_var && !expr_is_runtime_const(init_expr))
+		if (global_level_var && !expr_is_runtime_const(init))
 		{
-			SEMA_ERROR(init_expr, "The expression must be a constant value.");
-			expr_is_runtime_const(init_expr);
+			SEMA_ERROR(init, "The expression must be a constant value.");
 			return decl_poison(decl);
 		}
-		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
-		if (expr_is_const(init_expr))
+		if (global_level_var || !type_is_abi_aggregate(init->type)) sema_cast_const(init);
+		if (expr_is_const(init))
 		{
-			init_expr->const_expr.is_hex = false;
+			init->const_expr.is_hex = false;
 		}
 	}
 	EXIT_OK:;
