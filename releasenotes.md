@@ -27,6 +27,7 @@
 - Allow test runners to take String[] arguments.
 - Added `--lsp` output.
 - Improve the error message when running out of memory.
+- Allowed passing arguments to @test / @benchmark runners via `c3c test[benchmark] -- -o --opt1 <arg1>`
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

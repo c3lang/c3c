@@ -53,8 +53,8 @@ static void usage(bool full)
 	PRINTF("  init <project name>                                 Initialize a new project structure.");
 	PRINTF("  init-lib <library name>                             Initialize a new library structure.");
 	PRINTF("  build [<target>]                                    Build the target in the current project.");
-	PRINTF("  benchmark                                           Run the benchmarks in the current project.");
-	PRINTF("  test                                                Run the unit tests in the current project.");
+	PRINTF("  benchmark [-- [<arg1> ...]]                         Run the benchmarks in the current project.");
+	PRINTF("  test [-- [<arg1] ...]                               Run the unit tests in the current project.");
 	PRINTF("  clean                                               Clean all build files.");
 	PRINTF("  run [<target>] [-- [<arg1> ...]]                    Run (and build if needed) the target in the current project.");
 	PRINTF("  dist [<target>]                                     Clean and build a target for distribution.");
