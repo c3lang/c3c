@@ -10,21 +10,63 @@
 	unsigned decl_count_ = vec_size(unit->global_decls); \
 	for (unsigned k_ = 0; k_ < decl_count_; k_++) { \
 	a__ = unit->global_decls[k_];
-#define PRINTF(string, ...) fprintf(file, string, ##__VA_ARGS__) /* NOLINT */
+#define PRINTF(string__, ...) fprintf(file, string__, ##__VA_ARGS__) /* NOLINT */
+#define PRINT(string__) fputs(string__, file) /* NOLINT */
 #define FOREACH_DECL_END } } }
 #define INSERT_COMMA do { if (first) { first = false; } else { fputs(",\n", file); } } while(0)
 
+static bool emit_docs(FILE *file, AstId contracts, int tabs)
+{
+	if (!contracts) return false;
+	Ast *ast = astptr(contracts);
+	if (ast->contract_stmt.kind != CONTRACT_COMMENT) return false;
+	for (int i = 0; i < tabs; i++) PRINT("\t");
+	PRINT("\"comment\": \"");
+	bool last_is_whitespace = true;
+	for (size_t i = 0; i < ast->contract_stmt.strlen; i++)
+	{
+		unsigned char c = ast->contract_stmt.string[i];
+		if (char_is_whitespace(c) || c < 31)
+		{
+			if (last_is_whitespace) continue;
+			fputc(' ', file);
+			last_is_whitespace = true;
+			continue;
+		}
+		last_is_whitespace = false;
+		switch (c)
+		{
+			case '"':
+				PRINT("\\\"");
+				break;
+			case '\\':
+				PRINT("\\\\");
+				break;
+			default:
+				if (c > 127)
+				{
+					PRINTF("\\x%02x", c);
+				}
+				else
+				{
+					fputc(c, file);
+				}
+		}
+	}
+	PRINT("\"");
+	return true;
+}
 static inline void emit_modules(FILE *file)
 {
 
-	fputs("\t\"modules\": [\n", file);
+	PRINT("\t\"modules\": [\n");
 	FOREACH_IDX(i, Module *, module, compiler.context.module_list)
 	{
 		if (i != 0) fputs(",\n", file);
 		PRINTF("\t\t\"%s\"", module->name->module);
 	}
-	fputs("\n\t],\n", file);
-	fputs("\t\"generic_modules\": [\n", file);
+	PRINT("\n\t],\n");
+	PRINT("\t\"generic_modules\": [\n");
 	FOREACH_IDX(j, Module *, module, compiler.context.generic_module_list)
 	{
 		if (j != 0) fputs(",\n", file);
@@ -192,46 +234,121 @@ void print_var_expr(FILE *file, Expr *expr)
 	}
 }
 
+INLINE void print_indent(FILE *file, int indent)
+{
+	for (int j = 0; j < indent; j++) PRINT("\t");
+}
+static inline void emit_members(FILE *file, Decl **members, int indent)
+{
+	FOREACH_IDX(i, Decl *, member, members)
+	{
+		if (i != 0) fputs(",\n", file);
+		print_indent(file, indent);
+		PRINTF("\t\t\t\t{\n");
+		if (member->name)
+		{
+			print_indent(file, indent);
+			PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", member->name);
+		}
+		if (member->decl_kind == DECL_VAR)
+		{
+			print_indent(file, indent);
+			PRINTF("\t\t\t\t\t\"type\": \"");
+			ASSERT0(member->var.type_info);
+			print_type(file, type_infoptr(member->var.type_info));
+			PRINT("\"\n");
+			print_indent(file, indent);
+			PRINTF("\t\t\t\t}");
+			continue;
+		}
+		print_indent(file, indent);
+		PRINTF("\t\t\t\t\t\"inner\": ");
+		PRINT(member->decl_kind == DECL_STRUCT ? "\"struct\"" : "\"union\"");
+		PRINT(",\n");
+		print_indent(file, indent);
+		PRINT("\t\t\t\t\t\"members\": [\n");
+		emit_members(file, member->strukt.members, indent + 2);
+		PRINT("\n");
+		print_indent(file, indent);
+		PRINT("\t\t\t\t\t]\n");
+		print_indent(file, indent);
+		PRINTF("\t\t\t\t}");
+		continue;
+	}
+
+}
 static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 {
 	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
 	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
-	if (type->decl_kind == DECL_STRUCT || type->decl_kind == DECL_UNION)
+	switch (type->decl_kind)
 	{
-		fputs(",\n\t\t\t\"members\": [\n", file);
-		FOREACH_IDX(i, Decl *, member, type->strukt.members)
-		{
-			if (i != 0) fputs(",\n", file);
-			PRINTF("\t\t\t\t{\n");
-			if (member->name)
-			{
-				PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", member->name);
-			}
-			// TODO, extend this
-			PRINTF("\t\t\t\t\t\"type\": \"");
-			if (member->var.type_info)
-			{
-				print_type(file, type_infoptr(member->var.type_info));
-			}
-			else
-			{
-				fputs("", file);
-			}
-			PRINTF("\"\n\t\t\t\t}");
-		}
-		fputs("\n\t\t\t]", file);
+		case DECL_UNION:
+		case DECL_STRUCT:
+			fputs(",\n\t\t\t\"members\": [\n", file);
+			emit_members(file, type->strukt.members, 0);
+			fputs("\n\t\t\t]", file);
+			break;
+		case DECL_DISTINCT:
+			PRINT(",\n\t\t\t\"type\": \"");
+			print_type(file, type->distinct);
+			PRINTF(",\n\t\t\t\"inline\": \"%s\"", type->is_substruct ? "true" : "false");
+			break;
+		default:
+			break;
 	}
-	fputs("\n\t\t}", file);
+	PRINT("\n\t\t}");
 }
 
 static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
 	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, func->name);
+	if (emit_docs(file, func->func_decl.docs, 3))
+	{
+		PRINTF(",\n");
+	}
 	PRINTF("\t\t\t\"rtype\": \"");
 	print_type(file, type_infoptr(func->func_decl.signature.rtype));
 	PRINTF("\",\n");
-	fputs("\t\t\t\"params\": [\n", file);
+	PRINT("\t\t\t\"params\": [\n");
 	FOREACH_IDX(i, Decl *, decl, func->func_decl.signature.params)
+	{
+		if (!decl) continue;
+		if (i != 0) fputs(",\n", file);
+		fputs("\t\t\t\t{\n", file);
+		PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
+		PRINTF("\t\t\t\t\t\"type\": \"");
+		if (decl->var.type_info)
+		{
+			print_type(file, type_infoptr(decl->var.type_info));
+		}
+		else
+		{
+			fputs("", file);
+		}
+		fputs("\"\n", file);
+		fputs("\t\t\t\t}", file);
+	}
+	fputs("\n\t\t\t]\n", file);
+
+	fputs("\n\t\t}", file);
+}
+
+static inline void emit_macro_data(FILE *file, Module *module, Decl *macro)
+{
+	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, macro->name);
+	if (emit_docs(file, macro->func_decl.docs, 3))
+	{
+		PRINTF(",\n");
+	}
+	if (macro->func_decl.signature.rtype)
+	{
+		PRINTF("\t\t\t\"rtype\": \"");
+		print_type(file, type_infoptr(macro->func_decl.signature.rtype));
+		PRINTF("\",\n");
+	}
+	fputs("\t\t\t\"params\": [\n", file);
+	FOREACH_IDX(i, Decl *, decl, macro->func_decl.signature.params)
 	{
 		if (!decl) continue;
 		if (i != 0) fputs(",\n", file);
@@ -355,6 +472,17 @@ static inline void emit_functions(FILE *file)
 		FOREACH_DECL_END;
 	}
 	fputs("\n\t},\n", file);
+	fputs("\t\"macros\": {\n", file);
+	{
+		bool first = true;
+		FOREACH_DECL(Decl *func, compiler.context.module_list)
+					if (func->decl_kind != DECL_MACRO) continue;
+					if (decl_is_hidden(func)) continue;
+					INSERT_COMMA;
+					emit_macro_data(file, module, func);
+		FOREACH_DECL_END;
+	}
+	fputs("\n\t},\n", file);
 
 	fputs("\t\"generic_functions\": {\n", file);
 	{
@@ -367,6 +495,19 @@ static inline void emit_functions(FILE *file)
 		FOREACH_DECL_END;
 	}
 	fputs("\n\t},\n", file);
+
+	fputs("\t\"generic_macros\": {\n", file);
+	{
+		bool first = true;
+		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
+					if (func->decl_kind != DECL_MACRO) continue;
+					if (decl_is_hidden(func)) continue;
+					INSERT_COMMA;
+					emit_macro_data(file, module, func);
+		FOREACH_DECL_END;
+	}
+	fputs("\n\t},\n", file);
+
 }
 
 static inline void emit_json_to_file(FILE *file)

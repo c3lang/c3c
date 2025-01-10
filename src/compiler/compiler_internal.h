@@ -1473,6 +1473,11 @@ typedef struct AstDocDirective_
 			const char *directive_name;
 			const char *rest_of_line;
 		} generic;
+		struct
+		{
+			const char *string;
+			size_t strlen;
+		};
 	};
 } AstContractStmt;
 

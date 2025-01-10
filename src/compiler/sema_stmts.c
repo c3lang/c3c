@@ -3179,6 +3179,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 		{
 			case CONTRACT_UNKNOWN:
 			case CONTRACT_PURE:
+			case CONTRACT_COMMENT:
 				break;
 			case CONTRACT_REQUIRE:
 				if (!sema_analyse_require(context, directive, asserts, call_span)) return false;
