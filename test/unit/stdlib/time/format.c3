@@ -5,7 +5,7 @@ import std::time::datetime, std::collections::list, std::collections::triple;
 def FormatTzTestSpec = Triple(<TzDateTime, DateTimeFormat, String>);
 def FormatTestSpec = Triple(<DateTime, DateTimeFormat, String>);
 
-fn void! test_with_tz()
+fn void test_with_tz()
 {
 	FormatTzTestSpec[*] tests = {
 		{ datetime::from_date(1970, Month.JANUARY, 1, 0, 0, 0).with_gmt_offset(0), RFC1123, "Thu, 01 Jan 1970 00:00:00 GMT" },
@@ -32,7 +32,7 @@ fn void! test_with_tz()
 	}
 }
 
-fn void! test_without_tz()
+fn void test_without_tz()
 {
 	FormatTestSpec[*] tests = {
 		{ datetime::from_date(2006, Month.JANUARY, 2, 15, 4, 05), ANSIC, "Mon Jan  2 15:04:05 2006" },
