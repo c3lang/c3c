@@ -28,6 +28,7 @@
 - Added `--lsp` output.
 - Improve the error message when running out of memory.
 - Allowed passing arguments to @test / @benchmark runners via `c3c test[benchmark] -- -o --opt1 <arg1>`
+- Handle bytes and string literals the same way in terms of zero termination.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

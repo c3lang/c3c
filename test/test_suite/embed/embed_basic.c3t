@@ -13,9 +13,9 @@ fn void main()
 /* #expect: testing.ll
 
 
-@.bytes = private unnamed_addr constant [233 x i8] c"module testing;\0A\0Afn void main()\0A{\0A\09char[*] data = $embed(\22embed_basic.c3\22);\0A\09char* data2 = $embed(\22embed_basic.c3\22);\0A\09char[] data3 = $embed(\22embed_basic.c3\22);\0A\09char* data4 = $embed(\22fiek\22) ?? null;\0A\09char*! data5 = $embed(\22fiek\22);\0A}\0A\0A", align 1
-@.bytes.1 = private unnamed_addr constant [233 x i8] c"module testing;\0A\0Afn void main()\0A{\0A\09char[*] data = $embed(\22embed_basic.c3\22);\0A\09char* data2 = $embed(\22embed_basic.c3\22);\0A\09char[] data3 = $embed(\22embed_basic.c3\22);\0A\09char* data4 = $embed(\22fiek\22) ?? null;\0A\09char*! data5 = $embed(\22fiek\22);\0A}\0A\0A", align 1
-@.bytes.2 = private unnamed_addr constant [233 x i8] c"module testing;\0A\0Afn void main()\0A{\0A\09char[*] data = $embed(\22embed_basic.c3\22);\0A\09char* data2 = $embed(\22embed_basic.c3\22);\0A\09char[] data3 = $embed(\22embed_basic.c3\22);\0A\09char* data4 = $embed(\22fiek\22) ?? null;\0A\09char*! data5 = $embed(\22fiek\22);\0A}\0A\0A", align 1
+@.bytes = private unnamed_addr constant [234 x i8] c"module testing;\0A\0Afn void main()\0A{\0A\09char[*] data = $embed(\22embed_basic.c3\22);\0A\09char* data2 = $embed(\22embed_basic.c3\22);\0A\09char[] data3 = $embed(\22embed_basic.c3\22);\0A\09char* data4 = $embed(\22fiek\22) ?? null;\0A\09char*! data5 = $embed(\22fiek\22);\0A}\0A\0A\00", align 1
+@.bytes.1 = private unnamed_addr constant [234 x i8] c"module testing;\0A\0Afn void main()\0A{\0A\09char[*] data = $embed(\22embed_basic.c3\22);\0A\09char* data2 = $embed(\22embed_basic.c3\22);\0A\09char[] data3 = $embed(\22embed_basic.c3\22);\0A\09char* data4 = $embed(\22fiek\22) ?? null;\0A\09char*! data5 = $embed(\22fiek\22);\0A}\0A\0A\00", align 1
+@.bytes.2 = private unnamed_addr constant [234 x i8] c"module testing;\0A\0Afn void main()\0A{\0A\09char[*] data = $embed(\22embed_basic.c3\22);\0A\09char* data2 = $embed(\22embed_basic.c3\22);\0A\09char[] data3 = $embed(\22embed_basic.c3\22);\0A\09char* data4 = $embed(\22fiek\22) ?? null;\0A\09char*! data5 = $embed(\22fiek\22);\0A}\0A\0A\00", align 1
 
 define void @testing.main() #0 {
 entry:
