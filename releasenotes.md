@@ -82,6 +82,7 @@
 - Added convenience functions to `Maybe`.
 - Added `String.trim_left()` and `.trim_right()`.
 - Deprecation of several `&` macros.
+- Format functions for timedates.
 
 ## 0.6.5 Change list
 
