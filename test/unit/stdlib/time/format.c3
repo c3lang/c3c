@@ -2,8 +2,8 @@ module timeformat_test @test;
 
 import std::time::datetime, std::collections::list, std::collections::triple;
 
-def FormatTzTestSpec = Triple(<TzDateTime, FormatSpec, String>);
-def FormatTestSpec = Triple(<DateTime, FormatSpec, String>);
+def FormatTzTestSpec = Triple(<TzDateTime, DateTimeFormat, String>);
+def FormatTestSpec = Triple(<DateTime, DateTimeFormat, String>);
 
 fn void! test_with_tz()
 {
@@ -27,7 +27,7 @@ fn void! test_with_tz()
 
 	foreach (test : tests)
 	{
-		String candidate = test.first.format(test.second);
+		String candidate = test.first.new_format(test.second);
 		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
 	}
 }
@@ -43,7 +43,7 @@ fn void! test_without_tz()
 
 	foreach (test : tests)
 	{
-		String candidate = test.first.format(test.second);
+		String candidate = test.first.new_format(test.second);
 		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
 	}
 }
