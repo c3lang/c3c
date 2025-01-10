@@ -73,7 +73,7 @@
 - Added URL parser.
 - Added convenience functions to `Maybe`.
 - Added `String.trim_left()` and `.trim_right()`.
-- Add `mem::@assert_leak()` to assert on memory leaks in the scope.
+- Add `@assert_leak()` to assert on memory leaks in the scope.
 
 ## 0.6.5 Change list
 
