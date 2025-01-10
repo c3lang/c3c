@@ -79,3 +79,5 @@ TAGS
 # 'nix build' resulting symlink
 result
 
+# macOS
+.DS_Store

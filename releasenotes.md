@@ -83,6 +83,8 @@
 - Added convenience functions to `Maybe`.
 - Added `String.trim_left()` and `.trim_right()`.
 - Deprecation of several `&` macros.
+- Format functions for timedates.
+- Add `@assert_leak()` to assert on memory leaks in the scope.
 
 ## 0.6.5 Change list
 
