@@ -45,7 +45,7 @@ static bool emit_docs(FILE *file, AstId contracts, int tabs)
 			default:
 				if (c > 127)
 				{
-					PRINTF("\\x%02x", c);
+					PRINTF("\\u%04x", c);
 				}
 				else
 				{
@@ -292,7 +292,7 @@ static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 		case DECL_DISTINCT:
 			PRINT(",\n\t\t\t\"type\": \"");
 			print_type(file, type->distinct);
-			PRINTF(",\n\t\t\t\"inline\": \"%s\"", type->is_substruct ? "true" : "false");
+			PRINTF("\",\n\t\t\t\"inline\": \"%s\"", type->is_substruct ? "true" : "false");
 			break;
 		default:
 			break;
@@ -300,6 +300,50 @@ static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 	PRINT("\n\t\t}");
 }
 
+static inline void emit_param(FILE *file, Decl *decl)
+{
+	fputs("\t\t\t\t{\n", file);
+	PRINTF("\t\t\t\t\t\"kind\": \"");
+	if (!decl)
+	{
+		PRINT("vaarg\"\n");
+		fputs("\t\t\t\t}", file);
+		return;
+	}
+	assert(decl->decl_kind == DECL_VAR);
+	switch (decl->var.kind)
+	{
+		case VARDECL_PARAM:
+			PRINT("param");
+			break;
+		case VARDECL_PARAM_REF:
+			PRINT("refparam");
+			break;
+		case VARDECL_PARAM_EXPR:
+			PRINT("expr");
+			break;
+		case VARDECL_PARAM_CT:
+			PRINT("const");
+			break;
+		case VARDECL_PARAM_CT_TYPE:
+			PRINT("type");
+			break;
+		default:
+			UNREACHABLE
+	}
+	PRINTF("\",\n\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
+	PRINTF("\t\t\t\t\t\"type\": \"");
+	if (decl->var.type_info)
+	{
+		print_type(file, type_infoptr(decl->var.type_info));
+	}
+	else
+	{
+		fputs("", file);
+	}
+	fputs("\"\n", file);
+	fputs("\t\t\t\t}", file);
+}
 static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
 	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, func->name);
@@ -313,21 +357,8 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 	PRINT("\t\t\t\"params\": [\n");
 	FOREACH_IDX(i, Decl *, decl, func->func_decl.signature.params)
 	{
-		if (!decl) continue;
 		if (i != 0) fputs(",\n", file);
-		fputs("\t\t\t\t{\n", file);
-		PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
-		PRINTF("\t\t\t\t\t\"type\": \"");
-		if (decl->var.type_info)
-		{
-			print_type(file, type_infoptr(decl->var.type_info));
-		}
-		else
-		{
-			fputs("", file);
-		}
-		fputs("\"\n", file);
-		fputs("\t\t\t\t}", file);
+		emit_param(file, decl);
 	}
 	fputs("\n\t\t\t]\n", file);
 
@@ -350,21 +381,8 @@ static inline void emit_macro_data(FILE *file, Module *module, Decl *macro)
 	fputs("\t\t\t\"params\": [\n", file);
 	FOREACH_IDX(i, Decl *, decl, macro->func_decl.signature.params)
 	{
-		if (!decl) continue;
 		if (i != 0) fputs(",\n", file);
-		fputs("\t\t\t\t{\n", file);
-		PRINTF("\t\t\t\t\t\"name\": \"%s\",\n", decl->name ? decl->name : "");
-		PRINTF("\t\t\t\t\t\"type\": \"");
-		if (decl->var.type_info)
-		{
-			print_type(file, type_infoptr(decl->var.type_info));
-		}
-		else
-		{
-			fputs("", file);
-		}
-		fputs("\"\n", file);
-		fputs("\t\t\t\t}", file);
+		emit_param(file, decl);
 	}
 	fputs("\n\t\t\t]\n", file);
 
