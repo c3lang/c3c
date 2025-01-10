@@ -279,7 +279,8 @@ static inline void emit_members(FILE *file, Decl **members, int indent)
 }
 static inline void emit_type_data(FILE *file, Module *module, Decl *type)
 {
-	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, type->name);
+	PRINT("\t\t{\n");
+	PRINTF("\t\t\t\"name\": \"%s::%s\",\n", module->name->module, type->name);
 	PRINTF("\t\t\t\"kind\": \"%s\"", decl_type_to_string(type));
 	switch (type->decl_kind)
 	{
@@ -346,7 +347,8 @@ static inline void emit_param(FILE *file, Decl *decl)
 }
 static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 {
-	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, func->name);
+	PRINT("\t\t{\n");
+	PRINTF("\t\t\t\"name\": \"%s::%s\",\n", module->name->module, func->name);
 	if (emit_docs(file, func->func_decl.docs, 3))
 	{
 		PRINTF(",\n");
@@ -367,7 +369,8 @@ static inline void emit_func_data(FILE *file, Module *module, Decl *func)
 
 static inline void emit_macro_data(FILE *file, Module *module, Decl *macro)
 {
-	PRINTF("\t\t\"%s::%s\": {\n", module->name->module, macro->name);
+	PRINT("\t\t{\n");
+	PRINTF("\t\t\t\"name\": \"%s::%s\",\n", module->name->module, macro->name);
 	if (emit_docs(file, macro->func_decl.docs, 3))
 	{
 		PRINTF(",\n");
@@ -396,7 +399,7 @@ static inline bool decl_is_hidden(Decl *decl)
 
 static inline void emit_types(FILE *file)
 {
-	fputs("\t\"types\": {\n", file);
+	fputs("\t\"types\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *type, compiler.context.module_list)
@@ -407,8 +410,8 @@ static inline void emit_types(FILE *file)
 		FOREACH_DECL_END;
 	}
 
-	fputs("\n\t},\n", file);
-	fputs("\t\"generic_types\": {\n", file);
+	fputs("\n\t],\n", file);
+	fputs("\t\"generic_types\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *type, compiler.context.generic_module_list)
@@ -418,7 +421,7 @@ static inline void emit_types(FILE *file)
 					emit_type_data(file, module, type);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t},\n", file);
+	fputs("\n\t],\n", file);
 }
 
 static inline void emit_globals(FILE *file)
@@ -451,14 +454,15 @@ static inline void emit_globals(FILE *file)
 
 static inline void emit_constants(FILE *file)
 {
-	fputs("\t\"constants\": {\n", file);
+	fputs("\t\"constants\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *decl, compiler.context.module_list)
                     if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_CONST) continue;
 					if (decl_is_hidden(decl)) continue;
 					INSERT_COMMA;
-                    PRINTF("\t\t\"%s::%s\": {\n", module->name->module, decl->name);
+					PRINT("\t\t{\n");
+                    PRINTF("\t\t\"name\": \"%s::%s\",\n", module->name->module, decl->name);
                     fputs("\t\t\t\"type\": \"", file);
                     if (decl->var.type_info)
                     {
@@ -474,12 +478,12 @@ static inline void emit_constants(FILE *file)
                     fputs("\"\n\t\t}", file);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t}", file);
+	fputs("\n\t]", file);
 }
 
 static inline void emit_functions(FILE *file)
 {
-	fputs("\t\"functions\": {\n", file);
+	fputs("\t\"functions\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *func, compiler.context.module_list)
@@ -489,8 +493,8 @@ static inline void emit_functions(FILE *file)
 					emit_func_data(file, module, func);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t},\n", file);
-	fputs("\t\"macros\": {\n", file);
+	fputs("\n\t],\n", file);
+	fputs("\t\"macros\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *func, compiler.context.module_list)
@@ -500,9 +504,9 @@ static inline void emit_functions(FILE *file)
 					emit_macro_data(file, module, func);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t},\n", file);
+	fputs("\n\t],\n", file);
 
-	fputs("\t\"generic_functions\": {\n", file);
+	fputs("\t\"generic_functions\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
@@ -512,9 +516,9 @@ static inline void emit_functions(FILE *file)
 					emit_func_data(file, module, func);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t},\n", file);
+	fputs("\n\t],\n", file);
 
-	fputs("\t\"generic_macros\": {\n", file);
+	fputs("\t\"generic_macros\": [\n", file);
 	{
 		bool first = true;
 		FOREACH_DECL(Decl *func, compiler.context.generic_module_list)
@@ -524,7 +528,7 @@ static inline void emit_functions(FILE *file)
 					emit_macro_data(file, module, func);
 		FOREACH_DECL_END;
 	}
-	fputs("\n\t},\n", file);
+	fputs("\n\t],\n", file);
 
 }
 
