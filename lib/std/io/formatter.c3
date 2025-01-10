@@ -238,8 +238,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 				self.width = width;
 			}
 			self.width = 0;
-			self.out_substr("0x")!;
-			return self.ntoa_any(arg, 16);
+			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
 		case ARRAY:
 			// this is SomeType[*] so grab the "SomeType"
 			PrintFlags flags = self.flags;
@@ -485,11 +484,14 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 					total_len += self.pad(' ', self.width, len)!;
 					continue;
 				}
-				OutputFn out_fn = self.out_fn;
-				self.out_fn = (OutputFn)&out_null_fn;
-				usz len = self.out_str(current)!;
-				self.out_fn = out_fn;
-				total_len += self.pad(' ', self.width, len)!;
+				if (self.width)
+				{
+					OutputFn out_fn = self.out_fn;
+					self.out_fn = (OutputFn)&out_null_fn;
+					usz len = self.out_str(current)!;
+					self.out_fn = out_fn;
+					total_len += self.pad(' ', self.width, len)!;
+				}
 				total_len += self.out_str(current)!;
 				continue;
 			case 'p':
