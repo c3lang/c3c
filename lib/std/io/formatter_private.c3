@@ -215,7 +215,6 @@ fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		if (!self.flags.left) len += self.pad(' ', self.width, 3 + pl)!;
 		String s = self.flags.uppercase ? "INF" : "inf";
 		if (math::is_nan(y)) s = self.flags.uppercase ? "NAN" : "nan";
-		len += s.len;
 		if (pl) len += self.out(is_neg ? '-' : '+')!;
 		len += self.out_chars(s)!;
 		if (self.flags.left) len += self.pad(' ', self.width, 3 + pl)!;
