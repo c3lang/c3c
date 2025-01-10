@@ -5,9 +5,9 @@ import std::net::url;
 
 // Parser tests
 
-fn void! test_parse_foo()
+fn void test_parse_foo()
 {
-	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret#nose")!;
+	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret#nose")!!;
 	defer url.free();
 
 	assert(url.scheme == "foo", "got '%s'", url.scheme);
@@ -20,9 +20,9 @@ fn void! test_parse_foo()
 	assert(url.fragment == "nose", "got: '%s'", url.fragment);
 }
 
-fn void! test_parse_urn()
+fn void test_parse_urn()
 {
-	Url url = url::new_parse("urn:example:animal:ferret:nose")!;
+	Url url = url::new_parse("urn:example:animal:ferret:nose")!!;
 	defer url.free();
 
 	assert(url.scheme == "urn");
@@ -35,9 +35,9 @@ fn void! test_parse_urn()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_jdbc()
+fn void test_parse_jdbc()
 {
-	Url url = url::new_parse("jdbc:mysql://test_user:ouupppssss@localhost:3306/sakila?profileSQL=true")!;
+	Url url = url::new_parse("jdbc:mysql://test_user:ouupppssss@localhost:3306/sakila?profileSQL=true")!!;
 	defer url.free();
 
 	assert(url.scheme == "jdbc:mysql");
@@ -50,9 +50,9 @@ fn void! test_parse_jdbc()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_ftp()
+fn void test_parse_ftp()
 {
-	Url url = url::new_parse("ftp://ftp.is.co.za/rfc/rfc1808.txt")!;
+	Url url = url::new_parse("ftp://ftp.is.co.za/rfc/rfc1808.txt")!!;
 	defer url.free();
 
 	assert(url.scheme == "ftp");
@@ -65,9 +65,9 @@ fn void! test_parse_ftp()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_http()
+fn void test_parse_http()
 {
-	Url url = url::new_parse("http://www.ietf.org/rfc/rfc2396.txt#header1")!;
+	Url url = url::new_parse("http://www.ietf.org/rfc/rfc2396.txt#header1")!!;
 	defer url.free();
 
 	assert(url.scheme == "http");
@@ -80,9 +80,9 @@ fn void! test_parse_http()
 	assert(url.fragment == "header1");
 }
 
-fn void! test_parse_ldap()
+fn void test_parse_ldap()
 {
-	Url url = url::new_parse("ldap://[2001:db8::7]/c=GB?objectClass=one&objectClass=two")!;
+	Url url = url::new_parse("ldap://[2001:db8::7]/c=GB?objectClass=one&objectClass=two")!!;
 	defer url.free();
 
 	assert(url.scheme == "ldap");
@@ -95,9 +95,9 @@ fn void! test_parse_ldap()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_mailto()
+fn void test_parse_mailto()
 {
-	Url url = url::new_parse("mailto:John.Doe@example.com")!;
+	Url url = url::new_parse("mailto:John.Doe@example.com")!!;
 	defer url.free();
 
 	assert(url.scheme == "mailto");
@@ -110,9 +110,9 @@ fn void! test_parse_mailto()
 	assert(url.fragment == "");
 }
 
-fn void! test_new_parses()
+fn void test_new_parses()
 {
-	Url url = url::new_parse("news:comp.infosystems.www.servers.unix")!;
+	Url url = url::new_parse("news:comp.infosystems.www.servers.unix")!!;
 	defer url.free();
 
 	assert(url.scheme == "news");
@@ -125,9 +125,9 @@ fn void! test_new_parses()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_tel()
+fn void test_parse_tel()
 {
-	Url url = url::new_parse("tel:+1-816-555-1212")!;
+	Url url = url::new_parse("tel:+1-816-555-1212")!!;
 	defer url.free();
 
 	assert(url.scheme == "tel");
@@ -140,9 +140,9 @@ fn void! test_parse_tel()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_telnet()
+fn void test_parse_telnet()
 {
-	Url url = url::new_parse("telnet://192.0.2.16:80/")!;
+	Url url = url::new_parse("telnet://192.0.2.16:80/")!!;
 	defer url.free();
 
 	assert(url.scheme == "telnet");
@@ -155,9 +155,9 @@ fn void! test_parse_telnet()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_urn2()
+fn void test_parse_urn2()
 {
-	Url url = url::new_parse("urn:oasis:names:specification:docbook:dtd:xml:4.1.2")!;
+	Url url = url::new_parse("urn:oasis:names:specification:docbook:dtd:xml:4.1.2")!!;
 	defer url.free();
 
 	assert(url.scheme == "urn");
@@ -172,24 +172,14 @@ fn void! test_parse_urn2()
 
 fn void test_parse_empty()
 {
-	Url url = url::new_parse("       ")!;
-	defer url.free();
-
-	assert(url.scheme == "");
-	assert(url.host == "");
-	assert(url.port == 0);
-	assert(url.username == "", "got '%s'", url.username);
-	assert(url.password == "", "got '%s'", url.password);
-	assert(url.path == "");
-	assert(url.raw_query == "");
-	assert(url.fragment == "");
+	assert(@catch(url::new_parse("       ")) == UrlParsingResult.EMPTY);
 }
 
 // Parser tests with escape sequences
 
-fn void! test_parse_path_with_escape_sequence()
+fn void test_parse_path_with_escape_sequence()
 {
-	Url url = url::new_parse("foo://example.com:8042/file/name%20one%26two?name=ferret#nose")!;
+	Url url = url::new_parse("foo://example.com:8042/file/name%20one%26two?name=ferret#nose")!!;
 	defer url.free();
 
 	assert(url.scheme == "foo", "got '%s'", url.scheme);
@@ -202,9 +192,9 @@ fn void! test_parse_path_with_escape_sequence()
 	assert(url.fragment == "nose", "got: '%s'", url.fragment);
 }
 
-fn void! test_parse_username_and_password_with_escape_sequence()
+fn void test_parse_username_and_password_with_escape_sequence()
 {
-	Url url = url::new_parse("jdbc:mysql://test%20user:ouu%40pppssss@localhost:3306/sakila?profileSQL=true")!;
+	Url url = url::new_parse("jdbc:mysql://test%20user:ouu%40pppssss@localhost:3306/sakila?profileSQL=true")!!;
 	defer url.free();
 
 	assert(url.scheme == "jdbc:mysql");
@@ -217,9 +207,9 @@ fn void! test_parse_username_and_password_with_escape_sequence()
 	assert(url.fragment == "");
 }
 
-fn void! test_parse_fragment_with_escape_sequence()
+fn void test_parse_fragment_with_escape_sequence()
 {
-	Url url = url::new_parse("http://www.ietf.org/rfc/rfc2396.txt#header%201%262")!;
+	Url url = url::new_parse("http://www.ietf.org/rfc/rfc2396.txt#header%201%262")!!;
 	defer url.free();
 
 	assert(url.scheme == "http");
@@ -234,7 +224,7 @@ fn void! test_parse_fragment_with_escape_sequence()
 
 // to_string() tests
 
-fn void! test_string_foo()
+fn void test_string_foo()
 {
 	Url url = {.scheme="foo", .host="example.com", .port=8042, .path="/over/there", .raw_query="name=ferret", .fragment="nose"};
 	String str = string::new_format("%s", url);
@@ -243,7 +233,7 @@ fn void! test_string_foo()
 	assert(str == "foo://example.com:8042/over/there?name=ferret#nose");
 }
 
-fn void! test_string_urn()
+fn void test_string_urn()
 {
 	Url url = {.scheme="urn", .path="example:animal:ferret:nose"};
 	String str = string::new_format("%s", url);
@@ -252,7 +242,7 @@ fn void! test_string_urn()
 	assert(str == "urn:example:animal:ferret:nose");
 }
 
-fn void! test_string_jdbc()
+fn void test_string_jdbc()
 {
 	Url url = {.scheme="jdbc:mysql", .host="localhost", .port=3306, .username="test_user", .password="ouupppssss", .path="/sakila", .raw_query="profileSQL=true"};
 	String str = string::new_format("%s", url);
@@ -261,7 +251,7 @@ fn void! test_string_jdbc()
 	assert(str == "jdbc:mysql://test_user:ouupppssss@localhost:3306/sakila?profileSQL=true");
 }
 
-fn void! test_string_ftp()
+fn void test_string_ftp()
 {
 	Url url = {.scheme="ftp", .host="ftp.is.co.za", .path="/rfc/rfc1808.txt"};
 	String str = string::new_format("%s", url);
@@ -270,7 +260,7 @@ fn void! test_string_ftp()
 	assert(str == "ftp://ftp.is.co.za/rfc/rfc1808.txt");
 }
 
-fn void! test_string_http()
+fn void test_string_http()
 {
 	Url url = {.scheme="http", .host="www.ietf.org", .path="/rfc/rfc2396.txt", .fragment="header1"};
 	String str = string::new_format("%s", url);
@@ -279,7 +269,7 @@ fn void! test_string_http()
 	assert(str == "http://www.ietf.org/rfc/rfc2396.txt#header1", "got: '%s'", str);
 }
 
-fn void! test_string_ldap()
+fn void test_string_ldap()
 {
 	Url url = {.scheme="ldap", .host="[2001:db8::7]", .path="/c=GB", .raw_query="objectClass=one&objectClass=two"};
 	String str = string::new_format("%s", url);
@@ -288,7 +278,7 @@ fn void! test_string_ldap()
 	assert(str == "ldap://[2001:db8::7]/c=GB?objectClass=one&objectClass=two", "got: '%s'", str);
 }
 
-fn void! test_string_mailto()
+fn void test_string_mailto()
 {
 	Url url = {.scheme="mailto", .path="John.Doe@example.com"};
 	String str = string::new_format("%s", url);
@@ -297,7 +287,7 @@ fn void! test_string_mailto()
 	assert(str == "mailto:John.Doe@example.com");
 }
 
-fn void! test_string_news()
+fn void test_string_news()
 {
 	Url url = {.scheme="news", .path="comp.infosystems.www.servers.unix"};
 	String str = string::new_format("%s", url);
@@ -305,7 +295,7 @@ fn void! test_string_news()
 	assert(str == "news:comp.infosystems.www.servers.unix");
 }
 
-fn void! test_string_tel()
+fn void test_string_tel()
 {
 	Url url = {.scheme="tel", .path="+1-816-555-1212"};
 	String str = string::new_format("%s", url);
@@ -314,7 +304,7 @@ fn void! test_string_tel()
 	assert(str == "tel:+1-816-555-1212");
 }
 
-fn void! test_string_telnet()
+fn void test_string_telnet()
 {
 	Url url = {.scheme="telnet", .host="192.0.2.16", .port=80, .path="/"};
 	String str = string::new_format("%s", url);
@@ -323,7 +313,7 @@ fn void! test_string_telnet()
 	assert(str == "telnet://192.0.2.16:80/");
 }
 
-fn void! test_string_urn2()
+fn void test_string_urn2()
 {
 	Url url = {.scheme="urn", .path="oasis:names:specification:docbook:dtd:xml:4.1.2"};
 	String str = string::new_format("%s", url);
@@ -332,7 +322,7 @@ fn void! test_string_urn2()
 	assert(str == "urn:oasis:names:specification:docbook:dtd:xml:4.1.2");
 }
 
-fn void! test_string_empty()
+fn void test_string_empty()
 {
 	Url url = {};
 	String str = string::new_format("%s", url);
@@ -343,12 +333,12 @@ fn void! test_string_empty()
 
 // query_values
 
-fn void! test_query_values1()
+fn void test_query_values1()
 {
 	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret=ok#nose")!;
 	defer url.free();
 
-	UrlQueryValues vals = url.new_query_values();
+	UrlQueryValues vals = url::temp_parse_query(url.raw_query);
 	defer vals.free();
 
 	assert(vals.len() == 1);
@@ -358,12 +348,12 @@ fn void! test_query_values1()
 	assert(l[0] == "ferret=ok");
 }
 
-fn void! test_query_values2()
+fn void test_query_values2()
 {
 	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret&age=99&age=11#nose")!;
 	defer url.free();
 
-	UrlQueryValues vals = url.new_query_values();
+	UrlQueryValues vals = url::new_parse_query(url.raw_query);
 	defer vals.free();
 	assert(vals.len() == 2);
 
@@ -377,12 +367,12 @@ fn void! test_query_values2()
 	assert(l_age[1] == "11");
 }
 
-fn void! test_escaped_query_values()
+fn void test_escaped_query_values()
 {
 	Url url = url::new_parse("foo://example.com:8042/over/there?k%3Bey=%3Ckey%3A+0x90%3E&age=99&age=11#nose")!;
 	defer url.free();
 
-	UrlQueryValues vals = url.new_query_values();
+	UrlQueryValues vals = url::new_parse_query(url.raw_query);
 	defer vals.free();
 	assert(vals.len() == 2);
 
@@ -391,19 +381,19 @@ fn void! test_escaped_query_values()
 	assert(l_key[0] == "<key: 0x90>");
 }
 
-fn void! test_query_values_withempty()
+fn void test_query_values_withempty()
 {
 	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret&&&age=99&age=11")!;
 	defer url.free();
 
-	UrlQueryValues vals = url.new_query_values();
+	UrlQueryValues vals = url::new_parse_query(url.raw_query);
 	defer vals.free();
 	assert(vals.len() == 2);
 }
 
 // url compose and parse should be idempotent
 
-fn void! test_url_idempotence()
+fn void test_url_idempotence()
 {
 	UrlQueryValues query_builder;
 	query_builder.new_init();
@@ -436,7 +426,7 @@ fn void! test_url_idempotence()
 	Url parsed = url::new_parse(url_string)!;
 	defer parsed.free();
 
-	UrlQueryValues vals = parsed.new_query_values();
+	UrlQueryValues vals = url::new_parse_query(parsed.raw_query);
 	defer vals.free();
 	assert(vals.len() == 2);
 

@@ -2,12 +2,15 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-def UrlQueryValueList = List(<String>);
-
-struct UrlQueryValues
+fault UrlParsingResult
 {
-	inline HashMap(<String, UrlQueryValueList>) map;
-	UrlQueryValueList key_order;
+	EMPTY,
+	INVALID_SCHEME,
+	INVALID_USER,
+	INVALID_PASSWORD,
+	INVALID_HOST,
+	INVALID_PATH,
+	INVALID_FRAGMENT,
 }
 
 <*
@@ -57,58 +60,56 @@ fn Url! temp_parse(String url_string) => new_parse(url_string, allocator::temp()
 *>
 fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 {
-	Url url = { .allocator = allocator };
 	url_string = url_string.trim();
-	if (!url_string.len)
-	{
-		return url;
-	}
+	if (!url_string) return UrlParsingResult.EMPTY?;
+	Url url = { .allocator = allocator };
 
 	// Parse scheme
 	if (try pos = url_string.index_of("://"))
 	{
-		url.scheme = url_string[:pos];
+		if (!pos) return UrlParsingResult.INVALID_SCHEME?;
+		url.scheme = url_string[:pos].copy(allocator);
 		url_string = url_string[url.scheme.len + 3 ..];
 	}
-	else if (url_string.contains(":"))
+	else if (try pos = url_string.index_of(":"))
 	{
 		// Handle schemes without authority like 'mailto:'
-		url.scheme = url_string[:url_string.index_of(":")!];
-		url_string = url_string[url.scheme.len + 1 ..];
-		url.path = url_string;
-
-		return url.decode_copy(allocator);
+		if (!pos) return UrlParsingResult.INVALID_SCHEME?;
+		url.scheme = url_string[:pos].copy(allocator);
+		url.path = decode(url_string[pos + 1 ..], PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		return url;
 	}
 
 	// Parse host, port
 	if (url.scheme != "urn")
 	{
-		usz! authority_end = url_string.index_of_chars("/?#");
-		if (catch authority_end)
-		{
-			authority_end = url_string.len;
-		}
+		usz authority_end = url_string.index_of_chars("/?#") ?? url_string.len;
+		String authority = url_string[:authority_end];
 
-		String authority = url_string[:authority_end]!;
-
-		if (try usz userInfo_end = url_string.index_of_char('@'))
+		if (try user_info_end = authority.index_of_char('@'))
 		{
-			String userinfo = authority[:userInfo_end];
-			String[] userpass = userinfo.split(":");
-			defer free(userpass);
-			url.username = userpass[0];
-			if (userpass.len > 1)
+			String userinfo = authority[:user_info_end];
+			String username @noinit;
+			String password;
+			@pool(allocator)
 			{
-				url.password = userpass[1];
-			}
-			authority = authority[userInfo_end + 1 ..];
+				String[] userpass = userinfo.tsplit(":", 2);
+				username = userpass[0];
+				if (!username.len) return UrlParsingResult.INVALID_USER?;
+							url.host =
+
+				url.username = decode(username, HOST, allocator) ?? UrlParsingResult.INVALID_USER?!;
+				if (userpass.len) url.password = decode(userpass[1], USERPASS, allocator) ?? UrlParsingResult.INVALID_PASSWORD?!;
+			};
+			authority = authority[userinfo.len + 1 ..];
 		}
 
 		// Check for IPv6 address in square brackets
+		String host;
 		if (authority.starts_with("[") && authority.contains("]"))
 		{
 			usz ipv6_end = authority.index_of("]")!;
-			url.host = authority[0 .. ipv6_end];  // Includes closing bracket
+			host = authority[0 .. ipv6_end];  // Includes closing bracket
 			if ((ipv6_end + 1) < authority.len && authority[.. ipv6_end] == ":")
 			{
 				url.port = authority[.. ipv6_end + 1].to_uint()!;
@@ -116,59 +117,57 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 		}
 		else
 		{
-			String[] host_port = authority.split(":");
-			defer mem::free(host_port);
-			if (host_port.len > 1)
+			@pool(allocator)
 			{
-				url.host = host_port[0];
-				url.port = host_port[1].to_uint()!;
-			}
-			else
-			{
-				url.host = authority;
-			}
+				String[] host_port = authority.tsplit(":", 2);
+				if (host_port.len > 1)
+				{
+					host = host_port[0];
+					url.port = host_port[1].to_uint()!;
+				}
+				else
+				{
+					host = authority;
+				}
+			};
 		}
-		url_string = url_string[authority_end ..]!;
+		url.host = decode(host, HOST, allocator) ?? UrlParsingResult.INVALID_HOST?!;
+		url_string = url_string[authority_end ..];
 	}
 
 	// Parse path
-	long query_index = (long)url_string.index_of_char('?') ?? -1;
-	long fragment_index = (long)url_string.index_of_char('#') ?? -1;
+	usz! query_index = url_string.index_of_char('?');
+	usz! fragment_index = url_string.index_of_char('#');
 
-	if (query_index != -1 || fragment_index != -1)
+	if (@ok(query_index) || @ok(fragment_index))
 	{
-		long pathEnd = min(query_index == -1 ? url_string.len : query_index,
-						   fragment_index == -1 ? url_string.len : fragment_index,
-						   url_string.len);
-		url.path = url_string[:pathEnd];
+		usz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
+		url.path = decode(url_string[:path_end], PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url_string = url_string[path_end ..];
 	}
 	else
 	{
-		url.path = url_string;
+		url.path = decode(url_string, PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url_string = "";
 	}
 
 	// Remove the path part from url for further parsing
-	url_string = url_string[url.path.len ..];
+
 
 	// Parse query
 	if (url_string.starts_with("?"))
 	{
-		fragment_index = (long)url_string.index_of_char('#') ?? -1;
-		if (fragment_index == -1)
-		{
-			fragment_index = url_string.len;
-		}
-		url.raw_query = url_string[1 .. fragment_index - 1];
-		url_string = url_string[fragment_index ..];
+		usz index = url_string.index_of_char('#') ?? url_string.len;
+		url.raw_query = url_string[1 .. index - 1].copy(allocator);
+		url_string = url_string[index ..];
 	}
 
 	// Parse fragment
 	if (url_string.starts_with("#"))
 	{
-		url.fragment = url_string[1 ..];
+		url.fragment = decode(url_string[1..], FRAGMENT, allocator) ?? UrlParsingResult.INVALID_FRAGMENT?!;
 	}
-
-	return url.decode_copy(allocator);
+	return url;
 }
 
 <*
@@ -195,21 +194,21 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 		// Add username and password if they exist
 		if (self.username != "")
 		{
-			String username = encode_temp(self.username, USERPASS);
+			String username = temp_encode(self.username, USERPASS);
 			builder.append_chars(username);
 
 			if (self.password != "")
 			{
 				builder.append_char(':');
 
-				String password = encode_temp(self.password, USERPASS);
+				String password = temp_encode(self.password, USERPASS);
 				builder.append_chars(password);
 			}
 			builder.append_char('@');
 		}
 
 		// Add host
-		String host = encode_temp(self.host, HOST);
+		String host = temp_encode(self.host, HOST);
 		builder.append_chars(host);
 
 		// Add port
@@ -220,7 +219,7 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 		}
 
 		// Add path
-		String path = encode_temp(self.path, PATH);
+		String path = temp_encode(self.path, PATH);
 		builder.append_chars(path);
 
 		// Add query if it exists (note that `raw_query` is expected to
@@ -236,7 +235,7 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 		{
 			builder.append_char('#');
 
-			String fragment = encode_temp(self.fragment, FRAGMENT);
+			String fragment = temp_encode(self.fragment, FRAGMENT);
 			builder.append_chars(fragment);
 		}
 
@@ -244,67 +243,54 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 	};
 }
 
+def UrlQueryValueList = List(<String>);
+
+struct UrlQueryValues
+{
+	inline HashMap(<String, UrlQueryValueList>) map;
+	UrlQueryValueList key_order;
+}
+
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
 
- @param [in] self
+ @param [in] raw_query
+ @return "a UrlQueryValues HashMap"
+*>
+fn UrlQueryValues temp_parse_query(String raw_query) => parse_query(raw_query, allocator::temp());
+
+<*
+ Parse the query parameters of the Url into a UrlQueryValues map.
+
+ @param [in] raw_query
+ @return "a UrlQueryValues HashMap"
+*>
+fn UrlQueryValues new_parse_query(String raw_query) => parse_query(raw_query, allocator::heap());
+
+<*
+ Parse the query parameters of the Url into a UrlQueryValues map.
+
+ @param [in] raw_query
  @param [inout] allocator
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues Url.query_values(&self, Allocator allocator)
+fn UrlQueryValues parse_query(String raw_query, Allocator allocator)
 {
 	UrlQueryValues vals;
-	vals.init(allocator);
+	vals.map.init(allocator);
+	vals.key_order.new_init(allocator: allocator);
 
-	Splitter raw_vals = self.raw_query.tokenize("&");
-
+	Splitter raw_vals = raw_query.tokenize("&");
 	while (try String rv = raw_vals.next())
 	{
 		@pool(allocator)
 		{
 			String[] parts = rv.tsplit("=", 2);
-			String key = decode_temp(parts[0], QUERY) ?? parts[0];
-			String value = decode_temp(parts[1], QUERY) ?? parts[1];
-			vals.add(key, value);
+			String key = temp_decode(parts[0], QUERY) ?? parts[0];
+			vals.add(key, parts.len == 1 ? key : (temp_decode(parts[1], QUERY) ?? parts[1]));
 		};
 	}
 	return vals;
-}
-
-<*
- Parse the query parameters of the Url into a UrlQueryValues map,
- to be freed using values.free()
-
- @param [in] self
- @return "a UrlQueryValues map"
-*>
-fn UrlQueryValues Url.new_query_values(&self)
-{
-	return self.query_values(allocator::heap()) @inline;
-}
-
-<*
- Parse the query parameters of the Url into a UrlQueryValues map.
- stored on the temp allocator.
-
- @param [in] self
- @return "a UrlQueryValues map"
-*>
-fn UrlQueryValues Url.temp_query_values(&self)
-{
-	return self.query_values(allocator::temp()) @inline;
-}
-
-fn UrlQueryValues* UrlQueryValues.new_init(&self) => self.init(allocator::heap());
-fn UrlQueryValues* UrlQueryValues.temp_init(&self) => self.init(allocator::temp());
-<*
- @param [&inout] allocator "The allocator to use"
-*>
-fn UrlQueryValues* UrlQueryValues.init(&self, Allocator allocator)
-{
-	self.map.init(allocator);
-	self.key_order.new_init(allocator: allocator);
-	return self;
 }
 
 <*
@@ -333,6 +319,7 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 	return self;
 }
 
+
 <*
  Stringify UrlQueryValues into an encoded query string.
 
@@ -349,7 +336,7 @@ fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap(
 		usz i;
 		foreach (key: self.key_order)
 		{
-			String encoded_key = encode_temp(key, QUERY);
+			String encoded_key = temp_encode(key, QUERY);
 
 			UrlQueryValueList! values = self.map.get(key);
 			if (catch values) continue;
@@ -361,7 +348,7 @@ fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap(
 				builder.append_chars(encoded_key);
 				builder.append_char('=');
 
-				String encoded_value = encode_temp(value, QUERY);
+				String encoded_value = temp_encode(value, QUERY);
 				builder.append_chars(encoded_value);
 				i++;
 			}
@@ -375,52 +362,27 @@ fn void UrlQueryValues.free(&self)
 {
 	self.map.@each(;String key, UrlQueryValueList values)
 	{
-		foreach (value: values) value.free();
+		foreach (value: values) value.free(self.allocator);
 		values.free();
 	};
 	self.map.free();
 
-	foreach (&key: self.key_order) key.free();
+	foreach (&key: self.key_order) key.free(self.allocator);
 	self.key_order.free();
 }
 
 <*
- Returns a decoded Url copy on the allocator. `decode_copy` should only be
- called from `new_parse()` or `temp_parse()`. The parse function does not
- allocate any memory, but simply stores string slices referencing the input
- string.
-
- @param [in] self
- @param [&inout] allocator
- @return "a decoded Url struct"
-*>
-fn Url! Url.decode_copy(&self, Allocator allocator) @private
-{
-	return {
-		.scheme    = self.scheme.copy(allocator),
-		.host 	   = decode_new(self.host, HOST, allocator) ?? self.host.copy(allocator),
-		.port 	   = self.port,
-		.username  = decode_new(self.username, HOST, allocator) ?? self.username.copy(allocator),
-		.password  = decode_new(self.password, USERPASS, allocator) ?? self.password.copy(allocator),
-		.path 	   = decode_new(self.path, PATH, allocator) ?? self.path.copy(allocator),
-		.raw_query = self.raw_query.copy(allocator), // decoded query fields should be accessed vie `Url.query_values()`
-		.fragment  = decode_new(self.fragment, FRAGMENT, allocator) ?? self.fragment.copy(allocator),
-		.allocator = allocator,
-	};
-}
-
-<*
- Free an Url struct. Required when `new_parse()` is used.
+ Free an Url struct.
 
  @param [in] self
 *>
 fn void Url.free(&self)
 {
-	self.scheme.free();
-	self.host.free();
-	self.username.free();
-	self.password.free();
-	self.path.free();
-	self.raw_query.free();
-	self.fragment.free();
+	self.scheme.free(self.allocator);
+	self.host.free(self.allocator);
+	self.username.free(self.allocator);
+	self.password.free(self.allocator);
+	self.path.free(self.allocator);
+	self.raw_query.free(self.allocator);
+	self.fragment.free(self.allocator);
 }

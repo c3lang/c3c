@@ -92,13 +92,13 @@ EncodeTest[*] decode_with_error_tests @local = {
 	},
 };
 
-fn void! test_decoding_with_error()
+fn void test_decoding_with_error()
 {
 	String! actual;
 	@pool() {
 		foreach (test: decode_with_error_tests)
 		{
-			actual = url::decode_temp(test.in, test.mode);
+			actual = url::temp_decode(test.in, test.mode);
 			if (catch excuse = actual)
 			{
 				assert(excuse == test.err, "unescape(%s, %s); "
@@ -181,17 +181,17 @@ EncodeTest[*] encode_tests @local = {
 
 };
 
-fn void! test_percent_encode_and_decode()
+fn void test_percent_encode_and_decode()
 {
 	String actual;
 	@pool() {
 		foreach (test: encode_tests)
 		{
-			actual = url::encode_temp(test.in, test.mode);
+			actual = url::temp_encode(test.in, test.mode);
 			assert(actual == test.out, "escape(%s, %s); "
 				"got: %s, want: %s", test.in, test.mode, actual, test.out);
 
-			actual = url::decode_temp(test.out, test.mode)!;
+			actual = url::temp_decode(test.out, test.mode)!;
 			assert(actual == test.in, "unescape(%s, %s); "
 				"got: %s, want: %s", test.out, test.mode, actual, test.in);
 		}
@@ -254,7 +254,7 @@ ShouldEncodeTest[*] should_encode_tests = {
 	{'.', UrlEncodingMode.HOST, false},
 };
 
-fn void! test_should_encode()
+fn void test_should_encode()
 {
 	bool actual;
 	foreach (test: should_encode_tests)

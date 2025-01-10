@@ -69,7 +69,7 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
-fn String encode_new(String s, UrlEncodingMode mode, Allocator allocator = allocator::heap())
+fn String encode(String s, UrlEncodingMode mode, Allocator allocator = allocator::heap())
 {
 	usz n = encode_len(s, mode);
 	@pool(allocator)
@@ -101,13 +101,23 @@ fn String encode_new(String s, UrlEncodingMode mode, Allocator allocator = alloc
 }
 
 <*
+ Encode the string s for a given encoding mode.
+ Returned string must be freed.
+
+ @param s "String to encode"
+ @param mode "Url encoding mode"
+ @return "Percent-encoded String"
+*>
+fn String new_encode(String s, UrlEncodingMode mode) => encode(s, mode, allocator::heap());
+
+<*
  Encode string s for a given encoding mode, stored on the temp allocator.
 
  @param s "String to encode"
  @param mode "Url encoding mode"
  @return "Percent-encoded String"
 *>
-fn String encode_temp(String s, UrlEncodingMode mode) => encode_new(s, mode, allocator::temp());
+fn String temp_encode(String s, UrlEncodingMode mode) => encode(s, mode, allocator::temp());
 
 <*
  Calculate the length of the percent-decoded string.
@@ -138,7 +148,7 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-decoded String"
 *>
-fn String! decode_new(String s, UrlEncodingMode  mode, Allocator allocator = allocator::heap())
+fn String! decode(String s, UrlEncodingMode  mode, Allocator allocator)
 {
 	usz n = decode_len(s, mode)!;
 	@pool(allocator)
@@ -170,10 +180,20 @@ fn String! decode_new(String s, UrlEncodingMode  mode, Allocator allocator = all
 }
 
 <*
+ Decode string s for a given encoding mode.
+ Returned string must be freed.
+
+ @param s "String to decode"
+ @param mode "Url encoding mode"
+ @return "Percent-decoded String"
+*>
+fn String! new_decode(String s, UrlEncodingMode  mode) => decode(s, mode, allocator::heap());
+
+<*
  Decode string s for a given encoding mode, stored on the temp allocator.
 
  @param s "String to decode"
  @param mode "Url encoding mode"
  @return "Percent-decoded String"
 *>
-fn String! decode_temp(String s, UrlEncodingMode  mode) => decode_new(s, mode, allocator::temp());
+fn String! temp_decode(String s, UrlEncodingMode  mode) => decode(s, mode, allocator::temp());
