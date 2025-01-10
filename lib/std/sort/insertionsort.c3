@@ -8,7 +8,7 @@ Sort list using the quick sort algorithm.
 *>
 macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = sort::@len_from_list(list);
+	usz len = sort::len_from_list(list);
 	is::isort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len, cmp, context);
 }
 

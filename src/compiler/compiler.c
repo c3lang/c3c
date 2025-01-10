@@ -402,7 +402,16 @@ static void create_output_dir(const char *dir)
 
 void compiler_compile(void)
 {
+	if (compiler.build.lsp_output)
+	{
+		eprintf("> BEGINLSP\n");
+	}
 	sema_analysis_run();
+	if (compiler.build.lsp_output)
+	{
+		eprintf("> ENDLSP-OK\n");
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	compiler_sema_time = bench_mark();
 	Module **modules = compiler.context.module_list;
 	unsigned module_count = vec_size(modules);
@@ -437,7 +446,7 @@ void compiler_compile(void)
 			error_exit("Failed to create build directory '%s'.", compiler.build.build_dir);
 		}
 	}
-	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output))
+	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
 		if (!file_exists(compiler.build.ir_file_dir) && !dir_make(compiler.build.ir_file_dir))
 		{
@@ -1338,7 +1347,7 @@ void compile()
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
-	
+	setup_bool_define("OLD_TEST", compiler.build.old_test == OLD_TEST_ON);
 #if LLVM_AVAILABLE
     setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 #else 

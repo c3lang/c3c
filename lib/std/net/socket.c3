@@ -132,7 +132,7 @@ $endif
 	return (usz)n;
 }
 
-fn char! Socket.read_byte(&self) @dynamic => io::@read_byte_using_read(self);
+fn char! Socket.read_byte(&self) @dynamic => io::read_byte_using_read(self);
 
 fn usz! Socket.write(&self, char[] bytes) @dynamic
 {
@@ -145,7 +145,7 @@ $endif
 	return (usz)n;
 }
 
-fn void! Socket.write_byte(&self, char byte) @dynamic => io::@write_byte_using_write(self, byte);
+fn void! Socket.write_byte(&self, char byte) @dynamic => io::write_byte_using_write(self, byte);
 
 fn void! Socket.destroy(&self) @dynamic
 {

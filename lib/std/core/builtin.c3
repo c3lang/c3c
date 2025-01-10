@@ -26,24 +26,25 @@ def VoidFn = fn void();
  Stores a variable on the stack, then restores it at the end of the
  macro scope.
 
- @param variable `the variable to store and restore`
+ @param #variable `the variable to store and restore`
+ @require values::@is_lvalue(#variable)
 *>
-macro void @scope(&variable; @body) @builtin
+macro void @scope(#variable; @body) @builtin
 {
-	var temp = *variable;
-	defer *variable = temp;
+	var temp = #variable;
+	defer #variable = temp;
 	@body();
 }
 
 <*
  Swap two variables
- @require $assignable(*b, $typeof(*a)) && $assignable(*a, $typeof(*b))
+ @require $defined(#a = #b, #b = #a) `The values must be mutually assignable`
 *>
-macro void @swap(&a, &b) @builtin
+macro void @swap(#a, #b) @builtin
 {
-	var temp = *a;
-	*a = *b;
-	*b = temp;
+	var temp = #a;
+	#a = #b;
+	#b = temp;
 }
 
 <*
@@ -366,9 +367,12 @@ macro bool @ok(#expr) @builtin
 	return true;
 }
 
-macro char[] @as_char_view(&value) @builtin
+<*
+ @require $defined(&#value, (char*)&#value) "This must be a value that can be viewed as a char array"
+ *>
+macro char[] @as_char_view(#value) @builtin
 {
-	return ((char*)value)[:$sizeof(*value)];
+	return ((char*)&#value)[:$sizeof(#value)];
 }
 
 macro isz @str_find(String $string, String $needle) @builtin => $$str_find($string, $needle);

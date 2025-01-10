@@ -16,6 +16,7 @@ macro bool @is_promotable_to_float(#value) @const => types::is_promotable_to_flo
 macro bool @is_vector(#value) @const => types::is_vector($typeof(#value));
 macro bool @is_same_vector_type(#value1, #value2) @const => types::is_same_vector_type($typeof(#value1), $typeof(#value2));
 macro bool @assign_to(#value1, #value2) @const => $assignable(#value1, $typeof(#value2));
+macro bool @is_lvalue(#value) => $defined(#value = #value);
 
 macro promote_int(x)
 {

@@ -3,7 +3,7 @@ import std::io;
 import std::collections::map;
 
 def IntMap = HashMap(<String, int>);
-fn void! copy_map() @test
+fn void copy_map() @test
 {
 	TrackingAllocator alloc;
 	alloc.init(allocator::heap());
@@ -20,9 +20,9 @@ fn void! copy_map() @test
 		y.clear();
 		y.append("bye");
 		x.set(y.str_view(), 444);
-		assert(x.get("hello")! == 123);
-		assert(x.get("hellobye")! == 333);
-		assert(x.get("bye")! == 444);
+		assert(x.get("hello")!! == 123);
+		assert(x.get("hellobye")!! == 333);
+		assert(x.get("bye")!! == 444);
 		assert(alloc.allocated() > 0);
 		x.free();
 		y.free();
@@ -36,7 +36,7 @@ fn void! copy_map() @test
 	Otherwise when the map is freed, the copied-in keys will also be freed,
 	resulting in use-after-free.
 */
-fn void! copy_keys() @test
+fn void copy_keys() @test
 {
 	String[] y;
 	@pool() {

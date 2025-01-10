@@ -73,7 +73,7 @@ fn void! brainf(String program)
 		}
 	}
 }
-fn void! main()
+fn void main()
 {
 	String program = `
 	++++[>+++++<-]>[<+++++>-]+<+[
@@ -81,5 +81,5 @@ fn void! main()
         >>>+[[-]++++++>>>]<<<[[<++++++++<++>>-]+<.<[>----<-]<]
         <<[>>>>>[>>>[-]+++++++++<[>-<-]+++++++++>[-[<->-]+[<<<]]<[>+<-]>]<<-]<<-
     ]`;
-    brainf(program)!;
+    brainf(program)!!;
 }

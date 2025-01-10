@@ -14,10 +14,10 @@ fn int Foo.mutate(Foo *foo)
     return 10 * ++foo.x;
 }
 
-macro @macro_with_body(foo, &x; @body(x, y))
+macro @macro_with_body(foo, #x; @body(x, y))
 {
-    *x = foo.x;
-    @body(foo.mutate(), *x);
+    #x = foo.x;
+    @body(foo.mutate(), #x);
 }
 
 macro @repeat(int times; @body(x))

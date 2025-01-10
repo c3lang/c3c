@@ -72,6 +72,8 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func);
 bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, SourceSpan span, bool *has_ensures);
 void sema_append_contract_asserts(AstId assert_first, Ast* compound_stmt);
 
+Decl *sema_create_runner_main(SemaContext *context, Decl *decl);
+
 void sema_analyse_pass_top(Module *module);
 void sema_analyse_pass_module_hierarchy(Module *module);
 void sema_analysis_pass_process_imports(Module *module);
@@ -109,7 +111,8 @@ bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt
 
 bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member);
 CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr);
-bool sema_expr_check_assign(SemaContext *context, Expr *expr);
+
+bool sema_expr_check_assign(SemaContext *context, Expr *expr, bool *failed_ref);
 bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, TypeInfo *parent, CallABI abi, Signature *signature);
 Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Expr **exprs);
 ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs, ConstInitializer *rhs, BinaryOp op);

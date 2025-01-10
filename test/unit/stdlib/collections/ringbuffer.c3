@@ -4,7 +4,7 @@ import std::io;
 
 def Buffer = RingBuffer(<char, 4>);
 
-fn void! push_get()
+fn void push_get()
 {
 	Buffer rb;
 	rb.init();
@@ -24,6 +24,6 @@ fn void! push_get()
 	assert(rb.get(2) == 4);
 	assert(rb.get(3) == 5);
 
-	char c = rb.pop()!;
+	char c = rb.pop()!!;
 	assert(c == 5);
 }

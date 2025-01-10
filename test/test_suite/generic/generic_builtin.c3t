@@ -9,7 +9,7 @@ fn int iadd(int a, int b) @builtin =>
 module main;
 import std::io, add, iadd;
 
-fn void! main()
+fn void main()
 {
   io::printfn("%s", iadd(1,2)); // Fine
   io::printfn("%s", add(<int>)(1,2)); // Error

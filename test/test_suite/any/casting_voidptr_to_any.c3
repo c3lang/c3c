@@ -20,7 +20,7 @@ fn void test(void* tptr){
     iop = tptr; // #error: Casting a 'void*' to 'IOp' is not permitted
     iop.op();
 }
-fn void! main(String[] args) {
+fn void main(String[] args) {
     Op(<int>)* t = mem::new(Op(<int>), {.data = 1});
     test(&t);
 }

@@ -5,7 +5,7 @@ fn bool! get_bool()
     return true;
 }
 
-fn void! bool_chain_unwrap() @test
+fn void bool_chain_unwrap() @test
 {
     bool b;
     if (try v = get_bool() && b)

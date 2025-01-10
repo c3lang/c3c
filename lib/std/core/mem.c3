@@ -162,42 +162,55 @@ macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
 }
 
 <*
- @param [in] x "The variable or dereferenced pointer to load."
+ @param #x "The variable or dereferenced pointer to load."
  @param $alignment "The alignment to assume for the load"
- @return "The value of x"
+ @return "The value of the variable"
 
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
 *>
-macro @unaligned_load(&x, usz $alignment) @builtin
+macro @unaligned_load(#x, usz $alignment) @builtin
 {
-	return $$unaligned_load(x, $alignment);
+	return $$unaligned_load(&#x, $alignment);
 }
 
 <*
- @param [out] x "The variable or dereferenced pointer to store to."
+ @param #x "The variable or dereferenced pointer to store to."
  @param value "The value to store."
  @param $alignment "The alignment to assume for the store"
- @return "The value of x"
+ @return "The value stored"
 
- @require $assignable(value, $typeof(*x)) : "The value doesn't match the variable"
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
+ @require $defined(#x = value) : "The value doesn't match the variable"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 *>
-macro @unaligned_store(&x, value, usz $alignment) @builtin
+macro @unaligned_store(#x, value, usz $alignment) @builtin
 {
-	return $$unaligned_store(x, ($typeof(*x))value, $alignment);
-}
-
-macro @volatile_load(&x) @builtin
-{
-	return $$volatile_load(x);
+	return $$unaligned_store(&#x, ($typeof(#x))value, $alignment);
 }
 
 <*
- @require $assignable(y, $typeof(*x)) : "The value doesn't match the variable"
+ @param #x "The variable or dereferenced pointer to load."
+ @return "The value of the variable"
+
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
 *>
-macro @volatile_store(&x, y) @builtin
+macro @volatile_load(#x) @builtin
 {
-	return $$volatile_store(x, ($typeof(*x))y);
+	return $$volatile_load(&#x);
+}
+
+<*
+ @param #x "The variable or dereferenced pointer to store to."
+ @param value "The value to store."
+ @return "The value stored"
+
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
+ @require $defined(#x = value) : "The value doesn't match the variable"
+*>
+macro @volatile_store(#x, value) @builtin
+{
+	return $$volatile_store(&#x, ($typeof(#x))value);
 }
 
 enum AtomicOrdering : int
@@ -212,34 +225,36 @@ enum AtomicOrdering : int
 }
 
 <*
- @param [in] x "the variable or dereferenced pointer to load."
+ @param #x "the variable or dereferenced pointer to load."
  @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @param $volatile "whether the load should be volatile, defaults to 'false'"
  @return "returns the value of x"
 
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $ordering != AtomicOrdering.RELEASE "Release ordering is not valid for load."
  @require $ordering != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid for load."
- @require types::may_load_atomic($typeof(x)) "Only integer, float and pointers may be used."
- @require @typekind(x) == POINTER "You can only load from a pointer"
+ @require types::may_load_atomic($typeof(#x)) "Only integer, float and pointers may be used."
 *>
-macro @atomic_load(&x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
+macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	return $$atomic_load(x, $volatile, $ordering.ordinal);
+	return $$atomic_load(&#x, $volatile, $ordering.ordinal);
 }
 
 <*
- @param [out] x "the variable or dereferenced pointer to store to."
+ @param #x "the variable or dereferenced pointer to store to."
  @param value "the value to store."
  @param $ordering "the atomic ordering of the store, defaults to SEQ_CONSISTENT"
  @param $volatile "whether the store should be volatile, defaults to 'false'"
 
  @require $ordering != AtomicOrdering.ACQUIRE "Acquire ordering is not valid for store."
  @require $ordering != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid for store."
- @require types::may_load_atomic($typeof(x)) "Only integer, float and pointers may be used."
+ @require types::may_load_atomic($typeof(#x)) "Only integer, float and pointers may be used."
+ @require $defined(&#x) : "This must be a variable or dereferenced pointer"
+ @require $defined(#x = value) : "The value doesn't match the variable"
 *>
-macro void @atomic_store(&x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
+macro void @atomic_store(#x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
-	$$atomic_store(x, value, $volatile, $ordering.ordinal);
+	$$atomic_store(&#x, value, $volatile, $ordering.ordinal);
 }
 
 <*
@@ -569,19 +584,21 @@ fn void temp_pop(TempState old_state)
 	allocator::thread_temp_allocator = old_state.old;
 }
 
-macro void @pool(TempAllocator* #other_temp = null; @body) @builtin
+<*
+ @require @is_empty_macro_slot(#other_temp) ||| $assignable(#other_temp, Allocator) "Must be an allocator"
+ *>
+macro void @pool(#other_temp = EMPTY_MACRO_SLOT; @body) @builtin
 {
 	TempAllocator* current = allocator::temp();
-	var $has_arg = !$is_const(#other_temp);
-	$if $has_arg:
+	$if @is_valid_macro_slot(#other_temp):
 		TempAllocator* original = current;
-		if (current == (void*)#other_temp) current = allocator::temp_allocator_next();
+		if (current == #other_temp.ptr) current = allocator::temp_allocator_next();
 	$endif
 	usz mark = current.used;
 	defer
 	{
 		current.reset(mark);
-		$if $has_arg:
+		$if @is_valid_macro_slot(#other_temp):
 			allocator::thread_temp_allocator = original;
 		$endif;
 	}

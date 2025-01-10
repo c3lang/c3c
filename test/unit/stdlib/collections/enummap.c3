@@ -10,7 +10,7 @@ enum FooEnum
 
 def FooEnumMap = EnumMap(<FooEnum, uint>);
 
-fn void! enums()
+fn void enums()
 {
     FooEnumMap nm;
     nm.set(ONE, 1);

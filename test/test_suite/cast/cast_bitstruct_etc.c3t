@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-fn void! main()
+fn void main()
 {
 	Enum e = ENUM1;
 	ushort x = (ushort)Foo{ .x = e };
@@ -32,5 +32,3 @@ bitstruct Foo : ushort
   %zext1 = zext i8 %2 to i16
   %3 = and i16 %zext1, 255
   store i16 %3, ptr %z, align 2
-  ret i64 0
-}

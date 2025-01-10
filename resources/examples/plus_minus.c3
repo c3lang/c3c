@@ -10,10 +10,10 @@ fault TokenResult
 
 // While we could have written this with libc
 // the C way, let's showcase some features added to C3.
-fn void! main(String[] args)
+fn void main(String[] args)
 {
 	// Grab a string from stdin
-	String s = io::readline()!;
+	String s = io::readline()!!;
 	// Delete it at scope end [defer]
 	defer s.free();
 

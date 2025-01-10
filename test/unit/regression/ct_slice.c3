@@ -1,6 +1,6 @@
 module ct_slice @test;
 
-fn void! slice_bytes()
+fn void slice_bytes()
 {
 	char[4] $a = x'aabbccdd';
 	var $b = $a[1..2];
@@ -9,7 +9,7 @@ fn void! slice_bytes()
 	assert(y == char[2] { 187, 204 });
 }
 
-fn void! slice_string()
+fn void slice_string()
 {
 	String $a = "abcd";
 	assert($a == "abcd");

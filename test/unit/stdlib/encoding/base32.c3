@@ -92,16 +92,16 @@ fn void decode_nopadding()
 	decode_tests(hex_tests, &base32::HEX, base32::NO_PAD);
 }
 
-fn void! base32_api()
+fn void base32_api()
 {
 	@pool()
 	{
 		foreach (t : std_tests)
 		{
-			String got = base32::encode_temp(t.dec)!;
+			String got = base32::encode_temp(t.dec)!!;
 			assert(got == t.enc, "got: %s, want: %s", got, t.enc);
 
-			char[] got_chars = base32::decode_temp(t.enc)!;
+			char[] got_chars = base32::decode_temp(t.enc)!!;
 			assert(got_chars == t.dec, "got: %s, want: %s", got_chars, t.dec);
 		}
 	};

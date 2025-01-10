@@ -102,7 +102,7 @@ bool expr_may_addr(Expr *expr)
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
-				case VARDECL_PARAM_REF:
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_CONST:
 					return true;
 				case VARDECL_MEMBER:
@@ -462,7 +462,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
-				case VARDECL_PARAM_REF:
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_EXPR:
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:

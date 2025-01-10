@@ -10,7 +10,7 @@ struct ScanTest
     String left_over;
 }
 
-fn void! scanner()
+fn void scanner()
 {
     ScanTest[] tcases = {
         {"aa,,bb", {"aa"}, "bb"},
@@ -35,7 +35,7 @@ fn void! scanner()
         		case SearchResult.MISSING:
         			break LOOP;
         		default:
-        			return err?;
+        			return err?!!;
         	}
         	String str = (String)res;
             results.push(str.tconcat(""));
@@ -49,7 +49,7 @@ fn void! scanner()
     }
 }
 
-fn void! scanner_as_reader()
+fn void scanner_as_reader()
 {
 	ByteReader br;
 	br.init("Lorem ipsum sit.");
@@ -57,10 +57,10 @@ fn void! scanner_as_reader()
 	char[8] buffer;
 	sc.init(&br, buffer[..]);
 
-	sc.scan(" ")!;
+	sc.scan(" ")!!;
 
 	char[16] res;
-	usz n = sc.read(&res)!;
+	usz n = sc.read(&res)!!;
 	String str = (String)res[:n];
 
 	assert(str == "ipsum sit.", "got '%s'; want 'ipsum sit.'", str);

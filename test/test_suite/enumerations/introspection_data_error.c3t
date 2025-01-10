@@ -6,7 +6,7 @@ enum Boom: int (String a) {
 
 module app;
 import std::io, boom;
-fn void! main(String[] args) {
+fn void main(String[] args) {
 	io::printn(Boom.BOOM);
 }
 /* #expect: boom.ll

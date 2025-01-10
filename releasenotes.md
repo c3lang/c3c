@@ -20,6 +20,13 @@
 - Improved error message when accessing `@private` from other modules #1769.
 - Include `@name` when searching for possible matches to `name` in the error message. #1779
 - Improve `@param` parse errors #1777
+- Improved `#foo` resolution inside of the compiler.
+- Deprecated '&' macro arguments.
+- Deprecate `fn void! main() type main functions.
+- Deprecate old `void!` @benchmark and @test functions.
+- Allow test runners to take String[] arguments.
+- Added `--lsp` output.
+- Improve the error message when running out of memory.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -61,6 +68,7 @@
 - Macros with trailing bodys aren't allowed as the single statement after a while loop with no body #1772.
 - Deref subscripts as needed for macro ref method arguments. #1789
 - Change ordering to simplify adding methods to type in conditional modules.
+- `#foo` style arguments were not type checked when given a type. #1790
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
@@ -73,6 +81,8 @@
 - Added URL parser.
 - Added convenience functions to `Maybe`.
 - Added `String.trim_left()` and `.trim_right()`.
+- Deprecation of several `&` macros.
+- Format functions for timedates.
 - Add `@assert_leak()` to assert on memory leaks in the scope.
 
 ## 0.6.5 Change list

@@ -22,7 +22,8 @@ fn void Resource.deinit(Resource this) => io::printfn("close %s", this.name);
 macro void! @open_with(String name; @body(Resource resource))
 {
 	Resource resource = resource_init(name)!;
-	defer {
+	defer
+	{
 		io::printn("Using open_with to close");
 		resource.deinit();
 	}
@@ -44,9 +45,9 @@ fn Resource! prep_out(String out_name, String[] prep_names)
 	return writer;
 }
 
-fn void! main()
+fn void main()
 {
-	Resource writer = prep_out("out", String[] { "a", "b"})!;
+	Resource writer = prep_out("out", String[] { "a", "b"})!!;
     defer writer.deinit();
     io::printn("use out");
 }

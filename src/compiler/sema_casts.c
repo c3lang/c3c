@@ -1810,7 +1810,7 @@ static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
 		expr->resolve_status = RESOLVE_DONE;
 		return;
 	}
-	assert(expr_is_const_fault(expr));
+	ASSERT0(expr_is_const_fault(expr));
 	Decl *value = expr->const_expr.enum_err_val;
 	ASSERT0(value->type != type);
 	expr->type = type;

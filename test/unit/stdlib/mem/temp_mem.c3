@@ -57,12 +57,12 @@ fn String inner4(String s, Allocator a)
     };
 }
 
-fn void! test_temp_allocator() @test
+fn void test_temp_allocator() @test
 {
     assert("foofoofoofoofoofooabcaaaaaa" == add("abc", allocator::temp(), 5), "was %s", add("abc", allocator::temp(), 5));
 }
 
-fn void! test_temp_allocator2() @test
+fn void test_temp_allocator2() @test
 {
     assert("fooxyz0123456789xy**********" == breakit("xyz0123456789", allocator::temp()));
 }

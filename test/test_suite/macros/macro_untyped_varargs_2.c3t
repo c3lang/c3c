@@ -34,9 +34,9 @@ macro foo3(...)
 
 macro @foo4(...)
 {
-	$typeof(*$varef[0]) a = *$varef[0];
-	*$varef[0] = *$varef[1];
-	*$varef[1] = a;
+	$typeof($vaexpr[0]) a = $vaexpr[0];
+	$vaexpr[0] = $vaexpr[1];
+	$vaexpr[1] = a;
 }
 fn int ping(int val)
 {

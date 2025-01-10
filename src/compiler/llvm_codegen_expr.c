@@ -6142,7 +6142,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			case VARDECL_PARAM_CT_TYPE:
 			case VARDECL_PARAM_EXPR:
 				continue;
-			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_REF: // DEPRECATED
 			case VARDECL_PARAM:
 				break;
 		}
@@ -6826,7 +6826,7 @@ static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 	Type *inner_type = value->type;
 	if (inner_type->type_kind == TYPE_ARRAY)
 	{
-		assert(inner_type->array.base == type_char || inner_type->array.base == type_ichar);
+		ASSERT0(inner_type->array.base == type_char || inner_type->array.base == type_ichar);
 		llvm_value_addr(c, value);
 		unsigned len = type_size(value->type);
 		ASSERT0(len > 0);
