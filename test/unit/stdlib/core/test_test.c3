@@ -42,7 +42,9 @@ TestState state = {
     },
     .panic_mock_fn = fn void (String message, String file, String function, uint line) {
 	    if (test::test_context.assert_print_backtrace){
-    	    builtin::print_backtrace(message, 3);
+			$if env::NATIVE_STACKTRACE:
+    	    	builtin::print_backtrace(message, 3);
+			$endif
 	    }
         if (state.expected_fail) {
 	        // io::printfn("[OOPS] (expected fail) ( %s:%s ) %s", file, line, message);
