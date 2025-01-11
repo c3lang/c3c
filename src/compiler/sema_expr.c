@@ -1409,6 +1409,7 @@ static bool sema_analyse_parameter(SemaContext *context, Expr *arg, Decl *param,
 				Expr *inner = expr_copy(arg);
 				arg->expr_kind = EXPR_OTHER_CONTEXT;
 				arg->expr_other_context = (ExprOtherContext) { .context = context, .inner = inner };
+				arg->resolve_status = RESOLVE_NOT_DONE;
 			}
 			break;
 		case VARDECL_PARAM_CT:
@@ -3662,29 +3663,33 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
  */
  Expr *sema_expr_resolve_access_child(SemaContext *context, Expr *child, bool *missing)
 {
+	 SourceSpan span = child->span;
+	 bool in_hash = false;
 RETRY:
-	if (!sema_expr_fold_hash(context, child)) return false;
 	switch (child->expr_kind)
 	{
+		case EXPR_HASH_IDENT:
+			if (!sema_expr_fold_hash(context, child)) return false;
+			in_hash = true;
+			goto RETRY;
 		case EXPR_OTHER_CONTEXT:
 		{
 			Expr *inner = child->expr_other_context.inner;
-			SemaContext *c2 = child->expr_other_context.context;
-			return sema_expr_resolve_access_child(c2, inner, missing);
+			context = child->expr_other_context.context;
+			child = inner;
+			goto RETRY;
 		}
 		case EXPR_IDENTIFIER:
+			if (child->resolve_status == RESOLVE_DONE) goto ALREADY_RESOLVED;
 			// A path is not allowed.
-			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
 			if (child->identifier_expr.path) break;
 			return child;
 		case EXPR_CT_IDENT:
-			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
+			if (child->resolve_status == RESOLVE_DONE) goto ALREADY_RESOLVED;
 			return child;
 		case EXPR_TYPEINFO:
 			if (child->type_expr->kind == TYPE_INFO_CT_IDENTIFIER) return child;
 			break;
-		case EXPR_HASH_IDENT:
-			UNREACHABLE
 		case EXPR_CT_EVAL:
 		{
 			ASSERT_SPAN(child, child->resolve_status != RESOLVE_DONE);
@@ -3704,7 +3709,17 @@ RETRY:
 			break;
 
 	}
-	SEMA_ERROR(child, "Expected an identifier here.");
+	sema_error_at(context, span, "Expected an identifier here.");
+	return NULL;
+ALREADY_RESOLVED:
+	if (in_hash)
+	{
+		sema_error_at(context, span, "An expression cannot already be resolved when used as '.foo'. "
+		                             "One way this might happen is if you pass a '#foo' style "
+		                             "parameter that is already assigned a type when declared: 'macro @test(int #foo) { ... }'.");
+		return NULL;
+	}
+	sema_error_at(context, span, "This expression was already resolved to an identifier before it was used.");
 	return NULL;
 }
 
@@ -5675,7 +5690,8 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 
 static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 {
-	if (expr->expr_kind == EXPR_HASH_IDENT)
+	assert(expr->expr_kind == EXPR_HASH_IDENT);
+	while (expr->expr_kind == EXPR_HASH_IDENT)
 	{
 		ASSERT0(expr && expr->hash_ident_expr.identifier);
 		DEBUG_LOG("Resolving identifier '%s'", expr->hash_ident_expr.identifier);
@@ -5685,12 +5701,11 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
 		if (!decl) return expr_poison(expr);
 
 		ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
+		DEBUG_LOG("Replacing expr (%p) with '%s' (%p) expression resolve: %d", expr, expr_kind_to_string(decl->var.init_expr->expr_kind), decl->var.init_expr, decl->var.init_expr->resolve_status);
 		expr_replace(expr, copy_expr_single(decl->var.init_expr));
-		ASSERT0(expr->expr_kind == EXPR_OTHER_CONTEXT);
 		REMINDER("Handle inlining at");
-		return true;
 	}
-	return true;
+	return expr_ok(expr);
 }
 /**
  * Analyse a = b
@@ -5698,10 +5713,13 @@ static bool sema_expr_fold_hash(SemaContext *context, Expr *expr)
  */
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref)
 {
-	if (!sema_expr_fold_hash(context, left)) return false;
+RETRY:;
 	// 1. Evaluate left side
 	switch (left->expr_kind)
 	{
+		case EXPR_HASH_IDENT:
+			if (!sema_expr_fold_hash(context, left)) return false;
+			goto RETRY;
 		case EXPR_CT_IDENT:
 			// $foo = ...
 			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
@@ -7030,9 +7048,10 @@ static const char *sema_addr_check_may_take(Expr *inner)
  */
 static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check)
 {
+RETRY:;
 	// 1. Evaluate the expression
 	Expr *inner = expr->unary_expr.expr;
-	if (!sema_expr_fold_hash(context, inner)) return false;
+	if (inner->resolve_status == RESOLVE_DONE) goto RESOLVED;
 	switch (inner->expr_kind)
 	{
 		case EXPR_POISONED:
@@ -7045,14 +7064,8 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 			return sema_expr_analyse_addr(c2, expr, failed_ref, check);
 		}
 		case EXPR_HASH_IDENT:
-		{
-			Decl *decl = sema_resolve_symbol(context, inner->hash_ident_expr.identifier, NULL, inner->span);
-			if (!decl) return expr_poison(expr);
-			ASSERT_SPAN(expr, decl->decl_kind == DECL_VAR);
-			expr_replace(inner, copy_expr_single(decl->var.init_expr));
-			if (!sema_expr_analyse_addr(context, expr, failed_ref, check)) return decl_poison(decl);
-			return true;
-		}
+			if (!sema_expr_fold_hash(context, inner)) return false;
+			goto RETRY;
 		case EXPR_SUBSCRIPT:
 			inner->expr_kind = EXPR_SUBSCRIPT_ADDR;
 			if (failed_ref)
@@ -7077,7 +7090,7 @@ static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool
 		default:
 			break;
 	}
-
+RESOLVED:
 	if (inner->expr_kind == EXPR_CT_IDENT)
 	{
 		RETURN_SEMA_ERROR(expr, "It's not possible to take the address of a compile time value.");
@@ -9536,7 +9549,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return sema_expr_analyse_ct_call(context, expr);
 		case EXPR_HASH_IDENT:
 			if (!sema_expr_fold_hash(context, expr)) return false;
-			return sema_analyse_expr_dispatch(context, expr, check);
+			return sema_analyse_expr_check(context, expr, check);
 		case EXPR_CT_IDENT:
 			return sema_expr_analyse_ct_identifier(context, expr, check);
 		case EXPR_OPTIONAL:
@@ -10009,6 +10022,7 @@ RETRY:
 bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *expr)
 {
 	infer_type = type_no_optional(infer_type);
+RETRY:
 	switch (expr->resolve_status)
 	{
 		case RESOLVE_NOT_DONE:
@@ -10026,10 +10040,12 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 			UNREACHABLE
 	}
 
-	if (!sema_expr_fold_hash(context, expr)) return false;
 	expr->resolve_status = RESOLVE_RUNNING;
 	switch (expr->expr_kind)
 	{
+		case EXPR_HASH_IDENT:
+			if (!sema_expr_fold_hash(context, expr)) return false;
+			goto RETRY;
 		case EXPR_OTHER_CONTEXT:
 		{
 			InliningSpan *new_span = context->inlined_at;
@@ -10057,8 +10073,6 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *infer_type, Expr *ex
 		case EXPR_TERNARY:
 			if (!sema_expr_analyse_ternary(context, infer_type, expr)) return expr_poison(expr);
 			break;
-		case EXPR_HASH_IDENT:
-			UNREACHABLE
 		case EXPR_CT_ARG:
 			if (!sema_expr_analyse_ct_arg(context, infer_type, expr)) return expr_poison(expr);
 			break;

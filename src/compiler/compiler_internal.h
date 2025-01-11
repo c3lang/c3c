@@ -2221,6 +2221,7 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 Expr *expr_new_const_string(SourceSpan span, const char *string);
 Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
+const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
