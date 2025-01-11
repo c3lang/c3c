@@ -77,6 +77,8 @@
 - Fix bug with defer assignment in macro #1807.
 - Fix regression with swizzle references for vectors #1810.
 - Assert when partially initializing a constant struct containing a slice #1812.
+- Assert concatenating constant slices #1805.
+- Do not link "ld" on Linux with no libc.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
