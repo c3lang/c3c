@@ -101,13 +101,13 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_RUN:
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:
+		case COMMAND_COMPILE_BENCHMARK:
+		case COMMAND_COMPILE_TEST:
 			return true;
 		case COMMAND_COMPILE:
 		case COMMAND_COMPILE_ONLY:
 		case COMMAND_DYNAMIC_LIB:
 		case COMMAND_STATIC_LIB:
-		case COMMAND_COMPILE_BENCHMARK:
-		case COMMAND_COMPILE_TEST:
 		case COMMAND_UNIT_TEST:
 		case COMMAND_MISSING:
 		case COMMAND_INIT:

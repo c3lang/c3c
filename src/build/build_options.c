@@ -63,8 +63,8 @@ static void usage(bool full)
 	PRINTF("  clean-run [<target>] [-- [<arg1> ...]]              Clean, then run the target.");
 	PRINTF("  compile-run <file1> [<file2> ...] [-- [<arg1> ...]] Compile files then immediately run the result.");
 	PRINTF("  compile-only <file1> [<file2> ...]                  Compile files but do not perform linking.");
-	PRINTF("  compile-benchmark <file1> [<file2> ...]             Compile files into an executable and run benchmarks.");
-	PRINTF("  compile-test <file1> [<file2> ...]                  Compile files into an executable and run unit tests.");
+	PRINTF("  compile-benchmark <file1> [<file2> ...] [-- <arg>]  Compile files into an executable and run benchmarks.");
+	PRINTF("  compile-test <file1> [<file2> ...]  [-- <arg>]      Compile files into an executable and run unit tests.");
 	PRINTF("  static-lib <file1> [<file2> ...]                    Compile files without a project into a static library.");
 	PRINTF("  dynamic-lib <file1> [<file2> ...]                   Compile files without a project into a dynamic library.");
 	PRINTF("  headers <file1> [<file2> ...]                       Analyse files and generate C headers for public methods.");
