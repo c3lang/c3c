@@ -243,6 +243,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
 	Type *indexed = type_get_indexed_type(init->type);
+	if (!cast_implicit(context, element, indexed, false)) return false;
 	Type *new_inner_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)

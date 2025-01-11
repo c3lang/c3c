@@ -28,6 +28,8 @@
 - Added `--lsp` output.
 - Improve the error message when running out of memory.
 - Allowed passing arguments to @test / @benchmark runners via `c3c test[benchmark] -- -o --opt1 <arg1>`
+- Handle bytes and string literals the same way in terms of zero termination.
+- Function comments are stored and displayed with -P.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -70,6 +72,8 @@
 - Deref subscripts as needed for macro ref method arguments. #1789
 - Change ordering to simplify adding methods to type in conditional modules.
 - `#foo` style arguments were not type checked when given a type. #1790
+- Bug when using +++ on value build a slice or array: the rhs cast was not done.
+- Fix bug preventing compile time slices from being iterated over with `$foreach`.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

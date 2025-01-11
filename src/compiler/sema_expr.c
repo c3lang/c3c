@@ -2445,6 +2445,7 @@ EXIT:
 	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;
 	sema_context_destroy(&macro_context);
+	call_expr->resolve_status = RESOLVE_DONE;
 	if (is_always_const && !expr_is_runtime_const(call_expr))
 	{
 		SEMA_ERROR(call_expr, "The macro failed to fold to a constant value, despite being '@const'.");
