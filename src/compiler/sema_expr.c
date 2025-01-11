@@ -4854,12 +4854,27 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	index &= 0xF;
 	if (len == 1)
 	{
-		expr->expr_kind = EXPR_SUBSCRIPT;
+		switch (check)
+		{
+			case CHECK_ADDRESS:
+				expr->expr_kind = EXPR_SUBSCRIPT_ADDR;
+				break;
+			case CHECK_LVALUE:
+			case CHECK_VALUE:
+				expr->expr_kind = EXPR_SUBSCRIPT;
+				break;
+		}
 		expr->subscript_expr = (ExprSubscript) {
 				.index.expr = exprid(expr_new_const_int(expr->span, type_usz, index)),
 				.expr = exprid(parent)
 		};
-		return sema_expr_analyse_subscript(context, expr, check, false);
+		if (!sema_expr_analyse_subscript(context, expr, check, false)) return false;
+		expr->resolve_status = RESOLVE_DONE;
+		if (check == CHECK_ADDRESS)
+		{
+			expr_rewrite_insert_deref(expr);
+		}
+		return true;
 	}
 	Type *result = type_get_vector(indexed_type, len);
 	expr->expr_kind = EXPR_SWIZZLE;
@@ -7030,6 +7045,8 @@ static const char *sema_addr_check_may_take(Expr *inner)
 			}
 			return sema_addr_check_may_take(inner->access_expr.parent);
 		}
+		case EXPR_SUBSCRIPT_ADDR:
+			return NULL;
 		case EXPR_SUBSCRIPT:
 			return sema_addr_check_may_take(exprptr(inner->subscript_expr.expr));
 		case EXPR_TYPEINFO:

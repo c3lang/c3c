@@ -75,6 +75,7 @@
 - Bug when using +++ on value build a slice or array: the rhs cast was not done.
 - Fix bug preventing compile time slices from being iterated over with `$foreach`.
 - Fix bug with defer assignment in macro #1807.
+- Fix regression with swizzle references for vectors #1810.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
