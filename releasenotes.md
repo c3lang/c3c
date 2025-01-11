@@ -72,6 +72,7 @@
 - Deref subscripts as needed for macro ref method arguments. #1789
 - Change ordering to simplify adding methods to type in conditional modules.
 - `#foo` style arguments were not type checked when given a type. #1790
+- Bug when using +++ on value build a slice or array: the rhs cast was not done.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
