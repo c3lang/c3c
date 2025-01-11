@@ -33,6 +33,7 @@
 - New `std::core::test` module for unit testing machinery
 - Completely refactored unit test default runner, added extra optional arguments (colors, test case filters, breakpoints, etc..., see `c3c test -- --help`)
 - Added new `std::os::argparse::` module for CLI and arguments parsing, with sub-commands support
+- Allowed passing arguments to @test / @benchmark runners via `c3c compile-test -- -o --opt1 <arg1>`
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
