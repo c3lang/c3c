@@ -189,17 +189,10 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		quicksort(tests, &cmp_test_unit);
 	}
 
+	// Buffer for hijacking the output
 	$if (!env::NO_LIBC):
 		test::test_context.fake_stdout.file = libc::tmpfile();
 	$endif
-	// // Buffer for hijacking the output
-	// test::test_context.error_buffer_capacity = 1024 * 1024;
-	// test::test_context.error_buffer = libc::calloc(1, test::test_context.error_buffer_capacity);
-	// test::test_context.fake_stdout = File {
-	// 	.file = libc::fmemopen(test::test_context.error_buffer, test::test_context.error_buffer_capacity, "r+w"),
-	// };
-	// assert(test::test_context.error_buffer, "out of mem");
-	// defer libc::free(test::test_context.error_buffer);
 	if (test::test_context.fake_stdout.file == null) {
 		io::print("Failed to hijack stdout, tests will print everything");
 	}
