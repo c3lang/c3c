@@ -44,7 +44,7 @@ TestState state = {
 		if(test::test_context.is_in_panic){
 			return;
 		}
-		test::test_context.is_in_panic = true;
+		// test::test_context.is_in_panic = true;
 	    if (test::test_context.assert_print_backtrace){
 			$if env::NATIVE_STACKTRACE:
     	    	builtin::print_backtrace(message, 0);
