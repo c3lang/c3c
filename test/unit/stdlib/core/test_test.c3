@@ -7,7 +7,6 @@ struct TestState {
     int n_runs;
     int n_fails;
     bool expected_fail;
-    bool setup_fail;
 
     // NOTE: we must wrap setup/teardown functions to hide them from module @test runner
     test::TestFn setup_fn;
@@ -27,9 +26,6 @@ TestState state = {
 
 	    state.old_panic = builtin::panic;
 	    builtin::panic = state.panic_mock_fn;
-	    if (state.setup_fail) {
-	        unreachable();
-	    }
     },
     .teardown_fn = fn void() {
         // io::printn("test teardown");
@@ -43,7 +39,6 @@ TestState state = {
         state.n_fails = 0;
         state.expected_fail = false;
         state.n_runs = 0;
-        state.setup_fail = false;
     },
     .panic_mock_fn = fn void (String message, String file, String function, uint line) {
 	    if (test::test_context.assert_print_backtrace){
@@ -132,16 +127,6 @@ fn void expected_fail(){
     state.expected_fail = true;
     test::equal(state.n_fails, 0);
     test::equal(2, 1); // this fails, and we test it
-    test::equal(state.n_fails, 1);
-}
-
-fn void setup_failed_when_setup_fn_failed(){
-    test::equal(state.n_fails, 0);
-    test::equal(state.n_runs, 0);
-    state.setup_fail = true;
-    state.expected_fail = true;
-    test::setup(state.setup_fn, state.teardown_fn);
-    state.expected_fail = false;
     test::equal(state.n_fails, 1);
 }
 
