@@ -9961,7 +9961,9 @@ bool sema_cast_const(Expr *expr)
 		case EXPR_RECAST:
 			if (sema_cast_const(expr->inner_expr))
 			{
+				Type *type = expr->type;
 				expr_replace(expr, expr->inner_expr);
+				expr->type = type;
 				return true;
 			}
 			return false;
