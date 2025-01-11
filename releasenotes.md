@@ -76,6 +76,7 @@
 - Fix bug preventing compile time slices from being iterated over with `$foreach`.
 - Fix bug with defer assignment in macro #1807.
 - Fix regression with swizzle references for vectors #1810.
+- Assert when partially initializing a constant struct containing a slice #1812.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
