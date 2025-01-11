@@ -703,6 +703,36 @@ jobs:
           name: c3-macos-${{matrix.build_type}}
           path: c3-macos-${{matrix.build_type}}.zip
 
+  build-nix:
+    runs-on: ubuntu-latest
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [ Release, Debug ]
+        nixpkgs: [ Lock, Latest ]
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install Nix
+      uses: cachix/install-nix-action@v30
+      with: 
+        github_access_token: ${{ secrets.GITHUB_TOKEN }}
+
+    - name: Update flake (if necessary)
+      run: |
+        if [[ matrix.nixpkgs == "Latest" ]]; then 
+          nix flake update
+        fi
+        nix flake info
+
+    - name: Build and check 
+      run: |
+        if [[ ${{ matrix.build_type }} = "Debug" ]]; then 
+          nix build -L ".#c3c-debug-checks" 
+        else 
+          nix build -L ".#c3c-checks"
+        fi
 
   release:
     runs-on: ubuntu-latest

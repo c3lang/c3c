@@ -1,7 +1,7 @@
 module oups;
 import std::collections::map;
 
-fn void! main()
+fn void main()
 {
 }
 

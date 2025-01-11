@@ -12,7 +12,7 @@ struct Bcd
 
 const Abc FOO = { 2 };
 
-fn void! main()
+fn void main()
 {
 	Bcd a = { FOO };
 }

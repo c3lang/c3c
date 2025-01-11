@@ -45,7 +45,7 @@ const char* JSON_EXE =
 		"  // CPU name, used for optimizations in the LLVM backend.\n"
 		"  \"cpu\": \"generic\",\n"
 		"  // Optimization: \"O0\", \"O1\", \"O2\", \"O3\", \"O4\", \"O5\", \"Os\", \"Oz\".\n"
-		"  \"opt\": \"O0\",\n"
+		"  \"opt\": \"O0\"\n"
 		"  // See resources/examples/project_all_settings.json and 'c3c --list-project-properties' to see more properties.\n"
 		"}";
 
@@ -88,7 +88,7 @@ const char* JSON_STATIC =
 		"  },\n"
 		"  // Global settings.\n"
 		"  // Optimization: \"O0\", \"O1\", \"O2\", \"O3\", \"O4\", \"O5\", \"Os\", \"Oz\".\n"
-		"  \"opt\": \"O0\",\n"
+		"  \"opt\": \"O0\"\n"
 		"  // See resources/examples/project_all_settings.json and 'c3c --list-project-properties' to see more properties.\n"
 		"}";
 
@@ -131,7 +131,7 @@ const char* JSON_DYNAMIC =
 		"  },\n"
 		"  // Global settings.\n"
 		"  // Optimization: \"O0\", \"O1\", \"O2\", \"O3\", \"O4\", \"O5\", \"Os\", \"Oz\".\n"
-		"  \"opt\": \"O0\",\n"
+		"  \"opt\": \"O0\"\n"
 		"  // See resources/examples/project_all_settings.json and 'c3c --list-project-properties' to see more properties.\n"
 		"}";
 

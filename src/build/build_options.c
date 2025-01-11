@@ -53,8 +53,8 @@ static void usage(bool full)
 	PRINTF("  init <project name>                                 Initialize a new project structure.");
 	PRINTF("  init-lib <library name>                             Initialize a new library structure.");
 	PRINTF("  build [<target>]                                    Build the target in the current project.");
-	PRINTF("  benchmark                                           Run the benchmarks in the current project.");
-	PRINTF("  test                                                Run the unit tests in the current project.");
+	PRINTF("  benchmark [-- [<arg1> ...]]                         Run the benchmarks in the current project.");
+	PRINTF("  test [-- [<arg1] ...]                               Run the unit tests in the current project.");
 	PRINTF("  clean                                               Clean all build files.");
 	PRINTF("  run [<target>] [-- [<arg1> ...]]                    Run (and build if needed) the target in the current project.");
 	PRINTF("  dist [<target>]                                     Clean and build a target for distribution.");
@@ -125,6 +125,9 @@ static void usage(bool full)
 		PRINTF("  --optsize=<option>         - Code size optimization: none, small, tiny.");
 		PRINTF("  --single-module=<yes|no>   - Compile all modules together, enables more inlining.");
 		PRINTF("  --show-backtrace=<yes|no>  - Show detailed backtrace on segfaults.");
+		PRINTF("  --lsp                      - Emit data about errors suitable for a LSP.");
+		PRINTF("  --old-test-bench=<yes|no>  - Allow benchmarks and tests to use the deprecated 'void!' returns.");
+
 	}
 	PRINTF("");
 	PRINTF("  -g                         - Emit debug info.");
@@ -175,7 +178,7 @@ static void usage(bool full)
 		PRINTF("  --winsdk <dir>             - Set the directory for Windows system library files for cross compilation.");
 		PRINTF("  --wincrt=<option>          - Windows CRT linking: none, static-debug, static, dynamic-debug (default if debug info enabled), dynamic (default).");
 		PRINTF("  --windef <file>            - Use Windows 'def' file for function exports instead of 'dllexport'.");
-		PRINTF("  --win-vs-dirs <dir>;<dir> - Override Windows VS detection.");
+		PRINTF("  --win-vs-dirs <dir>;<dir>  - Override Windows VS detection.");
 		PRINTF("");
 		PRINTF("  --macossdk <dir>           - Set the directory for the MacOS SDK for cross compilation.");
 		PRINTF("  --macos-min-version <ver>  - Set the minimum MacOS version to compile for.");
@@ -691,6 +694,11 @@ static void parse_option(BuildOptions *options)
 				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
 				return;
 			}
+			if ((argopt = match_argopt("old-test-bench")))
+			{
+				options->old_test = (OldTest) parse_multi_option(argopt, 2, on_off);
+				return;
+			}
 			if ((argopt = match_argopt("show-backtrace")))
 			{
 				options->show_backtrace = (ShowBacktrace) parse_multi_option(argopt, 2, on_off);
@@ -1076,8 +1084,16 @@ static void parse_option(BuildOptions *options)
 				options->benchmark_mode = true;
 				return;
 			}
+			if (match_longopt("lsp"))
+			{
+				options->lsp_mode = true;
+				options->strip_unused = STRIP_UNUSED_OFF;
+				options->test_mode = false;
+				return;
+			}
 			if (match_longopt("test"))
 			{
+				options->lsp_mode = false;
 				options->test_mode = true;
 				options->strip_unused = STRIP_UNUSED_OFF;
 				return;
@@ -1149,6 +1165,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
+		.old_test = OLD_TEST_NOT_SET,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),

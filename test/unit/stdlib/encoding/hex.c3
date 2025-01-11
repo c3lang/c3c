@@ -17,7 +17,7 @@ TestCase[] tests = {
 	{{0xe3, 0xa1}, "E3A1"},
 };
 
-fn void! encode()
+fn void encode()
 {
 	usz n;
 	char[64] buf;
@@ -33,17 +33,17 @@ fn void! encode()
 	}
 }
 
-fn void! decode()
+fn void decode()
 {
 	usz n;
 	char[64] buf;
 	foreach (t : tests)
 	{
-		n = hex::decode_bytes(t.enc, buf[..])!;
+		n = hex::decode_bytes(t.enc, buf[..])!!;
 		assert(t.dec == buf[:n], "decode failed: got: %s, want: %s", buf[:n], t.dec);
 		@pool()
 		{
-			assert(t.dec == hex::decode_temp(t.enc)!);
+			assert(t.dec == hex::decode_temp(t.enc)!!);
 		};
 	}
 }

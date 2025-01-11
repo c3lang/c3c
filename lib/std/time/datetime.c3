@@ -11,7 +11,7 @@ fn DateTime now()
  @require hour >= 0 && hour < 24
  @require min >= 0 && min < 60
  @require sec >= 0 && sec < 60
- @require us >= 0 && us < 999_999
+ @require us >= 0 && us <= 999_999
 *>
 fn DateTime from_date(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0)
 {
@@ -25,7 +25,7 @@ fn DateTime from_date(int year, Month month = JANUARY, int day = 1, int hour = 0
  @require hour >= 0 && hour < 24
  @require min >= 0 && min < 60
  @require sec >= 0 && sec < 60
- @require us >= 0 && us < 999_999
+ @require us >= 0 && us <= 999_999
  @require gmt_offset >= -12 * 3600 && gmt_offset <= 14 * 3600
 *>
 fn TzDateTime from_date_tz(int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0, int gmt_offset = 0)
@@ -117,7 +117,7 @@ fn TzDateTime TzDateTime.to_gmt_offset(self, int gmt_offset) {
  @require hour >= 0 && hour < 24
  @require min >= 0 && min <= 60
  @require sec >= 0 && sec < 60
- @require us >= 0 && us < 999_999
+ @require us >= 0 && us <= 999_999
 *>
 fn void DateTime.set_date(&self, int year, Month month = JANUARY, int day = 1, int hour = 0, int min = 0, int sec = 0, int us = 0)
 {

@@ -82,8 +82,8 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
 			UNREACHABLE;
+		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF:
 		{
 			Expr *init_expr = decl->var.init_expr;
 			llvm_emit_expr(c, value, init_expr);
@@ -113,6 +113,17 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 
 	// Create a local alloca
 	ASSERT0(!decl->backend_ref);
+	Type *type_low = type_lowering(decl->type);
+	if (decl->var.is_temp && !IS_OPTIONAL(decl) && !decl->var.is_addr && !decl->var.is_written && !type_is_user_defined(
+			type_low) && type_low->type_kind != TYPE_ARRAY)
+	{
+		ASSERT0(decl->var.init_expr);
+		llvm_emit_expr(c, value, decl->var.init_expr);
+		llvm_value_rvalue(c, value);
+		decl->backend_value = value->value;
+		decl->is_value = true;
+		return;
+	}
 	llvm_emit_local_var_alloca(c, decl);
 
 	// Create optional storage
@@ -196,13 +207,7 @@ static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bo
 	}
 
 	// Cast the result to bool if needed.
-	if (bool_cast && be_value->type != type_bool)
-	{
-		Type *type = be_value->type;
-		llvm_emit_bool_cast(c, last, be_value);
-
-//		llvm_emit_cast(c, cast, last, be_value, type_bool, type);
-	}
+	ASSERT0(!bool_cast || be_value->type == type_bool);
 }
 
 void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)

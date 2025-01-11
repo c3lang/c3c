@@ -11,6 +11,38 @@
 #define LINES_SHOWN 4
 #define MAX_WIDTH 120
 
+static void eprint_escaped_string(const char *message)
+{
+	fputc('"', stderr);
+	char c;
+	while ((c = *(message++)) != 0)
+	{
+		switch (c)
+		{
+			case '\t':
+				fputs("\\t", stderr);
+				break;
+			case '\r':
+				break;
+			case '|':
+				fputs("\\x7c", stderr);
+				break;
+			case '\"':
+				fputs("\\\"", stderr);
+				break;
+			case '\\':
+				fputs("\\\\", stderr);
+				break;
+			case '\n':
+				fputs("\\n", stderr);
+				break;
+			default:
+				fputc(c, stderr);
+		}
+	}
+	fputc('"', stderr);
+}
+
 static void print_error_type_at(SourceSpan location, const char *message, PrintType print_type)
 {
 	if (!location.a)
@@ -19,7 +51,31 @@ static void print_error_type_at(SourceSpan location, const char *message, PrintT
 		return;
 	}
 	File *file = source_file_by_id(location.file_id);
-	if (compiler.build.test_output || compiler.build.benchmark_output)
+	if (compiler.build.lsp_output)
+	{
+		eprintf("> LSPERR|");
+		switch (print_type)
+		{
+			case PRINT_TYPE_ERROR:
+				eprintf("error");
+				break;
+			case PRINT_TYPE_NOTE:
+				eprintf("note");
+				break;
+			case PRINT_TYPE_WARN:
+				eprintf("warn");
+				break;
+			default:
+				UNREACHABLE
+		}
+		eprintf("|");
+		eprint_escaped_string(file->full_path);
+		eprintf("|%d|%d|", location.row, location.col);
+		eprint_escaped_string(message);
+		eprintf("\n");
+		return;
+	}
+	else if (compiler.build.test_output || compiler.build.benchmark_output)
 	{
 		switch (print_type)
 		{

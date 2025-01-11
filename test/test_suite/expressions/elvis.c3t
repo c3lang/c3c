@@ -20,49 +20,62 @@ fn bool elvis3(bool x, bool y)
 
 define ptr @elvis.elvis(ptr %0, ptr %1) #0 {
 entry:
-  %ptrbool = icmp ne ptr %0, null
-  br i1 %ptrbool, label %cond.phi, label %cond.rhs
+  %i2b = icmp ne ptr %0, null
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  br label %cond.phi
 
 cond.rhs:                                         ; preds = %entry
   br label %cond.phi
 
-cond.phi:                                         ; preds = %cond.rhs, %entry
-  %val = phi ptr [ %0, %entry ], [ %1, %cond.rhs ]
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi ptr [ %0, %cond.lhs ], [ %1, %cond.rhs ]
   ret ptr %val
 }
 
+; Function Attrs: nounwind uwtable
 define ptr @elvis.elvis2(ptr %0, ptr %1) #0 {
 entry:
-  %ptrbool = icmp ne ptr %0, null
-  br i1 %ptrbool, label %cond.phi3, label %cond.rhs
+  %i2b = icmp ne ptr %0, null
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  br label %cond.phi4
 
 cond.rhs:                                         ; preds = %entry
-  %ptrbool1 = icmp ne ptr %1, null
-  br i1 %ptrbool1, label %cond.phi, label %cond.rhs2
+  %i2b1 = icmp ne ptr %1, null
+  br i1 %i2b1, label %cond.lhs2, label %cond.rhs3
 
-cond.rhs2:                                        ; preds = %cond.rhs
+cond.lhs2:                                        ; preds = %cond.rhs
   br label %cond.phi
 
-cond.phi:                                         ; preds = %cond.rhs2, %cond.rhs
-  %val = phi ptr [ %1, %cond.rhs ], [ %0, %cond.rhs2 ]
-  br label %cond.phi3
+cond.rhs3:                                        ; preds = %cond.rhs
+  br label %cond.phi
 
-cond.phi3:                                        ; preds = %cond.phi, %entry
-  %val4 = phi ptr [ %0, %entry ], [ %val, %cond.phi ]
-  ret ptr %val4
+cond.phi:                                         ; preds = %cond.rhs3, %cond.lhs2
+  %val = phi ptr [ %1, %cond.lhs2 ], [ %0, %cond.rhs3 ]
+  br label %cond.phi4
+
+cond.phi4:                                        ; preds = %cond.phi, %cond.lhs
+  %val5 = phi ptr [ %0, %cond.lhs ], [ %val, %cond.phi ]
+  ret ptr %val5
 }
 
 define zeroext i8 @elvis.elvis3(i8 zeroext %0, i8 zeroext %1) #0 {
 entry:
   %2 = trunc i8 %0 to i1
-  br i1 %2, label %cond.phi, label %cond.rhs
+  br i1 %2, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  br label %cond.phi
 
 cond.rhs:                                         ; preds = %entry
   %3 = trunc i8 %1 to i1
   br label %cond.phi
 
-cond.phi:                                         ; preds = %cond.rhs, %entry
-  %val = phi i1 [ %2, %entry ], [ %3, %cond.rhs ]
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi i1 [ %2, %cond.lhs ], [ %3, %cond.rhs ]
   %4 = zext i1 %val to i8
   ret i8 %4
 }

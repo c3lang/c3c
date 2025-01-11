@@ -8,7 +8,7 @@ fn void init() @init
     set_benchmark_max_iterations(10_000);
 }
 
-fn void! quicksort_bench() @benchmark
+fn void quicksort_bench() @benchmark
 {
 	// test set: 500 numbers between 0 and 99;
 	int[] data = {

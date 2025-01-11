@@ -1,6 +1,9 @@
 // #target: macos-x64
 module foo;
 
+char[2] g = "ab";
+char[*] h = "abc";
+
 fn int main()
 {
     char[2] x = "ab";
@@ -10,14 +13,16 @@ fn int main()
 
 /* #expect: foo.ll
 
+@foo.g = local_unnamed_addr global [2 x i8] c"ab", align 1
+@foo.h = local_unnamed_addr global [3 x i8] c"abc", align 1
 @.str = private unnamed_addr constant [3 x i8] c"ab\00", align 1
-@.str.1 = private unnamed_addr constant [4 x i8] c"abc\00", align 1
+@.str.2 = private unnamed_addr constant [4 x i8] c"abc\00", align 1
 
 define i32 @main() #0 {
 entry:
   %x = alloca [2 x i8], align 1
   %y = alloca [3 x i8], align 1
   call void @llvm.memcpy.p0.p0.i32(ptr align 1 %x, ptr align 1 @.str, i32 2, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 @.str.1, i32 3, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %y, ptr align 1 @.str.2, i32 3, i1 false)
   ret i32 0
 }

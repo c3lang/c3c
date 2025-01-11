@@ -104,7 +104,12 @@ macro usz! write_all(stream, char[] buffer)
 	return n;
 }
 
-macro usz! @read_using_read_byte(&s, char[] buffer)
+macro usz! @read_using_read_byte(&s, char[] buffer) @deprecated
+{
+	return read_using_read_byte(*s, buffer);
+}
+
+macro usz! read_using_read_byte(s, char[] buffer)
 {
 	usz len = 0;
 	foreach (&cptr : buffer)
@@ -121,17 +126,26 @@ macro usz! @read_using_read_byte(&s, char[] buffer)
 	return len;
 }
 
-macro void! @write_byte_using_write(&s, char c)
+macro void! write_byte_using_write(s, char c)
 {
 	char[1] buff = { c };
-	(*s).write(&buff)!;
+	s.write(&buff)!;
 }
 
+macro void! @write_byte_using_write(&s, char c) @deprecated
+{
+	return write_byte_using_write(*s, c);
+}
 
-macro char! @read_byte_using_read(&s)
+macro char! @read_byte_using_read(&s) @deprecated
+{
+	return read_byte_using_read(*s);
+}
+
+macro char! read_byte_using_read(s)
 {
 	char[1] buffer;
-	usz read = (*s).read(&buffer)!;
+	usz read = s.read(&buffer)!;
 	if (read != 1) return IoError.EOF?;
 	return buffer[0];
 }
@@ -139,13 +153,23 @@ macro char! @read_byte_using_read(&s)
 def ReadByteFn = fn char!();
 
 
-macro usz! @write_using_write_byte(&s, char[] bytes)
+macro usz! write_using_write_byte(s, char[] bytes)
 {
 	foreach (c : bytes) s.write_byte(self, c)!;
 	return bytes.len;
 }
 
-macro void! @pushback_using_seek(&s)
+macro usz! @write_using_write_byte(&s, char[] bytes) @deprecated
+{
+	return write_using_write_byte(*s, bytes);
+}
+
+macro void! pushback_using_seek(s)
+{
+	s.seek(-1, CURSOR)!;
+}
+
+macro void! @pushback_using_seek(&s) @deprecated
 {
 	s.seek(-1, CURSOR)!;
 }

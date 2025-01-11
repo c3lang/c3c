@@ -59,6 +59,7 @@ fn void test_ends_with()
 	assert(s.ends_with(""));
 	assert(!s.ends_with("e"));
 }
+
 fn void test_trim()
 {
 	String s = " \t\nabc ";
@@ -67,6 +68,29 @@ fn void test_trim()
 	assert("  \n\tok".trim() == "ok");
 	assert("!! \n\t ".trim() == "!!");
 	assert(s.trim("c \t") == "\nab");
+	assert("".trim() == "");
+
+
+}
+
+fn void test_trim_left()
+{
+	String s = " \t\nabc ";
+	assert(s.trim_left() == "abc ");
+	assert("\n\t".trim_left() == "");
+	assert("  \n\tok".trim_left() == "ok");
+	assert("!! \n\t ".trim_left() == "!! \n\t ");
+	assert("".trim_left() == "");
+}
+
+fn void test_trim_right()
+{
+	String s = " \t\nabc ";
+	assert(s.trim_right() == " \t\nabc");
+	assert("\n\t".trim_right() == "");
+	assert("  \n\tok".trim_right() == "  \n\tok");
+	assert("!! \n\t ".trim_right() == "!!");
+	assert("".trim_right() == "");
 }
 
 fn void test_split()
@@ -99,11 +123,11 @@ fn void test_split_skip_empty()
 	assert(strings[1] == "b||c|");
 }
 
-fn void! test_split_to_buffer_skip_empty()
+fn void test_split_to_buffer_skip_empty()
 {
 	String[10] buffer;
 	String test = "abc|b||c|";
-	String[] strings = test.split_to_buffer("|", &buffer, skip_empty: true)!;
+	String[] strings = test.split_to_buffer("|", &buffer, skip_empty: true)!!;
 	assert(strings.len == 3);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b");
@@ -114,11 +138,11 @@ fn void! test_split_to_buffer_skip_empty()
 	assert(strings[1] == "b||c|");
 }
 
-fn void! test_split_to_buffer()
+fn void test_split_to_buffer()
 {
 	String[5] b;
 	String test = "abc|b||c|";
-	String[] strings = test.split_to_buffer("|", &b)!;
+	String[] strings = test.split_to_buffer("|", &b)!!;
 	assert(strings.len == 5);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b");
@@ -133,46 +157,46 @@ fn void! test_split_to_buffer()
 	assert(strings[1] == "b||c|");
 }
 
-fn void! test_index_of()
+fn void test_index_of()
 {
 	String test = "hello world hello";
-	assert(test.index_of("o")! == 4);
-	assert(test.index_of("ll")! == 2);
-	assert(test.index_of(" hello")! == 11);
+	assert(test.index_of("o")!! == 4);
+	assert(test.index_of("ll")!! == 2);
+	assert(test.index_of(" hello")!! == 11);
 	assert(@catch(test.index_of("wi")));
 }
 
-fn void! test_rindex_of()
+fn void test_rindex_of()
 {
 	String test = "hello world hello";
-	assert(test.rindex_of("o")! == 16);
-	assert(test.rindex_of("ll")! == 14);
-	assert(test.rindex_of("he")! == 12);
-	assert(test.rindex_of("world")! == 6);
-	assert(test.rindex_of("hello ")! == 0);
+	assert(test.rindex_of("o")!! == 16);
+	assert(test.rindex_of("ll")!! == 14);
+	assert(test.rindex_of("he")!! == 12);
+	assert(test.rindex_of("world")!! == 6);
+	assert(test.rindex_of("hello ")!! == 0);
 	assert(@catch(test.rindex_of("wi")));
 }
 
-fn void! test_index_of_char()
+fn void test_index_of_char()
 {
 	String test = "hello world hello";
-	assert(test.index_of_char('o')! == 4);
-	assert(test.index_of_char('l')! == 2);
-	assert(test.index_of_char('h')! == 0);
+	assert(test.index_of_char('o')!! == 4);
+	assert(test.index_of_char('l')!! == 2);
+	assert(test.index_of_char('h')!! == 0);
 	assert(@catch(test.index_of_char('x')));
 }
 
-fn void! test_rindex_of_char()
+fn void test_rindex_of_char()
 {
 	String test = "hello world hello";
-	assert(test.rindex_of_char('o')! == 16);
-	assert(test.rindex_of_char('l')! == 15);
-	assert(test.rindex_of_char('h')! == 12);
+	assert(test.rindex_of_char('o')!! == 16);
+	assert(test.rindex_of_char('l')!! == 15);
+	assert(test.rindex_of_char('h')!! == 12);
 	assert(@catch(test.index_of_char('x')));
 }
 
-fn void! test_hex_conversion()
+fn void test_hex_conversion()
 {
-	assert("0x123aCd".to_long()! == 0x123acd);
-	assert("123acD".to_long(16)! == 0x123acd);
+	assert("0x123aCd".to_long()!! == 0x123acd);
+	assert("123acD".to_long(16)!! == 0x123acd);
 }

@@ -3,7 +3,7 @@
 module testing;
 import std::io;
 
-fn void! main()
+fn void main()
 {
     Bits b1;
     Bits b2;
@@ -22,7 +22,6 @@ fn bool Bits.equals(a, Bits b)
 
 /* #expect: testing.ll
 
-define i64 @testing.main() #0 {
 entry:
   %b1 = alloca i8, align 1
   %b2 = alloca i8, align 1
@@ -39,5 +38,3 @@ entry:
   %3 = load i8, ptr %b, align 1
   %4 = call i8 @testing.Bits.equals(i8 zeroext %2, i8 zeroext %3)
   store i8 %4, ptr %x, align 1
-  ret i64 0
-}

@@ -25,88 +25,79 @@ entry:
   %1 = load i8, ptr %0, align 1
   %2 = trunc i8 %1 to i1
   br i1 %2, label %cond.lhs, label %cond.rhs
-
 cond.lhs:                                         ; preds = %entry
   %3 = load ptr, ptr %c, align 8
   %4 = load i8, ptr %3, align 1
   %5 = trunc i8 %4 to i1
   br label %cond.phi
-
 cond.rhs:                                         ; preds = %entry
   %6 = load ptr, ptr %c, align 8
   %7 = load i8, ptr %6, align 1
   %8 = trunc i8 %7 to i1
   br label %cond.phi
-
 cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
   %val = phi i1 [ %5, %cond.lhs ], [ %8, %cond.rhs ]
   br i1 %val, label %if.then, label %if.exit
-
 if.then:                                          ; preds = %cond.phi
   call void (ptr, ...) @printf(ptr @.str)
   br label %if.exit
-
 if.exit:                                          ; preds = %if.then, %cond.phi
   %9 = load i8, ptr %b, align 1
   %10 = trunc i8 %9 to i1
   br i1 %10, label %cond.lhs1, label %cond.rhs2
-
 cond.lhs1:                                        ; preds = %if.exit
   %11 = load i8, ptr %b, align 1
   %12 = trunc i8 %11 to i1
   br label %cond.phi3
-
 cond.rhs2:                                        ; preds = %if.exit
   %13 = load i8, ptr %b, align 1
   %14 = trunc i8 %13 to i1
   br label %cond.phi3
-
 cond.phi3:                                        ; preds = %cond.rhs2, %cond.lhs1
   %val4 = phi i1 [ %12, %cond.lhs1 ], [ %14, %cond.rhs2 ]
   br i1 %val4, label %if.then5, label %if.exit6
-
 if.then5:                                         ; preds = %cond.phi3
   call void (ptr, ...) @printf(ptr @.str.1)
   br label %if.exit6
-
 if.exit6:                                         ; preds = %if.then5, %cond.phi3
   %15 = load ptr, ptr %c, align 8
   %16 = load i8, ptr %15, align 1
   %17 = trunc i8 %16 to i1
-  br i1 %17, label %cond.phi8, label %cond.rhs7
-
-cond.rhs7:                                        ; preds = %if.exit6
+  br i1 %17, label %cond.lhs7, label %cond.rhs8
+cond.lhs7:                                        ; preds = %if.exit6
+  br label %cond.phi9
+cond.rhs8:                                        ; preds = %if.exit6
   %18 = load ptr, ptr %c, align 8
   %19 = load i8, ptr %18, align 1
   %20 = trunc i8 %19 to i1
-  br label %cond.phi8
-
-cond.phi8:                                        ; preds = %cond.rhs7, %if.exit6
-  %val9 = phi i1 [ %17, %if.exit6 ], [ %20, %cond.rhs7 ]
-  br i1 %val9, label %if.then10, label %if.exit11
-
-if.then10:                                        ; preds = %cond.phi8
+  br label %cond.phi9
+cond.phi9:                                        ; preds = %cond.rhs8, %cond.lhs7
+  %val10 = phi i1 [ %17, %cond.lhs7 ], [ %20, %cond.rhs8 ]
+  br i1 %val10, label %if.then11, label %if.exit12
+if.then11:                                        ; preds = %cond.phi9
   call void (ptr, ...) @printf(ptr @.str.2)
-  br label %if.exit11
-
-if.exit11:                                        ; preds = %if.then10, %cond.phi8
+  br label %if.exit12
+if.exit12:                                        ; preds = %if.then11, %cond.phi9
   %21 = load i8, ptr %b, align 1
   %22 = trunc i8 %21 to i1
-  br i1 %22, label %cond.phi13, label %cond.rhs12
+  br i1 %22, label %cond.lhs13, label %cond.rhs14
 
-cond.rhs12:                                       ; preds = %if.exit11
+cond.lhs13:                                       ; preds = %if.exit12
+  br label %cond.phi15
+
+cond.rhs14:                                       ; preds = %if.exit12
   %23 = load i8, ptr %b, align 1
   %24 = trunc i8 %23 to i1
-  br label %cond.phi13
+  br label %cond.phi15
 
-cond.phi13:                                       ; preds = %cond.rhs12, %if.exit11
-  %val14 = phi i1 [ %22, %if.exit11 ], [ %24, %cond.rhs12 ]
-  br i1 %val14, label %if.then15, label %if.exit16
+cond.phi15:                                       ; preds = %cond.rhs14, %cond.lhs13
+  %val16 = phi i1 [ %22, %cond.lhs13 ], [ %24, %cond.rhs14 ]
+  br i1 %val16, label %if.then17, label %if.exit18
 
-if.then15:                                        ; preds = %cond.phi13
+if.then17:                                        ; preds = %cond.phi15
   call void (ptr, ...) @printf(ptr @.str.3)
-  br label %if.exit16
+  br label %if.exit18
 
-if.exit16:                                        ; preds = %if.then15, %cond.phi13
+if.exit18:                                        ; preds = %if.then17, %cond.phi15
   ret void
 }

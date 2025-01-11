@@ -271,6 +271,9 @@ RETRY:
 			return;
 		case EXPR_BUILTIN:
 			return;
+		case EXPR_MAKE_SLICE:
+			expr = expr->make_slice_expr.ptr;
+			goto RETRY;
 		case EXPR_MAKE_ANY:
 			sema_trace_expr_liveness(expr->make_any_expr.typeid);
 			expr = expr->make_any_expr.inner;
@@ -329,11 +332,17 @@ RETRY:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_RETHROW:
 		case EXPR_OPTIONAL:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_PTR_ACCESS:
+		case EXPR_ENUM_FROM_ORD:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -650,8 +659,8 @@ RETRY:
 				case VARDECL_PARAM_EXPR:
 					// These are never traced, they are folded in use.
 					break;
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_CT:
-				case VARDECL_PARAM_REF:
 				case VARDECL_PARAM:
 					sema_trace_type_liveness(decl->type);
 					if (decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE)

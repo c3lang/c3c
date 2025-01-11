@@ -119,7 +119,7 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 	}
 
 	CondResult result_no_resolve = COND_MISSING;
-	if (expr_is_const_bool(expr) && expr->resolve_status == RESOLVE_DONE)
+	if (expr->resolve_status == RESOLVE_DONE && expr_is_const_bool(expr))
 	{
 		result_no_resolve = expr->const_expr.b ? COND_TRUE : COND_FALSE;
 	}
@@ -284,6 +284,9 @@ static inline Expr *sema_dive_into_expression(Expr *expr)
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
 				expr = expr->inner_expr;
+				continue;
+			case EXPR_MAKE_SLICE:
+				expr = expr->make_slice_expr.ptr;
 				continue;
 			case EXPR_MAKE_ANY:
 				expr = expr->make_any_expr.inner;
@@ -764,15 +767,22 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_DEFAULT_ARG:
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_MAKE_SLICE:
+		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_PTR_ACCESS:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
+		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
+		case EXPR_ENUM_FROM_ORD:
 			return true;
 	}
 	UNREACHABLE
@@ -1149,14 +1159,19 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 		{
 			return sema_error_failed_cast(context, last, last->type, cast_to_bool ? type_bool : init->type);
 		}
-		if (cast_to_bool && !may_cast(context, init, type_bool, true, true))
+		if (cast_to_bool)
 		{
-			RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
+			if (!may_cast(context, init, type_bool, true, true))
+			{
+				RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
+			}
+			cast_no_check(context, last, type_bool, false);
 		}
 		if (cast_to_bool && expr_is_const_bool(init))
 		{
 			*result = init->const_expr.b ? COND_TRUE : COND_FALSE;
 		}
+
 		return true;
 	}
 
@@ -2657,54 +2672,70 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	unsigned ct_context = sema_context_push_ct_stack(context);
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
-	if (!expr_is_const_untyped_list(collection) && !expr_is_const_initializer(collection)
-		&& !expr_is_const_string(collection) && !expr_is_const_bytes(collection))
-	{
-		SEMA_ERROR(collection, "Expected a list to iterate over");
-		goto FAILED;
-	}
+	if (!expr_is_const(collection)) goto FAILED_NO_LIST;
 	unsigned count;
 	ConstInitializer *initializer = NULL;
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
 	const char *bytes = NULL;
 	Type *bytes_type;
-	if (expr_is_const_initializer(collection))
+	switch (collection->const_expr.const_kind)
 	{
-		initializer = collection->const_expr.initializer;
-		ConstInitType init_type = initializer->kind;
-		const_list_type = type_flatten(collection->type);
-		if (const_list_type->type_kind == TYPE_ARRAY || const_list_type->type_kind == TYPE_VECTOR)
-		{
-			count = const_list_type->array.len;
-		}
-		else
-		{
-			// Empty list
-			if (init_type == CONST_INIT_ZERO)
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_ERR:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_REF:
+		case CONST_MEMBER:
+			goto FAILED_NO_LIST;
+		case CONST_SLICE:
+			if (!collection->const_expr.slice_init)
 			{
 				sema_context_pop_ct_stack(context, ct_context);
 				statement->ast_kind = AST_NOP_STMT;
 				return true;
 			}
-			if (init_type != CONST_INIT_ARRAY_FULL)
+			initializer = collection->const_expr.slice_init;
+			goto INITIALIZER;
+		case CONST_INITIALIZER:
+			initializer = collection->const_expr.initializer;
+		INITIALIZER:;
+			ConstInitType init_type = initializer->kind;
+			const_list_type = type_flatten(collection->type);
+			if (const_list_type->type_kind == TYPE_ARRAY || const_list_type->type_kind == TYPE_VECTOR)
 			{
-				SEMA_ERROR(collection, "Only regular arrays are allowed here.");
-				goto FAILED;
+				count = const_list_type->array.len;
 			}
-			count = vec_size(initializer->init_array_full);
-		}
-	}
-	else if (expr_is_const_untyped_list(collection))
-	{
-		expressions = collection->const_expr.untyped_list;
-		count = vec_size(expressions);
-	}
-	else
-	{
-		bytes = collection->const_expr.bytes.ptr;
-		count = collection->const_expr.bytes.len;
-		bytes_type = type_get_indexed_type(collection->type);
+			else
+			{
+				// Empty list
+				if (init_type == CONST_INIT_ZERO)
+				{
+					sema_context_pop_ct_stack(context, ct_context);
+					statement->ast_kind = AST_NOP_STMT;
+					return true;
+				}
+				if (init_type != CONST_INIT_ARRAY_FULL)
+				{
+					SEMA_ERROR(collection, "Only regular arrays are allowed here.");
+					goto FAILED;
+				}
+				count = vec_size(initializer->init_array_full);
+			}
+			break;
+		case CONST_UNTYPED_LIST:
+			expressions = collection->const_expr.untyped_list;
+			count = vec_size(expressions);
+			break;
+		case CONST_BYTES:
+		case CONST_STRING:
+			bytes = collection->const_expr.bytes.ptr;
+			count = collection->const_expr.bytes.len;
+			bytes_type = type_get_indexed_type(collection->type);
+			break;
 	}
 	Decl *index = declptrzero(statement->ct_foreach_stmt.index);
 
@@ -2756,6 +2787,9 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
 	return true;
+FAILED_NO_LIST:
+	SEMA_ERROR(collection, "Expected a list to iterate over, but this was a non-list expression of type %s.",
+	           type_quoted_error_string(collection->type));
 FAILED:
 	sema_context_pop_ct_stack(context, ct_context);
 	return false;
@@ -3164,6 +3198,7 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 		{
 			case CONTRACT_UNKNOWN:
 			case CONTRACT_PURE:
+			case CONTRACT_COMMENT:
 				break;
 			case CONTRACT_REQUIRE:
 				if (!sema_analyse_require(context, directive, asserts, call_span)) return false;

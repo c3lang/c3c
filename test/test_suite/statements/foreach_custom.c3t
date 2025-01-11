@@ -39,7 +39,6 @@ entry:
   %i = alloca [3 x i32], align 4
   %x = alloca %Foo, align 8
   %.anon = alloca i64, align 8
-  %.anon1 = alloca i64, align 8
   %f = alloca i32, align 4
   %index = alloca i64, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %i, ptr align 4 @.__const, i32 12, i1 false)
@@ -48,32 +47,30 @@ entry:
   store %"int[]" %1, ptr %x, align 8
   %ptradd = getelementptr inbounds i8, ptr %x, i64 8
   %2 = load i64, ptr %ptradd, align 8
-  store i64 %2, ptr %.anon, align 8
-  store i64 0, ptr %.anon1, align 8
+  store i64 0, ptr %.anon, align 8
   br label %loop.cond
 
 loop.cond:                                        ; preds = %entry
-  %3 = load i64, ptr %.anon1, align 8
-  %4 = load i64, ptr %.anon, align 8
-  %lt = icmp ult i64 %3, %4
+  %3 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %3, %2
   br i1 %lt, label %loop.body, label %loop.exit
 
 loop.body:                                        ; preds = %loop.cond
-  %5 = load i64, ptr %.anon1, align 8
-  store i64 %5, ptr %index, align 8
-  %6 = load ptr, ptr %x, align 8
-  %7 = load i64, ptr %index, align 8
-  %ptroffset = getelementptr inbounds [4 x i8], ptr %6, i64 %7
-  %8 = load i32, ptr %ptroffset, align 4
-  store i32 %8, ptr %f, align 4
-  %9 = load i32, ptr %f, align 4
-  %10 = call i32 (ptr, ...) @printf(ptr @.str, i32 %9)
-  br label %loop.body2
+  %4 = load i64, ptr %.anon, align 8
+  store i64 %4, ptr %index, align 8
+  %5 = load ptr, ptr %x, align 8
+  %6 = load i64, ptr %index, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %5, i64 %6
+  %7 = load i32, ptr %ptroffset, align 4
+  store i32 %7, ptr %f, align 4
+  %8 = load i32, ptr %f, align 4
+  %9 = call i32 (ptr, ...) @printf(ptr @.str, i32 %8)
+  br label %loop.body1
 
-loop.body2:                                       ; preds = %loop.body
+loop.body1:                                       ; preds = %loop.body
   br label %loop.exit
 
-loop.exit:                                        ; preds = %loop.body2, %loop.cond
+loop.exit:                                        ; preds = %loop.body1, %loop.cond
   ret void
 }
 

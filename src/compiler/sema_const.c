@@ -17,13 +17,8 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		{
 			return range_const_len(&expr->slice_expr.range);
 		}
-		if (expr->expr_kind != EXPR_CAST) return -1;
-		if (expr->cast_expr.kind != CAST_APTSA) return -1;
-		Expr *inner = exprptr(expr->cast_expr.expr);
-		if (inner->expr_kind != EXPR_UNARY || inner->unary_expr.operator != UNARYOP_ADDR) return -1;
-		inner = inner->unary_expr.expr;
-		if (!sema_cast_const(inner)) return -1;
-		expr = inner;
+		if (expr->expr_kind != EXPR_MAKE_SLICE) return -1;
+		return expr->make_slice_expr.len;
 	}
 	ConstInitializer *init;
 	switch (expr->const_expr.const_kind)
@@ -248,6 +243,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
 	Type *indexed = type_get_indexed_type(init->type);
+	if (!cast_implicit(context, element, indexed, false)) return false;
 	Type *new_inner_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)

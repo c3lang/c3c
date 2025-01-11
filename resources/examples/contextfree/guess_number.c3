@@ -67,7 +67,7 @@ fn void Game.update(Game *game, int guess)
 	game.guesses++;
 }
 
-fn void! main()
+fn void main()
 {
 	int high = 100;
 	int answer = rand(high) + 1;

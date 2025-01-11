@@ -63,7 +63,7 @@ fn int fannkuchredux(int n)
 	}
 }
 
-fn void! main(String[] argv)
+fn void main(String[] argv)
 {
 	int n = argv.len > 1 ? argv[1].to_int()!! : 7;
 	io::printf("Pfannkuchen(%d) = %d\n", n, fannkuchredux(n));

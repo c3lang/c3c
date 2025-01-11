@@ -15,4 +15,4 @@ fn void main()
 /* #expect: test.ll
 
 @.str = private unnamed_addr constant [8 x i8] c"helloab\00", align 1
-@.bytes = private unnamed_addr constant [5 x i8] c"\01\03\FFab", align 1
+@.bytes = private unnamed_addr constant [6 x i8] c"\01\03\FFab\00", align 1

@@ -18,7 +18,7 @@ static ABIArgInfo *wasm_classify_argument_type(Type *type)
 		// For the experimental multivalue ABI, fully expand all other aggregates
 		/*if (Kind == ABIKind::ExperimentalMV) {
 			const RecordType *RT = Ty->getAs<RecordType>();
-			assert(RT);
+			ASSERT0(RT);
 			bool HasBitField = false;
 			for (auto *Field : RT->getDecl()->fields()) {
 				if (Field->isBitField()) {

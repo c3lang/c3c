@@ -784,7 +784,8 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	if (!to) to = type_untypedlist;
 	ASSERT0(to);
 	Type *flattened = type_flatten(to);
-	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) || sema_initializer_list_is_empty(expr);
+	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) ||
+			(expr->resolve_status == RESOLVE_DONE && sema_initializer_list_is_empty(expr));
 
 	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
 	switch (flattened->type_kind)
@@ -886,6 +887,47 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 	const_init->kind = CONST_INIT_VALUE;
 }
 
+bool const_init_is_zero(ConstInitializer *init)
+{
+	RETRY:
+	switch (init->kind)
+	{
+		case CONST_INIT_ZERO:
+			return true;
+		case CONST_INIT_STRUCT:
+		{
+			FOREACH(ConstInitializer *, i, init->init_struct)
+			{
+				if (!const_init_is_zero(i)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_UNION:
+			init = init->init_union.element;
+			goto RETRY;
+		case CONST_INIT_VALUE:
+			return expr_is_zero(init->init_value);
+		case CONST_INIT_ARRAY:
+		{
+			FOREACH(ConstInitializer *, i, init->init_array.elements)
+			{
+				if (!const_init_is_zero(i)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_FULL:
+		{
+			FOREACH(ConstInitializer *, i, init->init_array_full)
+			{
+				if (!const_init_is_zero(i)) return false;
+			}
+			return true;
+		}
+		case CONST_INIT_ARRAY_VALUE:
+			return const_init_is_zero(init->init_array_value.element);
+	}
+	UNREACHABLE
+}
 ConstInitializer *const_init_new_value(Expr *value)
 {
 	ConstInitializer *init = CALLOCS(ConstInitializer);

@@ -420,6 +420,7 @@ typedef struct VarDecl_
 	bool no_alias : 1;
 	bool bit_is_expr : 1;
 	bool is_self : 1;
+	bool is_temp : 1;
 	union
 	{
 		Expr *init_expr;
@@ -428,11 +429,6 @@ typedef struct VarDecl_
 	union
 	{
 		int32_t index;
-		struct
-		{
-			SemaContext *context;
-			SourceSpan span;
-		} hash_var;
 		struct
 		{
 			void *backend_debug_ref;
@@ -968,7 +964,6 @@ typedef struct
 
 typedef struct
 {
-	CastKind kind : 8;
 	ExprId expr;
 	TypeInfoId type_info;
 } ExprCast;
@@ -1115,6 +1110,7 @@ typedef struct
 {
 	Expr *inner;
 	SemaContext *context;
+	SourceSpan inline_at;
 } ExprOtherContext;
 
 typedef struct
@@ -1134,6 +1130,13 @@ typedef struct
 	Expr *inner;
 	Expr *typeid;
 } ExprMakeAny;
+
+typedef struct
+{
+	Expr *ptr;
+	ArraySize len;
+} ExprMakeSlice;
+
 struct Expr_
 {
 	Type *type;
@@ -1179,6 +1182,7 @@ struct Expr_
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
+		ExprMakeSlice make_slice_expr;
 		Decl *lambda_expr;                          // 8
 		ExprMacroBlock macro_block;                 // 24
 		ExprMacroBody macro_body_expr;              // 16
@@ -1322,7 +1326,6 @@ typedef struct
 	bool value_by_ref : 1;
 	bool iterator : 1;
 	bool is_reverse : 1;
-	CastKind cast : 8;
 	ExprId enumeration;
 	AstId body;
 	DeclId index;
@@ -1470,6 +1473,11 @@ typedef struct AstDocDirective_
 			const char *directive_name;
 			const char *rest_of_line;
 		} generic;
+		struct
+		{
+			const char *string;
+			size_t strlen;
+		};
 	};
 } AstContractStmt;
 
@@ -1860,8 +1868,6 @@ typedef struct
 	Decl *panicf;
 	Decl *io_error_file_not_found;
 	Decl *main;
-	Decl *test_func;
-	Decl *benchmark_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
@@ -2227,6 +2233,7 @@ Expr *expr_negate_expr(Expr *expr);
 bool expr_may_addr(Expr *expr);
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high);
 bool expr_is_unwrapped_ident(Expr *expr);
+bool expr_is_zero(Expr *expr);
 INLINE Expr *expr_new_expr(ExprKind kind, Expr *expr);
 INLINE bool expr_ok(Expr *expr);
 INLINE void expr_resolve_ident(Expr *expr, Decl *decl);
@@ -3283,6 +3290,7 @@ ConstInitializer *const_init_new_struct(Type *type, Expr **elements);
 ConstInitializer *const_init_new_array_full(Type *type, ConstInitializer **elements);
 ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index);
 ConstInitializer *const_init_new_array_value(Expr *expr, ArrayIndex index);
+bool const_init_is_zero(ConstInitializer *init);
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
@@ -3369,16 +3377,25 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			expr_set_span(expr->make_any_expr.inner, loc);
 			expr_set_span(expr->make_any_expr.typeid, loc);
 			return;
+		case EXPR_MAKE_SLICE:
+			if (expr->make_slice_expr.ptr) expr_set_span(expr->make_slice_expr.ptr, loc);
+			return;
 		case EXPR_SPLAT:
 		case EXPR_PTR_ACCESS:
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_ENUM_FROM_ORD:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_RECAST:
+		case EXPR_ANYFAULT_TO_FAULT:
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3723,8 +3740,18 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 {
-	assert(inner->resolve_status == RESOLVE_DONE);
+	ASSERT0(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_PTR_ACCESS;
+	expr->inner_expr = inner;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+}
+
+INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	ASSERT0(inner->resolve_status == RESOLVE_DONE);
+	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = inner;
 	expr->type = type;
 	expr->resolve_status = RESOLVE_DONE;
@@ -3733,7 +3760,7 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 
 INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
 {
-	assert(inner->resolve_status == RESOLVE_DONE);
+	ASSERT0(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_SLICE_LEN;
 	expr->inner_expr = inner;
 	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
@@ -3744,35 +3771,9 @@ INLINE void expr_rewrite_int_to_bool(Expr *expr, bool negate)
 {
 	if (expr_is_const(expr))
 	{
-		switch (expr->const_expr.const_kind)
-		{
-			case CONST_FLOAT:
-			case CONST_BOOL:
-			case CONST_ENUM:
-			case CONST_BYTES:
-			case CONST_STRING:
-			case CONST_SLICE:
-			case CONST_INITIALIZER:
-			case CONST_UNTYPED_LIST:
-			case CONST_MEMBER:
-				UNREACHABLE
-			case CONST_ERR:
-				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.enum_err_val != NULL);
-				return;
-			case CONST_INTEGER:
-				expr_rewrite_const_bool(expr, type_bool, !int_is_zero(expr->const_expr.ixx));
-				return;
-			case CONST_POINTER:
-				expr_rewrite_const_bool(expr, type_bool, expr->const_expr.ptr != 0);
-				return;
-			case CONST_TYPEID:
-				expr_rewrite_const_bool(expr, type_bool, expr->type != NULL);
-				return;
-			case CONST_REF:
-				expr_rewrite_const_bool(expr, type_bool, true);
-				return;
-		}
-		UNREACHABLE
+		bool is_zero = expr_is_zero(expr);
+		expr_rewrite_const_bool(expr, type_bool, negate ? is_zero : !is_zero);
+		return;
 	}
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_BOOL;
@@ -3834,6 +3835,14 @@ INLINE void expr_rewrite_to_int_to_ptr(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_PTR;
+	expr->inner_expr = inner;
+	expr->type = type;
+}
+
+INLINE void expr_rewrite_to_ptr_to_int(Expr *expr, Type *type)
+{
+	Expr *inner = expr_copy(expr);
+	expr->expr_kind = EXPR_PTR_TO_INT;
 	expr->inner_expr = inner;
 	expr->type = type;
 }
@@ -3947,6 +3956,7 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 
 INLINE bool expr_is_empty_const_slice(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST
 		&& expr->const_expr.const_kind == CONST_SLICE
 		&& expr->const_expr.slice_init == NULL;
@@ -3973,7 +3983,7 @@ static inline bool decl_is_var_local(Decl *decl)
 		   || kind == VARDECL_LOCAL
 		   || kind == VARDECL_LOCAL_CT_TYPE
 		   || kind == VARDECL_LOCAL_CT
-		   || kind == VARDECL_PARAM_REF
+		   || kind == VARDECL_PARAM_REF // DEPRECATED
 		   || kind == VARDECL_PARAM_EXPR
 		   || kind == VARDECL_BITMEMBER
 		   || kind == VARDECL_MEMBER;
@@ -3981,56 +3991,67 @@ static inline bool decl_is_var_local(Decl *decl)
 
 INLINE bool expr_is_const_string(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
 
 INLINE bool expr_is_const_enum(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM;
 }
 
 INLINE bool expr_is_const_fault(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ERR;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
 INLINE bool expr_is_const_bool(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BOOL;
 }
 
 INLINE bool expr_is_const_initializer(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
 }
 
 INLINE bool expr_is_const_slice(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_SLICE;
 }
 
 INLINE bool expr_is_const_bytes(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BYTES;
 }
 
 INLINE bool expr_is_const_untyped_list(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
 }
 
 INLINE bool expr_is_const_int(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
 }
 
 INLINE bool expr_is_const_member(Expr *expr)
 {
+	ASSERT0(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
 }
 

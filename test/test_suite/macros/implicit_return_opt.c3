@@ -1,9 +1,9 @@
 module test;
 import std::io;
 
-fn void! main()
+fn void main()
 {
-	int x = run()!; // #error: You cannot cast
+	int x = run()!!; // #error: You cannot cast
 	io::printfn("x=%d", x);
 }
 

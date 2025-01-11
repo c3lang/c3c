@@ -1,7 +1,7 @@
 module std::core::runtime_test;
 import std::sort;
 
-fn void! cmp_unit() @test
+fn void cmp_unit() @test
 {
 	TestUnit[] list = {
     	{ .name = "http::url_test::url_query" },

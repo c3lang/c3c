@@ -246,6 +246,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 				case CONTRACT_ENSURE:
 					break;
 				case CONTRACT_REQUIRE:
+				case CONTRACT_COMMENT:
 					continue;
 			}
 			RETURN_PRINT_ERROR_AT(false, current, "Invalid constraint - only '@require' is valid for modules.");
@@ -2621,7 +2622,21 @@ static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **do
 	}
 	else
 	{
-		try_consume(c, TOKEN_STRING);
+		if (!try_consume(c, TOKEN_STRING))
+		{
+			if (!tok_is(c, TOKEN_DOCS_EOL) && !tok_is(c, TOKEN_DOCS_END))
+			{
+				if (tok_is(c, TOKEN_IDENT) || tok_is(c, TOKEN_TYPE_IDENT))
+				{
+					PRINT_ERROR_HERE("A string containing the parameter description was expected, did you forget enclosing the description in \"\" or ``?");
+				}
+				else
+				{
+					PRINT_ERROR_HERE("A string containing the description was expected after the parameter name.");
+				}
+				return false;
+			}
+		}
 	}
 	append_docs(docs_next, docs, ast);
 	return true;
@@ -2663,9 +2678,21 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 {
 	*contracts_ref = 0;
-	if (!try_consume(c, TOKEN_DOCS_START)) return true;
+	if (!tok_is(c, TOKEN_DOCS_START)) return true;
 
 	AstId **next = &contracts_ref;
+	if (c->data.strlen > 0)
+	{
+		Ast *ast = ast_new_curr(c, AST_CONTRACT);
+		ast->contract_stmt.kind = CONTRACT_COMMENT;
+		ast->contract_stmt.string = symstr(c);
+		ast->contract_stmt.strlen = c->data.strlen;
+		ast->span = c->span;
+		append_docs(next, contracts_ref, ast);
+	}
+
+	advance_and_verify(c, TOKEN_DOCS_START);
+
 	while (!try_consume(c, TOKEN_DOCS_END))
 	{
 		// Skip empty lines.
@@ -2782,6 +2809,15 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 	if (!parse_contracts(c, &contracts)) return poisoned_decl;
 	Decl *decl;
 
+	bool has_real_contracts = false;
+	if (contracts)
+	{
+		Ast *contract_start = astptr(contracts);
+		if (contract_start->contract_stmt.kind != CONTRACT_COMMENT || contract_start->next)
+		{
+			has_real_contracts = true;
+		}
+	}
 	TokenType tok = c->tok;
 	if (tok != TOKEN_MODULE && !c->unit->module)
 	{
@@ -2801,13 +2837,13 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 					decl = parse_func_definition(c, contracts, FUNC_PARSE_EXTERN);
 					break;
 				case TOKEN_CONST:
-					if (contracts) goto CONTRACT_NOT_ALLOWED;
+					if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 					decl = parse_top_level_const_declaration(c, true);
 					break;
 				case TOKEN_IDENT:
 				case TOKEN_TLOCAL:
 				case TYPELIKE_TOKENS:
-					if (contracts) goto CONTRACT_NOT_ALLOWED;
+					if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 					decl = parse_global_declaration(c);
 					break;
 				default:
@@ -2838,7 +2874,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_DEF:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_def(c);
 			break;
 		case TOKEN_FN:
@@ -2886,39 +2922,39 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			decl = parse_exec(c);
 			break;
 		case TOKEN_BITSTRUCT:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_bitstruct_declaration(c);
 			break;
 		case TOKEN_INTERFACE:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_interface_declaration(c);
 			break;
 		case TOKEN_DISTINCT:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_distinct_declaration(c);
 			break;
 		case TOKEN_CONST:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_top_level_const_declaration(c, false);
 			break;
 		case TOKEN_STRUCT:
 		case TOKEN_UNION:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_struct_declaration(c);
 			break;
 		case TOKEN_MACRO:
 			decl = parse_macro_declaration(c, contracts);
 			break;
 		case TOKEN_ENUM:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_enum_declaration(c);
 			break;
 		case TOKEN_FAULT:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_fault_declaration(c);
 			break;
 		case TOKEN_IDENT:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_global_declaration(c);
 			break;
 		case TOKEN_EOF:
@@ -2939,7 +2975,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			return poisoned_decl;
 		case TOKEN_TLOCAL:
 		case TYPELIKE_TOKENS:
-			if (contracts) goto CONTRACT_NOT_ALLOWED;
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_global_declaration(c);
 			break;
 		case TOKEN_EOS:

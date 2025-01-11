@@ -1,4 +1,4 @@
-fn void! int_min() @test
+fn void int_min() @test
 {
 	assert(int.min == -2147483648);
 	assert((float)int.min == -2147483648.0f);

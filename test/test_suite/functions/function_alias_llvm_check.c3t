@@ -24,7 +24,7 @@ fn void Foo.add_fn_b(&self, FnB f) => self.bFuncs.push(f);
 fn void a_func(Foo* foo) {}
 fn void b_func(Foo* foo) {}
 
-fn void! main()
+fn void main()
 {
     Foo foo;
     defer foo.deinit()!!;
@@ -34,7 +34,8 @@ fn void! main()
 
 /* #expect: repro.ll
 
-define i64 @repro.main() #0 {
+
+define void @repro.main() #0 {
 entry:
   %foo = alloca %Foo, align 8
   %error_var = alloca i64, align 8

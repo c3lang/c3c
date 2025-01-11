@@ -27,8 +27,17 @@ entry:
   %ternary = select i1 %siui-gt, i8 1, i8 0
   store i8 %ternary, ptr %c, align 1
   %2 = load i32, ptr %b, align 4
-  %intbool = icmp ne i32 %2, 0
-  %elvis = select i1 %intbool, i32 %2, i32 1
-  store i32 %elvis, ptr %d, align 4
+  %i2b = icmp ne i32 %2, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %entry
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi i32 [ %2, %cond.lhs ], [ 1, %cond.rhs ]
+  store i32 %val, ptr %d, align 4
   ret void
 }

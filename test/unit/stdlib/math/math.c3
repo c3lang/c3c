@@ -1,7 +1,7 @@
 module math_tests;
 import std::math;
 
-fn void! test_abs() @test
+fn void test_abs() @test
 {
 	int x = -21;
 	assert(math::abs(x) == 21);
@@ -16,7 +16,7 @@ fn void! test_abs() @test
 	assert(math::abs(yy) == double[<3>] { 1, 0.5, 1000 });
 }
 
-fn void! test_acos() @test
+fn void test_acos() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
 	double [<3>] out = { 0., math::PI_2, math::PI };
@@ -54,7 +54,7 @@ fn void! test_acos() @test
 }
 
 
-fn void! test_acosh() @test
+fn void test_acosh() @test
 {
 	int [<5>] in = { 0, -1, 1, 2, 231 };
 	double [<3>] out = { 0., 1.3169578969248166, 6.135560205979194 };
@@ -79,7 +79,7 @@ fn void! test_acosh() @test
 	}
 }
 
-fn void! test_asin() @test
+fn void test_asin() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
 	double [<3>] out = { math::PI_2, 0., -math::PI_2 };
@@ -113,7 +113,7 @@ fn void! test_asin() @test
 	}
 }
 
-fn void! test_asinh() @test
+fn void test_asinh() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { 6.135569576118435, 0.881373587019543, 0., -0.881373587019543, -6.135569576118435 };
@@ -131,7 +131,7 @@ fn void! test_asinh() @test
 	}
 }
 
-fn void! test_atan() @test
+fn void test_atan() @test
 {
 	int [<9>] in = { 231, 3, 2, 1, 0, -1, -2, -3, -231 };
 	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::PI_4, 0., -math::PI_4, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
@@ -158,7 +158,7 @@ fn void! test_atan() @test
 	}
 }
 
-fn void! test_atanh() @test
+fn void test_atanh() @test
 {
 	int [<4>] in = { 231, -231, 1, -1 };
 	double [<6>] in2 = {0.8, 0.5, 0.3, -0.3, -0.5, -0.8 };
@@ -190,7 +190,7 @@ fn void! test_atanh() @test
 	}
 }
 
-fn void! test_ceil() @test
+fn void test_ceil() @test
 {
 	double d = -123.1;
 	assert(math::ceil(d) == -123.0);
@@ -214,7 +214,7 @@ fn void! test_ceil() @test
 	assert(math::ceil(vec) == double[<5>] { -123, 124, 1, 0, 0 });
 }
 
-fn void! test_cos() @test
+fn void test_cos() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { 0.09280621889587707, 0.54030230586813972 , 1., 0.54030230586813972, 0.09280621889587707 };
@@ -243,7 +243,7 @@ fn void! test_cos() @test
 	}
 }
 
-fn void! test_exp() @test
+fn void test_exp() @test
 {
 	int [<5>] in = { 2, 1, 0, -1, -2 };
 	double [<5>] out = { 7.38905609893065, math::E , 1., 0.36787944117144233, 0.1353352832366127 };
@@ -272,7 +272,7 @@ fn void! test_exp() @test
 	}
 }
 
-fn void! test_floor() @test
+fn void test_floor() @test
 {
 	double d = -123.1;
 	assert(math::floor(d) == -124.0);
@@ -296,7 +296,7 @@ fn void! test_floor() @test
 	assert(math::floor(vec) == double[<5>] { -124, 123, 0, -1, 0 });
 }
 
-fn void! test_log() @test
+fn void test_log() @test
 {
 	double x = math::E;
 	assert(math::log(x, x) == 1.0);
@@ -309,7 +309,7 @@ fn void! test_log() @test
 	assert(math::log(yy, 10) == float[<3>] { 1.0, 2.0, 3.0 });
 }
 
-fn void! test_sign() @test
+fn void test_sign() @test
 {
 	int x = -21;
 	assert(math::sign(x) == -1);
@@ -327,7 +327,7 @@ fn void! test_sign() @test
 }
 
 
-fn void! test_sin() @test
+fn void test_sin() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { -0.99568418975810324, 0.84147098480789651 , 0., -0.84147098480789651, 0.99568418975810324 };
@@ -356,7 +356,7 @@ fn void! test_sin() @test
 	}
 }
 
-fn void! test_tan() @test
+fn void test_tan() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
 	double [<5>] out = { -10.7286365246191129, 1.5574077246549022 , 0., -1.5574077246549022, 10.7286365246191129 };
@@ -385,7 +385,7 @@ fn void! test_tan() @test
 	}
 }
 
-fn void! test_trunc() @test
+fn void test_trunc() @test
 {
 	double d = -123.9;
 	assert(math::trunc(d) == -123.0);
@@ -409,7 +409,7 @@ fn void! test_trunc() @test
 	assert(math::trunc(vec) == double[<5>] { -123, 123, 0, 0, 0 });
 }
 
-fn void! test_round_decimals() @test
+fn void test_round_decimals() @test
 {
 	double d = 0.532451241142;
 	float d_f = 0.532451241142;
@@ -420,7 +420,7 @@ fn void! test_round_decimals() @test
 	assert(math::round_to_decimals(d_f, 5) == 0.53245f);
 }
 
-fn void! test() @test
+fn void test() @test
 {
 	double radians = math::deg_to_rad(45);
 	float radians_f = (float)math::deg_to_rad(45);
@@ -429,7 +429,7 @@ fn void! test() @test
 	assert(math::round_to_decimals(radians_f, 3) == 0.785f);
 }
 
-fn void! test_muldiv()
+fn void test_muldiv()
 {
 	char a = 20;
 	assert(a.muldiv(20, 10) == 40);
@@ -459,7 +459,7 @@ fn void! test_muldiv()
 	assert(k.muldiv(20,-10) == ichar[<4>]{-40,-60,-80,-100});
 }
 
-fn void! test_gcd() @test
+fn void test_gcd() @test
 {
 	assert(math::gcd(20,15) == 5);
 	assert(math::gcd(15,20) == 5);
@@ -471,7 +471,7 @@ fn void! test_gcd() @test
 	assert(math::gcd(2,4,6,8) == 2);
 }
 
-fn void! test_lcm() @test
+fn void test_lcm() @test
 {
 	assert(math::lcm(4,5) == 20);
 	assert(math::lcm(6,10) == 30);

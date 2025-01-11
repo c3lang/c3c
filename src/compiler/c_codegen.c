@@ -395,9 +395,14 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 {
 	switch (expr->expr_kind)
 	{
+		case EXPR_VECTOR_TO_ARRAY:
+		case EXPR_SLICE_TO_VEC_ARRAY:
+		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_ENUM_FROM_ORD:
 		case EXPR_PTR_ACCESS:
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_INT_TO_PTR:
+		case EXPR_PTR_TO_INT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
@@ -406,8 +411,10 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_EXT_TRUNC:
 		case EXPR_MAKE_ANY:
+		case EXPR_MAKE_SLICE:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_ANYFAULT_TO_FAULT:
 			break;
 		case EXPR_ACCESS:
 			break;
@@ -430,7 +437,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_CALL:
 			break;
 		case EXPR_CAST:
-			break;
+			UNREACHABLE
 		case EXPR_CATCH_UNWRAP:
 			break;
 		case EXPR_COMPILER_CONST:
@@ -509,7 +516,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_OPTIONAL:
 			break;
 		case EXPR_OTHER_CONTEXT:
-			break;
+			UNREACHABLE
 		case EXPR_POINTER_OFFSET:
 			break;
 		case EXPR_POISONED:
@@ -627,7 +634,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case VARDECL_BITMEMBER:
 			UNREACHABLE;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_REF: // DEPRECATED
 		{
 			PRINT("/* LOCAL DECL */\n");
 /*

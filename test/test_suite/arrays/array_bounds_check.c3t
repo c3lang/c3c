@@ -10,7 +10,7 @@ struct Foo
 	int x;
 }
 
-fn void! main()
+fn void main()
 {
 	for (usz i = 0; i < 20; i++)
 	{
@@ -24,6 +24,7 @@ loop.cond:                                        ; preds = %checkok, %entry
   %0 = load i64, ptr %i, align 8
   %gt = icmp ugt i64 20, %0
   br i1 %gt, label %loop.body, label %loop.exit
+
 loop.body:                                        ; preds = %loop.cond
   %1 = load i64, ptr %i, align 8
   %ge = icmp uge i64 %1, 2
@@ -40,7 +41,7 @@ checkok:                                          ; preds = %loop.body
   br label %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
-  ret i64 0
+  ret void
 
 panic:                                            ; preds = %loop.body
   store i64 2, ptr %taddr, align 8

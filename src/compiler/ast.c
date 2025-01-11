@@ -147,7 +147,7 @@ const char *decl_to_a_name(Decl *decl)
 				case VARDECL_PARAM_CT: return "a compile time parameter";
 				case VARDECL_PARAM_CT_TYPE: return "a compile time type parameter";
 				case VARDECL_PARAM_EXPR: return "a expression parameter";
-				case VARDECL_PARAM_REF: return "a ref parameter";
+				case VARDECL_PARAM_REF: return "a ref parameter"; // DEPRECATED
 				case VARDECL_REWRAPPED: UNREACHABLE
 				case VARDECL_UNWRAPPED: return "an unwrapped variable";
 			}
@@ -172,6 +172,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	decl->span = span;
 	decl->name = NULL;
 	decl->var.kind = kind;
+	decl->var.is_temp = true;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
 	ASSERT0(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
@@ -372,7 +373,7 @@ bool decl_is_global(Decl *ident)
 		case VARDECL_PARAM:
 		case VARDECL_MEMBER:
 		case VARDECL_BITMEMBER:
-		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM_EXPR:
 		case VARDECL_UNWRAPPED:
 		case VARDECL_ERASE:

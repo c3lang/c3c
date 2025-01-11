@@ -1,7 +1,7 @@
 module test;
 import std::io;
 
-fn void! main()
+fn void main()
 {
 	int a;
 	switch (a)

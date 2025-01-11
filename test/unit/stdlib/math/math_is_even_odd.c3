@@ -16,7 +16,7 @@ macro test(start, ...)
     $endfor;
 }
 
-fn void! tests() @test
+fn void tests() @test
 {
     test(0, char, ushort, uint, ulong, uptr, usz, uint128);
     test(-4, ichar, short, int, long, iptr, isz, int128);

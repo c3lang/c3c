@@ -14,7 +14,7 @@ bitstruct Bar : char[13]
 	bool gh;
 }
 
-fn void! test_bitops() @test
+fn void test_bitops() @test
 {
 	Foo f1 = { true, true };
 	Foo f2 = { true, false };
@@ -42,7 +42,7 @@ fn void! test_bitops() @test
 	assert(b3.z == true && b3.w == false && b3.gh == true);
 }
 
-fn void! test_bitops_const() @test
+fn void test_bitops_const() @test
 {
 	const Foo F1 = { true, true };
 	const Foo F2 = { true, false };

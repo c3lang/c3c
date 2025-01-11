@@ -1,7 +1,7 @@
 module testing;
 import std::io;
 
-fn void! main()
+fn void main()
 {
     String[] s1;
     String[] s2;

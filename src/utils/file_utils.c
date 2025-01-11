@@ -314,11 +314,12 @@ char *file_read_binary(const char *path, size_t *size)
 	}
 	if (file_size > max_read) file_size = max_read;
 	rewind(file);
-	char *buffer = (char *)MALLOC(file_size);
+	char *buffer = (char *)MALLOC(file_size + 1);
 	if (buffer == NULL)
 	{
 		error_exit("Not enough memory to read \"%s\".\n", path);
 	}
+	buffer[file_size] = 0;
 	*size = file_size;
 	bool success = file_read(file, buffer, size);
 	fclose(file);
