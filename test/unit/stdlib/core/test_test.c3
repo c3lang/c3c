@@ -293,6 +293,10 @@ fn void test_error_wrong_error_expected(){
     test::@error(ffail_int(1, 0), IoError.FILE_NOT_FOUND);
 }
 
+fn void test_vanilla_assert_afail(){
+    assert(false, "this assert expected to fail with backtrace");
+}
+
 fn void test_vanilla_assert_fail(){
     test::setup(state.setup_fn, state.teardown_fn);
     state.expected_fail = true;
