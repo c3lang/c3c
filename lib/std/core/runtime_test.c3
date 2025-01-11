@@ -189,7 +189,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		quicksort(tests, &cmp_test_unit);
 	}
 
-	test::test_context.fake_stdout.file = libc::tmpfile();
+	$if (!env::NO_LIBC):
+		test::test_context.fake_stdout.file = libc::tmpfile();
+	$endif
 	// // Buffer for hijacking the output
 	// test::test_context.error_buffer_capacity = 1024 * 1024;
 	// test::test_context.error_buffer = libc::calloc(1, test::test_context.error_buffer_capacity);
