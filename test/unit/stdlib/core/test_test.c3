@@ -41,6 +41,10 @@ TestState state = {
         state.n_runs = 0;
     },
     .panic_mock_fn = fn void (String message, String file, String function, uint line) {
+		if(test::test_context.is_in_panic){
+			return;
+		}
+		test::test_context.is_in_panic = true;
 	    if (test::test_context.assert_print_backtrace){
 			$if env::NATIVE_STACKTRACE:
     	    	builtin::print_backtrace(message, 0);
@@ -56,6 +60,7 @@ TestState state = {
             state.old_panic(message, file, function, line);
 ;       }
 	    test::test_context.assert_print_backtrace = true;
+		test::test_context.is_in_panic = false;
     }
 };
 
