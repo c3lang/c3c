@@ -56,7 +56,9 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	unmute_output(true);
 	(void)io::stdout().flush();
 	if (test::test_context.assert_print_backtrace){
-    	builtin::print_backtrace(message, 3);
+		$if env::NATIVE_STACKTRACE:
+    		builtin::print_backtrace(message, 3);
+		$endif
 	}
 	io::printfn("[%sFAIL%s] %s ( %s:%s ) %s", 
 		test::test_context.has_ansi_codes ? "\e[0;31m" : "",
@@ -79,7 +81,8 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	libc::longjmp(&test::test_context.buf, 1);
 }
 
-fn void mute_output() @local {
+fn void mute_output() @local @if(!env::POSIX) {}
+fn void mute_output() @local @if(env::POSIX) {
 	assert(test::test_context.error_buffer != null);
 	assert(test::test_context.error_buffer_capacity > 0);
 	assert(!test::test_context.fake_buffer.file);
@@ -100,7 +103,8 @@ fn void mute_output() @local {
 	*stdout = test::test_context.fake_buffer;
 }
 
-fn void unmute_output(bool has_error) @local {
+fn void unmute_output() @local @if(!env::POSIX) {}
+fn void unmute_output(bool has_error) @local @if(env::POSIX) {
 	assert(test::test_context.fake_buffer.file);
 	assert(test::test_context.orig_stderr.file);
 	assert(test::test_context.orig_stdout.file);
