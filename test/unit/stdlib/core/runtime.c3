@@ -1,4 +1,5 @@
 module std::core::runtime_test;
+import std::core::runtime @public;
 import std::sort;
 
 fn void cmp_unit() @test
