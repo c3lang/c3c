@@ -61,6 +61,10 @@ macro Char32[] conv_utf8_to_char32($source) @const
 import std;
 fn void main(String[] args)
 {
+	Char32[] $chars = conv_utf8_to_char32("🐉 eats 🌎");
+	$foreach($v : $chars)
+		io::printn($v);
+	$endforeach
     Char32[] chars = conv_utf8_to_char32 ("🐉 eats 🌎");
     io::printn(chars);
     foreach (c : chars)

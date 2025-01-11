@@ -2672,54 +2672,70 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	unsigned ct_context = sema_context_push_ct_stack(context);
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
-	if (!expr_is_const_untyped_list(collection) && !expr_is_const_initializer(collection)
-		&& !expr_is_const_string(collection) && !expr_is_const_bytes(collection))
-	{
-		SEMA_ERROR(collection, "Expected a list to iterate over");
-		goto FAILED;
-	}
+	if (!expr_is_const(collection)) goto FAILED_NO_LIST;
 	unsigned count;
 	ConstInitializer *initializer = NULL;
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
 	const char *bytes = NULL;
 	Type *bytes_type;
-	if (expr_is_const_initializer(collection))
+	switch (collection->const_expr.const_kind)
 	{
-		initializer = collection->const_expr.initializer;
-		ConstInitType init_type = initializer->kind;
-		const_list_type = type_flatten(collection->type);
-		if (const_list_type->type_kind == TYPE_ARRAY || const_list_type->type_kind == TYPE_VECTOR)
-		{
-			count = const_list_type->array.len;
-		}
-		else
-		{
-			// Empty list
-			if (init_type == CONST_INIT_ZERO)
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_ERR:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_REF:
+		case CONST_MEMBER:
+			goto FAILED_NO_LIST;
+		case CONST_SLICE:
+			if (!collection->const_expr.slice_init)
 			{
 				sema_context_pop_ct_stack(context, ct_context);
 				statement->ast_kind = AST_NOP_STMT;
 				return true;
 			}
-			if (init_type != CONST_INIT_ARRAY_FULL)
+			initializer = collection->const_expr.slice_init;
+			goto INITIALIZER;
+		case CONST_INITIALIZER:
+			initializer = collection->const_expr.initializer;
+		INITIALIZER:;
+			ConstInitType init_type = initializer->kind;
+			const_list_type = type_flatten(collection->type);
+			if (const_list_type->type_kind == TYPE_ARRAY || const_list_type->type_kind == TYPE_VECTOR)
 			{
-				SEMA_ERROR(collection, "Only regular arrays are allowed here.");
-				goto FAILED;
+				count = const_list_type->array.len;
 			}
-			count = vec_size(initializer->init_array_full);
-		}
-	}
-	else if (expr_is_const_untyped_list(collection))
-	{
-		expressions = collection->const_expr.untyped_list;
-		count = vec_size(expressions);
-	}
-	else
-	{
-		bytes = collection->const_expr.bytes.ptr;
-		count = collection->const_expr.bytes.len;
-		bytes_type = type_get_indexed_type(collection->type);
+			else
+			{
+				// Empty list
+				if (init_type == CONST_INIT_ZERO)
+				{
+					sema_context_pop_ct_stack(context, ct_context);
+					statement->ast_kind = AST_NOP_STMT;
+					return true;
+				}
+				if (init_type != CONST_INIT_ARRAY_FULL)
+				{
+					SEMA_ERROR(collection, "Only regular arrays are allowed here.");
+					goto FAILED;
+				}
+				count = vec_size(initializer->init_array_full);
+			}
+			break;
+		case CONST_UNTYPED_LIST:
+			expressions = collection->const_expr.untyped_list;
+			count = vec_size(expressions);
+			break;
+		case CONST_BYTES:
+		case CONST_STRING:
+			bytes = collection->const_expr.bytes.ptr;
+			count = collection->const_expr.bytes.len;
+			bytes_type = type_get_indexed_type(collection->type);
+			break;
 	}
 	Decl *index = declptrzero(statement->ct_foreach_stmt.index);
 
@@ -2771,6 +2787,9 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	statement->ast_kind = AST_COMPOUND_STMT;
 	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
 	return true;
+FAILED_NO_LIST:
+	SEMA_ERROR(collection, "Expected a list to iterate over, but this was a non-list expression of type %s.",
+	           type_quoted_error_string(collection->type));
 FAILED:
 	sema_context_pop_ct_stack(context, ct_context);
 	return false;
