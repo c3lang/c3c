@@ -79,9 +79,9 @@ Initializes test case context.
 @param teardown_fn `cleanup function for test context (may be null)`
 
 @require setup_fn != null, "setup_fn must always be set"
+@require test_context != null, "allowed only in @test functions"
 *>
 macro setup(TestFn setup_fn, TestFn teardown_fn = null) {
-	$assert(env::TESTING);
 	test_context.setup_fn = setup_fn;
 	test_context.teardown_fn = teardown_fn;
 	test_context.setup_fn();
@@ -93,9 +93,9 @@ Checks condition and fails assertion if not true
 @param #condition `any boolean condition, will be expanded by text`
 @param format `printf compatible format`
 @param args `vargs for format`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro @check(#condition, format = "", args...) { 
-	$assert(env::TESTING);
     if(!#condition) {
 		@stack_mem(512; Allocator allocator)
 		{
@@ -114,9 +114,9 @@ Check if function returns specific error
 
 @param #funcresult `result of function execution`
 @param error_expected `expected error of function execution`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro @error(#funcresult, error_expected) {
-	$assert(env::TESTING);
     if(catch err = #funcresult) {
     	if (err != error_expected){
     		test_context.assert_print_backtrace = false;
@@ -137,9 +137,9 @@ Check if left == right
 
 @param left `left argument of any comparable type`
 @param left `right argument of any comparable type`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro equal(left, right) { 
-	$assert(env::TESTING);
     if(!builtin::equals(left, right)) {
     	test_context.assert_print_backtrace = false;
 	    builtin::panicf("`%s` != `%s`", $$FILE, $$FUNC, $$LINE, left, right);
@@ -157,9 +157,9 @@ Check left floating point value is approximately equals to right value
 
 @require places > 0, places <= 20, "too many decimal places"
 @require delta >= 0, delta <= 1, "delta must be a small number"
+@require test_context != null, "allowed only in @test functions"
 *>
 macro almost_equal(left, right, uint places=7, double delta=0, bool equal_nan = true) { 
-	$assert(env::TESTING);
 	double diff = (double)left - (double)right;
 	double eps = delta;
 	if (eps == 0){
@@ -180,9 +180,9 @@ Check if left != right
 
 @param left `left argument of any comparable type`
 @param left `right argument of any comparable type`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro not_equal(left, right) { 
-	$assert(env::TESTING);
     if(builtin::equals(left, right)) {
     	test_context.assert_print_backtrace = false;
 	    builtin::panicf("`%s` == `%s`", $$FILE, $$FUNC, $$LINE, left, right);
@@ -194,9 +194,9 @@ Check if left > right
 
 @param left `left argument of any comparable type`
 @param left `right argument of any comparable type`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro greater(left, right) { 
-	$assert(env::TESTING);
     if(!builtin::greater(left, right)) {
     	test_context.assert_print_backtrace = false;
 	    builtin::panicf("`%s` <= `%s`", $$FILE, $$FUNC, $$LINE, left, right);
@@ -208,9 +208,9 @@ Check if left >= right
 
 @param left `left argument of any comparable type`
 @param left `right argument of any comparable type`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro greater_equal(left, right) { 
-	$assert(env::TESTING);
     if(!builtin::greater_eq(left, right)) {
     	test_context.assert_print_backtrace = false;
 	    builtin::panicf("`%s` < `%s`", $$FILE, $$FUNC, $$LINE, left, right);
@@ -222,9 +222,9 @@ Check if left < right
 
 @param left `left argument of any comparable type`
 @param left `right argument of any comparable type`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro less(left, right) { 
-	$assert(env::TESTING);
     if(!builtin::less(left, right)) {
     	test_context.assert_print_backtrace = false;
 	    builtin::panicf("`%s` >= `%s`", $$FILE, $$FUNC, $$LINE, left, right);
@@ -236,9 +236,9 @@ Check if left <= right
 
 @param left `left argument of any comparable type`
 @param left `right argument of any comparable type`
+@require test_context != null, "allowed only in @test functions"
 *>
 macro less_equal(left, right) { 
-	$assert(env::TESTING);
     if(!builtin::less_eq(left, right)) {
     	test_context.assert_print_backtrace = false;
 	    builtin::panicf("`%s` > `%s`", $$FILE, $$FUNC, $$LINE, left, right);

@@ -17,7 +17,6 @@ struct TestUnit @private
 //
 fn TestUnit[] test_collection_create(Allocator allocator = allocator::heap()) 
 {
-	$assert(env::TESTING);
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
 	TestUnit[] tests = allocator::alloc_array(allocator, TestUnit, names.len);
@@ -31,7 +30,6 @@ fn TestUnit[] test_collection_create(Allocator allocator = allocator::heap())
 // Sort the tests by their name in ascending order.
 fn int cmp_test_unit(TestUnit a, TestUnit b) @private
 {
-	$assert(env::TESTING);
 	usz an = a.name.len;
 	usz bn = b.name.len;
 	if (an > bn) @swap(a, b);
@@ -50,7 +48,6 @@ fn bool terminal_has_ansi_codes() @local {
 
 fn void test_panic(String message, String file, String function, uint line) @local
 {
-	$assert(env::TESTING);
 	if(test::test_context.is_in_panic){
 		return;
 	}
@@ -83,7 +80,6 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 }
 
 fn void mute_output() @local {
-	$assert(env::TESTING);
 	assert(test::test_context.error_buffer != null);
 	assert(test::test_context.error_buffer_capacity > 0);
 	assert(!test::test_context.fake_buffer.file);
@@ -105,7 +101,6 @@ fn void mute_output() @local {
 }
 
 fn void unmute_output(bool has_error) @local {
-	$assert(env::TESTING);
 	assert(test::test_context.fake_buffer.file);
 	assert(test::test_context.orig_stderr.file);
 	assert(test::test_context.orig_stdout.file);
@@ -148,8 +143,6 @@ fn void unmute_output(bool has_error) @local {
 
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
-	$assert(env::TESTING);
-
 	usz max_name;
 	foreach (&unit : tests)
 	{
@@ -268,7 +261,6 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 
 fn bool default_test_runner(String[] args)
 {
-	$assert(env::TESTING);
 	@pool()
 	{
 		assert(test::test_context == null, "test suite is already running");
