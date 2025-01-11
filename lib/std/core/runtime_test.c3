@@ -103,7 +103,7 @@ fn void mute_output() @local @if(env::POSIX) {
 	*stdout = test::test_context.fake_buffer;
 }
 
-fn void unmute_output() @local @if(!env::POSIX) {}
+fn void unmute_output(bool has_error) @local @if(!env::POSIX) {}
 fn void unmute_output(bool has_error) @local @if(env::POSIX) {
 	assert(test::test_context.fake_buffer.file);
 	assert(test::test_context.orig_stderr.file);
