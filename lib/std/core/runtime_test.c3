@@ -57,7 +57,7 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	(void)io::stdout().flush();
 	if (test::test_context.assert_print_backtrace){
 		$if env::NATIVE_STACKTRACE:
-    		builtin::print_backtrace(message, 3);
+    		builtin::print_backtrace(message, 0);
 		$endif
 	}
 	io::printfn("[%sFAIL%s] %s ( %s:%s ) %s", 

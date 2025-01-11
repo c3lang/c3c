@@ -43,7 +43,9 @@ TestState state = {
     .panic_mock_fn = fn void (String message, String file, String function, uint line) {
 	    if (test::test_context.assert_print_backtrace){
 			$if env::NATIVE_STACKTRACE:
-    	    	builtin::print_backtrace(message, 3);
+    	    	builtin::print_backtrace(message, 0);
+    	    $else 
+    	    	io::printfn("No print_backtrace() supported by this platform");
 			$endif
 	    }
         if (state.expected_fail) {
