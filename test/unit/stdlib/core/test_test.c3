@@ -52,6 +52,7 @@ TestState state = {
     	    	io::printfn("No print_backtrace() supported by this platform");
 			$endif
 	    }
+	    test::test_context.assert_print_backtrace = true;
         if (state.expected_fail) {
 	        // io::printfn("[OOPS] (expected fail) ( %s:%s ) %s", file, line, message);
             state.n_fails++;
@@ -59,7 +60,6 @@ TestState state = {
 	        builtin::panic = state.old_panic;
             state.old_panic(message, file, function, line);
 ;       }
-	    test::test_context.assert_print_backtrace = true;
 		test::test_context.is_in_panic = false;
     }
 };

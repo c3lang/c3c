@@ -65,7 +65,7 @@ struct TestContext @private
 			
 	char* error_buffer;
 	usz error_buffer_capacity;
-	File fake_buffer;
+	File fake_stdout;
 	File orig_stdout;
 	File orig_stderr;
 }

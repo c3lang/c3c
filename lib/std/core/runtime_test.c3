@@ -81,17 +81,13 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	libc::longjmp(&test::test_context.buf, 1);
 }
 
-fn void mute_output() @local @if(!env::POSIX) {}
-fn void mute_output() @local @if(env::POSIX) {
-	assert(test::test_context.error_buffer != null);
-	assert(test::test_context.error_buffer_capacity > 0);
-	assert(!test::test_context.fake_buffer.file);
+fn void mute_output() @local  {
+	if(!test::test_context.fake_stdout.file) {
+		return;
+	}
 	assert(!test::test_context.orig_stderr.file);
 	assert(!test::test_context.orig_stdout.file);
 
-	test::test_context.fake_buffer = File {
-		.file = libc::fmemopen(test::test_context.error_buffer, test::test_context.error_buffer_capacity, "r+w"),
-	};
 
 	File* stdout = io::stdout();
 	File* stderr = io::stderr();
@@ -99,13 +95,16 @@ fn void mute_output() @local @if(env::POSIX) {
 	test::test_context.orig_stderr = *stderr;
 	test::test_context.orig_stdout = *stdout;
 
-	*stderr = test::test_context.fake_buffer;
-	*stdout = test::test_context.fake_buffer;
+	*stderr = test::test_context.fake_stdout;
+	*stdout = test::test_context.fake_stdout;
+
+	(void)test::test_context.fake_stdout.seek(0, Seek.SET)!!;
 }
 
-fn void unmute_output(bool has_error) @local @if(!env::POSIX) {}
-fn void unmute_output(bool has_error) @local @if(env::POSIX) {
-	assert(test::test_context.fake_buffer.file);
+fn void unmute_output(bool has_error) @local {
+	if(!test::test_context.fake_stdout.file) {
+		return;
+	}
 	assert(test::test_context.orig_stderr.file);
 	assert(test::test_context.orig_stdout.file);
 
@@ -118,17 +117,17 @@ fn void unmute_output(bool has_error) @local @if(env::POSIX) {
 	test::test_context.orig_stderr.file = null;
 	test::test_context.orig_stdout.file = null;
 
-	usz log_size = test::test_context.fake_buffer.seek(0, Seek.CURSOR)!!;
+	usz log_size = test::test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 
 	if (has_error && log_size > 0) {
-		test::test_context.fake_buffer.write_byte('\n')!!;
-		test::test_context.fake_buffer.write_byte('\0')!!;
-		(void)test::test_context.fake_buffer.seek(0, Seek.SET)!!;
+		test::test_context.fake_stdout.write_byte('\n')!!;
+		test::test_context.fake_stdout.write_byte('\0')!!;
+		(void)test::test_context.fake_stdout.seek(0, Seek.SET)!!;
 
 		io::printfn("========== TEST LOG ============");
 		io::printfn("%s\n", test::test_context.current_test_name);
 		while(true){
-			char! c = test::test_context.fake_buffer.read_byte();
+			char! c = test::test_context.fake_stdout.read_byte();
 			if(catch c) {
 				break; // EOF
 			}
@@ -141,8 +140,6 @@ fn void unmute_output(bool has_error) @local @if(env::POSIX) {
 		io::printfn("========== TEST END ============");
 	}
 	(void)stdout.flush();
-	libc::fclose(test::test_context.fake_buffer.file);
-	test::test_context.fake_buffer.file = null;
 }
 
 fn bool run_tests(String[] args, TestUnit[] tests) @private
@@ -192,11 +189,18 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		quicksort(tests, &cmp_test_unit);
 	}
 
-	// Buffer for hijacking the output
-	test::test_context.error_buffer_capacity = 1024 * 1024;
-	test::test_context.error_buffer = libc::calloc(1, test::test_context.error_buffer_capacity);
-	assert(test::test_context.error_buffer, "out of mem");
-	defer libc::free(test::test_context.error_buffer);
+	test::test_context.fake_stdout.file = libc::tmpfile();
+	// // Buffer for hijacking the output
+	// test::test_context.error_buffer_capacity = 1024 * 1024;
+	// test::test_context.error_buffer = libc::calloc(1, test::test_context.error_buffer_capacity);
+	// test::test_context.fake_stdout = File {
+	// 	.file = libc::fmemopen(test::test_context.error_buffer, test::test_context.error_buffer_capacity, "r+w"),
+	// };
+	// assert(test::test_context.error_buffer, "out of mem");
+	// defer libc::free(test::test_context.error_buffer);
+	if (test::test_context.fake_stdout.file == null) {
+		io::print("Failed to hijack stdout, tests will print everything");
+	}
 
 	PanicFn old_panic = builtin::panic;
 	defer builtin::panic = old_panic;
@@ -259,6 +263,10 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 				tests_passed,
 				n_failed,
 				tests_skipped);
+
+	// cleanup fake_stdout file
+	if(test::test_context.fake_stdout.file) libc::fclose(test::test_context.fake_stdout.file);
+	test::test_context.fake_stdout.file = null;
 
 	return n_failed == 0;
 }
