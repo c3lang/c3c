@@ -16,12 +16,15 @@ const float LOGF_L2 = 4.0000972152e-01f;
 const float LOGF_L3 = 2.8498786688e-01f;
 const float LOGF_L4 = 2.4279078841e-01f;
 
+const double SQRT2 = 1.41421356237309504880;
+const float SQRT2F = 1.41421356237309504880f;
+
 fn double log(double x) @extern("log")
 {
     if (x != x) return x;
-    if (x < 0.0) return NAN;
-    if (x == 0.0) return -INFINITY;
-    if (x == INFINITY) return INFINITY;
+    if (x < 0.0) return double.nan;
+    if (x == 0.0) return -double.inf;
+    if (x == double.inf) return double.inf;
 
     int k;
     double f = frexp(x, &k);
@@ -50,9 +53,9 @@ fn double log(double x) @extern("log")
 fn float logf(float x) @extern("logf")
 {
     if (x != x) return x;
-    if (x < 0.0f) return NAN;
-    if (x == 0.0f) return -INFINITY;
-    if (x == INFINITY) return INFINITY;
+    if (x < 0.0f) return float.nan;
+    if (x == 0.0f) return -float.inf;
+    if (x == float.inf) return float.inf;
 
     int k;
     float f = frexpf(x, &k);

@@ -7,7 +7,7 @@ fn double pow(double x, double y) @extern("pow")
     if (y == double.inf)
     {
         if (x == 1.0 || x == -1.0) return 1.0;
-        return (fabs(x) < 1.0) ? 0.0 : double.inf;
+        return (_fabs(x) < 1.0) ? 0.0 : double.inf;
     }
     if (y == -double.inf)
     {
@@ -20,7 +20,7 @@ fn double pow(double x, double y) @extern("pow")
     }
     if (x == -double.inf)
     {
-        if (y != floor(y)) return -double.nan;
+        if (y != _floor(y)) return -double.nan;
         if (y < 0.0) return 0.0;
         return ((int)y & 1) ? -double.inf : double.inf;
     }
@@ -56,17 +56,17 @@ fn double pow(double x, double y) @extern("pow")
 
 fn float powf(float x, float y) @extern("powf")
 {
-    if (x != x || y != y) return NAN;
+    if (x != x || y != y) return float.nan;
 
     if (y == float.inf)
     {
         if (x == 1.0f || x == -1.0f) return 1.0f;
-        return (fabsf(x) < 1.0f) ? 0.0f : float.inf;
+        return (_fabsf(x) < 1.0f) ? 0.0f : float.inf;
     }
     if (y == -float.inf)
     {
         if (x == 1.0f || x == -1.0f) return 1.0f;
-        return (fabsf(x) < 1.0f) ? float.inf : 0.0f;
+        return (_fabsf(x) < 1.0f) ? float.inf : 0.0f;
     }
     if (x == float.inf)
     {
@@ -93,7 +93,7 @@ fn float powf(float x, float y) @extern("powf")
 
     if (x < 0.0f)
     {
-        if (y != floorf(y)) return float.nan;
+        if (y != _floorf(y)) return float.nan;
         return ((int)y & 1) ? -powf(-x, y) : powf(-x, y);
     }
 
