@@ -30,7 +30,7 @@
 - Allowed passing arguments to @test / @benchmark runners via `c3c test[benchmark] -- -o --opt1 <arg1>`
 - Handle bytes and string literals the same way in terms of zero termination.
 - Function comments are stored and displayed with -P.
-
+- Prevent `#hash` arguments from taking code that modifies ct variables. #1794
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
 - Fix Map & HashMap `put_all_for_create` not copying all elements, causing `init_from_map` to create incomplete copy.

@@ -5677,6 +5677,11 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 	// Evaluate right side to using inference from last type.
 	if (!sema_analyse_inferred_expr(context, left->type, right)) return false;
 
+	if (context->call_env.in_other)
+	{
+		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
+	}
+
 	left->ct_ident_expr.decl->var.init_expr = right;
 	expr_replace(expr, right);
 	left->ct_ident_expr.decl->type = right->type;
@@ -5696,6 +5701,12 @@ static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Ex
 
 	Decl *decl = sema_find_symbol(context, info->unresolved.name);
 	if (!decl) RETURN_SEMA_ERROR(info, "'%s' is not defined in this scope yet.", info->unresolved.name);
+
+	if (context->call_env.in_other)
+	{
+		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
+	}
+
 	decl->var.init_expr = right;
 	expr->expr_kind = EXPR_NOP;
 	expr->type = type_void;
@@ -5792,6 +5803,10 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 	Decl *left_var = left->ct_ident_expr.decl;
 	if (!sema_cast_ct_ident_rvalue(context, left)) return false;
 
+	if (context->call_env.in_other)
+	{
+		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
+	}
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
 	if (!sema_expr_analyse_binary(context, expr, NULL)) return false;
@@ -9526,7 +9541,13 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
 			ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_NOT_DONE);
 			expr->resolve_status = RESOLVE_RUNNING;
-			return sema_analyse_expr_dispatch(context, expr, check);
+			{
+				bool in_other = context->call_env.in_other;
+				context->call_env.in_other = true;
+				bool success = sema_analyse_expr_dispatch(context, expr, check);
+				context->call_env.in_other = in_other;
+				return success;
+			}
 		case EXPR_CT_CASTABLE:
 			return sema_expr_analyse_castable(context, expr);
 		case EXPR_EMBED:
