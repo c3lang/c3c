@@ -378,6 +378,7 @@ fn void UrlQueryValues.free(&self)
 *>
 fn void Url.free(&self)
 {
+	if (!self.allocator) return;
 	self.scheme.free(self.allocator);
 	self.host.free(self.allocator);
 	self.username.free(self.allocator);
