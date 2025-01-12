@@ -17,8 +17,8 @@ fault UrlParsingResult
  Represents the actual (decoded) Url.
 
  An Url can be parsed from a String with `new_parse()` or `temp_parse()`. The
- parsed fields are decoded. The only field that is not decoded is `raw_query`.
- To access the decoded query values, use `Url.query_values()`.
+ parsed fields are decoded. The only field that is not decoded is `query`.
+ To access the decoded query values, use `new_parse_query(query)`.
 
  `Url.to_string()` will re-assemble the fields into a valid Url string with
  proper percent-encoded values.
@@ -36,7 +36,7 @@ struct Url(Printable)
 	String username;
 	String password;
 	String path;
-	String raw_query;
+	String query;
 	String fragment;
 
 	Allocator allocator;
@@ -158,7 +158,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 	if (url_string.starts_with("?"))
 	{
 		usz index = url_string.index_of_char('#') ?? url_string.len;
-		url.raw_query = url_string[1 .. index - 1].copy(allocator);
+		url.query = url_string[1 .. index - 1].copy(allocator);
 		url_string = url_string[index ..];
 	}
 
@@ -222,12 +222,12 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 		String path = temp_encode(self.path, PATH);
 		builder.append_chars(path);
 
-		// Add query if it exists (note that `raw_query` is expected to
+		// Add query if it exists (note that `query` is expected to
 		// be already properly encoded).
-		if (self.raw_query != "")
+		if (self.query != "")
 		{
 			builder.append_char('?');
-			builder.append_chars(self.raw_query);
+			builder.append_chars(self.query);
 		}
 
 		// Add fragment if it exists
@@ -254,33 +254,33 @@ struct UrlQueryValues
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
 
- @param [in] raw_query
+ @param [in] query
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues temp_parse_query(String raw_query) => parse_query(raw_query, allocator::temp());
+fn UrlQueryValues temp_parse_query(String query) => parse_query(query, allocator::temp());
 
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
 
- @param [in] raw_query
+ @param [in] query
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues new_parse_query(String raw_query) => parse_query(raw_query, allocator::heap());
+fn UrlQueryValues new_parse_query(String query) => parse_query(query, allocator::heap());
 
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
 
- @param [in] raw_query
+ @param [in] query
  @param [inout] allocator
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues parse_query(String raw_query, Allocator allocator)
+fn UrlQueryValues parse_query(String query, Allocator allocator)
 {
 	UrlQueryValues vals;
 	vals.map.init(allocator);
 	vals.key_order.new_init(allocator: allocator);
 
-	Splitter raw_vals = raw_query.tokenize("&");
+	Splitter raw_vals = query.tokenize("&");
 	while (try String rv = raw_vals.next())
 	{
 		@pool(allocator)
@@ -383,6 +383,6 @@ fn void Url.free(&self)
 	self.username.free(self.allocator);
 	self.password.free(self.allocator);
 	self.path.free(self.allocator);
-	self.raw_query.free(self.allocator);
+	self.query.free(self.allocator);
 	self.fragment.free(self.allocator);
 }

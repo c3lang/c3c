@@ -3,17 +3,15 @@
  components according to RFC 3986.
 *>
 module std::net::url;
-
 import std::encoding::hex;
-
 
 enum UrlEncodingMode : char (String allowed)
 {
-	UNRESERVED = "-_.~",		// section 2.3
-	PATH 	   = "$&+,/:;=@",	// section 3.3
-	HOST 	   = "!$&'()*+,;=:[]",	// section 3.2.2 (also include ':', '[', ']' for ipv6 hosts) 
-	USERPASS   = ";:&=+$,",		// section 3.2.1
-	QUERY 	   = "",		// section 3.4
+	UNRESERVED = "-_.~",            // section 2.3
+	PATH 	   = "$&+,/:;=@",       // section 3.3
+	HOST 	   = "!$&'()*+,;=:[]",  // section 3.2.2 (also include ':', '[', ']' for ipv6 hosts)
+	USERPASS   = ";:&=+$,",         // section 3.2.1
+	QUERY 	   = "",                // section 3.4
 	FRAGMENT   = "$&+,/:;=?@!()*",	// section 4.1
 }
 
@@ -69,7 +67,7 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
-fn String encode(String s, UrlEncodingMode mode, Allocator allocator = allocator::heap())
+fn String encode(String s, UrlEncodingMode mode)
 {
 	usz n = encode_len(s, mode);
 	@pool(allocator)
