@@ -63,12 +63,8 @@ fn double _acos(double x) @weak @extern("acos") @nostrip
 		default:
 			double z = (1. - x) * 0.5;
 			double s = math::sqrt(z);
-			double df @noinit;
-			{
-				ulong rep = bitcast(s, ulong);
-				rep &= 0xffffffff00000000;
-				df = bitcast(rep, double);
-			}
+			double df = s;
+			df.set_low_word(0);
 			double c = (z - df * df) / (s + df);
 			double w = _r(z) * s + c;
 			return 2. * (df + w);	
@@ -133,12 +129,9 @@ fn float _acosf(float x) @weak @extern("acosf") @nostrip
 		default:
 			float z = (1.f - x) * 0.5f;
 			float s = math::sqrt(z);
-			float df @noinit;
-			{
-				uint rep = bitcast(s, uint);
-				rep &= 0xfffff000;
-				df = bitcast(rep, float);
-			}
+			float df = s;
+			uint idf = df.word();
+			df.set_word(idf & 0xfffff000);
 			float c = (z - df * df) / (s + df);
 			float w = _r_f(z) * s + c;
 			return 2.f * (df + w);
