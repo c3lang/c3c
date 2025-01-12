@@ -30,6 +30,7 @@
 - Allowed passing arguments to @test / @benchmark runners via `c3c test[benchmark] -- -o --opt1 <arg1>`
 - Handle bytes and string literals the same way in terms of zero termination.
 - Function comments are stored and displayed with -P.
+- Prevent `#hash` arguments from taking code that modifies ct variables. #1794
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -74,6 +75,12 @@
 - `#foo` style arguments were not type checked when given a type. #1790
 - Bug when using +++ on value build a slice or array: the rhs cast was not done.
 - Fix bug preventing compile time slices from being iterated over with `$foreach`.
+- Fix bug with defer assignment in macro #1807.
+- Fix regression with swizzle references for vectors #1810.
+- Assert when partially initializing a constant struct containing a slice #1812.
+- Assert concatenating constant slices #1805.
+- Do not link "ld" on Linux with no libc.
+- Fix bug when multiple `$else` clauses followed an `$if` #1824.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

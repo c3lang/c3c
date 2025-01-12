@@ -1040,7 +1040,7 @@ static inline Ast *parse_ct_if_stmt(ParseContext *c)
 		if (!parse_ct_compound_stmt(c, &else_ast->ct_else_stmt)) return poisoned_ast;
 		ast->ct_if_stmt.elif = astid(else_ast);
 	}
-	advance_and_verify(c, TOKEN_CT_ENDIF);
+	CONSUME_OR_RET(TOKEN_CT_ENDIF, poisoned_ast);
 	RANGE_EXTEND_PREV(ast);
 	return ast;
 }

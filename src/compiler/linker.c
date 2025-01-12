@@ -362,7 +362,7 @@ static const char *find_linux_crt_begin(void)
 
 static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
-	linking_add_link(&compiler.linking, "dl");
+	if (link_libc()) linking_add_link(&compiler.linking, "dl");
 	if (linker_type == LINKER_CC)
 	{
 		if (!link_libc())
