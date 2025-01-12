@@ -133,7 +133,15 @@ void context_pop_defers_and_replace_ast(SemaContext *context, Ast *ast)
 
 static inline void halt_on_error(void)
 {
-	if (compiler.context.errors_found > 0) exit_compiler(EXIT_FAILURE);
+	if (compiler.context.errors_found > 0)
+	{
+		if (compiler.build.lsp_output)
+		{
+			eprintf("> ENDLSP-ERROR\n");
+			exit_compiler(COMPILER_SUCCESS_EXIT);
+		}
+		exit_compiler(EXIT_FAILURE);
+	}
 }
 
 void sema_analyze_stage(Module *module, AnalysisStage stage)
@@ -286,6 +294,20 @@ static void sema_analyze_to_stage(AnalysisStage stage)
 	halt_on_error();
 }
 
+static bool setup_main_runner(Decl *run_function)
+{
+	SemaContext context;
+	sema_context_init(&context, run_function->unit);
+	Decl *main = sema_create_runner_main(&context, run_function);
+	if (!decl_ok(main)) return false;
+	if (!sema_analyse_decl(&context, main)) return false;
+	if (!sema_analyse_function_body(&context, main)) return false;
+	sema_context_destroy(&context);
+	compiler.context.main = main;
+	main->unit->main_function = main;
+	main->no_strip = true;
+	return true;
+}
 static void assign_panicfn(void)
 {
 	if (compiler.build.feature.panic_level == PANIC_OFF || (!compiler.build.panicfn && no_stdlib()))
@@ -354,7 +376,7 @@ static void assign_testfn(void)
 	if (!compiler.build.testing) return;
 	if (!compiler.build.testfn && no_stdlib())
 	{
-		compiler.context.test_func = NULL;
+		error_exit("No test function could be found.");
 		return;
 	}
 	const char *testfn = compiler.build.testfn ? compiler.build.testfn : "std::core::runtime::default_test_runner";
@@ -374,12 +396,17 @@ static void assign_testfn(void)
 	{
 		error_exit("'%s::%s' is not a function.", path->module, ident);
 	}
-	if (!type_func_match(type_get_func_ptr(decl->type->canonical), type_bool, 0))
+	if (!type_func_match(type_get_func_ptr(decl->type->canonical), type_bool, 1, type_get_slice(type_string)))
 	{
-		error_exit("Expected test runner to have the signature fn void().");
+		error_exit("Expected test runner to have the signature fn bool(String[]).");
 	}
-	compiler.context.test_func = decl;
 	decl->no_strip = true;
+	if (compiler.build.type != TARGET_TYPE_TEST) return;
+
+	if (!setup_main_runner(decl))
+	{
+		error_exit("Failed to set up test runner.");
+	}
 }
 
 static void assign_benchfn(void)
@@ -387,7 +414,6 @@ static void assign_benchfn(void)
 	if (!compiler.build.benchmarking) return;
 	if (!compiler.build.benchfn && no_stdlib())
 	{
-		compiler.context.benchmark_func = NULL;
 		return;
 	}
 	const char *testfn = compiler.build.benchfn ? compiler.build.benchfn : "std::core::runtime::default_benchmark_runner";
@@ -407,12 +433,15 @@ static void assign_benchfn(void)
 	{
 		error_exit("'%s::%s' is not a function.", path->module, ident);
 	}
-	if (!type_func_match(type_get_func_ptr(decl->type->canonical), type_bool, 0))
+	if (!type_func_match(type_get_func_ptr(decl->type->canonical), type_bool, 1, type_get_slice(type_string)))
 	{
-		error_exit("Expected benchmark function to have the signature fn void().");
+		error_exit("Expected benchmark function to have the signature fn bool(String[] args).");
 	}
-	compiler.context.benchmark_func = decl;
 	decl->no_strip = true;
+	if (!setup_main_runner(decl))
+	{
+		error_exit("Failed to set up benchmark runner.");
+	}
 }
 
 /**

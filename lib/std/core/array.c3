@@ -79,7 +79,7 @@ macro concat(arr1, arr2, Allocator allocator) @nodiscard
  @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
  @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
  @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
- @ensure result.len == arr1.len + arr2.len
+ @ensure return.len == arr1.len + arr2.len
 *>
 macro concat_new(arr1, arr2, Allocator allocator = allocator::heap()) @nodiscard
 {
@@ -95,7 +95,7 @@ macro concat_new(arr1, arr2, Allocator allocator = allocator::heap()) @nodiscard
  @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
  @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
  @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
- @ensure result.len == arr1.len + arr2.len
+ @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(arr1, arr2, allocator::temp());
 

@@ -1,7 +1,7 @@
 // #target: macos-x64
 module abc;
 def UInt8 = char;
-fn void! main()
+fn void main()
 {
 	UInt8 x = 17;
 	UInt8 y = 5;
@@ -9,7 +9,6 @@ fn void! main()
 }
 /* #expect: abc.ll
 
-define i64 @abc.main() #0 {
 entry:
   %x = alloca i8, align 1
   %y = alloca i8, align 1
@@ -25,5 +24,3 @@ entry:
   %and = and i32 %2, 1
   %trunc = trunc i32 %and to i8
   store i8 %trunc, ptr %z, align 1
-  ret i64 0
-}

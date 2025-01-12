@@ -1734,7 +1734,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 			continue;
 		}
 		ArraySize new_len = len + next_len;
-		char *new_data = MALLOC(new_len);
+		char *new_data = MALLOC(new_len + 1);
 		if (data)
 		{
 			memmove(new_data, data, len);
@@ -1753,6 +1753,7 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 			parse_hex(new_data + len, hexdata, end);
 		}
 		len = new_len;
+		data[len] = 0;
 		advance(c);
 	}
 	if (len == 0)

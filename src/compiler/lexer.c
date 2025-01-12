@@ -1158,6 +1158,7 @@ static inline bool scan_base64(Lexer *lexer)
  **/
 static bool parse_doc_start(Lexer *lexer)
 {
+	const char *comment_start = NULL;
 	bool may_have_contract = true;
 	// Let's loop until we find the end or the contract.
 	while (!reached_end(lexer))
@@ -1188,6 +1189,10 @@ static bool parse_doc_start(Lexer *lexer)
 				FALLTHROUGH;
 			default:
 				may_have_contract = false;
+				if (!comment_start)
+				{
+					comment_start = lexer->current;
+				}
 				next(lexer);
 				continue;
 		}
@@ -1200,7 +1205,13 @@ EXIT:;
 	//
 	// In any case we can consider this having reached "the contracts"
 	lexer->mode = LEX_CONTRACTS;
-	return new_token(lexer, TOKEN_DOCS_START, lexer->lexing_start);
+	lexer->data.strlen = 0;
+	if (!comment_start) return new_token(lexer, TOKEN_DOCS_START, "<*");
+	new_token(lexer, TOKEN_DOCS_START, comment_start);
+	const char *last = lexer->current - 1;
+	while (last > comment_start && char_is_whitespace(*last)) last--;
+	lexer->data.strlen = last - comment_start + 1;
+	return true;
 }
 
 static bool lexer_scan_token_inner(Lexer *lexer)

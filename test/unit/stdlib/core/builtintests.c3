@@ -1,14 +1,14 @@
 module std::core::builtins @test;
 
-fn void! test_anycast()
+fn void test_anycast()
 {
 	int a;
 	any b = &a;
-	assert(anycast(b, int)! == &a);
+	assert(anycast(b, int)!! == &a);
 	assert(@catch(anycast(b, double)) == CastResult.TYPE_MISMATCH);
 }
 
-fn void! test_bitcast()
+fn void test_bitcast()
 {
 	int a = 123;
 	float z = bitcast(a, float);
@@ -21,10 +21,10 @@ enum Tester
 	DEF,
 }
 
-fn void! test_enum_by_name()
+fn void test_enum_by_name()
 {
-	assert(enum_by_name(Tester, "ABC")! == Tester.ABC);
-	assert(enum_by_name(Tester, "DEF")! == Tester.DEF);
+	assert(enum_by_name(Tester, "ABC")!! == Tester.ABC);
+	assert(enum_by_name(Tester, "DEF")!! == Tester.DEF);
 	assert(@catch(enum_by_name(Tester, "GHI")) == SearchResult.MISSING);
 }
 

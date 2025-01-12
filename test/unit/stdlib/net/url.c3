@@ -342,7 +342,7 @@ fn void test_query_values1()
 	defer vals.free();
 
 	assert(vals.len() == 1);
-	UrlQueryValueList l = vals["name"]!;
+	UrlQueryValueList l = vals["name"]!!;
 
 	assert(l.len() == 1);
 	assert(l[0] == "ferret=ok");
@@ -357,11 +357,11 @@ fn void test_query_values2()
 	defer vals.free();
 	assert(vals.len() == 2);
 
-	UrlQueryValueList l_name = vals["name"]!;
+	UrlQueryValueList l_name = vals["name"]!!;
 	assert(l_name.len() == 1);
 	assert(l_name[0] == "ferret");
 
-	UrlQueryValueList l_age = vals["age"]!;
+	UrlQueryValueList l_age = vals["age"]!!;
 	assert(l_age.len() == 2);
 	assert(l_age[0] == "99");
 	assert(l_age[1] == "11");

@@ -1,6 +1,6 @@
 module std::core::bitorder @test;
 
-fn void! test_read()
+fn void test_read()
 {
     char[*] bytes = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
 
@@ -26,7 +26,7 @@ fn void! test_read()
     assert(bitorder::read(bytes[..], ULongLE) == 0x0807060504030201);
 }
 
-fn void! test_write()
+fn void test_write()
 {
     char[*] bytes = { 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08 };
     char[8] buf;

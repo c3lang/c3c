@@ -8,7 +8,7 @@ fn void test_swizzle()
 	assert($$swizzle2(a, b, 0, 1, 4, 6, 2) == int[<5>] { 1, 2, 100, 10000, 3 });
 }
 
-fn void! swizzle_builtin()
+fn void swizzle_builtin()
 {
 	int[<4>] abc = { 1, 2, 3, 4 };
 	assert(abc.rb == { 1, 3 });

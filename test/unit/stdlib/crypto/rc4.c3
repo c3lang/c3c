@@ -1,7 +1,7 @@
 import std::crypto;
 import std::io;
 
-fn void! rc_crypt() @test
+fn void rc_crypt() @test
 {
 	Rc4 rc;
 	rc.init(&&x"63727970746969");

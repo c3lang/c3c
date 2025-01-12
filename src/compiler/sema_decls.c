@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -1085,7 +1085,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1149,7 +1149,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			case VARDECL_PARAM_REF:
 				inferred_type = type_get_ptr(method_parent->type);
 				param->var.not_null = true;
-				if (!is_macro) param->var.kind = VARDECL_PARAM;
+				param->var.kind = VARDECL_PARAM;
 				break;
 			case VARDECL_PARAM:
 			case VARDECL_PARAM_EXPR:
@@ -1224,6 +1224,10 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_REF:
+				if ((i != 0 || !method_parent) && !is_deprecated)
+				{
+					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated.");
+				}
 				if (type_info && !type_is_pointer(param->type))
 				{
 					SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
@@ -1239,7 +1243,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				}
 				if (!is_macro_at_name && (!method_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
 				{
-					SEMA_ERROR(param, "Ref and expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
+					SEMA_ERROR(param, "Expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
 				}
 				FALLTHROUGH;
@@ -1333,7 +1337,9 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 	// Get param count and variadic type
 	Decl **params = signature->params;
 
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export)) return false;
+	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
+
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -3260,6 +3266,69 @@ static inline MainType sema_find_main_type(SemaContext *context, Signature *sig,
 
 }
 
+Decl *sema_create_runner_main(SemaContext *context, Decl *decl)
+{
+	bool is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
+	function->is_export = true;
+	function->has_extname = true;
+	function->extname = kw_mainstub;
+	function->name = kw_mainstub;
+	function->unit = decl->unit;
+
+	// Pick wWinMain, main or wmain
+	Decl *params[4] = { NULL, NULL, NULL, NULL };
+	int param_count;
+	if (is_win32)
+	{
+		function->extname = kw_wmain;
+		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_ushort)), VARDECL_PARAM, decl->span);
+		param_count = 2;
+	}
+	else
+	{
+		function->extname = kw_main;
+		params[0] = decl_new_generated_var(type_cint, VARDECL_PARAM, decl->span);
+		params[1] = decl_new_generated_var(type_get_ptr(type_get_ptr(type_char)), VARDECL_PARAM, decl->span);
+		param_count = 2;
+	}
+
+	function->has_extname = true;
+	function->func_decl.signature.rtype = type_infoid(type_info_new_base(type_cint, decl->span));
+	function->func_decl.signature.vararg_index = param_count;
+	Decl **main_params = NULL;
+	for (int i = 0; i < param_count; i++) vec_add(main_params, params[i]);
+	function->func_decl.signature.params = main_params;
+	Ast *body = new_ast(AST_COMPOUND_STMT, decl->span);
+	AstId *next = &body->compound_stmt.first_stmt;
+	Ast *ret_stmt = new_ast(AST_RETURN_STMT, decl->span);
+	const char *kw_main_invoker = symtab_preset(is_win32 ? "@_wmain_runner" : "@_main_runner", TOKEN_AT_IDENT);
+	Decl *d = sema_find_symbol(context, kw_main_invoker);
+	if (!d)
+	{
+		SEMA_ERROR(decl, "Missing main forwarding function '%s'.", kw_main_invoker);
+		return poisoned_decl;
+	}
+	Expr *invoker = expr_new(EXPR_IDENTIFIER, decl->span);
+	expr_resolve_ident(invoker, d);
+	Expr *call = expr_new(EXPR_CALL, decl->span);
+	Expr *fn_ref = expr_variable(decl);
+	vec_add(call->call_expr.arguments, fn_ref);
+	for (int i = 0; i < param_count; i++)
+	{
+		Expr *arg = expr_variable(params[i]);
+		vec_add(call->call_expr.arguments, arg);
+	}
+	call->call_expr.function = exprid(invoker);
+	for (int i = 0; i < param_count; i++) params[i]->resolve_status = RESOLVE_NOT_DONE;
+	ast_append(&next, ret_stmt);
+	ret_stmt->return_stmt.expr = call;
+	function->func_decl.body = astid(body);
+	function->is_synthetic = true;
+	return function;
+}
+
 static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl, MainType main, bool int_return, bool err_return, bool is_winmain, bool is_wmain)
 {
 	Decl *function = decl_new(DECL_FUNC, NULL, decl->span);
@@ -3371,7 +3440,7 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 		default:
 			UNREACHABLE;
 	}
-NEXT:;
+	NEXT:;
 	const char *kw_main_invoker = symtab_preset(main_invoker, TOKEN_AT_IDENT);
 	Decl *d = sema_find_symbol(context, kw_main_invoker);
 	if (!d)
@@ -3417,11 +3486,12 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	{
 		if (rtype->optional->type_kind != TYPE_VOID)
 		{
-			SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
+			RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
 			return false;
 		}
 		is_int_return = false;
 		is_err_return = true;
+		SEMA_DEPRECATED(rtype_info, "Main functions with 'void!' returns is deprecated, use 'int' or 'void' instead.");
 	}
 
 	if (type_is_void(rtype)) is_int_return = false;
@@ -3502,34 +3572,41 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 	if (is_test || is_benchmark || is_init_finalizer)
 	{
 		ASSERT0(!is_interface_method);
-		if (vec_size(sig->params))
+		unsigned params = vec_size(sig->params);
+		if (params)
 		{
 			RETURN_SEMA_ERROR(sig->params[0], "%s functions may not take any parameters.",
-			           is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
+							  is_init_finalizer ? "'@init' and '@finalizer'" : "'@test' and '@benchmark'");
 		}
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
 		if (!sema_resolve_type_info(context, rtype_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Type *rtype = rtype_info->type;
 		if (is_init_finalizer)
 		{
-			if (rtype->canonical != type_void)
+			if (!type_is_void(rtype))
 			{
 				RETURN_SEMA_ERROR(rtype_info, "'@init' and '@finalizer' functions may only return 'void'.");
 			}
+			goto CHECK_DONE;
 		}
-		else
+		if (compiler.build.old_test != OLD_TEST_ON)
 		{
-			if (type_no_optional(rtype) != type_void)
+			if (!type_is_void(rtype))
 			{
-				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' functions may only return 'void' or 'void!'.");
+				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' you can allow 'void!' by passing in '--old-test-bench=yes'.");
 			}
-			if (type_is_void(rtype))
-			{
-				rtype_info->type = type_get_optional(rtype);
-			}
+			goto CHECK_DONE;
+		}
+		if (!type_is_void(type_no_optional(rtype)))
+		{
+			RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' or 'void!'.");
+		}
+		if (!type_is_optional(rtype))
+		{
+			rtype_info->type = type_get_optional(rtype);
 		}
 	}
-
+CHECK_DONE:
 	decl->type = type_new_func(decl, sig);
 	if (!sema_analyse_function_signature(context, decl, type_infoptrzero(decl->func_decl.type_parent), sig->abi, sig)) return decl_poison(decl);
 	TypeInfo *rtype_info = type_infoptr(sig->rtype);
@@ -3663,16 +3740,20 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		VarDeclKind kind = param->var.kind;
 		switch (kind)
 		{
-			case VARDECL_PARAM:
-			case VARDECL_PARAM_EXPR:
-			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_REF:
-			case VARDECL_PARAM_CT_TYPE:
+				// DEPRECATED
 				if (!type_info) break;
 				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 				if (kind != VARDECL_PARAM_REF || type_is_pointer(type_info->type)) break;
 				RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
 				                  type_quoted_error_string(type_get_ptr(type_info->type)));
+			case VARDECL_PARAM:
+			case VARDECL_PARAM_EXPR:
+			case VARDECL_PARAM_CT:
+			case VARDECL_PARAM_CT_TYPE:
+				if (!type_info) break;
+				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+				break;
 			case VARDECL_CONST:
 			case VARDECL_GLOBAL:
 			case VARDECL_LOCAL:
@@ -3696,9 +3777,12 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_func_macro(context, decl, ATTR_MACRO, erase_decl)) return false;
 	if (*erase_decl) return true;
+
+	bool deprecated = decl->resolved_attributes && decl->attrs_resolved && decl->attrs_resolved->deprecated;
+
 	if (!sema_analyse_signature(context, &decl->func_decl.signature,
 	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false)) return false;
+	                            false, deprecated)) return false;
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{
@@ -3788,7 +3872,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 			domain = ATTR_GLOBAL;
 			break;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM_CT_TYPE:
 		case VARDECL_PARAM_CT:
 			domain = ATTR_PARAM;
@@ -4118,19 +4202,16 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			decl->type = type_add_optional(init->type, IS_OPTIONAL(decl));
 		}
 
-		Expr *init_expr = decl->var.init_expr;
-
 		// 2. Check const-ness
-		if (global_level_var && !expr_is_runtime_const(init_expr))
+		if (global_level_var && !expr_is_runtime_const(init))
 		{
-			SEMA_ERROR(init_expr, "The expression must be a constant value.");
-			expr_is_runtime_const(init_expr);
+			SEMA_ERROR(init, "The expression must be a constant value.");
 			return decl_poison(decl);
 		}
-		if (global_level_var || !type_is_abi_aggregate(init_expr->type)) sema_cast_const(init_expr);
-		if (expr_is_const(init_expr))
+		if (global_level_var || !type_is_abi_aggregate(init->type)) sema_cast_const(init);
+		if (expr_is_const(init))
 		{
-			init_expr->const_expr.is_hex = false;
+			init->const_expr.is_hex = false;
 		}
 	}
 	EXIT_OK:;

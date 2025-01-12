@@ -1,6 +1,6 @@
 module std::io @test;
 
-fn void! test_writing()
+fn void test_writing()
 {
 	DString foo;
 	foo.new_init();
@@ -10,7 +10,7 @@ fn void! test_writing()
 	s.write("what?-------------------------------------------------------")!!;
 	ByteReader r;
 	String test_str = "2134";
-	io::copy_to(r.init(test_str), s)!;
+	io::copy_to(r.init(test_str), s)!!;
 	String o = foo.str_view();
 	assert(o == "hello-what?-------------------------------------------------------2134");
 }

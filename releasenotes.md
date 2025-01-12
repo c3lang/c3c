@@ -21,7 +21,16 @@
 - Include `@name` when searching for possible matches to `name` in the error message. #1779
 - Improve `@param` parse errors #1777
 - Improved `#foo` resolution inside of the compiler.
-
+- Deprecated '&' macro arguments.
+- Deprecate `fn void! main() type main functions.
+- Deprecate old `void!` @benchmark and @test functions.
+- Allow test runners to take String[] arguments.
+- Added `--lsp` output.
+- Improve the error message when running out of memory.
+- Allowed passing arguments to @test / @benchmark runners via `c3c test[benchmark] -- -o --opt1 <arg1>`
+- Handle bytes and string literals the same way in terms of zero termination.
+- Function comments are stored and displayed with -P.
+- Prevent `#hash` arguments from taking code that modifies ct variables. #1794
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
 - Fix Map & HashMap `put_all_for_create` not copying all elements, causing `init_from_map` to create incomplete copy.
@@ -62,6 +71,14 @@
 - Macros with trailing bodys aren't allowed as the single statement after a while loop with no body #1772.
 - Deref subscripts as needed for macro ref method arguments. #1789
 - Change ordering to simplify adding methods to type in conditional modules.
+- `#foo` style arguments were not type checked when given a type. #1790
+- Bug when using +++ on value build a slice or array: the rhs cast was not done.
+- Fix bug preventing compile time slices from being iterated over with `$foreach`.
+- Fix bug with defer assignment in macro #1807.
+- Fix regression with swizzle references for vectors #1810.
+- Assert when partially initializing a constant struct containing a slice #1812.
+- Assert concatenating constant slices #1805.
+- Do not link "ld" on Linux with no libc.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
@@ -75,6 +92,8 @@
 - Added convenience functions to `Maybe`.
 - Added `String.trim_left()` and `.trim_right()`.
 - Deprecation of several `&` macros.
+- Format functions for timedates.
+- Add `@assert_leak()` to assert on memory leaks in the scope.
 
 ## 0.6.5 Change list
 

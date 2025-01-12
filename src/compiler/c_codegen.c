@@ -634,7 +634,7 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case VARDECL_BITMEMBER:
 			UNREACHABLE;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF:
+		case VARDECL_PARAM_REF: // DEPRECATED
 		{
 			PRINT("/* LOCAL DECL */\n");
 /*

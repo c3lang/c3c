@@ -1,4 +1,4 @@
-fn void! vector_inc_dec() @test
+fn void vector_inc_dec() @test
 {
 	int[<3>] x;
 	int[<3>] y;
@@ -13,7 +13,7 @@ fn void! vector_inc_dec() @test
 	assert(g == { 1, 1, 0 });
 }
 
-fn void! int_inc_dec() @test
+fn void int_inc_dec() @test
 {
 	int x;
 	assert(x++ == 0);
@@ -23,7 +23,7 @@ fn void! int_inc_dec() @test
 	assert(--x == 0);
 }
 
-fn void! float_inc_dec() @test
+fn void float_inc_dec() @test
 {
 	double x;
 	assert(x++ == 0);

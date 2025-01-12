@@ -262,9 +262,10 @@ RETRY:
 		case EXPR_GENERIC_IDENT:
 		case EXPR_EMBED:
 		case EXPR_MACRO_BODY:
-		case EXPR_OTHER_CONTEXT:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
+			UNREACHABLE
+		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
@@ -659,8 +660,8 @@ RETRY:
 				case VARDECL_PARAM_EXPR:
 					// These are never traced, they are folded in use.
 					break;
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_CT:
-				case VARDECL_PARAM_REF:
 				case VARDECL_PARAM:
 					sema_trace_type_liveness(decl->type);
 					if (decl->var.init_expr && decl->var.init_expr->resolve_status == RESOLVE_DONE)

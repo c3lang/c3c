@@ -243,6 +243,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
 	Type *indexed = type_get_indexed_type(init->type);
+	if (!cast_implicit(context, element, indexed, false)) return false;
 	Type *new_inner_type = is_vector ? type_get_vector(indexed, len) : type_get_array(indexed, len);
 	Type *new_outer_type = list->type;
 	if (!is_slice)
@@ -282,6 +283,20 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 			UNREACHABLE
 	}
 	return true;
+}
+
+static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
+{
+	ASSERT(expr, expr->expr_kind == EXPR_CONST);
+	switch (expr->const_expr.const_kind)
+	{
+		case CONST_SLICE:
+			return expr->const_expr.slice_init;
+		case CONST_INITIALIZER:
+			return expr->const_expr.initializer;
+		default:
+			UNREACHABLE
+	}
 }
 
 /**
@@ -401,10 +416,10 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				}
 				continue;
 			}
-			ConstInitializer *init = single_expr->const_expr.initializer;
-			if (init->kind != CONST_INIT_ARRAY_FULL)
+			ConstInitializer *init = expr_const_initializer_from_expr(single_expr);
+			if (init && init->kind != CONST_INIT_ARRAY_FULL)
 			{
-				ASSERT0(init->type != type_untypedlist);
+				ASSERT0(!init || init->type != type_untypedlist);
 				RETURN_SEMA_ERROR(single_expr, "Expected a full array here.");
 			}
 			FOREACH(ConstInitializer *, val, init->init_array_full)
@@ -426,9 +441,14 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	for (int i = 0; i < 2; i++)
 	{
 		Expr *element = exprs[i];
-		ASSERT0(element->const_expr.const_kind == CONST_INITIALIZER);
-		ConstInitType init_type = element->const_expr.initializer->kind;
-		switch (init_type)
+		ConstInitializer *inititializer = expr_const_initializer_from_expr(element);
+		// Zero sized slice:
+		if (!inititializer)
+		{
+			ASSERT(element, element->const_expr.const_kind == CONST_SLICE);
+			continue;
+		}
+		switch (inititializer->kind)
 		{
 			case CONST_INIT_ARRAY_FULL:
 				break;
@@ -437,7 +457,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			default:
 				RETURN_SEMA_ERROR(element, "Only fully initialized arrays may be concatenated.");
 		}
-		FOREACH(ConstInitializer *, init, element->const_expr.initializer->init_array_full)
+		FOREACH(ConstInitializer *, init, inititializer->init_array_full)
 		{
 			vec_add(inits, init);
 		}

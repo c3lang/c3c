@@ -1,6 +1,6 @@
 import std::math;
 
-fn void! vector_method_reduce() @test
+fn void vector_method_reduce() @test
 {
 	float[<3>] x = { 1, 2.0, 4.0 };
 	int[<*>] y = { -23, 1, 4 };

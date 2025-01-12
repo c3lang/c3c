@@ -1,6 +1,6 @@
 import std::io;
 
-fn void! test_int_mod() @test
+fn void test_int_mod() @test
 {
 	int[<2>] y = { 10, 99 };
 	int[<2>] z = { 3, 5 };
@@ -10,7 +10,7 @@ fn void! test_int_mod() @test
 	assert(int[<2>]{ 10, 99 } / int[<2>]{ 3, 5 } == { 3, 19 });
 }
 
-fn void! test_conv() @test
+fn void test_conv() @test
 {
     float[<4>] y = { 1, 2, 3, 4 };
     float[<4>] z = { 0, 2, 2, -100 };
@@ -35,7 +35,7 @@ fn void! test_conv() @test
 	assert(b == { true, false });
 }
 
-fn void! testf() @test
+fn void testf() @test
 {
 	float[<4>] x = { 4, 0, -1, 33 };
 	assert({ true, false, true, true} == (bool[<4>])x);
@@ -63,7 +63,7 @@ fn void! testf() @test
     assert(ww == { -1, 0, -1, -1 });
 }
 
-fn void! testb() @test
+fn void testb() @test
 {
     bool[<4>] y = { true, false, true, true };
     bool[<4>] z = { false, false, true, true };
@@ -81,7 +81,7 @@ fn void! testb() @test
 	assert(ww == { -1, 0, 0, 0 });
 }
 
-fn void! testi() @test
+fn void testi() @test
 {
 	int[<4>] x = { 4, 0, -1, 33 };
 	assert({ true, false, true, true} == (bool[<4>])x);

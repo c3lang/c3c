@@ -233,21 +233,20 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
-			ASSERT0(const_init->type->type_kind != TYPE_SLICE);
 			return llvm_get_zero(c, const_init->type);
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_FULL:
 		{
-			ASSERT0(const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(const_init, const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
-			ASSERT0(array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
+			ASSERT(const_init, array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
 			ArraySize size = array_type->array.len;
-			ASSERT0(size > 0);
+			ASSERT(const_init, size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
@@ -268,14 +267,14 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 		case CONST_INIT_ARRAY:
 		{
-			ASSERT0(const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(const_init, const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
-			ASSERT0(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
+			ASSERT(const_init, vec_size(elements) > 0 && "Array should always have gotten at least one element.");
 			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
@@ -1343,28 +1342,6 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 	UNREACHABLE
 }
 
-static void llvm_gen_test_main(GenContext *c)
-{
-	Decl *test_runner = compiler.context.test_func;
-	if (!test_runner)
-	{
-		error_exit("No test runner found.");
-	}
-	ASSERT0(!compiler.context.main && "Main should not be set if a test main is generated.");
-	compiler.context.main = test_runner;
-	LLVMTypeRef cint = llvm_get_type(c, type_cint);
-	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
-	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
-	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
-	scratch_buffer_set_extern_decl_name(test_runner, true);
-	LLVMValueRef other_func = LLVMAddFunction(c->module, scratch_buffer_to_string(), runner_type);
-	LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
-	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
-	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
-						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
-	LLVMBuildRet(builder, val);
-	LLVMDisposeBuilder(builder);
-}
 
 INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
@@ -1431,37 +1408,10 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
 
-	if (compiler.build.type == TARGET_TYPE_TEST)
-	{
-		llvm_gen_test_main(c);
-	}
-
 	compiler.build.debug_info = actual_debug_info;
 	return c;
 }
 
-static void llvm_gen_benchmark_main(GenContext *c)
-{
-	Decl *benchmark_runner = compiler.context.benchmark_func;
-	if (!benchmark_runner)
-	{
-		error_exit("No benchmark runner found.");
-	}
-	ASSERT0(!compiler.context.main && "Main should not be set if a benchmark main is generated.");
-	compiler.context.main = benchmark_runner;
-	LLVMTypeRef cint = llvm_get_type(c, type_cint);
-	LLVMTypeRef main_type = LLVMFunctionType(cint, NULL, 0, true);
-	LLVMTypeRef runner_type = LLVMFunctionType(c->byte_type, NULL, 0, true);
-	LLVMValueRef func = LLVMAddFunction(c->module, kw_main, main_type);
-	scratch_buffer_set_extern_decl_name(benchmark_runner, true);
-	LLVMValueRef other_func = LLVMAddFunction(c->module, scratch_buffer_to_string(), runner_type);
-	LLVMBuilderRef builder = llvm_create_function_entry(c, func, NULL);
-	LLVMValueRef val = LLVMBuildCall2(builder, runner_type, other_func, NULL, 0, "");
-	val = LLVMBuildSelect(builder, LLVMBuildTrunc(builder, val, c->bool_type, ""),
-						  LLVMConstNull(cint), LLVMConstInt(cint, 1, false), "");
-	LLVMBuildRet(builder, val);
-	LLVMDisposeBuilder(builder);
-}
 
 INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, LLVMContextRef shared_context)
 {
@@ -1526,11 +1476,6 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	LLVMValueRef decl_list = llvm_add_global(c, benchmark_fns_var_name, decls_array_type, type_alloca_alignment(decls_array_type));
 	LLVMSetGlobalConstant(decl_list, 1);
 	LLVMSetInitializer(decl_list, llvm_emit_aggregate_two(c, decls_array_type, decl_ref, count));
-
-	if (compiler.build.type == TARGET_TYPE_BENCHMARK)
-	{
-		llvm_gen_benchmark_main(c);
-	}
 
 	compiler.build.debug_info = actual_debug_info;
 	return c;
@@ -1678,7 +1623,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_decl(gen_context, func);
 		}
 
-		if (compiler.build.type != TARGET_TYPE_TEST && compiler.build.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
+		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
 			llvm_emit_function_decl(gen_context, unit->main_function);
@@ -1726,7 +1671,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 			llvm_emit_function_body(gen_context, func);
 		}
 
-		if (compiler.build.type != TARGET_TYPE_TEST && compiler.build.type != TARGET_TYPE_BENCHMARK && unit->main_function && unit->main_function->is_synthetic)
+		if (unit->main_function && unit->main_function->is_synthetic)
 		{
 			has_elements = true;
 			llvm_emit_function_body(gen_context, unit->main_function);

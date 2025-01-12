@@ -615,6 +615,7 @@ void doc_ast_copy(CopyStruct *c, AstContractStmt *doc)
 		case CONTRACT_PARAM:
 		case CONTRACT_PURE:
 		case CONTRACT_UNKNOWN:
+		case CONTRACT_COMMENT:
 			break;
 	}
 }

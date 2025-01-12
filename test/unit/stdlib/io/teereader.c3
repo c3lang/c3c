@@ -1,6 +1,6 @@
 module std::io @test;
 
-fn void! test_teereader()
+fn void test_teereader()
 {
 	String want = "foobar";
 
@@ -8,7 +8,7 @@ fn void! test_teereader()
 	TeeReader r = tee_reader(ByteReader{}.init(want), w.temp_init());
 
 	char[16] buf;
-	usz n = r.read(buf[..])!;
+	usz n = r.read(buf[..])!!;
 
 	String got = w.str_view();
 	assert(n == want.len, "teereader: invalid length");

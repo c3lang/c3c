@@ -1,22 +1,22 @@
 module std::io::varint @test;
 import std::io;
 
-fn void! write_read()
+fn void write_read()
 {
 	ByteBuffer buf;
-	buf.temp_init(16)!;
+	buf.temp_init(16)!!;
 	usz n;
 	uint x;
 	uint y;
 
-	n = io::write_varint(&buf, 123)!;
+	n = io::write_varint(&buf, 123)!!;
 	assert(n == 1, "got %d; want 1", n);
-	io::read_varint(&buf, &y)!;
+	io::read_varint(&buf, &y)!!;
 	assert(y == 123, "got %d; want 123", y);
 
-	n = io::write_varint(&buf, 123456789)!;
+	n = io::write_varint(&buf, 123456789)!!;
 	assert(n == 4, "got %d; want 4", n);
-	io::read_varint(&buf, &y)!;
+	io::read_varint(&buf, &y)!!;
 	assert(y == 123456789, "got %d; want 123456789", y);
 }
 
@@ -26,7 +26,7 @@ struct VarIntTest
 	char[] bytes;
 }
 
-fn void! samples()
+fn void samples()
 {
 	VarIntTest[] tcases = {
 		{ 0,          { 0x00 } },
@@ -46,7 +46,7 @@ fn void! samples()
 	{
 		ByteWriter bw;
 		bw.temp_init();
-		usz n = io::write_varint(&bw, tc.in)!;
+		usz n = io::write_varint(&bw, tc.in)!!;
 		assert(n == tc.bytes.len, "got %d; want %d", n, tc.bytes.len);
 		char[] bytes = bw.bytes[:bw.index];
 		assert(bytes == tc.bytes, "got %d; want %d", bytes, tc.bytes);

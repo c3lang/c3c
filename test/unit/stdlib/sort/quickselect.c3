@@ -8,7 +8,7 @@ struct TestCase @local
 	int want;
 }
 
-fn void! quickselect()
+fn void quickselect()
 {
     TestCase[] tcases = {
 		{

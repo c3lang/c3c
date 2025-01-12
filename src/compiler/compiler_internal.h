@@ -1473,6 +1473,11 @@ typedef struct AstDocDirective_
 			const char *directive_name;
 			const char *rest_of_line;
 		} generic;
+		struct
+		{
+			const char *string;
+			size_t strlen;
+		};
 	};
 } AstContractStmt;
 
@@ -1674,6 +1679,7 @@ typedef struct
 	bool ensures : 1;
 	bool pure : 1;
 	bool in_no_eval : 1;
+	bool in_other : 1;
 	SourceSpan in_if_resolution;
 	Decl **opt_returns;
 	union
@@ -1863,8 +1869,6 @@ typedef struct
 	Decl *panicf;
 	Decl *io_error_file_not_found;
 	Decl *main;
-	Decl *test_func;
-	Decl *benchmark_func;
 	Decl *decl_stack[MAX_GLOBAL_DECL_STACK];
 	Decl **decl_stack_bottom;
 	Decl **decl_stack_top;
@@ -2218,6 +2222,7 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value);
 Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 Expr *expr_new_const_string(SourceSpan span, const char *string);
 Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
+const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
@@ -3980,7 +3985,7 @@ static inline bool decl_is_var_local(Decl *decl)
 		   || kind == VARDECL_LOCAL
 		   || kind == VARDECL_LOCAL_CT_TYPE
 		   || kind == VARDECL_LOCAL_CT
-		   || kind == VARDECL_PARAM_REF
+		   || kind == VARDECL_PARAM_REF // DEPRECATED
 		   || kind == VARDECL_PARAM_EXPR
 		   || kind == VARDECL_BITMEMBER
 		   || kind == VARDECL_MEMBER;

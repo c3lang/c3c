@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+// Issue #1812
+struct Foo
+{
+  float a;
+  String b;
+}
+
+struct Bar
+{
+	float a;
+	int[] b;
+}
+const Foo FOO = {.a = 1};
+const Bar FOO2 = {.a = 1, .b = { 1, 3 } };
+
+fn int main()
+{
+  Foo asdf = FOO;
+  Bar foek = FOO2;
+  return 0;
+}
+
+/* #expect: test.ll
+
+@test.FOO = local_unnamed_addr constant %Foo { float 1.000000e+00, %"char[]" zeroinitializer }, align 8
+@.__const_slice = private unnamed_addr global [2 x i32] [i32 1, i32 3], align 4
+@test.FOO2 = local_unnamed_addr constant %Bar { float 1.000000e+00, %"int[]" { ptr @.__const_slice, i64 2 } }, align 8
+
+entry:
+  %asdf = alloca %Foo, align 8
+  %foek = alloca %Bar, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %asdf, ptr align 8 @test.FOO, i32 24, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %foek, ptr align 8 @test.FOO2, i32 24, i1 false)
+  ret i32 0
+}

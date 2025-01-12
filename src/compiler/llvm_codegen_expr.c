@@ -4694,13 +4694,11 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				// In the global alloc case, create the byte array.
 				ArraySize array_len = str_type->array.len;
 				ArraySize size = expr->const_expr.bytes.len;
-				if (!is_bytes) size += 1;
+				size += 1;
 				LLVMValueRef string;
 				if (array_len == size)
 				{
-					string = is_bytes
-							? llvm_get_bytes(c, expr->const_expr.bytes.ptr, size)
-							: llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
+					string = llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 				}
 				else if (array_len < size)
 				{
@@ -4724,23 +4722,14 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 				return;
 			}
 			ArraySize size = expr->const_expr.bytes.len;
-			if (!is_bytes) size++;
+			size++;
 			if (is_array && type->array.len > size) size = type->array.len;
 			LLVMValueRef global_name = llvm_add_global_raw(c, is_bytes ? ".bytes" : ".str", LLVMArrayType(llvm_get_type(c, type_char), size), 1);
 			llvm_set_private_declaration(global_name);
 			LLVMSetGlobalConstant(global_name, 1);
-			LLVMValueRef data = is_bytes
-					? llvm_get_bytes(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len)
-					: llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
+			LLVMValueRef data = llvm_get_zstring(c, expr->const_expr.bytes.ptr, expr->const_expr.bytes.len);
 			LLVMValueRef trailing_zeros = NULL;
-			if (is_bytes)
-			{
-				if (size > len)
-				{
-					trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - len));
-				}
-			}
-			else if (size > len + 1)
+			if (size > len + 1)
 			{
 				trailing_zeros = llvm_get_zero_raw(LLVMArrayType(c->byte_type, size - len - 1));
 			}
@@ -6142,7 +6131,7 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			case VARDECL_PARAM_CT_TYPE:
 			case VARDECL_PARAM_EXPR:
 				continue;
-			case VARDECL_PARAM_REF:
+			case VARDECL_PARAM_REF: // DEPRECATED
 			case VARDECL_PARAM:
 				break;
 		}

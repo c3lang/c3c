@@ -8,6 +8,106 @@ static inline bool expr_list_is_constant_eval(Expr **exprs);
 static inline bool expr_unary_addr_is_constant_eval(Expr *expr);
 static inline ConstInitializer *initializer_for_index(ConstInitializer *initializer, ArraySize index, bool from_back);
 
+const char *expr_kind_to_string(ExprKind kind)
+{
+	switch (kind)
+	{
+		case EXPR_ACCESS: return "access";
+		case EXPR_ANYSWITCH: return "anyswitch";
+		case EXPR_ASM: return "asm";
+		case EXPR_BENCHMARK_HOOK: return "benchmark_hook";
+		case EXPR_BINARY: return "binary";
+		case EXPR_BITACCESS: return "bitaccess";
+		case EXPR_BITASSIGN: return "bitassign";
+		case EXPR_BUILTIN: return "builtin";
+		case EXPR_BUILTIN_ACCESS: return "builtin_access";
+		case EXPR_CALL: return "call";
+		case EXPR_CAST: return "cast";
+		case EXPR_CATCH_UNWRAP: return "catch_unwrap";
+		case EXPR_COMPILER_CONST: return "compiler_const";
+		case EXPR_COMPOUND_LITERAL: return "compound_litera";
+		case EXPR_COND: return "cond";
+		case EXPR_CONST: return "const";
+		case EXPR_TYPECALL: return "typecall";
+		case EXPR_CT_AND_OR: return "ct_and_or";
+		case EXPR_CT_ARG: return "ct_arg";
+		case EXPR_CT_APPEND: return "ct_append";
+		case EXPR_CT_CALL: return "ct_call";
+		case EXPR_CT_CASTABLE: return "ct_castable";
+		case EXPR_CT_CONCAT: return "ct_concat";
+		case EXPR_CT_DEFINED: return "ct_defined";
+		case EXPR_CT_EVAL: return "ct_eval";
+		case EXPR_CT_IDENT: return "ct_ident";
+		case EXPR_CT_IS_CONST: return "ct_is_const";
+		case EXPR_DECL: return "decl";
+		case EXPR_DEFAULT_ARG: return "default_arg";
+		case EXPR_DESIGNATED_INITIALIZER_LIST: return "designated_initializer_list";
+		case EXPR_DESIGNATOR: return "designator";
+		case EXPR_DISCARD: return "discard";
+		case EXPR_EMBED: return "embed";
+		case EXPR_VECTOR_TO_ARRAY: return "vector_to_array";
+		case EXPR_SLICE_TO_VEC_ARRAY: return "slice_to_vec_array";
+		case EXPR_SCALAR_TO_VECTOR: return "scalar_to_vector";
+		case EXPR_EXPRESSION_LIST: return "expression_list";
+		case EXPR_EXPR_BLOCK: return "expr_block";
+		case EXPR_FORCE_UNWRAP: return "force_unwrap";
+		case EXPR_FLOAT_TO_INT: return "float_to_int";
+		case EXPR_GENERIC_IDENT: return "generic_ident";
+		case EXPR_HASH_IDENT: return "hash_ident";
+		case EXPR_IDENTIFIER: return "identifier";
+		case EXPR_INITIALIZER_LIST: return "initializer_list";
+		case EXPR_INT_TO_FLOAT: return "int_to_float";
+		case EXPR_INT_TO_PTR: return "int_to_ptr";
+		case EXPR_PTR_TO_INT: return "ptr_to_int";
+		case EXPR_ANYFAULT_TO_FAULT: return "anyfault_to_fault";
+		case EXPR_LAMBDA: return "lambda";
+		case EXPR_LAST_FAULT: return "last_fault";
+		case EXPR_MACRO_BLOCK: return "macro_block";
+		case EXPR_MACRO_BODY: return "macro_body";
+		case EXPR_MACRO_BODY_EXPANSION: return "macro_body_expansion";
+		case EXPR_MAKE_ANY: return "make_any";
+		case EXPR_MAKE_SLICE: return "make_slice";
+		case EXPR_MEMBER_GET: return "member_get";
+		case EXPR_NAMED_ARGUMENT: return "named_argument";
+		case EXPR_NOP: return "nop";
+		case EXPR_OPERATOR_CHARS: return "operator_chars";
+		case EXPR_OPTIONAL: return "optional";
+		case EXPR_ENUM_FROM_ORD: return "enum_from_ord";
+		case EXPR_OTHER_CONTEXT: return "other_context";
+		case EXPR_POINTER_OFFSET: return "pointer_offset";
+		case EXPR_ADDR_CONVERSION: return "addr_conversion";
+		case EXPR_POISONED: return "poisoned";
+		case EXPR_PTR_ACCESS: return "ptr_access";
+		case EXPR_POST_UNARY: return "post_unary";
+		case EXPR_RETHROW: return "rethrow";
+		case EXPR_RETVAL: return "retval";
+		case EXPR_RVALUE: return "rvalue";
+		case EXPR_RECAST: return "recast";
+		case EXPR_SLICE: return "slice";
+		case EXPR_SLICE_LEN: return "slice_len";
+		case EXPR_SLICE_ASSIGN: return "slice_assign";
+		case EXPR_SLICE_COPY: return "slice_copy";
+		case EXPR_SPLAT: return "splat";
+		case EXPR_STRINGIFY: return "stringify";
+		case EXPR_SUBSCRIPT: return "subscript";
+		case EXPR_SUBSCRIPT_ADDR: return "subscript_addr";
+		case EXPR_SUBSCRIPT_ASSIGN: return "subscript_assign";
+		case EXPR_SWIZZLE: return "swizzle";
+		case EXPR_TERNARY: return "ternary";
+		case EXPR_TEST_HOOK: return "test_hook";
+		case EXPR_TRY_UNWRAP: return "try_unwrap";
+		case EXPR_TRY_UNWRAP_CHAIN: return "try_unwrap_chain";
+		case EXPR_TYPEID: return "typeid";
+		case EXPR_TYPEID_INFO: return "typeid_info";
+		case EXPR_TYPEINFO: return "typeinfo";
+		case EXPR_UNARY: return "unary";
+		case EXPR_VASPLAT: return "vasplat";
+		case EXPR_VECTOR_FROM_ARRAY: return "vector_from_array";
+		case EXPR_EXT_TRUNC: return "ext_trunc";
+		case EXPR_INT_TO_BOOL: return "int_to_bool";
+		default: return "???";
+	}
+}
 Expr *expr_negate_expr(Expr *expr)
 {
 	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_NEG)
@@ -102,7 +202,7 @@ bool expr_may_addr(Expr *expr)
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
-				case VARDECL_PARAM_REF:
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_CONST:
 					return true;
 				case VARDECL_MEMBER:
@@ -462,7 +562,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
-				case VARDECL_PARAM_REF:
+				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_EXPR:
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:

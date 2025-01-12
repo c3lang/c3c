@@ -4,9 +4,9 @@ import std, test2;
 
 int[2] x;
 
-macro @test2(&a = x[1])
+macro @test2(#a = x[1])
 {
-	*a = 123;
+	#a = 123;
 }
 macro test($Type = int)  { io::printn($Type.nameof); }
 
@@ -31,9 +31,9 @@ import std;
 
 int[2] x;
 
-macro @test2(&a = x[1])
+macro @test2(#a = x[1])
 {
-	*a = 12;
+	#a = 12;
 }
 macro test($Type = double)  { io::printn($Type.nameof); }
 
