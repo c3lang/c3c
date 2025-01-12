@@ -31,6 +31,7 @@
 - Handle bytes and string literals the same way in terms of zero termination.
 - Function comments are stored and displayed with -P.
 - Prevent `#hash` arguments from taking code that modifies ct variables. #1794
+
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
 - Fix Map & HashMap `put_all_for_create` not copying all elements, causing `init_from_map` to create incomplete copy.
@@ -79,6 +80,7 @@
 - Assert when partially initializing a constant struct containing a slice #1812.
 - Assert concatenating constant slices #1805.
 - Do not link "ld" on Linux with no libc.
+- Fix bug when multiple `$else` clauses followed an `$if` #1824.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
