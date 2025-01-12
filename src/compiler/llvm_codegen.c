@@ -233,21 +233,20 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
-			ASSERT0(const_init->type->type_kind != TYPE_SLICE);
 			return llvm_get_zero(c, const_init->type);
 		case CONST_INIT_ARRAY_VALUE:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_FULL:
 		{
-			ASSERT0(const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(const_init, const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
-			ASSERT0(array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
+			ASSERT(const_init, array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
 			ArraySize size = array_type->array.len;
-			ASSERT0(size > 0);
+			ASSERT(const_init, size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
@@ -268,14 +267,14 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 		case CONST_INIT_ARRAY:
 		{
-			ASSERT0(const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(const_init, const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
-			ASSERT0(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
+			ASSERT(const_init, vec_size(elements) > 0 && "Array should always have gotten at least one element.");
 			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;

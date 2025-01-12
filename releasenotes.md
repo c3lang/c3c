@@ -34,6 +34,7 @@
 - Completely refactored unit test default runner, added extra optional arguments (colors, test case filters, breakpoints, etc..., see `c3c test -- --help`)
 - Added new `std::os::argparse::` module for CLI and arguments parsing, with sub-commands support
 - Allowed passing arguments to @test / @benchmark runners via `c3c compile-test -- -o --opt1 <arg1>`
+- Prevent `#hash` arguments from taking code that modifies ct variables. #1794
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -78,6 +79,11 @@
 - `#foo` style arguments were not type checked when given a type. #1790
 - Bug when using +++ on value build a slice or array: the rhs cast was not done.
 - Fix bug preventing compile time slices from being iterated over with `$foreach`.
+- Fix bug with defer assignment in macro #1807.
+- Fix regression with swizzle references for vectors #1810.
+- Assert when partially initializing a constant struct containing a slice #1812.
+- Assert concatenating constant slices #1805.
+- Do not link "ld" on Linux with no libc.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
