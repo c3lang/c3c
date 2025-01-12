@@ -191,7 +191,7 @@ fn void test_percent_encode_and_decode()
 			assert(actual == test.out, "escape(%s, %s); "
 				"got: %s, want: %s", test.in, test.mode, actual, test.out);
 
-			actual = url::temp_decode(test.out, test.mode)!;
+			actual = url::temp_decode(test.out, test.mode)!!;
 			assert(actual == test.in, "unescape(%s, %s); "
 				"got: %s, want: %s", test.out, test.mode, actual, test.in);
 		}

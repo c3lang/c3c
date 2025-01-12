@@ -67,7 +67,7 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
-fn String encode(String s, UrlEncodingMode mode)
+fn String encode(String s, UrlEncodingMode mode, Allocator allocator)
 {
 	usz n = encode_len(s, mode);
 	@pool(allocator)

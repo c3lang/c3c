@@ -335,7 +335,7 @@ fn void test_string_empty()
 
 fn void test_query_values1()
 {
-	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret=ok#nose")!;
+	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret=ok#nose")!!;
 	defer url.free();
 
 	UrlQueryValues vals = url::temp_parse_query(url.query);
@@ -350,7 +350,7 @@ fn void test_query_values1()
 
 fn void test_query_values2()
 {
-	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret&age=99&age=11#nose")!;
+	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret&age=99&age=11#nose")!!;
 	defer url.free();
 
 	UrlQueryValues vals = url::new_parse_query(url.query);
@@ -369,21 +369,21 @@ fn void test_query_values2()
 
 fn void test_escaped_query_values()
 {
-	Url url = url::new_parse("foo://example.com:8042/over/there?k%3Bey=%3Ckey%3A+0x90%3E&age=99&age=11#nose")!;
+	Url url = url::new_parse("foo://example.com:8042/over/there?k%3Bey=%3Ckey%3A+0x90%3E&age=99&age=11#nose")!!;
 	defer url.free();
 
 	UrlQueryValues vals = url::new_parse_query(url.query);
 	defer vals.free();
 	assert(vals.len() == 2);
 
-	UrlQueryValueList l_key = vals["k;ey"]!;
+	UrlQueryValueList l_key = vals["k;ey"]!!;
 	assert(l_key.len() == 1);
 	assert(l_key[0] == "<key: 0x90>");
 }
 
 fn void test_query_values_withempty()
 {
-	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret&&&age=99&age=11")!;
+	Url url = url::new_parse("foo://example.com:8042/over/there?name=ferret&&&age=99&age=11")!!;
 	defer url.free();
 
 	UrlQueryValues vals = url::new_parse_query(url.query);
@@ -423,7 +423,7 @@ fn void test_url_idempotence()
 		"/sakila?profileSQL=true&k%3Bey=%3Ckey%3A+0x90%3E#no%20se";
 	assert(url_string == want, "got: %s, want: %s", url_string, want);
 
-	Url parsed = url::new_parse(url_string)!;
+	Url parsed = url::new_parse(url_string)!!;
 	defer parsed.free();
 
 	UrlQueryValues vals = url::new_parse_query(parsed.query);
@@ -431,11 +431,11 @@ fn void test_url_idempotence()
 	assert(vals.len() == 2);
 
 	UrlQueryValueList key;
-	key = vals["k;ey"]!;
+	key = vals["k;ey"]!!;
 	assert(key.len() == 1);
 	assert(key[0] == "<key: 0x90>");
 
-	key = vals["profileSQL"]!;
+	key = vals["profileSQL"]!!;
 	assert(key.len() == 1);
 	assert(key[0] == "true");
 
