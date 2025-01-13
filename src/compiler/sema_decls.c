@@ -4444,9 +4444,10 @@ static bool sema_analyse_generic_module_contracts(SemaContext *c, Module *module
 	{
 		Ast *ast = astptr(contract);
 		contract = ast->next;
-		ASSERT0(ast->ast_kind == AST_CONTRACT);
+		ASSERT(ast, ast->ast_kind == AST_CONTRACT);
 		SemaContext temp_context;
-		ASSERT0(ast->contract_stmt.kind == CONTRACT_REQUIRE);
+		if (ast->contract_stmt.kind == CONTRACT_COMMENT) continue;
+		ASSERT(ast, ast->contract_stmt.kind == CONTRACT_REQUIRE);
 		SemaContext *new_context = context_transform_for_eval(c, &temp_context, module->units[0]);
 		FOREACH(Expr *, expr, ast->contract_stmt.contract.decl_exprs->expression_list)
 		{

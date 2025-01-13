@@ -64,12 +64,8 @@ fn double _asin(double x) @weak @extern("asin") @nostrip
 			}
 			else
 			{
-				double f @noinit;
-				{
-					ulong rep = bitcast(s, ulong);
-					rep &= 0xffffffff00000000;
-					f = bitcast(rep, double);
-				}
+				double f = s;
+				f.set_low_word(0);
 				double c = (z - f * f) / (s + f);
 				x = 0.5 * PIO2_HI - (2. * s * r - (PIO2_LO - 2. * c) - (0.5 * PIO2_HI - 2. * f));
 			}

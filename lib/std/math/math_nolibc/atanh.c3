@@ -32,11 +32,7 @@ fn double _atanh(double x) @weak @extern("atanh") @nostrip
 		case ix < 0x3e300000 && (1e300 + x) > 0.:
 		     	return x;
 	}
-	{
-		ulong rep = bitcast(x, ulong);
-		rep = (rep & 0x00000000ffffffff) | (ulong)ix << 32;
-		x = bitcast(rep, double);
-	}
+	x.set_high_word(ix);
 	/* |x| < 0.5 */
 	if (ix < 0x3fe00000)
 	{
@@ -84,7 +80,7 @@ fn float _atanhf(float x) @weak @extern("atanhf") @nostrip
 		case ix < 0x31800000 && (1e30 + x) > 0.f:
 		     	return x;
 	}
-	x = bitcast(ix, float);
+	x.set_word(ix);
 	/* |x| < 0.5 */
 	if (ix < 0x3f000000)
 	{

@@ -140,7 +140,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
-static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
+static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool check_valid);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, CheckType check);
@@ -170,7 +170,6 @@ static inline void sema_create_const_membersof(SemaContext *context, Expr *expr,
 											   AlignSize offset);
 static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
-static inline int64_t expr_get_index_max(Expr *expr);
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const(Expr *left, Expr *right);
@@ -2852,7 +2851,8 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 	return sema_expr_analyse_general_call(context, expr, decl, struct_var, optional, no_match_ref);
 }
 
-static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end)
+static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index,
+                                         bool from_end, bool *remove_from_end, bool check_valid)
 {
 	ASSERT_SPAN(index_expr, type == type->canonical);
 	if (!sema_cast_const(index_expr)) return true;
@@ -2860,13 +2860,12 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 	Int index = index_expr->const_expr.ixx;
 	if (!int_fits(index, TYPE_I64))
 	{
-		SEMA_ERROR(index_expr, "The index cannot be stored in a 64-signed integer, which isn't supported.");
+		RETURN_SEMA_ERROR(index_expr, "The index cannot be stored in a 64-signed integer, which isn't supported.");
 		return false;
 	}
 	if (from_end && int_is_neg(index))
 	{
-		SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
-		return false;
+		RETURN_SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
 	}
 	ArrayIndex idx = (ArrayIndex)index.i.low;
 RETRY:;
@@ -2892,18 +2891,18 @@ RETRY:;
 			// Checking end can only be done for arrays.
 			if (end_index && idx >= len)
 			{
-				SEMA_ERROR(index_expr, "End index out of bounds, was %lld, exceeding %lld.", (long long)idx, (long long)len);
-				return false;
+				if (check_valid) return false;
+				RETURN_SEMA_ERROR(index_expr, "End index out of bounds, was %lld, exceeding %lld.", (long long)idx, (long long)len);
 			}
 			if (!end_index && idx >= len)
 			{
 				if (len == 0)
 				{
-					SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
-					return false;
+					if (check_valid) return false;
+					RETURN_SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
 				}
-				SEMA_ERROR(index_expr, "Index out of bounds, was %lld, exceeding maximum (%lld).", (long long)idx, (long long)len - 1);
-				return false;
+				if (check_valid) return false;
+				RETURN_SEMA_ERROR(index_expr, "Index out of bounds, was %lld, exceeding maximum (%lld).", (long long)idx, (long long)len - 1);
 			}
 			break;
 		}
@@ -2913,10 +2912,10 @@ RETRY:;
 			// From end we can only do sanity checks ^0 is invalid for non-end index. ^-1 and less is invalid for all.
 			if (idx == 0 && !end_index)
 			{
-				SEMA_ERROR(index_expr,
-						   "Array index out of bounds, index from end (%lld) must be greater than zero or it will exceed the max array index.",
-						   (long long) idx);
-				return false;
+				if (check_valid) return false;
+				RETURN_SEMA_ERROR(index_expr,
+				                  "Array index out of bounds, index from end (%lld) must be greater than zero or it will exceed the max array index.",
+				                  (long long) idx);
 			}
 			return true;
 		case TYPE_STRUCT:
@@ -2931,8 +2930,7 @@ RETRY:;
 	}
 	if (idx < 0)
 	{
-		SEMA_ERROR(index_expr, "Index out of bounds, using a negative index is only allowed for pointers.");
-		return false;
+		RETURN_SEMA_ERROR(index_expr, "Index out of bounds, using a negative index is only allowed for pointers.");
 	}
 	return true;
 }
@@ -3075,8 +3073,9 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 								 "and flexible array members.");
 	}
 
-	int64_t size;
-	if (expr_is_const_int(index) && (size = expr_get_index_max(subscripted)) >= 0)
+	ArrayIndex size;
+	bool check_len = !context->call_env.in_no_eval || current_type == type_untypedlist;
+	if (check_len && expr_is_const_int(index) && (size = sema_len_from_expr(current_expr)) >= 0)
 	{
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))
@@ -3124,7 +3123,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			RETURN_SEMA_ERROR(subscripted, "You need to use && to take the address of a temporary.");
 		}
 		// 4a. This may either be an initializer list or a CT value
-		while (subscripted->expr_kind == EXPR_CT_IDENT) current_expr = current_expr->ct_ident_expr.decl->var.init_expr;
+		while (current_expr->expr_kind == EXPR_CT_IDENT) current_expr = current_expr->ct_ident_expr.decl->var.init_expr;
 
 		// 4b. Now we need to check that we actually have a valid type.
 		if (index_value < 0)
@@ -3132,7 +3131,10 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			if (check_valid) goto VALID_FAIL_POISON;
 			RETURN_SEMA_ERROR(index, "To subscript an untyped list a compile time integer index is needed.");
 		}
-		if (check == CHECK_LVALUE) TODO;
+		if (check == CHECK_LVALUE)
+		{
+			REMINDER("Fix LVALUE");
+		}
 		expr_replace(expr, current_expr->const_expr.untyped_list[index_value]);
 		return true;
 	}
@@ -3187,7 +3189,12 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	optional |= IS_OPTIONAL(index);
 	// Check range
 	bool remove_from_back = false;
-	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back)) return false;
+	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back,
+	                                  check_valid))
+	{
+		if (check_valid) goto VALID_FAIL_POISON;
+		return false;
+	}
 	if (remove_from_back)
 	{
 		start_from_end = expr->subscript_expr.index.start_from_end = false;
@@ -5182,7 +5189,7 @@ CHECK_DEEPER:
 		if (!method)
 		{
 			if (missing_ref) goto MISSING_REF;
-			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(type));
+			RETURN_SEMA_ERROR(expr, "There is no member or method '%s' on '%s'", kw, type_to_error_string(parent->type));
 		}
 		expr->access_expr.parent = current_parent;
 		expr->type = method->type ? type_add_optional(method->type, optional) : NULL;
@@ -9260,13 +9267,19 @@ static inline bool sema_expr_analyse_castable(SemaContext *context, Expr *expr)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	TypeInfo *type_info = type_infoptr(expr->castable_expr.type);
-	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) return false;
+	bool in_no_eval = context->call_env.in_no_eval;
+	context->call_env.in_no_eval = true;
+	if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER)) goto FAILED;
 	Type *type = type_info->type;
 	Expr *inner = exprptr(expr->castable_expr.expr);
-	if (!sema_analyse_inferred_expr(context, type, inner)) return false;
+	if (!sema_analyse_inferred_expr(context, type, inner)) goto FAILED;
 	bool ok = may_cast(context, inner, type, !expr->castable_expr.is_assign, true);
 	expr_rewrite_const_bool(expr, type_bool, ok);
+	context->call_env.in_no_eval = in_no_eval;
 	return true;
+FAILED:
+	context->call_env.in_no_eval = in_no_eval;
+	return false;
 }
 
 
@@ -9870,24 +9883,28 @@ bool sema_analyse_expr_value(SemaContext *context, Expr *expr)
 	}
 }
 
+#define RESOLVE(expr__, check__) \
+  do { \
+  Expr *expr_temp__ = expr__; \
+  switch (expr_temp__->resolve_status) { \
+    case RESOLVE_NOT_DONE: \
+        expr_temp__->resolve_status = RESOLVE_RUNNING; \
+        if (!check__) return expr_poison(expr_temp__); \
+		expr_temp__->resolve_status = RESOLVE_DONE; \
+		return true; \
+	case RESOLVE_RUNNING: \
+		SEMA_ERROR(expr, "Recursive resolution of expression"); \
+		return expr_poison(expr_temp__); \
+	case RESOLVE_DONE: \
+		return expr_ok(expr_temp__); \
+	default: \
+		UNREACHABLE \
+	} } while (0);
+
+
 static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, CheckType check)
 {
-	ASSERT0(expr);
-	switch (expr->resolve_status)
-	{
-		case RESOLVE_NOT_DONE:
-			expr->resolve_status = RESOLVE_RUNNING;
-			if (!sema_analyse_expr_dispatch(context, expr, check)) return expr_poison(expr);
-			expr->resolve_status = RESOLVE_DONE;
-			return true;
-		case RESOLVE_RUNNING:
-			SEMA_ERROR(expr, "Recursive resolution of expression");
-			return expr_poison(expr);
-		case RESOLVE_DONE:
-			return expr_ok(expr);
-		default:
-			UNREACHABLE
-	}
+	RESOLVE(expr, sema_analyse_expr_dispatch(context, expr, check));
 }
 
 bool sema_analyse_expr_address(SemaContext *context, Expr *expr)
@@ -10025,36 +10042,6 @@ bool sema_cast_const(Expr *expr)
 			return true;
 		default:
 			return false;
-	}
-	UNREACHABLE
-}
-
-static inline int64_t expr_get_index_max(Expr *expr)
-{
-	if (expr_is_const_untyped_list(expr))
-	{
-		return vec_size(expr->const_expr.untyped_list);
-	}
-	Type *type = expr->type;
-RETRY:
-	switch (type->type_kind)
-	{
-		case TYPE_TYPEDEF:
-			type = type->canonical;
-			goto RETRY;
-		case TYPE_DISTINCT:
-			type = type->decl->distinct->type;
-			goto RETRY;
-		case TYPE_UNTYPED_LIST:
-			UNREACHABLE;
-		case TYPE_ARRAY:
-		case TYPE_VECTOR:
-			return type->array.len;
-		case TYPE_OPTIONAL:
-			type = type->optional;
-			goto RETRY;
-		default:
-			return -1;
 	}
 	UNREACHABLE
 }

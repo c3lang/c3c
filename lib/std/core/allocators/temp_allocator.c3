@@ -80,7 +80,7 @@ fn void TempAllocator.reset(&self, usz mark) @dynamic
 			usz cleaned = self.used - mark;
 			if (cleaned > 0)
 			{
-				$if env::COMPILER_SAFE_MODE:
+				$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
 					self.data[mark : cleaned] = 0xAA;
 				$endif
 				asan::poison_memory_region(&self.data[mark], cleaned);
