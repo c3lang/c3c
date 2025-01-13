@@ -140,7 +140,7 @@ static inline bool sema_call_check_invalid_body_arguments(SemaContext *context, 
 static inline bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *callee, Expr *call, bool *optional, bool *no_match_ref);
 static inline bool sema_call_check_contract_param_match(SemaContext *context, Decl *param, Expr *expr);
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
-static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end);
+static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool check_valid);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
 
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, CheckType check);
@@ -2851,7 +2851,8 @@ static inline bool sema_expr_analyse_call(SemaContext *context, Expr *expr, bool
 	return sema_expr_analyse_general_call(context, expr, decl, struct_var, optional, no_match_ref);
 }
 
-static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end)
+static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index,
+                                         bool from_end, bool *remove_from_end, bool check_valid)
 {
 	ASSERT_SPAN(index_expr, type == type->canonical);
 	if (!sema_cast_const(index_expr)) return true;
@@ -2859,13 +2860,12 @@ static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr 
 	Int index = index_expr->const_expr.ixx;
 	if (!int_fits(index, TYPE_I64))
 	{
-		SEMA_ERROR(index_expr, "The index cannot be stored in a 64-signed integer, which isn't supported.");
+		RETURN_SEMA_ERROR(index_expr, "The index cannot be stored in a 64-signed integer, which isn't supported.");
 		return false;
 	}
 	if (from_end && int_is_neg(index))
 	{
-		SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
-		return false;
+		RETURN_SEMA_ERROR(index_expr, "Negative numbers are not allowed when indexing from the end.");
 	}
 	ArrayIndex idx = (ArrayIndex)index.i.low;
 RETRY:;
@@ -2891,18 +2891,18 @@ RETRY:;
 			// Checking end can only be done for arrays.
 			if (end_index && idx >= len)
 			{
-				SEMA_ERROR(index_expr, "End index out of bounds, was %lld, exceeding %lld.", (long long)idx, (long long)len);
-				return false;
+				if (check_valid) return false;
+				RETURN_SEMA_ERROR(index_expr, "End index out of bounds, was %lld, exceeding %lld.", (long long)idx, (long long)len);
 			}
 			if (!end_index && idx >= len)
 			{
 				if (len == 0)
 				{
-					SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
-					return false;
+					if (check_valid) return false;
+					RETURN_SEMA_ERROR(index_expr, "Cannot index into a zero size list.");
 				}
-				SEMA_ERROR(index_expr, "Index out of bounds, was %lld, exceeding maximum (%lld).", (long long)idx, (long long)len - 1);
-				return false;
+				if (check_valid) return false;
+				RETURN_SEMA_ERROR(index_expr, "Index out of bounds, was %lld, exceeding maximum (%lld).", (long long)idx, (long long)len - 1);
 			}
 			break;
 		}
@@ -2912,10 +2912,10 @@ RETRY:;
 			// From end we can only do sanity checks ^0 is invalid for non-end index. ^-1 and less is invalid for all.
 			if (idx == 0 && !end_index)
 			{
-				SEMA_ERROR(index_expr,
-						   "Array index out of bounds, index from end (%lld) must be greater than zero or it will exceed the max array index.",
-						   (long long) idx);
-				return false;
+				if (check_valid) return false;
+				RETURN_SEMA_ERROR(index_expr,
+				                  "Array index out of bounds, index from end (%lld) must be greater than zero or it will exceed the max array index.",
+				                  (long long) idx);
 			}
 			return true;
 		case TYPE_STRUCT:
@@ -2930,8 +2930,7 @@ RETRY:;
 	}
 	if (idx < 0)
 	{
-		SEMA_ERROR(index_expr, "Index out of bounds, using a negative index is only allowed for pointers.");
-		return false;
+		RETURN_SEMA_ERROR(index_expr, "Index out of bounds, using a negative index is only allowed for pointers.");
 	}
 	return true;
 }
@@ -3190,7 +3189,12 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	optional |= IS_OPTIONAL(index);
 	// Check range
 	bool remove_from_back = false;
-	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back)) return false;
+	if (!sema_slice_index_is_in_range(context, current_type, index, false, start_from_end, &remove_from_back,
+	                                  check_valid))
+	{
+		if (check_valid) goto VALID_FAIL_POISON;
+		return false;
+	}
 	if (remove_from_back)
 	{
 		start_from_end = expr->subscript_expr.index.start_from_end = false;
