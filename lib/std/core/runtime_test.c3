@@ -60,10 +60,9 @@ fn void test_panic(String message, String file, String function, uint line) @loc
     		builtin::print_backtrace(message, 0);
 		$endif
 	}
-	io::printfn("[%sFAIL%s] %s ( %s:%s ) %s", 
+	io::printf("\n[%sFAIL%s] ^^^ ( %s:%s ) %s\n", 
 		test::test_context.has_ansi_codes ? "\e[0;31m" : "",
 		test::test_context.has_ansi_codes ? "\e[0m" : "",
-		test::test_context.current_test_name, 
 		file, 
 		line,
 		message);
@@ -124,7 +123,7 @@ fn void unmute_output(bool has_error) @local {
 		test::test_context.fake_stdout.write_byte('\0')!!;
 		(void)test::test_context.fake_stdout.seek(0, Seek.SET)!!;
 
-		io::printfn("========== TEST LOG ============");
+		io::printfn("\n========== TEST LOG ============");
 		io::printfn("%s\n", test::test_context.current_test_name);
 		while(true){
 			char! c = test::test_context.fake_stdout.read_byte();
@@ -137,7 +136,7 @@ fn void unmute_output(bool has_error) @local {
 			}
 			libc::putchar(c);			
 		}
-		io::printfn("========== TEST END ============");
+		io::printf("========== TEST END ============");
 	}
 	(void)stdout.flush();
 }
@@ -218,8 +217,13 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		}
 		test::test_context.setup_fn = null;
 		test::test_context.teardown_fn = null;
-
 		test::test_context.current_test_name = unit.name;
+
+		defer name.clear();
+		name.appendf("Testing %s ", unit.name);
+		name.append_repeat('.', max_name - unit.name.len + 2);
+		io::printf("%s ", name.str_view());
+
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
@@ -228,16 +232,15 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			$else
 				if (catch err = unit.func())
 				{
-					io::printfn("[FAIL] Failed due to: %s", err);
+					io::printf("[FAIL] Failed due to: %s", err);
 					continue;
 				}
 			$endif
 			unmute_output(false); // all good, discard output
 
-			io::printfn("[%sPASS%s] %s", 
+			io::printfn("[%sPASS%s]", 
 						test::test_context.has_ansi_codes ? "\e[0;32m" : "",
-						test::test_context.has_ansi_codes ? "\e[0m" : "",
-						unit.name);
+						test::test_context.has_ansi_codes ? "\e[0m" : "");
 			tests_passed++;
 
 			if (test::test_context.teardown_fn){
