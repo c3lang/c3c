@@ -14,7 +14,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 fn double tan(double x) @extern("tan") @weak @nostrip
 {
-	uint ix = (uint)(bitcast(x, ulong) >> 32);
+	uint ix = x.high_word();
 	ix &= 0x7fffffff;
 
 	// |x| ~< pi/4
@@ -59,7 +59,7 @@ fn double tan(double x) @extern("tan") @weak @nostrip
 
 fn float tanf(float x) @extern("tanf") @weak @nostrip
 {
-	uint ix = bitcast(x, uint);
+	uint ix = x.word();
 	uint sign = ix >> 31;
 	ix &= 0x7fffffff;
 
