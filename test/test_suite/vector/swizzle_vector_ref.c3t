@@ -1,0 +1,27 @@
+// #target: macos-x64
+module foo;
+
+import std;
+fn int main()
+{
+  int[<2>] vec;
+  int* a = &vec.x;
+  *a = 1;
+  assert(vec.x == 1);
+  return 0;
+}
+
+/* #expect: foo.ll
+
+  %vec = alloca <2 x i32>, align 8
+  %a = alloca ptr, align 8
+  store <2 x i32> zeroinitializer, ptr %vec, align 8
+  store ptr %vec, ptr %a, align 8
+  %0 = load ptr, ptr %a, align 8
+  store i32 1, ptr %0, align 4
+  %1 = load <2 x i32>, ptr %vec, align 8
+  %2 = extractelement <2 x i32> %1, i64 0
+  %eq = icmp eq i32 %2, 1
+  call void @llvm.assume(i1 %eq)
+  ret i32 0
+}

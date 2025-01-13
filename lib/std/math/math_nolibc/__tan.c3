@@ -32,7 +32,7 @@ fn double __tan(double x, double y, int odd) @extern("__tan") @weak @nostrip
 	const double PIO4 = 7.85398163397448278999e-01; /* 3FE921FB, 54442D18 */
 	const double PIO4LO = 3.06161699786838301793e-17; /* 3C81A626, 33145C07 */
 
-	uint hx = (uint)(bitcast(x, ulong) >> 32);
+	uint hx = x.high_word();
 	bool big = (hx &0x7fffffff) >= 0x3FE59428; // |x| >= 0.6744
 	int sign @noinit;
 	if (big)
@@ -68,12 +68,12 @@ fn double __tan(double x, double y, int odd) @extern("__tan") @weak @nostrip
 	// -1.0/(x+r) has up to 2ulp error, so compute it accurately
 
 	// Clear low word
-	ulong d = bitcast(w, ulong) & 0xFFFF_FFFF_0000_0000;
-	double w0 = bitcast(d, double);
+	double w0 = w;
+	w0.set_low_word(0);
 
 	v = r - (w0 - x);       // w0+v = r+x
 	double a = -1.0 / w;
-	d = bitcast(a, ulong) & 0xFFFF_FFFF_0000_0000;
-	double a0 = bitcast(d, double);
+	double a0 = a;
+	a0.set_low_word(0);
 	return a0 + a * (1.0 + a0 * w0 + a0 * v);
 }

@@ -1042,6 +1042,21 @@ macro uint double.high_word(double d) => (uint)(bitcast(d, ulong) >> 32);
 macro uint double.low_word(double d) => (uint)bitcast(d, ulong);
 macro uint float.word(float d) => bitcast(d, uint);
 
+macro void double.set_high_word(double* d, uint u)
+{
+	ulong rep = bitcast(*d, ulong);
+	rep = ((ulong)u << 32) | (rep & 0xffffffff);
+	*d = bitcast(rep, double);
+}
+
+macro void double.set_low_word(double* d, uint u)
+{
+	ulong rep = bitcast(*d, ulong);
+	rep = (rep & 0xffffffff00000000) | (ulong)u;
+	*d = bitcast(rep, double);
+}
+
+macro void float.set_word(float* f, uint u) => *f = bitcast(u, float);
 
 macro double scalbn(double x, int n) => _scalbn(x, n);
 

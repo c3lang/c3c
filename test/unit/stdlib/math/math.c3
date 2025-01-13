@@ -190,6 +190,64 @@ fn void test_atanh() @test
 	}
 }
 
+fn void test_floating_point_word() @test
+{
+	float f = 1.f;
+	assert(f.word() == 0x3f800000);
+	// xor swap
+	float f1 = 2.f;
+	float f2 = 3.f;
+	uint u1 = f1.word();
+	uint u2 = f2.word();
+	u1 ^= u2; u2 ^= u1; u1 ^= u2;
+	f1.set_word(u1);
+	f2.set_word(u2);
+	assert((f1 == 3.f) && (f2 == 2.f));
+	// sign bit trick
+	f = -1.f;
+	assert((f.word() >> 31) == 1);
+	f = 1.f;
+	assert((f.word() >> 31) == 0); 
+	// absolute value bit trick
+	float[<4>] fvals = { 1.f, -1.f, 91.5f, -91.5f };
+	for (int i = 0; i < 4; i++)
+	{
+		f = fvals[i];
+		f.set_word(f.word() & 0x7fffffff);
+		assert(f == math::abs(fvals[i]));
+	}
+
+	double d = 1.;
+	assert((d.high_word() - 0x3ff00000 | d.low_word()) == 0);
+	// xor swap
+	double d1 = 2.0;
+	double d2 = 3.0;
+	uint u1_low = d1.low_word();
+	uint u2_low = d2.low_word();
+	u1_low ^= u2_low; u2_low ^= u1_low; u1_low ^= u2_low;
+	uint u1_high = d1.high_word();
+	uint u2_high = d2.high_word();
+	u1_high ^= u2_high; u2_high ^= u1_high; u1_high ^= u2_high;
+	d1.set_low_word(u1_low);
+	d1.set_high_word(u1_high);
+	d2.set_low_word(u2_low);
+	d2.set_high_word(u2_high);
+	assert((d1 == 3.) && (d2 == 2.));
+	// sign bit trick
+	d = -1.;
+	assert((d.high_word() >> 31) == 1);
+	d = 1.;
+	assert((d.high_word() >> 31) == 0);
+	// absolute value bit trick
+	double[<4>] vals = { 1., -1., 91.5, -91.5 };
+	for (int i = 0; i < 4; i++)
+	{
+		d = vals[i];
+		d.set_high_word(d.high_word() & 0x7fffffff);
+		assert(d == math::abs(vals[i]));
+	}
+}
+
 fn void test_ceil() @test
 {
 	double d = -123.1;
