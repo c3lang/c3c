@@ -18,8 +18,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 fn void sincosf(float x, float *sin, float *cos) @extern("__sincosf") @weak @nostrip
 {
-
-	uint ix = bitcast(x, uint);
+	uint ix = x.word();
 	uint sign = ix >> 31;
 	ix &= 0x7fffffff;
 
@@ -108,8 +107,7 @@ fn void sincosf(float x, float *sin, float *cos) @extern("__sincosf") @weak @nos
 fn void sincos(double x, double *sin, double *cos) @extern("__sincos") @weak @nostrip
 {
 	// High word of x.
-	uint ix = (uint)(bitcast(x, ulong) >> 32);
-	ix &= 0x7fffffff;
+	uint ix = x.high_word() & 0x7fffffff;
 
 	// |x| ~< pi/4
 	switch
