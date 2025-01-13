@@ -96,6 +96,7 @@
 - Deprecation of several `&` macros.
 - Format functions for timedates.
 - Add `@assert_leak()` to assert on memory leaks in the scope.
+- Added `double.set_high_word()`, `double.set_low_word()`, and `float.set_word()`.
 
 ## 0.6.5 Change list
 
