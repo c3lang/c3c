@@ -81,6 +81,7 @@
 - Assert concatenating constant slices #1805.
 - Do not link "ld" on Linux with no libc.
 - Fix bug when multiple `$else` clauses followed an `$if` #1824.
+- Report the correct type as not having a method when access fails #1828.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
