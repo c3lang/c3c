@@ -83,6 +83,7 @@
 - Fix bug when multiple `$else` clauses followed an `$if` #1824.
 - Report the correct type as not having a method when access fails #1828.
 - Prevent temp arena scribbling from causing an asan warning. #1825
+- Fix bug where `&i[0] = null` was not detected to be an error #1833.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.

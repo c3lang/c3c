@@ -510,7 +510,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 		case EXPR_SUBSCRIPT_ASSIGN:
-		case EXPR_SUBSCRIPT_ADDR:
 			goto CHECK_OPTIONAL;
 		case EXPR_HASH_IDENT:
 			if (failed_ref) goto FAILED_REF;
@@ -595,6 +594,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
+		case EXPR_SUBSCRIPT_ADDR:
 			goto ERR;
 	}
 	UNREACHABLE
