@@ -43,7 +43,9 @@ static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statem
 static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr);
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement);
 static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index);
-static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged);
+static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
+                                         unsigned index,
+                                         bool *if_chained, bool *max_ranged, int *actual_cases_ref);
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
@@ -2268,7 +2270,8 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 	return true;
 }
 
-static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index, bool *if_chained, bool *max_ranged)
+static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
+                                         unsigned index, bool *if_chained, bool *max_ranged, int *actual_cases_ref)
 {
 	ASSERT0(switch_type);
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
@@ -2280,35 +2283,59 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 
 	bool is_range = to_expr != NULL;
 	bool first_is_const = sema_cast_const(expr);
+	(*actual_cases_ref)++;
 	if (!is_range && !first_is_const)
 	{
 		*if_chained = true;
 		return true;
 	}
-	if (is_range && (!expr_is_const_int(expr) || !sema_cast_const(to_expr)))
+	if (is_range && (!first_is_const || !(expr_is_const_int(expr) || expr_is_const_enum(expr))))
 	{
 		sema_error_at(context, extend_span_with_token(expr->span, to_expr->span), "Ranges must be constant integers.");
 		return false;
 	}
+	bool is_enum = expr_is_const_enum(expr);
 	ExprConst *const_expr = &expr->const_expr;
 	ExprConst *to_const_expr = to_expr ? &to_expr->const_expr : const_expr;
 
 	if (!*max_ranged && is_range)
 	{
-		if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
+		if (is_enum)
 		{
-			sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
-						  "The range is not valid because the first value (%s) is greater than the second (%s). "
-						  "It would work if you swapped their order.",
-						  int_to_str(const_expr->ixx, 10, false),
-						  int_to_str(to_const_expr->ixx, 10, false));
-			return false;
+			uint32_t ord1 = const_expr->enum_err_val->enum_constant.ordinal;
+			uint32_t ord2 = to_const_expr->enum_err_val->enum_constant.ordinal;
+			if (ord1 > ord2)
+			{
+				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
+				              "The range is not valid because the first enum (%s) has a lower ordinal than the second (%s). "
+				              "It would work if you swapped their order.",
+				              const_expr->enum_err_val->name,
+							  to_const_expr->enum_err_val->name);
+				return false;
+			}
+			(*actual_cases_ref) += ord2 - ord1;
+			if (compiler.build.switchrange_max_size < ord2 - ord1)
+			{
+				*max_ranged = true;
+			}
 		}
-		Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
-		Int128 max_range = { .low = compiler.build.switchrange_max_size };
-		if (i128_comp(range, max_range, type_i128) == CMP_GT)
+		else
 		{
-			*max_ranged = true;
+			if (int_comp(const_expr->ixx, to_const_expr->ixx, BINARYOP_GT))
+			{
+				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
+				              "The range is not valid because the first value (%s) is greater than the second (%s). "
+				              "It would work if you swapped their order.",
+				              int_to_str(const_expr->ixx, 10, false),
+				              int_to_str(to_const_expr->ixx, 10, false));
+				return false;
+			}
+			Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
+			Int128 max_range = { .low = compiler.build.switchrange_max_size };
+			if (i128_comp(range, max_range, type_i128) == CMP_GT)
+			{
+				*max_ranged = true;
+			}
 		}
 	}
 	for (unsigned i = 0; i < index; i++)
@@ -2329,9 +2356,10 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	return true;
 }
 
-INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned case_count, Decl **enums)
+INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned found_count, Decl **enums)
 {
-	unsigned missing = vec_size(enums) - case_count;
+	uint32_t enum_count = vec_size(enums);
+	unsigned missing = enum_count - found_count;
 	scratch_buffer_clear();
 	if (missing == 1)
 	{
@@ -2341,20 +2369,24 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned ca
 	{
 		scratch_buffer_printf("%u enum values were not handled in the switch: ", missing);
 	}
+	unsigned case_count = vec_size(cases);
 	unsigned printed = 0;
-	FOREACH(Decl *, decl, enums)
+	for (unsigned i = 0; i < enum_count; i++)
 	{
-		for (unsigned i = 0; i < case_count; i++)
+		for (unsigned j = 0; j < case_count; j++)
 		{
-			Expr *e = exprptr(cases[i]->case_stmt.expr);
-			ASSERT0(expr_is_const_enum(e));
-			if (e->const_expr.enum_err_val == decl) goto CONTINUE;
+			Expr *e = exprptr(cases[j]->case_stmt.expr);
+			Expr *e_to = exprptrzero(cases[j]->case_stmt.to_expr);
+			ASSERT(e, expr_is_const_enum(e));
+			uint32_t ordinal_from = e->const_expr.enum_err_val->enum_constant.ordinal;
+			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_err_val->enum_constant.ordinal : ordinal_from;
+			if (i >= ordinal_from && i <= ordinal_to) goto CONTINUE;
 		}
 		if (++printed != 1)
 		{
 			scratch_buffer_append(printed == missing ? " and " : ", ");
 		}
-		scratch_buffer_append(decl->name);
+		scratch_buffer_append(enums[i]->name);
 		if (printed > 2 && missing > 3)
 		{
 			scratch_buffer_append(", ...");
@@ -2394,6 +2426,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool success = true;
 	bool max_ranged = false;
 	bool type_switch = switch_type == type_typeid;
+	int actual_enum_cases = 0;
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		if (!success) break;
@@ -2408,12 +2441,12 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 					if (!sema_check_type_case(context, switch_type, stmt, cases, i))
 					{
 						success = false;
-						break;;
+						break;
 					}
 				}
 				else
 				{
-					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain, &max_ranged))
+					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain, &max_ranged, &actual_enum_cases))
 					{
 						success = false;
 						break;
@@ -2436,7 +2469,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 		POP_NEXT();
 	}
 
-	if (!exhaustive && is_enum_switch) exhaustive = case_count >= vec_size(flat->decl->enums.values);
+	if (!exhaustive && is_enum_switch) exhaustive = actual_enum_cases == vec_size(flat->decl->enums.values);
 	bool all_jump_end = exhaustive;
 	for (unsigned i = 0; i < case_count; i++)
 	{
@@ -2491,7 +2524,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	}
 	if (is_enum_switch && !exhaustive && success)
 	{
-		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, case_count, flat->decl->enums.values));
+		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, flat->decl->enums.values));
 	}
 	if ((if_chain || max_ranged) && statement->flow.jump)
 	{

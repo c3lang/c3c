@@ -797,6 +797,33 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 	return instr;
 }
 
+static void llvm_set_jump_table_values(ExprId from, ExprId to, Int *from_ref, Int *to_ref)
+{
+	Expr *from_expr = exprptr(from);
+	Expr *to_expr = exprptrzero(to);
+	Type *type_flat = type_flatten(from_expr->type);
+	ASSERT(from, expr_is_const(from_expr) && (!to_expr || expr_is_const(to_expr)));
+	if (type_flat->type_kind == TYPE_ENUM)
+	{
+		Type *low = type_lowering(type_flat);
+		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_err_val->enum_constant.ordinal, .type = low->type_kind };
+		if (to)
+		{
+			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_err_val->enum_constant.ordinal, .type = low->type_kind };
+		}
+		else
+		{
+			*to_ref = *from_ref;
+		}
+	}
+	else
+	{
+		ASSERT(from, type_is_integer(type_flat));
+		*from_ref = from_expr->const_expr.ixx;
+		*to_ref = to_expr ? to_expr->const_expr.ixx : *from_ref;
+	}
+
+}
 static void llvm_emit_switch_jump_table(GenContext *c,
 										Ast *switch_ast,
 										Ast **cases,
@@ -820,11 +847,8 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 			default_index = i;
 			continue;
 		}
-		Expr *from = exprptr(case_ast->case_stmt.expr);
-		Expr *to = exprptrzero(case_ast->case_stmt.to_expr);
-		ASSERT0(type_is_integer(from->type) && expr_is_const(from));
-		Int value = from->const_expr.ixx;
-		Int to_value = to ? to->const_expr.ixx : value;
+		Int value, to_value;
+		llvm_set_jump_table_values(case_ast->case_stmt.expr, case_ast->case_stmt.to_expr, &value, &to_value);
 		if (min.type == TYPE_VOID)
 		{
 			min = value;
@@ -871,11 +895,10 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		LLVMBasicBlockRef block = case_stmt->case_stmt.backend_block;
 		if (case_stmt->ast_kind != AST_DEFAULT_STMT)
 		{
-			Expr *from = exprptr(case_stmt->case_stmt.expr);
-			Expr *to = exprptrzero(case_stmt->case_stmt.to_expr);
-			ASSERT0(type_is_integer(from->type) && expr_is_const(from));
-			Int value = int_sub(from->const_expr.ixx, min);
-			Int to_value = to ? int_sub(to->const_expr.ixx, min) : value;
+			Int value, to_value;
+			llvm_set_jump_table_values(case_stmt->case_stmt.expr, case_stmt->case_stmt.to_expr, &value, &to_value);
+			value = int_sub(value, min);
+			to_value = int_sub(to_value, min);
 			uint64_t from_val = value.i.low;
 			uint64_t to_val = to_value.i.low;
 			for (uint64_t j = from_val; j <= to_val; j++)
