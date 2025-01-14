@@ -303,12 +303,12 @@ fn void test_cos() @test
 
 fn void test_exp() @test
 {
-	int [<5>] in = { 2, 1, 0, -1, -2 };
-	double [<5>] out = { 7.38905609893065, math::E , 1., 0.36787944117144233, 0.1353352832366127 };
-	float [<2>] in2 = { 1.f, 0.f };
-	float [<2>] out2 =  { math::E, 1.f };
-	double [<2>] in3 = { 1., 0. };
-	double [<2>] out3 =  { math::E, 1. };
+	int[<5>] in = { 2, 1, 0, -1, -2 };
+	double[<5>] out = { 7.38905609893065, math::E , 1., 0.36787944117144233, 0.1353352832366127 };
+	float[<6>] in2 = { 1.8f, 0.6f, 0.4f, -0.4f, -0.8f, -1.8f };
+	float[<6>] out2 =  {6.049647464412946f, 1.8221188003905089f, 1.4918246976412703f, 0.6703200460356393f, 0.44932896411722156f, 0.16529888822158656f };
+	double[<6>] in3 = { 1.8, 0.6, 0.4, -0.4, -0.8, -1.8 };
+	double[<6>] out3 =  {6.049647464412946, 1.8221188003905089, 1.4918246976412703, 0.6703200460356393, 0.44932896411722156, 0.16529888822158656 };
 	assert(@typeis(math::exp(in[0]), double));
 	assert(@typeis(math::exp((float)in[0]), float));
 	assert(@typeis(math::exp((double)in[0]), double));
@@ -321,9 +321,9 @@ fn void test_exp() @test
 		x = math::exp((double)in[i]);
 		assert(math::is_approx_rel(x, out[i], 1e-12), "exp(%f)=%f is not equal to %f", in[i], x, out[i]);
 	}
-	float [<2>] vecf = math::exp(in2);
-	double [<2>] vec = math::exp(in3);
-	for (int i = 0; i < 2; i++)
+	float[<6>] vecf = math::exp(in2);
+	double[<6>] vec = math::exp(in3);
+	for (int i = 0; i < 6; i++)
 	{
 		assert(math::is_approx_rel(vecf[i], out2[i], 1e-6), "exp(%f)=%f is not equal to %f", in2[i], vecf[i], out2[i]);
 		assert(math::is_approx_rel(vec[i], out3[i], 1e-12), "exp(%f)=%f is not equal to %f", in3[i], vec[i], out3[i]);
@@ -356,15 +356,87 @@ fn void test_floor() @test
 
 fn void test_log() @test
 {
-	double x = math::E;
-	assert(math::log(x, x) == 1.0);
-	float y = math::E;
-	assert(math::log(y, y) == 1.0f);
-	$assert @typeis(math::log(y, y), float);
-	double[<3>] xx = { 2, 4, 8 };
-	assert(math::log(xx, 2) == double[<3>] { 1.0, 2.0, 3.0 });
-	float[<3>] yy = { 10, 100, 1000 };
-	assert(math::log(yy, 10) == float[<3>] { 1.0, 2.0, 3.0 });
+	int[<8>] in = { 1, 10, 100, 1000, 1, 4, 8, 16 };
+	double[<8>] out = { 0., 1., 2., 3., 0., 2. / 3., 1., 4. / 3. };
+	float[<4>] bf = { 1.f / math::E, 1.f / (math::E * math::E), 1.f / (math::E * math::E), 1.f / math::E };
+	float[<4>] in2 = { math::E * math::E, math::E, 1.f / math::E, 1.f / (math::E * math::E) };
+	float[<4>] out2 =  { -2.f, -0.5f, 0.5f, 2.f };
+	double[<4>] bx = { 1. / math::E, 1. / (math::E * math::E), 1. / (math::E * math::E), 1. / math::E };
+	double[<4>] in3 = { math::E * math::E, math::E, 1. / math::E, 1. / (math::E * math::E) };
+	double[<4>] out3 =  { -2., -0.5, 0.5, 2. };
+	assert(@typeis(math::log(in[0], in[0]), double));
+	assert(@typeis(math::log(in[0], (float)in[0]), float));
+	assert(@typeis(math::log((float)in[0], in[0]), float));
+	assert(@typeis(math::log(in[0], (double)in[0]), double));
+	assert(@typeis(math::log((double)in[0], in[0]), double));
+	assert(@typeis(math::log((float)in[0], (float)in[0]), float));
+	assert(@typeis(math::log((float)in[0], (double)in[0]), double));
+	assert(@typeis(math::log((double)in[0], (float)in[0]), double));
+	assert(@typeis(math::log((double)in[0], (double)in[0]), double));
+	for (int i = 0; i < 8; i++)
+	{
+		int base = (i < 4) ? 10 : 8;
+		
+		double x = math::log(in[i], base);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "log(%d,%d)=%f is not equal to %f", in[i], base, x, out[i]);
+		
+		float f = math::log((float)in[i], base);
+		assert(math::is_approx_rel(f, (float)out[i], 1e-6), "log(%f,%d)=%f is not equal to %f", in[i], base, f, out[i]);
+
+		x = math::log((double)in[i], base);
+		assert(math::is_approx_rel(x, out[i], 1e-12), "log(%f,%d)=%f is not equal to %f", in[i], base, x, out[i]);
+	}
+	float[<4>] vecf = math::log(in2, bf);
+	double[<4>] vec = math::log(in3, bx);
+	for (int i = 0; i < 4; i++)
+	{
+		assert(math::is_approx_rel(vecf[i], out2[i], 1e-6), "log(%f,%f)=%f is not equal to %f", in2[i], bf[i], vecf[i], out2[i]);
+		assert(math::is_approx_rel(vec[i], out3[i], 1e-12), "log(%f,%f)=%f is not equal to %f", in3[i], bx[i], vec[i], out3[i]);
+	}
+}
+
+fn void test_pow() @test
+{
+	int[<10>] e =  { 2, 1, 0, -1, -2, 2, 1, 0, -1, -2 };
+	double[<10>] out = { 100., 10., 1., 0.1, 0.01, 4.,  2., 1., 0.5, 0.25 };
+	float[<2>] base2 = { -1.f / math::E, 1.f / math::E };
+	float[<5>] out2 = { 1.f / (math::E * math::E), 1.f / math::E, 1.f, math::E, math::E * math::E };
+	double[<2>] base3 = { -1. / math::E, 1. / math::E };
+	double[<5>] out3 = { 1. / (math::E * math::E), 1. / math::E, 1., math::E, math::E * math::E };
+	assert(@typeis(math::pow(e[1], e[1]), double));
+	assert(@typeis(math::pow((float)e[1], e[1]), float));
+	assert(@typeis(math::pow((double)e[1], e[1]), double));
+	for (int i = 0; i < 10; i++)
+	{
+		for (int j = 0; j < 2; j++)
+		{
+			int base = (2 * j - 1) * ((i < 5) ? 10 : 2);
+			
+			double x = math::pow(base, e[i]);
+			double outx = (e[i] & 1) ? (double)(2 * j - 1) * out[i] : out[i];
+			assert(math::is_approx_rel(x, outx, 1e-12), "pow(%d,%d)=%f is not equal to %f", base, e[i], x, outx);
+			
+			float f = math::pow((float)base, e[i]);
+			float outf = (e[i] & 1) ? (float)(2 * j - 1) * (float)out[i] : (float)out[i];
+		assert(math::is_approx_rel(f, outf, 1e-6), "pow(%d,%f)=%f is not equal to %f", base, e[i], f, outf);
+		
+			x = math::pow((double)base, e[i]);
+			assert(math::is_approx_rel(x, outx, 1e-12), "pow(%d,%f)=%f is not equal to %f", base, e[i], x, outx);
+		}
+	}
+	for (int i = 0; i < 5; i++)
+	{
+		float[<2>] vecf = math::pow(base2, e[i]);
+		double[<2>] vec = math::pow(base3, e[i]);
+		for (int j = 0; j < 2; j++)
+		{
+			float outf = (e[i] & 1) ? (float)(2 * j - 1) * (float)out2[i] : (float)out2[i];
+			assert(math::is_approx_rel(vecf[j], outf, 1e-6), "pow(%f,%f)=%f is not equal to %f", base2[i], e[i], vecf[j], outf);
+			double outx = (e[i] & 1) ? (double)(2 * j - 1) * out3[i] : out3[i];
+			assert(math::is_approx_rel(vec[j], outx, 1e-12), "pow(%f,%f)=%f is not equal to %f", base3[i], e[i], vec[j], outx);
+		}
+	}
+	
 }
 
 fn void test_sign() @test
