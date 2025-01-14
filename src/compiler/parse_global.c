@@ -2331,17 +2331,31 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
 		if (try_consume(c, TOKEN_EQ))
 		{
+			Expr **args = NULL;
 			if (expected_parameters == 1 || !tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_expr(c), poisoned_decl);
-				vec_add(enum_const->enum_constant.args, single);
+				vec_add(args, single);
 			}
 			else
 			{
 				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, 0)) return poisoned_decl;
-				CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+				while (1)
+				{
+					if (try_consume(c, TOKEN_RBRACE)) break;
+					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), poisoned_decl);
+					vec_add(args, arg);
+					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_IDENTIFIER)
+					{
+						print_error_at(extend_span_with_token(arg->span, c->span),
+									   "This looks like a designated initializer, but that style of declaration "
+									   "is not supported for declaring enum associated values.");
+						return poisoned_decl;
+					}
+					if (try_consume(c, TOKEN_COMMA)) continue;
+				}
 			}
+			enum_const->enum_constant.args = args;
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','

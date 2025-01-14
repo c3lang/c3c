@@ -213,6 +213,7 @@
 - @tag on macros cannot be retrieved with tagof #1582
 - Taking the $typeof of a wildcard optional returns `void!`.
 - Fix bug with enums with jump tables #1840.
+- Enum associated declarations accidentally allowed declaration in function style. #1841
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
