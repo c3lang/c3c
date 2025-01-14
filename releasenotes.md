@@ -31,6 +31,7 @@
 - Handle bytes and string literals the same way in terms of zero termination.
 - Function comments are stored and displayed with -P.
 - Prevent `#hash` arguments from taking code that modifies ct variables. #1794
+- Make stringify to recursively enter `#hash` expressions #1834.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.

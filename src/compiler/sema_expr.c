@@ -9334,13 +9334,22 @@ static inline bool sema_expr_analyse_ct_stringify(SemaContext *context, Expr *ex
 	Expr *inner = expr->inner_expr;
 	// Only hash ident style stringify reaches here.
 	ASSERT_SPAN(expr, inner->expr_kind == EXPR_HASH_IDENT);
-	Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
-	if (!decl) return false;
-	const char *desc = span_to_string(decl->var.init_expr->span);
+	while (true)
+	{
+		Decl *decl = sema_resolve_symbol(context, inner->ct_ident_expr.identifier, NULL, inner->span);
+		if (!decl) return false;
+		inner = decl->var.init_expr;
+		while (inner->expr_kind == EXPR_OTHER_CONTEXT)
+		{
+			context = inner->expr_other_context.context;
+			inner = inner->expr_other_context.inner;
+		}
+		if (inner->expr_kind != EXPR_HASH_IDENT) break;
+	}
+	const char *desc = span_to_string(inner->span);
 	if (!desc)
 	{
-		SEMA_ERROR(expr, "Failed to stringify hash variable contents - they must be a single line and not exceed 255 characters.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Failed to stringify hash variable contents - they must be a single line and not exceed 255 characters.");
 	}
 	expr_rewrite_const_string(expr, desc);
 	return true;
