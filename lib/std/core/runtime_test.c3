@@ -60,9 +60,7 @@ fn void test_panic(String message, String file, String function, uint line) @loc
     		builtin::print_backtrace(message, 0);
 		$endif
 	}
-	io::printf("\n[%sFAIL%s] ^^^ ( %s:%s ) %s\n", 
-		test::test_context.has_ansi_codes ? "\e[0;31m" : "",
-		test::test_context.has_ansi_codes ? "\e[0m" : "",
+	io::printf("\nTest failed ^^^ ( %s:%s ) %s\n", 
 		file, 
 		line,
 		message);
@@ -117,6 +115,12 @@ fn void unmute_output(bool has_error) @local {
 	test::test_context.orig_stdout.file = null;
 
 	usz log_size = test::test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
+	if (has_error) {
+		io::printfn("[%sFAIL%s]", 
+			test::test_context.has_ansi_codes ? "\e[0;31m" : "",
+			test::test_context.has_ansi_codes ? "\e[0m" : "");
+
+	}
 
 	if (has_error && log_size > 0) {
 		test::test_context.fake_stdout.write_byte('\n')!!;
