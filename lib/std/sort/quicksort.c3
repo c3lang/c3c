@@ -106,40 +106,40 @@ fn ElementType! qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context 
 	return SearchResult.MISSING?;
 }
 
-macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
+macro @partition(Type #list, isz l, isz h, CmpFn cmp, Context context)
 {
 	var $has_cmp = @is_valid_macro_slot(cmp);
 	var $has_context = @is_valid_macro_slot(context);
-	var $cmp_by_value = $has_cmp &&& $assignable(list[0], $typefrom(CmpFn.paramsof[0].type));
+	var $cmp_by_value = $has_cmp &&& $assignable(#list[0], $typefrom(CmpFn.paramsof[0].type));
 
-	ElementType pivot = list[l];
+	ElementType pivot = #list[l];
 	while (l < h)
 	{
 		$switch
 			$case $cmp_by_value && $has_context:
-				while (cmp(list[h], pivot, context) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(list[l], pivot, context) <= 0 && l < h) l++;
+				while (cmp(#list[h], pivot, context) >= 0 && l < h) h--;
+				if (l < h) #list[l++] = #list[h];
+				while (cmp(#list[l], pivot, context) <= 0 && l < h) l++;
 			$case $cmp_by_value:
-				while (cmp(list[h], pivot) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(list[l], pivot) <= 0 && l < h) l++;
+				while (cmp(#list[h], pivot) >= 0 && l < h) h--;
+				if (l < h) #list[l++] = #list[h];
+				while (cmp(#list[l], pivot) <= 0 && l < h) l++;
 			$case $has_cmp && $has_context:
-				while (cmp(&list[h], &pivot, context) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(&list[l], &pivot, context) <= 0 && l < h) l++;
+				while (cmp(&#list[h], &pivot, context) >= 0 && l < h) h--;
+				if (l < h) #list[l++] = #list[h];
+				while (cmp(&#list[l], &pivot, context) <= 0 && l < h) l++;
 			$case $has_cmp:
-				while (cmp(&list[h], &pivot) >= 0 && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (cmp(&list[l], &pivot) <= 0 && l < h) l++;
+				while (cmp(&#list[h], &pivot) >= 0 && l < h) h--;
+				if (l < h) #list[l++] = #list[h];
+				while (cmp(&#list[l], &pivot) <= 0 && l < h) l++;
 			$default:
-				while (greater_eq(list[h], pivot) && l < h) h--;
-				if (l < h) list[l++] = list[h];
-				while (less_eq(list[l], pivot) && l < h) l++;
+				while (greater_eq(#list[h], pivot) && l < h) h--;
+				if (l < h) #list[l++] = #list[h];
+				while (less_eq(#list[l], pivot) && l < h) l++;
 		$endswitch
-		if (l < h) list[h--] = list[l];
+		if (l < h) #list[h--] = #list[l];
 	}
-	list[l] = pivot;
+	#list[l] = pivot;
 
 	return l;
 }

@@ -54,6 +54,12 @@ fn void quicksort_with_value()
     }
 }
 
+fn void quicksort_with_fixed_array()
+{
+    int[*] tc = {3, 2, 1};
+    sort::quicksort(tc); // will not be sorted, but should return
+}
+
 fn void quicksort_with_lambda()
 {
     int[][] tcases = {
