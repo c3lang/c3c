@@ -9558,18 +9558,22 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_TYPECALL:
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");
 		case EXPR_OTHER_CONTEXT:
+		{
+			bool in_no_eval = context->call_env.in_no_eval;
 			context = expr->expr_other_context.context;
 			expr_replace(expr, expr->expr_other_context.inner);
 			if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
 			ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_NOT_DONE);
 			expr->resolve_status = RESOLVE_RUNNING;
-			{
-				bool in_other = context->call_env.in_other;
-				context->call_env.in_other = true;
-				bool success = sema_analyse_expr_dispatch(context, expr, check);
-				context->call_env.in_other = in_other;
-				return success;
-			}
+			bool in_other = context->call_env.in_other;
+			bool was_in_no_eval = context->call_env.in_no_eval;
+			context->call_env.in_other = true;
+			context->call_env.in_no_eval = in_no_eval;
+			bool success = sema_analyse_expr_dispatch(context, expr, check);
+			context->call_env.in_other = in_other;
+			context->call_env.in_no_eval = was_in_no_eval;
+			return success;
+		}
 		case EXPR_CT_CASTABLE:
 			return sema_expr_analyse_castable(context, expr);
 		case EXPR_EMBED:

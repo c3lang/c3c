@@ -37,6 +37,13 @@ fn void quicksort_with_ref()
     }
 }
 
+fn void quicksort_with_array()
+{
+	int[*] a = { 4, 8, 100, 1, 2 };
+	sort::quicksort(&a);
+	assert(a == { 1, 2, 4, 8, 100 });
+}
+
 fn void quicksort_with_value()
 {
     int[][] tcases = {

@@ -215,6 +215,7 @@
 - Taking the $typeof of a wildcard optional returns `void!`.
 - Fix bug with enums with jump tables #1840.
 - Enum associated declarations accidentally allowed declaration in function style. #1841
+- Quicksort and insertsort incorrectly allowing arrays and vectors by value. #1845.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String
