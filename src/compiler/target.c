@@ -1580,7 +1580,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
-#if !LLVM_AVAILABLE || LLVM_VERSION_MAJOR < 18
+#if LLVM_AVAILABLE && LLVM_VERSION_MAJOR < 18
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 #else
 			FALLTHROUGH;
