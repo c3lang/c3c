@@ -177,6 +177,7 @@
 - `io::print` will now print structs.
 - Improve error message when using `void` aliases as variable storage type.
 - Add a target type: "prepare" which doesn't compile anything (but may run `exec`)
+- Improve error message on incorrect inner struct/union name #1847.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.

@@ -1546,6 +1546,11 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				member = decl_new_with_type(NULL, c->span, decl_kind);
 				advance(c);
+				if (token_is_some_ident(c->tok))
+				{
+					RETURN_PRINT_ERROR_HERE("The name of an inner struct or union must be a name starting with a lowercase letter.");
+					return decl_poison(parent);
+				}
 			}
 			else
 			{
