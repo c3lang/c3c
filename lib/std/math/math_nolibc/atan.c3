@@ -217,30 +217,21 @@ fn float _atanf(float x) @weak @extern("atanf") @nostrip
 
 const PI_LO @private = 1.2246467991473531772E-16; /* 0x3CA1A626, 0x33145C07 */
 
-macro void extract_words(double d, uint* hi, uint* lo) @private
-{
-	ulong rep = bitcast(d, ulong);
-	*hi = (uint)(rep >> 32);
-	*lo = (uint)rep;
-}
-
 fn double _atan2(double y, double x) @weak @extern("atan2") @nostrip
 {
 	if (math::is_nan(x) || math::is_nan(y)) return x + y;
 
-	uint lx @noinit;
-	uint ix @noinit;
-	extract_words(x, &ix, &lx);
-	uint ly @noinit;
-	uint iy @noinit;
-	extract_words(y, &iy, &ly);
+	uint lx = x.low_word();
+	uint ix = x.high_word();
+	uint ly = y.low_word();
+	uint iy = y.high_word();
 
 	// x = 1.0
 	if ((ix - 0x3ff00000) | lx == 0) return _atan(y);
 	// 2*sign(x) + sign(y)
 	uint m = ((iy >> 31) & 1) | ((ix >> 30) & 2);
-	ix = ix & 0x7fffffff;
-	iy = iy & 0x7fffffff;
+	ix &= 0x7fffffff;
+	iy &= 0x7fffffff;
 
 	// when y = 0
 	if (iy | ly == 0)
@@ -313,8 +304,8 @@ const float PI_LO_F @private = -8.7422776573e-08; /* 0xb3bbbd2e */
 fn float _atan2f(float y, float x) @weak @extern("atan2f") @nostrip
 {
 	if (math::is_nan(x) || math::is_nan(y)) return x + y;
-	uint ix = bitcast(x, uint);
-	uint iy = bitcast(y, uint);
+	uint ix = x.word();
+	uint iy = y.word();
 	/* x=1.0 */
 	if (ix == 0x3f800000) return _atanf(y);
 	/* 2*sign(x)+sign(y) */
