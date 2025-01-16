@@ -476,6 +476,39 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 			case 'c':
 				total_len += self.out_char(current)!;
 				continue;
+			case 'H':
+				self.flags.uppercase = true;
+				nextcase;
+			case 'h':
+            	char[] out @noinit;
+				switch (current)
+				{
+					case char[]:
+						out = *current;
+					case ichar[]:
+						out = *(char[]*)current;
+					default:
+						if (current.type.kindof == ARRAY && (current.type.inner == char.typeid || current.type.inner == ichar.typeid))
+						{
+							out = ((char*)current.ptr)[:current.type.sizeof];
+							break;
+						}
+						total_len += self.out_substr("<INVALID>")!;
+						continue;
+				}
+				if (self.flags.left)
+				{
+					usz len = print_hex_chars(self, out, self.flags.uppercase)!;
+					total_len += len;
+					total_len += self.pad(' ', self.width, len)!;
+					continue;
+				}
+				if (self.width)
+				{
+					total_len += self.pad(' ', self.width, out.len * 2)!;
+				}
+				total_len += print_hex_chars(self, out, self.flags.uppercase)!;
+				continue;
 			case 's':
 				if (self.flags.left)
 				{

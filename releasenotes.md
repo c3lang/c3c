@@ -1,5 +1,16 @@
 # C3C Release Notes
 
+## 0.6.7 Change list
+
+### Changes / improvements
+- None yet.
+
+### Fixes
+- None yet.
+
+### Stdlib changes
+- Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
+
 ## 0.6.6 Change list
 
 ### Changes / improvements
