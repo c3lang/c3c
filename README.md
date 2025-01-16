@@ -1,13 +1,13 @@
 # C3 Language
 
 C3 is a programming language that builds on the syntax and semantics of the C language,
-with the goal of evolving it while still retaining familiarity for C programmers. 
+with the goal of evolving it while still retaining familiarity for C programmers.
 
-It's an evolution, not a revolution: the C-like 
+It's an evolution, not a revolution: the C-like
 for programmers who like C.
 
 Precompiled binaries for the following operating systems are available:
- 
+
 - Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
 - Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
@@ -33,7 +33,7 @@ whole new language.
 
 ### Example code
 
-The following code shows [generic modules](https://c3-lang.org/references/docs/generics/) (more examples can be found at https://c3-lang.org/references/docs/examples/). 
+The following code shows [generic modules](https://c3-lang.org/references/docs/generics/) (more examples can be found at https://c3-lang.org/references/docs/examples/).
 
 ```cpp
 module stack (<Type>);
@@ -47,7 +47,7 @@ struct Stack
 }
 
 // The type methods offers dot syntax calls,
-// so this function can either be called 
+// so this function can either be called
 // Stack.push(&my_stack, ...) or
 // my_stack.push(...)
 fn void Stack.push(Stack* this, Type element)
@@ -78,7 +78,7 @@ Testing it out:
 ```cpp
 import stack;
 
-// Define our new types, the first will implicitly create 
+// Define our new types, the first will implicitly create
 // a complete copy of the entire Stack module with "Type" set to "int"
 def IntStack = Stack(<int>);
 // The second creates another copy with "Type" set to "double"
@@ -98,17 +98,17 @@ fn void main()
     IntStack stack;
     // Note that C3 uses zero initialization by default
     // so the above is equivalent to IntStack stack = {};
-    
+
     stack.push(1);
-    // The above can also be written IntStack.push(&stack, 1); 
-    
+    // The above can also be written IntStack.push(&stack, 1);
+
     stack.push(2);
-    
+
     // Prints pop: 2
     printf("pop: %d\n", stack.pop());
     // Prints pop: 1
     printf("pop: %d\n", stack.pop());
-    
+
     DoubleStack dstack;
     dstack.push(2.3);
     dstack.push(3.141);
@@ -143,7 +143,7 @@ The current stable version of the compiler is **version 0.6.6**.
 The upcoming 0.6.x releases will focus on expanding the standard library.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
-If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
+If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues)
 or discuss C3 on its dedicated Discord: [https://discord.gg/qN76R87](https://discord.gg/qN76R87).
 
 The compiler is currently verified to compile on Linux, Windows and MacOS.
@@ -194,10 +194,10 @@ More platforms will be supported in the future.
 ### Installing
 
 #### Installing on Windows with precompiled binaries
-1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip) 
+1. Download the zip file: [https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip)
 (debug version [here](https://github.com/c3lang/c3c/releases/download/latest/c3-windows-debug.zip))
 2. Unzip exe and standard lib.
-3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows. 
+3. If you don't have Visual Studio 17 installed you can either do so, or run the `msvc_build_libraries.py` Python script which will download the necessary files to compile on Windows.
 4. Run `c3c.exe`.
 
 #### Installing on Debian with precompiled binaries
@@ -245,6 +245,56 @@ Or clone it manually:
 git clone https://aur.archlinux.org/c3c-git.git
 cd c3c-git
 makepkg -si
+```
+
+#### Building with Meson
+
+`c3c` may be built using the Meson build system. At a basic level, the following commands will build the compiler:
+
+```console
+$ meson setup build
+$ meson compile -C build
+```
+
+Note that `build` is the name of the build directory and may be changed to any other name, or several build directories may be configured for different build types.
+
+To specify a build type, use the `--buildtype` flag:
+
+```console
+$ meson setup build --buildtype=release
+$ meson compile -C build
+```
+
+To run the tests, use the `test` command:
+
+```console
+$ meson test -C build
+```
+
+Finally, options may be passed to the `meson setup` command to enable or disable features. For example, to enable the `c3c` compiler to use the `libcurl` library explicitly (and have the build fail if it cannot be found), use the following command:
+
+```console
+$ meson setup build -Dwith_libcurl=enabled
+```
+
+See all available options using the `meson configure` command:
+
+```console
+$ meson configure [build]
+```
+
+##### Advanced Meson usage
+
+To use a specific compiler, set the `CC` and `CXX` environment variables before running the `meson` command:
+
+```console
+$ CC=clang CXX=clang++ meson setup build
+```
+
+To build with analysis tools, such as asan, try the following:
+
+```console
+$ meson setup build -Db_sanitize=address
 ```
 
 #### Building via Docker
@@ -345,7 +395,7 @@ You can try it out by running some sample code: `./c3c compile ../resources/exam
 6. Create the CMake build cache: `cmake ..`
 7. Build: `cmake --build .`
 
-Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`  
+Your c3c executable should have compiled properly. You may want to test it: `./c3c compile ../resources/examples/hash.c3`
 For a sytem-wide installation, run the following as root: `cmake --install .`
 
 
@@ -371,7 +421,7 @@ The c3c binary should be created in the build directory. You can try it out by r
 4. Enter the C3C directory `cd c3c`.
 5. Create a build directory `mkdir build`
 6. Change directory to the build directory `cd build`
-7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually 
+7. Set up CMake build for debug: `cmake ..`. At this point you may need to manually
 provide the link path to the LLVM CMake directories, e.g. `cmake -DLLVM_DIR=/usr/local/opt/llvm/lib/cmake/llvm/ ..`
 8. Build: `cmake --build .`
 
@@ -392,7 +442,7 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 
 1. Write the test, either adding to existing test files in `/test/unit/` or add
    a new file. (If testing the standard library, put it in the `/test/unit/stdlib/` subdirectory).
-2. Make sure that the test functions have the `@test` attribute. 
+2. Make sure that the test functions have the `@test` attribute.
 3. Run tests and see that they pass. (Recommended settings: `c3c compile-test -O0 test/unit`.
    - in this example `test/unit/` is the relative path to the test directory, so adjust as required)
 4. Make a pull request for the new tests.
