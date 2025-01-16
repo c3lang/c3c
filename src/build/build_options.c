@@ -71,7 +71,7 @@ static void usage(bool full)
 	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
-	PRINTF(full ? "Options:" : "Common options:");
+	PRINTF(full ? "Options:\n" : "Common options:");
 	PRINTF("  -h -hh --help              - Print the help, -h for the normal options, -hh for the full help.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -q --quiet                 - Silence unnecessary output.");
@@ -205,7 +205,7 @@ static void project_usage()
 	PRINTF("  view                                            view the current projects structure");
 	PRINTF("  add-target <name>  <target_type>  [sources...]  add a new target to the project");
 	#if FETCH_AVAILABLE
-		PRINTF("  fetch              							fetch missing project libraries");
+		PRINTF("  fetch                                           fetch missing project libraries");
 	#endif
 }
 
@@ -405,7 +405,7 @@ static void print_version(void)
     PRINTF("Backends:                  LLVM");
 #elif TB_AVAILABLE
     PRINTF("Backends:                  TB");
-#else 
+#else
 
     PRINTF("No backends available");
 #endif
