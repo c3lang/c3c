@@ -6,7 +6,7 @@
 - None yet.
 
 ### Fixes
-- None yet.
+- Fix issue requiring prefix on a generic interface declaration.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
