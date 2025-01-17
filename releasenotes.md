@@ -7,6 +7,7 @@
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
+- Fix bug in SHA1 for longer blocks #1854.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
