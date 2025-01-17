@@ -20,26 +20,42 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 	if (!module)
 	{
 		module = unit->module = compiler_find_or_create_module(module_name, parameters);
-		if ((parameters == NULL) == module->is_generic)
+		if (module->is_generic != (parameters != NULL))
 		{
 			print_error_at(module_name->span, "'%s' is both used as regular and generic module, it can't be both.",
-						   module_name->module);
+			               module_name->module);
 			SEMA_NOTE(module->name, "The definition here is different.");
 			return false;
 		}
-	}
-	else
-	{
-		if (unit->module->name->module != module_name->module)
+		if (!module->is_generic) goto DONE;
+		if (vec_size(parameters) != vec_size(module->parameters))
 		{
-			RETURN_PRINT_ERROR_AT(false,
-			                      module_name,
-			                      "Module name here '%s' did not match actual module '%s'.",
-			                      module_name->module,
-			                      module->name->module);
+			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.");
+			SEMA_NOTE(module->name, "A different definition can be found here.");
+			return false;
 		}
+		FOREACH_IDX(idx, const char *, name, parameters)
+		{
+			bool is_type = str_is_type(name);
+			if (is_type != str_is_type(module->parameters[idx]))
+			{
+				PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.");
+				SEMA_NOTE(module->name, "The other definition is here.");
+				return false;
+			}
+		}
+		goto DONE;
+	}
+	if (unit->module->name->module != module_name->module)
+	{
+		RETURN_PRINT_ERROR_AT(false,
+		                      module_name,
+		                      "Module name here '%s' did not match actual module '%s'.",
+		                      module_name->module,
+		                      module->name->module);
 	}
 
+DONE:;
 	vec_add(module->units, unit);
 	return true;
 }
