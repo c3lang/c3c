@@ -396,16 +396,28 @@ typedef enum
 {
 	PROJECT_VIEW_TYPE_AUTHOR,
 	PROJECT_VIEW_TYPE_VERSION,
-	PROJECT_VIEW_TYPE_LANGUAGE_TARGET,
+	PROJECT_VIEW_TYPE_LANGUAGE_REVISION,
 	PROJECT_VIEW_TYPE_WARNINGS_USED,
 	PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS,
 	PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES,
 	PROJECT_VIEW_TYPE_SOURCE_PATHS,
 	PROJECT_VIEW_TYPE_OUTPUT_LOCATION,
 	PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION,
-	PROJECT_VIEW_TYPE_CPU_NAME,
 	PROJECT_VIEW_TYPE_TARGETS,
 } ProjectViewType;
+
+static const char *project_view_flags[10] = {
+		[PROJECT_VIEW_TYPE_AUTHOR] = "authors",
+		[PROJECT_VIEW_TYPE_VERSION] = "version",
+		[PROJECT_VIEW_TYPE_LANGUAGE_REVISION] = "language-revision",
+		[PROJECT_VIEW_TYPE_WARNINGS_USED] = "warnings-used",
+		[PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS] = "c3l-lib-search-paths",
+		[PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES] = "c3l-lib-dependencies",
+		[PROJECT_VIEW_TYPE_SOURCE_PATHS] = "source-paths",
+		[PROJECT_VIEW_TYPE_OUTPUT_LOCATION] = "output-location",
+		[PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION] = "default-optimization",
+		[PROJECT_VIEW_TYPE_TARGETS] = "targets",
+};
 
 static const char *targets[7] = {
 		[TARGET_TYPE_EXECUTABLE] = "executable",
@@ -490,9 +502,9 @@ typedef struct BuildOptions_
 		/* Support for flags for 'view' */
 		struct
 		{
-			ProjectViewType pv_type;
-			const char **pv_type_flag_names;
-		};
+			uint16_t project_view_flags_bitvector;
+			bool verbose;
+		} view_modifier;
 	} project_options;
 	CompileOption compile_option;
 	TrustLevel trust_level;
