@@ -23,13 +23,25 @@ struct List (Printable)
  @param initial_capacity "The initial capacity to reserve"
  @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
 *>
+fn List List.new(usz initial_capacity = 16, Allocator allocator = allocator::heap()) @operator(construct)
+{
+	List new;
+	new.allocator = allocator;
+	new.size = 0;
+	new.capacity = 0;
+	new.entries = null;
+	new.reserve(initial_capacity);
+	return new;
+}
+
+<*
+ @param initial_capacity "The initial capacity to reserve"
+ @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ @deprecated "Use List.new"
+*>
 fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
-	self.allocator = allocator;
-	self.size = 0;
-	self.capacity = 0;
-	self.entries = null;
-	self.reserve(initial_capacity);
+	*self = List.new();
 	return self;
 }
 
@@ -38,9 +50,30 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 
  @param initial_capacity "The initial capacity to reserve"
 *>
-fn List* List.temp_init(&self, usz initial_capacity = 16)
+fn List List.temp(usz initial_capacity = 16) @operator(construct) => List.new(initial_capacity, allocator::temp()) @inline;
+
+<*
+ Initialize the list using the temp allocator.
+
+ @param initial_capacity "The initial capacity to reserve"
+ @deprecated "Use List.temp"
+*>
+ fn List* List.temp_init(&self, usz initial_capacity = 16)
+ {
+ 	*self = List.temp();
+ 	return self;
+ }
+
+<*
+ Initialize a new list with an array.
+
+ @param [in] values `The values to initialize the list with.`
+*>
+fn List List.new_with_array(Type[] values, Allocator allocator = allocator::heap()) @operator(construct)
 {
-	return self.new_init(initial_capacity, allocator::temp()) @inline;
+	List new = List.new(values.len, allocator);
+	new.add_array(values);
+	return new;
 }
 
 <*
@@ -48,11 +81,11 @@ fn List* List.temp_init(&self, usz initial_capacity = 16)
 
  @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
+ @deprecated "Use List.init_with_array"
 *>
 fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap())
 {
-	self.new_init(values.len, allocator) @inline;
-	self.add_array(values) @inline;
+	*self = List.new_with_array(values, allocator);
 	return self;
 }
 
@@ -60,25 +93,45 @@ fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = al
  Initialize a temporary list with an array.
 
  @param [in] values `The values to initialize the list with.`
+*>
+fn List List.temp_with_array(Type[] values) @operator(construct)
+{
+	List new = List.temp(values.len);
+	new.add_array(values);
+	return new;
+}
+
+<*
+ Initialize a temporary list with an array.
+
+ @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
+ @deprecated "Use List.temp_with_array"
 *>
 fn List* List.temp_init_with_array(&self, Type[] values)
 {
-	self.temp_init(values.len) @inline;
-	self.add_array(values) @inline;
+	*self = List.temp_with_array(values) @inline;
 	return self;
 }
 
 <*
- @require self.capacity == 0 "The List must not be allocated"
+ Initialize a list wrapping an array
 *>
-fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
+fn List List.new_wrapping_array(Type[] types, Allocator allocator = allocator::heap()) @operator(construct)
 {
-	self.allocator = allocator;
-	self.capacity = types.len;
-	self.entries = types.ptr;
-	self.set_size(types.len);
+	List new;
+	new.allocator = allocator;
+	new.capacity = types.len;
+	new.entries = types.ptr;
+	new.set_size(types.len);
+	return new;
 }
+
+<*
+ @require self.capacity == 0 "The List must not be allocated"
+ @deprecated "Use List.new_wrapping_array"
+*>
+fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap()) => *self = List.new_wrapping_array(types, allocator);
 
 fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 {
