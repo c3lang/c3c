@@ -209,6 +209,39 @@ static void project_usage()
 	#endif
 }
 
+static void usage_view()
+{
+	PRINTF("Usage: %s [<options>] project view [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("View the content of project.json in a more readable format.");
+	PRINTF("Without flags, this prints out all the project properties.");
+	PRINTF("");
+	PRINTF("When using flags, each flag shows its corresponding property,");
+	PRINTF("while hiding those who did not get selected.");
+	PRINTF("Multiple properties will be split by an empty line.");
+	PRINTF("");
+	PRINTF("With -vv, each property will be displayed as in the full overview,");
+	PRINTF("so it will be prefixed with '<property-name>: '.");
+	PRINTF("-vv also affects a property that has a list of values. Normally they");
+	PRINTF("would get printed each on a seperate line, but with -vv, they get");
+	PRINTF("prefixed with a '- '.");
+	PRINTF("You can see '-vv' as a more human-readable format, while the default");
+	PRINTF("format is more usefull to tooling.");
+	PRINTF("");
+	PRINTF("View options:");
+	PRINTF("  -h --help                Show this help");
+	PRINTF("  --authors                List of authors");
+	PRINTF("  --version                Project version");
+	PRINTF("  --language-revision      Project language revision");
+	PRINTF("  --warnings-used          List of enabled compiler-warnings");
+	PRINTF("  --c3l-lib-search-paths   List of C3 linker library search paths");
+	PRINTF("  --c3l-lib-dependencies   List of C3 linker library dependencies");
+	PRINTF("  --source-paths           List of C3 source file paths");
+	PRINTF("  --output-location        Output directory");
+	PRINTF("  --default-optimization   Default optimization level");
+	PRINTF("  --targets                Project targets (!= compilation-targets)");
+}
+
 static void parse_project_view_subcommand(BuildOptions *options)
 {
 	/* TODO: see Discord #compiler-development for ideas
@@ -217,6 +250,36 @@ static void parse_project_view_subcommand(BuildOptions *options)
 	 *		Inside BuildOptions, maybe store the found flags using
 	 *		a bitvector?
 	 */
+	options->project_options.view_modifier.project_view_flags_bitvector = 0;
+	options->project_options.view_modifier.verbose = true;
+	if (at_end() || !next_is_opt()) return;
+
+	while(!at_end()) {
+		arg_index++;
+
+		current_arg = args[arg_index];
+		/* TODO: step through this with a debugger */
+
+		if (current_arg[0] != '-')
+		{
+			FAIL_WITH_ERR("'project view' does not take in args, only flags. Failed on: %s.", current_arg);
+		}
+		if (match_shortopt("vv"))
+		{
+			options->project_options.view_modifier.verbose = true;
+		}
+		if (match_longopt("help") || match_shortopt("h"))
+		{
+			usage_view();
+			exit_compiler(COMPILER_SUCCESS_EXIT);
+		}
+		int flag = parse_multi_option(current_arg, 10, project_view_flags);
+
+		options->project_options.view_modifier.project_view_flags_bitvector |=
+			1 << flag;
+
+
+	}
 }
 
 static void parse_project_subcommand(BuildOptions *options)
