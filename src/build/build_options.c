@@ -71,7 +71,7 @@ static void usage(bool full)
 	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
-	PRINTF(full ? "Options:\n" : "Common options:");
+	full ? PRINTF("Options:") : PRINTF("Common options:");
 	PRINTF("  -h -hh --help              - Print the help, -h for the normal options, -hh for the full help.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -q --quiet                 - Silence unnecessary output.");
