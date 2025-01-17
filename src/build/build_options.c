@@ -209,11 +209,22 @@ static void project_usage()
 	#endif
 }
 
+static void parse_project_view_subcommand(BuildOptions *options)
+{
+	/* TODO: see Discord #compiler-development for ideas
+	 * 		I'll have to implement the whole flag-parser here
+	 *		I'll already have the enum with the ProjectViewType's.
+	 *		Inside BuildOptions, maybe store the found flags using
+	 *		a bitvector?
+	 */
+}
+
 static void parse_project_subcommand(BuildOptions *options)
 {
 	if (arg_match("view"))
 	{
 		options->project_options.command = SUBCOMMAND_VIEW;
+		parse_project_view_subcommand(options);
 		return;
 	}
 	if (arg_match("add-target"))

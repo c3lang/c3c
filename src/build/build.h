@@ -392,6 +392,21 @@ typedef enum
 	TARGET_TYPE_PREPARE,
 } TargetType;
 
+typedef enum
+{
+	PROJECT_VIEW_TYPE_AUTHOR,
+	PROJECT_VIEW_TYPE_VERSION,
+	PROJECT_VIEW_TYPE_LANGUAGE_TARGET,
+	PROJECT_VIEW_TYPE_WARNINGS_USED,
+	PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS,
+	PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES,
+	PROJECT_VIEW_TYPE_SOURCE_PATHS,
+	PROJECT_VIEW_TYPE_OUTPUT_LOCATION,
+	PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION,
+	PROJECT_VIEW_TYPE_CPU_NAME,
+	PROJECT_VIEW_TYPE_TARGETS,
+} ProjectViewType;
+
 static const char *targets[7] = {
 		[TARGET_TYPE_EXECUTABLE] = "executable",
 		[TARGET_TYPE_STATIC_LIB] = "static-lib",
@@ -471,6 +486,13 @@ typedef struct BuildOptions_
 		const char *target_name;
 		TargetType target_type;
 		const char **sources;
+
+		/* Support for flags for 'view' */
+		struct
+		{
+			ProjectViewType pv_type;
+			const char **pv_type_flag_names;
+		};
 	} project_options;
 	CompileOption compile_option;
 	TrustLevel trust_level;
