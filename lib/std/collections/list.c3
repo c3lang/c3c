@@ -25,11 +25,7 @@ struct List (Printable)
 *>
 fn List List.new(usz initial_capacity = 16, Allocator allocator = allocator::heap()) @operator(construct)
 {
-	List new;
-	new.allocator = allocator;
-	new.size = 0;
-	new.capacity = 0;
-	new.entries = null;
+	List new = { .allocator = allocator };
 	new.reserve(initial_capacity);
 	return new;
 }
@@ -119,10 +115,7 @@ fn List* List.temp_init_with_array(&self, Type[] values)
 *>
 fn List List.new_wrapping_array(Type[] types, Allocator allocator = allocator::heap()) @operator(construct)
 {
-	List new;
-	new.allocator = allocator;
-	new.capacity = types.len;
-	new.entries = types.ptr;
+	List new = { .allocator = allocator, .capacity = types.len, .entries = types.ptr };
 	new.set_size(types.len);
 	return new;
 }
