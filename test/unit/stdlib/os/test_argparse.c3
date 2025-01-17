@@ -551,22 +551,6 @@ fn void test_multi_short_flags(){
 	test::equal(val2, true);
 }
 
-fn void test_single_dash(){
-
-	bool val = false;
-	bool val2 = false;
-	argparse::ArgParse agp = {
-		.description = "test ArgParse program",
-		.options = { 
-			{.short_name = 'a',  .value = &val},
-			{.short_name = 'b',  .value = &val2},
-		}
-	};
-
-    String[] args = {"testprog", "-"}; 
-	test::@error(agp.parse(args), ArgError.INVALID_ARGUMENT);
-}
-
 fn void test_empty_argument(){
 
 	bool val = false;
@@ -854,4 +838,25 @@ fn void test_bool_flag_unset_has_arg() {
 
     test::equal(val, false);
     test::equal(agp.options[0]._is_present, true);
+}
+fn void test_short_arguments(){
+
+	bool val = false;
+	bool val2 = false;
+	argparse::ArgParse agp = {
+		.description = "test ArgParse program",
+		.options = { 
+			{.short_name = 'a',  .value = &val},
+			{.short_name = 'b',  .value = &val2},
+		}
+	};
+
+    String[] args = {"testprog", ".", "-"}; 
+	agp.parse(args)!!;
+
+	test::equal(val, false);
+	test::equal(val2, false);
+	test::equal(agp.arguments.len, 2);
+	test::equal(agp.arguments[0], ".");
+	test::equal(agp.arguments[1], "-");
 }

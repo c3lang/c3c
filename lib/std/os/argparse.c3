@@ -126,12 +126,12 @@ fn void! ArgParse.parse(&self, String[] argv) {
     for (; self._ctx.argc && self._ctx.argv.len; self._ctx.argc--) {
         String arg = self._ctx.argv[0];
         // io::printf("arg: %s\n", arg);
-        if (arg.len < 2) {
+        if (arg.len == 0) {
             io::printf("Error: argument too short `%s`\n", arg);
             return ArgError.INVALID_ARGUMENT?;
         }
 
-        if (arg[0] != '-' || arg[1] == '\0') {
+        if (arg.len == 1 || arg[0] != '-' || arg[1] == '\0') {
             self._ctx.has_argument = true;
 
             if (self.flags.stop_at_non_option) {
