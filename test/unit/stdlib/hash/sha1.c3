@@ -9,6 +9,15 @@ fn void test_sha1_abc()
 	assert(sha.final() == x"A9993E36 4706816A BA3E2571 7850C26C 9CD0D89D");
 }
 
+fn void test_sha1_even_longer()
+{
+	char[] content = "Lorem ipsum dolor sit amet, consectetur adipiscing elit. Fusce viverra nulla nec neque convallis feugiat. Vestibulum sodales at.";
+	Sha1 sha1;
+	sha1.init();
+	sha1.update(content);
+	assert(sha1.final() == x"7ba51bc42c21e6159556537c2134d1c2028799ef");
+}
+
 fn void test_sha1_longer()
 {
 	Sha1 sha;

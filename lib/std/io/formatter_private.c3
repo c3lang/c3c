@@ -9,6 +9,22 @@ fault FormattingFault
 	BAD_FORMAT
 }
 
+fn usz! print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
+{
+	char past_10 = (uppercase ? 'A' : 'a') - 10;
+	usz len = 0;
+	foreach (c : out)
+	{
+		char digit = c >> 4;
+		f.out(digit + (digit < 10 ? '0' : past_10))!;
+		len++;
+		digit = c & 0xf;
+		f.out(digit + (digit < 10 ? '0' : past_10))!;
+		len++;
+	}
+	return len;
+}
+
 macro Formatter.first_err(&self, anyfault f)
 {
 	if (self.first_fault) return self.first_fault;

@@ -3315,11 +3315,10 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		if (!is_naked) sema_append_contract_asserts(assert_first, body);
 		Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
 		if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
-		ASSERT0(context->active_scope.depth == 1);
+		ASSERT(func,context->active_scope.depth == 1);
 		if (!context->active_scope.jump_end && canonical_rtype != type_void)
 		{
-			SEMA_ERROR(func, "Missing return statement at the end of the function.");
-			return false;
+			RETURN_SEMA_ERROR(func, "Missing return statement at the end of the function.");
 		}
 	SCOPE_END;
 	if (lambda_params)

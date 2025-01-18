@@ -408,6 +408,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_LAMBDA);
 	advance_and_verify(c, TOKEN_FN);
 	Decl *func = decl_calloc();
+	func->span = c->prev_span;
 	func->decl_kind = DECL_FUNC;
 	func->visibility = VISIBLE_LOCAL;
 	func->func_decl.generated_lambda = NULL;
@@ -429,7 +430,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	sig->rtype = return_type ? type_infoid(return_type) : 0;
 	sig->variadic = variadic;
 	if (!parse_attributes(c, &func->attributes, NULL, NULL, NULL)) return poisoned_expr;
-
+	RANGE_EXTEND_PREV(func);
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
 		ASSIGN_ASTID_OR_RET(func->func_decl.body,
