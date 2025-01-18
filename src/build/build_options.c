@@ -244,8 +244,6 @@ static void usage_view()
 
 static void parse_project_view_subcommand(BuildOptions *options)
 {
-	options->project_options.view_modifier.project_view_flags_bitvector = 0;
-	options->project_options.view_modifier.verbose = true;
 	if (at_end() || !next_is_opt()) return;
 
 	while(!at_end()) {
@@ -273,7 +271,7 @@ static void parse_project_view_subcommand(BuildOptions *options)
 		{
 			int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
 
-			options->project_options.view_modifier.project_view_flags_bitvector |=
+			options->project_options.view_modifier.flags_bitvector |=
 				1 << flag;
 		}
 	}
@@ -284,6 +282,8 @@ static void parse_project_subcommand(BuildOptions *options)
 	if (arg_match("view"))
 	{
 		options->project_options.command = SUBCOMMAND_VIEW;
+		options->project_options.view_modifier.flags_bitvector = 0;
+		options->project_options.view_modifier.verbose = false;
 		parse_project_view_subcommand(options);
 		return;
 	}
