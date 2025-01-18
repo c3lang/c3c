@@ -3829,6 +3829,23 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 					if (body->next) RETURN_SEMA_ERROR(body, "There should not be any statements after 'return'.");
 					body = NULL;
 					continue;
+				case AST_EXPR_STMT:
+					// For some cases we KNOW it's not correct.
+					switch (body->expr_stmt->expr_kind)
+					{
+						case EXPR_IDENTIFIER:
+						case EXPR_LAMBDA:
+						case EXPR_FORCE_UNWRAP:
+						case EXPR_ASM:
+						case EXPR_EXPR_BLOCK:
+						case EXPR_TERNARY:
+						case EXPR_RETHROW:
+							break;
+						default:
+							body = astptrzero(body->next);
+							continue;
+					}
+					FALLTHROUGH;
 				case AST_POISONED:
 				case AST_ASM_STMT:
 				case AST_ASM_LABEL:
@@ -3840,7 +3857,6 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 				case AST_CONTINUE_STMT:
 				case AST_DEFAULT_STMT:
 				case AST_DEFER_STMT:
-				case AST_EXPR_STMT:
 				case AST_FOR_STMT:
 				case AST_FOREACH_STMT:
 				case AST_IF_CATCH_SWITCH_STMT:

@@ -10,6 +10,7 @@
 - Fix bug in SHA1 for longer blocks #1854.
 - Fix lack of location for reporting lambdas with missing return statement #1857.
 - Compiler allows a generic module to be declared with different parameters #1856.
+- Fix issue with `@const` where the statement `$foo = 1;` was not considered constant.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
