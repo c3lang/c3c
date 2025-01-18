@@ -406,7 +406,8 @@ typedef enum
 	PROJECT_VIEW_TYPE_TARGETS,
 } ProjectViewType;
 
-static const char *project_view_flags[10] = {
+#define PROJECT_VIEW_FLAGS_COUNT 10
+static const char *project_view_flags[PROJECT_VIEW_FLAGS_COUNT] = {
 		[PROJECT_VIEW_TYPE_AUTHOR] = "authors",
 		[PROJECT_VIEW_TYPE_VERSION] = "version",
 		[PROJECT_VIEW_TYPE_LANGUAGE_REVISION] = "language-revision",
@@ -502,7 +503,7 @@ typedef struct BuildOptions_
 		/* Support for flags for 'view' */
 		struct
 		{
-			uint16_t project_view_flags_bitvector;
+			uint16_t flags_bitvector;
 			bool verbose;
 		} view_modifier;
 	} project_options;
