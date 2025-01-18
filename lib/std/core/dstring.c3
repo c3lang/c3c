@@ -157,7 +157,7 @@ fn String DString.str_view(self)
 
 <*
  @require index < self.len()
- @require self.data() "Empty string"
+ @require self.data() != null "Empty string"
 *>
 fn char DString.char_at(self, usz index) @operator([])
 {
@@ -166,7 +166,7 @@ fn char DString.char_at(self, usz index) @operator([])
 
 <*
  @require index < self.len()
- @require self.data() "Empty string"
+ @require self.data() != null  "Empty string"
 *>
 fn char* DString.char_ref(&self, usz index) @operator(&[])
 {

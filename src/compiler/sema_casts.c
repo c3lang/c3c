@@ -1966,6 +1966,11 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 
 static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
 {
+	if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
+	{
+		expr_rewrite_const_bool(expr, type, expr->const_expr.bytes.len > 0);
+		return;
+	}
 	if (expr_is_const_slice(expr))
 	{
 		expr_rewrite_const_bool(expr, type, expr->const_expr.slice_init != NULL);
