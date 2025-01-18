@@ -449,10 +449,107 @@ void add_target_project(BuildOptions *build_options)
 	fclose(file);
 }
 
+static void view_filtered_project_properties(BuildOptions *build_options, const char* filename, JSONObject *project_json)
+{
+	uint16_t bitvector = build_options->project_options.view_modifier.flags_bitvector;
+	bool verbose = build_options->project_options.view_modifier.verbose;
+
+	const char* delim = verbose ? ", " : "\n";
+	char* prop_header;
+
+	if (bitvector & (1 << 0))
+	{
+		prop_header = verbose ? "Authors" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "authors", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 1))
+	{
+		prop_header = verbose ? "Version" : "";
+		VIEW_MANDATORY_STRING(prop_header, "version");
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 2))
+	{
+		prop_header = verbose ? "Project language target" : "";
+		VIEW_MANDATORY_STRING(prop_header, "langrev");
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 3))
+	{
+		prop_header = verbose ? "Warnings used" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "warnings", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 4))
+	{
+		prop_header = verbose ? "c3l library search paths" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "dependency-search-paths", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 5))
+	{
+		prop_header = verbose ? "c3l library dependencies" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "dependencies", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 6))
+	{
+		prop_header = verbose ? "Source paths" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "sources", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 7))
+	{
+		prop_header = verbose ? "Output location" : "";
+		VIEW_STRING(prop_header, "output");
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 8))
+	{
+		prop_header = verbose ? "Default optimization level" : "";
+		VIEW_SETTING(prop_header, "opt", optimization_levels);
+		PRINTFN("");
+	}
+
+	/* Target information */
+	if (bitvector & (1 << 9))
+	{
+		if (verbose) PRINTFN("Targets: ");
+		JSONObject *targets_json = json_map_get(project_json, "targets");
+		if (!targets_json)
+		{
+			error_exit("No targets found in project.");
+		}
+		if (targets_json->type != J_OBJECT)
+		{
+			error_exit("'targets' did not contain map of targets.");
+		}
+
+		FOREACH_IDX(i, JSONObject *, object, targets_json->members)
+		{
+			const char *key = targets_json->keys[i];
+			if (object->type != J_OBJECT)
+			{
+				error_exit("Invalid data in target '%s'", key);
+			}
+			view_target(filename, key, object, verbose);
+		}
+	}
+}
+
 void view_project(BuildOptions *build_options)
 {
 	const char *filename;
 	JSONObject *project_json = read_project(&filename, false);
+
+	bool filter_properties =
+		build_options->project_options.view_modifier.flags_bitvector != 0;
+
+	if (filter_properties) {
+		view_filtered_project_properties(build_options, filename, project_json);
+		return;
+	}
 
 	/* General information */
 	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors", ", ");
