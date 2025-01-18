@@ -244,12 +244,6 @@ static void usage_view()
 
 static void parse_project_view_subcommand(BuildOptions *options)
 {
-	/* TODO: see Discord #compiler-development for ideas
-	 * 		I'll have to implement the whole flag-parser here
-	 *		I'll already have the enum with the ProjectViewType's.
-	 *		Inside BuildOptions, maybe store the found flags using
-	 *		a bitvector?
-	 */
 	options->project_options.view_modifier.project_view_flags_bitvector = 0;
 	options->project_options.view_modifier.verbose = true;
 	if (at_end() || !next_is_opt()) return;
@@ -258,27 +252,30 @@ static void parse_project_view_subcommand(BuildOptions *options)
 		arg_index++;
 
 		current_arg = args[arg_index];
-		/* TODO: step through this with a debugger */
 
 		if (current_arg[0] != '-')
 		{
 			FAIL_WITH_ERR("'project view' does not take in args, only flags. Failed on: %s.", current_arg);
 		}
-		if (match_shortopt("vv"))
+		else if (match_shortopt("v")) {
+			options->project_options.view_modifier.verbose = false;
+		}
+		else if (match_shortopt("vv"))
 		{
 			options->project_options.view_modifier.verbose = true;
 		}
-		if (match_longopt("help") || match_shortopt("h"))
+		else if (match_longopt("help") || match_shortopt("h"))
 		{
 			usage_view();
 			exit_compiler(COMPILER_SUCCESS_EXIT);
 		}
-		int flag = parse_multi_option(current_arg, 10, project_view_flags);
+		else
+		{
+			int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
 
-		options->project_options.view_modifier.project_view_flags_bitvector |=
-			1 << flag;
-
-
+			options->project_options.view_modifier.project_view_flags_bitvector |=
+				1 << flag;
+		}
 	}
 }
 
