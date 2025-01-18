@@ -417,6 +417,8 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				continue;
 			}
 			ConstInitializer *init = expr_const_initializer_from_expr(single_expr);
+			// Skip zero arrays from slices.
+			if (!init) continue;
 			if (init && init->kind != CONST_INIT_ARRAY_FULL)
 			{
 				ASSERT0(!init || init->type != type_untypedlist);
