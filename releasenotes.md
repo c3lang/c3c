@@ -12,7 +12,7 @@
 - Compiler allows a generic module to be declared with different parameters #1856.
 - Fix issue with `@const` where the statement `$foo = 1;` was not considered constant.
 - Const strings and bytes were not properly converted to compile time bools.
-- Concatenating an const empty slice with another array caused a null pointer access.
+- Concatenating a const empty slice with another array caused a null pointer access.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
