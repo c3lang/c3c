@@ -361,19 +361,15 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 	{
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
 		CondResult result = COND_MISSING;
-		if (!sema_analyse_cond_expr(context, expr, &result)) return false;
+		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, NULL)) return false;
 
 		const char *comment = directive->contract_stmt.contract.comment;
 		if (!comment) comment = directive->contract_stmt.contract.expr_string;
-		switch (result)
+		if (expr_is_const_bool(expr))
 		{
-			case COND_TRUE:
-				continue;
-			case COND_FALSE:
-				sema_error_at(context, evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
-				return false;
-			case COND_MISSING:
-				break;
+			if (expr->const_expr.b) continue;
+			sema_error_at(context, evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
+			return false;
 		}
 		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
 		assert->assert_stmt.is_ensure = true;

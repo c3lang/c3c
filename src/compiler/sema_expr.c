@@ -9697,7 +9697,7 @@ bool sema_analyse_cond_expr(SemaContext *context, Expr *expr, CondResult *result
 								type_quoted_error_string(expr->type));
 	}
 	if (!cast_explicit(context, expr, type_bool)) return false;
-	if (expr_is_const_bool(expr))
+	if (sema_cast_const(expr) && expr_is_const_bool(expr))
 	{
 		*result = expr->const_expr.b ? COND_TRUE : COND_FALSE;
 	}

@@ -56,7 +56,7 @@ struct OnStackAllocatorHeader
 }
 
 <*
- @require old_pointer
+ @require old_pointer != null
 *>
 fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {
