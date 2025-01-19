@@ -28,9 +28,4 @@ option(
     value: 'auto',
     description: 'Enable LLVM codegen support.',
 )
-option(
-    'llvm_version',
-    type: 'string',
-    value: '',
-    description: 'Version of LLVM to use.',
-)
+option('llvm_version', type : 'array', value : ['>=17.0', '<21.0'])

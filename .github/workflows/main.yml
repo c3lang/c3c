@@ -2,7 +2,7 @@ name: CI
 
 on:
   push:
-    branches: [ master, dev, ci_testing, experiments ]
+    branches: [ master, dev, ci_testing, experiments, meson ]
   pull_request:
     branches: [ master, dev ]
 
@@ -25,50 +25,58 @@ jobs:
 
     defaults:
       run:
-        shell: cmd
+        shell: pwsh # We can use modern syntax and expressions here. It shouldn't be a problem.
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        if : matrix.build_system == 'meson'
+        with:
+          python-version: '3.x'
 
       - name: Install Meson
         if: matrix.build_system == 'meson'
         run: |
-          choco install meson ninja
+          pip install meson ninja
 
       # Note: the meson vs backend is less mature than Ninja, which is typically preferred even when using msvc
-      # --backend vs to generate VS project files, but we probably don't need that
+      # "--backend vs" to generate VS project files, but we probably don't need that
       - name: build c3c
         run: |
-          if (${{ matrix.build_system }} -eq 'cmake') {
+          if ('${{ matrix.build_system }}' -eq 'cmake') {
             cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             cmake --build build --config ${{ matrix.build_type }}
           } else {
-            meson setup build --buildtype ${{ matrix.build_type }} --backend Ninja
-            ninja -C build
+            meson setup build --vsenv --buildtype $(("${{ matrix.build_type }}").ToLower()) --backend ninja
+            meson compile -C build
           }
-        shell: pwsh
 
       # pwsh (>=6.0) syntax used here, it's just easier to work with
       - name: Set c3c binary path
         id: c3c_binpath
         run: |
-          "c3c_bin=..\build\${{matrix.build_system == 'cmake' && format('{0}\',matrix.build_type) || '' }}c3c.exe" >> $env:GITHUB_ENV
-        shell: pwsh
+          echo "c3c_bin=$(Resolve-Path .\build\${{matrix.build_system == 'cmake' && format('{0}\',matrix.build_type) || '' }}c3c.exe | select -ExpandProperty Path)" >> $env:GITHUB_ENV
 
       - name: Compile and run some examples
         env:
           c3c_bin: ${{steps.c3c_binpath.outputs.c3c_bin}}
         run: |
           cd resources
-          $env:c3c_bin compile-run -L C:\ --print-linking examples\hello_world_many.c3
-          $env:c3c_bin compile-run --print-linking examples\time.c3
-          $env:c3c_bin compile-run --print-linking examples\fannkuch-redux.c3
-          $env:c3c_bin compile-run examples\contextfree\boolerr.c3
-          $env:c3c_bin compile-run examples\ls.c3
-          $env:c3c_bin compile-run examples\load_world.c3
-          $env:c3c_bin compile-run examples\process.c3
-          $env:c3c_bin compile-run examples\args.c3 -- foo -bar "baz baz"
-          $env:c3c_bin compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples\constants.c3
-          $env:c3c_bin compile-run msvc_stack.c3
+          echo "c3c_bin=$env:c3c_bin"
+          if (Test-Path $env:c3c_bin) {
+            & $env:c3c_bin compile-run --print-linking examples\hello_world_many.c3
+            & $env:c3c_bin compile-run --print-linking examples\time.c3
+            & $env:c3c_bin compile-run --print-linking examples\fannkuch-redux.c3
+            & $env:c3c_bin compile-run examples\contextfree\boolerr.c3
+            & $env:c3c_bin compile-run examples\ls.c3
+            & $env:c3c_bin compile-run examples\load_world.c3
+            & $env:c3c_bin compile-run examples\process.c3
+            & $env:c3c_bin compile-run examples\args.c3 -- foo -bar "baz baz"
+            & $env:c3c_bin compile --no-entry --test -g -O0 --threads 1 --target macos-x64 examples\constants.c3
+            & $env:c3c_bin compile-run msvc_stack.c3
+          } else {
+            Write-Error "c3c binary not found at $env:c3c_bin"
+          }
 
       - name: Build testproject
         env:
@@ -76,9 +84,9 @@ jobs:
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           cd resources/testproject
-          $env:c3c_bin -vvv --emit-llvm run hello_world_win32
+          & $env:c3c_bin -vvv --emit-llvm run hello_world_win32
           dir build\llvm_ir
-          $env:c3c_bin clean
+          & $env:c3c_bin clean
           dir build\llvm_ir
 
 
@@ -88,23 +96,23 @@ jobs:
         run: |
           cd resources/testproject
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          $env:c3c_bin -vvv build hello_world_win32_lib
+          & $env:c3c_bin -vvv build hello_world_win32_lib
 
       - name: Compile and run dynlib-test
         env:
           c3c_bin: ${{steps.c3c_binpath.outputs.c3c_bin}}
         run: |
           cd resources/examples/dynlib-test
-          $env:c3c_bin -vv dynamic-lib add.c3
-          ..\..\..\build\${{ matrix.build_type }}\c3c.exe -vv compile-run test.c3 -l ./add.lib
+          & $env:c3c_bin -vv dynamic-lib add.c3
+          & $env:c3c_bin -vv compile-run test.c3 -l ./add.lib
 
       - name: Compile and run staticlib-test
         env:
           c3c_bin: ${{steps.c3c_binpath.outputs.c3c_bin}}
         run: |
           cd resources/examples/staticlib-test
-          $env:c3c_bin -vv static-lib add.c3
-          $env:c3c_bin -vv compile-run test.c3 -l ./add.lib
+          & $env:c3c_bin -vv static-lib add.c3
+          & $env:c3c_bin -vv compile-run test.c3 -l ./add.lib
 
       - name: Vendor-fetch
         run: |
@@ -115,10 +123,10 @@ jobs:
           c3c_bin: ${{steps.c3c_binpath.outputs.c3c_bin}}
         run: |
           cd resources
-          $env:c3c_bin vendor-fetch raylib5
-          $env:c3c_bin compile --lib raylib5 --print-linking examples\raylib\raylib_arkanoid.c3
-          $env:c3c_bin compile --lib raylib5 --print-linking examples\raylib\raylib_snake.c3
-          $env:c3c_bin compile --lib raylib5 --print-linking examples\raylib\raylib_tetris.c3
+          & $env:c3c_bin vendor-fetch raylib5
+          & $env:c3c_bin compile --lib raylib5 --print-linking examples\raylib\raylib_arkanoid.c3
+          & $env:c3c_bin compile --lib raylib5 --print-linking examples\raylib\raylib_snake.c3
+          & $env:c3c_bin compile --lib raylib5 --print-linking examples\raylib\raylib_tetris.c3
 
       - name: Run test suite (CMake)
         if : matrix.build_system == 'cmake'
@@ -134,7 +142,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
+          & $env:c3c_bin compile-test unit -O1
 
       - name: Test python script
         run: |
@@ -175,11 +183,12 @@ jobs:
             pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-19.1.6-1-any.pkg.tar.zst
       - name: Build c3c
         run: |
-          if [[ ${{ matrix.build_system }} == 'cmake']]; then
+          if ${{ matrix.build_system == 'cmake'}}; then
             cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             cmake --build build
           else
-            meson setup build --buildtype ${{ matrix.build_type }}
+            build_type=$(echo ${{ matrix.build_type }} | tr '[:upper:]' '[:lower:]')
+            meson setup build --buildtype $build_type
             ninja -C build
           fi
 
@@ -210,12 +219,12 @@ jobs:
 
       - name: run compiler tests
         run: |
-          if [[ ${{ matrix.build_system }} == 'cmake' ]]; then
+          if [[ ${{ matrix.build_system }} == 'cmake' (
             cd test
             python3 src/tester.py ../build/c3c.exe test_suite/
-          else
+          ) else (
             meson test -C build
-          fi
+          )
 
 
   build-msys2-clang:
@@ -242,11 +251,12 @@ jobs:
 
       - name: Build c3c
         run: |
-          if [[ ${{ matrix.build_system }} == 'cmake']]; then
+          if ${{ matrix.build_system == 'cmake' }}; then
             cmake -B build -G "MinGW Makefiles" -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
             cmake --build build
           else
-            meson setup build --buildtype ${{ matrix.build_type }} --backend ninja
+            build_type=$(echo ${{ matrix.build_type }} | tr '[:upper:]' '[:lower:]')
+            meson setup build --buildtype $build_type
             ninja -C build
           fi
 
@@ -286,83 +296,64 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20]
+        llvm_version: [18, 19, 20]
         build_system: [ cmake, meson ]
 
     steps:
       - uses: actions/checkout@v4
       - name: Install common deps
         run: |
-          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl libedit-dev libzstd-dev
 
       - name: Install Meson
         if: matrix.build_system == 'meson'
         run: |
-          apt-get install python3 python3-pip python3-setuptools python3-wheel ninja-build
+          sudo apt-get install python3 python3-pip python3-setuptools python3-wheel
           pip3 install meson
 
       - name: Install Clang ${{matrix.llvm_version}}
+        if : matrix.llvm_version >= 18 # 17 is already installed in noble numbat and trying to install from apt.llvm.org actually causes failures.
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
-          if [[ "${{matrix.llvm_version}}" < 18 ]]; then
-            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
+          if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
+            sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble-${{matrix.llvm_version}} main"
             sudo apt-get update
-            sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
+            sudo apt-get install -y -t llvm-toolchain-noble-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
               clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev libmlir-${{matrix.llvm_version}} \
-              libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
+              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
           else
-            if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
-              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
-              sudo apt-get update
-              sudo apt-get install -y -t llvm-toolchain-focal-${{matrix.llvm_version}} libpolly-${{matrix.llvm_version}}-dev \
-                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-            else
-              sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
-              sudo apt-get install -y -t llvm-toolchain-focal libpolly-${{matrix.llvm_version}}-dev \
-                clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
-                lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
-            fi
+            sudo add-apt-repository "deb http://apt.llvm.org/noble/ llvm-toolchain-noble main"
+            sudo apt-get install -y -t llvm-toolchain-noble libpolly-${{matrix.llvm_version}}-dev \
+              clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev \
+              lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
           fi
-      - name: Build (CMake with ${{matrix.llvm_version}})
-        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
-        run: |
-          cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
-          cmake --build build
-      - name: Build (CMake with ${{matrix.llvm_version}})
-        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
-        run: |
-          cmake -B build \
-                -G Ninja \
-                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
-                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
-                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
-                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
-                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
-                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
-                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
-                -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
-          cmake --build build
 
-      - name: Build (Meson)
-        if: matrix.build_system == 'meson'
+      - name: Build c3c (${{matrix.build_system}} with ${{matrix.llvm_version}})
         run: |
-          export CC=clang-${{matrix.llvm_version}}
-          export CXX=clang++-${{matrix.llvm_version}}
-          export CC_LD=lld-link-${{matrix.llvm_version}}
-          export CXX_LD=lld-link-${{matrix.llvm_version}}
-          meson setup --builddir build --buildtype ${{ matrix.build_type }} --backend ninja -Dllvm_version=${{ matrix.llvm_version }}
-          ninja -C build
+          if ${{ matrix.build_system == 'cmake' }}; then
+            c3_llvm_ver="${{ matrix.llvm_version }}"
+            if ${{ matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION }}; then
+              c3_llvm_ver="${{ matrix.llvm_version }}.1"
+            fi
+            cmake -B build \
+                  -G Ninja \
+                  -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                  -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                  -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                  -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                  -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                  -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                  -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                  -DC3_LLVM_VERSION=${c3_llvm_ver}
+            cmake --build build
+          else
+            export CC=clang-${{matrix.llvm_version}}
+            export CXX=clang++-${{matrix.llvm_version}}
+            build_type=$(echo ${{ matrix.build_type }} | tr '[:upper:]' '[:lower:]')
+            llvm_ver="['>=${{ matrix.llvm_version }}', '<$((${{ matrix.llvm_version }}+1))']"
+            meson setup build --buildtype $build_type --backend ninja -Dllvm_version="${llvm_ver}" -Dwith_llvm=enabled
+            ninja -C build
+          fi
 
       - name: Compile and run some examples
         run: |
@@ -720,7 +711,9 @@ jobs:
               cmake --build build
             fi
           else
-            meson setup build --buildtype ${{ matrix.build_type }} --backend ninja -Dllvm_version=${{ matrix.llvm_version }}
+            build_type=$(echo ${{ matrix.build_type }} | tr '[:upper:]' '[:lower:]')
+            llvm_ver="['>=${{ matrix.llvm_version }}', '<$((${{ matrix.llvm_version }}+1))']"
+            meson setup build --buildtype $build_type --backend ninja -Dwith_llvm=enabled -Dllvm_version="${llvm_ver}"
             ninja -C build
           fi
 

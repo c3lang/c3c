@@ -256,6 +256,13 @@ $ meson setup build
 $ meson compile -C build
 ```
 
+The build backend may be invoked directly if using Ninja:
+
+```console
+$ meson setup build
+$ ninja -C build
+```
+
 Note that `build` is the name of the build directory and may be changed to any other name, or several build directories may be configured for different build types.
 
 To specify a build type, use the `--buildtype` flag:
