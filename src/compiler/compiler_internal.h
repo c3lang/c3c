@@ -863,21 +863,10 @@ typedef struct
 
 typedef struct
 {
-	union
-	{
-		struct
-		{
-			Path *path;
-			const char *ident;
-			bool is_const;
-		};
-		struct
-		{
-			Decl *decl;
-			bool was_ref;
-		};
-	};
-} ExprIdentifier;
+	Path *path;
+	const char *ident;
+	bool is_const;
+} ExprUnresolvedIdentifier;
 
 typedef struct
 {
@@ -1025,21 +1014,16 @@ typedef struct
 
 typedef struct
 {
-	union
-	{
-		struct
-		{
-			Expr *variable;
-			TypeInfo *type;
-		};
-		struct
-		{
-			Decl *decl;
-			Expr *lhs;
-		};
-	};
+	Decl *decl;
 	Expr **exprs;
-} ExprCatchUnwrap;
+} ExprCatch;
+
+typedef struct
+{
+	Expr *variable;
+	TypeInfo *type;
+	Expr **exprs;
+} ExprUnresolvedCatch;
 
 typedef struct
 {
@@ -1153,7 +1137,8 @@ struct Expr_
 		ExprBuiltin builtin_expr;                   // 16
 		ExprCall call_expr;                         // 40
 		ExprCast cast_expr;                         // 12
-		ExprCatchUnwrap catch_unwrap_expr;          // 24
+		ExprUnresolvedCatch unresolved_catch_expr;  // 24
+		ExprCatch catch_expr;                       // 24
 		Expr** cond_expr;                           // 8
 		ExprConst const_expr;                       // 32
 		ExprCtArg ct_arg_expr;
@@ -1178,7 +1163,8 @@ struct Expr_
 		ExprGenericIdent generic_ident_expr;
 		ExprDefaultArg default_arg_expr;
 		ExprIdentifierRaw hash_ident_expr;          // 24
-		ExprIdentifier identifier_expr;             // 24
+		ExprUnresolvedIdentifier unresolved_ident_expr;// 24
+		Decl *ident_expr;                           // 8
 		Expr** initializer_list;                    // 8
 		Expr *inner_expr;                           // 8
 		ExprMakeAny make_any_expr;
@@ -3412,7 +3398,8 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_BITASSIGN:
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH_UNRESOLVED:
+		case EXPR_CATCH:
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
@@ -3463,6 +3450,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
 		case EXPR_UNARY:
+		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
@@ -3494,8 +3482,9 @@ INLINE bool exprid_is_simple(ExprId expr_id, bool to_float) { return expr_is_sim
 
 INLINE void expr_resolve_ident(Expr *expr, Decl *decl)
 {
-	expr->identifier_expr = (ExprIdentifier) { .decl = decl };
-	expr->type = decl->type;
+	expr->expr_kind = EXPR_IDENTIFIER;
+	expr->ident_expr = decl;
+	expr->type = decl->type ? decl->type : type_void;
 	expr->resolve_status = RESOLVE_DONE;
 }
 

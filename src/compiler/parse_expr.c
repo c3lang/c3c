@@ -183,7 +183,7 @@ static inline Expr *parse_try_chain_expr(ParseContext *c)
  */
 static inline Expr *parse_catch_unwrap(ParseContext *c)
 {
-	Expr *expr = expr_new(EXPR_CATCH_UNWRAP, c->span);
+	Expr *expr = expr_new(EXPR_CATCH_UNRESOLVED, c->span);
 	advance_and_verify(c, TOKEN_CATCH);
 	Expr **exprs = NULL;
 
@@ -201,7 +201,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 			vec_add(exprs, sub_expr);
 		} while (try_consume(c, TOKEN_COMMA));
 		// We're done.
-		expr->catch_unwrap_expr.exprs = exprs;
+		expr->unresolved_catch_expr.exprs = exprs;
 		return expr;
 	}
 
@@ -209,28 +209,28 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	if (sub_expr->expr_kind == EXPR_TYPEINFO)
 	{
 		// Assign the type
-		expr->catch_unwrap_expr.type = sub_expr->type_expr;
+		expr->unresolved_catch_expr.type = sub_expr->type_expr;
 		// Assign the variable
-		ASSIGN_EXPR_OR_RET(expr->catch_unwrap_expr.variable, parse_try_chain_expr(c), poisoned_expr);
+		ASSIGN_EXPR_OR_RET(expr->unresolved_catch_expr.variable, parse_try_chain_expr(c), poisoned_expr);
 	}
 	else
 	{
 		// Here we assume it's either "f" or an expression.
-		expr->catch_unwrap_expr.type = NULL;
-		expr->catch_unwrap_expr.variable = sub_expr;
+		expr->unresolved_catch_expr.type = NULL;
+		expr->unresolved_catch_expr.variable = sub_expr;
 	}
 	// If we don't have an '=', we check whether
 	if (!try_consume(c, TOKEN_EQ))
 	{
 		// If we had "anyfault f", then we MUST have '='
-		if (expr->catch_unwrap_expr.type)
+		if (expr->unresolved_catch_expr.type)
 		{
 			PRINT_ERROR_HERE("Expected a '=' here.");
 			return poisoned_expr;
 		}
 		// We just have `catch foo`, so we add the "variable" as an expression
-		vec_add(expr->catch_unwrap_expr.exprs, expr->catch_unwrap_expr.variable);
-		expr->catch_unwrap_expr.variable = NULL;
+		vec_add(expr->unresolved_catch_expr.exprs, expr->unresolved_catch_expr.variable);
+		expr->unresolved_catch_expr.variable = NULL;
 		RANGE_EXTEND_PREV(expr);
 		return expr;
 	}
@@ -240,7 +240,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		ASSIGN_EXPR_OR_RET(sub_expr, parse_try_chain_expr(c), poisoned_expr);
 		vec_add(exprs, sub_expr);
 	} while (try_consume(c, TOKEN_COMMA));
-	expr->catch_unwrap_expr.exprs = exprs;
+	expr->unresolved_catch_expr.exprs = exprs;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -262,7 +262,7 @@ static inline Expr *parse_try_unwrap(ParseContext *c)
 	{
 		expr->try_unwrap_expr.variable = lhs;
 	}
-	if (lhs->expr_kind == EXPR_TYPEINFO && expr->try_unwrap_expr.variable->expr_kind != EXPR_IDENTIFIER)
+	if (lhs->expr_kind == EXPR_TYPEINFO && expr->try_unwrap_expr.variable->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		RETURN_PRINT_ERROR_AT(poisoned_expr, expr->try_unwrap_expr.variable, "A new variable was expected.");
 	}
@@ -1182,8 +1182,8 @@ static Expr *parse_ct_sizeof(ParseContext *c, Expr *left)
 	type_info->unresolved_type_expr = inner;
 	typeof_expr->type_expr = type_info;
 	access->access_expr.parent = typeof_expr;
-	Expr *ident = expr_new(EXPR_IDENTIFIER, c->span);
-	ident->identifier_expr.ident = type_property_list[TYPE_PROPERTY_SIZEOF];
+	Expr *ident = expr_new(EXPR_UNRESOLVED_IDENTIFIER, c->span);
+	ident->unresolved_ident_expr.ident = type_property_list[TYPE_PROPERTY_SIZEOF];
 	access->access_expr.child = ident;
 	RANGE_EXTEND_PREV(access);
 	return access;
@@ -1330,9 +1330,9 @@ static Expr *parse_identifier(ParseContext *c, Expr *left)
 		advance(c);
 		return expr;
 	}
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_IDENTIFIER);
-	expr->identifier_expr.ident = symstr(c);
-	expr->identifier_expr.is_const = tok_is(c, TOKEN_CONST_IDENT);
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_UNRESOLVED_IDENTIFIER);
+	expr->unresolved_ident_expr.ident = symstr(c);
+	expr->unresolved_ident_expr.is_const = tok_is(c, TOKEN_CONST_IDENT);
 	advance(c);
 	return expr;
 }
@@ -1351,7 +1351,7 @@ static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 		case TOKEN_AT_IDENT:
 		{
 			Expr *expr = parse_identifier(c, NULL);
-			expr->identifier_expr.path = path;
+			expr->unresolved_ident_expr.path = path;
 			if (path)
 			{
 				expr->span = extend_span_with_token(path->span, expr->span);

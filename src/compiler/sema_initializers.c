@@ -876,7 +876,7 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 	}
 	if (value->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *ident = decl_flatten(value->identifier_expr.decl);
+		Decl *ident = decl_flatten(value->ident_expr);
 		ASSERT0(ident->decl_kind == DECL_VAR);
 		ASSERT0(ident->var.kind == VARDECL_CONST);
 		const_init_rewrite_to_value(const_init, expr_copy(ident->var.init_expr));
@@ -1305,12 +1305,12 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL);
 	if (!field) return poisoned_decl;
 
-	if (field->expr_kind != EXPR_IDENTIFIER)
+	if (field->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		SEMA_ERROR(field, "An identifier was expected.");
 		return poisoned_decl;
 	}
-	const char *name = field->identifier_expr.ident;
+	const char *name = field->unresolved_ident_expr.ident;
 	unsigned old_index = *index;
 	FOREACH_IDX(i, Decl *, decl, decls)
 	{

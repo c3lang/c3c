@@ -317,15 +317,15 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 	last = sema_dive_into_expression(last);
 
 	// Skip any non-unwraps
-	if (last->expr_kind != EXPR_CATCH_UNWRAP) return;
+	if (last->expr_kind != EXPR_CATCH) return;
 
 	// If we have "if (catch x)" then this will unwrap x in the
 	// else branch.
-	FOREACH(Expr *, expr, last->catch_unwrap_expr.exprs)
+	FOREACH(Expr *, expr, last->unresolved_catch_expr.exprs)
 	{
 		if (expr->expr_kind != EXPR_IDENTIFIER) continue;
 
-		Decl *decl = expr->identifier_expr.decl;
+		Decl *decl = expr->ident_expr;
 		if (decl->decl_kind != DECL_VAR) continue;
 		ASSERT0(decl->type->type_kind == TYPE_OPTIONAL && "The variable should always be optional at this point.");
 
@@ -566,7 +566,7 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 CHECK_ACCESS:
 	while (expr->expr_kind == EXPR_ACCESS) expr = expr->access_expr.parent;
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
-	Decl *decl = expr->identifier_expr.decl;
+	Decl *decl = expr->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
 	switch (decl->var.kind)
 	{
@@ -687,7 +687,8 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case EXPR_BITASSIGN:
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
+		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COND:
 		case EXPR_POISONED:
 		case EXPR_CT_AND_OR:
@@ -701,6 +702,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
 		case EXPR_NAMED_ARGUMENT:
+		case EXPR_UNRESOLVED_IDENTIFIER:
 			UNREACHABLE
 		case EXPR_BINARY:
 		case EXPR_POINTER_OFFSET:
@@ -809,7 +811,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 			expr->type = type_bool;
 			return true;
 		}
-		Decl *decl = ident->identifier_expr.decl;
+		Decl *decl = ident->ident_expr;
 		if (decl->decl_kind != DECL_VAR)
 		{
 			RETURN_SEMA_ERROR(ident, "Expected this to be the name of an optional variable, but it isn't. Did you mistype?");
@@ -847,15 +849,15 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	// 3. We are creating a new variable
 
 	// 3a. If we had a variable type, then our expression must be an identifier.
-	if (ident->expr_kind != EXPR_IDENTIFIER) RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
+	if (ident->expr_kind != EXPR_UNRESOLVED_IDENTIFIER) RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
 	ASSERT0(ident->resolve_status != RESOLVE_DONE);
-	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
-	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
-	const char *ident_name = ident->identifier_expr.ident;
+	if (ident->unresolved_ident_expr.path) RETURN_SEMA_ERROR(ident->unresolved_ident_expr.path, "The variable may not have a path.");
+	if (ident->unresolved_ident_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+	const char *ident_name = ident->unresolved_ident_expr.ident;
 
 	// Special check for `if (try a = a)`
-	if (optional->expr_kind == EXPR_IDENTIFIER && optional->resolve_status == RESOLVE_NOT_DONE
-		&& !optional->identifier_expr.path && optional->identifier_expr.ident == ident_name)
+	if (optional->expr_kind == EXPR_UNRESOLVED_IDENTIFIER
+		&& !optional->unresolved_ident_expr.path && optional->unresolved_ident_expr.ident == ident_name)
 	{
 		RETURN_SEMA_ERROR(ident, "If you want to unwrap the same variable, use 'if (try %s)' { ... } instead.", ident_name);
 	}
@@ -881,7 +883,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 	}
 
 	// 4d. A new declaration is created.
-	Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, var_type, VARDECL_LOCAL);
+	Decl *decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, var_type, VARDECL_LOCAL);
 
 	// 4e. Analyse it
 	if (!sema_analyse_var_decl(context, decl, true)) return false;
@@ -918,16 +920,11 @@ static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *exp
 }
 static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 {
-	Expr *ident = expr->catch_unwrap_expr.variable;
+	Expr *ident = expr->unresolved_catch_expr.variable;
+	TypeInfo *type = expr->unresolved_catch_expr.type;
 
-	TypeInfo *type = expr->catch_unwrap_expr.type;
-
-	if (!type && !ident)
-	{
-		expr->catch_unwrap_expr.lhs = NULL;
-		expr->catch_unwrap_expr.decl = NULL;
-		goto RESOLVE_EXPRS;
-	}
+	Decl *decl = NULL;
+	if (!type && !ident) goto RESOLVE_EXPRS;
 	type = type ? type : type_info_new_base(type_anyfault, expr->span);
 
 	if (!sema_resolve_type_info(context, type, RESOLVE_TYPE_DEFAULT)) return false;
@@ -937,27 +934,24 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 		RETURN_SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyfault),
 		                  type_quoted_error_string(type->type));
 	}
-	if (ident->expr_kind != EXPR_IDENTIFIER)
+	if (ident->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		RETURN_SEMA_ERROR(ident, "A variable name was expected here.");
 	}
 
-	ASSERT0(ident->resolve_status != RESOLVE_DONE);
-	if (ident->identifier_expr.path) RETURN_SEMA_ERROR(ident->identifier_expr.path, "The variable may not have a path.");
-	if (ident->identifier_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
+	if (ident->unresolved_ident_expr.path) RETURN_SEMA_ERROR(ident->unresolved_ident_expr.path, "The variable may not have a path.");
+	if (ident->unresolved_ident_expr.is_const) RETURN_SEMA_ERROR(ident, "Expected a variable starting with a lower case letter.");
 
 	// 4d. A new declaration is created.
-	Decl *decl = decl_new_var(ident->identifier_expr.ident, ident->span, type, VARDECL_LOCAL);
+	decl = decl_new_var(ident->unresolved_ident_expr.ident, ident->span, type, VARDECL_LOCAL);
 	decl->var.no_init = true;
 
 	// 4e. Analyse it
 	if (!sema_analyse_var_decl(context, decl, true)) return false;
 
-	expr->catch_unwrap_expr.decl = decl;
-	expr->catch_unwrap_expr.lhs = NULL;
-
 RESOLVE_EXPRS:;
-	FOREACH(Expr *, fail, expr->catch_unwrap_expr.exprs)
+	Expr **exprs = expr->unresolved_catch_expr.exprs;
+	FOREACH(Expr *, fail, exprs)
 	{
 		if (!sema_analyse_expr(context, fail)) return false;
 		if (!type_is_optional(fail->type))
@@ -965,6 +959,8 @@ RESOLVE_EXPRS:;
 			RETURN_SEMA_ERROR(fail, "This expression is not optional, did you add it by mistake?");
 		}
 	}
+	expr->catch_expr = (ExprCatch) { .exprs = exprs, .decl = decl };
+	expr->expr_kind = EXPR_CATCH;
 	expr->type = type_anyfault;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -1001,7 +997,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 				return false;
 			}
 			return sema_analyse_try_unwrap_chain(context, expr, cond_type, result);
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH_UNRESOLVED:
 			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
 			{
 				RETURN_SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
@@ -1019,11 +1015,11 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	{
 		// No variable on the lhs? Then it can't be an any unwrap.
 		Expr *left = exprptr(expr->binary_expr.left);
-		if (left->resolve_status ==  RESOLVE_DONE || left->expr_kind != EXPR_IDENTIFIER || left->identifier_expr.path) goto NORMAL_EXPR;
+		if (left->resolve_status ==  RESOLVE_DONE || left->expr_kind != EXPR_UNRESOLVED_IDENTIFIER || left->unresolved_ident_expr.path) goto NORMAL_EXPR;
 
 		// Does the identifier exist in the parent scope?
 		// then again it can't be an any unwrap.
-		BoolErr defined_in_scope = sema_symbol_is_defined_in_scope(context, left->identifier_expr.ident);
+		BoolErr defined_in_scope = sema_symbol_is_defined_in_scope(context, left->unresolved_ident_expr.ident);
 		if (defined_in_scope == BOOL_ERR) return false;
 		if (defined_in_scope == BOOL_TRUE) goto NORMAL_EXPR;
 
@@ -1041,7 +1037,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		if (type != type_any) goto NORMAL_EXPR;
 		// Found an expansion here
 		expr->expr_kind = EXPR_ANYSWITCH;
-		expr->any_switch.new_ident = left->identifier_expr.ident;
+		expr->any_switch.new_ident = left->unresolved_ident_expr.ident;
 		expr->any_switch.span = left->span;
 		expr->any_switch.any_expr = right;
 		expr->any_switch.is_deref = is_deref;
@@ -1055,7 +1051,7 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	if (type != type_any) return true;
 	if (expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *decl = expr->identifier_expr.decl;
+		Decl *decl = expr->ident_expr;
 		expr->expr_kind = EXPR_ANYSWITCH;
 		expr->any_switch.is_deref = false;
 		expr->any_switch.is_assign = false;
@@ -1604,7 +1600,7 @@ SKIP_OVERLOAD:;
 	bool is_variable = false;
 	if (enumerator->expr_kind == EXPR_IDENTIFIER)
 	{
-		enumerator->identifier_expr.decl->var.is_written = true;
+		enumerator->ident_expr->var.is_written = true;
 		is_variable = true;
 	}
 	else if (expr_may_addr(enumerator))
@@ -1616,7 +1612,7 @@ SKIP_OVERLOAD:;
 	Decl *temp = NULL;
 	if (is_variable)
 	{
-		temp = enumerator->identifier_expr.decl;
+		temp = enumerator->ident_expr;
 	}
 	else
 	{

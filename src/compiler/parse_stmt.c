@@ -19,7 +19,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	switch (c->tok)
 	{
 		case TOKEN_LBRACE:
-			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_IDENTIFIER)
+			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 			{
 				print_error_at(decl->var.init_expr->span,
 				               "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
@@ -982,7 +982,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->span = expr->span;
 	ast->ast_kind = AST_EXPR_STMT;
 	ast->expr_stmt = expr;
-	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
+	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here.");
 	}

@@ -287,16 +287,6 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 
 	if (from_type == to_type) return true;
 
-	if (to_type->canonical->type_kind == TYPE_POINTER && from_type->canonical->type_kind != TYPE_POINTER
-	    && to_type->canonical->pointer == from_type->canonical && expr->expr_kind == EXPR_IDENTIFIER
-	    && expr->identifier_expr.was_ref)
-	{
-		if (is_silent) return false;
-		RETURN_SEMA_ERROR(expr, "A macro ref parameter is a dereferenced pointer ('*&foo'). You can prefix it"
-		                        " with '&' to pass it as a pointer.");
-	}
-
-
 	bool is_void_silence = type_is_void(to_type) && is_explicit;
 	bool add_optional = type_is_optional(to_type) || type_is_optional(from_type);
 	from_type = type_no_optional(from_type);
@@ -1231,7 +1221,7 @@ static bool rule_to_distinct(CastContext *cc, bool is_explicit, bool is_silent)
 	if (!is_const && from_type->type_kind == TYPE_FUNC_PTR
 		&& expr->expr_kind == EXPR_UNARY && expr->unary_expr.operator == UNARYOP_ADDR
 		&& expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER
-		&& expr->unary_expr.expr->identifier_expr.decl->decl_kind == DECL_FUNC)
+		&& expr->unary_expr.expr->ident_expr->decl_kind == DECL_FUNC)
 	{
 		is_const = true;
 	}

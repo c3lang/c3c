@@ -1952,8 +1952,8 @@ static inline Decl *parse_def_type(ParseContext *c)
 		case EXPR_TYPEINFO:
 			type_info = expr->type_expr;
 			break;
-		case EXPR_IDENTIFIER:
-			if (expr->identifier_expr.is_const)
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (expr->unresolved_ident_expr.is_const)
 			{
 				print_error_at(decl->span, "A constant may not have a type name alias, it must have an all caps name.");
 			}
@@ -2350,7 +2350,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 					if (try_consume(c, TOKEN_RBRACE)) break;
 					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), poisoned_decl);
 					vec_add(args, arg);
-					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_IDENTIFIER)
+					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 					{
 						print_error_at(extend_span_with_token(arg->span, c->span),
 									   "This looks like a designated initializer, but that style of declaration "

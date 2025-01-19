@@ -407,6 +407,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_RVALUE:
+		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_EXT_TRUNC:
@@ -437,8 +438,9 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_CALL:
 			break;
 		case EXPR_CAST:
+		case EXPR_CATCH_UNRESOLVED:
 			UNREACHABLE
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
 			break;
 		case EXPR_COMPILER_CONST:
 			break;

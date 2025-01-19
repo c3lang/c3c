@@ -4475,7 +4475,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		// If the LHS is an identifier, then we're assigning the optional value to that.
 		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
-			optional_ref = decl_optional_ref(left->identifier_expr.decl);
+			optional_ref = decl_optional_ref(left->ident_expr);
 			be_value->kind = BE_ADDRESS;
 		}
 
@@ -6348,14 +6348,10 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 {
 	BEValue addr;
-	if (expr->catch_unwrap_expr.lhs)
+	if (expr->catch_expr.decl)
 	{
-		llvm_emit_expr(c, &addr, expr->catch_unwrap_expr.lhs);
-	}
-	else if (expr->catch_unwrap_expr.decl)
-	{
-		llvm_emit_local_decl(c, expr->catch_unwrap_expr.decl, &addr);
-		llvm_value_set_decl_address(c, &addr, expr->catch_unwrap_expr.decl);
+		llvm_emit_local_decl(c, expr->catch_expr.decl, &addr);
+		llvm_value_set_decl_address(c, &addr, expr->catch_expr.decl);
 	}
 	else
 	{
@@ -6367,7 +6363,7 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	PUSH_CATCH_VAR_BLOCK(addr.value, catch_block);
 
-	FOREACH(Expr *, e, expr->catch_unwrap_expr.exprs)
+	FOREACH(Expr *, e, expr->catch_expr.exprs)
 	{
 		BEValue val;
 		LLVMBasicBlockRef block = llvm_basic_block_new(c, "testblock");
@@ -7028,6 +7024,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_CAST:
+		case EXPR_CATCH_UNRESOLVED:
 			UNREACHABLE
 		case EXPR_VECTOR_TO_ARRAY:
 			llvm_emit_vector_to_array(c, value, expr);
@@ -7149,7 +7146,7 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_TRY_UNWRAP:
 			llvm_emit_try_unwrap(c, value, expr);
 			return;
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
 			llvm_emit_catch_unwrap(c, value, expr);
 			return;
 		case EXPR_TYPEID_INFO:
@@ -7211,11 +7208,12 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			llvm_emit_rethrow_expr(c, value, expr);
 			return;
 		case EXPR_TYPEID:
+		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_SUBSCRIPT_ASSIGN:
 			// These are folded in the semantic analysis step.
 			UNREACHABLE
 		case EXPR_IDENTIFIER:
-			llvm_value_set_decl(c, value, expr->identifier_expr.decl);
+			llvm_value_set_decl(c, value, expr->ident_expr);
 			return;
 		case EXPR_SUBSCRIPT:
 			llvm_emit_subscript(c, value, expr);

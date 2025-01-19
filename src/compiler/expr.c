@@ -23,7 +23,8 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_BUILTIN_ACCESS: return "builtin_access";
 		case EXPR_CALL: return "call";
 		case EXPR_CAST: return "cast";
-		case EXPR_CATCH_UNWRAP: return "catch_unwrap";
+		case EXPR_CATCH: return "catch_unwrap";
+		case EXPR_CATCH_UNRESOLVED: return "catch_unresolved";
 		case EXPR_COMPILER_CONST: return "compiler_const";
 		case EXPR_COMPOUND_LITERAL: return "compound_litera";
 		case EXPR_COND: return "cond";
@@ -55,6 +56,7 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_GENERIC_IDENT: return "generic_ident";
 		case EXPR_HASH_IDENT: return "hash_ident";
 		case EXPR_IDENTIFIER: return "identifier";
+		case EXPR_UNRESOLVED_IDENTIFIER: return "unresolved_identifier";
 		case EXPR_INITIALIZER_LIST: return "initializer_list";
 		case EXPR_INT_TO_FLOAT: return "int_to_float";
 		case EXPR_INT_TO_PTR: return "int_to_ptr";
@@ -178,7 +180,7 @@ bool expr_is_zero(Expr *expr)
 bool expr_is_unwrapped_ident(Expr *expr)
 {
 	if (expr->expr_kind != EXPR_IDENTIFIER) return false;
-	Decl *decl = expr->identifier_expr.decl;
+	Decl *decl = expr->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return false;
 	return decl->var.kind == VARDECL_UNWRAPPED && IS_OPTIONAL(decl->var.alias);
 }
@@ -188,11 +190,13 @@ bool expr_may_addr(Expr *expr)
 	if (IS_OPTIONAL(expr)) return false;
 	switch (expr->expr_kind)
 	{
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_addr(expr->expr_other_context.inner);
 		case EXPR_IDENTIFIER:
 		{
-			Decl *decl = expr->identifier_expr.decl;
+			Decl *decl = expr->ident_expr;
 			if (decl->decl_kind != DECL_VAR) return false;
 			decl = decl_raw(decl);
 			switch (decl->var.kind)
@@ -254,7 +258,8 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_CALL:
 		case EXPR_CAST:
 		case EXPR_MAKE_ANY:
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
+		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CONST:
@@ -337,7 +342,8 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
 		case EXPR_CALL:
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
+		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_TRY_UNWRAP:
 		case EXPR_TRY_UNWRAP_CHAIN:
@@ -354,6 +360,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
+		case EXPR_UNRESOLVED_IDENTIFIER:
 			return false;
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ANYFAULT_TO_FAULT:
@@ -405,7 +412,7 @@ bool expr_is_runtime_const(Expr *expr)
 			goto RETRY;
 		case EXPR_IDENTIFIER:
 		{
-			Decl *ident = expr->identifier_expr.decl;
+			Decl *ident = expr->ident_expr;
 			if (ident->decl_kind != DECL_VAR) return true;
 			switch (ident->var.kind)
 			{
@@ -449,7 +456,7 @@ bool expr_is_runtime_const(Expr *expr)
 			expr = exprptr(expr->subscript_expr.expr);
 			if (expr->expr_kind == EXPR_IDENTIFIER)
 			{
-				Decl *decl = expr->identifier_expr.decl;
+				Decl *decl = expr->ident_expr;
 				if (decl->decl_kind == DECL_VAR)
 				{
 					switch (decl->var.kind)
@@ -542,10 +549,12 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			// We can't create temporaries as const locally or making them into compile time constants.
 			return expr_is_runtime_const(inner);
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			UNREACHABLE
 		case EXPR_IDENTIFIER:
 		{
 			// The address of an identifier is side effect free.
-			Decl *decl = inner->identifier_expr.decl;
+			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind == DECL_FUNC) return true;
 			if (decl->decl_kind != DECL_VAR) return false;
 			switch (decl->var.kind)
@@ -794,6 +803,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_IDENT:
 		case EXPR_EMBED:
 		case EXPR_IDENTIFIER:
+		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_MACRO_BODY:
 		case EXPR_NOP:
@@ -841,7 +851,8 @@ bool expr_is_pure(Expr *expr)
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
+		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_DESIGNATOR:
@@ -1070,8 +1081,8 @@ Expr *expr_variable(Decl *decl)
 		expr_resolve_ident(expr, decl);
 		return expr;
 	}
-	Expr *expr = expr_new(EXPR_IDENTIFIER, decl->span);
-	expr->identifier_expr.ident = decl->name;
+	Expr *expr = expr_new(EXPR_UNRESOLVED_IDENTIFIER, decl->span);
+	expr->unresolved_ident_expr = (ExprUnresolvedIdentifier) { .ident = decl->name };
 	expr->resolve_status = RESOLVE_NOT_DONE;
 	return expr;
 }

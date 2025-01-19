@@ -548,7 +548,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	// Fold "source" of the init.
 	while (init_expr && init_expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *inner_decl = decl_flatten(init_expr->identifier_expr.decl);
+		Decl *inner_decl = decl_flatten(init_expr->ident_expr);
 		if (inner_decl->decl_kind != DECL_VAR) break;
 		if (inner_decl->var.kind != VARDECL_CONST) break;
 		init_expr = inner_decl->var.init_expr;

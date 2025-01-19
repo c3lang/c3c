@@ -2663,14 +2663,14 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			switch (expr->expr_kind)
 			{
-				case EXPR_IDENTIFIER:
-					if (expr->identifier_expr.path) goto FAILED_OP_TYPE;
-					if (expr->identifier_expr.ident == kw_construct)
+				case EXPR_UNRESOLVED_IDENTIFIER:
+					if (expr->unresolved_ident_expr.path) goto FAILED_OP_TYPE;
+					if (expr->unresolved_ident_expr.ident == kw_construct)
 					{
 						decl->operator = OVERLOAD_CONSTRUCT;
 						break;
 					}
-					if (expr->identifier_expr.ident != kw_len) goto FAILED_OP_TYPE;
+					if (expr->unresolved_ident_expr.ident != kw_len) goto FAILED_OP_TYPE;
 					decl->operator = OVERLOAD_LEN;
 					break;
 				case EXPR_OPERATOR_CHARS:
@@ -4613,7 +4613,7 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 	{
 		RETURN_SEMA_ERROR(expr, "A global variable or function name was expected here.");
 	}
-	Decl *symbol = expr->identifier_expr.decl;
+	Decl *symbol = expr->ident_expr;
 	if (!sema_analyse_decl(context, symbol)) return false;
 	bool should_be_const = char_is_upper(decl->name[0]);
 	if (should_be_const)
