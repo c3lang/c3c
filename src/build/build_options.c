@@ -1281,7 +1281,7 @@ static inline bool at_end()
 
 static inline const char *next_arg()
 {
-	ASSERT0(!at_end());
+	ASSERT(!at_end());
 	current_arg = args[++arg_index];
 	return current_arg;
 }

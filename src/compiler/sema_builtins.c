@@ -52,7 +52,7 @@ static bool sema_expr_is_valid_mask_for_value(SemaContext *context, Expr *expr, 
  */
 static bool sema_check_builtin_args_match(SemaContext *context, Expr **args, size_t arg_len)
 {
-	ASSERT0(arg_len > 1);
+	ASSERT(arg_len > 1);
 	Type *first = type_no_optional(args[0]->type->canonical);
 	for (size_t i = 1; i < arg_len; i++)
 	{
@@ -457,7 +457,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 	switch (func)
 	{
 		case BUILTIN_SET_ROUNDING_MODE:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
 			rtype = type_void;
 			break;
@@ -474,7 +474,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_VECCOMPLT:
 		case BUILTIN_VECCOMPNE:
 		{
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_NUMVEC, BA_NUMVEC}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			Type *vec_type = type_flatten(args[0]->type);
@@ -488,7 +488,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		}
 		case BUILTIN_SELECT:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLVEC, BA_VEC, BA_VEC}, 3)) return false;
 			if (!sema_check_builtin_args_match(context, &args[1], 2)) return false;
 			rtype = args[1]->type;
@@ -497,7 +497,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_OVERFLOW_ADD:
 		case BUILTIN_OVERFLOW_MUL:
 		case BUILTIN_OVERFLOW_SUB:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args,
 			                             (BuiltinArg[]) {BA_INTEGER, BA_INTEGER, BA_POINTER},
 			                             3)) return false;
@@ -515,13 +515,13 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_EXACT_MUL:
 		case BUILTIN_EXACT_SUB:
 		case BUILTIN_EXACT_MOD:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER, BA_INTEGER}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type->canonical;
 			break;
 		case BUILTIN_ANY_MAKE:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_TYPEID}, 2)) return false;
 			{
 				expr->expr_kind = EXPR_MAKE_ANY;
@@ -533,12 +533,12 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				return true;
 			}
 		case BUILTIN_EXACT_NEG:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE}, 1)) return false;
 			rtype = args[0]->type->canonical;
 			break;
 		case BUILTIN_MEMCOPY_INLINE:
-			ASSERT0(arg_count == 6);
+			ASSERT(arg_count == 6);
 			if (!sema_check_builtin_args(context, args,
 			                             (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
 			                             6)) return false;
@@ -547,7 +547,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_MEMCOPY:
 		case BUILTIN_MEMMOVE:
-			ASSERT0(arg_count == 6);
+			ASSERT(arg_count == 6);
 			if (!sema_check_builtin_args(context, args,
 			                             (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
 			                             6)) return false;
@@ -555,14 +555,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET:
-			ASSERT0(arg_count == 5);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE},
 			                             5)) return false;
 			if (!sema_check_builtin_args_const(context, &args[3], 2)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET_INLINE:
-			ASSERT0(arg_count == 5);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE},
 			                             5)) return false;
 			if (!sema_check_builtin_args_const(context, &args[2], 3)) return false;
@@ -573,31 +573,31 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_CTLZ:
 		case BUILTIN_POPCOUNT:
 		case BUILTIN_CTTZ:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE}, 1)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_SAT_SHL:
 		case BUILTIN_SAT_SUB:
 		case BUILTIN_SAT_ADD:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE, BA_INTLIKE}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_REVERSE:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_VEC}, 1)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_EXPECT:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLINT, BA_BOOLINT}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_EXPECT_WITH_PROBABILITY:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLINT, BA_BOOLINT}, 2)) return false;
 			if (!cast_implicit(context, args[2], type_double, false))
 			{
@@ -635,32 +635,32 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_SIN:
 		case BUILTIN_SQRT:
 		case BUILTIN_TRUNC:
-			ASSERT0(arg_count);
+			ASSERT(arg_count);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE},
 			                             arg_count)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_FRAMEADDRESS:
 		case BUILTIN_RETURNADDRESS:
-			ASSERT0(arg_count);
+			ASSERT(arg_count);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTEGER}, arg_count)) return false;
 			if (!cast_implicit(context, args[0], type_int, false)) return false;
 			if (!expr_is_const_int(args[0])) RETURN_SEMA_ERROR(args[0], "Expected a compile time constant integer.");
 			rtype = type_voidptr;
 			break;
 		case BUILTIN_WASM_MEMORY_SIZE:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!cast_implicit(context, args[0], type_uint, false)) return false;
 			rtype = type_uptr;
 			break;
 		case BUILTIN_WASM_MEMORY_GROW:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!cast_implicit(context, args[0], type_uint, false)) return false;
 			if (!cast_implicit(context, args[1], type_uptr, false)) return false;
 			rtype = type_iptr;
 			break;
 		case BUILTIN_PREFETCH:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER, BA_INTEGER}, 3)) return false;
 			for (unsigned i = 1; i < 3; i++)
 			{
@@ -681,20 +681,20 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			rtype = type_void;
 			break;
 		case BUILTIN_POW:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_POW_INT:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATLIKE, BA_INTLIKE}, 2)) return false;
 			if (!cast_implicit(context, args[1], type_cint, false)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_REDUCE_FMUL:
 		case BUILTIN_REDUCE_FADD:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATVEC, BA_FLOAT}, 2)) return false;
 			if (!cast_implicit(context, args[1], args[0]->type->canonical->array.base, false)) return false;
 			{
@@ -707,7 +707,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_REDUCE_MAX:
 		case BUILTIN_REDUCE_MIN:
 		{
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_NUMVEC}, 1)) return false;
 			rtype = type_get_indexed_type(args[0]->type);
 			break;
@@ -717,18 +717,18 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_REDUCE_OR:
 		case BUILTIN_REDUCE_XOR:
 		case BUILTIN_REDUCE_MUL:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_BOOLINTVEC}, 1)) return false;
 			rtype = type_get_indexed_type(args[0]->type);
 			break;
 		case BUILTIN_ABS:
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_NUMLIKE}, 1)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_GATHER:
 		{
-			ASSERT0(arg_count == 4);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_PTRVEC, BA_BOOLVEC, BA_VEC, BA_INTEGER}, 4)) return false;
 			Type *flat_pointer_vec = type_flatten(args[0]->type);
 			Type *flat_passthru_vec = type_flatten(args[2]->type);
@@ -752,7 +752,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_SCATTER:
 		{
-			ASSERT0(arg_count == 4);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_PTRVEC, BA_VEC, BA_BOOLVEC, BA_INTEGER}, 4)) return false;
 			Type *flat_pointer_vec = type_flatten(args[0]->type);
 			Type *flat_value_vec = type_flatten(args[1]->type);
@@ -775,7 +775,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_MASKED_LOAD:
 		{
-			ASSERT0(arg_count == 4);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_BOOLVEC, BA_VEC, BA_INTEGER}, 4)) return false;
 			Type *pointer_type = args[0]->type;
 			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
@@ -790,7 +790,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_MASKED_STORE:
 		{
-			ASSERT0(arg_count == 4);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_VEC, BA_BOOLVEC, BA_INTEGER}, 4)) return false;
 			Type *pointer_type = args[0]->type;
 			if (!type_is_pointer(pointer_type)) RETURN_SEMA_ERROR(args[0], "Expected a direct pointer.");
@@ -805,13 +805,13 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_MAX:
 		case BUILTIN_MIN:
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_NUMLIKE, BA_NUMLIKE}, 2)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_FMA:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args,
 			                             (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE},
 			                             3)) return false;
@@ -820,14 +820,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_FSHL:
 		case BUILTIN_FSHR:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE, BA_INTLIKE, BA_INTLIKE},
 			                             3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_FMULADD:
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOAT, BA_FLOAT, BA_FLOAT},
 			                             3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
@@ -835,7 +835,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			break;
 		case BUILTIN_ATOMIC_LOAD:
 		{
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_BOOL, BA_INTEGER}, 3)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
@@ -853,7 +853,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_UNALIGNED_LOAD:
 		{
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
@@ -863,7 +863,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_UNALIGNED_STORE:
 		{
-			ASSERT0(arg_count == 3);
+			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_INTEGER}, 1)) return false;
 			Type *original = type_flatten(args[0]->type);
@@ -877,7 +877,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_VOLATILE_LOAD:
 		{
-			ASSERT0(arg_count == 1);
+			ASSERT(arg_count == 1);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original == type_voidptr) RETURN_SEMA_ERROR(args[0], "Expected a typed pointer.");
@@ -886,7 +886,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_VOLATILE_STORE:
 		{
-			ASSERT0(arg_count == 2);
+			ASSERT(arg_count == 2);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
@@ -899,7 +899,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_INC_WRAP:
 		case BUILTIN_ATOMIC_FETCH_DEC_WRAP:
 		{
-			ASSERT0(arg_count == 5);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			Type *val = type_flatten(args[1]->type);
@@ -933,7 +933,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_OR:
 		case BUILTIN_ATOMIC_FETCH_XOR:
 		{
-			ASSERT0(arg_count == 5);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
@@ -954,7 +954,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
 		{
-			ASSERT0(arg_count == 5);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
@@ -980,7 +980,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_MAX:
 		case BUILTIN_ATOMIC_FETCH_MIN:
 		{
-			ASSERT0(arg_count == 5);
+			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_NUM}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
@@ -1001,7 +1001,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		}
 		case BUILTIN_ATOMIC_STORE:
 		{
-			ASSERT0(arg_count == 4);
+			ASSERT(arg_count == 4);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER}, 1)) return false;
 			if (!sema_check_builtin_args(context, &args[2], (BuiltinArg[]) {BA_BOOL, BA_INTEGER}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);

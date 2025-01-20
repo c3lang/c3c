@@ -65,7 +65,7 @@ void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
 
 void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block)
 {
-	ASSERT0(c->current_block == NULL);
+	ASSERT(c->current_block == NULL);
 	LLVMAppendExistingBasicBlock(c->cur_func.ref, next_block);
 	LLVMPositionBuilderAtEnd(c->builder, next_block);
 	c->current_block = next_block;
@@ -151,7 +151,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 			// Realign to best alignment.
 			if (pref_align > decl_alignment) decl_alignment = decl->alignment = pref_align;
 			AlignSize hi_offset = aligned_offset(llvm_store_size(c, lo), hi_alignment);
-			ASSERT0(hi_offset + llvm_store_size(c, hi) <= type_size(decl->type));
+			ASSERT(hi_offset + llvm_store_size(c, hi) <= type_size(decl->type));
 
 			// Emit decl
 			llvm_emit_and_set_decl_alloca(c, decl);
@@ -258,7 +258,7 @@ static inline void llvm_process_parameter_value(GenContext *c, Decl *decl, ABIAr
 }
 static inline void llvm_emit_func_parameter(GenContext *context, Decl *decl, ABIArgInfo *abi_info, unsigned *index, unsigned real_index)
 {
-	ASSERT0(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
+	ASSERT(decl->decl_kind == DECL_VAR && decl->var.kind == VARDECL_PARAM);
 
 	// Allocate room on stack, but do not copy.
 	llvm_process_parameter_value(context, decl, abi_info, index);
@@ -307,7 +307,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 	{
 		if (return_value && return_value->type != type_void)
 		{
-			ASSERT0(return_value->value);
+			ASSERT(return_value->value);
 			llvm_store_to_ptr_aligned(c, c->return_out, return_value, type_alloca_alignment(return_value->type));
 		}
 		return_out = c->optional_out;
@@ -318,12 +318,12 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		}
 		return_value = optional;
 	}
-	ASSERT0(return_value || info->kind == ABI_ARG_IGNORE);
+	ASSERT(return_value || info->kind == ABI_ARG_IGNORE);
 
 	switch (info->kind)
 	{
 		case ABI_ARG_INDIRECT:
-			ASSERT0(return_value);
+			ASSERT(return_value);
 			llvm_store_to_ptr_aligned(c, return_out, return_value, info->indirect.alignment);
 			llvm_emit_return_value(c, NULL);
 			return;
@@ -405,7 +405,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 {
 	DEBUG_LOG("Generating function %s.", decl->name);
 	if (decl->func_decl.attr_dynamic) vec_add(c->dynamic_functions, decl);
-	ASSERT0(decl->backend_ref);
+	ASSERT(decl->backend_ref);
 	if (decl->func_decl.attr_init || (decl->func_decl.attr_finalizer && compiler.platform.object_format == OBJ_FORMAT_MACHO))
 	{
 		llvm_append_xxlizer(c, decl->func_decl.priority, decl->func_decl.attr_init, decl->backend_ref);
@@ -437,7 +437,7 @@ void llvm_emit_function_body(GenContext *c, Decl *decl)
 void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *prototype, Signature *signature, Ast *body,
                     Decl *decl)
 {
-	ASSERT0(prototype && function && body);
+	ASSERT(prototype && function && body);
 	// Signature is NULL if the function is naked.
 
 	bool emit_debug = llvm_use_debug(c);
@@ -487,7 +487,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	}
 	if (prototype->ret_by_ref_abi_info)
 	{
-		ASSERT0(!c->return_out);
+		ASSERT(!c->return_out);
 		c->return_out = llvm_get_next_param(c, &arg);
 	}
 
@@ -660,7 +660,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 
 void llvm_emit_function_decl(GenContext *c, Decl *decl)
 {
-	ASSERT0(decl->decl_kind == DECL_FUNC);
+	ASSERT(decl->decl_kind == DECL_FUNC);
 	// Resolve function backend type for function.
 	decl_append_links_to_global(decl);
 	LLVMValueRef function = llvm_get_ref(c, decl);

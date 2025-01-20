@@ -186,7 +186,7 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 		default:
 			UNREACHABLE
 	}
-	ASSERT0(!type->array.len || sema_cast_const(type->array.len));
+	ASSERT(!type->array.len || sema_cast_const(type->array.len));
 	type->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -248,8 +248,8 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 					SEMA_ERROR(type_info, "You need to assign a type to '%s' before using it.", decl->name);
 					return false;
 				}
-				ASSERT0(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);
-				ASSERT0(decl->var.init_expr->resolve_status == RESOLVE_DONE);
+				ASSERT(decl->var.init_expr->expr_kind == EXPR_TYPEINFO);
+				ASSERT(decl->var.init_expr->resolve_status == RESOLVE_DONE);
 				*type_info = *decl->var.init_expr->type_expr;
 				return true;
 			}
@@ -391,7 +391,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	{
 		RETURN_SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
 	}
-	ASSERT0(inner->resolve_status == RESOLVE_NOT_DONE);
+	ASSERT(inner->resolve_status == RESOLVE_NOT_DONE);
 
 	bool was_recursive = false;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,
@@ -533,7 +533,7 @@ FuncMap map;
 
 void type_func_prototype_init(uint32_t capacity)
 {
-	ASSERT0(is_power_of_two(capacity) && capacity > 1);
+	ASSERT(is_power_of_two(capacity) && capacity > 1);
 	map.entries = CALLOC(capacity * sizeof(FuncTypeEntry));
 	map.capacity = capacity;
 	map.max_load = (uint32_t)(TABLE_MAX_LOAD * capacity);

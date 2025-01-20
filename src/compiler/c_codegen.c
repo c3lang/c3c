@@ -417,7 +417,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ANYFAULT_TO_FAULT:
 			break;
-		case EXPR_ACCESS:
+		case EXPR_ACCESS_UNRESOLVED:
+		case EXPR_ACCESS_RESOLVED:
 			break;
 		case EXPR_ANYSWITCH:
 			break;
@@ -551,7 +552,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_TEST_HOOK:
 			break;
-		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY:
+		case EXPR_TRY_UNRESOLVED:
 			break;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			break;

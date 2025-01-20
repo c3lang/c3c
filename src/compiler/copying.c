@@ -168,7 +168,7 @@ TypeInfo *copy_type_info_single(TypeInfo *type_info)
 
 Ast *copy_ast_macro(Ast *source_ast)
 {
-	ASSERT0(copy_struct.copy_in_use);
+	ASSERT(copy_struct.copy_in_use);
 	return ast_copy_deep(&copy_struct, source_ast);
 }
 
@@ -362,32 +362,28 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_CT_CALL:
 			MACRO_COPY_EXPR(expr->ct_call_expr.main_var);
 			return expr;
-		case EXPR_TRY_UNWRAP:
-			if (expr->resolve_status != RESOLVE_DONE)
+		case EXPR_TRY:
+			MACRO_COPY_EXPR(expr->try_expr.optional);
+			if (expr->try_expr.assign_existing)
 			{
-				MACRO_COPY_EXPR(expr->try_unwrap_expr.variable);
-				MACRO_COPY_EXPR(expr->try_unwrap_expr.init);
-				MACRO_COPY_TYPE(expr->try_unwrap_expr.type);
+				MACRO_COPY_EXPR(expr->try_expr.lhs);
 			}
 			else
 			{
-				MACRO_COPY_EXPR(expr->try_unwrap_expr.optional);
-				if (expr->try_unwrap_expr.assign_existing)
+				if (expr->try_expr.optional)
 				{
-					MACRO_COPY_EXPR(expr->try_unwrap_expr.lhs);
+					MACRO_COPY_DECL(expr->try_expr.decl);
 				}
 				else
 				{
-					if (expr->try_unwrap_expr.optional)
-					{
-						MACRO_COPY_DECL(expr->try_unwrap_expr.decl);
-					}
-					else
-					{
-						fixup_decl(c, &expr->try_unwrap_expr.decl);
-					}
+					fixup_decl(c, &expr->try_expr.decl);
 				}
 			}
+			return expr;
+		case EXPR_TRY_UNRESOLVED:
+			MACRO_COPY_EXPR(expr->unresolved_try_expr.variable);
+			MACRO_COPY_EXPR(expr->unresolved_try_expr.init);
+			MACRO_COPY_TYPE(expr->unresolved_try_expr.type);
 			return expr;
 		case EXPR_TRY_UNWRAP_CHAIN:
 			MACRO_COPY_EXPR_LIST(expr->try_unwrap_chain_expr);
@@ -407,7 +403,7 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
-			ASSERT0(expr->resolve_status != RESOLVE_DONE);
+			ASSERT(expr->resolve_status != RESOLVE_DONE);
 			return expr;
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
@@ -566,17 +562,14 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 				}
 			}
 			return expr;
+		case EXPR_ACCESS_UNRESOLVED:
+			MACRO_COPY_EXPR(expr->access_unresolved_expr.parent);
+			MACRO_COPY_EXPR(expr->access_unresolved_expr.child);
+			return expr;
 		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-			MACRO_COPY_EXPR(expr->access_expr.parent);
-			if (expr->resolve_status == RESOLVE_DONE)
-			{
-				fixup_decl(c, &expr->access_expr.ref);
-			}
-			else
-			{
-				MACRO_COPY_EXPR(expr->access_expr.child);
-			}
+		case EXPR_ACCESS_RESOLVED:
+			MACRO_COPY_EXPR(expr->access_resolved_expr.parent);
+			fixup_decl(c, &expr->access_resolved_expr.ref);
 			return expr;
 		case EXPR_INITIALIZER_LIST:
 			MACRO_COPY_EXPR_LIST(expr->initializer_list);
@@ -787,20 +780,20 @@ Ast **copy_ast_list(CopyStruct *c, Ast **to_copy)
 void copy_begin(void)
 {
 	copy_struct.current_fixup = copy_struct.fixups;
-	ASSERT0(!copy_struct.copy_in_use);
+	ASSERT(!copy_struct.copy_in_use);
 	copy_struct.copy_in_use = true;
 	copy_struct.single_static = false;
 }
 
 void copy_end(void)
 {
-	ASSERT0(copy_struct.copy_in_use);
+	ASSERT(copy_struct.copy_in_use);
 	copy_struct.copy_in_use = false;
 }
 
 Decl **copy_decl_list_macro(Decl **decl_list)
 {
-	ASSERT0(copy_struct.copy_in_use);
+	ASSERT(copy_struct.copy_in_use);
 	return copy_decl_list(&copy_struct, decl_list);
 }
 
@@ -904,19 +897,19 @@ TypeInfo *copy_type_info(CopyStruct *c, TypeInfo *source)
 		case TYPE_INFO_EVALTYPE:
 		case TYPE_INFO_TYPEOF:
 		case TYPE_INFO_VATYPE:
-			ASSERT0(source->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->unresolved_type_expr = copy_expr(c, source->unresolved_type_expr);
 			return copy;
 		case TYPE_INFO_VECTOR:
 		case TYPE_INFO_ARRAY:
-			ASSERT0(source->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.len = copy_expr(c, source->array.len);
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;
 		case TYPE_INFO_INFERRED_ARRAY:
 		case TYPE_INFO_SLICE:
 		case TYPE_INFO_INFERRED_VECTOR:
-			ASSERT0(source->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT(source->resolve_status == RESOLVE_NOT_DONE);
 			copy->array.base = copy_type_info(c, source->array.base);
 			return copy;
 		case TYPE_INFO_POINTER:

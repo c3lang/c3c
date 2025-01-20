@@ -12,7 +12,8 @@ const char *expr_kind_to_string(ExprKind kind)
 {
 	switch (kind)
 	{
-		case EXPR_ACCESS: return "access";
+		case EXPR_ACCESS_UNRESOLVED: return "access_unresolved";
+		case EXPR_ACCESS_RESOLVED: return "access_resolved";
 		case EXPR_ANYSWITCH: return "anyswitch";
 		case EXPR_ASM: return "asm";
 		case EXPR_BENCHMARK_HOOK: return "benchmark_hook";
@@ -97,7 +98,8 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_SWIZZLE: return "swizzle";
 		case EXPR_TERNARY: return "ternary";
 		case EXPR_TEST_HOOK: return "test_hook";
-		case EXPR_TRY_UNWRAP: return "try_unwrap";
+		case EXPR_TRY: return "try";
+		case EXPR_TRY_UNRESOLVED: return "try_unresolved";
 		case EXPR_TRY_UNWRAP_CHAIN: return "try_unwrap_chain";
 		case EXPR_TYPEID: return "typeid";
 		case EXPR_TYPEID_INFO: return "typeid_info";
@@ -123,7 +125,7 @@ Expr *expr_negate_expr(Expr *expr)
 
 bool expr_in_int_range(Expr *expr, int64_t low, int64_t high)
 {
-	ASSERT0(expr_is_const(expr) && expr->const_expr.const_kind == CONST_INTEGER);
+	ASSERT(expr_is_const(expr) && expr->const_expr.const_kind == CONST_INTEGER);
 	Int val = expr->const_expr.ixx;
 	if (!int_fits(val, TYPE_I64)) return false;
 	int64_t value = int_to_i64(val);
@@ -190,7 +192,7 @@ bool expr_may_addr(Expr *expr)
 	if (IS_OPTIONAL(expr)) return false;
 	switch (expr->expr_kind)
 	{
-		case EXPR_UNRESOLVED_IDENTIFIER:
+		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:
 			return expr_may_addr(expr->expr_other_context.inner);
@@ -224,8 +226,8 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_UNARY:
 			return expr->unary_expr.operator == UNARYOP_DEREF;
 		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
-			return expr_may_addr(expr->access_expr.parent);
+		case EXPR_ACCESS_RESOLVED:
+			return expr_may_addr(expr->access_resolved_expr.parent);
 		case EXPR_SUBSCRIPT:
 		case EXPR_SLICE:
 		case EXPR_MEMBER_GET:
@@ -256,10 +258,8 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BUILTIN:
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
-		case EXPR_CAST:
 		case EXPR_MAKE_ANY:
 		case EXPR_CATCH:
-		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CONST:
@@ -292,9 +292,8 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_SWIZZLE:
 		case EXPR_TERNARY:
-		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_VASPLAT:
 		case EXPR_EXT_TRUNC:
@@ -308,7 +307,7 @@ bool expr_may_addr(Expr *expr)
 
 bool expr_is_runtime_const(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	RETRY:
 	switch (expr->expr_kind)
 	{
@@ -343,9 +342,8 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_DECL:
 		case EXPR_CALL:
 		case EXPR_CATCH:
-		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_MACRO_BODY_EXPANSION:
-		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_POST_UNARY:
 		case EXPR_SLICE_ASSIGN:
@@ -360,8 +358,9 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
-		case EXPR_UNRESOLVED_IDENTIFIER:
 			return false;
+		case UNRESOLVED_EXPRS:
+			UNREACHABLE
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_RVALUE:
@@ -383,8 +382,8 @@ bool expr_is_runtime_const(Expr *expr)
 			if (!expr_is_runtime_const(expr->make_any_expr.typeid)) return false;
 			expr = expr->make_any_expr.inner;
 			goto RETRY;
-		case EXPR_ACCESS:
-			expr = expr->access_expr.parent;
+		case EXPR_ACCESS_RESOLVED:
+			expr = expr->access_resolved_expr.parent;
 			goto RETRY;
 		case EXPR_BUILTIN_ACCESS:
 			switch (expr->builtin_access_expr.kind)
@@ -398,8 +397,6 @@ bool expr_is_runtime_const(Expr *expr)
 					break;
 			}
 			return exprid_is_runtime_const(expr->builtin_access_expr.inner);
-		case EXPR_CAST:
-			return exprid_is_runtime_const(expr->cast_expr.expr);
 		case EXPR_INT_TO_BOOL:
 			return expr_is_runtime_const(expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
@@ -474,13 +471,11 @@ bool expr_is_runtime_const(Expr *expr)
 			}
 			goto RETRY;
 		case EXPR_TERNARY:
-			ASSERT0(!exprid_is_runtime_const(expr->ternary_expr.cond));
+			ASSERT(!exprid_is_runtime_const(expr->ternary_expr.cond));
 			return false;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_LAST_FAULT:
 			return false;
-		case EXPR_TYPEID:
-			return true;
 		case EXPR_UNARY:
 			switch (expr->unary_expr.operator)
 			{
@@ -542,15 +537,15 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 	if (IS_OPTIONAL(inner)) return false;
 	switch (inner->expr_kind)
 	{
-		case EXPR_ACCESS:
+		case UNRESOLVED_EXPRS:
+			UNREACHABLE
+		case EXPR_ACCESS_RESOLVED:
 			return expr_is_runtime_const(inner);
 		case EXPR_CONST:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 			// We can't create temporaries as const locally or making them into compile time constants.
 			return expr_is_runtime_const(inner);
-		case EXPR_UNRESOLVED_IDENTIFIER:
-			UNREACHABLE
 		case EXPR_IDENTIFIER:
 		{
 			// The address of an identifier is side effect free.
@@ -589,7 +584,7 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 
 void expr_insert_addr(Expr *original)
 {
-	ASSERT0(original->resolve_status == RESOLVE_DONE);
+	ASSERT(original->resolve_status == RESOLVE_DONE);
 	if (original->expr_kind == EXPR_UNARY && original->unary_expr.operator == UNARYOP_DEREF)
 	{
 		*original = *original->unary_expr.expr;
@@ -606,8 +601,8 @@ void expr_insert_addr(Expr *original)
 
 Expr *expr_generate_decl(Decl *decl, Expr *assign)
 {
-	ASSERT0(decl->decl_kind == DECL_VAR);
-	ASSERT0(decl->var.init_expr == NULL);
+	ASSERT(decl->decl_kind == DECL_VAR);
+	ASSERT(decl->var.init_expr == NULL);
 	Expr *expr_decl = expr_new(EXPR_DECL, decl->span);
 	expr_decl->decl_expr = decl;
 	if (!assign) decl->var.no_init = true;
@@ -644,7 +639,7 @@ static inline ConstInitializer *initializer_for_index(ConstInitializer *initiali
 			}
 			FOREACH(ConstInitializer *, init, initializer->init_array.elements)
 			{
-				ASSERT0(init->kind == CONST_INIT_ARRAY_VALUE);
+				ASSERT(init->kind == CONST_INIT_ARRAY_VALUE);
 				if (init->init_array_value.index == index) return init->init_array_value.element;
 			}
 			return NULL;
@@ -686,7 +681,7 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			return;
 		case TYPE_ENUM:
 			expr->const_expr.const_kind = CONST_ENUM;
-			ASSERT0(canonical->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(canonical->decl->resolve_status == RESOLVE_DONE);
 			expr->const_expr.enum_err_val = canonical->decl->enums.values[0];
 			expr->resolve_status = RESOLVE_DONE;
 			break;
@@ -749,7 +744,7 @@ bool expr_is_pure(Expr *expr)
 	if (!expr) return true;
 	switch (expr->expr_kind)
 	{
-		case EXPR_CAST:
+		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_BUILTIN:
 		case EXPR_BENCHMARK_HOOK:
@@ -803,14 +798,12 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_IDENT:
 		case EXPR_EMBED:
 		case EXPR_IDENTIFIER:
-		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_LAMBDA:
 		case EXPR_MACRO_BODY:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_RETVAL:
 		case EXPR_STRINGIFY:
-		case EXPR_TYPEID:
 		case EXPR_TYPEINFO:
 		case EXPR_LAST_FAULT:
 		case EXPR_MEMBER_GET:
@@ -844,15 +837,14 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_GENERIC_IDENT:
 			return exprid_is_pure(expr->generic_ident_expr.parent);
 		case EXPR_BITACCESS:
-		case EXPR_ACCESS:
+		case EXPR_ACCESS_RESOLVED:
 			// All access is pure if the parent is pure.
-			return expr_is_pure(expr->access_expr.parent);
+			return expr_is_pure(expr->access_resolved_expr.parent);
 		case EXPR_POISONED:
 			UNREACHABLE
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
 		case EXPR_CATCH:
-		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_DESIGNATOR:
@@ -869,7 +861,7 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 		case EXPR_SLICE_COPY:
 		case EXPR_SPLAT:
-		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -1043,7 +1035,7 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	expr->expr_kind = EXPR_CONST;
 	expr->span = span;
 	expr->type = type;
-	ASSERT0(type_flatten(type)->type_kind == TYPE_BOOL);
+	ASSERT(type_flatten(type)->type_kind == TYPE_BOOL);
 	expr->const_expr.b = value;
 	expr->const_expr.const_kind = CONST_BOOL;
 	expr->resolve_status = RESOLVE_DONE;
@@ -1107,7 +1099,7 @@ void expr_rewrite_insert_deref(Expr *original)
 	if (original->resolve_status == RESOLVE_DONE)
 	{
 		Type *no_fail  = type_no_optional(inner->type);
-		ASSERT0(no_fail->canonical->type_kind == TYPE_POINTER);
+		ASSERT(no_fail->canonical->type_kind == TYPE_POINTER);
 
 		// Only fold to the canonical type if it wasn't a pointer.
 		Type *pointee = no_fail->type_kind == TYPE_POINTER ? no_fail->pointer : no_fail->canonical->pointer;

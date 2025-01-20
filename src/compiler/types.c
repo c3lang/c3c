@@ -303,7 +303,7 @@ const char *type_to_error_string(Type *type)
 
 bool type_is_matching_int(CanonicalType *type1, CanonicalType *type2)
 {
-	ASSERT0(type1->canonical == type1 && type2->canonical == type2);
+	ASSERT(type1->canonical == type1 && type2->canonical == type2);
 	TypeKind typekind1 = type1->type_kind;
 	TypeKind typekind2 = type2->type_kind;
 	if (typekind1 == typekind2) return type_kind_is_any_integer(typekind1);
@@ -318,11 +318,11 @@ RETRY:
 	switch (type->type_kind)
 	{
 		case TYPE_BITSTRUCT:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_DISTINCT:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_VECTOR:
@@ -346,12 +346,12 @@ RETRY:
 			type = type_iptr->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
-			ASSERT0(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
 			type = type->decl->enums.type_info->type->canonical;
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->strukt.size;
 		case TYPE_VOID:
 			return 1;
@@ -377,7 +377,7 @@ RETRY:
 
 FunctionPrototype *type_get_resolved_prototype(Type *type)
 {
-	ASSERT0(type->type_kind == TYPE_FUNC_RAW);
+	ASSERT(type->type_kind == TYPE_FUNC_RAW);
 	FunctionPrototype *prototype = type->function.prototype;
 	if (!prototype->is_resolved) c_abi_func_create(prototype);
 	return prototype;
@@ -466,7 +466,7 @@ bool type_is_abi_aggregate(Type *type)
 
 Type *type_find_largest_union_element(Type *type)
 {
-	ASSERT0(type->type_kind == TYPE_UNION);
+	ASSERT(type->type_kind == TYPE_UNION);
 	ByteSize largest = 0;
 	Type *largest_type = NULL;
 	FOREACH(Decl *, member, type->decl->strukt.members)
@@ -652,7 +652,7 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 
 bool type_func_match(Type *fn_type, Type *rtype, unsigned arg_count, ...)
 {
-	ASSERT0(type_is_func_ptr(fn_type));
+	ASSERT(type_is_func_ptr(fn_type));
 	Signature *sig = fn_type->pointer->function.signature;
 	if (rtype->canonical != typeget(sig->rtype)->canonical) return false;
 	if (vec_size(sig->params) != arg_count) return false;
@@ -715,7 +715,7 @@ AlignSize type_abi_alignment(Type *type)
 			goto RETRY;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			return type->decl->alignment;
 			UNREACHABLE
 		case TYPE_BOOL:
@@ -744,7 +744,7 @@ AlignSize type_abi_alignment(Type *type)
 
 static inline void create_type_cache(Type *type)
 {
-	ASSERT0(type->type_cache == NULL);
+	ASSERT(type->type_cache == NULL);
 	for (int i = 0; i < ARRAY_OFFSET; i++)
 	{
 		vec_add(type->type_cache, NULL);
@@ -921,14 +921,14 @@ Type *type_get_ptr_recurse(Type *ptr_type)
 }
 Type *type_get_ptr(Type *ptr_type)
 {
-	ASSERT0(ptr_type->type_kind != TYPE_FUNC_RAW);
-	ASSERT0(!type_is_optional(ptr_type));
+	ASSERT(ptr_type->type_kind != TYPE_FUNC_RAW);
+	ASSERT(!type_is_optional(ptr_type));
 	return type_generate_ptr(ptr_type, false);
 }
 
 Type *type_get_func_ptr(Type *func_type)
 {
-	ASSERT0(func_type->type_kind == TYPE_FUNC_RAW);
+	ASSERT(func_type->type_kind == TYPE_FUNC_RAW);
 	if (func_type->func_ptr) return func_type->func_ptr;
 	Type *type = func_type->func_ptr = type_new(TYPE_FUNC_PTR, func_type->name);
 	type->pointer = func_type;
@@ -938,38 +938,38 @@ Type *type_get_func_ptr(Type *func_type)
 
 Type *type_get_optional(Type *optional_type)
 {
-	ASSERT0(!type_is_optional(optional_type));
+	ASSERT(!type_is_optional(optional_type));
 	return type_generate_optional(optional_type, false);
 }
 
 Type *type_get_slice(Type *arr_type)
 {
-	ASSERT0(type_is_valid_for_array(arr_type));
+	ASSERT(type_is_valid_for_array(arr_type));
 	return type_generate_slice(arr_type, false);
 }
 
 Type *type_get_inferred_array(Type *arr_type)
 {
-	ASSERT0(type_is_valid_for_array(arr_type));
+	ASSERT(type_is_valid_for_array(arr_type));
 	return type_generate_inferred_array(arr_type, false);
 }
 
 Type *type_get_inferred_vector(Type *arr_type)
 {
-	ASSERT0(type_is_valid_for_array(arr_type));
+	ASSERT(type_is_valid_for_array(arr_type));
 	return type_generate_inferred_vector(arr_type, false);
 }
 
 Type *type_get_flexible_array(Type *arr_type)
 {
-	ASSERT0(type_is_valid_for_array(arr_type));
+	ASSERT(type_is_valid_for_array(arr_type));
 	return type_generate_flexible_array(arr_type, false);
 }
 
 
 static inline bool array_structurally_equivalent_to_struct(Type *array, Type *type)
 {
-	ASSERT0(array->type_kind == TYPE_ARRAY);
+	ASSERT(array->type_kind == TYPE_ARRAY);
 
 	ArrayIndex len = (ArrayIndex)array->array.len;
 	if (!len) return type_size(type) == 0;
@@ -978,7 +978,7 @@ static inline bool array_structurally_equivalent_to_struct(Type *array, Type *ty
 
 	if (len == 1 && type_is_structurally_equivalent(base, type)) return true;
 
-	ASSERT0(type->type_kind != TYPE_UNION && "Does not work on unions");
+	ASSERT(type->type_kind != TYPE_UNION && "Does not work on unions");
 
 	if (!type_is_union_or_strukt(type)) return false;
 
@@ -1154,8 +1154,8 @@ static Type *type_create_array(Type *element_type, ArraySize len, bool vector, b
 
 Type *type_get_array(Type *arr_type, ArraySize len)
 {
-	ASSERT(len > 0, "Created a zero length array");
-	ASSERT0(type_is_valid_for_array(arr_type));
+	ASSERT(len > 0 && "Created a zero length array");
+	ASSERT(type_is_valid_for_array(arr_type));
 	return type_create_array(arr_type, len, false, false);
 }
 
@@ -1174,7 +1174,7 @@ bool type_is_valid_for_vector(Type *type)
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_DISTINCT:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_TYPEDEF:
@@ -1191,7 +1191,7 @@ bool type_is_valid_for_array(Type *type)
 	switch (type->type_kind)
 	{
 		case TYPE_DISTINCT:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->decl->distinct->type;
 			goto RETRY;
 		case TYPE_ANY:
@@ -1214,7 +1214,7 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_VECTOR:
 			return true;
 		case TYPE_TYPEDEF:
-			ASSERT0(type->decl->resolve_status == RESOLVE_DONE);
+			ASSERT(type->decl->resolve_status == RESOLVE_DONE);
 			type = type->canonical;
 			goto RETRY;
 		case TYPE_FLEXIBLE_ARRAY:
@@ -1243,14 +1243,14 @@ Type *type_get_vector_bool(Type *original_type)
 
 Type *type_get_vector(Type *vector_type, unsigned len)
 {
-	ASSERT0(type_is_valid_for_vector(vector_type));
+	ASSERT(type_is_valid_for_vector(vector_type));
 	return type_create_array(vector_type, len, true, false);
 }
 
 static void type_create(const char *name, Type *location, TypeKind kind, unsigned bitsize,
 						unsigned align, unsigned pref_align)
 {
-	ASSERT0(align);
+	ASSERT(align);
 	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
@@ -1268,7 +1268,7 @@ static void type_create(const char *name, Type *location, TypeKind kind, unsigne
 
 static void type_init(const char *name, Type *location, TypeKind kind, unsigned bitsize, AlignData align)
 {
-	ASSERT0(align.align);
+	ASSERT(align.align);
 	unsigned byte_size = (bitsize + 7) / 8;
 	*location = (Type) {
 		.type_kind = kind,
@@ -1489,7 +1489,7 @@ bool type_is_scalar(Type *type)
 
 Type *type_find_parent_type(Type *type)
 {
-	ASSERT0(type->canonical);
+	ASSERT(type->canonical);
 	switch (type->type_kind)
 	{
 		case TYPE_DISTINCT:
@@ -1515,7 +1515,7 @@ Type *type_find_parent_type(Type *type)
  */
 bool type_is_subtype(Type *type, Type *possible_subtype)
 {
-	ASSERT0(type == type->canonical);
+	ASSERT(type == type->canonical);
 	while (possible_subtype)
 	{
 		possible_subtype = possible_subtype->canonical;
@@ -1588,7 +1588,7 @@ static TypeCmpResult type_array_is_equivalent(SemaContext *context, Type *from, 
 	switch (from->type_kind)
 	{
 		case TYPE_INFERRED_ARRAY:
-			ASSERT0(to_kind != TYPE_INFERRED_ARRAY);
+			ASSERT(to_kind != TYPE_INFERRED_ARRAY);
 			if (to_kind != TYPE_ARRAY) return TYPE_MISMATCH;
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_ARRAY:
@@ -1596,7 +1596,7 @@ static TypeCmpResult type_array_is_equivalent(SemaContext *context, Type *from, 
 			if (to->type_kind == TYPE_ARRAY && from->array.len != to->array.len) return TYPE_MISMATCH;
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_INFERRED_VECTOR:
-			ASSERT0(to_kind != TYPE_INFERRED_VECTOR);
+			ASSERT(to_kind != TYPE_INFERRED_VECTOR);
 			if (to->type_kind != TYPE_VECTOR) return TYPE_MISMATCH;
 			return type_array_element_is_equivalent(context, from->array.base, to->array.base, is_explicit);
 		case TYPE_VECTOR:
@@ -1784,8 +1784,8 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 {
 	TypeKind kind = num_type->type_kind;
 	TypeKind other_kind = other_num->type_kind;
-	ASSERT0(kind <= other_kind && "Expected ordering");
-	ASSERT0(kind != other_kind);
+	ASSERT(kind <= other_kind && "Expected ordering");
+	ASSERT(kind != other_kind);
 
 	// 1. The only conversions need to happen if the other type is a number.
 	if (other_kind < TYPE_INTEGER_FIRST || other_kind > TYPE_FLOAT_LAST) return NULL;
@@ -1808,7 +1808,7 @@ Type *type_find_max_num_type(Type *num_type, Type *other_num)
 	}
 
 	// Handle integer <=> integer conversions.
-	ASSERT0(type_kind_is_any_integer(other_kind) && type_is_integer(num_type));
+	ASSERT(type_kind_is_any_integer(other_kind) && type_is_integer(num_type));
 
 	// 4. Check the bit sizes.
 	unsigned other_bit_size = other_num->builtin.bitsize;
@@ -1889,7 +1889,7 @@ static inline Type *type_find_max_ptr_type(Type *type, Type *other)
 
 Type *type_decay_array_pointer(Type *type)
 {
-	ASSERT0(type->type_kind == TYPE_POINTER);
+	ASSERT(type->type_kind == TYPE_POINTER);
 	Type *ptr = type->pointer;
 	switch (ptr->type_kind)
 	{
@@ -1903,9 +1903,9 @@ Type *type_decay_array_pointer(Type *type)
 #define MAX_SEARCH_DEPTH 512
 static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 {
-	ASSERT0(left == left->canonical && right == right->canonical);
-	ASSERT0(left != right);
-	ASSERT0(left->type_kind == TYPE_DISTINCT && right->type_kind == TYPE_DISTINCT);
+	ASSERT(left == left->canonical && right == right->canonical);
+	ASSERT(left != right);
+	ASSERT(left->type_kind == TYPE_DISTINCT && right->type_kind == TYPE_DISTINCT);
 	static Type *left_types[MAX_SEARCH_DEPTH];
 	int depth = 0;
 	while (depth < MAX_SEARCH_DEPTH)
@@ -1919,7 +1919,7 @@ static inline Type *type_find_max_distinct_type(Type *left, Type *right)
 	{
 		error_exit("Common ancestor search depth %d exceeded.", MAX_SEARCH_DEPTH);
 	}
-	ASSERT0(left != right);
+	ASSERT(left != right);
 	while (true)
 	{
 		for (int i = 0; i < depth; i++)
@@ -1936,7 +1936,7 @@ Type *type_find_max_type(Type *type, Type *other)
 {
 	type = type->canonical;
 	other = other->canonical;
-	ASSERT0(!type_is_optional(type) && !type_is_optional(other));
+	ASSERT(!type_is_optional(type) && !type_is_optional(other));
 
 RETRY_DISTINCT:
 	if (type == other) return type;

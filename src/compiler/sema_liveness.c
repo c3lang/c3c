@@ -265,6 +265,7 @@ RETRY:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_UNRESOLVED_IDENTIFIER:
+		case EXPR_ACCESS_UNRESOLVED:
 			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:
 			UNREACHABLE
@@ -280,10 +281,10 @@ RETRY:
 			sema_trace_expr_liveness(expr->make_any_expr.typeid);
 			expr = expr->make_any_expr.inner;
 			goto RETRY;
-		case EXPR_ACCESS:
+		case EXPR_ACCESS_RESOLVED:
 		case EXPR_BITACCESS:
-			sema_trace_decl_liveness(expr->access_expr.ref);
-			expr = expr->access_expr.parent;
+			sema_trace_decl_liveness(expr->access_resolved_expr.ref);
+			expr = expr->access_resolved_expr.parent;
 			goto RETRY;
 		case EXPR_ASM:
 			switch (expr->expr_asm_arg.kind)
@@ -329,7 +330,7 @@ RETRY:
 			return;
 		}
 		case EXPR_CAST:
-			ASSERT(expr, "Casts should be gone when tracing liveness");
+			ASSERT_SPAN(expr, "Casts should be gone when tracing liveness");
 			UNREACHABLE
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_RETHROW:
@@ -423,6 +424,7 @@ RETRY:
 		}
 		case EXPR_LAMBDA:
 		case EXPR_CATCH_UNRESOLVED:
+		case EXPR_TRY_UNRESOLVED:
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
 		{
@@ -495,15 +497,15 @@ RETRY:
 		case EXPR_TYPEID_INFO:
 			sema_trace_exprid_liveness(expr->typeid_info_expr.parent);
 			return;
-		case EXPR_TRY_UNWRAP:
-			sema_trace_expr_liveness(expr->try_unwrap_expr.optional);
-			if (expr->try_unwrap_expr.assign_existing)
+		case EXPR_TRY:
+			sema_trace_expr_liveness(expr->try_expr.optional);
+			if (expr->try_expr.assign_existing)
 			{
-				sema_trace_expr_liveness(expr->try_unwrap_expr.lhs);
+				sema_trace_expr_liveness(expr->try_expr.lhs);
 			}
 			else
 			{
-				sema_trace_decl_liveness(expr->try_unwrap_expr.decl);
+				sema_trace_decl_liveness(expr->try_expr.decl);
 			}
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:

@@ -190,7 +190,7 @@ void decl_register(Decl *decl)
 
 void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 {
-	ASSERT0(!decl->unit || decl->unit->module->is_generic);
+	ASSERT(!decl->unit || decl->unit->module->is_generic);
 	decl->unit = unit;
 
 	switch (decl->decl_kind)
@@ -200,7 +200,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_POISONED:
 			break;
 		case DECL_MACRO:
-			ASSERT0(decl->name);
+			ASSERT(decl->name);
 			if (decl->func_decl.type_parent)
 			{
 				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
@@ -218,7 +218,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_register(decl);
 			break;
 		case DECL_FUNC:
-			ASSERT0(decl->name);
+			ASSERT(decl->name);
 			if (decl->func_decl.type_parent)
 			{
 				if (type_infoptr(decl->func_decl.type_parent)->kind == TYPE_INFO_GENERIC)
@@ -236,7 +236,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			decl_register(decl);
 			break;
 		case DECL_VAR:
-			ASSERT0(decl->name);
+			ASSERT(decl->name);
 			vec_add(unit->vars, decl);
 			decl_register(decl);
 			break;
@@ -247,17 +247,17 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_TYPEDEF:
 		case DECL_FAULT:
 		case DECL_BITSTRUCT:
-			ASSERT0(decl->name);
+			ASSERT(decl->name);
 			vec_add(unit->types, decl);
 			decl_register(decl);
 			break;
 		case DECL_DEFINE:
-			ASSERT0(decl->name);
+			ASSERT(decl->name);
 			vec_add(unit->generic_defines, decl);
 			decl_register(decl);
 			break;
 		case DECL_ENUM:
-			ASSERT0(decl->name);
+			ASSERT(decl->name);
 			vec_add(unit->enums, decl);
 			decl_register(decl);
 			break;
@@ -295,7 +295,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 	}
 	return;
 ERR:
-	ASSERT0(decl != old);
+	ASSERT(decl != old);
 	sema_shadow_error(NULL, decl, old);
 	decl_poison(decl);
 	decl_poison(old);

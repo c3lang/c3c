@@ -175,7 +175,7 @@ Decl *decl_new_generated_var(Type *type, VarDeclKind kind, SourceSpan span)
 	decl->var.is_temp = true;
 	decl->type = type;
 	decl->alignment = type ? type_alloca_alignment(type) : 0;
-	ASSERT0(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
+	ASSERT(!type || !type_is_user_defined(type) || type->decl->resolve_status == RESOLVE_DONE);
 	decl->var.type_info = type_info_id_new_base(type, span);
 	decl->resolve_status = RESOLVE_DONE;
 	return decl;
@@ -429,7 +429,7 @@ AlignSize decl_find_member_offset(Decl *decl, Decl *member)
 		default:
 			return NO_MATCH;
 	}
-	ASSERT0(members);
+	ASSERT(members);
 	unsigned list = vec_size(members);
 	for (unsigned i = 0; i < list; i++)
 	{

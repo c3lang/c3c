@@ -819,12 +819,14 @@ typedef struct
 typedef struct
 {
 	Expr *parent;
-	union
-	{
-		Expr *child;
-		Decl *ref;
-	};
-} ExprAccess;
+	Decl *ref;
+} ExprResolvedAccess;
+
+typedef struct
+{
+	Expr *parent;
+	Expr *child;
+} ExprUnresolvedAccess;
 
 typedef struct DesignatorElement_
 {
@@ -1027,26 +1029,21 @@ typedef struct
 
 typedef struct
 {
+	Expr *variable;
+	TypeInfo *type;
+	Expr *init;
+} ExprUnresolvedTry;
+
+typedef struct
+{
+	bool assign_existing : 1;
+	Expr *optional;
 	union
 	{
-		struct
-		{
-			Expr *variable;
-			TypeInfo *type;
-			Expr *init;
-		};
-		struct
-		{
-			bool assign_existing : 1;
-			Expr *optional;
-			union
-			{
-				Decl *decl;
-				Expr *lhs;
-			};
-		};
+		Decl *decl;
+		Expr *lhs;
 	};
-} ExprTryUnwrap;
+} ExprTry;
 
 
 typedef struct
@@ -1128,7 +1125,8 @@ struct Expr_
 	ExprKind expr_kind : 8;
 	ResolveStatus resolve_status : 4;
 	union {
-		ExprAccess access_expr;                     // 16
+		ExprResolvedAccess access_resolved_expr;
+		ExprUnresolvedAccess access_unresolved_expr;// 16
 		ExprAnySwitch any_switch;                   // 32
 		ExprBinary binary_expr;                     // 12
 		ExprBinary veccomp_expr;
@@ -1186,7 +1184,8 @@ struct Expr_
 		ExprTypeCall type_call_expr;
 		BuiltinDefine test_hook_expr;
 		Expr** try_unwrap_chain_expr;               // 8
-		ExprTryUnwrap try_unwrap_expr;              // 24
+		ExprTry try_expr;                          // 24
+		ExprUnresolvedTry unresolved_try_expr;     // 24
 		TypeInfo *type_expr;                        // 8
 		TypeInfo *typeid_expr;                      // 8
 		ExprTypeidInfo typeid_info_expr;            // 8
@@ -2570,16 +2569,16 @@ INLINE Type *type_from_inferred(Type *flattened, Type *element_type, unsigned co
 	switch (flattened->type_kind)
 	{
 		case TYPE_POINTER:
-			ASSERT0(count == 0);
+			ASSERT(count == 0);
 			return type_get_ptr(element_type);
 		case TYPE_VECTOR:
-			ASSERT0(flattened->array.len == count);
+			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_VECTOR:
 			return type_get_vector(element_type, count);
 			break;
 		case TYPE_ARRAY:
-			ASSERT0(flattened->array.len == count);
+			ASSERT(flattened->array.len == count);
 			FALLTHROUGH;
 		case TYPE_INFERRED_ARRAY:
 			return type_get_array(element_type, count);
@@ -2896,7 +2895,7 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 {
 	Type *type = CALLOCS(Type);
 	type->type_kind = kind;
-	ASSERT0(name);
+	ASSERT(name);
 	type->name = name;
 	global_context_add_type(type);
 	return type;
@@ -2905,8 +2904,8 @@ INLINE Type *type_new(TypeKind kind, const char *name)
 
 INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 {
-	ASSERT0(type_flat_is_vector(destination) || type_is_builtin(destination->canonical->type_kind));
-	ASSERT0(type_flat_is_vector(destination) || type_is_builtin(source->canonical->type_kind));
+	ASSERT(type_flat_is_vector(destination) || type_is_builtin(destination->canonical->type_kind));
+	ASSERT(type_flat_is_vector(destination) || type_is_builtin(source->canonical->type_kind));
 	return type_size(destination) < type_size(source);
 }
 
@@ -2915,7 +2914,7 @@ INLINE bool type_convert_will_trunc(Type *destination, Type *source)
 // Useful sanity check function.
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type)
 {
-	ASSERT0(context->tok == token_type);
+	ASSERT(context->tok == token_type);
 	advance(context);
 }
 
@@ -2992,12 +2991,12 @@ static inline Type *type_flatten_to_int(Type *type)
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_VECTOR:
-				ASSERT0(type_is_integer(type->array.base));
+				ASSERT(type_is_integer(type->array.base));
 				return type;
 			case TYPE_TYPEDEF:
 				UNREACHABLE
 			default:
-				ASSERT0(type_is_integer(type));
+				ASSERT(type_is_integer(type));
 				return type;
 		}
 	}
@@ -3180,7 +3179,7 @@ static inline Decl *decl_raw(Decl *decl)
 	}
 	if (decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED) return decl;
 	decl = decl->var.alias;
-	ASSERT0(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED);
+	ASSERT(decl->decl_kind != DECL_VAR || decl->var.kind != VARDECL_UNWRAPPED);
 	return decl;
 }
 
@@ -3389,7 +3388,8 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
-		case EXPR_ACCESS:
+		case EXPR_ACCESS_RESOLVED:
+		case EXPR_ACCESS_UNRESOLVED:
 		case EXPR_BITACCESS:
 		case EXPR_POISONED:
 		case EXPR_ASM:
@@ -3444,7 +3444,8 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TERNARY:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
-		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY:
+		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
@@ -3490,7 +3491,7 @@ INLINE void expr_resolve_ident(Expr *expr, Decl *decl)
 
 INLINE Type *exprtype(ExprId expr_id)
 {
-	ASSERT0(expr_id);
+	ASSERT(expr_id);
 	return exprptr(expr_id)->type;
 }
 
@@ -3687,7 +3688,7 @@ INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_const_empty_slice(Expr *expr, Type *type)
 {
-	ASSERT0(type_flatten(type)->type_kind == TYPE_SLICE);
+	ASSERT(type_flatten(type)->type_kind == TYPE_SLICE);
 	expr->const_expr = (ExprConst) { .const_kind = CONST_SLICE, .initializer = NULL };
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
@@ -3704,8 +3705,8 @@ INLINE void expr_rewrite_const_untyped_list(Expr *expr, Expr **elements)
 
 INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitializer *initializer)
 {
-	ASSERT0(type_flatten(type)->type_kind != TYPE_SLICE);
-	ASSERT0(type != type_untypedlist);
+	ASSERT(type_flatten(type)->type_kind != TYPE_SLICE);
+	ASSERT(type != type_untypedlist);
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->const_expr = (ExprConst) { .initializer = initializer, .const_kind = CONST_INITIALIZER };
@@ -3714,8 +3715,8 @@ INLINE void expr_rewrite_const_initializer(Expr *expr, Type *type, ConstInitiali
 
 INLINE void expr_rewrite_const_slice(Expr *expr, Type *type, ConstInitializer *initializer)
 {
-	ASSERT0(type_flatten(type)->type_kind == TYPE_SLICE);
-	ASSERT0(type != type_untypedlist);
+	ASSERT(type_flatten(type)->type_kind == TYPE_SLICE);
+	ASSERT(type != type_untypedlist);
 	expr->expr_kind = EXPR_CONST;
 	expr->type = type;
 	expr->const_expr = (ExprConst) { .slice_init = initializer, .const_kind = CONST_SLICE };
@@ -3733,7 +3734,7 @@ INLINE void expr_rewrite_const_typeid(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 {
-	ASSERT0(inner->resolve_status == RESOLVE_DONE);
+	ASSERT(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_PTR_ACCESS;
 	expr->inner_expr = inner;
 	expr->type = type;
@@ -3743,7 +3744,7 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
-	ASSERT0(inner->resolve_status == RESOLVE_DONE);
+	ASSERT(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = inner;
 	expr->type = type;
@@ -3753,7 +3754,7 @@ INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 
 INLINE void expr_rewrite_slice_len(Expr *expr, Expr *inner, Type *type)
 {
-	ASSERT0(inner->resolve_status == RESOLVE_DONE);
+	ASSERT(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_SLICE_LEN;
 	expr->inner_expr = inner;
 	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
@@ -3888,7 +3889,7 @@ INLINE AsmRegister *asm_reg_by_index(unsigned index)
 
 INLINE void clobbers_add(Clobbers *clobbers, unsigned index)
 {
-	ASSERT0(index < MAX_CLOBBER_FLAGS);
+	ASSERT(index < MAX_CLOBBER_FLAGS);
 	unsigned bit = index % 64;
 	unsigned element = index / 64;
 	clobbers->mask[element] |= (1ull << bit);
@@ -3901,7 +3902,7 @@ static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
 	int i;
 	while ((i = va_arg(list, int)) > -1)
 	{
-		ASSERT0(i < MAX_CLOBBER_FLAGS);
+		ASSERT(i < MAX_CLOBBER_FLAGS);
 		unsigned bit = i % 64;
 		unsigned element = i / 64;
 		clobbers.mask[element] |= (1ull << bit);
@@ -3913,7 +3914,7 @@ static inline Clobbers clobbers_make_from(Clobbers clobbers, ...)
 static inline Clobbers clobbers_make(unsigned index, ...)
 {
 	Clobbers clobbers = { .mask[0] = 0 };
-	ASSERT0(index < MAX_CLOBBER_FLAGS);
+	ASSERT(index < MAX_CLOBBER_FLAGS);
 	unsigned bit = index % 64;
 	unsigned element = index / 64;
 	clobbers.mask[element] |= (1ull << bit);
@@ -3922,7 +3923,7 @@ static inline Clobbers clobbers_make(unsigned index, ...)
 	int i;
 	while ((i = va_arg(list, int)) > -1)
 	{
-		ASSERT0(i < MAX_CLOBBER_FLAGS);
+		ASSERT(i < MAX_CLOBBER_FLAGS);
 		bit = i % 64;
 		element = i / 64;
 		clobbers.mask[element] |= (1ull << bit);
@@ -3949,7 +3950,7 @@ INLINE unsigned arg_bits_max(AsmArgBits bits, unsigned limit)
 
 INLINE bool expr_is_empty_const_slice(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST
 		&& expr->const_expr.const_kind == CONST_SLICE
 		&& expr->const_expr.slice_init == NULL;
@@ -3984,67 +3985,67 @@ static inline bool decl_is_var_local(Decl *decl)
 
 INLINE bool expr_is_const_string(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_STRING;
 }
 
 INLINE bool expr_is_const_enum(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ENUM;
 }
 
 INLINE bool expr_is_const_fault(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ERR;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_POINTER;
 }
 
 INLINE bool expr_is_const_bool(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BOOL;
 }
 
 INLINE bool expr_is_const_initializer(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INITIALIZER;
 }
 
 INLINE bool expr_is_const_slice(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_SLICE;
 }
 
 INLINE bool expr_is_const_bytes(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_BYTES;
 }
 
 INLINE bool expr_is_const_untyped_list(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_UNTYPED_LIST;
 }
 
 INLINE bool expr_is_const_int(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_INTEGER;
 }
 
 INLINE bool expr_is_const_member(Expr *expr)
 {
-	ASSERT0(expr->resolve_status == RESOLVE_DONE);
+	ASSERT(expr->resolve_status == RESOLVE_DONE);
 	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_MEMBER;
 }
 
@@ -4056,5 +4057,14 @@ INLINE bool check_module_name(Path *path)
 	}
 	return true;
 }
+
+#ifdef NDEBUG
+#define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
+#define ASSERT_SPAN(node__, check__) do { } while(0)
+#else
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT0(check__); } } while(0)
+#define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
+#endif
+void assert_print_line(SourceSpan span);
 
 const char *default_c_compiler(void);
