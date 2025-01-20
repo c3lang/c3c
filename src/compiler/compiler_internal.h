@@ -4062,7 +4062,7 @@ INLINE bool check_module_name(Path *path)
 #define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
 #define ASSERT_SPAN(node__, check__) do { } while(0)
 #else
-#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT0(check__); } } while(0)
+#define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
 #define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
 #endif
 void assert_print_line(SourceSpan span);

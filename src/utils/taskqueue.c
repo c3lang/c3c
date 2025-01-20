@@ -82,7 +82,7 @@ SHUTDOWN:
 
 void taskqueue_run(int threads, Task **task_list)
 {
-	ASSERT0(threads > 0);
+	ASSERT(threads > 0);
 	HANDLE *handles = malloc(sizeof(HANDLE) * (unsigned)threads);
 	TaskQueue queue = { .queue = task_list };
 	InitializeCriticalSection(&queue.lock);

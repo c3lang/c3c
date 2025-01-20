@@ -361,7 +361,7 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 	{
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
 		CondResult result = COND_MISSING;
-		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, NULL)) return false;
+		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, false)) return false;
 
 		const char *comment = directive->contract_stmt.contract.comment;
 		if (!comment) comment = directive->contract_stmt.contract.expr_string;
