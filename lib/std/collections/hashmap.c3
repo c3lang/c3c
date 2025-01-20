@@ -20,12 +20,31 @@ struct HashMap
  @param [&inout] allocator "The allocator to use"
  @require capacity > 0 "The capacity must be 1 or higher"
  @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
+fn HashMap HashMap.new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap()) @operator(construct)
+{
+	HashMap new;
+	capacity = math::next_power_of_2(capacity);
+	new.allocator = allocator;
+	new.load_factor = load_factor;
+	new.threshold = (uint)(capacity * load_factor);
+	new.table = allocator::new_array(allocator, Entry*, capacity);
+	return new;
+}
+
+<*
+ @param [&inout] allocator "The allocator to use"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.new"
 *>
 fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = null)
 {
-	return self.init(allocator ?: allocator::heap(), capacity, load_factor);
+	*self = HashMap.new(capacity, load_factor, allocator ?: allocator::heap());
+	return self;
 }
 
 <*
@@ -34,26 +53,48 @@ fn HashMap* HashMap.new_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, fl
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.new"
 *>
 fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	capacity = math::next_power_of_2(capacity);
-	self.allocator = allocator;
-	self.load_factor = load_factor;
-	self.threshold = (uint)(capacity * load_factor);
-	self.table = allocator::new_array(allocator, Entry*, capacity);
-	return self;
+  *self = HashMap.new(capacity, load_factor, allocator);
+  return self;
 }
+
+<*
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
+fn HashMap HashMap.temp(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR) @operator(construct) => HashMap.new(capacity, load_factor, allocator::temp()) @inline;
 
 <*
  @require capacity > 0 "The capacity must be 1 or higher"
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.temp"
 *>
 fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init(allocator::temp(), capacity, load_factor) @inline;
+	*self = HashMap.temp(capacity, load_factor);
+	return self;
+}
+
+<*
+ @param [&inout] allocator "The allocator to use"
+ @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
+macro HashMap HashMap.new_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap()) @operator(construct)
+{
+	HashMap new = HashMap.new(capacity, load_factor, allocator);
+	$for (var $i = 0; $i < $vacount; $i += 2)
+		new.set($vaarg[$i], $vaarg[$i+1]);
+	$endfor
+	return new;
 }
 
 <*
@@ -63,14 +104,33 @@ fn HashMap* HashMap.temp_init(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, f
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.new_with_key_values"
 *>
 macro HashMap* HashMap.new_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	self.new_init(capacity, load_factor, allocator);
-	$for (var $i = 0; $i < $vacount; $i += 2)
-		self.set($vaarg[$i], $vaarg[$i+1]);
-	$endfor
+	*self = HashMap.new_with_key_values($vasplat, capacity, load_factor, allocator);
 	return self;
+}
+
+<*
+ @param [in] keys "The keys for the HashMap entries"
+ @param [in] values "The values for the HashMap entries"
+ @param [&inout] allocator "The allocator to use"
+ @require keys.len == values.len "Both keys and values arrays must be the same length"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
+fn HashMap HashMap.new_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap()) @operator(construct)
+{
+	HashMap new = HashMap.new(capacity, load_factor, allocator);
+	assert(keys.len == values.len);
+	new.new_init(capacity, load_factor, allocator);
+	for (usz i = 0; i < keys.len; i++)
+	{
+		new.set(keys[i], values[i]);
+	}
+	return new;
 }
 
 <*
@@ -82,15 +142,11 @@ macro HashMap* HashMap.new_init_with_key_values(&self, ..., uint capacity = DEFA
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.new_from_keys_and_values"
 *>
 fn HashMap* HashMap.new_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	assert(keys.len == values.len);
-	self.new_init(capacity, load_factor, allocator);
-	for (usz i = 0; i < keys.len; i++)
-	{
-		self.set(keys[i], values[i]);
-	}
+	*self = HashMap.new_from_keys_and_values(keys, values, capacity, load_factor, allocator);
 	return self;
 }
 
@@ -101,14 +157,31 @@ fn HashMap* HashMap.new_init_from_keys_and_values(&self, Key[] keys, Value[] val
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
 *>
+macro HashMap HashMap.temp_with_key_values(..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR) @operator(construct) => HashMap.new_with_key_values($vasplat, capacity, load_factor, allocator::temp());
+
+<*
+ @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require !self.allocator "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.temp_with_key_values"
+*>
 macro HashMap* HashMap.temp_init_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	self.temp_init(capacity, load_factor);
-	$for (var $i = 0; $i < $vacount; $i += 2)
-		self.set($vaarg[$i], $vaarg[$i+1]);
-	$endfor
+	*self = HashMap.temp_with_key_values($vasplat, capacity, load_factor);
 	return self;
 }
+
+<*
+ @param [in] keys "The keys for the HashMap entries"
+ @param [in] values "The values for the HashMap entries"
+ @require keys.len == values.len "Both keys and values arrays must be the same length"
+ @require capacity > 0 "The capacity must be 1 or higher"
+ @require load_factor > 0.0 "The load factor must be higher than 0"
+ @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+*>
+fn HashMap HashMap.temp_from_keys_and_values(Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR) @operator(construct) => HashMap.new_from_keys_and_values(keys, values, capacity, load_factor, allocator::temp());
 
 <*
  @param [in] keys "The keys for the HashMap entries"
@@ -119,15 +192,11 @@ macro HashMap* HashMap.temp_init_with_key_values(&self, ..., uint capacity = DEF
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require !self.allocator "Map was already initialized"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @deprecated "Use HashMap.temp_from_keys_and_values"
 *>
 fn HashMap* HashMap.temp_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	assert(keys.len == values.len);
-	self.temp_init(capacity, load_factor);
-	for (usz i = 0; i < keys.len; i++)
-	{
-		self.set(keys[i], values[i]);
-	}
+	*self = HashMap.temp_from_keys_and_values(keys, values, capacity, load_factor, allocator);
 	return self;
 }
 
@@ -144,29 +213,49 @@ fn bool HashMap.is_initialized(&map)
 
 <*
  @param [&in] other_map "The map to copy from."
+ @deprecated "Use HashMap.new_from_map"
 *>
 fn HashMap* HashMap.new_init_from_map(&self, HashMap* other_map)
 {
-	return self.init_from_map(other_map, allocator::heap()) @inline;
+	*self = HashMap.new_from_map(other_map, allocator::heap());
+	return self;
 }
 
 <*
  @param [&inout] allocator "The allocator to use"
  @param [&in] other_map "The map to copy from."
 *>
+fn HashMap HashMap.new_from_map(HashMap* other_map, Allocator allocator = allocator::heap()) @operator(construct)
+{
+	HashMap new = HashMap.new(other_map.table.len, other_map.load_factor, allocator);
+	new.put_all_for_create(other_map);
+	return new;
+}
+
+<*
+ @param [&inout] allocator "The allocator to use"
+ @param [&in] other_map "The map to copy from."
+ @deprecated "Use HashMap.new_from_map"
+*>
 fn HashMap* HashMap.init_from_map(&self, HashMap* other_map, Allocator allocator)
 {
-	self.new_init(other_map.table.len, other_map.load_factor, allocator);
-	self.put_all_for_create(other_map);
+	*self = HashMap.new_from_map(other_map, allocator);
 	return self;
 }
 
 <*
  @param [&in] other_map "The map to copy from."
 *>
+fn HashMap HashMap.temp_from_map(HashMap* other_map) => Map.new_from_map(other_map, allocator::temp()) @inline;
+
+<*
+ @param [&in] other_map "The map to copy from."
+ @deprecated "HashMap.temp_from_map"
+*>
 fn HashMap* HashMap.temp_init_from_map(&map, HashMap* other_map)
 {
-	return map.init_from_map(other_map, allocator::temp()) @inline;
+	*map = HashMap.temp_from_map(other_map);
+	return map;
 }
 
 fn bool HashMap.is_empty(&map) @inline
