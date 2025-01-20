@@ -61,7 +61,7 @@ static inline void backtrack(Lexer *lexer)
 // Skip the x next characters.
 static inline void skip(Lexer *lexer, int steps)
 {
-	ASSERT0(steps > 0);
+	ASSERT(steps > 0);
 	for (int i = 0; i < steps; i++)
 	{
 		next(lexer);
@@ -549,7 +549,7 @@ static inline bool scan_hex(Lexer *lexer)
  */
 static inline bool scan_dec(Lexer *lexer)
 {
-	ASSERT0(char_is_digit(peek(lexer)));
+	ASSERT(char_is_digit(peek(lexer)));
 
 	// Walk through the digits, we don't need to worry about
 	// initial _ because we only call this if we have a digit initially.
@@ -747,7 +747,7 @@ static inline bool scan_char(Lexer *lexer)
 		signed char escape = ' ';
 		if (c == '\\')
 		{
-			ASSERT0(c == '\\');
+			ASSERT(c == '\\');
 			c = peek(lexer);
 			escape = char_is_valid_escape(c);
 			if (escape == -1)
@@ -817,7 +817,7 @@ static inline bool scan_char(Lexer *lexer)
 		b = i128_shl64(b, 8);
 		b = i128_add64(b, (unsigned char)c);
 	}
-	ASSERT0(width > 0 && width <= 16);
+	ASSERT(width > 0 && width <= 16);
 DONE:
 	set_generic_token(lexer, TOKEN_CHAR_LITERAL);
 	lexer->data.char_value = b;
@@ -1229,7 +1229,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 	switch (c)
 	{
 		case '\n':
-			ASSERT0(lexer->mode == LEX_CONTRACTS);
+			ASSERT(lexer->mode == LEX_CONTRACTS);
 			return new_token(lexer, TOKEN_DOCS_EOL, "<eol>");
 		case '@':
 			if (char_is_letter_(peek(lexer)))

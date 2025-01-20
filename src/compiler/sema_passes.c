@@ -77,7 +77,7 @@ void sema_analysis_pass_process_imports(Module *module)
 		{
 			// 3. Begin analysis
 			Decl *import = imports[i];
-			ASSERT0(import->resolve_status == RESOLVE_NOT_DONE);
+			ASSERT(import->resolve_status == RESOLVE_NOT_DONE);
 			import->resolve_status = RESOLVE_RUNNING;
 			// 4. Find the module.
 			Path *path = import->import.path;
@@ -186,7 +186,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 
 static bool exec_arg_append_to_scratch(Expr *arg)
 {
-	ASSERT0(expr_is_const(arg));
+	ASSERT(expr_is_const(arg));
 	switch (arg->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
@@ -272,7 +272,7 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	FOREACH_IDX(i, Expr *, arg, decl->exec_decl.args)
 	{
 		if (i) scratch_buffer_append(" ");
-		ASSERT0(expr_is_const(arg));
+		ASSERT(expr_is_const(arg));
 		if (!exec_arg_append_to_scratch(arg))
 		{
 			RETURN_PRINT_ERROR_AT(NULL, arg, "Bytes, initializers and member references may not be used as arguments.");
@@ -363,7 +363,7 @@ void sema_analysis_pass_register_global_declarations(Module *module)
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		if (unit->if_attr) continue;
-		ASSERT0(!unit->ct_includes);
+		ASSERT(!unit->ct_includes);
 		unit->module = module;
 		DEBUG_LOG("Processing %s.", unit->file->name);
 		register_global_decls(unit, unit->global_decls);
@@ -379,7 +379,7 @@ void sema_analysis_pass_process_includes(Module *module)
 		if (unit->if_attr) continue;
 		// Process all includes
 		sema_process_includes(unit);
-		ASSERT0(vec_size(unit->ct_includes) == 0);
+		ASSERT(vec_size(unit->ct_includes) == 0);
 	}
 
 	DEBUG_LOG("Pass finished with %d error(s).", compiler.context.errors_found);
@@ -431,7 +431,7 @@ void sema_analysis_pass_register_conditional_units(Module *module)
 	FOREACH(CompilationUnit *, unit, module->units)
 	{
 		// All ct_includes should already be registered.
-		ASSERT0(!unit->ct_includes);
+		ASSERT(!unit->ct_includes);
 
 		Attr *if_attr = unit->if_attr;
 		if (!if_attr && !unit->attr_links) continue;
@@ -463,7 +463,7 @@ CHECK_LINK:
 		{
 			Expr **exprs = attr->exprs;
 			unsigned args = vec_size(exprs);
-			ASSERT0(args > 0 && "Should already have been checked.");
+			ASSERT(args > 0 && "Should already have been checked.");
 			Expr *cond = args > 1 ? attr->exprs[0] : NULL;
 			if (cond && !sema_analyse_expr(&context, cond)) goto FAIL_CONTEXT;
 			bool start = cond && expr_is_const_bool(cond) ? 1 : 0;
@@ -607,7 +607,7 @@ INLINE void sema_analyse_inner_func_ptr(SemaContext *c, Decl *decl)
 	}
 	if (inner->type_kind != TYPE_FUNC_PTR) return;
 	Type *func = inner->pointer;
-	ASSERT0(func->type_kind == TYPE_FUNC_RAW);
+	ASSERT(func->type_kind == TYPE_FUNC_RAW);
 	if (!sema_resolve_type_decl(c, func)) decl_poison(decl);
 }
 

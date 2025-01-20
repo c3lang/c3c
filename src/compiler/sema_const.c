@@ -60,7 +60,7 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 	{
 		case CONST_INITIALIZER:
 		case CONST_SLICE:
-			ASSERT0(list->type != type_untypedlist);
+			ASSERT(list->type != type_untypedlist);
 			return sema_append_const_array_one(context, append_expr, list, element);
 		case CONST_UNTYPED_LIST:
 			untyped_list = list->const_expr.untyped_list;
@@ -194,7 +194,7 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool is_append)
 {
 	Type *indexed = type_get_indexed_type(list->type);
-	ASSERT0(indexed && "This should always work");
+	ASSERT(indexed && "This should always work");
 	if (is_append && !cast_implicit(context, element, indexed, false)) return false;
 	size_t str_len = list->const_expr.bytes.len;
 	size_t element_len = is_append ? 1 : element->const_expr.bytes.len;
@@ -238,7 +238,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 		return true;
 	}
 	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
-	ASSERT0(!type_is_inferred(array_type));
+	ASSERT(!type_is_inferred(array_type));
 	bool is_vector = array_type->type_kind == TYPE_VECTOR;
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
@@ -287,7 +287,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 
 static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
 {
-	ASSERT(expr, expr->expr_kind == EXPR_CONST);
+	ASSERT_SPAN(expr, expr->expr_kind == EXPR_CONST);
 	switch (expr->const_expr.const_kind)
 	{
 		case CONST_SLICE:
@@ -311,7 +311,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
  */
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right)
 {
-	ASSERT0(concat_expr->resolve_status == RESOLVE_RUNNING);
+	ASSERT(concat_expr->resolve_status == RESOLVE_RUNNING);
 	bool join_single = false;
 	ArraySize len = 0;
 	bool use_array = true;
@@ -421,7 +421,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			if (!init) continue;
 			if (init && init->kind != CONST_INIT_ARRAY_FULL)
 			{
-				ASSERT0(!init || init->type != type_untypedlist);
+				ASSERT(!init || init->type != type_untypedlist);
 				RETURN_SEMA_ERROR(single_expr, "Expected a full array here.");
 			}
 			FOREACH(ConstInitializer *, val, init->init_array_full)
@@ -447,7 +447,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		// Zero sized slice:
 		if (!inititializer)
 		{
-			ASSERT(element, element->const_expr.const_kind == CONST_SLICE);
+			ASSERT_SPAN(element, element->const_expr.const_kind == CONST_SLICE);
 			continue;
 		}
 		switch (inititializer->kind)

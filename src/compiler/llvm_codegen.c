@@ -58,7 +58,7 @@ bool module_should_weaken(Module *module)
 
 static void gencontext_init(GenContext *context, Module *module, LLVMContextRef shared_context)
 {
-	ASSERT0(LLVMIsMultithreaded());
+	ASSERT(LLVMIsMultithreaded());
 	memset(context, 0, sizeof(GenContext));
 	context->weaken = module_should_weaken(module);
 
@@ -81,7 +81,7 @@ static void gencontext_init(GenContext *context, Module *module, LLVMContextRef 
 
 static void gencontext_destroy(GenContext *context)
 {
-	ASSERT0(llvm_is_global_eval(context));
+	ASSERT(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
 	if (!context->shared_context) LLVMContextDispose(context->context);
 	LLVMDisposeTargetData(context->target_data);
@@ -229,7 +229,7 @@ static LLVMValueRef llvm_emit_const_array_padding(LLVMTypeRef element_type, Inde
 
 LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_init)
 {
-	ASSERT0(const_init->type == type_flatten(const_init->type));
+	ASSERT(const_init->type == type_flatten(const_init->type));
 	switch (const_init->kind)
 	{
 		case CONST_INIT_ZERO:
@@ -238,15 +238,15 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 			UNREACHABLE
 		case CONST_INIT_ARRAY_FULL:
 		{
-			ASSERT(const_init, const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			ConstInitializer **elements = const_init->init_array_full;
-			ASSERT(const_init, array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
+			ASSERT(array_type->type_kind == TYPE_ARRAY || array_type->type_kind == TYPE_VECTOR);
 			ArraySize size = array_type->array.len;
-			ASSERT(const_init, size > 0);
+			ASSERT(size > 0);
 			LLVMValueRef *parts = VECNEW(LLVMValueRef, size);
 			for (ArrayIndex i = 0; i < (ArrayIndex)size; i++)
 			{
@@ -267,21 +267,21 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 
 		case CONST_INIT_ARRAY:
 		{
-			ASSERT(const_init, const_init->type->type_kind != TYPE_SLICE);
+			ASSERT(const_init->type->type_kind != TYPE_SLICE);
 			bool was_modified = false;
 			Type *array_type = const_init->type;
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef element_type_llvm = llvm_get_type(c, element_type);
 			AlignSize expected_align = llvm_abi_alignment(c, element_type_llvm);
 			ConstInitializer **elements = const_init->init_array.elements;
-			ASSERT(const_init, vec_size(elements) > 0 && "Array should always have gotten at least one element.");
+			ASSERT(vec_size(elements) > 0 && "Array should always have gotten at least one element.");
 			ArrayIndex current_index = 0;
 			unsigned alignment = 0;
 			LLVMValueRef *parts = NULL;
 			bool pack = false;
 			FOREACH(ConstInitializer *, element, elements)
 			{
-				ASSERT0(element->kind == CONST_INIT_ARRAY_VALUE);
+				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
 				ArrayIndex element_index = element->init_array_value.index;
 				IndexDiff diff = element_index - current_index;
 				if (alignment && expected_align != alignment)
@@ -376,7 +376,7 @@ LLVMValueRef llvm_emit_const_initializer(GenContext *c, ConstInitializer *const_
 				LLVMTypeRef expected_type = llvm_get_type(c, const_init->init_struct[i]->type);
 				LLVMValueRef element = llvm_emit_const_initializer(c, const_init->init_struct[i]);
 				LLVMTypeRef element_type = LLVMTypeOf(element);
-				//ASSERT0(LLVMIsConstant(element));
+				//ASSERT(LLVMIsConstant(element));
 				if (expected_type != element_type)
 				{
 					was_modified = true;
@@ -533,7 +533,7 @@ void llvm_set_private_declaration(LLVMValueRef alloc)
 
 void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 {
-	ASSERT0(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST || decl->var.is_static);
+	ASSERT(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST || decl->var.is_static);
 
 	// Skip real constants.
 	if (!decl->type) return;
@@ -548,7 +548,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	// Fold "source" of the init.
 	while (init_expr && init_expr->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *inner_decl = decl_flatten(init_expr->identifier_expr.decl);
+		Decl *inner_decl = decl_flatten(init_expr->ident_expr);
 		if (inner_decl->decl_kind != DECL_VAR) break;
 		if (inner_decl->var.kind != VARDECL_CONST) break;
 		init_expr = inner_decl->var.init_expr;
@@ -557,7 +557,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	{
 		if (expr_is_const_initializer(init_expr))
 		{
-			ASSERT0(type_flatten(init_expr->type)->type_kind != TYPE_SLICE);
+			ASSERT(type_flatten(init_expr->type)->type_kind != TYPE_SLICE);
 			ConstInitializer *list = init_expr->const_expr.initializer;
 			init_value = llvm_emit_const_initializer(c, list);
 		}
@@ -623,7 +623,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	if (init_expr && IS_OPTIONAL(init_expr) && init_expr->expr_kind == EXPR_OPTIONAL)
 	{
 		Expr *inner = init_expr->inner_expr;
-		ASSERT0(expr_is_const(inner) && inner->const_expr.const_kind == CONST_ERR);
+		ASSERT(expr_is_const(inner) && inner->const_expr.const_kind == CONST_ERR);
 		BEValue value;
 		llvm_emit_expr_global_value(c, &value, inner);
 		optional_value = llvm_load_value_store(c, &value);
@@ -652,7 +652,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 static void gencontext_verify_ir(GenContext *context)
 {
 	char *error = NULL;
-	ASSERT0(context->module);
+	ASSERT(context->module);
 	if (LLVMVerifyModule(context->module, LLVMPrintMessageAction, &error))
 	{
 		if (*error)
@@ -720,12 +720,12 @@ void gencontext_print_llvm_ir(GenContext *context)
 
 LLVMValueRef llvm_emit_alloca(GenContext *c, LLVMTypeRef type, unsigned alignment, const char *name)
 {
-	ASSERT0(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
-	ASSERT0(!llvm_is_global_eval(c));
-	ASSERT0(alignment > 0);
+	ASSERT(LLVMGetTypeKind(type) != LLVMVoidTypeKind);
+	ASSERT(!llvm_is_global_eval(c));
+	ASSERT(alignment > 0);
 	LLVMBasicBlockRef current_block = LLVMGetInsertBlock(c->builder);
 	LLVMPositionBuilderBefore(c->builder, c->alloca_point);
-	ASSERT0(LLVMGetTypeContext(type) == c->context);
+	ASSERT(LLVMGetTypeContext(type) == c->context);
 	LLVMValueRef alloca = LLVMBuildAlloca(c->builder, type, name);
 	llvm_set_alignment(alloca, alignment);
 	LLVMPositionBuilderAtEnd(c->builder, current_block);
@@ -741,13 +741,13 @@ void llvm_emit_and_set_decl_alloca(GenContext *c, Decl *decl)
 {
 	Type *type = type_lowering(decl->type);
 	if (type == type_void) return;
-	ASSERT0(!decl->backend_ref && !decl->is_value);
+	ASSERT(!decl->backend_ref && !decl->is_value);
 	decl->backend_ref = llvm_emit_alloca(c, llvm_get_type(c, type), decl->alignment, decl->name ? decl->name : ".anon");
 }
 
 void llvm_emit_local_var_alloca(GenContext *c, Decl *decl)
 {
-	ASSERT0(!decl->var.is_static && decl->var.kind != VARDECL_CONST);
+	ASSERT(!decl->var.is_static && decl->var.kind != VARDECL_CONST);
 	llvm_emit_and_set_decl_alloca(c, decl);
 	if (llvm_use_debug(c))
 	{
@@ -1088,7 +1088,7 @@ const char *llvm_codegen(void *context)
 
 void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
-	ASSERT0(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+	ASSERT(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	bool same_module = decl->unit->module == c->code_module;
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
@@ -1128,21 +1128,21 @@ LLVMValueRef llvm_get_opt_ref(GenContext *c, Decl *decl)
 static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABIArgInfo *info, bool is_return,
                                        int index, int last_index, Decl *decl)
 {
-	ASSERT0(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
-		   || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
-		   || info->kind == ABI_ARG_DIRECT_COERCE_INT || info->kind == ABI_ARG_EXPAND_COERCE
-		   || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
+	ASSERT(last_index == index || info->kind == ABI_ARG_DIRECT_PAIR || info->kind == ABI_ARG_IGNORE
+	       || info->kind == ABI_ARG_EXPAND || info->kind == ABI_ARG_DIRECT || info->kind == ABI_ARG_DIRECT_COERCE
+	       || info->kind == ABI_ARG_DIRECT_COERCE_INT || info->kind == ABI_ARG_EXPAND_COERCE
+	       || info->kind == ABI_ARG_DIRECT_SPLIT_STRUCT_I32);
 
 	if (info->attributes.zeroext)
 	{
 		// Direct only
-		ASSERT0(index == last_index);
+		ASSERT(index == last_index);
 		llvm_attribute_add(c, function, attribute_id.zext, index);
 	}
 	if (info->attributes.signext)
 	{
 		// Direct only
-		ASSERT0(index == last_index);
+		ASSERT(index == last_index);
 		llvm_attribute_add(c, function, attribute_id.sext, index);
 	}
 	if (info->attributes.by_reg)
@@ -1168,7 +1168,7 @@ static void llvm_emit_param_attributes(GenContext *c, LLVMValueRef function, ABI
 		case ABI_ARG_INDIRECT:
 			if (is_return)
 			{
-				ASSERT0(info->indirect.type);
+				ASSERT(info->indirect.type);
 				llvm_attribute_add_type(c, function, attribute_id.sret, llvm_get_type(c, info->indirect.type), 1);
 				llvm_attribute_add(c, function, attribute_id.noalias, 1);
 				llvm_attribute_add_int(c, function, attribute_id.align, info->indirect.alignment, 1);
@@ -1265,7 +1265,7 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 }
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 {
-	ASSERT0(!decl->is_value);
+	ASSERT(!decl->is_value);
 	LLVMValueRef backend_ref = decl->backend_ref;
 	if (backend_ref)
 	{
@@ -1281,7 +1281,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			{
 				return decl->backend_ref = llvm_get_ref(c, decl->var.alias);
 			}
-			ASSERT0(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+			ASSERT(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
 			return decl->backend_ref;
 		case DECL_FUNC:
@@ -1314,7 +1314,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			{
 				llvm_get_typeid(c, declptr(decl->enum_constant.parent)->type);
 			}
-			ASSERT0(decl->backend_ref);
+			ASSERT(decl->backend_ref);
 			return decl->backend_ref;
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
@@ -1566,7 +1566,7 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	if (!vec_size(module->units)) return NULL;
 	if (compiler.build.emit_stdlib == EMIT_STDLIB_OFF && module_is_stdlib(module)) return NULL;
 
-	ASSERT0(intrinsics_setup);
+	ASSERT(intrinsics_setup);
 
 	bool has_elements = false;
 	GenContext *gen_context = cmalloc(sizeof(GenContext));
@@ -1768,7 +1768,7 @@ AlignSize llvm_abi_alignment(GenContext *c, LLVMTypeRef type)
 
 LLVMValueRef llvm_emit_memcpy(GenContext *c, LLVMValueRef dest, unsigned dest_align, LLVMValueRef source, unsigned src_align, uint64_t len)
 {
-	ASSERT0(dest_align && src_align);
+	ASSERT(dest_align && src_align);
 	if (len <= UINT32_MAX)
 	{
 		return LLVMBuildMemCpy(c->builder, dest, dest_align, source, src_align, llvm_const_int(c, type_uint, len));

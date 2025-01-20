@@ -7,13 +7,13 @@
 
 static ABIArgInfo *riscv_coerce_and_expand_fpcc_struct(AbiType field1, unsigned field1_offset, AbiType field2, unsigned field2_offset)
 {
-	ASSERT0(abi_type_is_type(field1));
+	ASSERT(abi_type_is_type(field1));
 	if (!abi_type_is_valid(field2))
 	{
 		return abi_arg_new_direct_coerce_type(field1.type);
 	}
 
-	ASSERT0(abi_type_is_type(field2));
+	ASSERT(abi_type_is_type(field2));
 	Type *type2 = field2.type;
 	ByteSize abi_type_size = type_size(type2);
 	// Not on even offset, use packed semantics.
@@ -132,10 +132,10 @@ static bool riscv_detect_fpcc_struct(Type *type, AbiType *field1_ref, unsigned *
 static ABIArgInfo *riscv_classify_argument_type(Type *type, bool is_fixed, unsigned *gprs, unsigned *fprs)
 {
 
-	ASSERT0(type == type->canonical);
+	ASSERT(type == type->canonical);
 
 	unsigned xlen = compiler.platform.riscv.xlen;
-	ASSERT0(is_power_of_two(xlen));
+	ASSERT(is_power_of_two(xlen));
 
 	ByteSize size = type_size(type);
 

@@ -11,7 +11,7 @@ void llvm_value_deref(GenContext *c, BEValue *value)
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 {
 	type = type_lowering(type);
-	ASSERT0(llvm_value || type == type_void);
+	ASSERT(llvm_value || type == type_void);
 	value->value = llvm_value;
 	value->alignment = type_abi_alignment(type);
 	value->kind = BE_VALUE;
@@ -40,7 +40,7 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment)
 {
-	ASSERT0(alignment > 0);
+	ASSERT(alignment > 0);
 	value->value = llvm_value;
 	value->alignment = alignment;
 	value->kind = BE_ADDRESS;
@@ -111,7 +111,7 @@ void llvm_value_rvalue(GenContext *c, BEValue *value)
 
 void llvm_emit_jump_to_optional_exit(GenContext *c, LLVMValueRef opt_value)
 {
-	ASSERT0(c->catch.block && "unexpected emit");
+	ASSERT(c->catch.block && "unexpected emit");
 	bool is_constant_opt = llvm_is_const(opt_value);
 
 	// Maybe we don't need to emit anything?
@@ -159,7 +159,7 @@ void llvm_value_fold_optional(GenContext *c, BEValue *value)
 
 void llvm_value_set_decl_address(GenContext *c, BEValue *value, Decl *decl)
 {
-	ASSERT0(!decl->is_value);
+	ASSERT(!decl->is_value);
 	LLVMValueRef backend_ref = llvm_get_ref(c, decl);
 	llvm_value_set_address(value, backend_ref, decl->type, decl->alignment);
 

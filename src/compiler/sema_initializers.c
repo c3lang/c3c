@@ -50,7 +50,7 @@ bool const_init_local_init_may_be_global_inner(ConstInitializer *init, bool top)
 			return top;
 		case CONST_INIT_STRUCT:
 			list = init->init_struct;
-			ASSERT0(vec_size(init->type->decl->strukt.members) == vec_size(list));
+			ASSERT(vec_size(init->type->decl->strukt.members) == vec_size(list));
 			len = vec_size(list);
 			break;
 		case CONST_INIT_UNION:
@@ -188,7 +188,7 @@ static inline void sema_not_enough_elements_error(SemaContext *context, Expr *in
  */
 static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *context, Decl *assigned, Expr *initializer)
 {
-	ASSERT0(assigned->resolve_status == RESOLVE_DONE);
+	ASSERT(assigned->resolve_status == RESOLVE_DONE);
 	Expr **elements = initializer->initializer_list;
 	Decl **members = assigned->strukt.members;
 	ArrayIndex size = (ArrayIndex)vec_size(elements);
@@ -197,7 +197,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	// 1. For struct number of members must be the same as the size of the struct.
 	//    Since we already handled the case with an empty initializer before going here
 	//    zero entries must be an error.
-	ASSERT0(size > 0 && "We should already have handled the size == 0 case.");
+	ASSERT(size > 0 && "We should already have handled the size == 0 case.");
 
 	// 2. We don't support this actually, but we used to. Maybe we will in the future.
 	if (elements_needed == 0)
@@ -227,7 +227,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		//    user pinpoint where they put the double elements.
 		if (i >= elements_needed)
 		{
-			ASSERT0(i < size);
+			ASSERT(i < size);
 			RETURN_SEMA_ERROR(elements[i], "Too many elements in initializer, expected only %d.", elements_needed);
 		}
 		// 5. We might have anonymous members
@@ -263,7 +263,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 			size -= reduce_by;
 			elements_needed -= reduce_by;
 			max_loop = size > elements_needed ? size : elements_needed;
-			ASSERT0(size <= vec_size(initializer->initializer_list));
+			ASSERT(size <= vec_size(initializer->initializer_list));
 			vec_resize(initializer->initializer_list, (unsigned)size);
 			elements = initializer->initializer_list;
 			elements[i] = new_initializer;
@@ -282,16 +282,16 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 		}
 		optional = optional || IS_OPTIONAL(element);
 	}
-	ASSERT0(initializer->type);
+	ASSERT(initializer->type);
 	if (optional) initializer->type = type_get_optional(initializer->type);
 
 	// 6. There's the case of too few values as well. Mark the last field as wrong.
-	ASSERT0(elements_needed <= size);
+	ASSERT(elements_needed <= size);
 	initializer->resolve_status = RESOLVE_DONE;
 	if (expr_is_runtime_const(initializer))
 	{
 		bool is_union = type_flatten(initializer->type)->type_kind == TYPE_UNION;
-		ASSERT0(!is_union || vec_size(elements) == 1);
+		ASSERT(!is_union || vec_size(elements) == 1);
 		ConstInitializer *init;
 		if (is_union)
 		{
@@ -329,17 +329,17 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	// We have the case where "Foo = int[*]"
 	if (inferred_len && !type_len_is_inferred(assigned))
 	{
-		ASSERT0(assigned->type_kind == TYPE_TYPEDEF);
-		ASSERT0(assigned->decl->decl_kind == DECL_TYPEDEF);
+		ASSERT(assigned->type_kind == TYPE_TYPEDEF);
+		ASSERT(assigned->decl->decl_kind == DECL_TYPEDEF);
 		while (assigned->type_kind == TYPE_TYPEDEF) assigned = assigned->decl->type;
-		ASSERT0(type_len_is_inferred(assigned));
+		ASSERT(type_len_is_inferred(assigned));
 	}
 	// Prefer the typedef index: define Bar = int; Bar[1] => Bar and not int
 	Type *inner_type = type_get_indexed_type(assigned);
-	ASSERT0(inner_type);
+	ASSERT(inner_type);
 	unsigned count = vec_size(elements);
 	unsigned expected_members = flattened->array.len;
-	ASSERT0(count > 0 && "We should already have handled the size == 0 case.");
+	ASSERT(count > 0 && "We should already have handled the size == 0 case.");
 
 	if (expected_members == 0 && !inferred_len)
 	{
@@ -441,7 +441,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 		initializer->type = assigned;
 	}
 
-	ASSERT0(initializer->type);
+	ASSERT(initializer->type);
 	if (optional) initializer->type = type_get_optional(initializer->type);
 
 	if (!inferred_len && expected_members > count)
@@ -512,7 +512,7 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		bool is_bitmember = member && member->decl_kind == DECL_VAR && member->var.kind == VARDECL_BITMEMBER;
 		Expr *value = expr->designator_expr.value;
 		if (!value && is_bitmember && member->var.start_bit == member->var.end_bit && type_flatten(result) == type_bool) {
-			ASSERT0(is_bitstruct);
+			ASSERT(is_bitstruct);
 			value = expr_new_const_bool(INVALID_SPAN, type_bool, true);
 			expr->designator_expr.value = value;
 			bitmember_count_without_value += 1;
@@ -570,10 +570,10 @@ static inline bool sema_expr_analyse_initializer(SemaContext *context, Type *ass
 
 	if (expr->expr_kind == EXPR_CONST)
 	{
-		ASSERT0(expr->const_expr.const_kind == CONST_INITIALIZER);
+		ASSERT(expr->const_expr.const_kind == CONST_INITIALIZER);
 		return cast_implicit(context, expr, assigned_type, false);
 	}
-	ASSERT0(expr->expr_kind == EXPR_INITIALIZER_LIST);
+	ASSERT(expr->expr_kind == EXPR_INITIALIZER_LIST);
 
 	// 2. Grab the expressions inside.
 	Expr **init_expressions = expr->initializer_list;
@@ -629,13 +629,13 @@ static void sema_create_const_initializer_from_designated_init(ConstInitializer 
 {
 	// Flatten the type since the external type might be typedef or a distinct type.
 	const_init_rewrite_to_zero(const_init, type_flatten(initializer->type));
-	ASSERT0(type_flatten(initializer->type)->type_kind != TYPE_SLICE);
+	ASSERT(type_flatten(initializer->type)->type_kind != TYPE_SLICE);
 	// Loop through the initializers.
 	FOREACH(Expr *, expr, initializer->initializer_list)
 	{
 		DesignatorElement **path = expr->designator_expr.path;
 		Expr *value = expr->designator_expr.value;
-		ASSERT0(value);
+		ASSERT(value);
 		sema_update_const_initializer_with_designator(const_init, path, path + vec_size(path), value);
 	}
 }
@@ -656,7 +656,7 @@ void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer)
 		}
 	}
 
-	ASSERT0(vec_size(initializer->init_struct) == len);
+	ASSERT(vec_size(initializer->init_struct) == len);
 	FOREACH_IDX(i, ConstInitializer *, init, initializer->init_struct)
 	{
 		Type *type = init->type;
@@ -718,7 +718,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 				UNREACHABLE
 		}
 	}
-	ASSERT0(lhs->kind == CONST_INIT_STRUCT && rhs->kind == CONST_INIT_STRUCT);
+	ASSERT(lhs->kind == CONST_INIT_STRUCT && rhs->kind == CONST_INIT_STRUCT);
 	ConstInitializer **lhs_inits = lhs->init_struct;
 	ConstInitializer **rhs_inits = rhs->init_struct;
 	Decl **members = lhs->type->decl->strukt.members;
@@ -760,7 +760,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 			}
 			continue;
 		}
-		ASSERT0(type_is_integer(type_flatten(init_lhs->type)));
+		ASSERT(type_is_integer(type_flatten(init_lhs->type)));
 		switch (op)
 		{
 			case BINARYOP_BIT_AND:
@@ -782,7 +782,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
 	if (!to) to = type_untypedlist;
-	ASSERT0(to);
+	ASSERT(to);
 	Type *flattened = type_flatten(to);
 	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) ||
 			(expr->resolve_status == RESOLVE_DONE && sema_initializer_list_is_empty(expr));
@@ -871,14 +871,14 @@ void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)
 	{
 		*const_init = *value->const_expr.initializer;
 		value->const_expr.initializer = const_init;
-		ASSERT0(type_flatten(value->type)->type_kind != TYPE_SLICE);
+		ASSERT(type_flatten(value->type)->type_kind != TYPE_SLICE);
 		return;
 	}
 	if (value->expr_kind == EXPR_IDENTIFIER)
 	{
-		Decl *ident = decl_flatten(value->identifier_expr.decl);
-		ASSERT0(ident->decl_kind == DECL_VAR);
-		ASSERT0(ident->var.kind == VARDECL_CONST);
+		Decl *ident = decl_flatten(value->ident_expr);
+		ASSERT(ident->decl_kind == DECL_VAR);
+		ASSERT(ident->var.kind == VARDECL_CONST);
 		const_init_rewrite_to_value(const_init, expr_copy(ident->var.init_expr));
 		return;
 	}
@@ -945,7 +945,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 {
 	// Get the current path element that we're processing
 	DesignatorElement *element = curr[0];
-	ASSERT0(element->kind == DESIGNATOR_FIELD);
+	ASSERT(element->kind == DESIGNATOR_FIELD);
 	DesignatorElement **next_element = curr + 1;
 	bool is_last_path_element = next_element == end;
 
@@ -953,7 +953,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	if (is_last_path_element && sema_initializer_list_is_empty(value))
 	{
 		const_init->kind = CONST_INIT_ZERO;
-		ASSERT0(type_flatten(value->type)->type_kind != TYPE_SLICE);
+		ASSERT(type_flatten(value->type)->type_kind != TYPE_SLICE);
 		return;
 	}
 	Decl **elements = const_init->type->decl->strukt.members;
@@ -973,7 +973,7 @@ static inline void sema_update_const_initializer_with_designator_struct(ConstIni
 	}
 
 	// We should always have expanded the struct at this point.
-	ASSERT0(const_init->kind == CONST_INIT_STRUCT);
+	ASSERT(const_init->kind == CONST_INIT_STRUCT);
 
 	// Find the ConstInitializer to change
 	ConstInitializer *sub_element = const_init->init_struct[element->index]; // NOLINT
@@ -1003,7 +1003,7 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 																	   Expr *value)
 {
 	DesignatorElement *element = curr[0];
-	ASSERT0(element->kind == DESIGNATOR_FIELD);
+	ASSERT(element->kind == DESIGNATOR_FIELD);
 	ConstInitializer *sub_element = const_init->init_union.element;
 
 	// If it's an empty initializer, just clear everything back to CONST_INIT_ZERO
@@ -1060,7 +1060,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 	DesignatorElement *element = curr[0];
 	ArrayIndex low_index = element->index;
 	ArrayIndex high_index = element->kind == DESIGNATOR_RANGE ? element->index_end : element->index;
-	ASSERT0(element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE);
+	ASSERT(element->kind == DESIGNATOR_ARRAY || element->kind == DESIGNATOR_RANGE);
 
 	// Expand zero into array.
 	if (const_init->kind == CONST_INIT_ZERO)
@@ -1081,7 +1081,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 
 	for (ArrayIndex index = low_index; index <= high_index; index++)
 	{
-		ASSERT0(insert_index >= array_count || array_elements);
+		ASSERT(insert_index >= array_count || array_elements);
 		// Walk to the insert point or until we reached the end of the array.
 		while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
 		{
@@ -1106,7 +1106,7 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 			// need to do an insert.
 			if (initializer->init_array_value.index != insert_index)
 			{
-				ASSERT0(initializer->init_array_value.index > insert_index);
+				ASSERT(initializer->init_array_value.index > insert_index);
 
 				// First we add a null at the end.
 				vec_add(array_elements, NULL);
@@ -1251,7 +1251,7 @@ static Type *sema_find_type_of_element(SemaContext *context, Type *type, Designa
 		}
 		return base;
 	}
-	ASSERT0(element->kind == DESIGNATOR_FIELD);
+	ASSERT(element->kind == DESIGNATOR_FIELD);
 	if (!type_is_union_or_strukt(type_flattened) && type_flattened->type_kind != TYPE_BITSTRUCT)
 	{
 		return NULL;
@@ -1305,12 +1305,12 @@ static Decl *sema_resolve_element_for_name(SemaContext *context, Decl **decls, D
 	Expr *field = sema_expr_resolve_access_child(context, element->field_expr, NULL);
 	if (!field) return poisoned_decl;
 
-	if (field->expr_kind != EXPR_IDENTIFIER)
+	if (field->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		SEMA_ERROR(field, "An identifier was expected.");
 		return poisoned_decl;
 	}
-	const char *name = field->identifier_expr.ident;
+	const char *name = field->unresolved_ident_expr.ident;
 	unsigned old_index = *index;
 	FOREACH_IDX(i, Decl *, decl, decls)
 	{

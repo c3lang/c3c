@@ -41,7 +41,7 @@ UNUSED static char digit_to_char(uint8_t digit, bool upper)
 
 char *i128_to_string(Int128 op, uint64_t base, bool is_signed, bool use_prefix)
 {
-	ASSERT0(base >= 2 && base <= 16);
+	ASSERT(base >= 2 && base <= 16);
 	static char digits[16] = "0123456789ABCDEF";
 	char buffer[130];
 	char *loc = buffer;
@@ -322,7 +322,7 @@ Int128 i128_from_float_unsigned(Real d)
 
 UNUSED bool i128_get_bit(const Int128 *op, int bit)
 {
-	ASSERT0(bit < 128 && bit >= 0);
+	ASSERT(bit < 128 && bit >= 0);
 	if (bit > 63)
 	{
 		return (op->high >> (bit - 64)) & 1;
@@ -761,7 +761,7 @@ unsigned int_bits_needed(Int op)
 
 Int int_add(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	return (Int){ i128_extend(i128_add(op1.i, op2.i), op1.type), op1.type };
 }
 
@@ -772,7 +772,7 @@ Int int_add64(Int op1, uint64_t op2)
 
 Int int_sub(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	return (Int){ i128_extend(i128_sub(op1.i, op2.i), op1.type), op1.type };
 }
 
@@ -783,7 +783,7 @@ Int int_sub64(Int op1, uint64_t op2)
 
 Int int_mul(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	return (Int){ i128_extend(i128_mult(op1.i, op2.i), op1.type), op1.type };
 }
 
@@ -821,7 +821,7 @@ Int int_conv(Int op, TypeKind to_type)
 
 Int int_div(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	Int128 res;
 	if (type_kind_is_signed(op1.type))
 	{
@@ -836,7 +836,7 @@ Int int_div(Int op1, Int op2)
 
 Int int_rem(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	Int128 res;
 	if (type_kind_is_signed(op1.type))
 	{
@@ -851,19 +851,19 @@ Int int_rem(Int op1, Int op2)
 
 Int int_and(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	return (Int){ i128_and(op1.i, op2.i), op1.type };
 }
 
 Int int_or(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	return (Int){ i128_or(op1.i, op2.i), op1.type };
 }
 
 Int int_xor(Int op1, Int op2)
 {
-	ASSERT0(op1.type == op2.type);
+	ASSERT(op1.type == op2.type);
 	return (Int){ i128_xor(op1.i, op2.i), op1.type };
 }
 

@@ -57,7 +57,7 @@ ABIArgInfo *aarch64_coerce_illegal_vector(Type *type)
 				UNREACHABLE
 		}*/
 	}
-	ASSERT0(type->type_kind == TYPE_VECTOR);
+	ASSERT(type->type_kind == TYPE_VECTOR);
 	TypeSize size = type_size(type);
 
 	// CLANG: Android promotes char[<2>] to ushort, not uint
@@ -107,7 +107,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 	unsigned members = 0;
 	if (type_is_homogenous_aggregate(type, &base, &members))
 	{
-		ASSERT0(members < 128);
+		ASSERT(members < 128);
 		if (members > 1)
 		{
 			return abi_arg_new_direct_coerce_type(type_get_array(base, members));
@@ -134,7 +134,7 @@ ABIArgInfo *aarch64_classify_argument_type(Type *type)
 		size = aligned_offset(size, alignment);
 		// We use a pair of i64 for 16-byte aggregate with 8-byte alignment.
 		// For aggregates with 16-byte alignment, we use i128.
-		ASSERT0(alignment == 8 || alignment == 16);
+		ASSERT(alignment == 8 || alignment == 16);
 
 		if (alignment == 16) return abi_arg_new_direct_coerce_type(type_u128);
 		ArraySize m = size / alignment;

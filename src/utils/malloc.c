@@ -33,7 +33,7 @@ void memory_release()
 
 void *calloc_string(size_t len)
 {
-	ASSERT0(len > 0);
+	ASSERT(len > 0);
 	allocations_done++;
 	return vmem_alloc(&char_arena, len);
 }
@@ -42,7 +42,7 @@ void *calloc_string(size_t len)
 // Simple bump allocator with buckets.
 void *calloc_arena(size_t mem)
 {
-	ASSERT0(mem > 0);
+	ASSERT(mem > 0);
 	// Round to multiple of 16
 	mem = (mem + 15U) & ~15ULL;
 	allocations_done++;
@@ -70,15 +70,15 @@ void run_arena_allocator_tests(void)
 	if (!was_init) memory_init(0);
 	memory_release();
 	memory_init(0);
-	ASSERT(calloc_arena(10) != calloc_arena(10), "Expected different values...");
+	ASSERT(calloc_arena(10) != calloc_arena(10) && "Expected different values...");
 	printf("-- Tested basic allocation - OK.\n");
-	ASSERT(arena.allocated == 48, "Expected allocations rounded to next 16 bytes");
+	ASSERT(arena.allocated == 48 && "Expected allocations rounded to next 16 bytes");
 	calloc_arena(1);
-	ASSERT(arena.allocated == 64, "Expected allocations rounded to next 16 bytes");
+	ASSERT(arena.allocated == 64 && "Expected allocations rounded to next 16 bytes");
 	printf("-- Tested allocation alignment - OK.\n");
-	ASSERT(calloc_arena(1024 * 1024) != NULL, "Expected allocation to work");
+	ASSERT(calloc_arena(1024 * 1024) != NULL && "Expected allocation to work");
 	free_arena();
-	ASSERT(arena.allocated == 0, "Arena not freed?");
+	ASSERT(arena.allocated == 0 && "Arena not freed?");
 	printf("-- Test freeing arena - OK.\n");
 	if (was_init) memory_init(0);
 }

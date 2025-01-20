@@ -444,7 +444,7 @@ static void duplicate_prop(const char ***prop_ref)
 static void project_add_target(const char *filename, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *name, const char *type, TargetType target_type)
 {
-	ASSERT0(json->type == J_OBJECT);
+	ASSERT(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
 	*target = *default_target;
 	duplicate_prop(&target->args);
@@ -479,7 +479,7 @@ static void project_add_target(const char *filename, Project *project, BuildTarg
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
 {
-	ASSERT0(project_data->type == J_OBJECT);
+	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
 	load_into_build_target(filename, project_data, NULL, &default_target);

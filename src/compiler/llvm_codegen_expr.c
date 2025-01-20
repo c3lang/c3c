@@ -77,14 +77,14 @@ LLVMValueRef llvm_emit_exprid_to_rvalue(GenContext *c, ExprId expr_id)
 
 void llvm_emit_assume_true(GenContext *c, BEValue *assume_true)
 {
-	ASSERT0(llvm_value_is_bool(assume_true));
+	ASSERT(llvm_value_is_bool(assume_true));
 	LLVMValueRef value = assume_true->value;
 	llvm_emit_call_intrinsic(c, intrinsic_id.assume, NULL, 0, &value, 1);
 }
 
 LLVMValueRef llvm_emit_expect_false(GenContext *c, BEValue *expect_false)
 {
-	ASSERT0(llvm_value_is_bool(expect_false));
+	ASSERT(llvm_value_is_bool(expect_false));
 	LLVMValueRef values[2] = { expect_false->value, LLVMConstNull(c->bool_type) };
 	return llvm_emit_call_intrinsic(c, intrinsic_id.expect, &c->bool_type, 1, values, 2);
 }
@@ -107,7 +107,7 @@ Expr *expr_remove_recast(Expr *expr)
 
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init)
 {
-	ASSERT0(llvm_value_is_addr(ref));
+	ASSERT(llvm_value_is_addr(ref));
 
 	assert((optional || !IS_OPTIONAL(expr)) && "Assumed an optional address if it's an optional expression.");
 
@@ -146,7 +146,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 	if (IS_OPTIONAL(expr))
 	{
 		assign_block = llvm_basic_block_new(c, "after_assign");
-		ASSERT0(optional);
+		ASSERT(optional);
 		if (c->catch.fault)
 		{
 			c->catch.block = rejump_block = llvm_basic_block_new(c, "optional_assign_jump");
@@ -335,7 +335,7 @@ static inline LLVMValueRef llvm_mask_low_bits(GenContext *c, LLVMValueRef value,
  */
 LLVMTypeRef llvm_const_padding_type(GenContext *c, AlignSize size)
 {
-	ASSERT0(size > 0);
+	ASSERT(size > 0);
 	if (size == 1) return c->byte_type;
 	return LLVMArrayType(c->byte_type, (unsigned)size);
 }
@@ -358,7 +358,7 @@ static inline LLVMValueRef llvm_emit_add_int(GenContext *c, Type *type, LLVMValu
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type->canonical);
 		LLVMValueRef args[2] = { left, right };
-		ASSERT0(type->canonical == type);
+		ASSERT(type->canonical == type);
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
@@ -432,7 +432,7 @@ LLVMValueRef llvm_coerce_int_ptr(GenContext *c, LLVMValueRef value, LLVMTypeRef 
 	bool to_is_pointer = LLVMGetTypeKind(to) == LLVMPointerTypeKind;
 	if (LLVMGetTypeKind(from) == LLVMPointerTypeKind)
 	{
-		ASSERT0(!to_is_pointer && "ptr<->ptr should never happen in LLVM 15+");
+		ASSERT(!to_is_pointer && "ptr<->ptr should never happen in LLVM 15+");
 		from = llvm_get_type(c, type_iptr);
 		value = LLVMBuildPtrToInt(c->builder, value, from, "");
 	}
@@ -563,7 +563,7 @@ void llvm_emit_coerce_store(GenContext *c, LLVMValueRef addr, AlignSize alignmen
 		return;
 	}
 
-	ASSERT0(coerced_type_kind != LLVMScalableVectorTypeKind && "Scalable vectors are not supported.");
+	ASSERT(coerced_type_kind != LLVMScalableVectorTypeKind && "Scalable vectors are not supported.");
 
 	ByteSize target_size = llvm_alloc_size(c, target_type);
 	if (src_size <= target_size && coerced_type_kind != LLVMScalableVectorTypeKind && source_type_kind != LLVMScalableVectorTypeKind)
@@ -594,7 +594,7 @@ static inline LLVMValueRef llvm_emit_sub_int(GenContext *c, Type *type, LLVMValu
 	{
 		LLVMTypeRef type_to_use = llvm_get_type(c, type);
 		LLVMValueRef args[2] = { left, right };
-		ASSERT0(type_lowering(type) == type);
+		ASSERT(type_lowering(type) == type);
 		LLVMValueRef add_res;
 		if (type_is_unsigned(type))
 		{
@@ -637,7 +637,7 @@ static void llvm_emit_array_bounds_check(GenContext *c, BEValue *index, LLVMValu
 
 static inline void llvm_emit_subscript_addr_with_base(GenContext *c, BEValue *result, BEValue *parent, BEValue *index, SourceSpan loc)
 {
-	ASSERT0(llvm_value_is_addr(parent));
+	ASSERT(llvm_value_is_addr(parent));
 	Type *type = type_lowering(parent->type);
 	switch (type->type_kind)
 	{
@@ -674,7 +674,7 @@ static inline void llvm_emit_vector_subscript(GenContext *c, BEValue *value, Exp
 	llvm_emit_exprid(c, value, expr->subscript_expr.expr);
 	llvm_value_rvalue(c, value);
 	Type *vec = value->type;
-	ASSERT0(vec->type_kind == TYPE_VECTOR);
+	ASSERT(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
 	llvm_emit_exprid(c, value, expr->subscript_expr.index.expr);
@@ -718,7 +718,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	else if (parent_type_kind == TYPE_ARRAY || parent_type_kind == TYPE_VECTOR)
 	{
 		// From back should always be folded.
-		ASSERT0(!expr_is_const(expr) || !start_from_end);
+		ASSERT(!expr_is_const(expr) || !start_from_end);
 		needs_len = (safe_mode_enabled() && !expr_is_const(expr)) || start_from_end;
 		if (needs_len)
 		{
@@ -736,7 +736,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 
 	if (start_from_end)
 	{
-		ASSERT0(needs_len);
+		ASSERT(needs_len);
 		index.value = LLVMBuildNUWSub(c->builder, llvm_zext_trunc(c, len.value, llvm_get_type(c, index.type)), index.value, "");
 	}
 	if (needs_len && safe_mode_enabled() && !llvm_is_global_eval(c))
@@ -744,7 +744,7 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 		llvm_emit_array_bounds_check(c, &index, len.value, index_expr->span);
 	}
 	llvm_emit_subscript_addr_with_base(c, value, value, &index, index_expr->span);
-	ASSERT0(llvm_value_is_addr(value));
+	ASSERT(llvm_value_is_addr(value));
 	llvm_value_fold_optional(c, value);
 }
 
@@ -810,13 +810,13 @@ static ArrayIndex find_member_index(Decl *parent, Decl *member)
 
 static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, Decl *member)
 {
-	ASSERT0(member->resolve_status == RESOLVE_DONE);
+	ASSERT(member->resolve_status == RESOLVE_DONE);
 	Decl *found = NULL;
 
 	do
 	{
 		ArrayIndex index = find_member_index(parent, member);
-		ASSERT0(index > -1);
+		ASSERT(index > -1);
 		found = parent->strukt.members[index];
 		switch (parent->type->canonical->type_kind)
 		{
@@ -837,13 +837,13 @@ static void llvm_emit_member_addr(GenContext *c, BEValue *value, Decl *parent, D
 
 static Decl *llvm_emit_bitstruct_member(GenContext *c, BEValue *value, Decl *parent, Decl *member)
 {
-	ASSERT0(member->resolve_status == RESOLVE_DONE);
+	ASSERT(member->resolve_status == RESOLVE_DONE);
 	Decl *found = parent;
 	Decl *last = NULL;
 	do
 	{
 		ArrayIndex index = find_member_index(parent, member);
-		ASSERT0(index > -1);
+		ASSERT(index > -1);
 		last = found;
 		found = parent->strukt.members[index];
 		switch (parent->type->canonical->type_kind)
@@ -872,7 +872,7 @@ static LLVMValueRef llvm_emit_bswap(GenContext *c, LLVMValueRef value)
 		return LLVMConstBswap(value);
 	}
 	LLVMTypeRef type = LLVMTypeOf(value);
-	ASSERT0(type != c->byte_type);
+	ASSERT(type != c->byte_type);
 	return llvm_emit_call_intrinsic(c, intrinsic_id.bswap, &type, 1, &value, 1);
 }
 
@@ -906,7 +906,7 @@ static inline void llvm_extract_bool_bit_from_array(GenContext *c, BEValue *be_v
 static inline LLVMValueRef llvm_bswap_non_integral(GenContext *c, LLVMValueRef value, unsigned bitsize)
 {
 	if (bitsize <= 8) return value;
-	ASSERT0(is_power_of_two(bitsize));
+	ASSERT(is_power_of_two(bitsize));
 	LLVMValueRef shifted = llvm_emit_shl_fixed(c, value, (int)llvm_bitsize(c, LLVMTypeOf(value)) - (int)bitsize);
 	return llvm_emit_bswap(c, shifted);
 }
@@ -1035,7 +1035,7 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 	Type *member_type = type_flatten(member->type);
 	if (member_type == type_bool)
 	{
-		ASSERT0(start_bit == end_bit);
+		ASSERT(start_bit == end_bit);
 		value = llvm_emit_shl_fixed(c, value, start_bit % 8);
 		AlignSize alignment;
 		LLVMValueRef byte_ptr = llvm_emit_array_gep_raw(c, array_ptr, array_type, start_bit / 8, array_alignment, &alignment);
@@ -1052,7 +1052,7 @@ static inline void llvm_emit_update_bitstruct_array(GenContext *c,
 	{
 		value = llvm_bswap_non_integral(c, value, bit_size);
 	}
-	ASSERT0(bit_size > 0 && bit_size <= 128);
+	ASSERT(bit_size > 0 && bit_size <= 128);
 	int start_byte = start_bit / 8;
 	int end_byte = end_bit / 8;
 	int start_mod = start_bit % 8;
@@ -1155,11 +1155,11 @@ INLINE LLVMValueRef llvm_emit_bitstruct_value_update(GenContext *c, LLVMValueRef
 static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	Expr *lhs = exprptr(expr->binary_expr.left);
-	Expr *parent_expr = lhs->access_expr.parent;
+	Expr *parent_expr = lhs->access_resolved_expr.parent;
 
 	// Grab the parent
 	BEValue parent;
-	Decl *member = lhs->access_expr.ref;
+	Decl *member = lhs->access_resolved_expr.ref;
 	llvm_emit_expr(c, &parent, parent_expr);
 	Decl *parent_decl = llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
 
@@ -1196,28 +1196,28 @@ static inline void llvm_emit_bitassign_expr(GenContext *c, BEValue *be_value, Ex
 }
 static inline void llvm_emit_bitaccess(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	Expr *parent = expr->access_expr.parent;
+	Expr *parent = expr->access_resolved_expr.parent;
 	llvm_emit_expr(c, be_value, parent);
 
-	Decl *member = expr->access_expr.ref;
-	ASSERT0(be_value && be_value->type);
+	Decl *member = expr->access_resolved_expr.ref;
+	ASSERT(be_value && be_value->type);
 
 	Decl *parent_decl = llvm_emit_bitstruct_member(c, be_value, type_flatten(parent->type)->decl, member);
-	llvm_extract_bitvalue(c, be_value, parent_decl, expr->access_expr.ref);
+	llvm_extract_bitvalue(c, be_value, parent_decl, expr->access_resolved_expr.ref);
 }
 
 static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	Expr *parent = expr->access_expr.parent;
+	Expr *parent = expr->access_resolved_expr.parent;
 	Type *flat_type = type_flatten(parent->type);
 	if (flat_type->type_kind == TYPE_ENUM)
 	{
 		llvm_emit_expr(c, be_value, parent);
-		Decl *member = expr->access_expr.ref;
+		Decl *member = expr->access_resolved_expr.ref;
 
 		llvm_value_rvalue(c, be_value);
 		if (!flat_type->decl->backend_ref) llvm_get_typeid(c, parent->type);
-		ASSERT0(member->backend_ref);
+		ASSERT(member->backend_ref);
 		LLVMTypeRef value_type = llvm_get_type(c, type_get_array(member->type, vec_size(flat_type->decl->enums.values)));
 		AlignSize align = LLVMGetAlignment(member->backend_ref);
 		AlignSize alignment;
@@ -1235,7 +1235,7 @@ static inline void llvm_emit_access_addr(GenContext *c, BEValue *be_value, Expr 
 	{
 		llvm_emit_expr(c, be_value, parent);
 	}
-	Decl *member = expr->access_expr.ref;
+	Decl *member = expr->access_resolved_expr.ref;
 
 	llvm_emit_member_addr(c, be_value, type_lowering(parent->type)->decl, member);
 }
@@ -1350,7 +1350,7 @@ static LLVMValueRef llvm_emit_char_array_zero(GenContext *c, BEValue *value, boo
 {
 	llvm_value_addr(c, value);
 	unsigned len = type_size(value->type);
-	ASSERT0(len > 0);
+	ASSERT(len > 0);
 	LLVMValueRef total = NULL;
 	for (int i = 0; i < len; i++)
 	{
@@ -1453,7 +1453,7 @@ static inline void llvm_emit_const_initialize_bitstruct_ref(GenContext *c, BEVal
 		llvm_store_zero(c, ref);
 		return;
 	}
-	ASSERT0(initializer->kind == CONST_INIT_STRUCT);
+	ASSERT(initializer->kind == CONST_INIT_STRUCT);
 	llvm_store_raw(c, ref, llvm_emit_const_bitstruct(c, initializer));
 }
 
@@ -1508,7 +1508,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			Type *element_type = array_type->array.base;
 			ArrayIndex size = (ArrayIndex)array_type->array.len;
 			LLVMTypeRef array_type_llvm = llvm_get_type(c, array_type);
-			ASSERT0(size <= UINT32_MAX);
+			ASSERT(size <= UINT32_MAX);
 			for (ArrayIndex i = 0; i < size; i++)
 			{
 				AlignSize alignment;
@@ -1531,7 +1531,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			LLVMValueRef *parts = NULL;
 			FOREACH(ConstInitializer *, element, elements)
 			{
-				ASSERT0(element->kind == CONST_INIT_ARRAY_VALUE);
+				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
 				ArrayIndex element_index = element->init_array_value.index;
 				AlignSize alignment;
 				LLVMValueRef array_pointer = llvm_emit_array_gep_raw(c, array_ref, array_type_llvm, (unsigned)element_index, ref->alignment, &alignment);
@@ -1557,7 +1557,7 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 		case CONST_INIT_STRUCT:
 		{
 			Decl *decl = const_init->type->decl;
-			ASSERT0(vec_size(decl->strukt.members) == vec_size(const_init->init_struct));
+			ASSERT(vec_size(decl->strukt.members) == vec_size(const_init->init_struct));
 			FOREACH_IDX(i, ConstInitializer *, init, const_init->init_struct)
 			{
 				BEValue value;
@@ -1642,7 +1642,7 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 {
 	Type *type = type_flatten(expr->type);
 	Expr **elements = expr->initializer_list;
-	ASSERT0(type->type_kind != TYPE_SLICE);
+	ASSERT(type->type_kind != TYPE_SLICE);
 
 	if (type->type_kind == TYPE_BITSTRUCT)
 	{
@@ -1708,7 +1708,7 @@ static void llvm_emit_initialize_designated_const_range(GenContext *c, BEValue *
 	DesignatorElement *curr = current[0];
 	llvm_value_addr(c, ref);
 
-	ASSERT0(curr->kind == DESIGNATOR_RANGE);
+	ASSERT(curr->kind == DESIGNATOR_RANGE);
 
 	BEValue emitted_local;
 	if (!emitted_value)
@@ -1775,11 +1775,11 @@ static void llvm_emit_initialize_designated_element(GenContext *c, BEValue *ref,
 			}
 			if (type->type_kind == TYPE_BITSTRUCT && last == current + 1)
 			{
-				ASSERT0(llvm_value_is_addr(&value));
+				ASSERT(llvm_value_is_addr(&value));
 				Decl *member = type->decl->strukt.members[last[0]->index];
 				// Special handling of bitstructs.
 				Type *underlying_type = value.type;
-				ASSERT0(!emitted_value);
+				ASSERT(!emitted_value);
 				BEValue exprval;
 				llvm_emit_expr(c, &exprval, expr);
 				LLVMValueRef val = llvm_load_value_store(c, &exprval);
@@ -1827,9 +1827,9 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct_array(Gen
 	// Now walk through the elements.
 	FOREACH(Expr *, designator, elements)
 	{
-		ASSERT0(vec_size(designator->designator_expr.path) == 1);
+		ASSERT(vec_size(designator->designator_expr.path) == 1);
 		DesignatorElement *element = designator->designator_expr.path[0];
-		ASSERT0(element->kind == DESIGNATOR_FIELD);
+		ASSERT(element->kind == DESIGNATOR_FIELD);
 		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
@@ -1852,9 +1852,9 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 	// Now walk through the elements.
 	FOREACH(Expr *, designator, elements)
 	{
-		ASSERT0(vec_size(designator->designator_expr.path) == 1);
+		ASSERT(vec_size(designator->designator_expr.path) == 1);
 		DesignatorElement *element = designator->designator_expr.path[0];
-		ASSERT0(element->kind == DESIGNATOR_FIELD);
+		ASSERT(element->kind == DESIGNATOR_FIELD);
 		Decl *member = bitstruct->strukt.members[element->index];
 		BEValue val;
 		llvm_emit_expr(c, &val, designator->designator_expr.value);
@@ -1870,9 +1870,9 @@ static inline void llvm_emit_initialize_reference_designated_bitstruct(GenContex
 static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEValue *ref, Expr *expr)
 {
 	Expr **elements = expr->designated_init_list;
-	ASSERT0(vec_size(elements));
+	ASSERT(vec_size(elements));
 	Type *type = type_flatten(expr->type);
-	ASSERT0(type->type_kind != TYPE_SLICE);
+	ASSERT(type->type_kind != TYPE_SLICE);
 	if (type->type_kind == TYPE_BITSTRUCT)
 	{
 		llvm_emit_initialize_reference_designated_bitstruct(c, ref, type->decl, elements);
@@ -1897,7 +1897,7 @@ static inline void llvm_emit_initialize_reference_designated(GenContext *c, BEVa
 
 static bool bitstruct_requires_bitswap(Decl *decl)
 {
-	ASSERT0(decl->decl_kind == DECL_BITSTRUCT);
+	ASSERT(decl->decl_kind == DECL_BITSTRUCT);
 	bool big_endian = compiler.platform.big_endian;
 	if (decl->strukt.big_endian) return !big_endian;
 	if (decl->strukt.little_endian) return big_endian;
@@ -1916,7 +1916,7 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		slots[i] = llvm_get_zero_raw(c->byte_type);
 	}
 	Decl **members = decl->strukt.members;
-	ASSERT0(vec_size(members) == vec_size(initializer->init_struct));
+	ASSERT(vec_size(members) == vec_size(initializer->init_struct));
 	FOREACH_IDX(i, ConstInitializer *, init, initializer->init_struct)
 	{
 		Decl *member = members[i];
@@ -1924,14 +1924,14 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 		unsigned end_bit = member->var.end_bit;
 		Type *member_type = type_flatten(member->type);
 		if (init->kind == CONST_INIT_ZERO) continue;
-		ASSERT0(init->kind == CONST_INIT_VALUE);
+		ASSERT(init->kind == CONST_INIT_VALUE);
 		Expr *expr = init->init_value;
 
 		// Special case for bool
 		if (member_type == type_bool)
 		{
-			ASSERT0(expr_is_const_bool(expr));
-			ASSERT0(start_bit == end_bit);
+			ASSERT(expr_is_const_bool(expr));
+			ASSERT(start_bit == end_bit);
 
 			// Completely skip zero.
 			if (!expr->const_expr.b) continue;
@@ -1943,10 +1943,10 @@ LLVMValueRef llvm_emit_const_bitstruct_array(GenContext *c, ConstInitializer *in
 			continue;
 		}
 		unsigned bit_size = end_bit - start_bit + 1;
-		ASSERT0(bit_size > 0 && bit_size <= 128);
+		ASSERT(bit_size > 0 && bit_size <= 128);
 		BEValue val;
 		llvm_emit_const_expr(c, &val, init->init_value);
-		ASSERT0(val.kind == BE_VALUE);
+		ASSERT(val.kind == BE_VALUE);
 		LLVMValueRef value = val.value;
 		int start_byte = start_bit / 8;
 		int end_byte = end_bit / 8;
@@ -1995,14 +1995,14 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 	Decl **members = decl->strukt.members;
 	TypeSize base_type_size = type_size(base_type);
 	TypeSize base_type_bitsize = base_type_size * 8;
-	ASSERT0(vec_size(members) == vec_size(initializer->init_struct));
+	ASSERT(vec_size(members) == vec_size(initializer->init_struct));
 	FOREACH_IDX(i, ConstInitializer *, val, initializer->init_struct)
 	{
 		Decl *member = members[i];
 		unsigned start_bit = member->var.start_bit;
 		unsigned end_bit = member->var.end_bit;
 		unsigned bit_size = end_bit - start_bit + 1;
-		ASSERT0(bit_size > 0 && bit_size <= 128);
+		ASSERT(bit_size > 0 && bit_size <= 128);
 		LLVMValueRef value;
 		if (val->kind == CONST_INIT_ZERO)
 		{
@@ -2011,7 +2011,7 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
 		else
 		{
 			BEValue entry;
-			ASSERT0(val->kind == CONST_INIT_VALUE);
+			ASSERT(val->kind == CONST_INIT_VALUE);
 			llvm_emit_const_expr(c, &entry, val->init_value);
 			value = llvm_load_value_store(c, &entry);
 		}
@@ -2040,8 +2040,8 @@ LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initiali
  */
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr)
 {
-	ASSERT0(expr_is_const_initializer(expr));
-	ASSERT0(type_flatten(expr->type)->type_kind != TYPE_SLICE);
+	ASSERT(expr_is_const_initializer(expr));
+	ASSERT(type_flatten(expr->type)->type_kind != TYPE_SLICE);
 	llvm_emit_const_init_ref(c, ref, expr->const_expr.initializer, true);
 	return;
 }
@@ -2072,7 +2072,7 @@ static inline void llvm_emit_initialize_reference(GenContext *c, BEValue *ref, E
 
 static inline LLVMValueRef llvm_emit_inc_dec_value(GenContext *c, SourceSpan span, BEValue *original, int diff, bool allow_wrap)
 {
-	ASSERT0(!llvm_value_is_addr(original));
+	ASSERT(!llvm_value_is_addr(original));
 
 	Type *type = original->type;
 	switch (type->type_kind)
@@ -2243,11 +2243,11 @@ static inline bool expr_is_vector_subscript(Expr *expr)
  */
 static inline void llvm_emit_pre_post_inc_dec_bitstruct(GenContext *c, BEValue *be_value, Expr *lhs, int diff, bool pre)
 {
-	Expr *parent_expr = lhs->access_expr.parent;
+	Expr *parent_expr = lhs->access_resolved_expr.parent;
 
 	// Grab the parent
 	BEValue parent;
-	Decl *member = lhs->access_expr.ref;
+	Decl *member = lhs->access_resolved_expr.ref;
 	llvm_emit_expr(c, &parent, parent_expr);
 	Decl *parent_decl = llvm_emit_bitstruct_member(c, &parent, type_flatten(parent_expr->type)->decl, member);
 
@@ -2287,7 +2287,7 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	// But we also want the value (of the full vector)
 	llvm_value_rvalue(c, value);
 	Type *vec = value->type;
-	ASSERT0(vec->type_kind == TYPE_VECTOR);
+	ASSERT(vec->type_kind == TYPE_VECTOR);
 	Type *element = vec->array.base;
 	LLVMValueRef vector = value->value;
 
@@ -2411,13 +2411,13 @@ static inline void llvm_emit_post_inc_dec(GenContext *c, BEValue *value, Expr *e
 
 static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *expr)
 {
-	llvm_emit_expr(c, value, expr->access_expr.parent);
+	llvm_emit_expr(c, value, expr->access_resolved_expr.parent);
 	llvm_emit_type_from_any(c, value);
 	llvm_value_rvalue(c, value);
 	LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "");
 
 	AlignSize align;
-	Decl *dyn_fn = expr->access_expr.ref;
+	Decl *dyn_fn = expr->access_resolved_expr.ref;
 	LLVMValueRef func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
 
 	llvm_value_set(value, func, type_get_func_ptr(dyn_fn->type));
@@ -2481,7 +2481,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 				value->value = LLVMBuildFNeg(c->builder, value->value, "fneg");
 				return;
 			}
-			ASSERT0(type->canonical != type_bool);
+			ASSERT(type->canonical != type_bool);
 			if (compiler.build.feature.trap_on_wrap && !type_flat_is_vector(value->type))
 			{
 				LLVMValueRef zero = llvm_get_zero(c, expr->unary_expr.expr->type);
@@ -2497,7 +2497,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			value->value = LLVMBuildNeg(c->builder, value->value, "neg");
 			return;
 		case UNARYOP_ADDR:
-			if (inner->expr_kind == EXPR_ACCESS && inner->access_expr.ref->decl_kind == DECL_FUNC)
+			if (inner->expr_kind == EXPR_ACCESS_RESOLVED && inner->access_resolved_expr.ref->decl_kind == DECL_FUNC)
 			{
 				llvm_emit_dynamic_method_addr(c, value, inner);
 				return;
@@ -2540,7 +2540,7 @@ static void llvm_emit_trap_zero(GenContext *c, Type *type, LLVMValueRef value, c
 {
 	if (!safe_mode_enabled()) return;
 
-	ASSERT0(type == type_flatten(type));
+	ASSERT(type == type_flatten(type));
 
 	if (type_flat_is_vector(type))
 	{
@@ -2614,7 +2614,7 @@ static void llvm_emit_trap_invalid_shift(GenContext *c, LLVMValueRef value, Type
 
 static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_ref, BEValue *start_ref, BEValue *end_ref, bool *is_exclusive)
 {
-	ASSERT0(slice->expr_kind == EXPR_SLICE);
+	ASSERT(slice->expr_kind == EXPR_SLICE);
 
 	Expr *parent_expr = exprptr(slice->subscript_expr.expr);
 
@@ -2680,7 +2680,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				check_end = false;
 				break;
 			case TYPE_SLICE:
-				ASSERT0(parent_load_value);
+				ASSERT(parent_load_value);
 				llvm_value_set(&len, llvm_emit_extract_value(c, parent_load_value, 1), start_type);
 				break;
 			case TYPE_ARRAY:
@@ -2701,7 +2701,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	// Check that index does not extend beyond the length.
 	if (check_end && safe_mode_enabled())
 	{
-		ASSERT0(len.value);
+		ASSERT(len.value);
 		BEValue exceeds_size;
 		llvm_emit_int_comp(c, &exceeds_size, &start_index, &len, BINARYOP_GT);
 		llvm_emit_panic_if_true(c, &exceeds_size, "Index exceeds array len", slice->span, "Index exceeds array length (array had size %d, index was %d).", &len, &start_index);
@@ -2727,11 +2727,11 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 				end_type = end_index.type;
 				break;
 			case RANGE_CONST_LEN:
-				ASSERT0(range.is_len);
+				ASSERT(range.is_len);
 				llvm_value_set_int(c, &end_index, end_type, range.const_end);
 				break;
 			case RANGE_CONST_END:
-				ASSERT0(!range.is_len);
+				ASSERT(!range.is_len);
 				llvm_value_set_int(c, &end_index, end_type, range.const_end);
 				break;
 			case RANGE_CONST_RANGE:
@@ -2742,7 +2742,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		// Reverse if it is "from back"
 		if (end_from_end)
 		{
-			ASSERT0(range.range_type == RANGE_DYNAMIC);
+			ASSERT(range.range_type == RANGE_DYNAMIC);
 			end_index.value = llvm_emit_sub_int(c, end_index.type, len.value, end_index.value, slice->span);
 			llvm_value_rvalue(c, &end_index);
 		}
@@ -2781,7 +2781,7 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	}
 	else
 	{
-		ASSERT0(len.value && "Pointer should never end up here.");
+		ASSERT(len.value && "Pointer should never end up here.");
 		end_index.value = len.value;
 		end_type = start_type;
 		// Use "len-range" when implicit, this avoids len - 1 here.
@@ -2888,7 +2888,7 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 	// First, find the value assigned.
 	Expr *assigned_value = exprptr(expr->slice_assign_expr.right);
 	llvm_emit_expr(c, be_value, assigned_value);
-	ASSERT0(!IS_OPTIONAL(assigned_value));
+	ASSERT(!IS_OPTIONAL(assigned_value));
 	// If this is copying a big value, then first store it in a variable, this is to
 	// ensure value semantics even in special cases.
 	if (llvm_value_is_addr(be_value) && type_size(assigned_value->type) > 16)
@@ -2914,15 +2914,15 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 
 	if (llvm_is_const(start.value) && llvm_is_const(end.value))
 	{
-		ASSERT0(type_is_integer(start.type) && type_is_integer(end.type));
+		ASSERT(type_is_integer(start.type) && type_is_integer(end.type));
 		bool signed_start = type_is_signed(start.type);
 		bool signed_end = type_is_signed(end.type);
 		uint64_t start_val = signed_start ? (uint64_t)LLVMConstIntGetSExtValue(start.value)
 										  : (uint64_t)LLVMConstIntGetZExtValue(start.value);
 		uint64_t end_val = signed_end ? (uint64_t)LLVMConstIntGetSExtValue(end.value)
 									  : (uint64_t)LLVMConstIntGetZExtValue(end.value);
-		ASSERT0(start_val <= INT64_MAX);
-		ASSERT0(end_val <= INT64_MAX);
+		ASSERT(start_val <= INT64_MAX);
+		ASSERT(end_val <= INT64_MAX);
 		if (start_val > end_val) return;
 		if (is_exclusive)
 		{
@@ -3079,7 +3079,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 	}
 	else
 	{
-		ASSERT0(type_is_integer_or_bool_kind(lhs_type));
+		ASSERT(type_is_integer_or_bool_kind(lhs_type));
 		lhs_signed = type_is_signed(lhs_type);
 		rhs_signed = type_is_signed(rhs_type);
 	}
@@ -3142,7 +3142,7 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 
 	if (!lhs_signed)
 	{
-		ASSERT0(lhs_signed == rhs_signed);
+		ASSERT(lhs_signed == rhs_signed);
 		// Right and left side are both unsigned.
 		LLVMValueRef value;
 		switch (binary_op)
@@ -3734,8 +3734,8 @@ void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEVa
 
 void llvm_emit_comp(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs, BinaryOp binary_op)
 {
-	ASSERT0(type_lowering(lhs->type) == lhs->type);
-	ASSERT0(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
+	ASSERT(type_lowering(lhs->type) == lhs->type);
+	ASSERT(binary_op >= BINARYOP_GT && binary_op <= BINARYOP_EQ);
 	switch (lhs->type->type_kind)
 	{
 		case TYPE_VOID:
@@ -3944,7 +3944,7 @@ INLINE bool llvm_emit_fmuladd_maybe(GenContext *c, BEValue *be_value, Expr *expr
 			break;
 		case FMUL_RHS_NEG_MULT:
 			rhs = rhs->unary_expr.expr;
-			ASSERT0(!negate_rhs);
+			ASSERT(!negate_rhs);
 			args[0] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.left);
 			args[1] = llvm_emit_exprid_to_rvalue(c, rhs->binary_expr.right);
 
@@ -4126,7 +4126,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 		case BINARYOP_ADD:
 			if (lhs_type->type_kind == TYPE_POINTER)
 			{
-				ASSERT0(type_is_integer(rhs_type));
+				ASSERT(type_is_integer(rhs_type));
 				val = llvm_emit_pointer_gep_raw(c, llvm_get_pointee_type(c, lhs_type), lhs_value, rhs_value);
 				break;
 			}
@@ -4229,7 +4229,7 @@ void llvm_emit_binary(GenContext *c, BEValue *be_value, Expr *expr, BEValue *lhs
 			// Handled elsewhere.
 			UNREACHABLE
 	}
-	ASSERT0(val);
+	ASSERT(val);
 	llvm_value_set(be_value, val, expr->type);
 }
 
@@ -4251,8 +4251,8 @@ void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)
 
 void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_value, BEValue *var_addr, BEValue *catch_addr, Expr *rhs)
 {
-	ASSERT0(!catch_addr || llvm_value_is_addr(catch_addr));
-	ASSERT0(!var_addr || llvm_value_is_addr(var_addr));
+	ASSERT(!catch_addr || llvm_value_is_addr(catch_addr));
+	ASSERT(!var_addr || llvm_value_is_addr(var_addr));
 
 	// 1.  Create after try/catch block
 	LLVMBasicBlockRef catch_block = llvm_basic_block_new(c, "catch_landing");
@@ -4273,7 +4273,7 @@ void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_valu
 	// 7. If we have a variable, then we make the store.
 	if (var_addr)
 	{
-		ASSERT0(is_try && "Storing will only happen on try.");
+		ASSERT(is_try && "Storing will only happen on try.");
 		llvm_store(c, var_addr, be_value);
 	}
 
@@ -4418,7 +4418,7 @@ static void llvm_emit_vector_assign_expr(GenContext *c, BEValue *be_value, Expr 
 	if (binary_op > BINARYOP_ASSIGN)
 	{
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
-		ASSERT0(base_op != BINARYOP_ERROR);
+		ASSERT(base_op != BINARYOP_ERROR);
 		BEValue lhs;
 		llvm_value_set(&lhs, LLVMBuildExtractElement(c->builder, vector_value, index_val, "elem"), expr->type);
 		llvm_emit_binary(c, be_value, expr, &lhs, base_op);
@@ -4447,12 +4447,12 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	{
 		// Finde the base op.
 		BinaryOp base_op = binaryop_assign_base_op(binary_op);
-		ASSERT0(base_op != BINARYOP_ERROR);
+		ASSERT(base_op != BINARYOP_ERROR);
 
 		// Get the left hand side, which must be an address.
 		BEValue addr;
 		llvm_emit_expr(c, &addr, exprptr(expr->binary_expr.left));
-		ASSERT0(llvm_value_is_addr(&addr));
+		ASSERT(llvm_value_is_addr(&addr));
 
 		// Fold the optional.
 		llvm_value_fold_optional(c, &addr);
@@ -4469,13 +4469,13 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 	{
 		Expr *left = exprptr(expr->binary_expr.left);
 		llvm_emit_expr(c, be_value, left);
-		ASSERT0(llvm_value_is_addr(be_value));
+		ASSERT(llvm_value_is_addr(be_value));
 		LLVMValueRef optional_ref = NULL;
 
 		// If the LHS is an identifier, then we're assigning the optional value to that.
 		if (left->expr_kind == EXPR_IDENTIFIER)
 		{
-			optional_ref = decl_optional_ref(left->identifier_expr.decl);
+			optional_ref = decl_optional_ref(left->ident_expr);
 			be_value->kind = BE_ADDRESS;
 		}
 
@@ -4491,7 +4491,7 @@ static void llvm_emit_binary_expr(GenContext *c, BEValue *be_value, Expr *expr)
 
 void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	ASSERT0(expr->ternary_expr.then_expr);
+	ASSERT(expr->ternary_expr.then_expr);
 
 	// Generate condition and conditional branch
 	Expr *cond = exprptr(expr->ternary_expr.cond);
@@ -4590,7 +4590,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 {
 	if (llvm_is_global_eval(c) || type_flat_is_vector(expr->type) || type_flatten(expr->type)->type_kind == TYPE_BITSTRUCT)
 	{
-		ASSERT0(type_flatten(expr->type)->type_kind != TYPE_SLICE);
+		ASSERT(type_flatten(expr->type)->type_kind != TYPE_SLICE);
 		llvm_value_set(value, llvm_emit_const_initializer(c, expr->const_expr.initializer), expr->type);
 		return;
 	}
@@ -4654,14 +4654,14 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 					LLVMValueRef global_copy = llvm_add_global_raw(c, ".__const_slice", val_type, alignment);
 					LLVMSetInitializer(global_copy, value);
 					llvm_set_private_declaration(global_copy);
-					ASSERT0(type_is_arraylike(init->type));
+					ASSERT(type_is_arraylike(init->type));
 					LLVMValueRef val = llvm_emit_aggregate_two(c, type, global_copy,
 					                                           llvm_const_int(c, type_usz, init->type->array.len));
 					llvm_value_set(be_value, val, type);
 				}
 				else
 				{
-					ASSERT0(type_is_arraylike(init->type));
+					ASSERT(type_is_arraylike(init->type));
 					llvm_value_set_address_abi_aligned(be_value, llvm_emit_alloca_aligned(c, init->type, "literal"), init->type);
 					llvm_emit_const_init_ref(c, be_value, init, true);
 					LLVMValueRef val = llvm_emit_aggregate_two(c, type, be_value->value, llvm_const_int(c, type_usz, init->type->array.len));
@@ -4763,7 +4763,7 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_ERR:
 		{
 			Decl *decl = expr->const_expr.enum_err_val;
-			ASSERT0(decl);
+			ASSERT(decl);
 			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
 			llvm_value_set(be_value, value, type_anyfault);
 			return;
@@ -4846,9 +4846,9 @@ static void llvm_expand_type_to_args(GenContext *context, Type *param_type, LLVM
 
 void llvm_emit_struct_member_ref(GenContext *c, BEValue *struct_ref, BEValue *member_ref, unsigned member_id)
 {
-	ASSERT0(llvm_value_is_addr(struct_ref));
+	ASSERT(llvm_value_is_addr(struct_ref));
 	llvm_value_fold_optional(c, struct_ref);
-	ASSERT0(struct_ref->type->type_kind == TYPE_STRUCT);
+	ASSERT(struct_ref->type->type_kind == TYPE_STRUCT);
 	AlignSize align;
 	LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, struct_ref->value, llvm_get_type(c, struct_ref->type), member_id, struct_ref->alignment, &align);
 	llvm_value_set_address(member_ref, ptr, struct_ref->type->decl->strukt.members[member_id]->type, align);
@@ -4869,7 +4869,7 @@ LLVMValueRef llvm_emit_array_gep_raw_index(GenContext *c, LLVMValueRef ptr, LLVM
 	LLVMValueRef index_val = llvm_load_value(c, index);
 	LLVMTypeRef element_type = LLVMGetElementType(array_type);
 	Type *index_type = index->type;
-	ASSERT0(type_is_integer(index_type));
+	ASSERT(type_is_integer(index_type));
 	if (type_is_unsigned(index_type) && type_size(index_type) < type_size(type_usz))
 	{
 		index_val = llvm_zext_trunc(c, index_val, llvm_get_type(c, type_usz));
@@ -4977,7 +4977,7 @@ void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len)
 
 void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer)
 {
-	ASSERT0(slice->type->type_kind == TYPE_SLICE);
+	ASSERT(slice->type->type_kind == TYPE_SLICE);
 	Type *ptr_type = type_get_ptr(slice->type->array.base);
 	llvm_value_fold_optional(c, slice);
 	if (slice->kind == BE_ADDRESS)
@@ -5034,7 +5034,7 @@ void llvm_value_struct_gep(GenContext *c, BEValue *element, BEValue *struct_poin
 void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_ref, ABIArgInfo *info, BEValue *be_value, Type *type)
 {
 	type = type_lowering(type);
-	ASSERT0(be_value->type->canonical == type);
+	ASSERT(be_value->type->canonical == type);
 	switch (info->kind)
 	{
 		case ABI_ARG_IGNORE:
@@ -5043,7 +5043,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		case ABI_ARG_INDIRECT:
 		{
 			// If we want we could optimize for structs by doing it by reference here.
-			ASSERT0(info->indirect.alignment == type_abi_alignment(type) || info->attributes.realign);
+			ASSERT(info->indirect.alignment == type_abi_alignment(type) || info->attributes.realign);
 			if (info->attributes.by_val && llvm_value_is_addr(be_value) && info->indirect.alignment <= be_value->alignment)
 			{
 				llvm_value_fold_optional(c, be_value);
@@ -5061,7 +5061,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		case ABI_ARG_DIRECT_SPLIT_STRUCT_I32:
 		{
 			LLVMTypeRef coerce_type = llvm_get_coerce_type(c, info);
-			ASSERT0(coerce_type && coerce_type != llvm_get_type(c, type));
+			ASSERT(coerce_type && coerce_type != llvm_get_type(c, type));
 			AlignSize target_alignment = llvm_abi_alignment(c, coerce_type);
 
 			AlignSize alignment;
@@ -5099,14 +5099,14 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 		}
 		case ABI_ARG_DIRECT_PAIR:
 		{
-			ASSERT0(type_flatten(be_value->type) == be_value->type);
+			ASSERT(type_flatten(be_value->type) == be_value->type);
 			LLVMTypeRef original_type = llvm_get_type(c, be_value->type);
 			LLVMTypeRef struct_type = llvm_get_coerce_type(c, info);
 			AlignSize alignment;
 			if (llvm_types_are_similar(original_type, struct_type))
 			{
 				// Optimization
-				ASSERT0(LLVMGetTypeKind(original_type) == LLVMStructTypeKind && LLVMCountStructElementTypes(original_type) == 2);
+				ASSERT(LLVMGetTypeKind(original_type) == LLVMStructTypeKind && LLVMCountStructElementTypes(original_type) == 2);
 				if (llvm_value_is_addr(be_value))
 				{
 					LLVMValueRef ptr = llvm_emit_struct_gep_raw(c, be_value->value, original_type, 0, be_value->alignment, &alignment);
@@ -5240,7 +5240,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 			break;
 	}
 
-	ASSERT0(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
+	ASSERT(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
 
 	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_types), prototype->abi_args);
 	if (prototype->abi_varargs)
@@ -5260,7 +5260,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		case ABI_ARG_IGNORE:
 			// 12. Basically void returns or empty structs.
 			//     Here we know we don't have an optional or any return value that can be used.
-			ASSERT0(!prototype->is_optional && "Optional should have produced a return value.");
+			ASSERT(!prototype->is_optional && "Optional should have produced a return value.");
 			*result_value = (BEValue) { .type = type_void, .kind = BE_VALUE };
 			return;
 		case ABI_ARG_INDIRECT:
@@ -5273,7 +5273,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 
 			// 13b. If not it will be contained in a be_value that is an address,
 			//      so we don't need to do anything more.
-			ASSERT0(result_value->kind == BE_ADDRESS);
+			ASSERT(result_value->kind == BE_ADDRESS);
 
 			break;
 		case ABI_ARG_DIRECT_PAIR:
@@ -5590,12 +5590,12 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 				break;
 			}
 			// 6b. Return true is indirect, in this case we allocate a local, using the desired alignment on the caller side.
-			ASSERT0(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(call_return_type));
+			ASSERT(ret_info->attributes.realign || ret_info->indirect.alignment == type_abi_alignment(call_return_type));
 			AlignSize alignment = ret_info->indirect.alignment;
 			// If we have a target, then use it.
 			if (target && alignment <= target->alignment)
 			{
-				ASSERT0(target->kind == BE_ADDRESS);
+				ASSERT(target->kind == BE_ADDRESS);
 				arg_values[arg_count++] = target->value;
 				sret_return = true;
 				break;
@@ -5759,9 +5759,9 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	// 1. Dynamic dispatch.
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
-		ASSERT0(arg_count);
+		ASSERT(arg_count);
 		Expr *any_val = args[0];
-		ASSERT0(any_val->expr_kind == EXPR_PTR_ACCESS);
+		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
 		args[0] = any_val->inner_expr;
 	}
 
@@ -5771,7 +5771,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		Expr *function = exprptr(expr->call_expr.function);
 
 		// 1a. Find the pointee type for the function pointer:
-		ASSERT0(type_flatten(function->type)->type_kind == TYPE_FUNC_PTR);
+		ASSERT(type_flatten(function->type)->type_kind == TYPE_FUNC_PTR);
 		Type *type = type_flatten(function->type)->pointer;
 
 		// 1b. Find the type signature using the underlying pointer.
@@ -5806,7 +5806,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		// 2b. Set signature, function and function type
 		prototype = type_get_resolved_prototype(function_decl->type);
 		func = llvm_get_ref(c, function_decl);
-		ASSERT0(func);
+		ASSERT(func);
 		func_type = llvm_get_type(c, function_decl->type);
 	}
 	int inline_flag = 0;
@@ -5868,7 +5868,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	// 1. Dynamic dispatch.
 	if (expr->call_expr.is_dynamic_dispatch)
 	{
-		ASSERT0(arg_count);
+		ASSERT(arg_count);
 		BEValue result = values[0];
 		BEValue typeid = result;
 		llvm_emit_type_from_any(c, &typeid);
@@ -6180,7 +6180,7 @@ static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *ex
 	// If there is an error value, assign to it.
 	if (c->catch.fault)
 	{
-		ASSERT0(c->catch.fault);
+		ASSERT(c->catch.fault);
 		llvm_emit_expr(c, be_value, fail);
 		llvm_store_to_ptr(c, c->catch.fault, be_value);
 	}
@@ -6236,7 +6236,7 @@ static inline void llvm_emit_vector_initializer_list(GenContext *c, BEValue *val
 
 		FOREACH(Expr *, designator, elements)
 		{
-			ASSERT0(vec_size(designator->designator_expr.path) == 1);
+			ASSERT(vec_size(designator->designator_expr.path) == 1);
 			DesignatorElement *element = designator->designator_expr.path[0];
 			llvm_emit_expr(c, &val, designator->designator_expr.value);
 			llvm_value_rvalue(c, &val);
@@ -6270,7 +6270,7 @@ static inline void llvm_emit_initializer_list_expr(GenContext *c, BEValue *value
 		llvm_emit_vector_initializer_list(c, value, expr);
 		return;
 	}
-	ASSERT0(!IS_OPTIONAL(expr) || c->catch.block);
+	ASSERT(!IS_OPTIONAL(expr) || c->catch.block);
 	llvm_value_set_address_abi_aligned(value, llvm_emit_alloca_aligned(c, type, "literal"), type);
 	llvm_emit_initialize_reference(c, value, expr);
 }
@@ -6314,48 +6314,44 @@ static void llvm_emit_macro_body_expansion(GenContext *c, BEValue *value, Expr *
 
 static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *expr)
 {
-	if (!expr->try_unwrap_expr.optional)
+	if (!expr->try_expr.optional)
 	{
-		LLVMValueRef fail_ref = decl_optional_ref(expr->try_unwrap_expr.decl);
+		LLVMValueRef fail_ref = decl_optional_ref(expr->try_expr.decl);
 		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_anyfault), fail_ref, type_abi_alignment(type_anyfault), "load.err");
 		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_anyfault), "result");
 		llvm_value_set(value, result, type_bool);
 		return;
 	}
 	BEValue addr;
-	if (expr->try_unwrap_expr.assign_existing)
+	if (expr->try_expr.assign_existing)
 	{
-		Expr *lhs = expr->try_unwrap_expr.lhs;
+		Expr *lhs = expr->try_expr.lhs;
 		if (lhs)
 		{
 			llvm_emit_expr(c, &addr, lhs);
 		}
 		else
 		{
-			llvm_emit_try_assign_try_catch(c, true, value, NULL, NULL, expr->try_unwrap_expr.optional);
+			llvm_emit_try_assign_try_catch(c, true, value, NULL, NULL, expr->try_expr.optional);
 			return;
 		}
 	}
 	else
 	{
-		llvm_emit_local_decl(c, expr->try_unwrap_expr.decl, &addr);
-		llvm_value_set_decl_address(c, &addr, expr->try_unwrap_expr.decl);
+		llvm_emit_local_decl(c, expr->try_expr.decl, &addr);
+		llvm_value_set_decl_address(c, &addr, expr->try_expr.decl);
 	}
-	ASSERT0(llvm_value_is_addr(&addr));
-	llvm_emit_try_assign_try_catch(c, true, value, &addr, NULL, expr->try_unwrap_expr.optional);
+	ASSERT(llvm_value_is_addr(&addr));
+	llvm_emit_try_assign_try_catch(c, true, value, &addr, NULL, expr->try_expr.optional);
 }
 
 void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 {
 	BEValue addr;
-	if (expr->catch_unwrap_expr.lhs)
+	if (expr->catch_expr.decl)
 	{
-		llvm_emit_expr(c, &addr, expr->catch_unwrap_expr.lhs);
-	}
-	else if (expr->catch_unwrap_expr.decl)
-	{
-		llvm_emit_local_decl(c, expr->catch_unwrap_expr.decl, &addr);
-		llvm_value_set_decl_address(c, &addr, expr->catch_unwrap_expr.decl);
+		llvm_emit_local_decl(c, expr->catch_expr.decl, &addr);
+		llvm_value_set_decl_address(c, &addr, expr->catch_expr.decl);
 	}
 	else
 	{
@@ -6367,7 +6363,7 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	PUSH_CATCH_VAR_BLOCK(addr.value, catch_block);
 
-	FOREACH(Expr *, e, expr->catch_unwrap_expr.exprs)
+	FOREACH(Expr *, e, expr->catch_expr.exprs)
 	{
 		BEValue val;
 		LLVMBasicBlockRef block = llvm_basic_block_new(c, "testblock");
@@ -6528,7 +6524,7 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 {
 	Expr **exprs = expr->try_unwrap_chain_expr;
 	unsigned elements = vec_size(exprs);
-	ASSERT0(elements > 0);
+	ASSERT(elements > 0);
 
 	LLVMBasicBlockRef next_block = NULL;
 	LLVMBasicBlockRef end_block = llvm_basic_block_new(c, "end_chain");
@@ -6537,7 +6533,7 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 	if (elements == 1)
 	{
 		llvm_emit_expr(c, value, exprs[0]);
-		ASSERT0(llvm_value_is_bool(value));
+		ASSERT(llvm_value_is_bool(value));
 		return;
 	}
 	else
@@ -6554,7 +6550,7 @@ void llvm_emit_try_unwrap_chain(GenContext *c, BEValue *value, Expr *expr)
 			BEValue res;
 			llvm_emit_expr(c, &res, link);
 			llvm_value_rvalue(c, &res);
-			ASSERT0(llvm_value_is_bool(&res));
+			ASSERT(llvm_value_is_bool(&res));
 			llvm_emit_cond_br(c, &res, next_block, fail_block);
 		}
 		llvm_emit_block(c, next_block);
@@ -6616,7 +6612,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 				llvm_value_set(be_value, llvm_get_zero(c, type_usz), type_usz);
 				return;
 			}
-			ASSERT0(type_flatten(inner->type)->type_kind == TYPE_FAULTTYPE);
+			ASSERT(type_flatten(inner->type)->type_kind == TYPE_FAULTTYPE);
 			llvm_value_rvalue(c, be_value);
 			BEValue zero;
 			LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "faultordinal_exit");
@@ -6638,7 +6634,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 		{
 			Type *inner_type = type_no_optional(inner->type)->canonical;
 			(void)inner_type;
-			ASSERT0(inner_type->type_kind == TYPE_FAULTTYPE || inner_type->type_kind == TYPE_ANYFAULT);
+			ASSERT(inner_type->type_kind == TYPE_FAULTTYPE || inner_type->type_kind == TYPE_ANYFAULT);
 			llvm_value_rvalue(c, be_value);
 			LLVMValueRef val = llvm_emit_alloca_aligned(c, type_chars, "faultname_zero");
 			BEValue zero;
@@ -6666,7 +6662,7 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 		case ACCESS_ENUMNAME:
 		{
 			Type *inner_type = type_no_optional(inner->type)->canonical;
-			ASSERT0(inner_type->canonical->type_kind == TYPE_ENUM);
+			ASSERT(inner_type->canonical->type_kind == TYPE_ENUM);
 			llvm_value_rvalue(c, be_value);
 			LLVMTypeRef slice = llvm_get_type(c, type_chars);
 			LLVMValueRef to_introspect = LLVMBuildIntToPtr(c->builder, llvm_get_typeid(c, inner_type),
@@ -6715,7 +6711,7 @@ static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
 
 INLINE void llvm_emit_last_fault(GenContext *c, BEValue *value)
 {
-	ASSERT0(c->defer_error_var);
+	ASSERT(c->defer_error_var);
 	llvm_value_set_address_abi_aligned(value, c->defer_error_var, type_anyfault);
 }
 
@@ -6762,7 +6758,7 @@ static void llvm_emit_swizzle(GenContext *c, BEValue *value, Expr *expr)
 	LLVMTypeRef result_type = llvm_get_type(c, expr->type);
 	unsigned vec_len = LLVMGetVectorSize(result_type);
 	LLVMValueRef mask_val[4];
-	ASSERT0(vec_len <= 4);
+	ASSERT(vec_len <= 4);
 	const char *sw_ptr = expr->swizzle_expr.swizzle;
 	for (unsigned i = 0; i < vec_len; i++)
 	{
@@ -6806,7 +6802,7 @@ void llvm_emit_expr_global_value(GenContext *c, BEValue *value, Expr *expr)
 	c->builder = c->global_builder;
 	llvm_emit_expr(c, value, expr);
 	c->builder = b;
-	ASSERT0(!llvm_value_is_addr(value));
+	ASSERT(!llvm_value_is_addr(value));
 }
 
 static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
@@ -6815,10 +6811,10 @@ static void llvm_emit_int_to_bool(GenContext *c, BEValue *value, Expr *expr)
 	Type *inner_type = value->type;
 	if (inner_type->type_kind == TYPE_ARRAY)
 	{
-		ASSERT0(inner_type->array.base == type_char || inner_type->array.base == type_ichar);
+		ASSERT(inner_type->array.base == type_char || inner_type->array.base == type_ichar);
 		llvm_value_addr(c, value);
 		unsigned len = type_size(value->type);
-		ASSERT0(len > 0);
+		ASSERT(len > 0);
 		LLVMValueRef total = NULL;
 		for (int i = 0; i < len; i++)
 		{
@@ -7013,21 +7009,18 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 	switch (expr->expr_kind)
 	{
 		case NON_RUNTIME_EXPR:
+		case UNRESOLVED_EXPRS:
+		case EXPR_SUBSCRIPT_ASSIGN:
+			// These are folded in the semantic analysis step.
+			UNREACHABLE
 		case EXPR_LAMBDA:
 		case EXPR_COND:
 		case EXPR_ASM:
-		case EXPR_VASPLAT:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_EMBED:
-		case EXPR_MACRO_BODY:
-		case EXPR_OTHER_CONTEXT:
 		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_BUILTIN:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_OPERATOR_CHARS:
-		case EXPR_CAST:
 			UNREACHABLE
 		case EXPR_VECTOR_TO_ARRAY:
 			llvm_emit_vector_to_array(c, value, expr);
@@ -7146,10 +7139,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_MACRO_BLOCK:
 			llvm_emit_macro_block(c, value, expr);
 			return;
-		case EXPR_TRY_UNWRAP:
+		case EXPR_TRY:
 			llvm_emit_try_unwrap(c, value, expr);
 			return;
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
 			llvm_emit_catch_unwrap(c, value, expr);
 			return;
 		case EXPR_TYPEID_INFO:
@@ -7210,24 +7203,20 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_RETHROW:
 			llvm_emit_rethrow_expr(c, value, expr);
 			return;
-		case EXPR_TYPEID:
-		case EXPR_SUBSCRIPT_ASSIGN:
-			// These are folded in the semantic analysis step.
-			UNREACHABLE
 		case EXPR_IDENTIFIER:
-			llvm_value_set_decl(c, value, expr->identifier_expr.decl);
+			llvm_value_set_decl(c, value, expr->ident_expr);
 			return;
 		case EXPR_SUBSCRIPT:
 			llvm_emit_subscript(c, value, expr);
 			return;
 		case EXPR_SUBSCRIPT_ADDR:
 			llvm_emit_subscript_addr(c, value, expr);
-			ASSERT0(llvm_value_is_addr(value));
+			ASSERT(llvm_value_is_addr(value));
 			llvm_value_fold_optional(c, value);
 			value->kind = BE_VALUE;
 			value->type = type_get_ptr(value->type);
 			return;
-		case EXPR_ACCESS:
+		case EXPR_ACCESS_RESOLVED:
 			llvm_emit_access_addr(c, value, expr);
 			return;
 		case EXPR_CALL:

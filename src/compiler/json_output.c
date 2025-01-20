@@ -254,7 +254,7 @@ static inline void emit_members(FILE *file, Decl **members, int indent)
 		{
 			print_indent(file, indent);
 			PRINTF("\t\t\t\t\t\"type\": \"");
-			ASSERT0(member->var.type_info);
+			ASSERT(member->var.type_info);
 			print_type(file, type_infoptr(member->var.type_info));
 			PRINT("\"\n");
 			print_indent(file, indent);
