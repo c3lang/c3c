@@ -140,7 +140,7 @@ class Issues:
 		else:
 			opts += " --safe=no"
 		code = subprocess.run(self.conf.compiler + target + ' -O0 ' + opts + ' ' + debug + args,
-							  universal_newlines=True, shell=True, encoding='utf-8', errors='replace', stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+							  universal_newlines=True, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 		os.chdir(self.conf.cwd)
 		if code.returncode != 0 and code.returncode != 1:
 			self.set_failed()
