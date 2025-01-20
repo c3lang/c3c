@@ -14,6 +14,7 @@
 - Const strings and bytes were not properly converted to compile time bools.
 - Concatenating a const empty slice with another array caused a null pointer access.
 - Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
+- Fix dues to crash when converting a const vector to another vector #1864.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
