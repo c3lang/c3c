@@ -23,7 +23,13 @@ struct BufferedChannelImpl @private
 
 fn void! BufferedChannel.new_init(&self, usz size = 1, Allocator allocator = allocator::heap())
 {
+	return self.init(size, allocator::heap());
+}
+
+fn void! BufferedChannel.init(&self, usz size = 1, Allocator allocator)
+{
 	BufferedChannelImpl* channel = allocator::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
+	defer catch allocator::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.size = size;
@@ -73,10 +79,7 @@ fn void! BufferedChannel.push(self, Type val)
 	}
 
 	// check if channel is closed
-	if (channel.closed)
-	{
-		return ThreadFault.CHANNEL_CLOSED?;
-	}
+	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
 
 	// save value to buf
 	channel.buf[channel.sendx] = val;

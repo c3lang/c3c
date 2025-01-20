@@ -18,9 +18,12 @@ struct UnbufferedChannelImpl @private
 	ConditionVariable read_cond;
 }
 
-fn void! UnbufferedChannel.new_init(&self, Allocator allocator = allocator::heap())
+fn void! UnbufferedChannel.new_init(&self) => self.init(allocator::heap());
+
+fn void! UnbufferedChannel.init(&self, Allocator allocator)
 {
 	UnbufferedChannelImpl* channel = allocator::alloc(allocator, UnbufferedChannelImpl);
+	defer catch (void)allocator::free(allocator, channel);
 
 	channel.allocator = allocator;
 	channel.send_waiting = 0;
@@ -35,7 +38,6 @@ fn void! UnbufferedChannel.new_init(&self, Allocator allocator = allocator::heap
 	channel.read_mu.init()!;
 	defer catch (void)channel.read_mu.destroy();
 	channel.read_cond.init()!;
-	defer catch (void)channel.read_cond.destroy();
 
 	*self = (UnbufferedChannel)channel;
 }
@@ -53,7 +55,7 @@ fn void! UnbufferedChannel.destroy(&self)
 
 	if (err) return err?;
 
-	self = null;
+	*self = null;
 }
 
 fn void! UnbufferedChannel.push(self, Type val)
@@ -84,10 +86,7 @@ fn void! UnbufferedChannel.push(self, Type val)
 	// wait until reader takes value from buffer
 	channel.send_cond.wait(&channel.mu)!;
 
-	if (channel.closed)
-	{
-		return ThreadFault.CHANNEL_CLOSED?;
-	}
+	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
 
 	channel.mu.unlock()!;
 	channel.send_mu.unlock()!;
@@ -110,10 +109,7 @@ fn Type! UnbufferedChannel.pop(self)
 		channel.read_waiting--;
 	}
 
-	if (channel.closed)
-	{
-		return ThreadFault.CHANNEL_CLOSED?;
-	}
+	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
 
 	// take value from buffer
 	Type ret = channel.buf;
@@ -142,4 +138,3 @@ fn void! UnbufferedChannel.close(self)
 
 	if (err) return err?;
 }
-
