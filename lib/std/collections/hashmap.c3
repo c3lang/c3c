@@ -196,7 +196,7 @@ fn HashMap HashMap.temp_from_keys_and_values(Key[] keys, Value[] values, uint ca
 *>
 fn HashMap* HashMap.temp_init_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
 {
-	*self = HashMap.temp_from_keys_and_values(keys, values, capacity, load_factor, allocator);
+	*self = HashMap.temp_from_keys_and_values(keys, values, capacity, load_factor);
 	return self;
 }
 
@@ -246,7 +246,7 @@ fn HashMap* HashMap.init_from_map(&self, HashMap* other_map, Allocator allocator
 <*
  @param [&in] other_map "The map to copy from."
 *>
-fn HashMap HashMap.temp_from_map(HashMap* other_map) => Map.new_from_map(other_map, allocator::temp()) @inline;
+fn HashMap HashMap.temp_from_map(HashMap* other_map) => HashMap.new_from_map(other_map, allocator::temp()) @inline;
 
 <*
  @param [&in] other_map "The map to copy from."
