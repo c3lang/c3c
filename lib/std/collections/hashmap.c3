@@ -125,7 +125,6 @@ fn HashMap HashMap.new_from_keys_and_values(Key[] keys, Value[] values, uint cap
 {
 	HashMap new = HashMap.new(capacity, load_factor, allocator);
 	assert(keys.len == values.len);
-	new.new_init(capacity, load_factor, allocator);
 	for (usz i = 0; i < keys.len; i++)
 	{
 		new.set(keys[i], values[i]);
