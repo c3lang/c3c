@@ -1286,11 +1286,20 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
 	if (cc->from->array.len != cc->to->array.len) return sema_cast_error(cc, false, is_silent);
 	Type *from_base = cc->from->array.base;
+	CastContext cc_copy = *cc;
 	cast_context_set_to(cc, cc->to->array.base);
 	// Allow bool vectors to expand to any int.
 	if (from_base == type_bool && cc->to_group == CONV_INT) return true;
+	// Create a fake expression that can't be folded for some checking if the
+	// the elements could be cast.
+	Expr temp = { .expr_kind = EXPR_EXPR_BLOCK, .type = from_base, .span = cc->expr->span, .resolve_status = RESOLVE_DONE };
+	cc->expr = &temp;
 	cast_context_set_from(cc, from_base);
-	return cast_is_allowed(cc, is_explicit, is_silent);
+	bool success = cast_is_allowed(cc, is_explicit, true);
+	*cc = cc_copy;
+	if (is_silent) return success;
+	if (success) return true;
+	return sema_cast_error(cc, is_explicit ? false : rule_vec_to_vec(cc, true, true), false);
 }
 
 static bool rule_expand_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
