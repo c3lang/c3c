@@ -445,7 +445,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(expr, "You cannot use swizzling to assign to multiple elements, use element-wise assign instead.");
 		case EXPR_LAMBDA:
-		case EXPR_EMBED:
 			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(expr, "This expression is a value and cannot be assigned to.");
 		case EXPR_CT_IDENT:
@@ -455,8 +454,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_DISCARD:
 			if (failed_ref) goto FAILED_REF;
 			goto ERR;
-		case EXPR_OTHER_CONTEXT:
-			return sema_binary_is_expr_lvalue(context, top_expr, expr->expr_other_context.inner, failed_ref);
 		case EXPR_IDENTIFIER:
 		{
 			Decl *decl = expr->ident_expr;
@@ -534,7 +531,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_CALL:
 		case EXPR_CATCH:
 		case EXPR_COMPILER_CONST:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CT_AND_OR:
 		case EXPR_CT_APPEND:
@@ -551,11 +547,9 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_GENERIC_IDENT:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_MAKE_ANY:
 		case EXPR_MAKE_SLICE:
@@ -588,7 +582,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_TYPECALL:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_VASPLAT:
 		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
@@ -620,7 +613,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_SWIZZLE:
 		case EXPR_LAMBDA:
 		case EXPR_CT_IDENT:
-		case EXPR_EMBED:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
@@ -644,8 +636,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_MAKE_SLICE:
 			return false;
-		case EXPR_OTHER_CONTEXT:
-			return expr_may_ref(expr->expr_other_context.inner);
 		case EXPR_SUBSCRIPT_ASSIGN:
 			return true;
 		case UNRESOLVED_EXPRS:
@@ -703,7 +693,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_CALL:
 		case EXPR_CATCH:
 		case EXPR_COMPILER_CONST:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CONST:
 		case EXPR_CT_AND_OR:
@@ -720,11 +709,9 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_GENERIC_IDENT:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
@@ -745,7 +732,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_VASPLAT:
 		case EXPR_MAKE_ANY:
 			return false;
 	}

@@ -194,8 +194,6 @@ bool expr_may_addr(Expr *expr)
 	{
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
-		case EXPR_OTHER_CONTEXT:
-			return expr_may_addr(expr->expr_other_context.inner);
 		case EXPR_IDENTIFIER:
 		{
 			Decl *decl = expr->ident_expr;
@@ -260,23 +258,19 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_CALL:
 		case EXPR_MAKE_ANY:
 		case EXPR_CATCH:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_CONST:
 		case EXPR_DECL:
 		case EXPR_DEFAULT_ARG:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
-		case EXPR_EMBED:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_GENERIC_IDENT:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_LAMBDA:
 		case EXPR_LAST_FAULT:
 		case EXPR_MACRO_BLOCK:
-		case EXPR_MACRO_BODY:
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_NOP:
@@ -295,7 +289,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_TRY:
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
-		case EXPR_VASPLAT:
 		case EXPR_EXT_TRUNC:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_MAKE_SLICE:
@@ -311,9 +304,6 @@ bool expr_is_runtime_const(Expr *expr)
 	RETRY:
 	switch (expr->expr_kind)
 	{
-		case EXPR_OTHER_CONTEXT:
-			expr = expr->expr_other_context.inner;
-			goto RETRY;
 		case EXPR_POINTER_OFFSET:
 			return exprid_is_runtime_const(expr->pointer_offset_expr.ptr) && exprid_is_runtime_const(
 					expr->pointer_offset_expr.offset);
@@ -321,7 +311,6 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_RETVAL:
 		case EXPR_BUILTIN:
 		case EXPR_CT_EVAL:
-		case EXPR_VASPLAT:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_ANYSWITCH:
@@ -337,7 +326,6 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_LAMBDA:
-		case EXPR_EMBED:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
 		case EXPR_CALL:
@@ -505,13 +493,10 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_TYPEINFO:
 		case EXPR_HASH_IDENT:
 		case EXPR_CT_IDENT:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_POISONED:
 		case EXPR_CT_ARG:
 		case EXPR_ASM:
 		case EXPR_SUBSCRIPT_ASSIGN:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_MACRO_BODY:
 		case EXPR_NAMED_ARGUMENT:
 			UNREACHABLE
 		case EXPR_NOP:
@@ -775,8 +760,6 @@ bool expr_is_pure(Expr *expr)
 			return expr_is_pure(expr->int_to_bool_expr.inner);
 		case EXPR_EXT_TRUNC:
 			return expr_is_pure(expr->ext_trunc_expr.inner);
-		case EXPR_OTHER_CONTEXT:
-			return expr_is_pure(expr->expr_other_context.inner);
 		case EXPR_SWIZZLE:
 			return exprid_is_pure(expr->swizzle_expr.parent);
 		case EXPR_BUILTIN_ACCESS:
@@ -796,10 +779,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_CT_IS_CONST:
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
-		case EXPR_EMBED:
 		case EXPR_IDENTIFIER:
 		case EXPR_LAMBDA:
-		case EXPR_MACRO_BODY:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_RETVAL:
@@ -809,7 +790,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MEMBER_GET:
 			return true;
 		case EXPR_BITASSIGN:
-		case EXPR_VASPLAT:
 		case EXPR_ANYSWITCH:
 			return false;
 		case EXPR_BINARY:
@@ -834,8 +814,6 @@ bool expr_is_pure(Expr *expr)
 					return expr_is_pure(expr->unary_expr.expr);
 			}
 			UNREACHABLE
-		case EXPR_GENERIC_IDENT:
-			return exprid_is_pure(expr->generic_ident_expr.parent);
 		case EXPR_BITACCESS:
 		case EXPR_ACCESS_RESOLVED:
 			// All access is pure if the parent is pure.
@@ -845,7 +823,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_CALL:
 		case EXPR_CATCH:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
 		case EXPR_DESIGNATOR:
 		case EXPR_DECL:

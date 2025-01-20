@@ -258,16 +258,11 @@ RETRY:
 		case NON_RUNTIME_EXPR:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_OPERATOR_CHARS:
-		case EXPR_VASPLAT:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_EMBED:
-		case EXPR_MACRO_BODY:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
-		case EXPR_UNRESOLVED_IDENTIFIER:
-		case EXPR_ACCESS_UNRESOLVED:
+		case UNRESOLVED_EXPRS:
 			UNREACHABLE
-		case EXPR_OTHER_CONTEXT:
+
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
@@ -329,9 +324,6 @@ RETRY:
 			sema_trace_decl_liveness(declptr(expr->call_expr.func_ref));
 			return;
 		}
-		case EXPR_CAST:
-			ASSERT_SPAN(expr, "Casts should be gone when tracing liveness");
-			UNREACHABLE
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_RETHROW:
 		case EXPR_OPTIONAL:
@@ -397,9 +389,6 @@ RETRY:
 					sema_trace_const_initializer_liveness(expr->const_expr.initializer);
 					return;
 			}
-		case EXPR_COMPOUND_LITERAL:
-			sema_trace_expr_liveness(expr->expr_compound_literal.initializer);
-			return;
 		case EXPR_COND:
 		{
 			FOREACH(Expr *, e, expr->cond_expr) sema_trace_expr_liveness(e);
@@ -423,8 +412,6 @@ RETRY:
 			return;
 		}
 		case EXPR_LAMBDA:
-		case EXPR_CATCH_UNRESOLVED:
-		case EXPR_TRY_UNRESOLVED:
 			UNREACHABLE
 		case EXPR_MACRO_BLOCK:
 		{
@@ -516,9 +503,6 @@ RETRY:
 			return;
 		case EXPR_EXT_TRUNC:
 			sema_trace_expr_liveness(expr->ext_trunc_expr.inner);
-			return;
-		case EXPR_TYPEID:
-			sema_trace_type_liveness(expr->typeid_expr->type);
 			return;
 		case EXPR_LAST_FAULT:
 			return;

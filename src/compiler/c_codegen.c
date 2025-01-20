@@ -407,7 +407,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_RVALUE:
-		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_EXT_TRUNC:
@@ -417,7 +416,8 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ANYFAULT_TO_FAULT:
 			break;
-		case EXPR_ACCESS_UNRESOLVED:
+		case UNRESOLVED_EXPRS:
+			UNREACHABLE
 		case EXPR_ACCESS_RESOLVED:
 			break;
 		case EXPR_ANYSWITCH:
@@ -438,14 +438,9 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_CALL:
 			break;
-		case EXPR_CAST:
-		case EXPR_CATCH_UNRESOLVED:
-			UNREACHABLE
 		case EXPR_CATCH:
 			break;
 		case EXPR_COMPILER_CONST:
-			break;
-		case EXPR_COMPOUND_LITERAL:
 			break;
 		case EXPR_COND:
 			break;
@@ -482,15 +477,11 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_DESIGNATOR:
 			break;
-		case EXPR_EMBED:
-			break;
 		case EXPR_EXPRESSION_LIST:
 			break;
 		case EXPR_EXPR_BLOCK:
 			break;
 		case EXPR_FORCE_UNWRAP:
-			break;
-		case EXPR_GENERIC_IDENT:
 			break;
 		case EXPR_HASH_IDENT:
 			break;
@@ -504,8 +495,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_MACRO_BLOCK:
 			break;
-		case EXPR_MACRO_BODY:
-			break;
 		case EXPR_MACRO_BODY_EXPANSION:
 			break;
 		case EXPR_MEMBER_GET:
@@ -518,8 +507,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_OPTIONAL:
 			break;
-		case EXPR_OTHER_CONTEXT:
-			UNREACHABLE
 		case EXPR_POINTER_OFFSET:
 			break;
 		case EXPR_POISONED:
@@ -553,19 +540,14 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_TEST_HOOK:
 			break;
 		case EXPR_TRY:
-		case EXPR_TRY_UNRESOLVED:
 			break;
 		case EXPR_TRY_UNWRAP_CHAIN:
-			break;
-		case EXPR_TYPEID:
 			break;
 		case EXPR_TYPEID_INFO:
 			break;
 		case EXPR_TYPEINFO:
 			break;
 		case EXPR_UNARY:
-			break;
-		case EXPR_VASPLAT:
 			break;
 	}
 	PRINT("/* TODO EXPR */\n");

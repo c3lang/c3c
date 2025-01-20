@@ -7016,16 +7016,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_LAMBDA:
 		case EXPR_COND:
 		case EXPR_ASM:
-		case EXPR_VASPLAT:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_EMBED:
-		case EXPR_MACRO_BODY:
-		case EXPR_OTHER_CONTEXT:
 		case EXPR_DESIGNATOR:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
 		case EXPR_BUILTIN:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_OPERATOR_CHARS:
 			UNREACHABLE
 		case EXPR_VECTOR_TO_ARRAY:

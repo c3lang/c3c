@@ -3834,6 +3834,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 					switch (body->expr_stmt->expr_kind)
 					{
 						case EXPR_IDENTIFIER:
+						case EXPR_UNRESOLVED_IDENTIFIER:
 						case EXPR_LAMBDA:
 						case EXPR_FORCE_UNWRAP:
 						case EXPR_ASM:

@@ -686,11 +686,12 @@ SKIP_ENSURE:;
 
 static inline bool sema_expr_valid_try_expression(Expr *expr)
 {
+	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_DONE);
 	switch (expr->expr_kind)
 	{
+		case UNRESOLVED_EXPRS:
 		case EXPR_BITASSIGN:
 		case EXPR_CATCH:
-		case EXPR_CATCH_UNRESOLVED:
 		case EXPR_COND:
 		case EXPR_POISONED:
 		case EXPR_CT_AND_OR:
@@ -704,11 +705,9 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IDENT:
 		case EXPR_NAMED_ARGUMENT:
-		case EXPR_UNRESOLVED_IDENTIFIER:
 			UNREACHABLE
 		case EXPR_BINARY:
 		case EXPR_POINTER_OFFSET:
-		case EXPR_CAST:
 		case EXPR_UNARY:
 		case EXPR_POST_UNARY:
 		case EXPR_TERNARY:
@@ -724,18 +723,15 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_BUILTIN_ACCESS:
 		case EXPR_CALL:
 		case EXPR_COMPILER_CONST:
-		case EXPR_COMPOUND_LITERAL:
 		case EXPR_CONST:
 		case EXPR_DECL:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
-		case EXPR_EMBED:
 		case EXPR_EXPRESSION_LIST:
 		case EXPR_EXPR_BLOCK:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
-		case EXPR_GENERIC_IDENT:
 		case EXPR_HASH_IDENT:
 		case EXPR_IDENTIFIER:
 		case EXPR_INITIALIZER_LIST:
@@ -743,7 +739,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_MACRO_BODY_EXPANSION:
 		case EXPR_NOP:
 		case EXPR_OPERATOR_CHARS:
-		case EXPR_OTHER_CONTEXT:
 		case EXPR_RETHROW:
 		case EXPR_RETVAL:
 		case EXPR_SLICE:
@@ -757,15 +752,10 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_TRY:
-		case EXPR_TRY_UNRESOLVED:
 		case EXPR_TRY_UNWRAP_CHAIN:
-		case EXPR_TYPEID:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
 		case EXPR_ANYSWITCH:
-		case EXPR_VASPLAT:
-		case EXPR_MACRO_BODY:
-		case EXPR_ACCESS_UNRESOLVED:
 		case EXPR_ACCESS_RESOLVED:
 		case EXPR_ASM:
 		case EXPR_DEFAULT_ARG:
