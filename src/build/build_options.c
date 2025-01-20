@@ -156,6 +156,7 @@ static void usage(bool full)
 		PRINTF("  --strip-unused=<yes|no>    - Strip unused code and globals from the output. (default: yes)");
 		PRINTF("  --fp-math=<option>         - FP math behaviour: strict, relaxed, fast.");
 		PRINTF("  --win64-simd=<option>      - Win64 SIMD ABI: array, full.");
+		PRINTF("  --win-debug=<option>       - Select debug output on Windows: codeview or dwarf (default: codeview)");
 		PRINTF("");
 		PRINTF("  --print-linking            - Print linker arguments.");
 		PRINTF("");
@@ -755,6 +756,11 @@ static void parse_option(BuildOptions *options)
 				options->win_64_simd = (Win64Simd)parse_multi_option(argopt, 2, win64_simd_type);
 				return;
 			}
+			if ((argopt = match_argopt("win-debug")))
+			{
+				options->win_debug = (WinDebug)parse_multi_option(argopt, 2, win_debug_type);
+				return;
+			}
 			if ((argopt = match_argopt("x86cpu")))
 			{
 				options->x86_cpu_set = (X86CpuSet)parse_multi_option(argopt, 8, x86_cpu_set);
@@ -1174,6 +1180,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
 		.win_64_simd = WIN64_SIMD_DEFAULT,
+		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
 		.riscv_float_capability = RISCVFLOAT_DEFAULT,

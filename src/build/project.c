@@ -342,8 +342,13 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	RiscvFloatCapability riscv_float = GET_SETTING(RiscvFloatCapability, "riscvfloat", riscv_capability, "`none`, `float` or `double`.");
 	if (riscv_float != RISCVFLOAT_DEFAULT) target->feature.riscv_float_capability = riscv_float;
 
+	// win-debug
+	WinDebug win_debug = GET_SETTING(WinDebug , "win-debug", win_debug_type, "`codeview` or `dwarf`.");
+	if (win_debug != WIN_DEBUG_DEFAULT) target->feature.win_debug = win_debug;
+
 	// winsdk
 	target->win.vs_dirs = get_string(filename, target_name, json, "win-vs-dirs", target->win.vs_dirs);
+
 
 	// winsdk
 	target->win.sdk = get_string(filename, target_name, json, "winsdk", target->win.sdk);

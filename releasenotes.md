@@ -4,6 +4,7 @@
 
 ### Changes / improvements
 - Contracts @require/@ensure are no longer treated as conditionals, but must be explicitly bool.
+- Add `win-debug` setting to be able to pick dwarf for output #1855.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
