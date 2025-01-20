@@ -20,6 +20,7 @@
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
 - Added weakly linked `__powidf2`
+- Added channels for threads.
 
 ## 0.6.6 Change list
 
