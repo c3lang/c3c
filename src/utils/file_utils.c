@@ -215,34 +215,8 @@ bool file_touch(const char *path)
 	return fclose(file) == 0;
 }
 
-char *file_read_all(const char *path, size_t *return_size)
+size_t file_clean_buffer(char *buffer, const char *path, size_t file_size)
 {
-	FILE *file = file_open_read(path);
-
-	if (file == NULL)
-	{
-		error_exit("Could not open file \"%s\".\n", path);
-	}
-
-	fseek(file, 0L, SEEK_END);
-	size_t file_size = (size_t)ftell(file);
-	*return_size = file_size;
-	rewind(file);
-
-	char *buffer = (char *)MALLOC(file_size + 1);
-	if (buffer == NULL)
-	{
-		error_exit("Not enough memory to read \"%s\".\n", path);
-	}
-
-	size_t bytes_read = fread(buffer, sizeof(char), file_size, file);
-	if (bytes_read < file_size)
-	{
-		error_exit("Failed to read file \"%s\".\n", path);
-	}
-	ASSERT(bytes_read == file_size);
-	buffer[bytes_read] = '\0';
-
 	size_t offset = 0;
 	// Simple UTF16 detection
 	if (buffer[0] == (char)0xFF || buffer[1] == (char)0xFE)
@@ -269,8 +243,41 @@ char *file_read_all(const char *path, size_t *return_size)
 			buffer[i] = c;
 		}
 	}
-	buffer[bytes_read - offset] = '\0';
+	file_size -= offset;
+	buffer[file_size] = '\0';
+	return file_size;
+}
+
+char *file_read_all(const char *path, size_t *return_size)
+{
+	FILE *file = file_open_read(path);
+
+	if (file == NULL)
+	{
+		error_exit("Could not open file \"%s\".\n", path);
+	}
+
+	fseek(file, 0L, SEEK_END);
+	size_t file_size = (size_t)ftell(file);
+	*return_size = file_size;
+	rewind(file);
+
+	char *buffer = (char *)MALLOC(file_size + 1);
+	if (buffer == NULL)
+	{
+		error_exit("Not enough memory to read \"%s\".\n", path);
+	}
+
+	size_t bytes_read = fread(buffer, sizeof(char), file_size, file);
+	if (bytes_read < file_size)
+	{
+		error_exit("Failed to read file \"%s\".\n", path);
+	}
+	ASSERT(bytes_read == file_size);
+
+	buffer[bytes_read] = '\0';
 	fclose(file);
+	file_clean_buffer(buffer, path, file_size);
 	return buffer;
 }
 
@@ -696,9 +703,9 @@ const char **target_expand_source_names(const char *base_dir, const char** dirs,
 
 
 #define BUFSIZE 1024
-const char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string)
+char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string)
 {
-	const char *result = NULL;
+	char *result = NULL;
 	bool success = execute_cmd_failable(cmd, &result, stdin_string);
 	if (!success)
 	{
@@ -708,7 +715,7 @@ const char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_
 	return result;
 }
 
-bool execute_cmd_failable(const char *cmd, const char **result, const char *stdin_string)
+bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string)
 {
 	char buffer[BUFSIZE];
 	char *output = "";
