@@ -312,7 +312,7 @@ LLVMBuilderRef llvm_create_builder(GenContext *c);
 
 static inline LLVMValueRef decl_optional_ref(Decl *decl)
 {
-	ASSERT0(decl->decl_kind == DECL_VAR);
+	ASSERT(decl->decl_kind == DECL_VAR);
 	if (decl->var.kind == VARDECL_UNWRAPPED) return decl_optional_ref(decl->var.alias);
 	if (decl->type->type_kind != TYPE_OPTIONAL) return NULL;
 	return decl->var.optional_ref;

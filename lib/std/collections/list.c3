@@ -471,7 +471,7 @@ macro void List.pre_free(&self) @private
 }
 
 <*
- @require self.capacity
+ @require self.capacity > 0
 *>
 macro void List.post_alloc(&self) @private
 {

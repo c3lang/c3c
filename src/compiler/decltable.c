@@ -19,7 +19,7 @@ static inline DeclId *declentry_find(DeclId *entries, uint32_t capacity, const c
 
 static inline void decltable_resize(DeclTable *table)
 {
-	ASSERT(table->capacity < MAX_HASH_SIZE, "Table size too large, exceeded max hash size");
+	ASSERT(table->capacity < MAX_HASH_SIZE && "Table size too large, exceeded max hash size");
 	uint32_t new_capacity = table->capacity ? (table->capacity << 2u) : 16u;
 	DeclId *new_data = CALLOC(new_capacity * sizeof(DeclId));
 	table->count = 0;
@@ -41,11 +41,11 @@ static inline void decltable_resize(DeclTable *table)
 
 void decltable_set(DeclTable *table, Decl *decl)
 {
-	ASSERT0(decl && "Cannot insert NULL");
+	ASSERT(decl && "Cannot insert NULL");
 	DeclId *entry = declentry_find(table->entries, table->capacity, decl->name);
 	DeclId decl_id = declid(decl);
 	DeclId old_id = *entry;
-	ASSERT0(old_id != decl_id);
+	ASSERT(old_id != decl_id);
 	// Simple case, a new decl
 	if (!old_id)
 	{
@@ -81,7 +81,7 @@ DeclId decltable_get(DeclTable *table, const char *name)
 
 void decltable_init(DeclTable *table, uint32_t initial_size)
 {
-	ASSERT0(initial_size && "Size must be larger than 0");
+	ASSERT(initial_size && "Size must be larger than 0");
 	assert (is_power_of_two(initial_size) && "Must be a power of two");
 
 	DeclId *entries = CALLOC(initial_size * sizeof(DeclId));

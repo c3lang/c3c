@@ -3,14 +3,20 @@
 ## 0.6.7 Change list
 
 ### Changes / improvements
-- None yet.
+- Contracts @require/@ensure are no longer treated as conditionals, but must be explicitly bool.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
 - Fix bug in SHA1 for longer blocks #1854.
+- Fix lack of location for reporting lambdas with missing return statement #1857.
+- Compiler allows a generic module to be declared with different parameters #1856.
+- Fix issue with `@const` where the statement `$foo = 1;` was not considered constant.
+- Const strings and bytes were not properly converted to compile time bools.
+- Concatenating a const empty slice with another array caused a null pointer access.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
+- Added weakly linked `__powidf2`
 
 ## 0.6.6 Change list
 

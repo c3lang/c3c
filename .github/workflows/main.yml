@@ -222,7 +222,7 @@ jobs:
           python3 src/tester.py ../build/c3c.exe test_suite/
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -520,7 +520,7 @@ jobs:
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
   
   build-with-docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
@@ -704,7 +704,7 @@ jobs:
           path: c3-macos-${{matrix.build_type}}.zip
 
   build-nix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -735,7 +735,7 @@ jobs:
         fi
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu20]
     if: github.ref == 'refs/heads/master'
 

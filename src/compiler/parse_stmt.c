@@ -19,7 +19,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	switch (c->tok)
 	{
 		case TOKEN_LBRACE:
-			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_IDENTIFIER)
+			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 			{
 				print_error_at(decl->var.init_expr->span,
 				               "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
@@ -53,7 +53,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 			}
 			if (decl->attributes)
 			{
-				ASSERT0(VECLAST(decl->attributes));
+				ASSERT(VECLAST(decl->attributes));
 				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
@@ -75,7 +75,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 		{
 			if (tok_is(c, TOKEN_COMMA))
 			{
-				ASSERT0(VECLAST(decl->attributes));
+				ASSERT(VECLAST(decl->attributes));
 				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
@@ -171,7 +171,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 		return false;
 	}
 	Expr *offset = parse_integer(c, NULL);
-	ASSERT0(expr_is_const_int(offset));
+	ASSERT(expr_is_const_int(offset));
 	Int i = offset->const_expr.ixx;
 	if (i.i.high)
 	{
@@ -190,7 +190,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 		return false;
 	}
 	Expr *value = parse_integer(c, NULL);
-	ASSERT0(expr_is_const_int(value));
+	ASSERT(expr_is_const_int(value));
 	Int i = value->const_expr.ixx;
 	if (i.i.high)
 	{
@@ -982,7 +982,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->span = expr->span;
 	ast->ast_kind = AST_EXPR_STMT;
 	ast->expr_stmt = expr;
-	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
+	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here.");
 	}

@@ -61,8 +61,8 @@ struct DynamicArenaChunk @local
 }
 
 <*
- @require ptr
- @require self.page `tried to free pointer on invalid allocator`
+ @require ptr != null
+ @require self.page != null  `tried to free pointer on invalid allocator`
 *>
 fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
 {
@@ -77,7 +77,7 @@ fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
 <*
  @require size > 0 `Resize doesn't support zeroing`
  @require old_pointer != null `Resize doesn't handle null pointers`
- @require self.page `tried to realloc pointer on invalid allocator`
+ @require self.page != null  `tried to realloc pointer on invalid allocator`
 *>
 fn void*! DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {

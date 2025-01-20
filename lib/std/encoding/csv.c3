@@ -61,7 +61,7 @@ fn CsvRow! CsvReader.read_temp_row(self)
 }
 
 <*
- @require self.allocator `Row already freed`
+ @require self.allocator != null  `Row already freed`
 *>
 fn void CsvRow.free(&self)
 {

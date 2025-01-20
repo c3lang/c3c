@@ -42,7 +42,6 @@ entry:
   ret i32 %add
 }
 
-
 // #expect: test.ll
 
 define i32 @test.getIt(i32 %0) #0 {
