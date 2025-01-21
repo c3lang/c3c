@@ -210,7 +210,7 @@ static void project_usage()
 	#endif
 }
 
-static void view_usage()
+static void project_view_usage()
 {
 	PRINTF("Usage: %s [<options>] project view [<options>]", args[0]);
 	PRINTF("");
@@ -248,34 +248,37 @@ static void parse_project_view_subcommand(BuildOptions *options)
 {
 	if (at_end() || !next_is_opt()) return;
 
-	while(!at_end()) {
+	while (!at_end())
+	{
 		next_arg();
-
 		current_arg = args[arg_index];
 
 		if (current_arg[0] != '-')
 		{
 			FAIL_WITH_ERR("'project view' does not take in args, only flags. Failed on: %s.", current_arg);
 		}
-		else if (match_shortopt("v")) {
+
+		if (match_shortopt("v"))
+		{
 			options->project_options.view_modifier.verbose = false;
+			continue;
 		}
-		else if (match_shortopt("vv"))
+
+		if (match_shortopt("vv"))
 		{
 			options->project_options.view_modifier.verbose = true;
+			continue;
 		}
-		else if (match_longopt("help") || match_shortopt("h"))
+
+		if (match_longopt("help") || match_shortopt("h"))
 		{
-			view_usage();
+			project_view_usage();
 			exit_compiler(COMPILER_SUCCESS_EXIT);
 		}
-		else
-		{
-			int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
 
-			options->project_options.view_modifier.flags_bitvector |=
-				1 << flag;
-		}
+		int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
+		options->project_options.view_modifier.flags_bitvector |= 1 << flag;
+
 	}
 }
 

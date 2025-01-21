@@ -411,39 +411,39 @@ typedef enum
 	PROJECT_VIEW_TYPE_OUTPUT_LOCATION,
 	PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION,
 	PROJECT_VIEW_TYPE_TARGETS,
+	PROJECT_VIEW_TYPE_MAX = PROJECT_VIEW_TYPE_TARGETS
 } ProjectViewType;
 
-#define PROJECT_VIEW_FLAGS_COUNT 10
-static const char *project_view_flags[PROJECT_VIEW_FLAGS_COUNT] = {
-		[PROJECT_VIEW_TYPE_AUTHOR] = "authors",
-		[PROJECT_VIEW_TYPE_VERSION] = "version",
-		[PROJECT_VIEW_TYPE_LANGUAGE_REVISION] = "language-revision",
-		[PROJECT_VIEW_TYPE_WARNINGS_USED] = "warnings-used",
-		[PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS] = "c3l-lib-search-paths",
-		[PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES] = "c3l-lib-dependencies",
-		[PROJECT_VIEW_TYPE_SOURCE_PATHS] = "source-paths",
-		[PROJECT_VIEW_TYPE_OUTPUT_LOCATION] = "output-location",
-		[PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION] = "default-optimization",
-		[PROJECT_VIEW_TYPE_TARGETS] = "targets",
+static const char *project_view_flags[PROJECT_VIEW_TYPE_MAX + 1] = {
+	[PROJECT_VIEW_TYPE_AUTHOR] = "authors",
+	[PROJECT_VIEW_TYPE_VERSION] = "version",
+	[PROJECT_VIEW_TYPE_LANGUAGE_REVISION] = "language-revision",
+	[PROJECT_VIEW_TYPE_WARNINGS_USED] = "warnings-used",
+	[PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS] = "c3l-lib-search-paths",
+	[PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES] = "c3l-lib-dependencies",
+	[PROJECT_VIEW_TYPE_SOURCE_PATHS] = "source-paths",
+	[PROJECT_VIEW_TYPE_OUTPUT_LOCATION] = "output-location",
+	[PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION] = "default-optimization",
+	[PROJECT_VIEW_TYPE_TARGETS] = "targets",
 };
 
 static const char *targets[7] = {
-		[TARGET_TYPE_EXECUTABLE] = "executable",
-		[TARGET_TYPE_STATIC_LIB] = "static-lib",
-		[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
-		[TARGET_TYPE_BENCHMARK] = "benchmark",
-		[TARGET_TYPE_TEST] = "test",
-		[TARGET_TYPE_OBJECT_FILES] = "object-files",
-		[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_EXECUTABLE] = "executable",
+	[TARGET_TYPE_STATIC_LIB] = "static-lib",
+	[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
+	[TARGET_TYPE_BENCHMARK] = "benchmark",
+	[TARGET_TYPE_TEST] = "test",
+	[TARGET_TYPE_OBJECT_FILES] = "object-files",
+	[TARGET_TYPE_PREPARE] = "prepare",
 };
 static const char *target_desc[7] = {
-		[TARGET_TYPE_EXECUTABLE] = "Executable",
-		[TARGET_TYPE_STATIC_LIB] = "Static library",
-		[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
-		[TARGET_TYPE_BENCHMARK] = "benchmark suite",
-		[TARGET_TYPE_TEST] = "test suite",
-		[TARGET_TYPE_OBJECT_FILES] = "object files",
-		[TARGET_TYPE_PREPARE] = "prepare"
+	[TARGET_TYPE_EXECUTABLE] = "Executable",
+	[TARGET_TYPE_STATIC_LIB] = "Static library",
+	[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
+	[TARGET_TYPE_BENCHMARK] = "benchmark suite",
+	[TARGET_TYPE_TEST] = "test suite",
+	[TARGET_TYPE_OBJECT_FILES] = "object files",
+	[TARGET_TYPE_PREPARE] = "prepare"
 
 };
 

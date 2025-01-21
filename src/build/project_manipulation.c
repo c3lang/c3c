@@ -221,7 +221,8 @@ do {\
 
 static void view_target(const char *filename, const char *name, JSONObject *target, bool verbose)
 {
-	if (!verbose) {
+	if (!verbose)
+	{
 		PRINTFN("%s", name);
 		return;
 	}
@@ -543,10 +544,10 @@ void view_project(BuildOptions *build_options)
 	const char *filename;
 	JSONObject *project_json = read_project(&filename, false);
 
-	bool filter_properties =
-		build_options->project_options.view_modifier.flags_bitvector != 0;
+	bool filter_properties = build_options->project_options.view_modifier.flags_bitvector != 0;
 
-	if (filter_properties) {
+	if (filter_properties)
+	{
 		view_filtered_project_properties(build_options, filename, project_json);
 		return;
 	}
