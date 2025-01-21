@@ -58,7 +58,7 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
 
   checkPhase = ''
     runHook preCheck
-    ( cd ../resources/testproject; ../../build/c3c build )
+    ( cd ../resources/testproject; ../../build/c3c build --trust=full )
     ( cd ../test; python src/tester.py ../build/c3c test_suite )
     runHook postCheck
   '';

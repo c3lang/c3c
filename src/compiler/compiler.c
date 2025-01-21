@@ -1554,7 +1554,7 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	}
 	DEBUG_LOG("EXEC OUT: %s", out);
 	scratch_buffer_clear();
-#if (!_MSC_VER)
+#if (!PLATFORM_WINDOWS)
 	scratch_buffer_append("./");
 #endif
 	scratch_buffer_append(output);

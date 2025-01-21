@@ -718,6 +718,7 @@ char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string
 
 bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string)
 {
+	DEBUG_LOG("Executing: %s", cmd);
 	char buffer[BUFSIZE];
 	char *output = "";
 	FILE *process = NULL;
@@ -726,7 +727,7 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 	{
 		cmd = strdup(cmd);
 		scratch_buffer_clear();
-#if (_MSC_VER)
+#if (PLATFORM_WINDOWS)
 		scratch_buffer_printf("%s < __c3temp.bin", cmd);
 #else
 		scratch_buffer_printf("cat __c3temp.bin | %s", cmd);
@@ -737,7 +738,7 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 		fputs(stdin_string, f);
 		fclose(f);
 	}
-#if (_MSC_VER)
+#if (PLATFORM_WINDOWS)
 	if (!(process = _wpopen(win_utf8to16(cmd), L"rb"))) return false;
 #else
 	if (!(process = popen(cmd, "r"))) return false;
