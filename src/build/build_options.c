@@ -281,6 +281,11 @@ static void parse_project_view_subcommand(BuildOptions *options)
 
 static void parse_project_subcommand(BuildOptions *options)
 {
+	if (match_longopt("help") || match_shortopt("h"))
+	{
+		project_usage();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	if (arg_match("view"))
 	{
 		options->project_options.command = SUBCOMMAND_VIEW;
