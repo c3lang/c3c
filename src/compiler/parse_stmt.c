@@ -19,7 +19,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	switch (c->tok)
 	{
 		case TOKEN_LBRACE:
-			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_IDENTIFIER)
+			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 			{
 				print_error_at(decl->var.init_expr->span,
 				               "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
@@ -53,7 +53,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 			}
 			if (decl->attributes)
 			{
-				ASSERT0(VECLAST(decl->attributes));
+				ASSERT(VECLAST(decl->attributes));
 				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
@@ -75,7 +75,7 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 		{
 			if (tok_is(c, TOKEN_COMMA))
 			{
-				ASSERT0(VECLAST(decl->attributes));
+				ASSERT(VECLAST(decl->attributes));
 				PRINT_ERROR_AT(VECLAST(decl->attributes), "Multiple variable declarations must have attributes at the end.");
 				return poisoned_ast;
 			}
@@ -171,7 +171,7 @@ static inline bool parse_asm_offset(ParseContext *c, ExprAsmArg *asm_arg)
 		return false;
 	}
 	Expr *offset = parse_integer(c, NULL);
-	ASSERT0(expr_is_const_int(offset));
+	ASSERT(expr_is_const_int(offset));
 	Int i = offset->const_expr.ixx;
 	if (i.i.high)
 	{
@@ -190,7 +190,7 @@ static inline bool parse_asm_scale(ParseContext *c, ExprAsmArg *asm_arg)
 		return false;
 	}
 	Expr *value = parse_integer(c, NULL);
-	ASSERT0(expr_is_const_int(value));
+	ASSERT(expr_is_const_int(value));
 	Int i = value->const_expr.ixx;
 	if (i.i.high)
 	{
@@ -522,9 +522,17 @@ static inline bool token_type_ends_case(TokenType type, TokenType case_type, Tok
 	return type == case_type || type == default_type || type == TOKEN_RBRACE || type == TOKEN_CT_ENDSWITCH;
 }
 
-static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenType default_type)
+static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenType default_type, uint32_t row)
 {
-	if (token_type_ends_case(c->tok, case_type, default_type)) return NULL;
+	if (token_type_ends_case(c->tok, case_type, default_type))
+	{
+		if (c->span.row > row + 1 && (c->tok == TOKEN_CASE || c->tok == TOKEN_DEFAULT))
+		{
+			PRINT_ERROR_LAST("Fallthrough cases with empty rows or comments have unclear meaning, an explicit 'break' or 'nextcase' is needed (or remove the spacing!).");
+			return poisoned_ast;
+		}
+		return NULL;
+	}
 	Ast *compound = new_ast(AST_COMPOUND_STMT, c->span);
 	AstId *next = &compound->compound_stmt.first_stmt;
 	while (!token_type_ends_case(c->tok, case_type, default_type))
@@ -678,13 +686,14 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 	{
 		ASSIGN_EXPRID_OR_RET(ast->case_stmt.to_expr, parse_expr(c), poisoned_ast);
 	}
+	uint32_t row = c->span.row;
 	if (!try_consume(c, TOKEN_COLON))
 	{
 		print_error_at(c->prev_span, "Missing ':' after case");
 		return poisoned_ast;
 	}
 	RANGE_EXTEND_PREV(ast);
-	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type), poisoned_ast);
+	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type, row), poisoned_ast);
 	return ast;
 }
 
@@ -697,8 +706,9 @@ static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, Toke
 	Ast *ast = new_ast(AST_DEFAULT_STMT, c->span);
 	advance(c);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':' after 'default'.", poisoned_ast);
+	uint32_t row = c->span.row;
 	RANGE_EXTEND_PREV(ast);
-	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type), poisoned_ast);
+	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type, row), poisoned_ast);
 	ast->case_stmt.expr = 0;
 	return ast;
 }
@@ -982,7 +992,7 @@ static inline Ast *parse_decl_or_expr_stmt(ParseContext *c)
 	ast->span = expr->span;
 	ast->ast_kind = AST_EXPR_STMT;
 	ast->expr_stmt = expr;
-	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_IDENTIFIER)
+	if (tok_is(c, TOKEN_IDENT) && expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
 	{
 		RETURN_PRINT_ERROR_AT(poisoned_ast, expr, "Expected a type here.");
 	}

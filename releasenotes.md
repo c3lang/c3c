@@ -1,5 +1,29 @@
 # C3C Release Notes
 
+## 0.6.7 Change list
+
+### Changes / improvements
+- Contracts @require/@ensure are no longer treated as conditionals, but must be explicitly bool.
+- Add `win-debug` setting to be able to pick dwarf for output #1855.
+- Error on switch case fallthough if there is more than one newline #1849.
+
+### Fixes
+- Fix issue requiring prefix on a generic interface declaration.
+- Fix bug in SHA1 for longer blocks #1854.
+- Fix lack of location for reporting lambdas with missing return statement #1857.
+- Compiler allows a generic module to be declared with different parameters #1856.
+- Fix issue with `@const` where the statement `$foo = 1;` was not considered constant.
+- Const strings and bytes were not properly converted to compile time bools.
+- Concatenating a const empty slice with another array caused a null pointer access.
+- Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
+- Fix dues to crash when converting a const vector to another vector #1864.
+- Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
+
+### Stdlib changes
+- Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
+- Added weakly linked `__powidf2`
+- Added channels for threads.
+
 ## 0.6.6 Change list
 
 ### Changes / improvements
@@ -35,6 +59,7 @@
 - Added new `std::os::argparse::` module for CLI and arguments parsing, with sub-commands support
 - Allowed passing arguments to @test / @benchmark runners via `c3c compile-test -- -o --opt1 <arg1>`
 - Prevent `#hash` arguments from taking code that modifies ct variables. #1794
+- Make stringify to recursively enter `#hash` expressions #1834.
 
 ### Fixes
 - Fix case trying to initialize a `char[*]*` from a String.
@@ -87,6 +112,7 @@
 - Fix bug when multiple `$else` clauses followed an `$if` #1824.
 - Report the correct type as not having a method when access fails #1828.
 - Prevent temp arena scribbling from causing an asan warning. #1825
+- Fix bug where `&i[0] = null` was not detected to be an error #1833.
 
 ### Stdlib changes
 - Increase BitWriter.write_bits limit up to 32 bits.
@@ -179,6 +205,7 @@
 - `io::print` will now print structs.
 - Improve error message when using `void` aliases as variable storage type.
 - Add a target type: "prepare" which doesn't compile anything (but may run `exec`)
+- Improve error message on incorrect inner struct/union name #1847.
 
 ### Fixes
 - `Unsupported int[*] $x = { 1, 2, 3, 4 }` #1489.
@@ -214,6 +241,9 @@
 - Sometimes generating introspection info would not be in the global scope causing a crash #1586.
 - @tag on macros cannot be retrieved with tagof #1582
 - Taking the $typeof of a wildcard optional returns `void!`.
+- Fix bug with enums with jump tables #1840.
+- Enum associated declarations accidentally allowed declaration in function style. #1841
+- Quicksort and insertsort incorrectly allowing arrays and vectors by value. #1845.
 
 ### Stdlib changes
 - Remove unintended print of `char[]` as String

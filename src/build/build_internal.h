@@ -66,6 +66,11 @@ static const char *win64_simd_type[2] = {
 	[WIN64_SIMD_FULL] = "full",
 };
 
+static const char *win_debug_type[2] = {
+	[WIN_DEBUG_CODEVIEW] = "codeview",
+	[WIN_DEBUG_DWARF] = "dwarf",
+};
+
 static const char *fp_math[3] = {
 	[FP_STRICT] = "strict",
 	[FP_RELAXED] = "relaxed",

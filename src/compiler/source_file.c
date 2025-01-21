@@ -18,17 +18,17 @@ static const size_t LEXER_FILES_START_CAPACITY = 128;
 File *source_file_by_id(FileId file)
 {
 	if (file == STDIN_FILE_ID) return &stdin_file;
-	ASSERT0(file < vec_size(compiler.context.loaded_sources));
+	ASSERT(file < vec_size(compiler.context.loaded_sources));
 	return compiler.context.loaded_sources[file];
 }
 
-File *source_file_text_load(const char *filename, const char *content)
+File *source_file_text_load(const char *filename, char *content)
 {
 	File *file = CALLOCS(File);
 	file->file_id = vec_size(compiler.context.loaded_sources);
 	file->full_path = str_copy(filename, strlen(filename));
+	file->content_len = file_clean_buffer(content, filename, strlen(content));
 	file->contents = content;
-	file->content_len = strlen(content);
 	file->name = (char *)file->full_path;
 	file->dir_path = str_copy("", 0);
 	vec_add(compiler.context.loaded_sources, file);

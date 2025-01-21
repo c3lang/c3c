@@ -54,6 +54,13 @@ fn void insertionsort_with_value()
     }
 }
 
+fn void insertionsort_with_array()
+{
+	int[*] a = { 4, 8, 100, 1, 2 };
+	sort::insertionsort(&a);
+	assert(a == { 1, 2, 4, 8, 100 });
+}
+
 fn void insertionsort_with_lambda()
 {
     int[][] tcases = {

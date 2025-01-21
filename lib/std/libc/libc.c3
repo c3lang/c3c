@@ -167,7 +167,7 @@ extern fn double strtod(char* str, char** endptr);
 extern fn float strtof(char* str, char** endptr);
 extern fn ZString strtok(ZString str, ZString delim);
 extern fn CLong strtol(char* str, char** endptr, CInt base);
-extern fn CULong strtul(char* str, char** endptr, CInt base);
+extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
 extern fn Time_t timegm(Tm *timeptr) @if(!env::WIN32);

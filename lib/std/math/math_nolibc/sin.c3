@@ -18,7 +18,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
 
 fn float _sinf(float x) @weak @extern("sinf") @nostrip
 {
-	uint ix = bitcast(x, uint);
+	uint ix = x.word();
 	int sign = ix >> 31;
 	ix &= 0x7fffffff;
 	switch
@@ -87,8 +87,7 @@ fn float _sinf(float x) @weak @extern("sinf") @nostrip
 fn double sin(double x) @extern("sin") @weak @nostrip
 {
 	// High word of x.
-	uint ix = (uint)(bitcast(x, ulong) >> 32);
-	ix &= 0x7fffffff;
+	uint ix = x.high_word() & 0x7fffffff;
 	switch
 	{
 		// |x| ~< pi/4

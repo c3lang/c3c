@@ -103,13 +103,13 @@ union Long16 @local
 	uint[16] l;
 }
 
-macro blk(block, i) @local
+macro blk(Long16* block, i) @local
 {
 	return (block.l[i & 15] = (block.l[(i + 13) & 15] ^ block.l[(i + 8) & 15]
 		^ block.l[(i + 2) & 15] ^ block.l[i & 15]).rotl(1));
 }
 
-macro blk0(block, i) @local
+macro blk0(Long16* block, i) @local
 {
 	$if env::BIG_ENDIAN:
 		return block.l[i];
@@ -119,35 +119,35 @@ macro blk0(block, i) @local
 	$endif
 }
 
-macro r0(block, v, wref, x, y, z, i) @local
+macro r0(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += ((w & (x ^ y)) ^ y) + blk0(block, i) + 0x5A827999 + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r1(block, v, wref, x, y, z, i) @local
+macro r1(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += ((w & (x ^ y)) ^ y) + blk(block, i) + 0x5A827999 + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r2(block, v, wref, x, y, z, i) @local
+macro r2(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += (w ^ x ^ y) + blk(block, i) + 0x6ED9EBA1 + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r3(block, v, wref, x, y, z, i) @local
+macro r3(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += (((w | x) & y) | (w & x)) + blk(block, i) + 0x8F1BBCDC + v.rotl(5);
 	*wref = w.rotl(30);
 }
 
-macro r4(block, v, wref, x, y, z, i) @local
+macro r4(Long16* block, uint v, uint* wref, uint x, uint y, uint* z, uint i) @local
 {
 	var w = *wref;
 	*z += (w ^ x ^ y) + blk(block, i) + 0xCA62C1D6 + v.rotl(5);
@@ -158,15 +158,15 @@ macro r4(block, v, wref, x, y, z, i) @local
  @param [&inout] state
  @param [&in] buffer
 *>
-fn void sha1_transform(uint* state, char* buffer) @local
+fn void sha1_transform(uint[5]* state, char* buffer) @local
 {
 	Long16 block;
 	block.c[..] = buffer[:64];
-	uint a = state[0];
-	uint b = state[1];
-	uint c = state[2];
-	uint d = state[3];
-	uint e = state[4];
+	uint a = (*state)[0];
+	uint b = (*state)[1];
+	uint c = (*state)[2];
+	uint d = (*state)[3];
+	uint e = (*state)[4];
 	r0(&block, a, &b, c, d, &e, 0);
 	r0(&block, e, &a, b, c, &d, 1);
 	r0(&block, d, &e, a, b, &c, 2);
@@ -247,11 +247,11 @@ fn void sha1_transform(uint* state, char* buffer) @local
 	r4(&block, d, &e, a, b, &c, 77);
 	r4(&block, c, &d, e, a, &b, 78);
 	r4(&block, b, &c, d, e, &a, 79);
-	state[0] += a;
-	state[1] += b;
-	state[2] += c;
-	state[3] += d;
-	state[4] += e;
+	(*state)[0] += a;
+	(*state)[1] += b;
+	(*state)[2] += c;
+	(*state)[3] += d;
+	(*state)[4] += e;
 	a = b = c = d = e = 0;
-	buffer[:64] = 0;
+	block = {};
 }

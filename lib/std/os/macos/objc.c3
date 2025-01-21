@@ -140,7 +140,8 @@ enum EventType : (long val)
 
 fn EventType! event_type_from(int val)
 {
-    switch(val) {
+    switch(val)
+    {
         case EventType.LEFT_MOUSE_DOWN.val:     return LEFT_MOUSE_DOWN;
         case EventType.LEFT_MOUSE_UP.val:       return LEFT_MOUSE_UP;
         case EventType.RIGHT_MOUSE_DOWN.val:    return RIGHT_MOUSE_DOWN;

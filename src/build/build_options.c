@@ -71,7 +71,7 @@ static void usage(bool full)
 	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
-	PRINTF(full ? "Options:" : "Common options:");
+	full ? PRINTF("Options:") : PRINTF("Common options:");
 	PRINTF("  -h -hh --help              - Print the help, -h for the normal options, -hh for the full help.");
 	PRINTF("  -V --version               - Print version information.");
 	PRINTF("  -q --quiet                 - Silence unnecessary output.");
@@ -156,6 +156,7 @@ static void usage(bool full)
 		PRINTF("  --strip-unused=<yes|no>    - Strip unused code and globals from the output. (default: yes)");
 		PRINTF("  --fp-math=<option>         - FP math behaviour: strict, relaxed, fast.");
 		PRINTF("  --win64-simd=<option>      - Win64 SIMD ABI: array, full.");
+		PRINTF("  --win-debug=<option>       - Select debug output on Windows: codeview or dwarf (default: codeview)");
 		PRINTF("");
 		PRINTF("  --print-linking            - Print linker arguments.");
 		PRINTF("");
@@ -205,7 +206,7 @@ static void project_usage()
 	PRINTF("  view                                            view the current projects structure");
 	PRINTF("  add-target <name>  <target_type>  [sources...]  add a new target to the project");
 	#if FETCH_AVAILABLE
-		PRINTF("  fetch              							fetch missing project libraries");
+		PRINTF("  fetch                                           fetch missing project libraries");
 	#endif
 }
 
@@ -405,7 +406,7 @@ static void print_version(void)
     PRINTF("Backends:                  LLVM");
 #elif TB_AVAILABLE
     PRINTF("Backends:                  TB");
-#else 
+#else
 
     PRINTF("No backends available");
 #endif
@@ -753,6 +754,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("win64-simd")))
 			{
 				options->win_64_simd = (Win64Simd)parse_multi_option(argopt, 2, win64_simd_type);
+				return;
+			}
+			if ((argopt = match_argopt("win-debug")))
+			{
+				options->win_debug = (WinDebug)parse_multi_option(argopt, 2, win_debug_type);
 				return;
 			}
 			if ((argopt = match_argopt("x86cpu")))
@@ -1174,6 +1180,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.backend = BACKEND_LLVM,
 		.x86_vector_capability = X86VECTOR_DEFAULT,
 		.win_64_simd = WIN64_SIMD_DEFAULT,
+		.win_debug = WIN_DEBUG_DEFAULT,
 		.fp_math = FP_DEFAULT,
 		.x86_cpu_set = X86CPU_DEFAULT,
 		.riscv_float_capability = RISCVFLOAT_DEFAULT,
@@ -1281,7 +1288,7 @@ static inline bool at_end()
 
 static inline const char *next_arg()
 {
-	ASSERT0(!at_end());
+	ASSERT(!at_end());
 	current_arg = args[++arg_index];
 	return current_arg;
 }

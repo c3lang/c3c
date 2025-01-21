@@ -61,7 +61,7 @@ static inline LLVMMetadataRef llvm_get_debug_struct(GenContext *c, Type *type, c
 
 static inline LLVMMetadataRef llvm_get_debug_member(GenContext *c, Type *type, const char *name, unsigned offset, SourceSpan *loc, LLVMMetadataRef scope, LLVMDIFlags flags)
 {
-	ASSERT0(name && scope);
+	ASSERT(name && scope);
 	return LLVMDIBuilderCreateMemberType(
 			c->debug.builder,
 			scope,
@@ -90,8 +90,8 @@ void llvm_emit_debug_function(GenContext *c, Decl *decl)
 
 	uint32_t row = decl->span.row;
 	if (!row) row = 1;
-	ASSERT0(decl->name);
-	ASSERT0(c->debug.file.debug_file);
+	ASSERT(decl->name);
+	ASSERT(c->debug.file.debug_file);
 	LLVMMetadataRef debug_type = llvm_get_debug_type(c, decl->type);
 	scratch_buffer_set_extern_decl_name(decl, true);
 	c->debug.function = LLVMDIBuilderCreateFunction(c->debug.builder,
@@ -145,7 +145,7 @@ static void llvm_emit_debug_declare(GenContext *c, LLVMValueRef var, LLVMMetadat
 
 void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 {
-	ASSERT0(llvm_is_local_eval(c));
+	ASSERT(llvm_is_local_eval(c));
 	EMIT_EXPR_LOC(c, decl);
 	uint32_t row = decl->span.row;
 	uint32_t col = decl->span.col;
@@ -167,7 +167,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
 			decl->alignment);
 	decl->var.backend_debug_ref = var;
 
-	ASSERT0(!decl->is_value);
+	ASSERT(!decl->is_value);
 	llvm_emit_debug_declare(c, decl->backend_ref, var, row, col, scope);
 }
 
@@ -179,7 +179,7 @@ void llvm_emit_debug_local_var(GenContext *c, Decl *decl)
  */
 void llvm_emit_debug_parameter(GenContext *c, Decl *parameter, unsigned index)
 {
-	ASSERT0(!llvm_is_global_eval(c));
+	ASSERT(!llvm_is_global_eval(c));
 	const char *name = parameter->name ? parameter->name : ".anon";
 	bool always_preserve = false;
 

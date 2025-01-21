@@ -81,3 +81,7 @@ result
 
 # macOS
 .DS_Store
+
+# tests
+/test/tmp/*
+/test/testrun

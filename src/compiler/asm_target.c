@@ -175,7 +175,7 @@ static inline void reg_instr_clob(PlatformTarget *target, const char *name, Clob
 	unsigned param_count = 0;
 	while (args && args[0] != 0)
 	{
-		ASSERT0(param_count <= MAX_ASM_INSTRUCTION_PARAMS);
+		ASSERT(param_count <= MAX_ASM_INSTRUCTION_PARAMS);
 		instr->param[param_count++] = decode_arg_type(&args);
 	}
 	instr->param_count = param_count;
@@ -188,7 +188,7 @@ static inline void reg_instr(PlatformTarget *target, const char *name, const cha
 	int param_count = 0;
 	while (args && args[0] != 0)
 	{
-		ASSERT0(param_count <= MAX_ASM_INSTRUCTION_PARAMS);
+		ASSERT(param_count <= MAX_ASM_INSTRUCTION_PARAMS);
 		instr->param[param_count++] = decode_arg_type(&args);
 	}
 	instr->param_count = param_count;

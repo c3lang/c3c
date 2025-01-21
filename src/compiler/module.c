@@ -23,7 +23,7 @@ void scratch_buffer_append_module(Module *module, bool is_export)
 		switch (c)
 		{
 			case ':':
-				ASSERT0(name[0] == ':');
+				ASSERT(name[0] == ':');
 				scratch_buffer_append_char(is_export ? '_' : '.');
 				name++;
 				break;
@@ -79,7 +79,7 @@ const char *module_create_object_file_name(Module *module)
 
 Path *path_create_from_string(const char *string, uint32_t len, SourceSpan span)
 {
-	ASSERT0(string);
+	ASSERT(string);
 	Path *path = CALLOCS(Path);
 	path->span = span;
 	TokenType type = TOKEN_IDENT;

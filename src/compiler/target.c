@@ -1580,7 +1580,7 @@ static AlignData os_target_alignment_of_int(OsType os, ArchType arch, uint32_t b
 		case ARCH_TYPE_XTENSA:
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 		case ARCH_TYPE_X86_64:
-#if !LLVM_AVAILABLE || LLVM_VERSION_MAJOR < 18
+#if LLVM_AVAILABLE && LLVM_VERSION_MAJOR < 18
 			return (AlignData) { MIN(64u, bits), MIN(64u, bits) };
 #else
 			FALLTHROUGH;
@@ -1891,7 +1891,7 @@ void target_setup(BuildTarget *target)
 	}
 
 	compiler.platform.target_triple = arch_to_target_triple[target->arch_os_target];
-	ASSERT0(compiler.platform.target_triple);
+	ASSERT(compiler.platform.target_triple);
 
 	compiler.platform.alloca_address_space = 0;
 
@@ -2112,7 +2112,7 @@ void target_setup(BuildTarget *target)
 		compiler.platform.target_triple = strdup(llvm_macos_target_triple(compiler.platform.target_triple));
 
 	}
-	ASSERT0(compiler.platform.reloc_model != RELOC_DEFAULT);
+	ASSERT(compiler.platform.reloc_model != RELOC_DEFAULT);
 
 		// TODO remove
 	type_setup(&compiler.platform);

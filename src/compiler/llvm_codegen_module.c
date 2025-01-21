@@ -57,7 +57,7 @@ static void llvm_set_module_flag(GenContext *c, LLVMModuleFlagBehavior flag_beha
 
 void gencontext_begin_module(GenContext *c)
 {
-	ASSERT0(!c->module && "Expected no module");
+	ASSERT(!c->module && "Expected no module");
 
 	codegen_setup_object_names(c->code_module, &c->ir_filename, &c->asm_filename, &c->object_filename);
 	DEBUG_LOG("Emit module %s.", c->code_module->name->module);
@@ -127,7 +127,8 @@ void gencontext_begin_module(GenContext *c)
 	if (c->panic_var) c->panic_var->backend_ref = NULL;
 	if (c->panicf) c->panicf->backend_ref = NULL;
 	bool is_win = compiler.build.arch_os_target == WINDOWS_X64 || compiler.build.arch_os_target == WINDOWS_AARCH64;
-	if (is_win)
+	bool is_codeview = compiler.build.feature.win_debug != WIN_DEBUG_DWARF && is_win;
+	if (is_codeview)
 	{
 		llvm_set_module_flag(c, LLVMModuleFlagBehaviorError, "CodeView", 1, type_uint);
 	}

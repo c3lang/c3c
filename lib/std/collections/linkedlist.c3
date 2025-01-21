@@ -45,7 +45,7 @@ fn LinkedList* LinkedList.temp_init(&self)
 }
 
 <*
- @require self.allocator
+ @require self.allocator != null
 *>
 macro void LinkedList.free_node(&self, Node* node) @private
 {
@@ -200,7 +200,7 @@ fn void LinkedList.link_before(&self, Node *succ, Type value) @private
 }
 
 <*
- @require self._first
+ @require self._first != null
 *>
 fn void LinkedList.unlink_first(&self) @private
 {
@@ -296,7 +296,7 @@ fn bool LinkedList.remove_last_match(&self, Type t)  @if(ELEMENT_IS_EQUATABLE)
 	return false;
 }
 <*
- @require self._last
+ @require self._last != null
 *>
 fn void LinkedList.unlink_last(&self) @inline @private
 {

@@ -93,7 +93,7 @@ INLINE bool parse_decl_initializer(ParseContext *c, Decl *decl)
  */
 static inline Path *parse_module_path(ParseContext *c)
 {
-	ASSERT0(tok_is(c, TOKEN_IDENT));
+	ASSERT(tok_is(c, TOKEN_IDENT));
 	scratch_buffer_clear();
 	SourceSpan span = c->span;
 	while (1)
@@ -236,7 +236,7 @@ bool parse_module(ParseContext *c, AstId contracts)
 		{
 			Ast *current = astptr(contracts);
 			contracts = current->next;
-			ASSERT0(current->ast_kind == AST_CONTRACT);
+			ASSERT(current->ast_kind == AST_CONTRACT);
 			switch (current->contract_stmt.kind)
 			{
 				case CONTRACT_UNKNOWN:
@@ -503,7 +503,7 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
  */
 static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 {
-	ASSERT0(type_info_ok(type));
+	ASSERT(type_info_ok(type));
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
 	if (!parse_generic_parameters(c, &generic_type->generic.params)) return poisoned_type_info;
 	generic_type->generic.base = type;
@@ -518,7 +518,7 @@ static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
  */
 static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 {
-	ASSERT0(type_info_ok(type));
+	ASSERT(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LBRACKET);
 	if (try_consume(c, TOKEN_STAR))
@@ -576,7 +576,7 @@ DIRECT_SLICE:;
  */
 static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 {
-	ASSERT0(type_info_ok(type));
+	ASSERT(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LVEC);
 	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
@@ -633,7 +633,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 						default:
 						{
 							TypeInfo *ptr_type = type_info_new(TYPE_INFO_POINTER, type_info->span);
-							ASSERT0(type_info);
+							ASSERT(type_info);
 							ptr_type->pointer = type_info;
 							type_info = ptr_type;
 							RANGE_EXTEND_PREV(type_info);
@@ -642,7 +642,7 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 					}
 					if (type_info->resolve_status == RESOLVE_DONE)
 					{
-						ASSERT0(type_info->type);
+						ASSERT(type_info->type);
 						type_info->type = type_get_ptr(type_info->type);
 					}
 					RANGE_EXTEND_PREV(type_info);
@@ -742,7 +742,7 @@ TypeInfo *parse_optional_type(ParseContext *c)
 	if (try_consume(c, TOKEN_BANG))
 	{
 		if (!parse_rethrow_bracket(c, info->span)) return poisoned_type_info;
-		ASSERT0(!info->optional);
+		ASSERT(!info->optional);
 		info->optional = true;
 		if (info->resolve_status == RESOLVE_DONE)
 		{
@@ -1533,7 +1533,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 
-	ASSERT0(decl_is_struct_type(parent));
+	ASSERT(decl_is_struct_type(parent));
 	ArrayIndex index = 0;
 	while (!tok_is(c, TOKEN_RBRACE))
 	{
@@ -1546,6 +1546,11 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				member = decl_new_with_type(NULL, c->span, decl_kind);
 				advance(c);
+				if (token_is_some_ident(c->tok))
+				{
+					RETURN_PRINT_ERROR_HERE("The name of an inner struct or union must be a name starting with a lowercase letter.");
+					return decl_poison(parent);
+				}
 			}
 			else
 			{
@@ -1629,7 +1634,7 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 				{
 					Decl *member = members[i];
 					if (is_cond) member->is_cond = true;
-					ASSERT0(!member->attributes);
+					ASSERT(!member->attributes);
 					member->attributes = copy_attributes_single(attributes);
 				}
 			}
@@ -1670,7 +1675,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
 
-	ASSERT0(!tok_is(c, TOKEN_LGENPAR));
+	ASSERT(!tok_is(c, TOKEN_LGENPAR));
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -1947,8 +1952,8 @@ static inline Decl *parse_def_type(ParseContext *c)
 		case EXPR_TYPEINFO:
 			type_info = expr->type_expr;
 			break;
-		case EXPR_IDENTIFIER:
-			if (expr->identifier_expr.is_const)
+		case EXPR_UNRESOLVED_IDENTIFIER:
+			if (expr->unresolved_ident_expr.is_const)
 			{
 				print_error_at(decl->span, "A constant may not have a type name alias, it must have an all caps name.");
 			}
@@ -1961,7 +1966,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 			PRINT_ERROR_HERE("Expected a type to alias here.");
 			return poisoned_decl;
 	}
-	ASSERT0(!tok_is(c, TOKEN_LGENPAR));
+	ASSERT(!tok_is(c, TOKEN_LGENPAR));
 
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;
@@ -2262,7 +2267,7 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	{
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
-		ASSERT0(last_parameter);
+		ASSERT(last_parameter);
 		last_parameter->var.index = vec_size(*parameters_ref) - 1; // NOLINT
 		if (!try_consume(c, TOKEN_COMMA))
 		{
@@ -2331,17 +2336,31 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		if (!parse_attributes_for_global(c, enum_const)) return poisoned_decl;
 		if (try_consume(c, TOKEN_EQ))
 		{
+			Expr **args = NULL;
 			if (expected_parameters == 1 || !tok_is(c, TOKEN_LBRACE))
 			{
 				ASSIGN_EXPR_OR_RET(Expr *single, parse_expr(c), poisoned_decl);
-				vec_add(enum_const->enum_constant.args, single);
+				vec_add(args, single);
 			}
 			else
 			{
 				CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-				if (!parse_arg_list(c, &enum_const->enum_constant.args, TOKEN_RBRACE, 0)) return poisoned_decl;
-				CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+				while (1)
+				{
+					if (try_consume(c, TOKEN_RBRACE)) break;
+					ASSIGN_EXPR_OR_RET(Expr *arg, parse_expr(c), poisoned_decl);
+					vec_add(args, arg);
+					if (tok_is(c, TOKEN_COLON) && arg->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
+					{
+						print_error_at(extend_span_with_token(arg->span, c->span),
+									   "This looks like a designated initializer, but that style of declaration "
+									   "is not supported for declaring enum associated values.");
+						return poisoned_decl;
+					}
+					if (try_consume(c, TOKEN_COMMA)) continue;
+				}
 			}
+			enum_const->enum_constant.args = args;
 		}
 		vec_add(decl->enums.values, enum_const);
 		// Allow trailing ','
@@ -2986,7 +3005,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			return poisoned_decl;
 	}
 	if (!decl_ok(decl)) return decl;
-	ASSERT0(decl);
+	ASSERT(decl);
 	return decl;
 CONTRACT_NOT_ALLOWED:
 	RETURN_PRINT_ERROR_AT(poisoned_decl, astptr(contracts), "Contracts are only used for modules, functions and macros.");

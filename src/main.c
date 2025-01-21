@@ -11,7 +11,7 @@ jmp_buf on_error_jump;
 
 NORETURN void exit_compiler(int exit_value)
 {
-	ASSERT0(exit_value != 0);
+	ASSERT(exit_value != 0);
 	longjmp(on_error_jump, exit_value);
 }
 

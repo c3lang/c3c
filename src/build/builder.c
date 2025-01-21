@@ -441,6 +441,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.riscv_float_capability = options->riscv_float_capability;
 	}
+	if (options->win_debug != WIN_DEBUG_DEFAULT)
+	{
+		target->feature.win_debug = options->win_debug;
+	}
 	if (options->win_64_simd != WIN64_SIMD_DEFAULT)
 	{
 		target->feature.pass_win64_simd_as_arrays = options->win_64_simd;
