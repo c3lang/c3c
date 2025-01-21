@@ -21,7 +21,7 @@ struct BufferedChannelImpl @private
 	Type[*] buf;
 }
 
-fn void! BufferedChannel.new_init(&self, usz size = 1, Allocator allocator = allocator::heap())
+fn void! BufferedChannel.new_init(&self, usz size = 1)
 {
 	return self.init(size, allocator::heap());
 }
