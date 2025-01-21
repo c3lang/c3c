@@ -78,7 +78,7 @@ Initializes test case context.
 @param setup_fn `initializer function for test case`
 @param teardown_fn `cleanup function for test context (may be null)`
 
-@require setup_fn != null, "setup_fn must always be set"
+@require setup_fn != null "setup_fn must always be set"
 *>
 macro setup(TestFn setup_fn, TestFn teardown_fn = null) {
 	assert(test_context, "allowed only in @test functions");
@@ -155,8 +155,8 @@ Check left floating point value is approximately equals to right value
 @param delta `minimal allowed difference (overrides places parameter)`
 @param equal_nan `allows comparing nan values, if left and right both nans result is ok`
 
-@require places > 0, places <= 20, "too many decimal places"
-@require delta >= 0, delta <= 1, "delta must be a small number"
+@require places > 0, places <= 20 "too many decimal places"
+@require delta >= 0, delta <= 1 "delta must be a small number"
 *>
 macro almost_equal(left, right, uint places=7, double delta=0, bool equal_nan = true) { 
 	assert(test_context, "allowed only in @test functions");
