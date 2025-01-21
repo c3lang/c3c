@@ -57,15 +57,15 @@ fn void read_write_any()
 	data.total = 0xA55A;
 	data.hello = 0xCC;
 
-	File file = file::open("__file_read_write_any_test_file", "wb")!!;
+    File file = file::open("tmp/__file_read_write_any_test_file", "wb")!!;
 
 	io::write_any(&file, &data)!!;
 	file.flush()!!;
 	file.close()!!;
 
-	file = file::open("__file_read_write_any_test_file", "rb")!!;
-	Data rdata;
-	io::read_any(&file, &rdata)!!;
+    file = file::open("tmp/__file_read_write_any_test_file", "rb")!!;
+    Data rdata;
+    io::read_any(&file, &rdata)!!;
 
 	file.close()!!;
 
