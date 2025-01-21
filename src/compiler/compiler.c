@@ -1525,7 +1525,7 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 		scratch_buffer_append_native_safe_path(file_name.ptr, file_name.len);
 	}
 	scratch_buffer_printf(" -o %s", output);
-	const char *out;
+	char *out;
 	if (PLATFORM_WINDOWS) scratch_buffer_append_char('"');
 	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, NULL))
 	{

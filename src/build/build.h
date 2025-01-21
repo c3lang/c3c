@@ -242,6 +242,13 @@ typedef enum
 
 typedef enum
 {
+	WIN_DEBUG_DEFAULT = -1,
+	WIN_DEBUG_CODEVIEW = 0,
+	WIN_DEBUG_DWARF = 1
+} WinDebug;
+
+typedef enum
+{
 	WIN64_SIMD_DEFAULT = -1,
 	WIN64_SIMD_FULL = 0,
 	WIN64_SIMD_ARRAY = 1
@@ -549,6 +556,7 @@ typedef struct BuildOptions_
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
 	Win64Simd win_64_simd;
+	WinDebug win_debug;
 	FpOpt fp_math;
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
@@ -696,6 +704,7 @@ typedef struct
 	const char *custom_linker_path;
 	struct
 	{
+		WinDebug win_debug;
 		SoftFloat soft_float : 3;
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
@@ -777,6 +786,7 @@ static BuildTarget default_build_target = {
 		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
+		.feature.win_debug = WIN_DEBUG_DEFAULT,
 		.feature.safe_mode = SAFETY_NOT_SET,
 		.feature.panic_level = PANIC_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,

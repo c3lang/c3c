@@ -4,6 +4,8 @@
 
 ### Changes / improvements
 - Contracts @require/@ensure are no longer treated as conditionals, but must be explicitly bool.
+- Add `win-debug` setting to be able to pick dwarf for output #1855.
+- Error on switch case fallthough if there is more than one newline #1849.
 - Added flags to `c3c project view` to filter displayed properties
 
 ### Fixes
@@ -16,10 +18,12 @@
 - Concatenating a const empty slice with another array caused a null pointer access.
 - Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
 - Fix dues to crash when converting a const vector to another vector #1864.
+- Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
 - Added weakly linked `__powidf2`
+- Added channels for threads.
 
 ## 0.6.6 Change list
 
