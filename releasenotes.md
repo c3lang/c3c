@@ -19,6 +19,7 @@
 - Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
 - Fix dues to crash when converting a const vector to another vector #1864.
 - Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
+- Fixes to `"exec" use.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

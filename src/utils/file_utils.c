@@ -217,6 +217,7 @@ bool file_touch(const char *path)
 
 size_t file_clean_buffer(char *buffer, const char *path, size_t file_size)
 {
+	if (file_size == 0) return 0;
 	size_t offset = 0;
 	// Simple UTF16 detection
 	if (buffer[0] == (char)0xFF || buffer[1] == (char)0xFE)
