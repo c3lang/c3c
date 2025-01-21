@@ -210,11 +210,91 @@ static void project_usage()
 	#endif
 }
 
+static void project_view_usage()
+{
+	PRINTF("Usage: %s [<options>] project view [<options>]", args[0]);
+	PRINTF("");
+	PRINTF("View the content of project.json in a more readable format.");
+	PRINTF("Without flags, this prints out all the project properties.");
+	PRINTF("");
+	PRINTF("Flags can be used to filter for specific properties.");
+	PRINTF("When one or more flags are used, the other properties do not get shown");
+	PRINTF("");
+	PRINTF("The verbosity of the output can be controlled with -v and -vv");
+	PRINTF("Verbosity has no effect without flags. When -vv is used with flags,");
+	PRINTF("the results will be printed out like they are in the full view.");
+	PRINTF("Otherwise the \"<header>: \" is left out.");
+	PRINTF("");
+	PRINTF("With flags on, each selected property will be seperated by an empty");
+	PRINTF("line, and properties with multiple values (like --authors) will have");
+	PRINTF("their values printed each on a new line.");
+	PRINTF("");
+	PRINTF("View options:");
+	PRINTF("  -h --help                Show this help");
+	PRINTF("  -v -vv                   Normal or very verbose output");
+	PRINTF("  --authors                List of authors");
+	PRINTF("  --version                Project version");
+	PRINTF("  --language-revision      Project language revision");
+	PRINTF("  --warnings-used          List of enabled compiler-warnings");
+	PRINTF("  --c3l-lib-search-paths   List of C3 linker library search paths");
+	PRINTF("  --c3l-lib-dependencies   List of C3 linker library dependencies");
+	PRINTF("  --source-paths           List of C3 source file paths");
+	PRINTF("  --output-location        Output directory");
+	PRINTF("  --default-optimization   Default optimization level");
+	PRINTF("  --targets                Project targets (!= compilation-targets)");
+}
+
+static void parse_project_view_subcommand(BuildOptions *options)
+{
+	if (at_end() || !next_is_opt()) return;
+
+	while (!at_end())
+	{
+		next_arg();
+		current_arg = args[arg_index];
+
+		if (current_arg[0] != '-')
+		{
+			FAIL_WITH_ERR("'project view' does not take in args, only flags. Failed on: %s.", current_arg);
+		}
+
+		if (match_shortopt("v"))
+		{
+			options->project_options.view_modifier.verbose = false;
+			continue;
+		}
+
+		if (match_shortopt("vv"))
+		{
+			options->project_options.view_modifier.verbose = true;
+			continue;
+		}
+
+		if (match_longopt("help") || match_shortopt("h"))
+		{
+			project_view_usage();
+			exit_compiler(COMPILER_SUCCESS_EXIT);
+		}
+
+		int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
+		options->project_options.view_modifier.flags_bitvector |= 1 << flag;
+
+	}
+}
+
 static void parse_project_subcommand(BuildOptions *options)
 {
+	if (match_longopt("help") || match_shortopt("h"))
+	{
+		project_usage();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	if (arg_match("view"))
 	{
 		options->project_options.command = SUBCOMMAND_VIEW;
+		options->project_options.view_modifier.flags_bitvector = 0;
+		options->project_options.view_modifier.verbose = false;
+		parse_project_view_subcommand(options);
 		return;
 	}
 	if (arg_match("add-target"))
