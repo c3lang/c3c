@@ -210,7 +210,7 @@ static void project_usage()
 	#endif
 }
 
-static void usage_view()
+static void view_usage()
 {
 	PRINTF("Usage: %s [<options>] project view [<options>]", args[0]);
 	PRINTF("");
@@ -249,7 +249,7 @@ static void parse_project_view_subcommand(BuildOptions *options)
 	if (at_end() || !next_is_opt()) return;
 
 	while(!at_end()) {
-		arg_index++;
+		next_arg();
 
 		current_arg = args[arg_index];
 
@@ -266,7 +266,7 @@ static void parse_project_view_subcommand(BuildOptions *options)
 		}
 		else if (match_longopt("help") || match_shortopt("h"))
 		{
-			usage_view();
+			view_usage();
 			exit_compiler(COMPILER_SUCCESS_EXIT);
 		}
 		else
