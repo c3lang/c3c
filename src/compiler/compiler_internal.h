@@ -4070,3 +4070,4 @@ void assert_print_line(SourceSpan span);
 const char *default_c_compiler(void);
 
 void print_build_env(void);
+const char *os_type_to_string(OsType os);
