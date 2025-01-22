@@ -576,6 +576,7 @@ typedef struct BuildOptions_
 	bool print_manifest_properties;
 	bool print_precedence;
 	bool print_linking;
+	bool print_env;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
