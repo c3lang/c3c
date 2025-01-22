@@ -19,7 +19,8 @@
 - Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
 - Fix dues to crash when converting a const vector to another vector #1864.
 - Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
-- Fixes to `"exec" use, including issue when compiling with MinGW
+- Fixes to `"exec" use, including issue when compiling with MinGW.
+- Correctly check jump table size and be generous when compiling it #1877.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

@@ -13,6 +13,7 @@
 #define MAX_THREADS 0xFFFF
 #define DEFAULT_SYMTAB_SIZE (256 * 1024)
 #define DEFAULT_SWITCHRANGE_MAX_SIZE (256)
+#define DEFAULT_SWITCH_JUMP_MAX_SIZE (0x3FFF)
 #define DEFAULT_PATH "."
 
 typedef enum
@@ -690,6 +691,7 @@ typedef struct
 	LinkerType linker_type;
 	uint32_t symtab_size;
 	uint32_t switchrange_max_size;
+	uint32_t switchjump_max_size;
 	const char **args;
 	const char *panicfn;
 	const char *benchfn;
@@ -792,6 +794,7 @@ static BuildTarget default_build_target = {
 		.win.crt_linking = WIN_CRT_DEFAULT,
 		.win.def = NULL,
 		.switchrange_max_size = DEFAULT_SWITCHRANGE_MAX_SIZE,
+		.switchjump_max_size = DEFAULT_SWITCH_JUMP_MAX_SIZE,
 };
 
 extern const char *project_default_keys[][2];

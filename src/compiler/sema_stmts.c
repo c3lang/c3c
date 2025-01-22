@@ -44,8 +44,8 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr);
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement);
 static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index);
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
-                                         unsigned index,
-                                         bool *if_chained, bool *max_ranged, int *actual_cases_ref);
+                                         unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref,
+										 Int *low, Int *high);
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
@@ -2256,7 +2256,7 @@ static inline bool sema_check_type_case(SemaContext *context, Type *switch_type,
 }
 
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
-                                         unsigned index, bool *if_chained, bool *max_ranged, int *actual_cases_ref)
+                                         unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref, Int *low, Int *high)
 {
 	ASSERT(switch_type);
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
@@ -2283,6 +2283,11 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	ExprConst *const_expr = &expr->const_expr;
 	ExprConst *to_const_expr = to_expr ? &to_expr->const_expr : const_expr;
 
+	if (const_expr->const_kind == CONST_INTEGER)
+	{
+		if (low->type == TYPE_POISONED || int_comp(*low, const_expr->ixx, BINARYOP_GT)) *low = const_expr->ixx;
+		if (high->type == TYPE_POISONED || int_comp(*high, to_const_expr->ixx, BINARYOP_LT)) *high = to_const_expr->ixx;
+	}
 	if (!*max_ranged && is_range)
 	{
 		if (is_enum)
@@ -2317,6 +2322,7 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 			}
 			Int128 range = int_sub(to_const_expr->ixx, const_expr->ixx).i;
 			Int128 max_range = { .low = compiler.build.switchrange_max_size };
+			*actual_cases_ref += range.low;
 			if (i128_comp(range, max_range, type_i128) == CMP_GT)
 			{
 				*max_ranged = true;
@@ -2411,7 +2417,9 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	bool success = true;
 	bool max_ranged = false;
 	bool type_switch = switch_type == type_typeid;
-	int actual_enum_cases = 0;
+	uint64_t actual_enum_cases = 0;
+	Int low = { .type = TYPE_POISONED };
+	Int high = { .type = TYPE_POISONED };
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		if (!success) break;
@@ -2431,7 +2439,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				}
 				else
 				{
-					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain, &max_ranged, &actual_enum_cases))
+					if (!sema_check_value_case(context, switch_type, stmt, cases, i, &if_chain, &max_ranged, &actual_enum_cases, &low, &high))
 					{
 						success = false;
 						break;
@@ -2511,9 +2519,22 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 	{
 		RETURN_SEMA_ERROR(statement, create_missing_enums_in_switch_error(cases, actual_enum_cases, flat->decl->enums.values));
 	}
-	if ((if_chain || max_ranged) && statement->flow.jump)
+	if (statement->flow.jump)
 	{
-		RETURN_SEMA_ERROR(statement, "Switch cannot use a jump table, please remove '@jump'.");
+		if (if_chain) RETURN_SEMA_ERROR(statement, "The switch cannot use a jump table because it cannot be translated into a jump, please remove '@jump'.");
+		// Ignore max ranged
+		max_ranged = false;
+		if (low.type != TYPE_POISONED)
+		{
+			Int range = int_sub(high, low);
+			Int max = { .i.low = compiler.build.switchjump_max_size, .type = range.type };
+			if (int_comp(range, max, BINARYOP_GE))
+			{
+				RETURN_SEMA_ERROR(statement, "The switch cannot use a jump table size of the table would exceed "
+				                             "the maximum allowed (%u), please remove '@jump'.", compiler.build.switchjump_max_size);
+			}
+
+		}
 	}
 
 	statement->flow.no_exit = all_jump_end;
