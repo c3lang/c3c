@@ -1625,13 +1625,12 @@ const char *os_type_to_string(OsType os)
 		case OS_TYPE_ANANAS: return "ANANAS";
 		case OS_TYPE_CLOUD_ABI: return "CLOUD_ABI";
 		case OS_TYPE_DRAGON_FLY: return "DRAGON_FLY";
-		case OS_TYPE_FREEBSD: return "FREEBSD";
 		case OS_TYPE_FUCHSIA: return "FUCHSIA";
 		case OS_TYPE_IOS: return "IOS";
 		case OS_TYPE_KFREEBSD: return "KFREEBSD";
 		case OS_TYPE_LINUX: return "LINUX";
 		case OS_TYPE_PS3: return "PS3";
-		case OS_TYPE_MACOS: return "MACOS";
+		case OS_TYPE_MACOSX: return "MACOSX";
 		case OS_TYPE_NETBSD: return "NETBSD";
 		case OS_TYPE_OPENBSD: return "OPENBSD";
 		case OS_TYPE_SOLARIS: return "SOLARIS";
