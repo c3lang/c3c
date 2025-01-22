@@ -589,6 +589,7 @@ typedef struct BuildOptions_
 	bool print_manifest_properties;
 	bool print_precedence;
 	bool print_linking;
+	bool print_env;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
@@ -832,3 +833,4 @@ void resolve_libraries(BuildTarget *build_target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);
+void print_build_env(void);
