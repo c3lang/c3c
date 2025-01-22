@@ -82,6 +82,7 @@ FILE *file_open_read(const char *path);
 bool file_touch(const char *path);
 char *file_read_binary(const char *path, size_t *size);
 char *file_read_all(const char *path, size_t *return_size);
+size_t file_clean_buffer(char *buffer, const char *path, size_t file_size);
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
 bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
@@ -91,9 +92,9 @@ const char *file_append_path_temp(const char *path, const char *name);
 
 const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
 
-const char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string);
+char * execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string);
 
-bool execute_cmd_failable(const char *cmd, const char **result, const char *stdin_string);
+bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(size_t max_mem);

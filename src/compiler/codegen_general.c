@@ -288,7 +288,6 @@ AlignSize type_alloca_alignment(Type *type)
 	return align;
 }
 
-
 void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename)
 {
 	const char *result = module_create_object_file_name(module);

@@ -28,6 +28,8 @@ const char *project_default_keys[][2] = {
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+  		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
@@ -100,6 +102,8 @@ const char* project_target_keys[][2] = {
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+  		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"name", "Set the name to be different from the target name."},
 		{"no-entry", "Do not generate (or require) a main function."},
@@ -338,8 +342,13 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	RiscvFloatCapability riscv_float = GET_SETTING(RiscvFloatCapability, "riscvfloat", riscv_capability, "`none`, `float` or `double`.");
 	if (riscv_float != RISCVFLOAT_DEFAULT) target->feature.riscv_float_capability = riscv_float;
 
+	// win-debug
+	WinDebug win_debug = GET_SETTING(WinDebug , "win-debug", win_debug_type, "`codeview` or `dwarf`.");
+	if (win_debug != WIN_DEBUG_DEFAULT) target->feature.win_debug = win_debug;
+
 	// winsdk
 	target->win.vs_dirs = get_string(filename, target_name, json, "win-vs-dirs", target->win.vs_dirs);
+
 
 	// winsdk
 	target->win.sdk = get_string(filename, target_name, json, "winsdk", target->win.sdk);

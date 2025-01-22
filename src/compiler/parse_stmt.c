@@ -522,9 +522,17 @@ static inline bool token_type_ends_case(TokenType type, TokenType case_type, Tok
 	return type == case_type || type == default_type || type == TOKEN_RBRACE || type == TOKEN_CT_ENDSWITCH;
 }
 
-static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenType default_type)
+static inline Ast *parse_case_stmts(ParseContext *c, TokenType case_type, TokenType default_type, uint32_t row)
 {
-	if (token_type_ends_case(c->tok, case_type, default_type)) return NULL;
+	if (token_type_ends_case(c->tok, case_type, default_type))
+	{
+		if (c->span.row > row + 1 && (c->tok == TOKEN_CASE || c->tok == TOKEN_DEFAULT))
+		{
+			PRINT_ERROR_LAST("Fallthrough cases with empty rows or comments have unclear meaning, an explicit 'break' or 'nextcase' is needed (or remove the spacing!).");
+			return poisoned_ast;
+		}
+		return NULL;
+	}
 	Ast *compound = new_ast(AST_COMPOUND_STMT, c->span);
 	AstId *next = &compound->compound_stmt.first_stmt;
 	while (!token_type_ends_case(c->tok, case_type, default_type))
@@ -678,13 +686,14 @@ static inline Ast *parse_case_stmt(ParseContext *c, TokenType case_type, TokenTy
 	{
 		ASSIGN_EXPRID_OR_RET(ast->case_stmt.to_expr, parse_expr(c), poisoned_ast);
 	}
+	uint32_t row = c->span.row;
 	if (!try_consume(c, TOKEN_COLON))
 	{
 		print_error_at(c->prev_span, "Missing ':' after case");
 		return poisoned_ast;
 	}
 	RANGE_EXTEND_PREV(ast);
-	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type), poisoned_ast);
+	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type, row), poisoned_ast);
 	return ast;
 }
 
@@ -697,8 +706,9 @@ static inline Ast *parse_default_stmt(ParseContext *c, TokenType case_type, Toke
 	Ast *ast = new_ast(AST_DEFAULT_STMT, c->span);
 	advance(c);
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':' after 'default'.", poisoned_ast);
+	uint32_t row = c->span.row;
 	RANGE_EXTEND_PREV(ast);
-	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type), poisoned_ast);
+	ASSIGN_AST_OR_RET(ast->case_stmt.body, parse_case_stmts(c, case_type, default_type, row), poisoned_ast);
 	ast->case_stmt.expr = 0;
 	return ast;
 }

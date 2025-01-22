@@ -32,6 +32,7 @@ fault ThreadFault
 	DETACH_FAILED,
 	JOIN_FAILED,
 	INTERRUPTED,
+	CHANNEL_CLOSED,
 }
 
 macro void! Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_PLAIN);

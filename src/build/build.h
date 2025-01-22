@@ -242,6 +242,13 @@ typedef enum
 
 typedef enum
 {
+	WIN_DEBUG_DEFAULT = -1,
+	WIN_DEBUG_CODEVIEW = 0,
+	WIN_DEBUG_DWARF = 1
+} WinDebug;
+
+typedef enum
+{
 	WIN64_SIMD_DEFAULT = -1,
 	WIN64_SIMD_FULL = 0,
 	WIN64_SIMD_ARRAY = 1
@@ -392,23 +399,51 @@ typedef enum
 	TARGET_TYPE_PREPARE,
 } TargetType;
 
+typedef enum
+{
+	PROJECT_VIEW_TYPE_AUTHOR,
+	PROJECT_VIEW_TYPE_VERSION,
+	PROJECT_VIEW_TYPE_LANGUAGE_REVISION,
+	PROJECT_VIEW_TYPE_WARNINGS_USED,
+	PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS,
+	PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES,
+	PROJECT_VIEW_TYPE_SOURCE_PATHS,
+	PROJECT_VIEW_TYPE_OUTPUT_LOCATION,
+	PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION,
+	PROJECT_VIEW_TYPE_TARGETS,
+	PROJECT_VIEW_TYPE_MAX = PROJECT_VIEW_TYPE_TARGETS
+} ProjectViewType;
+
+static const char *project_view_flags[PROJECT_VIEW_TYPE_MAX + 1] = {
+	[PROJECT_VIEW_TYPE_AUTHOR] = "authors",
+	[PROJECT_VIEW_TYPE_VERSION] = "version",
+	[PROJECT_VIEW_TYPE_LANGUAGE_REVISION] = "language-revision",
+	[PROJECT_VIEW_TYPE_WARNINGS_USED] = "warnings-used",
+	[PROJECT_VIEW_TYPE_C3L_LIB_SEARCH_PATHS] = "c3l-lib-search-paths",
+	[PROJECT_VIEW_TYPE_C3L_LIB_DEPENDENCIES] = "c3l-lib-dependencies",
+	[PROJECT_VIEW_TYPE_SOURCE_PATHS] = "source-paths",
+	[PROJECT_VIEW_TYPE_OUTPUT_LOCATION] = "output-location",
+	[PROJECT_VIEW_TYPE_DEFAULT_OPTIMIZATION] = "default-optimization",
+	[PROJECT_VIEW_TYPE_TARGETS] = "targets",
+};
+
 static const char *targets[7] = {
-		[TARGET_TYPE_EXECUTABLE] = "executable",
-		[TARGET_TYPE_STATIC_LIB] = "static-lib",
-		[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
-		[TARGET_TYPE_BENCHMARK] = "benchmark",
-		[TARGET_TYPE_TEST] = "test",
-		[TARGET_TYPE_OBJECT_FILES] = "object-files",
-		[TARGET_TYPE_PREPARE] = "prepare",
+	[TARGET_TYPE_EXECUTABLE] = "executable",
+	[TARGET_TYPE_STATIC_LIB] = "static-lib",
+	[TARGET_TYPE_DYNAMIC_LIB] = "dynamic-lib",
+	[TARGET_TYPE_BENCHMARK] = "benchmark",
+	[TARGET_TYPE_TEST] = "test",
+	[TARGET_TYPE_OBJECT_FILES] = "object-files",
+	[TARGET_TYPE_PREPARE] = "prepare",
 };
 static const char *target_desc[7] = {
-		[TARGET_TYPE_EXECUTABLE] = "Executable",
-		[TARGET_TYPE_STATIC_LIB] = "Static library",
-		[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
-		[TARGET_TYPE_BENCHMARK] = "benchmark suite",
-		[TARGET_TYPE_TEST] = "test suite",
-		[TARGET_TYPE_OBJECT_FILES] = "object files",
-		[TARGET_TYPE_PREPARE] = "prepare"
+	[TARGET_TYPE_EXECUTABLE] = "Executable",
+	[TARGET_TYPE_STATIC_LIB] = "Static library",
+	[TARGET_TYPE_DYNAMIC_LIB] = "Dynamic library",
+	[TARGET_TYPE_BENCHMARK] = "benchmark suite",
+	[TARGET_TYPE_TEST] = "test suite",
+	[TARGET_TYPE_OBJECT_FILES] = "object files",
+	[TARGET_TYPE_PREPARE] = "prepare"
 
 };
 
@@ -471,6 +506,13 @@ typedef struct BuildOptions_
 		const char *target_name;
 		TargetType target_type;
 		const char **sources;
+
+		/* Support for flags for 'view' */
+		struct
+		{
+			uint16_t flags_bitvector;
+			bool verbose;
+		} view_modifier;
 	} project_options;
 	CompileOption compile_option;
 	TrustLevel trust_level;
@@ -514,6 +556,7 @@ typedef struct BuildOptions_
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
 	Win64Simd win_64_simd;
+	WinDebug win_debug;
 	FpOpt fp_math;
 	EmitStdlib emit_stdlib;
 	UseStdlib use_stdlib;
@@ -661,6 +704,7 @@ typedef struct
 	const char *custom_linker_path;
 	struct
 	{
+		WinDebug win_debug;
 		SoftFloat soft_float : 3;
 		StructReturn x86_struct_return : 3;
 		X86VectorCapability x86_vector_capability : 4;
@@ -742,6 +786,7 @@ static BuildTarget default_build_target = {
 		.feature.riscv_float_capability = RISCVFLOAT_DEFAULT,
 		.feature.x86_vector_capability = X86VECTOR_DEFAULT,
 		.feature.x86_cpu_set = X86CPU_DEFAULT,
+		.feature.win_debug = WIN_DEBUG_DEFAULT,
 		.feature.safe_mode = SAFETY_NOT_SET,
 		.feature.panic_level = PANIC_NOT_SET,
 		.win.crt_linking = WIN_CRT_DEFAULT,
