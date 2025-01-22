@@ -6,6 +6,7 @@
 - Contracts @require/@ensure are no longer treated as conditionals, but must be explicitly bool.
 - Add `win-debug` setting to be able to pick dwarf for output #1855.
 - Error on switch case fallthough if there is more than one newline #1849.
+- Added flags to `c3c project view` to filter displayed properties
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -18,6 +19,7 @@
 - Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
 - Fix dues to crash when converting a const vector to another vector #1864.
 - Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
+- Fixes to `"exec" use, including issue when compiling with MinGW
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
@@ -279,7 +281,7 @@
 - Improved method detection in earlier stages of checking.
 - Allow `@norecurse` attribute for non-recursive imports #1480.
 - wasm32 / wasm64 targets are use-libc=no by default.
-- Add hash/sha256 module 
+- Add hash/sha256 module
 
 ### Fixes
 - Issue where a lambda wasn't correctly registered as external. #1408
@@ -491,7 +493,7 @@
 - Fix distinct inline conversions.
 - Bit negating const zero flags would give an incorrect result.
 - Fix to scalar -> vector conversions.
-- Bug fix for rethrow + defer catch. 
+- Bug fix for rethrow + defer catch.
 - Wrong size for structs containing overaligned structs #1219
 - $typeof(*x) should be valid when x is an `[out]` parameter #1226
 - Fix ABI lowering for 128 bit vectors on Linux.
@@ -559,9 +561,9 @@
 - Fixed issue in safe mode when converting enums.
 - Better checking of operator methods.
 - Bug when assigning an optional from an optional.
-- Lambdas were not type checked thoroughly #1185. 
+- Lambdas were not type checked thoroughly #1185.
 - Fix problems using reflection on interface types #1203.
-- `@param` with unnamed macro varargs could crash the compiler. 
+- `@param` with unnamed macro varargs could crash the compiler.
 - Compiler crash using enum nameof from different module #1205.
 - Incorrect length passed to scratch buffer printf.
 - Casting to a bitstruct would be allowed even if the type was the wrong size.
@@ -576,11 +578,11 @@
 - Compiler crash on designated initializer for structs with bitstruct.
 
 ### Stdlib changes
-- "init_new/init_temp" removed. 
-- LinkedList API rewritten. 
-- List "pop" and "remove" function now return Optionals. 
-- RingBuffer API rewritten. Allocator interface changed. 
-- Deprecated Allocator, DString and mem functions removed. 
+- "init_new/init_temp" removed.
+- LinkedList API rewritten.
+- List "pop" and "remove" function now return Optionals.
+- RingBuffer API rewritten. Allocator interface changed.
+- Deprecated Allocator, DString and mem functions removed.
 - "identity" functions are now constants for Matrix and Complex numbers.
 - Removed 'append' from Object and List, replaced by 'push'.
 - `GenericList` renamed `AnyList`.
@@ -801,7 +803,7 @@
 - `define` and `typedef` removed.
 - `define` is replaced by `def`.
 - LLVM "wrapper" library compilation is exception free.
-- `private` is replaced by attribute `@private`. 
+- `private` is replaced by attribute `@private`.
 - Addition of `@local` for file local visibility.
 - Addition of `@public` for overriding default visibility.
 - Default visibility can be overridden per module compile unit. Eg `module foo @private`.
@@ -1119,4 +1121,4 @@
 - Global @align fixed
 - Fixes enum set with new ordinal based enums
 - SysV ABI fix for passing certain things by struct.
-- Fix implicitly converting to float in the case of myfloat *= -1 
+- Fix implicitly converting to float in the case of myfloat *= -1
