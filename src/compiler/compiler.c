@@ -90,6 +90,12 @@ void compiler_init(BuildOptions *build_options)
 	{
 		compiler.context.lib_dir = find_lib_dir();
 	}
+
+	if (build_options->print_env)
+	{
+		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 }
 
 static void compiler_lex(void)
@@ -1584,4 +1590,28 @@ const char *default_c_compiler(void)
 #else
 	return cc = "cc";
 #endif
+}
+
+void print_build_env(void)
+{
+	printf("{\n");
+	printf("  \"c3c\": {\n");
+	printf("    \"version\": \"%s\",\n", COMPILER_VERSION);
+	printf("    \"stdlib\": \"%s\",\n", compiler.context.lib_dir);
+	printf("    \"c3c_exe\": \"%s\"\n", compiler_exe_name);
+	printf("  },\n");
+	printf("  \"project\": {\n");
+	printf("    \"path\": \"%s\",\n", getcwd(NULL, 0));
+	printf("    \"target\": \"%s\"\n", compiler.build.name);
+	printf("  },\n");
+	printf("  \"environment\": {\n");
+	printf("    \"system_path\": \"%s\",\n", getenv("PATH"));
+	printf("    \"os\": \"%s\",\n", os_type_to_string(compiler.platform.os));
+	printf("    \"variables\": {\n");
+	printf("      \"env::POSIX\": %s,\n", compiler.platform.os == OS_TYPE_LINUX ? "true" : "false");
+	printf("      \"env::win32\": %s,\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
+	printf("      \"LIBC\": %s\n", link_libc() ? "true" : "false");
+	printf("    }\n");
+	printf("  }\n");
+	printf("}\n");
 }
