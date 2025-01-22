@@ -7,6 +7,24 @@
 
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0);
+#define RESOLVE(expr__, check__) \
+  do { \
+  Expr *expr_temp__ = expr__; \
+  switch (expr_temp__->resolve_status) { \
+    case RESOLVE_NOT_DONE: \
+        expr_temp__->resolve_status = RESOLVE_RUNNING; \
+        if (!check__) return expr_poison(expr_temp__); \
+		expr_temp__->resolve_status = RESOLVE_DONE; \
+		return true; \
+	case RESOLVE_RUNNING: \
+		SEMA_ERROR(expr, "Recursive resolution of expression"); \
+		return expr_poison(expr_temp__); \
+	case RESOLVE_DONE: \
+		return expr_ok(expr_temp__); \
+	default: \
+		UNREACHABLE \
+	} } while (0);
+
 
 typedef enum
 {
@@ -39,7 +57,7 @@ static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, b
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_analyse_ct_eval(SemaContext *context, Expr *expr, CheckType check);
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr);
-static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr, CheckType check);
+static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr);
 
 static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool *invalid_cast_ref);
@@ -142,17 +160,13 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 static bool sema_call_analyse_body_expansion(SemaContext *macro_context, Expr *call);
 static bool sema_slice_index_is_in_range(SemaContext *context, Type *type, Expr *index_expr, bool end_index, bool from_end, bool *remove_from_end, bool check_valid);
 static Expr **sema_vasplat_insert(SemaContext *context, Expr **init_expressions, Expr *expr, unsigned insert_point);
-
 static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, CheckType check);
-
 static Decl *sema_expr_analyse_var_path(SemaContext *context, Expr *expr);
-static inline bool sema_expr_analyse_decl_element(SemaContext *context, DesignatorElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc,
-												  bool *is_missing);
+static inline bool sema_expr_analyse_decl_element(SemaContext *context, DesignatorElement *element, Type *type, Decl **member_ref, ArraySize *index_ref, Type **return_type, unsigned i, SourceSpan loc, bool *is_missing);
 static Type *sema_expr_check_type_exists(SemaContext *context, TypeInfo *type_info);
 static inline bool sema_cast_ct_ident_rvalue(SemaContext *context, Expr *expr);
 static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *expr, Expr *typeid, const char *kw, bool *was_error);
-static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property,
-											   Type *parent_type);
+static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr, Type *type, TypeProperty property, Type *parent_type);
 static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProperty property);
 static bool sema_expr_rewrite_typeid_call(Expr *expr, Expr *typeid, TypeIdInfoKind kind, Type *result_type);
 static inline void sema_expr_rewrite_typeid_kind(Expr *expr, Expr *parent);
@@ -166,8 +180,7 @@ static inline bool sema_create_const_inner(SemaContext *context, Expr *expr, Typ
 static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_max(SemaContext *context, Expr *expr, Type *type, Type *flat);
 static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Type *type);
-static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment,
-											   AlignSize offset);
+static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment, AlignSize offset);
 static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
 static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
@@ -218,6 +231,28 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 			return false;
 	}
 	UNREACHABLE
+}
+
+typedef struct
+{
+	bool in_no_eval;
+	bool in_other;
+} ContextSwitchState;
+
+static inline ContextSwitchState context_switch_state_push(SemaContext *context, SemaContext *new_context)
+{
+
+	ContextSwitchState state = { .in_no_eval = new_context->call_env.in_no_eval,
+								 .in_other = new_context->call_env.in_other };
+	new_context->call_env.in_no_eval = context->call_env.in_no_eval;
+	new_context->call_env.in_other = true;
+	return state;
+}
+
+static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchState state)
+{
+	swapped->call_env.in_no_eval = state.in_no_eval;
+	swapped->call_env.in_other = state.in_other;
 }
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
@@ -1112,9 +1147,9 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 	return true;
 }
 
-
-static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr, CheckType check)
+static inline bool sema_expr_resolve_ct_identifier(SemaContext *context, Expr *expr)
 {
+	ASSERT_SPAN(expr, expr->resolve_status != RESOLVE_DONE);
 	ASSERT(expr && expr->ct_ident_expr.identifier);
 
 	DEBUG_LOG("Resolving identifier '%s'", expr->ct_ident_expr.identifier);
@@ -1131,11 +1166,14 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 	expr->ct_ident_expr.decl = decl;
 	expr->type = decl->type;
 
-	if (check != CHECK_LVALUE)
-	{
-		if (!sema_cast_ct_ident_rvalue(context, expr)) return false;
-	}
 	return true;
+}
+
+
+static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr)
+{
+	if (!sema_expr_resolve_ct_identifier(context, expr)) return false;
+	return sema_cast_ct_ident_rvalue(context, expr);
 }
 
 
@@ -5788,6 +5826,7 @@ RETRY:;
  */
 static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *expr, Expr *left)
 {
+	ASSERT_SPAN(left, left->expr_kind == EXPR_CT_IDENT);
 
 	// 1. Analyse left side.
 	if (!sema_analyse_expr_lvalue(context, left)) return false;
@@ -7335,8 +7374,6 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr, Expr *inner)
 {
 	ASSERT_SPAN(expr, inner->expr_kind == EXPR_CT_IDENT);
-
-	if (!sema_analyse_expr_lvalue(context, inner)) return false;
 
 	Decl *var = inner->ct_ident_expr.decl;
 	Expr *start_value = var->var.init_expr;
@@ -9551,19 +9588,14 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			RETURN_SEMA_ERROR(expr, "Expected '()' after this.");
 		case EXPR_OTHER_CONTEXT:
 		{
-			bool in_no_eval = context->call_env.in_no_eval;
-			context = expr->expr_other_context.context;
+			SemaContext *new_context = expr->expr_other_context.context;
 			expr_replace(expr, expr->expr_other_context.inner);
 			if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
-			ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_NOT_DONE);
+			ContextSwitchState state = context_switch_state_push(context, new_context);
 			expr->resolve_status = RESOLVE_RUNNING;
-			bool in_other = context->call_env.in_other;
-			bool was_in_no_eval = context->call_env.in_no_eval;
-			context->call_env.in_other = true;
-			context->call_env.in_no_eval = in_no_eval;
-			bool success = sema_analyse_expr_dispatch(context, expr, check);
-			context->call_env.in_other = in_other;
-			context->call_env.in_no_eval = was_in_no_eval;
+			context = new_context;
+			bool success = sema_analyse_expr_dispatch(new_context, expr, check);
+			context_switch_stat_pop(new_context, state);
 			return success;
 		}
 		case EXPR_CT_CASTABLE:
@@ -9607,7 +9639,8 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			if (!sema_expr_fold_hash(context, expr)) return false;
 			return sema_analyse_expr_check(context, expr, check);
 		case EXPR_CT_IDENT:
-			return sema_expr_analyse_ct_identifier(context, expr, check);
+			ASSERT_SPAN(expr, check != CHECK_LVALUE);
+			return sema_expr_analyse_ct_identifier(context, expr);
 		case EXPR_OPTIONAL:
 			return sema_expr_analyse_optional(context, expr, NULL);
 		case EXPR_COMPILER_CONST:
@@ -9891,24 +9924,6 @@ bool sema_analyse_expr_value(SemaContext *context, Expr *expr)
 	}
 }
 
-#define RESOLVE(expr__, check__) \
-  do { \
-  Expr *expr_temp__ = expr__; \
-  switch (expr_temp__->resolve_status) { \
-    case RESOLVE_NOT_DONE: \
-        expr_temp__->resolve_status = RESOLVE_RUNNING; \
-        if (!check__) return expr_poison(expr_temp__); \
-		expr_temp__->resolve_status = RESOLVE_DONE; \
-		return true; \
-	case RESOLVE_RUNNING: \
-		SEMA_ERROR(expr, "Recursive resolution of expression"); \
-		return expr_poison(expr_temp__); \
-	case RESOLVE_DONE: \
-		return expr_ok(expr_temp__); \
-	default: \
-		UNREACHABLE \
-	} } while (0);
-
 
 static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, CheckType check)
 {
@@ -9920,10 +9935,47 @@ bool sema_analyse_expr_address(SemaContext *context, Expr *expr)
 	return sema_analyse_expr_check(context, expr, CHECK_ADDRESS);
 }
 
+
+INLINE bool sema_analyse_expr_lvalue_dispatch(SemaContext *context, Expr *expr)
+{
+RETRY:
+	switch (expr->expr_kind)
+	{
+		case EXPR_HASH_IDENT:
+			DEBUG_LOG("Expand hash ident");
+			if (!sema_expr_fold_hash(context, expr)) return false;
+			goto RETRY;
+		case EXPR_CT_IDENT:
+			return sema_expr_resolve_ct_identifier(context, expr);
+		case EXPR_SUBSCRIPT:
+			return sema_expr_analyse_subscript(context, expr, CHECK_LVALUE, false);
+		case EXPR_OTHER_CONTEXT:
+		{
+			DEBUG_LOG("Switch context");
+			SemaContext *new_context = expr->expr_other_context.context;
+			expr_replace(expr, expr->expr_other_context.inner);
+			if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
+			ContextSwitchState state = context_switch_state_push(context, new_context);
+			expr->resolve_status = RESOLVE_RUNNING;
+			context = new_context;
+			bool success = sema_analyse_expr_lvalue_dispatch(new_context, expr);
+			context_switch_stat_pop(new_context, state);
+			return success;
+		}
+		default:
+			if (expr->resolve_status == RESOLVE_RUNNING)
+			{
+				expr->resolve_status = RESOLVE_NOT_DONE;
+			}
+			return sema_analyse_expr_check(context, expr, CHECK_LVALUE);
+	}
+
+}
+
 bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr)
 {
 	ASSERT(expr);
-	return sema_analyse_expr_check(context, expr, CHECK_LVALUE);
+	RESOLVE(expr, sema_analyse_expr_lvalue_dispatch(context, expr));
 }
 
 bool sema_expr_check_discard(SemaContext *context, Expr *expr)
