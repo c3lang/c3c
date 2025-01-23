@@ -31,3 +31,5 @@ fn void wasm_initialize() @extern("_initialize") @wasm
 	// The linker synthesizes this to call constructors.
 	__wasm_call_ctors();
 }
+
+extern fn float fmodf(float x, float y) @wasm;
