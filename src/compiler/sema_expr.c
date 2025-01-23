@@ -9945,7 +9945,6 @@ RETRY:
 			if (expr->resolve_status == RESOLVE_DONE) return expr_ok(expr);
 			ContextSwitchState state = context_switch_state_push(context, new_context);
 			expr->resolve_status = RESOLVE_RUNNING;
-			context = new_context;
 			bool success = sema_analyse_expr_lvalue_dispatch(new_context, expr, failed_ref);
 			context_switch_stat_pop(new_context, state);
 			return success;
