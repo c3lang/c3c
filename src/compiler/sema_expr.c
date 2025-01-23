@@ -9924,7 +9924,7 @@ bool sema_analyse_expr_address(SemaContext *context, Expr *expr)
 }
 
 
-INLINE bool sema_analyse_expr_lvalue_dispatch(SemaContext *context, Expr *expr, bool *failed_ref)
+static inline bool sema_analyse_expr_lvalue_dispatch(SemaContext *context, Expr *expr, bool *failed_ref)
 {
 RETRY:
 	switch (expr->expr_kind)
