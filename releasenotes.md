@@ -7,6 +7,7 @@
 - Add `win-debug` setting to be able to pick dwarf for output #1855.
 - Error on switch case fallthough if there is more than one newline #1849.
 - Added flags to `c3c project view` to filter displayed properties
+- VERY experimental `<[ ]>` syntax for generics.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -19,7 +20,8 @@
 - Fix `linux-crt` and `linux-crtbegin` not getting recognized as a project paramater
 - Fix dues to crash when converting a const vector to another vector #1864.
 - Filter `$exec` output from `\r`, which otherwise would cause a compiler assert #1867.
-- Fixes to `"exec" use, including issue when compiling with MinGW
+- Fixes to `"exec" use, including issue when compiling with MinGW.
+- Correctly check jump table size and be generous when compiling it #1877.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

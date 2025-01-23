@@ -289,7 +289,7 @@ struct Type_
 		Decl *decl;
 		// int, float, bool
 		TypeBuiltin builtin;
-		// Type[], Type[*], Type[123], Type[<123>] or Type[<123>]
+		// Type[], Type[*], Type[123], Type[<123>] or Type<[123]>
 		TypeArray array;
 		// fn TypeR Type1(Type2, Type3, ...)
 		TypeFunction function;
@@ -1010,7 +1010,7 @@ typedef struct
 {
 	Expr *inner;
 	AstId cleanup;
-	BlockExit** in_block;
+	BlockExit **in_block;
 } ExprGuard;
 
 
@@ -3321,7 +3321,7 @@ static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
 	UNREACHABLE
 }
 
-static inline void expr_list_set_span(Expr **exprs, SourceSpan loc);
+static inline void expr_list_set_span(Expr **expr, SourceSpan loc);
 static inline void exprid_set_span(ExprId expr_id, SourceSpan loc);
 
 static inline void expr_set_span(Expr *expr, SourceSpan loc)
@@ -4068,6 +4068,3 @@ INLINE bool check_module_name(Path *path)
 void assert_print_line(SourceSpan span);
 
 const char *default_c_compiler(void);
-
-void print_build_env(void);
-const char *os_type_to_string(OsType os);

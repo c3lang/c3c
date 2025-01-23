@@ -885,9 +885,9 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	LLVMValueRef instr = llvm_emit_switch_jump_stmt(c, switch_ast, cases, count, min_index, jmptable, default_block, switch_value);
 
-	static LLVMValueRef refs[DEFAULT_SWITCHRANGE_MAX_SIZE];
+	static LLVMValueRef refs[DEFAULT_SWITCH_JUMP_MAX_SIZE + 1];
 	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
-	ASSERT(count < DEFAULT_SWITCHRANGE_MAX_SIZE);
+	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
 	memset(refs, 0, sizeof(LLVMValueRef) * count);
 	for (unsigned i = 0; i < case_count; i++)
 	{
