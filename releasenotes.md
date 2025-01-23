@@ -45,6 +45,7 @@
 - Added channels for threads.
 - New `std::core::test` module for unit testing machinery.
 - New unit test default runner.
+- Added weakly linked `fmodf`.
 
 ## 0.6.6 Change list
 
