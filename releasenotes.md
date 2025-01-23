@@ -7,6 +7,7 @@
 - Add `win-debug` setting to be able to pick dwarf for output #1855.
 - Error on switch case fallthough if there is more than one newline #1849.
 - Added flags to `c3c project view` to filter displayed properties
+- VERY experimental `<[ ]>` syntax for generics.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.

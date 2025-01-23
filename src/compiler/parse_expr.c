@@ -91,14 +91,20 @@ static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_to
 /**
  * generic_parameters ::= '(<' expr (',' expr) '>)'
  */
-bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
+bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref, bool is_new_syntax)
 {
-	advance_and_verify(c, TOKEN_LGENPAR);
+	advance_and_verify(c, is_new_syntax ? TOKEN_LBRACKET : TOKEN_LGENPAR);
 	while (true)
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 		vec_add(*exprs_ref, expr);
 		if (try_consume(c, TOKEN_COMMA)) continue;
+		if (is_new_syntax)
+		{
+			CONSUME_OR_RET(TOKEN_RBRACKET, false);
+			CONSUME_OR_RET(TOKEN_GREATER, false);
+			return true;
+		}
 		CONSUME_OR_RET(TOKEN_RGENPAR, false);
 		return true;
 	}
@@ -1091,12 +1097,24 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
 static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 {
 	ASSERT(left && expr_ok(left));
+	bool is_new_syntax = tok_is(c, TOKEN_LESS);
+	if (is_new_syntax) advance(c);
 	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
 	subs_expr->generic_ident_expr.parent = exprid(left);
-	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters)) return poisoned_expr;
+	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters, is_new_syntax)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
+
+static Expr *parse_less(ParseContext *c, Expr *left)
+{
+	if (c->lexer.token_type == TOKEN_LBRACKET)
+	{
+		return parse_generic_expr(c, left);
+	}
+	return parse_binary(c, left);
+}
+
 
 /**
  * access_expr ::= '.' primary_expr
@@ -2057,7 +2075,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_NOT_EQUAL] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_GREATER] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_GREATER_EQ] = { NULL, parse_binary, PREC_RELATIONAL },
-		[TOKEN_LESS] = { NULL, parse_binary, PREC_RELATIONAL },
+		[TOKEN_LESS] = { NULL, parse_less, PREC_RELATIONAL },
 		[TOKEN_LESS_EQ] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_SHL] = { NULL, parse_binary, PREC_SHIFT },
 		[TOKEN_SHR] = { NULL, parse_binary, PREC_SHIFT },
