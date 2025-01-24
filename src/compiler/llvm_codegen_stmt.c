@@ -207,7 +207,7 @@ static void llvm_emit_cond(GenContext *c, BEValue *be_value, Expr *expr, bool bo
 	}
 
 	// Cast the result to bool if needed.
-	ASSERT(!bool_cast || be_value->type == type_bool);
+	ASSERT(!bool_cast || be_value->type == type_void || be_value->type == type_bool);
 }
 
 void llvm_emit_jmp(GenContext *context, LLVMBasicBlockRef block)
@@ -415,14 +415,19 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 	}
 
 	llvm_emit_cond(c, &be_value, cond, true);
-
 	llvm_value_rvalue(c, &be_value);
+
+	// We might have encountered an ! if so, exit
+	if (!llvm_get_current_block_if_in_use(c))
+	{
+		return;
+	}
 
 	ASSERT(llvm_value_is_bool(&be_value));
 
 	if (llvm_value_is_const(&be_value) && then_block != else_block)
 	{
-		if (!LLVMIsNull(be_value.value))
+		if (LLVMConstIntGetZExtValue(be_value.value))
 		{
 			llvm_emit_br(c, then_block);
 			else_block = exit_block;
