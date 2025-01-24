@@ -9,8 +9,8 @@ fn int main()
 $foreach ( $c : $chars)
         int $offset = ($c - $from) / BITS;
         int $rem = ($c - $from) % BITS;
-        uint128 $value = $bitmap[$offset];
+        uint128 $value = $bitmap[$offset]; // #error: is out of range
         $value |= 1u128 << $rem;
-        $bitmap = $bitmap[:$offset] +++ $value +++ $bitmap[$offset+1..]; // #error: Only fully initialized arrays
+        $bitmap = $bitmap[:$offset] +++ $value +++ $bitmap[$offset+1..]; // #error: End index out of bounds
 $endforeach
 }

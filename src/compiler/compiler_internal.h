@@ -774,6 +774,12 @@ typedef struct
 
 typedef struct
 {
+	Decl *var;
+	ArrayIndex index;
+} ExprCtSubscript;
+
+typedef struct
+{
 	ExprId expr;
 	Range range;
 } ExprSlice;
@@ -1177,6 +1183,7 @@ struct Expr_
 		ExprSliceAssign slice_assign_expr;          // 8
 		ExprSubscriptAssign subscript_assign_expr;
 		ExprSubscript subscript_expr;               // 12
+		ExprCtSubscript ct_subscript_expr;
 		ExprSlice slice_expr;
 		ExprSwizzle swizzle_expr;
 		ExprTernary ternary_expr;                   // 16
@@ -3281,6 +3288,7 @@ ConstInitializer *const_init_new_zero_array_value(Type *type, ArrayIndex index);
 ConstInitializer *const_init_new_array_value(Expr *expr, ArrayIndex index);
 bool const_init_is_zero(ConstInitializer *init);
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value);
+void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, ArrayIndex index);
 void const_init_rewrite_to_zero(ConstInitializer *init, Type *type);
 
 static inline void const_init_set_span(ConstInitializer *init, SourceSpan loc)
@@ -3459,6 +3467,7 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TYPECALL:
 		case EXPR_MEMBER_GET:
 		case EXPR_RVALUE:
+		case EXPR_CT_SUBSCRIPT:
 			break;
 	}
 }

@@ -3065,7 +3065,8 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 	}
 	ArrayIndex size;
 	bool check_len = !context->call_env.in_no_eval || current_type == type_untypedlist;
-	if (check_len && expr_is_const_int(index) && (size = sema_len_from_expr(current_expr)) >= 0)
+	Expr *len_expr = current_expr->expr_kind == EXPR_CT_IDENT ? current_expr->ct_ident_expr.decl->var.init_expr : current_expr;
+	if (check_len && expr_is_const_int(index) && (size = sema_len_from_expr(len_expr)) >= 0)
 	{
 		// 4c. And that it's in range.
 		if (int_is_neg(index->const_expr.ixx))
@@ -3115,7 +3116,14 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 {
 	// Evaluate the expression to index.
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
-	if (!sema_analyse_expr(context, subscripted)) return false;
+	if (subscripted->expr_kind == EXPR_CT_IDENT)
+	{
+		if (!sema_analyse_expr_lvalue(context, subscripted, NULL)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_expr(context, subscripted)) return false;
+	}
 
 	if (!sema_expr_check_assign(context, expr, NULL)) return false;
 
@@ -3142,9 +3150,17 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	}
 
 	// 4. If we are indexing into a complist
-	if (current_type == type_untypedlist)
+	if (current_expr->expr_kind == EXPR_CT_IDENT)
 	{
-		TODO;
+		if (index_value == -1)
+		{
+			if (check_valid) goto VALID_FAIL_POISON;
+			RETURN_SEMA_ERROR(index, "Assigning to a compile time constant requires a constant index.");
+		}
+		expr->expr_kind = EXPR_CT_SUBSCRIPT;
+		expr->ct_subscript_expr = (ExprCtSubscript) { .var = current_expr->ct_ident_expr.decl, .index = index_value };
+		expr->type = NULL;
+		return true;
 	}
 
 	if (!sema_cast_rvalue(context, subscripted, true)) return false;
@@ -4955,8 +4971,7 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 
 
 static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, Expr *parent, Type *flat_type,
-                                             const char *kw,
-                                             unsigned len, CheckType check, bool is_lvalue)
+                                             const char *kw, unsigned len, CheckType check, bool is_lvalue)
 {
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
@@ -5825,6 +5840,70 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 	return true;
 }
 
+static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+{
+	Decl *ct_var = left->ct_subscript_expr.var;
+	ArrayIndex index = left->ct_subscript_expr.index;
+
+	if (ct_var->type == type_untypedlist)
+	{
+		if (!sema_analyse_expr(context, right)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_inferred_expr(context, type_get_indexed_type(ct_var->type), right)) return false;
+	}
+	if (!sema_cast_const(right))
+	{
+		RETURN_SEMA_ERROR(right, "The argument must be a constant value.");
+	}
+	if (context->call_env.in_other)
+	{
+		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
+	}
+
+	Expr *original_value = ct_var->var.init_expr;
+	ASSERT_SPAN(original_value, original_value->expr_kind == EXPR_CONST);
+
+	ExprConst *expr_const = &original_value->const_expr;
+
+	switch (expr_const->const_kind)
+	{
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_ERR:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_REF:
+		case CONST_MEMBER:
+			UNREACHABLE
+		case CONST_BYTES:
+		case CONST_STRING:
+		{
+			unsigned char *copy = MALLOC(expr_const->bytes.len + 1);
+			memcpy(copy, expr_const->bytes.ptr, expr_const->bytes.len + 1);
+			assert(right->const_expr.const_kind == CONST_INTEGER);
+			copy[index] = (unsigned char)right->const_expr.ixx.i.low;
+			expr_const->bytes.ptr = (char *)copy;
+			break;
+		}
+		case CONST_SLICE:
+			const_init_rewrite_array_at(expr_const->slice_init, right, index);
+			break;
+		case CONST_INITIALIZER:
+			const_init_rewrite_array_at(expr_const->initializer, right, index);
+			break;
+		case CONST_UNTYPED_LIST:
+			expr_const->untyped_list[index] = right;
+			break;
+	}
+	Expr *original = expr_copy(original_value);
+	expr_replace(expr, original);
+	return true;
+}
+
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
 {
 	TypeInfo *info = left->type_expr;
@@ -5884,10 +5963,15 @@ static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *lef
 		return sema_expr_analyse_ct_type_identifier_assign(context, expr, left, right);
 	}
 	if (!sema_analyse_expr_lvalue(context, left, failed_ref)) return false;
-	if (left->expr_kind == EXPR_CT_IDENT)
+	switch (left->expr_kind)
 	{
-		// $foo = ...
-		return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
+		case EXPR_CT_IDENT:
+			// $foo = ...
+			return sema_expr_analyse_ct_identifier_assign(context, expr, left, right);
+		case EXPR_CT_SUBSCRIPT:
+			return sema_expr_analyse_ct_subscript_assign(context, expr, left, right);
+		default:
+			break;
 	}
 
 	// 2. Check assignability
@@ -9184,6 +9268,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_IDENTIFIER:
 			case EXPR_NAMED_ARGUMENT:
 			case EXPR_ACCESS_RESOLVED:
+			case EXPR_CT_SUBSCRIPT:
 				UNREACHABLE
 			case EXPR_BINARY:
 				main_expr->resolve_status = RESOLVE_RUNNING;
@@ -9661,6 +9746,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_MAKE_SLICE:
+		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
@@ -10223,6 +10309,7 @@ IDENT_CHECK:;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_ACCESS_RESOLVED:
+		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE
 	}
 	if (failed_ref) goto FAILED_REF;

@@ -1049,6 +1049,81 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 	const_init_rewrite_to_value(sub_element, value);
 }
 
+static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInitializer *const_init, Type *element_type,
+                                                                       ArraySize array_count, ArrayIndex index,
+                                                                       ArrayIndex *insert_index_ref, Expr *value)
+{
+	ConstInitializer **array_elements = const_init->init_array.elements;
+	ArrayIndex insert_index = *insert_index_ref;
+	ASSERT(insert_index >= array_count || array_elements);
+	// Walk to the insert point or until we reached the end of the array.
+	while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
+	{
+		insert_index++;
+	}
+	// Pick up the initializer at the insert point.
+	ConstInitializer *initializer = insert_index < array_count ? array_elements[insert_index] : NULL;
+	ConstInitializer *inner_value;
+
+	// If we don't have an initializer, the location needs to be at the end.
+	// Create and append:
+	if (!initializer)
+	{
+		initializer = const_init_new_zero_array_value(element_type, index);
+		vec_add(array_elements, initializer);
+		array_count++;
+	}
+	else
+	{
+		// If we already have an initializer "found"
+		// it might be after the index. In this case, we
+		// need to do an insert.
+		if (initializer->init_array_value.index != insert_index)
+		{
+			ASSERT(initializer->init_array_value.index > insert_index);
+
+			// First we add a null at the end.
+			vec_add(array_elements, NULL);
+			// Shift all values one step up:
+			for (unsigned i = array_count; i > insert_index; i--)
+			{
+				array_elements[i] = array_elements[i - 1];
+			}
+			// Then we create our new entry.
+			initializer = const_init_new_zero_array_value(element_type, index);
+			// And assign it to the location.
+			array_elements[insert_index] = initializer;
+		}
+	}
+
+	const_init->init_array.elements = array_elements;
+	*insert_index_ref = insert_index;
+	return initializer->init_array_value.element;
+}
+
+void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, ArrayIndex index)
+{
+	// Expand zero into array.
+	if (const_init->kind == CONST_INIT_ZERO)
+	{
+		const_init->kind = CONST_INIT_ARRAY;
+		const_init->init_array.elements = NULL;
+	}
+
+	Type *element_type = type_flatten(const_init->type->array.base);
+
+	// Get all the elements in the array
+	ConstInitializer **array_elements = const_init->init_array.elements;
+
+	unsigned array_count = vec_size(array_elements);
+	ArrayIndex insert_index = 0;
+
+	ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type,
+	                                                                       array_count, index, &insert_index, value);
+
+	const_init_rewrite_to_value(inner_value, value);
+}
+
 /**
  * Update an array { [2] = 1 }
  */
@@ -1074,56 +1149,15 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 	bool is_last_path_element = next_element == end;
 
 	// Get all the elements in the array
-	ConstInitializer **array_elements = const_init->init_array.elements;
 
-	unsigned array_count = vec_size(array_elements);
+	unsigned array_count = vec_size(const_init->init_array.elements);
 	ArrayIndex insert_index = 0;
 
 	for (ArrayIndex index = low_index; index <= high_index; index++)
 	{
-		ASSERT(insert_index >= array_count || array_elements);
-		// Walk to the insert point or until we reached the end of the array.
-		while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
-		{
-			insert_index++;
-		}
-		// Pick up the initializer at the insert point.
-		ConstInitializer *initializer = insert_index < array_count ? array_elements[insert_index] : NULL;
-		ConstInitializer *inner_value;
-
-		// If we don't have an initializer, the location needs to be at the end.
-		// Create and append:
-		if (!initializer)
-		{
-			initializer = const_init_new_zero_array_value(element_type, index);
-			vec_add(array_elements, initializer);
-			array_count++;
-		}
-		else
-		{
-			// If we already have an initializer "found"
-			// it might be after the index. In this case, we
-			// need to do an insert.
-			if (initializer->init_array_value.index != insert_index)
-			{
-				ASSERT(initializer->init_array_value.index > insert_index);
-
-				// First we add a null at the end.
-				vec_add(array_elements, NULL);
-				// Shift all values one step up:
-				for (unsigned i = array_count; i > insert_index; i--)
-				{
-					array_elements[i] = array_elements[i - 1];
-				}
-				// Then we create our new entry.
-				initializer = const_init_new_zero_array_value(element_type, index);
-				// And assign it to the location.
-				array_elements[insert_index] = initializer;
-			}
-		}
-
-		const_init->init_array.elements = array_elements;
-		inner_value = initializer->init_array_value.element;
+		ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type,
+		                                                                       array_count, index, &insert_index,
+		                                                                       value);
 
 		// Update
 		if (!is_last_path_element)
