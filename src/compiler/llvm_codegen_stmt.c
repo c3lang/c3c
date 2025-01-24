@@ -425,7 +425,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 
 	ASSERT(llvm_value_is_bool(&be_value));
 
-	if (llvm_value_is_const(&be_value) && then_block != else_block)
+	if (LLVMIsAConstantInt(be_value.value) && then_block != else_block)
 	{
 		if (LLVMConstIntGetZExtValue(be_value.value))
 		{
