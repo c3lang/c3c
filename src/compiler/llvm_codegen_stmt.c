@@ -422,7 +422,7 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 
 	if (llvm_value_is_const(&be_value) && then_block != else_block)
 	{
-		if (LLVMConstIntGetZExtValue(be_value.value))
+		if (!LLVMIsNull(be_value.value))
 		{
 			llvm_emit_br(c, then_block);
 			else_block = exit_block;
