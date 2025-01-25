@@ -472,6 +472,7 @@ CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr)
 
 static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Expr *expr, bool *failed_ref)
 {
+	if (expr->expr_kind == EXPR_CT_SUBSCRIPT) return true;
 	switch (expr->expr_kind)
 	{
 		case UNRESOLVED_EXPRS:
@@ -4325,7 +4326,7 @@ static inline bool sema_create_const_min(SemaContext *context, Expr *expr, Type 
 		}
 		return true;
 	}
-	else if (type_is_integer(type))
+	else if (type_is_integer(flat))
 	{
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr.const_kind = CONST_INTEGER;
@@ -7557,7 +7558,9 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 
 static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr, Expr *inner)
 {
-	ASSERT_SPAN(expr, inner->expr_kind == EXPR_CT_IDENT);
+	ASSERT_SPAN(expr, inner->expr_kind == EXPR_CT_IDENT || inner->expr_kind == EXPR_CT_SUBSCRIPT);
+
+	if (inner->expr_kind == EXPR_CT_SUBSCRIPT) TODO
 
 	Decl *var = inner->ct_ident_expr.decl;
 	Expr *start_value = var->var.init_expr;
@@ -7681,7 +7684,7 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	if (!sema_expr_check_assign(context, inner, NULL)) return false;
 
 	// 3. This might be a $foo, if to handle it.
-	if (inner->expr_kind == EXPR_CT_IDENT)
+	if (inner->expr_kind == EXPR_CT_IDENT || inner->expr_kind == EXPR_CT_SUBSCRIPT)
 	{
 		return sema_expr_analyse_ct_incdec(context, expr, inner);
 	}
