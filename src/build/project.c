@@ -555,7 +555,7 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
 }
 
-JSONObject *project_JSON_load(const char **filename_ref)
+JSONObject *project_json_load(const char **filename_ref)
 {
 	// Locate the project.json
 	file_find_top_dir();
@@ -583,7 +583,7 @@ JSONObject *project_JSON_load(const char **filename_ref)
 Project *project_load(const char **filename_ref)
 {
 	Project *project = CALLOCS(Project);
-	JSONObject *json = project_JSON_load(filename_ref);
+	JSONObject *json = project_json_load(filename_ref);
 	project_add_targets(*filename_ref, project, json);
 	return project;
 }

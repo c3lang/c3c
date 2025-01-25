@@ -9,7 +9,7 @@
 const char** get_project_dependency_directories()
 {
 	const char *filename;
-	JSONObject *json = project_JSON_load(&filename);
+	JSONObject *json = project_json_load(&filename);
 
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
@@ -40,7 +40,7 @@ const char** get_project_dependencies()
 	const char *filename;
 	const char** dependencies = NULL;
 
-	JSONObject *project_json = project_JSON_load(&filename);
+	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
 
 	FOREACH(JSONObject *, element, dependencies_json->elements)
@@ -281,7 +281,7 @@ void fetch_project(BuildOptions* options)
 	const char **libdirs = get_project_dependency_directories();
 	const char **deps = get_project_dependencies();
 	const char *filename;
-	JSONObject *project_json = project_JSON_load(&filename);
+	JSONObject *project_json = project_json_load(&filename);
 
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
@@ -350,7 +350,7 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 	//TODO! Target name option not implemented
 
 	const char *filename;
-	JSONObject *project_json = project_JSON_load(&filename);
+	JSONObject *project_json = project_json_load(&filename);
 
 	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
@@ -388,7 +388,7 @@ void add_target_project(BuildOptions *build_options)
 {
 	const char *filename;
 	/* NOTE: this previously allowed project.json to not exist, and create it */
-	JSONObject *project_json = project_JSON_load(&filename);
+	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
 	if (targets_json == NULL)
@@ -512,7 +512,7 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 void view_project(BuildOptions *build_options)
 {
 	const char *filename;
-	JSONObject *project_json = project_JSON_load(&filename);
+	JSONObject *project_json = project_json_load(&filename);
 
 	bool filter_properties = build_options->project_options.view_modifier.flags_bitvector != 0;
 
