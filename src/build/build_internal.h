@@ -125,6 +125,7 @@ static const char *sanitize_modes[4] = {
 	[SANITIZE_THREAD] = "thread",
 };
 
+JSONObject *project_json_load(const char **filename_ref);
 Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target);
 

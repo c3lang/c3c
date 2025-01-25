@@ -2,45 +2,14 @@
 #include "build_internal.h"
 #include "project.h"
 #include "utils/json.h"
+#include "utils/lib.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
-
-static JSONObject *read_project(const char **file_used, bool assume_empty_if_not_exists)
-{
-	size_t size;
-	const char *project_filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
-	*file_used = project_filename;
-	char *read;
-	if (assume_empty_if_not_exists)
-	{
-		// If project file does not exist assume the project simply being empty instead of
-		// failing. This is useful for such commands as `project add-target`. It enables
-		// them to update otherwise non-existing project files reducing the friction.
-		read = "{}";
-		if (file_exists(project_filename)) read = file_read_all(project_filename, &size);
-	}
-	else
-	{
-		read = file_read_all(project_filename, &size);
-	}
-	JsonParser parser;
-	json_init_string(&parser, read);
-	JSONObject *json = json_parse(&parser);
-	if (parser.error_message)
-	{
-		error_exit("Error on line %d reading '%s':'%s'", parser.line, project_filename, parser.error_message);
-	}
-	if (!json || json->type != J_OBJECT)
-	{
-		error_exit("Expected a map of project information in '%s'.", project_filename);
-	}
-	return json;
-}
 
 const char** get_project_dependency_directories()
 {
 	const char *filename;
-	JSONObject *json = read_project(&filename, false);
+	JSONObject *json = project_json_load(&filename);
 
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
@@ -71,7 +40,7 @@ const char** get_project_dependencies()
 	const char *filename;
 	const char** dependencies = NULL;
 
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
 
 	FOREACH(JSONObject *, element, dependencies_json->elements)
@@ -312,7 +281,7 @@ void fetch_project(BuildOptions* options)
 	const char **libdirs = get_project_dependency_directories();
 	const char **deps = get_project_dependencies();
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
@@ -381,7 +350,7 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 	//TODO! Target name option not implemented
 
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 
 	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
@@ -418,7 +387,8 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 void add_target_project(BuildOptions *build_options)
 {
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, true);
+	/* NOTE: this previously allowed project.json to not exist, and create it */
+	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
 	if (targets_json == NULL)
@@ -542,7 +512,7 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 void view_project(BuildOptions *build_options)
 {
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 
 	bool filter_properties = build_options->project_options.view_modifier.flags_bitvector != 0;
 

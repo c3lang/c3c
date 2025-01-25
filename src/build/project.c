@@ -176,7 +176,7 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 
 	// CFlags
 	target->cflags = get_cflags(filename, target_name, json, target->cflags);
-	
+
 	// C source dirs.
 	get_list_append_strings(filename, target_name, json, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 
@@ -555,15 +555,19 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
 }
 
-Project *project_load(const char **filename_ref)
+JSONObject *project_json_load(const char **filename_ref)
 {
-	Project *project = CALLOCS(Project);
-	size_t size;
+	// Locate the project.json
+	file_find_top_dir();
 	const char *filename = *filename_ref = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
+
+	size_t size;
 	char *read = file_read_all(filename, &size);
+
 	JsonParser parser;
 	json_init_string(&parser, read);
 	JSONObject *json = json_parse(&parser);
+
 	if (parser.error_message)
 	{
 		error_exit("Error on line %d reading '%s':'%s'", parser.line, filename, parser.error_message);
@@ -572,6 +576,14 @@ Project *project_load(const char **filename_ref)
 	{
 		error_exit("Expected a map of targets in '%s'.", filename);
 	}
-	project_add_targets(filename, project, json);
+
+	return json;
+}
+
+Project *project_load(const char **filename_ref)
+{
+	Project *project = CALLOCS(Project);
+	JSONObject *json = project_json_load(filename_ref);
+	project_add_targets(*filename_ref, project, json);
 	return project;
 }
