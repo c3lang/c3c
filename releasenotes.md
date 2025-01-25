@@ -28,6 +28,7 @@
 - Correctly check jump table size and be generous when compiling it #1877.
 - Fix bug where .min/.max would fail on a distinct int #1888.
 - Fix issue where compile time declarations in expression list would not be handled properly.
+- Issue where trailing body argument was allowed without type even though the definition specified it #1879.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

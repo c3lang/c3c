@@ -2231,6 +2231,12 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		TypeInfo *type_info = vartype(body_arg);
 		if (type_info && !sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
 		Type *type = type_info ? type_info->type : NULL;
+		if (!type && expected_type_info)
+		{
+			if (no_match_ref) goto NO_MATCH_REF;
+			RETURN_SEMA_ERROR(body_arg, "This parameter should be explicitly typed to %s but was untyped.",
+			                  type_quoted_error_string(expected_type_info->type));
+		}
 		if (type && expected_type_info && type->canonical != expected_type_info->type->canonical)
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
