@@ -238,7 +238,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		{
 			ASSERT(decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
-			// Inferred types are not strictly allowed, but we use the int[*] for the flexible array member.
+			// Inferred types are not strictly allowed, but we use the int[?] for the flexible array member.
 			ASSERT(type_infoptrzero(decl->var.type_info));
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
@@ -513,9 +513,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		Type *member_type = type_flatten(member->type);
 		// If this is a struct and it has a variable array ending, then it must also be the last struct.
 		// So this is ok:
-		// struct Foo { int x; struct { int x; int[*] y; } }
+		// struct Foo { int x; struct { int x; int[?] y; } }
 		// But not this:
-		// struct Bar { struct { int x; int[*] y; } int x; }
+		// struct Bar { struct { int x; int[?] y; } int x; }
 		if (member_type->type_kind == TYPE_STRUCT && member_type->decl->has_variable_array)
 		{
 			if (i != member_count - 1)

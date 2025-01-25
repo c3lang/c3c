@@ -7,7 +7,7 @@ def FormatTestSpec = Triple(<DateTime, DateTimeFormat, String>);
 
 fn void test_with_tz()
 {
-	FormatTzTestSpec[*] tests = {
+	FormatTzTestSpec[?] tests = {
 		{ datetime::from_date(1970, Month.JANUARY, 1, 0, 0, 0).with_gmt_offset(0), RFC1123, "Thu, 01 Jan 1970 00:00:00 GMT" },
 		{ datetime::from_date(1994, Month.from_ordinal(10), 6, 8, 49, 37).with_gmt_offset(0), RFC1123, "Sun, 06 Nov 1994 08:49:37 GMT" },
 		{ datetime::from_date(2020, Month.JANUARY, 1, 0, 0, 0).with_gmt_offset(0), RFC1123, "Wed, 01 Jan 2020 00:00:00 GMT" },
@@ -34,7 +34,7 @@ fn void test_with_tz()
 
 fn void test_without_tz()
 {
-	FormatTestSpec[*] tests = {
+	FormatTestSpec[?] tests = {
 		{ datetime::from_date(2006, Month.JANUARY, 2, 15, 4, 05), ANSIC, "Mon Jan  2 15:04:05 2006" },
 		{ datetime::from_date(2006, Month.JANUARY, 2, 15, 4, 05), DATETIME, "2006-01-02 15:04:05" },
 		{ datetime::from_date(2006, Month.JANUARY, 2, 15, 4, 05), DATEONLY, "2006-01-02" },

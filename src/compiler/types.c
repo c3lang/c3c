@@ -145,7 +145,7 @@ void type_append_name_to_scratch(Type *type)
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
-			scratch_buffer_append("[*]");
+			scratch_buffer_append("[?]");
 			break;
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -277,7 +277,7 @@ const char *type_to_error_string(Type *type)
 			type_append_func_to_scratch(type->function.prototype);
 			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
-			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
+			return str_printf("%s[<?>]", type_to_error_string(type->array.base));
 		case TYPE_VECTOR:
 			return str_printf("%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_TYPEINFO:
@@ -293,7 +293,7 @@ const char *type_to_error_string(Type *type)
 			return str_printf("%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			return str_printf("%s[*]", type_to_error_string(type->array.base));
+			return str_printf("%s[?]", type_to_error_string(type->array.base));
 		case TYPE_SLICE:
 			return str_printf("%s[]", type_to_error_string(type->array.base));
 	}
@@ -839,7 +839,7 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[INFERRED_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_INFERRED_ARRAY, str_printf("%s[*]", arr_type->name));
+		arr = type_new(TYPE_INFERRED_ARRAY, str_printf("%s[?]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[INFERRED_ARRAY_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -865,7 +865,7 @@ static Type *type_generate_inferred_vector(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[INFERRED_VECTOR_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_INFERRED_VECTOR, str_printf("%s[<*>]", arr_type->name));
+		arr = type_new(TYPE_INFERRED_VECTOR, str_printf("%s[<?>]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[INFERRED_VECTOR_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -891,7 +891,7 @@ static Type *type_generate_flexible_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[FLEXIBLE_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_FLEXIBLE_ARRAY, str_printf("%s[*]", arr_type->name));
+		arr = type_new(TYPE_FLEXIBLE_ARRAY, str_printf("%s[?]", arr_type->name));
 		arr->array.base = arr_type;
 		arr->array.len = 0;
 		arr_type->type_cache[FLEXIBLE_ARRAY_OFFSET] = arr;

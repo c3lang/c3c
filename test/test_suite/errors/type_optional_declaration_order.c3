@@ -7,7 +7,7 @@ fn void! test1()
 
 fn void! test2()
 {
-	CallbackResult![*] result = 123; // #error: Foo[*]!
+	CallbackResult![?] result = 123; // #error: Foo[?]!
 }
 
 fn void! test3()
@@ -17,7 +17,7 @@ fn void! test3()
 
 fn void! test4()
 {
-	CallbackResult![<*>] result = 123; // #error: Foo[<*>]!
+	CallbackResult![<?>] result = 123; // #error: Foo[<?>]!
 }
 
 fn void! test5()

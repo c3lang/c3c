@@ -11,7 +11,7 @@ struct EncodeTest
 	UrlEncodingMode mode;
 }
 
-EncodeTest[*] decode_with_error_tests @local = {
+EncodeTest[?] decode_with_error_tests @local = {
 	{
 		"",
 		"",
@@ -111,7 +111,7 @@ fn void test_decoding_with_error()
 	};
 }
 
-EncodeTest[*] encode_tests @local = {
+EncodeTest[?] encode_tests @local = {
 	{
 		"",
 		"",
@@ -205,7 +205,7 @@ struct ShouldEncodeTest
 	bool escape;
 }
 
-ShouldEncodeTest[*] should_encode_tests = {
+ShouldEncodeTest[?] should_encode_tests = {
 	{'a', UrlEncodingMode.PATH, false},
 	{'a', UrlEncodingMode.USERPASS, false},
 	{'a', UrlEncodingMode.QUERY, false},

@@ -6,7 +6,7 @@ fn void testme(int a, double b)
 
 fn void main()
 {
-	ReflectedParam[*] z = $typeof(testme).paramsof;
+	ReflectedParam[?] z = $typeof(testme).paramsof;
 	foreach (r : z)
 	{
 		io::printn(r);

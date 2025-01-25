@@ -22,7 +22,7 @@ struct Posix_dirent
 	char[255+1] name @if(env::FREEBSD || env::OPENBSD);
 	char[511+1] name @if(env::NETBSD);
 	char[1024] name @if(env::DARWIN);
-	char[*] name @if(!env::DARWIN && !env::BSD_FAMILY);
+	char[?] name @if(!env::DARWIN && !env::BSD_FAMILY);
 }
 
 extern fn int rmdir(ZString);

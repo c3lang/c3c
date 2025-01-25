@@ -127,7 +127,7 @@ fn void main()
 	encode(helloworld[0..12], &buffer);
 	printf("Result: %s\n", &buffer);
 	char *to_decode = "aGVsbG8gd29ybGRcMA==";
-	char[*] result = b64"aGVsbG8gd29ybGRcMA==";
+	char[?] result = b64"aGVsbG8gd29ybGRcMA==";
 	decode((String)to_decode[0..19], &buffer)!!;
 	printf("Result: %s\n", &buffer);
 	printf("Result direct: %.*s\n", 13, &result);

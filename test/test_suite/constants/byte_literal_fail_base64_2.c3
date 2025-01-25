@@ -1,1 +1,1 @@
-char[*] foo64 = b64"SGVsbG8gV29y=bGQ="; // #error: 'b' can't be placed after an ending '='
+char[?] foo64 = b64"SGVsbG8gV29y=bGQ="; // #error: 'b' can't be placed after an ending '='

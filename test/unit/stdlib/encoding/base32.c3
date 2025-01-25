@@ -9,7 +9,7 @@ struct TestCase
     char[] enc;
 }
 
-TestCase[*] std_tests = {
+TestCase[?] std_tests = {
     { "", "" },
     { "f", "MY======" },
     { "fo", "MZXQ====" },
@@ -19,7 +19,7 @@ TestCase[*] std_tests = {
     { "foobar", "MZXW6YTBOI======" },
 };
 
-TestCase[*] hex_tests = {
+TestCase[?] hex_tests = {
    { "", "" },
    { "f", "CO======" },
    { "fo", "CPNG====" },

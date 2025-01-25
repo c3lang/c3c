@@ -18,7 +18,7 @@ struct BufferedChannelImpl @private
 	usz read_waiting;
 	ConditionVariable read_cond;
 
-	Type[*] buf;
+	Type[?] buf;
 }
 
 fn void! BufferedChannel.new_init(&self, usz size = 1)

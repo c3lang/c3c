@@ -226,10 +226,10 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	// if so we assume the original type
 	if (!type_len_is_inferred(to_infer)) return to_infer;
 
-	// Handle int[*]! a = { ... } by stripping the optional.
+	// Handle int[?]! a = { ... } by stripping the optional.
 	bool is_optional = type_is_optional(to_infer);
 
-	assert((is_optional || !type_is_optional(actual_type)) && "int[*] x = { may_fail } should have been caught.");
+	assert((is_optional || !type_is_optional(actual_type)) && "int[?] x = { may_fail } should have been caught.");
 
 	// Strip the optional
 	if (is_optional) to_infer = to_infer->optional;
@@ -241,7 +241,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	if (!actual) return actual_type;
 
 	// Grab the underlying indexed type,
-	// because we can only have [*] [] [<*>] [<>] * here
+	// because we can only have [?] [] [<?>] [<>] * here
 	Type *indexed = type_get_indexed_type(to_infer);
 
 	// We should always have indexed types.
@@ -251,7 +251,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	// In this case, infer it.
 	if (type_len_is_inferred(indexed))
 	{
-		// if we have int[*][*] => the inner is int[*], we cast it here.
+		// if we have int[?][?] => the inner is int[?], we cast it here.
 		indexed = type_infer_len_from_actual_type(indexed, actual);
 	}
 
@@ -259,10 +259,10 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 	switch (to_infer->type_kind)
 	{
 		case TYPE_POINTER:
-			// The case of int[*]* x = ...
+			// The case of int[?]* x = ...
 			return type_add_optional(type_get_ptr(indexed), is_optional);
 		case TYPE_ARRAY:
-			// The case of int[*][2] x = ...
+			// The case of int[?][2] x = ...
 			return type_add_optional(type_get_array(indexed, to_infer->array.len), is_optional);
 		case TYPE_INFERRED_ARRAY:
 			ASSERT(type_is_arraylike(type_flatten(actual_type)));
@@ -273,7 +273,7 @@ Type *type_infer_len_from_actual_type(Type *to_infer, Type *actual_type)
 		case TYPE_SLICE:
 			return type_add_optional(type_get_slice(indexed), is_optional);
 		case TYPE_VECTOR:
-			// The case of int[*]*[<2>] x = ...
+			// The case of int[?]*[<2>] x = ...
 			return type_add_optional(type_get_vector(indexed, to_infer->array.len), is_optional);
 		default:
 			UNREACHABLE
@@ -852,7 +852,11 @@ static bool rule_ulist_to_inferred(CastContext *cc, bool is_explicit, bool is_si
 	Type *base = cc->to->array.base;
 	FOREACH(Expr *, expr, expressions)
 	{
-		if (!may_cast(cc->context, expr, base, false, is_silent)) return false;
+		if (!may_cast(cc->context, expr, base, false, true))
+		{
+			RETURN_CAST_ERROR(cc->expr, "This untyped list contains an element of type %s which cannot be converted to %s.",
+			                  type_quoted_error_string(expr->type), type_quoted_error_string(base));
+		}
 	}
 	return true;
 }
@@ -2181,7 +2185,7 @@ static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type)
 #define RINPT &rule_int_to_ptr            /* Int -> ptr (explicit + size match)                                                                */
 #define RPTIN &rule_ptr_to_int            /* Ptr -> int (explicit + size match)                                                                */
 #define RINBS &rule_int_to_bits           /* Int -> bits (explicit + int + size match)                                                         */
-#define RARBS &rule_arr_to_bits           /* Char[*] -> bits (explicit + base match)                                                           */
+#define RARBS &rule_arr_to_bits           /* Char[?] -> bits (explicit + base match)                                                           */
 #define RINEN &rule_int_to_enum           /* Int -> enum (explicit, range check const)                                                         */
 #define RPTPT &rule_ptr_to_ptr            /* Ptr -> ptr (explicit or ptr match)                                                                */
 #define RAPSL &rule_arrptr_to_slice       /* Arrptr -> Slice (explicit flattens distinct, pointer match)                                       */

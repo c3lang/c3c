@@ -25,7 +25,7 @@ macro bool @constant_is_power_of_2($x) @const @private
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
 *>
-macro masked_load(ptr, bool[<*>] mask, passthru)
+macro masked_load(ptr, bool[<?>] mask, passthru)
 {
 	return $$masked_load(ptr, mask, passthru, 0);
 }
@@ -45,7 +45,7 @@ macro masked_load(ptr, bool[<*>] mask, passthru)
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
 *>
-macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
+macro @masked_load_aligned(ptr, bool[<?>] mask, passthru, usz $alignment)
 {
 	return $$masked_load(ptr, mask, passthru, $alignment);
 }
@@ -65,7 +65,7 @@ macro @masked_load_aligned(ptr, bool[<*>] mask, passthru, usz $alignment)
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
 *>
-macro gather(ptrvec, bool[<*>] mask, passthru)
+macro gather(ptrvec, bool[<?>] mask, passthru)
 {
 	return $$gather(ptrvec, mask, passthru, 0);
 }
@@ -88,7 +88,7 @@ macro gather(ptrvec, bool[<*>] mask, passthru)
 
  @return "A vector with the loaded values where the mask is true, passthru where the mask is false"
 *>
-macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, usz $alignment)
+macro @gather_aligned(ptrvec, bool[<?>] mask, passthru, usz $alignment)
 {
 	return $$gather(ptrvec, mask, passthru, $alignment);
 }
@@ -105,7 +105,7 @@ macro @gather_aligned(ptrvec, bool[<*>] mask, passthru, usz $alignment)
  @require @typekind(value) == VECTOR : "Expected value to be a vector"
  @require value.len == mask.len : "Mask and value must have the same length"
 *>
-macro masked_store(ptr, value, bool[<*>] mask)
+macro masked_store(ptr, value, bool[<?>] mask)
 {
 	return $$masked_store(ptr, value, mask, 0);
 }
@@ -122,7 +122,7 @@ macro masked_store(ptr, value, bool[<*>] mask)
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 
 *>
-macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
+macro @masked_store_aligned(ptr, value, bool[<?>] mask, usz $alignment)
 {
 	return $$masked_store(ptr, value, mask, $alignment);
 }
@@ -138,7 +138,7 @@ macro @masked_store_aligned(ptr, value, bool[<*>] mask, usz $alignment)
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
 
 *>
-macro scatter(ptrvec, value, bool[<*>] mask)
+macro scatter(ptrvec, value, bool[<?>] mask)
 {
 	return $$scatter(ptrvec, value, mask, 0);
 }
@@ -156,7 +156,7 @@ macro scatter(ptrvec, value, bool[<*>] mask)
  @require mask.len == ptrvec.len : "Mask and ptrvec must have the same length"
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
 *>
-macro @scatter_aligned(ptrvec, value, bool[<*>] mask, usz $alignment)
+macro @scatter_aligned(ptrvec, value, bool[<?>] mask, usz $alignment)
 {
 	return $$scatter(ptrvec, value, mask, $alignment);
 }

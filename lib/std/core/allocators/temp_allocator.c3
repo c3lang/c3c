@@ -4,7 +4,7 @@ import std::io, std::math;
 struct TempAllocatorChunk @local
 {
 	usz size;
-	char[*] data;
+	char[?] data;
 }
 
 struct TempAllocator (Allocator)
@@ -13,7 +13,7 @@ struct TempAllocator (Allocator)
 	TempAllocatorPage* last_page;
 	usz used;
 	usz capacity;
-	char[*] data;
+	char[?] data;
 }
 
 const usz PAGE_IS_ALIGNED @private = (usz)isz.max + 1u;
@@ -26,7 +26,7 @@ struct TempAllocatorPage
 	usz mark;
 	usz size;
 	usz ident;
-	char[*] data;
+	char[?] data;
 }
 
 macro usz TempAllocatorPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;

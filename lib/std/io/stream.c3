@@ -208,7 +208,7 @@ macro usz! copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 	}
 }
 
-const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
+const char[?] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
 
 <*
  @require @is_instream(stream)

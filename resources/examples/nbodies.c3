@@ -81,7 +81,7 @@ fn void offset_momentum(Planet[] bodies)
 	bodies[0].vz = - pz / SOLAR_MASS;
 }
 
-Planet[*] planet_bodies = {
+Planet[?] planet_bodies = {
 	{							   /* sun */
 		0, 0, 0, 0, 0, 0, SOLAR_MASS
     },

@@ -240,7 +240,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			self.width = 0;
 			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
 		case ARRAY:
-			// this is SomeType[*] so grab the "SomeType"
+			// this is SomeType[?] so grab the "SomeType"
 			PrintFlags flags = self.flags;
 			uint width = self.width;
 			defer
@@ -274,7 +274,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			self.flags = {};
 			self.width = 0;
-			// this is SomeType[*] so grab the "SomeType"
+			// this is SomeType[?] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz vlen = arg.type.len;

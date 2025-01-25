@@ -5660,7 +5660,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	if (invalid_cast_ref) *invalid_cast_ref = false;
 	Expr *inner = exprptr(expr->cast_expr.expr);
 	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
-	bool success = sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT);
+	bool success = sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER);
 	if (!sema_analyse_expr(context, inner) || !success) return false;
 
 	Type *target_type = type_info->type;
@@ -9808,9 +9808,25 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			if (!sema_expr_analyse_ct_stringify(context, expr)) return false;
 			return true;
 		case EXPR_DECL:
-			if (!sema_analyse_var_decl(context, expr->decl_expr, true)) return false;
-			expr->type = expr->decl_expr->type;
+		{
+			Decl *decl = expr->decl_expr;
+			bool erase = decl->var.kind == VARDECL_LOCAL_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT;
+			if (!sema_analyse_var_decl(context, decl, true)) return false;
+			if (erase)
+			{
+				Expr *init = decl->var.init_expr;
+				if (init)
+				{
+					expr_replace(expr, copy_expr_single(decl->var.init_expr));
+					return true;
+				}
+				expr->expr_kind = EXPR_NOP;
+				expr->type = type_void;
+				return true;
+			}
+			expr->type = decl->type;
 			return true;
+		}
 		case EXPR_LAST_FAULT:
 			expr->type = type_anyfault;
 			return true;

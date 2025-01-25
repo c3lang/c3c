@@ -289,7 +289,7 @@ struct Type_
 		Decl *decl;
 		// int, float, bool
 		TypeBuiltin builtin;
-		// Type[], Type[*], Type[123], Type[<123>] or Type<[123]>
+		// Type[], Type[?], Type[123] or Type[<123>]
 		TypeArray array;
 		// fn TypeR Type1(Type2, Type3, ...)
 		TypeFunction function;

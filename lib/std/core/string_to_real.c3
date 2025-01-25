@@ -40,7 +40,7 @@ macro double! decfloat(char[] chars, int $bits, int $emin, int sign)
 	const uint[2] TH = B1B_MAX;
 	int emax = - $emin - $bits + 3;
 
-	const int[*] P10S = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
+	const int[?] P10S = { 10, 100, 1000, 10000, 100000, 1000000, 10000000, 100000000 };
 	usz index;
 	bool got_digit = chars[0] == '0';
 	bool got_rad;

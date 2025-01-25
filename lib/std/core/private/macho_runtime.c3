@@ -214,7 +214,7 @@ struct TypeId
 	usz sizeof;
 	TypeId* inner;
 	usz len;
-	typeid[*] additional;
+	typeid[?] additional;
 }
 
 fn void dl_reg_callback(MachHeader* mh, isz vmaddr_slide)

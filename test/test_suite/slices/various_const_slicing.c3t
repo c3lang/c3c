@@ -16,7 +16,7 @@ fn void test()
 }
 fn int main()
 {
-	int[*] $x = { 1, 2, 3, 4 };
+	int[?] $x = { 1, 2, 3, 4 };
 	var $y = $x[1..3];
 	int[] y = { 1, 2 };
 	io::printn(y.ptr);

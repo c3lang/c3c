@@ -7,7 +7,7 @@ fn void assignable()
 	assert(!$assignable("12", int));
 	assert($assignable("12", String));
 	assert($assignable("12", char*));
-	assert($assignable("12", char[*]));
+	assert($assignable("12", char[?]));
 	assert($assignable("12", char[2]));
 	assert($assignable("12", char[3]));
 }

@@ -52,7 +52,7 @@ fn void OnStackAllocator.free(&self)
 struct OnStackAllocatorHeader
 {
 	usz size;
-	char[*] data;
+	char[?] data;
 }
 
 <*

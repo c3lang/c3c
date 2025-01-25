@@ -28,7 +28,7 @@ fn void ArenaAllocator.clear(&self)
 struct ArenaAllocatorHeader @local
 {
 	usz size;
-	char[*] data;
+	char[?] data;
 }
 
 <*

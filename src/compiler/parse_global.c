@@ -522,7 +522,7 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 	ASSERT(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LBRACKET);
-	if (try_consume(c, TOKEN_STAR))
+	if (try_consume(c, TOKEN_STAR) || try_consume(c, TOKEN_QUESTION))
 	{
 		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_type_info);
 		TypeInfo *inferred_array = type_info_new(TYPE_INFO_INFERRED_ARRAY, type->span);
@@ -582,7 +582,7 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 	advance_and_verify(c, TOKEN_LVEC);
 	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
 	vector->array.base = type;
-	if (try_consume(c, TOKEN_STAR))
+	if (try_consume(c, TOKEN_STAR) || try_consume(c, TOKEN_QUESTION))
 	{
 		CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
 		vector->kind = TYPE_INFO_INFERRED_VECTOR;
@@ -684,7 +684,7 @@ typedef enum DiscardedSubscript_
 static DiscardedSubscript parse_discarded_subscript(ParseContext *c, TokenType end)
 {
 	if (end == TOKEN_RBRACKET && try_consume(c, end)) return DISCARD_SLICE;
-	if (try_consume(c, TOKEN_STAR))
+	if (try_consume(c, TOKEN_STAR) || try_consume(c, TOKEN_QUESTION))
 	{
 		CONSUME_OR_RET(end, DISCARD_ERR);
 		return DISCARD_WILDCARD;
@@ -704,7 +704,7 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 			case DISCARD_ERR:
 				return false;
 			case DISCARD_WILDCARD:
-				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[*]' should appear before the '!', e.g 'Foo[*]!'.");
+				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[?]' should appear before the '!', e.g 'Foo[?]!'.");
 				return false;
 			case DISCARD_SLICE:
 				print_error_at(extend_span_with_token(start, c->prev_span),
@@ -723,7 +723,7 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 			case DISCARD_ERR:
 				return false;
 			case DISCARD_WILDCARD:
-				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<*>]' should appear before the '!', e.g 'Foo[<*>]!'.");
+				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<?>]' should appear before the '!', e.g 'Foo[<?>]!'.");
 				return false;
 			case DISCARD_SLICE:
 				UNREACHABLE

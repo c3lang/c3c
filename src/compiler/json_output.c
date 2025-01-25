@@ -158,11 +158,11 @@ void print_type(FILE *file, TypeInfo *type)
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
 			print_type(file, type->array.base);
-			fputs("[*]", file);
+			fputs("[?]", file);
 			break;
 		case TYPE_INFO_INFERRED_VECTOR:
 			print_type(file, type->array.base);
-			fputs("[<*>]", file);
+			fputs("[<?>]", file);
 			break;
 		case TYPE_INFO_SLICE:
 			print_type(file, type->array.base);

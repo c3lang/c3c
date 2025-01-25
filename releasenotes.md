@@ -10,6 +10,8 @@
 - VERY experimental `<[ ]>` syntax for generics.
 - Compile time array assignment #1806.
 - Allow `+++` to work on all types of arrays.
+- Allow `(int[*]) { 1, 2 }` cast style initialization.
+- Experimental change from `[*]` to `[?]`
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -25,6 +27,7 @@
 - Fixes to `"exec" use, including issue when compiling with MinGW.
 - Correctly check jump table size and be generous when compiling it #1877.
 - Fix bug where .min/.max would fail on a distinct int #1888.
+- Fix issue where compile time declarations in expression list would not be handled properly.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

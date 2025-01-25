@@ -660,5 +660,5 @@ struct StringData @private
 	Allocator allocator;
 	usz len;
 	usz capacity;
-	char[*] chars;
+	char[?] chars;
 }

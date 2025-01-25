@@ -2,12 +2,12 @@
 module foo;
 
 char[2] g = "ab";
-char[*] h = "abc";
+char[?] h = "abc";
 
 fn int main()
 {
     char[2] x = "ab";
-    char[*] y = "abc";
+    char[?] y = "abc";
     return 0;
 }
 

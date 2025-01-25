@@ -520,7 +520,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 {
 	if (self.is_zero()) return "0".copy(allocator);
 
-	const char[*] CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+	const char[?] CHARS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
 	@stack_mem(4100; Allocator mem)
 	{
 		BigInt a = *self;

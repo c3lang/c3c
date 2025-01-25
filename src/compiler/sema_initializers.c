@@ -326,7 +326,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	Expr **elements = initializer->initializer_list;
 	bool inferred_len = type_len_is_inferred(flattened);
 
-	// We have the case where "Foo = int[*]"
+	// We have the case where "Foo = int[?]"
 	if (inferred_len && !type_len_is_inferred(assigned))
 	{
 		ASSERT(assigned->type_kind == TYPE_TYPEDEF);
