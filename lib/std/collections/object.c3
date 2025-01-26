@@ -462,7 +462,7 @@ fn Object* Object.get_or_create_obj(&self, String key)
 	return container;
 }
 
-def ObjectInternalMap = HashMap(<String, Object*>) @private;
-def ObjectInternalList = List(<Object*>) @private;
-def ObjectInternalMapEntry = Entry(<String, Object*>) @private;
+def ObjectInternalMap = HashMap<[String, Object*]> @private;
+def ObjectInternalList = List<[Object*]> @private;
+def ObjectInternalMapEntry = Entry<[String, Object*]> @private;
 

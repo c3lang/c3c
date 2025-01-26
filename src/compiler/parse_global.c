@@ -615,7 +615,11 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 				type_info = parse_array_type_index(c, type_info);
 				break;
 			case TOKEN_LESS:
-				if (c->lexer.token_type != TOKEN_LBRACKET) break;
+				if (c->lexer.token_type != TOKEN_LBRACKET)
+				{
+					PRINT_ERROR_HERE("This looks like you're comparing a type? Or did you intend to write a generic type? In that case the syntax is 'Foo<[int]>'.");
+					return poisoned_type_info;
+				}
 				type_info = parse_generic_type(c, type_info, true);
 				break;
 			case TOKEN_LGENPAR:

@@ -91,7 +91,7 @@ fn void*[] capture_current(void*[] buffer)
 	$endswitch
 }
 
-def BacktraceList = List(<Backtrace>);
+def BacktraceList = List<[Backtrace]>;
 
 def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
 def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
