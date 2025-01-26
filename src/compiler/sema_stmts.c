@@ -2533,7 +2533,11 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 				RETURN_SEMA_ERROR(statement, "The switch cannot use a jump table size of the table would exceed "
 				                             "the maximum allowed (%u), please remove '@jump'.", compiler.build.switchjump_max_size);
 			}
-
+		}
+		// Do not generate a jump table if we only have a default statement.
+		if (default_case && case_count == 1)
+		{
+			statement->flow.jump = false;
 		}
 	}
 

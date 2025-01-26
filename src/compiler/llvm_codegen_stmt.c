@@ -777,6 +777,7 @@ static LLVMValueRef llvm_emit_switch_jump_stmt(GenContext *c,
 									   LLVMBasicBlockRef default_block,
 									   BEValue *switch_value)
 {
+	ASSERT_SPAN(switch_ast, min_index > -1);
 	unsigned case_count = vec_size(cases);
 	BEValue min_val;
 	llvm_emit_expr(c, &min_val, exprptr(cases[min_index]->case_stmt.expr));
@@ -848,6 +849,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		Ast *case_ast = cases[i];
 		if (case_ast->ast_kind == AST_DEFAULT_STMT)
 		{
+			if (!case_ast->case_stmt.body) continue;
 			default_block = case_ast->case_stmt.backend_block;
 			default_index = i;
 			continue;
@@ -914,7 +916,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 			if (!case_stmt->case_stmt.body) continue;
 			LLVMAddDestination(instr, block);
 		}
-
+		if (!case_stmt->case_stmt.body) continue;
 		llvm_emit_block(c, block);
 		llvm_emit_stmt(c, case_stmt->case_stmt.body);
 		llvm_emit_br(c, exit_block);
