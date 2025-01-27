@@ -66,6 +66,11 @@ static const char *win64_simd_type[2] = {
 	[WIN64_SIMD_FULL] = "full",
 };
 
+static const char *win_debug_type[2] = {
+	[WIN_DEBUG_CODEVIEW] = "codeview",
+	[WIN_DEBUG_DWARF] = "dwarf",
+};
+
 static const char *fp_math[3] = {
 	[FP_STRICT] = "strict",
 	[FP_RELAXED] = "relaxed",
@@ -120,6 +125,7 @@ static const char *sanitize_modes[4] = {
 	[SANITIZE_THREAD] = "thread",
 };
 
+JSONObject *project_json_load(const char **filename_ref);
 Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target);
 

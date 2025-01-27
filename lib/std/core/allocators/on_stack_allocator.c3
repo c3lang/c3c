@@ -52,11 +52,11 @@ fn void OnStackAllocator.free(&self)
 struct OnStackAllocatorHeader
 {
 	usz size;
-	char[*] data;
+	char[?] data;
 }
 
 <*
- @require old_pointer
+ @require old_pointer != null
 *>
 fn void OnStackAllocator.release(&self, void* old_pointer, bool aligned) @dynamic
 {

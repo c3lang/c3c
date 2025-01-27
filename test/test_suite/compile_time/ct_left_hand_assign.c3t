@@ -1,0 +1,23 @@
+// #target: macos-x64
+module foo;
+import std;
+
+macro @foo(#arg)
+{
+	#arg++;
+}
+
+module bar;
+import foo;
+
+fn void main()
+{
+    int $c = 0;
+    foo::@foo($c);
+}
+
+/* #expect: bar.ll
+
+entry:
+  ret void
+}

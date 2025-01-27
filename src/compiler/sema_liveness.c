@@ -258,14 +258,9 @@ RETRY:
 		case NON_RUNTIME_EXPR:
 		case EXPR_SUBSCRIPT_ASSIGN:
 		case EXPR_OPERATOR_CHARS:
-		case EXPR_VASPLAT:
-		case EXPR_GENERIC_IDENT:
-		case EXPR_EMBED:
-		case EXPR_MACRO_BODY:
 		case EXPR_MEMBER_GET:
 		case EXPR_NAMED_ARGUMENT:
-			UNREACHABLE
-		case EXPR_OTHER_CONTEXT:
+		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
@@ -279,10 +274,10 @@ RETRY:
 			sema_trace_expr_liveness(expr->make_any_expr.typeid);
 			expr = expr->make_any_expr.inner;
 			goto RETRY;
-		case EXPR_ACCESS:
+		case EXPR_ACCESS_RESOLVED:
 		case EXPR_BITACCESS:
-			sema_trace_decl_liveness(expr->access_expr.ref);
-			expr = expr->access_expr.parent;
+			sema_trace_decl_liveness(expr->access_resolved_expr.ref);
+			expr = expr->access_resolved_expr.parent;
 			goto RETRY;
 		case EXPR_ASM:
 			switch (expr->expr_asm_arg.kind)
@@ -327,9 +322,6 @@ RETRY:
 			sema_trace_decl_liveness(declptr(expr->call_expr.func_ref));
 			return;
 		}
-		case EXPR_CAST:
-			expr = exprptr(expr->cast_expr.expr);
-			goto RETRY;
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_RETHROW:
 		case EXPR_OPTIONAL:
@@ -357,17 +349,13 @@ RETRY:
 		case EXPR_BUILTIN_ACCESS:
 			expr = exprptr(expr->builtin_access_expr.inner);
 			goto RETRY;
-		case EXPR_CATCH_UNWRAP:
+		case EXPR_CATCH:
 		{
-			if (expr->catch_unwrap_expr.lhs)
+			if (expr->catch_expr.decl)
 			{
-				sema_trace_expr_liveness(expr->catch_unwrap_expr.lhs);
+				sema_trace_decl_liveness(expr->catch_expr.decl);
 			}
-			else if (expr->catch_unwrap_expr.decl)
-			{
-				sema_trace_decl_liveness(expr->catch_unwrap_expr.decl);
-			}
-			FOREACH(Expr *, e, expr->catch_unwrap_expr.exprs) sema_trace_expr_liveness(e);
+			FOREACH(Expr *, e, expr->catch_expr.exprs) sema_trace_expr_liveness(e);
 			return;
 		}
 		case EXPR_CONST:
@@ -399,9 +387,6 @@ RETRY:
 					sema_trace_const_initializer_liveness(expr->const_expr.initializer);
 					return;
 			}
-		case EXPR_COMPOUND_LITERAL:
-			sema_trace_expr_liveness(expr->expr_compound_literal.initializer);
-			return;
 		case EXPR_COND:
 		{
 			FOREACH(Expr *, e, expr->cond_expr) sema_trace_expr_liveness(e);
@@ -417,7 +402,7 @@ RETRY:
 			sema_trace_expr_list_liveness(expr->designated_init_list);
 			return;
 		case EXPR_IDENTIFIER:
-			sema_trace_decl_liveness(expr->identifier_expr.decl);
+			sema_trace_decl_liveness(expr->ident_expr);
 			return;
 		case EXPR_INITIALIZER_LIST:
 		{
@@ -497,15 +482,15 @@ RETRY:
 		case EXPR_TYPEID_INFO:
 			sema_trace_exprid_liveness(expr->typeid_info_expr.parent);
 			return;
-		case EXPR_TRY_UNWRAP:
-			sema_trace_expr_liveness(expr->try_unwrap_expr.optional);
-			if (expr->try_unwrap_expr.assign_existing)
+		case EXPR_TRY:
+			sema_trace_expr_liveness(expr->try_expr.optional);
+			if (expr->try_expr.assign_existing)
 			{
-				sema_trace_expr_liveness(expr->try_unwrap_expr.lhs);
+				sema_trace_expr_liveness(expr->try_expr.lhs);
 			}
 			else
 			{
-				sema_trace_decl_liveness(expr->try_unwrap_expr.decl);
+				sema_trace_decl_liveness(expr->try_expr.decl);
 			}
 			return;
 		case EXPR_TRY_UNWRAP_CHAIN:
@@ -516,9 +501,6 @@ RETRY:
 			return;
 		case EXPR_EXT_TRUNC:
 			sema_trace_expr_liveness(expr->ext_trunc_expr.inner);
-			return;
-		case EXPR_TYPEID:
-			sema_trace_type_liveness(expr->typeid_expr->type);
 			return;
 		case EXPR_LAST_FAULT:
 			return;

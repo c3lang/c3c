@@ -16,7 +16,7 @@ module std::math::nolibc @if(env::NO_LIBC || $feature(C3_MATH));
  */
 
 // |tan(x)/x - t(x)| < 2**-25.5 (~[-2e-08, 2e-08]).
-const double[*] TANDF = {
+const double[?] TANDF = {
 	0x15554d3418c99f.0p-54, /* 0.333331395030791399758 */
 	0x1112fd38999f72.0p-55, /* 0.133392002712976742718 */
 	0x1b54c91d865afe.0p-57, /* 0.0533812378445670393523 */

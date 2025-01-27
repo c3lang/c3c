@@ -21,7 +21,7 @@ struct Test
 		int fa : 1..6;
 	}
 	Abc y;
-	int[*] x;
+	int[?] x;
 }
 
 /* #expect: test.ll

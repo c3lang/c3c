@@ -179,7 +179,7 @@ const char *build_base_name(void)
 
 static const char *exe_name(void)
 {
-	ASSERT0(compiler.build.output_name || compiler.build.name || compiler.context.main || compiler.build.no_entry);
+	ASSERT(compiler.build.output_name || compiler.build.name || compiler.context.main || compiler.build.no_entry);
 	const char *name = out_name();
 	if (!name && compiler.build.no_entry)
 	{
@@ -513,7 +513,7 @@ void compiler_compile(void)
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_EXECUTABLE:
-				ASSERT0(compiler.context.main || compiler.build.no_entry);
+				ASSERT(compiler.context.main || compiler.build.no_entry);
 				output_exe = exe_name();
 				break;
 			case TARGET_TYPE_STATIC_LIB:
@@ -567,7 +567,7 @@ void compiler_compile(void)
 	{
 		int compiled = compile_cfiles(compiler.build.cc, compiler.build.csources,
 		                              compiler.build.cflags, compiler.build.cinclude_dirs, &obj_files[output_file_count], "tmp_c_compile");
-		ASSERT0(cfiles == compiled);
+		ASSERT(cfiles == compiled);
 		(void)compiled;
 	}
 	const char **obj_file_next = &obj_files[output_file_count + cfiles];
@@ -850,7 +850,7 @@ static inline void setup_define(const char *id, Expr *expr)
 static void setup_int_define(const char *id, uint64_t i, Type *type)
 {
 	Type *flat = type_flatten(type);
-	ASSERT0(type_is_integer(flat));
+	ASSERT(type_is_integer(flat));
 	Expr *expr = expr_new_const_int(INVALID_SPAN, flat, i);
 	expr->type = type;
 	if (expr_const_will_overflow(&expr->const_expr, flat->type_kind))
@@ -1124,15 +1124,36 @@ void execute_scripts(void)
 	{
 		StringSlice execs = slice_from_string(exec);
 		StringSlice call = slice_next_token(&execs, ' ');
+		size_t out_len;
+		const char *out;
 		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' ||
-		    call.ptr[call.len - 2] != '3')
+		    call.ptr[call.len - 1] != '3')
 		{
-			(void) execute_cmd(exec, false, NULL);
-			continue;
+			out = execute_cmd(exec, false, NULL);
+			if (compiler.build.silent) continue;
+			out_len = strlen(out);
+			goto PRINT_SCRIPT;
 		}
 		scratch_buffer_clear();
 		scratch_buffer_append_len(call.ptr, call.len);
-		(void) compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL);
+		File *script = compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL);
+		out = script->contents;
+		out_len = script->content_len;
+PRINT_SCRIPT:;
+		if (!compiler.build.silent && script->content_len > 0)
+		{
+			if (out_len > 2048)
+			{
+				puts("Truncated script output --------------------------------->");
+				out_len = 2048;
+			}
+			else
+			{
+				puts("Script output ------------------------------------------->");
+			}
+			printf("%.*s\n", (int)out_len, out);
+			puts("---------------------------------------------------------<");
+		}
 	}
 	dir_change(old_path);
 	free(old_path);
@@ -1418,7 +1439,7 @@ void global_context_clear_errors(void)
 void global_context_add_type(Type *type)
 {
 	DEBUG_LOG("Created type %s.", type->name);
-	ASSERT0(type_ok(type));
+	ASSERT(type_ok(type));
 	vec_add(compiler.context.type, type);
 }
 
@@ -1435,7 +1456,7 @@ const char *get_object_extension(void)
 
 Module *global_context_find_module(const char *name)
 {
-	ASSERT0(name);
+	ASSERT(name);
 	return htable_get(&compiler.context.modules, (void *)name);
 }
 
@@ -1525,7 +1546,7 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 		scratch_buffer_append_native_safe_path(file_name.ptr, file_name.len);
 	}
 	scratch_buffer_printf(" -o %s", output);
-	const char *out;
+	char *out;
 	if (PLATFORM_WINDOWS) scratch_buffer_append_char('"');
 	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, NULL))
 	{
@@ -1533,7 +1554,7 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	}
 	DEBUG_LOG("EXEC OUT: %s", out);
 	scratch_buffer_clear();
-#if (!_MSC_VER)
+#if (!PLATFORM_WINDOWS)
 	scratch_buffer_append("./");
 #endif
 	scratch_buffer_append(output);

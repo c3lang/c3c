@@ -51,7 +51,7 @@ jobs:
         run: |
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
           cd resources/testproject
-          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv --emit-llvm run hello_world_win32
+          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv --emit-llvm run hello_world_win32 --trust=full
           dir build\llvm_ir
           ..\..\build\${{ matrix.build_type }}\c3c.exe clean
           dir build\llvm_ir
@@ -61,7 +61,7 @@ jobs:
         run: |
           cd resources/testproject
           call "C:\Program Files\Microsoft Visual Studio\2022\Enterprise\VC\Auxiliary\Build\vcvarsall.bat" x64
-          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv build hello_world_win32_lib
+          ..\..\build\${{ matrix.build_type }}\c3c.exe -vvv build hello_world_win32_lib --trust=full
 
       - name: Compile and run dynlib-test
         run: |
@@ -132,8 +132,8 @@ jobs:
           install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-19.1.6-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-19.1.6-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-19.1.7-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-19.1.7-1-any.pkg.tar.zst
       - name: CMake
         run: |
           cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -153,7 +153,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv
+          ../../build/c3c run -vvv --trust=full
 
       - name: Vendor-fetch
         run: |
@@ -162,7 +162,7 @@ jobs:
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib --cc cc -vvv
+          ../../build/c3c build hello_world_lib --cc cc -vvv --trust=full
 
       - name: run compiler tests
         run: |
@@ -209,12 +209,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv
+          ../../build/c3c run -vvv --trust=full
 
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib -vvv
+          ../../build/c3c build hello_world_lib -vvv --trust=full
 
       - name: run compiler tests
         run: |
@@ -222,13 +222,13 @@ jobs:
           python3 src/tester.py ../build/c3c.exe test_suite/
 
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19]
+        llvm_version: [17, 18, 19, 20]
 
     steps:
       - uses: actions/checkout@v4
@@ -349,7 +349,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv
+          ../../build/c3c run -vvv --trust=full
 
       - name: Test WASM
         run: |
@@ -368,7 +368,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin --trust=full
 
       - name: Init a library & a project
         run: |
@@ -405,7 +405,7 @@ jobs:
       fail-fast: false
       matrix:
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19]
+        llvm_version: [17, 18, 19, 20]
     steps:
       - uses: actions/checkout@v4
       - name: Install common deps
@@ -491,12 +491,12 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv
+          ../../build/c3c run -vvv --trust=full
 
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin --trust=full
 
       - name: run compiler tests
         run: |
@@ -520,13 +520,13 @@ jobs:
           path: c3-ubuntu-20-${{matrix.build_type}}.tar.gz
   
   build-with-docker:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       fail-fast: false
       matrix:
         ubuntu_version: [20.04, 22.04]
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19]
+        llvm_version: [17, 18, 19, 20]
 
     steps:
       - uses: actions/checkout@v4
@@ -583,7 +583,7 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv
+          ../../build/c3c run -vvv --trust=full
 
       - name: Test WASM
         run: |
@@ -593,7 +593,7 @@ jobs:
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin --trust=full
 
       - name: Init a library & a project
         run: |
@@ -670,17 +670,17 @@ jobs:
       - name: Build testproject
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv
+          ../../build/c3c run -vvv --trust=full
 
       - name: Build testproject direct linker
         run: |
           cd resources/testproject
-          ../../build/c3c run -vvv --linker=builtin
+          ../../build/c3c run -vvv --linker=builtin --trust=full
 
       - name: Build testproject lib
         run: |
           cd resources/testproject
-          ../../build/c3c build hello_world_lib -vvv
+          ../../build/c3c build hello_world_lib -vvv --trust=full
 
       - name: run compiler tests
         run: |
@@ -704,7 +704,7 @@ jobs:
           path: c3-macos-${{matrix.build_type}}.zip
 
   build-nix:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -735,7 +735,7 @@ jobs:
         fi
 
   release:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu20]
     if: github.ref == 'refs/heads/master'
 

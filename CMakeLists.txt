@@ -252,11 +252,11 @@ if(C3_WITH_LLVM)
     find_library(LLD_LOONG NAMES libLLVMLoongArchCodeGen.lib libLLVMLoongArchAsmParser.lib libLLVMLoongArchCodeGen.a libLLVMLoongArchAsmParser.a PATHS ${LLVM_LIBRARY_DIRS} NO_DEFAULT_PATH)
     set(lld_libs
             ${LLD_COFF}
-            ${LLD_COMMON}
             ${LLD_WASM}
             ${LLD_MINGW}
             ${LLD_ELF}
             ${LLD_MACHO}
+            ${LLD_COMMON}
     )
 
     if (APPLE)

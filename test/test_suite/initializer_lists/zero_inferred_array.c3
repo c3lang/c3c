@@ -1,4 +1,4 @@
 fn void test()
 {
-    int[*] a = {}; // #error: Zero length
+    int[?] a = {}; // #error: Zero length
 }

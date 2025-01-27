@@ -317,7 +317,7 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 			    && compiler.platform.arch != ARCH_TYPE_RISCV32
 			    && strstr(path, "riscv")) continue;
 			size_t len = strlen(path);
-			ASSERT0(len > file_len);
+			ASSERT(len > file_len);
 			const char *res = str_copy(path, len - file_len);
 			globfree(&globbuf);
 			return res;
@@ -800,7 +800,7 @@ static char *assemble_linker_command(const char **args, bool extra_quote)
 	{
 		if (i != 0) scratch_buffer_append_char(' ');
 		const char *arg = args[i];
-		ASSERT0(arg != scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
+		ASSERT(arg != scratch_buffer.str && "Incorrectly passed a scratch buffer string as an argument.");
 		if (arg == quote_arg)
 		{
 			scratch_buffer_append_cmd_argument(args[++i]);

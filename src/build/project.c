@@ -28,6 +28,8 @@ const char *project_default_keys[][2] = {
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+  		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"no-entry", "Do not generate (or require) a main function."},
 		{"opt", "Optimization setting: O0, O1, O2, O3, O4, O5, Os, Oz."},
@@ -100,6 +102,8 @@ const char* project_target_keys[][2] = {
 		{"macos-min-version", "Set the minimum MacOS version to compile for."},
 		{"macos-sdk-version", "Set the MacOS SDK compiled for." },
 		{"macossdk", "Set the directory for the MacOS SDK for cross compilation."},
+		{"linux-crt", "Set the directory to use for finding crt1.o and related files."},
+  		{"linux-crtbegin", "Set the directory to use for finding crtbegin.o and related files."},
 		{"memory-env", "Set the memory environment: normal, small, tiny, none."},
 		{"name", "Set the name to be different from the target name."},
 		{"no-entry", "Do not generate (or require) a main function."},
@@ -172,7 +176,7 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 
 	// CFlags
 	target->cflags = get_cflags(filename, target_name, json, target->cflags);
-	
+
 	// C source dirs.
 	get_list_append_strings(filename, target_name, json, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 
@@ -338,8 +342,13 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	RiscvFloatCapability riscv_float = GET_SETTING(RiscvFloatCapability, "riscvfloat", riscv_capability, "`none`, `float` or `double`.");
 	if (riscv_float != RISCVFLOAT_DEFAULT) target->feature.riscv_float_capability = riscv_float;
 
+	// win-debug
+	WinDebug win_debug = GET_SETTING(WinDebug , "win-debug", win_debug_type, "`codeview` or `dwarf`.");
+	if (win_debug != WIN_DEBUG_DEFAULT) target->feature.win_debug = win_debug;
+
 	// winsdk
 	target->win.vs_dirs = get_string(filename, target_name, json, "win-vs-dirs", target->win.vs_dirs);
+
 
 	// winsdk
 	target->win.sdk = get_string(filename, target_name, json, "winsdk", target->win.sdk);
@@ -444,7 +453,7 @@ static void duplicate_prop(const char ***prop_ref)
 static void project_add_target(const char *filename, Project *project, BuildTarget *default_target, JSONObject *json,
                                const char *name, const char *type, TargetType target_type)
 {
-	ASSERT0(json->type == J_OBJECT);
+	ASSERT(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
 	*target = *default_target;
 	duplicate_prop(&target->args);
@@ -479,7 +488,7 @@ static void project_add_target(const char *filename, Project *project, BuildTarg
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
 {
-	ASSERT0(project_data->type == J_OBJECT);
+	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
 	load_into_build_target(filename, project_data, NULL, &default_target);
@@ -546,15 +555,19 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 	error_exit("No build target named '%s' was found in %s. Was it misspelled?", optional_target, filename);
 }
 
-Project *project_load(const char **filename_ref)
+JSONObject *project_json_load(const char **filename_ref)
 {
-	Project *project = CALLOCS(Project);
-	size_t size;
+	// Locate the project.json
+	file_find_top_dir();
 	const char *filename = *filename_ref = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
+
+	size_t size;
 	char *read = file_read_all(filename, &size);
+
 	JsonParser parser;
 	json_init_string(&parser, read);
 	JSONObject *json = json_parse(&parser);
+
 	if (parser.error_message)
 	{
 		error_exit("Error on line %d reading '%s':'%s'", parser.line, filename, parser.error_message);
@@ -563,6 +576,14 @@ Project *project_load(const char **filename_ref)
 	{
 		error_exit("Expected a map of targets in '%s'.", filename);
 	}
-	project_add_targets(filename, project, json);
+
+	return json;
+}
+
+Project *project_load(const char **filename_ref)
+{
+	Project *project = CALLOCS(Project);
+	JSONObject *json = project_json_load(filename_ref);
+	project_add_targets(*filename_ref, project, json);
 	return project;
 }

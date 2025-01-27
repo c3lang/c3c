@@ -106,7 +106,7 @@ fn void! File.close(&self) @inline @dynamic
 }
 
 <*
- @require self.file
+ @require self.file != null
 *>
 fn bool File.eof(&self) @inline
 {
@@ -123,7 +123,7 @@ fn usz! File.read(&self, char[] buffer) @dynamic
 
 <*
  @param [out] buffer
- @require self.file `File must be initialized`
+ @require self.file != null `File must be initialized`
 *>
 fn usz! File.write(&self, char[] buffer) @dynamic
 {
@@ -194,7 +194,7 @@ fn void! save(String filename, char[] data)
 }
 
 <*
- @require self.file `File must be initialized`
+ @require self.file != null `File must be initialized`
 *>
 fn void! File.flush(&self) @dynamic
 {

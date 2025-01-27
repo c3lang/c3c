@@ -12,7 +12,7 @@ struct SimpleHeapAllocator (Allocator)
 }
 
 <*
- @require allocator "An underlying memory provider must be given"
+ @require allocator != null  "An underlying memory provider must be given"
  @require !self.free_list "The allocator may not be already initialized"
 *>
 fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)

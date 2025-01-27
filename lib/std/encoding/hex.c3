@@ -89,8 +89,8 @@ fn usz! decode_bytes(char[] src, char[] dst)
 	return i;
 }
 
-const char[*] HEXALPHABET @private = "0123456789abcdef";
-const char[*] HEXREVERSE @private =
+const char[?] HEXALPHABET @private = "0123456789abcdef";
+const char[?] HEXREVERSE @private =
 x`ffffffffffffffffffffffffffffffff
   ffffffffffffffffffffffffffffffff
   ffffffffffffffffffffffffffffffff

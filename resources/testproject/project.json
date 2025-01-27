@@ -9,13 +9,13 @@
   ],
   // sources compiled
   "sources": [
-    "./**"
+    "src"
   ],
   "dependency-search-paths": [ "./lib" ],
   "dependencies": ["clib", "clib2"],
 
   "features": ["ABCD"],
-
+  "exec": ["scriptme.c3 myarg"],
   // c sources
   "targets": {
     "hello_world": {

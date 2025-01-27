@@ -109,7 +109,7 @@ const char *zip_dir_iterator(FILE *zip, ZipDirIterator *iterator)
 
 const char *zip_dir_iterator_next(ZipDirIterator *iterator, ZipFile *file)
 {
-	ASSERT0(iterator->current_file < iterator->files);
+	ASSERT(iterator->current_file < iterator->files);
 	iterator->current_file++;
 	FILE *zip = iterator->file;
 	if (fseek(zip, iterator->offset, SEEK_SET)) return "Cannot seek in c3l file!";
@@ -186,7 +186,7 @@ const char *zip_file_read(FILE *zip, ZipFile *file, void **buffer_ptr)
 	}
 
 	// Only deflate supported.
-	ASSERT0(file->compression_method == 8 && "Should already be checked.");
+	ASSERT(file->compression_method == 8 && "Should already be checked.");
 
 	// Deflate - using zlib
 	z_stream strm = { .zalloc = Z_NULL, .zfree = Z_NULL, .opaque = Z_NULL, .avail_in = 0, .next_in = Z_NULL };
@@ -263,7 +263,7 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 		while (left_to_read)
 		{
 			size_t amount_to_read = left_to_read < ZIP_BUFFER_SIZE ? left_to_read : ZIP_BUFFER_SIZE;
-			ASSERT0(amount_to_read > 0);
+			ASSERT(amount_to_read > 0);
 			if (!read_all(zip, internal_buffer, amount_to_read))
 			{
 				fclose(f);
@@ -281,7 +281,7 @@ const char *zip_file_write(FILE *zip, ZipFile *file, const char *dir, bool overw
 	}
 
 	// Only deflate supported.
-	ASSERT0(file->compression_method == 8 && "Should already be checked.");
+	ASSERT(file->compression_method == 8 && "Should already be checked.");
 
 	// Deflate - using zlib
 	z_stream strm = { .zalloc = Z_NULL, .zfree = Z_NULL, .opaque = Z_NULL, .avail_in = 0, .next_in = Z_NULL };

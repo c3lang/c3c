@@ -92,7 +92,7 @@ static ABIArgInfo *create_indirect_return_x86(Type *type, Regs *regs)
 
 static bool x86_should_return_type_in_reg(Type *type)
 {
-	ASSERT0(type->canonical == type);
+	ASSERT(type->canonical == type);
 	ByteSize size = type_size(type);
 	if (size > 8) return false;
 
@@ -226,7 +226,7 @@ static inline bool x86_is_mmxtype(Type *type)
 
 static inline bool x86_can_expand_indirect_aggregate_arg(Type *type)
 {
-	ASSERT0(type_is_abi_aggregate(type));
+	ASSERT(type_is_abi_aggregate(type));
 
 	// Test whether an argument type which is to be passed indirectly (on the
 	// stack) would have the equivalent layout if it was expanded into separate
@@ -373,7 +373,7 @@ static inline ABIArgInfo *x86_classify_vector(Regs *regs, Type *type)
 static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type *type)
 {
 	// Only called for aggregates.
-	ASSERT0(type_is_abi_aggregate(type));
+	ASSERT(type_is_abi_aggregate(type));
 
 	if (type_is_union_or_strukt(type) && type->decl->has_variable_array)
 	{
@@ -390,7 +390,7 @@ static inline ABIArgInfo *x86_classify_aggregate(CallABI call, Regs *regs, Type 
 		// Here we coerce the aggregate into a struct { i32, i32, ... }
 		// but we do not generate this struct immediately here.
 		unsigned size_in_regs = (size + 3) / 4;
-		ASSERT0(size_in_regs < 8);
+		ASSERT(size_in_regs < 8);
 		ABIArgInfo *info;
 		if (size_in_regs > 1)
 		{

@@ -21,6 +21,8 @@ macro bool @is_sortable(#list)
 			return false;
 		$case !$defined(#list.len):
 			return false;
+		$case @typekind(#list) == VECTOR || @typekind(#list) == ARRAY:
+			return false;
 		$case $defined(&#list[0]) &&& !types::is_same($typeof(&#list[0]), $typeof(#list[0])*):
 			return false;
 		$default:

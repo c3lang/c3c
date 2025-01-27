@@ -6,7 +6,7 @@
 
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
-	ASSERT0(alignment > 0);
+	ASSERT(alignment > 0);
 	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
 	llvm_set_alignment(ref, alignment);
 	return ref;
@@ -36,7 +36,7 @@ bool llvm_temp_as_address(GenContext *c, Type *type)
 LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment)
 {
 	// If we have an address but not an aggregate, do a load.
-	ASSERT0(alignment);
+	ASSERT(alignment);
 	llvm_value_fold_optional(c, value);
 	if (value->kind == BE_ADDRESS && !type_is_abi_aggregate(value->type))
 	{
@@ -66,16 +66,16 @@ LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, 
 LLVMValueRef llvm_store(GenContext *c, BEValue *destination, BEValue *value)
 {
 	if (value->type == type_void) return NULL;
-	ASSERT0(!type_is_void(value->type));
-	ASSERT0(llvm_value_is_addr(destination));
+	ASSERT(!type_is_void(value->type));
+	ASSERT(llvm_value_is_addr(destination));
 	return llvm_store_to_ptr_aligned(c, destination->value, value, destination->alignment);
 }
 
 LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, AlignSize alignment, const char *name)
 {
-	ASSERT0(alignment > 0);
-	ASSERT0(!llvm_is_global_eval(c));
-	ASSERT0(LLVMGetTypeContext(type) == c->context);
+	ASSERT(alignment > 0);
+	ASSERT(!llvm_is_global_eval(c));
+	ASSERT(LLVMGetTypeContext(type) == c->context);
 	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
 	llvm_set_alignment(value, alignment ? alignment : llvm_abi_alignment(c, type));
 	return value;

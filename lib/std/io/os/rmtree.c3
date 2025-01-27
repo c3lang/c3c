@@ -2,7 +2,7 @@ module std::io::os @if(env::POSIX);
 import std::io, std::os, libc;
 
 <*
- @require dir.str_view()
+ @require dir.str_view().len > 0
 *>
 fn void! native_rmtree(Path dir)
 {

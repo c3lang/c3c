@@ -409,7 +409,7 @@ struct Header @packed
 	char colorspace;	// 0 = sRGB with linear alpha, 1 = all channels linear
 }
 
-const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
+const char[?] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 
 // inefficient, but it's only run once at a time
 macro @enumcast($Type, raw)

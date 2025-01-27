@@ -243,11 +243,11 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 	};
 }
 
-def UrlQueryValueList = List(<String>);
+def UrlQueryValueList = List<[String]>;
 
 struct UrlQueryValues
 {
-	inline HashMap(<String, UrlQueryValueList>) map;
+	inline HashMap<[String, UrlQueryValueList]> map;
 	UrlQueryValueList key_order;
 }
 

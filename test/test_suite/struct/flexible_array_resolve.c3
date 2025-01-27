@@ -6,11 +6,11 @@ struct Abc
 struct Foo
 {
 	int a;
-	int[*] x;
+	int[?] x;
 }
 
 struct Foo2
 {
 	int a;
-	int[*] x, y; // #error: must be the last element
+	int[?] x, y; // #error: must be the last element
 }

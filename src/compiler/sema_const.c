@@ -60,7 +60,7 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 	{
 		case CONST_INITIALIZER:
 		case CONST_SLICE:
-			ASSERT0(list->type != type_untypedlist);
+			ASSERT(list->type != type_untypedlist);
 			return sema_append_const_array_one(context, append_expr, list, element);
 		case CONST_UNTYPED_LIST:
 			untyped_list = list->const_expr.untyped_list;
@@ -194,7 +194,7 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool is_append)
 {
 	Type *indexed = type_get_indexed_type(list->type);
-	ASSERT0(indexed && "This should always work");
+	ASSERT(indexed && "This should always work");
 	if (is_append && !cast_implicit(context, element, indexed, false)) return false;
 	size_t str_len = list->const_expr.bytes.len;
 	size_t element_len = is_append ? 1 : element->const_expr.bytes.len;
@@ -238,7 +238,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 		return true;
 	}
 	bool is_slice = list->const_expr.const_kind == CONST_SLICE;
-	ASSERT0(!type_is_inferred(array_type));
+	ASSERT(!type_is_inferred(array_type));
 	bool is_vector = array_type->type_kind == TYPE_VECTOR;
 	ConstInitializer *init = is_slice ? list->const_expr.slice_init : list->const_expr.initializer;
 	unsigned len = sema_len_from_const(list) + 1;
@@ -287,7 +287,7 @@ static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *
 
 static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
 {
-	ASSERT(expr, expr->expr_kind == EXPR_CONST);
+	ASSERT_SPAN(expr, expr->expr_kind == EXPR_CONST);
 	switch (expr->const_expr.const_kind)
 	{
 		case CONST_SLICE:
@@ -311,7 +311,7 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
  */
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right)
 {
-	ASSERT0(concat_expr->resolve_status == RESOLVE_RUNNING);
+	ASSERT(concat_expr->resolve_status == RESOLVE_RUNNING);
 	bool join_single = false;
 	ArraySize len = 0;
 	bool use_array = true;
@@ -319,7 +319,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	if (!sema_analyse_expr(context, left)) return false;
 	if (!sema_cast_const(left)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
 	if (!sema_analyse_expr(context, right)) return false;
-	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(left, "Expected this to evaluate to a constant value.");
+	if (!sema_cast_const(right)) RETURN_SEMA_ERROR(right, "Expected this to evaluate to a constant value.");
 	Type *element_type = left->type->canonical;
 	Type *right_type = right->type->canonical;
 	switch (left->const_expr.const_kind)
@@ -363,6 +363,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 			len = vec_size(left->const_expr.untyped_list);
 			break;
 	}
+	ArraySize len_lhs = len;
 	switch (right->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
@@ -400,7 +401,8 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 	{
 		indexed_type = NULL;
 	}
-	len += sema_len_from_const(right);
+	ArraySize len_rhs = sema_len_from_const(right);
+	len += len_rhs;
 	if (!indexed_type)
 	{
 		Expr **untyped_exprs = VECNEW(Expr*, len + 1);
@@ -417,15 +419,71 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 				continue;
 			}
 			ConstInitializer *init = expr_const_initializer_from_expr(single_expr);
-			if (init && init->kind != CONST_INIT_ARRAY_FULL)
+			// Skip zero arrays from slices.
+			if (!init) continue;
+			switch (init->kind)
 			{
-				ASSERT0(!init || init->type != type_untypedlist);
-				RETURN_SEMA_ERROR(single_expr, "Expected a full array here.");
+				case CONST_INIT_UNION:
+				case CONST_INIT_STRUCT:
+				case CONST_INIT_ARRAY_VALUE:
+				case CONST_INIT_VALUE:
+					UNREACHABLE
+				case CONST_INIT_ARRAY_FULL:
+				{
+					FOREACH(ConstInitializer *, val, init->init_array_full)
+					{
+						vec_add(untyped_exprs, val->init_value);
+					}
+					continue;
+				}
+				case CONST_INIT_ZERO:
+				{
+					Type *index_type = type_get_indexed_type(type_flatten(init->type));
+					ArraySize len_zero = i == 0 ? len_lhs : len_rhs;
+					for (ArraySize j = 0; j < len_zero; j++)
+					{
+						Expr *zero = expr_new_expr(EXPR_CONST, single_expr);
+						expr_rewrite_to_const_zero(zero, index_type);
+						vec_add(untyped_exprs, zero);
+					}
+					continue;
+				}
+				case CONST_INIT_ARRAY:
+				{
+					Type *index_type = type_get_indexed_type(type_flatten(init->type));
+					ArraySize len_zero = i == 0 ? len_lhs : len_rhs;
+					ArraySize offset = vec_size(untyped_exprs);
+					for (ArraySize j = 0; j < len_zero; j++)
+					{
+						Expr *zero = expr_new_expr(EXPR_CONST, single_expr);
+						expr_rewrite_to_const_zero(zero, index_type);
+						vec_add(untyped_exprs, zero);
+					}
+					FOREACH(ConstInitializer *, element, init->init_array.elements)
+					{
+						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
+						ConstInitializer *inner_element = element->init_array_value.element;
+						Expr *inner_expr = untyped_exprs[offset + element->init_array_value.index];
+						switch (inner_element->kind)
+						{
+							case CONST_INIT_ZERO:
+								continue;
+							case CONST_INIT_STRUCT:
+							case CONST_INIT_UNION:
+							case CONST_INIT_ARRAY:
+							case CONST_INIT_ARRAY_FULL:
+							case CONST_INIT_ARRAY_VALUE:
+								expr_rewrite_const_initializer(inner_expr, index_type, inner_element);
+								continue;
+							case CONST_INIT_VALUE:
+								*inner_expr = *inner_element->init_value;
+								continue;
+						}
+					}
+					continue;
+				}
 			}
-			FOREACH(ConstInitializer *, val, init->init_array_full)
-			{
-				vec_add(untyped_exprs, val->init_value);
-			}
+			UNREACHABLE
 		}
 		concat_expr->expr_kind = EXPR_CONST;
 		concat_expr->type = type_untypedlist;
@@ -436,34 +494,193 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		};
 		return true;
 	}
-	ConstInitializer **inits = VECNEW(ConstInitializer*, len);
-	Expr *exprs[2] = { left, right };
-	for (int i = 0; i < 2; i++)
+	// Zero slice + zero slice => slice
+	if (len == 0)
 	{
-		Expr *element = exprs[i];
-		ConstInitializer *inititializer = expr_const_initializer_from_expr(element);
-		// Zero sized slice:
-		if (!inititializer)
-		{
-			ASSERT(element, element->const_expr.const_kind == CONST_SLICE);
-			continue;
-		}
-		switch (inititializer->kind)
-		{
-			case CONST_INIT_ARRAY_FULL:
-				break;
-			case CONST_INIT_ZERO:
-				if (type_flatten(element->type)->type_kind == TYPE_SLICE) continue;
-			default:
-				RETURN_SEMA_ERROR(element, "Only fully initialized arrays may be concatenated.");
-		}
-		FOREACH(ConstInitializer *, init, inititializer->init_array_full)
-		{
-			vec_add(inits, init);
-		}
+		expr_rewrite_to_const_zero(concat_expr, type_get_slice(indexed_type));
 	}
 	Type *type = use_array ? type_get_array(indexed_type, len) : type_get_vector(indexed_type, len);
-	expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+	ConstInitializer *lhs_init = expr_const_initializer_from_expr(left);
+	ConstInitializer *rhs_init = expr_const_initializer_from_expr(right);
+	if (!rhs_init)
+	{
+		rhs_init = lhs_init;
+		lhs_init = NULL;
+	}
+	if (!lhs_init)
+	{
+		ASSERT(rhs_init);
+		expr_rewrite_const_initializer(concat_expr, type, rhs_init);
+		return true;
+	}
 
-	return true;
+	switch (lhs_init->kind)
+	{
+		case CONST_INIT_UNION:
+		case CONST_INIT_STRUCT:
+		case CONST_INIT_ARRAY_VALUE:
+		case CONST_INIT_VALUE:
+			UNREACHABLE
+		case CONST_INIT_ZERO:
+			switch (rhs_init->kind)
+			{
+				case CONST_INIT_ZERO:
+					// { 0, 0, 0 } + { 0, 0, 0 }
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_zero(type));
+					return true;
+				case CONST_INIT_ARRAY_FULL:
+				{
+					// { 0, 0, 0 } + { 1, 2, 3 }
+					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
+					for (ArraySize i = 0; i < len_lhs; i++)
+					{
+						vec_add(inits, const_init_new_zero(indexed_type));
+					}
+					FOREACH(ConstInitializer *, init, rhs_init->init_array_full)
+					{
+						vec_add(inits, init);
+					}
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+					return true;
+				}
+				case CONST_INIT_ARRAY:
+				{
+					// { 0, 0, 0 } + { 1 => 3 }
+					FOREACH(ConstInitializer *, element, rhs_init->init_array.elements)
+					{
+						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
+						element->init_array_value.index += len_lhs;
+					}
+					rhs_init->type = type;
+					expr_rewrite_const_initializer(concat_expr, type, rhs_init);
+					return true;
+				}
+				case CONST_INIT_STRUCT:
+				case CONST_INIT_UNION:
+				case CONST_INIT_VALUE:
+				case CONST_INIT_ARRAY_VALUE:
+					UNREACHABLE
+			}
+			UNREACHABLE
+		case CONST_INIT_ARRAY_FULL:
+		{
+			switch (rhs_init->kind)
+			{
+				case CONST_INIT_UNION:
+				case CONST_INIT_STRUCT:
+				case CONST_INIT_ARRAY_VALUE:
+				case CONST_INIT_VALUE:
+					UNREACHABLE
+				case CONST_INIT_ZERO:
+				{
+					// { 1, 2, 3 } + { 0, 0, 0 }
+					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
+					FOREACH(ConstInitializer *, init, lhs_init->init_array_full)
+					{
+						vec_add(inits, init);
+					}
+					for (ArraySize i = 0; i < len_rhs; i++)
+					{
+						vec_add(inits, const_init_new_zero(indexed_type));
+					}
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+					return true;
+				}
+				case CONST_INIT_ARRAY_FULL:
+				{
+					// { 1, 2, 3 } + { 1, 2, 3 }
+					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
+					FOREACH(ConstInitializer *, init, lhs_init->init_array_full)
+					{
+						vec_add(inits, init);
+					}
+					FOREACH(ConstInitializer *, init, rhs_init->init_array_full)
+					{
+						vec_add(inits, init);
+					}
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+					return true;
+				}
+				case CONST_INIT_ARRAY:
+				{
+					// { 1, 2, 3 } + { 1 => 3 }
+					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
+					FOREACH(ConstInitializer *, init, lhs_init->init_array_full)
+					{
+						vec_add(inits, init);
+					}
+					for (ArraySize i = 0; i < len_rhs; i++)
+					{
+						vec_add(inits, const_init_new_zero(indexed_type));
+					}
+					FOREACH(ConstInitializer *, element, rhs_init->init_array.elements)
+					{
+						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
+						inits[element->init_array_value.index + len_lhs] = element->init_array_value.element;
+					}
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+					return true;
+				}
+			}
+			UNREACHABLE
+		}
+		case CONST_INIT_ARRAY:
+		{
+			switch (rhs_init->kind)
+			{
+				case CONST_INIT_UNION:
+				case CONST_INIT_STRUCT:
+				case CONST_INIT_ARRAY_VALUE:
+				case CONST_INIT_VALUE:
+					UNREACHABLE
+				case CONST_INIT_ZERO:
+				{
+					// { 1 => 3 } + { 0, 0, 0 }
+					lhs_init->type = type;
+					expr_rewrite_const_initializer(concat_expr, type, lhs_init);
+					return true;
+				}
+				case CONST_INIT_ARRAY_FULL:
+				{
+					// { 1 => 3 } + { 1, 2, 3 }
+					ConstInitializer **inits = VECNEW(ConstInitializer*, len);
+					for (ArraySize i = 0; i < len_lhs; i++)
+					{
+						vec_add(inits, const_init_new_zero(indexed_type));
+					}
+					FOREACH(ConstInitializer *, element, lhs_init->init_array.elements)
+					{
+						ASSERT_SPAN(left, element->kind == CONST_INIT_ARRAY_VALUE);
+						inits[element->init_array_value.index] = element->init_array_value.element;
+					}
+					FOREACH(ConstInitializer *, init, rhs_init->init_array_full)
+					{
+						vec_add(inits, init);
+					}
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array_full(type, inits));
+					return true;
+				}
+				case CONST_INIT_ARRAY:
+				{
+					// { 1 => 3 } + { 1 => 3 }
+					ArraySize elements = vec_size(lhs_init->init_array.elements) + vec_size(rhs_init->init_array.elements);
+					ConstInitializer **inits = VECNEW(ConstInitializer*, elements);
+					FOREACH(ConstInitializer *, element, lhs_init->init_array.elements)
+					{
+						vec_add(inits, element);
+					}
+					FOREACH(ConstInitializer *, element, rhs_init->init_array.elements)
+					{
+						ASSERT_SPAN(right, element->kind == CONST_INIT_ARRAY_VALUE);
+						element->init_array_value.index += len_lhs;
+						vec_add(inits, element);
+					}
+					expr_rewrite_const_initializer(concat_expr, type, const_init_new_array(type, inits));
+					return true;
+				}
+			}
+			UNREACHABLE
+		}
+	}
+	UNREACHABLE
 }

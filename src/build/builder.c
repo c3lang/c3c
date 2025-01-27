@@ -441,6 +441,10 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->feature.riscv_float_capability = options->riscv_float_capability;
 	}
+	if (options->win_debug != WIN_DEBUG_DEFAULT)
+	{
+		target->feature.win_debug = options->win_debug;
+	}
 	if (options->win_64_simd != WIN64_SIMD_DEFAULT)
 	{
 		target->feature.pass_win64_simd_as_arrays = options->win_64_simd;
@@ -539,8 +543,6 @@ void init_default_build_target(BuildTarget *target, BuildOptions *options)
 void init_build_target(BuildTarget *target, BuildOptions *options)
 {
 	*target = (BuildTarget) { 0 };
-	// Locate the project.json
-	file_find_top_dir();
 	// Parse it
 	const char *filename;
 	Project *project = project_load(&filename);

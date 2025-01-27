@@ -1,10 +1,10 @@
-#pragma once 
+#pragma once
 #include "../utils/json.h"
 
 const char** get_project_dependency_directories();
 const char** get_project_dependencies();
 
-static void print_vec(const char *header, const char **vec, bool opt);
+static void print_vec(const char *header, const char **vec, bool opt, const char *delim);
 
 void add_libraries_to_project_file(const char** libs, const char* target_name);
 

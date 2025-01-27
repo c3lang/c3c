@@ -5,7 +5,7 @@ import std::io;
 fn void main()
 {
     var $s1 = $stringify(1 + 2);
-    char[*] s2 = $stringify($s1);
+    char[?] s2 = $stringify($s1);
     char[] s3 = $s1;
 
     io::printfn("$s1 == %s", $s1);

@@ -3,7 +3,7 @@ module test;
 import std;
 
 def @TaggedAttr(value) = {
-    @tag("foo", ValueHere[*]{ value })
+    @tag("foo", ValueHere[?]{ value })
 };
 
 const FOO_STR = "foo";

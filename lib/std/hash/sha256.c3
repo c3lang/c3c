@@ -34,9 +34,9 @@ struct Sha256
     char[BLOCK_SIZE] buffer;
 }
 
-def HmacSha256 = Hmac(<Sha256, HASH_SIZE, BLOCK_SIZE>);
-def hmac = hmac::hash(<Sha256, HASH_SIZE, BLOCK_SIZE>);
-def pbkdf2 = hmac::pbkdf2(<Sha256, HASH_SIZE, BLOCK_SIZE>);
+def HmacSha256 = Hmac<[Sha256, HASH_SIZE, BLOCK_SIZE]>;
+def hmac = hmac::hash<[Sha256, HASH_SIZE, BLOCK_SIZE]>;
+def pbkdf2 = hmac::pbkdf2<[Sha256, HASH_SIZE, BLOCK_SIZE]>;
 
 fn char[HASH_SIZE] hash(char[] data)
 {

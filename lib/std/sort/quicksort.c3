@@ -9,8 +9,13 @@ Sort list using the quick sort algorithm.
 *>
 macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	usz len = sort::len_from_list(list);
-	qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, cmp, context);
+	$if @typekind(list) == POINTER &&& (@typekind(*list) == ARRAY || @typekind(*list) == VECTOR):
+		$typeof((*list)[0])[] list2 = list;
+		qs::qsort<[$typeof(list2), $typeof(cmp), $typeof(context)]>(list2, 0, (isz)list.len - 1, cmp, context);
+	$else
+		usz len = sort::len_from_list(list);
+		qs::qsort<[$typeof(list), $typeof(cmp), $typeof(context)]>(list, 0, (isz)len - 1, cmp, context);
+	$endif
 }
 
 <*
@@ -25,7 +30,7 @@ list will be partially sorted.
 macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::len_from_list(list);
-	return qs::qselect(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, k, cmp, context);
+	return qs::qselect<[$typeof(list), $typeof(cmp), $typeof(context)]>(list, 0, (isz)len - 1, k, cmp, context);
 }
 
 module std::sort::qs(<Type, CmpFn, Context>);

@@ -61,7 +61,7 @@ static inline AsmArgGroup sema_ireg_for_type(Type *type)
  */
 static inline bool sema_reg_int_suported_type(AsmArgType arg, Type *type)
 {
-	ASSERT0(type_flatten(type) == type);
+	ASSERT(type_flatten(type) == type);
 	unsigned bits = type_bit_size(type);
 	return next_highest_power_of_2(arg_bits_max(arg.ireg_bits, bits)) == bits;
 }
@@ -83,7 +83,7 @@ INLINE bool sema_reg_is_valid_in_slot(AsmRegister *reg, AsmArgType arg_type)
 
 static inline bool sema_reg_float_suported_type(AsmArgType arg, Type *type)
 {
-	ASSERT0(type_flatten(type) == type);
+	ASSERT(type_flatten(type) == type);
 	if (!arg.float_bits) return false;
 	return type_bit_size(type) == next_highest_power_of_2(arg_bits_max(arg.float_bits, 0));
 }
@@ -116,7 +116,7 @@ static inline bool sema_check_npot_imm_fits(Int imm, AsmArgType arg_type)
 		}
 		return true;
 	}
-	ASSERT0(arg_type.imm_arg_ubits > 0);
+	ASSERT(arg_type.imm_arg_ubits > 0);
 	if (arg_type.imm_arg_ubits & ARG_BITS_20)
 	{
 		if (!direct_compare) return false;
@@ -188,7 +188,7 @@ static inline bool sema_check_asm_arg_addr(SemaContext *context, AsmInlineBlock 
 	}
 	ExprAsmArg *asm_arg = &expr->expr_asm_arg;
 	Expr *base = exprptr(asm_arg->base);
-	ASSERT0(base->expr_kind == EXPR_ASM);
+	ASSERT(base->expr_kind == EXPR_ASM);
 	ExprAsmArg *base_arg = &base->expr_asm_arg;
 	AsmArgType any_ireg = { .ireg_bits = (AsmArgBits)0xFF };
 	unsigned bit_size = 0;
@@ -350,7 +350,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
 	if (!decl) return false;
 
-	ASSERT0(arg->kind == ASM_ARG_REGVAR);
+	ASSERT(arg->kind == ASM_ARG_REGVAR);
 	arg->ident.ident_decl = decl;
 	if (decl->decl_kind != DECL_VAR)
 	{
@@ -405,7 +405,7 @@ static inline bool sema_check_asm_var(SemaContext *context, AsmInlineBlock *bloc
 		if (!sema_reg_int_suported_type(arg_type, type))
 		{
 			unsigned bits = arg_bits_max(arg_type.ireg_bits, 0);
-			ASSERT0(bits);
+			ASSERT(bits);
 			SEMA_ERROR(expr, "%s is not supported in this position, convert it to a valid type, like %s.",
 					   type_quoted_error_string(decl->type), type_quoted_error_string(type_int_signed_by_bitsize(bits)));
 			return false;
@@ -443,7 +443,7 @@ static inline bool sema_check_asm_memvar(SemaContext *context, AsmInlineBlock *b
 	const char *name = arg->ident.name;
 	Decl *decl = sema_resolve_symbol(context, name, NULL, expr->span);
 	if (!decl) return false;
-	ASSERT0(arg->kind == ASM_ARG_MEMVAR);
+	ASSERT(arg->kind == ASM_ARG_MEMVAR);
 	arg->ident.ident_decl = decl;
 	if (decl->decl_kind != DECL_VAR)
 	{
@@ -542,7 +542,7 @@ static inline bool sema_check_asm_arg(SemaContext *context, AsmInlineBlock *bloc
 
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt)
 {
-	ASSERT0(compiler.platform.asm_initialized);
+	ASSERT(compiler.platform.asm_initialized);
 
 	AsmInstruction *instr = asm_instr_by_name(asm_stmt->asm_stmt.instruction);
 	if (!instr) RETURN_SEMA_ERROR(asm_stmt, "Unknown instruction");

@@ -1,56 +1,27 @@
+#include "build/build.h"
 #include "build_internal.h"
 #include "project.h"
+#include "utils/json.h"
+#include "utils/lib.h"
 #define PRINTFN(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string, ##__VA_ARGS__) // NOLINT
-
-static JSONObject *read_project(const char **file_used, bool assume_empty_if_not_exists)
-{
-	size_t size;
-	const char *project_filename = file_exists(PROJECT_JSON5) ? PROJECT_JSON5 : PROJECT_JSON;
-	*file_used = project_filename;
-	char *read;
-	if (assume_empty_if_not_exists)
-	{
-		// If project file does not exist assume the project simply being empty instead of
-		// failing. This is useful for such commands as `project add-target`. It enables
-		// them to update otherwise non-existing project files reducing the friction.
-		read = "{}";
-		if (file_exists(project_filename)) read = file_read_all(project_filename, &size);
-	}
-	else
-	{
-		read = file_read_all(project_filename, &size);
-	}
-	JsonParser parser;
-	json_init_string(&parser, read);
-	JSONObject *json = json_parse(&parser);
-	if (parser.error_message)
-	{
-		error_exit("Error on line %d reading '%s':'%s'", parser.line, project_filename, parser.error_message);
-	}
-	if (!json || json->type != J_OBJECT)
-	{
-		error_exit("Expected a map of project information in '%s'.", project_filename);
-	}
-	return json;
-}
 
 const char** get_project_dependency_directories()
 {
 	const char *filename;
-	JSONObject *json = read_project(&filename, false);
+	JSONObject *json = project_json_load(&filename);
 
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
 	get_list_append_strings(filename, target, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
-	
+
 	return deps_dirs;
 }
 
-static void print_vec(const char *header, const char **vec, bool opt)
+static void print_vec(const char *header, const char **vec, bool opt, const char *delim)
 {
 	if (opt && !vec) return;
-	PRINTF("%s: ", header);
+	if (header[0] != '\0') PRINTF("%s: ", header);
 	if (!vec_size(vec))
 	{
 		PRINTFN("*none*");
@@ -58,7 +29,7 @@ static void print_vec(const char *header, const char **vec, bool opt)
 	}
 	FOREACH_IDX(i, const char *, item, vec)
 	{
-		if (i > 0) PRINTF(", ");
+		if (i > 0) PRINTF("%s", delim);
 		PRINTF("%s", item);
 	}
 	PRINTFN("");
@@ -69,7 +40,7 @@ const char** get_project_dependencies()
 	const char *filename;
 	const char** dependencies = NULL;
 
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *dependencies_json = json_map_get(project_json, "dependencies");
 
 	FOREACH(JSONObject *, element, dependencies_json->elements)
@@ -82,26 +53,29 @@ const char** get_project_dependencies()
 static void print_opt_str(const char *header, const char *str)
 {
 	if (!str) return;
-	PRINTFN("%s: %s", header, str);
+	if (header[0] != '\0') PRINTF("%s: ", header);
+	PRINTFN("%s", str);
 }
 
 static void print_opt_setting(const char *header, int setting, const char **values)
 {
 	if (setting < 0) return;
-	PRINTFN("%s: %s", header, values[setting]);
+	if (header[0] != '\0') PRINTF("%s: ", header);
+	PRINTFN("%s", values[setting]);
 }
 
 static void print_opt_bool(const char *header, int b)
 {
 	if (b == -1) return;
-	PRINTF("%s: ", header);
+	if (header[0] != '\0') PRINTF("%s: ", header);
 	PRINTFN(b ? "true" : "false");
 }
 
 static void print_opt_int(const char *header, long v)
 {
 	if (v < 0) return;
-	PRINTFN("%s: %ld", header, v);
+	if (header[0] != '\0') PRINTF("%s: ", header);
+	PRINTFN("%ld", v);
 }
 
 static const char *generate_expected(const char **options, size_t n)
@@ -135,16 +109,16 @@ const char *debug_levels[] = {
 };
 
 
-#define VIEW_MANDATORY_STRING_ARRAY(header, key) \
+#define VIEW_MANDATORY_STRING_ARRAY(header, key, delim) \
 do { \
 	const char** arr = get_string_array(filename, NULL, project_json, key, true);\
-	print_vec(header, arr, false);\
+	print_vec(header, arr, false, delim);\
 } while(0)
 
-#define VIEW_STRING_ARRAY(header, key) \
+#define VIEW_STRING_ARRAY(header, key, delim) \
 do { \
 	const char** arr = get_optional_string_array(filename, NULL, project_json, key);\
-	print_vec(header, arr, true);\
+	print_vec(header, arr, true, delim);\
 } while(0)
 
 #define VIEW_MANDATORY_STRING(header, key) \
@@ -177,10 +151,10 @@ do {\
     print_opt_int(header, v);\
 } while(0);
 
-#define TARGET_VIEW_STRING_ARRAY(header, key) \
+#define TARGET_VIEW_STRING_ARRAY(header, key, delim) \
 do {\
     const char** arr = get_optional_string_array(filename, name, target, key);\
-	print_vec("\t" header, arr, true);\
+	print_vec("\t" header, arr, true, delim);\
 } while(0)
 
 #define TARGET_VIEW_MANDATORY_STRING(header, key) \
@@ -214,25 +188,30 @@ do {\
     print_opt_int("\t" header, v);\
 } while(0);
 
-static void view_target(const char *filename, const char *name, JSONObject *target)
+static void view_target(const char *filename, const char *name, JSONObject *target, bool verbose)
 {
+	if (!verbose)
+	{
+		PRINTFN("%s", name);
+		return;
+	}
 	/* General target information */
 	PRINTFN("- %s", name);
 	print_opt_str("\tName", name);
 	TARGET_VIEW_MANDATORY_STRING("Type", "type");
 	TARGET_VIEW_STRING("Target language target", "langrev");
 	TARGET_VIEW_STRING("Target output name", "name");
-	TARGET_VIEW_STRING_ARRAY("Warnings used", "warnings");
-	TARGET_VIEW_STRING_ARRAY("Additional c3l library search paths", "dependency-search-paths");
-	TARGET_VIEW_STRING_ARRAY("c3l library search paths (override)", "dependency-search-paths-override");
-	TARGET_VIEW_STRING_ARRAY("Additional c3l library dependencies", "dependencies");
-	TARGET_VIEW_STRING_ARRAY("c3l library dependencies (override)", "dependencies-override");
-	TARGET_VIEW_STRING_ARRAY("Additional source paths", "sources");
-	TARGET_VIEW_STRING_ARRAY("Source paths (override)", "sources-override");
-	TARGET_VIEW_STRING_ARRAY("Additional C source paths", "c-sources");
-	TARGET_VIEW_STRING_ARRAY("C source paths (override)", "c-sources-override");
-	TARGET_VIEW_STRING_ARRAY("Additional C source include directories", "c-include-dirs");
-	TARGET_VIEW_STRING_ARRAY("C source include directories (override)", "c-include-dirs-override");
+	TARGET_VIEW_STRING_ARRAY("Warnings used", "warnings", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional c3l library search paths", "dependency-search-paths", ", ");
+	TARGET_VIEW_STRING_ARRAY("c3l library search paths (override)", "dependency-search-paths-override", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional c3l library dependencies", "dependencies", ", ");
+	TARGET_VIEW_STRING_ARRAY("c3l library dependencies (override)", "dependencies-override", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional source paths", "sources", ", ");
+	TARGET_VIEW_STRING_ARRAY("Source paths (override)", "sources-override", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional C source paths", "c-sources", ", ");
+	TARGET_VIEW_STRING_ARRAY("C source paths (override)", "c-sources-override", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional C source include directories", "c-include-dirs", ", ");
+	TARGET_VIEW_STRING_ARRAY("C source include directories (override)", "c-include-dirs-override", ", ");
 	TARGET_VIEW_SETTING("Optimization level", "opt", optimization_levels);
 
 	/* Extended target information */
@@ -242,17 +221,17 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 	TARGET_VIEW_STRING("C compiler flags (override)", "cflags-override");
 	TARGET_VIEW_STRING("CPU name", "cpu");
 	TARGET_VIEW_SETTING("Debug level", "debug-info", debug_levels);
-	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec");
-	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec");
-	TARGET_VIEW_STRING_ARRAY("Enabled features", "features");
+	TARGET_VIEW_STRING_ARRAY("Additional scripts to run", "exec", ", ");
+	TARGET_VIEW_STRING_ARRAY("Scripts to run (override)", "exec", ", ");
+	TARGET_VIEW_STRING_ARRAY("Enabled features", "features", ", ");
 	TARGET_VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);
-	TARGET_VIEW_STRING_ARRAY("Additional linked libraries", "linked-libraries");
-	TARGET_VIEW_STRING_ARRAY("Linked libraries (override)", "linked-libraries-override");
+	TARGET_VIEW_STRING_ARRAY("Additional linked libraries", "linked-libraries", ", ");
+	TARGET_VIEW_STRING_ARRAY("Linked libraries (override)", "linked-libraries-override", ", ");
 	TARGET_VIEW_STRING("Linker", "linker");
-	TARGET_VIEW_STRING_ARRAY("Additional linker search paths", "linker-search-paths");
-	TARGET_VIEW_STRING_ARRAY("Linker search paths (override)", "linker-search-paths-override");
-	TARGET_VIEW_STRING_ARRAY("Additional linker arguments", "link-args");
-	TARGET_VIEW_STRING_ARRAY("Linker arguments (override)", "link-args-override");
+	TARGET_VIEW_STRING_ARRAY("Additional linker search paths", "linker-search-paths", ", ");
+	TARGET_VIEW_STRING_ARRAY("Linker search paths (override)", "linker-search-paths-override", ", ");
+	TARGET_VIEW_STRING_ARRAY("Additional linker arguments", "link-args", ", ");
+	TARGET_VIEW_STRING_ARRAY("Linker arguments (override)", "link-args-override", ", ");
 	TARGET_VIEW_BOOL("Link libc", "link-libc");
 	TARGET_VIEW_STRING("MacOS SDK directory", "macossdk");
 	TARGET_VIEW_SETTING("Memory environment", "memory-env", memory_environment);
@@ -283,7 +262,7 @@ static void view_target(const char *filename, const char *name, JSONObject *targ
 
 
 #if FETCH_AVAILABLE
-void fetch_project(BuildOptions* options) 
+void fetch_project(BuildOptions* options)
 {
 	if (!file_exists(PROJECT_JSON5) && !file_exists(PROJECT_JSON))
 	{
@@ -294,7 +273,7 @@ void fetch_project(BuildOptions* options)
 	{
 		{
 			const char** deps_dirs =  get_project_dependency_directories();
-			int num_lib = vec_size(deps_dirs); 
+			int num_lib = vec_size(deps_dirs);
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
 		}
 	}
@@ -302,7 +281,7 @@ void fetch_project(BuildOptions* options)
 	const char **libdirs = get_project_dependency_directories();
 	const char **deps = get_project_dependencies();
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
@@ -332,12 +311,12 @@ void fetch_project(BuildOptions* options)
 		FOREACH(const char*, dir, libdirs)
 		{
 			const char *dep = VECLAST(deps);
-			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep)))) 
+			if (file_exists(file_append_path(dir, str_printf("%s.c3l", dep))))
 			{
 				vec_pop(deps);
 				break;
 			};
-			
+
 			printf("Fetching missing library '%s'...", dep);
 			fflush(stdout);
 
@@ -358,7 +337,7 @@ void fetch_project(BuildOptions* options)
 	}
 }
 #else
-void fetch_project(BuildOptions* options) 
+void fetch_project(BuildOptions* options)
 {
 	error_exit("Error: project fetch only available when compiled with cURL.");
 }
@@ -371,17 +350,17 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 	//TODO! Target name option not implemented
 
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
 
 	// TODO! check if target is specified and exists (NULL at the moment)
 	JSONObject *libraries_json = json_map_get(project_json, "dependencies");
-	
+
 	const char** dependencies = NULL;
 	FOREACH(JSONObject *, element, libraries_json->elements)
 	{
 		vec_add(dependencies, element->str);
 	}
-	
+
 	// check if libraries are already present
 	FOREACH(const char*, lib, libs)
 	{
@@ -408,7 +387,8 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 void add_target_project(BuildOptions *build_options)
 {
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, true);
+	/* NOTE: this previously allowed project.json to not exist, and create it */
+	JSONObject *project_json = project_json_load(&filename);
 	JSONObject *targets_json = json_map_get(project_json, "targets");
 
 	if (targets_json == NULL)
@@ -440,20 +420,117 @@ void add_target_project(BuildOptions *build_options)
 	fclose(file);
 }
 
+static void view_filtered_project_properties(BuildOptions *build_options, const char* filename, JSONObject *project_json)
+{
+	uint16_t bitvector = build_options->project_options.view_modifier.flags_bitvector;
+	bool verbose = build_options->project_options.view_modifier.verbose;
+
+	const char* delim = verbose ? ", " : "\n";
+	char* prop_header;
+
+	if (bitvector & (1 << 0))
+	{
+		prop_header = verbose ? "Authors" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "authors", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 1))
+	{
+		prop_header = verbose ? "Version" : "";
+		VIEW_MANDATORY_STRING(prop_header, "version");
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 2))
+	{
+		prop_header = verbose ? "Project language target" : "";
+		VIEW_MANDATORY_STRING(prop_header, "langrev");
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 3))
+	{
+		prop_header = verbose ? "Warnings used" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "warnings", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 4))
+	{
+		prop_header = verbose ? "c3l library search paths" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "dependency-search-paths", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 5))
+	{
+		prop_header = verbose ? "c3l library dependencies" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "dependencies", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 6))
+	{
+		prop_header = verbose ? "Source paths" : "";
+		VIEW_MANDATORY_STRING_ARRAY(prop_header, "sources", delim);
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 7))
+	{
+		prop_header = verbose ? "Output location" : "";
+		VIEW_STRING(prop_header, "output");
+		PRINTFN("");
+	}
+	if (bitvector & (1 << 8))
+	{
+		prop_header = verbose ? "Default optimization level" : "";
+		VIEW_SETTING(prop_header, "opt", optimization_levels);
+		PRINTFN("");
+	}
+
+	/* Target information */
+	if (bitvector & (1 << 9))
+	{
+		if (verbose) PRINTFN("Targets: ");
+		JSONObject *targets_json = json_map_get(project_json, "targets");
+		if (!targets_json)
+		{
+			error_exit("No targets found in project.");
+		}
+		if (targets_json->type != J_OBJECT)
+		{
+			error_exit("'targets' did not contain map of targets.");
+		}
+
+		FOREACH_IDX(i, JSONObject *, object, targets_json->members)
+		{
+			const char *key = targets_json->keys[i];
+			if (object->type != J_OBJECT)
+			{
+				error_exit("Invalid data in target '%s'", key);
+			}
+			view_target(filename, key, object, verbose);
+		}
+	}
+}
+
 void view_project(BuildOptions *build_options)
 {
 	const char *filename;
-	JSONObject *project_json = read_project(&filename, false);
+	JSONObject *project_json = project_json_load(&filename);
+
+	bool filter_properties = build_options->project_options.view_modifier.flags_bitvector != 0;
+
+	if (filter_properties)
+	{
+		view_filtered_project_properties(build_options, filename, project_json);
+		return;
+	}
 
 	/* General information */
-	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors");
+	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors", ", ");
 	VIEW_MANDATORY_STRING("Version", "version");
 	VIEW_MANDATORY_STRING("Project language target", "langrev");
-	VIEW_MANDATORY_STRING_ARRAY("Warnings used", "warnings");
-	VIEW_MANDATORY_STRING_ARRAY("c3l library search paths", "dependency-search-paths");
-	VIEW_MANDATORY_STRING_ARRAY("c3l library dependencies", "dependencies");
-	VIEW_MANDATORY_STRING_ARRAY("Source paths", "sources");
-	VIEW_STRING_ARRAY("C source paths", "c-sources");
+	VIEW_MANDATORY_STRING_ARRAY("Warnings used", "warnings", ", ");
+	VIEW_MANDATORY_STRING_ARRAY("c3l library search paths", "dependency-search-paths", ", ");
+	VIEW_MANDATORY_STRING_ARRAY("c3l library dependencies", "dependencies", ", ");
+	VIEW_MANDATORY_STRING_ARRAY("Source paths", "sources", ", ");
+	VIEW_STRING_ARRAY("C source paths", "c-sources", ", ");
 	VIEW_STRING("Output location", "output");
 	VIEW_SETTING("Default optimization level", "opt", optimization_levels);
 
@@ -463,13 +540,13 @@ void view_project(BuildOptions *build_options)
 	VIEW_STRING("C compiler flags", "cflags");
 	VIEW_STRING("CPU name", "cpu");
 	VIEW_SETTING("Debug level", "debug-info", debug_levels);
-	VIEW_STRING_ARRAY("Scripts to run", "exec");
-	VIEW_STRING_ARRAY("Enabled features", "features");
+	VIEW_STRING_ARRAY("Scripts to run", "exec", ", ");
+	VIEW_STRING_ARRAY("Enabled features", "features", ", ");
 	VIEW_SETTING("Floating point behaviour", "fp-math", fp_math);
-	VIEW_STRING_ARRAY("Linked libraries", "linked-libraries");
+	VIEW_STRING_ARRAY("Linked libraries", "linked-libraries", ", ");
 	VIEW_STRING("Linker", "linker");
-	VIEW_STRING_ARRAY("Linker search paths", "linker-search-paths");
-	VIEW_STRING_ARRAY("Linker arguments", "link-args");
+	VIEW_STRING_ARRAY("Linker search paths", "linker-search-paths", ", ");
+	VIEW_STRING_ARRAY("Linker arguments", "link-args", ", ");
 	VIEW_BOOL("Link libc", "link-libc");
 	VIEW_STRING("MacOS SDK directory", "macossdk");
 	VIEW_SETTING("Memory environment", "memory-env", memory_environment);
@@ -515,6 +592,6 @@ void view_project(BuildOptions *build_options)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		view_target(filename, key, object);
+		view_target(filename, key, object, true);
 	}
 }
