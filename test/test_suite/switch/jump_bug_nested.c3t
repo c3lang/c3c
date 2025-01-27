@@ -23,9 +23,6 @@ macro void foo()
 
 /* #expect: test.ll
 
-
----------------------------------------------------> test.ll
-
 define void @test.main() #0 {
 entry:
   %switch = alloca i32, align 4
