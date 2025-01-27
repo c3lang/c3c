@@ -847,7 +847,6 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_ast = cases[i];
-		printf("Block %p\n", case_ast->case_stmt.backend_block);
 		if (case_ast->ast_kind == AST_DEFAULT_STMT)
 		{
 			if (!case_ast->case_stmt.body) continue;
