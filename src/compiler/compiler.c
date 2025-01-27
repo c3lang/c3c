@@ -1124,22 +1124,21 @@ void execute_scripts(void)
 	{
 		StringSlice execs = slice_from_string(exec);
 		StringSlice call = slice_next_token(&execs, ' ');
-		size_t out_len;
-		const char *out;
+		File *script;
 		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' ||
 		    call.ptr[call.len - 1] != '3')
 		{
-			out = execute_cmd(exec, false, NULL);
+			char *res = execute_cmd(exec, false, NULL);
 			if (compiler.build.silent) continue;
-			out_len = strlen(out);
+			script = source_file_text_load(exec, res);
 			goto PRINT_SCRIPT;
 		}
 		scratch_buffer_clear();
 		scratch_buffer_append_len(call.ptr, call.len);
-		File *script = compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL);
-		out = script->contents;
-		out_len = script->content_len;
+		script = compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL);
 PRINT_SCRIPT:;
+		size_t out_len = script->content_len;
+		const char *out = script->contents;
 		if (!compiler.build.silent && script->content_len > 0)
 		{
 			if (out_len > 2048)
