@@ -847,6 +847,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	for (unsigned i = 0; i < case_count; i++)
 	{
 		Ast *case_ast = cases[i];
+		printf("Block %p\n", case_ast->case_stmt.backend_block);
 		if (case_ast->ast_kind == AST_DEFAULT_STMT)
 		{
 			if (!case_ast->case_stmt.body) continue;
@@ -889,10 +890,16 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 	llvm_set_private_declaration(jmptable);
 	LLVMSetGlobalConstant(jmptable, 1);
 	BEValue array_value;
-
 	LLVMValueRef instr = llvm_emit_switch_jump_stmt(c, switch_ast, cases, count, min_index, jmptable, default_block, switch_value);
 
-	static LLVMValueRef refs[DEFAULT_SWITCH_JUMP_MAX_SIZE + 1];
+#define REF_STACK 16
+	LLVMValueRef refs_stack[REF_STACK];
+	LLVMValueRef *refs = refs_stack;
+	if (count > REF_STACK)
+	{
+		refs = MALLOC(sizeof(LLVMValueRef) * count);
+	}
+#undef REF_STACK
 	LLVMValueRef default_block_address = LLVMBlockAddress(c->cur_func.ref, default_block);
 	ASSERT(count < DEFAULT_SWITCH_JUMP_MAX_SIZE + 1);
 	memset(refs, 0, sizeof(LLVMValueRef) * count);
@@ -931,7 +938,6 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 		found = true;
 		LLVMAddDestination(instr, default_block);
 	}
-
 	LLVMSetInitializer(jmptable, LLVMConstArray(c->ptr_type, refs, count));
 	llvm_emit_block(c, exit_block);
 }

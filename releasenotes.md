@@ -30,6 +30,8 @@
 - Fix issue where compile time declarations in expression list would not be handled properly.
 - Issue where trailing body argument was allowed without type even though the definition specified it #1879.
 - Fix issues with @jump on empty `default` or only `default` #1893 #1894
+- Fixes miscompilation of nested `@jump` #1896.
+
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
 - Added weakly linked `__powidf2`
