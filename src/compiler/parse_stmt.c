@@ -824,8 +824,13 @@ static inline Ast* parse_for_stmt(ParseContext *c)
 
 	// Ast range does not include the body
 	RANGE_EXTEND_PREV(ast);
-
+	unsigned row = c->prev_span.row;
 	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
+	if (body->ast_kind != AST_COMPOUND_STMT && row != body->span.row)
+	{
+		PRINT_ERROR_AT(body, "A single statement after 'for' must be placed on the same line, or be enclosed in {}.");
+		return poisoned_ast;
+	}
 	ast->for_stmt.body = astid(body);
 	return ast;
 }

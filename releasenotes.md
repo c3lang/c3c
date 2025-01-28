@@ -32,6 +32,7 @@
 - Fix issues with @jump on empty `default` or only `default` #1893 #1894
 - Fixes miscompilation of nested `@jump` #1896.
 - Fixed STB_WEAK errors when using consts in macros in the stdlib #1871.
+- Missing error when placing a single statement for-body on a new row #1892.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
