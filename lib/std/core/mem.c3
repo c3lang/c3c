@@ -684,6 +684,22 @@ macro new($Type, ...) @nodiscard
 }
 
 <*
+ @require $vacount < 2 : "Too many arguments."
+ @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+ @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+*>
+macro new_with_padding($Type, usz padding, ...) @nodiscard
+{
+	$if $vacount == 0:
+		return ($Type*)calloc($Type.sizeof + padding);
+	$else
+		$Type* val = malloc($Type.sizeof + padding);
+		*val = $vaexpr[0];
+		return val;
+	$endif
+}
+
+<*
  Allocate using an aligned allocation. This is necessary for types with a default memory alignment
  exceeding DEFAULT_MEM_ALIGNMENT. IMPORTANT! It must be freed using free_aligned.
  @require $vacount < 2 : "Too many arguments."
@@ -706,6 +722,14 @@ macro new_aligned($Type, ...) @nodiscard
 macro alloc($Type) @nodiscard
 {
 	return ($Type*)malloc($Type.sizeof);
+}
+
+<*
+ @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'alloc_aligned' instead"
+*>
+macro alloc_with_padding($Type, usz padding) @nodiscard
+{
+	return ($Type*)malloc($Type.sizeof + padding);
 }
 
 <*
@@ -732,11 +756,30 @@ macro temp_new($Type, ...) @nodiscard
 	$endif
 }
 
+<*
+ @require $vacount < 2 : "Too many arguments."
+ @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
+*>
+macro temp_new_with_padding($Type, usz padding, ...) @nodiscard
+{
+	$if $vacount == 0:
+		return ($Type*)tcalloc($Type.sizeof + padding) @inline;
+	$else
+		$Type* val = tmalloc($Type.sizeof + padding) @inline;
+		*val = $vaexpr[0];
+		return val;
+	$endif
+}
+
 macro temp_alloc($Type) @nodiscard
 {
 	return tmalloc($Type.sizeof);
 }
 
+macro temp_alloc_with_padding($Type, usz padding) @nodiscard
+{
+	return tmalloc($Type.sizeof + padding);
+}
 
 <*
  @require $Type.alignof <= DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'new_array_aligned' instead"

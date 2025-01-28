@@ -4049,6 +4049,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			is_global = true;
 			break;
 		case VARDECL_CONST:
+			if (local) decl->var.is_static = true;
+			break;
 		default:
 			break;
 	}
