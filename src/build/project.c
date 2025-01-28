@@ -147,15 +147,14 @@ const int project_deprecated_target_keys_count = ELEMENTLEN(project_deprecated_t
 
 #define MAX_SYMTAB_SIZE (1024 * 1024)
 #define GET_SETTING(type__, key__, strings__, comment__) \
-  (type__)get_valid_string_setting(filename, target_name, json, key__, strings__, 0, ELEMENTLEN(strings__), comment__)
+  (type__)get_valid_string_setting(context, json, key__, strings__, 0, ELEMENTLEN(strings__), comment__)
 
 // Json -> target / default target
-static void load_into_build_target(const char *filename, JSONObject *json, const char *target_name,
-                                   BuildTarget *target)
+static void load_into_build_target(BuildParseContext context, JSONObject *json, BuildTarget *target)
 {
-	if (target_name)
+	if (context.target)
 	{
-		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count, json, target_name, "--list-project-properties");
+		check_json_keys(project_target_keys, project_target_keys_count, project_deprecated_target_keys, project_deprecated_target_keys_count, json, context.target, "--list-project-properties");
 	}
 	else
 	{
@@ -163,46 +162,46 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	}
 
 	// The default c compiler name
-	target->cc = get_string(filename, target_name, json, "cc", target->cc);
+	target->cc = get_string(context, json, "cc", target->cc);
 
 	// Where to find and execute the scripts
-	target->script_dir = get_string(filename, target_name, json, "script-dir", target->script_dir);
+	target->script_dir = get_string(context, json, "script-dir", target->script_dir);
 
 	// The output directory
-	target->output_dir = get_string(filename, target_name, json, "output", target->output_dir);
+	target->output_dir = get_string(context, json, "output", target->output_dir);
 
 	// "Before compilation" execution
-	get_list_append_strings(filename, target_name, json, &target->exec, "exec", "exec-override", "exec-add");
+	get_list_append_strings(context, json, &target->exec, "exec", "exec-override", "exec-add");
 
 	// CFlags
-	target->cflags = get_cflags(filename, target_name, json, target->cflags);
+	target->cflags = get_cflags(context, json, target->cflags);
 
 	// C source dirs.
-	get_list_append_strings(filename, target_name, json, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+	get_list_append_strings(context, json, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
 
 	// C include dirs.
-	get_list_append_strings(filename, target_name, json, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
+	get_list_append_strings(context, json, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 
 	// Sources
-	get_list_append_strings(filename, target_name, json, &target->source_dirs, "sources", "sources-override", "sources-add");
+	get_list_append_strings(context, json, &target->source_dirs, "sources", "sources-override", "sources-add");
 
 	// Test sources
-	get_list_append_strings(filename, target_name, json, &target->test_source_dirs, "test-sources", "test-sources-override", "test-sources-add");
+	get_list_append_strings(context, json, &target->test_source_dirs, "test-sources", "test-sources-override", "test-sources-add");
 
 	// Linked-libraries - libraries to add at link time
-	get_list_append_strings(filename, target_name, json, &target->linker_libs, "linked-libraries", "linked-libraries-override", "linked-libraries-add");
+	get_list_append_strings(context, json, &target->linker_libs, "linked-libraries", "linked-libraries-override", "linked-libraries-add");
 
 	// linker-search-paths libs dir - libraries to add at link time
-	get_list_append_strings(filename, target_name, json, &target->linker_libdirs, "linker-search-paths", "linker-search-paths-override", "linker-search-paths-add");
+	get_list_append_strings(context, json, &target->linker_libdirs, "linker-search-paths", "linker-search-paths-override", "linker-search-paths-add");
 
 	// link-args - link args to add at link time
-	get_list_append_strings(filename, target_name, json, &target->link_args, "link-args", "link-args-override", "link-args-add");
+	get_list_append_strings(context, json, &target->link_args, "link-args", "link-args-override", "link-args-add");
 
 	// dependency-search-paths - path to search for libraries
-	get_list_append_strings(filename, target_name, json, &target->libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	get_list_append_strings(context, json, &target->libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
 
 	// Dependencies
-	get_list_append_strings(filename, target_name, json, &target->libs, "dependencies", "dependencies-override", "dependencies-add");
+	get_list_append_strings(context, json, &target->libs, "dependencies", "dependencies-override", "dependencies-add");
 	FOREACH(const char *, name, target->libs)
 	{
 		if (!str_is_valid_lowercase_name(name))
@@ -243,46 +242,46 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	if (opt != OPT_SETTING_NOT_SET) target->optsetting = opt;
 
 	// Safety level
-	target->feature.safe_mode = (SafetyLevel)get_valid_bool(filename, target_name, json, "safe", target->feature.safe_mode);
+	target->feature.safe_mode = (SafetyLevel)get_valid_bool(context, json, "safe", target->feature.safe_mode);
 
 	// Backtrace
-	target->show_backtrace = (ShowBacktrace) get_valid_bool(filename, target_name, json, "show-backtrace", target->show_backtrace);
+	target->show_backtrace = (ShowBacktrace) get_valid_bool(context, json, "show-backtrace", target->show_backtrace);
 
 	// Panic level
-	target->feature.panic_level = (PanicLevel)get_valid_bool(filename, target_name, json, "panic-msg",
+	target->feature.panic_level = (PanicLevel)get_valid_bool(context, json, "panic-msg",
 	                                                         target->feature.panic_level);
 
 	// Overridden name
-	target->output_name = get_optional_string(filename, target_name, json, "name");
+	target->output_name = get_optional_string(context, json, "name");
 
 	// Single module
-	target->single_module = (SingleModule) get_valid_bool(filename, target_name, json, "single-module", target->single_module);
+	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
 
 	// Memory environment for memory constrained environments.
 	MemoryEnvironment env = GET_SETTING(MemoryEnvironment, "memory-env", memory_environment, "one of 'normal', 'small', 'tiny' or 'none'.");
 	if (env != MEMORY_ENV_NOT_SET) target->memory_environment = env;
 
 	// Symtab
-	long symtab_size = get_valid_integer(json, "symtab", target_name, false);
+	long symtab_size = get_valid_integer(context, json, "symtab", false);
 	if (symtab_size > 0)
 	{
 		if (symtab_size < 1024)
 		{
-			error_exit("Error reading %s: %s symtab was less than 1024.", filename, target_name);
+			error_exit("Error reading %s: symtab was less than 1024.", filename);
 		}
 		if (symtab_size > MAX_SYMTAB_SIZE)
 		{
-			error_exit("Error reading %s: %s symtab may not exceed %d.", filename, target_name, MAX_SYMTAB_SIZE);
+			error_exit("Error reading %s: symtab may not exceed %d.", context, MAX_SYMTAB_SIZE);
 		}
 		target->symtab_size = (uint32_t)symtab_size;
 	}
 
 	// Target
-	const char *arch_os_string = get_optional_string(filename, target_name, json, "target");
+	const char *arch_os_string = get_optional_string(context, json, "target");
 	if (arch_os_string)
 	{
 		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
-		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", filename, target_name);
+		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", filename, context.target);
 		target->arch_os_target = arch_os;
 	}
 
@@ -307,7 +306,7 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	}
 
 	// Cpu
-	target->cpu = get_string(filename, target_name, json, "cpu", target->cpu);
+	target->cpu = get_string(context, json, "cpu", target->cpu);
 
 	// WinCRT
 	WinCrtLinking wincrt = GET_SETTING(WinCrtLinking, "wincrt", wincrt_linking, "'none', 'static-debug', 'staticdebug, 'dynamic-debug' or 'dynamic'.");
@@ -317,7 +316,7 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	FpOpt fpmath = GET_SETTING(FpOpt, "fp-math", fp_math, "`strict`, `relaxed` or `fast`.");
 	if (fpmath > -1) target->feature.fp_math = fpmath;
 
-	const char **features = get_optional_string_array(filename, target_name, json, "features");
+	const char **features = get_optional_string_array(context, json, "features");
 	if (features)
 	{
 		FOREACH(const char *, feature, features)
@@ -347,53 +346,53 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	if (win_debug != WIN_DEBUG_DEFAULT) target->feature.win_debug = win_debug;
 
 	// winsdk
-	target->win.vs_dirs = get_string(filename, target_name, json, "win-vs-dirs", target->win.vs_dirs);
+	target->win.vs_dirs = get_string(context, json, "win-vs-dirs", target->win.vs_dirs);
 
 
 	// winsdk
-	target->win.sdk = get_string(filename, target_name, json, "winsdk", target->win.sdk);
+	target->win.sdk = get_string(context, json, "winsdk", target->win.sdk);
 
 	// windef
-	target->win.def = get_string(filename, target_name, json, "windef", target->win.def);
+	target->win.def = get_string(context, json, "windef", target->win.def);
 
 	// macossdk
-	target->macos.sysroot = get_string(filename, target_name, json, "macossdk", target->macos.sysroot);
+	target->macos.sysroot = get_string(context, json, "macossdk", target->macos.sysroot);
 
 	// macos-min-version
-	target->macos.min_version = get_string(filename, target_name, json, "macos-min-version", target->macos.min_version);
+	target->macos.min_version = get_string(context, json, "macos-min-version", target->macos.min_version);
 
 	// macos-sdk-version
-	target->macos.sdk_version = get_string(filename, target_name, json, "macos-sdk-version", target->macos.sdk_version);
+	target->macos.sdk_version = get_string(context, json, "macos-sdk-version", target->macos.sdk_version);
 
 	// Linux crt
-	target->linuxpaths.crt = get_string(filename, target_name, json, "linux-crt", target->linuxpaths.crt);
+	target->linuxpaths.crt = get_string(context, json, "linux-crt", target->linuxpaths.crt);
 
 	// Linux crtbegin
-	target->linuxpaths.crtbegin = get_string(filename, target_name, json, "linux-crtbegin", target->linuxpaths.crtbegin);
+	target->linuxpaths.crtbegin = get_string(context, json, "linux-crtbegin", target->linuxpaths.crtbegin);
 
 	// version
-	target->version = get_string(filename, target_name, json, "version", target->version);
+	target->version = get_string(context, json, "version", target->version);
 
 	// langrev
-	target->langrev = get_string(filename, target_name, json, "langrev", target->langrev);
+	target->langrev = get_string(context, json, "langrev", target->langrev);
 
 	// panicfn
-	target->panicfn = get_string(filename, target_name, json, "panicfn", target->panicfn);
+	target->panicfn = get_string(context, json, "panicfn", target->panicfn);
 
 	// testfn
-	target->testfn = get_string(filename, target_name, json, "testfn", target->testfn);
+	target->testfn = get_string(context, json, "testfn", target->testfn);
 
 	// testfn
-	target->benchfn = get_string(filename, target_name, json, "benchfn", target->benchfn);
+	target->benchfn = get_string(context, json, "benchfn", target->benchfn);
 
 	// link-libc
-	target->link_libc = (LinkLibc) get_valid_bool(filename, target_name, json, "link-libc", target->link_libc);
+	target->link_libc = (LinkLibc) get_valid_bool(context, json, "link-libc", target->link_libc);
 
 	// strip-unused
-	target->strip_unused = (StripUnused) get_valid_bool(filename, target_name, json, "strip-unused", target->strip_unused);
+	target->strip_unused = (StripUnused) get_valid_bool(context, json, "strip-unused", target->strip_unused);
 
 	// linker
-	const char *linker_selection = get_optional_string(filename, target_name, json, "linker");
+	const char *linker_selection = get_optional_string(context, json, "linker");
 	if (linker_selection)
 	{
 		if (str_eq("cc", linker_selection))
@@ -414,29 +413,29 @@ static void load_into_build_target(const char *filename, JSONObject *json, const
 	}
 
 	// no-entry
-	target->no_entry = get_valid_bool(filename, target_name, json, "no-entry", target->no_entry);
+	target->no_entry = get_valid_bool(context, json, "no-entry", target->no_entry);
 
 	// use-stdlib
-	target->use_stdlib = (UseStdlib) get_valid_bool(filename, target_name, json, "use-stdlib", target->use_stdlib);
+	target->use_stdlib = (UseStdlib) get_valid_bool(context, json, "use-stdlib", target->use_stdlib);
 
 	// emit-stdlib
-	target->emit_stdlib = (EmitStdlib) get_valid_bool(filename, target_name, json, "emit-stdlib", target->emit_stdlib);
+	target->emit_stdlib = (EmitStdlib) get_valid_bool(context, json, "emit-stdlib", target->emit_stdlib);
 
 	// single-module
-	target->single_module = (SingleModule) get_valid_bool(filename, target_name, json, "single-module", target->single_module);
+	target->single_module = (SingleModule) get_valid_bool(context, json, "single-module", target->single_module);
 
 	// Trap on wrap
-	target->feature.trap_on_wrap = get_valid_bool(filename, target_name, json, "trap-on-wrap", target->feature.trap_on_wrap);
+	target->feature.trap_on_wrap = get_valid_bool(context, json, "trap-on-wrap", target->feature.trap_on_wrap);
 
 	// Use the fact that they correspond to 0, 1, -1
-	target->feature.x86_struct_return = get_valid_bool(filename, target_name, json, "x86-stack-struct-return",
+	target->feature.x86_struct_return = get_valid_bool(context, json, "x86-stack-struct-return",
 	                                                   target->feature.x86_struct_return);
 
 	// Soft float
-	target->feature.soft_float = get_valid_bool(filename, target_name, json, "soft-float", target->feature.soft_float);
+	target->feature.soft_float = get_valid_bool(context, json, "soft-float", target->feature.soft_float);
 
 	// Win64 simd feature switch
-	target->feature.pass_win64_simd_as_arrays = get_valid_bool(filename, target_name, json, "win64-simd-array",
+	target->feature.pass_win64_simd_as_arrays = get_valid_bool(context, json, "win64-simd-array",
 	                                                           target->feature.pass_win64_simd_as_arrays);
 }
 
@@ -450,8 +449,8 @@ static void duplicate_prop(const char ***prop_ref)
 	}
 	*prop_ref = copy;
 }
-static void project_add_target(const char *filename, Project *project, BuildTarget *default_target, JSONObject *json,
-                               const char *name, const char *type, TargetType target_type)
+static void project_add_target(BuildParseContext context, Project *project, BuildTarget *default_target, JSONObject *json,
+                               const char *type, TargetType target_type)
 {
 	ASSERT(json->type == J_OBJECT);
 	BuildTarget *target = CALLOCS(BuildTarget);
@@ -472,18 +471,18 @@ static void project_add_target(const char *filename, Project *project, BuildTarg
 	duplicate_prop(&target->link_args);
 
 	vec_add(project->targets, target);
-	target->name = name;
+	target->name = context.target;
 	target->type = target_type;
 	FOREACH(BuildTarget *, other_target, project->targets)
 	{
 		if (other_target == target) continue;
 		if (strcmp(other_target->name, target->name) == 0)
 		{
-			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", filename, target->name);
+			error_exit("More %s contained more than one target with the name %s. Please make all target names unique.", context.file, target->name);
 		}
 	}
-	type = str_printf("%s %s", type, target->name);
-	load_into_build_target(filename, json, type, target);
+	context.target = str_printf("%s %s", type, context.target);
+	load_into_build_target(context, json, target);
 }
 
 static void project_add_targets(const char *filename, Project *project, JSONObject *project_data)
@@ -491,7 +490,7 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	ASSERT(project_data->type == J_OBJECT);
 
 	BuildTarget default_target = default_build_target;
-	load_into_build_target(filename, project_data, NULL, &default_target);
+	load_into_build_target((BuildParseContext) { filename, NULL }, project_data, &default_target);
 	JSONObject *targets_json = json_map_get(project_data, "targets");
 	if (!targets_json)
 	{
@@ -508,9 +507,10 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		int type = get_valid_string_setting(filename, NULL, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
+		BuildParseContext context = { filename, key };
+		int type = get_valid_string_setting(context, object, "type", targets, 0, ELEMENTLEN(targets), "a target type like 'executable' or 'static-lib'");
 		if (type < 0) error_exit("Target %s did not contain 'type' key.", key);
-		project_add_target(filename, project, &default_target, object, key, target_desc[type], type);
+		project_add_target(context, project, &default_target, object, target_desc[type], type);
 	}
 }
 
