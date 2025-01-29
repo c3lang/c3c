@@ -12,6 +12,7 @@
 - Allow `+++` to work on all types of arrays.
 - Allow `(int[*]) { 1, 2 }` cast style initialization.
 - Experimental change from `[*]` to `[?]`
+- Warn on if-catch with just a `default` case.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.

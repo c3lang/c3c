@@ -1860,6 +1860,15 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 		if (then->ast_kind == AST_IF_CATCH_SWITCH_STMT)
 		{
+			Ast **cases = then->switch_stmt.cases;
+			if (vec_size(cases) == 1 && cases[0]->ast_kind == AST_DEFAULT_STMT)
+			{
+				if (!SEMA_WARN(cases[0], "An 'if-catch' with only a 'default' clause is unclear. "
+						"Removing the 'default:' will have exactly the same behaviour but will be less confusing."))
+				{
+					return false;
+				}
+			}
 			DeclId label_id = statement->if_stmt.flow.label;
 			then->switch_stmt.flow.label = label_id;
 			statement->if_stmt.flow.label = 0;
@@ -2397,7 +2406,6 @@ DONE:;
 }
 static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder)
 {
-	bool use_type_id = false;
 	if (!type_is_comparable(switch_type))
 	{
 		sema_error_at(context, expr_span, "You cannot test '%s' for equality, and only values that supports '==' for comparison can be used in a switch.", type_to_error_string(switch_type));
