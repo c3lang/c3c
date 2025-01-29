@@ -38,7 +38,7 @@ static char *find_visual_studio(void)
 	char *install_path = NULL;
 
 	// Call vswhere.exe
-	if (!execute_cmd_failable(scratch_buffer_to_string(), &install_path, NULL))
+	if (!execute_cmd_failable(scratch_buffer_to_string(), &install_path, NULL, 0))
 	{
 		error_exit("Failed to find vswhere.exe to detect MSVC.");
 	}

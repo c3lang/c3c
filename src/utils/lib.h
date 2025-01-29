@@ -92,9 +92,9 @@ const char *file_append_path_temp(const char *path, const char *name);
 
 const char **target_expand_source_names(const char *base_dir, const char** dirs, const char **suffix_list, const char ***object_list_ref, int suffix_count, bool error_on_mismatch);
 
-char * execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string);
+char * execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string, size_t limit);
 
-bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string);
+bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string, size_t limit);
 void *cmalloc(size_t size);
 void *ccalloc(size_t size, size_t elements);
 void memory_init(size_t max_mem);

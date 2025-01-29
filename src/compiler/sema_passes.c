@@ -292,11 +292,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	}
 	if (c3_script)
 	{
-		file = compile_and_invoke(file_str, scratch_buffer_copy(), stdin_string);
+		file = compile_and_invoke(file_str, scratch_buffer_copy(), stdin_string, 0);
 	}
 	else
 	{
-		char *output = execute_cmd(scratch_buffer_to_string(), false, stdin_string);
+		char *output = execute_cmd(scratch_buffer_to_string(), false, stdin_string, 0);
 		file = source_file_text_load(scratch_buffer_to_string(), output);
 	}
 	if (old_path)

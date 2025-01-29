@@ -1128,30 +1128,20 @@ void execute_scripts(void)
 		if (call.len < 3 || call.ptr[call.len - 3] != '.' || call.ptr[call.len - 2] != 'c' ||
 		    call.ptr[call.len - 1] != '3')
 		{
-			char *res = execute_cmd(exec, false, NULL);
+			char *res = execute_cmd(exec, false, NULL, 0);
 			if (compiler.build.silent) continue;
 			script = source_file_text_load(exec, res);
 			goto PRINT_SCRIPT;
 		}
 		scratch_buffer_clear();
 		scratch_buffer_append_len(call.ptr, call.len);
-		script = compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL);
+		script = compile_and_invoke(scratch_buffer_copy(), execs.len ? execs.ptr : "", NULL, 2048);
 PRINT_SCRIPT:;
 		size_t out_len = script->content_len;
 		const char *out = script->contents;
 		if (!compiler.build.silent && script->content_len > 0)
 		{
-			if (out_len > 2048)
-			{
-				puts("Truncated script output --------------------------------->");
-				out_len = 2048;
-			}
-			else
-			{
-				puts("Script output ------------------------------------------->");
-			}
 			printf("%.*s\n", (int)out_len, out);
-			puts("---------------------------------------------------------<");
 		}
 	}
 	dir_change(old_path);
@@ -1522,7 +1512,7 @@ void scratch_buffer_append_native_safe_path(const char *data, int len)
 #endif
 }
 
-File *compile_and_invoke(const char *file, const char *args, const char *stdin_data)
+File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit)
 {
 	char *name;
 	if (!file_namesplit(compiler_exe_name, &name, NULL))
@@ -1547,8 +1537,14 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	scratch_buffer_printf(" -o %s", output);
 	char *out;
 	if (PLATFORM_WINDOWS) scratch_buffer_append_char('"');
-	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, NULL))
+	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, NULL, limit))
 	{
+		if (strlen(out))
+		{
+			eprintf("+-- Script compilation output ---------+\n");
+			eprintf("%s\n", out);
+			eprintf("+--------------------------------------+\n");
+		}
 		error_exit("Failed to compile script '%s'.", file);
 	}
 	DEBUG_LOG("EXEC OUT: %s", out);
@@ -1559,8 +1555,14 @@ File *compile_and_invoke(const char *file, const char *args, const char *stdin_d
 	scratch_buffer_append(output);
 	scratch_buffer_append(" ");
 	scratch_buffer_append(args);
-	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, stdin_data))
+	if (!execute_cmd_failable(scratch_buffer_to_string(), &out, stdin_data, limit))
 	{
+		if (strlen(out))
+		{
+			eprintf("+-- Script output ---------------------+\n");
+			eprintf("%s\n", out);
+			eprintf("+--------------------------------------+\n");
+		}
 		error_exit("Error invoking script '%s' with arguments %s.", file, args);
 	}
 	file_delete_file(output);
