@@ -41,6 +41,8 @@
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
 - Added weakly linked `__powidf2`
 - Added channels for threads.
+- New `std::core::test` module for unit testing machinery.
+- New unit test default runner.
 
 ## 0.6.6 Change list
 

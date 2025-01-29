@@ -133,6 +133,14 @@ static void usage(bool full)
 	PRINTF("  -g                         - Emit debug info.");
 	PRINTF("  -g0                        - Emit no debug info.");
 	PRINTF("");
+	if (full)
+	{
+		PRINTF("  --ansi=<yes|no>            - Set colour output using ansi on/off, default is to try to detect it.");
+		PRINTF("  --test-filter <arg>        - Set a filter when running tests, running only matching tests.");
+		PRINTF("  --test-breakpoint          - When running tests, trigger a breakpoint on failure.");
+		PRINTF("  --test-disable-sort        - Do not sort tests.");
+	}
+	PRINTF("");
 	PRINTF("  -l <library>               - Link with the library provided.");
 	PRINTF("  -L <library dir>           - Append the directory to the linker search paths.");
 	PRINTF("  -z <argument>              - Send the <argument> as a parameter to the linker.");
@@ -711,6 +719,27 @@ static void parse_option(BuildOptions *options)
 				options->validation_level = (ValidationLevel)parse_multi_option(argopt, 3, validation_levels);
 				return;
 			}
+			if ((argopt = match_argopt("ansi")))
+			{
+				options->ansi = (Ansi)parse_multi_option(argopt, 2, ansi_use);
+				return;
+			}
+			if (match_longopt("test-filter"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: --test-filter needs an argument.");
+				options->test_filter = next_arg();
+				return;
+			}
+			if (match_longopt("test-breakpoint"))
+			{
+				options->test_breakpoint = true;
+				return;
+			}
+			if (match_longopt("test-nosort"))
+			{
+				options->test_nosort = true;
+				return;
+			}
 			if (match_longopt("max-mem"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --max-mem needs a valid integer.");
@@ -1271,6 +1300,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
+		.ansi = ANSI_DETECT,
 		.strip_unused = STRIP_UNUSED_NOT_SET,
 		.single_module = SINGLE_MODULE_NOT_SET,
 		.sanitize_mode = SANITIZE_NOT_SET,
@@ -1491,7 +1521,7 @@ static int parse_multi_option(const char *start, unsigned count, const char **el
 {
 	const char *arg = current_arg;
 	int select = str_findlist(start, count, elements);
-	if (select < 0) error_exit("error: %.*s invalid option '%s' given.", (int)(start - arg), start, arg);
+	if (select < 0) error_exit("error: '%.*s' invalid option '%s' given.", (int)(start - arg), start, arg);
 	return select;
 }
 

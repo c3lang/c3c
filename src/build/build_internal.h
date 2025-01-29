@@ -111,6 +111,11 @@ static const char *validation_levels[3] = {
 	[VALIDATION_OBNOXIOUS] = "obnoxious",
 };
 
+static const char *ansi_use[2] = {
+	[ANSI_OFF] = "off",
+	[ANSI_ON] = "on",
+};
+
 static const char *backtrace_levels[2] = {
 	[SHOW_BACKTRACE_OFF] = "off",
 	[SHOW_BACKTRACE_ON] = "on",
