@@ -159,6 +159,13 @@ typedef enum
 
 typedef enum
 {
+	ANSI_DETECT = -1,
+	ANSI_OFF = 0,
+	ANSI_ON = 1
+} Ansi;
+
+typedef enum
+{
 	SINGLE_MODULE_NOT_SET = -1,
 	SINGLE_MODULE_OFF = 0, // NOLINT
 	SINGLE_MODULE_ON = 1
@@ -484,6 +491,7 @@ typedef struct BuildOptions_
 	int build_threads;
 	const char **libraries_to_fetch;
 	const char **files;
+	const char *test_filter;
 	const char **args;
 	const char **feature_names;
 	const char **removed_feature_names;
@@ -495,6 +503,9 @@ typedef struct BuildOptions_
 	const char *template;
 	LinkerType linker_type;
 	ValidationLevel validation_level;
+	Ansi ansi;
+	bool test_breakpoint;
+	bool test_nosort;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;

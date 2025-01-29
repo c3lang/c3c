@@ -718,8 +718,9 @@ void compiler_compile(void)
 			}
 			name = scratch_buffer_to_string();
 			OUTF("Launching %s", name);
-			for (uint32_t i = 0; i < vec_size(compiler.build.args); ++i) {
-				OUTF(" %s", compiler.build.args[i]);
+			FOREACH(const char *, arg, compiler.build.args)
+			{
+				OUTF(" %s", arg);
 			}
 			OUTN("");
 

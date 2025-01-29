@@ -227,7 +227,14 @@ fn void! out_putstream_fn(void* data, char c) @private
 
 fn void! out_putchar_fn(void* data @unused, char c) @private
 {
-	libc::putchar(c);
+	$if env::TESTING:
+		// HACK: this is used for the purpose of unit test output hijacking
+		File* stdout = io::stdout();
+		assert(stdout.file);
+		libc::fputc(c, stdout.file);
+	$else
+		libc::putchar(c);
+	$endif
 }
 
 <*
@@ -263,7 +270,7 @@ fn usz! printfn(String format, args...) @maydiscard
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
 	usz! len = formatter.vprintf(format, args);
-	putchar('\n');
+	out_putchar_fn(null, '\n')!;
 	io::stdout().flush()!;
 	return len + 1;
 }
