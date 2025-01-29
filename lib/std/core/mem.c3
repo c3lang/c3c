@@ -323,7 +323,7 @@ macro void clear_inline(void* dst, usz $len, usz $dst_align = 0, bool $is_volati
 
  @require len == 0 || dst + len <= src || src + len <= dst : "Ranges may not overlap"
 *>
-macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false, bool $inlined = false)
+macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false)
 {
 	$$memcpy(dst, src, len, $is_volatile, $dst_align, $src_align);
 }

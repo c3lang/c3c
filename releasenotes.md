@@ -33,6 +33,8 @@
 - Fixes miscompilation of nested `@jump` #1896.
 - Fixed STB_WEAK errors when using consts in macros in the stdlib #1871.
 - Missing error when placing a single statement for-body on a new row #1892.
+- Fix bug where in dead code, only the first statement would be turned into a nop.
+- Remove unused $inline argument to mem::copy.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

@@ -3156,8 +3156,8 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 				}
 			}
 			// Remove it
-			statement->ast_kind = AST_NOP_STMT;
 		}
+		statement->ast_kind = AST_NOP_STMT;
 	}
 	return true;
 }
