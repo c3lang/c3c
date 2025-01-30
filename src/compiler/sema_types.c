@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -8,10 +8,12 @@
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_kind);
 static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
+static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind);
 INLINE bool sema_resolve_vatype(SemaContext *context, TypeInfo *type_info);
 INLINE bool sema_resolve_evaltype(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind);
 INLINE bool sema_resolve_typefrom(SemaContext *context, TypeInfo *type_info);
 INLINE bool sema_resolve_typeof(SemaContext *context, TypeInfo *type_info);
+static int compare_function(Signature *sig, FunctionPrototype *proto);
 
 static inline bool sema_resolve_ptr_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
@@ -94,10 +96,10 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	return true;
 }
 
-static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_type_kind)
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_kind)
 {
 	// Check the underlying type
-	if (!sema_resolve_type(context, type->array.base, resolve_type_kind)) return type_info_poison(type);
+	if (!sema_resolve_type(context, type->array.base, resolve_kind)) return type_info_poison(type);
 
 	Type *distinct_base = type_flatten(type->array.base->type);
 
@@ -402,6 +404,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 	    && !context->call_env.current_function->func_decl.in_macro)
 	{
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		SEMA_DEPRECATED(type_info, "Nested generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
 		// TODO, completely disallow
 		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
@@ -409,7 +412,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	return true;
 }
 
-static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_type_kind)
+static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, ResolveTypeKind resolve_kind)
 {
 	// Ok, already resolved.
 	if (type_info->resolve_status == RESOLVE_DONE)
@@ -449,10 +452,10 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_CT_IDENTIFIER:
 		case TYPE_INFO_IDENTIFIER:
 			// $Type or Foo
-			if (!sema_resolve_type_identifier(context, type_info, resolve_type_kind)) return type_info_poison(type_info);
+			if (!sema_resolve_type_identifier(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_EVALTYPE:
-			if (!sema_resolve_evaltype(context, type_info, resolve_type_kind)) return type_info_poison(type_info);
+			if (!sema_resolve_evaltype(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_TYPEOF:
 			if (!sema_resolve_typeof(context, type_info)) return type_info_poison(type_info);
@@ -462,8 +465,8 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 			goto APPEND_QUALIFIERS;
 		case TYPE_INFO_INFERRED_VECTOR:
 		case TYPE_INFO_INFERRED_ARRAY:
-			if (!(resolve_type_kind & RESOLVE_TYPE_ALLOW_INFER)
-				&& (type_info->kind != TYPE_INFO_INFERRED_ARRAY || !(resolve_type_kind & RESOLVE_TYPE_ALLOW_FLEXIBLE)))
+			if (!(resolve_kind & RESOLVE_TYPE_ALLOW_INFER)
+				&& (type_info->kind != TYPE_INFO_INFERRED_ARRAY || !(resolve_kind & RESOLVE_TYPE_ALLOW_FLEXIBLE)))
 			{
 				SEMA_ERROR(type_info, "Inferred %s types can only be used in declarations with initializers and as macro parameters.",
 						   type_info->kind == TYPE_INFO_INFERRED_VECTOR ? "vector" : "array");
@@ -473,13 +476,13 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_SLICE:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
-			if (!sema_resolve_array_type(context, type_info, resolve_type_kind))
+			if (!sema_resolve_array_type(context, type_info, resolve_kind))
 			{
 				return type_info_poison(type_info);
 			}
 			break;
 		case TYPE_INFO_POINTER:
-			if (!sema_resolve_ptr_type(context, type_info, resolve_type_kind)) return type_info_poison(type_info);
+			if (!sema_resolve_ptr_type(context, type_info, resolve_kind)) return type_info_poison(type_info);
 			break;
 	}
 APPEND_QUALIFIERS:
@@ -734,15 +737,13 @@ static int compare_function(Signature *sig, FunctionPrototype *proto)
 
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi)
 {
-	uint32_t hash;
-	hash = hash_function(signature);
+	uint32_t hash = hash_function(signature);
 	uint32_t mask = map.capacity - 1;
 	uint32_t index = hash & mask;
 	FuncTypeEntry *entries = map.entries;
-	FuncTypeEntry *entry;
 	while (1)
 	{
-		entry = &entries[index];
+		FuncTypeEntry *entry = &entries[index];
 		if (!entry->key)
 		{
 			return func_create_new_func_proto(signature, abi, hash, entry);

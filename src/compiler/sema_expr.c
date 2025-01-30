@@ -6262,6 +6262,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 	// Enum - Enum / Enum + Enum
 	if (right_type->type_kind == TYPE_ENUM)
 	{
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		if (!is_sub) SEMA_DEPRECATED(expr, "Adding two enums is deprecated.");
 		if (left_type != right_type)
 		{
@@ -9443,6 +9444,7 @@ static inline bool sema_expr_analyse_ct_arg(SemaContext *context, Type *infer_ty
 		}
 		case TOKEN_CT_VAREF:
 		{
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(expr, "'$varef' is deprecated together with '&' arguments.");
 			// A normal argument, this means we only evaluate it once.
 			unsigned index = 0;
@@ -9715,7 +9717,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 	{
 		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '!'.");
 	}
-	if (!sema_resolve_type_structure(context, type, type_info->span)) return false;
+	if (!sema_resolve_type_structure(context, type)) return false;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
 	expr_replace(expr, expr->expr_compound_literal.initializer);
 	return true;

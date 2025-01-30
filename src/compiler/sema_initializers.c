@@ -352,7 +352,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	bool is_vector = type_flat_is_vector(assigned);
 	bool inner_is_inferred = type_len_is_inferred(inner_type);
 	Type *inferred_element = NULL;
-	if (!sema_resolve_type_structure(context, inner_type, initializer->span)) return false;
+	if (!sema_resolve_type_structure(context, inner_type)) return false;
 	for (unsigned i = 0; i < count; i++)
 	{
 		Expr *element = elements[i];
@@ -528,7 +528,6 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (!inner_type)
 		{
 			inner_type = type_no_optional(value->type);
-			continue;
 		}
 	}
 	if (bitmember_count_without_value != 0 && bitmember_count_without_value != vec_size(init_expressions)) {
@@ -787,7 +786,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) ||
 			(expr->resolve_status == RESOLVE_DONE && sema_initializer_list_is_empty(expr));
 
-	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
+	if (!sema_resolve_type_structure(context, to)) return false;
 	switch (flattened->type_kind)
 	{
 		case TYPE_ANY:

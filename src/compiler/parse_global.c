@@ -432,6 +432,7 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		// TODO remove in 0.7
 		if (is_lparen)
 		{
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(type_info, "'$vatype(...)' is deprecated, use '$vatype[...]' instead.");
 		}
 		return type_info;

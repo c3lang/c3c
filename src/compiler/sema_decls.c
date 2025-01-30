@@ -58,8 +58,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
-										  SourceSpan from);
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -1224,6 +1223,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			case VARDECL_PARAM_REF:
 				if ((i != 0 || !method_parent) && !is_deprecated)
 				{
+					static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated.");
 				}
 				if (type_info && !type_is_pointer(param->type))
@@ -2687,6 +2687,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		}
 		case ATTRIBUTE_ADHOC:
 			SEMA_DEPRECATED(attr, "'@adhoc' is deprecated.");
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			return true;
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
@@ -3385,7 +3386,7 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 					default: UNREACHABLE
 				}
 			}
-			else if (is_wmain)
+			if (is_wmain)
 			{
 				switch (type)
 				{
@@ -3395,15 +3396,12 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 					default: UNREACHABLE
 				}
 			}
-			else
+			switch (type)
 			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@main_to_void_main_args"; goto NEXT;
-					case 1 : main_invoker = "@main_to_int_main_args"; goto NEXT;
-					case 2 : main_invoker = "@main_to_err_main_args"; goto NEXT;
-					default: UNREACHABLE
-				}
+				case 0: main_invoker = "@main_to_void_main_args"; goto NEXT;
+				case 1: main_invoker = "@main_to_int_main_args"; goto NEXT;
+				case 2: main_invoker = "@main_to_err_main_args"; goto NEXT;
+				default: UNREACHABLE
 			}
 		case MAIN_TYPE_NO_ARGS:
 			ASSERT(!is_wmain);
@@ -3487,6 +3485,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		}
 		is_int_return = false;
 		is_err_return = true;
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		SEMA_DEPRECATED(rtype_info, "Main functions with 'void!' returns is deprecated, use 'int' or 'void' instead.");
 	}
 
@@ -3534,10 +3533,7 @@ REGISTER_MAIN:
 		SEMA_NOTE(compiler.context.main, "The first one was found here.");
 		return false;
 	}
-	else
-	{
-		compiler.context.main = function;
-	}
+	compiler.context.main = function;
 	return true;
 }
 
@@ -4258,8 +4254,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
-										  SourceSpan from)
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params)
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
@@ -4271,11 +4266,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		Expr *param = params[i];
 		if (param->expr_kind != EXPR_TYPEINFO)
 		{
-			if (!is_value)
-			{
-				SEMA_ERROR(param, "Expected a type, not a value.");
-				return NULL;
-			}
+			if (!is_value) RETURN_NULL_SEMA_ERROR(param, "Expected a type, not a value.");
 			Decl *decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST);
 			decl->var.init_expr = param;
 			decl->type = param->type;
@@ -4283,13 +4274,9 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 			params_decls[decls++] = decl;
 			continue;
 		}
-		if (is_value)
-		{
-			SEMA_ERROR(param, "Expected a value, not a type.");
-			return NULL;
-		}
+		if (is_value) RETURN_NULL_SEMA_ERROR(param, "Expected a value, not a type.");
 		TypeInfo *type_info = param->type_expr;
-		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return NULL;
 		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
 		ASSERT(type_info->resolve_status == RESOLVE_DONE);
@@ -4529,9 +4516,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path, params, span);
-		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
+		instantiated_module = module_instantiate_generic(c, module, path, params);
 		if (!instantiated_module) return poisoned_decl;
+		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
 		sema_analyze_stage(instantiated_module, stage > ANALYSIS_POST_REGISTER ? ANALYSIS_POST_REGISTER : stage);
 	}
@@ -4641,7 +4628,7 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 	return true;
 }
 
-bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span)
+bool sema_resolve_type_structure(SemaContext *context, Type *type)
 {
 RETRY:
 	switch (type->type_kind)

@@ -119,6 +119,7 @@ const char *get_cflags(BuildParseContext context, JSONObject *json, const char *
 	if (cflags && cflags_add)
 	{
 		// TODO remove in 0.7
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		error_exit("In file '%s': '%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", context.file, context.target);
 	}
 
@@ -149,6 +150,7 @@ void get_list_append_strings(BuildParseContext context, JSONObject *json, const 
 	if (value && add_value)
 	{
 		// TODO remove in 0.7
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", context.file, context.target, override, add);
 	}
 	if (value) *list_ptr = value;

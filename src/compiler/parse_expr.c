@@ -424,7 +424,6 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 		ASSIGN_TYPE_OR_RET(return_type, parse_optional_type(c), poisoned_expr);
 	}
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	Decl **params = NULL;
 	Decl **decls = NULL;
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
@@ -454,6 +453,8 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	return expr;
 }
 
+static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+
 /**
  * vasplat ::= CT_VASPLAT '(' range_expr ')'
  * -> TODO, this is the only one in 0.7
@@ -471,16 +472,19 @@ Expr *parse_vasplat(ParseContext *c)
 		CONSUME_OR_RET(lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
-END:
+END:;
 	// TODO remove in 0.7
+	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 	if (lparen)
 	{
 		if (expr->vasplat_expr.end || expr->vasplat_expr.start)
 		{
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(expr, "'$vasplat(...)' is deprecated, use '$vasplat[...]' instead.");
 		}
 		else
 		{
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(expr, "'$vasplat()' is deprecated, use '$vasplat' instead.");
 		}
 	}
@@ -494,11 +498,9 @@ END:
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool vasplat)
 {
 	*result = NULL;
-	bool has_splat = false;
 	while (1)
 	{
 		Expr *expr = NULL;
-		DesignatorElement **path;
 		SourceSpan start_span = c->span;
 
 		if (peek(c) == TOKEN_COLON && token_is_param_name(c->tok))
@@ -524,6 +526,7 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			CONSUME_OR_RET(TOKEN_EQ, false);
 			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
 			RANGE_EXTEND_PREV(expr);
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(expr, "Named arguments using the '.foo = expr' style are deprecated, please use 'foo: expr' instead.");
 			goto DONE;
 		}
@@ -587,7 +590,7 @@ bool parse_init_list(ParseContext *c, Expr ***result, TokenType param_end, bool 
 			*splat = try_consume(c, TOKEN_ELLIPSIS);
 		}
 		ASSIGN_EXPR_OR_RET(expr, parse_expr(c), false);
-		DONE:
+	DONE:
 		vec_add(*result, expr);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
@@ -654,8 +657,11 @@ Expr *parse_ct_expression_list(ParseContext *c, bool allow_decl)
 }
 
 /**
+ * type_expr ::= void | any | int | short ... etc
+ *
+ * @param c the context
  * @param left must be null.
- * @return Expr*
+ * @return Expr *
  */
 static Expr *parse_type_identifier(ParseContext *c, Expr *left)
 {
@@ -663,6 +669,13 @@ static Expr *parse_type_identifier(ParseContext *c, Expr *left)
 	return parse_type_expression_with_path(c, NULL);
 }
 
+/**
+ * splat_expr ::= '...' expr
+ *
+ * @param c the context
+ * @param left must be null.
+ * @return Expr *
+ */
 static Expr *parse_splat(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
@@ -696,6 +709,13 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	return expr;
 }
 
+/**
+ * ct_stringify ::= $stringify '(' expr ')'
+ *
+ * @param c the context
+ * @param left must be null
+ * @return Expr *
+ */
 static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
@@ -713,15 +733,7 @@ static Expr *parse_ct_stringify(ParseContext *c, Expr *left)
 		RANGE_EXTEND_PREV(expr);
 		return expr;
 	}
-	size_t len = end - start;
-	const char *content = str_copy(start, len);
-	Expr *expr = expr_new(EXPR_CONST, start_span);
-	expr->const_expr.const_kind = CONST_STRING;
-	expr->const_expr.bytes.ptr = content;
-	expr->const_expr.bytes.len = len;
-	expr->type = type_string;
-	expr->resolve_status = RESOLVE_DONE;
-	return expr;
+	return expr_new_const_string(start_span, str_copy(start, end - start));
 }
 
 /**
@@ -872,8 +884,6 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
  *	| initializer_values ',' initializer
  *	;
  *
- * @param elements
- * @return
  */
 Expr *parse_initializer_list(ParseContext *c, Expr *left)
 {
@@ -1247,6 +1257,7 @@ static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCATFN) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
+	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 	SEMA_DEPRECATED(expr, "'%s' is deprecated in favour of '+++'.", symstr(c));
 	advance(c);
 
@@ -1283,6 +1294,7 @@ static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_AND_OR);
 	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_ANDFN);
+	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 	SEMA_DEPRECATED(expr, "The use of '%s' is deprecated in favour of '%s'.", symstr(c),
 					expr->ct_and_or_expr.is_and ? "&&&" :  "|||");
 	advance(c);
@@ -1320,6 +1332,7 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	if (type != TOKEN_CT_VACOUNT)
 	{
 		// TODO remove in 0.7
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		bool is_lparen = try_consume(c, TOKEN_LPAREN);
 		if (!is_lparen) CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
@@ -1327,6 +1340,7 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 		// TODO remove in 0.7
 		if (is_lparen)
 		{
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(expr, "'%s(...)' is deprecated, use '%s[...]' instead.",
 			                token_type_to_string(type), token_type_to_string(type));
 		}
@@ -1359,7 +1373,6 @@ static Expr *parse_identifier(ParseContext *c, Expr *left)
 static Expr *parse_identifier_starting_expression(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return poisoned_expr;
 	switch (c->tok)
@@ -1696,7 +1709,7 @@ static void parse_hex(char *result_pointer, const char *data, const char *end)
 	{
 		int val, val2;
 		while ((val = char_hex_to_nibble(*(data++))) < 0) if (data == end) return;
-		while ((val2 = char_hex_to_nibble(*(data++))) < 0);
+		while ((val2 = char_hex_to_nibble(*(data++))) < 0) {}
 		*(data_current++) = (char)((val << 4) | val2);
 	}
 }
@@ -1717,6 +1730,7 @@ static char base64_to_sextet(char c)
 /**
  * Parse hex, skipping over invalid characters.
  * @param result_pointer ref to place to put the data
+ * @param result_pointer_end the end of the result data
  * @param data start pointer
  * @param end end pointer
  */
@@ -1728,9 +1742,9 @@ static void parse_base64(char *result_pointer, char *result_pointer_end, const c
 	{
 		int val, val2, val3, val4;
 		while ((val = base64_to_sextet(*(data++))) < 0) if (data == end) goto DONE;
-		while ((val2 = base64_to_sextet(*(data++))) < 0);
-		while ((val3 = base64_to_sextet(*(data++))) < 0);
-		while ((val4 = base64_to_sextet(*(data++))) < 0);
+		while ((val2 = base64_to_sextet(*(data++))) < 0) {}
+		while ((val3 = base64_to_sextet(*(data++))) < 0) {}
+		while ((val4 = base64_to_sextet(*(data++))) < 0) {}
 		uint32_t triplet = (uint32_t)((val << 3 * 6) + (val2 << 2 * 6) + (val3 << 6) + val4);
 		if (data_current < result_pointer_end) *(data_current++) = (char)((triplet >> 16) & 0xFF);
 		if (data_current < result_pointer_end) *(data_current++) = (char)((triplet >> 8) & 0xFF);

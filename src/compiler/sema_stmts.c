@@ -1101,7 +1101,8 @@ static inline bool sema_analyse_cond_list(SemaContext *context, Expr *expr, Cond
  *
  * @param context the current context
  * @param expr the conditional to evaluate
- * @param cast_to_bool if the result is to be cast to bool after
+ * @param cond_type the type of conditional unwrap / unwrap_bool / type
+ * @param result the result passed back to the caller if known at runtime
  * @return true if it passes analysis.
  */
 static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
@@ -1120,8 +1121,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 	//    signal that.
 	if (type_is_void(expr->type))
 	{
-		SEMA_ERROR(expr, cast_to_bool ? "Expected a boolean expression." : "Expected an expression resulting in a value.");
-		return false;
+		RETURN_SEMA_ERROR(expr, cast_to_bool ? "Expected a boolean expression." : "Expected an expression resulting in a value.");
 	}
 
 	// 3. We look at the last element (which is guaranteed to exist because
