@@ -6,9 +6,6 @@
 #include "../build/project.h"
 #include <compiler_tests/benchmark.h>
 #include "../utils/whereami.h"
-#if PLATFORM_POSIX
-#include <sys/wait.h>
-#endif 
 #if LLVM_AVAILABLE
 #include "c3_llvm.h"
 #endif
@@ -347,6 +344,7 @@ void delete_object_files(const char **files, size_t count)
 {
 	for (size_t i = 0; i < count; i++)
 	{
+		assert(files);
 		file_delete_file(files[i]);
 	}
 }
@@ -479,6 +477,7 @@ void compiler_compile(void)
 	{
 		case BACKEND_C:
 			gen_contexts = c_gen(modules, module_count);
+			(void)gen_contexts;
 			error_exit("Unfinished C backend!");
 		case BACKEND_LLVM:
 #if LLVM_AVAILABLE
@@ -936,7 +935,6 @@ void print_syntax(BuildOptions *options)
 
 	if (options->print_keywords)
 	{
-		int index = 1;
 		for (int i = 1; i < TOKEN_LAST; i++)
 		{
 			const char *name = token_type_to_string((TokenType)i);
@@ -949,7 +947,6 @@ void print_syntax(BuildOptions *options)
 	}
 	if (options->print_operators)
 	{
-		int index = 1;
 		for (int i = 1; i < TOKEN_LAST; i++)
 		{
 			if (i == TOKEN_DOCS_START || i == TOKEN_DOCS_END) continue;
@@ -991,7 +988,6 @@ void print_syntax(BuildOptions *options)
 	}
 	if (options->print_project_properties)
 	{
-		int width;
 		puts("Project properties");
 		puts("------------------");
 		for (int i = 0; i < project_default_keys_count; i++)
@@ -1009,7 +1005,6 @@ void print_syntax(BuildOptions *options)
 	}
 	if (options->print_manifest_properties)
 	{
-		int width;
 		puts("Manifest properties");
 		puts("------------------");
 		for (int i = 0; i < manifest_default_keys_count; i++)
@@ -1035,10 +1030,10 @@ void print_syntax(BuildOptions *options)
 		puts(" 4. Mult       | * / %");
 		puts(" 5. Shift      | << >>");
 		puts(" 6. Bitwise    | ^ | &");
-		puts(" 7. Additive   | + -");
+		puts(" 7. Additive   | + - +++");
 		puts(" 8. Relational | < > <= >= == !=");
-		puts(" 9. And        | &&");
-		puts("10. Or         | ||");
+		puts(" 9. And        | && &&&");
+		puts("10. Or         | || |||");
 		puts("11. Ternary    | ?: ??");
 		puts("12. Assign     | = *= /= %= -= += |= &= ^= <<= >>=");
 	}
@@ -1111,13 +1106,11 @@ void execute_scripts(void)
 	{
 		error_exit("This target has 'exec' directives, to run it trust level must be set to '--trust=full'.");
 	}
-	char *old_path = NULL;
+	char old_path[PATH_MAX + 1];
 	if (compiler.build.script_dir)
 	{
-		old_path = getcwd(NULL, 0);
-		if (!dir_change(compiler.build.script_dir))
+		if (getcwd(old_path, PATH_MAX) && !dir_change(compiler.build.script_dir))
 		{
-			free(old_path);
 			error_exit("Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
@@ -1146,7 +1139,6 @@ PRINT_SCRIPT:;
 		}
 	}
 	dir_change(old_path);
-	free(old_path);
 }
 
 static void check_sanitizer_options(BuildTarget *target)

@@ -824,13 +824,10 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr->type = to;
 				return true;
 			}
-			else
-			{
-				expr->resolve_status = RESOLVE_DONE;
-				expr_insert_addr(expr);
-				if (!sema_analyse_expr(context, expr)) return false;
-				return cast_explicit(context, expr, to);
-			}
+			expr->resolve_status = RESOLVE_DONE;
+			expr_insert_addr(expr);
+			if (!sema_analyse_expr(context, expr)) return false;
+			return cast_explicit(context, expr, to);
 		}
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
@@ -1049,12 +1046,12 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 }
 
 static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInitializer *const_init, Type *element_type,
-                                                                       ArraySize array_count, ArrayIndex index,
-                                                                       ArrayIndex *insert_index_ref, Expr *value)
+                                                                       ArrayIndex index,
+                                                                       ArrayIndex *insert_index_ref)
 {
 	ConstInitializer **array_elements = const_init->init_array.elements;
 	ArrayIndex insert_index = *insert_index_ref;
-	ASSERT(insert_index >= array_count || array_elements);
+	ArrayIndex array_count = vec_size(array_elements);
 	// Walk to the insert point or until we reached the end of the array.
 	while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
 	{
@@ -1062,7 +1059,6 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
 	}
 	// Pick up the initializer at the insert point.
 	ConstInitializer *initializer = insert_index < array_count ? array_elements[insert_index] : NULL;
-	ConstInitializer *inner_value;
 
 	// If we don't have an initializer, the location needs to be at the end.
 	// Create and append:
@@ -1111,14 +1107,8 @@ void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, Arra
 
 	Type *element_type = type_flatten(const_init->type->array.base);
 
-	// Get all the elements in the array
-	ConstInitializer **array_elements = const_init->init_array.elements;
-
-	unsigned array_count = vec_size(array_elements);
 	ArrayIndex insert_index = 0;
-
-	ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type,
-	                                                                       array_count, index, &insert_index, value);
+	ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type, index, &insert_index);
 
 	const_init_rewrite_to_value(inner_value, value);
 }
@@ -1149,14 +1139,11 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 
 	// Get all the elements in the array
 
-	unsigned array_count = vec_size(const_init->init_array.elements);
 	ArrayIndex insert_index = 0;
 
 	for (ArrayIndex index = low_index; index <= high_index; index++)
 	{
-		ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type,
-		                                                                       array_count, index, &insert_index,
-		                                                                       value);
+		ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type, index, &insert_index);
 
 		// Update
 		if (!is_last_path_element)
