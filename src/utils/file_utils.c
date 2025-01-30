@@ -497,24 +497,32 @@ const char *file_append_path_temp(const char *path, const char *name)
 	size_t path_len = strlen(path);
 	if (!path_len) return name;
 	size_t name_len = strlen(name);
-	if (path_len + name_len + 1 >= PATH_BUFFER_SIZE) error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
+	if (path_len + name_len + 2 > PATH_BUFFER_SIZE)
+	{
+		error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
+	}
+
 #if PLATFORM_WINDOWS
-	if (path[path_len - 1] == '\\') goto CONCAT;
-	if (path[path_len - 1] == '/') goto CONCAT;
-	sprintf(path_buffer, "%s\\%s", path, name);
-	path_buffer[name_len + path_len + 1] = 0;
-	return path_buffer;
+	char separator = '\\';
 #else
-	if (path[path_len - 1] == '/') goto CONCAT;
-	snprintf(path_buffer, PATH_BUFFER_SIZE, "%s/%s", path, name);
-	path_buffer[name_len + path_len + 1] = 0;
-	return path_buffer;
+	char separator = '/';
 #endif
-CONCAT:
-	snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);
-	path_buffer[name_len + path_len] = 0;
+
+	// format the string safely
+	bool insert_separator = path[path_len - 1] == '/' || path[path_len - 1] == separator;
+	int written = insert_separator
+		              ? snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%c%s", path, separator, name)
+		              : snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);
+
+	// check if truncation occurred
+	if (written < 0 || (size_t)written >= PATH_BUFFER_SIZE)
+	{
+		error_exit("Error generating path from %s and %s: snprintf truncation occurred.", path, name);
+	}
+
 	return path_buffer;
 }
+
 const char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);
