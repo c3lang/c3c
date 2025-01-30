@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include "compiler_internal.h"
-#include <inttypes.h>
 #include <math.h>
 
 UNUSED static inline uint32_t u32_min(uint32_t a, uint32_t b)
@@ -116,11 +115,10 @@ Int128 i128_from_str(const char *str)
 
 UNUSED Int128 i128_from_strl(const char *str, const char *end)
 {
-	char c;
 	Int128 x = { 0, 0 };
 	while (str != end)
 	{
-		c = *(str++);
+		char c = *(str++);
 		x = i128_add64(i128_mult64(x, 10), (uint64_t) (c - '0'));
 	}
 	return x;
@@ -128,11 +126,10 @@ UNUSED Int128 i128_from_strl(const char *str, const char *end)
 
 UNUSED Int128 i128_from_hexstrl(const char *str, const char *end)
 {
-	char c;
 	Int128 x = { 0, 0 };
 	while (str != end)
 	{
-		c = *(str++);
+		char c = *(str++);
 		x = i128_add64(i128_shl64(x, 4), (uint64_t)char_hex_to_nibble(c));
 	}
 	return x;
@@ -198,7 +195,7 @@ Int128 i128_xor(Int128 op1, Int128 op2)
 
 Int128 i128_neg(Int128 op1)
 {
-	if (!op1.low && !op1.low) return op1;
+	if (!op1.low && !op1.high) return op1;
 	return i128_add64(i128_not(op1), 1);
 }
 
@@ -323,7 +320,7 @@ Int128 i128_from_float_unsigned(Real d)
 UNUSED bool i128_get_bit(const Int128 *op, int bit)
 {
 	ASSERT(bit < 128 && bit >= 0);
-	if (bit > 63)
+	if (bit > 63) // NOLINT
 	{
 		return (op->high >> (bit - 64)) & 1;
 	}
@@ -442,9 +439,9 @@ static uint32_t ctz64(uint64_t n)
 	return c;
 }
 
-uint32_t i128_ctz(const Int128 *n)
+uint32_t i128_ctz(const Int128 *op)
 {
-	return !n->low ? ctz64(n->high) + 64 : ctz64(n->low);
+	return !op->low ? ctz64(op->high) + 64 : ctz64(op->low);
 }
 
 static uint32_t clz64(uint64_t n)
@@ -886,13 +883,13 @@ Int int_shr64(Int op1, uint64_t op2)
 	return (Int){ i128_extend(i128_ashr64(op1.i, op2), op1.type), op1.type };
 }
 
-Int int_shl64(Int op1, uint64_t op2)
+Int int_shl64(Int op, uint64_t op2)
 {
-	if (type_kind_is_unsigned(op1.type))
+	if (type_kind_is_unsigned(op.type))
 	{
-		return (Int){ i128_extend(i128_shl64(op1.i, op2), op1.type), op1.type };
+		return (Int){ i128_extend(i128_shl64(op.i, op2), op.type), op.type };
 	}
-	return (Int){ i128_extend(i128_shl64(op1.i, op2), op1.type), op1.type };
+	return (Int){ i128_extend(i128_shl64(op.i, op2), op.type), op.type };
 }
 
 Real int_to_real(Int op)

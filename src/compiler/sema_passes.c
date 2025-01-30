@@ -280,13 +280,13 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	}
 	File *file;
 	// TODO fix Win32
+	char old_path_buffer[PATH_MAX];
 	char *old_path = NULL;
 	if (compiler.build.script_dir)
 	{
-		old_path = getcwd(NULL, 0);
+		old_path = getcwd(old_path, PATH_MAX);
 		if (!dir_change(compiler.build.script_dir))
 		{
-			free(old_path);
 			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);
 		}
 	}
@@ -302,7 +302,6 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 	if (old_path)
 	{
 		success = dir_change(old_path);
-		free(old_path);
 		if (!success)
 		{
 			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open run dir '%s'", compiler.build.script_dir);

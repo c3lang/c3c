@@ -13,8 +13,11 @@
 #include <assert.h>
 #include <stdlib.h>
 #include <stdbool.h>
-#ifndef _MSC_VER
+#ifdef _MSC_VER
+#define PATH_MAX 260
+#else
 #include <unistd.h>
+#include <limits.h>
 #endif
 
 #define NO_ARENA 0
@@ -111,7 +114,7 @@
  "https://github.com/c3lang/c3c/issues/new so that we can get it fixed.", _string, __func__, __FILE__, __LINE__, ##__VA_ARGS__); } while(0)
 
 
-#define ASSERT(_condition) while (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); }
+#define ASSERT(_condition) do { if (!(_condition)) { FATAL_ERROR("Violated assert: " #_condition); } } while (0)
 #define WARNING(_string, ...) do { eprintf("WARNING: "); eprintf(_string, ##__VA_ARGS__); eprintf("\n"); } while(0)
 #define UNREACHABLE FATAL_ERROR("Should be unreachable");
 
