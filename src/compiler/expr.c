@@ -716,6 +716,7 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 		case CONST_INIT_ARRAY_VALUE:
 			return false;
 		case CONST_INIT_VALUE:
+			assert(initializer);
 			expr_replace(result, initializer->init_value);
 			return true;
 	}

@@ -22,7 +22,7 @@ typedef enum
 #define TRY_CONSUME_OR_RET(_tok, _message, _type) do { if (!consume(c, _tok, _message)) return _type; } while(0)
 #define CHECK_EXPR_OR_RET(_expr) do { if (!expr_ok(_expr)) return _expr; } while(0)
 
-Decl *parse_top_level_statement(ParseContext *c, ParseContext **new_context);
+Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out);
 Ast *parse_ct_assert_stmt(ParseContext *c);
 Ast *parse_ct_error_stmt(ParseContext *c);
 Ast *parse_ct_echo_stmt(ParseContext *c);
@@ -57,8 +57,8 @@ bool parse_current_is_expr(ParseContext *c);
 
 bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref, bool is_new_syntax);
 
-bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
-					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
+bool parse_parameters(ParseContext *c, Decl ***params_ref,
+                      Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);
 
 bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool vasplat);
 Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *type_info);

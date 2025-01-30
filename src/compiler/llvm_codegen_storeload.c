@@ -18,7 +18,7 @@ void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *typ
 	llvm_store_to_ptr_raw_aligned(context, pointer, llvm_get_zero(context, type), type_abi_alignment(type));
 }
 
-bool llvm_temp_as_address(GenContext *c, Type *type)
+bool llvm_temp_as_address(Type *type)
 {
 	if (type_size(type) <= 2) return false;
 	switch (type_lowering(type)->type_kind)
@@ -77,7 +77,7 @@ LLVMValueRef llvm_load(GenContext *c, LLVMTypeRef type, LLVMValueRef pointer, Al
 	ASSERT(!llvm_is_global_eval(c));
 	ASSERT(LLVMGetTypeContext(type) == c->context);
 	LLVMValueRef value = LLVMBuildLoad2(c->builder, type, pointer, name);
-	llvm_set_alignment(value, alignment ? alignment : llvm_abi_alignment(c, type));
+	llvm_set_alignment(value, alignment);
 	return value;
 }
 

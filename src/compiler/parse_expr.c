@@ -427,7 +427,7 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	Decl **decls = NULL;
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
-	if (!parse_parameters(c, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return false;
+	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_LAMBDA)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	Signature *sig = &func->func_decl.signature;
 	sig->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
@@ -606,7 +606,7 @@ bool parse_init_list(ParseContext *c, Expr ***result, TokenType param_end, bool 
 /**
  * expression_list ::= decl_or_expr+
  */
-Expr *parse_expression_list(ParseContext *c, bool allow_decl)
+Expr *parse_expression_list(ParseContext *c, bool allow_decls)
 {
 	Expr *expr_list = EXPR_NEW_TOKEN(EXPR_EXPRESSION_LIST);
 	while (1)
@@ -615,7 +615,7 @@ Expr *parse_expression_list(ParseContext *c, bool allow_decl)
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_decl_or_expr(c, &decl), poisoned_expr);
 		if (!expr)
 		{
-			if (!allow_decl)
+			if (!allow_decls)
 			{
 				PRINT_ERROR_HERE("This looks like a declaration, which isn't allowed here.");
 				return poisoned_expr;
@@ -996,7 +996,7 @@ static Expr *parse_call_expr(ParseContext *c, Expr *left)
 			PRINT_ERROR_LAST("Expected an ending ')'. Did you forget a ')' before this ';'?");
 			return poisoned_expr;
 		}
-		if (!parse_parameters(c, &body_args, NULL, NULL, NULL, PARAM_PARSE_CALL)) return poisoned_expr;
+		if (!parse_parameters(c, &body_args, NULL, NULL, PARAM_PARSE_CALL)) return poisoned_expr;
 	}
 	if (!tok_is(c, TOKEN_RPAREN))
 	{

@@ -145,7 +145,7 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 			vec_add(*params_ref, llvm_get_type(context, type));
 			return;
 	}
-
+	UNREACHABLE
 }
 
 static inline void add_func_type_param(GenContext *c, Type *param_type, ABIArgInfo *arg_info, LLVMTypeRef **params)
@@ -430,7 +430,6 @@ static inline LLVMValueRef llvm_generate_introspection_global(GenContext *c, LLV
 	}
 	ASSERT(type == type->canonical);
 	Type *parent_type = type_find_parent_type(type);
-	LLVMValueRef parent_typeid;
 	LLVMValueRef global_name = NULL;
 	if (!additional)
 	{
@@ -516,6 +515,7 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	bool obfuscate = decl->obfuscate;
 	for (unsigned i = 0; i < elements; i++)
 	{
+		assert(values);
 		const char *name = enum_vals[i]->name;
 		scratch_buffer_clear();
 		scratch_buffer_append(".enum.");
@@ -537,15 +537,15 @@ static LLVMValueRef llvm_get_introspection_for_enum(GenContext *c, Type *type)
 	LLVMValueRef names = llvm_get_array(c->chars_type, values, elements);
 
 	LLVMValueRef val = llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_ENUM, type_base(type), elements, names, is_external);
-	LLVMTypeRef val_type;
 
 	unsigned count = vec_size(associated_values);
 	for (unsigned ai = 0; ai < count; ai++)
 	{
-		val_type = NULL;
+		LLVMTypeRef val_type = NULL;
 		bool mixed = false;
 		for (unsigned i = 0; i < elements; i++)
 		{
+			assert(values);
 			BEValue value;
 			llvm_emit_expr_global_value(c, &value, enum_vals[i]->enum_constant.args[ai]);
 			LLVMValueRef llvm_value = llvm_load_value_store(c, &value);
@@ -628,6 +628,7 @@ static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
 	LLVMValueRef* values = elements ? MALLOC(sizeof(LLVMValueRef) * elements) : NULL;
 	for (unsigned i = 0; i < elements; i++)
 	{
+		assert(values);
 		values[i] = fault_vals[i]->backend_ref;
 	}
 	c->builder = builder;

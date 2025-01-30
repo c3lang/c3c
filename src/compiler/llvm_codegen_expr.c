@@ -6,7 +6,7 @@
 #include <math.h>
 
 
-static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment);
+static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, AlignSize target_alignment, AlignSize *resulting_alignment);
 static bool bitstruct_requires_bitswap(Decl *decl);
 static inline LLVMValueRef llvm_const_high_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int high_bits);
 static inline LLVMValueRef llvm_const_low_bitmask(GenContext *c, LLVMTypeRef type, int type_bits, int low_bits);
@@ -239,7 +239,7 @@ static void llvm_convert_vector_comparison(GenContext *c, BEValue *be_value, LLV
 	llvm_value_set(be_value, result, type_bool);
 }
 
-static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, LLVMTypeRef coerce_type, AlignSize target_alignment, AlignSize *resulting_alignment)
+static LLVMValueRef llvm_emit_coerce_alignment(GenContext *c, BEValue *be_value, AlignSize target_alignment, AlignSize *resulting_alignment)
 {
 	// If we are loading something with greater alignment than what we have, we cannot directly memcpy.
 	if (!llvm_value_is_addr(be_value) || be_value->alignment < target_alignment)
@@ -697,7 +697,6 @@ static inline void llvm_emit_subscript_addr(GenContext *c, BEValue *value, Expr 
 	Expr *parent_expr = exprptr(expr->subscript_expr.expr);
 	Expr *index_expr = exprptr(expr->subscript_expr.index.expr);
 	Type *parent_type = type_lowering(parent_expr->type);
-	BEValue ref;
 	// First, get thing being subscripted.
 	llvm_emit_expr(c, value, parent_expr);
 	BEValue len = { .value = NULL };
@@ -924,7 +923,6 @@ static inline void llvm_extract_bitvalue_from_array(GenContext *c, BEValue *be_v
 	unsigned end = member->var.end_bit;
 	LLVMValueRef array_ptr = be_value->value;
 	LLVMTypeRef array_type = llvm_get_type(c, type_char);
-	LLVMValueRef result = NULL;
 	int start_byte = start / 8;
 	int end_byte = end / 8;
 	Type *member_type = type_lowering(member->type);
@@ -1346,85 +1344,8 @@ void llvm_emit_ignored_expr(GenContext *c, Expr *expr)
 
 }
 
-static LLVMValueRef llvm_emit_char_array_zero(GenContext *c, BEValue *value, bool find_zero)
-{
-	llvm_value_addr(c, value);
-	unsigned len = type_size(value->type);
-	ASSERT(len > 0);
-	LLVMValueRef total = NULL;
-	for (int i = 0; i < len; i++)
-	{
-		LLVMValueRef ref = llvm_emit_const_ptradd_inbounds_raw(c, value->value, i);
-		LLVMValueRef val = llvm_zext_trunc(c, llvm_load(c, c->byte_type, ref, 1, ""), llvm_get_type(c, type_cint));
-		total = total ? LLVMBuildAdd(c->builder, total, val, "") : val;
-	}
-	return LLVMBuildICmp(c->builder, find_zero ? LLVMIntEQ : LLVMIntNE, total, llvm_get_zero(c, type_cint), "");
-}
-static void llvm_emit_bitstruct_to_bool(GenContext *c, BEValue *value, Type *to_type, Type *from_type)
-{
-	Type *base_type = type_flatten(from_type->decl->strukt.container_type->type);
-	if (base_type->type_kind != TYPE_ARRAY)
-	{
-		llvm_emit_int_comp_zero(c, value, value, BINARYOP_NE);
-		return;
-	}
-	llvm_value_set(value, llvm_emit_char_array_zero(c, value, false), to_type);
-}
-
-static LLVMValueRef llvm_recursive_set_value(GenContext *c, DesignatorElement **current_element_ptr, LLVMValueRef parent, DesignatorElement **last_element_ptr, Expr *value)
-{
-	DesignatorElement *current_element = current_element_ptr[0];
-	if (current_element_ptr == last_element_ptr)
-	{
-		BEValue res;
-		llvm_emit_expr(c, &res, value);
-		ArraySize index = (ArraySize)current_element->index;
-		LLVMValueRef val = llvm_load_value_store(c, &res);
-		switch (current_element->kind)
-		{
-			case DESIGNATOR_FIELD:
-			case DESIGNATOR_ARRAY:
-				return llvm_emit_insert_value(c, parent, val, index);
-			case DESIGNATOR_RANGE:
-				for (ArrayIndex i = current_element->index; i <= current_element->index_end; i++)
-				{
-					parent = llvm_emit_insert_value(c, parent, val, i);
-				}
-				return parent;
-		}
-		UNREACHABLE
-	}
-	LLVMValueRef current_val;
-	switch (current_element->kind)
-	{
-		case DESIGNATOR_FIELD:
-		{
-			unsigned index = (unsigned)current_element->index;
-			current_val = llvm_emit_extract_value(c, parent, index);
-			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-			return llvm_emit_insert_value(c, parent, current_val, index);
-		}
-		case DESIGNATOR_ARRAY:
-			current_val = llvm_emit_extract_value(c, parent, current_element->index);
-			current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-			return llvm_emit_insert_value(c, parent, current_val, current_element->index);
-		case DESIGNATOR_RANGE:
-			for (ArrayIndex i = current_element->index; i <= current_element->index_end; i++)
-			{
-				current_val = llvm_emit_extract_value(c, parent, i);
-				current_val = llvm_recursive_set_value(c, current_element_ptr + 1, current_val, last_element_ptr, value);
-				parent = llvm_emit_insert_value(c, parent, current_val, i);
-			}
-			return parent;
-		default:
-			UNREACHABLE
-	}
-}
-
-
 void llvm_emit_initialize_reference_temporary_const(GenContext *c, BEValue *ref, ConstInitializer *initializer)
 {
-	bool modified = false;
 	// First create the constant value.
 
 	LLVMValueRef value = llvm_emit_const_initializer(c, initializer);
@@ -1527,8 +1448,6 @@ static void llvm_emit_const_init_ref(GenContext *c, BEValue *ref, ConstInitializ
 			Type *element_type = array_type->array.base;
 			LLVMTypeRef array_type_llvm = llvm_get_type(c, array_type);
 			ConstInitializer **elements = const_init->init_array.elements;
-			ArrayIndex current_index = 0;
-			LLVMValueRef *parts = NULL;
 			FOREACH(ConstInitializer *, element, elements)
 			{
 				ASSERT(element->kind == CONST_INIT_ARRAY_VALUE);
@@ -1666,7 +1585,6 @@ static inline void llvm_emit_initialize_reference_list(GenContext *c, BEValue *r
 	bool is_struct = type_is_union_or_strukt(real_type);
 	bool is_array = real_type->type_kind == TYPE_ARRAY;
 
-	bool is_vector = real_type->type_kind == TYPE_VECTOR;
 	// Now walk through the elements.
 	FOREACH_IDX(i, Expr *, element, elements)
 	{
@@ -2416,7 +2334,6 @@ static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *e
 	llvm_value_rvalue(c, value);
 	LLVMValueRef introspect = LLVMBuildIntToPtr(c->builder, value->value, c->ptr_type, "");
 
-	AlignSize align;
 	Decl *dyn_fn = expr->access_resolved_expr.ref;
 	LLVMValueRef func = llvm_emit_dynamic_search(c, introspect, llvm_get_ref(c, dyn_fn));
 
@@ -2427,7 +2344,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
 	Type *type = type_reduced_from_expr(expr->unary_expr.expr);
 	Expr *inner = expr->unary_expr.expr;
-	LLVMValueRef llvm_value;
+
 	switch (expr->unary_expr.operator)
 	{
 		case UNARYOP_ERROR:
@@ -2441,6 +2358,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			{
 				llvm_value_rvalue(c, value);
 				Type *vec_type = type_vector_type(type);
+				LLVMValueRef llvm_value;
 				if (type_is_float(vec_type))
 				{
 					llvm_value = LLVMBuildFCmp(c->builder, LLVMRealUEQ, value->value, llvm_get_zero(c, type), "not");
@@ -2625,7 +2543,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 	LLVMValueRef parent_addr = parent_addr_x.value;
 	LLVMValueRef parent_load_value = NULL;
 	LLVMValueRef parent_base;
-	bool is_optional = type_is_optional(parent_type);
 	parent_type = type_no_optional(parent_type);
 	switch (parent_type->type_kind)
 	{
@@ -3000,13 +2917,11 @@ static void llvm_emit_slice_assign(GenContext *c, BEValue *be_value, Expr *expr)
 
 static void llvm_emit_logical_and_or(GenContext *c, BEValue *be_value, Expr *expr, BinaryOp op)
 {
-	LLVMBasicBlockRef lhs_end_block;
-
 	// Generate left-hand condition and conditional branch
 	llvm_emit_expr(c, be_value, exprptr(expr->binary_expr.left));
 	llvm_value_rvalue(c, be_value);
 
-	lhs_end_block = llvm_get_current_block_if_in_use(c);
+	LLVMBasicBlockRef lhs_end_block = llvm_get_current_block_if_in_use(c);
 
 	LLVMValueRef result_on_skip = LLVMConstInt(c->bool_type, op == BINARYOP_AND ? 0 : 1, 0);
 
@@ -3312,8 +3227,6 @@ static void llvm_emit_any_comparison(GenContext *c, BEValue *result, BEValue *lh
 	LLVMValueRef val;
 	LLVMValueRef val2;
 	LLVMValueRef res;
-	LLVMIntPredicate comparison;
-	const char *desc;
 	switch (binary_op)
 	{
 		case BINARYOP_EQ:
@@ -3377,9 +3290,6 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	LLVMBasicBlockRef value_cmp = llvm_basic_block_new(c, "slice_cmp_values");
 	LLVMBasicBlockRef loop_begin = llvm_basic_block_new(c, "slice_loop_start");
 	LLVMBasicBlockRef comparison = llvm_basic_block_new(c, "slice_loop_comparison");
-	LLVMBasicBlockRef no_match_block;
-	LLVMBasicBlockRef all_match_block;
-	LLVMBasicBlockRef match_fail_block;
 
 	llvm_value_rvalue(c, lhs);
 	llvm_value_rvalue(c, rhs);
@@ -3394,7 +3304,7 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	BEValue len_match;
 	llvm_emit_comp(c, &len_match, &lhs_len, &rhs_len, BINARYOP_EQ);
 
-	no_match_block = c->current_block;
+	LLVMBasicBlockRef no_match_block = c->current_block;
 	llvm_emit_cond_br(c, &len_match, value_cmp, exit);
 
 	llvm_emit_block(c, value_cmp);
@@ -3409,7 +3319,7 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 	llvm_value_rvalue(c, &current_index);
 	BEValue cmp;
 	llvm_emit_comp(c, &cmp, &current_index, &lhs_len, BINARYOP_LT);
-	all_match_block = c->current_block;
+	LLVMBasicBlockRef all_match_block = c->current_block;
 	llvm_emit_cond_br(c, &cmp, comparison, exit);
 
 	llvm_emit_block(c, comparison);
@@ -3428,7 +3338,7 @@ static void llvm_emit_slice_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 																		  current_index.value),
 									   array_base_type);
 	llvm_emit_comp(c, &cmp, &lhs_to_compare, &rhs_to_compare, BINARYOP_EQ);
-	match_fail_block = c->current_block;
+	LLVMBasicBlockRef match_fail_block = c->current_block;
 	llvm_store_raw(c, &index_var, LLVMBuildAdd(c->builder, current_index.value, one, ""));
 	llvm_emit_cond_br(c, &cmp, loop_begin, exit);
 	llvm_emit_block(c, exit);
@@ -3625,8 +3535,7 @@ MEMCMP:
 	LLVMBasicBlockRef exit = llvm_basic_block_new(c, "array_cmp_exit");
 	LLVMBasicBlockRef loop_begin = llvm_basic_block_new(c, "array_loop_start");
 	LLVMBasicBlockRef comparison = llvm_basic_block_new(c, "array_loop_comparison");
-	LLVMBasicBlockRef comparison_phi;
-	LLVMBasicBlockRef loop_begin_phi;
+
 	LLVMValueRef len_val = llvm_const_int(c, type_isz, len);
 	LLVMValueRef one = llvm_const_int(c, type_isz, 1);
 	BEValue index_var;
@@ -3648,14 +3557,14 @@ MEMCMP:
 	llvm_value_set_address(&rhs_v, rhs_ptr, array_base_type, align_rhs);
 	BEValue comp;
 	llvm_emit_comp(c, &comp, &lhs_v, &rhs_v, BINARYOP_EQ);
-	loop_begin_phi = c->current_block;
+	LLVMBasicBlockRef loop_begin_phi = c->current_block;
 	llvm_emit_cond_br(c, &comp, comparison, exit);
 	llvm_emit_block(c, comparison);
 
 	LLVMValueRef new_index = LLVMBuildAdd(c->builder, index_copy.value, one, "inc");
 	llvm_store_raw(c, &index_var, new_index);
 	llvm_emit_int_comp_raw(c, &comp, type_isz, type_isz, new_index, len_val, BINARYOP_LT);
-	comparison_phi = c->current_block;
+	LLVMBasicBlockRef comparison_phi = c->current_block;
 	llvm_emit_cond_br(c, &comp, loop_begin, exit);
 	llvm_emit_block(c, exit);
 	LLVMValueRef success = LLVMConstInt(c->bool_type, want_match ? 1 : 0, false);
@@ -3800,7 +3709,7 @@ static void llvm_emit_else(GenContext *c, BEValue *be_value, Expr *expr)
 	llvm_emit_exprid(c, &real_value, expr->binary_expr.left);
 	bool was_address = llvm_value_is_addr(&real_value);
 	llvm_value_fold_optional(c, &real_value);
-	if (was_address && !llvm_temp_as_address(c, real_value.type))
+	if (was_address && !llvm_temp_as_address(real_value.type))
 	{
 		was_address = false;
 		llvm_value_rvalue(c, &real_value);
@@ -4244,9 +4153,7 @@ static void llvm_emit_post_unary_expr(GenContext *context, BEValue *be_value, Ex
 
 void llvm_emit_typeid(GenContext *c, BEValue *be_value, Type *type)
 {
-	LLVMValueRef value;
-	type = type->canonical;
-	llvm_value_set(be_value, llvm_get_typeid(c, type), type_typeid);
+	llvm_value_set(be_value, llvm_get_typeid(c, type->canonical), type_typeid);
 }
 
 void llvm_emit_try_assign_try_catch(GenContext *c, bool is_try, BEValue *be_value, BEValue *var_addr, BEValue *catch_addr, Expr *rhs)
@@ -4519,7 +4426,6 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	LLVMBasicBlockRef phi_block = llvm_basic_block_new(c, "cond.phi");
 	LLVMBasicBlockRef rhs_block = llvm_basic_block_new(c, "cond.rhs");
 
-	LLVMBasicBlockRef lhs_exit;
 	LLVMBasicBlockRef lhs_block = llvm_basic_block_new(c, "cond.lhs");
 	llvm_emit_cond_br(c, value, lhs_block, rhs_block);
 	llvm_emit_block(c, lhs_block);
@@ -4527,7 +4433,7 @@ void gencontext_emit_ternary_expr(GenContext *c, BEValue *value, Expr *expr)
 	llvm_emit_expr(c, &lhs, then_expr);
 	llvm_value_rvalue(c, &lhs);
 	LLVMValueRef lhs_value = lhs.value;
-	lhs_exit = llvm_get_current_block_if_in_use(c);
+	LLVMBasicBlockRef lhs_exit = llvm_get_current_block_if_in_use(c);
 	if (lhs.type == type_bool && LLVMTypeOf(lhs_value) != c->bool_type)
 	{
 		llvm_emit_trunc_bool(c, lhs_value);
@@ -5065,7 +4971,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 			AlignSize target_alignment = llvm_abi_alignment(c, coerce_type);
 
 			AlignSize alignment;
-			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, coerce_type, target_alignment, &alignment);
+			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, target_alignment, &alignment);
 			LLVMTypeRef element = llvm_get_type(c, type_uint);
 			for (unsigned idx = 0; idx < info->direct_struct_expand; idx++)
 			{
@@ -5151,7 +5057,7 @@ void llvm_emit_parameter(GenContext *c, LLVMValueRef *args, unsigned *arg_count_
 			LLVMTypeRef hi = llvm_abi_type(c, info->direct_pair.hi);
 
 			AlignSize struct_align;
-			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, struct_type, llvm_abi_alignment(c, struct_type), &struct_align);
+			LLVMValueRef cast = llvm_emit_coerce_alignment(c, be_value, llvm_abi_alignment(c, struct_type), &struct_align);
 			// Get the lo value.
 
 			LLVMValueRef lo_ptr = llvm_emit_struct_gep_raw(c, cast, struct_type, 0, struct_align, &alignment);
@@ -5363,8 +5269,6 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	}
 	if (prototype->is_optional)
 	{
-		BEValue no_err;
-
 		// 17a. If we used the error var as the indirect recipient, then that will hold the error.
 		//      otherwise it's whatever value in be_value.
 		BEValue error_holder = *result_value;
@@ -5420,7 +5324,6 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 		LLVMBasicBlockRef entry;
 		LLVMBuilderRef builder = llvm_create_function_entry(c, func, &entry);
 
-		AlignSize align;
 		LLVMValueRef dtable_ptr_in = LLVMGetParam(func, 0);
 		LLVMValueRef func_ref = LLVMGetParam(func, 1);
 
@@ -5634,8 +5537,6 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 		// 7d. Update the be_value to actually be an address.
 		llvm_value_set_address_abi_aligned(&synthetic_return_param, synthetic_return_param.value, actual_return_type);
 	}
-
-	BEValue temp_value;
 
 	// 8. Add all other arguments.
 	for (unsigned i = 0; i < param_count; i++)
@@ -5879,7 +5780,6 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		LLVMBasicBlockRef missing_function = llvm_basic_block_new(c, "missing_function");
 		LLVMBasicBlockRef match = llvm_basic_block_new(c, "match");
 
-		AlignSize align;
 		Decl *dyn_fn = declptr(expr->call_expr.func_ref);
 		prototype = type_get_resolved_prototype(dyn_fn->type);
 		func_type = llvm_get_type(c, dyn_fn->type);
@@ -5978,7 +5878,6 @@ static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type
 	LLVMValueRef old_ret_out = c->return_out;
 	LLVMValueRef error_out = c->catch.fault;
 	LLVMBasicBlockRef error_block = c->catch.block;
-	LLVMValueRef return_out = NULL;
 	LLVMBasicBlockRef expr_block = llvm_basic_block_new(c, "expr_block.exit");
 	LLVMBasicBlockRef cleanup_error_block = error_block;
 	BlockExit exit = {
@@ -6079,7 +5978,7 @@ DONE:
 
 	c->return_out = old_ret_out;
 	c->catch.block = error_block;
-	c->catch.fault = error_out;
+	c->catch.fault = error_out; // NOLINT
 
 }
 
@@ -6614,7 +6513,6 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			}
 			ASSERT(type_flatten(inner->type)->type_kind == TYPE_FAULTTYPE);
 			llvm_value_rvalue(c, be_value);
-			BEValue zero;
 			LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "faultordinal_exit");
 			LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "faultordinal_found");
 			BEValue check;
@@ -6920,7 +6818,6 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 			scratch_buffer_clear();
 			scratch_buffer_printf("Attempt to convert a negative value (%%d) to enum '%s' failed.", decl->name);
 			llvm_emit_int_comp_zero(c, &check, value, BINARYOP_LT);
-			BEValue val;
 			llvm_emit_panic_on_true(c, check.value, "Attempt to convert negative value to enum failed.", expr->span, scratch_buffer_copy(), value, NULL);
 		}
 		scratch_buffer_clear();

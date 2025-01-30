@@ -7,10 +7,8 @@
 #include "codegen_internal.h"
 #include <llvm-c/Core.h>
 #include <llvm-c/Analysis.h>
-#include <llvm-c/ExecutionEngine.h>
 #include <llvm-c/Target.h>
 #include <llvm-c/Analysis.h>
-#include <llvm-c/BitWriter.h>
 #include <llvm-c/DebugInfo.h>
 #include "dwarf.h"
 #include "c3_llvm.h"
@@ -325,7 +323,7 @@ INLINE bool llvm_is_local_eval(GenContext *c);
 // -- BE value --
 void llvm_value_addr(GenContext *c, BEValue *value);
 bool llvm_value_is_const(BEValue *value);
-void llvm_value_rvalue(GenContext *context, BEValue *value);
+void llvm_value_rvalue(GenContext *c, BEValue *value);
 void llvm_value_deref(GenContext *c, BEValue *value);
 void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type);
 void llvm_value_set_int(GenContext *c, BEValue *value, Type *type, uint64_t i);
@@ -341,7 +339,7 @@ INLINE void llvm_value_bitcast(GenContext *c, BEValue *value, Type *type);
 void llvm_value_aggregate_two(GenContext *c, BEValue *value, Type *type, LLVMValueRef value1, LLVMValueRef value2);
 
 // -- Types --
-LLVMValueRef llvm_get_typeid(GenContext *context, Type *type);
+LLVMValueRef llvm_get_typeid(GenContext *c, Type *type);
 LLVMTypeRef llvm_abi_type(GenContext *c, AbiType type);
 TypeSize llvm_abi_size(GenContext *c, LLVMTypeRef type);
 BitSize llvm_bitsize(GenContext *c, LLVMTypeRef type);
@@ -429,9 +427,9 @@ LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name);
 LLVMBuilderRef llvm_create_function_entry(GenContext *c, LLVMValueRef func, LLVMBasicBlockRef *entry_block_ref);
 LLVMBasicBlockRef llvm_append_basic_block(GenContext *c, LLVMValueRef func, const char *name);
 void llvm_emit_block(GenContext *c, LLVMBasicBlockRef next_block);
-static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *context);
+static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *c);
 INLINE bool llvm_basic_block_is_unused(LLVMBasicBlockRef block);
-bool llvm_emit_check_block_branch(GenContext *context);
+bool llvm_emit_check_block_branch(GenContext *c);
 
 // -- Comparisons ---
 void llvm_emit_lhs_is_subtype(GenContext *c, BEValue *result, BEValue *lhs, BEValue *rhs);
@@ -457,13 +455,13 @@ INLINE LLVMValueRef llvm_store_raw(GenContext *c, BEValue *destination, LLVMValu
 INLINE LLVMValueRef llvm_store_decl(GenContext *c, Decl *decl, BEValue *value);
 INLINE LLVMValueRef llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMValueRef value);
 INLINE LLVMValueRef llvm_store_to_ptr(GenContext *c, LLVMValueRef destination, BEValue *value);
-INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, Type *type);
+INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, Type *type);
 LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment);
 LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
 void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *type);
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
 TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);
-bool llvm_temp_as_address(GenContext *c, Type *type);
+bool llvm_temp_as_address(Type *type);
 
 /// -- Aggregates --
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index);
@@ -535,8 +533,8 @@ void llvm_emit_slice_len(GenContext *c, BEValue *slice, BEValue *len);
 void llvm_emit_slice_pointer(GenContext *c, BEValue *slice, BEValue *pointer);
 void llvm_emit_compound_stmt(GenContext *c, Ast *ast);
 LLVMValueRef llvm_emit_const_bitstruct(GenContext *c, ConstInitializer *initializer);
-void llvm_emit_function_body(GenContext *context, Decl *decl);
-void llvm_emit_dynamic_functions(GenContext *context, Decl **funcs);
+void llvm_emit_function_body(GenContext *c, Decl *decl);
+void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs);
 BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValueRef optional, bool is_init);
 INLINE void llvm_emit_exprid(GenContext *c, BEValue *value, ExprId expr);
 INLINE void llvm_emit_statement_chain(GenContext *c, AstId current);

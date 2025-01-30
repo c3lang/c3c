@@ -131,7 +131,7 @@ INLINE void register_global_decls(CompilationUnit *unit, Decl **decls)
 	vec_resize(decls, 0);
 }
 
-INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filename, const char *type, File *no_file)
+INLINE File *sema_load_file(CompilationUnit *unit, Expr *filename)
 {
 	if (!expr_is_const_string(filename))
 	{
@@ -149,7 +149,6 @@ INLINE File *sema_load_file(CompilationUnit *unit, SourceSpan span, Expr *filena
 	File *file = source_file_load(string, &loaded, &error);
 	if (!file)
 	{
-		if (no_file) return no_file;
 		print_error_at(filename->span, "Failed to load file '%s': %s.", filename->const_expr.bytes.ptr, error);
 		return NULL;
 	}
@@ -175,7 +174,7 @@ static Decl **sema_load_include(CompilationUnit *unit, Decl *decl)
 	bool success = sema_analyse_ct_expr(&context, decl->include.filename);
 	sema_context_destroy(&context);
 	if (!success) return NULL;
-	File *file = sema_load_file(unit, decl->span,  decl->include.filename, "$include", NULL);
+	File *file = sema_load_file(unit, decl->include.filename);
 	if (!file) return NULL;
 	if (compiler.context.includes_used++ > MAX_INCLUDE_DIRECTIVES)
 	{
@@ -279,12 +278,11 @@ static Decl **sema_run_exec(CompilationUnit *unit, Decl *decl)
 		}
 	}
 	File *file;
-	// TODO fix Win32
-	char old_path_buffer[PATH_MAX];
+	char old_path_buffer[PATH_MAX]; // NOLINT
 	char *old_path = NULL;
 	if (compiler.build.script_dir)
 	{
-		old_path = getcwd(old_path, PATH_MAX);
+		old_path = getcwd(old_path_buffer, PATH_MAX);
 		if (!dir_change(compiler.build.script_dir))
 		{
 			RETURN_PRINT_ERROR_AT(NULL, decl, "Failed to open script dir '%s'", compiler.build.script_dir);

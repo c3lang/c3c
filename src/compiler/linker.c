@@ -370,10 +370,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 			add_plain_arg("-nostdlib");
 			return;
 		}
-		else
-		{
-			linking_add_link(&compiler.linking, "m");
-		}
+		linking_add_link(&compiler.linking, "m");
 		if (compiler.build.debug_info == DEBUG_INFO_FULL)
 		{
 			add_plain_arg("-rdynamic");
@@ -917,7 +914,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	}
 	const char *out_name = dir
 	                      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
-	                      : str_printf("%s%s", filename, get_object_extension());;
+	                      : str_printf("%s%s", filename, get_object_extension());
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);

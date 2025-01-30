@@ -264,7 +264,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	{
 		if (has_return_value)
 		{
-			if (llvm_temp_as_address(c, return_value.type))
+			if (llvm_temp_as_address(return_value.type))
 			{
 				LLVMValueRef temp = llvm_emit_alloca_aligned(c, return_value.type, "ret$temp");
 				llvm_store_to_ptr(c, temp, &return_value);
