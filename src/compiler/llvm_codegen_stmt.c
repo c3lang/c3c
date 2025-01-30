@@ -1,4 +1,4 @@
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -305,8 +305,6 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 static inline void llvm_emit_block_exit_return(GenContext *c, Ast *ast)
 {
 
-	LLVMBasicBlockRef error_return_block = NULL;
-	LLVMValueRef error_out = NULL;
 	BlockExit *exit = *ast->return_stmt.block_exit_ref;
 
 	PUSH_CATCH_VAR_BLOCK(exit->block_error_var, exit->block_optional_exit);
@@ -520,7 +518,6 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 	BEValue value;
 	if (ast->for_stmt.init) llvm_emit_expr(c, &value, exprptr(ast->for_stmt.init));
 
-	bool no_exit = ast->for_stmt.flow.no_exit;
 	ExprId incr = ast->for_stmt.incr;
 
 	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
@@ -888,7 +885,6 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 
 	llvm_set_private_declaration(jmptable);
 	LLVMSetGlobalConstant(jmptable, 1);
-	BEValue array_value;
 	LLVMValueRef instr = llvm_emit_switch_jump_stmt(c, switch_ast, cases, count, min_index, jmptable, default_block, switch_value);
 
 #define REF_STACK 16

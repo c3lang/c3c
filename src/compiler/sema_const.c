@@ -312,7 +312,6 @@ static inline ConstInitializer *expr_const_initializer_from_expr(Expr *expr)
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right)
 {
 	ASSERT(concat_expr->resolve_status == RESOLVE_RUNNING);
-	bool join_single = false;
 	ArraySize len = 0;
 	bool use_array = true;
 	Type *indexed_type = NULL;

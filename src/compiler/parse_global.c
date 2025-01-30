@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -446,7 +446,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		return type_info;
 	}
 	SourceSpan range = c->span;
-	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return poisoned_type_info;
 	if (path)
@@ -953,7 +952,6 @@ Decl *parse_var_decl(ParseContext *c)
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 {
 	SourceSpan start_span = c->prev_span;
-	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return false;
 
@@ -2197,9 +2195,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 	decl->decl_kind = DECL_MACRO;
 	decl->func_decl.docs = docs;
 	if (!parse_func_macro_header(c, decl)) return poisoned_decl;
-	const char *block_parameter = NULL;
 	if (!parse_macro_params(c, decl)) return poisoned_decl;
-
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	if (tok_is(c, TOKEN_IMPLIES))
 	{

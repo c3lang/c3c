@@ -1,3 +1,7 @@
+// Copyright (c) 2024-2025 Christoffer Lerno. All rights reserved.
+// Use of this source code is governed by the GNU LGPLv3.0 license
+// a copy of which can be found in the LICENSE file.
+
 #include "llvm_codegen_internal.h"
 
 void llvm_value_deref(GenContext *c, BEValue *value)

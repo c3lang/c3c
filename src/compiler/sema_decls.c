@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -309,7 +309,6 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	ArrayIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
-	bool has_named_parameter = false;
 	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
 	ASSERT(member_count > 0);
@@ -729,7 +728,6 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		RETURN_SEMA_ERROR(member, "Circular dependency resolving member.");
 	}
 
-	bool ease_decl = false;
 	if (!sema_analyse_attributes(context, member, member->attributes, ATTR_BITSTRUCT_MEMBER, erase_decl)) return decl_poison(member);
 	if (*erase_decl) return true;
 
@@ -1402,13 +1400,13 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 /**
  * Analyse a distinct type.
  */
-static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase)
+static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	// Check the attributes on the distinct type.
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase)) return false;
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase_decl)) return false;
 
 	// Erase it?
-	if (*erase) return true;
+	if (*erase_decl) return true;
 
 	// Check the interfaces.
 	if (!sema_resolve_implemented_interfaces(context, decl, false)) return false;
@@ -2469,7 +2467,6 @@ INLINE bool update_abi(Decl *decl, CallABI abi)
 static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *expr)
 {
 	const char *str = expr->const_expr.bytes.ptr;
-	CallABI abi;
 	// C decl is easy
 	if (str_eq(str, "cdecl")) return update_abi(decl, CALL_C);
 
@@ -3144,7 +3141,6 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 		}
 		if (directive_kind != CONTRACT_PARAM) continue;
 		const char *param_name = directive->contract_stmt.param.name;
-		Decl *extra_param = NULL;
 		Decl *param = NULL;
 		FOREACH(Decl *, other_param, params)
 		{
@@ -4519,7 +4515,6 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		return poisoned_decl;
 	}
 	if (!sema_generate_parameterized_name_to_scratch(c, module, params, true, was_recursive_ref)) return poisoned_decl;
-	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
 

@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2022-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 #include "sema_internal.h"
@@ -847,6 +847,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 				case ATOMIC_ACQUIRE_RELEASE:
 				case ATOMIC_RELEASE:
 					RETURN_SEMA_ERROR(args[2], "'release' and 'acquire release' are not valid for atomic loads.");
+				default:
+					break;
 			}
 			rtype = original->pointer;
 			break;
