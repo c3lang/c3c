@@ -42,7 +42,7 @@ static bool context_labels_exist_in_scope(SemaContext *context);
 static inline bool sema_analyse_then_overwrite(SemaContext *context, Ast *statement, AstId replacement);
 static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr);
 static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context, Ast *compound_statement);
-static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index);
+static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, unsigned index);
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
                                          unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref,
 										 Int *low, Int *high);
@@ -340,7 +340,7 @@ static void sema_unwrappable_from_catch_in_else(SemaContext *c, Expr *cond)
 				sema_unwrap_var(c, decl);
 				break;
 			default:
-				continue;
+				break;
 		}
 	}
 
@@ -360,7 +360,6 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 	FOREACH(Expr *, expr, declexpr->expression_list)
 	{
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
-		CondResult result = COND_MISSING;
 		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, false)) return false;
 
 		const char *comment = directive->contract_stmt.contract.comment;
@@ -384,7 +383,6 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 // Check whether a defer chain contains a try or a catch.
 static inline bool sema_defer_has_try_or_catch(AstId defer_top, AstId defer_bottom)
 {
-	AstId first = 0;
 	while (defer_bottom != defer_top)
 	{
 		Ast *defer = astptr(defer_top);
@@ -1447,8 +1445,6 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	Expr **expressions = NULL;
 	bool is_reverse = statement->foreach_stmt.is_reverse;
 	bool value_by_ref = statement->foreach_stmt.value_by_ref;
-	bool success = true;
-	bool iterator_based = false;
 	bool iterator_was_initializer = enumerator->expr_kind == EXPR_INITIALIZER_LIST;
 	// Check the type if needed
 	TypeInfo *variable_type_info = vartype(var);
@@ -1491,10 +1487,7 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		{
 			RETURN_SEMA_ERROR(enumerator, "It is not possible to enumerate a compile time 'untyped' list at runtime, but you can use the compile time `$foreach` with the list.");
 		}
-		else
-		{
-			RETURN_SEMA_ERROR(var, "Add an explicit type to the variable if you want to iterate over an initializer list.");
-		}
+		RETURN_SEMA_ERROR(var, "Add an explicit type to the variable if you want to iterate over an initializer list.");
 	}
 	if (canonical->type_kind == TYPE_POINTER)
 	{
@@ -2240,7 +2233,7 @@ static inline bool sema_analyse_compound_statement_no_scope(SemaContext *context
 	return all_ok;
 }
 
-static inline bool sema_check_type_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases, unsigned index)
+static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, Ast **cases, unsigned index)
 {
 	Expr *expr = exprptr(case_stmt->case_stmt.expr);
 	if (!sema_analyse_expr_rhs(context, type_typeid, expr, false, NULL, false)) return false;
@@ -2439,7 +2432,7 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			case AST_CASE_STMT:
 				if (type_switch)
 				{
-					if (!sema_check_type_case(context, switch_type, stmt, cases, i))
+					if (!sema_check_type_case(context, stmt, cases, i))
 					{
 						success = false;
 						break;
@@ -2601,6 +2594,7 @@ static inline bool sema_analyse_ct_switch_stmt(SemaContext *context, Ast *statem
 			case AST_CASE_STMT:
 			{
 				Expr *expr = exprptr(stmt->case_stmt.expr);
+				assert(expr);
 				Expr *to_expr = exprptrzero(stmt->case_stmt.to_expr);
 				if (to_expr && !type_is_integer(type))
 				{
@@ -2724,7 +2718,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	Expr *collection = exprptr(statement->ct_foreach_stmt.expr);
 	if (!sema_analyse_ct_expr(context, collection)) return false;
 	if (!expr_is_const(collection)) goto FAILED_NO_LIST;
-	unsigned count;
+	unsigned count = (unsigned)-1; // To fix invalid "maybe uninitialized" on GCC
 	ConstInitializer *initializer = NULL;
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
@@ -2914,7 +2908,6 @@ bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement)
 {
 	Expr *expr = exprptrzero(statement->assert_stmt.expr);
 	ExprId message = statement->assert_stmt.message;
-	const char *msg = NULL;
 	Expr *message_expr = message ? exprptr(message) : NULL;
 	if (message_expr)
 	{
@@ -2998,7 +2991,6 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement)
 {
 	unsigned for_context = sema_context_push_ct_stack(context);
-	bool success = false;
 	ExprId init;
 	if ((init = statement->for_stmt.init))
 	{
@@ -3194,7 +3186,6 @@ static bool sema_analyse_ensure(SemaContext *context, Ast *directive)
 
 static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 {
-	Ast **returns = NULL;
 	FOREACH(Ast *, ret, directive->contract_stmt.faults)
 	{
 		if (ret->contract_fault.resolved) continue;

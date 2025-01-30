@@ -5,7 +5,7 @@
 #include "sema_internal.h"
 
 static bool sema_append_const_array_one(SemaContext *context, Expr *expr, Expr *list, Expr *element);
-static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool is_append);
+static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element);
 
 ArrayIndex sema_len_from_const(Expr *expr)
 {
@@ -68,7 +68,7 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 		case CONST_POINTER:
 		case CONST_BYTES:
 		case CONST_STRING:
-			return sema_append_concat_const_bytes(context, append_expr, list, element, true);
+			return sema_append_concat_const_bytes(context, append_expr, list, element);
 		default:
 			RETURN_SEMA_ERROR(list, "Expected some kind of list or vector here.");
 	}
@@ -80,7 +80,7 @@ static inline bool sema_expr_const_append(SemaContext *context, Expr *append_exp
 	return true;
 }
 
-static bool sema_concat_const_bytes(SemaContext *context, Expr *expr, Type *type, bool is_bytes, const char *a, const char *b, ArraySize alen, ArraySize blen)
+static void expr_concat_const_bytes(Expr *expr, Type *type, bool is_bytes, const char *a, const char *b, ArraySize alen, ArraySize blen)
 {
 	Type *indexed = type_get_indexed_type(type);
 	char *data = malloc_arena(alen + blen + 1);
@@ -98,10 +98,9 @@ static bool sema_concat_const_bytes(SemaContext *context, Expr *expr, Type *type
 	};
 	expr->resolve_status = RESOLVE_DONE;
 	expr->type = is_bytes ? type_get_array(indexed, alen + blen) : type;
-	return true;
 }
 
-static bool sema_concat_character(SemaContext *context, Expr *expr, Type *type, const char *a, ArraySize alen, uint64_t c)
+static void expr_concat_character(Expr *expr, Type *type, const char *a, ArraySize alen, uint64_t c)
 {
 	char append_array[4];
 	int len;
@@ -131,7 +130,7 @@ static bool sema_concat_character(SemaContext *context, Expr *expr, Type *type, 
 		append_array[3] = (char) (0x80 | (c & 0x3F));
 		len = 4;
 	}
-	return sema_concat_const_bytes(context, expr, type, false, a, append_array, alen, len);
+	expr_concat_const_bytes(expr, type, false, a, append_array, alen, len);
 }
 
 /**
@@ -157,14 +156,16 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 				// 2. Bytes + (i)char => Bytes
 				if (!cast_implicit(context, right, type_char, false)) return false;
 				char c = (char) int_to_i64(right->const_expr.ixx);
-				return sema_concat_const_bytes(context, expr, left->type, true, left_bytes, &c, len, 1);
+				expr_concat_const_bytes(expr, left->type, true, left_bytes, &c, len, 1);
+				return true;
 			}
 			// 1. String + character => String
 			if (int_is_neg(right->const_expr.ixx) || int_icomp(right->const_expr.ixx, 0x10FFFF, BINARYOP_GT))
 			{
 				RETURN_SEMA_ERROR(right, "Cannot concatenate a string with an non-unicode value.");
 			}
-			return sema_concat_character(context, expr, left->type, left_bytes, len, right->const_expr.ixx.i.low);
+			expr_concat_character(expr, left->type, left_bytes, len, right->const_expr.ixx.i.low);
+			return true;
 		case CONST_FLOAT:
 		case CONST_BOOL:
 		case CONST_ENUM:
@@ -177,9 +178,9 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 			                  type_quoted_error_string(left->type), type_to_error_string(right->type));
 		case CONST_BYTES:
 		case CONST_STRING:
-			return sema_concat_const_bytes(context, expr, left->type, is_bytes, left_bytes,
-			                               right->const_expr.bytes.ptr,
-			                               len, right->const_expr.bytes.len);
+			expr_concat_const_bytes(expr, left->type, is_bytes, left_bytes, right->const_expr.bytes.ptr,
+				len, right->const_expr.bytes.len);
+			return true;
 		case CONST_UNTYPED_LIST:
 			if (!cast_implicit(context, right, type_get_inferred_array(indexed), false)) return false;
 			goto RETRY;
@@ -191,36 +192,27 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 	}
 	UNREACHABLE
 }
-static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element, bool is_append)
+static bool sema_append_concat_const_bytes(SemaContext *context, Expr *expr, Expr *list, Expr *element)
 {
 	Type *indexed = type_get_indexed_type(list->type);
 	ASSERT(indexed && "This should always work");
-	if (is_append && !cast_implicit(context, element, indexed, false)) return false;
+	if (!cast_implicit(context, element, indexed, false)) return false;
 	size_t str_len = list->const_expr.bytes.len;
-	size_t element_len = is_append ? 1 : element->const_expr.bytes.len;
 	bool is_bytes = list->const_expr.const_kind == CONST_BYTES;
-	char *data = malloc_arena(str_len + element_len + 1);
+	char *data = malloc_arena(str_len + 2);
 	char *current = data;
 	if (str_len) memcpy(current, list->const_expr.bytes.ptr, str_len);
 	current += str_len;
-	if (is_append)
-	{
-		current[0] = (unsigned char)element->const_expr.ixx.i.low;
-	}
-	else
-	{
-		if (element_len) memcpy(current, element->const_expr.bytes.ptr, element_len);
-	}
-	current += element_len;
-	current[0] = '\0';
+	current[0] = (unsigned char)element->const_expr.ixx.i.low;
+	current[1] = '\0';
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr = (ExprConst) {
 			.const_kind = list->const_expr.const_kind,
 			.bytes.ptr = data,
-			.bytes.len = str_len + element_len
+			.bytes.len = str_len + 1
 	};
 	expr->resolve_status = RESOLVE_DONE;
-	expr->type = is_bytes ? type_get_array(indexed, str_len + element_len) : list->type;
+	expr->type = is_bytes ? type_get_array(indexed, str_len + 1) : list->type;
 	return true;
 }
 
@@ -466,17 +458,17 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 						switch (inner_element->kind)
 						{
 							case CONST_INIT_ZERO:
-								continue;
+								break;
 							case CONST_INIT_STRUCT:
 							case CONST_INIT_UNION:
 							case CONST_INIT_ARRAY:
 							case CONST_INIT_ARRAY_FULL:
 							case CONST_INIT_ARRAY_VALUE:
 								expr_rewrite_const_initializer(inner_expr, index_type, inner_element);
-								continue;
+								break;
 							case CONST_INIT_VALUE:
 								*inner_expr = *inner_element->init_value;
-								continue;
+								break;
 						}
 					}
 					continue;
