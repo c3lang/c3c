@@ -29,6 +29,7 @@ void llvm_emit_compound_stmt(GenContext *c, Ast *ast)
 	if (old_block) c->debug.block_stack = old_block;
 }
 
+
 void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
 {
 	// In defers we might already have generated this variable.
@@ -1689,6 +1690,9 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 			break;
 		case AST_BLOCK_EXIT_STMT:
 			llvm_emit_block_exit_return(c, ast);
+			break;
+		case AST_CT_COMPOUND_STMT:
+			llvm_emit_statement_chain(c, ast->ct_compound_stmt);
 			break;
 		case AST_COMPOUND_STMT:
 			llvm_emit_compound_stmt(c, ast);

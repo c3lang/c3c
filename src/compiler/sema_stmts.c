@@ -233,6 +233,27 @@ static inline bool sema_analyse_compound_stmt(SemaContext *context, Ast *stateme
 }
 
 /**
+ * Ct compound statement
+ */
+static inline bool sema_analyse_ct_compound_stmt(SemaContext *context, Ast *statement)
+{
+	if (!ast_ok(statement)) return false;
+	AstId current = statement->ct_compound_stmt;
+	Ast *ast = NULL;
+	bool all_ok = true;
+	while (current)
+	{
+		ast = ast_next(&current);
+		if (!sema_analyse_statement(context, ast))
+		{
+			ast_poison(ast);
+			all_ok = false;
+		}
+	}
+	return all_ok;
+}
+
+/**
  * continue and continue FOO;
  */
 static inline bool sema_analyse_continue_stmt(SemaContext *context, Ast *statement)
@@ -2824,13 +2845,20 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 			index->var.init_expr = expr_new_const_int(index->span, type_int, i);
 			index->type = type_int;
 		}
-		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) goto FAILED;
+		if (!sema_analyse_statement(context, compound_stmt)) goto FAILED;
 		*current = astid(compound_stmt);
 		current = &compound_stmt->next;
 	}
 	sema_context_pop_ct_stack(context, ct_context);
-	statement->ast_kind = AST_COMPOUND_STMT;
-	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
+	if (!start)
+	{
+		statement->ast_kind = AST_NOP_STMT;
+	}
+	else
+	{
+		statement->ast_kind = AST_CT_COMPOUND_STMT;
+		statement->ct_compound_stmt = start;
+	}
 	return true;
 FAILED_NO_LIST:
 	SEMA_ERROR(collection, "Expected a list to iterate over, but this was a non-list expression of type %s.",
@@ -3046,7 +3074,7 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		Ast *compound_stmt = copy_ast_single(body);
 
 		// Analyse the body
-		if (!sema_analyse_compound_statement_no_scope(context, compound_stmt)) goto FAILED;
+		if (!sema_analyse_statement(context, compound_stmt)) goto FAILED;
 
 		// Append it.
 		*current = astid(compound_stmt);
@@ -3059,8 +3087,8 @@ static inline bool sema_analyse_ct_for_stmt(SemaContext *context, Ast *statement
 		}
 	}
 	// Analysis is done turn the generated statements into a compound statement for lowering.
-	statement->ast_kind = AST_COMPOUND_STMT;
-	statement->compound_stmt = (AstCompoundStmt) { .first_stmt = start };
+	statement->ast_kind = AST_CT_COMPOUND_STMT;
+	statement->ct_compound_stmt = start;
 	return true;
 FAILED:
 	sema_context_pop_ct_stack(context, for_context);
@@ -3091,6 +3119,8 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 			RETURN_SEMA_ERROR(statement, "Unexpected 'case' outside of switch");
 		case AST_COMPOUND_STMT:
 			return sema_analyse_compound_stmt(context, statement);
+		case AST_CT_COMPOUND_STMT:
+			return sema_analyse_ct_compound_stmt(context, statement);
 		case AST_CONTINUE_STMT:
 			return sema_analyse_continue_stmt(context, statement);
 		case AST_CT_ASSERT:

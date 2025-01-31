@@ -697,6 +697,9 @@ RETRY:
 			MACRO_COPY_EXPRID(ast->ct_switch_stmt.cond);
 			MACRO_COPY_AST_LIST(ast->ct_switch_stmt.body);
 			break;
+		case AST_CT_COMPOUND_STMT:
+			MACRO_COPY_ASTID(ast->ct_compound_stmt);
+			break;
 		case AST_DECLARE_STMT:
 			MACRO_COPY_DECL(ast->declare_stmt);
 			break;

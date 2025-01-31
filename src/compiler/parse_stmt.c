@@ -1100,9 +1100,9 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->span);
 	ast->ct_foreach_stmt.body = astid(body);
-	AstId *current = &body->compound_stmt.first_stmt;
+	AstId *current = &body->ct_compound_stmt;
 	while (!try_consume(c, TOKEN_CT_ENDFOREACH))
 	{
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
@@ -1140,9 +1140,9 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
-	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->span);
 	ast->for_stmt.body = astid(body);
-	AstId *current = &body->compound_stmt.first_stmt;
+	AstId *current = &body->ct_compound_stmt;
 	while (!try_consume(c, TOKEN_CT_ENDFOR))
 	{
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);

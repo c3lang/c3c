@@ -3763,6 +3763,78 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 	}
 	return true;
 }
+
+static inline bool sema_check_body_const(SemaContext *context, Ast *body)
+{
+	while (body)
+	{
+		switch (body->ast_kind)
+		{
+			case AST_CT_ASSERT:
+			case AST_CT_ECHO_STMT:
+			case AST_CT_FOREACH_STMT:
+			case AST_CT_FOR_STMT:
+			case AST_CT_IF_STMT:
+			case AST_CT_SWITCH_STMT:
+			case AST_CT_ELSE_STMT:
+			case AST_DECLARE_STMT:
+			case AST_DECLS_STMT:
+			case AST_NOP_STMT:
+				body = astptrzero(body->next);
+				continue;
+			case AST_CT_COMPOUND_STMT:
+				if (!sema_check_body_const(context, body)) return false;
+				body = astptrzero(body->next);
+				continue;
+			case AST_RETURN_STMT:
+				if (!body->return_stmt.expr) RETURN_SEMA_ERROR(body, "The 'return' in an `@const` must provide a value, e.g. 'return Foo.typeid;'");
+				if (body->next) RETURN_SEMA_ERROR(body, "There should not be any statements after 'return'.");
+				body = NULL;
+				continue;
+			case AST_EXPR_STMT:
+				// For some cases we KNOW it's not correct.
+				switch (body->expr_stmt->expr_kind)
+				{
+					case EXPR_IDENTIFIER:
+					case EXPR_UNRESOLVED_IDENTIFIER:
+					case EXPR_LAMBDA:
+					case EXPR_FORCE_UNWRAP:
+					case EXPR_ASM:
+					case EXPR_EXPR_BLOCK:
+					case EXPR_TERNARY:
+					case EXPR_RETHROW:
+						break;
+					default:
+						body = astptrzero(body->next);
+						continue;
+				}
+				FALLTHROUGH;
+			case AST_POISONED:
+			case AST_ASM_STMT:
+			case AST_ASM_LABEL:
+			case AST_ASM_BLOCK_STMT:
+			case AST_ASSERT_STMT:
+			case AST_BREAK_STMT:
+			case AST_CASE_STMT:
+			case AST_COMPOUND_STMT:
+			case AST_CONTINUE_STMT:
+			case AST_DEFAULT_STMT:
+			case AST_DEFER_STMT:
+			case AST_FOR_STMT:
+			case AST_FOREACH_STMT:
+			case AST_IF_CATCH_SWITCH_STMT:
+			case AST_IF_STMT:
+			case AST_BLOCK_EXIT_STMT:
+			case AST_SWITCH_STMT:
+			case AST_NEXTCASE_STMT:
+			case AST_CONTRACT:
+			case AST_CONTRACT_FAULT:
+				RETURN_SEMA_ERROR(body, "Only 'return' and compile time statements are allowed in an '@const' macro.");
+		}
+		UNREACHABLE
+	}
+	return true;
+}
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	decl->func_decl.unit = context->unit;
@@ -3800,69 +3872,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 		ASSERT(body->ast_kind == AST_COMPOUND_STMT);
 		body = astptrzero(body->compound_stmt.first_stmt);
 		if (!body) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have an empty body.");
-		while (body)
-		{
-			switch (body->ast_kind)
-			{
-				case AST_CT_ASSERT:
-				case AST_CT_ECHO_STMT:
-				case AST_CT_FOREACH_STMT:
-				case AST_CT_FOR_STMT:
-				case AST_CT_IF_STMT:
-				case AST_CT_SWITCH_STMT:
-				case AST_CT_ELSE_STMT:
-				case AST_DECLARE_STMT:
-				case AST_DECLS_STMT:
-				case AST_NOP_STMT:
-					body = astptrzero(body->next);
-					continue;
-				case AST_RETURN_STMT:
-					if (!body->return_stmt.expr) RETURN_SEMA_ERROR(body, "The 'return' in an `@const` must provide a value, e.g. 'return Foo.typeid;'");
-					if (body->next) RETURN_SEMA_ERROR(body, "There should not be any statements after 'return'.");
-					body = NULL;
-					continue;
-				case AST_EXPR_STMT:
-					// For some cases we KNOW it's not correct.
-					switch (body->expr_stmt->expr_kind)
-					{
-						case EXPR_IDENTIFIER:
-						case EXPR_UNRESOLVED_IDENTIFIER:
-						case EXPR_LAMBDA:
-						case EXPR_FORCE_UNWRAP:
-						case EXPR_ASM:
-						case EXPR_EXPR_BLOCK:
-						case EXPR_TERNARY:
-						case EXPR_RETHROW:
-							break;
-						default:
-							body = astptrzero(body->next);
-							continue;
-					}
-					FALLTHROUGH;
-				case AST_POISONED:
-				case AST_ASM_STMT:
-				case AST_ASM_LABEL:
-				case AST_ASM_BLOCK_STMT:
-				case AST_ASSERT_STMT:
-				case AST_BREAK_STMT:
-				case AST_CASE_STMT:
-				case AST_COMPOUND_STMT:
-				case AST_CONTINUE_STMT:
-				case AST_DEFAULT_STMT:
-				case AST_DEFER_STMT:
-				case AST_FOR_STMT:
-				case AST_FOREACH_STMT:
-				case AST_IF_CATCH_SWITCH_STMT:
-				case AST_IF_STMT:
-				case AST_BLOCK_EXIT_STMT:
-				case AST_SWITCH_STMT:
-				case AST_NEXTCASE_STMT:
-				case AST_CONTRACT:
-				case AST_CONTRACT_FAULT:
-					RETURN_SEMA_ERROR(body, "Only 'return' and compile time statements are allowed in an '@const' macro.");
-			}
-			UNREACHABLE
-		}
+		sema_check_body_const(context, body);
 	}
 	decl->type = type_void;
 	return true;

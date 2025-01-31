@@ -1488,6 +1488,7 @@ typedef struct Ast_
 		AstAssertStmt assert_stmt;          // 16
 		AstCaseStmt case_stmt;              // 32
 		AstCompoundStmt compound_stmt;      // 12
+		AstId ct_compound_stmt;
 		AstContinueBreakStmt contbreak_stmt;// 24
 		AstContractStmt contract_stmt;      // 32
 		AstDocFault contract_fault;         // 24

@@ -821,6 +821,7 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			break;
 		case AST_CT_ECHO_STMT:
 			break;
+		case AST_CT_COMPOUND_STMT:
 		case AST_CT_ELSE_STMT:
 			break;
 		case AST_CT_FOREACH_STMT:
