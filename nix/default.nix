@@ -38,12 +38,14 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
     "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
+    "-DC3_LLVM_CRT_LIBRARY_DIR=${llvmPackages.compiler-rt}"
   ];
 
   nativeBuildInputs = [ 
     cmake 
     llvmPackages.llvm
     llvmPackages.lld 
+    llvmPackages.compiler-rt
   ];
 
   buildInputs = [
