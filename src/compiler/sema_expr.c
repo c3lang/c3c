@@ -91,7 +91,6 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_add_sub_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
@@ -298,8 +297,6 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref)
 {
 	unsigned args = vec_size(context->macro_varargs);
-	uint64_t index;
-	Decl *param = NULL;
 	if (!sema_analyse_expr(context, index_expr)) return poisoned_expr;
 	if (!type_is_integer(index_expr->type))
 	{
@@ -954,13 +951,11 @@ static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_t
 	Expr *right = exprptr(expr->ternary_expr.else_expr);
 	if (!sema_analyse_maybe_dead_expr(context, right, path == COND_TRUE, infer_type)) return expr_poison(expr);
 
-	bool is_optional = false;
 	Type *left_canonical = left->type->canonical;
 	Type *right_canonical = right->type->canonical;
 	if (left_canonical != right_canonical)
 	{
-		Type *max;
-		max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical));
+		Type *max = type_find_max_type(type_no_optional(left_canonical), type_no_optional(right_canonical));
 		if (!max)
 		{
 			SEMA_ERROR(expr, "Cannot find a common parent type of '%s' and '%s'",
@@ -1039,9 +1034,6 @@ static inline bool sema_identifier_find_possible_inferred(SemaContext *context, 
 
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr)
 {
-	Decl *ambiguous_decl = NULL;
-	Decl *private_symbol = NULL;
-
 	ASSERT_SPAN(expr, expr && expr->unresolved_ident_expr.ident);
 	DEBUG_LOG("Resolving identifier '%s'", expr->unresolved_ident_expr.ident);
 
@@ -1484,7 +1476,6 @@ INLINE bool sema_set_default_argument(SemaContext *context, CalledDecl *callee, 
 	if (arg->resolve_status != RESOLVE_DONE)
 	{
 		SemaContext default_context;
-		Type *rtype = NULL;
 		SemaContext *new_context = context_transform_for_eval(context, &default_context, param->unit);
 		bool success;
 		SCOPE_START
@@ -1632,7 +1623,6 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 
 	// 2. Loop through the parameters.
 	bool has_named = false;
-	bool found_splat = false;
 	ArrayIndex last_index = -1;
 	Expr *last_named_arg = INVALID_PTR;
 	Expr *last = NULL;
@@ -1956,7 +1946,7 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 
 	expr->call_expr.has_optional_arg = optional;
 
-	if (rtype != type_void)
+	if (!type_is_void(rtype))
 	{
 		bool is_optional_return = type_is_optional(rtype);
 		expr->call_expr.is_optional_return = is_optional_return;
@@ -2413,6 +2403,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 
 	call_expr->type = type_add_optional(rtype, optional_return || has_optional_arg);
+	if (is_no_return && type_is_void(rtype))
+	{
+		call_expr->type = type_wildcard;
+	}
 
 	ASSERT_SPAN(call_expr, call_expr->type);
 	bool must_use = false;
@@ -7827,9 +7821,11 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 			expr_replace(expr, lhs);
 			return true;
 		}
-		SEMA_ERROR(lhs, "No optional to use '\?\?' with, please remove the '\?\?'.");
+		RETURN_SEMA_ERROR(lhs, "No optional to use '\?\?' with, please remove the '\?\?'.");
 		return false;
 	}
+
+	bool active_scope_jump = context->active_scope.jump_end;
 
 	// First we analyse the "else" and try to implictly cast.
 	if (!sema_analyse_expr(context, rhs)) return false;
@@ -7839,6 +7835,9 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
 		expr_replace(expr, rhs);
 		return true;
 	}
+
+	// Ignore the jump here.
+	context->active_scope.jump_end = active_scope_jump;
 
 	// Here we might need to insert casts.
 	Type *else_type = rhs->type;

@@ -1582,7 +1582,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 		BEValue res;
 		if (c->debug.builder) llvm_emit_debug_location(c, loc);
 		llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), llvm_get_ref(c, panicf), actual_args,
-						   count, 0, NULL, false, NULL);
+						   count, 0, NULL, false, NULL, true);
 		llvm_emit_unreachable(c);
 		return;
 	}
@@ -1594,7 +1594,7 @@ void llvm_emit_panic(GenContext *c, const char *message, SourceSpan loc, const c
 	BEValue res;
 	if (c->debug.builder) llvm_emit_debug_location(c, loc);
 	llvm_emit_raw_call(c, &res, prototype, llvm_func_type(c, prototype), val.value, actual_args,
-					   count, 0, NULL, false, NULL);
+					   count, 0, NULL, false, NULL, true);
 	llvm_emit_unreachable(c);
 }
 

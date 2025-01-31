@@ -5124,7 +5124,7 @@ void llvm_add_abi_call_attributes(GenContext *c, LLVMValueRef call_value, int co
 }
 
 
-void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param)
+void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype *prototype, LLVMTypeRef func_type, LLVMValueRef func, LLVMValueRef *args, unsigned arg_count, int inline_flag, LLVMValueRef error_var, bool sret_return, BEValue *synthetic_return_param, bool no_return)
 {
 	ABIArgInfo *ret_info = prototype->ret_abi_info;
 	Type *call_return_type = prototype->abi_ret_type;
@@ -5133,6 +5133,10 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 	if (prototype->call_abi)
 	{
 		LLVMSetInstructionCallConv(call_value, llvm_call_convention_from_call(prototype->call_abi));
+	}
+	if (no_return)
+	{
+		llvm_attribute_add_call(c, call_value, attribute_id.noreturn, -1, 0);
 	}
 	switch (inline_flag)
 	{
@@ -5145,7 +5149,6 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		default:
 			break;
 	}
-
 	ASSERT(!prototype->ret_by_ref || prototype->ret_by_ref_abi_info->kind != ABI_ARG_INDIRECT);
 
 	llvm_add_abi_call_attributes(c, call_value, vec_size(prototype->param_types), prototype->abi_args);
@@ -5442,6 +5445,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 									  Expr **args,
 									  BEValue *values,
 									  int inline_flag,
+									  bool no_return,
 									  LLVMValueRef func,
 									  LLVMTypeRef func_type,
 									  Expr **varargs)
@@ -5583,7 +5587,7 @@ INLINE void llvm_emit_call_invocation(GenContext *c, BEValue *result_value,
 	// 10. Create the actual call (remember to emit a loc, because we might have shifted loc emitting the params)
 	EMIT_SPAN(c, span);
 
-	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param);
+	llvm_emit_raw_call(c, result_value, prototype, func_type, func, arg_values, arg_count, inline_flag, error_var, sret_return, &synthetic_return_param, no_return);
 
 	// 17i. The simple case here is where there is a normal return.
 	//      In this case be_value already holds the result
@@ -5711,6 +5715,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		func_type = llvm_get_type(c, function_decl->type);
 	}
 	int inline_flag = 0;
+	bool no_return = expr->call_expr.no_return;
 	if (expr->call_expr.attr_force_noinline)
 	{
 		inline_flag = -1;
@@ -5793,7 +5798,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			LLVMBasicBlockRef after = llvm_basic_block_new(c, "after_call");
 			FunctionPrototype *default_prototype = type_get_resolved_prototype(default_method->type);
 			BEValue default_res;
-			llvm_emit_call_invocation(c, &default_res, target, expr->span, default_prototype, args, values, inline_flag,
+			llvm_emit_call_invocation(c, &default_res, target, expr->span, default_prototype, args, values, inline_flag, no_return,
 			                          llvm_get_ref(c, default_method),
 			                          llvm_get_type(c, default_method->type),
 			                          varargs);
@@ -5805,7 +5810,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 			func_type = llvm_get_type(c, dyn_fn->type);
 			BEValue normal_res;
 			values[0] = result;
-			llvm_emit_call_invocation(c, &normal_res, target, expr->span, prototype, args, values, inline_flag, func, func_type,
+			llvm_emit_call_invocation(c, &normal_res, target, expr->span, prototype, args, values, inline_flag, no_return, func, func_type,
 			                          varargs);
 			LLVMValueRef normal_val = llvm_load_value(c, &normal_res);
 			LLVMBasicBlockRef normal_block = c->current_block;
@@ -5830,7 +5835,7 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 	}
 
-	llvm_emit_call_invocation(c, result_value, target, expr->span, prototype, args, values, inline_flag, func, func_type,
+	llvm_emit_call_invocation(c, result_value, target, expr->span, prototype, args, values, inline_flag, no_return, func, func_type,
 							  varargs);
 }
 

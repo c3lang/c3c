@@ -19,7 +19,6 @@ fn void main() {
 define void @test.foo() #0 !dbg !8 {
 entry:
   %values = alloca [1 x i32], align 4
-  call void @llvm.dbg.declare(metadata ptr %values, metadata !12, metadata !DIExpression()), !dbg !17
   store i32 0, ptr %values, align 4, !dbg !17
   store i32 0, ptr %values, align 4, !dbg !18
   ret void, !dbg !18

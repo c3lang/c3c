@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -1082,7 +1082,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1100,6 +1100,10 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 		                                     : RESOLVE_TYPE_DEFAULT)) return false;
 		rtype = rtype_info->type;
+		if (sig->attrs.noreturn && !type_is_void(rtype))
+		{
+			RETURN_SEMA_ERROR(rtype_info, "@noreturn cannot be used on %s not returning 'void'.", is_macro ? "macros" : "functions");
+		}
 		if (sig->attrs.nodiscard)
 		{
 			if (type_is_void(rtype))
@@ -1337,7 +1341,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 
 	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
 
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated)) return false;
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl->span)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -2875,6 +2879,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.signature.attrs.always_const = true;
 			break;
 		case ATTRIBUTE_NODISCARD:
+			if (decl->func_decl.signature.attrs.nodiscard)
+			{
+				RETURN_SEMA_ERROR(attr, "@nodiscard cannot be combined with @noreturn.");
+			}
 			decl->func_decl.signature.attrs.nodiscard = true;
 			break;
 		case ATTRIBUTE_MAYDISCARD:
@@ -2885,6 +2893,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_noinline = false;
 			break;
 		case ATTRIBUTE_NORETURN:
+			if (decl->func_decl.signature.attrs.nodiscard)
+			{
+				RETURN_SEMA_ERROR(attr, "@noreturn cannot be combined with @nodiscard.");
+			}
 			decl->func_decl.signature.attrs.noreturn = true;
 			break;
 		case ATTRIBUTE_NOSANITIZE:
@@ -3846,7 +3858,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_signature(context, &decl->func_decl.signature,
 	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false, deprecated)) return false;
+	                            false, deprecated, decl->span)) return false;
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{

@@ -3171,6 +3171,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 {
 	if (statement->ast_kind == AST_POISONED) return false;
 	bool dead_code = context->active_scope.jump_end;
+	unsigned returns = vec_size(context->returns);
 	if (!sema_analyse_statement_inner(context, statement)) return ast_poison(statement);
 	if (dead_code)
 	{
@@ -3187,6 +3188,7 @@ bool sema_analyse_statement(SemaContext *context, Ast *statement)
 			}
 			// Remove it
 		}
+		vec_resize(context->returns, returns);
 		statement->ast_kind = AST_NOP_STMT;
 	}
 	return true;
