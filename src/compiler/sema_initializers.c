@@ -1073,7 +1073,7 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
 		// If we already have an initializer "found"
 		// it might be after the index. In this case, we
 		// need to do an insert.
-		if (initializer->init_array_value.index != insert_index)
+		if (initializer->init_array_value.index != index)
 		{
 			ASSERT(initializer->init_array_value.index > insert_index);
 
