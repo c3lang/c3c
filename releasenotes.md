@@ -13,6 +13,7 @@
 - Allow `(int[*]) { 1, 2 }` cast style initialization.
 - Experimental change from `[*]` to `[?]`
 - Warn on if-catch with just a `default` case.
+- Compile time array inc/dec.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.

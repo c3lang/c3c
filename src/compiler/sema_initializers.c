@@ -1104,12 +1104,19 @@ void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, Arra
 		const_init->kind = CONST_INIT_ARRAY;
 		const_init->init_array.elements = NULL;
 	}
+	ConstInitializer *inner_value;
+	if (const_init->kind == CONST_INIT_ARRAY_FULL)
+	{
+		inner_value = const_init->init_array_full[index];
+	}
+	else
+	{
+		assert(const_init->kind == CONST_INIT_ARRAY);
+		Type *element_type = type_flatten(const_init->type->array.base);
 
-	Type *element_type = type_flatten(const_init->type->array.base);
-
-	ArrayIndex insert_index = 0;
-	ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type, index, &insert_index);
-
+		ArrayIndex insert_index = 0;
+		inner_value = sema_update_const_initializer_at_index(const_init, element_type, index, &insert_index);
+	}
 	const_init_rewrite_to_value(inner_value, value);
 }
 

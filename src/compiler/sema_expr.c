@@ -6051,6 +6051,11 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 		return sema_binary_analyse_ct_common_assign(context, expr, left);
 	}
 
+	if (left->expr_kind == EXPR_CT_SUBSCRIPT)
+	{
+		TODO
+	}
+
 	// 1. Analyse left side.
 	if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
 
@@ -7557,11 +7562,101 @@ static inline bool sema_expr_analyse_not(SemaContext *context, Expr *expr)
 	return true;
 }
 
+static inline bool sema_expr_analyse_ct_subscript_incdec(SemaContext *context, Expr *expr, Expr *inner)
+{
+	Expr *init = inner->ct_subscript_expr.var->var.init_expr;
+	ArrayIndex index = inner->ct_subscript_expr.index;
+	ExprConst *expr_const = &init->const_expr;
+	bool post = expr->expr_kind == EXPR_POST_UNARY;
+	bool dec = expr->unary_expr.operator == UNARYOP_DEC;
+	Expr *value;
+	Expr temp;
+	switch (expr_const->const_kind)
+	{
+		case CONST_ERR:
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_REF:
+		case CONST_MEMBER:
+			UNREACHABLE
+		case CONST_BYTES:
+		case CONST_STRING:
+		{
+			uint8_t c = expr_const->bytes.ptr[index];
+			unsigned char *copy = MALLOC(expr_const->bytes.len + 1);
+			memcpy(copy, expr_const->bytes.ptr, expr_const->bytes.len + 1);
+			Type *indexed = type_get_indexed_type(init->type);
+			if (post) expr_rewrite_const_int(expr, indexed, c);
+			if (dec)
+			{
+				c--;
+			}
+			else
+			{
+				c++;
+			}
+			copy[index] = c;
+			expr_const->bytes.ptr = (char *)copy;
+			if (!post) expr_rewrite_const_int(expr, indexed, c);
+			return true;
+		}
+		case CONST_UNTYPED_LIST:
+			value = expr_const->untyped_list[index];
+			break;
+		case CONST_SLICE:
+			value = &temp;
+			if (!expr_rewrite_to_const_initializer_index(init->type, expr_const->slice_init, value, index, false)) return false;
+			break;
+		case CONST_INITIALIZER:
+			value = &temp;
+			if (!expr_rewrite_to_const_initializer_index(init->type, expr_const->initializer, value, index, false)) return false;
+			break;
+	}
+	if (!expr_is_const_int(value))
+	{
+		RETURN_SEMA_ERROR(expr, "The indexed type is not an integer.");
+	}
+	value = expr_copy(value);
+	if (post)
+	{
+		expr_replace(expr, value);
+	}
+	if (dec)
+	{
+		value->const_expr.ixx = int_sub64(value->const_expr.ixx, 1);
+	}
+	else
+	{
+		value->const_expr.ixx = int_add64(value->const_expr.ixx, 1);
+	}
+	if (!post)
+	{
+		expr_replace(expr, value);
+	}
+	switch (expr_const->const_kind)
+	{
+		case CONST_UNTYPED_LIST:
+			expr_const->untyped_list[index] = value;
+			break;
+		case CONST_SLICE:
+			const_init_rewrite_array_at(expr_const->slice_init, value, index);
+			break;
+		case CONST_INITIALIZER:
+			const_init_rewrite_array_at(expr_const->initializer, value, index);
+			break;
+		default:
+			UNREACHABLE
+	}
+	return true;
+}
+
 static inline bool sema_expr_analyse_ct_incdec(SemaContext *context, Expr *expr, Expr *inner)
 {
-	ASSERT_SPAN(expr, inner->expr_kind == EXPR_CT_IDENT || inner->expr_kind == EXPR_CT_SUBSCRIPT);
-
-	if (inner->expr_kind == EXPR_CT_SUBSCRIPT) TODO
+	ASSERT_SPAN(expr, inner->expr_kind == EXPR_CT_IDENT);
 
 	Decl *var = inner->ct_ident_expr.decl;
 	Expr *start_value = var->var.init_expr;
@@ -7685,9 +7780,14 @@ static inline bool sema_expr_analyse_incdec(SemaContext *context, Expr *expr)
 	if (!sema_expr_check_assign(context, inner, NULL)) return false;
 
 	// 3. This might be a $foo, if to handle it.
-	if (inner->expr_kind == EXPR_CT_IDENT || inner->expr_kind == EXPR_CT_SUBSCRIPT)
+	if (inner->expr_kind == EXPR_CT_IDENT)
 	{
 		return sema_expr_analyse_ct_incdec(context, expr, inner);
+	}
+
+	if (inner->expr_kind == EXPR_CT_SUBSCRIPT)
+	{
+		return sema_expr_analyse_ct_subscript_incdec(context, expr, inner);
 	}
 
 	// 4. Flatten typedef, enum, distinct, optional
