@@ -1,0 +1,43 @@
+// #target: macos-x64
+module test;
+fn int main()
+{
+	int[<2>] z = { 1, 2 };
+	z <<= 2;
+	z << 2;
+	int x;
+    z <<= { x, 2 };
+	z << { 1, 2 };
+	z <<= { 1, 2 };
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %z = alloca <2 x i32>, align 8
+  %x = alloca i32, align 4
+  store <2 x i32> <i32 1, i32 2>, ptr %z, align 8
+  %0 = load <2 x i32>, ptr %z, align 8
+  %shl = shl <2 x i32> %0, <i32 2, i32 2>
+  %1 = freeze <2 x i32> %shl
+  store <2 x i32> %1, ptr %z, align 8
+  %2 = load <2 x i32>, ptr %z, align 8
+  %shl1 = shl <2 x i32> %2, <i32 2, i32 2>
+  %3 = freeze <2 x i32> %shl1
+  store i32 0, ptr %x, align 4
+  %4 = load <2 x i32>, ptr %z, align 8
+  %5 = load i32, ptr %x, align 4
+  %6 = insertelement <2 x i32> undef, i32 %5, i64 0
+  %7 = insertelement <2 x i32> %6, i32 2, i64 1
+  %shl2 = shl <2 x i32> %4, %7
+  %8 = freeze <2 x i32> %shl2
+  store <2 x i32> %8, ptr %z, align 8
+  %9 = load <2 x i32>, ptr %z, align 8
+  %shl3 = shl <2 x i32> %9, <i32 1, i32 2>
+  %10 = freeze <2 x i32> %shl3
+  %11 = load <2 x i32>, ptr %z, align 8
+  %shl4 = shl <2 x i32> %11, <i32 1, i32 2>
+  %12 = freeze <2 x i32> %shl4
+  store <2 x i32> %12, ptr %z, align 8
+  ret i32 0

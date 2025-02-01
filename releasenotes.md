@@ -40,6 +40,7 @@
 - Defer is broken when placed before a $foreach #1912.
 - Usage of @noreturn macro is type-checked as if it returns #1913.
 - Bug when indexing into a constant array at compile time.
+- Fixing various issues around shifts, like `z <<= { 1, 2 }`.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

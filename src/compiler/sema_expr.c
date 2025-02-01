@@ -61,7 +61,7 @@ static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *e
 
 static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool *invalid_cast_ref);
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr);
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
 static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, bool allow_fail);
 
@@ -89,15 +89,14 @@ static bool sema_expr_analyse_mod(SemaContext *context, Expr *expr, Expr *left, 
 static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat);
 static bool sema_expr_analyse_and_or(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right, bool is_unwrapped);
 static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right);
 static bool sema_expr_analyse_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool *failed_ref);
 static bool sema_expr_analyse_comp(SemaContext *context, Expr *expr, Expr *left, Expr *right);
-static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only,
-                                        bool allow_bitstruct, bool is_add_sub);
+static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator);
 
 // -- unary
 static inline bool sema_expr_analyse_addr(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
@@ -182,7 +181,6 @@ static inline bool sema_create_const_params(SemaContext *context, Expr *expr, Ty
 static inline void sema_create_const_membersof(SemaContext *context, Expr *expr, Type *type, AlignSize alignment, AlignSize offset);
 static inline void sema_create_const_methodsof(SemaContext *context, Expr *expr, Type *type);
 
-static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right);
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right);
 static inline bool expr_both_const(Expr *left, Expr *right);
 static inline bool sema_identifier_find_possible_inferred(SemaContext *context, Type *to, Expr *expr);
@@ -401,17 +399,6 @@ Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 static inline bool expr_both_const(Expr *left, Expr *right)
 {
 	return expr_is_const(left) && expr_is_const(right);
-}
-
-static inline bool expr_both_any_integer_or_integer_vector(Expr *left, Expr *right)
-{
-	Type *flatten_left = type_flatten(left->type);
-	Type *flatten_right = type_flatten(right->type);
-	if (type_is_integer(flatten_left) && type_is_integer(flatten_right)) return true;
-
-	if (flatten_left->type_kind != TYPE_VECTOR || flatten_right->type_kind != TYPE_VECTOR) return false;
-
-	return type_is_integer(flatten_left->array.base) && type_is_integer(flatten_right->array.base);
 }
 
 static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr *right)
@@ -5841,11 +5828,8 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 	return true;
 }
 
-static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static bool sema_expr_analyse_ct_subscript_rhs(SemaContext *context, Decl *ct_var, Expr *right)
 {
-	Decl *ct_var = left->ct_subscript_expr.var;
-	ArrayIndex index = left->ct_subscript_expr.index;
-
 	if (ct_var->type == type_untypedlist)
 	{
 		if (!sema_analyse_expr(context, right)) return false;
@@ -5858,15 +5842,20 @@ static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *ex
 	{
 		RETURN_SEMA_ERROR(right, "The argument must be a constant value.");
 	}
+	return true;
+}
+
+static bool sema_expr_analyse_ct_subscript_set_value(SemaContext *context, Expr *expr, Expr *left, Decl *ct_var, Expr *right)
+{
 	if (context->call_env.in_other)
 	{
 		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
 	}
-
+	ArrayIndex index = left->ct_subscript_expr.index;
 	Expr *original_value = ct_var->var.init_expr;
 	ASSERT_SPAN(original_value, original_value->expr_kind == EXPR_CONST);
-
 	ExprConst *expr_const = &original_value->const_expr;
+
 
 	switch (expr_const->const_kind)
 	{
@@ -5892,17 +5881,24 @@ static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *ex
 		}
 		case CONST_SLICE:
 			const_init_rewrite_array_at(expr_const->slice_init, right, index);
-			break;
+		break;
 		case CONST_INITIALIZER:
 			const_init_rewrite_array_at(expr_const->initializer, right, index);
-			break;
+		break;
 		case CONST_UNTYPED_LIST:
 			expr_const->untyped_list[index] = right;
-			break;
+		break;
 	}
 	Expr *original = expr_copy(original_value);
 	expr_replace(expr, original);
 	return true;
+}
+
+static bool sema_expr_analyse_ct_subscript_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+{
+	Decl *ct_var = left->ct_subscript_expr.var;
+	if (!sema_expr_analyse_ct_subscript_rhs(context, ct_var, right)) return false;
+	return sema_expr_analyse_ct_subscript_set_value(context, expr, left, ct_var, right);
 }
 
 static bool sema_expr_analyse_ct_type_identifier_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
@@ -6013,9 +6009,6 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 {
 	ASSERT_SPAN(left, left->expr_kind == EXPR_CT_IDENT);
 
-	// 1. Analyse left side.
-	if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
-
 	Decl *left_var = left->ct_ident_expr.decl;
 	if (!sema_cast_ct_ident_rvalue(context, left)) return false;
 
@@ -6039,25 +6032,66 @@ static bool sema_binary_analyse_ct_common_assign(SemaContext *context, Expr *exp
 }
 
 /**
- * Analyse *= /= %= ^= |= &= += -=
+ * Analyse $foo[1] += ...
  *
  * @return true if analysis worked.
  */
-static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, bool int_only,
-                                        bool allow_bitstruct, bool is_add_sub)
+static bool sema_binary_analyse_ct_subscript_assign(SemaContext *context, Expr *expr, Expr *left)
 {
-	if (left->expr_kind == EXPR_CT_IDENT)
-	{
-		return sema_binary_analyse_ct_common_assign(context, expr, left);
-	}
+	TODO
+	return true;
+}
 
-	if (left->expr_kind == EXPR_CT_SUBSCRIPT)
+/**
+ * Analyse *= /= %= ^= |= &= += -= <<= >>=
+ *
+ * @return true if analysis worked.
+ */
+static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator)
+{
+	bool is_bit_op = false;
+	bool is_shift = false;
+	bool is_add_sub = false;
+	bool int_only = false;
+	switch (operator)
 	{
-		TODO
-	}
+		case BINARYOP_MULT_ASSIGN:
+		case BINARYOP_DIV_ASSIGN:
+			break;
+		case BINARYOP_BIT_AND_ASSIGN:
+		case BINARYOP_BIT_OR_ASSIGN:
+		case BINARYOP_BIT_XOR_ASSIGN:
+			int_only = true;
+			is_bit_op = true;
+			break;
+		case BINARYOP_ADD_ASSIGN:
+		case BINARYOP_SUB_ASSIGN:
+			is_add_sub = true;
+			break;
+		case BINARYOP_MOD_ASSIGN:
+			int_only = true;
+			break;
+		case BINARYOP_SHL_ASSIGN:
+		case BINARYOP_SHR_ASSIGN:
+			is_shift = true;
+			int_only = true;
+			break;
+		default:
+			UNREACHABLE
 
+	}
 	// 1. Analyse left side.
 	if (!sema_analyse_expr_lvalue(context, left, NULL)) return false;
+
+	switch (left->expr_kind)
+	{
+		case EXPR_CT_IDENT:
+			return sema_binary_analyse_ct_common_assign(context, expr, left);
+		case EXPR_CT_SUBSCRIPT:
+			return sema_binary_analyse_ct_subscript_assign(context, expr, left);
+		default:
+			break;
+	}
 
 	// 2. Verify that the left side is assignable.
 	if (!sema_expr_check_assign(context, left, NULL)) return false;
@@ -6073,7 +6107,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	// 3. If this is only defined for ints (*%, ^= |= &= %=) verify that this is an int.
 	if (int_only && !type_flat_is_intlike(flat))
 	{
-		if (allow_bitstruct && flat->type_kind == TYPE_BITSTRUCT) goto BITSTRUCT_OK;
+		if (is_bit_op && flat->type_kind == TYPE_BITSTRUCT) goto BITSTRUCT_OK;
 		RETURN_SEMA_ERROR(left, "Expected an integer here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
 
@@ -6083,10 +6117,18 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 		RETURN_SEMA_ERROR(left, "Expected a numeric type here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
 
+
 BITSTRUCT_OK:
 
 	// 5. Analyse RHS
-	if (!sema_analyse_expr(context, right)) return false;
+	if (flat->type_kind == TYPE_ENUM || flat->type_kind == TYPE_POINTER)
+	{
+		if (!sema_analyse_expr(context, right)) return false;
+	}
+	else
+	{
+		if (!sema_analyse_inferred_expr(context, left->type, right)) return false;
+	}
 
 	// 3. Copy type & set properties.
 	if (IS_OPTIONAL(right) && !IS_OPTIONAL(left))
@@ -6139,39 +6181,58 @@ BITSTRUCT_OK:
 		goto END;
 	}
 
-	// Otherwise cast left to right.
-	if (!cast_implicit_binary(context, right, no_fail, false)) return false;
+	if (is_shift)
+	{
+		if (!sema_expr_check_shift_rhs(context, expr, left->type, type_flatten(left->type), right, type_flatten(right->type)))
+		{
+			return false;
+		}
+	}
+	else
+	{
+		// Otherwise cast left to right.
+		if (!cast_implicit_binary(context, right, no_fail, false)) return false;
+	}
 
 	// 6. Check for zero in case of div or mod.
 	if (sema_cast_const(right))
 	{
-		if (expr->binary_expr.operator == BINARYOP_DIV_ASSIGN)
+		switch (operator)
 		{
-			switch (right->const_expr.const_kind)
-			{
-				case CONST_INTEGER:
-					if (int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, "Division by zero not allowed.");
-					break;
-				case CONST_FLOAT:
-					if (right->const_expr.fxx.f == 0) RETURN_SEMA_ERROR(right, "Division by zero not allowed.");
-					break;
-				default:
-					break;
-			}
-		}
-		else if (expr->binary_expr.operator == BINARYOP_MOD_ASSIGN)
-		{
-			switch (right->const_expr.const_kind)
-			{
-				case CONST_INTEGER:
-					if (int_is_zero(right->const_expr.ixx))
+			case BINARYOP_DIV_ASSIGN:
+			case BINARYOP_MOD_ASSIGN:
+				switch (right->const_expr.const_kind)
+				{
+					case CONST_INTEGER:
+						if (int_is_zero(right->const_expr.ixx)) RETURN_SEMA_ERROR(right, operator == BINARYOP_MOD_ASSIGN ? "% by zero not allowed." : "Division by zero not allowed.");
+						break;
+					case CONST_FLOAT:
+						if (right->const_expr.fxx.f == 0) RETURN_SEMA_ERROR(right, operator == BINARYOP_MOD_ASSIGN ? "% by zero not allowed." : "% by zero not allowed.");
+						break;
+					default:
+						break;
+				}
+				break;
+			case BINARYOP_SHL_ASSIGN:
+			case BINARYOP_SHR_ASSIGN:
+				if (expr_is_const_int(right))
+				{
+					//  Make sure the value does not exceed the bitsize of
+					//     the left hand side.
+					if (int_ucomp(right->const_expr.ixx, left->type->canonical->builtin.bitsize, BINARYOP_GT))
 					{
-						RETURN_SEMA_ERROR(right, "% by zero not allowed.");
+						RETURN_SEMA_ERROR(right, "The shift exceeds bitsize of '%s'.", type_to_error_string(left->type));
 					}
-					break;
-				default:
-					break;
-			}
+
+					// 4b. Make sure that the right hand side is positive.
+					if (int_is_neg(right->const_expr.ixx))
+					{
+						RETURN_SEMA_ERROR(right, "A shift must be a positive number.");
+					}
+				}
+				break;
+			default:
+				break;
 		}
 	}
 
@@ -6834,6 +6895,35 @@ static bool sema_expr_analyse_bit(SemaContext *context, Expr *expr, Expr *left, 
 	return true;
 }
 
+static bool sema_expr_check_shift_rhs(SemaContext *context, Expr *expr, Type *left_type, Type *left_type_flat, Expr *right, Type *right_type_flat)
+{
+	if (left_type_flat->type_kind == TYPE_VECTOR && right_type_flat->type_kind != TYPE_VECTOR)
+	{
+		// Create a vector from the right hand side.
+		Type *right_vec = type_get_vector(right->type, left_type_flat->array.len);
+		if (!cast_explicit(context, right, right_vec)) return false;
+	}
+
+	// 4. For a constant rhs side we will make a series of checks.
+	if (sema_cast_const(right) && expr_is_const_int(right))
+	{
+		// 4a. Make sure the value does not exceed the bitsize of
+		//     the left hand side. We ignore this check for lhs being a constant.
+
+		ASSERT_SPAN(expr, type_kind_is_any_integer(left_type_flat->type_kind));
+		if (int_ucomp(right->const_expr.ixx, left_type_flat->builtin.bitsize, BINARYOP_GE))
+		{
+			RETURN_SEMA_ERROR(right, "The shift is not less than the bitsize of %s.", type_quoted_error_string(type_no_optional(left_type)));
+		}
+
+		// 4b. Make sure that the RHS is positive.
+		if (int_is_neg(right->const_expr.ixx))
+		{
+			RETURN_SEMA_ERROR(right, "A shift must be a positive number.");
+		}
+	}
+	return true;
+}
 /**
  * Analyse >> and << operations.
  * @return true if the analysis succeeded.
@@ -6843,104 +6933,40 @@ static bool sema_expr_analyse_shift(SemaContext *context, Expr *expr, Expr *left
 	// 1. Analyze both sides.
 	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
 
+	// 3. Promote lhs using the usual numeric promotion.
+	if (!cast_implicit_binary(context, left, cast_numeric_arithmetic_promotion(type_no_optional(left->type)), false)) return false;
+
+	Type *flat_left = type_flatten(left->type);
+	Type *flat_right = type_flatten(right->type);
+
 	// 2. Only integers or integer vectors may be shifted.
-	if (!expr_both_any_integer_or_integer_vector(left, right))
+	if (!type_flat_is_intlike(flat_left) || !type_flat_is_intlike(flat_right)
+		|| (flat_right->type_kind == TYPE_VECTOR && flat_left->type_kind != TYPE_VECTOR))
 	{
 		return sema_type_error_on_binop(context, expr);
 	}
 
-	// 3. Promote lhs using the usual numeric promotion.
-	if (!cast_implicit_binary(context, left, cast_numeric_arithmetic_promotion(type_no_optional(left->type)), false)) return false;
+	if (!sema_expr_check_shift_rhs(context, expr, left->type, flat_left, right, flat_right)) return false;
 
-	// 4. For a constant rhs side we will make a series of checks.
-	if (sema_cast_const(right))
+	// Fold constant expressions.
+	if (expr_is_const_int(right) && sema_cast_const(left))
 	{
-		// 4a. Make sure the value does not exceed the bitsize of
-		//     the left hand side. We ignore this check for lhs being a constant.
-		Type *left_type_flat = type_flatten(left->type);
-		ASSERT_SPAN(expr, type_kind_is_any_integer(left_type_flat->type_kind));
-		if (int_ucomp(right->const_expr.ixx, left_type_flat->builtin.bitsize, BINARYOP_GE))
-		{
-			SEMA_ERROR(right, "The shift is not less than the bitsize of %s.", type_quoted_error_string(type_no_optional(left->type)));
-			return false;
-		}
 
-		// 4b. Make sure that the RHS is positive.
-		if (int_is_neg(right->const_expr.ixx))
+		bool shr = expr->binary_expr.operator == BINARYOP_SHR;
+		expr_replace(expr, left);
+		if (shr)
 		{
-			SEMA_ERROR(right, "A shift must be a positive number.");
-			return false;
+			expr->const_expr.ixx = int_shr64(left->const_expr.ixx, right->const_expr.ixx.i.low);
 		}
-
-		// 5. Fold constant expressions.
-		if (sema_cast_const(left))
+		else
 		{
-			bool shr = expr->binary_expr.operator == BINARYOP_SHR;
-			expr_replace(expr, left);
-			if (shr)
-			{
-				expr->const_expr.ixx = int_shr64(left->const_expr.ixx, right->const_expr.ixx.i.low);
-			}
-			else
-			{
-				expr->const_expr.ixx = int_shl64(left->const_expr.ixx, right->const_expr.ixx.i.low);
-			}
-			return true;
+			expr->const_expr.ixx = int_shl64(left->const_expr.ixx, right->const_expr.ixx.i.low);
 		}
+		return true;
 	}
 
 	// 6. Set the type
 	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));
-	return true;
-}
-
-/**
- * Analyse a <<= b a >>= b
- * @return true is the analysis succeeds, false otherwise.
- */
-static bool sema_expr_analyse_shift_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right)
-{
-	if (left->expr_kind == EXPR_CT_IDENT)
-	{
-		return sema_binary_analyse_ct_common_assign(context, expr, left);
-	}
-	// 1. Analyze the two sub lhs & rhs *without coercion*
-	if (!sema_binary_analyse_subexpr(context, expr, left, right)) return false;
-
-	bool optional = IS_OPTIONAL(left) || IS_OPTIONAL(right);
-
-	// 2. Ensure the lhs side is assignable
-	if (!sema_expr_check_assign(context, left, NULL)) return false;
-
-	// 3. Only integers may be shifted.
-	if (!expr_both_any_integer_or_integer_vector(left, right)) return sema_type_error_on_binop(context, expr);
-
-	// 4. For a constant right hand side we will make a series of checks.
-	if (sema_cast_const(right))
-	{
-		// 4a. Make sure the value does not exceed the bitsize of
-		//     the left hand side.
-		if (int_ucomp(right->const_expr.ixx, left->type->canonical->builtin.bitsize, BINARYOP_GT))
-		{
-			SEMA_ERROR(right, "The shift exceeds bitsize of '%s'.", type_to_error_string(left->type));
-			return false;
-		}
-
-		// 4b. Make sure that the right hand side is positive.
-		if (int_is_neg(right->const_expr.ixx))
-		{
-			SEMA_ERROR(right, "A shift must be a positive number.");
-			return false;
-		}
-	}
-
-	// 5. Set the type using the lhs side.
-
-	if (left->expr_kind == EXPR_BITACCESS)
-	{
-		expr->expr_kind = EXPR_BITASSIGN;
-	}
-	expr->type = type_add_optional(left->type, optional);
 	return true;
 }
 
@@ -7894,11 +7920,9 @@ INLINE bool expr_is_ungrouped_ternary(Expr *expr)
 	return expr->expr_kind == EXPR_TERNARY && !expr->ternary_expr.grouped;
 }
 
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr)
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *lhs, Expr *rhs)
 {
-	Expr *lhs = exprptr(expr->binary_expr.left);
 	bool lhs_is_embed = lhs->expr_kind == EXPR_EMBED;
-	Expr *rhs = exprptr(expr->binary_expr.right);
 	if (expr_is_ungrouped_ternary(lhs) || expr_is_ungrouped_ternary(rhs))
 	{
 		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
@@ -7979,7 +8003,6 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr,
 
 static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bool *failed_ref)
 {
-	if (expr->binary_expr.operator == BINARYOP_ELSE) return sema_expr_analyse_or_error(context, expr);
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	Expr *left = exprptr(expr->binary_expr.left);
 	Expr *right = exprptr(expr->binary_expr.right);
@@ -7989,10 +8012,11 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bo
 		SEMA_ERROR(expr, "You need to add explicit parentheses to clarify precedence.");
 		return expr_poison(expr);
 	}
-	switch (expr->binary_expr.operator)
+	BinaryOp operator = expr->binary_expr.operator;
+	switch (operator)
 	{
 		case BINARYOP_ELSE:
-			UNREACHABLE // Handled previously
+			return sema_expr_analyse_or_error(context, expr, left, right);
 		case BINARYOP_CT_CONCAT:
 			return sema_expr_analyse_ct_concat(context, expr, left, right);
 		case BINARYOP_CT_OR:
@@ -8004,22 +8028,10 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bo
 			return sema_expr_analyse_mult(context, expr, left, right);
 		case BINARYOP_ADD:
 			return sema_expr_analyse_add(context, expr, left, right);
-		case BINARYOP_ADD_ASSIGN:
-		case BINARYOP_SUB_ASSIGN:
-			return sema_expr_analyse_op_assign(context, expr, left, right, false, false, true);
 		case BINARYOP_SUB:
 			return sema_expr_analyse_sub(context, expr, left, right);
 		case BINARYOP_DIV:
 			return sema_expr_analyse_div(context, expr, left, right);
-		case BINARYOP_MULT_ASSIGN:
-		case BINARYOP_DIV_ASSIGN:
-			return sema_expr_analyse_op_assign(context, expr, left, right, false, false, false);
-		case BINARYOP_BIT_AND_ASSIGN:
-		case BINARYOP_BIT_OR_ASSIGN:
-		case BINARYOP_BIT_XOR_ASSIGN:
-			return sema_expr_analyse_op_assign(context, expr, left, right, true, true, false);
-		case BINARYOP_MOD_ASSIGN:
-			return sema_expr_analyse_op_assign(context, expr, left, right, true, false, false);
 		case BINARYOP_MOD:
 			return sema_expr_analyse_mod(context, expr, left, right);
 		case BINARYOP_AND:
@@ -8046,9 +8058,17 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bo
 		case BINARYOP_SHR:
 		case BINARYOP_SHL:
 			return sema_expr_analyse_shift(context, expr, left, right);
+		case BINARYOP_ADD_ASSIGN:
+		case BINARYOP_SUB_ASSIGN:
+		case BINARYOP_BIT_AND_ASSIGN:
+		case BINARYOP_BIT_OR_ASSIGN:
+		case BINARYOP_BIT_XOR_ASSIGN:
+		case BINARYOP_MOD_ASSIGN:
+		case BINARYOP_MULT_ASSIGN:
+		case BINARYOP_DIV_ASSIGN:
 		case BINARYOP_SHR_ASSIGN:
 		case BINARYOP_SHL_ASSIGN:
-			return sema_expr_analyse_shift_assign(context, expr, left, right);
+			return sema_expr_analyse_op_assign(context, expr, left, right, operator);
 		case BINARYOP_ERROR:
 			break;
 	}
