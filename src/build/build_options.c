@@ -67,7 +67,6 @@ static void usage(bool full)
 	PRINTF("  compile-test <file1> [<file2> ...]                  Compile files into an executable and run unit tests.");
 	PRINTF("  static-lib <file1> [<file2> ...]                    Compile files without a project into a static library.");
 	PRINTF("  dynamic-lib <file1> [<file2> ...]                   Compile files without a project into a dynamic library.");
-	PRINTF("  headers <file1> [<file2> ...]                       Analyse files and generate C headers for public methods.");
 	PRINTF("  vendor-fetch <library> ...                          Fetches one or more libraries from the vendor collection.");
 	PRINTF("  project <subcommand> ...                            Manipulate or view project files.");
 	PRINTF("");
