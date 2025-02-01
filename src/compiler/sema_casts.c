@@ -24,8 +24,8 @@ typedef struct
 
 static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr *problem, Type *to_type);
 static Expr *recursive_may_narrow(Expr *expr, Type *type);
-static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list);
-static void vector_const_initializer_convert_to_type(SemaContext *context, ConstInitializer *initializer, Type *to_type);
+static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type);
+static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type);
 static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent);
 
 static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent,
@@ -35,7 +35,7 @@ INLINE void cast_context_set_from(CastContext *cc, Type *new_from);
 INLINE void cast_context_set_to(CastContext *cc, Type *new_to);
 
 typedef bool(*CastRule)(CastContext *cc, bool is_explicit, bool is_silent);
-typedef void(*CastFunction)(SemaContext *context, Expr *expr, Type *to_type);
+typedef void(*CastFunction)(Expr *expr, Type *to_type);
 extern CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1];
 extern CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1];
 
@@ -122,7 +122,7 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 /**
  * Perform the cast with no additional checks. Casting from untyped not allowed.
  */
-void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional)
+void cast_no_check(Expr *expr, Type *to_type, bool add_optional)
 {
 	Type *to = type_flatten(to_type);
 	Type *from = type_flatten(expr->type);
@@ -136,7 +136,7 @@ void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_opt
 	CastFunction func = cast_function[from_group][to_group];
 	if (func)
 	{
-		func(context, expr, to_type);
+		func(expr, to_type);
 		expr->type = type_add_optional(expr->type, add_optional);
 		return;
 	}
@@ -147,7 +147,7 @@ void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_opt
  * Given lhs and rhs, promote to the maximum bit size, this will retain
  * signed/unsigned type of each side.
  */
-void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type)
+void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type)
 {
 	unsigned bit_size_left = left_type->builtin.bitsize;
 	unsigned bit_size_right = right_type->builtin.bitsize;
@@ -164,7 +164,7 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 		Type *to = lhs->type->type_kind < TYPE_U8
 		           ? type_int_signed_by_bitsize(bit_size_right)
 		           : type_int_unsigned_by_bitsize(bit_size_right);
-		cast_no_check(context, lhs, to, IS_OPTIONAL(lhs));
+		cast_no_check(lhs, to, IS_OPTIONAL(lhs));
 		return;
 	}
 
@@ -172,7 +172,7 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
 	Type *to = rhs->type->type_kind < TYPE_U8
 	           ? type_int_signed_by_bitsize(bit_size_left)
 	           : type_int_unsigned_by_bitsize(bit_size_left);
-	cast_no_check(context, rhs, to, IS_OPTIONAL(rhs));
+	cast_no_check(rhs, to, IS_OPTIONAL(rhs));
 }
 
 /**
@@ -181,7 +181,7 @@ void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Typ
  * 2. Widen float and smaller to double
  * 3. Turn slices into pointers
  */
-void cast_promote_vararg(SemaContext *context, Expr *arg)
+void cast_promote_vararg(Expr *arg)
 {
 	// Remove things like distinct, optional, enum etc.
 	Type *arg_type = type_flatten(arg->type);
@@ -189,21 +189,21 @@ void cast_promote_vararg(SemaContext *context, Expr *arg)
 	// 1. Promote any integer or bool to at least CInt
 	if (type_is_promotable_int_bool(arg_type))
 	{
-		cast_no_check(context, arg, type_cint, IS_OPTIONAL(arg));
+		cast_no_check(arg, type_cint, IS_OPTIONAL(arg));
 		return;
 	}
 
 	// 2. Promote any float to at least double
 	if (type_is_promotable_float(arg_type))
 	{
-		cast_no_check(context, arg, type_double, IS_OPTIONAL(arg));
+		cast_no_check(arg, type_double, IS_OPTIONAL(arg));
 		return;
 	}
 
 	// 3. Turn slices into pointers
 	if (arg_type->type_kind == TYPE_SLICE)
 	{
-		cast_no_check(context, arg, type_get_ptr(arg_type->array.base), IS_OPTIONAL(arg));
+		cast_no_check(arg, type_get_ptr(arg_type->array.base), IS_OPTIONAL(arg));
 		return;
 	}
 
@@ -316,7 +316,7 @@ static bool cast_if_valid(SemaContext *context, Expr *expr, Type *to_type, bool 
 		return false;
 	}
 
-	cast_no_check(context, expr, to_type, add_optional);
+	cast_no_check(expr, to_type, add_optional);
 	return true;
 }
 
@@ -524,16 +524,84 @@ static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr 
 /**
  * Recursively change a const list to an initializer list.
  */
-static void expr_recursively_rewrite_untyped_list(Expr *expr, Expr **list)
+static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 {
-	if (!expr_is_const_untyped_list(expr)) return;
-	expr->expr_kind = EXPR_INITIALIZER_LIST;
-	expr->initializer_list = list;
-	expr->resolve_status = RESOLVE_NOT_DONE;
-	FOREACH(Expr *, inner, list)
+	ASSERT_SPAN(expr, expr_is_const_untyped_list(expr));
+	expr->expr_kind = EXPR_CONST;
+	Expr **values = expr->const_expr.untyped_list;
+	unsigned count = vec_size(values);
+	ConstInitializer **elements = NULL;
+	Type *flat = type_flatten(to_type);
+	bool is_slice = flat->type_kind == TYPE_SLICE;
+	if (type_is_inferred(flat))
 	{
-		expr_recursively_rewrite_untyped_list(inner, inner->const_expr.untyped_list);
+		assert(vec_size(values) > 0);
+		to_type = type_from_inferred(flat, type_get_indexed_type(to_type), vec_size(values));
+		flat = type_flatten(to_type);
 	}
+	// Handle {}
+	if (!count)
+	{
+		if (is_slice)
+		{
+			expr_rewrite_const_slice(expr, to_type, NULL);
+			return;
+		}
+		expr_rewrite_const_initializer(expr, to_type, const_init_new_zero(flat));
+		return;
+	}
+	switch (flat->type_kind)
+	{
+		case TYPE_VECTOR:
+		{
+			Type *indexed = type_get_indexed_type(to_type);
+			FOREACH(Expr *, e, values)
+			{
+				vec_add(elements, const_init_new_value(e));
+				cast_no_check(e, indexed, false);
+			}
+			expr_rewrite_const_initializer(expr, to_type, const_init_new_array_full(flat, elements));
+			return;
+		}
+		case TYPE_SLICE:
+		case TYPE_ARRAY:
+		{
+			Type *indexed = type_get_indexed_type(to_type);
+			FOREACH(Expr *, e, values)
+			{
+				if (e->type == type_untypedlist)
+				{
+					expr_recursively_rewrite_untyped_list(e, indexed);
+				}
+				cast_no_check(e, indexed, false);
+				vec_add(elements, const_init_new_value(e));
+			}
+			if (is_slice)
+			{
+				expr_rewrite_const_slice(expr, to_type, const_init_new_array_full(type_get_array(indexed, count), elements));
+				return;
+			}
+			expr_rewrite_const_initializer(expr, to_type, const_init_new_array_full(to_type, elements));
+			return;
+		}
+		case TYPE_STRUCT:
+			break;
+		default:
+			UNREACHABLE
+	}
+	Decl *decl = flat->decl;
+	Decl **members = decl->strukt.members;
+
+	FOREACH_IDX(idx, Expr *, e, values)
+	{
+		Type *type = members[idx]->type;
+		if (e->type == type_untypedlist)
+		{
+			expr_recursively_rewrite_untyped_list(e, type);
+		}
+		cast_no_check(e, type, false);
+	}
+	expr_rewrite_const_initializer(expr, to_type, const_init_new_struct(flat, values));
 }
 
 
@@ -623,27 +691,24 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 		           type_quoted_error_string(to),
 		           type_to_error_string(type_no_optional(to)));
 	}
-	else
+	if (to->type_kind == TYPE_INTERFACE)
 	{
-		if (to->type_kind == TYPE_INTERFACE)
+		if (expr->type->canonical->type_kind != TYPE_POINTER)
 		{
-			if (expr->type->canonical->type_kind != TYPE_POINTER)
-			{
-				RETURN_CAST_ERROR(expr,
-				                  "You can only convert pointers to an interface like %s. "
-								  "Try passing the address of the expression instead.",
-				                  type_quoted_error_string(to));
-			}
+			RETURN_CAST_ERROR(expr,
+			                  "You can only convert pointers to an interface like %s. "
+			                  "Try passing the address of the expression instead.",
+			                  type_quoted_error_string(to));
 		}
-		else if (to->type_kind == TYPE_ANY && expr->type->canonical->type_kind != TYPE_POINTER)
-		{
-			RETURN_CAST_ERROR(expr,  "You can only convert pointers to 'any'. "
-									 "Try passing the address of the expression instead.");
-		}
-		RETURN_CAST_ERROR(expr,
-		           "It is not possible to cast %s to %s.",
-		           type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 	}
+	if (to->type_kind == TYPE_ANY && expr->type->canonical->type_kind != TYPE_POINTER)
+	{
+		RETURN_CAST_ERROR(expr, "You can only convert pointers to 'any'. "
+		                  "Try passing the address of the expression instead.");
+	}
+	RETURN_CAST_ERROR(expr,
+	                  "It is not possible to cast %s to %s.",
+	                  type_quoted_error_string(type_no_optional(expr->type)), type_quoted_error_string(to));
 }
 
 INLINE bool sema_cast_error(CastContext *cc, bool may_cast_explicit, bool is_silent)
@@ -786,7 +851,7 @@ static bool rule_arrptr_to_slice(CastContext *cc, bool is_explicit, bool is_sile
 	return sema_cast_error(cc, may_explicit, is_silent);
 }
 
-static bool rule_ulist_to_struct(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_ulist_to_struct(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	ASSERT(expr_is_const_untyped_list(cc->expr));
 	Expr **expressions = cc->expr->const_expr.untyped_list;
@@ -1394,7 +1459,7 @@ static bool rule_bits_to_int(CastContext *cc, bool is_explicit, bool is_silent)
 // CASTS ----
 
 
-static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type)
+static void cast_vaptr_to_slice(Expr *expr, Type *type)
 {
 	Type *flat = type_flatten(expr->type);
 	ASSERT(flat->type_kind == TYPE_POINTER);
@@ -1407,7 +1472,7 @@ static void cast_vaptr_to_slice(SemaContext *context, Expr *expr, Type *type)
 	expr->type = type;
 }
 
-static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type)
+static void cast_ptr_to_any(Expr *expr, Type *type)
 {
 	Expr *inner = expr_copy(expr);
 	Expr *typeid = expr_copy(expr);
@@ -1416,21 +1481,23 @@ static void cast_ptr_to_any(SemaContext *context, Expr *expr, Type *type)
 	expr->make_any_expr = (ExprMakeAny) { .inner = inner, .typeid = typeid };
 	expr->type = type;
 }
-static void cast_struct_to_inline(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
-static void cast_fault_to_anyfault(SemaContext *context, Expr *expr, Type *type) { expr->type = type; };
-static void cast_fault_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
-static void cast_typeid_to_int(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
-static void cast_fault_to_int(SemaContext *context, Expr *expr, Type *type) { cast_typeid_to_int(context, expr, type); }
-static void cast_typeid_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
-static void cast_any_to_bool(SemaContext *context, Expr *expr, Type *type) {
+static void cast_struct_to_inline(Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
+static void cast_fault_to_anyfault(Expr *expr, Type *type) { expr->type = type; };
+static void cast_fault_to_ptr(Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
+static void cast_typeid_to_int(Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
+static void cast_fault_to_int(Expr *expr, Type *type) { cast_typeid_to_int(expr, type); }
+static void cast_typeid_to_ptr(Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
+static void cast_any_to_bool(Expr *expr, Type *type)
+{
 	expr_rewrite_ptr_access(expr, expr_copy(expr), type_voidptr);
 	expr_rewrite_int_to_bool(expr, false);
+	expr->type = type;
 }
-static void cast_any_to_ptr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, expr_copy(expr), type); }
-static void cast_all_to_void(SemaContext *context, Expr *expr, Type *to_type) { expr_rewrite_discard(expr); }
-static void cast_retype(SemaContext *context, Expr *expr, Type *to_type) { expr->type = to_type; }
+static void cast_any_to_ptr(Expr *expr, Type *type) { expr_rewrite_ptr_access(expr, expr_copy(expr), type); }
+static void cast_all_to_void(Expr *expr, UNUSED Type *to_type) { expr_rewrite_discard(expr); }
+static void cast_retype(Expr *expr, Type *to_type) { expr->type = to_type; }
 
-static void vector_const_initializer_convert_to_type(SemaContext *context, ConstInitializer *initializer, Type *to_type)
+static void vector_const_initializer_convert_to_type(ConstInitializer *initializer, Type *to_type)
 {
 	switch (initializer->kind)
 	{
@@ -1439,7 +1506,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 			Type *element_type = type_flatten(to_type)->array.base;
 			FOREACH(ConstInitializer *, element, initializer->init_array.elements)
 			{
-				vector_const_initializer_convert_to_type(context, element, element_type);
+				vector_const_initializer_convert_to_type(element, element_type);
 			}
 			break;
 		}
@@ -1448,7 +1515,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 			Type *element_type = type_flatten(to_type)->array.base;
 			FOREACH(ConstInitializer *, element, initializer->init_array_full)
 			{
-				vector_const_initializer_convert_to_type(context, element, element_type);
+				vector_const_initializer_convert_to_type(element, element_type);
 			}
 			break;
 		}
@@ -1468,7 +1535,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 			}
 			else
 			{
-				cast_no_check(context, initializer->init_value, to_type, IS_OPTIONAL(initializer->init_value));
+				cast_no_check(initializer->init_value, to_type, IS_OPTIONAL(initializer->init_value));
 			}
 			break;
 		}
@@ -1478,7 +1545,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 		case CONST_INIT_STRUCT:
 			UNREACHABLE
 		case CONST_INIT_ARRAY_VALUE:
-			vector_const_initializer_convert_to_type(context, initializer->init_array_value.element, to_type);
+			vector_const_initializer_convert_to_type(initializer->init_array_value.element, to_type);
 			break;
 	}
 	initializer->type = type_flatten(to_type);
@@ -1487,7 +1554,7 @@ static void vector_const_initializer_convert_to_type(SemaContext *context, Const
 /**
  * Insert a PTRPTR cast or update the pointer type
  */
-static void cast_ptr_to_ptr(SemaContext *context, Expr *expr, Type *type)
+static void cast_ptr_to_ptr(Expr *expr, Type *type)
 {
 	if (!sema_cast_const(expr) || expr->const_expr.const_kind == CONST_STRING)
 	{
@@ -1504,7 +1571,7 @@ static void cast_ptr_to_ptr(SemaContext *context, Expr *expr, Type *type)
 /**
  * Convert any fp to another fp type using CAST_FPFP
  */
-static void cast_float_to_float(SemaContext *context, Expr *expr, Type *type)
+static void cast_float_to_float(Expr *expr, Type *type)
 {
 	// Change to same type should never enter here.
 	ASSERT(type_flatten(type) != type_flatten(expr->type));
@@ -1524,7 +1591,7 @@ static void cast_float_to_float(SemaContext *context, Expr *expr, Type *type)
  * Convert from any floating point to int using CAST_FPINT
  * Const conversion will disable narrowable and hex.
  */
-static void cast_float_to_int(SemaContext *context, Expr *expr, Type *type)
+static void cast_float_to_int(Expr *expr, Type *type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -1546,7 +1613,7 @@ static void cast_float_to_int(SemaContext *context, Expr *expr, Type *type)
  * Convert from integer to enum using CAST_INTENUM / or do a const conversion.
  * This will ensure that the conversion is valid (i.e. in the range 0 .. enumcount - 1)
  */
-static void cast_int_to_enum(SemaContext *context, Expr *expr, Type *type)
+static void cast_int_to_enum(Expr *expr, Type *type)
 {
 	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 	SEMA_DEPRECATED(expr, "Using casts to convert integers to enums is deprecated in favour of using 'MyEnum.from_ordinal(i)`.");
@@ -1574,7 +1641,7 @@ static void cast_int_to_enum(SemaContext *context, Expr *expr, Type *type)
 /**
  * Convert between integers: CAST_INTINT
  */
-static void cast_int_to_int(SemaContext *context, Expr *expr, Type *type)
+static void cast_int_to_int(Expr *expr, Type *type)
 {
 	// Fold pointer casts if narrowing
 	// So (int)(uptr)&x => (int)&x in the backend.
@@ -1603,11 +1670,11 @@ static void cast_int_to_int(SemaContext *context, Expr *expr, Type *type)
 /**
  * Convert 1 => { 1, 1, 1, 1 } using CAST_EXPVEC
  */
-static void cast_expand_to_vec(SemaContext *context, Expr *expr, Type *type)
+static void cast_expand_to_vec(Expr *expr, Type *type)
 {
 	// Fold pointer casts if narrowing
 	Type *base = type_get_indexed_type(type);
-	cast_no_check(context, expr, base, IS_OPTIONAL(expr));
+	cast_no_check(expr, base, IS_OPTIONAL(expr));
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_SCALAR_TO_VECTOR;
 	expr->inner_expr = inner;
@@ -1615,10 +1682,10 @@ static void cast_expand_to_vec(SemaContext *context, Expr *expr, Type *type)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
-static void cast_bitstruct_to_int_arr(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
-static void cast_int_arr_to_bitstruct(SemaContext *context, Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
+static void cast_bitstruct_to_int_arr(Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
+static void cast_int_arr_to_bitstruct(Expr *expr, Type *type) { expr_rewrite_recast(expr, type); }
 
-static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
+static void cast_bitstruct_to_bool(Expr *expr, Type *type)
 {
 	expr_rewrite_int_to_bool(expr, false);
 	expr->type = type;
@@ -1629,7 +1696,7 @@ static void cast_bitstruct_to_bool(SemaContext *context, Expr *expr, Type *type)
  * Cast a signed or unsigned integer -> floating point, using CAST_INTFP
  * for runtime, otherwise do const transformation.
  */
-static void cast_int_to_float(SemaContext *context, Expr *expr, Type *type)
+static void cast_int_to_float(Expr *expr, Type *type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -1641,19 +1708,19 @@ static void cast_int_to_float(SemaContext *context, Expr *expr, Type *type)
 	expr_rewrite_const_float(expr, type, f);
 }
 
-static void cast_enum_to_int(SemaContext *context, Expr* expr, Type *to_type)
+static void cast_enum_to_int(Expr* expr, Type *to_type)
 {
 	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 	SEMA_DEPRECATED(expr, "Using casts to convert enums to integers is deprecated in favour of using 'the_enum.ordinal`.");
-	sema_expr_convert_enum_to_int(context, expr);
-	cast_int_to_int(context, expr, to_type);
+	sema_expr_convert_enum_to_int(expr);
+	cast_int_to_int(expr, to_type);
 }
 
 /**
  * Cast using CAST_VECARR, casting an array to a vector. For the constant, this
  * is a simple type change, see array_to_vec.
  */
-static void cast_vec_to_arr(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_vec_to_arr(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -1674,7 +1741,7 @@ static void cast_vec_to_arr(SemaContext *context, Expr *expr, Type *to_type)
  * Convert vector -> vector. This is somewhat complex as there are various functions
  * we need to invoke depending on the underlying type.
  */
-static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_vec_to_vec(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -1788,24 +1855,19 @@ static void cast_vec_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 
 	// For the const initializer we need to change the internal type
 	ConstInitializer *list = expr->const_expr.initializer;
-	vector_const_initializer_convert_to_type(context, list, to_type);
+	vector_const_initializer_convert_to_type(list, to_type);
 	expr->type = to_type;
 }
 
 
-static void cast_untyped_list_to_other(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_untyped_list_to_other(Expr *expr, Type *to_type)
 {
 	ASSERT(expr_is_const_untyped_list(expr));
 	// Recursively set the type of all ConstInitializer inside.
-	expr_recursively_rewrite_untyped_list(expr, expr->const_expr.untyped_list);
-	// We can now analyse the list (this is where the actual check happens)
-	bool success = sema_expr_analyse_initializer_list(context, type_flatten(to_type), expr);
-	ASSERT(success);
-	// And set the type.
-	expr->type = type_infer_len_from_actual_type(to_type, expr->type);
+	expr_recursively_rewrite_untyped_list(expr, to_type);
 }
 
-static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
+static void cast_anyfault_to_fault(Expr *expr, Type *type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -1821,7 +1883,7 @@ static void cast_anyfault_to_fault(SemaContext *context, Expr *expr, Type *type)
 	expr->type = type;
 }
 
-static void cast_slice_to_ptr(SemaContext *context, Expr *expr, Type *type)
+static void cast_slice_to_ptr(Expr *expr, Type *type)
 {
 	if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
 	{
@@ -1836,7 +1898,7 @@ static void cast_slice_to_ptr(SemaContext *context, Expr *expr, Type *type)
  * Cast any int to a pointer, will use CAST_INTPTR after a conversion to uptr for runtime.
  * Compile time it will check that the value fits the pointer size.
  */
-static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
+static void cast_int_to_ptr(Expr *expr, Type *type)
 {
 	ASSERT(type_bit_size(type_uptr) <= 64 && "For > 64 bit pointers, this code needs updating.");
 
@@ -1849,7 +1911,7 @@ static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
 		return;
 	}
 	// This may be a narrowing
-	cast_no_check(context, expr, type_uptr, IS_OPTIONAL(expr));
+	cast_no_check(expr, type_uptr, IS_OPTIONAL(expr));
 	expr_rewrite_to_int_to_ptr(expr, type);
 }
 
@@ -1857,14 +1919,13 @@ static void cast_int_to_ptr(SemaContext *context, Expr *expr, Type *type)
  * Bool into a signed or unsigned int using CAST_BOOLINT
  * or rewrite to 0 / 1 for false / true.
  */
-static void cast_bool_to_int(SemaContext *context, Expr *expr, Type *type)
+static void cast_bool_to_int(Expr *expr, Type *type)
 {
 	if (!sema_cast_const(expr))
 	{
 		expr_rewrite_ext_trunc(expr, type, false);
 		return;
 	}
-
 	expr_rewrite_const_int(expr, type, expr->const_expr.b ? 1 : 0);
 }
 
@@ -1873,7 +1934,7 @@ static void cast_bool_to_int(SemaContext *context, Expr *expr, Type *type)
  * Cast bool to float using CAST_BOOLFP
  * or rewrite to 0.0 / 1.0 for false / true
  */
-static void cast_bool_to_float(SemaContext *context, Expr *expr, Type *type)
+static void cast_bool_to_float(Expr *expr, Type *type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -1889,7 +1950,7 @@ static void cast_bool_to_float(SemaContext *context, Expr *expr, Type *type)
  * Cast int to bool using CAST_INTBOOL
  * or rewrite 0 => false, any other value => true
  */
-static void cast_int_to_bool(SemaContext *context, Expr *expr, Type *type)
+static void cast_int_to_bool(Expr *expr, Type *type)
 {
 	if (!expr_is_const(expr))
 	{
@@ -1905,7 +1966,7 @@ static void cast_int_to_bool(SemaContext *context, Expr *expr, Type *type)
  * Cast any float to bool using CAST_FPBOOL
  * or rewrite 0.0 => false, any other value => true
  */
-static void cast_float_to_bool(SemaContext *context, Expr *expr, Type *type)
+static void cast_float_to_bool(Expr *expr, Type *type)
 {
 	if (!expr_is_const(expr))
 	{
@@ -1926,7 +1987,7 @@ static void cast_float_to_bool(SemaContext *context, Expr *expr, Type *type)
 /**
  * Insert the PTRXI cast, or on const do a rewrite.
  */
-static void cast_ptr_to_int(SemaContext *context, Expr *expr, Type *type)
+static void cast_ptr_to_int(Expr *expr, Type *type)
 {
 	if (sema_cast_const(expr) && expr_is_const_pointer(expr))
 	{
@@ -1940,7 +2001,7 @@ static void cast_ptr_to_int(SemaContext *context, Expr *expr, Type *type)
 /**
  * Insert the PTRBOOL cast or on const do a rewrite.
  */
-static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
+static void cast_ptr_to_bool(Expr *expr, Type *type)
 {
 	if (!expr_is_const(expr))
 	{
@@ -1969,7 +2030,7 @@ static void cast_ptr_to_bool(SemaContext *context, Expr *expr, Type *type)
 }
 
 
-static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
+static void cast_slice_to_bool(Expr *expr, Type *type)
 {
 	if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
 	{
@@ -1993,7 +2054,7 @@ static void cast_slice_to_bool(SemaContext *context, Expr *expr, Type *type)
  * 1. int[] -> Foo[] where Foo is a distinct or typedef or pointer. Then we can just redefine
  * 2. The second case is something like int[] -> float[] for this case we need to make a bitcast using CAST_SASA.
  */
-static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_slice_to_slice(Expr *expr, Type *to_type)
 {
 	if (sema_cast_const(expr))
 	{
@@ -2003,7 +2064,7 @@ static void cast_slice_to_slice(SemaContext *context, Expr *expr, Type *to_type)
 	expr_rewrite_recast(expr, to_type);
 }
 
-static void cast_vecarr_to_slice(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_vecarr_to_slice(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -2037,7 +2098,7 @@ static void cast_vecarr_to_slice(SemaContext *context, Expr *expr, Type *to_type
 	}
 	UNREACHABLE
 }
-static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 {
 	if (!sema_cast_const(expr))
 	{
@@ -2064,25 +2125,25 @@ static void cast_slice_to_vecarr(SemaContext *context, Expr *expr, Type *to_type
 	return;
 }
 
-static void cast_slice_to_infer(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_slice_to_infer(Expr *expr, Type *to_type)
 {
 	ArraySize len = sema_len_from_const(expr);
 	ASSERT(len > 0);
 	Type *indexed = type_get_indexed_type(expr->type);
 	to_type = type_infer_len_from_actual_type(to_type, type_get_array(indexed, len));
-	cast_no_check(context, expr, to_type, false);
+	cast_no_check(expr, to_type, false);
 }
 
-static void cast_vecarr_to_infer(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_vecarr_to_infer(Expr *expr, Type *to_type)
 {
 	to_type = type_infer_len_from_actual_type(to_type, type_flatten(expr->type));
-	cast_no_check(context, expr, to_type, false);
+	cast_no_check(expr, to_type, false);
 }
 
-static void cast_ptr_to_infer(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_ptr_to_infer(Expr *expr, Type *to_type)
 {
 	to_type = type_infer_len_from_actual_type(to_type, type_flatten(expr->type));
-	cast_no_check(context, expr, to_type, false);
+	cast_no_check(expr, to_type, false);
 }
 
 
@@ -2090,7 +2151,7 @@ static void cast_ptr_to_infer(SemaContext *context, Expr *expr, Type *to_type)
  * Cast using CAST_ARRVEC, casting an array to a vector. For the constant, this
  * is a simple type change.
  */
-static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_arr_to_vec(Expr *expr, Type *to_type)
 {
 	Type *index_vec = type_flatten(type_get_indexed_type(to_type));
 	Type *index_arr = type_flatten(type_get_indexed_type(expr->type));
@@ -2112,22 +2173,22 @@ static void cast_arr_to_vec(SemaContext *context, Expr *expr, Type *to_type)
 	}
 	if (to_temp != to_type)
 	{
-		cast_vec_to_vec(context, expr, to_type);
+		cast_vec_to_vec(expr, to_type);
 	}
 }
 
-static void cast_arr_to_arr(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_arr_to_arr(Expr *expr, Type *to_type)
 {
 	ASSERT(type_size(to_type) == type_size(expr->type));
 	expr->type = to_type;
 }
 
-static void cast_anyfault_to_bool(SemaContext *context, Expr *expr, Type *to_type)
+static void cast_anyfault_to_bool(Expr *expr, Type *to_type)
 {
 	expr_rewrite_int_to_bool(expr, false);
 	expr->type = to_type;
 }
-static void cast_typeid_to_bool(SemaContext *context, Expr *expr, Type *to_type) { expr_rewrite_int_to_bool(expr, false); expr->type = to_type; }
+static void cast_typeid_to_bool(Expr *expr, Type *to_type) { expr_rewrite_int_to_bool(expr, false); expr->type = to_type; }
 
 #define XX2XX &cast_retype
 #define BS2IA &cast_bitstruct_to_int_arr

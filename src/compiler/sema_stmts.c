@@ -1171,7 +1171,7 @@ static inline bool sema_analyse_cond(SemaContext *context, Expr *expr, CondType 
 			{
 				RETURN_SEMA_ERROR(last->decl_expr->var.init_expr, "The expression needs to be convertible to a boolean.");
 			}
-			cast_no_check(context, last, type_bool, false);
+			cast_no_check(last, type_bool, false);
 		}
 		if (cast_to_bool && expr_is_const_bool(init))
 		{

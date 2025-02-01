@@ -4190,7 +4190,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (type_is_user_defined(type) && type->decl)
 	{
 		if (!sema_analyse_decl(context, type->decl)) return false;
-		sema_display_deprecated_warning_on_use(context, type->decl, type_info->span);
+		sema_display_deprecated_warning_on_use(type->decl, type_info->span);
 	}
 
 	if (is_static && context->call_env.pure)

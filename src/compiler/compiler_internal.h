@@ -2141,7 +2141,7 @@ bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 
 bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
 
-void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
+void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
 bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
 
@@ -2337,7 +2337,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
                                     bool *no_match_ref);
 
-void sema_expr_convert_enum_to_int(SemaContext *context, Expr *expr);
+void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);

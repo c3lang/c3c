@@ -203,8 +203,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	if (elements_needed == 0)
 	{
 		// Generate a nice error message for zero.
-		SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
-		return false;
+		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
 
 	bool optional = false;
@@ -780,6 +779,7 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
+
 	if (!to) to = type_untypedlist;
 	ASSERT(to);
 	Type *flattened = type_flatten(to);
