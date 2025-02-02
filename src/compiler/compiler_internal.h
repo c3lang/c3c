@@ -2265,6 +2265,7 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
+Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index);
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 void expr_contract_array(ExprConst *expr_const, ConstKind contract_type);
