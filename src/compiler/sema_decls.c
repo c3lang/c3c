@@ -1228,7 +1228,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 				if ((i != 0 || !method_parent) && !is_deprecated)
 				{
 					static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated.");
+					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated. Consider using expression parameters instead '#%s'.", param->name);
 				}
 				if (type_info && !type_is_pointer(param->type))
 				{
@@ -4809,4 +4809,3 @@ FAILED:
 	DEBUG_LOG("<<< Analysis of [%s] failed.", decl_safe_name(decl));
 	return decl_poison(decl);
 }
-
