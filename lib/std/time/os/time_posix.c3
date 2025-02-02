@@ -1,7 +1,7 @@
 module std::time::os @if(env::POSIX);
 import libc;
 
-extern fn void clock_gettime(int type, TimeSpec *time);
+extern fn CInt clock_gettime(int type, TimeSpec *time);
 
 fn Time native_timestamp()
 {
