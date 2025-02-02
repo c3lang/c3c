@@ -14,6 +14,7 @@
 - Experimental change from `[*]` to `[?]`
 - Warn on if-catch with just a `default` case.
 - Compile time array inc/dec.
+- Improve error message when using ',' in struct declarations. #1920
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.

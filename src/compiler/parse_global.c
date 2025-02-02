@@ -1629,6 +1629,10 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			{
 				RETURN_PRINT_ERROR_AT(false, member, "'inline' can only be applied to a single member, so please define it on its own line.");
 			}
+			if (token_is_any_type(c->tok))
+			{
+				RETURN_PRINT_ERROR_LAST("Did you accidentally use ',' rather than ';' between your declarations?");
+			}
 		}
 		Decl **members = parent->strukt.members;
 		unsigned last_index = vec_size(members) - 1;
