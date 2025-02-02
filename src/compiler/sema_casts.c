@@ -6,8 +6,6 @@
 // implicit conversions. C3 has a fairly complex set of rules,
 // which makes this code somewhat lengthy.
 
-#include <tgmath.h>
-
 #include "sema_internal.h"
 
 typedef struct
