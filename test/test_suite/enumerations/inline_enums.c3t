@@ -7,10 +7,10 @@ enum Abc : inline int
 	DEF,
 }
 
-enum Foo : int (inline String name)
+enum Foo : int (inline String name, int y, int z)
 {
-	ABC = "Hello",
-	DEF = "World"
+	ABC = { "Hello", 1, 2 },
+	DEF = { "World", 2, 3 },
 }
 fn void main()
 {

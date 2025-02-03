@@ -1235,14 +1235,8 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 /**
  * enum_param_decl ::= type IDENT attributes?
  */
-static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters, bool *has_inline)
+static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
 {
-	bool is_inline = try_consume(c, TOKEN_INLINE);
-	if (is_inline)
-	{
-		if (*has_inline) RETURN_PRINT_ERROR_HERE("An enum may only have one inline parameter.");
-		*has_inline = true;
-	}
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
 	if (type->optional) RETURN_PRINT_ERROR_AT(false, type, "Parameters may not be optional.");
 	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
@@ -2282,15 +2276,18 @@ static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 
 	ArrayIndex index = -1;
+	bool has_inline = !inline_index;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
 		index++;
-		bool has_inline = !inline_index || *inline_index > -1;
-		if (!parse_enum_param_decl(c, parameters_ref, &has_inline)) return false;
-		if (has_inline)
+		bool is_inline = try_consume(c, TOKEN_INLINE);
+		if (is_inline)
 		{
+			if (has_inline) RETURN_PRINT_ERROR_HERE("An enum cannot combine an inline value and a inline parameter.");
+			if (*inline_index > -1) RETURN_PRINT_ERROR_HERE("An enum may only have one inline parameter.");
 			*inline_index = index;
 		}
+		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		ASSERT(last_parameter);
 		last_parameter->var.index = vec_size(*parameters_ref) - 1; // NOLINT
