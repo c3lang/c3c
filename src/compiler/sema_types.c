@@ -39,7 +39,7 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	Expr *len_expr = type_info->array.len;
 
 	// Analyse it.
-	if (!sema_analyse_expr(context, len_expr)) return type_info_poison(type_info);
+	if (!sema_analyse_expr_rhs(context, type_isz, len_expr, false, NULL, false)) return type_info_poison(type_info);
 
 	// A constant expression is assumed.
 	if (!sema_cast_const(len_expr))
