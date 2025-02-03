@@ -15,7 +15,7 @@ typedef enum FunctionParse_
 
 static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
 static Decl *parse_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
@@ -1235,8 +1235,14 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 /**
  * enum_param_decl ::= type IDENT attributes?
  */
-static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters)
+static inline bool parse_enum_param_decl(ParseContext *c, Decl*** parameters, bool *has_inline)
 {
+	bool is_inline = try_consume(c, TOKEN_INLINE);
+	if (is_inline)
+	{
+		if (*has_inline) RETURN_PRINT_ERROR_HERE("An enum may only have one inline parameter.");
+		*has_inline = true;
+	}
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), false);
 	if (type->optional) RETURN_PRINT_ERROR_AT(false, type, "Parameters may not be optional.");
 	Decl *param = decl_new_var_current(c, type, VARDECL_PARAM);
@@ -2270,14 +2276,21 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 /**
  * enum_param_list ::= '(' enum_param* ')'
  */
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref)
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index)
 {
 	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 
+	ArrayIndex index = -1;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
-		if (!parse_enum_param_decl(c, parameters_ref)) return false;
+		index++;
+		bool has_inline = !inline_index || *inline_index > -1;
+		if (!parse_enum_param_decl(c, parameters_ref, &has_inline)) return false;
+		if (has_inline)
+		{
+			*inline_index = index;
+		}
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		ASSERT(last_parameter);
 		last_parameter->var.index = vec_size(*parameters_ref) - 1; // NOLINT
@@ -2307,17 +2320,20 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	TypeInfo *type = NULL;
 
+	bool val_is_inline = false;
+	ArrayIndex inline_index = -1;
 	if (try_consume(c, TOKEN_COLON))
 	{
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
+			val_is_inline = try_consume(c, TOKEN_INLINE);
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
 			if (type->optional)
 			{
 				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum can't have an optional type.");
 			}
 		}
-		if (!parse_enum_param_list(c, &decl->enums.parameters)) return poisoned_decl;
+		if (!parse_enum_param_list(c, &decl->enums.parameters, val_is_inline ? NULL : &inline_index)) return poisoned_decl;
 	}
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
@@ -2326,6 +2342,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
+	decl->enums.inline_index = (int16_t)inline_index;
+	decl->enums.inline_value = val_is_inline;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);

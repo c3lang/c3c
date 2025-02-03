@@ -1463,6 +1463,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
 
+	if (decl->enums.inline_index > -1 || decl->enums.inline_value) decl->is_substruct = true;
 	Type *type = decl->enums.type_info->type;
 	ASSERT(!type_is_optional(type) && "Already stopped when parsing.");
 

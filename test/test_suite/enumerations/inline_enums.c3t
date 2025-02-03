@@ -1,0 +1,38 @@
+// #target: macos-x64
+module test;
+
+enum Abc : inline int
+{
+	ABC,
+	DEF,
+}
+
+enum Foo : int (inline String name)
+{
+	ABC = "Hello",
+	DEF = "World"
+}
+fn void main()
+{
+	int a = Abc.DEF;
+	Foo x = ABC;
+	Foo y = DEF;
+	String hello = Foo.ABC;
+	String world = Foo.DEF;
+}
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %a = alloca i32, align 4
+  %x = alloca i32, align 4
+  %y = alloca i32, align 4
+  %hello = alloca %"char[]", align 8
+  %world = alloca %"char[]", align 8
+  store i32 1, ptr %a, align 4
+  store i32 0, ptr %x, align 4
+  store i32 1, ptr %y, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %hello, ptr align 8 @"test.Foo$name", i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %world, ptr align 8 getelementptr inbounds (i8, ptr @"test.Foo$name", i32 16), i32 16, i1 false)
+  ret void
+}

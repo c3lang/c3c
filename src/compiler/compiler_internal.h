@@ -474,6 +474,8 @@ typedef struct
 	Decl** values;
 	Decl** parameters;
 	TypeInfo *type_info;
+	int16_t inline_index;
+	bool inline_value;
 } EnumDecl;
 
 struct Signature_
