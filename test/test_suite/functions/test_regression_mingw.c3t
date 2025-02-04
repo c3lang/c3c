@@ -595,10 +595,9 @@ loop.exit8:                                       ; preds = %loop.cond2
   store ptr null, ptr %b2, align 8
   ret void
 }
-
-declare void @llvm.memcpy.p0.p0.i32(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i32, i1 immarg) #1
+declare void @llvm.memcpy.p0.p0.i32(ptr noalias writeonly
 declare void @hello_world.hello() #0
-declare void @llvm.memset.p0.i64(ptr nocapture writeonly, i8, i64, i1 immarg) #2
+declare void @llvm.memset.p0.i64(ptr writeonly
 declare void @"std_collections_linkedlist$int$.LinkedList.push"(ptr, i32) #0
 declare i64 @"std_collections_linkedlist$int$.LinkedList.len"(ptr) #0
 declare i32 @"std_collections_linkedlist$int$.LinkedList.get"(ptr, i64) #0
