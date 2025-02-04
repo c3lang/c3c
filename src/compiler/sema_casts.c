@@ -605,11 +605,11 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 }
 
 
-bool cast_to_index(SemaContext *context, Expr *index)
+bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 {
 	Type *type = index->type;
 	RETRY:
-	type = type_flat_distinct_inline(type);
+	type = type_flat_distinct_enum_inline(type);
 	type = type_no_optional(type);
 	switch (type->type_kind)
 	{
@@ -624,17 +624,17 @@ bool cast_to_index(SemaContext *context, Expr *index)
 		case TYPE_U64:
 			return cast_explicit(context, index, type_usz);
 		case TYPE_U128:
-			SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
-			return false;
+			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 		case TYPE_I128:
-			SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
-			return false;
+			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
 		case TYPE_ENUM:
+			SEMA_DEPRECATED(index, "Implicitly converting enums into an index value is deprecated, use 'inline' on the value type instead.");
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			type = type->decl->enums.type_info->type;
 			goto RETRY;
 		default:
-			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer index.",
-			                  type_quoted_error_string(index->type));
+			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer %s.",
+			                  type_quoted_error_string(index->type), is_len ? "length" : "index");
 	}
 }
 

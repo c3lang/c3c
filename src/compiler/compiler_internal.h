@@ -2145,7 +2145,7 @@ bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit,
 
 void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
-bool cast_to_index(SemaContext *context, Expr *index);
+bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
@@ -2982,6 +2982,37 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	return type;
 }
 
+static inline Type *type_flat_distinct_enum_inline(Type *type)
+{
+	do
+	{
+		type = type->canonical;
+		Decl *decl;
+		switch (type->type_kind)
+		{
+			case TYPE_DISTINCT:
+				decl = type->decl;
+				if (!decl->is_substruct) break;
+				type = decl->distinct->type;
+				continue;
+			case TYPE_ENUM:
+				decl = type->decl;
+				if (!decl->is_substruct) break;
+				if (decl->enums.inline_value)
+				{
+					type = decl->enums.type_info->type;
+					continue;
+				}
+				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				continue;
+			default:
+				break;
+		}
+		break;
+	} while (1);
+	return type;
+}
+
 static inline Type *type_flatten_to_int(Type *type)
 {
 	while (1)
@@ -2999,6 +3030,8 @@ static inline Type *type_flatten_to_int(Type *type)
 				type = type->decl->strukt.container_type->type;
 				break;
 			case TYPE_ENUM:
+				SEMA_DEPRECATED(type->decl, "Relying on conversion of enums into ordinals is deprecated, use inline on the value instead.");
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_VECTOR:

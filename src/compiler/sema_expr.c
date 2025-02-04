@@ -3188,7 +3188,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	}
 
 	// Cast to an appropriate type for index.
-	if (!cast_to_index(context, index)) return false;
+	if (!cast_to_index_len(context, index, false)) return false;
 
 	optional |= IS_OPTIONAL(index);
 	// Check range
@@ -3304,7 +3304,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 
 	// Cast to an appropriate type for index.
-	if (!cast_to_index(context, index)) return false;
+	if (!cast_to_index_len(context, index, false)) return false;
 
 	optional |= IS_OPTIONAL(index);
 	// Check range
@@ -3418,7 +3418,7 @@ typedef enum RangeEnv
 	RANGE_FLEXIBLE,
 } RangeEnv;
 
-INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, Type *indexed_type, ArrayIndex len, RangeEnv env)
+INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range, ArrayIndex len, RangeEnv env)
 {
 	Expr *start = exprptr(range->start);
 	ASSERT(start);
@@ -3427,8 +3427,8 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (!sema_analyse_expr(context, start)) return false;
 	if (end && !sema_analyse_expr(context, end)) return false;
 
-	if (!cast_to_index(context, start)) return false;
-	if (end && !cast_to_index(context, end)) return false;
+	if (!cast_to_index_len(context, start, false)) return false;
+	if (end && !cast_to_index_len(context, end, false)) return false;
 	Type *end_type = end ? type_no_optional(end->type) : NULL;
 	Type *start_type = type_no_optional(start->type);
 	if (end && IS_OPTIONAL(end)) range->is_optional = true;
@@ -3588,7 +3588,7 @@ static inline bool sema_expr_analyse_range(SemaContext *context, Range *range, T
 			return true;
 		case RESOLVE_NOT_DONE:
 			range->status = RESOLVE_RUNNING;
-			if (!sema_expr_analyse_range_internal(context, range, indexed_type, len, env))
+			if (!sema_expr_analyse_range_internal(context, range, len, env))
 			{
 				range->status = RESOLVE_NOT_DONE;
 				return false;
