@@ -32,7 +32,7 @@ entry:
   store i32 1, ptr %a, align 4
   store i32 0, ptr %x, align 4
   store i32 1, ptr %y, align 4
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %hello, ptr align 8 @"test.Foo$name", i32 16, i1 false)
-  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %world, ptr align 8 getelementptr inbounds (i8, ptr @"test.Foo$name", i32 16), i32 16, i1 false)
+  store %"char[]" { ptr @.str.2, i64 5 }, ptr %hello, align 8
+  store %"char[]" { ptr @.str.3, i64 5 }, ptr %world, align 8
   ret void
 }

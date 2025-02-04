@@ -605,7 +605,7 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 }
 
 
-bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type)
+bool cast_to_index(SemaContext *context, Expr *index)
 {
 	Type *type = index->type;
 	RETRY:
@@ -735,9 +735,10 @@ static TypeCmpResult match_pointers(CastContext *cc, Type *to_ptr, Type *from_pt
 	return type_is_pointer_equivalent(cc->context, to_ptr, from_ptr, flatten);
 }
 
-static bool rule_voidptr_to_any(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_voidptr_to_any(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	if (expr_is_const_pointer(cc->expr) && !cc->expr->const_expr.ptr) return true;
+	if (is_silent) return false;
 	RETURN_CAST_ERROR(cc->expr,
 	                  "Casting a 'void*' to %s is not permitted (except when the 'void*' is a constant null).",
 	                  type_quoted_error_string(cc->to));
@@ -884,7 +885,7 @@ static bool rule_ulist_to_struct(CastContext *cc, UNUSED bool is_explicit, bool 
 	return true;
 }
 
-static bool rule_ulist_to_vecarr(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_ulist_to_vecarr(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	Expr **expressions = cc->expr->const_expr.untyped_list;
 	unsigned size = vec_size(expressions);
@@ -904,7 +905,7 @@ static bool rule_ulist_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 	return true;
 }
 
-static bool rule_ulist_to_slice(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_ulist_to_slice(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	ASSERT(expr_is_const_untyped_list(cc->expr));
 	Type *base = cc->to->array.base;
@@ -915,7 +916,7 @@ static bool rule_ulist_to_slice(CastContext *cc, bool is_explicit, bool is_silen
 	return true;
 }
 
-static bool rule_ulist_to_inferred(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_ulist_to_inferred(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	Expr **expressions = cc->expr->const_expr.untyped_list;
 	unsigned size = vec_size(expressions);
@@ -1262,7 +1263,7 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 	return true;
 }
 
-static bool rule_not_applicable(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_not_applicable(UNUSED CastContext *cc, UNUSED bool is_explicit, UNUSED bool is_silent)
 {
 	UNREACHABLE
 }
@@ -1352,7 +1353,7 @@ static bool rule_to_struct_to_distinct(CastContext *cc, bool is_explicit, bool i
 	return rule_to_distinct(cc, is_explicit, is_silent);
 }
 
-static bool rule_struct_to_struct(CastContext *cc, bool is_explicit, bool is_silent)
+static bool rule_struct_to_struct(CastContext *cc, UNUSED bool is_explicit, bool is_silent)
 {
 	Type *from = cc->from;
 	// 1. The distinct type is a subtype.
@@ -1522,7 +1523,7 @@ static void cast_ptr_to_any(Expr *expr, Type *type)
 	expr->type = type;
 }
 static void cast_struct_to_inline(Expr *expr, Type *type) { expr_rewrite_addr_conversion(expr, type); }
-static void cast_fault_to_anyfault(Expr *expr, Type *type) { expr->type = type; };
+static void cast_fault_to_anyfault(Expr *expr, Type *type) { expr->type = type; }
 static void cast_fault_to_ptr(Expr *expr, Type *type) { expr_rewrite_to_int_to_ptr(expr, type); }
 static void cast_typeid_to_int(Expr *expr, Type *type) { expr_rewrite_ext_trunc(expr, type, type_is_signed(type_flatten_to_int(type))); }
 static void cast_fault_to_int(Expr *expr, Type *type) { cast_typeid_to_int(expr, type); }
@@ -1764,6 +1765,16 @@ static void cast_enum_to_value(Expr* expr, Type *to_type)
 	{
 		sema_expr_convert_enum_to_int(expr);
 		cast_int_to_int(expr, to_type);
+		return;
+	}
+
+	if (expr_is_const_enum(expr))
+	{
+		expr_replace(expr, copy_expr_single(expr->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]));
+		if (expr->type != to_type)
+		{
+			cast_no_check(expr, to_type, false);
+		}
 		return;
 	}
 	Expr *copy = expr_copy(expr);
@@ -2184,7 +2195,6 @@ static void cast_slice_to_vecarr(Expr *expr, Type *to_type)
 	}
 	ASSERT(expr_is_const(expr));
 	expr->type = to_type;
-	return;
 }
 
 static void cast_slice_to_infer(Expr *expr, Type *to_type)

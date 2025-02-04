@@ -3188,7 +3188,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	}
 
 	// Cast to an appropriate type for index.
-	if (!cast_to_index(context, index, subscripted->type)) return false;
+	if (!cast_to_index(context, index)) return false;
 
 	optional |= IS_OPTIONAL(index);
 	// Check range
@@ -3304,7 +3304,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	}
 
 	// Cast to an appropriate type for index.
-	if (!cast_to_index(context, index, subscripted->type)) return false;
+	if (!cast_to_index(context, index)) return false;
 
 	optional |= IS_OPTIONAL(index);
 	// Check range
@@ -3427,8 +3427,8 @@ INLINE bool sema_expr_analyse_range_internal(SemaContext *context, Range *range,
 	if (!sema_analyse_expr(context, start)) return false;
 	if (end && !sema_analyse_expr(context, end)) return false;
 
-	if (!cast_to_index(context, start, indexed_type)) return false;
-	if (end && !cast_to_index(context, end, indexed_type)) return false;
+	if (!cast_to_index(context, start)) return false;
+	if (end && !cast_to_index(context, end)) return false;
 	Type *end_type = end ? type_no_optional(end->type) : NULL;
 	Type *start_type = type_no_optional(start->type);
 	if (end && IS_OPTIONAL(end)) range->is_optional = true;

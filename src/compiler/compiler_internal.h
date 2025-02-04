@@ -2141,11 +2141,11 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type, bool is_bina
 bool cast_explicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 
-bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
+bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
 
 void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
-bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
+bool cast_to_index(SemaContext *context, Expr *index);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
