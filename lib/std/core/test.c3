@@ -27,7 +27,7 @@ fn void! test_div() @test
 	test::gt(2, divide(3, 3)!);
 	test::lt(2, 3);
 	test::le(2, 3);
-	test::@almost(m::divide(1, 3)!, 0.333, places: 3);
+	test::eq_approx(m::divide(1, 3)!, 0.333, places: 3);
 	test::@check(2 == 2, "divide: %d", divide(6, 3)!);
 	test::@error(m::divide(3, 0), MathError.DIVISION_BY_ZERO);
 }
@@ -127,7 +127,7 @@ macro eq(left, right)
  @require delta >= 0, delta <= 1 "delta must be a small number"
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro void @almost(double left, double right, uint places = 7, double delta = 0, bool equal_nan = true)
+macro void eq_approx(double left, double right, uint places = 7, double delta = 0, bool equal_nan = true)
 {
 	double diff = left - right;
 	double eps = delta;

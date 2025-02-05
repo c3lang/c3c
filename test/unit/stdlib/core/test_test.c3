@@ -79,16 +79,16 @@ fn void test_eq()
 
 fn void test_almost_equal()
 {
-	test::@almost(1, 1);
-	test::@almost(1.31, 1.31);
-	test::@almost(1.31f, 1.31f);
-	test::@almost(double.nan, double.nan);
-	test::@almost(float.nan, float.nan);
-	test::@almost(1.31, 1.31, delta: 0.01);
-	test::@almost(1.311, 1.312, delta: 0.01);
-	test::@almost(1.311, 1.312, places: 2);
+	test::eq_approx(1, 1);
+	test::eq_approx(1.31, 1.31);
+	test::eq_approx(1.31f, 1.31f);
+	test::eq_approx(double.nan, double.nan);
+	test::eq_approx(float.nan, float.nan);
+	test::eq_approx(1.31, 1.31, delta: 0.01);
+	test::eq_approx(1.311, 1.312, delta: 0.01);
+	test::eq_approx(1.311, 1.312, places: 2);
 	// 7 decimal places are default
-	test::@almost(1.00000001, 1.00000000);
+	test::eq_approx(1.00000001, 1.00000000);
 }
 
 
@@ -97,28 +97,28 @@ fn void test_almost_equal_fails()
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
 	// 7 decimal places are default
-	test::@almost(1.0000001, 1.00000000);
+	test::eq_approx(1.0000001, 1.00000000);
 }
 
 fn void test_almost_equal_fails_nan()
 {
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
-	test::@almost(1.0000001, double.nan);
+	test::eq_approx(1.0000001, double.nan);
 }
 
 fn void test_almost_equal_fails_nan2()
 {
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
-	test::@almost(double.nan, 1);
+	test::eq_approx(double.nan, 1);
 }
 
 fn void test_almost_equal_fails_equal_nan_false()
 {
 	test::@setup(state.setup_fn, state.teardown_fn);
 	state.expected_fail = true;
-	test::@almost(double.nan, double.nan, equal_nan: false);
+	test::eq_approx(double.nan, double.nan, equal_nan: false);
 }
 
 fn void setup_teardown()
