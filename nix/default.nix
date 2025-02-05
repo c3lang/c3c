@@ -38,8 +38,7 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
     "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
-    "-DC3_IS_NIX_BUILD=ON"
-    "-DLLVM_CRT_LIBRARY_DIR=${llvmPackages.compiler-rt}"
+    "-DLLVM_CRT_LIBRARY_DIR=${llvmPackages.compiler-rt}/lib/darwin"
   ];
 
   nativeBuildInputs = [ 
