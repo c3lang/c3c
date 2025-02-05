@@ -21,13 +21,13 @@ fn double! divide(int a, int b)
 
 fn void! test_div() @test
 {
-	test::is_equal(2, divide(6, 3)!);
-	test::is_not_equal(1, 2);
-	test::is_almost_equal(m::divide(1, 3)!, 0.333, places: 3);
-	test::is_greater_equal(3, 3);
-	test::is_greater(2, divide(3, 3)!);
-	test::is_less(2, 3);
-	test::is_less_equal(2, 3);
+	test::eq(2, divide(6, 3)!);
+	test::ne(1, 2);
+	test::ge(3, 3);
+	test::gt(2, divide(3, 3)!);
+	test::lt(2, 3);
+	test::le(2, 3);
+	test::eq_approx(m::divide(1, 3)!, 0.333, places: 3);
 	test::@check(2 == 2, "divide: %d", divide(6, 3)!);
 	test::@error(m::divide(3, 0), MathError.DIVISION_BY_ZERO);
 }
@@ -50,7 +50,7 @@ import std::math, std::io, libc;
  @require runtime::test_context != null "Only allowed in @test functions"
  @require setup_fn != null "setup_fn must always be set"
 *>
-macro setup(TestFn setup_fn, TestFn teardown_fn = null)
+macro @setup(TestFn setup_fn, TestFn teardown_fn = null)
 {
 	runtime::test_context.setup_fn = setup_fn;
 	runtime::test_context.teardown_fn = teardown_fn;
@@ -108,7 +108,7 @@ macro @error(#funcresult, anyfault error_expected)
  @param right `right argument of any comparable type`
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro is_equal(left, right)
+macro eq(left, right)
 {
 	if (!equals(left, right))
 	{
@@ -127,7 +127,7 @@ macro is_equal(left, right)
  @require delta >= 0, delta <= 1 "delta must be a small number"
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-fn void is_almost_equal(double left, double right, uint places = 7, double delta = 0, bool equal_nan = true)
+macro void eq_approx(double left, double right, uint places = 7, double delta = 0, bool equal_nan = true)
 {
 	double diff = left - right;
 	double eps = delta;
@@ -147,7 +147,7 @@ fn void is_almost_equal(double left, double right, uint places = 7, double delta
  @param right `right argument of any comparable type`
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro void is_not_equal(left, right)
+macro void ne(left, right)
 {
 	if (equals(left, right))
 	{
@@ -162,7 +162,7 @@ macro void is_not_equal(left, right)
  @param right `right argument of any comparable type`
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro is_greater(left, right)
+macro gt(left, right)
 {
 	if (!builtin::greater(left, right))
 	{
@@ -177,7 +177,7 @@ macro is_greater(left, right)
  @param right `right argument of any comparable type`
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro is_greater_equal(left, right)
+macro ge(left, right)
 {
 	if (!builtin::greater_eq(left, right))
 	{
@@ -192,7 +192,7 @@ macro is_greater_equal(left, right)
  @param right `right argument of any comparable type`
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro is_less(left, right)
+macro lt(left, right)
 {
 	if (!builtin::less(left, right))
 	{
@@ -207,7 +207,7 @@ macro is_less(left, right)
  @param right `right argument of any comparable type`
  @require runtime::test_context != null "Only allowed in @test functions"
 *>
-macro is_less_equal(left, right)
+macro le(left, right)
 {
 	if (!builtin::less_eq(left, right))
 	{

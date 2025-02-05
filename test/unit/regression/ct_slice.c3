@@ -12,7 +12,7 @@ fn void slice_bytes()
 fn void slice_string()
 {
 	String $a = "abcd";
-	test::is_equal($a, "abcd");
+	test::eq($a, "abcd");
 	var $c = $a[1:0];
 	String c = $c;
 	assert($c == "");
