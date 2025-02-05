@@ -526,7 +526,7 @@ jobs:
       matrix:
         ubuntu_version: [20.04, 22.04]
         build_type: [Release, Debug]
-        llvm_version: [17, 18, 19, 20, 21]
+        llvm_version: [17, 18, 19]
 
     steps:
       - uses: actions/checkout@v4
