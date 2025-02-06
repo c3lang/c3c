@@ -569,10 +569,12 @@ INLINE bool sema_check_not_stack_variable_escape(SemaContext *context, Expr *exp
 {
 	Expr *outer = expr;
 	expr = sema_dive_into_expression(expr);
+	bool allow_pointer = false;
 	// We only want && and &
 	if (expr->expr_kind == EXPR_SUBSCRIPT_ADDR)
 	{
 		expr = exprptr(expr->subscript_expr.expr);
+		allow_pointer = true;
 		goto CHECK_ACCESS;
 	}
 	if (expr->expr_kind != EXPR_UNARY) return true;
@@ -598,7 +600,8 @@ CHECK_ACCESS:
 				case TYPE_POINTER:
 				case TYPE_SLICE:
 					// &foo[2] is fine if foo is a pointer or slice.
-					return true;
+					if (allow_pointer) return true;
+					break;
 				default:
 					break;
 			}
