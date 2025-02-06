@@ -156,35 +156,18 @@ fn void! Socket.close(&self) @inline @dynamic
 	self.sock.close()!;
 }
 
-enum SocketShutdownHow
-{
-	RECEIVE,
-	SEND,
-	BOTH,
-}
 
-fn CInt SocketShutdownHow.os_value(self)
+enum SocketShutdownHow : (inline CInt native_value)
 {
-	$switch
-		$case env::WIN32:
-			switch (self) {
-				case RECEIVE: return libc::SD_RECEIVE;
-				case SEND:    return libc::SD_SEND;
-				case BOTH:    return libc::SD_BOTH;
-			}
-		$case env::POSIX:
-			switch (self) {
-				case RECEIVE: return libc::SHUT_RD;
-				case SEND:    return libc::SHUT_WR;
-				case BOTH:    return libc::SHUT_RDWR;
-			}
-		$default: $error("Unsupported environment");
-	$endswitch
+	RECEIVE = @select(env::WIN32, libc::SD_RECEIVE, libc::SHUT_RD),
+	SEND = @select(env::WIN32, libc::SD_SEND, libc::SHUT_WR),
+	BOTH = @select(env::WIN32, libc::SD_BOTH, libc::SHUT_RDWR),
 }
 
 fn void! Socket.shutdown(&self, SocketShutdownHow how)
 {
-	if (libc::shutdown(self.sock, how.os_value()) < 0) {
+	if (libc::shutdown(self.sock, how) < 0)
+	{
 		return os::socket_error()?;
 	}
 }
