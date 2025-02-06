@@ -53,6 +53,7 @@
 - New `std::core::test` module for unit testing machinery.
 - New unit test default runner.
 - Added weakly linked `fmodf`.
+- Add `@select` to perform the equivalent of `a ? x : y` at compile time.
 
 ## 0.6.6 Change list
 
