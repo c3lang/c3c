@@ -94,3 +94,4 @@ const CShort POLLATTRIB          = 0x0400; // file attributes may have changed
 const CShort POLLNLINK           = 0x0800; // (un)link/rename may have happened
 const CShort POLLWRITE           = 0x1000; // file's contents may have changed
 
+const CInt MSG_PEEK = 0x0002;
