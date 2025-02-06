@@ -1,5 +1,10 @@
 module libc @if(env::POSIX);
 
+const CInt SHUT_RD = 0;
+const CInt SHUT_WR = 1;
+const CInt SHUT_RDWR = 2;
+extern fn CInt shutdown(Fd sockfd, CInt how);
+
 extern fn isz recv(Fd socket, void *buffer, usz length, CInt flags);
 extern fn isz send(Fd socket, void *buffer, usz length, CInt flags);
 

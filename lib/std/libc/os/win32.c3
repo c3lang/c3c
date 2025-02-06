@@ -24,6 +24,11 @@ extern fn CInt _wremove(WString);
 extern fn int recv(Win32_SOCKET s, void* buf, int len, int flags);
 extern fn int send(Win32_SOCKET s, void* buf, int len, int flags);
 
+const CInt SD_RECEIVE = 0;
+const CInt SD_SEND = 1;
+const CInt SD_BOTH = 2;
+extern fn CInt shutdown(Win32_SOCKET s, CInt how);
+
 struct SystemInfo
 {
 	union {
