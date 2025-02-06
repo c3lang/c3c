@@ -80,7 +80,6 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_DOCS:
 		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_BENCHMARK:
@@ -115,7 +114,6 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_BUILD:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_DOCS:
 		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:

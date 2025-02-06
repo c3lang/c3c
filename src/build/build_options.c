@@ -58,7 +58,6 @@ static void usage(bool full)
 	PRINTF("  clean                                               Clean all build files.");
 	PRINTF("  run [<target>] [-- [<arg1> ...]]                    Run (and build if needed) the target in the current project.");
 	PRINTF("  dist [<target>]                                     Clean and build a target for distribution.");
-	PRINTF("  directives [<target>]                               Generate documentation for the target.");
 	PRINTF("  bench [<target>]                                    Benchmark a target.");
 	PRINTF("  clean-run [<target>] [-- [<arg1> ...]]              Clean, then run the target.");
 	PRINTF("  compile-run <file1> [<file2> ...] [-- [<arg1> ...]] Compile files then immediately run the result.");
@@ -450,12 +449,6 @@ static void parse_command(BuildOptions *options)
 	if (arg_match("dist"))
 	{
 		options->command = COMMAND_CLEAN_RUN;
-		parse_optional_target(options);
-		return;
-	}
-	if (arg_match("directives"))
-	{
-		options->command = COMMAND_DOCS;
 		parse_optional_target(options);
 		return;
 	}
