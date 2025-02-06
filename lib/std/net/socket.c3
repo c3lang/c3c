@@ -155,3 +155,14 @@ fn void! Socket.close(&self) @inline @dynamic
 {
 	self.sock.close()!;
 }
+
+fn usz! Socket.peek(&self, char[] bytes) @dynamic
+{
+$if env::WIN32:
+	isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
+$else
+	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
+$endif
+	if (n < 0) return os::socket_error()?;
+	return (usz)n;
+}
