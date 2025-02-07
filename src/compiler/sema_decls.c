@@ -2450,6 +2450,11 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 // Helper method
 INLINE bool update_abi(Decl *decl, CallABI abi)
 {
+	if (decl->decl_kind == DECL_TYPEDEF)
+	{
+		decl->typedef_decl.decl->fntype_decl.abi = abi;
+		return true;
+	}
 	decl->func_decl.signature.abi = abi;
 	return true;
 }
@@ -2520,7 +2525,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
-			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
+			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_DEF | ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_COMPACT] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_CONST] = ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
@@ -2616,6 +2621,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_winmain = true;
 			break;
 		case ATTRIBUTE_CALLCONV:
+			if (domain == ATTR_DEF && (decl->decl_kind != DECL_TYPEDEF || !decl->typedef_decl.is_func))
+			{
+				RETURN_SEMA_ERROR(attr, "'@callconv' cannot only be used with fn types.");
+			}
 			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
 			if (expr && !sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
