@@ -135,7 +135,7 @@ struct ArgOpt
 <*
  Custom argparse option parser callback.
 
- You can use callack if you need custom parsing logic, or process multiple arguments of
+ You can use callback if you need custom parsing logic, or process multiple arguments of
  different types. 
 
  Example of parsing array of numbers:
@@ -326,7 +326,6 @@ fn void! ArgParse.parse(&self, String[] argv)
 
 	for (; self._ctx.argc && self._ctx.argv.len; self._ctx.argc--) {
 		String arg = self._ctx.argv[0];
-		// io::printf("arg: %s\n", arg);
 		if (arg.len == 0) {
 			io::printf("Error: argument too short `%s`\n", arg);
 			return ArgError.INVALID_ARGUMENT?;
@@ -358,7 +357,7 @@ fn void! ArgParse.parse(&self, String[] argv)
 
 			self._ctx.argv = self._ctx.argv[1..];
 
-			// Parsing stackted short args: when '-f -a -b' passed as '-fab'
+			// Parsing stacked short args: when '-f -a -b' passed as '-fab'
 			while (self._ctx.optvalue) {
 				self.parse_short_arg()!;
 			}
@@ -398,7 +397,6 @@ fn void! ArgParse.print_usage(&self)
 	if (self.usage) {
 		@pool() {
 			// NOTE: prepending program_name to all usage line
-
 			path::Path path = path::temp_new(self.program_name)!;
 			foreach (usage : self.usage.tsplit("\n")) {
 				usage = usage.trim();
@@ -657,7 +655,7 @@ fn void! ArgParse.parse_arg_val(&self, ArgOpt* opt, bool flag_unset = false) @lo
 			*anycast(opt.value, String)! = self.get_arg()!;
 		case int.typeid:
 			if (opt.allow_many) {
-				// ints in allow_many acts as accumulator value
+				// if .allow_many=true, .value acts as accumulator
 				*anycast(opt.value, int)! += 1;
 			} else {
 				String aval = self.get_arg()!;
