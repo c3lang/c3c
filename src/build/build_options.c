@@ -32,9 +32,11 @@ static void parse_optional_target(BuildOptions *options);
 static void add_linker_arg(BuildOptions *options, const char *arg);
 static void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
 static void print_all_targets(void);
-static int parse_multi_option(const char *start, unsigned count, const char **elements);
+static int parse_option_select(const char *start, unsigned count, const char **elements);
 static void print_cmd(const char *command, const char *desc);
 static void print_opt(const char *option, const char *desc);
+
+#define parse_opt_select(type_, start_, elements_) (type_)parse_option_select(start_, ELEMENTLEN(elements_), elements_)
 
 const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
 const char *trust_level[3];
@@ -280,7 +282,7 @@ static void parse_project_view_subcommand(BuildOptions *options)
 			exit_compiler(COMPILER_SUCCESS_EXIT);
 		}
 
-		int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
+		int flag = parse_option_select(current_arg + 2, 10, project_view_flags);
 		options->project_options.view_modifier.flags_bitvector |= 1 << flag;
 
 	}
@@ -706,12 +708,12 @@ static void parse_option(BuildOptions *options)
 		case '-':
 			if ((argopt = match_argopt("validation")))
 			{
-				options->validation_level = (ValidationLevel)parse_multi_option(argopt, 3, validation_levels);
+				options->validation_level = parse_opt_select(ValidationLevel, argopt, validation_levels);
 				return;
 			}
 			if ((argopt = match_argopt("ansi")))
 			{
-				options->ansi = (Ansi)parse_multi_option(argopt, 2, ansi_use);
+				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
 			if (match_longopt("test-filter"))
@@ -757,7 +759,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("backend")))
 			{
-				options->backend = (CompilerBackend)parse_multi_option(argopt, 3, backends);
+				options->backend = parse_opt_select(CompilerBackend, argopt, backends);
 				return;
 			}
 			if (match_longopt("run-once"))
@@ -768,48 +770,49 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("fp-math")))
 			{
-				options->fp_math = (FpOpt)parse_multi_option(argopt, 3, fp_math);
+				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
 				return;
 			}
 			if ((argopt = match_argopt("optsize")))
 			{
-				options->optsize = (SizeOptimizationLevel)parse_multi_option(argopt, 3, optsizes);
+				options->optsize = parse_opt_select(SizeOptimizationLevel, argopt, optsizes);
 				return;
 			}
 			if ((argopt = match_argopt("optlevel")))
 			{
-				options->optlevel = (OptimizationLevel)parse_multi_option(argopt, 4, optlevels);
+				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
 				return;
 			}
 			if ((argopt = match_argopt("safe")))
 			{
-				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
+				options->safety_level = parse_opt_select(SafetyLevel, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("old-test-bench")))
 			{
-				options->old_test = (OldTest) parse_multi_option(argopt, 2, on_off);
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->old_test = parse_opt_select(OldTest, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("show-backtrace")))
 			{
-				options->show_backtrace = (ShowBacktrace) parse_multi_option(argopt, 2, on_off);
+				options->show_backtrace = parse_opt_select(ShowBacktrace, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("panic-msg")))
 			{
-				options->panic_level = (PanicLevel)parse_multi_option(argopt, 2, on_off);
+				options->panic_level = parse_opt_select(PanicLevel, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("single-module")))
 			{
-				options->single_module = (SingleModule)parse_multi_option(argopt, 2, on_off);
+				options->single_module = parse_opt_select(SingleModule, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("linker")))
 			{
 				options->custom_linker_path = NULL;
-				options->linker_type = (LinkerType) parse_multi_option(argopt, 3, linker);
+				options->linker_type = parse_opt_select(LinkerType, argopt, linker);
 				if (options->linker_type == LINKER_TYPE_CUSTOM)
 				{
 					if (at_end() || next_is_opt()) error_exit("error: --linker=custom expects a valid linker name.");
@@ -819,57 +822,57 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("link-libc")))
 			{
-				options->link_libc = (LinkLibc)parse_multi_option(argopt, 2, on_off);
+				options->link_libc = parse_opt_select(LinkLibc, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("strip-unused")))
 			{
-				options->strip_unused = (StripUnused)parse_multi_option(argopt, 2, on_off);
+				options->strip_unused = parse_opt_select(StripUnused, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("emit-stdlib")))
 			{
-				options->emit_stdlib = (EmitStdlib)parse_multi_option(argopt, 2, on_off);
+				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("use-stdlib")))
 			{
-				options->use_stdlib = (UseStdlib)parse_multi_option(argopt, 2, on_off);
+				options->use_stdlib = parse_opt_select(UseStdlib, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("x86vec")))
 			{
-				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, x86_vector_capability);
+				options->x86_vector_capability = parse_opt_select(X86VectorCapability, argopt, x86_vector_capability);
 				return;
 			}
 			if ((argopt = match_argopt("win64-simd")))
 			{
-				options->win_64_simd = (Win64Simd)parse_multi_option(argopt, 2, win64_simd_type);
+				options->win_64_simd = parse_opt_select(Win64Simd, argopt, win64_simd_type);
 				return;
 			}
 			if ((argopt = match_argopt("win-debug")))
 			{
-				options->win_debug = (WinDebug)parse_multi_option(argopt, 2, win_debug_type);
+				options->win_debug = parse_opt_select(WinDebug, argopt, win_debug_type);
 				return;
 			}
 			if ((argopt = match_argopt("x86cpu")))
 			{
-				options->x86_cpu_set = (X86CpuSet)parse_multi_option(argopt, 8, x86_cpu_set);
+				options->x86_cpu_set = parse_opt_select(X86CpuSet, argopt, x86_cpu_set);
 				return;
 			}
 			if ((argopt = match_argopt("riscvfloat")))
 			{
-				options->riscv_float_capability = (RiscvFloatCapability)parse_multi_option(argopt, 3, riscv_capability);
+				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
 				return;
 			}
 			if ((argopt = match_argopt("memory-env")))
 			{
-				options->memory_environment = (MemoryEnvironment )parse_multi_option(argopt, 4, memory_environment);
+				options->memory_environment = parse_opt_select(MemoryEnvironment, argopt, memory_environment);
 				return;
 			}
 			if ((argopt = match_argopt("reloc")))
 			{
-				options->reloc_model = (RelocModel)parse_multi_option(argopt, 5, reloc_models);
+				options->reloc_model = parse_opt_select(RelocModel, argopt, reloc_models);
 				return;
 			}
 			if (match_longopt("about"))
@@ -1054,7 +1057,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("trust")))
 			{
-				options->trust_level = (TrustLevel) parse_multi_option(argopt, 3, trust_level);
+				options->trust_level = parse_opt_select(TrustLevel, argopt, trust_level);
 				return;
 			}
 			if (match_longopt("windef"))
@@ -1065,12 +1068,13 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("vector-conv")))
 			{
-				options->vector_conv = (VectorConv)parse_multi_option(argopt, 2, vector_conv);
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
 				return;
 			}
 			if ((argopt = match_argopt("wincrt")))
 			{
-				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 5, wincrt_linking);
+				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
 				return;
 			}
 			if (match_longopt("win-vs-dirs"))
@@ -1085,7 +1089,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("sanitize")))
 			{
-				options->sanitize_mode = (SanitizeMode)parse_multi_option(argopt, 4, sanitize_modes);
+				options->sanitize_mode = parse_opt_select(SanitizeMode, argopt, sanitize_modes);
 				return;
 			}
 			if (match_longopt("macos-sdk-version"))
@@ -1496,11 +1500,24 @@ static void print_all_targets(void)
 	}
 }
 
-static int parse_multi_option(const char *start, unsigned count, const char **elements)
+static int parse_option_select(const char *start, unsigned count, const char **elements)
 {
+	assert(count >= 2);
 	const char *arg = current_arg;
 	int select = str_findlist(start, count, elements);
-	if (select < 0) error_exit("error: '%.*s' invalid option '%s' given.", (int)(start - arg), start, arg);
+	if (select < 0)
+	{
+		switch (count)
+		{
+			case 2:
+				error_exit("error: '%.*s' does not support the option '%s', expected '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
+			case 3:
+				error_exit("error: '%.*s' does not support the option '%s', expected '%s', '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1], elements[2]);
+			default:
+				error_exit("Error: '%.*s' does not support the option '%s', expected an option like '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
+		}
+		UNREACHABLE
+	}
 	return select;
 }
 

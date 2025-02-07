@@ -56,9 +56,10 @@ static const char *linker[3] = {
 	[LINKER_TYPE_CC] = "cc",
 	[LINKER_TYPE_CUSTOM] = "custom"
 };
+
 static const char *on_off[2] = {
-	[SAFETY_OFF] = "no",
-	[SAFETY_ON] = "yes",
+	[0] = "no",
+	[1] = "yes",
 };
 
 static const char *riscv_capability[3] = {
@@ -111,10 +112,6 @@ static const char *validation_levels[3] = {
 	[VALIDATION_OBNOXIOUS] = "obnoxious",
 };
 
-static const char *ansi_use[2] = {
-	[ANSI_OFF] = "off",
-	[ANSI_ON] = "on",
-};
 
 static const char *backtrace_levels[2] = {
 	[SHOW_BACKTRACE_OFF] = "off",

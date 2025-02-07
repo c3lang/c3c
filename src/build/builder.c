@@ -263,6 +263,9 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 	UNREACHABLE
 }
 
+#define OVERRIDE_IF_SET(prop_) do { if (options->prop_) target->prop_ = options->prop_; } while (0)
+#define set_if_updated(target_, original_) do { if ((int)original_ != -1) target_ = original_; } while (0)
+
 static void update_build_target_from_options(BuildTarget *target, BuildOptions *options)
 {
 	switch (options->command)
@@ -362,26 +365,56 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->read_stdin = options->read_stdin;
 
 	if (options->cc) target->cc = options->cc;
-	if (options->optlevel != OPTIMIZATION_NOT_SET) target->optlevel = options->optlevel;
-	if (options->optsize != SIZE_OPTIMIZATION_NOT_SET) target->optsize = options->optsize;
-	if (options->optsetting != OPT_SETTING_NOT_SET) target->optsetting = options->optsetting;
-	if (options->single_module != SINGLE_MODULE_NOT_SET) target->single_module = options->single_module;
-	if (options->unroll_loops != UNROLL_LOOPS_NOT_SET) target->unroll_loops = options->unroll_loops;
-	if (options->merge_functions != MERGE_FUNCTIONS_NOT_SET) target->merge_functions = options->merge_functions;
-	if (options->loop_vectorization != VECTORIZATION_NOT_SET) target->loop_vectorization = options->loop_vectorization;
-	if (options->slp_vectorization != VECTORIZATION_NOT_SET) target->slp_vectorization = options->slp_vectorization;
-	if (options->validation_level != VALIDATION_LENIENT) target->validation_level = options->validation_level;
-	if (options->safety_level != SAFETY_NOT_SET) target->feature.safe_mode = options->safety_level;
-	if (options->panic_level != PANIC_NOT_SET) target->feature.panic_level = options->panic_level;
-	if (options->strip_unused != STRIP_UNUSED_NOT_SET) target->strip_unused = options->strip_unused;
-	if (options->memory_environment != MEMORY_ENV_NOT_SET) target->memory_environment = options->memory_environment;
-	if (options->debug_info_override != DEBUG_INFO_NOT_SET) target->debug_info = options->debug_info_override;
-	if (options->show_backtrace != SHOW_BACKTRACE_NOT_SET) target->show_backtrace = options->show_backtrace;
-	if (options->old_test != OLD_TEST_NOT_SET) target->old_test = options->old_test;
-	if (options->arch_os_target_override != ARCH_OS_TARGET_DEFAULT) target->arch_os_target = options->arch_os_target_override;
-	if (options->reloc_model != RELOC_DEFAULT) target->reloc_model = options->reloc_model;
-	if (options->symtab_size) target->symtab_size = options->symtab_size;
-	if (options->silence_deprecation) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
+	set_if_updated(target->optlevel, options->optlevel);
+	set_if_updated(target->optsize, options->optsize);
+	set_if_updated(target->optsetting, options->optsetting);
+	set_if_updated(target->single_module, options->single_module);
+	set_if_updated(target->unroll_loops, options->unroll_loops);
+	set_if_updated(target->merge_functions, options->merge_functions);
+	set_if_updated(target->loop_vectorization, options->loop_vectorization);
+	set_if_updated(target->slp_vectorization, options->slp_vectorization);
+	set_if_updated(target->validation_level, options->validation_level);
+	set_if_updated(target->feature.safe_mode, options->safety_level);
+	set_if_updated(target->feature.panic_level, options->panic_level);
+	set_if_updated(target->strip_unused, options->strip_unused);
+	set_if_updated(target->memory_environment, options->memory_environment);
+	set_if_updated(target->debug_info, options->debug_info_override);
+	set_if_updated(target->show_backtrace, options->show_backtrace);
+	set_if_updated(target->old_test, options->old_test);
+	set_if_updated(target->arch_os_target, options->arch_os_target_override);
+	set_if_updated(target->reloc_model, options->reloc_model);
+	set_if_updated(target->use_stdlib, options->use_stdlib);
+	set_if_updated(target->link_libc, options->link_libc);
+	set_if_updated(target->emit_stdlib, options->emit_stdlib);
+	set_if_updated(target->win.crt_linking, options->win.crt_linking);
+	set_if_updated(target->feature.fp_math, options->fp_math);
+	set_if_updated(target->feature.x86_vector_capability, options->x86_vector_capability);
+	set_if_updated(target->feature.x86_cpu_set, options->x86_cpu_set);
+	set_if_updated(target->feature.riscv_float_capability, options->riscv_float_capability);
+	set_if_updated(target->feature.win_debug, options->win_debug);
+
+	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
+	set_if_updated(target->old_test, options->old_test);
+	set_if_updated(target->old_test, options->old_test);
+
+	OVERRIDE_IF_SET(output_dir);
+	OVERRIDE_IF_SET(panicfn);
+	OVERRIDE_IF_SET(testfn);
+	OVERRIDE_IF_SET(benchfn);
+	OVERRIDE_IF_SET(symtab_size);
+	OVERRIDE_IF_SET(win.def);
+	OVERRIDE_IF_SET(no_entry);
+
+	OVERRIDE_IF_SET(macos.sysroot);
+	OVERRIDE_IF_SET(win.sdk);
+	OVERRIDE_IF_SET(win.vs_dirs);
+	OVERRIDE_IF_SET(macos.min_version);
+	OVERRIDE_IF_SET(macos.sdk_version);
+	OVERRIDE_IF_SET(linuxpaths.crt);
+	OVERRIDE_IF_SET(linuxpaths.crtbegin);
+
+
+	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
 
 	for (size_t i = 0; i < options->linker_arg_count; i++)
@@ -397,39 +430,22 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		vec_add(target->linker_libs, options->linker_libs[i]);
 	}
 	target->trust_level = options->trust_level;
-	if (options->win.def) target->win.def = options->win.def;
-	if (options->use_stdlib != USE_STDLIB_NOT_SET) target->use_stdlib = options->use_stdlib;
-	if (options->link_libc != LINK_LIBC_NOT_SET) target->link_libc = options->link_libc;
 	if (options->linker_type != LINKER_TYPE_NOT_SET)
 	{
 		target->custom_linker_path = options->custom_linker_path;
 		target->linker_type = options->linker_type;
 	}
-	if (options->emit_stdlib != EMIT_STDLIB_NOT_SET) target->emit_stdlib = options->emit_stdlib;
-	if (options->no_entry) target->no_entry = true;
 	target->print_output = options->print_output;
 	target->print_input = options->print_input;
 	target->emit_llvm = options->emit_llvm;
 	target->build_threads = options->build_threads;
 	target->emit_asm = options->emit_asm;
 	target->print_stats = options->verbosity_level >= 2;
-	if (options->output_dir) target->output_dir = options->output_dir;
-	if (options->panicfn) target->panicfn = options->panicfn;
-	if (options->testfn) target->testfn = options->testfn;
-	if (options->benchfn) target->benchfn = options->benchfn;
+
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;
 	target->vector_conv = options->vector_conv;
-	if (options->macos.sysroot) target->macos.sysroot = options->macos.sysroot;
-	if (options->win.sdk) target->win.sdk = options->win.sdk;
-	if (options->win.vs_dirs) target->win.vs_dirs = options->win.vs_dirs;
-	if (options->macos.min_version) target->macos.min_version = options->macos.min_version;
-	if (options->macos.sdk_version) target->macos.sdk_version = options->macos.sdk_version;
-	if (options->win.crt_linking != WIN_CRT_DEFAULT) target->win.crt_linking = options->win.crt_linking;
-	if (options->linuxpaths.crt) target->linuxpaths.crt = options->linuxpaths.crt;
-	if (options->linuxpaths.crtbegin) target->linuxpaths.crtbegin = options->linuxpaths.crtbegin;
-	if (options->fp_math != FP_DEFAULT) target->feature.fp_math = options->fp_math;
 	switch (options->sanitize_mode)
 	{
 		case SANITIZE_NOT_SET: break;
@@ -443,26 +459,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case SANITIZE_THREAD: target->feature.sanitize_thread = true; break;
 		default: UNREACHABLE;
 	}
-	if (options->x86_vector_capability != X86VECTOR_DEFAULT)
-	{
-		target->feature.x86_vector_capability = options->x86_vector_capability;
-	}
-	if (options->x86_cpu_set != X86CPU_DEFAULT)
-	{
-		target->feature.x86_cpu_set = options->x86_cpu_set;
-	}
-	if (options->riscv_float_capability != RISCVFLOAT_DEFAULT)
-	{
-		target->feature.riscv_float_capability = options->riscv_float_capability;
-	}
-	if (options->win_debug != WIN_DEBUG_DEFAULT)
-	{
-		target->feature.win_debug = options->win_debug;
-	}
-	if (options->win_64_simd != WIN64_SIMD_DEFAULT)
-	{
-		target->feature.pass_win64_simd_as_arrays = options->win_64_simd;
-	}
+
 	if (command_accepts_files(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : NULL;
