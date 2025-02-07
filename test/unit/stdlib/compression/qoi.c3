@@ -14,18 +14,18 @@ fn void test_qoi_all()
         QOIDesc test_desc;
 
         // decode the test data
-        char[] decoded = qoi::decode(TEST_QOI_DATA[..], &test_desc)!!;
+        char[] decoded = qoi::new_decode(TEST_QOI_DATA[..], &test_desc)!!;
         assert(test_desc.width == 340 && test_desc.height == 169, "Expected resolution of 340x169");
 
         // encode the decoded data
-        char[] encoded = qoi::encode(decoded, &test_desc)!!;
+        char[] encoded = qoi::new_encode(decoded, &test_desc)!!;
         assert(encoded == TEST_QOI_DATA[..], "Encoder output should match the test data");
 
         // encode and write the decoded data to a file
         usz written = qoi::write("unittest.qoi", decoded, &test_desc)!!;
 
         // read and decode the written data
-        char[] read = qoi::read("unittest.qoi", &test_desc)!!;
+        char[] read = qoi::new_read("unittest.qoi", &test_desc)!!;
         assert(read == decoded, "Read data should match the decoded data");
 
         // cleanup
