@@ -497,24 +497,32 @@ const char *file_append_path_temp(const char *path, const char *name)
 	size_t path_len = strlen(path);
 	if (!path_len) return name;
 	size_t name_len = strlen(name);
-	if (path_len + name_len + 1 >= PATH_BUFFER_SIZE) error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
+	if (path_len + name_len + 2 > PATH_BUFFER_SIZE)
+	{
+		error_exit("Error generating path from %s and %s: buffer max size exceeded.", path, name);
+	}
+
 #if PLATFORM_WINDOWS
-	if (path[path_len - 1] == '\\') goto CONCAT;
-	if (path[path_len - 1] == '/') goto CONCAT;
-	sprintf(path_buffer, "%s\\%s", path, name);
-	path_buffer[name_len + path_len + 1] = 0;
-	return path_buffer;
+	char separator = '\\';
 #else
-	if (path[path_len - 1] == '/') goto CONCAT;
-	snprintf(path_buffer, PATH_BUFFER_SIZE, "%s/%s", path, name);
-	path_buffer[name_len + path_len + 1] = 0;
-	return path_buffer;
+	char separator = '/';
 #endif
-CONCAT:
-	snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);
-	path_buffer[name_len + path_len] = 0;
+
+	// format the string safely
+	bool insert_separator = path[path_len - 1] == '/' || path[path_len - 1] == separator;
+	int written = insert_separator
+		              ? snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%c%s", path, separator, name)
+		              : snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);
+
+	// check if truncation occurred
+	if (written < 0 || (size_t)written >= PATH_BUFFER_SIZE)
+	{
+		error_exit("Error generating path from %s and %s: snprintf truncation occurred.", path, name);
+	}
+
 	return path_buffer;
 }
+
 const char *file_append_path(const char *path, const char *name)
 {
 	size_t path_len = strlen(path);
@@ -542,7 +550,7 @@ void file_copy_file(const char *src_path, const char *dst_path, bool overwrite)
 	CopyFileW(win_utf8to16(src_path), win_utf8to16(dst_path), !overwrite);
 #else
 	const char *cmd = "cp %s %s %s";
-	execute_cmd(str_printf(cmd, !overwrite ? "--update=none" : "--update=all", src_path, dst_path), true, NULL);
+	execute_cmd(str_printf(cmd, !overwrite ? "--update=none" : "--update=all", src_path, dst_path), true, NULL, 2048);
 #endif
 }
 
@@ -564,7 +572,7 @@ void file_delete_all_files_in_dir_with_suffix(const char *path, const char *suff
 #else
 	const char *cmd = "rm -f %s/*%s";
 #endif
-	execute_cmd(str_printf(cmd, path, suffix), true, NULL);
+	execute_cmd(str_printf(cmd, path, suffix), true, NULL, 2048);
 }
 
 #if (_MSC_VER)
@@ -704,19 +712,25 @@ const char **target_expand_source_names(const char *base_dir, const char** dirs,
 
 
 #define BUFSIZE 1024
-char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string)
+char *execute_cmd(const char *cmd, bool ignore_failure, const char *stdin_string, size_t limit)
 {
 	char *result = NULL;
-	bool success = execute_cmd_failable(cmd, &result, stdin_string);
+	bool success = execute_cmd_failable(cmd, &result, stdin_string, limit);
 	if (!success)
 	{
 		if (ignore_failure) return "";
+		if (strlen(result))
+		{
+			eprintf("+-- Command output --------------------+\n");
+			eprintf("%s\n", result);
+			eprintf("+--------------------------------------+\n");
+		}
 		error_exit("Failed to execute '%s'.", cmd);
 	}
 	return result;
 }
 
-bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string)
+bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_string, size_t limit)
 {
 	DEBUG_LOG("Executing: %s", cmd);
 	char buffer[BUFSIZE];
@@ -743,8 +757,18 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 #else
 	if (!(process = popen(cmd, "r"))) return false;
 #endif
+	unsigned len = 0;
 	while (fgets(buffer, BUFSIZE - 1, process))
 	{
+		if (limit)
+		{
+			if (len > limit)
+			{
+				output = str_cat(output, " ... [TRUNCATED]");
+				break;
+			}
+			len += strlen(buffer);
+		}
 		output = str_cat(output, buffer);
 	}
 #if PLATFORM_WINDOWS
@@ -756,8 +780,6 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 	{
 		file_delete_file("__c3temp.bin");
 	}
-	if (err) return false;
-
 	while (output[0] != 0)
 	{
 		switch (output[0])
@@ -774,7 +796,7 @@ bool execute_cmd_failable(const char *cmd, char **result, const char *stdin_stri
 		break;
 	}
 	*result = str_trim(output);
-	return true;
+	return !err;
 }
 
 #if PLATFORM_WINDOWS

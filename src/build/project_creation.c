@@ -382,20 +382,23 @@ static bool check_name(const char *name)
 
 static char* get_cwd_project_name()
 {
-	char *full_path = getcwd(NULL, 0);
+	char full_path[PATH_MAX];
+	if (!getcwd(full_path, PATH_MAX)) return NULL;
 	size_t len = strlen(full_path);
-	for (size_t i = len; i > 0; i--)
+	for (size_t i = len - 1; i > 0; i--)
 	{
 		switch (full_path[i])
 		{
-			case '/':
 #if PLATFORM_WINDOWS
 			case '\\':
 #endif
-			return &full_path[i + 1];
+			case '/':
+				return str_copy(&full_path[i + 1], len - i - 1);
+			default:
+				break;
 		}
 	}
-	return full_path;
+	return str_copy(full_path, len);
 }
 
 static void chdir_or_fail(BuildOptions *build_options, const char *name)

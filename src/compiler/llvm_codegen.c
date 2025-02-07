@@ -1,11 +1,10 @@
-// Copyright (c) 2019 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
 #include "llvm_codegen_internal.h"
 #include "compiler_tests/benchmark.h"
 #include "c3_llvm.h"
-#include <llvm-c/Error.h>
 #include <llvm-c/Comdat.h>
 #include <llvm-c/Linker.h>
 #include <llvm-c/Transforms/PassBuilder.h>
@@ -474,7 +473,7 @@ void llvm_set_weak(GenContext *c, LLVMValueRef global)
 	llvm_set_comdat(c, global);
 }
 
-static void llvm_set_external_reference(GenContext *c, LLVMValueRef ref, bool is_weak)
+static void llvm_set_external_reference(LLVMValueRef ref, bool is_weak)
 {
 	if (compiler.platform.os == OS_TYPE_WIN32) is_weak = false;
 	LLVMSetLinkage(ref, is_weak ? LLVMExternalWeakLinkage : LLVMExternalLinkage);
@@ -493,8 +492,8 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 	bool same_module = is_static || decl->unit->module == c->code_module;
 	if (decl->is_extern || !same_module)
 	{
-		llvm_set_external_reference(c, ref, should_weaken);
-		if (opt_ref) llvm_set_external_reference(c, opt_ref, should_weaken);
+		llvm_set_external_reference(ref, should_weaken);
+		if (opt_ref) llvm_set_external_reference(opt_ref, should_weaken);
 		return;
 	}
 	if (decl_is_externally_visible(decl) && !is_static)
@@ -959,9 +958,9 @@ LLVMBuilderRef llvm_create_function_entry(GenContext *c, LLVMValueRef func, LLVM
 	return builder;
 }
 
-LLVMBasicBlockRef llvm_append_basic_block(GenContext *c, LLVMValueRef function, const char *name)
+LLVMBasicBlockRef llvm_append_basic_block(GenContext *c, LLVMValueRef func, const char *name)
 {
-	return LLVMAppendBasicBlockInContext(c->context, function, name);
+	return LLVMAppendBasicBlockInContext(c->context, func, name);
 }
 
 LLVMBasicBlockRef llvm_basic_block_new(GenContext *c, const char *name)
@@ -1298,7 +1297,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			else
 			{
 				const char *name = scratch_buffer_to_string();
-				if (decl->is_extern && (backend_ref = LLVMGetNamedFunction(c->module, name)))
+				if (decl->is_extern && (backend_ref = LLVMGetNamedFunction(c->module, name))) // NOLINT
 				{
 					return decl->backend_ref = backend_ref;
 				}
@@ -1364,10 +1363,9 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 		Module *module = modules[i];
 		FOREACH(Decl *, test, module->tests)
 		{
-			LLVMValueRef ref;
 			LLVMTypeRef type = opt_test;
 			scratch_buffer_set_extern_decl_name(test, true);
-			ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
+			LLVMValueRef ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			scratch_buffer_clear();
 			scratch_buffer_printf("%s::%s", module->name->module, test->name);
 			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".test.name");
@@ -1433,10 +1431,9 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 		Module *module = modules[i];
 		FOREACH(Decl *, benchmark, module->benchmarks)
 		{
-			LLVMValueRef ref;
 			LLVMTypeRef type = opt_benchmark;
 			scratch_buffer_set_extern_decl_name(benchmark, true);
-			ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
+			LLVMValueRef ref = LLVMAddFunction(c->module, scratch_buffer_to_string(), type);
 			scratch_buffer_clear();
 			scratch_buffer_printf("%s::%s", module->name->module, benchmark->name);
 			LLVMValueRef name = llvm_emit_string_const(c, scratch_buffer_to_string(), ".benchmark.name");
@@ -1488,8 +1485,6 @@ void **llvm_gen(Module** modules, unsigned module_count)
 	llvm_codegen_setup();
 	if (compiler.build.single_module == SINGLE_MODULE_ON)
 	{
-		GenContext *first_context;
-		unsigned first_element;
 		LLVMContextRef context = LLVMGetGlobalContext();
 		for (int i = 0; i < module_count; i++)
 		{
@@ -1538,7 +1533,7 @@ LLVMMetadataRef llvm_get_debug_file(GenContext *c, FileId file_id)
 {
 	FOREACH(DebugFile, file, c->debug.debug_files)
 	{
-		if (file.file_id == file_id) return file.debug_file;
+		if (file.file_id == file_id) return file.debug_file; // NOLINT
 	}
 	File *f = source_file_by_id(file_id);
 	LLVMMetadataRef file = LLVMDIBuilderCreateFile(c->debug.builder,
@@ -1721,9 +1716,9 @@ void llvm_attribute_add_type(GenContext *c, LLVMValueRef value_to_add_attribute_
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, (LLVMAttributeIndex)index, llvm_attr);
 }
 
-void llvm_attribute_add(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index)
+void llvm_attribute_add(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index)
 {
-	llvm_attribute_add_int(context, value_to_add_attribute_to, attribute, 0, index);
+	llvm_attribute_add_int(c, value_to_add_attribute_to, attribute, 0, index);
 }
 
 void llvm_attribute_add_call_type(GenContext *c, LLVMValueRef call, unsigned attribute, int index, LLVMTypeRef type)
@@ -1732,23 +1727,23 @@ void llvm_attribute_add_call_type(GenContext *c, LLVMValueRef call, unsigned att
 	LLVMAddCallSiteAttribute(call, (LLVMAttributeIndex)index, llvm_attr);
 }
 
-void llvm_attribute_add_call(GenContext *context, LLVMValueRef call, unsigned attribute, int index, int64_t value)
+void llvm_attribute_add_call(GenContext *c, LLVMValueRef call, unsigned attribute, int index, int64_t value)
 {
-	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(context->context, attribute, (uint64_t)value);
+	LLVMAttributeRef llvm_attr = LLVMCreateEnumAttribute(c->context, attribute, (uint64_t)value);
 	LLVMAddCallSiteAttribute(call, (LLVMAttributeIndex)index, llvm_attr);
 }
 
-void llvm_attribute_add_range(GenContext *context, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index_start, int index_end)
+void llvm_attribute_add_range(GenContext *c, LLVMValueRef value_to_add_attribute_to, unsigned attribute, int index_start, int index_end)
 {
 	for (int i = index_start; i <= index_end; i++)
 	{
-		llvm_attribute_add_int(context, value_to_add_attribute_to, attribute, 0, i);
+		llvm_attribute_add_int(c, value_to_add_attribute_to, attribute, 0, i);
 	}
 }
 
-void llvm_attribute_add_string(GenContext *context, LLVMValueRef value_to_add_attribute_to, const char *attribute, const char *value, int index)
+void llvm_attribute_add_string(GenContext *c, LLVMValueRef value_to_add_attribute_to, const char *attribute, const char *value, int index)
 {
-	LLVMAttributeRef llvm_attr = LLVMCreateStringAttribute(context->context, attribute, (unsigned)strlen(attribute), value, (unsigned)strlen(value));
+	LLVMAttributeRef llvm_attr = LLVMCreateStringAttribute(c->context, attribute, (unsigned)strlen(attribute), value, (unsigned)strlen(value));
 	LLVMAddAttributeAtIndex(value_to_add_attribute_to, (LLVMAttributeIndex)index, llvm_attr);
 }
 

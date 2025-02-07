@@ -1,4 +1,4 @@
-// Copyright (c) 2022-2024 Christoffer Lerno and contributors. All rights reserved.
+// Copyright (c) 2022-2025 Christoffer Lerno and contributors. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -141,12 +141,12 @@ static inline bool sema_check_asm_arg_const_int(SemaContext *context, AsmInlineB
 	Type *type = max_supported_imm_int(is_signed, arg_type);
 	if (!type)
 	{
-		SEMA_ERROR(expr, "'%s' does not support a direct integer constant here.", instr->name);
+		RETURN_SEMA_ERROR(expr, "'%s' does not support a direct integer constant here.", instr->name);
 		return false;
 	}
 	Int i = int_expr->const_expr.ixx;
 	unsigned max_bits = arg_bits_max(arg_type.imm_arg_ibits > arg_type.imm_arg_ubits ? arg_type.imm_arg_ibits : arg_type.imm_arg_ubits, 0);
-	if (!type || !int_fits(i, type->type_kind) || !sema_check_npot_imm_fits(i, arg_type))
+	if (!int_fits(i, type->type_kind) || !sema_check_npot_imm_fits(i, arg_type))
 	{
 		SEMA_ERROR(expr, "'%s' expected %s limited to %d bits.", instr->name, type_quoted_error_string(type), max_bits);
 		return false;

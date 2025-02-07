@@ -474,6 +474,8 @@ typedef struct
 	Decl** values;
 	Decl** parameters;
 	TypeInfo *type_info;
+	int16_t inline_index;
+	bool inline_value;
 } EnumDecl;
 
 struct Signature_
@@ -1488,6 +1490,7 @@ typedef struct Ast_
 		AstAssertStmt assert_stmt;          // 16
 		AstCaseStmt case_stmt;              // 32
 		AstCompoundStmt compound_stmt;      // 12
+		AstId ct_compound_stmt;
 		AstContinueBreakStmt contbreak_stmt;// 24
 		AstContractStmt contract_stmt;      // 32
 		AstDocFault contract_fault;         // 24
@@ -2138,11 +2141,11 @@ bool cast_implicit(SemaContext *context, Expr *expr, Type *to_type, bool is_bina
 bool cast_explicit_silent(SemaContext *context, Expr *expr, Type *to_type);
 bool cast_explicit(SemaContext *context, Expr *expr, Type *to_type);
 
-bool may_cast(SemaContext *cc, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
+bool may_cast(SemaContext *context, Expr *expr, Type *to_type, bool is_explicit, bool is_silent);
 
-void cast_no_check(SemaContext *context, Expr *expr, Type *to_type, bool add_optional);
+void cast_no_check(Expr *expr, Type *to_type, bool add_optional);
 
-bool cast_to_index(SemaContext *context, Expr *index, Type *subscripted_type);
+bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len);
 
 const char *llvm_codegen(void *context);
 const char *tilde_codegen(void *context);
@@ -2264,6 +2267,7 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 
 void expr_rewrite_to_binary(Expr *expr_to_rewrite, Expr *left, Expr *right, BinaryOp op);
 
+Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index);
 bool expr_const_in_range(const ExprConst *left, const ExprConst *right, const ExprConst *right_to);
 bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp op);
 void expr_contract_array(ExprConst *expr_const, ConstKind contract_type);
@@ -2321,7 +2325,7 @@ bool sema_analyse_inferred_expr(SemaContext *context, Type *to, Expr *expr);
 bool sema_analyse_decl(SemaContext *context, Decl *decl);
 
 bool sema_analyse_method_register(SemaContext *context, Decl *method);
-bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span);
+bool sema_resolve_type_structure(SemaContext *context, Type *type);
 bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl);
 bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local);
 bool sema_analyse_ct_assert_stmt(SemaContext *context, Ast *statement);
@@ -2336,7 +2340,7 @@ Expr **sema_expand_vasplat_exprs(SemaContext *context, Expr **exprs);
 bool sema_expr_analyse_general_call(SemaContext *context, Expr *expr, Decl *decl, Expr *struct_var, bool optional,
                                     bool *no_match_ref);
 
-void sema_expr_convert_enum_to_int(SemaContext *context, Expr *expr);
+void sema_expr_convert_enum_to_int(Expr *expr);
 Decl *sema_decl_stack_resolve_symbol(const char *symbol);
 Decl *sema_find_decl_in_modules(Module **module_list, Path *path, const char *interned_name);
 bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_resolve);
@@ -2374,7 +2378,7 @@ File *source_file_load(const char *filename, bool *already_loaded, const char **
 File *source_file_generate(const char *filename);
 File *source_file_text_load(const char *filename, char *content);
 
-File *compile_and_invoke(const char *file, const char *args, const char *stdin_data);
+File *compile_and_invoke(const char *file, const char *args, const char *stdin_data, size_t limit);
 void compiler_parse(void);
 void emit_json(void);
 
@@ -2978,6 +2982,37 @@ static inline Type *type_flat_distinct_inline(Type *type)
 	return type;
 }
 
+static inline Type *type_flat_distinct_enum_inline(Type *type)
+{
+	do
+	{
+		type = type->canonical;
+		Decl *decl;
+		switch (type->type_kind)
+		{
+			case TYPE_DISTINCT:
+				decl = type->decl;
+				if (!decl->is_substruct) break;
+				type = decl->distinct->type;
+				continue;
+			case TYPE_ENUM:
+				decl = type->decl;
+				if (!decl->is_substruct) break;
+				if (decl->enums.inline_value)
+				{
+					type = decl->enums.type_info->type;
+					continue;
+				}
+				type = decl->enums.parameters[decl->enums.inline_index]->type;
+				continue;
+			default:
+				break;
+		}
+		break;
+	} while (1);
+	return type;
+}
+
 static inline Type *type_flatten_to_int(Type *type)
 {
 	while (1)
@@ -2995,6 +3030,8 @@ static inline Type *type_flatten_to_int(Type *type)
 				type = type->decl->strukt.container_type->type;
 				break;
 			case TYPE_ENUM:
+				SEMA_DEPRECATED(type->decl, "Relying on conversion of enums into ordinals is deprecated, use inline on the value instead.");
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 				type = type->decl->enums.type_info->type;
 				break;
 			case TYPE_VECTOR:

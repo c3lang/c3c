@@ -253,13 +253,17 @@ entry:
   %not_err = icmp eq i64 %12, 0, !dbg !101
   %13 = call i1 @llvm.expect.i1(i1 %not_err, i1 true), !dbg !101
   br i1 %13, label %after_check, label %assign_optional, !dbg !101
+
 assign_optional:                                  ; preds = %entry
   store i64 %12, ptr %error_var, align 8, !dbg !101
   br label %guard_block, !dbg !101
+
 after_check:                                      ; preds = %entry
   br label %noerr_block, !dbg !101
+
 guard_block:                                      ; preds = %assign_optional
   br label %voiderr, !dbg !101
+
 noerr_block:                                      ; preds = %after_check
   %14 = load i64, ptr %retparam, align 8, !dbg !101
   store i64 %14, ptr %len, align 8, !dbg !101
@@ -427,7 +431,7 @@ cache_hit:                                        ; preds = %if.exit
 
 missing_function:                                 ; preds = %16
   %18 = load ptr, ptr @std.core.builtin.panic, align 8, !dbg !166
-  call void %18(ptr @.panic_msg, i64 44, ptr @.file, i64 16, ptr @.func, i64 6, i32 68), !dbg !166
+  call void %18(ptr @.panic_msg, i64 44, ptr @.file, i64 16, ptr @.func, i64 6, i32 68)
   unreachable, !dbg !166
 
 match:                                            ; preds = %16
@@ -558,6 +562,7 @@ declare extern_weak i64 @std.io.File.flush(ptr) #0
 declare { ptr, i64 } @arena_scratch_begin(ptr, i64) #0
 
 declare void @arena_scratch_end(ptr, i64) #0
+
 define weak ptr @.dyn_search(ptr %0, ptr %1) unnamed_addr {
 entry:
   br label %check

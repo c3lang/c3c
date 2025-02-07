@@ -3,13 +3,6 @@
 // a copy of which can be found in the LICENSE file.
 
 #include <sys/stat.h>
-#ifdef _MSC_VER
-
-#define PATH_MAX 260
-
-#else
-#include <limits.h>
-#endif
 #include "compiler_internal.h"
 
 static const size_t LEXER_FILES_START_CAPACITY = 128;

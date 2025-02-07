@@ -514,6 +514,7 @@ identifier_list
 
 enum_param_decl
 	: type IDENT
+	| INLINE type IDENT
 	;
 
 base_type
@@ -1045,9 +1046,12 @@ struct_member_decl
 	| INLINE type opt_attributes ';'
 	;
 
+
 enum_spec
 	: ':' base_type '(' enum_params ')'
+	| ':' INLINE base_type '(' enum_params ')'
 	| ':' base_type
+	| ':' INLINE base_type
 	| ':' '(' enum_params ')'
 	;
 

@@ -721,10 +721,10 @@ static void init_asm_x86(PlatformTarget* target)
 	}
 	else
 	{
-		reg_register_list(target, x64_quad_regs, 15, ASM_REG_INT, ARG_BITS_64, X86_RAX);
-		reg_register_list(target, x86_long_regs, 15, ASM_REG_INT, ARG_BITS_32, X86_RAX);
-		reg_register_list(target, x86_word_regs, 15, ASM_REG_INT, ARG_BITS_16, X86_RAX);
-		reg_register_list(target, x86_low_byte_regs, 15, ASM_REG_INT, ARG_BITS_8, X86_RAX);
+		reg_register_list(target, x64_quad_regs, 16, ASM_REG_INT, ARG_BITS_64, X86_RAX);
+		reg_register_list(target, x86_long_regs, 16, ASM_REG_INT, ARG_BITS_32, X86_RAX);
+		reg_register_list(target, x86_word_regs, 16, ASM_REG_INT, ARG_BITS_16, X86_RAX);
+		reg_register_list(target, x86_low_byte_regs, 16, ASM_REG_INT, ARG_BITS_8, X86_RAX);
 		reg_register_list(target, x86_high_byte_regs, 4, ASM_REG_INT, ARG_BITS_8, X86_RAX);
 		reg_register_list(target, x86_xmm_regs, 16, ASM_REF_FVEC, ARG_BITS_128, X86_XMM0);
 		reg_register_list(target, x86_ymm_regs, 16, ASM_REF_FVEC, ARG_BITS_256, X86_XMM0);

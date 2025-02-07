@@ -1,4 +1,4 @@
-// Copyright (c) 2020 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2020-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -824,8 +824,13 @@ static inline Ast* parse_for_stmt(ParseContext *c)
 
 	// Ast range does not include the body
 	RANGE_EXTEND_PREV(ast);
-
+	unsigned row = c->prev_span.row;
 	ASSIGN_AST_OR_RET(Ast *body, parse_stmt(c), poisoned_ast);
+	if (body->ast_kind != AST_COMPOUND_STMT && row != body->span.row)
+	{
+		PRINT_ERROR_AT(body, "A single statement after 'for' must be placed on the same line, or be enclosed in {}.");
+		return poisoned_ast;
+	}
 	ast->for_stmt.body = astid(body);
 	return ast;
 }
@@ -1095,9 +1100,9 @@ static inline Ast* parse_ct_foreach_stmt(ParseContext *c)
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "Expected ':'.", poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(ast->ct_foreach_stmt.expr, parse_expr(c), poisoned_ast);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->span);
 	ast->ct_foreach_stmt.body = astid(body);
-	AstId *current = &body->compound_stmt.first_stmt;
+	AstId *current = &body->ct_compound_stmt;
 	while (!try_consume(c, TOKEN_CT_ENDFOREACH))
 	{
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);
@@ -1135,9 +1140,9 @@ static inline Ast* parse_ct_for_stmt(ParseContext *c)
 
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
-	Ast *body = new_ast(AST_COMPOUND_STMT, ast->span);
+	Ast *body = new_ast(AST_CT_COMPOUND_STMT, ast->span);
 	ast->for_stmt.body = astid(body);
-	AstId *current = &body->compound_stmt.first_stmt;
+	AstId *current = &body->ct_compound_stmt;
 	while (!try_consume(c, TOKEN_CT_ENDFOR))
 	{
 		ASSIGN_AST_OR_RET(Ast *stmt, parse_stmt(c), poisoned_ast);

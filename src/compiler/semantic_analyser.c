@@ -320,7 +320,6 @@ static void assign_panicfn(void)
 	const char *panicfn = compiler.build.panicfn ? compiler.build.panicfn : "std::core::builtin::panic";
 	Path *path;
 	const char *ident;
-	TokenType type;
 	if (sema_splitpathref(panicfn, strlen(panicfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
 	{
 		error_exit("'%s' is not a valid panic function.", panicfn);
@@ -377,12 +376,10 @@ static void assign_testfn(void)
 	if (!compiler.build.testfn && no_stdlib())
 	{
 		error_exit("No test function could be found.");
-		return;
 	}
 	const char *testfn = compiler.build.testfn ? compiler.build.testfn : "std::core::runtime::default_test_runner";
 	Path *path;
 	const char *ident;
-	TokenType type;
 	if (sema_splitpathref(testfn, strlen(testfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
 	{
 		error_exit("'%s' is not a valid test function.", testfn);
@@ -419,7 +416,6 @@ static void assign_benchfn(void)
 	const char *testfn = compiler.build.benchfn ? compiler.build.benchfn : "std::core::runtime::default_benchmark_runner";
 	Path *path;
 	const char *ident;
-	TokenType type;
 	if (sema_splitpathref(testfn, strlen(testfn), &path, &ident) != TOKEN_IDENT || path == NULL || !ident)
 	{
 		error_exit("'%s' is not a valid benchmark function.", testfn);

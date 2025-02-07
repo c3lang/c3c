@@ -16,7 +16,6 @@ fn void main() {
 
 /* #expect: test.ll
 
-
 define void @test.foo() #0 !dbg !8 {
 entry:
   %values = alloca [1 x i32], align 4
@@ -24,7 +23,6 @@ entry:
   store i32 0, ptr %values, align 4, !dbg !18
   ret void, !dbg !18
 }
-
 !0 = !{i32 2, !"Dwarf Version", i32 4}
 !1 = !{i32 2, !"Debug Info Version", i32 3}
 !2 = !{i32 2, !"wchar_size", i32 4}
@@ -43,21 +41,15 @@ entry:
 !15 = !{!16}
 !16 = !DISubrange(count: 1, lowerBound: 0)
 !17 = !DILocation(line: 5, column: 10, scope: !8)
-!18 = !DILocation(line: 7, column: 18, scope: !19)
-!19 = distinct !DILexicalBlock(scope: !20, file: !7, line: 6, column: 3)
-!20 = distinct !DILexicalBlock(scope: !8, file: !7, line: 6, column: 3)
-!21 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !7, file: !7, line: 11, type: !9, scopeLine: 11, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6)
-!22 = !DILocation(line: 12, column: 3, scope: !21)
-!23 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7, line: 11, type: !24, scopeLine: 11, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !11)
-!24 = !DISubroutineType(types: !25)
-!25 = !{!14, !14, !26}
-!26 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !27, size: 64, align: 64, dwarfAddressSpace: 0)
-!27 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !28, size: 64, align: 64, dwarfAddressSpace: 0)
-!28 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
-!29 = !DILocalVariable(name: ".anon", arg: 1, scope: !23, file: !7, line: 11, type: !14)
-!30 = !DILocation(line: 11, column: 9, scope: !23)
-!31 = !DILocalVariable(name: ".anon", arg: 2, scope: !23, file: !7, line: 11, type: !26)
-!32 = !DILocation(line: 18, column: 2, scope: !33, inlinedAt: !30)
-!33 = distinct !DISubprogram(name: "@main_to_void_main", linkageName: "@main_to_void_main", scope: !34, file: !34, line: 16, scopeLine: 16, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6)
-!34 = !DIFile(filename: "main_stub.c3"
-!35 = !DILocation(line: 19, column: 9, scope: !33, inlinedAt: !30)
+!18 = !DILocation(line: 7, column: 18, scope: !8)
+!19 = distinct !DISubprogram(name: "main", linkageName: "test.main", scope: !7, file: !7, line: 11, type: !9, scopeLine: 11, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6)
+!20 = !DILocation(line: 12, column: 3, scope: !19)
+!21 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7, line: 11, type: !22, scopeLine: 11, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !11)
+!22 = !DISubroutineType(types: !23)
+!23 = !{!14, !14, !24}
+!24 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char**", baseType: !25, size: 64, align: 64, dwarfAddressSpace: 0)
+!25 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "char*", baseType: !26, size: 64, align: 64, dwarfAddressSpace: 0)
+!26 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
+!27 = !DILocalVariable(name: ".anon", arg: 1, scope: !21, file: !7, line: 11, type: !14)
+!28 = !DILocation(line: 11, column: 9, scope: !21)
+!29 = !DILocalVariable(name: ".anon", arg: 2, scope: !21, file: !7, line: 11, type: !24)

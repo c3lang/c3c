@@ -203,8 +203,7 @@ static inline bool sema_expr_analyse_struct_plain_initializer(SemaContext *conte
 	if (elements_needed == 0)
 	{
 		// Generate a nice error message for zero.
-		SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
-		return false;
+		RETURN_SEMA_ERROR(elements[0], "Too many elements in initializer, it must be empty.");
 	}
 
 	bool optional = false;
@@ -352,7 +351,7 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 	bool is_vector = type_flat_is_vector(assigned);
 	bool inner_is_inferred = type_len_is_inferred(inner_type);
 	Type *inferred_element = NULL;
-	if (!sema_resolve_type_structure(context, inner_type, initializer->span)) return false;
+	if (!sema_resolve_type_structure(context, inner_type)) return false;
 	for (unsigned i = 0; i < count; i++)
 	{
 		Expr *element = elements[i];
@@ -528,7 +527,6 @@ static bool sema_expr_analyse_designated_initializer(SemaContext *context, Type 
 		if (!inner_type)
 		{
 			inner_type = type_no_optional(value->type);
-			continue;
 		}
 	}
 	if (bitmember_count_without_value != 0 && bitmember_count_without_value != vec_size(init_expressions)) {
@@ -781,13 +779,14 @@ ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs,
 
 bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *expr)
 {
+
 	if (!to) to = type_untypedlist;
 	ASSERT(to);
 	Type *flattened = type_flatten(to);
 	bool is_zero_init = (expr->expr_kind == EXPR_INITIALIZER_LIST && !vec_size(expr->initializer_list)) ||
 			(expr->resolve_status == RESOLVE_DONE && sema_initializer_list_is_empty(expr));
 
-	if (!sema_resolve_type_structure(context, to, expr->span)) return false;
+	if (!sema_resolve_type_structure(context, to)) return false;
 	switch (flattened->type_kind)
 	{
 		case TYPE_ANY:
@@ -825,13 +824,10 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr->type = to;
 				return true;
 			}
-			else
-			{
-				expr->resolve_status = RESOLVE_DONE;
-				expr_insert_addr(expr);
-				if (!sema_analyse_expr(context, expr)) return false;
-				return cast_explicit(context, expr, to);
-			}
+			expr->resolve_status = RESOLVE_DONE;
+			expr_insert_addr(expr);
+			if (!sema_analyse_expr(context, expr)) return false;
+			return cast_explicit(context, expr, to);
 		}
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
@@ -1050,12 +1046,12 @@ static inline void sema_update_const_initializer_with_designator_union(ConstInit
 }
 
 static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInitializer *const_init, Type *element_type,
-                                                                       ArraySize array_count, ArrayIndex index,
-                                                                       ArrayIndex *insert_index_ref, Expr *value)
+                                                                       ArrayIndex index,
+                                                                       ArrayIndex *insert_index_ref)
 {
 	ConstInitializer **array_elements = const_init->init_array.elements;
 	ArrayIndex insert_index = *insert_index_ref;
-	ASSERT(insert_index >= array_count || array_elements);
+	ArrayIndex array_count = vec_size(array_elements);
 	// Walk to the insert point or until we reached the end of the array.
 	while (insert_index < array_count && array_elements[insert_index]->init_array_value.index < index)
 	{
@@ -1063,7 +1059,6 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
 	}
 	// Pick up the initializer at the insert point.
 	ConstInitializer *initializer = insert_index < array_count ? array_elements[insert_index] : NULL;
-	ConstInitializer *inner_value;
 
 	// If we don't have an initializer, the location needs to be at the end.
 	// Create and append:
@@ -1078,7 +1073,7 @@ static inline ConstInitializer *sema_update_const_initializer_at_index(ConstInit
 		// If we already have an initializer "found"
 		// it might be after the index. In this case, we
 		// need to do an insert.
-		if (initializer->init_array_value.index != insert_index)
+		if (initializer->init_array_value.index != index)
 		{
 			ASSERT(initializer->init_array_value.index > insert_index);
 
@@ -1109,18 +1104,19 @@ void const_init_rewrite_array_at(ConstInitializer *const_init, Expr *value, Arra
 		const_init->kind = CONST_INIT_ARRAY;
 		const_init->init_array.elements = NULL;
 	}
+	ConstInitializer *inner_value;
+	if (const_init->kind == CONST_INIT_ARRAY_FULL)
+	{
+		inner_value = const_init->init_array_full[index];
+	}
+	else
+	{
+		assert(const_init->kind == CONST_INIT_ARRAY);
+		Type *element_type = type_flatten(const_init->type->array.base);
 
-	Type *element_type = type_flatten(const_init->type->array.base);
-
-	// Get all the elements in the array
-	ConstInitializer **array_elements = const_init->init_array.elements;
-
-	unsigned array_count = vec_size(array_elements);
-	ArrayIndex insert_index = 0;
-
-	ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type,
-	                                                                       array_count, index, &insert_index, value);
-
+		ArrayIndex insert_index = 0;
+		inner_value = sema_update_const_initializer_at_index(const_init, element_type, index, &insert_index);
+	}
 	const_init_rewrite_to_value(inner_value, value);
 }
 
@@ -1150,14 +1146,11 @@ static inline void sema_update_const_initializer_with_designator_array(ConstInit
 
 	// Get all the elements in the array
 
-	unsigned array_count = vec_size(const_init->init_array.elements);
 	ArrayIndex insert_index = 0;
 
 	for (ArrayIndex index = low_index; index <= high_index; index++)
 	{
-		ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type,
-		                                                                       array_count, index, &insert_index,
-		                                                                       value);
+		ConstInitializer *inner_value = sema_update_const_initializer_at_index(const_init, element_type, index, &insert_index);
 
 		// Update
 		if (!is_last_path_element)
@@ -1307,7 +1300,7 @@ static ArrayIndex sema_analyse_designator_index(SemaContext *context, Expr *inde
 	}
 
 	// Unless we already have type_usz, cast to type_isz;
-	if (!cast_to_index(context, index, NULL))
+	if (!cast_to_index_len(context, index, false))
 	{
 		return -1;
 	}

@@ -1,3 +1,4 @@
+
 INLINE LLVMValueRef llvm_emit_insert_value(GenContext *c, LLVMValueRef agg, LLVMValueRef new_value, ArraySize index)
 {
 	if (LLVMGetTypeKind(LLVMTypeOf(agg)) == LLVMVectorTypeKind)
@@ -184,13 +185,13 @@ static inline bool llvm_delete_current_if_unused(GenContext *c)
 	return true;
 }
 
-static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *context)
+static inline LLVMBasicBlockRef llvm_get_current_block_if_in_use(GenContext *c)
 {
-	LLVMBasicBlockRef block = context->current_block;
+	LLVMBasicBlockRef block = c->current_block;
 	if (block && llvm_basic_block_is_unused(block))
 	{
 		LLVMDeleteBasicBlock(block);
-		return context->current_block = NULL;
+		return c->current_block = NULL;
 	}
 	return block;
 }

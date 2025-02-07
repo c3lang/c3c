@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -13,9 +13,9 @@ typedef enum FunctionParse_
 	FUNC_PARSE_INTERFACE,
 } FunctionParse;
 
-static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_type);
+static inline Decl *parse_func_definition(ParseContext *c, AstId contracts, FunctionParse parse_kind);
 static inline bool parse_bitstruct_body(ParseContext *c, Decl *decl);
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref);
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index);
 static Decl *parse_include(ParseContext *c);
 static Decl *parse_exec(ParseContext *c);
 static bool parse_attributes_for_global(ParseContext *c, Decl *decl);
@@ -432,6 +432,7 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		// TODO remove in 0.7
 		if (is_lparen)
 		{
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			SEMA_DEPRECATED(type_info, "'$vatype(...)' is deprecated, use '$vatype[...]' instead.");
 		}
 		return type_info;
@@ -446,7 +447,6 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 		return type_info;
 	}
 	SourceSpan range = c->span;
-	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return poisoned_type_info;
 	if (path)
@@ -514,6 +514,7 @@ static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type, bool
 /**
  * array_type_index ::= '[' (constant_expression | '*')? ']'
  *
+ * @param c the parse context
  * @param type the type to wrap, may not be poisoned.
  * @return type (poisoned if fails)
  */
@@ -572,6 +573,7 @@ DIRECT_SLICE:;
 /**
  * vector_type_index ::= '[<' (constant_expression | '*') '>]'
  *
+ * @param c the parse context.
  * @param type the type to wrap, may not be poisoned.
  * @return type (poisoned if fails)
  */
@@ -953,7 +955,6 @@ Decl *parse_var_decl(ParseContext *c)
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 {
 	SourceSpan start_span = c->prev_span;
-	bool had_error;
 	Path *path;
 	if (!parse_path_prefix(c, &path)) return false;
 
@@ -1077,13 +1078,13 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 		Attr *attr;
 		if (!parse_attribute(c, &attr, false)) return false;
 		if (!attr) return true;
-		bool parsed_builtin = false;
 		Visibility parsed_visibility = -1; // NOLINT
 		if (!attr->is_custom)
 		{
 			// This is important: if we would allow user defined attributes,
 			// ordering between visibility of attributes would be complex.
 			// since there is little
+			bool parsed_builtin = false;
 			switch (attr->attr_kind)
 			{
 				case ATTRIBUTE_PUBLIC:
@@ -1199,7 +1200,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 			print_error_at(type->span, "This looks like the beginning of a function declaration but it's missing the initial `fn`. Did you forget it?");
 			return poisoned_decl;
 		}
-		else if (tok_is(c, TOKEN_LBRACKET))
+		if (tok_is(c, TOKEN_LBRACKET))
 		{
 			// Maybe we were doing int foo[4] = ...
 			PRINT_ERROR_HERE("This looks like a declaration of the format 'int foo[4]' "
@@ -1294,8 +1295,7 @@ INLINE bool is_end_of_param_list(ParseContext *c)
  * parameter ::= type ELLIPSIS? (non_type_ident ('=' expr))?
  *             | ELLIPSIS (CT_TYPE_IDENT | non_type_ident ('=' expr)?)?
  */
-bool parse_parameters(ParseContext *c, Decl ***params_ref, Decl **body_params,
-					  Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind)
+bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind)
 {
 	Decl** params = NULL;
 	bool var_arg_found = false;
@@ -1510,7 +1510,7 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
 	CONSUME_OR_RET(TOKEN_LPAREN, false);
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
-	if (!parse_parameters(c, &decls, NULL, &variadic, &vararg_index, PARAM_PARSE_FUNC)) return false;
+	if (!parse_parameters(c, &decls, &variadic, &vararg_index, PARAM_PARSE_FUNC)) return false;
 	CONSUME_OR_RET(TOKEN_RPAREN, false);
 	signature->vararg_index = vararg_index < 0 ? vec_size(decls) : vararg_index;
 	signature->params = decls;
@@ -1536,9 +1536,10 @@ static inline bool parse_fn_parameter_list(ParseContext *c, Signature *signature
  * 		| BITSTRUCT IDENT ':' type opt_attributes struct_body
  *		| BITSTRUCT ':' type opt_attributes struct_body
  *
+ * @param c the parse context
  * @param parent the parent of the struct
  */
-bool parse_struct_body(ParseContext *c, Decl *parent)
+static bool parse_struct_body(ParseContext *c, Decl *parent)
 {
 	CONSUME_OR_RET(TOKEN_LBRACE, false);
 
@@ -1627,6 +1628,10 @@ bool parse_struct_body(ParseContext *c, Decl *parent)
 			if (was_inline)
 			{
 				RETURN_PRINT_ERROR_AT(false, member, "'inline' can only be applied to a single member, so please define it on its own line.");
+			}
+			if (token_is_any_type(c->tok))
+			{
+				RETURN_PRINT_ERROR_LAST("Did you accidentally use ',' rather than ';' between your declarations?");
 			}
 		}
 		Decl **members = parent->strukt.members;
@@ -1867,7 +1872,7 @@ static bool parse_macro_params(ParseContext *c, Decl *macro)
 	Variadic variadic = VARIADIC_NONE;
 	int vararg_index = -1;
 	Decl **params = NULL;
-	if (!parse_parameters(c, &params, NULL, &variadic, &vararg_index, PARAM_PARSE_MACRO)) return false;
+	if (!parse_parameters(c, &params, &variadic, &vararg_index, PARAM_PARSE_MACRO)) return false;
 	macro->func_decl.signature.params = params;
 	macro->func_decl.signature.vararg_index = vararg_index < 0 ? vec_size(params) : vararg_index;
 	macro->func_decl.signature.variadic = variadic;
@@ -1880,7 +1885,7 @@ static bool parse_macro_params(ParseContext *c, Decl *macro)
 		TRY_CONSUME_OR_RET(TOKEN_AT_IDENT, "Expected an ending ')' or a block parameter on the format '@block(...).", false);
 		if (try_consume(c, TOKEN_LPAREN))
 		{
-			if (!parse_parameters(c, &body_param->body_params, NULL, NULL, NULL, PARAM_PARSE_BODY)) return false;
+			if (!parse_parameters(c, &body_param->body_params, NULL, NULL, PARAM_PARSE_BODY)) return false;
 			CONSUME_OR_RET(TOKEN_RPAREN, false);
 		}
 		macro->func_decl.body_param = declid(body_param);
@@ -2067,7 +2072,7 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 			print_error_at(c->prev_span, "At least one parameter was expected after '(' - try removing the '()'.");
 			return poisoned_decl;
 		}
-		if (!parse_parameters(c, &decl->attr_decl.params, NULL, NULL, NULL, PARAM_PARSE_ATTR)) return poisoned_decl;
+		if (!parse_parameters(c, &decl->attr_decl.params, NULL, NULL, PARAM_PARSE_ATTR)) return poisoned_decl;
 		CONSUME_OR_RET(TOKEN_RPAREN, poisoned_decl);
 	}
 
@@ -2171,7 +2176,7 @@ static inline bool parse_func_macro_header(ParseContext *c, Decl *decl)
 		print_error_at(c->span, "Expected a macro name here, e.g. '@someName' or 'someName'.");
 		return false;
 	}
-	else if (!is_macro && c->tok != TOKEN_IDENT)
+	if (!is_macro && c->tok != TOKEN_IDENT)
 	{
 		print_error_at(c->span, "Expected a function name here, e.g. 'someName'.");
 		return false;
@@ -2197,9 +2202,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 	decl->decl_kind = DECL_MACRO;
 	decl->func_decl.docs = docs;
 	if (!parse_func_macro_header(c, decl)) return poisoned_decl;
-	const char *block_parameter = NULL;
 	if (!parse_macro_params(c, decl)) return poisoned_decl;
-
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	if (tok_is(c, TOKEN_IMPLIES))
 	{
@@ -2267,13 +2270,23 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 /**
  * enum_param_list ::= '(' enum_param* ')'
  */
-static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref)
+static inline bool parse_enum_param_list(ParseContext *c, Decl*** parameters_ref, ArrayIndex *inline_index)
 {
 	// If no left parenthesis we're done.
 	if (!try_consume(c, TOKEN_LPAREN)) return true;
 
+	ArrayIndex index = -1;
+	bool has_inline = !inline_index;
 	while (!try_consume(c, TOKEN_RPAREN))
 	{
+		index++;
+		bool is_inline = try_consume(c, TOKEN_INLINE);
+		if (is_inline)
+		{
+			if (has_inline) RETURN_PRINT_ERROR_HERE("An enum cannot combine an inline value and a inline parameter.");
+			if (*inline_index > -1) RETURN_PRINT_ERROR_HERE("An enum may only have one inline parameter.");
+			*inline_index = index;
+		}
 		if (!parse_enum_param_decl(c, parameters_ref)) return false;
 		Decl *last_parameter = VECLAST(*parameters_ref);
 		ASSERT(last_parameter);
@@ -2304,17 +2317,20 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 
 	TypeInfo *type = NULL;
 
+	bool val_is_inline = false;
+	ArrayIndex inline_index = -1;
 	if (try_consume(c, TOKEN_COLON))
 	{
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
+			val_is_inline = try_consume(c, TOKEN_INLINE);
 			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
 			if (type->optional)
 			{
 				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum can't have an optional type.");
 			}
 		}
-		if (!parse_enum_param_list(c, &decl->enums.parameters)) return poisoned_decl;
+		if (!parse_enum_param_list(c, &decl->enums.parameters, val_is_inline ? NULL : &inline_index)) return poisoned_decl;
 	}
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
@@ -2323,6 +2339,8 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	decl->enums.type_info = type ? type : type_info_new_base(type_int, decl->span);
+	decl->enums.inline_index = (int16_t)inline_index;
+	decl->enums.inline_value = val_is_inline;
 	while (!try_consume(c, TOKEN_RBRACE))
 	{
 		Decl *enum_const = decl_new(DECL_ENUM_CONSTANT, symstr(c), c->span);
@@ -2366,7 +2384,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 									   "is not supported for declaring enum associated values.");
 						return poisoned_decl;
 					}
-					if (try_consume(c, TOKEN_COMMA)) continue;
+					if (try_consume(c, TOKEN_COMMA)) continue; // NOLINT
 				}
 			}
 			enum_const->enum_constant.args = args;
@@ -2831,7 +2849,7 @@ END:
  *
  * @return Decl* or a poison value if parsing failed
  */
-Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
+Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 {
 	AstId contracts = 0;
 	if (!parse_contracts(c, &contracts)) return poisoned_decl;
@@ -2882,7 +2900,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			decl->is_extern = true;
 			break;
 		case TOKEN_MODULE:
-			if (!c_ref)
+			if (!context_out)
 			{
 				PRINT_ERROR_HERE("'module' is not valid inside an include.");
 				return poisoned_decl;
@@ -2894,7 +2912,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 				ParseContext *new_context = CALLOCS(ParseContext);
 				*new_context = *c;
 				new_context->unit = unit_create(c->unit->file);
-				*c_ref = c = new_context;
+				*context_out = c = new_context;
 			}
 			if (!parse_module(c, contracts)) return poisoned_decl;
 			return NULL;
@@ -2934,7 +2952,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **c_ref)
 			}
 		case TOKEN_IMPORT:
 			if (contracts) goto CONTRACT_NOT_ALLOWED;
-			if (!c_ref)
+			if (!context_out)
 			{
 				PRINT_ERROR_HERE("'import' may not appear inside a compile time statement.");
 				return poisoned_decl;

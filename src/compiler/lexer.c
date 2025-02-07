@@ -331,13 +331,7 @@ static inline bool scan_ident(Lexer *lexer, TokenType normal, TokenType const_to
 		hash = FNV1a(c, hash);
 		next(lexer);
 	}
-	// Allow bang!
-	if (peek(lexer) == '!' && type == normal)
-	{
-		hash = FNV1a('!', hash);
-		next(lexer);
-	}
-	EXIT:;
+EXIT:;
 	uint32_t len = (uint32_t)(lexer->current - lexer->lexing_start);
 	if (!type)
 	{
@@ -712,12 +706,11 @@ static inline bool scan_char(Lexer *lexer)
 	}
 
 	int width = 0;
-	char c;
 	Int128 b = { 0, 0 };
 
 	while (!match(lexer, '\''))
 	{
-		c = peek(lexer);
+		char c = peek(lexer);
 		next(lexer);
 		// End of file may occur:
 		if (c == '\0')
@@ -937,7 +930,6 @@ static inline bool scan_string(Lexer *lexer)
 		{
 			c = *current;
 			if (c != '\n' && c != '\0') current++;
-			continue;
 		}
 	}
 	const char *end = current - 1;
@@ -1028,11 +1020,10 @@ static inline bool scan_hex_array(Lexer *lexer)
 {
 	char start_char = peek(lexer);
 	next(lexer); // Step past ' or " `
-	char c;
 	uint64_t len = 0;
 	while (1)
 	{
-		c = peek(lexer);
+		char c = peek(lexer);
 		if (c == 0)
 		{
 			return add_error_token_at_current(lexer, "The hex string seems to be missing a terminating '%c'", start_char);
@@ -1063,7 +1054,7 @@ static inline bool scan_hex_array(Lexer *lexer)
 	{
 		return add_error_token(lexer, "The hexadecimal string is not an even length, did you miss a digit somewhere?");
 	}
-	if (!new_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
+	new_token(lexer, TOKEN_BYTES, lexer->lexing_start);
 	lexer->data.is_base64 = false;
 	lexer->data.bytes_len = (uint64_t)len / 2;
 	return true;
@@ -1076,12 +1067,11 @@ static inline bool scan_base64(Lexer *lexer)
 	next(lexer); // Step past 4
 	char start_char = peek(lexer);
 	next(lexer); // Step past ' or " or `
-	char c;
 	unsigned end_len = 0;
 	uint64_t len = 0;
 	while (1)
 	{
-		c = peek(lexer);
+		char c = peek(lexer);
 		if (c == 0)
 		{
 			return add_error_token_at_start(lexer, "The base64 string seems to be missing a terminating '%c'", start_char);
@@ -1143,7 +1133,7 @@ static inline bool scan_base64(Lexer *lexer)
 											   "- only need 1 or 2 bytes of extra padding.");
 	}
 	uint64_t decoded_len = (3 * len - end_len) / 4;
-	if (!new_token(lexer, TOKEN_BYTES, lexer->lexing_start)) return false;
+	new_token(lexer, TOKEN_BYTES, lexer->lexing_start);
 	lexer->data.is_base64 = true;
 	lexer->data.bytes_len = decoded_len;
 	return true;
@@ -1156,7 +1146,7 @@ static inline bool scan_base64(Lexer *lexer)
 /**
  * Parse the <* *> directives comments
  **/
-static bool parse_doc_start(Lexer *lexer)
+static bool parse_doc_start(Lexer *lexer) // NOLINT
 {
 	const char *comment_start = NULL;
 	bool may_have_contract = true;
@@ -1194,7 +1184,7 @@ static bool parse_doc_start(Lexer *lexer)
 					comment_start = lexer->current;
 				}
 				next(lexer);
-				continue;
+				break;
 		}
 	}
 EXIT:;
@@ -1222,7 +1212,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 	// Point start to the first non-whitespace character.
 	begin_new_token(lexer);
 
-	if (reached_end(lexer)) return new_token(lexer, TOKEN_EOF, "\n") && false;
+	if (reached_end(lexer)) return new_token(lexer, TOKEN_EOF, "\n"), false;
 
 	char c = peek(lexer);
 	next(lexer);
@@ -1363,7 +1353,7 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			{
 				return scan_base64(lexer);
 			}
-			goto IDENT;
+			goto IDENT; // NOLINT
 		case '_':
 		IDENT:
 			backtrack(lexer);
@@ -1432,7 +1422,6 @@ INLINE void check_bidirectional_markers(Lexer *lexer)
 	if (balance != 0)
 	{
 		add_error_token_at_start(lexer, "Invalid encoding - Unbalanced bidirectional markers.");
-		return;
 	}
 }
 

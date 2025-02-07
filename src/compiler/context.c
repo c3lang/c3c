@@ -137,7 +137,7 @@ bool context_set_module(ParseContext *context, Path *path, const char **generic_
 bool context_is_macro(SemaContext *context)
 {
 	if (context->current_macro != NULL) return true;
-	return context->call_env.current_function && context->call_env.current_function->func_decl.in_macro;
+	return context->call_env.current_function && context->call_env.current_function->func_decl.in_macro; // NOLINT
 }
 
 void unit_register_external_symbol(SemaContext *context, Decl *decl)
@@ -211,10 +211,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 				vec_add(unit->methods_to_register, decl);
 				return;
 			}
-			else
-			{
-				vec_add(unit->macros, decl);
-			}
+			vec_add(unit->macros, decl);
 			decl_register(decl);
 			break;
 		case DECL_FUNC:
@@ -229,10 +226,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 				vec_add(unit->methods_to_register, decl);
 				return;
 			}
-			else
-			{
-				vec_add(unit->functions, decl);
-			}
+			vec_add(unit->functions, decl);
 			decl_register(decl);
 			break;
 		case DECL_VAR:

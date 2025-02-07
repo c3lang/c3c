@@ -1,3 +1,4 @@
+// #target: macos-aarch64
 module test;
 import std;
 fn void main()
@@ -21,9 +22,6 @@ macro void foo()
 }
 
 /* #expect: test.ll
-
-
----------------------------------------------------> test.ll
 
 define void @test.main() #0 {
 entry:

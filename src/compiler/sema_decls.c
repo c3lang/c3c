@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -58,8 +58,7 @@ static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool 
 
 static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit);
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
-										  SourceSpan from);
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params);
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -309,7 +308,6 @@ static bool sema_analyse_union_members(SemaContext *context, Decl *decl)
 	ArrayIndex max_alignment_element = 0;
 	AlignSize max_alignment = 0;
 
-	bool has_named_parameter = false;
 	Decl **members = decl->strukt.members;
 	unsigned member_count = vec_size(members);
 	ASSERT(member_count > 0);
@@ -729,7 +727,6 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 		RETURN_SEMA_ERROR(member, "Circular dependency resolving member.");
 	}
 
-	bool ease_decl = false;
 	if (!sema_analyse_attributes(context, member, member->attributes, ATTR_BITSTRUCT_MEMBER, erase_decl)) return decl_poison(member);
 	if (*erase_decl) return true;
 
@@ -1085,7 +1082,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1103,6 +1100,10 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 		                                     : RESOLVE_TYPE_DEFAULT)) return false;
 		rtype = rtype_info->type;
+		if (sig->attrs.noreturn && !type_is_void(rtype))
+		{
+			RETURN_SEMA_ERROR(rtype_info, "@noreturn cannot be used on %s not returning 'void'.", is_macro ? "macros" : "functions");
+		}
 		if (sig->attrs.nodiscard)
 		{
 			if (type_is_void(rtype))
@@ -1226,7 +1227,8 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			case VARDECL_PARAM_REF:
 				if ((i != 0 || !method_parent) && !is_deprecated)
 				{
-					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated.");
+					static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated. Consider using expression parameters instead '#%s'.", param->name);
 				}
 				if (type_info && !type_is_pointer(param->type))
 				{
@@ -1339,7 +1341,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 
 	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
 
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated)) return false;
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl->span)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -1402,13 +1404,13 @@ static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *
 /**
  * Analyse a distinct type.
  */
-static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase)
+static inline bool sema_analyse_distinct(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	// Check the attributes on the distinct type.
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase)) return false;
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DISTINCT, erase_decl)) return false;
 
 	// Erase it?
-	if (*erase) return true;
+	if (*erase_decl) return true;
 
 	// Check the interfaces.
 	if (!sema_resolve_implemented_interfaces(context, decl, false)) return false;
@@ -1461,6 +1463,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	// Resolve the type of the enum.
 	if (!sema_resolve_type_info(context, decl->enums.type_info, RESOLVE_TYPE_DEFAULT)) return false;
 
+	if (decl->enums.inline_index > -1 || decl->enums.inline_value) decl->is_substruct = true;
 	Type *type = decl->enums.type_info->type;
 	ASSERT(!type_is_optional(type) && "Already stopped when parsing.");
 
@@ -1816,7 +1819,7 @@ INLINE SourceSpan method_find_overload_span(Decl *method)
 	return method->attrs_resolved->overload;
 }
 
-static inline bool unit_add_base_extension_method(SemaContext *context, CompilationUnit *unit, Type *parent_type, Decl *method)
+static inline bool unit_add_base_extension_method(UNUSED SemaContext *context, CompilationUnit *unit, Type *parent_type, Decl *method)
 {
 	// Add it to the right list of extensions.
 	switch (method->visibility)
@@ -2469,7 +2472,6 @@ INLINE bool update_abi(Decl *decl, CallABI abi)
 static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *expr)
 {
 	const char *str = expr->const_expr.bytes.ptr;
-	CallABI abi;
 	// C decl is easy
 	if (str_eq(str, "cdecl")) return update_abi(decl, CALL_C);
 
@@ -2690,6 +2692,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		}
 		case ATTRIBUTE_ADHOC:
 			SEMA_DEPRECATED(attr, "'@adhoc' is deprecated.");
+			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 			return true;
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
@@ -2877,6 +2880,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.signature.attrs.always_const = true;
 			break;
 		case ATTRIBUTE_NODISCARD:
+			if (decl->func_decl.signature.attrs.nodiscard)
+			{
+				RETURN_SEMA_ERROR(attr, "@nodiscard cannot be combined with @noreturn.");
+			}
 			decl->func_decl.signature.attrs.nodiscard = true;
 			break;
 		case ATTRIBUTE_MAYDISCARD:
@@ -2887,6 +2894,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_noinline = false;
 			break;
 		case ATTRIBUTE_NORETURN:
+			if (decl->func_decl.signature.attrs.nodiscard)
+			{
+				RETURN_SEMA_ERROR(attr, "@noreturn cannot be combined with @nodiscard.");
+			}
 			decl->func_decl.signature.attrs.noreturn = true;
 			break;
 		case ATTRIBUTE_NOSANITIZE:
@@ -3144,7 +3155,6 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 		}
 		if (directive_kind != CONTRACT_PARAM) continue;
 		const char *param_name = directive->contract_stmt.param.name;
-		Decl *extra_param = NULL;
 		Decl *param = NULL;
 		FOREACH(Decl *, other_param, params)
 		{
@@ -3389,7 +3399,7 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 					default: UNREACHABLE
 				}
 			}
-			else if (is_wmain)
+			if (is_wmain)
 			{
 				switch (type)
 				{
@@ -3399,15 +3409,12 @@ static inline Decl *sema_create_synthetic_main(SemaContext *context, Decl *decl,
 					default: UNREACHABLE
 				}
 			}
-			else
+			switch (type)
 			{
-				switch (type)
-				{
-					case 0 : main_invoker = "@main_to_void_main_args"; goto NEXT;
-					case 1 : main_invoker = "@main_to_int_main_args"; goto NEXT;
-					case 2 : main_invoker = "@main_to_err_main_args"; goto NEXT;
-					default: UNREACHABLE
-				}
+				case 0: main_invoker = "@main_to_void_main_args"; goto NEXT;
+				case 1: main_invoker = "@main_to_int_main_args"; goto NEXT;
+				case 2: main_invoker = "@main_to_err_main_args"; goto NEXT;
+				default: UNREACHABLE
 			}
 		case MAIN_TYPE_NO_ARGS:
 			ASSERT(!is_wmain);
@@ -3491,6 +3498,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 		}
 		is_int_return = false;
 		is_err_return = true;
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		SEMA_DEPRECATED(rtype_info, "Main functions with 'void!' returns is deprecated, use 'int' or 'void' instead.");
 	}
 
@@ -3538,10 +3546,7 @@ REGISTER_MAIN:
 		SEMA_NOTE(compiler.context.main, "The first one was found here.");
 		return false;
 	}
-	else
-	{
-		compiler.context.main = function;
-	}
+	compiler.context.main = function;
 	return true;
 }
 
@@ -3771,6 +3776,78 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 	}
 	return true;
 }
+
+static inline bool sema_check_body_const(SemaContext *context, Ast *body)
+{
+	while (body)
+	{
+		switch (body->ast_kind)
+		{
+			case AST_CT_ASSERT:
+			case AST_CT_ECHO_STMT:
+			case AST_CT_FOREACH_STMT:
+			case AST_CT_FOR_STMT:
+			case AST_CT_IF_STMT:
+			case AST_CT_SWITCH_STMT:
+			case AST_CT_ELSE_STMT:
+			case AST_DECLARE_STMT:
+			case AST_DECLS_STMT:
+			case AST_NOP_STMT:
+				body = astptrzero(body->next);
+				continue;
+			case AST_CT_COMPOUND_STMT:
+				if (!sema_check_body_const(context, body)) return false;
+				body = astptrzero(body->next);
+				continue;
+			case AST_RETURN_STMT:
+				if (!body->return_stmt.expr) RETURN_SEMA_ERROR(body, "The 'return' in an `@const` must provide a value, e.g. 'return Foo.typeid;'");
+				if (body->next) RETURN_SEMA_ERROR(body, "There should not be any statements after 'return'.");
+				body = NULL;
+				continue;
+			case AST_EXPR_STMT:
+				// For some cases we KNOW it's not correct.
+				switch (body->expr_stmt->expr_kind)
+				{
+					case EXPR_IDENTIFIER:
+					case EXPR_UNRESOLVED_IDENTIFIER:
+					case EXPR_LAMBDA:
+					case EXPR_FORCE_UNWRAP:
+					case EXPR_ASM:
+					case EXPR_EXPR_BLOCK:
+					case EXPR_TERNARY:
+					case EXPR_RETHROW:
+						break;
+					default:
+						body = astptrzero(body->next);
+						continue;
+				}
+				FALLTHROUGH;
+			case AST_POISONED:
+			case AST_ASM_STMT:
+			case AST_ASM_LABEL:
+			case AST_ASM_BLOCK_STMT:
+			case AST_ASSERT_STMT:
+			case AST_BREAK_STMT:
+			case AST_CASE_STMT:
+			case AST_COMPOUND_STMT:
+			case AST_CONTINUE_STMT:
+			case AST_DEFAULT_STMT:
+			case AST_DEFER_STMT:
+			case AST_FOR_STMT:
+			case AST_FOREACH_STMT:
+			case AST_IF_CATCH_SWITCH_STMT:
+			case AST_IF_STMT:
+			case AST_BLOCK_EXIT_STMT:
+			case AST_SWITCH_STMT:
+			case AST_NEXTCASE_STMT:
+			case AST_CONTRACT:
+			case AST_CONTRACT_FAULT:
+				RETURN_SEMA_ERROR(body, "Only 'return' and compile time statements are allowed in an '@const' macro.");
+		}
+		UNREACHABLE
+	}
+	return true;
+}
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	decl->func_decl.unit = context->unit;
@@ -3782,7 +3859,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_signature(context, &decl->func_decl.signature,
 	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false, deprecated)) return false;
+	                            false, deprecated, decl->span)) return false;
 
 	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
 	{
@@ -3808,69 +3885,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 		ASSERT(body->ast_kind == AST_COMPOUND_STMT);
 		body = astptrzero(body->compound_stmt.first_stmt);
 		if (!body) RETURN_SEMA_ERROR(decl, "'@const' macros cannot have an empty body.");
-		while (body)
-		{
-			switch (body->ast_kind)
-			{
-				case AST_CT_ASSERT:
-				case AST_CT_ECHO_STMT:
-				case AST_CT_FOREACH_STMT:
-				case AST_CT_FOR_STMT:
-				case AST_CT_IF_STMT:
-				case AST_CT_SWITCH_STMT:
-				case AST_CT_ELSE_STMT:
-				case AST_DECLARE_STMT:
-				case AST_DECLS_STMT:
-				case AST_NOP_STMT:
-					body = astptrzero(body->next);
-					continue;
-				case AST_RETURN_STMT:
-					if (!body->return_stmt.expr) RETURN_SEMA_ERROR(body, "The 'return' in an `@const` must provide a value, e.g. 'return Foo.typeid;'");
-					if (body->next) RETURN_SEMA_ERROR(body, "There should not be any statements after 'return'.");
-					body = NULL;
-					continue;
-				case AST_EXPR_STMT:
-					// For some cases we KNOW it's not correct.
-					switch (body->expr_stmt->expr_kind)
-					{
-						case EXPR_IDENTIFIER:
-						case EXPR_UNRESOLVED_IDENTIFIER:
-						case EXPR_LAMBDA:
-						case EXPR_FORCE_UNWRAP:
-						case EXPR_ASM:
-						case EXPR_EXPR_BLOCK:
-						case EXPR_TERNARY:
-						case EXPR_RETHROW:
-							break;
-						default:
-							body = astptrzero(body->next);
-							continue;
-					}
-					FALLTHROUGH;
-				case AST_POISONED:
-				case AST_ASM_STMT:
-				case AST_ASM_LABEL:
-				case AST_ASM_BLOCK_STMT:
-				case AST_ASSERT_STMT:
-				case AST_BREAK_STMT:
-				case AST_CASE_STMT:
-				case AST_COMPOUND_STMT:
-				case AST_CONTINUE_STMT:
-				case AST_DEFAULT_STMT:
-				case AST_DEFER_STMT:
-				case AST_FOR_STMT:
-				case AST_FOREACH_STMT:
-				case AST_IF_CATCH_SWITCH_STMT:
-				case AST_IF_STMT:
-				case AST_BLOCK_EXIT_STMT:
-				case AST_SWITCH_STMT:
-				case AST_NEXTCASE_STMT:
-				case AST_CONTRACT:
-				case AST_CONTRACT_FAULT:
-					RETURN_SEMA_ERROR(body, "Only 'return' and compile time statements are allowed in an '@const' macro.");
-			}
-			UNREACHABLE
-		}
+		sema_check_body_const(context, body);
 	}
 	decl->type = type_void;
 	return true;
@@ -4049,6 +4064,8 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 			is_global = true;
 			break;
 		case VARDECL_CONST:
+			if (local) decl->var.is_static = true;
+			break;
 		default:
 			break;
 	}
@@ -4174,7 +4191,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	if (type_is_user_defined(type) && type->decl)
 	{
 		if (!sema_analyse_decl(context, type->decl)) return false;
-		sema_display_deprecated_warning_on_use(context, type->decl, type_info->span);
+		sema_display_deprecated_warning_on_use(type->decl, type_info->span);
 	}
 
 	if (is_static && context->call_env.pure)
@@ -4260,8 +4277,7 @@ static CompilationUnit *unit_copy(Module *module, CompilationUnit *unit)
 	return copy;
 }
 
-static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params,
-										  SourceSpan from)
+static Module *module_instantiate_generic(SemaContext *context, Module *module, Path *path, Expr **params)
 {
 	unsigned decls = 0;
 	Decl* params_decls[MAX_PARAMS];
@@ -4273,11 +4289,7 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 		Expr *param = params[i];
 		if (param->expr_kind != EXPR_TYPEINFO)
 		{
-			if (!is_value)
-			{
-				SEMA_ERROR(param, "Expected a type, not a value.");
-				return NULL;
-			}
+			if (!is_value) RETURN_NULL_SEMA_ERROR(param, "Expected a type, not a value.");
 			Decl *decl = decl_new_var(param_name, param->span, NULL, VARDECL_CONST);
 			decl->var.init_expr = param;
 			decl->type = param->type;
@@ -4285,13 +4297,9 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 			params_decls[decls++] = decl;
 			continue;
 		}
-		if (is_value)
-		{
-			SEMA_ERROR(param, "Expected a value, not a type.");
-			return NULL;
-		}
+		if (is_value) RETURN_NULL_SEMA_ERROR(param, "Expected a value, not a type.");
 		TypeInfo *type_info = param->type_expr;
-		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
+		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return NULL;
 		Decl *decl = decl_new_with_type(param_name, params[i]->span, DECL_TYPEDEF);
 		decl->resolve_status = RESOLVE_DONE;
 		ASSERT(type_info->resolve_status == RESOLVE_DONE);
@@ -4517,7 +4525,6 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		return poisoned_decl;
 	}
 	if (!sema_generate_parameterized_name_to_scratch(c, module, params, true, was_recursive_ref)) return poisoned_decl;
-	TokenType ident_type = TOKEN_IDENT;
 	const char *path_string = scratch_buffer_interned();
 	Module *instantiated_module = global_context_find_module(path_string);
 
@@ -4532,9 +4539,9 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 		path->module = path_string;
 		path->span = module->name->span;
 		path->len = scratch_buffer.len;
-		instantiated_module = module_instantiate_generic(c, module, path, params, span);
-		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
+		instantiated_module = module_instantiate_generic(c, module, path, params);
 		if (!instantiated_module) return poisoned_decl;
+		if (!sema_generate_parameterized_name_to_scratch(c, module, params, false, NULL)) return poisoned_decl;
 		instantiated_module->generic_suffix = scratch_buffer_copy();
 		sema_analyze_stage(instantiated_module, stage > ANALYSIS_POST_REGISTER ? ANALYSIS_POST_REGISTER : stage);
 	}
@@ -4644,7 +4651,7 @@ static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *e
 	return true;
 }
 
-bool sema_resolve_type_structure(SemaContext *context, Type *type, SourceSpan span)
+bool sema_resolve_type_structure(SemaContext *context, Type *type)
 {
 RETRY:
 	switch (type->type_kind)
@@ -4803,4 +4810,3 @@ FAILED:
 	DEBUG_LOG("<<< Analysis of [%s] failed.", decl_safe_name(decl));
 	return decl_poison(decl);
 }
-

@@ -130,6 +130,15 @@ fn usz! File.write(&self, char[] buffer) @dynamic
 	return os::native_fwrite(self.file, buffer);
 }
 
+fn Fd File.fd(self) @if(env::LIBC)
+{
+	return libc::fileno(self.file);
+}
+
+fn bool File.isatty(self) @if(env::LIBC)
+{
+	return libc::isatty(self.fd()) > 0;
+}
 
 fn char! File.read_byte(&self) @dynamic
 {

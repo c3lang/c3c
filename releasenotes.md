@@ -12,6 +12,11 @@
 - Allow `+++` to work on all types of arrays.
 - Allow `(int[*]) { 1, 2 }` cast style initialization.
 - Experimental change from `[*]` to `[?]`
+- Warn on if-catch with just a `default` case.
+- Compile time array inc/dec.
+- Improve error message when using ',' in struct declarations. #1920
+- Compile time array assign ops, e.g. `$c[1] += 3` #1890.
+- Add `inline` to enums #1819.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -31,11 +36,24 @@
 - Issue where trailing body argument was allowed without type even though the definition specified it #1879.
 - Fix issues with @jump on empty `default` or only `default` #1893 #1894
 - Fixes miscompilation of nested `@jump` #1896.
+- Fixed STB_WEAK errors when using consts in macros in the stdlib #1871.
+- Missing error when placing a single statement for-body on a new row #1892.
+- Fix bug where in dead code, only the first statement would be turned into a nop.
+- Remove unused $inline argument to mem::copy.
+- Defer is broken when placed before a $foreach #1912.
+- Usage of @noreturn macro is type-checked as if it returns #1913.
+- Bug when indexing into a constant array at compile time.
+- Fixing various issues around shifts, like `z <<= { 1, 2 }`.
+- `return (any)&foo` would not be reported as an escaping variable if `foo` was a pointer or slice.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
 - Added weakly linked `__powidf2`
 - Added channels for threads.
+- New `std::core::test` module for unit testing machinery.
+- New unit test default runner.
+- Added weakly linked `fmodf`.
+- Add `@select` to perform the equivalent of `a ? x : y` at compile time.
 
 ## 0.6.6 Change list
 

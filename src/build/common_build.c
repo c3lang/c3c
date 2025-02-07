@@ -11,7 +11,7 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 	{
 		for (size_t j = 0; j < key_count; j++)
 		{
-			if (str_eq(key, valid_keys[j][0])) goto OK;
+			if (str_eq(key, valid_keys[j][0])) goto OK; // NOLINT
 		}
 		for (size_t j = 0; j < deprecated_key_count; j++)
 		{
@@ -33,59 +33,59 @@ void check_json_keys(const char* valid_keys[][2], size_t key_count, const char* 
 	}
 }
 
-const char *get_optional_string(const char *file, const char *category, JSONObject *table, const char *key)
+
+static void error_missing_mandatory(BuildParseContext context, const char *key)
+{
+	if (context.target) error_exit("In file '%s': The mandatory field '%s' was missing in '%s'.", context.file, key, context.target);
+	error_exit("In file '%s': The mandatory field '%s' was missing.", context.file, key);
+}
+
+static void error_wrong_type(BuildParseContext context, const char *key, const char *expected)
+{
+	if (context.target) error_exit("In file '%s': '%s' had an invalid '%s' field that was not %s, please correct it.", context.file, context.target, key, expected);
+	error_exit("File '%s' had an invalid '%s' field that was not %s, please correct it.", context.file, key, expected);
+
+}
+const char *get_optional_string(BuildParseContext context, JSONObject *table, const char *key)
 {
 	JSONObject *value = json_map_get(table, key);
 	if (!value) return NULL;
 	if (value->type != J_STRING)
 	{
-		if (category) error_exit("In file '%s': '%s' had an invalid '%s' field that was not a string, please correct it.", file, category, key);
-		error_exit("File '%s' had an invalid '%s' field that was not a string, please correct it.", file, category, key);
+		error_wrong_type(context, key, "a string");
 	}
 	return value->str;
 }
 
-const char *get_mandatory_string(const char *file, const char *category, JSONObject *object, const char *key)
+const char *get_mandatory_string(BuildParseContext context, JSONObject *object, const char *key)
 {
-	const char *value = get_optional_string(file, category, object, key);
-	if (!value)
-	{
-		if (category) error_exit("In file '%s': The mandatory field '%s' was missing in '%s'.", file, key, category);
-		error_exit("In file '%s': The mandatory field '%s' was missing.", file, key);
-	}
+	const char *value = get_optional_string(context, object, key);
+	if (!value) error_missing_mandatory(context, key);
 	return value;
 }
 
-const char *get_string(const char *file, const char *category, JSONObject *table, const char *key,
+const char *get_string(BuildParseContext context, JSONObject *table, const char *key,
                        const char *default_value)
 {
-	const char *value = get_optional_string(file, category, table, key);
+	const char *value = get_optional_string(context, table, key);
 	return value ? value : default_value;
 }
 
 
-int get_valid_bool(const char *file, const char *target, JSONObject *json, const char *key, int default_val)
+int get_valid_bool(BuildParseContext context, JSONObject *json, const char *key, int default_val)
 {
 	JSONObject *value = json_map_get(json, key);
 	if (!value) return default_val;
-	if (value->type != J_BOOL)
-	{
-		if (target) error_exit("In file '%s': '%s' had an invalid '%s' field that was not a boolean, please correct it.", file, target, key);
-		error_exit("In file '%s': An invalid '%s' field that was not a boolean, please correct it.", file, key);
-	}
+	if (value->type != J_BOOL) error_wrong_type(context, key, "a boolean");
 	return value->b;
 }
 
-const char **get_string_array(const char *file, const char *category, JSONObject *table, const char *key, bool mandatory)
+const char **get_string_array(BuildParseContext context, JSONObject *table, const char *key, bool mandatory)
 {
 	JSONObject *value = json_map_get(table, key);
 	if (!value)
 	{
-		if (mandatory)
-		{
-			if (category) error_exit("In file '%s': '%s' was missing a mandatory '%s' field, please add it.", file, category, key);
-			error_exit("In file '%s': mandatory '%s' field is missing, please add it.", file, key);
-		}
+		if (mandatory) error_missing_mandatory(context, key);
 		return NULL;
 	}
 	if (value->type != J_ARRAY) goto NOT_ARRAY;
@@ -97,29 +97,30 @@ const char **get_string_array(const char *file, const char *category, JSONObject
 	}
 	return values;
 NOT_ARRAY:
-	if (category) error_exit("In file '%s': '%s' had an invalid mandatory '%s' field that was not a string array, please correct it", file, category, key);
-	error_exit("In file '%s': mandatory '%s' field that was not a string array, please correct it.", file, key);
+	error_wrong_type(context, key, "a string array");
+	UNREACHABLE
 }
 
-const char **get_optional_string_array(const char *file, const char *target, JSONObject *table, const char *key)
+const char **get_optional_string_array(BuildParseContext context, JSONObject *table, const char *key)
 {
-	return get_string_array(file, target, table, key, false);
+	return get_string_array(context, table, key, false);
 }
 
-const char *get_cflags(const char *file, const char *target, JSONObject *json, const char *original_flags)
+const char *get_cflags(BuildParseContext context, JSONObject *json, const char *original_flags)
 {
 	// CFlags
-	const char *cflags = get_optional_string(file, target, json, target ? "cflags-override" : "cflags");
-	const char *cflags_add = target ? get_optional_string(file, target, json, "cflags") : NULL;
+	const char *cflags = get_optional_string(context, json, context.target ? "cflags-override" : "cflags");
+	const char *cflags_add = context.target ? get_optional_string(context, json, "cflags") : NULL;
 	if (cflags && cflags_add)
 	{
-		error_exit("In file '%s': '%s' is combining both 'cflags' and 'cflags-override', only one may be used.", file, target);
+		error_exit("In file '%s': '%s' is combining both 'cflags' and 'cflags-override', only one may be used.", context.file, context.target);
 	}
-	if (target && !cflags_add) cflags_add = get_optional_string(file, target, json, "cflags-add");
+	if (context.target && !cflags_add) cflags_add = get_optional_string(context, json, "cflags-add");
 	if (cflags && cflags_add)
 	{
 		// TODO remove in 0.7
-		error_exit("In file '%s': '%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", file, target);
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+		error_exit("In file '%s': '%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", context.file, context.target);
 	}
 
 	if (cflags) original_flags = cflags;
@@ -136,20 +137,21 @@ INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const c
 	FOREACH(const char *, string, strings_to_append) vec_add(*list_of_strings_ptr, string);
 }
 
-void get_list_append_strings(const char *file, const char *target, JSONObject *json, const char ***list_ptr,
+void get_list_append_strings(BuildParseContext context, JSONObject *json, const char ***list_ptr,
                              const char *base, const char *override, const char *add)
 {
-	const char **value = get_optional_string_array(file, target, json, target ? override : base);
-	const char **add_value = target ? get_optional_string_array(file, target, json, base) : NULL;
+	const char **value = get_optional_string_array(context, json, context.target ? override : base);
+	const char **add_value = context.target ? get_optional_string_array(context, json, base) : NULL;
 	if (value && add_value)
 	{
-		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", file, target, override, base);
+		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", context.file, context.target, override, base);
 	}
-	if (!add_value && target) add_value = get_optional_string_array(file, target, json, add);
+	if (!add_value && context.target) add_value = get_optional_string_array(context, json, add);
 	if (value && add_value)
 	{
 		// TODO remove in 0.7
-		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", file, target, override, add);
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", context.file, context.target, override, add);
 	}
 	if (value) *list_ptr = value;
 	if (add_value)
@@ -159,7 +161,7 @@ void get_list_append_strings(const char *file, const char *target, JSONObject *j
 	}
 }
 
-int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char** values, int first_result, int count, const char *expected)
+int get_valid_string_setting(BuildParseContext context, JSONObject *json, const char *key, const char** values, int first_result, int count, const char *expected)
 {
 	JSONObject *value = json_map_get(json, key);
 	if (!value)
@@ -171,11 +173,11 @@ int get_valid_string_setting(const char *file, const char *target, JSONObject *j
 		int res = str_findlist(value->str, count, values);
 		if (res >= 0) return res + first_result;
 	}
-	if (target)
+	if (context.target)
 	{
-		error_exit("In file '%s': '%s' had an invalid value for '%s', expected %s", file, target, key, expected);
+		error_exit("In file '%s': '%s' had an invalid value for '%s', expected %s", context.file, context.target, key, expected);
 	}
-	error_exit("In file '%s': Invalid value for '%s', expected %s", file, key, expected);
+	error_exit("In file '%s': Invalid value for '%s', expected %s", context.file, key, expected);
 }
 
 int get_valid_enum_from_string(const char *str, const char *target, const char **values, int count, const char *expected)
@@ -189,20 +191,17 @@ int get_valid_enum_from_string(const char *str, const char *target, const char *
 	error_exit("Invalid value, expected %s", expected);
 }
 
-long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory)
+long get_valid_integer(BuildParseContext context, JSONObject *table, const char *key, bool mandatory)
 {
 	JSONObject *value = json_map_get(table, key);
 	if (!value)
 	{
-		if (mandatory)
-		{
-			error_exit("%s was missing a mandatory '%s' field, please add it.", category, key);
-		}
+		if (mandatory) error_missing_mandatory(context, key);
 		return -1;
 	}
 	if (value->type != J_NUMBER || trunc(value->f) != value->f)
 	{
-		error_exit("%s had an invalid mandatory '%s' field that was not an integer, please correct it.", category, key);
+		error_wrong_type(context, key, "an integer");
 	}
 	return (long)trunc(value->f);
 }
