@@ -158,11 +158,26 @@ fn void! Socket.close(&self) @inline @dynamic
 
 fn usz! Socket.peek(&self, char[] bytes) @dynamic
 {
-$if env::WIN32:
-	isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
-$else
-	isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
-$endif
+  $if env::WIN32:
+	  isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
+  $else
+	  isz n = libc::recv(self.sock, bytes.ptr, bytes.len, os::MSG_PEEK);
+  $endif
 	if (n < 0) return os::socket_error()?;
 	return (usz)n;
+}
+
+enum SocketShutdownHow : (inline CInt native_value)
+{
+	RECEIVE = @select(env::WIN32, libc::SD_RECEIVE, libc::SHUT_RD),
+	SEND = @select(env::WIN32, libc::SD_SEND, libc::SHUT_WR),
+	BOTH = @select(env::WIN32, libc::SD_BOTH, libc::SHUT_RDWR),
+}
+
+fn void! Socket.shutdown(&self, SocketShutdownHow how)
+{
+	if (libc::shutdown(self.sock, how) < 0)
+	{
+		return os::socket_error()?;
+	}
 }
