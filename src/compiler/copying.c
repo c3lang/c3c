@@ -667,6 +667,7 @@ RETRY:
 			if (ast->contbreak_stmt.is_resolved)
 			{
 				fixup_astid(c, &ast->contbreak_stmt.ast);
+				MACRO_COPY_ASTID(ast->contbreak_stmt.defers);
 			}
 			break;
 		case AST_CASE_STMT:
