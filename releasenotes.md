@@ -47,7 +47,7 @@
 - `return (any)&foo` would not be reported as an escaping variable if `foo` was a pointer or slice.
 - Incorrect error message when providing too many associated values for enum #1934.
 - Allow function types to have a calling convention. #1938
-- Issue with defer copying when triggered by break or continue.
+- Issue with defer copying when triggered by break or continue #1936.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
