@@ -707,8 +707,8 @@ RETRY:
 			MACRO_COPY_AST(ast->case_stmt.body);
 			break;
 		case AST_DEFER_STMT:
-			MACRO_COPY_ASTID(ast->defer_stmt.body);
 			copy_reg_ref(c, source, ast);
+			MACRO_COPY_ASTID(ast->defer_stmt.body);
 			fixup_astid(c, &ast->defer_stmt.prev_defer);
 			break;
 		case AST_CT_ECHO_STMT:
