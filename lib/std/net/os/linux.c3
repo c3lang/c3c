@@ -88,3 +88,5 @@ const CUShort POLLREMOVE              = 0x1000;
 const CUShort POLLRDHUP               = 0x2000;
 const CUShort POLLFREE                = 0x4000;
 const CUShort POLL_BUSY_LOOP          = 0x8000;
+
+const CInt MSG_PEEK = 0x0002;

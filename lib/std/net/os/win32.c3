@@ -101,3 +101,5 @@ const CUShort POLLRDNORM  = win32::POLLRDNORM;
 const CUShort POLLRDBAND  = win32::POLLRDBAND;
 const CUShort POLLWRNORM  = win32::POLLWRNORM;
 const CUShort POLLWRBAND  = win32::POLLWRBAND;
+
+const int MSG_PEEK = 0x0002;
