@@ -696,6 +696,45 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 	expr->type = type;
 }
 
+Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index)
+{
+	ExprConst *expr_const = &expr->const_expr;
+	switch (expr_const->const_kind)
+	{
+		case CONST_ERR:
+		case CONST_FLOAT:
+		case CONST_INTEGER:
+		case CONST_BOOL:
+		case CONST_ENUM:
+		case CONST_POINTER:
+		case CONST_TYPEID:
+		case CONST_REF:
+		case CONST_MEMBER:
+			UNREACHABLE
+		case CONST_BYTES:
+		case CONST_STRING:
+		{
+			uint8_t c = expr_const->bytes.ptr[index];
+			Type *indexed = type_get_indexed_type(expr->type);
+			return expr_new_const_int(expr->span, indexed, c);
+		}
+		case CONST_UNTYPED_LIST:
+			return copy_expr_single(expr_const->untyped_list[index]);
+		case CONST_SLICE:
+		{
+			Expr *val = expr_new_expr(EXPR_CONST, expr);
+			if (!expr_rewrite_to_const_initializer_index(expr->type, expr_const->slice_init, val, index, false)) return poisoned_expr;
+			return val;
+		}
+		case CONST_INITIALIZER:
+		{
+			Expr *val = expr_new_expr(EXPR_CONST, expr);
+			if (!expr_rewrite_to_const_initializer_index(expr->type, expr_const->initializer, val, index, false)) return poisoned_expr;
+			return val;
+		}
+	}
+	UNREACHABLE
+}
 bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *list, Expr *result, unsigned index, bool from_back)
 {
 	ConstInitializer *initializer = initializer_for_index(list, index, from_back);
@@ -716,6 +755,7 @@ bool expr_rewrite_to_const_initializer_index(Type *list_type, ConstInitializer *
 		case CONST_INIT_ARRAY_VALUE:
 			return false;
 		case CONST_INIT_VALUE:
+			assert(initializer);
 			expr_replace(result, initializer->init_value);
 			return true;
 	}

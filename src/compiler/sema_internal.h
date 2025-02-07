@@ -20,6 +20,7 @@
 #define SEMA_WARN(_node, ...) (sema_warn_at(context, (_node)->span, __VA_ARGS__))
 #define SEMA_ERROR(_node, ...) sema_error_at(context, (_node)->span, __VA_ARGS__)
 #define RETURN_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return false; } while (0)
+#define RETURN_NULL_SEMA_ERROR(_node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); return NULL; } while (0)
 #define RETURN_SEMA_ERROR_AT(span__, ...) do { sema_error_at(context, span__, __VA_ARGS__); return false; } while (0)
 #define SCOPE_OUTER_START do { DynamicScope stored_scope = context->active_scope; context_change_scope_with_flags(context, SCOPE_NONE);
 #define SCOPE_OUTER_END ASSERT(context->active_scope.defer_last == context->active_scope.defer_start); context->active_scope = stored_scope; } while(0)
@@ -97,10 +98,9 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 
-bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional,
-                                  bool *no_match_ref);
+bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref);
-Expr *sema_ct_eval_expr(SemaContext *context, bool is_type, Expr *inner, bool report_missing);
+Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 
 bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member);
@@ -112,16 +112,16 @@ Expr *sema_create_struct_from_expressions(Decl *struct_decl, SourceSpan span, Ex
 ConstInitializer *sema_merge_bitstruct_const_initializers(ConstInitializer *lhs, ConstInitializer *rhs, BinaryOp op);
 void sema_invert_bitstruct_const_initializer(ConstInitializer *initializer);
 ArrayIndex sema_len_from_const(Expr *expr);
-void cast_promote_vararg(SemaContext *context, Expr *arg);
+void cast_promote_vararg(Expr *arg);
 Type *cast_numeric_arithmetic_promotion(Type *type);
-void cast_to_int_to_max_bit_size(SemaContext *context, Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
+void cast_to_int_to_max_bit_size(Expr *lhs, Expr *rhs, Type *left_type, Type *right_type);
 bool sema_decl_if_cond(SemaContext *context, Decl *decl);
 Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, const char *name, SourceSpan span,
                                             Expr **params, bool *was_recursive_ref);
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan use);
+INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right);
 
 
@@ -153,7 +153,7 @@ INLINE Attr* attr_find_kind(Attr **attrs, AttributeType attr_type)
 	return NULL;
 }
 
-INLINE void sema_display_deprecated_warning_on_use(SemaContext *context, Decl *decl, SourceSpan span)
+INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span)
 {
 	ASSERT(decl->resolve_status == RESOLVE_DONE);
 	if (!decl->resolved_attributes || !decl->attrs_resolved || !decl->attrs_resolved->deprecated) return;

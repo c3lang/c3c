@@ -158,6 +158,7 @@ Ast *parse_include_file_stmts(File *file, CompilationUnit *unit)
 			first = current = stmt;
 			continue;
 		}
+		assert(current);
 		current->next = astid(stmt);
 		current = stmt;
 	}

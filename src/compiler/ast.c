@@ -342,6 +342,15 @@ bool ast_is_compile_time(Ast *ast)
 			return expr_is_runtime_const(ast->return_stmt.expr);
 		case AST_EXPR_STMT:
 			return expr_is_runtime_const(ast->expr_stmt);
+		case AST_CT_COMPOUND_STMT:
+		{
+			AstId current = ast->ct_compound_stmt;
+			while (current)
+			{
+				if (!ast_is_compile_time(ast_next(&current))) return false;
+			}
+			return true;
+		}
 		case AST_COMPOUND_STMT:
 		{
 			AstId current = ast->compound_stmt.first_stmt;

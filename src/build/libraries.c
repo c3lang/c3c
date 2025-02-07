@@ -75,27 +75,28 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
                                         JSONObject *object)
 {
-	target->link_flags = get_string_array(library->dir, target_name, object, "link-args", false);
+	BuildParseContext context = { library->dir, target_name };
+	target->link_flags = get_string_array(context, object, "link-args", false);
 	if (!target->link_flags)
 	{
-		target->link_flags = get_string_array(library->dir, target_name, object, "linkflags", false);
+		target->link_flags = get_string_array(context, object, "linkflags", false);
 	}
-	target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libraries", false);
+	target->linked_libs = get_string_array(context, object, "linked-libraries", false);
 	if (!target->linked_libs)
 	{
-		target->linked_libs = get_string_array(library->dir, target_name, object, "linked-libs", false);
+		target->linked_libs = get_string_array(context, object, "linked-libs", false);
 	}
-	target->dependencies = get_string_array(library->dir, target_name, object, "dependencies", false);
-	target->execs = get_string_array(library->dir, target_name, object, "exec", false);
-	target->cc = get_string(library->dir, target_name, object, "cc", library->cc);
-	target->cflags = get_cflags(library->dir, target_name, object, library->cflags);
+	target->dependencies = get_string_array(context, object, "dependencies", false);
+	target->execs = get_string_array(context, object, "exec", false);
+	target->cc = get_string(context, object, "cc", library->cc);
+	target->cflags = get_cflags(context, object, library->cflags);
 	target->source_dirs = library->source_dirs;
 	target->csource_dirs = library->csource_dirs;
 	target->cinclude_dirs = library->cinclude_dirs;
-	target->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, target_name, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
-	get_list_append_strings(library->dir, target_name, object, &target->source_dirs, "sources", "sources-override", "sources-add");
-	get_list_append_strings(library->dir, target_name, object, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
-	get_list_append_strings(library->dir, target_name, object, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
+	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	get_list_append_strings(context, object, &target->source_dirs, "sources", "sources-override", "sources-add");
+	get_list_append_strings(context, object, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+	get_list_append_strings(context, object, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 }
 
 static Library *add_library(JSONObject *object, const char *dir)
@@ -103,7 +104,8 @@ static Library *add_library(JSONObject *object, const char *dir)
 	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, object, "library", "--list-manifest-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
-	const char *provides = get_mandatory_string(dir, NULL, object, "provides");
+	BuildParseContext context = { dir, NULL };
+	const char *provides = get_mandatory_string(context, object, "provides");
 	DEBUG_LOG("Added library %s", provides);
 	if (!str_is_valid_lowercase_name(provides))
 	{
@@ -112,14 +114,14 @@ static Library *add_library(JSONObject *object, const char *dir)
 		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir, res);
 	}
 	library->provides = provides;
-	library->execs = get_optional_string_array(library->dir, NULL, object, "exec");
-	library->dependencies = get_optional_string_array(library->dir, NULL, object, "dependencies");
-	library->cc = get_optional_string(dir, NULL, object, "cc");
-	library->cflags = get_cflags(library->dir, NULL, object, NULL);
-	library->win_crt = (WinCrtLinking)get_valid_string_setting(library->dir, NULL, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
-	get_list_append_strings(library->dir, NULL, object, &library->source_dirs, "sources", "sources-override", "sources-add");
-	get_list_append_strings(library->dir, NULL, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
-	get_list_append_strings(library->dir, NULL, object, &library->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
+	library->execs = get_optional_string_array(context, object, "exec");
+	library->dependencies = get_optional_string_array(context, object, "dependencies");
+	library->cc = get_optional_string(context, object, "cc");
+	library->cflags = get_cflags(context, object, NULL);
+	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	get_list_append_strings(context, object, &library->source_dirs, "sources", "sources-override", "sources-add");
+	get_list_append_strings(context, object, &library->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+	get_list_append_strings(context, object, &library->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
 	parse_library_type(library, &library->targets, json_map_get(object, "targets"));
 	return library;
 }
@@ -322,12 +324,12 @@ void resolve_libraries(BuildTarget *build_target)
 		FOREACH(const char *, exec, library->execs)
 		{
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
-			puts(execute_cmd(exec, false, NULL));
+			puts(execute_cmd(exec, false, NULL, 2048));
 		}
 		FOREACH(const char *, exec, target->execs)
 		{
 			printf("] Execute '%s' for library '%s':", exec, library->provides);
-			puts(execute_cmd(exec, false, NULL));
+			puts(execute_cmd(exec, false, NULL, 2048));
 		}
 	}
 }

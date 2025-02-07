@@ -1,4 +1,4 @@
-// Copyright (c) 2022 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2022-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by a LGPLv3.0
 // a copy of which can be found in the LICENSE file.
 
@@ -39,12 +39,10 @@ INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, 
 {
 	Expr **args = expr->call_expr.arguments;
 	unsigned count = vec_size(args);
-	LLVMValueRef arg1;
 	LLVMValueRef arg2;
-	LLVMValueRef mask;
 	llvm_emit_expr(c, result_value, args[0]);
 	llvm_value_rvalue(c, result_value);
-	arg1 = result_value->value;
+	LLVMValueRef arg1 = result_value->value;
 	unsigned mask_start = 1;
 	if (swizzle_two)
 	{
@@ -73,7 +71,6 @@ INLINE void llvm_emit_swizzle(GenContext *c, BEValue *result_value, Expr *expr, 
 	}
 	LLVMValueRef val = LLVMBuildShuffleVector(c->builder, arg1, arg2, LLVMConstVector(mask_val, mask_len), "shuffle");
 	llvm_value_set(result_value, val, expr->type);
-	return;
 }
 
 static LLVMAtomicOrdering ordering_to_llvm(int value)
@@ -121,7 +118,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 	llvm_value_set(result_value, llvm_emit_extract_value(c, result, 0), type);
 }
 
-INLINE void llvm_emit_unreachable_stmt(GenContext *c, BEValue *result_value, Expr *expr)
+INLINE void llvm_emit_unreachable_stmt(GenContext *c, BEValue *result_value)
 {
 	llvm_value_set(result_value, LLVMBuildUnreachable(c->builder), type_void);
 	c->current_block = NULL;
@@ -180,8 +177,8 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 	bool is_float = type_is_float(result_value->type);
 	bool is_unsigned = !is_float && type_is_unsigned(result_value->type);
 	LLVMAtomicRMWBinOp op;
-	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUIncWrap = LLVMAtomicRMWBinOpFMin + 1;
-	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUDecWrap = LLVMAtomicRMWBinOpFMin + 2;
+	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUIncWrap = LLVMAtomicRMWBinOpFMin + 1; // NOLINT
+	static LLVMAtomicRMWBinOp LLVMAtomicRMWBinOpUDecWrap = LLVMAtomicRMWBinOpFMin + 2; // NOLINT
 	switch (func)
 	{
 		case BUILTIN_ATOMIC_FETCH_EXCHANGE:
@@ -250,7 +247,7 @@ INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr 
 	llvm_value_rvalue(c, result_value);
 }
 
-static inline LLVMValueRef llvm_syscall_asm(GenContext *c, LLVMTypeRef func_type, char *call)
+static inline LLVMValueRef llvm_syscall_asm(LLVMTypeRef func_type, char *call)
 {
 	return LLVMGetInlineAsm(func_type, call, strlen(call),
 							scratch_buffer_to_string(), scratch_buffer.len,
@@ -301,7 +298,7 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 				static char const *regs[] = { "x8", "x0", "x1", "x2", "x3", "x4", "x5" };
 				llvm_syscall_write_regs_to_scratch(regs, arguments);
 			}
-			inline_asm = llvm_syscall_asm(c, func_type, "svc #0x80");
+			inline_asm = llvm_syscall_asm(func_type, "svc #0x80");
 			break;
 		case ARCH_TYPE_X86:
 		{
@@ -313,10 +310,10 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 			{
 				scratch_buffer_append(",rm");
 				char *asm_str = "push %[arg6]\npush %%ebp\nmov 4(%%esp), %%ebp\nint $0x80\npop %%ebp\nadd $4, %%esp";
-				inline_asm = llvm_syscall_asm(c, func_type, asm_str);
+				inline_asm = llvm_syscall_asm(func_type, asm_str);
 				break;
 			}
-			inline_asm = llvm_syscall_asm(c, func_type, "int $0x80");
+			inline_asm = llvm_syscall_asm(func_type, "int $0x80");
 			break;
 		}
 		case ARCH_TYPE_X86_64:
@@ -328,7 +325,7 @@ static inline void llvm_emit_syscall(GenContext *c, BEValue *be_value, Expr *exp
 			}
 			// Check clobbers on different OSes
 			scratch_buffer_append(",~{rcx},~{r11},~{memory}");
-			inline_asm = llvm_syscall_asm(c, func_type, "syscall");
+			inline_asm = llvm_syscall_asm(func_type, "syscall");
 			break;
 		case ARCH_UNSUPPORTED:
 		default:
@@ -455,7 +452,7 @@ void llvm_emit_int_with_bool_builtin(GenContext *c, unsigned intrinsic, BEValue 
 	Expr **args = expr->call_expr.arguments;
 	LLVMValueRef arg_slots[2];
 	llvm_emit_intrinsic_args(c, args, arg_slots, 1);
-	arg_slots[1] = llvm_get_zero_raw(c->bool_type);
+	arg_slots[1] = LLVMConstInt(c->bool_type, bool_val ? 1 : 0, false);
 	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, 2);
 	llvm_value_set(be_value, result, expr->type);
@@ -479,7 +476,7 @@ void llvm_emit_3_variant_builtin(GenContext *c, BEValue *be_value, Expr *expr, u
 	LLVMValueRef arg_slots[3];
 	unsigned intrinsic = llvm_intrinsic_by_type(args[0]->type, sid, uid, fid);
 	llvm_emit_intrinsic_args(c, args, arg_slots, count);
-	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) };
+	LLVMTypeRef call_type[1] = { LLVMTypeOf(arg_slots[0]) }; // NOLINT
 	LLVMValueRef result = llvm_emit_call_intrinsic(c, intrinsic, call_type, 1, arg_slots, count);
 	llvm_value_set(be_value, result, expr->type);
 }
@@ -639,7 +636,6 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 	Type *base_type = type_lowering(args[0]->type);
 	if (base_type->type_kind == TYPE_VECTOR) base_type = base_type->array.base;
 	ASSERT(type_is_integer(base_type));
-	bool is_signed = type_is_signed(base_type);
 	LLVMValueRef res;
 	switch (func)
 	{
@@ -685,15 +681,13 @@ static void llvm_emit_wrap_builtin(GenContext *c, BEValue *result_value, Expr *e
 void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	BuiltinFunction func = exprptr(expr->call_expr.function)->builtin_expr.builtin;
-	unsigned intrinsic;
-	LLVMValueRef val = NULL;
 	switch (func)
 	{
 		case BUILTIN_ANY_MAKE:
 			// Folded in the frontend.
 			UNREACHABLE
 		case BUILTIN_UNREACHABLE:
-			llvm_emit_unreachable_stmt(c, result_value, expr);
+			llvm_emit_unreachable_stmt(c, result_value);
 			return;
 		case BUILTIN_SWIZZLE:
 			llvm_emit_swizzle(c, result_value, expr, false);
@@ -708,7 +702,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 			{
 				llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
 				llvm_value_rvalue(c, result_value);
-				LLVMValueRef res = llvm_emit_call_intrinsic(c, func == BUILTIN_FRAMEADDRESS ? intrinsic_id.frameaddress : intrinsic_id.returnaddress, &c->ptr_type, 1, &result_value->value, 1);
+				LLVMValueRef res = llvm_emit_call_intrinsic(c, intrinsic_id.frameaddress, &c->ptr_type, 1, &result_value->value, 1);
 				llvm_value_set(result_value, res, expr->type);
 				return;
 			}
@@ -716,8 +710,7 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		{
 			llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
 			llvm_value_rvalue(c, result_value);
-			LLVMTypeRef type = LLVMTypeOf(result_value->value);
-			LLVMValueRef res = llvm_emit_call_intrinsic(c, func == BUILTIN_FRAMEADDRESS ? intrinsic_id.frameaddress : intrinsic_id.returnaddress, NULL, 0, &result_value->value, 1);
+			LLVMValueRef res = llvm_emit_call_intrinsic(c, intrinsic_id.returnaddress, NULL, 0, &result_value->value, 1);
 			llvm_value_set(result_value, res, expr->type);
 			return;
 		}

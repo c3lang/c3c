@@ -53,7 +53,7 @@ bool llvm_emit_check_block_branch(GenContext *c)
 		return false;
 	}
 	return true;
-};
+}
 
 void llvm_emit_br(GenContext *c, LLVMBasicBlockRef next_block)
 {
@@ -84,7 +84,7 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 				LLVMValueRef target = llvm_emit_array_gep_raw(c, ref, array_type, i, alignment, &element_align);
 				llvm_expand_from_args(c, type->array.base, target, index, element_align);
 			}
-			return;
+			break;
 		}
 		case TYPE_STRUCT:
 		{
@@ -95,18 +95,18 @@ static void llvm_expand_from_args(GenContext *c, Type *type, LLVMValueRef ref, u
 				LLVMValueRef target = llvm_emit_struct_gep_raw(c, ref, struct_type, i, alignment, &element_align);
 				llvm_expand_from_args(c, member->type, target, index, element_align);
 			}
-			return;
+			break;
 		}
 		case TYPE_UNION:
 		{
 			Type *largest_type = type_find_largest_union_element(type);
 			// COERCE UPDATE bitcast removed, check for ways to optimize
 			llvm_expand_from_args(c, largest_type, ref, index, alignment);
-			return;
+			break;
 		}
 		default:
 			llvm_store_to_ptr_raw_aligned(c, ref, llvm_get_next_param(c, index), alignment);
-			return;
+			break;
 	}
 }
 
@@ -338,6 +338,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		case ABI_ARG_EXPAND_COERCE:
 		{
 			// Pick the return as an address.
+			assert(return_value);
 			llvm_value_addr(c, return_value);
 			LLVMValueRef addr = return_value->value;
 			AlignSize align = return_value->alignment;
@@ -352,7 +353,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 
 			// And return that unpadded result
 			llvm_emit_return_value(c, composite);
-			break;
+			return;
 		}
 		case ABI_ARG_DIRECT:
 DIRECT_RETURN:
@@ -381,6 +382,7 @@ DIRECT_RETURN:
 			return;
 		}
 	}
+	UNREACHABLE
 }
 
 void llvm_emit_return_implicit(GenContext *c)
@@ -468,7 +470,7 @@ void llvm_emit_body(GenContext *c, LLVMValueRef function, FunctionPrototype *pro
 	if (emit_debug)
 	{
 		scope = (DebugScope) { .lexical_block = c->debug.function, NULL, NULL };
-		c->debug.block_stack = &scope;
+		c->debug.block_stack = &scope; // NOLINT
 		EMIT_LOC(c, body);
 	}
 

@@ -91,7 +91,6 @@ int main_real(int argc, const char *argv[])
 		case COMMAND_BUILD:
 		case COMMAND_RUN:
 		case COMMAND_DIST:
-		case COMMAND_DOCS:
 		case COMMAND_BENCH:
 		case COMMAND_BENCHMARK:
 		case COMMAND_TEST:

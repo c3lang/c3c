@@ -273,7 +273,6 @@ static inline void emit_members(FILE *file, Decl **members, int indent)
 		PRINT("\t\t\t\t\t]\n");
 		print_indent(file, indent);
 		PRINTF("\t\t\t\t}");
-		continue;
 	}
 
 }

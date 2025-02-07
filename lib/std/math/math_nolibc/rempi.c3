@@ -238,8 +238,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 				{
 					/* add q[jz+1] to q[jz+k] */
 					f[jx + i] = (double)IPIO2[jv + i];
-					for (j = 0, fw = 0.0; j <= jx; j++)
-					fw += x[j] * f[jx + i - j];
+					for (j = 0, fw = 0.0; j <= jx; j++) fw += x[j] * f[jx + i - j];
 					q[i] = fw;
 				}
 				jz += k;
@@ -303,8 +302,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 		case 1:
 		case 2:
 			fw = 0.0;
-			for (int i = jz; i >= 0; i--)
-			fw += fq[i];
+			for (int i = jz; i >= 0; i--) fw += fq[i];
 			// TODO: drop excess precision here once double_t is used
 			fw = (double)fw;
 			y[0] = ih == 0 ? fw : -fw;
@@ -324,8 +322,7 @@ fn int __rem_pio2_large(double* x, double* y, int e0, int nx, int prec)
 				fq[i] += fq[i - 1] - fw;
 				fq[i - 1] = fw;
 			}
-			for (fw = 0.0, int i = jz; i >= 2; i--)
-			fw += fq[i];
+			for (fw = 0.0, int i = jz; i >= 2; i--) fw += fq[i];
 			if (ih == 0)
 			{
 				y[0] = fq[0];

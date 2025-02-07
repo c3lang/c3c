@@ -184,12 +184,12 @@ macro new_try(Allocator allocator, $Type, ...) @nodiscard
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
 *>
-macro new_aligned($Type, ...) @nodiscard
+macro new_aligned(Allocator allocator, $Type, ...) @nodiscard
 {
 	$if $vacount == 0:
 		return ($Type*)calloc_aligned(allocator, $Type.sizeof, $Type.alignof);
 	$else
-		$Type* val = malloc_aligned(allocator, $Type.sizeof, $Type.alignof);
+		$Type* val = malloc_aligned(allocator, $Type.sizeof, $Type.alignof)!;
 		*val = $vaexpr[0];
 		return val;
 	$endif

@@ -27,6 +27,25 @@ macro promote_int(x)
 	$endif
 }
 
+<*
+ Select between two values at compile time,
+ the values do not have to be of the same type.
+
+ This acts like `$bool ? #value_1 : #value_2` but at compile time.
+
+ @param $bool `true for picking the first value, false for the other`
+ @param #value_1
+ @param #value_2
+ @returns `The selected value.`
+*>
+macro @select(bool $bool, #value_1, #value_2) @builtin
+{
+	$if $bool:
+		return #value_1;
+	$else
+		return #value_2;
+	$endif
+}
 macro promote_int_same(x, y)
 {
 	$if @is_int(x):

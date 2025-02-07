@@ -80,7 +80,6 @@ bool command_accepts_files(CompilerCommand command)
 		case COMMAND_CLEAN_RUN:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_DOCS:
 		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_BENCHMARK:
@@ -115,7 +114,6 @@ bool command_passes_args(CompilerCommand command)
 		case COMMAND_BUILD:
 		case COMMAND_CLEAN:
 		case COMMAND_DIST:
-		case COMMAND_DOCS:
 		case COMMAND_BENCH:
 		case COMMAND_PRINT_SYNTAX:
 		case COMMAND_VENDOR_FETCH:
@@ -273,13 +271,29 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		case COMMAND_BENCHMARK:
 			target->run_after_compile = true;
 			target->type = TARGET_TYPE_BENCHMARK;
-			target->args = options->args;
 			break;
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:
 			target->run_after_compile = true;
 			target->type = TARGET_TYPE_TEST;
-			target->args = options->args;
+			switch (options->ansi)
+			{
+				case ANSI_ON:
+					vec_add(target->args, "useansi");
+					break;
+				case ANSI_OFF:
+					vec_add(target->args, "noansi");
+					break;
+				default:
+					break;
+			}
+			if (options->test_filter)
+			{
+				vec_add(target->args, "filter");
+				vec_add(target->args, options->test_filter);
+			}
+			if (options->test_breakpoint) vec_add(target->args, "breakpoint");
+			if (options->test_nosort) vec_add(target->args, "nosort");
 			break;
 		case COMMAND_RUN:
 		case COMMAND_COMPILE_RUN:

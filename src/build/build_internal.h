@@ -9,6 +9,12 @@
 
 typedef struct
 {
+	const char *file;
+	const char *target;
+} BuildParseContext;
+
+typedef struct
+{
 	BuildTarget **targets;
 } Project;
 
@@ -105,6 +111,11 @@ static const char *validation_levels[3] = {
 	[VALIDATION_OBNOXIOUS] = "obnoxious",
 };
 
+static const char *ansi_use[2] = {
+	[ANSI_OFF] = "off",
+	[ANSI_ON] = "on",
+};
+
 static const char *backtrace_levels[2] = {
 	[SHOW_BACKTRACE_OFF] = "off",
 	[SHOW_BACKTRACE_ON] = "on",
@@ -129,17 +140,16 @@ JSONObject *project_json_load(const char **filename_ref);
 Project *project_load(const char **filename_ref);
 BuildTarget *project_select_target(const char *filename, Project *project, const char *optional_target);
 
-const char *get_string(const char *file, const char *category, JSONObject *table, const char *key,
-	const char *default_value);
-int get_valid_bool(const char *file, const char *target, JSONObject *json, const char *key, int default_val);
-const char *get_optional_string(const char *file, const char *category, JSONObject *table, const char *key);
-const char *get_mandatory_string(const char *file, const char *category, JSONObject *object, const char *key);
-const char **get_string_array(const char *file, const char *category, JSONObject *table, const char *key, bool mandatory);
-const char **get_optional_string_array(const char *file, const char *target, JSONObject *table, const char *key);
-const char *get_cflags(const char *file, const char *target, JSONObject *json, const char *original_flags);
-void get_list_append_strings(const char *file, const char *target, JSONObject *json, const char ***list_ptr,
+const char *get_string(BuildParseContext context, JSONObject *table, const char *key, const char *default_value);
+int get_valid_bool(BuildParseContext context, JSONObject *json, const char *key, int default_val);
+const char *get_optional_string(BuildParseContext context, JSONObject *table, const char *key);
+const char *get_mandatory_string(BuildParseContext context, JSONObject *object, const char *key);
+const char **get_string_array(BuildParseContext context, JSONObject *table, const char *key, bool mandatory);
+const char **get_optional_string_array(BuildParseContext context, JSONObject *table, const char *key);
+const char *get_cflags(BuildParseContext context, JSONObject *json, const char *original_flags);
+void get_list_append_strings(BuildParseContext context, JSONObject *json, const char ***list_ptr,
 	const char *base, const char *override, const char *add);
-int get_valid_string_setting(const char *file, const char *target, JSONObject *json, const char *key, const char **values, int first_result, int count, const char *expected);
+int get_valid_string_setting(BuildParseContext context, JSONObject *json, const char *key, const char **values, int first_result, int count, const char *expected);
 int get_valid_enum_from_string(const char *str, const char *target, const char **values, int count, const char *expected);
 void check_json_keys(const char *valid_keys[][2], size_t key_count, const char *deprecated_keys[], size_t deprecated_key_count, JSONObject *json, const char *target_name, const char *option);
-long get_valid_integer(JSONObject *table, const char *key, const char *category, bool mandatory);
+long get_valid_integer(BuildParseContext context, JSONObject *table, const char *key, bool mandatory);

@@ -150,9 +150,10 @@ static bool sema_find_decl_in_imports(SemaContext *context, NameResolve *name_re
 		// Is the decl in the import.
 		Decl *found = sema_find_decl_in_module(import->import.module, path, symbol, &name_resolve->path_found);
 
+		if (!decl_ok(found)) return false;
+
 		// No match, so continue
 		if (!found) continue;
-
 		ASSERT(found->visibility != VISIBLE_LOCAL);
 
 		if (found->visibility != VISIBLE_PUBLIC)
@@ -403,8 +404,8 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 static bool sema_resolve_path_symbol(SemaContext *context, NameResolve *name_resolve)
 {
 	Path *path = name_resolve->path;
+	ASSERT(path);
 	name_resolve->ambiguous_other_decl = NULL;
-	Decl *decl = NULL;
 	name_resolve->path_found = NULL;
 	name_resolve->found = NULL;
 	ASSERT(name_resolve->path && "Expected path.");
@@ -588,7 +589,6 @@ static int module_closest_ident_names(Module *module, const char *name, Decl* ma
 {
 	matches[0] = matches[1] = matches[2] = NULL;
 
-	Decl *best = NULL;
 	int count = 0;
 	int len = strlen(name);
 	int distance = MAX(1, (int)(len * 0.8));
@@ -615,11 +615,10 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 			sema_error_at(context, span, "The %s '%s::%s' is '@private' and not visible from other modules.",
 			              private_name, path_name,
 			              symbol);
-		} else
-		{
-			sema_error_at(context, span, "The %s '%s' is '@private' and not visible from other modules.",
-			              private_name, symbol);
+			return;
 		}
+		sema_error_at(context, span, "The %s '%s' is '@private' and not visible from other modules.",
+		              private_name, symbol);
 		return;
 	}
 	if (!found && name_resolve->maybe_decl)
@@ -637,12 +636,10 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		{
 			sema_error_at(context, span, "Did you mean the %s '%s::%s' in module %s? If so please add 'import %s'.",
 			              maybe_name, module_name, symbol, module_name, module_name);
-
-		} else
-		{
-			sema_error_at(context, span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
-			              maybe_name, symbol, module_name, module_name);
+			return;
 		}
+		sema_error_at(context, span, "Did you mean the %s '%s' in module %s? If so please add 'import %s'.",
+		              maybe_name, symbol, module_name, module_name);
 		return;
 	}
 
@@ -812,7 +809,7 @@ Decl *sema_resolve_method_in_module(Module *module, Type *actual_type, const cha
 		*private_found = found;
 		found = NULL;
 	}
-	ASSERT(!found || found->visibility != VISIBLE_LOCAL);
+	assert(!found || found->visibility != VISIBLE_LOCAL);
 	if (found && search_type == METHOD_SEARCH_CURRENT) return found;
 	// We are now searching submodules, so hide the private ones.
 	if (search_type == METHOD_SEARCH_CURRENT) search_type = METHOD_SEARCH_SUBMODULE_CURRENT;
@@ -851,7 +848,7 @@ Decl *sema_resolve_method(CompilationUnit *unit, Decl *type, const char *method_
 	return sema_resolve_type_method(unit, type->type, method_name, ambiguous_ref, private_ref);
 }
 
-UNUSED bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
+bool sema_check_type_variable_array(SemaContext *context, TypeInfo *type_info)
 {
 	if (!type_info_ok(type_info)) return false;
 	Type *type = type_info->type;

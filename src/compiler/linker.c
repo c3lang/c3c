@@ -370,10 +370,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 			add_plain_arg("-nostdlib");
 			return;
 		}
-		else
-		{
-			linking_add_link(&compiler.linking, "m");
-		}
+		linking_add_link(&compiler.linking, "m");
 		if (compiler.build.debug_info == DEBUG_INFO_FULL)
 		{
 			add_plain_arg("-rdynamic");
@@ -391,7 +388,7 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 		if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 		if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	}
-	if (compiler.platform.arch == ARCH_TYPE_X86_64) add_plain_arg("--eh-frame-hdr");
+	add_plain_arg("--eh-frame-hdr");
 	if (!link_libc()) return;
 	const char *crt_begin_dir = find_linux_crt_begin();
 	const char *crt_dir = find_linux_crt();
@@ -417,7 +414,6 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	}
 	add_concat_file_arg(crt_dir, "crtn.o");
 	add_concat_quote_arg("-L", crt_dir);
-	add_plain_arg("-L/usr/lib/x86_64-linux-gnu/libdl.so");
 	add_plain_arg("--dynamic-linker=/lib64/ld-linux-x86-64.so.2");
 	linking_add_link(&compiler.linking, "m");
 	linking_add_link(&compiler.linking, "pthread");
@@ -437,7 +433,7 @@ static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, boo
 	}
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
-	if (compiler.platform.arch == ARCH_TYPE_X86_64) add_plain_arg("--eh-frame-hdr");
+	add_plain_arg("--eh-frame-hdr");
 
 	if (!link_libc()) return;
 
@@ -651,9 +647,6 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 			UNREACHABLE
 		case RELOC_NONE:
 			add_plain_arg("-fno-pic");
-			add_plain_arg("-fno-pie");
-			add_plain_arg("-fno-PIC");
-			add_plain_arg("-fno-PIE");
 			break;
 		case RELOC_SMALL_PIC:
 			add_plain_arg("-fpic");
@@ -663,11 +656,9 @@ static void append_fpie_pic_options(RelocModel reloc, const char ***args_ref)
 			break;
 		case RELOC_SMALL_PIE:
 			add_plain_arg("-fpie");
-			add_plain_arg("-fpic");
 			break;
 		case RELOC_BIG_PIE:
 			add_plain_arg("-fPIE");
-			add_plain_arg("-fPIC");
 			break;
 	}
 }
@@ -867,7 +858,6 @@ void platform_linker(const char *output_file, const char **files, unsigned file_
 	{
 		INFO_LOG("Using cc linker.");
 		vec_add(parts, compiler.build.cc ? compiler.build.cc : default_c_compiler());
-		append_fpie_pic_options(compiler.platform.reloc_model, &parts);
 	}
 
 	linker_setup(&parts, files, file_count, output_file, linker_type, &compiler.linking);
@@ -917,7 +907,7 @@ const char *cc_compiler(const char *cc, const char *file, const char *flags, con
 	}
 	const char *out_name = dir
 	                      ? str_printf("%s/%s%s", dir, filename, get_object_extension())
-	                      : str_printf("%s%s", filename, get_object_extension());;
+	                      : str_printf("%s%s", filename, get_object_extension());
 	const char **parts = NULL;
 	const char ***args_ref = &parts;
 	add_quote_arg(cc);

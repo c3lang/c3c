@@ -23,6 +23,20 @@ struct List (Printable)
  @param initial_capacity "The initial capacity to reserve"
  @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
 *>
+fn List* List.init(&self, usz initial_capacity = 16, Allocator allocator)
+{
+	self.allocator = allocator;
+	self.size = 0;
+	self.capacity = 0;
+	self.entries = null;
+	self.reserve(initial_capacity);
+	return self;
+}
+
+<*
+ @param initial_capacity "The initial capacity to reserve"
+ @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+*>
 fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	self.allocator = allocator;
@@ -40,7 +54,7 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 *>
 fn List* List.temp_init(&self, usz initial_capacity = 16)
 {
-	return self.new_init(initial_capacity, allocator::temp()) @inline;
+	return self.init(initial_capacity, allocator::temp()) @inline;
 }
 
 <*

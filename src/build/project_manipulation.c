@@ -13,7 +13,7 @@ const char** get_project_dependency_directories()
 
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
-	get_list_append_strings(filename, target, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	get_list_append_strings((BuildParseContext) { filename, target }, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
 
 	return deps_dirs;
 }
@@ -111,93 +111,93 @@ const char *debug_levels[] = {
 
 #define VIEW_MANDATORY_STRING_ARRAY(header, key, delim) \
 do { \
-	const char** arr = get_string_array(filename, NULL, project_json, key, true);\
+	const char** arr = get_string_array(context, project_json, key, true);\
 	print_vec(header, arr, false, delim);\
 } while(0)
 
 #define VIEW_STRING_ARRAY(header, key, delim) \
 do { \
-	const char** arr = get_optional_string_array(filename, NULL, project_json, key);\
+	const char** arr = get_optional_string_array(context, project_json, key);\
 	print_vec(header, arr, true, delim);\
 } while(0)
 
 #define VIEW_MANDATORY_STRING(header, key) \
 do { \
-	const char* str = get_mandatory_string(filename, NULL, project_json, key);\
+	const char* str = get_mandatory_string(context, project_json, key);\
 	print_opt_str(header, str);\
 } while(0)
 
 #define VIEW_STRING(header, key) \
 do { \
-	const char* str = get_optional_string(filename, NULL, project_json, key);\
+	const char* str = get_optional_string(context, project_json, key);\
 	print_opt_str(header, str);\
 } while(0)
 
 #define VIEW_SETTING(header, key, expected_arr) \
 do { \
-	int setting = get_valid_string_setting(filename, NULL, project_json, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
+	int setting = get_valid_string_setting(context, project_json, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
  	print_opt_setting(header, setting, expected_arr);\
 } while(0)
 
 #define VIEW_BOOL(header, key) \
 do {\
-    int val = get_valid_bool(filename, NULL, project_json, key, -1);\
+    int val = get_valid_bool(context, project_json, key, -1);\
 	print_opt_bool(header, val);\
 } while(0)
 
 #define VIEW_INTEGER(header, key) \
 do {\
-	long v = get_valid_integer(project_json, key, filename, false);\
+	long v = get_valid_integer(context, project_json, filename, false);\
     print_opt_int(header, v);\
 } while(0);
 
 #define TARGET_VIEW_STRING_ARRAY(header, key, delim) \
 do {\
-    const char** arr = get_optional_string_array(filename, name, target, key);\
+    const char** arr = get_optional_string_array(context, target, key);\
 	print_vec("\t" header, arr, true, delim);\
 } while(0)
 
 #define TARGET_VIEW_MANDATORY_STRING(header, key) \
 do { \
-	const char* str = get_mandatory_string(filename, name, target, key);\
+	const char* str = get_mandatory_string(context, target, key);\
 	print_opt_str("\t" header, str);\
 } while(0)
 
 #define TARGET_VIEW_STRING(header, key) \
 do { \
-	const char* str = get_optional_string(filename, name, target, key);\
+	const char* str = get_optional_string(context, target, key);\
 	print_opt_str("\t" header, str);\
 } while(0)
 
 
 #define TARGET_VIEW_SETTING(header, key, expected_arr) \
 do { \
-	int setting = get_valid_string_setting(filename, name, target, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
+	int setting = get_valid_string_setting(context, target, key, expected_arr, 0, ELEMENTLEN(expected_arr), generate_expected(expected_arr, ELEMENTLEN(expected_arr)));\
  	print_opt_setting("\t" header, setting, expected_arr);\
 } while(0)
 
 #define TARGET_VIEW_BOOL(header, key) \
 do {\
-    int val = get_valid_bool(filename, name, target, key, -1);\
+    int val = get_valid_bool(context, target, key, -1);\
 	print_opt_bool("\t" header, val);\
 } while(0)
 
 #define TARGET_VIEW_INTEGER(header, key) \
 do {\
-	long v = get_valid_integer(target, key, name, false);\
+	long v = get_valid_integer(context, target, key, false);\
     print_opt_int("\t" header, v);\
 } while(0);
 
-static void view_target(const char *filename, const char *name, JSONObject *target, bool verbose)
+static void view_target(BuildParseContext context, JSONObject *target, bool verbose)
 {
 	if (!verbose)
 	{
-		PRINTFN("%s", name);
+		PRINTFN("%s", context.target);
 		return;
 	}
 	/* General target information */
-	PRINTFN("- %s", name);
-	print_opt_str("\tName", name);
+	PRINTFN("- %s", context.target);
+	print_opt_str("\tName", context.target);
 	TARGET_VIEW_MANDATORY_STRING("Type", "type");
 	TARGET_VIEW_STRING("Target language target", "langrev");
 	TARGET_VIEW_STRING("Target output name", "name");
@@ -296,7 +296,7 @@ void fetch_project(BuildOptions* options)
 				error_exit("Invalid data in target '%s'", key);
 			}
 
-			const char **target_deps = get_optional_string_array(filename, key, target, "dependencies");
+			const char **target_deps = get_optional_string_array((BuildParseContext) { filename, key }, target, "dependencies");
 
 			FOREACH(const char*, dep, target_deps)
 			{
@@ -315,7 +315,7 @@ void fetch_project(BuildOptions* options)
 			{
 				vec_pop(deps);
 				break;
-			};
+			}
 
 			printf("Fetching missing library '%s'...", dep);
 			fflush(stdout);
@@ -424,7 +424,7 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 {
 	uint16_t bitvector = build_options->project_options.view_modifier.flags_bitvector;
 	bool verbose = build_options->project_options.view_modifier.verbose;
-
+	BuildParseContext context = { filename, NULL };
 	const char* delim = verbose ? ", " : "\n";
 	char* prop_header;
 
@@ -504,7 +504,7 @@ static void view_filtered_project_properties(BuildOptions *build_options, const 
 			{
 				error_exit("Invalid data in target '%s'", key);
 			}
-			view_target(filename, key, object, verbose);
+			view_target((BuildParseContext) { filename, key }, object, verbose);
 		}
 	}
 }
@@ -522,6 +522,7 @@ void view_project(BuildOptions *build_options)
 		return;
 	}
 
+	BuildParseContext context = { filename, NULL };
 	/* General information */
 	VIEW_MANDATORY_STRING_ARRAY("Authors", "authors", ", ");
 	VIEW_MANDATORY_STRING("Version", "version");
@@ -592,6 +593,6 @@ void view_project(BuildOptions *build_options)
 		{
 			error_exit("Invalid data in target '%s'", key);
 		}
-		view_target(filename, key, object, true);
+		view_target((BuildParseContext) {filename, key }, object, true);
 	}
 }
