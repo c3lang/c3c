@@ -98,10 +98,9 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 
-bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool optional,
-                                  bool *no_match_ref);
+bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl, bool call_var_optional, bool *no_match_ref);
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref);
-Expr *sema_ct_eval_expr(SemaContext *context, bool is_type, Expr *inner, bool report_missing);
+Expr *sema_ct_eval_expr(SemaContext *context, bool is_type_eval, Expr *inner, bool report_missing);
 bool sema_analyse_asm(SemaContext *context, AsmInlineBlock *block, Ast *asm_stmt);
 
 bool sema_bit_assignment_check(SemaContext *context, Expr *right, Decl *member);
@@ -122,7 +121,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 Type *sema_resolve_type_get_func(Signature *signature, CallABI abi);
 INLINE bool sema_set_abi_alignment(SemaContext *context, Type *type, AlignSize *result);
 INLINE bool sema_set_alloca_alignment(SemaContext *context, Type *type, AlignSize *result);
-INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan use);
+INLINE void sema_display_deprecated_warning_on_use(Decl *decl, SourceSpan span);
 bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *left, Expr *right);
 
 
