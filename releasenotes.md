@@ -45,6 +45,7 @@
 - Bug when indexing into a constant array at compile time.
 - Fixing various issues around shifts, like `z <<= { 1, 2 }`.
 - `return (any)&foo` would not be reported as an escaping variable if `foo` was a pointer or slice.
+- Incorrect error message when providing too many associated values for enum #1934.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

@@ -1471,8 +1471,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	// Require an integer type
 	if (!type_is_integer(flat_underlying_type))
 	{
-		SEMA_ERROR(decl->enums.type_info, "The enum type must be an integer type not '%s'.", type_to_error_string(type));
-		return false;
+		RETURN_SEMA_ERROR(decl->enums.type_info, "The enum type must be an integer type not '%s'.", type_to_error_string(type));
 	}
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
@@ -1518,8 +1517,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (enums == 1)
 			{
-				SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
-				return decl_poison(decl);
+				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
 			}
 			vec_erase_at(enum_values, i);
 			enums--;
@@ -1542,11 +1540,10 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		Int val = (Int){ value, flat_underlying_type->type_kind };
 		if (!int_fits(val, flat_underlying_type->type_kind))
 		{
-			SEMA_ERROR(enum_value,
-					   "The enum value would implicitly be %s which does not fit in %s.",
-					   i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
-					   type_quoted_error_string(type));
-			return false;
+			RETURN_SEMA_ERROR(enum_value,
+			                  "The enum value would implicitly be %s which does not fit in %s.",
+			                  i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
+			                  type_quoted_error_string(type));
 		}
 		enum_value->enum_constant.ordinal = value.low;
 
@@ -1559,14 +1556,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "No associated values are defined for this enum.");
+				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
 			}
-			RETURN_SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
+			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
 		if (arg_count < associated_value_count)
 		{
-			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value(s) for this enum.", associated_value_count);
-			return false;
+			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value%s for this enum value.", associated_value_count, associated_value_count != 1 ? "s" : "");
 		}
 		for (unsigned j = 0; j < arg_count; j++)
 		{
@@ -1575,8 +1571,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false, NULL, false)) return false;
 			if (!expr_is_runtime_const(arg))
 			{
-				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
-				return false;
+				RETURN_SEMA_ERROR(arg, "Associated values must be constant expressions.");
 			}
 		}
 		enum_value->resolve_status = RESOLVE_DONE;
