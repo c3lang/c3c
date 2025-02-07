@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -30,7 +30,7 @@ void append_arg(BuildOptions *build_options);
 static bool arg_match(const char *candidate);
 static void parse_optional_target(BuildOptions *options);
 static void add_linker_arg(BuildOptions *options, const char *arg);
-static void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
+static void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add);
 static void print_all_targets(void);
 static int parse_option_select(const char *start, unsigned count, const char **elements);
 static void print_cmd(const char *command, const char *desc);
@@ -39,7 +39,6 @@ static void print_opt(const char *option, const char *desc);
 #define parse_opt_select(type_, start_, elements_) (type_)parse_option_select(start_, ELEMENTLEN(elements_), elements_)
 
 const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
-const char *trust_level[3];
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
@@ -209,10 +208,10 @@ static void project_usage()
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
 	PRINTF("Project Subcommands:");
-	PRINTF("  view                                            view the current projects structure");
-	PRINTF("  add-target <name>  <target_type>  [sources...]  add a new target to the project");
+	print_cmd("view", "view the current projects structure.");
+	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
 	#if FETCH_AVAILABLE
-		PRINTF("  fetch                                           fetch missing project libraries");
+		print_cmd("fetch", "fetch missing project libraries.");
 	#endif
 }
 
@@ -236,18 +235,18 @@ static void project_view_usage()
 	PRINTF("their values printed each on a new line.");
 	PRINTF("");
 	PRINTF("View options:");
-	PRINTF("  -h --help                Show this help");
-	PRINTF("  -v -vv                   Normal or very verbose output");
-	PRINTF("  --authors                List of authors");
-	PRINTF("  --version                Project version");
-	PRINTF("  --language-revision      Project language revision");
-	PRINTF("  --warnings-used          List of enabled compiler-warnings");
-	PRINTF("  --c3l-lib-search-paths   List of C3 linker library search paths");
-	PRINTF("  --c3l-lib-dependencies   List of C3 linker library dependencies");
-	PRINTF("  --source-paths           List of C3 source file paths");
-	PRINTF("  --output-location        Output directory");
-	PRINTF("  --default-optimization   Default optimization level");
-	PRINTF("  --targets                Project targets (!= compilation-targets)");
+	print_opt("-h --help", "Show this help.");
+	print_opt("-v -vv", "Normal or very verbose output.");
+	print_opt("--authors", "List of authors.");
+	print_opt("--version", "Project version.");
+	print_opt("--language-revision", "Project language revision.");
+	print_opt("--warnings-used", "List of enabled compiler-warnings.");
+	print_opt("--c3l-lib-search-paths", "List of C3 library (.c3l) search paths.");
+	print_opt("--c3l-lib-dependencies", "List of C3 library (.c3l) dependencies.");
+	print_opt("--source-paths", "List of C3 source file paths.");
+	print_opt("--output-location", "Output directory.");
+	print_opt("--default-optimization", "Default optimization level.");
+	print_opt("--targets", "Project targets (!= compilation-targets)-");
 }
 
 static void parse_project_view_subcommand(BuildOptions *options)
@@ -261,7 +260,7 @@ static void parse_project_view_subcommand(BuildOptions *options)
 
 		if (current_arg[0] != '-')
 		{
-			FAIL_WITH_ERR("'project view' does not take in args, only flags. Failed on: %s.", current_arg);
+			FAIL_WITH_ERR("'project view' does not accept arguments, only flags. Failed on: %s.", current_arg);
 		}
 
 		if (match_shortopt("v"))
@@ -269,22 +268,18 @@ static void parse_project_view_subcommand(BuildOptions *options)
 			options->project_options.view_modifier.verbose = false;
 			continue;
 		}
-
 		if (match_shortopt("vv"))
 		{
 			options->project_options.view_modifier.verbose = true;
 			continue;
 		}
-
 		if (match_longopt("help") || match_shortopt("h"))
 		{
 			project_view_usage();
 			exit_compiler(COMPILER_SUCCESS_EXIT);
 		}
-
 		int flag = parse_option_select(current_arg + 2, 10, project_view_flags);
 		options->project_options.view_modifier.flags_bitvector |= 1 << flag;
-
 	}
 }
 
@@ -1510,9 +1505,9 @@ static int parse_option_select(const char *start, unsigned count, const char **e
 		switch (count)
 		{
 			case 2:
-				error_exit("error: '%.*s' does not support the option '%s', expected '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
+				error_exit("Error: '%.*s' does not support the option '%s', expected '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
 			case 3:
-				error_exit("error: '%.*s' does not support the option '%s', expected '%s', '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1], elements[2]);
+				error_exit("Error: '%.*s' does not support the option '%s', expected '%s', '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1], elements[2]);
 			default:
 				error_exit("Error: '%.*s' does not support the option '%s', expected an option like '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
 		}
@@ -1520,12 +1515,6 @@ static int parse_option_select(const char *start, unsigned count, const char **e
 	}
 	return select;
 }
-
-const char *trust_level[3] = {
-		[TRUST_NONE] = "none",
-		[TRUST_INCLUDE] = "include",
-		[TRUST_FULL] = "full",
-};
 
 const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[ANDROID_AARCH64] = "android-aarch64",

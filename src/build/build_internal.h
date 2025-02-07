@@ -23,7 +23,11 @@ typedef struct
 
 extern bool silence_deprecation;
 
-extern const char *trust_level[3];
+static const char *trust_level[3] = {
+	[TRUST_NONE] = "none",
+	[TRUST_INCLUDE] = "include",
+	[TRUST_FULL] = "full",
+};
 
 static const char *memory_environment[6] = {
 	[MEMORY_ENV_NORMAL] = "normal",
@@ -61,6 +65,8 @@ static const char *on_off[2] = {
 	[0] = "no",
 	[1] = "yes",
 };
+
+
 
 static const char *riscv_capability[3] = {
 	[RISCVFLOAT_NONE] = "none",
