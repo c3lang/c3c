@@ -2393,6 +2393,11 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		// Allow trailing ','
 		if (!try_consume(c, TOKEN_COMMA))
 		{
+			if (tok_is(c, TOKEN_CONST_IDENT))
+			{
+				PRINT_ERROR_HERE("It looks like you forgot a comma before this identifier.");
+				return poisoned_decl;
+			}
 			EXPECT_OR_RET(TOKEN_RBRACE, poisoned_decl);
 		}
 	}

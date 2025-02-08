@@ -138,6 +138,10 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 		if (precedence > token_precedence) break;
 		// LHS may be poison.
 		if (!expr_ok(left_side)) return left_side;
+
+		// Special rule to prevent = {}.
+		if (tok == TOKEN_DOT && left_side->expr_kind == EXPR_INITIALIZER_LIST) break;
+
 		// See if there is a rule for infix.
 		ParseFn infix_rule = rules[tok].infix;
 		// Otherwise we ran into a symbol that can't appear in this position.
@@ -912,7 +916,11 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 			}
 			designated = 0;
 		}
-		CONSUME_OR_RET(TOKEN_RBRACE, poisoned_expr);
+		if (!try_consume(c, TOKEN_RBRACE))
+		{
+			PRINT_ERROR_HERE("A comma or '}' was expected here.");
+			return poisoned_expr;
+		}
 		RANGE_EXTEND_PREV(initializer_list);
 		if (designated == 1)
 		{

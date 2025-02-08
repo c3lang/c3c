@@ -17,6 +17,7 @@
 - Improve error message when using ',' in struct declarations. #1920
 - Compile time array assign ops, e.g. `$c[1] += 3` #1890.
 - Add `inline` to enums #1819.
+- Cleaner error message when missing comma in struct initializer #1941.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
