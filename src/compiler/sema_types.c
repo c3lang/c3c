@@ -98,12 +98,9 @@ bool sema_resolve_array_like_len(SemaContext *context, TypeInfo *type_info, Arra
 	return true;
 }
 
-static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_kind)
+static inline bool sema_check_array_type(SemaContext *context, TypeInfo *original_info, Type *base, TypeInfoKind kind, ArraySize len, Type **result_ref)
 {
-	// Check the underlying type
-	if (!sema_resolve_type(context, type->array.base, resolve_kind)) return type_info_poison(type);
-
-	Type *distinct_base = type_flatten(type->array.base->type);
+	Type *distinct_base = type_flatten(base);
 
 	// We don't want to allow arrays with flexible members
 	if (distinct_base->type_kind == TYPE_STRUCT)
@@ -113,86 +110,88 @@ static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type,
 		{
 			if (distinct_base->decl->has_variable_array)
 			{
-				SEMA_ERROR(type, "Arrays of structs with flexible array members is not allowed.");
-				return type_info_poison(type);
+				RETURN_SEMA_ERROR(original_info, "Arrays of structs with flexible array members is not allowed.");
 			}
 		}
 		else
 		{
 			// Otherwise we have to defer it:
-			vec_add(context->unit->check_type_variable_array, type);
+			vec_add(context->unit->check_type_variable_array, original_info);
 		}
 	}
-	TypeInfo *base_info = type->array.base;
-	Type *base = base_info->type;
-	switch (type->kind)
+	switch (kind)
 	{
 		case TYPE_INFO_SLICE:
 			if (!type_is_valid_for_array(base))
 			{
-				SEMA_ERROR(base_info,
-				           "You cannot form a slice with elements of type %s.",
-				           type_quoted_error_string(base));
-				return type_info_poison(type);
+				RETURN_SEMA_ERROR(original_info,
+				                  "You cannot form a slice with elements of type %s.",
+				                  type_quoted_error_string(base));
 			}
-			type->type = type_get_slice(type->array.base->type);
+			*result_ref = type_get_slice(base);
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
 			if (!type_is_valid_for_array(base))
 			{
-				SEMA_ERROR(base_info,
-				           "You cannot form an array with elements of type %s.",
-				           type_quoted_error_string(base));
-				return type_info_poison(type);
+				RETURN_SEMA_ERROR(original_info,
+				                  "You cannot form an array with elements of type %s.",
+				                  type_quoted_error_string(base));
 			}
-			type->type = type_get_inferred_array(type->array.base->type);
+			*result_ref = type_get_inferred_array(base);
 			break;
 		case TYPE_INFO_INFERRED_VECTOR:
 			if (!type_is_valid_for_vector(base))
 			{
-				SEMA_ERROR(base_info,
-				           "You cannot form a vector with elements of type %s.",
-				           type_quoted_error_string(base));
-				return type_info_poison(type);
-
+				RETURN_SEMA_ERROR(original_info,
+				                  "You cannot form a vector with elements of type %s.",
+				                  type_quoted_error_string(base));
 			}
-			type->type = type_get_inferred_vector(type->array.base->type);
+			*result_ref = type_get_inferred_vector(base);
 			break;
 		case TYPE_INFO_VECTOR:
-		{
-			ArraySize width;
-			if (!sema_resolve_array_like_len(context, type, &width)) return type_info_poison(type);
 			if (!type_is_valid_for_vector(base))
 			{
-				SEMA_ERROR(base_info,
-				           "You cannot form a vector with elements of type %s.",
-				           type_quoted_error_string(base));
-				return type_info_poison(type);
-
+				RETURN_SEMA_ERROR(original_info, "You cannot form a vector with elements of type %s.", type_quoted_error_string(base));
 			}
-			type->type = type_get_vector(type->array.base->type, width);
+			*result_ref = type_get_vector(base, len);
 			break;
-		}
 		case TYPE_INFO_ARRAY:
-		{
 			if (!type_is_valid_for_array(base))
 			{
-				SEMA_ERROR(base_info,
-				           "You cannot form an array with elements of type %s.",
-				           type_quoted_error_string(base));
-				return type_info_poison(type);
+				RETURN_SEMA_ERROR(original_info,
+				                  "You cannot form an array with elements of type %s.",
+				                  type_quoted_error_string(base));
 			}
-			ArraySize size;
-			if (!sema_resolve_array_like_len(context, type, &size)) return type_info_poison(type);
-			type->type = type_get_array(type->array.base->type, size);
+			*result_ref = type_get_array(base, len);
 			break;
-		}
 		default:
 			UNREACHABLE
 	}
+	return true;
+}
+
+static inline bool sema_resolve_array_type(SemaContext *context, TypeInfo *type, ResolveTypeKind resolve_kind)
+{
+	// Check the underlying type
+	if (!sema_resolve_type(context, type->array.base, resolve_kind)) return type_info_poison(type);
+
+	ArraySize len;
+	TypeInfoKind kind = type->kind;
+	switch (kind)
+	{
+		case TYPE_INFO_ARRAY:
+		case TYPE_INFO_VECTOR:
+			if (!sema_resolve_array_like_len(context, type, &len)) return type_info_poison(type);
+			break;
+		default:
+			len = 0;
+			break;
+	}
+	if (!sema_check_array_type(context, type, type->array.base->type, kind, len, &type->type)) return type_info_poison(type);
 	ASSERT(!type->array.len || sema_cast_const(type->array.len));
 	type->resolve_status = RESOLVE_DONE;
 	return true;
+
 }
 
 
@@ -496,10 +495,11 @@ APPEND_QUALIFIERS:
 			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_SUB:
-			type_info->type = type_get_slice(type_info->type);
+			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
 			break;
 		case TYPE_COMPRESSED_SUBPTR:
-			type_info->type = type_get_ptr(type_get_slice(type_info->type));
+			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
+			type_info->type = type_get_ptr(type_info->type);
 			break;
 		case TYPE_COMPRESSED_PTRPTR:
 			type_info->type = type_get_ptr(type_get_ptr(type_info->type));
@@ -508,7 +508,8 @@ APPEND_QUALIFIERS:
 			type_info->type = type_get_slice(type_get_ptr(type_info->type));
 			break;
 		case TYPE_COMPRESSED_SUBSUB:
-			type_info->type = type_get_slice(type_get_slice(type_info->type));
+			if (!sema_check_array_type(context, type_info, type_info->type, TYPE_INFO_SLICE, 0, &type_info->type)) return type_info_poison(type_info);
+			type_info->type = type_get_slice(type_info->type);
 			break;
 	}
 	if (type_info->optional)
