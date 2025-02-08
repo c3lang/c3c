@@ -92,9 +92,9 @@ fn BigInt*! BigInt.init_string_radix(&self, String value, int radix)
 			case '0'..'9':
 				pos_val -= '0';
 			case 'A'..'Z':
-				pos_val -= 'A' + 10;
+				pos_val -= 'A' - 10;
 			case 'a'..'z':
-				pos_val -= 'a' + 10;
+				pos_val -= 'a' - 10;
 			default:
 				return NumberConversion.MALFORMED_INTEGER?;
 		}

@@ -1,5 +1,11 @@
 module std::math::bigint @test;
 
+fn void test_parse16()
+{
+	BigInt bi @noinit;
+    assert(bi.init_string_radix("c", 16)!!.equals(bigint::from_int(12)));
+}
+
 fn void test_plus()
 {
 	BigInt a = bigint::from_int(123);
