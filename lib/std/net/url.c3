@@ -177,70 +177,67 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
  @param [inout] allocator
  @return "Url as a string"
 *>
-fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
+fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
 {
-	@pool(allocator)
+	DString builder = dstring::temp_new();
+
+	// Add scheme if it exists
+	if (self.scheme != "")
 	{
-		DString builder = dstring::temp_new();
+		builder.append_chars(self.scheme);
+		builder.append_char(':');
+		if (self.host.len > 0) builder.append_chars("//");
+	}
 
-		// Add scheme if it exists
-		if (self.scheme != "")
-		{
-			builder.append_chars(self.scheme);
-			builder.append_char(':');
-			if (self.host.len > 0) builder.append_chars("//");
-		}
+	// Add username and password if they exist
+	if (self.username != "")
+	{
+		String username = temp_encode(self.username, USERPASS);
+		builder.append_chars(username);
 
-		// Add username and password if they exist
-		if (self.username != "")
-		{
-			String username = temp_encode(self.username, USERPASS);
-			builder.append_chars(username);
-
-			if (self.password != "")
-			{
-				builder.append_char(':');
-
-				String password = temp_encode(self.password, USERPASS);
-				builder.append_chars(password);
-			}
-			builder.append_char('@');
-		}
-
-		// Add host
-		String host = temp_encode(self.host, HOST);
-		builder.append_chars(host);
-
-		// Add port
-		if (self.port != 0)
+		if (self.password != "")
 		{
 			builder.append_char(':');
-			builder.appendf("%d", self.port);
+
+			String password = temp_encode(self.password, USERPASS);
+			builder.append_chars(password);
 		}
+		builder.append_char('@');
+	}
 
-		// Add path
-		String path = temp_encode(self.path, PATH);
-		builder.append_chars(path);
+	// Add host
+	String host = temp_encode(self.host, HOST);
+	builder.append_chars(host);
 
-		// Add query if it exists (note that `query` is expected to
-		// be already properly encoded).
-		if (self.query != "")
-		{
-			builder.append_char('?');
-			builder.append_chars(self.query);
-		}
+	// Add port
+	if (self.port != 0)
+	{
+		builder.append_char(':');
+		builder.appendf("%d", self.port);
+	}
 
-		// Add fragment if it exists
-		if (self.fragment != "")
-		{
-			builder.append_char('#');
+	// Add path
+	String path = temp_encode(self.path, PATH);
+	builder.append_chars(path);
 
-			String fragment = temp_encode(self.fragment, FRAGMENT);
-			builder.append_chars(fragment);
-		}
+	// Add query if it exists (note that `query` is expected to
+	// be already properly encoded).
+	if (self.query != "")
+	{
+		builder.append_char('?');
+		builder.append_chars(self.query);
+	}
 
-		return builder.copy_str(allocator);
-	};
+	// Add fragment if it exists
+	if (self.fragment != "")
+	{
+		builder.append_char('#');
+
+		String fragment = temp_encode(self.fragment, FRAGMENT);
+		builder.append_chars(fragment);
+	}
+
+	return builder.copy_str(allocator);
 }
 
 def UrlQueryValueList = List<[String]>;
@@ -327,35 +324,32 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
  @param [inout] allocator
  @return "a percent-encoded query string"
 *>
-fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
+fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
 {
-	@pool(allocator)
+	DString builder = dstring::temp_new();
+
+	usz i;
+	foreach (key: self.key_order)
 	{
-		DString builder = dstring::temp_new();
+		String encoded_key = temp_encode(key, QUERY);
 
-		usz i;
-		foreach (key: self.key_order)
+		UrlQueryValueList! values = self.map.get(key);
+		if (catch values) continue;
+
+		foreach (value: values)
 		{
-			String encoded_key = temp_encode(key, QUERY);
+			if (i > 0) builder.append_char('&');
 
-			UrlQueryValueList! values = self.map.get(key);
-			if (catch values) continue;
+			builder.append_chars(encoded_key);
+			builder.append_char('=');
 
-			foreach (value: values)
-			{
-				if (i > 0) builder.append_char('&');
-
-				builder.append_chars(encoded_key);
-				builder.append_char('=');
-
-				String encoded_value = temp_encode(value, QUERY);
-				builder.append_chars(encoded_value);
-				i++;
-			}
-		};
-
-		return builder.copy_str(allocator);
+			String encoded_value = temp_encode(value, QUERY);
+			builder.append_chars(encoded_value);
+			i++;
+		}
 	};
+
+	return builder.copy_str(allocator);
 }
 
 fn void UrlQueryValues.free(&self)

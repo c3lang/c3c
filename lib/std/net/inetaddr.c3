@@ -257,16 +257,13 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 	return addr.ipv4.a == 224 && addr.ipv4.b == 0 && addr.ipv4.c == 0;
 }
 
-fn AddrInfo*! addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET)
+fn AddrInfo*! addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
 {
-	@pool()
-	{
-		ZString zhost = host.zstr_tcopy();
-		DString str = dstring::temp_with_capacity(32);
-		str.appendf("%d", port);
-		AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
-		AddrInfo* ai;
-		if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return NetError.ADDRINFO_FAILED?;
-		return ai;
-	};
+	ZString zhost = host.zstr_tcopy();
+	DString str = dstring::temp_with_capacity(32);
+	str.appendf("%d", port);
+	AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
+	AddrInfo* ai;
+	if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return NetError.ADDRINFO_FAILED?;
+	return ai;
 }

@@ -168,10 +168,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks) @if(!$$OLD_TEST)
 	return true;
 }
 
-fn bool default_benchmark_runner(String[] args)
+fn bool default_benchmark_runner(String[] args) => @pool()
 {
-	@pool()
-	{
-		return run_benchmarks(benchmark_collection_create(allocator::temp()));
-	};
+	return run_benchmarks(benchmark_collection_create(allocator::temp()));
 }

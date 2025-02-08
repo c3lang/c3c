@@ -71,24 +71,21 @@ import std::io;
  @param [in] input `The raw RGB or RGBA pixels to encode`
  @param [&in] desc `The descriptor of the image`
 *>
-fn usz! write(String filename, char[] input, QOIDesc* desc)
+fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
-	@pool()
-	{
-		// encode data
-		char[] output = new_encode(input, desc)!;
+	// encode data
+	char[] output = new_encode(input, desc)!;
 
-		// open file
-		File! f = file::open(filename, "wb");
-		if (catch f) return QOIError.FILE_OPEN_FAILED?;
+	// open file
+	File! f = file::open(filename, "wb");
+	if (catch f) return QOIError.FILE_OPEN_FAILED?;
 
-		// write data to file and close it
-		usz! written = f.write(output);
-		if (catch written) return QOIError.FILE_WRITE_FAILED?;
-		if (catch f.close()) return QOIError.FILE_WRITE_FAILED?;
+	// write data to file and close it
+	usz! written = f.write(output);
+	if (catch written) return QOIError.FILE_WRITE_FAILED?;
+	if (catch f.close()) return QOIError.FILE_WRITE_FAILED?;
 
-		return written;
-	};
+	return written;
 }
 
 
@@ -113,16 +110,12 @@ fn usz! write(String filename, char[] input, QOIDesc* desc)
  @param [&out] desc `The descriptor to fill with the image's info`
  @param channels `The channels to be used`
 *>
-fn char[]! new_read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
+fn char[]! new_read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		// read file
-		char[] data = file::load_temp(filename) ?? QOIError.FILE_OPEN_FAILED?!;
-
-		// pass data to decode function
-		return new_decode(data, desc, channels, allocator);
-	};
+	// read file
+	char[] data = file::load_temp(filename) ?? QOIError.FILE_OPEN_FAILED?!;
+	// pass data to decode function
+	return new_decode(data, desc, channels, allocator);
 }
 
 fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) @deprecated("Use new_read")

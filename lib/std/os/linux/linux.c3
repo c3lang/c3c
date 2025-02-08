@@ -204,7 +204,8 @@ fn void! backtrace_add_element(BacktraceList *list, void* addr, Allocator alloca
 		return;
 	}
 
-	@pool(allocator) {
+	@pool(allocator)
+	{
 		Linux_Dl_info info;
 		if (dladdr(addr, &info) == 0)
 		{

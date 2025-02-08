@@ -49,13 +49,10 @@ fn void TrackingAllocator.free(&self)
 <*
  @return "the total allocated memory not yet freed."
 *>
-fn usz TrackingAllocator.allocated(&self)
+fn usz TrackingAllocator.allocated(&self) => @pool()
 {
 	usz allocated = 0;
-	@pool()
-	{
-		foreach (&allocation : self.map.value_tlist()) allocated += allocation.size;
-	};
+	foreach (&allocation : self.map.value_tlist()) allocated += allocation.size;
 	return allocated;
 }
 
@@ -118,99 +115,95 @@ fn void TrackingAllocator.clear(&self)
 
 fn void TrackingAllocator.print_report(&self) => self.fprint_report(io::stdout())!!;
 
-fn void! TrackingAllocator.fprint_report(&self, OutStream out)
+fn void! TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 {
-
 	usz total = 0;
 	usz entries = 0;
 	bool leaks = false;
-	@pool()
-	{
-		Allocation[] allocs = self.map.value_tlist();
-		if (allocs.len)
-		{
-			if (!allocs[0].backtrace[0])
-			{
-				io::fprintn(out, "======== Memory Report ========")!;
-				io::fprintn(out, "Size in bytes   Address")!;
-				foreach (i, &allocation : allocs)
-				{
-					entries++;
-					total += allocation.size;
-					io::fprintfn(out, "%13s   %p", allocation.size, allocation.ptr)!;
-				}
-				io::fprintn(out, "===============================")!;
 
-			}
-			else
+	Allocation[] allocs = self.map.value_tlist();
+	if (allocs.len)
+	{
+		if (!allocs[0].backtrace[0])
+		{
+			io::fprintn(out, "======== Memory Report ========")!;
+			io::fprintn(out, "Size in bytes   Address")!;
+			foreach (i, &allocation : allocs)
 			{
-				io::fprintn(out, "================================== Memory Report ==================================")!;
-				io::fprintn(out, "Size in bytes   Address          Function                       ")!;
-				foreach (i, &allocation : allocs)
-				{
-					entries++;
-					total += allocation.size;
-					BacktraceList backtraces = {};
-					Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
-					if (allocation.backtrace[3])
-					{
-						trace = backtrace::symbolize_backtrace(allocation.backtrace[3:1], allocator::temp()).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
-					}
-					if (trace.function.len)	leaks = true;
-					io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
-						allocation.ptr, trace.function.len ? trace.function : "???",
-						trace.line ? trace.line : 0)!;
-				}
-				io::fprintn(out, "===================================================================================")!;
+				entries++;
+				total += allocation.size;
+				io::fprintfn(out, "%13s   %p", allocation.size, allocation.ptr)!;
 			}
+			io::fprintn(out, "===============================")!;
+
 		}
 		else
 		{
-			io::fprintn(out, "* NO ALLOCATIONS FOUND *")!;
-		}
-		io::fprintfn(out, "- Total currently allocated memory:            %d", total)!;
-		io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
-		io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
-		io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
-		if (leaks)
-		{
-			io::fprintn(out)!;
-			io::fprintn(out, "Full leak report:")!;
+			io::fprintn(out, "================================== Memory Report ==================================")!;
+			io::fprintn(out, "Size in bytes   Address          Function                       ")!;
 			foreach (i, &allocation : allocs)
 			{
-				if (!allocation.backtrace[3])
-				{
-					io::fprintfn(out, "Allocation %d (%d bytes) - no backtrace available.", i + 1, allocation.size)!;
-					continue;
-				}
+				entries++;
+				total += allocation.size;
 				BacktraceList backtraces = {};
-				usz end = MAX_BACKTRACE;
-				foreach (j, val : allocation.backtrace)
+				Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
+				if (allocation.backtrace[3])
 				{
-					if (!val)
-					{
-						end = j;
-						break;
-					}
+					trace = backtrace::symbolize_backtrace(allocation.backtrace[3:1], allocator::temp()).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
 				}
-				BacktraceList list = backtrace::symbolize_backtrace(allocation.backtrace[3..(end - 1)], allocator::temp())!;
-				io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
-				foreach (trace : list)
+				if (trace.function.len)	leaks = true;
+				io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
+					allocation.ptr, trace.function.len ? trace.function : "???",
+					trace.line ? trace.line : 0)!;
+			}
+			io::fprintn(out, "===================================================================================")!;
+		}
+	}
+	else
+	{
+		io::fprintn(out, "* NO ALLOCATIONS FOUND *")!;
+	}
+	io::fprintfn(out, "- Total currently allocated memory:            %d", total)!;
+	io::fprintfn(out, "- Total current allocations:                   %d", entries)!;
+	io::fprintfn(out, "- Total allocations (freed and retained):      %d", self.allocs_total)!;
+	io::fprintfn(out, "- Total allocated memory (freed and retained): %d", self.mem_total)!;
+	if (leaks)
+	{
+		io::fprintn(out)!;
+		io::fprintn(out, "Full leak report:")!;
+		foreach (i, &allocation : allocs)
+		{
+			if (!allocation.backtrace[3])
+			{
+				io::fprintfn(out, "Allocation %d (%d bytes) - no backtrace available.", i + 1, allocation.size)!;
+				continue;
+			}
+			BacktraceList backtraces = {};
+			usz end = MAX_BACKTRACE;
+			foreach (j, val : allocation.backtrace)
+			{
+				if (!val)
 				{
-					if (trace.has_file())
-					{
-						io::fprintfn(out, "   %s (in %s:%d)", trace.function, trace.file, trace.line);
-						continue;
-					}
-					if (trace.is_unknown())
-					{
-						io::fprintfn(out, "   ??? (in unknown)");
-						continue;
-					}
-					io::fprintfn(out, "   %s (source unavailable)", trace.function);
+					end = j;
+					break;
 				}
 			}
+			BacktraceList list = backtrace::symbolize_backtrace(allocation.backtrace[3..(end - 1)], allocator::temp())!;
+			io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
+			foreach (trace : list)
+			{
+				if (trace.has_file())
+				{
+					io::fprintfn(out, "   %s (in %s:%d)", trace.function, trace.file, trace.line);
+					continue;
+				}
+				if (trace.is_unknown())
+				{
+					io::fprintfn(out, "   ??? (in unknown)");
+					continue;
+				}
+				io::fprintfn(out, "   %s (source unavailable)", trace.function);
+			}
 		}
-	};
-
+	}
 }

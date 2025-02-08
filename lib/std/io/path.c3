@@ -29,12 +29,9 @@ enum PathEnv
 	POSIX
 }
 
-fn Path! new_cwd(Allocator allocator = allocator::heap())
+fn Path! new_cwd(Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		return new(os::getcwd(allocator::temp()), allocator);
-	};
+	return new(os::getcwd(allocator::temp()), allocator);
 }
 
 fn Path! getcwd(Allocator allocator = allocator::heap()) @deprecated("Use new_cwd()")
@@ -164,12 +161,9 @@ fn Path! temp_new(String path, PathEnv path_env = DEFAULT_PATH_ENV)
 	return new(path, allocator::temp(), path_env);
 }
 
-fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap())
+fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		return path::new(string::temp_from_wstring(path)!, allocator: allocator);
-	};
+	return path::new(string::temp_from_wstring(path)!, allocator: allocator);
 }
 
 fn Path! new_windows(String path, Allocator allocator = allocator::heap())

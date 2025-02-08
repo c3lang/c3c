@@ -66,20 +66,18 @@ fn int cmp_test_unit(TestUnit a, TestUnit b)
 	return (int)(an - bn);
 }
 
-fn bool terminal_has_ansi_codes() @local
+fn bool terminal_has_ansi_codes() @local => @pool()
 {
-	@pool()
+
+	if (try v = env::get_var_temp("TERM"))
 	{
-		if (try v = env::get_var_temp("TERM"))
-		{
-			if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;
-		}
-		$if env::WIN32 || env::NO_LIBC:
-			return false;
-		$else
-			return io::stdout().isatty();
-		$endif
-	};
+		if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;
+	}
+	$if env::WIN32 || env::NO_LIBC:
+		return false;
+	$else
+		return io::stdout().isatty();
+	$endif
 }
 
 fn void test_panic(String message, String file, String function, uint line) @local
@@ -304,12 +302,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	return n_failed == 0;
 }
 
-fn bool default_test_runner(String[] args)
+fn bool default_test_runner(String[] args) => @pool()
 {
-	@pool()
-	{
-		assert(test_context == null, "test suite is already running");
-		return run_tests(args, test_collection_create(allocator::temp()));
-	};
+	assert(test_context == null, "test suite is already running");
+	return run_tests(args, test_collection_create(allocator::temp()));
 }
 

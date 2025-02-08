@@ -1,56 +1,50 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::BSD_FAMILY)
+fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::BSD_FAMILY) => @pool()
 {
-	@pool()
+	$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
+		int res = libc::stat(path.zstr_tcopy(), stat);
+	$else
+		unreachable("Stat unimplemented");
+		int res = 0;
+	$endif
+	if (res != 0)
 	{
-		$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
-			int res = libc::stat(path.zstr_tcopy(), stat);
-		$else
-			unreachable("Stat unimplemented");
-			int res = 0;
-		$endif
-		if (res != 0)
+		switch (libc::errno())
 		{
-			switch (libc::errno())
-			{
-				case errno::EBADF:
-					return IoError.FILE_NOT_VALID?;
-				case errno::EFAULT:
-					unreachable("Invalid stat");
-				case errno::EIO:
-					return IoError.GENERAL_ERROR?;
-				case errno::EACCES:
-					return IoError.NO_PERMISSION?;
-				case errno::ELOOP:
-					return IoError.NO_PERMISSION?;
-				case errno::ENAMETOOLONG:
-					return IoError.NAME_TOO_LONG?;
-				case errno::ENOENT:
-					return IoError.FILE_NOT_FOUND?;
-				case errno::ENOTDIR:
-					return IoError.FILE_NOT_DIR?;
-				case errno::EOVERFLOW:
-					return IoError.GENERAL_ERROR?;
-				default:
-					return IoError.UNKNOWN_ERROR?;
-			}
+			case errno::EBADF:
+				return IoError.FILE_NOT_VALID?;
+			case errno::EFAULT:
+				unreachable("Invalid stat");
+			case errno::EIO:
+				return IoError.GENERAL_ERROR?;
+			case errno::EACCES:
+				return IoError.NO_PERMISSION?;
+			case errno::ELOOP:
+				return IoError.NO_PERMISSION?;
+			case errno::ENAMETOOLONG:
+				return IoError.NAME_TOO_LONG?;
+			case errno::ENOENT:
+				return IoError.FILE_NOT_FOUND?;
+			case errno::ENOTDIR:
+				return IoError.FILE_NOT_DIR?;
+			case errno::EOVERFLOW:
+				return IoError.GENERAL_ERROR?;
+			default:
+				return IoError.UNKNOWN_ERROR?;
 		}
-	};
+	}
 }
 
-fn usz! native_file_size(String path) @if(env::WIN32)
+fn usz! native_file_size(String path) @if(env::WIN32) => @pool()
 {
-	@pool()
-	{
-		Win32_FILE_ATTRIBUTE_DATA data;
-		win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
-		Win32_LARGE_INTEGER size;
-		size.lowPart = data.nFileSizeLow;
-		size.highPart = data.nFileSizeHigh;
-		return (usz)size.quadPart;
-	};
+	Win32_FILE_ATTRIBUTE_DATA data;
+	win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
+	Win32_LARGE_INTEGER size;
+	size.lowPart = data.nFileSizeLow;
+	size.highPart = data.nFileSizeHigh;
+	return (usz)size.quadPart;
 }
 
 fn usz! native_file_size(String path) @if(!env::WIN32 && !env::DARWIN)

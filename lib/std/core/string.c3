@@ -52,14 +52,11 @@ fn ZString tformat_zstr(String fmt, args...)
  @param [inout] allocator `The allocator to use`
  @param [in] fmt `The formatting string`
 *>
-fn String format(String fmt, args..., Allocator allocator)
+fn String format(String fmt, args..., Allocator allocator) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
-		str.appendf(fmt, ...args);
-		return str.copy_str(allocator);
-	};
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
+	str.appendf(fmt, ...args);
+	return str.copy_str(allocator);
 }
 
 <*
@@ -87,14 +84,11 @@ fn String tformat(String fmt, args...)
  @param [in] fmt `The formatting string`
  @param [inout] allocator `The allocator to use`
 *>
-fn ZString new_format_zstr(String fmt, args..., Allocator allocator = allocator::heap())
+fn ZString new_format_zstr(String fmt, args..., Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
-		str.appendf(fmt, ...args);
-		return str.copy_zstr(allocator);
-	};
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
+	str.appendf(fmt, ...args);
+	return str.copy_zstr(allocator);
 }
 
 <*
