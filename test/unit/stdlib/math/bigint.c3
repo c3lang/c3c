@@ -6,6 +6,14 @@ fn void test_parse16()
     assert(bi.init_string_radix("c", 16)!!.equals(bigint::from_int(12)));
 }
 
+fn void test_zero()
+{
+    assert(bigint::from_int(0).to_string(allocator::temp()) == "0");
+    BigInt bi;
+    bi.init_string_radix("00", 16)!!;
+    assert(bi.to_string(allocator::temp()) == "0");
+}
+
 fn void test_plus()
 {
 	BigInt a = bigint::from_int(123);

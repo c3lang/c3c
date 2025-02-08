@@ -50,6 +50,7 @@
 - Issue with defer copying when triggered by break or continue #1936.
 - Assert when using optional as init or inc part in a for loop #1942.
 - Fix bigint hex parsing #1945.
+- `bigint::from_int(0)` throws assertion #1944.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

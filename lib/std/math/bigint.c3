@@ -35,7 +35,7 @@ fn BigInt* BigInt.init(&self, int128 value)
 		len++;
 	}
 	assert(value < 0 || tmp == 0 || !self.is_negative());
-	assert(value > 0 || tmp == -1 || self.is_negative());
+	assert(value >= 0 || tmp == -1 || self.is_negative());
 	self.len = len;
 	self.reduce_len();
 	return self;
