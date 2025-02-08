@@ -750,6 +750,7 @@ typedef struct
 	bool must_use : 1;
 	bool is_optional_return : 1;
 	bool va_is_splat : 1;
+	bool is_outer_call : 1;
 	Expr **arguments;
 	union {
 		Expr **varargs;

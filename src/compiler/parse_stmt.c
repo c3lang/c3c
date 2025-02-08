@@ -1523,27 +1523,35 @@ Ast* parse_compound_stmt(ParseContext *c)
 	return ast;
 }
 
-Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos)
+Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_fn)
 {
 	advance(c);
 	Ast *ast = ast_new_curr(c, AST_COMPOUND_STMT);
 	AstId *next = &ast->compound_stmt.first_stmt;
 
+	Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
+	ast_append(&next, ret);
 	TypeInfo *rtype = return_type ? type_infoptr(return_type) : NULL;
-	if (!rtype || (rtype->resolve_status != RESOLVE_DONE || rtype->type->type_kind != TYPE_VOID))
+	bool is_void_return = rtype && rtype->resolve_status == RESOLVE_DONE && rtype->type->type_kind == TYPE_VOID;
+	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_ast);
+	if (expr->expr_kind == EXPR_CALL && expr->call_expr.macro_body)
 	{
-		Ast *ret = ast_new_curr(c, AST_RETURN_STMT);
-		ast_append(&next, ret);
-		ASSIGN_EXPR_OR_RET(ret->return_stmt.expr, parse_expr(c), poisoned_ast);
+		ret->ast_kind = AST_EXPR_STMT;
+		ret->expr_stmt = expr;
+		is_regular_fn = false;
+		expr->call_expr.is_outer_call = true;
+		goto END;
 	}
-	else
+	if (is_void_return)
 	{
-		Ast *stmt = new_ast(AST_EXPR_STMT, c->span);
-		ASSIGN_EXPR_OR_RET(stmt->expr_stmt, parse_expr(c), poisoned_ast);
-		ast_append(&next, stmt);
+		ret->ast_kind = AST_EXPR_STMT;
+		ret->expr_stmt = expr;
+		goto END;
 	}
+	ret->return_stmt.expr = expr;
+END:;
 	RANGE_EXTEND_PREV(ast);
-	if (require_eos)
+	if (is_regular_fn)
 	{
 		CONSUME_EOS_OR_RET(poisoned_ast);
 	}

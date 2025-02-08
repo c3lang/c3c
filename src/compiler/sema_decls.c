@@ -3865,11 +3865,11 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 	                            type_infoptrzero(decl->func_decl.type_parent),
 	                            false, deprecated, decl->span)) return false;
 
-	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
+	DeclId body_param = decl->func_decl.body_param;
+	if (!decl->func_decl.signature.is_at_macro && body_param && !decl->func_decl.signature.is_safemacro)
 	{
 		RETURN_SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 	}
-	DeclId body_param = decl->func_decl.body_param;
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
 	if (!sema_analyse_macro_body(context, body_parameters)) return false;
 	bool pure = false;

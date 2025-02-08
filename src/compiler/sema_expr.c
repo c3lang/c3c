@@ -2081,6 +2081,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 								  bool call_var_optional, bool *no_match_ref)
 {
 	bool is_always_const = decl->func_decl.signature.attrs.always_const;
+	bool is_outer = call_expr->call_expr.is_outer_call;
 	ASSERT_SPAN(call_expr, decl->decl_kind == DECL_MACRO);
 
 	if (context->macro_call_depth > 256)
@@ -2442,6 +2443,12 @@ NOT_CT:
 	call_expr->macro_block.block_exit = block_exit_ref;
 	call_expr->macro_block.is_noreturn = is_no_return;
 EXIT:
+	if (is_outer && !type_is_void(call_expr->type))
+	{
+		RETURN_SEMA_ERROR(call_expr, "The macro itself returns %s here, but only 'void' is permitted "
+							   "when a macro with trailing body is used directly after '=>'.",
+							   type_quoted_error_string(rtype));
+	}
 	ASSERT_SPAN(call_expr, context->active_scope.defer_last == context->active_scope.defer_start);
 	context->active_scope = old_scope;
 	if (is_no_return) context->active_scope.jump_end = true;

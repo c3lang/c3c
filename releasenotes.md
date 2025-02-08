@@ -19,6 +19,7 @@
 - Add `inline` to enums #1819.
 - Cleaner error message when missing comma in struct initializer #1941.
 - Distinct inline void causes unexpected error if used in slice #1946.
+- Allow `fn int test() => @pool() { return 1; }` short function syntax usage #1906.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
