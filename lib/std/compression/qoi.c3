@@ -153,7 +153,7 @@ fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::
  @param [in] input `The raw RGB or RGBA pixels to encode`
  @param [&in] desc `The descriptor of the image`
 *>
-fn char[]! new_encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap())
+fn char[]! new_encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap()) @nodiscard
 {
 	// check info in desc
 	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_PARAMETERS?;
@@ -311,7 +311,7 @@ fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Alloc
  @param [&out] desc `The descriptor to fill with the image's info`
  @param channels `The channels to be used`
 *>
-fn char[]! new_decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
+fn char[]! new_decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) @nodiscard
 {
 	// check input data
 	if (data.len < Header.sizeof + END_OF_STREAM.len) return QOIError.INVALID_DATA?;
