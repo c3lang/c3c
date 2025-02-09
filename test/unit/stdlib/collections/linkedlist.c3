@@ -6,6 +6,7 @@ def IntList = LinkedList(<int>);
 fn void test_push_front()
 {
 	IntList list;
+	defer list.free();
 	list.push_front(23);
 	assert(list.len() == 1);
 	assert(list.first()!! == 23);
@@ -14,11 +15,13 @@ fn void test_push_front()
 	assert(list.len() == 2);
 	assert(list.last()!! == 23);
 	assert(list.first()!! == 55);
+
 }
 
 fn void test_push()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	assert(list.len() == 1);
 	assert(list.first()!! == 23);
@@ -32,6 +35,7 @@ fn void test_push()
 fn void test_get()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	list.push(55);
 	list.push(-3);
@@ -43,6 +47,7 @@ fn void test_get()
 fn void test_insert()
 {
 	IntList list;
+	defer list.free();
 	list.push(-3);
 	list.push(55);
 	list.push(23);
@@ -62,6 +67,7 @@ fn void test_insert()
 fn void test_set()
 {
 	IntList list;
+	defer list.free();
     list.push(-3);
 	list.push(55);
 	list.push(23);
@@ -74,6 +80,7 @@ fn void test_set()
 fn void test_remove_at()
 {
 	IntList list;
+	defer list.free();
 	for (int i = 0; i < 10; i++) list.push(i);
 	list.remove_at(0);
 	list.remove_at(1);
@@ -88,6 +95,7 @@ fn void test_remove_at()
 fn void test_remove()
 {
 	IntList list;
+	defer list.free();
 	list.push(2);
 	for (int i = 0; i < 10; i++) list.push(5);
 	list.push(2);
@@ -98,6 +106,7 @@ fn void test_remove()
 fn void test_remove_first_match()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	list.push(55);
 	list.push(-3);
@@ -126,6 +135,7 @@ fn void test_remove_first_match()
 fn void test_remove_last_match()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	list.push(55);
 	list.push(-3);
@@ -154,6 +164,7 @@ fn void test_remove_last_match()
 fn void test_pop()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	list.push(55);
 	list.push(-3);
@@ -178,6 +189,7 @@ fn void test_pop()
 fn void test_remove_last()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	list.push(55);
 	list.push(-3);
@@ -202,6 +214,7 @@ fn void test_remove_last()
 fn void test_remove_first()
 {
 	IntList list;
+	defer list.free();
 	list.push(23);
 	list.push(55);
 	list.push(-3);

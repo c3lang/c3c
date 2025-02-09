@@ -12,20 +12,21 @@ fn void test_ipv4()
 fn void test_ipv4_to_string()
 {
 	InetAddress a = net::ipv4_from_str("127.0.0.1")!!;
-	assert(a.to_new_string() == "127.0.0.1");
+	assert(a.to_new_string(allocator::temp()) == "127.0.0.1");
 }
 
 fn void test_ipv6_to_string()
 {
 	InetAddress a = net::ipv6_from_str("2001:db8::2:1")!!;
-	a.to_new_string();
-	assert(a.to_new_string() == "2001:0db8:0000:0000:0000:0000:0002:0001");
-	assert(net::ipv6_from_str("2001:db8::1").to_new_string()!! == "2001:0db8:0000:0000:0000:0000:0000:0001");
-	assert(net::ipv6_from_str("::1").to_new_string()!! == "0000:0000:0000:0000:0000:0000:0000:0001");
-	assert(net::ipv6_from_str("2001::1").to_new_string()!! == "2001:0000:0000:0000:0000:0000:0000:0001");
-	assert(net::ipv6_from_str("2001:db8:1234::").to_new_string()!! == "2001:0db8:1234:0000:0000:0000:0000:0000");
-	assert(net::ipv6_from_str("2001::").to_new_string()!! == "2001:0000:0000:0000:0000:0000:0000:0000");
-	assert(net::ipv6_from_str("::").to_new_string()!! == "0000:0000:0000:0000:0000:0000:0000:0000");
+	free(a.to_new_string());
+
+	assert(a.to_new_string(allocator::temp()) == "2001:0db8:0000:0000:0000:0000:0002:0001");
+	assert(net::ipv6_from_str("2001:db8::1").to_new_string(allocator::temp())!! == "2001:0db8:0000:0000:0000:0000:0000:0001");
+	assert(net::ipv6_from_str("::1").to_new_string(allocator::temp())!! == "0000:0000:0000:0000:0000:0000:0000:0001");
+	assert(net::ipv6_from_str("2001::1").to_new_string(allocator::temp())!! == "2001:0000:0000:0000:0000:0000:0000:0001");
+	assert(net::ipv6_from_str("2001:db8:1234::").to_new_string(allocator::temp())!! == "2001:0db8:1234:0000:0000:0000:0000:0000");
+	assert(net::ipv6_from_str("2001::").to_new_string(allocator::temp())!! == "2001:0000:0000:0000:0000:0000:0000:0000");
+	assert(net::ipv6_from_str("::").to_new_string(allocator::temp())!! == "0000:0000:0000:0000:0000:0000:0000:0000");
 }
 
 fn void test_ipv4_parse()

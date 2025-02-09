@@ -30,5 +30,8 @@ fn void test_qoi_all()
 
         // cleanup
         file::delete("unittest.qoi")!!;
+        free(encoded);
+        free(decoded);
+        free(read);
     };
 }

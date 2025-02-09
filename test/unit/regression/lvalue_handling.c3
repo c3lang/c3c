@@ -8,6 +8,8 @@ def IntList = List(<Foo>);
 fn void subscript_overload() @test
 {
 	IntList x;
+	defer x.free();
+
 	x.push({ 3 });
 	int* a = &x[0].a;
 	assert(*a == 3);

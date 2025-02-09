@@ -13,6 +13,8 @@ def OveralignList = List(<Overalign>);
 fn void overaligned_type()
 {
 	OveralignList l;
+	defer l.free();
+
 	Overalign y;
 	for (int i = 0; i < 1000; i++) l.push(y);
 	assert((usz)l.get_ref(2) - (usz)l.get_ref(1) == Overalign.sizeof);
@@ -22,6 +24,8 @@ fn void overaligned_type()
 fn void delete_contains_index()
 {
 	IntList test;
+	defer test.free();
+
 	test.add_array({ 1, 2 });
 	assert(test.contains(1));
 	assert(test.contains(2));
@@ -51,6 +55,7 @@ fn void delete_contains_index()
 fn void compact()
 {
 	PtrList test;
+	defer test.free();
 	test.add_array({ null, &test });
 	assert(test.compact_count() == 1);
 	test.push(null);
@@ -64,6 +69,8 @@ fn void compact()
 fn void reverse()
 {
 	IntList test;
+	defer test.free();
+
 	test.reverse();
 	test.add_array({ 1, 2 });
 	test.push(3);
@@ -79,6 +86,7 @@ fn void reverse()
 fn void remove_if()
 {
 	IntList test;
+	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });
@@ -96,6 +104,7 @@ fn void remove_if()
 fn void init_with_array()
 {
 	IntList foo;
+	defer foo.free();
 	foo.new_init_with_array({ 1, 2, 3});
 	assert(foo.len() == 3);
 	assert(foo[2] == 3);
@@ -112,6 +121,7 @@ fn void init_with_temp_array()
 fn void remove_using_test()
 {
 	IntList test;
+	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });
@@ -129,6 +139,7 @@ fn void remove_using_test()
 fn void retain_if()
 {
 	IntList test;
+	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });
@@ -146,6 +157,7 @@ fn void retain_if()
 fn void retain_using_test()
 {
 	IntList test;
+	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });

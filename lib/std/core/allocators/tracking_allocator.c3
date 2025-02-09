@@ -113,7 +113,13 @@ fn void TrackingAllocator.clear(&self)
 	self.map.clear();
 }
 
+fn bool TrackingAllocator.has_leaks(&self)
+{
+	return self.map.len() > 0;
+}
+
 fn void TrackingAllocator.print_report(&self) => self.fprint_report(io::stdout())!!;
+
 
 fn void! TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 {

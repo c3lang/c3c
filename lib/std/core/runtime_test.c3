@@ -260,20 +260,30 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
-			$if(!$$OLD_TEST):
-				unit.func();
-			$else
-				if (catch err = unit.func())
-				{
-					io::printf("[FAIL] Failed due to: %s", err);
-					continue;
-				}
-			$endif
+			TrackingAllocator mem;
+			mem.init(allocator::heap());
+			bool has_leaks;
+			mem::@scoped(&mem)
+			{
+				$if(!$$OLD_TEST):
+					unit.func();
+				$else
+					if (catch err = unit.func())
+					{
+						io::printf("[FAIL] Failed due to: %s", err);
+						continue;
+					}
+				$endif
+				has_leaks = mem.has_leaks();
+			};
+			mem.free();
 			unmute_output(false); // all good, discard output
 
-
-			io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+			io::printf(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
 			tests_passed++;
+
+			if (has_leaks) io::print(" LEAKS!");
+			io::printn();
 
 			if (test_context.teardown_fn)
 			{

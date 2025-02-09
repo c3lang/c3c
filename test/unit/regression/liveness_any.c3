@@ -17,4 +17,6 @@ fn void reflect_test() @test
 {
 	TestProto b = mem::alloc(Test);
 	b.tesT();
+	defer free(b);
+
 }

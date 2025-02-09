@@ -28,6 +28,7 @@ fn void test_with_tz()
 	foreach (test : tests)
 	{
 		String candidate = test.first.new_format(test.second);
+		defer free(candidate);
 		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
 	}
 }
@@ -44,6 +45,7 @@ fn void test_without_tz()
 	foreach (test : tests)
 	{
 		String candidate = test.first.new_format(test.second);
+		defer free(candidate);
 		assert(candidate == test.third, "got: '%s', expected: '%s'", candidate, test.third);
 	}
 }

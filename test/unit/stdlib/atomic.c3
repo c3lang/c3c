@@ -5,7 +5,7 @@ import std::atomic;
 uint a;
 float fa;
 
-fn void add() @test
+fn void add() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[100] ts;
 	a = 0;
@@ -42,7 +42,7 @@ fn void add() @test
 	assert(a == ts.len * 10 * 5, "Threads returned %d, expected %d", a, ts.len * 10 * 5);
 }
 
-fn void sub() @test
+fn void sub() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[100] ts;
 	a = ts.len * 10 * 5;
@@ -79,7 +79,7 @@ fn void sub() @test
 	assert(a == 0, "Threads returned %d, expected %d", a, 0);
 }
 
-fn void div() @test
+fn void div() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[8] ts;
 	a = 8 * 8 * 8 * 8 * 8 * 8 * 8 * 8 * 8;
@@ -98,7 +98,7 @@ fn void div() @test
 	assert(a == 8, "Threads returned %d, expected %d", a, 8);
 }
 
-fn void max() @test
+fn void max() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[100] ts;
 	a = 0;
@@ -134,7 +134,7 @@ fn void max() @test
 	assert(a == 5, "Threads returned %d, expected %d", a, 5);
 }
 
-fn void min() @test
+fn void min() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[100] ts;
 	a = 10;
@@ -170,7 +170,7 @@ fn void min() @test
 	assert(a == 0, "Threads returned %d, expected %d", a, 0);
 }
 
-fn void fadd() @test
+fn void fadd() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[100] ts;
 	fa = 0;
@@ -207,7 +207,7 @@ fn void fadd() @test
 	assert(fa == ts.len * 10 * 0.5, "Threads returned %f, expected %f", fa, ts.len * 10 * 0.5);
 }
 
-fn void fsub() @test
+fn void fsub() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	Thread[100] ts;
 	fa = ts.len * 10 * 0.5;
