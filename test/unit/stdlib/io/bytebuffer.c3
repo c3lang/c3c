@@ -5,7 +5,7 @@ fn void write_read()
 {
 	ByteBuffer buffer;
 	buffer.new_init(0)!!;
-
+	defer buffer.free();
 	buffer.write("hello")!!;
 
 	char[8] bytes;

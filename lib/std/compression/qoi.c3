@@ -74,7 +74,7 @@ import std::io;
 fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
-	char[] output = new_encode(input, desc)!;
+	char[] output = new_encode(input, desc, allocator: allocator::temp())!;
 
 	// open file
 	File! f = file::open(filename, "wb");

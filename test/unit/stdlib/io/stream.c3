@@ -77,6 +77,7 @@ fn void read_tiny_bytearray_test()
 	ByteReader reader = io::wrap_bytes(&&x'07aabbcc00112233');
 	char[] read = io::read_tiny_bytearray(&reader, allocator: allocator::heap())!!;
 	assert(read == &&x'aabbcc00112233');
+	free(read);
 }
 
 fn void read_short_bytearray_test()
@@ -84,4 +85,5 @@ fn void read_short_bytearray_test()
 	ByteReader reader = io::wrap_bytes(&&x'0007aabbcc00112233');
 	char[] read = io::read_short_bytearray(&reader, allocator: allocator::heap())!!;
 	assert(read == &&x'aabbcc00112233');
+	free(read);
 }

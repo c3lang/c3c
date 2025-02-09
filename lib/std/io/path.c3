@@ -395,7 +395,7 @@ fn Path! Path.parent(self)
 
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
-	if (!path_str.len) return "";
+	if (!path_str.len) return path_str;
 	usz path_start = volume_name_len(path_str, path_env)!;
 	if (path_start > 0 && path_env == PathEnv.WIN32)
 	{
@@ -506,7 +506,11 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 	if (len > path_start + 1 && is_separator(path_str[len - 1], path_env)) len--;
 	if (path_str.len > len) path_str.ptr[len] = 0;
 	// Empty path after normalization -> "."
-	if (!len) return ".";
+	if (!len)
+	{
+		path_str[0] = '.';
+		return path_str[:1];
+	}
 	return path_str[:len];
 }
 

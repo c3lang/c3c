@@ -77,7 +77,7 @@ fn void shared_mutex_decrement(ArgsWrapper1* args)
     args.m.unlock()!!;
 }
 
-fn void shared_mutex() @test
+fn void shared_mutex() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
     Mutex m;
     m.init()!!;
@@ -127,7 +127,7 @@ fn void acquire_recursively(RecursiveMutex* m)
     }
 }
 
-fn void test_recursive_mutex() @test
+fn void test_recursive_mutex() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
     RecursiveMutex m;
     m.init()!!;

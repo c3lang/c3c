@@ -13,6 +13,7 @@ fn void bytestream()
 	assert((String)buffer[:len] == "abc");
 	ByteWriter w;
 	w.new_init();
+	defer (void)w.destroy();
 	OutStream ws = &w;
 	ws.write("helloworld")!!;
 	assert(w.str_view() == "helloworld");

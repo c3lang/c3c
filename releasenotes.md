@@ -20,6 +20,7 @@
 - Cleaner error message when missing comma in struct initializer #1941.
 - Distinct inline void causes unexpected error if used in slice #1946.
 - Allow `fn int test() => @pool() { return 1; }` short function syntax usage #1906.
+- Test runner will also check for leaks.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -54,6 +55,9 @@
 - Assert when using optional as init or inc part in a for loop #1942.
 - Fix bigint hex parsing #1945.
 - `bigint::from_int(0)` throws assertion #1944.
+- `write` of qoi would leak memory.
+- Issue when having an empty `Path` or just "."
+- `set_env` would leak memory.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

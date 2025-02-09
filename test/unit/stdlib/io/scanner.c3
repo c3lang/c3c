@@ -27,6 +27,7 @@ fn void scanner()
         sc.init(&br, buffer[..]);
 
         Results results;
+        defer results.free();
         while LOOP: (true)
         {
         	char[]! res = sc.scan(",,");

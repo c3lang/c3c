@@ -5,7 +5,7 @@ import std::thread::pool;
 
 def Pool = ThreadPool(<4>);
 
-fn void init_destroy() @test
+fn void init_destroy() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	for (usz i = 0; i < 20; i++)
 	{
@@ -15,7 +15,7 @@ fn void init_destroy() @test
 	}
 }
 
-fn void push_destroy() @test
+fn void push_destroy() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	for FOO: (usz i = 0; i < 20; i++)
 	{
@@ -42,7 +42,7 @@ fn void push_destroy() @test
 	}
 }
 
-fn void push_stop() @test
+fn void push_stop() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
 	for (usz i = 0; i < 20; i++)
 	{

@@ -7,6 +7,7 @@ fn void copy_map() @test
 {
 	TrackingAllocator alloc;
 	alloc.init(allocator::heap());
+	defer alloc.free();
 	assert(alloc.allocated() == 0);
     mem::@scoped(&alloc)
 	{
@@ -39,7 +40,8 @@ fn void copy_map() @test
 fn void copy_keys() @test
 {
 	String[] y;
-	@pool() {
+	@pool()
+	{
 		IntMap x;
 		x.temp_init();
 		x.set("hello", 0); // keys copied into temp hashmap
@@ -47,4 +49,6 @@ fn void copy_keys() @test
 		// end of pool: hashmap and its copied-in keys dropped
 	};
 	assert(y == {"hello"});
+	foreach(key : y) free(key);
+	free(y);
 }

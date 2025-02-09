@@ -57,7 +57,7 @@ fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setenvironmentvariable
 		return (win32::setEnvironmentVariableW(wname, value.to_temp_wstring()) ?? 1) == 0;
 	$case env::LIBC && !env::WIN32:
-		return libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite) == 0;
+		return libc::setenv(name.zstr_tcopy(), value.zstr_tcopy(), (int)overwrite) == 0;
 	$default:
 		return false;
 	$endswitch

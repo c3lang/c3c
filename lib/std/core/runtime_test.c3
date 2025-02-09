@@ -256,13 +256,12 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
-
+		TrackingAllocator mem;
+		mem.init(allocator::heap());
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
-			TrackingAllocator mem;
-			mem.init(allocator::heap());
-			bool has_leaks;
+			mem.clear();
 			mem::@scoped(&mem)
 			{
 				$if(!$$OLD_TEST):
@@ -274,22 +273,25 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 						continue;
 					}
 				$endif
-				has_leaks = mem.has_leaks();
 			};
-			mem.free();
 			unmute_output(false); // all good, discard output
-
-			io::printf(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
-			tests_passed++;
-
-			if (has_leaks) io::print(" LEAKS!");
-			io::printn();
-
+			if (mem.has_leaks())
+            {
+            	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
+            	io::printn(" LEAKS DETECTED!");
+            	mem.print_report();
+            }
+            else
+            {
+                io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+				tests_passed++;
+			}
 			if (test_context.teardown_fn)
 			{
 				test_context.teardown_fn();
 			}
 		}
+		mem.free();
 	}
 	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count > 1 ? "s" : "");
 

@@ -9,18 +9,21 @@ const char[?] TEST_QOI_DATA = b64"cW9pZgAAAVQAAACpBABV/f39/f39/f39/f39/f39/f39/f
 
 fn void test_qoi_all()
 {
-    @pool() {
+    @pool()
+    {
         // create a test descriptor
         QOIDesc test_desc;
 
         // decode the test data
         char[] decoded = qoi::new_decode(TEST_QOI_DATA[..], &test_desc)!!;
+        defer free(decoded);
+
         assert(test_desc.width == 340 && test_desc.height == 169, "Expected resolution of 340x169");
 
         // encode the decoded data
         char[] encoded = qoi::new_encode(decoded, &test_desc)!!;
         assert(encoded == TEST_QOI_DATA[..], "Encoder output should match the test data");
-
+		defer free(encoded);
         // encode and write the decoded data to a file
         usz written = qoi::write("unittest.qoi", decoded, &test_desc)!!;
 
@@ -30,8 +33,6 @@ fn void test_qoi_all()
 
         // cleanup
         file::delete("unittest.qoi")!!;
-        free(encoded);
-        free(decoded);
         free(read);
     };
 }
