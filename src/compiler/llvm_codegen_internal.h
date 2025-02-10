@@ -84,6 +84,7 @@ typedef struct GenContext_
 	bool shared_context;
 	bool in_init_ref;
 	bool weaken;
+	bool emitting_load_store_check;
 	LLVMModuleRef module;
 	LLVMBuilderRef global_builder;
 	LLVMTargetMachineRef machine;

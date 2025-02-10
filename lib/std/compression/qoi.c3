@@ -471,7 +471,7 @@ bitstruct OpDiff : char
 	char diff_green : 2..3;
 	char diff_blue : 0..1;
 }
-bitstruct OpLuma : ushort
+bitstruct OpLuma : ushort @align(1)
 {
 	char tag : 6..7;
 	char diff_green : 0..5;

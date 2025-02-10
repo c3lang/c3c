@@ -2286,6 +2286,7 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 	}
 	llvm_emit_expr(c, value, inner);
 	llvm_value_rvalue(c, value);
+	AlignSize alignment = type_abi_alignment(type);
 	if (safe_mode_enabled())
 	{
 		LLVMValueRef check = LLVMBuildICmp(c->builder, LLVMIntEQ, value->value, llvm_get_zero(c, inner->type), "checknull");
@@ -2294,11 +2295,28 @@ static inline void llvm_emit_deref(GenContext *c, BEValue *value, Expr *inner, T
 		span_to_scratch(inner->span);
 		scratch_buffer_append("' was null.");
 		llvm_emit_panic_on_true(c, check, scratch_buffer_to_string(), inner->span, NULL, NULL, NULL);
+		if (alignment > 1 && !c->emitting_load_store_check)
+		{
+			LLVMValueRef as_int = LLVMBuildPtrToInt(c->builder, value->value, llvm_get_type(c, type_usz), "");
+			LLVMValueRef align = llvm_const_int(c, type_usz, alignment);
+			LLVMValueRef rem = LLVMBuildURem(c->builder, as_int, align, "");
+			LLVMValueRef is_not_zero = LLVMBuildICmp(c->builder, LLVMIntNE, rem, llvm_get_zero(c, type_usz), "");
+			c->emitting_load_store_check = true;
+			BEValue value1;
+			BEValue value2;
+			if (inner->type->name )
+			llvm_value_set(&value1, align, type_usz);
+			llvm_value_set(&value2, rem, type_usz);
+			llvm_emit_panic_on_true(c, is_not_zero, "Unaligned pointer access detected", inner->span, "Unaligned access: ptr %% %s = %s, use @unaligned_load / @unaligned_store for unaligned access.",
+				&value1, &value2);
+			c->emitting_load_store_check = false;
+		}
+
 	}
 	// Convert pointer to address
 	value->kind = BE_ADDRESS;
-	value->type = type;
-	value->alignment = type_abi_alignment(type);
+	value->type = type_lowering(type);
+	value->alignment = alignment;
 }
 
 /**
@@ -2342,7 +2360,7 @@ static void llvm_emit_dynamic_method_addr(GenContext *c, BEValue *value, Expr *e
 
 static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 {
-	Type *type = type_reduced_from_expr(expr->unary_expr.expr);
+	Type *type = type_lowering(expr->unary_expr.expr->type);
 	Expr *inner = expr->unary_expr.expr;
 
 	switch (expr->unary_expr.operator)
@@ -2430,7 +2448,7 @@ static void llvm_emit_unary_expr(GenContext *c, BEValue *value, Expr *expr)
 			value->type = type_lowering(expr->type);
 			return;
 		case UNARYOP_DEREF:
-			llvm_emit_deref(c, value, inner, type_lowering(expr->type));
+			llvm_emit_deref(c, value, inner, expr->type);
 			return;
 		case UNARYOP_INC:
 			llvm_emit_pre_inc_dec(c, value, inner, 1, !expr->unary_expr.no_wrap);
@@ -4506,7 +4524,7 @@ static inline void llvm_emit_const_initializer_list_expr(GenContext *c, BEValue 
 
 static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	Type *type = type_reduced_from_expr(expr)->canonical;
+	Type *type = type_lowering(expr->type)->canonical;
 	bool is_bytes = false;
 	switch (expr->const_expr.const_kind)
 	{

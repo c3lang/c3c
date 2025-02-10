@@ -108,7 +108,7 @@ macro @i(x, y, z) => y ^ (x | ~z);
 
 macro @step(#f, a, b, c, d, ptr, n, t, s)
 {
-	*a += #f(b, c, d) + *(uint *)&ptr[n * 4] + t;
+	*a += #f(b, c, d) + @unaligned_load(*(uint *)&ptr[n * 4], 2) + t;
 	*a = (*a << s) | ((*a & 0xffffffff) >> (32 - s));
 	*a += b;
 }

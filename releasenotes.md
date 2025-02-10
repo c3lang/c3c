@@ -22,6 +22,7 @@
 - Allow `fn int test() => @pool() { return 1; }` short function syntax usage #1906.
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
+- Detect unaligned loads #1951.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -59,6 +60,7 @@
 - `write` of qoi would leak memory.
 - Issue when having an empty `Path` or just "."
 - `set_env` would leak memory.
+- Fix issue where aligned bitstructs did not store/load with the given alignment.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
