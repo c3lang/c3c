@@ -301,7 +301,7 @@ macro void zero_volatile(char[] data)
 	$$memset(data.ptr, (char)0, data.len, true, (usz)1);
 }
 
-macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = false, bool $inlined = false)
+macro void clear(void* dst, usz len, usz $dst_align = 0, bool $is_volatile = false)
 {
 	$$memset(dst, (char)0, len, $is_volatile, $dst_align);
 }
