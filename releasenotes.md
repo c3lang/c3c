@@ -61,6 +61,7 @@
 - Issue when having an empty `Path` or just "."
 - `set_env` would leak memory.
 - Fix issue where aligned bitstructs did not store/load with the given alignment.
+- Fix issue in GrowableBitSet with sanitizers.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
