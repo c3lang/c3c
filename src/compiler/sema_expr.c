@@ -55,14 +55,14 @@ static inline bool sema_expr_analyse_access(SemaContext *context, Expr *expr, bo
                                             bool lvalue);
 static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_builtin(SemaContext *context, Expr *expr, bool throw_error);
-static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bool *failed_ref);
+static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_type, Expr *expr, bool *failed_ref);
 static inline bool sema_expr_resolve_ct_eval(SemaContext *context, Expr *expr);
 static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, Expr *expr);
 static inline bool sema_expr_analyse_ct_identifier(SemaContext *context, Expr *expr);
 
 static inline bool sema_expr_analyse_ternary(SemaContext *context, Type *infer_type, Expr *expr);
 static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool *invalid_cast_ref);
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right);
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *infer_type);
 static inline bool sema_expr_analyse_unary(SemaContext *context, Expr *expr, bool *failed_ref, CheckType check);
 static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, bool allow_fail);
 
@@ -6007,7 +6007,7 @@ static bool sema_binary_analyse_ct_op_assign(SemaContext *context, Expr *expr, E
 	}
 	expr->binary_expr.operator = binaryop_assign_base_op(expr->binary_expr.operator);
 
-	if (!sema_expr_analyse_binary(context, expr, NULL)) return false;
+	if (!sema_expr_analyse_binary(context, NULL, expr, NULL)) return false;
 	expr->resolve_status = RESOLVE_DONE;
 
 	if (!sema_cast_const(expr))
@@ -6041,7 +6041,7 @@ static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Exp
 
 	BinaryOp op = binaryop_assign_base_op(expr->binary_expr.operator);
 	expr->binary_expr = (ExprBinary) { .left = exprid(value), .right = expr->binary_expr.right, .operator = op };
-	if (!sema_expr_analyse_binary(context, expr, NULL)) return false;
+	if (!sema_expr_analyse_binary(context, NULL, expr, NULL)) return false;
 	if (!sema_expr_analyse_ct_subscript_set_value(context, left, left_var, expr)) return false;
 	return true;
 
@@ -7862,13 +7862,12 @@ INLINE bool expr_is_ungrouped_ternary(Expr *expr)
 	return expr->expr_kind == EXPR_TERNARY && !expr->ternary_expr.grouped;
 }
 
-static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right)
+static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *infer_type)
 {
 	bool lhs_is_embed = left->expr_kind == EXPR_EMBED;
 	if (expr_is_ungrouped_ternary(left) || expr_is_ungrouped_ternary(right))
 	{
-		SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "Unclear precedence using ternary with ??, please use () to remove ambiguity.");
 	}
 	if (lhs_is_embed)
 	{
@@ -7876,7 +7875,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	}
 	else
 	{
-		if (!sema_analyse_expr(context, left)) return false;
+		if (!sema_analyse_inferred_expr(context, infer_type, left)) return false;
 	}
 
 	Type *type = left->type;
@@ -7888,13 +7887,12 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 			return true;
 		}
 		RETURN_SEMA_ERROR(left, "No optional to use '\?\?' with, please remove the '\?\?'.");
-		return false;
 	}
 
 	bool active_scope_jump = context->active_scope.jump_end;
 
 	// First we analyse the "else" and try to implictly cast.
-	if (!sema_analyse_expr(context, right)) return false;
+	if (!sema_analyse_inferred_expr(context, infer_type, right)) return false;
 
 	if (left->expr_kind == EXPR_OPTIONAL)
 	{
@@ -7916,9 +7914,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	Type *common = type_find_max_type(type, else_type);
 	if (!common)
 	{
-		SEMA_ERROR(right, "Cannot find a common type for %s and %s.", type_quoted_error_string(type),
-				   type_quoted_error_string(else_type));
-		return false;
+		RETURN_SEMA_ERROR(right, "Cannot find a common type for %s and %s.", type_quoted_error_string(type), type_quoted_error_string(else_type));
 	}
 	if (!cast_implicit(context, left, common, false)) return false;
 	if (!cast_implicit(context, right, common, false)) return false;
@@ -7943,7 +7939,7 @@ static inline bool sema_expr_analyse_ct_and_or(SemaContext *context, Expr *expr,
 	return true;
 }
 
-static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bool *failed_ref)
+static inline bool sema_expr_analyse_binary(SemaContext *context, Type *infer_type, Expr *expr, bool *failed_ref)
 {
 	ASSERT_SPAN(expr, expr->resolve_status == RESOLVE_RUNNING);
 	Expr *left = exprptr(expr->binary_expr.left);
@@ -7958,7 +7954,7 @@ static inline bool sema_expr_analyse_binary(SemaContext *context, Expr *expr, bo
 	switch (operator)
 	{
 		case BINARYOP_ELSE:
-			return sema_expr_analyse_or_error(context, expr, left, right);
+			return sema_expr_analyse_or_error(context, expr, left, right, infer_type);
 		case BINARYOP_CT_CONCAT:
 			return sema_expr_analyse_ct_concat(context, expr, left, right);
 		case BINARYOP_CT_OR:
@@ -9340,7 +9336,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 				UNREACHABLE
 			case EXPR_BINARY:
 				main_expr->resolve_status = RESOLVE_RUNNING;
-				if (!sema_expr_analyse_binary(context, main_expr, &failed))
+				if (!sema_expr_analyse_binary(context, NULL, main_expr, &failed))
 				{
 					if (!failed) goto FAIL;
 					success = false;
@@ -9942,7 +9938,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			if (!sema_expr_resolve_ct_eval(context, expr)) return false;
 			return sema_analyse_expr_dispatch(context, expr, check);
 		case EXPR_BINARY:
-			return sema_expr_analyse_binary(context, expr, NULL);
+			return sema_expr_analyse_binary(context, NULL, expr, NULL);
 		case EXPR_TERNARY:
 			return sema_expr_analyse_ternary(context, NULL, expr);
 		case EXPR_UNARY:
@@ -10590,6 +10586,9 @@ RETRY:
 			break;
 		case EXPR_LAMBDA:
 			if (!sema_expr_analyse_lambda(context, to, expr)) return expr_poison(expr);
+			break;
+		case EXPR_BINARY:
+			if (!sema_expr_analyse_binary(context, to, expr, NULL)) return expr_poison(expr);
 			break;
 		case EXPR_TERNARY:
 			if (!sema_expr_analyse_ternary(context, to, expr)) return expr_poison(expr);

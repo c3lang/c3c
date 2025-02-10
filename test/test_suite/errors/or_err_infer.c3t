@@ -1,21 +1,19 @@
-fn void test()
+// #target: macos-x64
+enum Foo
 {
-    int x;
-    int y;
-    long z = (long)x * y;
-    z = x / y;
-    z = (long)x + y;
-    z = (long)x - y;
-    z = x % y;
-    z = (long)x << y;
-    z = (long)x >> y;
-    z = (long)~x;
-    z = (long)-x;
-    int! w;
-    z = w ?? 1;
+	ABC,
+	DEF
 }
 
-/* #expect: top_down_casts.ll
+fn int main()
+{
+	int a;
+	Foo! x = ABC;
+	Foo f = x ?? DEF;
+	return 0;
+}
+
+/* expect: test.ll
 
 define void @top_down_casts.test() #0 {
 entry:

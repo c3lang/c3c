@@ -57,45 +57,45 @@ phi_block:                                        ; preds = %else_block, %after_
   %6 = call i64 @testError(ptr %retparam5)
   %not_err6 = icmp eq i64 %6, 0
   %7 = call i1 @llvm.expect.i1(i1 %not_err6, i1 true)
-  br i1 %7, label %after_check7, label %else_block8
+  br i1 %7, label %after_check7, label %else_block9
 
 after_check7:                                     ; preds = %phi_block
   %8 = load i32, ptr %retparam5, align 4
   %shl = shl i32 1, %8
   %9 = freeze i32 %shl
-  br label %phi_block9
+  %sifp8 = sitofp i32 %9 to double
+  br label %phi_block10
 
-else_block8:                                      ; preds = %phi_block
-  br label %phi_block9
+else_block9:                                      ; preds = %phi_block
+  br label %phi_block10
 
-phi_block9:                                       ; preds = %else_block8, %after_check7
-  %val10 = phi i32 [ %9, %after_check7 ], [ 100, %else_block8 ]
-  %sifp11 = sitofp i32 %val10 to double
-  store double %sifp11, ptr %y, align 8
+phi_block10:                                      ; preds = %else_block9, %after_check7
+  %val11 = phi double [ %sifp8, %after_check7 ], [ 1.000000e+02, %else_block9 ]
+  store double %val11, ptr %y, align 8
   %10 = call i64 @testError(ptr %retparam12)
   %not_err13 = icmp eq i64 %10, 0
   %11 = call i1 @llvm.expect.i1(i1 %not_err13, i1 true)
-  br i1 %11, label %after_check14, label %else_block15
+  br i1 %11, label %after_check14, label %else_block16
 
-after_check14:                                    ; preds = %phi_block9
+after_check14:                                    ; preds = %phi_block10
   %12 = load i32, ptr %retparam12, align 4
   %ashr = ashr i32 %12, 1
   %13 = freeze i32 %ashr
-  br label %phi_block16
+  %sifp15 = sitofp i32 %13 to double
+  br label %phi_block17
 
-else_block15:                                     ; preds = %phi_block9
-  br label %phi_block16
+else_block16:                                     ; preds = %phi_block10
+  br label %phi_block17
 
-phi_block16:                                      ; preds = %else_block15, %after_check14
-  %val17 = phi i32 [ %13, %after_check14 ], [ 100, %else_block15 ]
-  %sifp18 = sitofp i32 %val17 to double
-  store double %sifp18, ptr %z, align 8
+phi_block17:                                      ; preds = %else_block16, %after_check14
+  %val18 = phi double [ %sifp15, %after_check14 ], [ 1.000000e+02, %else_block16 ]
+  store double %val18, ptr %z, align 8
   %14 = call i64 @testError(ptr %retparam19)
   %not_err20 = icmp eq i64 %14, 0
   %15 = call i1 @llvm.expect.i1(i1 %not_err20, i1 true)
   br i1 %15, label %after_check21, label %else_block27
 
-after_check21:                                    ; preds = %phi_block16
+after_check21:                                    ; preds = %phi_block17
   %16 = load i32, ptr %retparam19, align 4
   %sifp22 = sitofp i32 %16 to double
   %17 = call i64 @testError(ptr %retparam23)
@@ -109,7 +109,7 @@ after_check25:                                    ; preds = %after_check21
   %fmul = fmul double %sifp22, %sifp26
   br label %phi_block28
 
-else_block27:                                     ; preds = %after_check21, %phi_block16
+else_block27:                                     ; preds = %after_check21, %phi_block17
   br label %phi_block28
 
 phi_block28:                                      ; preds = %else_block27, %after_check25

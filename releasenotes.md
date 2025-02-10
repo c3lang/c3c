@@ -21,6 +21,7 @@
 - Distinct inline void causes unexpected error if used in slice #1946.
 - Allow `fn int test() => @pool() { return 1; }` short function syntax usage #1906.
 - Test runner will also check for leaks.
+- Improve inference on `??` #1943.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
