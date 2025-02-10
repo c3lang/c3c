@@ -1803,7 +1803,7 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
   LLVMInitialize ## X ## TargetMC(); \
  } while(0)
 
-#if LLVM_VERSION_MAJOR > 20
+#if LLVM_VERSION_MAJOR > 21
 #define XTENSA_AVAILABLE 1
 #else
 #define XTENSA_AVAILABLE 0
