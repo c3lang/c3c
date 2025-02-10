@@ -58,7 +58,8 @@ struct Poll
 *>
 fn ulong! poll(Poll[] polls, Duration timeout)
 {
-	return poll_ms(polls, timeout.to_ms()) @inline;
+	long d_ms = timeout == POLL_FOREVER ? (long)POLL_FOREVER : timeout.to_ms();
+	return poll_ms(polls, d_ms) @inline;
 }
 
 <*
