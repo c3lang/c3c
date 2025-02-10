@@ -344,7 +344,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit
+          ../build/c3c compile-test unit --sanitizer=thread
 
       - name: Build testproject
         run: |
@@ -486,7 +486,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit
+          ../build/c3c compile-test unit --sanitizer=address
 
       - name: Build testproject
         run: |
