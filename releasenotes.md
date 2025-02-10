@@ -62,6 +62,7 @@
 - `set_env` would leak memory.
 - Fix issue where aligned bitstructs did not store/load with the given alignment.
 - Fix issue in GrowableBitSet with sanitizers.
+- Fix issue in List with sanitizers.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
