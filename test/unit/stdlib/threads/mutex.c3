@@ -37,7 +37,7 @@ fn void! own_mutex(Mutex* m)
     m.unlock()!;
 }
 
-fn void ensure_owner_checks() @test
+fn void ensure_owner_checks() @test @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 {
     Mutex m;
     m.init()!!;
