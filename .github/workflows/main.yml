@@ -486,7 +486,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit --sanitize=address
+          ../build/c3c compile-test unit --sanitize=thread
 
       - name: Build testproject
         run: |
