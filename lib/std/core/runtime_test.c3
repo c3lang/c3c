@@ -256,14 +256,14 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
+		$if !env::WIN32:
 		TrackingAllocator mem;
 		mem.init(allocator::heap());
+		$endif
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
-			mem.clear();
-			mem::@scoped(&mem)
-			{
+			$if env::WIN32:
 				$if(!$$OLD_TEST):
 					unit.func();
 				$else
@@ -273,25 +273,46 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 						continue;
 					}
 				$endif
-			};
+			$else
+				mem.clear();
+				mem::@scoped(&mem)
+				{
+				$if(!$$OLD_TEST):
+					unit.func();
+				$else
+					if (catch err = unit.func())
+					{
+						io::printf("[FAIL] Failed due to: %s", err);
+						continue;
+					}
+				$endif
+				};
+			$endif
 			unmute_output(false); // all good, discard output
-			if (mem.has_leaks())
-            {
-            	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
-            	io::printn(" LEAKS DETECTED!");
-            	mem.print_report();
-            }
-            else
-            {
+			$if env::WIN32:
                 io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
 				tests_passed++;
-			}
+			$else
+				if (mem.has_leaks())
+                {
+                	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
+                	io::printn(" LEAKS DETECTED!");
+                	mem.print_report();
+                }
+                else
+                {
+                    io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+					tests_passed++;
+				}
+			$endif
 			if (test_context.teardown_fn)
 			{
 				test_context.teardown_fn();
 			}
 		}
+		$if !env::WIN32:
 		mem.free();
+		$endif
 	}
 	io::printfn("\n%d test%s run.\n", test_count-tests_skipped, test_count > 1 ? "s" : "");
 
