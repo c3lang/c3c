@@ -3,15 +3,6 @@ module std::os::win32 @if(env::WIN32);
 // See https://github.com/wine-mirror/wine/blob/master/include/winsock2.h
 
 distinct WSAError = int;
-struct Win32_pollfd
-{
-	Win32_SOCKET fd;
-	Win32_SHORT events;
-	Win32_SHORT revents;
-}
-def Win32_WSAPOLLFD = Win32_pollfd;
-def Win32_PWSAPOLLFD = Win32_WSAPOLLFD*;
-def Win32_LPWSAPOLLFD = Win32_WSAPOLLFD*;
 
 const Win32_SHORT POLLERR    = 0x0001;
 const Win32_SHORT POLLHUP    = 0x0002;
