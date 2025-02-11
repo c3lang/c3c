@@ -149,6 +149,7 @@ const bool OPENBSD = LIBC && OS_TYPE == OPENBSD;
 const bool FREEBSD = LIBC && OS_TYPE == FREEBSD;
 const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool BSD_FAMILY = env::FREEBSD || env::OPENBSD || env::NETBSD;
+const bool UNIX = POSIX || BSD_FAMILY || DARWIN;
 const bool WASI = LIBC && OS_TYPE == WASI;
 const bool WASM_NOLIBC @builtin = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool ADDRESS_SANITIZER = $$ADDRESS_SANITIZER;
