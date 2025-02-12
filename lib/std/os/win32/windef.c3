@@ -22,8 +22,8 @@ struct Win32_SIZE
 
 struct Win32_WSABUF 
 {
-    Win32_ULONG len;
-    Win32_CHAR* buf;
+	Win32_ULONG len;
+	Win32_CHAR* buf;
 }
 
 struct Win32_SOCKADDR 
