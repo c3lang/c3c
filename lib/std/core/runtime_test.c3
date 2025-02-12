@@ -279,6 +279,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
+		(void)io::stdout().flush();
 		TrackingAllocator mem;
 		mem.init(allocator::heap());
 		if (libc::setjmp(&context.buf) == 0)
