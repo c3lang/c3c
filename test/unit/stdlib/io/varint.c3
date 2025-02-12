@@ -4,7 +4,7 @@ import std::io;
 fn void write_read()
 {
 	ByteBuffer buf;
-	buf.temp_init(16)!!;
+	buf.temp_init(16);
 	usz n;
 	uint x;
 	uint y;
