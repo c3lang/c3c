@@ -23,6 +23,7 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
+- c3c `--test-leak-report` flag for displaying full memory lead report if any
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -63,6 +64,10 @@
 - Fix issue where aligned bitstructs did not store/load with the given alignment.
 - Fix issue in GrowableBitSet with sanitizers.
 - Fix issue in List with sanitizers.
+- Test runner --test-disable-sort fixed 
+- Test runner with tracking allocator assertion at failed test #1963
+- Test runner forcing `Testing test_name .........` stdout flush before deadlocking test
+
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

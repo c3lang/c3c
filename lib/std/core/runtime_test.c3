@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
+import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
@@ -33,6 +34,7 @@ struct TestContext
 	File fake_stdout;
 	File orig_stdout;
 	File orig_stderr;
+	Allocator orig_allocator;
 }
 
 struct TestUnit
@@ -108,6 +110,8 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	}
 
 	test_context.is_in_panic = false;
+	allocator::thread_allocator = test_context.orig_allocator;
+	test_context.orig_allocator = null;
 	libc::longjmp(&test_context.buf, 1);
 }
 
@@ -286,23 +290,25 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		{
 			mute_output();
 			mem.clear();
-			mem::@scoped(&mem)
-			{
-				$if(!$$OLD_TEST):
-					unit.func();
-				$else
-					if (catch err = unit.func())
-					{
-						io::printf("[FAIL] Failed due to: %s", err);
-						continue;
-					}
-				$endif
-				// track cleanup that may take place in teardown_fn
-				if (test_context.teardown_fn)
+			// NOTE: longjmp resilient mem::@scoped(&mem)
+			context.orig_allocator = allocator::thread_allocator;
+			allocator::thread_allocator = &mem;
+			$if(!$$OLD_TEST):
+				unit.func();
+			$else
+				if (catch err = unit.func())
 				{
-					test_context.teardown_fn();
+					io::printf("[FAIL] Failed due to: %s", err);
+					continue;
 				}
-			};
+			$endif
+			// track cleanup that may take place in teardown_fn
+			if (test_context.teardown_fn)
+			{
+				test_context.teardown_fn();
+			}
+			allocator::thread_allocator = context.orig_allocator;
+
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
             {
