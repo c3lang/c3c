@@ -26,4 +26,4 @@ fn void write_read()
 	n = buffer.read(bytes[..])!!;
 	assert((String)bytes[:n] == "rld");
 	assert(buffer.read_idx == 1);
-}*/
+}
