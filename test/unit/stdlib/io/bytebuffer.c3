@@ -1,10 +1,10 @@
 module std::io::bytebuffer @test;
 import std::io;
-/*
+
 fn void write_read()
 {
 	ByteBuffer buffer;
-	buffer.new_init(0)!!;
+	buffer.new_init(50, 100)!!;
 	defer buffer.free();
 	buffer.write("hello")!!;
 
