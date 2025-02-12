@@ -25,6 +25,7 @@ struct TestContext
 	bool has_ansi_codes;
 	bool is_in_panic;
 	bool leak_full_report;
+	bool quiet_mode;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
@@ -89,6 +90,7 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	test_context.is_in_panic = true;
 
 	unmute_output(true);
+
 	(void)io::stdout().flush();
 	if (test_context.assert_print_backtrace)
 	{
@@ -153,6 +155,7 @@ fn void unmute_output(bool has_error) @local
 	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 	if (has_error)
 	{
+		io::printf("\nTesting %s ", test_context.current_test_name);
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
 	}
 
@@ -185,8 +188,9 @@ fn void test_runner_usage() @local
 	io::printn("--test-breakpoint, -b              When running tests, trigger a breakpoint on failure.");
 	io::printn("--test-nosort, -s                  Do not sort tests.");
 	io::printn("--test-leak-report, -l             Display full memory leak report if any.");
-	io::printn("--test-noansi                      Disable test colour output");
-	io::printn("--test-useansi                     Enable test colour output");
+	io::printn("--test-noansi                      Disable test colour output.");
+	io::printn("--test-useansi                     Enable test colour output.");
+	io::printn("--test-quiet, -q                   Replace full test names by '.' and print out only failed tests.");
 }
 
 fn bool run_tests(String[] args, TestUnit[] tests) @private
@@ -202,6 +206,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
 		.leak_full_report = false,
+		.quiet_mode = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
 	};
@@ -219,6 +224,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			case "--test-nosort":
 			case "-s":
 				sort_tests = false;
+			case "--test-quiet":
+			case "-q":
+				context.quiet_mode = true;
 			case "--test-noansi":
 				context.has_ansi_codes = false;
 			case "--test-useansi":
@@ -266,7 +274,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);
-	io::printn(name);
+	if(!context.quiet_mode) io::printn(name);
 	name.clear();
 	foreach(unit : tests)
 	{
@@ -282,7 +290,12 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		defer name.clear();
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
-		io::printf("%s ", name.str_view());
+
+		if (context.quiet_mode) {
+			io::print(".");
+		} else {
+			io::printf("%s ", name.str_view());
+		}
 		(void)io::stdout().flush();
 		TrackingAllocator mem;
 		mem.init(allocator::heap());
@@ -312,13 +325,16 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
             {
+                if(test_context.quiet_mode) io::printf("\n%s ", context.current_test_name);
             	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
             	io::printn(" LEAKS DETECTED!");
             	if (test_context.leak_full_report) mem.print_report();
             }
             else
             {
-                io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+                if(!test_context.quiet_mode) {
+                	io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+                }
 				tests_passed++;
 			}
 		}

@@ -24,6 +24,7 @@
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
 - c3c `--test-leak-report` flag for displaying full memory lead report if any
+- c3c `--test-quiet` flag for minifying full test names to '.' and printing out only on errors
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
