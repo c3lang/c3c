@@ -3,7 +3,7 @@ import std::io;
 
 int a;
 
-fn void testrun() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void testrun() @test
 {
 	Thread t;
 	a = 0;
@@ -18,7 +18,7 @@ fn void testrun() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 
 Mutex m_global;
 
-fn void testrun_mutex() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void testrun_mutex()
 {
 	Thread[20] ts;
 	a = 0;
@@ -48,7 +48,7 @@ fn void testrun_mutex() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 	m_global.destroy()!!;
 }
 
-fn void testrun_mutex_try() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void testrun_mutex_try() @test
 {
 	Mutex m;
 	m.init()!!;
@@ -59,7 +59,7 @@ fn void testrun_mutex_try() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 	m.unlock()!!;
 }
 
-fn void testrun_mutex_timeout() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void testrun_mutex_timeout() @test
 {
 	TimedMutex m;
 	m.init()!!;
@@ -80,7 +80,7 @@ fn void call_once()
 	x_once += 100;
 }
 
-fn void testrun_once() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void testrun_once() @test
 {
 	OnceFlag once;
 	once.call(&call_once);

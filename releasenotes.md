@@ -6,9 +6,14 @@
 - Increase precedence of `(Foo) { 1, 2 }`
 - Add `--enable-new-generics` to enable `Foo{int}` generic syntax.
 - `{| |}` expression blocks deprecated.
+- c3c `--test-leak-report` flag for displaying full memory lead report if any
 
 ### Fixes
 - Bug appearing when `??` was combined with boolean in some cases.
+- Test runner --test-disable-sort didn't work, c3c was expecting --test-nosort
+- Test runner with tracking allocator assertion at failed test #1963
+- Test runner with tracking allocator didn't properly handle teardown_fn
+- Correctly give an error if a character literal contains a line break.
 
 ### Stdlib changes
 
@@ -34,6 +39,7 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
+- `Thread` no longer allocates memory on posix.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.

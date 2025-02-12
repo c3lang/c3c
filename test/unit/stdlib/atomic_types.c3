@@ -7,7 +7,7 @@ def AtomicFloat = Atomic(<float>);
 AtomicUint a;
 AtomicFloat fa;
 
-fn void add() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void add() @test
 {
 	Thread[100] ts;
 	a.store(0);
@@ -44,7 +44,7 @@ fn void add() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 	assert(a.load() == ts.len * 10 * 5, "Threads returned %d, expected %d", a.load(), ts.len * 10 * 5);
 }
 
-fn void sub() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void sub() @test
 {
 	Thread[100] ts;
 	a.store(ts.len * 10 * 5);
@@ -81,7 +81,7 @@ fn void sub() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 	assert(a.load() == 0, "Threads returned %d, expected %d", a.load(), 0);
 }
 
-fn void fadd() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void fadd() @test
 {
 	Thread[100] ts;
 	fa.store(0);
@@ -118,7 +118,7 @@ fn void fadd() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
 	assert(fa.load() == ts.len * 10 * 0.5, "Threads returned %f, expected %f", fa.load(), ts.len * 10 * 0.5);
 }
 
-fn void fsub() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void fsub() @test
 {
 	Thread[100] ts;
 	fa.store(ts.len * 10 * 0.5);
