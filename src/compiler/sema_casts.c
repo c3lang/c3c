@@ -1767,7 +1767,6 @@ static void cast_enum_to_value(Expr* expr, Type *to_type)
 		cast_int_to_int(expr, to_type);
 		return;
 	}
-
 	if (expr_is_const_enum(expr))
 	{
 		expr_replace(expr, copy_expr_single(expr->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]));

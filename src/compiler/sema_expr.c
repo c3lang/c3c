@@ -277,14 +277,27 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
+
 			if (parent->expr_kind == EXPR_CONST)
 			{
-				return copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[0]);
+				if (decl->enums.inline_value)
+				{
+					Expr *expr = expr_new_expr(EXPR_CONST, parent);
+					expr_rewrite_const_int(expr, decl->enums.type_info->type, parent->const_expr.enum_err_val->enum_constant.ordinal);
+					return expr;
+				}
+				return copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]);
+			}
+			if (decl->enums.inline_value)
+			{
+				Expr *expr = copy_expr_single(parent);
+				expr->type = decl->enums.type_info->type;
+				return expr;
 			}
 			Expr *property = expr_new(EXPR_ACCESS_RESOLVED, parent->span);
 			property->resolve_status = RESOLVE_DONE;
 			property->access_resolved_expr.parent = parent;
-			property->access_resolved_expr.ref = decl->enums.parameters[0];
+			property->access_resolved_expr.ref = decl->enums.parameters[decl->enums.inline_value];
 			property->type = property->access_resolved_expr.ref->type;
 			return property;
 		}

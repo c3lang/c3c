@@ -1089,7 +1089,7 @@ const char *llvm_codegen(void *context)
 
 void llvm_add_global_decl(GenContext *c, Decl *decl)
 {
-	ASSERT(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+	ASSERT_SPAN(decl, decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 
 	bool same_module = decl->unit->module == c->code_module;
 	LLVMTypeRef type = llvm_get_type(c, decl->type);
@@ -1282,7 +1282,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			{
 				return decl->backend_ref = llvm_get_ref(c, decl->var.alias);
 			}
-			ASSERT(decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
+			ASSERT_SPAN(decl, decl->var.kind == VARDECL_GLOBAL || decl->var.kind == VARDECL_CONST);
 			llvm_add_global_decl(c, decl);
 			return decl->backend_ref;
 		case DECL_FUNC:

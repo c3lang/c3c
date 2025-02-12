@@ -76,6 +76,7 @@
 - New unit test default runner.
 - Added weakly linked `fmodf`.
 - Add `@select` to perform the equivalent of `a ? x : y` at compile time.
+- `HashMap` is now `Printable`.
 
 ## 0.6.6 Change list
 

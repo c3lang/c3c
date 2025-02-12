@@ -56,6 +56,29 @@ fn void map()
     }
 }
 
+def FooMap = HashMap(<char, Foobar>);
+enum Foobar : inline char
+{
+    FOO,
+    BAR,
+    BAZ
+}
+
+enum Foobar2 : int (inline char y)
+{
+	ABC = 3,
+	DEF = 5,
+}
+
+fn void map_inline_enum()
+{
+	FooMap x;
+	x[Foobar.BAZ] = FOO;
+	x[Foobar2.ABC] = BAR;
+	test::eq(string::tformat("%s", x), "{ 2: FOO, 3: BAR }");
+	x.free();
+}
+
 fn void map_remove()
 {
 	TestHashMap m;

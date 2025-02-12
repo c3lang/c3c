@@ -6,8 +6,9 @@
 *>
 module std::collections::map(<Key, Value>);
 import std::math;
+import std::io @norecurse;
 
-struct HashMap
+struct HashMap (Printable)
 {
 	Entry*[] table;
 	Allocator allocator;
@@ -444,6 +445,18 @@ fn void HashMap.resize(&map, uint new_capacity) @private
 	map.table = new_table;
 	map.free_internal(old_table.ptr);
 	map.threshold = (uint)(new_capacity * map.load_factor);
+}
+
+fn usz! HashMap.to_format(&self, Formatter* f) @dynamic
+{
+	usz len;
+	len += f.print("{ ")!;
+	self.@each_entry(; Entry* entry)
+	{
+		if (len > 2) len += f.print(", ")!;
+		len += f.printf("%s: %s", entry.key, entry.value)!;
+    };
+	return len + f.print(" }");
 }
 
 fn void HashMap.transfer(&map, Entry*[] new_table) @private
