@@ -81,6 +81,7 @@ def Win32_LPVOID = void*;
 def Win32_LPWORD = Win32_WORD*;
 def Win32_LPWSTR = Win32_WCHAR*;
 def Win32_LRESULT = Win32_LONG_PTR;
+def Win32_NTSTATUS = Win32_LONG;
 def Win32_PBOOL = Win32_BOOL*;
 def Win32_PBOOLEAN = Win32_BOOLEAN*;
 def Win32_PBYTE = Win32_BYTE*;
