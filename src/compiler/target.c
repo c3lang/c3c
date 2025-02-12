@@ -159,6 +159,16 @@ static bool os_target_signed_c_char_type(OsType os, ArchType arch)
 	}
 }
 
+static inline void target_setup_aarch64_abi(void)
+{
+	compiler.platform.aarch.is_darwin = os_is_apple(compiler.platform.os);
+	compiler.platform.aarch.is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	compiler.platform.abi = ABI_AARCH64;
+	// TODO improve Aarch64 functionality support.
+	scratch_buffer_clear();
+	scratch_buffer_append("+crc,+lse,+rdm,+fp-armv8,+neon");
+	compiler.platform.features = scratch_buffer_copy();
+}
 static inline void target_setup_arm_abi(void)
 {
 	compiler.platform.abi = ABI_ARM;
@@ -836,8 +846,7 @@ static void x86_features_from_host(X86Features *cpu_features)
 #if LLVM_AVAILABLE
 	char *features = LLVMGetHostCPUFeatures();
 	INFO_LOG("Detected the following host features: %s", features);
-	INFO_LOG("For %s",
-			 LLVMGetHostCPUName());
+	INFO_LOG("For %s", LLVMGetHostCPUName());
 
 	char *tok = strtok(features, ",");
 	*cpu_features = x86_feature_zero;
@@ -1994,9 +2003,7 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-			compiler.platform.aarch.is_darwin = os_is_apple(compiler.platform.os);
-			compiler.platform.aarch.is_win32 = compiler.platform.os == OS_TYPE_WIN32;
-			compiler.platform.abi = ABI_AARCH64;
+			target_setup_aarch64_abi();
 			break;
 		case ARCH_TYPE_XTENSA:
 			compiler.platform.abi = ABI_XTENSA;

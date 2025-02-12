@@ -68,7 +68,9 @@
 - Test runner --test-disable-sort fixed 
 - Test runner with tracking allocator assertion at failed test #1963
 - Test runner forcing `Testing test_name .........` stdout flush before deadlocking test
-
+- Circumvent Aarch64 miscompilations of atomics.
+- Fixes to ByteBuffer allocation/free.
+- Fix issue where compiling both for asm and object file would corrupt the obj file output.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
