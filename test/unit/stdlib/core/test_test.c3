@@ -8,6 +8,7 @@ struct TestState
 	int n_runs;
 	int n_fails;
 	bool expected_fail;
+	void* some_mem;
 
 	// NOTE: we must wrap setup/teardown functions to hide them from module @test runner
 	TestFn setup_fn;
@@ -22,6 +23,7 @@ TestState state =
 	{
 		state.n_runs++;
 		state.n_fails = 0;
+		state.some_mem = mem::alloc(int);
 
 		assert (runtime::test_context.assert_print_backtrace);
 		assert (builtin::panic != state.panic_mock_fn, "missing finalization of panic");
@@ -42,6 +44,7 @@ TestState state =
 		state.n_fails = 0;
 		state.expected_fail = false;
 		state.n_runs = 0;
+		mem::free(state.some_mem);
 	},
 	.panic_mock_fn = fn void (String message, String file, String function, uint line)
 	{
@@ -138,6 +141,9 @@ fn void setup_no_teardown()
 	test::eq(state.n_runs, 1);
 	test::eq(state.n_fails, 0);
 	test::eq(state.expected_fail, false);
+
+	// this has to be freed in teardown
+	mem::free(state.some_mem);
 
 	// WARNING: reverting back original panic func
 	builtin::panic = state.old_panic;

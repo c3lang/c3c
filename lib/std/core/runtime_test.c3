@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
+import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
@@ -23,6 +24,8 @@ struct TestContext
 	bool assert_print_backtrace;
 	bool has_ansi_codes;
 	bool is_in_panic;
+	bool leak_full_report;
+	bool quiet_mode;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
@@ -32,6 +35,7 @@ struct TestContext
 	File fake_stdout;
 	File orig_stdout;
 	File orig_stderr;
+	Allocator orig_allocator;
 }
 
 struct TestUnit
@@ -86,6 +90,7 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	test_context.is_in_panic = true;
 
 	unmute_output(true);
+
 	(void)io::stdout().flush();
 	if (test_context.assert_print_backtrace)
 	{
@@ -107,6 +112,8 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	}
 
 	test_context.is_in_panic = false;
+	allocator::thread_allocator = test_context.orig_allocator;
+	test_context.orig_allocator = null;
 	libc::longjmp(&test_context.buf, 1);
 }
 
@@ -148,6 +155,7 @@ fn void unmute_output(bool has_error) @local
 	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 	if (has_error)
 	{
+		if (test_context.quiet_mode) io::printf("\nTesting %s ", test_context.current_test_name);
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
 	}
 
@@ -173,6 +181,18 @@ fn void unmute_output(bool has_error) @local
 	(void)stdout.flush();
 }
 
+fn void test_runner_usage() @local
+{
+	io::printn("Test runner arguments help.");
+	io::printn("--test-filter <arg>, -f <arg>      Set a filter when running tests, running only matching tests.");
+	io::printn("--test-breakpoint, -b              When running tests, trigger a breakpoint on failure.");
+	io::printn("--test-nosort, -s                  Do not sort tests.");
+	io::printn("--test-leak-report, -l             Display full memory leak report if any.");
+	io::printn("--test-noansi                      Disable test colour output.");
+	io::printn("--test-useansi                     Enable test colour output.");
+	io::printn("--test-quiet, -q                   Replace full test names by '.' and print out only failed tests.");
+}
+
 fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	usz max_name;
@@ -185,6 +205,8 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	{
 		.assert_print_backtrace = true,
 		.breakpoint_on_assert = false,
+		.leak_full_report = false,
+		.quiet_mode = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
 	};
@@ -192,15 +214,28 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	{
 		switch (args[i])
 		{
-			case "breakpoint":
+			case "--help":
+			case "-h":
+				test_runner_usage();
+				return false;
+			case "--test-breakpoint":
+			case "-b":
 				context.breakpoint_on_assert = true;
-			case "nosort":
+			case "--test-nosort":
+			case "-s":
 				sort_tests = false;
-			case "noansi":
+			case "--test-quiet":
+			case "-q":
+				context.quiet_mode = true;
+			case "--test-noansi":
 				context.has_ansi_codes = false;
-			case "useansi":
+			case "--test-useansi":
 				context.has_ansi_codes = true;
-			case "filter":
+			case "--test-leak-report":
+			case "-l":
+				context.leak_full_report = true;
+			case "--test-filter":
+			case "-f":
 				if (i == args.len - 1)
 				{
 					io::printn("Invalid arguments to test runner.");
@@ -239,7 +274,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);
-	io::printn(name);
+	if(!context.quiet_mode) io::printn(name);
 	name.clear();
 	foreach(unit : tests)
 	{
@@ -255,40 +290,52 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		defer name.clear();
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
-		io::printf("%s ", name.str_view());
+
+		if (context.quiet_mode) {
+			io::print(".");
+		} else {
+			io::printf("%s ", name.str_view());
+		}
+		(void)io::stdout().flush();
 		TrackingAllocator mem;
 		mem.init(allocator::heap());
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
 			mem.clear();
-			mem::@scoped(&mem)
-			{
-				$if(!$$OLD_TEST):
-					unit.func();
-				$else
-					if (catch err = unit.func())
-					{
-						io::printf("[FAIL] Failed due to: %s", err);
-						continue;
-					}
-				$endif
-			};
-			unmute_output(false); // all good, discard output
-			if (mem.has_leaks())
-            {
-            	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
-            	io::printn(" LEAKS DETECTED!");
-            	mem.print_report();
-            }
-            else
-            {
-                io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
-				tests_passed++;
-			}
+			// NOTE: longjmp resilient mem::@scoped(&mem)
+			context.orig_allocator = allocator::thread_allocator;
+			allocator::thread_allocator = &mem;
+			$if(!$$OLD_TEST):
+				unit.func();
+			$else
+				if (catch err = unit.func())
+				{
+					io::printf("[FAIL] Failed due to: %s", err);
+					continue;
+				}
+			$endif
+			// track cleanup that may take place in teardown_fn
 			if (test_context.teardown_fn)
 			{
 				test_context.teardown_fn();
+			}
+			allocator::thread_allocator = context.orig_allocator;
+
+			unmute_output(false); // all good, discard output
+			if (mem.has_leaks())
+            {
+                if(test_context.quiet_mode) io::printf("\n%s ", context.current_test_name);
+            	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
+            	io::printn(" LEAKS DETECTED!");
+            	if (test_context.leak_full_report) mem.print_report();
+            }
+            else
+            {
+                if(!test_context.quiet_mode) {
+                	io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+                }
+				tests_passed++;
 			}
 		}
 		mem.free();

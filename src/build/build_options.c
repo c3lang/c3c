@@ -135,7 +135,9 @@ static void usage(bool full)
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
-		print_opt("--test-disable-sort", "Do not sort tests.");
+		print_opt("--test-quiet", "Replace full test names by '.' and print out only failed tests.");
+		print_opt("--test-nosort", "Do not sort tests.");
+		print_opt("--test-leak-report", "Display full memory leak report if any.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -720,6 +722,16 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("test-breakpoint"))
 			{
 				options->test_breakpoint = true;
+				return;
+			}
+			if (match_longopt("test-leak-report"))
+			{
+				options->test_leak_report = true;
+				return;
+			}
+			if (match_longopt("test-quiet"))
+			{
+				options->test_quiet = true;
 				return;
 			}
 			if (match_longopt("test-nosort"))
