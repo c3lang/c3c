@@ -23,6 +23,7 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
+- Add flag `--no-run`. For commands which may run executable after building, skip the run step. #1931
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
