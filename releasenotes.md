@@ -66,6 +66,7 @@
 - Circumvent Aarch64 miscompilations of atomics.
 - Fixes to ByteBuffer allocation/free.
 - Fix issue where compiling both for asm and object file would corrupt the obj file output.
+- Fix `poll` and `POLL_FOREVER`.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
