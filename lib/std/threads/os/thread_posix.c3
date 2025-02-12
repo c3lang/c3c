@@ -8,7 +8,14 @@ struct NativeMutex
 }
 
 def NativeConditionVariable = Pthread_cond_t;
-def NativeThread = Pthread_t;
+
+struct NativeThread
+{
+	inline Pthread_t pthread;
+	ThreadFn thread_fn;
+    void* arg;
+}
+
 def NativeOnceFlag = Pthread_once_t;
 
 <*
@@ -148,59 +155,49 @@ fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 	}
 }
 
-tlocal PosixThreadData *_thread_data @private;
+tlocal NativeThread current_thread @private;
 
-fn void free_thread_data() @private
-{
-	if (_thread_data)
-	{
-		allocator::free(_thread_data.allocator, _thread_data);
-		_thread_data = null;
-	}
-}
 fn void* callback(void* arg) @private
 {
-	_thread_data = arg;
-	defer free_thread_data();
-	return (void*)(iptr)_thread_data.thread_fn(_thread_data.arg);
+	NativeThread* thread = arg;
+	current_thread = *thread;
+	return (void*)(iptr)thread.thread_fn(thread.arg);
 }
 
 fn void! NativeThread.create(&thread, ThreadFn thread_fn, void* arg)
 {
-	PosixThreadData *thread_data = mem::new(PosixThreadData, { .thread_fn = thread_fn, .arg = arg, .allocator = allocator::heap() });
-	if (posix::pthread_create(thread, null, &callback, thread_data) != 0)
+	thread.thread_fn = thread_fn;
+	thread.arg = arg;
+	if (posix::pthread_create(&thread.pthread, null, &callback, thread) != 0)
 	{
-		*thread = null;
-		free(thread_data);
 		return ThreadFault.INIT_FAILED?;
 	}
 }
 
 fn void! NativeThread.detach(thread)
 {
-	if (posix::pthread_detach(thread)) return ThreadFault.DETACH_FAILED?;
+	if (posix::pthread_detach(thread.pthread)) return ThreadFault.DETACH_FAILED?;
 }
 
 fn void native_thread_exit(int result)
 {
-	free_thread_data();
 	posix::pthread_exit((void*)(iptr)result);
 }
 
 fn NativeThread native_thread_current()
 {
-	return (NativeThread)posix::pthread_self();
+	return current_thread;
 }
 
 fn bool NativeThread.equals(thread, NativeThread other)
 {
-	return (bool)posix::pthread_equal(thread, other);
+	return (bool)posix::pthread_equal(thread.pthread, other.pthread);
 }
 
 fn int! NativeThread.join(thread)
 {
 	void *pres;
-	if (posix::pthread_join(thread, &pres)) return ThreadFault.JOIN_FAILED?;
+	if (posix::pthread_join(thread.pthread, &pres)) return ThreadFault.JOIN_FAILED?;
 	return (int)(iptr)pres;
 }
 
@@ -212,13 +209,6 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 fn void native_thread_yield()
 {
 	posix::sched_yield();
-}
-
-struct PosixThreadData @private
-{
-	ThreadFn thread_fn;
-	void* arg;
-	Allocator allocator;
 }
 
 fn void! native_sleep_nano(NanoDuration nano)

@@ -14,6 +14,7 @@ struct TestState
 	TestFn teardown_fn;
 	PanicFn old_panic;  // original test panic, use it when it's really fails
 	PanicFn panic_mock_fn; // mock panic, for testing the test:: failed
+	void* buf;
 }
 
 TestState state =
@@ -25,6 +26,7 @@ TestState state =
 
 		assert (runtime::test_context.assert_print_backtrace);
 		assert (builtin::panic != state.panic_mock_fn, "missing finalization of panic");
+		state.buf = mem::alloc(int);
 
 		state.old_panic = builtin::panic;
 		builtin::panic = state.panic_mock_fn;
@@ -42,6 +44,7 @@ TestState state =
 		state.n_fails = 0;
 		state.expected_fail = false;
 		state.n_runs = 0;
+		mem::free(state.buf);
 	},
 	.panic_mock_fn = fn void (String message, String file, String function, uint line)
 	{
@@ -138,6 +141,8 @@ fn void setup_no_teardown()
 	test::eq(state.n_runs, 1);
 	test::eq(state.n_fails, 0);
 	test::eq(state.expected_fail, false);
+
+	mem::free(state.buf);
 
 	// WARNING: reverting back original panic func
 	builtin::panic = state.old_panic;
