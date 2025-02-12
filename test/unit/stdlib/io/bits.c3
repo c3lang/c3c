@@ -231,7 +231,7 @@ fn void test_write_32_bits_multiple() {
 
 	assert(w.str_view() == x"f0 f1 f2 f3 fa fb fc fd");
 }
-/*
+
 fn void test_write_mixed_multiple() {
 	ByteWriter w;
 	w.temp_init();
@@ -246,4 +246,4 @@ fn void test_write_mixed_multiple() {
 	bw.flush()!!;
 
 	assert(w.str_view() == x"f3 f0 f1 f2 f3 eb ef f3 f6 f7");
-}*/
+}
