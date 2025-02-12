@@ -63,6 +63,9 @@
 - Fix issue where aligned bitstructs did not store/load with the given alignment.
 - Fix issue in GrowableBitSet with sanitizers.
 - Fix issue in List with sanitizers.
+- Circumvent Aarch64 miscompilations of atomics.
+- Fixes to ByteBuffer allocation/free.
+- Fix issue where compiling both for asm and object file would corrupt the obj file output.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

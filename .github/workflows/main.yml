@@ -87,15 +87,16 @@ jobs:
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib5 --print-linking examples\raylib\raylib_snake.c3
           ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib5 --print-linking examples\raylib\raylib_tetris.c3
 
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
+
       - name: run compiler tests
         run: |
           cd test
           python3.exe src/tester.py ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
 
-      - name: Compile run unit tests
-        run: |
-          cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-test unit -O1
 
       - name: Test python script
         run: |
@@ -486,7 +487,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit
+          ../build/c3c compile-test unit --sanitize=address
 
       - name: Build testproject
         run: |
@@ -660,7 +661,7 @@ jobs:
       - name: Compile run unit tests
         run: |
           cd test
-          ../build/c3c compile-test unit
+          ../build/c3c compile-test unit -O1
 
       - name: Test WASM
         run: |

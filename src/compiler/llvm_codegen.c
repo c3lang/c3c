@@ -664,47 +664,48 @@ static void gencontext_verify_ir(GenContext *context)
 	}
 }
 
-
-static void gencontext_emit_object_file(GenContext *context)
+static void llvm_emit_file(GenContext *c, const char *filename, LLVMCodeGenFileType llvm_codegen_type, bool clone_module)
 {
-	char *err = "";
 	DEBUG_LOG("Target: %s", compiler.platform.target_triple);
-	LLVMSetTarget(context->module, compiler.platform.target_triple);
-	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
-	LLVMSetDataLayout(context->module, layout);
+	LLVMModuleRef module = clone_module ? LLVMCloneModule(c->module) : c->module;
+	LLVMSetTarget(module, compiler.platform.target_triple);
+	char *layout = LLVMCopyStringRepOfTargetData(c->target_data);
+	LLVMSetDataLayout(module, layout);
 	LLVMDisposeMessage(layout);
 
-	if (context->asm_filename)
+	char *err = "";
+	FILE *file = NULL;
+	LLVMMemoryBufferRef buffer = NULL;
+	if (LLVMTargetMachineEmitToMemoryBuffer(c->machine, module, llvm_codegen_type, &err, &buffer))
 	{
-		// Generate .s file
-		if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
+		goto ERR;
+	}
+	file = fopen(filename, "wb");
+	if (!file)
+	{
+		err = "File could not be opened";
+		goto ERR;
+	}
+	size_t len = LLVMGetBufferSize(buffer);
+	const char *ptr = LLVMGetBufferStart(buffer);
+	while (len > 0)
+	{
+		size_t written = fwrite(ptr, 1, len, file);
+		if (written == 0)
 		{
-			error_exit("Could not emit asm file: %s", err);
+			err = "Failed to write to file";
+			goto ERR;
 		}
+		ptr += written;
+		len -= written;
 	}
-
-	// Generate .o or .obj file
-	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->object_filename, LLVMObjectFile, &err))
-	{
-		error_exit("Could not emit object file: %s", err);
-	}
-
-}
-
-static void llvm_emit_asm_file(GenContext *context)
-{
-	char *err = "";
-	DEBUG_LOG("Target: %s", compiler.platform.target_triple);
-	LLVMSetTarget(context->module, compiler.platform.target_triple);
-	char *layout = LLVMCopyStringRepOfTargetData(context->target_data);
-	LLVMSetDataLayout(context->module, layout);
-	LLVMDisposeMessage(layout);
-
-	// Generate .s file
-	if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
-	{
-		error_exit("Could not emit asm file: %s", err);
-	}
+	fclose(file);
+	LLVMDisposeMemoryBuffer(buffer);
+	return;
+ERR:
+	if (file) fclose(file);
+	if (buffer) LLVMDisposeMemoryBuffer(buffer);
+	error_exit("Could not emit '%s': %s", filename, err);
 }
 
 void gencontext_print_llvm_ir(GenContext *context)
@@ -1067,15 +1068,16 @@ const char *llvm_codegen(void *context)
 	}
 
 	const char *object_name = NULL;
-	if (compiler.build.emit_object_files)
-	{
-		gencontext_emit_object_file(c);
-		object_name = c->object_filename;
-	}
-
 	if (compiler.build.emit_asm)
 	{
-		llvm_emit_asm_file(context);
+		// Clone if there will be object file output.
+		llvm_emit_file(c, c->asm_filename, LLVMAssemblyFile, compiler.build.emit_object_files);
+	}
+
+	if (compiler.build.emit_object_files)
+	{
+		llvm_emit_file(c, c->object_filename, LLVMObjectFile, false);
+		object_name = c->object_filename;
 	}
 
 	gencontext_end_module(c);

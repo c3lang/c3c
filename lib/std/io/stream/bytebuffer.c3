@@ -16,15 +16,15 @@ struct ByteBuffer (InStream, OutStream)
  max_read defines how many bytes might be kept before its internal buffer is shrinked.
  @require self.bytes.len == 0 "Buffer already initialized."
 *>
-fn ByteBuffer*! ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator allocator = allocator::heap())
+fn ByteBuffer* ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator allocator = allocator::heap())
 {
 	*self = { .allocator = allocator, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
-	self.grow(initial_capacity)!;
+	self.grow(initial_capacity);
 	return self;
 }
 
-fn ByteBuffer*! ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity = 16)
+fn ByteBuffer* ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity = 16)
 {
 	return self.new_init(max_read, initial_capacity, allocator::temp());
 }
@@ -33,7 +33,7 @@ fn ByteBuffer*! ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity =
  @require buf.len > 0
  @require self.bytes.len == 0 "Buffer already initialized."
 *>
-fn ByteBuffer*! ByteBuffer.init_with_buffer(&self, char[] buf)
+fn ByteBuffer* ByteBuffer.init_with_buffer(&self, char[] buf)
 {
 	*self = { .max_read = buf.len, .bytes = buf };
 	return self;
@@ -48,7 +48,7 @@ fn void ByteBuffer.free(&self)
 fn usz! ByteBuffer.write(&self, char[] bytes) @dynamic
 {
 	usz cap = self.bytes.len - self.write_idx;
-	if (cap < bytes.len) self.grow(bytes.len)!;
+	if (cap < bytes.len) self.grow(bytes.len);
 	self.bytes[self.write_idx:bytes.len] = bytes[..];
 	self.write_idx += bytes.len;
 	return bytes.len;
@@ -57,7 +57,7 @@ fn usz! ByteBuffer.write(&self, char[] bytes) @dynamic
 fn void! ByteBuffer.write_byte(&self, char c) @dynamic
 {
 	usz cap = self.bytes.len - self.write_idx;
-	if (cap == 0) self.grow(1)!;
+	if (cap == 0) self.grow(1);
 	self.bytes[self.write_idx] = c;
 	self.write_idx++;
 }
@@ -128,10 +128,10 @@ fn usz! ByteBuffer.available(&self) @inline @dynamic
 	return self.write_idx - self.read_idx;
 }
 
-fn void! ByteBuffer.grow(&self, usz n)
+fn void ByteBuffer.grow(&self, usz n)
 {
 	n = math::next_power_of_2(n);
-	char* p = allocator::realloc_aligned(self.allocator, self.bytes, n, alignment: char.alignof)!;
+	char* p = allocator::realloc(self.allocator, self.bytes, n);
 	self.bytes = p[:n];
 }
 
