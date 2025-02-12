@@ -282,21 +282,22 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			switch (options->ansi)
 			{
 				case ANSI_ON:
-					vec_add(target->args, "useansi");
+					vec_add(target->args, "--test-useansi");
 					break;
 				case ANSI_OFF:
-					vec_add(target->args, "noansi");
+					vec_add(target->args, "--test-noansi");
 					break;
 				default:
 					break;
 			}
 			if (options->test_filter)
 			{
-				vec_add(target->args, "filter");
+				vec_add(target->args, "--test-filter");
 				vec_add(target->args, options->test_filter);
 			}
-			if (options->test_breakpoint) vec_add(target->args, "breakpoint");
-			if (options->test_nosort) vec_add(target->args, "nosort");
+			if (options->test_breakpoint) vec_add(target->args, "--test-breakpoint");
+			if (options->test_nosort) vec_add(target->args, "--test-nosort");
+			if (options->test_leak_report) vec_add(target->args, "--test-leak-report");
 			break;
 		case COMMAND_RUN:
 		case COMMAND_COMPILE_RUN:

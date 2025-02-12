@@ -504,6 +504,7 @@ typedef struct BuildOptions_
 	ValidationLevel validation_level;
 	Ansi ansi;
 	bool test_breakpoint;
+	bool test_leak_report;
 	bool test_nosort;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
