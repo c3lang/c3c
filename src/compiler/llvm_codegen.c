@@ -677,7 +677,7 @@ static void gencontext_emit_object_file(GenContext *context)
 	if (context->asm_filename)
 	{
 		// Generate .s file
-		if (LLVMTargetMachineEmitToFile(context->machine, context->module, (char *)context->asm_filename, LLVMAssemblyFile, &err))
+		if (LLVMTargetMachineEmitToFile(context->machine, LLVMCloneModule(context->module), (char *)context->asm_filename, LLVMAssemblyFile, &err))
 		{
 			error_exit("Could not emit asm file: %s", err);
 		}
