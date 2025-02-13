@@ -17,8 +17,8 @@ fn void main()
 
 /* #expect: test.ll
 
-  store <4 x i32> <i32 2, i32 2, i32 2, i32 2>, ptr %v1, align 16
-  store <4 x i32> <i32 1, i32 1, i32 1, i32 1>, ptr %v2, align 16
+  store <4 x i32>
+  store <4 x i32>
   %0 = load <4 x i32>, ptr %v1, align 16
   %1 = load <4 x i32>, ptr %v2, align 16
   %eq = icmp eq <4 x i32> %0, %1
