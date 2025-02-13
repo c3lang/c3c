@@ -11,17 +11,17 @@ Sort list using the counting sort algorithm.
 macro countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::len_from_list(list);
-	cs::csort<[$typeof(list), $typeof(key_fn)]>(list, 0, len, key_fn, ~((uint)0));
+	cs::csort(<$typeof(list), $typeof(key_fn)>)(list, 0, len, key_fn, ~((uint)0));
 }
 
 macro insertionsort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	is::isort<[$typeof(list), $typeof(cmp), $typeof(context)]>(list, (usz)start, (usz)end, cmp, context);
+	is::isort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, (usz)start, (usz)end, cmp, context);
 }
 
 macro quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	qs::qsort<[$typeof(list), $typeof(cmp), $typeof(context)]>(list, (isz)start, (isz)(end-1), cmp, context);
+	qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, (isz)start, (isz)(end-1), cmp, context);
 }
 
 module std::sort::cs(<Type, KeyFn>);

@@ -66,8 +66,8 @@ fn Vec3 Vec3.refract(self, Vec3 n, double r) => refract3(self, n, r);
 fn void ortho_normalize(Vec3f* v1, Vec3f* v2) => ortho_normalize3(v1, v2);
 fn void ortho_normalized(Vec3* v1, Vec3* v2) => ortho_normalize3(v1, v2);
 
-fn Matrix4f matrix4f_look_at(Vec3f eye, Vec3f target, Vec3f up) @deprecated => matrix::look_at<[float]>(eye, target, up);
-fn Matrix4 matrix4_look_at(Vec3 eye, Vec3 target, Vec3 up) @deprecated => matrix::look_at<[double]>(eye, target, up);
+fn Matrix4f matrix4f_look_at(Vec3f eye, Vec3f target, Vec3f up) @deprecated => matrix::look_at(<float>)(eye, target, up);
+fn Matrix4 matrix4_look_at(Vec3 eye, Vec3 target, Vec3 up) @deprecated => matrix::look_at(<double>)(eye, target, up);
 
 fn Vec3f Vec3f.rotate_quat(self, Quaternionf q) => rotate_by_quat3(self, q);
 fn Vec3 Vec3.rotate_quat(self, Quaternion q) => rotate_by_quat3(self, q);

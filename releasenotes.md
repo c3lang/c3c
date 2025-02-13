@@ -7,7 +7,6 @@
 - Add `win-debug` setting to be able to pick dwarf for output #1855.
 - Error on switch case fallthough if there is more than one newline #1849.
 - Added flags to `c3c project view` to filter displayed properties
-- VERY experimental `<[ ]>` syntax for generics.
 - Compile time array assignment #1806.
 - Allow `+++` to work on all types of arrays.
 - Allow `(int[*]) { 1, 2 }` cast style initialization.

@@ -501,12 +501,11 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 /**
  * generic_type ::= type generic_parameters
  */
-static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type, bool is_new_syntax)
+static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 {
 	ASSERT(type_info_ok(type));
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
-	if (is_new_syntax) advance(c);
-	if (!parse_generic_parameters(c, &generic_type->generic.params, is_new_syntax)) return poisoned_type_info;
+	if (!parse_generic_parameters(c, &generic_type->generic.params)) return poisoned_type_info;
 	generic_type->generic.base = type;
 	return generic_type;
 }
@@ -616,16 +615,8 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 			case TOKEN_LBRACKET:
 				type_info = parse_array_type_index(c, type_info);
 				break;
-			case TOKEN_LESS:
-				if (c->lexer.token_type != TOKEN_LBRACKET)
-				{
-					PRINT_ERROR_HERE("This looks like you're comparing a type? Or did you intend to write a generic type? In that case the syntax is 'Foo<[int]>'.");
-					return poisoned_type_info;
-				}
-				type_info = parse_generic_type(c, type_info, true);
-				break;
 			case TOKEN_LGENPAR:
-				type_info = parse_generic_type(c, type_info, false);
+				type_info = parse_generic_type(c, type_info);
 				break;
 			case TOKEN_STAR:
 				advance(c);

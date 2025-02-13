@@ -75,7 +75,7 @@ import std::collections::list;
 
 const BITS = Type.sizeof * 8;
 
-def GrowableBitSetList = List<[Type]>;
+def GrowableBitSetList = List(<Type>);
 
 struct GrowableBitSet
 {

@@ -7,7 +7,7 @@ const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
 const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 
-def PathList = List<[Path]>;
+def PathList = List(<Path>);
 
 fault PathResult
 {
