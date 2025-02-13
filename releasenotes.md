@@ -66,6 +66,7 @@
 - Fixes to ByteBuffer allocation/free.
 - Fix issue where compiling both for asm and object file would corrupt the obj file output.
 - Fix `poll` and `POLL_FOREVER`.
+- Missing end padding when including a packed struct #1966.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

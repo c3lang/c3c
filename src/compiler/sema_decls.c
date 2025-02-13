@@ -486,7 +486,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	Decl **struct_members = decl->strukt.members;
 	unsigned member_count = vec_size(struct_members);
 	ASSERT(member_count > 0 && "This analysis should only be called on member_count > 0");
-
+	bool is_naturally_aligned = !is_packed;
 	for (unsigned i = 0; i < member_count; i++)
 	{
 	AGAIN:;
@@ -579,6 +579,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		// If the natural align is different from the aligned offset we have two cases:
 		if (natural_align_offset != align_offset)
 		{
+			is_naturally_aligned = false;
 			// If the natural alignment is greater, in this case the struct is unaligned.
 			if (member_natural_alignment > member_alignment)
 			{
@@ -604,6 +605,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			{
 				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member which is not allowed with `@nopadding` and `@compact`.", align_offset - offset);
 			}
+			member->padding = align_offset - offset;
 		}
 
 		if (!sema_check_struct_holes(context, decl, member)) return false;
@@ -665,6 +667,15 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	}
 
 	decl->is_packed = is_unaligned;
+	// Strip padding if we are aligned.
+	if (!decl->is_packed && is_naturally_aligned)
+	{
+		for (unsigned i = 0; i < member_count; i++)
+		{
+			Decl *member = struct_members[i];
+			member->padding = 0;
+		}
+	}
 	decl->strukt.size = size;
 	return true;
 }
