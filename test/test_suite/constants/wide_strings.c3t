@@ -1,0 +1,15 @@
+char[?] a = L"WIDESTR";
+char[?] b = L"Esc\r\n";
+char[?] c = L`lit
+str\ting`;
+
+//@a = local_unnamed_addr global [16 x i8] c"W\00I\00D\00E\00S\00T\00R\00\00\00", align 16, !dbg !0
+//@b = local_unnamed_addr global [12 x i8] c"E\00s\00c\00\0D\00\0A\00\00\00", align 1, !dbg !7
+//@c = local_unnamed_addr global [24 x i8] c"l\00i\00t\00\0A\00s\00t\00r\00\09\00i\00n\00g\00\00\00", align 16, !dbg !12
+
+
+/* #expect: wide_strings.ll
+
+@wide_strings.a = local_unnamed_addr global [16 x i8] c"W\00I\00D\00E\00S\00T\00R\00\00\00", align 1
+@wide_strings.b = local_unnamed_addr global [12 x i8] c"E\00s\00c\00\0D\00\0A\00\00\00", align 1
+@wide_strings.c = local_unnamed_addr global [24 x i8] c"l\00i\00t\00\0A\00s\00t\00r\00\09\00i\00n\00g\00\00\00", align 1
