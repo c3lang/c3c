@@ -1558,7 +1558,7 @@ typedef struct
 		};
 		struct
 		{
-			bool is_base64 : 1;
+            uint64_t is_base64 : 1;
 			uint64_t bytes_len : 63;
 		};
 		struct

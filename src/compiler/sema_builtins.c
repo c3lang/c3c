@@ -369,6 +369,112 @@ bool sema_expr_analyse_str_conv(SemaContext *context, Expr *expr, BuiltinFunctio
 	return true;
 }
 
+/**
+ * Interpret a UTF-8 codepoint and return an integer corresponding to the raw codepoint's value.
+ * @param data_ptr pointer to the pointer which scrolls along the input data string
+ */
+static uint32_t utf8_to_codepoint(const char *data_ptr, int *inc)
+{
+	int bytes = 1;
+	const char *data = data_ptr;
+	uint32_t result = 0;
+
+	ASSERT(data);
+	ASSERT(inc);
+
+	while ((0xC0 & *(data++)) == 0x80) ++bytes;
+	data = data_ptr - 1;
+
+	switch (bytes) {
+		case 1: return (uint32_t)(data[0] & 0x7FU);
+		case 2:
+			result = ((data[0] & 0x1FU) << 6U) | (data[1] & 0x3FU);
+			break;
+		case 3:
+			result = ((data[0] & 0x0FU) << 12U) | ((data[1] & 0x3FU) << 6U) | (data[2] & 0x3FU);
+			break;
+		case 4:
+			result = ((data[0] & 0x07U) << 18U) | ((data[1] & 0x3FU) << 12U) | ((data[2] & 0x3FU) << 6U) | (data[3] & 0x3FU);
+			break;
+		default: return 0;   // U+10FFFF is the highest codepoint in UTF-8, consisting of a maximum of 4 bytes.
+	}
+
+	*inc = bytes;
+	return result;
+}
+
+
+
+bool sema_expr_analyse_str_wide(SemaContext *context, Expr *expr, BuiltinFunction func)
+{
+	Expr **args = expr->call_expr.arguments;
+	Expr *inner = args[0];
+	bool zero_terminate = true;
+	unsigned arg_count = vec_size(args);
+	if (arg_count > 2)
+	{
+		RETURN_SEMA_ERROR(inner, "Too many arguments, expected 1 or 2 arguments.");
+	}
+	if (arg_count == 2)
+	{
+		Expr *zero_term = args[1];
+		if (!sema_analyse_expr(context, zero_term)) return false;
+		if (!sema_cast_const(zero_term) || !expr_is_const_bool(zero_term))
+		{
+			RETURN_SEMA_ERROR(zero_term, "Expected a boolean value here, to determine zero termination or not.");
+		}
+		zero_terminate = zero_term->const_expr.b;
+	}
+	if (!sema_analyse_expr(context, inner)) return false;
+	if (!sema_cast_const(inner) && !expr_is_const_string(inner))
+	{
+		RETURN_SEMA_ERROR(inner, "You need a compile time constant string to convert to a wide string.");
+	}
+
+	const char *string = inner->const_expr.bytes.ptr;
+	ArraySize original_len = inner->const_expr.bytes.len;
+
+	int bytes_per_unit = func == BUILTIN_WIDESTRING_16 ? 2 : 4;
+
+	Type *type = func == BUILTIN_WIDESTRING_16 ? type_ushort : type_uint;
+	ArraySize len = (original_len + 1) * bytes_per_unit;   // inflate to unit size +null-term
+	ConstInitializer **elements = VECNEW(ConstInitializer*, len);;
+
+	const char *data = string;
+	const char *end = data + original_len;
+	while (data < end)
+	{
+		char c = *(data++);
+		if ((0xC0 & c) != 0xC0)
+		{
+			// ASCII
+			Expr *value = expr_new_const_int(expr->span, type, (c & 0x7F));
+			vec_add(elements, const_init_new_value(value));
+			continue;
+		}
+
+		int increment = 0;
+		uint32_t from_codepoint = utf8_to_codepoint(data, &increment);
+		data += increment - 1;
+		if (!from_codepoint)
+		{
+			RETURN_SEMA_ERROR(inner, "Unparseable codepoint in string.");
+		}
+		if (type == type_ushort && from_codepoint & 0xFFFF0000)
+		{
+			RETURN_SEMA_ERROR(inner, "Invalid codepoint in string: a 16-bit wide-string cannot accommodate codepoints over U+FFFF.");
+		}
+		Expr *value = expr_new_const_int(expr->span, type, from_codepoint);
+		vec_add(elements, const_init_new_value(value));
+	}
+	if (zero_terminate) vec_add(elements, const_init_new_zero(type));
+
+	Type *array_type = type_get_array(type, vec_size(elements));
+	ConstInitializer *init = const_init_new_array_full(array_type, elements);
+	expr_rewrite_const_initializer(expr, array_type, init);
+	return true;
+}
+
 INLINE BinaryOp operator_from_builtin(BuiltinFunction fn)
 {
 	switch (fn)
@@ -439,6 +545,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			return true;
 		case BUILTIN_COMPARE_EXCHANGE:
 			return sema_expr_analyse_compare_exchange(context, expr);
+		case BUILTIN_WIDESTRING_16:
+		case BUILTIN_WIDESTRING_32:
+			return sema_expr_analyse_str_wide(context, expr, func);
 		default:
 			break;
 	}
@@ -466,6 +575,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_LOWER:
 		case BUILTIN_STR_FIND:
+		case BUILTIN_WIDESTRING_16:
+		case BUILTIN_WIDESTRING_32:
 			UNREACHABLE
 		case BUILTIN_VECCOMPGE:
 		case BUILTIN_VECCOMPEQ:
@@ -499,8 +610,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_OVERFLOW_SUB:
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args,
-			                             (BuiltinArg[]) {BA_INTEGER, BA_INTEGER, BA_POINTER},
-			                             3)) return false;
+						     (BuiltinArg[]) {BA_INTEGER, BA_INTEGER, BA_POINTER},
+						     3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 2)) return false;
 			if (type_no_optional(args[0]->type->canonical) != type_no_optional(args[2]->type->canonical->pointer))
 			{
@@ -540,8 +651,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_MEMCOPY_INLINE:
 			ASSERT(arg_count == 6);
 			if (!sema_check_builtin_args(context, args,
-			                             (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
-			                             6)) return false;
+						     (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
+						     6)) return false;
 			if (!sema_check_builtin_args_const(context, &args[2], 4)) return false;
 			rtype = type_void;
 			break;
@@ -549,22 +660,22 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_MEMMOVE:
 			ASSERT(arg_count == 6);
 			if (!sema_check_builtin_args(context, args,
-			                             (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
-			                             6)) return false;
+						     (BuiltinArg[]) {BA_POINTER, BA_POINTER, BA_SIZE, BA_BOOL, BA_SIZE, BA_SIZE},
+						     6)) return false;
 			if (!sema_check_builtin_args_const(context, &args[3], 3)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET:
 			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE},
-			                             5)) return false;
+						     5)) return false;
 			if (!sema_check_builtin_args_const(context, &args[3], 2)) return false;
 			rtype = type_void;
 			break;
 		case BUILTIN_MEMSET_INLINE:
 			ASSERT(arg_count == 5);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_CHAR, BA_SIZE, BA_BOOL, BA_SIZE},
-			                             5)) return false;
+						     5)) return false;
 			if (!sema_check_builtin_args_const(context, &args[2], 3)) return false;
 			rtype = type_void;
 			break;
@@ -637,7 +748,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_TRUNC:
 			ASSERT(arg_count);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE},
-			                             arg_count)) return false;
+						     arg_count)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_FRAMEADDRESS:
@@ -741,9 +852,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (len != flat_passthru_vec->array.len)
 			{
 				RETURN_SEMA_ERROR(args[2], "Expected the vector to be %s, not %s.",
-				                  type_quoted_error_string(
-						                  type_get_vector(pointer_type->pointer, len)),
-				                  type_quoted_error_string(args[2]->type));
+						  type_quoted_error_string(
+								  type_get_vector(pointer_type->pointer, len)),
+						  type_quoted_error_string(args[2]->type));
 			}
 			if (!sema_check_alignment_expression(context, args[3])) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;
@@ -764,9 +875,9 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			if (flat_pointer_vec->array.len != flat_value_vec->array.len)
 			{
 				RETURN_SEMA_ERROR(args[1], "Expected the vector to be %s, not %s.",
-				                  type_quoted_error_string(
-						                  type_get_vector(pointer_type->pointer, flat_pointer_vec->array.len)),
-				                  type_quoted_error_string(args[2]->type));
+						  type_quoted_error_string(
+								  type_get_vector(pointer_type->pointer, flat_pointer_vec->array.len)),
+						  type_quoted_error_string(args[2]->type));
 			}
 			if (!sema_check_alignment_expression(context, args[3])) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[2], args[1])) return false;
@@ -785,7 +896,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 			}
 			if (!sema_check_alignment_expression(context, args[3])) return false;
 			if (!sema_expr_is_valid_mask_for_value(context, args[1], args[2])) return false;
- 			rtype = pointer_type->pointer;
+			rtype = pointer_type->pointer;
 			break;
 		}
 		case BUILTIN_MASKED_STORE:
@@ -813,8 +924,8 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_FMA:
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args,
-			                             (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE},
-			                             3)) return false;
+						     (BuiltinArg[]) {BA_FLOATLIKE, BA_FLOATLIKE, BA_FLOATLIKE},
+						     3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
 			rtype = args[0]->type;
 			break;
@@ -822,14 +933,14 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_FSHR:
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_INTLIKE, BA_INTLIKE, BA_INTLIKE},
-			                             3)) return false;
+						     3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
 			rtype = args[0]->type;
 			break;
 		case BUILTIN_FMULADD:
 			ASSERT(arg_count == 3);
 			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_FLOAT, BA_FLOAT, BA_FLOAT},
-			                             3)) return false;
+						     3)) return false;
 			if (!sema_check_builtin_args_match(context, args, 3)) return false;
 			rtype = args[0]->type;
 			break;
@@ -1043,7 +1154,9 @@ static inline int builtin_expected_args(BuiltinFunction func)
 	switch (func)
 	{
 		case BUILTIN_SYSCALL:
-			return -1;
+		case BUILTIN_WIDESTRING_16:
+		case BUILTIN_WIDESTRING_32:
+				return -1;
 		case BUILTIN_SWIZZLE:
 			return -2;
 		case BUILTIN_SWIZZLE2:
