@@ -17,6 +17,7 @@
 - Remove `@operator(construct)`.
 - Removal of "any-switch".
 - Allow swizzling assign, eg. `abc.xz += { 5, 10 };`
+- Added `$$wstr16` and `$$wstr32` builtins.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -35,6 +36,7 @@
 - Add `ONHEAP` variants for List/HashMap for initializing global maps on the heap. 
 - Remove Vec2 and other aliases from std::math. Replace `.length_sq()` with `sq_magnitude()`
 - Change all hash functions to have a common `hash` function.
+- `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
 
 ## 0.6.8 Change list
 

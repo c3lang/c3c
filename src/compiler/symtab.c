@@ -4,8 +4,6 @@
 
 #include "compiler_internal.h"
 
-
-
 typedef struct SymtabEntry_
 {
 	struct SymtabEntry_* next;
@@ -290,6 +288,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
 	builtin_list[BUILTIN_WASM_MEMORY_GROW] = KW_DEF("wasm_memory_grow");
 	builtin_list[BUILTIN_WASM_MEMORY_SIZE] = KW_DEF("wasm_memory_size");
+	builtin_list[BUILTIN_WIDESTRING_16] = KW_DEF("wstr16");
+	builtin_list[BUILTIN_WIDESTRING_32] = KW_DEF("wstr32");
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{

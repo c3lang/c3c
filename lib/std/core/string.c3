@@ -34,6 +34,26 @@ fault NumberConversion
 }
 
 
+macro Char32* @wstring32(String $string) @builtin
+{
+	return (Char32*)&&$$wstr32($string);
+}
+
+macro Char32[] @char32(String $string) @builtin
+{
+	return $$wstr32($string)[..^2];
+}
+
+macro WString @wstring(String $string) @builtin
+{
+	return (WString)&&$$wstr16($string);
+}
+
+macro Char16[] @char16(String $string) @builtin
+{
+	return $$wstr16($string)[..^2];
+}
+
 <*
  Return a temporary ZString created using the formatting function.
 
@@ -580,7 +600,7 @@ fn Char32[]! String.to_utf32(s, Allocator allocator)
 	return data[:codepoints];
 }
 
-fn Char32[]! String.to_temp_utf32(s, Allocator allocator) => s.to_utf32(tmem());
+fn Char32[]! String.to_temp_utf32(s) => s.to_utf32(tmem());
 
 <*
  Convert a string to ASCII lower case in place.
