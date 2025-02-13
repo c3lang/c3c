@@ -31,6 +31,11 @@ struct ArenaAllocatorHeader @local
 	char[?] data;
 }
 
+macro ArenaAllocator* wrap(char[] bytes)
+{
+	return ArenaAllocator{}.init(bytes);
+}
+
 <*
  @require ptr != null
 *>

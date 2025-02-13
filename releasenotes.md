@@ -77,6 +77,7 @@
 - Added weakly linked `fmodf`.
 - Add `@select` to perform the equivalent of `a ? x : y` at compile time.
 - `HashMap` is now `Printable`.
+- Add `allocator::wrap` to create an arena allocator on the stack from bytes.
 
 ## 0.6.6 Change list
 
