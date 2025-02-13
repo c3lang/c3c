@@ -1056,6 +1056,7 @@ static inline bool scan_hex_array(Lexer *lexer)
 	}
 	new_token(lexer, TOKEN_BYTES, lexer->lexing_start);
 	lexer->data.is_base64 = false;
+	lexer->data.is_wide = false;
 	lexer->data.bytes_len = (uint64_t)len / 2;
 	return true;
 }
@@ -1135,7 +1136,39 @@ static inline bool scan_base64(Lexer *lexer)
 	uint64_t decoded_len = (3 * len - end_len) / 4;
 	new_token(lexer, TOKEN_BYTES, lexer->lexing_start);
 	lexer->data.is_base64 = true;
+	lexer->data.is_wide = false;
 	lexer->data.bytes_len = decoded_len;
+	return true;
+}
+
+// L"wide string" and L`wide string`
+static inline bool scan_wide_string(Lexer *lexer)
+{
+	char start_char = peek(lexer);
+	next(lexer); // Step past " or `
+	uint64_t len = 0;
+	while (1)
+	{
+		char c = peek(lexer);
+		if (c == 0)
+		{
+			return add_error_token_at_current(lexer,
+											  "The wide string seems to be missing a terminating '%c'",
+											  start_char);
+		}
+		if (c == start_char) break;
+		char esc = peek_next(lexer);
+		if (c == '\\' && (-1 != char_is_valid_escape(esc))) {
+			next(lexer); // skip forward an extra character
+		}
+		next(lexer);
+		len++;
+	}
+	next(lexer);
+	new_token(lexer, TOKEN_BYTES, lexer->lexing_start);
+	lexer->data.is_base64 = false;
+	lexer->data.is_wide = true;
+	lexer->data.bytes_len = (len * 2) + 2;
 	return true;
 }
 
@@ -1352,6 +1385,12 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			if (peek(lexer) == '6' && peek_next(lexer) == '4' && (lexer->current[2] == '\'' || lexer->current[2] == '"' || lexer->current[2] == '`'))
 			{
 				return scan_base64(lexer);
+			}
+			goto IDENT;
+		case 'L':
+			if ((peek(lexer) == '"' || peek(lexer) == '`'))
+			{
+				return scan_wide_string(lexer);
 			}
 			goto IDENT; // NOLINT
 		case '_':

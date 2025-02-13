@@ -1761,6 +1761,40 @@ static void parse_base64(char *result_pointer, char *result_pointer_end, const c
 	DONE:;
 }
 
+/**
+ * Parse a normal ASCII string into a wide string (16-byte character array).
+ * @param result_pointer ref to place to put the data
+ * @param data start pointer
+ * @param end end pointer
+ */
+static void parse_wide_string(char *result_pointer, const char *data, const char *end)
+{
+//	char *data_current = result_pointer;
+	unsigned short *data_current = (unsigned short *)result_pointer;
+	ASSERT(data_current);
+	while (data < end)
+	{
+		char c = *(data++);
+		if (c == '\\')
+		{
+			char esc = *(data++);
+			if (-1 != char_is_valid_escape(esc))
+			{
+				*(data_current++) = char_is_valid_escape(esc);
+			}
+			else
+			{
+				*(data_current++) = '\\';
+				*(data_current++) = esc;
+			}
+		}
+		else
+		{
+			*(data_current++) = c;
+		}
+	}
+}
+
 static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Had left hand side");
@@ -1786,6 +1820,12 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 			const char *base64data = c->data.lex_start + 4;
 			const char *end = base64data + c->data.lex_len - 1 - 4;
 			parse_base64(new_data + len, new_data + next_len, base64data, end);
+		}
+		else if (c->data.is_wide)
+		{
+			const char *strdata = c->data.lex_start + 2;
+			const char *end = strdata + c->data.lex_len - 1 - 2;
+			parse_wide_string(new_data + len, strdata, end);
 		}
 		else
 		{
