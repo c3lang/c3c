@@ -1830,6 +1830,8 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 	if (!consume_type_name(c, "bitstruct")) return poisoned_decl;
 
+	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
+
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
 
 	ASSIGN_TYPE_OR_RET(decl->strukt.container_type, parse_type(c), poisoned_decl);
