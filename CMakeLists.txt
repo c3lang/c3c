@@ -65,7 +65,7 @@ option(C3_USE_TB "Use TB" OFF)
 set(C3_MIMALLOC_TAG "v1.7.3" CACHE STRING "Used version of mimalloc")
 option(C3_WITH_LLVM "Build with LLVM" ON)
 option(C3_LLD_DIR "Use custom LLD directory" "")
-option(LLVM_CRT_LIBRARY_DIR "Use custom llvm's compiler-rt directory" "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin")
+option(LLVM_CRT_LIBRARY_DIR "Use custom llvm's compiler-rt directory" "")
 
 set(C3_USE_MIMALLOC OFF)
 if(C3_USE_MIMALLOC)
@@ -262,10 +262,10 @@ if(C3_WITH_LLVM)
 
     if (APPLE)
         set(lld_libs ${lld_libs} xar)
-        find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS ${LLVM_CRT_LIBRARY_DIR})
-        find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS ${LLVM_CRT_LIBRARY_DIR})
-        find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS ${LLVM_CRT_LIBRARY_DIR})
-        find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS ${LLVM_CRT_LIBRARY_DIR})
+        find_file(RT_ASAN_DYNAMIC NAMES libclang_rt.asan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
+        find_file(RT_TSAN_DYNAMIC NAMES libclang_rt.tsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
+        find_file(RT_UBSAN_DYNAMIC NAMES libclang_rt.ubsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
+        find_file(RT_LSAN_DYNAMIC NAMES libclang_rt.lsan_osx_dynamic.dylib PATHS "${LLVM_LIBRARY_DIR}/clang/${LLVM_MAJOR_VERSION}/lib/darwin" ${LLVM_CRT_LIBRARY_DIR})
         set(sanitizer_runtime_libraries
                 ${RT_ASAN_DYNAMIC}
                 ${RT_TSAN_DYNAMIC}
