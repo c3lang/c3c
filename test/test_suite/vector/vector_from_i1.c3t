@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+import std;
+
+// issue 1954
+macro splat($Type, x)
+{
+	return $Type {x,x,x,x};
+}
+
+fn void main()
+{
+	int[<4>] v1 = splat(int[<4>], 2);
+	int[<4>] v2 = splat(int[<4>], 1);
+	bool[<4>] vb = (v1 == v2);
+}
+
+/* #expect: test.ll
+
+  store <4 x i32> <i32 2, i32 2, i32 2, i32 2>, ptr %v1, align 16
+  store <4 x i32> <i32 1, i32 1, i32 1, i32 1>, ptr %v2, align 16
+  %0 = load <4 x i32>, ptr %v1, align 16
+  %1 = load <4 x i32>, ptr %v2, align 16
+  %eq = icmp eq <4 x i32> %0, %1
+  %2 = call i1 @llvm.vector.reduce.and.v4i1(<4 x i1> %eq)
+  %3 = zext i1 %2 to i8
+  %4 = insertelement <4 x i8> undef, i8 %3, i64 0
+  %5 = insertelement <4 x i8> %4, i8 %3, i64 1
+  %6 = insertelement <4 x i8> %5, i8 %3, i64 2
+  %7 = insertelement <4 x i8> %6, i8 %3, i64 3
+  store <4 x i8> %7, ptr %vb, align 4

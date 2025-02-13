@@ -6863,13 +6863,13 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
-	llvm_value_rvalue(c, value);
+	LLVMValueRef val = llvm_load_value_store(c, value);
 	LLVMTypeRef type = llvm_get_type(c, expr->type);
 	unsigned elements = LLVMGetVectorSize(type);
 	LLVMValueRef res = LLVMGetUndef(type);
 	for (unsigned i = 0; i < elements; i++)
 	{
-		res = LLVMBuildInsertElement(c->builder, res, value->value, llvm_const_int(c, type_usz, i), "");
+		res = LLVMBuildInsertElement(c->builder, res, val, llvm_const_int(c, type_usz, i), "");
 	}
 	llvm_value_set(value, res, expr->type);
 }
