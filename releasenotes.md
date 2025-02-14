@@ -22,7 +22,6 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
-- c3c `--test-leak-report` flag for displaying full memory lead report if any
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
