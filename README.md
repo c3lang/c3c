@@ -275,6 +275,14 @@ A `c3c` executable will be found under `bin/`.
 8. Set up CMake build for debug: `cmake ..`
 9. Build: `cmake --build .`
 
+#### Installing on Windows using Scoop
+
+c3c is included in 'Main' bucket.
+
+```sh
+scoop install c3
+```
+
 #### Getting started with a "hello world"
 
 Create a `main.c3` file with:
