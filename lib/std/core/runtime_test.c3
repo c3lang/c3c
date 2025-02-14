@@ -31,9 +31,12 @@ struct TestContext
 	char* error_buffer;
 	usz error_buffer_capacity;
 	File fake_stdout;
-	File orig_stdout;
-	File orig_stderr;
-	Allocator orig_allocator;
+	struct stored
+	{
+		File stdout;
+		File stderr;
+		Allocator allocator;
+	}
 }
 
 struct TestUnit
@@ -109,45 +112,29 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	}
 
 	test_context.is_in_panic = false;
-	allocator::thread_allocator = test_context.orig_allocator;
-	test_context.orig_allocator = null;
+	allocator::thread_allocator = test_context.stored.allocator;
 	libc::longjmp(&test_context.buf, 1);
 }
 
 fn void mute_output() @local
 {
 	if (!test_context.fake_stdout.file) return;
-	assert(!test_context.orig_stderr.file);
-	assert(!test_context.orig_stdout.file);
-
 	File* stdout = io::stdout();
-	File* stderr = io::stderr();
-
-	test_context.orig_stderr = *stderr;
-	test_context.orig_stdout = *stdout;
-
+    File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
-
 	(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
 }
 
 fn void unmute_output(bool has_error) @local
 {
-	if (!test_context.fake_stdout.file)
-	{
-		return;
-	}
-	assert(test_context.orig_stderr.file);
-	assert(test_context.orig_stdout.file);
+	if (!test_context.fake_stdout.file) return;
 
 	File* stdout = io::stdout();
 	File* stderr = io::stderr();
 
-	*stderr = test_context.orig_stderr;
-	*stdout = test_context.orig_stdout;
-	test_context.orig_stderr.file = null;
-	test_context.orig_stdout.file = null;
+	*stderr = test_context.stored.stderr;
+	*stdout = test_context.stored.stdout;
 
 	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 	if (has_error)
@@ -191,6 +178,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		.breakpoint_on_assert = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
+		.stored.allocator = allocator::heap(),
+		.stored.stderr = *io::stderr(),
+		.stored.stdout = *io::stdout(),
 	};
 	for (int i = 1; i < args.len; i++)
 	{
@@ -225,9 +215,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 
 	// Buffer for hijacking the output
 	$if (!env::NO_LIBC):
-		test_context.fake_stdout.file = libc::tmpfile();
+		context.fake_stdout.file = libc::tmpfile();
 	$endif
-	if (test_context.fake_stdout.file == null)
+	if (context.fake_stdout.file == null)
 	{
 		io::print("Failed to hijack stdout, tests will print everything");
 	}
@@ -245,16 +235,19 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len - len / 2);
 	io::printn(name);
 	name.clear();
+	TempState temp_state = mem::temp_push();
+	defer mem::temp_pop(temp_state);
 	foreach(unit : tests)
 	{
-		if (test_context.test_filter && !unit.name.contains(test_context.test_filter))
+		mem::temp_pop(temp_state);
+		if (context.test_filter && !unit.name.contains(context.test_filter))
 		{
 			tests_skipped++;
 			continue;
 		}
-		test_context.setup_fn = null;
-		test_context.teardown_fn = null;
-		test_context.current_test_name = unit.name;
+		context.setup_fn = null;
+		context.teardown_fn = null;
+		context.current_test_name = unit.name;
 
 		defer name.clear();
 		name.appendf("Testing %s ", unit.name);
@@ -262,13 +255,12 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		io::printf("%s ", name.str_view());
 		(void)io::stdout().flush();
 		TrackingAllocator mem;
-		mem.init(allocator::heap());
+
+		mem.init(context.stored.allocator);
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
 			mem.clear();
-			// NOTE: longjmp resilient mem::@scoped(&mem)
-			context.orig_allocator = allocator::thread_allocator;
 			allocator::thread_allocator = &mem;
 			$if(!$$OLD_TEST):
 				unit.func();
@@ -284,7 +276,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			{
 				test_context.teardown_fn();
 			}
-			allocator::thread_allocator = context.orig_allocator;
+			allocator::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
