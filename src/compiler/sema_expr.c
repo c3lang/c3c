@@ -255,23 +255,24 @@ static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchSt
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 {
+	Expr *expr;
 	switch (type->type_kind)
 	{
 		case TYPE_STRUCT:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
-			Expr *embedded_struct = expr_access_inline_member(parent, decl);
-			return embedded_struct;
+			expr = expr_access_inline_member(parent, decl);
+			break;
 		}
 		case TYPE_DISTINCT:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
-			Expr *inner_expr = expr_copy(parent);
+			expr = expr_copy(parent);
 			type = type->decl->distinct->type;
-			inner_expr->type = type;
-			return inner_expr;
+			expr->type = type;
+			break;
 		}
 		case TYPE_ENUM:
 		{
@@ -282,28 +283,31 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			{
 				if (decl->enums.inline_value)
 				{
-					Expr *expr = expr_new_expr(EXPR_CONST, parent);
+					expr = expr_new_expr(EXPR_CONST, parent);
 					expr_rewrite_const_int(expr, decl->enums.type_info->type, parent->const_expr.enum_err_val->enum_constant.ordinal);
 					return expr;
 				}
-				return copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]);
+				expr = copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]);
+				break;
 			}
 			if (decl->enums.inline_value)
 			{
-				Expr *expr = copy_expr_single(parent);
-				expr->type = decl->enums.type_info->type;
-				return expr;
+				expr = copy_expr_single(parent);
+				expr->type = type_add_optional(decl->enums.type_info->type, IS_OPTIONAL(parent));
+				break;
 			}
-			Expr *property = expr_new(EXPR_ACCESS_RESOLVED, parent->span);
-			property->resolve_status = RESOLVE_DONE;
-			property->access_resolved_expr.parent = parent;
-			property->access_resolved_expr.ref = decl->enums.parameters[decl->enums.inline_value];
-			property->type = property->access_resolved_expr.ref->type;
-			return property;
+			expr = expr_new(EXPR_ACCESS_RESOLVED, parent->span);
+			expr->resolve_status = RESOLVE_DONE;
+			expr->access_resolved_expr.parent = parent;
+			expr->access_resolved_expr.ref = decl->enums.parameters[decl->enums.inline_value];
+			expr->type = expr->access_resolved_expr.ref->type;
+			break;
 		}
 		default:
 			return NULL;
 	}
+	if (IS_OPTIONAL(parent)) expr->type = type_add_optional(expr->type, true);
+	return expr;
 }
 
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref)
@@ -406,7 +410,7 @@ Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 	embedded_struct->resolve_status = RESOLVE_DONE;
 	embedded_struct->access_resolved_expr.parent = parent;
 	embedded_struct->access_resolved_expr.ref = parent_decl->strukt.members[0];
-	embedded_struct->type = embedded_struct->access_resolved_expr.ref->type;
+	embedded_struct->type = type_add_optional(embedded_struct->access_resolved_expr.ref->type, IS_OPTIONAL(parent));
 	return embedded_struct;
 }
 

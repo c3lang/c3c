@@ -480,8 +480,8 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 		{
 			RETURN_SEMA_ERROR(element, "An untyped list can only have "
 									   "constant elements, you can try "
-									   "to type the list by prefixing the type, "
-									   "e.g. 'int[2] { a, b }'.");
+									   "to type the list by prefixing the type and possibly enclosing it in parentheses, "
+									   "e.g. '((int[2]){ a, b })'.");
 		}
 	}
 	initializer->expr_kind = EXPR_CONST;

@@ -69,6 +69,7 @@
 - Missing end padding when including a packed struct #1966.
 - Issue when scalar expanding a boolean from a conditional to a bool vector #1954.
 - Fix issue when parsing bitstructs, preventing them from implementing interfaces.
+- Regression `String! a; char* b = a.ptr;` would incorrectly be allowed.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
