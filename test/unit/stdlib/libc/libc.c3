@@ -1,0 +1,343 @@
+module libc_tests;
+import libc;
+
+// fn void abort() @test {}
+
+fn void abs() @test
+{
+	CInt x = 21;
+	assert(libc::abs(x) == 21);
+	assert(libc::abs(-x) == 21);
+	$assert @typeis(libc::abs(x), CInt);
+	$assert @typeis(libc::abs(-x), CInt);
+}
+
+// fn void asctime() @test {}
+// fn void asctime_r() @test {}
+// fn void atexit() @test {}
+
+fn void atof() @test
+{
+	assert(libc::atof("123.45") == 123.45);
+	$assert @typeis(libc::atof("123.45"), double);
+	assert(libc::atof("-3.14") == -3.14);
+	$assert @typeis(libc::atof("-3.14"), double);
+	assert(libc::atof("x") == 0.0);
+	$assert @typeis(libc::atof("x"), double);
+	assert(libc::atof("") == 0.0);
+	$assert @typeis(libc::atof(""), double);
+}
+
+fn void atoi() @test
+{
+	assert(libc::atoi("123") == 123);
+	$assert @typeis(libc::atoi("123"), int);
+	assert(libc::atoi("-3.14") == -3);
+	$assert @typeis(libc::atoi("-3.14"), int);
+	assert(libc::atoi("x") == 0);
+	$assert @typeis(libc::atoi("x"), int);
+	assert(libc::atoi("") == 0);
+	$assert @typeis(libc::atoi(""), int);
+}
+
+fn void atoll() @test
+{
+	assert(libc::atoi("123") == 123);
+	$assert @typeis(libc::atoi("123"), int);
+	assert(libc::atoi("-3.14") == -3);
+	$assert @typeis(libc::atoi("-3.14"), int);
+	assert(libc::atoi("x") == 0);
+	$assert @typeis(libc::atoi("x"), int);
+	assert(libc::atoi("") == 0);
+	$assert @typeis(libc::atoi(""), int);
+}
+
+fn int compare_CInt(void* a, void* b)
+{
+	CInt a_i = *((CInt*) a);
+	CInt b_i = *((CInt*) b);
+	return a_i - b_i;
+}
+
+fn void bsearch() @test
+{
+	CInt[] int_ar = { 0, 1, 2, 3, 4, 5, 6 };
+	CInt key = 0;
+	// CInt* found = (CInt*) libc::bsearch(&key, int_ar, 6, CInt.sizeof, &compare_CInt);
+}
+// fn void calloc() @test {}
+// fn void clearerr() @test {}
+// fn void clock() @test {}
+// fn void close() @test {}
+// fn void difftime() @test {}
+// fn void div() @test {}
+// fn void exit() @test {}
+// fn void fclose() @test {}
+// fn void fdopen() @test {}
+// fn void feof() @test {}
+// fn void ferror() @test {}
+// fn void fflush() @test {}
+// fn void fgetc() @test {}
+// fn void fgets() @test {}
+// fn void fgetpos() @test {}
+// fn void fileno() @test {}
+// fn void fopen() @test {}
+// fn void fprintf() @test {}
+// fn void fputc() @test {}
+// fn void fputs() @test {}
+// fn void fread() @test {}
+// fn void free() @test {}
+// fn void freopen() @test {}
+// fn void fscanf() @test {}
+// fn void fseek() @test {}
+// fn void fsetpos() @test {}
+// fn void ftell() @test {}
+// fn void fwrite() @test {}
+// fn void getc() @test {}
+// fn void getchar() @test {}
+// fn void getenv() @test {}
+// fn void gets() @test {}
+// fn void gmtime() @test {}
+// fn void gmtime_r() @test {}
+// fn void isatty() @test {}
+// fn void labs() @test {}
+// fn void ldiv() @test {}
+// fn void localtime() @test {}
+// fn void localtime_r() @test {}
+// fn void longjmp() @test {}
+// fn void malloc() @test {}
+// fn void memchr() @test {}
+// fn void memcmp() @test {}
+// fn void memcpy() @test {}
+// fn void memmove() @test {}
+// fn void memset() @test {}
+// fn void mktime() @test {}
+// fn void perror() @test {}
+// fn void printf() @test {}
+// fn void putc() @test {}
+// fn void putchar() @test {}
+// fn void puts() @test {}
+// fn void qsort() @test {}
+// fn void raise() @test {}
+// fn void rand() @test {}
+// fn void read() @test {}
+// fn void realloc() @test {}
+// fn void remove() @test {}
+// fn void rename() @test {}
+// fn void rewind() @test {}
+// fn void scanf() @test {}
+// fn void setbuf() @test {}
+// fn void setenv() @test {}
+// fn void setjmp() @test {}
+// fn void setvbuf() @test {}
+// fn void signal() @test {}
+// fn void snprintf() @test {}
+// fn void sprintf() @test {}
+// fn void srand() @test {}
+// fn void sscanf() @test {}
+// fn void strcat() @test {}
+// fn void strchr() @test {}
+// fn void strcmp() @test {}
+// fn void strcoll() @test {}
+// fn void strcspn() @test {}
+// fn void strcpy() @test {}
+// fn void strerror() @test {}
+// fn void strftime() @test {}
+// fn void strlen() @test {}
+// fn void strncat() @test {}
+// fn void strncmp() @test {}
+// fn void strncpy() @test {}
+// fn void stroul() @test {}
+// fn void strpbrk() @test {}
+// fn void strspn() @test {}
+// fn void strptime() @test {}
+// fn void strrchr() @test {}
+// fn void strstr() @test {}
+// fn void strtod() @test {}
+// fn void strtof() @test {}
+// fn void strtok() @test {}
+// fn void strtol() @test {}
+// fn void strtoul() @test {}
+// fn void strxfrm() @test {}
+// fn void system() @test {}
+// fn void timegm() @test {}
+// fn void tmpnam() @test {}
+// fn void tmpfile() @test {}
+// fn void ungetc() @test {}
+// fn void unsetenv() @test {}
+// fn void write() @test {}
+//
+// extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
+// extern fn isz getline(char** linep, usz* linecapp, CFile stream);
+// extern fn CInt timespec_get(TimeSpec* ts, CInt base);
+// extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining);
+// extern fn ZString ctime(Time_t *timer);
+// extern fn Time_t time(Time_t *timer);
+//
+// const CInt STDIN_FD = 0;
+// const CInt STDOUT_FD = 1;
+// const CInt STDERR_FD = 2;
+//
+// module libc @if(env::LINUX);
+// extern CFile __stdin @extern("stdin");
+// extern CFile __stdout @extern("stdout");
+// extern CFile __stderr @extern("stderr");
+// extern fn usz malloc_usable_size(void* ptr);
+// macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
+// extern fn void* aligned_alloc(usz align, usz size);
+// macro CFile stdin() => __stdin;
+// macro CFile stdout() => __stdout;
+// macro CFile stderr() => __stderr;
+//
+// module libc @if(env::NETBSD || env::OPENBSD);
+// extern fn int fcntl(CInt socket, int cmd, ...);
+// extern fn int _setjmp(void*);
+// macro int setjmp(void* ptr) => _setjmp(ptr);
+// extern fn int _longjmp(void*, int);
+// macro usz longjmp(void* ptr, CInt i) => _longjmp(ptr, i);
+// extern fn usz malloc_size(void* ptr);
+// extern fn void* aligned_alloc(usz align, usz size);
+// macro CFile stdin() { return fdopen(0, "r"); }
+// macro CFile stdout() { return fdopen(1, "w"); }
+// macro CFile stderr() { return fdopen(2, "w"); }
+//
+// module libc @if(env::DARWIN || env::FREEBSD);
+// extern CFile __stdinp;
+// extern CFile __stdoutp;
+// extern CFile __stderrp;
+// extern fn usz malloc_size(void* ptr) @if(!env::FREEBSD);
+// extern fn void* aligned_alloc(usz align, usz size);
+// macro CFile stdin() => __stdinp;
+// macro CFile stdout() => __stdoutp;
+// macro CFile stderr() => __stderrp;
+//
+// module libc @if(env::FREEBSD);
+// extern fn usz malloc_usable_size(void* ptr);
+// macro usz malloc_size(void* ptr) => malloc_usable_size(ptr);
+//
+// module libc @if(env::WIN32);
+// macro usz malloc_size(void* ptr) => _msize(ptr);
+// macro CFile stdin() => __acrt_iob_func(STDIN_FD);
+// macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
+// macro CFile stderr() => __acrt_iob_func(STDERR_FD);
+//
+// module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::DARWIN && !env::BSD_FAMILY);
+// macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
+// macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
+// macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }
+//
+// module libc @if(!env::LIBC);
+//
+// fn void longjmp(JmpBuf* buffer, CInt value) @weak @extern("longjmp") @nostrip
+// {
+// 	unreachable("longjmp unavailable");
+// }
+//
+// fn CInt setjmp(JmpBuf* buffer) @weak @extern("setjmp") @nostrip
+// {
+// 	unreachable("setjmp unavailable");
+// }
+//
+// fn void* malloc(usz size) @weak @extern("malloc") @nostrip
+// {
+// 	unreachable("malloc unavailable");
+// }
+// fn void* calloc(usz count, usz size) @weak @extern("calloc") @nostrip
+// {
+// 	unreachable("calloc unavailable");
+// }
+// fn void* free(void*) @weak @extern("free")
+// {
+// 	unreachable("free unavailable");
+// }
+//
+// fn void* realloc(void* ptr, usz size) @weak @extern("realloc") @nostrip
+// {
+// 	unreachable("realloc unavailable");
+// }
+//
+// fn void* memcpy(void* dest, void* src, usz n) @weak @extern("memcpy") @nostrip
+// {
+// 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = ((char*)src)[i];
+// 	return dest;
+// }
+//
+// fn void* memmove(void* dest, void* src, usz n) @weak @extern("memmove") @nostrip
+// {
+// 	return memcpy(dest, src, n) @inline;
+// }
+//
+// fn void* memset(void* dest, CInt value, usz n) @weak @extern("memset") @nostrip
+// {
+// 	for (usz i = 0; i < n; i++) ((char*)dest)[i] = (char)value;
+// 	return dest;
+// }
+//
+// fn int fseek(CFile stream, SeekIndex offset, int whence) @weak @extern("fseek") @nostrip
+// {
+// 	unreachable("'fseek' not available.");
+// }
+// fn CFile fopen(ZString filename, ZString mode) @weak @extern("fopen") @nostrip
+// {
+// 	unreachable("'fopen' not available.");
+// }
+//
+// fn CFile freopen(ZString filename, ZString mode, CFile stream) @weak @extern("fopen") @nostrip
+// {
+// 	unreachable("'freopen' not available.");
+// }
+//
+// fn usz fwrite(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fwrite") @nostrip
+// {
+// 	unreachable("'fwrite' not available.");
+// }
+//
+// fn usz fread(void* ptr, usz size, usz nmemb, CFile stream) @weak @extern("fread") @nostrip
+// {
+// 	unreachable("'fread' not available.");
+// }
+//
+// fn CFile fclose(CFile) @weak @extern("fclose") @nostrip
+// {
+// 	unreachable("'fclose' not available.");
+// }
+//
+// fn int fflush(CFile stream) @weak @extern("fflush") @nostrip
+// {
+// 	unreachable("'fflush' not available.");
+// }
+//
+// fn int fputc(int c, CFile stream) @weak @extern("fputc") @nostrip
+// {
+// 	unreachable("'fputc' not available.");
+// }
+//
+// fn char* fgets(ZString str, int n, CFile stream) @weak @extern("fgets") @nostrip
+// {
+// 	unreachable("'fgets' not available.");
+// }
+//
+// fn int fgetc(CFile stream) @weak @extern("fgetc") @nostrip
+// {
+// 	unreachable("'fgetc' not available.");
+// }
+//
+// fn int feof(CFile stream) @weak @extern("feof") @nostrip
+// {
+// 	unreachable("'feof' not available.");
+// }
+//
+// fn int putc(int c, CFile stream) @weak @extern("putc") @nostrip
+// {
+// 	unreachable("'putc' not available.");
+// }
+// fn int putchar(int c) @weak @extern("putchar") @nostrip
+// {
+// 	unreachable("'putchar' not available.");
+// }
+// fn int puts(ZString str) @weak @extern("puts") @nostrip
+// {
+// 	unreachable("'puts' not available.");
+// }
+//
+// module libc;
