@@ -430,6 +430,7 @@
 - Add `$member.get(value)` to replace `value.$eval($member.nameof)`
 - Improve the error message when the compilation does not produce any files #1390.
 - Add `fmod` implementation for nolibc.
+- Allow `(Foo) { 1, 2 }` syntax for compound literals.
 
 ### Fixes
 

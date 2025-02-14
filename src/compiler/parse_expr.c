@@ -7,6 +7,7 @@
 
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
 static Expr *parse_subscript_expr(ParseContext *c, Expr *left);
+static Expr *parse_initializer_list(ParseContext *c, Expr *left);
 
 typedef struct
 {
@@ -840,11 +841,6 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		case EXPR_TYPEINFO:
 		{
 			TypeInfo *info = expr->type_expr;
-			if (tok_is(c, TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
-			{
-				PRINT_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
-				return poisoned_expr;
-			}
 			// Create a cast expr
 			if (rules[c->tok].prefix)
 			{
@@ -883,7 +879,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
  *	;
  *
  */
-Expr *parse_initializer_list(ParseContext *c, Expr *left)
+static Expr *parse_initializer_list(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);

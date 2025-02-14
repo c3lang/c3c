@@ -5651,6 +5651,12 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	if (invalid_cast_ref) *invalid_cast_ref = false;
 	Expr *inner = exprptr(expr->cast_expr.expr);
 	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
+	if (inner->expr_kind == EXPR_INITIALIZER_LIST)
+	{
+		expr->expr_kind = EXPR_COMPOUND_LITERAL;
+		expr->expr_compound_literal = (ExprCompoundLiteral) { .initializer = inner, .type_info = type_info };
+		return sema_expr_analyse_compound_literal(context, expr);
+	}
 	bool success = sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER);
 	if (!sema_analyse_expr(context, inner) || !success) return false;
 
@@ -9027,8 +9033,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	Expr *parent = exprptr(expr->generic_ident_expr.parent);
 	if (parent->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
-		SEMA_ERROR(parent, "Expected an identifier to parameterize.");
-		return false;
+		RETURN_SEMA_ERROR(parent, "Expected an identifier to parameterize.");
 	}
 	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->unresolved_ident_expr.path,
 														 parent->unresolved_ident_expr.ident, parent->span,
