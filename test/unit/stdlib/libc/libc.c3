@@ -52,6 +52,7 @@ fn void atoll() @test
 	$assert @typeis(libc::atoi(""), int);
 }
 
+// Compare function, struct and function for libc::bsearch test
 fn int compare_CInt(void* a, void* b)
 {
 	CInt a_i = *((CInt*) a);
@@ -59,11 +60,17 @@ fn int compare_CInt(void* a, void* b)
 	return a_i - b_i;
 }
 
-struct Event {
+struct Event (Printable) {
 	CInt day;
 	CInt month;
 	ZString desc;
 }
+
+fn usz! Event.to_format(&self, Formatter* f) @dynamic
+{
+	return f.printf("Event(%d, %d, %s) ", self.day, self.month, self.desc);
+}
+// fn usz! Event.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
 
 fn int compare_Event(void* a, void* b)
 {
@@ -76,7 +83,10 @@ fn int compare_Event(void* a, void* b)
 	return a_e.month - b_e.month;
 }
 
-fn void bsearch() @test
+// TODO: remove temp import
+import std::io;
+
+fn void main() // @test
 {
 	CInt[] int_ar = { 0, 1, 2, 3, 4, 5, 6 };
 	CInt key = 0;
@@ -109,6 +119,7 @@ fn void bsearch() @test
 		{ 31, 12, "End of the year" }
 	};
 	Event searching = { .day = 1, .month = 5 };
+	io::printn(events);
 	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
 	assert(found1.desc == "Begin of May");
 	searching = { .day = 4, .month = 4 };
@@ -116,11 +127,26 @@ fn void bsearch() @test
 	assert(found1 == null);
 }
 
-// fn void calloc() @test {}
+fn void calloc() @test
+{
+	usz amount = 10;
+	CInt* int_ar = libc::calloc(amount, CInt.sizeof);
+	for (usz i = 0; i < amount; i++)
+	{
+		assert(int_ar[i] == 0);
+	}
+	libc::free(int_ar);
+}
+
 // fn void clearerr() @test {}
 // fn void clock() @test {}
 // fn void close() @test {}
-// fn void difftime() @test {}
+
+fn void difftime() @test
+{
+
+}
+
 // fn void div() @test {}
 // fn void exit() @test {}
 // fn void fclose() @test {}
