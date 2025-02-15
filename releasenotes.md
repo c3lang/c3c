@@ -74,7 +74,7 @@
 - Test runner --test-disable-sort didn't work, c3c was expecting --test-nosort
 - Test runner with tracking allocator assertion at failed test #1963
 - Test runner with tracking allocator didn't properly handle teardown_fn
-
+- Correctly give an error if a character literal contains a line break.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
