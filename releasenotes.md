@@ -22,6 +22,7 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
+- `Thread` no longer allocates memory on posix.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
