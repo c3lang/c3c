@@ -86,7 +86,7 @@ fn int compare_Event(void* a, void* b)
 // TODO: remove temp import
 import std::io;
 
-fn void main() // @test
+fn void bsearch() @test
 {
 	CInt[] int_ar = { 0, 1, 2, 3, 4, 5, 6 };
 	CInt key = 0;
