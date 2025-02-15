@@ -59,12 +59,63 @@ fn int compare_CInt(void* a, void* b)
 	return a_i - b_i;
 }
 
+struct Event {
+	CInt day;
+	CInt month;
+	ZString desc;
+}
+
+fn int compare_Event(void* a, void* b)
+{
+	Event* a_e = (Event*) a;
+	Event* b_e = (Event*) b;
+	if (a_e.month == b_e.month)
+	{
+		return a_e.day - b_e.day;
+	}
+	return a_e.month - b_e.month;
+}
+
 fn void bsearch() @test
 {
 	CInt[] int_ar = { 0, 1, 2, 3, 4, 5, 6 };
 	CInt key = 0;
-	// CInt* found = (CInt*) libc::bsearch(&key, int_ar, 6, CInt.sizeof, &compare_CInt);
+	CInt* found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	assert(*found == 0);
+	key = 1;
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	assert(*found == 1);
+	key = 2;
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	assert(*found == 2);
+	key = 5;
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	assert(*found == 5);
+	key = 6;
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	assert(*found == 6);
+	CInt non_existant_key = 12;
+	found = (CInt*) libc::bsearch(&non_existant_key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	assert(found == null);
+
+	Event[] events = {
+		{ 2, 1, "2nd of February" },
+		{ 5, 1, "Some day" },
+		{ 1, 5, "Begin of May" },
+		{ 1, 7, "Summer holiday start" },
+		{ 21, 7, "A fine warm day" },
+		{ 11, 11, "Peace" },
+		{ 25, 12, "Family and sharing" },
+		{ 31, 12, "End of the year" }
+	};
+	Event searching = { .day = 1, .month = 5 };
+	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
+	assert(found1.desc == "Begin of May");
+	searching = { .day = 4, .month = 4 };
+	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
+	assert(found1 == null);
 }
+
 // fn void calloc() @test {}
 // fn void clearerr() @test {}
 // fn void clock() @test {}
