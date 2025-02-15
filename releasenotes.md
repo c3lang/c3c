@@ -22,6 +22,7 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
+- `Thread` no longer allocates memory on posix.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -70,6 +71,10 @@
 - Issue when scalar expanding a boolean from a conditional to a bool vector #1954.
 - Fix issue when parsing bitstructs, preventing them from implementing interfaces.
 - Regression `String! a; char* b = a.ptr;` would incorrectly be allowed.
+- Test runner --test-disable-sort didn't work, c3c was expecting --test-nosort
+- Test runner with tracking allocator assertion at failed test #1963
+- Test runner with tracking allocator didn't properly handle teardown_fn
+- Correctly give an error if a character literal contains a line break.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

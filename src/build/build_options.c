@@ -135,7 +135,7 @@ static void usage(bool full)
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
-		print_opt("--test-disable-sort", "Do not sort tests.");
+		print_opt("--test-nosort", "Do not sort tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
