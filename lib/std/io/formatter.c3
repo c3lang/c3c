@@ -145,7 +145,10 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 	return SearchResult.MISSING?;
 }
 
-
+fn usz! Formatter.out_unknown(&self, String category, any arg) @private
+{
+	return self.out_substr("[") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr("]");
+}
 fn usz! Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
@@ -199,13 +202,13 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			assert(i < arg.type.names.len, "Illegal enum value found, numerical value was %d.", i);
 			return self.out_substr(arg.type.names[i]);
 		case STRUCT:
-			return self.out_substr("<struct>");
+			return self.out_unknown("struct", arg);
 		case UNION:
-			return self.out_substr("<union>");
+			return self.out_unknown("union", arg);
 		case BITSTRUCT:
-			return self.out_substr("<bitstruct>");
+			return self.out_unknown("bitstruct", arg);
 		case FUNC:
-			return self.out_substr("<function>");
+			return self.out_unknown("function", arg);
 		case DISTINCT:
 			if (arg.type == String.typeid)
 			{
