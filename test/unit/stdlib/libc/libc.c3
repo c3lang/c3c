@@ -60,16 +60,10 @@ fn int compare_CInt(void* a, void* b)
 	return a_i - b_i;
 }
 
-struct Event (Printable) {
+struct Event {
 	CInt day;
 	CInt month;
 	String desc;
-}
-
-// TODO: remove this format thing after debugging failing ubuntu tests
-fn usz! Event.to_format(&self, Formatter* f) @dynamic
-{
-	return f.printf("Event(%d, %d, %s) ", self.day, self.month, self.desc);
 }
 
 fn int compare_Event(void* a, void* b)
@@ -78,9 +72,6 @@ fn int compare_Event(void* a, void* b)
   Event* b_e = b;
   return (a_e.month - b_e.month) * 100 + a_e.day - b_e.day;
 }
-
-// TODO: remove temp import
-import std::io;
 
 fn void bsearch() @test
 {
@@ -115,18 +106,11 @@ fn void bsearch() @test
 		{ 31, 12, "End of the year" }
 	};
 	Event searching = { .day = 1, .month = 5 };
-
-	io::printn(events);
-	libc::qsort(events, 7, Event.sizeof, &compare_Event);
-	io::printn(events);
-
 	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
-	io::printn(found1);
 	assert(found1.desc == "Begin of May");
 	searching = { .day = 4, .month = 4 };
 	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
 	assert(found1 == null);
-	// assert(false);
 }
 
 fn void calloc() @test
