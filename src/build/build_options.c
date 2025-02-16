@@ -1279,6 +1279,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
+		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.ansi = ANSI_DETECT,
