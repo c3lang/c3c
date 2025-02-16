@@ -132,6 +132,7 @@ fn void bsearch() @test
 	io::printn(events);
 
 	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
+	io::printn(found1);
 	assert(found1.desc == "Begin of May");
 	searching = { .day = 4, .month = 4 };
 	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
