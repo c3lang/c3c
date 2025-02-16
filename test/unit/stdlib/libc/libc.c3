@@ -63,7 +63,7 @@ fn int compare_CInt(void* a, void* b)
 struct Event (Printable) {
 	CInt day;
 	CInt month;
-	ZString desc;
+	String desc;
 }
 
 // TODO: remove this format thing after debugging failing ubuntu tests
@@ -71,18 +71,7 @@ fn usz! Event.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("Event(%d, %d, %s) ", self.day, self.month, self.desc);
 }
-// fn usz! Event.to_format(&self, Formatter* f) @dynamic => io::struct_to_format(*self, f, false);
 
-// fn int compare_Event(void* a, void* b)
-// {
-// 	Event* a_e = (Event*) a;
-// 	Event* b_e = (Event*) b;
-// 	if (a_e.month == b_e.month)
-// 	{
-// 		return a_e.day - b_e.day;
-// 	}
-// 	return a_e.month - b_e.month;
-// }
 fn int compare_Event(void* a, void* b)
 {
   Event* a_e = a; // Avoid casts if possible
@@ -137,7 +126,7 @@ fn void bsearch() @test
 	searching = { .day = 4, .month = 4 };
 	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
 	assert(found1 == null);
-	assert(false);
+	// assert(false);
 }
 
 fn void calloc() @test
