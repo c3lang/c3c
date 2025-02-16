@@ -1,3 +1,3 @@
 #define COMPILER_VERSION "0.6.7"
-#define PRERELEASE 1
+#define PRERELEASE 0
 #define ALLOW_DEPRECATED_6 1
