@@ -70,6 +70,7 @@
 - Issue when scalar expanding a boolean from a conditional to a bool vector #1954.
 - Fix issue when parsing bitstructs, preventing them from implementing interfaces.
 - Regression `String! a; char* b = a.ptr;` would incorrectly be allowed.
+- Fix issue where target was ignored for projects.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
