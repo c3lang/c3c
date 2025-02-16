@@ -1,3 +1,4 @@
+// #target: macos-x64
 module test;
 import std;
 
@@ -14,22 +15,6 @@ fn int main (String[] args)
 }
 
 /* #expect: test.ll
-
-
-
----------------------------------------------------> test.ll
-
-
-; ModuleID = 'test'
-source_filename = "test"
-target datalayout = "e-m:o-i64:64-i128:128-n32:64-S128"
-target triple = "aarch64-apple-macosx11.0.0"
-
-%any = type { ptr, i64 }
-%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
-%"char[][]" = type { ptr, i64 }
-%"char[]" = type { ptr, i64 }
-%"any[]" = type { ptr, i64 }
 
 @.str = private unnamed_addr constant [6 x i8] c"aeiou\00", align 1
 @test.VOWS = local_unnamed_addr constant ptr @.str, align 8
