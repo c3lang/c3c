@@ -367,7 +367,7 @@ static const char *find_linux_crt(void)
 static const char *find_linux_crt_begin(void)
 {
 	if (compiler.build.linuxpaths.crtbegin) return compiler.build.linuxpaths.crtbegin;
-	const char *arch_glob_path = get_linux_crt_begin_glob_path();
+	const char *arch_glob_path = get_linux_crt_begin_arch_glob();
 	const char *path = find_arch_glob_path(arch_glob_path, 10);
 	if (!path)
 	{
