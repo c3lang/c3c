@@ -763,7 +763,7 @@ static inline bool sema_analyse_bitstruct_member(SemaContext *context, Decl *par
 	Type *member_type = type_flatten_for_bitstruct(member->type);
 
 	// Only accept (flattened) integer and bool types
-	if (!type_is_integer(member_type) && member_type != type_bool)
+	if (!type_is_integer(member_type) && member_type != type_bool && member_type->type_kind != TYPE_BITSTRUCT)
 	{
 		SEMA_ERROR(type_info, "%s is not supported in a bitstruct, only enums, integer and boolean values may be used.",
 				   type_quoted_error_string(member->type));
