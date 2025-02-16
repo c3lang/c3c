@@ -1,10 +1,24 @@
-char[?] a = L"WIDESTR";
-char[?] b = L"Esc\r\n";
-char[?] c = L`lit
+ushort[?] a = u"WIDESTR";
+ushort[?] b = u"Esc\r\n";
+ushort[?] c = u`lit
 str\ting`;
+ushort[?] d = u`γειά`;
+uint[?] e = U"γειά";
+ushort[?] f = u"";
+uint[?] g = U"";
+ushort[?] h = u``;
+uint[?] i = U``;
+uint[?] j = U"-";
 
 /* #expect: wide_strings.ll
 
-@wide_strings.a = local_unnamed_addr global [16 x i8] c"W\00I\00D\00E\00S\00T\00R\00\00\00", align 1
-@wide_strings.b = local_unnamed_addr global [12 x i8] c"E\00s\00c\00\0D\00\0A\00\00\00", align 1
-@wide_strings.c = local_unnamed_addr global [24 x i8] c"l\00i\00t\00\0A\00s\00t\00r\00\09\00i\00n\00g\00\00\00", align 1
+@wide_strings.a = local_unnamed_addr global [16 x i8] c"W\00I\00D\00E\00S\00T\00R\00\00\00", align 16
+@wide_strings.b = local_unnamed_addr global [12 x i8] c"E\00s\00c\00\0D\00\0A\00\00\00", align 16
+@wide_strings.c = local_unnamed_addr global [26 x i8] c"l\00i\00t\00\0A\00s\00t\00r\00\\\00t\00i\00n\00g\00\00\00", align 16
+@wide_strings.d = local_unnamed_addr global [10 x i8] c"\B3\03\B5\03\B9\03\AC\03\00\00", align 16
+@wide_strings.e = local_unnamed_addr global [20 x i8] c"\B3\03\00\00\B5\03\00\00\B9\03\00\00\AC\03\00\00\00\00\00\00", align 16
+@wide_strings.f = local_unnamed_addr global [2 x i8] zeroinitializer, align 2
+@wide_strings.g = local_unnamed_addr global [4 x i8] zeroinitializer, align 16
+@wide_strings.h = local_unnamed_addr global [2 x i8] zeroinitializer, align 2
+@wide_strings.i = local_unnamed_addr global [4 x i8] zeroinitializer, align 16
+@wide_strings.j = local_unnamed_addr global [8 x i8] c"-\00\00\00\00\00\00\00", align 16
