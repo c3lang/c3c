@@ -7224,6 +7224,10 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 			case CONST_REF:
 				expr_replace(expr, expr_variable(inner->const_expr.global_ref));
 				break;
+			case CONST_BYTES:
+			case CONST_STRING:
+				expr_rewrite_const_int(expr, type_get_indexed_type(inner->type), inner->const_expr.bytes.len ? inner->const_expr.bytes.ptr[0] : 0);
+				return true;
 			default:
 				UNREACHABLE
 		}
