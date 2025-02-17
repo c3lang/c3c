@@ -330,18 +330,19 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 
 static const char *get_linux_crt_begin_arch_glob(void)
 {
-  switch (compiler.build.arch_os_target) {
-  case LINUX_X64:
-    return "/usr/lib/gcc/x86_64*linux*/*/crtbegin.o";
-  case LINUX_X86:
-    return "/usr/lib/gcc/i686*linux*/*/crtbegin.o";
-  case LINUX_AARCH64:
-    return "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
-  case LINUX_RISCV32:
-  case LINUX_RISCV64:
-  default:
-    return "/usr/lib/gcc/*/*/crtbegin.o";
-  }
+	switch (compiler.build.arch_os_target)
+	{
+		case LINUX_X64:
+			return "/usr/lib/gcc/x86_64*linux*/*/crtbegin.o";
+		case LINUX_X86:
+			return "/usr/lib/gcc/i686*linux*/*/crtbegin.o";
+		case LINUX_AARCH64:
+			return "/usr/lib/gcc/aarch64*linux*/*/crtbegin.o";
+		case LINUX_RISCV32:
+		case LINUX_RISCV64:
+		default:
+			return "/usr/lib/gcc/*/*/crtbegin.o";
+	}
 }
 
 static const char *find_linux_crt(void)
