@@ -30,7 +30,7 @@ fn DString DString.temp_init(&self, usz capacity = MIN_CAPACITY)
 
 fn DString new_with_capacity(usz capacity, Allocator allocator = allocator::heap())
 {
-	return DString{}.new_init(capacity, allocator);
+	return (DString){}.new_init(capacity, allocator);
 }
 
 fn DString temp_with_capacity(usz capacity) => new_with_capacity(capacity, allocator::temp()) @inline;

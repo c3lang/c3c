@@ -274,7 +274,7 @@ fn Path! Path.new_absolute(self, Allocator allocator = allocator::heap())
 		};
 	$else
 		String cwd = os::getcwd(allocator::temp())!;
-		return Path { cwd, self.env }.new_append(path_str, allocator)!;
+		return (Path){ cwd, self.env }.new_append(path_str, allocator)!;
 	$endif
 }
 

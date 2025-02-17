@@ -94,13 +94,17 @@ static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_to
  */
 bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
 {
-	advance_and_verify(c, TOKEN_LGENPAR);
+	bool is_new_generic = try_consume(c, TOKEN_LBRACE);
+	if (!is_new_generic)
+	{
+		advance_and_verify(c, TOKEN_LGENPAR);
+	}
 	while (true)
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 		vec_add(*exprs_ref, expr);
 		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(TOKEN_RGENPAR, false);
+		CONSUME_OR_RET(is_new_generic ? TOKEN_RBRACE : TOKEN_RGENPAR, false);
 		return true;
 	}
 }
@@ -692,7 +696,7 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_expr);
-	if (tok_is(c, TOKEN_LBRACE))
+	if (tok_is(c, TOKEN_LBRACE) && !compiler.build.enable_new_generics)
 	{
 		return parse_type_compound_literal_expr_after_type(c, type);
 	}
@@ -841,10 +845,15 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		case EXPR_TYPEINFO:
 		{
 			TypeInfo *info = expr->type_expr;
+			if (tok_is(c, TOKEN_LBRACE) && compiler.build.enable_new_generics)
+			{
+				return parse_type_compound_literal_expr_after_type(c, info);
+			}
 			// Create a cast expr
 			if (rules[c->tok].prefix)
 			{
-				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, PREC_CALL), poisoned_expr);
+				Precedence prec = tok_is(c, TOKEN_LBRACE) ? PREC_PRIMARY : PREC_CALL;
+				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, prec), poisoned_expr);
 				SourceSpan span = expr->span;
 				*expr = (Expr) {.expr_kind = EXPR_CAST,
 						.span = span,
@@ -1104,6 +1113,11 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
  */
 static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 {
+	if (tok_is(c, TOKEN_LBRACE) && !compiler.build.enable_new_generics)
+	{
+		PRINT_ERROR_HERE("This looks like you're using the new generics syntax. Please compile with --new-generics-enabled if you want it.");
+		return poisoned_expr;
+	}
 	ASSERT(left && expr_ok(left));
 	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
 	subs_expr->generic_ident_expr.parent = exprid(left);
@@ -2135,7 +2149,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
+		[TOKEN_LBRACE] = { parse_initializer_list, parse_generic_expr, PREC_NONE },
 		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VAREF] = { parse_ct_arg, NULL, PREC_NONE },
