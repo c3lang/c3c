@@ -3,7 +3,11 @@
 ## 0.6.8 Change list
 
 ### Changes / improvements
+- Increase precedence of `(Foo) { 1, 2 }`
+- Add `--enable-new-generics` to enable `Foo{int}` generic syntax.
+
 ### Fixes
+
 ### Stdlib changes
 
 ## 0.6.7 Change list

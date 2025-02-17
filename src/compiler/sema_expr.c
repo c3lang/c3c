@@ -5655,7 +5655,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	if (invalid_cast_ref) *invalid_cast_ref = false;
 	Expr *inner = exprptr(expr->cast_expr.expr);
 	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
-	if (inner->expr_kind == EXPR_INITIALIZER_LIST)
+	if (inner->expr_kind == EXPR_INITIALIZER_LIST || inner->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
 		expr->expr_kind = EXPR_COMPOUND_LITERAL;
 		expr->expr_compound_literal = (ExprCompoundLiteral) { .initializer = inner, .type_info = type_info };

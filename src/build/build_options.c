@@ -193,6 +193,7 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
+		print_opt("--enable-new-generics", "Enable Foo{int} generics, this will disable the old Foo { ... } initializers.");
 		print_opt("--vector-conv=<option>", "Set vector conversion behaviour: default, old.");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
@@ -1065,6 +1066,12 @@ static void parse_option(BuildOptions *options)
 			{
 				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
+				return;
+			}
+			if (match_longopt("enable-new-generics"))
+			{
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->enable_new_generics = true;
 				return;
 			}
 			if ((argopt = match_argopt("wincrt")))

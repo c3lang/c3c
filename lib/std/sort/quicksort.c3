@@ -35,7 +35,7 @@ macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLO
 
 module std::sort::qs(<Type, CmpFn, Context>);
 
-def ElementType = $typeof(Type{}[0]);
+def ElementType = $typeof(((Type){})[0]);
 
 struct StackElementItem @private
 {

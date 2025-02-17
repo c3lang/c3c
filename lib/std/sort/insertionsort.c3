@@ -19,7 +19,7 @@ macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @b
 
 module std::sort::is(<Type, CmpFn, Context>);
 
-def ElementType = $typeof(Type{}[0]);
+def ElementType = $typeof(((Type){})[0]);
 
 fn void isort(Type list, usz low, usz high, CmpFn comp, Context context)
 {

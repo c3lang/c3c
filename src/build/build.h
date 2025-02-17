@@ -469,6 +469,7 @@ typedef struct BuildOptions_
 	size_t linker_lib_count;
 	const char* std_lib_dir;
 	VectorConv vector_conv;
+	bool enable_new_generics;
 	struct
 	{
 		const char *sdk;
@@ -680,6 +681,7 @@ typedef struct
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
 	VectorConv vector_conv;
+	bool enable_new_generics;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
