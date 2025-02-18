@@ -321,6 +321,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			break;
 	}
 
+	if (options->no_run)
+	{
+		target->run_after_compile = false;
+	}
+
 	switch (options->command)
 	{
 		case COMMAND_BUILD:
