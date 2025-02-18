@@ -5,6 +5,7 @@
 ### Changes / improvements
 - Increase precedence of `(Foo) { 1, 2 }`
 - Add `--enable-new-generics` to enable `Foo{int}` generic syntax.
+- `{| |}` expression blocks deprecated.
 
 ### Fixes
 

@@ -8215,6 +8215,19 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	context->block_exit_ref = stored_block_exit;
 	context_pop_returns(context, saved_returns);
 
+	if (!compiler.build.silence_deprecation)
+	{
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+		if (type_no_optional(expr->type) == type_void)
+		{
+			SEMA_DEPRECATED(expr, "Expression blocks have been deprecated. For this type of expression block, use `do { ... };` blocks instead.");
+		}
+		else
+		{
+			SEMA_DEPRECATED(expr, "Expression blocks have been deprecated. Depending on your code, using `do { ... };` with a variable outside of the block may work fine. There is a possibility that these blocks will be replaced by inline macros.");
+		}
+	}
+
 	return success;
 }
 

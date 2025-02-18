@@ -376,10 +376,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 		else
 		{
 			got_digit = true;
-			int d = {|
-				if (c > '9') return (c | 32) + 10 - 'a';
-				return c - '0';
-			|};
+			int d = c > '9' ? ((c | 32) + 10 - 'a') : (c - '0');
 			switch
 			{
 				case dc < 8:

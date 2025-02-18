@@ -1,3 +1,4 @@
+// #deprecation: no
 module foob;
 
 fn void main()

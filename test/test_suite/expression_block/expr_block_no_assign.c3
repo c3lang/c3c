@@ -1,3 +1,4 @@
+// #deprecation: no
 module helloworld;
 
 fn void main()

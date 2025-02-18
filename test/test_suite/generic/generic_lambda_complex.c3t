@@ -1,4 +1,5 @@
 // #target: macos-x64
+// #deprecation: no
 
 <* @require Type.kindof == STRUCT *>
 module abc(<Type>);

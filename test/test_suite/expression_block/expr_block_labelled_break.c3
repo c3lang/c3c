@@ -1,4 +1,4 @@
-
+// #deprecation: no
 fn void test()
 {
 	for FOO: (int i = 0; i < 100; i++)

@@ -1,3 +1,4 @@
+// #deprecation: no
 fn int! foo()
 { return 1; }
 

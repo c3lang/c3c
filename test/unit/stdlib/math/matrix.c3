@@ -3,7 +3,7 @@ import std::math;
 
 fn void test_mat4()
 {
-	{|
+	{
 		Matrix4 mat = MATRIX4_IDENTITY;
 		Matrix4 mat2 = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 		Matrix4 calc = mat.mul(mat2);
@@ -11,17 +11,17 @@ fn void test_mat4()
 
 		Matrix4 translated = mat.translate(Vec3{0.0, 0.0, 0.0});
 		assert(translated.m == mat.m);
-	|};
+	};
 
-	{|
+	{
 		Matrix4 mat = { 1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8 };
 		Matrix4 mat2 = { 8, 7, 6, 5, 4, 3, 2, 1, 8, 7, 6, 5, 4, 3, 2, 1 };
 		Matrix4 calc = mat.mul(mat2);
 		Matrix4 value = { 56, 46, 36, 26, 152, 126, 100, 74, 56, 46, 36, 26, 152, 126, 100, 74 };
 		assert(calc.m == value.m);
-	|};
+	};
 
-	{|
+	{
 		Matrix4 result = {
 			0.988936, 0.000000, -0.148340, -0.988936, 
 			-0.014599, 0.995146, -0.097325, -2.970838, 
@@ -58,9 +58,9 @@ fn void test_mat4()
 
 		assert(math::round_to_decimals((double[<16>])result_transposed.m, 4) == math::round_to_decimals((double[<16>])look_at.transpose().m, 4));
 		assert(math::round_to_decimals((float[<16>])result_transposed_f.m, 4) == math::round_to_decimals((float[<16>])look_at_f.transpose().m, 4));
-	|};
+	};
 
-	{|
+	{
 		Matrix4 result = {
 			1.857087, 0.000000, 0.000000, 
 			0.000000, 0.000000, 2.414214, 
@@ -82,7 +82,7 @@ fn void test_mat4()
 
 		assert(math::round_to_decimals((double[<16>])result.m, 4) == math::round_to_decimals((double[<16>])perspective.m, 4));
 		assert(math::round_to_decimals((float[<16>])result_f.m, 4) == math::round_to_decimals((float[<16>])perspective_f.m, 4));
-	|};
+	};
 }
 
 
