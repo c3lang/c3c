@@ -7,5 +7,5 @@ fn void test4()
 
 fn void test5()
 {
-    Foo x = (Foo)(Foo{32});
+    Foo x = (Foo)((Foo){32});
 }

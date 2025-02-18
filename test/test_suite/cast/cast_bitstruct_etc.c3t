@@ -4,8 +4,8 @@ module test;
 fn void main()
 {
 	Enum e = ENUM1;
-	ushort x = (ushort)Foo{ .x = e };
-	Foo z = (Foo)(ushort)Foo { .x = e };
+	ushort x = (ushort)(Foo){ .x = e };
+	Foo z = (Foo)(ushort)(Foo) { .x = e };
 }
 
 enum Enum : char

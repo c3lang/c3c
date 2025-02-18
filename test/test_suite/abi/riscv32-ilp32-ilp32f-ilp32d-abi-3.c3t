@@ -172,9 +172,9 @@ fn void f_agg_stack(double a, long b, double c, long d, Tiny e,
 extern fn int f_va_callee(int, ...);
 
 fn void f_va_caller() {
-  f_va_callee(1, 2, 3, 4.0, 5.0, Tiny{6, 7, 8, 9},
-              Small{10, null}, Small_aligned{11},
-              Large{12, 13, 14, 15});
+  f_va_callee(1, 2, 3, 4.0, 5.0, (Tiny){6, 7, 8, 9},
+              (Small){10, null}, (Small_aligned){11},
+              (Large){12, 13, 14, 15});
 }
 
 

@@ -5,7 +5,7 @@ enum EnumWithErrorWithMissingName : (int)  // #error: Expected a member name her
 }
 
 enum EnumWithErrorData : ( int
-{ // #error: Expected a member name here
+,{ // #error: Expected a member name here
     TEST
 }
 

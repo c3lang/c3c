@@ -6,8 +6,8 @@ fn void test_int_mod() @test
 	int[<2>] z = { 3, 5 };
 	assert(y % z == { 1, 4 });
 	assert(y / z == { 3, 19 });
-	assert(int[<2>]{ 10, 99 } % int[<2>]{ 3, 5 } == { 1, 4 });
-	assert(int[<2>]{ 10, 99 } / int[<2>]{ 3, 5 } == { 3, 19 });
+	assert((int[<2>]){ 10, 99 } % { 3, 5 } == { 1, 4 });
+	assert((int[<2>]){ 10, 99 } / { 3, 5 } == { 3, 19 });
 }
 
 fn void test_conv() @test
@@ -26,7 +26,7 @@ fn void test_conv() @test
 	bool[<2>] b = { true, false };
 	int[<2>] gh = b;
 	assert(gh == { -1, 0 });
-	var $k = bool[<2>] { true, false };
+	var $k = (bool[<2>]){ true, false };
 	var $gh = (int[<2>])$k;
 	$assert $gh[0] == -1;
 	var $gh2 = (char[<2>])$gh;

@@ -25,7 +25,7 @@ fn void test_bitops() @test
 
 	Foo f4 = (f1 | ~f2) ^ f3;
 	assert(f4.a == false && f4.b == true);
-	Foo f5 = Foo { true, false } | Foo { false, true };
+	Foo f5 = (Foo) { true, false } | (Foo) { false, true };
 	assert(f5.a == true && f5.b == true);
 
 	f5 &= f2;
@@ -38,7 +38,7 @@ fn void test_bitops() @test
 	assert(b3.z == true && b3.w == false && b3.gh == false);
 	b3 = ~b3;
 	assert(b3.z == false && b3.w == true && b3.gh == true);
-	b3 ^= Bar { true, true, false };
+	b3 ^= (Bar) { true, true, false };
 	assert(b3.z == true && b3.w == false && b3.gh == true);
 }
 
@@ -53,7 +53,7 @@ fn void test_bitops_const() @test
 
 	const Foo F4 = (F1 | ~F2) ^ F3;
 	assert(F4.a == false && F4.b == true);
-	const Foo F5 = Foo { true, false } | Foo { false, true };
+	const Foo F5 = (Foo) { true, false } | (Foo) { false, true };
 	assert(F5.a == true && F5.b == true);
 
 	const Bar B1 = { true, true, true };

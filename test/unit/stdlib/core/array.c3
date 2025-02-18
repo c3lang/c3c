@@ -24,9 +24,9 @@ fn void concat()
 	free(array::concat_new(a, a));
 	free(array::concat_new(a[..], a[..]));
 	free(array::concat_new(a[:0], a[:0]));
-	free(array::concat_new(int[2] { 1, 2 }, a[:0]));
-	free(array::concat_new(a[:0], int[2] { 1, 2 }));
+	free(array::concat_new((int[2]) { 1, 2 }, a[:0]));
+	free(array::concat_new(a[:0], (int[2]) { 1, 2 }));
 	int[] c = array::concat_new(a[1..2], a);
 	defer free(c);
-	assert (c == int[]{ 2, 3, 1, 2, 3 });
+	assert (c == (int[]){ 2, 3, 1, 2, 3 });
 }

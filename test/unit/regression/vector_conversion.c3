@@ -9,11 +9,11 @@ fn void vector_array_inferred()
 	int[<?>] z = x;
 	int[<?>] w = y;
 	double[<2>] ww = x;
-	assert((int[<2>])y == int[<2>]{ 4, 7});
-	assert((int[<2>])y1 == int[<2>] { 4, 7 });
-	assert((int[<2>])y2 == int[<2>] { 4, 7 });
-	assert(z == int[<2>] { 4, 7 });
-	assert(w == int[<2>] { 4, 7 });
+	assert((int[<2>])y == { 4, 7});
+	assert((int[<2>])y1 == { 4, 7 });
+	assert((int[<2>])y2 == { 4, 7 });
+	assert(z == { 4, 7 });
+	assert(w == { 4, 7 });
 }
 
 fn void vector_convert_slice()
@@ -26,6 +26,6 @@ fn void vector_convert_slice()
 fn void vector_convert_bool()
 {
 	bool[<2>] a = { true, false };
-	assert(int[<2>] { -1, 0 } == (int[<2>])a);
-	assert(float[<2>] { 1.0, 0 } == (float[<2>])a);
+	assert({ -1, 0 } == (int[<2>])a);
+	assert({ 1.0, 0 } == (float[<2>])a);
 }

@@ -6,7 +6,8 @@ struct Matrix2x2
 	union
 	{
 		float[4] m;
-		struct {
+		struct
+		{
 			float m00, m01, m10, m11;
 		}
 	}
@@ -16,15 +17,19 @@ struct Matrix2x2_b
 {
 	union
 	{
-		struct {
+		struct
+		{
 			float m00, m01, m10, m11;
 		}
 		float[4] m;
 	}
 }
-struct Matrix4x4 {
-    union {
-        struct {
+struct Matrix4x4
+{
+    union
+    {
+        struct
+        {
             float m00, m01, m02, m03;
             float m10, m11, m12, m13;
             float m20, m21, m22, m23;
@@ -35,9 +40,12 @@ struct Matrix4x4 {
 }
 
 
-struct Matrix3x3 {
-    union {
-        struct {
+struct Matrix3x3
+{
+    union
+    {
+        struct
+        {
             float m00, m01, m02, m10, m11, m12, m20, m21, m22;
         }
         float[9] m;
@@ -46,7 +54,7 @@ struct Matrix3x3 {
 fn void main()
 {
 	Matrix3x3 x = { 1, 2, 3, 4, 5, 6, 7,8 ,9};
-	Matrix2x2 m = { float[4] { 1, 2, 3, 4 } };
+	Matrix2x2 m = { (float[4]) { 1, 2, 3, 4 } };
 	Matrix2x2_b m2 = { 1, 2, 3, 4 };
 	libc::printf("%f %f %f %f\n", x.m00, x.m[1], x.m10, x.m[3]);
 }

@@ -68,13 +68,13 @@ fn void! TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 				{
 					$switch ($m.typeid)
 						$case String.typeid:
-							return TextTag{
+							return (TextTag){
 								.kind = STRING,
 								.data = (String*)(data + $m.offsetof),
 							};
 						$default:
 							$if $defined($m.get(self.data).as_stream):
-								return TextTag{
+								return (TextTag){
 									.kind = TEMPLATE,
 									.template = self.data.$eval($m.nameof).as_stream(),
 								};

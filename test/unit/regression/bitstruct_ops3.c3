@@ -82,7 +82,7 @@ fn void negate()
 	Flags flags;
 	flags = ~flags;
 	assert(~0 == (int)flags);
-	flags = ~Flags {};
+	flags = ~(Flags){};
 	assert(3 == (int)flags);
 	const Flags FLAGS = {.flag1 };
 	flags = ~FLAGS;

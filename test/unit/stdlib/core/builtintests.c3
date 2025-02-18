@@ -62,16 +62,16 @@ fn void test_prefetch()
 
 fn void test_hash()
 {
-	char{}.hash();
-	ichar{}.hash();
-	short{}.hash();
-	ushort{}.hash();
-	int{}.hash();
-	uint{}.hash();
-	long{}.hash();
-	ulong{}.hash();
-	int128{}.hash();
-	uint128{}.hash();
+	(char){}.hash();
+	(ichar){}.hash();
+	(short){}.hash();
+	(ushort){}.hash();
+	(int){}.hash();
+	(uint){}.hash();
+	(long){}.hash();
+	(ulong){}.hash();
+	(int128){}.hash();
+	(uint128){}.hash();
 	String x = "abc";
 	char[] y = "abc";
 	assert(x.hash() == y.hash());

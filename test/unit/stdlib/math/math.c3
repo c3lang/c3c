@@ -11,9 +11,9 @@ fn void test_abs() @test
 	assert(math::abs(z) == 21.0f);
 	$assert @typeis(math::abs(z), float);
 	int[<3>] xx = { -1, -1000, 1000 };
-	assert(math::abs(xx) == int[<3>] { 1, 1000, 1000 });
+	assert(math::abs(xx) == (int[<3>]) { 1, 1000, 1000 });
 	double[<3>] yy = { -1, -0.5, 1000 };
-	assert(math::abs(yy) == double[<3>] { 1, 0.5, 1000 });
+	assert(math::abs(yy) == (double[<3>]) { 1, 0.5, 1000 });
 }
 
 fn void test_acos() @test
@@ -269,7 +269,7 @@ fn void test_ceil() @test
 	assert(math::ceil(f) == 0.0f);
 	$assert @typeis(math::ceil(f), float);
 	double[<5>] vec = { -123.1, 123.1, 0.1, -0.9, 0 };
-	assert(math::ceil(vec) == double[<5>] { -123, 124, 1, 0, 0 });
+	assert(math::ceil(vec) == (double[<5>]) { -123, 124, 1, 0, 0 });
 }
 
 fn void test_cos() @test
@@ -351,7 +351,7 @@ fn void test_floor() @test
 	assert(math::floor(f) == -1.0f);
 	$assert @typeis(math::floor(f), float);
 	double[<5>] vec = { -123.1, 123.1, 0.9, -0.1, 0 };
-	assert(math::floor(vec) == double[<5>] { -124, 123, 0, -1, 0 });
+	assert(math::floor(vec) == (double[<5>]) { -124, 123, 0, -1, 0 });
 }
 
 fn void test_log() @test
@@ -536,7 +536,7 @@ fn void test_trunc() @test
 	assert(math::trunc(f) == -0.0f);
 	$assert @typeis(math::trunc(f), float);
 	double[<5>] vec = { -123.9, 123.9, 0.9, -0.9, 0 };
-	assert(math::trunc(vec) == double[<5>] { -123, 123, 0, 0, 0 });
+	assert(math::trunc(vec) == (double[<5>]) { -123, 123, 0, 0, 0 });
 }
 
 fn void test_round_decimals() @test
@@ -579,14 +579,14 @@ fn void test_muldiv()
 	assert(h.muldiv(2_000_000_000_000u64, 1_000_000_000u64) == 2_000_000_000_000_000u64);
 
 	char[<4>] i = {20, 30, 40, 50};
-	assert(i.muldiv(12,10) == char[<4>] {24, 36, 48, 60});
-	assert(i.muldiv(char[<4>]{11, 12, 13, 14}, char[<4>]{10,10,10,10}) == char[<4>]{22, 36, 52, 70});
+	assert(i.muldiv(12,10) == (char[<4>]) {24, 36, 48, 60});
+	assert(i.muldiv((char[<4>]){11, 12, 13, 14}, (char[<4>]){10,10,10,10}) == (char[<4>]){22, 36, 52, 70});
 
 	long[<4>] j = {1_000_000_000_000i64, 2_000_000_000_000i64, 3_000_000_000_000i64, 4_000_000_000_000i64};
-	assert(j.muldiv(2_000_000_000_000i64, 1_000_000_000i64) == long[<4>]{2_000_000_000_000_000i64, 4_000_000_000_000_000i64, 6_000_000_000_000_000i64, 8_000_000_000_000_000i64});
+	assert(j.muldiv(2_000_000_000_000i64, 1_000_000_000i64) == (long[<4>]){2_000_000_000_000_000i64, 4_000_000_000_000_000i64, 6_000_000_000_000_000i64, 8_000_000_000_000_000i64});
 	
 	ichar[<4>] k = {20, 30, 40, 50};
-	assert(k.muldiv(20,-10) == ichar[<4>]{-40,-60,-80,-100});
+	assert(k.muldiv(20,-10) == (ichar[<4>]){-40,-60,-80,-100});
 }
 
 fn void test_gcd() @test

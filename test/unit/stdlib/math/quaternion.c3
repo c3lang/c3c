@@ -29,8 +29,8 @@ fn void test()
             0.000000, 0.000000, 0.000000, 1.000000
         };
         
-        Matrix4 rotation = Quaternion {0.5, 0.5, 0.5, 1}.to_matrix();
-        Matrix4f rotation_f = Quaternionf {0.5, 0.5, 0.5, 1}.to_matrixf();
+        Matrix4 rotation = (Quaternion) {0.5, 0.5, 0.5, 1}.to_matrix();
+        Matrix4f rotation_f = (Quaternionf) {0.5, 0.5, 0.5, 1}.to_matrixf();
 
         assert(math::round_to_decimals((double[<16>])result.m, 2) == math::round_to_decimals((double[<16>])rotation.m, 2));
         assert(math::round_to_decimals((float[<16>])result.m, 2) == math::round_to_decimals((float[<16>])rotation_f.m, 2));

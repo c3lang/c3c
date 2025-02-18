@@ -1843,7 +1843,7 @@ static inline Decl *parse_interface_declaration(ParseContext *c)
 	{
 		do
 		{
-			ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), poisoned_decl);
+			ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type_no_generic(c), poisoned_decl);
 			vec_add(parents, type);
 		} while (try_consume(c, TOKEN_COMMA));
 	}

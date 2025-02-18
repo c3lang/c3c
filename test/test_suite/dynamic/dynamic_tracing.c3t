@@ -37,7 +37,7 @@ macro @patch(IFoo *x, $Type) {
 }
 
 fn void main() {
-    IFoo foo = @clone(Ba{});
+    IFoo foo = @clone((Ba){});
 
     io::printfn("Aa.typeid: %p, Ba.typeid: %p", (usz) Aa.typeid, (usz) Ba.typeid);
     io::printfn("foo.type: %p", (usz) foo.type);

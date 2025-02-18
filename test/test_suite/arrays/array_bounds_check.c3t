@@ -3,7 +3,7 @@
 module testing;
 import std::io;
 
-const FOO = Foo[2]{ {11}, {22} };
+const FOO = (Foo[2]){ {11}, {22} };
 
 struct Foo
 {

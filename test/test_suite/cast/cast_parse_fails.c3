@@ -2,7 +2,7 @@ struct Foo { int a; }
 
 fn void test2()
 {
-    int x = int{ 32 };    // #error: 'int' with a non-empty initializer list
+    int x = (int){ 32 };    // #error: 'int' with a non-empty initializer list
 }
 
 fn void test3()

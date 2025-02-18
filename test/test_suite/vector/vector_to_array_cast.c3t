@@ -2,8 +2,8 @@
 
 module test;
 
-int[<2>] b = (int[<2>])(int[2] { 1, 2 });
-int[2] c = (int[2])(int[<2>] { 1, 2 });
+int[<2>] b = (int[<2>])((int[2]) { 1, 2 });
+int[2] c = (int[2])((int[<2>]) { 1, 2 });
 
 fn void tester()
 {

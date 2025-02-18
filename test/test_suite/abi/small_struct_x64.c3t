@@ -9,13 +9,13 @@ struct Foo
 
 fn int testing()
 {
-    Foo y = getFoo(Foo { 4, 5, 6 });
+    Foo y = getFoo((Foo) { 4, 5, 6 });
     return y.a + y.c;
 }
 
 fn Foo getFoo(Foo f)
 {
-    return Foo { 1, 2, 3 };
+    return (Foo) { 1, 2, 3 };
 }
 
 /* #expect: test.ll

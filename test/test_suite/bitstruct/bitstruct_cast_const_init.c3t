@@ -9,7 +9,7 @@ bitstruct Foo : int
 fn void main()
 {
 	Foo f;
-	int z = (int) Foo { .abc = 2, .defg = 1 };
+	int z = (int) (Foo) { .abc = 2, .defg = 1 };
 }
 
 /* #expect: test.ll

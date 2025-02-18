@@ -11,7 +11,7 @@ struct Rectangle
 
 fn void test(Rectangle r)
 {
-	test(Rectangle { 1, 2, 3, 4 });
+	test((Rectangle) { 1, 2, 3, 4 });
 }
 
 /* #expect: foo.ll

@@ -9,7 +9,7 @@ fn void test_mat4()
 		Matrix4 calc = mat.mul(mat2);
 		assert(calc.m == mat.m);
 
-		Matrix4 translated = mat.translate(Vec3{0.0, 0.0, 0.0});
+		Matrix4 translated = mat.translate({0.0, 0.0, 0.0});
 		assert(translated.m == mat.m);
 	};
 
@@ -117,6 +117,6 @@ fn void test_mat2_inverse()
 
 fn void test_vec3()
 {
-	Vec3 cross = Vec3{2,3,4}.cross(Vec3{5,6,7});
-	assert(cross == Vec3{-3,6,-3});
+	Vec3 cross = (Vec3){2,3,4}.cross({5,6,7});
+	assert(cross == {-3,6,-3});
 }

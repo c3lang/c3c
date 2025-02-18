@@ -23,7 +23,7 @@ fn void main()
 	io::printfn("%s %s", f3.a, f3.b);
 	Foo f4 = (f1 | ~f2) ^ f3;
 	io::printfn("%s %s", f4.a, f4.b);
-	Foo f5 = Foo { true, false } | Foo { false, true };
+	Foo f5 = (Foo) { true, false } | (Foo) { false, true };
 	io::printfn("%s %s", f5.a, f5.b);
 
 	f5 &= f2;
@@ -36,7 +36,7 @@ fn void main()
 	io::printfn("%s %s %s", b3.z, b3.w, b3.gh);
 	b3 = ~b3;
 	io::printfn("%s %s %s", b3.z, b3.w, b3.gh);
-	b3 ^= Bar { true, true, false };
+	b3 ^= (Bar) { true, true, false };
 	io::printfn("%s %s %s", b3.z, b3.w, b3.gh);
 }
 

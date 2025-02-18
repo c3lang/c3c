@@ -45,14 +45,14 @@ struct Complex { double i; double c; }
 extern fn void f62_helper(int, ...);
 Mm512 x62;
 fn void f62() {
-  f62_helper(0, x62, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 1.0, 1.0 });
+  f62_helper(0, x62, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
 }
 
 extern fn void f64_helper(Mm512, ...);
 Mm512 x64;
 fn void f64() {
-  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 1.0, 1.0 });
-  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 1.0, 1.0 });
+  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
+  f64_helper(x64, x64, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 1.0, 1.0 });
 }
 
 

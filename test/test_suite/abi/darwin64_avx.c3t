@@ -3,8 +3,9 @@
 module test;
 
 def Mm256 = float[<8>];
-struct St256 {
-  Mm256 m;
+struct St256
+{
+    Mm256 m;
 }
 
 St256 x38;
@@ -20,18 +21,21 @@ fn void f39() { f38(x38); f37(x37); }
 // CHECK: declare void @func40(%struct.t128* byval(%struct.t128) align 16)
 
 def Mm128 = float[<4>];
-struct Two128 {
-  Mm128 m;
-  Mm128 n;
+struct Two128
+{
+	Mm128 m;
+	Mm128 n;
 }
 
 extern fn void func40(Two128 s);
-fn void func41(Two128 s) {
-  func40(s);
+fn void func41(Two128 s)
+{
+    func40(s);
 }
 
-struct Atwo128 {
-  Mm128[2] array;
+struct Atwo128
+{
+	Mm128[2] array;
 }
 
 struct Sa {
@@ -59,14 +63,14 @@ struct Complex { double i; double c; }
 extern fn void test52_helper(int, ...);
 Mm256 x52;
 fn void test52() {
-  test52_helper(0, x52, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 0, 1.0 });
+  test52_helper(0, x52, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
 }
 
 extern fn void test54_helper(Mm256, ...);
 Mm256 x54;
 fn void test54() {
-  test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 0, 1.0 });
-  test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, Complex { 0, 1.0 });
+  test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
+  test54_helper(x54, x54, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, (Complex) { 0, 1.0 });
 }
 
 def Mm512 = float[<16>];

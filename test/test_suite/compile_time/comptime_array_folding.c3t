@@ -3,26 +3,30 @@ module test;
 import std;
 
 def @TaggedAttr(value) = {
-    @tag("foo", ValueHere[?]{ value })
+    @tag("foo", (ValueHere[?]){ value })
 };
 
 const FOO_STR = "foo";
 
-union TestUnion {
+union TestUnion
+{
 	int a;
 }
-struct ValueHere {
+struct ValueHere
+{
     int value;
     String thing;
 }
 
 const ValueHere VALUE_STRUCT = { 32, "lol" };
 
-struct ThisOtherStruct @TaggedAttr(VALUE_STRUCT) {
+struct ThisOtherStruct @TaggedAttr(VALUE_STRUCT)
+{
     int something;
 }
 
-enum Example : int (String str) @TaggedAttr(VALUE_STRUCT) {
+enum Example : int (String str) @TaggedAttr(VALUE_STRUCT)
+{
    FOO = FOO_STR,
 }
 
@@ -32,7 +36,8 @@ const int BAZ2 = BAZ[1];
 const TestUnion[1] ABC = { { .a = 112 } };
 const TestUnion BCD = ABC[0];
 
-macro int get_tag_value($Type) {
+macro int get_tag_value($Type)
+{
     $if $Type.has_tagof("foo"):
         return $Type.tagof("foo")[0].value;
     $else

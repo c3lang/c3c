@@ -6,16 +6,16 @@ struct Abc
 	float m00, m01, m10, m11;
 }
 
-Abc a = flip(Abc { 1, 2, 3, 4 });
+Abc a = flip((Abc) { 1, 2, 3, 4 });
 
 macro flip($init)
 {
-	return Abc { $init.m01, $init.m10, $init.m11, $init.m00 };
+	return (Abc) { $init.m01, $init.m10, $init.m11, $init.m00 };
 }
 
 macro check_type($Type)
 {
-	var $b = $Type[4][4] {};
+	var $b = ($Type[4][4]) {};
 	$Type z = $b[2][2];
 	return z;
 }
@@ -25,9 +25,9 @@ enum Blurb { FOO }
 distinct Bdd = Abc;
 fn void main()
 {
-	var $i = int[4] { 1, 2, 3, 4 };
-	var $b = Abc[2] { Abc {}, Abc { 11, 22, 33, 44 }};
-	var $c = any[4] {};
+	var $i = (int[4]) { 1, 2, 3, 4 };
+	var $b = (Abc[2]) { (Abc) {}, (Abc) { 11, 22, 33, 44 }};
+	var $c = (any[4]) {};
 	check_type(int);
 	check_type(Abc);
 	check_type(anyfault);

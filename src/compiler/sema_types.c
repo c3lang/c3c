@@ -394,9 +394,12 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	{
 		RETURN_SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
 	}
-	if (inner->resolve_status != RESOLVE_NOT_DONE)
+	if (inner->resolve_status == RESOLVE_DONE)
 	{
-		puts("feokf");
+		if (!type_is_user_defined(inner->type))
+		{
+			RETURN_SEMA_ERROR(inner, "A user defined type was expected here, not %s.", type_quoted_error_string(inner->type));
+		}
 	}
 	ASSERT_SPAN(inner, inner->resolve_status == RESOLVE_NOT_DONE);
 

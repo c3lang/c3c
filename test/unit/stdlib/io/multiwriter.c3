@@ -8,7 +8,7 @@ fn void test_multiwriter()
 	defer mw.free();
 
 	String want = "foobar";
-	io::copy_to(ByteReader{}.init(want), &mw)!!;
+	io::copy_to((ByteReader){}.init(want), &mw)!!;
 	
 	assert(w1.str_view() == want,
 		"invalid write; got: %s, want: %s", w1.str_view(), want);
