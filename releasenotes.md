@@ -8,6 +8,7 @@
 - `{| |}` expression blocks deprecated.
 
 ### Fixes
+- Bug appearing when `??` was combined with boolean in some cases.
 
 ### Stdlib changes
 

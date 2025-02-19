@@ -362,6 +362,11 @@ fn File SubProcess.stdout(&self)
 	return file::from_handle(self.stdout_file);
 }
 
+fn File SubProcess.stderr(&self)
+{
+	return file::from_handle(self.stderr_file);
+}
+
 fn CInt! SubProcess.join(&self) @if(env::WIN32)
 {
 	if (self.stdin_file)
