@@ -69,7 +69,7 @@ module libc @if(env::LIBC);
 extern fn void abort();
 extern fn CInt abs(CInt n);
 extern fn ZString asctime(Tm* timeptr);
-extern fn ZString asctime_r(Tm* timeptr, char* buf);
+extern fn ZString asctime_r(Tm* timeptr, char* buf) @if(!env::WIN32);
 extern fn CInt atexit(TerminateFunction func);
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
