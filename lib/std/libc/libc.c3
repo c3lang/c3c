@@ -79,7 +79,7 @@ extern fn void* calloc(usz count, usz size);
 extern fn void clearerr(CFile stream);
 extern fn Clock_t clock();
 extern fn CInt close(CInt fd) @if(!env::WIN32);
-extern fn double difftime(Time_t time1, Time_t time2);
+extern fn double difftime(Time_t time1, Time_t time2) @if(!env::WIN32);
 extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
 extern fn CInt fclose(CFile stream);
