@@ -12,8 +12,41 @@ fn void abs() @test
 	$assert @typeis(libc::abs(-x), CInt);
 }
 
-// fn void asctime() @test {}
-// fn void asctime_r() @test {}
+fn void asctime() @test
+{
+	Tm time = {
+		.tm_sec = 13,
+		.tm_min = 42,
+		.tm_hour = 3,
+		.tm_mday = 5,
+		.tm_mon = 8,
+		.tm_year = 11,
+		.tm_wday = 1,
+		.tm_yday = 41,
+		.tm_isdst = 0
+	};
+	ZString formatted_time = libc::asctime(&time);
+	assert(libc::strcmp(formatted_time, "Mon Sep  5 03:42:13 1911\n") == 0);
+}
+
+fn void asctime_r() @test
+{
+	Tm time = {
+		.tm_sec = 13,
+		.tm_min = 42,
+		.tm_hour = 3,
+		.tm_mday = 5,
+		.tm_mon = 8,
+		.tm_year = 11,
+		.tm_wday = 1,
+		.tm_yday = 41,
+		.tm_isdst = 0
+	};
+	char[26] formatted_time;
+	libc::asctime_r(&time, &formatted_time);
+	assert(libc::strcmp((ZString) &formatted_time, "Mon Sep  5 03:42:13 1911\n") == 0);
+}
+
 // fn void atexit() @test {}
 
 fn void atof() @test
