@@ -1,6 +1,9 @@
 module libc_tests;
 import libc;
 
+// Functions from libc.c3 which do not have a test are still present in
+// comments here in the same order that they occur within libc.c3
+
 // fn void abort() @test {}
 
 fn void abs() @test
@@ -191,7 +194,25 @@ fn void clearerr() @test
 	assert(!libc::feof(tmpf));
 }
 
-// fn void clock() @test {}
+fn void clock() @test
+{
+	Clock_t time1 = libc::clock();
+	if (time1 < 0)
+	{
+		// If getting processor-time is not available, do nothing
+		return;
+	}
+	// Waist bit of time
+	int i = 0;
+	for (int j = 0; j <= 1000; j++)
+	{
+		i += j;
+	}
+	assert(i == (1000 / 2) * (1000 + 1)); // Gauss, prevent compiler-optimisation
+	Clock_t time2 = libc::clock();
+	assert(time2 >= time1);
+}
+
 // fn void close() @test {}
 
 fn void difftime() @test
