@@ -17,6 +17,7 @@ int skip_count;
 int success_count;
 Path start_cwd;
 Path test_dir;
+bool print_to_file;
 
 fn void arg_error_exit(String fmt, args...) @noreturn
 {
@@ -34,9 +35,8 @@ fn void error_exit(String fmt, args...) @noreturn
 fn void main(String[] args)
 {
 	appname = args[0];
-	args = { "foo", "../cmake-build-debug-latest/c3c", "test_suite/" };
 	if (args.len < 3 || args.len > 4) usage();
-
+	print_to_file = !io::stdout().isatty();
 	// Check compiler path
 	start_cwd = path::temp_cwd()!!;
 	test_dir = start_cwd.temp_append("_c3test")!!;
@@ -45,7 +45,7 @@ fn void main(String[] args)
 
 	if (!path::is_file(path))
 	{
-		error_exit("Error: Invalid path to compiler: %s", path.path_string);
+		error_exit("Error: Invalid path to compiler: %s (%s relative to %s)", path.path_string, args[1], start_cwd);
 	}
 	compiler_path = path;
 
@@ -82,9 +82,9 @@ struct RunFile
 	String name;
 	File file;
 	int line_offset;
-	List{String} expected_lines;
-	List{Error} warnings;
-	List{Error} errors;
+	List {String} expected_lines;
+	List {Error} warnings;
+	List {Error} errors;
 	bool is_llvm;
 }
 
@@ -128,46 +128,61 @@ struct RunSettings
 	List{RunFile*} files;
 }
 
-fn bool check_line(RunSettings*, String type, String file, String line, String col, String message)
+fn bool check_line(RunSettings* settings, String type, String file, String line_str, String col, String message) => @pool()
 {
+	int line = line_str.to_int()!!;
+	String basename = path::temp_new(file).basename()!!;
+	foreach (f : settings.files)
+	{
+		if (f.name != basename) continue;
+		List{Error}* list;
+		switch (type)
+		{
+			case "Error":
+				list = &f.errors;
+				break;
+			case "Warning":
+				list = &f.warnings;
+				break;
+			default:
+				error_exit("FAILED - Unknown error type '%s'", type);
+		}
+		foreach (i, err : *list)
+		{
+			if (line != err.line) continue;
+			if (!message.contains(err.text)) return false;
+			list.remove_at(i);
+			return true;
+		}
+	}
 	return false;
-/*
-	def check_line(self, typ, file, line, col, message):
-		map_ = {}
-		if typ == 'Error':
-			map_ = self.errors
-		elif typ == 'Warning':
-			map_ = self.warnings
-		else:
-			self.exit_error("Unknown type: " + typ)
-		file = os.path.basename(file)
-		key = file + ":" + line
-		value = map_.get(key)
-		if value is None:
-			return False
-		if value in message:
-			del map_[key]
-			return True
-		else:
-			return False
-*/
 }
+
 fn bool parse_result(DString out, RunSettings settings)
 {
 	// Inefficient, fix.
 	bool success = true;
+	int errors = 0;
 	foreach (line : out.str_view().tsplit("\n"))
 	{
 		if (!line) continue;
 		String[] parts = line.tsplit("|", 5);
 		if (parts.len != 5)
 		{
-			error_exit("Unexpected error: %s", out);
+			io::printn("FAILED - Unexpected response from compiler:");
+			io::printn("Output: ----------------------------------------------------------");
+			io::print(out);
+			io::printn("------------------------------------------------------------------");
+			return false;
 		}
 		if (!check_line(&settings, ...parts[:5]))
 		{
-			parts[0].convert_ascii_to_lower();
-			io::printf("Unexpected %s in %s line %s:", parts[0], path::temp_new(parts[1]).basename()!!, parts[2]);
+			if (success)
+			{
+				io::printn("FAILED\n\n Unexpected compilation errors:");
+				io::printn(" ------------------------------");
+			}
+			io::printf("  %d. %s at %s:%s: ", ++errors, parts[0], path::temp_new(parts[1]).basename()!!, parts[2]);
 			io::printfn(`"%s"`, parts[4]);
 			success = false;
 		}
@@ -177,11 +192,17 @@ fn bool parse_result(DString out, RunSettings settings)
 	{
 		if (file.errors.len())
 		{
+			if (success) io::printn("FAILED - Missing errors");
+			if (!not_found_errors)
+			{
+				io::printn();
+				io::printn(" Errors that never occurred:");
+				io::printn(" ---------------------------");
+			}
 			success = false;
-			if (!not_found_errors) io::printn("Errors that never occurred:");
 			foreach (i, &item : file.errors)
 			{
-				io::printfn(`%d. %s %d expected: "%s"`, ++not_found_errors, file.name, item.line, item.text);
+				io::printfn(`  %d. %s:%d expected: "%s"`, ++not_found_errors, file.name, item.line, item.text);
 			}
 		}
 	}
@@ -189,14 +210,21 @@ fn bool parse_result(DString out, RunSettings settings)
     {
     	if (file.warnings.len())
 		{
+			if (success) io::printn("FAILED - Missing warnings");
     		success = false;
-    		if (!not_found_warnings) io::printn("Warnings that never occurred:");
+			if (!not_found_warnings)
+			{
+				if (!success) io::printn();
+				io::printn(" Warnings that never occurred:");
+				io::printn(" -----------------------------");
+			}
     		foreach (i, &item : file.warnings)
     		{
-    			io::printfn(`%d. %s %d expected: "%s"`, ++not_found_warnings, file.name, item.line, item.text);
+				io::printfn(`  %d. %s:%d expected: "%s"`, ++not_found_errors, file.name, item.line, item.text);
     		}
     	}
     }
+    if (!success) io::printn();
     return success;
 }
 
@@ -213,17 +241,17 @@ fn void parse_trailing_directive(int line_number, String line, RunSettings* sett
 			line = line[6..].trim();
 			settings.current_file.errors.push({ line_number, line });
 		default:
-			error_exit("Unknown trailing directive '%s'", line);
+			error_exit("FAILED - Unknown trailing directive '%s'", line);
 	}
 }
-fn void parse_header_directive(int line_no, String line, RunSettings* settings, bool is_single)
+fn void parse_header_directive(int* line_no, String line, RunSettings* settings, bool is_single)
 {
 	line = line[4..].trim();
 	switch
 	{
 		case line.starts_with("error:"):
 			line = line[6..].trim();
-			settings.current_file.errors.push({ line_no, line });
+			settings.current_file.errors.push({ *line_no, line });
 		case line.starts_with("safe:"):
 			settings.safe = line[5..].trim() == "yes";
 		case line.starts_with("debuginfo:"):
@@ -235,34 +263,43 @@ fn void parse_header_directive(int line_no, String line, RunSettings* settings, 
 		case line.starts_with("deprecation:"):
 			settings.no_deprecation = line[12..].trim() == "no";
 		case line.starts_with("file:"):
-			if (is_single) error_exit("'file' directive only allowed with .c3t");
+			if (is_single) error_exit("FAILED - 'file' directive only allowed with .c3t");
 			settings.current_file.close();
 			line = line[5..].trim();
 			RunFile* file = settings.current_file = create_file(line)!!;
+			*line_no = 1;
 			settings.files.push(file);
 			settings.current_file = file;
 		case line.starts_with("expect:"):
-			if (is_single) error_exit("'expect' directive only allowed with .c3t");
+			if (is_single) error_exit("FAILED - 'expect' directive only allowed with .c3t");
 			line = line[7..].trim();
 			settings.current_file.close();
 			RunFile* file = settings.current_file = create_file(line, llvm: true)!!;
 			settings.files.push(file);
 		default:
-			io::printfn("Unknown header directive '%s'", line);
+			io::printfn("FAILED - Unknown header directive '%s'", line);
 			libc::exit(1);
 	}
 }
 
 fn void test_file(Path file_path)
 {
-	io::printfn("Checking %s", file_path);
+	test_count++;
+	if (print_to_file)
+	{
+		io::printf("- %d/%d %s: ", test_count, test_count - success_count - 1, file_path);
+	}
+	else
+	{
+		io::printf("- %d/%d Compiling: %s ", test_count, test_count - success_count - 1, file_path);
+	}
+	(void)io::stdout().flush();
 	static int count = 1;
 	bool single;
 	(void)path::rmtree(test_dir);
 	if (@catch(path::mkdir(test_dir)))
 	{
-		io::printfn("Failed to create temp test directory '%s'.", test_dir);
-		libc::exit(1);
+		error_exit("FAILED - Failed to create temp test directory '%s'.", test_dir);
 	}
 	switch (file_path.extension() ?? "")
 	{
@@ -271,14 +308,12 @@ fn void test_file(Path file_path)
 		case "c3t":
 			single = false;
 		default:
-			io::printfn("Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.", file_path.str_view());
-			libc::exit(1);
+			error_exit("FAILED - Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.", file_path.str_view());
 	}
 	File! f = file::open_path(file_path, "rb");
 	if (catch f)
 	{
-		io::printfn("Error: Failed to open '%s'.", file_path);
-		libc::exit(1);
+		error_exit("FAILED - Failed to open '%s'.", file_path);
 	}
 	defer (void)f.close();
 	RunSettings settings;
@@ -286,24 +321,22 @@ fn void test_file(Path file_path)
 	settings.files.temp_init();
 	settings.current_file = create_file(file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"))!!;
 	settings.files.push(settings.current_file);
-	int line_no = 0;
+	int line_no = 1;
 	while (try line = io::treadline(&f))
 	{
 		if (line.starts_with("// #") || line.starts_with("/* #"))
 		{
-			parse_header_directive(line_no, line, &settings, single);
+			parse_header_directive(&line_no, line, &settings, single);
 			continue;
 		}
 		else if (line.contains("// #"))
 		{
 			parse_trailing_directive(line_no, line, &settings, single);
-			continue;
 		}
 		settings.current_file.add_line(line);
 		line_no++;
 	}
 	settings.current_file.close();
-	test_count += 1;
 	DString cmdline = dstring::temp_new(compiler_path.str_view());
 	cmdline.append(" compile-only --test ");
 	foreach (file : settings.files)
@@ -322,16 +355,16 @@ fn void test_file(Path file_path)
 	{
 		cmdline.appendf("%s ", opt);
 	}
-	io::printfn("Dir: %s", test_dir);
 	path::chdir(test_dir)!!;
-	io::printn(cmdline);
-	SubProcess compilation = process::create(cmdline.str_view().trim().tsplit(" "), { .search_user_path = true })!!;
+	SubProcess compilation = process::create(cmdline.str_view().trim().tsplit(" "), { .search_user_path, .no_window, .inherit_environment })!!;
+	defer compilation.destroy();
     CInt result = compilation.join()!!;
 	DString out = dstring::temp_new();
 	io::copy_to(&&compilation.stderr(), &out)!!;
 	if (result != 0 && result != 1)
 	{
-		io::printfn("Error(%s): ", result, out);
+		(void)io::copy_to(&&compilation.stdout(), &out);
+		io::printfn("FAILED - Error(%s): ", result, out);
 		return;
 	}
 	if (!parse_result(out, settings)) return;
@@ -340,7 +373,7 @@ fn void test_file(Path file_path)
 		if (!file.is_llvm) continue;
 		if (!file::exists(file.name))
 		{
-    		io::printfn("Did not compile file %s.", file.name);
+    		io::printfn("FAILED - Did not compile file %s.", file.name);
     		return;
 		}
 		File file_ll = file::open(file.name, "rb")!!;
@@ -357,13 +390,22 @@ fn void test_file(Path file_path)
 		}
 		if (try next)
 		{
-    		io::printfn(`%s did not contain: "%s"`, file.name, next);
+    		io::printfn(`FAILED - %s did not contain: "%s"`, file.name, next);
     		io::printfn("\n\n\n---------------------------------------------------> %s\n\n", file.name);
     		(void)file_ll.seek(0);
     		(void)io::printn((String)io::read_new_fully(&file_ll, allocator: allocator::temp()));
     		io::printfn("<---------------------------------------------------- %s\n", file_path);
     		return;
     	}
+    }
+    if (print_to_file)
+    {
+	    io::print("Passed.");
+        io::printn();
+    }
+    else
+    {
+        for (int i = 0; i < 200; i++) io::print("\b \b");
     }
     success_count++;
 }
