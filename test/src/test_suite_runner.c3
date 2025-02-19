@@ -1,16 +1,7 @@
-import std::io;
-import std::io::file;
+module test_suite_runner;
+import std::io, std::math, std::os, std::collections;
 import libc;
-import std::math;
-import std::collections::map;
-import std::collections::list;
-import std::core::dstring;
-import std::os::process;
 
-def StringMap = HashMap{String, String};
-def StringList = List{String};
-
-String appname;
 Path compiler_path;
 int test_count;
 int skip_count;
@@ -19,43 +10,42 @@ Path start_cwd;
 Path test_dir;
 bool print_to_file;
 
-fn void arg_error_exit(String fmt, args...) @noreturn
-{
-	io::printfn(fmt, ...args);
-	usage();
-}
-
-fn void error_exit(String fmt, args...) @noreturn
-{
-	io::printfn(fmt, ...args);
-	libc::exit(1);
-}
-
-
 fn void main(String[] args)
 {
-	appname = args[0];
-	if (args.len < 3 || args.len > 4) usage();
-	print_to_file = !io::stdout().isatty();
-	// Check compiler path
-	start_cwd = path::temp_cwd()!!;
-	test_dir = start_cwd.temp_append("_c3test")!!;
-	Path! path = start_cwd.temp_append(args[1]);
-	if (catch path) arg_error_exit("Invalid compiler path: %s", args[1]);
+	// Grab the name for `usage`
+	String appname = args[0];
+	if (args.len < 3 || args.len > 4) usage(appname);
 
+	// Do we want the print to file variant
+	print_to_file = !io::stdout().isatty();
+
+	// Retain our current path.
+	start_cwd = path::temp_cwd()!!;
+
+	// Create our test path, note that this prevents us from doing tests in parallell
+	test_dir = start_cwd.temp_append("_c3test_")!!;
+	defer (void)path::rmtree(test_dir);
+
+	// Find the compiler
+	Path! path = start_cwd.temp_append(args[1]);
+	if (catch path) arg_error_exit(appname, "Invalid compiler path: %s", args[1]);
+	// Is it a valid file?
 	if (!path::is_file(path))
 	{
 		error_exit("Error: Invalid path to compiler: %s (%s relative to %s)", path.path_string, args[1], start_cwd);
 	}
+	// Ok we're done.
 	compiler_path = path;
 
+	// Do we only run skipped? [Not implemented yet!]
 	bool only_skipped = args.len == 4;
+	if (only_skipped && args[3] != "-s" && args[3] != "--skipped") usage(appname);
 
-	if (only_skipped && args[3] != "-s" && args[3] != "--skipped") usage();
-
+	// Get the directory or file to test
 	Path! file = path::temp_new(args[2]);
-	if (catch file) arg_error_exit("Invalid path: '%s'.", args[2]);
+	if (catch file) arg_error_exit(appname, "Invalid path: '%s'.", args[2]);
 
+	// Now just run all tests recursively.
 	switch
 	{
 		case path::is_file(file):
@@ -66,6 +56,7 @@ fn void main(String[] args)
 			error_exit("Error: Path wasn't to directory or file: %s", file);
 	}
 
+	// Print the test result
 	io::printfn("Found %d tests: %.1f%% (%d / %d) passed (%d skipped).",
         test_count, 100 * success_count / math::max(1, test_count - skip_count),
         success_count, test_count - skip_count, skip_count);
@@ -77,20 +68,30 @@ struct Error
 	int line;
 	String text;
 }
+
+<*
+ Information about a given file that we're running
+*>
 struct RunFile
 {
 	String name;
-	File file;
-	int line_offset;
-	List {String} expected_lines;
-	List {Error} warnings;
-	List {Error} errors;
-	bool is_llvm;
+	bool is_output;
+	union
+	{
+		struct
+		{
+			File file;
+			List {Error} warnings;
+			List {Error} errors;
+			int line_offset;
+		}
+		List {String} expected_lines;
+	}
 }
 
 fn void RunFile.add_line(&self, String line)
 {
-	if (self.is_llvm)
+	if (self.is_output)
 	{
 		line = line.trim();
 		if (line == "") return;
@@ -102,19 +103,25 @@ fn void RunFile.add_line(&self, String line)
 	}
 }
 
-fn RunFile*! create_file(String filename, bool llvm = false)
+fn RunFile*! create_input_file(String filename)
 {
 	File file = file::open_path(test_dir.temp_append(filename), "wb")!;
-	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .file = file, .is_llvm = llvm });
+	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .file = file, .is_output = false });
 	run_file.warnings.temp_init();
 	run_file.errors.temp_init();
-	if (llvm) run_file.expected_lines.temp_init();
+	return run_file;
+}
+
+fn RunFile*! create_output_file(String filename)
+{
+	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .is_output = true });
+	run_file.expected_lines.temp_init();
 	return run_file;
 }
 
 fn void RunFile.close(&self)
 {
-	(void)self.file.close();
+	if (!self.is_output) (void)self.file.close();
 }
 
 struct RunSettings
@@ -124,15 +131,23 @@ struct RunSettings
 	bool no_deprecation;
 	List{String} opts;
 	String arch;
+	List{RunFile*} input_files;
+	List{RunFile*} output_files;
 	RunFile* current_file;
-	List{RunFile*} files;
 }
-
+<*
+ Check a line from stderr returned by the compiler
+*>
 fn bool check_line(RunSettings* settings, String type, String file, String line_str, String col, String message) => @pool()
 {
+	// Convert the line number
 	int line = line_str.to_int()!!;
+
+	// Get the base name
 	String basename = path::temp_new(file).basename()!!;
-	foreach (f : settings.files)
+
+	// Loop through our input files (usually only 1!)
+	foreach (f : settings.input_files)
 	{
 		if (f.name != basename) continue;
 		List{Error}* list;
@@ -147,26 +162,35 @@ fn bool check_line(RunSettings* settings, String type, String file, String line_
 			default:
 				error_exit("FAILED - Unknown error type '%s'", type);
 		}
+		// See if we match the message
 		foreach (i, err : *list)
 		{
 			if (line != err.line) continue;
 			if (!message.contains(err.text)) return false;
+			// Match, remove it!
 			list.remove_at(i);
 			return true;
 		}
 	}
+	// No match
 	return false;
 }
 
+<*
+ Parse all stderr output
+*>
 fn bool parse_result(DString out, RunSettings settings)
 {
-	// Inefficient, fix.
+	// Note that this is a bit inefficient
 	bool success = true;
 	int errors = 0;
 	foreach (line : out.str_view().tsplit("\n"))
 	{
+		// Skip empty lines
 		if (!line) continue;
+		// Split the output from the compiler using `|`
 		String[] parts = line.tsplit("|", 5);
+		// We should have 5 parts, otherwise just print an error for this whole thing.
 		if (parts.len != 5)
 		{
 			io::printn("FAILED - Unexpected response from compiler:");
@@ -175,8 +199,10 @@ fn bool parse_result(DString out, RunSettings settings)
 			io::printn("------------------------------------------------------------------");
 			return false;
 		}
+		// Check the line
 		if (!check_line(&settings, ...parts[:5]))
 		{
+			// Print error if there is no match.
 			if (success)
 			{
 				io::printn("FAILED\n\n Unexpected compilation errors:");
@@ -187,8 +213,9 @@ fn bool parse_result(DString out, RunSettings settings)
 			success = false;
 		}
 	}
+	// Now let's check for missing errors:
 	int not_found_errors, not_found_warnings;
-	foreach (file : settings.files)
+	foreach (file : settings.input_files)
 	{
 		if (file.errors.len())
 		{
@@ -206,7 +233,8 @@ fn bool parse_result(DString out, RunSettings settings)
 			}
 		}
 	}
-	foreach (file : settings.files)
+	// Missing warnings
+	foreach (file : settings.input_files)
     {
     	if (file.warnings.len())
 		{
@@ -220,6 +248,9 @@ fn bool parse_result(DString out, RunSettings settings)
 			}
     		foreach (i, &item : file.warnings)
     		{
+    		    io::printn(file.name);
+    		    io::printn("Ok");
+    		    io::printn(item.text);
 				io::printfn(`  %d. %s:%d expected: "%s"`, ++not_found_errors, file.name, item.line, item.text);
     		}
     	}
@@ -228,8 +259,12 @@ fn bool parse_result(DString out, RunSettings settings)
     return success;
 }
 
+<*
+ Parse trailing directives #warning and #error
+*>
 fn void parse_trailing_directive(int line_number, String line, RunSettings* settings, bool is_single)
 {
+	if (settings.current_file.is_output) return;
 	usz index = line.rindex_of("// #")!! + 4;
 	line = line[index..].trim();
 	switch
@@ -244,6 +279,10 @@ fn void parse_trailing_directive(int line_number, String line, RunSettings* sett
 			error_exit("FAILED - Unknown trailing directive '%s'", line);
 	}
 }
+
+<*
+ Parse header directives, #error, #safe, #debuginfo, #opt, #target, #deprecation, #file and #expect
+*>
 fn void parse_header_directive(int* line_no, String line, RunSettings* settings, bool is_single)
 {
 	line = line[4..].trim();
@@ -251,37 +290,46 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 	{
 		case line.starts_with("error:"):
 			line = line[6..].trim();
+			if (settings.current_file.is_output) return;
 			settings.current_file.errors.push({ *line_no, line });
 		case line.starts_with("safe:"):
+			if (settings.current_file.is_output) return;
 			settings.safe = line[5..].trim() == "yes";
 		case line.starts_with("debuginfo:"):
+			if (settings.current_file.is_output) return;
 			settings.debuginfo = line[10..].trim() == "yes";
 		case line.starts_with("opt:"):
+			if (settings.current_file.is_output) return;
 			settings.opts.push(line[4..].trim());
 		case line.starts_with("target:"):
+			if (settings.current_file.is_output) return;
 			settings.arch = line[7..].trim();
 		case line.starts_with("deprecation:"):
+			if (settings.current_file.is_output) return;
 			settings.no_deprecation = line[12..].trim() == "no";
 		case line.starts_with("file:"):
 			if (is_single) error_exit("FAILED - 'file' directive only allowed with .c3t");
 			settings.current_file.close();
 			line = line[5..].trim();
-			RunFile* file = settings.current_file = create_file(line)!!;
+			RunFile* file = settings.current_file = create_input_file(line)!!;
 			*line_no = 1;
-			settings.files.push(file);
+			settings.input_files.push(file);
 			settings.current_file = file;
 		case line.starts_with("expect:"):
 			if (is_single) error_exit("FAILED - 'expect' directive only allowed with .c3t");
 			line = line[7..].trim();
 			settings.current_file.close();
-			RunFile* file = settings.current_file = create_file(line, llvm: true)!!;
-			settings.files.push(file);
+			RunFile* file = settings.current_file = create_output_file(line)!!;
+			settings.output_files.push(file);
 		default:
 			io::printfn("FAILED - Unknown header directive '%s'", line);
 			libc::exit(1);
 	}
 }
 
+<*
+ Test a file
+*>
 fn void test_file(Path file_path)
 {
 	test_count++;
@@ -318,9 +366,10 @@ fn void test_file(Path file_path)
 	defer (void)f.close();
 	RunSettings settings;
 	settings.opts.temp_init();
-	settings.files.temp_init();
-	settings.current_file = create_file(file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"))!!;
-	settings.files.push(settings.current_file);
+	settings.input_files.temp_init();
+	settings.output_files.temp_init();
+	settings.current_file = create_input_file(file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"))!!;
+	settings.input_files.push(settings.current_file);
 	int line_no = 1;
 	while (try line = io::treadline(&f))
 	{
@@ -337,26 +386,34 @@ fn void test_file(Path file_path)
 		line_no++;
 	}
 	settings.current_file.close();
-	DString cmdline = dstring::temp_new(compiler_path.str_view());
-	cmdline.append(" compile-only --test ");
-	foreach (file : settings.files)
+
+	// Construct the compile line
+	List{String} cmdline;
+	cmdline.temp_init();
+	cmdline.push(compiler_path.str_view());
+	cmdline.push("compile-only");
+	cmdline.push("--test");
+	foreach (file : settings.input_files)
 	{
-		if (file.is_llvm) continue;
-		cmdline.append(file.name);
-		cmdline.append(" ");
+		cmdline.push(file.name);
 	}
-	if (!single) cmdline.append("--emit-llvm ");
-	cmdline.append(settings.debuginfo ? "-g " : "-g0 ");
-	if (settings.arch) cmdline.appendf("--target %s ", settings.arch);
-	cmdline.append("-O0 ");
-	if (settings.no_deprecation) cmdline.append("--silence-deprecation ");
-	cmdline.append(settings.safe ? "--safe=yes " : "--safe=no ");
+	if (!single) cmdline.push("--emit-llvm");
+	cmdline.push(settings.debuginfo ? "-g" : "-g0");
+	if (settings.arch)
+	{
+		cmdline.push("--target");
+		cmdline.push(settings.arch);
+	}
+	cmdline.push("-O0");
+	if (settings.no_deprecation) cmdline.push("--silence-deprecation");
+	cmdline.push(settings.safe ? "--safe=yes" : "--safe=no");
 	foreach (opt : settings.opts)
 	{
-		cmdline.appendf("%s ", opt);
+		cmdline.push(opt);
 	}
 	path::chdir(test_dir)!!;
-	SubProcess compilation = process::create(cmdline.str_view().trim().tsplit(" "), { .search_user_path, .no_window, .inherit_environment })!!;
+	// Start process
+	SubProcess compilation = process::create(cmdline.array_view(), { .search_user_path, .no_window, .inherit_environment })!!;
 	defer compilation.destroy();
     CInt result = compilation.join()!!;
 	DString out = dstring::temp_new();
@@ -368,9 +425,8 @@ fn void test_file(Path file_path)
 		return;
 	}
 	if (!parse_result(out, settings)) return;
-	foreach (file : settings.files)
+	foreach (file : settings.output_files)
 	{
-		if (!file.is_llvm) continue;
 		if (!file::exists(file.name))
 		{
     		io::printfn("FAILED - Did not compile file %s.", file.name);
@@ -438,7 +494,7 @@ fn void! test_path(Path file_path)
 	}
 }
 
-fn void usage() @noreturn
+fn void usage(String appname) @noreturn
 {
     io::printfn("Usage: %s <compiler path> <file/dir> [-s]", appname);
     io::printn();
@@ -446,3 +502,17 @@ fn void usage() @noreturn
     io::printn("  -s, --skipped       only run skipped tests");
 	libc::exit(0);
 }
+
+fn void arg_error_exit(String appname, String fmt, args...) @noreturn
+{
+	io::printfn(fmt, ...args);
+	usage(appname);
+}
+
+fn void error_exit(String fmt, args...) @noreturn
+{
+	io::printfn(fmt, ...args);
+	libc::exit(1);
+}
+
+
