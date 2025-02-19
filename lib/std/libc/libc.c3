@@ -419,7 +419,7 @@ struct TimeSpec
 
 
 def Clock_t = int @if(env::WIN32);
-def Clock_t = CULong @if(!env::WIN32);
+def Clock_t = CLong @if(!env::WIN32);
 
 def TimeOffset = int @if(env::WASI) ;
 def TimeOffset = CLong @if(!env::WASI) ;
