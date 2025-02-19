@@ -29,7 +29,7 @@ fn void asctime() @test
 	assert(libc::strcmp(formatted_time, "Mon Sep  5 03:42:13 1911\n") == 0);
 }
 
-fn void asctime_r() @test
+fn void asctime_r() @test @if(!env::WIN32)
 {
 	Tm time = {
 		.tm_sec = 13,
