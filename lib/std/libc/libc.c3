@@ -427,8 +427,10 @@ def TimeOffset = CLong @if(!env::WASI) ;
 const int TIME_UTC = 1;
 
 
-// Likely wrong, must be per platform.
-const CLOCKS_PER_SEC = 1000000;
+// This is a best-effort aproximation, but the C standard does not enforce
+// that this is a compile-time standard.
+const CLOCKS_PER_SEC @if(env::WIN32) = 1000;
+const CLOCKS_PER_SEC @if(!env::WIN32) = 1000000;
 
 module libc::errno;
 
