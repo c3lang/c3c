@@ -47,7 +47,20 @@ fn void asctime_r() @test
 	assert(libc::strcmp((ZString) &formatted_time, "Mon Sep  5 03:42:13 1911\n") == 0);
 }
 
-// fn void atexit() @test {}
+fn void test_atexit_function()
+{
+	assert(5 == 5);
+	// This correctly asserts, but does not fail the tests.
+	// char c = 2;
+	// assert(c == 5);
+}
+
+fn void atexit() @test
+{
+	// No idea how to test this, but we can at least check if this compiles
+	libc::atexit(&test_atexit_function);
+	libc::atexit(fn void() => 4);
+}
 
 fn void atof() @test
 {
