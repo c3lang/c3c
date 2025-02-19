@@ -213,7 +213,12 @@ fn void clock() @test
 	assert(time2 >= time1);
 }
 
-// fn void close() @test {}
+fn void close() @test @if(!env::WIN32)
+{
+	assert(libc::close(13) == -1);
+	// NOTE: errno is part of libc, and is thus recursively imported
+	assert(libc::errno() == errno::EBADF);
+}
 
 fn void difftime() @test
 {
