@@ -170,7 +170,27 @@ fn void calloc() @test
 	libc::free(int_ar);
 }
 
-// fn void clearerr() @test {}
+fn void clearerr() @test
+{
+	CFile* tmpf = libc::tmpfile();
+	// Example from cppreference.com
+	ZString test_string = (ZString) "cppreference.com\n" +++ '\0';
+	libc::fputs(test_string, tmpf);
+	libc::rewind(tmpf);
+
+	for (int i = 0; i < test_string.len(); i++)
+	{
+		int c = libc::fgetc(tmpf);
+		assert(c != libc::EOF);
+		assert(c == test_string[i]);
+	}
+
+	assert(libc::fgetc(tmpf) == libc::EOF);
+	assert(libc::feof(tmpf));   // the loop is expected to terminate by EOF
+	libc::clearerr(tmpf);       // clear EOF
+	assert(!libc::feof(tmpf));
+}
+
 // fn void clock() @test {}
 // fn void close() @test {}
 
