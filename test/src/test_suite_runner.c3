@@ -58,7 +58,7 @@ fn void main(String[] args)
 
 	// Print the test result
 	io::printfn("Found %d tests: %.1f%% (%d / %d) passed (%d skipped).",
-        test_count, 100 * success_count / math::max(1, test_count - skip_count),
+        test_count, (100.0 * success_count) / math::max(1, test_count - skip_count),
         success_count, test_count - skip_count, skip_count);
     libc::exit(success_count == test_count - skip_count ? 0 :  1);
 }

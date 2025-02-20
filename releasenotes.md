@@ -14,6 +14,7 @@
 - Test runner with tracking allocator assertion at failed test #1963
 - Test runner with tracking allocator didn't properly handle teardown_fn
 - Correctly give an error if a character literal contains a line break.
+- Implicitly unwrapped optional value in defer incorrectly copied #1982.
 
 ### Stdlib changes
 
