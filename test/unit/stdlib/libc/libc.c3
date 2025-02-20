@@ -234,7 +234,24 @@ fn void difftime() @test
 // fn void fflush() @test {}
 // fn void fgetc() @test {}
 // fn void fgets() @test {}
-// fn void fgetpos() @test {}
+
+fn void fgetpos() @test
+{
+	CFile* tmpf = libc::tmpfile();
+	// Example from cppreference.com
+	ZString test_string = (ZString) "cppreference.com\n" +++ '\0';
+	libc::fputs(test_string, tmpf);
+	libc::rewind(tmpf);
+
+	Fpos_t pos;
+	libc::fgetpos(tmpf, &pos);
+	assert(libc::fgetc(tmpf) == 'c');
+	assert(libc::fgetc(tmpf) == 'p');
+	libc::fsetpos(tmpf, &pos);
+	assert(libc::fgetc(tmpf) == 'c');
+	assert(libc::fgetc(tmpf) == 'p');
+}
+
 // fn void fileno() @test {}
 // fn void fopen() @test {}
 // fn void fprintf() @test {}
