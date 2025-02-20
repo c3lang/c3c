@@ -680,6 +680,10 @@ static void llvm_emit_file(GenContext *c, const char *filename, LLVMCodeGenFileT
 	{
 		goto ERR;
 	}
+	if (clone_module)
+	{
+		LLVMDisposeModule(module);
+	}
 	file = fopen(filename, "wb");
 	if (!file)
 	{
