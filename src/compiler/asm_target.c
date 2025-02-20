@@ -90,7 +90,7 @@ INLINE AsmArgBits parse_bits(const char **desc)
 	error_exit("Invalid bits: %s.", *desc);
 }
 
-INLINE AsmArgType decode_arg_type(const char **desc)
+static AsmArgType decode_arg_type(const char **desc)
 {
 	AsmArgType arg_type = { .is_readwrite = false };
 	if (**desc == 'w')
