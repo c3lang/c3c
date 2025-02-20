@@ -69,12 +69,12 @@ module libc @if(env::LIBC);
 extern fn void abort();
 extern fn CInt abs(CInt n);
 extern fn ZString asctime(Tm* timeptr);
-extern fn ZString asctime_r(Tm* timeptr, char* buf);
+extern fn ZString asctime_r(Tm* timeptr, char* buf) @if(!env::WIN32);
 extern fn CInt atexit(TerminateFunction func);
 extern fn double atof(char* str);
 extern fn int atoi(char* str);
 extern fn CLongLong atoll(char* str);
-extern fn void bsearch(void* key, void *base, usz items, usz size, CompareFunction compare);
+extern fn void* bsearch(void* key, void* base, usz items, usz size, CompareFunction compare);
 extern fn void* calloc(usz count, usz size);
 extern fn void clearerr(CFile stream);
 extern fn Clock_t clock();
@@ -108,7 +108,7 @@ extern fn CInt getchar();
 extern fn ZString getenv(ZString name);
 extern fn ZString gets(char* buffer);
 extern fn Tm* gmtime(Time_t* timer);
-extern fn Tm* gmtime_r(Time_t *timer, Tm* buf) @if(!env::WIN32);
+extern fn Tm* gmtime_r(Time_t* timer, Tm* buf) @if(!env::WIN32);
 extern fn CInt isatty(Fd fd) @if(!env::WIN32);
 extern fn CLong labs(CLong x);
 extern fn LongDivResult ldiv(CLong number, CLong denom);
@@ -170,7 +170,7 @@ extern fn CLong strtol(char* str, char** endptr, CInt base);
 extern fn CULong strtoul(char* str, char** endptr, CInt base);
 extern fn usz strxfrm(char* dest, ZString src, usz n);
 extern fn CInt system(ZString str);
-extern fn Time_t timegm(Tm *timeptr) @if(!env::WIN32);
+extern fn Time_t timegm(Tm* timeptr) @if(!env::WIN32);
 extern fn ZString tmpnam(ZString str);
 extern fn CFile tmpfile();
 extern fn CInt ungetc(CInt c, CFile stream);
@@ -181,8 +181,8 @@ extern fn CFile fmemopen(void* ptr, usz size, ZString mode);
 extern fn isz getline(char** linep, usz* linecapp, CFile stream);
 extern fn CInt timespec_get(TimeSpec* ts, CInt base);
 extern fn CInt nanosleep(TimeSpec* req, TimeSpec* remaining);
-extern fn ZString ctime(Time_t *timer);
-extern fn Time_t time(Time_t *timer);
+extern fn ZString ctime(Time_t* timer);
+extern fn Time_t time(Time_t* timer);
 
 const CInt STDIN_FD = 0;
 const CInt STDOUT_FD = 1;
@@ -406,7 +406,7 @@ struct Tm
 	CInt	tm_yday;	// days since January 1 [0-365]
 	CInt	tm_isdst;	// Daylight Savings Time flag
 	TimeOffset tm_gmtoff @if(!env::WIN32);	/* offset from UTC in seconds */
-	char *tm_zone @if(!env::WIN32);	/* timezone abbreviation */
+	char* tm_zone @if(!env::WIN32);	/* timezone abbreviation */
 	CInt tm_nsec @if(env::WASI);
 }
 
@@ -419,7 +419,7 @@ struct TimeSpec
 
 
 def Clock_t = int @if(env::WIN32);
-def Clock_t = CULong @if(!env::WIN32);
+def Clock_t = CLong @if(!env::WIN32);
 
 def TimeOffset = int @if(env::WASI) ;
 def TimeOffset = CLong @if(!env::WASI) ;
@@ -427,8 +427,10 @@ def TimeOffset = CLong @if(!env::WASI) ;
 const int TIME_UTC = 1;
 
 
-// Likely wrong, must be per platform.
-const CLOCKS_PER_SEC = 1000000;
+// This is a best-effort aproximation, but the C standard does not enforce
+// that this is a compile-time standard.
+const CLOCKS_PER_SEC @if(env::WIN32) = 1000;
+const CLOCKS_PER_SEC @if(!env::WIN32) = 1000000;
 
 module libc::errno;
 
