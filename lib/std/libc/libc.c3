@@ -20,6 +20,22 @@ struct LongDivResult
 	CLong rem;
 }
 
+struct Fpos_t @if(!env::WIN32)
+{
+	long __pos;
+	Mbstate_t __state;
+}
+
+struct Mbstate_t @if(!env::WIN32)
+{
+	int __count;
+	union __value
+	{
+		uint __wch;
+		char[4] __wcb;
+	}
+}
+
 fn Errno errno()
 {
 	return (Errno)os::errno();
@@ -35,7 +51,7 @@ def TerminateFunction = fn void();
 def CompareFunction = fn int(void*, void*);
 def JmpBuf = uptr[$$JMP_BUF_SIZE];
 def Fd = CInt;
-def Fpos_t = long; // TODO make sure fpos is correct on all targets.
+def Fpos_t = long @if(env::WIN32);
 def SignalFunction = fn void(CInt);
 
 const CInt SIGHUP = 1;
