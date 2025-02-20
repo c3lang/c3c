@@ -82,6 +82,7 @@ static void gencontext_destroy(GenContext *context)
 {
 	ASSERT(llvm_is_global_eval(context));
 	LLVMDisposeBuilder(context->global_builder);
+	LLVMDisposeModule(context->module);
 	if (!context->shared_context) LLVMContextDispose(context->context);
 	LLVMDisposeTargetData(context->target_data);
 	LLVMDisposeTargetMachine(context->machine);
