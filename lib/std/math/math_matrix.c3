@@ -420,19 +420,19 @@ const Matrix4x4 IDENTITY4 = { .m = { [0] = 1, [5] = 1, [10] = 1, [15] = 1 } };
 macro matrix_component_mul(mat, val) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
-	return $typeof(*mat) { .m = val * ($Type)mat.m };
+	return ($typeof(*mat)) { .m = val * ($Type)mat.m };
 }
 
 macro matrix_add(mat, mat2) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
-	return $typeof(*mat) { .m = ($Type)mat.m + ($Type)mat2.m };
+	return ($typeof(*mat)) { .m = ($Type)mat.m + ($Type)mat2.m };
 }
 
 macro matrix_sub(mat, mat2) @private
 {
 	var $Type = Real[<$typeof(mat.m).len>];
-	return $typeof(*mat) { .m = ($Type)mat.m - ($Type)mat2.m };
+	return ($typeof(*mat)) { .m = ($Type)mat.m - ($Type)mat2.m };
 }
 
 macro matrix_look_at($Type, eye, target, up) @private
@@ -441,7 +441,7 @@ macro matrix_look_at($Type, eye, target, up) @private
 	var vx = up.cross(vz).normalize();
 	var vy = vz.cross(vx);
 
-	return $Type {
+	return ($Type){
 		vx[0], vx[1], vx[2], - (Real)vx.dot(eye),
 		vy[0], vy[1], vy[2], - (Real)vy.dot(eye),
 		vz[0], vz[1], vz[2], - (Real)vz.dot(eye),

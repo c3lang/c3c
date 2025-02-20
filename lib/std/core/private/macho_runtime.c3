@@ -101,7 +101,7 @@ macro find_segment_section_body(MachHeader* header, char* segname, char* sectnam
 	Section64*! section = find_section(find_segment(header, segname), sectname);
 	if (catch section)
 	{
-		return $Type[] {};
+		return ($Type[]){};
 	}
 	$Type* ptr = (void*)header + section.offset;
 	return ptr[:section.size / $Type.sizeof];

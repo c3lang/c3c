@@ -36,7 +36,7 @@ fn void csv_each_row()
 		String[] want = t.want;
 
 		CsvReader r;
-		r.init(ByteReader{}.init(t.input), t.sep);
+		r.init((ByteReader){}.init(t.input), t.sep);
 		r.@each_row(; String[] row) {
 			foreach (i, s : row) {
 				assert(want.len > 0,
@@ -58,7 +58,7 @@ fn void csv_row()
 		","
 	};
 	CsvReader r;
-	r.init(ByteReader{}.init(t.input), t.sep);
+	r.init((ByteReader){}.init(t.input), t.sep);
 	CsvRow row = r.read_temp_row()!!;
 	assert(row.list.len == t.want.len, "not enough records found");
 	for (int i = 0; i < row.list.len; i++) {

@@ -162,12 +162,12 @@ macro bool is_unsigned($Type) @const
 
 macro bool is_indexable($Type) @const
 {
-	return $defined($Type{}[0]);
+	return $defined(($Type){}[0]);
 }
 
 macro bool is_ref_indexable($Type) @const
 {
-	return $defined(&$Type{}[0]);
+	return $defined(&($Type){}[0]);
 }
 
 macro bool is_intlike($Type) @const

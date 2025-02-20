@@ -18,7 +18,7 @@ fn void main()
 	ichar[<2>] w = { -44, 30 };
 	io::printfn("%s %s", $$sat_add(x, y), $$sat_add(z, z));
 	io::printfn("%s %s", $$sat_sub(x, y), $$sat_sub(w, z));
-	io::printfn("%s %s", $$sat_shl(x, char[<2>] { 1, 1 }), $$sat_shl(z, ichar[<2>] { 1, 1 }));
+	io::printfn("%s %s", $$sat_shl(x, (char[<2>]) { 1, 1 }), $$sat_shl(z, (ichar[<2>]) { 1, 1 }));
 }
 
 /* #expect: test.ll

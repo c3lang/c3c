@@ -9,7 +9,7 @@ bitstruct Image_Tag : uint
 }
 
 distinct Glyph_Format = CInt;
-const Glyph_Format GLYPH_FORMAT_BITMAP = (Glyph_Format)Image_Tag {'b', 'i', 't', 's'};
+const Glyph_Format GLYPH_FORMAT_BITMAP = (Glyph_Format)(Image_Tag) {'b', 'i', 't', 's'};
 
 fn void main() {
   // Error: Implicitly casting 'Image_Tag' to 'Glyph_Format' is not permitted

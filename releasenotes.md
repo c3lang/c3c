@@ -1,5 +1,24 @@
 # C3C Release Notes
 
+## 0.6.8 Change list
+
+### Changes / improvements
+- Increase precedence of `(Foo) { 1, 2 }`
+- Add `--enable-new-generics` to enable `Foo{int}` generic syntax.
+- `{| |}` expression blocks deprecated.
+- c3c `--test-leak-report` flag for displaying full memory lead report if any
+
+### Fixes
+- Bug appearing when `??` was combined with boolean in some cases.
+- Test runner --test-disable-sort didn't work, c3c was expecting --test-nosort
+- Test runner with tracking allocator assertion at failed test #1963
+- Test runner with tracking allocator didn't properly handle teardown_fn
+- Correctly give an error if a character literal contains a line break.
+- Implicitly unwrapped optional value in defer incorrectly copied #1982.
+- Crash when trying to define a method macro that isn't `@construct` but has no arguments.
+
+### Stdlib changes
+
 ## 0.6.7 Change list
 
 ### Changes / improvements
@@ -22,6 +41,7 @@
 - Test runner will also check for leaks.
 - Improve inference on `??` #1943.
 - Detect unaligned loads #1951.
+- `Thread` no longer allocates memory on posix.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -70,6 +90,9 @@
 - Issue when scalar expanding a boolean from a conditional to a bool vector #1954.
 - Fix issue when parsing bitstructs, preventing them from implementing interfaces.
 - Regression `String! a; char* b = a.ptr;` would incorrectly be allowed.
+- Fix issue where target was ignored for projects.
+- Fix issue when dereferencing a constant string.
+- Fix problem where a line break in a literal was allowed.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.

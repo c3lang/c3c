@@ -5,7 +5,7 @@ fn void test_teereader()
 	String want = "foobar";
 
 	ByteWriter w;
-	TeeReader r = tee_reader(ByteReader{}.init(want), w.temp_init());
+	TeeReader r = tee_reader((ByteReader){}.init(want), w.temp_init());
 
 	char[16] buf;
 	usz n = r.read(buf[..])!!;

@@ -65,7 +65,7 @@ typedef uint16_t FileId;
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
-#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
+#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
  sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr

@@ -12,7 +12,7 @@ fn bool Foo[].is_empty(Foo[] array) {
 def foo_arr_is_empty = Foo[].is_empty;
 
 fn void main() {
-  Foo[] foos = { Foo { .i = 0 } };
+  Foo[] foos = { (Foo) { .i = 0 } };
   void* foo = &Foo[].is_empty;
   io::printfn("Is empty: %s", foos.is_empty());
   io::printfn("Is empty: %s", foo_arr_is_empty(foos));

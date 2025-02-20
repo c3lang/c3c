@@ -13,7 +13,7 @@ distinct TimedMutex = inline Mutex;
 distinct RecursiveMutex = inline Mutex;
 distinct TimedRecursiveMutex = inline Mutex;
 distinct ConditionVariable = NativeConditionVariable;
-distinct Thread = NativeThread;
+distinct Thread = inline NativeThread;
 distinct OnceFlag = NativeOnceFlag;
 def OnceFn = fn void();
 
@@ -59,11 +59,10 @@ macro void! ConditionVariable.wait_timeout(&cond, Mutex* mutex, ulong ms)
 	return NativeConditionVariable.wait_timeout((NativeConditionVariable*)cond, (NativeMutex*)mutex, ms);
 }
 
-
-macro void! Thread.create(&thread, ThreadFn thread_fn, void* arg) => NativeThread.create((NativeThread*)thread, thread_fn, arg);
-macro void! Thread.detach(thread) => NativeThread.detach((NativeThread)thread);
-macro int! Thread.join(thread) => NativeThread.join((NativeThread)thread);
-macro bool Thread.equals(thread, Thread other) => NativeThread.equals((NativeThread)thread, (NativeThread)other);
+macro void! Thread.create(&thread, ThreadFn thread_fn, void* arg) => NativeThread.create(thread, thread_fn, arg);
+macro void! Thread.detach(thread) => NativeThread.detach(thread);
+macro int! Thread.join(thread) => NativeThread.join(thread);
+macro bool Thread.equals(thread, Thread other) => NativeThread.equals(thread, other);
 
 macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((NativeOnceFlag*)flag, func);
 

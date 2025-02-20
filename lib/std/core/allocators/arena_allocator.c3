@@ -33,7 +33,7 @@ struct ArenaAllocatorHeader @local
 
 macro ArenaAllocator* wrap(char[] bytes)
 {
-	return ArenaAllocator{}.init(bytes);
+	return (ArenaAllocator){}.init(bytes);
 }
 
 <*

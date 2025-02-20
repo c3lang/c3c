@@ -135,7 +135,7 @@ static void usage(bool full)
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
-		print_opt("--test-disable-sort", "Do not sort tests.");
+		print_opt("--test-nosort", "Do not sort tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -193,6 +193,7 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
+		print_opt("--enable-new-generics", "Enable Foo{int} generics, this will disable the old Foo { ... } initializers.");
 		print_opt("--vector-conv=<option>", "Set vector conversion behaviour: default, old.");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
@@ -1067,6 +1068,12 @@ static void parse_option(BuildOptions *options)
 				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
 				return;
 			}
+			if (match_longopt("enable-new-generics"))
+			{
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->enable_new_generics = true;
+				return;
+			}
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
@@ -1279,6 +1286,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
+		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.ansi = ANSI_DETECT,

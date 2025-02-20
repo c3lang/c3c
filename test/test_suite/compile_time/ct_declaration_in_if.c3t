@@ -17,7 +17,7 @@ macro @printVecs(Vector3... vectors)
 
 fn void main()
 {
-    @printVecs(Vector3{10, 5, 3}, Vector3{9, 6, 4}, Vector3{5, 4, 3});
+    @printVecs({10, 5, 3}, {9, 6, 4}, {5, 4, 3});
 }
 
 /* #expect: test.ll

@@ -446,6 +446,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;
 	target->vector_conv = options->vector_conv;
+	target->enable_new_generics = options->enable_new_generics;
 	switch (options->sanitize_mode)
 	{
 		case SANITIZE_NOT_SET: break;

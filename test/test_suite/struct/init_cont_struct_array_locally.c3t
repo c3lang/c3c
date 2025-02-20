@@ -6,11 +6,11 @@ struct Test
   char[2] id;
 }
 
-Test t = Test{"id"};
+Test t = (Test){"id"};
 fn int main()
 {
 	io::printn(t);
-	Test y = Test { "id" };
+	Test y = (Test) { "id" };
     io::printn();
     return 0;
 }

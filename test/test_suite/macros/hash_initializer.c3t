@@ -7,7 +7,7 @@ macro int[2] test(#abc) @safemacro
 
 fn void main()
 {
-	int[2] x = int[2] { 1, 2 };
+	int[2] x = (int[2]) { 1, 2 };
 	int[2] y = test({ 2, 3 });
 	int[2] z = test({ [0] = 1 });
 }

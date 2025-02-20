@@ -1247,7 +1247,21 @@ void llvm_set_phi(LLVMValueRef phi, LLVMValueRef val1, LLVMBasicBlockRef block1,
 
 void llvm_new_phi(GenContext *c, BEValue *value, const char *name, Type *type, LLVMValueRef val1, LLVMBasicBlockRef block1, LLVMValueRef val2, LLVMBasicBlockRef block2)
 {
-	LLVMValueRef phi = LLVMBuildPhi(c->builder, LLVMTypeOf(val1), name);
+	LLVMTypeRef ret_type = LLVMTypeOf(val1);
+	LLVMTypeRef other_type = LLVMTypeOf(val2);
+	if (ret_type != other_type)
+	{
+		if (ret_type == c->bool_type)
+		{
+			val2 = LLVMBuildTrunc(c->builder, val2, ret_type, "");
+		}
+		else
+		{
+			assert(other_type == c->bool_type);
+			val2 = LLVMBuildZExt(c->builder, val2, ret_type, "");
+		}
+	}
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, ret_type, name);
 	llvm_set_phi(phi, val1, block1, val2, block2);
 	llvm_value_set(value, phi, type);
 }

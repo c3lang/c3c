@@ -5655,7 +5655,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	if (invalid_cast_ref) *invalid_cast_ref = false;
 	Expr *inner = exprptr(expr->cast_expr.expr);
 	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
-	if (inner->expr_kind == EXPR_INITIALIZER_LIST)
+	if (inner->expr_kind == EXPR_INITIALIZER_LIST || inner->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
 	{
 		expr->expr_kind = EXPR_COMPOUND_LITERAL;
 		expr->expr_compound_literal = (ExprCompoundLiteral) { .initializer = inner, .type_info = type_info };
@@ -7224,6 +7224,10 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 			case CONST_REF:
 				expr_replace(expr, expr_variable(inner->const_expr.global_ref));
 				break;
+			case CONST_BYTES:
+			case CONST_STRING:
+				expr_rewrite_const_int(expr, type_get_indexed_type(inner->type), inner->const_expr.bytes.len ? inner->const_expr.bytes.ptr[0] : 0);
+				return true;
 			default:
 				UNREACHABLE
 		}
@@ -8210,6 +8214,19 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	context->expected_block_type = stored_block_type;
 	context->block_exit_ref = stored_block_exit;
 	context_pop_returns(context, saved_returns);
+
+	if (!compiler.build.silence_deprecation)
+	{
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+		if (type_no_optional(expr->type) == type_void)
+		{
+			SEMA_DEPRECATED(expr, "Expression blocks have been deprecated. For this type of expression block, use `do { ... };` blocks instead.");
+		}
+		else
+		{
+			SEMA_DEPRECATED(expr, "Expression blocks have been deprecated. Depending on your code, using `do { ... };` with a variable outside of the block may work fine. There is a possibility that these blocks will be replaced by inline macros.");
+		}
+	}
 
 	return success;
 }

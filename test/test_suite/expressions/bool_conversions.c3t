@@ -1,4 +1,5 @@
 // #target: macos-x64
+// #deprecation: no
 
 fn bool f0_0(void* a0) @private {  return (bool)a0; }
 

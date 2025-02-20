@@ -10,9 +10,9 @@ fn void main()
 {
 
 	FooPriorityQueue agh;
-	agh.push(Foo { 3 });
-	agh.push(Foo { 101 });
-	agh.push(Foo { 10 });
+	agh.push((Foo) { 3 });
+	agh.push((Foo) { 101 });
+	agh.push({ 10 });
 	while (try f = agh.pop()) io::printf("%s\n", f.x);
 }
 

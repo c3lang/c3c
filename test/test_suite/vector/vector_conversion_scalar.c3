@@ -1,3 +1,4 @@
+// #deprecation: no
 fn void test2(int[<2>] x) {}
 fn void main()
 {

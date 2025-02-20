@@ -3,13 +3,13 @@ module test;
 macro foo()
 {
 	var c = "hello" +++ " world";
-	String[?] a = String[1] { "hello" } +++ String[1] { " world" };
+	String[?] a = (String[1]) { "hello" } +++ (String[1]) { " world" };
 	int[2] $a = { 1, 2 };
 	$a = $a +++ 100;
 	int z = $typeof($a).len;
 	var b = $a;
-	var d = int[]{} +++ 1 +++ 2 +++ 3;
-	var e = String[1] { "hello... " } +++ " there!";
+	var d = (int[]){} +++ 1 +++ 2 +++ 3;
+	var e = (String[1]) { "hello... " } +++ " there!";
 	var f = "" +++ "";
 	var g = "bye";
 	var h = $$str_hash("helloworld");

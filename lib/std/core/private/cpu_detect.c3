@@ -150,14 +150,14 @@ fn void x86_initialize_cpu_features()
 {
 	uint max_level = x86_cpuid(0).eax;
 	CpuId feat = x86_cpuid(1);
-	CpuId leaf7 = max_level >= 8 ? x86_cpuid(7) : CpuId {};
-	CpuId leaf7s1 = leaf7.eax >= 1 ? x86_cpuid(7, 1) : CpuId {};
-	CpuId ext1 = x86_cpuid(0x80000000).eax >= 0x80000001 ? x86_cpuid(0x80000001) : CpuId {};
-	CpuId ext8 = x86_cpuid(0x80000000).eax >= 0x80000008 ? x86_cpuid(0x80000008) : CpuId {};
-	CpuId leaf_d = max_level >= 0xd ? x86_cpuid(0xd, 0x1) : CpuId {};
-	CpuId leaf_14 = max_level >= 0x14 ? x86_cpuid(0x14) : CpuId {};
-	CpuId leaf_19 = max_level >= 0x19 ? x86_cpuid(0x19) : CpuId {};
-	CpuId leaf_24 = max_level >= 0x24 ? x86_cpuid(0x24) : CpuId {};
+	CpuId leaf7 = max_level >= 8 ? x86_cpuid(7) : {};
+	CpuId leaf7s1 = leaf7.eax >= 1 ? x86_cpuid(7, 1) : {};
+	CpuId ext1 = x86_cpuid(0x80000000).eax >= 0x80000001 ? x86_cpuid(0x80000001) : {};
+	CpuId ext8 = x86_cpuid(0x80000000).eax >= 0x80000008 ? x86_cpuid(0x80000008) : {};
+	CpuId leaf_d = max_level >= 0xd ? x86_cpuid(0xd, 0x1) : {};
+	CpuId leaf_14 = max_level >= 0x14 ? x86_cpuid(0x14) : {};
+	CpuId leaf_19 = max_level >= 0x19 ? x86_cpuid(0x19) : {};
+	CpuId leaf_24 = max_level >= 0x24 ? x86_cpuid(0x24) : {};
 	add_feature_if_bit(ADX, leaf7.ebx, 19);
 	add_feature_if_bit(AES, feat.ecx, 25);
 	add_feature_if_bit(AMX_BF16, leaf7.edx, 22);

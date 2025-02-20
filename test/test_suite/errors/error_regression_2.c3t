@@ -55,19 +55,19 @@ fn Doc! readDoc(char[] url)
 {
 	if (contains(url, "fail")) return ReadError.BAD_READ?;
 	if (contains(url, "head-missing")) return { .head = null };
-	if (contains(url, "title-missing")) return { dupe(Head { .title = null })! };
-	if (contains(url, "title-empty")) return { dupe(Head { .title = dupe((char[])"")! })! };
+	if (contains(url, "title-missing")) return { dupe((Head) { .title = null })! };
+	if (contains(url, "title-empty")) return { dupe((Head) { .title = dupe((char[])"")! })! };
 	// Not particularly elegant due to missing string functions.
 	isz len = libc::snprintf(null, 0, "Title of %.*s", (int)url.len, url.ptr);
 	char* str = malloc(len + 1);
 	if (!str) return ReadError.OUT_OF_MEMORY?;
 	libc::snprintf(str, len + 1, "Title of %.*s", (int)url.len, url.ptr);
-	return { dupe(Head { .title = dupe(str[..len - 1])! })! };
+	return { dupe((Head) { .title = dupe(str[..len - 1])! })! };
 }
 
 fn Summary buildSummary(Doc doc)
 {
-    return Summary {
+    return {
         .title = doc.head ? doc.head.title : null,
         .ok = true,
     };
@@ -75,7 +75,7 @@ fn Summary buildSummary(Doc doc)
 
 fn Summary readAndBuildSummary(char[] url)
 {
-	return buildSummary(readDoc(url)) ?? Summary { .title = null, .ok = false };
+	return buildSummary(readDoc(url)) ?? (Summary) { .title = null, .ok = false };
 	/*
 	// or
 	Summary summary = buildSummary(readDoc(url));

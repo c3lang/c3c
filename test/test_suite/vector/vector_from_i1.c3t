@@ -5,7 +5,7 @@ import std;
 // issue 1954
 macro splat($Type, x)
 {
-	return $Type {x,x,x,x};
+	return ($Type) {x,x,x,x};
 }
 
 fn void main()

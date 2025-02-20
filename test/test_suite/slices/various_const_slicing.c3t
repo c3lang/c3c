@@ -6,12 +6,12 @@ int[] y2 = FOO[1..2];
 
 fn void test()
 {
-	int[][] a = { int[] { 1 } };
+	int[][] a = { (int[]) { 1 } };
 	char[4] $a = x'aabbccdd';
 	var $b = $a[1..2];
 	char[2] y = $b;
-	assert($b == char[] { 187, 204 });
-	assert(y == char[2] { 187, 204 });
+	assert($b == (char[]) { 187, 204 });
+	assert(y == (char[2]) { 187, 204 });
 
 }
 fn int main()

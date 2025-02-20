@@ -12,8 +12,8 @@ extern fn void blorg(Test t);
 
 fn Test creator()
 {
-    blorg(Test{});
-    return Test{};
+    blorg((Test){});
+    return (Test){};
 }
 
 /* #expect: literal_load.ll

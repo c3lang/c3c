@@ -17,12 +17,12 @@ fault JsonParsingError
 
 fn Object*! parse_string(String s, Allocator allocator = allocator::heap())
 {
-	return parse(ByteReader{}.init(s), allocator);
+	return parse((ByteReader){}.init(s), allocator);
 }
 
 fn Object*! temp_parse_string(String s)
 {
-	return parse(ByteReader{}.init(s), allocator::temp());
+	return parse((ByteReader){}.init(s), allocator::temp());
 }
 
 fn Object*! parse(InStream s, Allocator allocator = allocator::heap())

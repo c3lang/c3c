@@ -1,3 +1,4 @@
+// #deprecation: no
 fn int! bar()
 {
 	defer {

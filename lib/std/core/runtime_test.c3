@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
+import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
@@ -30,8 +31,12 @@ struct TestContext
 	char* error_buffer;
 	usz error_buffer_capacity;
 	File fake_stdout;
-	File orig_stdout;
-	File orig_stderr;
+	struct stored
+	{
+		File stdout;
+		File stderr;
+		Allocator allocator;
+	}
 }
 
 struct TestUnit
@@ -107,43 +112,29 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	}
 
 	test_context.is_in_panic = false;
+	allocator::thread_allocator = test_context.stored.allocator;
 	libc::longjmp(&test_context.buf, 1);
 }
 
 fn void mute_output() @local
 {
 	if (!test_context.fake_stdout.file) return;
-	assert(!test_context.orig_stderr.file);
-	assert(!test_context.orig_stdout.file);
-
 	File* stdout = io::stdout();
-	File* stderr = io::stderr();
-
-	test_context.orig_stderr = *stderr;
-	test_context.orig_stdout = *stdout;
-
+    File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
-
 	(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
 }
 
 fn void unmute_output(bool has_error) @local
 {
-	if (!test_context.fake_stdout.file)
-	{
-		return;
-	}
-	assert(test_context.orig_stderr.file);
-	assert(test_context.orig_stdout.file);
+	if (!test_context.fake_stdout.file) return;
 
 	File* stdout = io::stdout();
 	File* stderr = io::stderr();
 
-	*stderr = test_context.orig_stderr;
-	*stdout = test_context.orig_stdout;
-	test_context.orig_stderr.file = null;
-	test_context.orig_stdout.file = null;
+	*stderr = test_context.stored.stderr;
+	*stdout = test_context.stored.stdout;
 
 	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 	if (has_error)
@@ -187,6 +178,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		.breakpoint_on_assert = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
+		.stored.allocator = allocator::heap(),
+		.stored.stderr = *io::stderr(),
+		.stored.stdout = *io::stdout(),
 	};
 	for (int i = 1; i < args.len; i++)
 	{
@@ -221,9 +215,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 
 	// Buffer for hijacking the output
 	$if (!env::NO_LIBC):
-		test_context.fake_stdout.file = libc::tmpfile();
+		context.fake_stdout.file = libc::tmpfile();
 	$endif
-	if (test_context.fake_stdout.file == null)
+	if (context.fake_stdout.file == null)
 	{
 		io::print("Failed to hijack stdout, tests will print everything");
 	}
@@ -241,39 +235,49 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len - len / 2);
 	io::printn(name);
 	name.clear();
+	TempState temp_state = mem::temp_push();
+	defer mem::temp_pop(temp_state);
 	foreach(unit : tests)
 	{
-		if (test_context.test_filter && !unit.name.contains(test_context.test_filter))
+		mem::temp_pop(temp_state);
+		if (context.test_filter && !unit.name.contains(context.test_filter))
 		{
 			tests_skipped++;
 			continue;
 		}
-		test_context.setup_fn = null;
-		test_context.teardown_fn = null;
-		test_context.current_test_name = unit.name;
+		context.setup_fn = null;
+		context.teardown_fn = null;
+		context.current_test_name = unit.name;
 
 		defer name.clear();
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
 		io::printf("%s ", name.str_view());
+		(void)io::stdout().flush();
 		TrackingAllocator mem;
-		mem.init(allocator::heap());
+
+		mem.init(context.stored.allocator);
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
 			mem.clear();
-			mem::@scoped(&mem)
+			allocator::thread_allocator = &mem;
+			$if(!$$OLD_TEST):
+				unit.func();
+			$else
+				if (catch err = unit.func())
+				{
+					io::printf("[FAIL] Failed due to: %s", err);
+					continue;
+				}
+			$endif
+			// track cleanup that may take place in teardown_fn
+			if (test_context.teardown_fn)
 			{
-				$if(!$$OLD_TEST):
-					unit.func();
-				$else
-					if (catch err = unit.func())
-					{
-						io::printf("[FAIL] Failed due to: %s", err);
-						continue;
-					}
-				$endif
-			};
+				test_context.teardown_fn();
+			}
+			allocator::thread_allocator = context.stored.allocator;
+
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
             {
@@ -285,10 +289,6 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
             {
                 io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
 				tests_passed++;
-			}
-			if (test_context.teardown_fn)
-			{
-				test_context.teardown_fn();
 			}
 		}
 		mem.free();

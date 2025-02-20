@@ -1,3 +1,4 @@
+// #deprecation: no
 module fe;
 import std::io;
 extern fn int printf(char *str, ...);

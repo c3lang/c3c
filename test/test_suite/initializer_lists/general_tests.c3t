@@ -20,7 +20,7 @@ fn int test()
     int foo2 = $foo[2];
     var $foos = { "Hello!" };
     char* str = $foos[0];
-    bool x = ! int[] { 1, 2, 3 };
+    bool x = ! (int[]) { 1, 2, 3 };
     Bar b = {};
     Baz z = {};
     int[] sub = {};

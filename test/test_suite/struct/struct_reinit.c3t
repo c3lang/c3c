@@ -15,7 +15,7 @@ fn void main()
 {
 	Abc x = { 1, 4};
 	print(&x) @noinline;
-	x = Abc { x.b, x.a };
+	x = (Abc) { x.b, x.a };
 	print(&x) @noinline;
 }
 

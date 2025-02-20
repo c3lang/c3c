@@ -5,7 +5,6 @@ import std::os;
 
 const TEST_MAGNITUDE = 10;
 
-
 fn void lock_control_test() @test
 {
     Mutex m;
@@ -37,7 +36,7 @@ fn void! own_mutex(Mutex* m)
     m.unlock()!;
 }
 
-fn void ensure_owner_checks() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void ensure_owner_checks() @test
 {
     Mutex m;
     m.init()!!;
@@ -77,7 +76,7 @@ fn void shared_mutex_decrement(ArgsWrapper1* args)
     args.m.unlock()!!;
 }
 
-fn void shared_mutex() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void shared_mutex() @test
 {
     Mutex m;
     m.init()!!;
@@ -127,7 +126,7 @@ fn void acquire_recursively(RecursiveMutex* m)
     }
 }
 
-fn void test_recursive_mutex() @test => mem::@scoped(&allocator::LIBC_ALLOCATOR)
+fn void test_recursive_mutex() @test
 {
     RecursiveMutex m;
     m.init()!!;

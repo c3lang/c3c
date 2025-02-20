@@ -18,7 +18,3 @@ fn void main()
 	Bob gh;
 	gh += 1; // #error: A value of type 'Bob'
 }
-
-/* #expect: test.ll
-
-feofke

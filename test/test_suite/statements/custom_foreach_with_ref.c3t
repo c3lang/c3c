@@ -26,7 +26,7 @@ macro int Foo.@operator_element_at(Foo* &f, int a) @operator([])
 fn int[5] getFields()
 {
     printf("getFields\n");
-    return int[5] { 3, 5, 2, 10, 111};
+    return (int[5]) { 3, 5, 2, 10, 111};
 }
 fn Foo *call(Foo* f)
 {
@@ -62,7 +62,7 @@ fn void main()
         i++;
     }
 
-    foreach(i, y : int[5] { 1, 2, 10, 111, 123 } )
+    foreach(i, y : (int[5]) { 1, 2, 10, 111, 123 } )
     {
         printf("Adding %d: %d\n", i, y);
         i++;

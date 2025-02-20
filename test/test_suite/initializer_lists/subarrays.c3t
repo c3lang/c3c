@@ -17,14 +17,14 @@ struct Bar
 
 Bar[] arrbar = { { 3, 4 }, { 8, 9 }};
 int[] xd = { 1, 2 };
-int* fofeo = &&(int[2]{ 3, 4 });
+int* fofeo = &&((int[2]){ 3, 4 });
 
 fn int main()
 {
     Bar w = arrbar[1];
     libc::printf("%d\n", arrbar[1].x);
     int[] x = { 1, 2, 3 };
-    int* y = &&(int[3]{ 123, 234, 567 });
+    int* y = &&((int[3]){ 123, 234, 567 });
     io::printn("Start:");
     libc::printf("X len: %d mid element %d\n", (int)(x.len), x[1]);
     libc::printf("Y mid element %d\n", y[1]);
@@ -33,7 +33,7 @@ fn int main()
     int[1] azz = {};
 
     //var $foo = { 1, 2, 3 };
-    bool xy = ! int[] { 1, 2, 3 };
+    bool xy = !(int[]){ 1, 2, 3 };
     if (!xy) io::printn("Ok");
     Bar b = {};
     Baz z = {};

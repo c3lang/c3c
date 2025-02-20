@@ -145,7 +145,7 @@ macro transform2(v, mat) @private
 
 macro transform3(v, mat) @private
 {
-	return $typeof(v) {
+	return ($typeof(v)){
 		mat.m00 * v[0] + mat.m10 * v[1] + mat.m20 * v[2] + mat.m30,
 		mat.m01 * v[0] + mat.m11 * v[1] + mat.m21 * v[2] + mat.m31,
 		mat.m02 * v[0] + mat.m12 * v[1] + mat.m22 * v[2] + mat.m32
@@ -169,7 +169,7 @@ macro void ortho_normalize3(v1, v2) @private
 
 macro rotate_by_quat3(v, q) @private
 {
-	return $typeof(v) {
+	return ($typeof(v)){
 		v[0] * (q.i * q.i + q.l * q.l - q.j * q.j - q.k * q.k)
 			+ v[1] * (2 * q.i * q.j - 2 * q.l * q.k)
 			+ v[2] * (2 * q.i * q.k - 2 * q.l * q.j),
@@ -233,7 +233,7 @@ macro barycenter3(p, a, b, c) @private
 	var denom = d00 * d11 - d01 * d01;
 	var y = (d11 * d20 - d01 * d21) / denom;
 	var z = (d00 * d21 - d01 * d20) / denom;
-	return $typeof(p) { 1 - y - z, y, z };
+	return ($typeof(p)){ 1 - y - z, y, z };
 }
 
 macro refract3(v, n, r) @private

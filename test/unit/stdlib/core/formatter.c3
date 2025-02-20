@@ -10,7 +10,7 @@ fn usz! Foo.to_format(&self, Formatter *f) @dynamic
 
 fn void test_ref() @test
 {
-	Foo* f = &&Foo{ 8 };
+	Foo* f = &&(Foo){ 8 };
 	Foo* f0 = null;
 	int* a = (void*)(uptr)0x40;
 	int* b = null;
