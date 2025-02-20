@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, Decl *decl);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -1093,7 +1093,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, Decl *decl)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1175,6 +1175,15 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 		param->var.is_self = true;
+	}
+
+	// Ensure it has at least one parameter if method.
+	if (method_parent && !vec_size(params) && decl->operator != OVERLOAD_CONSTRUCT)
+	{
+		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
+								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
+								"unless it is a 'construct' method,",
+								type_to_error_string(method_parent->type), decl->name, type_to_error_string(method_parent->type));
 	}
 
 	// Check parameters
@@ -1352,7 +1361,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 
 	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
 
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl->span)) return false;
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -2357,15 +2366,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 
 	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
-
-	// Ensure it has at least one parameter.
-	if (!vec_size(params) && !is_constructor)
-	{
-		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
-								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
-								"unless it is a 'construct' method,",
-		                  type_to_error_string(par_type), decl->name, type_to_error_string(par_type));
-	}
 
 	// Ensure that the first parameter is valid.
 	if (!is_constructor && !sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
@@ -3874,7 +3874,7 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_signature(context, &decl->func_decl.signature,
 	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false, deprecated, decl->span)) return false;
+	                            false, deprecated, decl)) return false;
 
 	DeclId body_param = decl->func_decl.body_param;
 	if (!decl->func_decl.signature.is_at_macro && body_param && !decl->func_decl.signature.is_safemacro)

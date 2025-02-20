@@ -15,6 +15,7 @@
 - Test runner with tracking allocator didn't properly handle teardown_fn
 - Correctly give an error if a character literal contains a line break.
 - Implicitly unwrapped optional value in defer incorrectly copied #1982.
+- Crash when trying to define a method macro that isn't `@construct` but has no arguments.
 
 ### Stdlib changes
 
