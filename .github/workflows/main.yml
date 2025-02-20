@@ -689,6 +689,11 @@ jobs:
           ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
           ./test_suite_runner ../build/c3c test_suite/
 
+      - name: run build test suite runner
+        run: |
+          cd test
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
         run: |
