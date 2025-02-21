@@ -222,11 +222,24 @@ fn void close() @test @if(!env::WIN32)
 
 fn void difftime() @test
 {
-
+	Time_t t1 = 1293;
+	Time_t t2 = 919919;
+	assert(libc::difftime(t2, t1) > 0);
+	assert(libc::difftime(t1, t2) < 0);
 }
 
-// fn void div() @test {}
+fn void div() @test
+{
+	DivResult res = libc::div(13, 2);
+	assert(res.quot == 6);
+	assert(res.rem == 1);
+	res = libc::div(-5, 3);
+	assert(res.quot == -1);
+	assert(res.rem == -2);
+}
+
 // fn void exit() @test {}
+
 // fn void fclose() @test {}
 // fn void fdopen() @test {}
 // fn void feof() @test {}
