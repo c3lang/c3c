@@ -652,8 +652,6 @@ jobs:
 
       - name: Check env
         run:
-          otool -L $(llvm-config --libdir)/libLLVM.dylib | grep std
-          otool -L ./build/c3c | grep std
           llvm-config --cxxflags
           c++ -v
 
