@@ -63,6 +63,13 @@ fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 fn BigInt* BigInt.init_with_array(&self, uint[] values)
 {
 	self.data[..] = 0;
+
+	if (values.len == 0)
+	{
+		self.len = 1;
+		return self;
+	}
+
 	self.len = values.len;
 
 	foreach_r(i, val : values)
