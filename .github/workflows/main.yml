@@ -650,6 +650,13 @@ jobs:
         run: |
           ./build/c3c vendor-fetch raylib5
 
+      - name: Check env
+        run:
+          otool -L $(llvm-config --libdir)/libLLVM.dylib | grep std
+          otool -L ./build/c3c | grep std
+          llvm-config --cxxflags
+          c++ -v
+
       - name: Compile and run some examples
         run: |
           cd resources
