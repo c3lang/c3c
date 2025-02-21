@@ -593,15 +593,17 @@ void compiler_compile(void)
 	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
 #endif
 	unsigned task_count = vec_size(tasks);
-	if (task_count == 1)
+	if (task_count > 0)
 	{
-		tasks[0]->task(tasks[0]->arg);
+		Task *task_last = VECLAST(tasks);
+		vec_pop(tasks);
+		task_last->task(task_last->arg);
+		task_count--;
+		if (task_count)
+		{
+			taskqueue_run(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads, tasks);
+		}
 	}
-	else if (task_count > 1)
-	{
-		taskqueue_run(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads, tasks);
-	}
-
 	if (compiler.build.print_output)
 	{
 		puts("# output-files-begin");
