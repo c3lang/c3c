@@ -650,10 +650,13 @@ jobs:
         run: |
           ./build/c3c vendor-fetch raylib5
 
-      - name: Check env
+      - name: Check env llvm
+        run:
+          c++ -v
+
+      - name: Check env llvm
         run:
           llvm-config --cxxflags
-          c++ -v
 
       - name: Compile and run some examples
         run: |
