@@ -1636,8 +1636,8 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 	{
 		gen_context->debug.compile_unit = unit->llvm.debug_compile_unit;
 		gen_context->debug.file = (DebugFile){
-				.debug_file = unit->llvm.debug_file,
-				.file_id = unit->file->file_id };
+			.debug_file = unit->llvm.debug_file,
+			.file_id = unit->file->file_id };
 
 		FOREACH(Decl *, var, unit->vars)
 		{
@@ -1706,7 +1706,12 @@ static GenContext *llvm_gen_module(Module *module, LLVMContextRef shared_context
 		gencontext_print_llvm_ir(gen_context);
 		gencontext_verify_ir(gen_context);
 	}
-	if (!has_elements) return NULL;
+	if (!has_elements)
+	{
+		gencontext_end_module(gen_context);
+		gencontext_destroy(gen_context);
+		return NULL;
+	}
 	return gen_context;
 }
 
