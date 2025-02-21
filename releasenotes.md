@@ -16,6 +16,8 @@
 - Correctly give an error if a character literal contains a line break.
 - Implicitly unwrapped optional value in defer incorrectly copied #1982.
 - Crash when trying to define a method macro that isn't `@construct` but has no arguments.
+- Regression, `.gitkeep` files were generated incorrectly.
+- Aliases are now correctly handled as if they were variables/functions in regards to namespacing and accept `@builtin`.
 
 ### Stdlib changes
 

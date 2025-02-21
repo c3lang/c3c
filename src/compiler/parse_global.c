@@ -2109,10 +2109,12 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	bool is_cond;
-	if (!parse_attributes(c, &attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+	bool is_builtin;
+	if (!parse_attributes(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return poisoned_decl;
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
 	decl->is_cond = is_cond;
+	decl->is_autoimport = is_builtin;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;

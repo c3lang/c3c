@@ -28,9 +28,9 @@ struct FrameScheduler
 
 fn void FrameScheduler.init(&self)
 {
-	self.events.new_init();
-	self.pending_events.new_init();
-	self.delayed_events.new_init();
+	self.events.init(mem);
+	self.pending_events.init(mem);
+	self.delayed_events.init(mem);
 	(void)self.mtx.init();
 	bool pending;
 }

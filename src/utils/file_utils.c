@@ -509,7 +509,7 @@ const char *file_append_path_temp(const char *path, const char *name)
 #endif
 
 	// format the string safely
-	bool insert_separator = path[path_len - 1] == '/' || path[path_len - 1] == separator;
+	bool insert_separator = path[path_len - 1] != '/' && path[path_len - 1] != separator;
 	int written = insert_separator
 		              ? snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%c%s", path, separator, name)
 		              : snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);

@@ -1093,6 +1093,9 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				case DECL_MACRO:
 					message = "Macros from other modules must be prefixed with the module name.";
 					break;
+				case DECL_DEFINE:
+					message = "Aliases from other modules must be prefixed with the module name.";
+					break;
 				default:
 					UNREACHABLE
 			}
