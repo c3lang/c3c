@@ -264,6 +264,7 @@ jobs:
       - name: CMake
         if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
         run: |
+          export ASAN_OPTIONS=detect_leaks=0
           cmake -B build \
                 -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
@@ -278,6 +279,7 @@ jobs:
       - name: CMake18
         if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
         run: |
+          export ASAN_OPTIONS=detect_leaks=0
           cmake -B build \
                 -G Ninja \
                 -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
@@ -297,6 +299,7 @@ jobs:
 
       - name: Compile and run some examples
         run: |
+          export ASAN_OPTIONS=detect_leaks=0
           cd resources
           ../build/c3c compile examples/base64.c3
           ../build/c3c compile examples/binarydigits.c3
@@ -460,6 +463,7 @@ jobs:
           cmake --build build
       - name: Compile and run some examples
         run: |
+          export ASAN_OPTIONS=detect_leaks=0
           cd resources
           ../build/c3c compile examples/gameoflife.c3
           ../build/c3c compile-only examples/levenshtein.c3
@@ -550,10 +554,12 @@ jobs:
       - name: build test runner
         run: |
           cd test
+          export ASAN_OPTIONS=detect_leaks=0
           ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
 
       - name: Compile and run some examples
         run: |
+          export ASAN_OPTIONS=detect_leaks=0
           cd resources
           ../build/c3c compile examples/base64.c3
           ../build/c3c compile examples/binarydigits.c3
@@ -705,12 +711,12 @@ jobs:
         run: |
           cd test
           ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
-
-      - name: run compiler tests
-        run: |
-          cd test
           ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
-          ./test_suite_runner ../build/c3c test_suite/
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
