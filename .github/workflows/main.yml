@@ -290,6 +290,11 @@ jobs:
                 -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
           cmake --build build
 
+      - name: build test runner
+        run: |
+          cd test
+          ../build/c3c compile -O1 src/test_suite_runner.c3
+
       - name: Compile and run some examples
         run: |
           cd resources
@@ -541,7 +546,12 @@ jobs:
       - name: Run build
         run: |
           LLVM_VERSION=${{ matrix.llvm_version }} UBUNTU_VERSION=${{ matrix.ubuntu_version }} CMAKE_BUILD_TYPE=${{ matrix.build_type }} ./build-with-docker.sh
-      
+
+      - name: build test runner
+        run: |
+          cd test
+          ../build/c3c compile -O1 src/test_suite_runner.c3
+
       - name: Compile and run some examples
         run: |
           cd resources
