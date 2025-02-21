@@ -293,7 +293,7 @@ jobs:
       - name: build test runner
         run: |
           cd test
-          ../build/c3c compile -O1 src/test_suite_runner.c3
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics 
 
       - name: Compile and run some examples
         run: |
@@ -550,7 +550,7 @@ jobs:
       - name: build test runner
         run: |
           cd test
-          ../build/c3c compile -O1 src/test_suite_runner.c3
+          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
 
       - name: Compile and run some examples
         run: |
