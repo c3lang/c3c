@@ -9,9 +9,8 @@ fn void test_init_with_u128()
 fn void init_with_array()
 {
 	BigInt bi @noinit;
-
+	assert(bi.init_with_array({}).equals(ZERO));
 	assert(bi.init_with_array({0, 0, 0, 1}).equals(bigint::from_int(1)));
-
 	assert("100000000" == bi.init_with_array({1, 0}).to_string_with_radix(16, allocator::temp()));
 }
 
