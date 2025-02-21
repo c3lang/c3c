@@ -251,6 +251,7 @@ macro bool @has_same(#a, #b, ...) @const
 macro bool may_load_atomic($Type) @const
 {
 	$switch ($Type.kindof)
+	$case BOOL:
 	$case SIGNED_INT:
 	$case UNSIGNED_INT:
 	$case POINTER:

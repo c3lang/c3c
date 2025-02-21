@@ -45,6 +45,12 @@ macro void! TimedMutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeou
 macro void! TimedRecursiveMutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
 macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
 macro void! Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
+macro void Mutex.@in_lock(&mutex; @body)
+{
+	(void)mutex.lock();
+	defer (void)mutex.unlock();
+	@body();
+}
 
 macro void! ConditionVariable.init(&cond) => NativeConditionVariable.init((NativeConditionVariable*)cond);
 macro void! ConditionVariable.destroy(&cond) => NativeConditionVariable.destroy((NativeConditionVariable*)cond);

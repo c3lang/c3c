@@ -18,6 +18,16 @@ fn NanoDuration Clock.mark(&self)
 	return diff;
 }
 
+fn Clock Clock.add_nano_duration(self, NanoDuration nano)
+{
+	return (Clock)((NanoDuration)self + nano);
+}
+
+fn Clock Clock.add_duration(self, Duration duration)
+{
+	return self.add_nano_duration(duration.to_nano());
+}
+
 fn NanoDuration Clock.to_now(self)
 {
 	return (NanoDuration)(now() - self);
