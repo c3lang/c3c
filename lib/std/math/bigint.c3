@@ -53,7 +53,7 @@ fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 		len++;
 	}
 	assert(!self.is_negative());
-	self.len = max(len ?: 1);
+	self.len = max(len, 1);
 	return self;
 }
 
