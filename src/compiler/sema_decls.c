@@ -3205,6 +3205,8 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 				param->var.out_param = true;
 				break;
 			case INOUT_INOUT:
+				param->var.out_param = true;
+				param->var.in_param = true;
 				break;
 		}
 		if (!may_be_pointer && type->type_kind != TYPE_SLICE)

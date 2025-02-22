@@ -393,6 +393,8 @@ fn void test_file(Path file_path)
 	cmdline.push(compiler_path.str_view());
 	cmdline.push("compile-only");
 	cmdline.push("--test");
+	cmdline.push("--llvm-out");
+	cmdline.push(".");
 	foreach (file : settings.input_files)
 	{
 		cmdline.push(file.name);

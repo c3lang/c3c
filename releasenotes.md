@@ -7,6 +7,8 @@
 - Add `--enable-new-generics` to enable `Foo{int}` generic syntax.
 - `{| |}` expression blocks deprecated.
 - c3c `--test-leak-report` flag for displaying full memory lead report if any
+- Output into /.build/obj/<platform> by default.
+- Output llvm/asm into llvm/<platform> and asm/<platform> by default.
 
 ### Fixes
 - Bug appearing when `??` was combined with boolean in some cases.
@@ -18,6 +20,8 @@
 - Crash when trying to define a method macro that isn't `@construct` but has no arguments.
 - Regression, `.gitkeep` files were generated incorrectly.
 - Aliases are now correctly handled as if they were variables/functions in regards to namespacing and accept `@builtin`.
+- Correctly handle in/out when interacting with inout.
+- Don't delete .o files not produced by the compiler.
 
 ### Stdlib changes
 

@@ -175,6 +175,8 @@ fn char[]! load_buffer(String filename, char[] buffer)
 
 }
 
+fn char[]! load(Allocator allocator, String filename) => load_new(filename, allocator);
+
 fn char[]! load_new(String filename, Allocator allocator = allocator::heap())
 {
 	File file = open(filename, "rb")!;

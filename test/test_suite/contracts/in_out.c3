@@ -8,7 +8,7 @@ fn void bar(Foo* f)
 <* @param [in] f *>
 fn void foo(Foo* f)
 {
-  bar(f); // #error: macro as an 'out' argument
+  bar(f); // #error: An 'in' parameter may not be passed i
 }
 
 <* @param [in] f *>

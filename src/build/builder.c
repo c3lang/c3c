@@ -461,23 +461,54 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 		default: UNREACHABLE;
 	}
 
+	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
+
+	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
+	{
+		error_exit("Unable to detect the default target, please set an explicit --target value.");
+	}
+
+	const char *target_name = arch_os_target[target->arch_os_target];
 	if (command_accepts_files(options->command))
 	{
-		target->build_dir = options->build_dir ? options->build_dir : NULL;
-		target->object_file_dir = options->obj_out ? options->obj_out : target->build_dir;
-		target->ir_file_dir = options->llvm_out ? options->llvm_out : target->build_dir;
-		target->asm_file_dir = options->asm_out ? options->asm_out : target->build_dir;
-		target->script_dir = options->script_dir ? options->script_dir : target->script_dir;
+		target->build_dir = options->build_dir ? options->build_dir : ".build";
+		if (!target->script_dir) target->script_dir = target->build_dir;
 	}
 	else
 	{
-		target->build_dir = options->build_dir ? options->build_dir : "build";
-		target->object_file_dir = options->obj_out ? options->obj_out : file_append_path(target->build_dir, "tmp");
-		target->ir_file_dir = options->llvm_out ? options->llvm_out : file_append_path(target->build_dir, "llvm_ir");
-		target->asm_file_dir = options->asm_out ? options->asm_out : file_append_path(target->build_dir, "asm");
-		target->script_dir = options->script_dir ? options->script_dir : target->script_dir;
+		if (!target->build_dir) target->build_dir = "build";
+		if (options->build_dir)
+		{
+			target->build_dir = options->build_dir;
+		}
+		else
+		{
+			options->build_dir = target->build_dir;
+		}
 		if (!target->script_dir) target->script_dir = "scripts";
 	}
+	target->ir_file_dir = options->llvm_out;
+	target->asm_file_dir = options->asm_out;
+	target->object_file_dir = options->obj_out;
+	if (!target->ir_file_dir)
+	{
+		target->ir_file_dir = options->build_dir
+			? file_append_path(file_append_path(options->build_dir, "llvm"), target_name)
+			: file_append_path("llvm", target_name);
+		}
+	if (!target->asm_file_dir)
+	{
+		target->asm_file_dir = options->build_dir
+			? file_append_path(file_append_path(options->build_dir, "asm"), target_name)
+			: file_append_path("asm", target_name);
+	}
+	if (!target->object_file_dir)
+	{
+		target->object_file_dir = options->build_dir
+			? file_append_path(file_append_path(options->build_dir, "obj"), target_name)
+			: file_append_path("obj", target_name);
+	}
+
 	switch (options->compile_option)
 	{
 		case COMPILE_NORMAL:

@@ -792,7 +792,7 @@ CHECK_INNER:
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = inner->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
-	if (!decl->var.in_param) return true;
+	if (!decl->var.in_param || decl->var.out_param) return true;
 	RETURN_SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
 }
 
@@ -1902,21 +1902,21 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	{
 		if (expr->unary_expr.expr->ident_expr->var.kind == VARDECL_CONST && param->var.out_param)
 		{
-			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' argument.");
+			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 			return false;
 		}
 	}
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *ident = expr->ident_expr;
 	if (ident->decl_kind != DECL_VAR) return true;
-	if (ident->var.out_param && param->var.in_param)
+	if (ident->var.out_param && !ident->var.in_param && param->var.in_param)
 	{
-		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' argument.");
+		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' or 'inout' argument.");
 		return false;
 	}
-	if (ident->var.in_param && param->var.out_param)
+	if (ident->var.in_param && !ident->var.out_param && param->var.out_param)
 	{
-		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' argument.");
+		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 		return false;
 	}
 	return true;
@@ -10170,7 +10170,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
-			if (!decl->var.out_param) break;
+			if (!decl->var.out_param || decl->var.in_param) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
 		}
 		case EXPR_UNARY:
@@ -10180,7 +10180,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
-			if (!decl->var.out_param) break;
+			if (!decl->var.out_param || decl->var.in_param) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
 		}
 		default:
