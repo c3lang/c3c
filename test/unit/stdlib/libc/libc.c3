@@ -242,15 +242,35 @@ fn void div() @test
 
 // fn void exit() @test {}
 
-// fn void fclose() @test {}
-// fn void fdopen() @test {}
-// fn void feof() @test {}
-// fn void ferror() @test {}
-// fn void fflush() @test {}
-// fn void fgetc() @test {}
-// fn void fgets() @test {}
+fn void fclose() @test
+{
+	CFile random_file = libc::tmpfile();
+	assert(libc::fclose(random_file) == 0);
+}
 
-fn void fgetpos() @test
+fn void fdopen() @test @if(!env::WIN32)
+{
+	CFile stdin = libc::fdopen(0, "w");
+	assert(libc::fputc('a', stdin) == (CInt) 'a');
+}
+
+fn void fflush() @test
+{
+	CFile stdin = libc::stdin();
+	assert(libc::fflush(stdin) == 0);
+}
+
+fn void fgets_fget() @test
+{
+	CFile* tmpf = libc::tmpfile();
+	// Example from cppreference.com
+	ZString test_string = (ZString) "cppreference.com\n" +++ '\0';
+	libc::rewind(tmpf);
+	libc::fclose(tmpf);
+}
+
+import std::io;
+fn void fseek_ftell_fgetpos_fsetpos_rewind() @test
 {
 	CFile* tmpf = libc::tmpfile();
 	// Example from cppreference.com
@@ -262,9 +282,18 @@ fn void fgetpos() @test
 	libc::fgetpos(tmpf, &pos);
 	assert(libc::fgetc(tmpf) == 'c');
 	assert(libc::fgetc(tmpf) == 'p');
+
 	libc::fsetpos(tmpf, &pos);
 	assert(libc::fgetc(tmpf) == 'c');
 	assert(libc::fgetc(tmpf) == 'p');
+
+	assert(libc::ftell(tmpf) == 2);
+
+	libc::fseek(tmpf, -2, libc::SEEK_END);
+	assert(libc::fgetc(tmpf) == 'm');
+	assert(libc::fgetc(tmpf) == '\n');
+
+	libc::fclose(tmpf);
 }
 
 // fn void fileno() @test {}
@@ -277,7 +306,6 @@ fn void fgetpos() @test
 // fn void freopen() @test {}
 // fn void fscanf() @test {}
 // fn void fseek() @test {}
-// fn void fsetpos() @test {}
 // fn void ftell() @test {}
 // fn void fwrite() @test {}
 // fn void getc() @test {}
@@ -311,7 +339,6 @@ fn void fgetpos() @test
 // fn void realloc() @test {}
 // fn void remove() @test {}
 // fn void rename() @test {}
-// fn void rewind() @test {}
 // fn void scanf() @test {}
 // fn void setbuf() @test {}
 // fn void setenv() @test {}
