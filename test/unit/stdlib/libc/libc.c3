@@ -4,7 +4,11 @@ import libc;
 // Functions from libc.c3 which do not have a test are still present in
 // comments here in the same order that they occur within libc.c3
 
-// fn void abort() @test {}
+fn void abort() @test
+{
+	// Cannot actually test this, so just checking if it's defined.
+	assert($defined(libc::abort));
+}
 
 fn void abs() @test
 {
@@ -240,7 +244,11 @@ fn void div() @test
 	assert(res.rem == -2);
 }
 
-// fn void exit() @test {}
+fn void exit() @test
+{
+	// Cannot actually test this, so just checking if it's defined.
+	assert($defined(libc::exit));
+}
 
 fn void fclose() @test
 {
