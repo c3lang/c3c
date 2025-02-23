@@ -173,7 +173,7 @@ fn void calloc() @test
 	libc::free(int_ar);
 }
 
-fn void clearerr() @test
+fn void clearerr_feof_ferror() @test
 {
 	CFile* tmpf = libc::tmpfile();
 	// Example from cppreference.com
@@ -189,9 +189,11 @@ fn void clearerr() @test
 	}
 
 	assert(libc::fgetc(tmpf) == libc::EOF);
-	assert(libc::feof(tmpf));   // the loop is expected to terminate by EOF
-	libc::clearerr(tmpf);       // clear EOF
-	assert(!libc::feof(tmpf));
+	assert(libc::feof(tmpf) != 0);
+	// there should be no errors (EOF is not an error)
+	assert(libc::ferror(tmpf) == 0);
+	libc::clearerr(tmpf);
+	assert(libc::feof(tmpf) == 0);
 }
 
 fn void clock() @test
