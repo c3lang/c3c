@@ -49,7 +49,7 @@ struct Url(Printable)
  @require url_string.len > 0 "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url! temp_parse(String url_string) => new_parse(url_string, allocator::temp());
+fn Url! tparse(String url_string) => parse(tmem(), url_string);
 
 <*
  Parse a URL string into a Url struct.
@@ -58,7 +58,7 @@ fn Url! temp_parse(String url_string) => new_parse(url_string, allocator::temp()
  @require url_string.len > 0 "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
+fn Url! parse(Allocator allocator, String url_string)
 {
 	url_string = url_string.trim();
 	if (!url_string) return UrlParsingResult.EMPTY?;
@@ -76,7 +76,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 		// Handle schemes without authority like 'mailto:'
 		if (!pos) return UrlParsingResult.INVALID_SCHEME?;
 		url.scheme = url_string[:pos].copy(allocator);
-		url.path = decode(url_string[pos + 1 ..], PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string[pos + 1 ..], PATH) ?? UrlParsingResult.INVALID_PATH?!;
 		return url;
 	}
 
@@ -98,8 +98,8 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 				if (!username.len) return UrlParsingResult.INVALID_USER?;
 							url.host =
 
-				url.username = decode(username, HOST, allocator) ?? UrlParsingResult.INVALID_USER?!;
-				if (userpass.len) url.password = decode(userpass[1], USERPASS, allocator) ?? UrlParsingResult.INVALID_PASSWORD?!;
+				url.username = decode(allocator, username, HOST) ?? UrlParsingResult.INVALID_USER?!;
+				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? UrlParsingResult.INVALID_PASSWORD?!;
 			};
 			authority = authority[userinfo.len + 1 ..];
 		}
@@ -131,7 +131,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 				}
 			};
 		}
-		url.host = decode(host, HOST, allocator) ?? UrlParsingResult.INVALID_HOST?!;
+		url.host = decode(allocator, host, HOST) ?? UrlParsingResult.INVALID_HOST?!;
 		url_string = url_string[authority_end ..];
 	}
 
@@ -142,12 +142,12 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 	if (@ok(query_index) || @ok(fragment_index))
 	{
 		usz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
-		url.path = decode(url_string[:path_end], PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string[:path_end], PATH) ?? UrlParsingResult.INVALID_PATH?!;
 		url_string = url_string[path_end ..];
 	}
 	else
 	{
-		url.path = decode(url_string, PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string, PATH) ?? UrlParsingResult.INVALID_PATH?!;
 		url_string = "";
 	}
 
@@ -165,7 +165,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 	// Parse fragment
 	if (url_string.starts_with("#"))
 	{
-		url.fragment = decode(url_string[1..], FRAGMENT, allocator) ?? UrlParsingResult.INVALID_FRAGMENT?!;
+		url.fragment = decode(allocator, url_string[1..], FRAGMENT) ?? UrlParsingResult.INVALID_FRAGMENT?!;
 	}
 	return url;
 }
@@ -179,7 +179,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 *>
 fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
 {
-	DString builder = dstring::temp_new();
+	DString builder = dstring::tnew();
 
 	// Add scheme if it exists
 	if (self.scheme != "")
@@ -192,21 +192,21 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 	// Add username and password if they exist
 	if (self.username != "")
 	{
-		String username = temp_encode(self.username, USERPASS);
+		String username = tencode(self.username, USERPASS);
 		builder.append_chars(username);
 
 		if (self.password != "")
 		{
 			builder.append_char(':');
 
-			String password = temp_encode(self.password, USERPASS);
+			String password = tencode(self.password, USERPASS);
 			builder.append_chars(password);
 		}
 		builder.append_char('@');
 	}
 
 	// Add host
-	String host = temp_encode(self.host, HOST);
+	String host = tencode(self.host, HOST);
 	builder.append_chars(host);
 
 	// Add port
@@ -217,7 +217,7 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 	}
 
 	// Add path
-	String path = temp_encode(self.path, PATH);
+	String path = tencode(self.path, PATH);
 	builder.append_chars(path);
 
 	// Add query if it exists (note that `query` is expected to
@@ -233,7 +233,7 @@ fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic
 	{
 		builder.append_char('#');
 
-		String fragment = temp_encode(self.fragment, FRAGMENT);
+		String fragment = tencode(self.fragment, FRAGMENT);
 		builder.append_chars(fragment);
 	}
 
@@ -283,8 +283,8 @@ fn UrlQueryValues parse_query(String query, Allocator allocator)
 		@pool(allocator)
 		{
 			String[] parts = rv.tsplit("=", 2);
-			String key = temp_decode(parts[0], QUERY) ?? parts[0];
-			vals.add(key, parts.len == 1 ? key : (temp_decode(parts[1], QUERY) ?? parts[1]));
+			String key = tdecode(parts[0], QUERY) ?? parts[0];
+			vals.add(key, parts.len == 1 ? key : (tdecode(parts[1], QUERY) ?? parts[1]));
 		};
 	}
 	return vals;
@@ -326,12 +326,12 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 *>
 fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
 {
-	DString builder = dstring::temp_new();
+	DString builder = dstring::tnew();
 
 	usz i;
 	foreach (key: self.key_order)
 	{
-		String encoded_key = temp_encode(key, QUERY);
+		String encoded_key = tencode(key, QUERY);
 
 		UrlQueryValueList! values = self.map.get(key);
 		if (catch values) continue;
@@ -343,7 +343,7 @@ fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap(
 			builder.append_chars(encoded_key);
 			builder.append_char('=');
 
-			String encoded_value = temp_encode(value, QUERY);
+			String encoded_value = tencode(value, QUERY);
 			builder.append_chars(encoded_value);
 			i++;
 		}

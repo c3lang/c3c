@@ -55,7 +55,7 @@ fault IoError
  @param [inout] allocator `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String! readline(stream = io::stdin(), Allocator allocator = allocator::heap())
+macro String! readline(Allocator allocator, stream = io::stdin())
 {
 	bool $is_stream = @typeis(stream, InStream);
 	$if $is_stream:
@@ -68,7 +68,7 @@ macro String! readline(stream = io::stdin(), Allocator allocator = allocator::he
 	if (val == '\n') return "";
 	@pool(allocator)
 	{
-		DString str = dstring::temp_with_capacity(256);
+		DString str = dstring::tnew_with_capacity(256);
 		if (val != '\r') str.append(val);
 		while (1)
 		{
@@ -100,7 +100,7 @@ macro String! readline(stream = io::stdin(), Allocator allocator = allocator::he
 *>
 macro String! treadline(stream = io::stdin())
 {
-	return readline(stream, allocator::temp()) @inline;
+	return readline(tmem(), stream) @inline;
 }
 
 <*

@@ -74,7 +74,7 @@ fn void! create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 
 fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WIN32) @local
 {
-	DString str = dstring::temp_with_capacity(512);
+	DString str = dstring::tnew_with_capacity(512);
 	foreach LINE: (i, s : command_line)
 	{
 		if (i != 0) str.append(' ');
@@ -109,7 +109,7 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 		str.append('"');
 	}
 	str.append('\0');
-	return str.str_view().to_temp_wstring()!!;
+	return str.str_view().to_wstring_tcopy()!!;
 }
 
 <*
@@ -138,7 +138,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 		WString used_environment = null;
 		if (!options.inherit_environment)
 		{
-			DString env = dstring::temp_with_capacity(64);
+			DString env = dstring::tnew_with_capacity(64);
 			if (!environment.len)
 			{
 				env.append("\0");
@@ -149,7 +149,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 				env.append("\0");
 			}
 			env.append("\0");
-			used_environment = env.str_view().to_temp_wstring()!;
+			used_environment = env.str_view().to_wstring_tcopy()!;
 		}
 		int fd = win32::_open_osfhandle((iptr)wr, 0);
 		if (fd != -1)

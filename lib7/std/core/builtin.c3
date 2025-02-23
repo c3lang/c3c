@@ -171,7 +171,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 	@stack_mem(512; Allocator allocator)
 	{
 		DString s;
-		s.new_init(allocator: allocator);
+		s.init(allocator);
 		s.appendf(fmt, ...args);
 		in_panic = false;
 		panic(s.str_view(), file, function, line);

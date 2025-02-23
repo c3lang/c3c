@@ -11,7 +11,7 @@ def IntDoubleMap = HashMap { int, double };
 
 fn String Foo.to_new_string(Foo* foo, Allocator allocator = allocator::heap()) @dynamic
 {
-	DString s = dstring::new_with_capacity(128, allocator);
+	DString s = dstring::new_with_capacity(allocator, 128);
 	s.appendf("{%s, %p}", foo.x, foo.bar);
 	return s.str_view();
 }
@@ -68,7 +68,7 @@ entry:
   %lo = load i64, ptr %allocator, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %allocator, i64 8
   %hi = load ptr, ptr %ptradd1, align 8
-  %3 = call ptr @std.core.dstring.new_with_capacity(i64 128, i64 %lo, ptr %hi)
+  %3 = call ptr @std.core.dstring.new_with_capacity(i64 %lo, ptr %hi, i64 128)
   store ptr %3, ptr %s, align 8
   %4 = insertvalue %any undef, ptr %0, 0
   %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
@@ -132,7 +132,7 @@ entry:
   call void @llvm.memset.p0.i64(ptr align 8 %map, i8 0, i64 48, i1 false)
   %lo = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
   %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %0 = call ptr @"std_collections_map$int$test.Foo$.HashMap.init"(ptr %map
+  %0 = call ptr @"std_collections_map$int$test.Foo$.HashMap.init"(ptr %map, i64 %lo, ptr %hi, i32 16, float 7.500000e-01)
   %ptradd = getelementptr inbounds i8, ptr %map, i64 32
   %1 = insertvalue %any undef, ptr %ptradd, 0
   %2 = insertvalue %any %1, i64 ptrtoint (ptr @"$ct.uint" to i64), 1
@@ -201,7 +201,7 @@ after_check18:                                    ; preds = %entry, %after_check
   call void @llvm.memset.p0.i64(ptr align 8 %map2, i8 0, i64 48, i1 false)
   %lo38 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
   %hi39 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %31 = call ptr @"std_collections_map$int$double$.HashMap.init"(ptr %map2
+  %31 = call ptr @"std_collections_map$int$double$.HashMap.init"(ptr %map2, i64 %lo38, ptr %hi39, i32 16, float 7.500000e-01)
   %32 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map2, i32 4, double 1.300000e+00)
   %33 = call i8 @"std_collections_map$int$double$.HashMap.has_value"(ptr %map2, double 1.300000e+00)
   store i8 %33, ptr %taddr41, align 1
@@ -249,8 +249,8 @@ if.exit:                                          ; preds = %if.then, %after_che
   store i64 %53, ptr %mark, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 48, i1 false)
   %lo65 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
-  %hi66 = load ptr, ptr getelementptr inbounds
-  %54 = call ptr @"std_collections_map$int$double$.HashMap.init"(ptr %map3,
+  %hi66 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
+  %54 = call ptr @"std_collections_map$int$double$.HashMap.init"(ptr %map3, i64 %lo65, ptr %hi66, i32 16, float 7.500000e-01)
   %55 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map3, i32 5, double 3.200000e+00)
   %56 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
   %lo68 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8

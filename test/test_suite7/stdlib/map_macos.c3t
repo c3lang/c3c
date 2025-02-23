@@ -11,7 +11,7 @@ def IntDoubleMap = HashMap { int, double };
 
 fn String Foo.to_new_string(Foo* foo, Allocator allocator = allocator::heap()) @dynamic
 {
-	DString s = dstring::new_with_capacity(128, allocator);
+	DString s = dstring::new_with_capacity(allocator, 128);
 	s.appendf("{%s, %p}", foo.x, foo.bar);
 	return s.str_view();
 }
@@ -68,7 +68,7 @@ entry:
   %lo = load i64, ptr %allocator, align 8
   %ptradd1 = getelementptr inbounds i8, ptr %allocator, i64 8
   %hi = load ptr, ptr %ptradd1, align 8
-  %3 = call ptr @std.core.dstring.new_with_capacity(i64 128, i64 %lo, ptr %hi)
+  %3 = call ptr @std.core.dstring.new_with_capacity(i64 %lo, ptr %hi, i64 128)
   store ptr %3, ptr %s, align 8
   %4 = insertvalue %any undef, ptr %0, 0
   %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1

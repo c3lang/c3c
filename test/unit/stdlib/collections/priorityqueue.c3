@@ -2,7 +2,7 @@ module priorityqueue_test @test;
 import std::collections;
 import std::collections::priorityqueue;
 
-def Queue = PriorityQueue{int};
+def Queue = PriorityQueue(<int>);
 
 fn void priorityqueue()
 {
@@ -32,7 +32,7 @@ fn void priorityqueue()
     assert(x == 3, "got %d; want %d", x, 3);
 }
 
-def QueueMax = PriorityQueueMax{int};
+def QueueMax = PriorityQueueMax(<int>);
 
 fn void priorityqueue_max()
 {

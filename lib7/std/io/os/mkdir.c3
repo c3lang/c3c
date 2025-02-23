@@ -29,7 +29,7 @@ macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 			@pool()
 			{
 				// TODO security attributes
-				if (win32::createDirectoryW(path.str_view().to_temp_utf16()!!, null)) return true;
+				if (win32::createDirectoryW(path.str_view().to_utf16_tcopy()!!, null)) return true;
 				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:

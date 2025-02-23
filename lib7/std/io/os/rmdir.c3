@@ -26,7 +26,7 @@ macro bool! native_rmdir(Path path)
 		$case env::WIN32:
 			@pool()
 			{
-				if (win32::removeDirectoryW(path.str_view().to_temp_utf16()!!)) return true;
+				if (win32::removeDirectoryW(path.str_view().to_utf16_tcopy()!!)) return true;
 				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:

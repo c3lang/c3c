@@ -74,7 +74,7 @@ fn int cmp_test_unit(TestUnit a, TestUnit b)
 fn bool terminal_has_ansi_codes() @local => @pool()
 {
 
-	if (try v = env::get_var_temp("TERM"))
+	if (try v = env::tget_var("TERM"))
 	{
 		if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;
 	}
@@ -228,7 +228,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	int tests_passed = 0;
 	int tests_skipped = 0;
 	int test_count = tests.len;
-	DString name = dstring::temp_with_capacity(64);
+	DString name = dstring::tnew_with_capacity(64);
 	usz len = max_name + 9;
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");

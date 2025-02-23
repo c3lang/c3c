@@ -21,7 +21,7 @@ fn File! open_path(Path path, String mode)
 
 fn bool exists(String file) => @pool()
 {
-	return path::exists(path::temp_new(file)) ?? false;
+	return path::exists(path::tnew(file)) ?? false;
 }
 
 fn File from_handle(CFile file)

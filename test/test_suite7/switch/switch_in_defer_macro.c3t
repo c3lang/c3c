@@ -283,7 +283,7 @@ fn String! Lexer.parse_string(&self, char quote) @private
 	char c = self.read_char_for_string()!;
 	if (c == quote) return "";
 	DString str;
-	str.new_init(8, self.allocator);
+	str.init(self.allocator, 8);
 	char prev;
 	while (true)
 	{
@@ -353,7 +353,7 @@ fn void! Lexer.parse_comment(&self, String end) @private
 {
 	// Find the end token and accumulate the data in between.
 	DString acc;
-	acc.new_init(8, self.allocator);
+	acc.init(self.allocator, 8);
 	char[] buf = self.buf[:end.len];
 	while (true)
 	{
@@ -394,7 +394,7 @@ macro Lexer.unread(self, n) @private
 fn String! Lexer.parse_ident(&self) @private
 {
 	DString str;
-	str.new_init(8, self.allocator);
+	str.init(self.allocator, 8);
 	while (true)
 	{
 		char! c = self.reader.read_byte();

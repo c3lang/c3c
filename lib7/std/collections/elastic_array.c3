@@ -39,16 +39,6 @@ fn usz! ElasticArray.to_format(&self, Formatter* formatter) @dynamic
 	}
 }
 
-fn String ElasticArray.to_string(&self, Allocator allocator) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator);
-}
-
-fn String ElasticArray.to_new_string(&self, Allocator allocator = nul) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator ?: allocator::heap());
-}
-
 fn String ElasticArray.to_tstring(&self)
 {
 	return string::tformat("%s", *self);

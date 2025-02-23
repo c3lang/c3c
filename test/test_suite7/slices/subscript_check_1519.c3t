@@ -13,7 +13,7 @@ macro @test_list(a)
 
 fn int main(String[] args)
 {
-  DString str = dstring::new("test");
+  DString str = dstring::new(mem, "test");
   return @test_list(str);
 }
 
@@ -29,7 +29,7 @@ entry:
   store i64 %1, ptr %ptradd, align 8
   %lo = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
   %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %2 = call ptr @std.core.dstring.new(ptr @.str, i64 4, i64 %lo, ptr %hi)
+  %2 = call ptr @std.core.dstring.new(i64 %lo, ptr %hi, ptr @.str, i64 4)
   store ptr %2, ptr %str, align 8
   %3 = load ptr, ptr %str, align 8
   store ptr %3, ptr %a, align 8

@@ -120,7 +120,7 @@ fn usz! NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 	bool neg = nd < 0;
 	if (neg) nd = -nd;
 
-	DString str = dstring::temp_with_capacity(64);
+	DString str = dstring::tnew_with_capacity(64);
 	if (nd < 1_000_000_000)
 	{
 		// Less than 1s: print milliseconds, microseconds and nanoseconds.

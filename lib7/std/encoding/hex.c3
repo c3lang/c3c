@@ -13,22 +13,21 @@ fn char[]! decode_buffer(char[] code, char[] buffer)
 	return buffer[:decode_bytes(code, buffer)!];
 }
 
-fn String encode(char[] code, Allocator allocator)
+fn String encode(Allocator allocator, char[] code)
 {
 	char[] data = allocator::alloc_array(allocator, char, encode_len(code.len));
 	return (String)data[:encode_bytes(code, data)];
 }
 
-fn char[]! decode(char[] code, Allocator allocator)
+fn char[]! decode(Allocator allocator, char[] code)
 {
 	char[] data = allocator::alloc_array(allocator, char, decode_len(code.len));
 	return data[:decode_bytes(code, data)!];
 }
 
-fn String encode_new(char[] code) @inline => encode(code, allocator::heap());
-fn String encode_temp(char[] code) @inline => encode(code, allocator::temp());
-fn char[]! decode_new(char[] code) @inline => decode(code, allocator::heap());
-fn char[]! decode_temp(char[] code) @inline => decode(code, allocator::temp());
+fn String tencode(char[] code) @inline => encode(tmem(), code);
+fn char[]! tdecode(char[] code) @inline => decode(tmem(), code);
+
 
 <*
  Calculate the size of the encoded data.

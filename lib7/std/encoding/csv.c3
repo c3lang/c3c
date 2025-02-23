@@ -38,26 +38,20 @@ fn void CsvReader.init(&self, InStream stream, String separator = ",")
 	self.stream = stream;
 	self.separator = separator;
 }
-
-fn CsvRow! CsvReader.read_new_row(self)
-{
-	return self.read_row(allocator::heap()) @inline;
-}
-
 <*
  @param [&inout] allocator
 *>
 fn CsvRow! CsvReader.read_row(self, Allocator allocator)
 {
-	String row = io::readline(self.stream, allocator: allocator)!;
+	String row = io::readline(allocator, self.stream)!;
 	defer catch allocator::free(allocator, row);
-	String[] list = row.split(self.separator, allocator: allocator);
+	String[] list = row.split(allocator, self.separator);
 	return { list, row, allocator };
 }
 
-fn CsvRow! CsvReader.read_temp_row(self)
+fn CsvRow! CsvReader.tread_row(self)
 {
-	return self.read_row(allocator::temp()) @inline;
+	return self.read_row(tmem()) @inline;
 }
 
 <*

@@ -9,7 +9,7 @@ import std::io::path, libc, std::os;
  @require name.len > 0
  @return! SearchResult.MISSING
 *>
-fn String! get_var(String name, Allocator allocator = allocator::heap()) => @pool(allocator)
+fn String! get_var(Allocator allocator, String name) => @pool(allocator)
 {
 
 	$switch
@@ -20,7 +20,7 @@ fn String! get_var(String name, Allocator allocator = allocator::heap()) => @poo
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable
 		const usz BUFSIZE = 1024;
 		WString buff = (WString)tcalloc(BUFSIZE * 2 + 2);
-		WString wstr = name.to_temp_wstring()!;
+		WString wstr = name.to_wstring_tcopy()!;
 		usz len = win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
 		if (len == 0) return SearchResult.MISSING?;
 		if (len > BUFSIZE)
@@ -28,15 +28,15 @@ fn String! get_var(String name, Allocator allocator = allocator::heap()) => @poo
 			buff = (WString)tmalloc(len * 2 + 2);
 			win32::getEnvironmentVariableW(wstr, buff, (Win32_DWORD)len);
 		}
-		return string::new_from_wstring(buff, allocator);
+		return string::new_from_wstring(allocator, buff);
 	$default:
 		return "";
 	$endswitch
 }
 
-fn String! get_var_temp(String name)
+fn String! tget_var(String name)
 {
-	return get_var(name, allocator::temp());
+	return get_var(tmem(), name);
 }
 
 <*
@@ -48,14 +48,14 @@ fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 {
 	$switch
 	$case env::WIN32:
-		WString wname = name.to_temp_wstring()!!;
+		WString wname = name.to_wstring_tcopy()!!;
 		if (!overwrite)
 		{
 			Char16[8] buff;
 			if (win32::getEnvironmentVariableW(wname, &buff, 8) > 0) return true;
 		}
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setenvironmentvariable
-		return (win32::setEnvironmentVariableW(wname, value.to_temp_wstring()) ?? 1) == 0;
+		return (win32::setEnvironmentVariableW(wname, value.to_wstring_tcopy()) ?? 1) == 0;
 	$case env::LIBC && !env::WIN32:
 		return libc::setenv(name.zstr_tcopy(), value.zstr_tcopy(), (int)overwrite) == 0;
 	$default:
@@ -74,7 +74,7 @@ fn String! get_home_dir(Allocator using = allocator::heap())
 	$else
 		home = "USERPROFILE";
 	$endif
-	return get_var(home, using);
+	return get_var(using, home);
 }
 
 fn Path! get_config_dir(Allocator allocator = allocator::heap()) @deprecated("use new_get_config_dir()")
@@ -85,19 +85,19 @@ fn Path! get_config_dir(Allocator allocator = allocator::heap()) @deprecated("us
 <*
 Returns the current user's config directory.
 *>
-fn Path! new_get_config_dir(Allocator allocator = allocator::heap()) => @pool(allocator)
+fn Path! new_get_config_dir(Allocator allocator) => @pool(allocator)
 {
 	$if env::WIN32:
-		return path::new(get_var_temp("AppData"), allocator);
+		return path::new(allocator, tget_var("AppData"));
 	$else
 		$if env::DARWIN:
-			String s = get_var_temp("HOME")!;
+			String s = tget_var("HOME")!;
 			const DIR = "Library/Application Support";
 		$else
-			String s = get_var_temp("XDG_CONFIG_HOME") ?? get_var_temp("HOME")!;
+			String s = tget_var("XDG_CONFIG_HOME") ?? tget_var("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::temp_new(s).new_append(DIR, allocator: allocator);
+		return path::tnew(s).append(allocator, DIR);
 	$endif
 }
 
@@ -110,7 +110,7 @@ fn bool clear_var(String name) => @pool()
 {
 	$switch
 	$case env::WIN32:
-		WString wname = name.to_temp_wstring()!!;
+		WString wname = name.to_wstring_tcopy()!!;
 		return win32::setEnvironmentVariableW(wname, null) == 0;
 	$case env::LIBC && !env::WIN32:
 		return libc::unsetenv(name.zstr_tcopy()) == 0;
@@ -119,12 +119,7 @@ fn bool clear_var(String name) => @pool()
 	$endswitch
 }
 
-fn String! executable_path(Allocator allocator = allocator::heap()) @deprecated("use new_executable_path()")
-{
-	return new_executable_path(allocator) @inline;
-}
-
-fn String! new_executable_path(Allocator allocator = allocator::heap())
+fn String! executable_path(Allocator allocator)
 {
 	$if env::DARWIN:
 		return darwin::executable_path(allocator);
