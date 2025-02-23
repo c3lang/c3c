@@ -1,0 +1,1 @@
+import "Hello my friend"; // #error: An import should be followed by a plain identifier, not a string. Did you accidentally put the module name between ""?

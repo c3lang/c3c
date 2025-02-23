@@ -1,0 +1,70 @@
+// #target: macos-aarch64
+module test;
+
+fn void test1()
+{
+	switch (0) @jump
+    {
+        case 0:
+            break;
+        default:
+	}
+}
+
+enum Foo { A, B, }
+
+fn void main()
+{
+	test1();
+	switch (Foo.A) @jump
+	{
+        default:
+			break;
+	}
+}
+
+/* #expect: test.ll
+
+@jumptable = private unnamed_addr constant [1 x ptr] [ptr blockaddress(@test.test1, %switch.case)], align 4
+
+define void @test.test1() #0 {
+entry:
+  %switch = alloca i32, align 4
+  store i32 0, ptr %switch, align 4
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %0 = load i32, ptr %switch, align 4
+  %1 = icmp ugt i32 %0, 0
+  br i1 %1, label %switch.exit, label %jumpblock
+
+jumpblock:                                        ; preds = %switch.entry
+  %ptroffset = getelementptr inbounds [8 x i8], ptr @jumptable, i32 %0
+  %target = load ptr, ptr %ptroffset, align 8
+  indirectbr ptr %target, [label %switch.case]
+
+switch.case:                                      ; preds = %jumpblock
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.case, %switch.entry
+  ret void
+}
+
+define void @test.main() #0 {
+entry:
+  %switch = alloca i32, align 4
+  call void @test.test1()
+  store i32 0, ptr %switch, align 4
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %0 = load i32, ptr %switch, align 4
+  switch i32 %0, label %switch.default [
+  ]
+
+switch.default:                                   ; preds = %switch.entry
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default
+  ret void
+}

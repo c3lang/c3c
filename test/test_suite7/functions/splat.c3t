@@ -1,0 +1,43 @@
+// #target: macos-x64
+module splat;
+
+extern fn int sum_us(int... x);
+
+fn void test()
+{
+    sum_us(1, 2, 3);
+    int[3] x = { 1, 2, 3 };
+    int[] z = &x;
+    sum_us(...x);
+    sum_us(...z);
+    sum_us();
+}
+
+/* #expect: splat.ll
+
+
+declare i32 @sum_us(ptr, i64) #0
+
+  %varargslots = alloca [3 x i32], align 4
+  %x = alloca [3 x i32], align 4
+  %z = alloca %"int[]", align 8
+  store i32 1, ptr %varargslots, align 4
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 4
+  store i32 2, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 8
+  store i32 3, ptr %ptradd1, align 4
+  %0 = call i32 @sum_us(ptr %varargslots, i64 3)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  %1 = insertvalue %"int[]" undef, ptr %x, 0
+  %2 = insertvalue %"int[]" %1, i64 3, 1
+  store %"int[]" %2, ptr %z, align 8
+  %3 = insertvalue %"int[]" undef, ptr %x, 0
+  %4 = insertvalue %"int[]" %3, i64 3, 1
+  %5 = call i32 @sum_us(ptr %x, i64 3)
+  %lo = load ptr, ptr %z, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %z, i64 8
+  %hi = load i64, ptr %ptradd2, align 8
+  %6 = call i32 @sum_us(ptr %lo, i64 %hi)
+  %7 = call i32 @sum_us(ptr null, i64 0)
+  ret void
+}

@@ -1,0 +1,179 @@
+// #target: macos-x64
+module test;
+import std;
+
+def Abc = HashMap(<int, int>);
+Abc m;
+fn void main()
+{
+	m[3] = 100;
+	int! x = m[3]--;
+	assert(m[3]!! == 99);
+	assert(x!! == 100);
+	x = ++m[3];
+	assert(m[3]!! == 100);
+	assert(x!! == 100);
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca i32, align 4
+  %x.f = alloca i64, align 8
+  %.anon = alloca i32, align 4
+  %anon.f = alloca i64, align 8
+  %retparam = alloca i32, align 4
+  %.anon1 = alloca i32, align 4
+  %anon.f2 = alloca i64, align 8
+  %.anon18 = alloca i32, align 4
+  %anon.f19 = alloca i64, align 8
+  %retparam20 = alloca i32, align 4
+  %.anon27 = alloca i32, align 4
+  %anon.f28 = alloca i64, align 8
+  %0 = call i8 @"std_collections_map$int$int$.HashMap.set"(ptr @test.m, i32 3, i32 100)
+  %1 = call i64 @"std_collections_map$int$int$.HashMap.get"(ptr %retparam, ptr @test.m, i32 3)
+  %not_err = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %1, ptr %anon.f, align 8
+  br label %optional_assign_jump
+
+after_check:                                      ; preds = %entry
+  %3 = load i32, ptr %retparam, align 4
+  store i32 %3, ptr %.anon, align 4
+  store i64 0, ptr %anon.f, align 8
+  br label %after_assign
+
+optional_assign_jump:                             ; preds = %assign_optional
+  %reload_err = load i64, ptr %anon.f, align 8
+  store i64 %reload_err, ptr %x.f, align 8
+  br label %after_assign17
+
+after_assign:                                     ; preds = %after_check
+  %optval = load i64, ptr %anon.f, align 8
+  %not_err3 = icmp eq i64 %optval, 0
+  %4 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %4, label %after_check5, label %assign_optional4
+
+assign_optional4:                                 ; preds = %after_assign
+  store i64 %optval, ptr %anon.f2, align 8
+  br label %optional_assign_jump6
+
+after_check5:                                     ; preds = %after_assign
+  %5 = load i32, ptr %.anon, align 4
+  %sub = sub i32 %5, 1
+  store i32 %sub, ptr %.anon, align 4
+  store i32 %5, ptr %.anon1, align 4
+  store i64 0, ptr %anon.f2, align 8
+  br label %after_assign8
+
+optional_assign_jump6:                            ; preds = %assign_optional4
+  %reload_err7 = load i64, ptr %anon.f2, align 8
+  store i64 %reload_err7, ptr %x.f, align 8
+  br label %after_assign17
+
+after_assign8:                                    ; preds = %after_check5
+  %optval9 = load i64, ptr %anon.f, align 8
+  %not_err10 = icmp eq i64 %optval9, 0
+  %6 = call i1 @llvm.expect.i1(i1 %not_err10, i1 true)
+  br i1 %6, label %after_check12, label %assign_optional11
+
+assign_optional11:                                ; preds = %after_assign8
+  store i64 %optval9, ptr %x.f, align 8
+  br label %after_assign17
+
+after_check12:                                    ; preds = %after_assign8
+  %7 = load i32, ptr %.anon, align 4
+  %8 = call i8 @"std_collections_map$int$int$.HashMap.set"(ptr @test.m, i32 3, i32 %7)
+  %optval13 = load i64, ptr %anon.f2, align 8
+  %not_err14 = icmp eq i64 %optval13, 0
+  %9 = call i1 @llvm.expect.i1(i1 %not_err14, i1 true)
+  br i1 %9, label %after_check16, label %assign_optional15
+
+assign_optional15:                                ; preds = %after_check12
+  store i64 %optval13, ptr %x.f, align 8
+  br label %after_assign17
+
+after_check16:                                    ; preds = %after_check12
+  %10 = load i32, ptr %.anon1, align 4
+  store i32 %10, ptr %x, align 4
+  store i64 0, ptr %x.f, align 8
+  br label %after_assign17
+
+after_assign17:                                   ; preds = %after_check16, %assign_optional15, %assign_optional11, %optional_assign_jump6, %optional_assign_jump
+  %11 = call i64 @"std_collections_map$int$int$.HashMap.get"(ptr %retparam20, ptr @test.m, i32 3)
+  %not_err21 = icmp eq i64 %11, 0
+  %12 = call i1 @llvm.expect.i1(i1 %not_err21, i1 true)
+  br i1 %12, label %after_check23, label %assign_optional22
+
+assign_optional22:                                ; preds = %after_assign17
+  store i64 %11, ptr %anon.f19, align 8
+  br label %optional_assign_jump24
+
+after_check23:                                    ; preds = %after_assign17
+  %13 = load i32, ptr %retparam20, align 4
+  store i32 %13, ptr %.anon18, align 4
+  store i64 0, ptr %anon.f19, align 8
+  br label %after_assign26
+
+optional_assign_jump24:                           ; preds = %assign_optional22
+  %reload_err25 = load i64, ptr %anon.f19, align 8
+  store i64 %reload_err25, ptr %x.f, align 8
+  br label %after_assign44
+
+after_assign26:                                   ; preds = %after_check23
+  %optval29 = load i64, ptr %anon.f19, align 8
+  %not_err30 = icmp eq i64 %optval29, 0
+  %14 = call i1 @llvm.expect.i1(i1 %not_err30, i1 true)
+  br i1 %14, label %after_check32, label %assign_optional31
+
+assign_optional31:                                ; preds = %after_assign26
+  store i64 %optval29, ptr %anon.f28, align 8
+  br label %optional_assign_jump33
+
+after_check32:                                    ; preds = %after_assign26
+  %15 = load i32, ptr %.anon18, align 4
+  %add = add i32 %15, 1
+  store i32 %add, ptr %.anon18, align 4
+  store i32 %add, ptr %.anon27, align 4
+  store i64 0, ptr %anon.f28, align 8
+  br label %after_assign35
+
+optional_assign_jump33:                           ; preds = %assign_optional31
+  %reload_err34 = load i64, ptr %anon.f28, align 8
+  store i64 %reload_err34, ptr %x.f, align 8
+  br label %after_assign44
+
+after_assign35:                                   ; preds = %after_check32
+  %optval36 = load i64, ptr %anon.f19, align 8
+  %not_err37 = icmp eq i64 %optval36, 0
+  %16 = call i1 @llvm.expect.i1(i1 %not_err37, i1 true)
+  br i1 %16, label %after_check39, label %assign_optional38
+
+assign_optional38:                                ; preds = %after_assign35
+  store i64 %optval36, ptr %x.f, align 8
+  br label %after_assign44
+
+after_check39:                                    ; preds = %after_assign35
+  %17 = load i32, ptr %.anon18, align 4
+  %18 = call i8 @"std_collections_map$int$int$.HashMap.set"(ptr @test.m, i32 3, i32 %17)
+  %optval40 = load i64, ptr %anon.f28, align 8
+  %not_err41 = icmp eq i64 %optval40, 0
+  %19 = call i1 @llvm.expect.i1(i1 %not_err41, i1 true)
+  br i1 %19, label %after_check43, label %assign_optional42
+
+assign_optional42:                                ; preds = %after_check39
+  store i64 %optval40, ptr %x.f, align 8
+  br label %after_assign44
+
+after_check43:                                    ; preds = %after_check39
+  %20 = load i32, ptr %.anon27, align 4
+  store i32 %20, ptr %x, align 4
+  store i64 0, ptr %x.f, align 8
+  br label %after_assign44
+
+after_assign44:                                   ; preds = %after_check43, %assign_optional42, %assign_optional38, %optional_assign_jump33, %optional_assign_jump24
+  ret void
+}

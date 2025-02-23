@@ -1,0 +1,34 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+	Enum e = ENUM1;
+	ushort x = (ushort)(Foo){ .x = e };
+	Foo z = (Foo)(ushort)(Foo) { .x = e };
+}
+
+enum Enum : char
+{
+	ENUM1,
+}
+
+bitstruct Foo : ushort
+{
+	Enum x : 0..7;
+}
+
+/* #expect: test.ll
+
+  %e = alloca i8, align 1
+  %x = alloca i16, align 2
+  %z = alloca i16, align 2
+  store i8 0, ptr %e, align 1
+  %0 = load i8, ptr %e, align 1
+  %zext = zext i8 %0 to i16
+  %1 = and i16 %zext, 255
+  store i16 %1, ptr %x, align 2
+  %2 = load i8, ptr %e, align 1
+  %zext1 = zext i8 %2 to i16
+  %3 = and i16 %zext1, 255
+  store i16 %3, ptr %z, align 2

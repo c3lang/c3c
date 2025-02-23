@@ -1,0 +1,43 @@
+// #target: macos-x64
+
+fn void test1()
+{
+    char a = 1;
+    int b = 2;
+    char c = b > a ? 1u8 : 0u8;
+    int d = b ?: 1;
+}
+
+/* #expect: comparison_widening.ll
+
+define void @comparison_widening.test1() #0 {
+entry:
+  %a = alloca i8, align 1
+  %b = alloca i32, align 4
+  %c = alloca i8, align 1
+  %d = alloca i32, align 4
+  store i8 1, ptr %a, align 1
+  store i32 2, ptr %b, align 4
+  %0 = load i32, ptr %b, align 4
+  %1 = load i8, ptr %a, align 1
+  %zext = zext i8 %1 to i32
+  %gt = icmp sgt i32 %0, %zext
+  %check = icmp sge i32 %zext, 0
+  %siui-gt = and i1 %check, %gt
+  %ternary = select i1 %siui-gt, i8 1, i8 0
+  store i8 %ternary, ptr %c, align 1
+  %2 = load i32, ptr %b, align 4
+  %i2b = icmp ne i32 %2, 0
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %entry
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %entry
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi i32 [ %2, %cond.lhs ], [ 1, %cond.rhs ]
+  store i32 %val, ptr %d, align 4
+  ret void
+}

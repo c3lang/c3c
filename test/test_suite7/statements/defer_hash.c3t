@@ -1,0 +1,45 @@
+import std::io;
+
+struct Version {
+	uint major;
+	uint minor;
+}
+
+fn void main()
+{
+	String s = "123.456";
+
+	Version v;
+	v.major = @read_int(s);
+	s = s[1..];
+	v.minor = @read_int(s);
+
+	io::printfn("Version{.major = %d, .minor = %d}", v.major, v.minor);
+}
+
+<*
+	@require values::@is_lvalue(#s)
+*>
+macro int @read_int(String #s)
+{
+	int res = 0;
+	int i = 0;
+
+	String s = #s;
+	defer #s = s[i..]; // commenting out this lines leads to a successful compilation
+
+	while (i < s.len && s[i].is_space())
+	{
+		++i;
+	}
+
+	if (i >= s.len) return res;
+
+	char c;
+	while (i < s.len && (c = s[i]).is_digit())
+	{
+		res = (10 * res) + (c - '0');
+		++i;
+	}
+	return res;
+}

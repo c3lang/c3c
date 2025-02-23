@@ -1,0 +1,31 @@
+// #target: macos-x64
+fn int foo()
+{
+    return 1;
+}
+
+fn void test()
+{
+    int x = foo();
+    if (x > 0) return;
+    unreachable();
+}
+
+
+/* #expect: unreachable.ll
+
+define void @unreachable.test() #0 {
+entry:
+  %x = alloca i32, align 4
+  %0 = call i32 @unreachable.foo()
+  store i32 %0, ptr %x, align 4
+  %1 = load i32, ptr %x, align 4
+  %gt = icmp sgt i32 %1, 0
+  br i1 %gt, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret void
+
+if.exit:                                          ; preds = %entry
+  unreachable
+}

@@ -1,0 +1,27 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+distinct Foo = int;
+fn void Foo.test(&self) {}
+fn int main()
+{
+	Foo* a = null;
+	a.test();
+    return 0;
+}
+/* #expect: test.ll
+
+define void @test.Foo.test(ptr %0) #0 {
+entry:
+  %1 = icmp eq ptr %0, null
+  %2 = call i1 @llvm.expect.i1(i1 %1, i1 false)
+  br i1 %2, label %panic, label %checkok
+
+checkok:                                          ; preds = %entry
+  ret void
+
+panic:                                            ; preds = %entry
+  %3 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %3(ptr @.panic_msg, i64 62, ptr @.file, i64 20, ptr @.func, i64 4, i32 3)
+  unreachable
+}

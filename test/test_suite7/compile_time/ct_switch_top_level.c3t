@@ -1,0 +1,52 @@
+// #target: macos-x64
+module test;
+
+extern fn void printf(char*, ...);
+
+macro tester()
+{
+    var $Type = int;
+    $switch ($Type)
+    $case int:
+        printf("Hello\n");
+        int z = 0;
+    $default:
+        int j = 213;
+    $endswitch
+
+}
+
+const BOOL_TYPEID = bool.typeid;
+int oefke @if(BOOL_TYPEID == int.typeid) = 23;
+int oeoekgokege @if(BOOL_TYPEID != int.typeid) = 343432;
+
+fn int main()
+{
+    tester();
+    tester();
+    int i = 1;
+    return 1;
+}
+
+/* #expect: test.ll
+
+source_filename = "test"
+target datalayout = "e-m:o-p270:32:32-p271:32
+target triple = "x86_64-apple
+
+@test.oeoekgokege = local_unnamed_addr global i32 343432, align 4
+@.str = private unnamed_addr constant [7 x i8] c"Hello\0A\00", align 1
+@.str.2 = private unnamed_addr constant [7 x i8] c"Hello\0A\00", align 1
+
+define i32 @main() #0 {
+entry:
+  %z = alloca i32, align 4
+  %z1 = alloca i32, align 4
+  %i = alloca i32, align 4
+  call void (ptr, ...) @printf(ptr @.str)
+  store i32 0, ptr %z, align 4
+  call void (ptr, ...) @printf(ptr @.str.2)
+  store i32 0, ptr %z1, align 4
+  store i32 1, ptr %i, align 4
+  ret i32 1
+}

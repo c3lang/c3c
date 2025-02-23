@@ -1,0 +1,65 @@
+// #target: macos-x64
+module test;
+struct Foo
+{
+	int[30] a;
+}
+
+fn void test()
+{
+	int! a = 0;
+	Foo! b = {};
+	Foo c;
+
+	int e = a ?? 1;
+	Foo d = b ?? c;
+	return;
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  %a = alloca i32, align 4
+  %a.f = alloca i64, align 8
+  %b = alloca %Foo, align 4
+  %b.f = alloca i64, align 8
+  %c = alloca %Foo, align 4
+  %e = alloca i32, align 4
+  %d = alloca %Foo, align 4
+  store i32 0, ptr %a, align 4
+  store i64 0, ptr %a.f, align 8
+  call void @llvm.memset.p0.i64(ptr align 4 %b, i8 0, i64 120, i1 false)
+  store i64 0, ptr %b.f, align 8
+  call void @llvm.memset.p0.i64(ptr align 4 %c, i8 0, i64 120, i1 false)
+  %optval = load i64, ptr %a.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %0, label %after_check, label %else_block
+
+after_check:                                      ; preds = %entry
+  %1 = load i32, ptr %a, align 4
+  br label %phi_block
+
+else_block:                                       ; preds = %entry
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %after_check
+  %val = phi i32 [ %1, %after_check ], [ 1, %else_block ]
+  store i32 %val, ptr %e, align 4
+  %optval1 = load i64, ptr %b.f, align 8
+  %not_err2 = icmp eq i64 %optval1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
+  br i1 %2, label %after_check3, label %else_block4
+
+after_check3:                                     ; preds = %phi_block
+  br label %phi_block5
+
+else_block4:                                      ; preds = %phi_block
+  br label %phi_block5
+
+phi_block5:                                       ; preds = %else_block4, %after_check3
+  %val6 = phi ptr [ %b, %after_check3 ], [ %c, %else_block4 ]
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %d, ptr align 8 %val6, i32 120, i1 false)
+  ret void
+}

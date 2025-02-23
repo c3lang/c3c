@@ -1,0 +1,51 @@
+// #target: macos-x64
+module test;
+
+fn int main()
+{
+	char[] x = x'00aabbcc';
+	bool text = x == x'00aabbcc';
+	char[] $x = x'00aabbcc';
+	bool $y = $x == x'00aabbcc';
+    return (int)$y;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca %"char[]", align 8
+  %text = alloca i8, align 1
+  %cmp.idx = alloca i64, align 8
+  store %"char[]" { ptr @.bytes, i64 4 }, ptr %x, align 8
+  %0 = load %"char[]", ptr %x, align 8
+  %1 = extractvalue %"char[]" %0, 1
+  %2 = extractvalue %"char[]" %0, 0
+  %eq = icmp eq i64 %1, 4
+  br i1 %eq, label %slice_cmp_values, label %slice_cmp_exit
+
+slice_cmp_values:                                 ; preds = %entry
+  store i64 0, ptr %cmp.idx, align 8
+  br label %slice_loop_start
+
+slice_loop_start:                                 ; preds = %slice_loop_comparison, %slice_cmp_values
+  %3 = load i64, ptr %cmp.idx, align 8
+  %lt = icmp slt i64 %3, %1
+  br i1 %lt, label %slice_loop_comparison, label %slice_cmp_exit
+
+slice_loop_comparison:                            ; preds = %slice_loop_start
+  %ptradd = getelementptr inbounds i8, ptr %2, i64 %3
+  %ptradd1 = getelementptr inbounds i8, ptr @.bytes.1, i64 %3
+  %4 = load i8, ptr %ptradd, align 1
+  %5 = load i8, ptr %ptradd1, align 1
+  %eq2 = icmp eq i8 %4, %5
+  %6 = add i64 %3, 1
+  store i64 %6, ptr %cmp.idx, align 8
+  br i1 %eq2, label %slice_loop_start, label %slice_cmp_exit
+
+slice_cmp_exit:                                   ; preds = %slice_loop_comparison, %slice_loop_start, %entry
+  %slice_cmp_phi = phi i1 [ true, %slice_loop_start ], [ false, %entry ], [ false, %slice_loop_comparison ]
+  %7 = zext i1 %slice_cmp_phi to i8
+  store i8 %7, ptr %text, align 1
+  ret i32 1
+}

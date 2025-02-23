@@ -1,0 +1,47 @@
+// #target: macos-x64
+module test;
+
+struct Foo { int a; struct { int b; int c; }}
+fn int main()
+{
+	var $z = { { 1, 2 }, {  }};
+	int[2][] z = $z;
+	int[2][2] z_slice = $z;
+	var $c = { 1, { 3, 4 }};
+	var $d = { 1, 2 };
+	Foo f = $c;
+	int[?] y = $d;
+	return 0;
+}
+
+/* #expect: test.ll
+
+@.__const = private unnamed_addr constant %Foo { i32 1, %.anon { i32 3, i32 4 } }, align 4
+@.__const.2 = private unnamed_addr constant [2 x i32] [i32 1, i32 2], align 4
+
+entry:
+  %z = alloca %"int[2][]", align 8
+  %literal = alloca [2 x [2 x i32]], align 16
+  %z_slice = alloca [2 x [2 x i32]], align 16
+  %f = alloca %Foo, align 4
+  %y = alloca [2 x i32], align 4
+  store i32 1, ptr %literal, align 4
+  %ptradd = getelementptr inbounds i8, ptr %literal, i64 4
+  store i32 2, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %literal, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %ptradd1, i64 4
+  store i32 0, ptr %ptradd2, align 4
+  %0 = insertvalue %"int[2][]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[2][]" %0, i64 2, 1
+  store %"int[2][]" %1, ptr %z, align 8
+  store i32 1, ptr %z_slice, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %z_slice, i64 4
+  store i32 2, ptr %ptradd3, align 4
+  %ptradd4 = getelementptr inbounds i8, ptr %z_slice, i64 8
+  store i32 0, ptr %ptradd4, align 4
+  %ptradd5 = getelementptr inbounds i8, ptr %ptradd4, i64 4
+  store i32 0, ptr %ptradd5, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %f, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const.2, i32 8, i1 false)
+  ret i32 0

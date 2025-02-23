@@ -1,0 +1,15 @@
+// #target: elf-riscv64
+module test;
+
+fn void main(String[] args)
+{
+	int x = 2;
+	asm
+	{
+		li $s1, -9223372036854775808;
+	}
+}
+
+/* #expect: test.ll
+
+"li s1, -9223372036854775808\0A", "~{x9}"()

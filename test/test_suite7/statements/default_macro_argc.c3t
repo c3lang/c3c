@@ -1,0 +1,287 @@
+// #target: linux-x64
+module test;
+import std, test2;
+
+int[2] x;
+
+macro @test2(#a = x[1])
+{
+	#a = 123;
+}
+macro test($Type = int)  { io::printn($Type.nameof); }
+
+fn void testme() { io::printn("Testme"); }
+macro @test3(#foo = testme()) => #foo;
+
+fn void main()
+{
+	test();
+	@test2();
+	@test3();
+	io::printn(x);
+	test2::test();
+	test2::@test2();
+	test2::@test3();
+	io::printn(test2::x);
+
+}
+
+module test2;
+import std;
+
+int[2] x;
+
+macro @test2(#a = x[1])
+{
+	#a = 12;
+}
+macro test($Type = double)  { io::printn($Type.nameof); }
+
+fn void testme() { io::printn("Testme2"); }
+macro @test3(#foo = testme()) => #foo;
+
+/* #expect: test.ll
+
+
+define void @test.main() #0 {
+entry:
+  %len = alloca i64, align 8
+  %error_var = alloca i64, align 8
+  %retparam = alloca i64, align 8
+  %error_var2 = alloca i64, align 8
+  %error_var8 = alloca i64, align 8
+  %x = alloca [2 x i32], align 4
+  %x14 = alloca [2 x i32], align 4
+  %len15 = alloca i64, align 8
+  %error_var16 = alloca i64, align 8
+  %x17 = alloca [2 x i32], align 4
+  %varargslots = alloca [1 x %any], align 16
+  %retparam19 = alloca i64, align 8
+  %taddr = alloca %any, align 8
+  %indirectarg = alloca %"any[]", align 8
+  %error_var25 = alloca i64, align 8
+  %error_var31 = alloca i64, align 8
+  %len39 = alloca i64, align 8
+  %error_var40 = alloca i64, align 8
+  %retparam42 = alloca i64, align 8
+  %error_var48 = alloca i64, align 8
+  %error_var54 = alloca i64, align 8
+  %x62 = alloca [2 x i32], align 4
+  %x63 = alloca [2 x i32], align 4
+  %len64 = alloca i64, align 8
+  %error_var65 = alloca i64, align 8
+  %x66 = alloca [2 x i32], align 4
+  %varargslots68 = alloca [1 x %any], align 16
+  %retparam70 = alloca i64, align 8
+  %taddr71 = alloca %any, align 8
+  %indirectarg75 = alloca %"any[]", align 8
+  %error_var81 = alloca i64, align 8
+  %error_var87 = alloca i64, align 8
+  %0 = call ptr @std.io.stdout()
+  %1 = call i64 @std.io.File.write(ptr %retparam, ptr %0, ptr @.str.1, i64 3)
+  %not_err = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+assign_optional:                                  ; preds = %entry
+  store i64 %1, ptr %error_var, align 8
+  br label %guard_block
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+guard_block:                                      ; preds = %assign_optional
+  br label %voiderr
+noerr_block:                                      ; preds = %after_check
+  %3 = load i64, ptr %retparam, align 8
+  store i64 %3, ptr %len, align 8
+  %4 = call i64 @std.io.File.write_byte(ptr %0, i8 zeroext 10)
+  %not_err3 = icmp eq i64 %4, 0
+  %5 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %5, label %after_check5, label %assign_optional4
+assign_optional4:                                 ; preds = %noerr_block
+  store i64 %4, ptr %error_var2, align 8
+  br label %guard_block6
+after_check5:                                     ; preds = %noerr_block
+  br label %noerr_block7
+guard_block6:                                     ; preds = %assign_optional4
+  br label %voiderr
+noerr_block7:                                     ; preds = %after_check5
+  %6 = call i64 @std.io.File.flush(ptr %0)
+  %not_err9 = icmp eq i64 %6, 0
+  %7 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %7, label %after_check11, label %assign_optional10
+assign_optional10:                                ; preds = %noerr_block7
+  store i64 %6, ptr %error_var8, align 8
+  br label %guard_block12
+after_check11:                                    ; preds = %noerr_block7
+  br label %noerr_block13
+guard_block12:                                    ; preds = %assign_optional10
+  br label %voiderr
+noerr_block13:                                    ; preds = %after_check11
+  %8 = load i64, ptr %len, align 8
+  %add = add i64 %8, 1
+  br label %voiderr
+voiderr:                                          ; preds = %noerr_block13, %guard_block12, %guard_block6, %guard_block
+  store i32 123, ptr getelementptr inbounds (i8, ptr @test.x, i64 4), align 4
+  call void @test.testme()
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @test.x, i32 8, i1 false)
+  %9 = call ptr @std.io.stdout()
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x14, ptr align 4 %x, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x17, ptr align 4 %x14, i32 8, i1 false)
+  %10 = insertvalue %any undef, ptr %9, 0
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
+  %12 = insertvalue %any undef, ptr %x17, 0
+  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.a2$int" to i64), 1
+  store %any %13, ptr %varargslots, align 16
+  %14 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %14, i64 1, 1
+  store %any %11, ptr %taddr, align 8
+  %lo = load i64, ptr %taddr, align 8
+  %ptradd = getelementptr inbounds i8, ptr %taddr, i64 8
+  %hi = load ptr, ptr %ptradd, align 8
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  %15 = call i64 @std.io.fprintf(ptr %retparam19, i64 %lo, ptr %hi, ptr @.str.2, i64 2, ptr byval(%"any[]") align 8 %indirectarg)
+  %not_err20 = icmp eq i64 %15, 0
+  %16 = call i1 @llvm.expect.i1(i1 %not_err20, i1 true)
+  br i1 %16, label %after_check22, label %assign_optional21
+assign_optional21:                                ; preds = %voiderr
+  store i64 %15, ptr %error_var16, align 8
+  br label %guard_block23
+after_check22:                                    ; preds = %voiderr
+  br label %noerr_block24
+guard_block23:                                    ; preds = %assign_optional21
+  br label %voiderr38
+noerr_block24:                                    ; preds = %after_check22
+  %17 = load i64, ptr %retparam19, align 8
+  store i64 %17, ptr %len15, align 8
+  %18 = call i64 @std.io.File.write_byte(ptr %9, i8 zeroext 10)
+  %not_err26 = icmp eq i64 %18, 0
+  %19 = call i1 @llvm.expect.i1(i1 %not_err26, i1 true)
+  br i1 %19, label %after_check28, label %assign_optional27
+assign_optional27:                                ; preds = %noerr_block24
+  store i64 %18, ptr %error_var25, align 8
+  br label %guard_block29
+after_check28:                                    ; preds = %noerr_block24
+  br label %noerr_block30
+guard_block29:                                    ; preds = %assign_optional27
+  br label %voiderr38
+noerr_block30:                                    ; preds = %after_check28
+  %20 = call i64 @std.io.File.flush(ptr %9)
+  %not_err32 = icmp eq i64 %20, 0
+  %21 = call i1 @llvm.expect.i1(i1 %not_err32, i1 true)
+  br i1 %21, label %after_check34, label %assign_optional33
+assign_optional33:                                ; preds = %noerr_block30
+  store i64 %20, ptr %error_var31, align 8
+  br label %guard_block35
+after_check34:                                    ; preds = %noerr_block30
+  br label %noerr_block36
+guard_block35:                                    ; preds = %assign_optional33
+  br label %voiderr38
+noerr_block36:                                    ; preds = %after_check34
+  %22 = load i64, ptr %len15, align 8
+  %add37 = add i64 %22, 1
+  br label %voiderr38
+voiderr38:                                        ; preds = %noerr_block36, %guard_block35, %guard_block29, %guard_block23
+  %23 = call ptr @std.io.stdout()
+  %24 = call i64 @std.io.File.write(ptr %retparam42, ptr %23, ptr @.str.3, i64 6)
+  %not_err43 = icmp eq i64 %24, 0
+  %25 = call i1 @llvm.expect.i1(i1 %not_err43, i1 true)
+  br i1 %25, label %after_check45, label %assign_optional44
+assign_optional44:                                ; preds = %voiderr38
+  store i64 %24, ptr %error_var40, align 8
+  br label %guard_block46
+after_check45:                                    ; preds = %voiderr38
+  br label %noerr_block47
+guard_block46:                                    ; preds = %assign_optional44
+  br label %voiderr61
+noerr_block47:                                    ; preds = %after_check45
+  %26 = load i64, ptr %retparam42, align 8
+  store i64 %26, ptr %len39, align 8
+  %27 = call i64 @std.io.File.write_byte(ptr %23, i8 zeroext 10)
+  %not_err49 = icmp eq i64 %27, 0
+  %28 = call i1 @llvm.expect.i1(i1 %not_err49, i1 true)
+  br i1 %28, label %after_check51, label %assign_optional50
+assign_optional50:                                ; preds = %noerr_block47
+  store i64 %27, ptr %error_var48, align 8
+  br label %guard_block52
+after_check51:                                    ; preds = %noerr_block47
+  br label %noerr_block53
+guard_block52:                                    ; preds = %assign_optional50
+  br label %voiderr61
+noerr_block53:                                    ; preds = %after_check51
+  %29 = call i64 @std.io.File.flush(ptr %23)
+  %not_err55 = icmp eq i64 %29, 0
+  %30 = call i1 @llvm.expect.i1(i1 %not_err55, i1 true)
+  br i1 %30, label %after_check57, label %assign_optional56
+assign_optional56:                                ; preds = %noerr_block53
+  store i64 %29, ptr %error_var54, align 8
+  br label %guard_block58
+after_check57:                                    ; preds = %noerr_block53
+  br label %noerr_block59
+guard_block58:                                    ; preds = %assign_optional56
+  br label %voiderr61
+noerr_block59:                                    ; preds = %after_check57
+  %31 = load i64, ptr %len39, align 8
+  %add60 = add i64 %31, 1
+  br label %voiderr61
+voiderr61:                                        ; preds = %noerr_block59, %guard_block58, %guard_block52, %guard_block46
+  store i32 12, ptr getelementptr inbounds (i8, ptr @test2.x, i64 4), align 4
+  call void @test2.testme()
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x62, ptr align 4 @test2.x, i32 8, i1 false)
+  %32 = call ptr @std.io.stdout()
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x63, ptr align 4 %x62, i32 8, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x66, ptr align 4 %x63, i32 8, i1 false)
+  %33 = insertvalue %any undef, ptr %32, 0
+  %34 = insertvalue %any %33, i64 ptrtoint (ptr @"$ct.std.io.File" to i64), 1
+  %35 = insertvalue %any undef, ptr %x66, 0
+  %36 = insertvalue %any %35, i64 ptrtoint (ptr @"$ct.a2$int" to i64), 1
+  store %any %36, ptr %varargslots68, align 16
+  %37 = insertvalue %"any[]" undef, ptr %varargslots68, 0
+  %"$$temp69" = insertvalue %"any[]" %37, i64 1, 1
+  store %any %34, ptr %taddr71, align 8
+  %lo72 = load i64, ptr %taddr71, align 8
+  %ptradd73 = getelementptr inbounds i8, ptr %taddr71, i64 8
+  %hi74 = load ptr, ptr %ptradd73, align 8
+  store %"any[]" %"$$temp69", ptr %indirectarg75, align 8
+  %38 = call i64 @std.io.fprintf(ptr %retparam70, i64 %lo72, ptr %hi74, ptr @.str.4, i64 2, ptr byval(%"any[]") align 8 %indirectarg75)
+  %not_err76 = icmp eq i64 %38, 0
+  %39 = call i1 @llvm.expect.i1(i1 %not_err76, i1 true)
+  br i1 %39, label %after_check78, label %assign_optional77
+assign_optional77:                                ; preds = %voiderr61
+  store i64 %38, ptr %error_var65, align 8
+  br label %guard_block79
+after_check78:                                    ; preds = %voiderr61
+  br label %noerr_block80
+guard_block79:                                    ; preds = %assign_optional77
+  br label %voiderr94
+noerr_block80:                                    ; preds = %after_check78
+  %40 = load i64, ptr %retparam70, align 8
+  store i64 %40, ptr %len64, align 8
+  %41 = call i64 @std.io.File.write_byte(ptr %32, i8 zeroext 10)
+  %not_err82 = icmp eq i64 %41, 0
+  %42 = call i1 @llvm.expect.i1(i1 %not_err82, i1 true)
+  br i1 %42, label %after_check84, label %assign_optional83
+assign_optional83:                                ; preds = %noerr_block80
+  store i64 %41, ptr %error_var81, align 8
+  br label %guard_block85
+after_check84:                                    ; preds = %noerr_block80
+  br label %noerr_block86
+guard_block85:                                    ; preds = %assign_optional83
+  br label %voiderr94
+noerr_block86:                                    ; preds = %after_check84
+  %43 = call i64 @std.io.File.flush(ptr %32)
+  %not_err88 = icmp eq i64 %43, 0
+  %44 = call i1 @llvm.expect.i1(i1 %not_err88, i1 true)
+  br i1 %44, label %after_check90, label %assign_optional89
+assign_optional89:                                ; preds = %noerr_block86
+  store i64 %43, ptr %error_var87, align 8
+  br label %guard_block91
+after_check90:                                    ; preds = %noerr_block86
+  br label %noerr_block92
+guard_block91:                                    ; preds = %assign_optional89
+  br label %voiderr94
+noerr_block92:                                    ; preds = %after_check90
+  %45 = load i64, ptr %len64, align 8
+  %add93 = add i64 %45, 1
+  br label %voiderr94
+voiderr94:                                        ; preds = %noerr_block92, %guard_block91, %guard_block85, %guard_block79
+  ret void
+}

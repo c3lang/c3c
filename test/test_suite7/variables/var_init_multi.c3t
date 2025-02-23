@@ -1,0 +1,28 @@
+// #target: macos-x64
+module test;
+fn int main()
+{
+	static int sx, sy;
+	tlocal int tx, ty;
+	int x, y;
+	int* z, w @noinit @align(16);
+	return x;
+}
+
+/* #expect: test.ll
+
+@main.sx = internal unnamed_addr global i32 0, align 4
+@main.sy = internal unnamed_addr global i32 0, align 4
+@main.tx = internal thread_local(localdynamic) unnamed_addr global i32 0, align 4
+@main.ty = internal thread_local(localdynamic) unnamed_addr global i32 0, align 4
+
+entry:
+  %x = alloca i32, align 4
+  %y = alloca i32, align 4
+  %z = alloca ptr, align 16
+  %w = alloca ptr, align 16
+  store i32 0, ptr %x, align 4
+  store i32 0, ptr %y, align 4
+  %0 = load i32, ptr %x, align 4
+  ret i32 %0
+}

@@ -1,0 +1,18 @@
+// #target: macos-x64
+
+// This will depend on platform source file line endings
+char *message2 = `
+  ``oh`` superman
+    where are you now?
+`;
+
+char *message3 = "Hfo\u0044ke";
+char *message4 = "\x64\x6f\x63\x75\x6d\x65\x6e\x74";
+
+
+/* #expect: multiline_strings.ll
+
+
+@.str = private unnamed_addr constant [41 x i8] c"\0A  `oh` superman\0A    where are you now?\0A\00", align 1
+@.str.3 = private unnamed_addr constant [7 x i8] c"HfoDke\00", align 1
+@.str.4 = private unnamed_addr constant [9 x i8] c"document\00", align 1

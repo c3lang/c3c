@@ -1,0 +1,34 @@
+// #target: linux-aarch64
+module literal_load;
+
+struct Test
+{
+    int x;
+}
+
+Test foo = {};
+
+extern fn void blorg(Test t);
+
+fn Test creator()
+{
+    blorg((Test){});
+    return (Test){};
+}
+
+/* #expect: literal_load.ll
+
+declare void @blorg(i64) #0
+
+define i32 @literal_load.creator() #0 {
+entry:
+  %literal = alloca %Test, align 4
+  %literal1 = alloca %Test, align 4
+  store i32 0, ptr %literal, align 4
+  %0 = load i32, ptr %literal, align 4
+  %1 = zext i32 %0 to i64
+  call void @blorg(i64 %1)
+  store i32 0, ptr %literal1, align 4
+  %2 = load i32, ptr %literal1, align 4
+  ret i32 %2
+}

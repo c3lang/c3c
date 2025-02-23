@@ -1,0 +1,35 @@
+// #target: macos-x64
+module test;
+import std;
+
+enum Abc
+{
+	ABCD,
+	OKFEOFKE,
+	OFKEOFK
+}
+
+distinct Bob = inline Abc;
+fn void main()
+{
+	Abc y;
+	y += 1;
+	Bob gh;
+	gh += 1;
+}
+
+/* #expect: test.ll
+
+entry:
+  %y = alloca i32, align 4
+  %gh = alloca i32, align 4
+  store i32 0, ptr %y, align 4
+  %0 = load i32, ptr %y, align 4
+  %add = add i32 %0, 1
+  store i32 %add, ptr %y, align 4
+  store i32 0, ptr %gh, align 4
+  %1 = load i32, ptr %gh, align 4
+  %add1 = add i32 %1, 1
+  store i32 %add1, ptr %gh, align 4
+  ret void
+}

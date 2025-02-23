@@ -1,0 +1,40 @@
+// #target: macos-x64
+module splat;
+import std;
+
+int a = 0;
+
+fn int[2] test()
+{
+	a++;
+	return { 2, 3 };
+}
+fn void main()
+{
+	int[4] z = { a, ...test(), a };
+}
+
+/* #expect: splat.ll
+
+define void @splat.main() #0 {
+entry:
+  %z = alloca [4 x i32], align 16
+  %.anon = alloca [2 x i32], align 4
+  %result = alloca [2 x i32], align 4
+  %0 = load i32, ptr @splat.a, align 4
+  store i32 %0, ptr %z, align 4
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 4
+  %1 = call i64 @splat.test()
+  store i64 %1, ptr %result, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon, ptr align 4 %result, i32 8, i1 false)
+  %2 = load i32, ptr %.anon, align 4
+  store i32 %2, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %z, i64 8
+  %ptradd2 = getelementptr inbounds i8, ptr %.anon, i64 4
+  %3 = load i32, ptr %ptradd2, align 4
+  store i32 %3, ptr %ptradd1, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %z, i64 12
+  %4 = load i32, ptr @splat.a, align 4
+  store i32 %4, ptr %ptradd3, align 4
+  ret void
+}

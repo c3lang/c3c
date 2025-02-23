@@ -1,0 +1,92 @@
+// #target: macos-x64
+module test;
+import std::io;
+struct Abc
+{
+	float m00, m01, m10, m11;
+}
+
+Abc a = flip((Abc) { 1, 2, 3, 4 });
+
+macro flip($init)
+{
+	return (Abc) { $init.m01, $init.m10, $init.m11, $init.m00 };
+}
+
+macro check_type($Type)
+{
+	var $b = ($Type[4][4]) {};
+	$Type z = $b[2][2];
+	return z;
+}
+
+enum Blurb { FOO }
+
+distinct Bdd = Abc;
+fn void main()
+{
+	var $i = (int[4]) { 1, 2, 3, 4 };
+	var $b = (Abc[2]) { (Abc) {}, (Abc) { 11, 22, 33, 44 }};
+	var $c = (any[4]) {};
+	check_type(int);
+	check_type(Abc);
+	check_type(anyfault);
+	check_type(Blurb);
+	check_type(int*);
+	check_type(bool);
+	check_type(typeid);
+	check_type(int[<3>]);
+	check_type(Bdd);
+	check_type(int[2]);
+	check_type(int[]);
+	io::printfn("%d", $b[0].m11);
+}
+
+/* #expect: test.ll
+
+  %z = alloca i32, align 4
+  %z1 = alloca %Abc, align 4
+  %z4 = alloca i64, align 8
+  %z5 = alloca i32, align 4
+  %z6 = alloca ptr, align 8
+  %z7 = alloca i8, align 1
+  %z8 = alloca i64, align 8
+  %z9 = alloca <3 x i32>, align 16
+  %z10 = alloca %Abc, align 4
+  %z14 = alloca [2 x i32], align 4
+  %z16 = alloca %"int[]", align 8
+  %varargslots = alloca [1 x %any], align 16
+  %taddr = alloca float, align 4
+  %retparam = alloca i64, align 8
+  store i32 0, ptr %z, align 4
+  store float 0.000000e+00, ptr %z1, align 4
+  %ptradd = getelementptr inbounds i8, ptr %z1, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %z1, i64 8
+  store float 0.000000e+00, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %z1, i64 12
+  store float 0.000000e+00, ptr %ptradd3, align 4
+  store i64 0, ptr %z4, align 8
+  store i32 0, ptr %z5, align 4
+  store ptr null, ptr %z6, align 8
+  store i8 0, ptr %z7, align 1
+  store i64 0, ptr %z8, align 8
+  store <3 x i32> zeroinitializer, ptr %z9, align 16
+  store float 0.000000e+00, ptr %z10, align 4
+  %ptradd11 = getelementptr inbounds i8, ptr %z10, i64 4
+  store float 0.000000e+00, ptr %ptradd11, align 4
+  %ptradd12 = getelementptr inbounds i8, ptr %z10, i64 8
+  store float 0.000000e+00, ptr %ptradd12, align 4
+  %ptradd13 = getelementptr inbounds i8, ptr %z10, i64 12
+  store float 0.000000e+00, ptr %ptradd13, align 4
+  store i32 0, ptr %z14, align 4
+  %ptradd15 = getelementptr inbounds i8, ptr %z14, i64 4
+  store i32 0, ptr %ptradd15, align 4
+  store %"int[]" zeroinitializer, ptr %z16, align 8
+  store float 0.000000e+00, ptr %taddr, align 4
+  %0 = insertvalue %any undef, ptr %taddr, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.float" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  %2 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr %varargslots, i64 1)
+  ret void
+}

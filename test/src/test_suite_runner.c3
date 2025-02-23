@@ -9,12 +9,13 @@ int success_count;
 Path start_cwd;
 Path test_dir;
 bool print_to_file;
+String stdlib;
 
 fn void main(String[] args)
 {
 	// Grab the name for `usage`
 	String appname = args[0];
-	if (args.len < 3 || args.len > 4) usage(appname);
+	if (args.len < 3) usage(appname);
 
 	// Do we want the print to file variant
 	print_to_file = !io::stdout().isatty();
@@ -37,8 +38,31 @@ fn void main(String[] args)
 	// Ok we're done.
 	compiler_path = path;
 
-	// Do we only run skipped? [Not implemented yet!]
-	bool only_skipped = args.len == 4;
+	bool only_skipped = false;
+	for (int i = 3; i < args.len; i++)
+	{
+		String arg = args[i];
+		switch (arg)
+		{
+			case "-s":
+			case "--skipped":
+				only_skipped = true;
+			case "--stdlib":
+				if (i == args.len - 1 || args[i + 1].starts_with("-"))
+				{
+					arg_error_exit(appname, "Expected --stdlib to be followed by the path to the alternative standard library.");
+				}
+				stdlib = args[i + 1];
+				i++;
+				if (!os::native_is_dir(stdlib))
+				{
+					error_exit(appname, "Stdlib directory '%s' cannot be found.", stdlib);
+				}
+				stdlib = start_cwd.temp_append(stdlib).str_view()!!;
+			default:
+				arg_error_exit(appname, "Unknown option '%s'.", args[i]);
+		}
+	}
 	if (only_skipped && args[3] != "-s" && args[3] != "--skipped") usage(appname);
 
 	// Get the directory or file to test
@@ -393,6 +417,12 @@ fn void test_file(Path file_path)
 	cmdline.push(compiler_path.str_view());
 	cmdline.push("compile-only");
 	cmdline.push("--test");
+	if (stdlib)
+	{
+		cmdline.push("--stdlib");
+		cmdline.push(stdlib);
+		cmdline.push("--enable-new-generics");
+	}
 	cmdline.push("--llvm-out");
 	cmdline.push(".");
 	foreach (file : settings.input_files)
@@ -498,10 +528,11 @@ fn void! test_path(Path file_path)
 
 fn void usage(String appname) @noreturn
 {
-    io::printfn("Usage: %s <compiler path> <file/dir> [-s]", appname);
+    io::printfn("Usage: %s <compiler path> <file/dir> [options]", appname);
     io::printn();
     io::printn("Options:");
     io::printn("  -s, --skipped       only run skipped tests");
+    io::printn("  --stdlib <path>     override the path to stdlib");
 	libc::exit(0);
 }
 

@@ -1,0 +1,40 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+Foo y;
+bitstruct Foo : ushort @align(1)
+{
+	int a : 0..10;
+}
+fn int main(String[] args)
+{
+	Foo z = y;
+	Foo* y = &z;
+	y.a = 123;
+	return 0;
+}
+
+/* #expect: test.ll
+
+@test.y = local_unnamed_addr global i16 0, align 1
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %z = alloca i16, align 1
+  %y = alloca ptr, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %2 = load i16, ptr @test.y, align 1
+  store i16 %2, ptr %z, align 1
+  store ptr %z, ptr %y, align 8
+  %3 = load ptr, ptr %y, align 8
+  %4 = load i16, ptr %3, align 1
+  %5 = and i16 %4, -2048
+  %6 = or i16 %5, 123
+  store i16 %6, ptr %3, align 1
+  ret i32 0
+}
+

@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+import std::io;
+import std::math;
+import std::collections::priorityqueue;
+
+def FooPriorityQueue = PriorityQueueMax{Foo};
+
+fn void main()
+{
+
+	FooPriorityQueue agh;
+	agh.push((Foo) { 3 });
+	agh.push((Foo) { 101 });
+	agh.push({ 10 });
+	while (try f = agh.pop()) io::printf("%s\n", f.x);
+}
+
+struct Foo
+{
+	int x;
+}
+
+fn bool Foo.less(Foo* x, Foo y) @inline
+{
+	return x.x < y.x;
+}
+
+/* #expect: test.ll
+
+%PrivatePriorityQueue = type { %List }

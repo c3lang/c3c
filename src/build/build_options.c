@@ -1372,7 +1372,7 @@ static const char *check_dir(const char *path)
 {
 	char original_path[PATH_MAX + 1];
 	if (!getcwd(original_path, PATH_MAX)) error_exit("Failed to store path.");
-	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory.", path);
+	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory from '%s'.", path, original_path);
 	if (!dir_change(original_path)) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
 	return path;
 }

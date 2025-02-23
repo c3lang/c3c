@@ -1,0 +1,120 @@
+// #target: macos-x64
+module test;
+
+fn void test()
+{
+	int[] a = { 1, 2, 3 };
+	for (int i = 0; i < 3; i++)
+	{
+		int! b = i == 0 ? SearchResult.MISSING? : i;
+		int[]! y = a[:b];
+		int[]! w = a[b..];
+		int! z = a[b];
+	}
+}
+
+/* #expect: test.ll
+
+  store %"int[]" %1, ptr %a, align 8
+  store i32 0, ptr %i, align 4
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %after_assign15, %entry
+  %2 = load i32, ptr %i, align 4
+  %lt = icmp slt i32 %2, 3
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %3 = load i32, ptr %i, align 4
+  %eq = icmp eq i32 %3, 0
+  br i1 %eq, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %loop.body
+  store i64 ptrtoint (ptr @"std.core.builtin.SearchResult$MISSING" to i64), ptr %b.f, align 8
+  br label %after_assign
+
+cond.rhs:                                         ; preds = %loop.body
+  %4 = load i32, ptr %i, align 4
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs
+  store i32 %4, ptr %b, align 4
+  store i64 0, ptr %b.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %cond.phi, %cond.lhs
+  %5 = load %"int[]", ptr %a, align 8
+  %6 = extractvalue %"int[]" %5, 0
+  %optval = load i64, ptr %b.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %7 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %7, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %after_assign
+  store i64 %optval, ptr %y.f, align 8
+  br label %after_assign1
+
+after_check:                                      ; preds = %after_assign
+  %8 = load i32, ptr %b, align 4
+  %sext = sext i32 %8 to i64
+  %add = add i64 0, %sext
+  %size = sub i64 %add, 0
+  %9 = insertvalue %"int[]" undef, ptr %6, 0
+  %10 = insertvalue %"int[]" %9, i64 %size, 1
+  store %"int[]" %10, ptr %y, align 8
+  store i64 0, ptr %y.f, align 8
+  br label %after_assign1
+
+after_assign1:                                    ; preds = %after_check, %assign_optional
+  %11 = load %"int[]", ptr %a, align 8
+  %12 = extractvalue %"int[]" %11, 0
+  %optval2 = load i64, ptr %b.f, align 8
+  %not_err3 = icmp eq i64 %optval2, 0
+  %13 = call i1 @llvm.expect.i1(i1 %not_err3, i1 true)
+  br i1 %13, label %after_check5, label %assign_optional4
+
+assign_optional4:                                 ; preds = %after_assign1
+  store i64 %optval2, ptr %w.f, align 8
+  br label %after_assign8
+
+after_check5:                                     ; preds = %after_assign1
+  %14 = load i32, ptr %b, align 4
+  %sext6 = sext i32 %14 to i64
+  %15 = extractvalue %"int[]" %11, 1
+  %size7 = sub i64 %15, %sext6
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %12, i64 %sext6
+  %16 = insertvalue %"int[]" undef, ptr %ptroffset, 0
+  %17 = insertvalue %"int[]" %16, i64 %size7, 1
+  store %"int[]" %17, ptr %w, align 8
+  store i64 0, ptr %w.f, align 8
+  br label %after_assign8
+
+after_assign8:                                    ; preds = %after_check5, %assign_optional4
+  %18 = load ptr, ptr %a, align 8
+  %optval9 = load i64, ptr %b.f, align 8
+  %not_err10 = icmp eq i64 %optval9, 0
+  %19 = call i1 @llvm.expect.i1(i1 %not_err10, i1 true)
+  br i1 %19, label %after_check12, label %assign_optional11
+
+assign_optional11:                                ; preds = %after_assign8
+  store i64 %optval9, ptr %z.f, align 8
+  br label %after_assign15
+
+after_check12:                                    ; preds = %after_assign8
+  %20 = load i32, ptr %b, align 4
+  %sext13 = sext i32 %20 to i64
+  %ptroffset14 = getelementptr inbounds [4 x i8], ptr %18, i64 %sext13
+  %21 = load i32, ptr %ptroffset14, align 4
+  store i32 %21, ptr %z, align 4
+  store i64 0, ptr %z.f, align 8
+  br label %after_assign15
+
+after_assign15:                                   ; preds = %after_check12, %assign_optional11
+  %22 = load i32, ptr %i, align 4
+  %add16 = add i32 %22, 1
+  store i32 %add16, ptr %i, align 4
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret void
+}

@@ -1,0 +1,55 @@
+// #target: macos-x64
+module test;
+
+const FG_YELLOW = "\e[0;38;2;255;240;128m";
+const FG_GREEN  = "\e[0;38;2;192;255;192m";
+const FG_RED    = "\e[0;38;2;255;40;40m";
+
+enum SeverityTag : int (String fg, String label) {
+   INFO  = { FG_GREEN,  "info"  },
+   WARN  = { FG_YELLOW, "warn"  },
+   FATAL = { FG_RED,    "fatal" },
+   FATAL2 = { FG_RED,    "fatal2" },
+}
+
+fn void main()
+{
+	SeverityTag tag = WARN;
+	String a = tag.fg;
+}
+
+/* #expect: test.ll
+
+@.enum.INFO = internal constant [5 x i8] c"INFO\00", align 1
+@.enum.WARN = internal constant [5 x i8] c"WARN\00", align 1
+@.enum.FATAL = internal constant [6 x i8] c"FATAL\00", align 1
+@.enum.FATAL2 = internal constant [7 x i8] c"FATAL2\00", align 1
+@"$ct.test.SeverityTag" = linkonce global { i8, i64, ptr, i64, i64, i64, [4 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 4, [4 x %"char[]"] [%"char[]" { ptr @.enum.INFO, i64 4 }, %"char[]" { ptr @.enum.WARN, i64 4 }, %"char[]" { ptr @.enum.FATAL, i64 5 }, %"char[]" { ptr @.enum.FATAL2, i64 6 }] }, align 8
+@.str = private unnamed_addr constant [22 x i8] c"\1B[0;38;2;192;255;192m\00", align 1
+@.str.1 = private unnamed_addr constant [22 x i8] c"\1B[0;38;2;255;240;128m\00", align 1
+@.str.2 = private unnamed_addr constant [20 x i8] c"\1B[0;38;2;255;40;40m\00", align 1
+@.str.3 = private unnamed_addr constant [20 x i8] c"\1B[0;38;2;255;40;40m\00", align 1
+@"test.SeverityTag$fg" = linkonce constant [4 x %"char[]"] [%"char[]" { ptr @.str, i64 21 }, %"char[]" { ptr @.str.1, i64 21 }, %"char[]" { ptr @.str.2, i64 19 }, %"char[]" { ptr @.str.3, i64 19 }], align 8
+@.str.4 = private unnamed_addr constant [5 x i8] c"info\00", align 1
+@.str.5 = private unnamed_addr constant [5 x i8] c"warn\00", align 1
+@.str.6 = private unnamed_addr constant [6 x i8] c"fatal\00", align 1
+@.str.7 = private unnamed_addr constant [7 x i8] c"fatal2\00", align 1
+@"test.SeverityTag$label" = linkonce constant [4 x %"char[]"] [%"char[]" { ptr @.str.4, i64 4 }, %"char[]" { ptr @.str.5, i64 4 }, %"char[]" { ptr @.str.6, i64 5 }, %"char[]" { ptr @.str.7, i64 6 }], align 8
+@.str.10 = private unnamed_addr constant [22 x i8] c"\1B[0;38;2;255;240;128m\00", align 1
+@test.FG_YELLOW = local_unnamed_addr constant %"char[]" { ptr @.str.10, i64 21 }, align 8
+@.str.11 = private unnamed_addr constant [22 x i8] c"\1B[0;38;2;192;255;192m\00", align 1
+@test.FG_GREEN = local_unnamed_addr constant %"char[]" { ptr @.str.11, i64 21 }, align 8
+@.str.12 = private unnamed_addr constant [20 x i8] c"\1B[0;38;2;255;40;40m\00", align 1
+@test.FG_RED = local_unnamed_addr constant %"char[]" { ptr @.str.12, i64 19 }, align 8
+
+define void @test.main() #0 {
+entry:
+  %tag = alloca i32, align 4
+  %a = alloca %"char[]", align 8
+  store i32 1, ptr %tag, align 4
+  %0 = load i32, ptr %tag, align 4
+  %ptroffset = getelementptr inbounds [16 x i8], ptr @"test.SeverityTag$fg", i32 %0
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %a, ptr align 8 %ptroffset, i32 16, i1 false)
+  ret void
+}
+

@@ -1,0 +1,58 @@
+distinct Foo = uint;
+
+macro @test($abc)
+{
+    return 1u << ($abc - 1);
+}
+
+const Foo TEST = 5;
+const Foo TEST_1 = @test(TEST);
+
+macro @test2($abc)
+{
+    return 1u << ($abc + 1);
+}
+
+const Foo TEST_2 = @test2(TEST);
+
+macro @test3($abc)
+{
+    return 1u << ($abc * 2);
+}
+
+const Foo TEST_3 = @test3(TEST);
+
+macro @test4($abc)
+{
+    return 1u << ($abc / 2);
+}
+
+const Foo TEST_4 = @test4(TEST);
+
+macro @test5($abc)
+{
+    return 1u << ($abc % 2);
+}
+
+const Foo TEST_5 = @test5(TEST);
+
+macro @test6($abc)
+{
+    return 1u << ($abc >> 1);
+}
+
+const Foo TEST_6 = @test6(TEST);
+
+macro @test7($abc)
+{
+    return 1u << ($abc >> 1);
+}
+
+const Foo TEST_7 = @test7(TEST);
+
+macro @test8($abc)
+{
+    return 1u << ($abc ^ 1);
+}
+
+const Foo TEST_8 = @test8(TEST);

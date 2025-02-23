@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+
+fn void foo() {  }
+fn void bar() {}
+
+fn void main()
+{
+    bool b = true;
+    true ? foo() : bar(); // ok
+    b ? foo() : bar(); // segfault
+}
+
+/* #expect: test.ll
+
+entry:
+  %b = alloca i8, align 1
+  store i8 1, ptr %b, align 1
+  call void @test.foo()
+  %0 = load i8, ptr %b, align 1
+  %1 = trunc i8 %0 to i1
+  br i1 %1, label %cond.lhs, label %cond.rhs
+cond.lhs:                                         ; preds = %entry
+  call void @test.foo()
+  br label %cond.phi
+cond.rhs:                                         ; preds = %entry
+  call void @test.bar()
+  br label %cond.phi
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  ret void
+}

@@ -1,0 +1,23 @@
+// #target: macos-x64
+module test;
+fn int[<2>] foo(int x)
+{
+  return x > 0 ? {0, 0} : {255, 255};
+}
+
+
+fn int main()
+{
+  return 0;
+}
+/* #expect: test.ll
+
+define double @test.foo(i32 %0) #0 {
+entry:
+  %taddr = alloca <2 x i32>, align 8
+  %gt = icmp sgt i32 %0, 0
+  %ternary = select i1 %gt, <2 x i32> zeroinitializer, <2 x i32>
+  store <2 x i32> %ternary, ptr %taddr, align 8
+  %1 = load double, ptr %taddr, align 8
+  ret double %1
+}

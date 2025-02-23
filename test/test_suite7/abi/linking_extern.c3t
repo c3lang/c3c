@@ -1,0 +1,24 @@
+// #target: macos-x64
+module abc;
+extern fn void puts(char*);
+macro void test()
+{
+	puts("b");
+}
+module test;
+import abc;
+extern fn void puts(char*);
+fn void main()
+{
+	puts("a");
+	abc::test();
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  call void @puts(ptr @.str)
+  call void @puts(ptr @.str.1)
+  ret void
+}

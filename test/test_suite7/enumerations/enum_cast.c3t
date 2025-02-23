@@ -1,0 +1,97 @@
+// #target: macos-x64
+module test;
+
+enum MyEnum : char
+{
+    FOO,
+    BAR
+}
+
+fn void test2()
+{
+	char ww = MyEnum.FOO.ordinal;
+	MyEnum x = MyEnum.BAR;
+	char zz = x.ordinal;
+}
+
+fn void test()
+{
+    char b = (char)MyEnum.FOO.ordinal;
+    int z = (int)MyEnum.BAR.ordinal;
+    var $foo = (int)MyEnum.FOO.ordinal;
+    var $baz = MyEnum.BAR;
+    MyEnum x = MyEnum.BAR;
+    char b2 = x.ordinal;
+    int z2 = (int)x.ordinal;
+    float d = (float)MyEnum.FOO.ordinal;
+    bool hello = (bool)MyEnum.FOO.ordinal;
+    var $d = (float)MyEnum.FOO.ordinal;
+    var $hello = (bool)MyEnum.FOO.ordinal;
+    MyEnum! xf = MyEnum.BAR;
+    float! e = (float)x.ordinal;
+    e = (float)xf.ordinal;
+
+}
+
+/* #expect: test.ll
+
+define void @test.test2() #0 {
+entry:
+  %ww = alloca i8, align 1
+  %x = alloca i8, align 1
+  %zz = alloca i8, align 1
+  store i8 0, ptr %ww, align 1
+  store i8 1, ptr %x, align 1
+  %0 = load i8, ptr %x, align 1
+  store i8 %0, ptr %zz, align 1
+  ret void
+}
+
+define void @test.test() #0 {
+entry:
+  %b = alloca i8, align 1
+  %z = alloca i32, align 4
+  %x = alloca i8, align 1
+  %b2 = alloca i8, align 1
+  %z2 = alloca i32, align 4
+  %d = alloca float, align 4
+  %hello = alloca i8, align 1
+  %xf = alloca i8, align 1
+  %xf.f = alloca i64, align 8
+  %e = alloca float, align 4
+  %e.f = alloca i64, align 8
+  store i8 0, ptr %b, align 1
+  store i32 1, ptr %z, align 4
+  store i8 1, ptr %x, align 1
+  %0 = load i8, ptr %x, align 1
+  store i8 %0, ptr %b2, align 1
+  %1 = load i8, ptr %x, align 1
+  %zext = zext i8 %1 to i32
+  store i32 %zext, ptr %z2, align 4
+  store float 0.000000e+00, ptr %d, align 4
+  store i8 0, ptr %hello, align 1
+  store i8 1, ptr %xf, align 1
+  store i64 0, ptr %xf.f, align 8
+  %2 = load i8, ptr %x, align 1
+  %uifp = uitofp i8 %2 to float
+  store float %uifp, ptr %e, align 4
+  store i64 0, ptr %e.f, align 8
+  %optval = load i64, ptr %xf.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %3, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %optval, ptr %e.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %4 = load i8, ptr %xf, align 1
+  %uifp1 = uitofp i8 %4 to float
+  store float %uifp1, ptr %e, align 4
+  store i64 0, ptr %e.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  ret void
+}

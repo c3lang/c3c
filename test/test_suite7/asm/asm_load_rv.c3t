@@ -1,0 +1,21 @@
+// #target: elf-riscv32
+module test;
+
+fn void main(String[] args)
+{
+	int x = 2;
+	asm
+	{
+		li $s1, -2147483648;
+		lui $t0, 123456u;
+		auipc $x15, 123456u;
+		auipc $a0, 1;
+		mv $a0, $a1;
+		lw $a4, [&x];
+		lb $a5, [$a7 - 4];
+	}
+}
+
+/* #expect: test.ll
+
+"li s1, -2147483648\0Alui t0, 123456\0Aauipc x15, 123456\0Aauipc a0, 1\0Amv a0, a1\0Alw a4, $0\0Alb a5, -4(a7)\0A", "*m,~{x5},~{x9},~{x10},~{x14},~{x15}"(ptr elementtype(i32) %x)

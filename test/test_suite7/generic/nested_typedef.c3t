@@ -1,0 +1,30 @@
+// #target: macos-x64
+module broken(<Type>);
+distinct Bar = Type;
+def Bar2 = Type;
+struct Baz
+{
+	int a;
+}
+module test;
+import broken;
+
+struct Foo
+{
+	Bar(<int>) y;
+}
+
+struct Foo2
+{
+	Bar2(<int>) y;
+}
+fn int test() @if(Foo.sizeof > 2) => 1;
+fn int test2() @if(Foo2.sizeof > 2) => 1;
+fn void main() {}
+
+/* #expect: test.ll
+
+@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo2" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+define i32 @test.test() #0 {
+define i32 @test.test2() #0 {

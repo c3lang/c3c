@@ -1,0 +1,22 @@
+module foo;
+
+bitstruct Foo : int
+{
+	bool a : 1;
+	bool b : 2;
+	bool c : 3;
+}
+
+fn void test()
+{
+	Foo f = { .a = true, .b = false };
+}
+
+/* #expect: foo.ll
+
+define void @foo.test() #0 {
+entry:
+  %f = alloca i32, align 4
+  store i32 2, ptr %f, align 4
+  ret void
+}

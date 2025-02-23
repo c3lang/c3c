@@ -1,0 +1,61 @@
+// #target: macos-x64
+module test;
+import libc;
+
+enum Foo : uint (int val, char* testme)
+{
+	A = { 123, "Number A" },
+	B = { 333, "Number B" },
+}
+
+fn void main()
+{
+	int x = Foo.A.val;
+	Foo f = Foo.B;
+	Foo g = Foo.A;
+	libc::printf("%d (%s) %d (%s)\n", f.val, f.testme, g.val, g.testme);
+}
+
+/* #expect: test.ll
+
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"char[]" = type { ptr, i64 }
+
+@.enum.A = internal constant [2 x i8] c"A\00", align 1
+@.enum.B = internal constant [2 x i8] c"B\00", align 1
+@"$ct.uint" = linkonce global %.introspect { i8 3, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.test.Foo" = linkonce global { i8, i64, ptr, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.uint" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.A, i64 1 }, %"char[]" { ptr @.enum.B, i64 1 }] }, align 8
+@"test.Foo$val" = linkonce constant [2 x i32] [i32 123, i32 333], align 4
+@.str = private unnamed_addr constant [9 x i8] c"Number A\00", align 1
+@.str.1 = private unnamed_addr constant [9 x i8] c"Number B\00", align 1
+@"test.Foo$testme" = linkonce constant [2 x ptr] [ptr @.str, ptr @.str.1], align 8
+@.str.2 = private unnamed_addr constant [17 x i8] c"%d (%s) %d (%s)\0A\00", align 1
+
+; Function Attrs:
+define void @test.main() #0 {
+entry:
+  %x = alloca i32, align 4
+  %f = alloca i32, align 4
+  %g = alloca i32, align 4
+  store i32 123, ptr %x, align 4
+  store i32 1, ptr %f, align 4
+  store i32 0, ptr %g, align 4
+  %0 = load i32, ptr %f, align 4
+  %zext = zext i32 %0 to i64
+  %ptroffset = getelementptr inbounds [4 x i8], ptr @"test.Foo$val", i64 %zext
+  %1 = load i32, ptr %f, align 4
+  %zext1 = zext i32 %1 to i64
+  %ptroffset2 = getelementptr inbounds [8 x i8], ptr @"test.Foo$testme", i64 %zext1
+  %2 = load i32, ptr %g, align 4
+  %zext3 = zext i32 %2 to i64
+  %ptroffset4 = getelementptr inbounds [4 x i8], ptr @"test.Foo$val", i64 %zext3
+  %3 = load i32, ptr %g, align 4
+  %zext5 = zext i32 %3 to i64
+  %ptroffset6 = getelementptr inbounds [8 x i8], ptr @"test.Foo$testme", i64 %zext5
+  %4 = load i32, ptr %ptroffset, align 4
+  %5 = load ptr, ptr %ptroffset2, align 8
+  %6 = load i32, ptr %ptroffset4, align 4
+  %7 = load ptr, ptr %ptroffset6, align 8
+  %8 = call i32 (ptr, ...) @printf(ptr @.str.2, i32 %4, ptr %5, i32 %6, ptr %7)
+  ret void
+}

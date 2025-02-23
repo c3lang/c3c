@@ -1,0 +1,45 @@
+// #target: macos-aarch64
+module test;
+import std;
+
+extern fn Features query_features() @extern("sg_query_features");
+extern fn void set_features(Features);
+
+struct Features
+{
+    bool origin_top_left;
+    bool image_clamp_to_border;
+    bool mrt_independent_blend_state;
+    bool mrt_independent_write_mask;
+    bool storage_buffer;
+}
+
+fn void main()
+{
+    Features fs = query_features();
+    fs.storage_buffer = false;
+    set_features(fs);
+}
+/* #expect: test.ll
+
+declare i40 @sg_query_features() #0
+
+declare void @set_features(i64) #0
+
+define void @test.main() #0 {
+entry:
+  %fs = alloca %Features, align 1
+  %result = alloca %Features, align 1
+  %tempcoerce = alloca i40, align 8
+  %tempcoerce1 = alloca i64, align 8
+  %0 = call i40 @sg_query_features()
+  store i40 %0, ptr %tempcoerce, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %result, ptr align 8 %tempcoerce, i32 5, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %fs, ptr align 1 %result, i32 5, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %fs, i64 4
+  store i8 0, ptr %ptradd, align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tempcoerce1, ptr align 1 %fs, i32 5, i1 false)
+  %1 = load i64, ptr %tempcoerce1, align 8
+  call void @set_features(i64 %1)
+  ret void
+}

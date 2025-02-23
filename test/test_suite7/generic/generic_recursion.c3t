@@ -1,0 +1,21 @@
+// #target: macos-x64
+module test;
+import std::io;
+import std::collections::list;
+
+def TreeNodeList = List(<TreeNode>);
+
+struct TreeNode
+{
+	TreeNode* foo;
+	TreeNode* bar;
+	TreeNodeList list;
+}
+
+TreeNode abc;
+
+/* #expect: test.ll
+
+%TreeNode = type { ptr, ptr, %List }
+%List = type { i64, i64, %any, ptr }
+@test.abc = local_unnamed_addr global %TreeNode zeroinitializer, align 8

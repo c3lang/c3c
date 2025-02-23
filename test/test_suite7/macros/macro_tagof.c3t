@@ -1,0 +1,11 @@
+import std::io;
+macro int test() @tag("hello", 1)
+{
+	return 1;
+}
+
+fn void main()
+{
+	var $v = test.tagof("hello");
+	io::printn($v);
+}

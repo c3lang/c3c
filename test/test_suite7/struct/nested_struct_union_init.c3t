@@ -1,0 +1,110 @@
+// #target: macos-x64
+module foob;
+import libc;
+struct Matrix2x2
+{
+	union
+	{
+		float[4] m;
+		struct
+		{
+			float m00, m01, m10, m11;
+		}
+	}
+}
+
+struct Matrix2x2_b
+{
+	union
+	{
+		struct
+		{
+			float m00, m01, m10, m11;
+		}
+		float[4] m;
+	}
+}
+struct Matrix4x4
+{
+    union
+    {
+        struct
+        {
+            float m00, m01, m02, m03;
+            float m10, m11, m12, m13;
+            float m20, m21, m22, m23;
+            float m30, m31, m32, m33;
+        }
+        float[16] m;
+    }
+}
+
+
+struct Matrix3x3
+{
+    union
+    {
+        struct
+        {
+            float m00, m01, m02, m10, m11, m12, m20, m21, m22;
+        }
+        float[9] m;
+    }
+}
+fn void main()
+{
+	Matrix3x3 x = { 1, 2, 3, 4, 5, 6, 7,8 ,9};
+	Matrix2x2 m = { (float[4]) { 1, 2, 3, 4 } };
+	Matrix2x2_b m2 = { 1, 2, 3, 4 };
+	libc::printf("%f %f %f %f\n", x.m00, x.m[1], x.m10, x.m[3]);
+}
+
+/* #expect: foob.ll
+
+%Matrix2x2 = type { %.anon.1 }
+%.anon.1 = type { [4 x float] }
+%Matrix2x2_b = type { %.anon.2 }
+%.anon.2 = type { %.anon.3 }
+%.anon.3 = type { float, float, float, float }
+%Matrix3x3 = type { %.anon }
+%.anon = type { %.anon.0 }
+%.anon.0 = type { float, float, float, float, float, float, float, float, float }
+
+define void @foob.main() #0 {
+entry:
+  %x = alloca %Matrix3x3, align 4
+  %m = alloca %Matrix2x2, align 4
+  %m2 = alloca %Matrix2x2_b, align 4
+  store float 1.000000e+00, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store float 2.000000e+00, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  store float 3.000000e+00, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %x, i64 12
+  store float 4.000000e+00, ptr %ptradd2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %x, i64 16
+  store float 5.000000e+00, ptr %ptradd3, align 4
+  %ptradd4 = getelementptr inbounds i8, ptr %x, i64 20
+  store float 6.000000e+00, ptr %ptradd4, align 4
+  %ptradd5 = getelementptr inbounds i8, ptr %x, i64 24
+  store float 7.000000e+00, ptr %ptradd5, align 4
+  %ptradd6 = getelementptr inbounds i8, ptr %x, i64 28
+  store float 8.000000e+00, ptr %ptradd6, align 4
+  %ptradd7 = getelementptr inbounds i8, ptr %x, i64 32
+  store float 9.000000e+00, ptr %ptradd7, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m, ptr align 4 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %m2, ptr align 4 @.__const.16, i32 16, i1 false)
+  %0 = load float, ptr %x, align 4
+  %fpfpext = fpext float %0 to double
+  %ptradd8 = getelementptr inbounds i8, ptr %x, i64 4
+  %1 = load float, ptr %ptradd8, align 4
+  %fpfpext9 = fpext float %1 to double
+  %ptradd10 = getelementptr inbounds i8, ptr %x, i64 12
+  %2 = load float, ptr %ptradd10, align 4
+  %fpfpext11 = fpext float %2 to double
+  %ptradd12 = getelementptr inbounds i8, ptr %x, i64 12
+  %3 = load float, ptr %ptradd12, align 4
+  %fpfpext13 = fpext float %3 to double
+  %4 = call i32 (ptr, ...) @printf(ptr @.str, double %fpfpext, double %fpfpext9, double %fpfpext11, double %fpfpext13)
+  ret void
+}

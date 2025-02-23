@@ -1,0 +1,34 @@
+// #target: macos-x64
+module foo;
+
+struct Rectangle
+{
+    float x;                // Rectangle top-left corner position x
+    float y;                // Rectangle top-left corner position y
+    float width;            // Rectangle width
+    float height;           // Rectangle height
+}
+
+fn void test(Rectangle r)
+{
+	test((Rectangle) { 1, 2, 3, 4 });
+}
+
+/* #expect: foo.ll
+
+define void @foo.test(<2 x float> %0, <2 x float> %1) #0 {
+entry:
+  %r = alloca %Rectangle, align 8
+  %literal = alloca %Rectangle, align 4
+  %coerce = alloca %Rectangle, align 8
+  store <2 x float> %0, ptr %r, align 8
+  %ptradd = getelementptr inbounds i8, ptr %r, i64 8
+  store <2 x float> %1, ptr %ptradd, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %literal, i32 16, i1 false)
+  %lo = load <2 x float>, ptr %coerce, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load <2 x float>, ptr %ptradd1, align 8
+  call void @foo.test(<2 x float> %lo, <2 x float> %hi)
+  ret void
+}

@@ -1,0 +1,19 @@
+// #target: macos-x64
+module test;
+import std;
+
+fn void main()
+{
+	char[3] $x = { 1, 2, 5 };
+	char[] y = $x;
+	String $a = "hello";
+    char[2] $b = { 'a', 'b' };
+	var $c = $a +++ $b;
+    String y2 = $c;
+    char[] $bytes = x'0103ff';
+	var $d = $bytes +++ $b;
+    char[] z = $d;
+}
+/* expect: test.ll
+
+feofke

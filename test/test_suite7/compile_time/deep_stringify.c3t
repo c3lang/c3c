@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+macro @foo(#foo) => @bar(#foo);
+macro @bar(#bar)
+{
+  return "#bar contains " +++ $stringify(#bar);
+}
+
+fn void main()
+{
+  String a = @foo(something);
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [24 x i8] c"#bar contains something\00", align 1
+
+entry:
+  %a = alloca %"char[]", align 8
+  store %"char[]" { ptr @.str, i64 23 }, ptr %a, align 8
+  ret void
+}

@@ -1,0 +1,838 @@
+// #target: macos-x64
+
+<*
+ @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
+ @require $defined((Token){}.token)
+ @require $defined((Comment){}.start) && $defined((Comment){}.end)
+ *>
+module lexer {Token, Comment};
+import std::io;
+import trie;
+
+enum Kind : char
+{
+	UNKNOWN,
+	UINT,
+	STRING,
+	RUNE,
+	TOKEN,
+	IDENTIFIER,
+}
+
+fault LexerError
+{
+	UNTERMINATED_STRING,
+	UNTERMINATED_RUNE,
+	UNTERMINATED_COMMENT,
+}
+
+def TokenTrie = Trie{Token, ushort};
+
+def Ident = fn bool (usz index, char c);
+
+struct Lexer
+{
+	Allocator allocator;
+	InStream reader;
+	char[] buf;
+	TokenTrie tokens;
+	Ident ident;
+	bool peeked;
+	Kind kind;
+	uint line;
+	uint column;
+	uint span;
+	union
+	{
+		ulong x;       // UINT
+		String string; // STRING, IDENTIFIER
+		char rune;     // RUNE
+		Token token;   // TOKEN
+	}
+}
+
+fn void! Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
+{
+	TokenTrie trie;
+	ushort max_token;
+	foreach (i, tok : Token.values)
+	{
+		String name = tok.token;
+		assert(name.len > 0 && name.len <= ushort.max);
+		trie.set(name, Token.from_ordinal(i))!;
+		max_token = max(max_token, (ushort)name.len);
+	}
+	foreach (tok : Comment.values)
+	{
+		String end = tok.end;
+		assert(end.len > 0 && end.len <= ushort.max);
+		max_token = max(max_token, (ushort)end.len);
+	}
+	char* buf = allocator::malloc_try(using, max_token)!;
+	*self = { .allocator = using, .reader = reader, .buf = buf[:max_token], .tokens = trie };
+}
+
+fn void! Lexer.free(&self)
+{
+	allocator::free(self.allocator, self.buf);
+	*self = {};
+}
+
+fn Kind! Lexer.next(&self)
+{
+	if (self.peeked)
+	{
+		self.peeked = false;
+		return self.kind;
+	}
+	char c = self.reader.read_byte()!;
+	switch
+	{
+		case c.is_digit():
+			self.reader.pushback_byte()!!;
+			self.x = self.parse_uint()!;
+			return UINT;
+		case c == '"':
+			self.string = self.parse_string(c)!;
+			return STRING;
+		case c == '\'':
+			self.rune = self.parse_rune()!;
+			return RUNE;
+	}
+	if (try tok = self.parse_token())
+	{
+		foreach (comment : Comment.values)
+		{
+			if (comment.start == tok)
+			{
+				self.parse_comment(comment.end)!;
+				break;
+			}
+		}
+		self.token = tok;
+		return TOKEN;
+	}
+	if (try tok = self.parse_ident())
+	{
+		self.string = tok;
+		return IDENTIFIER;
+	}
+
+	return UNKNOWN;
+}
+
+fn Kind! Lexer.peek(&self)
+{
+	if (!self.peeked)
+	{
+		self.kind = self.next()!;
+		self.peeked = true;
+	}
+	return self.kind;
+}
+
+fn Token! Lexer.expect(&self, anyfault err, Token... tokens)
+{
+	Kind kind = self.next()!;
+	if (kind == TOKEN)
+	{
+		foreach (tok : tokens)
+		{
+			if (tok == self.token) return tok;
+		}
+	}
+	return err?;
+}
+
+fn void! Lexer.skip_whitespace(&self) @private
+{
+	self.span = 0;
+	while (true)
+	{
+		char c = self.reader.read_byte()!;
+		if (!c.is_space())
+		{
+			self.reader.pushback_byte()!!;
+			return;
+		}
+		if (c == '\n')
+		{
+			self.line++;
+			self.column = 0;
+		}
+		else
+		{
+			self.column++;
+		}
+	}
+}
+
+fn ulong! Lexer.parse_uint(&self) @private
+{
+	ulong x;
+	char c = self.reader.read_byte()!;
+	if (c == '0')
+	{
+		c = self.reader.read_byte()!;
+		switch (c)
+		{
+			case 'x':
+				self.span = 2;
+				return self.parse_hexadecimal()!;
+			case 'b':
+				self.span = 2;
+				return self.parse_binary()!;
+			case 'o':
+				self.span = 2;
+				return self.parse_octal()!;
+		}
+	}
+	self.span = 0;
+	return self.parse_decimal()!;
+}
+
+fn ulong! Lexer.parse_decimal(&self) @private
+{
+	return @parse_uint(self, ulong; ulong x, char c, bool ok)
+	{
+		if (c.is_digit())
+		{
+			x = x * 10 + (ulong)(c - '0');
+			ok = true;
+		}
+	};
+}
+
+fn ulong! Lexer.parse_hexadecimal(&self) @private
+{
+	return @parse_uint(self, ulong; ulong x, char c, bool ok)
+	{
+		switch
+		{
+			case c.is_digit():
+				x = x * 10 + (ulong)(c - '0');
+				ok = true;
+			case c.is_xdigit():
+				c -= c < 'A' ? 'a' : 'A';
+				x = x * 16 + (ulong)c;
+				ok = true;
+		}
+	};
+}
+
+fn ulong! Lexer.parse_binary(&self) @private
+{
+	return @parse_uint(self, ulong; ulong x, char c, bool ok)
+	{
+		if (c.is_digit())
+		{
+			x = x * 2 + (ulong)(c - '0');
+			ok = true;
+		}
+	};
+}
+
+fn ulong! Lexer.parse_octal(&self) @private
+{
+	return @parse_uint(self, ulong; ulong x, char c, bool ok)
+	{
+		if (c.is_odigit())
+		{
+			x = x * 8 + (ulong)(c - '0');
+			ok = true;
+		}
+	};
+}
+
+macro @parse_uint(self, $Type; @body(x, c, ok)) @private
+{
+	$Type x;
+	uint column = self.column;
+	while (true)
+	{
+		char! c = self.reader.read_byte();
+		if (catch err = c)
+		{
+			case IoError.EOF:
+				break;
+			default:
+				return err?;
+		}
+		else
+		{
+			self.column++;
+			if (c == '_') continue;
+			$Type xx = x;
+			bool ok;
+			@body(x, c, ok);
+			if (xx > x) return NumberConversion.INTEGER_OVERFLOW?;
+			if (!ok)
+			{
+				self.column--;
+				self.reader.pushback_byte()!!;
+				break;
+			}
+		}
+	}
+	self.span = self.column - column;
+	return x;
+}
+
+fn String! Lexer.parse_string(&self, char quote) @private
+{
+	char c = self.read_char_for_string()!;
+	if (c == quote) return "";
+	DString str;
+	str.new_init(8, self.allocator);
+	char prev;
+	while (true)
+	{
+		c = self.read_char_for_string()!;
+		if (prev != '\\')
+		{
+			str.append_char(prev);
+			if (c == quote)
+			{
+				self.span = (uint)str.len();
+				self.column += self.span + 2;
+				return str.str_view();
+			}
+			prev = c;
+			continue;
+		}
+		prev = c;
+		switch (c)
+		{
+			case 'a':
+			case 'b':
+			case '\\':
+			case '\n':
+			case '\f':
+			case '\r':
+			case '\v':
+			case '"':
+			case '\'':
+				break;
+			default: c = '\\';
+		}
+		str.append_char(c);
+	}
+}
+
+fn char! Lexer.parse_rune(&self) @private
+{
+	char x = self.reader.read_byte()!;
+	char c = self.reader.read_byte()!;
+	if (c != '\'') return LexerError.UNTERMINATED_RUNE?;
+	return x;
+}
+
+macro char! Lexer.read_char_for_string(&self) @private
+{
+	char! c = self.reader.read_byte();
+	if (catch err = c)
+	{
+		case IoError.EOF:
+			return LexerError.UNTERMINATED_STRING?;
+		default:
+			return err?;
+	}
+	return c;
+}
+
+fn Token! Lexer.parse_token(&self) @private
+{
+	usz n = self.reader.read(self.buf)!;
+	defer self.unread(n);
+	Token tok = self.tokens.get_best(self.buf[:n])!;
+	n = self.buf.len - tok.token.len;
+	return tok;
+}
+
+fn void! Lexer.parse_comment(&self, String end) @private
+{
+	// Find the end token and accumulate the data in between.
+	DString acc;
+	acc.new_init(8, self.allocator);
+	char[] buf = self.buf[:end.len];
+	while (true)
+	{
+		if (catch err = io::read_all(self.reader, buf))
+		{
+			case IoError.UNEXPECTED_EOF:
+			case IoError.EOF:
+				return LexerError.UNTERMINATED_COMMENT?;
+			default:
+				return err?;
+		}
+		if (end == (String)buf)
+		{
+			self.string = acc.str_view();
+			return;
+		}
+		acc.append_char(buf[0]);
+		self.unread(buf.len - 1);
+	}
+}
+
+macro Lexer.unread(self, n) @private
+{
+	switch
+	{
+		case n == 1:
+			self.reader.pushback_byte()!!;
+		case n > 1:
+			if (&self.reader.seek)
+			{
+				self.reader.seek(-n, CURSOR)!!;
+				break;
+			}
+			for (; n > 0; n--) self.reader.pushback_byte()!!;
+	}
+}
+
+fn String! Lexer.parse_ident(&self) @private
+{
+	DString str;
+	str.new_init(8, self.allocator);
+	while (true)
+	{
+		char! c = self.reader.read_byte();
+		if (catch err = c)
+		{
+			case IoError.EOF:
+				return str.str_view();
+			default:
+				return err?;
+		}
+		if (!self.ident(str.len(), c)) return str.str_view();
+		str.append_char(c);
+	}
+}
+
+module lexer_test;
+import lexer;
+import std::io;
+
+def Lexer = Lexer{Token, Comment};
+def Kind = Kind{Token, Comment};
+
+enum Token : char (String token)
+{
+	KEYWORD1 = "keword1",
+	KEYWORD2 = "keyword2",
+	SINGLE   = "//",
+	MULTI    = "/*",
+}
+
+enum Comment : char (Token start, String end)
+{
+	SINGLE = { SINGLE, "\n" },
+	MULTI  = { MULTI, "*/" },
+}
+
+fn bool is_ident_char(usz i, char c)
+{
+	return (i == 0 && c.is_alpha()) || (i > 0 && c.is_alnum());
+}
+
+struct UintTest
+{
+	String in;
+	ulong out;
+}
+
+fn void! lex_uint()
+{
+	UintTest[] tcases = {};
+	foreach (tc : tcases)
+	{
+		ByteReader br;
+		Lexer lex;
+		lex.init(br.init((char[])tc.in), &is_ident_char)!;
+
+		Kind kind = lex.next()!;
+		assert(kind == UINT, "got %s; want %s", kind, Kind.UINT);
+	}
+}
+module lexer2;
+import std::io;
+
+fn int main(String[] args)
+{
+	io::printn("Hello, World!");
+	return 0;
+}
+<*
+ @require Index.kindof == TypeKind.UNSIGNED_INT
+ *>
+module trie{Value, Index};
+import std::collections::list;
+import trie::bitmap;
+
+def TrieNodeList = List{TrieNode};
+def TriePath = List{Index} @private;
+
+fault TrieError
+{
+	TRIE_FULL,
+}
+
+struct Trie
+{
+	TrieNodeList nodes;
+}
+
+struct TrieNode
+{
+	Index[256] children;
+	Value value;
+	bool valid;
+}
+
+fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::heap())
+{
+	*self = {};
+	self.nodes.init(using, initial_capacity);
+	self.nodes.push((TrieNode){});
+}
+
+<*
+ @require self.nodes.len() > 0
+ *>
+fn Value! Trie.get(&self, char[] key)
+{
+	return self.nodes[0].get(self, key);
+}
+
+<*
+  @require self.nodes.len() > 0
+ *>
+fn Value! Trie.get_best(&self, char[] key)
+{
+	TrieNode* root = &self.nodes[0];
+	if (key.len == 0) return root.valid ? root.value : SearchResult.MISSING?;
+	return root.get_best(self, key, 0);
+}
+
+<*
+ @require self.nodes.len() > 0
+ *>
+fn void! Trie.set(&self, char[] key, Value value)
+{
+	self.nodes[0].set(self, key, value)!!;
+}
+
+<*
+ @require self.nodes.len() > 0
+ *>
+fn void! Trie.del(&self, char[] key)
+{
+	if (key.len == 0)
+	{
+		Value zero;
+		(&self.nodes[0]).valid = false;
+		return;
+	}
+	TriePath path;
+	path.init(self.nodes.allocator, 8);
+	defer path.free();
+	path.push(0);
+	self.nodes[0].del(self, key, path)!;
+}
+
+fn Value! TrieNode.get(&self, Trie *t, char[] key) @private
+{
+	if (key.len == 0) return self.valid ? self.value : SearchResult.MISSING?;
+	char c = key[0];
+	Index idx = self.children[c];
+	if (idx == 0) return SearchResult.MISSING?;
+	return t.nodes[idx].get(t, key[1..]);
+}
+
+fn Value! TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
+{
+	if (key.len == 0)
+	{
+		if (result == 0) return SearchResult.MISSING?;
+		return t.nodes[result].value;
+	}
+	char c = key[0];
+	Index idx = self.children[c];
+	if (idx == 0)
+	{
+		if (result == 0) return SearchResult.MISSING?;
+		return t.nodes[result].value;
+	}
+	TrieNode* next = &t.nodes[idx];
+	if (next.valid) result = idx;
+	return next.get_best(t, key[1..], result);
+}
+
+fn void! TrieNode.set(&self, Trie *t, char[] key, Value value) @private
+{
+	if (key.len == 0)
+	{
+		self.value = value;
+		self.valid = true;
+		return;
+	}
+	char c = key[0];
+	Index idx = self.children[c];
+	if (idx == 0)
+	{
+		usz new_idx = t.nodes.len();
+		assert(new_idx != 0);
+		if (new_idx > Index.max) return TrieError.TRIE_FULL?;
+		idx = (Index)new_idx;
+		self.children[c] = idx;
+		t.nodes.push((TrieNode){});
+	}
+	t.nodes[idx].set(t, key[1..], value)!;
+}
+
+fn void! TrieNode.del(&self, Trie* t, char[] key, TriePath path) @private
+{
+	if (key.len > 0)
+	{
+		char c = key[0];
+		Index idx = self.children[c];
+		if (idx != 0)
+		{
+			path.push(idx);
+			t.nodes[idx].del(t, key[1..], path)!;
+		}
+		return;
+	}
+	Index current = path.pop()!;
+	for (isz i = path.len() - 1; i >= 0; i--)
+	{
+		Index parent = path[i];
+		bool is_empty = true;
+		TrieNode* node = &t.nodes[parent];
+		foreach (j, p : node.children)
+		{
+			if (p == current)
+			{
+				node.children[j] = 0;
+				(&t.nodes[p]).valid = false;
+			}
+			is_empty = is_empty && node.children[j] == 0;
+		}
+		if (!is_empty) break;
+	}
+}
+
+module trie::bitmap @private;
+
+struct Bitmap
+{
+	ulong[4] data;
+}
+
+fn bool Bitmap.get(&self, char x)
+{
+	char i = x & 0b11;
+	char j = 1 << (x >> 2);
+	return self.data[i] & j != 0;
+}
+
+fn void Bitmap.set(&self, char x)
+{
+	char i = x & 0b11;
+	char j = 1 << (x >> 2);
+	self.data[i] |= j;
+}
+
+fn bool Bitmap.is_empty(&self)
+{
+	return self.data[0] == 0 && self.data[1] == 0 && self.data[2] == 0 && self.data[3] == 0;
+}
+module trie_test;
+import trie;
+
+def Trie = Trie{String, char};
+
+fn void test()
+{
+	Trie t;
+	t.init();
+	String! v = t.get("a");
+	if (try v) unreachable("key 'a' should not exist");
+	if (catch t.set("a", "va")) unreachable("key 'a' not added");
+	String w = t.get("a")!!;
+	assert(w == "va");
+
+	if (catch t.set("hello world", "hi")) unreachable("key not added");
+	w = t.get("hello world")!!;
+	assert(w == "hi");
+	if (try invalid = t.get("hello")) unreachable("key 'hello' should not exist");
+
+	if (catch t.set("hello", "hoi")) unreachable("key not added");
+	String ww = t.get("hello")!!;
+	assert(ww == "hoi");
+	ww = t.get_best("hello world")!!;
+	assert(ww == "hi");
+
+	t.del("a")!!;
+	String! x = t.get("a");
+	if (try x) unreachable("key 'a' should not exist");
+}
+
+/* #expect: lexer_test.ll
+
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"char[]" = type { ptr, i64 }
+%any = type { ptr, i64 }
+%"UintTest[]" = type { ptr, i64 }
+%UintTest = type { %"char[]", i64 }
+%ByteReader = type { %"char[]", i64 }
+%Lexer = type { %any, %any, %"char[]", %Trie, ptr, i8, i8, i32, i32, i32, %.anon }
+%Trie = type { %List }
+%List = type { i64, i64, %any, ptr }
+%.anon = type { %"char[]" }
+
+@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@.enum.KEYWORD1 = internal constant [9 x i8] c"KEYWORD1\00", align 1
+@.enum.KEYWORD2 = internal constant [9 x i8] c"KEYWORD2\00", align 1
+@.enum.SINGLE = internal constant [7 x i8] c"SINGLE\00", align 1
+@.enum.MULTI = internal constant [6 x i8] c"MULTI\00", align 1
+@"$ct.char" = linkonce global %.introspect { i8 3, i64 0, ptr null, i64 1, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.lexer_test.Token" = linkonce global { i8, i64, ptr, i64, i64, i64, [4 x %"char[]"] } { i8 8, i64 0, ptr null, i64 1, i64 ptrtoint (ptr @"$ct.char" to i64), i64 4, [4 x %"char[]"] [%"char[]" { ptr @.enum.KEYWORD1, i64 8 }, %"char[]" { ptr @.enum.KEYWORD2, i64 8 }, %"char[]" { ptr @.enum.SINGLE, i64 6 }, %"char[]" { ptr @.enum.MULTI, i64 5 }] }, align 8
+@.str = private unnamed_addr constant [8 x i8] c"keword1\00", align 1
+@.str.1 = private unnamed_addr constant [9 x i8] c"keyword2\00", align 1
+@.str.2 = private unnamed_addr constant [3 x i8] c"//\00", align 1
+@.str.3 = private unnamed_addr constant [3 x i8] c"/*\00", align 1
+@"lexer_test.Token$token" = linkonce constant [4 x %"char[]"] [%"char[]" { ptr @.str, i64 7 }, %"char[]" { ptr @.str.1, i64 8 }, %"char[]" { ptr @.str.2, i64 2 }, %"char[]" { ptr @.str.3, i64 2 }], align 8
+@"$ct.lexer_test.Comment" = linkonce global { i8, i64, ptr, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 0, ptr null, i64 1, i64 ptrtoint (ptr @"$ct.char" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.SINGLE, i64 6 }, %"char[]" { ptr @.enum.MULTI, i64 5 }] }, align 8
+@"lexer_test.Comment$start" = linkonce constant [2 x i8] c"\02\03", align 1
+@.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
+@.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
+@"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
+@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
+
+; Function Attrs:
+define zeroext i8 @lexer_test.is_ident_char(i64 %0, i8 zeroext %1) #0 {
+entry:
+  %eq = icmp eq i64 0, %0
+  br i1 %eq, label %and.rhs, label %and.phi
+
+and.rhs:                                          ; preds = %entry
+  %2 = call i8 @std.ascii.char.is_alpha(i8 zeroext %1)
+  %3 = trunc i8 %2 to i1
+  br label %and.phi
+
+and.phi:                                          ; preds = %and.rhs, %entry
+  %val = phi i1 [ false, %entry ], [ %3, %and.rhs ]
+  br i1 %val, label %or.phi, label %or.rhs
+
+or.rhs:                                           ; preds = %and.phi
+  %lt = icmp ult i64 0, %0
+  br i1 %lt, label %and.rhs1, label %and.phi2
+
+and.rhs1:                                         ; preds = %or.rhs
+  %4 = call i8 @std.ascii.char.is_alnum(i8 zeroext %1)
+  %5 = trunc i8 %4 to i1
+  br label %and.phi2
+
+and.phi2:                                         ; preds = %and.rhs1, %or.rhs
+  %val3 = phi i1 [ false, %or.rhs ], [ %5, %and.rhs1 ]
+  br label %or.phi
+
+or.phi:                                           ; preds = %and.phi2, %and.phi
+  %val4 = phi i1 [ true, %and.phi ], [ %val3, %and.phi2 ]
+  %6 = zext i1 %val4 to i8
+  ret i8 %6
+}
+
+; Function Attrs:
+define i64 @lexer_test.lex_uint() #0 {
+entry:
+  %tcases = alloca %"UintTest[]", align 8
+  %.anon = alloca i64, align 8
+  %tc = alloca %UintTest, align 8
+  %br = alloca %ByteReader, align 8
+  %lex = alloca %Lexer, align 8
+  %error_var = alloca i64, align 8
+  %taddr = alloca %any, align 8
+  %kind = alloca i8, align 1
+  %error_var7 = alloca i64, align 8
+  %retparam = alloca i8, align 1
+  store %"UintTest[]" zeroinitializer, ptr %tcases, align 8
+  %ptradd = getelementptr inbounds i8, ptr %tcases, i64 8
+  %0 = load i64, ptr %ptradd, align 8
+  store i64 0, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %noerr_block12, %entry
+  %1 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %1, %0
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %2 = load ptr, ptr %tcases, align 8
+  %3 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [24 x i8], ptr %2, i64 %3
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %tc, ptr align 8 %ptroffset, i32 24, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %br, i8 0, i64 24, i1 false)
+  call void @llvm.memset.p0.i64(ptr align 8 %lex, i8 0, i64 128, i1 false)
+  %lo = load ptr, ptr %tc, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %tc, i64 8
+  %hi = load i64, ptr %ptradd1, align 8
+  %4 = call ptr @std.io.ByteReader.init(ptr %br, ptr %lo, i64 %hi)
+  %5 = insertvalue %any undef, ptr %4, 0
+  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.std.io.ByteReader" to i64), 1
+  store %any %6, ptr %taddr, align 8
+  %lo2 = load i64, ptr %taddr, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %taddr, i64 8
+  %hi4 = load ptr, ptr %ptradd3, align 8
+  %lo5 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi6 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
+  %7 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.init"(ptr %lex, i64 %lo2, ptr %hi4, ptr @lexer_test.is_ident_char, i64 %lo5, ptr %hi6)
+  %not_err = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %8, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %loop.body
+  store i64 %7, ptr %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %loop.body
+  br label %noerr_block
+
+guard_block:                                      ; preds = %assign_optional
+  %9 = load i64, ptr %error_var, align 8
+  ret i64 %9
+
+noerr_block:                                      ; preds = %after_check
+  %10 = call i64 @"lexer$lexer_test.Token$lexer_test.Comment$.Lexer.next"(ptr %retparam, ptr %lex)
+  %not_err8 = icmp eq i64 %10, 0
+  %11 = call i1 @llvm.expect.i1(i1 %not_err8, i1 true)
+  br i1 %11, label %after_check10, label %assign_optional9
+
+assign_optional9:                                 ; preds = %noerr_block
+  store i64 %10, ptr %error_var7, align 8
+  br label %guard_block11
+
+after_check10:                                    ; preds = %noerr_block
+  br label %noerr_block12
+
+guard_block11:                                    ; preds = %assign_optional9
+  %12 = load i64, ptr %error_var7, align 8
+  ret i64 %12
+
+noerr_block12:                                    ; preds = %after_check10
+  %13 = load i8, ptr %retparam, align 1
+  store i8 %13, ptr %kind, align 1
+  %14 = load i8, ptr %kind, align 1
+  %eq = icmp eq i8 %14, 1
+  call void @llvm.assume(i1 %eq)
+  %15 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %15, 1
+  store i64 %addnuw, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i64 0
+}

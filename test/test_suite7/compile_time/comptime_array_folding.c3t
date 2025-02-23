@@ -1,0 +1,68 @@
+// #target: macos-x64
+module test;
+import std;
+
+def @TaggedAttr(value) = {
+    @tag("foo", (ValueHere[?]){ value })
+};
+
+const FOO_STR = "foo";
+
+union TestUnion
+{
+	int a;
+}
+struct ValueHere
+{
+    int value;
+    String thing;
+}
+
+const ValueHere VALUE_STRUCT = { 32, "lol" };
+
+struct ThisOtherStruct @TaggedAttr(VALUE_STRUCT)
+{
+    int something;
+}
+
+enum Example : int (String str) @TaggedAttr(VALUE_STRUCT)
+{
+   FOO = FOO_STR,
+}
+
+const int[2][1] BAR = { { 1, 2} };
+const int[2] BAZ = BAR[0];
+const int BAZ2 = BAZ[1];
+const TestUnion[1] ABC = { { .a = 112 } };
+const TestUnion BCD = ABC[0];
+
+macro int get_tag_value($Type)
+{
+    $if $Type.has_tagof("foo"):
+        return $Type.tagof("foo")[0].value;
+    $else
+    return -1;
+    $endif
+}
+
+const MY_VALUE_1 = get_tag_value(Example);
+const MY_VALUE_2 = get_tag_value(ThisOtherStruct);
+
+fn void main()
+{
+	io::printn(MY_VALUE_2);
+	io::printn(BAZ);
+}
+
+/* #expect: test.ll
+
+@.enum.FOO = internal constant [4 x i8] c"FOO\00", align 1
+@test.FOO_STR = local_unnamed_addr constant %"char[]" { ptr @.str.9, i64 3 }, align 8
+@test.VALUE_STRUCT = local_unnamed_addr constant %ValueHere { i32 32, %"char[]" { ptr @.str.10, i64 3 } }, align 8
+@test.BAR = local_unnamed_addr constant [1 x [2 x i32]] [[2 x i32] [i32 1, i32 2]], align 4
+@test.BAZ = local_unnamed_addr constant [2 x i32] [i32 1, i32 2], align 4
+@test.BAZ2 = local_unnamed_addr constant i32 2, align 4
+@test.ABC = local_unnamed_addr constant [1 x %TestUnion] [%TestUnion { i32 112 }], align 4
+@test.BCD = local_unnamed_addr constant %TestUnion { i32 112 }, align 4
+@test.MY_VALUE_1 = local_unnamed_addr constant i32 32, align 4
+@test.MY_VALUE_2 = local_unnamed_addr constant i32 32, align 4

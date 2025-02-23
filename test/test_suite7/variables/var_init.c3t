@@ -1,0 +1,26 @@
+module test;
+
+struct Abc
+{
+	int[100] x;
+}
+
+
+fn void main()
+{
+	int z @noinit;
+    Abc y @noinit;
+    int x;
+    Abc w;
+}
+
+/* #expect: test.ll
+
+entry:
+  %z = alloca i32, align 4
+  %y = alloca %Abc, align 4
+  %x = alloca i32, align 4
+  %w = alloca %Abc, align 4
+  store i32 0, ptr %x, align 4
+  call void @llvm.memset.p0.i64(ptr align 4 %w, i8 0, i64 400, i1 false)
+  ret void

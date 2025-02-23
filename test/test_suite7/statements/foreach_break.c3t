@@ -1,0 +1,73 @@
+// #target: macos-x64
+module test;
+
+fn void test()
+{
+    int[3] x;
+    int g = 0;
+    foreach (z : x)
+    {
+        if (z > 0) break;
+        if (z == 1) continue;
+        g += z;
+    }
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  %x = alloca [3 x i32], align 4
+  %g = alloca i32, align 4
+  %.anon = alloca i64, align 8
+  %z = alloca i32, align 4
+  store i32 0, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  store i32 0, ptr %g, align 4
+  store i64 0, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.inc, %entry
+  %0 = load i64, ptr %.anon, align 8
+  %gt = icmp ugt i64 3, %0
+  br i1 %gt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %1 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %1
+  %2 = load i32, ptr %ptroffset, align 4
+  store i32 %2, ptr %z, align 4
+  %3 = load i32, ptr %z, align 4
+  %gt2 = icmp sgt i32 %3, 0
+  br i1 %gt2, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %loop.body
+  br label %loop.exit
+
+if.exit:                                          ; preds = %loop.body
+  %4 = load i32, ptr %z, align 4
+  %eq = icmp eq i32 %4, 1
+  br i1 %eq, label %if.then3, label %if.exit4
+
+if.then3:                                         ; preds = %if.exit
+  br label %loop.inc
+
+if.exit4:                                         ; preds = %if.exit
+  %5 = load i32, ptr %g, align 4
+  %6 = load i32, ptr %z, align 4
+  %add = add i32 %5, %6
+  store i32 %add, ptr %g, align 4
+  br label %loop.inc
+
+loop.inc:                                         ; preds = %if.exit4, %if.then3
+  %7 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %7, 1
+  store i64 %addnuw, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %if.then, %loop.cond
+  ret void
+}

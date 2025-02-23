@@ -1,0 +1,33 @@
+// #target: macos-x64
+module playground::bug(<Ty>);
+import std::io;
+
+struct Foo
+{
+    Ty x;
+}
+
+fn void Foo.print_it(&self)
+{
+    io::printf("Method %s\n", self.x);
+}
+
+module playground::bug(<Ty>);
+import std::io;
+
+macro void print_it(...)
+{
+    io::printn("Macro 456");
+}
+
+module playground;
+import playground::bug;
+
+def MyFoo = Foo(<int>);
+
+fn void main(String[] args)
+{
+    MyFoo foo = { 123 };
+    foo.print_it();
+    bug::print_it(<int>)();
+}

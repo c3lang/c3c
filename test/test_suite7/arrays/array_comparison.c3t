@@ -1,0 +1,248 @@
+// #target: macos-x64
+module test;
+
+extern fn void get(double[2]*);
+extern fn void get2(int[2]*);
+extern fn void get3(bool[2]*);
+
+fn void test()
+{
+	double[2] a @noinit;
+	double[2] b @noinit;
+	get(&a);
+	get(&b);
+	bool x = a == b;
+	bool y = a != b;
+
+	int[2] a2 @noinit;
+	int[2] b2 @noinit;
+	get2(&a2);
+	get2(&b2);
+	bool x2 = a2 == b2;
+	bool y2 = a2 != b2;
+
+	bool[2] a3 @noinit;
+	bool[2] b3 @noinit;
+	get3(&a3);
+    get3(&b3);
+
+	bool x3 = a3 == b3;
+	bool y3 = a3 != b3;
+
+}
+
+extern fn void aget(double[200]*);
+extern fn void aget2(int[200]*);
+extern fn void aget3(bool[200]*);
+
+fn void test2()
+{
+	double[200] a @noinit;
+	double[200] b @noinit;
+	aget(&a);
+	aget(&b);
+	bool x = a == b;
+	bool y = a != b;
+
+	int[200] a2 @noinit;
+	int[200] b2 @noinit;
+	aget2(&a2);
+	aget2(&b2);
+	bool x2 = a2 == b2;
+	bool y2 = a2 != b2;
+
+	bool[200] a3 @noinit;
+	bool[200] b3 @noinit;
+	aget3(&a3);
+	aget3(&b3);
+	bool x3 = a3 == b3;
+	bool y3 = a3 != b3;
+
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  %a = alloca [2 x double], align 16
+  %b = alloca [2 x double], align 16
+  %x = alloca i8, align 1
+  %y = alloca i8, align 1
+  %a2 = alloca [2 x i32], align 4
+  %b2 = alloca [2 x i32], align 4
+  %x2 = alloca i8, align 1
+  %y2 = alloca i8, align 1
+  %a3 = alloca [2 x i8], align 1
+  %b3 = alloca [2 x i8], align 1
+  %x3 = alloca i8, align 1
+  %y3 = alloca i8, align 1
+  call void @get(ptr %a)
+  call void @get(ptr %b)
+  %lhs = load <2 x double>, ptr %a, align 16
+  %rhs = load <2 x double>, ptr %b, align 16
+  %cmp = fcmp oeq <2 x double> %lhs, %rhs
+  %0 = call i1 @llvm.vector.reduce.and.v2i1(<2 x i1> %cmp)
+  %1 = zext i1 %0 to i8
+  store i8 %1, ptr %x, align 1
+  %lhs1 = load <2 x double>, ptr %a, align 16
+  %rhs2 = load <2 x double>, ptr %b, align 16
+  %cmp3 = fcmp one <2 x double> %lhs1, %rhs2
+  %2 = call i1 @llvm.vector.reduce.or.v2i1(<2 x i1> %cmp3)
+  %3 = zext i1 %2 to i8
+  store i8 %3, ptr %y, align 1
+  call void @get2(ptr %a2)
+  call void @get2(ptr %b2)
+  %cmp4 = call i32 @memcmp(ptr %a2, ptr %b2, i64 8)
+  %eq = icmp eq i32 %cmp4, 0
+  %4 = zext i1 %eq to i8
+  store i8 %4, ptr %x2, align 1
+  %cmp5 = call i32 @memcmp(ptr %a2, ptr %b2, i64 8)
+  %neq = icmp ne i32 %cmp5, 0
+  %5 = zext i1 %neq to i8
+  store i8 %5, ptr %y2, align 1
+  call void @get3(ptr %a3)
+  call void @get3(ptr %b3)
+  %lhs6 = load <2 x i8>, ptr %a3, align 1
+  %rhs7 = load <2 x i8>, ptr %b3, align 1
+  %6 = trunc <2 x i8> %lhs6 to <2 x i1>
+  %7 = trunc <2 x i8> %rhs7 to <2 x i1>
+  %cmp8 = icmp eq <2 x i1> %6, %7
+  %8 = call i1 @llvm.vector.reduce.and.v2i1(<2 x i1> %cmp8)
+  %9 = zext i1 %8 to i8
+  store i8 %9, ptr %x3, align 1
+  %lhs9 = load <2 x i8>, ptr %a3, align 1
+  %rhs10 = load <2 x i8>, ptr %b3, align 1
+  %10 = trunc <2 x i8> %lhs9 to <2 x i1>
+  %11 = trunc <2 x i8> %rhs10 to <2 x i1>
+  %cmp11 = icmp ne <2 x i1> %10, %11
+  %12 = call i1 @llvm.vector.reduce.or.v2i1(<2 x i1> %cmp11)
+  %13 = zext i1 %12 to i8
+  store i8 %13, ptr %y3, align 1
+  ret void
+}
+define void @test.test2() #0 {
+entry:
+  %a = alloca [200 x double], align 16
+  %b = alloca [200 x double], align 16
+  %x = alloca i8, align 1
+  %cmp.idx = alloca i64, align 8
+  %y = alloca i8, align 1
+  %cmp.idx2 = alloca i64, align 8
+  %a2 = alloca [200 x i32], align 16
+  %b2 = alloca [200 x i32], align 16
+  %x2 = alloca i8, align 1
+  %y2 = alloca i8, align 1
+  %a3 = alloca [200 x i8], align 16
+  %b3 = alloca [200 x i8], align 16
+  %x3 = alloca i8, align 1
+  %cmp.idx14 = alloca i64, align 8
+  %y3 = alloca i8, align 1
+  %cmp.idx23 = alloca i64, align 8
+  call void @aget(ptr %a)
+  call void @aget(ptr %b)
+  store i64 0, ptr %cmp.idx, align 8
+  br label %array_loop_start
+
+array_loop_start:                                 ; preds = %array_loop_comparison, %entry
+  %0 = load i64, ptr %cmp.idx, align 8
+  %ptroffset = getelementptr inbounds [8 x i8], ptr %a, i64 %0
+  %ptroffset1 = getelementptr inbounds [8 x i8], ptr %b, i64 %0
+  %1 = load double, ptr %ptroffset, align 8
+  %2 = load double, ptr %ptroffset1, align 8
+  %eq = fcmp oeq double %1, %2
+  br i1 %eq, label %array_loop_comparison, label %array_cmp_exit
+
+array_loop_comparison:                            ; preds = %array_loop_start
+  %inc = add i64 %0, 1
+  store i64 %inc, ptr %cmp.idx, align 8
+  %lt = icmp ult i64 %inc, 200
+  br i1 %lt, label %array_loop_start, label %array_cmp_exit
+
+array_cmp_exit:                                   ; preds = %array_loop_comparison, %array_loop_start
+  %array_cmp_phi = phi i1 [ true, %array_loop_comparison ], [ false, %array_loop_start ]
+  %3 = zext i1 %array_cmp_phi to i8
+  store i8 %3, ptr %x, align 1
+  store i64 0, ptr %cmp.idx2, align 8
+  br label %array_loop_start3
+
+array_loop_start3:                                ; preds = %array_loop_comparison7, %array_cmp_exit
+  %4 = load i64, ptr %cmp.idx2, align 8
+  %ptroffset4 = getelementptr inbounds [8 x i8], ptr %a, i64 %4
+  %ptroffset5 = getelementptr inbounds [8 x i8], ptr %b, i64 %4
+  %5 = load double, ptr %ptroffset4, align 8
+  %6 = load double, ptr %ptroffset5, align 8
+  %eq6 = fcmp oeq double %5, %6
+  br i1 %eq6, label %array_loop_comparison7, label %array_cmp_exit10
+
+array_loop_comparison7:                           ; preds = %array_loop_start3
+  %inc8 = add i64 %4, 1
+  store i64 %inc8, ptr %cmp.idx2, align 8
+  %lt9 = icmp ult i64 %inc8, 200
+  br i1 %lt9, label %array_loop_start3, label %array_cmp_exit10
+
+array_cmp_exit10:                                 ; preds = %array_loop_comparison7, %array_loop_start3
+  %array_cmp_phi11 = phi i1 [ false, %array_loop_comparison7 ], [ true, %array_loop_start3 ]
+  %7 = zext i1 %array_cmp_phi11 to i8
+  store i8 %7, ptr %y, align 1
+  call void @aget2(ptr %a2)
+  call void @aget2(ptr %b2)
+  %cmp = call i32 @memcmp(ptr %a2, ptr %b2, i64 800)
+  %eq12 = icmp eq i32 %cmp, 0
+  %8 = zext i1 %eq12 to i8
+  store i8 %8, ptr %x2, align 1
+  %cmp13 = call i32 @memcmp(ptr %a2, ptr %b2, i64 800)
+  %neq = icmp ne i32 %cmp13, 0
+  %9 = zext i1 %neq to i8
+  store i8 %9, ptr %y2, align 1
+  call void @aget3(ptr %a3)
+  call void @aget3(ptr %b3)
+  store i64 0, ptr %cmp.idx14, align 8
+  br label %array_loop_start15
+
+array_loop_start15:                               ; preds = %array_loop_comparison18, %array_cmp_exit10
+  %10 = load i64, ptr %cmp.idx14, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a3, i64 %10
+  %ptradd16 = getelementptr inbounds i8, ptr %b3, i64 %10
+  %11 = load i8, ptr %ptradd, align 1
+  %12 = trunc i8 %11 to i1
+  %13 = load i8, ptr %ptradd16, align 1
+  %14 = trunc i8 %13 to i1
+  %eq17 = icmp eq i1 %12, %14
+  br i1 %eq17, label %array_loop_comparison18, label %array_cmp_exit21
+
+array_loop_comparison18:                          ; preds = %array_loop_start15
+  %inc19 = add i64 %10, 1
+  store i64 %inc19, ptr %cmp.idx14, align 8
+  %lt20 = icmp ult i64 %inc19, 200
+  br i1 %lt20, label %array_loop_start15, label %array_cmp_exit21
+
+array_cmp_exit21:                                 ; preds = %array_loop_comparison18, %array_loop_start15
+  %array_cmp_phi22 = phi i1 [ true, %array_loop_comparison18 ], [ false, %array_loop_start15 ]
+  %15 = zext i1 %array_cmp_phi22 to i8
+  store i8 %15, ptr %x3, align 1
+  store i64 0, ptr %cmp.idx23, align 8
+  br label %array_loop_start24
+
+array_loop_start24:                               ; preds = %array_loop_comparison28, %array_cmp_exit21
+  %16 = load i64, ptr %cmp.idx23, align 8
+  %ptradd25 = getelementptr inbounds i8, ptr %a3, i64 %16
+  %ptradd26 = getelementptr inbounds i8, ptr %b3, i64 %16
+  %17 = load i8, ptr %ptradd25, align 1
+  %18 = trunc i8 %17 to i1
+  %19 = load i8, ptr %ptradd26, align 1
+  %20 = trunc i8 %19 to i1
+  %eq27 = icmp eq i1 %18, %20
+  br i1 %eq27, label %array_loop_comparison28, label %array_cmp_exit31
+
+array_loop_comparison28:                          ; preds = %array_loop_start24
+  %inc29 = add i64 %16, 1
+  store i64 %inc29, ptr %cmp.idx23, align 8
+  %lt30 = icmp ult i64 %inc29, 200
+  br i1 %lt30, label %array_loop_start24, label %array_cmp_exit31
+
+array_cmp_exit31:                                 ; preds = %array_loop_comparison28, %array_loop_start24
+  %array_cmp_phi32 = phi i1 [ false, %array_loop_comparison28 ], [ true, %array_loop_start24 ]
+  %21 = zext i1 %array_cmp_phi32 to i8
+  store i8 %21, ptr %y3, align 1
+  ret void
+}

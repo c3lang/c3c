@@ -1,0 +1,39 @@
+// #target: macos-x64
+// #deprecation: no
+module foo;
+extern fn void printf(char*,...);
+
+fn void main()
+{
+	defer printf("On exit\n");
+	{|
+		defer printf("Baz\n");
+		defer (void){|
+			defer printf("Hello!\n");
+			defer printf("1\n");
+			if (true) return 12;
+			defer printf("2\n");
+			return 34;
+		|};
+	|};
+	defer printf("On 2\n");
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %blockret = alloca i32, align 4
+  br label %if.then
+if.then:                                          ; preds = %entry
+  store i32 12, ptr %blockret, align 4
+  call void (ptr, ...) @printf(ptr @.str)
+  call void (ptr, ...) @printf(ptr @.str.1)
+  br label %expr_block.exit
+expr_block.exit:                                  ; preds = %if.then
+  call void (ptr, ...) @printf(ptr @.str.2)
+  call void (ptr, ...) @printf(ptr @.str.3)
+  call void (ptr, ...) @printf(ptr @.str.4)
+  ret void
+}
+

@@ -1,0 +1,12 @@
+import std::io;
+
+macro foo($Type, a, ..., bool b = true, float f = 123.f) { io::printfn("%s %s %s %s", $Type.nameof, a, b, f); }
+macro bar($Type, a, ..., bool b, float f) { io::printfn("%s %s %s %s", $Type.nameof, a, b, f); }
+
+fn void main()
+{
+    foo(void*, 99, 0, b: false, f: 456.f); // OK
+    foo(void*, 99, /*0,*/ b: false, f: 456.f); // SEGFAULT
+    foo(void*, 99, 0, b: false, f: 456.f); // OK
+    bar(void*, 99, /*0,*/ b: false, f: 456.f);  // SEGFAULT
+}

@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+import std::io;
+fn void! example_fn()
+{
+    defer try {
+        int a = 1;
+    }
+
+    defer (catch err) {
+        anyfault f = err;
+    }
+    return io::IoError.FILE_NOT_FOUND?;
+}
+
+/* #expect: test.ll
+
+define i64 @test.example_fn() #0 {
+entry:
+  %reterr = alloca i64, align 8
+  %err = alloca i64, align 8
+  %f = alloca i64, align 8
+  store i64 ptrtoint (ptr @"std.io.IoError$FILE_NOT_FOUND" to i64), ptr %reterr, align 8
+  %0 = load i64, ptr %reterr, align 8
+  store i64 %0, ptr %err, align 8
+  %1 = load i64, ptr %err, align 8
+  store i64 %1, ptr %f, align 8
+  ret i64 ptrtoint (ptr @"std.io.IoError$FILE_NOT_FOUND" to i64)
+}

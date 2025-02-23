@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+import std::collections::list;
+macro @test_list(a)
+{
+  var $Type = $typeof(a);
+  $if $defined(a[0]) &&& $Type.typeid == List(<$typeof(a[0])>).typeid:
+    return 1;
+  $else
+    return 0;
+  $endif
+}
+
+fn int main(String[] args)
+{
+  DString str = dstring::new("test");
+  return @test_list(str);
+}
+
+/* #expect: test.ll
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %str = alloca ptr, align 8
+  %a = alloca ptr, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  %lo = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
+  %2 = call ptr @std.core.dstring.new(ptr @.str, i64 4, i64 %lo, ptr %hi)
+  store ptr %2, ptr %str, align 8
+  %3 = load ptr, ptr %str, align 8
+  store ptr %3, ptr %a, align 8
+  ret i32 0
+}

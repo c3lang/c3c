@@ -1,0 +1,37 @@
+// #target: macos-x64
+module foo;
+fn float[20] get()
+{
+    float[20] y;
+    for (int i = 0; i < 20; i++) y[i] = (float)i * i + 1;
+    return y;
+}
+fn void main()
+{
+	float[<4>] x = get()[1..^16];
+	float[4] y = get()[2..^15];
+}
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca <4 x float>, align 16
+  %sretparam = alloca [20 x float], align 4
+  %y = alloca [4 x float], align 16
+  %sretparam1 = alloca [20 x float], align 4
+  call void @foo.get(ptr sret([20 x float]) align 4 %sretparam)
+  %ptradd = getelementptr inbounds i8, ptr %sretparam, i64 4
+  %0 = insertvalue %"float[]" undef, ptr %ptradd, 0
+  %1 = insertvalue %"float[]" %0, i64 4, 1
+  %2 = extractvalue %"float[]" %1, 0
+  %3 = load <4 x float>, ptr %2, align 4
+  store <4 x float> %3, ptr %x, align 16
+  call void @foo.get(ptr sret([20 x float]) align 4 %sretparam1)
+  %ptradd2 = getelementptr inbounds i8, ptr %sretparam1, i64 8
+  %4 = insertvalue %"float[]" undef, ptr %ptradd2, 0
+  %5 = insertvalue %"float[]" %4, i64 4, 1
+  %6 = extractvalue %"float[]" %5, 0
+  call void @llvm.memcpy.p0.p0.i32(ptr align 16 %y, ptr align 4 %6, i32 16, i1 false)
+  ret void
+}
