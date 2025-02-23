@@ -302,7 +302,6 @@ fn void fseek_ftell_fgetpos_fsetpos_rewind() @test
 // fn void fputc() @test {}
 // fn void fputs() @test {}
 // fn void fread() @test {}
-// fn void free() @test {}
 // fn void freopen() @test {}
 // fn void fscanf() @test {}
 // fn void fseek() @test {}
@@ -320,7 +319,19 @@ fn void fseek_ftell_fgetpos_fsetpos_rewind() @test
 // fn void localtime() @test {}
 // fn void localtime_r() @test {}
 // fn void longjmp() @test {}
-// fn void malloc() @test {}
+
+fn void malloc_free() @test
+{
+	CInt* ar = libc::malloc(3 * CInt.sizeof);
+	ar[0] = 10;
+	ar[1] = -10;
+	ar[2] = 4;
+	assert(ar[0] == 10);
+	assert(ar[1] == -10);
+	assert(ar[2] == 4);
+	libc::free(ar);
+}
+
 // fn void memchr() @test {}
 // fn void memcmp() @test {}
 // fn void memcpy() @test {}
