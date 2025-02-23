@@ -1,7 +1,7 @@
 //  priorityqueue.c3
 //  A priority queue using a classic binary heap for C3.
 //
-//  Copyright (c) 2022 David Kopec
+//  Copyright (c) 2022-2025 David Kopec
 //
 //  Permission is hereby granted, free of charge, to any person obtaining a copy
 //  of this software and associated documentation files (the "Software"), to deal
@@ -20,35 +20,30 @@
 //  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 //  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 //  SOFTWARE.
-module std::collections::priorityqueue(<Type>);
+module std::collections::priorityqueue{Type};
 import std::collections::priorityqueue::private;
 
-distinct PriorityQueue = inline PrivatePriorityQueue(<Type, false>);
-distinct PriorityQueueMax = inline PrivatePriorityQueue(<Type, true>);
+distinct PriorityQueue = inline List{Type};
+distinct PriorityQueueMax = inline List{Type};
 
-module std::collections::priorityqueue::private(<Type, MAX>);
+module std::collections::priorityqueue::private{Type, MAX};
 import std::collections::list, std::io;
-
-def Heap = List(<Type>);
 
 struct PrivatePriorityQueue (Printable)
 {
-	Heap heap;
+	List{Type} heap;
 }
 
-fn void PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16, ) @inline
+fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16, ) @inline
 {
-	self.heap.new_init(initial_capacity, allocator);
+	self.heap.init(allocator, initial_capacity);
+	return self;
 }
 
-fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @inline
+fn PrivatePriorityQueue* PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
 {
-	self.heap.new_init(initial_capacity, allocator);
-}
-
-fn void PrivatePriorityQueue.temp_init(&self, usz initial_capacity = 16) @inline
-{
-	self.heap.new_init(initial_capacity, allocator::temp()) @inline;
+	self.init(tmem(), initial_capacity);
+	return self;
 }
 
 
@@ -72,11 +67,14 @@ fn void PrivatePriorityQueue.push(&self, Type element)
 	}
 }
 
+<*
+ @require index < self.len : "Index out of range"
+*>
 fn void PrivatePriorityQueue.remove_at(&self, usz index)
 {
 	if (index == 0)
 	{
-		self.pop()!!;
+		self.heap.remove_last();
 		return;
 	}
 	self.heap.remove_at(index);
@@ -124,8 +122,7 @@ fn Type! PrivatePriorityQueue.pop(&self)
 
 fn Type! PrivatePriorityQueue.first(&self)
 {
-	if (!self.len()) return IteratorResult.NO_MORE_ELEMENT?;
-	return self.heap.get(0);
+	return self.heap.first();
 }
 
 fn void PrivatePriorityQueue.free(&self)
@@ -135,12 +132,12 @@ fn void PrivatePriorityQueue.free(&self)
 
 fn usz PrivatePriorityQueue.len(&self) @operator(len)
 {
-	return self.heap.len();
+	return self.heap.len() @inline;
 }
 
 fn bool PrivatePriorityQueue.is_empty(&self)
 {
-	return self.heap.is_empty();
+	return self.heap.is_empty() @inline;
 }
 
 <*
@@ -154,10 +151,5 @@ fn Type PrivatePriorityQueue.get(&self, usz index) @operator([])
 fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
 	return self.heap.to_format(formatter);
-}
-
-fn String PrivatePriorityQueue.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
-{
-	return self.heap.to_new_string(allocator);
 }
 

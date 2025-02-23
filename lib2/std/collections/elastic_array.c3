@@ -4,7 +4,7 @@
 <*
  @require MAX_SIZE >= 1 `The size must be at least 1 element big.`
 *>
-module std::collections::elastic_array(<Type, MAX_SIZE>);
+module std::collections::elastic_array{Type, MAX_SIZE};
 import std::io, std::math, std::collections::list_common;
 
 def ElementPredicate = fn bool(Type *type);
@@ -195,9 +195,9 @@ macro Type[] ElasticArray.to_array(&self, Allocator allocator)
 fn Type[] ElasticArray.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_aligned_array(allocator::temp());
+	return self.to_aligned_array(tmem());
 	$else
-	return self.to_array(allocator::temp());
+	return self.to_array(tmem());
 	$endif;
 }
 

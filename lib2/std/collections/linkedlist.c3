@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::linkedlist(<Type>);
+module std::collections::linkedlist{Type};
 
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 
@@ -30,18 +30,9 @@ fn LinkedList* LinkedList.init(&self, Allocator allocator)
 	return self;
 }
 
-<*
- @return "the initialized list"
-*>
-fn LinkedList* LinkedList.new_init(&self)
+fn LinkedList* LinkedList.tinit(&self)
 {
-	return self.init(allocator::heap()) @inline;
-}
-
-
-fn LinkedList* LinkedList.temp_init(&self)
-{
-	return self.init(allocator::temp()) @inline;
+	return self.init(tmem()) @inline;
 }
 
 <*
@@ -54,7 +45,7 @@ macro void LinkedList.free_node(&self, Node* node) @private
 
 macro Node* LinkedList.alloc_node(&self) @private
 {
-	if (!self.allocator) self.allocator = allocator::heap();
+	if (!self.allocator) self.allocator = tmem();
 	return allocator::alloc(self.allocator, Node);
 }
 

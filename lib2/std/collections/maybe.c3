@@ -1,4 +1,4 @@
-module std::collections::maybe(<Type>);
+module std::collections::maybe{Type};
 import std::io;
 
 struct Maybe (Printable)

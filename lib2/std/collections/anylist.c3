@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2024-2025 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::anylist;
@@ -15,16 +15,6 @@ struct AnyList (Printable)
 	any* entries;
 }
 
-
-<*
- Use `init` for to use a custom allocator.
-
- @param initial_capacity "The initial capacity to reserve"
-*>
-fn AnyList* AnyList.new_init(&self, usz initial_capacity = 16, Allocator allocator = null)
-{
-	return self.init(allocator ?: allocator::heap(), initial_capacity) @inline;
-}
 
 <*
  @param [&inout] allocator "The allocator to use"
@@ -52,9 +42,9 @@ fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 
  @param initial_capacity "The initial capacity to reserve"
 *>
-fn AnyList* AnyList.temp_init(&self, usz initial_capacity = 16)
+fn AnyList* AnyList.tinit(&self, usz initial_capacity = 16)
 {
-	return self.init(allocator::temp(), initial_capacity) @inline;
+	return self.init(tmem(), initial_capacity) @inline;
 }
 
 fn usz! AnyList.to_format(&self, Formatter* formatter) @dynamic
@@ -152,13 +142,13 @@ fn any! AnyList.new_pop(&self, Allocator allocator = allocator::heap())
  @return! IteratorResult.NO_MORE_ELEMENT
  @deprecated `use tcopy_pop`
 *>
-fn any! AnyList.temp_pop(&self) => self.copy_pop(allocator::temp());
+fn any! AnyList.temp_pop(&self) => self.copy_pop(tmem());
 
 <*
  Pop the last value and allocate the copy using the temp allocator
  @return! IteratorResult.NO_MORE_ELEMENT
 *>
-fn any! AnyList.tcopy_pop(&self) => self.copy_pop(allocator::temp());
+fn any! AnyList.tcopy_pop(&self) => self.copy_pop(tmem());
 
 <*
  Pop the last value. It must later be released using list.free_element()
@@ -222,13 +212,13 @@ fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 <*
  Same as temp_pop() but pops the first value instead.
 *>
-fn any! AnyList.tcopy_pop_first(&self) => self.copy_pop_first(allocator::temp());
+fn any! AnyList.tcopy_pop_first(&self) => self.copy_pop_first(tmem());
 
 <*
  Same as temp_pop() but pops the first value instead.
  @deprecated `use tcopy_pop_first`
 *>
-fn any! AnyList.temp_pop_first(&self) => self.new_pop_first(allocator::temp());
+fn any! AnyList.temp_pop_first(&self) => self.new_pop_first(tmem());
 
 <*
  @require index < self.size
@@ -466,7 +456,7 @@ fn void AnyList.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
-	if (!self.allocator) self.allocator = allocator::heap();
+	if (!self.allocator) self.allocator = tmem();
 	min_capacity = math::next_power_of_2(min_capacity);
 	self.entries = allocator::realloc(self.allocator, self.entries, any.sizeof * min_capacity);
 	self.capacity = min_capacity;

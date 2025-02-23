@@ -132,11 +132,11 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 	};
 }
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
+fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace)
 {
 	void *load_addr = (void *)load_address()!;
 	BacktraceList list;
-	list.new_init(backtrace.len, allocator);
+	list.init(allocator, backtrace.len);
 	defer catch
 	{
 		foreach (trace : list)

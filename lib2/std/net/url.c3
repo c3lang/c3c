@@ -275,7 +275,7 @@ fn UrlQueryValues parse_query(String query, Allocator allocator)
 {
 	UrlQueryValues vals;
 	vals.map.init(allocator);
-	vals.key_order.new_init(allocator: allocator);
+	vals.key_order.init(allocator);
 
 	Splitter raw_vals = query.tokenize("&");
 	while (try String rv = raw_vals.next())
@@ -309,7 +309,7 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 	else
 	{
 		UrlQueryValueList new_list;
-		new_list.new_init_with_array({ value_copy }, self.allocator);
+		new_list.init_with_array(self.allocator, { value_copy });
 		(*self)[key] = new_list;
 		self.key_order.push(key.copy(self.allocator));
 	}

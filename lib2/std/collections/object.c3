@@ -50,7 +50,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			usz n = formatter.printf("{")!;
 			@stack_mem(1024; Allocator mem)
 			{
-				foreach (i, key : self.map.copy_keys(mem))
+				foreach (i, key : self.map.keys(mem))
 				{
 					if (i > 0) n += formatter.printf(",")!;
 					n += formatter.printf(`"%s":`, key)!;
@@ -156,7 +156,7 @@ fn void Object.init_map_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalMap.typeid;
-		self.map.new_init(allocator: self.allocator);
+		self.map.tinit();
 	}
 }
 
@@ -168,7 +168,7 @@ fn void Object.init_array_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalList.typeid;
-		self.array.new_init(allocator: self.allocator);
+		self.array.init(self.allocator);
 	}
 }
 

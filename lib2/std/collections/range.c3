@@ -1,7 +1,7 @@
 <*
  @require Type.is_ordered : "The type must be ordered"
 *>
-module std::collections::range(<Type>);
+module std::collections::range{Type};
 import std::io;
 
 struct Range (Printable)
@@ -29,21 +29,6 @@ fn Type Range.get(&self, usz index) @operator([])
 	return (Type)(self.start + (usz)index);
 }
 
-fn String Range.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic @deprecated
-{
-	return string::format("[%s..%s]", self.start, self.end, allocator: allocator);
-}
-
-fn String Range.to_string(&self, Allocator allocator) @dynamic
-{
-	return string::format("[%s..%s]", self.start, self.end, allocator: allocator);
-}
-
-fn String Range.to_tstring(&self)
-{
-	return self.to_string(allocator::temp());
-}
-
 fn usz! Range.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..%s]", self.start, self.end)!;
@@ -69,21 +54,6 @@ fn bool ExclusiveRange.contains(&self, Type value) @inline
 fn usz! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..<%s]", self.start, self.end)!;
-}
-
-fn String ExclusiveRange.to_new_string(&self, Allocator allocator = null) @dynamic
-{
-	return self.to_string(allocator ?: allocator::heap());
-}
-
-fn String ExclusiveRange.to_string(&self, Allocator allocator) @dynamic
-{
-	return string::format("[%s..<%s]", self.start, self.end, allocator: allocator);
-}
-
-fn String ExclusiveRange.to_tstring(&self)
-{
-	return self.to_new_string(allocator::temp());
 }
 
 <*

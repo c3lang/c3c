@@ -3,7 +3,7 @@ module std::collections::list_common;
 <*
  IMPORTANT The returned array must be freed using free_aligned.
 *>
-macro list_to_new_aligned_array($Type, self, Allocator allocator)
+macro list_to_aligned_array($Type, self, Allocator allocator)
 {
 	if (!self.size) return ($Type[]){};
 	$Type[] result = allocator::alloc_array_aligned(allocator, $Type, self.size);
@@ -11,7 +11,7 @@ macro list_to_new_aligned_array($Type, self, Allocator allocator)
 	return result;
 }
 
-macro list_to_new_array($Type, self, Allocator allocator)
+macro list_to_array($Type, self, Allocator allocator)
 {
 	if (!self.size) return ($Type[]){};
 	$Type[] result = allocator::alloc_array(allocator, $Type, self.size);

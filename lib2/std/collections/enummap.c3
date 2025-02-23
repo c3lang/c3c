@@ -1,7 +1,7 @@
 <*
  @require Enum.kindof == TypeKind.ENUM : "Only enums may be used with an enummap"
 *>
-module std::collections::enummap(<Enum, ValueType>);
+module std::collections::enummap{Enum, ValueType};
 import std::io;
 struct EnumMap (Printable)
 {
@@ -31,11 +31,6 @@ fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 fn String EnumMap.to_string(&self, Allocator allocator) @dynamic
 {
 	return string::format("%s", *self, allocator: allocator);
-}
-
-fn String EnumMap.to_new_string(&self, Allocator allocator = null) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator ?: allocator::heap());
 }
 
 fn String EnumMap.to_tstring(&self) @dynamic
