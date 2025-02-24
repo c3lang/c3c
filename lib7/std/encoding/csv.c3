@@ -77,13 +77,13 @@ macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @
 	{
 		@stack_mem(512; Allocator mem)
 		{
-			String! s = io::readline(stream, mem);
+			String! s = io::readline(mem, stream);
 			if (catch err = s)
 			{
 				if (err == IoError.EOF) return;
 				return err?;
 			}
-			@body(s.split(sep, allocator: mem));
+			@body(s.split(mem, sep));
 		};
 	}
 }

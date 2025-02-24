@@ -28,16 +28,6 @@ fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
 	return n;
 }
 
-fn String EnumMap.to_string(&self, Allocator allocator) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator);
-}
-
-fn String EnumMap.to_tstring(&self) @dynamic
-{
-	return string::tformat("%s", *self);
-}
-
 <*
  @return "The total size of this map, which is the same as the number of enum values"
  @pure

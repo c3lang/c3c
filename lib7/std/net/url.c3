@@ -170,81 +170,81 @@ fn Url! parse(Allocator allocator, String url_string)
 	return url;
 }
 
-<*
- Stringify a Url struct.
-
- @param [in] self
- @param [inout] allocator
- @return "Url as a string"
-*>
-fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
+fn usz! Url.to_format(&self, Formatter* f) @dynamic
 {
-	DString builder = dstring::tnew();
-
+	usz len;
 	// Add scheme if it exists
 	if (self.scheme != "")
 	{
-		builder.append_chars(self.scheme);
-		builder.append_char(':');
-		if (self.host.len > 0) builder.append_chars("//");
+		len += f.print(self.scheme)!;
+		len += f.print(":")!;
+		if (self.host.len > 0) len += f.print("//")!;
 	}
 
 	// Add username and password if they exist
-	if (self.username != "")
+	if (self.username)
 	{
-		String username = tencode(self.username, USERPASS);
-		builder.append_chars(username);
-
-		if (self.password != "")
+		@stack_mem(64; Allocator smem)
 		{
-			builder.append_char(':');
-
-			String password = tencode(self.password, USERPASS);
-			builder.append_chars(password);
+			len += f.print(encode(smem, self.username, USERPASS))!;
+		};
+		if (self.password)
+		{
+			len += f.print(":")!;
+			@stack_mem(64; Allocator smem)
+			{
+				len += f.print(encode(smem, self.password, USERPASS))!;
+			};
 		}
-		builder.append_char('@');
+		len += f.print("@")!;
 	}
 
 	// Add host
-	String host = tencode(self.host, HOST);
-	builder.append_chars(host);
+	@stack_mem(128; Allocator smem)
+	{
+		len += f.print(encode(smem, self.host, HOST))!;
+	};
 
 	// Add port
-	if (self.port != 0)
-	{
-		builder.append_char(':');
-		builder.appendf("%d", self.port);
-	}
+	if (self.port) len += f.printf(":%d", self.port)!;
 
 	// Add path
-	String path = tencode(self.path, PATH);
-	builder.append_chars(path);
+	@stack_mem(256; Allocator smem)
+	{
+		len += f.print(encode(smem, self.path, PATH))!;
+	};
 
 	// Add query if it exists (note that `query` is expected to
 	// be already properly encoded).
-	if (self.query != "")
+	if (self.query)
 	{
-		builder.append_char('?');
-		builder.append_chars(self.query);
+		len += f.print("?")!;
+		len += f.print(self.query)!;
 	}
 
 	// Add fragment if it exists
-	if (self.fragment != "")
+	if (self.fragment)
 	{
-		builder.append_char('#');
-
-		String fragment = tencode(self.fragment, FRAGMENT);
-		builder.append_chars(fragment);
+		@stack_mem(256; Allocator smem)
+		{
+			len += f.print("#")!;
+			len += f.print(encode(smem, self.fragment, FRAGMENT))!;
+		};
 	}
-
-	return builder.copy_str(allocator);
+	return len;
 }
 
-def UrlQueryValueList = List(<String>);
+fn String Url.to_string(&self, Allocator allocator)
+{
+	return string::format(allocator, "%s", *self);
+}
+
+
+def UrlQueryValueList = List{String};
 
 struct UrlQueryValues
 {
-	inline HashMap(<String, UrlQueryValueList>) map;
+	inline HashMap{String, UrlQueryValueList} map;
 	UrlQueryValueList key_order;
 }
 
@@ -317,40 +317,34 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 }
 
 
-<*
- Stringify UrlQueryValues into an encoded query string.
 
- @param [in] self
- @param [inout] allocator
- @return "a percent-encoded query string"
-*>
-fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
+fn usz! UrlQueryValues.to_format(&self, Formatter* f) @dynamic
 {
-	DString builder = dstring::tnew();
-
+	usz len;
 	usz i;
 	foreach (key: self.key_order)
 	{
-		String encoded_key = tencode(key, QUERY);
-
-		UrlQueryValueList! values = self.map.get(key);
-		if (catch values) continue;
-
-		foreach (value: values)
+		@stack_mem(128; Allocator mem)
 		{
-			if (i > 0) builder.append_char('&');
-
-			builder.append_chars(encoded_key);
-			builder.append_char('=');
-
-			String encoded_value = tencode(value, QUERY);
-			builder.append_chars(encoded_value);
-			i++;
-		}
-	};
-
-	return builder.copy_str(allocator);
+			String encoded_key = encode(mem, key, QUERY);
+			UrlQueryValueList! values = self.map.get(key);
+			if (catch values) continue;
+			foreach (value : values)
+			{
+				if (i > 0) len += f.print("&")!;
+				len += f.print(encoded_key)!;
+				len += f.print("=")!;
+				@stack_mem(256; Allocator smem)
+				{
+					len += f.print(encode(smem, value, QUERY))!;
+				};
+				i++;
+			}
+		};
+	}
+	return len;
 }
+
 
 fn void UrlQueryValues.free(&self)
 {

@@ -72,7 +72,7 @@ macro @check(#condition, String format = "", args...)
 		@stack_mem(512; Allocator allocator)
 		{
 			DString s;
-			s.new_init(allocator: allocator);
+			s.init(allocator);
 			s.appendf("check `%s` failed. ", $stringify(#condition));
 			s.appendf(format, ...args);
 			print_panicf(s.str_view());
