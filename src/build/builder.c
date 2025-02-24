@@ -272,12 +272,12 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_BENCHMARK:
-			target->run_after_compile = true;
+			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_BENCHMARK;
 			break;
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:
-			target->run_after_compile = true;
+			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_TEST;
 			switch (options->ansi)
 			{

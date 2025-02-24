@@ -9,6 +9,7 @@
 - c3c `--test-leak-report` flag for displaying full memory lead report if any
 - Output into /.build/obj/<platform> by default.
 - Output llvm/asm into llvm/<platform> and asm/<platform> by default.
+- Add flag `--suppress-run`. For commands which may run executable after building, skip the run step. #1931
 
 ### Fixes
 - Bug appearing when `??` was combined with boolean in some cases.

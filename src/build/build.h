@@ -553,6 +553,7 @@ typedef struct BuildOptions_
 	bool print_output;
 	bool print_input;
 	bool run_once;
+	bool suppress_run;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;

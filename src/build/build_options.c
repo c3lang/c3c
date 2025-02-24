@@ -103,6 +103,7 @@ static void usage(bool full)
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
+		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -1233,6 +1234,11 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("testing"))
 			{
 				options->testing = true;
+				return;
+			}
+			if (match_longopt("suppress-run"))
+			{
+				options->suppress_run = true;
 				return;
 			}
 			if (match_longopt("help"))
