@@ -45,7 +45,7 @@ struct TestUnit
 	TestFn func;
 }
 
-fn TestUnit[] test_collection_create(Allocator allocator = allocator::heap())
+fn TestUnit[] test_collection_create(Allocator allocator)
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
@@ -317,6 +317,6 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 fn bool default_test_runner(String[] args) => @pool()
 {
 	assert(test_context == null, "test suite is already running");
-	return run_tests(args, test_collection_create(allocator::temp()));
+	return run_tests(args, test_collection_create(tmem()));
 }
 

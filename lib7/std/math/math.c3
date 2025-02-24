@@ -90,33 +90,33 @@ fault MatrixError
 	MATRIX_INVERSE_DOESNT_EXIST,
 }
 
-def Complexf = Complex(<float>);
-def Complex = Complex(<double>);
-def COMPLEX_IDENTITY = complex::IDENTITY(<double>) @builtin;
-def COMPLEXF_IDENTITY = complex::IDENTITY(<float>) @builtin;
+def Complexf = Complex{float};
+def Complex = Complex{double};
+def COMPLEX_IDENTITY = complex::IDENTITY{double} @builtin;
+def COMPLEXF_IDENTITY = complex::IDENTITY{float} @builtin;
 
-def Quaternionf = Quaternion(<float>);
-def Quaternion = Quaternion(<double>);
-def QUATERNION_IDENTITY = quaternion::IDENTITY(<double>) @builtin;
-def QUATERNIONF_IDENTITY = quaternion::IDENTITY(<float>) @builtin;
+def Quaternionf = Quaternion{float};
+def Quaternion = Quaternion{double};
+def QUATERNION_IDENTITY = quaternion::IDENTITY{double} @builtin;
+def QUATERNIONF_IDENTITY = quaternion::IDENTITY{float} @builtin;
 
-def Matrix2f = Matrix2x2(<float>);
-def Matrix2 = Matrix2x2(<double>);
-def Matrix3f = Matrix3x3(<float>);
-def Matrix3 = Matrix3x3(<double>);
-def Matrix4f = Matrix4x4(<float>);
-def Matrix4 = Matrix4x4(<double>);
-def matrix4_ortho = matrix::ortho(<double>) @builtin;
-def matrix4_perspective = matrix::perspective(<double>) @builtin;
-def matrix4f_ortho = matrix::ortho(<float>) @builtin;
-def matrix4f_perspective = matrix::perspective(<float>) @builtin;
+def Matrix2f = Matrix2x2{float};
+def Matrix2 = Matrix2x2{double};
+def Matrix3f = Matrix3x3{float};
+def Matrix3 = Matrix3x3{double};
+def Matrix4f = Matrix4x4{float};
+def Matrix4 = Matrix4x4{double};
+def matrix4_ortho = matrix::ortho{double} @builtin;
+def matrix4_perspective = matrix::perspective{double} @builtin;
+def matrix4f_ortho = matrix::ortho{float} @builtin;
+def matrix4f_perspective = matrix::perspective{float} @builtin;
 
-def MATRIX2_IDENTITY = matrix::IDENTITY2(<double>) @builtin;
-def MATRIX2F_IDENTITY = matrix::IDENTITY2(<float>) @builtin;
-def MATRIX3_IDENTITY = matrix::IDENTITY3(<double>) @builtin;
-def MATRIX3F_IDENTITY = matrix::IDENTITY3(<float>) @builtin;
-def MATRIX4_IDENTITY = matrix::IDENTITY4(<double>) @builtin;
-def MATRIX4F_IDENTITY = matrix::IDENTITY4(<float>) @builtin;
+def MATRIX2_IDENTITY = matrix::IDENTITY2{double} @builtin;
+def MATRIX2F_IDENTITY = matrix::IDENTITY2{float} @builtin;
+def MATRIX3_IDENTITY = matrix::IDENTITY3{double} @builtin;
+def MATRIX3F_IDENTITY = matrix::IDENTITY3{float} @builtin;
+def MATRIX4_IDENTITY = matrix::IDENTITY4{double} @builtin;
+def MATRIX4F_IDENTITY = matrix::IDENTITY4{float} @builtin;
 
 
 <*

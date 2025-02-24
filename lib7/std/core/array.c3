@@ -26,7 +26,7 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 	if (xlen < 1) xlen = $typeof((*array_ptr)[0]).len + xlen;
 	if (ylen < 1) ylen = $typeof((*array_ptr)).len + ylen;
 	var $ElementType = $typeof((*array_ptr)[0][0]);
-	return Slice2d(<$ElementType>) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
+	return Slice2d{$ElementType} { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
 }
 
 
@@ -56,7 +56,7 @@ macro rindex_of(array, element)
  @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
-macro concat(arr1, arr2, Allocator allocator) @nodiscard
+macro concat(Allocator allocator, arr1, arr2) @nodiscard
 {
 	var $Type = $typeof(arr1[0]);
 	$Type[] result = allocator::alloc_array(allocator, $Type, arr1.len + arr2.len);
@@ -71,22 +71,6 @@ macro concat(arr1, arr2, Allocator allocator) @nodiscard
 	return result;
 }
 <*
- Concatenate two arrays or slices, returning a slice containing the concatenation of them.
-
- @param [in] arr1
- @param [in] arr2
- @param [&inout] allocator "The allocator to use, default is the heap allocator"
- @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
- @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
- @ensure return.len == arr1.len + arr2.len
-*>
-macro concat_new(arr1, arr2, Allocator allocator = allocator::heap()) @nodiscard
-{
-	return concat(arr1, arr2, allocator);
-}
-
-<*
  Concatenate two arrays or slices, returning a slice containing the concatenation of them,
  allocated using the temp allocator.
 
@@ -97,9 +81,9 @@ macro concat_new(arr1, arr2, Allocator allocator = allocator::heap()) @nodiscard
  @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
-macro tconcat(arr1, arr2) @nodiscard => concat(arr1, arr2, allocator::temp());
+macro tconcat(arr1, arr2) @nodiscard => concat(allocator::temp(), arr1, arr2);
 
-module std::core::array::slice(<Type>);
+module std::core::array::slice{Type};
 
 struct Slice2d
 {

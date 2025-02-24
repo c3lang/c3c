@@ -1,7 +1,7 @@
 <*
  @require Type.kindof == ARRAY : "Required an array type"
 *>
-module std::collections::ringbuffer(<Type>);
+module std::collections::ringbuffer{Type};
 import std::io;
 
 def Element = $typeof((Type){}[0]);

@@ -1,4 +1,4 @@
-module std::math::complex(<Real>);
+module std::math::complex{Real};
 
 union Complex
 {

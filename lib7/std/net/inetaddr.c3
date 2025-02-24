@@ -56,19 +56,14 @@ fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 	return formatter.printf("%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!;
 }
 
-fn String InetAddress.to_new_string(InetAddress* addr, Allocator allocator = allocator::heap()) @dynamic
+fn String InetAddress.to_string(&self, Allocator allocator)
 {
-	if (addr.is_ipv6)
-	{
-		char[8 * 5 + 1] buffer;
-		String res = (String)io::bprintf(&buffer, "%04x:%04x:%04x:%04x:%04x:%04x:%04x:%04x",
-			addr.ipv6.a, addr.ipv6.b, addr.ipv6.c, addr.ipv6.d,
-			addr.ipv6.e, addr.ipv6.f, addr.ipv6.g, addr.ipv6.h)!!;
-		return res.copy(allocator);
-	}
-	char[3 * 4 + 3 + 1] buffer;
-	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", addr.ipv4.a, addr.ipv4.b, addr.ipv4.c, addr.ipv4.d)!!;
-	return res.copy(allocator);
+	return string::format(allocator, "%s", *self);
+}
+
+fn String InetAddress.to_tstring(&self)
+{
+	return string::format(tmem(), "%s", *self);
 }
 
 fn InetAddress! ipv6_from_str(String s)

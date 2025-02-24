@@ -70,7 +70,7 @@ fn void BitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
 <*
  @require Type.kindof == UNSIGNED_INT
 *>
-module std::collections::growablebitset(<Type>);
+module std::collections::growablebitset{Type};
 import std::collections::list;
 
 const BITS = Type.sizeof * 8;

@@ -10,7 +10,7 @@ struct BenchmarkUnit
 	BenchmarkFn func;
 }
 
-fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator = allocator::heap())
+fn BenchmarkUnit[] benchmark_collection_create(Allocator allocator)
 {
 	BenchmarkFn[] fns = $$BENCHMARK_FNS;
 	String[] names = $$BENCHMARK_NAMES;
@@ -170,5 +170,5 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks) @if(!$$OLD_TEST)
 
 fn bool default_benchmark_runner(String[] args) => @pool()
 {
-	return run_benchmarks(benchmark_collection_create(allocator::temp()));
+	return run_benchmarks(benchmark_collection_create(tmem()));
 }
