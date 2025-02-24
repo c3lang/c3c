@@ -2109,7 +2109,7 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	bool is_cond;
-	bool is_builtin;
+	bool is_builtin = false;
 	if (!parse_attributes(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return poisoned_decl;
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
