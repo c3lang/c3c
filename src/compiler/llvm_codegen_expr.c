@@ -5876,10 +5876,15 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	FOREACH(Expr *, e, expr->expression_list)
+	Expr **list = expr->expression_list;
+	unsigned count = vec_size(list);
+	assert(count);
+	unsigned last = count - 1;
+	for (unsigned i = 0; i < last; i++)
 	{
-		llvm_emit_expr(c, be_value, e);
+		llvm_emit_ignored_expr(c, list[i]);
 	}
+	llvm_emit_expr(c, be_value, list[last]);
 }
 
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit)

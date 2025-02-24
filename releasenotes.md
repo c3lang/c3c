@@ -23,6 +23,7 @@
 - Aliases are now correctly handled as if they were variables/functions in regards to namespacing and accept `@builtin`.
 - Correctly handle in/out when interacting with inout.
 - Don't delete .o files not produced by the compiler.
+- Fix optional jumps in expression lists, #1942.
 
 ### Stdlib changes
 
