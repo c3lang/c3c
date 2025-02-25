@@ -156,7 +156,7 @@ fn void unmute_output(bool has_error) @local
 		{
 			if (@unlikely(c == '\0'))
 			{
-				// ignore junk from previous tests 
+				// ignore junk from previous tests
 				break;
 			}
 			libc::putchar(c);
@@ -242,7 +242,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);
-	if(!context.is_quiet_mode) io::printn(name);
+	if (!context.is_quiet_mode) io::printn(name);
 	name.clear();
 	TempState temp_state = mem::temp_push();
 	defer mem::temp_pop(temp_state);
@@ -261,11 +261,11 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		defer name.clear();
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
-		if (context.is_quiet_mode) 
+		if (context.is_quiet_mode)
 		{
 			io::print(".");
-		} 
-		else 
+		}
+		else
 		{
 			io::printf("%s ", name.str_view());
 		}
@@ -292,7 +292,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			{
 				context.teardown_fn();
 			}
-			if(check_leaks) allocator::thread_allocator = context.stored.allocator;
+			if (check_leaks) allocator::thread_allocator = context.stored.allocator;
 
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
@@ -304,7 +304,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			}
 			else
 			{
-				if(!context.is_quiet_mode) 
+				if (!context.is_quiet_mode)
 				{
 					io::printfn(context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
 				}
