@@ -201,7 +201,7 @@ fn Path! Path.tappend(self, String filename) => self.append(tmem(), filename);
 
 fn usz! start_of_base_name(String str, PathEnv path_env) @local
 {
-	if (!str.len) return PathResult.INVALID_PATH?;
+	if (!str.len) return 0;
 	usz! start_slash = str.rindex_of_char('/');
 	if (path_env != PathEnv.WIN32) return start_slash + 1 ?? 0;
 	if (try index = str.rindex_of_char('\\'))

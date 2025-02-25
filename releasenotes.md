@@ -24,6 +24,7 @@
 - Correctly handle in/out when interacting with inout.
 - Don't delete .o files not produced by the compiler.
 - Fix optional jumps in expression lists, #1942.
+- Several fixes for .o files and -o output, improving handling and naming.
 
 ### Stdlib changes
 

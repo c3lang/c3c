@@ -314,7 +314,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			break;
 		case COMMAND_STATIC_LIB:
 			target->type = TARGET_TYPE_STATIC_LIB;
-			target->single_module = true;
+			target->single_module = SINGLE_MODULE_ON;
 			break;
 		default:
 			target->run_after_compile = false;
@@ -504,9 +504,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	if (!target->object_file_dir)
 	{
-		target->object_file_dir = options->build_dir
-			? file_append_path(file_append_path(options->build_dir, "obj"), target_name)
-			: file_append_path("obj", target_name);
+		target->object_file_dir = file_append_path(file_append_path(target->build_dir, "obj"), target_name);
 	}
 
 	switch (options->compile_option)
@@ -558,6 +556,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->emit_object_files = false;
 	}
+	if (options->output_name && target->emit_object_files
+		&& target->single_module != SINGLE_MODULE_ON && target->type == TARGET_TYPE_OBJECT_FILES)
+	{
+		error_exit("'-o' cannot be used when generating multiple output files, try using '--single-module=yes' to compile into a single object file.");
+	}
 	for (int i = 0; i < options->lib_dir_count; i++)
 	{
 		vec_add(target->libdirs, options->lib_dir[i]);
@@ -572,6 +575,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->link_libc = libc_from_arch_os(target->arch_os_target);
 	}
+
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)

@@ -717,7 +717,7 @@ void gencontext_print_llvm_ir(GenContext *context)
 	char *err = NULL;
 	if (LLVMPrintModuleToFile(context->module, context->ir_filename, &err))
 	{
-		error_exit("Could not emit ir to file: %s", err);
+		error_exit("Could not emit ir '%s' to file: %s", context->ir_filename, err);
 	}
 }
 

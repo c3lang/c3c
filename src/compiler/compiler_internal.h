@@ -1876,6 +1876,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	const char *obj_output;
 } CompilerState;
 
 extern CompilerState compiler;

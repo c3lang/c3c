@@ -491,7 +491,6 @@ void compiler_compile(void)
 			UNREACHABLE
 	}
 	compiler_ir_gen_time = bench_mark();
-
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
@@ -518,6 +517,12 @@ void compiler_compile(void)
 				output_dynamic = dynamic_lib_name();
 				break;
 			case TARGET_TYPE_OBJECT_FILES:
+				if (compiler.obj_output)
+				{
+					OUTF("Object file %s created.\n", compiler.obj_output);
+					break;
+				}
+				OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
 				break;
 			case TARGET_TYPE_PREPARE:
 				break;
@@ -525,7 +530,14 @@ void compiler_compile(void)
 				UNREACHABLE
 		}
 	}
-
+	if (compiler.build.emit_llvm)
+	{
+		OUTF("LLVM files written to %s.\n", compiler.build.ir_file_dir);
+	}
+	if (compiler.build.emit_asm)
+	{
+		OUTF("Asm files written to %s.\n", compiler.build.asm_file_dir);
+	}
 	free_arenas();
 
 	uint32_t output_file_count = vec_size(gen_contexts);
@@ -537,6 +549,7 @@ void compiler_compile(void)
 		cfiles_library += vec_size(lib->csources);
 	}
 	unsigned total_output = output_file_count + cfiles + cfiles_library + external_objfile_count;
+
 	if (total_output > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
@@ -1430,6 +1443,9 @@ const char *get_object_extension(void)
 	{
 		case ANY_WINDOWS_ARCH_OS:
 			return ".obj";
+		case WASM32:
+		case WASM64:
+			return ".wasm";
 		default:
 			return ".o";
 	}

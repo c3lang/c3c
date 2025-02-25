@@ -288,16 +288,44 @@ AlignSize type_alloca_alignment(Type *type)
 	return align;
 }
 
+bool codegen_single_obj_output()
+{
+	if (!compiler.build.output_name) return false;
+	if (compiler.build.type != TARGET_TYPE_OBJECT_FILES) return false;
+	return compiler.build.single_module == SINGLE_MODULE_ON;
+}
+
 void codegen_setup_object_names(Module *module, const char **ir_filename, const char **asm_filename, const char **object_filename)
 {
 	const char *result = module_create_object_file_name(module);
+	assert(compiler.build.object_file_dir);
+	if (codegen_single_obj_output())
+	{
+		const char *ext = get_object_extension();
+		if (!str_has_suffix(result, ext))
+		{
+			result = str_printf("%s%s", result, ext);
+		}
+		compiler.obj_output = *object_filename = file_append_path(compiler.build.output_dir ? compiler.build.output_dir : ".", result);
+		char *dir_path = NULL;
+		char *filename = NULL;
+		file_get_dir_and_filename_from_full(compiler.obj_output, &filename, &dir_path);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't output '%s', the directory '%s' could not be found.", compiler.obj_output, dir_path);
+		}
+		result = str_remove_suffix(filename, ext);
+	}
+	else
+	{
+		*object_filename = file_append_path(compiler.build.object_file_dir, str_printf("%s%s", result, get_object_extension()));
+	}
+
 	*ir_filename = str_printf(compiler.build.backend == BACKEND_LLVM ? "%s.ll" : "%s.ir", result);
 	if (compiler.build.ir_file_dir) *ir_filename = file_append_path(compiler.build.ir_file_dir, *ir_filename);
-	*object_filename = str_printf("%s%s", result, get_object_extension());
 	if (compiler.build.emit_asm)
 	{
 		*asm_filename = str_printf("%s.s", result);
 		if (compiler.build.asm_file_dir) *asm_filename = file_append_path(compiler.build.asm_file_dir, *asm_filename);
 	}
-	if (compiler.build.object_file_dir) *object_filename = file_append_path(compiler.build.object_file_dir, *object_filename);
 }
