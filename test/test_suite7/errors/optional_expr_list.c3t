@@ -9,13 +9,6 @@ fn void main()
 
 /* #expect: test.ll
 
-
-; ModuleID = 'test'
-source_filename = "test"
-target datalayout = "e-m:o-p270:32:32-p271:32:32-p272:64:64-i64:64-i128:128-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-apple-macosx10.13.0"
-
-; Function Attrs: nounwind uwtable
 define void @test.main() #0 {
 entry:
   %n = alloca i32, align 4
@@ -36,25 +29,3 @@ after_check:                                      ; preds = %entry
 voiderr:                                          ; preds = %after_check, %entry
   ret void
 }
-
-; Function Attrs: nounwind uwtable
-define i32 @main(i32 %0, ptr %1) #0 {
-entry:
-  call void @test.main()
-  ret i32 0
-}
-
-; Function Attrs: nocallback nofree nosync nounwind willreturn memory(none)
-declare i1 @llvm.expect.i1(i1, i1) #1
-
-attributes #0 = { nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" }
-attributes #1 = { nocallback nofree nosync nounwind willreturn memory(none) }
-
-!llvm.module.flags = !{!0, !1, !2, !3, !4, !5}
-
-!0 = !{i32 2, !"Dwarf Version", i32 4}
-!1 = !{i32 2, !"Debug Info Version", i32 3}
-!2 = !{i32 2, !"wchar_size", i32 4}
-!3 = !{i32 4, !"PIC Level", i32 2}
-!4 = !{i32 1, !"uwtable", i32 2}
-!5 = !{i32 2, !"frame-pointer", i32 2}
