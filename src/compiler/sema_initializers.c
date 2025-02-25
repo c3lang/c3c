@@ -480,8 +480,8 @@ static inline bool sema_expr_analyse_untyped_initializer(SemaContext *context, E
 		{
 			RETURN_SEMA_ERROR(element, "An untyped list can only have "
 									   "constant elements, you can try "
-									   "to type the list by prefixing the type, "
-									   "e.g. 'int[2] { a, b }'.");
+									   "to type the list by prefixing the type and possibly enclosing it in parentheses, "
+									   "e.g. '((int[2]){ a, b })'.");
 		}
 	}
 	initializer->expr_kind = EXPR_CONST;
@@ -836,8 +836,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 				expr_rewrite_to_const_zero(expr, to);
 				return true;
 			}
-			SEMA_ERROR(expr, "Pointers cannot be initialized using an initializer list, instead you need to take the address of an array.");
-			return false;
+			RETURN_SEMA_ERROR(expr, "Pointers cannot be initialized using an initializer list, instead you need to take the address of an array.");
 		case TYPE_VOID:
 		case TYPE_POISONED:
 		case TYPE_FUNC_RAW:
@@ -845,7 +844,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 		case TYPE_OPTIONAL:
 		case TYPE_TYPEINFO:
 		case TYPE_MEMBER:
-			break;
+			RETURN_SEMA_ERROR(expr, "You cannot use %s with an initializer list.", type_quoted_error_string(to));
 		default:
 			if (is_zero_init)
 			{
@@ -855,8 +854,7 @@ bool sema_expr_analyse_initializer_list(SemaContext *context, Type *to, Expr *ex
 			}
 			break;
 	}
-	SEMA_ERROR(expr, "'%s' cannot use compound literal initialization, did you intend to use a cast?", type_to_error_string(to));
-	return false;
+	RETURN_SEMA_ERROR(expr, "You cannot use %s with a non-empty initializer list.", type_quoted_error_string(to));
 }
 
 void const_init_rewrite_to_value(ConstInitializer *const_init, Expr *value)

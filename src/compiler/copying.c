@@ -399,8 +399,23 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPR_LIST(expr->catch_expr.exprs);
 			return expr;
 		case EXPR_IDENTIFIER:
+		{
+			Decl *var = expr->ident_expr;
+			// In the case we have an unwrapped alias, we need to create it.
+			if (var->decl_kind == DECL_VAR)
+			{
+				switch (var->var.kind)
+				{
+					case VARDECL_UNWRAPPED:
+					case VARDECL_REWRAPPED:
+						expr->ident_expr = copy_decl(c, var);
+						return expr;
+					default: break;
+				}
+			}
 			fixup_decl(c, &expr->ident_expr);
 			return expr;
+		}
 		case EXPR_UNRESOLVED_IDENTIFIER:
 		case EXPR_CT_IDENT:
 		case EXPR_HASH_IDENT:
@@ -667,6 +682,7 @@ RETRY:
 			if (ast->contbreak_stmt.is_resolved)
 			{
 				fixup_astid(c, &ast->contbreak_stmt.ast);
+				MACRO_COPY_ASTID(ast->contbreak_stmt.defers);
 			}
 			break;
 		case AST_CASE_STMT:
@@ -707,8 +723,8 @@ RETRY:
 			MACRO_COPY_AST(ast->case_stmt.body);
 			break;
 		case AST_DEFER_STMT:
-			MACRO_COPY_ASTID(ast->defer_stmt.body);
 			copy_reg_ref(c, source, ast);
+			MACRO_COPY_ASTID(ast->defer_stmt.body);
 			fixup_astid(c, &ast->defer_stmt.prev_defer);
 			break;
 		case AST_CT_ECHO_STMT:

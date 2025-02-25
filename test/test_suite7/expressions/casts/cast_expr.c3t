@@ -1,0 +1,28 @@
+// #target: macos-x64
+module cast_expr;
+
+fn int main(int argc, char** argv)
+{
+    int a = 10;
+
+    int b = (ichar)(20);
+    int c = (ichar)(a);
+    return 0;
+}
+
+/* #expect: cast_expr.ll
+
+define i32 @main
+
+    %a = alloca i32
+    %b = alloca i32
+    %c = alloca i32
+
+    store i32 10, ptr %a
+    store i32 20, ptr %b
+    %2 = load i32, ptr %a
+    trunc i32 %2 to i8
+    sext i8 %trunc to i32
+    store i32 %sext, ptr %c
+    ret i32 0
+}

@@ -1,0 +1,120 @@
+// #target: macos-x64
+
+module test;
+extern fn void printf(char*,...);
+
+fn void test(int x)
+{
+	defer
+	{
+		do
+		{
+			defer printf("Hello %d\n", x);
+			x *= 2;
+			if (x < 100) break;
+			x *= 10000;
+		};
+	}
+	if (x == 1)
+	{
+		printf("1x\n");
+		return;
+	}
+    if (x == 0) return;
+}
+
+fn void main()
+{
+	test(123);
+	test(1);
+	test(0);
+}
+
+/* #expect: test.ll
+
+define void @test.test(i32 %0) #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 %0, ptr %x, align 4
+  %1 = load i32, ptr %x, align 4
+  %eq = icmp eq i32 %1, 1
+  br i1 %eq, label %if.then, label %if.exit3
+
+if.then:                                          ; preds = %entry
+  call void (ptr, ...) @printf(ptr @.str)
+  %2 = load i32, ptr %x, align 4
+  %mul = mul i32 %2, 2
+  store i32 %mul, ptr %x, align 4
+  %3 = load i32, ptr %x, align 4
+  %lt = icmp slt i32 %3, 100
+  br i1 %lt, label %if.then1, label %if.exit
+
+if.then1:                                         ; preds = %if.then
+  %4 = load i32, ptr %x, align 4
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %4)
+  br label %loop.exit
+
+if.exit:                                          ; preds = %if.then
+  %5 = load i32, ptr %x, align 4
+  %mul2 = mul i32 %5, 10000
+  store i32 %mul2, ptr %x, align 4
+  %6 = load i32, ptr %x, align 4
+  call void (ptr, ...) @printf(ptr @.str.2, i32 %6)
+  br label %loop.exit
+
+loop.exit:                                        ; preds = %if.exit, %if.then1
+  ret void
+
+if.exit3:                                         ; preds = %entry
+  %7 = load i32, ptr %x, align 4
+  %eq4 = icmp eq i32 %7, 0
+  br i1 %eq4, label %if.then5, label %if.exit12
+
+if.then5:                                         ; preds = %if.exit3
+  %8 = load i32, ptr %x, align 4
+  %mul6 = mul i32 %8, 2
+  store i32 %mul6, ptr %x, align 4
+  %9 = load i32, ptr %x, align 4
+  %lt7 = icmp slt i32 %9, 100
+  br i1 %lt7, label %if.then8, label %if.exit9
+
+if.then8:                                         ; preds = %if.then5
+  %10 = load i32, ptr %x, align 4
+  call void (ptr, ...) @printf(ptr @.str.3, i32 %10)
+  br label %loop.exit11
+
+if.exit9:                                         ; preds = %if.then5
+  %11 = load i32, ptr %x, align 4
+  %mul10 = mul i32 %11, 10000
+  store i32 %mul10, ptr %x, align 4
+  %12 = load i32, ptr %x, align 4
+  call void (ptr, ...) @printf(ptr @.str.4, i32 %12)
+  br label %loop.exit11
+
+loop.exit11:                                      ; preds = %if.exit9, %if.then8
+  ret void
+
+if.exit12:                                        ; preds = %if.exit3
+  %13 = load i32, ptr %x, align 4
+  %mul13 = mul i32 %13, 2
+  store i32 %mul13, ptr %x, align 4
+  %14 = load i32, ptr %x, align 4
+  %lt14 = icmp slt i32 %14, 100
+  br i1 %lt14, label %if.then15, label %if.exit16
+
+if.then15:                                        ; preds = %if.exit12
+  %15 = load i32, ptr %x, align 4
+  call void (ptr, ...) @printf(ptr @.str.5, i32 %15)
+  br label %loop.exit18
+
+if.exit16:                                        ; preds = %if.exit12
+  %16 = load i32, ptr %x, align 4
+  %mul17 = mul i32 %16, 10000
+  store i32 %mul17, ptr %x, align 4
+  %17 = load i32, ptr %x, align 4
+  call void (ptr, ...) @printf(ptr @.str.6, i32 %17)
+  br label %loop.exit18
+
+loop.exit18:                                      ; preds = %if.exit16, %if.then15
+  ret void
+}

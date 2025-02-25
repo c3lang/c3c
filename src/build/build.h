@@ -353,8 +353,8 @@ typedef enum
 
 typedef enum
 {
-	ARCH_OS_TARGET_DEFAULT = 0,
-	ANDROID_AARCH64,
+	ARCH_OS_TARGET_DEFAULT = -1,
+	ANDROID_AARCH64 = 0,
 	ELF_AARCH64,
 	ELF_RISCV32,
 	ELF_RISCV64,
@@ -469,6 +469,7 @@ typedef struct BuildOptions_
 	size_t linker_lib_count;
 	const char* std_lib_dir;
 	VectorConv vector_conv;
+	bool enable_new_generics;
 	struct
 	{
 		const char *sdk;
@@ -552,6 +553,7 @@ typedef struct BuildOptions_
 	bool print_output;
 	bool print_input;
 	bool run_once;
+	bool suppress_run;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -680,6 +682,7 @@ typedef struct
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
 	VectorConv vector_conv;
+	bool enable_new_generics;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;

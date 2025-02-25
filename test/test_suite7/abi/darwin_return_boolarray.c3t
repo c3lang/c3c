@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+
+fn bool[2] get() { return { false, false }; }
+
+/* #expect: test.ll
+
+source_filename = "test"
+target datalayout = "e-m:o-p270:32:32-p271:32
+target triple = "x86_64-apple
+@.__const = private unnamed_addr constant [2 x i8] zeroinitializer, align 1
+define i16 @test.get() #0 {
+entry:
+  %literal = alloca [2 x i8], align 1
+  call void @llvm.memcpy.p0.p0.i32(ptr align 1 %literal, ptr align 1 @.__const, i32 2, i1 false)
+  %0 = load i16, ptr %literal, align 1
+  ret i16 %0
+}

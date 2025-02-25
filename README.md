@@ -138,7 +138,7 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.6.6**.
+The current stable version of the compiler is **version 0.6.7**.
 
 The upcoming 0.6.x releases will focus on expanding the standard library.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
@@ -274,6 +274,14 @@ A `c3c` executable will be found under `bin/`.
 7. Change directory to the build directory `cd build`
 8. Set up CMake build for debug: `cmake ..`
 9. Build: `cmake --build .`
+
+#### Installing on Windows using Scoop
+
+c3c is included in 'Main' bucket.
+
+```sh
+scoop install c3
+```
 
 #### Getting started with a "hello world"
 

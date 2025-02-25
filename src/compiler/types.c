@@ -683,6 +683,7 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_WILDCARD:
 			UNREACHABLE;
 		case TYPE_BITSTRUCT:
+			if (type->decl->alignment) return type->decl->alignment;
 			type = type->decl->strukt.container_type->type;
 			goto RETRY;
 		case TYPE_INFERRED_VECTOR:

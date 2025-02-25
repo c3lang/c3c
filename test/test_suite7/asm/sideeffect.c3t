@@ -1,0 +1,21 @@
+// #target: macos-x64
+module test;
+
+fn void test()
+{
+	asm { nop; }
+	asm @pure { nop; }
+	asm("nop");
+	asm("nop") @pure;
+}
+
+/* #expect: test.ll
+
+define void @test.test() #0 {
+entry:
+  call void asm sideeffect alignstack "nop \0A", "~{flags},~{dirflag},~{fspr}"()
+  call void asm alignstack "nop \0A", "~{flags},~{dirflag},~{fspr}"()
+  call void asm sideeffect alignstack "nop", "~{dirflag},~{fpsr},~{flags}"()
+  call void asm alignstack "nop", "~{dirflag},~{fpsr},~{flags}"()
+  ret void
+}

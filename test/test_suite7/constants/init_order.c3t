@@ -1,0 +1,23 @@
+// #target: macos-x64
+module test;
+
+macro foo()
+{
+	$if $defined(A):
+        return A + 1;
+    $else
+        return 1;
+    $endif
+}
+
+const Z = foo();
+
+const A @if(!$defined(A) && Z == 1) = 222;
+
+const B = foo();
+
+/* #expect: test.ll
+
+@test.Z = local_unnamed_addr constant i32 1, align 4
+@test.B = local_unnamed_addr constant i32 223, align 4
+@test.A = local_unnamed_addr constant i32 222, align 4

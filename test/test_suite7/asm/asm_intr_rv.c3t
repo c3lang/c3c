@@ -1,0 +1,21 @@
+// #target: elf-riscv32
+module test;
+
+fn void main(String[] args)
+{
+	int x = 0;
+	void* fp;
+	asm
+	{
+		csrw $mstatus, $a0;
+		csrrsi $zero, $mstatus, 8u;
+		csrrci $zero, $mstatus, 31u;
+		csrrw  $zero, $mtvec, fp;
+		mret;
+		wfi;
+	}
+}
+
+/* #expect: test.ll
+
+"csrw mstatus, a0\0Acsrrsi zero, mstatus, 8\0Acsrrci zero, mstatus, 31\0Acsrrw zero, mtvec, $0\0Amret \0Awfi \0A", "r,~{x0},~{mstatus},~{mtvec}"(ptr %1)

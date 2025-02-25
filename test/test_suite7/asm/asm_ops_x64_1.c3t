@@ -1,0 +1,44 @@
+// #target: macos-x64
+module test;
+
+fn void main(String[] args)
+{
+	int x;
+	if (args.len < 10) return;
+	asm
+	{
+		in $eax, 3;
+		in $ax, $dx;
+		incb $al;
+		incw $bx;
+		incl $eax;
+		incq $rax;
+		incl [&x];
+		insb;
+		insw;
+		insl;
+		int 0x08;
+		int3;
+		// int1; Broken in LLVM
+		invd;
+		invlpg [&x];
+		invpcid $rax, [&x];
+		invlpga $ecx, $rax;
+		iret;
+		iretl;
+		iretw;
+		iretq;
+		push 1;
+		pushw 2;
+		pushw $ax;
+		pushw [&x];
+		pushq $rax;
+		pushq [&x];
+		popw $ax;
+		popq $rax;
+	}
+}
+
+/* #expect: test.ll
+
+"in $$3, %eax\0Ain %dx, %ax\0Aincb %al\0Aincw %bx\0Aincl %eax\0Aincq %rax\0Aincl $0\0Ainsb \0Ainsw \0Ainsl \0Aint $$8\0Aint3 \0Ainvd \0Ainvlpg $0\0Ainvpcid $1, %rax\0Ainvlpga %rax, %ecx\0Airet \0Airetl \0Airetw \0Airetq \0Apush $$1\0Apushw $$2\0Apushw %ax\0Apushw $1\0Apushq %rax\0Apushq $1\0Apopw %ax\0Apopq %rax\0A", "=*&m,*m,~{cc},~{rax},~{rbx},~{flags},~{dirflag},~{fspr}"

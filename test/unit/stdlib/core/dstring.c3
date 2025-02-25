@@ -22,6 +22,7 @@ fn void test_reverse()
 	assert(a.str_view() == "abcde");
 	a.reverse();
 	assert(a.str_view() == "edcba");
+	a.free();
 }
 
 fn void test_delete()
@@ -31,6 +32,7 @@ fn void test_delete()
 		d.append("Hello cruel world.");
 		d.delete_range(5, 10);
 		assert(d.str_view() == "Hello world.");
+		d.free();
 	}
 	DString d;
 	d.append("Hello cruel world.");
@@ -44,6 +46,7 @@ fn void test_delete()
 	assert(d.str_view() == "llo crul worl");
 	d.delete(0, 1);
 	assert(d.str_view() == "lo crul worl");
+	d.free();
 }
 
 fn void test_append()

@@ -1,0 +1,1 @@
+import foo, ; // #error: Another module name was expected after

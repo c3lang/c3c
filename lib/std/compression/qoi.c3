@@ -71,23 +71,21 @@ import std::io;
  @param [in] input `The raw RGB or RGBA pixels to encode`
  @param [&in] desc `The descriptor of the image`
 *>
-fn usz! write(String filename, char[] input, QOIDesc* desc)
+fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
-	@pool() {
-		// encode data
-		char[] output = encode(input, desc)!;
+	// encode data
+	char[] output = new_encode(input, desc, allocator: allocator::temp())!;
 
-		// open file
-		File! f = file::open(filename, "wb");
-		if (catch f) { return QOIError.FILE_OPEN_FAILED?; }
+	// open file
+	File! f = file::open(filename, "wb");
+	if (catch f) return QOIError.FILE_OPEN_FAILED?;
 
-		// write data to file and close it
-		usz! written = f.write(output);
-		if (catch written) { return QOIError.FILE_WRITE_FAILED?; }
-		if (catch f.close()) { return QOIError.FILE_WRITE_FAILED?; }
+	// write data to file and close it
+	usz! written = f.write(output);
+	if (catch written) return QOIError.FILE_WRITE_FAILED?;
+	if (catch f.close()) return QOIError.FILE_WRITE_FAILED?;
 
-		return written;
-	};
+	return written;
 }
 
 
@@ -112,21 +110,28 @@ fn usz! write(String filename, char[] input, QOIDesc* desc)
  @param [&out] desc `The descriptor to fill with the image's info`
  @param channels `The channels to be used`
 *>
-fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
+fn char[]! new_read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) => @pool(allocator)
 {
 	// read file
-	char[]! data = file::load_new(filename);
-	if (catch data) return QOIError.FILE_OPEN_FAILED?;
-	defer mem::free(data);
-
+	char[] data = file::load_temp(filename) ?? QOIError.FILE_OPEN_FAILED?!;
 	// pass data to decode function
-	return decode(data, desc, channels, allocator);
+	return new_decode(data, desc, channels, allocator);
+}
+
+fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) @deprecated("Use new_read")
+{
+	return new_read(filename, desc, channels, allocator);
 }
 
 
 // Back to basic non-stdio mode
 module std::compression::qoi;
 import std::bits;
+
+fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap()) @deprecated("use encode_new")
+{
+	return new_encode(input, desc, allocator);
+}
 
 <*
  Encode raw RGB or RGBA pixels into a QOI image in memory.
@@ -141,7 +146,7 @@ import std::bits;
  @param [in] input `The raw RGB or RGBA pixels to encode`
  @param [&in] desc `The descriptor of the image`
 *>
-fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap())
+fn char[]! new_encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap()) @nodiscard
 {
 	// check info in desc
 	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_PARAMETERS?;
@@ -191,70 +196,77 @@ fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::
 		if (desc.channels == RGBA) p.a = input[loc + 3];
 
 		// check if we can run the previous pixel
-		if (prev == p) {
+		if (prev == p)
+		{
 			run_length++;
-			if (run_length == 62 || loc == loc_end) {
+			if (run_length == 62 || loc == loc_end)
+			{
 				*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1 };
 				run_length = 0;
 			}
-		} else {
-			// end last run if there was one
-			if (run_length > 0) {
-				*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1 };
-				run_length = 0;
-			}
+			continue;
+		}
+		// end last run if there was one
+		if (run_length > 0)
+		{
+			*@extract(OpRun, output, &pos) = { OP_RUN, run_length - 1 };
+			run_length = 0;
+		}
 
-			switch {
-				// check if we can index the palette
-				case (palette[p.hash()] == p):
-					*@extract(OpIndex, output, &pos) = {
-						OP_INDEX,
-						p.hash()
+		switch
+		{
+			// check if we can index the palette
+			case (palette[p.hash()] == p):
+				*@extract(OpIndex, output, &pos) = {
+					OP_INDEX,
+					p.hash()
+				};
+
+			// check if we can use diff or luma
+			case (prev != p && prev.a == p.a):
+				// diff the pixels
+				diff = p.rgb - prev.rgb;
+				if (diff.r > -3 && diff.r < 2
+					&& diff.g > -3 && diff.g < 2
+					&& diff.b > -3 && diff.b < 2)
+				{
+					*@extract(OpDiff, output, &pos) = {
+						OP_DIFF,
+						(char)diff.r + 2,
+						(char)diff.g + 2,
+						(char)diff.b + 2
 					};
-
-				// check if we can use diff or luma
-				case (prev != p && prev.a == p.a):
-					// diff the pixels
-					diff = p.rgb - prev.rgb;
-					if (
-						diff.r > -3 && diff.r < 2 &&
-						diff.g > -3 && diff.g < 2 &&
-						diff.b > -3 && diff.b < 2
-					) {
-						*@extract(OpDiff, output, &pos) = {
-							OP_DIFF,
-							(char)diff.r + 2,
-							(char)diff.g + 2,
-							(char)diff.b + 2
-						};
-						palette[p.hash()] = p;
-					} else {
-						// check luma eligibility
-						luma = { diff.r - diff.g, diff.g, diff.b - diff.g };
-						if (
-							luma.r >= -8 && luma.r <= 7 &&
-							luma.g >= -32 && luma.g <= 31 &&
-							luma.b >= -8 && luma.b <= 7
-						) {
-							*@extract(OpLuma, output, &pos) = {
-								OP_LUMA,
-								(char)luma.g + 32,
-								(char)luma.r + 8,
-								(char)luma.b + 8
-							};
-							palette[p.hash()] = p;
-						} else { nextcase; }
-					}
-
-				// worst case scenario: just encode the raw pixel
-				default:
-					if (prev.a != p.a) {
-						*@extract(OpRGBA, output, &pos) = { OP_RGBA, p.r, p.g, p.b, p.a };
-					} else {
-						*@extract(OpRGB, output, &pos) = { OP_RGB, p.r, p.g, p.b };
-					}
 					palette[p.hash()] = p;
-			}
+					break;
+				}
+				// check luma eligibility
+				luma = { diff.r - diff.g, diff.g, diff.b - diff.g };
+				if (luma.r >= -8 && luma.r <= 7
+					&& luma.g >= -32 && luma.g <= 31
+					&& luma.b >= -8 && luma.b <= 7)
+				{
+					*@extract(OpLuma, output, &pos) = {
+						OP_LUMA,
+						(char)luma.g + 32,
+						(char)luma.r + 8,
+						(char)luma.b + 8
+					};
+					palette[p.hash()] = p;
+					break;
+				}
+				nextcase;
+
+			// worst case scenario: just encode the raw pixel
+			default:
+				if (prev.a != p.a)
+				{
+					*@extract(OpRGBA, output, &pos) = { OP_RGBA, p.r, p.g, p.b, p.a };
+				}
+				else
+				{
+					*@extract(OpRGB, output, &pos) = { OP_RGB, p.r, p.g, p.b };
+				}
+				palette[p.hash()] = p;
 		}
 	}
 
@@ -265,6 +277,11 @@ fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::
 	return output[:pos];
 }
 
+
+fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
+{
+	return new_decode(data, desc, channels, allocator);
+}
 
 <*
  Decode a QOI image from memory.
@@ -287,7 +304,7 @@ fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::
  @param [&out] desc `The descriptor to fill with the image's info`
  @param channels `The channels to be used`
 *>
-fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
+fn char[]! new_decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) @nodiscard
 {
 	// check input data
 	if (data.len < Header.sizeof + END_OF_STREAM.len) return QOIError.INVALID_DATA?;
@@ -414,14 +431,16 @@ const char[?] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 // inefficient, but it's only run once at a time
 macro @enumcast($Type, raw)
 {
-	foreach (value : $Type.values) {
+	foreach (value : $Type.values)
+	{
 		if (value.id == raw) return value;
 	}
 	return QOIError.INVALID_DATA?;
 }
 
 distinct Pixel = inline char[<4>];
-macro char Pixel.hash(Pixel p) {
+macro char Pixel.hash(Pixel p)
+{
 	return (p.r * 3 + p.g * 5 + p.b * 7 + p.a * 11) % 64;
 }
 
@@ -452,7 +471,7 @@ bitstruct OpDiff : char
 	char diff_green : 2..3;
 	char diff_blue : 0..1;
 }
-bitstruct OpLuma : ushort
+bitstruct OpLuma : ushort @align(1)
 {
 	char tag : 6..7;
 	char diff_green : 0..5;

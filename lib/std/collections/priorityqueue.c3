@@ -23,17 +23,22 @@
 module std::collections::priorityqueue(<Type>);
 import std::collections::priorityqueue::private;
 
-distinct PriorityQueue = inline PrivatePriorityQueue<[Type, false]>;
-distinct PriorityQueueMax = inline PrivatePriorityQueue<[Type, true]>;
+distinct PriorityQueue = inline PrivatePriorityQueue(<Type, false>);
+distinct PriorityQueueMax = inline PrivatePriorityQueue(<Type, true>);
 
 module std::collections::priorityqueue::private(<Type, MAX>);
 import std::collections::list, std::io;
 
-def Heap = List<[Type]>;
+def Heap = List(<Type>);
 
 struct PrivatePriorityQueue (Printable)
 {
 	Heap heap;
+}
+
+fn void PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16, ) @inline
+{
+	self.heap.new_init(initial_capacity, allocator);
 }
 
 fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @inline

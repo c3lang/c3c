@@ -1,0 +1,71 @@
+// #target: macos-x64
+module test;
+fn void! x() {}
+fn void main()
+{
+	int a;
+	@catch(a > 0 ? x() : x());
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %a = alloca i32, align 4
+  %blockret = alloca i64, align 8
+  %f = alloca i64, align 8
+  store i32 0, ptr %a, align 4
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %0 = load i32, ptr %a, align 4
+  %gt = icmp sgt i32 %0, 0
+  br i1 %gt, label %cond.lhs, label %cond.rhs
+
+cond.lhs:                                         ; preds = %testblock
+  %1 = call i64 @test.x()
+  %not_err = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %cond.lhs
+  store i64 %1, ptr %f, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %cond.lhs
+  br label %cond.phi
+
+cond.rhs:                                         ; preds = %testblock
+  %3 = call i64 @test.x()
+  %not_err1 = icmp eq i64 %3, 0
+  %4 = call i1 @llvm.expect.i1(i1 %not_err1, i1 true)
+  br i1 %4, label %after_check3, label %assign_optional2
+
+assign_optional2:                                 ; preds = %cond.rhs
+  store i64 %3, ptr %f, align 8
+  br label %end_block
+
+after_check3:                                     ; preds = %cond.rhs
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %after_check3, %after_check
+  store i64 0, ptr %f, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %cond.phi, %assign_optional2, %assign_optional
+  %5 = load i64, ptr %f, align 8
+  %i2b = icmp ne i64 %5, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %6 = load i64, ptr %f, align 8
+  store i64 %6, ptr %blockret, align 8
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %end_block
+  store i64 0, ptr %blockret, align 8
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.exit, %if.then
+  ret void
+}

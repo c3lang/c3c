@@ -1,0 +1,38 @@
+// #target: mingw-x64
+// #debuginfo: yes
+const char AA @private = 1;
+const char BB = 200 ;
+const uint CC @private = ~(uint)(0);
+const FOO @private = ~(uint)(0);
+
+/* #expect: constants_mingw.ll
+
+; ModuleID = 'constants_mingw'
+
+@constants_mingw.AA = internal unnamed_addr constant i8 1, align 1, !dbg !0
+@constants_mingw.BB = local_unnamed_addr constant i8 -56, align 1, !dbg !4
+@constants_mingw.CC = internal unnamed_addr constant i32 -1, align 4, !dbg !6
+@constants_mingw.FOO = internal unnamed_addr constant i32 -1, align 4, !dbg !9
+
+!llvm.module.flags = !{!11, !12, !13, !14, !15, !16}
+!llvm.dbg.cu = !{!17}
+
+!0 = !DIGlobalVariableExpression(var: !1, expr: !DIExpression())
+!1 = distinct !DIGlobalVariable(name: "AA", linkageName: "constants_mingw.AA", scope: !2, file: !2, line: 1, type: !3, isLocal: true, isDefinition: true, align: 1)
+!2 = !DIFile(filename: "constants_mingw.c3", directory
+!3 = !DIBasicType(name: "char", size: 8, encoding: DW_ATE_unsigned_char)
+!4 = !DIGlobalVariableExpression(var: !5, expr: !DIExpression())
+!5 = distinct !DIGlobalVariable(name: "BB", linkageName: "constants_mingw.BB", scope: !2, file: !2, line: 2, type: !3, isLocal: false, isDefinition: true, align: 1)
+!6 = !DIGlobalVariableExpression(var: !7, expr: !DIExpression())
+!7 = distinct !DIGlobalVariable(name: "CC", linkageName: "constants_mingw.CC", scope: !2, file: !2, line: 3, type: !8, isLocal: true, isDefinition: true, align: 4)
+!8 = !DIBasicType(name: "uint", size: 32, encoding: DW_ATE_unsigned)
+!9 = !DIGlobalVariableExpression(var: !10, expr: !DIExpression())
+!10 = distinct !DIGlobalVariable(name: "FOO", linkageName: "constants_mingw.FOO", scope: !2, file: !2, line: 4, type: !8, isLocal: true, isDefinition: true, align: 4)
+!11 = !{i32 2, !"Dwarf Version", i32 4}
+!12 = !{i32 2, !"Debug Info Version", i32 3}
+!13 = !{i32 2, !"wchar_size", i32 4}
+!14 = !{i32 4, !"PIC Level", i32 2}
+!15 = !{i32 1, !"uwtable", i32 2}
+!16 = !{i32 2, !"frame-pointer", i32 2}
+!17 = distinct !DICompileUnit(language: DW_LANG_C11, file: !2, producer: "c3c", isOptimized: false, runtimeVersion: 0, emissionKind: FullDebug, globals: !18, splitDebugInlining: false)
+!18 = !{!0, !4, !6, !9}

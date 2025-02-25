@@ -1,0 +1,98 @@
+// #target: macos-x64
+extern fn void printf(char* c, ...);
+
+struct ExtraSimple
+{
+    int a;
+    int b;
+    struct c
+    {
+        double e;
+        double f0;
+        double f1;
+        double f;
+        double j;
+    }
+    struct
+    {
+        int r;
+        int s;
+    }
+    union
+    {
+        double o0;
+        int o1;
+    }
+    int g;
+}
+
+
+fn void testSimple()
+{
+    ExtraSimple a = { .c.j = 3.3 };
+    a.c.j = 3.4;
+    printf("a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\n", a.a, a.c.e, a.c.f, a.c.j, a.g, a.o0, a.r, a.s);
+}
+
+// TODO these may be wrong.
+/* #expect: pointer_access.ll
+
+%ExtraSimple = type { i32, i32, %c, %.anon, %.anon.0, i32 }
+%c = type { double, double, double, double, double }
+%.anon = type { i32, i32 }
+%.anon.0 = type { double }
+
+@"$ct.pointer_access.c" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 40, i64 0, i64 5, [0 x i64] zeroinitializer }, align 8
+@"$ct.pointer_access.$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.pointer_access.$anon.4" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.pointer_access.ExtraSimple" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 72, i64 0, i64 6, [0 x i64] zeroinitializer }, align 8
+@.str = private unnamed_addr constant [71 x i8] c"a = %d, c.e = %f, c.f = %f, c.j = %f, g = %d, o0 = %f, r = %d, s = %d\0A\00", align 1
+
+define void @pointer_access.testSimple() #0 {
+entry:
+  %a = alloca %ExtraSimple, align 8
+  store i32 0, ptr %a, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %a, i64 8
+  store double 0.000000e+00, ptr %ptradd1, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %ptradd1, i64 8
+  store double 0.000000e+00, ptr %ptradd2, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %ptradd1, i64 16
+  store double 0.000000e+00, ptr %ptradd3, align 8
+  %ptradd4 = getelementptr inbounds i8, ptr %ptradd1, i64 24
+  store double 0.000000e+00, ptr %ptradd4, align 8
+  %ptradd5 = getelementptr inbounds i8, ptr %ptradd1, i64 32
+  store double 3.300000e+00, ptr %ptradd5, align 8
+  %ptradd6 = getelementptr inbounds i8, ptr %a, i64 48
+  store i32 0, ptr %ptradd6, align 8
+  %ptradd7 = getelementptr inbounds i8, ptr %ptradd6, i64 4
+  store i32 0, ptr %ptradd7, align 4
+  %ptradd8 = getelementptr inbounds i8, ptr %a, i64 56
+  call void @llvm.memset.p0.i64(ptr align 8 %ptradd8, i8 0, i64 8, i1 false)
+  %ptradd9 = getelementptr inbounds i8, ptr %a, i64 64
+  store i32 0, ptr %ptradd9, align 8
+  %ptradd10 = getelementptr inbounds i8, ptr %a, i64 8
+  %ptradd11 = getelementptr inbounds i8, ptr %ptradd10, i64 32
+  store double 3.400000e+00, ptr %ptradd11, align 8
+  %ptradd12 = getelementptr inbounds i8, ptr %a, i64 8
+  %ptradd13 = getelementptr inbounds i8, ptr %a, i64 8
+  %ptradd14 = getelementptr inbounds i8, ptr %ptradd13, i64 24
+  %ptradd15 = getelementptr inbounds i8, ptr %a, i64 8
+  %ptradd16 = getelementptr inbounds i8, ptr %ptradd15, i64 32
+  %ptradd17 = getelementptr inbounds i8, ptr %a, i64 64
+  %ptradd18 = getelementptr inbounds i8, ptr %a, i64 56
+  %ptradd19 = getelementptr inbounds i8, ptr %a, i64 48
+  %ptradd20 = getelementptr inbounds i8, ptr %a, i64 48
+  %ptradd21 = getelementptr inbounds i8, ptr %ptradd20, i64 4
+  %0 = load i32, ptr %a, align 8
+  %1 = load double, ptr %ptradd12, align 8
+  %2 = load double, ptr %ptradd14, align 8
+  %3 = load double, ptr %ptradd16, align 8
+  %4 = load i32, ptr %ptradd17, align 8
+  %5 = load double, ptr %ptradd18, align 8
+  %6 = load i32, ptr %ptradd19, align 8
+  %7 = load i32, ptr %ptradd21, align 4
+  call void (ptr, ...) @printf(ptr @.str, i32 %0, double %1, double %2, double %3, i32 %4, double %5, i32 %6, i32 %7)
+  ret void
+}

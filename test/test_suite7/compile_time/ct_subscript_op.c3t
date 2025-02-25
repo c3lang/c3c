@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+fn void main()
+{
+	var $x2 = { 1, 2, 4  };
+	int y = $x2[2] += 1;
+	int[3] gh = $x2;
+	$x2[1] <<= 4;
+	int[3] kl = $x2;
+}
+
+/* #expect: test.ll
+
+@.__const = private unnamed_addr constant [3 x i32] [i32 1, i32 2, i32 5], align 4
+@.__const.1 = private unnamed_addr constant [3 x i32] [i32 1, i32 32, i32 5], align 4
+
+; Function Attrs: nounwind uwtable
+define void @test.main() #0 {
+entry:
+  %y = alloca i32, align 4
+  %gh = alloca [3 x i32], align 4
+  %kl = alloca [3 x i32], align 4
+  store i32 5, ptr %y, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %gh, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %kl, ptr align 4 @.__const.1, i32 12, i1 false)
+  ret void
+}

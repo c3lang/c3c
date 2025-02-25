@@ -1,0 +1,16 @@
+module add(<Type>);
+fn Type add(Type a, Type b) @builtin =>
+  a + b;
+
+module iadd;
+fn int iadd(int a, int b) @builtin =>
+  a + b;
+
+module main;
+import std::io, add, iadd;
+
+fn void main()
+{
+  io::printfn("%s", iadd(1,2)); // Fine
+  io::printfn("%s", add(<int>)(1,2)); // Error
+}

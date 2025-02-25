@@ -1,0 +1,36 @@
+// #target: macos-x64
+module foo;
+import std;
+fn int main()
+{
+    int! cmd = 3;
+    defer
+    {
+        if (try cmd) { io::printfn("HO! %s", cmd); }
+    }
+    return 0;
+}
+/* #expect: foo.ll
+
+define i32 @main() #0 {
+entry:
+  %cmd = alloca i32, align 4
+  %cmd.f = alloca i64, align 8
+  %varargslots = alloca [1 x %any], align 16
+  %retparam = alloca i64, align 8
+  store i32 3, ptr %cmd, align 4
+  store i64 0, ptr %cmd.f, align 8
+  %load.err = load i64, ptr %cmd.f, align 8
+  %result = icmp eq i64 %load.err, 0
+  br i1 %result, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  %0 = insertvalue %any undef, ptr %cmd, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  %2 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 1)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %entry
+  ret i32 0
+}

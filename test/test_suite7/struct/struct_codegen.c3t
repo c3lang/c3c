@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+
+struct Point
+{
+    int x;
+    int y;
+}
+
+fn void test1()
+{
+    Point p = { 5, 6 };
+}
+
+/* #expect: test.ll
+
+%Point = type { i32, i32 }
+
+@"$ct.test.Point" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@.__const = private unnamed_addr constant %Point { i32 5, i32 6 }, align 4
+
+define void @test.test1() #0 {
+entry:
+  %p = alloca %Point, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %p, ptr align 4 @.__const, i32 8, i1 false)
+  ret void
+}

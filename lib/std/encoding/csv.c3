@@ -70,12 +70,9 @@ fn void CsvRow.free(&self)
 	self.allocator = null;
 }
 
-fn void! CsvReader.skip_row(self) @maydiscard
+fn void! CsvReader.skip_row(self) @maydiscard => @pool()
 {
-	@pool()
-	{
-		(void)io::treadline(self.stream);
-	};
+	(void)io::treadline(self.stream);
 }
 
 macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard

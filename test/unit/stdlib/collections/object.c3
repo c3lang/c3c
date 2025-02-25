@@ -4,6 +4,8 @@ import std::collections::object;
 fn void test_general()
 {
 	Object* root = object::new_obj(allocator::heap());
+	defer root.free();
+
 	root.set("foo", 1);
 	root.set("bar", "baz");
 	assert(root.get_int("foo")!! == 1);

@@ -38,12 +38,14 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
   cmakeFlags = [
     "-DC3_ENABLE_CLANGD_LSP=${if debug then "ON" else "OFF"}"
     "-DC3_LLD_DIR=${llvmPackages.lld.lib}/lib"
+    "-DLLVM_CRT_LIBRARY_DIR=${llvmPackages.compiler-rt}/lib/darwin"
   ];
 
   nativeBuildInputs = [ 
     cmake 
     llvmPackages.llvm
     llvmPackages.lld 
+    llvmPackages.compiler-rt
   ];
 
   buildInputs = [
@@ -59,7 +61,7 @@ in llvmPackages.stdenv.mkDerivation (finalAttrs: {
   checkPhase = ''
     runHook preCheck
     ( cd ../resources/testproject; ../../build/c3c build --trust=full )
-    ( cd ../test; python src/tester.py ../build/c3c test_suite )
+    ( cd ../test; ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c test_suite )
     runHook postCheck
   '';
 

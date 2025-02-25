@@ -7,6 +7,7 @@
 
 typedef Expr *(*ParseFn)(ParseContext *context, Expr *);
 static Expr *parse_subscript_expr(ParseContext *c, Expr *left);
+static Expr *parse_initializer_list(ParseContext *c, Expr *left);
 
 typedef struct
 {
@@ -91,21 +92,19 @@ static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_to
 /**
  * generic_parameters ::= '(<' expr (',' expr) '>)'
  */
-bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref, bool is_new_syntax)
+bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
 {
-	advance_and_verify(c, is_new_syntax ? TOKEN_LBRACKET : TOKEN_LGENPAR);
+	bool is_new_generic = try_consume(c, TOKEN_LBRACE);
+	if (!is_new_generic)
+	{
+		advance_and_verify(c, TOKEN_LGENPAR);
+	}
 	while (true)
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 		vec_add(*exprs_ref, expr);
 		if (try_consume(c, TOKEN_COMMA)) continue;
-		if (is_new_syntax)
-		{
-			CONSUME_OR_RET(TOKEN_RBRACKET, false);
-			CONSUME_OR_RET(TOKEN_GREATER, false);
-			return true;
-		}
-		CONSUME_OR_RET(TOKEN_RGENPAR, false);
+		CONSUME_OR_RET(is_new_generic ? TOKEN_RBRACE : TOKEN_RGENPAR, false);
 		return true;
 	}
 }
@@ -138,6 +137,10 @@ inline Expr *parse_precedence_with_left_side(ParseContext *c, Expr *left_side, P
 		if (precedence > token_precedence) break;
 		// LHS may be poison.
 		if (!expr_ok(left_side)) return left_side;
+
+		// Special rule to prevent = {}.
+		if (tok == TOKEN_DOT && left_side->expr_kind == EXPR_INITIALIZER_LIST) break;
+
 		// See if there is a rule for infix.
 		ParseFn infix_rule = rules[tok].infix;
 		// Otherwise we ran into a symbol that can't appear in this position.
@@ -693,7 +696,7 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_expr);
-	if (tok_is(c, TOKEN_LBRACE))
+	if (tok_is(c, TOKEN_LBRACE) && !compiler.build.enable_new_generics)
 	{
 		return parse_type_compound_literal_expr_after_type(c, type);
 	}
@@ -842,15 +845,15 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		case EXPR_TYPEINFO:
 		{
 			TypeInfo *info = expr->type_expr;
-			if (tok_is(c, TOKEN_LBRACE) && info->resolve_status != RESOLVE_DONE)
+			if (tok_is(c, TOKEN_LBRACE) && compiler.build.enable_new_generics)
 			{
-				PRINT_ERROR_HERE("Unexpected start of a block '{' here. If you intended a compound literal, remove the () around the type.");
-				return poisoned_expr;
+				return parse_type_compound_literal_expr_after_type(c, info);
 			}
 			// Create a cast expr
 			if (rules[c->tok].prefix)
 			{
-				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, PREC_CALL), poisoned_expr);
+				Precedence prec = tok_is(c, TOKEN_LBRACE) ? PREC_PRIMARY : PREC_CALL;
+				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, prec), poisoned_expr);
 				SourceSpan span = expr->span;
 				*expr = (Expr) {.expr_kind = EXPR_CAST,
 						.span = span,
@@ -885,7 +888,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
  *	;
  *
  */
-Expr *parse_initializer_list(ParseContext *c, Expr *left)
+static Expr *parse_initializer_list(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *initializer_list = EXPR_NEW_TOKEN(EXPR_INITIALIZER_LIST);
@@ -912,7 +915,11 @@ Expr *parse_initializer_list(ParseContext *c, Expr *left)
 			}
 			designated = 0;
 		}
-		CONSUME_OR_RET(TOKEN_RBRACE, poisoned_expr);
+		if (!try_consume(c, TOKEN_RBRACE))
+		{
+			PRINT_ERROR_HERE("A comma or '}' was expected here.");
+			return poisoned_expr;
+		}
 		RANGE_EXTEND_PREV(initializer_list);
 		if (designated == 1)
 		{
@@ -1106,25 +1113,18 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
  */
 static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 {
+	if (tok_is(c, TOKEN_LBRACE) && !compiler.build.enable_new_generics)
+	{
+		PRINT_ERROR_HERE("This looks like you're using the new generics syntax. Please compile with --new-generics-enabled if you want it.");
+		return poisoned_expr;
+	}
 	ASSERT(left && expr_ok(left));
-	bool is_new_syntax = tok_is(c, TOKEN_LESS);
-	if (is_new_syntax) advance(c);
 	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
 	subs_expr->generic_ident_expr.parent = exprid(left);
-	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters, is_new_syntax)) return poisoned_expr;
+	if (!parse_generic_parameters(c, &subs_expr->generic_ident_expr.parmeters)) return poisoned_expr;
 	RANGE_EXTEND_PREV(subs_expr);
 	return subs_expr;
 }
-
-static Expr *parse_less(ParseContext *c, Expr *left)
-{
-	if (c->lexer.token_type == TOKEN_LBRACKET)
-	{
-		return parse_generic_expr(c, left);
-	}
-	return parse_binary(c, left);
-}
-
 
 /**
  * access_expr ::= '.' primary_expr
@@ -2089,7 +2089,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_NOT_EQUAL] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_GREATER] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_GREATER_EQ] = { NULL, parse_binary, PREC_RELATIONAL },
-		[TOKEN_LESS] = { NULL, parse_less, PREC_RELATIONAL },
+		[TOKEN_LESS] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_LESS_EQ] = { NULL, parse_binary, PREC_RELATIONAL },
 		[TOKEN_SHL] = { NULL, parse_binary, PREC_SHIFT },
 		[TOKEN_SHR] = { NULL, parse_binary, PREC_SHIFT },
@@ -2149,7 +2149,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_TYPEOF] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_STRINGIFY] = { parse_ct_stringify, NULL, PREC_NONE },
 		[TOKEN_CT_EVALTYPE] = { parse_type_expr, NULL, PREC_NONE },
-		[TOKEN_LBRACE] = { parse_initializer_list, NULL, PREC_NONE },
+		[TOKEN_LBRACE] = { parse_initializer_list, parse_generic_expr, PREC_PRIMARY },
 		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VAREF] = { parse_ct_arg, NULL, PREC_NONE },

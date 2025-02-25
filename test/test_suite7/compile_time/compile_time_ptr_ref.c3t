@@ -1,0 +1,22 @@
+// #target: macos-x64
+module test;
+
+
+int*[] blurp = { &ptr, &ptr, (&ptr + 1), &ptr - 1, (int*)((iptr)(&ptr) - 4) };
+int* c = (int*)((iptr)(&ptr) - 4);
+int* c2 = (int*)((iptr)(&ptr) + 4);
+int* c3 = (int*)(4 + (iptr)(&ptr));
+iptr ff = (iptr)(&ptr);
+int ptr = 0;
+
+/* #expect: test.ll
+
+%"int*[]" = type { ptr, i64 }
+
+@.__const_slice = private unnamed_addr global [5 x ptr] [ptr @test.ptr, ptr @test.ptr, ptr getelementptr (i8, ptr @test.ptr, i64 4), ptr getelementptr (i8, ptr @test.ptr, i64 -4), ptr getelementptr (i8, ptr @test.ptr, i64 -4)], align 16
+@test.blurp = local_unnamed_addr global %"int*[]" { ptr @.__const_slice, i64 5 }, align 8
+@test.c = local_unnamed_addr global ptr getelementptr (i8, ptr @test.ptr, i64 -4), align 8
+@test.c2 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.ptr, i64 4), align 8
+@test.c3 = local_unnamed_addr global ptr getelementptr (i8, ptr @test.ptr, i64 4), align 8
+@test.ff = local_unnamed_addr global i64 ptrtoint (ptr @test.ptr to i64), align 8
+@test.ptr = global i32 0, align 4

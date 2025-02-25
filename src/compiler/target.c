@@ -159,6 +159,16 @@ static bool os_target_signed_c_char_type(OsType os, ArchType arch)
 	}
 }
 
+static inline void target_setup_aarch64_abi(void)
+{
+	compiler.platform.aarch.is_darwin = os_is_apple(compiler.platform.os);
+	compiler.platform.aarch.is_win32 = compiler.platform.os == OS_TYPE_WIN32;
+	compiler.platform.abi = ABI_AARCH64;
+	// TODO improve Aarch64 functionality support.
+	scratch_buffer_clear();
+	scratch_buffer_append("+crc,+lse,+rdm,+fp-armv8,+neon");
+	compiler.platform.features = scratch_buffer_copy();
+}
 static inline void target_setup_arm_abi(void)
 {
 	compiler.platform.abi = ABI_ARM;
@@ -836,8 +846,7 @@ static void x86_features_from_host(X86Features *cpu_features)
 #if LLVM_AVAILABLE
 	char *features = LLVMGetHostCPUFeatures();
 	INFO_LOG("Detected the following host features: %s", features);
-	INFO_LOG("For %s",
-			 LLVMGetHostCPUName());
+	INFO_LOG("For %s", LLVMGetHostCPUName());
 
 	char *tok = strtok(features, ",");
 	*cpu_features = x86_feature_zero;
@@ -1803,7 +1812,7 @@ INLINE const char *llvm_macos_target_triple(const char *triple)
   LLVMInitialize ## X ## TargetMC(); \
  } while(0)
 
-#if LLVM_VERSION_MAJOR > 20
+#if LLVM_VERSION_MAJOR > 21
 #define XTENSA_AVAILABLE 1
 #else
 #define XTENSA_AVAILABLE 0
@@ -1876,13 +1885,6 @@ void target_setup(BuildTarget *target)
 	if (target->win.def && !file_exists(target->win.def))
 	{
 		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
-	}
-
-	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
-
-	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
-	{
-		error_exit("Unable to detect the default target, please set an explicit --target value.");
 	}
 
 	if (target->arch_os_target == ELF_XTENSA && !XTENSA_AVAILABLE)
@@ -1994,9 +1996,7 @@ void target_setup(BuildTarget *target)
 			break;
 		case ARCH_TYPE_AARCH64:
 		case ARCH_TYPE_AARCH64_BE:
-			compiler.platform.aarch.is_darwin = os_is_apple(compiler.platform.os);
-			compiler.platform.aarch.is_win32 = compiler.platform.os == OS_TYPE_WIN32;
-			compiler.platform.abi = ABI_AARCH64;
+			target_setup_aarch64_abi();
 			break;
 		case ARCH_TYPE_XTENSA:
 			compiler.platform.abi = ABI_XTENSA;

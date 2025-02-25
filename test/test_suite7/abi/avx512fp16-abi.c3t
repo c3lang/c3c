@@ -1,0 +1,166 @@
+// #target: macos-x64
+// #opt: --x86cpu=avx512
+module abi;
+
+struct Half1 {
+  float16 a;
+}
+
+fn Half1 h1(float16 a) {
+  Half1 x;
+  x.a = a;
+  return x;
+}
+
+struct Half2 {
+  float16 a;
+  float16 b;
+}
+
+fn Half2 h2(float16 a, float16 b) {
+  Half2 x;
+  x.a = a;
+  x.b = b;
+  return x;
+}
+
+struct Half3 {
+  float16 a;
+  float16 b;
+  float16 c;
+}
+
+fn Half3 h3(float16 a, float16 b, float16 c) {
+  // CHECK: define{{.*}}<4 x half> @
+  Half3 x;
+  x.a = a;
+  x.b = b;
+  x.c = c;
+  return x;
+}
+
+struct Half4 {
+  float16 a;
+  float16 b;
+  float16 c;
+  float16 d;
+}
+
+fn Half4 h4(float16 a, float16 b, float16 c, float16 d) {
+  Half4 x;
+  x.a = a;
+  x.b = b;
+  x.c = c;
+  x.d = d;
+  return x;
+}
+
+struct Floathalf {
+  float a;
+  float16 b;
+}
+
+fn Floathalf fh(float a, float16 b) {
+  Floathalf x;
+  x.a = a;
+  x.b = b;
+  return x;
+}
+
+struct Floathalf2 {
+  float a;
+  float16 b;
+  float16 c;
+}
+
+fn Floathalf2 fh2(float a, float16 b, float16 c) {
+  Floathalf2 x;
+  x.a = a;
+  x.b = b;
+  x.c = c;
+  return x;
+}
+
+struct Halffloat {
+  float16 a;
+  float b;
+}
+
+fn Halffloat hf(float16 a, float b) {
+  Halffloat x;
+  x.a = a;
+  x.b = b;
+  return x;
+}
+
+struct Half2float {
+  float16 a;
+  float16 b;
+  float c;
+}
+
+fn Half2float h2f(float16 a, float16 b, float c) {
+  Half2float x;
+  x.a = a;
+  x.b = b;
+  x.c = c;
+  return x;
+}
+
+struct Floathalf3 {
+  float a;
+  float16 b;
+  float16 c;
+  float16 d;
+}
+
+fn Floathalf3 fh3(float a, float16 b, float16 c, float16 d) {
+  Floathalf3 x;
+  x.a = a;
+  x.b = b;
+  x.c = c;
+  x.d = d;
+  return x;
+}
+
+struct Half5 {
+  float16 a;
+  float16 b;
+  float16 c;
+  float16 d;
+  float16 e;
+}
+
+fn Half5 h5(float16 a, float16 b, float16 c, float16 d, float16 e) {
+  Half5 x;
+  x.a = a;
+  x.b = b;
+  x.c = c;
+  x.d = d;
+  x.e = e;
+  return x;
+}
+
+/* #expect: abi.ll
+
+%Half1 = type { half }
+%Half2 = type { half, half }
+%Half3 = type { half, half, half }
+%Half4 = type { half, half, half, half }
+%Floathalf = type { float, half }
+%Floathalf2 = type { float, half, half }
+%Halffloat = type { half, float }
+%Half2float = type { half, half, float }
+%Floathalf3 = type { float, half, half, half }
+%Half5 = type { half, half, half, half, half }
+
+define half @abi.h1(half %0)
+define <2 x half> @abi.h2(half %0, half %1)
+define <4 x half> @abi.h3(half %0, half %1, half %2)
+define <4 x half> @abi.h4(half %0, half %1, half %2, half %3)
+define <4 x half> @abi.fh(float %0, half %1)
+define <4 x half> @abi.fh2(float %0, half %1, half %2)
+define <4 x half> @abi.hf(half %0, float %1)
+define <4 x half> @abi.h2f(half %0, half %1, float %2) #0 {
+define { <4 x half>, half } @abi.fh3(float %0, half %1, half %2, half %3) #0 {
+define { <4 x half>, half } @abi.h5(half %0, half %1, half %2, half %3, half %4) #0 {

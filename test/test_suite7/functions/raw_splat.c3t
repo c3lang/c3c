@@ -1,0 +1,146 @@
+// #target: macos-x64
+module rawsplat;
+
+int x;
+macro void foo(...)
+{
+	$for (var $i = 0; $i < $vacount; $i++)
+		x += $vaarg[$i] * $i;
+	$endfor
+}
+
+fn void main()
+{
+	int[3] y = { 33, 44, 55 };
+	foo(...y);
+	foo(1, ...y);
+	int[] z = &y;
+	foo(...z[1..2]);
+	foo(1, ...z[1..2], 5);
+}
+
+/* #expect: rawsplat.ll
+
+define void @rawsplat.main() #0 {
+entry:
+  %y = alloca [3 x i32], align 4
+  %.anon = alloca [3 x i32], align 4
+  %.anon1 = alloca i32, align 4
+  %.anon2 = alloca i32, align 4
+  %.anon4 = alloca i32, align 4
+  %.anon9 = alloca [3 x i32], align 4
+  %.anon10 = alloca i32, align 4
+  %.anon12 = alloca i32, align 4
+  %.anon14 = alloca i32, align 4
+  %z = alloca %"int[]", align 8
+  %.anon23 = alloca i32, align 4
+  %.anon25 = alloca i32, align 4
+  %.anon31 = alloca i32, align 4
+  %.anon33 = alloca i32, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon, ptr align 4 %y, i32 12, i1 false)
+  %0 = load i32, ptr %.anon, align 4
+  store i32 %0, ptr %.anon1, align 4
+  %ptradd = getelementptr inbounds i8, ptr %.anon, i64 4
+  %1 = load i32, ptr %ptradd, align 4
+  store i32 %1, ptr %.anon2, align 4
+  %ptradd3 = getelementptr inbounds i8, ptr %.anon, i64 8
+  %2 = load i32, ptr %ptradd3, align 4
+  store i32 %2, ptr %.anon4, align 4
+  %3 = load i32, ptr @rawsplat.x, align 4
+  %4 = load i32, ptr %.anon1, align 4
+  %mul = mul i32 %4, 0
+  %add = add i32 %3, %mul
+  store i32 %add, ptr @rawsplat.x, align 4
+  %5 = load i32, ptr @rawsplat.x, align 4
+  %6 = load i32, ptr %.anon2, align 4
+  %mul5 = mul i32 %6, 1
+  %add6 = add i32 %5, %mul5
+  store i32 %add6, ptr @rawsplat.x, align 4
+  %7 = load i32, ptr @rawsplat.x, align 4
+  %8 = load i32, ptr %.anon4, align 4
+  %mul7 = mul i32 %8, 2
+  %add8 = add i32 %7, %mul7
+  store i32 %add8, ptr @rawsplat.x, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon9, ptr align 4 %y, i32 12, i1 false)
+  %9 = load i32, ptr %.anon9, align 4
+  store i32 %9, ptr %.anon10, align 4
+  %ptradd11 = getelementptr inbounds i8, ptr %.anon9, i64 4
+  %10 = load i32, ptr %ptradd11, align 4
+  store i32 %10, ptr %.anon12, align 4
+  %ptradd13 = getelementptr inbounds i8, ptr %.anon9, i64 8
+  %11 = load i32, ptr %ptradd13, align 4
+  store i32 %11, ptr %.anon14, align 4
+  %12 = load i32, ptr @rawsplat.x, align 4
+  %add15 = add i32 %12, 0
+  store i32 %add15, ptr @rawsplat.x, align 4
+  %13 = load i32, ptr @rawsplat.x, align 4
+  %14 = load i32, ptr %.anon10, align 4
+  %mul16 = mul i32 %14, 1
+  %add17 = add i32 %13, %mul16
+  store i32 %add17, ptr @rawsplat.x, align 4
+  %15 = load i32, ptr @rawsplat.x, align 4
+  %16 = load i32, ptr %.anon12, align 4
+  %mul18 = mul i32 %16, 2
+  %add19 = add i32 %15, %mul18
+  store i32 %add19, ptr @rawsplat.x, align 4
+  %17 = load i32, ptr @rawsplat.x, align 4
+  %18 = load i32, ptr %.anon14, align 4
+  %mul20 = mul i32 %18, 3
+  %add21 = add i32 %17, %mul20
+  store i32 %add21, ptr @rawsplat.x, align 4
+  %19 = insertvalue %"int[]" undef, ptr %y, 0
+  %20 = insertvalue %"int[]" %19, i64 3, 1
+  store %"int[]" %20, ptr %z, align 8
+  %21 = load %"int[]", ptr %z, align 8
+  %22 = extractvalue %"int[]" %21, 0
+  %ptradd22 = getelementptr inbounds i8, ptr %22, i64 4
+  %23 = insertvalue %"int[]" undef, ptr %ptradd22, 0
+  %24 = insertvalue %"int[]" %23, i64 2, 1
+  %25 = extractvalue %"int[]" %24, 0
+  %26 = load i32, ptr %25, align 4
+  store i32 %26, ptr %.anon23, align 4
+  %27 = extractvalue %"int[]" %24, 0
+  %ptradd24 = getelementptr inbounds i8, ptr %27, i64 4
+  %28 = load i32, ptr %ptradd24, align 4
+  store i32 %28, ptr %.anon25, align 4
+  %29 = load i32, ptr @rawsplat.x, align 4
+  %30 = load i32, ptr %.anon23, align 4
+  %mul26 = mul i32 %30, 0
+  %add27 = add i32 %29, %mul26
+  store i32 %add27, ptr @rawsplat.x, align 4
+  %31 = load i32, ptr @rawsplat.x, align 4
+  %32 = load i32, ptr %.anon25, align 4
+  %mul28 = mul i32 %32, 1
+  %add29 = add i32 %31, %mul28
+  store i32 %add29, ptr @rawsplat.x, align 4
+  %33 = load %"int[]", ptr %z, align 8
+  %34 = extractvalue %"int[]" %33, 0
+  %ptradd30 = getelementptr inbounds i8, ptr %34, i64 4
+  %35 = insertvalue %"int[]" undef, ptr %ptradd30, 0
+  %36 = insertvalue %"int[]" %35, i64 2, 1
+  %37 = extractvalue %"int[]" %36, 0
+  %38 = load i32, ptr %37, align 4
+  store i32 %38, ptr %.anon31, align 4
+  %39 = extractvalue %"int[]" %36, 0
+  %ptradd32 = getelementptr inbounds i8, ptr %39, i64 4
+  %40 = load i32, ptr %ptradd32, align 4
+  store i32 %40, ptr %.anon33, align 4
+  %41 = load i32, ptr @rawsplat.x, align 4
+  %add34 = add i32 %41, 0
+  store i32 %add34, ptr @rawsplat.x, align 4
+  %42 = load i32, ptr @rawsplat.x, align 4
+  %43 = load i32, ptr %.anon31, align 4
+  %mul35 = mul i32 %43, 1
+  %add36 = add i32 %42, %mul35
+  store i32 %add36, ptr @rawsplat.x, align 4
+  %44 = load i32, ptr @rawsplat.x, align 4
+  %45 = load i32, ptr %.anon33, align 4
+  %mul37 = mul i32 %45, 2
+  %add38 = add i32 %44, %mul37
+  store i32 %add38, ptr @rawsplat.x, align 4
+  %46 = load i32, ptr @rawsplat.x, align 4
+  %add39 = add i32 %46, 15
+  store i32 %add39, ptr @rawsplat.x, align 4
+  ret void
+}

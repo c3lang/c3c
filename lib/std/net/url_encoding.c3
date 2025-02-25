@@ -67,35 +67,32 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
-fn String encode(String s, UrlEncodingMode mode, Allocator allocator)
+fn String encode(String s, UrlEncodingMode mode, Allocator allocator) => @pool(allocator)
 {
 	usz n = encode_len(s, mode);
-	@pool(allocator)
+	DString builder = dstring::temp_with_capacity(n);
+
+	foreach(i, c: s)
 	{
-		DString builder = dstring::temp_with_capacity(n);
-
-		foreach(i, c: s)
+		switch
 		{
-			switch
-			{
-				// encode spaces in queries
-				case c == ' ' && mode == QUERY:
-					builder.append_char('+');
+			// encode spaces in queries
+			case c == ' ' && mode == QUERY:
+				builder.append_char('+');
 
-				// add encoded char
-				case should_encode(c, mode):
-					builder.append_char('%');
-					String hex = hex::encode_temp(s[i:1]);
-					builder.append(hex.temp_ascii_to_upper());
+			// add encoded char
+			case should_encode(c, mode):
+				builder.append_char('%');
+				String hex = hex::encode_temp(s[i:1]);
+				builder.append(hex.temp_ascii_to_upper());
 
-				// use char, no encoding needed
-				default:
-					builder.append_char(c);
-			}
+			// use char, no encoding needed
+			default:
+				builder.append_char(c);
 		}
+	}
 
-		return builder.copy_str(allocator);
-	};
+	return builder.copy_str(allocator);
 }
 
 <*
@@ -146,35 +143,32 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-decoded String"
 *>
-fn String! decode(String s, UrlEncodingMode  mode, Allocator allocator)
+fn String! decode(String s, UrlEncodingMode  mode, Allocator allocator) => @pool(allocator)
 {
 	usz n = decode_len(s, mode)!;
-	@pool(allocator)
+	DString builder = dstring::temp_with_capacity(n);
+
+	for (usz i = 0; i < s.len; i++)
 	{
-		DString builder = dstring::temp_with_capacity(n);
-
-		for (usz i = 0; i < s.len; i++)
+		switch (s[i])
 		{
-			switch (s[i])
-			{
-				// decode encoded char
-				case '%':
-					char[] hex = hex::decode_temp(s[i+1:2])!;
-					builder.append(hex);
-					i += 2;
+			// decode encoded char
+			case '%':
+				char[] hex = hex::decode_temp(s[i+1:2])!;
+				builder.append(hex);
+				i += 2;
 
-				// decode space when in queries
-				case '+':
-					builder.append_char((mode == QUERY) ? ' ' : '+');
+			// decode space when in queries
+			case '+':
+				builder.append_char((mode == QUERY) ? ' ' : '+');
 
-				// use char, no decoding needed
-				default:
-					builder.append_char(s[i]);
-			}
+			// use char, no decoding needed
+			default:
+				builder.append_char(s[i]);
 		}
+	}
 
-		return builder.copy_str(allocator);
-	};
+	return builder.copy_str(allocator);
 }
 
 <*

@@ -516,9 +516,10 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 {
 	DEBUG_PUSH_LEXICAL_SCOPE(c, ast->span);
 	// First, emit all inits.
-	BEValue value;
-	if (ast->for_stmt.init) llvm_emit_expr(c, &value, exprptr(ast->for_stmt.init));
-
+	if (ast->for_stmt.init)
+	{
+		llvm_emit_ignored_expr(c, exprptr(ast->for_stmt.init));
+	}
 	ExprId incr = ast->for_stmt.incr;
 
 	LLVMBasicBlockRef inc_block = incr ? llvm_basic_block_new(c, "loop.inc") : NULL;
@@ -669,8 +670,7 @@ void llvm_emit_for_stmt(GenContext *c, Ast *ast)
 		}
 		if (llvm_get_current_block_if_in_use(c))
 		{
-			BEValue dummy;
-			llvm_emit_expr(c, &dummy, incr ? exprptr(incr) : NULL);
+			if (incr) llvm_emit_ignored_expr(c, exprptr(incr));
 		}
 	}
 

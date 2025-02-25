@@ -1,0 +1,10 @@
+// Check that this work.
+import std::net;
+
+fn void main() {
+    Socket s;
+    defer {
+        char[1024] buf;
+        while (try s.read(&buf));
+    }
+}

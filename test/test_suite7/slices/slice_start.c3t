@@ -1,0 +1,19 @@
+// #target: macos-x64
+fn void test()
+{
+    int[3] x = { 1, 2, 3 };
+    int[] y = x[..];
+}
+
+/* #expect: slice_start.ll
+
+define void @slice_start.test() #0 {
+entry:
+  %x = alloca [3 x i32], align 4
+  %y = alloca %"int[]", align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 12, i1 false)
+  %0 = insertvalue %"int[]" undef, ptr %x, 0
+  %1 = insertvalue %"int[]" %0, i64 3, 1
+  store %"int[]" %1, ptr %y, align 8
+  ret void
+}

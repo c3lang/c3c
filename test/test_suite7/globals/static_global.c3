@@ -1,0 +1,1 @@
+static int ifej; // #error: 'static' is only used

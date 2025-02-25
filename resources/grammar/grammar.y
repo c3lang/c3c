@@ -557,8 +557,10 @@ type
 	| type '[' constant_expr ']'
 	| type '[' ']'
 	| type '[' '*' ']'
+	| type '[' '?' ']'
 	| type LVEC constant_expr RVEC
 	| type LVEC '*' RVEC
+	| type LVEC '?' RVEC
 	;
 
 optional_type
@@ -1094,6 +1096,7 @@ fn_parameter_list
 parameter_default
 	: parameter
 	| parameter '=' expr
+	| parameter '=' type
 	;
 
 parameters
@@ -1131,8 +1134,8 @@ func_definition
 
 const_declaration
 	: CONST CONST_IDENT opt_attributes '=' expr ';'
-	| CONST type CONST_IDENT opt_attributes '=' expr ';'
-	| CONST type CONST_IDENT opt_attributes ';'
+	| CONST optional_type CONST_IDENT opt_attributes '=' expr ';'
+	| CONST optional_type CONST_IDENT opt_attributes ';'
 	;
 
 func_typedef
@@ -1204,8 +1207,18 @@ interface_body
 	;
 
 interface_declaration
-	: INTERFACE TYPE_IDENT '{' '}'
-	| INTERFACE TYPE_IDENT '{' interface_body '}'
+	: INTERFACE interface_declaration_name '{' '}'
+	| INTERFACE interface_declaration_name '{' interface_body '}'
+	;
+
+interface_parents
+	: TYPE_IDENT
+	| interface_parents ',' TYPE_IDENT
+	;
+
+interface_declaration_name
+	: TYPE_IDENT
+	| TYPE_IDENT ':' interface_parents
 	;
 
 distinct_declaration

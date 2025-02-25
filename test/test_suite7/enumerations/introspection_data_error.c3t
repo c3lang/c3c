@@ -1,0 +1,19 @@
+// #target: macos-x64
+module boom;
+enum Boom: int (String a) {
+    BOOM = {0}
+}
+
+module app;
+import std::io, boom;
+fn void main(String[] args) {
+	io::printn(Boom.BOOM);
+}
+/* #expect: boom.ll
+
+@.enum.BOOM = internal constant [5 x i8] c"BOOM\00", align 1
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.boom.Boom" = linkonce global { i8, i64, ptr, i64, i64, i64, [1 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 1, [1 x %"char[]"] [%"char[]" { ptr @.enum.BOOM, i64 4 }] }, align 8
+@.__const_slice = private unnamed_addr global [1 x i8] zeroinitializer, align 1
+@"boom.Boom$a" = linkonce constant [1 x %"char[]"] [%"char[]" { ptr @.__const_slice, i64 1 }], align 8
+

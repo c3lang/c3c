@@ -1,0 +1,13 @@
+char[?] foob = x"a0";
+char[?] fooz = x"00aabbccddeeff";
+char[?] fooy = x'dead beef';
+char[?] foow = x"4549234d e d";
+char[?] foo64 = b64"SGVsbG8gV29ybGQ=";
+
+/* #expect: byte_literals.ll
+
+@byte_literals.foob = local_unnamed_addr global [1 x i8] c"\A0", align 1
+@byte_literals.fooz = local_unnamed_addr global [7 x i8] c"\00\AA\BB\CC\DD\EE\FF", align 1
+@byte_literals.fooy = local_unnamed_addr global [4 x i8] c"\DE\AD\BE\EF", align 1
+@byte_literals.foow = local_unnamed_addr global [5 x i8] c"EI#M\ED", align 1
+@byte_literals.foo64 = local_unnamed_addr global [11 x i8] c"Hello World", align 1

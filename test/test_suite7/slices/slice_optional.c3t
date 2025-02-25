@@ -1,0 +1,41 @@
+// #target: macos-x64
+module test;
+fn void main() {
+  int[]! a = {1, 2};
+  int! b = a[0];
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %a = alloca %"int[]", align 8
+  %a.f = alloca i64, align 8
+  %literal = alloca [2 x i32], align 4
+  %b = alloca i32, align 4
+  %b.f = alloca i64, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = insertvalue %"int[]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[]" %0, i64 2, 1
+  store %"int[]" %1, ptr %a, align 8
+  store i64 0, ptr %a.f, align 8
+  %optval = load i64, ptr %a.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %optval, ptr %b.f, align 8
+  br label %after_assign
+
+after_check:                                      ; preds = %entry
+  %3 = load ptr, ptr %a, align 8
+  %4 = load i32, ptr %3, align 4
+  store i32 %4, ptr %b, align 4
+  store i64 0, ptr %b.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %after_check, %assign_optional
+  ret void
+}
+

@@ -5,57 +5,48 @@ import libc;
  @require mode.len > 0
  @require filename.len > 0
 *>
-fn void*! native_fopen(String filename, String mode) @inline
+fn void*! native_fopen(String filename, String mode) @inline => @pool()
 {
-	@pool()
-	{
-		$if env::WIN32:
-			void* file = libc::_wfopen(filename.to_temp_wstring(), mode.to_temp_wstring())!;
-		$else
-			void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
-		$endif
-			return file ?: file_open_errno()?;
-	};
+	$if env::WIN32:
+		void* file = libc::_wfopen(filename.to_temp_wstring(), mode.to_temp_wstring())!;
+	$else
+		void* file = libc::fopen(filename.zstr_tcopy(), mode.zstr_tcopy());
+	$endif
+		return file ?: file_open_errno()?;
 }
 
-fn void! native_remove(String filename)
+fn void! native_remove(String filename) => @pool()
 {
-	@pool()
+	$if env::WIN32:
+		CInt result = libc::_wremove(filename.to_temp_wstring())!;
+	$else
+		CInt result = libc::remove(filename.zstr_tcopy());
+	$endif
+	if (result)
 	{
-		$if env::WIN32:
-			CInt result = libc::_wremove(filename.to_temp_wstring())!;
-		$else
-			CInt result = libc::remove(filename.zstr_tcopy());
-		$endif
-		if (result)
+		switch (libc::errno())
 		{
-			switch (libc::errno())
-			{
-				case errno::ENOENT:
-					return IoError.FILE_NOT_FOUND?;
-				case errno::EACCES:
-				default:
-					return IoError.FILE_CANNOT_DELETE?;
-			}
+			case errno::ENOENT:
+				return IoError.FILE_NOT_FOUND?;
+			case errno::EACCES:
+			default:
+				return IoError.FILE_CANNOT_DELETE?;
 		}
-	};
+	}
 }
 
 <*
  @require mode.len > 0
  @require filename.len > 0
 *>
-fn void*! native_freopen(void* file, String filename, String mode) @inline
+fn void*! native_freopen(void* file, String filename, String mode) @inline => @pool()
 {
-	@pool()
-	{
-		$if env::WIN32:
-			file = libc::_wfreopen(filename.to_temp_wstring(), mode.to_temp_wstring(), file)!;
-		$else
-			file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
-		$endif
-			return file ?: file_open_errno()?;
-	};
+	$if env::WIN32:
+		file = libc::_wfreopen(filename.to_temp_wstring(), mode.to_temp_wstring(), file)!;
+	$else
+		file = libc::freopen(filename.zstr_tcopy(), mode.zstr_tcopy(), file);
+	$endif
+		return file ?: file_open_errno()?;
 }
 
 fn void! native_fseek(void* file, isz offset, Seek seek_mode) @inline

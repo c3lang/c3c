@@ -1,0 +1,52 @@
+extern fn void printf(char *, ...);
+
+macro bitcast($Target, value)
+{
+    $typeof(value) temp = value;
+    $Target* result = ($Target*)(&temp);
+    return *result;
+}
+
+fn void main()
+{
+    float f = 100;
+    int i = bitcast(int, f);
+    float f2 = bitcast(float, i);
+    printf("Bitcast %f to %d to %f", f, i, f2);
+}
+
+/* #expect: typeof_example.ll
+
+  %f = alloca float, align 4
+  %i = alloca i32, align 4
+  %value = alloca float, align 4
+  %temp = alloca float, align 4
+  %result = alloca ptr, align 8
+  %f2 = alloca float, align 4
+  %value1 = alloca i32, align 4
+  %temp2 = alloca i32, align 4
+  %result3 = alloca ptr, align 8
+  store float 1.000000e+02, ptr %f, align 4
+  %0 = load float, ptr %f, align 4
+  store float %0, ptr %value, align 4
+  %1 = load float, ptr %value, align 4
+  store float %1, ptr %temp, align 4
+  store ptr %temp, ptr %result, align 8
+  %2 = load ptr, ptr %result, align 8
+  %3 = load i32, ptr %2, align 4
+  store i32 %3, ptr %i, align 4
+  %4 = load i32, ptr %i, align 4
+  store i32 %4, ptr %value1, align 4
+  %5 = load i32, ptr %value1, align 4
+  store i32 %5, ptr %temp2, align 4
+  store ptr %temp2, ptr %result3, align 8
+  %6 = load ptr, ptr %result3, align 8
+  %7 = load float, ptr %6, align 4
+  store float %7, ptr %f2, align 4
+  %8 = load float, ptr %f, align 4
+  %fpfpext = fpext float %8 to double
+  %9 = load float, ptr %f2, align 4
+  %fpfpext4 = fpext float %9 to double
+  %10 = load i32, ptr %i, align 4
+  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, i32 %10, double %fpfpext4)
+  ret void

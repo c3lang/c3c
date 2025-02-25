@@ -42,7 +42,7 @@ Expr *parse_decl_or_expr(ParseContext *c, Decl **decl_ref);
 void recover_top_level(ParseContext *c);
 Expr *parse_cond(ParseContext *c);
 Ast* parse_compound_stmt(ParseContext *c);
-Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool require_eos);
+Ast *parse_short_body(ParseContext *c, TypeInfoId return_type, bool is_regular_fn);
 
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos);
 
@@ -55,7 +55,7 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type);
 Decl *parse_var_decl(ParseContext *c);
 bool parse_current_is_expr(ParseContext *c);
 
-bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref, bool is_new_syntax);
+bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref);
 
 bool parse_parameters(ParseContext *c, Decl ***params_ref,
                       Variadic *variadic, int *vararg_index_ref, ParameterParseKind parse_kind);

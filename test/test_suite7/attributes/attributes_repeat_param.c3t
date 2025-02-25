@@ -1,0 +1,26 @@
+// #target: macos-aarch64
+module test;
+
+def @Test(x) = { @extern("Foo" +++ x) };
+
+fn void hello_world() @Test("Megaman")
+{}
+
+fn void ello_world() @Test("Pegasus")
+{}
+
+fn int main()
+{
+	hello_world();
+	ello_world();
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  call void @FooMegaman()
+  call void @FooPegasus()
+  ret i32 0
+}

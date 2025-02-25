@@ -1,0 +1,26 @@
+// #target: macos-x64
+module test;
+
+extern fn void test1_f(void *);
+
+fn void test1_g()
+{
+  float[4] x;
+  test1_f(&x);
+}
+
+/* #expect: test.ll
+
+define void @test.test1_g() #0 {
+entry:
+  %x = alloca [4 x float], align 16
+  store float 0.000000e+00, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store float 0.000000e+00, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  store float 0.000000e+00, ptr %ptradd1, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %x, i64 12
+  store float 0.000000e+00, ptr %ptradd2, align 4
+  call void @test1_f(ptr %x)
+  ret void
+}

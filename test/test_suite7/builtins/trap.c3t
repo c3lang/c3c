@@ -1,0 +1,12 @@
+module test;
+
+fn void main()
+{
+    $$breakpoint();
+    $$trap();
+}
+
+/* #expect: test.ll
+
+  call void @llvm.debugtrap()
+  call void @llvm.trap()

@@ -1,0 +1,7 @@
+module test;
+
+fn void init() @init
+{
+	int a;
+	a = 1;
+}

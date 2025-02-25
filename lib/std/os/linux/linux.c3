@@ -95,7 +95,7 @@ fn ulong! elf_module_image_base(String path) @local
 	defer (void)file.close();
 	char[4] buffer;
 	io::read_all(&file, &buffer)!;
-	if (buffer != char[4]{ 0x7f, 'E', 'L', 'F'}) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (buffer != { 0x7f, 'E', 'L', 'F'}) return BacktraceFault.IMAGE_NOT_FOUND?;
 	bool is_64 = file.read_byte()! == 2;
 	bool is_little_endian = file.read_byte()! == 1;
 	// Actually, not supported.
@@ -204,7 +204,8 @@ fn void! backtrace_add_element(BacktraceList *list, void* addr, Allocator alloca
 		return;
 	}
 
-	@pool(allocator) {
+	@pool(allocator)
+	{
 		Linux_Dl_info info;
 		if (dladdr(addr, &info) == 0)
 		{

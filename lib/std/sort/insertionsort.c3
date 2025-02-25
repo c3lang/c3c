@@ -10,16 +10,16 @@ macro insertionsort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @b
 {
 	$if @typekind(list) == POINTER &&& (@typekind(*list) == ARRAY || @typekind(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
-		is::isort<[$typeof(list2), $typeof(cmp), $typeof(context)]>(list2, 0, list.len, cmp, context);
+		is::isort(<$typeof(list2), $typeof(cmp), $typeof(context)>)(list2, 0, list.len, cmp, context);
 	$else
 		usz len = sort::len_from_list(list);
-		is::isort<[$typeof(list), $typeof(cmp), $typeof(context)]>(list, 0, (isz)len, cmp, context);
+		is::isort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len, cmp, context);
 	$endif
 }
 
 module std::sort::is(<Type, CmpFn, Context>);
 
-def ElementType = $typeof(Type{}[0]);
+def ElementType = $typeof(((Type){})[0]);
 
 fn void isort(Type list, usz low, usz high, CmpFn comp, Context context)
 {

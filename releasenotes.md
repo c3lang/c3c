@@ -1,5 +1,33 @@
 # C3C Release Notes
 
+## 0.6.8 Change list
+
+### Changes / improvements
+- Increase precedence of `(Foo) { 1, 2 }`
+- Add `--enable-new-generics` to enable `Foo{int}` generic syntax.
+- `{| |}` expression blocks deprecated.
+- c3c `--test-leak-report` flag for displaying full memory lead report if any
+- Output into /.build/obj/<platform> by default.
+- Output llvm/asm into llvm/<platform> and asm/<platform> by default.
+- Add flag `--suppress-run`. For commands which may run executable after building, skip the run step. #1931
+
+### Fixes
+- Bug appearing when `??` was combined with boolean in some cases.
+- Test runner --test-disable-sort didn't work, c3c was expecting --test-nosort
+- Test runner with tracking allocator assertion at failed test #1963
+- Test runner with tracking allocator didn't properly handle teardown_fn
+- Correctly give an error if a character literal contains a line break.
+- Implicitly unwrapped optional value in defer incorrectly copied #1982.
+- Crash when trying to define a method macro that isn't `@construct` but has no arguments.
+- Regression, `.gitkeep` files were generated incorrectly.
+- Aliases are now correctly handled as if they were variables/functions in regards to namespacing and accept `@builtin`.
+- Correctly handle in/out when interacting with inout.
+- Don't delete .o files not produced by the compiler.
+- Fix optional jumps in expression lists, #1942.
+- Several fixes for .o files and -o output, improving handling and naming.
+
+### Stdlib changes
+
 ## 0.6.7 Change list
 
 ### Changes / improvements
@@ -7,7 +35,6 @@
 - Add `win-debug` setting to be able to pick dwarf for output #1855.
 - Error on switch case fallthough if there is more than one newline #1849.
 - Added flags to `c3c project view` to filter displayed properties
-- VERY experimental `<[ ]>` syntax for generics.
 - Compile time array assignment #1806.
 - Allow `+++` to work on all types of arrays.
 - Allow `(int[*]) { 1, 2 }` cast style initialization.
@@ -17,6 +44,13 @@
 - Improve error message when using ',' in struct declarations. #1920
 - Compile time array assign ops, e.g. `$c[1] += 3` #1890.
 - Add `inline` to enums #1819.
+- Cleaner error message when missing comma in struct initializer #1941.
+- Distinct inline void causes unexpected error if used in slice #1946.
+- Allow `fn int test() => @pool() { return 1; }` short function syntax usage #1906.
+- Test runner will also check for leaks.
+- Improve inference on `??` #1943.
+- Detect unaligned loads #1951.
+- `Thread` no longer allocates memory on posix.
 
 ### Fixes
 - Fix issue requiring prefix on a generic interface declaration.
@@ -45,6 +79,29 @@
 - Bug when indexing into a constant array at compile time.
 - Fixing various issues around shifts, like `z <<= { 1, 2 }`.
 - `return (any)&foo` would not be reported as an escaping variable if `foo` was a pointer or slice.
+- Incorrect error message when providing too many associated values for enum #1934.
+- Allow function types to have a calling convention. #1938
+- Issue with defer copying when triggered by break or continue #1936.
+- Assert when using optional as init or inc part in a for loop #1942.
+- Fix bigint hex parsing #1945.
+- `bigint::from_int(0)` throws assertion #1944.
+- `write` of qoi would leak memory.
+- Issue when having an empty `Path` or just "."
+- `set_env` would leak memory.
+- Fix issue where aligned bitstructs did not store/load with the given alignment.
+- Fix issue in GrowableBitSet with sanitizers.
+- Fix issue in List with sanitizers.
+- Circumvent Aarch64 miscompilations of atomics.
+- Fixes to ByteBuffer allocation/free.
+- Fix issue where compiling both for asm and object file would corrupt the obj file output.
+- Fix `poll` and `POLL_FOREVER`.
+- Missing end padding when including a packed struct #1966.
+- Issue when scalar expanding a boolean from a conditional to a bool vector #1954.
+- Fix issue when parsing bitstructs, preventing them from implementing interfaces.
+- Regression `String! a; char* b = a.ptr;` would incorrectly be allowed.
+- Fix issue where target was ignored for projects.
+- Fix issue when dereferencing a constant string.
+- Fix problem where a line break in a literal was allowed.
 
 ### Stdlib changes
 - Added '%h' and '%H' for printing out binary data in hexadecimal using the formatter.
@@ -54,6 +111,8 @@
 - New unit test default runner.
 - Added weakly linked `fmodf`.
 - Add `@select` to perform the equivalent of `a ? x : y` at compile time.
+- `HashMap` is now `Printable`.
+- Add `allocator::wrap` to create an arena allocator on the stack from bytes.
 
 ## 0.6.6 Change list
 
@@ -404,6 +463,7 @@
 - Add `$member.get(value)` to replace `value.$eval($member.nameof)`
 - Improve the error message when the compilation does not produce any files #1390.
 - Add `fmod` implementation for nolibc.
+- Allow `(Foo) { 1, 2 }` syntax for compound literals.
 
 ### Fixes
 

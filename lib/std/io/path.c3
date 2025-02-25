@@ -7,7 +7,7 @@ const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
 const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 
-def PathList = List<[Path]>;
+def PathList = List(<Path>);
 
 fault PathResult
 {
@@ -29,12 +29,9 @@ enum PathEnv
 	POSIX
 }
 
-fn Path! new_cwd(Allocator allocator = allocator::heap())
+fn Path! new_cwd(Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		return new(os::getcwd(allocator::temp()), allocator);
-	};
+	return new(os::getcwd(allocator::temp()), allocator);
 }
 
 fn Path! getcwd(Allocator allocator = allocator::heap()) @deprecated("Use new_cwd()")
@@ -164,12 +161,9 @@ fn Path! temp_new(String path, PathEnv path_env = DEFAULT_PATH_ENV)
 	return new(path, allocator::temp(), path_env);
 }
 
-fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap())
+fn Path! new_win32_wstring(WString path, Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
-		return path::new(string::temp_from_wstring(path)!, allocator: allocator);
-	};
+	return path::new(string::temp_from_wstring(path)!, allocator: allocator);
 }
 
 fn Path! new_windows(String path, Allocator allocator = allocator::heap())
@@ -280,7 +274,7 @@ fn Path! Path.new_absolute(self, Allocator allocator = allocator::heap())
 		};
 	$else
 		String cwd = os::getcwd(allocator::temp())!;
-		return Path { cwd, self.env }.new_append(path_str, allocator)!;
+		return (Path){ cwd, self.env }.new_append(path_str, allocator)!;
 	$endif
 }
 
@@ -401,7 +395,7 @@ fn Path! Path.parent(self)
 
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 {
-	if (!path_str.len) return "";
+	if (!path_str.len) return path_str;
 	usz path_start = volume_name_len(path_str, path_env)!;
 	if (path_start > 0 && path_env == PathEnv.WIN32)
 	{
@@ -512,7 +506,11 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_PATH_ENV)
 	if (len > path_start + 1 && is_separator(path_str[len - 1], path_env)) len--;
 	if (path_str.len > len) path_str.ptr[len] = 0;
 	// Empty path after normalization -> "."
-	if (!len) return ".";
+	if (!len)
+	{
+		path_str[0] = '.';
+		return path_str[:1];
+	}
 	return path_str[:len];
 }
 

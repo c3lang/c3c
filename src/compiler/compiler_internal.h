@@ -65,7 +65,7 @@ typedef uint16_t FileId;
 #define PRINT_ERROR_LAST(...) print_error_at(c->prev_span, __VA_ARGS__)
 #define RETURN_PRINT_ERROR_LAST(...) do { print_error_at(c->prev_span, __VA_ARGS__); return false; } while (0)
 #define SEMA_NOTE(_node, ...) sema_note_prev_at((_node)->span, __VA_ARGS__)
-#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
+#define SEMA_DEPRECATED(_node, ...) do { if (compiler.build.test_output && !compiler.build.silence_deprecation) print_error_at((_node)->span, __VA_ARGS__); if (!compiler.build.silence_deprecation) \
  sema_note_prev_at((_node)->span, __VA_ARGS__); } while (0)
 
 #define EXPAND_EXPR_STRING(str_) (str_)->const_expr.bytes.len, (str_)->const_expr.bytes.ptr
@@ -750,6 +750,7 @@ typedef struct
 	bool must_use : 1;
 	bool is_optional_return : 1;
 	bool va_is_splat : 1;
+	bool is_outer_call : 1;
 	Expr **arguments;
 	union {
 		Expr **varargs;
@@ -1875,6 +1876,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	const char *obj_output;
 } CompilerState;
 
 extern CompilerState compiler;
@@ -3783,7 +3785,7 @@ INLINE void expr_rewrite_ptr_access(Expr *expr, Expr *inner, Type *type)
 	ASSERT(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_PTR_ACCESS;
 	expr->inner_expr = inner;
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 	expr->resolve_status = RESOLVE_DONE;
 }
 
@@ -3793,7 +3795,7 @@ INLINE void expr_rewrite_enum_from_ord(Expr *expr, Type *type)
 	ASSERT(inner->resolve_status == RESOLVE_DONE);
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = inner;
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(expr));
 	expr->resolve_status = RESOLVE_DONE;
 }
 
@@ -3818,7 +3820,7 @@ INLINE void expr_rewrite_int_to_bool(Expr *expr, bool negate)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_BOOL;
 	expr->int_to_bool_expr = (ExprIntToBool) { .inner = inner, .negate = negate };
-	expr->type = type_bool;
+	expr->type = type_add_optional(type_bool, IS_OPTIONAL(expr));
 }
 
 INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
@@ -3826,7 +3828,7 @@ INLINE void expr_rewrite_ext_trunc(Expr *expr, Type *type, bool is_signed)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_EXT_TRUNC;
 	expr->ext_trunc_expr = (ExprExtTrunc) { .inner = inner, .is_signed = is_signed };
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 }
 
 INLINE void expr_rewrite_const_int(Expr *expr, Type *type, uint64_t v)
@@ -3868,7 +3870,7 @@ INLINE void expr_rewrite_to_int_to_float(Expr *expr, Type *type)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_FLOAT;
 	expr->inner_expr = inner;
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 }
 
 INLINE void expr_rewrite_to_int_to_ptr(Expr *expr, Type *type)
@@ -3876,7 +3878,7 @@ INLINE void expr_rewrite_to_int_to_ptr(Expr *expr, Type *type)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_INT_TO_PTR;
 	expr->inner_expr = inner;
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 }
 
 INLINE void expr_rewrite_to_ptr_to_int(Expr *expr, Type *type)
@@ -3884,7 +3886,7 @@ INLINE void expr_rewrite_to_ptr_to_int(Expr *expr, Type *type)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_PTR_TO_INT;
 	expr->inner_expr = inner;
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 }
 
 INLINE void expr_rewrite_to_float_to_int(Expr *expr, Type *type)
@@ -3892,7 +3894,7 @@ INLINE void expr_rewrite_to_float_to_int(Expr *expr, Type *type)
 	Expr *inner = expr_copy(expr);
 	expr->expr_kind = EXPR_FLOAT_TO_INT;
 	expr->inner_expr = inner;
-	expr->type = type;
+	expr->type = type_add_optional(type, IS_OPTIONAL(inner));
 }
 
 INLINE void expr_rewrite_const_float(Expr *expr, Type *type, Real d)
@@ -4107,9 +4109,11 @@ INLINE bool check_module_name(Path *path)
 #ifdef NDEBUG
 #define ASSERT_SPANF(node__, check__, format__, ...) do { } while(0)
 #define ASSERT_SPAN(node__, check__) do { } while(0)
+#define ASSERT_AT(span__, check__) do { } while(0)
 #else
 #define ASSERT_SPANF(node__, check__, format__, ...) do { if (!(check__)) { assert_print_line((node__)->span); eprintf(format__, __VA_ARGS__); ASSERT(check__); } } while(0)
 #define ASSERT_SPAN(node__, check__) do { if (!(check__)) { assert_print_line((node__)->span); ASSERT(check__); } } while(0)
+#define ASSERT_AT(span__, check__) do { if (!(check__)) { assert_print_line(span__); ASSERT(check__); } } while(0)
 #endif
 void assert_print_line(SourceSpan span);
 

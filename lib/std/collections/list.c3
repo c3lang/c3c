@@ -23,7 +23,7 @@ struct List (Printable)
  @param initial_capacity "The initial capacity to reserve"
  @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
 *>
-fn List* List.init(&self, usz initial_capacity = 16, Allocator allocator)
+fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -54,7 +54,7 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 *>
 fn List* List.temp_init(&self, usz initial_capacity = 16)
 {
-	return self.init(initial_capacity, allocator::temp()) @inline;
+	return self.init(allocator::temp(), initial_capacity) @inline;
 }
 
 <*
@@ -234,11 +234,11 @@ fn void List.push_front(&self, Type type) @inline
 fn void List.insert_at(&self, usz index, Type type)
 {
 	self.reserve(1);
-	for (usz i = self.size; i > index; i--)
+	self.set_size(self.size + 1);
+	for (isz i = self.size - 1; i > index; i--)
 	{
 		self.entries[i] = self.entries[i - 1];
 	}
-	self.set_size(self.size + 1);
 	self.entries[index] = type;
 }
 
@@ -342,7 +342,8 @@ fn usz List.retain_if(&self, ElementPredicate selection)
 fn usz List.remove_using_test(&self, ElementTest filter, any context)
 {
 	usz old_size = self.size;
-	defer {
+	defer
+	{
 		if (old_size != self.size) self._update_size_change(old_size, self.size);
 	}
 	return list_common::list_remove_using_test(self, filter, false, context);

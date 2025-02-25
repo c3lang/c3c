@@ -1,0 +1,87 @@
+// #target: macos-x64
+module foo;
+extern fn void printf(char*,...);
+
+fn int! foo() { return 1; }
+
+macro @foo_test(int i; @body())
+{
+	defer printf("%d\n", i);
+	@body();
+	defer printf("2:%d\n", i);
+}
+
+macro foo_defer()
+{
+	defer printf("A\n");
+	printf("B\n");
+	defer printf("C\n");
+}
+fn void main()
+{
+    foo_defer();
+	@foo_test(34) {
+		defer printf("inside_defer\n");
+	};
+	while (1)
+	{
+		defer printf("outside\n");
+		@foo_test(3)
+		{
+			defer printf("Inside will it jump?\n");
+			printf("3-test\n");
+			break;
+		};
+	}
+	while (1)
+	{
+		defer printf("outside2\n");
+		printf("--\n");
+		@foo_test(3)
+		{
+			defer printf("Inside will it jump?\n");
+			printf("--3\n");
+			return;
+		};
+	}
+}
+
+/* #expect: foo.ll
+
+define i64 @foo.foo(ptr %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  store i32 1, ptr %0, align 4
+  ret i64 0
+}
+define void @foo.main() #0 {
+entry:
+  call void (ptr, ...) @printf(ptr @.str)
+  call void (ptr, ...) @printf(ptr @.str.1)
+  call void (ptr, ...) @printf(ptr @.str.2)
+  call void (ptr, ...) @printf(ptr @.str.3)
+  call void (ptr, ...) @printf(ptr @.str.4, i32 34)
+  call void (ptr, ...) @printf(ptr @.str.5, i32 34)
+  br label %loop.body
+loop.body:                                        ; preds = %entry
+  call void (ptr, ...) @printf(ptr @.str.6)
+  call void (ptr, ...) @printf(ptr @.str.7)
+  call void (ptr, ...) @printf(ptr @.str.8, i32 3)
+  call void (ptr, ...) @printf(ptr @.str.9)
+  br label %loop.exit
+loop.exit:                                        ; preds = %loop.body
+  br label %loop.body1
+loop.body1:                                       ; preds = %loop.exit
+  call void (ptr, ...) @printf(ptr @.str.10)
+  call void (ptr, ...) @printf(ptr @.str.11)
+  call void (ptr, ...) @printf(ptr @.str.12)
+  call void (ptr, ...) @printf(ptr @.str.13, i32 3)
+  call void (ptr, ...) @printf(ptr @.str.14)
+  ret void
+}
+
+define i32 @main(i32 %0, ptr %1) #0 {
+entry:
+  call void @foo.main()
+  ret i32 0
+}

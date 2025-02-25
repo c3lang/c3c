@@ -1,0 +1,52 @@
+// #target: macos-x64
+module test;
+
+fn void main()
+{
+	int a;
+	switch (a)
+	{
+		case a++:
+			nextcase 0;
+		case 10:
+			nextcase a + 1;
+		default:
+			a--;
+    }
+}
+
+/* #expect: test.ll
+
+entry:
+  %a = alloca i32, align 4
+  %switch = alloca i32, align 4
+  store i32 0, ptr %a, align 4
+  %0 = load i32, ptr %a, align 4
+  store i32 %0, ptr %switch, align 4
+  br label %switch.entry
+switch.entry:                                     ; preds = %switch.case2, %switch.case, %entry
+  %1 = load i32, ptr %switch, align 4
+  %2 = load i32, ptr %a, align 4
+  %add = add i32 %2, 1
+  store i32 %add, ptr %a, align 4
+  %eq = icmp eq i32 %2, %1
+  br i1 %eq, label %switch.case, label %next_if
+switch.case:                                      ; preds = %switch.entry
+  store i32 0, ptr %switch, align 4
+  br label %switch.entry
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i32 10, %1
+  br i1 %eq1, label %switch.case2, label %next_if4
+switch.case2:                                     ; preds = %next_if
+  %3 = load i32, ptr %a, align 4
+  %add3 = add i32 %3, 1
+  store i32 %add3, ptr %switch, align 4
+  br label %switch.entry
+next_if4:                                         ; preds = %next_if
+  br label %switch.default
+switch.default:                                   ; preds = %next_if4
+  %4 = load i32, ptr %a, align 4
+  %sub = sub i32 %4, 1
+  store i32 %sub, ptr %a, align 4
+  br label %switch.exit
+switch.exit:                                      ; preds = %switch.default

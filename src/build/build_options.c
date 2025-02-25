@@ -1,4 +1,4 @@
-// Copyright (c) 2019-2023 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2019-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the GNU LGPLv3.0 license
 // a copy of which can be found in the LICENSE file.
 
@@ -30,14 +30,15 @@ void append_arg(BuildOptions *build_options);
 static bool arg_match(const char *candidate);
 static void parse_optional_target(BuildOptions *options);
 static void add_linker_arg(BuildOptions *options, const char *arg);
-static void update_feature_flags(const char ***flags, const char ***removed_flag, const char *arg, bool add);
+static void update_feature_flags(const char ***flags, const char ***removed_flags, const char *arg, bool add);
 static void print_all_targets(void);
-static int parse_multi_option(const char *start, unsigned count, const char **elements);
+static int parse_option_select(const char *start, unsigned count, const char **elements);
 static void print_cmd(const char *command, const char *desc);
 static void print_opt(const char *option, const char *desc);
 
+#define parse_opt_select(type_, start_, elements_) (type_)parse_option_select(start_, ELEMENTLEN(elements_), elements_)
+
 const char *arch_os_target[ARCH_OS_TARGET_LAST + 1];
-const char *trust_level[3];
 
 #define EOUTPUT(string, ...) fprintf(stderr, string "\n", ##__VA_ARGS__) // NOLINT
 #define PRINTF(string, ...) fprintf(stdout, string "\n", ##__VA_ARGS__) // NOLINT
@@ -102,6 +103,7 @@ static void usage(bool full)
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
+		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -134,7 +136,7 @@ static void usage(bool full)
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
-		print_opt("--test-disable-sort", "Do not sort tests.");
+		print_opt("--test-nosort", "Do not sort tests.");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -192,6 +194,7 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
+		print_opt("--enable-new-generics", "Enable Foo{int} generics, this will disable the old Foo { ... } initializers.");
 		print_opt("--vector-conv=<option>", "Set vector conversion behaviour: default, old.");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
@@ -207,10 +210,10 @@ static void project_usage()
 	PRINTF("Usage: %s [<options>] project <subcommand> [<args>]", args[0]);
 	PRINTF("");
 	PRINTF("Project Subcommands:");
-	PRINTF("  view                                            view the current projects structure");
-	PRINTF("  add-target <name>  <target_type>  [sources...]  add a new target to the project");
+	print_cmd("view", "view the current projects structure.");
+	print_cmd("add-target <name>  <target_type>  [sources...]", "add a new target to the project.");
 	#if FETCH_AVAILABLE
-		PRINTF("  fetch                                           fetch missing project libraries");
+		print_cmd("fetch", "fetch missing project libraries.");
 	#endif
 }
 
@@ -234,18 +237,18 @@ static void project_view_usage()
 	PRINTF("their values printed each on a new line.");
 	PRINTF("");
 	PRINTF("View options:");
-	PRINTF("  -h --help                Show this help");
-	PRINTF("  -v -vv                   Normal or very verbose output");
-	PRINTF("  --authors                List of authors");
-	PRINTF("  --version                Project version");
-	PRINTF("  --language-revision      Project language revision");
-	PRINTF("  --warnings-used          List of enabled compiler-warnings");
-	PRINTF("  --c3l-lib-search-paths   List of C3 linker library search paths");
-	PRINTF("  --c3l-lib-dependencies   List of C3 linker library dependencies");
-	PRINTF("  --source-paths           List of C3 source file paths");
-	PRINTF("  --output-location        Output directory");
-	PRINTF("  --default-optimization   Default optimization level");
-	PRINTF("  --targets                Project targets (!= compilation-targets)");
+	print_opt("-h --help", "Show this help.");
+	print_opt("-v -vv", "Normal or very verbose output.");
+	print_opt("--authors", "List of authors.");
+	print_opt("--version", "Project version.");
+	print_opt("--language-revision", "Project language revision.");
+	print_opt("--warnings-used", "List of enabled compiler-warnings.");
+	print_opt("--c3l-lib-search-paths", "List of C3 library (.c3l) search paths.");
+	print_opt("--c3l-lib-dependencies", "List of C3 library (.c3l) dependencies.");
+	print_opt("--source-paths", "List of C3 source file paths.");
+	print_opt("--output-location", "Output directory.");
+	print_opt("--default-optimization", "Default optimization level.");
+	print_opt("--targets", "Project targets (!= compilation-targets)-");
 }
 
 static void parse_project_view_subcommand(BuildOptions *options)
@@ -259,7 +262,7 @@ static void parse_project_view_subcommand(BuildOptions *options)
 
 		if (current_arg[0] != '-')
 		{
-			FAIL_WITH_ERR("'project view' does not take in args, only flags. Failed on: %s.", current_arg);
+			FAIL_WITH_ERR("'project view' does not accept arguments, only flags. Failed on: %s.", current_arg);
 		}
 
 		if (match_shortopt("v"))
@@ -267,22 +270,18 @@ static void parse_project_view_subcommand(BuildOptions *options)
 			options->project_options.view_modifier.verbose = false;
 			continue;
 		}
-
 		if (match_shortopt("vv"))
 		{
 			options->project_options.view_modifier.verbose = true;
 			continue;
 		}
-
 		if (match_longopt("help") || match_shortopt("h"))
 		{
 			project_view_usage();
 			exit_compiler(COMPILER_SUCCESS_EXIT);
 		}
-
-		int flag = parse_multi_option(current_arg + 2, 10, project_view_flags);
+		int flag = parse_option_select(current_arg + 2, 10, project_view_flags);
 		options->project_options.view_modifier.flags_bitvector |= 1 << flag;
-
 	}
 }
 
@@ -706,12 +705,12 @@ static void parse_option(BuildOptions *options)
 		case '-':
 			if ((argopt = match_argopt("validation")))
 			{
-				options->validation_level = (ValidationLevel)parse_multi_option(argopt, 3, validation_levels);
+				options->validation_level = parse_opt_select(ValidationLevel, argopt, validation_levels);
 				return;
 			}
 			if ((argopt = match_argopt("ansi")))
 			{
-				options->ansi = (Ansi)parse_multi_option(argopt, 2, ansi_use);
+				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
 			if (match_longopt("test-filter"))
@@ -757,7 +756,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("backend")))
 			{
-				options->backend = (CompilerBackend)parse_multi_option(argopt, 3, backends);
+				options->backend = parse_opt_select(CompilerBackend, argopt, backends);
 				return;
 			}
 			if (match_longopt("run-once"))
@@ -768,48 +767,49 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("fp-math")))
 			{
-				options->fp_math = (FpOpt)parse_multi_option(argopt, 3, fp_math);
+				options->fp_math = parse_opt_select(FpOpt, argopt, fp_math);
 				return;
 			}
 			if ((argopt = match_argopt("optsize")))
 			{
-				options->optsize = (SizeOptimizationLevel)parse_multi_option(argopt, 3, optsizes);
+				options->optsize = parse_opt_select(SizeOptimizationLevel, argopt, optsizes);
 				return;
 			}
 			if ((argopt = match_argopt("optlevel")))
 			{
-				options->optlevel = (OptimizationLevel)parse_multi_option(argopt, 4, optlevels);
+				options->optlevel = parse_opt_select(OptimizationLevel, argopt, optlevels);
 				return;
 			}
 			if ((argopt = match_argopt("safe")))
 			{
-				options->safety_level = (SafetyLevel)parse_multi_option(argopt, 2, on_off);
+				options->safety_level = parse_opt_select(SafetyLevel, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("old-test-bench")))
 			{
-				options->old_test = (OldTest) parse_multi_option(argopt, 2, on_off);
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->old_test = parse_opt_select(OldTest, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("show-backtrace")))
 			{
-				options->show_backtrace = (ShowBacktrace) parse_multi_option(argopt, 2, on_off);
+				options->show_backtrace = parse_opt_select(ShowBacktrace, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("panic-msg")))
 			{
-				options->panic_level = (PanicLevel)parse_multi_option(argopt, 2, on_off);
+				options->panic_level = parse_opt_select(PanicLevel, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("single-module")))
 			{
-				options->single_module = (SingleModule)parse_multi_option(argopt, 2, on_off);
+				options->single_module = parse_opt_select(SingleModule, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("linker")))
 			{
 				options->custom_linker_path = NULL;
-				options->linker_type = (LinkerType) parse_multi_option(argopt, 3, linker);
+				options->linker_type = parse_opt_select(LinkerType, argopt, linker);
 				if (options->linker_type == LINKER_TYPE_CUSTOM)
 				{
 					if (at_end() || next_is_opt()) error_exit("error: --linker=custom expects a valid linker name.");
@@ -819,57 +819,57 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("link-libc")))
 			{
-				options->link_libc = (LinkLibc)parse_multi_option(argopt, 2, on_off);
+				options->link_libc = parse_opt_select(LinkLibc, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("strip-unused")))
 			{
-				options->strip_unused = (StripUnused)parse_multi_option(argopt, 2, on_off);
+				options->strip_unused = parse_opt_select(StripUnused, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("emit-stdlib")))
 			{
-				options->emit_stdlib = (EmitStdlib)parse_multi_option(argopt, 2, on_off);
+				options->emit_stdlib = parse_opt_select(EmitStdlib, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("use-stdlib")))
 			{
-				options->use_stdlib = (UseStdlib)parse_multi_option(argopt, 2, on_off);
+				options->use_stdlib = parse_opt_select(UseStdlib, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("x86vec")))
 			{
-				options->x86_vector_capability = (X86VectorCapability)parse_multi_option(argopt, 6, x86_vector_capability);
+				options->x86_vector_capability = parse_opt_select(X86VectorCapability, argopt, x86_vector_capability);
 				return;
 			}
 			if ((argopt = match_argopt("win64-simd")))
 			{
-				options->win_64_simd = (Win64Simd)parse_multi_option(argopt, 2, win64_simd_type);
+				options->win_64_simd = parse_opt_select(Win64Simd, argopt, win64_simd_type);
 				return;
 			}
 			if ((argopt = match_argopt("win-debug")))
 			{
-				options->win_debug = (WinDebug)parse_multi_option(argopt, 2, win_debug_type);
+				options->win_debug = parse_opt_select(WinDebug, argopt, win_debug_type);
 				return;
 			}
 			if ((argopt = match_argopt("x86cpu")))
 			{
-				options->x86_cpu_set = (X86CpuSet)parse_multi_option(argopt, 8, x86_cpu_set);
+				options->x86_cpu_set = parse_opt_select(X86CpuSet, argopt, x86_cpu_set);
 				return;
 			}
 			if ((argopt = match_argopt("riscvfloat")))
 			{
-				options->riscv_float_capability = (RiscvFloatCapability)parse_multi_option(argopt, 3, riscv_capability);
+				options->riscv_float_capability = parse_opt_select(RiscvFloatCapability, argopt, riscv_capability);
 				return;
 			}
 			if ((argopt = match_argopt("memory-env")))
 			{
-				options->memory_environment = (MemoryEnvironment )parse_multi_option(argopt, 4, memory_environment);
+				options->memory_environment = parse_opt_select(MemoryEnvironment, argopt, memory_environment);
 				return;
 			}
 			if ((argopt = match_argopt("reloc")))
 			{
-				options->reloc_model = (RelocModel)parse_multi_option(argopt, 5, reloc_models);
+				options->reloc_model = parse_opt_select(RelocModel, argopt, reloc_models);
 				return;
 			}
 			if (match_longopt("about"))
@@ -1054,7 +1054,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("trust")))
 			{
-				options->trust_level = (TrustLevel) parse_multi_option(argopt, 3, trust_level);
+				options->trust_level = parse_opt_select(TrustLevel, argopt, trust_level);
 				return;
 			}
 			if (match_longopt("windef"))
@@ -1065,12 +1065,19 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("vector-conv")))
 			{
-				options->vector_conv = (VectorConv)parse_multi_option(argopt, 2, vector_conv);
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
+				return;
+			}
+			if (match_longopt("enable-new-generics"))
+			{
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->enable_new_generics = true;
 				return;
 			}
 			if ((argopt = match_argopt("wincrt")))
 			{
-				options->win.crt_linking = (WinCrtLinking)parse_multi_option(argopt, 5, wincrt_linking);
+				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
 				return;
 			}
 			if (match_longopt("win-vs-dirs"))
@@ -1085,7 +1092,7 @@ static void parse_option(BuildOptions *options)
 			}
 			if ((argopt = match_argopt("sanitize")))
 			{
-				options->sanitize_mode = (SanitizeMode)parse_multi_option(argopt, 4, sanitize_modes);
+				options->sanitize_mode = parse_opt_select(SanitizeMode, argopt, sanitize_modes);
 				return;
 			}
 			if (match_longopt("macos-sdk-version"))
@@ -1229,6 +1236,11 @@ static void parse_option(BuildOptions *options)
 				options->testing = true;
 				return;
 			}
+			if (match_longopt("suppress-run"))
+			{
+				options->suppress_run = true;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				usage(true);
@@ -1280,6 +1292,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
+		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.ansi = ANSI_DETECT,
@@ -1365,7 +1378,7 @@ static const char *check_dir(const char *path)
 {
 	char original_path[PATH_MAX + 1];
 	if (!getcwd(original_path, PATH_MAX)) error_exit("Failed to store path.");
-	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory.", path);
+	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory from '%s'.", path, original_path);
 	if (!dir_change(original_path)) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
 	return path;
 }
@@ -1410,7 +1423,7 @@ void append_file(BuildOptions *build_options)
 static inline const char *match_argopt(const char *name)
 {
 	size_t len = strlen(name);
-	if (memcmp(&current_arg[2], name, len) != 0) return false;
+	if (!str_start_with(&current_arg[2], name)) return false;
 	if (current_arg[2 + len] != '=') return false;
 	return &current_arg[2 + len + 1];
 }
@@ -1496,19 +1509,26 @@ static void print_all_targets(void)
 	}
 }
 
-static int parse_multi_option(const char *start, unsigned count, const char **elements)
+static int parse_option_select(const char *start, unsigned count, const char **elements)
 {
+	assert(count >= 2);
 	const char *arg = current_arg;
 	int select = str_findlist(start, count, elements);
-	if (select < 0) error_exit("error: '%.*s' invalid option '%s' given.", (int)(start - arg), start, arg);
+	if (select < 0)
+	{
+		switch (count)
+		{
+			case 2:
+				error_exit("Error: '%.*s' does not support the option '%s', expected '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
+			case 3:
+				error_exit("Error: '%.*s' does not support the option '%s', expected '%s', '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1], elements[2]);
+			default:
+				error_exit("Error: '%.*s' does not support the option '%s', expected an option like '%s' or '%s'.", (int)(start - arg - 1), arg, start, elements[0], elements[1]);
+		}
+		UNREACHABLE
+	}
 	return select;
 }
-
-const char *trust_level[3] = {
-		[TRUST_NONE] = "none",
-		[TRUST_INCLUDE] = "include",
-		[TRUST_FULL] = "full",
-};
 
 const char *arch_os_target[ARCH_OS_TARGET_LAST + 1] = {
 		[ANDROID_AARCH64] = "android-aarch64",

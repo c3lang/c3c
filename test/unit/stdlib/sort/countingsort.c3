@@ -95,4 +95,6 @@ module sort_test @test;
 
      sort::countingsort(list, &sort::key_int_value);
      assert(check::int_ascending_sort(list.array_view()));
+     list.free();
+
 }

@@ -103,10 +103,12 @@ fn void test_split()
 	assert(strings[2] == "");
 	assert(strings[3] == "c");
 	assert(strings[4] == "");
+	free(strings);
 	strings = test.split("|", 2);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
+	free(strings);
 }
 
 fn void test_split_skip_empty()
@@ -117,10 +119,12 @@ fn void test_split_skip_empty()
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b");
 	assert(strings[2] == "c");
+	free(strings);
 	strings = test.split("|", 2, skip_empty: true);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
+	free(strings);
 }
 
 fn void test_split_to_buffer_skip_empty()
@@ -136,6 +140,7 @@ fn void test_split_to_buffer_skip_empty()
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
+	free(strings);
 }
 
 fn void test_split_to_buffer()
@@ -155,6 +160,7 @@ fn void test_split_to_buffer()
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
+	free(strings);
 }
 
 fn void test_index_of()

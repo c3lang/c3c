@@ -13,9 +13,9 @@ struct Md5
 	uint[16] block;
 }
 
-def HmacMd5 = Hmac<[Md5, HASH_BYTES, BLOCK_BYTES]>;
-def hmac = hmac::hash<[Md5, HASH_BYTES, BLOCK_BYTES]>;
-def pbkdf2 = hmac::pbkdf2<[Md5, HASH_BYTES, BLOCK_BYTES]>;
+def HmacMd5 = Hmac(<Md5, HASH_BYTES, BLOCK_BYTES>);
+def hmac = hmac::hash(<Md5, HASH_BYTES, BLOCK_BYTES>);
+def pbkdf2 = hmac::pbkdf2(<Md5, HASH_BYTES, BLOCK_BYTES>);
 
 fn char[HASH_BYTES] hash(char[] data)
 {
@@ -108,7 +108,7 @@ macro @i(x, y, z) => y ^ (x | ~z);
 
 macro @step(#f, a, b, c, d, ptr, n, t, s)
 {
-	*a += #f(b, c, d) + *(uint *)&ptr[n * 4] + t;
+	*a += #f(b, c, d) + @unaligned_load(*(uint *)&ptr[n * 4], 2) + t;
 	*a = (*a << s) | ((*a & 0xffffffff) >> (32 - s));
 	*a += b;
 }

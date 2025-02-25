@@ -160,12 +160,15 @@ INLINE void llvm_emit_atomic_store(GenContext *c, BEValue *result_value, Expr *e
 
 INLINE void llvm_emit_unaligned_store(GenContext *c, BEValue *result_value, Expr *expr)
 {
+	bool emit_check = c->emitting_load_store_check;
+	c->emitting_load_store_check = true;
 	BEValue value;
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
 	llvm_value_deref(c, &value);
 	value.alignment = expr->call_expr.arguments[2]->const_expr.ixx.i.low;
 	llvm_store(c, &value, result_value);
+	c->emitting_load_store_check = emit_check;
 }
 
 INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue *result_value, Expr *expr)
@@ -241,10 +244,13 @@ INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *ex
 
 INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
+	bool emit_check = c->emitting_load_store_check;
+	c->emitting_load_store_check = true;
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
 	llvm_value_deref(c, result_value);
 	result_value->alignment = expr->call_expr.arguments[1]->const_expr.ixx.i.low;
 	llvm_value_rvalue(c, result_value);
+	c->emitting_load_store_check = emit_check;
 }
 
 static inline LLVMValueRef llvm_syscall_asm(LLVMTypeRef func_type, char *call)

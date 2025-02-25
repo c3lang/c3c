@@ -35,7 +35,7 @@ fn BigInt* BigInt.init(&self, int128 value)
 		len++;
 	}
 	assert(value < 0 || tmp == 0 || !self.is_negative());
-	assert(value > 0 || tmp == -1 || self.is_negative());
+	assert(value >= 0 || tmp == -1 || self.is_negative());
 	self.len = len;
 	self.reduce_len();
 	return self;
@@ -44,16 +44,15 @@ fn BigInt* BigInt.init(&self, int128 value)
 fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 {
 	self.data[..] = 0;
-	int128 tmp = value;
+	uint128 tmp = value;
 	uint len = 0;
-	while (tmp != 0 && len < MAX_LEN)
+	while (tmp != 0)
 	{
 		self.data[len] = (uint)(tmp & 0xFFFFFFFF);
 		tmp >>= 32;
 		len++;
 	}
-	self.len = len;
-	assert(value == 0 || tmp == 0 || !self.is_negative());
+	assert(!self.is_negative());
 	self.len = max(len, 1);
 	return self;
 }
@@ -64,11 +63,18 @@ fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 fn BigInt* BigInt.init_with_array(&self, uint[] values)
 {
 	self.data[..] = 0;
+
+	if (values.len == 0)
+	{
+		self.len = 1;
+		return self;
+	}
+
 	self.len = values.len;
 
 	foreach_r(i, val : values)
 	{
-		values[values.len - 1 - i] = val;
+		self.data[values.len - 1 - i] = val;
 	}
 	while (self.len > 1 && self.data[self.len - 1] == 0)
 	{
@@ -92,9 +98,9 @@ fn BigInt*! BigInt.init_string_radix(&self, String value, int radix)
 			case '0'..'9':
 				pos_val -= '0';
 			case 'A'..'Z':
-				pos_val -= 'A' + 10;
+				pos_val -= 'A' - 10;
 			case 'a'..'z':
-				pos_val -= 'a' + 10;
+				pos_val -= 'a' - 10;
 			default:
 				return NumberConversion.MALFORMED_INTEGER?;
 		}

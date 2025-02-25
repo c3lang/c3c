@@ -12,190 +12,66 @@ struct EncodeTest
 }
 
 EncodeTest[?] decode_with_error_tests @local = {
-	{
-		"",
-		"",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"abc",
-		"abc",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"1%41",
-		"1A",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"1%41%42%43",
-		"1ABC",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"%4a",
-		"J",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"%6F",
-		"o",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"%",
-		"",
-		UrlDecodingError.INVALID_HEX,
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"%a",
-		"",
-		UrlDecodingError.INVALID_HEX,
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"%1",
-		"",
-		UrlDecodingError.INVALID_HEX,
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"123%45%6",
-		"",
-		UrlDecodingError.INVALID_HEX,
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"%zzzzz",
-		"",
-		UrlDecodingError.INVALID_HEX,
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"a+b",
-		"a b",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"a%20b",
-		"a b",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
+	{ "", "", {}, QUERY, },
+	{ "abc", "abc", {}, QUERY, },
+	{ "1%41", "1A", {}, QUERY, },
+	{ "1%41%42%43", "1ABC", {}, QUERY, },
+	{ "%4a", "J", {}, QUERY, },
+	{ "%6F", "o", {}, QUERY, },
+	{ "%", "", UrlDecodingError.INVALID_HEX, QUERY, },
+	{ "%a", "", UrlDecodingError.INVALID_HEX, QUERY, },
+	{ "%1", "", UrlDecodingError.INVALID_HEX, QUERY, },
+	{ "123%45%6", "", UrlDecodingError.INVALID_HEX, QUERY, },
+	{ "%zzzzz", "", UrlDecodingError.INVALID_HEX, QUERY, },
+	{ "a+b", "a b", {}, QUERY, },
+	{ "a%20b", "a b", {}, QUERY, },
 };
 
-fn void test_decoding_with_error()
+fn void test_decoding_with_error() => @pool()
 {
-	String! actual;
-	@pool() {
-		foreach (test: decode_with_error_tests)
+	foreach (test: decode_with_error_tests)
+	{
+		String! actual = url::temp_decode(test.in, test.mode);
+		if (catch excuse = actual)
 		{
-			actual = url::temp_decode(test.in, test.mode);
-			if (catch excuse = actual)
-			{
-				assert(excuse == test.err, "unescape(%s, %s); "
+			assert(excuse == test.err, "unescape(%s, %s); "
 					"got: %s, want: %s", test.in, test.mode, excuse, test.err);
-				continue;
-			}
-			assert(actual == test.out, "unescape(%s, %s); "
-				"got: %s, want: %s", test.in, test.mode, actual, test.out);
+			continue;
 		}
-	};
+		assert(actual == test.out, "unescape(%s, %s); "
+			"got: %s, want: %s", test.in, test.mode, actual, test.out);
+	}
 }
 
 EncodeTest[?] encode_tests @local = {
-	{
-		"",
-		"",
-		anyfault{},
-		UrlEncodingMode.PATH,
+	{ "", "", {}, PATH, },
+	{ "abc", "abc", {}, PATH, },
+	{ "abc+def", "abc+def", {}, PATH, },
+	{ "a/b", "a/b", {}, PATH, },
+	{ "one two", "one%20two", {}, PATH, },
+	{ "10%", "10%25", {}, PATH, },
+	{ "", "", {}, QUERY, },
+	{ "abc", "abc", {}, QUERY, },
+	{ "one two", "one+two", {}, QUERY, },
+	{ "10%", "10%25", {}, QUERY, },
+	{ " ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;",
+	  "+%3F%26%3D%23%2B%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09%3A%2F%40%24%27%28%29%2A%2C%3B",
+	  {}, QUERY,
 	},
-	{
-		"abc",
-		"abc",
-		anyfault{},
-		UrlEncodingMode.PATH,
-	},
-	{
-		"abc+def",
-		"abc+def",
-		anyfault{},
-		UrlEncodingMode.PATH,
-	},
-	{
-		"a/b",
-		"a/b",
-		anyfault{},
-		UrlEncodingMode.PATH,
-	},
-	{
-		"one two",
-		"one%20two",
-		anyfault{},
-		UrlEncodingMode.PATH,
-	},
-	{
-		"10%",
-		"10%25",
-		anyfault{},
-		UrlEncodingMode.PATH,
-	},
-	{
-		"",
-		"",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"abc",
-		"abc",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"one two",
-		"one+two",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		"10%",
-		"10%25",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-	{
-		" ?&=#+%!<>#\"{}|\\^[]`☺\t:/@$'()*,;",
-		"+%3F%26%3D%23%2B%25%21%3C%3E%23%22%7B%7D%7C%5C%5E%5B%5D%60%E2%98%BA%09%3A%2F%40%24%27%28%29%2A%2C%3B",
-		anyfault{},
-		UrlEncodingMode.QUERY,
-	},
-
 };
 
-fn void test_percent_encode_and_decode()
+fn void test_percent_encode_and_decode() => @pool()
 {
-	String actual;
-	@pool() {
-		foreach (test: encode_tests)
-		{
-			actual = url::temp_encode(test.in, test.mode);
-			assert(actual == test.out, "escape(%s, %s); "
-				"got: %s, want: %s", test.in, test.mode, actual, test.out);
+	foreach (test: encode_tests)
+	{
+		String actual = url::temp_encode(test.in, test.mode);
+		assert(actual == test.out, "escape(%s, %s); "
+			"got: %s, want: %s", test.in, test.mode, actual, test.out);
 
-			actual = url::temp_decode(test.out, test.mode)!!;
-			assert(actual == test.in, "unescape(%s, %s); "
+		actual = url::temp_decode(test.out, test.mode)!!;
+		assert(actual == test.in, "unescape(%s, %s); "
 				"got: %s, want: %s", test.out, test.mode, actual, test.in);
-		}
-	};
+	}
 }
 
 struct ShouldEncodeTest
@@ -206,60 +82,59 @@ struct ShouldEncodeTest
 }
 
 ShouldEncodeTest[?] should_encode_tests = {
-	{'a', UrlEncodingMode.PATH, false},
-	{'a', UrlEncodingMode.USERPASS, false},
-	{'a', UrlEncodingMode.QUERY, false},
-	{'a', UrlEncodingMode.FRAGMENT, false},
-	{'a', UrlEncodingMode.HOST, false},
-	{'z', UrlEncodingMode.PATH, false},
-	{'A', UrlEncodingMode.PATH, false},
-	{'Z', UrlEncodingMode.PATH, false},
-	{'0', UrlEncodingMode.PATH, false},
-	{'9', UrlEncodingMode.PATH, false},
-	{'-', UrlEncodingMode.PATH, false},
-	{'-', UrlEncodingMode.USERPASS, false},
-	{'-', UrlEncodingMode.QUERY, false},
-	{'-', UrlEncodingMode.FRAGMENT, false},
-	{'.', UrlEncodingMode.PATH, false},
-	{'_', UrlEncodingMode.PATH, false},
-	{'~', UrlEncodingMode.PATH, false},
+	{'a', PATH, false},
+	{'a', USERPASS, false},
+	{'a', QUERY, false},
+	{'a', FRAGMENT, false},
+	{'a', HOST, false},
+	{'z', PATH, false},
+	{'A', PATH, false},
+	{'Z', PATH, false},
+	{'0', PATH, false},
+	{'9', PATH, false},
+	{'-', PATH, false},
+	{'-', USERPASS, false},
+	{'-', QUERY, false},
+	{'-', FRAGMENT, false},
+	{'.', PATH, false},
+	{'_', PATH, false},
+	{'~', PATH, false},
 
-	{'/', UrlEncodingMode.USERPASS, true},
-	{'?', UrlEncodingMode.USERPASS, true},
-	{'@', UrlEncodingMode.USERPASS, true},
-	{'$', UrlEncodingMode.USERPASS, false},
-	{'&', UrlEncodingMode.USERPASS, false},
-	{'+', UrlEncodingMode.USERPASS, false},
-	{',', UrlEncodingMode.USERPASS, false},
-	{';', UrlEncodingMode.USERPASS, false},
-	{'=', UrlEncodingMode.USERPASS, false},
+	{'/', USERPASS, true},
+	{'?', USERPASS, true},
+	{'@', USERPASS, true},
+	{'$', USERPASS, false},
+	{'&', USERPASS, false},
+	{'+', USERPASS, false},
+	{',', USERPASS, false},
+	{';', USERPASS, false},
+	{'=', USERPASS, false},
 
-	{'!', UrlEncodingMode.HOST, false},
-	{'$', UrlEncodingMode.HOST, false},
-	{'&', UrlEncodingMode.HOST, false},
-	{'\'', UrlEncodingMode.HOST, false},
-	{'(', UrlEncodingMode.HOST, false},
-	{')', UrlEncodingMode.HOST, false},
-	{'*', UrlEncodingMode.HOST, false},
-	{'+', UrlEncodingMode.HOST, false},
-	{',', UrlEncodingMode.HOST, false},
-	{';', UrlEncodingMode.HOST, false},
-	{'=', UrlEncodingMode.HOST, false},
-	{'0', UrlEncodingMode.HOST, false},
-	{'9', UrlEncodingMode.HOST, false},
-	{'A', UrlEncodingMode.HOST, false},
-	{'z', UrlEncodingMode.HOST, false},
-	{'_', UrlEncodingMode.HOST, false},
-	{'-', UrlEncodingMode.HOST, false},
-	{'.', UrlEncodingMode.HOST, false},
+	{'!', HOST, false},
+	{'$', HOST, false},
+	{'&', HOST, false},
+	{'\'',HOST, false},
+	{'(', HOST, false},
+	{')', HOST, false},
+	{'*', HOST, false},
+	{'+', HOST, false},
+	{',', HOST, false},
+	{';', HOST, false},
+	{'=', HOST, false},
+	{'0', HOST, false},
+	{'9', HOST, false},
+	{'A', HOST, false},
+	{'z', HOST, false},
+	{'_', HOST, false},
+	{'-', HOST, false},
+	{'.', HOST, false},
 };
 
 fn void test_should_encode()
 {
-	bool actual;
-	foreach (test: should_encode_tests)
+	foreach (test : should_encode_tests)
 	{
-		actual = url::should_encode(test.in, test.mode);
+		bool actual = url::should_encode(test.in, test.mode);
 		assert(actual == test.escape, "should_encode(%c, %s); "
 			"got: %s, want: %s", test.in, test.mode, actual, test.escape);
 	}

@@ -1,0 +1,11 @@
+import std;
+
+fn int main()
+{
+	$assert(@str_upper("Hello World") == "HELLO WORLD");
+	$assert(@str_lower("Hello World") == "hello world");
+	$assert(@str_find("Hello World", "o") == 4);
+	$assert(@str_find("Hello World", "w") == -1);
+	$assert(@str_hash("Hello C3") == 487972447);
+	return 0;
+}

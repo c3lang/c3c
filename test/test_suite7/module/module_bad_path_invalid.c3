@@ -1,0 +1,1 @@
+module abc::&&; // #error: Each '::' must be followed by a regular lower case sub module name

@@ -206,8 +206,8 @@ b64\`{B64}\` { return(BYTES); }
 {INT}"."{INT}{E}?{REALTYPE}?	{ return(REAL); }
 0[xX]{HINT}"."{HINT}{P}{REALTYPE}? { return(REAL); }
 
-\"(\\.|[^\\"])*\"	{ return(STRING_LITERAL); }
-\'(\\[ux]{HEX}|\\.|[^\\']+)\'	{ return(CHAR_LITERAL); }
+\"([^"\\]|\\.)*\"	{ return(STRING_LITERAL); }
+\'([^'\\]|\\.)+\'	{ return(CHAR_LITERAL); }
 
 "`"             { BEGIN(RAW_STRING); }
 <RAW_STRING>{

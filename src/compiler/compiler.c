@@ -391,12 +391,20 @@ void compiler_parse(void)
 
 static void create_output_dir(const char *dir)
 {
-	if (!file_exists(dir))
+	if (!dir) return;
+	if (file_exists(dir))
 	{
-		if (!dir_make(dir)) error_exit("Failed to create output directory %s.", dir);
+		if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
+		return;
 	}
-	if (!file_is_dir(dir)) error_exit("Output directory is not a directory %s.", dir);
+	scratch_buffer_clear();
+	scratch_buffer_append(dir);
+	if (!dir_make_recursive(scratch_buffer_to_string()))
+	{
+		error_exit("Failed to create directory '%s'.", dir);
+	}
 }
+
 
 void compiler_compile(void)
 {
@@ -439,31 +447,19 @@ void compiler_compile(void)
 
 	if (compiler.build.asm_file_dir || compiler.build.ir_file_dir || compiler.build.emit_object_files)
 	{
-		if (compiler.build.build_dir && !file_exists(compiler.build.build_dir) && !dir_make(compiler.build.build_dir))
-		{
-			error_exit("Failed to create build directory '%s'.", compiler.build.build_dir);
-		}
+		create_output_dir(compiler.build.build_dir);
 	}
 	if (compiler.build.ir_file_dir && (compiler.build.emit_llvm || compiler.build.test_output || compiler.build.lsp_output))
 	{
-		if (!file_exists(compiler.build.ir_file_dir) && !dir_make(compiler.build.ir_file_dir))
-		{
-			error_exit("Failed to create output directory '%s'.", compiler.build.ir_file_dir);
-		}
+		create_output_dir(compiler.build.ir_file_dir);
 	}
 	if (compiler.build.asm_file_dir && compiler.build.emit_asm)
 	{
-		if (!file_exists(compiler.build.asm_file_dir) && !dir_make(compiler.build.asm_file_dir))
-		{
-			error_exit("Failed to create output directory '%s'.", compiler.build.asm_file_dir);
-		}
+		create_output_dir(compiler.build.asm_file_dir);
 	}
 	if (compiler.build.object_file_dir && compiler.build.emit_object_files)
 	{
-		if (!file_exists(compiler.build.object_file_dir) && !dir_make(compiler.build.object_file_dir))
-		{
-			error_exit("Failed to create output directory '%s'.", compiler.build.object_file_dir);
-		}
+		create_output_dir(compiler.build.object_file_dir);
 	}
 	if (compiler.build.type == TARGET_TYPE_EXECUTABLE && !compiler.context.main && !compiler.build.no_entry)
 	{
@@ -495,7 +491,6 @@ void compiler_compile(void)
 			UNREACHABLE
 	}
 	compiler_ir_gen_time = bench_mark();
-
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
@@ -522,6 +517,12 @@ void compiler_compile(void)
 				output_dynamic = dynamic_lib_name();
 				break;
 			case TARGET_TYPE_OBJECT_FILES:
+				if (compiler.obj_output)
+				{
+					OUTF("Object file %s created.\n", compiler.obj_output);
+					break;
+				}
+				OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
 				break;
 			case TARGET_TYPE_PREPARE:
 				break;
@@ -529,18 +530,26 @@ void compiler_compile(void)
 				UNREACHABLE
 		}
 	}
-
+	if (compiler.build.emit_llvm)
+	{
+		OUTF("LLVM files written to %s.\n", compiler.build.ir_file_dir);
+	}
+	if (compiler.build.emit_asm)
+	{
+		OUTF("Asm files written to %s.\n", compiler.build.asm_file_dir);
+	}
 	free_arenas();
 
 	uint32_t output_file_count = vec_size(gen_contexts);
-	unsigned objfiles = vec_size(compiler.build.object_files);
+	unsigned external_objfile_count = vec_size(compiler.build.object_files);
 	unsigned cfiles = vec_size(compiler.build.csources);
 	unsigned cfiles_library = 0;
 	FOREACH(LibraryTarget *, lib, compiler.build.ccompiling_libraries)
 	{
 		cfiles_library += vec_size(lib->csources);
 	}
-	unsigned total_output = output_file_count + cfiles + cfiles_library + objfiles;
+	unsigned total_output = output_file_count + cfiles + cfiles_library + external_objfile_count;
+
 	if (total_output > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
@@ -575,7 +584,7 @@ void compiler_compile(void)
 		obj_file_next += compile_cfiles(lib->cc ? lib->cc : compiler.build.cc, lib->csources,
 		                                lib->cflags, lib->cinclude_dirs, obj_file_next, lib->parent->provides);
 	}
-	for (unsigned i = 0; i < objfiles; i++)
+	for (unsigned i = 0; i < external_objfile_count; i++)
 	{
 		obj_file_next[0] = compiler.build.object_files[i];
 		obj_file_next++;
@@ -593,15 +602,17 @@ void compiler_compile(void)
 	INFO_LOG("Will use %d thread(s).\n", compiler.build.build_threads);
 #endif
 	unsigned task_count = vec_size(tasks);
-	if (task_count == 1)
+	if (task_count > 0)
 	{
-		tasks[0]->task(tasks[0]->arg);
+		Task *task_last = VECLAST(tasks);
+		vec_pop(tasks);
+		task_last->task(task_last->arg);
+		task_count--;
+		if (task_count)
+		{
+			taskqueue_run(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads, tasks);
+		}
 	}
-	else if (task_count > 1)
-	{
-		taskqueue_run(compiler.build.build_threads > task_count ? task_count : compiler.build.build_threads, tasks);
-	}
-
 	if (compiler.build.print_output)
 	{
 		puts("# output-files-begin");
@@ -622,7 +633,8 @@ void compiler_compile(void)
 		puts("# output-files-end");
 	}
 
-	output_file_count += cfiles + cfiles_library + objfiles;
+	output_file_count += cfiles + cfiles_library + external_objfile_count;
+	unsigned objfile_delete_count = output_file_count - external_objfile_count;
 	free(compile_data);
 	compiler_codegen_time = bench_mark();
 
@@ -669,7 +681,7 @@ void compiler_compile(void)
 			platform_linker(output_exe, obj_files, output_file_count);
 			compiler_link_time = bench_mark();
 			compiler_print_bench();
-			delete_object_files(obj_files, output_file_count);
+			delete_object_files(obj_files, objfile_delete_count);
 		}
 		else
 		{
@@ -682,7 +694,7 @@ void compiler_compile(void)
 			}
 			else
 			{
-				delete_object_files(obj_files, output_file_count);
+				delete_object_files(obj_files, objfile_delete_count);
 			}
 		}
 
@@ -748,7 +760,7 @@ void compiler_compile(void)
 		{
 			error_exit("Failed to produce static library '%s'.", output_static);
 		}
-		delete_object_files(obj_files, output_file_count);
+		delete_object_files(obj_files, objfile_delete_count);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
 		OUTF("Static library '%s' created.\n", output_static);
@@ -768,7 +780,7 @@ void compiler_compile(void)
 		{
 			error_exit("Failed to produce dynamic library '%s'.", output_dynamic);
 		}
-		delete_object_files(obj_files, output_file_count);
+		delete_object_files(obj_files, objfile_delete_count);
 		OUTF("Dynamic library '%s' created.\n", output_dynamic);
 		compiler_link_time = bench_mark();
 		compiler_print_bench();
@@ -1431,6 +1443,9 @@ const char *get_object_extension(void)
 	{
 		case ANY_WINDOWS_ARCH_OS:
 			return ".obj";
+		case WASM32:
+		case WASM64:
+			return ".wasm";
 		default:
 			return ".o";
 	}

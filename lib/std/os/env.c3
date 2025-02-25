@@ -9,10 +9,9 @@ import std::io::path, libc, std::os;
  @require name.len > 0
  @return! SearchResult.MISSING
 *>
-fn String! get_var(String name, Allocator allocator = allocator::heap())
+fn String! get_var(String name, Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
+
 	$switch
 	$case env::LIBC && !env::WIN32:
 		ZString val = libc::getenv(name.zstr_tcopy());
@@ -33,7 +32,6 @@ fn String! get_var(String name, Allocator allocator = allocator::heap())
 	$default:
 		return "";
 	$endswitch
-	};
 }
 
 fn String! get_var_temp(String name)
@@ -46,10 +44,8 @@ fn String! get_var_temp(String name)
  @param [in] value
  @require name.len > 0
 *>
-fn bool set_var(String name, String value, bool overwrite = true)
+fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 {
-	@pool()
-	{
 	$switch
 	$case env::WIN32:
 		WString wname = name.to_temp_wstring()!!;
@@ -61,12 +57,10 @@ fn bool set_var(String name, String value, bool overwrite = true)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setenvironmentvariable
 		return (win32::setEnvironmentVariableW(wname, value.to_temp_wstring()) ?? 1) == 0;
 	$case env::LIBC && !env::WIN32:
-		return libc::setenv(name.zstr_tcopy(), value.zstr_copy(), (int)overwrite) == 0;
+		return libc::setenv(name.zstr_tcopy(), value.zstr_tcopy(), (int)overwrite) == 0;
 	$default:
 		return false;
 	$endswitch
-	};
-
 }
 
 <*
@@ -91,10 +85,8 @@ fn Path! get_config_dir(Allocator allocator = allocator::heap()) @deprecated("us
 <*
 Returns the current user's config directory.
 *>
-fn Path! new_get_config_dir(Allocator allocator = allocator::heap())
+fn Path! new_get_config_dir(Allocator allocator = allocator::heap()) => @pool(allocator)
 {
-	@pool(allocator)
-	{
 	$if env::WIN32:
 		return path::new(get_var_temp("AppData"), allocator);
 	$else
@@ -107,7 +99,6 @@ fn Path! new_get_config_dir(Allocator allocator = allocator::heap())
 		$endif
 		return path::temp_new(s).new_append(DIR, allocator: allocator);
 	$endif
-	};
 }
 
 
@@ -115,10 +106,8 @@ fn Path! new_get_config_dir(Allocator allocator = allocator::heap())
  @param [in] name
  @require name.len > 0
 *>
-fn bool clear_var(String name)
+fn bool clear_var(String name) => @pool()
 {
-	@pool()
-	{
 	$switch
 	$case env::WIN32:
 		WString wname = name.to_temp_wstring()!!;
@@ -128,7 +117,6 @@ fn bool clear_var(String name)
 	$default:
 		return false;
 	$endswitch
-	};
 }
 
 fn String! executable_path(Allocator allocator = allocator::heap()) @deprecated("use new_executable_path()")

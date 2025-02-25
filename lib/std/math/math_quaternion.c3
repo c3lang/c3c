@@ -11,11 +11,11 @@ union Quaternion
 
 const Quaternion IDENTITY = { 0, 0, 0, 1 };
 
-macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => Quaternion { .v = a.v + b.v };
-macro Quaternion Quaternion.add_each(Quaternion a, Real b) => Quaternion { .v = a.v + b };
-macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => Quaternion { .v = a.v - b.v };
-macro Quaternion Quaternion.sub_each(Quaternion a, Real b) => Quaternion { .v = a.v - b };
-macro Quaternion Quaternion.scale(Quaternion a, Real s) => Quaternion { .v = a.v * s };
+macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => { .v = a.v + b.v };
+macro Quaternion Quaternion.add_each(Quaternion a, Real b) => { .v = a.v + b };
+macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => { .v = a.v - b.v };
+macro Quaternion Quaternion.sub_each(Quaternion a, Real b) => { .v = a.v - b };
+macro Quaternion Quaternion.scale(Quaternion a, Real s) => { .v = a.v * s };
 macro Quaternion Quaternion.normalize(Quaternion q) => { .v = q.v.normalize() };
 macro Real Quaternion.length(Quaternion q) => q.v.length();
 macro Quaternion Quaternion.lerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount) };
@@ -76,7 +76,7 @@ macro into_matrix(Quaternion* q, $Type) @private
     var z = rotation.k;
     var w = rotation.l;
 
-    return $Type {
+    return ($Type) {
         1 - 2*y*y - 2*z*z, 2*x*y - 2*z*w, 2*x*z + 2*y*w, 0,
         2*x*y + 2*z*w, 1 - 2*x*x - 2*z*z, 2*y*z - 2*x*w, 0,
         2*x*z - 2*y*w, 2*y*z + 2*x*w , 1 - 2*x*x - 2*y*y, 0,

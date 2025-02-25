@@ -11,7 +11,7 @@
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span);
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, Decl *decl);
 static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl);
 static inline bool sema_check_param_uniqueness_and_type(SemaContext *context, Decl **decls, Decl *current,
                                                         unsigned current_index, unsigned count);
@@ -486,7 +486,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	Decl **struct_members = decl->strukt.members;
 	unsigned member_count = vec_size(struct_members);
 	ASSERT(member_count > 0 && "This analysis should only be called on member_count > 0");
-
+	bool is_naturally_aligned = !is_packed;
 	for (unsigned i = 0; i < member_count; i++)
 	{
 	AGAIN:;
@@ -579,6 +579,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		// If the natural align is different from the aligned offset we have two cases:
 		if (natural_align_offset != align_offset)
 		{
+			is_naturally_aligned = false;
 			// If the natural alignment is greater, in this case the struct is unaligned.
 			if (member_natural_alignment > member_alignment)
 			{
@@ -604,6 +605,7 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 			{
 				RETURN_SEMA_ERROR(member, "%d bytes of padding would be added to align this member which is not allowed with `@nopadding` and `@compact`.", align_offset - offset);
 			}
+			member->padding = align_offset - offset;
 		}
 
 		if (!sema_check_struct_holes(context, decl, member)) return false;
@@ -665,6 +667,15 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 	}
 
 	decl->is_packed = is_unaligned;
+	// Strip padding if we are aligned.
+	if (!decl->is_packed && is_naturally_aligned)
+	{
+		for (unsigned i = 0; i < member_count; i++)
+		{
+			Decl *member = struct_members[i];
+			member->padding = 0;
+		}
+	}
 	decl->strukt.size = size;
 	return true;
 }
@@ -1082,7 +1093,7 @@ ERROR:
 	return decl_poison(decl);
 }
 
-static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, SourceSpan span)
+static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, TypeInfo *method_parent, bool is_export, bool is_deprecated, Decl *decl)
 {
 	Variadic variadic_type = sig->variadic;
 	Decl **params = sig->params;
@@ -1164,6 +1175,15 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		param->var.type_info = type_info_id_new_base(inferred_type, param->span);
 		param->var.is_self = true;
+	}
+
+	// Ensure it has at least one parameter if method.
+	if (method_parent && !vec_size(params) && decl->operator != OVERLOAD_CONSTRUCT)
+	{
+		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
+								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
+								"unless it is a 'construct' method,",
+								type_to_error_string(method_parent->type), decl->name, type_to_error_string(method_parent->type));
 	}
 
 	// Check parameters
@@ -1341,7 +1361,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 
 	bool deprecated = func_decl->resolved_attributes && func_decl->attrs_resolved && func_decl->attrs_resolved->deprecated;
 
-	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl->span)) return false;
+	if (!sema_analyse_signature(context, signature, parent, func_decl->is_export, deprecated, func_decl)) return false;
 
 	Variadic variadic_type = signature->variadic;
 
@@ -1471,8 +1491,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 	// Require an integer type
 	if (!type_is_integer(flat_underlying_type))
 	{
-		SEMA_ERROR(decl->enums.type_info, "The enum type must be an integer type not '%s'.", type_to_error_string(type));
-		return false;
+		RETURN_SEMA_ERROR(decl->enums.type_info, "The enum type must be an integer type not '%s'.", type_to_error_string(type));
 	}
 
 	DEBUG_LOG("* Enum type resolved to %s.", type->name);
@@ -1518,8 +1537,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (enums == 1)
 			{
-				SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
-				return decl_poison(decl);
+				RETURN_SEMA_ERROR(decl, "No enum values left in enum after @if resolution, there must be at least one.");
 			}
 			vec_erase_at(enum_values, i);
 			enums--;
@@ -1542,11 +1560,10 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		Int val = (Int){ value, flat_underlying_type->type_kind };
 		if (!int_fits(val, flat_underlying_type->type_kind))
 		{
-			SEMA_ERROR(enum_value,
-					   "The enum value would implicitly be %s which does not fit in %s.",
-					   i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
-					   type_quoted_error_string(type));
-			return false;
+			RETURN_SEMA_ERROR(enum_value,
+			                  "The enum value would implicitly be %s which does not fit in %s.",
+			                  i128_to_string(value, 10, type_is_signed(flat_underlying_type), false),
+			                  type_quoted_error_string(type));
 		}
 		enum_value->enum_constant.ordinal = value.low;
 
@@ -1559,14 +1576,13 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		{
 			if (!associated_value_count)
 			{
-				RETURN_SEMA_ERROR(args[0], "No associated values are defined for this enum.");
+				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
 			}
-			RETURN_SEMA_ERROR(args[associated_value_count], "Only %d associated value(s) may be defined for this enum.");
+			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
 		}
 		if (arg_count < associated_value_count)
 		{
-			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value(s) for this enum.", associated_value_count);
-			return false;
+			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value%s for this enum value.", associated_value_count, associated_value_count != 1 ? "s" : "");
 		}
 		for (unsigned j = 0; j < arg_count; j++)
 		{
@@ -1575,8 +1591,7 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 			if (!sema_analyse_expr_rhs(context, associated_values[j]->type, arg, false, NULL, false)) return false;
 			if (!expr_is_runtime_const(arg))
 			{
-				SEMA_ERROR(arg, "Expected a constant expression as parameter.");
-				return false;
+				RETURN_SEMA_ERROR(arg, "Associated values must be constant expressions.");
 			}
 		}
 		enum_value->resolve_status = RESOLVE_DONE;
@@ -2352,15 +2367,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 
 	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
 
-	// Ensure it has at least one parameter.
-	if (!vec_size(params) && !is_constructor)
-	{
-		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
-								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
-								"unless it is a 'construct' method,",
-		                  type_to_error_string(par_type), decl->name, type_to_error_string(par_type));
-	}
-
 	// Ensure that the first parameter is valid.
 	if (!is_constructor && !sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
@@ -2455,6 +2461,11 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 // Helper method
 INLINE bool update_abi(Decl *decl, CallABI abi)
 {
+	if (decl->decl_kind == DECL_TYPEDEF)
+	{
+		decl->typedef_decl.decl->fntype_decl.abi = abi;
+		return true;
+	}
 	decl->func_decl.signature.abi = abi;
 	return true;
 }
@@ -2525,7 +2536,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
-			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD,
+			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_DEF | ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_COMPACT] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_CONST] = ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
@@ -2621,6 +2632,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_winmain = true;
 			break;
 		case ATTRIBUTE_CALLCONV:
+			if (domain == ATTR_DEF && (decl->decl_kind != DECL_TYPEDEF || !decl->typedef_decl.is_func))
+			{
+				RETURN_SEMA_ERROR(attr, "'@callconv' cannot only be used with fn types.");
+			}
 			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
 			if (expr && !sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -3190,6 +3205,8 @@ static inline bool sema_analyse_doc_header(SemaContext *context, AstId doc,
 				param->var.out_param = true;
 				break;
 			case INOUT_INOUT:
+				param->var.out_param = true;
+				param->var.in_param = true;
 				break;
 		}
 		if (!may_be_pointer && type->type_kind != TYPE_SLICE)
@@ -3859,13 +3876,13 @@ static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *er
 
 	if (!sema_analyse_signature(context, &decl->func_decl.signature,
 	                            type_infoptrzero(decl->func_decl.type_parent),
-	                            false, deprecated, decl->span)) return false;
+	                            false, deprecated, decl)) return false;
 
-	if (!decl->func_decl.signature.is_at_macro && decl->func_decl.body_param && !decl->func_decl.signature.is_safemacro)
+	DeclId body_param = decl->func_decl.body_param;
+	if (!decl->func_decl.signature.is_at_macro && body_param && !decl->func_decl.signature.is_safemacro)
 	{
 		RETURN_SEMA_ERROR(decl, "Names of macros with a trailing body must start with '@'.");
 	}
-	DeclId body_param = decl->func_decl.body_param;
 	Decl **body_parameters = body_param ? declptr(body_param)->body_params : NULL;
 	if (!sema_analyse_macro_body(context, body_parameters)) return false;
 	bool pure = false;

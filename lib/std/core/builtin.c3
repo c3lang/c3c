@@ -62,38 +62,37 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE)
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @pool()
 {
-	@pool()
+	void*[256] buffer;
+	void*[] backtraces = backtrace::capture_current(&buffer);
+	backtraces_to_ignore++;
+	BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, allocator::temp());
+	if (catch backtrace) return false;
+	if (backtrace.len() <= backtraces_to_ignore) return false;
+	io::eprint("\nERROR: '");
+	io::eprint(message);
+	io::eprintn("'");
+	foreach (i, &trace : backtrace)
 	{
-		void*[256] buffer;
-		void*[] backtraces = backtrace::capture_current(&buffer);
-		backtraces_to_ignore++;
-		BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, allocator::temp());
-		if (catch backtrace) return false;
-		if (backtrace.len() <= backtraces_to_ignore) return false;
-		io::eprint("\nERROR: '");
-		io::eprint(message);
-		io::eprintn("'");
-		foreach (i, &trace : backtrace)
+		if (i < backtraces_to_ignore) continue;
+		String inline_suffix = trace.is_inline ? " [inline]" : "";
+		if (trace.is_unknown())
 		{
-			if (i < backtraces_to_ignore) continue;
-			String inline_suffix = trace.is_inline ? " [inline]" : "";
-			if (trace.is_unknown())
-			{
-				io::eprintfn("  in ???%s", inline_suffix);
-				continue;
-			}
-			if (trace.has_file())
-			{
-				io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
-				continue;
-			}
-			io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
+			io::eprintfn("  in ???%s", inline_suffix);
+			continue;
 		}
-		return true;
-	};
+		if (trace.has_file())
+		{
+			io::eprintfn("  in %s (%s:%d) [%s]%s", trace.function, trace.file, trace.line, trace.object_file, inline_suffix);
+			continue;
+		}
+		io::eprintfn("  in %s (source unavailable) [%s]%s", trace.function, trace.object_file, inline_suffix);
+	}
+	return true;
+
 }
+
 fn void default_panic(String message, String file, String function, uint line) @if(env::NATIVE_STACKTRACE)
 {
 	$if $defined(io::stderr):
@@ -239,7 +238,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @param $Type `The type of the enum`
  @require $Type.kindof == ENUM `Only enums may be used`
  @require $defined($Type.#value) `Expected '#value' to match an enum associated value`
- @require $assignable(value, $typeof($Type{}.#value)) `Expected the value to match the type of the associated value`
+ @require $assignable(value, $typeof(($Type){}.#value)) `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
 *>
@@ -352,7 +351,7 @@ macro swizzle2(v, v2, ...) @builtin
 macro anyfault @catch(#expr) @builtin
 {
 	if (catch f = #expr) return f;
-	return anyfault {};
+	return {};
 }
 
 <*

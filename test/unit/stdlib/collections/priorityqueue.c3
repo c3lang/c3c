@@ -7,6 +7,8 @@ def Queue = PriorityQueue(<int>);
 fn void priorityqueue()
 {
     Queue q;
+	defer q.free();
+
     assert(q.is_empty());
 
     q.push(1);
@@ -35,6 +37,7 @@ def QueueMax = PriorityQueueMax(<int>);
 fn void priorityqueue_max()
 {
     QueueMax q;
+	defer q.free();
     assert(q.is_empty());
 
     q.push(1);

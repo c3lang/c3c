@@ -8,7 +8,7 @@ module std::os::env @test;
  	env::set_var(NAME, VALUE);
  	String v = env::get_var(NAME)!!;
  	assert(v == VALUE, "got %s; want %s", v, VALUE);
-
+	free(v);
  	env::clear_var(NAME);
  	if (try env::get_var(NAME))
  	{

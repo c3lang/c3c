@@ -738,6 +738,10 @@ static inline bool scan_char(Lexer *lexer)
 		}
 		// Parse the escape code
 		signed char escape = ' ';
+		if (c == '\n')
+		{
+			return add_error_token_at_current(lexer, "A line break is not allowed in a character literal.");
+		}
 		if (c == '\\')
 		{
 			ASSERT(c == '\\');

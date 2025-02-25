@@ -1,0 +1,61 @@
+// #target: macos-x64
+module test;
+import std;
+distinct TypeA = char[];
+
+fn char TypeA.get(self, usz i) @operator([]) {
+	return ((char[])self)[i];
+}
+
+fn usz TypeA.len(self) @operator(len)
+{
+	return self.len;
+}
+
+fn int main() {
+	TypeA x = "AAAAA";
+	foreach(y : x)
+	{
+		int z = y;
+	}
+	return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %x = alloca %"char[]", align 8
+  %.anon = alloca i64, align 8
+  %y = alloca i8, align 1
+  %z = alloca i32, align 4
+  store %"char[]" { ptr @.str, i64 5 }, ptr %x, align 8
+  %lo = load ptr, ptr %x, align 8
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 8
+  %hi = load i64, ptr %ptradd, align 8
+  %0 = call i64 @test.TypeA.len(ptr %lo, i64 %hi)
+  store i64 0, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.body, %entry
+  %1 = load i64, ptr %.anon, align 8
+  %lt = icmp ult i64 %1, %0
+  br i1 %lt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %lo1 = load ptr, ptr %x, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %x, i64 8
+  %hi3 = load i64, ptr %ptradd2, align 8
+  %2 = load i64, ptr %.anon, align 8
+  %3 = call i8 @test.TypeA.get(ptr %lo1, i64 %hi3, i64 %2)
+  store i8 %3, ptr %y, align 1
+  %4 = load i8, ptr %y, align 1
+  %zext = zext i8 %4 to i32
+  store i32 %zext, ptr %z, align 4
+  %5 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %5, 1
+  store i64 %addnuw, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i32 0

@@ -1,0 +1,31 @@
+module test;
+
+macro frab(x)
+{
+    if (!x) return 0;
+    return 0.0;
+}
+
+fn void test2()
+{
+    frab(1);
+    frab(0);
+}
+
+/* #expect: test.ll
+
+define void @test.test2() #0 {
+entry:
+  %blockret = alloca double, align 8
+  br label %if.exit
+
+if.exit:                                          ; preds = %entry
+  br label %if.then
+
+if.then:                                          ; preds = %if.exit
+  store double 0.000000e+00, ptr %blockret, align 8
+  br label %expr_block.exit
+
+expr_block.exit:                                  ; preds = %if.then
+  ret void
+}

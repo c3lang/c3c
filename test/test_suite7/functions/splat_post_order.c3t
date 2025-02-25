@@ -1,0 +1,12 @@
+macro @foo(..., bool a = true, bool b = false)
+{
+    return @foo2((void*)null, $vasplat, a: a, b: b);
+}
+
+macro @foo2(x, ..., bool a = true, bool b = false)
+{ }
+
+fn void main()
+{
+    @foo(1, 2, 3, 4, a: true, b: false);
+}

@@ -5,7 +5,7 @@ module std::collections::list_common;
 *>
 macro list_to_new_aligned_array($Type, self, Allocator allocator)
 {
-	if (!self.size) return $Type[] {};
+	if (!self.size) return ($Type[]){};
 	$Type[] result = allocator::alloc_array_aligned(allocator, $Type, self.size);
 	result[..] = self.entries[:self.size];
 	return result;
@@ -13,7 +13,7 @@ macro list_to_new_aligned_array($Type, self, Allocator allocator)
 
 macro list_to_new_array($Type, self, Allocator allocator)
 {
-	if (!self.size) return $Type[] {};
+	if (!self.size) return ($Type[]){};
 	$Type[] result = allocator::alloc_array(allocator, $Type, self.size);
 	result[..] = self.entries[:self.size];
 	return result;

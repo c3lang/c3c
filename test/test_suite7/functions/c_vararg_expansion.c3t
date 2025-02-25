@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+extern fn void printf(char*,...);
+distinct Foo = float;
+fn void main()
+{
+	Foo a = 12.3;
+	Foo! b = 33.5;
+	(void)printf("%f %f %f", (float)a, a, b);
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %a = alloca float, align 4
+  %b = alloca float, align 4
+  %b.f = alloca i64, align 8
+  store float 0x40289999A0000000, ptr %a, align 4
+  store float 3.350000e+01, ptr %b, align 4
+  store i64 0, ptr %b.f, align 8
+  %0 = load float, ptr %a, align 4
+  %fpfpext = fpext float %0 to double
+  %1 = load float, ptr %a, align 4
+  %fpfpext1 = fpext float %1 to double
+  %optval = load i64, ptr %b.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %voiderr
+after_check:                                      ; preds = %entry
+  %3 = load float, ptr %b, align 4
+  %fpfpext2 = fpext float %3 to double
+  call void (ptr, ...) @printf(ptr @.str, double %fpfpext, double %fpfpext1, double %fpfpext2)
+  br label %voiderr
+voiderr:                                          ; preds = %after_check, %entry
+  ret void
+}

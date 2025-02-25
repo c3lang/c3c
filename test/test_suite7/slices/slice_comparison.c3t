@@ -1,0 +1,232 @@
+// #target: macos-x64
+
+module mymodule;
+
+extern fn void printf(char *, ...);
+
+fn void main()
+{
+
+    char[] y = "hodo";
+    char[] z = "hodo";
+    if (y == "hodo")
+    {
+        printf("This works\n");
+    }
+    if (y == z)
+    {
+        printf("This works too\n");
+    }
+    switch (y)
+    {
+        case "mixx":
+            printf("Wut\n");
+        case "hodot":
+            printf("Nope\n");
+        case "hodo":
+            printf("Winning!\n");
+        default:
+            printf("Hodohell\n");
+    }
+
+}
+
+/* #expect: mymodule.ll
+
+
+define void @mymodule.main() #0 {
+entry:
+  %y = alloca %"char[]", align 8
+  %z = alloca %"char[]", align 8
+  %cmp.idx = alloca i64, align 8
+  %cmp.idx5 = alloca i64, align 8
+  %switch = alloca %"char[]", align 8
+  %cmp.idx18 = alloca i64, align 8
+  %cmp.idx29 = alloca i64, align 8
+  %cmp.idx42 = alloca i64, align 8
+  store %"char[]" { ptr @.str, i64 4 }, ptr %y, align 8
+  store %"char[]" { ptr @.str.1, i64 4 }, ptr %z, align 8
+  %0 = load %"char[]", ptr %y, align 8
+  %1 = extractvalue %"char[]" %0, 1
+  %2 = extractvalue %"char[]" %0, 0
+  %eq = icmp eq i64 %1, 4
+  br i1 %eq, label %slice_cmp_values, label %slice_cmp_exit
+
+slice_cmp_values:                                 ; preds = %entry
+  store i64 0, ptr %cmp.idx, align 8
+  br label %slice_loop_start
+
+slice_loop_start:                                 ; preds = %slice_loop_comparison, %slice_cmp_values
+  %3 = load i64, ptr %cmp.idx, align 8
+  %lt = icmp slt i64 %3, %1
+  br i1 %lt, label %slice_loop_comparison, label %slice_cmp_exit
+
+slice_loop_comparison:                            ; preds = %slice_loop_start
+  %ptradd = getelementptr inbounds i8, ptr %2, i64 %3
+  %ptradd1 = getelementptr inbounds i8, ptr @.str.2, i64 %3
+  %4 = load i8, ptr %ptradd, align 1
+  %5 = load i8, ptr %ptradd1, align 1
+  %eq2 = icmp eq i8 %4, %5
+  %6 = add i64 %3, 1
+  store i64 %6, ptr %cmp.idx, align 8
+  br i1 %eq2, label %slice_loop_start, label %slice_cmp_exit
+
+slice_cmp_exit:                                   ; preds = %slice_loop_comparison, %slice_loop_start, %entry
+  %slice_cmp_phi = phi i1 [ true, %slice_loop_start ], [ false, %entry ], [ false, %slice_loop_comparison ]
+  br i1 %slice_cmp_phi, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %slice_cmp_exit
+  call void (ptr, ...) @printf(ptr @.str.3)
+  br label %if.exit
+
+if.exit:                                          ; preds = %if.then, %slice_cmp_exit
+  %7 = load %"char[]", ptr %y, align 8
+  %8 = load %"char[]", ptr %z, align 8
+  %9 = extractvalue %"char[]" %7, 1
+  %10 = extractvalue %"char[]" %8, 1
+  %11 = extractvalue %"char[]" %7, 0
+  %12 = extractvalue %"char[]" %8, 0
+  %eq3 = icmp eq i64 %9, %10
+  br i1 %eq3, label %slice_cmp_values4, label %slice_cmp_exit12
+
+slice_cmp_values4:                                ; preds = %if.exit
+  store i64 0, ptr %cmp.idx5, align 8
+  br label %slice_loop_start6
+
+slice_loop_start6:                                ; preds = %slice_loop_comparison8, %slice_cmp_values4
+  %13 = load i64, ptr %cmp.idx5, align 8
+  %lt7 = icmp slt i64 %13, %9
+  br i1 %lt7, label %slice_loop_comparison8, label %slice_cmp_exit12
+
+slice_loop_comparison8:                           ; preds = %slice_loop_start6
+  %ptradd9 = getelementptr inbounds i8, ptr %11, i64 %13
+  %ptradd10 = getelementptr inbounds i8, ptr %12, i64 %13
+  %14 = load i8, ptr %ptradd9, align 1
+  %15 = load i8, ptr %ptradd10, align 1
+  %eq11 = icmp eq i8 %14, %15
+  %16 = add i64 %13, 1
+  store i64 %16, ptr %cmp.idx5, align 8
+  br i1 %eq11, label %slice_loop_start6, label %slice_cmp_exit12
+
+slice_cmp_exit12:                                 ; preds = %slice_loop_comparison8, %slice_loop_start6, %if.exit
+  %slice_cmp_phi13 = phi i1 [ true, %slice_loop_start6 ], [ false, %if.exit ], [ false, %slice_loop_comparison8 ]
+  br i1 %slice_cmp_phi13, label %if.then14, label %if.exit15
+
+if.then14:                                        ; preds = %slice_cmp_exit12
+  call void (ptr, ...) @printf(ptr @.str.4)
+  br label %if.exit15
+
+if.exit15:                                        ; preds = %if.then14, %slice_cmp_exit12
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %switch, ptr align 8 %y, i32 16, i1 false)
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %if.exit15
+  %17 = load %"char[]", ptr %switch, align 8
+  %18 = extractvalue %"char[]" %17, 1
+  %19 = extractvalue %"char[]" %17, 0
+  %eq16 = icmp eq i64 4, %18
+  br i1 %eq16, label %slice_cmp_values17, label %slice_cmp_exit25
+
+slice_cmp_values17:                               ; preds = %switch.entry
+  store i64 0, ptr %cmp.idx18, align 8
+  br label %slice_loop_start19
+
+slice_loop_start19:                               ; preds = %slice_loop_comparison21, %slice_cmp_values17
+  %20 = load i64, ptr %cmp.idx18, align 8
+  %lt20 = icmp slt i64 %20, 4
+  br i1 %lt20, label %slice_loop_comparison21, label %slice_cmp_exit25
+
+slice_loop_comparison21:                          ; preds = %slice_loop_start19
+  %ptradd22 = getelementptr inbounds i8, ptr @.str.5, i64 %20
+  %ptradd23 = getelementptr inbounds i8, ptr %19, i64 %20
+  %21 = load i8, ptr %ptradd22, align 1
+  %22 = load i8, ptr %ptradd23, align 1
+  %eq24 = icmp eq i8 %21, %22
+  %23 = add i64 %20, 1
+  store i64 %23, ptr %cmp.idx18, align 8
+  br i1 %eq24, label %slice_loop_start19, label %slice_cmp_exit25
+
+slice_cmp_exit25:                                 ; preds = %slice_loop_comparison21, %slice_loop_start19, %switch.entry
+  %slice_cmp_phi26 = phi i1 [ true, %slice_loop_start19 ], [ false, %switch.entry ], [ false, %slice_loop_comparison21 ]
+  br i1 %slice_cmp_phi26, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %slice_cmp_exit25
+  call void (ptr, ...) @printf(ptr @.str.6)
+  br label %switch.exit
+
+next_if:                                          ; preds = %slice_cmp_exit25
+  %24 = extractvalue %"char[]" %17, 1
+  %25 = extractvalue %"char[]" %17, 0
+  %eq27 = icmp eq i64 5, %24
+  br i1 %eq27, label %slice_cmp_values28, label %slice_cmp_exit36
+
+slice_cmp_values28:                               ; preds = %next_if
+  store i64 0, ptr %cmp.idx29, align 8
+  br label %slice_loop_start30
+
+slice_loop_start30:                               ; preds = %slice_loop_comparison32, %slice_cmp_values28
+  %26 = load i64, ptr %cmp.idx29, align 8
+  %lt31 = icmp slt i64 %26, 5
+  br i1 %lt31, label %slice_loop_comparison32, label %slice_cmp_exit36
+
+slice_loop_comparison32:                          ; preds = %slice_loop_start30
+  %ptradd33 = getelementptr inbounds i8, ptr @.str.7, i64 %26
+  %ptradd34 = getelementptr inbounds i8, ptr %25, i64 %26
+  %27 = load i8, ptr %ptradd33, align 1
+  %28 = load i8, ptr %ptradd34, align 1
+  %eq35 = icmp eq i8 %27, %28
+  %29 = add i64 %26, 1
+  store i64 %29, ptr %cmp.idx29, align 8
+  br i1 %eq35, label %slice_loop_start30, label %slice_cmp_exit36
+
+slice_cmp_exit36:                                 ; preds = %slice_loop_comparison32, %slice_loop_start30, %next_if
+  %slice_cmp_phi37 = phi i1 [ true, %slice_loop_start30 ], [ false, %next_if ], [ false, %slice_loop_comparison32 ]
+  br i1 %slice_cmp_phi37, label %switch.case38, label %next_if39
+
+switch.case38:                                    ; preds = %slice_cmp_exit36
+  call void (ptr, ...) @printf(ptr @.str.8)
+  br label %switch.exit
+
+next_if39:                                        ; preds = %slice_cmp_exit36
+  %30 = extractvalue %"char[]" %17, 1
+  %31 = extractvalue %"char[]" %17, 0
+  %eq40 = icmp eq i64 4, %30
+  br i1 %eq40, label %slice_cmp_values41, label %slice_cmp_exit49
+
+slice_cmp_values41:                               ; preds = %next_if39
+  store i64 0, ptr %cmp.idx42, align 8
+  br label %slice_loop_start43
+
+slice_loop_start43:                               ; preds = %slice_loop_comparison45, %slice_cmp_values41
+  %32 = load i64, ptr %cmp.idx42, align 8
+  %lt44 = icmp slt i64 %32, 4
+  br i1 %lt44, label %slice_loop_comparison45, label %slice_cmp_exit49
+
+slice_loop_comparison45:                          ; preds = %slice_loop_start43
+  %ptradd46 = getelementptr inbounds i8, ptr @.str.9, i64 %32
+  %ptradd47 = getelementptr inbounds i8, ptr %31, i64 %32
+  %33 = load i8, ptr %ptradd46, align 1
+  %34 = load i8, ptr %ptradd47, align 1
+  %eq48 = icmp eq i8 %33, %34
+  %35 = add i64 %32, 1
+  store i64 %35, ptr %cmp.idx42, align 8
+  br i1 %eq48, label %slice_loop_start43, label %slice_cmp_exit49
+
+slice_cmp_exit49:                                 ; preds = %slice_loop_comparison45, %slice_loop_start43, %next_if39
+  %slice_cmp_phi50 = phi i1 [ true, %slice_loop_start43 ], [ false, %next_if39 ], [ false, %slice_loop_comparison45 ]
+  br i1 %slice_cmp_phi50, label %switch.case51, label %next_if52
+
+switch.case51:                                    ; preds = %slice_cmp_exit49
+  call void (ptr, ...) @printf(ptr @.str.10)
+  br label %switch.exit
+
+next_if52:                                        ; preds = %slice_cmp_exit49
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if52
+  call void (ptr, ...) @printf(ptr @.str.11)
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.default, %switch.case51, %switch.case38, %switch.case
+  ret void
+}

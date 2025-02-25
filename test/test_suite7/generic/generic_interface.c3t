@@ -1,0 +1,31 @@
+// #target: macos-aarch64
+module base;
+
+module test(<MyType>);
+import base;
+interface Zzz
+{
+    fn void zzz(MyType t);
+}
+struct TestStruct (Zzz)
+{
+	String data;
+}
+fn void TestStruct.zzz(&self, MyType t) @dynamic { }
+
+module app;
+import test;
+fn int main()
+{
+	TestStruct(<int>) ts;
+	return 0;
+}
+
+/* #expect: app.ll
+
+define i32 @main() #0 {
+entry:
+  %ts = alloca %TestStruct, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %ts, i8 0, i64 16, i1 false)
+  ret i32 0
+}

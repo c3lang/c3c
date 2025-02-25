@@ -1,0 +1,38 @@
+// #target: macos-aarch64
+fn void test1() {}
+fn void test2() {}
+fn void test3() {}
+fn void test4() {}
+
+fn void test()
+{
+    defer
+    {
+        defer test1();
+        test2();
+        defer test3();
+    }
+    test4();
+}
+
+fn void test_line()
+{
+    defer { defer test1(); }
+}
+
+/* #expect: defer_in_defer.ll
+
+define void @defer_in_defer.test() #0 {
+entry:
+  call void @defer_in_defer.test4()
+  call void @defer_in_defer.test2()
+  call void @defer_in_defer.test3()
+  call void @defer_in_defer.test1()
+  ret void
+}
+
+define void @defer_in_defer.test_line() #0 {
+entry:
+  call void @defer_in_defer.test1()
+  ret void
+}

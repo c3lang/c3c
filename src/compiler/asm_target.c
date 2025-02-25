@@ -32,60 +32,60 @@ INLINE AsmInstruction *insert_instruction_named(PlatformTarget *target, const ch
 
 INLINE AsmArgBits parse_bits(const char **desc)
 {
-	if (memcmp("80", *desc, 2) == 0)
+	if (str_start_with(*desc, "80"))
 	{
 		*desc += 2;
 		return ARG_BITS_80;
 	}
-	if (memcmp("8", *desc, 1) == 0)
+	if (str_start_with(*desc, "8"))
 	{
 		*desc += 1;
 		return ARG_BITS_8;
 	}
-	if (memcmp("16", *desc, 2) == 0)
+	if (str_start_with(*desc, "16"))
 	{
 		*desc += 2;
 		return ARG_BITS_16;
 	}
-	if (memcmp("20", *desc, 2) == 0)
+	if (str_start_with(*desc, "20"))
 	{
 		*desc += 2;
 		return ARG_BITS_20;
 	}
-	if (memcmp("32", *desc, 2) == 0)
+	if (str_start_with(*desc, "32"))
 	{
 		*desc += 2;
 		return ARG_BITS_32;
 	}
-	if (memcmp("64", *desc, 2) == 0)
+	if (str_start_with(*desc, "64"))
 	{
 		*desc += 2;
 		return ARG_BITS_64;
 	}
-	if (memcmp("128", *desc, 3) == 0)
+	if (str_start_with(*desc, "128"))
 	{
 		*desc += 3;
 		return ARG_BITS_128;
-	}
-	if (memcmp("256", *desc, 3) == 0)
-	{
-		*desc += 3;
-		return ARG_BITS_256;
-	}
-	if (memcmp("512", *desc, 3) == 0)
-	{
-		*desc += 3;
-		return ARG_BITS_512;
-	}
-	if (memcmp("5", *desc, 1) == 0)
-	{
-		*desc += 1;
-		return ARG_BITS_5;
 	}
 	if (memcmp("12", *desc, 2) == 0)
 	{
 		*desc += 2;
 		return ARG_BITS_12;
+	}
+	if (str_start_with(*desc, "256"))
+	{
+		*desc += 3;
+		return ARG_BITS_256;
+	}
+	if (str_start_with(*desc, "512"))
+	{
+		*desc += 3;
+		return ARG_BITS_512;
+	}
+	if (str_start_with(*desc, "5"))
+	{
+		*desc += 1;
+		return ARG_BITS_5;
 	}
 	error_exit("Invalid bits: %s.", *desc);
 }

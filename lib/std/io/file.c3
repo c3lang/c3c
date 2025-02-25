@@ -19,6 +19,11 @@ fn File! open_path(Path path, String mode)
 	return from_handle(os::native_fopen(path.str_view(), mode));
 }
 
+fn bool exists(String file) => @pool()
+{
+	return path::exists(path::temp_new(file)) ?? false;
+}
+
 fn File from_handle(CFile file)
 {
 	return { .file = file };
@@ -170,6 +175,8 @@ fn char[]! load_buffer(String filename, char[] buffer)
 
 }
 
+fn char[]! load(Allocator allocator, String filename) => load_new(filename, allocator);
+
 fn char[]! load_new(String filename, Allocator allocator = allocator::heap())
 {
 	File file = open(filename, "rb")!;
@@ -186,10 +193,14 @@ fn char[]! load_new(String filename, Allocator allocator = allocator::heap())
 	return data[:len];
 }
 
+fn char[]! load_path_new(Path path, Allocator allocator = allocator::heap()) => load_new(path.str_view(), allocator);
+
 fn char[]! load_temp(String filename)
 {
 	return load_new(filename, allocator::temp());
 }
+
+fn char[]! load_path_temp(Path path) => load_temp(path.str_view());
 
 fn void! save(String filename, char[] data)
 {

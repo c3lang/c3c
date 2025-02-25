@@ -21,11 +21,12 @@ fn void find_subarray()
 fn void concat()
 {
 	int[3] a = { 1, 2, 3 };
-	(void)array::concat_new(a, a);
-	(void)array::concat_new(a[..], a[..]);
-	(void)array::concat_new(a[:0], a[:0]);
-	(void)array::concat_new(int[2] { 1, 2 }, a[:0]);
-	(void)array::concat_new(a[:0], int[2] { 1, 2 });
+	free(array::concat_new(a, a));
+	free(array::concat_new(a[..], a[..]));
+	free(array::concat_new(a[:0], a[:0]));
+	free(array::concat_new((int[2]) { 1, 2 }, a[:0]));
+	free(array::concat_new(a[:0], (int[2]) { 1, 2 }));
 	int[] c = array::concat_new(a[1..2], a);
-	assert (c == int[]{ 2, 3, 1, 2, 3 });
+	defer free(c);
+	assert (c == (int[]){ 2, 3, 1, 2, 3 });
 }

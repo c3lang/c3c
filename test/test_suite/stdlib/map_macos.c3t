@@ -23,14 +23,14 @@ fn void main()
 	IntFooMap map;
 	map.new_init();
 	io::printfn("Map size: %d", map.count);
-	map.set(1, Foo { 1, null });
+	map.set(1, { 1, null });
 	io::printfn("Map size: %d", map.count);
-	map.set(1, Foo { 2, null });
+	map.set(1, { 2, null });
 	io::printfn("Map size: %d", map.count);
 	(void)io::printfn("Val: %d", map.get(1).x);
 	io::printfn("Has 1: %s", map.has_key(1));
 	io::printfn("Has 2: %s", map.has_key(2));
-	map.set(7, Foo { 4, null });
+	map.set(7, { 4, null });
 	io::printfn("Values: %s", map.value_new_list());
 	IntDoubleMap map2;
 	map2.new_init();
