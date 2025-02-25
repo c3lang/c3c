@@ -25,6 +25,7 @@
 - Don't delete .o files not produced by the compiler.
 - Fix optional jumps in expression lists, #1942.
 - Several fixes for .o files and -o output, improving handling and naming.
+- Fix bug casting bool to int to other int #1995.
 
 ### Stdlib changes
 

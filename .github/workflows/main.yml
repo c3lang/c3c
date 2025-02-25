@@ -95,7 +95,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 --stdlib ..\lib7 --enable-new-generics -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 --stdlib ..\lib7 --enable-new-generics -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite7/ --stdlib ../lib7
 
       - name: Test python script
         run: |
@@ -169,7 +169,7 @@ jobs:
         run: |
           cd test
           ../build/c3c.exe compile --target windows-x64 -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics
-          ./test_suite_runner.exe ../build/c3c.exe test_suite/
+          ./test_suite_runner.exe ../build/c3c.exe  test_suite7/ --stdlib ../lib7
 
   build-msys2-clang:
     runs-on: windows-latest
@@ -220,7 +220,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c.exe compile-run -O1 --stdlib ../lib7 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c.exe compile-run -O1 --stdlib ../lib7 src/test_suite_runner.c3 --enable-new-generics test_suite7/ --stdlib ../lib7
 
   build-linux:
     runs-on: ubuntu-22.04
@@ -381,7 +381,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c  test_suite7/ --stdlib ../lib7
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
@@ -502,7 +502,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c  test_suite7/ --stdlib ../lib7
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU20
@@ -606,7 +606,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics -- ../build/c3c  test_suite7/ --stdlib ../lib7
 
   build-mac:
     runs-on: macos-latest
@@ -687,7 +687,7 @@ jobs:
         run: |
           cd test
           ../build/c3c compile -O1 src/test_suite_runner.c3 --stdlib ../lib7 --enable-new-generics
-          ./test_suite_runner ../build/c3c test_suite/
+          ./test_suite_runner ../build/c3c test_suite7/ --stdlib ../lib7
 
       - name: run build test suite runner
         run: |
