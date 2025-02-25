@@ -73,7 +73,6 @@ fn int cmp_test_unit(TestUnit a, TestUnit b)
 
 fn bool terminal_has_ansi_codes() @local => @pool()
 {
-
 	if (try v = env::get_var_temp("TERM"))
 	{
 		if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;

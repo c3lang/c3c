@@ -44,6 +44,8 @@ fn void main(String[] args)
 		String arg = args[i];
 		switch (arg)
 		{
+			case "--no-terminal":
+				print_to_file = true;
 			case "-s":
 			case "--skipped":
 				only_skipped = true;
