@@ -220,7 +220,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c.exe compile-run -O1 --stdlib ../lib7 src/test_suite_runner.c3 --enable-new-generics test_suite7/ --stdlib ../lib7 --no-terminal
+          ../build/c3c.exe compile-run -O1 --stdlib ../lib7 src/test_suite_runner.c3 --enable-new-generics -- ../build/c3c.exe test_suite7/ --stdlib ../lib7 --no-terminal
 
   build-linux:
     runs-on: ubuntu-22.04
