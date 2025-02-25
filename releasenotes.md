@@ -26,6 +26,7 @@
 - Fix optional jumps in expression lists, #1942.
 - Several fixes for .o files and -o output, improving handling and naming.
 - Fix bug casting bool to int to other int #1995.
+- `@if` declarations were missing from -P output #1973.
 
 ### Stdlib changes
 
