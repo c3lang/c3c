@@ -301,12 +301,15 @@ void codegen_setup_object_names(Module *module, const char **ir_filename, const 
 	assert(compiler.build.object_file_dir);
 	if (codegen_single_obj_output())
 	{
+		const char *res = compiler.build.output_name;
+		if (!res) res = compiler.build.name;
+		if (!res) res = result;
 		const char *ext = get_object_extension();
-		if (!str_has_suffix(result, ext))
+		if (!str_has_suffix(res, ext))
 		{
-			result = str_printf("%s%s", result, ext);
+			res = str_printf("%s%s", result, ext);
 		}
-		compiler.obj_output = *object_filename = file_append_path(compiler.build.output_dir ? compiler.build.output_dir : ".", result);
+		compiler.obj_output = *object_filename = file_append_path(compiler.build.output_dir ? compiler.build.output_dir : ".", res);
 		char *dir_path = NULL;
 		char *filename = NULL;
 		file_get_dir_and_filename_from_full(compiler.obj_output, &filename, &dir_path);
@@ -314,7 +317,6 @@ void codegen_setup_object_names(Module *module, const char **ir_filename, const 
 		{
 			error_exit("Can't output '%s', the directory '%s' could not be found.", compiler.obj_output, dir_path);
 		}
-		result = str_remove_suffix(filename, ext);
 	}
 	else
 	{
