@@ -658,6 +658,12 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
+		char *dir_path = file_get_dir(output_exe);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't create '%s', the directory '%s' could not be found.", output_exe, dir_path);
+		}
+
 		if (file_is_dir(output_exe))
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
@@ -757,6 +763,11 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
+		char *dir_path = file_get_dir(output_static);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't create '%s', the directory '%s' could not be found.", output_static, dir_path);
+		}
 		if (file_is_dir(output_static))
 		{
 			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -776,6 +787,11 @@ void compiler_compile(void)
 		{
 			create_output_dir(compiler.build.output_dir);
 			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
+		}
+		char *dir_path = file_get_dir(output_dynamic);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't create '%s', the directory '%s' could not be found.", output_dynamic, dir_path);
 		}
 		if (file_is_dir(output_dynamic))
 		{

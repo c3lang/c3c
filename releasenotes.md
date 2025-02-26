@@ -28,6 +28,7 @@
 - Several fixes for .o files and -o output, improving handling and naming.
 - Fix bug casting bool to int to other int #1995.
 - `@if` declarations were missing from -P output #1973.
+- Check exe and lib output so -o works with directories.
 
 ### Stdlib changes
 

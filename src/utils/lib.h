@@ -83,6 +83,7 @@ bool file_touch(const char *path);
 char *file_read_binary(const char *path, size_t *size);
 char *file_read_all(const char *path, size_t *return_size);
 size_t file_clean_buffer(char *buffer, const char *path, size_t file_size);
+char *file_get_dir(const char *full_path);
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path);
 void file_find_top_dir();
 bool file_has_suffix_in_list(const char *file_name, int name_len, const char **suffix_list, int suffix_count);
