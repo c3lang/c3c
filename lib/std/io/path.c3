@@ -548,15 +548,14 @@ def PathWalker = fn bool! (Path, bool is_dir, void*);
 *>
 fn bool! Path.walk(self, PathWalker w, void* data)
 {
-	const PATH_MAX = 512;
-	@stack_mem(PATH_MAX; Allocator allocator)
+	mem::@scoped(allocator::temp())
 	{
-		Path abs = self.new_absolute(allocator)!;
-		PathList files = new_ls(abs, allocator: allocator)!;
+		Path abs = self.new_absolute()!;
+		PathList files = new_ls(abs)!;
 		foreach (f : files)
 		{
 			if (f.str_view() == "." || f.str_view() == "..") continue;
-			f = abs.new_append(f.str_view(), allocator)!;
+			f = abs.new_append(f.str_view())!;
 			bool is_directory = is_dir(f);
 			if (w(f, is_directory, data)!) return true;
 			if (is_directory && f.walk(w, data)!) return true;
