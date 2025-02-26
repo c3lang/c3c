@@ -1839,6 +1839,7 @@ typedef struct
 
 typedef struct
 {
+	bool should_print_environment;
 	HTable modules;
 	Module *core_module;
 	CompilationUnit *core_unit;

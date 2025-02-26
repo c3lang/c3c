@@ -58,13 +58,6 @@ int main_real(int argc, const char *argv[])
 	// Init the compiler
 	compiler_init(&build_options);
 
-	if (build_options.print_env)
-	{
-		print_build_env();
-		cleanup();
-		return EXIT_SUCCESS;
-	}
-
 	switch (build_options.command)
 	{
 		case COMMAND_PRINT_SYNTAX:

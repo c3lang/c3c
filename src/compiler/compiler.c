@@ -90,8 +90,7 @@ void compiler_init(BuildOptions *build_options)
 
 	if (build_options->print_env)
 	{
-		print_build_env();
-		exit_compiler(COMPILER_SUCCESS_EXIT);
+		compiler.context.should_print_environment = true;
 	}
 }
 
@@ -1334,6 +1333,11 @@ void compile()
 	unit->module = compiler.context.core_module;
 	compiler.context.core_unit = unit;
 	target_setup(&compiler.build);
+	if (compiler.context.should_print_environment)
+	{
+		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	check_sanitizer_options(&compiler.build);
 	resolve_libraries(&compiler.build);
 	compiler.context.sources = compiler.build.sources;
@@ -1601,28 +1605,45 @@ const char *default_c_compiler(void)
 #endif
 }
 
+static bool is_posix(OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_IOS:
+		case OS_TYPE_MACOSX:
+		case OS_TYPE_WATCHOS:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_KFREEBSD:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_SOLARIS:
+			return true;
+		case OS_TYPE_WIN32:
+		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
+			return false;
+		default:
+			return false;
+	}
+}
 void print_build_env(void)
 {
-	printf("{\n");
-	printf("  \"c3c\": {\n");
-	printf("    \"version\": \"%s\",\n", COMPILER_VERSION);
-	printf("    \"stdlib\": \"%s\",\n", compiler.context.lib_dir);
-	printf("    \"c3c_exe\": \"%s\"\n", compiler_exe_name);
-	printf("  },\n");
-	printf("  \"project\": {\n");
-	printf("    \"path\": \"%s\",\n", getcwd(NULL, 0));
-	printf("    \"target\": \"%s\"\n", compiler.build.name);
-	printf("  },\n");
-	printf("  \"environment\": {\n");
-	printf("    \"system_path\": \"%s\",\n", getenv("PATH"));
-	printf("    \"os\": \"%s\",\n", os_type_to_string(compiler.platform.os));
-	printf("    \"variables\": {\n");
-	printf("      \"env::POSIX\": %s,\n", compiler.platform.os == OS_TYPE_LINUX ? "true" : "false");
-	printf("      \"env::win32\": %s,\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
-	printf("      \"LIBC\": %s\n", link_libc() ? "true" : "false");
-	printf("    }\n");
-	printf("  }\n");
-	printf("}\n");
+	char path[PATH_MAX + 1];
+	printf("Version           : %s\n", COMPILER_VERSION);
+	printf("Stdlib            : %s\n", compiler.context.lib_dir);
+	printf("Exe name          : %s\n", compiler_exe_name);
+	printf("Base path         : %s\n", getcwd(path, PATH_MAX));
+	if (compiler.build.name && !compiler.build.is_non_project)
+	{
+		printf("Target name       : %s\n", compiler.build.name);
+	}
+	printf("Output name       : %s\n", compiler.build.output_name);
+	printf("System path       : %s\n", getenv("PATH"));
+	printf("Arch/OS target    : %s\n", arch_os_target[compiler.build.arch_os_target]);
+	printf("env::POSIX        : %s\n", link_libc() && is_posix(compiler.platform.os) ? "true" : "false");
+	printf("env::WIN32        : %s\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
+	printf("env::LIBC         : %s\n", link_libc() ? "true" : "false");
 }
 
 const char *os_type_to_string(OsType os)

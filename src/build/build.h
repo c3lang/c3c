@@ -652,6 +652,7 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *script_dir;
+	bool is_non_project;
 	bool run_after_compile;
 	bool delete_after_run;
 	bool generate_benchmark_runner;
@@ -769,6 +770,7 @@ static const char *x86_cpu_set[8] = {
 };
 
 static BuildTarget default_build_target = {
+		.is_non_project = true,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.memory_environment = MEMORY_ENV_NORMAL,
