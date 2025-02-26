@@ -92,6 +92,7 @@ static void usage(bool full)
 	print_opt("-U <name>", "Remove feature flag <name>.");
 	PRINTF("");
 	print_opt("--about", "Prints a short description of C3.");
+	print_opt("--build-env", "Prints build environment information.");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
 	if (full)
@@ -751,6 +752,11 @@ static void parse_option(BuildOptions *options)
 			{
 				options->silence_deprecation = true;
 				silence_deprecation = true;
+				return;
+			}
+			if (match_longopt("build-env"))
+			{
+				options->print_env = true;
 				return;
 			}
 			if (match_longopt("symtab"))

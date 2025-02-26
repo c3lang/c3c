@@ -87,6 +87,11 @@ void compiler_init(BuildOptions *build_options)
 	{
 		compiler.context.lib_dir = find_lib_dir();
 	}
+
+	if (build_options->print_env)
+	{
+		compiler.context.should_print_environment = true;
+	}
 }
 
 static void compiler_lex(void)
@@ -1328,6 +1333,11 @@ void compile()
 	unit->module = compiler.context.core_module;
 	compiler.context.core_unit = unit;
 	target_setup(&compiler.build);
+	if (compiler.context.should_print_environment)
+	{
+		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	check_sanitizer_options(&compiler.build);
 	resolve_libraries(&compiler.build);
 	compiler.context.sources = compiler.build.sources;
@@ -1593,4 +1603,88 @@ const char *default_c_compiler(void)
 #else
 	return cc = "cc";
 #endif
+}
+
+static bool is_posix(OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_IOS:
+		case OS_TYPE_MACOSX:
+		case OS_TYPE_WATCHOS:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_KFREEBSD:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_SOLARIS:
+			return true;
+		case OS_TYPE_WIN32:
+		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
+			return false;
+		default:
+			return false;
+	}
+}
+void print_build_env(void)
+{
+	char path[PATH_MAX + 1];
+	printf("Version           : %s\n", COMPILER_VERSION);
+	printf("Stdlib            : %s\n", compiler.context.lib_dir);
+	printf("Exe name          : %s\n", compiler_exe_name);
+	printf("Base path         : %s\n", getcwd(path, PATH_MAX));
+	if (compiler.build.name && !compiler.build.is_non_project)
+	{
+		printf("Target name       : %s\n", compiler.build.name);
+	}
+	printf("Output name       : %s\n", compiler.build.output_name);
+	printf("System path       : %s\n", getenv("PATH"));
+	printf("Arch/OS target    : %s\n", arch_os_target[compiler.build.arch_os_target]);
+	printf("env::POSIX        : %s\n", link_libc() && is_posix(compiler.platform.os) ? "true" : "false");
+	printf("env::WIN32        : %s\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
+	printf("env::LIBC         : %s\n", link_libc() ? "true" : "false");
+}
+
+const char *os_type_to_string(OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_UNKNOWN: return "UNKNOWN";
+		case OS_TYPE_NONE: return "NONE";
+		case OS_TYPE_ANANAS: return "ANANAS";
+		case OS_TYPE_CLOUD_ABI: return "CLOUD_ABI";
+		case OS_TYPE_DRAGON_FLY: return "DRAGON_FLY";
+		case OS_TYPE_FUCHSIA: return "FUCHSIA";
+		case OS_TYPE_IOS: return "IOS";
+		case OS_TYPE_KFREEBSD: return "KFREEBSD";
+		case OS_TYPE_LINUX: return "LINUX";
+		case OS_TYPE_PS3: return "PS3";
+		case OS_TYPE_MACOSX: return "MACOSX";
+		case OS_TYPE_NETBSD: return "NETBSD";
+		case OS_TYPE_OPENBSD: return "OPENBSD";
+		case OS_TYPE_SOLARIS: return "SOLARIS";
+		case OS_TYPE_WIN32: return "WIN32";
+		case OS_TYPE_HAIKU: return "HAIKU";
+		case OS_TYPE_MINIX: return "MINIX";
+		case OS_TYPE_RTEMS: return "RTEMS";
+		case OS_TYPE_NACL: return "NACL";
+		case OS_TYPE_CNK: return "CNK";
+		case OS_TYPE_AIX: return "AIX";
+		case OS_TYPE_CUDA: return "CUDA";
+		case OS_TYPE_NVOPENCL: return "NVOPENCL";
+		case OS_TYPE_AMDHSA: return "AMDHSA";
+		case OS_TYPE_PS4: return "PS4";
+		case OS_TYPE_ELFIAMCU: return "ELFIAMCU";
+		case OS_TYPE_TVOS: return "TVOS";
+		case OS_TYPE_WATCHOS: return "WATCHOS";
+		case OS_TYPE_MESA3D: return "MESA3D";
+		case OS_TYPE_CONTIKI: return "CONTIKI";
+		case OS_TYPE_AMDPAL: return "AMDPAL";
+		case OS_TYPE_HERMITCORE: return "HERMITCORE";
+		case OS_TYPE_HURD: return "HURD";
+		case OS_TYPE_WASI: return "WASI";
+		case OS_TYPE_EMSCRIPTEN: return "EMSCRIPTEN";
+		default: return "UNKNOWN";
+	}
 }

@@ -592,6 +592,7 @@ typedef struct BuildOptions_
 	bool print_manifest_properties;
 	bool print_precedence;
 	bool print_linking;
+	bool print_env;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
@@ -654,6 +655,7 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *script_dir;
+	bool is_non_project;
 	bool run_after_compile;
 	bool delete_after_run;
 	bool generate_benchmark_runner;
@@ -771,6 +773,7 @@ static const char *x86_cpu_set[8] = {
 };
 
 static BuildTarget default_build_target = {
+		.is_non_project = true,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.memory_environment = MEMORY_ENV_NORMAL,
@@ -835,3 +838,4 @@ void resolve_libraries(BuildTarget *build_target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);
+void print_build_env(void);

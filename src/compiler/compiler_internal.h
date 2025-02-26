@@ -1839,6 +1839,7 @@ typedef struct
 
 typedef struct
 {
+	bool should_print_environment;
 	HTable modules;
 	Module *core_module;
 	CompilationUnit *core_unit;
@@ -4118,3 +4119,6 @@ INLINE bool check_module_name(Path *path)
 void assert_print_line(SourceSpan span);
 
 const char *default_c_compiler(void);
+
+void print_build_env(void);
+const char *os_type_to_string(OsType os);
