@@ -1016,6 +1016,14 @@ typedef enum
 
 typedef enum
 {
+    STRING_NORMAL,
+    STRING_WIDE_16,
+    STRING_WIDE_32,
+} StringWidthType;
+
+
+typedef enum
+{
 	TOKEN_INVALID_TOKEN = 0,
 
 	// Single-character tokens.
@@ -1114,6 +1122,7 @@ typedef enum
 	TOKEN_CHAR_LITERAL,        // 'a' 'FO' 'BARS' '\u1232'
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
 	TOKEN_BYTES,            // Base64 or Hex
+    TOKEN_DYNAMIC_BYTES,    // Byte arrays with dynamic unit sizes (wide strings: u"abc")
 
 	TOKEN_DOC_COMMENT,      // Doc Comment start
 
