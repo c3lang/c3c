@@ -107,7 +107,7 @@ fn void test_append()
 
 	DString str2 = dstring::new("yyy");
 	defer str2.free();
-	DString str3 = str.new_concat(str2);
+	DString str3 = str.concat(mem, str2);
 	defer str3.free();
 	s = str3.str_view();
 	assert(s == "xxxyyy", "got '%s'; want 'xxxyyy'", s);

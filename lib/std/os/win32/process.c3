@@ -157,7 +157,7 @@ Win32_DWORD64 displacement;
 fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 {
 	BacktraceList list;
-	list.new_init(backtrace.len, allocator);
+	list.init(allocator, backtrace.len);
 	Win32_HANDLE process = getCurrentProcess();
 	symInitialize(process, null, 1);
 	defer symCleanup(process);

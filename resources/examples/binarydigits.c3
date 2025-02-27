@@ -15,7 +15,7 @@ fn DString bin(int x)
 {
     int bits = x == 0 ? 1 : 1 + (int)math::log2(x);
     DString str;
-    str.new_init();
+    str.init(mem);
     str.append_repeat('0', bits);
     for (int i = 0; i < bits; i++)
     {

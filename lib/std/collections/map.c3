@@ -26,7 +26,7 @@ struct MapImpl
  @require load_factor > 0.0 "The load factor must be higher than 0"
  @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
 *>
-fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap())
+fn Map new(uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR, Allocator allocator = allocator::heap()) @deprecated("Map is deprecated")
 {
 	MapImpl* map = allocator::alloc(allocator, MapImpl);
 	_init(map, capacity, load_factor, allocator);

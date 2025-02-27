@@ -41,7 +41,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 			if (no_dirs && (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)) continue;
 			@pool(allocator)
 			{
-				String filename = string::tnew_from_wstring((WString)&find_data.cFileName)!;
+				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
 				if (filename == ".." || filename == ".") continue;
 				list.push(path::new(allocator, filename)!);
 			};

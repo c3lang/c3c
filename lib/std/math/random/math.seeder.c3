@@ -86,7 +86,7 @@ fn char[8 * 4] entropy() @if(!env::WASM_NOLIBC)
 		hash(&entropy),
 		random_int,
 		hash(clock::now()),
-		hash(&DString.new_init),
+		hash(&DString.init),
 		hash(allocator::heap())
 	};
 	return bitcast(entropy_data, char[8 * 4]);

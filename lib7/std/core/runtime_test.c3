@@ -238,7 +238,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	int tests_passed = 0;
 	int tests_skipped = 0;
 	int test_count = tests.len;
-	DString name = dstring::tnew_with_capacity(64);
+	DString name = dstring::temp_with_capacity(64);
 	usz len = max_name + 9;
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");

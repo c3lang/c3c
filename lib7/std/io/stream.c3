@@ -80,7 +80,7 @@ macro usz! read_all(stream, char[] buffer)
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_new_fully(stream, Allocator allocator = allocator::heap())
+macro char[]! read_fully(Allocator allocator, stream)
 {
 	usz len = available(stream)!;
 	char* data = allocator::malloc_try(allocator, len)!;

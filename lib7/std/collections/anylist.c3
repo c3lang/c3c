@@ -107,29 +107,13 @@ macro AnyList.pop(&self, $Type)
  Pop the last value and allocate the copy using the given allocator.
  @return! IteratorResult.NO_MORE_ELEMENT
 *>
-fn any! AnyList.copy_pop(&self, Allocator allocator = allocator::heap())
+fn any! AnyList.copy_pop(&self, Allocator allocator)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
 	return allocator::clone_any(allocator, self.entries[--self.size]);
 }
 
-<*
- Pop the last value and allocate the copy using the given allocator.
- @return! IteratorResult.NO_MORE_ELEMENT
- @deprecated `use copy_pop`
-*>
-fn any! AnyList.new_pop(&self, Allocator allocator = allocator::heap())
-{
-	return self.copy_pop(allocator);
-}
-
-<*
- Pop the last value and allocate the copy using the temp allocator
- @return! IteratorResult.NO_MORE_ELEMENT
- @deprecated `use tcopy_pop`
-*>
-fn any! AnyList.temp_pop(&self) => self.copy_pop(tmem());
 
 <*
  Pop the last value and allocate the copy using the temp allocator
@@ -176,17 +160,9 @@ fn any! AnyList.pop_first_retained(&self)
 	return self.entries[0];
 }
 
-<*
- Same as new_pop() but pops the first value instead.
- @deprecated `use copy_pop_first`
-*>
-fn any! AnyList.new_pop_first(&self, Allocator allocator = allocator::heap())
-{
-	return self.copy_pop_first(allocator) @inline;
-}
 
 <*
- Same as new_pop() but pops the first value instead.
+ Same as copy_pop() but pops the first value instead.
 *>
 fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 {
@@ -200,12 +176,6 @@ fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
  Same as temp_pop() but pops the first value instead.
 *>
 fn any! AnyList.tcopy_pop_first(&self) => self.copy_pop_first(tmem());
-
-<*
- Same as temp_pop() but pops the first value instead.
- @deprecated `use tcopy_pop_first`
-*>
-fn any! AnyList.temp_pop_first(&self) => self.new_pop_first(tmem());
 
 <*
  @require index < self.size

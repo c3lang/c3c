@@ -52,7 +52,7 @@ macro void! chdir(path)
 	$if @typeis(path, String):
 		@pool()
 		{
-			return os::native_chdir(tnew(path));
+			return os::native_chdir(temp(path));
 		};
 	$else
 		return os::native_chdir(path) @inline;
@@ -100,7 +100,7 @@ enum MkdirPermissions
 macro bool! mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL)
 {
 	$if @typeis(path, String):
-		@pool() { return _mkdir(tnew(path), recursive, permissions); };
+		@pool() { return _mkdir(temp(path), recursive, permissions); };
 	$else
 		return _mkdir(path, recursive, permissions);
 	$endif
@@ -118,7 +118,7 @@ macro bool! mkdir(Path path, bool recursive = false, MkdirPermissions permission
 macro bool! rmdir(path)
 {
 	$if @typeis(path, String):
-		@pool() { return _rmdir(tnew(path)); };
+		@pool() { return _rmdir(temp(path)); };
 	$else
 		return _mkdir(path);
 	$endif
@@ -152,14 +152,14 @@ fn Path! new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 
  @return! PathResult.INVALID_PATH `if the path was invalid`
 *>
-fn Path! tnew(String path, PathEnv path_env = DEFAULT_ENV)
+fn Path! temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
 	return new(tmem(), path, path_env);
 }
 
 fn Path! from_win32_wstring(Allocator allocator, WString path) => @pool(allocator)
 {
-	return path::new(allocator, string::tnew_from_wstring(path)!);
+	return path::new(allocator, string::temp_from_wstring(path)!);
 }
 
 fn Path! for_windows(Allocator allocator, String path)
@@ -189,7 +189,7 @@ fn Path! Path.append(self, Allocator allocator, String filename)
 
 	@pool(allocator)
 	{
-		DString dstr = dstring::tnew_with_capacity(self.path_string.len + 1 + filename.len);
+		DString dstr = dstring::temp_with_capacity(self.path_string.len + 1 + filename.len);
 		dstr.append(self.path_string);
 		dstr.append(PREFERRED_SEPARATOR);
 		dstr.append(filename);
@@ -223,7 +223,7 @@ fn usz! start_of_base_name(String str, PathEnv path_env) @local
 
 fn bool! String.is_absolute_path(self) => @pool()
 {
-	return tnew(self).is_absolute();
+	return temp(self).is_absolute();
 }
 
 fn bool! Path.is_absolute(self)
@@ -238,7 +238,7 @@ fn bool! Path.is_absolute(self)
 
 fn Path! String.to_absolute_path(self, Allocator allocator) => @pool(allocator)
 {
-	return tnew(self).absolute(allocator);
+	return temp(self).absolute(allocator);
 }
 
 <*
@@ -274,7 +274,7 @@ fn Path! Path.absolute(self, Allocator allocator)
 
 fn String! String.file_basename(self, Allocator allocator) => @pool(allocator)
 {
-	return tnew(self).basename().copy(allocator);
+	return temp(self).basename().copy(allocator);
 }
 
 fn String! String.file_tbasename(self) => self.file_basename(tmem());
@@ -291,7 +291,7 @@ fn String! String.path_tdirname(self) => self.path_dirname(tmem());
 
 fn String! String.path_dirname(self, Allocator allocator) => @pool(allocator)
 {
-	return tnew(self).dirname().copy(allocator);
+	return temp(self).dirname().copy(allocator);
 }
 
 fn String Path.dirname(self)

@@ -531,7 +531,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 	{
 		BigInt a = *self;
 		DString str;
-		str.new_init(4096, allocator: mem);
+		str.init(mem, 4096);
 		bool negative = self.is_negative();
 		if (negative)
 		{

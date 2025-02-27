@@ -32,7 +32,7 @@ fn DString new_with_capacity(Allocator allocator, usz capacity)
 	return (DString){}.init(allocator, capacity);
 }
 
-fn DString tnew_with_capacity(usz capacity) => new_with_capacity(tmem(), capacity) @inline;
+fn DString temp_with_capacity(usz capacity) => new_with_capacity(tmem(), capacity) @inline;
 
 fn DString new(Allocator allocator, String c = "")
 {
@@ -46,7 +46,7 @@ fn DString new(Allocator allocator, String c = "")
 	return (DString)data;
 }
 
-fn DString tnew(String s = "") => new(tmem(), s) @inline;
+fn DString temp(String s = "") => new(tmem(), s) @inline;
 
 
 fn void DString.replace_char(self, char ch, char replacement)
@@ -297,7 +297,7 @@ fn void DString.append_chars(&self, String str)
 	if (!other_len) return;
 	if (!*self)
 	{
-		*self = tnew(str);
+		*self = temp(str);
 		return;
 	}
 	self.reserve(other_len);
@@ -339,7 +339,7 @@ fn void DString.append_char(&self, char c)
 {
 	if (!*self)
 	{
-		*self = tnew_with_capacity(MIN_CAPACITY);
+		*self = temp_with_capacity(MIN_CAPACITY);
 	}
 	self.reserve(1);
 	StringData* data = self.data();
@@ -607,7 +607,7 @@ fn void DString.reserve(&self, usz addition)
 	StringData* data = self.data();
 	if (!data)
 	{
-		*self = dstring::tnew_with_capacity(addition);
+		*self = dstring::temp_with_capacity(addition);
 		return;
 	}
 	usz len = data.len + addition;

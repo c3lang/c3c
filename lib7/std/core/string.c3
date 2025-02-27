@@ -41,7 +41,7 @@ fault NumberConversion
 *>
 fn ZString tformat_zstr(String fmt, args...)
 {
-	DString str = dstring::tnew_with_capacity(fmt.len + args.len * 8);
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);
 	return str.zstr_view();
 }
@@ -54,7 +54,7 @@ fn ZString tformat_zstr(String fmt, args...)
 *>
 fn String format(Allocator allocator, String fmt, args...) => @pool(allocator)
 {
-	DString str = dstring::tnew_with_capacity(fmt.len + args.len * 8);
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);
 	return str.copy_str(allocator);
 }
@@ -66,7 +66,7 @@ fn String format(Allocator allocator, String fmt, args...) => @pool(allocator)
 *>
 fn String tformat(String fmt, args...)
 {
-	DString str = dstring::tnew_with_capacity(fmt.len + args.len * 8);
+	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);
 	return str.str_view();
 }
@@ -99,7 +99,7 @@ fn String join(Allocator allocator, String[] s, String joiner)
 	}
 	@pool(allocator)
 	{
-		DString res = dstring::tnew_with_capacity(total_size);
+		DString res = dstring::temp_with_capacity(total_size);
 		res.append(s[0]);
 		foreach (String* &str : s[1..])
 		{
@@ -671,8 +671,8 @@ fn String! new_from_wstring(Allocator allocator, WString wstring)
 	return new_from_utf16(allocator, utf16);
 }
 
-fn String! tnew_from_wstring(WString wstring) => new_from_wstring(tmem(), wstring) @inline;
-fn String! tnew_from_utf16(Char16[] utf16) => new_from_utf16(tmem(), utf16) @inline;
+fn String! temp_from_wstring(WString wstring) => new_from_wstring(tmem(), wstring) @inline;
+fn String! temp_from_utf16(Char16[] utf16) => new_from_utf16(tmem(), utf16) @inline;
 
 fn usz String.utf8_codepoints(s)
 {
@@ -831,4 +831,4 @@ macro String new_from_struct(Allocator allocator, x)
 	};
 }
 
-macro String tnew_from_struct(x) => new_from_struct(tmem(), x);
+macro String temp_from_struct(x) => new_from_struct(tmem(), x);

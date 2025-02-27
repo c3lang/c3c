@@ -173,7 +173,7 @@ fn void test_join()
 
 fn void test_insert_at()
 {
-	DString str = dstring::tnew(" world");
+	DString str = dstring::temp(" world");
 	String s;
 
 	str.insert_at(0, "");
@@ -208,7 +208,7 @@ fn void test_insert_at()
 
 fn void test_insert_at_overlaps()
 {
-	DString str = dstring::tnew("abc");
+	DString str = dstring::temp("abc");
 	String s;
 	String v;
 

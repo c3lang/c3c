@@ -21,7 +21,7 @@ struct AnyList (Printable)
 
  @param initial_capacity "The initial capacity to reserve"
 *>
-fn AnyList* AnyList.new_init(&self, usz initial_capacity = 16, Allocator allocator = null)
+fn AnyList* AnyList.new_init(&self, usz initial_capacity = 16, Allocator allocator = null) @deprecated("Use init(mem)")
 {
 	return self.init(allocator ?: allocator::heap(), initial_capacity) @inline;
 }
@@ -52,7 +52,18 @@ fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 
  @param initial_capacity "The initial capacity to reserve"
 *>
-fn AnyList* AnyList.temp_init(&self, usz initial_capacity = 16)
+fn AnyList* AnyList.temp_init(&self, usz initial_capacity = 16) @deprecated("Use tinit")
+{
+	return self.init(allocator::temp(), initial_capacity) @inline;
+}
+
+
+<*
+ Initialize the list using the temp allocator.
+
+ @param initial_capacity "The initial capacity to reserve"
+*>
+fn AnyList* AnyList.tinit(&self, usz initial_capacity = 16)
 {
 	return self.init(allocator::temp(), initial_capacity) @inline;
 }

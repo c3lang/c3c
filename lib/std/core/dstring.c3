@@ -9,7 +9,7 @@ const usz MIN_CAPACITY @private = 16;
 <*
  @require !self.data() "String already initialized"
 *>
-fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator allocator = allocator::heap())
+fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
 {
 	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
 	StringData* data = allocator::alloc_with_padding(allocator, StringData, capacity)!!;
@@ -22,15 +22,37 @@ fn DString DString.new_init(&self, usz capacity = MIN_CAPACITY, Allocator alloca
 <*
  @require !self.data() "String already initialized"
 *>
-fn DString DString.temp_init(&self, usz capacity = MIN_CAPACITY)
+fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
 {
-	self.new_init(capacity, allocator::temp()) @inline;
+	if (capacity < MIN_CAPACITY) capacity = MIN_CAPACITY;
+	StringData* data = allocator::alloc_with_padding(allocator, StringData, capacity)!!;
+	data.allocator = allocator;
+	data.len = 0;
+	data.capacity = capacity;
+	return *self = (DString)data;
+}
+
+<*
+ @require !self.data() "String already initialized"
+*>
+fn DString DString.temp_init(&self, usz capacity = MIN_CAPACITY) @deprecated("Use tinit()")
+{
+	self.init(allocator::temp(), capacity) @inline;
+	return *self;
+}
+
+<*
+ @require !self.data() "String already initialized"
+*>
+fn DString DString.tinit(&self, usz capacity = MIN_CAPACITY)
+{
+	self.init(allocator::temp(), capacity) @inline;
 	return *self;
 }
 
 fn DString new_with_capacity(usz capacity, Allocator allocator = allocator::heap())
 {
-	return (DString){}.new_init(capacity, allocator);
+	return (DString){}.init(allocator, capacity);
 }
 
 fn DString temp_with_capacity(usz capacity) => new_with_capacity(capacity, allocator::temp()) @inline;
@@ -99,16 +121,25 @@ fn void DString.replace(&self, String needle, String replacement)
 	};
 }
 
-fn DString DString.new_concat(self, DString b, Allocator allocator = allocator::heap())
+fn DString DString.new_concat(self, DString b, Allocator allocator = allocator::heap()) @deprecated("Use concat(mem)")
 {
 	DString string;
-	string.new_init(self.len() + b.len(), allocator);
+	string.init(allocator, self.len() + b.len());
 	string.append(self);
 	string.append(b);
 	return string;
 }
 
-fn DString DString.temp_concat(self, DString b) => self.new_concat(b, allocator::temp());
+fn DString DString.concat(self, Allocator allocator, DString b)
+{
+	DString string;
+	string.init(allocator, self.len() + b.len());
+	string.append(self);
+	string.append(b);
+	return string;
+}
+
+fn DString DString.temp_concat(self, DString b) => self.concat(allocator::temp(), b);
 
 fn ZString DString.zstr_view(&self)
 {
@@ -543,7 +574,7 @@ macro void DString.insert_at(&self, usz index, value)
 
 fn usz! DString.appendf(&self, String format, args...) @maydiscard
 {
-	if (!self.data()) self.new_init(format.len + 20);
+	if (!self.data()) self.init(mem, format.len + 20);
 	@pool(self.data().allocator)
 	{
 		Formatter formatter;
@@ -554,7 +585,7 @@ fn usz! DString.appendf(&self, String format, args...) @maydiscard
 
 fn usz! DString.appendfn(&self, String format, args...) @maydiscard
 {
-	if (!self.data()) self.new_init(format.len + 20);
+	if (!self.data()) self.init(mem, format.len + 20);
 	@pool(self.data().allocator)
 	{
 		Formatter formatter;

@@ -870,7 +870,7 @@ macro String new_struct_to_str(x, Allocator allocator = allocator::heap())
 	DString s;
 	@stack_mem(512; Allocator mem)
 	{
-		s.new_init(allocator: mem);
+		s.init(mem);
 		io::fprint(&s, x)!!;
 		return s.copy_str(allocator);
 	};

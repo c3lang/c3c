@@ -337,7 +337,7 @@ fn void test_query_values1()
 	Url url = url::parse(mem, "foo://example.com:8042/over/there?name=ferret=ok#nose")!!;
 	defer url.free();
 
-	UrlQueryValues vals = url::temp_parse_query(url.query);
+	UrlQueryValues vals = url::parse_query_to_temp(url.query);
 	defer vals.free();
 
 	assert(vals.len() == 1);
@@ -352,7 +352,7 @@ fn void test_query_values2()
 	Url url = url::parse(mem, "foo://example.com:8042/over/there?name=ferret&age=99&age=11#nose")!!;
 	defer url.free();
 
-	UrlQueryValues vals = url::new_parse_query(url.query);
+	UrlQueryValues vals = url::parse_query(mem, url.query);
 	defer vals.free();
 	assert(vals.len() == 2);
 
@@ -371,7 +371,7 @@ fn void test_escaped_query_values()
 	Url url = url::parse(mem, "foo://example.com:8042/over/there?k%3Bey=%3Ckey%3A+0x90%3E&age=99&age=11#nose")!!;
 	defer url.free();
 
-	UrlQueryValues vals = url::new_parse_query(url.query);
+	UrlQueryValues vals = url::parse_query(mem, url.query);
 	defer vals.free();
 	assert(vals.len() == 2);
 
@@ -385,7 +385,7 @@ fn void test_query_values_withempty()
 	Url url = url::parse(mem, "foo://example.com:8042/over/there?name=ferret&&&age=99&age=11")!!;
 	defer url.free();
 
-	UrlQueryValues vals = url::new_parse_query(url.query);
+	UrlQueryValues vals = url::parse_query(mem, url.query);
 	defer vals.free();
 	assert(vals.len() == 2);
 }
@@ -426,7 +426,7 @@ fn void test_url_idempotence()
 	Url parsed = url::parse(mem, url_string)!!;
 	defer parsed.free();
 
-	UrlQueryValues vals = url::new_parse_query(parsed.query);
+	UrlQueryValues vals = url::parse_query(mem, parsed.query);
 	defer vals.free();
 	assert(vals.len() == 2);
 

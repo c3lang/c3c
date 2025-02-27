@@ -27,8 +27,7 @@ macro bool is_struct_with_default_print($Type)
 {
 	return $Type.kindof == STRUCT
 		&&& !$defined($Type.to_format)
-		&&& !$defined($Type.to_new_string)
-		&&& !$defined($Type.to_string);
+		&&& !$defined($Type.to_constant_string);
 }
 
 <*

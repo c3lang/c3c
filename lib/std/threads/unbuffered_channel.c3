@@ -18,7 +18,7 @@ struct UnbufferedChannelImpl @private
 	ConditionVariable read_cond;
 }
 
-fn void! UnbufferedChannel.new_init(&self) => self.init(allocator::heap());
+fn void! UnbufferedChannel.new_init(&self) @deprecated("Use init") => self.init(allocator::heap());
 
 fn void! UnbufferedChannel.init(&self, Allocator allocator)
 {

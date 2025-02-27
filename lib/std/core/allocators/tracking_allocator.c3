@@ -34,7 +34,7 @@ struct TrackingAllocator (Allocator)
 fn void TrackingAllocator.init(&self, Allocator allocator)
 {
 	*self = { .inner_allocator = allocator };
-	self.map.new_init(allocator: allocator);
+	self.map.init(allocator);
 }
 
 <*

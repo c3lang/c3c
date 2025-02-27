@@ -77,15 +77,11 @@ fn String! get_home_dir(Allocator using = allocator::heap())
 	return get_var(using, home);
 }
 
-fn Path! get_config_dir(Allocator allocator = allocator::heap()) @deprecated("use new_get_config_dir()")
-{
-	return new_get_config_dir(allocator) @inline;
-}
 
 <*
 Returns the current user's config directory.
 *>
-fn Path! new_get_config_dir(Allocator allocator) => @pool(allocator)
+fn Path! get_config_dir(Allocator allocator) => @pool(allocator)
 {
 	$if env::WIN32:
 		return path::new(allocator, tget_var("AppData"));
@@ -97,7 +93,7 @@ fn Path! new_get_config_dir(Allocator allocator) => @pool(allocator)
 			String s = tget_var("XDG_CONFIG_HOME") ?? tget_var("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::tnew(s).append(allocator, DIR);
+		return path::temp(s).append(allocator, DIR);
 	$endif
 }
 

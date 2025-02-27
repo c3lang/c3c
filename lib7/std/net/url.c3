@@ -254,15 +254,7 @@ struct UrlQueryValues
  @param [in] query
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues temp_parse_query(String query) => parse_query(query, allocator::temp());
-
-<*
- Parse the query parameters of the Url into a UrlQueryValues map.
-
- @param [in] query
- @return "a UrlQueryValues HashMap"
-*>
-fn UrlQueryValues new_parse_query(String query) => parse_query(query, allocator::heap());
+fn UrlQueryValues parse_query_to_temp(String query) => parse_query(tmem(), query);
 
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
@@ -271,7 +263,7 @@ fn UrlQueryValues new_parse_query(String query) => parse_query(query, allocator:
  @param [inout] allocator
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues parse_query(String query, Allocator allocator)
+fn UrlQueryValues parse_query(Allocator allocator, String query)
 {
 	UrlQueryValues vals;
 	vals.map.init(allocator);

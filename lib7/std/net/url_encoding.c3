@@ -70,7 +70,7 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
 fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool(allocator)
 {
 	usz n = encode_len(s, mode);
-	DString builder = dstring::tnew_with_capacity(n);
+	DString builder = dstring::temp_with_capacity(n);
 
 	foreach(i, c: s)
 	{
@@ -137,7 +137,7 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
 fn String! decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool(allocator)
 {
 	usz n = decode_len(s, mode)!;
-	DString builder = dstring::tnew_with_capacity(n);
+	DString builder = dstring::temp_with_capacity(n);
 
 	for (usz i = 0; i < s.len; i++)
 	{

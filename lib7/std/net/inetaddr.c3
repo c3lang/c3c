@@ -255,7 +255,7 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 fn AddrInfo*! addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
 {
 	ZString zhost = host.zstr_tcopy();
-	DString str = dstring::tnew_with_capacity(32);
+	DString str = dstring::temp_with_capacity(32);
 	str.appendf("%d", port);
 	AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
 	AddrInfo* ai;

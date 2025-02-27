@@ -218,7 +218,7 @@ fn void! backtrace_add_element(BacktraceList *list, void* addr, Allocator alloca
 fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 {
 	BacktraceList list;
-	list.new_init(backtrace.len, allocator);
+	list.init(allocator, backtrace.len);
 	defer catch
 	{
 		foreach (trace : list)

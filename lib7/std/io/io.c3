@@ -68,7 +68,7 @@ macro String! readline(Allocator allocator, stream = io::stdin())
 	if (val == '\n') return "";
 	@pool(allocator)
 	{
-		DString str = dstring::tnew_with_capacity(256);
+		DString str = dstring::temp_with_capacity(256);
 		if (val != '\r') str.append(val);
 		while (1)
 		{

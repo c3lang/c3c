@@ -27,7 +27,7 @@ fn void read_uint128_test()
 fn void write_ushort_test()
 {
 	ByteWriter bw;
-	bw.temp_init();
+	bw.tinit();
 	io::write_be_short(&bw, 0x348a)!!;
 	assert(bw.str_view() == &&x'348a');
 }
@@ -35,7 +35,7 @@ fn void write_ushort_test()
 fn void write_uint_test()
 {
 	ByteWriter bw;
-	bw.temp_init();
+	bw.tinit();
 	io::write_be_int(&bw, 0x3421348a)!!;
 	assert(bw.str_view() == &&x'3421348a');
 }
@@ -43,7 +43,7 @@ fn void write_uint_test()
 fn void write_ulong_test()
 {
 	ByteWriter bw;
-	bw.temp_init();
+	bw.tinit();
 	io::write_be_long(&bw, 0xaabbccdd3421348a)!!;
 	assert(bw.str_view() == &&x'aabbccdd3421348a');
 }
@@ -51,7 +51,7 @@ fn void write_ulong_test()
 fn void write_uint128_test()
 {
 	ByteWriter bw;
-	bw.temp_init();
+	bw.tinit();
 	io::write_be_int128(&bw, 0xaabbccdd3421348aaabbccdd3421348a)!!;
 	assert(bw.str_view() == &&x'aabbccdd3421348aaabbccdd3421348a');
 }
@@ -59,7 +59,7 @@ fn void write_uint128_test()
 fn void write_tiny_bytearray_test()
 {
 	ByteWriter bw;
-	bw.temp_init();
+	bw.tinit();
 	io::write_tiny_bytearray(&bw, &&x"aabbcc00112233")!!;
 	assert(bw.str_view() == &&x'07aabbcc00112233');
 }
@@ -67,7 +67,7 @@ fn void write_tiny_bytearray_test()
 fn void write_short_bytearray_test()
 {
 	ByteWriter bw;
-	bw.temp_init();
+	bw.tinit();
 	io::write_short_bytearray(&bw, &&x"aabbcc00112233")!!;
 	assert(bw.str_view() == &&x'0007aabbcc00112233');
 }

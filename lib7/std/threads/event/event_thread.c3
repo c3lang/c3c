@@ -173,7 +173,7 @@ fn void remove_all_pool_threads(EventThreadPool* pool) @local
 <*
  @require size > 0 "Must have at least one thread"
 *>
-fn EventThreadPool* EventThreadPool.new_init(&self, int size, String name, Allocator allocator, void* monitor_context)
+fn EventThreadPool* EventThreadPool.init(&self, int size, String name, Allocator allocator, void* monitor_context)
 {
 	*self = { .is_alive = true, .name = name.copy(allocator), .monitor_context = monitor_context, .allocator = allocator };
 	self.pool.init(allocator);

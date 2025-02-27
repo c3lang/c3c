@@ -123,7 +123,7 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks) @if(!$$OLD_TEST)
 
 	usz len = max_name + 9;
 
-	DString name = dstring::tnew_with_capacity(64);
+	DString name = dstring::temp_with_capacity(64);
 	name.append_repeat('-', len / 2);
 	name.append(" BENCHMARKS ");
 	name.append_repeat('-', len - len / 2);

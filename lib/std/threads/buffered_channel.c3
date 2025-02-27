@@ -21,12 +21,12 @@ struct BufferedChannelImpl @private
 	Type[?] buf;
 }
 
-fn void! BufferedChannel.new_init(&self, usz size = 1)
+fn void! BufferedChannel.new_init(&self, usz size = 1) @deprecated("Use init(mem)")
 {
-	return self.init(size, allocator::heap());
+	return self.init(mem, size);
 }
 
-fn void! BufferedChannel.init(&self, usz size = 1, Allocator allocator)
+fn void! BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 {
 	BufferedChannelImpl* channel = allocator::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
 	defer catch allocator::free(allocator, channel);
