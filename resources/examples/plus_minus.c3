@@ -13,9 +13,9 @@ fault TokenResult
 fn void main(String[] args)
 {
 	// Grab a string from stdin
-	String s = io::readline()!!;
+	String s = io::readline(mem)!!;
 	// Delete it at scope end [defer]
-	defer s.free();
+	defer free(s);
 
 	// Copy the slice, which doesn't change the underlying data.
 	String numbers = s;
