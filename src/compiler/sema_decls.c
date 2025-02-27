@@ -1180,7 +1180,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	}
 
 	// Ensure it has at least one parameter if method.
-	if (method_parent && !vec_size(params) && decl->operator != OVERLOAD_CONSTRUCT)
+	if (method_parent && !vec_size(params))
 	{
 		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
 								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
@@ -1702,33 +1702,6 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 	return NULL;
 }
 
-static inline bool sema_analyse_operator_construct(SemaContext *context, Decl *method)
-{
-	Signature *signature = &method->func_decl.signature;
-	Decl **params = signature->params;
-	uint32_t param_count = vec_size(params);
-	if (param_count && params[0] && params[0]->var.is_self)
-	{
-		RETURN_SEMA_ERROR(method, "'construct' methods cannot have 'self' parameters.");
-	}
-	if (!signature->rtype)
-	{
-		RETURN_SEMA_ERROR(method, "A 'construct' macro method should always have an explicitly typed return value.");
-	}
-	Type *rtype = typeget(signature->rtype)->canonical;
-	Type *parent = typeget(method->func_decl.type_parent);
-	if (parent->canonical != rtype && type_get_ptr(parent->canonical) != rtype)
-	{
-		RETURN_SEMA_ERROR(type_infoptr(signature->rtype),
-		                  "The return type of a 'construct' method must be the method type, or a pointer to it."
-		                  " In this case %s or %s was expected.",
-		                  type_quoted_error_string(parent), type_quoted_error_string(type_get_ptr(parent)));
-	}
-	SEMA_DEPRECATED(method, "'operator(@construct)' is deprecated and will be removed in the next version, prefer using init methods and functions instead.");
-	return true;
-}
-
-
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method)
 {
 	TypeInfo *rtype;
@@ -1781,8 +1754,6 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 {
 	switch (method->operator)
 	{
-		case OVERLOAD_CONSTRUCT:
-			return sema_analyse_operator_construct(context, method);
 		case OVERLOAD_ELEMENT_SET:
 			return sema_analyse_operator_element_set(context, method);
 		case OVERLOAD_ELEMENT_AT:
@@ -1889,7 +1860,6 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 
 	// See if the operator has already been defined.
 	OperatorOverload operator = method->operator;
-	if (operator == OVERLOAD_CONSTRUCT) return true;
 
 	Decl *other = sema_find_operator(context, parent_type, operator);
 	if (other != method)
@@ -1956,7 +1926,6 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 				break;
 			}
 			return true;
-		case OVERLOAD_CONSTRUCT:
 		default:
 			UNREACHABLE
 	}
@@ -2355,10 +2324,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 
-	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
-
 	// Ensure that the first parameter is valid.
-	if (!is_constructor && !sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
+	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
 	// Make dynamic checks.
 	if (is_dynamic)
@@ -2370,10 +2337,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		if (par_type == type_any)
 		{
 			RETURN_SEMA_ERROR(decl, "'any' may not implement '@dynamic' methods, only regular methods.");
-		}
-		if (is_constructor)
-		{
-			RETURN_SEMA_ERROR(decl, "A 'construct' method may not be '@dynamic'.");
 		}
 		// Retrieve the implemented method.
 		Decl *implemented_method = sema_find_interface_for_method(context, par_type, decl);
@@ -2671,11 +2634,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				case EXPR_UNRESOLVED_IDENTIFIER:
 					if (expr->unresolved_ident_expr.path) goto FAILED_OP_TYPE;
-					if (expr->unresolved_ident_expr.ident == kw_construct)
-					{
-						decl->operator = OVERLOAD_CONSTRUCT;
-						break;
-					}
 					if (expr->unresolved_ident_expr.ident != kw_len) goto FAILED_OP_TYPE;
 					decl->operator = OVERLOAD_LEN;
 					break;
@@ -3688,19 +3646,17 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	ASSERT(parent_type_info->resolve_status == RESOLVE_DONE);
 	Type *parent_type = parent_type_info->type->canonical;
 
-	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
-
 	// Check the first argument.
-	Decl *first_param = is_constructor ? NULL : decl->func_decl.signature.params[0];
-	if (!is_constructor && !first_param)
+	Decl *first_param = decl->func_decl.signature.params[0];
+	if (!first_param)
 	{
 		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type %s or %s.", type_quoted_error_string(parent_type),
 		                  type_quoted_error_string(type_get_ptr(parent_type)));
 	}
 
-	if (!is_constructor && !sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
+	if (!sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
 
-	if (!is_constructor && first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM)
+	if (first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}

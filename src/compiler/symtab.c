@@ -47,7 +47,6 @@ const char *kw_at_pure;
 const char *kw_at_require;
 const char *kw_at_return;
 const char *kw_at_jump;
-const char *kw_construct;
 const char *kw_in;
 const char *kw_inout;
 const char *kw_len;
@@ -134,7 +133,6 @@ void symtab_init(uint32_t capacity)
 	kw_IoError = KW_DEF("IoError");
 
 	type = TOKEN_IDENT;
-	kw_construct = KW_DEF("construct");
 	kw_in = KW_DEF("in");
 	kw_inout = KW_DEF("inout");
 	kw_libc = KW_DEF("libc");
