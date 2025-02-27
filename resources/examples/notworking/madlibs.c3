@@ -5,7 +5,7 @@ fn void main()
 {
     printn("Enter a story template, terminated by an empty line:");
     String story = "";
-    while (try String line = stdin().readline().strip())
+    while (try String line = stdin().readline(mem).strip())
     {
 
         story = story.append(line);
@@ -21,7 +21,7 @@ fn void main()
     {
         VarString s = match.string;
         printf("Enter a value for '%s': ", s[1..^2]);
-        String word = stdin().readline().strip()!;
+        String word = stdin().readline(mem).strip()!;
         story = story.replace(s, word);
     }
 

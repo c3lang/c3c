@@ -27,6 +27,6 @@ fn void main()
 {
 	long val1 = perform("something");
 	long val2 = @with_mode("faster", perform, "reliable");
-	long val3 = perform(String[] {"something"});
+	long val3 = perform((String[]){"something"});
 	io::printfn("%d %d %d", val1, val2, val3);
 }

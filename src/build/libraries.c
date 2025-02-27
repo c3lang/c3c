@@ -40,7 +40,7 @@ const char *manifest_target_keys[][2] = {
 
 const int manifest_target_keys_count = ELEMENTLEN(manifest_target_keys);
 
-const char *manifest_deprecated_target_keys[] = { };
+const char *manifest_deprecated_target_keys[] = { "none" };
 
 const int manifest_deprecated_target_key_count = ELEMENTLEN(manifest_deprecated_target_keys);
 
