@@ -14,6 +14,7 @@
 - Removed `@adhoc` attribute.
 - Disallow inline use of nested generics (e.g. `List{List{int}}`.
 - Remove `.allocator = allocator` syntax for functions.
+- Remove `@operator(construct)`.
 
 ## 0.6.8 Change list
 

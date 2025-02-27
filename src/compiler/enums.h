@@ -902,7 +902,6 @@ typedef enum
 	OVERLOAD_ELEMENT_REF,
 	OVERLOAD_ELEMENT_SET,
 	OVERLOAD_LEN,
-	OVERLOAD_CONSTRUCT,
 } OperatorOverload;
 
 typedef enum
