@@ -1,4 +1,4 @@
-module foo(<Type>);
+module foo{Type};
 
 interface Baz
 {}
@@ -8,5 +8,5 @@ import foo;
 
 fn void main()
 {
-	Baz(<int>) x;
+	Baz{int} x;
 }

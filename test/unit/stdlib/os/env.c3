@@ -6,11 +6,11 @@ module std::os::env @test;
  	const VALUE = "foobar";
 
  	env::set_var(NAME, VALUE);
- 	String v = env::get_var(NAME)!!;
+ 	String v = env::get_var(mem, NAME)!!;
  	assert(v == VALUE, "got %s; want %s", v, VALUE);
 	free(v);
  	env::clear_var(NAME);
- 	if (try env::get_var(NAME))
+ 	if (try env::get_var(mem, NAME))
  	{
  	    unreachable("environment variable should no longer exist");
  	}

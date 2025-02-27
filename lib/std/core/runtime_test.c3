@@ -7,8 +7,7 @@ import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
-def TestFn = fn void!() @if($$OLD_TEST);
-def TestFn = fn void() @if(!$$OLD_TEST);
+def TestFn = fn void();
 
 TestContext* test_context @private;
 
@@ -47,7 +46,7 @@ struct TestUnit
 	TestFn func;
 }
 
-fn TestUnit[] test_collection_create(Allocator allocator = allocator::heap())
+fn TestUnit[] test_collection_create(Allocator allocator)
 {
 	TestFn[] fns = $$TEST_FNS;
 	String[] names = $$TEST_NAMES;
@@ -75,7 +74,8 @@ fn int cmp_test_unit(TestUnit a, TestUnit b)
 
 fn bool terminal_has_ansi_codes() @local => @pool()
 {
-	if (try v = env::get_var_temp("TERM"))
+
+	if (try v = env::tget_var("TERM"))
 	{
 		if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;
 	}
@@ -278,15 +278,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			mute_output();
 			mem.clear();
 			if (check_leaks) allocator::thread_allocator = &mem;
-			$if(!$$OLD_TEST):
-				unit.func();
-			$else
-				if (catch err = unit.func())
-				{
-					io::printf("[FAIL] Failed due to: %s", err);
-					continue;
-				}
-			$endif
+			unit.func();
 			// track cleanup that may take place in teardown_fn
 			if (context.teardown_fn)
 			{
@@ -297,7 +289,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
 			{
-				if(context.is_quiet_mode) io::printf("\n%s ", context.current_test_name);
+				if (context.is_quiet_mode) io::printf("\n%s ", context.current_test_name);
 				io::print(context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
 				io::printn(" LEAKS DETECTED!");
 				mem.print_report();
@@ -337,6 +329,6 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 fn bool default_test_runner(String[] args) => @pool()
 {
 	assert(test_context == null, "test suite is already running");
-	return run_tests(args, test_collection_create(allocator::temp()));
+	return run_tests(args, test_collection_create(tmem()));
 }
 

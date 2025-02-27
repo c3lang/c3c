@@ -1,5 +1,4 @@
 // #target: macos-x64
-// #deprecation: no
 
 fn bool f0_0(void* a0) @private {  return (bool)a0; }
 
@@ -7,7 +6,7 @@ fn int f0() { return (int)f0_0((void*)0x2); }
 
 def Test = fn void();
 
-fn bool f1() { return (bool){| Test x @noinit; return x = (Test)0; |}; }
+fn bool f1() { Test x @noinit; return (bool)(x = (Test)0); }
 
 /* #expect: bool_conversions.ll
 

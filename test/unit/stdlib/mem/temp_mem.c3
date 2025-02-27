@@ -11,14 +11,14 @@ fn String add(String s, Allocator a, int x)
     };
     ulong* y = mem::temp_alloc(ulong);
     *y = 0xAAAA_AAAA_AAAA_AAAA;
-    return tmp.concat("a", allocator: a);
+    return tmp.concat(a, "a");
 }
 
 fn String breakit(String s, Allocator a)
 {
     @pool(a)
     {
-        return inner2("foo".concat(s, allocator::temp()), a);
+        return inner2("foo".concat(tmem(), s), a);
     };
 }
 
@@ -52,7 +52,7 @@ fn String inner4(String s, Allocator a)
 {
     @pool(a)
     {
-        String y = s.concat("xy**********", allocator::temp()).copy(a);
+        String y = s.concat(tmem(), "xy**********").copy(a);
         return y;
     };
 }

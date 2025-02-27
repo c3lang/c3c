@@ -55,7 +55,7 @@ fn void Backtrace.free(&self)
 	allocator::free(self.allocator, self.file);
 }
 
-fn Backtrace* Backtrace.init(&self, uptr offset, String function, String object_file, String file = "", uint line = 0, Allocator allocator)
+fn Backtrace* Backtrace.init(&self, Allocator allocator, uptr offset, String function, String object_file, String file = "", uint line = 0)
 {
 	if (!allocator)
 	{
@@ -91,13 +91,13 @@ fn void*[] capture_current(void*[] buffer)
 	$endswitch
 }
 
-def BacktraceList = List(<Backtrace>);
+def BacktraceList = List{Backtrace};
 
 def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
 def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
 def symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator) @if(!env::NATIVE_STACKTRACE)
+fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
 {
 	return {};
 }

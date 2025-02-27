@@ -6,8 +6,7 @@ const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
 interface Printable
 {
-	fn String to_string(Allocator allocator) @optional;
-	fn String to_new_string(Allocator allocator) @optional @deprecated("Use to_string");
+	fn String to_constant_string() @optional;
 	fn usz! to_format(Formatter* formatter) @optional;
 }
 
@@ -28,8 +27,7 @@ macro bool is_struct_with_default_print($Type)
 {
 	return $Type.kindof == STRUCT
 		&&& !$defined($Type.to_format)
-		&&& !$defined($Type.to_new_string)
-		&&& !$defined($Type.to_string);
+		&&& !$defined($Type.to_constant_string);
 }
 
 <*
@@ -125,7 +123,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 		if (!arg) return self.out_substr("(null)");
 		return arg.to_format(self);
 	}
-	if (&arg.to_string)
+	if (&arg.to_constant_string)
 	{
 		PrintFlags old = self.flags;
 		uint old_width = self.width;
@@ -137,10 +135,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 			self.prec = old_prec;
 		}
 		if (!arg) return self.out_substr("(null)");
-		@stack_mem(1024; Allocator mem)
-		{
-			return self.out_substr(arg.to_string(mem));
-		};
+		return self.out_substr(arg.to_constant_string());
 	}
 	return SearchResult.MISSING?;
 }

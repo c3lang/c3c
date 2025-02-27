@@ -128,17 +128,17 @@ fn ulong! elf_module_image_base(String path) @local
 	return 0;
 }
 
-fn void! backtrace_add_from_exec(BacktraceList* list, void* addr, Allocator allocator) @local
+fn void! backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void* addr) @local
 {
 	char[] buf = mem::temp_alloc_array(char, 1024);
 
 	String exec_path = process::execute_stdout_to_buffer(buf, {"realpath", "-e", string::tformat("/proc/%d/exe", posix::getpid())})!;
 	String obj_name = exec_path.copy(allocator);
 	String addr2line = process::execute_stdout_to_buffer(buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", exec_path, string::tformat("0x%x", addr)})!;
-	return backtrace_add_addr2line(list, addr, addr2line, obj_name, "???", allocator);
+	return backtrace_add_addr2line(allocator, list, addr, addr2line, obj_name, "???");
 }
 
-fn void! backtrace_add_from_dlinfo(BacktraceList* list, void* addr, Linux_Dl_info* info, Allocator allocator) @local
+fn void! backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, void* addr, Linux_Dl_info* info) @local
 {
 	char[] buf = mem::temp_alloc_array(char, 1024);
 
@@ -146,10 +146,10 @@ fn void! backtrace_add_from_dlinfo(BacktraceList* list, void* addr, Linux_Dl_inf
 	ZString obj_path  = info.dli_fname;
 	String  sname     = info.dli_sname ? info.dli_sname.str_view() : "???";
 	String  addr2line = process::execute_stdout_to_buffer(buf, {"addr2line", "-p", "-i", "-C", "-f", "-e", obj_path.str_view(), string::tformat("0x%x", obj_addr - 1)})!;
-	return backtrace_add_addr2line(list, addr, addr2line, info.dli_fname.str_view(), sname, allocator);
+	return backtrace_add_addr2line(allocator, list, addr, addr2line, info.dli_fname.str_view(), sname);
 }
 
-fn Backtrace! backtrace_line_parse(String string, String obj_name, String func_name, bool is_inlined, Allocator allocator)
+fn Backtrace! backtrace_line_parse(Allocator allocator, String string, String obj_name, String func_name, bool is_inlined)
 {
 	String[] parts = string.trim().tsplit(" at ");
 	if (parts.len != 2) return SearchResult.MISSING?;
@@ -171,14 +171,14 @@ fn Backtrace! backtrace_line_parse(String string, String obj_name, String func_n
 		.is_inline   = is_inlined
 	};
 }
-fn void! backtrace_add_addr2line(BacktraceList* list, void* addr, String addr2line, String obj_name, String func_name, Allocator allocator) @local
+fn void! backtrace_add_addr2line(Allocator allocator, BacktraceList* list, void* addr, String addr2line, String obj_name, String func_name) @local
 {
 	String[] inline_parts = addr2line.tsplit("(inlined by)");
 	usz last = inline_parts.len - 1;
 	foreach (i, part : inline_parts)
 	{
 		bool is_inline = i != last;
-		Backtrace! trace = backtrace_line_parse(part, obj_name, func_name, is_inline, allocator);
+		Backtrace! trace = backtrace_line_parse(allocator, part, obj_name, func_name, is_inline);
 		if (catch trace)
 		{
 			list.push({
@@ -196,7 +196,7 @@ fn void! backtrace_add_addr2line(BacktraceList* list, void* addr, String addr2li
 	}
 }
 
-fn void! backtrace_add_element(BacktraceList *list, void* addr, Allocator allocator = allocator::heap()) @local
+fn void! backtrace_add_element(Allocator allocator, BacktraceList *list, void* addr) @local
 {
 	if (!addr)
 	{
@@ -209,13 +209,13 @@ fn void! backtrace_add_element(BacktraceList *list, void* addr, Allocator alloca
 		Linux_Dl_info info;
 		if (dladdr(addr, &info) == 0)
 		{
-			return backtrace_add_from_exec(list, addr, allocator);
+			return backtrace_add_from_exec(allocator, list, addr);
 		}
-		return backtrace_add_from_dlinfo(list, addr, &info, allocator);
+		return backtrace_add_from_dlinfo(allocator, list, addr, &info);
 	};
 }
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
+fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace)
 {
 	BacktraceList list;
 	list.init(allocator, backtrace.len);
@@ -231,7 +231,7 @@ fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
 	{
 		foreach (addr : backtrace)
 		{
-			backtrace_add_element(&list, addr, allocator)!;
+			backtrace_add_element(allocator, &list, addr)!;
 		}
 	};
 	return list;

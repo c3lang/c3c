@@ -74,18 +74,10 @@ import std::io;
 fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
-	char[] output = new_encode(input, desc, allocator: allocator::temp())!;
+	char[] output = encode(tmem(), input, desc)!;
 
-	// open file
-	File! f = file::open(filename, "wb");
-	if (catch f) return QOIError.FILE_OPEN_FAILED?;
-
-	// write data to file and close it
-	usz! written = f.write(output);
-	if (catch written) return QOIError.FILE_WRITE_FAILED?;
-	if (catch f.close()) return QOIError.FILE_WRITE_FAILED?;
-
-	return written;
+	file::save(filename, output)!;
+	return output.len;
 }
 
 
@@ -110,28 +102,19 @@ fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
  @param [&out] desc `The descriptor to fill with the image's info`
  @param channels `The channels to be used`
 *>
-fn char[]! new_read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) => @pool(allocator)
+fn char[]! read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
 {
 	// read file
 	char[] data = file::load_temp(filename) ?? QOIError.FILE_OPEN_FAILED?!;
 	// pass data to decode function
-	return new_decode(data, desc, channels, allocator);
+	return decode(allocator, data, desc, channels);
 }
 
-fn char[]! read(String filename, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) @deprecated("Use new_read")
-{
-	return new_read(filename, desc, channels, allocator);
-}
 
 
 // Back to basic non-stdio mode
 module std::compression::qoi;
 import std::bits;
-
-fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap()) @deprecated("use encode_new")
-{
-	return new_encode(input, desc, allocator);
-}
 
 <*
  Encode raw RGB or RGBA pixels into a QOI image in memory.
@@ -146,7 +129,7 @@ fn char[]! encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::
  @param [in] input `The raw RGB or RGBA pixels to encode`
  @param [&in] desc `The descriptor of the image`
 *>
-fn char[]! new_encode(char[] input, QOIDesc* desc, Allocator allocator = allocator::heap()) @nodiscard
+fn char[]! encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 {
 	// check info in desc
 	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_PARAMETERS?;
@@ -278,10 +261,6 @@ fn char[]! new_encode(char[] input, QOIDesc* desc, Allocator allocator = allocat
 }
 
 
-fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap())
-{
-	return new_decode(data, desc, channels, allocator);
-}
 
 <*
  Decode a QOI image from memory.
@@ -304,7 +283,7 @@ fn char[]! decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Alloc
  @param [&out] desc `The descriptor to fill with the image's info`
  @param channels `The channels to be used`
 *>
-fn char[]! new_decode(char[] data, QOIDesc* desc, QOIChannels channels = AUTO, Allocator allocator = allocator::heap()) @nodiscard
+fn char[]! decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
 {
 	// check input data
 	if (data.len < Header.sizeof + END_OF_STREAM.len) return QOIError.INVALID_DATA?;

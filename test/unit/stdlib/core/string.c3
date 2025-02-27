@@ -17,7 +17,7 @@ fn void test_print_null()
 	ZString z;
 	int* y;
 	ZString w = "hello";
-	String s = string::new_format("%s %s %s", z, w, y);
+	String s = string::format(mem, "%s %s %s", z, w, y);
 	defer free(s);
 	assert(s == "(null) hello 0x0");
 }
@@ -96,7 +96,7 @@ fn void test_trim_right()
 fn void test_split()
 {
 	String test = "abc|b||c|";
-	String[] strings = test.split("|");
+	String[] strings = test.split(mem, "|");
 	assert(strings.len == 5);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b");
@@ -104,7 +104,7 @@ fn void test_split()
 	assert(strings[3] == "c");
 	assert(strings[4] == "");
 	free(strings);
-	strings = test.split("|", 2);
+	strings = test.split(mem, "|", 2);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
@@ -114,13 +114,13 @@ fn void test_split()
 fn void test_split_skip_empty()
 {
 	String test = "abc|b||c|";
-	String[] strings = test.split("|", skip_empty: true);
+	String[] strings = test.split(mem, "|", skip_empty: true);
 	assert(strings.len == 3);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b");
 	assert(strings[2] == "c");
 	free(strings);
-	strings = test.split("|", 2, skip_empty: true);
+	strings = test.split(mem, "|", 2, skip_empty: true);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
@@ -136,7 +136,7 @@ fn void test_split_to_buffer_skip_empty()
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b");
 	assert(strings[2] == "c");
-	strings = test.split("|", 2, skip_empty: true);
+	strings = test.split(mem, "|", 2, skip_empty: true);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");
@@ -156,7 +156,7 @@ fn void test_split_to_buffer()
 	assert(strings[4] == "");
 	String[4] c;
 	assert(@catch(test.split_to_buffer("|", &c)) == SplitResult.BUFFER_EXCEEDED);
-	strings = test.split("|", 2);
+	strings = test.split(mem, "|", 2);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");
 	assert(strings[1] == "b||c|");

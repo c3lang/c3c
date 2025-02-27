@@ -16,7 +16,7 @@ fn void! native_rmtree(Path dir)
 		{
 			String name = ((ZString)&entry.name).str_view();
 			if (!name || name == "." || name == "..") continue;
-			Path new_path = dir.temp_append(name)!;
+			Path new_path = dir.tappend(name)!;
 			if (entry.d_type == posix::DT_DIR)
 			{
 				native_rmtree(new_path)!;
@@ -39,7 +39,7 @@ fn void! native_rmtree(Path path)
 {
 	Win32_WIN32_FIND_DATAW find_data;
 	String s = path.str_view().tconcat("\\*");
-	Win32_HANDLE find = win32::findFirstFileW(s.to_temp_utf16(), &find_data)!;
+	Win32_HANDLE find = win32::findFirstFileW(s.to_utf16_tcopy(), &find_data)!;
 
 	if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
 	defer win32::findClose(find);
@@ -47,16 +47,16 @@ fn void! native_rmtree(Path path)
 	{
 		@pool()
 		{
-			String filename = string::new_from_wstring((WString)&find_data.cFileName, allocator::temp())!;
+			String filename = string::new_from_wstring(tmem(), (WString)&find_data.cFileName)!;
 			if (filename == "." || filename == "..") continue;
-			Path file_path = path.temp_append(filename)!;
+			Path file_path = path.tappend(filename)!;
 			if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)
 			{
 				native_rmtree(file_path)!;
 			}
 			else
 			{
-				win32::deleteFileW(file_path.str_view().to_temp_wstring()!!);
+				win32::deleteFileW(file_path.str_view().to_wstring_tcopy()!!);
 			}
 		};
 	} while (win32::findNextFileW(find, &find_data) != 0);

@@ -401,6 +401,15 @@ macro TempAllocator* temp()
 	return thread_temp_allocator;
 }
 
+macro TempAllocator* tmem() @builtin
+{
+	if (!thread_temp_allocator)
+	{
+		init_default_temp_allocators();
+	}
+	return thread_temp_allocator;
+}
+
 fn void init_default_temp_allocators() @private
 {
 	temp_allocator_pair[0] = create_default_sized_temp_allocator(temp_base_allocator);

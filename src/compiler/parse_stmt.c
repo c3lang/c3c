@@ -1339,11 +1339,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BYTES:
 		case TOKEN_CHAR_LITERAL:
 		case TOKEN_CT_ALIGNOF:
-		case TOKEN_CT_ANDFN:
 		case TOKEN_CT_AND:
-		case TOKEN_CT_APPEND:
 		case TOKEN_CT_ASSIGNABLE:
-		case TOKEN_CT_CONCATFN:
 		case TOKEN_CT_CONCAT:
 		case TOKEN_CT_CONST_IDENT:
 		case TOKEN_CT_IS_CONST:
@@ -1355,7 +1352,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_IDENT:
 		case TOKEN_CT_NAMEOF:
 		case TOKEN_CT_OFFSETOF:
-		case TOKEN_CT_ORFN:
 		case TOKEN_CT_OR:
 		case TOKEN_CT_QNAMEOF:
 		case TOKEN_CT_SIZEOF:
@@ -1364,10 +1360,8 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_VACONST:
 		case TOKEN_CT_VACOUNT:
 		case TOKEN_CT_VAEXPR:
-		case TOKEN_CT_VAREF:
 		case TOKEN_FALSE:
 		case TOKEN_INTEGER:
-		case TOKEN_LBRAPIPE:
 		case TOKEN_LPAREN:
 		case TOKEN_MINUS:
 		case TOKEN_MINUSMINUS:
@@ -1439,7 +1433,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_DEFAULT:
 		case TOKEN_CT_ENDIF:
 		case TOKEN_CT_ENDSWITCH:
-		case TOKEN_RBRAPIPE:
 		case TOKEN_BANGBANG:
 		case TOKEN_UNDERSCORE:
 		case TOKEN_BITSTRUCT:
@@ -1453,7 +1446,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_DISTINCT:
 		case TOKEN_CT_INCLUDE:
 		case TOKEN_CT_EXEC:
-		case TOKEN_LGENPAR:
 		case TOKEN_INTERFACE:
 			PRINT_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                 token_type_to_string(c->tok));
@@ -1462,7 +1454,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_RPAREN:
 		case TOKEN_RBRACE:
 		case TOKEN_RBRACKET:
-		case TOKEN_RGENPAR:
 			PRINT_ERROR_HERE("Mismatched '%s' found.", token_type_to_string(c->tok));
 			advance(c);
 			return poisoned_ast;

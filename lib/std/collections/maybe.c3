@@ -1,4 +1,4 @@
-module std::collections::maybe(<Type>);
+module std::collections::maybe{Type};
 import std::io;
 
 struct Maybe (Printable)
@@ -26,16 +26,6 @@ fn void Maybe.reset(&self)
 fn Maybe value(Type val)
 {
 	return { .value = val, .has_value = true };
-}
-
-fn Maybe Maybe.with_value(Type val) @deprecated("Use maybe::value instead.") @operator(construct)
-{
-	return { .value = val, .has_value = true };
-}
-
-fn Maybe Maybe.empty() @deprecated("Use maybe::EMPTY instead.") @operator(construct)
-{
-	return { };
 }
 
 const Maybe EMPTY = { };

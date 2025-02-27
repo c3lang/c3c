@@ -1,7 +1,7 @@
 module thread_pool_test;
 import std::io, std::thread, std::time;
 
-def Pool = ThreadPool(<4>);
+def Pool = ThreadPool{4};
 
 fn void init_destroy() @test
 {

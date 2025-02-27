@@ -1,8 +1,0 @@
-def Foo = fn void(int x);
-
-distinct Bar = Foo;
-
-fn void main()
-{
-    Bar t = fn (x) { };
-}

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2024-2025 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::collections::anylist;
@@ -15,16 +15,6 @@ struct AnyList (Printable)
 	any* entries;
 }
 
-
-<*
- Use `init` for to use a custom allocator.
-
- @param initial_capacity "The initial capacity to reserve"
-*>
-fn AnyList* AnyList.new_init(&self, usz initial_capacity = 16, Allocator allocator = null) @deprecated("Use init(mem)")
-{
-	return self.init(allocator ?: allocator::heap(), initial_capacity) @inline;
-}
 
 <*
  @param [&inout] allocator "The allocator to use"
@@ -52,20 +42,9 @@ fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 
  @param initial_capacity "The initial capacity to reserve"
 *>
-fn AnyList* AnyList.temp_init(&self, usz initial_capacity = 16) @deprecated("Use tinit")
-{
-	return self.init(allocator::temp(), initial_capacity) @inline;
-}
-
-
-<*
- Initialize the list using the temp allocator.
-
- @param initial_capacity "The initial capacity to reserve"
-*>
 fn AnyList* AnyList.tinit(&self, usz initial_capacity = 16)
 {
-	return self.init(allocator::temp(), initial_capacity) @inline;
+	return self.init(tmem(), initial_capacity) @inline;
 }
 
 fn usz! AnyList.to_format(&self, Formatter* formatter) @dynamic
@@ -87,19 +66,6 @@ fn usz! AnyList.to_format(&self, Formatter* formatter) @dynamic
 			return n;
 	}
 }
-
-fn String AnyList.to_new_string(&self, Allocator allocator = null) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator ?: allocator::heap());
-}
-
-
-fn String AnyList.to_string(&self, Allocator allocator) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator);
-}
-
-fn String AnyList.to_tstring(&self) => string::tformat("%s", *self);
 
 <*
  Push an element on the list by cloning it.
@@ -141,35 +107,19 @@ macro AnyList.pop(&self, $Type)
  Pop the last value and allocate the copy using the given allocator.
  @return! IteratorResult.NO_MORE_ELEMENT
 *>
-fn any! AnyList.copy_pop(&self, Allocator allocator = allocator::heap())
+fn any! AnyList.copy_pop(&self, Allocator allocator)
 {
 	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
 	return allocator::clone_any(allocator, self.entries[--self.size]);
 }
 
-<*
- Pop the last value and allocate the copy using the given allocator.
- @return! IteratorResult.NO_MORE_ELEMENT
- @deprecated `use copy_pop`
-*>
-fn any! AnyList.new_pop(&self, Allocator allocator = allocator::heap())
-{
-	return self.copy_pop(allocator);
-}
-
-<*
- Pop the last value and allocate the copy using the temp allocator
- @return! IteratorResult.NO_MORE_ELEMENT
- @deprecated `use tcopy_pop`
-*>
-fn any! AnyList.temp_pop(&self) => self.copy_pop(allocator::temp());
 
 <*
  Pop the last value and allocate the copy using the temp allocator
  @return! IteratorResult.NO_MORE_ELEMENT
 *>
-fn any! AnyList.tcopy_pop(&self) => self.copy_pop(allocator::temp());
+fn any! AnyList.tcopy_pop(&self) => self.copy_pop(tmem());
 
 <*
  Pop the last value. It must later be released using list.free_element()
@@ -210,17 +160,9 @@ fn any! AnyList.pop_first_retained(&self)
 	return self.entries[0];
 }
 
-<*
- Same as new_pop() but pops the first value instead.
- @deprecated `use copy_pop_first`
-*>
-fn any! AnyList.new_pop_first(&self, Allocator allocator = allocator::heap())
-{
-	return self.copy_pop_first(allocator) @inline;
-}
 
 <*
- Same as new_pop() but pops the first value instead.
+ Same as copy_pop() but pops the first value instead.
 *>
 fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 {
@@ -233,13 +175,7 @@ fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 <*
  Same as temp_pop() but pops the first value instead.
 *>
-fn any! AnyList.tcopy_pop_first(&self) => self.copy_pop_first(allocator::temp());
-
-<*
- Same as temp_pop() but pops the first value instead.
- @deprecated `use tcopy_pop_first`
-*>
-fn any! AnyList.temp_pop_first(&self) => self.new_pop_first(allocator::temp());
+fn any! AnyList.tcopy_pop_first(&self) => self.copy_pop_first(tmem());
 
 <*
  @require index < self.size
@@ -477,7 +413,7 @@ fn void AnyList.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
-	if (!self.allocator) self.allocator = allocator::heap();
+	if (!self.allocator) self.allocator = tmem();
 	min_capacity = math::next_power_of_2(min_capacity);
 	self.entries = allocator::realloc(self.allocator, self.entries, any.sizeof * min_capacity);
 	self.capacity = min_capacity;

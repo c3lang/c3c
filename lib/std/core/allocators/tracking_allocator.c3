@@ -13,7 +13,7 @@ struct Allocation
 	void*[MAX_BACKTRACE] backtrace;
 }
 
-def AllocMap = HashMap(<uptr, Allocation>);
+def AllocMap = HashMap { uptr, Allocation };
 
 // A simple tracking allocator.
 // It tracks allocations using a hash map but
@@ -52,7 +52,7 @@ fn void TrackingAllocator.free(&self)
 fn usz TrackingAllocator.allocated(&self) => @pool()
 {
 	usz allocated = 0;
-	foreach (&allocation : self.map.value_tlist()) allocated += allocation.size;
+	foreach (&allocation : self.map.tvalues()) allocated += allocation.size;
 	return allocated;
 }
 
@@ -68,7 +68,7 @@ fn usz TrackingAllocator.total_allocation_count(&self) => self.allocs_total;
 
 fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 {
-	return self.map.value_tlist();
+	return self.map.tvalues();
 }
 
 <*
@@ -127,7 +127,7 @@ fn void! TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 	usz entries = 0;
 	bool leaks = false;
 
-	Allocation[] allocs = self.map.value_tlist();
+	Allocation[] allocs = self.map.tvalues();
 	if (allocs.len)
 	{
 		if (!allocs[0].backtrace[0])
@@ -155,7 +155,7 @@ fn void! TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 				Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
 				if (allocation.backtrace[3])
 				{
-					trace = backtrace::symbolize_backtrace(allocation.backtrace[3:1], allocator::temp()).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
+					trace = backtrace::symbolize_backtrace(tmem(), allocation.backtrace[3:1]).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
 				}
 				if (trace.function.len)	leaks = true;
 				io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
@@ -194,7 +194,7 @@ fn void! TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 					break;
 				}
 			}
-			BacktraceList list = backtrace::symbolize_backtrace(allocation.backtrace[3..(end - 1)], allocator::temp())!;
+			BacktraceList list = backtrace::symbolize_backtrace(tmem(), allocation.backtrace[3..(end - 1)])!;
 			io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
 			foreach (trace : list)
 			{

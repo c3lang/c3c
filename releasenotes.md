@@ -1,5 +1,20 @@
 # C3C Release Notes
 
+## 0.7.0 Change list
+
+### Changes / improvements
+- Removed `Foo { 1, 2 }` initializer.
+- Changed `Foo(<int>)` to `Foo {int}`.
+- Removed `{| |}` expression blocks.
+- Removed macro `&ref` and `$varef` parameters.
+- Removed `$vaexpr(0)` syntax in favour of `$vaexpr[0]`
+- Enum does not cast to/from an integer (its ordinal).
+- Removed use of `void!` for main, test and benchmark functions.
+- Removed `$or`, `$and`, `$concat` compile time functions.
+- Removed `@adhoc` attribute.
+- Disallow inline use of nested generics (e.g. `List{List{int}}`.
+- Remove `.allocator = allocator` syntax for functions.
+
 ## 0.6.8 Change list
 
 ### Changes / improvements

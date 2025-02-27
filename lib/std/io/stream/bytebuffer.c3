@@ -24,27 +24,9 @@ fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz ini
 	return self;
 }
 
-<*
- ByteBuffer provides a streamable read/write buffer.
- max_read defines how many bytes might be kept before its internal buffer is shrinked.
- @require self.bytes.len == 0 "Buffer already initialized."
-*>
-fn ByteBuffer* ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
-{
-	*self = { .allocator = allocator, .max_read = max_read };
-	initial_capacity = max(initial_capacity, 16);
-	self.grow(initial_capacity);
-	return self;
-}
-
 fn ByteBuffer* ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
 {
-	return self.init(allocator::temp(), max_read, initial_capacity);
-}
-
-fn ByteBuffer* ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity = 16) @deprecated("Use tinit()")
-{
-	return self.init(allocator::temp(), max_read, initial_capacity);
+	return self.init(tmem(), max_read, initial_capacity);
 }
 
 <*

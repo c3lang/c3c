@@ -4,6 +4,31 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
+<*
+ EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
+ way. It relies on the fact that distinct types are not implicitly convertable.
+
+ You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
+ the argument has been used or not.
+
+ An example:
+
+```c3
+macro foo(a, #b = EMPTY_MACRO_SLOT)
+{
+	$if @is_valid_macro_slot(#b):
+        return invoke_foo2(a, #b);
+    $else
+        return invoke_foo1(a);
+    $endif
+}
+*>
+const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
+
+distinct EmptySlot = void*;
+macro @is_empty_macro_slot(#arg) @const @builtin => @typeis(#arg, EmptySlot);
+macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
+
 /*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
 */
@@ -67,7 +92,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, allocator::temp());
+	BacktraceList! backtrace = backtrace::symbolize_backtrace(tmem(), backtraces);
 	if (catch backtrace) return false;
 	if (backtrace.len() <= backtraces_to_ignore) return false;
 	io::eprint("\nERROR: '");
@@ -413,10 +438,6 @@ macro uint String.hash(String c) => (uint)fnv32a::encode(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
-distinct EmptySlot = void*;
-const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
-macro @is_empty_macro_slot(#arg) @builtin => @typeis(#arg, EmptySlot);
-macro @is_valid_macro_slot(#arg) @builtin => !@typeis(#arg, EmptySlot);
 
 const MAX_FRAMEADDRESS = 128;
 <*

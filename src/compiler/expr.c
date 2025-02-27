@@ -31,12 +31,9 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_COND: return "cond";
 		case EXPR_CONST: return "const";
 		case EXPR_TYPECALL: return "typecall";
-		case EXPR_CT_AND_OR: return "ct_and_or";
 		case EXPR_CT_ARG: return "ct_arg";
-		case EXPR_CT_APPEND: return "ct_append";
 		case EXPR_CT_CALL: return "ct_call";
 		case EXPR_CT_CASTABLE: return "ct_castable";
-		case EXPR_CT_CONCAT: return "ct_concat";
 		case EXPR_CT_DEFINED: return "ct_defined";
 		case EXPR_CT_EVAL: return "ct_eval";
 		case EXPR_CT_IDENT: return "ct_ident";
@@ -51,7 +48,6 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_SLICE_TO_VEC_ARRAY: return "slice_to_vec_array";
 		case EXPR_SCALAR_TO_VECTOR: return "scalar_to_vector";
 		case EXPR_EXPRESSION_LIST: return "expression_list";
-		case EXPR_EXPR_BLOCK: return "expr_block";
 		case EXPR_FORCE_UNWRAP: return "force_unwrap";
 		case EXPR_FLOAT_TO_INT: return "float_to_int";
 		case EXPR_GENERIC_IDENT: return "generic_ident";
@@ -206,7 +202,6 @@ bool expr_may_addr(Expr *expr)
 				case VARDECL_LOCAL:
 				case VARDECL_GLOBAL:
 				case VARDECL_PARAM:
-				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_CONST:
 					return true;
 				case VARDECL_MEMBER:
@@ -265,7 +260,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPRESSION_LIST:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_LAMBDA:
@@ -319,14 +313,10 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_BINARY:
 		case EXPR_OPERATOR_CHARS:
 		case EXPR_STRINGIFY:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_CONCAT:
-		case EXPR_CT_APPEND:
 		case EXPR_CT_CASTABLE:
 		case EXPR_CT_DEFINED:
 		case EXPR_CT_IS_CONST:
 		case EXPR_LAMBDA:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_DECL:
 		case EXPR_CALL:
 		case EXPR_CATCH:
@@ -551,7 +541,6 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 				case VARDECL_BITMEMBER:
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM_CT_TYPE:
-				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_EXPR:
 				case VARDECL_LOCAL_CT:
 				case VARDECL_LOCAL_CT_TYPE:
@@ -809,9 +798,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_COMPILER_CONST:
 		case EXPR_CONST:
 		case EXPR_TYPECALL:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_CONCAT:
-		case EXPR_CT_APPEND:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CASTABLE:
@@ -866,7 +852,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_COND:
 		case EXPR_DESIGNATOR:
 		case EXPR_DECL:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_RETHROW:
 		case EXPR_HASH_IDENT:

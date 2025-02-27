@@ -1,7 +1,7 @@
 // Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
 // Use of self source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-module std::collections::list(<Type>);
+module std::collections::list{Type};
 import std::io, std::math, std::collections::list_common;
 
 def ElementPredicate = fn bool(Type *type);
@@ -33,29 +33,6 @@ fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 	return self;
 }
 
-<*
- @param initial_capacity "The initial capacity to reserve"
- @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
-*>
-fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
-{
-	self.allocator = allocator;
-	self.size = 0;
-	self.capacity = 0;
-	self.entries = null;
-	self.reserve(initial_capacity);
-	return self;
-}
-
-<*
- Initialize the list using the temp allocator.
-
- @param initial_capacity "The initial capacity to reserve"
-*>
-fn List* List.temp_init(&self, usz initial_capacity = 16) @deprecated("Use tinit()")
-{
-	return self.init(allocator::temp(), initial_capacity) @inline;
-}
 
 <*
  Initialize the list using the temp allocator.
@@ -64,18 +41,7 @@ fn List* List.temp_init(&self, usz initial_capacity = 16) @deprecated("Use tinit
 *>
 fn List* List.tinit(&self, usz initial_capacity = 16)
 {
-	return self.init(allocator::temp(), initial_capacity) @inline;
-}
-
-<*
- Initialize a new list with an array.
-
- @param [in] values `The values to initialize the list with.`
- @require self.size == 0 "The List must be empty"
-*>
-fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap()) @deprecated("Use init_with_array(mem)")
-{
-	return self.init_with_array(allocator, values);
+	return self.init(tmem(), initial_capacity) @inline;
 }
 
 <*
@@ -97,19 +63,6 @@ fn List* List.init_with_array(&self, Allocator allocator, Type[] values)
  @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
 *>
-fn List* List.temp_init_with_array(&self, Type[] values) @deprecated("Use tinit_with_array()")
-{
-	self.tinit(values.len) @inline;
-	self.add_array(values) @inline;
-	return self;
-}
-
-<*
- Initialize a temporary list with an array.
-
- @param [in] values `The values to initialize the list with.`
- @require self.size == 0 "The List must be empty"
-*>
 fn List* List.tinit_with_array(&self, Type[] values)
 {
 	self.tinit(values.len) @inline;
@@ -120,7 +73,7 @@ fn List* List.tinit_with_array(&self, Type[] values)
 <*
  @require self.capacity == 0 "The List must not be allocated"
 *>
-fn void List.init_wrapping_array(&self, Type[] types, Allocator allocator = allocator::heap())
+fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 {
 	self.allocator = allocator;
 	self.capacity = types.len;
@@ -146,16 +99,6 @@ fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 			n += formatter.print("]")!;
 			return n;
 	}
-}
-
-fn String List.to_new_string(&self, Allocator allocator = allocator::heap()) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator);
-}
-
-fn String List.to_tstring(&self)
-{
-	return string::tformat("%s", *self);
 }
 
 fn void List.push(&self, Type element) @inline
@@ -208,25 +151,25 @@ fn void List.add_all(&self, List* other_list)
 <*
  IMPORTANT The returned array must be freed using free_aligned.
 *>
-fn Type[] List.to_new_aligned_array(&self, Allocator allocator = allocator::heap())
+fn Type[] List.to_aligned_array(&self, Allocator allocator)
 {
-	return list_common::list_to_new_aligned_array(Type, self, allocator);
+	return list_common::list_to_aligned_array(Type, self, allocator);
 }
 
 <*
  @require !type_is_overaligned() : "This function is not available on overaligned types"
 *>
-macro Type[] List.to_new_array(&self, Allocator allocator = allocator::heap())
+macro Type[] List.to_array(&self, Allocator allocator)
 {
-	return list_common::list_to_new_array(Type, self, allocator);
+	return list_common::list_to_array(Type, self, allocator);
 }
 
 fn Type[] List.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_new_aligned_array(allocator::temp());
+	return self.to_aligned_array(tmem());
 	$else
-	return self.to_new_array(allocator::temp());
+	return self.to_array(tmem());
 	$endif;
 }
 
@@ -398,7 +341,7 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
-	if (!self.allocator) self.allocator = allocator::heap();
+	if (!self.allocator) self.allocator = tmem();
 
 	self.pre_free(); // Remove sanitizer annotation
 

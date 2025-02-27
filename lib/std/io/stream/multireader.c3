@@ -18,20 +18,6 @@ struct MultiReader (InStream)
  @require self.readers.len == 0 "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
-fn MultiReader* MultiReader.new_init(&self, InStream... readers, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
-{
-	InStream []copy = allocator::new_array(allocator, InStream, readers.len);
-	copy[..] = readers[..];
-	*self = { .readers = copy, .allocator = allocator };
-	return self;
-}
-
-<*
- @param [&inout] self
- @param [&inout] allocator
- @require self.readers.len == 0 "Init may not run on already initialized data"
- @ensure self.index == 0
-*>
 fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers)
 {
 	InStream []copy = allocator::new_array(allocator, InStream, readers.len);
@@ -45,19 +31,9 @@ fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers
  @require self.readers.len == 0 "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
-fn MultiReader* MultiReader.temp_init(&self, InStream... readers) @deprecated("Use tinit()")
-{
-	return self.init(allocator::temp(), ...readers);
-}
-
-<*
- @param [&inout] self
- @require self.readers.len == 0 "Init may not run on already initialized data"
- @ensure self.index == 0
-*>
 fn MultiReader* MultiReader.tinit(&self, InStream... readers)
 {
-	return self.init(allocator::temp(), ...readers);
+	return self.init(tmem(), ...readers);
 }
 
 fn void MultiReader.free(&self)

@@ -17,7 +17,7 @@ fn void main()
 
     for (usz i; i < values_len; ++i)
     {
-      ms.dyn[i].temp_init();
+      ms.dyn[i].tinit();
     }
 
     ms.dyn[0].append_chars("sad");

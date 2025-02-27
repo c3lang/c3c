@@ -4,15 +4,14 @@ import std::collections::map;
 import std::sort;
 import std::io;
 
-def TestHashMap = HashMap(<String, usz>);
-def TestMap = Map(<String, usz>);
+def TestHashMap = HashMap{String, usz};
 
 struct MapTest
 {
     String key;
     usz value;
 }
-def List = List(<MapTest>);
+def List = List{MapTest};
 
 fn void map()
 {
@@ -56,7 +55,7 @@ fn void map()
     }
 }
 
-def FooMap = HashMap(<char, Foobar>);
+def FooMap = HashMap{char, Foobar};
 enum Foobar : inline char
 {
     FOO,
@@ -103,13 +102,4 @@ fn void map_copy()
 
 	assert(hash_map_copy.len() == hash_map.len());
 
-	TestMap map = map::temp(<String, usz>)();
-
-	map.set("aa", 1);
-	map.set("b", 2);
-	map.set("bb", 1);
-
-	TestMap map_copy = map::temp_from_map(<String, usz>)(map);
-
-	assert(map_copy.len() == map.len());
 }

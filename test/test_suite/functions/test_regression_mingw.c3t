@@ -67,8 +67,8 @@ fn int Foo2.mutate(Foo2 *foo)
 
 
 
-def oopsInt = test2::argh(<int>);
-def oopsDouble = test2::argh(<int>);
+def oopsInt = test2::argh{int};
+def oopsDouble = test2::argh{int};
 def Argh = fn int(double, Bobo);
 def Argh2 = fn int(double, Bobo);
 
@@ -97,15 +97,15 @@ struct Foo
     int b;
 }
 
-def getValueInt = test2::getValue(<int>);
-def getValueDouble = test2::getValue(<double>);
-def IntBlob = test2::Blob(<int>);
-def DoubleBlob = Blob(<double>);
-def getMultInt = test2::getMult(<int>);
-def getMultDouble = test2::getMult(<double>);
+def getValueInt = test2::getValue{int};
+def getValueDouble = test2::getValue{double};
+def IntBlob = test2::Blob{int};
+def DoubleBlob = Blob{double};
+def getMultInt = test2::getMult{int};
+def getMultDouble = test2::getMult{double};
 
-def IntArray = List(<int>);
-def IntList = LinkedList(<int>);
+def IntArray = List{int};
+def IntList = LinkedList{int};
 
 enum MyEnum : int
 {
@@ -175,7 +175,7 @@ module hello_world;
 import foo;
 
 extern fn int printf(char *, ...);
-def doubleMult = foo::check(<double>);
+def doubleMult = foo::check{double};
 
 fn void hello()
 {
@@ -183,14 +183,14 @@ fn void hello()
     printf("Mult %f\n", doubleMult(11.1));
 }
 
-module foo(<Type>);
+module foo{Type};
 
 fn Type check(Type i)
 {
     return i * i;
 }
 
-module test2(<Type>);
+module test2{Type};
 
 struct Blob
 {

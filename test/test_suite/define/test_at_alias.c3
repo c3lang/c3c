@@ -1,4 +1,4 @@
-module foo(<Type>);
+module foo{Type};
 import std::io;
 
 macro @hello(Type thing) {
@@ -9,7 +9,7 @@ module bar;
 
 import foo @public;
 
-def @intHello = foo::@hello(<int>);
+def @intHello = foo::@hello{int};
 
 fn void main(String[] args) {
     @intHello(42);

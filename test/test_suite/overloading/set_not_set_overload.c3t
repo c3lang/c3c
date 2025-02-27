@@ -3,7 +3,7 @@ module test;
 import std::io;
 import std::collections::list;
 
-List(<int[3]>) x;
+List{int[3]} x;
 
 struct Map
 {
@@ -15,13 +15,13 @@ fn char[] Map.get(self, int i) @inline @operator([]) => self.data[i][:self.width
 
 fn void main ()
 {
-  x.temp_init();
-  int[3] y = { 1, 2, 3 };
-  x.push(y);
-  x[0][0] = 4;
-  char[20][20] z;
-  Map foo = { z[:10], 10 };
-  foo[3][4] = 123;
+	x.tinit();
+	int[3] y = { 1, 2, 3 };
+	x.push(y);
+	x[0][0] = 4;
+	char[20][20] z;
+	Map foo = { z[:10], 10 };
+	foo[3][4] = 123;
 }
 
 /* #expect: test.ll
@@ -33,7 +33,7 @@ entry:
   %z = alloca [20 x [20 x i8]], align 16
   %foo = alloca %Map, align 8
   %result = alloca %"char[]", align 8
-  %0 = call ptr @"std_collections_list$a3$int$.List.temp_init"(ptr @test.x, i64 16)
+  %0 = call ptr @"std_collections_list$a3$int$.List.tinit"(ptr @test.x, i64 16)
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
   call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %y, i32 12, i1 false)
   %lo = load i64, ptr %coerce, align 8

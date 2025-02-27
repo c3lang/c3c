@@ -176,7 +176,7 @@ void print_type(FILE *file, TypeInfo *type)
 			break;
 		case TYPE_INFO_GENERIC:
 			print_type(file, type->array.base);
-			fputs("(<...>)", file);
+			fputs("{...}", file);
 			break;
 	}
 	switch (type->subtype)
@@ -317,9 +317,6 @@ static inline void emit_param(FILE *file, Decl *decl)
 	{
 		case VARDECL_PARAM:
 			PRINT("param");
-			break;
-		case VARDECL_PARAM_REF:
-			PRINT("refparam");
 			break;
 		case VARDECL_PARAM_EXPR:
 			PRINT("expr");

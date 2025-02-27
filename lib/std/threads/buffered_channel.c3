@@ -1,4 +1,4 @@
-module std::thread::channel(<Type>);
+module std::thread::channel{Type};
 
 distinct BufferedChannel = void*;
 
@@ -19,11 +19,6 @@ struct BufferedChannelImpl @private
 	ConditionVariable read_cond;
 
 	Type[?] buf;
-}
-
-fn void! BufferedChannel.new_init(&self, usz size = 1) @deprecated("Use init(mem)")
-{
-	return self.init(mem, size);
 }
 
 fn void! BufferedChannel.init(&self, Allocator allocator, usz size = 1)

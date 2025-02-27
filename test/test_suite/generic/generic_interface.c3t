@@ -1,7 +1,7 @@
 // #target: macos-aarch64
 module base;
 
-module test(<MyType>);
+module test{MyType};
 import base;
 interface Zzz
 {
@@ -17,7 +17,7 @@ module app;
 import test;
 fn int main()
 {
-	TestStruct(<int>) ts;
+	TestStruct{int} ts;
 	return 0;
 }
 

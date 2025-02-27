@@ -2,7 +2,7 @@ module test;
 import std::io;
 import std::collections::map;
 
-def IntMap = HashMap(<String, int>);
+def IntMap = HashMap{String, int};
 fn void copy_map() @test
 {
 	TrackingAllocator alloc;
@@ -43,9 +43,8 @@ fn void copy_keys() @test
 	@pool()
 	{
 		IntMap x;
-		x.tinit();
 		x.set("hello", 0); // keys copied into temp hashmap
-		y = x.copy_keys(allocator::heap()); // keys copied out
+		y = x.keys(mem); // keys copied out
 		// end of pool: hashmap and its copied-in keys dropped
 	};
 	assert(y == {"hello"});

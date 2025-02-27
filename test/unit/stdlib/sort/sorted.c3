@@ -66,13 +66,13 @@ fn void sorted()
 			tc.input, got, tc.want);
 	
 		// with list
-		List(<int>) list;
+		List{int} list;
 		list.tinit();
 		list.add_array(tc.input);
 
 		got = is_sorted(list);
 		assert(got == tc.want, "list: %s, got: %s, want: %s",
-			list.to_tstring(), got, tc.want);
+			list, got, tc.want);
 
 		// with lambda
 		got = is_sorted(tc.input, fn int(int a, int b) => a - b);

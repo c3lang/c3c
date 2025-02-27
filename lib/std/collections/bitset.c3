@@ -1,7 +1,7 @@
 <*
  @require SIZE > 0
 *>
-module std::collections::bitset(<SIZE>);
+module std::collections::bitset{SIZE};
 
 def Type = uint;
 
@@ -70,26 +70,16 @@ fn void BitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
 <*
  @require Type.kindof == UNSIGNED_INT
 *>
-module std::collections::growablebitset(<Type>);
+module std::collections::growablebitset{Type};
 import std::collections::list;
 
 const BITS = Type.sizeof * 8;
 
-def GrowableBitSetList = List(<Type>);
+def GrowableBitSetList = List{Type};
 
 struct GrowableBitSet
 {
 	GrowableBitSetList data;
-}
-
-<*
- @param initial_capacity
- @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
-*>
-fn GrowableBitSet* GrowableBitSet.new_init(&self, usz initial_capacity = 1, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
-{
-	self.data.init(allocator, initial_capacity);
-	return self;
 }
 
 <*
@@ -102,14 +92,9 @@ fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, usz initial_c
 	return self;
 }
 
-fn GrowableBitSet* GrowableBitSet.temp_init(&self, usz initial_capacity = 1) @deprecated("Use tinit()")
-{
-	return self.init(allocator::temp(), initial_capacity) @inline;
-}
-
 fn GrowableBitSet* GrowableBitSet.tinit(&self, usz initial_capacity = 1)
 {
-	return self.init(allocator::temp(), initial_capacity) @inline;
+	return self.init(tmem(), initial_capacity) @inline;
 }
 
 fn void GrowableBitSet.free(&self)

@@ -1,8 +1,0 @@
-module test;
-distinct Time = long;
-
-fn void main(String[] args)
-{
-	Time.min;
-	Time.max;
-}

@@ -8,8 +8,8 @@ def FnB = fn void(Foo*);
 
 struct Foo
 {
-    List(<FnA>) aFuncs;
-    List(<FnB>) bFuncs;
+    List{FnA} aFuncs;
+    List{FnB} bFuncs;
 }
 
 fn void! Foo.deinit(&self)

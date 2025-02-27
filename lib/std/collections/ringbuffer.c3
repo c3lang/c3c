@@ -1,11 +1,14 @@
 <*
- @require values::@is_int(SIZE) &&& SIZE > 0 "The size must be positive integer"
+ @require Type.kindof == ARRAY : "Required an array type"
 *>
-module std::collections::ringbuffer(<Type, SIZE>);
+module std::collections::ringbuffer{Type};
+import std::io;
 
-struct RingBuffer
+def Element = $typeof((Type){}[0]);
+
+struct RingBuffer (Printable)
 {
-	Type[SIZE] buf;
+	Type buf;
 	usz written;
 	usz head;
 }
@@ -15,9 +18,9 @@ fn void RingBuffer.init(&self) @inline
 	*self = {};
 }
 
-fn void RingBuffer.push(&self, Type c)
+fn void RingBuffer.push(&self, Element c)
 {
-	if (self.written < SIZE)
+	if (self.written < self.buf.len)
 	{
 		self.buf[self.written] = c;
 		self.written++;
@@ -25,14 +28,14 @@ fn void RingBuffer.push(&self, Type c)
 	else
 	{
 		self.buf[self.head] = c;
-		self.head = (self.head + 1) % SIZE;
+		self.head = (self.head + 1) % self.buf.len;
 	}
 }
 
-fn Type RingBuffer.get(&self, usz index) @operator([])
+fn Element RingBuffer.get(&self, usz index) @operator([])
 {
-	index %= SIZE;
-	usz avail = SIZE - self.head;
+	index %= self.buf.len;
+	usz avail = self.buf.len - self.head;
 	if (index < avail)
 	{
 		return self.buf[self.head + index];
@@ -40,25 +43,31 @@ fn Type RingBuffer.get(&self, usz index) @operator([])
 	return self.buf[index - avail];
 }
 
-fn Type! RingBuffer.pop(&self)
+fn Element! RingBuffer.pop(&self)
 {
 	switch
 	{
 		case self.written == 0:
 			return SearchResult.MISSING?;
-		case self.written < SIZE:
+		case self.written < self.buf.len:
 			self.written--;
 			return self.buf[self.written];
 		default:
-			self.head = (self.head - 1) % SIZE;
+			self.head = (self.head - 1) % self.buf.len;
 			return self.buf[self.head];
 	}
 }
 
-fn usz RingBuffer.read(&self, usz index, Type[] buffer)
+fn usz! RingBuffer.to_format(&self, Formatter* format) @dynamic
 {
-	index %= SIZE;
-	if (self.written < SIZE)
+	// Improve this?
+	return format.printf("%s", self.buf);
+}
+
+fn usz RingBuffer.read(&self, usz index, Element[] buffer)
+{
+	index %= self.buf.len;
+	if (self.written < self.buf.len)
 	{
 		if (index >= self.written) return 0;
 		usz end = self.written - index;
@@ -66,7 +75,7 @@ fn usz RingBuffer.read(&self, usz index, Type[] buffer)
 		buffer[:n] = self.buf[index:n];
 		return n;
 	}
-	usz end = SIZE - self.head;
+	usz end = self.buf.len - self.head;
 	if (index >= end)
 	{
 		index -= end;
@@ -75,13 +84,13 @@ fn usz RingBuffer.read(&self, usz index, Type[] buffer)
 		buffer[:n] = self.buf[index:n];
 		return n;
 	}
-	if (buffer.len <= SIZE - index)
+	if (buffer.len <= self.buf.len - index)
 	{
 		usz n = buffer.len;
 		buffer[:n] = self.buf[self.head + index:n];
 		return n;
 	}
-	usz n1 = SIZE - index;
+	usz n1 = self.buf.len - index;
 	buffer[:n1] = self.buf[self.head + index:n1];
 	buffer = buffer[n1..];
 	index -= n1;
@@ -90,10 +99,10 @@ fn usz RingBuffer.read(&self, usz index, Type[] buffer)
 	return n1 + n2;
 }
 
-fn void RingBuffer.write(&self, Type[] buffer)
+fn void RingBuffer.write(&self, Element[] buffer)
 {
 	usz i;
-	while (self.written < SIZE && i < buffer.len)
+	while (self.written < self.buf.len && i < buffer.len)
 	{
 		self.buf[self.written] = buffer[i++];
 		self.written++;
@@ -101,6 +110,6 @@ fn void RingBuffer.write(&self, Type[] buffer)
 	foreach (c : buffer[i..])
 	{
 		self.buf[self.head] = c;
-		self.head = (self.head + 1) % SIZE;
+		self.head = (self.head + 1) % self.buf.len;
 	}
 }

@@ -90,21 +90,17 @@ static bool parse_expr_list(ParseContext *c, Expr ***exprs_ref, TokenType end_to
 	return true;
 }
 /**
- * generic_parameters ::= '(<' expr (',' expr) '>)'
+ * generic_parameters ::= '{' expr (',' expr) '}'
  */
 bool parse_generic_parameters(ParseContext *c, Expr ***exprs_ref)
 {
-	bool is_new_generic = try_consume(c, TOKEN_LBRACE);
-	if (!is_new_generic)
-	{
-		advance_and_verify(c, TOKEN_LGENPAR);
-	}
+	advance_and_verify(c, TOKEN_LBRACE);
 	while (true)
 	{
 		ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), false);
 		vec_add(*exprs_ref, expr);
 		if (try_consume(c, TOKEN_COMMA)) continue;
-		CONSUME_OR_RET(is_new_generic ? TOKEN_RBRACE : TOKEN_RGENPAR, false);
+		CONSUME_OR_RET(TOKEN_RBRACE, false);
 		return true;
 	}
 }
@@ -456,41 +452,19 @@ static Expr *parse_lambda(ParseContext *c, Expr *left)
 	return expr;
 }
 
-static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-
 /**
- * vasplat ::= CT_VASPLAT '(' range_expr ')'
- * -> TODO, this is the only one in 0.7
  * vasplat ::= CT_VASPLAT ('[' range_expr ']')?
  */
 Expr *parse_vasplat(ParseContext *c)
 {
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_VASPLAT);
 	advance_and_verify(c, TOKEN_CT_VASPLAT);
-	bool lparen = try_consume(c, TOKEN_LPAREN);
-	if (lparen && try_consume(c, TOKEN_RPAREN)) goto END;
-	if (lparen || try_consume(c, TOKEN_LBRACKET))
+	if (try_consume(c, TOKEN_LBRACKET))
 	{
 		if (!parse_range(c, &expr->vasplat_expr)) return poisoned_expr;
-		CONSUME_OR_RET(lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_expr);
+		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
-END:;
-	// TODO remove in 0.7
-	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-	if (lparen)
-	{
-		if (expr->vasplat_expr.end || expr->vasplat_expr.start)
-		{
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			SEMA_DEPRECATED(expr, "'$vasplat(...)' is deprecated, use '$vasplat[...]' instead.");
-		}
-		else
-		{
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			SEMA_DEPRECATED(expr, "'$vasplat()' is deprecated, use '$vasplat' instead.");
-		}
-	}
 	return expr;
 }
 /**
@@ -516,21 +490,6 @@ bool parse_arg_list(ParseContext *c, Expr ***result, TokenType param_end, bool v
 			advance(c);
 			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
 			RANGE_EXTEND_PREV(expr);
-			goto DONE;
-		}
-		if (tok_is(c, TOKEN_DOT) && token_is_param_name(peek(c)))
-		{
-			// Create the parameter expr
-			expr = expr_new(EXPR_NAMED_ARGUMENT, start_span);
-			advance(c);
-			expr->named_argument_expr.name = symstr(c);
-			expr->named_argument_expr.name_span = c->span;
-			advance(c);
-			CONSUME_OR_RET(TOKEN_EQ, false);
-			ASSIGN_EXPR_OR_RET(expr->named_argument_expr.value, parse_expr(c), false);
-			RANGE_EXTEND_PREV(expr);
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			SEMA_DEPRECATED(expr, "Named arguments using the '.foo = expr' style are deprecated, please use 'foo: expr' instead.");
 			goto DONE;
 		}
 		if (vasplat && tok_is(c, TOKEN_CT_VASPLAT))
@@ -696,10 +655,6 @@ static Expr *parse_type_expr(ParseContext *c, Expr *left)
 	ASSERT(!left && "Unexpected left hand side");
 	Expr *expr = EXPR_NEW_TOKEN(EXPR_TYPEINFO);
 	ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type(c), poisoned_expr);
-	if (tok_is(c, TOKEN_LBRACE) && !compiler.build.enable_new_generics)
-	{
-		return parse_type_compound_literal_expr_after_type(c, type);
-	}
 	expr->span = type->span;
 	expr->type_expr = type;
 	expr->type = type_typeinfo;
@@ -845,7 +800,7 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		case EXPR_TYPEINFO:
 		{
 			TypeInfo *info = expr->type_expr;
-			if (tok_is(c, TOKEN_LBRACE) && compiler.build.enable_new_generics)
+			if (tok_is(c, TOKEN_LBRACE))
 			{
 				return parse_type_compound_literal_expr_after_type(c, info);
 			}
@@ -1113,11 +1068,6 @@ static Expr *parse_subscript_expr(ParseContext *c, Expr *left)
  */
 static Expr *parse_generic_expr(ParseContext *c, Expr *left)
 {
-	if (tok_is(c, TOKEN_LBRACE) && !compiler.build.enable_new_generics)
-	{
-		PRINT_ERROR_HERE("This looks like you're using the new generics syntax. Please compile with --new-generics-enabled if you want it.");
-		return poisoned_expr;
-	}
 	ASSERT(left && expr_ok(left));
 	Expr *subs_expr = expr_new_expr(EXPR_GENERIC_IDENT, left);
 	subs_expr->generic_ident_expr.parent = exprid(left);
@@ -1252,22 +1202,6 @@ static Expr *parse_ct_embed(ParseContext *c, Expr *left)
 	return embed;
 }
 
-
-static Expr *parse_ct_concat_append(ParseContext *c, Expr *left)
-{
-	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(tok_is(c, TOKEN_CT_CONCATFN) ? EXPR_CT_CONCAT : EXPR_CT_APPEND);
-	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-	SEMA_DEPRECATED(expr, "'%s' is deprecated in favour of '+++'.", symstr(c));
-	advance(c);
-
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (!parse_expr_list(c, &expr->ct_concat, TOKEN_RPAREN)) return poisoned_expr;
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
-
-
 /**
  * ct_call ::= (CT_ALIGNOF | CT_FEATURE | CT_EXTNAMEOF | CT_OFFSETOF | CT_NAMEOF | CT_QNAMEOF) '(' flat_path ')'
  * flat_path ::= expr ('.' primary) | '[' expr ']')*
@@ -1285,21 +1219,6 @@ static Expr *parse_ct_call(ParseContext *c, Expr *left)
 	expr->ct_call_expr.main_var = internal;
 	expr->ct_call_expr.flat_path = elements;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
-
-static Expr *parse_ct_and_or(ParseContext *c, Expr *left)
-{
-	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_CT_AND_OR);
-	expr->ct_and_or_expr.is_and = tok_is(c, TOKEN_CT_ANDFN);
-	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-	SEMA_DEPRECATED(expr, "The use of '%s' is deprecated in favour of '%s'.", symstr(c),
-					expr->ct_and_or_expr.is_and ? "&&&" :  "|||");
-	advance(c);
-	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_expr);
-	if (!parse_expr_list(c, &expr->ct_and_or_expr.args, TOKEN_RPAREN)) return poisoned_expr;
 	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
@@ -1331,19 +1250,9 @@ static Expr *parse_ct_arg(ParseContext *c, Expr *left)
 	advance(c);
 	if (type != TOKEN_CT_VACOUNT)
 	{
-		// TODO remove in 0.7
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-		bool is_lparen = try_consume(c, TOKEN_LPAREN);
-		if (!is_lparen) CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
+		CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_expr);
 		ASSIGN_EXPRID_OR_RET(expr->ct_arg_expr.arg, parse_expr(c), poisoned_expr);
-		CONSUME_OR_RET(is_lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_expr);
-		// TODO remove in 0.7
-		if (is_lparen)
-		{
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			SEMA_DEPRECATED(expr, "'%s(...)' is deprecated, use '%s[...]' instead.",
-			                token_type_to_string(type), token_type_to_string(type));
-		}
+		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_expr);
 	}
 	RANGE_EXTEND_PREV(expr);
 	return expr;
@@ -2017,26 +1926,6 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 }
 
 
-
-/**
- * expr_block ::= '{|' opt_stmt_list '|}'
- */
-static Expr* parse_expr_block(ParseContext *c, Expr *left)
-{
-	ASSERT(!left && "Had left hand side");
-	Expr *expr = EXPR_NEW_TOKEN(EXPR_EXPR_BLOCK);
-	advance_and_verify(c, TOKEN_LBRAPIPE);
-	AstId *next = &expr->expr_block.first_stmt;
-	while (!try_consume(c, TOKEN_RBRAPIPE))
-	{
-		Ast *stmt = parse_stmt(c);
-		if (!ast_ok(stmt)) return poisoned_expr;
-		ast_append(&next, stmt);
-	}
-	RANGE_EXTEND_PREV(expr);
-	return expr;
-}
-
 ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_BOOL] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_CHAR] = { parse_type_identifier, NULL, PREC_NONE },
@@ -2069,10 +1958,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_PLUSPLUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_MINUSMINUS] = { parse_unary_expr, parse_post_unary, PREC_CALL },
 		[TOKEN_LPAREN] = { parse_grouping_expr, parse_call_expr, PREC_CALL },
-		[TOKEN_LBRAPIPE] = { parse_expr_block, NULL, PREC_NONE },
 		[TOKEN_BANGBANG] = { NULL, parse_force_unwrap_expr, PREC_CALL },
 		[TOKEN_LBRACKET] = { NULL, parse_subscript_expr, PREC_CALL },
-		[TOKEN_LGENPAR] = { NULL, parse_generic_expr, PREC_CALL },
 		[TOKEN_MINUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_PLUS] = { parse_unary_expr, parse_binary, PREC_ADDITIVE },
 		[TOKEN_DIV] = { NULL, parse_binary, PREC_MULTIPLICATIVE },
@@ -2129,11 +2016,8 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		//[TOKEN_HASH_TYPE_IDENT] = { parse_type_identifier, NULL, PREC_NONE }
 		[TOKEN_ELLIPSIS] = { parse_splat, NULL, PREC_NONE },
 		[TOKEN_FN] = { parse_lambda, NULL, PREC_NONE },
-		[TOKEN_CT_CONCATFN] = {parse_ct_concat_append, NULL, PREC_NONE },
-		[TOKEN_CT_APPEND] = { parse_ct_concat_append, NULL, PREC_NONE },
 		[TOKEN_CT_SIZEOF] = { parse_ct_sizeof, NULL, PREC_NONE },
 		[TOKEN_CT_ALIGNOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_ANDFN] = {parse_ct_and_or, NULL, PREC_NONE },
 		[TOKEN_CT_ASSIGNABLE] = { parse_ct_castable, NULL, PREC_NONE },
 		[TOKEN_CT_DEFINED] = { parse_ct_defined, NULL, PREC_NONE },
 		[TOKEN_CT_IS_CONST] = {parse_ct_is_const, NULL, PREC_NONE },
@@ -2142,7 +2026,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_CT_FEATURE] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_EXTNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_OFFSETOF] = { parse_ct_call, NULL, PREC_NONE },
-		[TOKEN_CT_ORFN] = {parse_ct_and_or, NULL, PREC_NONE },
 		[TOKEN_CT_NAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_QNAMEOF] = { parse_ct_call, NULL, PREC_NONE },
 		[TOKEN_CT_TYPEFROM] = { parse_type_expr, NULL, PREC_NONE },
@@ -2152,7 +2035,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_LBRACE] = { parse_initializer_list, parse_generic_expr, PREC_PRIMARY },
 		[TOKEN_CT_VACOUNT] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VAARG] = { parse_ct_arg, NULL, PREC_NONE },
-		[TOKEN_CT_VAREF] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VATYPE] = { parse_type_expr, NULL, PREC_NONE },
 		[TOKEN_CT_VAEXPR] = { parse_ct_arg, NULL, PREC_NONE },
 		[TOKEN_CT_VACONST] = { parse_ct_arg, NULL, PREC_NONE },

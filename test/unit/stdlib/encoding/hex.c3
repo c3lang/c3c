@@ -24,11 +24,11 @@ fn void encode()
 	foreach (t : tests)
 	{
 		n = hex::encode_bytes(t.dec, buf[..]);
-		String want = ((String)t.enc).temp_ascii_to_lower();
+		String want = ((String)t.enc).to_lower_tcopy();
 		assert(want == buf[:n], "encode failed: got: %s, want: %s", buf[:n], want);
 		@pool()
 		{
-			assert(want == hex::encode_temp(t.dec));
+			assert(want == hex::tencode(t.dec));
 		};
 	}
 }
@@ -43,7 +43,7 @@ fn void decode()
 		assert(t.dec == buf[:n], "decode failed: got: %s, want: %s", buf[:n], t.dec);
 		@pool()
 		{
-			assert(t.dec == hex::decode_temp(t.enc)!!);
+			assert(t.dec == hex::tdecode(t.enc)!!);
 		};
 	}
 }

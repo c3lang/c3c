@@ -468,13 +468,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			MACRO_COPY_EXPRID(expr->castable_expr.expr);
 			MACRO_COPY_TYPEID(expr->castable_expr.type);
 			return expr;
-		case EXPR_CT_APPEND:
-		case EXPR_CT_CONCAT:
-			MACRO_COPY_EXPR_LIST(expr->ct_concat);
-			return expr;
-		case EXPR_CT_AND_OR:
-			MACRO_COPY_EXPR_LIST(expr->ct_and_or_expr.args);
-			return expr;
 		case EXPR_CT_EVAL:
 		case EXPR_CT_IS_CONST:
 		case EXPR_FORCE_UNWRAP:
@@ -526,9 +519,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_COMPOUND_LITERAL:
 			MACRO_COPY_EXPR(expr->expr_compound_literal.initializer);
 			MACRO_COPY_TYPE(expr->expr_compound_literal.type_info);
-			return expr;
-		case EXPR_EXPR_BLOCK:
-			MACRO_COPY_ASTID(expr->expr_block.first_stmt);
 			return expr;
 		case EXPR_POISONED:
 			return source_expr;

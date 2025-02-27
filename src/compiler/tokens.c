@@ -102,10 +102,6 @@ const char *token_type_to_string(TokenType type)
 			return "=>";
 		case TOKEN_LESS_EQ:
 			return "<=";
-		case TOKEN_LBRAPIPE:
-			return "{|";
-		case TOKEN_LGENPAR:
-			return "(<";
 		case TOKEN_LVEC:
 			return "[<";
 		case TOKEN_MINUS_ASSIGN:
@@ -126,10 +122,6 @@ const char *token_type_to_string(TokenType type)
 			return "++";
 		case TOKEN_QUESTQUEST:
 			return "??";
-		case TOKEN_RBRAPIPE:
-			return "|}";
-		case TOKEN_RGENPAR:
-			return ">)";
 		case TOKEN_RVEC:
 			return ">]";
 		case TOKEN_SCOPE:
@@ -329,18 +321,12 @@ const char *token_type_to_string(TokenType type)
 			return "*>";
 		case TOKEN_CT_ALIGNOF:
 			return "$alignof";
-		case TOKEN_CT_ANDFN:
-			return "$and";
-		case TOKEN_CT_APPEND:
-			return "$append";
 		case TOKEN_CT_ASSERT:
 			return "$assert";
 		case TOKEN_CT_ASSIGNABLE:
 			return "$assignable";
 		case TOKEN_CT_CASE:
 			return "$case";
-		case TOKEN_CT_CONCATFN:
-			return "$concat";
 		case TOKEN_CT_DEFAULT:
 			return "$default";
 		case TOKEN_CT_DEFINED:
@@ -387,8 +373,6 @@ const char *token_type_to_string(TokenType type)
 			return "$vaconst";
 		case TOKEN_CT_VAARG:
 			return "$vaarg";
-		case TOKEN_CT_VAREF:
-			return "$varef";
 		case TOKEN_CT_VAEXPR:
 			return "$vaexpr";
 		case TOKEN_CT_VASPLAT:
@@ -397,8 +381,6 @@ const char *token_type_to_string(TokenType type)
 			return "$nameof";
 		case TOKEN_CT_OFFSETOF:
 			return "$offsetof";
-		case TOKEN_CT_ORFN:
-			return "$or";
 		case TOKEN_CT_QNAMEOF:
 			return "$qnameof";
 		case TOKEN_CT_SIZEOF:

@@ -15,7 +15,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		if (!name || name == "." || name == "..") continue;
 		if (entry.d_type == posix::DT_LNK && no_symlinks) continue;
 		if (entry.d_type == posix::DT_DIR && no_dirs) continue;
-		Path path = path::new(name, allocator)!!;
+		Path path = path::new(allocator, name)!!;
 		list.push(path);
 	}
 	return list;
@@ -31,7 +31,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 
 	@pool(allocator)
 	{
-		WString result = dir.str_view().tconcat(`\*`).to_temp_wstring()!!;
+		WString result = dir.str_view().tconcat(`\*`).to_wstring_tcopy()!!;
 		Win32_WIN32_FIND_DATAW find_data;
 		Win32_HANDLE find = win32::findFirstFileW(result, &find_data);
 		if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
@@ -43,7 +43,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 			{
 				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
 				if (filename == ".." || filename == ".") continue;
-				list.push(path::new(filename, allocator)!);
+				list.push(path::new(allocator, filename)!);
 			};
 		} while (win32::findNextFileW(find, &find_data));
 		return list;

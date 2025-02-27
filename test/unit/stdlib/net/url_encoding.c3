@@ -31,7 +31,7 @@ fn void test_decoding_with_error() => @pool()
 {
 	foreach (test: decode_with_error_tests)
 	{
-		String! actual = url::temp_decode(test.in, test.mode);
+		String! actual = url::tdecode(test.in, test.mode);
 		if (catch excuse = actual)
 		{
 			assert(excuse == test.err, "unescape(%s, %s); "
@@ -64,11 +64,11 @@ fn void test_percent_encode_and_decode() => @pool()
 {
 	foreach (test: encode_tests)
 	{
-		String actual = url::temp_encode(test.in, test.mode);
+		String actual = url::tencode(test.in, test.mode);
 		assert(actual == test.out, "escape(%s, %s); "
 			"got: %s, want: %s", test.in, test.mode, actual, test.out);
 
-		actual = url::temp_decode(test.out, test.mode)!!;
+		actual = url::tdecode(test.out, test.mode)!!;
 		assert(actual == test.in, "unescape(%s, %s); "
 				"got: %s, want: %s", test.out, test.mode, actual, test.in);
 	}

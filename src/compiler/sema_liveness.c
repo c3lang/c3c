@@ -420,9 +420,6 @@ RETRY:
 			sema_trace_stmt_chain_liveness(expr->macro_block.first_stmt);
 			return;
 		}
-		case EXPR_EXPR_BLOCK:
-			sema_trace_stmt_chain_liveness(expr->expr_block.first_stmt);
-			return;
 		case EXPR_MACRO_BODY_EXPANSION:
 		{
 			FOREACH(Decl *, arg, expr->body_expansion_expr.declarations) sema_trace_decl_liveness(arg);
@@ -645,7 +642,6 @@ RETRY:
 				case VARDECL_PARAM_EXPR:
 					// These are never traced, they are folded in use.
 					break;
-				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM:
 					sema_trace_type_liveness(decl->type);

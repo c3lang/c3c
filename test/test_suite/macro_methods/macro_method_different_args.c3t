@@ -7,7 +7,7 @@ struct Foo
 	int x;
 }
 
-macro void Foo.@hello(Foo* &this) { this.x = 3; printf("-%d\n", this.x); }
+macro void Foo.@hello(&this) { this.x = 3; printf("-%d\n", this.x); }
 macro void Foo.hello(Foo* this) { this.x = 4; printf("-%d\n", this.x); }
 macro void Foo.hello2(Foo this) { this.x = 5; printf("-%d\n", this.x); }
 

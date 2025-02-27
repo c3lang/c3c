@@ -1,6 +1,6 @@
 module test;
 import std;
-def ListStr = List(<String>);
+def ListStr = List{String};
 fn void test()
 {
 	List<String> a = List<...>.new_init(); // #error: An expression was expected
@@ -8,12 +8,12 @@ fn void test()
 
 fn void test2()
 {
-	List(<String>) a = List<...>.new_init(); // #error: An expression was expected
+	List{String} a = List<...>.new_init(); // #error: An expression was expected
 }
 
 fn void test3()
 {
-	List(<String>) a = List(<...>).new_init(); // #error: An expression was expected
+	List{String} a = List{...}.new_init(); // #error: An expression was expected
 }
 
 fn void main()
