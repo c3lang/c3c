@@ -394,10 +394,13 @@ fn void List.reserve(&self, usz added)
 fn void List._update_size_change(&self,usz old_size, usz new_size)
 {
 	if (old_size == new_size) return;
-	sanitizer::annotate_contiguous_container(self.entries,
+	$if env::ADDRESS_SANITIZER:
+		if (self.allocator.ptr != &allocator::LIBC_ALLOCATOR) return;
+		sanitizer::annotate_contiguous_container(self.entries,
 	                                         &self.entries[self.capacity],
 	                                         &self.entries[old_size],
 	                                         &self.entries[new_size]);
+	$endif
 }
 <*
  @require new_size == 0 || self.capacity != 0
