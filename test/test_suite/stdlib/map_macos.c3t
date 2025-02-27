@@ -53,7 +53,7 @@ fn void main()
 /* #expect: test.ll
 
 @"$sel.to_new_string" = linkonce_odr constant [14 x i8] c"to_new_string\00", align 1
-@"$c3_dynamic" = internal global [1 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @test.Foo.to_new_string, ptr @"$sel.to_new_string", i64 ptrtoint (ptr @"$ct.test.Foo" to i64) }], section "__DATA,__c3_dynamic", align 8
+@"$c3_dynamic" = internal global [1 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @test.Foo.to_new_string, ptr @"$sel.to_new_string", i64 ptrtoint (ptr @"$ct.test.Foo" to i64) }], section "__DATA,__c3_dynamic", no_sanitize_address, align 8
 
 define { ptr, i64 } @test.Foo.to_new_string(ptr %0, i64 %1, ptr %2) #0 {
 entry:

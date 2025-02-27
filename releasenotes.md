@@ -16,6 +16,9 @@
 - Remove `.allocator = allocator` syntax for functions.
 - Remove `@operator(construct)`.
 
+### Fixes
+- Fix address sanitizer to work on MachO targets (e.g. MacOS).
+
 ## 0.6.8 Change list
 
 ### Changes / improvements

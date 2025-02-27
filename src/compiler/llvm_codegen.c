@@ -160,6 +160,7 @@ static LLVMValueRef llvm_emit_macho_xtor(GenContext *c, LLVMValueRef *list, cons
 	scratch_buffer_append(name);
 	LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, list, vec_size(list));
 	LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), scratch_buffer_to_string());
+	LLVMSetNoSanitizeAddress(global);
 	scratch_buffer_clear();
 	scratch_buffer_append("__DATA,__");
 	scratch_buffer_append(name);
@@ -196,6 +197,7 @@ void llvm_emit_constructors_and_destructors(GenContext *c)
 		LLVMValueRef entry = LLVMConstNamedStruct(c->xtor_entry_type, vals, 3);
 		LLVMValueRef array = LLVMConstArray(c->xtor_entry_type, &entry, 1);
 		LLVMValueRef global_dtor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_dtors");
+		LLVMSetNoSanitizeAddress(global_dtor);
 		LLVMSetLinkage(global_dtor, LLVMAppendingLinkage);
 		LLVMSetInitializer(global_dtor, array);
 		vals[1] = runtime_start;
@@ -205,6 +207,7 @@ EMIT_CTORS:
 		if (len == 0) return;
 		array = LLVMConstArray(c->xtor_entry_type, ctors, len);
 		LLVMValueRef global_ctor = LLVMAddGlobal(c->module, LLVMTypeOf(array), "llvm.global_ctors");
+		LLVMSetNoSanitizeAddress(global_ctor);
 		LLVMSetLinkage(global_ctor, LLVMAppendingLinkage);
 		LLVMSetInitializer(global_ctor, array);
 		return;
