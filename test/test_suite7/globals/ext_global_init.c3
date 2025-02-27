@@ -1,1 +1,0 @@
-extern int a = 1; // #error: Extern globals may not have initializers

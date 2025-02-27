@@ -1,6 +1,6 @@
 import std;
 
-def IList = List(<int>);
+def IList = List{int};
 fn IList new()
 {
 	IList l;

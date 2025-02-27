@@ -415,6 +415,7 @@ typedef struct VarDecl_
 	bool in_param : 1;
 	bool is_written : 1;
 	bool is_addr : 1;
+	bool self_addr : 1;
 	bool is_threadlocal : 1;
 	bool no_init : 1;
 	bool no_alias : 1;
@@ -984,11 +985,6 @@ typedef struct
 	void *block_return_out;
 } BlockExit;
 
-typedef struct
-{
-	AstId first_stmt;
-	BlockExit **block_exit_ref;
-} ExprFuncBlock;
 
 
 typedef struct
@@ -1149,7 +1145,6 @@ struct Expr_
 		Expr** cond_expr;                           // 8
 		ExprConst const_expr;                       // 32
 		ExprCtArg ct_arg_expr;
-		ExprCtAndOr ct_and_or_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
 		ExprCastable castable_expr;
@@ -1162,7 +1157,6 @@ struct Expr_
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr **exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
-		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr **expression_list;                     // 8
 		ExprIntToBool int_to_bool_expr;
@@ -3033,10 +3027,7 @@ static inline Type *type_flatten_to_int(Type *type)
 				type = type->decl->strukt.container_type->type;
 				break;
 			case TYPE_ENUM:
-				SEMA_DEPRECATED(type->decl, "Relying on conversion of enums into ordinals is deprecated, use inline on the value instead.");
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				type = type->decl->enums.type_info->type;
-				break;
+				return type;
 			case TYPE_VECTOR:
 				ASSERT(type_is_integer(type->array.base));
 				return type;
@@ -3451,9 +3442,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_APPEND:
-		case EXPR_CT_CONCAT:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CASTABLE:
@@ -3464,7 +3452,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_DECL:
 		case EXPR_DESIGNATOR:
 		case EXPR_EMBED:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_GENERIC_IDENT:
@@ -4026,7 +4013,6 @@ static inline bool decl_is_var_local(Decl *decl)
 		   || kind == VARDECL_LOCAL
 		   || kind == VARDECL_LOCAL_CT_TYPE
 		   || kind == VARDECL_LOCAL_CT
-		   || kind == VARDECL_PARAM_REF // DEPRECATED
 		   || kind == VARDECL_PARAM_EXPR
 		   || kind == VARDECL_BITMEMBER
 		   || kind == VARDECL_MEMBER;

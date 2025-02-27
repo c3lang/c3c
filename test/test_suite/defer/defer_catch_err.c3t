@@ -1,5 +1,4 @@
 // #target: macos-x64
-// #deprecation: no
 module foo;
 import std::io;
 
@@ -11,15 +10,17 @@ fn void! test2()
 	test()!;
 }
 
+macro run()
+{
+	const ABC = 4;
+	int! x = SearchResult.MISSING?;
+	defer (catch err) io::printfn("Hello %s", err);
+	defer (catch err) { io::printfn("Bye %s", err); err = Test.FOO; }
+	return x;
+}
 fn int! test()
 {
-	int! z = {|
-		const ABC = 4;
-		int! x = SearchResult.MISSING?;
-		defer (catch err) io::printfn("Hello %s", err);
-		defer (catch err) { io::printfn("Bye %s", err); err = Test.FOO; }
-		return x;
-	|};
+	int! z = run();
 	const ABC = 4;
 	int! x = SearchResult.MISSING?;
 	defer (catch err) io::printfn("Hello %s", err);

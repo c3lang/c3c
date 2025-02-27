@@ -8,8 +8,4 @@ fn void main()
   y *= 2;
   y = 3;          // #error: explicit cast
   test2(3);       // #error: explicit cast
-  {|
-    if (y[0] == 3) return 1; // #error: explicit cast
-    return y;
-  |};
 }

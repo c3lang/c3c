@@ -43,22 +43,20 @@ const Base64Alphabet URL = {
 const STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
-fn String encode(char[] src, Allocator allocator, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn String encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, encode_len(src.len, padding));
 	return encode_buffer(src, dst, padding, alphabet);
 }
 
-fn char[]! decode(char[] src, Allocator allocator, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn char[]! decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, decode_len(src.len, padding))!;
 	return decode_buffer(src, dst, padding, alphabet);
 }
 
-fn String encode_new(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(code, allocator::heap(), padding, alphabet);
-fn String encode_temp(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(code, allocator::temp(), padding, alphabet);
-fn char[]! decode_new(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(code, allocator::heap(), padding, alphabet);
-fn char[]! decode_temp(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(code, allocator::temp(), padding, alphabet);
+fn String tencode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
+fn char[]! tdecode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
 
 
 <*

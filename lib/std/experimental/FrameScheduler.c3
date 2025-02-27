@@ -1,4 +1,4 @@
-module std::experimental::scheduler(<Event>);
+module std::experimental::scheduler{Event};
 import std::collections, std::thread, std::time;
 
 struct DelayedSchedulerEvent @local
@@ -19,9 +19,9 @@ fn int DelayedSchedulerEvent.compare_to(self, DelayedSchedulerEvent other) @loca
 
 struct FrameScheduler
 {
-	PriorityQueue(<DelayedSchedulerEvent>) delayed_events;
-	List(<Event>) events;
-	List(<Event>) pending_events;
+	PriorityQueue{DelayedSchedulerEvent} delayed_events;
+	List{Event} events;
+	List{Event} pending_events;
 	bool pending;
 	Mutex mtx;
 }

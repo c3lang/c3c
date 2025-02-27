@@ -35,7 +35,7 @@ fn usz! Uuid.to_format(&self, Formatter* formatter) @dynamic
 		(*self)[10], (*self)[11], (*self)[12], (*self)[13], (*self)[14], (*self)[15]);
 }
 
-fn String Uuid.to_string(&self, Allocator allocator) @dynamic
+fn String Uuid.to_string(&self, Allocator allocator)
 {
-	return string::new_format("%s", *self, allocator: allocator);
+	return string::format(allocator, "%s", *self);
 }

@@ -1,5 +1,0 @@
-fn void foo1(int... x;) {} // #error: Expected ')'
-fn void foo2(... x;) {} // #error: Expected ')'
-fn void foo3(... x;) {} // #error: Expected ')'
-fn void foo4(;) {} // #error: Expected ')'
-fn void foo5(int x;) {} // #error: Expected ')'

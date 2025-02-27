@@ -109,7 +109,7 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 		str.append('"');
 	}
 	str.append('\0');
-	return str.str_view().to_temp_wstring()!!;
+	return str.str_view().to_wstring_tcopy()!!;
 }
 
 <*
@@ -149,7 +149,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 				env.append("\0");
 			}
 			env.append("\0");
-			used_environment = env.str_view().to_temp_wstring()!;
+			used_environment = env.str_view().to_wstring_tcopy()!;
 		}
 		int fd = win32::_open_osfhandle((iptr)wr, 0);
 		if (fd != -1)

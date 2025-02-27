@@ -4,7 +4,7 @@
 <*
  @require MAX_SIZE >= 1 `The size must be at least 1 element big.`
 *>
-module std::collections::elastic_array(<Type, MAX_SIZE>);
+module std::collections::elastic_array{Type, MAX_SIZE};
 import std::io, std::math, std::collections::list_common;
 
 def ElementPredicate = fn bool(Type *type);
@@ -37,16 +37,6 @@ fn usz! ElasticArray.to_format(&self, Formatter* formatter) @dynamic
 			n += formatter.print("]")!;
 			return n;
 	}
-}
-
-fn String ElasticArray.to_string(&self, Allocator allocator) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator);
-}
-
-fn String ElasticArray.to_new_string(&self, Allocator allocator = nul) @dynamic
-{
-	return string::format("%s", *self, allocator: allocator ?: allocator::heap());
 }
 
 fn String ElasticArray.to_tstring(&self)
@@ -163,25 +153,9 @@ fn void ElasticArray.add_array(&self, Type[] array)
 <*
  IMPORTANT The returned array must be freed using free_aligned.
 *>
-fn Type[] ElasticArray.to_new_aligned_array(&self)
-{
-	return list_common::list_to_new_aligned_array(Type, self, allocator::heap());
-}
-
-<*
- IMPORTANT The returned array must be freed using free_aligned.
-*>
 fn Type[] ElasticArray.to_aligned_array(&self, Allocator allocator)
 {
-	return list_common::list_to_new_aligned_array(Type, self, allocator);
-}
-
-<*
- @require !type_is_overaligned() : "This function is not available on overaligned types"
-*>
-macro Type[] ElasticArray.to_new_array(&self)
-{
-	return list_common::list_to_array(Type, self, allocator::heap());
+	return list_common::list_to_aligned_array(Type, self, allocator);
 }
 
 <*
@@ -189,15 +163,15 @@ macro Type[] ElasticArray.to_new_array(&self)
 *>
 macro Type[] ElasticArray.to_array(&self, Allocator allocator)
 {
-	return list_common::list_to_new_array(Type, self, allocator);
+	return list_common::list_to_array(Type, self, allocator);
 }
 
 fn Type[] ElasticArray.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_aligned_array(allocator::temp());
+	return self.to_aligned_array(tmem());
 	$else
-	return self.to_array(allocator::temp());
+	return self.to_array(tmem());
 	$endif;
 }
 

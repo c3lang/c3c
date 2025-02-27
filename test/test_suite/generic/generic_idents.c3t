@@ -1,5 +1,5 @@
 // #target: macos-aarch64
-module gen(<Type>);
+module gen{Type};
 
 fn Type mult(Type x)
 {
@@ -14,8 +14,8 @@ fn Type addMult(Type x, Type a, Type b)
 module test;
 import gen;
 
-def intMult = gen::mult(<int>);
-def doubleAddMult = gen::addMult(<double>);
+def intMult = gen::mult{int};
+def doubleAddMult = gen::addMult{double};
 
 fn int getIt(int i)
 {

@@ -80,22 +80,6 @@ macro usz! read_all(stream, char[] buffer)
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_new_fully(stream, Allocator allocator = allocator::heap()) @deprecated("Use read_fully(mem)")
-{
-	usz len = available(stream)!;
-	char* data = allocator::malloc_try(allocator, len)!;
-	defer catch allocator::free(allocator, data);
-	usz read = 0;
-	while (read < len)
-	{
-		read += stream.read(data[read:len - read])!;
-	}
-	return data[:len];
-}
-
-<*
- @require @is_instream(stream)
-*>
 macro char[]! read_fully(Allocator allocator, stream)
 {
 	usz len = available(stream)!;

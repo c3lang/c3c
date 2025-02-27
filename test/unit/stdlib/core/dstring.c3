@@ -4,7 +4,7 @@ const TEST_STRING = "hello world";
 
 fn void test_replace()
 {
-	DString hello = dstring::new("Hello world where are you? Are you here too?");
+	DString hello = dstring::new(mem, "Hello world where are you? Are you here too?");
 	defer hello.free();
 	hello.replace("u", "ooo");
 	assert(hello.str_view() == "Hello world where are yoooo? Are yoooo here too?");
@@ -51,7 +51,7 @@ fn void test_delete()
 
 fn void test_append()
 {
-	DString str = dstring::new(TEST_STRING);
+	DString str = dstring::new(mem, TEST_STRING);
 	defer str.free();
 	String s;
 
@@ -105,7 +105,7 @@ fn void test_append()
 	s = str.str_view();
 	assert(s == "xxx", "got '%s'; want 'xxx'", s);
 
-	DString str2 = dstring::new("yyy");
+	DString str2 = dstring::new(mem, "yyy");
 	defer str2.free();
 	DString str3 = str.concat(mem, str2);
 	defer str3.free();
@@ -120,7 +120,7 @@ fn void test_append()
 
 fn void test_print()
 {
-	DString str = dstring::new("");
+	DString str = dstring::new(mem, "");
 	defer str.free();
 	String s;
 
@@ -136,11 +136,11 @@ fn void test_print()
 
 fn void test_copy()
 {
-	DString str = dstring::new(TEST_STRING);
+	DString str = dstring::new(mem, TEST_STRING);
 	defer str.free();
 	String s;
 
-	DString str2 = str.copy();
+	DString str2 = str.copy(mem);
 	defer str2.free();
 	s = str2.str_view();
 	assert(s == TEST_STRING, "got '%s'; want '%s'", s, TEST_STRING);
@@ -148,10 +148,10 @@ fn void test_copy()
 
 fn void test_cmp()
 {
-	DString str = dstring::new(TEST_STRING);
+	DString str = dstring::new(mem, TEST_STRING);
 	defer str.free();
 
-	DString str2 = dstring::new(TEST_STRING);
+	DString str2 = dstring::new(mem, TEST_STRING);
 	defer str2.free();
 
 	assert(str.equals(str2));
@@ -164,7 +164,7 @@ fn void test_cmp()
 
 fn void test_join()
 {
-	DString str = dstring::new_join({"hello", "world"}, " ");
+	DString str = dstring::join(mem, {"hello", "world"}, " ");
 	defer str.free();
 
 	String s = str.str_view();
@@ -173,7 +173,7 @@ fn void test_join()
 
 fn void test_insert_at()
 {
-	DString str = dstring::temp_new(" world");
+	DString str = dstring::temp(" world");
 	String s;
 
 	str.insert_at(0, "");
@@ -208,7 +208,7 @@ fn void test_insert_at()
 
 fn void test_insert_at_overlaps()
 {
-	DString str = dstring::temp_new("abc");
+	DString str = dstring::temp("abc");
 	String s;
 	String v;
 
@@ -253,7 +253,7 @@ fn void test_insert_at_overlaps()
 
 fn void test_char_at()
 {
-	DString str = dstring::new("hello");
+	DString str = dstring::new(mem, "hello");
 	defer str.free();
 
 	char c = str.char_at(1);
@@ -265,7 +265,7 @@ fn void test_char_at()
 
 fn void test_operators()
 {
-	DString str = dstring::new("hello");
+	DString str = dstring::new(mem, "hello");
 	defer str.free();
 
 	str[0] = 'p';

@@ -1158,12 +1158,14 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		Type *inferred_type = NULL;
 		switch (param->var.kind)
 		{
-			case VARDECL_PARAM_REF:
-				inferred_type = type_get_ptr(method_parent->type);
-				param->var.not_null = true;
-				param->var.kind = VARDECL_PARAM;
-				break;
 			case VARDECL_PARAM:
+				if (param->var.self_addr)
+				{
+					inferred_type = type_get_ptr(method_parent->type);
+					param->var.not_null = true;
+					break;
+				}
+				FALLTHROUGH;
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
 				inferred_type = method_parent->type;
@@ -1244,26 +1246,13 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		switch (var_kind)
 		{
-			case VARDECL_PARAM_REF:
-				if ((i != 0 || !method_parent) && !is_deprecated)
-				{
-					static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated. Consider using expression parameters instead '#%s'.", param->name);
-				}
-				if (type_info && !type_is_pointer(param->type))
-				{
-					SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
-							   type_quoted_error_string(type_get_ptr(param->type)));
-					return decl_poison(param);
-				}
-				FALLTHROUGH;
 			case VARDECL_PARAM_EXPR:
 				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
 				}
-				if (!is_macro_at_name && (!method_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
+				if (!is_macro_at_name)
 				{
 					SEMA_ERROR(param, "Expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
@@ -2532,7 +2521,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	ASSERT(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	// NOLINTBEGIN(*.EnumCastOutOfRange)
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
-			[ATTRIBUTE_ADHOC] = USER_DEFINED_TYPES,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
@@ -2706,10 +2694,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			FAILED_OP_TYPE:
 			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
 		}
-		case ATTRIBUTE_ADHOC:
-			SEMA_DEPRECATED(attr, "'@adhoc' is deprecated.");
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			return true;
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
 			{
@@ -3509,15 +3493,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	bool is_err_return = false;
 	if (!is_err_return && type_is_optional(rtype))
 	{
-		if (rtype->optional->type_kind != TYPE_VOID)
-		{
-			RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
-			return false;
-		}
-		is_int_return = false;
-		is_err_return = true;
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-		SEMA_DEPRECATED(rtype_info, "Main functions with 'void!' returns is deprecated, use 'int' or 'void' instead.");
+		RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional.");
 	}
 
 	if (type_is_void(rtype)) is_int_return = false;
@@ -3612,21 +3588,9 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 			}
 			goto CHECK_DONE;
 		}
-		if (compiler.build.old_test != OLD_TEST_ON)
+		if (!type_is_void(rtype))
 		{
-			if (!type_is_void(rtype))
-			{
-				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' you can allow 'void!' by passing in '--old-test-bench=yes'.");
-			}
-			goto CHECK_DONE;
-		}
-		if (!type_is_void(type_no_optional(rtype)))
-		{
-			RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' or 'void!'.");
-		}
-		if (!type_is_optional(rtype))
-		{
-			rtype_info->type = type_get_optional(rtype);
+			RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' you can allow 'void!' by passing in '--old-test-bench=yes'.");
 		}
 	}
 CHECK_DONE:
@@ -3736,7 +3700,7 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 
 	if (!is_constructor && !sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
 
-	if (!is_constructor && first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
+	if (!is_constructor && first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
@@ -3763,13 +3727,6 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		VarDeclKind kind = param->var.kind;
 		switch (kind)
 		{
-			case VARDECL_PARAM_REF:
-				// DEPRECATED
-				if (!type_info) break;
-				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-				if (kind != VARDECL_PARAM_REF || type_is_pointer(type_info->type)) break;
-				RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
-				                  type_quoted_error_string(type_get_ptr(type_info->type)));
 			case VARDECL_PARAM:
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
@@ -3831,7 +3788,6 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 					case EXPR_LAMBDA:
 					case EXPR_FORCE_UNWRAP:
 					case EXPR_ASM:
-					case EXPR_EXPR_BLOCK:
 					case EXPR_TERNARY:
 					case EXPR_RETHROW:
 						break;
@@ -3922,7 +3878,6 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 			domain = ATTR_GLOBAL;
 			break;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM_CT_TYPE:
 		case VARDECL_PARAM_CT:
 			domain = ATTR_PARAM;
@@ -4406,7 +4361,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	}
 	else
 	{
-		scratch_buffer_append("(<");
+		scratch_buffer_append("{");
 	}
 	FOREACH_IDX(j, Expr *, param, params)
 	{
@@ -4475,7 +4430,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			}
 		}
 	}
-	scratch_buffer_append(mangled ? "$" : ">)");
+	scratch_buffer_append(mangled ? "$" : "}");
 	return true;
 }
 

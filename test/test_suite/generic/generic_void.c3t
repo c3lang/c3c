@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test(<Type>);
+module test{Type};
 
 def Callback = fn Type();
 
@@ -8,7 +8,7 @@ module mymain;
 import std::io;
 import test;
 
-def VoidCb = test::Callback(<void>);
+def VoidCb = test::Callback{void};
 
 fn int main()
 {

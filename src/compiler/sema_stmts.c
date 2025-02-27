@@ -527,7 +527,7 @@ END:
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
 	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
-	ASSERT(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
+	ASSERT(context->active_scope.flags & SCOPE_MACRO);
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
 	Type *block_type = context->expected_block_type;
@@ -636,7 +636,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	}
 
 	// This might be a return in a function block or a macro which must be treated differently.
-	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
+	if (context->active_scope.flags & SCOPE_MACRO)
 	{
 		return sema_analyse_block_exit_stmt(context, statement);
 	}
@@ -716,10 +716,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CATCH:
 		case EXPR_COND:
 		case EXPR_POISONED:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_CONCAT:
 		case EXPR_CT_ARG:
-		case EXPR_CT_APPEND:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CASTABLE:
 		case EXPR_CT_IS_CONST:
@@ -750,7 +747,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPRESSION_LIST:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
@@ -1963,23 +1959,6 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 		target = sema_find_label_symbol_anywhere(context, name);
 		if (target && target->decl_kind == DECL_LABEL)
 		{
-			if (context->active_scope.flags & SCOPE_EXPR_BLOCK)
-			{
-				switch (stmt->ast_kind)
-				{
-					case AST_BREAK_STMT:
-						SEMA_ERROR(stmt, "You cannot break out of an expression block.");
-						return poisoned_decl;
-					case AST_CONTINUE_STMT:
-						SEMA_ERROR(stmt, "You cannot use continue out of an expression block.");
-						return poisoned_decl;
-					case AST_NEXTCASE_STMT:
-						SEMA_ERROR(stmt, "You cannot use nextcase to exit an expression block.");
-						return poisoned_decl;
-					default:
-						UNREACHABLE
-				}
-			}
 			if (target->label.scope_defer != astid(context->active_scope.in_defer))
 			{
 				switch (stmt->ast_kind)

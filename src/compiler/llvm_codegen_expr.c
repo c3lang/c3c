@@ -16,7 +16,7 @@ static LLVMValueRef llvm_emit_dynamic_search(GenContext *c, LLVMValueRef type_id
 static inline void llvm_emit_bitassign_array(GenContext *c, LLVMValueRef result, BEValue parent, Decl *parent_decl, Decl *member);
 static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_const_initialize_reference(GenContext *c, BEValue *ref, Expr *expr);
-static inline void llvm_emit_expr_block(GenContext *context, BEValue *be_value, Expr *expr);
+
 static inline void llvm_emit_optional(GenContext *c, BEValue *be_value, Expr *expr);
 static inline void llvm_emit_inc_dec_change(GenContext *c, BEValue *addr, BEValue *after, BEValue *before, Expr *expr, int diff,
                          bool allow_wrap);
@@ -6024,19 +6024,6 @@ DONE:
 
 }
 
-static inline void llvm_emit_expr_block(GenContext *c, BEValue *be_value, Expr *expr)
-{
-	AstId first_stmt = expr->expr_block.first_stmt;
-	if (!first_stmt)
-	{
-		llvm_emit_return_block(c, be_value, expr->type, first_stmt, expr->expr_block.block_exit_ref);
-		return;
-	}
-	DEBUG_PUSH_LEXICAL_SCOPE(c, astptr(first_stmt)->span);
-	llvm_emit_return_block(c, be_value, expr->type, first_stmt, expr->expr_block.block_exit_ref);
-	DEBUG_POP_LEXICAL_SCOPE(c);
-}
-
 static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr *expr)
 {
 	DebugScope *old_inline_location = c->debug.block_stack;
@@ -6072,7 +6059,6 @@ static inline void llvm_emit_macro_block(GenContext *c, BEValue *be_value, Expr 
 			case VARDECL_PARAM_CT_TYPE:
 			case VARDECL_PARAM_EXPR:
 				continue;
-			case VARDECL_PARAM_REF: // DEPRECATED
 			case VARDECL_PARAM:
 				break;
 		}
@@ -7107,9 +7093,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			return;
 		case EXPR_NOP:
 			llvm_value_set(value, NULL, type_void);
-			return;
-		case EXPR_EXPR_BLOCK:
-			llvm_emit_expr_block(c, value, expr);
 			return;
 		case EXPR_INITIALIZER_LIST:
 		case EXPR_DESIGNATED_INITIALIZER_LIST:

@@ -21,7 +21,7 @@ fn File! open_path(Path path, String mode)
 
 fn bool exists(String file) => @pool()
 {
-	return path::exists(path::temp_new(file)) ?? false;
+	return os::native_file_or_dir_exists(file);
 }
 
 fn File from_handle(CFile file)
@@ -34,12 +34,20 @@ fn bool is_file(String path)
 	return os::native_is_file(path);
 }
 
+fn bool is_dir(String path)
+{
+	return os::native_is_dir(path);
+}
+
 fn usz! get_size(String path)
 {
 	return os::native_file_size(path);
 }
 
-fn void! delete(String filename) => os::native_remove(filename) @inline;
+fn void! delete(String filename)
+{
+	return os::native_remove(filename) @inline;
+}
 
 
 <*

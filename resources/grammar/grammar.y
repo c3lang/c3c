@@ -18,7 +18,6 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token CT_AND_OP CT_OR_OP CT_CONCAT_OP CT_EXEC
 %token INC_OP DEC_OP SHL_OP SHR_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
-%token LGENPAR RGENPAR
 %token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE ANYFAULT
 %token MODULE IMPORT DEF EXTERN
@@ -36,7 +35,7 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token CT_SIZEOF CT_STRINGIFY CT_QNAMEOF CT_OFFSETOF CT_VAEXPR CT_FEATURE
 %token CT_EXTNAMEOF CT_EVAL CT_DEFINED CT_ALIGNOF ASSERT
 %token ASM CHAR_LITERAL REAL TRUE FALSE CT_CONST_IDENT
-%token LBRAPIPE RBRAPIPE HASH_CONST_IDENT CT_ASSIGNABLE CT_AND CT_IS_CONST
+%token HASH_CONST_IDENT CT_ASSIGNABLE CT_AND CT_IS_CONST
 
 %start translation_unit
 %%
@@ -119,10 +118,6 @@ bytes_expr
 	| bytes_expr BYTES
 	;
 
-expr_block
-	: LBRAPIPE opt_stmt_list RBRAPIPE
-	;
-
 base_expr
 	: string_expr
 	| INTEGER
@@ -141,11 +136,9 @@ base_expr_assignable
 	| path ident_expr
 	| ident_expr
 	| local_ident_expr
-	| type initializer_list
 	| type '.' access_ident
 	| type '.' CONST_IDENT
 	| '(' expr ')'
-	| expr_block
 	| ct_call '(' flat_path ')'
 	| ct_vaarg '[' expr ']'
 	| ct_analyse '(' expression_list ')'
@@ -159,6 +152,7 @@ base_expr_assignable
 primary_expr
 	: base_expr
 	| initializer_list
+	| base_expr generic_expr
 	;
 
 range_loc
@@ -194,13 +188,16 @@ access_ident
 	| TYPEID
 	;
 
+opt_compound_statement
+	: /* Empty */
+	| compound_statement
+	;
+
 call_trailing
 	: '[' range_loc ']'
 	| '[' range_expr ']'
-	| call_invocation
-	| call_invocation compound_statement
+	| call_invocation opt_compound_statement
 	| '.' access_ident
-	| generic_expr
 	| INC_OP
 	| DEC_OP
 	| '!'
@@ -517,7 +514,7 @@ enum_param_decl
 	| INLINE type IDENT
 	;
 
-base_type
+base_type_no_user_defined
 	: VOID
 	| BOOL
 	| CHAR
@@ -542,26 +539,42 @@ base_type
 	| ANYFAULT
 	| ANY
 	| TYPEID
-	| TYPE_IDENT opt_generic_parameters
-	| path TYPE_IDENT opt_generic_parameters
 	| CT_TYPE_IDENT
 	| CT_TYPEOF '(' expr ')'
 	| CT_TYPEFROM '(' constant_expr ')'
 	| CT_VATYPE '[' constant_expr ']'
 	| CT_EVALTYPE '(' constant_expr ')'
 	;
+base_type
+	: base_type_no_user_defined
+	| TYPE_IDENT opt_generic_parameters
+        | path TYPE_IDENT opt_generic_parameters
+	;
 
+base_type_no_generics
+	: base_type_no_user_defined
+	| TYPE_IDENT
+        | path TYPE_IDENT
+	;
+
+type_no_generics
+	: base_type_no_generics
+	| type_no_generics type_suffix
+	;
+
+type_suffix
+	: '*'
+	| '[' constant_expr ']'
+        | '[' ']'
+        | '[' '*' ']'
+        | '[' '?' ']'
+        | LVEC constant_expr RVEC
+        | LVEC '*' RVEC
+        | LVEC '?' RVEC
+        ;
 type
 	: base_type
-	| type '*'
-	| type '[' constant_expr ']'
-	| type '[' ']'
-	| type '[' '*' ']'
-	| type '[' '?' ']'
-	| type LVEC constant_expr RVEC
-	| type LVEC '*' RVEC
-	| type LVEC '?' RVEC
-	;
+	| type type_suffix;
 
 optional_type
 	: type
@@ -932,7 +945,7 @@ ct_echo_stmt
 	;
 
 bitstruct_declaration
-	: BITSTRUCT TYPE_IDENT opt_interface_impl ':' type opt_attributes bitstruct_body
+	: BITSTRUCT TYPE_IDENT opt_interface_impl ':' type_no_generics opt_attributes bitstruct_body
 	;
 
 bitstruct_body
@@ -1042,19 +1055,19 @@ struct_member_decl
 	: type identifier_list opt_attributes ';'
 	| struct_or_union IDENT opt_attributes struct_body
 	| struct_or_union opt_attributes struct_body
-	| BITSTRUCT ':' type opt_attributes bitstruct_body
-	| BITSTRUCT IDENT ':' type opt_attributes bitstruct_body
+	| BITSTRUCT ':' type_no_generics opt_attributes bitstruct_body
+	| BITSTRUCT IDENT ':' type_no_generics opt_attributes bitstruct_body
 	| INLINE type IDENT opt_attributes ';'
 	| INLINE type opt_attributes ';'
 	;
 
 
 enum_spec
-	: ':' base_type '(' enum_params ')'
-	| ':' INLINE base_type '(' enum_params ')'
-	| ':' base_type
-	| ':' INLINE base_type
-	| ':' '(' enum_params ')'
+	: ':' base_type_no_generics '(' enum_params ')'
+	| ':' INLINE base_type_no_generics '(' enum_params ')'
+        | ':' base_type_no_generics
+        | ':' INLINE base_type_no_generics
+        | ':' '(' enum_params ')'
 	;
 
 enum_declaration
@@ -1181,7 +1194,7 @@ define_attribute
 	;
 
 generic_expr
-	: LGENPAR generic_parameters RGENPAR
+	: '{' generic_parameters '}'
 	;
 
 opt_generic_parameters
@@ -1237,7 +1250,7 @@ module_params
 
 module
 	: MODULE path_ident opt_attributes ';'
-	| MODULE path_ident LGENPAR module_params RGENPAR opt_attributes ';'
+	| MODULE path_ident '{' module_params '}' opt_attributes ';'
 	;
 
 import_paths

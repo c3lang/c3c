@@ -386,7 +386,7 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 	goto RETRY;
 }
 
-// Foo(<...>)
+// Foo{...}
 INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 {
 	TypeInfo *inner = type_info->generic.base;
@@ -412,10 +412,7 @@ INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 	if (!context->current_macro && (context->call_env.kind == CALL_ENV_FUNCTION || context->call_env.kind == CALL_ENV_FUNCTION_STATIC)
 	    && !context->call_env.current_function->func_decl.in_macro)
 	{
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-		SEMA_DEPRECATED(type_info, "Nested generic type declarations outside of macros is a deprecated feature, please use 'def' to create an alias.");
-		// TODO, completely disallow
-		// RETURN_SEMA_ERROR(type_info, "Direct generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
+		RETURN_SEMA_ERROR(type_info, "Recursively generic type declarations are only allowed inside of macros. Use `def` to define an alias for the type instead.");
 	}
 	return true;
 }

@@ -25,36 +25,12 @@ fn MultiWriter* MultiWriter.init(&self, Allocator allocator, OutStream... writer
 
 <*
  @param [&inout] self
- @param [&inout] allocator
- @require writers.len > 0
- @require self.writers.len == 0 "Init may not run on already initialized data"
-*>
-fn MultiWriter* MultiWriter.new_init(&self, OutStream... writers, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
-{
-	OutStream[] copy = allocator::new_array(allocator, OutStream, writers.len);
-	copy[..] = writers[..];
-	*self = { .writers = copy, .allocator = allocator };
-	return self;
-}
-
-<*
- @param [&inout] self
- @require writers.len > 0
- @require self.writers.len == 0 "Init may not run on already initialized data"
-*>
-fn MultiWriter* MultiWriter.temp_init(&self, OutStream... writers) @deprecated("Use tinit")
-{
-	return self.init(allocator::temp(), ...writers);
-}
-
-<*
- @param [&inout] self
  @require writers.len > 0
  @require self.writers.len == 0 "Init may not run on already initialized data"
 *>
 fn MultiWriter* MultiWriter.tinit(&self, OutStream... writers)
 {
-	return self.init(allocator::temp(), ...writers);
+	return self.init(tmem(), ...writers);
 }
 
 fn void MultiWriter.free(&self)

@@ -4,6 +4,7 @@
 
 #include "compiler_internal.h"
 
+
 static Type *flatten_raw_function_type(Type *type);
 
 static struct

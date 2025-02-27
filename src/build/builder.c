@@ -383,7 +383,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->memory_environment, options->memory_environment);
 	set_if_updated(target->debug_info, options->debug_info_override);
 	set_if_updated(target->show_backtrace, options->show_backtrace);
-	set_if_updated(target->old_test, options->old_test);
 	set_if_updated(target->arch_os_target, options->arch_os_target_override);
 	set_if_updated(target->reloc_model, options->reloc_model);
 	set_if_updated(target->use_stdlib, options->use_stdlib);
@@ -397,8 +396,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->feature.win_debug, options->win_debug);
 
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
-	set_if_updated(target->old_test, options->old_test);
-	set_if_updated(target->old_test, options->old_test);
 
 	OVERRIDE_IF_SET(output_dir);
 	OVERRIDE_IF_SET(panicfn);
@@ -448,8 +445,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;
-	target->vector_conv = options->vector_conv;
-	target->enable_new_generics = options->enable_new_generics;
 	switch (options->sanitize_mode)
 	{
 		case SANITIZE_NOT_SET: break;

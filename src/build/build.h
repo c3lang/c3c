@@ -225,12 +225,6 @@ typedef enum
 	SHOW_BACKTRACE_ON = 1
 } ShowBacktrace;
 
-typedef enum
-{
-	OLD_TEST_NOT_SET = -1,
-	OLD_TEST_OFF = 0,
-	OLD_TEST_ON = 1
-} OldTest;
 
 typedef enum
 {
@@ -327,11 +321,6 @@ typedef enum
 	WIN_CRT_STATIC_DEBUG = 4,
 } WinCrtLinking;
 
-typedef enum
-{
-	VECTOR_CONV_DEFAULT = 0,
-	VECTOR_CONV_OLD = 1,
-} VectorConv;
 
 typedef enum
 {
@@ -468,8 +457,6 @@ typedef struct BuildOptions_
 	const char* linker_libs[MAX_BUILD_LIB_DIRS];
 	size_t linker_lib_count;
 	const char* std_lib_dir;
-	VectorConv vector_conv;
-	bool enable_new_generics;
 	struct
 	{
 		const char *sdk;
@@ -535,7 +522,6 @@ typedef struct BuildOptions_
 	OptimizationSetting optsetting;
 	DebugInfo debug_info_override;
 	ShowBacktrace show_backtrace;
-	OldTest old_test;
 	ArchOsTarget arch_os_target_override;
 	SafetyLevel safety_level;
 	PanicLevel panic_level;
@@ -686,8 +672,6 @@ typedef struct
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
-	VectorConv vector_conv;
-	bool enable_new_generics;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
@@ -696,7 +680,6 @@ typedef struct
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
 	ShowBacktrace show_backtrace;
-	OldTest old_test;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
 	MergeFunctions merge_functions;
@@ -781,7 +764,6 @@ static BuildTarget default_build_target = {
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 		.debug_info = DEBUG_INFO_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
-		.old_test = OLD_TEST_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,

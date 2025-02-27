@@ -117,6 +117,7 @@ fn void testArrays()
     printf("Pointer to array: %p\nPointer to slice: %p\nPointer to first element of slice: %p\n", z, &y, &y[0]);
 }
 
+/*
 fn void testExpressionBlocks()
 {
     int x = {|
@@ -142,10 +143,11 @@ fn void testExpressionBlocks()
         puts("In if");
     }
 }
+*/
 
 fn void main()
 {
     testStruct();
     testArrays();
-    testExpressionBlocks();
+//    testExpressionBlocks();
 }

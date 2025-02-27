@@ -22,7 +22,7 @@ struct Client
     ClientState state;
     MsgHeader header;
     ushort service_id;
-    ElasticArray(<ulong, 1>) subscribers;
+    ElasticArray{ulong, 1} subscribers;
 }
 
 Client[10] clients;

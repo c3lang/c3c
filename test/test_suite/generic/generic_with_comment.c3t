@@ -3,11 +3,11 @@ import generic;
 
 // Issue #1821
 fn void main() {
-  Generic(<int>) asdf;
+  Generic{int} asdf;
 }
 
 <*
  Hello
 *>
-module generic(<Param>);
+module generic{Param};
 struct Generic { int a; }

@@ -1,8 +1,8 @@
 module elastic_array_test @test;
 import std::collections::elastic_array;
 
-def IntList = ElasticArray(<int, 10>);
-def PtrList = ElasticArray(<void*, 10>);
+def IntList = ElasticArray{int, 10};
+def PtrList = ElasticArray{void*, 10};
 
 fn void delete_contains_index()
 {

@@ -627,7 +627,7 @@ static void sema_report_error_on_decl(SemaContext *context, NameResolve *name_re
 		if (name_resolve->maybe_decl->unit->module->generic_module)
 		{
 			const char *module_name = name_resolve->maybe_decl->unit->module->generic_module->name->module;
-			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s(<...>)' instead.",
+			sema_error_at(context, span, "Did you mean the %s '%s' in the generic module %s? If so, use '%s{...}' instead.",
 			              maybe_name, symbol, module_name, symbol);
 			return;
 		}
@@ -751,7 +751,7 @@ MOD_FOUND:
 					if (matches_subpath(module->name, name_resolve->path))
 					{
 						RETURN_SEMA_ERROR(name_resolve->path,
-						                  "%s is a generic module, did you forget to add the generic parameter(s) (<...>) after '%s'?",
+						                  "%s is a generic module, did you forget to add the generic parameter(s) {...} after '%s'?",
 						                  module->name->module, name_resolve->symbol);
 					}
 				}

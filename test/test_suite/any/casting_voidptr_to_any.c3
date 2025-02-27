@@ -2,7 +2,7 @@ module mylib::ifaces;
 interface IOp {
     fn void op();
 }
-module mylib(<Type>);
+module mylib{Type};
 import std::io;
 import mylib::ifaces;
 struct Op (IOp){
@@ -13,7 +13,7 @@ module myapp;
 import mylib;
 fn void test(void* tptr){
     // this work
-    IOp iop = (Op(<int>)*)tptr;
+    IOp iop = (Op{int}*)tptr;
     iop.op();
 
     // this don't work
@@ -21,6 +21,6 @@ fn void test(void* tptr){
     iop.op();
 }
 fn void main(String[] args) {
-    Op(<int>)* t = mem::new(Op(<int>), {.data = 1});
+    Op{int}* t = mem::new(Op{int}, {.data = 1});
     test(&t);
 }

@@ -1388,7 +1388,6 @@ void compile()
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
-	setup_bool_define("OLD_TEST", compiler.build.old_test == OLD_TEST_ON);
 #if LLVM_AVAILABLE
     setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 #else 

@@ -3,7 +3,7 @@ import std;
 import abc;
 fn void main()
 {
-	abc::test(); // #error: (<...>)
+	abc::test(); // #error: {...}
 }
-module abc(<Type>);
+module abc{Type};
 fn void test() {}

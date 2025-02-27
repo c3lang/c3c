@@ -3,10 +3,10 @@ import libc;
 import std::io;
 import std::collections::maybe;
 
-def MaybeString = Maybe(<String>);
-def MaybeHead = Maybe(<Head>);
-def new_head_val = maybe::value(<Head>);
-def new_string_val = maybe::value(<String>);
+def MaybeString = Maybe{String};
+def MaybeHead = Maybe{Head};
+def new_head_val = maybe::value{Head};
+def new_string_val = maybe::value{String};
 
 fault TitleResult
 {

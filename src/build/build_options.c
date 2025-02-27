@@ -126,7 +126,6 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
-		print_opt("--old-test-bench=<yes|no>", "Allow benchmarks and tests to use the deprecated 'void!' returns.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -198,8 +197,6 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
-		print_opt("--enable-new-generics", "Enable Foo{int} generics, this will disable the old Foo { ... } initializers.");
-		print_opt("--vector-conv=<option>", "Set vector conversion behaviour: default, old.");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
 	if (!full)
@@ -809,12 +806,6 @@ static void parse_option(BuildOptions *options)
 				options->safety_level = parse_opt_select(SafetyLevel, argopt, on_off);
 				return;
 			}
-			if ((argopt = match_argopt("old-test-bench")))
-			{
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				options->old_test = parse_opt_select(OldTest, argopt, on_off);
-				return;
-			}
 			if ((argopt = match_argopt("show-backtrace")))
 			{
 				options->show_backtrace = parse_opt_select(ShowBacktrace, argopt, on_off);
@@ -1087,18 +1078,6 @@ static void parse_option(BuildOptions *options)
 				options->win.def = next_arg();
 				return;
 			}
-			if ((argopt = match_argopt("vector-conv")))
-			{
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
-				return;
-			}
-			if (match_longopt("enable-new-generics"))
-			{
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				options->enable_new_generics = true;
-				return;
-			}
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
@@ -1298,7 +1277,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
-		.old_test = OLD_TEST_NOT_SET,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),

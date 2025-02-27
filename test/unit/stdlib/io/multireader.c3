@@ -3,13 +3,12 @@ module std::io @test;
 fn void test_multireader()
 {
 	MultiReader mr;
-	mr.init(mem,
+	mr.tinit(
 		&&wrap_bytes("foo"),
 		&&wrap_bytes(" "),
 		&&wrap_bytes("bar"),
 		&&wrap_bytes("!"),
 	);
-	defer mr.free();
 
 	ByteWriter w;
 	io::copy_to(&mr, w.tinit())!!;

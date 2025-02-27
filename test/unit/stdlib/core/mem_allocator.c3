@@ -12,7 +12,7 @@ struct Bar
 {
 	int x;
 	int y;
-	List(<Foo>) foos;
+	List{Foo} foos;
 }
 
 fn void test_new_aligned_compiles() @test

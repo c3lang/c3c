@@ -80,7 +80,7 @@ macro String[] wargs_strings(int argc, Char16** argv) @private
 	{
 		Char16* arg = argv[i];
 		Char16[] argstring = arg[:_strlen(arg)];
-		list[i] = string::new_from_utf16(argstring) ?? "?".copy();
+		list[i] = string::new_from_utf16(mem, argstring) ?? "?".copy(mem);
 	}
 	return list[:argc];
 }

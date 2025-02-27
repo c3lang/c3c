@@ -9,7 +9,7 @@ fn void init_destroy_buffered() @test
 {
 	for (usz i = 0; i < 20; i++)
 	{
-		BufferedChannel(<int>) c;
+		BufferedChannel{int} c;
 		c.init(mem, 1)!!;
 		defer c.destroy()!!;
 	}
@@ -19,7 +19,7 @@ fn void init_destroy_unbuffered() @test
 {
 	for (usz i = 0; i < 20; i++)
 	{
-		UnbufferedChannel(<int>) c;
+		UnbufferedChannel{int} c;
 		c.init(mem)!!;
 		defer c.destroy()!!;
 	}
@@ -27,7 +27,7 @@ fn void init_destroy_unbuffered() @test
 
 fn void push_to_buffered_channel_no_lock() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 1)!!;
 	defer c.destroy()!!;
 
@@ -36,7 +36,7 @@ fn void push_to_buffered_channel_no_lock() @test
 
 fn void push_pop_buffered_no_locks() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 1)!!;
 	defer c.destroy()!!;
 
@@ -47,7 +47,7 @@ fn void push_pop_buffered_no_locks() @test
 
 fn void push_pop_unbuffered_with_locks() @test
 {
-	UnbufferedChannel(<int>) c;
+	UnbufferedChannel{int} c;
 	c.init(mem)!!;
 	defer c.destroy()!!;
 
@@ -56,7 +56,7 @@ fn void push_pop_unbuffered_with_locks() @test
 
 	thread.create(fn int(void* arg)
 	{
-		UnbufferedChannel(<int>) c = (UnbufferedChannel(<int>))arg;
+		UnbufferedChannel{int} c = (UnbufferedChannel{int})arg;
 		c.push(123)!!;
 		c.push(321)!!;
 		return 0;
@@ -70,8 +70,8 @@ fn void push_pop_unbuffered_with_locks() @test
 
 fn void sending_to_closed_unbuffered_chan_is_forbidden() @test
 {
-	UnbufferedChannel(<int>) c;
-	c.init(mem)!!;
+	UnbufferedChannel{int} c;
+	c.init(mem, )!!;
 	defer c.destroy()!!;
 
 	c.close()!!;
@@ -86,7 +86,7 @@ fn void sending_to_closed_unbuffered_chan_is_forbidden() @test
 
 fn void sending_to_closed_buffered_chan_is_forbidden() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 1)!!;
 	defer c.destroy()!!;
 
@@ -102,8 +102,8 @@ fn void sending_to_closed_buffered_chan_is_forbidden() @test
 
 fn void reading_from_empty_closed_unbuffered_chan_is_forbidden() @test
 {
-	UnbufferedChannel(<int>) c;
-	c.init(mem)!!;
+	UnbufferedChannel{int} c;
+	c.init(mem, )!!;
 	defer c.destroy()!!;
 
 	c.close()!!;
@@ -118,7 +118,7 @@ fn void reading_from_empty_closed_unbuffered_chan_is_forbidden() @test
 
 fn void reading_from_empty_closed_buffered_chan_is_forbidden() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 1)!!;
 	defer c.destroy()!!;
 
@@ -134,7 +134,7 @@ fn void reading_from_empty_closed_buffered_chan_is_forbidden() @test
 
 fn void reading_from_non_empty_closed_buffered_chan_is_ok() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 3)!!;
 	defer c.destroy()!!;
 
@@ -163,7 +163,7 @@ fn void reading_from_non_empty_closed_buffered_chan_is_ok() @test
 
 fn void reading_from_empty_buffered_chan_aborted_by_close() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 3)!!;
 	defer c.destroy()!!;
 
@@ -172,7 +172,7 @@ fn void reading_from_empty_buffered_chan_aborted_by_close() @test
 
 	thread.create(fn int(void* arg)
 	{
-		BufferedChannel(<int>) c = (BufferedChannel(<int>))arg;
+		BufferedChannel{int} c = (BufferedChannel{int})arg;
 		c.close()!!;
 		return 0;
 	}, (void*)c)!!;
@@ -189,8 +189,8 @@ fn void reading_from_empty_buffered_chan_aborted_by_close() @test
 
 fn void reading_from_unbuffered_chan_aborted_by_close() @test
 {
-	UnbufferedChannel(<int>) c;
-	c.init(mem)!!;
+	UnbufferedChannel{int} c;
+	c.init(mem, )!!;
 	defer c.destroy()!!;
 
 	Thread thread;
@@ -198,7 +198,7 @@ fn void reading_from_unbuffered_chan_aborted_by_close() @test
 
 	thread.create(fn int(void* arg)
 	{
-		UnbufferedChannel(<int>) c = (UnbufferedChannel(<int>))arg;
+		UnbufferedChannel{int} c = (UnbufferedChannel{int})arg;
 		c.close()!!;
 		return 0;
 	}, (void*)c)!!;
@@ -215,7 +215,7 @@ fn void reading_from_unbuffered_chan_aborted_by_close() @test
 
 fn void sending_to_full_buffered_chan_aborted_by_close() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 1)!!;
 	defer c.destroy()!!;
 
@@ -226,7 +226,7 @@ fn void sending_to_full_buffered_chan_aborted_by_close() @test
 
 	thread.create(fn int(void* arg)
 	{
-		BufferedChannel(<int>) c = (BufferedChannel(<int>))arg;
+		BufferedChannel{int} c = (BufferedChannel{int})arg;
 		c.close()!!;
 		return 0;
 	}, (void*)c)!!;
@@ -243,7 +243,7 @@ fn void sending_to_full_buffered_chan_aborted_by_close() @test
 
 fn void sending_to_unbuffered_chan_aborted_by_close() @test
 {
-	UnbufferedChannel(<int>) c;
+	UnbufferedChannel{int} c;
 	c.init(mem, )!!;
 	defer c.destroy()!!;
 
@@ -252,7 +252,7 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 
 	thread.create(fn int(void* arg)
 	{
-		UnbufferedChannel(<int>) c = (UnbufferedChannel(<int>))arg;
+		UnbufferedChannel{int} c = (UnbufferedChannel{int})arg;
 		c.close()!!;
 		return 0;
 	}, (void*)c)!!;
@@ -269,7 +269,7 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 
 fn void multiple_actions_unbuffered() @test
 {
-	UnbufferedChannel(<int>) c;
+	UnbufferedChannel{int} c;
 	c.init(mem, )!!;
 	defer c.destroy()!!;
 
@@ -278,7 +278,7 @@ fn void multiple_actions_unbuffered() @test
 
 	thread.create(fn int(void* arg)
 	{
-		UnbufferedChannel(<int>) c = (UnbufferedChannel(<int>))arg;
+		UnbufferedChannel{int} c = (UnbufferedChannel{int})arg;
 		for (int i = 0; i <= 100; i++)
 		{
 			c.push(i)!!;
@@ -303,7 +303,7 @@ fn void multiple_actions_unbuffered() @test
 
 fn void multiple_actions_buffered() @test
 {
-	BufferedChannel(<int>) c;
+	BufferedChannel{int} c;
 	c.init(mem, 10)!!;
 	defer c.destroy()!!;
 
@@ -312,7 +312,7 @@ fn void multiple_actions_buffered() @test
 
 	thread.create(fn int(void* arg)
 	{
-		BufferedChannel(<int>) c = (BufferedChannel(<int>))arg;
+		BufferedChannel{int} c = (BufferedChannel{int})arg;
 		for (int i = 0; i <= 100; i++)
 		{
 			c.push(i)!!;
