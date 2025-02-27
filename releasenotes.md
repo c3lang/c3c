@@ -29,6 +29,7 @@
 - Fix bug casting bool to int to other int #1995.
 - `@if` declarations were missing from -P output #1973.
 - Check exe and lib output so -o works with directories.
+- Swizzling an inline vector in a struct would cause a crash.
 
 ### Stdlib changes
 

@@ -4978,6 +4978,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 {
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
+	assert(indexed_type);
 	if (is_lvalue) check = CHECK_VALUE;
 	ASSERT_SPAN(expr, len > 0);
 	int index;
@@ -5241,7 +5242,7 @@ CHECK_DEEPER:
 				if (!swizzle[(int)kw[i]]) goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
-			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len, check, lvalue);
+			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len, check, lvalue);
 			NOT_SWIZZLE:;
 		}
 	}
