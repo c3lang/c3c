@@ -1,8 +1,8 @@
 fn int main()
 {
     String msg = "Hello, C3 World!\n";
-    $$syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
-    return 0;
+	$$syscall(1, 1, (uptr)msg.ptr, msg.len); // __NR_write, STDOUT
+	return 0;
 }
 
 fn void _start() @export("_start")
