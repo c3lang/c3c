@@ -78,6 +78,7 @@ LLVMValueRef LLVMConstBswap(LLVMValueRef ConstantVal);
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option);
 void LLVMSetDSOLocal(LLVMValueRef Global, bool value);
 void LLVMSetTargetMachineUseInitArray(LLVMTargetMachineRef ref, bool use_init_array);
+void LLVMSetNoSanitizeAddress(LLVMValueRef Global);
 
 #ifdef __cplusplus
 }

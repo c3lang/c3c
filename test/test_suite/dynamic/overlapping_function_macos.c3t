@@ -42,7 +42,7 @@ fn void main()
 @.func = internal constant [5 x i8] c"main\00", align 1
 @std.core.builtin.panic = extern_weak global ptr, align 8
 @"$sel.foo" = linkonce_odr constant [4 x i8] c"foo\00", align 1
-@"$c3_dynamic" = internal global [2 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @overlap.Test.tesT, ptr @"$sel.tesT", i64 ptrtoint (ptr @"$ct.overlap.Test" to i64) }, { ptr, ptr, i64 } { ptr @overlap.Test.foo, ptr @"$sel.foo", i64 ptrtoint (ptr @"$ct.overlap.Test" to i64) }], section "__DATA,__c3_dynamic", align 8
+@"$c3_dynamic" = internal global [2 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @overlap.Test.tesT, ptr @"$sel.tesT", i64 ptrtoint (ptr @"$ct.overlap.Test" to i64) }, { ptr, ptr, i64 } { ptr @overlap.Test.foo, ptr @"$sel.foo", i64 ptrtoint (ptr @"$ct.overlap.Test" to i64) }], section "__DATA,__c3_dynamic", no_sanitize_address, align 8
 
 ; Function Attrs: nounwind uwtable
 define void @overlap.Test.tesT(ptr %0) #0 {

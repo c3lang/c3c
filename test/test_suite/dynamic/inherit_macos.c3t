@@ -48,7 +48,7 @@ fn void main()
 @.func = internal constant [5 x i8] c"main\00", align 1
 @std.core.builtin.panic = extern_weak global ptr, align 8
 @"$sel.hello" = linkonce_odr constant [6 x i8] c"hello\00", align 1
-@"$c3_dynamic" = internal global [2 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @inherit.Test.tesT, ptr @"$sel.tesT", i64 ptrtoint (ptr @"$ct.inherit.Test" to i64) }, { ptr, ptr, i64 } { ptr @inherit.Test.hello, ptr @"$sel.hello", i64 ptrtoint (ptr @"$ct.inherit.Test" to i64) }], section "__DATA,__c3_dynamic", align 8
+@"$c3_dynamic" = internal global [2 x { ptr, ptr, i64 }] [{ ptr, ptr, i64 } { ptr @inherit.Test.tesT, ptr @"$sel.tesT", i64 ptrtoint (ptr @"$ct.inherit.Test" to i64) }, { ptr, ptr, i64 } { ptr @inherit.Test.hello, ptr @"$sel.hello", i64 ptrtoint (ptr @"$ct.inherit.Test" to i64) }], section "__DATA,__c3_dynamic", no_sanitize_address, align 8
 
 define void @inherit.Test.tesT(ptr %0) #0 {
 entry:
