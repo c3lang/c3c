@@ -1,10 +1,5 @@
 module std::sort;
 
-macro usz @len_from_list(&list) @deprecated
-{
-	return len_from_list(*list);
-}
-
 macro usz len_from_list(list)
 {
 	$if $defined(list.len()):

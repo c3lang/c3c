@@ -538,36 +538,3 @@ fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 	}
 	return list_common::list_compact(self);
 }
-
-// --> Deprecated
-
-<*
- @param [&inout] self "The list to remove elements from"
- @param value "The value to remove"
- @return "true if the value was found"
-*>
-fn bool List.remove_last_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
-{
-	return self.remove_last_item(value) @inline;
-}
-
-<*
- @param [&inout] self "The list to remove elements from"
- @param value "The value to remove"
- @return "true if the value was found"
-*>
-fn bool List.remove_first_match(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
-{
-	return self.remove_first_item(value) @inline;
-}
-
-
-<*
- @param [&inout] self "The list to remove elements from"
- @param value "The value to remove"
- @return "the number of deleted elements."
-*>
-fn usz List.remove_all_matches(&self, Type value) @if(ELEMENT_IS_EQUATABLE) @deprecated
-{
-	return self.remove_item(value) @inline;
-}
