@@ -249,20 +249,13 @@ makepkg -si
 
 #### Building via Docker
 
-You can build `c3c` using either an Ubuntu 18.04 or 20.04 container:
+You can build `c3c` using an Ubuntu container. By default, the script will build through Ubuntu 22.04. You can specify the version by passing the `UBUNTU_VERSION` environment variable.
 
 ```
-./build-with-docker.sh 18
+UBUNTU_VERSION=20.04 ./build-with-docker.sh
 ```
 
-Replace `18` with `20` to build through Ubuntu 20.04.
-
-For a release build specify:
-```
-./build-with-docker.sh 20 Release
-```
-
-A `c3c` executable will be found under `bin/`.
+See the `build-with-docker.sh` script for more information on other configurable environment variables.
 
 #### Installing on OS X using Homebrew
 
