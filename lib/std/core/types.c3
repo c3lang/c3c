@@ -319,11 +319,6 @@ macro bool implements_copy($Type) @const
 	return $defined($Type.copy) && $defined($Type.free);
 }
 
-macro bool is_equatable_value(value) @deprecated
-{
-	return is_equatable_type($typeof(value));
-}
-
 macro bool @equatable_value(#value) @const
 {
 	return is_equatable_type($typeof(#value));
@@ -335,15 +330,6 @@ macro bool @comparable_value(#value) @const
 		return true;
 	$else
 		return $typeof(#value).is_ordered;
-	$endif
-}
-
-macro bool is_comparable_value(value) @deprecated
-{
-	$if $defined(value.less) || $defined(value.compare_to):
-		return true;
-	$else
-		return $typeof(value).is_ordered;
 	$endif
 }
 

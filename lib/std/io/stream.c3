@@ -104,11 +104,6 @@ macro usz! write_all(stream, char[] buffer)
 	return n;
 }
 
-macro usz! @read_using_read_byte(&s, char[] buffer) @deprecated
-{
-	return read_using_read_byte(*s, buffer);
-}
-
 macro usz! read_using_read_byte(s, char[] buffer)
 {
 	usz len = 0;
@@ -132,16 +127,6 @@ macro void! write_byte_using_write(s, char c)
 	s.write(&buff)!;
 }
 
-macro void! @write_byte_using_write(&s, char c) @deprecated
-{
-	return write_byte_using_write(*s, c);
-}
-
-macro char! @read_byte_using_read(&s) @deprecated
-{
-	return read_byte_using_read(*s);
-}
-
 macro char! read_byte_using_read(s)
 {
 	char[1] buffer;
@@ -159,17 +144,7 @@ macro usz! write_using_write_byte(s, char[] bytes)
 	return bytes.len;
 }
 
-macro usz! @write_using_write_byte(&s, char[] bytes) @deprecated
-{
-	return write_using_write_byte(*s, bytes);
-}
-
 macro void! pushback_using_seek(s)
-{
-	s.seek(-1, CURSOR)!;
-}
-
-macro void! @pushback_using_seek(&s) @deprecated
 {
 	s.seek(-1, CURSOR)!;
 }
