@@ -11,6 +11,7 @@
 - Output llvm/asm into llvm/<platform> and asm/<platform> by default.
 - Add flag `--suppress-run`. For commands which may run executable after building, skip the run step. #1931
 - Add `--build-env` for build environment information.
+- Deprecation of `operator(@construct)`.
 
 ### Fixes
 - Bug appearing when `??` was combined with boolean in some cases.

@@ -1,3 +1,4 @@
+// #deprecation: no
 module test;
 import std::collections::maybe;
 

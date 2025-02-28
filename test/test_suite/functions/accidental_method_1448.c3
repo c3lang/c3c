@@ -1,3 +1,4 @@
+// #deprecation: no
 import std;
 def MaybeInt = maybe::Maybe(<int>);
 

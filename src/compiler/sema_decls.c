@@ -1735,6 +1735,7 @@ static inline bool sema_analyse_operator_construct(SemaContext *context, Decl *m
 		                  " In this case %s or %s was expected.",
 		                  type_quoted_error_string(parent), type_quoted_error_string(type_get_ptr(parent)));
 	}
+	SEMA_DEPRECATED(method, "'operator(@construct)' is deprecated and will be removed in the next version, prefer using init methods and functions instead.");
 	return true;
 }
 

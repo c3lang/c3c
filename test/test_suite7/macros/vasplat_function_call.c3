@@ -1,7 +1,7 @@
 import std;
 
-def IList = List{int};
-fn IList IList.new() @operator(construct)
+def IList = List(<int>);
+fn IList new()
 {
 	IList l;
 	l.init(mem, $vasplat); // #error: can only be used inside
@@ -11,7 +11,7 @@ fn IList IList.new() @operator(construct)
 
 fn void main()
 {
-	IList a = IList.new(123, 123, 123, 123, 123, 123, 123, 134);
+	IList a = new(123, 123, 123, 123, 123, 123, 123, 134);
 	a.push(567);
 
 	io::printfn("%s", a[0]);
