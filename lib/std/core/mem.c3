@@ -644,7 +644,7 @@ macro @clone(value) @builtin @nodiscard
 
 macro @tclone(value) @builtin @nodiscard
 {
-	return temp_new($typeof(value), value);
+	return tnew($typeof(value), value);
 }
 
 fn void* malloc(usz size) @builtin @inline @nodiscard
@@ -745,7 +745,7 @@ macro alloc_aligned($Type) @nodiscard
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
 *>
-macro temp_new($Type, ...) @nodiscard
+macro tnew($Type, ...) @nodiscard
 {
 	$if $vacount == 0:
 		return ($Type*)tcalloc($Type.sizeof) @inline;
@@ -760,7 +760,7 @@ macro temp_new($Type, ...) @nodiscard
  @require $vacount < 2 : "Too many arguments."
  @require $vacount == 0 ||| $assignable($vaexpr[0], $Type) : "The second argument must be an initializer for the type"
 *>
-macro temp_new_with_padding($Type, usz padding, ...) @nodiscard
+macro temp_with_padding($Type, usz padding, ...) @nodiscard
 {
 	$if $vacount == 0:
 		return ($Type*)tcalloc($Type.sizeof + padding) @inline;
@@ -771,12 +771,12 @@ macro temp_new_with_padding($Type, usz padding, ...) @nodiscard
 	$endif
 }
 
-macro temp_alloc($Type) @nodiscard
+macro talloc($Type) @nodiscard
 {
 	return tmalloc($Type.sizeof);
 }
 
-macro temp_alloc_with_padding($Type, usz padding) @nodiscard
+macro talloc_with_padding($Type, usz padding) @nodiscard
 {
 	return tmalloc($Type.sizeof + padding);
 }
@@ -815,12 +815,12 @@ macro alloc_array_aligned($Type, usz elements) @nodiscard
 	return allocator::alloc_array_aligned(allocator::heap(), $Type, elements);
 }
 
-macro temp_alloc_array($Type, usz elements) @nodiscard
+macro talloc_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tmalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }
 
-macro temp_new_array($Type, usz elements) @nodiscard
+macro temp_array($Type, usz elements) @nodiscard
 {
 	return (($Type*)tcalloc($Type.sizeof * elements, $Type.alignof))[:elements];
 }

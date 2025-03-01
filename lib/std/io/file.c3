@@ -77,7 +77,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
 {
 	@pool()
 	{
-		file.file = libc::memopen(data.ptr, data.len, mode.zstr_tcopy(), file.file);
+		file.file = libc::memopen(data.ptr, data.len, mode.to_temp_zstr(), file.file);
 		// TODO errors
 	};
 }

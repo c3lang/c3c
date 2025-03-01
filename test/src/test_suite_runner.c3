@@ -132,13 +132,13 @@ fn void RunFile.add_line(&self, String line)
 fn RunFile*! create_input_file(String filename)
 {
 	File file = file::open_path(test_dir.tappend(filename), "wb")!;
-	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .file = file, .is_output = false });
+	RunFile *run_file = mem::tnew(RunFile, { .name = filename, .file = file, .is_output = false });
 	return run_file;
 }
 
 fn RunFile*! create_output_file(String filename)
 {
-	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .is_output = true });
+	RunFile *run_file = mem::tnew(RunFile, { .name = filename, .is_output = true });
 	return run_file;
 }
 

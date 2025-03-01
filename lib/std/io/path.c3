@@ -159,7 +159,7 @@ fn Path! temp(String path, PathEnv path_env = DEFAULT_ENV)
 
 fn Path! from_win32_wstring(Allocator allocator, WString path) => @pool(allocator)
 {
-	return path::new(allocator, string::temp_from_wstring(path)!);
+	return path::new(allocator, string::tfrom_wstring(path)!);
 }
 
 fn Path! for_windows(Allocator allocator, String path)
@@ -261,10 +261,10 @@ fn Path! Path.absolute(self, Allocator allocator)
 		@pool(allocator)
 		{
 			const usz BUFFER_LEN = 4096;
-			WString buffer = (WString)mem::temp_alloc_array(Char16, BUFFER_LEN);
-			buffer = win32::_wfullpath(buffer, path_str.to_wstring_tcopy()!, BUFFER_LEN);
+			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
+			buffer = win32::_wfullpath(buffer, path_str.to_temp_wstring()!, BUFFER_LEN);
 			if (!buffer) return PathResult.INVALID_PATH?;
-			return { string::new_from_wstring(allocator, buffer), WIN32, allocator };
+			return { string::from_wstring(allocator, buffer), WIN32, allocator };
 		};
 	$else
 		String cwd = os::getcwd(tmem())!;

@@ -19,6 +19,16 @@
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
 
+### Stdlib changes
+- `new_*` functions in general moved to version without `new_` prefix.
+- `string::new_from_*` changed to `string::from_*`.
+- `String.to_utf16_copy` and related changed to `String.to_utf16`.
+- `String.to_utf16_tcopy` and related changed to `String.to_temp_utf16`
+- `mem::temp_new` changed to `mem::tnew`.
+- `mem::temp_alloc` and related changed to `mem::talloc`.
+- `mem::temp_new_array` changed to `mem::temp_array`.
+
+
 ## 0.6.8 Change list
 
 ### Changes / improvements

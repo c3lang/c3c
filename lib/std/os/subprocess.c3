@@ -109,7 +109,7 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 		str.append('"');
 	}
 	str.append('\0');
-	return str.str_view().to_wstring_tcopy()!!;
+	return str.str_view().to_temp_wstring()!!;
 }
 
 <*
@@ -149,7 +149,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 				env.append("\0");
 			}
 			env.append("\0");
-			used_environment = env.str_view().to_wstring_tcopy()!;
+			used_environment = env.str_view().to_temp_wstring()!;
 		}
 		int fd = win32::_open_osfhandle((iptr)wr, 0);
 		if (fd != -1)
@@ -244,7 +244,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 *>
 fn ZString* tcopy_command_line(String[] command_line) @local @inline @if(env::POSIX)
 {
-	ZString* copy = mem::temp_alloc_array(ZString, command_line.len + 1);
+	ZString* copy = mem::talloc_array(ZString, command_line.len + 1);
 	foreach (i, str : command_line)
 	{
 		copy[i] = str.zstr_tcopy();
@@ -257,7 +257,7 @@ const ZString[1] EMPTY_ENVIRONMENT @if(env::POSIX) = { null };
 fn ZString* tcopy_env(String[] environment) @local @inline @if(env::POSIX)
 {
 	if (!environment.len) return &EMPTY_ENVIRONMENT;
-	ZString* copy = mem::temp_alloc_array(ZString, environment.len + 1);
+	ZString* copy = mem::talloc_array(ZString, environment.len + 1);
 	copy[environment.len] = null;
 	foreach (i, str : environment)
 	{
