@@ -1,0 +1,123 @@
+// #target: macos-x64
+module test;
+import std::io;
+
+fault HadError
+{
+    BAD_STUFF,
+    WORSE_STUFF,
+    THE_WORST_STUFF
+}
+
+fn int exitcode(anyfault error)
+{
+    switch ((HadError)error)
+    {
+        case BAD_STUFF: return 64;
+        case WORSE_STUFF: return 65;
+        case THE_WORST_STUFF: return 66;
+        default: return 70;
+    }
+}
+
+fn void! canFail()
+{
+    if (34 + 35 == 69)
+    {
+        return HadError.BAD_STUFF?;
+    }
+}
+
+fn int main(String[] args)
+{
+    if (catch err = canFail())
+    {
+        return exitcode(err);
+    }
+
+	return 0;
+}
+
+/* #expect: test.ll
+
+
+define i32 @test.exitcode(i64 %0) #0 {
+entry:
+  %switch = alloca i64, align 8
+  store i64 %0, ptr %switch, align 8
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %1 = load i64, ptr %switch, align 8
+  %eq = icmp eq i64 ptrtoint (ptr @"test.HadError$BAD_STUFF" to i64), %1
+  br i1 %eq, label %switch.case, label %next_if
+
+switch.case:                                      ; preds = %switch.entry
+  ret i32 64
+
+next_if:                                          ; preds = %switch.entry
+  %eq1 = icmp eq i64 ptrtoint (ptr @"test.HadError$WORSE_STUFF" to i64), %1
+  br i1 %eq1, label %switch.case2, label %next_if3
+
+switch.case2:                                     ; preds = %next_if
+  ret i32 65
+
+next_if3:                                         ; preds = %next_if
+  %eq4 = icmp eq i64 ptrtoint (ptr @"test.HadError$THE_WORST_STUFF" to i64), %1
+  br i1 %eq4, label %switch.case5, label %next_if6
+
+switch.case5:                                     ; preds = %next_if3
+  ret i32 66
+
+next_if6:                                         ; preds = %next_if3
+  br label %switch.default
+
+switch.default:                                   ; preds = %next_if6
+  ret i32 70
+}
+
+define i64 @test.canFail() #0 {
+entry:
+  br label %if.then
+
+if.then:                                          ; preds = %entry
+  ret i64 ptrtoint (ptr @"test.HadError$BAD_STUFF" to i64)
+}
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %args = alloca %"char[][]", align 8
+  %err = alloca i64, align 8
+  store ptr %0, ptr %args, align 8
+  %ptradd = getelementptr inbounds i8, ptr %args, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  br label %testblock
+
+testblock:                                        ; preds = %entry
+  %2 = call i64 @test.canFail()
+  %not_err = icmp eq i64 %2, 0
+  %3 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %3, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %testblock
+  store i64 %2, ptr %err, align 8
+  br label %end_block
+
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %err, align 8
+  br label %end_block
+
+end_block:                                        ; preds = %after_check, %assign_optional
+  %4 = load i64, ptr %err, align 8
+  %i2b = icmp ne i64 %4, 0
+  br i1 %i2b, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %end_block
+  %5 = load i64, ptr %err, align 8
+  %6 = call i32 @test.exitcode(i64 %5)
+  ret i32 %6
+
+if.exit:                                          ; preds = %end_block
+  ret i32 0
+}
+

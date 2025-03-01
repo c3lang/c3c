@@ -1,0 +1,30 @@
+// #target: macos-x64
+module testing;
+import blurb;
+import foo;
+
+def hello_int = foo::hello(<int>);
+
+fn void main()
+{
+	blurb::test(&hello_int);
+}
+
+module foo(<Type>);
+
+fn void hello() {}
+
+module blurb;
+
+def Foo = fn void();
+def Bar = fn void();
+
+fn void test(Foo x) {}
+
+/* #expect: testing.ll
+
+define void @testing.main() #0 {
+entry:
+  call void @blurb.test(ptr @"foo$int$.hello")
+  ret void
+}

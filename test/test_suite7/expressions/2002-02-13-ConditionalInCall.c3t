@@ -1,0 +1,16 @@
+// #target: macos-x64
+
+module test;
+
+extern fn void foo(int, double, float);
+
+fn void bar(int x)
+{
+  foo(x, x ? 1.0 : 12.5, 1.0);
+}
+
+/* #expect: test.ll
+
+  %i2b = icmp ne i32 %0, 0
+  %ternary = select i1 %i2b, double 1.000000e+00, double 1.250000e+01
+  call void @foo(i32 %0, double %ternary, float 1.000000e+00)

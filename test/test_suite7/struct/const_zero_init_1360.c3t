@@ -1,0 +1,27 @@
+// #target: macos-x64
+module test;
+import std::collections::map;
+
+def Foo = HashMap(<String, HashMap(<String, String>)>);
+macro test()
+{
+    HashMap(<String, String>) map0;
+    map0["c3c"] = {};
+
+    Foo map;
+    map["c3c"] = {};
+    map["c3c"] = { {}, null, 1 ,2 ,2 };
+
+	HashMap(<String, HashMap(<String, String>)>) map2;
+    map2["c3c"] = {};
+    map2["c3c"] = { {}, null, 1 ,2 ,2 };
+
+}
+fn void main()
+{
+	test();
+}
+
+/* #expect: test.ll
+
+main

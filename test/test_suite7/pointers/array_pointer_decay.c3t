@@ -1,0 +1,77 @@
+// #target: macos-x64
+module foo;
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    int[3] x;
+    int[3]* y = &x;
+    int* z = y;
+    int[] sub = y;
+    int[3] y1 = y[1];
+    int z1 = z[1];
+    int* xx = &x + 1;
+    int[3]* yy = (int[3]*)(xx);
+    int* zz = yy - 1;
+    printf("%p = %p = %p, %p != %p\n", y, z, zz, &(*y)[1], xx);
+    x[1] = 123;
+    printf("%d = %d\n", x[1], z[1]);
+}
+
+
+/* #expect: foo.ll
+
+define void @foo.main() #0 {
+entry:
+  %x = alloca [3 x i32], align 4
+  %y = alloca ptr, align 8
+  %z = alloca ptr, align 8
+  %sub = alloca %"int[]", align 8
+  %y1 = alloca [3 x i32], align 4
+  %z1 = alloca i32, align 4
+  %xx = alloca ptr, align 8
+  %yy = alloca ptr, align 8
+  %zz = alloca ptr, align 8
+  store i32 0, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  store ptr %x, ptr %y, align 8
+  %0 = load ptr, ptr %y, align 8
+  store ptr %0, ptr %z, align 8
+  %1 = load ptr, ptr %y, align 8
+  %2 = insertvalue %"int[]" undef, ptr %1, 0
+  %3 = insertvalue %"int[]" %2, i64 3, 1
+  store %"int[]" %3, ptr %sub, align 8
+  %4 = load ptr, ptr %y, align 8
+  %ptradd2 = getelementptr inbounds i8, ptr %4, i64 12
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y1, ptr align 4 %ptradd2, i32 12, i1 false)
+  %5 = load ptr, ptr %z, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %5, i64 4
+  %6 = load i32, ptr %ptradd3, align 4
+  store i32 %6, ptr %z1, align 4
+  %ptradd_any = getelementptr i8, ptr %x, i64 12
+  store ptr %ptradd_any, ptr %xx, align 8
+  %7 = load ptr, ptr %xx, align 8
+  store ptr %7, ptr %yy, align 8
+  %8 = load ptr, ptr %yy, align 8
+  %ptradd_any4 = getelementptr i8, ptr %8, i64 -12
+  store ptr %ptradd_any4, ptr %zz, align 8
+  %9 = load ptr, ptr %y, align 8
+  %ptradd5 = getelementptr inbounds i8, ptr %9, i64 4
+  %10 = load ptr, ptr %y, align 8
+  %11 = load ptr, ptr %z, align 8
+  %12 = load ptr, ptr %zz, align 8
+  %13 = load ptr, ptr %xx, align 8
+  call void (ptr, ...) @printf(ptr @.str, ptr %10, ptr %11, ptr %12, ptr %ptradd5, ptr %13)
+  %ptradd6 = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 123, ptr %ptradd6, align 4
+  %ptradd7 = getelementptr inbounds i8, ptr %x, i64 4
+  %14 = load ptr, ptr %z, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %14, i64 4
+  %15 = load i32, ptr %ptradd7, align 4
+  %16 = load i32, ptr %ptradd8, align 4
+  call void (ptr, ...) @printf(ptr @.str.1, i32 %15, i32 %16)
+  ret void
+}

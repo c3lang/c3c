@@ -390,11 +390,18 @@ bool sema_unresolved_type_is_generic(SemaContext *context, TypeInfo *type_info)
 INLINE bool sema_resolve_generic_type(SemaContext *context, TypeInfo *type_info)
 {
 	TypeInfo *inner = type_info->generic.base;
-	if (inner->kind != TYPE_INFO_IDENTIFIER && inner->subtype != TYPE_COMPRESSED_NONE && !inner->optional)
+	if (inner->kind != TYPE_INFO_IDENTIFIER || inner->subtype != TYPE_COMPRESSED_NONE || inner->optional)
 	{
 		RETURN_SEMA_ERROR(inner, "Parameterization required a concrete type name here.");
 	}
-	ASSERT(inner->resolve_status == RESOLVE_NOT_DONE);
+	if (inner->resolve_status == RESOLVE_DONE)
+	{
+		if (!type_is_user_defined(inner->type))
+		{
+			RETURN_SEMA_ERROR(inner, "A user defined type was expected here, not %s.", type_quoted_error_string(inner->type));
+		}
+	}
+	ASSERT_SPAN(inner, inner->resolve_status == RESOLVE_NOT_DONE);
 
 	bool was_recursive = false;
 	Decl *type = sema_analyse_parameterized_identifier(context, inner->unresolved.path, inner->unresolved.name,

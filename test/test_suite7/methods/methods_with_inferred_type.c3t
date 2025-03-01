@@ -1,0 +1,83 @@
+// #target: macos-x64
+module test;
+
+distinct Foo = int;
+
+struct Abc
+{
+	int a;
+	int b;
+}
+
+fn void Foo.add(&f)
+{
+	*f = *f + 1;
+}
+
+macro void Foo.add_macro(&f)
+{
+	(*f)++;
+}
+
+fn int Abc.add(&a)
+{
+	return a.a + a.b;
+}
+
+macro int Abc.add_macro(&a)
+{
+	return a.a + a.b;
+}
+
+fn void test()
+{
+	Abc x = { 3, 4 };
+	int a = x.add();
+	int b = x.add_macro();
+	Foo f = 100;
+	f.add();
+	f.add_macro();
+}
+
+/* #expect: test.ll
+
+define void @test.Foo.add(ptr %0) #0 {
+entry:
+  %1 = load i32, ptr %0, align 4
+  %add = add i32 %1, 1
+  store i32 %add, ptr %0, align 4
+  ret void
+}
+
+; Function Attrs:
+define i32 @test.Abc.add(ptr %0) #0 {
+entry:
+  %1 = load i32, ptr %0, align 4
+  %ptradd = getelementptr inbounds i8, ptr %0, i64 4
+  %2 = load i32, ptr %ptradd, align 4
+  %add = add i32 %1, %2
+  ret i32 %add
+}
+
+; Function Attrs:
+define void @test.test() #0 {
+entry:
+  %x = alloca %Abc, align 4
+  %a = alloca i32, align 4
+  %b = alloca i32, align 4
+  %f = alloca i32, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = call i32 @test.Abc.add(ptr %x)
+  store i32 %0, ptr %a, align 4
+  %1 = load i32, ptr %x, align 4
+  %ptradd = getelementptr inbounds i8, ptr %x, i64 4
+  %2 = load i32, ptr %ptradd, align 4
+  %add = add i32 %1, %2
+  store i32 %add, ptr %b, align 4
+  store i32 100, ptr %f, align 4
+  call void @test.Foo.add(ptr %f)
+  %3 = load i32, ptr %f, align 4
+  %add1 = add i32 %3, 1
+  store i32 %add1, ptr %f, align 4
+  ret void
+}

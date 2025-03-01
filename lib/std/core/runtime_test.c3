@@ -3,6 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::runtime;
 import std::core::test @public;
+import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
@@ -23,6 +24,8 @@ struct TestContext
 	bool assert_print_backtrace;
 	bool has_ansi_codes;
 	bool is_in_panic;
+	bool is_quiet_mode;
+	bool is_no_capture;
 	String current_test_name;
 	TestFn setup_fn;
 	TestFn teardown_fn;
@@ -30,8 +33,12 @@ struct TestContext
 	char* error_buffer;
 	usz error_buffer_capacity;
 	File fake_stdout;
-	File orig_stdout;
-	File orig_stderr;
+	struct stored
+	{
+		File stdout;
+		File stderr;
+		Allocator allocator;
+	}
 }
 
 struct TestUnit
@@ -68,7 +75,6 @@ fn int cmp_test_unit(TestUnit a, TestUnit b)
 
 fn bool terminal_has_ansi_codes() @local => @pool()
 {
-
 	if (try v = env::get_var_temp("TERM"))
 	{
 		if (v.contains("xterm") || v.contains("vt100") || v.contains("screen")) return true;
@@ -107,47 +113,34 @@ fn void test_panic(String message, String file, String function, uint line) @loc
 	}
 
 	test_context.is_in_panic = false;
+	allocator::thread_allocator = test_context.stored.allocator;
 	libc::longjmp(&test_context.buf, 1);
 }
 
 fn void mute_output() @local
 {
-	if (!test_context.fake_stdout.file) return;
-	assert(!test_context.orig_stderr.file);
-	assert(!test_context.orig_stdout.file);
-
+	if (test_context.is_no_capture || !test_context.fake_stdout.file) return;
 	File* stdout = io::stdout();
-	File* stderr = io::stderr();
-
-	test_context.orig_stderr = *stderr;
-	test_context.orig_stdout = *stdout;
-
+    File* stderr = io::stderr();
 	*stderr = test_context.fake_stdout;
 	*stdout = test_context.fake_stdout;
-
 	(void)test_context.fake_stdout.seek(0, Seek.SET)!!;
 }
 
 fn void unmute_output(bool has_error) @local
 {
-	if (!test_context.fake_stdout.file)
-	{
-		return;
-	}
-	assert(test_context.orig_stderr.file);
-	assert(test_context.orig_stdout.file);
+	if (test_context.is_no_capture || !test_context.fake_stdout.file) return;
 
 	File* stdout = io::stdout();
 	File* stderr = io::stderr();
 
-	*stderr = test_context.orig_stderr;
-	*stdout = test_context.orig_stdout;
-	test_context.orig_stderr.file = null;
-	test_context.orig_stdout.file = null;
+	*stderr = test_context.stored.stderr;
+	*stdout = test_context.stored.stdout;
 
 	usz log_size = test_context.fake_stdout.seek(0, Seek.CURSOR)!!;
 	if (has_error)
 	{
+		io::printf("\nTesting %s ", test_context.current_test_name);
 		io::printn(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
 	}
 
@@ -163,7 +156,7 @@ fn void unmute_output(bool has_error) @local
 		{
 			if (@unlikely(c == '\0'))
 			{
-				// ignore junk from previous tests 
+				// ignore junk from previous tests
 				break;
 			}
 			libc::putchar(c);
@@ -177,6 +170,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 {
 	usz max_name;
 	bool sort_tests = true;
+	bool check_leaks = true;
 	foreach (&unit : tests)
 	{
 		if (max_name < unit.name.len) max_name = unit.name.len;
@@ -187,20 +181,29 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		.breakpoint_on_assert = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
+		.stored.allocator = allocator::heap(),
+		.stored.stderr = *io::stderr(),
+		.stored.stdout = *io::stdout(),
 	};
 	for (int i = 1; i < args.len; i++)
 	{
 		switch (args[i])
 		{
-			case "breakpoint":
+			case "--test-breakpoint":
 				context.breakpoint_on_assert = true;
-			case "nosort":
+			case "--test-nosort":
 				sort_tests = false;
-			case "noansi":
+			case "--test-noleak":
+				check_leaks = false;
+			case "--test-nocapture":
+				context.is_no_capture = true;
+			case "--noansi":
 				context.has_ansi_codes = false;
-			case "useansi":
+			case "--useansi":
 				context.has_ansi_codes = true;
-			case "filter":
+			case "--test-quiet":
+				context.is_quiet_mode = true;
+			case "--test-filter":
 				if (i == args.len - 1)
 				{
 					io::printn("Invalid arguments to test runner.");
@@ -221,9 +224,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 
 	// Buffer for hijacking the output
 	$if (!env::NO_LIBC):
-		test_context.fake_stdout.file = libc::tmpfile();
+		context.fake_stdout.file = libc::tmpfile();
 	$endif
-	if (test_context.fake_stdout.file == null)
+	if (context.fake_stdout.file == null)
 	{
 		io::print("Failed to hijack stdout, tests will print everything");
 	}
@@ -239,56 +242,73 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len / 2);
 	name.append(" TESTS ");
 	name.append_repeat('-', len - len / 2);
-	io::printn(name);
+	if (!context.is_quiet_mode) io::printn(name);
 	name.clear();
+	TempState temp_state = mem::temp_push();
+	defer mem::temp_pop(temp_state);
 	foreach(unit : tests)
 	{
-		if (test_context.test_filter && !unit.name.contains(test_context.test_filter))
+		mem::temp_pop(temp_state);
+		if (context.test_filter && !unit.name.contains(context.test_filter))
 		{
 			tests_skipped++;
 			continue;
 		}
-		test_context.setup_fn = null;
-		test_context.teardown_fn = null;
-		test_context.current_test_name = unit.name;
+		context.setup_fn = null;
+		context.teardown_fn = null;
+		context.current_test_name = unit.name;
 
 		defer name.clear();
 		name.appendf("Testing %s ", unit.name);
 		name.append_repeat('.', max_name - unit.name.len + 2);
-		io::printf("%s ", name.str_view());
+		if (context.is_quiet_mode)
+		{
+			io::print(".");
+		}
+		else
+		{
+			io::printf("%s ", name.str_view());
+		}
+		(void)io::stdout().flush();
 		TrackingAllocator mem;
-		mem.init(allocator::heap());
+
+		mem.init(context.stored.allocator);
 		if (libc::setjmp(&context.buf) == 0)
 		{
 			mute_output();
 			mem.clear();
-			mem::@scoped(&mem)
+			if (check_leaks) allocator::thread_allocator = &mem;
+			$if(!$$OLD_TEST):
+				unit.func();
+			$else
+				if (catch err = unit.func())
+				{
+					io::printf("[FAIL] Failed due to: %s", err);
+					continue;
+				}
+			$endif
+			// track cleanup that may take place in teardown_fn
+			if (context.teardown_fn)
 			{
-				$if(!$$OLD_TEST):
-					unit.func();
-				$else
-					if (catch err = unit.func())
-					{
-						io::printf("[FAIL] Failed due to: %s", err);
-						continue;
-					}
-				$endif
-			};
+				context.teardown_fn();
+			}
+			if (check_leaks) allocator::thread_allocator = context.stored.allocator;
+
 			unmute_output(false); // all good, discard output
 			if (mem.has_leaks())
-            {
-            	io::print(test_context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
-            	io::printn(" LEAKS DETECTED!");
-            	mem.print_report();
-            }
-            else
-            {
-                io::printfn(test_context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
-				tests_passed++;
-			}
-			if (test_context.teardown_fn)
 			{
-				test_context.teardown_fn();
+				if(context.is_quiet_mode) io::printf("\n%s ", context.current_test_name);
+				io::print(context.has_ansi_codes ? "[\e[0;31mFAIL\e[0m]" : "[FAIL]");
+				io::printn(" LEAKS DETECTED!");
+				mem.print_report();
+			}
+			else
+			{
+				if (!context.is_quiet_mode)
+				{
+					io::printfn(context.has_ansi_codes ? "[\e[0;32mPASS\e[0m]" : "[PASS]");
+				}
+				tests_passed++;
 			}
 		}
 		mem.free();
@@ -297,9 +317,9 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 
 	int n_failed = test_count - tests_passed - tests_skipped;
 	io::printf("Test Result: %s%s%s: ",
-				test_context.has_ansi_codes ? (n_failed ? "\e[0;31m" : "\e[0;32m") : "",
+				context.has_ansi_codes ? (n_failed ? "\e[0;31m" : "\e[0;32m") : "",
 				n_failed ? "FAILED" : "PASSED",
-				test_context.has_ansi_codes ? "\e[0m" : "",
+				context.has_ansi_codes ? "\e[0m" : "",
 				);
 
 	io::printfn("%d passed, %d failed, %d skipped.",
@@ -308,8 +328,8 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 				tests_skipped);
 
 	// cleanup fake_stdout file
-	if (test_context.fake_stdout.file) libc::fclose(test_context.fake_stdout.file);
-	test_context.fake_stdout.file = null;
+	if (context.fake_stdout.file) libc::fclose(context.fake_stdout.file);
+	context.fake_stdout.file = null;
 
 	return n_failed == 0;
 }

@@ -1,0 +1,18 @@
+module test;
+import std;
+
+fn void main()
+{
+	String $a = "hello";
+	char[] $b = { 'a', 'b' };
+	var $c = $a +++ $b;
+	String y = $c;
+	char[3] $bytes = x'0103ff';
+	var $d = $bytes +++ $b;
+	char[5] z = $d;
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [8 x i8] c"helloab\00", align 1
+@.bytes = private unnamed_addr constant [6 x i8] c"\01\03\FFab\00", align 1

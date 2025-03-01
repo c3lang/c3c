@@ -1,0 +1,1 @@
+module "Hello my friend"; // #error: 'module' should be followed by a plain identifier, not a string. Did you accidentally put the module name between ""?

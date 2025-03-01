@@ -1,0 +1,33 @@
+// #target: macos-x64
+module test;
+union Rect {
+  struct { float[<2>] min, max; }
+}
+
+fn Rect test_rect(float[<2>] max) {
+  Rect rect = {.max = max};
+  assert(rect.min == {});
+  return rect;
+}
+
+/* #expect: test.ll
+
+%Rect = type { %.anon }
+%.anon = type { <2 x float>, <2 x float> }
+
+define { double, double } @test.test_rect(double %0) #0 {
+entry:
+  %max = alloca <2 x float>, align 8
+  %rect = alloca %Rect, align 8
+  store double %0, ptr %max, align 8
+  call void @llvm.memset.p0.i64(ptr align 8 %rect, i8 0, i64 16, i1 false)
+  %ptradd = getelementptr inbounds i8, ptr %rect, i64 8
+  %1 = load <2 x float>, ptr %max, align 8
+  store <2 x float> %1, ptr %ptradd, align 8
+  %2 = load <2 x float>, ptr %rect, align 8
+  %eq = fcmp oeq <2 x float> %2, zeroinitializer
+  %3 = call i1 @llvm.vector.reduce.and.v2i1(<2 x i1> %eq)
+  call void @llvm.assume(i1 %3)
+  %4 = load { double, double }, ptr %rect, align 8
+  ret { double, double } %4
+}

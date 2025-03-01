@@ -1,0 +1,112 @@
+// #target: macos-x64
+module test;
+extern fn void foo(args...);
+
+fn void main()
+{
+	int[3] y = { 33, 44, 55 };
+	foo(...y);
+	foo(1, ...y);
+	int[] z = &y;
+	foo(...z[1..2]);
+	foo(1, ...z[1..2], 5);
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %y = alloca [3 x i32], align 4
+  %varargslots = alloca [3 x %any], align 16
+  %.anon = alloca [3 x i32], align 4
+  %varargslots4 = alloca [4 x %any], align 16
+  %taddr = alloca i32, align 4
+  %.anon5 = alloca [3 x i32], align 4
+  %z = alloca %"int[]", align 8
+  %varargslots11 = alloca [2 x %any], align 16
+  %varargslots15 = alloca [4 x %any], align 16
+  %taddr16 = alloca i32, align 4
+  %taddr21 = alloca i32, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 @.__const, i32 12, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon, ptr align 4 %y, i32 12, i1 false)
+  %0 = insertvalue %any undef, ptr %.anon, 0
+  %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %1, ptr %varargslots, align 16
+  %ptradd = getelementptr inbounds i8, ptr %.anon, i64 4
+  %2 = insertvalue %any undef, ptr %ptradd, 0
+  %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd1 = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %3, ptr %ptradd1, align 16
+  %ptradd2 = getelementptr inbounds i8, ptr %.anon, i64 8
+  %4 = insertvalue %any undef, ptr %ptradd2, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd3 = getelementptr inbounds i8, ptr %varargslots, i64 32
+  store %any %5, ptr %ptradd3, align 16
+  call void @foo(ptr %varargslots, i64 3)
+  store i32 1, ptr %taddr, align 4
+  %6 = insertvalue %any undef, ptr %taddr, 0
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %7, ptr %varargslots4, align 16
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %.anon5, ptr align 4 %y, i32 12, i1 false)
+  %8 = insertvalue %any undef, ptr %.anon5, 0
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd6 = getelementptr inbounds i8, ptr %varargslots4, i64 16
+  store %any %9, ptr %ptradd6, align 16
+  %ptradd7 = getelementptr inbounds i8, ptr %.anon5, i64 4
+  %10 = insertvalue %any undef, ptr %ptradd7, 0
+  %11 = insertvalue %any %10, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd8 = getelementptr inbounds i8, ptr %varargslots4, i64 32
+  store %any %11, ptr %ptradd8, align 16
+  %ptradd9 = getelementptr inbounds i8, ptr %.anon5, i64 8
+  %12 = insertvalue %any undef, ptr %ptradd9, 0
+  %13 = insertvalue %any %12, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd10 = getelementptr inbounds i8, ptr %varargslots4, i64 48
+  store %any %13, ptr %ptradd10, align 16
+  call void @foo(ptr %varargslots4, i64 4)
+  %14 = insertvalue %"int[]" undef, ptr %y, 0
+  %15 = insertvalue %"int[]" %14, i64 3, 1
+  store %"int[]" %15, ptr %z, align 8
+  %16 = load %"int[]", ptr %z, align 8
+  %17 = extractvalue %"int[]" %16, 0
+  %ptradd12 = getelementptr inbounds i8, ptr %17, i64 4
+  %18 = insertvalue %"int[]" undef, ptr %ptradd12, 0
+  %19 = insertvalue %"int[]" %18, i64 2, 1
+  %20 = extractvalue %"int[]" %19, 0
+  %21 = insertvalue %any undef, ptr %20, 0
+  %22 = insertvalue %any %21, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %22, ptr %varargslots11, align 16
+  %23 = extractvalue %"int[]" %19, 0
+  %ptradd13 = getelementptr inbounds i8, ptr %23, i64 4
+  %24 = insertvalue %any undef, ptr %ptradd13, 0
+  %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd14 = getelementptr inbounds i8, ptr %varargslots11, i64 16
+  store %any %25, ptr %ptradd14, align 16
+  call void @foo(ptr %varargslots11, i64 2)
+  store i32 1, ptr %taddr16, align 4
+  %26 = insertvalue %any undef, ptr %taddr16, 0
+  %27 = insertvalue %any %26, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  store %any %27, ptr %varargslots15, align 16
+  %28 = load %"int[]", ptr %z, align 8
+  %29 = extractvalue %"int[]" %28, 0
+  %ptradd17 = getelementptr inbounds i8, ptr %29, i64 4
+  %30 = insertvalue %"int[]" undef, ptr %ptradd17, 0
+  %31 = insertvalue %"int[]" %30, i64 2, 1
+  %32 = extractvalue %"int[]" %31, 0
+  %33 = insertvalue %any undef, ptr %32, 0
+  %34 = insertvalue %any %33, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd18 = getelementptr inbounds i8, ptr %varargslots15, i64 16
+  store %any %34, ptr %ptradd18, align 16
+  %35 = extractvalue %"int[]" %31, 0
+  %ptradd19 = getelementptr inbounds i8, ptr %35, i64 4
+  %36 = insertvalue %any undef, ptr %ptradd19, 0
+  %37 = insertvalue %any %36, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd20 = getelementptr inbounds i8, ptr %varargslots15, i64 32
+  store %any %37, ptr %ptradd20, align 16
+  store i32 5, ptr %taddr21, align 4
+  %38 = insertvalue %any undef, ptr %taddr21, 0
+  %39 = insertvalue %any %38, i64 ptrtoint (ptr @"$ct.int" to i64), 1
+  %ptradd22 = getelementptr inbounds i8, ptr %varargslots15, i64 48
+  store %any %39, ptr %ptradd22, align 16
+  call void @foo(ptr %varargslots15, i64 4)
+  ret void
+}

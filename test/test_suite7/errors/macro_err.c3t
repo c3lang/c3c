@@ -1,0 +1,58 @@
+// #target: macos-x64
+module test;
+import libc;
+fn int! abc()
+{
+	return 1;
+}
+macro test()
+{
+	return abc()!;
+}
+
+fn void main()
+{
+	libc::printf("%d\n", test() ?? 2);
+}
+
+/* #expect: test.ll
+
+define i64 @test.abc(ptr %0) #0 {
+entry:
+  %reterr = alloca i64, align 8
+  store i32 1, ptr %0, align 4
+  ret i64 0
+}
+
+
+define void @test.main() #0 {
+entry:
+  %error_var = alloca i64, align 8
+  %retparam = alloca i32, align 4
+  %0 = call i64 @test.abc(ptr %retparam)
+  %not_err = icmp eq i64 %0, 0
+  %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %1, label %after_check, label %assign_optional
+
+assign_optional:                                  ; preds = %entry
+  store i64 %0, ptr %error_var, align 8
+  br label %guard_block
+
+after_check:                                      ; preds = %entry
+  br label %noerr_block
+
+guard_block:                                      ; preds = %assign_optional
+  br label %else_block
+
+noerr_block:                                      ; preds = %after_check
+  %2 = load i32, ptr %retparam, align 4
+  br label %phi_block
+
+else_block:                                       ; preds = %guard_block
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %noerr_block
+  %val = phi i32 [ %2, %noerr_block ], [ 2, %else_block ]
+  %3 = call i32 (ptr, ...) @printf(ptr @.str, i32 %val)
+  ret void
+}

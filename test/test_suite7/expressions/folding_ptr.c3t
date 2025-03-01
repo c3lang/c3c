@@ -1,0 +1,32 @@
+// #target: macos-x64
+module test;
+struct Test
+{
+    int x;
+}
+
+extern Test *cfun;
+
+fn int f()
+{
+  if (!(cfun + 0)) return 0;
+  return cfun.x;
+}
+
+
+/* #expect: test.ll
+
+define i32 @test.f() #0 {
+entry:
+  %0 = load ptr, ptr @cfun, align 8
+  %i2nb = icmp eq ptr %0, null
+  br i1 %i2nb, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret i32 0
+
+if.exit:                                          ; preds = %entry
+  %1 = load ptr, ptr @cfun, align 8
+  %2 = load i32, ptr %1, align 4
+  ret i32 %2
+}

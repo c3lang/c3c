@@ -1,0 +1,25 @@
+// #target: macos-x64
+
+int foo = 2.2 ? 1 : 2;
+double bar = false ? 1.0 : 2;
+bool baz = 1 ? false : true;
+
+fn void test()
+{
+    int x = 1 ? 0 : test2();
+}
+
+fn int test2() { return 3; }
+
+/* #expect: ternary_folding.ll
+
+@ternary_folding.foo = local_unnamed_addr global i32 1, align 4
+@ternary_folding.bar = local_unnamed_addr global double 2.000000e+00, align 8
+@ternary_folding.baz = local_unnamed_addr global i8 0, align 1
+
+define void @ternary_folding.test() #0 {
+entry:
+  %x = alloca i32, align 4
+  store i32 0, ptr %x, align 4
+  ret void
+}

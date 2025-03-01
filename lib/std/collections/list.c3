@@ -23,7 +23,7 @@ struct List (Printable)
  @param initial_capacity "The initial capacity to reserve"
  @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
 *>
-fn List* List.init(&self, usz initial_capacity = 16, Allocator allocator)
+fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -37,7 +37,7 @@ fn List* List.init(&self, usz initial_capacity = 16, Allocator allocator)
  @param initial_capacity "The initial capacity to reserve"
  @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
 *>
-fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap())
+fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @deprecated("Use init(mem)")
 {
 	self.allocator = allocator;
 	self.size = 0;
@@ -52,9 +52,19 @@ fn List* List.new_init(&self, usz initial_capacity = 16, Allocator allocator = a
 
  @param initial_capacity "The initial capacity to reserve"
 *>
-fn List* List.temp_init(&self, usz initial_capacity = 16)
+fn List* List.temp_init(&self, usz initial_capacity = 16) @deprecated("Use tinit()")
 {
-	return self.init(initial_capacity, allocator::temp()) @inline;
+	return self.init(allocator::temp(), initial_capacity) @inline;
+}
+
+<*
+ Initialize the list using the temp allocator.
+
+ @param initial_capacity "The initial capacity to reserve"
+*>
+fn List* List.tinit(&self, usz initial_capacity = 16)
+{
+	return self.init(allocator::temp(), initial_capacity) @inline;
 }
 
 <*
@@ -63,9 +73,20 @@ fn List* List.temp_init(&self, usz initial_capacity = 16)
  @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
 *>
-fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap())
+fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = allocator::heap()) @deprecated("Use init_with_array(mem)")
 {
-	self.new_init(values.len, allocator) @inline;
+	return self.init_with_array(allocator, values);
+}
+
+<*
+ Initialize a new list with an array.
+
+ @param [in] values `The values to initialize the list with.`
+ @require self.size == 0 "The List must be empty"
+*>
+fn List* List.init_with_array(&self, Allocator allocator, Type[] values)
+{
+	self.init(allocator, values.len) @inline;
 	self.add_array(values) @inline;
 	return self;
 }
@@ -76,9 +97,22 @@ fn List* List.new_init_with_array(&self, Type[] values, Allocator allocator = al
  @param [in] values `The values to initialize the list with.`
  @require self.size == 0 "The List must be empty"
 *>
-fn List* List.temp_init_with_array(&self, Type[] values)
+fn List* List.temp_init_with_array(&self, Type[] values) @deprecated("Use tinit_with_array()")
 {
-	self.temp_init(values.len) @inline;
+	self.tinit(values.len) @inline;
+	self.add_array(values) @inline;
+	return self;
+}
+
+<*
+ Initialize a temporary list with an array.
+
+ @param [in] values `The values to initialize the list with.`
+ @require self.size == 0 "The List must be empty"
+*>
+fn List* List.tinit_with_array(&self, Type[] values)
+{
+	self.tinit(values.len) @inline;
 	self.add_array(values) @inline;
 	return self;
 }

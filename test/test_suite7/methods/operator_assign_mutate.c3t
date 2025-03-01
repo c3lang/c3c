@@ -1,0 +1,77 @@
+// #target: macos-x64
+module test;
+import std::io, std::time, std::math, std::collections;
+
+List(<long>) stones;
+
+struct Foo
+{
+	int[3] x;
+}
+
+fn int Foo.get(self, usz i) @operator([]) => self.x[i];
+fn void Foo.set(&self, usz i, int z) @operator([]=) => self.x[i] = z;
+
+fn void main() {
+  stones.push(1);
+  stones.push(100);
+  stones[0] *= 3;
+  stones[1] *= 2;
+  stones[0] += 31;
+  Foo z;
+  z[1] += 5;
+  z[1] *= 3;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %z = alloca %Foo, align 4
+  %.anon = alloca i32, align 4
+  %coerce = alloca %Foo, align 8
+  %.anon5 = alloca i32, align 4
+  %coerce6 = alloca %Foo, align 8
+  call void @"std_collections_list$long$.List.push"(ptr @test.stones, i64 1) #2
+  call void @"std_collections_list$long$.List.push"(ptr @test.stones, i64 100) #2
+  %0 = call ptr @"std_collections_list$long$.List.get_ref"(ptr @test.stones, i64 0) #2
+  %1 = load i64, ptr %0, align 8
+  %mul = mul i64 %1, 3
+  store i64 %mul, ptr %0, align 8
+  %2 = call ptr @"std_collections_list$long$.List.get_ref"(ptr @test.stones, i64 1) #2
+  %3 = load i64, ptr %2, align 8
+  %mul1 = mul i64 %3, 2
+  store i64 %mul1, ptr %2, align 8
+  %4 = call ptr @"std_collections_list$long$.List.get_ref"(ptr @test.stones, i64 0) #2
+  %5 = load i64, ptr %4, align 8
+  %add = add i64 %5, 31
+  store i64 %add, ptr %4, align 8
+  store i32 0, ptr %z, align 4
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %ptradd2 = getelementptr inbounds i8, ptr %z, i64 8
+  store i32 0, ptr %ptradd2, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce, ptr align 4 %z, i32 12, i1 false)
+  %lo = load i64, ptr %coerce, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %coerce, i64 8
+  %hi = load i32, ptr %ptradd3, align 8
+  %6 = call i32 @test.Foo.get(i64 %lo, i32 %hi, i64 1)
+  store i32 %6, ptr %.anon, align 4
+  %7 = load i32, ptr %.anon, align 4
+  %add4 = add i32 %7, 5
+  store i32 %add4, ptr %.anon, align 4
+  %8 = load i32, ptr %.anon, align 4
+  call void @test.Foo.set(ptr %z, i64 1, i32 %8)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %coerce6, ptr align 4 %z, i32 12, i1 false)
+  %lo7 = load i64, ptr %coerce6, align 8
+  %ptradd8 = getelementptr inbounds i8, ptr %coerce6, i64 8
+  %hi9 = load i32, ptr %ptradd8, align 8
+  %9 = call i32 @test.Foo.get(i64 %lo7, i32 %hi9, i64 1)
+  store i32 %9, ptr %.anon5, align 4
+  %10 = load i32, ptr %.anon5, align 4
+  %mul10 = mul i32 %10, 3
+  store i32 %mul10, ptr %.anon5, align 4
+  %11 = load i32, ptr %.anon5, align 4
+  call void @test.Foo.set(ptr %z, i64 1, i32 %11)
+  ret void
+}

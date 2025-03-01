@@ -396,7 +396,7 @@ fn void test_query_values_withempty()
 fn void test_url_idempotence()
 {
 	UrlQueryValues query_builder;
-	query_builder.new_init();
+	query_builder.init(mem);
 	defer query_builder.free();
 
 	query_builder.add("profileSQL", "true");

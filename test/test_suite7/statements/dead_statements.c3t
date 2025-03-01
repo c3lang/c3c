@@ -1,0 +1,44 @@
+// #target: macos-x64
+module test;
+import std::io;
+import std::io::path;
+import std::collections::list;
+
+fn void! load_corpus2(String code, String path) @local
+{
+    for(;;)	io::printfn("hi");
+    path::Path p = path::temp(path)!; // #warning: This code will never execute
+
+    if (!path::exists(p))
+    {
+		return IoError.FILE_NOT_FOUND?;
+    }
+}
+
+fn int main(String[] args)
+{
+	if (catch err = load_corpus2("foo", "bar"))
+	{
+		return 1;
+	}
+	return 0;
+}
+/* #expect: test.ll
+
+define internal i64 @test.load_corpus2(ptr %0, i64 %1, ptr %2, i64 %3) #0 {
+entry:
+  %code = alloca %"char[]", align 8
+  %path = alloca %"char[]", align 8
+  %retparam = alloca i64, align 8
+  store ptr %0, ptr %code, align 8
+  %ptradd = getelementptr inbounds i8, ptr %code, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  store ptr %2, ptr %path, align 8
+  %ptradd1 = getelementptr inbounds i8, ptr %path, i64 8
+  store i64 %3, ptr %ptradd1, align 8
+  br label %loop.body
+
+loop.body:                                        ; preds = %loop.body, %entry
+  %4 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 2, ptr null, i64 0)
+  br label %loop.body
+}

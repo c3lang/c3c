@@ -1,0 +1,66 @@
+module foo;
+import bar;
+import bar::abc;
+
+long x = Baz.sizeof;
+short y = $evaltype("Baz").sizeof;
+int z = bar::Baz.sizeof;
+int w = bar::Baz.sizeof;
+int v = bar::abc::Foo.sizeof;
+int x1 = $sizeof(x);
+int y1 = $sizeof($eval("y"));
+int a = Baz.y.sizeof;
+int b = $evaltype("Deep").a.$eval("b").sizeof;
+int c = Deep.a.b.c.sizeof;
+int d = Deep[][100].sizeof;
+int e = $evaltype("Deep")[][100]**[100][]*.sizeof;
+int a2 = Baz.y.sizeof;
+int a3 = Baz.y.sizeof;
+int a4 = Baz.y.sizeof;
+int a5 = Baz.y.sizeof;
+
+module bar;
+
+struct Deep
+{
+    int x;
+    struct a
+    {
+        struct b
+        {
+            char[5] c;
+        }
+    }
+}
+
+struct Baz
+{
+    int x;
+    char[60] y;
+}
+
+module bar::abc;
+
+struct Foo
+{
+    char x;
+}
+
+/* #expect: foo.ll
+
+@foo.x = local_unnamed_addr global i64 64, align 8
+@foo.y = local_unnamed_addr global i16 64, align 2
+@foo.z = local_unnamed_addr global i32 64, align 4
+@foo.w = local_unnamed_addr global i32 64, align 4
+@foo.v = local_unnamed_addr global i32 1, align 4
+@foo.x1 = local_unnamed_addr global i32 8, align 4
+@foo.y1 = local_unnamed_addr global i32 2, align 4
+@foo.a = local_unnamed_addr global i32 60, align 4
+@foo.b = local_unnamed_addr global i32 5, align 4
+@foo.c = local_unnamed_addr global i32 5, align 4
+@foo.d = local_unnamed_addr global i32 1600, align 4
+@foo.e = local_unnamed_addr global i32 8, align 4
+@foo.a2 = local_unnamed_addr global i32 60, align 4
+@foo.a3 = local_unnamed_addr global i32 60, align 4
+@foo.a4 = local_unnamed_addr global i32 60, align 4
+@foo.a5 = local_unnamed_addr global i32 60, align 4

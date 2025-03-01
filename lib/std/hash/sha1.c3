@@ -18,9 +18,9 @@ struct Sha1
 	char[BLOCK_BYTES] buffer;
 }
 
-def HmacSha1 = Hmac<[Sha1, HASH_BYTES, BLOCK_BYTES]>;
-def hmac = hmac::hash<[Sha1, HASH_BYTES, BLOCK_BYTES]>;
-def pbkdf2 = hmac::pbkdf2<[Sha1, HASH_BYTES, BLOCK_BYTES]>;
+def HmacSha1 = Hmac(<Sha1, HASH_BYTES, BLOCK_BYTES>);
+def hmac = hmac::hash(<Sha1, HASH_BYTES, BLOCK_BYTES>);
+def pbkdf2 = hmac::pbkdf2(<Sha1, HASH_BYTES, BLOCK_BYTES>);
 
 fn char[HASH_BYTES] hash(char[] data)
 {
@@ -78,10 +78,10 @@ fn char[HASH_BYTES] Sha1.final(&self)
 	{
 		finalcount[i] = (char)((self.count[(i >= 4 ? 0 : 1)] >> ((3 - (i & 3)) * 8)) & 0xFF);
 	}
-	self.update(char[] { 0o200 });
+	self.update((char[]){ 0o200 });
 	while ((self.count[0] & 504) != 448)
 	{
-		self.update(char[] { 0 });
+		self.update((char[]){ 0 });
 	}
 
 	self.update(&finalcount);

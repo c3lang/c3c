@@ -111,7 +111,7 @@ static Library *add_library(JSONObject *object, const char *dir)
 	{
 		char *res = strdup(provides);
 		str_ellide_in_place(res, 32);
-		error_exit("Invalid 'provides' module name in %s, was '%s'.", library->dir, res);
+		error_exit("Invalid 'provides' module name in %s, was '%s', the name should only contain alphanumerical letters and '_'.", library->dir, res);
 	}
 	library->provides = provides;
 	library->execs = get_optional_string_array(context, object, "exec");

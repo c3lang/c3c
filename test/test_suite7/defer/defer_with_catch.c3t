@@ -1,0 +1,88 @@
+// #target: macos-x64
+module test;
+
+fn void! test() {}
+fn void main()
+{
+	int a;
+	defer { if (catch e = test()) {} }
+	defer { if (catch b = test()) {} }
+	if (a > 0) return;
+}
+/* #expect: test.ll
+
+entry:
+  %a = alloca i32, align 4
+  %b = alloca i64, align 8
+  %e = alloca i64, align 8
+  %b7 = alloca i64, align 8
+  %e14 = alloca i64, align 8
+  store i32 0, ptr %a, align 4
+  %0 = load i32, ptr %a, align 4
+  %gt = icmp sgt i32 %0, 0
+  br i1 %gt, label %if.then, label %if.exit
+if.then:                                          ; preds = %entry
+  br label %testblock
+testblock:                                        ; preds = %if.then
+  %1 = call i64 @test.test()
+  %not_err = icmp eq i64 %1, 0
+  %2 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %2, label %after_check, label %assign_optional
+assign_optional:                                  ; preds = %testblock
+  store i64 %1, ptr %b, align 8
+  br label %end_block
+after_check:                                      ; preds = %testblock
+  store i64 0, ptr %b, align 8
+  br label %end_block
+end_block:                                        ; preds = %after_check, %assign_optional
+  %3 = load i64, ptr %b, align 8
+  %i2b = icmp ne i64 %3, 0
+  br label %testblock1
+testblock1:                                       ; preds = %end_block
+  %4 = call i64 @test.test()
+  %not_err2 = icmp eq i64 %4, 0
+  %5 = call i1 @llvm.expect.i1(i1 %not_err2, i1 true)
+  br i1 %5, label %after_check4, label %assign_optional3
+assign_optional3:                                 ; preds = %testblock1
+  store i64 %4, ptr %e, align 8
+  br label %end_block5
+after_check4:                                     ; preds = %testblock1
+  store i64 0, ptr %e, align 8
+  br label %end_block5
+end_block5:                                       ; preds = %after_check4, %assign_optional3
+  %6 = load i64, ptr %e, align 8
+  %i2b6 = icmp ne i64 %6, 0
+  ret void
+if.exit:                                          ; preds = %entry
+  br label %testblock8
+testblock8:                                       ; preds = %if.exit
+  %7 = call i64 @test.test()
+  %not_err9 = icmp eq i64 %7, 0
+  %8 = call i1 @llvm.expect.i1(i1 %not_err9, i1 true)
+  br i1 %8, label %after_check11, label %assign_optional10
+assign_optional10:                                ; preds = %testblock8
+  store i64 %7, ptr %b7, align 8
+  br label %end_block12
+after_check11:                                    ; preds = %testblock8
+  store i64 0, ptr %b7, align 8
+  br label %end_block12
+end_block12:                                      ; preds = %after_check11, %assign_optional10
+  %9 = load i64, ptr %b7, align 8
+  %i2b13 = icmp ne i64 %9, 0
+  br label %testblock15
+testblock15:                                      ; preds = %end_block12
+  %10 = call i64 @test.test()
+  %not_err16 = icmp eq i64 %10, 0
+  %11 = call i1 @llvm.expect.i1(i1 %not_err16, i1 true)
+  br i1 %11, label %after_check18, label %assign_optional17
+assign_optional17:                                ; preds = %testblock15
+  store i64 %10, ptr %e14, align 8
+  br label %end_block19
+after_check18:                                    ; preds = %testblock15
+  store i64 0, ptr %e14, align 8
+  br label %end_block19
+end_block19:                                      ; preds = %after_check18, %assign_optional17
+  %12 = load i64, ptr %e14, align 8
+  %i2b20 = icmp ne i64 %12, 0
+  ret void
+}

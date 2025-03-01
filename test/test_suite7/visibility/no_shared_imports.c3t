@@ -1,0 +1,22 @@
+// #file: file1.c3
+module baz;
+
+fn void runBar()
+{
+    visible();
+    bar::barFunc(); // #error: 'bar::barFunc' could not be found, did you spell it right?
+}
+
+// #file: file2.c3
+module baz;
+import bar @public;
+
+fn void visible() @private
+{
+    bar::barFunc();
+}
+
+// #file: file3.c3
+module bar;
+
+fn void barFunc() @private {}

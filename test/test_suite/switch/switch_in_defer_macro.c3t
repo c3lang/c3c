@@ -2,8 +2,8 @@
 
 <*
  @require Token.kindof == ENUM && $typefrom(Token.inner).kindof == UNSIGNED_INT
- @require $defined(Token{}.token)
- @require $defined(Comment{}.start) && $defined(Comment{}.end)
+ @require $defined((Token){}.token)
+ @require $defined((Comment){}.start) && $defined((Comment){}.end)
  *>
 module lexer(<Token, Comment>);
 import std::io;
@@ -493,7 +493,7 @@ fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::
 {
     *self = {};
     self.nodes.new_init(initial_capacity, allocator: using);
-    self.nodes.push(TrieNode{});
+    self.nodes.push((TrieNode){});
 }
 
 <*
@@ -585,7 +585,7 @@ fn void! TrieNode.set(&self, Trie *t, char[] key, Value value) @private
         if (new_idx > Index.max) return TrieError.TRIE_FULL?;
         idx = (Index)new_idx;
         self.children[c] = idx;
-        t.nodes.push(TrieNode{});
+        t.nodes.push((TrieNode){});
     }
     t.nodes[idx].set(t, key[1..], value)!;
 }

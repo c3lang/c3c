@@ -1,0 +1,24 @@
+// #target: macos-x64
+module test;
+enum TokenType: char (char token) {
+  ERROR = 0,
+  INCP = '>',
+  DECP = '>',
+  LOOPS = '[',
+}
+
+macro populate_token_table() {
+  TokenType[256] $tmp = {};
+
+  $foreach ($tokenType: TokenType.values)
+    $tmp[$tokenType.token] = $tokenType;
+  $endforeach
+
+  return $tmp;
+}
+
+const TokenType[256] TOKEN_TABLE = populate_token_table();
+
+/* #expect: test.ll
+
+@test.TOKEN_TABLE = local_unnamed_addr constant { i8, [61 x i8], i8, [28 x i8], i8, [164 x i8] } { i8 0, [61 x i8] zeroinitializer, i8 2, [28 x i8] zeroinitializer, i8 3, [164 x i8] zeroinitializer }, align 16

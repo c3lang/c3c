@@ -1,0 +1,8 @@
+// #target: wasm32
+module test;
+extern fn void test() @wasm("hello", "world");
+
+/* #expect: test.ll
+
+declare void @world() #0
+attributes #0 = { nounwind uwtable "no-trapping-math"="true" "stack-protector-buffer-size"="8" "wasm-export-name"="world" "wasm-import-module"="hello" "wasm-import-name"="world" }

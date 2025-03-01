@@ -780,26 +780,28 @@ macro String.to_integer(string, $Type, int base = 10)
 	$Type value = 0;
 	while (index != len)
 	{
-		char c = {|
-			char ch = string[index++];
-			if (base_used != 16 || ch < 'A') return (char)(ch - '0');
-			if (ch <= 'F') return (char)(ch - 'A' + 10);
-			if (ch < 'a') return NumberConversion.MALFORMED_INTEGER?;
-			if (ch > 'f') return NumberConversion.MALFORMED_INTEGER?;
-			return (char)(ch - 'a' + 10);
-		|}!;
+		char c = string[index++];
+		switch
+		{
+			case base_used != 16 || c < 'A':  c -= '0';
+			case c <= 'F':                    c -= 'A' - 10;
+			case c < 'a' || c > 'f':          return NumberConversion.MALFORMED_INTEGER?;
+			default:                          c -= 'a' - 10;
+		}
 		if (c >= base_used) return NumberConversion.MALFORMED_INTEGER?;
-		value = {|
+		do
+		{
 			if (is_negative)
 			{
 				$Type new_value = value * base_used - c;
 				if (new_value > value) return NumberConversion.INTEGER_OVERFLOW?;
-				return new_value;
+				value = new_value;
+				break;
 			}
 			$Type new_value = value * base_used + c;
 			if (new_value < value) return NumberConversion.INTEGER_OVERFLOW?;
-			return new_value;
-		|}!;
+			value = new_value;
+		};
 	}
 	return value;
 }
@@ -868,7 +870,7 @@ macro String new_struct_to_str(x, Allocator allocator = allocator::heap())
 	DString s;
 	@stack_mem(512; Allocator mem)
 	{
-		s.new_init(allocator: mem);
+		s.init(mem);
 		io::fprint(&s, x)!!;
 		return s.copy_str(allocator);
 	};

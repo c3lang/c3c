@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test(<Type>);
+
+def Callback = fn Type();
+
+module mymain;
+
+import std::io;
+import test;
+
+def VoidCb = test::Callback(<void>);
+
+fn int main()
+{
+	VoidCb a = null;
+	void *b = a;
+	return 0;
+}
+/* #expect: mymain.ll
+
+define i32 @main() #0 {
+entry:
+  %a = alloca ptr, align 8
+  %b = alloca ptr, align 8
+  store ptr null, ptr %a, align 8
+  %0 = load ptr, ptr %a, align 8
+  store ptr %0, ptr %b, align 8
+  ret i32 0
+}

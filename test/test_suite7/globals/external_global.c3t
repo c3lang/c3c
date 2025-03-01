@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+
+struct MinInfo
+{
+    long offset;
+    uint file_attr;
+}
+
+struct UzGlobs
+{
+    ichar answerbuf;
+    MinInfo[1] info;
+    MinInfo* pInfo;
+}
+
+extern UzGlobs g;
+
+fn int extract_or_test_files()
+{
+    g.pInfo = &g.info;
+    return 0;
+}
+
+/* #expect: test.ll
+
+
+%UzGlobs = type { i8, [1 x %MinInfo], ptr }
+%MinInfo = type { i64, i32 }
+
+@g = external global %UzGlobs, align 8
+
+entry:
+  store ptr getelementptr inbounds (i8, ptr @g, i64 8), ptr getelementptr inbounds (i8, ptr @g, i64 24), align 8
+  ret i32 0
+}

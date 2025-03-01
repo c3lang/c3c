@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+import std::io;
+import abc;
+
+fn void main(String[] args)
+{
+	typeid y = Abc.typeid;
+	int* x = &abc::dabc;
+	Foo a = Foo.DEF;
+	String z = a.val;
+	io::printfn("%s", z);
+}
+
+module abc;
+int dabc;
+
+struct Abc { int x; }
+enum Foo : int (String val)
+{
+	ABC = "hello" ,
+	DEF = "world"
+}
+
+/* #expect: abc.ll
+
+%.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
+%"char[]" = type { ptr, i64 }
+@"$ct.abc.Abc" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@.enum.ABC = internal constant [4 x i8] c"ABC\00", align 1
+@.enum.DEF = internal constant [4 x i8] c"DEF\00", align 1
+@"$ct.int" = linkonce global %.introspect { i8 2, i64 0, ptr null, i64 4, i64 0, i64 0, [0 x i64] zeroinitializer }, align 8
+@"$ct.abc.Foo" = linkonce global { i8, i64, ptr, i64, i64, i64, [2 x %"char[]"] } { i8 8, i64 0, ptr null, i64 4, i64 ptrtoint (ptr @"$ct.int" to i64), i64 2, [2 x %"char[]"] [%"char[]" { ptr @.enum.ABC, i64 3 }, %"char[]" { ptr @.enum.DEF, i64 3 }] }, align 8
+@.str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@.str.1 = private unnamed_addr constant [6 x i8] c"world\00", align 1
+@"abc.Foo$val" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str, i64 5 }, %"char[]" { ptr @.str.1, i64 5 }], align 8
+@abc.dabc = global i32 0, align 4

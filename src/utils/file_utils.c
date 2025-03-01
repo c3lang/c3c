@@ -169,7 +169,7 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	if (file_len == 1 && path[0] == '.') return false;
 	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
 	if (!file_len) return false;
-	*filename_ptr = str_copy(&path[len - file_len], file_len);
+	if (filename_ptr) *filename_ptr = str_copy(&path[len - file_len], file_len);
 	if (!directory_ptr) return true;
 	if (file_len < len)
 	{
@@ -422,6 +422,13 @@ DONE:;
 	return lib_path;
 }
 
+char *file_get_dir(const char *full_path)
+{
+	char *dir = NULL;
+	file_get_dir_and_filename_from_full(full_path, NULL, &dir);
+	return dir;
+}
+
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)
 {
 	if (!file_namesplit(full_path, filename, dir_path))
@@ -509,7 +516,7 @@ const char *file_append_path_temp(const char *path, const char *name)
 #endif
 
 	// format the string safely
-	bool insert_separator = path[path_len - 1] == '/' || path[path_len - 1] == separator;
+	bool insert_separator = path[path_len - 1] != '/' && path[path_len - 1] != separator;
 	int written = insert_separator
 		              ? snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%c%s", path, separator, name)
 		              : snprintf(path_buffer, PATH_BUFFER_SIZE, "%s%s", path, name);

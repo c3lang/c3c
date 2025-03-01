@@ -255,23 +255,24 @@ static inline void context_switch_stat_pop(SemaContext *swapped, ContextSwitchSt
 
 Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 {
+	Expr *expr;
 	switch (type->type_kind)
 	{
 		case TYPE_STRUCT:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
-			Expr *embedded_struct = expr_access_inline_member(parent, decl);
-			return embedded_struct;
+			expr = expr_access_inline_member(parent, decl);
+			break;
 		}
 		case TYPE_DISTINCT:
 		{
 			Decl *decl = type->decl;
 			if (!decl->is_substruct) return NULL;
-			Expr *inner_expr = expr_copy(parent);
+			expr = expr_copy(parent);
 			type = type->decl->distinct->type;
-			inner_expr->type = type;
-			return inner_expr;
+			expr->type = type;
+			break;
 		}
 		case TYPE_ENUM:
 		{
@@ -282,28 +283,31 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 			{
 				if (decl->enums.inline_value)
 				{
-					Expr *expr = expr_new_expr(EXPR_CONST, parent);
+					expr = expr_new_expr(EXPR_CONST, parent);
 					expr_rewrite_const_int(expr, decl->enums.type_info->type, parent->const_expr.enum_err_val->enum_constant.ordinal);
 					return expr;
 				}
-				return copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]);
+				expr = copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]);
+				break;
 			}
 			if (decl->enums.inline_value)
 			{
-				Expr *expr = copy_expr_single(parent);
-				expr->type = decl->enums.type_info->type;
-				return expr;
+				expr = copy_expr_single(parent);
+				expr->type = type_add_optional(decl->enums.type_info->type, IS_OPTIONAL(parent));
+				break;
 			}
-			Expr *property = expr_new(EXPR_ACCESS_RESOLVED, parent->span);
-			property->resolve_status = RESOLVE_DONE;
-			property->access_resolved_expr.parent = parent;
-			property->access_resolved_expr.ref = decl->enums.parameters[decl->enums.inline_value];
-			property->type = property->access_resolved_expr.ref->type;
-			return property;
+			expr = expr_new(EXPR_ACCESS_RESOLVED, parent->span);
+			expr->resolve_status = RESOLVE_DONE;
+			expr->access_resolved_expr.parent = parent;
+			expr->access_resolved_expr.ref = decl->enums.parameters[decl->enums.inline_value];
+			expr->type = expr->access_resolved_expr.ref->type;
+			break;
 		}
 		default:
 			return NULL;
 	}
+	if (IS_OPTIONAL(parent)) expr->type = type_add_optional(expr->type, true);
+	return expr;
 }
 
 Expr *sema_expr_analyse_ct_arg_index(SemaContext *context, Expr *index_expr, unsigned *index_ref)
@@ -406,7 +410,7 @@ Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl)
 	embedded_struct->resolve_status = RESOLVE_DONE;
 	embedded_struct->access_resolved_expr.parent = parent;
 	embedded_struct->access_resolved_expr.ref = parent_decl->strukt.members[0];
-	embedded_struct->type = embedded_struct->access_resolved_expr.ref->type;
+	embedded_struct->type = type_add_optional(embedded_struct->access_resolved_expr.ref->type, IS_OPTIONAL(parent));
 	return embedded_struct;
 }
 
@@ -788,7 +792,7 @@ CHECK_INNER:
 	if (inner->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *decl = inner->ident_expr;
 	if (decl->decl_kind != DECL_VAR) return true;
-	if (!decl->var.in_param) return true;
+	if (!decl->var.in_param || decl->var.out_param) return true;
 	RETURN_SEMA_ERROR(inner, "'in' parameters may not be assigned to.");
 }
 
@@ -1088,6 +1092,9 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 					break;
 				case DECL_MACRO:
 					message = "Macros from other modules must be prefixed with the module name.";
+					break;
+				case DECL_DEFINE:
+					message = "Aliases from other modules must be prefixed with the module name.";
 					break;
 				default:
 					UNREACHABLE
@@ -1895,21 +1902,21 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	{
 		if (expr->unary_expr.expr->ident_expr->var.kind == VARDECL_CONST && param->var.out_param)
 		{
-			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' argument.");
+			SEMA_ERROR(expr, "A const parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 			return false;
 		}
 	}
 	if (expr->expr_kind != EXPR_IDENTIFIER) return true;
 	Decl *ident = expr->ident_expr;
 	if (ident->decl_kind != DECL_VAR) return true;
-	if (ident->var.out_param && param->var.in_param)
+	if (ident->var.out_param && !ident->var.in_param && param->var.in_param)
 	{
-		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' argument.");
+		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' or 'inout' argument.");
 		return false;
 	}
-	if (ident->var.in_param && param->var.out_param)
+	if (ident->var.in_param && !ident->var.out_param && param->var.out_param)
 	{
-		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' argument.");
+		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 		return false;
 	}
 	return true;
@@ -4971,6 +4978,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 {
 	unsigned vec_len = flat_type->array.len;
 	Type *indexed_type = type_get_indexed_type(parent->type);
+	assert(indexed_type);
 	if (is_lvalue) check = CHECK_VALUE;
 	ASSERT_SPAN(expr, len > 0);
 	int index;
@@ -5234,7 +5242,7 @@ CHECK_DEEPER:
 				if (!swizzle[(int)kw[i]]) goto NOT_SWIZZLE;
 			}
 			// TODO should we do a missing for this as well?
-			return sema_expr_analyse_swizzle(context, expr, parent, flat_type, kw, len, check, lvalue);
+			return sema_expr_analyse_swizzle(context, expr, current_parent, flat_type, kw, len, check, lvalue);
 			NOT_SWIZZLE:;
 		}
 	}
@@ -5651,6 +5659,12 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 	if (invalid_cast_ref) *invalid_cast_ref = false;
 	Expr *inner = exprptr(expr->cast_expr.expr);
 	TypeInfo *type_info = type_infoptr(expr->cast_expr.type_info);
+	if (inner->expr_kind == EXPR_INITIALIZER_LIST || inner->expr_kind == EXPR_DESIGNATED_INITIALIZER_LIST)
+	{
+		expr->expr_kind = EXPR_COMPOUND_LITERAL;
+		expr->expr_compound_literal = (ExprCompoundLiteral) { .initializer = inner, .type_info = type_info };
+		return sema_expr_analyse_compound_literal(context, expr);
+	}
 	bool success = sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_INFER);
 	if (!sema_analyse_expr(context, inner) || !success) return false;
 
@@ -7214,6 +7228,10 @@ static inline bool sema_expr_analyse_deref(SemaContext *context, Expr *expr, boo
 			case CONST_REF:
 				expr_replace(expr, expr_variable(inner->const_expr.global_ref));
 				break;
+			case CONST_BYTES:
+			case CONST_STRING:
+				expr_rewrite_const_int(expr, type_get_indexed_type(inner->type), inner->const_expr.bytes.len ? inner->const_expr.bytes.ptr[0] : 0);
+				return true;
 			default:
 				UNREACHABLE
 		}
@@ -8201,6 +8219,19 @@ static inline bool sema_expr_analyse_expr_block(SemaContext *context, Type *infe
 	context->block_exit_ref = stored_block_exit;
 	context_pop_returns(context, saved_returns);
 
+	if (!compiler.build.silence_deprecation)
+	{
+		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+		if (type_no_optional(expr->type) == type_void)
+		{
+			SEMA_DEPRECATED(expr, "Expression blocks have been deprecated. For this type of expression block, use `do { ... };` blocks instead.");
+		}
+		else
+		{
+			SEMA_DEPRECATED(expr, "Expression blocks have been deprecated. Depending on your code, using `do { ... };` with a variable outside of the block may work fine. There is a possibility that these blocks will be replaced by inline macros.");
+		}
+	}
+
 	return success;
 }
 
@@ -9027,8 +9058,7 @@ static inline bool sema_expr_analyse_generic_ident(SemaContext *context, Expr *e
 	Expr *parent = exprptr(expr->generic_ident_expr.parent);
 	if (parent->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
 	{
-		SEMA_ERROR(parent, "Expected an identifier to parameterize.");
-		return false;
+		RETURN_SEMA_ERROR(parent, "Expected an identifier to parameterize.");
 	}
 	Decl *symbol = sema_analyse_parameterized_identifier(context, parent->unresolved_ident_expr.path,
 														 parent->unresolved_ident_expr.ident, parent->span,
@@ -10141,7 +10171,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
-			if (!decl->var.out_param) break;
+			if (!decl->var.out_param || decl->var.in_param) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
 		}
 		case EXPR_UNARY:
@@ -10151,7 +10181,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			if (inner->expr_kind != EXPR_IDENTIFIER) break;
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
-			if (!decl->var.out_param) break;
+			if (!decl->var.out_param || decl->var.in_param) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
 		}
 		default:

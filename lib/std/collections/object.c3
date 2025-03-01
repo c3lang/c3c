@@ -156,7 +156,7 @@ fn void Object.init_map_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalMap.typeid;
-		self.map.new_init(allocator: self.allocator);
+		self.map.init(self.allocator);
 	}
 }
 
@@ -168,7 +168,7 @@ fn void Object.init_array_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalList.typeid;
-		self.array.new_init(allocator: self.allocator);
+		self.array.init(self.allocator);
 	}
 }
 
@@ -462,7 +462,7 @@ fn Object* Object.get_or_create_obj(&self, String key)
 	return container;
 }
 
-def ObjectInternalMap = HashMap<[String, Object*]> @private;
-def ObjectInternalList = List<[Object*]> @private;
-def ObjectInternalMapEntry = Entry<[String, Object*]> @private;
+def ObjectInternalMap = HashMap(<String, Object*>) @private;
+def ObjectInternalList = List(<Object*>) @private;
+def ObjectInternalMapEntry = Entry(<String, Object*>) @private;
 

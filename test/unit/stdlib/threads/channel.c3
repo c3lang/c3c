@@ -10,7 +10,7 @@ fn void init_destroy_buffered() @test
 	for (usz i = 0; i < 20; i++)
 	{
 		BufferedChannel(<int>) c;
-		c.new_init(1)!!;
+		c.init(mem, 1)!!;
 		defer c.destroy()!!;
 	}
 }
@@ -28,7 +28,7 @@ fn void init_destroy_unbuffered() @test
 fn void push_to_buffered_channel_no_lock() @test
 {
 	BufferedChannel(<int>) c;
-	c.new_init(1)!!;
+	c.init(mem, 1)!!;
 	defer c.destroy()!!;
 
 	c.push(1)!!;

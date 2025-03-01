@@ -53,11 +53,13 @@ fn void! Game.play(Game *game)
 
 fn void Game.report(Game* game, int guess)
 {
-	String desc = {|
-		if (guess < game.answer) return "too low";
-		if (guess > game.answer) return "too high";
-		return "the answer";
-	|};
+	String desc @noinit;
+	switch
+	{
+		case guess < game.answer: desc = "too low";
+		case guess > game.answer: desc = "too high";
+		default: desc = "the answer";
+	}
 	io::printfn("%d is %s.\n", guess, desc);
 }
 

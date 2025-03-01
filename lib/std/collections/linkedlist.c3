@@ -33,13 +33,18 @@ fn LinkedList* LinkedList.init(&self, Allocator allocator)
 <*
  @return "the initialized list"
 *>
-fn LinkedList* LinkedList.new_init(&self)
+fn LinkedList* LinkedList.new_init(&self) @deprecated("Use init(mem)")
 {
 	return self.init(allocator::heap()) @inline;
 }
 
 
-fn LinkedList* LinkedList.temp_init(&self)
+fn LinkedList* LinkedList.temp_init(&self) @deprecated("Use tinit()")
+{
+	return self.init(allocator::temp()) @inline;
+}
+
+fn LinkedList* LinkedList.tinit(&self)
 {
 	return self.init(allocator::temp()) @inline;
 }

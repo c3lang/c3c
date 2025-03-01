@@ -1,0 +1,72 @@
+// #target: macos-x64
+module test;
+import std;
+enum Foo : ichar
+{
+	ABC,
+	BCD,
+	BAR,
+	BAZ
+}
+
+fn void main()
+{
+	Foo x = 1 + Foo.ABC;
+	ichar i = 1;
+	assert(x == BCD);
+	x = i + Foo.ABC;
+	assert(x == BCD);
+	x++;
+	assert(x == BAR);
+	x = -1 + x;
+	assert(x == BCD);
+	x = -i + x;
+	assert(x == ABC);
+	x = -1 + Foo.BAR;
+	assert(x == BCD);
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca i8, align 1
+  %i = alloca i8, align 1
+  store i8 1, ptr %x, align 1
+  store i8 1, ptr %i, align 1
+  %0 = load i8, ptr %x, align 1
+  %eq = icmp eq i8 %0, 1
+  call void @llvm.assume(i1 %eq)
+  %1 = load i8, ptr %i, align 1
+  %add = add i8 %1, 0
+  store i8 %add, ptr %x, align 1
+  %2 = load i8, ptr %x, align 1
+  %eq1 = icmp eq i8 %2, 1
+  call void @llvm.assume(i1 %eq1)
+  %3 = load i8, ptr %x, align 1
+  %add2 = add i8 %3, 1
+  store i8 %add2, ptr %x, align 1
+  %4 = load i8, ptr %x, align 1
+  %eq3 = icmp eq i8 %4, 2
+  call void @llvm.assume(i1 %eq3)
+  %5 = load i8, ptr %x, align 1
+  %add4 = add i8 -1, %5
+  store i8 %add4, ptr %x, align 1
+  %6 = load i8, ptr %x, align 1
+  %eq5 = icmp eq i8 %6, 1
+  call void @llvm.assume(i1 %eq5)
+  %7 = load i8, ptr %i, align 1
+  %sext = sext i8 %7 to i32
+  %neg = sub i32 0, %sext
+  %trunc = trunc i32 %neg to i8
+  %8 = load i8, ptr %x, align 1
+  %add6 = add i8 %trunc, %8
+  store i8 %add6, ptr %x, align 1
+  %9 = load i8, ptr %x, align 1
+  %eq7 = icmp eq i8 %9, 0
+  call void @llvm.assume(i1 %eq7)
+  store i8 1, ptr %x, align 1
+  %10 = load i8, ptr %x, align 1
+  %eq8 = icmp eq i8 %10, 1
+  call void @llvm.assume(i1 %eq8)
+  ret void
+}

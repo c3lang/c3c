@@ -1,0 +1,9 @@
+module test;
+macro @test(uint value, #type) {
+
+}
+
+fn void main()
+{
+	@test(1, uint);
+}

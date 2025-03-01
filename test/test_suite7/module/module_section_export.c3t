@@ -1,0 +1,29 @@
+// #target: macos-x64
+
+module test @extern("TEST");
+
+fn void hello() @private {}
+
+fn void hello2() @private @export {}
+
+int a @private @export;
+int b @private;
+
+module test @export;
+
+fn void helloe() @private {}
+
+int c @private @export;
+int d @private;
+
+/* #expect: test.ll
+
+
+@TEST__a = local_unnamed_addr global i32 0, align 4
+@TEST.b = internal unnamed_addr global i32 0, align 4
+@TEST__c = local_unnamed_addr global i32 0, align 4
+@TEST__d = local_unnamed_addr global i32 0, align 4
+
+define internal void @TEST.hello()
+define void @TEST__hello2()
+define void @TEST__helloe()

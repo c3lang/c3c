@@ -360,6 +360,7 @@ macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 // All allocators
 
 
+def mem = thread_allocator @builtin;
 tlocal Allocator thread_allocator @private = base_allocator();
 Allocator temp_base_allocator @private = base_allocator();
 

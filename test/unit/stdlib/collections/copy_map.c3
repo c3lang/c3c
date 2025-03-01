@@ -12,7 +12,7 @@ fn void copy_map() @test
     mem::@scoped(&alloc)
 	{
 		IntMap x;
-		x.new_init();
+		x.init(mem);
 		DString y;
 		y.append("hello");
 		x.set(y.str_view(), 123);

@@ -67,7 +67,7 @@ fn void sorted()
 	
 		// with list
 		List(<int>) list;
-		list.temp_init();
+		list.tinit();
 		list.add_array(tc.input);
 
 		got = is_sorted(list);

@@ -1,0 +1,4 @@
+module test;
+const ABC = 1;
+const A @if(ABC == 1) = 100 ;
+int b @if(A == 100); // #error: This @if expression is dependent on

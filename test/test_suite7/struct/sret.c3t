@@ -1,0 +1,26 @@
+// #target: macos-x64
+struct Abc
+{
+	long a;
+    long b;
+    long c;
+    long d;
+    long e;
+}
+
+extern fn Abc foo1();
+extern fn Abc foo2();
+
+fn void bar()
+{
+  Abc dummy1 = foo1();
+  Abc dummy2 = foo2();
+}
+
+
+/* #expect: sret.ll
+
+sret(%Abc)
+sret(%Abc)
+sret(%Abc)
+sret(%Abc)

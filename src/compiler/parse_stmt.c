@@ -18,14 +18,6 @@ static Ast *parse_decl_stmt_after_type(ParseContext *c, TypeInfo *type)
 	Decl *decl = ast->declare_stmt;
 	switch (c->tok)
 	{
-		case TOKEN_LBRACE:
-			if (decl->var.init_expr && decl->var.init_expr->expr_kind == EXPR_UNRESOLVED_IDENTIFIER)
-			{
-				print_error_at(decl->var.init_expr->span,
-				               "An identifier would not usually be followed by a '{'. Did you intend write the name of a type here?");
-				return poisoned_ast;
-			}
-			break;
 		case TOKEN_LBRACKET:
 			if (!decl->var.init_expr)
 			{

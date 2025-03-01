@@ -64,6 +64,7 @@ class Issues:
 		self.debuginfo = False
 		self.safe = False
 		self.arch = None
+		self.no_deprecation = False
 		self.current_file = None
 		self.files = []
 		self.errors = {}
@@ -135,6 +136,8 @@ class Issues:
 		opts = ""
 		for opt in self.opts:
 			opts += ' ' + opt
+		if self.no_deprecation:
+			opts += " --silence-deprecation"
 		if self.safe:
 			opts += " --safe=yes"
 		else:
@@ -181,6 +184,9 @@ class Issues:
 		if line.startswith("target:"):
 			self.arch = line[7:].strip()
 			return
+		if line.startswith("deprecation:"):
+			self.no_deprecation = line[12:].strip() == "no"
+			return
 		if line.startswith("file:"):
 			if self.current_file:
 				self.current_file.close()
@@ -205,6 +211,8 @@ class Issues:
 			self.warnings[self.current_file.filename + ":%d" % (self.line + self.current_file.line_offset)] = line
 		elif line.startswith("target:"):
 			self.arch = line[7:].strip()
+		elif line.startswith("deprecation:"):
+			self.no_deprecation = line[12:].strip() == "no"
 		elif line.startswith("error:"):
 			line = line[6:].strip()
 			self.errors[self.current_file.filename + ":%d" % (self.line + self.current_file.line_offset)] = line

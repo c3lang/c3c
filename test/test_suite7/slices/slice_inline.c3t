@@ -1,0 +1,34 @@
+// #target: macos-x64
+module foo;
+struct Data{
+    inline char[32] data;
+}
+fn void Data.not_working(self) {
+    self[:self.data.len];
+}
+
+fn void Data.working(self) {
+    self.data[:self.data.len];
+}
+fn void main(String[] args) {
+    Data d;
+    d.not_working();
+    d.working();
+}
+
+/* #expect: foo.ll
+
+define void @foo.Data.not_working(ptr byval(%Data) align 8 %0) #0 {
+entry:
+  %1 = insertvalue %"char[]" undef, ptr %0, 0
+  %2 = insertvalue %"char[]" %1, i64 32, 1
+  ret void
+}
+; Function Attrs: nounwind uwtable
+define void @foo.Data.working(ptr byval(%Data) align 8 %0) #0 {
+entry:
+  %1 = insertvalue %"char[]" undef, ptr %0, 0
+  %2 = insertvalue %"char[]" %1, i64 32, 1
+  ret void
+}
+

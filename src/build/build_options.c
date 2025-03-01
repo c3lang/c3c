@@ -92,6 +92,7 @@ static void usage(bool full)
 	print_opt("-U <name>", "Remove feature flag <name>.");
 	PRINTF("");
 	print_opt("--about", "Prints a short description of C3.");
+	print_opt("--build-env", "Prints build environment information.");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
 	if (full)
@@ -103,6 +104,7 @@ static void usage(bool full)
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
+		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -135,7 +137,10 @@ static void usage(bool full)
 		print_opt("--ansi=<yes|no>", "Set colour output using ansi on/off, default is to try to detect it.");
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
-		print_opt("--test-disable-sort", "Do not sort tests.");
+		print_opt("--test-nosort", "Do not sort tests.");
+		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
+		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
+		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -193,6 +198,7 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
+		print_opt("--enable-new-generics", "Enable Foo{int} generics, this will disable the old Foo { ... } initializers.");
 		print_opt("--vector-conv=<option>", "Set vector conversion behaviour: default, old.");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
@@ -722,6 +728,21 @@ static void parse_option(BuildOptions *options)
 				options->test_breakpoint = true;
 				return;
 			}
+			if (match_longopt("test-noleak"))
+			{
+				options->test_noleak = true;
+				return;
+			}
+			if (match_longopt("test-nocapture"))
+			{
+				options->test_nocapture = true;
+				return;
+			}
+			if (match_longopt("test-quiet"))
+			{
+				options->test_quiet = true;
+				return;
+			}
 			if (match_longopt("test-nosort"))
 			{
 				options->test_nosort = true;
@@ -731,6 +752,11 @@ static void parse_option(BuildOptions *options)
 			{
 				options->silence_deprecation = true;
 				silence_deprecation = true;
+				return;
+			}
+			if (match_longopt("build-env"))
+			{
+				options->print_env = true;
 				return;
 			}
 			if (match_longopt("symtab"))
@@ -1067,6 +1093,12 @@ static void parse_option(BuildOptions *options)
 				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
 				return;
 			}
+			if (match_longopt("enable-new-generics"))
+			{
+				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
+				options->enable_new_generics = true;
+				return;
+			}
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
@@ -1228,6 +1260,11 @@ static void parse_option(BuildOptions *options)
 				options->testing = true;
 				return;
 			}
+			if (match_longopt("suppress-run"))
+			{
+				options->suppress_run = true;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				usage(true);
@@ -1279,6 +1316,7 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
+		.arch_os_target_override = ARCH_OS_TARGET_DEFAULT,
 		.linker_type = LINKER_TYPE_NOT_SET,
 		.validation_level = VALIDATION_NOT_SET,
 		.ansi = ANSI_DETECT,
@@ -1364,7 +1402,7 @@ static const char *check_dir(const char *path)
 {
 	char original_path[PATH_MAX + 1];
 	if (!getcwd(original_path, PATH_MAX)) error_exit("Failed to store path.");
-	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory.", path);
+	if (!dir_change(path)) error_exit("The path \"%s\" does not point to a valid directory from '%s'.", path, original_path);
 	if (!dir_change(original_path)) FAIL_WITH_ERR("Failed to change path to %s.", original_path);
 	return path;
 }
@@ -1409,7 +1447,7 @@ void append_file(BuildOptions *build_options)
 static inline const char *match_argopt(const char *name)
 {
 	size_t len = strlen(name);
-	if (memcmp(&current_arg[2], name, len) != 0) return false;
+	if (!str_start_with(&current_arg[2], name)) return false;
 	if (current_arg[2 + len] != '=') return false;
 	return &current_arg[2 + len + 1];
 }

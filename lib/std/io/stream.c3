@@ -80,7 +80,23 @@ macro usz! read_all(stream, char[] buffer)
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_new_fully(stream, Allocator allocator = allocator::heap())
+macro char[]! read_new_fully(stream, Allocator allocator = allocator::heap()) @deprecated("Use read_fully(mem)")
+{
+	usz len = available(stream)!;
+	char* data = allocator::malloc_try(allocator, len)!;
+	defer catch allocator::free(allocator, data);
+	usz read = 0;
+	while (read < len)
+	{
+		read += stream.read(data[read:len - read])!;
+	}
+	return data[:len];
+}
+
+<*
+ @require @is_instream(stream)
+*>
+macro char[]! read_fully(Allocator allocator, stream)
 {
 	usz len = available(stream)!;
 	char* data = allocator::malloc_try(allocator, len)!;
@@ -181,12 +197,12 @@ fn usz! copy_to(InStream in, OutStream dst, char[] buffer = {})
 	if (&dst.read_to) return dst.read_to(in);
 	$switch (env::MEMORY_ENV)
 		$case NORMAL:
-			return copy_through_buffer(in, dst, &&char[4096]{});
+			return copy_through_buffer(in, dst, &&(char[4096]){});
 		$case SMALL:
-			return copy_through_buffer(in, dst, &&char[1024]{});
+			return copy_through_buffer(in, dst, &&(char[1024]){});
 		$case TINY:
 		$case NONE:
-			return copy_through_buffer(in, dst, &&(char[256]{}));
+			return copy_through_buffer(in, dst, &&(char[256]){});
 	$endswitch
 }
 

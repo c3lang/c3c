@@ -353,8 +353,8 @@ typedef enum
 
 typedef enum
 {
-	ARCH_OS_TARGET_DEFAULT = 0,
-	ANDROID_AARCH64,
+	ARCH_OS_TARGET_DEFAULT = -1,
+	ANDROID_AARCH64 = 0,
 	ELF_AARCH64,
 	ELF_RISCV32,
 	ELF_RISCV64,
@@ -469,6 +469,7 @@ typedef struct BuildOptions_
 	size_t linker_lib_count;
 	const char* std_lib_dir;
 	VectorConv vector_conv;
+	bool enable_new_generics;
 	struct
 	{
 		const char *sdk;
@@ -504,7 +505,10 @@ typedef struct BuildOptions_
 	ValidationLevel validation_level;
 	Ansi ansi;
 	bool test_breakpoint;
+	bool test_quiet;
 	bool test_nosort;
+	bool test_noleak;
+	bool test_nocapture;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -552,6 +556,7 @@ typedef struct BuildOptions_
 	bool print_output;
 	bool print_input;
 	bool run_once;
+	bool suppress_run;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -587,6 +592,7 @@ typedef struct BuildOptions_
 	bool print_manifest_properties;
 	bool print_precedence;
 	bool print_linking;
+	bool print_env;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
@@ -649,6 +655,7 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *script_dir;
+	bool is_non_project;
 	bool run_after_compile;
 	bool delete_after_run;
 	bool generate_benchmark_runner;
@@ -680,6 +687,7 @@ typedef struct
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
 	VectorConv vector_conv;
+	bool enable_new_generics;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
@@ -765,6 +773,7 @@ static const char *x86_cpu_set[8] = {
 };
 
 static BuildTarget default_build_target = {
+		.is_non_project = true,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.memory_environment = MEMORY_ENV_NORMAL,
@@ -829,3 +838,4 @@ void resolve_libraries(BuildTarget *build_target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);
+void print_build_env(void);

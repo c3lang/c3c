@@ -1,0 +1,38 @@
+module qoi_test @test;
+
+import std::io::file;
+import std::compression::qoi;
+
+
+const char[?] TEST_QOI_DATA = b64"cW9pZgAAAVQAAACpBABV/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/f39/cl/Jv39/f392jXBJv39/f392TXBJv39/f392TXBJv39/f392TXBJv39/f392TXBJv39/f392TXBJv39/f392DXBJv39/f392TXBJv39/f392TXBJv39/f392TXBJv39/f392TXBJu81Jv39zzXAJv390jXBJu01wyb9/cg1xib9/dA1wibsNcQm/f3GNcgm0zXAJv33NcEm6zXHJv39wzXIJtQ1xCb99DXBJus1wibANcEm/f3BNcgm1TXHJv3yNcEm6jXCJsE1wSb9/cA1xibZNSbANcQm/fE1wSbpNcImwjXBJv39NcUm4DXCJv3xNcEm6DXCJsM1wSb9/TXEJuI1wib98DXBJuc1wibENcEm/fw1wyblNcIm/e41wibmNcImxTXBJv37NcMm5zXBJv3uNcIm5jXCJsU1wSb9+jXEJuc1wib97TXCJuU1wibGNcEm/fk1xCboNcIm/e01wSbmNcImxjXBJv35NcMm6DXCJv3uNcEm5jXBJsc1wSb9+DXDJuk1wib97jXBJuU1wibGNcIm/fg1wyboNcIm/e81wSblNcEmxzXBJv34NcMm6TXCJv3vNcEm5TXBJsc1wSb9+DXCJuk1wib98DXBJuQ1wibHNcEm/fc1wyboNcMm/fA1wSbkNcEmxzXCJv33NcMm5jXEJv3xNcEm5DXBJsc1wSb9+DXCJuY1xSb98TXBJuM1wibGNcIm/fc1wybmNcQm/fI1wSbjNcEmxjXCJv34NcIm5zXGJv3wNcEm4zXBJsU1wyb9+DXCJug1xib97jXCJuI1wibENcMm/fk1wibrNcQm/e01wibiNcImwjXDJv37NcIm7DXEJv3sNcEm4zXBJsE1xCb9wDUm+TXCJu41wyb96zXBJuM1wSY1xSbKNcUm6jXDJvc1wibvNcMm/eo1wSbjNccmyzXIJuY1xSb3NcIm7zXEJv3pNcEm4jXGJsw1yibLNcUm0DXGJvc1wibwNcMm/ek1wSbiNcQmzTXLJsk1xybDNcImxjXHJvc1wibxNcIm/ek1wSbhNcMmzzXDJsA1xSbGNcomwjXDJsQ1ySb2NcIm8TXCJv3pNcEm4TXCJs81wibCNcUmxDXLJsI1xSbCNcQmNcIm9zXDJvA1wib96DXCJuI1wSbONcMmwzXEJsM1xibANcImwjXGJsA1xCY1wyb4NcIm7zXDJv3oNcIm4jXBJs41wibENcQmwTXGJsE1wybCNccmNcMmNcMm+TXCJtA1wibZNcIm/ek1wSbjNcEmzjXBJsU1wybANcYmwzXCJsI11Cb5NcMmzTXDJtk1wyb96TXBJuM1wSbNNcImxTXMJsM1wybCNcImwDXNJvs1wibMNcMm2TXDJv3qNcEm4zXBJs01wibFNcsmxDXDJsE1wybBNcsm/DXDJsk1xCbZNcQm/eo1wSbjNcEmzDXCJsc1yCbGNcImwjXCJsM1yCb9wDXEJsY1xCbaNcQm/es1wSbjNcEmyzXDJsY1xibJNcImwTXDJsQ1wib9xjXQJto1xCb97DXBJuM1wSbKNcQmxjXCJs01wibANcMmxTXCJv3HNc4m2jXEJv3tNcEm4zXBJsk1xibENcImzjXCJsA1wybENcMm/cg1yybbNcQm/e41wSbjNcImxzXCJjXCJsQ1wibNNcMmNcMmxTXDJv3JNcgm3DXEJv3vNcEm5DXBJsQ1xCbANcwmzTXIJsY1wyb98DXEJtg1wCb91DXBJuQ1wyY1xibCNcomzjXIJsc1wib96DXBJsE1xSbWNcAm/dc1wSblNckmxTXIJs81xybINcImzTXBJv3VNcMmNcUm1TXAJv3ZNcEm5jXHJsg1wibTNcYmyTXDJss1wSb91TXLJtQ1wCb92zXBJug1wSblNcYmyTXDJsk1wyb91TXJJtM1wCb93jXBJv3UNcQmzDXEJsU1xCb91TXJJtI1wCb94DXBJv3UNcMmzjXGJjXGJv3WNccm0jXAJv3iNcEm/dU1wSbPNc4m/dc1xibQNcAm/eU1wSb96zXLJv3YNcQm0DXAJv3nNcIm/ew1xyb92zXBJtA1wCb96jXBJv3uNcIm/fE1wCb97DXBJv39/eU1wCb9/f39/dc1wCb9/f39/dg1wCb9/f39/dg1wCbxNcUm/f39/dw1wCbxNcgm/f39/dk1wCbxNcom/f39/dc1wCbyNcQmwjXBJv39/f3VNcAm9DXCJsQ1wSb9/f390jXBJvY1wSbENcIm/f39/dA1wSb4NcAmxTXCJv39/f3ONcEm+zUmxTXCJs01wCb9/f35NcEm/cc1wibJNcUm1QDeJv39/DXCJv3JNcImyDXGJtUA3ib9/fo1wSb9zDXCJsU1yCbWAN4m/f33NcIm/c41wibDNckm1wDeJsdv4Cb9/co1wib9zzXCJsE1ySbaAN4mxzLgJv39yDXCJv3RNc4m3ADeJscy4Cb9/cY1wib9xTXBJsk1zCbeAN4mxzLgJv39xDXCJv3ENcYmxjXKJuEAyP8AAAC7/wAAAOr/AAAA9g4JAAn/AAAA+sAJAMomxzLJ/icAAMIy0Sb9/cI1wib9xTXIJsU1xybkAMc+yP8AAAD5AMomxzLI/o0AACrDMtAm/f3BNcEm/cY1ySbFNcUm5gDGPsoAyibHMsj+UQAAKsgyyyb9/TXBJv3INcImwDXDJsU1wyboAMY+whI+xQDKJscyyCrJMssm/fs1wSb9yjXBJsE1xCbENcEm6gDGPsIADj7DDgDKJscyyCrJMssm/fg1wib9zDXBJsE1xCbzAMUJPsEJPsUAyybHMsgqwSgqwP41AADAKBwyzCb99jXCJv3ONcImwDXEJsM1Ju0AxQ4+yQDLJscyyCrBMtMm/fQ1wib90DXCJsA1xSY1wibtAMUOPsgzCQDKJscyyCrBMtMm/fI1wib9yDXEJsI1wiY1yibuAMUJPsQJEj7DAMkmxzLIKsEy0yb98DXCJuY1wibcNcUmwTXOJu8AzQ4+wwDJJscyyCrBMtMm/e41wibpNcEm2zXHJsE1xSY1xSbvAM0JPsMAySbHMsgqwTLTJv3sNcIm6zXCJto1wSbANcMmwTXEJjXEJvAA3ibHMsgqwTLTJv3qNcIm7jXCJtA1JsE1JsA1wibCNcImwjXBJsI1wibxAN4mxzLIKsEy0yb96DXCJvA1wybONcomwzXCJv3BAN4mxzLIHMEy0yb95jXCJvM1wibPNckmwzXCJv3BAN4mxzLgJvs1wSbiNcIm9jXCJs81yCbDNcIm/cEA3ibHMuAm+zXCJt81wibxNSbENcImxTXDJsI1xCbANcImwjXCJv3qMuAm/DXCJtw1wibxNcEmxTXBJsQ1xSbBNcMmwjXBJsM1wSb96jLgJvw1wibcNcIm8DXCJsU1wibCNccmwTXCJsI1wSbENSb9/f3RNcEm3DXDJu81wSbFNcImwjXCJsA1wSbCNcEmwjXCJv39/dc1wibfNcAm7jXBJsY1wSbCNcEmwTXCJsE1wSbBNcMm/f392DXBJv3TNcImxTXBJsI1wSbCNcEmwDXCJsI1wib9/f3YNcEm/dM1wibFNcImwTXBJsE1wSY1xCbCNcIm/f392DXCJv3TNcEmxTXCJsE1wSY1wyY1xCbDNcAm/f39wjUm1TXBJv01wCbQNcEmxDXDJsE1xibANcEmNcAm/f39yDXDJtI1wSb4NckmzDXCJsE1xSbBNcUmwDXBJv39/cw1xCbRNcIm9jXPJsg1wSbANccmwDXDJsE1wib9/f3lNcIm9TXTJsU1xyY1wibANcEmwzXBJv39/eY1wib1NcUmNcsmxTXGJsA1wibANcImwTXCJv3Zftwm/es1wib1NcImwTXNJsM1xibCNcEmwDXCJsA1wib92i7cJsx73Sb9NcEm9TXCJsA1xSbDNcImwzXFJsM1wSbANcgm/dou3CbMMN0m/TXBJvQ1wyY1xibDNcMmwzXCJsU1wSbBNcYm/dsu3CbMMN0m/DXCJvQ1wibANcEmNcImxDXCJsQ1wSbFNcEmwjXEJv3cLsr+AADQ/gAAjcAlLswmzDDI/gCNAMD+ACcAwjDNJvw1wib0NcImwDXBJjXCJsM1wibFNcImxDXBJsM1wSb93i7K/gAAJ8EQLswmzDDHOMUwzSb8NcIm9DXCJsA1wSbANcImwTXDJsY1wSbENcEm/eYuygbBEC7MJswwxjjIMMsm/DXCJvQ1wibANcEmwDXCJjXEJsg1wCbENcEm/eYuygbBJS7MJswwxTjENsA4wTDLJvw1wib0NcImwDXBJsA1yCbINcEmxTXAJv3mLskQBsEuzSbMMMU4wzDA/gBRADjBMMsm/DXCJvQ1wibANcImNccmyzXAJv3uLsn+AAAQ/gAAAcEGwBAuyibMMMU4wTYwwTjCMMsm/DXCJvQ1wibBNcomzDXAJv3uLsklPMCgjAbCLskmzDDFOMSkRDjCMMsm+zXCJvU1wibCNccmzzUm/e4uySU8wCUGxC7HJswwxTjJMMsm6TXAJs41wib1NcImwzXFJv39wy7IBsElBsUuxybMMMU4yTDLJug1wCbPNcIm9TXDJv39zi7IPMEYLsEGwi7HJswwyDjB/gA1ADjCMMsm5jXBJs81wib2NcMm/f3OLsg8wSUGEP4AAFEGwi7HJswwzDjBCjDLJuU1wybONcIm9zXDJss1JjXAJv36Lsg8wQbGLscmzDDGNjjANjA2OME2MMsm5TXCJs41wyb3NcQmyTXCJv37LsgGJTwGxi7HJswwxgo4wAo2OMIwzCb5NcIm+TXFJsQ1xCb9/C7KEAbEEC7IJswwxj44wG44wzDMJvg1wib7Nc8m/f0u3CbMMMYKOMU2MMwm+DXCJvw1zSb9/cAu3CbMMMY2OMQ2MM0m9zXCJv3ANcsm/f3tMMc4wzYwzib3NcIm/cM1xib9/e8w3Sb2NcIm/f39/f3XNcMm/f397f6NjY3BJv3iNcMm/f397Tj+JycnwSb93zXFJv39/dU4/lFRUT7DJtA+wib93zXEJv39/dQ4PsYmzzg+wTQm/d81wyb9/f3UPsgmzz7COCb94DXAJv39/dU+xjgmyDg0wDgmwjg+wibCOD7GJv39/f3tPsQmyD7FJsI+wjgmwT7IJs84ND7CJsU4NMA4Jv39/f3LPsImyT7GJsE0PsImwj7IJsE4PsI4JsY+xCbEPsMmxTg0hIg0OCb9/f39PsEmyj7GJsE+wjgmwj7COMA0PsEmwTQ+yCbBPsQmxD7DJsQ+xSb9/f38PsI4JsI4wSbBPsEQOD7BJsE+wTQmwz7BOD7EJsEQPsgmwT7DJsU+wTQ4JsM+xib9/f38PsomwRA+xSbAOD7BOCbDPsgmwRA+yCbBPsUmwz7CJsQ+whA+wSb9/f38PsomwTg+xSbAND7CNMA4JsA+xzgmwRA+wBAmyT7FJsI+wibEPsI4Jv39/f3BOD7IOCbCPsUmwDQ+xSbAPsUmxBA+wBAmyz7DJsI+wzgmwj7DOCb9/f390j7COCbAOD7FJsE4NMA4JsY0PsA0Jsk+xSbCOD7DJsI4PsM4Jv39/f3bPsE0OCbNOD7AOCbJPsQ4JsE+xibBPsQ4Jv39/f39wD7EJsI+xibBPsQ4Jv39/f39yj7GJsE+wzgm/f39/f3LODT+KysrPsA4JsM+wSb9/f39/f39/f3aAAAAAAAAAAE=";
+
+
+fn void test_qoi_all()
+{
+    @pool()
+    {
+        // create a test descriptor
+        QOIDesc test_desc;
+
+        // decode the test data
+        char[] decoded = qoi::decode(mem, TEST_QOI_DATA[..], &test_desc)!!;
+        defer free(decoded);
+
+        assert(test_desc.width == 340 && test_desc.height == 169, "Expected resolution of 340x169");
+
+        // encode the decoded data
+        char[] encoded = qoi::encode(mem, decoded, &test_desc)!!;
+        assert(encoded == TEST_QOI_DATA[..], "Encoder output should match the test data");
+		defer free(encoded);
+        // encode and write the decoded data to a file
+        usz written = qoi::write("unittest.qoi", decoded, &test_desc)!!;
+
+        // read and decode the written data
+        char[] read = qoi::read(mem, "unittest.qoi", &test_desc)!!;
+        assert(read == decoded, "Read data should match the decoded data");
+
+        // cleanup
+        file::delete("unittest.qoi")!!;
+        free(read);
+    };
+}

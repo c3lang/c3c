@@ -1,0 +1,60 @@
+// #target: macos-x64
+
+fn void test1()
+{}
+
+fn void test2()
+{}
+
+fn void test(int i)
+{
+    bool b = true;
+    switch (i)
+    {
+        case 1:
+            defer test2();
+            if (b) break;
+            test1();
+        case 2:
+            test1();
+    }
+}
+
+/* #expect: defer_break_switch.ll
+
+define void @defer_break_switch.test(i32 %0) #0 {
+entry:
+  %b = alloca i8, align 1
+  %switch = alloca i32, align 4
+  store i8 1, ptr %b, align 1
+  store i32 %0, ptr %switch, align 4
+  br label %switch.entry
+
+switch.entry:                                     ; preds = %entry
+  %1 = load i32, ptr %switch, align 4
+  switch i32 %1, label %switch.exit [
+    i32 1, label %switch.case
+    i32 2, label %switch.case1
+  ]
+
+switch.case:                                      ; preds = %switch.entry
+  %2 = load i8, ptr %b, align 1
+  %3 = trunc i8 %2 to i1
+  br i1 %3, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %switch.case
+  call void @defer_break_switch.test2()
+  br label %switch.exit
+
+if.exit:                                          ; preds = %switch.case
+  call void @defer_break_switch.test1()
+  call void @defer_break_switch.test2()
+  br label %switch.exit
+
+switch.case1:                                     ; preds = %switch.entry
+  call void @defer_break_switch.test1()
+  br label %switch.exit
+
+switch.exit:                                      ; preds = %switch.case1, %if.exit, %if.then, %switch.entry
+  ret void
+}

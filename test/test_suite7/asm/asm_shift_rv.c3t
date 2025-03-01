@@ -1,0 +1,19 @@
+// #target: elf-riscv32
+module test;
+
+fn void main(String[] args)
+{
+	asm
+	{
+		sll $t0, $t1, $t2;
+		slli $s1, $s2, 31u;
+		srl $a0, $a1, $a2;
+		srli $x10, $x11, 0u;
+		sra $t0, $t1, $t2;
+		srai $s1, $s2, 1u;
+	}
+}
+
+/* #expect: test.ll
+
+"sll t0, t1, t2\0Aslli s1, s2, 31\0Asrl a0, a1, a2\0Asrli x10, x11, 0\0Asra t0, t1, t2\0Asrai s1, s2, 1\0A", "~{x5},~{x9},~{x10}"()

@@ -1,0 +1,32 @@
+// #target: macos-x64
+module test;
+
+distinct Foo = int;
+fn void main()
+{
+	int*[] abc = { };
+	void*[] bcd = (void*[]) abc;
+	int[] cde = {};
+	Foo[] xyz = (Foo[])cde;
+	Foo[] xyz2 = (Foo[])(int[]) { 1, 2 };
+}
+
+/* #expect: test.ll
+
+entry:
+  %abc = alloca %"int*[]", align 8
+  %bcd = alloca %"void*[]", align 8
+  %cde = alloca %"int[]", align 8
+  %xyz = alloca %"int[]", align 8
+  %xyz2 = alloca %"int[]", align 8
+  %literal = alloca [2 x i32], align 4
+  store %"int*[]" zeroinitializer, ptr %abc, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %bcd, ptr align 8 %abc, i32 16, i1 false)
+  store %"int[]" zeroinitializer, ptr %cde, align 8
+  call void @llvm.memcpy.p0.p0.i32(ptr align 8 %xyz, ptr align 8 %cde, i32 16, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const, i32 8, i1 false)
+  %0 = insertvalue %"int[]" undef, ptr %literal, 0
+  %1 = insertvalue %"int[]" %0, i64 2, 1
+  store %"int[]" %1, ptr %xyz2, align 8
+  ret void
+}

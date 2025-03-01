@@ -13,7 +13,7 @@ struct Allocation
 	void*[MAX_BACKTRACE] backtrace;
 }
 
-def AllocMap = HashMap<[uptr, Allocation]>;
+def AllocMap = HashMap(<uptr, Allocation>);
 
 // A simple tracking allocator.
 // It tracks allocations using a hash map but
@@ -34,7 +34,7 @@ struct TrackingAllocator (Allocator)
 fn void TrackingAllocator.init(&self, Allocator allocator)
 {
 	*self = { .inner_allocator = allocator };
-	self.map.new_init(allocator: allocator);
+	self.map.init(allocator);
 }
 
 <*

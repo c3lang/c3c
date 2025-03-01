@@ -75,10 +75,12 @@ fn void! create_named_pipe_helper(void** rd, void **wr) @local @if(env::WIN32)
 fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WIN32) @local
 {
 	DString str = dstring::temp_with_capacity(512);
-	foreach (i, s : command_line)
+	foreach LINE: (i, s : command_line)
 	{
 		if (i != 0) str.append(' ');
-		bool needs_escape = {|
+
+		do CHECK_WS:
+		{
 			foreach (c : s)
 			{
 				switch (c)
@@ -86,16 +88,12 @@ fn WString convert_command_line_win32(String[] command_line) @inline @if(env::WI
 					case '\t':
 					case ' ':
 					case '\v':
-						return true;
+						break CHECK_WS;
 				}
 			}
-			return false;
-		|};
-		if (!needs_escape)
-		{
 			str.append(s);
-			continue;
-		}
+			continue LINE;
+		};
 		str.append('"');
 		foreach (j, c : s)
 		{
@@ -178,12 +176,13 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 
 		start_info.hStdOutput = wr;
 
-		{|
+		do
+		{
 			if (options.combined_stdout_stderr)
 			{
 				stderr = stdout;
 				start_info.hStdError = start_info.hStdOutput;
-				return;
+				break;
 			}
 			if (options.read_async)
 			{
@@ -202,8 +201,7 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 				if (!stderr) return SubProcessResult.FAILED_TO_OPEN_STDERR?;
 			}
 			start_info.hStdError = wr;
-
-		|}!;
+		};
 		void *event_output;
 		void *event_error;
 		if (options.read_async)
@@ -323,11 +321,17 @@ fn SubProcess! create(String[] command_line, SubProcessOptions options = {}, Str
 	CFile stdin = libc::fdopen(stdinfd[1], "wb");
 	libc::close(stdoutfd[1]);
 	CFile stdout = libc::fdopen(stdoutfd[0], "rb");
-	CFile stderr = {|
-		if (options.combined_stdout_stderr) return stdout;
+	CFile stderr @noinit;
+	do
+	{
+		if (options.combined_stdout_stderr)
+		{
+			stderr = stdout;
+			break;
+		}
 		libc::close(stderrfd[1]);
-		return libc::fdopen(stderrfd[0], "rb");
-	|};
+		stderr = libc::fdopen(stderrfd[0], "rb");
+	};
 	return {
 		.stdin_file = stdin,
 		.stdout_file = stdout,
@@ -356,6 +360,11 @@ fn CInt! SubProcess.join(&self) @if(env::POSIX)
 fn File SubProcess.stdout(&self)
 {
 	return file::from_handle(self.stdout_file);
+}
+
+fn File SubProcess.stderr(&self)
+{
+	return file::from_handle(self.stderr_file);
 }
 
 fn CInt! SubProcess.join(&self) @if(env::WIN32)

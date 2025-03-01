@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+import std::io;
+macro @test(;@body($val))
+{
+  @body(1);
+  @body(2);
+}
+
+fn void main()
+{
+	int a;
+  @test(;int $num)
+  {
+    a += $num;
+  };
+}
+
+/* #expect: test.ll
+
+entry:
+  %a = alloca i32, align 4
+  store i32 0, ptr %a, align 4
+  %0 = load i32, ptr %a, align 4
+  %add = add i32 %0, 1
+  store i32 %add, ptr %a, align 4
+  %1 = load i32, ptr %a, align 4
+  %add1 = add i32 %1, 2
+  store i32 %add1, ptr %a, align 4
+  ret void
+}

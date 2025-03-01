@@ -7,7 +7,7 @@ const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
 const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 
-def PathList = List<[Path]>;
+def PathList = List(<Path>);
 
 fault PathResult
 {
@@ -274,7 +274,7 @@ fn Path! Path.new_absolute(self, Allocator allocator = allocator::heap())
 		};
 	$else
 		String cwd = os::getcwd(allocator::temp())!;
-		return Path { cwd, self.env }.new_append(path_str, allocator)!;
+		return (Path){ cwd, self.env }.new_append(path_str, allocator)!;
 	$endif
 }
 

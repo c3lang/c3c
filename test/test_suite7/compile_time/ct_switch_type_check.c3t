@@ -1,0 +1,46 @@
+// #target: macos-x64
+
+module test;
+
+macro get_type($Type)
+{
+    $switch ($Type.typeid)
+        $case int:
+            return "int";
+        $case double:
+            return "double";
+        $default:
+            return "any other";
+    $endswitch
+}
+
+extern fn void printf(char*, ...);
+
+fn void main()
+{
+    printf("%s\n", get_type(int));
+    printf("%s\n", get_type(double));
+    printf("%s\n", get_type(bool));
+
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.1 = private unnamed_addr constant [4 x i8] c"int\00", align 1
+@.str.2 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.3 = private unnamed_addr constant [7 x i8] c"double\00", align 1
+@.str.4 = private unnamed_addr constant [4 x i8] c"%s\0A\00", align 1
+@.str.5 = private unnamed_addr constant [10 x i8] c"any other\00", align 1
+
+
+declare void @printf(ptr, ...) #0
+
+
+define void @test.main() #0 {
+entry:
+  call void (ptr, ...) @printf(ptr @.str, ptr @.str.1)
+  call void (ptr, ...) @printf(ptr @.str.2, ptr @.str.3)
+  call void (ptr, ...) @printf(ptr @.str.4, ptr @.str.5)
+  ret void
+}

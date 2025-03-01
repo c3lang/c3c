@@ -1,0 +1,30 @@
+// #target: elf-riscv32
+module test;
+
+def Sum = fn int(int a, int b);
+
+fn int sum(int a, int b)
+{
+	return a + b;
+}
+
+fn void main(String[] args)
+{
+	int a = 1;
+	int b = 2;
+	int result = 0;
+	Sum sum_ptr = &sum;
+
+	asm
+	{
+		mv $a0, a;
+		mv $a1, b;
+		jalr $ra, sum_ptr, 0;
+		mv result, $a0;
+	}
+}
+
+
+/* #expect: test.ll
+
+"mv a0, $1\0Amv a1, $2\0Ajalr ra, $3, 0\0Amv $0, a0\0A", "=r,r,r,r,~{x1},~{x10},~{x11}"(i32 %1, i32 %2, ptr %3)

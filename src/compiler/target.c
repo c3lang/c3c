@@ -1887,13 +1887,6 @@ void target_setup(BuildTarget *target)
 		error_exit("Failed to find Windows def file: '%s' in path.", target->win.def);
 	}
 
-	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT) target->arch_os_target = default_target;
-
-	if (target->arch_os_target == ARCH_OS_TARGET_DEFAULT)
-	{
-		error_exit("Unable to detect the default target, please set an explicit --target value.");
-	}
-
 	if (target->arch_os_target == ELF_XTENSA && !XTENSA_AVAILABLE)
 	{
 		error_exit("Xtensa support is not available with this LLVM version.");

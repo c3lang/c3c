@@ -1,0 +1,20 @@
+// #target: elf-riscv32
+module test;
+
+fn void main(String[] args)
+{
+	asm
+	{
+		and $t0, $t1, $t2;
+		or $a0, $a1, $a2;
+		xor $s7, $s6, $s5;
+		andi $s1, $s2, -2048;
+		ori $s3, $s4, 2047;
+		xori $t3, $t4, 1;
+		not $t3, $t4;
+	}
+}
+
+/* #expect: test.ll
+
+"and t0, t1, t2\0Aor a0, a1, a2\0Axor s7, s6, s5\0Aandi s1, s2, -2048\0Aori s3, s4, 2047\0Axori t3, t4, 1\0Anot t3, t4\0A", "~{x5},~{x9},~{x10},~{x19},~{x23},~{x28}"()

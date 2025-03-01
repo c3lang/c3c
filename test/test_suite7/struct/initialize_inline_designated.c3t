@@ -1,0 +1,31 @@
+// #target: macos-x64
+module test;
+import std;
+struct Abc
+{
+	int a;
+	int b;
+}
+
+struct Bcd
+{
+	inline Abc x;
+	int y;
+}
+fn void main()
+{
+	Bcd z = { .x.b = 333, .a = 123 };
+}
+/* #expect: test.ll
+
+%Bcd = type { %Abc, i32 }
+%Abc = type { i32, i32 }
+
+  %z = alloca %Bcd, align 4
+  store i32 123, ptr %z, align 4
+  %ptradd = getelementptr inbounds i8, ptr %z, i64 4
+  store i32 333, ptr %ptradd, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %z, i64 8
+  store i32 0, ptr %ptradd1, align 4
+  ret void
+}

@@ -1,0 +1,59 @@
+// #target: macos-aarch64
+module test;
+
+fn int main()
+{
+	int[4] x = { 1, 4, 5, 7 };
+	defer
+	{
+		foreach (i : x)
+		{
+			if (i % 2 == 0) continue;
+			int a = 123;
+		}
+	}
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %x = alloca [4 x i32], align 4
+  %.anon = alloca i64, align 8
+  %i = alloca i32, align 4
+  %a = alloca i32, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 16, i1 false)
+  store i64 0, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.cond:                                        ; preds = %loop.inc, %entry
+  %0 = load i64, ptr %.anon, align 8
+  %gt = icmp ugt i64 4, %0
+  br i1 %gt, label %loop.body, label %loop.exit
+
+loop.body:                                        ; preds = %loop.cond
+  %1 = load i64, ptr %.anon, align 8
+  %ptroffset = getelementptr inbounds [4 x i8], ptr %x, i64 %1
+  %2 = load i32, ptr %ptroffset, align 4
+  store i32 %2, ptr %i, align 4
+  %3 = load i32, ptr %i, align 4
+  %smod = srem i32 %3, 2
+  %eq = icmp eq i32 %smod, 0
+  br i1 %eq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %loop.body
+  br label %loop.inc
+
+if.exit:                                          ; preds = %loop.body
+  store i32 123, ptr %a, align 4
+  br label %loop.inc
+
+loop.inc:                                         ; preds = %if.exit, %if.then
+  %4 = load i64, ptr %.anon, align 8
+  %addnuw = add nuw i64 %4, 1
+  store i64 %addnuw, ptr %.anon, align 8
+  br label %loop.cond
+
+loop.exit:                                        ; preds = %loop.cond
+  ret i32 0
+}

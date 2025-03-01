@@ -1247,7 +1247,21 @@ void llvm_set_phi(LLVMValueRef phi, LLVMValueRef val1, LLVMBasicBlockRef block1,
 
 void llvm_new_phi(GenContext *c, BEValue *value, const char *name, Type *type, LLVMValueRef val1, LLVMBasicBlockRef block1, LLVMValueRef val2, LLVMBasicBlockRef block2)
 {
-	LLVMValueRef phi = LLVMBuildPhi(c->builder, LLVMTypeOf(val1), name);
+	LLVMTypeRef ret_type = LLVMTypeOf(val1);
+	LLVMTypeRef other_type = LLVMTypeOf(val2);
+	if (ret_type != other_type)
+	{
+		if (ret_type == c->bool_type)
+		{
+			val2 = LLVMBuildTrunc(c->builder, val2, ret_type, "");
+		}
+		else
+		{
+			assert(other_type == c->bool_type);
+			val2 = LLVMBuildZExt(c->builder, val2, ret_type, "");
+		}
+	}
+	LLVMValueRef phi = LLVMBuildPhi(c->builder, ret_type, name);
 	llvm_set_phi(phi, val1, block1, val2, block2);
 	llvm_value_set(value, phi, type);
 }
@@ -5862,10 +5876,15 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 
 static inline void llvm_emit_expression_list_expr(GenContext *c, BEValue *be_value, Expr *expr)
 {
-	FOREACH(Expr *, e, expr->expression_list)
+	Expr **list = expr->expression_list;
+	unsigned count = vec_size(list);
+	assert(count);
+	unsigned last = count - 1;
+	for (unsigned i = 0; i < last; i++)
 	{
-		llvm_emit_expr(c, be_value, e);
+		llvm_emit_ignored_expr(c, list[i]);
 	}
+	llvm_emit_expr(c, be_value, list[last]);
 }
 
 static inline void llvm_emit_return_block(GenContext *c, BEValue *be_value, Type *type, AstId current, BlockExit **block_exit)
@@ -6863,13 +6882,13 @@ void llvm_emit_enum_from_ord(GenContext *c, BEValue *value, Expr *expr)
 void llvm_emit_scalar_to_vector(GenContext *c, BEValue *value, Expr *expr)
 {
 	llvm_emit_expr(c, value, expr->inner_expr);
-	llvm_value_rvalue(c, value);
+	LLVMValueRef val = llvm_load_value_store(c, value);
 	LLVMTypeRef type = llvm_get_type(c, expr->type);
 	unsigned elements = LLVMGetVectorSize(type);
 	LLVMValueRef res = LLVMGetUndef(type);
 	for (unsigned i = 0; i < elements; i++)
 	{
-		res = LLVMBuildInsertElement(c->builder, res, value->value, llvm_const_int(c, type_usz, i), "");
+		res = LLVMBuildInsertElement(c->builder, res, val, llvm_const_int(c, type_usz, i), "");
 	}
 	llvm_value_set(value, res, expr->type);
 }

@@ -1,0 +1,37 @@
+// #target: macos-x64
+module test;
+struct Foo
+{
+	int hello;
+	int bar;
+}
+
+macro usz @offsetof($Type) {
+  $Type* x;
+  return x.bar;
+}
+
+
+fn void main(String[] argv)
+{
+	Foo x;
+	(Foo*)((void*)&x - @offsetof(Foo));
+}
+
+
+/* #expect: test.ll
+
+
+entry:
+  store i32 0, ptr %x, align 4
+  %ptradd1 = getelementptr inbounds i8, ptr %x, i64 4
+  store i32 0, ptr %ptradd1, align 4
+  store ptr null, ptr %x2, align 8
+  %2 = load ptr, ptr %x2, align 8
+  %ptradd3 = getelementptr inbounds i8, ptr %2, i64 4
+  %3 = load i32, ptr %ptradd3, align 4
+  %sext = sext i32 %3 to i64
+  %neg = sub i64 0, %sext
+  %ptradd_any = getelementptr i8, ptr %x, i64 %neg
+  ret void
+}

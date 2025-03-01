@@ -146,7 +146,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 	@stack_mem(512; Allocator allocator)
 	{
 		DString s;
-		s.new_init(allocator: allocator);
+		s.init(allocator);
 		s.appendf(fmt, ...args);
 		in_panic = false;
 		panic(s.str_view(), file, function, line);
@@ -238,7 +238,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @param $Type `The type of the enum`
  @require $Type.kindof == ENUM `Only enums may be used`
  @require $defined($Type.#value) `Expected '#value' to match an enum associated value`
- @require $assignable(value, $typeof($Type{}.#value)) `Expected the value to match the type of the associated value`
+ @require $assignable(value, $typeof(($Type){}.#value)) `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
 *>
@@ -351,7 +351,7 @@ macro swizzle2(v, v2, ...) @builtin
 macro anyfault @catch(#expr) @builtin
 {
 	if (catch f = #expr) return f;
-	return anyfault {};
+	return {};
 }
 
 <*

@@ -28,12 +28,12 @@ fn Maybe value(Type val)
 	return { .value = val, .has_value = true };
 }
 
-fn Maybe Maybe.with_value(Type val) @operator(construct)
+fn Maybe Maybe.with_value(Type val) @deprecated("Use maybe::value instead.") @operator(construct)
 {
 	return { .value = val, .has_value = true };
 }
 
-fn Maybe Maybe.empty() @operator(construct)
+fn Maybe Maybe.empty() @deprecated("Use maybe::EMPTY instead.") @operator(construct)
 {
 	return { };
 }

@@ -1,0 +1,14 @@
+// #target: macos-x64
+module numbers;
+
+double a = 0x1.1p+1;
+double b = -12.3e-12;
+double c = 0x1.1p-1;
+double d = 12.3e+12;
+
+/* #expect: numbers.ll
+
+@numbers.a = local_unnamed_addr global double 2.125000e+00, align 8
+@numbers.b = local_unnamed_addr global double -1.230000e-11, align 8
+@numbers.c = local_unnamed_addr global double 5.312500e-01, align 8
+@numbers.d = local_unnamed_addr global double 1.230000e+13, align 8

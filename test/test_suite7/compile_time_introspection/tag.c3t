@@ -1,0 +1,34 @@
+// #target: macos-x64
+module test;
+struct Foo @tag("foo", 3)
+{
+	int a @tag("foo", "hello");
+}
+bitstruct Bar : int
+{
+	int a: 1..4 @tag("foo", "a");
+}
+fn void main()
+{
+	$if Foo.has_tagof("foo"):
+		int a = Foo.tagof("foo");
+	$endif;
+	String b = Foo.a.tagof("foo");
+	String c = Bar.a.tagof("foo");
+}
+
+/* #expect: test.ll
+
+
+@.str = private unnamed_addr constant [6 x i8] c"hello\00", align 1
+@.str.1 = private unnamed_addr constant [2 x i8] c"a\00", align 1
+
+entry:
+  %a = alloca i32, align 4
+  %b = alloca %"char[]", align 8
+  %c = alloca %"char[]", align 8
+  store i32 3, ptr %a, align 4
+  store %"char[]" { ptr @.str, i64 5 }, ptr %b, align 8
+  store %"char[]" { ptr @.str.1, i64 1 }, ptr %c, align 8
+  ret void
+}

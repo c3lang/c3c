@@ -382,8 +382,7 @@ RETRY:
 				case BINARYOP_LE:
 				case BINARYOP_NE:
 				case BINARYOP_EQ:
-					// This type is bool, so check should never happen.
-					UNREACHABLE
+					return NULL;
 				case BINARYOP_CT_OR:
 				case BINARYOP_CT_AND:
 				case BINARYOP_CT_CONCAT:
@@ -396,7 +395,7 @@ RETRY:
 				case BINARYOP_VEC_NE:
 				case BINARYOP_VEC_EQ:
 					// Functions
-					return false;
+					return NULL;
 
 			}
 			UNREACHABLE

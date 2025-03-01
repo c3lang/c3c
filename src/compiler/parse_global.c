@@ -142,9 +142,10 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 
 	*tokens_ref = NULL;
 
-	if (!try_consume(c, TOKEN_LGENPAR)) return true;
-
-	if (try_consume(c, TOKEN_RGENPAR)) RETURN_PRINT_ERROR_HERE("Generic parameter list cannot be empty.");
+	bool is_new_generic = try_consume(c, TOKEN_LBRACE);
+	if (!is_new_generic && !try_consume(c, TOKEN_LGENPAR)) return true;
+	TokenType end = is_new_generic ? TOKEN_RGENPAR : TOKEN_RBRACE;
+	if (try_consume(c, end)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
 
 	// No params
 	while (1)
@@ -168,7 +169,14 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			if (!consume(c, TOKEN_RGENPAR, "Expected '>)'.")) return false;
+			if (is_new_generic)
+			{
+				if (!consume(c, TOKEN_RBRACE, "Expected '}'.")) return false;
+			}
+			else
+			{
+				if (!consume(c, TOKEN_RGENPAR, "Expected '>)'.")) return false;
+			}
 			return true;
 		}
 	}
@@ -501,12 +509,11 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 /**
  * generic_type ::= type generic_parameters
  */
-static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type, bool is_new_syntax)
+static inline TypeInfo *parse_generic_type(ParseContext *c, TypeInfo *type)
 {
 	ASSERT(type_info_ok(type));
 	TypeInfo *generic_type = type_info_new(TYPE_INFO_GENERIC, type->span);
-	if (is_new_syntax) advance(c);
-	if (!parse_generic_parameters(c, &generic_type->generic.params, is_new_syntax)) return poisoned_type_info;
+	if (!parse_generic_parameters(c, &generic_type->generic.params)) return poisoned_type_info;
 	generic_type->generic.base = type;
 	return generic_type;
 }
@@ -597,14 +604,13 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 	RANGE_EXTEND_PREV(vector);
 	return vector;
 }
-
 /**
  * type ::= base_type ('*' | array_type_index | vector_type_index | generic_parameters)*
  *
  * Assume already stepped into.
  * @return Type, poisoned if parsing is invalid.
  */
-TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
+static inline TypeInfo *parse_type_with_base_maybe_generic(ParseContext *c, TypeInfo *type_info, bool allow_generic)
 {
 	while (type_info_ok(type_info))
 	{
@@ -616,16 +622,13 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 			case TOKEN_LBRACKET:
 				type_info = parse_array_type_index(c, type_info);
 				break;
-			case TOKEN_LESS:
-				if (c->lexer.token_type != TOKEN_LBRACKET)
-				{
-					PRINT_ERROR_HERE("This looks like you're comparing a type? Or did you intend to write a generic type? In that case the syntax is 'Foo<[int]>'.");
-					return poisoned_type_info;
-				}
-				type_info = parse_generic_type(c, type_info, true);
-				break;
+			case TOKEN_LBRACE:
+				if (!allow_generic) return type_info;
+				if (!compiler.build.enable_new_generics) return type_info;
+				FALLTHROUGH;
 			case TOKEN_LGENPAR:
-				type_info = parse_generic_type(c, type_info, false);
+				if (!allow_generic) return type_info;
+				type_info = parse_generic_type(c, type_info);
 				break;
 			case TOKEN_STAR:
 				advance(c);
@@ -667,6 +670,10 @@ TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
 	return type_info;
 }
 
+TypeInfo *parse_type_with_base(ParseContext *c, TypeInfo *type_info)
+{
+	return parse_type_with_base_maybe_generic(c, type_info, true);
+}
 /**
  * type ::= base_type modifiers
  *
@@ -741,15 +748,16 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 	}
 	return true;
 }
+
 /**
  * optional_type ::= type '!'?
  * @param c
  * @return
  */
-TypeInfo *parse_optional_type(ParseContext *c)
+static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool allow_generic)
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *info, parse_base_type(c), poisoned_type_info);
-	ASSIGN_TYPE_OR_RET(info, parse_type_with_base(c, info), poisoned_type_info);
+	ASSIGN_TYPE_OR_RET(info, parse_type_with_base_maybe_generic(c, info, allow_generic), poisoned_type_info);
 	if (try_consume(c, TOKEN_BANG))
 	{
 		if (!parse_rethrow_bracket(c, info->span)) return poisoned_type_info;
@@ -762,6 +770,21 @@ TypeInfo *parse_optional_type(ParseContext *c)
 		RANGE_EXTEND_PREV(info);
 	}
 	return info;
+}
+
+/**
+ * optional_type ::= type '!'?
+ * @param c
+ * @return
+ */
+TypeInfo *parse_optional_type(ParseContext *c)
+{
+	return parse_optional_type_maybe_generic(c, true);
+}
+
+TypeInfo *parse_optional_type_no_generic(ParseContext *c)
+{
+	return parse_optional_type_maybe_generic(c, false);
 }
 
 
@@ -1572,7 +1595,7 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 			if (decl_kind == DECL_BITSTRUCT)
 			{
 				TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
-				ASSIGN_TYPE_OR_RET(member->strukt.container_type, parse_type(c), poisoned_decl);
+				ASSIGN_TYPE_OR_RET(member->strukt.container_type, parse_optional_type_no_generic(c), poisoned_decl);
 				if (!parse_attributes_for_global(c, member)) return decl_poison(parent);
 				if (!parse_bitstruct_body(c, member)) return decl_poison(parent);
 			}
@@ -1689,7 +1712,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
 
-	ASSERT(!tok_is(c, TOKEN_LGENPAR));
+	ASSERT(!tok_is(c, TOKEN_LGENPAR) && !tok_is(c, TOKEN_LBRACE));
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -1820,7 +1843,7 @@ static inline Decl *parse_interface_declaration(ParseContext *c)
 	{
 		do
 		{
-			ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_type(c), poisoned_decl);
+			ASSIGN_TYPE_OR_RET(TypeInfo *type, parse_optional_type_no_generic(c), poisoned_decl);
 			vec_add(parents, type);
 		} while (try_consume(c, TOKEN_COMMA));
 	}
@@ -1839,9 +1862,13 @@ static inline Decl *parse_bitstruct_declaration(ParseContext *c)
 
 	if (!consume_type_name(c, "bitstruct")) return poisoned_decl;
 
+	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
+
 	TRY_CONSUME_OR_RET(TOKEN_COLON, "':' followed by bitstruct type (e.g. 'int') was expected here.", poisoned_decl);
 
-	ASSIGN_TYPE_OR_RET(decl->strukt.container_type, parse_type(c), poisoned_decl);
+	ASSIGN_TYPE_OR_RET(TypeInfo *type = decl->strukt.container_type, parse_optional_type_no_generic(c), poisoned_decl);
+
+	if (type->optional)	RETURN_PRINT_ERROR_AT(poisoned_decl, type, "A bitstruct can't have an optional type.");
 
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
@@ -1980,7 +2007,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 			PRINT_ERROR_HERE("Expected a type to alias here.");
 			return poisoned_decl;
 	}
-	ASSERT(!tok_is(c, TOKEN_LGENPAR));
+	ASSERT(!tok_is(c, TOKEN_LGENPAR) && !tok_is(c, TOKEN_LBRACE));
 
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;
@@ -2082,10 +2109,12 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	bool is_cond;
-	if (!parse_attributes(c, &attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+	bool is_builtin = false;
+	if (!parse_attributes(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return poisoned_decl;
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
 	decl->is_cond = is_cond;
+	decl->is_autoimport = is_builtin;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
@@ -2324,7 +2353,7 @@ static inline Decl *parse_enum_declaration(ParseContext *c)
 		if (!tok_is(c, TOKEN_LPAREN) && !tok_is(c, TOKEN_LBRACE))
 		{
 			val_is_inline = try_consume(c, TOKEN_INLINE);
-			ASSIGN_TYPE_OR_RET(type, parse_optional_type(c), poisoned_decl);
+			ASSIGN_TYPE_OR_RET(type, parse_optional_type_no_generic(c), poisoned_decl);
 			if (type->optional)
 			{
 				RETURN_PRINT_ERROR_AT(poisoned_decl, type, "An enum can't have an optional type.");

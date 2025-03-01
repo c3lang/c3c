@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test(<FOO>);
+
+const Z = FOO;
+
+struct Foo
+{
+    $typeof(FOO) z;
+}
+module tester;
+import test;
+
+enum Abc
+{
+    ONE,
+    TWO
+}
+
+fn void main()
+{
+    Foo(<Abc.ONE>) x;
+    Abc e = test::Z(<Abc.ONE>);
+}
+
+/* #expect: tester.ll
+
+%Foo = type { i32 }
+
+define void @tester.main() #0 {
+entry:
+  %x = alloca %Foo, align 4
+  %e = alloca i32, align 4
+  store i32 0, ptr %x, align 4
+  store i32 0, ptr %e, align 4
+  ret void
+}
