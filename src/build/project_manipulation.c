@@ -147,7 +147,7 @@ do {\
 
 #define VIEW_INTEGER(header, key) \
 do {\
-	long v = get_valid_integer(context, project_json, filename, false);\
+	long v = get_valid_integer(context, project_json, context.file, false);\
     print_opt_int(header, v);\
 } while(0);
 

@@ -267,11 +267,11 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	{
 		if (symtab_size < 1024)
 		{
-			error_exit("Error reading %s: symtab was less than 1024.", filename);
+			error_exit("Error reading %s: symtab was less than 1024.", context.file);
 		}
 		if (symtab_size > MAX_SYMTAB_SIZE)
 		{
-			error_exit("Error reading %s: symtab may not exceed %d.", context, MAX_SYMTAB_SIZE);
+			error_exit("Error reading %s: symtab may not exceed %d.", context.file, MAX_SYMTAB_SIZE);
 		}
 		target->symtab_size = (uint32_t)symtab_size;
 	}
@@ -281,7 +281,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	if (arch_os_string)
 	{
 		ArchOsTarget arch_os = arch_os_target_from_string(arch_os_string);
-		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", filename, context.target);
+		if (arch_os == ARCH_OS_TARGET_DEFAULT) error_exit("Error reading %s: %s target was not valid.", context.file, context.target);
 		target->arch_os_target = arch_os;
 	}
 
