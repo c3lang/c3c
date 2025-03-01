@@ -321,10 +321,11 @@ void LLVMSetDSOLocal(LLVMValueRef Global, bool value)
 void LLVMSetNoSanitizeAddress(LLVMValueRef Global)
 {
 	auto global = llvm::unwrap<llvm::GlobalValue>(Global);
-	auto data = global->getSanitizerMetadata();
+	auto data = global->hasSanitizerMetadata() ? global->getSanitizerMetadata() : llvm::GlobalValue::SanitizerMetadata();
 	data.NoAddress = 1;
 	global->setSanitizerMetadata(data);
 }
+
 void LLVMBuilderSetFastMathFlags(LLVMBuilderRef Builder, FastMathOption option)
 {
 	llvm::FastMathFlags math_flags {};
