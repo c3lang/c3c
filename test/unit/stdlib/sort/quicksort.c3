@@ -83,7 +83,7 @@ def List = List(<int>);
 fn void quicksort_list()
 {
     List list;
-    list.temp_init();
+    list.tinit();
     list.add_array({ 2, 1, 3});
     sort::quicksort(list, &sort::cmp_int_value);
     assert(check::int_sort(list.array_view()));

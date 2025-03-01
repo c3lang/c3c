@@ -38,17 +38,17 @@ struct PrivatePriorityQueue (Printable)
 
 fn void PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16, ) @inline
 {
-	self.heap.new_init(initial_capacity, allocator);
+	self.heap.init(allocator, initial_capacity);
 }
 
 fn void PrivatePriorityQueue.new_init(&self, usz initial_capacity = 16, Allocator allocator = allocator::heap()) @inline
 {
-	self.heap.new_init(initial_capacity, allocator);
+	self.heap.init(allocator, initial_capacity);
 }
 
 fn void PrivatePriorityQueue.temp_init(&self, usz initial_capacity = 16) @inline
 {
-	self.heap.new_init(initial_capacity, allocator::temp()) @inline;
+	self.heap.init(allocator::temp(), initial_capacity) @inline;
 }
 
 

@@ -3,7 +3,7 @@ module std::io @test;
 fn void test_multireader()
 {
 	MultiReader mr;
-	mr.temp_init(
+	mr.init(mem,
 		&&wrap_bytes("foo"),
 		&&wrap_bytes(" "),
 		&&wrap_bytes("bar"),
@@ -12,7 +12,7 @@ fn void test_multireader()
 	defer mr.free();
 
 	ByteWriter w;
-	io::copy_to(&mr, w.temp_init())!!;
+	io::copy_to(&mr, w.tinit())!!;
 	
 	String want = "foo bar!";
 	assert(w.str_view() == want,

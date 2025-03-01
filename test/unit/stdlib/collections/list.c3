@@ -105,7 +105,7 @@ fn void init_with_array()
 {
 	IntList foo;
 	defer foo.free();
-	foo.new_init_with_array({ 1, 2, 3});
+	foo.init_with_array(mem, { 1, 2, 3});
 	assert(foo.len() == 3);
 	assert(foo[2] == 3);
 }
@@ -113,7 +113,7 @@ fn void init_with_array()
 fn void init_with_temp_array()
 {
 	IntList foo;
-	foo.temp_init_with_array({ 1, 2, 3});
+	foo.tinit_with_array({ 1, 2, 3});
 	assert(foo.len() == 3);
 	assert(foo[2] == 3);
 }

@@ -4,7 +4,7 @@ fn void test_multiwriter()
 {
 	ByteWriter w1, w2;
 	MultiWriter mw;
-	mw.temp_init(w1.temp_init(), w2.temp_init());
+	mw.tinit(w1.tinit(), w2.tinit());
 	defer mw.free();
 
 	String want = "foobar";

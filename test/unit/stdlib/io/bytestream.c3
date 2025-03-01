@@ -12,7 +12,7 @@ fn void bytestream()
 	usz len = s.read(&buffer)!!;
 	assert((String)buffer[:len] == "abc");
 	ByteWriter w;
-	w.new_init();
+	w.init(mem);
 	defer (void)w.destroy();
 	OutStream ws = &w;
 	ws.write("helloworld")!!;
@@ -44,7 +44,7 @@ fn void bytewriter_read_from()
     InStream s = &r;
 
     ByteWriter bw;
-    bw.temp_init();
+    bw.tinit();
     bw.read_from(s)!!;
 
     assert(bw.str_view() == data);

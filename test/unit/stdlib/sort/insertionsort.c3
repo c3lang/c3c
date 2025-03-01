@@ -83,7 +83,7 @@ def InsertionSortTestList = List(<int>);
 fn void insertionsort_list()
 {
     InsertionSortTestList list;
-    list.temp_init();
+    list.tinit();
     list.add_array({ 2, 1, 3});
     sort::insertionsort(list, &sort::cmp_int_value);
     assert(check::int_ascending_sort(list.array_view()));

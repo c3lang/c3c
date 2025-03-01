@@ -77,7 +77,7 @@ module sort_test @test;
  fn void countingsort_list()
  {
      CountingSortTestList list;
-     list.temp_init();
+     list.tinit();
      list.add_array({ 2, 1, 3});
      sort::countingsort(list, &sort::key_int_value);
      assert(check::int_ascending_sort(list.array_view()));
