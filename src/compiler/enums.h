@@ -515,6 +515,9 @@ typedef enum
 	BUILTIN_VOLATILE_STORE,
 	BUILTIN_WASM_MEMORY_SIZE,
 	BUILTIN_WASM_MEMORY_GROW,
+	BUILTIN_WIDESTRING,
+	BUILTIN_WIDESTRING_16,
+	BUILTIN_WIDESTRING_32,
 	BUILTIN_NONE,
 	NUMBER_OF_BUILTINS = BUILTIN_NONE,
 
@@ -1016,14 +1019,6 @@ typedef enum
 
 typedef enum
 {
-    STRING_NORMAL,
-    STRING_WIDE_16,
-    STRING_WIDE_32,
-} StringWidthType;
-
-
-typedef enum
-{
 	TOKEN_INVALID_TOKEN = 0,
 
 	// Single-character tokens.
@@ -1122,7 +1117,6 @@ typedef enum
 	TOKEN_CHAR_LITERAL,        // 'a' 'FO' 'BARS' '\u1232'
 	TOKEN_REAL,             // 0x23.2p-2a 43.23e23
 	TOKEN_BYTES,            // Base64 or Hex
-    TOKEN_DYNAMIC_BYTES,    // Byte arrays with dynamic unit sizes (wide strings: u"abc")
 
 	TOKEN_DOC_COMMENT,      // Doc Comment start
 

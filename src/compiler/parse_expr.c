@@ -1806,160 +1806,10 @@ static Expr *parse_bytes_expr(ParseContext *c, Expr *left)
 	expr_bytes->const_expr.bytes.ptr = data;
 	expr_bytes->const_expr.bytes.len = len;
 	expr_bytes->const_expr.const_kind = CONST_BYTES;
-    Type *type = type_get_array(type_char, len);
+	Type *type = type_get_array(type_char, len);
 	expr_bytes->type = type;
 	expr_bytes->resolve_status = RESOLVE_DONE;
 	return expr_bytes;
-}
-
-/**
- * Interpret a UTF-8 codepoint and return an integer corresponding to the raw codepoint's value.
- * @param starting_byte the first byte in the UTF-8 multibyte sequence
- * @param data_ptr pointer to the pointer which scrolls along the input data string
- */
-static uint32_t codepoint_to_uint(const char *data_ptr, int *inc)
-{
-    int bytes = 1;
-    const char *data = data_ptr;
-    uint32_t result = 0;
-
-    ASSERT(data);
-    ASSERT(inc);
-
-    while ((0xC0 & *(data++)) == 0x80) ++bytes;
-    data = data_ptr - 1;
-
-    switch (bytes) {
-        case 1: return (uint32_t)(data[0] & 0x7FU);
-        case 2:
-            result = ((data[0] & 0x1FU) << 6U) | (data[1] & 0x3FU);
-            break;
-        case 3:
-            result = ((data[0] & 0x0FU) << 12U) | ((data[1] & 0x3FU) << 6U) | (data[2] & 0x3FU);
-            break;
-        case 4:
-            result = ((data[0] & 0x07U) << 18U) | ((data[1] & 0x3FU) << 12U) | ((data[2] & 0x3FU) << 6U) | (data[3] & 0x3FU);
-            break;
-        default: return 0;   // U+10FFFF is the highest codepoint in UTF-8, consisting of a maximum of 4 bytes.
-    }
-
-    *inc = bytes;
-    return result;
-}
-
-/**
- * Parse a normal UTF-8 string into a wide string (16-bit-unit character array).
- * @param result_pointer ref to place to put the data
- * @param data start pointer
- * @param end end pointer
- */
-static const char *parse_wide_string_16(char *result_pointer, const char *data, const char *end)
-{
-    unsigned short *data_current = (unsigned short *)result_pointer;
-    ASSERT(data_current);
-    while (data < end)
-    {
-        char c = *(data++);
-        if ((0xC0 & c) != 0xC0)
-        {
-            *(data_current++) = (c & 0x7F);   // ASCII
-            continue;
-        }
-
-        int increment = 0;
-        uint32_t from_codepoint = codepoint_to_uint(data, &increment);
-        if (!from_codepoint)
-        {
-            return "Unparseable codepoint in string.";
-        }
-        else if (from_codepoint & 0xFFFF0000)
-        {
-            return "Invalid codepoint in string: a 16-bit wide-string cannot accommodate codepoints over U+FFFF.";
-        }
-        *(data_current++) = (unsigned short)(from_codepoint & 0xFFFF);
-        data += (increment - 1);
-    }
-
-    return (const char *)NULL;
-}
-
-/**
- * Parse a normal UTF-8 string into a wide string (32-bit-unit character array).
- * @param result_pointer ref to place to put the data
- * @param data start pointer
- * @param end end pointer
- */
-static const char *parse_wide_string_32(char *result_pointer, const char *data, const char *end)
-{
-    unsigned int *data_current = (unsigned int *)result_pointer;
-    ASSERT(data_current);
-    while (data < end)
-    {
-        char c = *(data++);
-        if ((0xC0 & c) != 0xC0)
-        {
-            *(data_current++) = (c & 0x7F);
-            continue;
-        }
-
-        int increment = 0;
-        uint32_t from_codepoint = codepoint_to_uint(data, &increment);
-        if (!from_codepoint)
-        {
-            return "Unparseable codepoint in string.";
-        }
-        *(data_current++) = (unsigned int)from_codepoint;
-        data += (increment - 1);
-    }
-
-    return (const char *)NULL;
-}
-
-/**
- * Dynamic-unit byte arrays / wide strings.
- */
-static Expr *parse_dynamic_bytes_expr(ParseContext *c, Expr *left)
-{
-    ASSERT(!left && "Had left hand side");
-    size_t final_len = c->data.str_bytes_len;
-    if (0 == final_len)
-    {
-        PRINT_ERROR_LAST("A dynamic array of bytes cannot be empty (of zero length).");
-        return poisoned_expr;
-    }
-    char *converted_aob = MALLOC(final_len);
-    const char *str_data = symstr(c);
-    const char *end = str_data + c->data.strlen;
-    const char *ret_str = NULL;
-    switch ((StringWidthType)c->data.str_type)
-    {
-        case STRING_WIDE_16:
-            ret_str = parse_wide_string_16(converted_aob, str_data, end);
-            break;
-        case STRING_WIDE_32:
-            ret_str = parse_wide_string_32(converted_aob, str_data, end);
-            break;
-        default: UNREACHABLE;
-    }
-    if (NULL != ret_str) {
-        PRINT_ERROR_LAST(ret_str);
-        return poisoned_expr;
-    }
-    Expr *expr_bytes = EXPR_NEW_TOKEN(EXPR_CONST);
-    expr_bytes->const_expr.bytes.ptr = converted_aob;
-    expr_bytes->const_expr.bytes.len = final_len;
-    expr_bytes->const_expr.const_kind = CONST_BYTES;
-    Type *type;
-    switch ((StringWidthType)c->data.str_type)
-    {
-        case STRING_WIDE_16: type = type_get_array(type_ushort, final_len); break;
-        case STRING_WIDE_32: type = type_get_array(type_uint, final_len); break;
-        default: UNREACHABLE;
-    }
-    expr_bytes->type = type;
-    expr_bytes->resolve_status = RESOLVE_DONE;
-    advance(c);
-    return expr_bytes;
 }
 
 /**
@@ -2239,7 +2089,6 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_DOT] = { NULL, parse_access_expr, PREC_CALL },
 		[TOKEN_BANG] = { parse_unary_expr, parse_rethrow_expr, PREC_CALL },
 		[TOKEN_BYTES] = { parse_bytes_expr, NULL, PREC_NONE },
-        [TOKEN_DYNAMIC_BYTES] = { parse_dynamic_bytes_expr, NULL, PREC_NONE },
 		[TOKEN_BIT_NOT] = { parse_unary_expr, NULL, PREC_UNARY },
 		[TOKEN_BIT_XOR] = { NULL, parse_binary, PREC_BIT },
 		[TOKEN_BIT_OR] = { NULL, parse_binary, PREC_BIT },

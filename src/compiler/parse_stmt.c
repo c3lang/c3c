@@ -1345,7 +1345,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_BIT_XOR:
 		case TOKEN_BUILTIN:
 		case TOKEN_BYTES:
-        case TOKEN_DYNAMIC_BYTES:
 		case TOKEN_CHAR_LITERAL:
 		case TOKEN_CT_ALIGNOF:
 		case TOKEN_CT_ANDFN:

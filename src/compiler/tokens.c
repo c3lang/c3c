@@ -187,8 +187,6 @@ const char *token_type_to_string(TokenType type)
 			return "CHAR_LITERAL";
 		case TOKEN_BYTES:
 			return "BYTES";
-        case TOKEN_DYNAMIC_BYTES:
-            return "DYNAMIC_BYTES";
 
 		// Comments
 		case TOKEN_DOC_COMMENT:

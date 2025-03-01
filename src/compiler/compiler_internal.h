@@ -1573,8 +1573,6 @@ typedef struct
 		{
 			const char *string;
 			size_t strlen;
-            StringWidthType str_type;
-            size_t str_bytes_len;
 		};
 		struct
 		{
@@ -1582,7 +1580,7 @@ typedef struct
 		};
 		struct
 		{
-            uint64_t is_base64 : 1;
+			bool is_base64 : 1;
 			uint64_t bytes_len : 63;
 		};
 		struct

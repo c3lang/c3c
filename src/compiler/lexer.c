@@ -915,39 +915,7 @@ static inline void consume_to_end_quote(Lexer *lexer)
 	}
 }
 
-static inline size_t wide_string_calculate_bytes_len(char *destination, size_t len, StringWidthType str_type)
-{
-    // `len` must adjust depending on the resulting string type's unit size
-    size_t bytes_per_unit = 1;
-    switch (str_type)
-    {
-        case STRING_WIDE_16: bytes_per_unit = sizeof(unsigned short); break;
-        case STRING_WIDE_32: bytes_per_unit = sizeof(unsigned int); break;
-        default: UNREACHABLE;
-    }
-    len = (len + 1) * bytes_per_unit;
-
-    // Now, iterate over the original array of bytes. Since we know the unit size of the resultant array, we must
-    //   adjust the `len` property to indicate how many bytes the resultant array will be. In the case of UTF-8 inputs,
-    //   a multibyte codepoint might fit into a single unit, e.g. U+0801 (3 single bytes) will fit into ONE unit in
-    //   32-bit-wide strings, and `len` must reflect that.
-    char *scroll = destination;
-    char *end = destination + len;
-    while (scroll < end)
-    {
-        if ((0xC0 & *(scroll++)) != 0xC0) continue;
-
-        // This assumes the full codepoint will always fit into one unit -- this is enforced later in the compilation process.
-        int bytes_wide = 1;
-        while ((0xC0 & *(scroll++)) == 0x80) ++bytes_wide;
-        len -= (bytes_wide - 1) * bytes_per_unit;
-        --scroll;   // be sure to back up to account for upcoming ++ when looping
-    }
-
-    return len;
-}
-
-static inline bool scan_string(Lexer *lexer, StringWidthType str_type)
+static inline bool scan_string(Lexer *lexer)
 {
 	char c = 0;
 	const char *current = lexer->current;
@@ -999,13 +967,6 @@ static inline bool scan_string(Lexer *lexer, StringWidthType str_type)
 				consume_to_end_quote(lexer);
 				return false;
 			}
-            else if (scanned > 5 && str_type == STRING_WIDE_16) {   // NOTE: '5' because the initial 'u' is counted
-                add_error_token_at_current(lexer,
-                                           "Escape sequence produced a codepoint too large for a 16-bit string (%u bytes).",
-                                           scanned);
-                consume_to_end_quote(lexer);
-                return false;
-            }
 			skip(lexer, scanned);
 			continue;
 		}
@@ -1014,17 +975,12 @@ static inline bool scan_string(Lexer *lexer, StringWidthType str_type)
 	// Skip the `"`
 	next(lexer);
 	destination[len] = 0;
-    new_token(lexer, (str_type == STRING_NORMAL) ? TOKEN_STRING : TOKEN_DYNAMIC_BYTES, destination);
-    lexer->data.strlen = len;
-    lexer->data.str_type = str_type;
-    if (str_type != STRING_NORMAL)
-    {
-        lexer->data.str_bytes_len = wide_string_calculate_bytes_len(destination, len, str_type);
-    }
+	new_token(lexer, TOKEN_STRING, destination);
+	lexer->data.strlen = len;
 	return true;
 }
 
-static inline bool scan_raw_string(Lexer *lexer, StringWidthType str_type)
+static inline bool scan_raw_string(Lexer *lexer)
 {
 	char c;
 	while (1)
@@ -1040,8 +996,7 @@ static inline bool scan_raw_string(Lexer *lexer, StringWidthType str_type)
 		}
 		if (c == '`') next(lexer);
 	}
-    // NOTE: The add'l '1' onto this start ptr accounts for u/U/L single-char wide-string prefixes.
-	const char *current = lexer->lexing_start + 1 + (str_type != STRING_NORMAL ? 1 : 0);
+	const char *current = lexer->lexing_start + 1;
 	const char *end = lexer->current - 1;
 	size_t len = (size_t)(end - current);
 	char *destination = malloc_string(len + 1);
@@ -1056,13 +1011,8 @@ static inline bool scan_raw_string(Lexer *lexer, StringWidthType str_type)
 		destination[len++] = c;
 	}
 	destination[len] = 0;
-    new_token(lexer, (str_type == STRING_NORMAL) ? TOKEN_STRING : TOKEN_DYNAMIC_BYTES, destination);
-    lexer->data.strlen = len;
-    lexer->data.str_type = str_type;
-    if (str_type != STRING_NORMAL)
-    {
-        lexer->data.str_bytes_len = wide_string_calculate_bytes_len(destination, len, str_type);
-    }
+	new_token(lexer, TOKEN_STRING, destination);
+	lexer->data.strlen = len;
 	return true;
 }
 
@@ -1264,7 +1214,6 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 
 	if (reached_end(lexer)) return new_token(lexer, TOKEN_EOF, "\n"), false;
 
-    StringWidthType str_type = STRING_NORMAL;
 	char c = peek(lexer);
 	next(lexer);
 	switch (c)
@@ -1281,9 +1230,9 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case '\'':
 			return scan_char(lexer);
 		case '`':
-			return scan_raw_string(lexer, STRING_NORMAL);
+			return scan_raw_string(lexer);
 		case '"':
-			return scan_string(lexer, STRING_NORMAL);
+			return scan_string(lexer);
 		case '#':
 			return scan_ident(lexer, TOKEN_HASH_IDENT, TOKEN_HASH_CONST_IDENT, TOKEN_HASH_TYPE_IDENT, '#');
 		case '$':
@@ -1404,37 +1353,12 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			{
 				return scan_base64(lexer);
 			}
-			goto IDENT;
-        case 'u':
-            str_type = STRING_WIDE_16;   // UTF-8 to 16-bit fixed (codepoints U+0000 through U+FFFF)
-            goto WIDESTR;
-        case 'U':
-            str_type = STRING_WIDE_32;   // UTF-8 to 32-bit fixed (all codepoints)
-            goto WIDESTR;
-		case 'L':
-            // TODO: convert to 16/32 here based on target
-            str_type = STRING_WIDE_16;   // UTF-8 to 16 or 32, depending on target platform (16 for Windows; 32 for Linux/Mac/Other).
-            goto WIDESTR; // NOLINT
-        WIDESTR:
-            // Note that conversions of UTF-16 to UTF-8 will probably need to be handled elsewhere,
-            //   such as before writing strings into a C3 input. This means that L"A UTF-16 string"
-            //   will produce unexpected errors if the UTF-16 isn't converted to UTF-8 first.
-			if (peek(lexer) == '"')
-			{
-                next(lexer);  // need to move up an extra character to accommodate how str scanning works.
-				return scan_string(lexer, str_type);
-			}
-            else if (peek(lexer) == '`')
-            {
-                next(lexer);  // need to move up an extra character to accommodate how str scanning works.
-                return scan_raw_string(lexer, str_type);
-            }
 			goto IDENT; // NOLINT
 		case '_':
 		IDENT:
 			backtrack(lexer);
 			return scan_ident(lexer, TOKEN_IDENT, TOKEN_CONST_IDENT, TOKEN_TYPE_IDENT, 0);
-        default:
+		default:
 			if (c >= '0' && c <= '9')
 			{
 				backtrack(lexer);
