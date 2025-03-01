@@ -475,7 +475,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (command_accepts_files(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : ".build";
-		if (!target->script_dir) target->script_dir = target->build_dir;
+		if (!target->script_dir) target->script_dir = ".";
 	}
 	else
 	{
