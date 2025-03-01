@@ -208,7 +208,7 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 		{
 			char *name_copy = strdup(name);
 			str_ellide_in_place(name_copy, 32);
-			error_exit("Error reading %s: invalid library target '%s'.", filename, name_copy);
+			error_exit("Error reading %s: invalid library target name '%s' – it should only contain alphanumerical letters and '_'.", context.file, name_copy);
 		}
 	}
 
