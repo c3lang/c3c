@@ -553,7 +553,7 @@ fn String ZString.tcopy(z)
  @return! UnicodeResult.INVALID_UTF8 "If the string contained an invalid UTF-8 sequence"
  @return! AllocationFailure "If allocation of the string fails"
 *>
-fn Char16[]! String.to_utf16_copy(s, Allocator allocator)
+fn Char16[]! String.to_utf16(s, Allocator allocator)
 {
 	usz len16 = conv::utf16len_for_utf8(s);
 	Char16* data = allocator::alloc_array_try(allocator, Char16, len16 + 1)!;
@@ -562,16 +562,16 @@ fn Char16[]! String.to_utf16_copy(s, Allocator allocator)
 	return data[:len16];
 }
 
-fn Char16[]! String.to_utf16_tcopy(s) => s.to_utf16_copy(tmem());
+fn Char16[]! String.to_temp_utf16(s) => s.to_utf16(tmem());
 
-fn WString! String.to_wstring_copy(s, Allocator allocator)
+fn WString! String.to_wstring(s, Allocator allocator)
 {
-	return (WString)s.to_utf16_copy(allocator).ptr;
+	return (WString)s.to_utf16(allocator).ptr;
 }
 
-fn WString! String.to_wstring_tcopy(s) => s.to_wstring_copy(tmem());
+fn WString! String.to_temp_wstring(s) => s.to_wstring(tmem());
 
-fn Char32[]! String.to_utf32_copy(s, Allocator allocator)
+fn Char32[]! String.to_utf32(s, Allocator allocator)
 {
 	usz codepoints = conv::utf8_codepoints(s);
 	Char32* data = allocator::alloc_array_try(allocator, Char32, codepoints + 1)!;
@@ -579,6 +579,8 @@ fn Char32[]! String.to_utf32_copy(s, Allocator allocator)
 	data[codepoints] = 0;
 	return data[:codepoints];
 }
+
+fn Char32[]! String.to_temp_utf32(s, Allocator allocator) => s.to_utf32(tmem());
 
 <*
  Convert a string to ASCII lower case in place.
@@ -643,7 +645,7 @@ fn String String.to_upper_tcopy(s)
 	return s.to_upper_copy(tmem());
 }
 
-fn String! new_from_utf32(Allocator allocator, Char32[] utf32)
+fn String! from_utf32(Allocator allocator, Char32[] utf32)
 {
 	usz len = conv::utf8len_for_utf32(utf32);
 	char* data = allocator::malloc_try(allocator, len + 1)!;
@@ -653,7 +655,7 @@ fn String! new_from_utf32(Allocator allocator, Char32[] utf32)
 	return (String)data[:len];
 }
 
-fn String! new_from_utf16(Allocator allocator, Char16[] utf16)
+fn String! from_utf16(Allocator allocator, Char16[] utf16)
 {
 	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator::malloc_try(allocator, len + 1)!;
@@ -663,16 +665,16 @@ fn String! new_from_utf16(Allocator allocator, Char16[] utf16)
 	return (String)data[:len];
 }
 
-fn String! new_from_wstring(Allocator allocator, WString wstring)
+fn String! from_wstring(Allocator allocator, WString wstring)
 {
 	usz utf16_len;
 	while (wstring[utf16_len] != 0) utf16_len++;
 	Char16[] utf16 = wstring[:utf16_len];
-	return new_from_utf16(allocator, utf16);
+	return from_utf16(allocator, utf16);
 }
 
-fn String! temp_from_wstring(WString wstring) => new_from_wstring(tmem(), wstring) @inline;
-fn String! temp_from_utf16(Char16[] utf16) => new_from_utf16(tmem(), utf16) @inline;
+fn String! tfrom_wstring(WString wstring) => from_wstring(tmem(), wstring) @inline;
+fn String! tfrom_utf16(Char16[] utf16) => from_utf16(tmem(), utf16) @inline;
 
 fn usz String.utf8_codepoints(s)
 {
@@ -820,7 +822,7 @@ fn String! Splitter.next(&self)
 	}
 }
 
-macro String new_from_struct(Allocator allocator, x)
+macro String from_struct(Allocator allocator, x)
 {
 	DString s;
 	@stack_mem(512; Allocator mem)
@@ -831,4 +833,4 @@ macro String new_from_struct(Allocator allocator, x)
 	};
 }
 
-macro String temp_from_struct(x) => new_from_struct(tmem(), x);
+macro String tfrom_struct(x) => from_struct(tmem(), x);

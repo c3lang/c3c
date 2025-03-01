@@ -40,7 +40,7 @@ fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || e
 fn usz! native_file_size(String path) @if(env::WIN32) => @pool()
 {
 	Win32_FILE_ATTRIBUTE_DATA data;
-	win32::getFileAttributesExW(path.to_wstring_tcopy()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
+	win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
 	Win32_LARGE_INTEGER size;
 	size.lowPart = data.nFileSizeLow;
 	size.highPart = data.nFileSizeHigh;
@@ -74,7 +74,7 @@ fn bool native_file_or_dir_exists(String path)
 		$case env::WIN32:
 			@pool()
 			{
-				return (bool)win32::pathFileExistsW(path.to_utf16_tcopy()) ?? false;
+				return (bool)win32::pathFileExistsW(path.to_temp_utf16()) ?? false;
 			};
 		$case env::POSIX:
 			@pool()

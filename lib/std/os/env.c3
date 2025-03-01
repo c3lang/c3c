@@ -20,7 +20,7 @@ fn String! get_var(Allocator allocator, String name) => @pool(allocator)
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable
 		const usz BUFSIZE = 1024;
 		WString buff = (WString)tcalloc(BUFSIZE * 2 + 2);
-		WString wstr = name.to_wstring_tcopy()!;
+		WString wstr = name.to_temp_wstring()!;
 		usz len = win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
 		if (len == 0) return SearchResult.MISSING?;
 		if (len > BUFSIZE)
@@ -28,7 +28,7 @@ fn String! get_var(Allocator allocator, String name) => @pool(allocator)
 			buff = (WString)tmalloc(len * 2 + 2);
 			win32::getEnvironmentVariableW(wstr, buff, (Win32_DWORD)len);
 		}
-		return string::new_from_wstring(allocator, buff);
+		return string::from_wstring(allocator, buff);
 	$default:
 		return "";
 	$endswitch
@@ -48,14 +48,14 @@ fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 {
 	$switch
 	$case env::WIN32:
-		WString wname = name.to_wstring_tcopy()!!;
+		WString wname = name.to_temp_wstring()!!;
 		if (!overwrite)
 		{
 			Char16[8] buff;
 			if (win32::getEnvironmentVariableW(wname, &buff, 8) > 0) return true;
 		}
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-setenvironmentvariable
-		return (win32::setEnvironmentVariableW(wname, value.to_wstring_tcopy()) ?? 1) == 0;
+		return (win32::setEnvironmentVariableW(wname, value.to_temp_wstring()) ?? 1) == 0;
 	$case env::LIBC && !env::WIN32:
 		return libc::setenv(name.zstr_tcopy(), value.zstr_tcopy(), (int)overwrite) == 0;
 	$default:
@@ -106,7 +106,7 @@ fn bool clear_var(String name) => @pool()
 {
 	$switch
 	$case env::WIN32:
-		WString wname = name.to_wstring_tcopy()!!;
+		WString wname = name.to_temp_wstring()!!;
 		return win32::setEnvironmentVariableW(wname, null) == 0;
 	$case env::LIBC && !env::WIN32:
 		return libc::unsetenv(name.zstr_tcopy()) == 0;

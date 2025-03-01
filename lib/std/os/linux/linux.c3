@@ -130,7 +130,7 @@ fn ulong! elf_module_image_base(String path) @local
 
 fn void! backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void* addr) @local
 {
-	char[] buf = mem::temp_alloc_array(char, 1024);
+	char[] buf = mem::talloc_array(char, 1024);
 
 	String exec_path = process::execute_stdout_to_buffer(buf, {"realpath", "-e", string::tformat("/proc/%d/exe", posix::getpid())})!;
 	String obj_name = exec_path.copy(allocator);
@@ -140,7 +140,7 @@ fn void! backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void*
 
 fn void! backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, void* addr, Linux_Dl_info* info) @local
 {
-	char[] buf = mem::temp_alloc_array(char, 1024);
+	char[] buf = mem::talloc_array(char, 1024);
 
 	void*   obj_addr  = addr - (uptr)info.dli_fbase + (uptr)elf_module_image_base(info.dli_fname.str_view())!;
 	ZString obj_path  = info.dli_fname;

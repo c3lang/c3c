@@ -15,9 +15,9 @@ fn Path! native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool(all
 {
 	Win32_DWORD len = win32::getTempPathW(0, null);
 	if (!len) return IoError.GENERAL_ERROR?;
-	Char16[] buff = mem::temp_alloc_array(Char16, len + (usz)1);
+	Char16[] buff = mem::talloc_array(Char16, len + (usz)1);
 	if (!win32::getTempPathW(len, buff)) return IoError.GENERAL_ERROR?;
-	return path::new(allocator, string::temp_from_utf16(buff[:len]));
+	return path::new(allocator, string::tfrom_utf16(buff[:len]));
 }
 
 module std::io::os @if(env::NO_LIBC);
