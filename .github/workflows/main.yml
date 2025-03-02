@@ -778,8 +778,8 @@ jobs:
       - run: cp -r lib c3-windows-Debug
       - run: cp msvc_build_libraries.py c3-windows-Release
       - run: cp msvc_build_libraries.py c3-windows-Debug
-      - run: cp README.md macos c3-windows-Debug
-      - run: cp README.md macos c3-windows-Debug
+      - run: cp README.md c3-windows-Release
+      - run: cp README.md c3-windows-Debug
       - run: zip -r c3-windows.zip c3-windows-Release
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
