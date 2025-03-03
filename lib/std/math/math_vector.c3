@@ -1,11 +1,11 @@
 module std::math::vector;
 import std::math;
 
-macro double[<*>].length_sq(self) => self.dot(self);
-macro float[<*>].length_sq(self) => self.dot(self);
+macro double[<*>].sq_magnitude(self) => self.dot(self);
+macro float[<*>].sq_magnitude(self) => self.dot(self);
 
-macro double[<*>].distance_sq(self, double[<*>] v2) => (self - v2).length_sq();
-macro float[<*>].distance_sq(self, float[<*>] v2) => (self - v2).length_sq();
+macro double[<*>].distance_sq(self, double[<*>] v2) => (self - v2).sq_magnitude();
+macro float[<*>].distance_sq(self, float[<*>] v2) => (self - v2).sq_magnitude();
 
 macro float[<2>].transform(self, Matrix4f mat) => transform2(self, mat);
 macro float[<2>].rotate(self, float angle) => rotate(self, angle);
@@ -54,7 +54,7 @@ fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v
 macro towards(v, target, max_distance) @private
 {
 	var delta = target - v;
-	var square = delta.length_sq();
+	var square = delta.sq_magnitude();
 
 	if (square == 0 || (max_distance >= 0 && (square <= max_distance * max_distance))) return target;
 
@@ -65,7 +65,7 @@ macro towards(v, target, max_distance) @private
 
 macro clamp_magnitude(v, min, max) @private
 {
-	var length = v.dot(v);
+	var length = v.sq_magnitude();
 	if (length > 0)
 	{
 		length = math::sqrt(length);

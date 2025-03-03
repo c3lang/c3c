@@ -31,7 +31,7 @@
 - `mem::temp_alloc` and related changed to `mem::talloc`.
 - `mem::temp_new_array` changed to `mem::temp_array`.
 - Add `ONHEAP` variants for List/HashMap for initializing global maps on the heap. 
-- Remove Vec2 and other aliases from std::math.
+- Remove Vec2 and other aliases from std::math. Replace `.length_sq()` with `sq_magnitude()`
 
 ## 0.6.8 Change list
 

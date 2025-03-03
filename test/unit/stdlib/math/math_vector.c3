@@ -32,7 +32,7 @@ fn void test_vec2_arithmetic() @test
 fn void test_vec2_length() @test
 {
     float[<2>] v = { 3.0f, 4.0f };
-    assert(math::is_approx_rel(v.length_sq(), 25.0f, EPSILON_F));
+    assert(math::is_approx_rel(v.sq_magnitude(), 25.0f, EPSILON_F));
     float[<2>] v2 = { 0.0f, 0.0f };
     assert(math::is_approx_rel(v.distance_sq(v2), 25.0f, EPSILON_F));
 }
@@ -58,7 +58,7 @@ fn void test_vec3_transform() @test
     assert(math::is_approx_rel(rotated[2], 0.0f, EPSILON_F));
     float[<3>] perp = v.perpendicular();
     assert(math::is_approx_rel(v.dot(perp), 0.0f, EPSILON_F));
-    assert(math::is_approx_rel(perp.length_sq(), v.length_sq(), EPSILON_F));
+    assert(math::is_approx_rel(perp.sq_magnitude(), v.sq_magnitude(), EPSILON_F));
 }
 
 fn void test_vec_magnitude() @test
@@ -91,7 +91,7 @@ fn void test_vec3_advanced() @test
     float[<3>] n = { 0.0f, 1.0f, 0.0f };
     float r = 1.5f;
     float[<3>] refracted = v.refract(n, r);
-    assert(refracted.length_sq() > 0.0f);
+    assert(refracted.sq_magnitude() > 0.0f);
     float[<3>] a = { 0.0f, 0.0f, 0.0f };
     float[<3>] b = { 1.0f, 0.0f, 0.0f };
     float[<3>] c = { 0.0f, 1.0f, 0.0f };
@@ -104,20 +104,20 @@ fn void test_edge_cases() @test
 {
     float[<2>] zero2 = { 0.0f, 0.0f };
     float[<3>] zero3 = { 0.0f, 0.0f, 0.0f };
-    assert(zero2.length_sq() == 0.0f);
-    assert(zero3.length_sq() == 0.0f);
+    assert(zero2.sq_magnitude() == 0.0f);
+    assert(zero3.sq_magnitude() == 0.0f);
     float[<3>] perp = zero3.perpendicular();
-    assert(perp.length_sq() <= 1.0f + EPSILON_F);
+    assert(perp.sq_magnitude() <= 1.0f + EPSILON_F);
     float[<2>] clamped = zero2.clamp_mag(1.0f, 2.0f);
-    assert(clamped.length_sq() == 0.0f);
+    assert(clamped.sq_magnitude() == 0.0f);
 }
 
 fn void test_type_consistency() @test
 {
     float[<2>] vf = { 1.0f, 2.0f };
     double[<2>] vd = { 1.0, 2.0 };
-    $assert @typeis(vf.length_sq(), float);
-    $assert @typeis(vd.length_sq(), double);
+    $assert @typeis(vf.sq_magnitude(), float);
+    $assert @typeis(vd.sq_magnitude(), double);
     float[<3>] v3f = { 1.0f, 2.0f, 3.0f };
     double[<3>] v3d = { 1.0, 2.0, 3.0 };
     $assert @typeis(v3f.cross(v3f)[0], float);
