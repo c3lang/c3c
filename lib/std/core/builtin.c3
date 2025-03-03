@@ -434,8 +434,8 @@ macro uint int128.hash(int128 i) => @generic_hash(i);
 macro uint uint128.hash(uint128 i) => @generic_hash(i);
 macro uint bool.hash(bool b) => @generic_hash(b);
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)fnv32a::encode(c);
-macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
+macro uint String.hash(String c) => (uint)fnv32a::hash(c);
+macro uint char[].hash(char[] c) => (uint)fnv32a::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
 

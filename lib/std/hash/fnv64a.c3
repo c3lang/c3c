@@ -30,7 +30,7 @@ macro void Fnv64a.update_char(&self, char c)
 	update(self, c);
 }
 
-fn ulong encode(char[] data)
+fn ulong hash(char[] data)
 {
 	ulong h = FNV64A_START;
 	foreach (char x : data)

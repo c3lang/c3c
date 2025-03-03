@@ -40,7 +40,7 @@ fn uint Adler32.final(&self)
 	return (self.b << 16) | self.a;
 }
 
-fn uint encode(char[] data)
+fn uint hash(char[] data)
 {
 	uint a = 1;
 	uint b = 0;

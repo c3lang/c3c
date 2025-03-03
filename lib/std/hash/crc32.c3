@@ -33,7 +33,7 @@ fn uint Crc32.final(&self)
 	return ~self.result;
 }
 
-fn uint encode(char[] data)
+fn uint hash(char[] data)
 {
 	uint result = ~(uint)(0);
 	foreach (char x : data)

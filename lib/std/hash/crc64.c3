@@ -33,7 +33,7 @@ fn ulong Crc64.final(&self)
 	return self.result;
 }
 
-fn ulong encode(char[] data)
+fn ulong hash(char[] data)
 {
 	ulong result = (ulong)(0);
 	foreach (char x : data)
