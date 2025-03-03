@@ -117,6 +117,6 @@ fn void test_mat2_inverse()
 
 fn void test_vec3()
 {
-	Vec3 cross = (Vec3){2,3,4}.cross({5,6,7});
+	double[<3>] cross = (double[<3>]){2,3,4}.cross({5,6,7});
 	assert(cross == {-3,6,-3});
 }
