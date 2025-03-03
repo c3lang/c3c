@@ -2247,7 +2247,7 @@ static inline void llvm_emit_pre_post_inc_dec_vector(GenContext *c, BEValue *val
 	llvm_store_raw(c, &addr, vector);
 
 	// And set the return value.
-	llvm_value_set(value, pre ? current_res.value : new_value, element);
+	llvm_value_set(value, pre ? new_value : current_res.value, element);
 }
 
 /**

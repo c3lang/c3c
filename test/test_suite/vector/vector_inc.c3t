@@ -1,0 +1,20 @@
+// #target: macos-x64
+module test;
+fn void main()
+{
+    float[<1>] myvar = { 3 };
+    myvar.x = ++myvar.x * 2;
+}
+
+/* #expect: test.ll
+
+  %0 = load <1 x float>, ptr %myvar, align 4
+  %1 = load <1 x float>, ptr %myvar, align 4
+  %2 = extractelement <1 x float> %1, i64 0
+  %fincdec = fadd float %2, 1.000000e+00
+  %3 = insertelement <1 x float> %1, float %fincdec, i64 0
+  store <1 x float> %3, ptr %myvar, align 4
+  %fmul = fmul float %fincdec, 2.000000e+00
+  %elemset = insertelement <1 x float> %0, float %fmul, i64 0
+  store <1 x float> %elemset, ptr %myvar, align 4
+  ret void

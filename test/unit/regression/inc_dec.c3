@@ -9,7 +9,7 @@ fn void vector_inc_dec() @test
 	int[<3>] g = x--;
 	assert(x == { 0, 0, -1 });
 	assert(y == { 1, 0, 1 });
-	assert(z == 0 && zz == 1);
+	assert(z == 1 && zz == 0);
 	assert(g == { 1, 1, 0 });
 }
 
