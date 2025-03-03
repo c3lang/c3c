@@ -387,7 +387,7 @@ bool expr_is_runtime_const(Expr *expr)
 			goto RETRY;
 		case EXPR_IDENTIFIER:
 		{
-			Decl *ident = expr->ident_expr;
+			Decl *ident = decl_flatten(expr->ident_expr);
 			if (ident->decl_kind != DECL_VAR) return true;
 			switch (ident->var.kind)
 			{
