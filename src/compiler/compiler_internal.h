@@ -1059,22 +1059,6 @@ typedef struct
 
 typedef struct
 {
-	bool is_assign : 1;
-	bool is_deref : 1;
-	union
-	{
-		struct
-		{
-			const char *new_ident;
-			SourceSpan span;
-			Expr *any_expr;
-		};
-		Decl *variable;
-	};
-} ExprAnySwitch;
-
-typedef struct
-{
 	ExprId parent;
 	TypeIdInfoKind kind;
 } ExprTypeidInfo;
@@ -1132,7 +1116,6 @@ struct Expr_
 	union {
 		ExprResolvedAccess access_resolved_expr;
 		ExprUnresolvedAccess access_unresolved_expr;// 16
-		ExprAnySwitch any_switch;                   // 32
 		ExprBinary binary_expr;                     // 12
 		ExprBinary veccomp_expr;
 		ExprBodyExpansion body_expansion_expr;      // 24
@@ -3486,7 +3469,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TYPEINFO:
 		case EXPR_UNARY:
 		case EXPR_UNRESOLVED_IDENTIFIER:
-		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:

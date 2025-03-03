@@ -479,10 +479,9 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				nextcase;
 			case 'h':
             	char[] out @noinit;
-				switch (current)
+				switch (current.type)
 				{
 					case char[]:
-						out = *current;
 					case ichar[]:
 						out = *(char[]*)current;
 					default:

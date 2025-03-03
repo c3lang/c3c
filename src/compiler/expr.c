@@ -14,7 +14,6 @@ const char *expr_kind_to_string(ExprKind kind)
 	{
 		case EXPR_ACCESS_UNRESOLVED: return "access_unresolved";
 		case EXPR_ACCESS_RESOLVED: return "access_resolved";
-		case EXPR_ANYSWITCH: return "anyswitch";
 		case EXPR_ASM: return "asm";
 		case EXPR_BENCHMARK_HOOK: return "benchmark_hook";
 		case EXPR_BINARY: return "binary";
@@ -307,7 +306,6 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_CT_EVAL:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
-		case EXPR_ANYSWITCH:
 		case EXPR_BITASSIGN:
 		case EXPR_TYPECALL:
 		case EXPR_BINARY:
@@ -816,7 +814,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_MEMBER_GET:
 			return true;
 		case EXPR_BITASSIGN:
-		case EXPR_ANYSWITCH:
 			return false;
 		case EXPR_BINARY:
 			// Anything with assignment is impure, otherwise true if sub expr are pure.

@@ -295,7 +295,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	switch (source_expr->expr_kind)
 	{
 		case EXPR_TYPECALL:
-		case EXPR_ANYSWITCH:
 		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE
 		case EXPR_OTHER_CONTEXT:

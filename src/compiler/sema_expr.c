@@ -551,7 +551,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_HASH_IDENT:
 		case EXPR_POISONED:
 		case EXPR_ADDR_CONVERSION:
-		case EXPR_ANYSWITCH:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_BINARY:
@@ -708,7 +707,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_EXPRESSION_LIST:
 			if (!vec_size(expr->expression_list)) return false;
 			return expr_may_ref(VECLAST(expr->expression_list));
-		case EXPR_ANYSWITCH:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_BINARY:
@@ -9158,7 +9156,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_TRY_UNRESOLVED:
 			case EXPR_TRY:
 			case EXPR_TRY_UNWRAP_CHAIN:
-			case EXPR_ANYSWITCH:
 			case EXPR_OPERATOR_CHARS:
 			case EXPR_MACRO_BODY_EXPANSION:
 			case EXPR_BUILTIN_ACCESS:
@@ -9530,7 +9527,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 {
 	switch (expr->expr_kind)
 	{
-		case EXPR_ANYSWITCH:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_CATCH_UNRESOLVED:
@@ -10051,7 +10047,6 @@ IDENT_CHECK:;
 		case EXPR_INT_TO_BOOL:
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
-		case EXPR_ANYSWITCH:
 		case EXPR_ASM:
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_BINARY:

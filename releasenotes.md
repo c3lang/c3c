@@ -15,6 +15,7 @@
 - Disallow inline use of nested generics (e.g. `List{List{int}}`.
 - Remove `.allocator = allocator` syntax for functions.
 - Remove `@operator(construct)`.
+- Removal of "any-switch".
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
