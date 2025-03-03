@@ -9,6 +9,10 @@ def ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 
+const Allocator LIST_HEAP_ALLOCATOR = (Allocator)&dummy;
+
+const List ONHEAP = { .allocator = LIST_HEAP_ALLOCATOR };
+
 macro type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
 
 struct List (Printable)
@@ -276,7 +280,7 @@ fn Type List.get(&self, usz index) @inline
 
 fn void List.free(&self)
 {
-	if (!self.allocator || !self.capacity) return;
+	if (!self.allocator || self.allocator.ptr == &dummy || !self.capacity) return;
 
 	self.pre_free(); // Remove sanitizer annotation
 
@@ -341,7 +345,17 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
-	if (!self.allocator) self.allocator = tmem();
+
+	// Get a proper allocator
+	switch (self.allocator.ptr)
+	{
+		case &dummy:
+			self.allocator = mem;
+		case null:
+			self.allocator = tmem();
+		default:
+			break;
+	}
 
 	self.pre_free(); // Remove sanitizer annotation
 
@@ -538,3 +552,5 @@ fn usz List.compact(&self) @if(ELEMENT_IS_POINTER)
 	}
 	return list_common::list_compact(self);
 }
+
+int dummy @local;

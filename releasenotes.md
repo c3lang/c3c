@@ -29,7 +29,7 @@
 - `mem::temp_new` changed to `mem::tnew`.
 - `mem::temp_alloc` and related changed to `mem::talloc`.
 - `mem::temp_new_array` changed to `mem::temp_array`.
-
+- Add `ONHEAP` variants for List/HashMap for initializing global maps on the heap. 
 
 ## 0.6.8 Change list
 

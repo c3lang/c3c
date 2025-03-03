@@ -14,6 +14,9 @@ const float DEFAULT_LOAD_FACTOR = 0.75;
 const VALUE_IS_EQUATABLE = Value.is_eq;
 const bool COPY_KEYS = types::implements_copy(Key);
 
+const Allocator MAP_HEAP_ALLOCATOR = (Allocator)&dummy;
+
+const HashMap ONHEAP = { .allocator = MAP_HEAP_ALLOCATOR };
 
 struct Entry
 {
@@ -34,11 +37,11 @@ struct HashMap (Printable)
 
 
 <*
- @param [&inout] allocator "The allocator to use"
- @require capacity > 0 "The capacity must be 1 or higher"
- @require load_factor > 0.0 "The load factor must be higher than 0"
- @require !self.allocator "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @param [&inout] allocator : "The allocator to use"
+ @require capacity > 0 : "The capacity must be 1 or higher"
+ @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require !self.is_initialized() : "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -51,10 +54,10 @@ fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INI
 }
 
 <*
- @require capacity > 0 "The capacity must be 1 or higher"
- @require load_factor > 0.0 "The load factor must be higher than 0"
- @require !self.allocator "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @require capacity > 0 : "The capacity must be 1 or higher"
+ @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require !self.is_initialized() : "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn HashMap* HashMap.tinit(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -62,12 +65,12 @@ fn HashMap* HashMap.tinit(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float
 }
 
 <*
- @param [&inout] allocator "The allocator to use"
- @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
- @require capacity > 0 "The capacity must be 1 or higher"
- @require load_factor > 0.0 "The load factor must be higher than 0"
- @require !self.allocator "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @param [&inout] allocator : "The allocator to use"
+ @require $vacount % 2 == 0 : "There must be an even number of arguments provided for keys and values"
+ @require capacity > 0 : "The capacity must be 1 or higher"
+ @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require !self.is_initialized() : "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -79,11 +82,11 @@ macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., uin
 }
 
 <*
- @require $vacount % 2 == 0 "There must be an even number of arguments provided for keys and values"
- @require capacity > 0 "The capacity must be 1 or higher"
- @require load_factor > 0.0 "The load factor must be higher than 0"
- @require !self.allocator "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @require $vacount % 2 == 0 : "There must be an even number of arguments provided for keys and values"
+ @require capacity > 0 : "The capacity must be 1 or higher"
+ @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require !self.is_initialized() : "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 macro HashMap* HashMap.tinit_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -91,14 +94,14 @@ macro HashMap* HashMap.tinit_with_key_values(&self, ..., uint capacity = DEFAULT
 }
 
 <*
- @param [in] keys "The keys for the HashMap entries"
- @param [in] values "The values for the HashMap entries"
- @param [&inout] allocator "The allocator to use"
- @require keys.len == values.len "Both keys and values arrays must be the same length"
- @require capacity > 0 "The capacity must be 1 or higher"
- @require load_factor > 0.0 "The load factor must be higher than 0"
- @require !self.allocator "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @param [in] keys : "The keys for the HashMap entries"
+ @param [in] values : "The values for the HashMap entries"
+ @param [&inout] allocator : "The allocator to use"
+ @require keys.len == values.len : "Both keys and values arrays must be the same length"
+ @require capacity > 0 : "The capacity must be 1 or higher"
+ @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require !self.is_initialized() : "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -113,13 +116,13 @@ fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] 
 
 
 <*
- @param [in] keys "The keys for the HashMap entries"
- @param [in] values "The values for the HashMap entries"
- @require keys.len == values.len "Both keys and values arrays must be the same length"
- @require capacity > 0 "The capacity must be 1 or higher"
- @require load_factor > 0.0 "The load factor must be higher than 0"
- @require !self.allocator "Map was already initialized"
- @require capacity < MAXIMUM_CAPACITY "Capacity cannot exceed maximum"
+ @param [in] keys : "The keys for the HashMap entries"
+ @param [in] values : "The values for the HashMap entries"
+ @require keys.len == values.len : "Both keys and values arrays must be the same length"
+ @require capacity > 0 : "The capacity must be 1 or higher"
+ @require load_factor > 0.0 : "The load factor must be higher than 0"
+ @require !self.is_initialized() : "Map was already initialized"
+ @require capacity < MAXIMUM_CAPACITY : "Capacity cannot exceed maximum"
 *>
 fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
@@ -134,12 +137,13 @@ fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values
 *>
 fn bool HashMap.is_initialized(&map)
 {
-	return (bool)map.allocator;
+	return map.allocator && map.allocator.ptr != &dummy;
 }
 
 <*
- @param [&inout] allocator "The allocator to use"
- @param [&in] other_map "The map to copy from."
+ @param [&inout] allocator : "The allocator to use"
+ @param [&in] other_map : "The map to copy from."
+ @require !self.is_initialized() : "Map was already initialized"
 *>
 fn HashMap* HashMap.init_from_map(&self, Allocator allocator, HashMap* other_map)
 {
@@ -150,6 +154,7 @@ fn HashMap* HashMap.init_from_map(&self, Allocator allocator, HashMap* other_map
 
 <*
  @param [&in] other_map "The map to copy from."
+ @require !map.is_initialized() : "Map was already initialized"
 *>
 fn HashMap* HashMap.tinit_from_map(&map, HashMap* other_map)
 {
@@ -224,10 +229,15 @@ fn bool HashMap.has_key(&map, Key key)
 fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 {
 	// If the map isn't initialized, use the defaults to initialize it.
-	if (!map.allocator)
-	{
-		map.tinit();
-	}
+    switch (map.allocator.ptr)
+    {
+    	case &dummy:
+    	    map.init(mem);
+    	case null:
+    	    map.tinit();
+    	default:
+    		break;
+    }
 	uint hash = rehash(key.hash());
 	uint index = index_for(hash, map.table.len);
 	for (Entry *e = map.table[index]; e != null; e = e.next)
@@ -269,7 +279,7 @@ fn void HashMap.clear(&map)
 
 fn void HashMap.free(&map)
 {
-	if (!map.allocator) return;
+	if (!map.is_initialized()) return;
 	map.clear();
 	map.free_internal(map.table.ptr);
 	map.table = {};
@@ -578,3 +588,5 @@ macro uint index_for(uint hash, uint capacity) @private
 {
 	return hash & (capacity - 1);
 }
+
+int dummy @local;
