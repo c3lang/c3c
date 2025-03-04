@@ -22,6 +22,7 @@
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
 - Post and pre-decrement operators switched places for vector elements #2010.
 - Aliases were incorrectly considered compile time constants.
+- FreeBSD libc stat definitions were incorrect.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
