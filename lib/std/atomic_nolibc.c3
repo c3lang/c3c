@@ -3,8 +3,9 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::atomic;
 
-macro @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, $success, failure, $alignment) {
-	switch(failure)
+macro @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, $success, failure, $alignment)
+{
+	switch (failure)
 	{
 		case AtomicOrdering.RELAXED.ordinal: return $$compare_exchange(ptr, expected, desired, false, false, $success, AtomicOrdering.RELAXED.ordinal, $alignment);
 		case AtomicOrdering.ACQUIRE.ordinal: return $$compare_exchange(ptr, expected, desired, false, false, $success, AtomicOrdering.ACQUIRE.ordinal, $alignment);
@@ -16,7 +17,7 @@ macro @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, $succe
 
 macro @__atomic_compare_exchange_ordering_success(ptr, expected, desired, success, failure, $alignment)
 {
-	switch(success)
+	switch (success)
 	{
 		case AtomicOrdering.RELAXED.ordinal: return @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, AtomicOrdering.RELAXED.ordinal, failure, $alignment);
 		case AtomicOrdering.ACQUIRE.ordinal: return @__atomic_compare_exchange_ordering_failure(ptr, expected, desired, AtomicOrdering.ACQUIRE.ordinal, failure, $alignment);
@@ -28,7 +29,7 @@ macro @__atomic_compare_exchange_ordering_success(ptr, expected, desired, succes
 	return 0;
 }
 
-fn CInt __atomic_compare_exchange(CInt size, any ptr, any expected, any desired, CInt success, CInt failure) @extern("__atomic_compare_exchange") @export
+fn CInt __atomic_compare_exchange(CInt size, any ptr, any expected, any desired, CInt success, CInt failure) @weak @export("__atomic_compare_exchange")
 {
 	switch (size)
 	{

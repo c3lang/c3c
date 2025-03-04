@@ -175,7 +175,7 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 	BEValue value;
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_value_rvalue(c, &value);
+	LLVMValueRef val = llvm_load_value_store(c, &value);
 	bool is_float = type_is_float(result_value->type);
 	bool is_unsigned = !is_float && type_is_unsigned(result_value->type);
 	LLVMAtomicRMWBinOp op;
@@ -219,7 +219,7 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 		default:
 			UNREACHABLE
 	}
-	LLVMValueRef res = LLVMBuildAtomicRMW(c->builder, op, value.value, llvm_load_value(c, result_value),
+	LLVMValueRef res = LLVMBuildAtomicRMW(c->builder, op, val, llvm_load_value_store(c, result_value),
 	                   llvm_atomic_ordering(expr->call_expr.arguments[3]->const_expr.ixx.i.low),
 					   false);
 	if (expr->call_expr.arguments[2]->const_expr.b) LLVMSetVolatile(res, true);
