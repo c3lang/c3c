@@ -16,6 +16,7 @@
 - Remove `.allocator = allocator` syntax for functions.
 - Remove `@operator(construct)`.
 - Removal of "any-switch".
+- Allow swizzling assign, eg. `abc.xz += { 5, 10 };`
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

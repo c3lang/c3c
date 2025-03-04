@@ -481,7 +481,11 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 			UNREACHABLE
 		case EXPR_SWIZZLE:
 			if (failed_ref) goto FAILED_REF;
-			RETURN_SEMA_ERROR(expr, "You cannot use swizzling to assign to multiple elements, use element-wise assign instead.");
+			if (expr->swizzle_expr.is_overlapping)
+			{
+				RETURN_SEMA_ERROR(expr, "You cannot use swizzling to assign to multiple elements if they are overlapping");
+			}
+			return sema_binary_is_expr_lvalue(context, top_expr, exprptr(expr->swizzle_expr.parent), failed_ref);
 		case EXPR_LAMBDA:
 			if (failed_ref) goto FAILED_REF;
 			RETURN_SEMA_ERROR(expr, "This expression is a value and cannot be assigned to.");
@@ -4892,6 +4896,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	if (is_lvalue) check = CHECK_VALUE;
 	ASSERT_SPAN(expr, len > 0);
 	int index;
+	bool is_overlapping = false;
 	for (unsigned i = 0; i < len; i++)
 	{
 		char val = swizzle[(int)kw[i]] - 1;
@@ -4906,6 +4911,18 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 		if ((index ^ val) & 0x10)
 		{
 			RETURN_SEMA_ERROR(expr, "Mixing [xyzw] and [rgba] is not permitted, you will need to select one of them.");
+		}
+		if (!is_overlapping)
+		{
+			for (int j = 0; j < i; j++)
+			{
+				char prev = swizzle[(int)kw[j]] - 1;
+				if (val == prev)
+				{
+					is_overlapping = true;
+					break;
+				}
+			}
 		}
 	}
 	index &= 0xF;
@@ -4941,7 +4958,8 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	}
 	Type *result = type_get_vector(indexed_type, len);
 	expr->expr_kind = EXPR_SWIZZLE;
-	expr->swizzle_expr = (ExprSwizzle) { exprid(parent), kw };
+	expr->swizzle_expr = (ExprSwizzle) { .parent = exprid(parent), .swizzle = kw, .is_overlapping = is_overlapping };
+
 	expr->type = result;
 	return true;
 }
@@ -6045,10 +6063,11 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	Type *no_fail = type_no_optional(left->type);
 	Type *flat = type_flatten(no_fail);
 
-	// 3. If this is only defined for ints (*%, ^= |= &= %=) verify that this is an int.
+	// 3. If this is only defined for ints (^= |= &= %=) verify that this is an int.
 	if (int_only && !type_flat_is_intlike(flat))
 	{
-		if (is_bit_op && flat->type_kind == TYPE_BITSTRUCT) goto BITSTRUCT_OK;
+		if (is_bit_op && (flat->type_kind == TYPE_BITSTRUCT || flat == type_bool || type_flat_is_bool_vector(flat))) goto BITSTRUCT_OK;
+
 		RETURN_SEMA_ERROR(left, "Expected an integer here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
 

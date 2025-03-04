@@ -1066,6 +1066,7 @@ typedef struct
 typedef struct
 {
 	ExprId parent;
+	bool is_overlapping;
 	const char *swizzle;
 } ExprSwizzle;
 

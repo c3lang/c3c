@@ -10,6 +10,34 @@ fn void test_int_mod() @test
 	assert((int[<2>]){ 10, 99 } / { 3, 5 } == { 3, 19 });
 }
 
+fn void test_swizzle_assign() @test
+{
+	int[<3>] abc;
+	abc.xy = { 3, 4 };
+	assert(abc == { 3, 4, 0 });
+	abc.xz += { 2, 7 };
+	assert(abc == { 5, 4, 7 });
+	abc.xy += { 4, -100 };
+	assert(abc == { 9, -96, 7 });
+	abc.xz = { 0, 0 };
+	assert(abc == { 0, -96, 0});
+}
+
+fn void test_swizzle_assign_bool() @test
+{
+	bool[<3>] abc;
+	abc.xy = { true, true };
+	assert(abc == { true, true, false });
+	abc.yz ^= { true, true };
+	assert(abc == { true, false, true });
+	abc ^= true;
+	assert(abc == { false, true, false });
+	abc.xy ^= true;
+	assert(abc == { true, false, false });
+	assert((abc.yx ^= true) == { true, false });
+	assert(abc == { false, true, false });
+}
+
 fn void test_conv() @test
 {
     float[<4>] y = { 1, 2, 3, 4 };
