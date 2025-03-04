@@ -6,7 +6,7 @@ fn int main()
  String $chars = "Abcd";
  char $from = 2;
  char[10] $bitmap = {};
-$foreach ( $c : $chars)
+$foreach  $c : $chars:
         int $offset = ($c - $from) / BITS;
         int $rem = ($c - $from) % BITS;
         uint128 $value = $bitmap[$offset]; // #error: is out of range

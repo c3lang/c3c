@@ -6,7 +6,7 @@ macro testbitcast(expr, $Type)
     $Type x @noinit;
     var $size = (usz)($sizeof(expr));
 
-	$switch
+	$switch:
 	    $case $alignof(expr) >= 8 && $Type.alignof >= 8:
 	        ulong *b = (ulong*)(&expr);
 	        ulong *to = (ulong*)(&x);

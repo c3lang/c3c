@@ -189,7 +189,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 macro Object* Object.object_from_value(&self, value) @private
 {
 	var $Type = $typeof(value);
-	$switch
+	$switch:
 		$case types::is_int($Type):
 			return new_int(value, self.allocator);
 		$case types::is_float($Type):

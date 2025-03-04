@@ -12,7 +12,7 @@ import std::io::path, libc, std::os;
 fn String! get_var(Allocator allocator, String name) => @pool(allocator)
 {
 
-	$switch
+	$switch:
 	$case env::LIBC && !env::WIN32:
 		ZString val = libc::getenv(name.zstr_tcopy());
 		return val ? val.copy(allocator) : SearchResult.MISSING?;
@@ -46,7 +46,7 @@ fn String! tget_var(String name)
 *>
 fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 {
-	$switch
+	$switch:
 	$case env::WIN32:
 		WString wname = name.to_temp_wstring()!!;
 		if (!overwrite)
@@ -104,7 +104,7 @@ fn Path! get_config_dir(Allocator allocator) => @pool(allocator)
 *>
 fn bool clear_var(String name) => @pool()
 {
-	$switch
+	$switch:
 	$case env::WIN32:
 		WString wname = name.to_temp_wstring()!!;
 		return win32::setEnvironmentVariableW(wname, null) == 0;

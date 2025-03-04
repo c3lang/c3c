@@ -154,7 +154,7 @@ fn usz! copy_to(InStream in, OutStream dst, char[] buffer = {})
 	if (buffer.len) return copy_through_buffer(in, dst, buffer);
 	if (&in.write_to) return in.write_to(dst);
 	if (&dst.read_to) return dst.read_to(in);
-	$switch (env::MEMORY_ENV)
+	$switch env::MEMORY_ENV:
 		$case NORMAL:
 			return copy_through_buffer(in, dst, &&(char[4096]){});
 		$case SMALL:

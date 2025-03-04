@@ -120,7 +120,7 @@ macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
 	ElementType pivot = list[l];
 	while (l < h)
 	{
-		$switch
+		$switch:
 			$case $cmp_by_value && $has_context:
 				while (cmp(list[h], pivot, context) >= 0 && l < h) h--;
 				if (l < h) list[l++] = list[h];

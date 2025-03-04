@@ -64,10 +64,10 @@ fn void! TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 		TextTag tag @noinit;
 		do OUTER:
 		{
-			$foreach ($m : Type.membersof)
+			$foreach $m : Type.membersof:
 				if (name == $m.nameof)
 				{
-					$switch ($m.typeid)
+					$switch $m.typeid:
 						$case String.typeid:
 							tag = {
 								.kind = STRING,

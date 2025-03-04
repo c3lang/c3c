@@ -9,7 +9,7 @@ enum Vehicles
 macro elements($Type)
 {
 	int x;
-    $foreach ($x : $Type.values)
+    $foreach $x : $Type.values:
         x = $x.ordinal;
     $endforeach;
 }

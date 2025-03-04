@@ -49,7 +49,7 @@ macro @select(bool $bool, #value_1, #value_2) @builtin
 macro promote_int_same(x, y)
 {
 	$if @is_int(x):
-		$switch
+		$switch:
 		$case @is_vector(y) &&& $typeof(y).inner == float.typeid:
 			return (float)x;
 		$case $typeof(y).typeid == float.typeid:

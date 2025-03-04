@@ -6,7 +6,7 @@ import std::os::posix;
 
 macro bool! native_rmdir(Path path)
 {
-	$switch
+	$switch:
 		$case env::POSIX:
 			if (!posix::rmdir(path.as_zstr())) return true;
 			switch (libc::errno())

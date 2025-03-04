@@ -18,6 +18,10 @@
 - Removal of "any-switch".
 - Allow swizzling assign, eg. `abc.xz += { 5, 10 };`
 - Added `$$wstr16` and `$$wstr32` builtins.
+- `$foreach` "()" replaced by trailing ":" `$foreach ($x, $y : $foo)` -> `$foreach $x, $y : $foo:` 
+- `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
+- `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
+- Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

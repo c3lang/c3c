@@ -114,7 +114,7 @@ macro String! treadline(stream = io::stdin())
 macro usz! fprint(out, x)
 {
 	var $Type = $typeof(x);
-	$switch ($Type)
+	$switch $Type:
 		$case String: return out.write(x);
 		$case ZString: return out.write(x.str_view());
 		$case DString: return out.write(x.str_view());
@@ -173,7 +173,7 @@ macro usz! fprintn(out, x = "")
 {
 	usz len = fprint(out, x)!;
 	out.write_byte('\n')!;
-	$switch
+	$switch:
 		$case @typeid(out) == OutStream.typeid:
 			if (&out.flush) out.flush()!;
 		$case $defined(out.flush):

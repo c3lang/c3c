@@ -21,7 +21,7 @@ fn Socket! connect_from_addrinfo(AddrInfo* addrinfo, SocketOption[] options) @pr
 
 fn bool last_error_is_delayed_connect()
 {
-	$switch
+	$switch:
 		$case env::WIN32:
 		switch (win32_WSAGetLastError())
 		{

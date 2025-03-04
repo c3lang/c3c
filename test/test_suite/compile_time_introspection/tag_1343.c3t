@@ -6,7 +6,7 @@ macro void Foo.tags(&self, other)
     // inner to remove pointer
     var $Type = $typefrom($typeof(other).inner);
     var $methodcount = $Type.methodsof.len;
-    $for (var $i = 0; $i < $methodcount; $i++)
+    $for var $i = 0; $i < $methodcount; $i++:
         var $MethodType1 = $typeof($Type.$eval($Type.methodsof[$i]));
         var $MethodType = $typeof(&$Type.$eval($Type.methodsof[$i]));
 		$MethodType a;

@@ -65,7 +65,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 	for (usz i = low; i < high; i++)
 	{
-		$switch
+		$switch:
 			$case NO_KEY_FN:
 				KeyFnReturnType k = list[i];
 			$case KEY_BY_VALUE:
@@ -129,7 +129,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 				sorted_count += (e - s);
 				for (; s < e; s++)
 				{
-					$switch
+					$switch:
 					$case NO_KEY_FN:
 						KeyFnReturnType k = list[low + s];
 					$case KEY_BY_VALUE:

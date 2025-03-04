@@ -378,7 +378,7 @@ macro Allocator base_allocator() @private
 
 macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @local
 {
-	$switch (env::MEMORY_ENV)
+	$switch env::MEMORY_ENV:
 	$case NORMAL:
 		return new_temp_allocator(1024 * 256, allocator)!!;
 	$case SMALL:

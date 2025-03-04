@@ -1,7 +1,7 @@
 
 fn void test()
 {
-    $switch (int.typeid)
+    $switch int.typeid:
         $case int:
             return;
         $default: // #error: must be last in a $switch
@@ -12,7 +12,7 @@ fn void test()
 
 fn void test1()
 {
-    $switch (int.typeid)
+    $switch int.typeid:
         $case int:
             return;
         $case int: // #error: 'int' appears more than once
@@ -26,7 +26,7 @@ def Foo = int;
 def Bar = double;
 fn void test2()
 {
-    $switch (int.typeid)
+    $switch int.typeid:
         $case Foo:
             return;
         $case Bar:
@@ -40,7 +40,7 @@ fn void test2()
 
 fn void test3()
 {
-    $switch (int.typeid)
+    $switch int.typeid:
         $case int:
             return;
         $case 123: // #error: A type was expected here not 'int'

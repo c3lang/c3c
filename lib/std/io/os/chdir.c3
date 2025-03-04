@@ -3,7 +3,7 @@ import std::io::path, libc, std::os;
 
 macro void! native_chdir(Path path)
 {
-	$switch
+	$switch:
 		$case env::POSIX:
 			if (posix::chdir(path.as_zstr()))
 			{

@@ -75,7 +75,7 @@ fn HashMap* HashMap.tinit(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float
 macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
 	self.init(allocator, capacity, load_factor);
-	$for (var $i = 0; $i < $vacount; $i += 2)
+	$for var $i = 0; $i < $vacount; $i += 2:
 		self.set($vaarg[$i], $vaarg[$i + 1]);
 	$endfor
 	return self;

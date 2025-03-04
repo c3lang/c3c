@@ -10,7 +10,7 @@ enum TokenType: char (char token) {
 macro populate_token_table() {
   TokenType[256] $tmp = {};
 
-  $foreach ($tokenType: TokenType.values)
+  $foreach $tokenType: TokenType.values:
     $tmp[$tokenType.token] = $tokenType;
   $endforeach
 

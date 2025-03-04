@@ -4,7 +4,7 @@ module test;
 
 macro get_type($Type)
 {
-    $switch ($Type.typeid)
+    $switch $Type.typeid:
         $case int:
             return "int";
         $case double:

@@ -143,7 +143,7 @@ fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
 
 macro typeid type_for_enum_elements(usz $elements) @local
 {
-	$switch
+	$switch:
 		$case ($elements > 128):
 			return char[($elements + 7) / 8].typeid;
 		$case ($elements > 64):

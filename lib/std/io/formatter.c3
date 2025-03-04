@@ -39,7 +39,7 @@ macro usz! struct_to_format(value, Formatter* f, bool $force_dump)
 {
     var $Type = $typeof(value);
     usz total = f.print("{ ")!;
-    $foreach ($i, $member : $Type.membersof)
+    $foreach $i, $member : $Type.membersof:
         $if $i > 0:
             total += f.print(", ")!;
         $endif

@@ -54,7 +54,7 @@ fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignmen
 	void* new_ptr;
 	if (posix::posix_memalign(&new_ptr, alignment, new_bytes)) return AllocationFailure.OUT_OF_MEMORY?;
 
-	$switch
+	$switch:
 	$case env::DARWIN:
 		usz old_usable_size = darwin::malloc_size(old_ptr);
 	$case env::LINUX:

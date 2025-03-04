@@ -79,7 +79,7 @@ fn Backtrace* Backtrace.init(&self, Allocator allocator, uptr offset, String fun
 fn void*[] capture_current(void*[] buffer)
 {
 	if (!buffer.len) return buffer[:0];
-	$switch
+	$switch:
 		$case env::POSIX:
 			CInt len = posix::backtrace(buffer.ptr, buffer.len);
 			return buffer[:len];

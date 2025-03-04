@@ -44,7 +44,7 @@ macro int @sort_cmp(list, pos, cmp, ctx) @local
 	var a = list[pos];
 	var b = list[pos+1];
 
-	$switch
+	$switch:
 		$case $cmp_by_value && $has_context:
 			return cmp(a, b);
 		$case $cmp_by_value:

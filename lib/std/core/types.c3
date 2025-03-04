@@ -93,7 +93,7 @@ fn bool typeid.is_subtype_of(self, typeid other)
 macro bool is_subtype_of($Type, $OtherType)
 {
 	var $typeid = $Type.typeid;
-	$switch ($Type)
+	$switch $Type:
 		$case $OtherType: return true;
 		$default: return false;
 	$endswitch
@@ -116,7 +116,7 @@ fn bool TypeKind.is_int(kind) @inline
 
 macro bool is_slice_convertable($Type)
 {
-	$switch ($Type.kindof)
+	$switch $Type.kindof:
 		$case SLICE:
 			return true;
 		$case POINTER:
@@ -134,7 +134,7 @@ macro bool is_int($Type) @const  => $Type.kindof == TypeKind.SIGNED_INT || $Type
 *>
 macro bool is_signed($Type) @const
 {
-	$switch (inner_kind($Type))
+	$switch inner_kind($Type):
 		$case SIGNED_INT:
 		$case FLOAT:
 			return true;
@@ -150,7 +150,7 @@ macro bool is_signed($Type) @const
 *>
 macro bool is_unsigned($Type) @const
 {
-	$switch (inner_kind($Type))
+	$switch inner_kind($Type):
 		$case UNSIGNED_INT:
 			return true;
 		$case VECTOR:
@@ -190,7 +190,7 @@ macro bool is_ref_indexable($Type) @const
 
 macro bool is_intlike($Type) @const
 {
-	$switch ($Type.kindof)
+	$switch $Type.kindof:
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 			return true;
@@ -203,7 +203,7 @@ macro bool is_intlike($Type) @const
 
 macro bool is_underlying_int($Type) @const
 {
-	$switch ($Type.kindof)
+	$switch $Type.kindof:
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
 			return true;
@@ -218,7 +218,7 @@ macro bool is_float($Type) @const  => $Type.kindof == TypeKind.FLOAT;
 
 macro bool is_floatlike($Type) @const
 {
-	$switch ($Type.kindof)
+	$switch $Type.kindof:
 		$case FLOAT:
 			return true;
 		$case VECTOR:
@@ -258,7 +258,7 @@ macro bool @has_same(#a, #b, ...) @const
 	$if $type_a != @typeid(#b):
 		return false;
 	$endif
-	$for (var $i = 0; $i < $vacount; $i++)
+	$for var $i = 0; $i < $vacount; $i++:
 		$if @typeid($vaexpr[$i]) != $type_a:
 			return false;
 		$endif
@@ -268,7 +268,7 @@ macro bool @has_same(#a, #b, ...) @const
 
 macro bool may_load_atomic($Type) @const
 {
-	$switch ($Type.kindof)
+	$switch $Type.kindof:
 	$case BOOL:
 	$case SIGNED_INT:
 	$case UNSIGNED_INT:
@@ -284,7 +284,7 @@ macro bool may_load_atomic($Type) @const
 
 macro lower_to_atomic_compatible_type($Type) @const
 {
-	$switch ($Type.kindof)
+	$switch $Type.kindof:
 		$case BOOL:
 		$case SIGNED_INT:
 		$case UNSIGNED_INT:
@@ -292,7 +292,7 @@ macro lower_to_atomic_compatible_type($Type) @const
 		$case DISTINCT:
 			return lower_to_atomic_compatible_type($Type.inner);
 		$case FLOAT:
-			$switch ($Type)
+			$switch $Type:
 				$case float16:
 					return ushort.typeid;
 				$case float: 

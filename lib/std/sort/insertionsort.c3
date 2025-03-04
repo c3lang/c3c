@@ -35,7 +35,7 @@ fn void isort(Type list, usz low, usz high, CmpFn comp, Context context)
 			$if $has_get_ref:
 				ElementType *rhs = &list[j];
 				ElementType *lhs = &list[--j];
-				$switch
+				$switch:
 					$case $cmp_by_value && $has_context:
 						if (comp(*rhs, *lhs, context) >= 0) break;
 					$case $cmp_by_value:
@@ -51,7 +51,7 @@ fn void isort(Type list, usz low, usz high, CmpFn comp, Context context)
 			$else
 				usz r = j;
 				--j;
-				$switch
+				$switch:
 					$case $cmp_by_value && $has_context:
 						if (comp(list[r], list[j], context) >= 0) break;
 					$case $cmp_by_value:

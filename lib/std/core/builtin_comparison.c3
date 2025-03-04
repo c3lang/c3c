@@ -8,7 +8,7 @@ module std::core::builtin;
 *>
 macro less(a, b) @builtin
 {
-	$switch
+	$switch:
 	$case $defined(a.less):
 		return a.less(b);
 	$case $defined(a.compare_to):
@@ -23,7 +23,7 @@ macro less(a, b) @builtin
 *>
 macro less_eq(a, b) @builtin
 {
-	$switch
+	$switch:
 	$case $defined(a.less):
 		return !b.less(a);
 	$case $defined(a.compare_to):
@@ -38,7 +38,7 @@ macro less_eq(a, b) @builtin
 *>
 macro greater(a, b) @builtin
 {
-	$switch
+	$switch:
 	$case $defined(a.less):
 		return b.less(a);
 	$case $defined(a.compare_to):
@@ -53,7 +53,7 @@ macro greater(a, b) @builtin
 *>
 macro int compare_to(a, b) @builtin
 {
-	$switch
+	$switch:
 	$case $defined(a.compare_to):
 		return a.compare_to(b);
 	$case $defined(a.less):
@@ -67,7 +67,7 @@ macro int compare_to(a, b) @builtin
 *>
 macro greater_eq(a, b) @builtin
 {
-	$switch
+	$switch:
 	$case $defined(a.less):
 		return !a.less(b);
 	$case $defined(a.compare_to):
@@ -82,7 +82,7 @@ macro greater_eq(a, b) @builtin
 *>
 macro bool equals(a, b) @builtin
 {
-	$switch
+	$switch:
 	$case $defined(a.equals, a.equals(b)):
 		return a.equals(b);
 	$case $defined(a.compare_to, a.compare_to(b)):
@@ -100,7 +100,7 @@ macro min(x, ...) @builtin
 		return less(x, $vaarg[0]) ? x : $vaarg[0];
 	$else
 		var result = x;
-		$for (var $i = 0; $i < $vacount; $i++)
+		$for var $i = 0; $i < $vacount; $i++:
 			if (less($vaarg[$i], result))
 			{
 				 result = $vaarg[$i];
@@ -116,7 +116,7 @@ macro max(x, ...) @builtin
 		return greater(x, $vaarg[0]) ? x : $vaarg[0];
 	$else
 		var result = x;
-		$for (var $i = 0; $i < $vacount; $i++)
+		$for var $i = 0; $i < $vacount; $i++:
 			if (greater($vaarg[$i], result))
 			{
 				 result = $vaarg[$i];

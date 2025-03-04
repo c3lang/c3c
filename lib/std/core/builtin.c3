@@ -286,7 +286,7 @@ macro @enum_from_value($Type, #value, value) @builtin
 *>
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
-	$switch
+	$switch:
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value;
 	$case $probability == 1.0:
@@ -305,7 +305,7 @@ macro bool @likely(bool #value, $probability = 1.0) @builtin
 *>
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
-	$switch
+	$switch:
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value;
 	$case $probability == 1.0:
@@ -322,7 +322,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 *>
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
-	$switch
+	$switch:
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value == expected;
 	$case $probability == 1.0:
@@ -415,7 +415,7 @@ macro @generic_hash_core(h, value)
 macro @generic_hash(value)
 {
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
-	$for (var $cnt = 4; $cnt < $sizeof(value); $cnt += 4)
+	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:
 		value >>= 32; // reduce value
 		h = @generic_hash_core(h, value);
 	$endfor

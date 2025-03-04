@@ -449,7 +449,7 @@ macro double! hexfloat(char[] chars, int $bits, int $emin, int sign)
 macro String.to_real(chars, $Type) @private
 {
 	int sign = 1;
-	$switch ($Type)
+	$switch $Type:
 	$case float:
 		const int BITS = math::FLOAT_MANT_DIG;
 		const int EMIN = math::FLOAT_MIN_EXP - BITS;

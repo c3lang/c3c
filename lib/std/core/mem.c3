@@ -421,7 +421,7 @@ macro bool equals(a, b, isz len = -1, usz $align = 0)
 
 	if (!len) return true;
 	var $Type;
-	$switch ($align)
+	$switch $align:
 		$case 1:
 			$Type = char;
 		$case 2:

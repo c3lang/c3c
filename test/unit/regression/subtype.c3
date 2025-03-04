@@ -69,7 +69,7 @@ fn void switch_subtyping()
 		default:
 			assert(false);
 	}
-	$switch (Bar.typeid)
+	$switch Bar.typeid:
 	$case Foo:
 		assert(true);
 	$case Bar:

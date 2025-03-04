@@ -7,7 +7,7 @@ fn int hell() { return 1; }
 macro print_args($Type)
 {
 	var $params = $Type.params;
-	$foreach ($param : $params)
+	$foreach $param : $params:
 		io::printn($param.nameof);
 	$endforeach;
 }
@@ -35,7 +35,7 @@ macro print_fields($Type)
 {
 	io::printfn("Type: %s", $Type.nameof);
 	var $params = $Type.membersof;
-	$foreach ($param : $params)
+	$foreach $param : $params:
 		io::printfn("%s: %s", $param.nameof, $param.typeid.nameof);
 	$endforeach;
 }

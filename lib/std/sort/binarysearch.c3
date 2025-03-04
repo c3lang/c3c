@@ -25,7 +25,7 @@ macro usz binarysearch(list, x, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SL
 			}
 		$else
 
-			$switch
+			$switch:
 				$case $defined(cmp(list[0], list[0], context)):
 					int res = cmp(list[half], x, context);
 				$case $defined(cmp(list[0], list[0])):

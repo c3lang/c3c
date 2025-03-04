@@ -381,7 +381,7 @@ fn void DString.delete(&self, usz start, usz len = 1)
 macro void DString.append(&self, value)
 {
 	var $Type = $typeof(value);
-	$switch ($Type)
+	$switch $Type:
 		$case char:
 		$case ichar:
 			self.append_char(value);
@@ -392,7 +392,7 @@ macro void DString.append(&self, value)
 		$case Char32:
 			self.append_char32(value);
 		$default:
-			$switch
+			$switch:
 				$case $defined((Char32)value):
 					self.append_char32((Char32)value);
 				$case $defined((String)value):
@@ -513,7 +513,7 @@ fn usz DString.insert_utf32_at(&self, usz index, Char32[] chars)
 macro void DString.insert_at(&self, usz index, value)
 {
 	var $Type = $typeof(value);
-	$switch ($Type)
+	$switch $Type:
 		$case char:
 		$case ichar:
 			self.insert_char_at(index, value);
@@ -524,7 +524,7 @@ macro void DString.insert_at(&self, usz index, value)
 		$case Char32:
 			self.insert_char32_at(index, value);
 		$default:
-			$switch
+			$switch:
 				$case $defined((Char32)value):
 					self.insert_char32_at(index, (Char32)value);
 				$case $defined((String)value):

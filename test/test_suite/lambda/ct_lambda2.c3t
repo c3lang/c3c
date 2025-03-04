@@ -7,7 +7,7 @@ def Call = fn void();
 fn int main()
 {
 	var $x = 0;
-	$for (var $i = 0; $i < 10; $i++)
+	$for var $i = 0; $i < 10; $i++:
 	{
 		var $Type = int;
 		$if $i % 2 == 0:

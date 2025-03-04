@@ -405,7 +405,7 @@ macro max(x, y, ...)
 		return $$max(x, y);
 	$else
 		var m = $$max(x, y);
-		$for (var $i = 0; $i < $vacount; $i++)
+		$for var $i = 0; $i < $vacount; $i++:
 			m = $$max(m, $vaarg[$i]);
 		$endfor
 		return m;
@@ -422,7 +422,7 @@ macro min(x, y, ...)
 		return $$min(x, y);
 	$else
 		var m = $$min(x, y);
-		$for (var $i = 0; $i < $vacount; $i++)
+		$for var $i = 0; $i < $vacount; $i++:
 			m = $$min(m, $vaarg[$i]);
 		$endfor
 		return m;
@@ -458,7 +458,7 @@ macro pow(x, exp)
 *>
 macro frexp(x, int* e)
 {
-	$switch ($typeof(x))
+	$switch $typeof(x):
 	$case float:
 	$case float16:
 		return _frexpf((float)x, e);
@@ -472,7 +472,7 @@ macro frexp(x, int* e)
 *>
 macro int signbit(x)
 {
-	$switch ($typeof(x))
+	$switch $typeof(x):
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) >> 31;
@@ -542,7 +542,7 @@ macro sqrt(x) => $$sqrt(values::promote_int(x));
 macro tan(x)
 {
 	var $Type = $typeof(x);
-	$switch
+	$switch:
 		$case types::is_vector($Type):
 			return $$sin(x) / $$cos(x);
 		$case $Type.typeid == float.typeid:
@@ -557,7 +557,7 @@ macro tan(x)
 *>
 macro bool is_finite(x)
 {
-	$switch ($typeof(x))
+	$switch $typeof(x):
 		$case float:
 		$case float16:
 			return bitcast((float)x, uint) & 0x7fffffff < 0x7f800000;
@@ -571,7 +571,7 @@ macro bool is_finite(x)
 *>
 macro is_nan(x)
 {
-	$switch ($typeof(x))
+	$switch $typeof(x):
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff > 0x7f800000;
@@ -585,7 +585,7 @@ macro is_nan(x)
 *>
 macro is_inf(x)
 {
-	$switch ($typeof(x))
+	$switch $typeof(x):
 	$case float:
 	$case float16:
 		return bitcast((float)x, uint) & 0x7fffffff == 0x7f800000;
@@ -1252,7 +1252,7 @@ Calculate the least common multiple for the provided arguments.
 macro lcm(...)
 {
 	$typeof($vaarg[0]) result = $vaarg[0];
-	$for (var $i = 1; $i < $vacount; $i++)
+	$for var $i = 1; $i < $vacount; $i++:
 		$if $defined(result.lcm):
 			result = result.lcm($vaarg[$i]);
 		$else
@@ -1270,7 +1270,7 @@ Calculate the greatest common divisor for the provided arguments.
 macro gcd(...)
 {
 	$typeof($vaarg[0]) result = $vaarg[0];
-	$for (var $i = 1; $i < $vacount; $i++)
+	$for var $i = 1; $i < $vacount; $i++:
 		$if $defined(result.gcd):
 			result = result.gcd($vaarg[$i]);
 		$else

@@ -309,7 +309,7 @@ fn int128 __fixsfti(float a) @weak @extern("__fixsfti") @nostrip => fixint(a);
 macro float_from_i128($Type, a) @private
 {
 	var $Rep;
-	$switch ($Type)
+	$switch $Type:
 		$case double:
 			$Rep = ulong;
 			const MANT_DIG = DOUBLE_MANT_DIG;
@@ -368,7 +368,7 @@ macro float_from_i128($Type, a) @private
 macro float_from_u128($Type, a) @private
 {
 	var $Rep;
-	$switch ($Type)
+	$switch $Type:
 		$case double:
 			$Rep = ulong;
 			const MANT_DIG = DOUBLE_MANT_DIG;
@@ -423,7 +423,7 @@ macro float_from_u128($Type, a) @private
 macro fixuint(a) @private
 {
 	var $Rep;
-	$switch ($typeof(a))
+	$switch $typeof(a):
 		$case double:
 			$Rep = ulong;
 			const EXPONENT_BITS = 11;
@@ -467,7 +467,7 @@ macro fixuint(a) @private
 macro fixint(a) @private
 {
 	var $Rep;
-	$switch ($typeof(a))
+	$switch $typeof(a):
 		$case double:
 			$Rep = ulong;
 			const EXPONENT_BITS = 11;
