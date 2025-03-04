@@ -167,7 +167,7 @@ macro bool is_native_atomic_type($Type)
 	$if $Type.sizeof > void*.sizeof:
 		return false;
 	$else
-		$switch ($Type.kindof)
+		$switch $Type.kindof:
 			$case SIGNED_INT:
 			$case UNSIGNED_INT:
 			$case POINTER:
