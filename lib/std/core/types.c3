@@ -160,6 +160,24 @@ macro bool is_unsigned($Type) @const
 	$endswitch
 }
 
+macro typeid flat_type($Type) @const
+{
+	$if $Type.kindof == DISTINCT:
+		return flat_type($typefrom($Type.inner));
+	$else
+		return $Type.typeid;
+	$endif
+}
+
+macro TypeKind flat_kind($Type) @const
+{
+	$if $Type.kindof == DISTINCT:
+		return flat_type($typefrom($Type.inner));
+	$else
+		return $Type.kindof;
+	$endif
+}
+
 macro bool is_indexable($Type) @const
 {
 	return $defined(($Type){}[0]);
@@ -267,14 +285,15 @@ macro bool may_load_atomic($Type) @const
 macro lower_to_atomic_compatible_type($Type) @const
 {
 	$switch ($Type.kindof)
-	$case SIGNED_INT:
-	  $case UNSIGNED_INT:
-	  return $Type.typeid;
+		$case BOOL:
+		$case SIGNED_INT:
+		$case UNSIGNED_INT:
+	        return $Type.typeid;
 		$case DISTINCT:
 			return lower_to_atomic_compatible_type($Type.inner);
 		$case FLOAT:
 			$switch ($Type)
-				$case float16: 
+				$case float16:
 					return ushort.typeid;
 				$case float: 
 					return uint.typeid;

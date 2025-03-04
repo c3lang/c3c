@@ -2763,6 +2763,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
+		case TYPE_BOOL:
 			break;
 		default:
 			return false;

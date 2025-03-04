@@ -232,7 +232,6 @@ static bool sema_expr_analyse_compare_exchange(SemaContext *context, Expr *expr)
 		{
 			RETURN_SEMA_ERROR(arg, "%s may not be used with atomics.", type_quoted_error_string(arg->type));
 		}
-
 		optional = optional || IS_OPTIONAL(args[i]);
 	}
 	for (int i = 3; i < 5; i++)
@@ -1047,7 +1046,7 @@ bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr)
 		case BUILTIN_ATOMIC_FETCH_XOR:
 		{
 			ASSERT(arg_count == 5);
-			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_INTEGER}, 2)) return false;
+			if (!sema_check_builtin_args(context, args, (BuiltinArg[]) {BA_POINTER, BA_BOOLINT}, 2)) return false;
 			Type *original = type_flatten(args[0]->type);
 			if (original != type_voidptr)
 			{
