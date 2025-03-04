@@ -118,6 +118,37 @@ fn void fadd() @test
 	assert(fa.load() == ts.len * 10 * 0.5, "Threads returned %f, expected %f", fa.load(), ts.len * 10 * 0.5);
 }
 
+fn void fops() @test
+{
+	fa.store(100);
+	fa.mul(2);
+	fa.div(3.4);
+}
+
+fn void iops() @test
+{
+	a.store(100);
+	a.mul(3);
+	a.div(5);
+	a.shr(1);
+	a.shl(3);
+	a.xor(4);
+	a.or(5);
+	a.and(6);
+}
+
+fn void bops() @test
+{
+	Atomic {bool} ab;
+	ab.store(true);
+	ab.store(false);
+	ab.xor(true);
+	ab.or(false);
+	ab.store(false);
+	test::eq(false, ab.set());
+	test::eq(true, ab.clear());
+	test::eq(false, ab.clear());
+}
 fn void fsub() @test
 {
 	Thread[100] ts;

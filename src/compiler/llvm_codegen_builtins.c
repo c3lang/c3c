@@ -96,8 +96,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 	for (int i = 0; i < 3; i++)
 	{
 		llvm_emit_expr(c, &value, args[i]);
-		llvm_value_rvalue(c, &value);
-		normal_args[i] = value.value;
+		normal_args[i] = llvm_load_value_store(c, &value);
 	}
 	Type *type = value.type;
 	bool is_volatile = args[3]->const_expr.b;

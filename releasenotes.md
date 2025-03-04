@@ -24,6 +24,7 @@
 - Post and pre-decrement operators switched places for vector elements #2010.
 - Aliases were incorrectly considered compile time constants.
 - FreeBSD libc stat definitions were incorrect.
+- Atomic max was incorrect.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
@@ -37,6 +38,7 @@
 - Remove Vec2 and other aliases from std::math. Replace `.length_sq()` with `sq_magnitude()`
 - Change all hash functions to have a common `hash` function.
 - `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
+- Updates to `Atomic` to handle distinct types and booleans.
 
 ## 0.6.8 Change list
 
