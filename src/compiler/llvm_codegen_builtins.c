@@ -108,7 +108,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 												 ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
 	if (alignment && alignment >= type_abi_alignment(type))
 	{
-		ASSERT(is_power_of_two(alignment));
+		ASSERT_SPAN(expr, is_power_of_two(alignment));
 		LLVMSetAlignment(result, alignment);
 	}
 	if (is_volatile) LLVMSetVolatile(result, true);
@@ -235,10 +235,12 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
-	llvm_value_deref(c, result_value);
 	llvm_value_rvalue(c, result_value);
-	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(result_value->value, true);
-	LLVMSetOrdering(result_value->value,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
+	Type *type = result_value->type->pointer;
+	LLVMValueRef val = llvm_load(c, llvm_get_type(c, type), result_value->value, type_abi_alignment(type), "");
+	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(val, true);
+	LLVMSetOrdering(val,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
+	llvm_value_set(result_value, val, type);
 }
 
 INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr *expr)

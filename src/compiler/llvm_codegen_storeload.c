@@ -4,10 +4,11 @@
 
 #include "llvm_codegen_internal.h"
 
-LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
+LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment)
 {
 	ASSERT(alignment > 0);
-	LLVMValueRef ref = LLVMBuildStore(context->builder, value, pointer);
+	assert(LLVMTypeOf(value) != c->bool_type);
+	LLVMValueRef ref = LLVMBuildStore(c->builder, value, pointer);
 	llvm_set_alignment(ref, alignment);
 	return ref;
 }

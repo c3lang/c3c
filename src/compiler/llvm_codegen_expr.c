@@ -3064,6 +3064,8 @@ void llvm_emit_int_comp_raw(GenContext *c, BEValue *result, Type *lhs_type, Type
 			}
 		}
 	}
+	ASSERT(LLVMTypeOf(lhs_value) == LLVMTypeOf(rhs_value));
+
 	if (lhs_signed && !rhs_signed && !vector_type && llvm_is_const(lhs_value) && type_size(lhs_type) <= 8)
 	{
 		long long val = LLVMConstIntGetSExtValue(lhs_value);
