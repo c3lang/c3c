@@ -7,7 +7,7 @@ distinct DStringOpaque = void;
 const usz MIN_CAPACITY @private = 16;
 
 <*
- @require !self.data() "String already initialized"
+ @require !self.data() : "String already initialized"
 *>
 fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
 {
@@ -20,7 +20,7 @@ fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
 }
 
 <*
- @require !self.data() "String already initialized"
+ @require !self.data() : "String already initialized"
 *>
 fn DString DString.tinit(&self, usz capacity = MIN_CAPACITY)
 {
@@ -156,7 +156,7 @@ fn String DString.str_view(self)
 
 <*
  @require index < self.len()
- @require self.data() != null "Empty string"
+ @require self.data() != null : "Empty string"
 *>
 fn char DString.char_at(self, usz index) @operator([])
 {
@@ -165,7 +165,7 @@ fn char DString.char_at(self, usz index) @operator([])
 
 <*
  @require index < self.len()
- @require self.data() != null  "Empty string"
+ @require self.data() != null  : "Empty string"
 *>
 fn char* DString.char_ref(&self, usz index) @operator(&[])
 {
@@ -349,7 +349,7 @@ fn void DString.append_char(&self, char c)
 <*
  @require start < self.len()
  @require end < self.len()
- @require end >= start "End must be same or equal to the start"
+ @require end >= start : "End must be same or equal to the start"
 *>
 fn void DString.delete_range(&self, usz start, usz end)
 {

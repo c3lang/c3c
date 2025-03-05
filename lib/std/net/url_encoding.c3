@@ -23,8 +23,8 @@ fault UrlDecodingError
 <*
  Returns true if char c should be encoded according to RFC 3986.
 
- @param c "Character to check if it should be encoded."
- @param mode "Url encoding mode."
+ @param c : "Character to check if it should be encoded."
+ @param mode : "Url encoding mode."
 *>
 fn bool should_encode(char c, UrlEncodingMode mode) @private
 {
@@ -62,8 +62,8 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  Encode the string s for a given encoding mode.
  Returned string must be freed.
 
- @param s "String to encode"
- @param mode "Url encoding mode"
+ @param s : "String to encode"
+ @param mode : "Url encoding mode"
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
@@ -99,8 +99,8 @@ fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool(a
 <*
  Encode string s for a given encoding mode, stored on the temp allocator.
 
- @param s "String to encode"
- @param mode "Url encoding mode"
+ @param s : "String to encode"
+ @param mode : "Url encoding mode"
  @return "Percent-encoded String"
 *>
 fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
@@ -129,8 +129,8 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
  Decode string s for a given encoding mode.
  Returned string must be freed.
 
- @param s "String to decode"
- @param mode "Url encoding mode"
+ @param s : "String to decode"
+ @param mode : "Url encoding mode"
  @param [inout] allocator
  @return "Percent-decoded String"
 *>
@@ -166,8 +166,8 @@ fn String! decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool
 <*
  Decode string s for a given encoding mode, stored on the temp allocator.
 
- @param s "String to decode"
- @param mode "Url encoding mode"
+ @param s : "String to decode"
+ @param mode : "Url encoding mode"
  @return "Percent-decoded String"
 *>
 fn String! tdecode(String s, UrlEncodingMode  mode) => decode(tmem(), s, mode);

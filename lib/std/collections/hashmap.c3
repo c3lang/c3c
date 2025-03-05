@@ -2,7 +2,7 @@
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 <*
- @require $defined((Key){}.hash()) `No .hash function found on the key`
+ @require $defined((Key){}.hash()) : `No .hash function found on the key`
 *>
 module std::collections::map{Key, Value};
 import std::math;
@@ -132,7 +132,7 @@ fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values
 <*
  Has this hash map been initialized yet?
 
- @param [&in] map "The hash map we are testing"
+ @param [&in] map : "The hash map we are testing"
  @return "Returns true if it has been initialized, false otherwise"
 *>
 fn bool HashMap.is_initialized(&map)
@@ -153,7 +153,7 @@ fn HashMap* HashMap.init_from_map(&self, Allocator allocator, HashMap* other_map
 }
 
 <*
- @param [&in] other_map "The map to copy from."
+ @param [&in] other_map : "The map to copy from."
  @require !map.is_initialized() : "Map was already initialized"
 *>
 fn HashMap* HashMap.tinit_from_map(&map, HashMap* other_map)

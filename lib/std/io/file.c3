@@ -136,7 +136,7 @@ fn usz! File.read(&self, char[] buffer) @dynamic
 
 <*
  @param [out] buffer
- @require self.file != null `File must be initialized`
+ @require self.file != null : `File must be initialized`
 *>
 fn usz! File.write(&self, char[] buffer) @dynamic
 {
@@ -164,8 +164,8 @@ fn char! File.read_byte(&self) @dynamic
  Load up to buffer.len characters. Returns IoError.OVERFLOW if the file is longer
  than the buffer.
 
- @param filename "The path to the file to read"
- @param [in] buffer "The buffer to read to"
+ @param filename : "The path to the file to read"
+ @param [in] buffer : "The buffer to read to"
 *>
 fn char[]! load_buffer(String filename, char[] buffer)
 {
@@ -222,7 +222,7 @@ fn void! save(String filename, char[] data)
 }
 
 <*
- @require self.file != null `File must be initialized`
+ @require self.file != null : `File must be initialized`
 *>
 fn void! File.flush(&self) @dynamic
 {

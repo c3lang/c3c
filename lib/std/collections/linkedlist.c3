@@ -21,7 +21,7 @@ struct LinkedList
 }
 
 <*
- @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ @param [&inout] allocator : "The allocator to use, defaults to the heap allocator"
  @return "the initialized list"
 *>
 fn LinkedList* LinkedList.init(&self, Allocator allocator)

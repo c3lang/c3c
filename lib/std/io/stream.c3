@@ -57,7 +57,7 @@ macro usz! read_any(stream, any ref)
 }
 
 <*
- @param [&in] ref "the object to write."
+ @param [&in] ref : "the object to write."
  @require @is_outstream(stream)
  @ensure return == ref.type.sizeof
 *>
@@ -393,7 +393,7 @@ macro void! write_be_int128(stream, uint128 s)
 
 <*
  @require @is_outstream(stream)
- @require data.len < 256 "Data exceeded 255"
+ @require data.len < 256 : "Data exceeded 255"
 *>
 macro usz! write_tiny_bytearray(stream, char[] data)
 {
@@ -415,7 +415,7 @@ macro char[]! read_tiny_bytearray(stream, Allocator allocator)
 
 <*
  @require @is_outstream(stream)
- @require data.len < 0x1000 "Data exceeded 65535"
+ @require data.len < 0x1000 : "Data exceeded 65535"
 *>
 macro usz! write_short_bytearray(stream, char[] data)
 {

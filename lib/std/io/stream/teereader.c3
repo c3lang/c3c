@@ -9,15 +9,15 @@ struct TeeReader (InStream)
 <* Returns a reader that implements InStream and that will write any data read
  from the wrapped reader r to the writer w. There is no internal buffering.
  
- @param [&inout] r "Stream r to read from."
- @param [&inout] w "Stream w to write to what it reads from r."
+ @param [&inout] r : "Stream r to read from."
+ @param [&inout] w : "Stream w to write to what it reads from r."
 *>
 macro TeeReader tee_reader(InStream r, OutStream w) => { r, w };
 
 <*
  @param [&inout] self
- @param [&inout] r "Stream r to read from."
- @param [&inout] w "Stream w to write to what it reads from r."
+ @param [&inout] r : "Stream r to read from."
+ @param [&inout] w : "Stream w to write to what it reads from r."
  *>
 fn TeeReader* TeeReader.init(&self, InStream r, OutStream w)
 {

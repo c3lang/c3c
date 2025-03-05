@@ -24,7 +24,7 @@ struct QueueItem @private
 }
 
 <*
- @require !self.initialized "ThreadPool must not be already initialized"
+ @require !self.initialized : "ThreadPool must not be already initialized"
 *>
 fn void! ThreadPool.init(&self)
 {

@@ -55,7 +55,7 @@ fn CsvRow! CsvReader.tread_row(self)
 }
 
 <*
- @require self.allocator != null  `Row already freed`
+ @require self.allocator != null  : `Row already freed`
 *>
 fn void CsvRow.free(&self)
 {

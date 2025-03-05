@@ -67,9 +67,9 @@ import std::io;
  The function returns an optional, which can either be a QOIError
  or the number of bytes written on success.
 
- @param [in] filename `The file's name to write the image to`
- @param [in] input `The raw RGB or RGBA pixels to encode`
- @param [&in] desc `The descriptor of the image`
+ @param [in] filename : `The file's name to write the image to`
+ @param [in] input : `The raw RGB or RGBA pixels to encode`
+ @param [&in] desc : `The descriptor of the image`
 *>
 fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
@@ -98,9 +98,9 @@ fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
  The returned pixel data should be free()d after use, or the decoding
  and use of the data should be wrapped in a @pool() { ... }; block.
 
- @param [in] filename `The file's name to read the image from`
- @param [&out] desc `The descriptor to fill with the image's info`
- @param channels `The channels to be used`
+ @param [in] filename : `The file's name to read the image from`
+ @param [&out] desc : `The descriptor to fill with the image's info`
+ @param channels : `The channels to be used`
 *>
 fn char[]! read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
 {
@@ -126,8 +126,8 @@ import std::bits;
  and use of the data should be wrapped in a @pool() { ... }; block.
  See the write() function for an example.
 
- @param [in] input `The raw RGB or RGBA pixels to encode`
- @param [&in] desc `The descriptor of the image`
+ @param [in] input : `The raw RGB or RGBA pixels to encode`
+ @param [&in] desc : `The descriptor of the image`
 *>
 fn char[]! encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 {
@@ -279,9 +279,9 @@ fn char[]! encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
  The returned pixel data should be free()d after use, or the decoding
  and use of the data should be wrapped in a @pool() { ... }; block.
 
- @param [in] data `The QOI image data to decode`
- @param [&out] desc `The descriptor to fill with the image's info`
- @param channels `The channels to be used`
+ @param [in] data : `The QOI image data to decode`
+ @param [&out] desc : `The descriptor to fill with the image's info`
+ @param channels : `The channels to be used`
 *>
 fn char[]! decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
 {

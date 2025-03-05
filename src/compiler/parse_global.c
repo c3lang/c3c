@@ -2633,7 +2633,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 }
 
 /**
- * param_contract ::= '@param' inout_attribute? any_identifier ( (':' STRING) | STRING )?
+ * param_contract ::= '@param' inout_attribute? any_identifier ( ':' STRING )?
  * inout_attribute ::= '[' '&'? ('in' | 'inout' | 'out') ']'
  */
 static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **docs_next)
@@ -2742,7 +2742,14 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	}
 	RANGE_EXTEND_PREV(ast);
 	// Just ignore our potential string:
-	(void)try_consume(c, TOKEN_STRING);
+	if (try_consume(c, TOKEN_COLON))
+	{
+		CONSUME_OR_RET(TOKEN_STRING, false);
+	}
+	else if (try_consume(c, TOKEN_STRING))
+	{
+		RETURN_PRINT_ERROR_LAST("Expected a ':' before the description.");
+	}
 	ast->contract_stmt.faults = returns;
 	append_docs(docs_next, docs, ast);
 	return true;

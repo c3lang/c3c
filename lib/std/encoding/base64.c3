@@ -61,9 +61,9 @@ fn char[]! tdecode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alph
 
 <*
  Calculate the size of the encoded data.
- @param n "Size of the input to be encoded."
- @param padding "The padding character or 0 if none"
- @require padding < 0xFF "Invalid padding character"
+ @param n : "Size of the input to be encoded."
+ @param padding : "The padding character or 0 if none"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once encoded."
 *>
 fn usz encode_len(usz n, char padding)
@@ -75,9 +75,9 @@ fn usz encode_len(usz n, char padding)
 
 <*
  Calculate the size of the decoded data.
- @param n "Size of the input to be decoded."
- @param padding "The padding character or 0 if none"
- @require padding < 0xFF "Invalid padding character"
+ @param n : "Size of the input to be decoded."
+ @param padding : "The padding character or 0 if none"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once decoded."
  @return! DecodingFailure.INVALID_PADDING
 *>
@@ -97,11 +97,11 @@ fn usz! decode_len(usz n, char padding)
 
 <*
  Encode the content of src into dst, which must be properly sized.
- @param src "The input to be encoded."
- @param dst "The encoded input."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require padding < 0xFF "Invalid padding character"
+ @param src : "The input to be encoded."
+ @param dst : "The encoded input."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The encoded size."
 *>
 fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
@@ -156,12 +156,12 @@ fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base
 
 <*
  Decode the content of src into dst, which must be properly sized.
- @param src "The input to be decoded."
- @param dst "The decoded input."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require (decode_len(src.len, padding) ?? 0) <= dst.len "Destination buffer too small"
- @require padding < 0xFF "Invalid padding character"
+ @param src : "The input to be decoded."
+ @param dst : "The decoded input."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require (decode_len(src.len, padding) ?? 0) <= dst.len : "Destination buffer too small"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The decoded data."
  @return! DecodingFailure
 *>

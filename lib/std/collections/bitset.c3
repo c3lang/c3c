@@ -84,7 +84,7 @@ struct GrowableBitSet
 
 <*
  @param initial_capacity
- @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ @param [&inout] allocator : "The allocator to use, defaults to the heap allocator"
 *>
 fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, usz initial_capacity = 1)
 {

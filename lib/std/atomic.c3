@@ -11,7 +11,7 @@ struct Atomic
 <*
  Loads data atomically, by default this uses SEQ_CONSISTENT ordering.
 
- @param ordering "The ordering, cannot be release or acquire-release."
+ @param ordering : "The ordering, cannot be release or acquire-release."
  @require ordering != RELEASE && ordering != ACQUIRE_RELEASE : "Release and acquire-release are not valid for load"
 *>
 macro Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
@@ -31,7 +31,7 @@ macro Type Atomic.load(&self, AtomicOrdering ordering = SEQ_CONSISTENT)
 <*
  Stores data atomically, by default this uses SEQ_CONSISTENT ordering.
 
- @param ordering "The ordering, cannot be acquire or acquire-release."
+ @param ordering : "The ordering, cannot be acquire or acquire-release."
  @require ordering != ACQUIRE && ordering != ACQUIRE_RELEASE : "Acquire and acquire-release are not valid for store"
 *>
 macro void Atomic.store(&self, Type value, AtomicOrdering ordering = SEQ_CONSISTENT)
@@ -183,16 +183,16 @@ macro bool is_native_atomic_type($Type)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to be added to ptr."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to be added to ptr."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr + y) : "+ must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -203,16 +203,16 @@ macro fetch_add(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to be subtracted from ptr."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to be subtracted from ptr."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
+ @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr - y) : "- must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -223,15 +223,15 @@ macro fetch_sub(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to be multiplied with ptr."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to be multiplied with ptr."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr * y) : "* must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -263,15 +263,15 @@ macro fetch_mul(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to divide ptr by."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to divide ptr by."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr * y) : "/ must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -303,16 +303,16 @@ macro fetch_div(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to perform a bitwise or with."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to perform a bitwise or with."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
+ @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr | y) : "| must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -320,16 +320,16 @@ macro fetch_or(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to perform a bitwise xor with."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to perform a bitwise xor with."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
+ @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr ^ y) : "^ must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -337,16 +337,16 @@ macro fetch_xor(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to perform a bitwise and with."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to perform a bitwise and with."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
- @require !$alignment || math::is_power_of_2($alignment) "Alignment must be a power of two."
+ @require !$alignment || math::is_power_of_2($alignment) : "Alignment must be a power of two."
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr ^ y) : "& must be defined between the values."
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -354,16 +354,16 @@ macro fetch_and(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to shift ptr by."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to shift ptr by."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
- @require types::is_int($typeof(y)) "The value for shift right must be an integer"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require types::is_int($typeof(*ptr)) : "Only integer pointers may be used."
+ @require types::is_int($typeof(y)) : "The value for shift right must be an integer"
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -396,16 +396,16 @@ macro fetch_shift_right(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to shift ptr by."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to shift ptr by."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::is_int($typeof(*ptr)) "Only integer pointers may be used."
- @require types::is_int($typeof(y)) "The value for shift left must be an integer"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require types::is_int($typeof(*ptr)) : "Only integer pointers may be used."
+ @require types::is_int($typeof(y)) : "The value for shift left must be an integer"
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -438,15 +438,15 @@ macro fetch_shift_left(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
- @require types::flat_kind($typeof(*ptr)) == BOOL "Only bool pointers may be used."
+ @require types::flat_kind($typeof(*ptr)) == BOOL : "Only bool pointers may be used."
 
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 {
@@ -466,8 +466,8 @@ macro flag_set(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
@@ -493,15 +493,15 @@ macro flag_clear(ptr, AtomicOrdering $ordering = SEQ_CONSISTENT)
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to be compared to ptr."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to be compared to ptr."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {
@@ -512,15 +512,15 @@ macro fetch_max(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatil
 }
 
 <*
- @param [&in] ptr "the variable or dereferenced pointer to the data."
- @param [in] y "the value to be compared to ptr."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param [&in] ptr : "the variable or dereferenced pointer to the data."
+ @param [in] y : "the value to be compared to ptr."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
  @return "returns the old value of ptr"
 
  @require $defined(*ptr) : "Expected a pointer"
  @require @is_native_atomic_value(*ptr) : "Only types that are native atomic may be used."
  @require $defined(*ptr > y) : "Only values that are comparable with > may be used"
- @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
+ @require $ordering != AtomicOrdering.NOT_ATOMIC && $ordering != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
 *>
 macro fetch_min(ptr, y, AtomicOrdering $ordering = SEQ_CONSISTENT, bool $volatile = false, usz $alignment = 0)
 {

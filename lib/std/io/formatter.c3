@@ -33,7 +33,7 @@ macro bool is_struct_with_default_print($Type)
 <*
  Introspect a struct and print it to a formatter
 
- @require @typekind(value) == STRUCT `This macro is only valid on macros`
+ @require @typekind(value) == STRUCT : `This macro is only valid on macros`
 *>
 macro usz! struct_to_format(value, Formatter* f, bool $force_dump)
 {

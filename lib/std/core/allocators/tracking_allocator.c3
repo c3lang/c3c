@@ -29,7 +29,7 @@ struct TrackingAllocator (Allocator)
 <*
  Initialize a tracking allocator to wrap (and track) another allocator.
 
- @param [&inout] allocator "The allocator to track"
+ @param [&inout] allocator : "The allocator to track"
 *>
 fn void TrackingAllocator.init(&self, Allocator allocator)
 {

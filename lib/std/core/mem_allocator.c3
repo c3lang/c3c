@@ -22,13 +22,13 @@ interface Allocator
 	fn usz mark() @optional;
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
-	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require size > 0
 	*>
 	fn void*! acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
-	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
 	 @require new_size > 0
 	*>

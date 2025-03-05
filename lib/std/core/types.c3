@@ -10,8 +10,8 @@ fault ConversionResult
 }
 
 <*
- @require $Type.kindof.is_int() "Type was not an integer"
- @require v.type.kindof == ENUM "Value was not an enum"
+ @require $Type.kindof.is_int() : "Type was not an integer"
+ @require v.type.kindof == ENUM : "Value was not an enum"
 *>
 macro any_to_enum_ordinal(any v, $Type)
 {
@@ -19,8 +19,8 @@ macro any_to_enum_ordinal(any v, $Type)
 }
 
 <*
- @require $Type.kindof.is_int() "Type was not an integer"
- @require v.type.kindof.is_int() "Value was not an integer"
+ @require $Type.kindof.is_int() : "Type was not an integer"
+ @require v.type.kindof.is_int() : "Value was not an integer"
 *>
 macro any_to_int(any v, $Type)
 {
@@ -130,7 +130,7 @@ macro bool is_bool($Type) @const => $Type.kindof == TypeKind.BOOL;
 macro bool is_int($Type) @const  => $Type.kindof == TypeKind.SIGNED_INT || $Type.kindof == TypeKind.UNSIGNED_INT;
 
 <*
- @require is_numerical($Type) "Expected a numerical type"
+ @require is_numerical($Type) : "Expected a numerical type"
 *>
 macro bool is_signed($Type) @const
 {
@@ -146,7 +146,7 @@ macro bool is_signed($Type) @const
 }
 
 <*
- @require is_numerical($Type) "Expected a numerical type"
+ @require is_numerical($Type) : "Expected a numerical type"
 *>
 macro bool is_unsigned($Type) @const
 {

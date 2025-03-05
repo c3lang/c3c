@@ -171,7 +171,7 @@ fn void remove_all_pool_threads(EventThreadPool* pool) @local
 }
 
 <*
- @require size > 0 "Must have at least one thread"
+ @require size > 0 : "Must have at least one thread"
 *>
 fn EventThreadPool* EventThreadPool.init(&self, int size, String name, Allocator allocator, void* monitor_context)
 {

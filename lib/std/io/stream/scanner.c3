@@ -13,8 +13,8 @@ struct Scanner (InStream)
  The supplied buffer must be at least as large as the expected data length
  including its pattern.
 
- @param [&in] stream "The stream to read data from."
- @require buffer.len > 0 "Non-empty buffer required."
+ @param [&in] stream : "The stream to read data from."
+ @require buffer.len > 0 : "Non-empty buffer required."
 *>
 fn void Scanner.init(&self, InStream stream, char[] buffer)
 {
@@ -42,8 +42,8 @@ fn void! Scanner.close(&self) @dynamic
 
 <*
  Scan the stream for the next split character and return data up to the match.
- @require pattern.len > 0 "Non-empty pattern required."
- @require self.buf.len > pattern.len "Pattern too large."
+ @require pattern.len > 0 : "Non-empty pattern required."
+ @require self.buf.len > pattern.len : "Pattern too large."
 *>
 fn char[]! Scanner.scan(&self, String pattern = "\n")
 {

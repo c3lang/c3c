@@ -46,7 +46,7 @@ struct Url(Printable)
  Parse a URL string into a Url struct.
 
  @param [in] url_string
- @require url_string.len > 0 "the url_string must be len 1 or more"
+ @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
 fn Url! tparse(String url_string) => parse(tmem(), url_string);
@@ -55,7 +55,7 @@ fn Url! tparse(String url_string) => parse(tmem(), url_string);
  Parse a URL string into a Url struct.
 
  @param [in] url_string
- @require url_string.len > 0 "the url_string must be len 1 or more"
+ @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
 fn Url! parse(Allocator allocator, String url_string)

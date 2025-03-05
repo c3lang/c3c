@@ -92,10 +92,10 @@ enum MkdirPermissions
 <*
  Create a directory on a given path, optionally recursive.
 
- @param path `The path to create`
+ @param path : `The path to create`
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
- @param recursive `If directories in between should be created if they're missing, defaults to false`
- @param permissions `The permissions to set on the directory`
+ @param recursive : `If directories in between should be created if they're missing, defaults to false`
+ @param permissions : `The permissions to set on the directory`
 *>
 macro bool! mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL)
 {
@@ -110,10 +110,10 @@ macro bool! mkdir(Path path, bool recursive = false, MkdirPermissions permission
 <*
  Tries to delete directory, which must be empty.
 
- @param path `The path to delete`
+ @param path : `The path to delete`
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
  @return `true if there was a directory to delete, false otherwise`
- @return! PathResult.INVALID_PATH `if the path was invalid`
+ @return! PathResult.INVALID_PATH : `if the path was invalid`
 *>
 macro bool! rmdir(path)
 {
@@ -140,7 +140,7 @@ fn void! rmtree(Path path)
 <*
  Creates a new path.
 
- @return! PathResult.INVALID_PATH `if the path was invalid`
+ @return! PathResult.INVALID_PATH : `if the path was invalid`
 *>
 fn Path! new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -150,7 +150,7 @@ fn Path! new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 <*
  Creates a new path using the temp allocator.
 
- @return! PathResult.INVALID_PATH `if the path was invalid`
+ @return! PathResult.INVALID_PATH : `if the path was invalid`
 *>
 fn Path! temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -316,7 +316,7 @@ fn String Path.dirname(self)
  Test if the path has the given extension, so given the path /foo/bar.c3
  this would be true matching the extension "c3"
 
- @param [in] extension `The extension name (not including the leading '.')`
+ @param [in] extension : `The extension name (not including the leading '.')`
  @require extension.len > 0 : `The extension cannot be empty`
  @return `true if the extension matches`
 *>
@@ -396,7 +396,7 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
  of the path itself.
 
  @return `The parent of the path as a non-allocated path`
- @return! PathResult.NO_PARENT `if this path does not have a parent`
+ @return! PathResult.NO_PARENT : `if this path does not have a parent`
 *>
 fn Path! Path.parent(self)
 {

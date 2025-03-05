@@ -24,8 +24,8 @@ struct List (Printable)
 }
 
 <*
- @param initial_capacity "The initial capacity to reserve"
- @param [&inout] allocator "The allocator to use, defaults to the heap allocator"
+ @param initial_capacity : "The initial capacity to reserve"
+ @param [&inout] allocator : "The allocator to use, defaults to the heap allocator"
 *>
 fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 {
@@ -41,7 +41,7 @@ fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 <*
  Initialize the list using the temp allocator.
 
- @param initial_capacity "The initial capacity to reserve"
+ @param initial_capacity : "The initial capacity to reserve"
 *>
 fn List* List.tinit(&self, usz initial_capacity = 16)
 {
@@ -51,8 +51,8 @@ fn List* List.tinit(&self, usz initial_capacity = 16)
 <*
  Initialize a new list with an array.
 
- @param [in] values `The values to initialize the list with.`
- @require self.size == 0 "The List must be empty"
+ @param [in] values : `The values to initialize the list with.`
+ @require self.size == 0 : "The List must be empty"
 *>
 fn List* List.init_with_array(&self, Allocator allocator, Type[] values)
 {
@@ -64,8 +64,8 @@ fn List* List.init_with_array(&self, Allocator allocator, Type[] values)
 <*
  Initialize a temporary list with an array.
 
- @param [in] values `The values to initialize the list with.`
- @require self.size == 0 "The List must be empty"
+ @param [in] values : `The values to initialize the list with.`
+ @require self.size == 0 : "The List must be empty"
 *>
 fn List* List.tinit_with_array(&self, Type[] values)
 {
@@ -75,7 +75,7 @@ fn List* List.tinit_with_array(&self, Type[] values)
 }
 
 <*
- @require self.capacity == 0 "The List must not be allocated"
+ @require self.capacity == 0 : "The List must not be allocated"
 *>
 fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 {
@@ -131,7 +131,7 @@ fn Type! List.pop_first(&self)
 }
 
 <*
- @require index < self.size `Removed element out of bounds`
+ @require index < self.size : `Removed element out of bounds`
 *>
 fn void List.remove_at(&self, usz index)
 {
@@ -210,7 +210,7 @@ fn void List.push_front(&self, Type type) @inline
 }
 
 <*
- @require index <= self.size `Insert was out of bounds`
+ @require index <= self.size : `Insert was out of bounds`
 *>
 fn void List.insert_at(&self, usz index, Type type)
 {
@@ -271,7 +271,7 @@ fn usz List.len(&self) @operator(len) @inline
 }
 
 <*
- @require index < self.size `Access out of bounds`
+ @require index < self.size : `Access out of bounds`
 *>
 fn Type List.get(&self, usz index) @inline
 {
@@ -295,7 +295,7 @@ fn void List.free(&self)
 }
 
 <*
- @require i < self.size && j < self.size `Access out of bounds`
+ @require i < self.size && j < self.size : `Access out of bounds`
 *>
 fn void List.swap(&self, usz i, usz j)
 {
@@ -303,7 +303,7 @@ fn void List.swap(&self, usz i, usz j)
 }
 
 <*
- @param filter "The function to determine if it should be removed or not"
+ @param filter : "The function to determine if it should be removed or not"
  @return "the number of deleted elements"
 *>
 fn usz List.remove_if(&self, ElementPredicate filter)
@@ -312,7 +312,7 @@ fn usz List.remove_if(&self, ElementPredicate filter)
 }
 
 <*
- @param selection "The function to determine if it should be kept or not"
+ @param selection : "The function to determine if it should be kept or not"
  @return "the number of deleted elements"
 *>
 fn usz List.retain_if(&self, ElementPredicate selection)
@@ -371,7 +371,7 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 }
 
 <*
- @require index < self.size `Access out of bounds`
+ @require index < self.size : `Access out of bounds`
 *>
 macro Type List.@item_at(&self, usz index) @operator([])
 {
@@ -379,7 +379,7 @@ macro Type List.@item_at(&self, usz index) @operator([])
 }
 
 <*
- @require index < self.size `Access out of bounds`
+ @require index < self.size : `Access out of bounds`
 *>
 fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
 {
@@ -387,7 +387,7 @@ fn Type* List.get_ref(&self, usz index) @operator(&[]) @inline
 }
 
 <*
- @require index < self.size `Access out of bounds`
+ @require index < self.size : `Access out of bounds`
 *>
 fn void List.set(&self, usz index, Type value) @operator([]=)
 {
@@ -475,8 +475,8 @@ fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)
 <*
  Check for presence of a value in a list.
 
- @param [&in] self "the list to find elements in"
- @param value "The value to search for"
+ @param [&in] self : "the list to find elements in"
+ @param value : "The value to search for"
  @return "True if the value is found, false otherwise"
 *>
 fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
@@ -489,8 +489,8 @@ fn bool List.contains(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 }
 
 <*
- @param [&inout] self "The list to remove elements from"
- @param value "The value to remove"
+ @param [&inout] self : "The list to remove elements from"
+ @param value : "The value to remove"
  @return "true if the value was found"
 *>
 fn bool List.remove_last_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
@@ -499,8 +499,8 @@ fn bool List.remove_last_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 }
 
 <*
- @param [&inout] self "The list to remove elements from"
- @param value "The value to remove"
+ @param [&inout] self : "The list to remove elements from"
+ @param value : "The value to remove"
  @return "true if the value was found"
 *>
 fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
@@ -508,8 +508,8 @@ fn bool List.remove_first_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)
 	return @ok(self.remove_at(self.index_of(value)));
 }
 <*
- @param [&inout] self "The list to remove elements from"
- @param value "The value to remove"
+ @param [&inout] self : "The list to remove elements from"
+ @param value : "The value to remove"
  @return "the number of deleted elements."
 *>
 fn usz List.remove_item(&self, Type value) @if(ELEMENT_IS_EQUATABLE)

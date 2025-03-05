@@ -22,6 +22,7 @@
 - `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
+- Change `@return!` syntax to require ":" after faults.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

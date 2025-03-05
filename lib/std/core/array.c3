@@ -50,10 +50,10 @@ macro rindex_of(array, element)
 
  @param [in] arr1
  @param [in] arr2
- @param [&inout] allocator "The allocator to use, default is the heap allocator"
+ @param [&inout] allocator : "The allocator to use, default is the heap allocator"
  @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
  @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ @require @typeis(arr1[0], $typeof(arr2[0])) : "Arrays must have the same type"
  @ensure result.len == arr1.len + arr2.len
 *>
 macro concat(Allocator allocator, arr1, arr2) @nodiscard
@@ -78,7 +78,7 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @param [in] arr2
  @require @typekind(arr1) == SLICE || @typekind(arr1) == ARRAY
  @require @typekind(arr2) == SLICE || @typekind(arr2) == ARRAY
- @require @typeis(arr1[0], $typeof(arr2[0])) "Arrays must have the same type"
+ @require @typeis(arr1[0], $typeof(arr2[0])) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(allocator::temp(), arr1, arr2);

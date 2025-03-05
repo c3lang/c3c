@@ -292,7 +292,7 @@ fn void Object.set_object_at(&self, usz index, Object* to_set)
 }
 
 <*
- @require $Type.kindof.is_int() "Expected an integer type."
+ @require $Type.kindof.is_int() : "Expected an integer type."
 *>
 macro get_integer_value(Object* value, $Type)
 {

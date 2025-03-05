@@ -57,7 +57,7 @@ macro Char16[] @char16(String $string) @builtin
 <*
  Return a temporary ZString created using the formatting function.
 
- @param [in] fmt `The formatting string`
+ @param [in] fmt : `The formatting string`
 *>
 fn ZString tformat_zstr(String fmt, args...)
 {
@@ -69,8 +69,8 @@ fn ZString tformat_zstr(String fmt, args...)
 <*
  Return a new String created using the formatting function.
 
- @param [inout] allocator `The allocator to use`
- @param [in] fmt `The formatting string`
+ @param [inout] allocator : `The allocator to use`
+ @param [in] fmt : `The formatting string`
 *>
 fn String format(Allocator allocator, String fmt, args...) => @pool(allocator)
 {
@@ -82,7 +82,7 @@ fn String format(Allocator allocator, String fmt, args...) => @pool(allocator)
 <*
  Return a temporary String created using the formatting function.
 
- @param [in] fmt `The formatting string`
+ @param [in] fmt : `The formatting string`
 *>
 fn String tformat(String fmt, args...)
 {
@@ -94,8 +94,8 @@ fn String tformat(String fmt, args...)
 <*
  Check if a character is in a set.
 
- @param c `the character to check`
- @param [in] set `The formatting string`
+ @param c : `the character to check`
+ @param [in] set : `The formatting string`
  @pure
  @return `True if a character is in the set`
 *>
@@ -133,8 +133,8 @@ fn String join(Allocator allocator, String[] s, String joiner)
 <*
  Remove characters from the front and end of a string.
 
- @param [in] string `The string to trim`
- @param [in] to_trim `The set of characters to trim, defaults to whitespace`
+ @param [in] string : `The string to trim`
+ @param [in] to_trim : `The set of characters to trim, defaults to whitespace`
  @pure
  @return `a substring of the string passed in`
 *>
@@ -146,8 +146,8 @@ fn String String.trim(string, String to_trim = "\t\n\r ")
 <*
  Remove characters from the front of a string.
 
- @param [in] string `The string to trim`
- @param [in] to_trim `The set of characters to trim, defaults to whitespace`
+ @param [in] string : `The string to trim`
+ @param [in] to_trim : `The set of characters to trim, defaults to whitespace`
  @pure
  @return `a substring of the string passed in`
 *>
@@ -163,8 +163,8 @@ fn String String.trim_left(string, String to_trim = "\t\n\r ")
 <*
  Remove characters from the end of a string.
 
- @param [in] string `The string to trim`
- @param [in] to_trim `The set of characters to trim, defaults to whitespace`
+ @param [in] string : `The string to trim`
+ @param [in] to_trim : `The set of characters to trim, defaults to whitespace`
  @pure
  @return `a substring of the string passed in`
 *>
@@ -239,11 +239,11 @@ fn String String.strip_end(string, String needle)
 
  @param [in] s
  @param [in] needle
- @param max "Max number of elements, 0 means no limit, defaults to 0"
- @param skip_empty "True to skip empty elements"
- @param [&inout] allocator "The allocator to use for the String[]"
+ @param max : "Max number of elements, 0 means no limit, defaults to 0"
+ @param skip_empty : "True to skip empty elements"
+ @param [&inout] allocator : "The allocator to use for the String[]"
 
- @require needle.len > 0 "The needle must be at least 1 character long"
+ @require needle.len > 0 : "The needle must be at least 1 character long"
  @ensure return.len > 0
 *>
 fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, bool skip_empty = false)
@@ -288,8 +288,8 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
 
  @param [in] s
  @param [in] needle
- @param max "Max number of elements, 0 means no limit, defaults to 0"
- @param skip_empty "True to skip empty elements"
+ @param max : "Max number of elements, 0 means no limit, defaults to 0"
+ @param skip_empty : "True to skip empty elements"
 *>
 fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(tmem(), needle, max, skip_empty) @inline;
 
@@ -301,10 +301,10 @@ fault SplitResult { BUFFER_EXCEEDED }
  @param [in] s
  @param [in] needle
  @param [inout] buffer
- @param max "Max number of elements, 0 means no limit, defaults to 0"
- @require needle.len > 0 "The needle must be at least 1 character long"
+ @param max : "Max number of elements, 0 means no limit, defaults to 0"
+ @require needle.len > 0 : "The needle must be at least 1 character long"
  @ensure return.len > 0
- @return! SplitResult.BUFFER_EXCEEDED `If there are more elements than would fit the buffer`
+ @return! SplitResult.BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
 *>
 fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max = 0, bool skip_empty = false)
 {
@@ -342,7 +342,7 @@ fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max =
  Check if a substring is found in the string.
 
  @param [in] s
- @param [in] needle "The string to look for."
+ @param [in] needle : "The string to look for."
  @pure
  @return "true if the string contains the substring, false otherwise"
 *>
@@ -355,11 +355,11 @@ fn bool String.contains(s, String needle)
  Find the index of the first incidence of a string.
 
  @param [in] s
- @param needle "The character to look for"
+ @param needle : "The character to look for"
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING "if the needle cannot be found"
+ @return! SearchResult.MISSING : "if the needle cannot be found"
 *>
 fn usz! String.index_of_char(s, char needle)
 {
@@ -374,11 +374,11 @@ fn usz! String.index_of_char(s, char needle)
  Find the index of the first incidence of a one of the chars.
 
  @param [in] s
- @param [in] needle "The characters to look for"
+ @param [in] needle : "The characters to look for"
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING "if the needle cannot be found"
+ @return! SearchResult.MISSING : "if the needle cannot be found"
 *>
 fn usz! String.index_of_chars(String s, char[] needle)
 {
@@ -397,12 +397,12 @@ fn usz! String.index_of_chars(String s, char[] needle)
  Find the index of the first incidence of a character.
 
  @param [in] s
- @param needle "The character to look for"
- @param start_index "The index to start with, may exceed max index."
+ @param needle : "The character to look for"
+ @param start_index : "The index to start with, may exceed max index."
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING "if the needle cannot be found starting from the start_index"
+ @return! SearchResult.MISSING : "if the needle cannot be found starting from the start_index"
 *>
 fn usz! String.index_of_char_from(s, char needle, usz start_index)
 {
@@ -419,11 +419,11 @@ fn usz! String.index_of_char_from(s, char needle, usz start_index)
  Find the index of the first incidence of a character starting from the end.
 
  @param [in] s
- @param needle "the character to find"
+ @param needle : "the character to find"
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING "if the needle cannot be found"
+ @return! SearchResult.MISSING : "if the needle cannot be found"
 *>
 fn usz! String.rindex_of_char(s, char needle)
 {
@@ -443,7 +443,7 @@ fn usz! String.rindex_of_char(s, char needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! SearchResult.MISSING "if the needle cannot be found"
+ @return! SearchResult.MISSING : "if the needle cannot be found"
 *>
 fn usz! String.index_of(s, String needle)
 {
@@ -466,9 +466,9 @@ fn usz! String.index_of(s, String needle)
  @param [in] needle
  @pure
  @ensure return < s.len
- @require needle.len > 0 "The needle must be len 1 or more"
+ @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! SearchResult.MISSING "if the needle cannot be found"
+ @return! SearchResult.MISSING : "if the needle cannot be found"
 *>
 fn usz! String.rindex_of(s, String needle)
 {
@@ -570,8 +570,8 @@ fn String ZString.tcopy(z)
 <*
  Convert an UTF-8 string to UTF-16
  @return "The UTF-16 string as a slice, allocated using the given allocator"
- @return! UnicodeResult.INVALID_UTF8 "If the string contained an invalid UTF-8 sequence"
- @return! AllocationFailure "If allocation of the string fails"
+ @return! UnicodeResult.INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
+ @return! AllocationFailure : "If allocation of the string fails"
 *>
 fn Char16[]! String.to_utf16(s, Allocator allocator)
 {

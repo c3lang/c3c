@@ -520,7 +520,7 @@ fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 }
 
 <*
- @require radix > 1 && radix <= 36 "Radix must be 2-36"
+ @require radix > 1 && radix <= 36 : "Radix must be 2-36"
 *>
 fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 {
@@ -562,7 +562,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 }
 
 <*
- @require !exp.is_negative() "Positive exponents only"
+ @require !exp.is_negative() : "Positive exponents only"
 *>
 fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 {
@@ -846,7 +846,7 @@ fn BigInt BigInt.lcm(&self, BigInt other)
 }
 
 <*
- @require bits >> 5 < MAX_LEN "Required bits > maxlength"
+ @require bits >> 5 < MAX_LEN : "Required bits > maxlength"
 *>
 fn void BigInt.randomize_bits(&self, Random random, int bits)
 {

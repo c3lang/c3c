@@ -17,8 +17,8 @@ struct AnyList (Printable)
 
 
 <*
- @param [&inout] allocator "The allocator to use"
- @param initial_capacity "The initial capacity to reserve"
+ @param [&inout] allocator : "The allocator to use"
+ @param initial_capacity : "The initial capacity to reserve"
 *>
 fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 {
@@ -40,7 +40,7 @@ fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 <*
  Initialize the list using the temp allocator.
 
- @param initial_capacity "The initial capacity to reserve"
+ @param initial_capacity : "The initial capacity to reserve"
 *>
 fn AnyList* AnyList.tinit(&self, usz initial_capacity = 16)
 {
@@ -295,7 +295,7 @@ fn usz AnyList.len(&self) @operator(len) @inline
 }
 
 <*
- @require index < self.size "Index out of range"
+ @require index < self.size : "Index out of range"
 *>
 macro AnyList.get(&self, usz index, $Type)
 {
@@ -303,7 +303,7 @@ macro AnyList.get(&self, usz index, $Type)
 }
 
 <*
- @require index < self.size "Index out of range"
+ @require index < self.size : "Index out of range"
 *>
 fn any AnyList.get_any(&self, usz index) @inline
 {
@@ -327,7 +327,7 @@ fn void AnyList.swap(&self, usz i, usz j)
 }
 
 <*
- @param filter "The function to determine if it should be removed or not"
+ @param filter : "The function to determine if it should be removed or not"
  @return "the number of deleted elements"
 *>
 fn usz AnyList.remove_if(&self, AnyPredicate filter)
@@ -336,7 +336,7 @@ fn usz AnyList.remove_if(&self, AnyPredicate filter)
 }
 
 <*
- @param selection "The function to determine if it should be kept or not"
+ @param selection : "The function to determine if it should be kept or not"
  @return "the number of deleted elements"
 *>
 fn usz AnyList.retain_if(&self, AnyPredicate selection)
@@ -425,7 +425,7 @@ macro any AnyList.@item_at(&self, usz index) @operator([])
 }
 
 <*
- @require index <= self.size "Index out of range"
+ @require index <= self.size : "Index out of range"
 *>
 macro void AnyList.set(&self, usz index, value)
 {

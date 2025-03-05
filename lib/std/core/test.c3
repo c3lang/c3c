@@ -44,11 +44,11 @@ import std::math, std::io, libc;
 <*
  Initializes test case context.
 
- @param setup_fn `initializer function for test case`
- @param teardown_fn `cleanup function for test context (may be null)`
+ @param setup_fn : `initializer function for test case`
+ @param teardown_fn : `cleanup function for test context (may be null)`
 
- @require runtime::test_context != null "Only allowed in @test functions"
- @require setup_fn != null "setup_fn must always be set"
+ @require runtime::test_context != null : "Only allowed in @test functions"
+ @require setup_fn != null : "setup_fn must always be set"
 *>
 macro @setup(TestFn setup_fn, TestFn teardown_fn = null)
 {
@@ -60,10 +60,10 @@ macro @setup(TestFn setup_fn, TestFn teardown_fn = null)
 <*
  Checks condition and fails assertion if not true
 
- @param #condition `any boolean condition, will be expanded by text`
- @param format `printf compatible format`
- @param args `vargs for format`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param #condition : `any boolean condition, will be expanded by text`
+ @param format : `printf compatible format`
+ @param args : `vargs for format`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro @check(#condition, String format = "", args...)
 {
@@ -83,9 +83,9 @@ macro @check(#condition, String format = "", args...)
 <*
  Check if function returns specific error
 
- @param #funcresult `result of function execution`
- @param error_expected `expected error of function execution`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param #funcresult : `result of function execution`
+ @param error_expected : `expected error of function execution`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro @error(#funcresult, anyfault error_expected)
 {
@@ -104,9 +104,9 @@ macro @error(#funcresult, anyfault error_expected)
 <*
  Check if left == right
 
- @param left `left argument of any comparable type`
- @param right `right argument of any comparable type`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param left : `left argument of any comparable type`
+ @param right : `right argument of any comparable type`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro eq(left, right)
 {
@@ -119,13 +119,13 @@ macro eq(left, right)
 <*
  Check left floating point value is approximately equals to right value
 
- @param places `number of decimal places to compare (default: 7)`
- @param delta `minimal allowed difference (overrides places parameter)`
- @param equal_nan `allows comparing nan values, if left and right both nans result is ok`
+ @param places : `number of decimal places to compare (default: 7)`
+ @param delta : `minimal allowed difference (overrides places parameter)`
+ @param equal_nan : `allows comparing nan values, if left and right both nans result is ok`
 
- @require places > 0, places <= 20 "too many decimal places"
- @require delta >= 0, delta <= 1 "delta must be a small number"
- @require runtime::test_context != null "Only allowed in @test functions"
+ @require places > 0, places <= 20 : "too many decimal places"
+ @require delta >= 0, delta <= 1 : "delta must be a small number"
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro void eq_approx(double left, double right, uint places = 7, double delta = 0, bool equal_nan = true)
 {
@@ -143,9 +143,9 @@ macro void eq_approx(double left, double right, uint places = 7, double delta = 
 <*
  Check if left != right
 
- @param left `left argument of any comparable type`
- @param right `right argument of any comparable type`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param left : `left argument of any comparable type`
+ @param right : `right argument of any comparable type`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro void ne(left, right)
 {
@@ -158,9 +158,9 @@ macro void ne(left, right)
 <*
  Check if left > right
 
- @param left `left argument of any comparable type`
- @param right `right argument of any comparable type`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param left : `left argument of any comparable type`
+ @param right : `right argument of any comparable type`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro gt(left, right)
 {
@@ -173,9 +173,9 @@ macro gt(left, right)
 <*
  Check if left >= right
 
- @param left `left argument of any comparable type`
- @param right `right argument of any comparable type`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param left : `left argument of any comparable type`
+ @param right : `right argument of any comparable type`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro ge(left, right)
 {
@@ -188,9 +188,9 @@ macro ge(left, right)
 <*
  Check if left < right
 
- @param left `left argument of any comparable type`
- @param right `right argument of any comparable type`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param left : `left argument of any comparable type`
+ @param right : `right argument of any comparable type`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro lt(left, right)
 {
@@ -203,9 +203,9 @@ macro lt(left, right)
 <*
  Check if left <= right
 
- @param left `left argument of any comparable type`
- @param right `right argument of any comparable type`
- @require runtime::test_context != null "Only allowed in @test functions"
+ @param left : `left argument of any comparable type`
+ @param right : `right argument of any comparable type`
+ @require runtime::test_context != null : "Only allowed in @test functions"
 *>
 macro le(left, right)
 {

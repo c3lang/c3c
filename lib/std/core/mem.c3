@@ -16,9 +16,9 @@ macro bool @constant_is_power_of_2($x) @const @private
 <*
  Load a vector from memory according to a mask assuming default alignment.
 
- @param ptr "The pointer address to load from."
- @param mask "The mask for the load"
- @param passthru "The value to use for non masked values"
+ @param ptr : "The pointer address to load from."
+ @param mask : "The mask for the load"
+ @param passthru : "The value to use for non masked values"
  @require $assignable(&&passthru, $typeof(ptr)) : "Pointer and passthru must match"
  @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
  @require passthru.len == mask.len : "Mask and passthru must have the same length"
@@ -33,10 +33,10 @@ macro masked_load(ptr, bool[<?>] mask, passthru)
 <*
  Load a vector from memory according to a mask.
 
- @param ptr "The pointer address to load from."
- @param mask "The mask for the load"
- @param passthru "The value to use for non masked values"
- @param $alignment "The alignment to assume for the pointer"
+ @param ptr : "The pointer address to load from."
+ @param mask : "The mask for the load"
+ @param passthru : "The value to use for non masked values"
+ @param $alignment : "The alignment to assume for the pointer"
 
  @require $assignable(&&passthru, $typeof(ptr)) : "Pointer and passthru must match"
  @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
@@ -53,9 +53,9 @@ macro @masked_load_aligned(ptr, bool[<?>] mask, passthru, usz $alignment)
 <*
  Load values from a pointer vector, assuming default alignment.
 
- @param ptrvec "The vector of pointers to load from."
- @param mask "The mask for the load"
- @param passthru "The value to use for non masked values"
+ @param ptrvec : "The vector of pointers to load from."
+ @param mask : "The mask for the load"
+ @param passthru : "The value to use for non masked values"
 
  @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
@@ -74,10 +74,10 @@ macro gather(ptrvec, bool[<?>] mask, passthru)
 <*
  Load values from a pointer vector.
 
- @param ptrvec "The vector of pointers to load from."
- @param mask "The mask for the load"
- @param passthru "The value to use for non masked values"
- @param $alignment "The alignment to assume for the pointers"
+ @param ptrvec : "The vector of pointers to load from."
+ @param mask : "The mask for the load"
+ @param passthru : "The value to use for non masked values"
+ @param $alignment : "The alignment to assume for the pointers"
 
  @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  @require @typekind(passthru) == VECTOR : "Expected passthru to be a vector"
@@ -97,9 +97,9 @@ macro @gather_aligned(ptrvec, bool[<?>] mask, passthru, usz $alignment)
 <*
  Store parts of a vector according to the mask, assuming default alignment.
 
- @param ptr "The pointer address to store to."
- @param value "The value to store masked"
- @param mask "The mask for the store"
+ @param ptr : "The pointer address to store to."
+ @param value : "The value to store masked"
+ @param mask : "The mask for the store"
 
  @require $assignable(&&value, $typeof(ptr)) : "Pointer and value must match"
  @require @typekind(value) == VECTOR : "Expected value to be a vector"
@@ -111,10 +111,10 @@ macro masked_store(ptr, value, bool[<?>] mask)
 }
 
 <*
- @param ptr "The pointer address to store to."
- @param value "The value to store masked"
- @param mask "The mask for the store"
- @param $alignment "The alignment of the pointer"
+ @param ptr : "The pointer address to store to."
+ @param value : "The value to store masked"
+ @param mask : "The mask for the store"
+ @param $alignment : "The alignment of the pointer"
 
  @require $assignable(&&value, $typeof(ptr)) : "Pointer and value must match"
  @require @typekind(value) == VECTOR : "Expected value to be a vector"
@@ -128,9 +128,9 @@ macro @masked_store_aligned(ptr, value, bool[<?>] mask, usz $alignment)
 }
 
 <*
- @param ptrvec "The vector pointer containing the addresses to store to."
- @param value "The value to store masked"
- @param mask "The mask for the store"
+ @param ptrvec : "The vector pointer containing the addresses to store to."
+ @param value : "The value to store masked"
+ @param mask : "The mask for the store"
  @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  @require @typekind(value) == VECTOR : "Expected value to be a vector"
  @require $assignable(&&value[0], $typeof(ptrvec[0])) : "Pointer and value must match"
@@ -144,10 +144,10 @@ macro scatter(ptrvec, value, bool[<?>] mask)
 }
 
 <*
- @param ptrvec "The vector pointer containing the addresses to store to."
- @param value "The value to store masked"
- @param mask "The mask for the store"
- @param $alignment "The alignment of the load"
+ @param ptrvec : "The vector pointer containing the addresses to store to."
+ @param value : "The value to store masked"
+ @param mask : "The mask for the store"
+ @param $alignment : "The alignment of the load"
 
  @require @typekind(ptrvec) == VECTOR : "Expected ptrvec to be a vector"
  @require @typekind(value) == VECTOR : "Expected value to be a vector"
@@ -162,8 +162,8 @@ macro @scatter_aligned(ptrvec, value, bool[<?>] mask, usz $alignment)
 }
 
 <*
- @param #x "The variable or dereferenced pointer to load."
- @param $alignment "The alignment to assume for the load"
+ @param #x : "The variable or dereferenced pointer to load."
+ @param $alignment : "The alignment to assume for the load"
  @return "The value of the variable"
 
  @require @constant_is_power_of_2($alignment) : "The alignment must be a power of two"
@@ -175,9 +175,9 @@ macro @unaligned_load(#x, usz $alignment) @builtin
 }
 
 <*
- @param #x "The variable or dereferenced pointer to store to."
- @param value "The value to store."
- @param $alignment "The alignment to assume for the store"
+ @param #x : "The variable or dereferenced pointer to store to."
+ @param value : "The value to store."
+ @param $alignment : "The alignment to assume for the store"
  @return "The value stored"
 
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
@@ -190,7 +190,7 @@ macro @unaligned_store(#x, value, usz $alignment) @builtin
 }
 
 <*
- @param #x "The variable or dereferenced pointer to load."
+ @param #x : "The variable or dereferenced pointer to load."
  @return "The value of the variable"
 
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
@@ -201,8 +201,8 @@ macro @volatile_load(#x) @builtin
 }
 
 <*
- @param #x "The variable or dereferenced pointer to store to."
- @param value "The value to store."
+ @param #x : "The variable or dereferenced pointer to store to."
+ @param value : "The value to store."
  @return "The value stored"
 
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
@@ -225,15 +225,15 @@ enum AtomicOrdering : int
 }
 
 <*
- @param #x "the variable or dereferenced pointer to load."
- @param $ordering "atomic ordering of the load, defaults to SEQ_CONSISTENT"
- @param $volatile "whether the load should be volatile, defaults to 'false'"
+ @param #x : "the variable or dereferenced pointer to load."
+ @param $ordering : "atomic ordering of the load, defaults to SEQ_CONSISTENT"
+ @param $volatile : "whether the load should be volatile, defaults to 'false'"
  @return "returns the value of x"
 
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
- @require $ordering != AtomicOrdering.RELEASE "Release ordering is not valid for load."
- @require $ordering != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid for load."
- @require types::may_load_atomic($typeof(#x)) "Only integer, float and pointers may be used."
+ @require $ordering != AtomicOrdering.RELEASE : "Release ordering is not valid for load."
+ @require $ordering != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid for load."
+ @require types::may_load_atomic($typeof(#x)) : "Only integer, float and pointers may be used."
 *>
 macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = false) @builtin
 {
@@ -241,14 +241,14 @@ macro @atomic_load(#x, AtomicOrdering $ordering = SEQ_CONSISTENT, $volatile = fa
 }
 
 <*
- @param #x "the variable or dereferenced pointer to store to."
- @param value "the value to store."
- @param $ordering "the atomic ordering of the store, defaults to SEQ_CONSISTENT"
- @param $volatile "whether the store should be volatile, defaults to 'false'"
+ @param #x : "the variable or dereferenced pointer to store to."
+ @param value : "the value to store."
+ @param $ordering : "the atomic ordering of the store, defaults to SEQ_CONSISTENT"
+ @param $volatile : "whether the store should be volatile, defaults to 'false'"
 
- @require $ordering != AtomicOrdering.ACQUIRE "Acquire ordering is not valid for store."
- @require $ordering != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid for store."
- @require types::may_load_atomic($typeof(#x)) "Only integer, float and pointers may be used."
+ @require $ordering != AtomicOrdering.ACQUIRE : "Acquire ordering is not valid for store."
+ @require $ordering != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid for store."
+ @require types::may_load_atomic($typeof(#x)) : "Only integer, float and pointers may be used."
  @require $defined(&#x) : "This must be a variable or dereferenced pointer"
  @require $defined(#x = value) : "The value doesn't match the variable"
 *>
@@ -258,8 +258,8 @@ macro void @atomic_store(#x, value, AtomicOrdering $ordering = SEQ_CONSISTENT, $
 }
 
 <*
- @require $success != AtomicOrdering.NOT_ATOMIC && $success != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
- @require $failure != AtomicOrdering.RELEASE && $failure != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid."
+ @require $success != AtomicOrdering.NOT_ATOMIC && $success != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $failure != AtomicOrdering.RELEASE && $failure != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid."
 *>
 macro compare_exchange(ptr, compare, value, AtomicOrdering $success = SEQ_CONSISTENT, AtomicOrdering $failure = SEQ_CONSISTENT, bool $volatile = true, bool $weak = false, usz $alignment = 0)
 {
@@ -267,8 +267,8 @@ macro compare_exchange(ptr, compare, value, AtomicOrdering $success = SEQ_CONSIS
 }
 
 <*
- @require $success != AtomicOrdering.NOT_ATOMIC && $success != AtomicOrdering.UNORDERED "Acquire ordering is not valid."
- @require $failure != AtomicOrdering.RELEASE && $failure != AtomicOrdering.ACQUIRE_RELEASE "Acquire release is not valid."
+ @require $success != AtomicOrdering.NOT_ATOMIC && $success != AtomicOrdering.UNORDERED : "Acquire ordering is not valid."
+ @require $failure != AtomicOrdering.RELEASE && $failure != AtomicOrdering.ACQUIRE_RELEASE : "Acquire release is not valid."
 *>
 macro compare_exchange_volatile(ptr, compare, value, AtomicOrdering $success = SEQ_CONSISTENT, AtomicOrdering $failure = SEQ_CONSISTENT)
 {
@@ -314,12 +314,12 @@ macro void clear_inline(void* dst, usz $len, usz $dst_align = 0, bool $is_volati
 <*
  Copy memory from src to dst efficiently, assuming the memory ranges do not overlap.
 
- @param [&out] dst "The destination to copy to"
- @param [&in] src "The source to copy from"
- @param len "The number of bytes to copy"
- @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $src_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ @param [&out] dst : "The destination to copy to"
+ @param [&in] src : "The source to copy from"
+ @param len : "The number of bytes to copy"
+ @param $dst_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $src_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $is_volatile : "True if this copy should be treated as volatile, i.e. it can't be optimized away."
 
  @require len == 0 || dst + len <= src || src + len <= dst : "Ranges may not overlap"
 *>
@@ -332,12 +332,12 @@ macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_alig
  Copy memory from src to dst efficiently, assuming the memory ranges do not overlap, it
  will always be inlined and never call memcopy
 
- @param [&out] dst "The destination to copy to"
- @param [&in] src "The source to copy from"
- @param $len "The number of bytes to copy"
- @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $src_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ @param [&out] dst : "The destination to copy to"
+ @param [&in] src : "The source to copy from"
+ @param $len : "The number of bytes to copy"
+ @param $dst_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $src_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $is_volatile : "True if this copy should be treated as volatile, i.e. it can't be optimized away."
 
  @require $len == 0 || dst + $len <= src || src + $len <= dst : "Ranges may not overlap"
 *>
@@ -349,12 +349,12 @@ macro void copy_inline(void* dst, void* src, usz $len, usz $dst_align = 0, usz $
 <*
  Copy memory from src to dst but correctly handle the possibility of overlapping ranges.
 
- @param [&out] dst "The destination to copy to"
- @param [&in] src "The source to copy from"
- @param len "The number of bytes to copy"
- @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $src_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ @param [&out] dst : "The destination to copy to"
+ @param [&in] src : "The source to copy from"
+ @param len : "The number of bytes to copy"
+ @param $dst_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $src_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $is_volatile : "True if this copy should be treated as volatile, i.e. it can't be optimized away."
 *>
 macro void move(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false)
 {
@@ -364,11 +364,11 @@ macro void move(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_alig
 <*
  Sets all memory in a region to that of the provided byte.
 
- @param [&out] dst "The destination to copy to"
- @param val "The value to copy into memory"
- @param len "The number of bytes to copy"
- @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ @param [&out] dst : "The destination to copy to"
+ @param val : "The value to copy into memory"
+ @param len : "The number of bytes to copy"
+ @param $dst_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $is_volatile : "True if this copy should be treated as volatile, i.e. it can't be optimized away."
 
  @ensure !len || (dst[0] == val && dst[len - 1] == val)
 *>
@@ -380,11 +380,11 @@ macro void set(void* dst, char val, usz len, usz $dst_align = 0, bool $is_volati
 <*
  Sets all memory in a region to that of the provided byte. Never calls OS memset.
 
- @param [&out] dst "The destination to copy to"
- @param val "The value to copy into memory"
- @param $len "The number of bytes to copy"
- @param $dst_align "the alignment of the destination if different from the default, 0 assumes the default"
- @param $is_volatile "True if this copy should be treated as volatile, i.e. it can't be optimized away."
+ @param [&out] dst : "The destination to copy to"
+ @param val : "The value to copy into memory"
+ @param $len : "The number of bytes to copy"
+ @param $dst_align : "the alignment of the destination if different from the default, 0 assumes the default"
+ @param $is_volatile : "True if this copy should be treated as volatile, i.e. it can't be optimized away."
 
  @ensure !$len || (dst[0] == val && dst[$len - 1] == val)
 *>
@@ -471,7 +471,7 @@ macro void @scoped(Allocator allocator; @body())
  Run the tracking allocator in the scope, then
  print out stats.
 
- @param $enabled "Set to false to disable tracking"
+ @param $enabled : "Set to false to disable tracking"
 *>
 macro void @report_heap_allocs_in_scope($enabled = true; @body())
 {
@@ -493,7 +493,7 @@ macro void @report_heap_allocs_in_scope($enabled = true; @body())
 <*
  Assert on memory leak in the scope of the macro body.
 
- @param $report "Set to false to disable memory report"
+ @param $report : "Set to false to disable memory report"
 *>
 macro void @assert_leak($report = true; @body()) @builtin
 {
@@ -530,7 +530,7 @@ macro void @assert_leak($report = true; @body()) @builtin
 
  Release everything on scope exit.
 
- @param $size `the size of the buffer`
+ @param $size : `the size of the buffer`
 *>
 macro void @stack_mem(usz $size; @body(Allocator mem)) @builtin
 {
@@ -585,7 +585,7 @@ fn void temp_pop(TempState old_state)
 }
 
 <*
- @require @is_empty_macro_slot(#other_temp) ||| $assignable(#other_temp, Allocator) "Must be an allocator"
+ @require @is_empty_macro_slot(#other_temp) ||| $assignable(#other_temp, Allocator) : "Must be an allocator"
  *>
 macro void @pool(#other_temp = EMPTY_MACRO_SLOT; @body) @builtin
 {

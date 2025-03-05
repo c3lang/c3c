@@ -78,7 +78,7 @@ macro greater_eq(a, b) @builtin
 }
 
 <*
- @require types::@equatable_value(a) && types::@equatable_value(b) `values must be equatable`
+ @require types::@equatable_value(a) && types::@equatable_value(b) : `values must be equatable`
 *>
 macro bool equals(a, b) @builtin
 {

@@ -137,7 +137,7 @@ fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 <*
  @require size > 0
  @require !alignment || math::is_power_of_2(alignment)
- @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
 fn void*! TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {

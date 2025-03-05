@@ -13,7 +13,7 @@ struct MultiWriter (OutStream)
  @param [&inout] self
  @param [&inout] allocator
  @require writers.len > 0
- @require self.writers.len == 0 "Init may not run on already initialized data"
+ @require self.writers.len == 0 : "Init may not run on already initialized data"
 *>
 fn MultiWriter* MultiWriter.init(&self, Allocator allocator, OutStream... writers)
 {
@@ -26,7 +26,7 @@ fn MultiWriter* MultiWriter.init(&self, Allocator allocator, OutStream... writer
 <*
  @param [&inout] self
  @require writers.len > 0
- @require self.writers.len == 0 "Init may not run on already initialized data"
+ @require self.writers.len == 0 : "Init may not run on already initialized data"
 *>
 fn MultiWriter* MultiWriter.tinit(&self, OutStream... writers)
 {

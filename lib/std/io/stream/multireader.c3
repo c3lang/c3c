@@ -15,7 +15,7 @@ struct MultiReader (InStream)
 <*
  @param [&inout] self
  @param [&inout] allocator
- @require self.readers.len == 0 "Init may not run on already initialized data"
+ @require self.readers.len == 0 : "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
 fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers)
@@ -28,7 +28,7 @@ fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers
 
 <*
  @param [&inout] self
- @require self.readers.len == 0 "Init may not run on already initialized data"
+ @require self.readers.len == 0 : "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
 fn MultiReader* MultiReader.tinit(&self, InStream... readers)

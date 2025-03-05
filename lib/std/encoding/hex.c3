@@ -31,17 +31,17 @@ fn char[]! tdecode(char[] code) @inline => decode(tmem(), code);
 
 <*
  Calculate the size of the encoded data.
- @param n "Size of the input to be encoded."
+ @param n : "Size of the input to be encoded."
  @return "The size of the input once encoded."
 *>
 fn usz encode_len(usz n) => n * 2;
 
 <*
  Encode the content of src into dst, which must be properly sized.
- @param src "The input to be encoded."
- @param dst "The encoded input."
+ @param src : "The input to be encoded."
+ @param dst : "The encoded input."
  @return "The encoded size."
- @require dst.len >= encode_len(src.len) "Destination array is not large enough"
+ @require dst.len >= encode_len(src.len) : "Destination array is not large enough"
 *>
 fn usz encode_bytes(char[] src, char[] dst)
 {
@@ -57,7 +57,7 @@ fn usz encode_bytes(char[] src, char[] dst)
 
 <*
  Calculate the size of the decoded data.
- @param n "Size of the input to be decoded."
+ @param n : "Size of the input to be decoded."
  @return "The size of the input once decoded."
 *>
 macro usz decode_len(usz n) => n / 2;
@@ -68,10 +68,10 @@ macro usz decode_len(usz n) => n / 2;
  Expects that src only contains hexadecimal characters and that src has even
  length.
 
- @param src "The input to be decoded."
- @param dst "The decoded input."
- @require src.len % 2 == 0 "src is not of even length"
- @require dst.len >= decode_len(src.len) "Destination array is not large enough"
+ @param src : "The input to be decoded."
+ @param dst : "The decoded input."
+ @require src.len % 2 == 0 : "src is not of even length"
+ @require dst.len >= decode_len(src.len) : "Destination array is not large enough"
  @return! DecodingFailure.INVALID_CHARACTER
 *>
 fn usz! decode_bytes(char[] src, char[] dst)

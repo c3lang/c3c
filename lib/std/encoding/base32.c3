@@ -14,10 +14,10 @@ const char DEFAULT_PAD = '=';
 
 <*
  Encode the content of src into a newly allocated string
- @param [in] src "The input to be encoded."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require padding < 0xFF "Invalid padding character"
+ @param [in] src : "The input to be encoded."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The encoded string."
 *>
 fn String! encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
@@ -28,10 +28,10 @@ fn String! encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, B
 
 <*
  Decode the content of src into a newly allocated char array.
- @param [in] src "The input to be encoded."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require padding < 0xFF "Invalid padding character"
+ @param [in] src : "The input to be encoded."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The decoded data."
 *>
 fn char[]! decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
@@ -45,9 +45,9 @@ fn char[]! tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alph
 
 <*
  Calculate the length in bytes of the decoded data.
- @param n "Length in bytes of input."
- @param padding "The padding character or 0 if none"
- @require padding < 0xFF "Invalid padding character"
+ @param n : "Length in bytes of input."
+ @param padding : "The padding character or 0 if none"
+ @require padding < 0xFF : "Invalid padding character"
  @return "Length in bytes of the decoded data."
 *>
 fn usz decode_len(usz n, char padding)
@@ -60,9 +60,9 @@ fn usz decode_len(usz n, char padding)
 
 <*
  Calculate the length in bytes of the encoded data.
- @param n "Length in bytes on input."
- @param padding "The padding character or 0 if none"
- @require padding < 0xFF "Invalid padding character"
+ @param n : "Length in bytes on input."
+ @param padding : "The padding character or 0 if none"
+ @require padding < 0xFF : "Invalid padding character"
  @return "Length in bytes of the encoded data."
 *>
 fn usz encode_len(usz n, char padding)
@@ -77,12 +77,12 @@ fn usz encode_len(usz n, char padding)
 
 <*
  Decode the content of src into dst, which must be properly sized.
- @param src "The input to be decoded."
- @param dst "The decoded input."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require padding < 0xFF "Invalid padding character"
- @require dst.len >= decode_len(src.len, padding) "Destination buffer too small"
+ @param src : "The input to be decoded."
+ @param dst : "The decoded input."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require padding < 0xFF : "Invalid padding character"
+ @require dst.len >= decode_len(src.len, padding) : "Destination buffer too small"
  @return "The resulting dst buffer"
  @return! DecodingFailure
 *>
@@ -160,12 +160,12 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 
 <*
  Encode the content of src into dst, which must be properly sized.
- @param [in] src "The input to be encoded."
- @param [inout] dst "The encoded input."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require padding < 0xFF "Invalid padding character"
- @require dst.len >= encode_len(src.len, padding) "Destination buffer too small"
+ @param [in] src : "The input to be encoded."
+ @param [inout] dst : "The encoded input."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require padding < 0xFF : "Invalid padding character"
+ @require dst.len >= encode_len(src.len, padding) : "Destination buffer too small"
  @return "The encoded size."
 *>
 fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)

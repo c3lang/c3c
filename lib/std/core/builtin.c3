@@ -51,7 +51,7 @@ def VoidFn = fn void();
  Stores a variable on the stack, then restores it at the end of the
  macro scope.
 
- @param #variable `the variable to store and restore`
+ @param #variable : `the variable to store and restore`
  @require values::@is_lvalue(#variable)
 *>
 macro void @scope(#variable; @body) @builtin
@@ -63,7 +63,7 @@ macro void @scope(#variable; @body) @builtin
 
 <*
  Swap two variables
- @require $defined(#a = #b, #b = #a) `The values must be mutually assignable`
+ @require $defined(#a = #b, #b = #a) : `The values must be mutually assignable`
 *>
 macro void @swap(#a, #b) @builtin
 {
@@ -75,8 +75,8 @@ macro void @swap(#a, #b) @builtin
 <*
  Convert an `any` type to a type, returning an failure if there is a type mismatch.
 
- @param v `the any to convert to the given type.`
- @param $Type `the type to convert to`
+ @param v : `the any to convert to the given type.`
+ @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
  @ensure @typeis(return, $Type*)
  @return! CastResult.TYPE_MISMATCH
@@ -181,7 +181,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 <*
  Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
  never happens.
- @param [in] string "The panic message or format string"
+ @param [in] string : "The panic message or format string"
 *>
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
 {
@@ -193,7 +193,7 @@ macro void unreachable(String string = "Unreachable statement reached.", ...) @b
 
 <*
  Marks the path as unsupported, this is similar to unreachable.
- @param [in] string "The error message"
+ @param [in] string : "The error message"
 *>
 macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
 {
@@ -225,10 +225,10 @@ macro any.as_inner(&self)
 }
 
 <*
- @param expr "the expression to cast"
- @param $Type "the type to cast to"
+ @param expr : "the expression to cast"
+ @param $Type : "the type to cast to"
 
- @require $sizeof(expr) == $Type.sizeof  "Cannot bitcast between types of different size."
+ @require $sizeof(expr) == $Type.sizeof  : "Cannot bitcast between types of different size."
  @ensure @typeis(return, $Type)
 *>
 macro bitcast(expr, $Type) @builtin
@@ -243,9 +243,9 @@ macro bitcast(expr, $Type) @builtin
 }
 
 <*
- @param $Type `The type of the enum`
- @param [in] enum_name `The name of the enum to search for`
- @require $Type.kindof == ENUM `Only enums may be used`
+ @param $Type : `The type of the enum`
+ @param [in] enum_name : `The name of the enum to search for`
+ @require $Type.kindof == ENUM : `Only enums may be used`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
 *>
@@ -260,10 +260,10 @@ macro enum_by_name($Type, String enum_name) @builtin
 }
 
 <*
- @param $Type `The type of the enum`
- @require $Type.kindof == ENUM `Only enums may be used`
- @require $defined($Type.#value) `Expected '#value' to match an enum associated value`
- @require $assignable(value, $typeof(($Type){}.#value)) `Expected the value to match the type of the associated value`
+ @param $Type : `The type of the enum`
+ @require $Type.kindof == ENUM : `Only enums may be used`
+ @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
+ @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
 *>
@@ -280,8 +280,8 @@ macro @enum_from_value($Type, #value, value) @builtin
 <*
  Mark an expression as likely to be true
 
- @param #value "expression to be marked likely"
- @param $probability "in the range 0 - 1"
+ @param #value : "expression to be marked likely"
+ @param $probability : "in the range 0 - 1"
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro bool @likely(bool #value, $probability = 1.0) @builtin
@@ -299,8 +299,8 @@ macro bool @likely(bool #value, $probability = 1.0) @builtin
 <*
  Mark an expression as unlikely to be true
 
- @param #value "expression to be marked unlikely"
- @param $probability "in the range 0 - 1"
+ @param #value : "expression to be marked unlikely"
+ @param $probability : "in the range 0 - 1"
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
@@ -347,9 +347,9 @@ enum PrefetchLocality
 <*
  Prefetch a pointer.
 
- @param [in] ptr `Pointer to prefetch`
- @param $locality `Locality ranging from none to extremely local`
- @param $write `Prefetch for write, otherwise prefetch for read.`
+ @param [in] ptr : `Pointer to prefetch`
+ @param $locality : `Locality ranging from none to extremely local`
+ @param $write : `Prefetch for write, otherwise prefetch for read.`
 *>
 macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
 {
@@ -392,7 +392,7 @@ macro bool @ok(#expr) @builtin
 }
 
 <*
- @require $defined(&#value, (char*)&#value) "This must be a value that can be viewed as a char array"
+ @require $defined(&#value, (char*)&#value) : "This must be a value that can be viewed as a char array"
  *>
 macro char[] @as_char_view(#value) @builtin
 {

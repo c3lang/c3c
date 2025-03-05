@@ -54,7 +54,7 @@ struct Poll
 
 <*
  @param [inout] polls
- @param timeout "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
+ @param timeout : "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
 *>
 fn ulong! poll(Poll[] polls, Duration timeout)
 {
@@ -63,7 +63,7 @@ fn ulong! poll(Poll[] polls, Duration timeout)
 
 <*
  @param [inout] polls
- @param timeout_ms "duration to poll in ms or -1. Clamped to CInt.max"
+ @param timeout_ms : "duration to poll in ms or -1. Clamped to CInt.max"
 *>
 fn ulong! poll_ms(Poll[] polls, long timeout_ms)
 {

@@ -2,8 +2,8 @@
  Randoms:
  General usage -
  1. Create a Random (see std/math/random for various alternatives), or pick DefaultRandom
- 2. Define it `DefaultRandom my_random;`
- 3. Seed it: `random::seed(&my_random, some_seed);` or `rand::seed_entropy(&my_random);`
+ 2. Define it : `DefaultRandom my_random;`
+ 3. Seed it: `random::seed(&my_random, some_seed);` or : `rand::seed_entropy(&my_random);`
  4. Use it with the functions in random: `float random_float = random::next_float(&my_random);`
 
  For just a simple integer between 0 and n (not including n), you can use `rand(n)`.

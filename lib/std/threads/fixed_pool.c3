@@ -32,9 +32,9 @@ struct QueueItem @private
 }
 
 <*
- @require !self.initialized "ThreadPool must not be already initialized"
- @require threads > 0 && threads < 0x1000 `Threads should be greater than 0 and less than 0x1000`
- @require queue_size < 0x10000 `Queue size must be less than 65536`
+ @require !self.initialized : "ThreadPool must not be already initialized"
+ @require threads > 0 && threads < 0x1000 : `Threads should be greater than 0 and less than 0x1000`
+ @require queue_size < 0x10000 : `Queue size must be less than 65536`
 *>
 fn void! FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 {
