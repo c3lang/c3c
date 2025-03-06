@@ -1,17 +1,17 @@
 module errors;
 
-fault TheError
+fault
 {
     A
 }
 
-fault TheError2
+fault
 {
-    A,
-    B
+    A2,
+    B2
 }
 
-fault TheError3
+fault
 {
     C, D
 }

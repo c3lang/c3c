@@ -1,12 +1,10 @@
+module std::thread;
+fault THREAD_QUEUE_FULL;
+
 module std::thread::threadpool @if (env::POSIX || env::WIN32);
 import std::thread;
 
 // Please do not use this one in production.
-
-fault ThreadPoolResult
-{
-	QUEUE_FULL
-}
 
 def ThreadPoolFn = fn void(any[] args);
 
@@ -113,7 +111,7 @@ fn void! FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
 	self.mu.lock()!;
 	defer self.mu.unlock()!!;
-	if (self.qindex == self.queue.len) return ThreadPoolResult.QUEUE_FULL?;
+	if (self.qindex == self.queue.len) return thread::THREAD_QUEUE_FULL?;
 	any[] data;
 	if (args.len)
 	{

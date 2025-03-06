@@ -1,11 +1,11 @@
 
 int z;
 
-fault MyError
+fault
 {
     FOO,
 }
 
 fn void test(int a = z) {}
 
-fn void test2(int b = MyError.FOO?) {}
+fn void test2(int b = FOO?) {}

@@ -108,7 +108,7 @@ fn ElementType! qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context 
 			}
 		}
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)

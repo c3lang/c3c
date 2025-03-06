@@ -48,7 +48,7 @@ fn void! NativeMutex.init(&mtx, MutexType type)
 		win32::initializeCriticalSection(&(mtx.critical_section));
 		return;
 	}
-	if (!(mtx.handle = win32::createMutex(null, 0, null))) return ThreadFault.INIT_FAILED?;
+	if (!(mtx.handle = win32::createMutex(null, 0, null))) return thread::INIT_FAILED?;
 }
 
 fn void! NativeMutex.destroy(&mtx)
@@ -59,7 +59,7 @@ fn void! NativeMutex.destroy(&mtx)
 		win32::deleteCriticalSection(&mtx.critical_section);
 		return;
 	}
-	if (!win32::closeHandle(mtx.handle)) return ThreadFault.DESTROY_FAILED?;
+	if (!win32::closeHandle(mtx.handle)) return thread::DESTROY_FAILED?;
 }
 
 fn void! NativeMutex.lock(&mtx)
@@ -76,13 +76,13 @@ fn void! NativeMutex.lock(&mtx)
 				break;
 			case win32::WAIT_ABANDONED:
 			default:
-				return ThreadFault.LOCK_FAILED?;
+				return thread::LOCK_FAILED?;
 
 		}
 	}
 	if (!mtx.recursive && mtx.locks)
 	{
-		return ThreadFault.LOCK_FAILED?;
+		return thread::LOCK_FAILED?;
 	}
 	mtx.locks++;
 }
@@ -99,14 +99,14 @@ fn void! NativeMutex.lock_timeout(&mtx, ulong ms)
 		case win32::WAIT_OBJECT_0:
 			break;
 		case win32::WAIT_TIMEOUT:
-			return ThreadFault.LOCK_TIMEOUT?;
+			return thread::LOCK_TIMEOUT?;
 		case win32::WAIT_ABANDONED:
 		default:
-			return ThreadFault.LOCK_FAILED?;
+			return thread::LOCK_FAILED?;
 	}
 	if (!mtx.recursive && mtx.locks)
 	{
-		return ThreadFault.LOCK_FAILED?;
+		return thread::LOCK_FAILED?;
 	}
 	mtx.locks++;
 }
@@ -139,14 +139,14 @@ fn bool NativeMutex.try_lock(&mtx)
 
 fn void! NativeMutex.unlock(&mtx)
 {
-	if (!mtx.locks) return ThreadFault.UNLOCK_FAILED?;
+	if (!mtx.locks) return thread::UNLOCK_FAILED?;
 	mtx.locks--;
 	if (!mtx.timed)
 	{
 		win32::leaveCriticalSection(&mtx.critical_section);
 		return;
 	}
-	if (!win32::releaseMutex(mtx.handle)) return ThreadFault.UNLOCK_FAILED?;
+	if (!win32::releaseMutex(mtx.handle)) return thread::UNLOCK_FAILED?;
 }
 
 const int CONDITION_EVENT_ONE = 0;
@@ -160,14 +160,14 @@ fn void! NativeConditionVariable.init(&cond)
 	if (!cond.event_one)
 	{
 		cond.event_all = (Win32_HANDLE)0;
-		return ThreadFault.INIT_FAILED?;
+		return thread::INIT_FAILED?;
 	}
 	cond.event_all = win32::createEventA(null, 1, 0, null);
 	if (!cond.event_all)
 	{
 		win32::closeHandle(cond.event_one);
 		cond.event_one = (Win32_HANDLE)0;
-		return ThreadFault.INIT_FAILED?;
+		return thread::INIT_FAILED?;
 	}
 }
 
@@ -183,7 +183,7 @@ fn void! NativeConditionVariable.signal(&cond)
 	win32::enterCriticalSection(&cond.waiters_count_lock);
 	bool have_waiters = cond.waiters_count > 0;
 	win32::leaveCriticalSection(&cond.waiters_count_lock);
-	if (have_waiters && !win32::setEvent(cond.event_one)) return ThreadFault.SIGNAL_FAILED?;
+	if (have_waiters && !win32::setEvent(cond.event_one)) return thread::SIGNAL_FAILED?;
 }
 
 fn void! NativeConditionVariable.broadcast(&cond)
@@ -191,7 +191,7 @@ fn void! NativeConditionVariable.broadcast(&cond)
 	win32::enterCriticalSection(&cond.waiters_count_lock);
 	bool have_waiters = cond.waiters_count > 0;
 	win32::leaveCriticalSection(&cond.waiters_count_lock);
-	if (have_waiters && !win32::setEvent(cond.event_all)) return ThreadFault.SIGNAL_FAILED?;
+	if (have_waiters && !win32::setEvent(cond.event_all)) return thread::SIGNAL_FAILED?;
 }
 
 fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
@@ -207,10 +207,10 @@ fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout
 	{
 		case win32::WAIT_TIMEOUT:
 			mtx.lock()!;
-			return ThreadFault.WAIT_TIMEOUT?;
+			return thread::WAIT_TIMEOUT?;
 		case win32::WAIT_FAILED:
 			mtx.lock()!;
-			return ThreadFault.WAIT_FAILED?;
+			return thread::WAIT_FAILED?;
 		default:
 			break;
 	}
@@ -226,7 +226,7 @@ fn void! timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout
 		if (!win32::resetEvent(cond.event_all))
 		{
 			mtx.lock()!;
-			return ThreadFault.WAIT_FAILED?;
+			return thread::WAIT_FAILED?;
 		}
 	}
 
@@ -246,12 +246,12 @@ fn void! NativeConditionVariable.wait_timeout(&cond, NativeMutex* mtx, ulong ms)
 
 fn void! NativeThread.create(&thread, ThreadFn func, void* args)
 {
-	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return ThreadFault.INIT_FAILED?;
+	if (!(*thread = (NativeThread)win32::createThread(null, 0, func, args, 0, null))) return thread::INIT_FAILED?;
 }
 
 fn void! NativeThread.detach(thread) @inline
 {
-	if (!win32::closeHandle(thread)) return ThreadFault.DETACH_FAILED?;
+	if (!win32::closeHandle(thread)) return thread::DETACH_FAILED?;
 }
 
 
@@ -296,8 +296,8 @@ fn void NativeOnceFlag.call_once(&flag, OnceFn func)
 fn int! NativeThread.join(thread)
 {
 	uint res;
-	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) return ThreadFault.JOIN_FAILED?;
-	if (!win32::getExitCodeThread(thread, &res)) return ThreadFault.JOIN_FAILED?;
+	if (win32::waitForSingleObject(thread, win32::INFINITE) == win32::WAIT_FAILED) return thread::JOIN_FAILED?;
+	if (!win32::getExitCodeThread(thread, &res)) return thread::JOIN_FAILED?;
 	defer win32::closeHandle(thread);
 	return res;
 }
@@ -317,5 +317,5 @@ fn void! native_sleep_nano(NanoDuration ns)
 	long ms = ns.to_ms();
 	if (ms <= 0) return;
 	if (ms > Win32_DWORD.max) ms = Win32_DWORD.max;
-	if (win32::sleepEx((Win32_DWORD)ms, (Win32_BOOL)true) == win32::WAIT_IO_COMPLETION) return ThreadFault.INTERRUPTED?;
+	if (win32::sleepEx((Win32_DWORD)ms, (Win32_BOOL)true) == win32::WAIT_IO_COMPLETION) return thread::INTERRUPTED?;
 }

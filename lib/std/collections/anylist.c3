@@ -94,22 +94,22 @@ fn void AnyList.free_element(&self, any element) @inline
  Pop a value who's type is known. If the type is incorrect, this
  will still pop the element.
 
- @return! CastResult.TYPE_MISMATCH, IteratorResult.NO_MORE_ELEMENT
+ @return! TYPE_MISMATCH, NO_MORE_ELEMENT
 *>
 macro AnyList.pop(&self, $Type)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
 	return *anycast(self.entries[--self.size], $Type);
 }
 
 <*
  Pop the last value and allocate the copy using the given allocator.
- @return! IteratorResult.NO_MORE_ELEMENT
+ @return! NO_MORE_ELEMENT
 *>
 fn any! AnyList.copy_pop(&self, Allocator allocator)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
 	return allocator::clone_any(allocator, self.entries[--self.size]);
 }
@@ -117,17 +117,17 @@ fn any! AnyList.copy_pop(&self, Allocator allocator)
 
 <*
  Pop the last value and allocate the copy using the temp allocator
- @return! IteratorResult.NO_MORE_ELEMENT
+ @return! NO_MORE_ELEMENT
 *>
 fn any! AnyList.tcopy_pop(&self) => self.copy_pop(tmem());
 
 <*
  Pop the last value. It must later be released using list.free_element()
- @return! IteratorResult.NO_MORE_ELEMENT
+ @return! NO_MORE_ELEMENT
 *>
 fn any! AnyList.pop_retained(&self)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	return self.entries[--self.size];
 }
 
@@ -145,7 +145,7 @@ fn void AnyList.clear(&self)
 *>
 macro AnyList.pop_first(&self, $Type)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.remove_at(0);
 	return *anycast(self.entries[0], $Type);
 }
@@ -155,7 +155,7 @@ macro AnyList.pop_first(&self, $Type)
 *>
 fn any! AnyList.pop_first_retained(&self)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.remove_at(0);
 	return self.entries[0];
 }
@@ -166,7 +166,7 @@ fn any! AnyList.pop_first_retained(&self)
 *>
 fn any! AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
 	defer self.remove_at(0);
 	return allocator::clone_any(allocator, self.entries[0]);
@@ -271,7 +271,7 @@ macro AnyList.first(&self, $Type)
 
 fn any! AnyList.first_any(&self) @inline
 {
-	return self.size ? self.entries[0] : IteratorResult.NO_MORE_ELEMENT?;
+	return self.size ? self.entries[0] : NO_MORE_ELEMENT?;
 }
 
 macro AnyList.last(&self, $Type)
@@ -281,7 +281,7 @@ macro AnyList.last(&self, $Type)
 
 fn any! AnyList.last_any(&self) @inline
 {
-	return self.size ? self.entries[self.size - 1] : IteratorResult.NO_MORE_ELEMENT?;
+	return self.size ? self.entries[self.size - 1] : NO_MORE_ELEMENT?;
 }
 
 fn bool AnyList.is_empty(&self) @inline

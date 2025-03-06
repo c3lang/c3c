@@ -8,11 +8,17 @@ distinct WString = inline Char16*;
 def Char32 = uint;
 def Char16 = ushort;
 
-fault UnicodeResult
+fault
 {
 	INVALID_UTF8,
 	INVALID_UTF16,
 	CONVERSION_FAILED,
+	EMPTY_STRING,
+	NEGATIVE_VALUE,
+	MALFORMED_INTEGER,
+	INTEGER_OVERFLOW,
+	MALFORMED_FLOAT,
+	FLOAT_OUT_OF_RANGE,
 }
 
 const uint SURROGATE_OFFSET @private = 0x10000;
@@ -22,16 +28,6 @@ const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
 const uint SURROGATE_BITS @private = 10;
 const uint SURROGATE_LOW_VALUE @private = 0xDC00;
 const uint SURROGATE_HIGH_VALUE @private = 0xD800;
-
-fault NumberConversion
-{
-	EMPTY_STRING,
-	NEGATIVE_VALUE,
-	MALFORMED_INTEGER,
-	INTEGER_OVERFLOW,
-	MALFORMED_FLOAT,
-	FLOAT_OUT_OF_RANGE,
-}
 
 
 macro Char32* @wstring32(String $string) @builtin
@@ -254,7 +250,7 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz! index = i == max - 1 ? SearchResult.MISSING? : s.index_of(needle);
+		usz! index = i == max - 1 ? NOT_FOUND? : s.index_of(needle);
 		String res @noinit;
 		if (try index)
 		{
@@ -293,7 +289,7 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
 *>
 fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(tmem(), needle, max, skip_empty) @inline;
 
-fault SplitResult { BUFFER_EXCEEDED }
+fault { BUFFER_EXCEEDED }
 
 <*
  Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
@@ -304,7 +300,7 @@ fault SplitResult { BUFFER_EXCEEDED }
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @require needle.len > 0 : "The needle must be at least 1 character long"
  @ensure return.len > 0
- @return! SplitResult.BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
+ @return! BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
 *>
 fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max = 0, bool skip_empty = false)
 {
@@ -313,7 +309,7 @@ fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max =
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz! index = i == max - 1 ? SearchResult.MISSING? : s.index_of(needle);
+		usz! index = i == max - 1 ? NOT_FOUND? : s.index_of(needle);
 		String res @noinit;
 		if (try index)
 		{
@@ -331,7 +327,7 @@ fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max =
 		}
 		if (i == max_capacity)
 		{
-			return SplitResult.BUFFER_EXCEEDED?;
+			return BUFFER_EXCEEDED?;
 		}
 		buffer[i++] = res;
 	}
@@ -359,7 +355,7 @@ fn bool String.contains(s, String needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz! String.index_of_char(s, char needle)
 {
@@ -367,7 +363,7 @@ fn usz! String.index_of_char(s, char needle)
 	{
 		if (c == needle) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -378,7 +374,7 @@ fn usz! String.index_of_char(s, char needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz! String.index_of_chars(String s, char[] needle)
 {
@@ -390,7 +386,7 @@ fn usz! String.index_of_chars(String s, char[] needle)
         }
     }
 
-    return SearchResult.MISSING?;
+    return NOT_FOUND?;
 }
 
 <*
@@ -402,17 +398,17 @@ fn usz! String.index_of_chars(String s, char[] needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found starting from the start_index"
+ @return! NOT_FOUND : "if the needle cannot be found starting from the start_index"
 *>
 fn usz! String.index_of_char_from(s, char needle, usz start_index)
 {
 	usz len = s.len;
-	if (len <= start_index) return SearchResult.MISSING?;
+	if (len <= start_index) return NOT_FOUND?;
 	for (usz i = start_index; i < len; i++)
 	{
 		if (s[i] == needle) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -423,7 +419,7 @@ fn usz! String.index_of_char_from(s, char needle, usz start_index)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz! String.rindex_of_char(s, char needle)
 {
@@ -431,7 +427,7 @@ fn usz! String.rindex_of_char(s, char needle)
 	{
 		if (c == needle) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -443,7 +439,7 @@ fn usz! String.rindex_of_char(s, char needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz! String.index_of(s, String needle)
 {
@@ -456,7 +452,7 @@ fn usz! String.index_of(s, String needle)
 			if (c == first && s[i:needed] == needle) return i;
 		}
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -468,7 +464,7 @@ fn usz! String.index_of(s, String needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz! String.rindex_of(s, String needle)
 {
@@ -481,7 +477,7 @@ fn usz! String.rindex_of(s, String needle)
 			if (c == first && s[i:needed] == needle) return i;
 		}
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 fn String ZString.str_view(str)
@@ -570,8 +566,7 @@ fn String ZString.tcopy(z)
 <*
  Convert an UTF-8 string to UTF-16
  @return "The UTF-16 string as a slice, allocated using the given allocator"
- @return! UnicodeResult.INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
- @return! AllocationFailure : "If allocation of the string fails"
+ @return! INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
 *>
 fn Char16[]! String.to_utf16(s, Allocator allocator)
 {
@@ -716,12 +711,12 @@ macro String.to_integer(string, $Type, int base = 10)
 	usz index = 0;
 	char* ptr = string.ptr;
 	while (index < len && ascii::is_blank_m(ptr[index])) index++;
-	if (len == index) return NumberConversion.EMPTY_STRING?;
+	if (len == index) return EMPTY_STRING?;
 	bool is_negative;
 	switch (string[index])
 	{
 		case '-':
-			if ($Type.min == 0) return NumberConversion.NEGATIVE_VALUE?;
+			if ($Type.min == 0) return NEGATIVE_VALUE?;
 			is_negative = true;
 			index++;
 		case '+':
@@ -729,7 +724,7 @@ macro String.to_integer(string, $Type, int base = 10)
 		default:
 			break;
 	}
-	if (len == index) return NumberConversion.MALFORMED_INTEGER?;
+	if (len == index) return MALFORMED_INTEGER?;
 	$Type base_used = ($Type)base;
 	if (string[index] == '0' && base == 10)
 	{
@@ -752,7 +747,7 @@ macro String.to_integer(string, $Type, int base = 10)
 			default:
 				break;
 		}
-		if (len == index) return NumberConversion.MALFORMED_INTEGER?;
+		if (len == index) return MALFORMED_INTEGER?;
 	}
 	$Type value = 0;
 	while (index != len)
@@ -762,21 +757,21 @@ macro String.to_integer(string, $Type, int base = 10)
 		{
 			case base_used != 16 || c < 'A':  c -= '0';
 			case c <= 'F':                    c -= 'A' - 10;
-			case c < 'a' || c > 'f':          return NumberConversion.MALFORMED_INTEGER?;
+			case c < 'a' || c > 'f':          return MALFORMED_INTEGER?;
 			default:                          c -= 'a' - 10;
 		}
-		if (c >= base_used) return NumberConversion.MALFORMED_INTEGER?;
+		if (c >= base_used) return MALFORMED_INTEGER?;
 		do
 		{
 			if (is_negative)
 			{
 				$Type new_value = value * base_used - c;
-				if (new_value > value) return NumberConversion.INTEGER_OVERFLOW?;
+				if (new_value > value) return INTEGER_OVERFLOW?;
 				value = new_value;
 				break;
 			}
 			$Type new_value = value * base_used + c;
-			if (new_value < value) return NumberConversion.INTEGER_OVERFLOW?;
+			if (new_value < value) return INTEGER_OVERFLOW?;
 			value = new_value;
 		};
 	}
@@ -828,7 +823,7 @@ fn String! Splitter.next(&self)
 	{
 		usz len = self.string.len;
 		usz current = self.current;
-		if (current >= len) return IteratorResult.NO_MORE_ELEMENT?;
+		if (current >= len) return NO_MORE_ELEMENT?;
 		String remaining = self.string[current..];
 		usz! next = remaining.index_of(self.split);
 		if (try next)

@@ -32,5 +32,5 @@ const Maybe EMPTY = { };
 
 macro Type! Maybe.get(self)
 {
-	return self.has_value ? self.value : SearchResult.MISSING?;
+	return self.has_value ? self.value : NOT_FOUND?;
 }

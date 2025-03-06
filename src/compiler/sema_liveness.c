@@ -375,8 +375,10 @@ RETRY:
 				case CONST_UNTYPED_LIST:
 				case CONST_MEMBER:
 					return;
+				case CONST_FAULT:
+					sema_trace_decl_liveness(expr->const_expr.fault);
+					return;
 				case CONST_ENUM:
-				case CONST_ERR:
 					sema_trace_decl_liveness(expr->const_expr.enum_err_val);
 					return;
 				case CONST_REF:
@@ -600,7 +602,6 @@ RETRY:
 			sema_trace_type_liveness(decl->distinct->type);
 			FALLTHROUGH;
 		case DECL_BITSTRUCT:
-		case DECL_FAULT:
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_INTERFACE:
@@ -611,7 +612,7 @@ RETRY:
 			return;
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
-		case DECL_FAULTVALUE:
+		case DECL_FAULT_NEW:
 			return;
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
@@ -622,6 +623,7 @@ RETRY:
 		case DECL_MACRO:
 		case DECL_BODYPARAM:
 		case DECL_GLOBALS:
+		case DECL_FAULTS:
 			UNREACHABLE
 		case DECL_FNTYPE:;
 			sema_trace_func_liveness(&decl->fntype_decl);

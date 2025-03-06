@@ -1,10 +1,8 @@
 extern fn int printf(char* fmt, ...);
 
 extern fn int! err();
-fault FooErr
-{
-    X
-}
+fault X;
+
 fn void test1()
 {
     int! z = 234;
@@ -12,7 +10,7 @@ fn void test1()
     {
         int y = z;
         z = 12;
-        z = FooErr.X?; // #error: The variable is unwrapped in this context
+        z = X?; // #error: The variable is unwrapped in this context
     }
 }
 

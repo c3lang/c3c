@@ -38,12 +38,12 @@ fn void main()
 %Matrix2x2_b = type { %.anon.1 }
 %.anon.1 = type { [4 x float] }
 
-@"$ct.foo.$anon" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.$anon.3" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.Matrix2x2" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.$anon.6" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.$anon.7" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
-@"$ct.foo.Matrix2x2_b" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.$anon" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.$anon.3" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.Matrix2x2" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.$anon.6" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 16, i64 0, i64 4, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.$anon.7" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.foo.Matrix2x2_b" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 16, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @.__const = private unnamed_addr constant %Matrix2x2 { %.anon { %.anon.0 { float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00 } } }, align 4
 @.__const.8 = private unnamed_addr constant %Matrix2x2_b { %.anon.1 { [4 x float] [float 1.000000e+00, float 2.000000e+00, float 3.000000e+00, float 4.000000e+00] } }, align 4
 @.str = private unnamed_addr constant [13 x i8] c"%f %f %f %f\0A\00", align 1

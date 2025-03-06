@@ -173,24 +173,24 @@ fn usz HashMap.len(&map) @inline
 
 fn Value*! HashMap.get_ref(&map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING?;
+	if (!map.count) return NOT_FOUND?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return &e.value;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 fn Entry*! HashMap.get_entry(&map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING?;
+	if (!map.count) return NOT_FOUND?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -254,7 +254,7 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 
 fn void! HashMap.remove(&map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return SearchResult.MISSING?;
+	if (!map.remove_entry_for_key(key)) return NOT_FOUND?;
 }
 
 fn void HashMap.clear(&map)

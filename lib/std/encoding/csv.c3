@@ -80,7 +80,7 @@ macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @
 			String! s = io::readline(mem, stream);
 			if (catch err = s)
 			{
-				if (err == IoError.EOF) return;
+				if (err == io::EOF) return;
 				return err?;
 			}
 			@body(s.split(mem, sep));

@@ -78,8 +78,6 @@ static inline LLVMTypeRef llvm_type_from_decl(GenContext *c, Decl *decl)
 		}
 		case DECL_ENUM:
 			return llvm_get_type(c, decl->type);
-		case DECL_FAULT:
-			return llvm_get_type(c, type_iptr);
 	}
 	UNREACHABLE
 }
@@ -118,7 +116,6 @@ static void param_expand(GenContext *context, LLVMTypeRef** params_ref, Type *ty
 		}
 		case TYPE_ENUM:
 		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
 			param_expand(context, params_ref, type_lowering(type));
 			return;
 		case TYPE_UNION:
@@ -598,43 +595,6 @@ static LLVMValueRef llvm_get_introspection_for_struct_union(GenContext *c, Type 
 											  vec_size(decls), NULL, false);
 }
 
-static LLVMValueRef llvm_get_introspection_for_fault(GenContext *c, Type *type)
-{
-	void *builder = c->builder;
-	c->builder = c->global_builder;
-
-	Decl *decl = type->decl;
-	Decl **fault_vals = decl->enums.values;
-	unsigned elements = vec_size(fault_vals);
-	LLVMValueRef ref = llvm_generate_temp_introspection_global(c, type);
-	for (unsigned i = 0; i < elements; i++)
-	{
-		scratch_buffer_set_extern_decl_name(decl, true);
-		scratch_buffer_append_char('$');
-		Decl *val = fault_vals[i];
-		scratch_buffer_append(val->name);
-		LLVMValueRef global_name = LLVMAddGlobal(c->module, c->fault_type, scratch_buffer_to_string());
-		LLVMSetAlignment(global_name, LLVMPreferredAlignmentOfGlobal(c->target_data, global_name));
-		LLVMSetGlobalConstant(global_name, 1);
-
-		LLVMValueRef vals[3] = { LLVMBuildPtrToInt(c->builder, ref, c->typeid_type, ""),
-								 llvm_emit_string_const(c, val->name, ".fault"),
-								 llvm_const_int(c, type_usz, val->enum_constant.ordinal + 1 )};
-
-		LLVMSetInitializer(global_name, llvm_get_struct_named(c->fault_type, vals, 3));
-		llvm_set_linkonce(c, global_name);
-		val->backend_ref = LLVMBuildPtrToInt(c->builder, global_name, c->typeid_type, "");
-	}
-	LLVMValueRef* values = elements ? MALLOC(sizeof(LLVMValueRef) * elements) : NULL;
-	for (unsigned i = 0; i < elements; i++)
-	{
-		assert(values);
-		values[i] = fault_vals[i]->backend_ref;
-	}
-	c->builder = builder;
-	return llvm_generate_introspection_global(c, ref, type, INTROSPECT_TYPE_FAULT, NULL, elements, NULL, false);
-}
-
 
 LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 {
@@ -662,8 +622,6 @@ LLVMValueRef llvm_get_typeid(GenContext *c, Type *type)
 			return llvm_generate_introspection_global(c, NULL, type, INTROSPECT_TYPE_DISTINCT, type->decl->distinct->type, 0, NULL, false);
 		case TYPE_ENUM:
 			return llvm_get_introspection_for_enum(c, type);
-		case TYPE_FAULTTYPE:
-			return llvm_get_introspection_for_fault(c, type);
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 			return llvm_get_introspection_for_struct_union(c, type);

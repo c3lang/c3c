@@ -8,7 +8,7 @@ fn void! native_rmtree(Path dir)
 {
 	DIRPtr directory = posix::opendir(dir.as_zstr());
 	defer if (directory) posix::closedir(directory);
-	if (!directory) return path::is_dir(dir) ? IoError.CANNOT_READ_DIR? : IoError.FILE_NOT_DIR?;
+	if (!directory) return path::is_dir(dir) ? io::CANNOT_READ_DIR? : io::FILE_NOT_DIR?;
 	Posix_dirent* entry;
 	while ((entry = posix::readdir(directory)))
 	{
@@ -25,7 +25,7 @@ fn void! native_rmtree(Path dir)
 			if (libc::remove(new_path.as_zstr()))
 			{
 				// TODO improve
-				return IoError.GENERAL_ERROR?;
+				return io::GENERAL_ERROR?;
 			}
 		};
 	}
@@ -41,7 +41,7 @@ fn void! native_rmtree(Path path)
 	String s = path.str_view().tconcat("\\*");
 	Win32_HANDLE find = win32::findFirstFileW(s.to_temp_utf16(), &find_data)!;
 
-	if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
+	if (find == win32::INVALID_HANDLE_VALUE) return io::CANNOT_READ_DIR?;
 	defer win32::findClose(find);
 	do
 	{

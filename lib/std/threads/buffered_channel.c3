@@ -74,7 +74,7 @@ fn void! BufferedChannel.push(self, Type val)
 	}
 
 	// check if channel is closed
-	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED?;
 
 	// save value to buf
 	channel.buf[channel.sendx] = val;
@@ -116,7 +116,7 @@ fn Type! BufferedChannel.pop(self)
 	// check if chan is closed and empty
 	if (channel.closed && channel.elems == 0)
 	{
-		return ThreadFault.CHANNEL_CLOSED?;
+		return thread::CHANNEL_CLOSED?;
 	}
 
 	// read from buf

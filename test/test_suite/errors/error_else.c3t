@@ -1,6 +1,6 @@
 module foo;
 
-fault Baz
+fault
 {
 	TEST
 }
@@ -10,7 +10,7 @@ import foo;
 
 fn int! abc()
 {
-	return Baz.TEST?;
+	return foo::TEST?;
 }
 
 module baz;
@@ -18,5 +18,5 @@ import foo;
 
 fn int! abc()
 {
-	return Baz.TEST?;
+	return foo::TEST?;
 }

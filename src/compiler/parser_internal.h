@@ -65,7 +65,7 @@ Expr *parse_type_compound_literal_expr_after_type(ParseContext *c, TypeInfo *typ
 
 INLINE void add_decl_to_list(Decl ***list, Decl *decl)
 {
-	if (decl->decl_kind == DECL_GLOBALS)
+	if (decl->decl_kind == DECL_GLOBALS || decl->decl_kind == DECL_FAULTS)
 	{
 		FOREACH(Decl *, d, decl->decls) vec_add(*list, d);
 		return;

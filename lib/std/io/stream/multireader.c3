@@ -2,7 +2,7 @@ module std::io;
 
 /* MultiReader implements the InStream interface and provides a logical
  * concatenation of the provided readers. They are read sequentially. If all the
- * data has been read, IoError.EOF is returned.
+ * data has been read, io::EOF is returned.
  */
 struct MultiReader (InStream)
 {
@@ -49,11 +49,11 @@ fn usz! MultiReader.read(&self, char[] bytes) @dynamic
 	usz! n = r.read(bytes);
 	if (catch err = n)
 	{
-		if (err != IoError.EOF) return err?;
+		if (err != io::EOF) return err?;
 		self.index++;
 		if (self.index >= self.readers.len)
 		{
-			return IoError.EOF?;
+				return io::EOF?;
 		}
 		return self.read(bytes);
 	}

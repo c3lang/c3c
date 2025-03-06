@@ -113,7 +113,6 @@ static bool x86_should_return_type_in_reg(Type *type)
 		case TYPE_TYPEDEF:
 		case TYPE_DISTINCT:
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 		case TYPE_TYPEID:
 		case TYPE_ANYFAULT:
 		case TYPE_BITSTRUCT:

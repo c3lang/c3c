@@ -64,9 +64,6 @@ Decl *decl_new_with_type(const char *name, SourceSpan loc, DeclKind decl_type)
 		case DECL_STRUCT:
 			kind = TYPE_STRUCT;
 			break;
-		case DECL_FAULT:
-			kind = TYPE_FAULTTYPE;
-			break;
 		case DECL_ENUM:
 			kind = TYPE_ENUM;
 			break;
@@ -120,8 +117,8 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ENUM: return "an enum";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
-		case DECL_FAULT: return "a fault";
-		case DECL_FAULTVALUE: return "a fault value";
+		case DECL_FAULT_NEW: return "a fault";
+		case DECL_FAULTS: return "faults";
 		case DECL_FNTYPE: return "a function type";
 		case DECL_FUNC: return "a function";
 		case DECL_GLOBALS: return "globals";
@@ -407,6 +404,7 @@ bool decl_needs_prefix(Decl *decl)
 		case DECL_DEFINE:
 		case DECL_FUNC:
 		case DECL_MACRO:
+		case DECL_FAULT_NEW:
 			return !decl->is_autoimport;
 		default:
 			return false;

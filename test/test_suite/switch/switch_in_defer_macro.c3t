@@ -19,7 +19,7 @@ enum Kind : char
 	IDENTIFIER,
 }
 
-fault LexerError
+fault
 {
 	UNTERMINATED_STRING,
 	UNTERMINATED_RUNE,
@@ -253,7 +253,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 		char! c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			if (err == IoError.EOF) break;
+			if (err == io::EOF) break;
 			return err?;
 		}
 		else
@@ -263,7 +263,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 			$Type xx = x;
 			bool ok;
 			@body(x, c, ok);
-			if (xx > x) return NumberConversion.INTEGER_OVERFLOW?;
+			if (xx > x) return string::INTEGER_OVERFLOW?;
 			if (!ok)
 			{
 				self.column--;
@@ -321,7 +321,7 @@ fn char! Lexer.parse_rune(&self) @private
 {
 	char x = self.reader.read_byte()!;
 	char c = self.reader.read_byte()!;
-	if (c != '\'') return LexerError.UNTERMINATED_RUNE?;
+	if (c != '\'') return UNTERMINATED_RUNE?;
 	return x;
 }
 
@@ -330,7 +330,7 @@ macro char! Lexer.read_char_for_string(&self) @private
 	char! c = self.reader.read_byte();
 	if (catch err = c)
 	{
-		if (err == IoError.EOF) return LexerError.UNTERMINATED_STRING?;
+		if (err == io::EOF) return UNTERMINATED_STRING?;
 		return err?;
 	}
 	return c;
@@ -355,7 +355,7 @@ fn void! Lexer.parse_comment(&self, String end) @private
 	{
 		if (catch err = io::read_all(self.reader, buf))
 		{
-			if (err == IoError.UNEXPECTED_EOF || err == IoError.EOF) return LexerError.UNTERMINATED_COMMENT?;
+			if (err == io::UNEXPECTED_EOF || err == io::EOF) return UNTERMINATED_COMMENT?;
 			return err?;
 		}
 		if (end == (String)buf)
@@ -393,7 +393,7 @@ fn String! Lexer.parse_ident(&self) @private
 		char! c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			if (err == IoError.EOF) return str.str_view();
+			if (err == io::EOF) return str.str_view();
 			return err?;
 		}
 		if (!self.ident(str.len(), c)) return str.str_view();
@@ -464,7 +464,7 @@ import trie::bitmap;
 def TrieNodeList = List{TrieNode};
 def TriePath = List{Index} @private;
 
-fault TrieError
+fault
 {
 	TRIE_FULL,
 }
@@ -502,7 +502,7 @@ fn Value! Trie.get(&self, char[] key)
 fn Value! Trie.get_best(&self, char[] key)
 {
 	TrieNode* root = &self.nodes[0];
-	if (key.len == 0) return root.valid ? root.value : SearchResult.MISSING?;
+	if (key.len == 0) return root.valid ? root.value : NOT_FOUND?;
 	return root.get_best(self, key, 0);
 }
 
@@ -534,10 +534,10 @@ fn void! Trie.del(&self, char[] key)
 
 fn Value! TrieNode.get(&self, Trie *t, char[] key) @private
 {
-	if (key.len == 0) return self.valid ? self.value : SearchResult.MISSING?;
+	if (key.len == 0) return self.valid ? self.value : NOT_FOUND?;
 	char c = key[0];
 	Index idx = self.children[c];
-	if (idx == 0) return SearchResult.MISSING?;
+	if (idx == 0) return NOT_FOUND?;
 	return t.nodes[idx].get(t, key[1..]);
 }
 
@@ -545,14 +545,14 @@ fn Value! TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
 {
 	if (key.len == 0)
 	{
-		if (result == 0) return SearchResult.MISSING?;
+		if (result == 0) return NOT_FOUND?;
 		return t.nodes[result].value;
 	}
 	char c = key[0];
 	Index idx = self.children[c];
 	if (idx == 0)
 	{
-		if (result == 0) return SearchResult.MISSING?;
+		if (result == 0) return NOT_FOUND?;
 		return t.nodes[result].value;
 	}
 	TrieNode* next = &t.nodes[idx];
@@ -574,7 +574,7 @@ fn void! TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 	{
 		usz new_idx = t.nodes.len();
 		assert(new_idx != 0);
-		if (new_idx > Index.max) return TrieError.TRIE_FULL?;
+		if (new_idx > Index.max) return TRIE_FULL?;
 		idx = (Index)new_idx;
 		self.children[c] = idx;
 		t.nodes.push((TrieNode){});
@@ -683,7 +683,7 @@ fn void test()
 %List = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
 
-@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.enum.KEYWORD1 = internal constant [9 x i8] c"KEYWORD1\00", align 1
 @.enum.KEYWORD2 = internal constant [9 x i8] c"KEYWORD2\00", align 1
 @.enum.SINGLE = internal constant [7 x i8] c"SINGLE\00", align 1
@@ -700,7 +700,7 @@ fn void test()
 @.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
-@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
 
 ; Function Attrs:
@@ -737,7 +737,7 @@ or.phi:                                           ; preds = %and.phi2, %and.phi
   ret i8 %6
 }
 
-; Function Attrs:
+; Function Attrs: nounwind uwtable
 define i64 @lexer_test.lex_uint() #0 {
 entry:
   %tcases = alloca %"UintTest[]", align 8

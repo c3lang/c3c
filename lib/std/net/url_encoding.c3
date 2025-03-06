@@ -15,7 +15,7 @@ enum UrlEncodingMode : char (String allowed)
 	FRAGMENT   = "$&+,/:;=?@!()*",	// section 4.1
 }
 
-fault UrlDecodingError
+fault
 {
 	INVALID_HEX
 }
@@ -108,7 +108,7 @@ fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
 <*
  Calculate the length of the percent-decoded string.
 
- @return! UrlDecodingError.INVALID_HEX
+ @return! INVALID_HEX
 *>
 fn usz! decode_len(String s, UrlEncodingMode mode) @inline
 {
@@ -118,7 +118,7 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
 		if (c != '%') continue;
 		if (i + 2 >= s.len || !s[i+1].is_xdigit() || !s[i+2].is_xdigit())
 		{
-			return UrlDecodingError.INVALID_HEX?;
+			return INVALID_HEX?;
 		}
 		n++;
 	}

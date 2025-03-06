@@ -42,7 +42,7 @@ fn void main()
 %.introspect = type { i8, i64, ptr, i64, i64, i64, [0 x i64] }
 %any = type { ptr, i64 }
 
-@"$ct.inherit.Test" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
+@"$ct.inherit.Test" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 1, [0 x i64] zeroinitializer }, align 8
 @"$sel.tesT" = linkonce_odr constant [5 x i8] c"tesT\00", align 1
 @.panic_msg = internal constant [42 x i8] c"No method 'tesT' could be found on target\00", align 1
 @.func = internal constant [5 x i8] c"main\00", align 1

@@ -2,7 +2,7 @@
 
 module test;
 import std::io;
-fault Foo
+fault
 {
     MY_VAL1,
     MY_VAL2,
@@ -15,7 +15,7 @@ struct Bar
 
 fn void! test1() @maydiscard
 {
-    Bar! x = Foo.MY_VAL1?;
+    Bar! x = MY_VAL1?;
     Bar y = x!;
 }
 
@@ -39,7 +39,7 @@ entry:
   %x.f = alloca i64, align 8
   %y = alloca %Bar, align 4
   %error_var = alloca i64, align 8
-  store i64 ptrtoint (ptr @"test.Foo$MY_VAL1" to i64), ptr %x.f, align 8
+  store i64 ptrtoint (ptr @test.MY_VAL1 to i64), ptr %x.f, align 8
   %optval = load i64, ptr %x.f, align 8
   %not_err = icmp eq i64 %optval, 0
   %0 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)

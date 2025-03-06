@@ -175,7 +175,6 @@ static void header_print_type(HeaderContext *c, Type *type)
 			header_print_type(c, type->decl->strukt.container_type->type);
 			return;
 		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
 			PRINTF("c3fault_t");
 			return;
 		case TYPE_DISTINCT:
@@ -507,7 +506,6 @@ RETRY:
 		case ALL_INTS:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
-		case TYPE_FAULTTYPE:
 		case TYPE_SLICE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
@@ -652,9 +650,10 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 				PRINTF("\"\n");
 				return;
 			case CONST_ENUM:
-			case CONST_ERR:
 				PRINTF("%s\n", decl_get_extname(init->const_expr.enum_err_val));
 				return;
+			case CONST_FAULT:
+				PRINTF("%s\n", decl_get_extname(init->const_expr.fault));
 			case CONST_SLICE:
 			case CONST_TYPEID:
 			case CONST_MEMBER:

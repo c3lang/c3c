@@ -1,6 +1,6 @@
 module foo;
 
-fault Blurg
+fault
 {
     X, Y, Z
 }

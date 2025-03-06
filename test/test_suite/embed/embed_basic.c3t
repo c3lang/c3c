@@ -29,6 +29,6 @@ entry:
   store ptr @.bytes.1, ptr %data2, align 8
   store %"char[]" { ptr @.bytes.2
   store ptr null, ptr %data4, align 8
-  store i64 ptrtoint (ptr @"std.io.IoError$FILE_NOT_FOUND" to i64), ptr %data5.f, align 8
+  store i64 ptrtoint (ptr @std.io.FILE_NOT_FOUND to i64), ptr %data5.f, align 8
   ret void
 }

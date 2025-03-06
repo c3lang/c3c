@@ -223,7 +223,6 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 		switch (decl->decl_kind)
 		{
 			case DECL_ENUM_CONSTANT:
-			case DECL_FAULTVALUE:
 			case DECL_DECLARRAY:
 			case DECL_ERASED:
 			case DECL_LABEL:
@@ -240,15 +239,16 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 				break;
 			case DECL_BODYPARAM:
 			case DECL_GLOBALS:
+			case DECL_FAULTS:
 				UNREACHABLE
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
-			case DECL_FAULT:
 			case DECL_STRUCT:
 			case DECL_TYPEDEF:
 			case DECL_UNION:
 			case DECL_VAR:
+			case DECL_FAULT_NEW:
 			case DECL_BITSTRUCT:
 			case DECL_INTERFACE:
 				break;

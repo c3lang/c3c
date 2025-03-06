@@ -24,6 +24,7 @@ interface Allocator
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require size > 0
+	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*! acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	<*
@@ -31,6 +32,7 @@ interface Allocator
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
 	 @require new_size > 0
+	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*! resize(void* ptr, usz new_size, usz alignment = 0);
 	<*
@@ -41,11 +43,7 @@ interface Allocator
 
 def MemoryAllocFn = fn char[]!(usz);
 
-fault AllocationFailure
-{
-	OUT_OF_MEMORY,
-	CHUNK_TOO_LARGE,
-}
+
 
 fn usz alignment_for_allocation(usz alignment) @inline @private
 {
@@ -450,12 +448,12 @@ distinct NullAllocator (Allocator) = uptr;
 
 fn void*! NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	return AllocationFailure.OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY?;
 }
 
 fn void*! NullAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	return AllocationFailure.OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY?;
 }
 
 fn void NullAllocator.release(&self, void* old_ptr, bool aligned) @dynamic

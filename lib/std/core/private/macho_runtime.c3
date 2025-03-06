@@ -56,10 +56,7 @@ struct MachHeader64
 
 const LC_SEGMENT_64 = 0x19;
 
-fault MachoSearch
-{
-	NOT_FOUND
-}
+
 fn bool name_cmp(char* a, char[16]* b)
 {
 	for (usz i = 0; i < 16; i++)
@@ -82,7 +79,7 @@ fn SegmentCommand64*! find_segment(MachHeader* header, char* segname)
 		}
 		command = (void*)command + command.cmdsize;
 	}
-	return MachoSearch.NOT_FOUND?;
+	return NOT_FOUND?;
 }
 fn Section64*! find_section(SegmentCommand64* command, char* sectname)
 {
@@ -92,7 +89,7 @@ fn Section64*! find_section(SegmentCommand64* command, char* sectname)
 		if (name_cmp(sectname, &section.sectname)) return section;
 		section++;
 	}
-	return MachoSearch.NOT_FOUND?;
+	return NOT_FOUND?;
 }
 
 macro find_segment_section_body(MachHeader* header, char* segname, char* sectname, $Type)

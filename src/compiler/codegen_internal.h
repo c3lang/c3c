@@ -46,7 +46,6 @@ static inline Type *type_lowering(Type *type)
 				return type_any;
 			case TYPE_ANYFAULT:
 			case TYPE_TYPEID:
-			case TYPE_FAULTTYPE:
 				return type_iptr->canonical;
 			case TYPE_BITSTRUCT:
 				type = type->decl->strukt.container_type->type;

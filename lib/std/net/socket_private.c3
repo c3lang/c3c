@@ -57,7 +57,7 @@ fn Socket! connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 				Duration to_remove = c.to_now().to_duration();
 				if (to_remove >= timeout_left)
 				{
-					return NetError.CONNECTION_TIMED_OUT?;
+					return CONNECTION_TIMED_OUT?;
 				}
 				timeout_left -= to_remove;
 			}
@@ -68,7 +68,7 @@ fn Socket! connect_with_timeout_from_addrinfo(AddrInfo* addrinfo, SocketOption[]
 			Poll poll_request = { sockfd, SUBSCRIBE_ANY_WRITE, 0 };
 			if (!poll((&poll_request)[:1], timeout_left)!)
 			{
-				return NetError.CONNECTION_TIMED_OUT?;
+				return CONNECTION_TIMED_OUT?;
 			}
 			if (poll_request.revents & POLL_EVENT_WRITE)
 			{

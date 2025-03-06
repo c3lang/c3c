@@ -200,8 +200,10 @@ static bool exec_arg_append_to_scratch(Expr *arg)
 		case CONST_REF:
 			scratch_buffer_append(arg->const_expr.global_ref->name);
 			return true;
+		case CONST_FAULT:
+			scratch_buffer_append(arg->const_expr.fault->name);
+		return true;
 		case CONST_ENUM:
-		case CONST_ERR:
 			scratch_buffer_append(arg->const_expr.enum_err_val->name);
 			return true;
 		case CONST_TYPEID:
@@ -734,7 +736,6 @@ void sema_analysis_pass_interface(Module *module)
 				case DECL_STRUCT:
 				case DECL_UNION:
 				case DECL_ENUM:
-				case DECL_FAULT:
 				case DECL_BITSTRUCT:
 					break;
 				default:

@@ -1,4 +1,4 @@
-fault Error
+fault
 {
 	ABC
 }

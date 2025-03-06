@@ -24,22 +24,22 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 		void* data @noinit;
 		if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
 		{
-			if (posix::posix_memalign(&data, alignment, bytes)) return AllocationFailure.OUT_OF_MEMORY?;
+			if (posix::posix_memalign(&data, alignment, bytes)) return mem::OUT_OF_MEMORY?;
 			mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 			return data;
 		}
-		return libc::calloc(1, bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
+		return libc::calloc(1, bytes) ?: mem::OUT_OF_MEMORY?;
 	}
 	else
 	{
 		void* data @noinit;
 		if (alignment > mem::DEFAULT_MEM_ALIGNMENT)
 		{
-			if (posix::posix_memalign(&data, alignment, bytes)) return AllocationFailure.OUT_OF_MEMORY?;
+			if (posix::posix_memalign(&data, alignment, bytes)) return mem::OUT_OF_MEMORY?;
 		}
 		else
 		{
-			if (!(data = libc::malloc(bytes))) return AllocationFailure.OUT_OF_MEMORY?;
+			if (!(data = libc::malloc(bytes))) return mem::OUT_OF_MEMORY?;
 		}
 		$if env::TESTING:
 			for (usz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
@@ -50,9 +50,9 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 
 fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	if (alignment <= mem::DEFAULT_MEM_ALIGNMENT) return libc::realloc(old_ptr, new_bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
+	if (alignment <= mem::DEFAULT_MEM_ALIGNMENT) return libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY?;
 	void* new_ptr;
-	if (posix::posix_memalign(&new_ptr, alignment, new_bytes)) return AllocationFailure.OUT_OF_MEMORY?;
+	if (posix::posix_memalign(&new_ptr, alignment, new_bytes)) return mem::OUT_OF_MEMORY?;
 
 	$switch:
 	$case env::DARWIN:
@@ -84,12 +84,12 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 	{
 		if (alignment > 0)
 		{
-			return win32::_aligned_recalloc(null, 1, bytes, alignment) ?: AllocationFailure.OUT_OF_MEMORY?;
+			return win32::_aligned_recalloc(null, 1, bytes, alignment) ?: mem::OUT_OF_MEMORY?;
 		}
-		return libc::calloc(1, bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
+		return libc::calloc(1, bytes) ?: mem::OUT_OF_MEMORY?;
 	}
 	void* data = alignment > 0 ? win32::_aligned_malloc(bytes, alignment) : libc::malloc(bytes);
-	if (!data) return AllocationFailure.OUT_OF_MEMORY?;
+	if (!data) return mem::OUT_OF_MEMORY?;
 	$if env::TESTING:
 		for (usz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
 	$endif
@@ -100,9 +100,9 @@ fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignmen
 {
 	if (alignment)
 	{
-		return win32::_aligned_realloc(old_ptr, new_bytes, alignment) ?: AllocationFailure.OUT_OF_MEMORY?;
+		return win32::_aligned_realloc(old_ptr, new_bytes, alignment) ?: mem::OUT_OF_MEMORY?;
 	}
-	return libc::realloc(old_ptr, new_bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
+	return libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY?;
 }
 
 fn void LibcAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
@@ -123,12 +123,12 @@ fn void*! LibcAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz a
 	if (init_type == ZERO)
 	{
 		void* data = alignment ? @aligned_alloc(fn void*(usz bytes) => libc::calloc(bytes, 1), bytes, alignment)!! : libc::calloc(bytes, 1);
-		return data ?: AllocationFailure.OUT_OF_MEMORY?;
+		return data ?: mem::OUT_OF_MEMORYY?;
 	}
 	else
 	{
 		void* data = alignment ? @aligned_alloc(libc::malloc, bytes, alignment)!! : libc::malloc(bytes);
-		if (!data) return AllocationFailure.OUT_OF_MEMORY?;
+		if (!data) return mem::OUT_OF_MEMORY?;
 		$if env::TESTING:
 			for (usz i = 0; i < bytes; i++) ((char*)data)[i] = 0xAA;
 		$endif
@@ -142,9 +142,9 @@ fn void*! LibcAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignmen
 	if (alignment)
 	{
 		void* data = @aligned_realloc(fn void*(usz bytes) => libc::malloc(bytes), libc::free, old_ptr, new_bytes, alignment)!!;
-		return data ?: AllocationFailure.OUT_OF_MEMORY?;
+		return data ?: mem::OUT_OF_MEMORY?;
 	}
-	return libc::realloc(old_ptr, new_bytes) ?: AllocationFailure.OUT_OF_MEMORY?;
+	return libc::realloc(old_ptr, new_bytes) ?: mem::OUT_OF_MEMORY?;
 }
 
 

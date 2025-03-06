@@ -19,7 +19,7 @@ def OnceFn = fn void();
 
 def ThreadFn = fn int(void* arg);
 
-fault ThreadFault
+fault
 {
 	INIT_FAILED,
 	DESTROY_FAILED,

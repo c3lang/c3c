@@ -4,11 +4,11 @@ module test;
 fn void! foo()
 {}
 
-fault Abc { AAA }
+fault { AAA }
 
 macro int! bar()
 {
-	return Abc.AAA?;
+	return AAA?;
 }
 
 fn int! baz()

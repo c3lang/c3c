@@ -11,7 +11,7 @@ enum Seek
 	END
 }
 
-fault IoError
+fault
 {
 	ALREADY_EXISTS,
 	BUSY,
@@ -79,7 +79,7 @@ macro String! readline(Allocator allocator, stream = io::stdin())
 			$endif
 			if (catch err = c)
 			{
-				if (err == IoError.EOF) break;
+				if (err == io::EOF) break;
 				return err?;
 			}
 			if (c == '\r') continue;
@@ -330,7 +330,7 @@ fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
 fn void! out_buffer_fn(void *data, char c) @private
 {
 	BufferData *buffer_data = data;
-	if (buffer_data.written >= buffer_data.buffer.len) return PrintFault.BUFFER_EXCEEDED?;
+	if (buffer_data.written >= buffer_data.buffer.len) return BUFFER_EXCEEDED?;
 	buffer_data.buffer[buffer_data.written++] = c;
 }
 

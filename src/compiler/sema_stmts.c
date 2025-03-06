@@ -446,17 +446,13 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 	if (!sema_cast_const(inner)) return true;
 
 	// Here we have a const optional return.
-	ASSERT(ret_expr->inner_expr->const_expr.const_kind == CONST_ERR);
+	ASSERT(ret_expr->inner_expr->const_expr.const_kind == CONST_FAULT);
 	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
 
 	// Check that we find it.
 	FOREACH(Decl *, opt, context->call_env.opt_returns)
 	{
-		if (opt->decl_kind == DECL_FAULT)
-		{
-			if (fault->type->decl == opt) return true;
-			continue;
-		}
+		assert(opt->decl_kind == DECL_FAULT_NEW);
 		if (opt == fault) return true;
 	}
 	// No match
@@ -2613,7 +2609,7 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 		case CONST_INTEGER:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_REF:
@@ -2825,8 +2821,10 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 		case CONST_REF:
 			puts(message->const_expr.global_ref->name);
 			break;
+		case CONST_FAULT:
+			puts(message->const_expr.fault->name);
+		break;
 		case CONST_ENUM:
-		case CONST_ERR:
 			puts(message->const_expr.enum_err_val->name);
 			break;
 		case CONST_STRING:
@@ -3056,33 +3054,17 @@ static bool sema_analyse_optional_returns(SemaContext *context, Ast *directive)
 	FOREACH(Ast *, ret, directive->contract_stmt.faults)
 	{
 		if (ret->contract_fault.resolved) continue;
-		TypeInfo *type_info = ret->contract_fault.type;
-		const char *ident = ret->contract_fault.ident;
-		if (type_info->kind != TYPE_INFO_IDENTIFIER) RETURN_SEMA_ERROR(type_info, "Expected a fault name here.");
-		if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-		Type *type = type_info->type;
-		if (type->type_kind != TYPE_FAULTTYPE) RETURN_SEMA_ERROR(type_info, "A fault type is required.");
-		if (!ident)
+		Expr *expr = ret->contract_fault.expr;
+		if (expr->expr_kind != EXPR_UNRESOLVED_IDENTIFIER && !expr->unresolved_ident_expr.is_const)
 		{
-			ret->contract_fault.decl = type->decl;
-			ret->contract_fault.resolved = true;
-			goto NEXT;
+			RETURN_SEMA_ERROR(expr, "Expected a fault name here.");
 		}
-		Decl *decl = type->decl;
-		Decl **enums = decl->enums.values;
-		FOREACH(Decl *, opt_value, enums)
-		{
-			if (opt_value->name == ident)
-			{
-				ret->contract_fault.decl = opt_value;
-				ret->contract_fault.resolved = true;
-				goto NEXT;
-			}
-		}
-		RETURN_SEMA_ERROR(ret, "No fault value '%s' found.", ident);
-NEXT:;
-		Decl *d = ret->contract_fault.decl;
-		vec_add(context->call_env.opt_returns, d);
+		if (!sema_analyse_expr(context, expr)) return false;
+		if (!expr_is_const_fault(expr)) RETURN_SEMA_ERROR(expr, "A fault is required.");
+		Decl *decl = expr->const_expr.fault;
+		ret->contract_fault.decl = decl;
+		ret->contract_fault.resolved = true;
+		vec_add(context->call_env.opt_returns, decl);
 	}
 	return true;
 }

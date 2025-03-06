@@ -95,17 +95,17 @@ fn ulong! elf_module_image_base(String path) @local
 	defer (void)file.close();
 	char[4] buffer;
 	io::read_all(&file, &buffer)!;
-	if (buffer != { 0x7f, 'E', 'L', 'F'}) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (buffer != { 0x7f, 'E', 'L', 'F'}) return backtrace::IMAGE_NOT_FOUND?;
 	bool is_64 = file.read_byte()! == 2;
 	bool is_little_endian = file.read_byte()! == 1;
 	// Actually, not supported.
-	if (!is_little_endian) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (!is_little_endian) return backtrace::IMAGE_NOT_FOUND?;
 	file.seek(0)!;
 	if (is_64)
 	{
 		Elf64_Ehdr file_header;
 		io::read_any(&file, &file_header)!;
-		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return BacktraceFault.IMAGE_NOT_FOUND?;
+		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND?;
 		for (isz i = 0; i < file_header.e_phnum; i++)
 		{
 			Elf64_Phdr header;
@@ -117,7 +117,7 @@ fn ulong! elf_module_image_base(String path) @local
 	}
 	Elf32_Ehdr file_header;
 	io::read_any(&file, &file_header)!;
-	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND?;
 	for (isz i = 0; i < file_header.e_phnum; i++)
 	{
 		Elf32_Phdr header;
@@ -152,7 +152,7 @@ fn void! backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, voi
 fn Backtrace! backtrace_line_parse(Allocator allocator, String string, String obj_name, String func_name, bool is_inlined)
 {
 	String[] parts = string.trim().tsplit(" at ");
-	if (parts.len != 2) return SearchResult.MISSING?;
+	if (parts.len != 2) return NOT_FOUND?;
 
 	uint line   = 0;
 	String source = "";

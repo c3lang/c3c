@@ -1,11 +1,10 @@
 module base64;
+
+fault INVALID_CHARACTER;
+
 // Based on the C2 version.
 
 
-fault DecodingError
-{
-	INVALID_CHARACTER
-}
 const char[64] LUT_ENC = {
 	'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H',
 	'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P',
@@ -89,7 +88,7 @@ fn int! decode(String in, char* out, int* invalid_char_index = null)
 		if (c == ERR)
 		{
 			if (invalid_char_index) *invalid_char_index = i;
-			return DecodingError.INVALID_CHARACTER?;
+			return INVALID_CHARACTER?;
 		}
 
 

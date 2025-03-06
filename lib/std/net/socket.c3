@@ -110,14 +110,14 @@ fn void! Socket.set_option(&self, SocketOption option, bool value)
 {
 	CInt flag = (CInt)value;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED?;
 }
 
 fn bool! Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED?;
 	return (bool)flag;
 }
 

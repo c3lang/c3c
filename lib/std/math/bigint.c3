@@ -102,9 +102,9 @@ fn BigInt*! BigInt.init_string_radix(&self, String value, int radix)
 			case 'a'..'z':
 				pos_val -= 'a' - 10;
 			default:
-				return NumberConversion.MALFORMED_INTEGER?;
+				return string::MALFORMED_INTEGER?;
 		}
-		if (pos_val >= radix) return NumberConversion.MALFORMED_INTEGER?;
+		if (pos_val >= radix) return string::MALFORMED_INTEGER?;
 		if (limit == 1) pos_val = -pos_val;
 		self.add_this(multiplier.mult(from_int(pos_val)));
 		if (i - 1 >= limit)
@@ -115,9 +115,9 @@ fn BigInt*! BigInt.init_string_radix(&self, String value, int radix)
 	switch
 	{
 		case limit && !self.is_negative():
-			return NumberConversion.INTEGER_OVERFLOW?;
+			return string::INTEGER_OVERFLOW?;
 		case !limit && self.is_negative():
-			return NumberConversion.INTEGER_OVERFLOW?;
+			return string::INTEGER_OVERFLOW?;
 	}
 	return self;
 }

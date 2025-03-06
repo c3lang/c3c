@@ -4,7 +4,7 @@ struct Foo
     int x, y;
 }
 
-fault MyErr
+fault
 {
     FOO
 }
@@ -26,5 +26,5 @@ fn void foo2()
 fn void test()
 {
     int! z = 2;
-    Foo*! w = &&Foo!{ z, 0 }; // #error: please remove the '!'
+    Foo*! w = &&(Foo!){ z, 0 }; // #error: please remove the '!'
 }

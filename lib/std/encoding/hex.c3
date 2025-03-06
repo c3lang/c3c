@@ -72,7 +72,7 @@ macro usz decode_len(usz n) => n / 2;
  @param dst : "The decoded input."
  @require src.len % 2 == 0 : "src is not of even length"
  @require dst.len >= decode_len(src.len) : "Destination array is not large enough"
- @return! DecodingFailure.INVALID_CHARACTER
+ @return! encoding::INVALID_CHARACTER
 *>
 fn usz! decode_bytes(char[] src, char[] dst)
 {
@@ -81,7 +81,7 @@ fn usz! decode_bytes(char[] src, char[] dst)
 	{
 		char a = HEXREVERSE[src[j - 1]];
 		char b = HEXREVERSE[src[j]];
-		if (a > 0x0f || b > 0x0f) return DecodingFailure.INVALID_CHARACTER?;
+		if (a > 0x0f || b > 0x0f) return encoding::INVALID_CHARACTER?;
 		dst[i] = (a << 4) | b;
 		i++;
 	}

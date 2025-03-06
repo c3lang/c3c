@@ -139,7 +139,6 @@ bool expr_is_zero(Expr *expr)
 		case CONST_BOOL:
 			return !expr->const_expr.b;
 		case CONST_ENUM:
-		case CONST_ERR:
 			return !expr->const_expr.enum_err_val->enum_constant.ordinal;
 		case CONST_BYTES:
 		case CONST_STRING:
@@ -151,6 +150,8 @@ bool expr_is_zero(Expr *expr)
 			}
 			return true;
 		}
+		case CONST_FAULT:
+			return !expr->const_expr.fault;
 		case CONST_POINTER:
 			return !expr->const_expr.ptr;
 		case CONST_TYPEID:
@@ -366,8 +367,6 @@ bool expr_is_runtime_const(Expr *expr)
 			{
 				case ACCESS_ENUMNAME:
 				case ACCESS_FAULTNAME:
-				case ACCESS_FAULTORDINAL:
-					break;
 				case ACCESS_TYPEOFANYFAULT:
 				case ACCESS_TYPEOFANY:
 					break;
@@ -643,7 +642,6 @@ void expr_rewrite_to_const_zero(Expr *expr, Type *type)
 			expr_rewrite_const_bool(expr, type, false);
 			return;
 		case TYPE_POINTER:
-		case TYPE_FAULTTYPE:
 		case TYPE_ANY:
 		case TYPE_INTERFACE:
 		case TYPE_ANYFAULT:
@@ -688,7 +686,7 @@ Expr *expr_from_const_expr_at_index(Expr *expr, ArrayIndex index)
 	ExprConst *expr_const = &expr->const_expr;
 	switch (expr_const->const_kind)
 	{
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_FLOAT:
 		case CONST_INTEGER:
 		case CONST_BOOL:

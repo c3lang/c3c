@@ -27,10 +27,10 @@ fn void! native_remove(String filename) => @pool()
 		switch (libc::errno())
 		{
 			case errno::ENOENT:
-				return IoError.FILE_NOT_FOUND?;
+				return io::FILE_NOT_FOUND?;
 			case errno::EACCES:
 			default:
-				return IoError.FILE_CANNOT_DELETE?;
+				return io::FILE_CANNOT_DELETE?;
 		}
 	}
 }
@@ -68,7 +68,7 @@ fn usz! native_fwrite(CFile file, char[] buffer) @inline
 
 fn void! native_fputc(CInt c, CFile stream) @inline
 {
-	if (libc::fputc(c, stream) == libc::EOF) return IoError.EOF?;
+	if (libc::fputc(c, stream) == libc::EOF) return io::EOF?;
 }
 
 fn usz! native_fread(CFile file, char[] buffer) @inline
@@ -80,27 +80,27 @@ macro anyfault file_open_errno() @local
 {
 	switch (libc::errno())
 	{
-		case errno::EACCES: return IoError.NO_PERMISSION;
-		case errno::EDQUOT: return IoError.OUT_OF_SPACE;
-		case errno::EBADF: return IoError.FILE_NOT_VALID;
-		case errno::EEXIST: return IoError.ALREADY_EXISTS;
-		case errno::EINTR: return IoError.INTERRUPTED;
-		case errno::EFAULT: return IoError.GENERAL_ERROR;
-		case errno::EISDIR: return IoError.FILE_IS_DIR;
-		case errno::ELOOP: return IoError.SYMLINK_FAILED;
-		case errno::EMFILE: return IoError.TOO_MANY_DESCRIPTORS;
-		case errno::ENAMETOOLONG: return IoError.NAME_TOO_LONG;
-		case errno::ENFILE: return IoError.OUT_OF_SPACE;
-		case errno::ENOTDIR: return IoError.FILE_NOT_DIR;
-		case errno::ENOENT: return IoError.FILE_NOT_FOUND;
-		case errno::ENOSPC: return IoError.OUT_OF_SPACE;
-		case errno::ENXIO: return IoError.FILE_NOT_FOUND;
-		case errno::EOVERFLOW: return IoError.OVERFLOW;
-		case errno::EROFS: return IoError.READ_ONLY;
-		case errno::EOPNOTSUPP: return IoError.UNSUPPORTED_OPERATION;
-		case errno::EIO: return IoError.INCOMPLETE_WRITE;
-		case errno::EWOULDBLOCK: return IoError.WOULD_BLOCK;
-		default: return IoError.UNKNOWN_ERROR;
+		case errno::EACCES: return io::NO_PERMISSION;
+		case errno::EDQUOT: return io::OUT_OF_SPACE;
+		case errno::EBADF: return io::FILE_NOT_VALID;
+		case errno::EEXIST: return io::ALREADY_EXISTS;
+		case errno::EINTR: return io::INTERRUPTED;
+		case errno::EFAULT: return io::GENERAL_ERROR;
+		case errno::EISDIR: return io::FILE_IS_DIR;
+		case errno::ELOOP: return io::SYMLINK_FAILED;
+		case errno::EMFILE: return io::TOO_MANY_DESCRIPTORS;
+		case errno::ENAMETOOLONG: return io::NAME_TOO_LONG;
+		case errno::ENFILE: return io::OUT_OF_SPACE;
+		case errno::ENOTDIR: return io::FILE_NOT_DIR;
+		case errno::ENOENT: return io::FILE_NOT_FOUND;
+		case errno::ENOSPC: return io::OUT_OF_SPACE;
+		case errno::ENXIO: return io::FILE_NOT_FOUND;
+		case errno::EOVERFLOW: return io::OVERFLOW;
+		case errno::EROFS: return io::READ_ONLY;
+		case errno::EOPNOTSUPP: return io::UNSUPPORTED_OPERATION;
+		case errno::EIO: return io::INCOMPLETE_WRITE;
+		case errno::EWOULDBLOCK: return io::WOULD_BLOCK;
+		default: return io::UNKNOWN_ERROR;
 	}
 }
 
@@ -108,18 +108,18 @@ macro anyfault file_seek_errno() @local
 {
 	switch (libc::errno())
 	{
-		case errno::ESPIPE: return IoError.FILE_IS_PIPE;
-		case errno::EPIPE: return IoError.FILE_IS_PIPE;
-		case errno::EOVERFLOW: return IoError.OVERFLOW;
-		case errno::ENXIO: return IoError.FILE_NOT_FOUND;
-		case errno::ENOSPC: return IoError.OUT_OF_SPACE;
-		case errno::EIO: return IoError.INCOMPLETE_WRITE;
-		case errno::EINVAL: return IoError.INVALID_POSITION;
-		case errno::EINTR: return IoError.INTERRUPTED;
-		case errno::EFBIG: return IoError.OUT_OF_SPACE;
-		case errno::EBADF: return IoError.FILE_NOT_VALID;
-		case errno::EAGAIN: return IoError.WOULD_BLOCK;
-		default: return IoError.UNKNOWN_ERROR;
+		case errno::ESPIPE: return io::FILE_IS_PIPE;
+		case errno::EPIPE: return io::FILE_IS_PIPE;
+		case errno::EOVERFLOW: return io::OVERFLOW;
+		case errno::ENXIO: return io::FILE_NOT_FOUND;
+		case errno::ENOSPC: return io::OUT_OF_SPACE;
+		case errno::EIO: return io::INCOMPLETE_WRITE;
+		case errno::EINVAL: return io::INVALID_POSITION;
+		case errno::EINTR: return io::INTERRUPTED;
+		case errno::EFBIG: return io::OUT_OF_SPACE;
+		case errno::EBADF: return io::FILE_NOT_VALID;
+		case errno::EAGAIN: return io::WOULD_BLOCK;
+		default: return io::UNKNOWN_ERROR;
 	}
 }
 

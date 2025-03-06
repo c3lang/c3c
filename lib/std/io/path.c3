@@ -9,7 +9,7 @@ const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFER
 
 def PathList = List { Path };
 
-fault PathResult
+fault
 {
 	INVALID_PATH,
 	NO_PARENT,
@@ -78,7 +78,7 @@ fn PathList! ls(Allocator allocator, Path dir, bool no_dirs = false, bool no_sym
 	$if $defined(os::native_ls):
 		return os::native_ls(dir, no_dirs, no_symlinks, mask, allocator);
 	$else
-		return IoError.UNSUPPORTED_OPERATION?;
+		return io::UNSUPPORTED_OPERATION?;
 	$endif
 }
 
@@ -113,7 +113,7 @@ macro bool! mkdir(Path path, bool recursive = false, MkdirPermissions permission
  @param path : `The path to delete`
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
  @return `true if there was a directory to delete, false otherwise`
- @return! PathResult.INVALID_PATH : `if the path was invalid`
+ @return! INVALID_PATH : `if the path was invalid`
 *>
 macro bool! rmdir(path)
 {
@@ -129,18 +129,18 @@ macro bool! rmdir(path)
 *>
 fn void! rmtree(Path path)
 {
-	if (!path.path_string.len) return PathResult.INVALID_PATH?;
+	if (!path.path_string.len) return INVALID_PATH?;
 	$if $defined(os::native_rmtree):
 		return os::native_rmtree(path);
 	$else
-		return IoError.UNSUPPORTED_OPERATION?;
+		return io::UNSUPPORTED_OPERATION?;
 	$endif
 }
 
 <*
  Creates a new path.
 
- @return! PathResult.INVALID_PATH : `if the path was invalid`
+ @return! INVALID_PATH : `if the path was invalid`
 *>
 fn Path! new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -150,7 +150,7 @@ fn Path! new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 <*
  Creates a new path using the temp allocator.
 
- @return! PathResult.INVALID_PATH : `if the path was invalid`
+ @return! INVALID_PATH : `if the path was invalid`
 *>
 fn Path! temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -213,7 +213,7 @@ fn usz! start_of_base_name(String str, PathEnv path_env) @local
 		// Find the \ before "foo"
 		usz last_index = 2 + str[2..].index_of_char('\\')!;
 		// If they don't match, we're done
-		if (last_index > index) return PathResult.INVALID_PATH?;
+		if (last_index > index) return INVALID_PATH?;
 		if (last_index != index) return index + 1;
 		// Otherwise just default to the volume length.
 	}
@@ -247,7 +247,7 @@ fn Path! String.to_absolute_path(self, Allocator allocator) => @pool(allocator)
 fn Path! Path.absolute(self, Allocator allocator)
 {
 	String path_str = self.str_view();
-	if (!path_str.len) return PathResult.INVALID_PATH?;
+	if (!path_str.len) return INVALID_PATH?;
 	if (self.is_absolute()!) return new(allocator, path_str, self.env);
 	if (path_str == ".")
 	{
@@ -263,7 +263,7 @@ fn Path! Path.absolute(self, Allocator allocator)
 			const usz BUFFER_LEN = 4096;
 			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
 			buffer = win32::_wfullpath(buffer, path_str.to_temp_wstring()!, BUFFER_LEN);
-			if (!buffer) return PathResult.INVALID_PATH?;
+			if (!buffer) return INVALID_PATH?;
 			return { string::from_wstring(allocator, buffer), WIN32, allocator };
 		};
 	$else
@@ -332,9 +332,8 @@ fn String! Path.extension(self)
 {
 	String basename = self.basename();
 	usz index = basename.rindex_of(".")!;
-	// Plain ".foo" does not have an
-	if (index == 0) return SearchResult.MISSING?;
-	if (index == basename.len) return "";
+	// Plain ".foo" does not have an extension
+	if (index == 0 || index == basename.len) return "";
 	return basename[index + 1..];
 }
 
@@ -379,10 +378,10 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
 					base_found = i;
 					continue;
 				}
-				if (is_reserved_win32_path_char(c)) return PathResult.INVALID_PATH?;
+				if (is_reserved_win32_path_char(c)) return INVALID_PATH?;
 			}
 			if (base_found > 0 && base_found + 1 < len) return len;
-			return PathResult.INVALID_PATH?;
+			return INVALID_PATH?;
 		case 'A'..'Z':
 		case 'a'..'z':
 			return path[1] == ':' ? 2 : 0;
@@ -396,11 +395,11 @@ fn usz! volume_name_len(String path, PathEnv path_env) @local
  of the path itself.
 
  @return `The parent of the path as a non-allocated path`
- @return! PathResult.NO_PARENT : `if this path does not have a parent`
+ @return! NO_PARENT : `if this path does not have a parent`
 *>
 fn Path! Path.parent(self)
 {
-	if (self.path_string.len == 1 && is_separator(self.path_string[0], self.env)) return PathResult.NO_PARENT?;
+	if (self.path_string.len == 1 && is_separator(self.path_string[0], self.env)) return NO_PARENT?;
 	foreach_r(i, c : self.path_string)
 	{
 		if (is_separator(c, self.env))
@@ -408,7 +407,7 @@ fn Path! Path.parent(self)
 			return { self.path_string[:i], self.env, null };
 		}
 	}
-	return PathResult.NO_PARENT?;
+	return NO_PARENT?;
 }
 
 fn String! normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
@@ -450,7 +449,7 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 
 		// The rest are names of the path elements, so check that the
 		// characters are valid.
-		if (is_reserved_path_char(c, path_env)) return PathResult.INVALID_PATH?;
+		if (is_reserved_path_char(c, path_env)) return INVALID_PATH?;
 
 		// If we have '.' after a separator
 		if (c == '.' && previous_was_separator)
@@ -483,7 +482,7 @@ fn String! normalize(String path_str, PathEnv path_env = DEFAULT_ENV)
 					continue;
 				case 2:
 					// This is an error: /a/../..
-					if (len == path_start && has_root) return PathResult.INVALID_PATH?;
+					if (len == path_start && has_root) return INVALID_PATH?;
 
 					// If this .. at the start, or after ../? If so, we just copy ..
 					if (len == path_start ||
@@ -667,21 +666,21 @@ macro bool is_reserved_path_char(char c, PathEnv path_env = DEFAULT_ENV)
 }
 fn bool! _mkdir(Path path, bool recursive = false, MkdirPermissions permissions = NORMAL) @private
 {
-	if (!path.path_string.len) return PathResult.INVALID_PATH?;
+	if (!path.path_string.len) return INVALID_PATH?;
 	if (is_dir(path)) return false;
-	if (exists(path)) return IoError.FILE_NOT_DIR?;
+	if (exists(path)) return io::FILE_NOT_DIR?;
 
 	if (recursive)
 	{
 		if (try parent = path.parent()) mkdir(parent, true, permissions)!;
 	}
-	if (!is_dir(path.parent()) ?? false) return IoError.CANNOT_READ_DIR?;
+	if (!is_dir(path.parent()) ?? false) return io::CANNOT_READ_DIR?;
 
 	return os::native_mkdir(path, permissions);
 }
 
 fn bool! _rmdir(Path path) @private
 {
-	if (!path.path_string.len) return PathResult.INVALID_PATH?;
+	if (!path.path_string.len) return INVALID_PATH?;
 	return os::native_rmdir(path);
 }

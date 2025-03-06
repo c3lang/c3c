@@ -1,7 +1,7 @@
 module std::os::backtrace;
 import std::collections::list, std::os, std::io;
 
-fault BacktraceFault
+fault
 {
 	SEGMENT_NOT_FOUND,
 	EXECUTABLE_PATH_NOT_FOUND,

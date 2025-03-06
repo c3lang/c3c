@@ -10,7 +10,7 @@ interface Printable
 	fn usz! to_format(Formatter* formatter) @optional;
 }
 
-fault PrintFault
+fault
 {
 	BUFFER_EXCEEDED,
 	INTERNAL_BUFFER_EXCEEDED,
@@ -137,7 +137,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 		if (!arg) return self.out_substr("(null)");
 		return self.out_substr(arg.to_constant_string());
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 fn usz! Formatter.out_unknown(&self, String category, any arg) @private
@@ -153,7 +153,6 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case VOID:
 			return self.out_substr("void");
 		case ANYFAULT:
-		case FAULT:
 			return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case INTERFACE:
 		case ANY:
@@ -189,7 +188,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 	}
 	usz! n = self.print_with_function((Printable)arg);
 	if (try n) return n;
-	if (@catch(n) != SearchResult.MISSING) n!;
+	if (@catch(n) != NOT_FOUND) n!;
 	switch (arg.type.kindof)
 	{
 		case ENUM:
@@ -226,7 +225,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 				any deref = any_make(*pointer, inner);
 				n = self.print_with_function((Printable)deref);
 				if (try n) return n;
-				if (@catch(n) != SearchResult.MISSING) n!;
+				if (@catch(n) != NOT_FOUND) n!;
 			}
 			PrintFlags flags = self.flags;
 			uint width = self.width;
@@ -332,7 +331,7 @@ fn void! out_null_fn(void* data @unused, char c @unused) @private
 macro usz! @report_fault(Formatter* f, $fault)
 {
 	(void)f.out_substr($fault);
-	return PrintFault.INVALID_FORMAT?;
+	return INVALID_FORMAT?;
 }
 
 macro usz! @wrap_bad(Formatter* f, #action)
@@ -342,11 +341,11 @@ macro usz! @wrap_bad(Formatter* f, #action)
 	{
 		switch (err)
 		{
-			case PrintFault.BUFFER_EXCEEDED:
-        	case PrintFault.INTERNAL_BUFFER_EXCEEDED:
+			case BUFFER_EXCEEDED:
+        	case INTERNAL_BUFFER_EXCEEDED:
         		return f.first_err(err)?;
         	default:
-        		err = f.first_err(PrintFault.INVALID_ARGUMENT);
+			err = f.first_err(INVALID_ARGUMENT);
         		f.out_substr("<INVALID>")!;
         		return err?;
 		}
@@ -425,7 +424,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		uint base = 0;
 		if (variant_index >= anys.len)
 		{
-			self.first_err(PrintFault.NOT_ENOUGH_ARGUMENTS);
+			self.first_err(NOT_ENOUGH_ARGUMENTS);
 			total_len += self.out_substr("<MISSING>")!;
 			continue;
 		}
@@ -532,7 +531,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.hash = true;
 				base = 16;
 			default:
-				self.first_err(PrintFault.INVALID_FORMAT);
+				self.first_err(INVALID_FORMAT);
 				total_len += self.out_substr("<BAD FORMAT>")!;
 				continue;
 		}

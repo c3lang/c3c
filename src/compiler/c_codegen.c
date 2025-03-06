@@ -110,7 +110,6 @@ static const char *c_type_name(GenContext *c, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 		case TYPE_SLICE:
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
@@ -235,7 +234,6 @@ static bool c_emit_type_decl(GenContext *c, Type *type)
 			return true;
 		}
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 			TODO
 			break;
 		case TYPE_SLICE:
@@ -371,8 +369,8 @@ static void c_emit_const_expr(GenContext *c, CValue *value, Expr *expr)
 			}
 			PRINT("\";\n");
 			return;
+		case CONST_FAULT:
 		case CONST_ENUM:
-		case CONST_ERR:
 		case CONST_BYTES:
 			break;
 		case CONST_POINTER:

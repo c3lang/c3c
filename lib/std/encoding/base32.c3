@@ -84,7 +84,7 @@ fn usz encode_len(usz n, char padding)
  @require padding < 0xFF : "Invalid padding character"
  @require dst.len >= decode_len(src.len, padding) : "Destination buffer too small"
  @return "The resulting dst buffer"
- @return! DecodingFailure
+ @return! encoding::INVALID_PADDING, encoding::INVALID_CHARACTER
 *>
 fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
@@ -101,12 +101,12 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 		{
 			if (src.len == 0)
 			{
-				if (padding > 0) return DecodingFailure.INVALID_PADDING?;
+				if (padding > 0) return encoding::INVALID_PADDING?;
 				break;
 			}
 			if (src[0] == padding) break;
 			buf[i] = alphabet.reverse[src[0]];
-			if (buf[i] == INVALID) return DecodingFailure.INVALID_CHARACTER?;
+			if (buf[i] == INVALID) return encoding::INVALID_CHARACTER?;
 			src = src[1..];
 		}
 
@@ -150,7 +150,7 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 				dst[0] = buf[1] >> 2 | buf[0] << 3;
 				n++;
 			default:
-				return DecodingFailure.INVALID_CHARACTER?;
+				return encoding::INVALID_CHARACTER?;
 		}
 		if (dst.len < 5) break;
 		dst = dst[5..];

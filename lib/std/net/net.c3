@@ -1,7 +1,7 @@
 module std::net;
 import std::io;
 
-fault NetError
+fault
 {
 	INVALID_URL,
 	URL_TOO_LONG,
@@ -39,13 +39,13 @@ fn uint! ipv4toint(String s)
 	{
 		if (c == '.')
 		{
-			if (current < 0) return NetError.INVALID_IP_STRING?;
+			if (current < 0) return INVALID_IP_STRING?;
 			out = out << 8 + current;
 			current = -1;
 			element++;
 			continue;
 		}
-		if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING?;
+		if (element > 3 || c < '0' || c > '9') return INVALID_IP_STRING?;
 		if (current < 0)
 		{
 			current = c - '0';
@@ -53,7 +53,7 @@ fn uint! ipv4toint(String s)
 		}
 		current = current * 10 + c - '0';
 	}
-	if (element != 3 || current < 0) return NetError.INVALID_IP_STRING?;
+	if (element != 3 || current < 0) return INVALID_IP_STRING?;
 	out = out << 8 + current;
 	return out;
 }
