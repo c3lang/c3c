@@ -465,7 +465,8 @@ macro String.to_real(chars, $Type) @private
 	while (chars.len && chars[0] == ' ') chars = chars[1..];
 	if (!chars.len) return NumberConversion.MALFORMED_FLOAT?;
 
-	if (chars.len != 1) {
+	if (chars.len != 1)
+	{
 		switch (chars[0])
 		{
 			case '-':

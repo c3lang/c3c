@@ -30,6 +30,7 @@
 - Aliases were incorrectly considered compile time constants.
 - FreeBSD libc stat definitions were incorrect.
 - Atomic max was incorrect.
+- `"+".to_float()` would panic.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
