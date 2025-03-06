@@ -464,13 +464,16 @@ macro String.to_real(chars, $Type) @private
 
 	while (chars.len && chars[0] == ' ') chars = chars[1..];
 	if (!chars.len) return NumberConversion.MALFORMED_FLOAT?;
-	switch (chars[0])
-	{
-		case '-':
-			sign = -1;
-			nextcase;
-		case '+':
-			chars = chars[1..];
+
+	if (chars.len != 1) {
+		switch (chars[0])
+		{
+			case '-':
+				sign = -1;
+				nextcase;
+			case '+':
+				chars = chars[1..];
+		}
 	}
 	if (chars == "infinity" || chars == "INFINITY") return sign * $Type.inf;
 	if (chars == "NAN" || chars == "nan") return $Type.nan;
