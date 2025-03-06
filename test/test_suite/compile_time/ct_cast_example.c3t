@@ -6,7 +6,7 @@ fn void main()
 {
 	var $x = { 1, 2 };
 	$x = $x +++ 333;
-	io::printn((int[?])$x);
+	io::printn((int[*])$x);
 }
 
 /* #expect: test.ll

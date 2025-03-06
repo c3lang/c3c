@@ -1,4 +1,4 @@
-int[?] foo = {1,2,3};
+int[*] foo = {1,2,3};
 fn int* bar(int index)
 {
 	int* array = &foo;

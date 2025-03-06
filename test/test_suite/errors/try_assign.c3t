@@ -1,13 +1,13 @@
 // #target: macos-x64
 
-extern fn int! err();
-fault FooErr { QBERT }
+extern fn int? err();
+fault QBERT;
 extern fn int printf(char* fmt, ...);
 
 fn void main()
 {
-    int! z = 234;
-    int! w;
+    int? z = 234;
+    int? w;
     if (try x = z && try gh = w)
     {
         printf("Success %d && %d!\n", x, gh);

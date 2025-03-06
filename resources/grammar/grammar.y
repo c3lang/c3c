@@ -578,7 +578,7 @@ type
 
 optional_type
 	: type
-	| type '!'
+	| type '?'
 	;
 
 local_decl_after_type

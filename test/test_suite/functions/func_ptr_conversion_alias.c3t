@@ -14,8 +14,8 @@ fn Callback**[][123]* tester()
 GetCallback x = &tester;
 
 
-def GetCallbackOpt = fn Callback2!();
+def GetCallbackOpt = fn Callback2?();
 
-fn Callback2! tester2() => null;
+fn Callback2? tester2() => null;
 
 GetCallbackOpt y = &tester2;

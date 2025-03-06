@@ -1,7 +1,7 @@
 
-fault Bob { FOO }
+fault FOO;
 
-fn int! test()
+fn int? test()
 {
-	return Bob.FOO; // #error: You need to add a trailing
+	return FOO; // #error: You need to add a trailing
 }

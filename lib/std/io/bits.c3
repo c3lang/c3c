@@ -21,7 +21,7 @@ fn void BitReader.clear(&self) @inline
  @require nbits <= 8
  @require self.len + nbits <= uint.sizeof * 8
 *>
-fn char! BitReader.read_bits(&self, uint nbits)
+fn char? BitReader.read_bits(&self, uint nbits)
 {
 	uint bits = self.bits;
 	if (self.len < nbits)
@@ -54,7 +54,7 @@ fn void BitWriter.init(&self, OutStream byte_writer)
 	*self = { .writer = byte_writer };
 }
 
-fn void! BitWriter.flush(&self)
+fn void? BitWriter.flush(&self)
 {
 	if (self.len == 0) return;
 
@@ -70,7 +70,7 @@ fn void! BitWriter.flush(&self)
 <*
  @require nbits <= 32
 *>
-fn void! BitWriter.write_bits(&self, uint bits, uint nbits)
+fn void? BitWriter.write_bits(&self, uint bits, uint nbits)
 {
 	if (nbits == 0) return;
 	while (self.len + nbits > WRITER_BITS)

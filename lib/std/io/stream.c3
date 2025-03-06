@@ -3,28 +3,28 @@ import std::math;
 
 interface InStream
 {
-	fn void! close() @optional;
-	fn usz! seek(isz offset, Seek seek) @optional;
+	fn void? close() @optional;
+	fn usz? seek(isz offset, Seek seek) @optional;
 	fn usz len() @optional;
-	fn usz! available() @optional;
-	fn usz! read(char[] buffer);
-	fn char! read_byte();
-	fn usz! write_to(OutStream out) @optional;
-	fn void! pushback_byte() @optional;
+	fn usz? available() @optional;
+	fn usz? read(char[] buffer);
+	fn char? read_byte();
+	fn usz? write_to(OutStream out) @optional;
+	fn void? pushback_byte() @optional;
 }
 
 
 interface OutStream
 {
-	fn void! destroy() @optional;
-	fn void! close() @optional;
-	fn void! flush() @optional;
-	fn usz! write(char[] bytes);
-	fn void! write_byte(char c);
-	fn usz! read_to(InStream in) @optional;
+	fn void? destroy() @optional;
+	fn void? close() @optional;
+	fn void? flush() @optional;
+	fn usz? write(char[] bytes);
+	fn void? write_byte(char c);
+	fn usz? read_to(InStream in) @optional;
 }
 
-fn usz! available(InStream s)
+fn usz? available(InStream s)
 {
 	if (&s.available) return s.available();
 	if (&s.seek)
@@ -51,7 +51,7 @@ macro bool @is_outstream(#expr)
  @param [&out] ref
  @require @is_instream(stream)
 *>
-macro usz! read_any(stream, any ref)
+macro usz? read_any(stream, any ref)
 {
 	return read_all(stream, ((char*)ref)[:ref.type.sizeof]);
 }
@@ -61,7 +61,7 @@ macro usz! read_any(stream, any ref)
  @require @is_outstream(stream)
  @ensure return == ref.type.sizeof
 *>
-macro usz! write_any(stream, any ref)
+macro usz? write_any(stream, any ref)
 {
 	return write_all(stream, ((char*)ref)[:ref.type.sizeof]);
 }
@@ -69,18 +69,18 @@ macro usz! write_any(stream, any ref)
 <*
  @require @is_instream(stream)
 *>
-macro usz! read_all(stream, char[] buffer)
+macro usz? read_all(stream, char[] buffer)
 {
 	if (buffer.len == 0) return 0;
 	usz n = stream.read(buffer)!;
-	if (n != buffer.len) return IoError.UNEXPECTED_EOF?;
+	if (n != buffer.len) return UNEXPECTED_EOF?;
 	return n;
 }
 
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_fully(Allocator allocator, stream)
+macro char[]? read_fully(Allocator allocator, stream)
 {
 	usz len = available(stream)!;
 	char* data = allocator::malloc_try(allocator, len)!;
@@ -96,23 +96,23 @@ macro char[]! read_fully(Allocator allocator, stream)
 <*
  @require @is_outstream(stream)
 *>
-macro usz! write_all(stream, char[] buffer)
+macro usz? write_all(stream, char[] buffer)
 {
 	if (buffer.len == 0) return 0;
 	usz n = stream.write(buffer)!;
-	if (n != buffer.len) return IoError.INCOMPLETE_WRITE?;
+	if (n != buffer.len) return INCOMPLETE_WRITE?;
 	return n;
 }
 
-macro usz! read_using_read_byte(s, char[] buffer)
+macro usz? read_using_read_byte(s, char[] buffer)
 {
 	usz len = 0;
 	foreach (&cptr : buffer)
 	{
-		char! c = s.read_byte();
+		char? c = s.read_byte();
 		if (catch err = c)
 		{
-			if (err == IoError.EOF) return len;
+			if (err == io::EOF) return len;
 			return err?;
 		}
 		*cptr = c;
@@ -121,35 +121,35 @@ macro usz! read_using_read_byte(s, char[] buffer)
 	return len;
 }
 
-macro void! write_byte_using_write(s, char c)
+macro void? write_byte_using_write(s, char c)
 {
 	char[1] buff = { c };
 	s.write(&buff)!;
 }
 
-macro char! read_byte_using_read(s)
+macro char? read_byte_using_read(s)
 {
 	char[1] buffer;
 	usz read = s.read(&buffer)!;
-	if (read != 1) return IoError.EOF?;
+	if (read != 1) return io::EOF?;
 	return buffer[0];
 }
 
-def ReadByteFn = fn char!();
+def ReadByteFn = fn char?();
 
 
-macro usz! write_using_write_byte(s, char[] bytes)
+macro usz? write_using_write_byte(s, char[] bytes)
 {
 	foreach (c : bytes) s.write_byte(self, c)!;
 	return bytes.len;
 }
 
-macro void! pushback_using_seek(s)
+macro void? pushback_using_seek(s)
 {
 	s.seek(-1, CURSOR)!;
 }
 
-fn usz! copy_to(InStream in, OutStream dst, char[] buffer = {})
+fn usz? copy_to(InStream in, OutStream dst, char[] buffer = {})
 {
 	if (buffer.len) return copy_through_buffer(in, dst, buffer);
 	if (&in.write_to) return in.write_to(dst);
@@ -165,31 +165,31 @@ fn usz! copy_to(InStream in, OutStream dst, char[] buffer = {})
 	$endswitch
 }
 
-macro usz! copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
+macro usz? copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 {
 	usz total_copied;
 	while (true)
 	{
-		usz! len = in.read(buffer);
+		usz? len = in.read(buffer);
 		if (catch err = len)
 		{
-			if (err == IoError.EOF) return total_copied;
+			if (err == io::EOF) return total_copied;
 			return err?;
 		}
 		if (!len) return total_copied;
 		usz written = dst.write(buffer[:len])!;
 		total_copied += len;
-		if (written != len) return IoError.INCOMPLETE_WRITE?;
+		if (written != len) return INCOMPLETE_WRITE?;
 	}
 }
 
-const char[?] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
+const char[*] MAX_VARS @private = { [2] = 3, [4] = 5, [8] = 10 };
 
 <*
  @require @is_instream(stream)
  @require @typekind(x_ptr) == POINTER && $typeof(x_ptr).inner.kindof.is_int()
 *>
-macro usz! read_varint(stream, x_ptr)
+macro usz? read_varint(stream, x_ptr)
 {
 	var $Type = $typefrom($typeof(x_ptr).inner);
 	const MAX = MAX_VARS[$Type.sizeof];
@@ -198,10 +198,10 @@ macro usz! read_varint(stream, x_ptr)
 	usz n;
 	for (usz i = 0; i < MAX; i++)
 	{
-		char! c = stream.read_byte();
+		char? c = stream.read_byte();
 		if (catch err = c)
 		{
-			if (err == IoError.EOF) return IoError.UNEXPECTED_EOF?;
+			if (err == io::EOF) return io::UNEXPECTED_EOF?;
 			return err?;
 		}
 		n++;
@@ -218,13 +218,13 @@ macro usz! read_varint(stream, x_ptr)
 		x |= (c & 0x7F) << shift;
 		shift += 7;
 	}
-	return MathError.OVERFLOW?;
+	return math::OVERFLOW?;
 }
 <*
  @require @is_outstream(stream)
  @require @typekind(x).is_int()
 *>
-macro usz! write_varint(stream, x)
+macro usz? write_varint(stream, x)
 {
 	var $Type = $typeof(x);
 	const MAX = MAX_VARS[$Type.sizeof];
@@ -243,7 +243,7 @@ macro usz! write_varint(stream, x)
 <*
  @require @is_instream(stream)
 *>
-macro ushort! read_be_ushort(stream)
+macro ushort? read_be_ushort(stream)
 {
 	char hi_byte = stream.read_byte()!;
 	char lo_byte = stream.read_byte()!;
@@ -253,7 +253,7 @@ macro ushort! read_be_ushort(stream)
 <*
  @require @is_instream(stream)
 *>
-macro short! read_be_short(stream)
+macro short? read_be_short(stream)
 {
 	return read_be_ushort(stream);
 }
@@ -261,7 +261,7 @@ macro short! read_be_short(stream)
 <*
  @require @is_outstream(stream)
 *>
-macro void! write_be_short(stream, ushort s)
+macro void? write_be_short(stream, ushort s)
 {
 	stream.write_byte((char)(s >> 8))!;
 	stream.write_byte((char)s)!;
@@ -270,7 +270,7 @@ macro void! write_be_short(stream, ushort s)
 <*
  @require @is_instream(stream)
 *>
-macro uint! read_be_uint(stream)
+macro uint? read_be_uint(stream)
 {
 	uint val = stream.read_byte()! << 24;
 	val += stream.read_byte()! << 16;
@@ -281,7 +281,7 @@ macro uint! read_be_uint(stream)
 <*
  @require @is_instream(stream)
 *>
-macro int! read_be_int(stream)
+macro int? read_be_int(stream)
 {
 	return read_be_uint(stream);
 }
@@ -289,7 +289,7 @@ macro int! read_be_int(stream)
 <*
  @require @is_outstream(stream)
 *>
-macro void! write_be_int(stream, uint s)
+macro void? write_be_int(stream, uint s)
 {
 	stream.write_byte((char)(s >> 24))!;
 	stream.write_byte((char)(s >> 16))!;
@@ -300,7 +300,7 @@ macro void! write_be_int(stream, uint s)
 <*
  @require @is_instream(stream)
 *>
-macro ulong! read_be_ulong(stream)
+macro ulong? read_be_ulong(stream)
 {
 	ulong val = (ulong)stream.read_byte()! << 56;
 	val += (ulong)stream.read_byte()! << 48;
@@ -315,7 +315,7 @@ macro ulong! read_be_ulong(stream)
 <*
  @require @is_instream(stream)
 *>
-macro long! read_be_long(stream)
+macro long? read_be_long(stream)
 {
 	return read_be_ulong(stream);
 }
@@ -323,7 +323,7 @@ macro long! read_be_long(stream)
 <*
  @require @is_outstream(stream)
 *>
-macro void! write_be_long(stream, ulong s)
+macro void? write_be_long(stream, ulong s)
 {
 	stream.write_byte((char)(s >> 56))!;
 	stream.write_byte((char)(s >> 48))!;
@@ -338,7 +338,7 @@ macro void! write_be_long(stream, ulong s)
 <*
  @require @is_instream(stream)
 *>
-macro uint128! read_be_uint128(stream)
+macro uint128? read_be_uint128(stream)
 {
 	uint128 val = (uint128)stream.read_byte()! << 120;
 	val += (uint128)stream.read_byte()! << 112;
@@ -361,7 +361,7 @@ macro uint128! read_be_uint128(stream)
 <*
  @require @is_instream(stream)
 *>
-macro int128! read_be_int128(stream)
+macro int128? read_be_int128(stream)
 {
 	return read_be_uint128(stream);
 }
@@ -369,7 +369,7 @@ macro int128! read_be_int128(stream)
 <*
  @require @is_outstream(stream)
 *>
-macro void! write_be_int128(stream, uint128 s)
+macro void? write_be_int128(stream, uint128 s)
 {
 	stream.write_byte((char)(s >> 120))!;
 	stream.write_byte((char)(s >> 112))!;
@@ -393,7 +393,7 @@ macro void! write_be_int128(stream, uint128 s)
  @require @is_outstream(stream)
  @require data.len < 256 : "Data exceeded 255"
 *>
-macro usz! write_tiny_bytearray(stream, char[] data)
+macro usz? write_tiny_bytearray(stream, char[] data)
 {
 	stream.write_byte((char)data.len)!;
 	return stream.write(data) + 1;
@@ -402,7 +402,7 @@ macro usz! write_tiny_bytearray(stream, char[] data)
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_tiny_bytearray(stream, Allocator allocator)
+macro char[]? read_tiny_bytearray(stream, Allocator allocator)
 {
 	int len = stream.read_byte()!;
 	if (!len) return {};
@@ -415,7 +415,7 @@ macro char[]! read_tiny_bytearray(stream, Allocator allocator)
  @require @is_outstream(stream)
  @require data.len < 0x1000 : "Data exceeded 65535"
 *>
-macro usz! write_short_bytearray(stream, char[] data)
+macro usz? write_short_bytearray(stream, char[] data)
 {
 	io::write_be_short(stream, (ushort)data.len)!;
 	return stream.write(data) + 2;
@@ -424,7 +424,7 @@ macro usz! write_short_bytearray(stream, char[] data)
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_short_bytearray(stream, Allocator allocator)
+macro char[]? read_short_bytearray(stream, Allocator allocator)
 {
 	int len = io::read_be_ushort(stream)!;
 	if (!len) return {};

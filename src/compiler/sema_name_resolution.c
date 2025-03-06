@@ -95,7 +95,7 @@ static bool add_members_to_decl_stack(SemaContext *context, Decl *decl, FindMemb
 		if (!type_is_user_defined(type)) break;
 		decl = type->decl;
 	}
-	if (decl_is_enum_kind(decl))
+	if (decl->decl_kind == DECL_ENUM)
 	{
 		FOREACH(Decl *, member, decl->enums.parameters) sema_decl_stack_push(member);
 	}
@@ -922,7 +922,6 @@ bool sema_resolve_type_decl(SemaContext *context, Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 			return sema_analyse_decl(context, type->decl);
 		case TYPE_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:

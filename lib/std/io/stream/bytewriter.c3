@@ -36,7 +36,7 @@ fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)
 	return self;
 }
 
-fn void! ByteWriter.destroy(&self) @dynamic
+fn void? ByteWriter.destroy(&self) @dynamic
 {
 	if (!self.allocator) return;
 	if (void* ptr = self.bytes.ptr) allocator::free(self.allocator, ptr);
@@ -48,17 +48,17 @@ fn String ByteWriter.str_view(&self) @inline
 	return (String)self.bytes[:self.index];
 }
 
-fn void! ByteWriter.ensure_capacity(&self, usz len) @inline
+fn void? ByteWriter.ensure_capacity(&self, usz len) @inline
 {
 	if (self.bytes.len > len) return;
-	if (!self.allocator) return IoError.OUT_OF_SPACE?;
+	if (!self.allocator) return OUT_OF_SPACE?;
 	if (len < 16) len = 16;
 	usz new_capacity = math::next_power_of_2(len);
 	char* new_ptr = allocator::realloc_try(self.allocator, self.bytes.ptr, new_capacity)!;
 	self.bytes = new_ptr[:new_capacity];
 }
 
-fn usz! ByteWriter.write(&self, char[] bytes) @dynamic
+fn usz? ByteWriter.write(&self, char[] bytes) @dynamic
 {
 	self.ensure_capacity(self.index + bytes.len)!;
 	mem::copy(&self.bytes[self.index], bytes.ptr, bytes.len);
@@ -66,7 +66,7 @@ fn usz! ByteWriter.write(&self, char[] bytes) @dynamic
 	return bytes.len;
 }
 
-fn void! ByteWriter.write_byte(&self, char c) @dynamic
+fn void? ByteWriter.write_byte(&self, char c) @dynamic
 {
 	self.ensure_capacity(self.index + 1)!;
 	self.bytes[self.index++] = c;
@@ -76,7 +76,7 @@ fn void! ByteWriter.write_byte(&self, char c) @dynamic
  @param [&inout] self
  @param reader
 *>
-fn usz! ByteWriter.read_from(&self, InStream reader) @dynamic
+fn usz? ByteWriter.read_from(&self, InStream reader) @dynamic
 {
 	usz start_index = self.index;
 	if (&reader.available)

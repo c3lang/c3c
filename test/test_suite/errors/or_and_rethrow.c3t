@@ -2,16 +2,16 @@
 module foo;
 import std::io;
 
-fault Foo { ABC }
+fault ABC;
 
 fn void blurb() { io::printn("Blurb");}
 
-macro int! tester()
+macro int? tester()
 {
 	defer blurb();
-	return Foo.ABC?;
+	return ABC?;
 }
-fn void! test(int x)
+fn void? test(int x)
 {
 	io::printfn("test(%d)", x);
 	if (x || (tester()!)) io::printn("Ok1");
@@ -20,7 +20,7 @@ fn void! test(int x)
 	io::printn("Test ok");
 }
 
-fn void! test2(int x)
+fn void? test2(int x)
 {
 	io::printfn("test2(%d)", x);
 	if (x && (tester()!)) io::printn("Ok1");
@@ -67,7 +67,7 @@ entry:
   br i1 %i2b, label %or.phi, label %or.rhs
 
 or.rhs:                                           ; preds = %entry
-  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var, align 8
+  store i64 ptrtoint (ptr @foo.ABC to i64), ptr %error_var, align 8
   br label %opt_block_cleanup
 
 opt_block_cleanup:                                ; preds = %or.rhs
@@ -197,7 +197,7 @@ noerr_block39:                                    ; preds = %after_check37
   br label %voiderr41
 
 voiderr41:                                        ; preds = %noerr_block39, %guard_block38, %guard_block32, %guard_block26
-  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var42, align 8
+  store i64 ptrtoint (ptr @foo.ABC to i64), ptr %error_var42, align 8
   br label %opt_block_cleanup44
 
 opt_block_cleanup44:                              ; preds = %voiderr41
@@ -233,7 +233,7 @@ entry:
   br i1 %i2b, label %and.rhs, label %and.phi
 
 and.rhs:                                          ; preds = %entry
-  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var, align 8
+  store i64 ptrtoint (ptr @foo.ABC to i64), ptr %error_var, align 8
   br label %opt_block_cleanup
 
 opt_block_cleanup:                                ; preds = %and.rhs
@@ -304,7 +304,7 @@ noerr_block17:                                    ; preds = %after_check15
   br label %voiderr
 
 voiderr:                                          ; preds = %noerr_block17, %guard_block16, %guard_block10, %guard_block5
-  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var18, align 8
+  store i64 ptrtoint (ptr @foo.ABC to i64), ptr %error_var18, align 8
   br label %opt_block_cleanup20
 
 opt_block_cleanup20:                              ; preds = %voiderr

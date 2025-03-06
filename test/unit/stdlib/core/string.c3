@@ -155,7 +155,7 @@ fn void test_split_to_buffer()
 	assert(strings[3] == "c");
 	assert(strings[4] == "");
 	String[4] c;
-	assert(@catch(test.split_to_buffer("|", &c)) == SplitResult.BUFFER_EXCEEDED);
+	assert(@catch(test.split_to_buffer("|", &c)) == string::BUFFER_EXCEEDED);
 	strings = test.split(mem, "|", 2);
 	assert(strings.len == 2);
 	assert(strings[0] == "abc");

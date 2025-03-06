@@ -3,7 +3,7 @@ module test;
 macro foo()
 {
 	var c = "hello" +++ " world";
-	String[?] a = (String[1]) { "hello" } +++ (String[1]) { " world" };
+	String[*] a = (String[1]) { "hello" } +++ (String[1]) { " world" };
 	int[2] $a = { 1, 2 };
 	$a = $a +++ 100;
 	int z = $typeof($a).len;

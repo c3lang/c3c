@@ -2,31 +2,31 @@
 module test;
 import std::io;
 
-fault Foo { ABC, DEF }
+fault ABC, DEF;
 
 fn void main()
 {
 	io::printfn("1:%d", get_a(1) ?? get_b(4) ?? -1);
 	io::printfn("2:%d", get_a(2) ?? get_b(4) ?? -1);
 	io::printfn("3:%d", get_a(1) ?? get_b(5) ?? -1);
-	io::printfn("4:%s", @catch(Foo.ABC? ?? Foo.DEF?));
-	io::printfn("5:%s", Foo.ABC? ?? 3);
-	io::printfn("6:%s", @catch((3 > 2 ? Foo.ABC? : 4) ?? Foo.DEF?));
-	io::printfn("7:%s", @catch((3 < 2 ? Foo.ABC? : 4) ?? Foo.DEF?));
-	long x = Foo.DEF? ?? 3;
+	io::printfn("4:%s", @catch(ABC? ?? DEF?));
+	io::printfn("5:%s", ABC? ?? 3);
+	io::printfn("6:%s", @catch((3 > 2 ? ABC? : 4) ?? DEF?));
+	io::printfn("7:%s", @catch((3 < 2 ? ABC? : 4) ?? DEF?));
+	long x = DEF? ?? 3;
 	io::printfn("8:%s", x);
-	int! xy = Foo.ABC? ?? Foo.DEF?;
+	int? xy = ABC? ?? DEF?;
 }
 
-fn int! get_a(int x)
+fn int? get_a(int x)
 {
-	if (x % 2) return Foo.ABC?;
+	if (x % 2) return ABC?;
 	return x * 2;
 }
 
-fn int! get_b(int x)
+fn int? get_b(int x)
 {
-	if (x % 2 == 0) return Foo.ABC?;
+	if (x % 2 == 0) return ABC?;
 	return x * 2;
 }
 
@@ -134,7 +134,7 @@ phi_block21:                                      ; preds = %phi_block19, %after
   %15 = insertvalue %any undef, ptr %taddr23, 0
   %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %any %16, ptr %varargslots10, align 16
-  %17 = call i64 @std.io.printfn(ptr %retparam24, ptr @.str.2, i64 4, ptr %varargslots10, i64 1)
+  %17 = call i64 @std.io.printfn(ptr %retparam24, ptr @.str.1, i64 4, ptr %varargslots10, i64 1)
   %18 = call i64 @test.get_a(ptr %retparam28, i32 1)
   %not_err29 = icmp eq i64 %18, 0
   %19 = call i1 @llvm.expect.i1(i1 %not_err29, i1 true)
@@ -167,11 +167,11 @@ phi_block38:                                      ; preds = %phi_block36, %after
   %24 = insertvalue %any undef, ptr %taddr40, 0
   %25 = insertvalue %any %24, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %any %25, ptr %varargslots27, align 16
-  %26 = call i64 @std.io.printfn(ptr %retparam41, ptr @.str.3, i64 4, ptr %varargslots27, i64 1)
+  %26 = call i64 @std.io.printfn(ptr %retparam41, ptr @.str.2, i64 4, ptr %varargslots27, i64 1)
   br label %testblock
 
 testblock:                                        ; preds = %phi_block38
-  store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %f, align 8
+  store i64 ptrtoint (ptr @test.DEF to i64), ptr %f, align 8
   br label %end_block
 
 end_block:                                        ; preds = %testblock
@@ -192,16 +192,16 @@ expr_block.exit:                                  ; preds = %if.exit, %if.then
   %29 = insertvalue %any undef, ptr %blockret, 0
   %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
   store %any %30, ptr %varargslots44, align 16
-  %31 = call i64 @std.io.printfn(ptr %retparam45, ptr @.str.4, i64 4, ptr %varargslots44, i64 1)
+  %31 = call i64 @std.io.printfn(ptr %retparam45, ptr @.str.3, i64 4, ptr %varargslots44, i64 1)
   store i32 3, ptr %taddr49, align 4
   %32 = insertvalue %any undef, ptr %taddr49, 0
   %33 = insertvalue %any %32, i64 ptrtoint (ptr @"$ct.int" to i64), 1
   store %any %33, ptr %varargslots48, align 16
-  %34 = call i64 @std.io.printfn(ptr %retparam50, ptr @.str.5, i64 4, ptr %varargslots48, i64 1)
+  %34 = call i64 @std.io.printfn(ptr %retparam50, ptr @.str.4, i64 4, ptr %varargslots48, i64 1)
   br label %testblock56
 
 testblock56:                                      ; preds = %expr_block.exit
-  store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %f55, align 8
+  store i64 ptrtoint (ptr @test.DEF to i64), ptr %f55, align 8
   br label %end_block57
 
 end_block57:                                      ; preds = %testblock56
@@ -222,7 +222,7 @@ expr_block.exit61:                                ; preds = %if.exit60, %if.then
   %37 = insertvalue %any undef, ptr %blockret54, 0
   %38 = insertvalue %any %37, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
   store %any %38, ptr %varargslots53, align 16
-  %39 = call i64 @std.io.printfn(ptr %retparam62, ptr @.str.6, i64 4, ptr %varargslots53, i64 1)
+  %39 = call i64 @std.io.printfn(ptr %retparam62, ptr @.str.5, i64 4, ptr %varargslots53, i64 1)
   br label %testblock68
 
 testblock68:                                      ; preds = %expr_block.exit61
@@ -250,13 +250,13 @@ expr_block.exit75:                                ; preds = %if.exit74, %if.then
   %42 = insertvalue %any undef, ptr %blockret66, 0
   %43 = insertvalue %any %42, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
   store %any %43, ptr %varargslots65, align 16
-  %44 = call i64 @std.io.printfn(ptr %retparam76, ptr @.str.7, i64 4, ptr %varargslots65, i64 1)
+  %44 = call i64 @std.io.printfn(ptr %retparam76, ptr @.str.6, i64 4, ptr %varargslots65, i64 1)
   store i64 3, ptr %x, align 8
   %45 = insertvalue %any undef, ptr %x, 0
   %46 = insertvalue %any %45, i64 ptrtoint (ptr @"$ct.long" to i64), 1
   store %any %46, ptr %varargslots79, align 16
-  %47 = call i64 @std.io.printfn(ptr %retparam80, ptr @.str.8, i64 4, ptr %varargslots79, i64 1)
-  store i64 ptrtoint (ptr @"test.Foo$DEF" to i64), ptr %xy.f, align 8
+  %47 = call i64 @std.io.printfn(ptr %retparam80, ptr @.str.7, i64 4, ptr %varargslots79, i64 1)
+  store i64 ptrtoint (ptr @test.DEF to i64), ptr %xy.f, align 8
   ret void
 }
 
@@ -269,7 +269,7 @@ entry:
   br i1 %i2b, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @"test.Foo$ABC" to i64)
+  ret i64 ptrtoint (ptr @test.ABC to i64)
 
 if.exit:                                          ; preds = %entry
   %mul = mul i32 %1, 2
@@ -286,7 +286,7 @@ entry:
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @"test.Foo$ABC" to i64)
+  ret i64 ptrtoint (ptr @test.ABC to i64)
 
 if.exit:                                          ; preds = %entry
   %mul = mul i32 %1, 2

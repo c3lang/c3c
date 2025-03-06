@@ -135,13 +135,10 @@ fn void test_missing_no_cases(Baz x)
     }
 }
 
-fault MathError
-{
-    DIVISION_BY_ZERO
-}
+fault DIVISION_BY_ZERO;
 
 // Rethrowing an error uses "!!" suffix
-fn void! testMayError()
+fn void? testMayError()
 {
 }
 
@@ -150,7 +147,7 @@ fn void main()
     // Handle the error
     switch (catch err = testMayError()) // #error: Catch unwrapping is only allowed
     {
-        case MathError.DIVISION_BY_ZERO:
+        case DIVISION_BY_ZERO:
             libc::printf("Division by zero\n");
             return;
         default:

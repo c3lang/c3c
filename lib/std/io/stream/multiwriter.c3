@@ -40,18 +40,18 @@ fn void MultiWriter.free(&self)
 	*self = {};
 }
 
-fn usz! MultiWriter.write(&self, char[] bytes) @dynamic
+fn usz? MultiWriter.write(&self, char[] bytes) @dynamic
 {
 	usz n;
 	foreach (w : self.writers) 
 	{
 		n = w.write(bytes)!;
-		if (n != bytes.len) return IoError.INCOMPLETE_WRITE?;
+		if (n != bytes.len) return INCOMPLETE_WRITE?;
 	}
 	return bytes.len;
 }
 
-fn void! MultiWriter.write_byte(&self, char c) @dynamic
+fn void? MultiWriter.write_byte(&self, char c) @dynamic
 {
 	char[1] data;
 	data[0] = c;

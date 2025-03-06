@@ -215,7 +215,7 @@ static inline bool sema_constant_fold_ops(Expr *expr)
 		case CONST_FLOAT:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_STRING:
 		case CONST_POINTER:
 		case CONST_TYPEID:
@@ -799,14 +799,14 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_MACRO:
 			SEMA_ERROR(expr, "Expected a macro followed by (...).");
 			return expr_poison(expr);
-		case DECL_FAULTVALUE:
-			SEMA_ERROR(expr, "Did you forget a '!' after '%s'?", decl->name);
-			return expr_poison(expr);
 		case DECL_ENUM_CONSTANT:
 			// This can't happen, inferred identifiers are folded to consts they are never identifiers.
 			UNREACHABLE;
 		case DECL_VAR:
 			break;
+		case DECL_FAULT_NEW:
+			expr_rewrite_const_fault(expr, decl);
+			return true;
 		case DECL_DISTINCT:
 		case DECL_TYPEDEF:
 		case DECL_DECLARRAY:
@@ -814,6 +814,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
+		case DECL_FAULTS:
 		case DECL_ERASED:
 		case DECL_IMPORT:
 		case DECL_ATTRIBUTE:
@@ -840,9 +841,6 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			return expr_poison(expr);
 		case DECL_ENUM:
 			SEMA_ERROR(expr, "Expected enum name followed by '.' and an enum value.");
-			return expr_poison(expr);
-		case DECL_FAULT:
-			SEMA_ERROR(expr, "Expected fault name followed by '.' and a fault value.");
 			return expr_poison(expr);
 	}
 	switch (decl->var.kind)
@@ -995,7 +993,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 	expr->type = decl->type;
 
 	expr->expr_kind = EXPR_CONST;
-	expr->const_expr.const_kind = enum_constant->decl_kind == DECL_ENUM_CONSTANT ? CONST_ENUM : CONST_ERR;
+	expr->const_expr.const_kind = CONST_ENUM;
 	expr->const_expr.enum_err_val = enum_constant;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
@@ -1004,7 +1002,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 
 static inline bool sema_identifier_find_possible_inferred(SemaContext *context, Type *to, Expr *expr)
 {
-	if (to->canonical->type_kind != TYPE_ENUM && to->canonical->type_kind != TYPE_FAULTTYPE) return false;
+	if (to->canonical->type_kind != TYPE_ENUM) return false;
 	Decl *parent_decl = to->canonical->decl;
 	if (!decl_ok(parent_decl))
 	{
@@ -1014,7 +1012,6 @@ static inline bool sema_identifier_find_possible_inferred(SemaContext *context, 
 	switch (parent_decl->decl_kind)
 	{
 		case DECL_ENUM:
-		case DECL_FAULT:
 			return sema_expr_analyse_enum_constant(context, expr, expr->unresolved_ident_expr.ident, parent_decl);
 		case DECL_UNION:
 		case DECL_STRUCT:
@@ -1085,6 +1082,9 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				case DECL_DEFINE:
 					message = "Aliases from other modules must be prefixed with the module name.";
 					break;
+				case DECL_FAULT_NEW:
+					message = "Faults from other modules must be prefixed with the module name.";
+					break;
 				default:
 					UNREACHABLE
 			}
@@ -1127,6 +1127,11 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 			default:
 				break;
 		}
+	}
+	else if (decl->decl_kind == DECL_FAULT_NEW)
+	{
+		expr_rewrite_const_fault(expr, decl);
+		return true;
 	}
 	expr_resolve_ident(expr, decl);
 	return true;
@@ -2597,12 +2602,11 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr = (ExprConst) {
 				.enum_err_val = decl->enums.values[to_convert.i.low],
-				.const_kind = decl->decl_kind == DECL_FAULT ? CONST_ERR : CONST_ENUM
+				.const_kind = CONST_ENUM
 		};
 		expr->type = decl->type;
 		return true;
 	}
-	if (decl->decl_kind == DECL_FAULT) RETURN_SEMA_ERROR(key, "For faults you can only use 'from_ordinal' with constant arguments.", decl->name);
 
 	expr->expr_kind = EXPR_ENUM_FROM_ORD;
 	expr->inner_expr = key;
@@ -3683,7 +3687,7 @@ static inline bool sema_expr_analyse_slice(SemaContext *context, Expr *expr, Che
 			case CONST_INTEGER:
 			case CONST_BOOL:
 			case CONST_ENUM:
-			case CONST_ERR:
+			case CONST_FAULT:
 			case CONST_TYPEID:
 			case CONST_REF:
 			case CONST_MEMBER:
@@ -3794,7 +3798,7 @@ static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr 
 	ArraySize elements = vec_size(values);
 	Expr **element_values = elements > 0 ? VECNEW(Expr*, elements) : NULL;
 	Type *kind = enum_decl->type;
-	ConstKind const_kind = enum_decl->decl_kind == DECL_FAULT ? CONST_ERR : CONST_ENUM;
+	ConstKind const_kind = CONST_ENUM;
 	for (ArraySize i = 0; i < elements; i++)
 	{
 		Decl *decl = values[i];
@@ -3932,20 +3936,6 @@ static inline bool sema_expr_analyse_type_access(SemaContext *context, Expr *exp
 					if (missing_ref) goto MISSING_REF;
 					if (!decl_ok(decl)) return false;
 					SEMA_ERROR(expr, "'%s' has no enumeration value '%s'.", decl->name, name);
-					return false;
-				}
-				return true;
-			}
-			break;
-		case DECL_FAULT:
-			unit_register_external_symbol(context, decl);
-			if (is_const)
-			{
-				if (!sema_expr_analyse_enum_constant(context, expr, name, decl))
-				{
-					if (missing_ref) goto MISSING_REF;
-					if (decl_poison(decl)) return false;
-					SEMA_ERROR(expr, "'%s' has no error value '%s'.", decl->name, name);
 					return false;
 				}
 				return true;
@@ -4154,7 +4144,6 @@ static inline bool sema_create_const_len(Expr *expr, Type *type)
 			len = type->array.len;
 			break;
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 			len = vec_size(type->decl->enums.values);
 			break;
 		case TYPE_INFERRED_ARRAY:
@@ -4714,20 +4703,18 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 				case TYPE_ARRAY:
 				case TYPE_VECTOR:
 				case TYPE_ENUM:
-				case TYPE_FAULTTYPE:
 					return true;
 				default:
 					return false;
 			}
 		case TYPE_PROPERTY_FROM_ORDINAL:
-			return type_kind_is_enumlike(type->canonical->type_kind);
+			return type->canonical->type_kind == TYPE_ENUM;
 		case TYPE_PROPERTY_MIN:
 		case TYPE_PROPERTY_MAX:
 			return type_is_float(type) || type_is_integer(type);
 		case TYPE_PROPERTY_ELEMENTS:
 		case TYPE_PROPERTY_NAMES:
 		case TYPE_PROPERTY_VALUES:
-			return type_kind_is_enumlike(type->type_kind);
 		case TYPE_PROPERTY_ASSOCIATED:
 			return type->type_kind == TYPE_ENUM;
 		case TYPE_PROPERTY_MEMBERSOF:
@@ -4807,17 +4794,17 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_MAX:
 			return sema_create_const_max(expr, type, flat);
 		case TYPE_PROPERTY_NAMES:
-			ASSERT_SPAN(expr, type_kind_is_enumlike(flat->type_kind));
+			ASSERT_SPAN(expr, flat->type_kind == TYPE_ENUM);
 			return sema_expr_replace_with_enum_name_array(context, expr, flat->decl);
 		case TYPE_PROPERTY_ASSOCIATED:
 			return sema_create_const_associated(context, expr, flat);
 		case TYPE_PROPERTY_ELEMENTS:
-			ASSERT_SPAN(expr, type_kind_is_enumlike(flat->type_kind));
+			ASSERT_SPAN(expr, flat->type_kind == TYPE_ENUM);
 			if (!sema_analyse_decl(context, type->decl)) return false;
 			expr_rewrite_const_int(expr, type_isz, vec_size(flat->decl->enums.values));
 			return true;
 		case TYPE_PROPERTY_VALUES:
-			ASSERT_SPAN(expr, type_kind_is_enumlike(flat->type_kind));
+			ASSERT_SPAN(expr, flat->type_kind == TYPE_ENUM);
 			return sema_expr_replace_with_enum_array(context, expr, flat->decl);
 		case TYPE_PROPERTY_NAN:
 			ASSERT_SPAN(expr, type_is_float(flat));
@@ -5187,32 +5174,11 @@ CHECK_DEEPER:
 			return true;
 		}
 	}
-	if (kw == kw_ordinal)
+	if (kw == kw_ordinal && flat_type->type_kind == TYPE_ENUM)
 	{
-		if (flat_type->type_kind == TYPE_ENUM)
-		{
-			sema_expr_convert_enum_to_int(current_parent);
-			expr_replace(expr, current_parent);
-			return true;
-		}
-		if (flat_type->type_kind == TYPE_FAULTTYPE)
-		{
-			ASSERT_SPAN(expr, flat_type->decl->resolve_status == RESOLVE_DONE);
-
-			if (sema_cast_const(current_parent))
-			{
-				if (current_parent->const_expr.const_kind == CONST_POINTER)
-				{
-					ASSERT_SPAN(expr, !current_parent->const_expr.ptr);
-					expr_rewrite_const_int(expr, type_usz, 0);
-					return true;
-				}
-				expr_rewrite_const_int(expr, type_usz, current_parent->const_expr.enum_err_val->enum_constant.ordinal + 1);
-				return true;
-			}
-			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTORDINAL, type_usz);
-			return true;
-		}
+		sema_expr_convert_enum_to_int(current_parent);
+		expr_replace(expr, current_parent);
+		return true;
 	}
 	if (kw == kw_nameof)
 	{
@@ -5226,11 +5192,11 @@ CHECK_DEEPER:
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_ENUMNAME, type_string);
 			return true;
 		}
-		if (type_is_fault_raw(flat_type))
+		if (flat_type == type_anyfault)
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_const_string(expr, current_parent->const_expr.enum_err_val->name);
+				expr_rewrite_const_string(expr, current_parent->const_expr.fault->name);
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_FAULTNAME, type_string);
@@ -5274,7 +5240,7 @@ CHECK_DEEPER:
 
 	Decl *member = sema_decl_stack_find_decl_member(context, decl, kw, METHODS_AND_FIELDS);
 	if (!decl_ok(member)) return false;
-	if (member && decl_is_enum_kind(decl) && member->decl_kind == DECL_VAR && sema_cast_const(parent))
+	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
 		ASSERT_SPAN(expr, parent->const_expr.const_kind == CONST_ENUM);
@@ -5806,7 +5772,7 @@ static bool sema_expr_analyse_ct_subscript_set_value(SemaContext *context, Expr 
 		case CONST_INTEGER:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_REF:
@@ -8068,7 +8034,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 
 	Type *type = inner->type->canonical;
 
-	if (!type_is_fault_raw(type))
+	if (type != type_anyfault)
 	{
 		if (failed_ref) goto ON_FAILED;
 		RETURN_SEMA_ERROR(inner, "You cannot use the '?' operator on expressions of type %s",
@@ -8540,13 +8506,14 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_LABEL:
 			case DECL_MACRO:
 			case DECL_DEFINE:
+			case DECL_FAULTS:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
+			case DECL_FAULT_NEW:
+				goto RETURN_CT;
 			case DECL_BITSTRUCT:
 			case DECL_DISTINCT:
 			case DECL_ENUM:
 			case DECL_ENUM_CONSTANT:
-			case DECL_FAULT:
-			case DECL_FAULTVALUE:
 			case DECL_FNTYPE:
 			case DECL_FUNC:
 			case DECL_INTERFACE:
@@ -8823,18 +8790,11 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		if (!compiler.context.io_error_file_not_found)
 		{
 			Module *module = global_context_find_module(kw_std__io);
-			Decl *io_error = module ? module_find_symbol(module, kw_IoError) : NULL;
+			Decl *io_error = module ? module_find_symbol(module, kw_FILE_NOT_FOUND) : NULL;
 			Decl *fault = poisoned_decl;
-			if (io_error && io_error->decl_kind == DECL_FAULT)
+			if (io_error && io_error->decl_kind == DECL_FAULT_NEW)
 			{
-				FOREACH(Decl *, f, io_error->enums.values)
-				{
-					if (f->name == kw_FILE_NOT_FOUND)
-					{
-						fault = f;
-						break;
-					}
-				}
+				fault = io_error;
 			}
 			compiler.context.io_error_file_not_found = fault;
 		}
@@ -8845,9 +8805,9 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 		expr->expr_kind = EXPR_OPTIONAL;
 		expr->inner_expr = filename;
 		filename->expr_kind = EXPR_CONST;
-		filename->const_expr.const_kind = CONST_ERR;
+		filename->const_expr.const_kind = CONST_FAULT;
 		expr->type = type_wildcard_optional;
-		filename->const_expr.enum_err_val = compiler.context.io_error_file_not_found;
+		filename->const_expr.fault = compiler.context.io_error_file_not_found;
 		filename->resolve_status = RESOLVE_DONE;
 		expr->resolve_status = RESOLVE_DONE;
 		return true;
@@ -9533,7 +9493,7 @@ static inline bool sema_expr_analyse_compound_literal(SemaContext *context, Expr
 	Type *type = type_info->type;
 	if (type_is_optional(type))
 	{
-		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '!'.");
+		RETURN_SEMA_ERROR(type_info, "The type here should always be written as a plain type and not an optional, please remove the '?'.");
 	}
 	if (!sema_resolve_type_structure(context, type)) return false;
 	if (!sema_expr_analyse_initializer_list(context, type, expr->expr_compound_literal.initializer)) return false;
@@ -9772,10 +9732,11 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	Type *to_canonical = to ? to->canonical : NULL;
 	Type *rhs_type = expr->type;
 	Type *rhs_type_canonical = rhs_type->canonical;
-	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical->type_kind == TYPE_FAULTTYPE)
+	// Let's have a better error on `return io::FILE_NOT_FOUND;` when the return type is not anyfault.
+	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical == type_anyfault)
 	{
 		Type *flat = type_flatten(to);
-		if (!type_is_fault_raw(flat) && sema_cast_const(expr))
+		if (flat != type_anyfault && sema_cast_const(expr))
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			print_error_after(expr->span, "You need to add a trailing '?' here to make this an optional.");

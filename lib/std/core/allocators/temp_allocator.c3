@@ -4,7 +4,7 @@ import std::io, std::math;
 struct TempAllocatorChunk @local
 {
 	usz size;
-	char[?] data;
+	char[*] data;
 }
 
 struct TempAllocator (Allocator)
@@ -13,7 +13,7 @@ struct TempAllocator (Allocator)
 	TempAllocatorPage* last_page;
 	usz used;
 	usz capacity;
-	char[?] data;
+	char[*] data;
 }
 
 const usz PAGE_IS_ALIGNED @private = (usz)isz.max + 1u;
@@ -26,7 +26,7 @@ struct TempAllocatorPage
 	usz mark;
 	usz size;
 	usz ident;
-	char[?] data;
+	char[*] data;
 }
 
 macro usz TempAllocatorPage.pagesize(&self) => self.size & ~PAGE_IS_ALIGNED;
@@ -35,7 +35,7 @@ macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED ==
 <*
  @require size >= 16
 *>
-fn TempAllocator*! new_temp_allocator(usz size, Allocator allocator)
+fn TempAllocator*? new_temp_allocator(usz size, Allocator allocator)
 {
 	TempAllocator* temp = allocator::alloc_with_padding(allocator, TempAllocator, size)!;
 	temp.last_page = null;
@@ -90,13 +90,13 @@ fn void TempAllocator.reset(&self, usz mark) @dynamic
 	self.used = mark;
 }
 
-fn void! TempAllocator._free_page(&self, TempAllocatorPage* page) @inline @local
+fn void? TempAllocator._free_page(&self, TempAllocatorPage* page) @inline @local
 {
 	void* mem = page.start;
 	return self.backing_allocator.release(mem, page.is_aligned());
 }
 
-fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, usz alignment) @inline @local
+fn void*? TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, usz alignment) @inline @local
 {
 	// Then the actual start pointer:
 	void* real_pointer = page.start;
@@ -117,7 +117,7 @@ fn void*! TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, 
 	return data;
 }
 
-fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
+fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @dynamic
 {
 	TempAllocatorChunk *chunk = pointer - TempAllocatorChunk.sizeof;
 	if (chunk.size == (usz)-1)
@@ -139,7 +139,7 @@ fn void*! TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
  @require !alignment || math::is_power_of_2(alignment)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
-fn void*! TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	alignment = alignment_for_allocation(alignment);
 	void* start_mem = &self.data;
@@ -210,7 +210,7 @@ fn void*! TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 	return &page.data[0];
 }
 
-fn void! TempAllocator.print_pages(&self, File* f)
+fn void? TempAllocator.print_pages(&self, File* f)
 {
 	TempAllocatorPage *last_page = self.last_page;
 	if (!last_page)

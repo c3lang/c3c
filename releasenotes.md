@@ -24,6 +24,9 @@
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
 - Change `@return!` syntax to require ":" after faults.
 - Remove `if (catch foo) { case ... }` syntax.
+- Remove `[?]` syntax.
+- Change `int!` to `int?` syntax.
+- New `fault` declarations.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

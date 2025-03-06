@@ -49,14 +49,14 @@ fn String encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Ba
 	return encode_buffer(src, dst, padding, alphabet);
 }
 
-fn char[]! decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, decode_len(src.len, padding))!;
 	return decode_buffer(src, dst, padding, alphabet);
 }
 
 fn String tencode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
-fn char[]! tdecode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
+fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
 
 
 <*
@@ -79,19 +79,19 @@ fn usz encode_len(usz n, char padding)
  @param padding : "The padding character or 0 if none"
  @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once decoded."
- @return! DecodingFailure.INVALID_PADDING
+ @return! encoding::INVALID_PADDING
 *>
-fn usz! decode_len(usz n, char padding)
+fn usz? decode_len(usz n, char padding)
 {
 	usz dn = n / 4 * 3;
 	usz trailing = n % 4;
 	if (padding)
 	{
-		if (trailing != 0) return DecodingFailure.INVALID_PADDING?;
+		if (trailing != 0) return encoding::INVALID_PADDING?;
 		// source size is multiple of 4
 		return dn;
 	}
-	if (trailing == 1) return DecodingFailure.INVALID_PADDING?;
+	if (trailing == 1) return encoding::INVALID_PADDING?;
 	return dn + trailing * 3 / 4;
 }
 
@@ -163,9 +163,9 @@ fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base
  @require (decode_len(src.len, padding) ?? 0) <= dst.len : "Destination buffer too small"
  @require padding < 0xFF : "Invalid padding character"
  @return "The decoded data."
- @return! DecodingFailure
+ @return! encoding::INVALID_CHARACTER, encoding::INVALID_PADDING
 *>
-fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	if (src.len == 0) return dst[:0];
 	usz dn = decode_len(src.len, padding)!;
@@ -196,7 +196,7 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 			case c1:
 			case c2:
 			case c3:
-				return DecodingFailure.INVALID_CHARACTER?;
+				return encoding::INVALID_CHARACTER?;
 		}
 		uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6 | (uint)c3;
 		dst[0] = (char)(group >> 16);
@@ -211,7 +211,7 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 	src = src[^trailing..];
 	char c0 = alphabet.reverse[src[0]];
 	char c1 = alphabet.reverse[src[1]];
-	if (c0 == 0xFF || c1 == 0xFF) return DecodingFailure.INVALID_PADDING?;
+	if (c0 == 0xFF || c1 == 0xFF) return encoding::INVALID_PADDING?;
 	if (!padding)
 	{
 		switch (src.len)
@@ -221,7 +221,7 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 				dst[0] = (char)(group >> 16);
 			case 3:
 				char c2 = alphabet.reverse[src[2]];
-				if (c2 == 0xFF) return DecodingFailure.INVALID_CHARACTER?;
+				if (c2 == 0xFF) return encoding::INVALID_CHARACTER?;
 				uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6;
 				dst[0] = (char)(group >> 16);
 				dst[1] = (char)(group >> 8);
@@ -235,13 +235,13 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 		switch (padding)
 		{
 			case src[2]:
-				if (src[3] != padding) return DecodingFailure.INVALID_PADDING?;
+				if (src[3] != padding) return encoding::INVALID_PADDING?;
 				uint group = (uint)c0 << 18 | (uint)c1 << 12;
 				dst[0] = (char)(group >> 16);
 				dn -= 2;
 			case src[3]:
 				char c2 = alphabet.reverse[src[2]];
-				if (c2 == 0xFF) return DecodingFailure.INVALID_CHARACTER?;
+				if (c2 == 0xFF) return encoding::INVALID_CHARACTER?;
 				uint group = (uint)c0 << 18 | (uint)c1 << 12 | (uint)c2 << 6;
 				dst[0] = (char)(group >> 16);
 				dst[1] = (char)(group >> 8);

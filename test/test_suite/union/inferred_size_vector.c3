@@ -1,4 +1,4 @@
 union Foo
 {
-	int[<?>] x; // #error:  Inferred vector types can only
+	int[<*>] x; // #error:  Inferred vector types can only
 }

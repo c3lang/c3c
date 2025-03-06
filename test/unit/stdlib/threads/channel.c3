@@ -78,7 +78,7 @@ fn void sending_to_closed_unbuffered_chan_is_forbidden() @test
 
 	if (catch err = c.push(123))
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 	assert(false);
@@ -94,7 +94,7 @@ fn void sending_to_closed_buffered_chan_is_forbidden() @test
 
 	if (catch err = c.push(123))
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 	assert(false);
@@ -110,7 +110,7 @@ fn void reading_from_empty_closed_unbuffered_chan_is_forbidden() @test
 
 	if (catch err = c.pop())
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 	assert(false);
@@ -126,7 +126,7 @@ fn void reading_from_empty_closed_buffered_chan_is_forbidden() @test
 
 	if (catch err = c.pop())
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 	assert(false);
@@ -151,10 +151,10 @@ fn void reading_from_non_empty_closed_buffered_chan_is_ok() @test
 	got = c.pop()!!;
 	assert(got == 3);
 
-	int! got_err = c.pop();
+	int? got_err = c.pop();
 	if (catch err = got_err)
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 
@@ -177,10 +177,10 @@ fn void reading_from_empty_buffered_chan_aborted_by_close() @test
 		return 0;
 	}, (void*)c)!!;
 
-	int! res = c.pop();
+	int? res = c.pop();
 	if (catch err = res)
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 
@@ -203,10 +203,10 @@ fn void reading_from_unbuffered_chan_aborted_by_close() @test
 		return 0;
 	}, (void*)c)!!;
 
-	int! res = c.pop();
+	int? res = c.pop();
 	if (catch err = res)
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 
@@ -234,7 +234,7 @@ fn void sending_to_full_buffered_chan_aborted_by_close() @test
 	anyfault err = @catch(c.push(1));
 	if (err)
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 
@@ -260,7 +260,7 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 	anyfault err = @catch(c.push(1));
 	if (err)
 	{
-		assert(err == ThreadFault.CHANNEL_CLOSED);
+		assert(err == thread::CHANNEL_CLOSED);
 		return;
 	}
 
@@ -290,7 +290,7 @@ fn void multiple_actions_unbuffered() @test
 
 	for (int i = 0; i <= 100; i++)
 	{
-		int! res = c.pop();
+		int? res = c.pop();
 		if (catch err = res)
 		{
 			assert(false);
@@ -324,7 +324,7 @@ fn void multiple_actions_buffered() @test
 
 	for (int i = 0; i <= 100; i++)
 	{
-		int! res = c.pop();
+		int? res = c.pop();
 		if (catch err = res)
 		{
 			assert(false);

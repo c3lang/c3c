@@ -1,19 +1,19 @@
 struct Foo
 {
     int x;
-    int[?] y; // #error: flexible array member must be the last element
+    int[*] y; // #error: flexible array member must be the last element
     int z;
 }
 
 struct Bar
 {
-    int[?] y; // #error: flexible array member cannot be the only element
+    int[*] y; // #error: flexible array member cannot be the only element
 }
 
 struct Baz
 {
     int y;
-    int[?] z;
+    int[*] z;
 }
 
 struct BazContainerOk

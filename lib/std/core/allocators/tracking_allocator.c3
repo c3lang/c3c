@@ -76,7 +76,7 @@ fn Allocation[] TrackingAllocator.allocations_tlist(&self, Allocator allocator)
 *>
 fn usz TrackingAllocator.allocation_count(&self) => self.map.count;
 
-fn void*! TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	void* data = self.inner_allocator.acquire(size, init_type, alignment)!;
 	self.allocs_total++;
@@ -87,7 +87,7 @@ fn void*! TrackingAllocator.acquire(&self, usz size, AllocInitType init_type, us
 	return data;
 }
 
-fn void*! TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
+fn void*? TrackingAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	void* data = self.inner_allocator.resize(old_pointer, size, alignment)!;
 	self.map.remove((uptr)old_pointer);
@@ -121,7 +121,7 @@ fn bool TrackingAllocator.has_leaks(&self)
 fn void TrackingAllocator.print_report(&self) => self.fprint_report(io::stdout())!!;
 
 
-fn void! TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
+fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 {
 	usz total = 0;
 	usz entries = 0;

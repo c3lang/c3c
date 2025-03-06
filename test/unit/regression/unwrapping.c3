@@ -1,6 +1,6 @@
 module unwrapping;
 
-fn bool! get_bool()
+fn bool? get_bool()
 {
     return true;
 }

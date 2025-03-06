@@ -9,7 +9,7 @@ struct TestCase
     char[] enc;
 }
 
-TestCase[?] std_tests = {
+TestCase[*] std_tests = {
     { "", "" },
     { "f", "MY======" },
     { "fo", "MZXQ====" },
@@ -19,7 +19,7 @@ TestCase[?] std_tests = {
     { "foobar", "MZXW6YTBOI======" },
 };
 
-TestCase[?] hex_tests = {
+TestCase[*] hex_tests = {
    { "", "" },
    { "f", "CO======" },
    { "fo", "CPNG====" },
@@ -38,7 +38,7 @@ macro encode_tests(tests, alphabet, padding)
 		base32::encode_buffer(t.dec, buf[:n], padding, alphabet);
 
 		char[] want = t.enc;
-		usz! pad_idx = array::index_of(want, '=');
+		usz? pad_idx = array::index_of(want, '=');
 		if (try pad_idx && !padding)
 		{
 			want = want[:pad_idx];
@@ -66,7 +66,7 @@ macro decode_tests(tests, alphabet, padding)
     foreach (t : tests)
     {
 		char[] input = t.enc[..];
-		usz! pad_idx = array::index_of(input, '=');
+		usz? pad_idx = array::index_of(input, '=');
 		if (try pad_idx && !padding)
 		{
 			input = input[:pad_idx];

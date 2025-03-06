@@ -1,6 +1,6 @@
 // #target: macos-x64
 
-extern fn int! testError();
+extern fn int? testError();
 
 fn void test()
 {

@@ -7,8 +7,8 @@ struct Foo
 
 fn void test()
 {
-	int! a = 0;
-	Foo! b = {};
+	int? a = 0;
+	Foo? b = {};
 	Foo c;
 
 	int e = a ?? 1;

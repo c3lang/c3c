@@ -19,12 +19,7 @@ enum Kind : char
 	IDENTIFIER,
 }
 
-fault LexerError
-{
-	UNTERMINATED_STRING,
-	UNTERMINATED_RUNE,
-	UNTERMINATED_COMMENT,
-}
+fault UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
 
 def TokenTrie = Trie{Token, ushort};
 
@@ -51,7 +46,7 @@ struct Lexer
 	}
 }
 
-fn void! Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
+fn void? Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
 {
 	TokenTrie trie;
 	ushort max_token;
@@ -72,13 +67,13 @@ fn void! Lexer.init(&self, InStream reader, Ident ident, Allocator using = mem)
 	*self = { .allocator = using, .reader = reader, .buf = buf[:max_token], .tokens = trie };
 }
 
-fn void! Lexer.free(&self)
+fn void? Lexer.free(&self)
 {
 	allocator::free(self.allocator, self.buf);
 	*self = {};
 }
 
-fn Kind! Lexer.next(&self)
+fn Kind? Lexer.next(&self)
 {
 	if (self.peeked)
 	{
@@ -121,7 +116,7 @@ fn Kind! Lexer.next(&self)
 	return UNKNOWN;
 }
 
-fn Kind! Lexer.peek(&self)
+fn Kind? Lexer.peek(&self)
 {
 	if (!self.peeked)
 	{
@@ -131,7 +126,7 @@ fn Kind! Lexer.peek(&self)
 	return self.kind;
 }
 
-fn Token! Lexer.expect(&self, anyfault err, Token... tokens)
+fn Token? Lexer.expect(&self, anyfault err, Token... tokens)
 {
 	Kind kind = self.next()!;
 	if (kind == TOKEN)
@@ -144,7 +139,7 @@ fn Token! Lexer.expect(&self, anyfault err, Token... tokens)
 	return err?;
 }
 
-fn void! Lexer.skip_whitespace(&self) @private
+fn void? Lexer.skip_whitespace(&self) @private
 {
 	self.span = 0;
 	while (true)
@@ -167,7 +162,7 @@ fn void! Lexer.skip_whitespace(&self) @private
 	}
 }
 
-fn ulong! Lexer.parse_uint(&self) @private
+fn ulong? Lexer.parse_uint(&self) @private
 {
 	ulong x;
 	char c = self.reader.read_byte()!;
@@ -191,7 +186,7 @@ fn ulong! Lexer.parse_uint(&self) @private
 	return self.parse_decimal()!;
 }
 
-fn ulong! Lexer.parse_decimal(&self) @private
+fn ulong? Lexer.parse_decimal(&self) @private
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -203,7 +198,7 @@ fn ulong! Lexer.parse_decimal(&self) @private
 	};
 }
 
-fn ulong! Lexer.parse_hexadecimal(&self) @private
+fn ulong? Lexer.parse_hexadecimal(&self) @private
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -220,7 +215,7 @@ fn ulong! Lexer.parse_hexadecimal(&self) @private
 	};
 }
 
-fn ulong! Lexer.parse_binary(&self) @private
+fn ulong? Lexer.parse_binary(&self) @private
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -232,7 +227,7 @@ fn ulong! Lexer.parse_binary(&self) @private
 	};
 }
 
-fn ulong! Lexer.parse_octal(&self) @private
+fn ulong? Lexer.parse_octal(&self) @private
 {
 	return @parse_uint(self, ulong; ulong x, char c, bool ok)
 	{
@@ -250,10 +245,10 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 	uint column = self.column;
 	while (true)
 	{
-		char! c = self.reader.read_byte();
+		char? c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			if (err == IoError.EOF) break;
+			if (err == io::EOF) break;
 			return err?;
 		}
 		else
@@ -263,7 +258,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 			$Type xx = x;
 			bool ok;
 			@body(x, c, ok);
-			if (xx > x) return NumberConversion.INTEGER_OVERFLOW?;
+			if (xx > x) return string::INTEGER_OVERFLOW?;
 			if (!ok)
 			{
 				self.column--;
@@ -276,7 +271,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 	return x;
 }
 
-fn String! Lexer.parse_string(&self, char quote) @private
+fn String? Lexer.parse_string(&self, char quote) @private
 {
 	char c = self.read_char_for_string()!;
 	if (c == quote) return "";
@@ -317,26 +312,26 @@ fn String! Lexer.parse_string(&self, char quote) @private
 	}
 }
 
-fn char! Lexer.parse_rune(&self) @private
+fn char? Lexer.parse_rune(&self) @private
 {
 	char x = self.reader.read_byte()!;
 	char c = self.reader.read_byte()!;
-	if (c != '\'') return LexerError.UNTERMINATED_RUNE?;
+	if (c != '\'') return UNTERMINATED_RUNE?;
 	return x;
 }
 
-macro char! Lexer.read_char_for_string(&self) @private
+macro char? Lexer.read_char_for_string(&self) @private
 {
-	char! c = self.reader.read_byte();
+	char? c = self.reader.read_byte();
 	if (catch err = c)
 	{
-		if (err == IoError.EOF) return LexerError.UNTERMINATED_STRING?;
+		if (err == io::EOF) return UNTERMINATED_STRING?;
 		return err?;
 	}
 	return c;
 }
 
-fn Token! Lexer.parse_token(&self) @private
+fn Token? Lexer.parse_token(&self) @private
 {
 	usz n = self.reader.read(self.buf)!;
 	defer self.unread(n);
@@ -345,7 +340,7 @@ fn Token! Lexer.parse_token(&self) @private
 	return tok;
 }
 
-fn void! Lexer.parse_comment(&self, String end) @private
+fn void? Lexer.parse_comment(&self, String end) @private
 {
 	// Find the end token and accumulate the data in between.
 	DString acc;
@@ -355,7 +350,7 @@ fn void! Lexer.parse_comment(&self, String end) @private
 	{
 		if (catch err = io::read_all(self.reader, buf))
 		{
-			if (err == IoError.UNEXPECTED_EOF || err == IoError.EOF) return LexerError.UNTERMINATED_COMMENT?;
+			if (err == io::UNEXPECTED_EOF || err == io::EOF) return UNTERMINATED_COMMENT?;
 			return err?;
 		}
 		if (end == (String)buf)
@@ -384,16 +379,16 @@ macro Lexer.unread(self, n) @private
 	}
 }
 
-fn String! Lexer.parse_ident(&self) @private
+fn String? Lexer.parse_ident(&self) @private
 {
 	DString str;
 	str.init(self.allocator, 8);
 	while (true)
 	{
-		char! c = self.reader.read_byte();
+		char? c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			if (err == IoError.EOF) return str.str_view();
+			if (err == io::EOF) return str.str_view();
 			return err?;
 		}
 		if (!self.ident(str.len(), c)) return str.str_view();
@@ -433,7 +428,7 @@ struct UintTest
 	ulong out;
 }
 
-fn void! lex_uint()
+fn void? lex_uint()
 {
 	UintTest[] tcases = {};
 	foreach (tc : tcases)
@@ -464,10 +459,7 @@ import trie::bitmap;
 def TrieNodeList = List{TrieNode};
 def TriePath = List{Index} @private;
 
-fault TrieError
-{
-	TRIE_FULL,
-}
+fault TRIE_FULL;
 
 struct Trie
 {
@@ -491,7 +483,7 @@ fn void Trie.init(&self, usz initial_capacity = 8, Allocator using = allocator::
 <*
  @require self.nodes.len() > 0
  *>
-fn Value! Trie.get(&self, char[] key)
+fn Value? Trie.get(&self, char[] key)
 {
 	return self.nodes[0].get(self, key);
 }
@@ -499,17 +491,17 @@ fn Value! Trie.get(&self, char[] key)
 <*
   @require self.nodes.len() > 0
  *>
-fn Value! Trie.get_best(&self, char[] key)
+fn Value? Trie.get_best(&self, char[] key)
 {
 	TrieNode* root = &self.nodes[0];
-	if (key.len == 0) return root.valid ? root.value : SearchResult.MISSING?;
+	if (key.len == 0) return root.valid ? root.value : NOT_FOUND?;
 	return root.get_best(self, key, 0);
 }
 
 <*
  @require self.nodes.len() > 0
  *>
-fn void! Trie.set(&self, char[] key, Value value)
+fn void? Trie.set(&self, char[] key, Value value)
 {
 	self.nodes[0].set(self, key, value)!!;
 }
@@ -517,7 +509,7 @@ fn void! Trie.set(&self, char[] key, Value value)
 <*
  @require self.nodes.len() > 0
  *>
-fn void! Trie.del(&self, char[] key)
+fn void? Trie.del(&self, char[] key)
 {
 	if (key.len == 0)
 	{
@@ -532,27 +524,27 @@ fn void! Trie.del(&self, char[] key)
 	self.nodes[0].del(self, key, path)!;
 }
 
-fn Value! TrieNode.get(&self, Trie *t, char[] key) @private
+fn Value? TrieNode.get(&self, Trie *t, char[] key) @private
 {
-	if (key.len == 0) return self.valid ? self.value : SearchResult.MISSING?;
+	if (key.len == 0) return self.valid ? self.value : NOT_FOUND?;
 	char c = key[0];
 	Index idx = self.children[c];
-	if (idx == 0) return SearchResult.MISSING?;
+	if (idx == 0) return NOT_FOUND?;
 	return t.nodes[idx].get(t, key[1..]);
 }
 
-fn Value! TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
+fn Value? TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
 {
 	if (key.len == 0)
 	{
-		if (result == 0) return SearchResult.MISSING?;
+		if (result == 0) return NOT_FOUND?;
 		return t.nodes[result].value;
 	}
 	char c = key[0];
 	Index idx = self.children[c];
 	if (idx == 0)
 	{
-		if (result == 0) return SearchResult.MISSING?;
+		if (result == 0) return NOT_FOUND?;
 		return t.nodes[result].value;
 	}
 	TrieNode* next = &t.nodes[idx];
@@ -560,7 +552,7 @@ fn Value! TrieNode.get_best(&self, Trie *t, char[] key, Index result) @private
 	return next.get_best(t, key[1..], result);
 }
 
-fn void! TrieNode.set(&self, Trie *t, char[] key, Value value) @private
+fn void? TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 {
 	if (key.len == 0)
 	{
@@ -574,7 +566,7 @@ fn void! TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 	{
 		usz new_idx = t.nodes.len();
 		assert(new_idx != 0);
-		if (new_idx > Index.max) return TrieError.TRIE_FULL?;
+		if (new_idx > Index.max) return TRIE_FULL?;
 		idx = (Index)new_idx;
 		self.children[c] = idx;
 		t.nodes.push((TrieNode){});
@@ -582,7 +574,7 @@ fn void! TrieNode.set(&self, Trie *t, char[] key, Value value) @private
 	t.nodes[idx].set(t, key[1..], value)!;
 }
 
-fn void! TrieNode.del(&self, Trie* t, char[] key, TriePath path) @private
+fn void? TrieNode.del(&self, Trie* t, char[] key, TriePath path) @private
 {
 	if (key.len > 0)
 	{
@@ -648,7 +640,7 @@ fn void test()
 {
 	Trie t;
 	t.init();
-	String! v = t.get("a");
+	String? v = t.get("a");
 	if (try v) unreachable("key 'a' should not exist");
 	if (catch t.set("a", "va")) unreachable("key 'a' not added");
 	String w = t.get("a")!!;
@@ -666,7 +658,7 @@ fn void test()
 	assert(ww == "hi");
 
 	t.del("a")!!;
-	String! x = t.get("a");
+	String? x = t.get("a");
 	if (try x) unreachable("key 'a' should not exist");
 }
 
@@ -683,7 +675,7 @@ fn void test()
 %List = type { i64, i64, %any, ptr }
 %.anon = type { %"char[]" }
 
-@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.lexer_test.UintTest" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.enum.KEYWORD1 = internal constant [9 x i8] c"KEYWORD1\00", align 1
 @.enum.KEYWORD2 = internal constant [9 x i8] c"KEYWORD2\00", align 1
 @.enum.SINGLE = internal constant [7 x i8] c"SINGLE\00", align 1
@@ -700,7 +692,7 @@ fn void test()
 @.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
-@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
+@"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
 
 ; Function Attrs:
@@ -737,7 +729,7 @@ or.phi:                                           ; preds = %and.phi2, %and.phi
   ret i8 %6
 }
 
-; Function Attrs:
+; Function Attrs: nounwind uwtable
 define i64 @lexer_test.lex_uint() #0 {
 entry:
   %tcases = alloca %"UintTest[]", align 8

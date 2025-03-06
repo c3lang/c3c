@@ -6,7 +6,7 @@ fn int main()
 {
 	defer
 	{
-		int! x = 1;
+		int? x = 1;
 		if (catch err = x) unreachable();
 		int y = x;
 	}

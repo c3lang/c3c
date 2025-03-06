@@ -2,8 +2,8 @@ module test;
 
 fn void test1()
 {
-    bool! x = false;
-    if (x) // #error: optional, but was 'bool!
+    bool? x = false;
+    if (x) // #error: optional, but was 'bool?
     {
         x = 100;
     }
@@ -11,8 +11,8 @@ fn void test1()
 
 fn void test2()
 {
-    bool! x = false;
-    while (x) // #error: optional, but was 'bool!
+    bool? x = false;
+    while (x) // #error: optional, but was 'bool?
     {
         x = false;
     }
@@ -20,7 +20,7 @@ fn void test2()
 
 fn void test3()
 {
-    bool! x = false;
+    bool? x = false;
     double y = 1;
     do
     {
@@ -30,5 +30,5 @@ fn void test3()
     {
         x = !x;
     }
-    while (x); // #error: 'bool!' cannot be implicitly converted to a regular boolean value
+    while (x); // #error: 'bool?' cannot be implicitly converted to a regular boolean value
 }

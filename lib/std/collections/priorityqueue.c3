@@ -82,11 +82,11 @@ fn void PrivatePriorityQueue.remove_at(&self, usz index)
 <*
  @require self != null
 *>
-fn Type! PrivatePriorityQueue.pop(&self)
+fn Type? PrivatePriorityQueue.pop(&self)
 {
 	usz i = 0;
 	usz len = self.heap.len();
-	if (!len) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!len) return NO_MORE_ELEMENT?;
 	usz new_count = len - 1;
 	self.heap.swap(0, new_count);
 	while OUTER: ((2 * i + 1) < new_count)
@@ -120,7 +120,7 @@ fn Type! PrivatePriorityQueue.pop(&self)
 	return self.heap.pop();
 }
 
-fn Type! PrivatePriorityQueue.first(&self)
+fn Type? PrivatePriorityQueue.first(&self)
 {
 	return self.heap.first();
 }
@@ -148,7 +148,7 @@ fn Type PrivatePriorityQueue.get(&self, usz index) @operator([])
 	return self.heap[index];
 }
 
-fn usz! PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
+fn usz? PrivatePriorityQueue.to_format(&self, Formatter* formatter) @dynamic
 {
 	return self.heap.to_format(formatter);
 }

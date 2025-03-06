@@ -216,7 +216,6 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_STRUCT:
 		case DECL_BITSTRUCT:
 		case DECL_UNION:
-		case DECL_FAULT:
 		case DECL_ENUM:
 		case DECL_INTERFACE:
 			type_info->type = decl->type;
@@ -259,12 +258,12 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 			FALLTHROUGH;
 		case DECL_DEFINE:
 		case DECL_FUNC:
-		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_MACRO:
 		case DECL_LABEL:
 		case DECL_ATTRIBUTE:
+		case DECL_FAULT_NEW:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ASSERT:
@@ -274,6 +273,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
+		case DECL_FAULTS:
 			UNREACHABLE
 	}
 	UNREACHABLE

@@ -56,7 +56,7 @@ struct Poll
  @param [inout] polls
  @param timeout : "duration to poll (clamped to CInt.max ms), or POLL_FOREVER."
 *>
-fn ulong! poll(Poll[] polls, Duration timeout)
+fn ulong? poll(Poll[] polls, Duration timeout)
 {
 	return poll_ms(polls, timeout == POLL_FOREVER ? -1 : timeout.to_ms()) @inline;
 }
@@ -65,7 +65,7 @@ fn ulong! poll(Poll[] polls, Duration timeout)
  @param [inout] polls
  @param timeout_ms : "duration to poll in ms or -1. Clamped to CInt.max"
 *>
-fn ulong! poll_ms(Poll[] polls, long timeout_ms)
+fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 {
 	if (timeout_ms > CInt.max) timeout_ms = CInt.max;
 	$if env::WIN32:
@@ -94,34 +94,34 @@ enum SocketOption : char (CInt value)
 	DONTROUTE                  = os::SO_DONTROUTE,
 }
 
-fn bool! Socket.get_broadcast(&self) => self.get_option(BROADCAST);
-fn bool! Socket.get_keepalive(&self) => self.get_option(KEEPALIVE);
-fn bool! Socket.get_reuseaddr(&self) => self.get_option(REUSEADDR);
-fn bool! Socket.get_dontroute(&self) => self.get_option(DONTROUTE);
-fn bool! Socket.get_oobinline(&self) => self.get_option(OOBINLINE);
+fn bool? Socket.get_broadcast(&self) => self.get_option(BROADCAST);
+fn bool? Socket.get_keepalive(&self) => self.get_option(KEEPALIVE);
+fn bool? Socket.get_reuseaddr(&self) => self.get_option(REUSEADDR);
+fn bool? Socket.get_dontroute(&self) => self.get_option(DONTROUTE);
+fn bool? Socket.get_oobinline(&self) => self.get_option(OOBINLINE);
 
-fn void! Socket.set_broadcast(&self, bool value) => self.set_option(BROADCAST, value);
-fn void! Socket.set_keepalive(&self, bool value) => self.set_option(KEEPALIVE, value);
-fn void! Socket.set_reuseaddr(&self, bool value) => self.set_option(REUSEADDR, value);
-fn void! Socket.set_dontroute(&self, bool value) => self.set_option(DONTROUTE, value);
-fn void! Socket.set_oobinline(&self, bool value) => self.set_option(OOBINLINE, value);
+fn void? Socket.set_broadcast(&self, bool value) => self.set_option(BROADCAST, value);
+fn void? Socket.set_keepalive(&self, bool value) => self.set_option(KEEPALIVE, value);
+fn void? Socket.set_reuseaddr(&self, bool value) => self.set_option(REUSEADDR, value);
+fn void? Socket.set_dontroute(&self, bool value) => self.set_option(DONTROUTE, value);
+fn void? Socket.set_oobinline(&self, bool value) => self.set_option(OOBINLINE, value);
 
-fn void! Socket.set_option(&self, SocketOption option, bool value)
+fn void? Socket.set_option(&self, SocketOption option, bool value)
 {
 	CInt flag = (CInt)value;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED?;
 }
 
-fn bool! Socket.get_option(&self, SocketOption option)
+fn bool? Socket.get_option(&self, SocketOption option)
 {
 	CInt flag;
 	int errcode = os::setsockopt(self.sock, os::SOL_SOCKET, option.value, &flag, CInt.sizeof);
-	if (errcode != 0) return NetError.SOCKOPT_FAILED?;
+	if (errcode != 0) return SOCKOPT_FAILED?;
 	return (bool)flag;
 }
 
-fn usz! Socket.read(&self, char[] bytes) @dynamic
+fn usz? Socket.read(&self, char[] bytes) @dynamic
 {
 $if env::WIN32:
 	isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, 0);
@@ -132,9 +132,9 @@ $endif
 	return (usz)n;
 }
 
-fn char! Socket.read_byte(&self) @dynamic => io::read_byte_using_read(self);
+fn char? Socket.read_byte(&self) @dynamic => io::read_byte_using_read(self);
 
-fn usz! Socket.write(&self, char[] bytes) @dynamic
+fn usz? Socket.write(&self, char[] bytes) @dynamic
 {
 $if env::WIN32:
 	isz n = libc::send(self.sock, bytes.ptr, (int)bytes.len, 0);
@@ -145,18 +145,18 @@ $endif
 	return (usz)n;
 }
 
-fn void! Socket.write_byte(&self, char byte) @dynamic => io::write_byte_using_write(self, byte);
+fn void? Socket.write_byte(&self, char byte) @dynamic => io::write_byte_using_write(self, byte);
 
-fn void! Socket.destroy(&self) @dynamic
+fn void? Socket.destroy(&self) @dynamic
 {
 	self.close()!;
 }
-fn void! Socket.close(&self) @inline @dynamic
+fn void? Socket.close(&self) @inline @dynamic
 {
 	self.sock.close()!;
 }
 
-fn usz! Socket.peek(&self, char[] bytes) @dynamic
+fn usz? Socket.peek(&self, char[] bytes) @dynamic
 {
   $if env::WIN32:
 	  isz n = libc::recv(self.sock, bytes.ptr, (int)bytes.len, os::MSG_PEEK);
@@ -174,7 +174,7 @@ enum SocketShutdownHow : (inline CInt native_value)
 	BOTH = @select(env::WIN32, libc::SD_BOTH, libc::SHUT_RDWR),
 }
 
-fn void! Socket.shutdown(&self, SocketShutdownHow how)
+fn void? Socket.shutdown(&self, SocketShutdownHow how)
 {
 	if (libc::shutdown(self.sock, how) < 0)
 	{

@@ -9,12 +9,12 @@ struct File (InStream, OutStream)
 module std::io::file;
 import libc, std::io::path, std::io::os;
 
-fn File! open(String filename, String mode)
+fn File? open(String filename, String mode)
 {
 	return from_handle(os::native_fopen(filename, mode));
 }
 
-fn File! open_path(Path path, String mode)
+fn File? open_path(Path path, String mode)
 {
 	return from_handle(os::native_fopen(path.str_view(), mode));
 }
@@ -39,12 +39,12 @@ fn bool is_dir(String path)
 	return os::native_is_dir(path);
 }
 
-fn usz! get_size(String path)
+fn usz? get_size(String path)
 {
 	return os::native_file_size(path);
 }
 
-fn void! delete(String filename)
+fn void? delete(String filename)
 {
 	return os::native_remove(filename) @inline;
 }
@@ -53,7 +53,7 @@ fn void! delete(String filename)
 <*
  @require self.file != null
 *>
-fn void! File.reopen(&self, String filename, String mode)
+fn void? File.reopen(&self, String filename, String mode)
 {
 	self.file = os::native_freopen(self.file, filename, mode)!;
 }
@@ -61,7 +61,7 @@ fn void! File.reopen(&self, String filename, String mode)
 <*
  @require self.file != null
 *>
-fn usz! File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
+fn usz? File.seek(&self, isz offset, Seek seek_mode = Seek.SET) @dynamic
 {
 	os::native_fseek(self.file, offset, seek_mode)!;
 	return os::native_ftell(self.file);
@@ -73,7 +73,7 @@ Implement later
 <*
  @require self.file == null
 *>
-fn void! File.memopen(File* file, char[] data, String mode)
+fn void? File.memopen(File* file, char[] data, String mode)
 {
 	@pool()
 	{
@@ -87,7 +87,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
 <*
  @require self.file != null
 *>
-fn void! File.write_byte(&self, char c) @dynamic
+fn void? File.write_byte(&self, char c) @dynamic
 {
 	return os::native_fputc(c, self.file);
 }
@@ -95,15 +95,15 @@ fn void! File.write_byte(&self, char c) @dynamic
 <*
  @param [&inout] self
 *>
-fn void! File.close(&self) @inline @dynamic
+fn void? File.close(&self) @inline @dynamic
 {
 	if (self.file && libc::fclose(self.file))
 	{
 		switch (libc::errno())
 		{
 			case errno::ECONNRESET:
-			case errno::EBADF: return IoError.FILE_NOT_VALID?;
-			case errno::EINTR: return IoError.INTERRUPTED?;
+			case errno::EBADF: return io::FILE_NOT_VALID?;
+			case errno::EINTR: return io::INTERRUPTED?;
 			case errno::EDQUOT:
 			case errno::EFAULT:
 			case errno::EAGAIN:
@@ -111,8 +111,8 @@ fn void! File.close(&self) @inline @dynamic
 			case errno::ENETDOWN:
 			case errno::ENETUNREACH:
 			case errno::ENOSPC:
-			case errno::EIO: return IoError.INCOMPLETE_WRITE?;
-			default: return IoError.UNKNOWN_ERROR?;
+			case errno::EIO: return io::INCOMPLETE_WRITE?;
+			default: return io::UNKNOWN_ERROR?;
 		}
 	}
 	self.file = null;
@@ -129,7 +129,7 @@ fn bool File.eof(&self) @inline
 <*
  @param [in] buffer
 *>
-fn usz! File.read(&self, char[] buffer) @dynamic
+fn usz? File.read(&self, char[] buffer) @dynamic
 {
 	return os::native_fread(self.file, buffer);
 }
@@ -138,7 +138,7 @@ fn usz! File.read(&self, char[] buffer) @dynamic
  @param [out] buffer
  @require self.file != null : `File must be initialized`
 *>
-fn usz! File.write(&self, char[] buffer) @dynamic
+fn usz? File.write(&self, char[] buffer) @dynamic
 {
 	return os::native_fwrite(self.file, buffer);
 }
@@ -153,26 +153,26 @@ fn bool File.isatty(self) @if(env::LIBC)
 	return libc::isatty(self.fd()) > 0;
 }
 
-fn char! File.read_byte(&self) @dynamic
+fn char? File.read_byte(&self) @dynamic
 {
 	int c = libc::fgetc(self.file);
-	if (c == -1) return IoError.EOF?;
+	if (c == -1) return io::EOF?;
 	return (char)c;
 }
 
 <*
- Load up to buffer.len characters. Returns IoError.OVERFLOW if the file is longer
+ Load up to buffer.len characters. Returns io::OVERFLOW if the file is longer
  than the buffer.
 
  @param filename : "The path to the file to read"
  @param [in] buffer : "The buffer to read to"
 *>
-fn char[]! load_buffer(String filename, char[] buffer)
+fn char[]? load_buffer(String filename, char[] buffer)
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
 	usz len = file.seek(0, END)!;
-	if (len > buffer.len) return IoError.OVERFLOW?;
+	if (len > buffer.len) return io::OVERFLOW?;
 	file.seek(0, SET)!;
 	usz read = 0;
 	while (read < len)
@@ -183,9 +183,9 @@ fn char[]! load_buffer(String filename, char[] buffer)
 
 }
 
-fn char[]! load(Allocator allocator, String filename) => load_new(filename, allocator);
+fn char[]? load(Allocator allocator, String filename) => load_new(filename, allocator);
 
-fn char[]! load_new(String filename, Allocator allocator = allocator::heap())
+fn char[]? load_new(String filename, Allocator allocator = allocator::heap())
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
@@ -201,16 +201,16 @@ fn char[]! load_new(String filename, Allocator allocator = allocator::heap())
 	return data[:len];
 }
 
-fn char[]! load_path_new(Path path, Allocator allocator = allocator::heap()) => load_new(path.str_view(), allocator);
+fn char[]? load_path_new(Path path, Allocator allocator = allocator::heap()) => load_new(path.str_view(), allocator);
 
-fn char[]! load_temp(String filename)
+fn char[]? load_temp(String filename)
 {
 	return load_new(filename, allocator::temp());
 }
 
-fn char[]! load_path_temp(Path path) => load_temp(path.str_view());
+fn char[]? load_path_temp(Path path) => load_temp(path.str_view());
 
-fn void! save(String filename, char[] data)
+fn void? save(String filename, char[] data)
 {
 	File file = open(filename, "wb")!;
 	defer (void)file.close();
@@ -224,7 +224,7 @@ fn void! save(String filename, char[] data)
 <*
  @require self.file != null : `File must be initialized`
 *>
-fn void! File.flush(&self) @dynamic
+fn void? File.flush(&self) @dynamic
 {
 	libc::fflush(self.file);
 }

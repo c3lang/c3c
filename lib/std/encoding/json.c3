@@ -6,26 +6,19 @@ import std::io;
 import std::ascii;
 import std::collections::object;
 
-fault JsonParsingError
-{
-	EOF,
-	UNEXPECTED_CHARACTER,
-	INVALID_ESCAPE_SEQUENCE,
-	DUPLICATE_MEMBERS,
-	INVALID_NUMBER,
-}
+fault UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
 
-fn Object*! parse_string(Allocator allocator, String s)
+fn Object*? parse_string(Allocator allocator, String s)
 {
 	return parse(allocator, (ByteReader){}.init(s));
 }
 
-fn Object*! tparse_string(String s)
+fn Object*? tparse_string(String s)
 {
 	return parse(tmem(), (ByteReader){}.init(s));
 }
 
-fn Object*! parse(Allocator allocator, InStream s)
+fn Object*? parse(Allocator allocator, InStream s)
 {
 	@stack_mem(512; Allocator smem)
 	{
@@ -37,7 +30,7 @@ fn Object*! parse(Allocator allocator, InStream s)
 	};
 }
 
-fn Object*! tparse(InStream s)
+fn Object*? tparse(InStream s)
 {
 	return parse(tmem(), s);
 }
@@ -78,7 +71,7 @@ struct JsonContext @local
 }
 
 
-fn Object*! parse_from_token(JsonContext* context, JsonTokenType token) @local
+fn Object*? parse_from_token(JsonContext* context, JsonTokenType token) @local
 {
 	switch (token)
 	{
@@ -88,21 +81,21 @@ fn Object*! parse_from_token(JsonContext* context, JsonTokenType token) @local
 		case COMMA:
 		case RBRACE:
 		case RBRACKET:
-		case COLON: return JsonParsingError.UNEXPECTED_CHARACTER?;
+		case COLON: return UNEXPECTED_CHARACTER?;
 		case STRING: return object::new_string(context.last_string.str_view(), context.allocator);
 		case NUMBER: return object::new_float(context.last_number, context.allocator);
 		case TRUE: return object::new_bool(true);
 		case FALSE: return object::new_bool(false);
 		case NULL: return object::new_null();
-		case EOF: return JsonParsingError.EOF?;
+		case EOF: return io::EOF?;
 	}
 }
-fn Object*! parse_any(JsonContext* context) @local
+fn Object*? parse_any(JsonContext* context) @local
 {
 	return parse_from_token(context, advance(context));
 }
 
-fn JsonTokenType! lex_number(JsonContext *context, char c) @local
+fn JsonTokenType? lex_number(JsonContext *context, char c) @local
 {
 	@stack_mem(256; Allocator mem)
 	{
@@ -137,7 +130,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 					t.append(c);
 					c = read_next(context)!;
 			}
-			if (!c.is_digit()) return JsonParsingError.INVALID_NUMBER?;
+			if (!c.is_digit()) return INVALID_NUMBER?;
 			while (c.is_digit())
 			{
 				t.append(c);
@@ -145,13 +138,13 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 			}
 		}
 		pushback(context, c);
-		double! d = t.str_view().to_double() ?? JsonParsingError.INVALID_NUMBER?;
+		double? d = t.str_view().to_double() ?? INVALID_NUMBER?;
 		context.last_number = d!;
 		return NUMBER;
 	};
 }
 
-fn Object*! parse_map(JsonContext* context) @local
+fn Object*? parse_map(JsonContext* context) @local
 {
 	Object* map = object::new_obj(context.allocator);
 	defer catch map.free();
@@ -162,9 +155,9 @@ fn Object*! parse_map(JsonContext* context) @local
 		DString temp_key = dstring::new_with_capacity(mem, 32);
 		while (token != JsonTokenType.RBRACE)
 		{
-			if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
+			if (token != JsonTokenType.STRING) return UNEXPECTED_CHARACTER?;
 			DString string = context.last_string;
-			if (map.has_key(string.str_view())) return JsonParsingError.DUPLICATE_MEMBERS?;
+			if (map.has_key(string.str_view())) return DUPLICATE_MEMBERS?;
 			// Copy the key to our temp holder, since our
 			// last_string may be used in parse_any
 			temp_key.clear();
@@ -178,13 +171,13 @@ fn Object*! parse_map(JsonContext* context) @local
 				token = advance(context)!;
 				continue;
 			}
-			if (token != JsonTokenType.RBRACE) return JsonParsingError.UNEXPECTED_CHARACTER?;
+			if (token != JsonTokenType.RBRACE) return UNEXPECTED_CHARACTER?;
 		}
 		return map;
 	};
 }
 
-fn Object*! parse_array(JsonContext* context) @local
+fn Object*? parse_array(JsonContext* context) @local
 {
 	Object* list = object::new_obj(context.allocator);
 	defer catch list.free();
@@ -199,7 +192,7 @@ fn Object*! parse_array(JsonContext* context) @local
 			token = advance(context)!;
 			continue;
 		}
-		if (token != JsonTokenType.RBRACKET) return JsonParsingError.UNEXPECTED_CHARACTER?;
+		if (token != JsonTokenType.RBRACKET) return UNEXPECTED_CHARACTER?;
 	}
 	return list;
 }
@@ -214,7 +207,7 @@ fn void pushback(JsonContext* context, char c) @local
 	}
 }
 
-fn char! read_next(JsonContext* context) @local
+fn char? read_next(JsonContext* context) @local
 {
 	if (context.reached_end) return '\0';
 	if (context.pushed_back)
@@ -222,10 +215,10 @@ fn char! read_next(JsonContext* context) @local
 		context.pushed_back = false;
 		return context.current;
 	}
-	char! c = context.stream.read_byte();
+	char? c = context.stream.read_byte();
 	if (catch err = c)
 	{
-		if (err == IoError.EOF)
+		if (err == io::EOF)
 		{
 			context.reached_end = true;
 			return '\0';
@@ -239,7 +232,7 @@ fn char! read_next(JsonContext* context) @local
 	return c;
 }
 
-fn JsonTokenType! advance(JsonContext* context) @local
+fn JsonTokenType? advance(JsonContext* context) @local
 {
 	char c;
 	// Skip whitespace
@@ -287,7 +280,7 @@ fn JsonTokenType! advance(JsonContext* context) @local
 	switch (c)
 	{
 		case '\0':
-			return IoError.EOF?;
+			return io::EOF?;
 		case '{':
 			return LBRACE;
 		case '}':
@@ -315,25 +308,25 @@ fn JsonTokenType! advance(JsonContext* context) @local
 			match(context, "ull")!;
 			return NULL;
 		default:
-			return JsonParsingError.UNEXPECTED_CHARACTER?;
+			return UNEXPECTED_CHARACTER?;
 	}
 }
 
-fn void! match(JsonContext* context, String str) @local
+fn void? match(JsonContext* context, String str) @local
 {
 	foreach (c : str)
 	{
 		char l = read_next(context)!;
-		if (l != c) return JsonParsingError.UNEXPECTED_CHARACTER?;
+		if (l != c) return UNEXPECTED_CHARACTER?;
 	}
 }
 
-fn void! parse_expected(JsonContext* context, JsonTokenType token) @local
+fn void? parse_expected(JsonContext* context, JsonTokenType token) @local
 {
-	if (advance(context)! != token) return JsonParsingError.UNEXPECTED_CHARACTER?;
+	if (advance(context)! != token) return UNEXPECTED_CHARACTER?;
 }
 
-fn JsonTokenType! lex_string(JsonContext* context)
+fn JsonTokenType? lex_string(JsonContext* context)
 {
 	context.last_string.clear();
 	while LOOP: (true)
@@ -342,9 +335,9 @@ fn JsonTokenType! lex_string(JsonContext* context)
 		switch (c)
 		{
 			case '\0':
-				return JsonParsingError.EOF?;
+				return io::EOF?;
 			case 1..31:
-				return JsonParsingError.UNEXPECTED_CHARACTER?;
+				return UNEXPECTED_CHARACTER?;
 			case '"':
 				break LOOP;
 			case '\\':
@@ -357,9 +350,9 @@ fn JsonTokenType! lex_string(JsonContext* context)
 		switch (c)
 		{
 			case '\0':
-				return JsonParsingError.EOF?;
+				return io::EOF?;
 			case 1..31:
-				return JsonParsingError.UNEXPECTED_CHARACTER?;
+				return UNEXPECTED_CHARACTER?;
 			case '"':
 			case '\\':
 			case '/':
@@ -379,13 +372,13 @@ fn JsonTokenType! lex_string(JsonContext* context)
 				for (int i = 0; i < 4; i++)
 				{
 					c = read_next(context)!;
-					if (!c.is_xdigit()) return JsonParsingError.INVALID_ESCAPE_SEQUENCE?;
+					if (!c.is_xdigit()) return INVALID_ESCAPE_SEQUENCE?;
 					val = val << 4 + (c > '9' ? (c | 32) - 'a' + 10 : c - '0');
 				}
 				context.last_string.append_char32(val);
 				continue;
 			default:
-				 return JsonParsingError.INVALID_ESCAPE_SEQUENCE?;
+				 return INVALID_ESCAPE_SEQUENCE?;
 		}
 		context.last_string.append(c);
 	}

@@ -1,9 +1,6 @@
 module foo;
 
-fault Blurg
-{
-    X, Y, Z
-}
+fault X, Y, Z;
 
 fn void main()
 {

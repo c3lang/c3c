@@ -1,15 +1,12 @@
 module test;
 import libc;
 
-fault TestErr
-{
-	NOPE
-}
+fault NOPE;
 
-fn int! eventually_succeed()
+fn int? eventually_succeed()
 {
 	static int i = 0;
-	if (i++ < 3) return TestErr.NOPE?;
+	if (i++ < 3) return NOPE?;
 	return i * 3;
 }
 
@@ -19,7 +16,7 @@ macro @retry(#function, int retries = 3)
     anyfault e;
     do
     {
-        $Type! result = #function;
+        $Type? result = #function;
         if (catch err = result)
         {
             e = err;
@@ -32,7 +29,7 @@ macro @retry(#function, int retries = 3)
 
 fn void main()
 {
-    int! result = @retry(eventually_succeed());
+    int? result = @retry(eventually_succeed());
     if (try result)
     {
 	    libc::printf("Got result: %d\n", result);

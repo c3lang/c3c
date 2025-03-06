@@ -1,12 +1,9 @@
 module foo;
 
-fault Blurg
-{
-    Z
-}
+fault Z;
 
 fn void main()
 {
-    int! i = Blurg.Z?;
-    int! j = Blurg.Z?;
+    int? i = Z?;
+    int? j = Z?;
 }

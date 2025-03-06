@@ -27,7 +27,7 @@ ArrayIndex sema_len_from_const(Expr *expr)
 		case CONST_INTEGER:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
 		case CONST_REF:
@@ -169,7 +169,7 @@ static bool sema_concat_bytes_and_other(SemaContext *context, Expr *expr, Expr *
 		case CONST_FLOAT:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:
@@ -320,7 +320,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_INTEGER:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_TYPEID:
 		case CONST_REF:
 		case CONST_MEMBER:
@@ -361,7 +361,7 @@ bool sema_expr_analyse_ct_concat(SemaContext *context, Expr *concat_expr, Expr *
 		case CONST_INTEGER:
 		case CONST_BOOL:
 		case CONST_ENUM:
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_POINTER:
 		case CONST_TYPEID:
 		case CONST_MEMBER:

@@ -4,41 +4,41 @@ import std::io;
 
 macro @hello(...)
 {
-	int[?] a = { 1, $vasplat, 3 };
+	int[*] a = { 1, $vasplat, 3 };
 	foreach (i, x : a) io::printfn("%d: %d", i, x);
 }
 
 macro @hello1(...)
 {
-	int[?] a = { 1, $vasplat };
+	int[*] a = { 1, $vasplat };
 	foreach (i, x : a) io::printfn("x:%d: %d", i, x);
 }
 
 macro @hello2(...)
 {
-	int[?] a = { $vasplat, 888 };
+	int[*] a = { $vasplat, 888 };
 	foreach (i, x : a) io::printfn("x:%d: %d", i, x);
 }
 
 macro @hello3(...)
 {
-	int[?] a = { $vasplat };
+	int[*] a = { $vasplat };
 	foreach (i, x : a) io::printfn("x:%d: %d", i, x);
 }
 
 macro @hello4(...)
 {
-	int[?] a = { 5, $vasplat[2..4], 77 };
+	int[*] a = { 5, $vasplat[2..4], 77 };
 	foreach (i, x : a) io::printfn("y:%d: %d", i, x);
 }
 
 macro @hello5(...)
 {
-	int[?] a = { 5, $vasplat[2..], 77 };
+	int[*] a = { 5, $vasplat[2..], 77 };
 	foreach (i, x : a) io::printfn("y:%d: %d", i, x);
-	int[?] b = { 55, $vasplat[2..^2], 88 };
+	int[*] b = { 55, $vasplat[2..^2], 88 };
 	foreach (i, x : b) io::printfn("z:%d: %d", i, x);
-	int[?] c = { 55, $vasplat[0:^2], 88 };
+	int[*] c = { 55, $vasplat[0:^2], 88 };
 	foreach (i, x : c) io::printfn("zz:%d: %d", i, x);
 }
 

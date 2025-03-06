@@ -20,7 +20,7 @@ const char DEFAULT_PAD = '=';
  @require padding < 0xFF : "Invalid padding character"
  @return "The encoded string."
 *>
-fn String! encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
+fn String? encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, encode_len(src.len, padding));
 	return encode_buffer(src, dst, padding, alphabet);
@@ -34,14 +34,14 @@ fn String! encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, B
  @require padding < 0xFF : "Invalid padding character"
  @return "The decoded data."
 *>
-fn char[]! decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
+fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, decode_len(src.len, padding));
 	return decode_buffer(src, dst, padding, alphabet);
 }
 
-fn String! tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
-fn char[]! tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
+fn String? tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
+fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
 
 <*
  Calculate the length in bytes of the decoded data.
@@ -84,9 +84,9 @@ fn usz encode_len(usz n, char padding)
  @require padding < 0xFF : "Invalid padding character"
  @require dst.len >= decode_len(src.len, padding) : "Destination buffer too small"
  @return "The resulting dst buffer"
- @return! DecodingFailure
+ @return! encoding::INVALID_PADDING, encoding::INVALID_CHARACTER
 *>
-fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
+fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
 	if (src.len == 0) return dst[:0];
 	char* dst_ptr = dst;
@@ -101,12 +101,12 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 		{
 			if (src.len == 0)
 			{
-				if (padding > 0) return DecodingFailure.INVALID_PADDING?;
+				if (padding > 0) return encoding::INVALID_PADDING?;
 				break;
 			}
 			if (src[0] == padding) break;
 			buf[i] = alphabet.reverse[src[0]];
-			if (buf[i] == INVALID) return DecodingFailure.INVALID_CHARACTER?;
+			if (buf[i] == INVALID) return encoding::INVALID_CHARACTER?;
 			src = src[1..];
 		}
 
@@ -150,7 +150,7 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 				dst[0] = buf[1] >> 2 | buf[0] << 3;
 				n++;
 			default:
-				return DecodingFailure.INVALID_CHARACTER?;
+				return encoding::INVALID_CHARACTER?;
 		}
 		if (dst.len < 5) break;
 		dst = dst[5..];

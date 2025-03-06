@@ -1,14 +1,14 @@
 // #target: macos-x64
 module test;
 
-fn int! foo() => 1;
+fn int? foo() => 1;
 
 fn int main()
 {
-	int[?]! x = { 1, 2 };
-	int[?]! y = { foo(), foo() };
-	int[<?>]! x2 = { 1, 2 };
-	int[<?>]! y2 = { foo(), foo() };
+	int[*]? x = { 1, 2 };
+	int[*]? y = { foo(), foo() };
+	int[<*>]? x2 = { 1, 2 };
+	int[<*>]? y2 = { foo(), foo() };
 	return 1;
 }
 

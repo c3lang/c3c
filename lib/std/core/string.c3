@@ -8,12 +8,8 @@ distinct WString = inline Char16*;
 def Char32 = uint;
 def Char16 = ushort;
 
-fault UnicodeResult
-{
-	INVALID_UTF8,
-	INVALID_UTF16,
-	CONVERSION_FAILED,
-}
+fault INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED, EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
+      INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;
 
 const uint SURROGATE_OFFSET @private = 0x10000;
 const uint SURROGATE_GENERIC_MASK @private = 0xF800;
@@ -22,16 +18,6 @@ const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
 const uint SURROGATE_BITS @private = 10;
 const uint SURROGATE_LOW_VALUE @private = 0xDC00;
 const uint SURROGATE_HIGH_VALUE @private = 0xD800;
-
-fault NumberConversion
-{
-	EMPTY_STRING,
-	NEGATIVE_VALUE,
-	MALFORMED_INTEGER,
-	INTEGER_OVERFLOW,
-	MALFORMED_FLOAT,
-	FLOAT_OUT_OF_RANGE,
-}
 
 
 macro Char32* @wstring32(String $string) @builtin
@@ -254,7 +240,7 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz! index = i == max - 1 ? SearchResult.MISSING? : s.index_of(needle);
+		usz? index = i == max - 1 ? NOT_FOUND? : s.index_of(needle);
 		String res @noinit;
 		if (try index)
 		{
@@ -293,7 +279,7 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
 *>
 fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(tmem(), needle, max, skip_empty) @inline;
 
-fault SplitResult { BUFFER_EXCEEDED }
+fault BUFFER_EXCEEDED;
 
 <*
  Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
@@ -304,16 +290,16 @@ fault SplitResult { BUFFER_EXCEEDED }
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @require needle.len > 0 : "The needle must be at least 1 character long"
  @ensure return.len > 0
- @return! SplitResult.BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
+ @return! BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
 *>
-fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max = 0, bool skip_empty = false)
+fn String[]? String.split_to_buffer(s, String needle, String[] buffer, usz max = 0, bool skip_empty = false)
 {
 	usz max_capacity = buffer.len;
 	usz i = 0;
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz! index = i == max - 1 ? SearchResult.MISSING? : s.index_of(needle);
+		usz? index = i == max - 1 ? NOT_FOUND? : s.index_of(needle);
 		String res @noinit;
 		if (try index)
 		{
@@ -331,7 +317,7 @@ fn String[]! String.split_to_buffer(s, String needle, String[] buffer, usz max =
 		}
 		if (i == max_capacity)
 		{
-			return SplitResult.BUFFER_EXCEEDED?;
+			return BUFFER_EXCEEDED?;
 		}
 		buffer[i++] = res;
 	}
@@ -359,15 +345,15 @@ fn bool String.contains(s, String needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
-fn usz! String.index_of_char(s, char needle)
+fn usz? String.index_of_char(s, char needle)
 {
 	foreach (i, c : s)
 	{
 		if (c == needle) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -378,9 +364,9 @@ fn usz! String.index_of_char(s, char needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
-fn usz! String.index_of_chars(String s, char[] needle)
+fn usz? String.index_of_chars(String s, char[] needle)
 {
     foreach (i, c : s)
     {
@@ -390,7 +376,7 @@ fn usz! String.index_of_chars(String s, char[] needle)
         }
     }
 
-    return SearchResult.MISSING?;
+    return NOT_FOUND?;
 }
 
 <*
@@ -402,17 +388,17 @@ fn usz! String.index_of_chars(String s, char[] needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found starting from the start_index"
+ @return! NOT_FOUND : "if the needle cannot be found starting from the start_index"
 *>
-fn usz! String.index_of_char_from(s, char needle, usz start_index)
+fn usz? String.index_of_char_from(s, char needle, usz start_index)
 {
 	usz len = s.len;
-	if (len <= start_index) return SearchResult.MISSING?;
+	if (len <= start_index) return NOT_FOUND?;
 	for (usz i = start_index; i < len; i++)
 	{
 		if (s[i] == needle) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -423,15 +409,15 @@ fn usz! String.index_of_char_from(s, char needle, usz start_index)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
-fn usz! String.rindex_of_char(s, char needle)
+fn usz? String.rindex_of_char(s, char needle)
 {
 	foreach_r (i, c : s)
 	{
 		if (c == needle) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -443,9 +429,9 @@ fn usz! String.rindex_of_char(s, char needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
-fn usz! String.index_of(s, String needle)
+fn usz? String.index_of(s, String needle)
 {
 	usz needed = needle.len;
 	if (needed > 0 && s.len >= needed)
@@ -456,7 +442,7 @@ fn usz! String.index_of(s, String needle)
 			if (c == first && s[i:needed] == needle) return i;
 		}
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -468,9 +454,9 @@ fn usz! String.index_of(s, String needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! SearchResult.MISSING : "if the needle cannot be found"
+ @return! NOT_FOUND : "if the needle cannot be found"
 *>
-fn usz! String.rindex_of(s, String needle)
+fn usz? String.rindex_of(s, String needle)
 {
 	usz needed = needle.len;
 	if (needed > 0 && s.len >= needed)
@@ -481,7 +467,7 @@ fn usz! String.rindex_of(s, String needle)
 			if (c == first && s[i:needed] == needle) return i;
 		}
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 fn String ZString.str_view(str)
@@ -570,10 +556,9 @@ fn String ZString.tcopy(z)
 <*
  Convert an UTF-8 string to UTF-16
  @return "The UTF-16 string as a slice, allocated using the given allocator"
- @return! UnicodeResult.INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
- @return! AllocationFailure : "If allocation of the string fails"
+ @return! INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
 *>
-fn Char16[]! String.to_utf16(s, Allocator allocator)
+fn Char16[]? String.to_utf16(s, Allocator allocator)
 {
 	usz len16 = conv::utf16len_for_utf8(s);
 	Char16* data = allocator::alloc_array_try(allocator, Char16, len16 + 1)!;
@@ -582,16 +567,16 @@ fn Char16[]! String.to_utf16(s, Allocator allocator)
 	return data[:len16];
 }
 
-fn Char16[]! String.to_temp_utf16(s) => s.to_utf16(tmem());
+fn Char16[]? String.to_temp_utf16(s) => s.to_utf16(tmem());
 
-fn WString! String.to_wstring(s, Allocator allocator)
+fn WString? String.to_wstring(s, Allocator allocator)
 {
 	return (WString)s.to_utf16(allocator).ptr;
 }
 
-fn WString! String.to_temp_wstring(s) => s.to_wstring(tmem());
+fn WString? String.to_temp_wstring(s) => s.to_wstring(tmem());
 
-fn Char32[]! String.to_utf32(s, Allocator allocator)
+fn Char32[]? String.to_utf32(s, Allocator allocator)
 {
 	usz codepoints = conv::utf8_codepoints(s);
 	Char32* data = allocator::alloc_array_try(allocator, Char32, codepoints + 1)!;
@@ -600,7 +585,7 @@ fn Char32[]! String.to_utf32(s, Allocator allocator)
 	return data[:codepoints];
 }
 
-fn Char32[]! String.to_temp_utf32(s) => s.to_utf32(tmem());
+fn Char32[]? String.to_temp_utf32(s) => s.to_utf32(tmem());
 
 <*
  Convert a string to ASCII lower case in place.
@@ -665,7 +650,7 @@ fn String String.to_upper_tcopy(s)
 	return s.to_upper_copy(tmem());
 }
 
-fn String! from_utf32(Allocator allocator, Char32[] utf32)
+fn String? from_utf32(Allocator allocator, Char32[] utf32)
 {
 	usz len = conv::utf8len_for_utf32(utf32);
 	char* data = allocator::malloc_try(allocator, len + 1)!;
@@ -675,7 +660,7 @@ fn String! from_utf32(Allocator allocator, Char32[] utf32)
 	return (String)data[:len];
 }
 
-fn String! from_utf16(Allocator allocator, Char16[] utf16)
+fn String? from_utf16(Allocator allocator, Char16[] utf16)
 {
 	usz len = conv::utf8len_for_utf16(utf16);
 	char* data = allocator::malloc_try(allocator, len + 1)!;
@@ -685,7 +670,7 @@ fn String! from_utf16(Allocator allocator, Char16[] utf16)
 	return (String)data[:len];
 }
 
-fn String! from_wstring(Allocator allocator, WString wstring)
+fn String? from_wstring(Allocator allocator, WString wstring)
 {
 	usz utf16_len;
 	while (wstring[utf16_len] != 0) utf16_len++;
@@ -693,8 +678,8 @@ fn String! from_wstring(Allocator allocator, WString wstring)
 	return from_utf16(allocator, utf16);
 }
 
-fn String! tfrom_wstring(WString wstring) => from_wstring(tmem(), wstring) @inline;
-fn String! tfrom_utf16(Char16[] utf16) => from_utf16(tmem(), utf16) @inline;
+fn String? tfrom_wstring(WString wstring) => from_wstring(tmem(), wstring) @inline;
+fn String? tfrom_utf16(Char16[] utf16) => from_utf16(tmem(), utf16) @inline;
 
 fn usz String.utf8_codepoints(s)
 {
@@ -716,12 +701,12 @@ macro String.to_integer(string, $Type, int base = 10)
 	usz index = 0;
 	char* ptr = string.ptr;
 	while (index < len && ascii::is_blank_m(ptr[index])) index++;
-	if (len == index) return NumberConversion.EMPTY_STRING?;
+	if (len == index) return EMPTY_STRING?;
 	bool is_negative;
 	switch (string[index])
 	{
 		case '-':
-			if ($Type.min == 0) return NumberConversion.NEGATIVE_VALUE?;
+			if ($Type.min == 0) return NEGATIVE_VALUE?;
 			is_negative = true;
 			index++;
 		case '+':
@@ -729,7 +714,7 @@ macro String.to_integer(string, $Type, int base = 10)
 		default:
 			break;
 	}
-	if (len == index) return NumberConversion.MALFORMED_INTEGER?;
+	if (len == index) return MALFORMED_INTEGER?;
 	$Type base_used = ($Type)base;
 	if (string[index] == '0' && base == 10)
 	{
@@ -752,7 +737,7 @@ macro String.to_integer(string, $Type, int base = 10)
 			default:
 				break;
 		}
-		if (len == index) return NumberConversion.MALFORMED_INTEGER?;
+		if (len == index) return MALFORMED_INTEGER?;
 	}
 	$Type value = 0;
 	while (index != len)
@@ -762,41 +747,41 @@ macro String.to_integer(string, $Type, int base = 10)
 		{
 			case base_used != 16 || c < 'A':  c -= '0';
 			case c <= 'F':                    c -= 'A' - 10;
-			case c < 'a' || c > 'f':          return NumberConversion.MALFORMED_INTEGER?;
+			case c < 'a' || c > 'f':          return MALFORMED_INTEGER?;
 			default:                          c -= 'a' - 10;
 		}
-		if (c >= base_used) return NumberConversion.MALFORMED_INTEGER?;
+		if (c >= base_used) return MALFORMED_INTEGER?;
 		do
 		{
 			if (is_negative)
 			{
 				$Type new_value = value * base_used - c;
-				if (new_value > value) return NumberConversion.INTEGER_OVERFLOW?;
+				if (new_value > value) return INTEGER_OVERFLOW?;
 				value = new_value;
 				break;
 			}
 			$Type new_value = value * base_used + c;
-			if (new_value < value) return NumberConversion.INTEGER_OVERFLOW?;
+			if (new_value < value) return INTEGER_OVERFLOW?;
 			value = new_value;
 		};
 	}
 	return value;
 }
 
-fn int128! String.to_int128(s, int base = 10) => s.to_integer(int128, base);
-fn long! String.to_long(s, int base = 10) => s.to_integer(long, base);
-fn int! String.to_int(s, int base = 10) => s.to_integer(int, base);
-fn short! String.to_short(s, int base = 10) => s.to_integer(short, base);
-fn ichar! String.to_ichar(s, int base = 10) => s.to_integer(ichar, base);
+fn int128? String.to_int128(s, int base = 10) => s.to_integer(int128, base);
+fn long? String.to_long(s, int base = 10) => s.to_integer(long, base);
+fn int? String.to_int(s, int base = 10) => s.to_integer(int, base);
+fn short? String.to_short(s, int base = 10) => s.to_integer(short, base);
+fn ichar? String.to_ichar(s, int base = 10) => s.to_integer(ichar, base);
 
-fn uint128! String.to_uint128(s, int base = 10) => s.to_integer(uint128, base);
-fn ulong! String.to_ulong(s, int base = 10) => s.to_integer(ulong, base);
-fn uint! String.to_uint(s, int base = 10) => s.to_integer(uint, base);
-fn ushort! String.to_ushort(s, int base = 10) => s.to_integer(ushort, base);
-fn char! String.to_uchar(s, int base = 10) => s.to_integer(char, base);
+fn uint128? String.to_uint128(s, int base = 10) => s.to_integer(uint128, base);
+fn ulong? String.to_ulong(s, int base = 10) => s.to_integer(ulong, base);
+fn uint? String.to_uint(s, int base = 10) => s.to_integer(uint, base);
+fn ushort? String.to_ushort(s, int base = 10) => s.to_integer(ushort, base);
+fn char? String.to_uchar(s, int base = 10) => s.to_integer(char, base);
 
-fn double! String.to_double(s) => s.to_real(double);
-fn float! String.to_float(s) => s.to_real(float);
+fn double? String.to_double(s) => s.to_real(double);
+fn float? String.to_float(s) => s.to_real(float);
 
 fn Splitter String.splitter(self, String split)
 {
@@ -822,15 +807,15 @@ fn void Splitter.reset(&self)
 	self.current = 0;
 }
 
-fn String! Splitter.next(&self)
+fn String? Splitter.next(&self)
 {
 	while (true)
 	{
 		usz len = self.string.len;
 		usz current = self.current;
-		if (current >= len) return IteratorResult.NO_MORE_ELEMENT?;
+		if (current >= len) return NO_MORE_ELEMENT?;
 		String remaining = self.string[current..];
-		usz! next = remaining.index_of(self.split);
+		usz? next = remaining.index_of(self.split);
 		if (try next)
 		{
 			self.current = current + next + self.split.len;

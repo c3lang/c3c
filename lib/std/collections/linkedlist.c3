@@ -85,18 +85,18 @@ fn void LinkedList.push(&self, Type value)
 	self.size++;
 }
 
-fn Type! LinkedList.peek(&self) => self.first() @inline;
-fn Type! LinkedList.peek_last(&self) => self.last() @inline;
+fn Type? LinkedList.peek(&self) => self.first() @inline;
+fn Type? LinkedList.peek_last(&self) => self.last() @inline;
 
-fn Type! LinkedList.first(&self)
+fn Type? LinkedList.first(&self)
 {
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT?;
 	return self._first.value;
 }
 
-fn Type! LinkedList.last(&self)
+fn Type? LinkedList.last(&self)
 {
-	if (!self._last) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self._last) return NO_MORE_ELEMENT?;
 	return self._last.value;
 }
 
@@ -231,9 +231,9 @@ fn usz LinkedList.remove(&self, Type t) @if(ELEMENT_IS_EQUATABLE)
 	return start - self.size;
 }
 
-fn Type! LinkedList.pop(&self)
+fn Type? LinkedList.pop(&self)
 {
-	if (!self._last) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self._last) return NO_MORE_ELEMENT?;
 	defer self.unlink_last();
 	return self._last.value;
 }
@@ -243,22 +243,22 @@ fn bool LinkedList.is_empty(&self)
 	return !self._first;
 }
 
-fn Type! LinkedList.pop_front(&self)
+fn Type? LinkedList.pop_front(&self)
 {
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT?;
 	defer self.unlink_first();
 	return self._first.value;
 }
 
-fn void! LinkedList.remove_last(&self) @maydiscard
+fn void? LinkedList.remove_last(&self) @maydiscard
 {
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT?;
 	self.unlink_last();
 }
 
-fn void! LinkedList.remove_first(&self) @maydiscard
+fn void? LinkedList.remove_first(&self) @maydiscard
 {
-	if (!self._first) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self._first) return NO_MORE_ELEMENT?;
 	self.unlink_first();
 }
 

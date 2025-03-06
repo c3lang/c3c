@@ -3,19 +3,12 @@ module mymodule;
 
 extern fn void printf(char *, ...);
 
-fault HelloErr
-{
-    FOO,
-}
-fault ByeErr
-{
-    BAR,
-    BAZ
-}
+fault FOO;
+fault BAR, BAZ;
 
 fn void test()
 {
-    int! x = ByeErr.BAR?;
+    int? x = BAR?;
 
     typeid z = int.typeid;
     switch (z)
@@ -70,7 +63,7 @@ entry:
   %zy = alloca i32, align 4
   %switch17 = alloca i32, align 4
   %switch27 = alloca i8, align 1
-  store i64 ptrtoint (ptr @"mymodule.ByeErr$BAR" to i64), ptr %x.f, align 8
+  store i64 ptrtoint (ptr @mymodule.BAR to i64), ptr %x.f, align 8
   store i64 ptrtoint (ptr @"$ct.int" to i64), ptr %z, align 8
   %0 = load i64, ptr %z, align 8
   store i64 %0, ptr %switch, align 8
@@ -148,7 +141,7 @@ next_if16:                                        ; preds = %result_block14
   br label %switch.default
 
 switch.default:                                   ; preds = %next_if16, %switch.case15
-  call void (ptr, ...) @printf(ptr @.str.3)
+  call void (ptr, ...) @printf(ptr @.str.1)
   br label %switch.exit
 
 switch.exit:                                      ; preds = %switch.default, %switch.case
@@ -169,7 +162,7 @@ switch.entry18:                                   ; preds = %switch.exit
   br i1 %eq19, label %switch.case20, label %next_if21
 
 switch.case20:                                    ; preds = %switch.entry18
-  call void (ptr, ...) @printf(ptr @.str.4)
+  call void (ptr, ...) @printf(ptr @.str.2)
   br label %switch.exit26
 
 next_if21:                                        ; preds = %switch.entry18
@@ -178,14 +171,14 @@ next_if21:                                        ; preds = %switch.entry18
   br i1 %eq22, label %switch.case23, label %next_if24
 
 switch.case23:                                    ; preds = %next_if21
-  call void (ptr, ...) @printf(ptr @.str.5)
+  call void (ptr, ...) @printf(ptr @.str.3)
   br label %switch.exit26
 
 next_if24:                                        ; preds = %next_if21
   br label %switch.default25
 
 switch.default25:                                 ; preds = %next_if24
-  call void (ptr, ...) @printf(ptr @.str.6)
+  call void (ptr, ...) @printf(ptr @.str.4)
   br label %switch.exit26
 
 switch.exit26:                                    ; preds = %switch.default25, %switch.case23, %switch.case20
@@ -201,7 +194,7 @@ switch.entry28:                                   ; preds = %switch.exit26
   br i1 %eq29, label %switch.case30, label %next_if31
 
 switch.case30:                                    ; preds = %switch.entry28
-  call void (ptr, ...) @printf(ptr @.str.7)
+  call void (ptr, ...) @printf(ptr @.str.5)
   br label %switch.exit37
 
 next_if31:                                        ; preds = %switch.entry28
@@ -211,14 +204,14 @@ next_if31:                                        ; preds = %switch.entry28
   br i1 %eq33, label %switch.case34, label %next_if35
 
 switch.case34:                                    ; preds = %next_if31
-  call void (ptr, ...) @printf(ptr @.str.8)
+  call void (ptr, ...) @printf(ptr @.str.6)
   br label %switch.exit37
 
 next_if35:                                        ; preds = %next_if31
   br label %switch.default36
 
 switch.default36:                                 ; preds = %next_if35
-  call void (ptr, ...) @printf(ptr @.str.9)
+  call void (ptr, ...) @printf(ptr @.str.7)
   br label %switch.exit37
 
 switch.exit37:                                    ; preds = %switch.default36, %switch.case34, %switch.case30
@@ -229,6 +222,6 @@ switch.exit37:                                    ; preds = %switch.default36, %
 define void @mymodule.main() #0 {
 entry:
   call void @mymodule.test()
-  call void (ptr, ...) @printf(ptr @.str.10)
+  call void (ptr, ...) @printf(ptr @.str.8)
   ret void
 }

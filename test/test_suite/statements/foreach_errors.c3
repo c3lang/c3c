@@ -33,12 +33,12 @@ fn void test4()
 
 fn void test5()
 {
-    foreach (int! y : z) foo();
+    foreach (int? y : z) foo();
 }
 
 fn void test6()
 {
-    foreach (int! i, y : z) foo(); // #error: The index may not be an optional.
+    foreach (int? i, y : z) foo(); // #error: The index may not be an optional.
 }
 
 fn void test7()

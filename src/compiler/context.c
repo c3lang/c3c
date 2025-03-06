@@ -161,18 +161,17 @@ void decl_register(Decl *decl)
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
 		case DECL_ENUM_CONSTANT:
-		case DECL_FAULTVALUE:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_GLOBALS:
+		case DECL_FAULTS:
 			UNREACHABLE
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
 		case DECL_DISTINCT:
-		case DECL_FAULT:
 		case DECL_ENUM:
 		case DECL_STRUCT:
 		case DECL_TYPEDEF:
@@ -183,6 +182,7 @@ void decl_register(Decl *decl)
 		case DECL_VAR:
 		case DECL_FNTYPE:
 		case DECL_INTERFACE:
+		case DECL_FAULT_NEW:
 			global_context_add_decl(decl);
 			break;
 	}
@@ -239,10 +239,14 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_TYPEDEF:
-		case DECL_FAULT:
 		case DECL_BITSTRUCT:
 			ASSERT(decl->name);
 			vec_add(unit->types, decl);
+			decl_register(decl);
+			break;
+		case DECL_FAULT_NEW:
+			ASSERT(decl->name);
+			vec_add(unit->faults, decl);
 			decl_register(decl);
 			break;
 		case DECL_DEFINE:
@@ -259,13 +263,13 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->attributes, decl);
 			decl_register(decl);
 			break;
-		case DECL_FAULTVALUE:
 		case DECL_ENUM_CONSTANT:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_GLOBALS:
+		case DECL_FAULTS:
 		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_CT_EXEC:

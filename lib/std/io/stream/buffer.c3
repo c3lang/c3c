@@ -24,12 +24,12 @@ fn String ReadBuffer.str_view(&self) @inline
 	return (String)self.bytes[self.read_idx:self.write_idx - self.read_idx];
 }
 
-fn void! ReadBuffer.close(&self) @dynamic
+fn void? ReadBuffer.close(&self) @dynamic
 {
 	if (&self.wrapped_stream.close) self.wrapped_stream.close()!;
 }
 
-fn usz! ReadBuffer.read(&self, char[] bytes) @dynamic
+fn usz? ReadBuffer.read(&self, char[] bytes) @dynamic
 {
 	if (self.read_idx == self.write_idx)
 	{
@@ -46,16 +46,16 @@ fn usz! ReadBuffer.read(&self, char[] bytes) @dynamic
 	return n;
 }
 
-fn char! ReadBuffer.read_byte(&self) @dynamic
+fn char? ReadBuffer.read_byte(&self) @dynamic
 {
 	if (self.read_idx == self.write_idx) self.refill()!;
-	if (self.read_idx == self.write_idx) return IoError.EOF?;
+	if (self.read_idx == self.write_idx) return io::EOF?;
 	char c = self.bytes[self.read_idx];
 	self.read_idx++;
 	return c;
 }
 
-fn void! ReadBuffer.refill(&self) @local @inline
+fn void? ReadBuffer.refill(&self) @local @inline
 {
 	self.read_idx = 0;
 	self.write_idx = self.wrapped_stream.read(self.bytes)!;
@@ -85,18 +85,18 @@ fn String WriteBuffer.str_view(&self) @inline
 	return (String)self.bytes[:self.index];
 }
 
-fn void! WriteBuffer.close(&self) @dynamic
+fn void? WriteBuffer.close(&self) @dynamic
 {
 	if (&self.wrapped_stream.close) return self.wrapped_stream.close();
 }
 
-fn void! WriteBuffer.flush(&self) @dynamic
+fn void? WriteBuffer.flush(&self) @dynamic
 {
 	self.write_pending()!;
 	if (&self.wrapped_stream.flush) self.wrapped_stream.flush()!;
 }
 
-fn usz! WriteBuffer.write(&self, char[] bytes) @dynamic
+fn usz? WriteBuffer.write(&self, char[] bytes) @dynamic
 {
 	usz n = self.bytes.len - self.index;
 	if (bytes.len < n)
@@ -118,7 +118,7 @@ fn usz! WriteBuffer.write(&self, char[] bytes) @dynamic
 	return bytes.len;
 }
 
-fn void! WriteBuffer.write_byte(&self, char c) @dynamic
+fn void? WriteBuffer.write_byte(&self, char c) @dynamic
 {
 	usz n = self.bytes.len - self.index;
 	if (n == 0)
@@ -129,8 +129,8 @@ fn void! WriteBuffer.write_byte(&self, char c) @dynamic
 	self.index += 1;
 }
 
-fn void! WriteBuffer.write_pending(&self) @local
+fn void? WriteBuffer.write_pending(&self) @local
 {
 	self.index -= self.wrapped_stream.write(self.bytes[:self.index])!;
-	if (self.index != 0) return IoError.INCOMPLETE_WRITE?;
+	if (self.index != 0) return INCOMPLETE_WRITE?;
 }

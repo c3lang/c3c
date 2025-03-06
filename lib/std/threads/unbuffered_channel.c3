@@ -1,4 +1,4 @@
-module std::thread::channel{Type};
+module std::thread::channel {Type};
 
 distinct UnbufferedChannel = void*;
 
@@ -18,7 +18,7 @@ struct UnbufferedChannelImpl @private
 	ConditionVariable read_cond;
 }
 
-fn void! UnbufferedChannel.init(&self, Allocator allocator)
+fn void? UnbufferedChannel.init(&self, Allocator allocator)
 {
 	UnbufferedChannelImpl* channel = allocator::alloc(allocator, UnbufferedChannelImpl);
 	defer catch (void)allocator::free(allocator, channel);
@@ -40,7 +40,7 @@ fn void! UnbufferedChannel.init(&self, Allocator allocator)
 	*self = (UnbufferedChannel)channel;
 }
 
-fn void! UnbufferedChannel.destroy(&self)
+fn void? UnbufferedChannel.destroy(&self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)(*self);
 
@@ -56,7 +56,7 @@ fn void! UnbufferedChannel.destroy(&self)
 	*self = null;
 }
 
-fn void! UnbufferedChannel.push(self, Type val)
+fn void? UnbufferedChannel.push(self, Type val)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
@@ -67,7 +67,7 @@ fn void! UnbufferedChannel.push(self, Type val)
 
 	if (channel.closed)
 	{
-		return ThreadFault.CHANNEL_CLOSED?;
+		return thread::CHANNEL_CLOSED?;
 	}
 
 	// store value in the buffer
@@ -84,13 +84,13 @@ fn void! UnbufferedChannel.push(self, Type val)
 	// wait until reader takes value from buffer
 	channel.send_cond.wait(&channel.mu)!;
 
-	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED?;
 
 	channel.mu.unlock()!;
 	channel.send_mu.unlock()!;
 }
 
-fn Type! UnbufferedChannel.pop(self)
+fn Type? UnbufferedChannel.pop(self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
@@ -107,7 +107,7 @@ fn Type! UnbufferedChannel.pop(self)
 		channel.read_waiting--;
 	}
 
-	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED?;
 
 	// take value from buffer
 	Type ret = channel.buf;
@@ -122,7 +122,7 @@ fn Type! UnbufferedChannel.pop(self)
 	return ret;
 }
 
-fn void! UnbufferedChannel.close(self)
+fn void? UnbufferedChannel.close(self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 

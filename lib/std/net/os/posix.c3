@@ -34,20 +34,20 @@ fn anyfault convert_error(Errno error)
 {
 	switch (error)
 	{
-		case errno::EACCES: return IoError.NO_PERMISSION;
-		case errno::EADDRINUSE: return NetError.ADDRESS_IN_USE;
-		case errno::EALREADY: return NetError.CONNECTION_ALREADY_IN_PROGRESS;
-		case errno::EBADF: return NetError.BAD_SOCKET_DESCRIPTOR;
-		case errno::ECONNREFUSED: return NetError.CONNECTION_REFUSED;
-		case errno::ECONNRESET: return NetError.CONNECTION_RESET;
-		case errno::EISCONN: return NetError.ALREADY_CONNECTED;
-		case errno::ENETUNREACH: return NetError.NETWORK_UNREACHABLE;
-		case errno::ENOTSOCK: return NetError.NOT_A_SOCKET;
-		case errno::EINTR: return IoError.INTERRUPTED;
-		case errno::EWOULDBLOCK: return IoError.WOULD_BLOCK;
-		case errno::EOPNOTSUPP: return NetError.OPERATION_NOT_SUPPORTED_ON_SOCKET;
-		case errno::ETIMEDOUT: return NetError.CONNECTION_TIMED_OUT;
-		default: return IoError.GENERAL_ERROR;
+		case errno::EACCES: return io::NO_PERMISSION;
+		case errno::EADDRINUSE: return net::ADDRESS_IN_USE;
+		case errno::EALREADY: return net::CONNECTION_ALREADY_IN_PROGRESS;
+		case errno::EBADF: return net::BAD_SOCKET_DESCRIPTOR;
+		case errno::ECONNREFUSED: return net::CONNECTION_REFUSED;
+		case errno::ECONNRESET: return net::CONNECTION_RESET;
+		case errno::EISCONN: return net::ALREADY_CONNECTED;
+		case errno::ENETUNREACH: return net::NETWORK_UNREACHABLE;
+		case errno::ENOTSOCK: return net::NOT_A_SOCKET;
+		case errno::EINTR: return io::INTERRUPTED;
+		case errno::EWOULDBLOCK: return io::WOULD_BLOCK;
+		case errno::EOPNOTSUPP: return net::OPERATION_NOT_SUPPORTED_ON_SOCKET;
+		case errno::ETIMEDOUT: return net::CONNECTION_TIMED_OUT;
+		default: return io::GENERAL_ERROR;
 	}
 }
 
@@ -61,16 +61,16 @@ macro bool NativeSocket.is_valid(self)
 	return (iptr)self >= 0;
 }
 
-macro void! NativeSocket.close(self)
+macro void? NativeSocket.close(self)
 {
 	if (libc::close(self))
 	{
-		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
-		return NetError.GENERAL_ERROR?;
+		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET?;
+		return net::GENERAL_ERROR?;
 	}
 }
 
-macro void! NativeSocket.set_non_blocking(self, bool non_blocking)
+macro void? NativeSocket.set_non_blocking(self, bool non_blocking)
 {
 	int flags = fcntl(self, F_GETFL, 0);
 	if (non_blocking)
@@ -85,8 +85,8 @@ macro void! NativeSocket.set_non_blocking(self, bool non_blocking)
 	}
 	if (fcntl(self, F_SETFL, flags) == -1)
 	{
-		if (libc::errno() == errno::EBADF) return NetError.INVALID_SOCKET?;
-		return NetError.GENERAL_ERROR?;
+		if (libc::errno() == errno::EBADF) return net::INVALID_SOCKET?;
+		return net::GENERAL_ERROR?;
 	}
 }
 

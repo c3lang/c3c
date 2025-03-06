@@ -1,8 +1,8 @@
 // #target: macos-x64
 
-fn void! test()
+fn void? test()
 {
-    int! i;
+    int? i;
     i!;
 }
 

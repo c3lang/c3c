@@ -35,7 +35,7 @@ fn char[] Scanner.flush(&self) @dynamic
 	return buf;
 }
 
-fn void! Scanner.close(&self) @dynamic
+fn void? Scanner.close(&self) @dynamic
 {
 	if (&self.wrapped_stream.close) return self.wrapped_stream.close();
 }
@@ -45,7 +45,7 @@ fn void! Scanner.close(&self) @dynamic
  @require pattern.len > 0 : "Non-empty pattern required."
  @require self.buf.len > pattern.len : "Pattern too large."
 *>
-fn char[]! Scanner.scan(&self, String pattern = "\n")
+fn char[]? Scanner.scan(&self, String pattern = "\n")
 {
 	if (self.read_idx == 0)
 	{
@@ -65,7 +65,7 @@ fn char[]! Scanner.scan(&self, String pattern = "\n")
 	{
 		// Split pattern not found with maximized search, abort.
 		// Split pattern not found and already read as much as possible.
-		return SearchResult.MISSING?;
+		return NOT_FOUND?;
 	}
 	// Split pattern not found: maximize the search and try one more time.
 	self.buf[:n] = buf[..];
@@ -82,23 +82,23 @@ fn char[]! Scanner.scan(&self, String pattern = "\n")
 	return self.buf[:n + i];
 }
 
-macro usz! Scanner.find(&self, buf, pattern) @private
+macro usz? Scanner.find(&self, buf, pattern) @private
 {
 	return ((String)buf).index_of(pattern);
 }
 
-macro usz! Scanner.refill(&self, buf) @private
+macro usz? Scanner.refill(&self, buf) @private
 {
-	usz! n = self.wrapped_stream.read(buf);
+	usz? n = self.wrapped_stream.read(buf);
 	if (catch err = n)
 	{
-		if (err == IoError.EOF) return SearchResult.MISSING?;
+		if (err == io::EOF) return NOT_FOUND?;
 		return err?;
 	}
 	return n;
 }
 
-fn usz! Scanner.read(&self, char[] bytes) @dynamic
+fn usz? Scanner.read(&self, char[] bytes) @dynamic
 {
 	usz n;
 	if (self.pattern_idx < self.read_idx)
@@ -112,7 +112,7 @@ fn usz! Scanner.read(&self, char[] bytes) @dynamic
 	return n;
 }
 
-fn char! Scanner.read_byte(&self) @dynamic
+fn char? Scanner.read_byte(&self) @dynamic
 {
 	if (self.pattern_idx < self.read_idx)
 	{

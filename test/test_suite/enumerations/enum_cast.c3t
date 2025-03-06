@@ -27,8 +27,8 @@ fn void test()
     bool hello = (bool)MyEnum.FOO.ordinal;
     var $d = (float)MyEnum.FOO.ordinal;
     var $hello = (bool)MyEnum.FOO.ordinal;
-    MyEnum! xf = MyEnum.BAR;
-    float! e = (float)x.ordinal;
+    MyEnum? xf = MyEnum.BAR;
+    float? e = (float)x.ordinal;
     e = (float)xf.ordinal;
 
 }

@@ -2,16 +2,11 @@
 module test;
 import std::io;
 
-fault HadError
-{
-    BAD_STUFF,
-    WORSE_STUFF,
-    THE_WORST_STUFF
-}
+fault BAD_STUFF, WORSE_STUFF, THE_WORST_STUFF;
 
 fn int exitcode(anyfault error)
 {
-    switch ((HadError)error)
+    switch (error)
     {
         case BAD_STUFF: return 64;
         case WORSE_STUFF: return 65;
@@ -20,11 +15,11 @@ fn int exitcode(anyfault error)
     }
 }
 
-fn void! canFail()
+fn void? canFail()
 {
     if (34 + 35 == 69)
     {
-        return HadError.BAD_STUFF?;
+        return BAD_STUFF?;
     }
 }
 
@@ -49,21 +44,21 @@ entry:
 
 switch.entry:                                     ; preds = %entry
   %1 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"test.HadError$BAD_STUFF" to i64), %1
+  %eq = icmp eq i64 ptrtoint (ptr @test.BAD_STUFF to i64), %1
   br i1 %eq, label %switch.case, label %next_if
 
 switch.case:                                      ; preds = %switch.entry
   ret i32 64
 
 next_if:                                          ; preds = %switch.entry
-  %eq1 = icmp eq i64 ptrtoint (ptr @"test.HadError$WORSE_STUFF" to i64), %1
+  %eq1 = icmp eq i64 ptrtoint (ptr @test.WORSE_STUFF to i64), %1
   br i1 %eq1, label %switch.case2, label %next_if3
 
 switch.case2:                                     ; preds = %next_if
   ret i32 65
 
 next_if3:                                         ; preds = %next_if
-  %eq4 = icmp eq i64 ptrtoint (ptr @"test.HadError$THE_WORST_STUFF" to i64), %1
+  %eq4 = icmp eq i64 ptrtoint (ptr @test.THE_WORST_STUFF to i64), %1
   br i1 %eq4, label %switch.case5, label %next_if6
 
 switch.case5:                                     ; preds = %next_if3
@@ -81,7 +76,7 @@ entry:
   br label %if.then
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @"test.HadError$BAD_STUFF" to i64)
+  ret i64 ptrtoint (ptr @test.BAD_STUFF to i64)
 }
 
 define i32 @test.main(ptr %0, i64 %1) #0 {

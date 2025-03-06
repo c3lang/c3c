@@ -2,7 +2,7 @@
 module foo;
 extern fn void printf(char*,...);
 
-fn int! foo() { return 1; }
+fn int? foo() { return 1; }
 
 macro @foo_test(int i; @body())
 {

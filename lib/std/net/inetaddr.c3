@@ -45,7 +45,7 @@ struct InetAddress (Printable)
 }
 
 
-fn usz! InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
+fn usz? InetAddress.to_format(InetAddress* addr, Formatter* formatter) @dynamic
 {
 	if (addr.is_ipv6)
 	{
@@ -66,14 +66,14 @@ fn String InetAddress.to_tstring(&self)
 	return string::format(tmem(), "%s", *self);
 }
 
-fn InetAddress! ipv6_from_str(String s)
+fn InetAddress? ipv6_from_str(String s)
 {
 	uint sections = 0;
-	if (s.len < 2) return NetError.INVALID_IP_STRING?;
+	if (s.len < 2) return INVALID_IP_STRING?;
 	foreach (c : s) if (c == ':') sections++;
 	int zero_segment_len = s[0] == ':' || s[^1] == ':' ? 9 - sections : 8 - sections;
 	if (zero_segment_len == 7 && s.len == 2) return { .is_ipv6 = true };
-	if (zero_segment_len > 7) return NetError.INVALID_IP_STRING?;
+	if (zero_segment_len > 7) return INVALID_IP_STRING?;
 	usz index = 0;
 	bool last_was_colon, found_zero;
 	int current = -1;
@@ -89,7 +89,7 @@ fn InetAddress! ipv6_from_str(String s)
 					last_was_colon = true;
 					continue;
 				}
-				if (current < 0 || current > 65535) return NetError.INVALID_IP_STRING?;
+				if (current < 0 || current > 65535) return INVALID_IP_STRING?;
 				addr.ipv6arr[index++].val = (ushort)current;
 				current = -1;
 				last_was_colon = true;
@@ -97,9 +97,9 @@ fn InetAddress! ipv6_from_str(String s)
 			}
 			assert(current == -1);
 			// Check that this is the first ::
-			if (found_zero) return NetError.INVALID_IP_STRING?;
+			if (found_zero) return INVALID_IP_STRING?;
 			// Also check that the zeroed section is at least 2
-			if (zero_segment_len < 2) return NetError.INVALID_IP_STRING?;
+			if (zero_segment_len < 2) return INVALID_IP_STRING?;
 			// Skip (will be zero by default
 			index += zero_segment_len;
 			found_zero = true;
@@ -107,7 +107,7 @@ fn InetAddress! ipv6_from_str(String s)
 			continue;
 		}
 		last_was_colon = false;
-		if (index > 7 || !c.is_xdigit()) return NetError.INVALID_IP_STRING?;
+		if (index > 7 || !c.is_xdigit()) return INVALID_IP_STRING?;
 		if (current < 0) current = 0;
 		current = current * 16 + (c <= '9' ? c - '0' : (c | 32) - 'a' + 10);
 	}
@@ -115,12 +115,12 @@ fn InetAddress! ipv6_from_str(String s)
 	if (index == 8 && current == -1) return addr;
 
 	// Ends with number
-	if (index != 7 || current < 0 || current > 65535) return NetError.INVALID_IP_STRING?;
+	if (index != 7 || current < 0 || current > 65535) return INVALID_IP_STRING?;
 	addr.ipv6arr[7].val = (ushort)current;
 	return addr;
 }
 
-fn InetAddress! ipv4_from_str(String s)
+fn InetAddress? ipv4_from_str(String s)
 {
 	InetAddress addr;
 	int element;
@@ -129,20 +129,20 @@ fn InetAddress! ipv4_from_str(String s)
 	{
 		if (c == '.')
 		{
-			if (current < 0) return NetError.INVALID_IP_STRING?;
-			if (current > 255) return NetError.INVALID_IP_STRING?;
+			if (current < 0) return INVALID_IP_STRING?;
+			if (current > 255) return INVALID_IP_STRING?;
 			switch (element)
 			{
 				case 0: addr.ipv4.a = (char)current;
 				case 1: addr.ipv4.b = (char)current;
 				case 2: addr.ipv4.c = (char)current;
-				default: return NetError.INVALID_IP_STRING?;
+				default: return INVALID_IP_STRING?;
 			}
 			current = -1;
 			element++;
 			continue;
 		}
-		if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING?;
+		if (element > 3 || c < '0' || c > '9') return INVALID_IP_STRING?;
 		if (current < 0)
 		{
 			current = c - '0';
@@ -150,7 +150,7 @@ fn InetAddress! ipv4_from_str(String s)
 		}
 		current = current * 10 + c - '0';
 	}
-	if (element != 3 || current < 0 || current > 255) return NetError.INVALID_IP_STRING?;
+	if (element != 3 || current < 0 || current > 255) return INVALID_IP_STRING?;
 	addr.ipv4.d = (char)current;
 	return addr;
 }
@@ -252,13 +252,13 @@ fn bool InetAddress.is_multicast_link_local(InetAddress* addr)
 	return addr.ipv4.a == 224 && addr.ipv4.b == 0 && addr.ipv4.c == 0;
 }
 
-fn AddrInfo*! addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
+fn AddrInfo*? addrinfo(String host, uint port, AIFamily ai_family, AISockType ai_socktype) @if(os::SUPPORTS_INET) => @pool()
 {
 	ZString zhost = host.zstr_tcopy();
 	DString str = dstring::temp_with_capacity(32);
 	str.appendf("%d", port);
 	AddrInfo hints = { .ai_family = ai_family, .ai_socktype = ai_socktype };
 	AddrInfo* ai;
-	if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return NetError.ADDRINFO_FAILED?;
+	if (os::getaddrinfo(zhost, str.zstr_view(), &hints, &ai)) return ADDRINFO_FAILED?;
 	return ai;
 }

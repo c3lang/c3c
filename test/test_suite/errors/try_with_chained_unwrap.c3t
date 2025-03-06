@@ -1,7 +1,7 @@
 // #target: macos-x64
 
-extern fn char*! readLine();
-extern fn int! atoi(char*);
+extern fn char*? readLine();
+extern fn int? atoi(char*);
 
 extern fn int printf(char* fmt, ...);
 

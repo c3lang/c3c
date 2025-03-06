@@ -12,28 +12,29 @@ const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
 <*
  @param c : `The utf32 codepoint to convert`
  @param [out] output : `the resulting buffer`
+ @return! string::CONVERSION_FAILED
 *>
-fn usz! char32_to_utf8(Char32 c, char[] output)
+fn usz? char32_to_utf8(Char32 c, char[] output)
 {
-	if (!output.len) return UnicodeResult.CONVERSION_FAILED?;
+	if (!output.len) return string::CONVERSION_FAILED?;
 	switch (true)
 	{
 		case c <= 0x7f:
 			output[0] = (char)c;
 			return 1;
 		case c <= 0x7ff:
-			if (output.len < 2) return UnicodeResult.CONVERSION_FAILED?;
+			if (output.len < 2) return string::CONVERSION_FAILED?;
 			output[0] = (char)(0xC0 | c >> 6);
 			output[1] = (char)(0x80 | (c & 0x3F));
 			return 2;
 		case c <= 0xffff:
-			if (output.len < 3) return UnicodeResult.CONVERSION_FAILED?;
+			if (output.len < 3) return string::CONVERSION_FAILED?;
 			output[0] = (char)(0xE0 | c >> 12);
 			output[1] = (char)(0x80 | (c >> 6 & 0x3F));
 			output[2] = (char)(0x80 | (c & 0x3F));
 			return 3;
 		case c <= 0x10ffff:
-			if (output.len < 4) return UnicodeResult.CONVERSION_FAILED?;
+			if (output.len < 4) return string::CONVERSION_FAILED?;
 			output[0] = (char)(0xF0 | c >> 18);
 			output[1] = (char)(0x80 | (c >> 12 & 0x3F));
 			output[2] = (char)(0x80 | (c >> 6 & 0x3F));
@@ -41,7 +42,7 @@ fn usz! char32_to_utf8(Char32 c, char[] output)
 			return 4;
 		default:
 			// 0x10FFFF and above is not defined.
-			return UnicodeResult.CONVERSION_FAILED?;
+			return string::CONVERSION_FAILED?;
 	}
 }
 
@@ -73,7 +74,7 @@ fn void char32_to_utf16_unsafe(Char32 c, Char16** output)
  @param [inout] available : `amount of UTF16 data available.`
  @param [inout] output : `the resulting utf8 buffer to write to.`
 *>
-fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
+fn void? char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 {
 	Char16 high = *ptr;
 	if (high & UTF16_SURROGATE_GENERIC_MASK != UTF16_SURROGATE_GENERIC_VALUE)
@@ -83,15 +84,15 @@ fn void! char16_to_utf8_unsafe(Char16 *ptr, usz *available, char** output)
 		return;
 	}
 	// Low surrogate first is an error
-	if (high & UTF16_SURROGATE_MASK != UTF16_SURROGATE_HIGH_VALUE) return UnicodeResult.INVALID_UTF16?;
+	if (high & UTF16_SURROGATE_MASK != UTF16_SURROGATE_HIGH_VALUE) return string::INVALID_UTF16?;
 
 	// Unmatched high surrogate is an error
-	if (*available == 1) return UnicodeResult.INVALID_UTF16?;
+	if (*available == 1) return string::INVALID_UTF16?;
 
 	Char16 low = ptr[1];
 
 	// Unmatched high surrogate, invalid
-	if (low & UTF16_SURROGATE_MASK != UTF16_SURROGATE_LOW_VALUE) return UnicodeResult.INVALID_UTF16?;
+	if (low & UTF16_SURROGATE_MASK != UTF16_SURROGATE_LOW_VALUE) return string::INVALID_UTF16?;
 
 	// The high bits of the codepoint are the value bits of the high surrogate
 	// The low bits of the codepoint are the value bits of the low surrogate
@@ -134,10 +135,10 @@ fn usz char32_to_utf8_unsafe(Char32 c, char** output)
  @param [inout] size : `Set to max characters to read, set to characters read`
  @return `the parsed 32 bit codepoint`
 *>
-fn Char32! utf8_to_char32(char* ptr, usz* size)
+fn Char32? utf8_to_char32(char* ptr, usz* size)
 {
 	usz max_size = *size;
-	if (max_size < 1) return UnicodeResult.INVALID_UTF8?;
+	if (max_size < 1) return string::INVALID_UTF8?;
 	char c = (ptr++)[0];
 
 	if ((c & 0x80) == 0)
@@ -147,40 +148,40 @@ fn Char32! utf8_to_char32(char* ptr, usz* size)
 	}
 	if ((c & 0xE0) == 0xC0)
 	{
-		if (max_size < 2) return UnicodeResult.INVALID_UTF8?;
+		if (max_size < 2) return string::INVALID_UTF8?;
 		*size = 2;
 		Char32 uc = (c & 0x1F) << 6;
 		c = *ptr;
 		// Overlong sequence or invalid second.
-		if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
+		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8?;
 		return uc + c & 0x3F;
 	}
 	if ((c & 0xF0) == 0xE0)
 	{
-		if (max_size < 3) return UnicodeResult.INVALID_UTF8?;
+		if (max_size < 3) return string::INVALID_UTF8?;
 		*size = 3;
 		Char32 uc = (c & 0x0F) << 12;
 		c = ptr++[0];
-		if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
+		if (c & 0xC0 != 0x80) return string::INVALID_UTF8?;
 		uc += (c & 0x3F) << 6;
 		c = ptr++[0];
 		// Overlong sequence or invalid last
-		if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
+		if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8?;
 		return uc + c & 0x3F;
 	}
-	if (max_size < 4) return UnicodeResult.INVALID_UTF8?;
-	if ((c & 0xF8) != 0xF0) return UnicodeResult.INVALID_UTF8?;
+	if (max_size < 4) return string::INVALID_UTF8?;
+	if ((c & 0xF8) != 0xF0) return string::INVALID_UTF8?;
 	*size = 4;
 	Char32 uc = (c & 0x07) << 18;
 	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
+	if (c & 0xC0 != 0x80) return string::INVALID_UTF8?;
 	uc += (c & 0x3F) << 12;
 	c = ptr++[0];
-	if (c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
+	if (c & 0xC0 != 0x80) return string::INVALID_UTF8?;
 	uc += (c & 0x3F) << 6;
 	c = ptr++[0];
 	// Overlong sequence or invalid last
-	if (!uc || c & 0xC0 != 0x80) return UnicodeResult.INVALID_UTF8?;
+	if (!uc || c & 0xC0 != 0x80) return string::INVALID_UTF8?;
 	return uc + c & 0x3F;
 }
 
@@ -300,7 +301,7 @@ fn usz utf16len_for_utf32(Char32[] utf32)
  @param [out] utf8_buffer
  @return `the number of bytes written.`
 *>
-fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
+fn usz? utf32to8(Char32[] utf32, char[] utf8_buffer)
 {
 	char[] buffer = utf8_buffer;
 	foreach (uc : utf32)
@@ -320,7 +321,7 @@ fn usz! utf32to8(Char32[] utf32, char[] utf8_buffer)
  @param [out] utf32_buffer
  @return `the number of Char32s written.`
 *>
-fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
+fn usz? utf8to32(String utf8, Char32[] utf32_buffer)
 {
 	usz len = utf8.len;
 	Char32* ptr = utf32_buffer.ptr;
@@ -328,7 +329,7 @@ fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
 	usz buf_len = utf32_buffer.len;
 	for (usz i = 0; i < len;)
 	{
-		if (len32 == buf_len) return UnicodeResult.CONVERSION_FAILED?;
+		if (len32 == buf_len) return string::CONVERSION_FAILED?;
 		usz width = len - i;
 		Char32 uc = utf8_to_char32(&utf8[i], &width) @inline!;
 		i += width;
@@ -347,7 +348,7 @@ fn usz! utf8to32(String utf8, Char32[] utf32_buffer)
  @param [in] utf16 : `The UTF16 array containing the data to convert.`
  @param [out] utf8_buffer : `the (sufficiently large) buffer to hold the UTF16 data.`
 *>
-fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
+fn void? utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
 {
 	usz len16 = utf16.len;
 	for (usz i = 0; i < len16;)
@@ -366,7 +367,7 @@ fn void! utf16to8_unsafe(Char16[] utf16, char* utf8_buffer)
  @param [in] utf8 : `The UTF8 buffer containing the data to convert.`
  @param [out] utf32_buffer : `the (sufficiently large) buffer to hold the UTF8 data.`
 *>
-fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
+fn void? utf8to32_unsafe(String utf8, Char32* utf32_buffer)
 {
 	usz len = utf8.len;
 	for (usz i = 0; i < len;)
@@ -386,7 +387,7 @@ fn void! utf8to32_unsafe(String utf8, Char32* utf32_buffer)
  @param [in] utf8 : `The UTF8 buffer containing the data to convert.`
  @param [out] utf16_buffer : `the (sufficiently large) buffer to hold the UTF8 data.`
 *>
-fn void! utf8to16_unsafe(String utf8, Char16* utf16_buffer)
+fn void? utf8to16_unsafe(String utf8, Char16* utf16_buffer)
 {
 	usz len = utf8.len;
 	for (usz i = 0; i < len;)

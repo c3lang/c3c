@@ -1,22 +1,19 @@
 module foo;
 
-fault Baz
-{
-	TEST
-}
+fault TEST;
 
 module bar;
 import foo;
 
-fn int! abc()
+fn int? abc()
 {
-	return Baz.TEST?;
+	return foo::TEST?;
 }
 
 module baz;
 import foo;
 
-fn int! abc()
+fn int? abc()
 {
-	return Baz.TEST?;
+	return foo::TEST?;
 }

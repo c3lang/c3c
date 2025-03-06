@@ -1,7 +1,7 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::BSD_FAMILY) => @pool()
+fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::BSD_FAMILY) => @pool()
 {
 	$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
 		int res = libc::stat(path.zstr_tcopy(), stat);
@@ -14,30 +14,30 @@ fn void! native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || e
 		switch (libc::errno())
 		{
 			case errno::EBADF:
-				return IoError.FILE_NOT_VALID?;
+				return io::FILE_NOT_VALID?;
 			case errno::EFAULT:
 				unreachable("Invalid stat");
 			case errno::EIO:
-				return IoError.GENERAL_ERROR?;
+				return io::GENERAL_ERROR?;
 			case errno::EACCES:
-				return IoError.NO_PERMISSION?;
+				return io::NO_PERMISSION?;
 			case errno::ELOOP:
-				return IoError.NO_PERMISSION?;
+				return io::NO_PERMISSION?;
 			case errno::ENAMETOOLONG:
-				return IoError.NAME_TOO_LONG?;
+				return io::NAME_TOO_LONG?;
 			case errno::ENOENT:
-				return IoError.FILE_NOT_FOUND?;
+				return io::FILE_NOT_FOUND?;
 			case errno::ENOTDIR:
-				return IoError.FILE_NOT_DIR?;
+				return io::FILE_NOT_DIR?;
 			case errno::EOVERFLOW:
-				return IoError.GENERAL_ERROR?;
+				return io::GENERAL_ERROR?;
 			default:
-				return IoError.UNKNOWN_ERROR?;
+				return io::UNKNOWN_ERROR?;
 		}
 	}
 }
 
-fn usz! native_file_size(String path) @if(env::WIN32) => @pool()
+fn usz? native_file_size(String path) @if(env::WIN32) => @pool()
 {
 	Win32_FILE_ATTRIBUTE_DATA data;
 	win32::getFileAttributesExW(path.to_temp_wstring()!, Win32_GET_FILEEX_INFO_LEVELS.STANDARD, &data);
@@ -47,14 +47,14 @@ fn usz! native_file_size(String path) @if(env::WIN32) => @pool()
 	return (usz)size.quadPart;
 }
 
-fn usz! native_file_size(String path) @if(!env::WIN32 && !env::DARWIN)
+fn usz? native_file_size(String path) @if(!env::WIN32 && !env::DARWIN)
 {
 	File f = file::open(path, "r")!;
 	defer (void)f.close();
 	return f.seek(0, Seek.END)!;
 }
 
-fn usz! native_file_size(String path) @if(env::DARWIN)
+fn usz? native_file_size(String path) @if(env::DARWIN)
 {
 	Stat stat;
 	native_stat(&stat, path)!;
@@ -97,7 +97,7 @@ fn bool native_is_file(String path)
 			Stat stat;
 			return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFREG);
 		$default:
-			File! f = file::open(path, "r");
+			File? f = file::open(path, "r");
 			defer (void)f.close();
 			return @ok(f);
 	$endswitch

@@ -2,49 +2,46 @@
 
 module test;
 
-fault Foo
+fault X;
+
+fn int? test(int i)
 {
-	X
+	return i ?: X?;
 }
 
-fn int! test(int i)
+fn int? test2(int i)
 {
-	return i ?: Foo.X?;
-}
-
-fn int! test2(int i)
-{
-	return i ? Foo.X? : Foo.X?;
+	return i ? X? : X?;
 }
 
 
-fn int! test3(int i)
+fn int? test3(int i)
 {
-	return i ? 2 : Foo.X?;
+	return i ? 2 : X?;
 }
 
 
-fn int! test4(int i)
+fn int? test4(int i)
 {
-	int! y = i;
-	return (y!) ?: Foo.X?;
+	int? y = i;
+	return (y!) ?: X?;
 }
-fn int! test5(int i)
+fn int? test5(int i)
 {
-	int! y = i;
-	return (y!) ? Foo.X? : Foo.X?;
-}
-
-fn int! test6(int i)
-{
-	int! y = i;
-	return (y!) ? 2 : Foo.X?;
+	int? y = i;
+	return (y!) ? X? : X?;
 }
 
-fn int! test7(int i)
+fn int? test6(int i)
 {
-	int! y = i;
-    return (y!) ? Foo.X? : 2;
+	int? y = i;
+	return (y!) ? 2 : X?;
+}
+
+fn int? test7(int i)
+{
+	int? y = i;
+    return (y!) ? X? : 2;
 }
 
 fn void main()
@@ -52,7 +49,7 @@ fn void main()
 	test(1)!!;
 	test7(0)!!;
 	test6(1)!!;
-	int! i = test2(3);
+	int? i = test2(3);
 }
 
 /* expect: test.ll

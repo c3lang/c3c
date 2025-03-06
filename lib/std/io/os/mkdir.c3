@@ -5,7 +5,7 @@ import std::os::win32;
 import std::os::posix;
 
 
-macro bool! native_mkdir(Path path, MkdirPermissions permissions)
+macro bool? native_mkdir(Path path, MkdirPermissions permissions)
 {
 	$switch:
 		$case env::POSIX:
@@ -15,15 +15,15 @@ macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 				case errno::EACCES:
 				case errno::EPERM:
 				case errno::EROFS:
-				case errno::EFAULT: return IoError.NO_PERMISSION?;
-				case errno::ENAMETOOLONG: return IoError.NAME_TOO_LONG?;
+				case errno::EFAULT: return io::NO_PERMISSION?;
+				case errno::ENAMETOOLONG: return io::NAME_TOO_LONG?;
 				case errno::EDQUOT:
-				case errno::ENOSPC: return IoError.OUT_OF_SPACE?;
+				case errno::ENOSPC: return io::OUT_OF_SPACE?;
 				case errno::EISDIR:
 				case errno::EEXIST: return false;
-				case errno::ELOOP: return IoError.SYMLINK_FAILED?;
-				case errno::ENOTDIR: return IoError.FILE_NOT_FOUND?;
-				default: return IoError.GENERAL_ERROR?;
+				case errno::ELOOP: return io::SYMLINK_FAILED?;
+				case errno::ENOTDIR: return io::FILE_NOT_FOUND?;
+				default: return io::GENERAL_ERROR?;
 			}
 		$case env::WIN32:
 			@pool()
@@ -33,18 +33,18 @@ macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 				switch (win32::getLastError())
 				{
 					case win32::ERROR_ACCESS_DENIED:
-						return IoError.NO_PERMISSION?;
+						return io::NO_PERMISSION?;
 					case win32::ERROR_DISK_FULL:
-						return IoError.OUT_OF_SPACE?;
+						return io::OUT_OF_SPACE?;
 					case win32::ERROR_ALREADY_EXISTS:
 						return false;
 					case win32::ERROR_PATH_NOT_FOUND:
-						return IoError.FILE_NOT_FOUND?;
+						return io::FILE_NOT_FOUND?;
 					default:
-						return IoError.GENERAL_ERROR?;
+						return io::GENERAL_ERROR?;
 				}
 			};
 		$default:
-			return IoError.UNSUPPORTED_OPERATION?;
+			return io::UNSUPPORTED_OPERATION?;
 	$endswitch
 }

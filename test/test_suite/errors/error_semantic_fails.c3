@@ -1,5 +1,5 @@
-fault Repeater
-{
+fault
+
     A,
-    A // #error: This fault value was declared twice.
-}
+    A // #error: would shadow a previous declaration
+;

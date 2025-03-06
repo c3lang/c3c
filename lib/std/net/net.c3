@@ -1,8 +1,7 @@
 module std::net;
 import std::io;
 
-fault NetError
-{
+fault
 	INVALID_URL,
 	URL_TOO_LONG,
 	INVALID_SOCKET,
@@ -27,10 +26,9 @@ fault NetError
 	ALREADY_CONNECTED,
 	NETWORK_UNREACHABLE,
 	OPERATION_NOT_SUPPORTED_ON_SOCKET,
-	CONNECTION_RESET,
-}
+	CONNECTION_RESET;
 
-fn uint! ipv4toint(String s)
+fn uint? ipv4toint(String s)
 {
 	uint out;
 	int element;
@@ -39,13 +37,13 @@ fn uint! ipv4toint(String s)
 	{
 		if (c == '.')
 		{
-			if (current < 0) return NetError.INVALID_IP_STRING?;
+			if (current < 0) return INVALID_IP_STRING?;
 			out = out << 8 + current;
 			current = -1;
 			element++;
 			continue;
 		}
-		if (element > 3 || c < '0' || c > '9') return NetError.INVALID_IP_STRING?;
+		if (element > 3 || c < '0' || c > '9') return INVALID_IP_STRING?;
 		if (current < 0)
 		{
 			current = c - '0';
@@ -53,12 +51,12 @@ fn uint! ipv4toint(String s)
 		}
 		current = current * 10 + c - '0';
 	}
-	if (element != 3 || current < 0) return NetError.INVALID_IP_STRING?;
+	if (element != 3 || current < 0) return INVALID_IP_STRING?;
 	out = out << 8 + current;
 	return out;
 }
 
-fn String! int_to_ipv4(uint val, Allocator allocator)
+fn String? int_to_ipv4(uint val, Allocator allocator)
 {
 	char[3 * 4 + 3 + 1] buffer;
 	String res = (String)io::bprintf(&buffer, "%d.%d.%d.%d", val >> 24, (val >> 16) & 0xFF, (val >> 8) & 0xFF, val & 0xFF)!;

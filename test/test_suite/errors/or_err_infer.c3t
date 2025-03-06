@@ -8,7 +8,7 @@ enum Foo
 fn int main()
 {
 	int a;
-	Foo! x = ABC;
+	Foo? x = ABC;
 	Foo f = x ?? DEF;
 	return 0;
 }

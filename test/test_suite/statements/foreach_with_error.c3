@@ -2,7 +2,7 @@ module test;
 
 fn void test()
 {
-    int[3]! x;
+    int[3]? x;
     int g;
     foreach (z : x) // #error: The foreach iterable expression
     {

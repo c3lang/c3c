@@ -126,7 +126,7 @@ fn EnumSet EnumSet.xor_of(&self, EnumSet s)
 	$endif
 }
 
-fn usz! EnumSet.to_format(&set, Formatter* formatter) @dynamic
+fn usz? EnumSet.to_format(&set, Formatter* formatter) @dynamic
 {
 	usz n = formatter.print("[")!;
 	bool found;

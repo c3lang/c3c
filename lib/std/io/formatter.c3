@@ -7,19 +7,12 @@ const int PRINTF_NTOA_BUFFER_SIZE = 256;
 interface Printable
 {
 	fn String to_constant_string() @optional;
-	fn usz! to_format(Formatter* formatter) @optional;
+	fn usz? to_format(Formatter* formatter) @optional;
 }
 
-fault PrintFault
-{
-	BUFFER_EXCEEDED,
-	INTERNAL_BUFFER_EXCEEDED,
-	INVALID_FORMAT,
-	NOT_ENOUGH_ARGUMENTS,
-	INVALID_ARGUMENT,
-}
+fault BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
 
-def OutputFn = fn void!(void* buffer, char c);
+def OutputFn = fn void?(void* buffer, char c);
 def FloatType = double;
 
 
@@ -35,7 +28,7 @@ macro bool is_struct_with_default_print($Type)
 
  @require @typekind(value) == STRUCT : `This macro is only valid on macros`
 *>
-macro usz! struct_to_format(value, Formatter* f, bool $force_dump)
+macro usz? struct_to_format(value, Formatter* f, bool $force_dump)
 {
     var $Type = $typeof(value);
     usz total = f.print("{ ")!;
@@ -56,12 +49,12 @@ macro usz! struct_to_format(value, Formatter* f, bool $force_dump)
 	return total + f.print(" }");
 }
 
-fn usz! ReflectedParam.to_format(&self, Formatter* f) @dynamic
+fn usz? ReflectedParam.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("[Parameter '%s']", self.name);
 }
 
-fn usz! Formatter.printf(&self, String format, args...)
+fn usz? Formatter.printf(&self, String format, args...)
 {
 	return self.vprintf(format, args) @inline;
 }
@@ -96,7 +89,7 @@ fn void Formatter.init(&self, OutputFn out_fn, void* data = null)
 	*self = { .data = data, .out_fn = out_fn};
 }
 
-fn usz! Formatter.out(&self, char c) @private
+fn usz? Formatter.out(&self, char c) @private
 {
 	if (catch err = self.out_fn(self.data, c))
 	{
@@ -107,7 +100,7 @@ fn usz! Formatter.out(&self, char c) @private
 	return 1;
 }
 
-fn usz! Formatter.print_with_function(&self, Printable arg)
+fn usz? Formatter.print_with_function(&self, Printable arg)
 {
 	if (&arg.to_format)
 	{
@@ -137,14 +130,14 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 		if (!arg) return self.out_substr("(null)");
 		return self.out_substr(arg.to_constant_string());
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
-fn usz! Formatter.out_unknown(&self, String category, any arg) @private
+fn usz? Formatter.out_unknown(&self, String category, any arg) @private
 {
 	return self.out_substr("[") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr("]");
 }
-fn usz! Formatter.out_str(&self, any arg) @private
+fn usz? Formatter.out_str(&self, any arg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -153,7 +146,6 @@ fn usz! Formatter.out_str(&self, any arg) @private
 		case VOID:
 			return self.out_substr("void");
 		case ANYFAULT:
-		case FAULT:
 			return self.out_substr((*(anyfault*)arg.ptr).nameof);
 		case INTERFACE:
 		case ANY:
@@ -187,9 +179,9 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			return self.out_substr(*(bool*)arg.ptr ? "true" : "false");
 		default:
 	}
-	usz! n = self.print_with_function((Printable)arg);
+	usz? n = self.print_with_function((Printable)arg);
 	if (try n) return n;
-	if (@catch(n) != SearchResult.MISSING) n!;
+	if (@catch(n) != NOT_FOUND) n!;
 	switch (arg.type.kindof)
 	{
 		case ENUM:
@@ -226,7 +218,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 				any deref = any_make(*pointer, inner);
 				n = self.print_with_function((Printable)deref);
 				if (try n) return n;
-				if (@catch(n) != SearchResult.MISSING) n!;
+				if (@catch(n) != NOT_FOUND) n!;
 			}
 			PrintFlags flags = self.flags;
 			uint width = self.width;
@@ -238,7 +230,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			self.width = 0;
 			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
 		case ARRAY:
-			// this is SomeType[?] so grab the "SomeType"
+			// this is SomeType[*] so grab the "SomeType"
 			PrintFlags flags = self.flags;
 			uint width = self.width;
 			defer
@@ -272,7 +264,7 @@ fn usz! Formatter.out_str(&self, any arg) @private
 			}
 			self.flags = {};
 			self.width = 0;
-			// this is SomeType[?] so grab the "SomeType"
+			// this is SomeType[*] so grab the "SomeType"
 			typeid inner = arg.type.inner;
 			usz size = inner.sizeof;
 			usz vlen = arg.type.len;
@@ -325,28 +317,28 @@ fn usz! Formatter.out_str(&self, any arg) @private
 
 
 
-fn void! out_null_fn(void* data @unused, char c @unused) @private
+fn void? out_null_fn(void* data @unused, char c @unused) @private
 {
 }
 
-macro usz! @report_fault(Formatter* f, $fault)
+macro usz? @report_fault(Formatter* f, $fault)
 {
 	(void)f.out_substr($fault);
-	return PrintFault.INVALID_FORMAT?;
+	return INVALID_FORMAT?;
 }
 
-macro usz! @wrap_bad(Formatter* f, #action)
+macro usz? @wrap_bad(Formatter* f, #action)
 {
-	usz! len = #action;
+	usz? len = #action;
 	if (catch err = len)
 	{
 		switch (err)
 		{
-			case PrintFault.BUFFER_EXCEEDED:
-        	case PrintFault.INTERNAL_BUFFER_EXCEEDED:
+			case BUFFER_EXCEEDED:
+        	case INTERNAL_BUFFER_EXCEEDED:
         		return f.first_err(err)?;
         	default:
-        		err = f.first_err(PrintFault.INVALID_ARGUMENT);
+			err = f.first_err(INVALID_ARGUMENT);
         		f.out_substr("<INVALID>")!;
         		return err?;
 		}
@@ -354,7 +346,7 @@ macro usz! @wrap_bad(Formatter* f, #action)
 	return len;
 }
 
-fn usz! Formatter.vprintf(&self, String format, any[] anys)
+fn usz? Formatter.vprintf(&self, String format, any[] anys)
 {
 	self.first_fault = {};
 	if (!self.out_fn)
@@ -400,7 +392,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 			c = format[i];
 		}
 		// evaluate width field
-		int! w = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
+		int? w = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
 		if (catch w) return @report_fault(self, "%ERR");
 		c = format[i];
 		if (w < 0)
@@ -415,7 +407,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		{
 			self.flags.precision = true;
 			if (++i >= format_len) return @report_fault(self, "<BAD FORMAT>");
-			int! prec = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
+			int? prec = printf_parse_format_field(anys.ptr, anys.len, &variant_index, format.ptr, format.len, &i);
 			if (catch prec) return @report_fault(self, "<BAD FORMAT>");
 			self.prec = prec < 0 ? 0 : prec;
 			c = format[i];
@@ -425,7 +417,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 		uint base = 0;
 		if (variant_index >= anys.len)
 		{
-			self.first_err(PrintFault.NOT_ENOUGH_ARGUMENTS);
+			self.first_err(NOT_ENOUGH_ARGUMENTS);
 			total_len += self.out_substr("<MISSING>")!;
 			continue;
 		}
@@ -532,7 +524,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				self.flags.hash = true;
 				base = 16;
 			default:
-				self.first_err(PrintFault.INVALID_FORMAT);
+				self.first_err(INVALID_FORMAT);
 				total_len += self.out_substr("<BAD FORMAT>")!;
 				continue;
 		}
@@ -556,7 +548,7 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 }
 
 
-fn usz! Formatter.print(&self, String str)
+fn usz? Formatter.print(&self, String str)
 {
 	if (!self.out_fn)
 	{

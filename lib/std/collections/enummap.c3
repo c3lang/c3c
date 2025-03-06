@@ -16,7 +16,7 @@ fn void EnumMap.init(&self, ValueType init_value)
 	}
 }
 
-fn usz! EnumMap.to_format(&self, Formatter* formatter) @dynamic
+fn usz? EnumMap.to_format(&self, Formatter* formatter) @dynamic
 {
 	usz n = formatter.print("{ ")!;
 	foreach (i, &value : self.values)

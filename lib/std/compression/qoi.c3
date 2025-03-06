@@ -42,14 +42,7 @@ struct QOIDesc
  QOI Errors.
  These are all the possible bad outcomes.
 *>
-fault QOIError
-{
-	INVALID_PARAMETERS,
-	FILE_OPEN_FAILED,
-	FILE_WRITE_FAILED,
-	INVALID_DATA,
-	TOO_MANY_PIXELS
-}
+fault INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, TOO_MANY_PIXELS;
 
 
 // Let the user decide if they want to use std::io
@@ -71,7 +64,7 @@ import std::io;
  @param [in] input : `The raw RGB or RGBA pixels to encode`
  @param [&in] desc : `The descriptor of the image`
 *>
-fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
+fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
 	char[] output = encode(tmem(), input, desc)!;
@@ -101,11 +94,12 @@ fn usz! write(String filename, char[] input, QOIDesc* desc) => @pool()
  @param [in] filename : `The file's name to read the image from`
  @param [&out] desc : `The descriptor to fill with the image's info`
  @param channels : `The channels to be used`
+ @return! FILE_OPEN_FAILED, INVALID_DATA, TOO_MANY_PIXELS
 *>
-fn char[]! read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
+fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
 {
 	// read file
-	char[] data = file::load_temp(filename) ?? QOIError.FILE_OPEN_FAILED?!;
+	char[] data = file::load_temp(filename) ?? FILE_OPEN_FAILED?!;
 	// pass data to decode function
 	return decode(allocator, data, desc, channels);
 }
@@ -128,18 +122,19 @@ import std::bits;
 
  @param [in] input : `The raw RGB or RGBA pixels to encode`
  @param [&in] desc : `The descriptor of the image`
+ @return! INVALID_PARAMETERS, TOO_MANY_PIXELS, INVALID_DATA
 *>
-fn char[]! encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
+fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 {
 	// check info in desc
-	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_PARAMETERS?;
-	if (desc.channels == AUTO) return QOIError.INVALID_PARAMETERS?;
+	if (desc.width == 0 || desc.height == 0) return INVALID_PARAMETERS?;
+	if (desc.channels == AUTO) return INVALID_PARAMETERS?;
 	uint pixels = desc.width * desc.height;
-	if (pixels > PIXELS_MAX) return QOIError.TOO_MANY_PIXELS?;
+	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS?;
 	
 	// check input data size
 	uint image_size = pixels * desc.channels.id;
-	if (image_size != input.len) return QOIError.INVALID_DATA?;
+	if (image_size != input.len) return INVALID_DATA?;
 
 	// allocate memory for encoded data (output)
 	// header + chunk tag and RGB(A) data for each pixel + end of stream
@@ -282,31 +277,32 @@ fn char[]! encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
  @param [in] data : `The QOI image data to decode`
  @param [&out] desc : `The descriptor to fill with the image's info`
  @param channels : `The channels to be used`
+ @return! INVALID_DATA, TOO_MANY_PIXELS
 *>
-fn char[]! decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
+fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
 {
 	// check input data
-	if (data.len < Header.sizeof + END_OF_STREAM.len) return QOIError.INVALID_DATA?;
+	if (data.len < Header.sizeof + END_OF_STREAM.len) return INVALID_DATA?;
 
 	// get header
 	Header* header = (Header*)data.ptr;
 
 	// check magic bytes (FourCC)
-	if (bswap(header.be_magic) != 'qoif') return QOIError.INVALID_DATA?;
+	if (bswap(header.be_magic) != 'qoif') return INVALID_DATA?;
 
 	// copy header data to desc
 	desc.width = bswap(header.be_width);
 	desc.height = bswap(header.be_height);
 	desc.channels = @enumcast(QOIChannels, header.channels)!; 			// Rethrow if invalid
 	desc.colorspace = @enumcast(QOIColorspace, header.colorspace)!;	// Rethrow if invalid
-	if (desc.channels == AUTO) return QOIError.INVALID_DATA?; // Channels must be specified in the header
+	if (desc.channels == AUTO) return INVALID_DATA?; // Channels must be specified in the header
 
 	// check width and height
-	if (desc.width == 0 || desc.height == 0) return QOIError.INVALID_DATA?;
+	if (desc.width == 0 || desc.height == 0) return INVALID_DATA?;
 
 	// check pixel count
 	ulong pixels = (ulong)desc.width * (ulong)desc.height;
-	if (pixels > PIXELS_MAX) return QOIError.TOO_MANY_PIXELS?;
+	if (pixels > PIXELS_MAX) return TOO_MANY_PIXELS?;
 
 	uint pos = Header.sizeof; 	// Current position in data
 	uint loc;					// Current position in image (top-left corner)
@@ -405,16 +401,20 @@ struct Header @packed
 	char colorspace;	// 0 = sRGB with linear alpha, 1 = all channels linear
 }
 
-const char[?] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
+const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 
 // inefficient, but it's only run once at a time
+
+<*
+ @return! INVALID_DATA
+*>
 macro @enumcast($Type, raw)
 {
 	foreach (value : $Type.values)
 	{
 		if (value.id == raw) return value;
 	}
-	return QOIError.INVALID_DATA?;
+	return INVALID_DATA?;
 }
 
 distinct Pixel = inline char[<4>];

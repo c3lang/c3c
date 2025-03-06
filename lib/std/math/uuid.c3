@@ -25,7 +25,7 @@ fn Uuid generate_from_random(Random random)
 	return uuid;
 }
 
-fn usz! Uuid.to_format(&self, Formatter* formatter) @dynamic
+fn usz? Uuid.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("%02x%02x%02x%02x-%02x%02x-%02x%02x-%02x%02x-%02x%02x%02x%02x%02x%02x",
 		(*self)[0], (*self)[1], (*self)[2], (*self)[3],

@@ -32,17 +32,17 @@ macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 /*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
 */
-fault IteratorResult { NO_MORE_ELEMENT }
+fault NO_MORE_ELEMENT @builtin;
 
 /*
  Use `SearchResult` when trying to return a value from some collection but the element is missing.
 */
-fault SearchResult { MISSING }
+fault NOT_FOUND @builtin;
 
 /*
  Use `CastResult` when an attempt at conversion fails.
 */
-fault CastResult { TYPE_MISMATCH }
+fault TYPE_MISMATCH @builtin;
 
 
 def VoidFn = fn void();
@@ -79,11 +79,11 @@ macro void @swap(#a, #b) @builtin
  @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
  @ensure @typeis(return, $Type*)
- @return! CastResult.TYPE_MISMATCH
+ @return! TYPE_MISMATCH
 *>
 macro anycast(any v, $Type) @builtin
 {
-	if (v.type != $Type.typeid) return CastResult.TYPE_MISMATCH?;
+	if (v.type != $Type.typeid) return TYPE_MISMATCH?;
 	return ($Type*)v.ptr;
 }
 
@@ -92,7 +92,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList! backtrace = backtrace::symbolize_backtrace(tmem(), backtraces);
+	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem(), backtraces);
 	if (catch backtrace) return false;
 	if (backtrace.len() <= backtraces_to_ignore) return false;
 	io::eprint("\nERROR: '");
@@ -247,7 +247,7 @@ macro bitcast(expr, $Type) @builtin
  @param [in] enum_name : `The name of the enum to search for`
  @require $Type.kindof == ENUM : `Only enums may be used`
  @ensure @typeis(return, $Type)
- @return! SearchResult.MISSING
+ @return! NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
@@ -256,7 +256,7 @@ macro enum_by_name($Type, String enum_name) @builtin
 	{
 		if (name == enum_name) return $Type.from_ordinal(i);
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -265,7 +265,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
  @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
- @return! SearchResult.MISSING
+ @return! NOT_FOUND
 *>
 macro @enum_from_value($Type, #value, value) @builtin
 {
@@ -274,7 +274,7 @@ macro @enum_from_value($Type, #value, value) @builtin
 	{
 		if (e.#value == value) return e;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*

@@ -7,7 +7,7 @@ struct Maybe (Printable)
 	bool has_value;
 }
 
-fn usz! Maybe.to_format(&self, Formatter* f) @dynamic
+fn usz? Maybe.to_format(&self, Formatter* f) @dynamic
 {
 	if (self.has_value) return f.printf("[%s]", self.value);
 	return f.printf("[EMPTY]");
@@ -30,7 +30,7 @@ fn Maybe value(Type val)
 
 const Maybe EMPTY = { };
 
-macro Type! Maybe.get(self)
+macro Type? Maybe.get(self)
 {
-	return self.has_value ? self.value : SearchResult.MISSING?;
+	return self.has_value ? self.value : NOT_FOUND?;
 }

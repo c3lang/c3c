@@ -4,14 +4,14 @@ import std::io;
 import std::io::path;
 import std::collections::list;
 
-fn void! load_corpus2(String code, String path) @local
+fn void? load_corpus2(String code, String path) @local
 {
     for(;;)	io::printfn("hi");
     path::Path p = path::temp(path)!; // #warning: This code will never execute
 
     if (!path::exists(p))
     {
-		return IoError.FILE_NOT_FOUND?;
+		return io::FILE_NOT_FOUND?;
     }
 }
 

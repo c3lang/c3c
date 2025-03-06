@@ -52,7 +52,7 @@ fn void OnStackAllocator.free(&self)
 struct OnStackAllocatorHeader
 {
 	usz size;
-	char[?] data;
+	char[*] data;
 }
 
 <*
@@ -104,7 +104,7 @@ fn OnStackAllocatorExtraChunk* on_stack_allocator_find_chunk(OnStackAllocator* a
  @require old_pointer != null
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 *>
-fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
+fn void*? OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	if (!allocation_in_stack_mem(self, old_pointer))
 	{
@@ -124,7 +124,7 @@ fn void*! OnStackAllocator.resize(&self, void* old_pointer, usz size, usz alignm
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require size > 0
 *>
-fn void*! OnStackAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? OnStackAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	bool aligned = alignment > 0;
 	alignment = alignment_for_allocation(alignment);

@@ -5,7 +5,7 @@ struct Foo(Printable)
 	int a;
 }
 
-fn usz! Foo.to_format(&self, Formatter* f) @dynamic
+fn usz? Foo.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("Foo[%d]", self.a);
 }

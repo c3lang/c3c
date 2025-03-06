@@ -156,6 +156,7 @@ typedef struct
 		Expr *expr_ref;
 		Decl *global_ref;
 		Decl *enum_err_val;
+		Decl *fault;
 		Type *typeid;
 		ConstInitializer *initializer;
 		ConstInitializer *slice_init;
@@ -289,7 +290,7 @@ struct Type_
 		Decl *decl;
 		// int, float, bool
 		TypeBuiltin builtin;
-		// Type[], Type[?], Type[123] or Type[<123>]
+		// Type[], Type[*], Type[123] or Type[<123>]
 		TypeArray array;
 		// fn TypeR Type1(Type2, Type3, ...)
 		TypeFunction function;
@@ -1413,11 +1414,7 @@ typedef struct
 	bool resolved;
 	union
 	{
-		struct
-		{
-			TypeInfo *type;
-			const char *ident;
-		};
+		Expr *expr;
 		Decl *decl;
 	};
 } AstDocFault;
@@ -1605,6 +1602,7 @@ struct CompilationUnit_
 	Decl **enums;
 	Decl **attributes;
 	Decl **faulttypes;
+	Decl **faults;
 	const char **links;
 	Visibility default_visibility;
 	Attr *if_attr;
@@ -2514,7 +2512,6 @@ int type_kind_bitsize(TypeKind kind);
 INLINE bool type_kind_is_signed(TypeKind kind);
 INLINE bool type_kind_is_unsigned(TypeKind kind);
 INLINE bool type_kind_is_any_integer(TypeKind kind);
-INLINE bool type_kind_is_enumlike(TypeKind kind);
 
 void advance(ParseContext *c);
 INLINE void advance_and_verify(ParseContext *context, TokenType token_type);
@@ -2615,17 +2612,6 @@ INLINE bool type_is_wildcard(Type *type)
 	return type == type_wildcard || type == type_wildcard_optional;
 }
 
-INLINE bool type_is_fault_raw(Type *type)
-{
-	switch (type->type_kind)
-	{
-		case TYPE_FAULTTYPE:
-		case TYPE_ANYFAULT:
-			return true;
-		default:
-			return false;
-	}
-}
 INLINE bool type_is_any_raw(Type *type)
 {
 	switch (type->type_kind)
@@ -2662,7 +2648,6 @@ INLINE bool type_may_implement_interface(Type *type)
 		case TYPE_UNION:
 		case TYPE_ENUM:
 		case TYPE_DISTINCT:
-		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
 			return true;
 		default:
@@ -2760,7 +2745,6 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case ALL_SIGNED_INTS:
 		case ALL_FLOATS:
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
 		case TYPE_BOOL:
@@ -3092,7 +3076,7 @@ INLINE bool type_is_builtin(TypeKind kind) { return kind >= TYPE_VOID && kind <=
 INLINE bool type_kind_is_signed(TypeKind kind) { return kind >= TYPE_I8 && kind < TYPE_U8; }
 INLINE bool type_kind_is_unsigned(TypeKind kind) { return kind >= TYPE_U8 && kind <= TYPE_U128; }
 INLINE bool type_kind_is_any_integer(TypeKind kind) { return kind >= TYPE_I8 && kind <= TYPE_U128; }
-INLINE bool type_kind_is_enumlike(TypeKind kind) { return kind == TYPE_ENUM || kind == TYPE_FAULTTYPE; }
+INLINE bool type_kind_is_enum_or_fault(TypeKind kind) { return kind == TYPE_ENUM || kind == TYPE_ANYFAULT; }
 INLINE bool type_is_unsigned(Type *type) { return type->type_kind >= TYPE_U8 && type->type_kind <= TYPE_U128; }
 INLINE bool type_ok(Type *type) { return !type || type->type_kind != TYPE_POISONED; }
 INLINE bool type_info_ok(TypeInfo *type_info) { return !type_info || type_info->kind != TYPE_INFO_POISON; }
@@ -3209,12 +3193,6 @@ INLINE bool decl_is_struct_type(Decl *decl)
 {
 	DeclKind kind = decl->decl_kind;
 	return (kind == DECL_UNION) | (kind == DECL_STRUCT);
-}
-
-static inline bool decl_is_enum_kind(Decl *decl)
-{
-	DeclKind kind = decl->decl_kind;
-	return (kind == DECL_ENUM) | (kind == DECL_FAULT);
 }
 
 INLINE bool decl_is_user_defined_type(Decl *decl)
@@ -3697,6 +3675,14 @@ INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b)
 	expr->resolve_status = RESOLVE_DONE;
 }
 
+INLINE void expr_rewrite_const_fault(Expr *expr, Decl *fault)
+{
+	expr->expr_kind = EXPR_CONST;
+	expr->type = type_anyfault;
+	expr->const_expr = (ExprConst) { .fault = fault, .const_kind = CONST_FAULT };
+	expr->resolve_status = RESOLVE_DONE;
+}
+
 INLINE void expr_rewrite_const_null(Expr *expr, Type *type)
 {
 	expr->expr_kind = EXPR_CONST;
@@ -4016,7 +4002,7 @@ INLINE bool expr_is_const_enum(Expr *expr)
 INLINE bool expr_is_const_fault(Expr *expr)
 {
 	ASSERT(expr->resolve_status == RESOLVE_DONE);
-	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_ERR;
+	return expr->expr_kind == EXPR_CONST && expr->const_expr.const_kind == CONST_FAULT;
 }
 
 INLINE bool expr_is_const_pointer(Expr *expr)

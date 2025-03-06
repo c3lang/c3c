@@ -8,7 +8,7 @@ struct Bar
         int y;
     }
     int ufe;
-    int[?] z;
+    int[*] z;
 }
 
 

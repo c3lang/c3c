@@ -11,7 +11,7 @@ fn void test()
     z = (long)x >> y;
     z = (long)~x;
     z = (long)-x;
-    int! w;
+    int? w;
     z = w ?? 1;
 }
 

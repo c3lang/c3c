@@ -55,7 +55,7 @@ struct HttpInternal @private
 	void* data;
 }
 
-fn String! parse_url(String url, String* port, String* resource) @private
+fn String? parse_url(String url, String* port, String* resource) @private
 {
 	if (url[:7] != "http://") return NetError.INVALID_URL?;
 	url = url[7..];
@@ -85,7 +85,7 @@ fn String! parse_url(String url, String* port, String* resource) @private
 	return address;
 }
 
-fn Socket! http_internal_connect(String address, uint port) @private
+fn Socket? http_internal_connect(String address, uint port) @private
 {
 	return tcp::connect_async(address, port)!;
 }
@@ -108,7 +108,7 @@ fn HttpInternal* http_internal_create(usz request_data_size, Allocator allocator
 	return internal;
 }
 
-fn Http*! http_get(String url, Allocator allocator = allocator::temp())
+fn Http*? http_get(String url, Allocator allocator = allocator::temp())
 {
 $if env::WIN32:
 	int[1024] wsa_data;
@@ -139,7 +139,7 @@ $endif
 	return internal;
 }
 
-fn Http*! http_post(String url, Allocator allocator = allocator::temp())
+fn Http*? http_post(String url, Allocator allocator = allocator::temp())
 {
 $if env::OS_TYPE == OsType::WIN32:
 	int[1024] wsa_data;

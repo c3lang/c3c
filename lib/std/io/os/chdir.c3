@@ -1,7 +1,7 @@
 module std::io::os;
 import std::io::path, libc, std::os;
 
-macro void! native_chdir(Path path)
+macro void? native_chdir(Path path)
 {
 	$switch:
 		$case env::POSIX:
@@ -9,12 +9,12 @@ macro void! native_chdir(Path path)
 			{
 				switch (libc::errno())
 				{
-					case errno::EACCES: return IoError.NO_PERMISSION?;
-					case errno::ENAMETOOLONG: return IoError.NAME_TOO_LONG?;
-					case errno::ENOTDIR: return IoError.FILE_NOT_DIR?;
-					case errno::ENOENT: return IoError.FILE_NOT_FOUND?;
-					case errno::ELOOP: return IoError.SYMLINK_FAILED?;
-					default: return IoError.GENERAL_ERROR?;
+					case errno::EACCES: return io::NO_PERMISSION?;
+					case errno::ENAMETOOLONG: return io::NAME_TOO_LONG?;
+					case errno::ENOTDIR: return io::FILE_NOT_DIR?;
+					case errno::ENOENT: return io::FILE_NOT_FOUND?;
+					case errno::ELOOP: return io::SYMLINK_FAILED?;
+					default: return io::GENERAL_ERROR?;
 				}
 			}
 		$case env::WIN32:
@@ -23,8 +23,8 @@ macro void! native_chdir(Path path)
 				// TODO improve with better error handling.
 				if (win32::setCurrentDirectoryW(path.str_view().to_temp_utf16()!!)) return;
 			};
-			return IoError.GENERAL_ERROR?;
+			return io::GENERAL_ERROR?;
 		$default:
-			return IoError.UNSUPPORTED_OPERATION?;
+			return io::UNSUPPORTED_OPERATION?;
 	$endswitch
 }

@@ -1,6 +1,6 @@
 module test;
 
-fn void! test1()
+fn void? test1()
 {
 	double a;
 	switch (a)
@@ -10,7 +10,7 @@ fn void! test1()
     }
 }
 
-fn void! test2()
+fn void? test2()
 {
 	int a;
 	switch (a)

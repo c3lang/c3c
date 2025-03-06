@@ -28,7 +28,7 @@ fn void main(String[] args)
 	defer (void)path::rmtree(test_dir);
 
 	// Find the compiler
-	Path! path = start_cwd.tappend(args[1]);
+	Path? path = start_cwd.tappend(args[1]);
 	if (catch path) arg_error_exit(appname, "Invalid compiler path: %s", args[1]);
 	// Is it a valid file?
 	if (!path::is_file(path))
@@ -68,7 +68,7 @@ fn void main(String[] args)
 	if (only_skipped && args[3] != "-s" && args[3] != "--skipped") usage(appname);
 
 	// Get the directory or file to test
-	Path! file = args[2].to_tpath();
+	Path? file = args[2].to_tpath();
 	if (catch file) arg_error_exit(appname, "Invalid path: '%s'.", args[2]);
 
 	// Now just run all tests recursively.
@@ -129,14 +129,14 @@ fn void RunFile.add_line(&self, String line)
 	}
 }
 
-fn RunFile*! create_input_file(String filename)
+fn RunFile*? create_input_file(String filename)
 {
 	File file = file::open_path(test_dir.tappend(filename), "wb")!;
 	RunFile *run_file = mem::tnew(RunFile, { .name = filename, .file = file, .is_output = false });
 	return run_file;
 }
 
-fn RunFile*! create_output_file(String filename)
+fn RunFile*? create_output_file(String filename)
 {
 	RunFile *run_file = mem::tnew(RunFile, { .name = filename, .is_output = true });
 	return run_file;
@@ -381,7 +381,7 @@ fn void test_file(Path file_path)
 		default:
 			error_exit("FAILED - Unexpected file name '%s', expected a file with a '.c3' or '.c3t' suffix.", file_path.str_view());
 	}
-	File! f = file::open_path(file_path, "rb");
+	File? f = file::open_path(file_path, "rb");
 	if (catch f)
 	{
 		error_exit("FAILED - Failed to open '%s'.", file_path);
@@ -461,7 +461,7 @@ fn void test_file(Path file_path)
 		}
 		File file_ll = file::open(file.name, "rb")!!;
 		defer (void)file_ll.close();
-		String! next = file.expected_lines.pop_first();
+		String? next = file.expected_lines.pop_first();
 		while (try line = io::treadline(&file_ll) && try value = next)
 		{
 			line = line.trim();
@@ -493,7 +493,7 @@ fn void test_file(Path file_path)
     success_count++;
 }
 
-fn void! test_path(Path file_path)
+fn void? test_path(Path file_path)
 {
 	(void)path::chdir(start_cwd);
 	foreach (file : path::ls(tmem(), file_path)!!)

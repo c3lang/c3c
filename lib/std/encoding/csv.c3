@@ -15,7 +15,7 @@ struct CsvRow (Printable)
 	Allocator allocator;
 }
 
-fn usz! CsvRow.to_format(&self, Formatter* f) @dynamic
+fn usz? CsvRow.to_format(&self, Formatter* f) @dynamic
 {
 	return f.printf("%s", self.list);
 }
@@ -41,7 +41,7 @@ fn void CsvReader.init(&self, InStream stream, String separator = ",")
 <*
  @param [&inout] allocator
 *>
-fn CsvRow! CsvReader.read_row(self, Allocator allocator)
+fn CsvRow? CsvReader.read_row(self, Allocator allocator)
 {
 	String row = io::readline(allocator, self.stream)!;
 	defer catch allocator::free(allocator, row);
@@ -49,7 +49,7 @@ fn CsvRow! CsvReader.read_row(self, Allocator allocator)
 	return { list, row, allocator };
 }
 
-fn CsvRow! CsvReader.tread_row(self)
+fn CsvRow? CsvReader.tread_row(self)
 {
 	return self.read_row(tmem()) @inline;
 }
@@ -64,12 +64,12 @@ fn void CsvRow.free(&self)
 	self.allocator = null;
 }
 
-fn void! CsvReader.skip_row(self) @maydiscard => @pool()
+fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 {
 	(void)io::treadline(self.stream);
 }
 
-macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard
+macro void? CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard
 {
 	InStream stream = self.stream;
 	String sep = self.separator;
@@ -77,10 +77,10 @@ macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @
 	{
 		@stack_mem(512; Allocator mem)
 		{
-			String! s = io::readline(mem, stream);
+			String? s = io::readline(mem, stream);
 			if (catch err = s)
 			{
-				if (err == IoError.EOF) return;
+				if (err == io::EOF) return;
 				return err?;
 			}
 			@body(s.split(mem, sep));

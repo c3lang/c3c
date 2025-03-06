@@ -44,6 +44,10 @@ void llvm_value_set(BEValue *value, LLVMValueRef llvm_value, Type *type)
 
 void llvm_value_set_address(BEValue *value, LLVMValueRef llvm_value, Type *type, AlignSize alignment)
 {
+	if (alignment == 0)
+	{
+		puts("TODO");
+	}
 	ASSERT(alignment > 0);
 	value->value = llvm_value;
 	value->alignment = alignment;

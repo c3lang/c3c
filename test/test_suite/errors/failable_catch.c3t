@@ -1,24 +1,21 @@
 // #target: macos-x64
 
-fault MyErr
-{
-    TEST
-}
+fault TEST;
 
 macro foo(int x)
 {
     if (x) return x;
-    return MyErr.TEST?;
+    return TEST?;
 }
 
 extern fn void printf(char*, ...);
 
 fn int main()
 {
-    int! a = foo(1);
+    int? a = foo(1);
 
-    int! b = foo((a + 3) ?? 2);
-    int! c = foo(0);
+    int? b = foo((a + 3) ?? 2);
+    int? c = foo(0);
     (void)printf("a = %d\n", a);
     (void)printf("b = %d\n", b);
     (void)printf("c = %d\n", c);
@@ -78,7 +75,7 @@ if.then2:                                         ; preds = %phi_block
   br label %expr_block.exit3
 
 if.exit:                                          ; preds = %phi_block
-  store i64 ptrtoint (ptr @"failable_catch.MyErr$TEST" to i64), ptr %b.f, align 8
+  store i64 ptrtoint (ptr @failable_catch.TEST to i64), ptr %b.f, align 8
   br label %after_assign4
 
 expr_block.exit3:                                 ; preds = %if.then2
@@ -91,7 +88,7 @@ after_assign4:                                    ; preds = %expr_block.exit3, %
   br label %if.exit6
 
 if.exit6:                                         ; preds = %after_assign4
-  store i64 ptrtoint (ptr @"failable_catch.MyErr$TEST" to i64), ptr %c.f, align 8
+  store i64 ptrtoint (ptr @failable_catch.TEST to i64), ptr %c.f, align 8
   br label %after_assign7
 
 after_assign7:                                    ; preds = %if.exit6

@@ -7,19 +7,17 @@ fn int hello(int x)
 
 extern fn int printf(char *c, ...);
 
-fn int! tester()
+fn int? tester()
 {
     printf("In tester\n");
     return 222;
 }
 
-fault Foo
-{
-    A
-}
+fault A;
+
 fn void test1()
 {
-    int! a = 11;
+    int? a = 11;
     if (try int b = a && try int c = tester())
     {
         printf("%d\n", hello(b));
@@ -33,7 +31,7 @@ fn void main()
 
 fn void test2()
 {
-    int! a;
+    int? a;
     if (try int b = a && hello(b))
     {
         hello(b + 1);

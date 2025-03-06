@@ -1,8 +1,8 @@
-fn int! foo()
+fn int? foo()
 { return 1; }
 
 
-fn int! bar()
+fn int? bar()
 {
 	defer {
 		foo()!!;

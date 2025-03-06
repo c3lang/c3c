@@ -62,7 +62,6 @@ static Module *module_instantiate_generic(SemaContext *context, Module *module, 
 
 static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param);
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl);
-static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl);
 
 static bool sema_check_section(SemaContext *context, Attr *attr)
 {
@@ -237,7 +236,7 @@ static inline bool sema_analyse_struct_member(SemaContext *context, Decl *parent
 		{
 			ASSERT(decl->var.kind == VARDECL_MEMBER);
 			decl->resolve_status = RESOLVE_RUNNING;
-			// Inferred types are not strictly allowed, but we use the int[?] for the flexible array member.
+			// Inferred types are not strictly allowed, but we use the int[*] for the flexible array member.
 			ASSERT(type_infoptrzero(decl->var.type_info));
 			TypeInfo *type_info = type_infoptr(decl->var.type_info);
 			if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_ALLOW_FLEXIBLE)) return decl_poison(decl);
@@ -440,7 +439,6 @@ RETRY:;
 		case TYPE_FUNC_PTR:
 		case TYPE_POINTER:
 		case TYPE_FUNC_RAW:
-		case TYPE_FAULTTYPE:
 		case TYPE_SLICE:
 			return compiler.platform.align_pointer.align / 8;
 		case TYPE_ENUM:
@@ -511,9 +509,9 @@ static bool sema_analyse_struct_members(SemaContext *context, Decl *decl)
 		Type *member_type = type_flatten(member->type);
 		// If this is a struct and it has a variable array ending, then it must also be the last struct.
 		// So this is ok:
-		// struct Foo { int x; struct { int x; int[?] y; } }
+		// struct Foo { int x; struct { int x; int[*] y; } }
 		// But not this:
-		// struct Bar { struct { int x; int[?] y; } int x; }
+		// struct Bar { struct { int x; int[*] y; } int x; }
 		if (member_type->type_kind == TYPE_STRUCT && member_type->decl->has_variable_array)
 		{
 			if (i != member_count - 1)
@@ -1021,7 +1019,6 @@ RETRY:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
 		case TYPE_VECTOR:
 		case TYPE_INFERRED_VECTOR:
@@ -1591,29 +1588,13 @@ ERR:
 	return false;
 }
 
-static inline bool sema_analyse_error(SemaContext *context, Decl *decl, bool *erase_decl)
+static inline bool sema_analyse_fault(SemaContext *context, Decl *decl, bool *erase_decl)
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FAULT, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	if (!sema_resolve_implemented_interfaces(context, decl, false)) return decl_poison(decl);
-
-	bool success = true;
-	unsigned enums = vec_size(decl->enums.values);
-
-	for (unsigned i = 0; i < enums; i++)
-	{
-		Decl *enum_value = decl->enums.values[i];
-		enum_value->type = decl->type;
-		DEBUG_LOG("* Checking error value %s.", enum_value->name);
-		enum_value->enum_constant.ordinal = i;
-		DEBUG_LOG("* Ordinal: %d", i);
-		ASSERT(enum_value->resolve_status == RESOLVE_NOT_DONE);
-		ASSERT(enum_value->decl_kind == DECL_FAULTVALUE);
-
-		// Start evaluating the constant
-		enum_value->resolve_status = RESOLVE_DONE;
-	}
-	return success;
+	decl->type = type_anyfault;
+	decl->alignment = type_abi_alignment(type_string);
+	return true;
 }
 
 static inline const char *method_name_by_decl(Decl *method_like)
@@ -2078,7 +2059,6 @@ static inline Decl *sema_find_interface_for_method(SemaContext *context, Canonic
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_DISTINCT:
-		case TYPE_FAULTTYPE:
 		case TYPE_ENUM:
 			break;
 		case TYPE_TYPEDEF:
@@ -2243,13 +2223,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 			if (d) RETURN_SEMA_ERROR(decl, "%s already has a field with the same name.", type_quoted_error_string(par_type));
 			break;
 		}
-		case TYPE_FAULTTYPE:
-			if (kw == kw_ordinal || kw == kw_nameof)
-			{
-				errname = "a fault";
-				goto NOT_VALID_NAME;
-			}
-			break;
 		case TYPE_ANYFAULT:
 			if (kw == kw_type || kw == kw_nameof)
 			{
@@ -4298,8 +4271,8 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		{
 			if (!sema_analyse_ct_expr(context, param)) return false;
 			Type *type = param->type->canonical;
-			bool is_enum_like = type_kind_is_enumlike(type->type_kind);
-			if (!type_is_integer_or_bool_kind(type) && !is_enum_like)
+			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
+			if (!type_is_integer_or_bool_kind(type) && !is_enum_or_fault)
 			{
 				SEMA_ERROR(param, "Only integer, bool, fault and enum values may be generic arguments.");
 				return poisoned_decl;
@@ -4339,7 +4312,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		else
 		{
 			Type *type = param->type->canonical;
-			bool is_enum_like = type_kind_is_enumlike(type->type_kind);
+			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
 			if (type == type_bool)
 			{
 				if (mangled)
@@ -4351,12 +4324,19 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 					scratch_buffer_append(param->const_expr.b ? "true" : "false");
 				}
 			}
-			else if (is_enum_like)
+			else if (type->type_kind == TYPE_ENUM)
 			{
-				Decl *enum_like = param->const_expr.enum_err_val;
-				type_mangle_introspect_name_to_buffer(enum_like->type->canonical);
+				Decl *enumm = param->const_expr.enum_err_val;
+				type_mangle_introspect_name_to_buffer(enumm->type->canonical);
 				scratch_buffer_append(mangled ? "_" : ":");
-				scratch_buffer_append(enum_like->name);
+				scratch_buffer_append(enumm->name);
+			}
+			else if (type->type_kind == TYPE_ANYFAULT)
+			{
+				Decl *fault = param->const_expr.fault;
+				type_mangle_introspect_name_to_buffer(fault->type->canonical);
+				scratch_buffer_append(mangled ? "_" : ":");
+				scratch_buffer_append(fault->name);
 			}
 			else
 			{
@@ -4603,7 +4583,6 @@ RETRY:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 			return sema_analyse_decl(context, type->decl);
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
@@ -4703,8 +4682,8 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_FAULT:
-			if (!sema_analyse_error(context, decl, &erase_decl)) goto FAILED;
+		case DECL_FAULT_NEW:
+			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_DEFINE:
 			if (!sema_analyse_define(context, decl, &erase_decl)) goto FAILED;
@@ -4715,12 +4694,12 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_LABEL:
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
-		case DECL_FAULTVALUE:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
 		case DECL_GLOBALS:
+		case DECL_FAULTS:
 			UNREACHABLE
 	}
 	if (erase_decl)

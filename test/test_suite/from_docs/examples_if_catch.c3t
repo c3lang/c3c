@@ -3,23 +3,20 @@ module demo;
 import libc;
 import std::io;
 
-fault MathError
-{
-    DIVISION_BY_ZERO
-}
+fault DIVISION_BY_ZERO;
 
 fn int foo() { return 123; }
 fn int bar() { return 0; }
 
-fn double! divide(int a, int b)
+fn double? divide(int a, int b)
 {
-    if (b == 0) return MathError.DIVISION_BY_ZERO?;
+    if (b == 0) return DIVISION_BY_ZERO?;
     return (double)(a) / (double)(b);
 
 }
 
 // Rethrowing an error uses "?" suffix
-fn void! testMayError()
+fn void? testMayError()
 {
     divide(foo(), bar())!;
 }
@@ -27,12 +24,12 @@ fn void! testMayError()
 fn void main()
 {
     // ratio has an optional type.
-    double! ratio = divide(foo(), bar());
+    double? ratio = divide(foo(), bar());
 
     // Handle the error
     if (catch err = ratio)
     {
-        if (err == MathError.DIVISION_BY_ZERO)
+        if (err == DIVISION_BY_ZERO)
         {
             libc::printf("Division by zero\n");
             return;
@@ -55,7 +52,7 @@ entry:
   br i1 %eq, label %if.then, label %if.exit
 
 if.then:                                          ; preds = %entry
-  ret i64 ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64)
+  ret i64 ptrtoint (ptr @demo.DIVISION_BY_ZERO to i64)
 
 if.exit:                                          ; preds = %entry
   %sifp = sitofp i32 %1 to double
@@ -138,7 +135,7 @@ end_block:                                        ; preds = %after_check3, %assi
 
 if.then:                                          ; preds = %end_block
   %7 = load i64, ptr %err, align 8
-  %eq = icmp eq i64 %7, ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64)
+  %eq = icmp eq i64 %7, ptrtoint (ptr @demo.DIVISION_BY_ZERO to i64)
   br i1 %eq, label %if.then4, label %if.exit
 
 if.then4:                                         ; preds = %if.then

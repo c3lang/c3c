@@ -11,7 +11,7 @@ fn void main()
 
 macro InStream.foo(&self)
 {
-	char! c = self.read_byte();
+	char? c = self.read_byte();
 	if (catch err = c)
 	{
 		return err?;

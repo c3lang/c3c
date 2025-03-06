@@ -172,7 +172,7 @@ fn void test_parse_urn2()
 
 fn void test_parse_empty()
 {
-	assert(@catch(url::parse(mem, "       ")) == UrlParsingResult.EMPTY);
+	assert(@catch(url::parse(mem, "       ")) == url::EMPTY);
 }
 
 // Parser tests with escape sequences

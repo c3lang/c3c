@@ -45,7 +45,7 @@ fn void ByteBuffer.free(&self)
 	*self = {};
 }
 
-fn usz! ByteBuffer.write(&self, char[] bytes) @dynamic
+fn usz? ByteBuffer.write(&self, char[] bytes) @dynamic
 {
 	usz cap = self.bytes.len - self.write_idx;
 	if (cap < bytes.len) self.grow(bytes.len);
@@ -54,7 +54,7 @@ fn usz! ByteBuffer.write(&self, char[] bytes) @dynamic
 	return bytes.len;
 }
 
-fn void! ByteBuffer.write_byte(&self, char c) @dynamic
+fn void? ByteBuffer.write_byte(&self, char c) @dynamic
 {
 	usz cap = self.bytes.len - self.write_idx;
 	if (cap == 0) self.grow(1);
@@ -62,13 +62,13 @@ fn void! ByteBuffer.write_byte(&self, char c) @dynamic
 	self.write_idx++;
 }
 
-fn usz! ByteBuffer.read(&self, char[] bytes) @dynamic
+fn usz? ByteBuffer.read(&self, char[] bytes) @dynamic
 {
 	usz readable = self.write_idx - self.read_idx;
 	if (readable == 0)
 	{
 		self.has_last = false;
-		return IoError.EOF?;
+		return io::EOF?;
 	}
 	usz n = min(readable, bytes.len);
 	bytes[:n] = self.bytes[self.read_idx:n];
@@ -78,13 +78,13 @@ fn usz! ByteBuffer.read(&self, char[] bytes) @dynamic
 	return n;
 }
 
-fn char! ByteBuffer.read_byte(&self) @dynamic
+fn char? ByteBuffer.read_byte(&self) @dynamic
 {
 	usz readable = self.write_idx - self.read_idx;
 	if (readable == 0)
 	{
 		self.has_last = false;
-		return IoError.EOF?;
+		return io::EOF?;
 	}
 	char c = self.bytes[self.read_idx];
 	self.read_idx++;
@@ -96,34 +96,34 @@ fn char! ByteBuffer.read_byte(&self) @dynamic
 <*
  Only the last byte of a successful read can be pushed back.
 *>
-fn void! ByteBuffer.pushback_byte(&self) @dynamic
+fn void? ByteBuffer.pushback_byte(&self) @dynamic
 {
-	if (!self.has_last) return IoError.EOF?;
+	if (!self.has_last) return io::EOF?;
 	assert(self.read_idx > 0);
 	self.read_idx--;
 	self.has_last = false;
 }
 
-fn usz! ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
+fn usz? ByteBuffer.seek(&self, isz offset, Seek seek) @dynamic
 {
 	switch (seek)
 	{
 		case SET:
-			if (offset < 0 || offset > self.write_idx) return IoError.INVALID_POSITION?;
+			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION?;
 			self.read_idx = offset;
 			return offset;
 		case CURSOR:
 			if ((offset < 0 && self.read_idx < -offset) ||
-				(offset > 0 && self.read_idx + offset > self.write_idx)) return IoError.INVALID_POSITION?;
+				(offset > 0 && self.read_idx + offset > self.write_idx)) return INVALID_POSITION?;
 			self.read_idx += offset;
 		case END:
-			if (offset < 0 || offset > self.write_idx) return IoError.INVALID_POSITION?;
+			if (offset < 0 || offset > self.write_idx) return INVALID_POSITION?;
 			self.read_idx = self.write_idx - offset;
 	}
 	return self.read_idx;
 }
 
-fn usz! ByteBuffer.available(&self) @inline @dynamic
+fn usz? ByteBuffer.available(&self) @inline @dynamic
 {
 	return self.write_idx - self.read_idx;
 }

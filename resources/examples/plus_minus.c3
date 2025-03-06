@@ -2,10 +2,7 @@ module test;
 import std::io;
 import libc;
 
-fault TokenResult
-{
-	NO_MORE_TOKENS
-}
+fault NO_MORE_TOKENS;
 
 
 // While we could have written this with libc
@@ -36,7 +33,7 @@ fn void main(String[] args)
 		val = add ? val + i : val - i;
 
 		// Read an optional token.
-		String! op = read_next(&numbers);
+		String? op = read_next(&numbers);
 
 		// If it's an error, then we're done.
 		if (catch op) break;
@@ -56,7 +53,7 @@ fn void main(String[] args)
 	io::printfn("%d", val);
 }
 
-fn String! read_next(String* remaining)
+fn String? read_next(String* remaining)
 {
 	while (remaining.len > 0 && (*remaining)[0] == ' ')
 	{
@@ -77,7 +74,7 @@ fn String! read_next(String* remaining)
 	}
 
 	// If it's a zero length token, return an optional result.
-	if (!len) return TokenResult.NO_MORE_TOKENS?;
+	if (!len) return NO_MORE_TOKENS?;
 
 	// Otherwise create a slice from the pointer start and length.
 	return (String)ptr_start[:len];

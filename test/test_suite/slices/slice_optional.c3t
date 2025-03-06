@@ -1,8 +1,8 @@
 // #target: macos-x64
 module test;
 fn void main() {
-  int[]! a = {1, 2};
-  int! b = a[0];
+  int[]? a = {1, 2};
+  int? b = a[0];
 }
 
 /* #expect: test.ll

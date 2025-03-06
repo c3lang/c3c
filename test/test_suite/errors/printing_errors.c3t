@@ -2,15 +2,11 @@
 module test;
 import std::io;
 
-fault Cde
-{
-	HELLO,
-	WORLD,
-}
+fault HELLO, WORLD;
 fn void main()
 {
-	anyfault x = Cde.WORLD;
-	io::printf("%s %s\n", Cde.HELLO.nameof, x.nameof);
+	anyfault x = WORLD;
+	io::printf("%s %s\n", HELLO.nameof, x.nameof);
 }
 
 /* #expect: test.ll
@@ -22,8 +18,8 @@ entry:
   %taddr = alloca %"char[]", align 8
   %faultname_zero = alloca %"char[]", align 8
   %retparam = alloca i64, align 8
-  store i64 ptrtoint (ptr @"test.Cde$WORLD" to i64), ptr %x, align 8
-  store %"char[]" { ptr @.str.2, i64 5 }, ptr %taddr, align 8
+  store i64 ptrtoint (ptr @test.WORLD to i64), ptr %x, align 8
+  store %"char[]" { ptr @.str.1, i64 5 }, ptr %taddr, align 8
   %0 = insertvalue %any undef, ptr %taddr, 0
   %1 = insertvalue %any %0, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   store %any %1, ptr %varargslots, align 16
@@ -37,16 +33,15 @@ faultname_no:                                     ; preds = %entry
 
 faultname_ok:                                     ; preds = %entry
   %3 = inttoptr i64 %2 to ptr
-  %4 = getelementptr inbounds
   br label %faultname_exit
 
 faultname_exit:                                   ; preds = %faultname_ok, %faultname_no
-  %faultname = phi ptr [ %faultname_zero, %faultname_no ], [ %4, %faultname_ok ]
-  %5 = insertvalue %any undef, ptr %faultname, 0
-  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.String" to i64), 1
+  %faultname = phi ptr [ %faultname_zero, %faultname_no ], [ %3, %faultname_ok ]
+  %4 = insertvalue %any undef, ptr %faultname, 0
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.String" to i64), 1
   %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
-  store %any %6, ptr %ptradd, align 16
-  %7 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 2)
+  store %any %5, ptr %ptradd, align 16
+  %6 = call i64 @std.io.printf(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 2)
   ret void
 }
 

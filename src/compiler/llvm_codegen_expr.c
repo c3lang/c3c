@@ -3476,7 +3476,6 @@ static void llvm_emit_array_comp(GenContext *c, BEValue *be_value, BEValue *lhs,
 		case TYPE_INTERFACE:
 		case TYPE_ANY:
 		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
 		case TYPE_TYPEID:
 MEMCMP:
 			llvm_value_addr(c, lhs);
@@ -4744,9 +4743,9 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		case CONST_TYPEID:
 			llvm_emit_typeid(c, be_value, expr->const_expr.typeid);
 			return;
-		case CONST_ERR:
+		case CONST_FAULT:
 		{
-			Decl *decl = expr->const_expr.enum_err_val;
+			Decl *decl = expr->const_expr.fault;
 			ASSERT(decl);
 			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
 			llvm_value_set(be_value, value, type_anyfault);
@@ -6577,36 +6576,11 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 	llvm_value_fold_optional(c, be_value);
 	switch (expr->builtin_access_expr.kind)
 	{
-		case ACCESS_FAULTORDINAL:
-		{
-			LLVMBasicBlockRef current_block = llvm_get_current_block_if_in_use(c);
-			if (!current_block)
-			{
-				llvm_value_set(be_value, llvm_get_zero(c, type_usz), type_usz);
-				return;
-			}
-			ASSERT(type_flatten(inner->type)->type_kind == TYPE_FAULTTYPE);
-			llvm_value_rvalue(c, be_value);
-			LLVMBasicBlockRef exit_block = llvm_basic_block_new(c, "faultordinal_exit");
-			LLVMBasicBlockRef ok_block = llvm_basic_block_new(c, "faultordinal_found");
-			BEValue check;
-			llvm_emit_int_comp_zero(c, &check, be_value, BINARYOP_EQ);
-			llvm_emit_cond_br(c, &check, exit_block, ok_block);
-			llvm_emit_block(c, ok_block);
-			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value,
-														c->ptr_type, "");
-			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->fault_type, fault_data, 2, "");
-			LLVMValueRef ordinal = llvm_load_abi_alignment(c, type_usz, ptr, "");
-			llvm_emit_br(c, exit_block);
-			llvm_emit_block(c, exit_block);
-			llvm_new_phi(c, be_value, "faultname", type_usz, llvm_const_int(c, type_usz, 0), current_block, ordinal, ok_block);
-			return;
-		}
 		case ACCESS_FAULTNAME:
 		{
 			Type *inner_type = type_no_optional(inner->type)->canonical;
 			(void)inner_type;
-			ASSERT(inner_type->type_kind == TYPE_FAULTTYPE || inner_type->type_kind == TYPE_ANYFAULT);
+			ASSERT(inner_type->type_kind == TYPE_ANYFAULT);
 			llvm_value_rvalue(c, be_value);
 			LLVMValueRef val = llvm_emit_alloca_aligned(c, type_chars, "faultname_zero");
 			BEValue zero;
@@ -6621,13 +6595,11 @@ static inline void llvm_emit_builtin_access(GenContext *c, BEValue *be_value, Ex
 			llvm_store_zero(c, &zero);
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, ok_block);
-			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value,
-														c->ptr_type, "");
-			LLVMValueRef ptr = LLVMBuildStructGEP2(c->builder, c->fault_type, fault_data, 1, "");
+			LLVMValueRef fault_data = LLVMBuildIntToPtr(c->builder, be_value->value, c->ptr_type, "");
 			llvm_emit_br(c, exit_block);
 			llvm_emit_block(c, exit_block);
 			LLVMValueRef phi = LLVMBuildPhi(c->builder, c->ptr_type, "faultname");
-			llvm_set_phi(phi, zero.value, zero_block, ptr, ok_block);
+			llvm_set_phi(phi, zero.value, zero_block, fault_data, ok_block);
 			llvm_value_set_address_abi_aligned(be_value, phi, type_chars);
 			return;
 		}

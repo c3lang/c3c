@@ -30,7 +30,7 @@ fn void lock_with_double_unlock_test() @test
     assert(@catch(m.unlock()));
 }
 
-fn void! own_mutex(Mutex* m)
+fn void? own_mutex(Mutex* m)
 {
     m.lock()!;
     m.unlock()!;

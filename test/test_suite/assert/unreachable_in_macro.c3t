@@ -11,15 +11,12 @@ fn int main()
   return 0;
 }
 
-fault Bob
-{
-	ABC
-}
+fault ABC;
 
 macro test()
 {
   if (false) return;
-  return Bob.ABC?;
+  return ABC?;
   unreachable();
 }
 
@@ -38,7 +35,7 @@ entry:
 testblock:                                        ; preds = %entry
   br label %if.exit
 if.exit:                                          ; preds = %testblock
-  store i64 ptrtoint (ptr @"test.Bob$ABC" to i64), ptr %temp_err, align 8
+  store i64 ptrtoint (ptr @test.ABC to i64), ptr %temp_err, align 8
   br label %end_block
 end_block:                                        ; preds = %if.exit
   %0 = load i64, ptr %temp_err, align 8

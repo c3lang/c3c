@@ -3,10 +3,10 @@ module foo;
 import std;
 fn int main()
 {
-    int! cmd = 3;
+    int? cmd = 3;
     defer
     {
-        if (try cmd) { io::printfn("HO! %s", cmd); }
+        if (try cmd) { io::printfn("HO? %s", cmd); }
     }
     return 0;
 }

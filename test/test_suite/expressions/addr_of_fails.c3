@@ -62,7 +62,7 @@ fn void test6()
 
 def Baz = Foo;
 distinct Bar = int;
-fault Err { FOO }
+fault FOO;
 union Un { int x; }
 enum MyEnum { BAR }
 
@@ -70,9 +70,8 @@ fn void test7()
 {
     &Baz; // #error: It is not possible to take the address of a type.
     &Bar; // #error: It is not possible to take the address of a type.
-    &Err; // #error: It is not possible to take the address of a type.
     &Un; // #error: It is not possible to take the address of a type.
-    &Err.FOO; // #error: To take the address of a temporary value, use '&&' instead of '&'
+    &FOO; // #error: To take the address of a temporary value, use '&&'
     &MyEnum; // #error: It is not possible to take the address of a type.
     &MyEnum.BAR; // #error: To take the address of a temporary value, use '&&' instead of '&'
 }

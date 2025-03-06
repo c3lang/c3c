@@ -26,7 +26,7 @@ struct QueueItem @private
 <*
  @require !self.initialized : "ThreadPool must not be already initialized"
 *>
-fn void! ThreadPool.init(&self)
+fn void? ThreadPool.init(&self)
 {
 	defer catch @ok(self.destroy());
 	*self = { .num_threads = SIZE, .initialized = true };
@@ -44,7 +44,7 @@ fn void! ThreadPool.init(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be dropped.
 *>
-fn void! ThreadPool.destroy(&self)
+fn void? ThreadPool.destroy(&self)
 {
 	return self.@shutdown(stop_now);
 }
@@ -53,12 +53,12 @@ fn void! ThreadPool.destroy(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void! ThreadPool.stop_and_destroy(&self)
+fn void? ThreadPool.stop_and_destroy(&self)
 {
 	return self.@shutdown(stop);
 }
 
-macro void! ThreadPool.@shutdown(&self, #stop) @private
+macro void? ThreadPool.@shutdown(&self, #stop) @private
 {
 	if (self.initialized)
 	{
@@ -86,7 +86,7 @@ macro void! ThreadPool.@shutdown(&self, #stop) @private
  Push a new job to the pool.
  Returns whether the queue is full, in which case the job is ignored.
 *>
-fn void! ThreadPool.push(&self, ThreadFn func, void* arg)
+fn void? ThreadPool.push(&self, ThreadFn func, void* arg)
 {
 	while (true)
 	{

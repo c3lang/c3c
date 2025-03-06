@@ -1,15 +1,15 @@
 // #target: macos-x64
-ushort[?] a = $$wstr16("WIDESTR");
-ushort[?] b = $$wstr16("Esc\r\n");
-ushort[?] c = $$wstr16(`lit
+ushort[*] a = $$wstr16("WIDESTR");
+ushort[*] b = $$wstr16("Esc\r\n");
+ushort[*] c = $$wstr16(`lit
 str\ting`);
-ushort[?] d = $$wstr16(`γειά`);
-uint[?] e = $$wstr32("\u03B3ειά");
-ushort[?] f = $$wstr16("");
-uint[?] g = $$wstr32("");
-ushort[?] h = $$wstr16(``);
-uint[?] i = $$wstr32(``);
-uint[?] j = $$wstr32("-");
+ushort[*] d = $$wstr16(`γειά`);
+uint[*] e = $$wstr32("\u03B3ειά");
+ushort[*] f = $$wstr16("");
+uint[*] g = $$wstr32("");
+ushort[*] h = $$wstr16(``);
+uint[*] i = $$wstr32(``);
+uint[*] j = $$wstr32("-");
 
 /* #expect: wide_strings.ll
 

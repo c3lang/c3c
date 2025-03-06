@@ -68,19 +68,19 @@ struct Darwin_segment_command_64
 }
 
 
-fn String! executable_path(Allocator allocator)
+fn String? executable_path(Allocator allocator)
 {
 	char[4096] path;
 	uint len = path.len;
-	if (darwin_NSGetExecutablePath(&path, &len) < 0) return SearchResult.MISSING?;
+	if (darwin_NSGetExecutablePath(&path, &len) < 0) return NOT_FOUND?;
 	return ((ZString)&path).copy(allocator);
 }
 
-fn uptr! load_address() @local
+fn uptr? load_address() @local
 {
 	Darwin_segment_command_64* cmd = darwin::getsegbyname("__TEXT");
-	if (!cmd) return BacktraceFault.SEGMENT_NOT_FOUND?;
-	String path = env::executable_path(tmem()) ?? BacktraceFault.EXECUTABLE_PATH_NOT_FOUND?!;
+	if (!cmd) return backtrace::SEGMENT_NOT_FOUND?;
+	String path = env::executable_path(tmem()) ?? backtrace::EXECUTABLE_PATH_NOT_FOUND?!;
 	uint dyld_count = darwin::_dyld_image_count();
 	for (uint i = 0; i < dyld_count; i++)
 	{
@@ -89,11 +89,11 @@ fn uptr! load_address() @local
 		if (image_name.str_view() != path) continue;
 		return cmd.vmaddr + darwin::_dyld_get_image_vmaddr_slide(i);
 	}
-	return BacktraceFault.IMAGE_NOT_FOUND?;
+	return backtrace::IMAGE_NOT_FOUND?;
 }
 
 
-fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator allocator = allocator::heap()) @local
+fn Backtrace? backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator allocator = allocator::heap()) @local
 {
 	@pool(allocator)
 	{
@@ -132,7 +132,7 @@ fn Backtrace! backtrace_load_element(String execpath, void* buffer, void* load_a
 	};
 }
 
-fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace)
+fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 {
 	void *load_addr = (void *)load_address()!;
 	BacktraceList list;

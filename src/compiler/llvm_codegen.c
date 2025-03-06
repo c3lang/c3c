@@ -625,7 +625,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	if (init_expr && IS_OPTIONAL(init_expr) && init_expr->expr_kind == EXPR_OPTIONAL)
 	{
 		Expr *inner = init_expr->inner_expr;
-		ASSERT(expr_is_const(inner) && inner->const_expr.const_kind == CONST_ERR);
+		ASSERT(expr_is_const(inner) && inner->const_expr.const_kind == CONST_FAULT);
 		BEValue value;
 		llvm_emit_expr_global_value(c, &value, inner);
 		optional_value = llvm_load_value_store(c, &value);
@@ -999,7 +999,6 @@ static void llvm_emit_type_decls(GenContext *context, Decl *decl)
 		case DECL_STRUCT:
 		case DECL_UNION:
 		case DECL_ENUM:
-		case DECL_FAULT:
 		case DECL_BITSTRUCT:
 			llvm_get_typeid(context, decl->type);
 			break;
@@ -1271,6 +1270,18 @@ void llvm_append_function_attributes(GenContext *c, Decl *decl)
 
 	LLVMSetFunctionCallConv(function, llvm_call_convention_from_call(prototype->call_abi));
 }
+static LLVMValueRef llvm_create_fault(GenContext *c, Decl *decl)
+{
+	scratch_buffer_set_extern_decl_name(decl, true);
+	LLVMValueRef fault = llvm_add_global_raw(c, scratch_buffer_to_string(), c->chars_type, 0);
+	LLVMSetGlobalConstant(fault, 1);
+	scratch_buffer_append(".nameof");
+	LLVMSetInitializer(fault, llvm_emit_string_const(c, decl->name, scratch_buffer_to_string()));
+	llvm_set_linkonce(c, fault);
+	decl->backend_ref = fault;
+	return fault;
+}
+
 LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 {
 	ASSERT(!decl->is_value);
@@ -1317,13 +1328,8 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			return backend_ref;
 		case DECL_DEFINE:
 			return llvm_get_ref(c, decl->define_decl.alias);
-		case DECL_FAULTVALUE:
-			if (!decl->backend_ref)
-			{
-				llvm_get_typeid(c, declptr(decl->enum_constant.parent)->type);
-			}
-			ASSERT(decl->backend_ref);
-			return decl->backend_ref;
+		case DECL_FAULT_NEW:
+			return llvm_create_fault(c, decl);
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
@@ -1331,7 +1337,6 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_DISTINCT:
 		case DECL_ENUM:
 		case DECL_ENUM_CONSTANT:
-		case DECL_FAULT:
 		case DECL_IMPORT:
 		case DECL_LABEL:
 		case DECL_MACRO:
@@ -1345,6 +1350,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_INCLUDE:
 		case DECL_GLOBALS:
 		case DECL_INTERFACE:
+		case DECL_FAULTS:
 			UNREACHABLE;
 	}
 	UNREACHABLE

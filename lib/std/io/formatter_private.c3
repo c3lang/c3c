@@ -4,12 +4,9 @@ import std::math;
 const char[16] XDIGITS_H = "0123456789ABCDEF";
 const char[16] XDIGITS_L = "0123456789abcdef";
 
-fault FormattingFault
-{
-	BAD_FORMAT
-}
+fault BAD_FORMAT;
 
-fn usz! print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
+fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 {
 	char past_10 = (uppercase ? 'A' : 'a') - 10;
 	usz len = 0;
@@ -32,13 +29,13 @@ macro Formatter.first_err(&self, anyfault f)
 	return f;
 }
 
-fn usz! Formatter.adjust(&self, usz len) @local
+fn usz? Formatter.adjust(&self, usz len) @local
 {
 	if (!self.flags.left) return 0;
 	return self.pad(' ', self.width, len);
 }
 
-fn uint128! int_from_any(any arg, bool *is_neg) @private
+fn uint128? int_from_any(any arg, bool *is_neg) @private
 {
 	switch (arg.type.kindof)
 	{
@@ -88,11 +85,11 @@ fn uint128! int_from_any(any arg, bool *is_neg) @private
 			double d = *(double*)arg;
 			return (uint128)((*is_neg = d < 0) ? -d : d);
 		default:
-			return FormattingFault.BAD_FORMAT?;
+			return BAD_FORMAT?;
 	}
 }
 
-fn FloatType! float_from_any(any arg) @private
+fn FloatType? float_from_any(any arg) @private
 {
 	$if env::F128_SUPPORT:
 		if (arg.type == float128.typeid) return (FloatType)*((float128*)arg.ptr);
@@ -130,7 +127,7 @@ fn FloatType! float_from_any(any arg) @private
 		case double:
 			return (FloatType)*(double*)arg;
 		default:
-			return FormattingFault.BAD_FORMAT?;
+			return BAD_FORMAT?;
 	}
 }
 
@@ -158,7 +155,7 @@ fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private
 	return i;
 }
 
-fn usz! Formatter.out_substr(&self, String str) @private
+fn usz? Formatter.out_substr(&self, String str) @private
 {
 	usz l = conv::utf8_codepoints(str);
 	uint prec = self.prec;
@@ -177,7 +174,7 @@ fn usz! Formatter.out_substr(&self, String str) @private
 	return index;
 }
 
-fn usz! Formatter.pad(&self, char c, isz width, isz len) @inline
+fn usz? Formatter.pad(&self, char c, isz width, isz len) @inline
 {
 	isz delta = width - len;
 	for (isz i = 0; i < delta; i++) self.out(c)!;
@@ -191,7 +188,7 @@ fn char* fmt_u(uint128 x, char* s)
 	return s;
 }
 
-fn usz! Formatter.out_chars(&self, char[] s)
+fn usz? Formatter.out_chars(&self, char[] s)
 {
 	foreach (c : s) self.out(c)!;
 	return s.len;
@@ -205,12 +202,12 @@ enum FloatFormatting
 	HEX
 }
 
-fn usz! Formatter.etoa(&self, double y) => self.floatformat(EXPONENTIAL, y);
-fn usz! Formatter.ftoa(&self, double y) => self.floatformat(FLOAT, y);
-fn usz! Formatter.gtoa(&self, double y) => self.floatformat(ADAPTIVE, y);
-fn usz! Formatter.atoa(&self, double y) => self.floatformat(HEX, y);
+fn usz? Formatter.etoa(&self, double y) => self.floatformat(EXPONENTIAL, y);
+fn usz? Formatter.ftoa(&self, double y) => self.floatformat(FLOAT, y);
+fn usz? Formatter.gtoa(&self, double y) => self.floatformat(ADAPTIVE, y);
+fn usz? Formatter.atoa(&self, double y) => self.floatformat(HEX, y);
 
-fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @private
+fn usz? Formatter.floatformat(&self, FloatFormatting formatting, double y) @private
 {
 	// This code is heavily based on musl's printf code
 	const BUF_SIZE = (math::DOUBLE_MANT_DIG + 28) / 29 + 1
@@ -285,7 +282,7 @@ fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		} while (y);
 		isz outlen = s - buf;
 		isz explen = ebuf - estr;
-		if (p > int.max - 2 - explen - pl) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+		if (p > int.max - 2 - explen - pl) return INTERNAL_BUFFER_EXCEEDED?;
 		usz len;
 		usz l = p && outlen - 2 < p
 				? p + 2 + explen
@@ -453,12 +450,12 @@ fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 			}
 		}
 	}
-	if (p > int.max - 1 - (isz)(p || self.flags.hash)) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+	if (p > int.max - 1 - (isz)(p || self.flags.hash)) return INTERNAL_BUFFER_EXCEEDED?;
 	int l = (int)(1 + p + (isz)(p || self.flags.hash));
 	char* estr @noinit;
 	if (formatting == FLOAT)
 	{
-		if (e > int.max - l) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+		if (e > int.max - l) return INTERNAL_BUFFER_EXCEEDED?;
 		if (e > 0) l += e;
 	}
 	else
@@ -467,10 +464,10 @@ fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 		while (ebuf - estr < 2) (--estr)[0] = '0';
 		*--estr = (e < 0 ? '-' : '+');
 		*--estr = self.flags.uppercase ? 'E' : 'e';
-		if (ebuf - estr > (isz)int.max - l) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+		if (ebuf - estr > (isz)int.max - l) return INTERNAL_BUFFER_EXCEEDED?;
 		l += (int)(ebuf - estr);
 	}
-	if (l > int.max - pl) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+	if (l > int.max - pl) return INTERNAL_BUFFER_EXCEEDED?;
 	usz len;
 	if (!self.flags.left && !self.flags.zeropad) len += self.pad(' ', self.width, pl + l)!;
 	if (is_neg || self.flags.plus) len += self.out(is_neg ? '-' : '+')!;
@@ -528,7 +525,7 @@ fn usz! Formatter.floatformat(&self, FloatFormatting formatting, double y) @priv
 	return len;
 }
 
-fn usz! Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
+fn usz? Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 {
 	char[PRINTF_NTOA_BUFFER_SIZE] buf @noinit;
 	usz len;
@@ -542,7 +539,7 @@ fn usz! Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 		char past_10 = (self.flags.uppercase ? 'A' : 'a') - 10;
 		do
 		{
-			if (len >= PRINTF_NTOA_BUFFER_SIZE) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= PRINTF_NTOA_BUFFER_SIZE) return INTERNAL_BUFFER_EXCEEDED?;
 			char digit = (char)(value % base);
 			buf[len++] = digit + (digit < 10 ? '0' : past_10);
 			value /= base;
@@ -552,7 +549,7 @@ fn usz! Formatter.ntoa(&self, uint128 value, bool negative, uint base) @private
 	return self.ntoa_format((String)buf[:PRINTF_NTOA_BUFFER_SIZE], len, negative, base);
 }
 
-fn usz! Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint base) @private
+fn usz? Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint base) @private
 {
 	// pad leading zeros
 	if (!self.flags.left)
@@ -560,12 +557,12 @@ fn usz! Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 		if (self.width && self.flags.zeropad && (negative || self.flags.plus || self.flags.space)) self.width--;
 		while (len < self.prec)
 		{
-			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
 			buf[len++] = '0';
 		}
 		while (self.flags.zeropad && len < self.width)
 		{
-			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
 			buf[len++] = '0';
 		}
 	}
@@ -580,7 +577,7 @@ fn usz! Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 		}
 		if (base != 10)
 		{
-			if (len + 1 >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len + 1 >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
 			switch (base)
 			{
 				case 16:
@@ -599,13 +596,13 @@ fn usz! Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 	switch (true)
 	{
 		case negative:
-			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
 			buf[len++] = '-';
 		case self.flags.plus:
-			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
 			buf[len++] = '+';
 		case self.flags.space:
-			if (len >= buf.len) return PrintFault.INTERNAL_BUFFER_EXCEEDED?;
+			if (len >= buf.len) return INTERNAL_BUFFER_EXCEEDED?;
 			buf[len++] = ' ';
 	}
 	if (len) self.out_reverse(buf[:len])!;
@@ -613,13 +610,13 @@ fn usz! Formatter.ntoa_format(&self, String buf, usz len, bool negative, uint ba
 }
 
 
-fn usz! Formatter.ntoa_any(&self, any arg, uint base) @private
+fn usz? Formatter.ntoa_any(&self, any arg, uint base) @private
 {
 	bool is_neg;
 	return self.ntoa(int_from_any(arg, &is_neg)!!, is_neg, base) @inline;
 }
 
-fn usz! Formatter.out_char(&self, any arg) @private
+fn usz? Formatter.out_char(&self, any arg) @private
 {
 	if (!arg.type.kindof.is_int())
 	{
@@ -653,7 +650,7 @@ fn usz! Formatter.out_char(&self, any arg) @private
 }
 
 
-fn usz! Formatter.out_reverse(&self, char[] buf) @private
+fn usz? Formatter.out_reverse(&self, char[] buf) @private
 {
 	usz n;
 	usz buffer_start_idx = self.idx;
@@ -672,7 +669,7 @@ fn usz! Formatter.out_reverse(&self, char[] buf) @private
 }
 
 
-fn int! printf_parse_format_field(
+fn int? printf_parse_format_field(
 	any* args_ptr, usz args_len, usz* args_index_ptr,
 	char* format_ptr, usz format_len, usz* index_ptr) @inline @private
 {
@@ -680,10 +677,10 @@ fn int! printf_parse_format_field(
 	if (c.is_digit()) return simple_atoi(format_ptr, format_len, index_ptr);
 	if (c != '*') return 0;
 	usz len = ++(*index_ptr);
-	if (len >= format_len) return FormattingFault.BAD_FORMAT?;
-	if (*args_index_ptr >= args_len) return FormattingFault.BAD_FORMAT?;
+	if (len >= format_len) return BAD_FORMAT?;
+	if (*args_index_ptr >= args_len) return BAD_FORMAT?;
 	any val = args_ptr[(*args_index_ptr)++];
-	if (!val.type.kindof.is_int()) return FormattingFault.BAD_FORMAT?;
-	uint! intval = types::any_to_int(val, int);
-	return intval ?? FormattingFault.BAD_FORMAT?;
+	if (!val.type.kindof.is_int()) return BAD_FORMAT?;
+	uint? intval = types::any_to_int(val, int);
+	return intval ?? BAD_FORMAT?;
 }

@@ -1,7 +1,7 @@
 module abi;
 
-fn void! abc() {}
-macro void! abc_macro() => abc();
+fn void? abc() {}
+macro void? abc_macro() => abc();
 
 fn void main()
 {

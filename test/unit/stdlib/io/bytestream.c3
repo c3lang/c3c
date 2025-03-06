@@ -59,7 +59,7 @@ struct TestReader (InStream)
     usz index;
 }
 
-fn usz! TestReader.read(&self, char[] bytes) @dynamic
+fn usz? TestReader.read(&self, char[] bytes) @dynamic
 {
     usz left = self.bytes.len - self.index;
     if (left == 0) return 0;
@@ -69,4 +69,4 @@ fn usz! TestReader.read(&self, char[] bytes) @dynamic
     return n;
 }
 
-fn char! TestReader.read_byte(&self) @dynamic => io::read_byte_using_read(self);
+fn char? TestReader.read_byte(&self) @dynamic => io::read_byte_using_read(self);

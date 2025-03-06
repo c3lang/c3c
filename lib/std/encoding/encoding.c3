@@ -1,7 +1,3 @@
 module std::encoding;
 
-fault DecodingFailure
-{
-	INVALID_CHARACTER,
-	INVALID_PADDING,
-}
+fault INVALID_CHARACTER, INVALID_PADDING;

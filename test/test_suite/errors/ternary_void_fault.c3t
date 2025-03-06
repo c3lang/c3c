@@ -1,6 +1,6 @@
 // #target: macos-x64
 module test;
-fn void! x() {}
+fn void? x() {}
 fn void main()
 {
 	int a;
