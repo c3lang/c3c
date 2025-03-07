@@ -253,7 +253,7 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 		char! c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			if (err = IoError.EOF) break;
+			if (err == IoError.EOF) break;
 			return err?;
 		}
 		else

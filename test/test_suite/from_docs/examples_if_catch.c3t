@@ -32,7 +32,7 @@ fn void main()
     // Handle the error
     if (catch err = ratio)
     {
-        if (err = MathError.DIVISION_BY_ZERO)
+        if (err == MathError.DIVISION_BY_ZERO)
         {
             libc::printf("Division by zero\n");
             return;
@@ -137,19 +137,20 @@ end_block:                                        ; preds = %after_check3, %assi
   br i1 %i2b, label %if.then, label %if.exit5
 
 if.then:                                          ; preds = %end_block
-  store i64 ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64), ptr %err, align 8
-  br i1 icmp ne (i64 ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64), i64 0), label %if.then4, label %if.exit
+  %7 = load i64, ptr %err, align 8
+  %eq = icmp eq i64 %7, ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64)
+  br i1 %eq, label %if.then4, label %if.exit
 
 if.then4:                                         ; preds = %if.then
-  %7 = call i32 (ptr, ...) @printf(ptr @.str)
+  %8 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 
 if.exit:                                          ; preds = %if.then
-  %8 = call i32 (ptr, ...) @printf(ptr @.str.1)
+  %9 = call i32 (ptr, ...) @printf(ptr @.str.1)
   ret void
 
 if.exit5:                                         ; preds = %end_block
-  %9 = load double, ptr %ratio, align 8
-  %10 = call i32 (ptr, ...) @printf(ptr @.str.2, double %9)
+  %10 = load double, ptr %ratio, align 8
+  %11 = call i32 (ptr, ...) @printf(ptr @.str.2, double %10)
   ret void
 }
