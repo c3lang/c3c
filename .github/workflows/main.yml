@@ -136,7 +136,7 @@ jobs:
             pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-20.1.0-1-any.pkg.tar.zst
       - name: CMake
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld
           cmake --build build
 
       - name: Compile and run some examples
