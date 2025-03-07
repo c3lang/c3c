@@ -112,7 +112,7 @@ jobs:
 
   build-msys2-mingw:
     runs-on: windows-latest
-    # if: ${{ false }}
+    if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
