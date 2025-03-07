@@ -31,7 +31,7 @@ fn int! ask_guess_multi(int high)
 	while (true)
 	{
 		int! result = ask_guess(high);
-		if (@catch(result) == InputResult.NOT_AN_INT)
+		if (@catch(result) == NOT_AN_INT)
 		{
 		  io::printn("I didn't understand that.");
 		  err_count++;

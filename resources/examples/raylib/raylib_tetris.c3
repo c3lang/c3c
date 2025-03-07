@@ -257,7 +257,7 @@ fn void update_game()
     {
         for (int i = 1; i < GRID_HORIZONTAL_SIZE - 1; i++)
         {
-            if (grid[i][j] == GridSquare.FULL)
+            if (grid[i][j] == FULL)
             {
                 game_over = true;
             }
@@ -404,7 +404,7 @@ fn bool create_piece()
     {
         for (int j = 0; j < 4; j++)
         {
-            if (piece[i - (int)piece_position_x][j] == GridSquare.MOVING) grid[i][j] = MOVING;
+            if (piece[i - (int)piece_position_x][j] == MOVING) grid[i][j] = MOVING;
         }
     }
 
@@ -474,7 +474,7 @@ fn void resolve_falling_movement(bool* detection_ref, bool* piece_active_ref)
         {
             for (int i = 1; i < GRID_HORIZONTAL_SIZE - 1; i++)
             {
-                if (grid[i][j] == GridSquare.MOVING)
+                if (grid[i][j] == MOVING)
                 {
                     grid[i][j] = FULL;
                     *detection_ref = false;
@@ -489,7 +489,7 @@ fn void resolve_falling_movement(bool* detection_ref, bool* piece_active_ref)
         {
             for (int i = 1; i < GRID_HORIZONTAL_SIZE - 1; i++)
             {
-                if (grid[i][j] == GridSquare.MOVING)
+                if (grid[i][j] == MOVING)
                 {
                     grid[i][j+1] = MOVING;
                     grid[i][j] = EMPTY;
@@ -513,10 +513,10 @@ fn bool resolve_lateral_movement()
         {
             for (int i = 1; i < GRID_HORIZONTAL_SIZE - 1; i++)
             {
-                if (grid[i][j] == GridSquare.MOVING)
+                if (grid[i][j] == MOVING)
                 {
                     // Check if we are touching the left wall or we have a full square at the left
-                    if ((i-1 == 0) || (grid[i-1][j] == GridSquare.FULL)) collision = true;
+                    if ((i-1 == 0) || (grid[i-1][j] == FULL)) collision = true;
                 }
             }
         }
