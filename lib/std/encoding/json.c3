@@ -225,11 +225,12 @@ fn char! read_next(JsonContext* context) @local
 	char! c = context.stream.read_byte();
 	if (catch err = c)
 	{
-		case IoError.EOF:
+		if (err == IoError.EOF)
+		{
 			context.reached_end = true;
 			return '\0';
-		default:
-			return err?;
+		}
+		return err?;
 	}
 	if (c == 0)
 	{

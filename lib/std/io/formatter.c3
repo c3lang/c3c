@@ -340,13 +340,16 @@ macro usz! @wrap_bad(Formatter* f, #action)
 	usz! len = #action;
 	if (catch err = len)
 	{
-		case PrintFault.BUFFER_EXCEEDED:
-		case PrintFault.INTERNAL_BUFFER_EXCEEDED:
-			return f.first_err(err)?;
-		default:
-			err = f.first_err(PrintFault.INVALID_ARGUMENT);
-			f.out_substr("<INVALID>")!;
-			return err?;
+		switch (err)
+		{
+			case PrintFault.BUFFER_EXCEEDED:
+        	case PrintFault.INTERNAL_BUFFER_EXCEEDED:
+        		return f.first_err(err)?;
+        	default:
+        		err = f.first_err(PrintFault.INVALID_ARGUMENT);
+        		f.out_substr("<INVALID>")!;
+        		return err?;
+		}
 	}
 	return len;
 }
