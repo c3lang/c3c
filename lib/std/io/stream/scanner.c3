@@ -92,10 +92,8 @@ macro usz! Scanner.refill(&self, buf) @private
 	usz! n = self.wrapped_stream.read(buf);
 	if (catch err = n)
 	{
-		case IoError.EOF:
-			return SearchResult.MISSING?;
-		default:
-			return err?;
+		if (err == IoError.EOF) return SearchResult.MISSING?;
+		return err?;
 	}
 	return n;
 }

@@ -398,20 +398,6 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 
 	bool exit_in_use = true;
 
-	if (then_body->ast_kind == AST_IF_CATCH_SWITCH_STMT)
-	{
-		llvm_emit_cond(c, &be_value, cond, false);
-		llvm_value_rvalue(c, &be_value);
-		BEValue comp;
-		llvm_emit_int_comp_zero(c, &comp, &be_value, BINARYOP_NE);
-		llvm_emit_cond_br(c, &comp, then_block, else_block);
-		llvm_emit_br(c, then_block);
-		llvm_emit_block(c, then_block);
-		llvm_emit_switch_body(c, &be_value, then_body, false);
-		llvm_emit_br(c, exit_block);
-		goto EMIT_ELSE;
-	}
-
 	llvm_emit_cond(c, &be_value, cond, true);
 	llvm_value_rvalue(c, &be_value);
 
@@ -459,7 +445,6 @@ static void llvm_emit_if_stmt(GenContext *c, Ast *ast)
 		llvm_emit_br(c, exit_block);
 	}
 
-	EMIT_ELSE:
 	// Emit the 'else' branch if present.
 	if (else_block != exit_block)
 	{
@@ -940,7 +925,7 @@ static void llvm_emit_switch_jump_table(GenContext *c,
 static void llvm_emit_switch_body(GenContext *c, BEValue *switch_value, Ast *switch_ast, bool is_typeid)
 {
 	bool is_if_chain = switch_ast->switch_stmt.flow.if_chain;
-	Type *switch_type = switch_ast->ast_kind == AST_IF_CATCH_SWITCH_STMT ? type_lowering(type_anyfault) : switch_value->type;
+	Type *switch_type = switch_value->type;
 	Ast **cases = switch_ast->switch_stmt.cases;
 	ArraySize case_count = vec_size(cases);
 	if (!case_count)
@@ -1094,7 +1079,6 @@ void llvm_emit_break(GenContext *c, Ast *ast)
 		case AST_FOR_STMT:
 			jump = jump_target->for_stmt.codegen.exit_block;
 			break;
-		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_SWITCH_STMT:
 			jump = jump_target->switch_stmt.codegen.exit_block;
 			break;
@@ -1646,7 +1630,6 @@ void llvm_emit_stmt(GenContext *c, Ast *ast)
 	switch (ast->ast_kind)
 	{
 		case AST_POISONED:
-		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_FOREACH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:

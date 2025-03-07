@@ -23,6 +23,7 @@
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
 - Change `@return!` syntax to require ":" after faults.
+- Remove `if (catch foo) { case ... }` syntax.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

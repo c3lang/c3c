@@ -49,15 +49,13 @@ fn usz! MultiReader.read(&self, char[] bytes) @dynamic
 	usz! n = r.read(bytes);
 	if (catch err = n)
 	{
-		case IoError.EOF:
-			self.index++;
-			if (self.index >= self.readers.len)
-			{
-				return IoError.EOF?;
-			}
-			return self.read(bytes);
-		default:
-			return err?;
+		if (err != IoError.EOF) return err?;
+		self.index++;
+		if (self.index >= self.readers.len)
+		{
+			return IoError.EOF?;
+		}
+		return self.read(bytes);
 	}
 	return n;
 }

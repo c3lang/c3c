@@ -175,7 +175,6 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			sema_trace_astid_liveness(ast->if_stmt.else_body);
 			return;
 		case AST_SWITCH_STMT:
-		case AST_IF_CATCH_SWITCH_STMT:
 			sema_trace_exprid_liveness(ast->switch_stmt.cond);
 			{
 				FOREACH(Ast *, casestm, ast->switch_stmt.cases) sema_trace_stmt_liveness(casestm);

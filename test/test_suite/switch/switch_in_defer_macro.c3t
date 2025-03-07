@@ -253,10 +253,8 @@ macro @parse_uint(self, $Type; @body(x, c, ok)) @private
 		char! c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			case IoError.EOF:
-				break;
-			default:
-				return err?;
+			if (err = IoError.EOF) break;
+			return err?;
 		}
 		else
 		{
@@ -332,10 +330,8 @@ macro char! Lexer.read_char_for_string(&self) @private
 	char! c = self.reader.read_byte();
 	if (catch err = c)
 	{
-		case IoError.EOF:
-			return LexerError.UNTERMINATED_STRING?;
-		default:
-			return err?;
+		if (err == IoError.EOF) return LexerError.UNTERMINATED_STRING?;
+		return err?;
 	}
 	return c;
 }
@@ -359,11 +355,8 @@ fn void! Lexer.parse_comment(&self, String end) @private
 	{
 		if (catch err = io::read_all(self.reader, buf))
 		{
-			case IoError.UNEXPECTED_EOF:
-			case IoError.EOF:
-				return LexerError.UNTERMINATED_COMMENT?;
-			default:
-				return err?;
+			if (err == IoError.UNEXPECTED_EOF || err == IoError.EOF) return LexerError.UNTERMINATED_COMMENT?;
+			return err?;
 		}
 		if (end == (String)buf)
 		{
@@ -400,10 +393,8 @@ fn String! Lexer.parse_ident(&self) @private
 		char! c = self.reader.read_byte();
 		if (catch err = c)
 		{
-			case IoError.EOF:
-				return str.str_view();
-			default:
-				return err?;
+			if (err == IoError.EOF) return str.str_view();
+			return err?;
 		}
 		if (!self.ident(str.len(), c)) return str.str_view();
 		str.append_char(c);

@@ -602,8 +602,7 @@ static inline Ast* parse_while_stmt(ParseContext *c)
 
 
 /**
- * if_stmt ::= IF optional_label '(' cond ')' switch_body (ELSE compound_stmt)?
- *           | IF optional_label '(' cond ')' compound_stmt (ELSE compound_stmt)?
+ * if_stmt ::= IF optional_label '(' cond ')' compound_stmt (ELSE compound_stmt)?
  *           | IF optional_label '(' cond ')' statement
  */
 static inline Ast* parse_if_stmt(ParseContext *c)
@@ -615,25 +614,13 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	ASSIGN_EXPRID_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
 	unsigned row = c->span.row;
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
-	// Special case, we might have if ( ) { case ... }
-	if (tok_is(c, TOKEN_LBRACE) && (peek(c) == TOKEN_CASE || peek(c) == TOKEN_DEFAULT))
-	{
-		Ast *stmt = new_ast(AST_IF_CATCH_SWITCH_STMT, c->span);
-		Ast **cases = NULL;
-		if (!parse_switch_body(c, &cases, TOKEN_CASE, TOKEN_DEFAULT)) return poisoned_ast;
-		stmt->switch_stmt.cases = cases;
-		if_ast->if_stmt.then_body = astid(stmt);
 
-	}
-	else
+	unsigned next_row = c->span.row;
+	ASSIGN_ASTID_OR_RET(if_ast->if_stmt.then_body, parse_stmt(c), poisoned_ast);
+	if (row != next_row && astptr(if_ast->if_stmt.then_body)->ast_kind != AST_COMPOUND_STMT)
 	{
-		unsigned next_row = c->span.row;
-		ASSIGN_ASTID_OR_RET(if_ast->if_stmt.then_body, parse_stmt(c), poisoned_ast);
-		if (row != next_row && astptr(if_ast->if_stmt.then_body)->ast_kind != AST_COMPOUND_STMT)
-		{
-			// Poison it and pick it up later.
-			ast_poison(astptr(if_ast->if_stmt.then_body));
-		}
+		// Poison it and pick it up later.
+		ast_poison(astptr(if_ast->if_stmt.then_body));
 	}
 	if (try_consume(c, TOKEN_ELSE))
 	{

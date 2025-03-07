@@ -795,8 +795,6 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			break;
 		case AST_FOREACH_STMT:
 			break;
-		case AST_IF_CATCH_SWITCH_STMT:
-			break;
 		case AST_IF_STMT:
 			break;
 		case AST_NOP_STMT:

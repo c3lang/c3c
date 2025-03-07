@@ -909,7 +909,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
-	ASSERT(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
+	ASSERT(cond_type == COND_TYPE_UNWRAP_BOOL);
 
 	ASSERT(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
 
@@ -1001,14 +1001,14 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	switch (expr->expr_kind)
 	{
 		case EXPR_TRY_UNWRAP_CHAIN:
-			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
+			if (cond_type != COND_TYPE_UNWRAP_BOOL)
 			{
 				SEMA_ERROR(expr, "Try unwrapping is only allowed inside of a 'while' or 'if' conditional.");
 				return false;
 			}
 			return sema_analyse_try_unwrap_chain(context, expr, cond_type, result);
 		case EXPR_CATCH_UNRESOLVED:
-			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
+			if (cond_type != COND_TYPE_UNWRAP_BOOL)
 			{
 				RETURN_SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
 			}
@@ -1777,10 +1777,8 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	SCOPE_OUTER_START
-		CondType cond_type = then->ast_kind == AST_IF_CATCH_SWITCH_STMT
-							 ? COND_TYPE_UNWRAP : COND_TYPE_UNWRAP_BOOL;
 		CondResult result = COND_MISSING;
-		success = sema_analyse_cond(context, cond, cond_type, &result);
+		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 
 		if (success && !ast_ok(then))
 		{
@@ -1791,7 +1789,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 		if (success && else_body)
 		{
-			bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
+			bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT;
 			if (!then_has_braces)
 			{
 				SEMA_ERROR(then, "if-statements with an 'else' must use '{ }' even around a single statement.");
@@ -1813,35 +1811,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			}
 		}
 
-		if (then->ast_kind == AST_IF_CATCH_SWITCH_STMT)
-		{
-			Ast **cases = then->switch_stmt.cases;
-			if (vec_size(cases) == 1 && cases[0]->ast_kind == AST_DEFAULT_STMT)
-			{
-				if (!SEMA_WARN(cases[0], "An 'if-catch' with only a 'default' clause is unclear. "
-						"Removing the 'default:' will have exactly the same behaviour but will be less confusing."))
-				{
-					return false;
-				}
-			}
-			DeclId label_id = statement->if_stmt.flow.label;
-			then->switch_stmt.flow.label = label_id;
-			statement->if_stmt.flow.label = 0;
-			Decl *label = declptrzero(label_id);
-			if (label) label->label.parent = astid(then);
-			SCOPE_START_WITH_LABEL(label_id);
-				success = success && sema_analyse_switch_stmt(context, then);
-				then_jump = context->active_scope.jump_end;
-			SCOPE_END;
-		}
-		else
-		{
-			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
-				if (result == COND_FALSE) context->active_scope.is_dead = true;
-				success = success && sema_analyse_statement(context, then);
-				then_jump = context->active_scope.jump_end;
-			SCOPE_END;
-		}
+		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+			if (result == COND_FALSE) context->active_scope.is_dead = true;
+			success = success && sema_analyse_statement(context, then);
+			then_jump = context->active_scope.jump_end;
+		SCOPE_END;
 
 		if (!success) goto END;
 		else_jump = false;
@@ -1986,7 +1960,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		if (!decl_ok(target)) return false;
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
-		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
+		if (kind != AST_SWITCH_STMT)
 		{
 			RETURN_SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the label to match a 'switch' or 'if-catch' statement.");
 		}
@@ -2963,7 +2937,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	switch (statement->ast_kind)
 	{
 		case AST_POISONED:
-		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:
 		case AST_ASM_LABEL:

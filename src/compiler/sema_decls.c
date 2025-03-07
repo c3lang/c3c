@@ -3765,7 +3765,6 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 			case AST_DEFER_STMT:
 			case AST_FOR_STMT:
 			case AST_FOREACH_STMT:
-			case AST_IF_CATCH_SWITCH_STMT:
 			case AST_IF_STMT:
 			case AST_BLOCK_EXIT_STMT:
 			case AST_SWITCH_STMT:

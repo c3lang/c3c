@@ -112,8 +112,8 @@ macro usz! read_using_read_byte(s, char[] buffer)
 		char! c = s.read_byte();
 		if (catch err = c)
 		{
-			case IoError.EOF: return len;
-			default: return err?;
+			if (err == IoError.EOF) return len;
+			return err?;
 		}
 		*cptr = c;
 		len++;
@@ -173,8 +173,8 @@ macro usz! copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 		usz! len = in.read(buffer);
 		if (catch err = len)
 		{
-			case IoError.EOF: return total_copied;
-			default: return err?;
+			if (err == IoError.EOF) return total_copied;
+			return err?;
 		}
 		if (!len) return total_copied;
 		usz written = dst.write(buffer[:len])!;
@@ -201,10 +201,8 @@ macro usz! read_varint(stream, x_ptr)
 		char! c = stream.read_byte();
 		if (catch err = c)
 		{
-			case IoError.EOF:
-				return IoError.UNEXPECTED_EOF?;
-			default:
-				return err?;
+			if (err == IoError.EOF) return IoError.UNEXPECTED_EOF?;
+			return err?;
 		}
 		n++;
 		if (c & 0x80 == 0)
