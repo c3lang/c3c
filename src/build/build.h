@@ -344,6 +344,7 @@ typedef enum
 {
 	ARCH_OS_TARGET_DEFAULT = -1,
 	ANDROID_AARCH64 = 0,
+	ANDROID_X86_64,
 	ELF_AARCH64,
 	ELF_RISCV32,
 	ELF_RISCV64,
@@ -475,6 +476,11 @@ typedef struct BuildOptions_
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
+	struct
+	{
+		const char *ndk_path;
+		int api_version;
+	} android;
 	int build_threads;
 	const char **libraries_to_fetch;
 	const char **files;
@@ -742,6 +748,11 @@ typedef struct
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
+	struct
+	{
+		const char *ndk_path;
+		int api_version;
+	} android;
 } BuildTarget;
 
 static const char *x86_cpu_set[8] = {

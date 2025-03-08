@@ -443,6 +443,71 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 	add_plain_arg(ld_target(compiler.platform.arch));
 }
 
+static void linker_setup_android(const char ***args_ref, Linker linker_type, bool is_dylib)
+{
+#ifdef __linux__
+	#define ANDROID_HOST_TAG "linux-x86_64"
+#elif __APPLE__
+	#define ANDROID_HOST_TAG "darwin-x86_64"
+#elif _WIN32
+	#define ANDROID_HOST_TAG "windows-x86_64"
+#else
+	#error Unknown Host OS
+#endif
+
+	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
+	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
+	add_plain_arg("-dynamic-linker"); add_plain_arg("/system/bin/linker64");
+
+	scratch_buffer_clear();
+	scratch_buffer_append("-L");
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
+	scratch_buffer_append_char('/');
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
+	add_plain_arg(scratch_buffer_copy());
+
+	scratch_buffer_clear();
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
+	scratch_buffer_append_char('/');
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
+	scratch_buffer_append("/crtbegin_dynamic.o");
+	add_plain_arg(scratch_buffer_copy());
+
+	scratch_buffer_clear();
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
+	scratch_buffer_append_char('/');
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
+	scratch_buffer_append("/crt_pad_segment.o");
+	add_plain_arg(scratch_buffer_copy());
+
+	scratch_buffer_clear();
+	scratch_buffer_append(compiler.build.android.ndk_path);
+	scratch_buffer_append("/toolchains/llvm/prebuilt/");
+	scratch_buffer_append(ANDROID_HOST_TAG);
+	scratch_buffer_append("/sysroot/usr/lib/");
+	scratch_buffer_append(compiler.platform.target_triple);
+	scratch_buffer_append_char('/');
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
+	scratch_buffer_append("/crtend_android.o");
+	add_plain_arg(scratch_buffer_copy());
+
+	add_plain_arg("-ldl");
+	add_plain_arg("-lm");
+	add_plain_arg("-lc");
+}
+
 static void linker_setup_freebsd(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
 	if (linker_type == LINKER_CC) {
@@ -594,6 +659,9 @@ static bool linker_setup(const char ***args_ref, const char **files_to_link, uns
 		case OS_TYPE_LINUX:
 			linker_setup_linux(args_ref, linker_type, is_dylib);
 			break;
+		case OS_TYPE_ANDROID:
+			linker_setup_android(args_ref, linker_type, is_dylib);
+			break;
 		case OS_TYPE_UNKNOWN:
 			if (link_libc())
 			{
@@ -694,6 +762,7 @@ Linker linker_find_linker_type(void)
 		case OS_TYPE_LINUX:
 		case OS_TYPE_NETBSD:
 		case OS_TYPE_OPENBSD:
+		case OS_TYPE_ANDROID:
 			return LINKER_LD;
 		case OS_DARWIN_TYPES:
 			return LINKER_LD64;

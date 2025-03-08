@@ -203,7 +203,7 @@ const CInt STDIN_FD = 0;
 const CInt STDOUT_FD = 1;
 const CInt STDERR_FD = 2;
 
-module libc @if(env::LINUX);
+module libc @if(env::LINUX || env::ANDROID);
 extern CFile __stdin @extern("stdin");
 extern CFile __stdout @extern("stdout");
 extern CFile __stderr @extern("stderr");
@@ -246,7 +246,7 @@ macro CFile stdin() => __acrt_iob_func(STDIN_FD);
 macro CFile stdout() => __acrt_iob_func(STDOUT_FD);
 macro CFile stderr() => __acrt_iob_func(STDERR_FD);
 
-module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::DARWIN && !env::BSD_FAMILY);
+module libc @if(env::LIBC && !env::WIN32 && !env::LINUX && !env::ANDROID && !env::DARWIN && !env::BSD_FAMILY);
 macro CFile stdin() { return (CFile*)(uptr)STDIN_FD; }
 macro CFile stdout() { return (CFile*)(uptr)STDOUT_FD; }
 macro CFile stderr() { return (CFile*)(uptr)STDERR_FD; }

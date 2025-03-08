@@ -230,6 +230,7 @@ static LinkLibc libc_from_arch_os(ArchOsTarget target)
 	switch (target)
 	{
 		case ANDROID_AARCH64:
+		case ANDROID_X86_64:
 		case FREEBSD_X86:
 		case FREEBSD_X64:
 		case IOS_AARCH64:
@@ -412,7 +413,8 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(macos.sdk_version);
 	OVERRIDE_IF_SET(linuxpaths.crt);
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
-
+	OVERRIDE_IF_SET(android.ndk_path);
+	OVERRIDE_IF_SET(android.api_version);
 
 	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
 	target->print_linking = options->print_linking || options->verbosity_level > 1;
