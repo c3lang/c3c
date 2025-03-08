@@ -67,7 +67,7 @@ const CLOCK_UPTIME_RAW_APPROX = 9;
 const CLOCK_PROCESS_CPUTIME_ID = 12;
 const CLOCK_THREAD_CPUTIME_ID = 16;
 
-module std::time::os @if(env::LINUX);
+module std::time::os @if(env::LINUX || env::ANDROID);
 const CLOCK_REALTIME = 0;
 const CLOCK_MONOTONIC = 1;
 const CLOCK_PROCESS_CPUTIME_ID = 2;

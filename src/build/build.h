@@ -475,6 +475,11 @@ typedef struct BuildOptions_
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
+	struct
+	{
+		const char *ndk_path;
+		int api_verion;
+	} android;
 	int build_threads;
 	const char **libraries_to_fetch;
 	const char **files;
@@ -742,6 +747,11 @@ typedef struct
 		const char *crt;
 		const char *crtbegin;
 	} linuxpaths;
+	struct
+	{
+		const char *ndk_path;
+		int api_verion;
+	} android;
 } BuildTarget;
 
 static const char *x86_cpu_set[8] = {

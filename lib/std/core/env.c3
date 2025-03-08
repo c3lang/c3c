@@ -57,6 +57,7 @@ enum OsType
 	HURD,
 	WASI,
 	EMSCRIPTEN,
+	ANDROID,
 }
 
 enum ArchType
@@ -150,6 +151,7 @@ const bool FREEBSD = LIBC && OS_TYPE == FREEBSD;
 const bool NETBSD = LIBC && OS_TYPE == NETBSD;
 const bool BSD_FAMILY = env::FREEBSD || env::OPENBSD || env::NETBSD;
 const bool WASI = LIBC && OS_TYPE == WASI;
+const bool ANDROID = LIBC && OS_TYPE == ANDROID;
 const bool WASM_NOLIBC @builtin = !LIBC && ARCH_TYPE == ArchType.WASM32 || ARCH_TYPE == ArchType.WASM64;
 const bool ADDRESS_SANITIZER = $$ADDRESS_SANITIZER;
 const bool MEMORY_SANITIZER = $$MEMORY_SANITIZER;
@@ -182,6 +184,7 @@ macro bool os_is_posix() @const
 	$case SOLARIS:
 	$case TVOS:
 	$case WATCHOS:
+	$case ANDROID:
 		return true;
 	$case WIN32:
 	$case WASI:

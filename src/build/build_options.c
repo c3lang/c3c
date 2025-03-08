@@ -197,6 +197,9 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
+		print_opt("--android-ndk <dir>", "Set the NDK directory location.");
+		print_opt("--android-api <dir>", "Set Android API version.");
+		PRINTF("");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
 	if (!full)
@@ -984,7 +987,7 @@ static void parse_option(BuildOptions *options)
 				PRINTF("Available targets:");
 				EOUTPUT("Invalid target %s.", target);
 				EOUTPUT("These targets are supported:");
-				for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+				for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
 				{
 					EOUTPUT("   %s", arch_os_target[i]);
 				}
@@ -1229,6 +1232,18 @@ static void parse_option(BuildOptions *options)
 				options->linuxpaths.crtbegin = check_dir(next_arg());
 				return;
 			}
+			if (match_longopt("android-ndk"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: android-ndk needs a directory.");
+				options->android.ndk_path = check_dir(next_arg());
+				return;
+			}
+			if (match_longopt("android-api"))
+			{
+				if (at_end() || next_is_opt()) error_exit("error: android-api needs a version.");
+				options->android.api_verion = atoi(next_arg());
+				return;
+			}
 			if (match_longopt("benchmarking"))
 			{
 				options->benchmarking = true;
@@ -1358,13 +1373,29 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
+	if (build_options.arch_os_target_override == ANDROID_AARCH64) {
+		if (build_options.android.ndk_path == NULL)
+		{
+			const char *ndk_path = NULL;
+			ndk_path = getenv("ANDROID_NDK");
+			if (ndk_path == NULL)
+			{
+				FAIL_WITH_ERR("Can't find Android NDK!");
+			}
+			build_options.android.ndk_path = ndk_path;
+		}
+		if (build_options.android.api_verion <= 0)
+		{
+			build_options.android.api_verion = 30; // 30 = Android 11
+		}
+	}
 	debug_log = build_options.verbosity_level > 2;
 	return build_options;
 }
 
 ArchOsTarget arch_os_target_from_string(const char *target)
 {
-	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+	for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
 	{
 		if (strcmp(arch_os_target[i], target) == 0)
 		{
@@ -1505,7 +1536,7 @@ static void update_feature_flags(const char ***flags, const char ***removed_flag
 static void print_all_targets(void)
 {
 	PRINTF("Available targets:");
-	for (unsigned i = 1; i <= ARCH_OS_TARGET_LAST; i++)
+	for (unsigned i = 0; i <= ARCH_OS_TARGET_LAST; i++)
 	{
 		PRINTF("   %s", arch_os_target[i]);
 	}
