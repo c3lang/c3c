@@ -238,8 +238,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_ATTRIBUTE:
 				break;
 			case DECL_BODYPARAM:
-			case DECL_GLOBALS:
-			case DECL_FAULTS:
+			case DECL_GROUP:
 				UNREACHABLE
 			case DECL_DEFINE:
 			case DECL_DISTINCT:
@@ -248,7 +247,7 @@ static void register_generic_decls(CompilationUnit *unit, Decl **decls)
 			case DECL_TYPEDEF:
 			case DECL_UNION:
 			case DECL_VAR:
-			case DECL_FAULT_NEW:
+			case DECL_FAULT:
 			case DECL_BITSTRUCT:
 			case DECL_INTERFACE:
 				break;

@@ -166,8 +166,7 @@ void decl_register(Decl *decl)
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 			UNREACHABLE
 		case DECL_ATTRIBUTE:
 		case DECL_BITSTRUCT:
@@ -182,7 +181,7 @@ void decl_register(Decl *decl)
 		case DECL_VAR:
 		case DECL_FNTYPE:
 		case DECL_INTERFACE:
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			global_context_add_decl(decl);
 			break;
 	}
@@ -244,7 +243,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 			vec_add(unit->types, decl);
 			decl_register(decl);
 			break;
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			ASSERT(decl->name);
 			vec_add(unit->faults, decl);
 			decl_register(decl);
@@ -268,8 +267,7 @@ void unit_register_global_decl(CompilationUnit *unit, Decl *decl)
 		case DECL_LABEL:
 		case DECL_DECLARRAY:
 		case DECL_BODYPARAM:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 		case DECL_FNTYPE:
 			UNREACHABLE
 		case DECL_CT_EXEC:

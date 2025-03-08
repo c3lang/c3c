@@ -1328,7 +1328,7 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 			return backend_ref;
 		case DECL_DEFINE:
 			return llvm_get_ref(c, decl->define_decl.alias);
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			return llvm_create_fault(c, decl);
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
@@ -1348,9 +1348,8 @@ LLVMValueRef llvm_get_ref(GenContext *c, Decl *decl)
 		case DECL_CT_ECHO:
 		case DECL_CT_EXEC:
 		case DECL_CT_INCLUDE:
-		case DECL_GLOBALS:
+		case DECL_GROUP:
 		case DECL_INTERFACE:
-		case DECL_FAULTS:
 			UNREACHABLE;
 	}
 	UNREACHABLE

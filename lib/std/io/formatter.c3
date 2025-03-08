@@ -10,7 +10,8 @@ interface Printable
 	fn usz? to_format(Formatter* formatter) @optional;
 }
 
-fault BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
+fault BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS,
+      INVALID_ARGUMENT;
 
 def OutputFn = fn void?(void* buffer, char c);
 def FloatType = double;

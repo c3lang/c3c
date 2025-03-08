@@ -117,11 +117,10 @@ const char *decl_to_a_name(Decl *decl)
 		case DECL_ENUM: return "an enum";
 		case DECL_ENUM_CONSTANT: return "an enum value";
 		case DECL_ERASED: return "an erased declaration";
-		case DECL_FAULT_NEW: return "a fault";
-		case DECL_FAULTS: return "faults";
+		case DECL_FAULT: return "a fault";
 		case DECL_FNTYPE: return "a function type";
 		case DECL_FUNC: return "a function";
-		case DECL_GLOBALS: return "globals";
+		case DECL_GROUP: return "group";
 		case DECL_IMPORT: return "an import";
 		case DECL_LABEL: return "a label";
 		case DECL_MACRO: return "a macro";
@@ -404,7 +403,7 @@ bool decl_needs_prefix(Decl *decl)
 		case DECL_DEFINE:
 		case DECL_FUNC:
 		case DECL_MACRO:
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			return !decl->is_autoimport;
 		default:
 			return false;

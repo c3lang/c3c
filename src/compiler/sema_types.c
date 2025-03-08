@@ -263,7 +263,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_MACRO:
 		case DECL_LABEL:
 		case DECL_ATTRIBUTE:
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			SEMA_ERROR(type_info, "This is not a type.");
 			return type_info_poison(type_info);
 		case DECL_CT_ASSERT:
@@ -272,8 +272,7 @@ static bool sema_resolve_type_identifier(SemaContext *context, TypeInfo *type_in
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 			UNREACHABLE
 	}
 	UNREACHABLE

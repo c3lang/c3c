@@ -612,7 +612,7 @@ RETRY:
 			return;
 		case DECL_POISONED:
 		case DECL_ATTRIBUTE:
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			return;
 		case DECL_CT_ASSERT:
 		case DECL_CT_ECHO:
@@ -622,8 +622,7 @@ RETRY:
 		case DECL_LABEL:
 		case DECL_MACRO:
 		case DECL_BODYPARAM:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 			UNREACHABLE
 		case DECL_FNTYPE:;
 			sema_trace_func_liveness(&decl->fntype_decl);

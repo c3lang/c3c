@@ -451,7 +451,7 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 	// Check that we find it.
 	FOREACH(Decl *, opt, context->call_env.opt_returns)
 	{
-		assert(opt->decl_kind == DECL_FAULT_NEW);
+		assert(opt->decl_kind == DECL_FAULT);
 		if (opt == fault) return true;
 	}
 	// No match

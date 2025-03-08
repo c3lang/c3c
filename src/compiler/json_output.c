@@ -91,11 +91,10 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_DISTINCT: return "distinct";
 		case DECL_ENUM: return "enum";
 		case DECL_ENUM_CONSTANT: return "enum_const";
-		case DECL_FAULT_NEW: return "fault";
+		case DECL_FAULT: return "fault";
 		case DECL_FNTYPE: return "fntype";
 		case DECL_FUNC: return "function";
-		case DECL_GLOBALS: return "globals";
-		case DECL_FAULTS: return "faults";
+		case DECL_GROUP: return "globals";
 		case DECL_IMPORT: return "import";
 		case DECL_MACRO: return "macro";
 		case DECL_INTERFACE: return "interface";

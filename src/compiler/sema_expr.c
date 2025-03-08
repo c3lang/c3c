@@ -804,7 +804,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 			UNREACHABLE;
 		case DECL_VAR:
 			break;
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			expr_rewrite_const_fault(expr, decl);
 			return true;
 		case DECL_DISTINCT:
@@ -813,8 +813,7 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 		case DECL_ERASED:
 		case DECL_IMPORT:
 		case DECL_ATTRIBUTE:
@@ -1082,7 +1081,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				case DECL_DEFINE:
 					message = "Aliases from other modules must be prefixed with the module name.";
 					break;
-				case DECL_FAULT_NEW:
+				case DECL_FAULT:
 					message = "Faults from other modules must be prefixed with the module name.";
 					break;
 				default:
@@ -1128,7 +1127,7 @@ static inline bool sema_expr_analyse_identifier(SemaContext *context, Type *to, 
 				break;
 		}
 	}
-	else if (decl->decl_kind == DECL_FAULT_NEW)
+	else if (decl->decl_kind == DECL_FAULT)
 	{
 		expr_rewrite_const_fault(expr, decl);
 		return true;
@@ -8503,14 +8502,13 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 			case DECL_CT_INCLUDE:
 			case DECL_DECLARRAY:
 			case DECL_ERASED:
-			case DECL_GLOBALS:
+			case DECL_GROUP:
 			case DECL_IMPORT:
 			case DECL_LABEL:
 			case DECL_MACRO:
 			case DECL_DEFINE:
-			case DECL_FAULTS:
 				RETURN_SEMA_ERROR(main_var, "'%s' does not have an external name.", decl->name);
-			case DECL_FAULT_NEW:
+			case DECL_FAULT:
 				goto RETURN_CT;
 			case DECL_BITSTRUCT:
 			case DECL_DISTINCT:
@@ -8794,7 +8792,7 @@ static inline bool sema_expr_analyse_embed(SemaContext *context, Expr *expr, boo
 			Module *module = global_context_find_module(kw_std__io);
 			Decl *io_error = module ? module_find_symbol(module, kw_FILE_NOT_FOUND) : NULL;
 			Decl *fault = poisoned_decl;
-			if (io_error && io_error->decl_kind == DECL_FAULT_NEW)
+			if (io_error && io_error->decl_kind == DECL_FAULT)
 			{
 				fault = io_error;
 			}

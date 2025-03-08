@@ -1226,7 +1226,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	if (decls)
 	{
 		decl = decl_calloc();
-		decl->decl_kind = DECL_GLOBALS;
+		decl->decl_kind = DECL_GROUP;
 		decl->decls = decls;
 		return decl;
 	}
@@ -2239,7 +2239,7 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 
 static inline Decl *parse_fault(ParseContext *c)
 {
-	Decl *decl = decl_new(DECL_FAULT_NEW, symstr(c), c->span);
+	Decl *decl = decl_new(DECL_FAULT, symstr(c), c->span);
 	if (!consume_const_name(c, "fault")) return poisoned_decl;
 	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	return decl;
@@ -2273,7 +2273,7 @@ static inline Decl *parse_fault_declaration(ParseContext *c)
 		return poisoned_decl;
 	}
 	Decl *decl = decl_calloc();
-	decl->decl_kind = DECL_FAULTS;
+	decl->decl_kind = DECL_GROUP;
 	decl->decl_list = decls;
 	return decl;
 }

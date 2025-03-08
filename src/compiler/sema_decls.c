@@ -4705,7 +4705,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_ENUM:
 			if (!sema_analyse_enum(context, decl, &erase_decl)) goto FAILED;
 			break;
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			if (!sema_analyse_fault(context, decl, &erase_decl)) goto FAILED;
 			break;
 		case DECL_DEFINE:
@@ -4721,8 +4721,7 @@ bool sema_analyse_decl(SemaContext *context, Decl *decl)
 		case DECL_BODYPARAM:
 		case DECL_CT_INCLUDE:
 		case DECL_CT_EXEC:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 			UNREACHABLE
 	}
 	if (erase_decl)

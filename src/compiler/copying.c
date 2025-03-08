@@ -1001,8 +1001,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_DECLARRAY:
-		case DECL_GLOBALS:
-		case DECL_FAULTS:
+		case DECL_GROUP:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			copy_decl_type(copy);
@@ -1012,7 +1011,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE(copy->strukt.container_type);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
-		case DECL_FAULT_NEW:
+		case DECL_FAULT:
 			break;
 		case DECL_ENUM:
 			copy_decl_type(copy);
