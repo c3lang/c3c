@@ -75,7 +75,7 @@ fn List* List.tinit_with_array(&self, Type[] values)
 }
 
 <*
- @require self.capacity == 0 : "The List must not be allocated"
+ @require !self.is_initialized() : "The List must not be allocated"
 *>
 fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 {
@@ -84,6 +84,8 @@ fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 	self.entries = types.ptr;
 	self.set_size(types.len);
 }
+
+fn bool List.is_initialized(&self) @inline => self.allocator && self.allocator.ptr != null && self.allocator.ptr != &dummy;
 
 fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 {

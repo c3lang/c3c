@@ -47,6 +47,8 @@ fn AnyList* AnyList.tinit(&self, usz initial_capacity = 16)
 	return self.init(tmem(), initial_capacity) @inline;
 }
 
+fn bool AnyList.is_initialized(&self) @inline => self.allocator && self.allocator.ptr != null;
+
 fn usz! AnyList.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)

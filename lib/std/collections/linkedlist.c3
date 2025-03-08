@@ -35,8 +35,10 @@ fn LinkedList* LinkedList.tinit(&self)
 	return self.init(tmem()) @inline;
 }
 
+fn bool LinkedList.is_initialized(&self) @inline => self.allocator && self.allocator.ptr != null;
+
 <*
- @require self.allocator != null
+ @require self.is_initialized()
 *>
 macro void LinkedList.free_node(&self, Node* node) @private
 {
