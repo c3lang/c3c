@@ -1102,6 +1102,7 @@ static char *arch_to_target_triple[ARCH_OS_TARGET_LAST + 1] = {
 		[OPENBSD_X64] = "x86_64-pc-openbsd",
 		[ELF_X64] = "x86_64-unknown-elf",
 		[ANDROID_AARCH64] = "aarch64-linux-android",
+		[ANDROID_X86_64] = "x86_64-linux-android",
 		[LINUX_AARCH64] = "aarch64-unknown-linux-gnu",
 		[IOS_AARCH64] = "aarch64-apple-ios",
 		[MACOS_AARCH64] = "aarch64-apple-macosx",

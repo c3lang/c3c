@@ -1098,6 +1098,7 @@ static int jump_buffer_size()
 			return 32;
 		case ELF_X64:
 		case LINUX_X64:
+		case ANDROID_X86_64:
 			// Godbolt test
 			return 25;
 		case FREEBSD_X64:
