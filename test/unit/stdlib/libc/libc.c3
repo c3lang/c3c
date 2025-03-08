@@ -106,20 +106,21 @@ fn void atoll() @test
 }
 
 // Compare function, struct and function for libc::bsearch test
-fn int compare_CInt(void* a, void* b)
+fn int compare_cint(void* a, void* b)
 {
 	CInt a_i = *((CInt*) a);
 	CInt b_i = *((CInt*) b);
 	return a_i - b_i;
 }
 
-struct Event {
+struct Event
+{
 	CInt day;
 	CInt month;
 	String desc;
 }
 
-fn int compare_Event(void* a, void* b)
+fn int compare_event(void* a, void* b)
 {
   Event* a_e = a; // Avoid casts if possible
   Event* b_e = b;
@@ -130,22 +131,22 @@ fn void bsearch() @test
 {
 	CInt[] int_ar = { 0, 1, 2, 3, 4, 5, 6 };
 	CInt key = 0;
-	CInt* found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	CInt* found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 0);
 	key = 1;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 1);
 	key = 2;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 2);
 	key = 5;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 5);
 	key = 6;
-	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	found = (CInt*) libc::bsearch(&key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(*found == 6);
 	CInt non_existant_key = 12;
-	found = (CInt*) libc::bsearch(&non_existant_key, int_ar, 7, CInt.sizeof, &compare_CInt);
+	found = (CInt*) libc::bsearch(&non_existant_key, int_ar, 7, CInt.sizeof, &compare_cint);
 	assert(found == null);
 
 	Event[] events = {
@@ -159,10 +160,10 @@ fn void bsearch() @test
 		{ 31, 12, "End of the year" }
 	};
 	Event searching = { .day = 1, .month = 5 };
-	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
+	Event* found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_event);
 	assert(found1.desc == "Begin of May");
 	searching = { .day = 4, .month = 4 };
-	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_Event);
+	found1 = (Event*) libc::bsearch(&searching, events, 7, Event.sizeof, &compare_event);
 	assert(found1 == null);
 }
 
