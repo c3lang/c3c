@@ -165,6 +165,16 @@ fn void retain_using_test()
 	assert(test.array_view() == {11, 10, 20});
 }
 
+fn void is_initialized()
+{
+	IntList test;
+	
+	assert(!test.is_initialized());
+	test.init(mem);
+	assert(test.is_initialized());
+	test.free();
+}
+
 module list_test;
 
 fn bool filter(int* i)

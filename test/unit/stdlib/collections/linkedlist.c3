@@ -3,6 +3,16 @@ import std::collections::linkedlist;
 
 def IntList = LinkedList{int};
 
+fn void test_is_initialized()
+{
+	IntList test;
+	
+	assert(!test.is_initialized());
+	test.init(mem);
+	assert(test.is_initialized());
+	test.free();
+}
+
 fn void test_push_front()
 {
 	IntList list;
