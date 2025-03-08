@@ -1457,7 +1457,7 @@ static inline bool sema_analyse_enum_param(SemaContext *context, Decl *param)
 	}
 	sema_decl_stack_push(param);
 	ASSERT(!param->var.init_expr);
-	return sema_set_abi_alignment(context, param->type, &param->alignment);
+	return true;
 }
 
 static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *erase_decl)
@@ -1500,8 +1500,6 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 				break;
 		}
 		if (!sema_analyse_enum_param(context, value)) goto ERR;
-
-		value->resolve_status = RESOLVE_DONE;
 	}
 	sema_decl_stack_restore(state);
 
@@ -1556,6 +1554,31 @@ static inline bool sema_analyse_enum(SemaContext *context, Decl *decl, bool *era
 		// Update the value
 		value.low++;
 
+		Expr **args = enum_value->enum_constant.args;
+		unsigned arg_count = vec_size(args);
+		if (arg_count > associated_value_count)
+		{
+			if (!associated_value_count)
+			{
+				RETURN_SEMA_ERROR(args[0], "There are no associated values defined for this enum. Did you perhaps want C style gap enums? In that case, try enums with inline associated values.");
+			}
+			RETURN_SEMA_ERROR(args[associated_value_count], "You're adding too many values, only %d associated value%s are defined for '%s'.", associated_value_count, associated_value_count != 1 ? "s" : "", decl->name);
+		}
+		if (arg_count < associated_value_count)
+		{
+			RETURN_SEMA_ERROR(enum_value, "Expected %d associated value%s for this enum value.", associated_value_count, associated_value_count != 1 ? "s" : "");
+		}
+	}
+	decl->resolve_status = RESOLVE_DONE;
+	for (unsigned i = 0; i < associated_value_count; i++)
+	{
+		Decl *param = associated_values[i];
+		if (!sema_set_abi_alignment(context, param->type, &param->alignment)) return false;
+		param->resolve_status = RESOLVE_DONE;
+	}
+	for (unsigned i = 0; i < enums; i++)
+	{
+		Decl *enum_value = enum_values[i];
 		Expr **args = enum_value->enum_constant.args;
 		unsigned arg_count = vec_size(args);
 		if (arg_count > associated_value_count)

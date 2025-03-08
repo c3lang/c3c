@@ -989,7 +989,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 
 	if (!sema_analyse_decl(context, decl)) return false;
 
-	ASSERT_SPAN(expr, enum_constant->resolve_status == RESOLVE_DONE);
+	ASSERT_SPAN(expr, enum_constant->resolve_status != RESOLVE_NOT_DONE);
 	expr->type = decl->type;
 
 	expr->expr_kind = EXPR_CONST;
@@ -5243,8 +5243,10 @@ CHECK_DEEPER:
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
+		Decl *ref = current_parent->const_expr.enum_err_val;
+		if (!sema_analyse_decl(context, ref)) return false;
 		ASSERT_SPAN(expr, parent->const_expr.const_kind == CONST_ENUM);
-		Expr *copy_init = copy_expr_single(current_parent->const_expr.enum_err_val->enum_constant.args[member->var.index]);
+		Expr *copy_init = copy_expr_single(ref->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
 		ASSERT_SPAN(expr, copy_init->resolve_status == RESOLVE_DONE);
 		return true;
