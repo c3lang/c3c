@@ -8,8 +8,6 @@
 #include <glob.h>
 #endif
 
-#include <stdio.h>
-
 const char *quote_arg = "\"";
 const char *concat_arg = ":";
 const char *concat_quote_arg = "+";
@@ -447,24 +445,19 @@ static void linker_setup_linux(const char ***args_ref, Linker linker_type, bool 
 
 static void linker_setup_android(const char ***args_ref, Linker linker_type, bool is_dylib)
 {
-	char android_api_version[16];
-
 #ifdef __linux__
- #define ANDROID_HOST_TAG "linux-x86_64"
+	#define ANDROID_HOST_TAG "linux-x86_64"
 #elif __APPLE__
- #define ANDROID_HOST_TAG "darwin-x86_64"
+	#define ANDROID_HOST_TAG "darwin-x86_64"
 #elif _WIN32
- #define ANDROID_HOST_TAG "windows-x86_64"
+	#define ANDROID_HOST_TAG "windows-x86_64"
 #else
-#error Unknown Host OS
+	#error Unknown Host OS
 #endif
-
 
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
 	if (is_pie(compiler.platform.reloc_model)) add_plain_arg("-pie");
 	add_plain_arg("-dynamic-linker"); add_plain_arg("/system/bin/linker64");
-
-	snprintf(android_api_version, sizeof(android_api_version), "%d", compiler.build.android.api_verion);
 
 	scratch_buffer_clear();
 	scratch_buffer_append("-L");
@@ -474,7 +467,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	scratch_buffer_append("/sysroot/usr/lib/");
 	scratch_buffer_append(compiler.platform.target_triple);
 	scratch_buffer_append_char('/');
-	scratch_buffer_append(android_api_version);
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
 	add_plain_arg(scratch_buffer_copy());
 
 	scratch_buffer_clear();
@@ -484,7 +477,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	scratch_buffer_append("/sysroot/usr/lib/");
 	scratch_buffer_append(compiler.platform.target_triple);
 	scratch_buffer_append_char('/');
-	scratch_buffer_append(android_api_version);
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
 	scratch_buffer_append("/crtbegin_dynamic.o");
 	add_plain_arg(scratch_buffer_copy());
 
@@ -495,7 +488,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	scratch_buffer_append("/sysroot/usr/lib/");
 	scratch_buffer_append(compiler.platform.target_triple);
 	scratch_buffer_append_char('/');
-	scratch_buffer_append(android_api_version);
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
 	scratch_buffer_append("/crt_pad_segment.o");
 	add_plain_arg(scratch_buffer_copy());
 
@@ -506,7 +499,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	scratch_buffer_append("/sysroot/usr/lib/");
 	scratch_buffer_append(compiler.platform.target_triple);
 	scratch_buffer_append_char('/');
-	scratch_buffer_append(android_api_version);
+	scratch_buffer_append_signed_int(compiler.build.android.api_version);
 	scratch_buffer_append("/crtend_android.o");
 	add_plain_arg(scratch_buffer_copy());
 

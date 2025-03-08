@@ -170,7 +170,7 @@ const char* MAIN_INTERFACE_TEMPLATE =
 		"// extern fn int some_library_function();\n";
 
 const char* DEFAULT_TARGETS[] = {
-		"android-aarch64.",
+		"android-aarch64",
 		"freebsd-x64",
 		"linux-aarch64",
 		"linux-riscv32",

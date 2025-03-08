@@ -1241,7 +1241,7 @@ static void parse_option(BuildOptions *options)
 			if (match_longopt("android-api"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: android-api needs a version.");
-				options->android.api_verion = atoi(next_arg());
+				options->android.api_version = atoi(next_arg());
 				return;
 			}
 			if (match_longopt("benchmarking"))
@@ -1373,20 +1373,20 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 	{
 		FAIL_WITH_ERR("Missing a compiler command such as 'compile' or 'build'.");
 	}
-	if (build_options.arch_os_target_override == ANDROID_AARCH64) {
-		if (build_options.android.ndk_path == NULL)
+	if (build_options.arch_os_target_override == ANDROID_AARCH64)
+	{
+		if (!build_options.android.ndk_path)
 		{
-			const char *ndk_path = NULL;
-			ndk_path = getenv("ANDROID_NDK");
-			if (ndk_path == NULL)
+			const char *ndk_path = getenv("ANDROID_NDK");
+			if (!ndk_path)
 			{
-				FAIL_WITH_ERR("Can't find Android NDK!");
+				FAIL_WITH_ERR("Can't find Android NDK, please set --ndk-path.");
 			}
-			build_options.android.ndk_path = ndk_path;
+			build_options.android.ndk_path = strdup(ndk_path);
 		}
-		if (build_options.android.api_verion <= 0)
+		if (build_options.android.api_version <= 0)
 		{
-			build_options.android.api_verion = 30; // 30 = Android 11
+			build_options.android.api_version = 30; // 30 = Android 11
 		}
 	}
 	debug_log = build_options.verbosity_level > 2;

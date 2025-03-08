@@ -479,7 +479,7 @@ typedef struct BuildOptions_
 	struct
 	{
 		const char *ndk_path;
-		int api_verion;
+		int api_version;
 	} android;
 	int build_threads;
 	const char **libraries_to_fetch;
@@ -751,7 +751,7 @@ typedef struct
 	struct
 	{
 		const char *ndk_path;
-		int api_verion;
+		int api_version;
 	} android;
 } BuildTarget;
 
