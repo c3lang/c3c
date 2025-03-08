@@ -85,7 +85,7 @@ fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 	self.set_size(types.len);
 }
 
-fn bool List.is_initialized(&self) @inline => self.allocator && self.allocator.ptr != null && self.allocator.ptr != &dummy;
+fn bool List.is_initialized(&self) @inline => self.allocator != null && self.allocator != (Allocator)&dummy;
 
 fn usz! List.to_format(&self, Formatter* formatter) @dynamic
 {
