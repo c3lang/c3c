@@ -258,8 +258,8 @@ fn void fclose() @test
 
 fn void fdopen() @test @if(!env::WIN32)
 {
-	CFile stdin = libc::fdopen(0, "w");
-	assert(libc::fputc('a', stdin) == (CInt) 'a');
+	CFile stdin = libc::fdopen(-1, "w");
+	assert(libc::errno() == errno::EBADF);
 }
 
 fn void fflush() @test
