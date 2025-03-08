@@ -22,13 +22,13 @@ interface Allocator
 	fn usz mark() @optional;
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
-	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require size > 0
 	*>
 	fn void*! acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
-	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
 	 @require new_size > 0
 	*>
@@ -378,7 +378,7 @@ macro Allocator base_allocator() @private
 
 macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @local
 {
-	$switch (env::MEMORY_ENV)
+	$switch env::MEMORY_ENV:
 	$case NORMAL:
 		return new_temp_allocator(1024 * 256, allocator)!!;
 	$case SMALL:
@@ -393,6 +393,15 @@ macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @l
 macro Allocator heap() => thread_allocator;
 
 macro TempAllocator* temp()
+{
+	if (!thread_temp_allocator)
+	{
+		init_default_temp_allocators();
+	}
+	return thread_temp_allocator;
+}
+
+macro TempAllocator* tmem() @builtin
 {
 	if (!thread_temp_allocator)
 	{

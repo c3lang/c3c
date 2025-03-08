@@ -1,5 +1,5 @@
 // #target: macos-x64
-module playground::bug(<Ty>);
+module playground::bug{Ty};
 import std::io;
 
 struct Foo
@@ -12,7 +12,7 @@ fn void Foo.print_it(&self)
     io::printf("Method %s\n", self.x);
 }
 
-module playground::bug(<Ty>);
+module playground::bug{Ty};
 import std::io;
 
 macro void print_it(...)
@@ -23,11 +23,11 @@ macro void print_it(...)
 module playground;
 import playground::bug;
 
-def MyFoo = Foo(<int>);
+def MyFoo = Foo{int};
 
 fn void main(String[] args)
 {
     MyFoo foo = { 123 };
     foo.print_it();
-    bug::print_it(<int>)();
+    bug::print_it{int}();
 }

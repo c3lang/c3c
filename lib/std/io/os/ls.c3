@@ -4,7 +4,7 @@ import std::io, std::os;
 fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
-	list.new_init(allocator: allocator);
+	list.init(allocator);
 	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) posix::closedir(directory);
 	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
@@ -15,7 +15,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		if (!name || name == "." || name == "..") continue;
 		if (entry.d_type == posix::DT_LNK && no_symlinks) continue;
 		if (entry.d_type == posix::DT_DIR && no_dirs) continue;
-		Path path = path::new(name, allocator)!!;
+		Path path = path::new(allocator, name)!!;
 		list.push(path);
 	}
 	return list;
@@ -27,7 +27,7 @@ import std::time, std::os, std::io;
 fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
-	list.new_init(allocator: allocator);
+	list.init(allocator);
 
 	@pool(allocator)
 	{
@@ -41,9 +41,9 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 			if (no_dirs && (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)) continue;
 			@pool(allocator)
 			{
-				String filename = string::temp_from_wstring((WString)&find_data.cFileName)!;
+				String filename = string::tfrom_wstring((WString)&find_data.cFileName)!;
 				if (filename == ".." || filename == ".") continue;
-				list.push(path::new(filename, allocator)!);
+				list.push(path::new(allocator, filename)!);
 			};
 		} while (win32::findNextFileW(find, &find_data));
 		return list;

@@ -215,7 +215,6 @@ typedef enum
 	AST_EXPR_STMT,
 	AST_FOREACH_STMT,
 	AST_FOR_STMT,
-	AST_IF_CATCH_SWITCH_STMT,
 	AST_IF_STMT,
 	AST_NEXTCASE_STMT,
 	AST_NOP_STMT,
@@ -259,7 +258,6 @@ typedef enum FLAG_ATTR
 
 typedef enum
 {
-	ATTRIBUTE_ADHOC,
 	ATTRIBUTE_ALIGN,
 	ATTRIBUTE_BENCHMARK,
 	ATTRIBUTE_BIGENDIAN,
@@ -515,6 +513,8 @@ typedef enum
 	BUILTIN_VOLATILE_STORE,
 	BUILTIN_WASM_MEMORY_SIZE,
 	BUILTIN_WASM_MEMORY_GROW,
+	BUILTIN_WIDESTRING_16,
+	BUILTIN_WIDESTRING_32,
 	BUILTIN_NONE,
 	NUMBER_OF_BUILTINS = BUILTIN_NONE,
 
@@ -558,7 +558,6 @@ typedef enum
 typedef enum
 {
 	COND_TYPE_UNWRAP_BOOL,
-	COND_TYPE_UNWRAP,
 	COND_TYPE_EVALTYPE_VALUE,
 } CondType;
 
@@ -717,7 +716,6 @@ typedef enum
 {
 	EXPR_ACCESS_RESOLVED,
 	EXPR_ACCESS_UNRESOLVED,
-	EXPR_ANYSWITCH,
 	EXPR_ASM,
 	EXPR_BENCHMARK_HOOK,
 	EXPR_BINARY,
@@ -734,12 +732,9 @@ typedef enum
 	EXPR_COND,
 	EXPR_CONST,
 	EXPR_TYPECALL,
-	EXPR_CT_AND_OR,
 	EXPR_CT_ARG,
-	EXPR_CT_APPEND,
 	EXPR_CT_CALL,
 	EXPR_CT_CASTABLE,
-	EXPR_CT_CONCAT,
 	EXPR_CT_DEFINED,
 	EXPR_CT_EVAL,
 	EXPR_CT_IDENT,
@@ -755,7 +750,6 @@ typedef enum
 	EXPR_SLICE_TO_VEC_ARRAY,
 	EXPR_SCALAR_TO_VECTOR,
 	EXPR_EXPRESSION_LIST,
-	EXPR_EXPR_BLOCK,
 	EXPR_FORCE_UNWRAP,
 	EXPR_FLOAT_TO_INT,
 	EXPR_GENERIC_IDENT,
@@ -907,7 +901,6 @@ typedef enum
 	OVERLOAD_ELEMENT_REF,
 	OVERLOAD_ELEMENT_SET,
 	OVERLOAD_LEN,
-	OVERLOAD_CONSTRUCT,
 } OperatorOverload;
 
 typedef enum
@@ -998,7 +991,6 @@ typedef enum FLAG_ATTR
 	SCOPE_NONE = 0,
 	SCOPE_ENSURE = 1 << 1,
 	SCOPE_ENSURE_MACRO = 1 << 2,
-	SCOPE_EXPR_BLOCK = 1 << 3,
 	SCOPE_MACRO = 1 << 4,
 	SCOPE_COND = 1 << 5,
 } ScopeFlags;
@@ -1063,8 +1055,6 @@ typedef enum
 	TOKEN_GREATER_EQ,       // >=
 	TOKEN_IMPLIES,          // =>
 	TOKEN_LESS_EQ,          // <=
-	TOKEN_LBRAPIPE,         // {|
-	TOKEN_LGENPAR,          // (<
 	TOKEN_LVEC,             // [<
 	TOKEN_MINUS_ASSIGN,     // -=
 	TOKEN_MINUSMINUS,       // --
@@ -1074,8 +1064,6 @@ typedef enum
 	TOKEN_OR,               // ||
 	TOKEN_PLUS_ASSIGN,      // +=
 	TOKEN_PLUSPLUS,         // ++
-	TOKEN_RBRAPIPE,         // |}
-	TOKEN_RGENPAR,          // >)
 	TOKEN_RVEC,             // >]
 	TOKEN_QUESTQUEST,       // ??
 	TOKEN_SCOPE,            // ::
@@ -1188,12 +1176,9 @@ typedef enum
 	TOKEN_LAST_NON_CT_KEYWORD = TOKEN_WHILE,
 
 	TOKEN_CT_ALIGNOF,           // $alignof
-	TOKEN_CT_ANDFN,             // $and
-	TOKEN_CT_APPEND,            // $append
 	TOKEN_CT_ASSERT,            // $assert
 	TOKEN_CT_ASSIGNABLE,        // $assignable
 	TOKEN_CT_CASE,              // $case
-	TOKEN_CT_CONCATFN,          // $concat
 	TOKEN_CT_DEFAULT,           // $default
 	TOKEN_CT_DEFINED,           // $defined
 	TOKEN_CT_ECHO,              // $echo
@@ -1216,7 +1201,6 @@ typedef enum
 	TOKEN_CT_IS_CONST,          // $is_const
 	TOKEN_CT_NAMEOF,            // $nameof
 	TOKEN_CT_OFFSETOF,          // $offsetof
-	TOKEN_CT_ORFN,              // $or
 	TOKEN_CT_QNAMEOF,           // $qnameof
 	TOKEN_CT_SIZEOF,            // $sizeof
 	TOKEN_CT_STRINGIFY,         // $stringify
@@ -1226,7 +1210,6 @@ typedef enum
 	TOKEN_CT_VACOUNT,           // $vacount
 	TOKEN_CT_VATYPE,            // $vatype
 	TOKEN_CT_VACONST,           // $vaconst,
-	TOKEN_CT_VAREF,             // $varef,
 	TOKEN_CT_VAARG,             // $vaarg,
 	TOKEN_CT_VAEXPR,            // $vaexpr,
 	TOKEN_CT_VASPLAT,           // $vasplat,
@@ -1409,7 +1392,6 @@ typedef enum
 	VARDECL_PARAM,
 	VARDECL_MEMBER,
 	VARDECL_BITMEMBER,
-	VARDECL_PARAM_REF,
 	VARDECL_PARAM_EXPR,
 	VARDECL_UNWRAPPED,
 	VARDECL_ERASE,
@@ -1614,12 +1596,12 @@ typedef enum
 
 // -- Expr helper macros
 #define NON_RUNTIME_EXPR EXPR_POISONED: \
-		case EXPR_CT_DEFINED: case EXPR_CT_AND_OR:\
+		case EXPR_CT_DEFINED: \
 		case EXPR_CT_CASTABLE: case EXPR_CT_IS_CONST: \
 		case EXPR_CT_ARG: case EXPR_TYPEINFO: case EXPR_CT_IDENT: case EXPR_HASH_IDENT: \
 		case EXPR_COMPILER_CONST: case EXPR_CT_CALL:  \
-		case EXPR_SPLAT: case EXPR_ANYSWITCH: case EXPR_STRINGIFY: case EXPR_TYPECALL: \
-		case EXPR_CT_EVAL: case EXPR_CT_CONCAT: case EXPR_CT_APPEND
+		case EXPR_SPLAT: case EXPR_STRINGIFY: case EXPR_TYPECALL: \
+		case EXPR_CT_EVAL
 
 static_assert(EXPR_LAST < 128, "Too many expression types");
 

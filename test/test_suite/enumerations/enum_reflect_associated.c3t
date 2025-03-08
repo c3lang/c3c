@@ -9,7 +9,7 @@ enum Abc : int (int x, double y, String z)
 
 fn int main()
 {
-	$foreach ($type : Abc.associated)
+	$foreach $type : Abc.associated:
 		io::printfn("%s", $type.qnameof);
 	$endforeach
 	return 0;

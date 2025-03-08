@@ -23,8 +23,8 @@ fault UrlDecodingError
 <*
  Returns true if char c should be encoded according to RFC 3986.
 
- @param c "Character to check if it should be encoded."
- @param mode "Url encoding mode."
+ @param c : "Character to check if it should be encoded."
+ @param mode : "Url encoding mode."
 *>
 fn bool should_encode(char c, UrlEncodingMode mode) @private
 {
@@ -62,12 +62,12 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  Encode the string s for a given encoding mode.
  Returned string must be freed.
 
- @param s "String to encode"
- @param mode "Url encoding mode"
+ @param s : "String to encode"
+ @param mode : "Url encoding mode"
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
-fn String encode(String s, UrlEncodingMode mode, Allocator allocator) => @pool(allocator)
+fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool(allocator)
 {
 	usz n = encode_len(s, mode);
 	DString builder = dstring::temp_with_capacity(n);
@@ -83,8 +83,8 @@ fn String encode(String s, UrlEncodingMode mode, Allocator allocator) => @pool(a
 			// add encoded char
 			case should_encode(c, mode):
 				builder.append_char('%');
-				String hex = hex::encode_temp(s[i:1]);
-				builder.append(hex.temp_ascii_to_upper());
+				String hex = hex::tencode(s[i:1]);
+				builder.append(hex.to_upper_tcopy());
 
 			// use char, no encoding needed
 			default:
@@ -95,24 +95,15 @@ fn String encode(String s, UrlEncodingMode mode, Allocator allocator) => @pool(a
 	return builder.copy_str(allocator);
 }
 
-<*
- Encode the string s for a given encoding mode.
- Returned string must be freed.
-
- @param s "String to encode"
- @param mode "Url encoding mode"
- @return "Percent-encoded String"
-*>
-fn String new_encode(String s, UrlEncodingMode mode) => encode(s, mode, allocator::heap());
 
 <*
  Encode string s for a given encoding mode, stored on the temp allocator.
 
- @param s "String to encode"
- @param mode "Url encoding mode"
+ @param s : "String to encode"
+ @param mode : "Url encoding mode"
  @return "Percent-encoded String"
 *>
-fn String temp_encode(String s, UrlEncodingMode mode) => encode(s, mode, allocator::temp());
+fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
 
 <*
  Calculate the length of the percent-decoded string.
@@ -138,12 +129,12 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
  Decode string s for a given encoding mode.
  Returned string must be freed.
 
- @param s "String to decode"
- @param mode "Url encoding mode"
+ @param s : "String to decode"
+ @param mode : "Url encoding mode"
  @param [inout] allocator
  @return "Percent-decoded String"
 *>
-fn String! decode(String s, UrlEncodingMode  mode, Allocator allocator) => @pool(allocator)
+fn String! decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool(allocator)
 {
 	usz n = decode_len(s, mode)!;
 	DString builder = dstring::temp_with_capacity(n);
@@ -154,7 +145,7 @@ fn String! decode(String s, UrlEncodingMode  mode, Allocator allocator) => @pool
 		{
 			// decode encoded char
 			case '%':
-				char[] hex = hex::decode_temp(s[i+1:2])!;
+				char[] hex = hex::tdecode(s[i+1:2])!;
 				builder.append(hex);
 				i += 2;
 
@@ -171,21 +162,12 @@ fn String! decode(String s, UrlEncodingMode  mode, Allocator allocator) => @pool
 	return builder.copy_str(allocator);
 }
 
-<*
- Decode string s for a given encoding mode.
- Returned string must be freed.
-
- @param s "String to decode"
- @param mode "Url encoding mode"
- @return "Percent-decoded String"
-*>
-fn String! new_decode(String s, UrlEncodingMode  mode) => decode(s, mode, allocator::heap());
 
 <*
  Decode string s for a given encoding mode, stored on the temp allocator.
 
- @param s "String to decode"
- @param mode "Url encoding mode"
+ @param s : "String to decode"
+ @param mode : "Url encoding mode"
  @return "Percent-decoded String"
 *>
-fn String! temp_decode(String s, UrlEncodingMode  mode) => decode(s, mode, allocator::temp());
+fn String! tdecode(String s, UrlEncodingMode  mode) => decode(tmem(), s, mode);

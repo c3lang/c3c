@@ -169,7 +169,7 @@ bool file_namesplit(const char *path, char** filename_ptr, char** directory_ptr)
 	if (file_len == 1 && path[0] == '.') return false;
 	if (file_len == 2 && path[0] == '.' && path[1] == '.') return false;
 	if (!file_len) return false;
-	*filename_ptr = str_copy(&path[len - file_len], file_len);
+	if (filename_ptr) *filename_ptr = str_copy(&path[len - file_len], file_len);
 	if (!directory_ptr) return true;
 	if (file_len < len)
 	{
@@ -420,6 +420,13 @@ const char *find_lib_dir(void)
 DONE:;
 	free(path);
 	return lib_path;
+}
+
+char *file_get_dir(const char *full_path)
+{
+	char *dir = NULL;
+	file_get_dir_and_filename_from_full(full_path, NULL, &dir);
+	return dir;
 }
 
 void file_get_dir_and_filename_from_full(const char *full_path, char **filename, char **dir_path)

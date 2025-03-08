@@ -92,6 +92,7 @@ static void usage(bool full)
 	print_opt("-U <name>", "Remove feature flag <name>.");
 	PRINTF("");
 	print_opt("--about", "Prints a short description of C3.");
+	print_opt("--build-env", "Prints build environment information.");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
 	if (full)
@@ -103,6 +104,7 @@ static void usage(bool full)
 		print_opt("--template <template>", "Select template for 'init': \"exe\", \"static-lib\", \"dynamic-lib\" or a path.");
 		print_opt("--symtab <value>", "Sets the preferred symtab size.");
 		print_opt("--run-once", "After running the output file, delete it immediately.");
+		print_opt("--suppress-run", "Build but do not run on test/benchmark options.");
 		print_opt("--trust=<option>", "Trust level: none (default), include ($include allowed), full ($exec / exec allowed).");
 		print_opt("--output-dir <dir>", "Override general output directory.");
 		print_opt("--build-dir <dir>", "Override build output directory.");
@@ -124,7 +126,6 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
-		print_opt("--old-test-bench=<yes|no>", "Allow benchmarks and tests to use the deprecated 'void!' returns.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -136,6 +137,9 @@ static void usage(bool full)
 		print_opt("--test-filter <arg>", "Set a filter when running tests, running only matching tests.");
 		print_opt("--test-breakpoint", "When running tests, trigger a breakpoint on failure.");
 		print_opt("--test-nosort", "Do not sort tests.");
+		print_opt("--test-noleak", "Disable tracking allocator and memory leak detection for tests");
+		print_opt("--test-nocapture", "Disable test stdout capturing, all tests can print as they run");
+		print_opt("--test-quiet", "Run tests without printing full names, printing output only on failure");
 	}
 	PRINTF("");
 	print_opt("-l <library>", "Link with the static or dynamic library provided.");
@@ -193,8 +197,6 @@ static void usage(bool full)
 		print_opt("--linux-crt <dir>", "Set the directory to use for finding crt1.o and related files.");
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
-		print_opt("--enable-new-generics", "Enable Foo{int} generics, this will disable the old Foo { ... } initializers.");
-		print_opt("--vector-conv=<option>", "Set vector conversion behaviour: default, old.");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
 	if (!full)
@@ -723,6 +725,21 @@ static void parse_option(BuildOptions *options)
 				options->test_breakpoint = true;
 				return;
 			}
+			if (match_longopt("test-noleak"))
+			{
+				options->test_noleak = true;
+				return;
+			}
+			if (match_longopt("test-nocapture"))
+			{
+				options->test_nocapture = true;
+				return;
+			}
+			if (match_longopt("test-quiet"))
+			{
+				options->test_quiet = true;
+				return;
+			}
 			if (match_longopt("test-nosort"))
 			{
 				options->test_nosort = true;
@@ -732,6 +749,11 @@ static void parse_option(BuildOptions *options)
 			{
 				options->silence_deprecation = true;
 				silence_deprecation = true;
+				return;
+			}
+			if (match_longopt("build-env"))
+			{
+				options->print_env = true;
 				return;
 			}
 			if (match_longopt("symtab"))
@@ -782,12 +804,6 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("safe")))
 			{
 				options->safety_level = parse_opt_select(SafetyLevel, argopt, on_off);
-				return;
-			}
-			if ((argopt = match_argopt("old-test-bench")))
-			{
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				options->old_test = parse_opt_select(OldTest, argopt, on_off);
 				return;
 			}
 			if ((argopt = match_argopt("show-backtrace")))
@@ -1062,18 +1078,6 @@ static void parse_option(BuildOptions *options)
 				options->win.def = next_arg();
 				return;
 			}
-			if ((argopt = match_argopt("vector-conv")))
-			{
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				options->vector_conv = parse_opt_select(VectorConv, argopt, vector_conv);
-				return;
-			}
-			if (match_longopt("enable-new-generics"))
-			{
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				options->enable_new_generics = true;
-				return;
-			}
 			if ((argopt = match_argopt("wincrt")))
 			{
 				options->win.crt_linking = parse_opt_select(WinCrtLinking, argopt, wincrt_linking);
@@ -1235,6 +1239,11 @@ static void parse_option(BuildOptions *options)
 				options->testing = true;
 				return;
 			}
+			if (match_longopt("suppress-run"))
+			{
+				options->suppress_run = true;
+				return;
+			}
 			if (match_longopt("help"))
 			{
 				usage(true);
@@ -1268,7 +1277,6 @@ BuildOptions parse_arguments(int argc, const char *argv[])
 		.safety_level = SAFETY_NOT_SET,
 		.panic_level = PANIC_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
-		.old_test = OLD_TEST_NOT_SET,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsize = SIZE_OPTIMIZATION_NOT_SET,
 		.build_threads = cpus(),

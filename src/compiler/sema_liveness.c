@@ -175,7 +175,6 @@ static void sema_trace_stmt_liveness(Ast *ast)
 			sema_trace_astid_liveness(ast->if_stmt.else_body);
 			return;
 		case AST_SWITCH_STMT:
-		case AST_IF_CATCH_SWITCH_STMT:
 			sema_trace_exprid_liveness(ast->switch_stmt.cond);
 			{
 				FOREACH(Ast *, casestm, ast->switch_stmt.cases) sema_trace_stmt_liveness(casestm);
@@ -420,9 +419,6 @@ RETRY:
 			sema_trace_stmt_chain_liveness(expr->macro_block.first_stmt);
 			return;
 		}
-		case EXPR_EXPR_BLOCK:
-			sema_trace_stmt_chain_liveness(expr->expr_block.first_stmt);
-			return;
 		case EXPR_MACRO_BODY_EXPANSION:
 		{
 			FOREACH(Decl *, arg, expr->body_expansion_expr.declarations) sema_trace_decl_liveness(arg);
@@ -645,7 +641,6 @@ RETRY:
 				case VARDECL_PARAM_EXPR:
 					// These are never traced, they are folded in use.
 					break;
-				case VARDECL_PARAM_REF: // DEPRECATED
 				case VARDECL_PARAM_CT:
 				case VARDECL_PARAM:
 					sema_trace_type_liveness(decl->type);

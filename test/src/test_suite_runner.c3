@@ -21,14 +21,14 @@ fn void main(String[] args)
 	print_to_file = !io::stdout().isatty();
 
 	// Retain our current path.
-	start_cwd = path::temp_cwd()!!;
+	start_cwd = path::tcwd()!!;
 
 	// Create our test path, note that this prevents us from doing tests in parallell
-	test_dir = start_cwd.temp_append("_c3test_")!!;
+	test_dir = start_cwd.tappend("_c3test_")!!;
 	defer (void)path::rmtree(test_dir);
 
 	// Find the compiler
-	Path! path = start_cwd.temp_append(args[1]);
+	Path! path = start_cwd.tappend(args[1]);
 	if (catch path) arg_error_exit(appname, "Invalid compiler path: %s", args[1]);
 	// Is it a valid file?
 	if (!path::is_file(path))
@@ -44,6 +44,8 @@ fn void main(String[] args)
 		String arg = args[i];
 		switch (arg)
 		{
+			case "--no-terminal":
+				print_to_file = true;
 			case "-s":
 			case "--skipped":
 				only_skipped = true;
@@ -58,7 +60,7 @@ fn void main(String[] args)
 				{
 					error_exit(appname, "Stdlib directory '%s' cannot be found.", stdlib);
 				}
-				stdlib = start_cwd.temp_append(stdlib).str_view()!!;
+				stdlib = start_cwd.tappend(stdlib).str_view()!!;
 			default:
 				arg_error_exit(appname, "Unknown option '%s'.", args[i]);
 		}
@@ -66,7 +68,7 @@ fn void main(String[] args)
 	if (only_skipped && args[3] != "-s" && args[3] != "--skipped") usage(appname);
 
 	// Get the directory or file to test
-	Path! file = path::temp_new(args[2]);
+	Path! file = args[2].to_tpath();
 	if (catch file) arg_error_exit(appname, "Invalid path: '%s'.", args[2]);
 
 	// Now just run all tests recursively.
@@ -129,17 +131,14 @@ fn void RunFile.add_line(&self, String line)
 
 fn RunFile*! create_input_file(String filename)
 {
-	File file = file::open_path(test_dir.temp_append(filename), "wb")!;
-	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .file = file, .is_output = false });
-	run_file.warnings.temp_init();
-	run_file.errors.temp_init();
+	File file = file::open_path(test_dir.tappend(filename), "wb")!;
+	RunFile *run_file = mem::tnew(RunFile, { .name = filename, .file = file, .is_output = false });
 	return run_file;
 }
 
 fn RunFile*! create_output_file(String filename)
 {
-	RunFile *run_file = mem::temp_new(RunFile, { .name = filename, .is_output = true });
-	run_file.expected_lines.temp_init();
+	RunFile *run_file = mem::tnew(RunFile, { .name = filename, .is_output = true });
 	return run_file;
 }
 
@@ -168,13 +167,13 @@ fn bool check_line(RunSettings* settings, String type, String file, String line_
 	int line = line_str.to_int()!!;
 
 	// Get the base name
-	String basename = path::temp_new(file).basename()!!;
+	String basename = file.file_tbasename()!!;
 
 	// Loop through our input files (usually only 1!)
 	foreach (f : settings.input_files)
 	{
 		if (f.name != basename) continue;
-		List{Error}* list;
+		List {Error}* list;
 		switch (type)
 		{
 			case "Error":
@@ -232,7 +231,7 @@ fn bool parse_result(DString out, RunSettings settings)
 				io::printn("FAILED\n\n Unexpected compilation errors:");
 				io::printn(" ------------------------------");
 			}
-			io::printf("  %d. %s at %s:%s: ", ++errors, parts[0], path::temp_new(parts[1]).basename()!!, parts[2]);
+			io::printf("  %d. %s at %s:%s: ", ++errors, parts[0], parts[1].file_tbasename()!!, parts[2]);
 			io::printfn(`"%s"`, parts[4]);
 			success = false;
 		}
@@ -389,9 +388,6 @@ fn void test_file(Path file_path)
 	}
 	defer (void)f.close();
 	RunSettings settings;
-	settings.opts.temp_init();
-	settings.input_files.temp_init();
-	settings.output_files.temp_init();
 	settings.current_file = create_input_file(file_path.basename()[..^(single ? 4 : 5)].tconcat(".c3"))!!;
 	settings.input_files.push(settings.current_file);
 	int line_no = 1;
@@ -413,7 +409,6 @@ fn void test_file(Path file_path)
 
 	// Construct the compile line
 	List{String} cmdline;
-	cmdline.temp_init();
 	cmdline.push(compiler_path.str_view());
 	cmdline.push("compile-only");
 	cmdline.push("--test");
@@ -448,7 +443,7 @@ fn void test_file(Path file_path)
 	SubProcess compilation = process::create(cmdline.array_view(), { .search_user_path, .no_window, .inherit_environment })!!;
 	defer compilation.destroy();
     CInt result = compilation.join()!!;
-	DString out = dstring::temp_new();
+	DString out;
 	io::copy_to(&&compilation.stderr(), &out)!!;
 	if (result != 0 && result != 1)
 	{
@@ -481,7 +476,7 @@ fn void test_file(Path file_path)
     		io::printfn(`FAILED - %s did not contain: "%s"`, file.name, next);
     		io::printfn("\n\n\n---------------------------------------------------> %s\n\n", file.name);
     		(void)file_ll.seek(0);
-    		(void)io::printn((String)io::read_new_fully(&file_ll, allocator: allocator::temp()));
+    		(void)io::printn((String)io::read_fully(tmem(), &file_ll));
     		io::printfn("<---------------------------------------------------- %s\n", file_path);
     		return;
     	}
@@ -501,12 +496,12 @@ fn void test_file(Path file_path)
 fn void! test_path(Path file_path)
 {
 	(void)path::chdir(start_cwd);
-	foreach (file : path::temp_ls(file_path)!!)
+	foreach (file : path::ls(tmem(), file_path)!!)
 	{
 		@pool()
 		{
 			(void)path::chdir(start_cwd);
-			file = file_path.temp_append(file.str_view())!;
+			file = file_path.tappend(file.str_view())!;
 			switch
 			{
 				case path::is_dir(file):

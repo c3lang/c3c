@@ -50,12 +50,12 @@ fault IoError
  or to the end of the stream, whatever comes first.
  "\r" will be filtered from the String.
 
- @param stream `The stream to read from.`
- @require @is_instream(stream) `The stream must implement InStream.`
- @param [inout] allocator `the allocator to use.`
+ @param stream : `The stream to read from.`
+ @require @is_instream(stream) : `The stream must implement InStream.`
+ @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String! readline(stream = io::stdin(), Allocator allocator = allocator::heap())
+macro String! readline(Allocator allocator, stream = io::stdin())
 {
 	bool $is_stream = @typeis(stream, InStream);
 	$if $is_stream:
@@ -94,27 +94,27 @@ macro String! readline(stream = io::stdin(), Allocator allocator = allocator::he
  Reads a string, see `readline`, except the it is allocated
  on the temporary allocator and does not need to be freed.
 
- @param stream `The stream to read from.`
- @require @is_instream(stream) `The stream must implement InStream.`
+ @param stream : `The stream to read from.`
+ @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>
 macro String! treadline(stream = io::stdin())
 {
-	return readline(stream, allocator::temp()) @inline;
+	return readline(tmem(), stream) @inline;
 }
 
 <*
  Print a value to a stream.
 
- @param out `the stream to print to`
- @param x `the value to print`
- @require @is_outstream(out) `The output must implement OutStream.`
+ @param out : `the stream to print to`
+ @param x : `the value to print`
+ @require @is_outstream(out) : `The output must implement OutStream.`
  @return `the number of bytes printed.`
 *>
 macro usz! fprint(out, x)
 {
 	var $Type = $typeof(x);
-	$switch ($Type)
+	$switch $Type:
 		$case String: return out.write(x);
 		$case ZString: return out.write(x.str_view());
 		$case DString: return out.write(x.str_view());
@@ -137,8 +137,8 @@ macro usz! fprint(out, x)
  Prints using a 'printf'-style formatting string.
  See `printf` for details on formatting.
 
- @param [inout] out `The OutStream to print to`
- @param [in] format `The printf-style format string`
+ @param [inout] out : `The OutStream to print to`
+ @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
 fn usz! fprintf(OutStream out, String format, args...)
@@ -152,8 +152,8 @@ fn usz! fprintf(OutStream out, String format, args...)
  Prints using a 'printf'-style formatting string,
  appending '\n' at the end. See `printf`.
 
- @param [inout] out `The OutStream to print to`
- @param [in] format `The printf-style format string`
+ @param [inout] out : `The OutStream to print to`
+ @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
 fn usz! fprintfn(OutStream out, String format, args...) @maydiscard
@@ -167,13 +167,13 @@ fn usz! fprintfn(OutStream out, String format, args...) @maydiscard
 }
 
 <*
- @require @is_outstream(out) "The output must implement OutStream"
+ @require @is_outstream(out) : "The output must implement OutStream"
 *>
 macro usz! fprintn(out, x = "")
 {
 	usz len = fprint(out, x)!;
 	out.write_byte('\n')!;
-	$switch
+	$switch:
 		$case @typeid(out) == OutStream.typeid:
 			if (&out.flush) out.flush()!;
 		$case $defined(out.flush):
@@ -193,7 +193,7 @@ macro void print(x)
 <*
  Print any value to stdout, appending an '\n’ after.
 
- @param x "The value to print"
+ @param x : "The value to print"
 *>
 macro void printn(x = "")
 {
@@ -211,7 +211,7 @@ macro void eprint(x)
 <*
  Print any value to stderr, appending an '\n’ after.
 
- @param x "The value to print"
+ @param x : "The value to print"
 *>
 macro void eprintn(x)
 {
@@ -248,7 +248,7 @@ fn void! out_putchar_fn(void* data @unused, char c) @private
  To create a custom output for a type, implement
  the Printable interface.
 
- @param [in] format `The printf-style format string`
+ @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
 fn usz! printf(String format, args...) @maydiscard
@@ -262,7 +262,7 @@ fn usz! printf(String format, args...) @maydiscard
  Prints using a 'printf'-style formatting string,
  appending '\n' at the end. See `printf`.
 
- @param [in] format `The printf-style format string`
+ @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
 fn usz! printfn(String format, args...) @maydiscard
@@ -279,7 +279,7 @@ fn usz! printfn(String format, args...) @maydiscard
  Prints using a 'printf'-style formatting string
  to stderr.
 
- @param [in] format `The printf-style format string`
+ @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
 fn usz! eprintf(String format, args...) @maydiscard
@@ -295,7 +295,7 @@ fn usz! eprintf(String format, args...) @maydiscard
  Prints using a 'printf'-style formatting string,
  to stderr appending '\n' at the end. See `printf`.
 
- @param [in] format `The printf-style format string`
+ @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
 fn usz! eprintfn(String format, args...) @maydiscard
@@ -313,8 +313,8 @@ fn usz! eprintfn(String format, args...) @maydiscard
  Prints using a 'printf'-style formatting string,
  to a string buffer. See `printf`.
 
- @param [inout] buffer `The buffer to print to`
- @param [in] format `The printf-style format string`
+ @param [inout] buffer : `The buffer to print to`
+ @param [in] format : `The printf-style format string`
  @return `a slice formed from the "buffer" with the resulting length.`
 *>
 fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard

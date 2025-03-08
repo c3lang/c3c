@@ -15,21 +15,21 @@ fault JsonParsingError
 	INVALID_NUMBER,
 }
 
-fn Object*! parse_string(String s, Allocator allocator = allocator::heap())
+fn Object*! parse_string(Allocator allocator, String s)
 {
-	return parse((ByteReader){}.init(s), allocator);
+	return parse(allocator, (ByteReader){}.init(s));
 }
 
-fn Object*! temp_parse_string(String s)
+fn Object*! tparse_string(String s)
 {
-	return parse((ByteReader){}.init(s), allocator::temp());
+	return parse(tmem(), (ByteReader){}.init(s));
 }
 
-fn Object*! parse(InStream s, Allocator allocator = allocator::heap())
+fn Object*! parse(Allocator allocator, InStream s)
 {
-	@stack_mem(512; Allocator mem)
+	@stack_mem(512; Allocator smem)
 	{
-		JsonContext context = { .last_string = dstring::new_with_capacity(64, mem), .stream = s, .allocator = allocator };
+		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
 		@pool(allocator)
 		{
 			return parse_any(&context);
@@ -37,9 +37,9 @@ fn Object*! parse(InStream s, Allocator allocator = allocator::heap())
 	};
 }
 
-fn Object*! temp_parse(InStream s)
+fn Object*! tparse(InStream s)
 {
-	return parse(s, allocator::temp());
+	return parse(tmem(), s);
 }
 
 // -- Implementation follows --
@@ -106,7 +106,7 @@ fn JsonTokenType! lex_number(JsonContext *context, char c) @local
 {
 	@stack_mem(256; Allocator mem)
 	{
-		DString t = dstring::new_with_capacity(32, allocator: mem);
+		DString t = dstring::new_with_capacity(mem, 32);
 		bool negate = c == '-';
 		if (negate)
 		{
@@ -159,7 +159,7 @@ fn Object*! parse_map(JsonContext* context) @local
 
 	@stack_mem(256; Allocator mem)
 	{
-		DString temp_key = dstring::new_with_capacity(32, mem);
+		DString temp_key = dstring::new_with_capacity(mem, 32);
 		while (token != JsonTokenType.RBRACE)
 		{
 			if (token != JsonTokenType.STRING) return JsonParsingError.UNEXPECTED_CHARACTER?;
@@ -225,11 +225,12 @@ fn char! read_next(JsonContext* context) @local
 	char! c = context.stream.read_byte();
 	if (catch err = c)
 	{
-		case IoError.EOF:
+		if (err == IoError.EOF)
+		{
 			context.reached_end = true;
 			return '\0';
-		default:
-			return err?;
+		}
+		return err?;
 	}
 	if (c == 0)
 	{

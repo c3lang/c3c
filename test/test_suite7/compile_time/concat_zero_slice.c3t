@@ -1,6 +1,0 @@
-fn int main()
-{
-	char[] $res;
-	$res = { '0' } +++ $res;
-    return 0;
-}

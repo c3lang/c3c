@@ -3,7 +3,7 @@ import std::io;
 
 fn void test_write_0b1() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -16,7 +16,7 @@ fn void test_write_0b1() {
 
 fn void test_write_0b1111() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -29,7 +29,7 @@ fn void test_write_0b1111() {
 
 fn void test_write_0b1111_1111() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -42,7 +42,7 @@ fn void test_write_0b1111_1111() {
 
 fn void test_write_0b1000() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -55,7 +55,7 @@ fn void test_write_0b1000() {
 
 fn void test_write_0b01000() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -68,7 +68,7 @@ fn void test_write_0b01000() {
 
 fn void test_write_0b0001() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -82,7 +82,7 @@ fn void test_write_0b0001() {
 
 fn void test_write_0b0000_0001() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -95,7 +95,7 @@ fn void test_write_0b0000_0001() {
 
 fn void test_write_10_bits() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -109,7 +109,7 @@ fn void test_write_10_bits() {
 
 fn void test_write_16_bits() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -122,7 +122,7 @@ fn void test_write_16_bits() {
 
 fn void test_write_24_bits() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -135,7 +135,7 @@ fn void test_write_24_bits() {
 
 fn void test_write_30_bits() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -148,7 +148,7 @@ fn void test_write_30_bits() {
 
 fn void test_write_32_bits() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -161,7 +161,7 @@ fn void test_write_32_bits() {
 
 fn void test_write_2_bits_multiple() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -176,7 +176,7 @@ fn void test_write_2_bits_multiple() {
 
 fn void test_write_10_bits_multiple() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -192,7 +192,7 @@ fn void test_write_10_bits_multiple() {
 
 fn void test_write_24_bits_multiple() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -206,7 +206,7 @@ fn void test_write_24_bits_multiple() {
 
 fn void test_write_30_bits_multiple() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -220,7 +220,7 @@ fn void test_write_30_bits_multiple() {
 
 fn void test_write_32_bits_multiple() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);
@@ -234,7 +234,7 @@ fn void test_write_32_bits_multiple() {
 
 fn void test_write_mixed_multiple() {
 	ByteWriter w;
-	w.temp_init();
+	w.tinit();
 
 	BitWriter bw;
 	bw.init(&w);

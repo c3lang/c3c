@@ -3,18 +3,18 @@ import std::sort::qs;
 
 <*
 Sort list using the quick sort algorithm.
- @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- @require @is_valid_cmp_fn(cmp, list, context) "Expected a comparison function which compares values"
- @require @is_valid_context(cmp, context) "Expected a valid context"
+ @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(cmp, list, context) : "Expected a comparison function which compares values"
+ @require @is_valid_context(cmp, context) : "Expected a valid context"
 *>
 macro quicksort(list, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	$if @typekind(list) == POINTER &&& (@typekind(*list) == ARRAY || @typekind(*list) == VECTOR):
 		$typeof((*list)[0])[] list2 = list;
-		qs::qsort(<$typeof(list2), $typeof(cmp), $typeof(context)>)(list2, 0, (isz)list.len - 1, cmp, context);
+		qs::qsort{$typeof(list2), $typeof(cmp), $typeof(context)}(list2, 0, (isz)list.len - 1, cmp, context);
 	$else
 		usz len = sort::len_from_list(list);
-		qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, cmp, context);
+		qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len - 1, cmp, context);
 	$endif
 }
 
@@ -23,17 +23,17 @@ Select the (k+1)th smallest element in an unordered list using Hoare's
 selection algorithm (Quickselect). k should be between 0 and len-1. The data
 list will be partially sorted.
 
- @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- @require @is_valid_cmp_fn(cmp, list, context) "expected a comparison function which compares values"
- @require @is_valid_context(cmp, context) "Expected a valid context"
+ @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(cmp, list, context) : "expected a comparison function which compares values"
+ @require @is_valid_context(cmp, context) : "Expected a valid context"
 *>
 macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::len_from_list(list);
-	return qs::qselect(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, 0, (isz)len - 1, k, cmp, context);
+	return qs::qselect{$typeof(list), $typeof(cmp), $typeof(context)}(list, 0, (isz)len - 1, k, cmp, context);
 }
 
-module std::sort::qs(<Type, CmpFn, Context>);
+module std::sort::qs{Type, CmpFn, Context};
 
 def ElementType = $typeof(((Type){})[0]);
 
@@ -82,8 +82,8 @@ fn void qsort(Type list, isz low, isz high, CmpFn cmp, Context context)
 }
 
 <*
-@require low <= k "kth smalles element is smaller than lower bounds"
-@require k <= high "kth smalles element is larger than upper bounds"
+@require low <= k : "kth smalles element is smaller than lower bounds"
+@require k <= high : "kth smalles element is larger than upper bounds"
 *>
 fn ElementType! qselect(Type list, isz low, isz high, isz k, CmpFn cmp, Context context)
 {
@@ -120,7 +120,7 @@ macro @partition(Type list, isz l, isz h, CmpFn cmp, Context context)
 	ElementType pivot = list[l];
 	while (l < h)
 	{
-		$switch
+		$switch:
 			$case $cmp_by_value && $has_context:
 				while (cmp(list[h], pivot, context) >= 0 && l < h) h--;
 				if (l < h) list[l++] = list[h];

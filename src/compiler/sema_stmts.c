@@ -46,7 +46,7 @@ static inline bool sema_check_type_case(SemaContext *context, Ast *case_stmt, As
 static inline bool sema_check_value_case(SemaContext *context, Type *switch_type, Ast *case_stmt, Ast **cases,
                                          unsigned index, bool *if_chained, bool *max_ranged, uint64_t *actual_cases_ref,
 										 Int *low, Int *high);
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder);
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases);
 
 static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *statement);
 static bool sema_analyse_require(SemaContext *context, Ast *directive, AstId **asserts, SourceSpan source);
@@ -527,7 +527,7 @@ END:
 static inline bool sema_analyse_block_exit_stmt(SemaContext *context, Ast *statement)
 {
 	bool is_macro = (context->active_scope.flags & SCOPE_MACRO) != 0;
-	ASSERT(context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO));
+	ASSERT(context->active_scope.flags & SCOPE_MACRO);
 	statement->ast_kind = AST_BLOCK_EXIT_STMT;
 	context->active_scope.jump_end = true;
 	Type *block_type = context->expected_block_type;
@@ -636,7 +636,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	}
 
 	// This might be a return in a function block or a macro which must be treated differently.
-	if (context->active_scope.flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
+	if (context->active_scope.flags & SCOPE_MACRO)
 	{
 		return sema_analyse_block_exit_stmt(context, statement);
 	}
@@ -716,10 +716,7 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_CATCH:
 		case EXPR_COND:
 		case EXPR_POISONED:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_CONCAT:
 		case EXPR_CT_ARG:
-		case EXPR_CT_APPEND:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CASTABLE:
 		case EXPR_CT_IS_CONST:
@@ -750,7 +747,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_DESIGNATED_INITIALIZER_LIST:
 		case EXPR_DESIGNATOR:
 		case EXPR_EXPRESSION_LIST:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_MACRO_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
@@ -777,7 +773,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYSWITCH:
 		case EXPR_ACCESS_RESOLVED:
 		case EXPR_ASM:
 		case EXPR_DEFAULT_ARG:
@@ -914,7 +909,7 @@ static inline bool sema_analyse_try_unwrap(SemaContext *context, Expr *expr)
 
 static inline bool sema_analyse_try_unwrap_chain(SemaContext *context, Expr *expr, CondType cond_type, CondResult *result)
 {
-	ASSERT(cond_type == COND_TYPE_UNWRAP_BOOL || cond_type == COND_TYPE_UNWRAP);
+	ASSERT(cond_type == COND_TYPE_UNWRAP_BOOL);
 
 	ASSERT(expr->expr_kind == EXPR_TRY_UNWRAP_CHAIN);
 
@@ -1006,14 +1001,14 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 	switch (expr->expr_kind)
 	{
 		case EXPR_TRY_UNWRAP_CHAIN:
-			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
+			if (cond_type != COND_TYPE_UNWRAP_BOOL)
 			{
 				SEMA_ERROR(expr, "Try unwrapping is only allowed inside of a 'while' or 'if' conditional.");
 				return false;
 			}
 			return sema_analyse_try_unwrap_chain(context, expr, cond_type, result);
 		case EXPR_CATCH_UNRESOLVED:
-			if (cond_type != COND_TYPE_UNWRAP_BOOL && cond_type != COND_TYPE_UNWRAP)
+			if (cond_type != COND_TYPE_UNWRAP_BOOL)
 			{
 				RETURN_SEMA_ERROR(expr, "Catch unwrapping is only allowed inside of a 'while' or 'if' conditional, maybe '@catch(<expr>)' will do what you need?");
 			}
@@ -1021,63 +1016,6 @@ static inline bool sema_analyse_last_cond(SemaContext *context, Expr *expr, Cond
 		default:
 			break;
 	}
-
-	if (cond_type != COND_TYPE_EVALTYPE_VALUE) goto NORMAL_EXPR;
-
-	// Now we're analysing the last expression in a switch.
-	// Case 1: switch (var = variant_expr)
-	if (expr->expr_kind == EXPR_BINARY && expr->binary_expr.operator == BINARYOP_ASSIGN)
-	{
-		// No variable on the lhs? Then it can't be an any unwrap.
-		Expr *left = exprptr(expr->binary_expr.left);
-		if (left->resolve_status ==  RESOLVE_DONE || left->expr_kind != EXPR_UNRESOLVED_IDENTIFIER || left->unresolved_ident_expr.path) goto NORMAL_EXPR;
-
-		// Does the identifier exist in the parent scope?
-		// then again it can't be an any unwrap.
-		BoolErr defined_in_scope = sema_symbol_is_defined_in_scope(context, left->unresolved_ident_expr.ident);
-		if (defined_in_scope == BOOL_ERR) return false;
-		if (defined_in_scope == BOOL_TRUE) goto NORMAL_EXPR;
-
-		Expr *right = exprptr(expr->binary_expr.right);
-		bool is_deref = right->expr_kind == EXPR_UNARY && right->unary_expr.operator == UNARYOP_DEREF;
-		if (is_deref) right = right->unary_expr.expr;
-		if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL, false)) return false;
-		Type *type = right->type->canonical;
-		if (type == type_get_ptr(type_any) && is_deref)
-		{
-			is_deref = false;
-			right = exprptr(expr->binary_expr.right);
-			if (!sema_analyse_expr_rhs(context, NULL, right, false, NULL, false)) return false;
-		}
-		if (type != type_any) goto NORMAL_EXPR;
-		// Found an expansion here
-		expr->expr_kind = EXPR_ANYSWITCH;
-		expr->any_switch.new_ident = left->unresolved_ident_expr.ident;
-		expr->any_switch.span = left->span;
-		expr->any_switch.any_expr = right;
-		expr->any_switch.is_deref = is_deref;
-		expr->any_switch.is_assign = true;
-		expr->resolve_status = RESOLVE_DONE;
-		expr->type = type_typeid;
-		return true;
-	}
-	if (!sema_analyse_expr(context, expr)) return false;
-	Type *type = expr->type->canonical;
-	if (type != type_any) return true;
-	if (expr->expr_kind == EXPR_IDENTIFIER)
-	{
-		Decl *decl = expr->ident_expr;
-		expr->expr_kind = EXPR_ANYSWITCH;
-		expr->any_switch.is_deref = false;
-		expr->any_switch.is_assign = false;
-		expr->any_switch.variable = decl;
-		expr->type = type_typeid;
-		expr->resolve_status = RESOLVE_DONE;
-		return true;
-	}
-	return true;
-
-NORMAL_EXPR:;
 	return sema_analyse_expr(context, expr);
 }
 /**
@@ -1839,10 +1777,8 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
 	SCOPE_OUTER_START
-		CondType cond_type = then->ast_kind == AST_IF_CATCH_SWITCH_STMT
-							 ? COND_TYPE_UNWRAP : COND_TYPE_UNWRAP_BOOL;
 		CondResult result = COND_MISSING;
-		success = sema_analyse_cond(context, cond, cond_type, &result);
+		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 
 		if (success && !ast_ok(then))
 		{
@@ -1853,7 +1789,7 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 
 		if (success && else_body)
 		{
-			bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT || then->ast_kind == AST_IF_CATCH_SWITCH_STMT;
+			bool then_has_braces = then->ast_kind == AST_COMPOUND_STMT;
 			if (!then_has_braces)
 			{
 				SEMA_ERROR(then, "if-statements with an 'else' must use '{ }' even around a single statement.");
@@ -1875,35 +1811,11 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 			}
 		}
 
-		if (then->ast_kind == AST_IF_CATCH_SWITCH_STMT)
-		{
-			Ast **cases = then->switch_stmt.cases;
-			if (vec_size(cases) == 1 && cases[0]->ast_kind == AST_DEFAULT_STMT)
-			{
-				if (!SEMA_WARN(cases[0], "An 'if-catch' with only a 'default' clause is unclear. "
-						"Removing the 'default:' will have exactly the same behaviour but will be less confusing."))
-				{
-					return false;
-				}
-			}
-			DeclId label_id = statement->if_stmt.flow.label;
-			then->switch_stmt.flow.label = label_id;
-			statement->if_stmt.flow.label = 0;
-			Decl *label = declptrzero(label_id);
-			if (label) label->label.parent = astid(then);
-			SCOPE_START_WITH_LABEL(label_id);
-				success = success && sema_analyse_switch_stmt(context, then);
-				then_jump = context->active_scope.jump_end;
-			SCOPE_END;
-		}
-		else
-		{
-			SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
-				if (result == COND_FALSE) context->active_scope.is_dead = true;
-				success = success && sema_analyse_statement(context, then);
-				then_jump = context->active_scope.jump_end;
-			SCOPE_END;
-		}
+		SCOPE_START_WITH_LABEL(statement->if_stmt.flow.label);
+			if (result == COND_FALSE) context->active_scope.is_dead = true;
+			success = success && sema_analyse_statement(context, then);
+			then_jump = context->active_scope.jump_end;
+		SCOPE_END;
 
 		if (!success) goto END;
 		else_jump = false;
@@ -1963,23 +1875,6 @@ static inline Decl *sema_analyse_label(SemaContext *context, Ast *stmt)
 		target = sema_find_label_symbol_anywhere(context, name);
 		if (target && target->decl_kind == DECL_LABEL)
 		{
-			if (context->active_scope.flags & SCOPE_EXPR_BLOCK)
-			{
-				switch (stmt->ast_kind)
-				{
-					case AST_BREAK_STMT:
-						SEMA_ERROR(stmt, "You cannot break out of an expression block.");
-						return poisoned_decl;
-					case AST_CONTINUE_STMT:
-						SEMA_ERROR(stmt, "You cannot use continue out of an expression block.");
-						return poisoned_decl;
-					case AST_NEXTCASE_STMT:
-						SEMA_ERROR(stmt, "You cannot use nextcase to exit an expression block.");
-						return poisoned_decl;
-					default:
-						UNREACHABLE
-				}
-			}
 			if (target->label.scope_defer != astid(context->active_scope.in_defer))
 			{
 				switch (stmt->ast_kind)
@@ -2065,7 +1960,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		if (!decl_ok(target)) return false;
 		parent = astptr(target->label.parent);
 		AstKind kind = parent->ast_kind;
-		if (kind != AST_SWITCH_STMT && kind != AST_IF_CATCH_SWITCH_STMT)
+		if (kind != AST_SWITCH_STMT)
 		{
 			RETURN_SEMA_ERROR(&statement->nextcase_stmt.label, "Expected the label to match a 'switch' or 'if-catch' statement.");
 		}
@@ -2421,7 +2316,7 @@ DONE:;
 	scratch_buffer_append(" - either add them or use 'default'.");
 	return scratch_buffer_to_string();
 }
-static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases, ExprAnySwitch *any_switch, Decl *var_holder)
+static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, SourceSpan expr_span, Type *switch_type, Ast **cases)
 {
 	if (!type_is_comparable(switch_type))
 	{
@@ -2497,42 +2392,6 @@ static bool sema_analyse_switch_body(SemaContext *context, Ast *statement, Sourc
 			Ast *next = (i < case_count - 1) ? cases[i + 1] : NULL;
 			PUSH_NEXT(next, statement);
 			Ast *body = stmt->case_stmt.body;
-			if (stmt->ast_kind == AST_CASE_STMT && body && type_switch && var_holder && sema_cast_const(exprptr(stmt->case_stmt.expr)))
-			{
-				if (any_switch->is_assign)
-				{
-					Type *real_type = type_get_ptr(exprptr(stmt->case_stmt.expr)->const_expr.typeid);
-					Decl *new_var = decl_new_var(any_switch->new_ident, any_switch->span,
-												 type_info_new_base(any_switch->is_deref
-												 ? real_type->pointer : real_type, any_switch->span),
-												 VARDECL_LOCAL);
-					Expr *var_result = expr_variable(var_holder);
-					if (!cast_explicit(context, var_result, real_type)) return false;
-					if (any_switch->is_deref)
-					{
-						expr_rewrite_insert_deref(var_result);
-					}
-					new_var->var.init_expr = var_result;
-					Ast *decl_ast = new_ast(AST_DECLARE_STMT, new_var->span);
-					decl_ast->declare_stmt = new_var;
-					ast_prepend(&body->compound_stmt.first_stmt, decl_ast);
-				}
-				else
-				{
-					Expr *expr = exprptr(stmt->case_stmt.expr);
-					Type *type = type_get_ptr(expr->const_expr.typeid);
-					Decl *alias = decl_new_var(var_holder->name, var_holder->span,
-											   type_info_new_base(type, expr->span),
-											   VARDECL_LOCAL);
-					Expr *ident_converted = expr_variable(var_holder);
-					if (!cast_explicit(context, ident_converted, type)) return false;
-					alias->var.init_expr = ident_converted;
-					alias->var.shadow = true;
-					Ast *decl_ast = new_ast(AST_DECLARE_STMT, alias->span);
-					decl_ast->declare_stmt = alias;
-					ast_prepend(&body->compound_stmt.first_stmt, decl_ast);
-				}
-			}
 			success = success && (!body || sema_analyse_compound_statement_no_scope(context, body));
 			POP_BREAK();
 			POP_NEXT();
@@ -2880,38 +2739,12 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 		Expr *cond = exprptrzero(statement->switch_stmt.cond);
 		Type *switch_type;
 
-		ExprAnySwitch var_switch;
-		Decl *any_decl = NULL;
 		if (statement->ast_kind == AST_SWITCH_STMT)
 		{
 			CondResult res = COND_MISSING;
 			if (cond && !sema_analyse_cond(context, cond, COND_TYPE_EVALTYPE_VALUE, &res)) return false;
 			Expr *last = cond ? VECLAST(cond->cond_expr) : NULL;
 			switch_type = last ? last->type->canonical : type_bool;
-			if (last && last->expr_kind == EXPR_ANYSWITCH)
-			{
-				var_switch = last->any_switch;
-				Expr *inner;
-				if (var_switch.is_assign)
-				{
-					inner = expr_new(EXPR_DECL, last->span);
-					any_decl = decl_new_generated_var(type_any, VARDECL_LOCAL, last->span);
-					any_decl->var.init_expr = var_switch.any_expr;
-					inner->decl_expr = any_decl;
-					if (!sema_analyse_expr(context, inner)) return false;
-				}
-				else
-				{
-					inner = expr_new(EXPR_IDENTIFIER, last->span);
-					any_decl = var_switch.variable;
-					expr_resolve_ident(inner, any_decl);
-					inner->type = type_any;
-				}
-				expr_rewrite_to_builtin_access(last, inner, ACCESS_TYPEOFANY, type_typeid);
-				switch_type = type_typeid;
-				cond->type = type_typeid;
-			}
-
 		}
 		else
 		{
@@ -2921,7 +2754,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 		statement->switch_stmt.defer = context->active_scope.defer_last;
 		if (!sema_analyse_switch_body(context, statement, cond ? cond->span : statement->span,
 									  switch_type->canonical,
-									  statement->switch_stmt.cases, any_decl ? &var_switch : NULL, any_decl))
+									  statement->switch_stmt.cases))
 		{
 			return SCOPE_POP_ERROR();
 		}
@@ -3104,7 +2937,6 @@ static inline bool sema_analyse_statement_inner(SemaContext *context, Ast *state
 	switch (statement->ast_kind)
 	{
 		case AST_POISONED:
-		case AST_IF_CATCH_SWITCH_STMT:
 		case AST_CONTRACT:
 		case AST_ASM_STMT:
 		case AST_ASM_LABEL:

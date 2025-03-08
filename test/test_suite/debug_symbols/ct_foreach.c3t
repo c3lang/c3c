@@ -5,7 +5,7 @@ struct Flags { bool flag1; }
 
 fn void foo() {
   int[1] values;
-  $foreach ($i, $member : Flags.membersof)
+  $foreach $i, $member : Flags.membersof:
     values[$i] = $i;
   $endforeach
 }

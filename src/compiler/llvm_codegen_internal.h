@@ -458,7 +458,7 @@ INLINE LLVMValueRef llvm_store_decl_raw(GenContext *context, Decl *decl, LLVMVal
 INLINE LLVMValueRef llvm_store_to_ptr(GenContext *c, LLVMValueRef destination, BEValue *value);
 INLINE LLVMValueRef llvm_store_to_ptr_raw(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, Type *type);
 LLVMValueRef llvm_store_to_ptr_aligned(GenContext *c, LLVMValueRef destination, BEValue *value, AlignSize alignment);
-LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *context, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
+LLVMValueRef llvm_store_to_ptr_raw_aligned(GenContext *c, LLVMValueRef pointer, LLVMValueRef value, AlignSize alignment);
 void llvm_store_to_ptr_zero(GenContext *context, LLVMValueRef pointer, Type *type);
 TypeSize llvm_store_size(GenContext *c, LLVMTypeRef type);
 TypeSize llvm_alloc_size(GenContext *c, LLVMTypeRef type);

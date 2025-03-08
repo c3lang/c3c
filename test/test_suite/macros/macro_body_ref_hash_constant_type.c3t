@@ -1,5 +1,4 @@
 // #target: macos-x64
-// #deprecation: no
 module test;
 import std::io;
 
@@ -15,12 +14,16 @@ fn void main()
 	};
 }
 
+macro @unwrap(#x)
+{
+	io::printfn("Send %d", #x); #x++;
+}
 macro void @boba(;@body(#hash, #foo, $val, $Type))
 {
 	io::printn("Boba");
 	int a = 0;
 	int b = 0;
-	@body({| io::printfn("Send %d", a); a++; |}, b, 3, int);
+	@body(@unwrap(a), b, 3, int);
 	io::printfn("%d", b);
 }
 

@@ -12,12 +12,12 @@ fn void main()
     usz values_len = 10;
 
     MyStruct ms = {
-      .dyn = mem::temp_new_array(DString, values_len).ptr,
+      .dyn = mem::temp_array(DString, values_len).ptr,
     };
 
     for (usz i; i < values_len; ++i)
     {
-      ms.dyn[i].temp_init();
+      ms.dyn[i].tinit();
     }
 
     ms.dyn[0].append_chars("sad");

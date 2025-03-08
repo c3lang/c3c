@@ -1,15 +1,15 @@
 module list_test @test;
 import std::collections::list;
 
-def IntList = List(<int>);
-def PtrList = List(<void*>);
+def IntList = List{int};
+def PtrList = List{void*};
 
 struct Overalign
 {
 	float[<4>] x @align(128);
 }
 
-def OveralignList = List(<Overalign>);
+def OveralignList = List{Overalign};
 fn void overaligned_type()
 {
 	OveralignList l;
@@ -24,7 +24,6 @@ fn void overaligned_type()
 fn void delete_contains_index()
 {
 	IntList test;
-	defer test.free();
 
 	test.add_array({ 1, 2 });
 	assert(test.contains(1));
@@ -55,7 +54,6 @@ fn void delete_contains_index()
 fn void compact()
 {
 	PtrList test;
-	defer test.free();
 	test.add_array({ null, &test });
 	assert(test.compact_count() == 1);
 	test.push(null);
@@ -69,7 +67,6 @@ fn void compact()
 fn void reverse()
 {
 	IntList test;
-	defer test.free();
 
 	test.reverse();
 	test.add_array({ 1, 2 });
@@ -86,7 +83,6 @@ fn void reverse()
 fn void remove_if()
 {
 	IntList test;
-	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });
@@ -104,8 +100,8 @@ fn void remove_if()
 fn void init_with_array()
 {
 	IntList foo;
+	foo.init_with_array(mem, { 1, 2, 3});
 	defer foo.free();
-	foo.new_init_with_array({ 1, 2, 3});
 	assert(foo.len() == 3);
 	assert(foo[2] == 3);
 }
@@ -113,7 +109,7 @@ fn void init_with_array()
 fn void init_with_temp_array()
 {
 	IntList foo;
-	foo.temp_init_with_array({ 1, 2, 3});
+	foo.tinit_with_array({ 1, 2, 3});
 	assert(foo.len() == 3);
 	assert(foo[2] == 3);
 }
@@ -121,7 +117,6 @@ fn void init_with_temp_array()
 fn void remove_using_test()
 {
 	IntList test;
-	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });
@@ -139,7 +134,6 @@ fn void remove_using_test()
 fn void retain_if()
 {
 	IntList test;
-	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });
@@ -157,7 +151,6 @@ fn void retain_if()
 fn void retain_using_test()
 {
 	IntList test;
-	defer test.free();
 	usz removed;
 
 	test.add_array({ 1, 11, 2, 10, 20 });

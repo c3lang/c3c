@@ -5,26 +5,26 @@ import std::sort::qs;
 
 <*
 Sort list using the counting sort algorithm.
- @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- @require @is_cmp_key_fn(key_fn, list) "Expected a transformation function which returns an unsigned integer."
+ @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
+ @require @is_cmp_key_fn(key_fn, list) : "Expected a transformation function which returns an unsigned integer."
 *>
 macro countingsort(list, key_fn = EMPTY_MACRO_SLOT) @builtin
 {
 	usz len = sort::len_from_list(list);
-	cs::csort(<$typeof(list), $typeof(key_fn)>)(list, 0, len, key_fn, ~((uint)0));
+	cs::csort{$typeof(list), $typeof(key_fn)}(list, 0, len, key_fn, ~((uint)0));
 }
 
 macro insertionsort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	is::isort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, (usz)start, (usz)end, cmp, context);
+	is::isort{$typeof(list), $typeof(cmp), $typeof(context)}(list, (usz)start, (usz)end, cmp, context);
 }
 
 macro quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLOT) @builtin
 {
-	qs::qsort(<$typeof(list), $typeof(cmp), $typeof(context)>)(list, (isz)start, (isz)(end-1), cmp, context);
+	qs::qsort{$typeof(list), $typeof(cmp), $typeof(context)}(list, (isz)start, (isz)(end-1), cmp, context);
 }
 
-module std::sort::cs(<Type, KeyFn>);
+module std::sort::cs{Type, KeyFn};
 
 def Counts = usz[256] @private;
 def Ranges = usz[257] @private;
@@ -65,7 +65,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 
 	for (usz i = low; i < high; i++)
 	{
-		$switch
+		$switch:
 			$case NO_KEY_FN:
 				KeyFnReturnType k = list[i];
 			$case KEY_BY_VALUE:
@@ -129,7 +129,7 @@ fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 				sorted_count += (e - s);
 				for (; s < e; s++)
 				{
-					$switch
+					$switch:
 					$case NO_KEY_FN:
 						KeyFnReturnType k = list[low + s];
 					$case KEY_BY_VALUE:

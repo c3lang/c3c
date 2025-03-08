@@ -158,7 +158,7 @@ const bool ANY_SANITIZER = ADDRESS_SANITIZER || MEMORY_SANITIZER || THREAD_SANIT
 
 macro bool os_is_darwin() @const
 {
-	$switch (OS_TYPE)
+	$switch OS_TYPE:
 	$case IOS:
 	$case MACOS:
 	$case TVOS:
@@ -171,7 +171,7 @@ macro bool os_is_darwin() @const
 
 macro bool os_is_posix() @const
 {
-	$switch (OS_TYPE)
+	$switch OS_TYPE:
 	$case IOS:
 	$case MACOS:
 	$case NETBSD:

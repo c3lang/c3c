@@ -22,18 +22,15 @@ void context_change_scope_with_flags(SemaContext *context, ScopeFlags flags)
 	unsigned last_local = context->active_scope.current_local;
 	// Defer and expression blocks introduce their own return/break/continue
 	// otherwise just merge with the old flags.
-	if (flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO))
+	if (flags & SCOPE_MACRO)
 	{
 		previous_defer = 0;
 		parent_defer = 0;
 	}
-	bool new_label_scope = (flags & (SCOPE_EXPR_BLOCK | SCOPE_MACRO)) != 0;
-	if (!(flags & SCOPE_EXPR_BLOCK))
-	{
-		bool is_macro = (flags & SCOPE_MACRO) != 0;
-		flags = context->active_scope.flags | flags;
-		if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
-	}
+	bool new_label_scope = (flags & SCOPE_MACRO) != 0;
+	bool is_macro = (flags & SCOPE_MACRO) != 0;
+	flags = context->active_scope.flags | flags;
+	if (is_macro) flags &= ~(SCOPE_ENSURE | SCOPE_ENSURE_MACRO);
 
 	unsigned label_start = new_label_scope ? last_local : context->active_scope.label_start;
 	context->active_scope = (DynamicScope) {

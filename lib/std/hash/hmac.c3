@@ -1,4 +1,4 @@
-module std::hash::hmac(<HashAlg, HASH_BYTES, BLOCK_BYTES>);
+module std::hash::hmac{HashAlg, HASH_BYTES, BLOCK_BYTES};
 import std::crypto;
 
 struct Hmac
@@ -15,8 +15,8 @@ fn char[HASH_BYTES] hash(char[] key, char[] message)
 }
 
 <*
- @require output.len > 0 "Output must be greater than zero"
- @require output.len < int.max / HASH_BYTES "Output is too large"
+ @require output.len > 0 : "Output must be greater than zero"
+ @require output.len < int.max / HASH_BYTES : "Output is too large"
 *>
 fn void pbkdf2(char[] pw, char[] salt, uint iterations, char[] output)
 {

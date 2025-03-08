@@ -98,10 +98,10 @@ fn void base32_api()
 	{
 		foreach (t : std_tests)
 		{
-			String got = base32::encode_temp(t.dec)!!;
+			String got = base32::tencode(t.dec)!!;
 			assert(got == t.enc, "got: %s, want: %s", got, t.enc);
 
-			char[] got_chars = base32::decode_temp(t.enc)!!;
+			char[] got_chars = base32::tdecode(t.enc)!!;
 			assert(got_chars == t.dec, "got: %s, want: %s", got_chars, t.dec);
 		}
 	};

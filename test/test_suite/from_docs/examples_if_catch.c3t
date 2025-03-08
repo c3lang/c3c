@@ -32,12 +32,13 @@ fn void main()
     // Handle the error
     if (catch err = ratio)
     {
-        case MathError.DIVISION_BY_ZERO:
+        if (err == MathError.DIVISION_BY_ZERO)
+        {
             libc::printf("Division by zero\n");
             return;
-        default:
-            libc::printf("Unexpected error!");
-            return;
+        }
+        libc::printf("Unexpected error!");
+        return;
     }
     // Flow typing makes "ratio"
     // have the type double here.
@@ -96,7 +97,6 @@ entry:
   %ratio.f = alloca i64, align 8
   %retparam = alloca double, align 8
   %err = alloca i64, align 8
-  %switch = alloca i64, align 8
   %0 = call i32 @demo.foo()
   %1 = call i32 @demo.bar()
   %2 = call i64 @demo.divide(ptr %retparam, i32 %0, i32 %1)
@@ -133,30 +133,23 @@ after_check3:                                     ; preds = %testblock
 
 end_block:                                        ; preds = %after_check3, %assign_optional2
   %6 = load i64, ptr %err, align 8
-  %neq = icmp ne i64 %6, 0
-  br i1 %neq, label %if.then, label %if.exit
+  %i2b = icmp ne i64 %6, 0
+  br i1 %i2b, label %if.then, label %if.exit5
 
 if.then:                                          ; preds = %end_block
-  store i64 %6, ptr %switch, align 8
-  br label %switch.entry
+  %7 = load i64, ptr %err, align 8
+  %eq = icmp eq i64 %7, ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64)
+  br i1 %eq, label %if.then4, label %if.exit
 
-switch.entry:                                     ; preds = %if.then
-  %7 = load i64, ptr %switch, align 8
-  %eq = icmp eq i64 ptrtoint (ptr @"demo.MathError$DIVISION_BY_ZERO" to i64), %7
-  br i1 %eq, label %switch.case, label %next_if
-
-switch.case:                                      ; preds = %switch.entry
+if.then4:                                         ; preds = %if.then
   %8 = call i32 (ptr, ...) @printf(ptr @.str)
   ret void
 
-next_if:                                          ; preds = %switch.entry
-  br label %switch.default
-
-switch.default:                                   ; preds = %next_if
+if.exit:                                          ; preds = %if.then
   %9 = call i32 (ptr, ...) @printf(ptr @.str.1)
   ret void
 
-if.exit:                                          ; preds = %end_block
+if.exit5:                                         ; preds = %end_block
   %10 = load double, ptr %ratio, align 8
   %11 = call i32 (ptr, ...) @printf(ptr @.str.2, double %10)
   ret void

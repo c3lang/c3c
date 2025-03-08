@@ -78,12 +78,11 @@ fn void quicksort_with_lambda()
     }
 }
 
-def List = List(<int>);
+def List = List{int};
 
 fn void quicksort_list()
 {
     List list;
-    list.temp_init();
     list.add_array({ 2, 1, 3});
     sort::quicksort(list, &sort::cmp_int_value);
     assert(check::int_sort(list.array_view()));

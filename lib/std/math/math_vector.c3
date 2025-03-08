@@ -1,87 +1,60 @@
 module std::math::vector;
 import std::math;
 
-def Vec2f = float[<2>];
-def Vec3f = float[<3>];
-def Vec4f = float[<4>];
+macro double[<*>].sq_magnitude(self) => self.dot(self);
+macro float[<*>].sq_magnitude(self) => self.dot(self);
 
-def Vec2 = double[<2>];
-def Vec3 = double[<3>];
-def Vec4 = double[<4>];
+macro double[<*>].distance_sq(self, double[<*>] v2) => (self - v2).sq_magnitude();
+macro float[<*>].distance_sq(self, float[<*>] v2) => (self - v2).sq_magnitude();
 
-macro Vec2f.length_sq(self) => self.dot(self);
-macro Vec3f.length_sq(self) => self.dot(self);
-macro Vec4f.length_sq(self) => self.dot(self);
-macro Vec2.length_sq(self) => self.dot(self);
-macro Vec3.length_sq(self) => self.dot(self);
-macro Vec4.length_sq(self) => self.dot(self);
+macro float[<2>].transform(self, Matrix4f mat) => transform2(self, mat);
+macro float[<2>].rotate(self, float angle) => rotate(self, angle);
+macro float[<2>].angle(self, float[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
-macro Vec2f.distance_sq(self, Vec2f v2) => (self - v2).length_sq();
-macro Vec3f.distance_sq(self, Vec3f v2) => (self - v2).length_sq();
-macro Vec4f.distance_sq(self, Vec4f v2) => (self - v2).length_sq();
-macro Vec2.distance_sq(self, Vec2 v2) => (self - v2).length_sq();
-macro Vec3.distance_sq(self, Vec3 v2) => (self - v2).length_sq();
-macro Vec4.distance_sq(self, Vec4 v2) => (self - v2).length_sq();
+macro double[<2>].transform(self, Matrix4 mat) => transform2(self, mat);
+macro double[<2>].rotate(self, double angle) => rotate(self, angle);
+macro double[<2>].angle(self, double[<2>] v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
 
-macro Vec2f.transform(self, Matrix4f mat) => transform2(self, mat);
-macro Vec2f.rotate(self, float angle) => rotate(self, angle);
-macro Vec2f.angle(self, Vec2f v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
+macro float[<*>].clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
+macro double[<*>].clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
 
-macro Vec2.transform(self, Matrix4 mat) => transform2(self, mat);
-macro Vec2.rotate(self, double angle) => rotate(self, angle);
-macro Vec2.angle(self, Vec2 v2) => math::atan2(v2.y, v2.x) - math::atan2(self.y, self.x);
+macro float[<*>].towards(self, float[<*>] target, float max_distance) => towards(self, target, max_distance);
+macro double[<*>].towards(self, double[<*>] target, double max_distance) => towards(self, target, max_distance);
 
-macro Vec2f.clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
-macro Vec3f.clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
-macro Vec4f.clamp_mag(self, float min, float max) => clamp_magnitude(self, min, max);
-macro Vec2.clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
-macro Vec3.clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
-macro Vec4.clamp_mag(self, double min, double max) => clamp_magnitude(self, min, max);
+fn float[<3>] float[<3>].cross(self, float[<3>] v2) => cross3(self, v2);
+fn double[<3>] double[<3>].cross(self, double[<3>] v2) => cross3(self, v2);
 
-fn Vec2f Vec2f.towards(self, Vec2f target, float max_distance) => towards(self, target, max_distance);
-fn Vec3f Vec3f.towards(self, Vec3f target, float max_distance) => towards(self, target, max_distance);
-fn Vec4f Vec4f.towards(self, Vec4f target, float max_distance) => towards(self, target, max_distance);
-fn Vec2 Vec2.towards(self, Vec2 target, double max_distance) => towards(self, target, max_distance);
-fn Vec3 Vec3.towards(self, Vec3 target, double max_distance) => towards(self, target, max_distance);
-fn Vec4 Vec4.towards(self, Vec4 target, double max_distance) => towards(self, target, max_distance);
+fn float[<3>] float[<3>].perpendicular(self) => perpendicular3(self);
+fn double[<3>] double[<3>].perpendicular(self) => perpendicular3(self);
 
-fn Vec3f Vec3f.cross(self, Vec3f v2) => cross3(self, v2);
-fn Vec3 Vec3.cross(self, Vec3 v2) => cross3(self, v2);
+fn float[<3>] float[<3>].barycenter(self, float[<3>] a, float[<3>] b, float[<3>] c) => barycenter3(self, a, b, c);
+fn double[<3>] double[<3>].barycenter(self, double[<3>] a, double[<3>] b, double[<3>] c) => barycenter3(self, a, b, c);
 
-fn Vec3f Vec3f.perpendicular(self) => perpendicular3(self);
-fn Vec3 Vec3.perpendicular(self) => perpendicular3(self);
+fn float[<3>] float[<3>].transform(self, Matrix4f mat) => transform3(self, mat);
+fn double[<3>] double[<3>].transform(self, Matrix4 mat) => transform3(self, mat);
 
-fn Vec3f Vec3f.barycenter(self, Vec3f a, Vec3f b, Vec3f c) => barycenter3(self, a, b, c);
-fn Vec3 Vec3.barycenter(self, Vec3 a, Vec3 b, Vec3 c) => barycenter3(self, a, b, c);
+fn float float[<3>].angle(self, float[<3>] v2) => angle3(self, v2);
+fn double double[<3>].angle(self, double[<3>] v2) => angle3(self, v2);
 
-fn Vec3f Vec3f.transform(self, Matrix4f mat) => transform3(self, mat);
-fn Vec3 Vec3.transform(self, Matrix4 mat) => transform3(self, mat);
+fn float[<3>] float[<3>].refract(self, float[<3>] n, float r) => refract3(self, n, r);
+fn double[<3>] double[<3>].refract(self, double[<3>] n, double r) => refract3(self, n, r);
 
-fn float Vec3f.angle(self, Vec3f v2) => angle3(self, v2);
-fn double Vec3.angle(self, Vec3 v2) => angle3(self, v2);
+fn float[<3>] float[<3>].rotate_quat(self, Quaternionf q) => rotate_by_quat3(self, q);
+fn double[<3>] double[<3>].rotate_quat(self, Quaternion q) => rotate_by_quat3(self, q);
 
-fn Vec3f Vec3f.refract(self, Vec3f n, float r) => refract3(self, n, r);
-fn Vec3 Vec3.refract(self, Vec3 n, double r) => refract3(self, n, r);
+fn float[<3>] float[<3>].rotate_axis(self, float[<3>] axis, float angle) => rotate_axis_angle(self, axis, angle);
+fn double[<3>] double[<3>].rotate_axis(self, double[<3>] axis, double angle) => rotate_axis_angle(self, axis, angle);
 
-fn void ortho_normalize(Vec3f* v1, Vec3f* v2) => ortho_normalize3(v1, v2);
-fn void ortho_normalized(Vec3* v1, Vec3* v2) => ortho_normalize3(v1, v2);
+fn float[<3>] float[<3>].unproject(self, Matrix4f projection, Matrix4f view) => unproject3(self, projection, view);
+fn double[<3>] double[<3>].unproject(self, Matrix4 projection, Matrix4 view) => unproject3(self, projection, view);
 
-fn Matrix4f matrix4f_look_at(Vec3f eye, Vec3f target, Vec3f up) @deprecated => matrix::look_at(<float>)(eye, target, up);
-fn Matrix4 matrix4_look_at(Vec3 eye, Vec3 target, Vec3 up) @deprecated => matrix::look_at(<double>)(eye, target, up);
-
-fn Vec3f Vec3f.rotate_quat(self, Quaternionf q) => rotate_by_quat3(self, q);
-fn Vec3 Vec3.rotate_quat(self, Quaternion q) => rotate_by_quat3(self, q);
-
-fn Vec3f Vec3f.rotate_axis(self, Vec3f axis, float angle) => rotate_axis_angle(self, axis, angle);
-fn Vec3 Vec3.rotate_axis(self, Vec3 axis, double angle) => rotate_axis_angle(self, axis, angle);
-
-fn Vec3f Vec3f.unproject(self, Matrix4f projection, Matrix4f view) => unproject3(self, projection, view);
-fn Vec3 Vec3.unproject(self, Matrix4 projection, Matrix4 view) => unproject3(self, projection, view);
+fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) => ortho_normalize3(v1, v2);
+fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v1, v2);
 
 macro towards(v, target, max_distance) @private
 {
 	var delta = target - v;
-	var square = delta.length_sq();
+	var square = delta.sq_magnitude();
 
 	if (square == 0 || (max_distance >= 0 && (square <= max_distance * max_distance))) return target;
 
@@ -92,7 +65,7 @@ macro towards(v, target, max_distance) @private
 
 macro clamp_magnitude(v, min, max) @private
 {
-	var length = v.dot(v);
+	var length = v.sq_magnitude();
 	if (length > 0)
 	{
 		length = math::sqrt(length);

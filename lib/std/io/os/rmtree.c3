@@ -16,7 +16,7 @@ fn void! native_rmtree(Path dir)
 		{
 			String name = ((ZString)&entry.name).str_view();
 			if (!name || name == "." || name == "..") continue;
-			Path new_path = dir.temp_append(name)!;
+			Path new_path = dir.tappend(name)!;
 			if (entry.d_type == posix::DT_DIR)
 			{
 				native_rmtree(new_path)!;
@@ -47,9 +47,9 @@ fn void! native_rmtree(Path path)
 	{
 		@pool()
 		{
-			String filename = string::new_from_wstring((WString)&find_data.cFileName, allocator::temp())!;
+			String filename = string::tfrom_wstring((WString)&find_data.cFileName)!;
 			if (filename == "." || filename == "..") continue;
-			Path file_path = path.temp_append(filename)!;
+			Path file_path = path.tappend(filename)!;
 			if (find_data.dwFileAttributes & win32::FILE_ATTRIBUTE_DIRECTORY)
 			{
 				native_rmtree(file_path)!;

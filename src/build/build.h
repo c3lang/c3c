@@ -225,12 +225,6 @@ typedef enum
 	SHOW_BACKTRACE_ON = 1
 } ShowBacktrace;
 
-typedef enum
-{
-	OLD_TEST_NOT_SET = -1,
-	OLD_TEST_OFF = 0,
-	OLD_TEST_ON = 1
-} OldTest;
 
 typedef enum
 {
@@ -327,11 +321,6 @@ typedef enum
 	WIN_CRT_STATIC_DEBUG = 4,
 } WinCrtLinking;
 
-typedef enum
-{
-	VECTOR_CONV_DEFAULT = 0,
-	VECTOR_CONV_OLD = 1,
-} VectorConv;
 
 typedef enum
 {
@@ -468,8 +457,6 @@ typedef struct BuildOptions_
 	const char* linker_libs[MAX_BUILD_LIB_DIRS];
 	size_t linker_lib_count;
 	const char* std_lib_dir;
-	VectorConv vector_conv;
-	bool enable_new_generics;
 	struct
 	{
 		const char *sdk;
@@ -505,7 +492,10 @@ typedef struct BuildOptions_
 	ValidationLevel validation_level;
 	Ansi ansi;
 	bool test_breakpoint;
+	bool test_quiet;
 	bool test_nosort;
+	bool test_noleak;
+	bool test_nocapture;
 	const char *custom_linker_path;
 	uint32_t symtab_size;
 	unsigned version;
@@ -532,7 +522,6 @@ typedef struct BuildOptions_
 	OptimizationSetting optsetting;
 	DebugInfo debug_info_override;
 	ShowBacktrace show_backtrace;
-	OldTest old_test;
 	ArchOsTarget arch_os_target_override;
 	SafetyLevel safety_level;
 	PanicLevel panic_level;
@@ -553,6 +542,7 @@ typedef struct BuildOptions_
 	bool print_output;
 	bool print_input;
 	bool run_once;
+	bool suppress_run;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -588,6 +578,7 @@ typedef struct BuildOptions_
 	bool print_manifest_properties;
 	bool print_precedence;
 	bool print_linking;
+	bool print_env;
 	bool benchmarking;
 	bool testing;
 } BuildOptions;
@@ -650,6 +641,7 @@ typedef struct
 	const char *ir_file_dir;
 	const char *asm_file_dir;
 	const char *script_dir;
+	bool is_non_project;
 	bool run_after_compile;
 	bool delete_after_run;
 	bool generate_benchmark_runner;
@@ -680,8 +672,6 @@ typedef struct
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;
 	OptimizationLevel optlevel;
-	VectorConv vector_conv;
-	bool enable_new_generics;
 	MemoryEnvironment memory_environment;
 	SizeOptimizationLevel optsize;
 	SingleModule single_module;
@@ -690,7 +680,6 @@ typedef struct
 	EmitStdlib emit_stdlib;
 	LinkLibc link_libc;
 	ShowBacktrace show_backtrace;
-	OldTest old_test;
 	StripUnused strip_unused;
 	DebugInfo debug_info;
 	MergeFunctions merge_functions;
@@ -767,6 +756,7 @@ static const char *x86_cpu_set[8] = {
 };
 
 static BuildTarget default_build_target = {
+		.is_non_project = true,
 		.optlevel = OPTIMIZATION_NOT_SET,
 		.optsetting = OPT_SETTING_NOT_SET,
 		.memory_environment = MEMORY_ENV_NORMAL,
@@ -774,7 +764,6 @@ static BuildTarget default_build_target = {
 		.arch_os_target = ARCH_OS_TARGET_DEFAULT,
 		.debug_info = DEBUG_INFO_NOT_SET,
 		.show_backtrace = SHOW_BACKTRACE_NOT_SET,
-		.old_test = OLD_TEST_NOT_SET,
 		.use_stdlib = USE_STDLIB_NOT_SET,
 		.link_libc = LINK_LIBC_NOT_SET,
 		.emit_stdlib = EMIT_STDLIB_NOT_SET,
@@ -831,3 +820,4 @@ void resolve_libraries(BuildTarget *build_target);
 void view_project(BuildOptions *build_options);
 void add_target_project(BuildOptions *build_options);
 void fetch_project(BuildOptions* options);
+void print_build_env(void);

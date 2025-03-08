@@ -1,5 +1,52 @@
 # C3C Release Notes
 
+## 0.7.0 Change list
+
+### Changes / improvements
+- Removed `Foo { 1, 2 }` initializer.
+- Changed `Foo(<int>)` to `Foo {int}`.
+- Removed `{| |}` expression blocks.
+- Removed macro `&ref` and `$varef` parameters.
+- Removed `$vaexpr(0)` syntax in favour of `$vaexpr[0]`
+- Enum does not cast to/from an integer (its ordinal).
+- Removed use of `void!` for main, test and benchmark functions.
+- Removed `$or`, `$and`, `$concat` compile time functions.
+- Removed `@adhoc` attribute.
+- Disallow inline use of nested generics (e.g. `List{List{int}}`.
+- Remove `.allocator = allocator` syntax for functions.
+- Remove `@operator(construct)`.
+- Removal of "any-switch".
+- Allow swizzling assign, eg. `abc.xz += { 5, 10 };`
+- Added `$$wstr16` and `$$wstr32` builtins.
+- `$foreach` "()" replaced by trailing ":" `$foreach ($x, $y : $foo)` -> `$foreach $x, $y : $foo:` 
+- `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
+- `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
+- Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
+- Change `@return!` syntax to require ":" after faults.
+- Remove `if (catch foo) { case ... }` syntax.
+
+### Fixes
+- Fix address sanitizer to work on MachO targets (e.g. MacOS).
+- Post and pre-decrement operators switched places for vector elements #2010.
+- Aliases were incorrectly considered compile time constants.
+- FreeBSD libc stat definitions were incorrect.
+- Atomic max was incorrect.
+- `"+".to_float()` would panic.
+
+### Stdlib changes
+- `new_*` functions in general moved to version without `new_` prefix.
+- `string::new_from_*` changed to `string::from_*`.
+- `String.to_utf16_copy` and related changed to `String.to_utf16`.
+- `String.to_utf16_tcopy` and related changed to `String.to_temp_utf16`
+- `mem::temp_new` changed to `mem::tnew`.
+- `mem::temp_alloc` and related changed to `mem::talloc`.
+- `mem::temp_new_array` changed to `mem::temp_array`.
+- Add `ONHEAP` variants for List/HashMap for initializing global maps on the heap. 
+- Remove Vec2 and other aliases from std::math. Replace `.length_sq()` with `sq_magnitude()`
+- Change all hash functions to have a common `hash` function.
+- `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
+- Updates to `Atomic` to handle distinct types and booleans.
+
 ## 0.6.8 Change list
 
 ### Changes / improvements
@@ -9,6 +56,9 @@
 - c3c `--test-leak-report` flag for displaying full memory lead report if any
 - Output into /.build/obj/<platform> by default.
 - Output llvm/asm into llvm/<platform> and asm/<platform> by default.
+- Add flag `--suppress-run`. For commands which may run executable after building, skip the run step. #1931
+- Add `--build-env` for build environment information.
+- Deprecation of `@operator(construct)`.
 
 ### Fixes
 - Bug appearing when `??` was combined with boolean in some cases.
@@ -22,6 +72,13 @@
 - Aliases are now correctly handled as if they were variables/functions in regards to namespacing and accept `@builtin`.
 - Correctly handle in/out when interacting with inout.
 - Don't delete .o files not produced by the compiler.
+- Fix optional jumps in expression lists, #1942.
+- Several fixes for .o files and -o output, improving handling and naming.
+- Fix bug casting bool to int to other int #1995.
+- `@if` declarations were missing from -P output #1973.
+- Check exe and lib output so -o works with directories.
+- Swizzling an inline vector in a struct would cause a crash.
+- Fixed error and poor error message when using an invalid target name.
 
 ### Stdlib changes
 

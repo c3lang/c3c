@@ -26,7 +26,7 @@ fn void seeder(char[] input, char[] out_buffer)
 	usz out_chars = out_buffer.len;
 	@pool()
 	{
-		ulong[] words = mem::temp_alloc_array(ulong, (out_chars + 7) / 8);
+		ulong[] words = mem::talloc_array(ulong, (out_chars + 7) / 8);
 		words[..] = ODD_PHI64;
 		usz words_len_2 = words.len * 2;
 
@@ -69,7 +69,7 @@ fn void seeder(char[] input, char[] out_buffer)
 
 macro uint hash(value) @local
 {
-	return fnv32a::encode(&&bitcast(value, char[$sizeof(value)]));
+	return fnv32a::hash(&&bitcast(value, char[$sizeof(value)]));
 }
 
 fn char[8 * 4] entropy() @if(!env::WASM_NOLIBC)
@@ -86,7 +86,7 @@ fn char[8 * 4] entropy() @if(!env::WASM_NOLIBC)
 		hash(&entropy),
 		random_int,
 		hash(clock::now()),
-		hash(&DString.new_init),
+		hash(&DString.init),
 		hash(allocator::heap())
 	};
 	return bitcast(entropy_data, char[8 * 4]);

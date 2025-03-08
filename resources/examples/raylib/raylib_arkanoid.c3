@@ -182,8 +182,7 @@ fn void update_game()
     }
 
     // Collision logic: ball vs player
-    if (rl::checkCollisionCircleRec(ball.position, ball.radius,
-        Rectangle{ player.position.x - player.size.x / 2, player.position.y - player.size.y / 2, player.size.x, player.size.y}))
+    if (rl::checkCollisionCircleRec(ball.position, ball.radius, { player.position.x - player.size.x / 2, player.position.y - player.size.y / 2, player.size.x, player.size.y}))
     {
         if (ball.speed.y > 0)
         {

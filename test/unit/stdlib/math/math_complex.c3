@@ -1,17 +1,17 @@
 module math_tests @test;
 import math_tests::complex;
 
-def ComplexDouble = ComplexType(<double>) @local;
-def ComplexInt = ComplexType(<int>) @local;
+def ComplexDouble = ComplexType{double} @local;
+def ComplexInt = ComplexType{int} @local;
 
-module math_tests::complex(<ElementType>) @test;
+module math_tests::complex{ElementType} @test;
 import std::math;
 
-def ComplexType = Complex(<ElementType>);
+def ComplexType = Complex{ElementType};
 
 fn void complex_mul_imaginary()
 {
-	ComplexType i = complex::IMAGINARY(<ElementType>);
+	ComplexType i = complex::IMAGINARY{ElementType};
 	assert(i.mul(i).equals((ComplexType){-1, 0}));
 	assert(i.mul(i).mul(i).equals((ComplexType){0, -1}));
 }
@@ -47,7 +47,7 @@ fn void complex_conjugate()
 fn void complex_inverse() @if(types::is_float(ElementType))
 {
 	ComplexType a = {3, 4};
-	assert(a.inverse().mul(a).equals(complex::IDENTITY(<ElementType>)));
+	assert(a.inverse().mul(a).equals(complex::IDENTITY{ElementType}));
 }
 
 fn void complex_div() @if(types::is_float(ElementType))

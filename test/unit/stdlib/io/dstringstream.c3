@@ -3,7 +3,7 @@ module std::io @test;
 fn void test_writing()
 {
 	DString foo;
-	foo.new_init();
+	foo.init(mem);
 	defer foo.free();
 	OutStream s = &foo;
 	s.write("hello")!!;

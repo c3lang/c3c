@@ -26,8 +26,8 @@ def ErrorCallback = fn void (ZString);
  NOTE This function is not thread-safe because no two threads can poison or
  unpoison memory in the same memory region simultaneously.
 
- @param addr "Start of memory region."
- @param size "Size of memory region."
+ @param addr : "Start of memory region."
+ @param size : "Size of memory region."
 *>
 macro poison_memory_region(void* addr, usz size)
 {
@@ -47,8 +47,8 @@ macro poison_memory_region(void* addr, usz size)
  NOTE This function is not thread-safe because no two threads can
  poison or unpoison memory in the same memory region simultaneously.
 
- @param addr "Start of memory region."
- @param size "Size of memory region."
+ @param addr : "Start of memory region."
+ @param size : "Size of memory region."
 *>
 macro unpoison_memory_region(void* addr, usz size)
 {
@@ -60,7 +60,7 @@ macro unpoison_memory_region(void* addr, usz size)
 <*
  Checks if an address is poisoned.
  @return "True if 'addr' is poisoned (that is, 1-byte read/write access to this address would result in an error report from ASan). Otherwise returns false."
- @param addr "Address to check."
+ @param addr : "Address to check."
 *>
 macro bool address_is_poisoned(void* addr)
 {
@@ -77,8 +77,8 @@ macro bool address_is_poisoned(void* addr)
  If at least one byte in [beg, beg+size) is poisoned, returns the
  address of the first such byte. Otherwise returns 0.
 
- @param beg "Start of memory region."
- @param size "Start of memory region."
+ @param beg : "Start of memory region."
+ @param size : "Start of memory region."
  @return "Address of first poisoned byte."
 *>
 macro void* region_is_poisoned(void* beg, usz size)

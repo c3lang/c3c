@@ -2,9 +2,9 @@ module std::sort;
 
 <*
 Returns true if list is sorted in either ascending or descending order.
- @require @is_sortable(list) "The list must be indexable and support .len or .len()"
- @require @is_valid_cmp_fn(cmp, list, ctx) "Expected a comparison function which compares values"
- @require @is_valid_context(cmp, ctx) "Expected a valid context"
+ @require @is_sortable(list) : "The list must be indexable and support .len or .len()"
+ @require @is_valid_cmp_fn(cmp, list, ctx) : "Expected a comparison function which compares values"
+ @require @is_valid_context(cmp, ctx) : "Expected a valid context"
 *>
 macro bool is_sorted(list, cmp = EMPTY_MACRO_SLOT, ctx = EMPTY_MACRO_SLOT) @builtin
 {
@@ -44,7 +44,7 @@ macro int @sort_cmp(list, pos, cmp, ctx) @local
 	var a = list[pos];
 	var b = list[pos+1];
 
-	$switch
+	$switch:
 		$case $cmp_by_value && $has_context:
 			return cmp(a, b);
 		$case $cmp_by_value:

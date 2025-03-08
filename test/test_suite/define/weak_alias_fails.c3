@@ -1,3 +1,6 @@
+module std::math::vector;
+def Vec2f = float[<2>];
+
 module abc;
 import std::math;
 def Vec2f = std::math::vector::Vec2f @weak;

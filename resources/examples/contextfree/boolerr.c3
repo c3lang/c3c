@@ -1,12 +1,8 @@
+
 module test;
 import libc;
 import std::io;
 import std::collections::maybe;
-
-def MaybeString = Maybe(<String>);
-def MaybeHead = Maybe(<Head>);
-def new_head_val = maybe::value(<Head>);
-def new_string_val = maybe::value(<String>);
 
 fault TitleResult
 {
@@ -18,16 +14,23 @@ fault ReadError
 	BAD_READ,
 }
 
-struct Doc { MaybeHead head; }
-struct Head { MaybeString title; }
+struct Doc
+{
+	Maybe { Head } head;
+}
+
+struct Head
+{
+	Maybe { String } title;
+}
 
 struct Summary
 {
-	MaybeString title;
+	Maybe { String } title;
 	bool ok;
 }
 
-fn void! Summary.print(Summary *s, OutStream out)
+fn void! Summary.print(Summary* s, OutStream out)
 {
 	io::fprintf(out, "Summary({ .title = %s, .ok = %s})", s.title.get() ?? "missing", s.ok)!;
 }
@@ -36,22 +39,22 @@ fn Doc! read_doc(String url)
 {
 	if (url.contains("fail")) return ReadError.BAD_READ?;
 	if (url.contains("head-missing")) return { };
-	if (url.contains("title-missing")) return { .head = new_head_val({}) };
-	if (url.contains("title-empty")) return { .head = new_head_val({ .title = new_string_val("")}) };
-	return { .head = new_head_val({ .title = new_string_val(string::new_format("Title of %s", url)) }) };
+	if (url.contains("title-missing")) return { .head = maybe::value{Head}({}) };
+	if (url.contains("title-empty")) return { .head = maybe::value{Head}({ .title = maybe::value{String}("")}) };
+	return { .head = maybe::value{Head}({ .title = maybe::value{String}(string::format(mem, "Title of %s", url)) }) };
 }
 
 fn Summary build_summary(Doc doc)
 {
-    return Summary {
-        .title = new_string_val(doc.head.get().title.get()) ?? MaybeString {},
+    return {
+        .title = maybe::value{String}(doc.head.get().title.get()) ?? {},
         .ok = true,
     };
 }
 
 fn Summary read_and_build_summary(String url)
 {
-	return build_summary(read_doc(url)) ?? Summary {};
+	return build_summary(read_doc(url)) ?? {};
 }
 
 fn bool! is_title_non_empty(Doc doc)

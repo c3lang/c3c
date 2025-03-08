@@ -2,7 +2,7 @@ module ringbuffer_test @test;
 import std::collections::ringbuffer;
 import std::io;
 
-def Buffer = RingBuffer(<char, 4>);
+def Buffer = RingBuffer{char[4]};
 
 fn void push_get()
 {

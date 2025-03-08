@@ -1,4 +1,4 @@
-module std::math::quaternion(<Real>);
+module std::math::quaternion{Real};
 import std::math::vector;
 union Quaternion
 {

@@ -46,19 +46,19 @@ struct Url(Printable)
  Parse a URL string into a Url struct.
 
  @param [in] url_string
- @require url_string.len > 0 "the url_string must be len 1 or more"
+ @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url! temp_parse(String url_string) => new_parse(url_string, allocator::temp());
+fn Url! tparse(String url_string) => parse(tmem(), url_string);
 
 <*
  Parse a URL string into a Url struct.
 
  @param [in] url_string
- @require url_string.len > 0 "the url_string must be len 1 or more"
+ @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
+fn Url! parse(Allocator allocator, String url_string)
 {
 	url_string = url_string.trim();
 	if (!url_string) return UrlParsingResult.EMPTY?;
@@ -76,7 +76,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 		// Handle schemes without authority like 'mailto:'
 		if (!pos) return UrlParsingResult.INVALID_SCHEME?;
 		url.scheme = url_string[:pos].copy(allocator);
-		url.path = decode(url_string[pos + 1 ..], PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string[pos + 1 ..], PATH) ?? UrlParsingResult.INVALID_PATH?!;
 		return url;
 	}
 
@@ -98,8 +98,8 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 				if (!username.len) return UrlParsingResult.INVALID_USER?;
 							url.host =
 
-				url.username = decode(username, HOST, allocator) ?? UrlParsingResult.INVALID_USER?!;
-				if (userpass.len) url.password = decode(userpass[1], USERPASS, allocator) ?? UrlParsingResult.INVALID_PASSWORD?!;
+				url.username = decode(allocator, username, HOST) ?? UrlParsingResult.INVALID_USER?!;
+				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? UrlParsingResult.INVALID_PASSWORD?!;
 			};
 			authority = authority[userinfo.len + 1 ..];
 		}
@@ -131,7 +131,7 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 				}
 			};
 		}
-		url.host = decode(host, HOST, allocator) ?? UrlParsingResult.INVALID_HOST?!;
+		url.host = decode(allocator, host, HOST) ?? UrlParsingResult.INVALID_HOST?!;
 		url_string = url_string[authority_end ..];
 	}
 
@@ -142,12 +142,12 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 	if (@ok(query_index) || @ok(fragment_index))
 	{
 		usz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
-		url.path = decode(url_string[:path_end], PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string[:path_end], PATH) ?? UrlParsingResult.INVALID_PATH?!;
 		url_string = url_string[path_end ..];
 	}
 	else
 	{
-		url.path = decode(url_string, PATH, allocator) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string, PATH) ?? UrlParsingResult.INVALID_PATH?!;
 		url_string = "";
 	}
 
@@ -165,86 +165,86 @@ fn Url! new_parse(String url_string, Allocator allocator = allocator::heap())
 	// Parse fragment
 	if (url_string.starts_with("#"))
 	{
-		url.fragment = decode(url_string[1..], FRAGMENT, allocator) ?? UrlParsingResult.INVALID_FRAGMENT?!;
+		url.fragment = decode(allocator, url_string[1..], FRAGMENT) ?? UrlParsingResult.INVALID_FRAGMENT?!;
 	}
 	return url;
 }
 
-<*
- Stringify a Url struct.
-
- @param [in] self
- @param [inout] allocator
- @return "Url as a string"
-*>
-fn String Url.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
+fn usz! Url.to_format(&self, Formatter* f) @dynamic
 {
-	DString builder = dstring::temp_new();
-
+	usz len;
 	// Add scheme if it exists
 	if (self.scheme != "")
 	{
-		builder.append_chars(self.scheme);
-		builder.append_char(':');
-		if (self.host.len > 0) builder.append_chars("//");
+		len += f.print(self.scheme)!;
+		len += f.print(":")!;
+		if (self.host.len > 0) len += f.print("//")!;
 	}
 
 	// Add username and password if they exist
-	if (self.username != "")
+	if (self.username)
 	{
-		String username = temp_encode(self.username, USERPASS);
-		builder.append_chars(username);
-
-		if (self.password != "")
+		@stack_mem(64; Allocator smem)
 		{
-			builder.append_char(':');
-
-			String password = temp_encode(self.password, USERPASS);
-			builder.append_chars(password);
+			len += f.print(encode(smem, self.username, USERPASS))!;
+		};
+		if (self.password)
+		{
+			len += f.print(":")!;
+			@stack_mem(64; Allocator smem)
+			{
+				len += f.print(encode(smem, self.password, USERPASS))!;
+			};
 		}
-		builder.append_char('@');
+		len += f.print("@")!;
 	}
 
 	// Add host
-	String host = temp_encode(self.host, HOST);
-	builder.append_chars(host);
+	@stack_mem(128; Allocator smem)
+	{
+		len += f.print(encode(smem, self.host, HOST))!;
+	};
 
 	// Add port
-	if (self.port != 0)
-	{
-		builder.append_char(':');
-		builder.appendf("%d", self.port);
-	}
+	if (self.port) len += f.printf(":%d", self.port)!;
 
 	// Add path
-	String path = temp_encode(self.path, PATH);
-	builder.append_chars(path);
+	@stack_mem(256; Allocator smem)
+	{
+		len += f.print(encode(smem, self.path, PATH))!;
+	};
 
 	// Add query if it exists (note that `query` is expected to
 	// be already properly encoded).
-	if (self.query != "")
+	if (self.query)
 	{
-		builder.append_char('?');
-		builder.append_chars(self.query);
+		len += f.print("?")!;
+		len += f.print(self.query)!;
 	}
 
 	// Add fragment if it exists
-	if (self.fragment != "")
+	if (self.fragment)
 	{
-		builder.append_char('#');
-
-		String fragment = temp_encode(self.fragment, FRAGMENT);
-		builder.append_chars(fragment);
+		@stack_mem(256; Allocator smem)
+		{
+			len += f.print("#")!;
+			len += f.print(encode(smem, self.fragment, FRAGMENT))!;
+		};
 	}
-
-	return builder.copy_str(allocator);
+	return len;
 }
 
-def UrlQueryValueList = List(<String>);
+fn String Url.to_string(&self, Allocator allocator)
+{
+	return string::format(allocator, "%s", *self);
+}
+
+
+def UrlQueryValueList = List{String};
 
 struct UrlQueryValues
 {
-	inline HashMap(<String, UrlQueryValueList>) map;
+	inline HashMap{String, UrlQueryValueList} map;
 	UrlQueryValueList key_order;
 }
 
@@ -254,15 +254,7 @@ struct UrlQueryValues
  @param [in] query
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues temp_parse_query(String query) => parse_query(query, allocator::temp());
-
-<*
- Parse the query parameters of the Url into a UrlQueryValues map.
-
- @param [in] query
- @return "a UrlQueryValues HashMap"
-*>
-fn UrlQueryValues new_parse_query(String query) => parse_query(query, allocator::heap());
+fn UrlQueryValues parse_query_to_temp(String query) => parse_query(tmem(), query);
 
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
@@ -271,11 +263,11 @@ fn UrlQueryValues new_parse_query(String query) => parse_query(query, allocator:
  @param [inout] allocator
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues parse_query(String query, Allocator allocator)
+fn UrlQueryValues parse_query(Allocator allocator, String query)
 {
 	UrlQueryValues vals;
 	vals.map.init(allocator);
-	vals.key_order.new_init(allocator: allocator);
+	vals.key_order.init(allocator);
 
 	Splitter raw_vals = query.tokenize("&");
 	while (try String rv = raw_vals.next())
@@ -283,8 +275,8 @@ fn UrlQueryValues parse_query(String query, Allocator allocator)
 		@pool(allocator)
 		{
 			String[] parts = rv.tsplit("=", 2);
-			String key = temp_decode(parts[0], QUERY) ?? parts[0];
-			vals.add(key, parts.len == 1 ? key : (temp_decode(parts[1], QUERY) ?? parts[1]));
+			String key = tdecode(parts[0], QUERY) ?? parts[0];
+			vals.add(key, parts.len == 1 ? key : (tdecode(parts[1], QUERY) ?? parts[1]));
 		};
 	}
 	return vals;
@@ -309,7 +301,7 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 	else
 	{
 		UrlQueryValueList new_list;
-		new_list.new_init_with_array({ value_copy }, self.allocator);
+		new_list.init_with_array(self.allocator, { value_copy });
 		(*self)[key] = new_list;
 		self.key_order.push(key.copy(self.allocator));
 	}
@@ -317,40 +309,34 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 }
 
 
-<*
- Stringify UrlQueryValues into an encoded query string.
 
- @param [in] self
- @param [inout] allocator
- @return "a percent-encoded query string"
-*>
-fn String UrlQueryValues.to_string(&self, Allocator allocator = allocator::heap()) @dynamic => @pool(allocator)
+fn usz! UrlQueryValues.to_format(&self, Formatter* f) @dynamic
 {
-	DString builder = dstring::temp_new();
-
+	usz len;
 	usz i;
 	foreach (key: self.key_order)
 	{
-		String encoded_key = temp_encode(key, QUERY);
-
-		UrlQueryValueList! values = self.map.get(key);
-		if (catch values) continue;
-
-		foreach (value: values)
+		@stack_mem(128; Allocator mem)
 		{
-			if (i > 0) builder.append_char('&');
-
-			builder.append_chars(encoded_key);
-			builder.append_char('=');
-
-			String encoded_value = temp_encode(value, QUERY);
-			builder.append_chars(encoded_value);
-			i++;
-		}
-	};
-
-	return builder.copy_str(allocator);
+			String encoded_key = encode(mem, key, QUERY);
+			UrlQueryValueList! values = self.map.get(key);
+			if (catch values) continue;
+			foreach (value : values)
+			{
+				if (i > 0) len += f.print("&")!;
+				len += f.print(encoded_key)!;
+				len += f.print("=")!;
+				@stack_mem(256; Allocator smem)
+				{
+					len += f.print(encode(smem, value, QUERY))!;
+				};
+				i++;
+			}
+		};
+	}
+	return len;
 }
+
 
 fn void UrlQueryValues.free(&self)
 {

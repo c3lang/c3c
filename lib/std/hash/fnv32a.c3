@@ -30,7 +30,7 @@ macro void Fnv32a.update_char(&self, char c)
 	update(self, c);
 }
 
-fn uint encode(char[] data)
+fn uint hash(char[] data)
 {
 	uint h = FNV32A_START;
 	foreach (char x : data)

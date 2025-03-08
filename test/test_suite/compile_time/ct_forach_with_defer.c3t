@@ -6,7 +6,7 @@ fn void test()
 {
 	defer io::printn("World!");
 	const HELLO = "Hello";
-	$for (var $i = 0; $i < 5; $i++)
+	$for var $i = 0; $i < 5; $i++:
 		io::printf("%c", HELLO[$i]);
 	$endfor
 }
@@ -15,7 +15,7 @@ fn void main()
 {
 	defer io::printn("World!");
 
-	$foreach ($c : "Hello")
+	$foreach $c : "Hello":
 		io::printf("%c", $c);
 	$endforeach
 	io::printn();

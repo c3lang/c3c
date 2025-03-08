@@ -1,3 +1,5 @@
+#include <iso646.h>
+
 #include "build_internal.h"
 #include "utils/common.h"
 #include <math.h>
@@ -110,26 +112,7 @@ const char *get_cflags(BuildParseContext context, JSONObject *json, const char *
 {
 	// CFlags
 	const char *cflags = get_optional_string(context, json, context.target ? "cflags-override" : "cflags");
-	const char *cflags_add = context.target ? get_optional_string(context, json, "cflags") : NULL;
-	if (cflags && cflags_add)
-	{
-		error_exit("In file '%s': '%s' is combining both 'cflags' and 'cflags-override', only one may be used.", context.file, context.target);
-	}
-	if (context.target && !cflags_add) cflags_add = get_optional_string(context, json, "cflags-add");
-	if (cflags && cflags_add)
-	{
-		// TODO remove in 0.7
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-		error_exit("In file '%s': '%s' is combining both 'cflags-add' and 'cflags-override', only one may be used.", context.file, context.target);
-	}
-
-	if (cflags) original_flags = cflags;
-	if (!cflags_add) return original_flags;
-	if (original_flags)
-	{
-		return str_printf("%s %s", original_flags, cflags_add);
-	}
-	return cflags_add;
+	return cflags ? cflags : original_flags;
 }
 
 INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const char **strings_to_append)
@@ -142,15 +125,9 @@ void get_list_append_strings(BuildParseContext context, JSONObject *json, const 
 {
 	const char **value = get_optional_string_array(context, json, context.target ? override : base);
 	const char **add_value = context.target ? get_optional_string_array(context, json, base) : NULL;
+	if (!add_value && context.target && add) add_value = get_optional_string_array(context, json, add);
 	if (value && add_value)
 	{
-		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", context.file, context.target, override, base);
-	}
-	if (!add_value && context.target) add_value = get_optional_string_array(context, json, add);
-	if (value && add_value)
-	{
-		// TODO remove in 0.7
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
 		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", context.file, context.target, override, add);
 	}
 	if (value) *list_ptr = value;

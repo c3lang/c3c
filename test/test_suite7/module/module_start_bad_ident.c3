@@ -1,1 +1,0 @@
-module BIG::MONEY; // #error: The module name must consist of only lower case letters

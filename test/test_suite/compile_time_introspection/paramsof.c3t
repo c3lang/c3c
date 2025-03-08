@@ -11,7 +11,7 @@ fn void main()
 	{
 		io::printn(r);
 	}
-	$foreach ($r : $typeof(testme).paramsof)
+	$foreach $r : $typeof(testme).paramsof:
 		io::printn($r.name);
 		io::printn($r.type.nameof);
 	$endforeach

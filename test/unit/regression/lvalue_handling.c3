@@ -4,7 +4,7 @@ struct Foo
 {
 	int a;
 }
-def IntList = List(<Foo>);
+def IntList = List{Foo};
 fn void subscript_overload() @test
 {
 	IntList x;

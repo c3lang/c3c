@@ -9,10 +9,10 @@ import std::io::path, libc, std::os;
  @require name.len > 0
  @return! SearchResult.MISSING
 *>
-fn String! get_var(String name, Allocator allocator = allocator::heap()) => @pool(allocator)
+fn String! get_var(Allocator allocator, String name) => @pool(allocator)
 {
 
-	$switch
+	$switch:
 	$case env::LIBC && !env::WIN32:
 		ZString val = libc::getenv(name.zstr_tcopy());
 		return val ? val.copy(allocator) : SearchResult.MISSING?;
@@ -28,15 +28,15 @@ fn String! get_var(String name, Allocator allocator = allocator::heap()) => @poo
 			buff = (WString)tmalloc(len * 2 + 2);
 			win32::getEnvironmentVariableW(wstr, buff, (Win32_DWORD)len);
 		}
-		return string::new_from_wstring(buff, allocator);
+		return string::from_wstring(allocator, buff);
 	$default:
 		return "";
 	$endswitch
 }
 
-fn String! get_var_temp(String name)
+fn String! tget_var(String name)
 {
-	return get_var(name, allocator::temp());
+	return get_var(tmem(), name);
 }
 
 <*
@@ -46,7 +46,7 @@ fn String! get_var_temp(String name)
 *>
 fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 {
-	$switch
+	$switch:
 	$case env::WIN32:
 		WString wname = name.to_temp_wstring()!!;
 		if (!overwrite)
@@ -74,30 +74,26 @@ fn String! get_home_dir(Allocator using = allocator::heap())
 	$else
 		home = "USERPROFILE";
 	$endif
-	return get_var(home, using);
+	return get_var(using, home);
 }
 
-fn Path! get_config_dir(Allocator allocator = allocator::heap()) @deprecated("use new_get_config_dir()")
-{
-	return new_get_config_dir(allocator) @inline;
-}
 
 <*
 Returns the current user's config directory.
 *>
-fn Path! new_get_config_dir(Allocator allocator = allocator::heap()) => @pool(allocator)
+fn Path! get_config_dir(Allocator allocator) => @pool(allocator)
 {
 	$if env::WIN32:
-		return path::new(get_var_temp("AppData"), allocator);
+		return path::new(allocator, tget_var("AppData"));
 	$else
 		$if env::DARWIN:
-			String s = get_var_temp("HOME")!;
+			String s = tget_var("HOME")!;
 			const DIR = "Library/Application Support";
 		$else
-			String s = get_var_temp("XDG_CONFIG_HOME") ?? get_var_temp("HOME")!;
+			String s = tget_var("XDG_CONFIG_HOME") ?? tget_var("HOME")!;
 			const DIR = ".config";
 		$endif
-		return path::temp_new(s).new_append(DIR, allocator: allocator);
+		return path::temp(s).append(allocator, DIR);
 	$endif
 }
 
@@ -108,7 +104,7 @@ fn Path! new_get_config_dir(Allocator allocator = allocator::heap()) => @pool(al
 *>
 fn bool clear_var(String name) => @pool()
 {
-	$switch
+	$switch:
 	$case env::WIN32:
 		WString wname = name.to_temp_wstring()!!;
 		return win32::setEnvironmentVariableW(wname, null) == 0;
@@ -119,12 +115,7 @@ fn bool clear_var(String name) => @pool()
 	$endswitch
 }
 
-fn String! executable_path(Allocator allocator = allocator::heap()) @deprecated("use new_executable_path()")
-{
-	return new_executable_path(allocator) @inline;
-}
-
-fn String! new_executable_path(Allocator allocator = allocator::heap())
+fn String! executable_path(Allocator allocator)
 {
 	$if env::DARWIN:
 		return darwin::executable_path(allocator);

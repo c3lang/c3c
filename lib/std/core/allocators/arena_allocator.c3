@@ -55,7 +55,7 @@ fn void ArenaAllocator.reset(&self, usz mark) @dynamic => self.used = mark;
 
 <*
  @require !alignment || math::is_power_of_2(alignment)
- @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require size > 0
 *>
 fn void*! ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
@@ -77,7 +77,7 @@ fn void*! ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz a
 
 <*
  @require !alignment || math::is_power_of_2(alignment)
- @require alignment <= mem::MAX_MEMORY_ALIGNMENT `alignment too big`
+ @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require old_pointer != null
  @require size > 0
 *>

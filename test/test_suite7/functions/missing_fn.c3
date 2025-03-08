@@ -1,1 +1,0 @@
-void foo(int x) {} // #error: This looks like the beginning of a function declaration

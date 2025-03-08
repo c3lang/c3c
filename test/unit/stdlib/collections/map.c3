@@ -4,21 +4,20 @@ import std::collections::map;
 import std::sort;
 import std::io;
 
-def TestHashMap = HashMap(<String, usz>);
-def TestMap = Map(<String, usz>);
+def TestHashMap = HashMap{String, usz};
 
 struct MapTest
 {
     String key;
     usz value;
 }
-def List = List(<MapTest>);
+def List = List{MapTest};
 
 fn void map()
 {
     TestHashMap m;
     assert(!m.is_initialized());
-    m.temp_init();
+    m.tinit();
     assert(m.is_initialized());
     assert(m.is_empty());
     assert(m.len() == 0);
@@ -42,7 +41,7 @@ fn void map()
     }
 
     List list;
-    list.temp_init();
+    list.tinit();
     m.@each(;String key, usz value)
     {
         list.push({key, value});
@@ -56,7 +55,7 @@ fn void map()
     }
 }
 
-def FooMap = HashMap(<char, Foobar>);
+def FooMap = HashMap{char, Foobar};
 enum Foobar : inline char
 {
     FOO,
@@ -83,7 +82,7 @@ fn void map_remove()
 {
 	TestHashMap m;
 	assert(!@ok(m.remove("A")));
-	m.temp_init();
+	m.tinit();
 	assert(!@ok(m.remove("A")));
 	m.set("A", 0);
 	assert(@ok(m.remove("A")));
@@ -92,24 +91,15 @@ fn void map_remove()
 fn void map_copy()
 {
 	TestHashMap hash_map;
-	hash_map.temp_init();
+	hash_map.tinit();
 
 	hash_map.set("aa", 1);
 	hash_map.set("b", 2);
 	hash_map.set("bb", 1);
 
 	TestHashMap hash_map_copy;
-	hash_map_copy.temp_init_from_map(&hash_map);
+	hash_map_copy.tinit_from_map(&hash_map);
 
 	assert(hash_map_copy.len() == hash_map.len());
 
-	TestMap map = map::temp(<String, usz>)();
-
-	map.set("aa", 1);
-	map.set("b", 2);
-	map.set("bb", 1);
-
-	TestMap map_copy = map::temp_from_map(<String, usz>)(map);
-
-	assert(map_copy.len() == map.len());
 }

@@ -135,17 +135,15 @@ static inline Path *parse_module_path(ParseContext *c)
  *		| CONST_IDENT
  *		;
  *
- * module_params ::= '(<' module_param (',' module_param)* '>)'
+ * module_params ::= '{' module_param (',' module_param)* '}'
  */
 static inline bool parse_optional_module_params(ParseContext *c, const char ***tokens_ref)
 {
 
 	*tokens_ref = NULL;
 
-	bool is_new_generic = try_consume(c, TOKEN_LBRACE);
-	if (!is_new_generic && !try_consume(c, TOKEN_LGENPAR)) return true;
-	TokenType end = is_new_generic ? TOKEN_RGENPAR : TOKEN_RBRACE;
-	if (try_consume(c, end)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
+	if (!try_consume(c, TOKEN_LBRACE)) return true;
+	if (try_consume(c, TOKEN_RBRACE)) RETURN_PRINT_ERROR_HERE("The generic parameter list cannot be empty, it needs at least one element.");
 
 	// No params
 	while (1)
@@ -169,20 +167,13 @@ static inline bool parse_optional_module_params(ParseContext *c, const char ***t
 		advance(c);
 		if (!try_consume(c, TOKEN_COMMA))
 		{
-			if (is_new_generic)
-			{
-				if (!consume(c, TOKEN_RBRACE, "Expected '}'.")) return false;
-			}
-			else
-			{
-				if (!consume(c, TOKEN_RGENPAR, "Expected '>)'.")) return false;
-			}
+			if (!consume(c, TOKEN_RBRACE, "Expected '}'.")) return false;
 			return true;
 		}
 	}
 }
 /**
- * module ::= MODULE module_path ('(<' module_params '>)')? (@public|@private|@local|@test|@export|@extern) EOS
+ * module ::= MODULE module_path ('{' module_params '}')? (@public|@private|@local|@test|@export|@extern) EOS
  */
 bool parse_module(ParseContext *c, AstId contracts)
 {
@@ -432,17 +423,10 @@ static inline TypeInfo *parse_base_type(ParseContext *c)
 	if (try_consume(c, TOKEN_CT_VATYPE))
 	{
 		TypeInfo *type_info = type_info_new(TYPE_INFO_VATYPE, c->prev_span);
-		bool is_lparen = try_consume(c, TOKEN_LPAREN);
-		if (!is_lparen) CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_type_info);
+		CONSUME_OR_RET(TOKEN_LBRACKET, poisoned_type_info);
 		ASSIGN_EXPR_OR_RET(type_info->unresolved_type_expr, parse_expr(c), poisoned_type_info);
-		CONSUME_OR_RET(is_lparen ? TOKEN_RPAREN : TOKEN_RBRACKET, poisoned_type_info);
+		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_type_info);
 		RANGE_EXTEND_PREV(type_info);
-		// TODO remove in 0.7
-		if (is_lparen)
-		{
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			SEMA_DEPRECATED(type_info, "'$vatype(...)' is deprecated, use '$vatype[...]' instead.");
-		}
 		return type_info;
 	}
 	if (try_consume(c, TOKEN_CT_EVALTYPE))
@@ -623,10 +607,6 @@ static inline TypeInfo *parse_type_with_base_maybe_generic(ParseContext *c, Type
 				type_info = parse_array_type_index(c, type_info);
 				break;
 			case TOKEN_LBRACE:
-				if (!allow_generic) return type_info;
-				if (!compiler.build.enable_new_generics) return type_info;
-				FALLTHROUGH;
-			case TOKEN_LGENPAR:
 				if (!allow_generic) return type_info;
 				type_info = parse_generic_type(c, type_info);
 				break;
@@ -1384,6 +1364,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		const char *name = NULL;
 		SourceSpan span = c->span;
 		bool no_name = false;
+		bool ref = false;
 		switch (c->tok)
 		{
 			case TOKEN_CONST_IDENT:
@@ -1444,15 +1425,27 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					PRINT_ERROR_HERE("A regular variable name, e.g. 'foo' was expected after the '&'.");
 					return false;
 				}
+				if (vec_size(params) > 0)
+				{
+					PRINT_ERROR_HERE("Only the first parameter may use '&'.");
+					return false;
+				}
 				// This will catch Type... &foo and &foo..., neither is allowed.
 				if (ellipsis || tok_is(c, TOKEN_ELLIPSIS))
 				{
-					PRINT_ERROR_LAST("Reference parameters may not be varargs, use untyped macro varargs '...' instead.");
+					PRINT_ERROR_LAST("'&foo' parameters may not be followed by '...’");
 					return false;
 				}
+				if (type)
+				{
+					PRINT_ERROR_LAST("'&foo' should be untyped.");
+					return false;
+				}
+
 				// Span includes the "&"
 				span = extend_span_with_token(span, c->span);
-				param_kind = VARDECL_PARAM_REF;
+				ref = true;
+				param_kind = VARDECL_PARAM;
 				break;
 			case TOKEN_HASH_TYPE_IDENT:
 				// #Foo (not allowed)
@@ -1502,6 +1495,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 		}
 		Decl *param = decl_new_var(name, span, type, param_kind);
 		param->var.type_info = type ? type_infoid(type) : 0;
+		param->var.self_addr = ref;
 		if (!parse_attributes(c, &param->attributes, NULL, NULL, NULL)) return false;
 		if (!no_name)
 		{
@@ -1712,7 +1706,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 	// 2. Now parse the type which we know is here.
 	ASSIGN_TYPE_OR_RET(decl->distinct, parse_type(c), poisoned_decl);
 
-	ASSERT(!tok_is(c, TOKEN_LGENPAR) && !tok_is(c, TOKEN_LBRACE));
+	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -2007,7 +2001,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 			PRINT_ERROR_HERE("Expected a type to alias here.");
 			return poisoned_decl;
 	}
-	ASSERT(!tok_is(c, TOKEN_LGENPAR) && !tok_is(c, TOKEN_LBRACE));
+	ASSERT(!tok_is(c, TOKEN_LBRACE));
 
 	decl->typedef_decl.type_info = type_info;
 	decl->typedef_decl.is_func = false;
@@ -2109,7 +2103,7 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
 
 	bool is_cond;
-	bool is_builtin;
+	bool is_builtin = false;
 	if (!parse_attributes(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return poisoned_decl;
 	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
 	decl->attr_decl.attrs = attributes;
@@ -2639,7 +2633,7 @@ static inline bool parse_doc_contract(ParseContext *c, AstId *docs, AstId **docs
 }
 
 /**
- * param_contract ::= '@param' inout_attribute? any_identifier ( (':' STRING) | STRING )?
+ * param_contract ::= '@param' inout_attribute? any_identifier ( ':' STRING )?
  * inout_attribute ::= '[' '&'? ('in' | 'inout' | 'out') ']'
  */
 static inline bool parse_contract_param(ParseContext *c, AstId *docs, AstId **docs_next)
@@ -2748,7 +2742,14 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	}
 	RANGE_EXTEND_PREV(ast);
 	// Just ignore our potential string:
-	(void)try_consume(c, TOKEN_STRING);
+	if (try_consume(c, TOKEN_COLON))
+	{
+		CONSUME_OR_RET(TOKEN_STRING, false);
+	}
+	else if (try_consume(c, TOKEN_STRING))
+	{
+		RETURN_PRINT_ERROR_LAST("Expected a ':' before the description.");
+	}
 	ast->contract_stmt.faults = returns;
 	append_docs(docs_next, docs, ast);
 	return true;

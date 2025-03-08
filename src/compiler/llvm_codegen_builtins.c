@@ -96,8 +96,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 	for (int i = 0; i < 3; i++)
 	{
 		llvm_emit_expr(c, &value, args[i]);
-		llvm_value_rvalue(c, &value);
-		normal_args[i] = value.value;
+		normal_args[i] = llvm_load_value_store(c, &value);
 	}
 	Type *type = value.type;
 	bool is_volatile = args[3]->const_expr.b;
@@ -109,7 +108,7 @@ INLINE void llvm_emit_compare_exchange(GenContext *c, BEValue *result_value, Exp
 												 ordering_to_llvm(success_ordering), ordering_to_llvm(failure_ordering), false);
 	if (alignment && alignment >= type_abi_alignment(type))
 	{
-		ASSERT(is_power_of_two(alignment));
+		ASSERT_SPAN(expr, is_power_of_two(alignment));
 		LLVMSetAlignment(result, alignment);
 	}
 	if (is_volatile) LLVMSetVolatile(result, true);
@@ -176,7 +175,7 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 	BEValue value;
 	llvm_emit_expr(c, &value, expr->call_expr.arguments[0]);
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[1]);
-	llvm_value_rvalue(c, &value);
+	LLVMValueRef val = llvm_load_value_store(c, &value);
 	bool is_float = type_is_float(result_value->type);
 	bool is_unsigned = !is_float && type_is_unsigned(result_value->type);
 	LLVMAtomicRMWBinOp op;
@@ -220,7 +219,7 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 		default:
 			UNREACHABLE
 	}
-	LLVMValueRef res = LLVMBuildAtomicRMW(c->builder, op, value.value, llvm_load_value(c, result_value),
+	LLVMValueRef res = LLVMBuildAtomicRMW(c->builder, op, val, llvm_load_value_store(c, result_value),
 	                   llvm_atomic_ordering(expr->call_expr.arguments[3]->const_expr.ixx.i.low),
 					   false);
 	if (expr->call_expr.arguments[2]->const_expr.b) LLVMSetVolatile(res, true);
@@ -236,10 +235,12 @@ INLINE void llvm_emit_atomic_fetch(GenContext *c, BuiltinFunction func, BEValue 
 INLINE void llvm_emit_atomic_load(GenContext *c, BEValue *result_value, Expr *expr)
 {
 	llvm_emit_expr(c, result_value, expr->call_expr.arguments[0]);
-	llvm_value_deref(c, result_value);
 	llvm_value_rvalue(c, result_value);
-	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(result_value->value, true);
-	LLVMSetOrdering(result_value->value,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
+	Type *type = result_value->type->pointer;
+	LLVMValueRef val = llvm_load(c, llvm_get_type(c, type), result_value->value, type_abi_alignment(type), "");
+	if (expr->call_expr.arguments[1]->const_expr.b) LLVMSetVolatile(val, true);
+	LLVMSetOrdering(val,  llvm_atomic_ordering(expr->call_expr.arguments[2]->const_expr.ixx.i.low));
+	llvm_value_set(result_value, val, type);
 }
 
 INLINE void llvm_emit_unaligned_load(GenContext *c, BEValue *result_value, Expr *expr)
@@ -1006,6 +1007,8 @@ void llvm_emit_builtin_call(GenContext *c, BEValue *result_value, Expr *expr)
 		case BUILTIN_STR_LOWER:
 		case BUILTIN_STR_UPPER:
 		case BUILTIN_STR_FIND:
+		case BUILTIN_WIDESTRING_16:
+		case BUILTIN_WIDESTRING_32:
 			UNREACHABLE
 		case BUILTIN_NONE:
 			UNREACHABLE

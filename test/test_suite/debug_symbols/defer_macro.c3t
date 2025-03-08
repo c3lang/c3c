@@ -14,53 +14,59 @@ fn void foo(int x)
 	}
 }
 
-fn int main(String[] args) {
+fn int main(String[] args)
+{
 
-  // Case 1: Jump to create_foo
-  Foo* asdf = create_foo(attach::to_scope(), {.flag1 = true});
+	// Case 1: Jump to create_foo
+	Foo* asdf = create_foo(attach::to_scope(), {.flag1 = true});
 
-  // Case 2: Ternary jump
-  test(args.len != 0 ? foo::BLACK : foo::WHITE);
+	// Case 2: Ternary jump
+	test(args.len != 0 ? foo::BLACK : foo::WHITE);
 
-  test2();
-  return 0;
+	test2();
+	return 0;
 }
 
-struct Foo {
-  void* asdf;
+struct Foo
+{
+	void* asdf;
 }
 
 
 
-fn Foo* create_foo(Attach_Arg attach, Box_Flags flags, String name = {}) {
-  return mem::new(Foo);
+fn Foo* create_foo(Attach_Arg attach, Box_Flags flags, String name = {})
+{
+	return mem::new(Foo);
 }
 
-bitstruct Box_Flags : ulong {
-  bool flag1;
+bitstruct Box_Flags : ulong
+{
+	bool flag1;
 }
 
-fn Foo* test(Color color) {
-  io::printn(color);
-
-
-  return null;
+fn Foo* test(Color color)
+{
+	io::printn(color);
+	return null;
 }
 
-fn void* test2() {
-  // Case 3: Trailing macro body exit jump
-  @scratch(; Arena* scratch) {
-    void* asdf;
-    return asdf;
-  };
+fn void* test2()
+{
+	// Case 3: Trailing macro body exit jump
+	@scratch(; Arena* scratch)
+	{
+	    void* asdf;
+	    return asdf;
+	};
 }
 
 module foo;
 import std::io;
 
-enum ID_Type : char {
-  NONE,
-  UNIQUE,
+enum ID_Type : char
+{
+	NONE,
+	UNIQUE,
 }
 
 struct Id {
@@ -68,13 +74,15 @@ struct Id {
   ID_Type type;
 }
 
-macro Id make(type, value) {
-  return Id {.type = type, .value = value};
+macro Id make(type, value)
+{
+	return (Id){.type = type, .value = value};
 }
 
-macro Id unique() {
-  static char x;
-  return make(ID_Type.UNIQUE, (ulong)&x);
+macro Id unique()
+{
+	static char x;
+	return make(ID_Type.UNIQUE, (ulong)&x);
 }
 
 
@@ -83,52 +91,57 @@ distinct Color = float[<4>];
 const Color BLACK = {0, 0, 0, 1};
 const Color WHITE = {1, 1, 1, 1};
 
-struct Arena @export {
-  usz cursor;
+struct Arena @export
+{
+	usz cursor;
 }
 
-struct Arena_Cursor @export {
-  Arena* arena;
-  usz cursor;
+struct Arena_Cursor @export
+{
+    Arena* arena;
+    usz cursor;
 }
 
-fn void rewind(Arena* arena, usz pos) @export("arena_rewind") {
-  arena.cursor = pos;
+fn void rewind(Arena* arena, usz pos) @export("arena_rewind")
+{
+	arena.cursor = pos;
 }
 
-fn Arena_Cursor get_cursor(Arena* arena) @inline => Arena_Cursor {arena, arena.cursor};
+fn Arena_Cursor get_cursor(Arena* arena) @inline => (Arena_Cursor) {arena, arena.cursor};
 fn void restore_cursor(Arena_Cursor cursor) @inline => rewind(cursor.arena, cursor.cursor);
 
 
-fn Arena_Cursor scratch_begin(Arena*[] conflicts) @export("arena_scratch_begin") {
-  static Arena scratch_arena;
-  Arena* arena = &scratch_arena;
-  return arena ? get_cursor(arena) : Arena_Cursor {};
+fn Arena_Cursor scratch_begin(Arena*[] conflicts) @export("arena_scratch_begin")
+{
+	static Arena scratch_arena;
+	Arena* arena = &scratch_arena;
+	return arena ? get_cursor(arena) : {};
 }
 
 fn void scratch_end(Arena_Cursor cursor) @inline @export("arena_scratch_end") => restore_cursor(cursor);
 
-macro void @scratch(Arena*... conflicts; @body(Arena* arena)) @builtin {
-  Arena_Cursor scratch = scratch_begin(conflicts);
-  defer scratch_end(scratch);
-  @body(scratch.arena);
+macro void @scratch(Arena*... conflicts; @body(Arena* arena)) @builtin
+{
+	Arena_Cursor scratch = scratch_begin(conflicts);
+	defer scratch_end(scratch);
+	@body(scratch.arena);
 }
 
 module attach;
-enum Attach_Arg_Kind {
-  TOP,
+enum Attach_Arg_Kind
+{
+	TOP,
 }
 
-struct Attach_Arg {
-  Attach_Arg_Kind kind;
-  void* box;
+struct Attach_Arg
+{
+    Attach_Arg_Kind kind;
+    void* box;
 }
 
-fn Attach_Arg to_scope() @inline {
-  return {
-    TOP,
-    null
-  };
+fn Attach_Arg to_scope() @inline
+{
+  return { TOP, null };
 }
 
 /* #expect: test.ll
@@ -602,11 +615,11 @@ no_match:                                         ; preds = %compare
 !6 = distinct !DICompileUnit(language: DW_LANG_C11
 !7 = !DIFile(filename: "defer_macro.c3"
 !8 = !{!9}
-!9 = !DICompositeType(tag: DW_TAG_enumeration_type, name: "Attach_Arg_Kind", scope: !10, file: !7, line: 116, baseType: !15, size: 32, align: 32, elements: !16)
-!10 = !DICompositeType(tag: DW_TAG_structure_type, name: "Attach_Arg", scope: !7, file: !7, line: 120, size: 128, align: 64, elements: !11, identifier: "attach.Attach_Arg")
+!9 = !DICompositeType(tag: DW_TAG_enumeration_type, name: "Attach_Arg_Kind", scope: !10, file: !7, line: 129, baseType: !15, size: 32, align: 32, elements: !16)
+!10 = !DICompositeType(tag: DW_TAG_structure_type, name: "Attach_Arg", scope: !7, file: !7, line: 134, size: 128, align: 64, elements: !11, identifier: "attach.Attach_Arg")
 !11 = !{!12, !13}
-!12 = !DIDerivedType(tag: DW_TAG_member, name: "kind", scope: !10, file: !7, line: 121, baseType: !9, size: 32, align: 32)
-!13 = !DIDerivedType(tag: DW_TAG_member, name: "box", scope: !10, file: !7, line: 122, baseType: !14, size: 64, align: 64, offset: 64)
+!12 = !DIDerivedType(tag: DW_TAG_member, name: "kind", scope: !10, file: !7, line: 136, baseType: !9, size: 32, align: 32)
+!13 = !DIDerivedType(tag: DW_TAG_member, name: "box", scope: !10, file: !7, line: 137, baseType: !14, size: 64, align: 64, offset: 64)
 !14 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "void*", baseType: null, size: 64, align: 64, dwarfAddressSpace: 0)
 !15 = !DIBasicType(name: "int", size: 32, encoding: DW_ATE_signed)
 !16 = !{!17}
@@ -644,54 +657,54 @@ no_match:                                         ; preds = %compare
 !48 = !DIDerivedType(tag: DW_TAG_member, name: "len", scope: !35, baseType: !46, size: 64, align: 64, offset: 64)
 !49 = !DILocalVariable(name: "args", arg: 1, scope: !32, file: !7, line: 15, type: !35)
 !50 = !DILocation(line: 15, column: 22, scope: !32)
-!51 = !DILocalVariable(name: "asdf", scope: !32, file: !7, line: 18, type: !52, align: 8)
+!51 = !DILocalVariable(name: "asdf", scope: !32, file: !7, line: 19, type: !52, align: 8)
 !52 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "Foo*", baseType: !53, size: 64, align: 64, dwarfAddressSpace: 0)
-!53 = !DICompositeType(tag: DW_TAG_structure_type, name: "Foo", scope: !7, file: !7, line: 27, size: 64, align: 64, elements: !54, identifier: "test.Foo")
+!53 = !DICompositeType(tag: DW_TAG_structure_type, name: "Foo", scope: !7, file: !7, line: 28, size: 64, align: 64, elements: !54, identifier: "test.Foo")
 !54 = !{!55}
-!55 = !DIDerivedType(tag: DW_TAG_member, name: "asdf", scope: !53, file: !7, line: 28, baseType: !14, size: 64, align: 64)
-!56 = !DILocation(line: 18, column: 8, scope: !32)
-!57 = !DILocation(line: 18, column: 26, scope: !32)
+!55 = !DIDerivedType(tag: DW_TAG_member, name: "asdf", scope: !53, file: !7, line: 30, baseType: !14, size: 64, align: 64)
+!56 = !DILocation(line: 19, column: 7, scope: !32)
+!57 = !DILocation(line: 19, column: 25, scope: !32)
 !58 = !DILocation
-!59 = distinct !DISubprogram(name: "[DEFAULT INIT]", linkageName: "[DEFAULT INIT]", scope: !7, file: !7, line: 33, scopeLine: 33, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6)
-!60 = !DILocation(line: 18, column: 15, scope: !32)
-!61 = !DILocation(line: 21, column: 8, scope: !32)
-!62 = !DILocation(line: 21, column: 37, scope: !32)
-!63 = !DILocation(line: 21, column: 3, scope: !32)
-!64 = !DILocation(line: 23, column: 3, scope: !32)
-!65 = !DILocation(line: 24, column: 10, scope: !32)
-!66 = distinct !DISubprogram(name: "create_foo", linkageName: "test.create_foo", scope: !7, file: !7, line: 33, type: !67, scopeLine: 33, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!59 = distinct !DISubprogram(name: "[DEFAULT INIT]", linkageName: "[DEFAULT INIT]", scope: !7, file: !7, line: 35, scopeLine: 35, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6)
+!60 = !DILocation(line: 19, column: 14, scope: !32)
+!61 = !DILocation(line: 22, column: 7, scope: !32)
+!62 = !DILocation(line: 22, column: 36, scope: !32)
+!63 = !DILocation(line: 22, column: 2, scope: !32)
+!64 = !DILocation(line: 24, column: 2, scope: !32)
+!65 = !DILocation(line: 25, column: 9, scope: !32)
+!66 = distinct !DISubprogram(name: "create_foo", linkageName: "test.create_foo", scope: !7, file: !7, line: 35, type: !67, scopeLine: 35, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
 !67 = !DISubroutineType(types: !68)
 !68 = !{!52, !10, !47, !39}
-!69 = !DILocalVariable(name: "attach", arg: 1, scope: !66, file: !7, line: 33, type: !10)
-!70 = !DILocation(line: 33, column: 31, scope: !66)
-!71 = !DILocalVariable(name: "flags", arg: 2, scope: !66, file: !7, line: 33, type: !47)
-!72 = !DILocation(line: 33, column: 49, scope: !66)
-!73 = !DILocalVariable(name: "name", arg: 3, scope: !66, file: !7, line: 33, type: !39)
-!74 = !DILocation(line: 33, column: 63, scope: !66)
+!69 = !DILocalVariable(name: "attach", arg: 1, scope: !66, file: !7, line: 35, type: !10)
+!70 = !DILocation(line: 35, column: 31, scope: !66)
+!71 = !DILocalVariable(name: "flags", arg: 2, scope: !66, file: !7, line: 35, type: !47)
+!72 = !DILocation(line: 35, column: 49, scope: !66)
+!73 = !DILocalVariable(name: "name", arg: 3, scope: !66, file: !7, line: 35, type: !39)
+!74 = !DILocation(line: 35, column: 63, scope: !66)
 !75 = !DILocation(line:
 !76 = distinct !DISubprogram(name: "new", linkageName: "new", scope: !77, file: !77, line:
 !77 = !DIFile(filename: "mem.c3"
-!78 = !DILocation(line: 34, column: 10, scope: !66)
-!79 = distinct !DISubprogram(name: "test", linkageName: "test.test", scope: !7, file: !7, line: 41, type: !80, scopeLine: 41, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!78 = !DILocation(line: 37, column: 9, scope: !66)
+!79 = distinct !DISubprogram(name: "test", linkageName: "test.test", scope: !7, file: !7, line: 45, type: !80, scopeLine: 45, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
 !80 = !DISubroutineType(types: !81)
 !81 = !{!52, !82}
-!82 = !DIDerivedType(tag: DW_TAG_typedef, name: "Color", scope: !7, file: !7, line: 79, baseType: !83, align: 16)
+!82 = !DIDerivedType(tag: DW_TAG_typedef, name: "Color", scope: !7, file: !7, line: 87, baseType: !83, align: 16)
 !83 = !DICompositeType(tag: DW_TAG_array_type, baseType: !84, size: 128, align: 32, flags: DIFlagVector, elements: !85)
 !84 = !DIBasicType(name: "float", size: 32, encoding: DW_ATE_float)
 !85 = !{!86}
 !86 = !DISubrange(count: 4, lowerBound: 0)
-!87 = !DILocalVariable(name: "color", arg: 1, scope: !79, file: !7, line: 41, type: !82)
-!88 = !DILocation(line: 41, column: 20, scope: !79)
-!89 = !DILocation
+!87 = !DILocalVariable(name: "color", arg: 1, scope: !79, file: !7, line: 45, type: !82)
+!88 = !DILocation(line: 45, column: 20, scope: !79)
+!89 = !DILocation(
 !90 = distinct !DISubprogram(name: "printn", linkageName: "printn"
 !91 = !DIFile(filename: "io.c3"
-!92 = !DILocation(line: 42, column: 3, scope: !79)
+!92 = !DILocation(line: 47, column: 2, scope: !79)
 !93 = !DILocalVariable(name: "len"
-!94 = distinct !DISubprogram(name: "fprintn", linkageName: "fprintn", scope: !91, file: !91, line: 172, scopeLine: 172, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!94 = distinct !DISubprogram(name: "fprintn", linkageName: "fprintn", scope: !91
 !95 = !DILocation
 !96 = !DILocation
 !97 = !DILocation
-!98 = distinct !DISubprogram(name: "fprint", linkageName: "fprint", scope: !91, file: !91, line: 114, scopeLine: 114, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6)
+!98 = distinct !DISubprogram(name: "fprint", linkageName: "fprint", scope: !91
 !99 = !DILocation
 !100 = !DILocation
 !101 = !DILocation
@@ -700,33 +713,33 @@ no_match:                                         ; preds = %compare
 !104 = !DILocation
 !105 = !DILocation
 !106 = !DILocation
-!107 = distinct !DISubprogram(name: "test2", linkageName: "test.test2", scope: !7, file: !7, line: 48, type: !108, scopeLine: 48, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!107 = distinct !DISubprogram(name: "test2", linkageName: "test.test2", scope: !7, file: !7, line: 51, type: !108, scopeLine: 51, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
 !108 = !DISubroutineType(types: !109)
 !109 = !{!14}
-!110 = !DILocalVariable(name: "scratch", scope: !111, file: !7, line: 110, type: !112, align: 8)
-!111 = distinct !DISubprogram(name: "@scratch", linkageName: "@scratch", scope: !7, file: !7, line: 109, scopeLine: 109, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !21)
-!112 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena_Cursor", scope: !7, file: !7, line: 88, size: 128, align: 64, elements: !113, identifier: "foo__Arena_Cursor")
+!110 = !DILocalVariable(name: "scratch", scope: !111, file: !7, line: 123, type: !112, align: 8)
+!111 = distinct !DISubprogram(name: "@scratch", linkageName: "@scratch", scope: !7, file: !7, line: 121, scopeLine: 121, spFlags: DISPFlagLocalToUnit | DISPFlagDefinition, unit: !6, retainedNodes: !21)
+!112 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena_Cursor", scope: !7, file: !7, line: 97, size: 128, align: 64, elements: !113, identifier: "foo__Arena_Cursor")
 !113 = !{!114, !119}
-!114 = !DIDerivedType(tag: DW_TAG_member, name: "arena", scope: !112, file: !7, line: 89, baseType: !115, size: 64, align: 64)
+!114 = !DIDerivedType(tag: DW_TAG_member, name: "arena", scope: !112, file: !7, line: 99, baseType: !115, size: 64, align: 64)
 !115 = !DIDerivedType(tag: DW_TAG_pointer_type, name: "Arena*", baseType: !116, size: 64, align: 64, dwarfAddressSpace: 0)
-!116 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena", scope: !7, file: !7, line: 84, size: 64, align: 64, elements: !117, identifier: "foo__Arena")
+!116 = !DICompositeType(tag: DW_TAG_structure_type, name: "Arena", scope: !7, file: !7, line: 92, size: 64, align: 64, elements: !117, identifier: "foo__Arena")
 !117 = !{!118}
-!118 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !116, file: !7, line: 85, baseType: !46, size: 64, align: 64)
-!119 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !112, file: !7, line: 90, baseType: !46, size: 64, align: 64, offset: 64)
-!120 = !DILocation(line: 110, column: 16, scope: !111, inlinedAt: !121)
+!118 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !116, file: !7, line: 94, baseType: !46, size: 64, align: 64)
+!119 = !DIDerivedType(tag: DW_TAG_member, name: "cursor", scope: !112, file: !7, line: 100, baseType: !46, size: 64, align: 64, offset: 64)
+!120 = !DILocation(line: 123, column: 15, scope: !111, inlinedAt: !121)
 !121 = !DILocation
 !122 = !DILocation
 !123 = !DILocation
-!124 = !DILocalVariable(name: "scratch", scope: !107, file: !7, line: 50, type: !115, align: 8)
-!125 = !DILocation(line: 50, column: 21, scope: !107)
+!124 = !DILocalVariable(name: "scratch", scope: !107, file: !7, line: 54, type: !115, align: 8)
+!125 = !DILocation(line: 54, column: 20, scope: !107)
 !126 = !DILocation
-!127 = distinct !DILexicalBlock(scope: !111, file: !7, line: 112, column: 3)
-!128 = !DILocalVariable(name: "asdf", scope: !129, file: !7, line: 51, type: !14, align: 8)
-!129 = distinct !DILexicalBlock(scope: !107, file: !7, line: 50, column: 30)
-!130 = !DILocation(line: 51, column: 11, scope: !129)
-!131 = !DILocation(line: 52, column: 12, scope: !129)
+!127 = distinct !DILexicalBlock(scope: !111, file: !7, line: 125, column: 2)
+!128 = !DILocalVariable(name: "asdf", scope: !129, file: !7, line: 56, type: !14, align: 8)
+!129 = distinct !DILexicalBlock(scope: !107, file: !7, line: 55, column: 2)
+!130 = !DILocation(line: 56, column: 12, scope: !129)
+!131 = !DILocation(line: 57, column: 13, scope: !129)
 !132 = !DILocation
-!133 = distinct !DILexicalBlock(scope: !111, file: !7, line: 111, column: 9)
+!133 = distinct !DILexicalBlock(scope: !111, file: !7, line: 124, column: 8)
 !134 = !DILocation
 !135 = distinct !DISubprogram(name: "_$main", linkageName: "main", scope: !7, file: !7, line: 15, type: !136, scopeLine: 15, flags: DIFlagPrototyped, spFlags: DISPFlagDefinition, unit: !6, retainedNodes: !21)
 !136 = !DISubroutineType(types: !137)

@@ -3,14 +3,14 @@ module testing;
 import blurb;
 import foo;
 
-def hello_int = foo::hello(<int>);
+def hello_int = foo::hello{int};
 
 fn void main()
 {
 	blurb::test(&hello_int);
 }
 
-module foo(<Type>);
+module foo{Type};
 
 fn void hello() {}
 

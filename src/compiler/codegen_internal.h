@@ -113,10 +113,10 @@ UNUSED static inline bool abi_type_is_promotable_integer_or_bool(AbiType type)
 	return false;
 }
 
-static inline bool expr_is_vector_index(Expr *expr)
+static inline bool expr_is_vector_index_or_swizzle(Expr *expr)
 {
-	return expr->expr_kind == EXPR_SUBSCRIPT
-		   && type_lowering(exprtype(expr->subscript_expr.expr))->type_kind == TYPE_VECTOR;
+	return (expr->expr_kind == EXPR_SUBSCRIPT && type_lowering(exprtype(expr->subscript_expr.expr))->type_kind == TYPE_VECTOR)
+			|| (expr->expr_kind == EXPR_SWIZZLE && type_lowering(exprtype(expr->swizzle_expr.parent))->type_kind == TYPE_VECTOR);
 }
 
 const char *codegen_create_asm(Ast *ast);

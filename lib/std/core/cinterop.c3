@@ -38,7 +38,7 @@ enum CBool : char
 // Helper macros
 macro typeid signed_int_from_bitsize(usz $bitsize) @private
 {
-	$switch ($bitsize)
+	$switch $bitsize:
 		$case 128: return int128.typeid;
 		$case 64: return long.typeid;
 		$case 32: return int.typeid;
@@ -50,7 +50,7 @@ macro typeid signed_int_from_bitsize(usz $bitsize) @private
 
 macro typeid unsigned_int_from_bitsize(usz $bitsize) @private
 {
-	$switch ($bitsize)
+	$switch $bitsize:
 		$case 128: return uint128.typeid;
 		$case 64: return ulong.typeid;
 		$case 32: return uint.typeid;

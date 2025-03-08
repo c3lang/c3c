@@ -12,6 +12,8 @@ fn void test_float() @test
 	assert(String.to_float("-23.545")!! == -23.545f);
 	assert(String.to_float("1.5555555555555")!! == 1.5555555555555f);
 	assert(String.to_float("1.5555555555556666")!! == 1.5555555555556666f);
+	test::@error("+".to_float(), NumberConversion.MALFORMED_FLOAT);
+	test::@error("-".to_float(), NumberConversion.MALFORMED_FLOAT);
 }
 
 fn void test_double() @test
@@ -26,4 +28,6 @@ fn void test_double() @test
 	assert(String.to_double("-23.545")!! == -23.545);
 	assert(String.to_double("1.5555555555555")!! == 1.5555555555555);
 	assert(String.to_double("1.5555555555556666")!! == 1.5555555555556666);
+	test::@error("+".to_double(), NumberConversion.MALFORMED_FLOAT);
+	test::@error("-".to_double(), NumberConversion.MALFORMED_FLOAT);
 }

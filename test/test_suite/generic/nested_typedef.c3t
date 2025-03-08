@@ -1,5 +1,5 @@
 // #target: macos-x64
-module broken(<Type>);
+module broken{Type};
 distinct Bar = Type;
 def Bar2 = Type;
 struct Baz
@@ -11,12 +11,12 @@ import broken;
 
 struct Foo
 {
-	Bar(<int>) y;
+	Bar{int} y;
 }
 
 struct Foo2
 {
-	Bar2(<int>) y;
+	Bar2{int} y;
 }
 fn int test() @if(Foo.sizeof > 2) => 1;
 fn int test2() @if(Foo2.sizeof > 2) => 1;

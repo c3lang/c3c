@@ -416,11 +416,10 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ANYFAULT_TO_FAULT:
 			break;
+		case NON_RUNTIME_EXPR:
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_ACCESS_RESOLVED:
-			break;
-		case EXPR_ANYSWITCH:
 			break;
 		case EXPR_ASM:
 			break;
@@ -440,35 +439,11 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_CATCH:
 			break;
-		case EXPR_COMPILER_CONST:
-			break;
 		case EXPR_COND:
 			break;
 		case EXPR_CONST:
 			c_emit_const_expr(c, value, expr);
 			return;
-		case EXPR_TYPECALL:
-			break;
-		case EXPR_CT_AND_OR:
-			break;
-		case EXPR_CT_ARG:
-			break;
-		case EXPR_CT_APPEND:
-			break;
-		case EXPR_CT_CALL:
-			break;
-		case EXPR_CT_CASTABLE:
-			break;
-		case EXPR_CT_CONCAT:
-			break;
-		case EXPR_CT_DEFINED:
-			break;
-		case EXPR_CT_EVAL:
-			break;
-		case EXPR_CT_IDENT:
-			break;
-		case EXPR_CT_IS_CONST:
-			break;
 		case EXPR_DECL:
 			break;
 		case EXPR_DEFAULT_ARG:
@@ -479,11 +454,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_EXPRESSION_LIST:
 			break;
-		case EXPR_EXPR_BLOCK:
-			break;
 		case EXPR_FORCE_UNWRAP:
-			break;
-		case EXPR_HASH_IDENT:
 			break;
 		case EXPR_IDENTIFIER:
 			break;
@@ -509,8 +480,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 			break;
 		case EXPR_POINTER_OFFSET:
 			break;
-		case EXPR_POISONED:
-			break;
 		case EXPR_POST_UNARY:
 			break;
 		case EXPR_RETHROW:
@@ -522,10 +491,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_SLICE_ASSIGN:
 			break;
 		case EXPR_SLICE_COPY:
-			break;
-		case EXPR_SPLAT:
-			break;
-		case EXPR_STRINGIFY:
 			break;
 		case EXPR_SUBSCRIPT:
 			break;
@@ -544,8 +509,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_TRY_UNWRAP_CHAIN:
 			break;
 		case EXPR_TYPEID_INFO:
-			break;
-		case EXPR_TYPEINFO:
 			break;
 		case EXPR_UNARY:
 			break;
@@ -620,23 +583,6 @@ static void c_emit_local_decl(GenContext *c, Decl *decl, CValue *value)
 		case VARDECL_BITMEMBER:
 			UNREACHABLE;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF: // DEPRECATED
-		{
-			PRINT("/* LOCAL DECL */\n");
-/*
-			Expr *init_expr = decl->var.init_expr;
-			llvm_emit_expr(c, value, init_expr);
-			if (llvm_value_is_addr(value) || decl->var.is_written || decl->var.is_addr || llvm_use_accurate_debug_info(c))
-			{
-				llvm_emit_and_set_decl_alloca(c, decl);
-				llvm_store_decl(c, decl, value);
-				return;
-			}
-
-			decl->is_value = true;
-			decl->backend_value = value->value;*/
-			return;
-		}
 		case VARDECL_UNWRAPPED:
 		case VARDECL_ERASE:
 		case VARDECL_REWRAPPED:
@@ -848,8 +794,6 @@ static void c_emit_stmt(GenContext *c, Ast *stmt)
 			PRINT("/* FOR */\n");
 			break;
 		case AST_FOREACH_STMT:
-			break;
-		case AST_IF_CATCH_SWITCH_STMT:
 			break;
 		case AST_IF_STMT:
 			break;

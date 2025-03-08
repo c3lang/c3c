@@ -1,7 +1,7 @@
 module std::io @test;
 import std::collections::list;
 
-def Results = List(<String>);
+def Results = List{String};
 
 struct ScanTest
 {
@@ -28,15 +28,13 @@ fn void scanner()
 
         Results results;
         defer results.free();
-        while LOOP: (true)
+        while (true)
         {
         	char[]! res = sc.scan(",,");
         	if (catch err = res)
         	{
-        		case SearchResult.MISSING:
-        			break LOOP;
-        		default:
-        			return err?!!;
+        		if (err == SearchResult.MISSING) break;
+        		return err?!!;
         	}
         	String str = (String)res;
             results.push(str.tconcat(""));

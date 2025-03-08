@@ -1,17 +1,17 @@
 module test;
 
-def Bob = Test(<any>);
+def Bob = Test{any};
 fn void Bob.crash(&self) {}
 
 fn int main()
 {
-  Test(<any>) foo;
+  Test{any} foo;
   return 0;
 }
 <*
  @require $defined(String.hash)
 *>
-module test::generic(<Some_Type>);
+module test::generic{Some_Type};
 
 enum Test
 {

@@ -4,9 +4,9 @@ import std::collections::growablebitset;
 import std::collections::list;
 import std::io;
 
-def List = List(<usz>);
+def List = List{usz};
 
-def BitSet = BitSet(<2048>);
+def BitSet = BitSet{2048};
 
 fn void set_get()
 {
@@ -24,7 +24,6 @@ fn void set_get()
 	assert(bs.cardinality() == 2);
 
 	List found;
-	found.temp_init();
 	foreach (i, x : bs)
 	{
 		switch (i)
@@ -46,11 +45,11 @@ fn void set_get()
 	assert(bs.cardinality() == 0);
 }
 
-def GrowableBitSet = GrowableBitSet(<char>);
+def GrowableBitSet = GrowableBitSet{char};
 fn void growable_set_get()
 {
 	GrowableBitSet bs;
-	bs.temp_init();
+	bs.tinit();
 	assert(bs.cardinality() == 0, "Invalid cardinality");
 
 	assert(!bs.get(0), "Get was true");
@@ -68,7 +67,6 @@ fn void growable_set_get()
 	assert(bs.len() == 2001, "Len should be 2001");
 
 	List found;
-	found.temp_init();
 	foreach (i, x : bs)
 	{
 		switch (i)

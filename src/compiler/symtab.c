@@ -4,8 +4,6 @@
 
 #include "compiler_internal.h"
 
-
-
 typedef struct SymtabEntry_
 {
 	struct SymtabEntry_* next;
@@ -47,7 +45,6 @@ const char *kw_at_pure;
 const char *kw_at_require;
 const char *kw_at_return;
 const char *kw_at_jump;
-const char *kw_construct;
 const char *kw_in;
 const char *kw_inout;
 const char *kw_len;
@@ -134,7 +131,6 @@ void symtab_init(uint32_t capacity)
 	kw_IoError = KW_DEF("IoError");
 
 	type = TOKEN_IDENT;
-	kw_construct = KW_DEF("construct");
 	kw_in = KW_DEF("in");
 	kw_inout = KW_DEF("inout");
 	kw_libc = KW_DEF("libc");
@@ -292,6 +288,8 @@ void symtab_init(uint32_t capacity)
 	builtin_list[BUILTIN_VOLATILE_STORE] = KW_DEF("volatile_store");
 	builtin_list[BUILTIN_WASM_MEMORY_GROW] = KW_DEF("wasm_memory_grow");
 	builtin_list[BUILTIN_WASM_MEMORY_SIZE] = KW_DEF("wasm_memory_size");
+	builtin_list[BUILTIN_WIDESTRING_16] = KW_DEF("wstr16");
+	builtin_list[BUILTIN_WIDESTRING_32] = KW_DEF("wstr32");
 
 	for (unsigned i = 0; i < NUMBER_OF_BUILTINS; i++)
 	{
@@ -317,7 +315,6 @@ void symtab_init(uint32_t capacity)
 	kw_at_require = KW_DEF("@require");
 	kw_at_return = KW_DEF("@return");
 	kw_at_jump = KW_DEF("@jump");
-	attribute_list[ATTRIBUTE_ADHOC] = KW_DEF("@adhoc");
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
 	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");

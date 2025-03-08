@@ -1158,12 +1158,14 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		Type *inferred_type = NULL;
 		switch (param->var.kind)
 		{
-			case VARDECL_PARAM_REF:
-				inferred_type = type_get_ptr(method_parent->type);
-				param->var.not_null = true;
-				param->var.kind = VARDECL_PARAM;
-				break;
 			case VARDECL_PARAM:
+				if (param->var.self_addr)
+				{
+					inferred_type = type_get_ptr(method_parent->type);
+					param->var.not_null = true;
+					break;
+				}
+				FALLTHROUGH;
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
 				inferred_type = method_parent->type;
@@ -1178,7 +1180,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	}
 
 	// Ensure it has at least one parameter if method.
-	if (method_parent && !vec_size(params) && decl->operator != OVERLOAD_CONSTRUCT)
+	if (method_parent && !vec_size(params))
 	{
 		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
 								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
@@ -1244,26 +1246,13 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		}
 		switch (var_kind)
 		{
-			case VARDECL_PARAM_REF:
-				if ((i != 0 || !method_parent) && !is_deprecated)
-				{
-					static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-					SEMA_DEPRECATED(param, "Reference macro arguments are deprecated. Consider using expression parameters instead '#%s'.", param->name);
-				}
-				if (type_info && !type_is_pointer(param->type))
-				{
-					SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
-							   type_quoted_error_string(type_get_ptr(param->type)));
-					return decl_poison(param);
-				}
-				FALLTHROUGH;
 			case VARDECL_PARAM_EXPR:
 				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
 					return decl_poison(param);
 				}
-				if (!is_macro_at_name && (!method_parent || i != 0 || var_kind != VARDECL_PARAM_REF))
+				if (!is_macro_at_name)
 				{
 					SEMA_ERROR(param, "Expression parameters are not allowed in function-like macros. Prefix the macro name with '@'.");
 					return decl_poison(param);
@@ -1713,32 +1702,6 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 	return NULL;
 }
 
-static inline bool sema_analyse_operator_construct(SemaContext *context, Decl *method)
-{
-	Signature *signature = &method->func_decl.signature;
-	Decl **params = signature->params;
-	uint32_t param_count = vec_size(params);
-	if (param_count && params[0] && params[0]->var.is_self)
-	{
-		RETURN_SEMA_ERROR(method, "'construct' methods cannot have 'self' parameters.");
-	}
-	if (!signature->rtype)
-	{
-		RETURN_SEMA_ERROR(method, "A 'construct' macro method should always have an explicitly typed return value.");
-	}
-	Type *rtype = typeget(signature->rtype)->canonical;
-	Type *parent = typeget(method->func_decl.type_parent);
-	if (parent->canonical != rtype && type_get_ptr(parent->canonical) != rtype)
-	{
-		RETURN_SEMA_ERROR(type_infoptr(signature->rtype),
-		                  "The return type of a 'construct' method must be the method type, or a pointer to it."
-		                  " In this case %s or %s was expected.",
-		                  type_quoted_error_string(parent), type_quoted_error_string(type_get_ptr(parent)));
-	}
-	return true;
-}
-
-
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method)
 {
 	TypeInfo *rtype;
@@ -1791,8 +1754,6 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 {
 	switch (method->operator)
 	{
-		case OVERLOAD_CONSTRUCT:
-			return sema_analyse_operator_construct(context, method);
 		case OVERLOAD_ELEMENT_SET:
 			return sema_analyse_operator_element_set(context, method);
 		case OVERLOAD_ELEMENT_AT:
@@ -1899,7 +1860,6 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 
 	// See if the operator has already been defined.
 	OperatorOverload operator = method->operator;
-	if (operator == OVERLOAD_CONSTRUCT) return true;
 
 	Decl *other = sema_find_operator(context, parent_type, operator);
 	if (other != method)
@@ -1966,7 +1926,6 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 				break;
 			}
 			return true;
-		case OVERLOAD_CONSTRUCT:
 		default:
 			UNREACHABLE
 	}
@@ -2365,10 +2324,8 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 	Decl **params = decl->func_decl.signature.params;
 	bool is_dynamic = decl->func_decl.attr_dynamic;
 
-	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
-
 	// Ensure that the first parameter is valid.
-	if (!is_constructor && !sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
+	if (!sema_is_valid_method_param(context, params[0], par_type, is_dynamic)) return false;
 
 	// Make dynamic checks.
 	if (is_dynamic)
@@ -2380,10 +2337,6 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		if (par_type == type_any)
 		{
 			RETURN_SEMA_ERROR(decl, "'any' may not implement '@dynamic' methods, only regular methods.");
-		}
-		if (is_constructor)
-		{
-			RETURN_SEMA_ERROR(decl, "A 'construct' method may not be '@dynamic'.");
 		}
 		// Retrieve the implemented method.
 		Decl *implemented_method = sema_find_interface_for_method(context, par_type, decl);
@@ -2531,7 +2484,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 	ASSERT(type >= 0 && type < NUMBER_OF_ATTRIBUTES);
 	// NOLINTBEGIN(*.EnumCastOutOfRange)
 	static AttributeDomain attribute_domain[NUMBER_OF_ATTRIBUTES] = {
-			[ATTRIBUTE_ADHOC] = USER_DEFINED_TYPES,
 			[ATTRIBUTE_ALIGN] = ATTR_FUNC | ATTR_CONST | ATTR_LOCAL | ATTR_GLOBAL | ATTR_BITSTRUCT | ATTR_STRUCT | ATTR_UNION | ATTR_MEMBER, // NOLINT
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
@@ -2682,11 +2634,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			{
 				case EXPR_UNRESOLVED_IDENTIFIER:
 					if (expr->unresolved_ident_expr.path) goto FAILED_OP_TYPE;
-					if (expr->unresolved_ident_expr.ident == kw_construct)
-					{
-						decl->operator = OVERLOAD_CONSTRUCT;
-						break;
-					}
 					if (expr->unresolved_ident_expr.ident != kw_len) goto FAILED_OP_TYPE;
 					decl->operator = OVERLOAD_LEN;
 					break;
@@ -2705,10 +2652,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			FAILED_OP_TYPE:
 			RETURN_SEMA_ERROR(attr, "'operator' requires an operator type argument: '[]', '[]=', '&[]' or 'len'.");
 		}
-		case ATTRIBUTE_ADHOC:
-			SEMA_DEPRECATED(attr, "'@adhoc' is deprecated.");
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			return true;
 		case ATTRIBUTE_ALIGN:
 			if (!expr)
 			{
@@ -3508,15 +3451,7 @@ static inline bool sema_analyse_main_function(SemaContext *context, Decl *decl)
 	bool is_err_return = false;
 	if (!is_err_return && type_is_optional(rtype))
 	{
-		if (rtype->optional->type_kind != TYPE_VOID)
-		{
-			RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional, unless it is 'void!'.");
-			return false;
-		}
-		is_int_return = false;
-		is_err_return = true;
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-		SEMA_DEPRECATED(rtype_info, "Main functions with 'void!' returns is deprecated, use 'int' or 'void' instead.");
+		RETURN_SEMA_ERROR(rtype_info, "The return type of 'main' cannot be an optional.");
 	}
 
 	if (type_is_void(rtype)) is_int_return = false;
@@ -3611,21 +3546,9 @@ static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *era
 			}
 			goto CHECK_DONE;
 		}
-		if (compiler.build.old_test != OLD_TEST_ON)
+		if (!type_is_void(rtype))
 		{
-			if (!type_is_void(rtype))
-			{
-				RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' you can allow 'void!' by passing in '--old-test-bench=yes'.");
-			}
-			goto CHECK_DONE;
-		}
-		if (!type_is_void(type_no_optional(rtype)))
-		{
-			RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' or 'void!'.");
-		}
-		if (!type_is_optional(rtype))
-		{
-			rtype_info->type = type_get_optional(rtype);
+			RETURN_SEMA_ERROR(rtype_info, "'@test' and '@benchmark' function may only return 'void' you can allow 'void!' by passing in '--old-test-bench=yes'.");
 		}
 	}
 CHECK_DONE:
@@ -3723,19 +3646,17 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 	ASSERT(parent_type_info->resolve_status == RESOLVE_DONE);
 	Type *parent_type = parent_type_info->type->canonical;
 
-	bool is_constructor = decl->operator == OVERLOAD_CONSTRUCT;
-
 	// Check the first argument.
-	Decl *first_param = is_constructor ? NULL : decl->func_decl.signature.params[0];
-	if (!is_constructor && !first_param)
+	Decl *first_param = decl->func_decl.signature.params[0];
+	if (!first_param)
 	{
 		RETURN_SEMA_ERROR(decl, "The first parameter to this method must be of type %s or %s.", type_quoted_error_string(parent_type),
 		                  type_quoted_error_string(type_get_ptr(parent_type)));
 	}
 
-	if (!is_constructor && !sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
+	if (!sema_is_valid_method_param(context, first_param, parent_type, false)) return false;
 
-	if (!is_constructor && first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM_REF && first_param->var.kind != VARDECL_PARAM)
+	if (first_param->var.kind != VARDECL_PARAM_EXPR && first_param->var.kind != VARDECL_PARAM_CT && first_param->var.kind != VARDECL_PARAM)
 	{
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
@@ -3762,13 +3683,6 @@ INLINE bool sema_analyse_macro_body(SemaContext *context, Decl **body_parameters
 		VarDeclKind kind = param->var.kind;
 		switch (kind)
 		{
-			case VARDECL_PARAM_REF:
-				// DEPRECATED
-				if (!type_info) break;
-				if (!sema_resolve_type_info(context, type_info, RESOLVE_TYPE_DEFAULT)) return false;
-				if (kind != VARDECL_PARAM_REF || type_is_pointer(type_info->type)) break;
-				RETURN_SEMA_ERROR(type_info, "A pointer type was expected for a ref argument, did you mean %s?",
-				                  type_quoted_error_string(type_get_ptr(type_info->type)));
 			case VARDECL_PARAM:
 			case VARDECL_PARAM_EXPR:
 			case VARDECL_PARAM_CT:
@@ -3830,7 +3744,6 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 					case EXPR_LAMBDA:
 					case EXPR_FORCE_UNWRAP:
 					case EXPR_ASM:
-					case EXPR_EXPR_BLOCK:
 					case EXPR_TERNARY:
 					case EXPR_RETHROW:
 						break;
@@ -3852,7 +3765,6 @@ static inline bool sema_check_body_const(SemaContext *context, Ast *body)
 			case AST_DEFER_STMT:
 			case AST_FOR_STMT:
 			case AST_FOREACH_STMT:
-			case AST_IF_CATCH_SWITCH_STMT:
 			case AST_IF_STMT:
 			case AST_BLOCK_EXIT_STMT:
 			case AST_SWITCH_STMT:
@@ -3921,7 +3833,6 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 			domain = ATTR_GLOBAL;
 			break;
 		case VARDECL_PARAM:
-		case VARDECL_PARAM_REF: // DEPRECATED
 		case VARDECL_PARAM_CT_TYPE:
 		case VARDECL_PARAM_CT:
 			domain = ATTR_PARAM;
@@ -4405,7 +4316,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 	}
 	else
 	{
-		scratch_buffer_append("(<");
+		scratch_buffer_append("{");
 	}
 	FOREACH_IDX(j, Expr *, param, params)
 	{
@@ -4474,7 +4385,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			}
 		}
 	}
-	scratch_buffer_append(mangled ? "$" : ">)");
+	scratch_buffer_append(mangled ? "$" : "}");
 	return true;
 }
 

@@ -4,6 +4,31 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
+<*
+ EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
+ way. It relies on the fact that distinct types are not implicitly convertable.
+
+ You can use `@is_empty_macro_slot()` and `@is_valid_macro_slot()` to figure out whether
+ the argument has been used or not.
+
+ An example:
+
+```c3
+macro foo(a, #b = EMPTY_MACRO_SLOT)
+{
+	$if @is_valid_macro_slot(#b):
+        return invoke_foo2(a, #b);
+    $else
+        return invoke_foo1(a);
+    $endif
+}
+*>
+const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
+
+distinct EmptySlot = void*;
+macro @is_empty_macro_slot(#arg) @const @builtin => @typeis(#arg, EmptySlot);
+macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
+
 /*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
 */
@@ -26,7 +51,7 @@ def VoidFn = fn void();
  Stores a variable on the stack, then restores it at the end of the
  macro scope.
 
- @param #variable `the variable to store and restore`
+ @param #variable : `the variable to store and restore`
  @require values::@is_lvalue(#variable)
 *>
 macro void @scope(#variable; @body) @builtin
@@ -38,7 +63,7 @@ macro void @scope(#variable; @body) @builtin
 
 <*
  Swap two variables
- @require $defined(#a = #b, #b = #a) `The values must be mutually assignable`
+ @require $defined(#a = #b, #b = #a) : `The values must be mutually assignable`
 *>
 macro void @swap(#a, #b) @builtin
 {
@@ -50,8 +75,8 @@ macro void @swap(#a, #b) @builtin
 <*
  Convert an `any` type to a type, returning an failure if there is a type mismatch.
 
- @param v `the any to convert to the given type.`
- @param $Type `the type to convert to`
+ @param v : `the any to convert to the given type.`
+ @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
  @ensure @typeis(return, $Type*)
  @return! CastResult.TYPE_MISMATCH
@@ -67,7 +92,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList! backtrace = backtrace::symbolize_backtrace(backtraces, allocator::temp());
+	BacktraceList! backtrace = backtrace::symbolize_backtrace(tmem(), backtraces);
 	if (catch backtrace) return false;
 	if (backtrace.len() <= backtraces_to_ignore) return false;
 	io::eprint("\nERROR: '");
@@ -146,7 +171,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 	@stack_mem(512; Allocator allocator)
 	{
 		DString s;
-		s.new_init(allocator: allocator);
+		s.init(allocator);
 		s.appendf(fmt, ...args);
 		in_panic = false;
 		panic(s.str_view(), file, function, line);
@@ -156,7 +181,7 @@ fn void panicf(String fmt, String file, String function, uint line, args...)
 <*
  Marks the path as unreachable. This will panic in safe mode, and in fast will simply be assumed
  never happens.
- @param [in] string "The panic message or format string"
+ @param [in] string : "The panic message or format string"
 *>
 macro void unreachable(String string = "Unreachable statement reached.", ...) @builtin @noreturn
 {
@@ -168,7 +193,7 @@ macro void unreachable(String string = "Unreachable statement reached.", ...) @b
 
 <*
  Marks the path as unsupported, this is similar to unreachable.
- @param [in] string "The error message"
+ @param [in] string : "The error message"
 *>
 macro void unsupported(String string = "Unsupported function invoked") @builtin @noreturn
 {
@@ -200,10 +225,10 @@ macro any.as_inner(&self)
 }
 
 <*
- @param expr "the expression to cast"
- @param $Type "the type to cast to"
+ @param expr : "the expression to cast"
+ @param $Type : "the type to cast to"
 
- @require $sizeof(expr) == $Type.sizeof  "Cannot bitcast between types of different size."
+ @require $sizeof(expr) == $Type.sizeof  : "Cannot bitcast between types of different size."
  @ensure @typeis(return, $Type)
 *>
 macro bitcast(expr, $Type) @builtin
@@ -218,9 +243,9 @@ macro bitcast(expr, $Type) @builtin
 }
 
 <*
- @param $Type `The type of the enum`
- @param [in] enum_name `The name of the enum to search for`
- @require $Type.kindof == ENUM `Only enums may be used`
+ @param $Type : `The type of the enum`
+ @param [in] enum_name : `The name of the enum to search for`
+ @require $Type.kindof == ENUM : `Only enums may be used`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
 *>
@@ -235,10 +260,10 @@ macro enum_by_name($Type, String enum_name) @builtin
 }
 
 <*
- @param $Type `The type of the enum`
- @require $Type.kindof == ENUM `Only enums may be used`
- @require $defined($Type.#value) `Expected '#value' to match an enum associated value`
- @require $assignable(value, $typeof(($Type){}.#value)) `Expected the value to match the type of the associated value`
+ @param $Type : `The type of the enum`
+ @require $Type.kindof == ENUM : `Only enums may be used`
+ @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
+ @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
  @return! SearchResult.MISSING
 *>
@@ -255,13 +280,13 @@ macro @enum_from_value($Type, #value, value) @builtin
 <*
  Mark an expression as likely to be true
 
- @param #value "expression to be marked likely"
- @param $probability "in the range 0 - 1"
+ @param #value : "expression to be marked likely"
+ @param $probability : "in the range 0 - 1"
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro bool @likely(bool #value, $probability = 1.0) @builtin
 {
-	$switch
+	$switch:
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value;
 	$case $probability == 1.0:
@@ -274,13 +299,13 @@ macro bool @likely(bool #value, $probability = 1.0) @builtin
 <*
  Mark an expression as unlikely to be true
 
- @param #value "expression to be marked unlikely"
- @param $probability "in the range 0 - 1"
+ @param #value : "expression to be marked unlikely"
+ @param $probability : "in the range 0 - 1"
  @require $probability >= 0 && $probability <= 1.0
 *>
 macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 {
-	$switch
+	$switch:
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value;
 	$case $probability == 1.0:
@@ -297,7 +322,7 @@ macro bool @unlikely(bool #value, $probability = 1.0) @builtin
 *>
 macro @expect(#value, expected, $probability = 1.0) @builtin
 {
-	$switch
+	$switch:
 	$case env::BUILTIN_EXPECT_IS_DISABLED:
 	return #value == expected;
 	$case $probability == 1.0:
@@ -322,9 +347,9 @@ enum PrefetchLocality
 <*
  Prefetch a pointer.
 
- @param [in] ptr `Pointer to prefetch`
- @param $locality `Locality ranging from none to extremely local`
- @param $write `Prefetch for write, otherwise prefetch for read.`
+ @param [in] ptr : `Pointer to prefetch`
+ @param $locality : `Locality ranging from none to extremely local`
+ @param $write : `Prefetch for write, otherwise prefetch for read.`
 *>
 macro @prefetch(void* ptr, PrefetchLocality $locality = VERY_NEAR, bool $write = false) @builtin
 {
@@ -367,7 +392,7 @@ macro bool @ok(#expr) @builtin
 }
 
 <*
- @require $defined(&#value, (char*)&#value) "This must be a value that can be viewed as a char array"
+ @require $defined(&#value, (char*)&#value) : "This must be a value that can be viewed as a char array"
  *>
 macro char[] @as_char_view(#value) @builtin
 {
@@ -390,7 +415,7 @@ macro @generic_hash_core(h, value)
 macro @generic_hash(value)
 {
 	uint h = @generic_hash_core((uint)0x3efd4391, value);
-	$for (var $cnt = 4; $cnt < $sizeof(value); $cnt += 4)
+	$for var $cnt = 4; $cnt < $sizeof(value); $cnt += 4:
 		value >>= 32; // reduce value
 		h = @generic_hash_core(h, value);
 	$endfor
@@ -409,14 +434,10 @@ macro uint int128.hash(int128 i) => @generic_hash(i);
 macro uint uint128.hash(uint128 i) => @generic_hash(i);
 macro uint bool.hash(bool b) => @generic_hash(b);
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
-macro uint String.hash(String c) => (uint)fnv32a::encode(c);
-macro uint char[].hash(char[] c) => (uint)fnv32a::encode(c);
+macro uint String.hash(String c) => (uint)fnv32a::hash(c);
+macro uint char[].hash(char[] c) => (uint)fnv32a::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
-distinct EmptySlot = void*;
-const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
-macro @is_empty_macro_slot(#arg) @builtin => @typeis(#arg, EmptySlot);
-macro @is_valid_macro_slot(#arg) @builtin => !@typeis(#arg, EmptySlot);
 
 const MAX_FRAMEADDRESS = 128;
 <*

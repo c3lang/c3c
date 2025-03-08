@@ -415,6 +415,7 @@ typedef struct VarDecl_
 	bool in_param : 1;
 	bool is_written : 1;
 	bool is_addr : 1;
+	bool self_addr : 1;
 	bool is_threadlocal : 1;
 	bool no_init : 1;
 	bool no_alias : 1;
@@ -984,11 +985,6 @@ typedef struct
 	void *block_return_out;
 } BlockExit;
 
-typedef struct
-{
-	AstId first_stmt;
-	BlockExit **block_exit_ref;
-} ExprFuncBlock;
 
 
 typedef struct
@@ -1063,22 +1059,6 @@ typedef struct
 
 typedef struct
 {
-	bool is_assign : 1;
-	bool is_deref : 1;
-	union
-	{
-		struct
-		{
-			const char *new_ident;
-			SourceSpan span;
-			Expr *any_expr;
-		};
-		Decl *variable;
-	};
-} ExprAnySwitch;
-
-typedef struct
-{
 	ExprId parent;
 	TypeIdInfoKind kind;
 } ExprTypeidInfo;
@@ -1086,6 +1066,7 @@ typedef struct
 typedef struct
 {
 	ExprId parent;
+	bool is_overlapping;
 	const char *swizzle;
 } ExprSwizzle;
 
@@ -1136,7 +1117,6 @@ struct Expr_
 	union {
 		ExprResolvedAccess access_resolved_expr;
 		ExprUnresolvedAccess access_unresolved_expr;// 16
-		ExprAnySwitch any_switch;                   // 32
 		ExprBinary binary_expr;                     // 12
 		ExprBinary veccomp_expr;
 		ExprBodyExpansion body_expansion_expr;      // 24
@@ -1149,7 +1129,6 @@ struct Expr_
 		Expr** cond_expr;                           // 8
 		ExprConst const_expr;                       // 32
 		ExprCtArg ct_arg_expr;
-		ExprCtAndOr ct_and_or_expr;
 		Expr** ct_concat;
 		ExprOtherContext expr_other_context;
 		ExprCastable castable_expr;
@@ -1162,7 +1141,6 @@ struct Expr_
 		ExprEmbedExpr embed_expr;                   // 16
 		Expr **exec_expr;                           // 8
 		ExprAsmArg expr_asm_arg;                    // 24
-		ExprFuncBlock expr_block;                   // 4
 		ExprCompoundLiteral expr_compound_literal;  // 16
 		Expr **expression_list;                     // 8
 		ExprIntToBool int_to_bool_expr;
@@ -1580,7 +1558,7 @@ typedef struct
 		};
 		struct
 		{
-			bool is_base64 : 1;
+            uint64_t is_base64 : 1;
 			uint64_t bytes_len : 63;
 		};
 		struct
@@ -1839,6 +1817,7 @@ typedef struct
 
 typedef struct
 {
+	bool should_print_environment;
 	HTable modules;
 	Module *core_module;
 	CompilationUnit *core_unit;
@@ -1876,6 +1855,7 @@ typedef struct
 	PlatformTarget platform;
 	Linking linking;
 	GlobalContext context;
+	const char *obj_output;
 } CompilerState;
 
 extern CompilerState compiler;
@@ -1920,7 +1900,6 @@ extern const char *kw_at_pure;
 extern const char *kw_at_require;
 extern const char *kw_at_return;
 extern const char *kw_at_jump;
-extern const char *kw_construct;
 extern const char *kw_in;
 extern const char *kw_inout;
 extern const char *kw_len;
@@ -2784,6 +2763,7 @@ INLINE bool type_is_atomic(Type *type_flat)
 		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
 		case TYPE_TYPEID:
+		case TYPE_BOOL:
 			break;
 		default:
 			return false;
@@ -3031,10 +3011,7 @@ static inline Type *type_flatten_to_int(Type *type)
 				type = type->decl->strukt.container_type->type;
 				break;
 			case TYPE_ENUM:
-				SEMA_DEPRECATED(type->decl, "Relying on conversion of enums into ordinals is deprecated, use inline on the value instead.");
-				static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-				type = type->decl->enums.type_info->type;
-				break;
+				return type;
 			case TYPE_VECTOR:
 				ASSERT(type_is_integer(type->array.base));
 				return type;
@@ -3449,9 +3426,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_COMPILER_CONST:
 		case EXPR_COMPOUND_LITERAL:
 		case EXPR_COND:
-		case EXPR_CT_AND_OR:
-		case EXPR_CT_APPEND:
-		case EXPR_CT_CONCAT:
 		case EXPR_CT_ARG:
 		case EXPR_CT_CALL:
 		case EXPR_CT_CASTABLE:
@@ -3462,7 +3436,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_DECL:
 		case EXPR_DESIGNATOR:
 		case EXPR_EMBED:
-		case EXPR_EXPR_BLOCK:
 		case EXPR_OPTIONAL:
 		case EXPR_FORCE_UNWRAP:
 		case EXPR_GENERIC_IDENT:
@@ -3498,7 +3471,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_TYPEINFO:
 		case EXPR_UNARY:
 		case EXPR_UNRESOLVED_IDENTIFIER:
-		case EXPR_ANYSWITCH:
 		case EXPR_VASPLAT:
 		case EXPR_MACRO_BODY:
 		case EXPR_DEFAULT_ARG:
@@ -4024,7 +3996,6 @@ static inline bool decl_is_var_local(Decl *decl)
 		   || kind == VARDECL_LOCAL
 		   || kind == VARDECL_LOCAL_CT_TYPE
 		   || kind == VARDECL_LOCAL_CT
-		   || kind == VARDECL_PARAM_REF // DEPRECATED
 		   || kind == VARDECL_PARAM_EXPR
 		   || kind == VARDECL_BITMEMBER
 		   || kind == VARDECL_MEMBER;
@@ -4117,3 +4088,6 @@ INLINE bool check_module_name(Path *path)
 void assert_print_line(SourceSpan span);
 
 const char *default_c_compiler(void);
+
+void print_build_env(void);
+const char *os_type_to_string(OsType os);

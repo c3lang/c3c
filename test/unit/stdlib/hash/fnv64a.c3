@@ -19,6 +19,6 @@ fn void test_fnv64a()
 	assert ((ulong)hash == want, "got: %d, want: %d", hash, want);
 
 	// encode
-	ulong encoded = fnv64a::encode(input);
+	ulong encoded = fnv64a::hash(input);
 	assert (encoded == want, "got: %d, want: %d", encoded, want);
 }

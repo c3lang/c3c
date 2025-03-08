@@ -249,8 +249,6 @@ b64\`{B64}\` { return(BYTES); }
 "=>"            { return(IMPLIES); }
 "[<"            { return(LVEC); }
 ">]"            { return(RVEC); }
-"(<"            { return(LGENPAR); }
-">)"            { return(RGENPAR); }
 "$$"            { return(BUILTIN); }
 ";"			{ return(';'); }
 ("{")		{ return('{'); }
@@ -276,8 +274,6 @@ b64\`{B64}\` { return(BYTES); }
 "^"			{ return('^'); }
 "|"			{ return('|'); }
 "?"			{ return('?'); }
-"{|"        { return(LBRAPIPE); }
-"|}"        { return(RBRAPIPE); }
 [ \t\v\n\f]		{ }
 .			{ /* ignore bad characters */ }
 

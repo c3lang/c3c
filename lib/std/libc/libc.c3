@@ -60,7 +60,6 @@ const CInt SIGQUIT = 3;
 const CInt SIGILL = 4;
 const CInt SIGTRAP = 5;
 const CInt SIGABRT = 6;
-const CInt SIGABTR @deprecated("use SIGABRT") = SIGABRT;
 const CInt SIGBUS = BSD_FLAVOR_SIG ? 10 : 7; // Or Mips
 const CInt SIGFPE = 8;
 const CInt SIGKILL = 9;

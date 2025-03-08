@@ -57,7 +57,7 @@ macro usz! read_any(stream, any ref)
 }
 
 <*
- @param [&in] ref "the object to write."
+ @param [&in] ref : "the object to write."
  @require @is_outstream(stream)
  @ensure return == ref.type.sizeof
 *>
@@ -80,7 +80,7 @@ macro usz! read_all(stream, char[] buffer)
 <*
  @require @is_instream(stream)
 *>
-macro char[]! read_new_fully(stream, Allocator allocator = allocator::heap())
+macro char[]! read_fully(Allocator allocator, stream)
 {
 	usz len = available(stream)!;
 	char* data = allocator::malloc_try(allocator, len)!;
@@ -104,11 +104,6 @@ macro usz! write_all(stream, char[] buffer)
 	return n;
 }
 
-macro usz! @read_using_read_byte(&s, char[] buffer) @deprecated
-{
-	return read_using_read_byte(*s, buffer);
-}
-
 macro usz! read_using_read_byte(s, char[] buffer)
 {
 	usz len = 0;
@@ -117,8 +112,8 @@ macro usz! read_using_read_byte(s, char[] buffer)
 		char! c = s.read_byte();
 		if (catch err = c)
 		{
-			case IoError.EOF: return len;
-			default: return err?;
+			if (err == IoError.EOF) return len;
+			return err?;
 		}
 		*cptr = c;
 		len++;
@@ -130,16 +125,6 @@ macro void! write_byte_using_write(s, char c)
 {
 	char[1] buff = { c };
 	s.write(&buff)!;
-}
-
-macro void! @write_byte_using_write(&s, char c) @deprecated
-{
-	return write_byte_using_write(*s, c);
-}
-
-macro char! @read_byte_using_read(&s) @deprecated
-{
-	return read_byte_using_read(*s);
 }
 
 macro char! read_byte_using_read(s)
@@ -159,17 +144,7 @@ macro usz! write_using_write_byte(s, char[] bytes)
 	return bytes.len;
 }
 
-macro usz! @write_using_write_byte(&s, char[] bytes) @deprecated
-{
-	return write_using_write_byte(*s, bytes);
-}
-
 macro void! pushback_using_seek(s)
-{
-	s.seek(-1, CURSOR)!;
-}
-
-macro void! @pushback_using_seek(&s) @deprecated
 {
 	s.seek(-1, CURSOR)!;
 }
@@ -179,7 +154,7 @@ fn usz! copy_to(InStream in, OutStream dst, char[] buffer = {})
 	if (buffer.len) return copy_through_buffer(in, dst, buffer);
 	if (&in.write_to) return in.write_to(dst);
 	if (&dst.read_to) return dst.read_to(in);
-	$switch (env::MEMORY_ENV)
+	$switch env::MEMORY_ENV:
 		$case NORMAL:
 			return copy_through_buffer(in, dst, &&(char[4096]){});
 		$case SMALL:
@@ -198,8 +173,8 @@ macro usz! copy_through_buffer(InStream in, OutStream dst, char[] buffer) @local
 		usz! len = in.read(buffer);
 		if (catch err = len)
 		{
-			case IoError.EOF: return total_copied;
-			default: return err?;
+			if (err == IoError.EOF) return total_copied;
+			return err?;
 		}
 		if (!len) return total_copied;
 		usz written = dst.write(buffer[:len])!;
@@ -226,10 +201,8 @@ macro usz! read_varint(stream, x_ptr)
 		char! c = stream.read_byte();
 		if (catch err = c)
 		{
-			case IoError.EOF:
-				return IoError.UNEXPECTED_EOF?;
-			default:
-				return err?;
+			if (err == IoError.EOF) return IoError.UNEXPECTED_EOF?;
+			return err?;
 		}
 		n++;
 		if (c & 0x80 == 0)
@@ -418,7 +391,7 @@ macro void! write_be_int128(stream, uint128 s)
 
 <*
  @require @is_outstream(stream)
- @require data.len < 256 "Data exceeded 255"
+ @require data.len < 256 : "Data exceeded 255"
 *>
 macro usz! write_tiny_bytearray(stream, char[] data)
 {
@@ -440,7 +413,7 @@ macro char[]! read_tiny_bytearray(stream, Allocator allocator)
 
 <*
  @require @is_outstream(stream)
- @require data.len < 0x1000 "Data exceeded 65535"
+ @require data.len < 0x1000 : "Data exceeded 65535"
 *>
 macro usz! write_short_bytearray(stream, char[] data)
 {

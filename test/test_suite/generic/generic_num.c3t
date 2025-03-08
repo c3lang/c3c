@@ -1,5 +1,5 @@
 // #target: macos-x64
-module hello(<Type, FOO>);
+module hello{Type, FOO};
 
 fn Type x(Type t)
 {
@@ -8,7 +8,7 @@ fn Type x(Type t)
 
 module test;
 import hello;
-def xint = hello::x(<int, -123>);
+def xint = hello::x{int, -123};
 
 import std::io;
 

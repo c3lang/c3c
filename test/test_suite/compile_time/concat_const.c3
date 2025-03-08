@@ -6,7 +6,7 @@ macro String to_string(uint $num) @const
 {
     char[] $res;
     int $i = 0;
-    $for (;$num != 0;)
+    $for ;$num != 0;:
         $res = $res +++ (char) ('0' + $num % 10);
         $num = $num / 10;
         $i++;

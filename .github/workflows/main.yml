@@ -95,7 +95,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 --enable-new-generics -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/
+          ..\build\${{ matrix.build_type }}\c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ..\build\${{ matrix.build_type }}\c3c.exe test_suite/ --no-terminal
 
       - name: Test python script
         run: |
@@ -112,7 +112,7 @@ jobs:
 
   build-msys2-mingw:
     runs-on: windows-latest
-    # if: ${{ false }}
+    if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -132,11 +132,11 @@ jobs:
           install: git binutils mingw-w64-x86_64-clang mingw-w64-x86_64-ninja mingw-w64-x86_64-cmake mingw-w64-x86_64-toolchain mingw-w64-x86_64-python
       - shell: msys2 {0}
         run: |
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-19.1.7-1-any.pkg.tar.zst
-            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-19.1.7-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-llvm-20.1.0-1-any.pkg.tar.zst
+            pacman --noconfirm -U https://mirror.msys2.org/mingw/mingw64/mingw-w64-x86_64-lld-20.1.0-1-any.pkg.tar.zst
       - name: CMake
         run: |
-          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
+          cmake -B build -G Ninja -DCMAKE_C_COMPILER=clang -DCMAKE_BUILD_TYPE=${{ matrix.build_type }} -DCMAKE_LINKER=lld
           cmake --build build
 
       - name: Compile and run some examples
@@ -168,8 +168,8 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c.exe compile --target windows-x64 -O1 src/test_suite_runner.c3 --enable-new-generics
-          ./test_suite_runner.exe ../build/c3c.exe test_suite/
+          ../build/c3c.exe compile --target windows-x64 -O1 src/test_suite_runner.c3
+          ./test_suite_runner.exe ../build/c3c.exe test_suite/ --no-terminal
 
   build-msys2-clang:
     runs-on: windows-latest
@@ -220,7 +220,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c.exe compile-run -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c.exe compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c.exe test_suite/ --no-terminal
 
   build-linux:
     runs-on: ubuntu-22.04
@@ -381,7 +381,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --enable-new-generics -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c  test_suite/
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_LINUX
@@ -390,6 +390,7 @@ jobs:
           cp -r lib c3
           cp msvc_build_libraries.py c3
           cp build/c3c c3
+          cp README.md c3
           tar czf c3-linux-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
@@ -502,13 +503,14 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --enable-new-generics -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU20
         run: |
           mkdir c3
           cp -r lib c3
+          cp README.md c3
           cp msvc_build_libraries.py c3
           cp build/c3c c3
           tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz c3
@@ -606,7 +608,7 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile-run -O1 src/test_suite_runner.c3 --enable-new-generics -- ../build/c3c test_suite/
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
 
   build-mac:
     runs-on: macos-latest
@@ -686,13 +688,13 @@ jobs:
       - name: run compiler tests
         run: |
           cd test
-          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c compile -O1 src/test_suite_runner.c3
           ./test_suite_runner ../build/c3c test_suite/
 
       - name: run build test suite runner
         run: |
           cd test
-          ../build/c3c compile -O1 src/test_suite_runner.c3 --enable-new-generics
+          ../build/c3c compile -O1 src/test_suite_runner.c3
 
       - name: bundle_output
         if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_MAC
@@ -700,6 +702,7 @@ jobs:
           mkdir macos
           cp -r lib macos
           cp msvc_build_libraries.py macos
+          cp README.md macos
           cp build/c3c macos
           zip -r c3-macos-${{matrix.build_type}}.zip macos
 
@@ -775,6 +778,8 @@ jobs:
       - run: cp -r lib c3-windows-Debug
       - run: cp msvc_build_libraries.py c3-windows-Release
       - run: cp msvc_build_libraries.py c3-windows-Debug
+      - run: cp README.md c3-windows-Release
+      - run: cp README.md c3-windows-Debug
       - run: zip -r c3-windows.zip c3-windows-Release
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz

@@ -38,30 +38,24 @@ fn void CsvReader.init(&self, InStream stream, String separator = ",")
 	self.stream = stream;
 	self.separator = separator;
 }
-
-fn CsvRow! CsvReader.read_new_row(self)
-{
-	return self.read_row(allocator::heap()) @inline;
-}
-
 <*
  @param [&inout] allocator
 *>
 fn CsvRow! CsvReader.read_row(self, Allocator allocator)
 {
-	String row = io::readline(self.stream, allocator: allocator)!;
+	String row = io::readline(allocator, self.stream)!;
 	defer catch allocator::free(allocator, row);
-	String[] list = row.split(self.separator, allocator: allocator);
+	String[] list = row.split(allocator, self.separator);
 	return { list, row, allocator };
 }
 
-fn CsvRow! CsvReader.read_temp_row(self)
+fn CsvRow! CsvReader.tread_row(self)
 {
-	return self.read_row(allocator::temp()) @inline;
+	return self.read_row(tmem()) @inline;
 }
 
 <*
- @require self.allocator != null  `Row already freed`
+ @require self.allocator != null  : `Row already freed`
 *>
 fn void CsvRow.free(&self)
 {
@@ -83,13 +77,13 @@ macro void! CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @
 	{
 		@stack_mem(512; Allocator mem)
 		{
-			String! s = io::readline(stream, mem);
+			String! s = io::readline(mem, stream);
 			if (catch err = s)
 			{
 				if (err == IoError.EOF) return;
 				return err?;
 			}
-			@body(s.split(sep, allocator: mem));
+			@body(s.split(mem, sep));
 		};
 	}
 }

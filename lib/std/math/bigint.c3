@@ -44,16 +44,15 @@ fn BigInt* BigInt.init(&self, int128 value)
 fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 {
 	self.data[..] = 0;
-	int128 tmp = value;
+	uint128 tmp = value;
 	uint len = 0;
-	while (tmp != 0 && len < MAX_LEN)
+	while (tmp != 0)
 	{
 		self.data[len] = (uint)(tmp & 0xFFFFFFFF);
 		tmp >>= 32;
 		len++;
 	}
-	self.len = len;
-	assert(value == 0 || tmp == 0 || !self.is_negative());
+	assert(!self.is_negative());
 	self.len = max(len, 1);
 	return self;
 }
@@ -64,11 +63,18 @@ fn BigInt* BigInt.init_with_u128(&self, uint128 value)
 fn BigInt* BigInt.init_with_array(&self, uint[] values)
 {
 	self.data[..] = 0;
+
+	if (values.len == 0)
+	{
+		self.len = 1;
+		return self;
+	}
+
 	self.len = values.len;
 
 	foreach_r(i, val : values)
 	{
-		values[values.len - 1 - i] = val;
+		self.data[values.len - 1 - i] = val;
 	}
 	while (self.len > 1 && self.data[self.len - 1] == 0)
 	{
@@ -514,7 +520,7 @@ fn String BigInt.to_string(&self, Allocator allocator) @dynamic
 }
 
 <*
- @require radix > 1 && radix <= 36 "Radix must be 2-36"
+ @require radix > 1 && radix <= 36 : "Radix must be 2-36"
 *>
 fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 {
@@ -525,7 +531,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 	{
 		BigInt a = *self;
 		DString str;
-		str.new_init(4096, allocator: mem);
+		str.init(mem, 4096);
 		bool negative = self.is_negative();
 		if (negative)
 		{
@@ -556,7 +562,7 @@ fn String BigInt.to_string_with_radix(&self, int radix, Allocator allocator)
 }
 
 <*
- @require !exp.is_negative() "Positive exponents only"
+ @require !exp.is_negative() : "Positive exponents only"
 *>
 fn BigInt BigInt.mod_pow(&self, BigInt exp, BigInt mod)
 {
@@ -840,7 +846,7 @@ fn BigInt BigInt.lcm(&self, BigInt other)
 }
 
 <*
- @require bits >> 5 < MAX_LEN "Required bits > maxlength"
+ @require bits >> 5 < MAX_LEN : "Required bits > maxlength"
 *>
 fn void BigInt.randomize_bits(&self, Random random, int bits)
 {

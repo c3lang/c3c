@@ -578,6 +578,7 @@ void llvm_emit_dynamic_functions(GenContext *c, Decl **funcs)
 		}
 		LLVMValueRef array = LLVMConstArray(entry_type, entries, len);
 		LLVMValueRef global = LLVMAddGlobal(c->module, LLVMTypeOf(array), "$c3_dynamic");
+		LLVMSetNoSanitizeAddress(global);
 		LLVMSetLinkage(global, LLVMInternalLinkage);
 		LLVMSetInitializer(global, array);
 		LLVMSetSection(global, "__DATA,__c3_dynamic");

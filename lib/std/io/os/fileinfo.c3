@@ -63,7 +63,7 @@ fn usz! native_file_size(String path) @if(env::DARWIN)
 
 fn bool native_file_or_dir_exists(String path)
 {
-	$switch
+	$switch:
 		$case env::DARWIN:
 		$case env::FREEBSD:
 		$case env::NETBSD:
@@ -88,7 +88,7 @@ fn bool native_file_or_dir_exists(String path)
 
 fn bool native_is_file(String path)
 {
-	$switch
+	$switch:
 		$case env::DARWIN:
 		$case env::FREEBSD:
 		$case env::NETBSD:

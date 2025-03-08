@@ -4,7 +4,7 @@ module rawsplat;
 int x;
 macro void foo(...)
 {
-	$for (var $i = 0; $i < $vacount; $i++)
+	$for var $i = 0; $i < $vacount; $i++:
 		x += $vaarg[$i] * $i;
 	$endfor
 }

@@ -1254,11 +1254,11 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 		case ';':
 			return new_token(lexer, TOKEN_EOS, ";");
 		case '{':
-			return match(lexer, '|') ? new_token(lexer, TOKEN_LBRAPIPE, "{|") : new_token(lexer, TOKEN_LBRACE, "{");
+			return new_token(lexer, TOKEN_LBRACE, "{");
 		case '}':
 			return new_token(lexer, TOKEN_RBRACE, "}");
 		case '(':
-			return match(lexer, '<') ? new_token(lexer, TOKEN_LGENPAR, "(<") : new_token(lexer, TOKEN_LPAREN, "(");
+			return new_token(lexer, TOKEN_LPAREN, "(");
 		case ')':
 			return new_token(lexer, TOKEN_RPAREN, ")");
 		case '[':
@@ -1314,7 +1314,6 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 				if (match(lexer, '=')) return new_token(lexer, TOKEN_SHR_ASSIGN, ">>=");
 				return new_token(lexer, TOKEN_SHR, ">>");
 			}
-			if (match(lexer, ')')) return new_token(lexer, TOKEN_RGENPAR, ">)");
 			if (match(lexer, ']')) return new_token(lexer, TOKEN_RVEC, ">]");
 			return match(lexer, '=') ? new_token(lexer, TOKEN_GREATER_EQ, ">=") : new_token(lexer, TOKEN_GREATER, ">");
 		case '%':
@@ -1326,7 +1325,6 @@ static bool lexer_scan_token_inner(Lexer *lexer)
 			}
 			return match(lexer, '=') ? new_token(lexer, TOKEN_BIT_AND_ASSIGN, "&=") : new_token(lexer, TOKEN_AMP, "&");
 		case '|':
-			if (match(lexer, '}')) return new_token(lexer, TOKEN_RBRAPIPE, "|}");
 			if (match(lexer, '|'))
 			{
 				return match(lexer, '|') ? new_token(lexer, TOKEN_CT_OR, "|||") : new_token(lexer, TOKEN_OR, "||");

@@ -1,12 +1,12 @@
 module std::bits;
 
 <*
- @require types::is_intlike($typeof(i)) `The input must be an integer or integer vector`
+ @require types::is_intlike($typeof(i)) : `The input must be an integer or integer vector`
 *>
 macro reverse(i) => $$bitreverse(i);
 
 <*
- @require types::is_intlike($typeof(i)) `The input must be an integer or integer vector`
+ @require types::is_intlike($typeof(i)) : `The input must be an integer or integer vector`
 *>
 macro bswap(i) @builtin => $$bswap(i);
 

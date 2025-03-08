@@ -52,40 +52,40 @@ fn uint128! int_from_any(any arg, bool *is_neg) @private
 			break;
 	}
 	*is_neg = false;
-	switch (arg)
+	switch (arg.type)
 	{
 		case bool:
-			return (uint128)*arg;
+			return *(uint128*)arg;
 		case ichar:
-			int val = *arg;
+			int val = *(ichar*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case short:
-			int val = *arg;
+			int val = *(short*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case int:
-			int val = *arg;
+			int val = *(int*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case long:
-			long val = *arg;
+			long val = *(long*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case int128:
-			int128 val = *arg;
+			int128 val = *(int128*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;
 		case char:
-			return *arg;
+			return *(char*)arg;
 		case ushort:
-			return *arg;
+			return *(ushort*)arg;
 		case uint:
-			return *arg;
+			return *(uint*)arg;
 		case ulong:
-			return *arg;
+			return *(ulong*)arg;
 		case uint128:
-			return *arg;
+			return *(uint128*)arg;
 		case float:
-			float f = *arg;
+			float f = *(float*)arg;
 			return (uint128)((*is_neg = f < 0) ? -f : f);
 		case double:
-			double d = *arg;
+			double d = *(double*)arg;
 			return (uint128)((*is_neg = d < 0) ? -d : d);
 		default:
 			return FormattingFault.BAD_FORMAT?;
@@ -101,34 +101,34 @@ fn FloatType! float_from_any(any arg) @private
 	{
 		return float_from_any(arg.as_inner());
 	}
-	switch (arg)
+	switch (arg.type)
 	{
 		case bool:
-			return (FloatType)*arg;
+			return (FloatType)*(bool*)arg;
 		case ichar:
-			return *arg;
+			return *(ichar*)arg;
 		case short:
-			return *arg;
+			return *(short*)arg;
 		case int:
-			return *arg;
+			return *(int*)arg;
 		case long:
-			return *arg;
+			return *(long*)arg;
 		case int128:
-			return *arg;
+			return *(int128*)arg;
 		case char:
-			return *arg;
+			return *(char*)arg;
 		case ushort:
-			return *arg;
+			return *(ushort*)arg;
 		case uint:
-			return *arg;
+			return *(uint*)arg;
 		case ulong:
-			return *arg;
+			return *(ulong*)arg;
 		case uint128:
-			return *arg;
+			return *(uint128*)arg;
 		case float:
-			return (FloatType)*arg;
+			return (FloatType)*(float*)arg;
 		case double:
-			return (FloatType)*arg;
+			return (FloatType)*(double*)arg;
 		default:
 			return FormattingFault.BAD_FORMAT?;
 	}
@@ -138,9 +138,9 @@ fn FloatType! float_from_any(any arg) @private
 <*
  Read a simple integer value, typically for formatting.
 
- @param [inout] len_ptr "the length remaining."
- @param [in] buf "the buf to read from."
- @param maxlen "the maximum len that can be read."
+ @param [inout] len_ptr : "the length remaining."
+ @param [in] buf : "the buf to read from."
+ @param maxlen : "the maximum len that can be read."
  @return "The result of the atoi."
 *>
 fn uint simple_atoi(char* buf, usz maxlen, usz* len_ptr) @inline @private

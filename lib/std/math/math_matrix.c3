@@ -1,4 +1,4 @@
-module std::math::matrix(<Real>);
+module std::math::matrix{Real};
 import std::math::vector;
 
 struct Matrix2x2

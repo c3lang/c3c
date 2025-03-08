@@ -1,3 +1,0 @@
-import std::io, std::core::mem;
-
-int foo = 1;

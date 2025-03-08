@@ -43,29 +43,27 @@ const Base64Alphabet URL = {
 const STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
 const URL_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_";
 
-fn String encode(char[] src, Allocator allocator, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn String encode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, encode_len(src.len, padding));
 	return encode_buffer(src, dst, padding, alphabet);
 }
 
-fn char[]! decode(char[] src, Allocator allocator, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
+fn char[]! decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
 	char[] dst = allocator::alloc_array(allocator, char, decode_len(src.len, padding))!;
 	return decode_buffer(src, dst, padding, alphabet);
 }
 
-fn String encode_new(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(code, allocator::heap(), padding, alphabet);
-fn String encode_temp(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(code, allocator::temp(), padding, alphabet);
-fn char[]! decode_new(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(code, allocator::heap(), padding, alphabet);
-fn char[]! decode_temp(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(code, allocator::temp(), padding, alphabet);
+fn String tencode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
+fn char[]! tdecode(char[] code, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
 
 
 <*
  Calculate the size of the encoded data.
- @param n "Size of the input to be encoded."
- @param padding "The padding character or 0 if none"
- @require padding < 0xFF "Invalid padding character"
+ @param n : "Size of the input to be encoded."
+ @param padding : "The padding character or 0 if none"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once encoded."
 *>
 fn usz encode_len(usz n, char padding)
@@ -77,9 +75,9 @@ fn usz encode_len(usz n, char padding)
 
 <*
  Calculate the size of the decoded data.
- @param n "Size of the input to be decoded."
- @param padding "The padding character or 0 if none"
- @require padding < 0xFF "Invalid padding character"
+ @param n : "Size of the input to be decoded."
+ @param padding : "The padding character or 0 if none"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once decoded."
  @return! DecodingFailure.INVALID_PADDING
 *>
@@ -99,13 +97,12 @@ fn usz! decode_len(usz n, char padding)
 
 <*
  Encode the content of src into dst, which must be properly sized.
- @param src "The input to be encoded."
- @param dst "The encoded input."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require padding < 0xFF "Invalid padding character"
+ @param src : "The input to be encoded."
+ @param dst : "The encoded input."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The encoded size."
- @return! Base64Error.DESTINATION_TOO_SMALL
 *>
 fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {
@@ -159,12 +156,12 @@ fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base
 
 <*
  Decode the content of src into dst, which must be properly sized.
- @param src "The input to be decoded."
- @param dst "The decoded input."
- @param padding "The padding character or 0 if none"
- @param alphabet "The alphabet to use"
- @require (decode_len(src.len, padding) ?? 0) <= dst.len "Destination buffer too small"
- @require padding < 0xFF "Invalid padding character"
+ @param src : "The input to be decoded."
+ @param dst : "The decoded input."
+ @param padding : "The padding character or 0 if none"
+ @param alphabet : "The alphabet to use"
+ @require (decode_len(src.len, padding) ?? 0) <= dst.len : "Destination buffer too small"
+ @require padding < 0xFF : "Invalid padding character"
  @return "The decoded data."
  @return! DecodingFailure
 *>
@@ -255,147 +252,4 @@ fn char[]! decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Bas
 }
 
 const MASK @private = 0b111111;
-
-struct Base64Encoder @deprecated
-{
-	char padding;
-	String alphabet;
-}
-
-fault Base64Error
-{
-	DUPLICATE_IN_ALPHABET,
-	PADDING_IN_ALPHABET,
-	DESTINATION_TOO_SMALL,
-	INVALID_PADDING,
-	INVALID_CHARACTER,
-}
-
-<*
- @param alphabet "The alphabet used for encoding."
- @param padding "Set to a negative value to disable padding."
- @require alphabet.len == 64
- @require padding < 256
- @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
-*>
-fn Base64Encoder*! Base64Encoder.init(&self, String alphabet, int padding = '=')
-{
-	check_alphabet(alphabet, padding)!;
-	*self = { .padding = padding < 0 ? 0 : (char)padding, .alphabet = alphabet };
-	return self;
-}
-
-<*
- Calculate the size of the encoded data.
- @param n "Size of the input to be encoded."
- @return "The size of the input once encoded."
-*>
-fn usz Base64Encoder.encode_len(&self, usz n)
-{
-	return encode_len(n, self.padding);
-}
-
-<*
- Encode the content of src into dst, which must be properly sized.
- @param src "The input to be encoded."
- @param dst "The encoded input."
- @return "The encoded size."
- @return! Base64Error.DESTINATION_TOO_SMALL
-*>
-fn usz! Base64Encoder.encode(&self, char[] src, char[] dst)
-{
-	if (src.len == 0) return 0;
-	usz dn = self.encode_len(src.len);
-	if (dst.len < dn) return Base64Error.DESTINATION_TOO_SMALL?;
-	Base64Alphabet a = { .encoding = self.alphabet[:64] };
-	return encode_buffer(src, dst, self.padding, &a).len;
-}
-
-struct Base64Decoder @deprecated
-{
-	char padding;
-	Base64Alphabet encoding;
-	bool init_done;
-}
-
-import std;
-<*
- @param alphabet "The alphabet used for encoding."
- @param padding "Set to a negative value to disable padding."
- @require alphabet.len == 64
- @require padding < 256
- @return! Base64Error.DUPLICATE_IN_ALPHABET, Base64Error.PADDING_IN_ALPHABET
-*>
-fn void! Base64Decoder.init(&self, String alphabet, int padding = '=')
-{
-	self.init_done = true;
-	check_alphabet(alphabet, padding)!;
-	*self = { .padding = padding < 0 ? 0 : (char)padding, .encoding.encoding = alphabet[:64] };
-
-	self.encoding.reverse[..] = 0xFF;
-
-	foreach (i, c : alphabet)
-	{
-		self.encoding.reverse[c] = (char)i;
-	}
-}
-
-<*
- Calculate the size of the decoded data.
- @param n "Size of the input to be decoded."
- @return "The size of the input once decoded."
- @return! Base64Error.INVALID_PADDING
-*>
-fn usz! Base64Decoder.decode_len(&self, usz n)
-{
-	return decode_len(n, self.padding) ?? Base64Error.INVALID_PADDING?;
-}
-
-<*
- Decode the content of src into dst, which must be properly sized.
- @param src "The input to be decoded."
- @param dst "The decoded input."
- @return "The decoded size."
- @return! Base64Error.DESTINATION_TOO_SMALL, Base64Error.INVALID_PADDING, Base64Error.INVALID_CHARACTER
-*>
-fn usz! Base64Decoder.decode(&self, char[] src, char[] dst)
-{
-	if (src.len == 0) return 0;
-	usz dn = self.decode_len(src.len)!;
-	if (dst.len < dn) return Base64Error.DESTINATION_TOO_SMALL?;
-	char[]! decoded = decode_buffer(src, dst, self.padding, &self.encoding);
-	if (catch err = decoded)
-	{
-		case DecodingFailure.INVALID_PADDING:
-			return Base64Error.INVALID_PADDING?;
-		case DecodingFailure.INVALID_CHARACTER:
-			return Base64Error.INVALID_CHARACTER?;
-		default:
-			return err?;
-	}
-	return decoded.len;
-}
-
-// Make sure that all bytes in the alphabet are unique and
-// the padding is not present in the alphabet.
-fn void! check_alphabet(String alphabet, int padding) @local
-{
-	bool[256] checked;
-	if (padding < 0)
-	{
-		foreach (c : alphabet)
-		{
-			if (checked[c]) return Base64Error.DUPLICATE_IN_ALPHABET?;
-			checked[c] = true;
-		}
-		return;
-	}
-	char pad = (char)padding;
-	foreach (c : alphabet)
-	{
-		if (c == pad) return Base64Error.PADDING_IN_ALPHABET?;
-		if (checked[c]) return Base64Error.DUPLICATE_IN_ALPHABET?;
-		checked[c] = true;
-	}
-}
 

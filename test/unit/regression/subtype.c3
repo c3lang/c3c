@@ -18,7 +18,7 @@ fn void switch_subtyping()
 	Foo f = {};
 	f.z = 123;
 	any x = &f;
-	switch (x)
+	switch (x.type)
 	{
 		case int:
 			assert(false);
@@ -27,7 +27,7 @@ fn void switch_subtyping()
 		default:
 			assert(false);
 	}
-	switch (x)
+	switch (x.type)
 	{
 		case int:
 			assert(false);
@@ -36,7 +36,7 @@ fn void switch_subtyping()
 		default:
 			assert(false);
 	}
-	switch (x)
+	switch (x.type)
 	{
 		case int:
 			assert(false);
@@ -69,7 +69,7 @@ fn void switch_subtyping()
 		default:
 			assert(false);
 	}
-	$switch (Bar.typeid)
+	$switch Bar.typeid:
 	$case Foo:
 		assert(true);
 	$case Bar:

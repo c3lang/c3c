@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
@@ -12,8 +12,8 @@ struct SimpleHeapAllocator (Allocator)
 }
 
 <*
- @require allocator != null  "An underlying memory provider must be given"
- @require !self.free_list "The allocator may not be already initialized"
+ @require allocator != null  : "An underlying memory provider must be given"
+ @require !self.free_list : "The allocator may not be already initialized"
 *>
 fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
 {

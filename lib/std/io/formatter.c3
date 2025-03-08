@@ -6,8 +6,7 @@ const int PRINTF_NTOA_BUFFER_SIZE = 256;
 
 interface Printable
 {
-	fn String to_string(Allocator allocator) @optional;
-	fn String to_new_string(Allocator allocator) @optional @deprecated("Use to_string");
+	fn String to_constant_string() @optional;
 	fn usz! to_format(Formatter* formatter) @optional;
 }
 
@@ -28,20 +27,19 @@ macro bool is_struct_with_default_print($Type)
 {
 	return $Type.kindof == STRUCT
 		&&& !$defined($Type.to_format)
-		&&& !$defined($Type.to_new_string)
-		&&& !$defined($Type.to_string);
+		&&& !$defined($Type.to_constant_string);
 }
 
 <*
  Introspect a struct and print it to a formatter
 
- @require @typekind(value) == STRUCT `This macro is only valid on macros`
+ @require @typekind(value) == STRUCT : `This macro is only valid on macros`
 *>
 macro usz! struct_to_format(value, Formatter* f, bool $force_dump)
 {
     var $Type = $typeof(value);
     usz total = f.print("{ ")!;
-    $foreach ($i, $member : $Type.membersof)
+    $foreach $i, $member : $Type.membersof:
         $if $i > 0:
             total += f.print(", ")!;
         $endif
@@ -125,7 +123,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 		if (!arg) return self.out_substr("(null)");
 		return arg.to_format(self);
 	}
-	if (&arg.to_string)
+	if (&arg.to_constant_string)
 	{
 		PrintFlags old = self.flags;
 		uint old_width = self.width;
@@ -137,10 +135,7 @@ fn usz! Formatter.print_with_function(&self, Printable arg)
 			self.prec = old_prec;
 		}
 		if (!arg) return self.out_substr("(null)");
-		@stack_mem(1024; Allocator mem)
-		{
-			return self.out_substr(arg.to_string(mem));
-		};
+		return self.out_substr(arg.to_constant_string());
 	}
 	return SearchResult.MISSING?;
 }
@@ -345,13 +340,16 @@ macro usz! @wrap_bad(Formatter* f, #action)
 	usz! len = #action;
 	if (catch err = len)
 	{
-		case PrintFault.BUFFER_EXCEEDED:
-		case PrintFault.INTERNAL_BUFFER_EXCEEDED:
-			return f.first_err(err)?;
-		default:
-			err = f.first_err(PrintFault.INVALID_ARGUMENT);
-			f.out_substr("<INVALID>")!;
-			return err?;
+		switch (err)
+		{
+			case PrintFault.BUFFER_EXCEEDED:
+        	case PrintFault.INTERNAL_BUFFER_EXCEEDED:
+        		return f.first_err(err)?;
+        	default:
+        		err = f.first_err(PrintFault.INVALID_ARGUMENT);
+        		f.out_substr("<INVALID>")!;
+        		return err?;
+		}
 	}
 	return len;
 }
@@ -484,10 +482,9 @@ fn usz! Formatter.vprintf(&self, String format, any[] anys)
 				nextcase;
 			case 'h':
             	char[] out @noinit;
-				switch (current)
+				switch (current.type)
 				{
 					case char[]:
-						out = *current;
 					case ichar[]:
 						out = *(char[]*)current;
 					default:

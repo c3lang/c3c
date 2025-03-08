@@ -1,5 +1,5 @@
 // #target: macos-x64
-module test(<FOO>);
+module test{FOO};
 
 const Z = FOO;
 
@@ -18,8 +18,8 @@ enum Abc
 
 fn void main()
 {
-    Foo(<Abc.ONE>) x;
-    Abc e = test::Z(<Abc.ONE>);
+    Foo{Abc.ONE} x;
+    Abc e = test::Z{Abc.ONE};
 }
 
 /* #expect: tester.ll

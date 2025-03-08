@@ -272,31 +272,34 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		case COMMAND_COMPILE_BENCHMARK:
 		case COMMAND_BENCHMARK:
-			target->run_after_compile = true;
+			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_BENCHMARK;
 			break;
 		case COMMAND_COMPILE_TEST:
 		case COMMAND_TEST:
-			target->run_after_compile = true;
+			target->run_after_compile = !options->suppress_run;
 			target->type = TARGET_TYPE_TEST;
 			switch (options->ansi)
 			{
 				case ANSI_ON:
-					vec_add(target->args, "useansi");
+					vec_add(target->args, "--useansi");
 					break;
 				case ANSI_OFF:
-					vec_add(target->args, "noansi");
+					vec_add(target->args, "--noansi");
 					break;
 				default:
 					break;
 			}
 			if (options->test_filter)
 			{
-				vec_add(target->args, "filter");
+				vec_add(target->args, "--test-filter");
 				vec_add(target->args, options->test_filter);
 			}
-			if (options->test_breakpoint) vec_add(target->args, "breakpoint");
-			if (options->test_nosort) vec_add(target->args, "nosort");
+			if (options->test_breakpoint) vec_add(target->args, "--test-breakpoint");
+			if (options->test_nosort) vec_add(target->args, "--test-nosort");
+			if (options->test_quiet) vec_add(target->args, "--test-quiet");
+			if (options->test_noleak) vec_add(target->args, "--test-noleak");
+			if (options->test_nocapture) vec_add(target->args, "--test-nocapture");
 			break;
 		case COMMAND_RUN:
 		case COMMAND_COMPILE_RUN:
@@ -314,7 +317,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 			break;
 		case COMMAND_STATIC_LIB:
 			target->type = TARGET_TYPE_STATIC_LIB;
-			target->single_module = true;
+			target->single_module = SINGLE_MODULE_ON;
 			break;
 		default:
 			target->run_after_compile = false;
@@ -380,7 +383,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->memory_environment, options->memory_environment);
 	set_if_updated(target->debug_info, options->debug_info_override);
 	set_if_updated(target->show_backtrace, options->show_backtrace);
-	set_if_updated(target->old_test, options->old_test);
 	set_if_updated(target->arch_os_target, options->arch_os_target_override);
 	set_if_updated(target->reloc_model, options->reloc_model);
 	set_if_updated(target->use_stdlib, options->use_stdlib);
@@ -394,8 +396,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	set_if_updated(target->feature.win_debug, options->win_debug);
 
 	set_if_updated(target->feature.pass_win64_simd_as_arrays, options->win_64_simd);
-	set_if_updated(target->old_test, options->old_test);
-	set_if_updated(target->old_test, options->old_test);
 
 	OVERRIDE_IF_SET(output_dir);
 	OVERRIDE_IF_SET(panicfn);
@@ -445,8 +445,6 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	target->benchmarking = options->benchmarking;
 	target->testing = options->testing;
 	target->silent = options->verbosity_level < 0;
-	target->vector_conv = options->vector_conv;
-	target->enable_new_generics = options->enable_new_generics;
 	switch (options->sanitize_mode)
 	{
 		case SANITIZE_NOT_SET: break;
@@ -472,7 +470,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	if (command_accepts_files(options->command))
 	{
 		target->build_dir = options->build_dir ? options->build_dir : ".build";
-		if (!target->script_dir) target->script_dir = target->build_dir;
+		if (!target->script_dir) target->script_dir = ".";
 	}
 	else
 	{
@@ -504,9 +502,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 	if (!target->object_file_dir)
 	{
-		target->object_file_dir = options->build_dir
-			? file_append_path(file_append_path(options->build_dir, "obj"), target_name)
-			: file_append_path("obj", target_name);
+		target->object_file_dir = file_append_path(file_append_path(target->build_dir, "obj"), target_name);
 	}
 
 	switch (options->compile_option)
@@ -558,6 +554,11 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->emit_object_files = false;
 	}
+	if (options->output_name && target->emit_object_files
+		&& target->single_module != SINGLE_MODULE_ON && target->type == TARGET_TYPE_OBJECT_FILES)
+	{
+		error_exit("'-o' cannot be used when generating multiple output files, try using '--single-module=yes' to compile into a single object file.");
+	}
 	for (int i = 0; i < options->lib_dir_count; i++)
 	{
 		vec_add(target->libdirs, options->lib_dir[i]);
@@ -572,6 +573,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	{
 		target->link_libc = libc_from_arch_os(target->arch_os_target);
 	}
+
 }
 
 void init_default_build_target(BuildTarget *target, BuildOptions *options)

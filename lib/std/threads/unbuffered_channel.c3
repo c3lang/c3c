@@ -1,4 +1,4 @@
-module std::thread::channel(<Type>);
+module std::thread::channel{Type};
 
 distinct UnbufferedChannel = void*;
 
@@ -17,8 +17,6 @@ struct UnbufferedChannelImpl @private
 	usz read_waiting;
 	ConditionVariable read_cond;
 }
-
-fn void! UnbufferedChannel.new_init(&self) => self.init(allocator::heap());
 
 fn void! UnbufferedChannel.init(&self, Allocator allocator)
 {

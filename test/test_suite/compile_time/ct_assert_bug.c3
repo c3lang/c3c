@@ -11,7 +11,7 @@ fn void main()
 
 macro bool deep_equal(a, b)
 {
-    $switch ($typeof(a).kindof)
+    $switch $typeof(a).kindof:
         $case SLICE:
             if (a.len != b.len) return false;
             foreach (i, x : a)

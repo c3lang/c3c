@@ -30,7 +30,7 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 		if (!module->is_generic) goto DONE;
 		if (vec_size(parameters) != vec_size(module->parameters))
 		{
-			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module->name);
+			PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
 			SEMA_NOTE(module->name, "A different definition can be found here.");
 			return false;
 		}
@@ -39,7 +39,7 @@ static inline bool create_module_or_check_name(CompilationUnit *unit, Path *modu
 			bool is_type = str_is_type(name);
 			if (is_type != str_is_type(module->parameters[idx]))
 			{
-				PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module->name);
+				PRINT_ERROR_AT(module_name, "The parameter declarations of the generic module '%s' don't match.", module_name->module);
 				SEMA_NOTE(module->name, "The other definition is here.");
 				return false;
 			}

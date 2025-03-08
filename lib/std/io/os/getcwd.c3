@@ -3,7 +3,7 @@ import libc, std::os;
 
 macro String! getcwd(Allocator allocator = allocator::heap())
 {
-	$switch
+	$switch:
 		$case env::WIN32:
 			const DEFAULT_BUFFER = 256;
 			Char16[DEFAULT_BUFFER] buffer;
@@ -17,7 +17,7 @@ macro String! getcwd(Allocator allocator = allocator::heap())
 				free = true;
 			}
 			Char16[] str16 = res[:win32::wcslen(res)];
-			return string::new_from_utf16(str16, allocator);
+			return string::from_utf16(allocator, str16);
 
 		$case env::POSIX:
 			const usz DEFAULT_BUFFER = 256;

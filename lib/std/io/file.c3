@@ -21,7 +21,7 @@ fn File! open_path(Path path, String mode)
 
 fn bool exists(String file) => @pool()
 {
-	return path::exists(path::temp_new(file)) ?? false;
+	return os::native_file_or_dir_exists(file);
 }
 
 fn File from_handle(CFile file)
@@ -34,12 +34,20 @@ fn bool is_file(String path)
 	return os::native_is_file(path);
 }
 
+fn bool is_dir(String path)
+{
+	return os::native_is_dir(path);
+}
+
 fn usz! get_size(String path)
 {
 	return os::native_file_size(path);
 }
 
-fn void! delete(String filename) => os::native_remove(filename) @inline;
+fn void! delete(String filename)
+{
+	return os::native_remove(filename) @inline;
+}
 
 
 <*
@@ -69,7 +77,7 @@ fn void! File.memopen(File* file, char[] data, String mode)
 {
 	@pool()
 	{
-		file.file = libc::memopen(data.ptr, data.len, mode.zstr_tcopy(), file.file);
+		file.file = libc::memopen(data.ptr, data.len, mode.to_temp_zstr(), file.file);
 		// TODO errors
 	};
 }
@@ -128,7 +136,7 @@ fn usz! File.read(&self, char[] buffer) @dynamic
 
 <*
  @param [out] buffer
- @require self.file != null `File must be initialized`
+ @require self.file != null : `File must be initialized`
 *>
 fn usz! File.write(&self, char[] buffer) @dynamic
 {
@@ -156,8 +164,8 @@ fn char! File.read_byte(&self) @dynamic
  Load up to buffer.len characters. Returns IoError.OVERFLOW if the file is longer
  than the buffer.
 
- @param filename "The path to the file to read"
- @param [in] buffer "The buffer to read to"
+ @param filename : "The path to the file to read"
+ @param [in] buffer : "The buffer to read to"
 *>
 fn char[]! load_buffer(String filename, char[] buffer)
 {
@@ -214,7 +222,7 @@ fn void! save(String filename, char[] data)
 }
 
 <*
- @require self.file != null `File must be initialized`
+ @require self.file != null : `File must be initialized`
 *>
 fn void! File.flush(&self) @dynamic
 {

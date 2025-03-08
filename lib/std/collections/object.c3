@@ -50,7 +50,7 @@ fn usz! Object.to_format(&self, Formatter* formatter) @dynamic
 			usz n = formatter.printf("{")!;
 			@stack_mem(1024; Allocator mem)
 			{
-				foreach (i, key : self.map.copy_keys(mem))
+				foreach (i, key : self.map.keys(mem))
 				{
 					if (i > 0) n += formatter.printf(",")!;
 					n += formatter.printf(`"%s":`, key)!;
@@ -156,7 +156,7 @@ fn void Object.init_map_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalMap.typeid;
-		self.map.new_init(allocator: self.allocator);
+		self.map.init(self.allocator);
 	}
 }
 
@@ -168,7 +168,7 @@ fn void Object.init_array_if_needed(&self) @private
 	if (self.is_empty())
 	{
 		self.type = ObjectInternalList.typeid;
-		self.array.new_init(allocator: self.allocator);
+		self.array.init(self.allocator);
 	}
 }
 
@@ -189,7 +189,7 @@ fn void Object.set_object(&self, String key, Object* new_object) @private
 macro Object* Object.object_from_value(&self, value) @private
 {
 	var $Type = $typeof(value);
-	$switch
+	$switch:
 		$case types::is_int($Type):
 			return new_int(value, self.allocator);
 		$case types::is_float($Type):
@@ -292,7 +292,7 @@ fn void Object.set_object_at(&self, usz index, Object* to_set)
 }
 
 <*
- @require $Type.kindof.is_int() "Expected an integer type."
+ @require $Type.kindof.is_int() : "Expected an integer type."
 *>
 macro get_integer_value(Object* value, $Type)
 {
@@ -462,7 +462,7 @@ fn Object* Object.get_or_create_obj(&self, String key)
 	return container;
 }
 
-def ObjectInternalMap = HashMap(<String, Object*>) @private;
-def ObjectInternalList = List(<Object*>) @private;
-def ObjectInternalMapEntry = Entry(<String, Object*>) @private;
+def ObjectInternalMap = HashMap{String, Object*} @private;
+def ObjectInternalList = List{Object*} @private;
+def ObjectInternalMapEntry = Entry{String, Object*} @private;
 

@@ -59,7 +59,7 @@ fn void csv_row()
 	};
 	CsvReader r;
 	r.init((ByteReader){}.init(t.input), t.sep);
-	CsvRow row = r.read_temp_row()!!;
+	CsvRow row = r.tread_row()!!;
 	assert(row.list.len == t.want.len, "not enough records found");
 	for (int i = 0; i < row.list.len; i++) {
 		assert(row.list[i] == t.want[i],"columns do not match; "

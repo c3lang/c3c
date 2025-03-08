@@ -1,10 +1,5 @@
 module std::sort;
 
-macro usz @len_from_list(&list) @deprecated
-{
-	return len_from_list(*list);
-}
-
 macro usz len_from_list(list)
 {
 	$if $defined(list.len()):
@@ -16,7 +11,7 @@ macro usz len_from_list(list)
 
 macro bool @is_sortable(#list)
 {
-	$switch
+	$switch:
 		$case !$defined(#list[0]):
 			return false;
 		$case !$defined(#list.len):
@@ -39,7 +34,7 @@ macro bool @is_valid_cmp_fn(#cmp, #list, #context)
 {
 	var $Type = $typeof(#cmp);
 	var $no_context = @is_empty_macro_slot(#context);
-	$switch
+	$switch:
 		$case @is_empty_macro_slot(#cmp): return true;
 		$case $Type.kindof != FUNC ||| $Type.returns.kindof != SIGNED_INT: return false;
 		$case $defined(#cmp(#list[0], #list[0], #context)): return true;
@@ -52,7 +47,7 @@ macro bool @is_valid_cmp_fn(#cmp, #list, #context)
 
 macro bool @is_cmp_key_fn(#key_fn, #list)
 {
-	$switch
+	$switch:
 		$case @is_empty_macro_slot(#key_fn): return true;
 		$case $typeof(#key_fn).kindof != FUNC: return false;
 		$case $typeof(#key_fn).returns.kindof != UNSIGNED_INT: return false;

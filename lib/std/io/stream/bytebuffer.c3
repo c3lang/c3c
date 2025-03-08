@@ -14,9 +14,9 @@ struct ByteBuffer (InStream, OutStream)
 <*
  ByteBuffer provides a streamable read/write buffer.
  max_read defines how many bytes might be kept before its internal buffer is shrinked.
- @require self.bytes.len == 0 "Buffer already initialized."
+ @require self.bytes.len == 0 : "Buffer already initialized."
 *>
-fn ByteBuffer* ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 16, Allocator allocator = allocator::heap())
+fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz initial_capacity = 16)
 {
 	*self = { .allocator = allocator, .max_read = max_read };
 	initial_capacity = max(initial_capacity, 16);
@@ -24,14 +24,14 @@ fn ByteBuffer* ByteBuffer.new_init(&self, usz max_read, usz initial_capacity = 1
 	return self;
 }
 
-fn ByteBuffer* ByteBuffer.temp_init(&self, usz max_read, usz initial_capacity = 16)
+fn ByteBuffer* ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
 {
-	return self.new_init(max_read, initial_capacity, allocator::temp());
+	return self.init(tmem(), max_read, initial_capacity);
 }
 
 <*
  @require buf.len > 0
- @require self.bytes.len == 0 "Buffer already initialized."
+ @require self.bytes.len == 0 : "Buffer already initialized."
 *>
 fn ByteBuffer* ByteBuffer.init_with_buffer(&self, char[] buf)
 {

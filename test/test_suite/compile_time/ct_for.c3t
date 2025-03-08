@@ -7,11 +7,11 @@ extern fn void printf(char*, ...);
 fn void main()
 {
 
-    $for (var $i = 0; $i < 3; $i++)
+    $for var $i = 0; $i < 3; $i++:
        printf("Foo %d\n", $i);
     $endfor;
 
-    $for ($i = 0, var $j = 100; $i < 4;)
+    $for $i = 0, var $j = 100; $i < 4;:
        printf("Foo %d %d\n", $i++, $j--);
     $endfor;
 

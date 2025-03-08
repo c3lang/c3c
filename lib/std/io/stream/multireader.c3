@@ -15,10 +15,10 @@ struct MultiReader (InStream)
 <*
  @param [&inout] self
  @param [&inout] allocator
- @require self.readers.len == 0 "Init may not run on already initialized data"
+ @require self.readers.len == 0 : "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
-fn MultiReader* MultiReader.new_init(&self, InStream... readers, Allocator allocator = allocator::heap())
+fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers)
 {
 	InStream []copy = allocator::new_array(allocator, InStream, readers.len);
 	copy[..] = readers[..];
@@ -28,12 +28,12 @@ fn MultiReader* MultiReader.new_init(&self, InStream... readers, Allocator alloc
 
 <*
  @param [&inout] self
- @require self.readers.len == 0 "Init may not run on already initialized data"
+ @require self.readers.len == 0 : "Init may not run on already initialized data"
  @ensure self.index == 0
 *>
-fn MultiReader* MultiReader.temp_init(&self, InStream... readers)
+fn MultiReader* MultiReader.tinit(&self, InStream... readers)
 {
-	return self.new_init(...readers, allocator: allocator::temp());
+	return self.init(tmem(), ...readers);
 }
 
 fn void MultiReader.free(&self)
@@ -49,15 +49,13 @@ fn usz! MultiReader.read(&self, char[] bytes) @dynamic
 	usz! n = r.read(bytes);
 	if (catch err = n)
 	{
-		case IoError.EOF:
-			self.index++;
-			if (self.index >= self.readers.len)
-			{
-				return IoError.EOF?;
-			}
-			return self.read(bytes);
-		default:
-			return err?;
+		if (err != IoError.EOF) return err?;
+		self.index++;
+		if (self.index >= self.readers.len)
+		{
+			return IoError.EOF?;
+		}
+		return self.read(bytes);
 	}
 	return n;
 }

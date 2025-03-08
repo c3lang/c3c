@@ -15,7 +15,7 @@ fn void test_aliasing()
 {
 	int x;
 	AnyAlias z = &x;
-	switch (z)
+	switch (z.type)
 	{
 		case int:
 			assert(true);

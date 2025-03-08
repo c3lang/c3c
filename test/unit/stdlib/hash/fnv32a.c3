@@ -19,6 +19,6 @@ fn void test_fnv32a()
 	assert ((uint)hash == want, "got: %d, want: %d", hash, want);
 
 	// encode
-	uint encoded = fnv32a::encode(input);
+	uint encoded = fnv32a::hash(input);
 	assert (encoded == want, "got: %d, want: %d", encoded, want);
 }

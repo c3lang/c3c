@@ -1,4 +1,4 @@
-module std::thread::pool(<SIZE>);
+module std::thread::pool{SIZE};
 import std::thread;
 
 struct ThreadPool
@@ -24,7 +24,7 @@ struct QueueItem @private
 }
 
 <*
- @require !self.initialized "ThreadPool must not be already initialized"
+ @require !self.initialized : "ThreadPool must not be already initialized"
 *>
 fn void! ThreadPool.init(&self)
 {

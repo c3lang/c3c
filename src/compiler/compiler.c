@@ -87,6 +87,11 @@ void compiler_init(BuildOptions *build_options)
 	{
 		compiler.context.lib_dir = find_lib_dir();
 	}
+
+	if (build_options->print_env)
+	{
+		compiler.context.should_print_environment = true;
+	}
 }
 
 static void compiler_lex(void)
@@ -491,7 +496,6 @@ void compiler_compile(void)
 			UNREACHABLE
 	}
 	compiler_ir_gen_time = bench_mark();
-
 	const char *output_exe = NULL;
 	const char *output_static = NULL;
 	const char *output_dynamic = NULL;
@@ -518,6 +522,12 @@ void compiler_compile(void)
 				output_dynamic = dynamic_lib_name();
 				break;
 			case TARGET_TYPE_OBJECT_FILES:
+				if (compiler.obj_output)
+				{
+					OUTF("Object file %s created.\n", compiler.obj_output);
+					break;
+				}
+				OUTF("Object files written to %s.\n", compiler.build.object_file_dir);
 				break;
 			case TARGET_TYPE_PREPARE:
 				break;
@@ -525,7 +535,14 @@ void compiler_compile(void)
 				UNREACHABLE
 		}
 	}
-
+	if (compiler.build.emit_llvm)
+	{
+		OUTF("LLVM files written to %s.\n", compiler.build.ir_file_dir);
+	}
+	if (compiler.build.emit_asm)
+	{
+		OUTF("Asm files written to %s.\n", compiler.build.asm_file_dir);
+	}
 	free_arenas();
 
 	uint32_t output_file_count = vec_size(gen_contexts);
@@ -537,6 +554,7 @@ void compiler_compile(void)
 		cfiles_library += vec_size(lib->csources);
 	}
 	unsigned total_output = output_file_count + cfiles + cfiles_library + external_objfile_count;
+
 	if (total_output > MAX_OUTPUT_FILES)
 	{
 		error_exit("Too many output files.");
@@ -640,6 +658,12 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_exe = file_append_path(compiler.build.output_dir, output_exe);
 		}
+		char *dir_path = file_get_dir(output_exe);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't create '%s', the directory '%s' could not be found.", output_exe, dir_path);
+		}
+
 		if (file_is_dir(output_exe))
 		{
 			error_exit("Cannot create exe with the name '%s' - there is already a directory with that name.", output_exe);
@@ -739,6 +763,11 @@ void compiler_compile(void)
 			create_output_dir(compiler.build.output_dir);
 			output_static = file_append_path(compiler.build.output_dir, output_static);
 		}
+		char *dir_path = file_get_dir(output_static);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't create '%s', the directory '%s' could not be found.", output_static, dir_path);
+		}
 		if (file_is_dir(output_static))
 		{
 			error_exit("Cannot create a static library with the name '%s' - there is already a directory with that name.", output_exe);
@@ -758,6 +787,11 @@ void compiler_compile(void)
 		{
 			create_output_dir(compiler.build.output_dir);
 			output_dynamic = file_append_path(compiler.build.output_dir, output_dynamic);
+		}
+		char *dir_path = file_get_dir(output_dynamic);
+		if (dir_path && strlen(dir_path) && !file_is_dir(dir_path))
+		{
+			error_exit("Can't create '%s', the directory '%s' could not be found.", output_dynamic, dir_path);
 		}
 		if (file_is_dir(output_dynamic))
 		{
@@ -1315,6 +1349,11 @@ void compile()
 	unit->module = compiler.context.core_module;
 	compiler.context.core_unit = unit;
 	target_setup(&compiler.build);
+	if (compiler.context.should_print_environment)
+	{
+		print_build_env();
+		exit_compiler(COMPILER_SUCCESS_EXIT);
+	}
 	check_sanitizer_options(&compiler.build);
 	resolve_libraries(&compiler.build);
 	compiler.context.sources = compiler.build.sources;
@@ -1349,7 +1388,6 @@ void compile()
 	setup_bool_define("COMPILER_SAFE_MODE", safe_mode_enabled());
 	setup_bool_define("DEBUG_SYMBOLS", compiler.build.debug_info == DEBUG_INFO_FULL);
 	setup_bool_define("BACKTRACE", compiler.build.show_backtrace != SHOW_BACKTRACE_OFF);
-	setup_bool_define("OLD_TEST", compiler.build.old_test == OLD_TEST_ON);
 #if LLVM_AVAILABLE
     setup_int_define("LLVM_VERSION", llvm_version_major, type_int);
 #else 
@@ -1430,6 +1468,9 @@ const char *get_object_extension(void)
 	{
 		case ANY_WINDOWS_ARCH_OS:
 			return ".obj";
+		case WASM32:
+		case WASM64:
+			return ".wasm";
 		default:
 			return ".o";
 	}
@@ -1577,4 +1618,45 @@ const char *default_c_compiler(void)
 #else
 	return cc = "cc";
 #endif
+}
+
+static bool is_posix(OsType os)
+{
+	switch (os)
+	{
+		case OS_TYPE_IOS:
+		case OS_TYPE_MACOSX:
+		case OS_TYPE_WATCHOS:
+		case OS_TYPE_TVOS:
+		case OS_TYPE_NETBSD:
+		case OS_TYPE_LINUX:
+		case OS_TYPE_KFREEBSD:
+		case OS_TYPE_FREE_BSD:
+		case OS_TYPE_SOLARIS:
+			return true;
+		case OS_TYPE_WIN32:
+		case OS_TYPE_WASI:
+		case OS_TYPE_EMSCRIPTEN:
+			return false;
+		default:
+			return false;
+	}
+}
+void print_build_env(void)
+{
+	char path[PATH_MAX + 1];
+	printf("Version           : %s\n", COMPILER_VERSION);
+	printf("Stdlib            : %s\n", compiler.context.lib_dir);
+	printf("Exe name          : %s\n", compiler_exe_name);
+	printf("Base path         : %s\n", getcwd(path, PATH_MAX));
+	if (compiler.build.name && !compiler.build.is_non_project)
+	{
+		printf("Target name       : %s\n", compiler.build.name);
+	}
+	printf("Output name       : %s\n", compiler.build.output_name);
+	printf("System path       : %s\n", getenv("PATH"));
+	printf("Arch/OS target    : %s\n", arch_os_target[compiler.build.arch_os_target]);
+	printf("env::POSIX        : %s\n", link_libc() && is_posix(compiler.platform.os) ? "true" : "false");
+	printf("env::WIN32        : %s\n", compiler.platform.os == OS_TYPE_WIN32 ? "true" : "false");
+	printf("env::LIBC         : %s\n", link_libc() ? "true" : "false");
 }

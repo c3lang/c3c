@@ -382,8 +382,7 @@ RETRY:
 				case BINARYOP_LE:
 				case BINARYOP_NE:
 				case BINARYOP_EQ:
-					// This type is bool, so check should never happen.
-					UNREACHABLE
+					return NULL;
 				case BINARYOP_CT_OR:
 				case BINARYOP_CT_AND:
 				case BINARYOP_CT_CONCAT:
@@ -396,7 +395,7 @@ RETRY:
 				case BINARYOP_VEC_NE:
 				case BINARYOP_VEC_EQ:
 					// Functions
-					return false;
+					return NULL;
 
 			}
 			UNREACHABLE
@@ -608,7 +607,6 @@ static void expr_recursively_rewrite_untyped_list(Expr *expr, Type *to_type)
 bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 {
 	Type *type = index->type;
-	RETRY:
 	type = type_flat_distinct_enum_inline(type);
 	type = type_no_optional(type);
 	switch (type->type_kind)
@@ -627,11 +625,6 @@ bool cast_to_index_len(SemaContext *context, Expr *index, bool is_len)
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to a uint or ulong.");
 		case TYPE_I128:
 			RETURN_SEMA_ERROR(index, "You need to explicitly cast this to an int or long.");
-		case TYPE_ENUM:
-			SEMA_DEPRECATED(index, "Implicitly converting enums into an index value is deprecated, use 'inline' on the value type instead.");
-			static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-			type = type->decl->enums.type_info->type;
-			goto RETRY;
 		default:
 			RETURN_SEMA_ERROR(index, "An integer value was expected here, but it is a value of type %s, which can't be implicitly converted into an integer %s.",
 			                  type_quoted_error_string(index->type), is_len ? "length" : "index");
@@ -1372,7 +1365,7 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 	if (from_base == type_bool && cc->to_group == CONV_INT) return true;
 	// Create a fake expression that can't be folded for some checking if the
 	// the elements could be cast.
-	Expr temp = { .expr_kind = EXPR_EXPR_BLOCK, .type = from_base, .span = cc->expr->span, .resolve_status = RESOLVE_DONE };
+	Expr temp = { .expr_kind = EXPR_MACRO_BLOCK, .type = from_base, .span = cc->expr->span, .resolve_status = RESOLVE_DONE };
 	cc->expr = &temp;
 	cast_context_set_from(cc, from_base);
 	bool success = cast_is_allowed(cc, is_explicit, true);
@@ -1384,7 +1377,7 @@ static bool rule_vec_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 
 static bool rule_expand_to_vec(CastContext *cc, bool is_explicit, bool is_silent)
 {
-	if (!is_explicit && compiler.build.vector_conv == VECTOR_CONV_DEFAULT && !cc->is_binary_conversion)
+	if (!is_explicit && !cc->is_binary_conversion)
 	{
 		if (is_silent) return false;
 		bool explicit_works = rule_expand_to_vec(cc, true, true);
@@ -1650,34 +1643,6 @@ static void cast_float_to_int(Expr *expr, Type *type)
 }
 
 
-/**
- * Convert from integer to enum using CAST_INTENUM / or do a const conversion.
- * This will ensure that the conversion is valid (i.e. in the range 0 .. enumcount - 1)
- */
-static void cast_int_to_enum(Expr *expr, Type *type)
-{
-	static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-	SEMA_DEPRECATED(expr, "Using casts to convert integers to enums is deprecated in favour of using 'MyEnum.from_ordinal(i)`.");
-	Type *canonical = type_flatten(type);
-	ASSERT(canonical->type_kind == TYPE_ENUM);
-	if (!sema_cast_const(expr))
-	{
-		expr_rewrite_enum_from_ord(expr, type);
-		return;
-	}
-
-	Decl *enum_decl = canonical->decl;
-	// Fold the const into the actual enum.
-	// Check is already done.
-	Decl *decl = enum_decl->enums.values[expr->const_expr.ixx.i.low];
-	ASSERT(decl->resolve_status == RESOLVE_DONE);
-	expr->const_expr = (ExprConst) {
-			.enum_err_val = decl,
-			.const_kind = CONST_ENUM
-	};
-	expr->type = type;
-}
-
 
 /**
  * Convert between integers: CAST_INTINT
@@ -1753,14 +1718,7 @@ static void cast_enum_to_value(Expr* expr, Type *to_type)
 {
 	Type *enum_type = type_flatten(expr->type);
 	Decl *decl = enum_type->decl;
-	if (!decl->is_substruct)
-	{
-		static_assert(ALLOW_DEPRECATED_6, "Fix deprecation");
-		SEMA_DEPRECATED(expr, "Using casts to convert enums to integers is deprecated in favour of using 'the_enum.ordinal`, use `inline` on the enum storage type to recover this behaviour.");
-		sema_expr_convert_enum_to_int(expr);
-		cast_int_to_int(expr, to_type);
-		return;
-	}
+	assert(decl->is_substruct);
 	if (decl->enums.inline_value)
 	{
 		sema_expr_convert_enum_to_int(expr);
@@ -2272,7 +2230,6 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type) { expr_rewrite_int_to
 #define IN2IN &cast_int_to_int           
 #define IN2FP &cast_int_to_float         
 #define IN2PT &cast_int_to_ptr           
-#define IN2EN &cast_int_to_enum          
 #define EN2XX &cast_enum_to_value
 #define FP2BO &cast_float_to_bool        
 #define FP2IN &cast_float_to_int         
@@ -2383,7 +2340,7 @@ CastFunction cast_function[CONV_LAST + 1][CONV_LAST + 1] = {
  {0,          0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // VOID (from)
  {XX2XX,      0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX, XX2XX,     0,     0     }, // WILDCARD
  {XX2VO,      0,     0, BO2IN, BO2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // BOOL
- {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0,     0, IN2EN, IN2PT,     0,     0, IN2PT, IN2PT,     0,     0     }, // INT
+ {XX2VO,      0, IN2BO, IN2IN, IN2FP, IN2PT,     0, EX2VC, IA2BS,     0,     0,     0,     0,     0,     0,     0,     0, IN2PT,     0,     0, IN2PT, IN2PT,     0,     0     }, // INT
  {XX2VO,      0, FP2BO, FP2IN, FP2FP,     0,     0, EX2VC,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0,     0     }, // FLOAT
  {XX2VO,      0, PT2BO, PT2IN,     0, PT2PT,     0, EX2VC,     0,     0,     0,     0,     0, PT2AY, PT2AY,     0,     0,     0,     0,     0, PT2PT, PT2PT, PT2FE,     0     }, // PTR
  {XX2VO,      0, SL2BO,     0,     0, SL2PT, SL2SL, SL2VA,     0,     0, SL2VA,     0,     0,     0,     0,     0,     0,     0,     0,     0, SL2PT, SL2PT, SL2FE,     0     }, // SLICE

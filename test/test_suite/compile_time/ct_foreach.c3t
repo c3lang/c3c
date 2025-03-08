@@ -7,18 +7,18 @@ fn void main()
 {
 
     var $foo = { 1, 10, 34 };
-    $foreach ($i : $foo)
+    $foreach $i : $foo:
        printf("Foo %d\n", $i);
     $endforeach;
 
-    $foreach ($i, $j : $foo)
+    $foreach $i, $j : $foo:
         printf("Bar %d %d\n", $i, $j);
     $endforeach;
 
-    $foreach ($x : { 123, "abc", 1177, "hello" })
+    $foreach $x : { 123, "abc", 1177, "hello" }:
     {
         $typeof($x) z = $x;
-        $switch ($typeof($x))
+        $switch $typeof($x):
         $case int:
             printf("Bar %d\n", $x);
         $default:

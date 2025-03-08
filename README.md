@@ -11,7 +11,7 @@ Precompiled binaries for the following operating systems are available:
 - Windows x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-windows.zip), [install instructions](#installing-on-windows-with-precompiled-binaries).
 - Debian x64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-linux.tar.gz), [install instructions](#installing-on-debian-with-precompiled-binaries).
 - Ubuntu x86 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-ubuntu-20.tar.gz), [install instructions](#installing-on-ubuntu-with-precompiled-binaries).
-- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-mac-with-precompiled-binaries).
+- MacOS Arm64 [download](https://github.com/c3lang/c3c/releases/download/latest/c3-macos.zip), [install instructions](#installing-on-macos-with-precompiled-binaries).
 
 The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
@@ -138,9 +138,9 @@ fn void main()
 
 ### Current status
 
-The current stable version of the compiler is **version 0.6.7**.
+The current stable version of the compiler is **version 0.6.8**.
 
-The upcoming 0.6.x releases will focus on expanding the standard library.
+The the next version is 0.7.0 which will be a breaking release.
 Follow the issues [here](https://github.com/c3lang/c3c/issues).
 
 If you have suggestions on how to improve the language, either [file an issue](https://github.com/c3lang/c3c/issues) 
@@ -249,20 +249,13 @@ makepkg -si
 
 #### Building via Docker
 
-You can build `c3c` using either an Ubuntu 18.04 or 20.04 container:
+You can build `c3c` using an Ubuntu container. By default, the script will build through Ubuntu 22.04. You can specify the version by passing the `UBUNTU_VERSION` environment variable.
 
 ```
-./build-with-docker.sh 18
+UBUNTU_VERSION=20.04 ./build-with-docker.sh
 ```
 
-Replace `18` with `20` to build through Ubuntu 20.04.
-
-For a release build specify:
-```
-./build-with-docker.sh 20 Release
-```
-
-A `c3c` executable will be found under `bin/`.
+See the `build-with-docker.sh` script for more information on other configurable environment variables.
 
 #### Installing on OS X using Homebrew
 

@@ -22,7 +22,7 @@ int err_count = 0;
 fn int! ask_guess(int high)
 {
 	io::printf("Guess a number between 1 and %d: ", high);
-	String text = io::readline() ?? InputResult.FAILED_TO_READ?!;
+	String text = io::treadline() ?? InputResult.FAILED_TO_READ?!;
 	return text.to_int() ?? InputResult.NOT_AN_INT?;
 }
 

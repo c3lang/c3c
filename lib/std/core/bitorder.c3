@@ -88,13 +88,13 @@ bitstruct UInt128LE : uint128 @littleendian
 }
 
 <*
- @require is_array_or_slice_of_char(bytes) "argument must be an array, a pointer to an array or a slice of char"
- @require is_bitorder($Type) "type must be a bitorder integer"
+ @require is_array_or_slice_of_char(bytes) : "argument must be an array, a pointer to an array or a slice of char"
+ @require is_bitorder($Type) : "type must be a bitorder integer"
 *>
 macro read(bytes, $Type)
 {
 	char[] s;
-	$switch (@typekind(bytes))
+	$switch @typekind(bytes):
 	$case POINTER:
 		s = (*bytes)[:$Type.sizeof];
 	$default:
@@ -104,13 +104,13 @@ macro read(bytes, $Type)
 }
 
 <*
- @require is_arrayptr_or_slice_of_char(bytes) "argument must be a pointer to an array or a slice of char"
- @require is_bitorder($Type) "type must be a bitorder integer"
+ @require is_arrayptr_or_slice_of_char(bytes) : "argument must be a pointer to an array or a slice of char"
+ @require is_bitorder($Type) : "type must be a bitorder integer"
 *>
 macro write(x, bytes, $Type)
 {
 	char[] s;
-	$switch (@typekind(bytes))
+	$switch @typekind(bytes):
 	$case POINTER:
 		s = (*bytes)[:$Type.sizeof];
 	$default:
@@ -121,7 +121,7 @@ macro write(x, bytes, $Type)
 
 macro is_bitorder($Type)
 {
-	$switch ($Type)
+	$switch $Type:
 	$case UShortLE:
 	$case ShortLE:
 	$case UIntLE:
@@ -146,7 +146,7 @@ macro is_bitorder($Type)
 
 macro bool is_array_or_slice_of_char(bytes)
 {
-	$switch (@typekind(bytes))
+	$switch @typekind(bytes):
 	$case POINTER:
 		var $Inner = $typefrom($typeof(bytes).inner);
 		$if $Inner.kindof == ARRAY:
@@ -164,7 +164,7 @@ macro bool is_array_or_slice_of_char(bytes)
 
 macro bool is_arrayptr_or_slice_of_char(bytes)
 {
-	$switch (@typekind(bytes))
+	$switch @typekind(bytes):
 	$case POINTER:
 		var $Inner = $typefrom($typeof(bytes).inner);
 		$if $Inner.kindof == ARRAY:

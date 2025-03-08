@@ -7,7 +7,7 @@ import std::os::posix;
 
 macro bool! native_mkdir(Path path, MkdirPermissions permissions)
 {
-	$switch
+	$switch:
 		$case env::POSIX:
 			if (!posix::mkdir(path.as_zstr(), permissions == NORMAL ? 0o777 : 0o700)) return true;
 			switch (libc::errno())

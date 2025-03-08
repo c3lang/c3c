@@ -154,21 +154,21 @@ struct Symbol
 
 Win32_DWORD64 displacement;
 
-fn BacktraceList! symbolize_backtrace(void*[] backtrace, Allocator allocator)
+fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace)
 {
 	BacktraceList list;
-	list.new_init(backtrace.len, allocator);
+	list.init(allocator, backtrace.len);
 	Win32_HANDLE process = getCurrentProcess();
 	symInitialize(process, null, 1);
 	defer symCleanup(process);
 	foreach (addr : backtrace)
 	{
-		list.push(resolve_backtrace(addr, process, allocator) ?? backtrace::BACKTRACE_UNKNOWN);
+		list.push(resolve_backtrace(allocator, addr, process) ?? backtrace::BACKTRACE_UNKNOWN);
 	}
 	return list;
 }
 
-fn Backtrace! resolve_backtrace(void* addr, Win32_HANDLE process, Allocator allocator)
+fn Backtrace! resolve_backtrace(Allocator allocator, void* addr, Win32_HANDLE process)
 {
 	Symbol symbol;
 	//Win32_DWORD image_type = load_modules()!;
@@ -193,10 +193,10 @@ fn Backtrace! resolve_backtrace(void* addr, Win32_HANDLE process, Allocator allo
 	ZString zname = (ZString)&name;
 	if (!symGetLineFromAddr64(process, (Win32_ULONG64)addr - 1, &offset, &line))
 	{
-		backtrace.init((uptr)addr, zname.str_view(), module_name.str_view(), allocator: allocator);
+		backtrace.init(allocator, (uptr)addr, zname.str_view(), module_name.str_view());
 		return backtrace;
 	}
 	String filename = ((ZString)line.fileName).str_view();
-	backtrace.init((uptr)addr, zname.str_view(), module_name.str_view(), file: filename, line: line.lineNumber, allocator: allocator);
+	backtrace.init(allocator, (uptr)addr, zname.str_view(), module_name.str_view(), file: filename, line: line.lineNumber);
 	return backtrace;
 }

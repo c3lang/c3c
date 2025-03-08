@@ -1,8 +1,0 @@
-extern fn CInt execvp(CChar* file, CChar*[] argv);
-
-fn int main()
-{
-    ZString[] argv = {"ls", "-l", "-a"};
-    execvp((CChar*)"ls", (CChar*[])argv);
-    return 0;
-}
