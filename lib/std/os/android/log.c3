@@ -3,41 +3,41 @@ module std::os::android @if(env::ANDROID);
 
 enum LogPriority : (CInt val)
 {
-    ANDROID_LOG_UNKNOWN = 0,
-    ANDROID_LOG_DEFAULT = 1,
-    ANDROID_LOG_VERBOSE = 2,
-    ANDROID_LOG_DEBUG   = 3,
-    ANDROID_LOG_INFO    = 4,
-    ANDROID_LOG_WARN    = 5,
-    ANDROID_LOG_ERROR   = 6,
-    ANDROID_LOG_FATAL   = 7,
-    ANDROID_LOG_SILENT  = 8
+	ANDROID_LOG_UNKNOWN = 0,
+	ANDROID_LOG_DEFAULT = 1,
+	ANDROID_LOG_VERBOSE = 2,
+	ANDROID_LOG_DEBUG   = 3,
+	ANDROID_LOG_INFO    = 4,
+	ANDROID_LOG_WARN    = 5,
+	ANDROID_LOG_ERROR   = 6,
+	ANDROID_LOG_FATAL   = 7,
+	ANDROID_LOG_SILENT  = 8
 }
 
 enum LogId : (CInt val)
 {
-    LOG_ID_MIN      = 0,
-    LOG_ID_MAIN     = 0,
-    LOG_ID_RADIO    = 1,
-    LOG_ID_EVENTS   = 2,
-    LOG_ID_SYSTEM   = 3,
-    LOG_ID_CRASH    = 4,
-    LOG_ID_STATS    = 5,
-    LOG_ID_SECURITY = 6,
-    LOG_ID_KERNEL   = 7,
-    LOG_ID_MAX      = 7,
-    LOG_ID_DEFAULT  = 0x7FFFFFFF
+	LOG_ID_MIN      = 0,
+	LOG_ID_MAIN     = 0,
+	LOG_ID_RADIO    = 1,
+	LOG_ID_EVENTS   = 2,
+	LOG_ID_SYSTEM   = 3,
+	LOG_ID_CRASH    = 4,
+	LOG_ID_STATS    = 5,
+	LOG_ID_SECURITY = 6,
+	LOG_ID_KERNEL   = 7,
+	LOG_ID_MAX      = 7,
+	LOG_ID_DEFAULT  = 0x7FFFFFFF
 }
 
 struct LogMessage @packed
 {
-    usz struct_size;
-    CInt buffer_id;
-    CInt priority;
-    ZString tag;
-    ZString file;
-    CUInt line;
-    ZString message;
+	usz struct_size;
+	CInt buffer_id;
+	CInt priority;
+	ZString tag;
+	ZString file;
+	CUInt line;
+	ZString message;
 }
 
 extern fn CInt log_write(LogPriority prio, ZString tag, ZString text) @extern("__android_log_write");
@@ -46,7 +46,7 @@ extern fn void log_assert(ZString cond, ZString tag, ZString fmt, ...) @extern("
 
 fn bool log_id_is_valid(LogId id)
 {
-    return id >= LOG_ID_MIN && id < LOG_ID_MAX;
+	return id >= LOG_ID_MIN && id < LOG_ID_MAX;
 }
 
 extern fn CInt log_buf_write(CInt bufID, CInt prio, ZString tag, ZString text) @extern("__android_log_buf_write");
