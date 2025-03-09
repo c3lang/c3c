@@ -15,7 +15,7 @@ fn void main()
 	}
 }
 
-fn void! foo() {}
+fn void? foo() {}
 
 /* #expect: foo.ll
 

@@ -2,15 +2,12 @@
 
 module foo;
 
-fault Blurg
-{
-    Y
-}
+fault Y;
 
 fn void main()
 {
-    static int! x = 120;
-    int! i = Blurg.Y?;
+    static int? x = 120;
+    int? i = Y?;
 }
 
 /* #expect: foo.ll
@@ -19,6 +16,6 @@ define void @foo.main() #0 {
 entry:
   %i = alloca i32, align 4
   %i.f = alloca i64, align 8
-  store i64 ptrtoint (ptr @"foo.Blurg$Y" to i64), ptr %i.f, align 8
+  store i64 ptrtoint (ptr @foo.Y to i64), ptr %i.f, align 8
   ret void
 }

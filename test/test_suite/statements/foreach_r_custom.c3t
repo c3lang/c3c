@@ -18,7 +18,7 @@ macro usz Foo.@operator_len(&foo) @operator(len)
 
 fn void main()
 {
-    int[?] i = { 1, 3, 10 };
+    int[*] i = { 1, 3, 10 };
     Foo x = { &i };
     foreach_r FOO: (int f : x) {
         printf("%d\n", f);

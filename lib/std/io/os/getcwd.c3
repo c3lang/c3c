@@ -1,7 +1,7 @@
 module std::io::os;
 import libc, std::os;
 
-macro String! getcwd(Allocator allocator = allocator::heap())
+macro String? getcwd(Allocator allocator = allocator::heap())
 {
 	$switch:
 		$case env::WIN32:
@@ -12,7 +12,7 @@ macro String! getcwd(Allocator allocator = allocator::heap())
 			defer if (free) libc::free(res);
 			if (!res)
 			{
-				if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR?;
+				if (libc::errno() != errno::ERANGE) return io::GENERAL_ERROR?;
 				res = win32::_wgetcwd(null, 0);
 				free = true;
 			}
@@ -27,7 +27,7 @@ macro String! getcwd(Allocator allocator = allocator::heap())
 			if (!res)
 			{
 				// Improve error
-				if (libc::errno() != errno::ERANGE) return IoError.GENERAL_ERROR?;
+				if (libc::errno() != errno::ERANGE) return io::GENERAL_ERROR?;
 				res = posix::getcwd(null, 0);
 				free = true;
 			}
@@ -35,7 +35,7 @@ macro String! getcwd(Allocator allocator = allocator::heap())
 			return res.copy(allocator);
 
 		$default:
-			return IoError.UNSUPPORTED_OPERATION?;
+			return io::UNSUPPORTED_OPERATION?;
 	$endswitch
 }
 

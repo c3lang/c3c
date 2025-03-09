@@ -11,8 +11,7 @@ enum Seek
 	END
 }
 
-fault IoError
-{
+fault
 	ALREADY_EXISTS,
 	BUSY,
 	CANNOT_READ_DIR,
@@ -41,8 +40,7 @@ fault IoError
 	UNEXPECTED_EOF,
 	UNKNOWN_ERROR,
 	UNSUPPORTED_OPERATION,
-	WOULD_BLOCK,
-}
+	WOULD_BLOCK;
 
 
 <*
@@ -55,7 +53,7 @@ fault IoError
  @param [inout] allocator : `the allocator to use.`
  @return `The string containing the data read.`
 *>
-macro String! readline(Allocator allocator, stream = io::stdin())
+macro String? readline(Allocator allocator, stream = io::stdin())
 {
 	bool $is_stream = @typeis(stream, InStream);
 	$if $is_stream:
@@ -73,13 +71,13 @@ macro String! readline(Allocator allocator, stream = io::stdin())
 		while (1)
 		{
 			$if $is_stream:
-				char! c = func((void*)stream);
+				char? c = func((void*)stream);
 			$else
-				char! c = stream.read_byte();
+				char? c = stream.read_byte();
 			$endif
 			if (catch err = c)
 			{
-				if (err == IoError.EOF) break;
+				if (err == io::EOF) break;
 				return err?;
 			}
 			if (c == '\r') continue;
@@ -98,7 +96,7 @@ macro String! readline(Allocator allocator, stream = io::stdin())
  @require @is_instream(stream) : `The stream must implement InStream.`
  @return `The temporary string containing the data read.`
 *>
-macro String! treadline(stream = io::stdin())
+macro String? treadline(stream = io::stdin())
 {
 	return readline(tmem(), stream) @inline;
 }
@@ -111,7 +109,7 @@ macro String! treadline(stream = io::stdin())
  @require @is_outstream(out) : `The output must implement OutStream.`
  @return `the number of bytes printed.`
 *>
-macro usz! fprint(out, x)
+macro usz? fprint(out, x)
 {
 	var $Type = $typeof(x);
 	$switch $Type:
@@ -141,7 +139,7 @@ macro usz! fprint(out, x)
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz! fprintf(OutStream out, String format, args...)
+fn usz? fprintf(OutStream out, String format, args...)
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
@@ -156,7 +154,7 @@ fn usz! fprintf(OutStream out, String format, args...)
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz! fprintfn(OutStream out, String format, args...) @maydiscard
+fn usz? fprintfn(OutStream out, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
@@ -169,7 +167,7 @@ fn usz! fprintfn(OutStream out, String format, args...) @maydiscard
 <*
  @require @is_outstream(out) : "The output must implement OutStream"
 *>
-macro usz! fprintn(out, x = "")
+macro usz? fprintn(out, x = "")
 {
 	usz len = fprint(out, x)!;
 	out.write_byte('\n')!;
@@ -219,13 +217,13 @@ macro void eprintn(x)
 }
 
 
-fn void! out_putstream_fn(void* data, char c) @private
+fn void? out_putstream_fn(void* data, char c) @private
 {
 	OutStream* stream = data;
 	return (*stream).write_byte(c);
 }
 
-fn void! out_putchar_fn(void* data @unused, char c) @private
+fn void? out_putchar_fn(void* data @unused, char c) @private
 {
 	$if env::TESTING:
 		// HACK: this is used for the purpose of unit test output hijacking
@@ -251,7 +249,7 @@ fn void! out_putchar_fn(void* data @unused, char c) @private
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz! printf(String format, args...) @maydiscard
+fn usz? printf(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
@@ -265,11 +263,11 @@ fn usz! printf(String format, args...) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz! printfn(String format, args...) @maydiscard
+fn usz? printfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
-	usz! len = formatter.vprintf(format, args);
+	usz? len = formatter.vprintf(format, args);
 	out_putchar_fn(null, '\n')!;
 	io::stdout().flush()!;
 	return len + 1;
@@ -282,7 +280,7 @@ fn usz! printfn(String format, args...) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz! eprintf(String format, args...) @maydiscard
+fn usz? eprintf(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	OutStream stream = stderr();
@@ -298,12 +296,12 @@ fn usz! eprintf(String format, args...) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz! eprintfn(String format, args...) @maydiscard
+fn usz? eprintfn(String format, args...) @maydiscard
 {
 	Formatter formatter;
 	OutStream stream = stderr();
 	formatter.init(&out_putstream_fn, &stream);
-	usz! len = formatter.vprintf(format, args);
+	usz? len = formatter.vprintf(format, args);
 	stderr().write_byte('\n')!;
 	stderr().flush()!;
 	return len + 1;
@@ -317,7 +315,7 @@ fn usz! eprintfn(String format, args...) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `a slice formed from the "buffer" with the resulting length.`
 *>
-fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
+fn char[]? bprintf(char[] buffer, String format, args...) @maydiscard
 {
 	Formatter formatter;
 	BufferData data = { .buffer = buffer };
@@ -327,10 +325,10 @@ fn char[]! bprintf(char[] buffer, String format, args...) @maydiscard
 }
 
 // Used to print to a buffer.
-fn void! out_buffer_fn(void *data, char c) @private
+fn void? out_buffer_fn(void *data, char c) @private
 {
 	BufferData *buffer_data = data;
-	if (buffer_data.written >= buffer_data.buffer.len) return PrintFault.BUFFER_EXCEEDED?;
+	if (buffer_data.written >= buffer_data.buffer.len) return BUFFER_EXCEEDED?;
 	buffer_data.buffer[buffer_data.written++] = c;
 }
 

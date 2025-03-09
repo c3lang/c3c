@@ -1,27 +1,27 @@
 import std::io;
 
-fn void! test1()
+fn void? test1()
 {
-	CallbackResult![] result = 123; // #error: Foo[]!
+	CallbackResult?[] result = 123; // #error: Foo[]?
 }
 
-fn void! test2()
+fn void? test2()
 {
-	CallbackResult![?] result = 123; // #error: Foo[?]!
+	CallbackResult?[*] result = 123; // #error: Foo[*]?
 }
 
-fn void! test3()
+fn void? test3()
 {
-	CallbackResult![4 + 5] result = 123; // #error: Foo[4]!
+	CallbackResult?[4 + 5] result = 123; // #error: Foo[4]?
 }
 
-fn void! test4()
+fn void? test4()
 {
-	CallbackResult![<?>] result = 123; // #error: Foo[<?>]!
+	CallbackResult?[<*>] result = 123; // #error: Foo[<*>]?
 }
 
-fn void! test5()
+fn void? test5()
 {
-	CallbackResult![<FOO>] result = 123; // #error: Foo[<4>]!
+	CallbackResult?[<FOO>] result = 123; // #error: Foo[<4>]?
 }
 

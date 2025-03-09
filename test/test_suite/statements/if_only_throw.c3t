@@ -2,15 +2,14 @@
 module foo;
 import std::io;
 
-fault Foo { ABC }
-fn void! test()
+fault ABC;
+
+fn void? test()
 {
-	if ((Foo.ABC?!))
-	{
-	}
+	if ((ABC?!))
+	{ }
 	else
-	{
-	}
+	{}
 }
 fn void main()
 {
@@ -22,7 +21,7 @@ fn void main()
 define i64 @foo.test() #0 {
 entry:
   %error_var = alloca i64, align 8
-  store i64 ptrtoint (ptr @"foo.Foo$ABC" to i64), ptr %error_var, align 8
+  store i64 ptrtoint (ptr @foo.ABC to i64), ptr %error_var, align 8
   br label %guard_block
 guard_block:                                      ; preds = %entry
   %0 = load i64, ptr %error_var, align 8

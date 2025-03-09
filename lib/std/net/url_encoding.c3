@@ -15,10 +15,7 @@ enum UrlEncodingMode : char (String allowed)
 	FRAGMENT   = "$&+,/:;=?@!()*",	// section 4.1
 }
 
-fault UrlDecodingError
-{
-	INVALID_HEX
-}
+fault INVALID_HEX;
 
 <*
  Returns true if char c should be encoded according to RFC 3986.
@@ -108,9 +105,9 @@ fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
 <*
  Calculate the length of the percent-decoded string.
 
- @return! UrlDecodingError.INVALID_HEX
+ @return! INVALID_HEX
 *>
-fn usz! decode_len(String s, UrlEncodingMode mode) @inline
+fn usz? decode_len(String s, UrlEncodingMode mode) @inline
 {
 	usz n;
 	foreach (i, c: s)
@@ -118,7 +115,7 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
 		if (c != '%') continue;
 		if (i + 2 >= s.len || !s[i+1].is_xdigit() || !s[i+2].is_xdigit())
 		{
-			return UrlDecodingError.INVALID_HEX?;
+			return INVALID_HEX?;
 		}
 		n++;
 	}
@@ -134,7 +131,7 @@ fn usz! decode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-decoded String"
 *>
-fn String! decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool(allocator)
+fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool(allocator)
 {
 	usz n = decode_len(s, mode)!;
 	DString builder = dstring::temp_with_capacity(n);
@@ -170,4 +167,4 @@ fn String! decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool
  @param mode : "Url encoding mode"
  @return "Percent-decoded String"
 *>
-fn String! tdecode(String s, UrlEncodingMode  mode) => decode(tmem(), s, mode);
+fn String? tdecode(String s, UrlEncodingMode  mode) => decode(tmem(), s, mode);

@@ -262,8 +262,10 @@ INLINE Expr *copy_const_expr(CopyStruct *c, Expr *expr)
 		case CONST_REF:
 			fixup_decl(c, &expr->const_expr.global_ref);
 			break;
+		case CONST_FAULT:
+			fixup_decl(c, &expr->const_expr.fault);
+			break;
 		case CONST_ENUM:
-		case CONST_ERR:
 			fixup_decl(c, &expr->const_expr.enum_err_val);
 			break;
 		case CONST_BYTES:
@@ -638,7 +640,7 @@ RETRY:
 			}
 			else
 			{
-				MACRO_COPY_TYPE(ast->contract_fault.type);
+				MACRO_COPY_EXPR(ast->contract_fault.expr);
 			}
 			break;
 		case AST_CONTRACT:
@@ -999,7 +1001,7 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
 		case DECL_DECLARRAY:
-		case DECL_GLOBALS:
+		case DECL_GROUP:
 			UNREACHABLE
 		case DECL_BITSTRUCT:
 			copy_decl_type(copy);
@@ -1009,8 +1011,9 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 			MACRO_COPY_TYPE(copy->strukt.container_type);
 			MACRO_COPY_DECL_LIST(copy->methods);
 			break;
-		case DECL_ENUM:
 		case DECL_FAULT:
+			break;
+		case DECL_ENUM:
 			copy_decl_type(copy);
 			MACRO_COPY_TYPE_LIST(copy->interfaces);
 			MACRO_COPY_DECL_LIST(copy->methods);
@@ -1054,9 +1057,6 @@ Decl *copy_decl(CopyStruct *c, Decl *decl)
 		case DECL_ENUM_CONSTANT:
 			fixup_declid(c, &copy->enum_constant.parent);
 			MACRO_COPY_EXPR_LIST(copy->enum_constant.args);
-			break;
-		case DECL_FAULTVALUE:
-			fixup_declid(c, &copy->enum_constant.parent);
 			break;
 		case DECL_TYPEDEF:
 			copy_decl_type(copy);

@@ -4,18 +4,15 @@ import std::io;
 const BF_MEM = 30000;
 char[BF_MEM] memory;
 
-fault InterpretError
-{
-	INTEPRET_FAILED
-}
+fault INTEPRET_FAILED;
 
-fn void! print_error_type_at(usz pos, String err)
+fn void? print_error_type_at(usz pos, String err)
 {
 	io::printfn("Error at %s: %s", pos, err);
-	return InterpretError.INTEPRET_FAILED?;
+	return INTEPRET_FAILED?;
 }
 
-fn void! brainf(String program)
+fn void? brainf(String program)
 {
 	usz sp = 0;
 	usz mem = 0;

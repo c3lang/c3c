@@ -1,32 +1,27 @@
-fault Abc
-{
+fault
 	ABC,
 	DEF,
-	ZED
-}
+	ZED;
 
 
-fault Foo
-{
-	XYZ
-}
+fault XYZ;
 <*
 
  hello world
- @return! Foo, Abc.ABC
+ @return! XYZ, ABC
  *>
-fn void! abc(int a, int b, int z)
+fn void? abc(int a, int b, int z)
 {
-	return Abc.ZED?; // #error: This value does not match declared optional returns
+	return ZED?; // #error: This value does not match declared optional returns
 }
 
 <*
 hello world
- @return! Foo, Abc.ABC
+ @return! XYZ, ABC
  *>
-macro void! @abc(int a, int b, int z)
+macro void? @abc(int a, int b, int z)
 {
-	return Abc.ZED?; // #error: This value does not match declared optional returns
+	return ZED?; // #error: This value does not match declared optional returns
 }
 
 fn void main()

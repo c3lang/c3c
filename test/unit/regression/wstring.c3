@@ -23,6 +23,6 @@ fn void lengths() @test
 {
 	test::eq($$wstr16("ABC").len, 4);
 	test::eq($$wstr16("ABC", false).len, 3);
-	Char16[?] w = $$wstr16("ÅÄÖ");
-	test::eq(w, (Char16[?]) { 'Å', 'Ä', 'Ö', 0 });
+	Char16[*] w = $$wstr16("ÅÄÖ");
+	test::eq(w, (Char16[*]) { 'Å', 'Ä', 'Ö', 0 });
 }

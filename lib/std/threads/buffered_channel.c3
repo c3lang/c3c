@@ -18,10 +18,10 @@ struct BufferedChannelImpl @private
 	usz read_waiting;
 	ConditionVariable read_cond;
 
-	Type[?] buf;
+	Type[*] buf;
 }
 
-fn void! BufferedChannel.init(&self, Allocator allocator, usz size = 1)
+fn void? BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 {
 	BufferedChannelImpl* channel = allocator::new_with_padding(allocator, BufferedChannelImpl, Type.sizeof * size)!;
 	defer catch allocator::free(allocator, channel);
@@ -44,7 +44,7 @@ fn void! BufferedChannel.init(&self, Allocator allocator, usz size = 1)
 	*self = (BufferedChannel)channel;
 }
 
-fn void! BufferedChannel.destroy(&self)
+fn void? BufferedChannel.destroy(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)(*self);
 
@@ -58,7 +58,7 @@ fn void! BufferedChannel.destroy(&self)
 	if (err) return err?;
 }
 
-fn void! BufferedChannel.push(self, Type val)
+fn void? BufferedChannel.push(self, Type val)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
@@ -74,7 +74,7 @@ fn void! BufferedChannel.push(self, Type val)
 	}
 
 	// check if channel is closed
-	if (channel.closed) return ThreadFault.CHANNEL_CLOSED?;
+	if (channel.closed) return thread::CHANNEL_CLOSED?;
 
 	// save value to buf
 	channel.buf[channel.sendx] = val;
@@ -98,7 +98,7 @@ fn void! BufferedChannel.push(self, Type val)
 	channel.mu.unlock()!;
 }
 
-fn Type! BufferedChannel.pop(self)
+fn Type? BufferedChannel.pop(self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
@@ -116,7 +116,7 @@ fn Type! BufferedChannel.pop(self)
 	// check if chan is closed and empty
 	if (channel.closed && channel.elems == 0)
 	{
-		return ThreadFault.CHANNEL_CLOSED?;
+		return thread::CHANNEL_CLOSED?;
 	}
 
 	// read from buf
@@ -143,7 +143,7 @@ fn Type! BufferedChannel.pop(self)
 	return ret;
 }
 
-fn void! BufferedChannel.close(self)
+fn void? BufferedChannel.close(self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 

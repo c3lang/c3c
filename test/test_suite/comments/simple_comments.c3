@@ -12,4 +12,4 @@ fn void test()
    return;
 }
 
-/* /* nested /* comments! */ !! */ goes here */
+/* /* nested /* comments? */ !! */ goes here */

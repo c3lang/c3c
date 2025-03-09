@@ -3,7 +3,7 @@ module test;
 
 fn void main()
 {
-	int! n;
+	int? n;
 	for (n += 1, 1 + 1; false;);
 }
 

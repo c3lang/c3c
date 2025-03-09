@@ -1,1 +1,1 @@
-char[?] foo64 = b64"SGVsbG8g!V29ybGQ="; // #error: '!' is not a valid base64 character
+char[*] foo64 = b64"SGVsbG8g!V29ybGQ="; // #error: '!' is not a valid base64 character

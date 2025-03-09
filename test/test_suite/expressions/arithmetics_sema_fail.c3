@@ -1,7 +1,7 @@
 
 fn void test7()
 {
-    double x = 1.2 / 0; // This is ok! NaN
+    double x = 1.2 / 0; // This is ok? NaN
 }
 
 fn void test8()

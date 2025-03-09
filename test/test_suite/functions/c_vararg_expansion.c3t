@@ -5,7 +5,7 @@ distinct Foo = float;
 fn void main()
 {
 	Foo a = 12.3;
-	Foo! b = 33.5;
+	Foo? b = 33.5;
 	(void)printf("%f %f %f", (float)a, a, b);
 }
 

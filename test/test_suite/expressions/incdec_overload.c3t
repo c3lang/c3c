@@ -7,7 +7,7 @@ Abc m;
 fn void main()
 {
 	m[3] = 100;
-	int! x = m[3]--;
+	int? x = m[3]--;
 	assert(m[3]!! == 99);
 	assert(x!! == 100);
 	x = ++m[3];

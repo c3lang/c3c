@@ -24,28 +24,26 @@ interface Allocator
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require size > 0
+	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
-	fn void*! acquire(usz size, AllocInitType init_type, usz alignment = 0);
+	fn void*? acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
 	 @require new_size > 0
+	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
-	fn void*! resize(void* ptr, usz new_size, usz alignment = 0);
+	fn void*? resize(void* ptr, usz new_size, usz alignment = 0);
 	<*
 	 @require ptr != null
 	*>
 	fn void release(void* ptr, bool aligned);
 }
 
-def MemoryAllocFn = fn char[]!(usz);
+def MemoryAllocFn = fn char[]?(usz);
 
-fault AllocationFailure
-{
-	OUT_OF_MEMORY,
-	CHUNK_TOO_LARGE,
-}
+
 
 fn usz alignment_for_allocation(usz alignment) @inline @private
 {
@@ -57,7 +55,7 @@ macro void* malloc(Allocator allocator, usz size) @nodiscard
 	return malloc_try(allocator, size)!!;
 }
 
-macro void*! malloc_try(Allocator allocator, usz size) @nodiscard
+macro void*? malloc_try(Allocator allocator, usz size) @nodiscard
 {
 	if (!size) return null;
 	$if env::TESTING:
@@ -74,7 +72,7 @@ macro void* calloc(Allocator allocator, usz size) @nodiscard
 	return calloc_try(allocator, size)!!;
 }
 
-macro void*! calloc_try(Allocator allocator, usz size) @nodiscard
+macro void*? calloc_try(Allocator allocator, usz size) @nodiscard
 {
 	if (!size) return null;
 	return allocator.acquire(size, ZERO);
@@ -85,7 +83,7 @@ macro void* realloc(Allocator allocator, void* ptr, usz new_size) @nodiscard
 	return realloc_try(allocator, ptr, new_size)!!;
 }
 
-macro void*! realloc_try(Allocator allocator, void* ptr, usz new_size) @nodiscard
+macro void*? realloc_try(Allocator allocator, void* ptr, usz new_size) @nodiscard
 {
 	if (!new_size)
 	{
@@ -105,7 +103,7 @@ macro void free(Allocator allocator, void* ptr)
 	allocator.release(ptr, false);
 }
 
-macro void*! malloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
+macro void*? malloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
 {
 	if (!size) return null;
 	$if env::TESTING:
@@ -117,13 +115,13 @@ macro void*! malloc_aligned(Allocator allocator, usz size, usz alignment) @nodis
 	$endif
 }
 
-macro void*! calloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
+macro void*? calloc_aligned(Allocator allocator, usz size, usz alignment) @nodiscard
 {
 	if (!size) return null;
 	return allocator.acquire(size, ZERO, alignment);
 }
 
-macro void*! realloc_aligned(Allocator allocator, void* ptr, usz new_size, usz alignment) @nodiscard
+macro void*? realloc_aligned(Allocator allocator, void* ptr, usz new_size, usz alignment) @nodiscard
 {
 	if (!new_size)
 	{
@@ -305,7 +303,7 @@ fn any clone_any(Allocator allocator, any value) @nodiscard
  @require alignment > 0
  @require bytes <= isz.max
 *>
-macro void*! @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
+macro void*? @aligned_alloc(#alloc_fn, usz bytes, usz alignment)
 {
 	if (alignment < void*.alignof) alignment = void*.alignof;
 	usz header = AlignedBlock.sizeof + alignment;
@@ -328,7 +326,7 @@ struct AlignedBlock
 	void* start;
 }
 
-macro void! @aligned_free(#free_fn, void* old_pointer)
+macro void? @aligned_free(#free_fn, void* old_pointer)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	$if @typekind(#free_fn(desc.start)) == OPTIONAL:
@@ -342,7 +340,7 @@ macro void! @aligned_free(#free_fn, void* old_pointer)
  @require bytes > 0
  @require alignment > 0
 *>
-macro void*! @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
+macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes, usz alignment)
 {
 	AlignedBlock* desc = (AlignedBlock*)old_pointer - 1;
 	void* data_start = desc.start;
@@ -448,14 +446,14 @@ fn TempAllocator* temp_allocator_next() @private
 const NullAllocator NULL_ALLOCATOR = {};
 distinct NullAllocator (Allocator) = uptr;
 
-fn void*! NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
+fn void*? NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	return AllocationFailure.OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY?;
 }
 
-fn void*! NullAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
+fn void*? NullAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
 {
-	return AllocationFailure.OUT_OF_MEMORY?;
+	return mem::OUT_OF_MEMORY?;
 }
 
 fn void NullAllocator.release(&self, void* old_ptr, bool aligned) @dynamic

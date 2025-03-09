@@ -1,7 +1,4 @@
-fault Error
-{
-	ABC
-}
+fault ABC;
 
 distinct Foo1 = Error;
 

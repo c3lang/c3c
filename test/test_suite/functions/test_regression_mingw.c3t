@@ -203,11 +203,7 @@ fn Type getMult(Type a)
 }
 Type argh = 234;
 
-fault MyErr
-{
-    X,
-    Y
-}
+fault X, Y;
 
 enum Hello : int
 {
@@ -259,11 +255,11 @@ $"$ct.int" = comdat any
 
 $"$ct.test.MyEnum" = comdat any
 
-@"$ct.test.Bobo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 20, i64 0, i64 6, [0 x i64] zeroinitializer }, comdat, align 8
-@"$ct.test.Blob" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
-@"$ct.test.Foor" = linkonce global %.introspect { i8 11, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
-@"$ct.test.Foo2" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, comdat, align 8
-@"$ct.test.Foo" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
+@"$ct.test.Bobo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 20, i64 0, i64 6, [0 x i64] zeroinitializer }, comdat, align 8
+@"$ct.test.Blob" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
+@"$ct.test.Foor" = linkonce global %.introspect { i8 10, i64 0, ptr null, i64 16, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
+@"$ct.test.Foo2" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 4, i64 0, i64 1, [0 x i64] zeroinitializer }, comdat, align 8
+@"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, comdat, align 8
 @.enum.HELO = internal constant [5 x i8] c"HELO\00", align 1
 @.enum.WORLD = internal constant [6 x i8] c"WORLD\00", align 1
 @.enum.BYE = internal constant [4 x i8] c"BYE\00", align 1

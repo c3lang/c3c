@@ -7,22 +7,22 @@ import std::io::path, libc, std::os;
 <*
  @param [in] name
  @require name.len > 0
- @return! SearchResult.MISSING
+ @return! NOT_FOUND
 *>
-fn String! get_var(Allocator allocator, String name) => @pool(allocator)
+fn String? get_var(Allocator allocator, String name) => @pool(allocator)
 {
 
 	$switch:
 	$case env::LIBC && !env::WIN32:
 		ZString val = libc::getenv(name.zstr_tcopy());
-		return val ? val.copy(allocator) : SearchResult.MISSING?;
+		return val ? val.copy(allocator) : NOT_FOUND?;
 	$case env::WIN32:
 		// https://learn.microsoft.com/en-us/windows/win32/api/winbase/nf-winbase-getenvironmentvariable
 		const usz BUFSIZE = 1024;
 		WString buff = (WString)tcalloc(BUFSIZE * 2 + 2);
 		WString wstr = name.to_temp_wstring()!;
 		usz len = win32::getEnvironmentVariableW(wstr, buff, BUFSIZE);
-		if (len == 0) return SearchResult.MISSING?;
+		if (len == 0) return NOT_FOUND?;
 		if (len > BUFSIZE)
 		{
 			buff = (WString)tmalloc(len * 2 + 2);
@@ -34,7 +34,7 @@ fn String! get_var(Allocator allocator, String name) => @pool(allocator)
 	$endswitch
 }
 
-fn String! tget_var(String name)
+fn String? tget_var(String name)
 {
 	return get_var(tmem(), name);
 }
@@ -66,7 +66,7 @@ fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 <*
 Returns the current user's home directory.
 *>
-fn String! get_home_dir(Allocator using = allocator::heap())
+fn String? get_home_dir(Allocator using = allocator::heap())
 {
 	String home;
 	$if !env::WIN32:
@@ -81,7 +81,7 @@ fn String! get_home_dir(Allocator using = allocator::heap())
 <*
 Returns the current user's config directory.
 *>
-fn Path! get_config_dir(Allocator allocator) => @pool(allocator)
+fn Path? get_config_dir(Allocator allocator) => @pool(allocator)
 {
 	$if env::WIN32:
 		return path::new(allocator, tget_var("AppData"));
@@ -115,11 +115,11 @@ fn bool clear_var(String name) => @pool()
 	$endswitch
 }
 
-fn String! executable_path(Allocator allocator)
+fn String? executable_path(Allocator allocator)
 {
 	$if env::DARWIN:
 		return darwin::executable_path(allocator);
 	$else
-		return SearchResult.MISSING?;
+		return NOT_FOUND?;
 	$endif
 }

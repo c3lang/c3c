@@ -4,15 +4,8 @@ import libc;
 import std::io;
 import std::collections::maybe;
 
-fault TitleResult
-{
-	TITLE_MISSING
-}
-
-fault ReadError
-{
-	BAD_READ,
-}
+fault TITLE_MISSING;
+fault BAD_READ;
 
 struct Doc
 {
@@ -30,14 +23,14 @@ struct Summary
 	bool ok;
 }
 
-fn void! Summary.print(Summary* s, OutStream out)
+fn void? Summary.print(Summary* s, OutStream out)
 {
 	io::fprintf(out, "Summary({ .title = %s, .ok = %s})", s.title.get() ?? "missing", s.ok)!;
 }
 
-fn Doc! read_doc(String url)
+fn Doc? read_doc(String url)
 {
-	if (url.contains("fail")) return ReadError.BAD_READ?;
+	if (url.contains("fail")) return BAD_READ?;
 	if (url.contains("head-missing")) return { };
 	if (url.contains("title-missing")) return { .head = maybe::value{Head}({}) };
 	if (url.contains("title-empty")) return { .head = maybe::value{Head}({ .title = maybe::value{String}("")}) };
@@ -57,14 +50,14 @@ fn Summary read_and_build_summary(String url)
 	return build_summary(read_doc(url)) ?? {};
 }
 
-fn bool! is_title_non_empty(Doc doc)
+fn bool? is_title_non_empty(Doc doc)
 {
-	String! title = doc.head.get().title.get();
-	if (catch title) return TitleResult.TITLE_MISSING?;
+	String? title = doc.head.get().title.get();
+	if (catch title) return TITLE_MISSING?;
 	return title.len > 0;
 }
 
-fn bool! read_whether_title_non_empty(String url)
+fn bool? read_whether_title_non_empty(String url)
 {
     return is_title_non_empty(read_doc(url));
 }
@@ -90,7 +83,7 @@ fn void main()
             summary.print(out)!!;
             io::fprintn(out, "")!!;
             io::fprintf(out, "  Title: %s\n", summary.title.get() ?? "")!!;
-            bool! has_title = read_whether_title_non_empty(url);
+            bool? has_title = read_whether_title_non_empty(url);
             // This looks a bit less than elegant, but as you see it's mostly due to having to
             // use printf here.
             io::fprintf(out, "  Has title: %s vs %s\n", bool_to_string(has_title) ?? (@catch(has_title)).nameof, has_title ?? false)!!;

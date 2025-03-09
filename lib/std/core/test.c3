@@ -13,13 +13,13 @@ fault MathError
 	DIVISION_BY_ZERO
 }
 
-fn double! divide(int a, int b)
+fn double? divide(int a, int b)
 {
 	if (b == 0) return MathError.DIVISION_BY_ZERO?;
 	return (double)(a) / (double)(b);
 }
 
-fn void! test_div() @test
+fn void? test_div() @test
 {
 	test::eq(2, divide(6, 3)!);
 	test::ne(1, 2);

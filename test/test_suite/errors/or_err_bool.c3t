@@ -4,7 +4,7 @@ module test;
 
 fn void tester()
 {
-	bool! x = false;
+	bool? x = false;
 	x ?? true;
 }
 

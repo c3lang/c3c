@@ -7,13 +7,7 @@ import std::collections::list;
 
 def TextTagList = List{TextTag};
 
-fault TextError
-{
-	UNTERMINATED_TAG,
-	EMPTY_TAG,
-	MISSING_TAG,
-	UNSUPPORTED_TAG,
-}
+fault UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
 enum TextTagKind: char
 {
@@ -44,21 +38,21 @@ struct TextTag
  @require self.tags.len == 0 "template already initialized"
  @require tag_start != tag_end
  *>
-fn void! TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())
+fn void? TextTemplate.init(&self, String template, String tag_start = "{{", String tag_end = "}}", Allocator using = allocator::heap())
 {
 	TextTagList tags;
 	String tmpl = template;
 	uptr data = (uptr)&self.data;
 	while (true)
 	{
-		usz! start = tmpl.index_of(tag_start);
+		usz? start = tmpl.index_of(tag_start);
 		if (catch start) break;
 		tmpl = tmpl[start + tag_start.len..];
 
-		usz! end = tmpl.index_of(tag_end);
-		if (catch end) return TextError.UNTERMINATED_TAG?;
+		usz? end = tmpl.index_of(tag_end);
+		if (catch end) return UNTERMINATED_TAG?;
 		String name = tmpl[:end].trim();
-		if (name == "") return TextError.EMPTY_TAG?;
+		if (name == "") return EMPTY_TAG?;
 		// Check that the tag exists in the data struct.
 
 		TextTag tag @noinit;
@@ -83,10 +77,10 @@ fn void! TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 								break;
 							$endif
 					$endswitch
-					//return TextError.UNSUPPORTED_TAG?;
+					//return UNSUPPORTED_TAG?;
 				}
 			$endforeach
-			return TextError.MISSING_TAG?;
+			return MISSING_TAG?;
 		};
 		tmpl = tmpl[end + tag_end.len..];
 
@@ -98,13 +92,13 @@ fn void! TextTemplate.init(&self, String template, String tag_start = "{{", Stri
 	*self = { .allocator = using, .template = template, .tags = tags.array_view() };
 }
 
-fn void! TextTemplate.free(&self)
+fn void? TextTemplate.free(&self)
 {
 	allocator::free(self.allocator, self.tags);
 	*self = {};
 }
 
-fn usz! TextTemplate.write_to(&self, OutStream writer)
+fn usz? TextTemplate.write_to(&self, OutStream writer)
 {
 	usz n;
 	usz pos;
@@ -118,7 +112,7 @@ fn usz! TextTemplate.write_to(&self, OutStream writer)
 	return n;
 }
 
-fn usz! TextTag.write(&self, OutStream writer)
+fn usz? TextTag.write(&self, OutStream writer)
 {
 	switch (self.kind)
 	{

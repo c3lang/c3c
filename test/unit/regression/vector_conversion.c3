@@ -4,10 +4,10 @@ fn void vector_array_inferred()
 {
 	int[<2>] x = { 4, 7 };
 	int[2] y = x;
-	int[?] y1 = y;
-	int[?] y2 = x;
-	int[<?>] z = x;
-	int[<?>] w = y;
+	int[*] y1 = y;
+	int[*] y2 = x;
+	int[<*>] z = x;
+	int[<*>] w = y;
 	double[<2>] ww = x;
 	assert((int[<2>])y == { 4, 7});
 	assert((int[<2>])y1 == { 4, 7 });

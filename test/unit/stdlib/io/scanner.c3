@@ -30,10 +30,10 @@ fn void scanner()
         defer results.free();
         while (true)
         {
-        	char[]! res = sc.scan(",,");
+        	char[]? res = sc.scan(",,");
         	if (catch err = res)
         	{
-        		if (err == SearchResult.MISSING) break;
+        		if (err == NOT_FOUND) break;
         		return err?!!;
         	}
         	String str = (String)res;

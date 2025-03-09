@@ -1903,7 +1903,7 @@ Expr *parse_type_expression_with_path(ParseContext *c, Path *path)
 		advance_and_verify(c, TOKEN_TYPE_IDENT);
 		RANGE_EXTEND_PREV(type);
 		ASSIGN_TYPE_OR_RET(type, parse_type_with_base(c, type), poisoned_expr);
-		type->optional = try_consume(c, TOKEN_BANG);
+		type->optional = try_consume(c, TOKEN_QUESTION);
 	}
 	else
 	{

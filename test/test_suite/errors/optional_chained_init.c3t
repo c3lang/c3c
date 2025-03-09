@@ -2,12 +2,12 @@
 module test;
 import std::io;
 
-fault Test { FOO }
+fault FOO;
 
 fn void test1()
 {
-	int! a = 1;
-	int! b = a = Test.FOO?;
+	int? a = 1;
+	int? b = a = FOO?;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
 	(void)io::printfn("A was: %s", a);
@@ -16,9 +16,9 @@ fn void test1()
 
 fn void test2()
 {
-	int! x = Test.FOO?;
-	int! a = 1;
-	int! b = a = x;
+	int? x = FOO?;
+	int? a = 1;
+	int? b = a = x;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
 	(void)io::printfn("A was: %s", a);
@@ -28,9 +28,9 @@ fn void test2()
 
 fn void test3()
 {
-	int! x = 23;
-	int! a = 1;
-	int! b = a = x;
+	int? x = 23;
+	int? a = 1;
+	int? b = a = x;
 	if (catch err = a) io::printfn("A err was: %s", err);
 	if (catch err = b) io::printfn("B err was: %s", err);
 	(void)io::printfn("A was: %s", a);
@@ -64,8 +64,8 @@ entry:
   %retparam28 = alloca i64, align 8
   store i32 1, ptr %a, align 4
   store i64 0, ptr %a.f, align 8
-  store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %a.f, align 8
-  store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %b.f, align 8
+  store i64 ptrtoint (ptr @test.FOO to i64), ptr %a.f, align 8
+  store i64 ptrtoint (ptr @test.FOO to i64), ptr %b.f, align 8
   br label %after_assign
 
 after_assign:                                     ; preds = %entry
@@ -179,7 +179,7 @@ entry:
   %retparam26 = alloca i64, align 8
   %varargslots29 = alloca [1 x %any], align 16
   %retparam33 = alloca i64, align 8
-  store i64 ptrtoint (ptr @"test.Test$FOO" to i64), ptr %x.f, align 8
+  store i64 ptrtoint (ptr @test.FOO to i64), ptr %x.f, align 8
   store i32 1, ptr %a, align 4
   store i64 0, ptr %a.f, align 8
   %optval = load i64, ptr %x.f, align 8

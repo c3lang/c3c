@@ -87,7 +87,7 @@ fn void List.init_wrapping_array(&self, Allocator allocator, Type[] types)
 
 fn bool List.is_initialized(&self) @inline => self.allocator != null && self.allocator != (Allocator)&dummy;
 
-fn usz! List.to_format(&self, Formatter* formatter) @dynamic
+fn usz? List.to_format(&self, Formatter* formatter) @dynamic
 {
 	switch (self.size)
 	{
@@ -113,9 +113,9 @@ fn void List.push(&self, Type element) @inline
 	self.entries[self.set_size(self.size + 1)] = element;
 }
 
-fn Type! List.pop(&self)
+fn Type? List.pop(&self)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.set_size(self.size - 1);
 	return self.entries[self.size - 1];
 }
@@ -125,9 +125,9 @@ fn void List.clear(&self)
 	self.set_size(0);
 }
 
-fn Type! List.pop_first(&self)
+fn Type? List.pop_first(&self)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.remove_at(0);
 	return self.entries[0];
 }
@@ -233,27 +233,27 @@ fn void List.set_at(&self, usz index, Type type)
 	self.entries[index] = type;
 }
 
-fn void! List.remove_last(&self) @maydiscard
+fn void? List.remove_last(&self) @maydiscard
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	self.set_size(self.size - 1);
 }
 
-fn void! List.remove_first(&self) @maydiscard
+fn void? List.remove_first(&self) @maydiscard
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	self.remove_at(0);
 }
 
-fn Type! List.first(&self)
+fn Type? List.first(&self)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	return self.entries[0];
 }
 
-fn Type! List.last(&self)
+fn Type? List.last(&self)
 {
-	if (!self.size) return IteratorResult.NO_MORE_ELEMENT?;
+	if (!self.size) return NO_MORE_ELEMENT?;
 	return self.entries[self.size - 1];
 }
 
@@ -446,22 +446,22 @@ macro void List.post_alloc(&self) @private
 // Functions for equatable types
 
 
-fn usz! List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.index_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach (i, v : self)
 	{
 		if (equals(v, type)) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
-fn usz! List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
+fn usz? List.rindex_of(&self, Type type) @if(ELEMENT_IS_EQUATABLE)
 {
 	foreach_r (i, v : self)
 	{
 		if (equals(v, type)) return i;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 fn bool List.equals(&self, List other_list) @if(ELEMENT_IS_EQUATABLE)

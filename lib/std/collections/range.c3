@@ -29,7 +29,7 @@ fn Type Range.get(&self, usz index) @operator([])
 	return (Type)(self.start + (usz)index);
 }
 
-fn usz! Range.to_format(&self, Formatter* formatter) @dynamic
+fn usz? Range.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..%s]", self.start, self.end)!;
 }
@@ -51,7 +51,7 @@ fn bool ExclusiveRange.contains(&self, Type value) @inline
 	return value >= self.start && value < self.end;
 }
 
-fn usz! ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
+fn usz? ExclusiveRange.to_format(&self, Formatter* formatter) @dynamic
 {
 	return formatter.printf("[%s..<%s]", self.start, self.end)!;
 }

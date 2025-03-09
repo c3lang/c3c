@@ -171,26 +171,26 @@ fn usz HashMap.len(&map) @inline
 	return map.count;
 }
 
-fn Value*! HashMap.get_ref(&map, Key key)
+fn Value*? HashMap.get_ref(&map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING?;
+	if (!map.count) return NOT_FOUND?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return &e.value;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
-fn Entry*! HashMap.get_entry(&map, Key key)
+fn Entry*? HashMap.get_entry(&map, Key key)
 {
-	if (!map.count) return SearchResult.MISSING?;
+	if (!map.count) return NOT_FOUND?;
 	uint hash = rehash(key.hash());
 	for (Entry *e = map.table[index_for(hash, map.table.len)]; e != null; e = e.next)
 	{
 		if (e.hash == hash && equals(key, e.key)) return e;
 	}
-	return SearchResult.MISSING?;
+	return NOT_FOUND?;
 }
 
 <*
@@ -216,7 +216,7 @@ macro Value HashMap.@get_or_set(&map, Key key, Value #expr)
 	return val;
 }
 
-fn Value! HashMap.get(&map, Key key) @operator([])
+fn Value? HashMap.get(&map, Key key) @operator([])
 {
 	return *map.get_ref(key) @inline;
 }
@@ -252,9 +252,9 @@ fn bool HashMap.set(&map, Key key, Value value) @operator([]=)
 	return false;
 }
 
-fn void! HashMap.remove(&map, Key key) @maydiscard
+fn void? HashMap.remove(&map, Key key) @maydiscard
 {
-	if (!map.remove_entry_for_key(key)) return SearchResult.MISSING?;
+	if (!map.remove_entry_for_key(key)) return NOT_FOUND?;
 }
 
 fn void HashMap.clear(&map)
@@ -413,7 +413,7 @@ fn void HashMap.resize(&map, uint new_capacity) @private
 	map.threshold = (uint)(new_capacity * map.load_factor);
 }
 
-fn usz! HashMap.to_format(&self, Formatter* f) @dynamic
+fn usz? HashMap.to_format(&self, Formatter* f) @dynamic
 {
 	usz len;
 	len += f.print("{ ")!;

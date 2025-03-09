@@ -92,10 +92,9 @@ static inline const char *decl_type_to_string(Decl *type)
 		case DECL_ENUM: return "enum";
 		case DECL_ENUM_CONSTANT: return "enum_const";
 		case DECL_FAULT: return "fault";
-		case DECL_FAULTVALUE: return "fault_val";
 		case DECL_FNTYPE: return "fntype";
 		case DECL_FUNC: return "function";
-		case DECL_GLOBALS: return "global";
+		case DECL_GROUP: return "globals";
 		case DECL_IMPORT: return "import";
 		case DECL_MACRO: return "macro";
 		case DECL_INTERFACE: return "interface";
@@ -160,11 +159,11 @@ void print_type(FILE *file, TypeInfo *type)
 			break;
 		case TYPE_INFO_INFERRED_ARRAY:
 			print_type(file, type->array.base);
-			fputs("[?]", file);
+			fputs("[*]", file);
 			break;
 		case TYPE_INFO_INFERRED_VECTOR:
 			print_type(file, type->array.base);
-			fputs("[<?>]", file);
+			fputs("[<*>]", file);
 			break;
 		case TYPE_INFO_SLICE:
 			print_type(file, type->array.base);

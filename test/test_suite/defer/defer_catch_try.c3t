@@ -2,19 +2,17 @@
 module test;
 extern fn void printf(char*, ...);
 
-fault Abc
-{
-	FOO
-}
-fn int! abc(int x)
+fault FOO;
+
+fn int? abc(int x)
 {
 	printf("Enter abc\n");
 	defer catch printf("Abc catch %d\n", x);
 	defer try printf("Abc try %d\n", x);
 	defer printf("Abc normal %d\n", x);
-	return x > 0 ? Abc.FOO? : 0;
+	return x > 0 ? FOO? : 0;
 }
-fn int! bcd(int x)
+fn int? bcd(int x)
 {
 	printf("Enter bcd\n");
 	for (int i = 0; i < 10; i++)
@@ -25,7 +23,7 @@ fn int! bcd(int x)
 		defer printf("Bcd %d normal %d\n", i, x);
 		if (i == 1) continue;
 		printf("bcd check\n");
-		if (i == 2) return x > 0 ? Abc.FOO? : 0;
+		if (i == 2) return x > 0 ? FOO? : 0;
 	}
 	return 0;
 }
@@ -50,7 +48,7 @@ entry:
   br i1 %gt, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %entry
-  store i64 ptrtoint (ptr @"test.Abc$FOO" to i64), ptr %reterr, align 8
+  store i64 ptrtoint (ptr @test.FOO to i64), ptr %reterr, align 8
   br label %err_retblock
 
 cond.rhs:                                         ; preds = %entry
@@ -107,7 +105,7 @@ if.then2:                                         ; preds = %if.exit
   br i1 %gt, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %if.then2
-  store i64 ptrtoint (ptr @"test.Abc$FOO" to i64), ptr %reterr, align 8
+  store i64 ptrtoint (ptr @test.FOO to i64), ptr %reterr, align 8
   br label %err_retblock
 
 cond.rhs:                                         ; preds = %if.then2

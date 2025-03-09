@@ -11,18 +11,18 @@ struct EncodeTest
 	UrlEncodingMode mode;
 }
 
-EncodeTest[?] decode_with_error_tests @local = {
+EncodeTest[*] decode_with_error_tests @local = {
 	{ "", "", {}, QUERY, },
 	{ "abc", "abc", {}, QUERY, },
 	{ "1%41", "1A", {}, QUERY, },
 	{ "1%41%42%43", "1ABC", {}, QUERY, },
 	{ "%4a", "J", {}, QUERY, },
 	{ "%6F", "o", {}, QUERY, },
-	{ "%", "", UrlDecodingError.INVALID_HEX, QUERY, },
-	{ "%a", "", UrlDecodingError.INVALID_HEX, QUERY, },
-	{ "%1", "", UrlDecodingError.INVALID_HEX, QUERY, },
-	{ "123%45%6", "", UrlDecodingError.INVALID_HEX, QUERY, },
-	{ "%zzzzz", "", UrlDecodingError.INVALID_HEX, QUERY, },
+	{ "%", "", url::INVALID_HEX, QUERY, },
+	{ "%a", "", url::INVALID_HEX, QUERY, },
+	{ "%1", "", url::INVALID_HEX, QUERY, },
+	{ "123%45%6", "", url::INVALID_HEX, QUERY, },
+	{ "%zzzzz", "", url::INVALID_HEX, QUERY, },
 	{ "a+b", "a b", {}, QUERY, },
 	{ "a%20b", "a b", {}, QUERY, },
 };
@@ -31,7 +31,7 @@ fn void test_decoding_with_error() => @pool()
 {
 	foreach (test: decode_with_error_tests)
 	{
-		String! actual = url::tdecode(test.in, test.mode);
+		String? actual = url::tdecode(test.in, test.mode);
 		if (catch excuse = actual)
 		{
 			assert(excuse == test.err, "unescape(%s, %s); "
@@ -43,7 +43,7 @@ fn void test_decoding_with_error() => @pool()
 	}
 }
 
-EncodeTest[?] encode_tests @local = {
+EncodeTest[*] encode_tests @local = {
 	{ "", "", {}, PATH, },
 	{ "abc", "abc", {}, PATH, },
 	{ "abc+def", "abc+def", {}, PATH, },
@@ -81,7 +81,7 @@ struct ShouldEncodeTest
 	bool escape;
 }
 
-ShouldEncodeTest[?] should_encode_tests = {
+ShouldEncodeTest[*] should_encode_tests = {
 	{'a', PATH, false},
 	{'a', USERPASS, false},
 	{'a', QUERY, false},

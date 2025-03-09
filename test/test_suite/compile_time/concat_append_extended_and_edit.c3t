@@ -6,7 +6,7 @@ struct Abc (Printable)
 {
 	int a;
 }
-fn usz! Abc.to_format(&self, Formatter* f) @dynamic => f.printf("{%s}", self.a);
+fn usz? Abc.to_format(&self, Formatter* f) @dynamic => f.printf("{%s}", self.a);
 
 fn void main2()
 {

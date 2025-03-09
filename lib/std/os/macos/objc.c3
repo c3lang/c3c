@@ -7,11 +7,7 @@ distinct ObjcSelector = void*;
 def ObjcId = void*;
 def SendVoid = fn void*(void*, ObjcSelector);
 
-fault ObjcFailure
-{
-	CLASS_NOT_FOUND,
-	UNKNOWN_EVENT
-}
+fault CLASS_NOT_FOUND, UNKNOWN_EVENT;
 
 macro ZString ObjcClass.name(ObjcClass cls) => class_getName(cls);
 macro ObjcClass ObjcClass.superclass(ObjcClass cls) => class_getSuperclass(cls);
@@ -24,10 +20,10 @@ macro bool ObjcClass.equals(ObjcClass a, ObjcClass b) => a == b;
 fn ObjcId alloc(ObjcClass cls) => objc::msg_send(cls, SendVoid, "alloc");
 fn void release(ObjcId id) => objc::msg_send(id, SendVoid, "release"); 
 
-macro ObjcClass! class_by_name(ZString c)
+macro ObjcClass? class_by_name(ZString c)
 {
 	ObjcClass cls = objc::lookUpClass(c);
-	return cls ?: ObjcFailure.CLASS_NOT_FOUND?;
+	return cls ?: CLASS_NOT_FOUND?;
 }
 
 macro ObjcClass[] class_get_list(Allocator allocator = allocator::heap())
@@ -138,7 +134,7 @@ enum EventType : (long val)
 	CHANGE_MODE         = 38,
 }
 
-fn EventType! event_type_from(int val)
+fn EventType? event_type_from(int val)
 {
     switch(val)
     {
@@ -176,7 +172,7 @@ fn EventType! event_type_from(int val)
         case EventType.PRESSURE.val:            return PRESSURE;
         case EventType.DIRECT_TOUCH.val:        return DIRECT_TOUCH;
         case EventType.CHANGE_MODE.val:         return CHANGE_MODE;
-        default: return ObjcFailure.UNKNOWN_EVENT?;
+        default: return UNKNOWN_EVENT?;
     }
 }
 

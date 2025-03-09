@@ -12,6 +12,6 @@
 
 0xg // #error: '0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.
 
-0x! // #error: '0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.
+0x? // #error: '0x' starts a hexadecimal number, so the next character should be 0-9, a-f or A-F.
 
 0b // #error: An expression starting with '0b' should be followed by binary digits

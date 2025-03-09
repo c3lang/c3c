@@ -1,12 +1,10 @@
+module std::thread;
+fault THREAD_QUEUE_FULL;
+
 module std::thread::threadpool @if (env::POSIX || env::WIN32);
 import std::thread;
 
 // Please do not use this one in production.
-
-fault ThreadPoolResult
-{
-	QUEUE_FULL
-}
 
 def ThreadPoolFn = fn void(any[] args);
 
@@ -36,7 +34,7 @@ struct QueueItem @private
  @require threads > 0 && threads < 0x1000 : `Threads should be greater than 0 and less than 0x1000`
  @require queue_size < 0x10000 : `Queue size must be less than 65536`
 *>
-fn void! FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
+fn void? FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
 {
 	if (queue_size == 0) queue_size = threads * 32;
 	defer catch @ok(self.destroy());
@@ -61,7 +59,7 @@ fn void! FixedThreadPool.init(&self, usz threads, usz queue_size = 0)
  Stop all the threads and cleanup the pool.
  Any pending work will be dropped.
 *>
-fn void! FixedThreadPool.destroy(&self)
+fn void? FixedThreadPool.destroy(&self)
 {
 	return self.@shutdown(stop_now);
 }
@@ -70,12 +68,12 @@ fn void! FixedThreadPool.destroy(&self)
  Stop all the threads and cleanup the pool.
  Any pending work will be processed.
 *>
-fn void! FixedThreadPool.stop_and_destroy(&self)
+fn void? FixedThreadPool.stop_and_destroy(&self)
 {
 	return self.@shutdown(stop);
 }
 
-macro void! FixedThreadPool.@shutdown(&self, #stop) @private
+macro void? FixedThreadPool.@shutdown(&self, #stop) @private
 {
 	if (self.initialized)
 	{
@@ -109,11 +107,11 @@ macro void! FixedThreadPool.@shutdown(&self, #stop) @private
  Push a new job to the pool.
  return Excuse if the queue is full, in which case the job is ignored.
 *>
-fn void! FixedThreadPool.push(&self, ThreadPoolFn func, args...)
+fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 {
 	self.mu.lock()!;
 	defer self.mu.unlock()!!;
-	if (self.qindex == self.queue.len) return ThreadPoolResult.QUEUE_FULL?;
+	if (self.qindex == self.queue.len) return thread::THREAD_QUEUE_FULL?;
 	any[] data;
 	if (args.len)
 	{

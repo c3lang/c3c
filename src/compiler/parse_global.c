@@ -514,7 +514,7 @@ static inline TypeInfo *parse_array_type_index(ParseContext *c, TypeInfo *type)
 	ASSERT(type_info_ok(type));
 
 	advance_and_verify(c, TOKEN_LBRACKET);
-	if (try_consume(c, TOKEN_STAR) || try_consume(c, TOKEN_QUESTION))
+	if (try_consume(c, TOKEN_STAR))
 	{
 		CONSUME_OR_RET(TOKEN_RBRACKET, poisoned_type_info);
 		TypeInfo *inferred_array = type_info_new(TYPE_INFO_INFERRED_ARRAY, type->span);
@@ -575,7 +575,7 @@ static inline TypeInfo *parse_vector_type_index(ParseContext *c, TypeInfo *type)
 	advance_and_verify(c, TOKEN_LVEC);
 	TypeInfo *vector = type_info_new(TYPE_INFO_VECTOR, type->span);
 	vector->array.base = type;
-	if (try_consume(c, TOKEN_STAR) || try_consume(c, TOKEN_QUESTION))
+	if (try_consume(c, TOKEN_STAR))
 	{
 		CONSUME_OR_RET(TOKEN_RVEC, poisoned_type_info);
 		vector->kind = TYPE_INFO_INFERRED_VECTOR;
@@ -697,14 +697,14 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 			case DISCARD_ERR:
 				return false;
 			case DISCARD_WILDCARD:
-				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[?]' should appear before the '!', e.g 'Foo[?]!'.");
+				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[*]' should appear before the '?', e.g 'Foo[*]?'.");
 				return false;
 			case DISCARD_SLICE:
 				print_error_at(extend_span_with_token(start, c->prev_span),
-				               "When declaring an optional slice the '[]' should appear before the '!', e.g 'Foo[]!'.");
+				               "When declaring an optional slice the '[]' should appear before the '?', e.g 'Foo[]?'.");
 				return false;
 			case DISCARD_EXPR:
-				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[...]' should appear before the '!', e.g 'Foo[4]!'.");
+				print_error_at(extend_span_with_token(start, c->prev_span), "When declaring an optional array, the '[...]' should appear before the '?', e.g 'Foo[4]?'.");
 				return false;
 		}
 		UNREACHABLE
@@ -716,12 +716,12 @@ INLINE bool parse_rethrow_bracket(ParseContext *c, SourceSpan start)
 			case DISCARD_ERR:
 				return false;
 			case DISCARD_WILDCARD:
-				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<?>]' should appear before the '!', e.g 'Foo[<?>]!'.");
+				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<*>]' should appear before the '?', e.g 'Foo[<*>]?'.");
 				return false;
 			case DISCARD_SLICE:
 				UNREACHABLE
 			case DISCARD_EXPR:
-				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<...>]' should appear before the '!', e.g 'Foo[<4>]!'.");
+				print_error_at(extend_span_with_token(start, c->span), "When declaring an optional vector, the '[<...>]' should appear before the '?', e.g 'Foo[<4>]?'.");
 				return false;
 		}
 		UNREACHABLE
@@ -738,7 +738,7 @@ static inline TypeInfo *parse_optional_type_maybe_generic(ParseContext *c, bool 
 {
 	ASSIGN_TYPE_OR_RET(TypeInfo *info, parse_base_type(c), poisoned_type_info);
 	ASSIGN_TYPE_OR_RET(info, parse_type_with_base_maybe_generic(c, info, allow_generic), poisoned_type_info);
-	if (try_consume(c, TOKEN_BANG))
+	if (try_consume(c, TOKEN_QUESTION))
 	{
 		if (!parse_rethrow_bracket(c, info->span)) return poisoned_type_info;
 		ASSERT(!info->optional);
@@ -1226,7 +1226,7 @@ static inline Decl *parse_global_declaration(ParseContext *c)
 	if (decls)
 	{
 		decl = decl_calloc();
-		decl->decl_kind = DECL_GLOBALS;
+		decl->decl_kind = DECL_GROUP;
 		decl->decls = decls;
 		return decl;
 	}
@@ -2237,56 +2237,44 @@ static inline Decl *parse_macro_declaration(ParseContext *c, AstId docs)
 	return decl;
 }
 
+static inline Decl *parse_fault(ParseContext *c)
+{
+	Decl *decl = decl_new(DECL_FAULT, symstr(c), c->span);
+	if (!consume_const_name(c, "fault")) return poisoned_decl;
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+	return decl;
+}
 
 /**
- * fault_declaration ::= FAULT TYPE_IDENT opt_interfaces opt_attributes '{' faults ','? '}'
+ * fault_declaration ::= FAULT CONST_IDENT (',' CONST_IDENT)* ','? ';'
  */
 static inline Decl *parse_fault_declaration(ParseContext *c)
 {
 	advance_and_verify(c, TOKEN_FAULT);
 
-	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_FAULT);
-	if (!consume_type_name(c, "fault")) return poisoned_decl;
-	if (!parse_interface_impls(c, &decl->interfaces)) return poisoned_decl;
-
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
-
-	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-
-	decl->enums.type_info = type_info_new_base(type_iptr->canonical, decl->span);
-	uint64_t ordinal = 0;
-	while (!try_consume(c, TOKEN_RBRACE))
+	if (c->lexer.token_type == TOKEN_EOS)
 	{
-		Decl *fault_const = decl_new(DECL_FAULTVALUE, symstr(c), c->span);
-		if (!consume_const_name(c, "fault value"))
-		{
-			return poisoned_decl;
-		}
-		const char *name = fault_const->name;
-		fault_const->enum_constant.parent = declid(decl);
-		fault_const->enum_constant.ordinal = ordinal;
-		ordinal++;
-		FOREACH(Decl *, other_constant, decl->enums.values)
-		{
-			if (other_constant->name == name)
-			{
-				PRINT_ERROR_AT(fault_const, "This fault value was declared twice.");
-				SEMA_NOTE(other_constant, "The previous declaration was here.");
-				return poisoned_decl;
-			}
-		}
-		vec_add(decl->enums.values, fault_const);
-		// Allow trailing ','
-		if (!try_consume(c, TOKEN_COMMA))
-		{
-			EXPECT_OR_RET(TOKEN_RBRACE, poisoned_decl);
-		}
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
+		CONSUME_EOS_OR_RET(poisoned_decl);
+		return decl;
 	}
-	if (ordinal == 0)
+	Decl **decls = NULL;
+	while (!try_consume(c, TOKEN_EOS))
 	{
-		print_error_at(c->prev_span, "Declaration of '%s' contains no values, at least one value is required.", decl->name);
+		ASSIGN_DECL_OR_RET(Decl *decl, parse_fault(c), poisoned_decl);
+		vec_add(decls, decl);
+		if (try_consume(c, TOKEN_COMMA)) continue;
+		CONSUME_OR_RET(TOKEN_EOS, poisoned_decl);
+		break;
+	}
+	if (!decls)
+	{
+		PRINT_ERROR_LAST("Expected the name of a fault here.");
 		return poisoned_decl;
 	}
+	Decl *decl = decl_calloc();
+	decl->decl_kind = DECL_GROUP;
+	decl->decl_list = decls;
 	return decl;
 }
 
@@ -2726,17 +2714,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	while (1)
 	{
 		Ast *ret = ast_new_curr(c, AST_CONTRACT_FAULT);
-		ASSIGN_TYPE_OR_RET(ret->contract_fault.type, parse_base_type(c), false);
-		if (ret->contract_fault.type->kind != TYPE_INFO_IDENTIFIER)
-		{
-			RETURN_PRINT_ERROR_AT(false, ret->contract_fault.type, "Expected a fault type.");
-		}
-		if (try_consume(c, TOKEN_DOT))
-		{
-			ret->contract_fault.ident = c->data.string;
-			TRY_CONSUME_OR_RET(TOKEN_CONST_IDENT, "Expected a fault value.", false);
-		}
-		RANGE_EXTEND_PREV(ret);
+		ASSIGN_EXPR_OR_RET(ret->contract_fault.expr, parse_expr(c), false);
 		vec_add(returns, ret);
 		if (!try_consume(c, TOKEN_COMMA)) break;
 	}

@@ -116,7 +116,6 @@ void type_append_name_to_scratch(Type *type)
 		case TYPE_POISONED:
 		case TYPE_TYPEDEF:
 			UNREACHABLE;
-		case TYPE_FAULTTYPE:
 		case TYPE_ENUM:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -146,7 +145,7 @@ void type_append_name_to_scratch(Type *type)
 			break;
 		case TYPE_FLEXIBLE_ARRAY:
 			type_append_name_to_scratch(type->array.base);
-			scratch_buffer_append("[?]");
+			scratch_buffer_append("[*]");
 			break;
 		case TYPE_VOID:
 		case TYPE_BOOL:
@@ -251,7 +250,6 @@ const char *type_to_error_string(Type *type)
 		case TYPE_WILDCARD:
 			return type->name;
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 		case TYPE_TYPEDEF:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -278,7 +276,7 @@ const char *type_to_error_string(Type *type)
 			type_append_func_to_scratch(type->function.prototype);
 			return scratch_buffer_copy();
 		case TYPE_INFERRED_VECTOR:
-			return str_printf("%s[<?>]", type_to_error_string(type->array.base));
+			return str_printf("%s[<*>]", type_to_error_string(type->array.base));
 		case TYPE_VECTOR:
 			return str_printf("%s[<%llu>]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_TYPEINFO:
@@ -288,13 +286,13 @@ const char *type_to_error_string(Type *type)
 		case TYPE_POINTER:
 			return str_printf("%s*", type_to_error_string(type->pointer));
 		case TYPE_OPTIONAL:
-			if (!type->optional) return "void!";
-			return str_printf("%s!", type_to_error_string(type->optional));
+			if (!type->optional) return "void?";
+			return str_printf("%s?", type_to_error_string(type->optional));
 		case TYPE_ARRAY:
 			return str_printf("%s[%llu]", type_to_error_string(type->array.base), (unsigned long long)type->array.len);
 		case TYPE_INFERRED_ARRAY:
 		case TYPE_FLEXIBLE_ARRAY:
-			return str_printf("%s[?]", type_to_error_string(type->array.base));
+			return str_printf("%s[*]", type_to_error_string(type->array.base));
 		case TYPE_SLICE:
 			return str_printf("%s[]", type_to_error_string(type->array.base));
 	}
@@ -342,9 +340,6 @@ RETRY:
 			goto RETRY;
 		case TYPE_TYPEDEF:
 			type = type->canonical;
-			goto RETRY;
-		case TYPE_FAULTTYPE:
-			type = type_iptr->canonical;
 			goto RETRY;
 		case TYPE_ENUM:
 			ASSERT(type->decl->enums.type_info->resolve_status == RESOLVE_DONE);
@@ -452,7 +447,6 @@ bool type_is_abi_aggregate(Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_VECTOR:
 		case TYPE_ANYFAULT:
-		case TYPE_FAULTTYPE:
 			return false;
 		case TYPE_STRUCT:
 		case TYPE_UNION:
@@ -546,7 +540,6 @@ bool type_is_comparable(Type *type)
 		case TYPE_ENUM:
 		case TYPE_FUNC_PTR:
 		case TYPE_FUNC_RAW:
-		case TYPE_FAULTTYPE:
 		case TYPE_UNTYPED_LIST:
 		case TYPE_TYPEINFO:
 		case TYPE_VECTOR:
@@ -639,7 +632,6 @@ void type_mangle_introspect_name_to_buffer(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
 		case TYPE_INTERFACE:
 			scratch_buffer_set_extern_decl_name(type->decl, false);
@@ -731,7 +723,6 @@ AlignSize type_abi_alignment(Type *type)
 		case TYPE_ANY:
 		case TYPE_POINTER:
 		case TYPE_TYPEID:
-		case TYPE_FAULTTYPE:
 			return t.iptr.canonical->builtin.abi_alignment;
 		case TYPE_ARRAY:
 		case TYPE_INFERRED_ARRAY:
@@ -841,7 +832,7 @@ static Type *type_generate_inferred_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[INFERRED_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_INFERRED_ARRAY, str_printf("%s[?]", arr_type->name));
+		arr = type_new(TYPE_INFERRED_ARRAY, str_printf("%s[*]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[INFERRED_ARRAY_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -867,7 +858,7 @@ static Type *type_generate_inferred_vector(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[INFERRED_VECTOR_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_INFERRED_VECTOR, str_printf("%s[<?>]", arr_type->name));
+		arr = type_new(TYPE_INFERRED_VECTOR, str_printf("%s[<*>]", arr_type->name));
 		arr->array.base = arr_type;
 		arr_type->type_cache[INFERRED_VECTOR_OFFSET] = arr;
 		if (arr_type == arr_type->canonical)
@@ -893,7 +884,7 @@ static Type *type_generate_flexible_array(Type *arr_type, bool canonical)
 	Type *arr = arr_type->type_cache[FLEXIBLE_ARRAY_OFFSET];
 	if (arr == NULL)
 	{
-		arr = type_new(TYPE_FLEXIBLE_ARRAY, str_printf("%s[?]", arr_type->name));
+		arr = type_new(TYPE_FLEXIBLE_ARRAY, str_printf("%s[*]", arr_type->name));
 		arr->array.base = arr_type;
 		arr->array.len = 0;
 		arr_type->type_cache[FLEXIBLE_ARRAY_OFFSET] = arr;
@@ -1067,7 +1058,6 @@ bool type_is_user_defined(Type *type)
 		case TYPE_FUNC_RAW:
 		case TYPE_STRUCT:
 		case TYPE_UNION:
-		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
 		case TYPE_BITSTRUCT:
 		case TYPE_TYPEDEF:
@@ -1172,7 +1162,6 @@ bool type_is_valid_for_vector(Type *type)
 		case TYPE_POINTER:
 		case TYPE_ENUM:
 		case TYPE_TYPEID:
-		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_DISTINCT:
@@ -1207,7 +1196,6 @@ bool type_is_valid_for_array(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 		case ALL_INTS:
 		case ALL_FLOATS:
 		case TYPE_BOOL:
@@ -1469,7 +1457,6 @@ bool type_is_scalar(Type *type)
 		case TYPE_POINTER:
 		case TYPE_FUNC_PTR:
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 		case TYPE_ANYFAULT:
 			return true;
 		case TYPE_BITSTRUCT:
@@ -1730,7 +1717,6 @@ bool type_may_have_method(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
 		case ALL_FLOATS:
 		case ALL_INTS:
@@ -1773,7 +1759,6 @@ bool type_may_have_sub_elements(Type *type)
 		case TYPE_UNION:
 		case TYPE_STRUCT:
 		case TYPE_ENUM:
-		case TYPE_FAULTTYPE:
 		case TYPE_BITSTRUCT:
 		case TYPE_INTERFACE:
 			return true;
@@ -2020,9 +2005,6 @@ RETRY_DISTINCT:
 			// IMPROVE: should there be implicit conversion between one enum and the other in
 			// some way?
 			return NULL;
-		case TYPE_FAULTTYPE:
-			if (other->type_kind == TYPE_FAULTTYPE) return type_anyfault;
-			return NULL;
 		case TYPE_ANYFAULT:
 			return type_anyfault;
 		case TYPE_FUNC_PTR:
@@ -2129,8 +2111,6 @@ unsigned type_get_introspection_kind(TypeKind kind)
 			return INTROSPECT_TYPE_UNION;
 		case TYPE_BITSTRUCT:
 			return INTROSPECT_TYPE_BITSTRUCT;
-		case TYPE_FAULTTYPE:
-			return INTROSPECT_TYPE_FAULT;
 		case TYPE_FUNC_RAW:
 		case TYPE_TYPEDEF:
 			UNREACHABLE
@@ -2184,7 +2164,6 @@ Module *type_base_module(Type *type)
 		case TYPE_STRUCT:
 		case TYPE_UNION:
 		case TYPE_BITSTRUCT:
-		case TYPE_FAULTTYPE:
 		case TYPE_DISTINCT:
 		case TYPE_INTERFACE:
 			return type->decl->unit ? type->decl->unit->module : NULL;

@@ -8,7 +8,7 @@ fn String encode_buffer(char[] code, char[] buffer)
 	return (String)buffer[:encode_bytes(code, buffer)];
 }
 
-fn char[]! decode_buffer(char[] code, char[] buffer)
+fn char[]? decode_buffer(char[] code, char[] buffer)
 {
 	return buffer[:decode_bytes(code, buffer)!];
 }
@@ -19,14 +19,14 @@ fn String encode(Allocator allocator, char[] code)
 	return (String)data[:encode_bytes(code, data)];
 }
 
-fn char[]! decode(Allocator allocator, char[] code)
+fn char[]? decode(Allocator allocator, char[] code)
 {
 	char[] data = allocator::alloc_array(allocator, char, decode_len(code.len));
 	return data[:decode_bytes(code, data)!];
 }
 
 fn String tencode(char[] code) @inline => encode(tmem(), code);
-fn char[]! tdecode(char[] code) @inline => decode(tmem(), code);
+fn char[]? tdecode(char[] code) @inline => decode(tmem(), code);
 
 
 <*
@@ -72,24 +72,24 @@ macro usz decode_len(usz n) => n / 2;
  @param dst : "The decoded input."
  @require src.len % 2 == 0 : "src is not of even length"
  @require dst.len >= decode_len(src.len) : "Destination array is not large enough"
- @return! DecodingFailure.INVALID_CHARACTER
+ @return! encoding::INVALID_CHARACTER
 *>
-fn usz! decode_bytes(char[] src, char[] dst)
+fn usz? decode_bytes(char[] src, char[] dst)
 {
 	usz i;
 	for (usz j = 1; j < src.len; j += 2)
 	{
 		char a = HEXREVERSE[src[j - 1]];
 		char b = HEXREVERSE[src[j]];
-		if (a > 0x0f || b > 0x0f) return DecodingFailure.INVALID_CHARACTER?;
+		if (a > 0x0f || b > 0x0f) return encoding::INVALID_CHARACTER?;
 		dst[i] = (a << 4) | b;
 		i++;
 	}
 	return i;
 }
 
-const char[?] HEXALPHABET @private = "0123456789abcdef";
-const char[?] HEXREVERSE @private =
+const char[*] HEXALPHABET @private = "0123456789abcdef";
+const char[*] HEXREVERSE @private =
 x`ffffffffffffffffffffffffffffffff
   ffffffffffffffffffffffffffffffff
   ffffffffffffffffffffffffffffffff

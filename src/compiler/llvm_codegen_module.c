@@ -86,7 +86,6 @@ void gencontext_begin_module(GenContext *c)
 		switch (type->type_kind)
 		{
 			case TYPE_ENUM:
-			case TYPE_FAULTTYPE:
 			{
 				FOREACH(Decl *, value, type->decl->enums.values)
 				{

@@ -1,14 +1,7 @@
 module std::os::backtrace;
 import std::collections::list, std::os, std::io;
 
-fault BacktraceFault
-{
-	SEGMENT_NOT_FOUND,
-	EXECUTABLE_PATH_NOT_FOUND,
-	IMAGE_NOT_FOUND,
-	NO_BACKTRACE_SYMBOLS,
-	RESOLUTION_FAILED,
-}
+fault SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS, RESOLUTION_FAILED;
 
 const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null, false };
 
@@ -34,7 +27,7 @@ fn bool Backtrace.is_unknown(&self)
 	return !self.object_file.len;
 }
 
-fn usz! Backtrace.to_format(&self, Formatter* formatter) @dynamic
+fn usz? Backtrace.to_format(&self, Formatter* formatter) @dynamic
 {
 	String inline_suffix = self.is_inline ? " [inline]" : "";
 	if (self.has_file())
@@ -97,7 +90,7 @@ def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
 def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
 def symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
 
-fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
+fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
 {
 	return {};
 }

@@ -1,14 +1,11 @@
-fault MyError
+fault FOO, BAR;
+
+fn void? errorThing()
 {
-    FOO,
-    BAR
-}
-fn void! errorThing()
-{
-    return MyError.BAR?;
+    return BAR?;
 }
 
-fn void! errorThing2()
+fn void? errorThing2()
 {
     return;
 }
@@ -18,8 +15,8 @@ fn void main()
 {
     anyfault z = @catch(errorThing());
     printf("Z;   %llx\n", (iptr)(z));
-    printf("BAR: %llx\n", (iptr)(MyError.BAR));
-    printf("FOO: %llx\n", (iptr)(MyError.FOO));
+    printf("BAR: %llx\n", (iptr)(BAR));
+    printf("FOO: %llx\n", (iptr)(FOO));
     z = @catch(errorThing2());
     printf("Z2:  %llx\n", (iptr)(z));
 }
@@ -28,7 +25,7 @@ fn void main()
 
 define i64 @anyfault_void.errorThing() #0 {
 entry:
-  ret i64 ptrtoint (ptr @"anyfault_void.MyError$BAR" to i64)
+  ret i64 ptrtoint (ptr @anyfault_void.BAR to i64)
 }
 
 define i64 @anyfault_void.errorThing2() #0 {
@@ -47,62 +44,76 @@ entry:
   %blockret1 = alloca i64, align 8
   %f2 = alloca i64, align 8
   br label %testblock
+
 testblock:                                        ; preds = %entry
   %0 = call i64 @anyfault_void.errorThing()
   %not_err = icmp eq i64 %0, 0
   %1 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %1, label %after_check, label %assign_optional
+
 assign_optional:                                  ; preds = %testblock
   store i64 %0, ptr %f, align 8
   br label %end_block
+
 after_check:                                      ; preds = %testblock
   store i64 0, ptr %f, align 8
   br label %end_block
+
 end_block:                                        ; preds = %after_check, %assign_optional
   %2 = load i64, ptr %f, align 8
   %i2b = icmp ne i64 %2, 0
   br i1 %i2b, label %if.then, label %if.exit
+
 if.then:                                          ; preds = %end_block
   %3 = load i64, ptr %f, align 8
   store i64 %3, ptr %blockret, align 8
   br label %expr_block.exit
+
 if.exit:                                          ; preds = %end_block
   store i64 0, ptr %blockret, align 8
   br label %expr_block.exit
+
 expr_block.exit:                                  ; preds = %if.exit, %if.then
   %4 = load i64, ptr %blockret, align 8
   store i64 %4, ptr %z, align 8
   %5 = load i64, ptr %z, align 8
   call void (ptr, ...) @printf(ptr @.str, i64 %5)
-  call void (ptr, ...) @printf(ptr @.str.2, i64 ptrtoint (ptr @"anyfault_void.MyError$BAR" to i64))
-  call void (ptr, ...) @printf(ptr @.str.3, i64 ptrtoint (ptr @"anyfault_void.MyError$FOO" to i64))
+  call void (ptr, ...) @printf(ptr @.str.1, i64 ptrtoint (ptr @anyfault_void.BAR to i64))
+  call void (ptr, ...) @printf(ptr @.str.2, i64 ptrtoint (ptr @anyfault_void.FOO to i64))
   br label %testblock3
+
 testblock3:                                       ; preds = %expr_block.exit
   %6 = call i64 @anyfault_void.errorThing2()
   %not_err4 = icmp eq i64 %6, 0
   %7 = call i1 @llvm.expect.i1(i1 %not_err4, i1 true)
   br i1 %7, label %after_check6, label %assign_optional5
+
 assign_optional5:                                 ; preds = %testblock3
   store i64 %6, ptr %f2, align 8
   br label %end_block7
+
 after_check6:                                     ; preds = %testblock3
   store i64 0, ptr %f2, align 8
   br label %end_block7
+
 end_block7:                                       ; preds = %after_check6, %assign_optional5
   %8 = load i64, ptr %f2, align 8
   %i2b8 = icmp ne i64 %8, 0
   br i1 %i2b8, label %if.then9, label %if.exit10
+
 if.then9:                                         ; preds = %end_block7
   %9 = load i64, ptr %f2, align 8
   store i64 %9, ptr %blockret1, align 8
   br label %expr_block.exit11
+
 if.exit10:                                        ; preds = %end_block7
   store i64 0, ptr %blockret1, align 8
   br label %expr_block.exit11
+
 expr_block.exit11:                                ; preds = %if.exit10, %if.then9
   %10 = load i64, ptr %blockret1, align 8
   store i64 %10, ptr %z, align 8
   %11 = load i64, ptr %z, align 8
-  call void (ptr, ...) @printf(ptr @.str.4, i64 %11)
+  call void (ptr, ...) @printf(ptr @.str.3, i64 %11)
   ret void
 }

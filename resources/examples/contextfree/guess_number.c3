@@ -11,27 +11,23 @@ struct Game
 	int high;
 }
 
-fault InputResult
-{
-	NOT_AN_INT,
-	FAILED_TO_READ,
-}
+fault NOT_AN_INT, FAILED_TO_READ;
 
 int err_count = 0;
 
-fn int! ask_guess(int high)
+fn int? ask_guess(int high)
 {
 	io::printf("Guess a number between 1 and %d: ", high);
-	String text = io::treadline() ?? InputResult.FAILED_TO_READ?!;
-	return text.to_int() ?? InputResult.NOT_AN_INT?;
+	String text = io::treadline() ?? FAILED_TO_READ?!;
+	return text.to_int() ?? NOT_AN_INT?;
 }
 
-fn int! ask_guess_multi(int high)
+fn int? ask_guess_multi(int high)
  {
 	while (true)
 	{
-		int! result = ask_guess(high);
-		if (@catch(result) == InputResult.NOT_AN_INT)
+		int? result = ask_guess(high);
+		if (@catch(result) == NOT_AN_INT)
 		{
 		  io::printn("I didn't understand that.");
 		  err_count++;
@@ -41,7 +37,7 @@ fn int! ask_guess_multi(int high)
 	}
 }
 
-fn void! Game.play(Game *game)
+fn void? Game.play(Game *game)
 {
 	while (!game.done)
 	{

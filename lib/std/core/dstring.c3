@@ -324,13 +324,13 @@ fn void DString.clear(self)
 	self.data().len = 0;
 }
 
-fn usz! DString.write(&self, char[] buffer) @dynamic
+fn usz? DString.write(&self, char[] buffer) @dynamic
 {
 	self.append_chars((String)buffer);
 	return buffer.len;
 }
 
-fn void! DString.write_byte(&self, char c) @dynamic
+fn void? DString.write_byte(&self, char c) @dynamic
 {
 	self.append_char(c);
 }
@@ -535,7 +535,7 @@ macro void DString.insert_at(&self, usz index, value)
 	$endswitch
 }
 
-fn usz! DString.appendf(&self, String format, args...) @maydiscard
+fn usz? DString.appendf(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
 	@pool(self.data().allocator)
@@ -546,7 +546,7 @@ fn usz! DString.appendf(&self, String format, args...) @maydiscard
 	};
 }
 
-fn usz! DString.appendfn(&self, String format, args...) @maydiscard
+fn usz? DString.appendfn(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
 	@pool(self.data().allocator)
@@ -577,7 +577,7 @@ fn DString join(Allocator allocator, String[] s, String joiner)
 	return res;
 }
 
-fn void! out_string_append_fn(void* data, char c) @private
+fn void? out_string_append_fn(void* data, char c) @private
 {
 	DString* s = data;
 	s.append_char(c);
@@ -619,7 +619,7 @@ fn void DString.reserve(&self, usz addition)
 	*self = (DString)allocator::realloc(data.allocator, data, StringData.sizeof + new_capacity);
 }
 
-fn usz! DString.read_from_stream(&self, InStream reader)
+fn usz? DString.read_from_stream(&self, InStream reader)
 {
 	if (&reader.available)
 	{
@@ -654,5 +654,5 @@ struct StringData @private
 	Allocator allocator;
 	usz len;
 	usz capacity;
-	char[?] chars;
+	char[*] chars;
 }

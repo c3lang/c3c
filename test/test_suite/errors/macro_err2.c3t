@@ -1,11 +1,11 @@
 // #target: macos-x64
 module test;
 import libc;
-fault Tester { FOO }
+fault FOO;
 
-fn int! abc()
+fn int? abc()
 {
-	return Tester.FOO?;
+	return FOO?;
 }
 macro test()
 {
@@ -23,7 +23,7 @@ fn void main()
 
 define i64 @test.abc(ptr %0) #0 {
 entry:
-  ret i64 ptrtoint (ptr @"test.Tester$FOO" to i64)
+  ret i64 ptrtoint (ptr @test.FOO to i64)
 }
 
 define void @test.main() #0 {

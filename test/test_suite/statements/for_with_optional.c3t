@@ -1,15 +1,15 @@
 // #target: macos-x64
 module test;
 
-fn void! test()
+fn void? test()
 {
-	int! n;
+	int? n;
 	for (n += 1; n! < 10; n += 1);
 }
 fn int main()
 {
 	(void)test();
-	int! n;
+	int? n;
 	for (n += 1; n!! < 10; n += 1);
 	return 0;
 }

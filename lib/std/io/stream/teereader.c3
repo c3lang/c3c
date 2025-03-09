@@ -25,16 +25,16 @@ fn TeeReader* TeeReader.init(&self, InStream r, OutStream w)
 	return self;
 }
 
-fn usz! TeeReader.read(&self, char[] bytes) @dynamic
+fn usz? TeeReader.read(&self, char[] bytes) @dynamic
 {
 	usz nr, nw;
 	nr = self.r.read(bytes)!;
 	nw = self.w.write(bytes[:nr])!;
-	if (nr != nw) return IoError.GENERAL_ERROR?;
+	if (nr != nw) return GENERAL_ERROR?;
 	return nr;
 }
 
-fn char! TeeReader.read_byte(&self) @dynamic
+fn char? TeeReader.read_byte(&self) @dynamic
 {
 	char[1] data;
 	self.read(data[..])!;

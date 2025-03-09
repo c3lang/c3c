@@ -2,7 +2,7 @@ fn void main()
 {
 	int[<2>] ab = { 11, 22 };
 	$assert !$defined(&1);
-	int! a;
+	int? a;
 	$assert $defined(a!!);
 	$assert !$defined(ab!!);
 	$assert $defined(a!);

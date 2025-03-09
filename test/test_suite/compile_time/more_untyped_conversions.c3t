@@ -10,7 +10,7 @@ fn int main()
 	var $c = { 1, { 3, 4 }};
 	var $d = { 1, 2 };
 	Foo f = $c;
-	int[?] y = $d;
+	int[*] y = $d;
 	return 0;
 }
 

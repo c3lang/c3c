@@ -6,10 +6,10 @@ fn void test()
 	int[] a = { 1, 2, 3 };
 	for (int i = 0; i < 3; i++)
 	{
-		int! b = i == 0 ? SearchResult.MISSING? : i;
-		int[]! y = a[:b];
-		int[]! w = a[b..];
-		int! z = a[b];
+		int? b = i == 0 ? NOT_FOUND? : i;
+		int[]? y = a[:b];
+		int[]? w = a[b..];
+		int? z = a[b];
 	}
 }
 
@@ -30,7 +30,7 @@ loop.body:                                        ; preds = %loop.cond
   br i1 %eq, label %cond.lhs, label %cond.rhs
 
 cond.lhs:                                         ; preds = %loop.body
-  store i64 ptrtoint (ptr @"std.core.builtin.SearchResult$MISSING" to i64), ptr %b.f, align 8
+  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %b.f, align 8
   br label %after_assign
 
 cond.rhs:                                         ; preds = %loop.body

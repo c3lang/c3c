@@ -2,16 +2,14 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-fault UrlParsingResult
-{
+fault
 	EMPTY,
 	INVALID_SCHEME,
 	INVALID_USER,
 	INVALID_PASSWORD,
 	INVALID_HOST,
 	INVALID_PATH,
-	INVALID_FRAGMENT,
-}
+	INVALID_FRAGMENT;
 
 <*
  Represents the actual (decoded) Url.
@@ -49,7 +47,7 @@ struct Url(Printable)
  @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url! tparse(String url_string) => parse(tmem(), url_string);
+fn Url? tparse(String url_string) => parse(tmem(), url_string);
 
 <*
  Parse a URL string into a Url struct.
@@ -58,25 +56,25 @@ fn Url! tparse(String url_string) => parse(tmem(), url_string);
  @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url! parse(Allocator allocator, String url_string)
+fn Url? parse(Allocator allocator, String url_string)
 {
 	url_string = url_string.trim();
-	if (!url_string) return UrlParsingResult.EMPTY?;
+	if (!url_string) return EMPTY?;
 	Url url = { .allocator = allocator };
 
 	// Parse scheme
 	if (try pos = url_string.index_of("://"))
 	{
-		if (!pos) return UrlParsingResult.INVALID_SCHEME?;
+		if (!pos) return INVALID_SCHEME?;
 		url.scheme = url_string[:pos].copy(allocator);
 		url_string = url_string[url.scheme.len + 3 ..];
 	}
 	else if (try pos = url_string.index_of(":"))
 	{
 		// Handle schemes without authority like 'mailto:'
-		if (!pos) return UrlParsingResult.INVALID_SCHEME?;
+		if (!pos) return INVALID_SCHEME?;
 		url.scheme = url_string[:pos].copy(allocator);
-		url.path = decode(allocator, url_string[pos + 1 ..], PATH) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string[pos + 1 ..], PATH) ?? INVALID_PATH?!;
 		return url;
 	}
 
@@ -95,11 +93,11 @@ fn Url! parse(Allocator allocator, String url_string)
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
-				if (!username.len) return UrlParsingResult.INVALID_USER?;
+				if (!username.len) return INVALID_USER?;
 							url.host =
 
-				url.username = decode(allocator, username, HOST) ?? UrlParsingResult.INVALID_USER?!;
-				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? UrlParsingResult.INVALID_PASSWORD?!;
+				url.username = decode(allocator, username, HOST) ?? INVALID_USER?!;
+				if (userpass.len) url.password = decode(allocator, userpass[1], USERPASS) ?? INVALID_PASSWORD?!;
 			};
 			authority = authority[userinfo.len + 1 ..];
 		}
@@ -131,23 +129,23 @@ fn Url! parse(Allocator allocator, String url_string)
 				}
 			};
 		}
-		url.host = decode(allocator, host, HOST) ?? UrlParsingResult.INVALID_HOST?!;
+		url.host = decode(allocator, host, HOST) ?? INVALID_HOST?!;
 		url_string = url_string[authority_end ..];
 	}
 
 	// Parse path
-	usz! query_index = url_string.index_of_char('?');
-	usz! fragment_index = url_string.index_of_char('#');
+	usz? query_index = url_string.index_of_char('?');
+	usz? fragment_index = url_string.index_of_char('#');
 
 	if (@ok(query_index) || @ok(fragment_index))
 	{
 		usz path_end = min(query_index ?? url_string.len, fragment_index ?? url_string.len);
-		url.path = decode(allocator, url_string[:path_end], PATH) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string[:path_end], PATH) ?? INVALID_PATH?!;
 		url_string = url_string[path_end ..];
 	}
 	else
 	{
-		url.path = decode(allocator, url_string, PATH) ?? UrlParsingResult.INVALID_PATH?!;
+		url.path = decode(allocator, url_string, PATH) ?? INVALID_PATH?!;
 		url_string = "";
 	}
 
@@ -165,12 +163,12 @@ fn Url! parse(Allocator allocator, String url_string)
 	// Parse fragment
 	if (url_string.starts_with("#"))
 	{
-		url.fragment = decode(allocator, url_string[1..], FRAGMENT) ?? UrlParsingResult.INVALID_FRAGMENT?!;
+		url.fragment = decode(allocator, url_string[1..], FRAGMENT) ?? INVALID_FRAGMENT?!;
 	}
 	return url;
 }
 
-fn usz! Url.to_format(&self, Formatter* f) @dynamic
+fn usz? Url.to_format(&self, Formatter* f) @dynamic
 {
 	usz len;
 	// Add scheme if it exists
@@ -310,7 +308,7 @@ fn UrlQueryValues* UrlQueryValues.add(&self, String key, String value)
 
 
 
-fn usz! UrlQueryValues.to_format(&self, Formatter* f) @dynamic
+fn usz? UrlQueryValues.to_format(&self, Formatter* f) @dynamic
 {
 	usz len;
 	usz i;
@@ -319,7 +317,7 @@ fn usz! UrlQueryValues.to_format(&self, Formatter* f) @dynamic
 		@stack_mem(128; Allocator mem)
 		{
 			String encoded_key = encode(mem, key, QUERY);
-			UrlQueryValueList! values = self.map.get(key);
+			UrlQueryValueList? values = self.map.get(key);
 			if (catch values) continue;
 			foreach (value : values)
 			{

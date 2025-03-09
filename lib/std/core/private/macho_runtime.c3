@@ -56,10 +56,7 @@ struct MachHeader64
 
 const LC_SEGMENT_64 = 0x19;
 
-fault MachoSearch
-{
-	NOT_FOUND
-}
+
 fn bool name_cmp(char* a, char[16]* b)
 {
 	for (usz i = 0; i < 16; i++)
@@ -70,7 +67,7 @@ fn bool name_cmp(char* a, char[16]* b)
 	return false;
 }
 
-fn SegmentCommand64*! find_segment(MachHeader* header, char* segname)
+fn SegmentCommand64*? find_segment(MachHeader* header, char* segname)
 {
 	LoadCommand* command = (void*)header + MachHeader64.sizeof;
 	for (uint i = 0; i < header.ncmds; i++)
@@ -82,9 +79,9 @@ fn SegmentCommand64*! find_segment(MachHeader* header, char* segname)
 		}
 		command = (void*)command + command.cmdsize;
 	}
-	return MachoSearch.NOT_FOUND?;
+	return NOT_FOUND?;
 }
-fn Section64*! find_section(SegmentCommand64* command, char* sectname)
+fn Section64*? find_section(SegmentCommand64* command, char* sectname)
 {
 	Section64* section = (void*)command + SegmentCommand64.sizeof;
 	for (uint i = 0; i < command.nsects; i++)
@@ -92,13 +89,13 @@ fn Section64*! find_section(SegmentCommand64* command, char* sectname)
 		if (name_cmp(sectname, &section.sectname)) return section;
 		section++;
 	}
-	return MachoSearch.NOT_FOUND?;
+	return NOT_FOUND?;
 }
 
 macro find_segment_section_body(MachHeader* header, char* segname, char* sectname, $Type)
 {
 
-	Section64*! section = find_section(find_segment(header, segname), sectname);
+	Section64*? section = find_section(find_segment(header, segname), sectname);
 	if (catch section)
 	{
 		return ($Type[]){};
@@ -214,7 +211,7 @@ struct TypeId
 	usz sizeof;
 	TypeId* inner;
 	usz len;
-	typeid[?] additional;
+	typeid[*] additional;
 }
 
 fn void dl_reg_callback(MachHeader* mh, isz vmaddr_slide)

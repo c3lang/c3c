@@ -6,7 +6,7 @@ interface TestProto
 
 struct Foo (TestProto) { int a; }
 
-fn int! Foo.test(Foo* f) @dynamic { return 1; } // #error: The prototype method has a return type 'int'
+fn int? Foo.test(Foo* f) @dynamic { return 1; } // #error: The prototype method has a return type 'int'
 
 struct Foo1 (TestProto) { int a; }
 

@@ -1,13 +1,13 @@
 module std::io::os @if(env::POSIX);
 import std::io, std::os;
 
-fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
+fn PathList? native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
 	list.init(allocator);
 	DIRPtr directory = posix::opendir(dir.str_view() ? dir.as_zstr() : (ZString)".");
 	defer if (directory) posix::closedir(directory);
-	if (!directory) return (path::is_dir(dir) ? IoError.CANNOT_READ_DIR : IoError.FILE_NOT_DIR)?;
+	if (!directory) return (path::is_dir(dir) ? io::CANNOT_READ_DIR : io::FILE_NOT_DIR)?;
 	Posix_dirent* entry;
 	while ((entry = posix::readdir(directory)))
 	{
@@ -24,7 +24,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 module std::io::os @if(env::WIN32);
 import std::time, std::os, std::io;
 
-fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
+fn PathList? native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Allocator allocator)
 {
 	PathList list;
 	list.init(allocator);
@@ -34,7 +34,7 @@ fn PathList! native_ls(Path dir, bool no_dirs, bool no_symlinks, String mask, Al
 		WString result = dir.str_view().tconcat(`\*`).to_temp_wstring()!!;
 		Win32_WIN32_FIND_DATAW find_data;
 		Win32_HANDLE find = win32::findFirstFileW(result, &find_data);
-		if (find == win32::INVALID_HANDLE_VALUE) return IoError.CANNOT_READ_DIR?;
+		if (find == win32::INVALID_HANDLE_VALUE) return io::CANNOT_READ_DIR?;
 		defer win32::findClose(find);
 		do
 		{

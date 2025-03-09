@@ -1,19 +1,9 @@
 module errors;
 
-fault TheError
-{
-    A
-}
+fault A;
 
-fault TheError2
-{
-    A,
-    B
-}
+fault A2, B2;
 
-fault TheError3
-{
-    C, D
-}
+fault C, D;
 
 

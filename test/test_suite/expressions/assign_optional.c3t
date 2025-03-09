@@ -3,10 +3,10 @@ module test;
 
 fn void main()
 {
-	anyfault x = SearchResult.MISSING;
-	int! a = x?;
-	int! b = a = x?;
-	int! c = b = a;
+	anyfault x = NOT_FOUND;
+	int? a = x?;
+	int? b = a = x?;
+	int? c = b = a;
 }
 
 /* #expect: test.ll
@@ -20,7 +20,7 @@ entry:
   %b.f = alloca i64, align 8
   %c = alloca i32, align 4
   %c.f = alloca i64, align 8
-  store i64 ptrtoint (ptr @"std.core.builtin.SearchResult$MISSING" to i64), ptr %x, align 8
+  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %x, align 8
   %0 = load i64, ptr %x, align 8
   store i64 %0, ptr %a.f, align 8
   %1 = load i64, ptr %x, align 8

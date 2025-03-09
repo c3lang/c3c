@@ -12,7 +12,7 @@ struct Foo
     List{FnB} bFuncs;
 }
 
-fn void! Foo.deinit(&self)
+fn void? Foo.deinit(&self)
 {
     self.aFuncs.free();
     self.bFuncs.free();

@@ -1,7 +1,7 @@
 module std::io::os @if(env::LIBC);
 import std::io::path, std::os;
 
-fn Path! native_temp_directory(Allocator allocator) @if(!env::WIN32)
+fn Path? native_temp_directory(Allocator allocator) @if(!env::WIN32)
 {
 	foreach (String env : { "TMPDIR", "TMP", "TEMP", "TEMPDIR" })
 	{
@@ -11,19 +11,19 @@ fn Path! native_temp_directory(Allocator allocator) @if(!env::WIN32)
 	return path::new(allocator, "/tmp");
 }
 
-fn Path! native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool(allocator)
+fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool(allocator)
 {
 	Win32_DWORD len = win32::getTempPathW(0, null);
-	if (!len) return IoError.GENERAL_ERROR?;
+	if (!len) return io::GENERAL_ERROR?;
 	Char16[] buff = mem::talloc_array(Char16, len + (usz)1);
-	if (!win32::getTempPathW(len, buff)) return IoError.GENERAL_ERROR?;
+	if (!win32::getTempPathW(len, buff)) return io::GENERAL_ERROR?;
 	return path::new(allocator, string::tfrom_utf16(buff[:len]));
 }
 
 module std::io::os @if(env::NO_LIBC);
 import std::io::path;
 
-macro Path! native_temp_directory(Allocator allocator = allocator::heap())
+macro Path? native_temp_directory(Allocator allocator = allocator::heap())
 {
-	return IoError.UNSUPPORTED_OPERATION?;
+	return io::UNSUPPORTED_OPERATION?;
 }

@@ -1,17 +1,17 @@
 // #target: macos-x64
 module test;
 
-fn void! foo()
+fn void? foo()
 {}
 
-fault Abc { AAA }
+fault AAA;
 
-macro int! bar()
+macro int? bar()
 {
-	return Abc.AAA?;
+	return AAA?;
 }
 
-fn int! baz()
+fn int? baz()
 {
 	return 2;
 }
@@ -19,7 +19,7 @@ fn int! baz()
 fn int main()
 {
 	int x;
-	int! y;
+	int? y;
 	(void)x;
 	(void)y;
 	(void)foo();

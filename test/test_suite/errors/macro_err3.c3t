@@ -1,13 +1,13 @@
 // #target: macos-x64
 module test;
 import libc;
-fault Tester { FOO }
+fault FOO;
 
 
 macro test()
 {
 	defer libc::printf("Test2\n");
-	return Tester.FOO?;
+	return FOO?;
 }
 
 fn void main()

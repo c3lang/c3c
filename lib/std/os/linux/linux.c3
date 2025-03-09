@@ -89,23 +89,23 @@ struct Linux_Dl_info
 	void*       dli_saddr;     /* Address of nearest symbol */
 }
 
-fn ulong! elf_module_image_base(String path) @local
+fn ulong? elf_module_image_base(String path) @local
 {
 	File file = file::open(path, "rb")!;
 	defer (void)file.close();
 	char[4] buffer;
 	io::read_all(&file, &buffer)!;
-	if (buffer != { 0x7f, 'E', 'L', 'F'}) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (buffer != { 0x7f, 'E', 'L', 'F'}) return backtrace::IMAGE_NOT_FOUND?;
 	bool is_64 = file.read_byte()! == 2;
 	bool is_little_endian = file.read_byte()! == 1;
 	// Actually, not supported.
-	if (!is_little_endian) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (!is_little_endian) return backtrace::IMAGE_NOT_FOUND?;
 	file.seek(0)!;
 	if (is_64)
 	{
 		Elf64_Ehdr file_header;
 		io::read_any(&file, &file_header)!;
-		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return BacktraceFault.IMAGE_NOT_FOUND?;
+		if (file_header.e_ehsize != Elf64_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND?;
 		for (isz i = 0; i < file_header.e_phnum; i++)
 		{
 			Elf64_Phdr header;
@@ -117,7 +117,7 @@ fn ulong! elf_module_image_base(String path) @local
 	}
 	Elf32_Ehdr file_header;
 	io::read_any(&file, &file_header)!;
-	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return BacktraceFault.IMAGE_NOT_FOUND?;
+	if (file_header.e_ehsize != Elf32_Ehdr.sizeof) return backtrace::IMAGE_NOT_FOUND?;
 	for (isz i = 0; i < file_header.e_phnum; i++)
 	{
 		Elf32_Phdr header;
@@ -128,7 +128,7 @@ fn ulong! elf_module_image_base(String path) @local
 	return 0;
 }
 
-fn void! backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void* addr) @local
+fn void? backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void* addr) @local
 {
 	char[] buf = mem::talloc_array(char, 1024);
 
@@ -138,7 +138,7 @@ fn void! backtrace_add_from_exec(Allocator allocator, BacktraceList* list, void*
 	return backtrace_add_addr2line(allocator, list, addr, addr2line, obj_name, "???");
 }
 
-fn void! backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, void* addr, Linux_Dl_info* info) @local
+fn void? backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, void* addr, Linux_Dl_info* info) @local
 {
 	char[] buf = mem::talloc_array(char, 1024);
 
@@ -149,10 +149,10 @@ fn void! backtrace_add_from_dlinfo(Allocator allocator, BacktraceList* list, voi
 	return backtrace_add_addr2line(allocator, list, addr, addr2line, info.dli_fname.str_view(), sname);
 }
 
-fn Backtrace! backtrace_line_parse(Allocator allocator, String string, String obj_name, String func_name, bool is_inlined)
+fn Backtrace? backtrace_line_parse(Allocator allocator, String string, String obj_name, String func_name, bool is_inlined)
 {
 	String[] parts = string.trim().tsplit(" at ");
-	if (parts.len != 2) return SearchResult.MISSING?;
+	if (parts.len != 2) return NOT_FOUND?;
 
 	uint line   = 0;
 	String source = "";
@@ -171,14 +171,14 @@ fn Backtrace! backtrace_line_parse(Allocator allocator, String string, String ob
 		.is_inline   = is_inlined
 	};
 }
-fn void! backtrace_add_addr2line(Allocator allocator, BacktraceList* list, void* addr, String addr2line, String obj_name, String func_name) @local
+fn void? backtrace_add_addr2line(Allocator allocator, BacktraceList* list, void* addr, String addr2line, String obj_name, String func_name) @local
 {
 	String[] inline_parts = addr2line.tsplit("(inlined by)");
 	usz last = inline_parts.len - 1;
 	foreach (i, part : inline_parts)
 	{
 		bool is_inline = i != last;
-		Backtrace! trace = backtrace_line_parse(allocator, part, obj_name, func_name, is_inline);
+		Backtrace? trace = backtrace_line_parse(allocator, part, obj_name, func_name, is_inline);
 		if (catch trace)
 		{
 			list.push({
@@ -196,7 +196,7 @@ fn void! backtrace_add_addr2line(Allocator allocator, BacktraceList* list, void*
 	}
 }
 
-fn void! backtrace_add_element(Allocator allocator, BacktraceList *list, void* addr) @local
+fn void? backtrace_add_element(Allocator allocator, BacktraceList *list, void* addr) @local
 {
 	if (!addr)
 	{
@@ -215,7 +215,7 @@ fn void! backtrace_add_element(Allocator allocator, BacktraceList *list, void* a
 	};
 }
 
-fn BacktraceList! symbolize_backtrace(Allocator allocator, void*[] backtrace)
+fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 {
 	BacktraceList list;
 	list.init(allocator, backtrace.len);

@@ -7,7 +7,7 @@ fn void main()
     if (ok && !foo()) io::printfn("nok"); // #error: The expression may not be an optional
 }
 
-fn bool! foo()
+fn bool? foo()
 {
     return false;
 }

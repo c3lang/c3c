@@ -43,12 +43,12 @@ fn Element RingBuffer.get(&self, usz index) @operator([])
 	return self.buf[index - avail];
 }
 
-fn Element! RingBuffer.pop(&self)
+fn Element? RingBuffer.pop(&self)
 {
 	switch
 	{
 		case self.written == 0:
-			return SearchResult.MISSING?;
+			return NO_MORE_ELEMENT?;
 		case self.written < self.buf.len:
 			self.written--;
 			return self.buf[self.written];
@@ -58,7 +58,7 @@ fn Element! RingBuffer.pop(&self)
 	}
 }
 
-fn usz! RingBuffer.to_format(&self, Formatter* format) @dynamic
+fn usz? RingBuffer.to_format(&self, Formatter* format) @dynamic
 {
 	// Improve this?
 	return format.printf("%s", self.buf);

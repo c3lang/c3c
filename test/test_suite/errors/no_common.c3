@@ -1,4 +1,4 @@
-fn int! abc()
+fn int? abc()
 {
 	return 1;
 }

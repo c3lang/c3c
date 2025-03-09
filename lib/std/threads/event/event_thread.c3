@@ -73,7 +73,7 @@ fn int run_thread(void* arg) @local
 			thread.state = KILLED;
 			continue;
 		}
-		EventThreadTask! task = thread.queue.wait_for_task();
+		EventThreadTask? task = thread.queue.wait_for_task();
 		if (catch task)
 		{
 			pool.notify_user_shutdown(thread);

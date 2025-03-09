@@ -21,7 +21,7 @@ fn void SimpleHeapAllocator.init(&self, MemoryAllocFn allocator)
 	self.free_list = null;
 }
 
-fn void*! SimpleHeapAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
+fn void*? SimpleHeapAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {
 	if (init_type == ZERO)
 	{
@@ -30,7 +30,7 @@ fn void*! SimpleHeapAllocator.acquire(&self, usz size, AllocInitType init_type, 
 	return alignment > 0 ? @aligned_alloc(self._alloc, size, alignment) : self._alloc(size);
 }
 
-fn void*! SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
+fn void*? SimpleHeapAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
 	return alignment > 0
 		? @aligned_realloc(self._calloc, self._free, old_pointer, size, alignment)
@@ -52,7 +52,7 @@ fn void SimpleHeapAllocator.release(&self, void* old_pointer, bool aligned) @dyn
 <*
  @require old_pointer && bytes > 0
 *>
-fn void*! SimpleHeapAllocator._realloc(&self, void* old_pointer, usz bytes) @local
+fn void*? SimpleHeapAllocator._realloc(&self, void* old_pointer, usz bytes) @local
 {
 	// Find the block header.
 	Header* block = (Header*)old_pointer - 1;
@@ -64,14 +64,14 @@ fn void*! SimpleHeapAllocator._realloc(&self, void* old_pointer, usz bytes) @loc
 	return new;
 }
 
-fn void*! SimpleHeapAllocator._calloc(&self, usz bytes) @local
+fn void*? SimpleHeapAllocator._calloc(&self, usz bytes) @local
 {
 	void* data = self._alloc(bytes)!;
 	mem::clear(data, bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	return data;
 }
 
-fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
+fn void*? SimpleHeapAllocator._alloc(&self, usz bytes) @local
 {
 	usz aligned_bytes = mem::aligned_offset(bytes, mem::DEFAULT_MEM_ALIGNMENT);
 	if (!self.free_list)
@@ -120,7 +120,7 @@ fn void*! SimpleHeapAllocator._alloc(&self, usz bytes) @local
 	return self._alloc(aligned_bytes);
 }
 
-fn void! SimpleHeapAllocator.add_block(&self, usz aligned_bytes) @local
+fn void? SimpleHeapAllocator.add_block(&self, usz aligned_bytes) @local
 {
 	assert(mem::aligned_offset(aligned_bytes, mem::DEFAULT_MEM_ALIGNMENT) == aligned_bytes);
 	char[] result = self.alloc_fn(aligned_bytes + Header.sizeof)!;

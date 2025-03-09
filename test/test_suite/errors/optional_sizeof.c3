@@ -1,4 +1,4 @@
-fn int! abc()
+fn int? abc()
 {
 	return 1;
 }
@@ -27,7 +27,7 @@ fn void c()
 	$sizeof(test2() ?? 1);
 }
 
-fn void! d()
+fn void? d()
 {
 	$typeof(test2()!) g; // #error: This expression lacks a concrete type
 }
@@ -37,7 +37,7 @@ macro e()
 	var g = test2()!; // #error: No type can be inferred from the optional result
 }
 
-fn void! h()
+fn void? h()
 {
 	e();
 }

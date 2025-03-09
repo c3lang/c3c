@@ -3,7 +3,7 @@ module test;
 struct Abc
 {
 	int x;
-	int[?] y;
+	int[*] y;
 }
 
 

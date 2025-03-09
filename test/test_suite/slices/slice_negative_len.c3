@@ -68,7 +68,7 @@ fn void test10()
 struct Abc
 {
 	int a;
-	char[?] z;
+	char[*] z;
 }
 
 fn void test105()

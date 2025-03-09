@@ -76,7 +76,7 @@ fn void init_game()
 
     counter_tail = 1;
     allow_move = false;
-	snake_direction = SnakeDirection.RIGHT;
+	snake_direction = RIGHT;
     offset.x = SCREEN_WIDTH % SQUARE_SIZE;
     offset.y = SCREEN_HEIGHT % SQUARE_SIZE;
 

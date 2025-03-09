@@ -1,10 +1,10 @@
 // #target: macos-x64
 module test;
-fn int! xy()
+fn int? xy()
 {
 	return 1;
 }
-macro int! foo()
+macro int? foo()
 {
 	xy()!;
 	return 1;

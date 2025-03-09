@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import libc;
-fn int! abc()
+fn int? abc()
 {
 	return 1;
 }

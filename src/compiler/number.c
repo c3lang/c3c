@@ -135,6 +135,9 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_INTEGER:
 			ASSERT(right->const_kind != CONST_ENUM);
 			return int_comp(left->ixx, right->ixx, op);
+		case CONST_FAULT:
+			ASSERT(right->const_kind == CONST_FAULT);
+			return decl_flatten(right->fault) == decl_flatten(left->fault);
 		case CONST_REF:
 			ASSERT(right->const_kind == CONST_POINTER || right->const_kind == CONST_REF);
 			if (right->const_kind == CONST_POINTER) return false;
@@ -163,7 +166,6 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 		case CONST_TYPEID:
 			is_eq = left->typeid == right->typeid;
 			goto RETURN;
-		case CONST_ERR:
 		case CONST_ENUM:
 		{
 			Decl *left_decl = left->enum_err_val;
@@ -274,7 +276,7 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 			Int i = { .i = { .low = expr->enum_err_val->var.index }, .type = type_flatten(expr->enum_err_val->type)->type_kind };
 			return !int_fits(i, kind);
 		}
-		case CONST_ERR:
+		case CONST_FAULT:
 		case CONST_BYTES:
 		case CONST_STRING:
 		case CONST_POINTER:
@@ -310,8 +312,9 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 			return "<binary data>";
 		case CONST_REF:
 			return expr->global_ref->name;
+		case CONST_FAULT:
+			return expr->fault->name;
 		case CONST_ENUM:
-		case CONST_ERR:
 			return expr->enum_err_val->name;
 		case CONST_TYPEID:
 			return type_to_error_string(expr->typeid);

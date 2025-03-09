@@ -1,15 +1,15 @@
 // #target: macos-x64
-extern fn char*! readLine();
-extern fn int! atoi(char*);
+extern fn char*? readLine();
+extern fn int? atoi(char*);
 
 extern fn int printf(char* fmt, ...);
 
 fn void main()
 {
-    char*! line = readLine();
+    char*? line = readLine();
     if (try line)
     {
-        int! val = atoi(line);
+        int? val = atoi(line);
         if (try val)
         {
             printf("You typed the number %d\n", val);
