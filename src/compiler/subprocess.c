@@ -156,6 +156,7 @@ int run_subprocess(const char *name, const char **args)
 }
 
 // For C users, so that they can stay with "system"
-int system(const char *name, const char **args) {
+int system(const char *name, const char **args)
+{
     return run_subprocess(name, args);
 }
