@@ -379,7 +379,7 @@ RETRY:
 					sema_trace_decl_liveness(expr->const_expr.fault);
 					return;
 				case CONST_ENUM:
-					sema_trace_decl_liveness(expr->const_expr.enum_err_val);
+					sema_trace_decl_liveness(expr->const_expr.enum_val);
 					return;
 				case CONST_REF:
 					sema_trace_decl_liveness(expr->const_expr.global_ref);

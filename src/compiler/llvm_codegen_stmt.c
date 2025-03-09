@@ -794,10 +794,10 @@ static void llvm_set_jump_table_values(ExprId from, ExprId to, Int *from_ref, In
 	if (type_flat->type_kind == TYPE_ENUM)
 	{
 		Type *low = type_lowering(type_flat);
-		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_err_val->enum_constant.ordinal, .type = low->type_kind };
+		*from_ref = (Int) { .i.low = from_expr->const_expr.enum_val->enum_constant.ordinal, .type = low->type_kind };
 		if (to)
 		{
-			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_err_val->enum_constant.ordinal, .type = low->type_kind };
+			*to_ref = (Int) { .i.low = to_expr->const_expr.enum_val->enum_constant.ordinal, .type = low->type_kind };
 		}
 		else
 		{

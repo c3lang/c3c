@@ -507,7 +507,7 @@ static bool sema_error_const_int_out_of_range(CastContext *cc, Expr *expr, Expr 
 	if (expr->const_expr.const_kind == CONST_ENUM)
 	{
 		RETURN_CAST_ERROR(problem, "The ordinal '%d' is out of range for %s, so you need an explicit cast to truncate the value.",
-				   expr->const_expr.enum_err_val->var.index,
+				   expr->const_expr.enum_val->var.index,
 				   type_quoted_error_string(to_type));
 	}
 	const char *error_value = expr->const_expr.is_hex ? int_to_str(expr->const_expr.ixx, 16, true)
@@ -1707,7 +1707,7 @@ static void cast_enum_to_value(Expr* expr, Type *to_type)
 	}
 	if (expr_is_const_enum(expr))
 	{
-		expr_replace(expr, copy_expr_single(expr->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]));
+		expr_replace(expr, copy_expr_single(expr->const_expr.enum_val->enum_constant.args[decl->enums.inline_index]));
 		if (expr->type != to_type)
 		{
 			cast_no_check(expr, to_type, false);
@@ -1886,7 +1886,7 @@ static void cast_anyfault_to_fault(Expr *expr, Type *type)
 		return;
 	}
 	ASSERT(expr_is_const_fault(expr));
-	Decl *value = expr->const_expr.enum_err_val;
+	Decl *value = expr->const_expr.enum_val;
 	ASSERT(value->type != type);
 	expr->type = type;
 }

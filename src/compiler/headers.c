@@ -650,7 +650,7 @@ static void header_gen_global_var(HeaderContext *c, Decl *decl, bool fn_globals,
 				PRINTF("\"\n");
 				return;
 			case CONST_ENUM:
-				PRINTF("%s\n", decl_get_extname(init->const_expr.enum_err_val));
+				PRINTF("%s\n", decl_get_extname(init->const_expr.enum_val));
 				return;
 			case CONST_FAULT:
 				PRINTF("%s\n", decl_get_extname(init->const_expr.fault));

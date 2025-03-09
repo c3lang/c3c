@@ -446,7 +446,7 @@ static inline bool sema_check_return_matches_opt_returns(SemaContext *context, E
 
 	// Here we have a const optional return.
 	ASSERT(ret_expr->inner_expr->const_expr.const_kind == CONST_FAULT);
-	Decl *fault = ret_expr->inner_expr->const_expr.enum_err_val;
+	Decl *fault = ret_expr->inner_expr->const_expr.enum_val;
 
 	// Check that we find it.
 	FOREACH(Decl *, opt, context->call_env.opt_returns)
@@ -2208,15 +2208,15 @@ static inline bool sema_check_value_case(SemaContext *context, Type *switch_type
 	{
 		if (is_enum)
 		{
-			uint32_t ord1 = const_expr->enum_err_val->enum_constant.ordinal;
-			uint32_t ord2 = to_const_expr->enum_err_val->enum_constant.ordinal;
+			uint32_t ord1 = const_expr->enum_val->enum_constant.ordinal;
+			uint32_t ord2 = to_const_expr->enum_val->enum_constant.ordinal;
 			if (ord1 > ord2)
 			{
 				sema_error_at(context, extend_span_with_token(expr->span, to_expr->span),
 				              "The range is not valid because the first enum (%s) has a lower ordinal than the second (%s). "
 				              "It would work if you swapped their order.",
-				              const_expr->enum_err_val->name,
-							  to_const_expr->enum_err_val->name);
+				              const_expr->enum_val->name,
+							  to_const_expr->enum_val->name);
 				return false;
 			}
 			(*actual_cases_ref) += ord2 - ord1;
@@ -2285,8 +2285,8 @@ INLINE const char *create_missing_enums_in_switch_error(Ast **cases, unsigned fo
 			Expr *e = exprptr(cases[j]->case_stmt.expr);
 			Expr *e_to = exprptrzero(cases[j]->case_stmt.to_expr);
 			ASSERT_SPAN(e, expr_is_const_enum(e));
-			uint32_t ordinal_from = e->const_expr.enum_err_val->enum_constant.ordinal;
-			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_err_val->enum_constant.ordinal : ordinal_from;
+			uint32_t ordinal_from = e->const_expr.enum_val->enum_constant.ordinal;
+			uint32_t ordinal_to = e_to ? e_to->const_expr.enum_val->enum_constant.ordinal : ordinal_from;
 			if (i >= ordinal_from && i <= ordinal_to) goto CONTINUE;
 		}
 		if (++printed != 1)
@@ -2824,7 +2824,7 @@ bool sema_analyse_ct_echo_stmt(SemaContext *context, Ast *statement)
 			puts(message->const_expr.fault->name);
 		break;
 		case CONST_ENUM:
-			puts(message->const_expr.enum_err_val->name);
+			puts(message->const_expr.enum_val->name);
 			break;
 		case CONST_STRING:
 			printf("%.*s\n", EXPAND_EXPR_STRING(message));

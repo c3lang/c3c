@@ -284,10 +284,10 @@ Expr *sema_enter_inline_member(Expr *parent, CanonicalType *type)
 				if (decl->enums.inline_value)
 				{
 					expr = expr_new_expr(EXPR_CONST, parent);
-					expr_rewrite_const_int(expr, decl->enums.type_info->type, parent->const_expr.enum_err_val->enum_constant.ordinal);
+					expr_rewrite_const_int(expr, decl->enums.type_info->type, parent->const_expr.enum_val->enum_constant.ordinal);
 					return expr;
 				}
-				expr = copy_expr_single(parent->const_expr.enum_err_val->enum_constant.args[decl->enums.inline_index]);
+				expr = copy_expr_single(parent->const_expr.enum_val->enum_constant.args[decl->enums.inline_index]);
 				break;
 			}
 			if (decl->enums.inline_value)
@@ -993,7 +993,7 @@ static inline bool sema_expr_analyse_enum_constant(SemaContext *context, Expr *e
 
 	expr->expr_kind = EXPR_CONST;
 	expr->const_expr.const_kind = CONST_ENUM;
-	expr->const_expr.enum_err_val = enum_constant;
+	expr->const_expr.enum_val = enum_constant;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -2526,7 +2526,7 @@ void sema_expr_convert_enum_to_int(Expr *expr)
 	if (sema_cast_const(expr))
 	{
 		ASSERT(expr->const_expr.const_kind == CONST_ENUM);
-		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_err_val->enum_constant.ordinal);
+		expr_rewrite_const_int(expr, underlying_type, expr->const_expr.enum_val->enum_constant.ordinal);
 	}
 	if (expr->expr_kind == EXPR_ENUM_FROM_ORD)
 	{
@@ -2600,7 +2600,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 		}
 		expr->expr_kind = EXPR_CONST;
 		expr->const_expr = (ExprConst) {
-				.enum_err_val = decl->enums.values[to_convert.i.low],
+				.enum_val = decl->enums.values[to_convert.i.low],
 				.const_kind = CONST_ENUM
 		};
 		expr->type = decl->type;
@@ -3804,7 +3804,7 @@ static inline bool sema_expr_replace_with_enum_array(SemaContext *context, Expr 
 		Expr *expr = expr_new(EXPR_CONST, span);
 		expr->const_expr.const_kind = const_kind;
 		ASSERT_SPAN(enum_array_expr, enum_decl->resolve_status == RESOLVE_DONE);
-		expr->const_expr.enum_err_val = decl;
+		expr->const_expr.enum_val = decl;
 		ASSERT_SPAN(enum_array_expr, decl_ok(decl));
 		expr->type = kind;
 		expr->resolve_status = RESOLVE_DONE;
@@ -4126,7 +4126,7 @@ static inline bool sema_create_const_kind(SemaContext *context, Expr *expr, Type
 	ASSERT_SPAN(expr, type_kind->resolve_status == RESOLVE_DONE);
 	expr->const_expr = (ExprConst) {
 		.const_kind = CONST_ENUM,
-		.enum_err_val = values[val]
+		.enum_val = values[val]
 	};
 	return true;
 }
@@ -5185,7 +5185,7 @@ CHECK_DEEPER:
 		{
 			if (sema_cast_const(current_parent))
 			{
-				expr_rewrite_const_string(expr, current_parent->const_expr.enum_err_val->name);
+				expr_rewrite_const_string(expr, current_parent->const_expr.enum_val->name);
 				return true;
 			}
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_ENUMNAME, type_string);
@@ -5242,7 +5242,7 @@ CHECK_DEEPER:
 	if (member && decl->decl_kind == DECL_ENUM && member->decl_kind == DECL_VAR && sema_cast_const(parent))
 	{
 		if (!sema_analyse_decl(context, decl)) return false;
-		Decl *ref = current_parent->const_expr.enum_err_val;
+		Decl *ref = current_parent->const_expr.enum_val;
 		if (!sema_analyse_decl(context, ref)) return false;
 		ASSERT_SPAN(expr, parent->const_expr.const_kind == CONST_ENUM);
 		Expr *copy_init = copy_expr_single(ref->enum_constant.args[member->var.index]);
@@ -6267,7 +6267,7 @@ static bool sema_expr_analyse_enum_add_sub(SemaContext *context, Expr *expr, Exp
 			return false;
 		}
 		ASSERT_SPAN(expr, left_type->decl->resolve_status == RESOLVE_DONE);
-		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_err_val = enums[int_to_i64(i)] };
+		expr->const_expr = (ExprConst) { .const_kind = CONST_ENUM, .enum_val = enums[int_to_i64(i)] };
 		expr->expr_kind = EXPR_CONST;
 		expr->resolve_status = RESOLVE_DONE;
 	}

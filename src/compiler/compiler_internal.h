@@ -155,7 +155,7 @@ typedef struct
 		} bytes;
 		Expr *expr_ref;
 		Decl *global_ref;
-		Decl *enum_err_val;
+		Decl *enum_val;
 		Decl *fault;
 		Type *typeid;
 		ConstInitializer *initializer;

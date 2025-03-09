@@ -168,13 +168,13 @@ bool expr_const_compare(const ExprConst *left, const ExprConst *right, BinaryOp 
 			goto RETURN;
 		case CONST_ENUM:
 		{
-			Decl *left_decl = left->enum_err_val;
+			Decl *left_decl = left->enum_val;
 			// The error case
 			ASSERT(right->const_kind == left->const_kind);
-			Decl *right_decl = right->enum_err_val;
+			Decl *right_decl = right->enum_val;
 			// Non-matching cannot be compared.
 			if (right_decl->type != left_decl->type) return false;
-			int64_t right_ordinal = right->enum_err_val->enum_constant.ordinal;
+			int64_t right_ordinal = right->enum_val->enum_constant.ordinal;
 			switch (op)
 			{
 				case BINARYOP_GT:
@@ -273,7 +273,7 @@ bool expr_const_will_overflow(const ExprConst *expr, TypeKind kind)
 			return false;
 		case CONST_ENUM:
 		{
-			Int i = { .i = { .low = expr->enum_err_val->var.index }, .type = type_flatten(expr->enum_err_val->type)->type_kind };
+			Int i = { .i = { .low = expr->enum_val->var.index }, .type = type_flatten(expr->enum_val->type)->type_kind };
 			return !int_fits(i, kind);
 		}
 		case CONST_FAULT:
@@ -315,7 +315,7 @@ const char *expr_const_to_error_string(const ExprConst *expr)
 		case CONST_FAULT:
 			return expr->fault->name;
 		case CONST_ENUM:
-			return expr->enum_err_val->name;
+			return expr->enum_val->name;
 		case CONST_TYPEID:
 			return type_to_error_string(expr->typeid);
 		case CONST_MEMBER:

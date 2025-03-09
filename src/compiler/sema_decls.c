@@ -4349,7 +4349,7 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			}
 			else if (type->type_kind == TYPE_ENUM)
 			{
-				Decl *enumm = param->const_expr.enum_err_val;
+				Decl *enumm = param->const_expr.enum_val;
 				type_mangle_introspect_name_to_buffer(enumm->type->canonical);
 				scratch_buffer_append(mangled ? "_" : ":");
 				scratch_buffer_append(enumm->name);
