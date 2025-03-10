@@ -15,10 +15,10 @@ fn void tester() @private {}
 module bar;
 macro test()
 {
-    tester(); // #error: 'tester' could not be found, did you spell it right
+    tester(); // #error: function 'tester' is '@private' and not visible
 }
 
 macro test2()
 {
-    foo::tester(); // #error: 'foo::tester' could not be found, did you spell
+    foo::tester(); // #error: 'foo::tester' is '@private' and not visible
 }

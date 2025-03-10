@@ -29,6 +29,7 @@
 - New `fault` declarations.
 - Enum associated values can reference the calling enum.
 - Improve error message on `foo ?? io::EOF` with missing '?' #2036
+- Make `@public` import recursive. #2018
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -37,6 +38,7 @@
 - FreeBSD libc stat definitions were incorrect.
 - Atomic max was incorrect.
 - `"+".to_float()` would panic.
+- `import` can now both be @public and @norecurse.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.

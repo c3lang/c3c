@@ -2520,7 +2520,7 @@ static inline bool parse_import(ParseContext *c)
 		if (!path) return false;
 		bool private = false;
 		bool is_norecurse = false;
-		if (tok_is(c, TOKEN_AT_IDENT))
+		while (tok_is(c, TOKEN_AT_IDENT))
 		{
 			const char *name = symstr(c);
 			if (name == attribute_list[ATTRIBUTE_PUBLIC])
