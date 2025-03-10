@@ -28,6 +28,7 @@
 - Change `int!` to `int?` syntax.
 - New `fault` declarations.
 - Enum associated values can reference the calling enum.
+- Improve error message on `foo ?? io::EOF` with missing '?' #2036
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
