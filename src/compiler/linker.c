@@ -453,6 +453,7 @@ static void linker_setup_android(const char ***args_ref, Linker linker_type, boo
 	#define ANDROID_HOST_TAG "windows-x86_64"
 #else
 	error_exit("Unsupported OS for Android host");
+	#define ANDROID_HOST_TAG "error"
 #endif
 
 	if (is_no_pie(compiler.platform.reloc_model)) add_plain_arg("-no-pie");
