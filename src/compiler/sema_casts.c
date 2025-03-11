@@ -1045,16 +1045,21 @@ static bool rule_slice_to_vecarr(CastContext *cc, bool is_explicit, bool is_sile
 		if (is_silent) return false;
 		RETURN_CAST_ERROR(expr, "Zero sized slices can't be converted to arrays or vectors.");
 	}
+	Type *base = cc->from->array.base;
 	if (cc->to_group == CONV_ARRAY)
 	{
 		if (expr_is_const_string(expr) || expr_is_const_bytes(expr))
 		{
 			if (cc->to->array.len > size) size = cc->to->array.len;
 		}
-		cast_context_set_from(cc, type_get_array(cc->from->array.base, size));
+		cast_context_set_from(cc, type_get_array(base, size));
 	}
 	else
 	{
+		if (!type_is_valid_for_vector(base))
+		{
+			return report_cast_error(cc, false);
+		}
 		cast_context_set_from(cc, type_get_vector(cc->from->array.base, size));
 	}
 	return cast_is_allowed(cc, is_explicit, is_silent);

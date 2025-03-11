@@ -39,6 +39,7 @@
 - Atomic max was incorrect.
 - `"+".to_float()` would panic.
 - `import` can now both be @public and @norecurse.
+- Crash when trying to convert a struct slice to a vector #2039.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
