@@ -26,8 +26,8 @@ fn void main()
 
 @"$ct.test.Foo" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 8, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
-@test.FOO = linkonce constant %"char[]" { ptr @test.FOO.nameof, i64 3 }, align 8
-@test.FOO.nameof = internal constant [4 x i8] c"FOO\00", align 1
+@test.FOO = linkonce constant %"char[]" { ptr @test.FOO.nameof, i64 9 }, align 8
+@test.FOO.nameof = internal constant [10 x i8] c"test::FOO\00", align 1
 @.str.1 = private unnamed_addr constant [17 x i8] c"Not visible: %d\0A\00", align 1
 
 ; Function Attrs:
