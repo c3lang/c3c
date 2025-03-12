@@ -72,7 +72,7 @@ macro usz decode_len(usz n) => n / 2;
  @param dst : "The decoded input."
  @require src.len % 2 == 0 : "src is not of even length"
  @require dst.len >= decode_len(src.len) : "Destination array is not large enough"
- @return! encoding::INVALID_CHARACTER
+ @return? encoding::INVALID_CHARACTER
 *>
 fn usz? decode_bytes(char[] src, char[] dst)
 {

@@ -96,7 +96,7 @@ fn void AnyList.free_element(&self, any element) @inline
  Pop a value who's type is known. If the type is incorrect, this
  will still pop the element.
 
- @return! TYPE_MISMATCH, NO_MORE_ELEMENT
+ @return? TYPE_MISMATCH, NO_MORE_ELEMENT
 *>
 macro AnyList.pop(&self, $Type)
 {
@@ -107,7 +107,7 @@ macro AnyList.pop(&self, $Type)
 
 <*
  Pop the last value and allocate the copy using the given allocator.
- @return! NO_MORE_ELEMENT
+ @return? NO_MORE_ELEMENT
 *>
 fn any? AnyList.copy_pop(&self, Allocator allocator)
 {
@@ -119,13 +119,13 @@ fn any? AnyList.copy_pop(&self, Allocator allocator)
 
 <*
  Pop the last value and allocate the copy using the temp allocator
- @return! NO_MORE_ELEMENT
+ @return? NO_MORE_ELEMENT
 *>
 fn any? AnyList.tcopy_pop(&self) => self.copy_pop(tmem());
 
 <*
  Pop the last value. It must later be released using list.free_element()
- @return! NO_MORE_ELEMENT
+ @return? NO_MORE_ELEMENT
 *>
 fn any? AnyList.pop_retained(&self)
 {

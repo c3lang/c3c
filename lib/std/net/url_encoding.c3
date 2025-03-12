@@ -105,7 +105,7 @@ fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
 <*
  Calculate the length of the percent-decoded string.
 
- @return! INVALID_HEX
+ @return? INVALID_HEX
 *>
 fn usz? decode_len(String s, UrlEncodingMode mode) @inline
 {

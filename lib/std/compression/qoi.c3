@@ -94,7 +94,7 @@ fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
  @param [in] filename : `The file's name to read the image from`
  @param [&out] desc : `The descriptor to fill with the image's info`
  @param channels : `The channels to be used`
- @return! FILE_OPEN_FAILED, INVALID_DATA, TOO_MANY_PIXELS
+ @return? FILE_OPEN_FAILED, INVALID_DATA, TOO_MANY_PIXELS
 *>
 fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
 {
@@ -122,7 +122,7 @@ import std::bits;
 
  @param [in] input : `The raw RGB or RGBA pixels to encode`
  @param [&in] desc : `The descriptor of the image`
- @return! INVALID_PARAMETERS, TOO_MANY_PIXELS, INVALID_DATA
+ @return? INVALID_PARAMETERS, TOO_MANY_PIXELS, INVALID_DATA
 *>
 fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 {
@@ -277,7 +277,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
  @param [in] data : `The QOI image data to decode`
  @param [&out] desc : `The descriptor to fill with the image's info`
  @param channels : `The channels to be used`
- @return! INVALID_DATA, TOO_MANY_PIXELS
+ @return? INVALID_DATA, TOO_MANY_PIXELS
 *>
 fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
 {
@@ -406,7 +406,7 @@ const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 // inefficient, but it's only run once at a time
 
 <*
- @return! INVALID_DATA
+ @return? INVALID_DATA
 *>
 macro @enumcast($Type, raw)
 {

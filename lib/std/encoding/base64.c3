@@ -79,7 +79,7 @@ fn usz encode_len(usz n, char padding)
  @param padding : "The padding character or 0 if none"
  @require padding < 0xFF : "Invalid padding character"
  @return "The size of the input once decoded."
- @return! encoding::INVALID_PADDING
+ @return? encoding::INVALID_PADDING
 *>
 fn usz? decode_len(usz n, char padding)
 {
@@ -163,7 +163,7 @@ fn String encode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base
  @require (decode_len(src.len, padding) ?? 0) <= dst.len : "Destination buffer too small"
  @require padding < 0xFF : "Invalid padding character"
  @return "The decoded data."
- @return! encoding::INVALID_CHARACTER, encoding::INVALID_PADDING
+ @return? encoding::INVALID_CHARACTER, encoding::INVALID_PADDING
 *>
 fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base64Alphabet* alphabet = &STANDARD)
 {

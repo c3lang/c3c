@@ -7,7 +7,7 @@ import std::io::path, libc, std::os;
 <*
  @param [in] name
  @require name.len > 0
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 fn String? get_var(Allocator allocator, String name) => @pool(allocator)
 {

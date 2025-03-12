@@ -24,7 +24,7 @@ interface Allocator
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require size > 0
-	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*? acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	<*
@@ -32,7 +32,7 @@ interface Allocator
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
 	 @require new_size > 0
-	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*? resize(void* ptr, usz new_size, usz alignment = 0);
 	<*
