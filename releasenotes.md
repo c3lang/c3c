@@ -41,6 +41,7 @@
 - `"+".to_float()` would panic.
 - `import` can now both be @public and @norecurse.
 - Crash when trying to convert a struct slice to a vector #2039.
+- Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
