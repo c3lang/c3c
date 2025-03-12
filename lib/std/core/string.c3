@@ -290,7 +290,7 @@ fault BUFFER_EXCEEDED;
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @require needle.len > 0 : "The needle must be at least 1 character long"
  @ensure return.len > 0
- @return! BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
+ @return? BUFFER_EXCEEDED : `If there are more elements than would fit the buffer`
 *>
 fn String[]? String.split_to_buffer(s, String needle, String[] buffer, usz max = 0, bool skip_empty = false)
 {
@@ -345,7 +345,7 @@ fn bool String.contains(s, String needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! NOT_FOUND : "if the needle cannot be found"
+ @return? NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz? String.index_of_char(s, char needle)
 {
@@ -364,7 +364,7 @@ fn usz? String.index_of_char(s, char needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! NOT_FOUND : "if the needle cannot be found"
+ @return? NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz? String.index_of_chars(String s, char[] needle)
 {
@@ -388,7 +388,7 @@ fn usz? String.index_of_chars(String s, char[] needle)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! NOT_FOUND : "if the needle cannot be found starting from the start_index"
+ @return? NOT_FOUND : "if the needle cannot be found starting from the start_index"
 *>
 fn usz? String.index_of_char_from(s, char needle, usz start_index)
 {
@@ -409,7 +409,7 @@ fn usz? String.index_of_char_from(s, char needle, usz start_index)
  @pure
  @ensure return < s.len
  @return "the index of the needle"
- @return! NOT_FOUND : "if the needle cannot be found"
+ @return? NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz? String.rindex_of_char(s, char needle)
 {
@@ -429,7 +429,7 @@ fn usz? String.rindex_of_char(s, char needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! NOT_FOUND : "if the needle cannot be found"
+ @return? NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz? String.index_of(s, String needle)
 {
@@ -454,7 +454,7 @@ fn usz? String.index_of(s, String needle)
  @ensure return < s.len
  @require needle.len > 0 : "The needle must be len 1 or more"
  @return "the index of the needle"
- @return! NOT_FOUND : "if the needle cannot be found"
+ @return? NOT_FOUND : "if the needle cannot be found"
 *>
 fn usz? String.rindex_of(s, String needle)
 {
@@ -556,7 +556,7 @@ fn String ZString.tcopy(z)
 <*
  Convert an UTF-8 string to UTF-16
  @return "The UTF-16 string as a slice, allocated using the given allocator"
- @return! INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
+ @return? INVALID_UTF8 : "If the string contained an invalid UTF-8 sequence"
 *>
 fn Char16[]? String.to_utf16(s, Allocator allocator)
 {

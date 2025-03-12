@@ -79,7 +79,7 @@ macro void @swap(#a, #b) @builtin
  @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
  @ensure @typeis(return, $Type*)
- @return! TYPE_MISMATCH
+ @return? TYPE_MISMATCH
 *>
 macro anycast(any v, $Type) @builtin
 {
@@ -247,7 +247,7 @@ macro bitcast(expr, $Type) @builtin
  @param [in] enum_name : `The name of the enum to search for`
  @require $Type.kindof == ENUM : `Only enums may be used`
  @ensure @typeis(return, $Type)
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
@@ -265,7 +265,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
  @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro @enum_from_value($Type, #value, value) @builtin
 {

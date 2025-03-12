@@ -12,7 +12,7 @@ const uint UTF16_SURROGATE_HIGH_VALUE @private = 0xD800;
 <*
  @param c : `The utf32 codepoint to convert`
  @param [out] output : `the resulting buffer`
- @return! string::CONVERSION_FAILED
+ @return? string::CONVERSION_FAILED
 *>
 fn usz? char32_to_utf8(Char32 c, char[] output)
 {

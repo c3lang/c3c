@@ -22,7 +22,7 @@
 - `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
-- Change `@return!` syntax to require ":" after faults.
+- Rename `@return` to `@return?` and change syntax to require ":" after faults.
 - Remove `if (catch foo) { case ... }` syntax.
 - Remove `[?]` syntax.
 - Change `int!` to `int?` syntax.

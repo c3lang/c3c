@@ -78,7 +78,7 @@ fn void DynamicArenaAllocator.release(&self, void* ptr, bool) @dynamic
  @require size > 0 : `Resize doesn't support zeroing`
  @require old_pointer != null : `Resize doesn't handle null pointers`
  @require self.page != null  : `tried to realloc pointer on invalid allocator`
- @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+ @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
 fn void*? DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz alignment) @dynamic
 {
@@ -130,7 +130,7 @@ fn void DynamicArenaAllocator.reset(&self, usz mark = 0) @dynamic
 <*
  @require math::is_power_of_2(alignment)
  @require size > 0
- @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+ @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
 fn void*? DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @local
 {
@@ -161,7 +161,7 @@ fn void*? DynamicArenaAllocator._alloc_new(&self, usz size, usz alignment) @loca
 <*
  @require size > 0 : `acquire expects size > 0`
  @require !alignment || math::is_power_of_2(alignment)
- @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+ @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 *>
 fn void*? DynamicArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz alignment) @dynamic
 {

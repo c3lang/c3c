@@ -2770,7 +2770,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 		else if (name == kw_at_return)
 		{
 			advance(c);
-			if (tok_is(c, TOKEN_BANG))
+			if (tok_is(c, TOKEN_QUESTION))
 			{
 				if (!parse_doc_optreturn(c, contracts_ref, next)) return false;
 			}

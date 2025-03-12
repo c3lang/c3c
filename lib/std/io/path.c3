@@ -109,7 +109,7 @@ macro bool? mkdir(Path path, bool recursive = false, MkdirPermissions permission
  @param path : `The path to delete`
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
  @return `true if there was a directory to delete, false otherwise`
- @return! INVALID_PATH : `if the path was invalid`
+ @return? INVALID_PATH : `if the path was invalid`
 *>
 macro bool? rmdir(path)
 {
@@ -136,7 +136,7 @@ fn void? rmtree(Path path)
 <*
  Creates a new path.
 
- @return! INVALID_PATH : `if the path was invalid`
+ @return? INVALID_PATH : `if the path was invalid`
 *>
 fn Path? new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -146,7 +146,7 @@ fn Path? new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 <*
  Creates a new path using the temp allocator.
 
- @return! INVALID_PATH : `if the path was invalid`
+ @return? INVALID_PATH : `if the path was invalid`
 *>
 fn Path? temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -391,7 +391,7 @@ fn usz? volume_name_len(String path, PathEnv path_env) @local
  of the path itself.
 
  @return `The parent of the path as a non-allocated path`
- @return! NO_PARENT : `if this path does not have a parent`
+ @return? NO_PARENT : `if this path does not have a parent`
 *>
 fn Path? Path.parent(self)
 {

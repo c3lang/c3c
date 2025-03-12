@@ -5,7 +5,7 @@ import std::core::array::slice;
  @param [in] array
  @param [in] element
  @return "the first index of the element"
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro index_of(array, element)
 {
@@ -34,7 +34,7 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
  @param [in] array
  @param [in] element
  @return "the last index of the element"
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro rindex_of(array, element)
 {
