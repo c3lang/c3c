@@ -132,7 +132,7 @@ const char *time_get(void);
 
 const char *str_remove_suffix(const char *name, const char *suffix);
 bool str_has_suffix(const char *name, const char *suffix);
-bool str_start_with(const char *name, const char *suffix);
+bool str_start_with(const char *name, const char *prefix);
 char *str_trim(char *str);
 const char *str_trim_start(const char *str);
 void str_trim_end(char *str);

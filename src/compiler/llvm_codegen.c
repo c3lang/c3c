@@ -1276,7 +1276,26 @@ static LLVMValueRef llvm_create_fault(GenContext *c, Decl *decl)
 	LLVMValueRef fault = llvm_add_global_raw(c, scratch_buffer_to_string(), c->chars_type, 0);
 	LLVMSetGlobalConstant(fault, 1);
 	scratch_buffer_append(".nameof");
-	LLVMSetInitializer(fault, llvm_emit_string_const(c, decl->name, scratch_buffer_to_string()));
+	if (decl->obfuscate)
+	{
+		LLVMSetInitializer(fault, llvm_emit_string_const(c, "<FAULT>", scratch_buffer_to_string()));
+	}
+	else
+	{
+		const char *module_name = decl->unit->module->name->module;
+		size_t last = 0;
+		for (size_t i = 0;; i++)
+		{
+			if (module_name[i] == 0) break;
+			if (module_name[i] == ':')
+			{
+				i++;
+				last = i + 1;
+			}
+		}
+		const char *new_name = str_printf("%s::%s", &module_name[last], decl->name);
+		LLVMSetInitializer(fault, llvm_emit_string_const(c, new_name, scratch_buffer_to_string()));
+	}
 	llvm_set_linkonce(c, fault);
 	decl->backend_ref = fault;
 	return fault;

@@ -4,7 +4,7 @@ module baz;
 fn void runBar()
 {
     visible();
-    bar::barFunc(); // #error: 'bar::barFunc' could not be found, did you spell it right?
+    bar::barFunc(); // #error: and not visible from other
 }
 
 // #file: file2.c3

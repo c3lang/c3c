@@ -1180,8 +1180,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	if (method_parent && !vec_size(params))
 	{
 		RETURN_SEMA_ERROR(decl, "A method must start with an argument of the type "
-								"it is a method of, e.g. 'fn void %s.%s(%s* self)', "
-								"unless it is a 'construct' method,",
+								"it is a method of, e.g. 'fn void %s.%s(%s* self)'.",
 								type_to_error_string(method_parent->type), decl->name, type_to_error_string(method_parent->type));
 	}
 

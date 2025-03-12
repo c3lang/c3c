@@ -204,14 +204,14 @@ bool str_has_suffix(const char *name, const char *suffix)
 	return memcmp(name + name_len - suffix_len, suffix, suffix_len) == 0;
 }
 
-bool str_start_with(const char *name, const char *suffix)
+bool str_start_with(const char *name, const char *prefix)
 {
-	size_t suffix_len = strlen(suffix);
+	size_t suffix_len = strlen(prefix);
 	for (size_t i = 0; i < suffix_len; i++)
 	{
 		char c = name[i];
 		if (c == 0) return false;
-		if (c != suffix[i]) return false;
+		if (c != prefix[i]) return false;
 	}
 	return true;
 }

@@ -238,19 +238,25 @@ static bool decl_is_visible(CompilationUnit *unit, Decl *decl)
 	// This never matches a generic module.
 	if (module->generic_module) return false;
 
-	// 2. Module inclusion: a is submodule of b or b of a.
+	// 2. Skip to imports for private decls
+	bool is_public = decl->visibility == VISIBLE_PUBLIC;
+	if (!is_public) goto IMPORT_CHECK;
+
+	// 3. Module inclusion: a is submodule of b or b of a.
+
 	if (module_inclusion_match(module, unit->module)) return true;
 
-	// 3. We want to check std::core
+	// 4. We want to check std::core
 	Module *lookup = module;
 	while (lookup)
 	{
 		if (lookup->name->module == kw_std__core) return true;
 		lookup = lookup->parent_module;
 	}
-
+IMPORT_CHECK:;
 	FOREACH(Decl *, import, unit->imports)
 	{
+		if (!is_public && !import->import.import_private_as_public) continue;
 		Module *import_module = import->import.module;
 		if (import_module == module) return true;
 		if (import->import.is_non_recurse) continue;
@@ -371,7 +377,14 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 		if (path && !matches_subpath(decls->unit->module->name, path)) return true;
 		if (!decl_is_visible(context->unit, decls))
 		{
-			name_resolve->maybe_decl = decls;
+			if (decls->visibility == VISIBLE_PRIVATE)
+			{
+				name_resolve->private_decl = decls;
+			}
+			else
+			{
+				name_resolve->maybe_decl = decls;
+			}
 		}
 		else
 		{
@@ -395,9 +408,17 @@ static bool sema_find_decl_in_global(SemaContext *context, DeclTable *table, Mod
 		if (!sema_resolve_ambiguity(context, &decl, candidate, &ambiguous)) return false;
 	}
 	name_resolve->ambiguous_other_decl = ambiguous;
-	name_resolve->private_decl = NULL;
 	name_resolve->found = decl;
-	name_resolve->maybe_decl = maybe_decl;
+	if (maybe_decl && maybe_decl->visibility == VISIBLE_PRIVATE)
+	{
+		name_resolve->private_decl = maybe_decl;
+		name_resolve->maybe_decl = NULL;
+	}
+	else
+	{
+		name_resolve->private_decl = NULL;
+		name_resolve->maybe_decl = maybe_decl;
+	}
 	return true;
 }
 
@@ -720,7 +741,7 @@ INLINE bool sema_resolve_symbol_common(SemaContext *context, NameResolve *name_r
 	if (name_resolve->path)
 	{
 		if (!sema_resolve_path_symbol(context, name_resolve)) return false;
-		if (!name_resolve->found && !name_resolve->maybe_decl && !name_resolve->path_found)
+		if (!name_resolve->found && !name_resolve->maybe_decl && !name_resolve->private_decl && !name_resolve->path_found)
 		{
 			if (name_resolve->suppress_error) return true;
 			Module *module_with_path = NULL;

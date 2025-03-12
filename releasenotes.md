@@ -29,6 +29,8 @@
 - New `fault` declarations.
 - Enum associated values can reference the calling enum.
 - Improve error message on `foo ?? io::EOF` with missing '?' #2036
+- Make `@public` import recursive. #2018
+- Fault nameof prefixes the first last module path, for instance `std::io::EOF` is rendered as `io::EOF`.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -37,6 +39,9 @@
 - FreeBSD libc stat definitions were incorrect.
 - Atomic max was incorrect.
 - `"+".to_float()` would panic.
+- `import` can now both be @public and @norecurse.
+- Crash when trying to convert a struct slice to a vector #2039.
+- Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.

@@ -480,7 +480,7 @@ static inline bool sema_resolve_type(SemaContext *context, TypeInfo *type_info, 
 		case TYPE_INFO_SLICE:
 		case TYPE_INFO_ARRAY:
 		case TYPE_INFO_VECTOR:
-			if (!sema_resolve_array_type(context, type_info, resolve_kind))
+			if (!sema_resolve_array_type(context, type_info, resolve_kind & ~RESOLVE_TYPE_NO_CHECK_DISTINCT))
 			{
 				return type_info_poison(type_info);
 			}
