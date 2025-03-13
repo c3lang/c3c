@@ -1363,6 +1363,7 @@ Ast *parse_stmt(ParseContext *c)
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_ALIAS:
+		case TOKEN_DEF: // TODO remove
 		case TOKEN_AND:
 		case TOKEN_ARROW:
 		case TOKEN_BANGBANG:

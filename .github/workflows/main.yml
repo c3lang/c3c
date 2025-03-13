@@ -80,7 +80,6 @@ jobs:
           build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib5
 
       - name: Try raylib5
-        if: ${{ false }}
         run: |
           cd resources
           ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib5

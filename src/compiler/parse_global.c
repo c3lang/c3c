@@ -48,6 +48,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
 			case TOKEN_ALIAS:
+			case TOKEN_DEF:
 			case TOKEN_FAULT:
 				return;
 			case TOKEN_CONST:
@@ -1934,7 +1935,9 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
  */
 static inline Decl *parse_alias_type(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_ALIAS);
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse def %s", decl->name);
@@ -2026,8 +2029,11 @@ static inline Decl *parse_alias_type(ParseContext *c)
  */
 static inline Decl *parse_alias_ident(ParseContext *c)
 {
-	// 1. Store the beginning of the "define".
-	advance_and_verify(c, TOKEN_ALIAS);
+	// 1. Store the beginning of the "alias".
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
+
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
@@ -2079,8 +2085,11 @@ static inline Decl *parse_alias_ident(ParseContext *c)
  */
 static inline Decl *parse_alias_attribute(ParseContext *c)
 {
-	// 1. Store the beginning of the "def".
-	advance_and_verify(c, TOKEN_ALIAS);
+	// 1. Store the beginning of the "alias".
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
+
 
 	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
@@ -2933,6 +2942,7 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
 		case TOKEN_ALIAS:
+		case TOKEN_DEF:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_alias(c);
 			break;
