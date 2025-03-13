@@ -31,6 +31,7 @@
 - Improve error message on `foo ?? io::EOF` with missing '?' #2036
 - Make `@public` import recursive. #2018
 - Fault nameof prefixes the first last module path, for instance `std::io::EOF` is rendered as `io::EOF`.
+- Rename `def` to `alias`.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

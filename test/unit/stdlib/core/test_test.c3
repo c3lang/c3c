@@ -270,8 +270,8 @@ fn void test_check_fails_no_info()
 	test::@check(2 == 1);
 }
 
-def TestIntFn = fn int? (int a, int b);
-def TestFailFn = fn void? (bool to_fail);
+alias TestIntFn = fn int? (int a, int b);
+alias TestFailFn = fn void? (bool to_fail);
 
 fault FOO;
 

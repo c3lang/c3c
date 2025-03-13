@@ -78,7 +78,7 @@ fn void quicksort_with_lambda()
     }
 }
 
-def List = List{int};
+alias List = List{int};
 
 fn void quicksort_list()
 {

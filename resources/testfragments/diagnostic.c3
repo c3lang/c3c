@@ -4,7 +4,7 @@ struct Overalign
 	double[<33>] x;
 }
 
-def Olist = List{Overalign};
+alias Olist = List{Overalign};
 
 fn void main()
 {

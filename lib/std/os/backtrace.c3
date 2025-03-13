@@ -84,11 +84,11 @@ fn void*[] capture_current(void*[] buffer)
 	$endswitch
 }
 
-def BacktraceList = List{Backtrace};
+alias BacktraceList = List{Backtrace};
 
-def symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
-def symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
-def symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
+alias symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
+alias symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
+alias symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
 
 fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
 {

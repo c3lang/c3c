@@ -1,11 +1,11 @@
 module libc @if(env::DARWIN);
 
-def Dev_t = int;
-def Mode_t = ushort;
-def Nlink_t = ushort;
-def Blkcnt_t = long;
-def Blksize_t = int;
-def Ino_t = ulong;
+alias Dev_t = int;
+alias Mode_t = ushort;
+alias Nlink_t = ushort;
+alias Blkcnt_t = long;
+alias Blksize_t = int;
+alias Ino_t = ulong;
 
 struct Stat
 {

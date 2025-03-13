@@ -1,13 +1,13 @@
 module math_tests @test;
 import math_tests::complex;
 
-def ComplexDouble = ComplexType{double} @local;
-def ComplexInt = ComplexType{int} @local;
+alias ComplexDouble = ComplexType{double} @local;
+alias ComplexInt = ComplexType{int} @local;
 
 module math_tests::complex{ElementType} @test;
 import std::math;
 
-def ComplexType = Complex{ElementType};
+alias ComplexType = Complex{ElementType};
 
 fn void complex_mul_imaginary()
 {

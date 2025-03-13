@@ -58,4 +58,4 @@ struct Win32_INPUT_RECORD
     }
 }
 
-def Win32_PCOORD = Win32_COORD*;
+alias Win32_PCOORD = Win32_COORD*;

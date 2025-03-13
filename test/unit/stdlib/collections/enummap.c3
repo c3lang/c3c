@@ -8,7 +8,7 @@ enum FooEnum
     THREE,
 }
 
-def FooEnumMap = EnumMap{FooEnum, uint};
+alias FooEnumMap = EnumMap{FooEnum, uint};
 
 fn void enums()
 {

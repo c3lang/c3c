@@ -6,8 +6,8 @@ distinct AIProtocol = CInt;
 distinct AISockType = CInt;
 distinct AIFlags = CInt;
 
-def Socklen_t = CUInt @if(!env::WIN32);
-def Socklen_t = usz @if(env::WIN32);
+alias Socklen_t = CUInt @if(!env::WIN32);
+alias Socklen_t = usz @if(env::WIN32);
 
 distinct SockAddrPtr = void*;
 

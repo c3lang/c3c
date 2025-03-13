@@ -4,7 +4,7 @@
 module std::collections::ringbuffer{Type};
 import std::io;
 
-def Element = $typeof((Type){}[0]);
+alias Element = $typeof((Type){}[0]);
 
 struct RingBuffer (Printable)
 {

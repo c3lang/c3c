@@ -2,7 +2,7 @@ module std::os::macos::cf @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.fr
 
 distinct CFAllocatorRef = void*;
 distinct CFAllocatorContextRef = void*;
-def CFOptionFlags = usz;
+alias CFOptionFlags = usz;
 
 macro CFAllocatorRef default_allocator() => macos_CFAllocatorGetDefault();
 macro void CFAllocatorRef.dealloc(CFAllocatorRef allocator, void* ptr) => macos_CFAllocatorDeallocate(allocator, ptr);

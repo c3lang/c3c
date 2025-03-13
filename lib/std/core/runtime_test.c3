@@ -7,7 +7,7 @@ import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
-def TestFn = fn void();
+alias TestFn = fn void();
 
 TestContext* test_context @private;
 

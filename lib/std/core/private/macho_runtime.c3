@@ -104,7 +104,7 @@ macro find_segment_section_body(MachHeader* header, char* segname, char* sectnam
 	return ptr[:section.size / $Type.sizeof];
 }
 
-def DyldCallback = fn void (MachHeader* mh, isz vmaddr_slide);
+alias DyldCallback = fn void (MachHeader* mh, isz vmaddr_slide);
 
 extern fn void _dyld_register_func_for_add_image(DyldCallback);
 
@@ -123,7 +123,7 @@ extern fn void* realloc(void* ptr, usz size);
 extern fn void* malloc(usz size);
 extern fn void free(void* ptr);
 
-def CallbackFn = fn void();
+alias CallbackFn = fn void();
 struct Callback
 {
 	uint priority;

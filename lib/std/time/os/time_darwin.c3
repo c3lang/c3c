@@ -6,8 +6,8 @@ struct Darwin_mach_timebase_info
 	uint denom;
 }
 
-def Darwin_mach_timebase_info_t = Darwin_mach_timebase_info;
-def Darwin_mach_timebase_info_data_t = Darwin_mach_timebase_info;
+alias Darwin_mach_timebase_info_t = Darwin_mach_timebase_info;
+alias Darwin_mach_timebase_info_data_t = Darwin_mach_timebase_info;
 
 extern fn void mach_timebase_info(Darwin_mach_timebase_info_data_t* timebase);
 extern fn ulong mach_absolute_time();

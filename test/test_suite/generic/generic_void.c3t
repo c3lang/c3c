@@ -1,14 +1,14 @@
 // #target: macos-x64
 module test{Type};
 
-def Callback = fn Type();
+alias Callback = fn Type();
 
 module mymain;
 
 import std::io;
 import test;
 
-def VoidCb = test::Callback{void};
+alias VoidCb = test::Callback{void};
 
 fn int main()
 {

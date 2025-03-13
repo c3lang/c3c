@@ -5,7 +5,7 @@ module abc{Type};
 import std::io;
 import std::collections::list;
 
-def TextTagList = List{TextTag};
+alias TextTagList = List{TextTag};
 
 fault UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
@@ -127,7 +127,7 @@ module text_test;
 import abc;
 import std::io;
 
-def Tmpl = TextTemplate{Data};
+alias Tmpl = TextTemplate{Data};
 
 struct Data
 {
@@ -138,8 +138,8 @@ struct Data
 
 
 
-def FooTmpl = TextTemplate{Foo};
-def BarTmpl = TextTemplate{Bar};
+alias FooTmpl = TextTemplate{Foo};
+alias BarTmpl = TextTemplate{Bar};
 
 struct Foo
 {

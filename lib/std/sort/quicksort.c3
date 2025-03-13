@@ -35,7 +35,7 @@ macro quickselect(list, isz k, cmp = EMPTY_MACRO_SLOT, context = EMPTY_MACRO_SLO
 
 module std::sort::qs{Type, CmpFn, Context};
 
-def ElementType = $typeof(((Type){})[0]);
+alias ElementType = $typeof(((Type){})[0]);
 
 struct StackElementItem @private
 {
@@ -43,7 +43,7 @@ struct StackElementItem @private
 	isz high;
 }
 
-def Stack = StackElementItem[64] @private;
+alias Stack = StackElementItem[64] @private;
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 

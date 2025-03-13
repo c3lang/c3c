@@ -1,6 +1,6 @@
 module test;
 
-def Bob = Test{any};
+alias Bob = Test{any};
 fn void Bob.crash(&self) {}
 
 fn int main()

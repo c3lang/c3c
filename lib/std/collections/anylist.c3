@@ -4,8 +4,8 @@
 module std::collections::anylist;
 import std::io,std::math;
 
-def AnyPredicate = fn bool(any value);
-def AnyTest = fn bool(any type, any context);
+alias AnyPredicate = fn bool(any value);
+alias AnyTest = fn bool(any type, any context);
 
 struct AnyList (Printable)
 {

@@ -1,5 +1,5 @@
 module test;
-def Func = fn void (bool);
+alias Func = fn void (bool);
 
 fn bool foo (String) => true;
 fn void bar(Func func) => func(false);

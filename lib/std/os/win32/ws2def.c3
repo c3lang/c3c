@@ -12,9 +12,9 @@ struct Win32_addrinfo
 	Win32_ADDRINFO* ai_next;
 }
 
-def Win32_ADDRINFO = Win32_addrinfo;
-def Win32_ADDRINFOA = Win32_ADDRINFO;
-def Win32_PADDRINFOA = Win32_ADDRINFO*;
+alias Win32_ADDRINFO = Win32_addrinfo;
+alias Win32_ADDRINFOA = Win32_ADDRINFO;
+alias Win32_PADDRINFOA = Win32_ADDRINFO*;
 
 struct Win32_addrinfoW {
 	Win32_INT ai_flags;
@@ -27,5 +27,5 @@ struct Win32_addrinfoW {
 	Win32_addrinfo *ai_next;
 }
 
-def Win32_ADDRINFOW = Win32_addrinfoW;
-def Win32_PADDRINFOW = Win32_addrinfoW*;
+alias Win32_ADDRINFOW = Win32_addrinfoW;
+alias Win32_PADDRINFOW = Win32_addrinfoW*;

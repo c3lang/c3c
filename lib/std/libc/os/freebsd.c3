@@ -2,13 +2,13 @@ module libc @if(env::FREEBSD);
 
 // Checked for x86_64
 
-def Blksize_t = int;
-def Nlink_t = $typefrom(env::X86_64 ? ulong.typeid : CUInt.typeid);
-def Dev_t = ulong;
-def Ino_t = ulong;
-def Mode_t = ushort;
-def Blkcnt_t = long;
-def Fflags_t = uint;
+alias Blksize_t = int;
+alias Nlink_t = $typefrom(env::X86_64 ? ulong.typeid : CUInt.typeid);
+alias Dev_t = ulong;
+alias Ino_t = ulong;
+alias Mode_t = ushort;
+alias Blkcnt_t = long;
+alias Fflags_t = uint;
 
 struct Stat @if(env::X86_64)
 {

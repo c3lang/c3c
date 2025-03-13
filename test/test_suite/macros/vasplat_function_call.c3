@@ -1,6 +1,6 @@
 import std;
 
-def IList = List{int};
+alias IList = List{int};
 fn IList IList.newAbc(&self)
 {
 	IList l;

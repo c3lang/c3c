@@ -5,7 +5,7 @@ macro foo($Foo)
     return a;
 }
 
-def Bar = short;
+alias Bar = short;
 fn void test()
 {
     int x = foo(int);

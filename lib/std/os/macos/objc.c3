@@ -4,8 +4,8 @@ distinct ObjcClass = void*;
 distinct ObjcMethod = void*;
 distinct ObjcIvar = void*;
 distinct ObjcSelector = void*;
-def ObjcId = void*;
-def SendVoid = fn void*(void*, ObjcSelector);
+alias ObjcId = void*;
+alias SendVoid = fn void*(void*, ObjcSelector);
 
 fault CLASS_NOT_FOUND, UNKNOWN_EVENT;
 

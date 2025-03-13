@@ -21,9 +21,9 @@ enum Kind : char
 
 fault UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
 
-def TokenTrie = Trie{Token, ushort};
+alias TokenTrie = Trie{Token, ushort};
 
-def Ident = fn bool (usz index, char c);
+alias Ident = fn bool (usz index, char c);
 
 struct Lexer
 {
@@ -400,8 +400,8 @@ module lexer_test;
 import lexer;
 import std::io;
 
-def Lexer = Lexer{Token, Comment};
-def Kind = Kind{Token, Comment};
+alias Lexer = Lexer{Token, Comment};
+alias Kind = Kind{Token, Comment};
 
 enum Token : char (String token)
 {
@@ -456,8 +456,8 @@ module trie{Value, Index};
 import std::collections::list;
 import trie::bitmap;
 
-def TrieNodeList = List{TrieNode};
-def TriePath = List{Index} @private;
+alias TrieNodeList = List{TrieNode};
+alias TriePath = List{Index} @private;
 
 fault TRIE_FULL;
 
@@ -634,7 +634,7 @@ fn bool Bitmap.is_empty(&self)
 module trie_test;
 import trie;
 
-def Trie = Trie{String, char};
+alias Trie = Trie{String, char};
 
 fn void test()
 {

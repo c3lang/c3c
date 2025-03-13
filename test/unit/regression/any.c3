@@ -9,7 +9,7 @@ fn void any_compare()
 	assert(a == a);
 }
 
-def AnyAlias = any;
+alias AnyAlias = any;
 
 fn void test_aliasing()
 {

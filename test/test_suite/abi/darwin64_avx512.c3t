@@ -2,8 +2,8 @@
 // #opt: --x86cpu=avx512
 module test;
 
-def Mm256 = float[<8>];
-def Mm512 = float[<16>];
+alias Mm256 = float[<8>];
+alias Mm512 = float[<16>];
 struct St512 {
   Mm512 m;
 }

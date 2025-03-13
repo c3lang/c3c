@@ -1,6 +1,6 @@
 // #target: macos-x64
 module abc;
-def UInt8 = char;
+alias UInt8 = char;
 fn void main()
 {
 	UInt8 x = 17;

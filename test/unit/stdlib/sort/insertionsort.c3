@@ -78,7 +78,7 @@ fn void insertionsort_with_lambda()
     }
 }
 
-def InsertionSortTestList = List{int};
+alias InsertionSortTestList = List{int};
 
 fn void insertionsort_list()
 {

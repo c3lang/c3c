@@ -13,7 +13,7 @@ struct Posix_pollfd
 	CUShort revents;
 }
 
-def Posix_nfds_t = CUInt;
+alias Posix_nfds_t = CUInt;
 
 extern fn CInt connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
 extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol ip_protocol);

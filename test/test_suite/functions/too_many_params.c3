@@ -1,5 +1,5 @@
 import std::io;
-def Tester = fn int(int x, int y, int z);
+alias Tester = fn int(int x, int y, int z);
 
 fn int test1(
 	int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, int, // 20

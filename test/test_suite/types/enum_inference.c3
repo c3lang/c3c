@@ -13,7 +13,7 @@ enum Inf2 : char
     C,
 }
 
-def BooInf = Inf;
+alias BooInf = Inf;
 
 
 fn void enumInferenceTest()

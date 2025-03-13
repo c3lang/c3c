@@ -1,7 +1,7 @@
 module std::io @test;
 import std::collections::list;
 
-def Results = List{String};
+alias Results = List{String};
 
 struct ScanTest
 {

@@ -1130,6 +1130,7 @@ typedef enum
 	TOKEN_TYPEID,
 
 	// Keywords
+	TOKEN_ALIAS,
 	TOKEN_ASSERT,
 	TOKEN_ASM,
 	TOKEN_BITSTRUCT,

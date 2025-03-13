@@ -6,8 +6,8 @@ import std::collections::map;
 
 struct Foo (Printable) { int x; void* bar; }
 
-def IntFooMap = HashMap { int, Foo };
-def IntDoubleMap = HashMap { int, double };
+alias IntFooMap = HashMap { int, Foo };
+alias IntDoubleMap = HashMap { int, double };
 
 fn String Foo.to_new_string(Foo* foo, Allocator allocator = allocator::heap()) @dynamic
 {

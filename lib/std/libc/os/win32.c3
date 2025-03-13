@@ -1,19 +1,30 @@
 module libc @if(env::WIN32);
 import std::os::win32;
 
+alias fdopen = _fdopen;
+alias close = _close;
+alias fileno = _fileno;
+alias isatty = _isatty;
+alias difftime = _difftime64;
+alias fseek = _fseeki64;
+alias ftell = _ftelli64;
+alias timegm = _mkgmtime64;
+alias mktime = _mktime64;
+
 extern fn CFile __acrt_iob_func(CInt c);
-extern fn CInt _close(Fd fd); def close = _close;
-extern fn double _difftime64(Time_t time1, Time_t time2); def difftime = _difftime64;
-extern fn CFile _fdopen(Fd fd, ZString mode); def fdopen = _fdopen;
-extern fn CInt _fileno(CFile stream); def fileno = _fileno;
-extern fn CInt _fseeki64(CFile, long, int); def fseek = _fseeki64;
-extern fn CLong _ftelli64(CFile); def ftell = _ftelli64;
+extern fn CInt _close(Fd fd);
+extern fn double _difftime64(Time_t time1, Time_t time2);
+extern fn CFile _fdopen(Fd fd, ZString mode);
+extern fn CInt _fileno(CFile stream);
+
+extern fn CInt _fseeki64(CFile, long, int);
+extern fn CLong _ftelli64(CFile);
 extern fn Errno _get_timezone(CLong *timezone);
 extern fn Tm* _gmtime64_s(Tm* buf, Time_t *timer);
-extern fn CInt _isatty(Fd fd); def isatty = _isatty;
+extern fn CInt _isatty(Fd fd);
 extern fn Tm* _localtime64_s(Tm* buf, Time_t *timer);
-extern fn Time_t _mkgmtime64(Tm* timeptr); def timegm = _mkgmtime64;
-extern fn Time_t _mktime64(Tm *timeptr); def mktime = _mktime64;
+extern fn Time_t _mkgmtime64(Tm* timeptr);
+extern fn Time_t _mktime64(Tm *timeptr);
 extern fn usz _msize(void* ptr);
 extern fn CInt _read(Fd fd, void* buffer, CUInt buffer_size);
 extern fn CInt _setjmp(JmpBuf* buffer, void* frameptr);
@@ -31,9 +42,11 @@ extern fn CInt shutdown(Win32_SOCKET s, CInt how);
 
 struct SystemInfo
 {
-	union {
+	union
+	{
 		uint dwOemId;
-		struct {
+		struct
+		{
 			ushort wProcessorArchitecture;
 			ushort wReserved;
 		}

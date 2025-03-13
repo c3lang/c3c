@@ -48,7 +48,7 @@ struct Foo
     int y;
 }
 
-def heh = he;
+alias heh = he;
 
 fn void test6()
 {
@@ -60,7 +60,7 @@ fn void test6()
     int[]* e = &arr[1..2]; // #error: To take the address of a temporary value, use '&&' instead of '&'
 }
 
-def Baz = Foo;
+alias Baz = Foo;
 distinct Bar = int;
 fault FOO;
 union Un { int x; }

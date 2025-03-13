@@ -2,9 +2,9 @@ module test;
 import std::time;
 import std::io;
 
-def foo = write;
+alias foo = write;
 
-def Int = int;
+alias Int = int;
 
 macro @timeit(#call)
 {

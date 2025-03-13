@@ -15,9 +15,9 @@ distinct TimedRecursiveMutex = inline Mutex;
 distinct ConditionVariable = NativeConditionVariable;
 distinct Thread = inline NativeThread;
 distinct OnceFlag = NativeOnceFlag;
-def OnceFn = fn void();
+alias OnceFn = fn void();
 
-def ThreadFn = fn int(void* arg);
+alias ThreadFn = fn int(void* arg);
 
 fault
 	INIT_FAILED,

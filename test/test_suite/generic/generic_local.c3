@@ -2,7 +2,7 @@ module testing;
 import std::io;
 import foo;
 
-def Foo = foo::Foo;
+alias Foo = foo::Foo;
 
 fn void main()
 {

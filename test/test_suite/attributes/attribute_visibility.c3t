@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 const int FOO @private = 4;
-def @Align(x) = { @align(x * FOO) };
+alias @Align(x) = { @align(x * FOO) };
 
 module test2;
 import test;

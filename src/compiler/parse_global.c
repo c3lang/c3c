@@ -47,6 +47,7 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_IMPORT:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
+			case TOKEN_ALIAS:
 			case TOKEN_DEF:
 			case TOKEN_FAULT:
 				return;
@@ -1927,14 +1928,16 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
 	decl->type = type;
 }
 /**
- * typedef_declaration ::= DEF TYPE_IDENT '=' typedef_type ';'
+ * typedef_declaration ::= ALIAS TYPE_IDENT '=' typedef_type ';'
  *
  * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_def_type(ParseContext *c)
+static inline Decl *parse_alias_type(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_DEF);
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse def %s", decl->name);
@@ -2024,10 +2027,13 @@ static inline Decl *parse_def_type(ParseContext *c)
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT | AT_IDENT)
  */
-static inline Decl *parse_def_ident(ParseContext *c)
+static inline Decl *parse_alias_ident(ParseContext *c)
 {
-	// 1. Store the beginning of the "define".
-	advance_and_verify(c, TOKEN_DEF);
+	// 1. Store the beginning of the "alias".
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
+
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
@@ -2075,12 +2081,15 @@ static inline Decl *parse_def_ident(ParseContext *c)
 }
 
 /**
- * define_attribute ::= 'def' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
+ * define_attribute ::= 'alias' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
  */
-static inline Decl *parse_def_attribute(ParseContext *c)
+static inline Decl *parse_alias_attribute(ParseContext *c)
 {
-	// 1. Store the beginning of the "def".
-	advance_and_verify(c, TOKEN_DEF);
+	// 1. Store the beginning of the "alias".
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
+
 
 	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
@@ -2115,19 +2124,19 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 }
 
 /**
- * define_decl ::= DEF define_type_body |
+ * define_decl ::= ALIAS define_type_body |
  */
-static inline Decl *parse_def(ParseContext *c)
+static inline Decl *parse_alias(ParseContext *c)
 {
 	switch (peek(c))
 	{
 		case TOKEN_TYPE_IDENT:
-			return parse_def_type(c);
+			return parse_alias_type(c);
 		case TOKEN_AT_TYPE_IDENT:
 			// define @Foo = @inline, @noreturn
-			return parse_def_attribute(c);
+			return parse_alias_attribute(c);
 		default:
-			return parse_def_ident(c);
+			return parse_alias_ident(c);
 	}
 }
 
@@ -2709,7 +2718,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	Ast **returns = NULL;
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
 	ast->span = c->prev_span;
-	advance_and_verify(c, TOKEN_BANG);
+	advance_and_verify(c, TOKEN_QUESTION);
 	ast->contract_stmt.kind = CONTRACT_OPTIONALS;
 	while (1)
 	{
@@ -2932,9 +2941,10 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_DOCS_START:
 			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
+		case TOKEN_ALIAS:
 		case TOKEN_DEF:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_def(c);
+			decl = parse_alias(c);
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, contracts, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);

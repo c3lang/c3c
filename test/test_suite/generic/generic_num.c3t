@@ -8,7 +8,7 @@ fn Type x(Type t)
 
 module test;
 import hello;
-def xint = hello::x{int, -123};
+alias xint = hello::x{int, -123};
 
 import std::io;
 

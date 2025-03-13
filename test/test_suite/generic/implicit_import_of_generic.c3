@@ -2,8 +2,8 @@ module test;
 import std::io;
 
 import abc;
-def Def2 = Def;
-def Test = abc::cde::Abc{int};
+alias Def2 = Def;
+alias Test = abc::cde::Abc{int};
 
 module abc;
 

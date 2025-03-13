@@ -22,17 +22,17 @@ extern fn CInt posix_spawn_file_actions_adddup2(Posix_spawn_file_actions_t *file
 extern fn CInt get_nprocs();
 extern fn CInt get_nprocs_conf();
 
-def spawn_file_actions_init = posix_spawn_file_actions_init;
-def spawn_file_actions_destroy = posix_spawn_file_actions_destroy;
-def spawn_file_actions_addclose = posix_spawn_file_actions_addclose;
-def spawn_file_actions_adddup2 = posix_spawn_file_actions_adddup2;
+alias spawn_file_actions_init = posix_spawn_file_actions_init;
+alias spawn_file_actions_destroy = posix_spawn_file_actions_destroy;
+alias spawn_file_actions_addclose = posix_spawn_file_actions_addclose;
+alias spawn_file_actions_adddup2 = posix_spawn_file_actions_adddup2;
 
 extern fn CInt posix_spawnp(Pid_t* pid, char* file, Posix_spawn_file_actions_t* file_actions,
 	Posix_spawnattr_t* attrp, ZString* argv, ZString* envp);
 extern fn CInt posix_spawn(Pid_t* pid, char* file, Posix_spawn_file_actions_t* file_actions,
 	Posix_spawnattr_t* attrp, ZString* argv, ZString* envp);
-def spawnp = posix_spawnp;
-def spawn = posix_spawn;
+alias spawnp = posix_spawnp;
+alias spawn = posix_spawn;
 
 extern fn CInt getpid();
 extern fn CInt kill(Pid_t pid, CInt sig);
@@ -56,7 +56,7 @@ const CInt WNOHANG = 1;
 const CInt WUNTRACES = 2;
 
 JmpBuf backtrace_jmpbuf @local;
-def BacktraceFn = fn CInt(void** buffer, CInt size);
+alias BacktraceFn = fn CInt(void** buffer, CInt size);
 
 fn CInt backtrace(void** buffer, CInt size)
 {

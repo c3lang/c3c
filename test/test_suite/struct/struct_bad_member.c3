@@ -2,7 +2,7 @@ struct Foo {
   void bar; // #error: Members cannot be of
 }
 
-def Void = void;
+alias Void = void;
 struct Foo2 {
   Void bar; // #error: Members cannot be of
 }

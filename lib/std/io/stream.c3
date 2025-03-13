@@ -135,7 +135,7 @@ macro char? read_byte_using_read(s)
 	return buffer[0];
 }
 
-def ReadByteFn = fn char?();
+alias ReadByteFn = fn char?();
 
 
 macro usz? write_using_write_byte(s, char[] bytes)

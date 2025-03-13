@@ -1,174 +1,174 @@
 module std::os::win32;
 
-def Win32_BOOL = int;
-def Win32_BOOLEAN = Win32_BYTE;
-def Win32_BYTE = char;
-def Win32_CCHAR = cinterop::CChar;
-def Win32_CHAR = cinterop::CChar;
-def Win32_COLORREF = Win32_DWORD;
-def Win32_DWORD = uint;
-def Win32_DWORDLONG = ulong;
-def Win32_DWORD_PTR = Win32_ULONG_PTR;
-def Win32_DWORD32 = uint;
-def Win32_DWORD64 = ulong;
-def Win32_FLOAT = float;
-def Win32_HACCEL = Win32_HANDLE;
-def Win32_HALF_PTR = int;
-def Win32_HANDLE = Win32_PVOID;
-def Win32_HBITMAP = Win32_HANDLE;
-def Win32_HBRUSH = Win32_HANDLE;
-def Win32_HCOLORSPACE = Win32_HANDLE;
-def Win32_HCONV = Win32_HANDLE;
-def Win32_HCONVLIST = Win32_HANDLE;
-def Win32_HCURSOR = Win32_HICON;
-def Win32_HDC = Win32_HANDLE;
-def Win32_HDDEDATA = Win32_HANDLE;
-def Win32_HDESK = Win32_HANDLE;
-def Win32_HDROP = Win32_HANDLE;
-def Win32_HDWP = Win32_HANDLE;
-def Win32_HFILE = int;
-def Win32_HFONT = Win32_HANDLE;
-def Win32_HGDIOBJ = Win32_HANDLE;
-def Win32_HGLOBAL = Win32_HANDLE;
-def Win32_HHOOK = Win32_HANDLE;
-def Win32_HICON = Win32_HANDLE;
-def Win32_HINSTANCE = Win32_HANDLE;
-def Win32_HKEY = Win32_HANDLE;
-def Win32_HKL = Win32_HANDLE;
-def Win32_HLOCAL = Win32_HANDLE;
-def Win32_HMENU = Win32_HANDLE;
-def Win32_HMETAFILE = Win32_HANDLE;
-def Win32_HMODULE = Win32_HANDLE;
-def Win32_HMONITOR = Win32_HANDLE;
-def Win32_HPALETTE = Win32_HANDLE;
-def Win32_HPEN = Win32_HANDLE;
-def Win32_HRESULT = Win32_LONG;
-def Win32_HRGN = Win32_HANDLE;
-def Win32_HRSRC = Win32_HANDLE;
-def Win32_HSZ = Win32_HANDLE;
-def Win32_HWINSTA = Win32_HANDLE;
-def Win32_HWND = Win32_HANDLE;
-def Win32_INT = int;
-def Win32_INT_PTR = iptr;
-def Win32_INT8 = ichar;
-def Win32_INT16 = short;
-def Win32_INT32 = int;
-def Win32_INT64 = long;
-def Win32_LANGID = Win32_WORD;
-def Win32_LCID = Win32_DWORD;
-def Win32_LCTYPE = Win32_DWORD;
-def Win32_LGRPID = Win32_DWORD;
-def Win32_LONG = int;
-def Win32_LONGLONG = long;
-def Win32_LONG_PTR = iptr;
-def Win32_LONG32 = int;
-def Win32_LONG64 = long;
-def Win32_LPARAM = Win32_LONG_PTR;
-def Win32_LPBOOL = Win32_BOOL*;
-def Win32_LPBYTE = Win32_BYTE*;
-def Win32_LPCOLORREF = Win32_DWORD*;
-def Win32_LPCSTR = Win32_CCHAR*;
-def Win32_LPCTSTR = Win32_LPCWSTR;
-def Win32_LPCVOID = void*;
-def Win32_LPCWSTR = Win32_WCHAR*;
-def Win32_LPDWORD = Win32_DWORD*;
-def Win32_LPHANDLE = Win32_HANDLE*;
-def Win32_LPINT = int*;
-def Win32_LPLONG = int*;
-def Win32_LPSTR = Win32_CCHAR*;
-def Win32_LPTSTR = Win32_LPWSTR;
-def Win32_LPVOID = void*;
-def Win32_LPWORD = Win32_WORD*;
-def Win32_LPWSTR = Win32_WCHAR*;
-def Win32_LRESULT = Win32_LONG_PTR;
-def Win32_NTSTATUS = Win32_LONG;
-def Win32_PBOOL = Win32_BOOL*;
-def Win32_PBOOLEAN = Win32_BOOLEAN*;
-def Win32_PBYTE = Win32_BYTE*;
-def Win32_PCHAR = Win32_CHAR*;
-def Win32_PCSTR = Win32_CHAR*;
-def Win32_PCTSTR = Win32_LPCWSTR;
-def Win32_PCUNICODE_STRING = Win32_UNICODE_STRING*;
-def Win32_PCWSTR = WString;
-def Win32_PDWORD = Win32_DWORD*;
-def Win32_PDWORDLONG = Win32_DWORDLONG*;
-def Win32_PDWORDPTR = Win32_DWORD_PTR*;
-def Win32_PDWORD32 = Win32_DWORD32*;
-def Win32_PDWORD64 = Win32_DWORD64*;
-def Win32_PFLOAT = Win32_FLOAT*;
-def Win32_PHALFPTR = Win32_HALF_PTR*;
-def Win32_PHANDLE = Win32_HANDLE*;
-def Win32_PHKEY = Win32_HKEY*;
-def Win32_PINT = int*;
-def Win32_PINTPTR = Win32_INT_PTR*;
-def Win32_PINT8 = Win32_INT8*;
-def Win32_PINT16 = Win32_INT16*;
-def Win32_PINT32 = Win32_INT32*;
-def Win32_PINT64 = Win32_INT64*;
-def Win32_PLCID = Win32_PDWORD;
-def Win32_PLONG = Win32_LONG*;
-def Win32_PLONGLONG = Win32_LONGLONG*;
-def Win32_PLONG_PTR = Win32_LONG_PTR*;
-def Win32_PLONG32 = Win32_LONG32*;
-def Win32_PLONG64 = Win32_LONG64*;
-def Win32_POINTER_32 = uint;
-def Win32_POINTER_64 = uptr;
-def Win32_POINTER_SIGNED = iptr;
-def Win32_POINTER_UNSIGNED = uptr;
-def Win32_PSHORT = Win32_SHORT*;
-def Win32_PSIZE_T = usz*;
-def Win32_PSSIZE_T = isz*;
-def Win32_PSTR = Win32_CHAR*;
-def Win32_PTBYTE = Win32_TBYTE*;
-def Win32_PTCHAR = Win32_TCHAR*;
-def Win32_PTSTR = Win32_LPWSTR;
-def Win32_PUCHAR = Win32_UCHAR*;
-def Win32_PUHALFPTR = Win32_UHALF_PTR*;
-def Win32_PUINT = Win32_UINT*;
-def Win32_PUINTPTR = Win32_UINT_PTR*;
-def Win32_PUINT8 = Win32_UINT8*;
-def Win32_PUINT16 = Win32_UINT16*;
-def Win32_PUINT32 = Win32_UINT32*;
-def Win32_PUINT64 = Win32_UINT64*;
-def Win32_PULONG = Win32_ULONG*;
-def Win32_PULONGLONG = Win32_ULONGLONG*;
-def Win32_PULONG_PTR = Win32_ULONG_PTR*;
-def Win32_PULONG32 = Win32_ULONG32*;
-def Win32_PULONG64 = Win32_ULONG64*;
-def Win32_PUNICODE_STRING = Win32_UNICODE_STRING*;
-def Win32_PUSHORT = Win32_USHORT*;
-def Win32_PVOID = void*;
-def Win32_PWCHAR = Win32_WCHAR*;
-def Win32_PWORD = Win32_WORD*;
-def Win32_PWSTR = Win32_WCHAR*;
-def Win32_QWORD = ulong;
-def Win32_SC_HANDLE = Win32_HANDLE;
-def Win32_SC_LOCK = Win32_LPVOID;
-def Win32_SERVICE_STATUS_HANDLE = Win32_HANDLE;
-def Win32_SHORT = short;
-def Win32_SIZE_T = usz;
-def Win32_SOCKET = Win32_HANDLE;
-def Win32_SSIZE_T = isz;
-def Win32_TBYTE = Win32_WCHAR;
-def Win32_TCHAR = Win32_WCHAR;
-def Win32_UCHAR = char;
-def Win32_UHALF_PTR = uint;
-def Win32_UINT = uint;
-def Win32_UINT_PTR = uptr;
-def Win32_UINT8 = char;
-def Win32_UINT16 = ushort;
-def Win32_UINT32 = uint;
-def Win32_UINT64 = ulong;
-def Win32_ULONG = uint;
-def Win32_ULONGLONG = ulong;
-def Win32_ULONG_PTR = ulong;
-def Win32_ULONG32 = uint;
-def Win32_ULONG64 = ulong;
-def Win32_USHORT = ushort;
-def Win32_USN = Win32_LONGLONG;
-def Win32_WCHAR = Char16;
-def Win32_WORD = ushort;
-def Win32_WPARAM = Win32_UINT_PTR;
+alias Win32_BOOL = int;
+alias Win32_BOOLEAN = Win32_BYTE;
+alias Win32_BYTE = char;
+alias Win32_CCHAR = cinterop::CChar;
+alias Win32_CHAR = cinterop::CChar;
+alias Win32_COLORREF = Win32_DWORD;
+alias Win32_DWORD = uint;
+alias Win32_DWORDLONG = ulong;
+alias Win32_DWORD_PTR = Win32_ULONG_PTR;
+alias Win32_DWORD32 = uint;
+alias Win32_DWORD64 = ulong;
+alias Win32_FLOAT = float;
+alias Win32_HACCEL = Win32_HANDLE;
+alias Win32_HALF_PTR = int;
+alias Win32_HANDLE = Win32_PVOID;
+alias Win32_HBITMAP = Win32_HANDLE;
+alias Win32_HBRUSH = Win32_HANDLE;
+alias Win32_HCOLORSPACE = Win32_HANDLE;
+alias Win32_HCONV = Win32_HANDLE;
+alias Win32_HCONVLIST = Win32_HANDLE;
+alias Win32_HCURSOR = Win32_HICON;
+alias Win32_HDC = Win32_HANDLE;
+alias Win32_HDDEDATA = Win32_HANDLE;
+alias Win32_HDESK = Win32_HANDLE;
+alias Win32_HDROP = Win32_HANDLE;
+alias Win32_HDWP = Win32_HANDLE;
+alias Win32_HFILE = int;
+alias Win32_HFONT = Win32_HANDLE;
+alias Win32_HGDIOBJ = Win32_HANDLE;
+alias Win32_HGLOBAL = Win32_HANDLE;
+alias Win32_HHOOK = Win32_HANDLE;
+alias Win32_HICON = Win32_HANDLE;
+alias Win32_HINSTANCE = Win32_HANDLE;
+alias Win32_HKEY = Win32_HANDLE;
+alias Win32_HKL = Win32_HANDLE;
+alias Win32_HLOCAL = Win32_HANDLE;
+alias Win32_HMENU = Win32_HANDLE;
+alias Win32_HMETAFILE = Win32_HANDLE;
+alias Win32_HMODULE = Win32_HANDLE;
+alias Win32_HMONITOR = Win32_HANDLE;
+alias Win32_HPALETTE = Win32_HANDLE;
+alias Win32_HPEN = Win32_HANDLE;
+alias Win32_HRESULT = Win32_LONG;
+alias Win32_HRGN = Win32_HANDLE;
+alias Win32_HRSRC = Win32_HANDLE;
+alias Win32_HSZ = Win32_HANDLE;
+alias Win32_HWINSTA = Win32_HANDLE;
+alias Win32_HWND = Win32_HANDLE;
+alias Win32_INT = int;
+alias Win32_INT_PTR = iptr;
+alias Win32_INT8 = ichar;
+alias Win32_INT16 = short;
+alias Win32_INT32 = int;
+alias Win32_INT64 = long;
+alias Win32_LANGID = Win32_WORD;
+alias Win32_LCID = Win32_DWORD;
+alias Win32_LCTYPE = Win32_DWORD;
+alias Win32_LGRPID = Win32_DWORD;
+alias Win32_LONG = int;
+alias Win32_LONGLONG = long;
+alias Win32_LONG_PTR = iptr;
+alias Win32_LONG32 = int;
+alias Win32_LONG64 = long;
+alias Win32_LPARAM = Win32_LONG_PTR;
+alias Win32_LPBOOL = Win32_BOOL*;
+alias Win32_LPBYTE = Win32_BYTE*;
+alias Win32_LPCOLORREF = Win32_DWORD*;
+alias Win32_LPCSTR = Win32_CCHAR*;
+alias Win32_LPCTSTR = Win32_LPCWSTR;
+alias Win32_LPCVOID = void*;
+alias Win32_LPCWSTR = Win32_WCHAR*;
+alias Win32_LPDWORD = Win32_DWORD*;
+alias Win32_LPHANDLE = Win32_HANDLE*;
+alias Win32_LPINT = int*;
+alias Win32_LPLONG = int*;
+alias Win32_LPSTR = Win32_CCHAR*;
+alias Win32_LPTSTR = Win32_LPWSTR;
+alias Win32_LPVOID = void*;
+alias Win32_LPWORD = Win32_WORD*;
+alias Win32_LPWSTR = Win32_WCHAR*;
+alias Win32_LRESULT = Win32_LONG_PTR;
+alias Win32_NTSTATUS = Win32_LONG;
+alias Win32_PBOOL = Win32_BOOL*;
+alias Win32_PBOOLEAN = Win32_BOOLEAN*;
+alias Win32_PBYTE = Win32_BYTE*;
+alias Win32_PCHAR = Win32_CHAR*;
+alias Win32_PCSTR = Win32_CHAR*;
+alias Win32_PCTSTR = Win32_LPCWSTR;
+alias Win32_PCUNICODE_STRING = Win32_UNICODE_STRING*;
+alias Win32_PCWSTR = WString;
+alias Win32_PDWORD = Win32_DWORD*;
+alias Win32_PDWORDLONG = Win32_DWORDLONG*;
+alias Win32_PDWORDPTR = Win32_DWORD_PTR*;
+alias Win32_PDWORD32 = Win32_DWORD32*;
+alias Win32_PDWORD64 = Win32_DWORD64*;
+alias Win32_PFLOAT = Win32_FLOAT*;
+alias Win32_PHALFPTR = Win32_HALF_PTR*;
+alias Win32_PHANDLE = Win32_HANDLE*;
+alias Win32_PHKEY = Win32_HKEY*;
+alias Win32_PINT = int*;
+alias Win32_PINTPTR = Win32_INT_PTR*;
+alias Win32_PINT8 = Win32_INT8*;
+alias Win32_PINT16 = Win32_INT16*;
+alias Win32_PINT32 = Win32_INT32*;
+alias Win32_PINT64 = Win32_INT64*;
+alias Win32_PLCID = Win32_PDWORD;
+alias Win32_PLONG = Win32_LONG*;
+alias Win32_PLONGLONG = Win32_LONGLONG*;
+alias Win32_PLONG_PTR = Win32_LONG_PTR*;
+alias Win32_PLONG32 = Win32_LONG32*;
+alias Win32_PLONG64 = Win32_LONG64*;
+alias Win32_POINTER_32 = uint;
+alias Win32_POINTER_64 = uptr;
+alias Win32_POINTER_SIGNED = iptr;
+alias Win32_POINTER_UNSIGNED = uptr;
+alias Win32_PSHORT = Win32_SHORT*;
+alias Win32_PSIZE_T = usz*;
+alias Win32_PSSIZE_T = isz*;
+alias Win32_PSTR = Win32_CHAR*;
+alias Win32_PTBYTE = Win32_TBYTE*;
+alias Win32_PTCHAR = Win32_TCHAR*;
+alias Win32_PTSTR = Win32_LPWSTR;
+alias Win32_PUCHAR = Win32_UCHAR*;
+alias Win32_PUHALFPTR = Win32_UHALF_PTR*;
+alias Win32_PUINT = Win32_UINT*;
+alias Win32_PUINTPTR = Win32_UINT_PTR*;
+alias Win32_PUINT8 = Win32_UINT8*;
+alias Win32_PUINT16 = Win32_UINT16*;
+alias Win32_PUINT32 = Win32_UINT32*;
+alias Win32_PUINT64 = Win32_UINT64*;
+alias Win32_PULONG = Win32_ULONG*;
+alias Win32_PULONGLONG = Win32_ULONGLONG*;
+alias Win32_PULONG_PTR = Win32_ULONG_PTR*;
+alias Win32_PULONG32 = Win32_ULONG32*;
+alias Win32_PULONG64 = Win32_ULONG64*;
+alias Win32_PUNICODE_STRING = Win32_UNICODE_STRING*;
+alias Win32_PUSHORT = Win32_USHORT*;
+alias Win32_PVOID = void*;
+alias Win32_PWCHAR = Win32_WCHAR*;
+alias Win32_PWORD = Win32_WORD*;
+alias Win32_PWSTR = Win32_WCHAR*;
+alias Win32_QWORD = ulong;
+alias Win32_SC_HANDLE = Win32_HANDLE;
+alias Win32_SC_LOCK = Win32_LPVOID;
+alias Win32_SERVICE_STATUS_HANDLE = Win32_HANDLE;
+alias Win32_SHORT = short;
+alias Win32_SIZE_T = usz;
+alias Win32_SOCKET = Win32_HANDLE;
+alias Win32_SSIZE_T = isz;
+alias Win32_TBYTE = Win32_WCHAR;
+alias Win32_TCHAR = Win32_WCHAR;
+alias Win32_UCHAR = char;
+alias Win32_UHALF_PTR = uint;
+alias Win32_UINT = uint;
+alias Win32_UINT_PTR = uptr;
+alias Win32_UINT8 = char;
+alias Win32_UINT16 = ushort;
+alias Win32_UINT32 = uint;
+alias Win32_UINT64 = ulong;
+alias Win32_ULONG = uint;
+alias Win32_ULONGLONG = ulong;
+alias Win32_ULONG_PTR = ulong;
+alias Win32_ULONG32 = uint;
+alias Win32_ULONG64 = ulong;
+alias Win32_USHORT = ushort;
+alias Win32_USN = Win32_LONGLONG;
+alias Win32_WCHAR = Char16;
+alias Win32_WORD = ushort;
+alias Win32_WPARAM = Win32_UINT_PTR;
 
 const INVALID_HANDLE_VALUE = (Win32_HANDLE)(uptr)-1;
 
@@ -200,8 +200,8 @@ struct Win32_SECURITY_ATTRIBUTES
 
 
 
-def Win32_LPSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
-def Win32_PSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
+alias Win32_LPSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
+alias Win32_PSECURITY_ATTRIBUTES = Win32_SECURITY_ATTRIBUTES*;
 
 struct Win32_STARTUPINFOW
 {
@@ -239,8 +239,8 @@ struct Win32_OVERLAPPED
 	Win32_HANDLE hEvent;
 }
 
-def Win32_LPOVERLAPPED = Win32_OVERLAPPED*;
-def Win32_LPSTARTUPINFOW = Win32_STARTUPINFOW*;
+alias Win32_LPOVERLAPPED = Win32_OVERLAPPED*;
+alias Win32_LPSTARTUPINFOW = Win32_STARTUPINFOW*;
 
 struct Win32_STARTUPINFOEXW
 {
@@ -248,8 +248,8 @@ struct Win32_STARTUPINFOEXW
 	Win32_LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
 }
 
-def Win32_LPPROC_THREAD_ATTRIBUTE_LIST = void*;
-def Win32_LPSTARTUPINFOEXW = Win32_STARTUPINFOEXW*;
+alias Win32_LPPROC_THREAD_ATTRIBUTE_LIST = void*;
+alias Win32_LPSTARTUPINFOEXW = Win32_STARTUPINFOEXW*;
 
 struct Win32_FILETIME
 {
@@ -265,8 +265,8 @@ struct Win32_PROCESS_INFORMATION
 	Win32_DWORD  dwThreadId;
 }
 
-def Win32_PPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
-def Win32_LPPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
+alias Win32_PPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
+alias Win32_LPPROCESS_INFORMATION = Win32_PROCESS_INFORMATION*;
 
 struct Win32_SYSTEM_INFO
 {
@@ -290,7 +290,7 @@ struct Win32_SYSTEM_INFO
 	Win32_WORD          wProcessorRevision;
 }
 
-def Win32_LPSYSTEM_INFO = Win32_SYSTEM_INFO*;
+alias Win32_LPSYSTEM_INFO = Win32_SYSTEM_INFO*;
 
 struct Win32_MODULEINFO
 {
@@ -358,7 +358,7 @@ struct Win32_IMAGEHLP_MODULE64
 	Win32_DWORD     reserved;
 }
 
-def Win32_PIMAGEHLP_MODULE64 = Win32_IMAGEHLP_MODULE64*;
+alias Win32_PIMAGEHLP_MODULE64 = Win32_IMAGEHLP_MODULE64*;
 
 struct Win32_ARM64_NT_CONTEXT @align(16)
 {
@@ -527,12 +527,12 @@ const CONTEXT_AMD64_DEBUG_REGISTERS = CONTEXT_AMD64 | 0x0010;
 const CONTEXT_AMD64_FULL = CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_FLOATING_POINT;
 const CONTEXT_AMD64_ALL = CONTEXT_AMD64_CONTROL | CONTEXT_AMD64_INTEGER | CONTEXT_AMD64_SEGMENTS | CONTEXT_AMD64_FLOATING_POINT | CONTEXT_AMD64_DEBUG_REGISTERS;
 
-def CONTEXT_CONTROL = CONTEXT_AMD64_CONTROL;
-def CONTEXT_FULL = CONTEXT_AMD64_FULL;
-def CONTEXT_ALL = CONTEXT_AMD64_ALL;
+alias CONTEXT_CONTROL = CONTEXT_AMD64_CONTROL;
+alias CONTEXT_FULL = CONTEXT_AMD64_FULL;
+alias CONTEXT_ALL = CONTEXT_AMD64_ALL;
 
-def Win32_CONTEXT = Win32_AMD64_CONTEXT;
-def Win32_PCONTEXT = Win32_CONTEXT*;
+alias Win32_CONTEXT = Win32_AMD64_CONTEXT;
+alias Win32_PCONTEXT = Win32_CONTEXT*;
 
 struct Win32_M128A @align(16)
 {
@@ -580,7 +580,7 @@ struct Win32_IMAGE_OPTIONAL_HEADER64
 	Win32_IMAGE_DATA_DIRECTORY[16] dataDirectory;
 }
 
-def Win32_PIMAGE_OPTIONAL_HEADER64 = Win32_IMAGE_OPTIONAL_HEADER64*;
+alias Win32_PIMAGE_OPTIONAL_HEADER64 = Win32_IMAGE_OPTIONAL_HEADER64*;
 struct Win32_IMAGE_FILE_HEADER
 {
 	Win32_WORD      machine;
@@ -592,7 +592,7 @@ struct Win32_IMAGE_FILE_HEADER
 	Win32_WORD      characteristics;
 }
 
-def Win32_PIMAGE_FILE_HEADER = Win32_IMAGE_FILE_HEADER*;
+alias Win32_PIMAGE_FILE_HEADER = Win32_IMAGE_FILE_HEADER*;
 
 struct Win32_IMAGE_NT_HEADERS
 {
@@ -601,7 +601,7 @@ struct Win32_IMAGE_NT_HEADERS
 	Win32_IMAGE_OPTIONAL_HEADER64 optionalHeader;
 }
 
-def Win32_PIMAGE_NT_HEADERS = Win32_IMAGE_NT_HEADERS*;
+alias Win32_PIMAGE_NT_HEADERS = Win32_IMAGE_NT_HEADERS*;
 
 struct Win32_SYMBOL_INFO
 {
@@ -622,7 +622,7 @@ struct Win32_SYMBOL_INFO
 	Win32_CHAR[1]       name;
 }
 
-def Win32_PSYMBOL_INFO = Win32_SYMBOL_INFO*;
+alias Win32_PSYMBOL_INFO = Win32_SYMBOL_INFO*;
 
 struct Win32_MODLOAD_DATA
 {
@@ -684,14 +684,14 @@ struct Win32_STACKFRAME64
 	Win32_KDHELP64      kdHelp;
 }
 
-def Win32_PREAD_PROCESS_MEMORY_ROUTINE64 = fn Win32_BOOL(Win32_HANDLE hProcess, Win32_DWORD64 qwBaseAddress, Win32_PVOID lpBuffer, Win32_DWORD nSize, Win32_LPDWORD lpNumberOfBytesRead);
-def Win32_PFUNCTION_TABLE_ACCESS_ROUTINE64 = fn Win32_PVOID(Win32_HANDLE ahProcess, Win32_DWORD64 addrBase);
-def Win32_PGET_MODULE_BASE_ROUTINE64 = fn Win32_DWORD64(Win32_HANDLE hProcess, Win32_DWORD64 address);
-def Win32_PTRANSLATE_ADDRESS_ROUTINE64 = fn Win32_DWORD64(Win32_HANDLE hProcess, Win32_HANDLE hThread, Win32_LPADDRESS64 lpaddr);
-def Win32_PKDHELP64 = Win32_KDHELP64*;
-def Win32_LPADDRESS64 = Win32_ADDRESS64*;
-def Win32_LPSTACKFRAME64 = Win32_STACKFRAME64*;
-def Win32_PMODLOAD_DATA = Win32_MODLOAD_DATA*;
-def Win32_PIMAGEHLP_LINE64 = Win32_IMAGEHLP_LINE64*;
-def Win32_LPMODULEINFO = Win32_MODULEINFO*;
+alias Win32_PREAD_PROCESS_MEMORY_ROUTINE64 = fn Win32_BOOL(Win32_HANDLE hProcess, Win32_DWORD64 qwBaseAddress, Win32_PVOID lpBuffer, Win32_DWORD nSize, Win32_LPDWORD lpNumberOfBytesRead);
+alias Win32_PFUNCTION_TABLE_ACCESS_ROUTINE64 = fn Win32_PVOID(Win32_HANDLE ahProcess, Win32_DWORD64 addrBase);
+alias Win32_PGET_MODULE_BASE_ROUTINE64 = fn Win32_DWORD64(Win32_HANDLE hProcess, Win32_DWORD64 address);
+alias Win32_PTRANSLATE_ADDRESS_ROUTINE64 = fn Win32_DWORD64(Win32_HANDLE hProcess, Win32_HANDLE hThread, Win32_LPADDRESS64 lpaddr);
+alias Win32_PKDHELP64 = Win32_KDHELP64*;
+alias Win32_LPADDRESS64 = Win32_ADDRESS64*;
+alias Win32_LPSTACKFRAME64 = Win32_STACKFRAME64*;
+alias Win32_PMODLOAD_DATA = Win32_MODLOAD_DATA*;
+alias Win32_PIMAGEHLP_LINE64 = Win32_IMAGEHLP_LINE64*;
+alias Win32_LPMODULEINFO = Win32_MODULEINFO*;
 

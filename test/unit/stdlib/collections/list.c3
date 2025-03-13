@@ -1,15 +1,15 @@
 module list_test @test;
 import std::collections::list;
 
-def IntList = List{int};
-def PtrList = List{void*};
+alias IntList = List{int};
+alias PtrList = List{void*};
 
 struct Overalign
 {
 	float[<4>] x @align(128);
 }
 
-def OveralignList = List{Overalign};
+alias OveralignList = List{Overalign};
 fn void overaligned_type()
 {
 	OveralignList l;

@@ -86,7 +86,7 @@ fn V4f32wrapper f27(V4f32wrapper x) {
 // PR22563 - We should unwrap simple structs and arrays to pass
 // and return them in the appropriate vector registers if possible.
 
-def V8f32 = float[<8>];
+alias V8f32 = float[<8>];
 struct V8f32wrapper {
   V8f32 v;
 }
@@ -133,15 +133,15 @@ fn float f31(F31foo x) {
   return x.c;
 }
 
-def V1i64 = ulong[<1>];
+alias V1i64 = ulong[<1>];
 
 fn V1i64 f34(V1i64 arg) { return arg; }
 
 
-def V1i64_2 = uint[<2>];
+alias V1i64_2 = uint[<2>];
 fn V1i64_2 f35(V1i64_2 arg) { return arg+arg; }
 
-def V2i32 = float[<2>];
+alias V2i32 = float[<2>];
 fn V2i32 f36(V2i32 arg) { return arg; }
 
 

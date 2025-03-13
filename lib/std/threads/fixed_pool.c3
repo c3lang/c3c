@@ -6,7 +6,7 @@ import std::thread;
 
 // Please do not use this one in production.
 
-def ThreadPoolFn = fn void(any[] args);
+alias ThreadPoolFn = fn void(any[] args);
 
 struct FixedThreadPool
 {

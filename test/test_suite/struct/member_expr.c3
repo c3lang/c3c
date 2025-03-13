@@ -1,7 +1,7 @@
 
-def Func = fn int(int);
+alias Func = fn int(int);
 
-def Func2 = fn int(Foo*, int);
+alias Func2 = fn int(Foo*, int);
 
 struct Foo
 {

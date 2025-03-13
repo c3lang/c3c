@@ -3,8 +3,8 @@ module repro;
 
 import std::collections::list;
 
-def FnA = fn void(Foo*);
-def FnB = fn void(Foo*);
+alias FnA = fn void(Foo*);
+alias FnB = fn void(Foo*);
 
 struct Foo
 {

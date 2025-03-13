@@ -5,8 +5,8 @@ import std::io;
 distinct String @if(!$defined(String)) = inline char[];
 distinct ZString = inline char*;
 distinct WString = inline Char16*;
-def Char32 = uint;
-def Char16 = ushort;
+alias Char32 = uint;
+alias Char16 = ushort;
 
 fault INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED, EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
       INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;

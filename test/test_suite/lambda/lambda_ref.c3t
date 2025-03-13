@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-def FnA = fn void(int*);
+alias FnA = fn void(int*);
 
 fn void func(int*) {  }
 fn void main()

@@ -8,9 +8,9 @@ enum Enum : uptr
     A, B
 }
 
-def Func = fn void(int);
-def FuncOther = fn bool(char*);
-def FuncSame = fn void(int);
+alias Func = fn void(int);
+alias FuncOther = fn bool(char*);
+alias FuncSame = fn void(int);
 
 
 fn void test1(Func arg)

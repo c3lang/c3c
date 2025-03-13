@@ -1,5 +1,5 @@
-def Number8 = char;
-def Number32 = int;
+alias Number8 = char;
+alias Number32 = int;
 distinct DNumber32 = int;
 fn void test1()
 {
