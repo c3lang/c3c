@@ -2709,7 +2709,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	Ast **returns = NULL;
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
 	ast->span = c->prev_span;
-	advance_and_verify(c, TOKEN_BANG);
+	advance_and_verify(c, TOKEN_QUESTION);
 	ast->contract_stmt.kind = CONTRACT_OPTIONALS;
 	while (1)
 	{
