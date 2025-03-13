@@ -7,11 +7,11 @@ const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
 const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 
-def PathList = List { Path };
+alias PathList = List { Path };
 
 fault INVALID_PATH, NO_PARENT;
 
-def Path = PathImp;
+alias Path = PathImp;
 
 struct PathImp (Printable)
 {
@@ -552,7 +552,7 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
-def PathWalker = fn bool? (Path, bool is_dir, void*);
+alias PathWalker = fn bool? (Path, bool is_dir, void*);
 
 <*
  Walk the path recursively. PathWalker is run on every file and
@@ -578,7 +578,7 @@ fn bool? Path.walk(self, PathWalker w, void* data)
 	return false;
 }
 
-def TraverseCallback = fn bool? (Path, bool is_dir, any data);
+alias TraverseCallback = fn bool? (Path, bool is_dir, any data);
 
 <*
  Walk the path recursively. TraverseCallback is run for every file and

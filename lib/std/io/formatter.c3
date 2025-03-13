@@ -13,8 +13,8 @@ interface Printable
 fault BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS,
       INVALID_ARGUMENT;
 
-def OutputFn = fn void?(void* buffer, char c);
-def FloatType = double;
+alias OutputFn = fn void?(void* buffer, char c);
+alias FloatType = double;
 
 
 macro bool is_struct_with_default_print($Type)

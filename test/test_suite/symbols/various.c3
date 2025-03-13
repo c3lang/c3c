@@ -49,7 +49,7 @@ fn void test7()
     int v = array[1];
 }
 
-def Number = int;
+alias Number = int;
 
 fn void test8()
 {

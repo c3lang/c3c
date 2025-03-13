@@ -13,7 +13,7 @@ enum EnumB : char
     C, D
 }
 
-def Func = fn void(Enum);
+alias Func = fn void(Enum);
 
 fn void test1(Enum e)
 {

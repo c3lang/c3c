@@ -1,5 +1,5 @@
-def @Foo() = { @inline }; // #error: At least one parameter was expected
-def @Bar = { @inline };
+alias @Foo() = { @inline }; // #error: At least one parameter was expected
+alias @Bar = { @inline };
 
 fn void test1() @Foo { }
 fn void test2() @Foo() { } // #error: An expression was

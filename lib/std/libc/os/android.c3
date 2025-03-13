@@ -2,14 +2,14 @@ module libc @if(env::ANDROID);
 
 // Checked for x86_64, this is notoriously incorrect when comparing with Rust code etc
 
-def Blksize_t = $typefrom(env::X86_64 ? long.typeid : CInt.typeid);
-def Nlink_t = $typefrom(env::X86_64 ? ulong.typeid : CUInt.typeid);
-def Blkcnt_t = long;
-def Ino_t = ulong;
-def Dev_t = ulong;
-def Mode_t = uint;
-def Ino64_t = ulong;
-def Blkcnt64_t = long;
+alias Blksize_t = $typefrom(env::X86_64 ? long.typeid : CInt.typeid);
+alias Nlink_t = $typefrom(env::X86_64 ? ulong.typeid : CUInt.typeid);
+alias Blkcnt_t = long;
+alias Ino_t = ulong;
+alias Dev_t = ulong;
+alias Mode_t = uint;
+alias Ino64_t = ulong;
+alias Blkcnt64_t = long;
 
 struct Stat @if(env::X86_64)
 {

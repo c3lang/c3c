@@ -1,7 +1,7 @@
 // #target: macos-x64
 module broken{Type};
 distinct Bar = Type;
-def Bar2 = Type;
+alias Bar2 = Type;
 struct Baz
 {
 	int a;

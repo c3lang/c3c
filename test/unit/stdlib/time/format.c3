@@ -2,8 +2,8 @@ module timeformat_test @test;
 
 import std::time::datetime, std::collections::list, std::collections::triple;
 
-def FormatTzTestSpec = Triple{TzDateTime, DateTimeFormat, String};
-def FormatTestSpec = Triple{DateTime, DateTimeFormat, String};
+alias FormatTzTestSpec = Triple{TzDateTime, DateTimeFormat, String};
+alias FormatTestSpec = Triple{DateTime, DateTimeFormat, String};
 
 fn void test_with_tz()
 {

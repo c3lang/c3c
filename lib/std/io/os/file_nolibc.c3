@@ -1,15 +1,15 @@
 module std::io::os @if(env::NO_LIBC);
 import libc;
 
-def FopenFn = fn void*?(String, String);
-def FreopenFn = fn void*?(void*, String, String);
-def FcloseFn = fn void?(void*);
-def FseekFn = fn void?(void*, isz, Seek);
-def FtellFn = fn usz?(void*);
-def FwriteFn = fn usz?(void*, char[] buffer);
-def FreadFn = fn usz?(void*, char[] buffer);
-def RemoveFn = fn void?(String);
-def FputcFn = fn void?(int, void*);
+alias FopenFn = fn void*?(String, String);
+alias FreopenFn = fn void*?(void*, String, String);
+alias FcloseFn = fn void?(void*);
+alias FseekFn = fn void?(void*, isz, Seek);
+alias FtellFn = fn usz?(void*);
+alias FwriteFn = fn usz?(void*, char[] buffer);
+alias FreadFn = fn usz?(void*, char[] buffer);
+alias RemoveFn = fn void?(String);
+alias FputcFn = fn void?(int, void*);
 
 FopenFn native_fopen_fn @weak @if(!$defined(native_fopen_fn));
 FcloseFn native_fclose_fn @weak @if(!$defined(native_fclose_fn));

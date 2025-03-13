@@ -1,4 +1,4 @@
-def Number = int;
+alias Number = int;
 
 fn void test1()
 {

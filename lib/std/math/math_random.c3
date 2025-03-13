@@ -60,7 +60,7 @@ macro int next_in_range(random, int min, int max)
 	return next(random, max - min + 1) + min;
 }
 
-def DefaultRandom = Sfc64Random;
+alias DefaultRandom = Sfc64Random;
 
 tlocal Sfc64Random default_random @private;
 tlocal bool default_random_initialized @private = false;

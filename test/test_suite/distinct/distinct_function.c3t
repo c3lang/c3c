@@ -1,6 +1,6 @@
 module test;
 
-def FnA = fn void(int*);
+alias FnA = fn void(int*);
 distinct FnB = FnA;
 distinct FnC = inline FnA;
 

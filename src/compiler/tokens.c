@@ -185,6 +185,8 @@ const char *token_type_to_string(TokenType type)
 			return "DOC_COMMENT";
 
 		// Keywords
+		case TOKEN_ALIAS:
+			return "alias";
 		case TOKEN_ANYFAULT:
 			return "anyfault";
 		case TOKEN_ASM:
@@ -203,8 +205,6 @@ const char *token_type_to_string(TokenType type)
 			return "const";
 		case TOKEN_CONTINUE:
 			return "continue";
-		case TOKEN_DEF:
-			return "def";
 		case TOKEN_DEFAULT:
 			return "default";
 		case TOKEN_DEFER:

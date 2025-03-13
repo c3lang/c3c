@@ -7,7 +7,7 @@ struct NativeMutex
 	bool initialized;
 }
 
-def NativeConditionVariable = Pthread_cond_t;
+alias NativeConditionVariable = Pthread_cond_t;
 
 struct NativeThread
 {
@@ -16,7 +16,7 @@ struct NativeThread
     void* arg;
 }
 
-def NativeOnceFlag = Pthread_once_t;
+alias NativeOnceFlag = Pthread_once_t;
 
 <*
  @require !self.is_initialized() : "Mutex is already initialized"

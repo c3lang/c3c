@@ -18,18 +18,18 @@ const int RTLD_LOCAL = 0x4;
 const int RTLD_GLOBAL = 0x8;
 const int RTLD_NODELETE = 0x1000;
 
-def Pid_t = int;
-def Uid_t = uint;
-def Gid_t = uint;
+alias Pid_t = int;
+alias Uid_t = uint;
+alias Gid_t = uint;
 
 const CUInt SA_ONSTACK       = env::LINUX ? 0x08000000 : 0x0001;
 const CUInt SA_RESTART       = env::LINUX ? 0x10000000 : 0x0002;
 const CUInt SA_RESETHAND     = env::LINUX ? 0x80000000 : 0x0004;
 const CUInt SA_SIGINFO       = env::LINUX ? 0x00000004 : 0x0040;
 
-def Sigset_t = uint @if(!env::LINUX);
-def Sigset_t = ulong[16] @if(env::LINUX);
-def SigActionFunction =  fn void(CInt, void*, void*);
+alias Sigset_t = uint @if(!env::LINUX);
+alias Sigset_t = ulong[16] @if(env::LINUX);
+alias SigActionFunction =  fn void(CInt, void*, void*);
 
 struct Sigaction
 {

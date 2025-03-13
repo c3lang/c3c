@@ -1,7 +1,7 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
-def BenchmarkFn = fn void();
+alias BenchmarkFn = fn void();
 
 struct BenchmarkUnit
 {

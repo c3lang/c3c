@@ -13,10 +13,10 @@ import foo @public;
 distinct Int = int;
 macro Int.@test(self) {}
 
-def intHello = foo::@hello{int}; // #error: An at-macro like
-def @intHello = foo::hello{int};
-def @intTest = Int.@test;
-def intTest = Int.@test;           // #error: An at-macro like
+alias intHello = foo::@hello{int}; // #error: An at-macro like
+alias @intHello = foo::hello{int};
+alias @intTest = Int.@test;
+alias intTest = Int.@test;           // #error: An at-macro like
 
 
 fn void main(String[] args) {

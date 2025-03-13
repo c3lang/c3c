@@ -10,7 +10,7 @@ struct An3
     An2 y;
 }
 
-def AnCall = fn void();
+alias AnCall = fn void();
 
 struct An2
 {

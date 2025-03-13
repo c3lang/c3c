@@ -1,8 +1,8 @@
 // #deprecation: no
 import std;
-def MaybeInt = maybe::Maybe{int};
+alias MaybeInt = maybe::Maybe{int};
 
-def Func = fn void (args...);
+alias Func = fn void (args...);
 
 fn int main() {
 	Func t;

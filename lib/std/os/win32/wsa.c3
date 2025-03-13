@@ -10,9 +10,9 @@ struct Win32_pollfd
 	Win32_SHORT events;
 	Win32_SHORT revents;
 }
-def Win32_WSAPOLLFD = Win32_pollfd;
-def Win32_PWSAPOLLFD = Win32_WSAPOLLFD*;
-def Win32_LPWSAPOLLFD = Win32_WSAPOLLFD*;
+alias Win32_WSAPOLLFD = Win32_pollfd;
+alias Win32_PWSAPOLLFD = Win32_WSAPOLLFD*;
+alias Win32_LPWSAPOLLFD = Win32_WSAPOLLFD*;
 
 struct Win32_InAddr 
 {
@@ -53,10 +53,10 @@ struct Win32_SOCKADDR_STORAGE
 	Win32_CHAR[_SS_PAD2SIZE]* __ss_pad2;
 }
 
-def Win32_WSAOVERLAPPED = Win32_OVERLAPPED;
-def Win32_LPWSAOVERLAPPED = Win32_WSAOVERLAPPED*;
+alias Win32_WSAOVERLAPPED = Win32_OVERLAPPED;
+alias Win32_LPWSAOVERLAPPED = Win32_WSAOVERLAPPED*;
 
-def Win32_LPWSAOVERLAPPED_COMPLETION_ROUTINE = fn void (
+alias Win32_LPWSAOVERLAPPED_COMPLETION_ROUTINE = fn void (
 	Win32_DWORD dwError,
 	Win32_DWORD cbTransferred,
 	Win32_LPWSAOVERLAPPED
@@ -64,7 +64,7 @@ def Win32_LPWSAOVERLAPPED_COMPLETION_ROUTINE = fn void (
 	Win32_DWORD dwFlags
 );
 
-def Win32_LPFN_WSARECV = fn CInt(
+alias Win32_LPFN_WSARECV = fn CInt(
 	Win32_SOCKET socket,
 	Win32_LPWSABUF buffers,
 	Win32_DWORD buffer_count,
@@ -74,7 +74,7 @@ def Win32_LPFN_WSARECV = fn CInt(
 	Win32_LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine
 );
 
-def Win32_LPFN_WSARECVFROM = fn CInt(
+alias Win32_LPFN_WSARECVFROM = fn CInt(
 	Win32_SOCKET socket,
 	Win32_LPWSABUF buffers,
 	Win32_DWORD buffer_count,
@@ -86,7 +86,7 @@ def Win32_LPFN_WSARECVFROM = fn CInt(
 	Win32_LPWSAOVERLAPPED_COMPLETION_ROUTINE completion_routine
 );
 
-def Win32_LPFn_CONNECTEX = fn bool(
+alias Win32_LPFn_CONNECTEX = fn bool(
 	Win32_SOCKET,
 	Win32_SOCKADDR*,
 	Win32_INT,
@@ -96,7 +96,7 @@ def Win32_LPFn_CONNECTEX = fn bool(
 	void*
 );
 
-def Win32_LPFn_ACCEPTEX = fn bool(
+alias Win32_LPFn_ACCEPTEX = fn bool(
 	Win32_SOCKET,
 	Win32_SOCKET,
 	Win32_PVOID,

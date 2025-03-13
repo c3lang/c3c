@@ -144,7 +144,7 @@ struct Quad {
 
 Quad globalQuad = { 4, {1, 2}, null, 3, 156 };
 
-def FuncPtr = fn int(int);
+alias FuncPtr = fn int(int);
 
 fn uint ptrFunc(FuncPtr func, int x) {
   return func(x);

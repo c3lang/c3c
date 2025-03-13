@@ -1,6 +1,6 @@
 module abc;
 
-def @Foo = { @inline };
+alias @Foo = { @inline };
 
 module bar;
 

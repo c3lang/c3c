@@ -35,7 +35,7 @@ struct Win32_WIN32_FIND_DATAW
 	Win32_WORD          wFinderFlags; // Obsolete. Do not use
 }
 
-def Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
+alias Win32_LPWIN32_FIND_DATAW = Win32_WIN32_FIND_DATAW*;
 
 extern fn Win32_BOOL closeHandle(Win32_HANDLE) @extern("CloseHandle");
 extern fn Win32_BOOL createPipe(Win32_PHANDLE hReadPipe, Win32_PHANDLE hWritePipe, Win32_LPSECURITY_ATTRIBUTES lpPipeAttributes, Win32_DWORD nSize) @extern("CreatePipe");

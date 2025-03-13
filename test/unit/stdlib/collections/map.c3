@@ -4,14 +4,14 @@ import std::collections::map;
 import std::sort;
 import std::io;
 
-def TestHashMap = HashMap{String, usz};
+alias TestHashMap = HashMap{String, usz};
 
 struct MapTest
 {
     String key;
     usz value;
 }
-def List = List{MapTest};
+alias List = List{MapTest};
 
 fn void map()
 {
@@ -55,7 +55,7 @@ fn void map()
     }
 }
 
-def FooMap = HashMap{char, Foobar};
+alias FooMap = HashMap{char, Foobar};
 enum Foobar : inline char
 {
     FOO,

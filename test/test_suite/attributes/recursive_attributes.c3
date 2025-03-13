@@ -1,8 +1,8 @@
 module test;
 
-def @Align(y) = { @Align16(y / 2) };
-def @Align16(x) = { @align(4) @Align(8 * x) }; // #error: Recursive declaration of attribute
-def @Test = { @noinline };
+alias @Align(y) = { @Align16(y / 2) };
+alias @Align16(x) = { @align(4) @Align(8 * x) }; // #error: Recursive declaration of attribute
+alias @Test = { @noinline };
 struct Foo
 {
 	int z;

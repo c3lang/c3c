@@ -26,21 +26,21 @@ macro quicksort_indexed(list, start, end, cmp = EMPTY_MACRO_SLOT, context = EMPT
 
 module std::sort::cs{Type, KeyFn};
 
-def Counts = usz[256] @private;
-def Ranges = usz[257] @private;
-def Indexs = char[256] @private;
-def ElementType = $typeof((Type){}[0]);
+alias Counts = usz[256] @private;
+alias Ranges = usz[257] @private;
+alias Indexs = char[256] @private;
+alias ElementType = $typeof((Type){}[0]);
 
 const bool NO_KEY_FN @private = types::is_same(KeyFn, EmptySlot);
 const bool KEY_BY_VALUE @private = NO_KEY_FN ||| $assignable((Type){}[0], $typefrom(KeyFn.paramsof[0].type));
 const bool LIST_HAS_REF @private = $defined(&(Type){}[0]);
 
-def KeyFnReturnType = $typefrom(KeyFn.returns) @if(!NO_KEY_FN);
-def KeyFnReturnType = ElementType @if(NO_KEY_FN);
-def CmpCallback = fn int(ElementType, ElementType) @if(KEY_BY_VALUE && NO_KEY_FN);
-def CmpCallback = fn int(ElementType*, ElementType*) @if(!KEY_BY_VALUE && NO_KEY_FN);
-def CmpCallback = fn int(ElementType, ElementType, KeyFn) @if(KEY_BY_VALUE && !NO_KEY_FN);
-def CmpCallback = fn int(ElementType*, ElementType*, KeyFn) @if(!KEY_BY_VALUE && !NO_KEY_FN);
+alias KeyFnReturnType = $typefrom(KeyFn.returns) @if(!NO_KEY_FN);
+alias KeyFnReturnType = ElementType @if(NO_KEY_FN);
+alias CmpCallback = fn int(ElementType, ElementType) @if(KEY_BY_VALUE && NO_KEY_FN);
+alias CmpCallback = fn int(ElementType*, ElementType*) @if(!KEY_BY_VALUE && NO_KEY_FN);
+alias CmpCallback = fn int(ElementType, ElementType, KeyFn) @if(KEY_BY_VALUE && !NO_KEY_FN);
+alias CmpCallback = fn int(ElementType*, ElementType*, KeyFn) @if(!KEY_BY_VALUE && !NO_KEY_FN);
 
 fn void csort(Type list, usz low, usz high, KeyFn key_fn, uint byte_idx)
 {

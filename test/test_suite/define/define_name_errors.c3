@@ -1,8 +1,8 @@
 
-def Foo = int;
+alias Foo = int;
 
-def hello1 = int; // #error: To alias a type, the alias
-def hello2 = Foo; // #error: To alias a type, the alias
+alias hello1 = int; // #error: To alias a type, the alias
+alias hello2 = Foo; // #error: To alias a type, the alias
 
-def HELLO1 = int; // #error: To alias a type, the alias
-def HELLO2 = Foo; // #error: To alias a type, the alias
+alias HELLO1 = int; // #error: To alias a type, the alias
+alias HELLO2 = Foo; // #error: To alias a type, the alias

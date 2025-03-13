@@ -45,7 +45,7 @@ fault NOT_FOUND @builtin;
 fault TYPE_MISMATCH @builtin;
 
 
-def VoidFn = fn void();
+alias VoidFn = fn void();
 
 <*
  Stores a variable on the stack, then restores it at the end of the
@@ -155,7 +155,7 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 }
 
-def PanicFn = fn void(String message, String file, String function, uint line);
+alias PanicFn = fn void(String message, String file, String function, uint line);
 
 PanicFn panic = &default_panic;
 

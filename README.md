@@ -80,13 +80,13 @@ import stack;
 
 // Define our new types, the first will implicitly create 
 // a complete copy of the entire Stack module with "Type" set to "int"
-def IntStack = Stack(<int>);
+alias IntStack = Stack {int};
 // The second creates another copy with "Type" set to "double"
-def DoubleStack = Stack(<double>);
+alias DoubleStack = Stack {double};
 
-// If we had added "define IntStack2 = Stack(<int>)"
+// If we had added "alias IntStack2 = Stack {int}"
 // no additional copy would have been made (since we already
-// have an parameterization of Stack(<int>)) so it would
+// have an parameterization of Stack {int} so it would
 // be same as declaring IntStack2 an alias of IntStack
 
 // Importing an external C function is straightforward

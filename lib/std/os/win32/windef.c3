@@ -32,20 +32,20 @@ struct Win32_SOCKADDR
    Win32_CHAR[14]* sa_data;
 }
 
-def Win32_PSIZE = Win32_SIZE*;
-def Win32_NPSIZE = Win32_SIZE*;
-def Win32_LPSIZE = Win32_SIZE*;
+alias Win32_PSIZE = Win32_SIZE*;
+alias Win32_NPSIZE = Win32_SIZE*;
+alias Win32_LPSIZE = Win32_SIZE*;
 
-def Win32_PPOINT = Win32_POINT*;
-def Win32_NPOINT = Win32_POINT*;
-def Win32_LPOINT = Win32_POINT*;
+alias Win32_PPOINT = Win32_POINT*;
+alias Win32_NPOINT = Win32_POINT*;
+alias Win32_LPOINT = Win32_POINT*;
 
-def Win32_PRECT = Win32_RECT*;
-def Win32_NPRECT = Win32_RECT*;
-def Win32_LPRECT = Win32_RECT*;
+alias Win32_PRECT = Win32_RECT*;
+alias Win32_NPRECT = Win32_RECT*;
+alias Win32_LPRECT = Win32_RECT*;
 
-def Win32_PWSABUF = Win32_WSABUF*;
-def Win32_LPWSABUF = Win32_WSABUF*;
+alias Win32_PWSABUF = Win32_WSABUF*;
+alias Win32_LPWSABUF = Win32_WSABUF*;
 
-def Win32_PSOCKADDR = Win32_SOCKADDR*;
-def Win32_LPSOCKADDR = Win32_SOCKADDR*;
+alias Win32_PSOCKADDR = Win32_SOCKADDR*;
+alias Win32_LPSOCKADDR = Win32_SOCKADDR*;

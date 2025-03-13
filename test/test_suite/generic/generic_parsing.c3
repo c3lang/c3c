@@ -1,6 +1,6 @@
 module test;
 import std;
-def ListStr = List{String};
+alias ListStr = List{String};
 fn void test()
 {
 	List<String> a = List<...>.new_init(); // #error: An expression was expected

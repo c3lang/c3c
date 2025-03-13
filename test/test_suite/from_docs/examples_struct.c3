@@ -1,4 +1,4 @@
-def Callback = fn int(char c);
+alias Callback = fn int(char c);
 struct Person { int i; }
 struct Company { int j; }
 enum Status : int

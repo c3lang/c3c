@@ -3,7 +3,7 @@ module testing;
 import blurb;
 import foo;
 
-def hello_int = foo::hello{int};
+alias hello_int = foo::hello{int};
 
 fn void main()
 {
@@ -16,8 +16,8 @@ fn void hello() {}
 
 module blurb;
 
-def Foo = fn void();
-def Bar = fn void();
+alias Foo = fn void();
+alias Bar = fn void();
 
 fn void test(Foo x) {}
 

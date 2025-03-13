@@ -1,4 +1,4 @@
-def Abc = fn void();
+alias Abc = fn void();
 distinct Foo = inline Abc;
 struct Bar
 {

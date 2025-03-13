@@ -3,7 +3,7 @@
 *>
 module std::collections::bitset{SIZE};
 
-def Type = uint;
+alias Type = uint;
 
 const BITS = Type.sizeof * 8;
 const SZ = (SIZE + BITS - 1) / BITS;
@@ -75,7 +75,7 @@ import std::collections::list;
 
 const BITS = Type.sizeof * 8;
 
-def GrowableBitSetList = List{Type};
+alias GrowableBitSetList = List{Type};
 
 struct GrowableBitSet
 {

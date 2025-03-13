@@ -8,7 +8,7 @@
 module std::collections::enumset{Enum};
 import std::io;
 
-def EnumSetType = $typefrom(type_for_enum_elements(Enum.elements)) @private;
+alias EnumSetType = $typefrom(type_for_enum_elements(Enum.elements)) @private;
 
 const IS_CHAR_ARRAY = Enum.elements > 128;
 distinct EnumSet (Printable) = EnumSetType;

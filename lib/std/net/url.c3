@@ -238,7 +238,7 @@ fn String Url.to_string(&self, Allocator allocator)
 }
 
 
-def UrlQueryValueList = List{String};
+alias UrlQueryValueList = List{String};
 
 struct UrlQueryValues
 {
