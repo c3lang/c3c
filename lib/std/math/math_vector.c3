@@ -51,6 +51,32 @@ fn double[<3>] double[<3>].unproject(self, Matrix4 projection, Matrix4 view) => 
 fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) => ortho_normalize3(v1, v2);
 fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v1, v2);
 
+/* determinants */
+macro float[<*>].determinant2(self, float[<*>] b) => determinant2(self,b);
+macro float[<*>].determinant3(self, float[<*>] b, float[<*>] c) => determinant3(self, b, c);
+macro float[<*>].determinant4(self, float[<*>] b, float[<*>] c, float[<*>] d) => determinant4(self, b, c, d);
+/* laplace */
+macro float[<*>].laplace2(self) => laplace2(self);
+macro float[<*>].laplace3(self, float[<*>] b) => laplace3(self, b);
+macro float[<*>].laplace4(self, float[<*>] b, float[<*>] c) => laplace4(self, b, c);
+/* cross[2,3,4] products */
+macro float[<*>].cross2(self, uint winding = 0x901) => cross2(self, winding);
+macro float[<*>].cross3(self, float[<*>] other) => cross3(self, other);
+macro float[<*>].cross4(self, float[<*>] b, float[<*>] c) => cross4(self, b, c);
+
+macro determinant2(a, b)       => ({ 1,-1        } * a.xy   * laplace2(b                   )).sum();
+macro determinant3(a, b, c)    => ({ 1,-1, 1     } * a.xyz  * laplace3(b.xyz,c.xyz         )).sum();
+macro determinant4(a, b, c, d) => ({ 1,-1, 1, -1 } * a.xyzw * laplace4(b.xyzw,c.xyzw,d.xyzw)).sum();
+
+macro laplace2(a)       => a.yx;
+macro laplace3(a, b)    => ($typeof(a)){ determinant2(a.yz,b.yz), determinant2(a.xz,b.xz), determinant2(a.xy,b.xy) };
+macro laplace4(a, b, c) => ($typeof(a)){ determinant3(a.yzw,b.yzw,c.yzw), determinant3(a.xzw,b.xzw,c.xzw), determinant3(a.xyw,b.xyw,c.xyw), determinant3(a.xyz,b.xyz,c.xyz) };
+
+/* use GL_CW=0x900/GL_CCW=0x901 or 0/1 as winding */
+macro cross2(a, uint winding = 0x901) => { (winding % 2 == 0 ? -1 : 1), 1 } * laplace2(a);
+macro cross3(a, b)                    => a.yzx * b.zxy - a.zxy * b.yzx;
+macro cross4(a, b, c)                 => {-1, 1, -1, 1} * laplace4(a.xyzw,b.xyzw,c.xyzw);
+
 macro towards(v, target, max_distance) @private
 {
 	var delta = target - v;
@@ -100,13 +126,6 @@ macro perpendicular3(v) @private
 	}
 
 	return cross3(v, cardinal_axis);
-}
-
-macro cross3(v1, v2) @private
-{
-	var a = v1.yzx * v2.zxy;
-	var b = v1.zxy * v2.yzx;
-	return a - b;
 }
 
 macro transform2(v, mat) @private

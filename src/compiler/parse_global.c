@@ -1347,11 +1347,7 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 			// We might have Foo...
 			if (ellipsis)
 			{
-				if (!variadic)
-				{
-					PRINT_ERROR_HERE("Variadic arguments are not allowed.");
-					return false;
-				}
+				if (!variadic) RETURN_PRINT_ERROR_HERE("Variadic arguments are not allowed.");
 				if (var_arg_found)
 				{
 					print_error_at(extend_span_with_token(type->span, c->prev_span), "Only a single variadic parameter is allowed.");

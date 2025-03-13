@@ -123,3 +123,19 @@ fn void test_type_consistency() @test
     $assert @typeis(v3f.cross(v3f)[0], float);
     $assert @typeis(v3d.cross(v3d)[0], double);
 }
+
+fn void test_vec_cross() @test
+{
+	float[<4>] u = { 1,0,0,0 };
+	float[<4>] v = { 0,1,0,0 };
+	float[<4>] w = { 0,0,1,0 };
+
+	float[<4>] x = vector::cross4(u,v,w);
+	float[<3>] y = vector::cross3(u,v);
+	float[<2>] z = vector::cross2(u);
+
+	assert(x == {-0, 0,-0, 1 });
+	assert(y == { 0, 0, 1    });
+	assert(z == { 0, 1       });
+}
+
