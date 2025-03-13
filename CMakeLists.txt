@@ -1,5 +1,10 @@
 cmake_minimum_required(VERSION 3.20)
 
+# Generate compile_commands.json
+if (NOT MSVC)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+endif()
+
 # Grab the version
 file(READ "src/version.h" ver)
 if (NOT ${ver} MATCHES "COMPILER_VERSION \"([0-9]+.[0-9]+.[0-9]+)\"")
@@ -558,3 +563,12 @@ if (C3_WITH_LLVM AND DEFINED sanitizer_runtime_libraries)
 endif()
 
 feature_summary(WHAT ALL)
+
+# Copy compile_commands.json to project root dir for IDE to pick it up
+if (NOT MSVC)
+    add_custom_command(COMMAND
+        TARGET c3c POST_BUILD
+        WORKING_DIRECTORY ${PROJECT_SOURCE_DIR}
+        COMMAND cp ${PROJECT_BINARY_DIR}/compile_commands.json ${PROJECT_SOURCE_DIR}
+    )
+endif()
