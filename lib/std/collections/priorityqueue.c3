@@ -34,7 +34,7 @@ struct PrivatePriorityQueue (Printable)
 	List{Type} heap;
 }
 
-fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16, ) @inline
+fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, usz initial_capacity = 16) @inline
 {
 	self.heap.init(allocator, initial_capacity);
 	return self;
