@@ -64,28 +64,77 @@ fn void test_hash()
 {
 	(char){}.hash();
 	(char[<100>]){}.hash();
+	(char[100]){}.hash();
 	(ichar){}.hash();
 	(ichar[<100>]){}.hash();
+	(ichar[100]){}.hash();
 	(short){}.hash();
 	(short[<100>]){}.hash();
+	(short[100]){}.hash();
 	(ushort){}.hash();
 	(ushort[<100>]){}.hash();
+	(ushort[100]){}.hash();
 	(int){}.hash();
 	(int[<100>]){}.hash();
+	(int[100]){}.hash();
 	(uint){}.hash();
 	(uint[<100>]){}.hash();
+	(uint[100]){}.hash();
 	(long){}.hash();
 	(long[<100>]){}.hash();
+	(long[100]){}.hash();
 	(ulong){}.hash();
 	(ulong[<100>]){}.hash();
+	(ulong[100]){}.hash();
 	(int128){}.hash();
 	(int128[<100>]){}.hash();
+	(int128[100]){}.hash();
 	(uint128){}.hash();
 	(uint128[<100>]){}.hash();
+	(uint128[100]){}.hash();
 	(bool){}.hash();
 	(bool[<100>]){}.hash();
+	(bool[100]){}.hash();
 	String x = "abc";
 	char[] y = "abc";
 	assert(x.hash() == y.hash());
 	assert(int.typeid.hash());
+}
+
+fn void test_hash_repeat()
+{
+	assert((char){}.hash() == (char){}.hash());
+	assert((char[<100>]){}.hash() == (char[<100>]){}.hash());
+	assert((char[100]){}.hash() == (char[100]){}.hash());
+	assert((ichar){}.hash() == (ichar){}.hash());
+	assert((ichar[<100>]){}.hash() == (ichar[<100>]){}.hash());
+	assert((ichar[100]){}.hash() == (ichar[100]){}.hash());
+	assert((short){}.hash() == (short){}.hash());
+	assert((short[<100>]){}.hash() == (short[<100>]){}.hash());
+	assert((short[100]){}.hash() == (short[100]){}.hash());
+	assert((ushort){}.hash() == (ushort){}.hash());
+	assert((ushort[<100>]){}.hash() == (ushort[<100>]){}.hash());
+	assert((ushort[100]){}.hash() == (ushort[100]){}.hash());
+	assert((int){}.hash() == (int){}.hash());
+	assert((int[<100>]){}.hash() == (int[<100>]){}.hash());
+	assert((int[100]){}.hash() == (int[100]){}.hash());
+	assert((uint){}.hash() == (uint){}.hash());
+	assert((uint[<100>]){}.hash() == (uint[<100>]){}.hash());
+	assert((uint[100]){}.hash() == (uint[100]){}.hash());
+	assert((long){}.hash() == (long){}.hash());
+	assert((long[<100>]){}.hash() == (long[<100>]){}.hash());
+	assert((long[100]){}.hash() == (long[100]){}.hash());
+	assert((ulong){}.hash() == (ulong){}.hash());
+	assert((ulong[<100>]){}.hash() == (ulong[<100>]){}.hash());
+	assert((ulong[100]){}.hash() == (ulong[100]){}.hash());
+	assert((int128){}.hash() == (int128){}.hash());
+	assert((int128[<100>]){}.hash() == (int128[<100>]){}.hash());
+	assert((int128[100]){}.hash() == (int128[100]){}.hash());
+	assert((uint128){}.hash() == (uint128){}.hash());
+	assert((uint128[<100>]){}.hash() == (uint128[<100>]){}.hash());
+	assert((uint128[100]){}.hash() == (uint128[100]){}.hash());
+	assert((bool){}.hash() == (bool){}.hash());
+	assert((bool[<100>]){}.hash() == (bool[<100>]){}.hash());
+	assert((bool[100]){}.hash() == (bool[100]){}.hash());
+	assert(int.typeid.hash() == int.typeid.hash());
 }
