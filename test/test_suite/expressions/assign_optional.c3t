@@ -3,7 +3,7 @@ module test;
 
 fn void main()
 {
-	anyfault x = NOT_FOUND;
+	fault x = NOT_FOUND;
 	int? a = x?;
 	int? b = a = x?;
 	int? c = b = a;

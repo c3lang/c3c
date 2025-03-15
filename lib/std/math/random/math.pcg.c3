@@ -15,7 +15,7 @@ const MUL_LCG16 @local = 0x915d; // TODO: Find good constant
 // -------------------------------- Pcg128_64 --------------------------------
 
 
-distinct Pcg128Random (Random) = uint128;
+typedef Pcg128Random (Random) = uint128;
 
 fn void  Pcg128Random.set_seed(&self, char[] input) @dynamic
 {
@@ -44,7 +44,7 @@ fn char Pcg128Random.next_byte(&self) @dynamic => (char)self.next_long();
 
 // -------------------------------- Pcg64_32 --------------------------------
 
-distinct Pcg64Random (Random) = ulong;
+typedef Pcg64Random (Random) = ulong;
 
 fn void Pcg64Random.set_seed(&self, char[] input) @dynamic
 {
@@ -73,7 +73,7 @@ fn char Pcg64Random.next_byte(&self) @dynamic => (char)self.next_int();
 
 // -------------------------------- Pcg32_16 --------------------------------
 
-distinct Pcg32Random (Random) = uint;
+typedef Pcg32Random (Random) = uint;
 
 fn void Pcg32Random.set_seed(&self, char[] input) @dynamic
 {
@@ -101,7 +101,7 @@ fn char Pcg32Random.next_byte(&self) @dynamic => (char)self.next_short();
 
 // -------------------------------- Pcg16_8 --------------------------------
 
-distinct Pcg16Random (Random) = ushort;
+typedef Pcg16Random (Random) = ushort;
 
 fn void Pcg16Random.set_seed(&self, char[] input) @dynamic
 {

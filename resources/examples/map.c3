@@ -2,7 +2,7 @@ module std::container::map{Key, Type};
 import std::core::builtin;
 import std::io;
 
-fault KEY_NOT_FOUND;
+faultdef KEY_NOT_FOUND;
 
 struct Entry
 {

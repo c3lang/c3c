@@ -2,12 +2,12 @@
 
 module test;
 
-alias @Foo = { @noreturn @weak };
+attrdef @Foo = @noreturn, @weak;
 
-alias @Align(y) = { @align(y) };
-alias @Align16(x) = { @Align(8 * x) @align(1024) } @private;
-alias @Test = { @noinline };
-alias @TestZero = { };
+attrdef @Align(y) = @align(y);
+attrdef @Align16(x) @private = @Align(8 * x), @align(1024);
+attrdef @Test = @noinline;
+attrdef @TestZero;
 struct Foo
 {
 	int z;

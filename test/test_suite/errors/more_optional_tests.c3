@@ -1,6 +1,6 @@
 module foo;
 
-fault ABC;
+faultdef ABC;
 
 fn void test()
 {

@@ -1,5 +1,5 @@
 
-fault FOO;
+faultdef FOO;
 
 fn int? test()
 {

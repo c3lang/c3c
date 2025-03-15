@@ -2,7 +2,7 @@
 module foo;
 import std::io;
 
-fault ABC;
+faultdef ABC;
 
 fn void blurb() { io::printn("Blurb");}
 
@@ -31,10 +31,10 @@ fn void? test2(int x)
 
 fn void main()
 {
-	anyfault a = @catch(test(0));
-	anyfault b = @catch(test(1));
-	anyfault c = @catch(test2(0));
-	anyfault d = @catch(test2(1));
+	fault a = @catch(test(0));
+	fault b = @catch(test(1));
+	fault c = @catch(test2(0));
+	fault d = @catch(test2(1));
 }
 
 /* #expect: foo.ll

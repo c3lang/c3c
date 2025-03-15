@@ -1,9 +1,9 @@
-fault ABC;
+faultdef ABC;
 
-distinct Foo1 = Error;
+typedef Foo1 = Error;
 
-distinct Foo3 = void;
+typedef Foo3 = void;
 
-distinct Foo4 = typeid;
+typedef Foo4 = typeid;
 
-distinct Foo = fn void(Foo** x); // #error: cannot define a new function type
+typedef Foo = fn void(Foo** x); // #error: cannot define a new function type

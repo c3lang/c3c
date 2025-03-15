@@ -2,7 +2,7 @@
 module foo;
 import std::io;
 
-fault FOO;
+faultdef FOO;
 
 fn void? test2()
 {
@@ -104,14 +104,14 @@ opt_block_cleanup:                                ; preds = %assign_optional
   %3 = load i64, ptr %z.f, align 8
   store i64 %3, ptr %err, align 8
   %4 = insertvalue %any undef, ptr %err, 0
-  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %5, ptr %varargslots, align 16
   %6 = call i64 @std.io.printfn(ptr %retparam, ptr @.str, i64 6, ptr %varargslots, i64 1)
   store i64 ptrtoint (ptr @foo.FOO to i64), ptr %err, align 8
   %7 = load i64, ptr %z.f, align 8
   store i64 %7, ptr %err3, align 8
   %8 = insertvalue %any undef, ptr %err3, 0
-  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %9 = insertvalue %any %8, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %9, ptr %varargslots4, align 16
   %10 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.1, i64 8, ptr %varargslots4, i64 1)
   br label %after_assign
@@ -142,14 +142,14 @@ err_retblock:                                     ; preds = %assign_optional12
   %14 = load i64, ptr %reterr, align 8
   store i64 %14, ptr %err14, align 8
   %15 = insertvalue %any undef, ptr %err14, 0
-  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %16 = insertvalue %any %15, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %16, ptr %varargslots15, align 16
   %17 = call i64 @std.io.printfn(ptr %retparam16, ptr @.str.3, i64 6, ptr %varargslots15, i64 1)
   store i64 ptrtoint (ptr @foo.FOO to i64), ptr %err14, align 8
   %18 = load i64, ptr %reterr, align 8
   store i64 %18, ptr %err19, align 8
   %19 = insertvalue %any undef, ptr %err19, 0
-  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %20 = insertvalue %any %19, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %20, ptr %varargslots20, align 16
   %21 = call i64 @std.io.printfn(ptr %retparam21, ptr @.str.4, i64 8, ptr %varargslots20, i64 1)
   %22 = load i64, ptr %reterr, align 8

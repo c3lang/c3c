@@ -12,7 +12,7 @@ const int FIONREAD = 1074030207;
 const int FIONBIO = -2147195266;
 const int FIOASYNC = -2147195267;
 
-distinct NativeSocket = inline Win32_SOCKET;
+typedef NativeSocket = inline Win32_SOCKET;
 
 extern fn CInt ioctlsocket(NativeSocket, CLong cmd, CULong *argp);
 extern fn WSAError closesocket(NativeSocket);
@@ -61,7 +61,7 @@ const int SO_RCVTIMEO             = 0x1006;
 const int SO_ERROR                = 0x1007;
 const int SO_TYPE                 = 0x1008;
 
-fn anyfault convert_error(WSAError error)
+fn fault convert_error(WSAError error)
 {
 	switch (error)
 	{
@@ -86,7 +86,7 @@ fn anyfault convert_error(WSAError error)
 	}
 }
 
-fn anyfault socket_error()
+fn fault socket_error()
 {
 	return convert_error(win32_WSAGetLastError());
 }

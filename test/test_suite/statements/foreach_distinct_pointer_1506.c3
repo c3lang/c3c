@@ -1,4 +1,4 @@
-distinct Type = char*;
+typedef Type = char*;
 fn usz Type.len(str)
 {
 	return 0;

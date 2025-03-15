@@ -80,43 +80,41 @@ enum RoundingMode : int
 	TOWARD_NEG_INFINITY
 }
 
-fault OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST;
+faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST;
 
-alias Complexf = Complex{float};
-alias Complex = Complex{double};
-alias COMPLEX_IDENTITY = complex::IDENTITY{double} @builtin;
-alias COMPLEXF_IDENTITY = complex::IDENTITY{float} @builtin;
+alias Complexf = Complex {float};
+alias Complex = Complex {double};
+alias COMPLEX_IDENTITY  @builtin = complex::IDENTITY {double};
+alias COMPLEXF_IDENTITY @builtin = complex::IDENTITY {float};
 
-alias Quaternionf = Quaternion{float};
-alias Quaternion = Quaternion{double};
-alias QUATERNION_IDENTITY = quaternion::IDENTITY{double} @builtin;
-alias QUATERNIONF_IDENTITY = quaternion::IDENTITY{float} @builtin;
+alias Quaternionf = Quaternion {float};
+alias Quaternion = Quaternion {double};
+alias QUATERNION_IDENTITY  @builtin = quaternion::IDENTITY {double};
+alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
 
-alias Matrix2f = Matrix2x2{float};
-alias Matrix2 = Matrix2x2{double};
-alias Matrix3f = Matrix3x3{float};
-alias Matrix3 = Matrix3x3{double};
-alias Matrix4f = Matrix4x4{float};
-alias Matrix4 = Matrix4x4{double};
-alias matrix4_ortho = matrix::ortho{double} @builtin;
-alias matrix4_perspective = matrix::perspective{double} @builtin;
-alias matrix4f_ortho = matrix::ortho{float} @builtin;
-alias matrix4f_perspective = matrix::perspective{float} @builtin;
+alias Matrix2f = Matrix2x2 {float};
+alias Matrix2  = Matrix2x2 {double};
+alias Matrix3f = Matrix3x3 {float};
+alias Matrix3  = Matrix3x3 {double};
+alias Matrix4f = Matrix4x4 {float};
+alias Matrix4  = Matrix4x4 {double};
+alias matrix4_ortho  @builtin = matrix::ortho {double};
+alias matrix4f_ortho @builtin = matrix::ortho {float};
+alias matrix4_perspective  @builtin = matrix::perspective {double};
+alias matrix4f_perspective @builtin = matrix::perspective {float};
 
-alias MATRIX2_IDENTITY = matrix::IDENTITY2{double} @builtin;
-alias MATRIX2F_IDENTITY = matrix::IDENTITY2{float} @builtin;
-alias MATRIX3_IDENTITY = matrix::IDENTITY3{double} @builtin;
-alias MATRIX3F_IDENTITY = matrix::IDENTITY3{float} @builtin;
-alias MATRIX4_IDENTITY = matrix::IDENTITY4{double} @builtin;
-alias MATRIX4F_IDENTITY = matrix::IDENTITY4{float} @builtin;
+alias MATRIX2_IDENTITY  @builtin = matrix::IDENTITY2 {double};
+alias MATRIX2F_IDENTITY @builtin = matrix::IDENTITY2 {float};
+alias MATRIX3_IDENTITY  @builtin = matrix::IDENTITY3 {double};
+alias MATRIX3F_IDENTITY @builtin = matrix::IDENTITY3 {float};
+alias MATRIX4_IDENTITY  @builtin = matrix::IDENTITY4 {double};
+alias MATRIX4F_IDENTITY @builtin = matrix::IDENTITY4 {float};
 
 
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
 *>
-macro deg_to_rad(x) {
-    return x * PI / 180;
-}
+macro deg_to_rad(x) => x * PI / 180;
 
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
@@ -209,7 +207,7 @@ macro sincos(x)
 *>
 macro atan(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		return _atanf(x);
 	$else
 		return _atan(x);
@@ -221,7 +219,7 @@ macro atan(x)
 *>
 macro atanh(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		return _atanhf(x);
 	$else
 		return _atanh(x);
@@ -233,7 +231,7 @@ macro atanh(x)
 *>
 macro acos(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		return _acosf(x);
 	$else
 		return _acos(x);
@@ -245,7 +243,7 @@ macro acos(x)
 *>
 macro acosh(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		return _acoshf(x);
 	$else
 		return _acosh(x);
@@ -257,7 +255,7 @@ macro acosh(x)
 *>
 macro asin(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		return _asinf(x);
 	$else
 		return _asin(x);
@@ -269,7 +267,7 @@ macro asin(x)
 *>
 macro asinh(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		return _asinhf(x);
 	$else
 		return _asinh(x);

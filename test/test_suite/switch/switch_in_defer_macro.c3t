@@ -19,7 +19,7 @@ enum Kind : char
 	IDENTIFIER,
 }
 
-fault UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
+faultdef UNTERMINATED_STRING, UNTERMINATED_RUNE, UNTERMINATED_COMMENT;
 
 alias TokenTrie = Trie{Token, ushort};
 
@@ -126,7 +126,7 @@ fn Kind? Lexer.peek(&self)
 	return self.kind;
 }
 
-fn Token? Lexer.expect(&self, anyfault err, Token... tokens)
+fn Token? Lexer.expect(&self, fault err, Token... tokens)
 {
 	Kind kind = self.next()!;
 	if (kind == TOKEN)
@@ -457,9 +457,9 @@ import std::collections::list;
 import trie::bitmap;
 
 alias TrieNodeList = List{TrieNode};
-alias TriePath = List{Index} @private;
+alias TriePath @private = List{Index};
 
-fault TRIE_FULL;
+faultdef TRIE_FULL;
 
 struct Trie
 {

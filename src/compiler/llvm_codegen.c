@@ -97,7 +97,7 @@ LLVMBuilderRef llvm_create_builder(GenContext *c)
 
 LLVMValueRef llvm_emit_is_no_opt(GenContext *c, LLVMValueRef error_value)
 {
-	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_anyfault), "not_err");
+	LLVMValueRef compare = LLVMBuildICmp(c->builder, LLVMIntEQ, error_value, llvm_get_zero(c, type_fault), "not_err");
 	return llvm_emit_expect_raw(c, compare);
 }
 
@@ -618,7 +618,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 	LLVMValueRef optional_ref = decl->var.optional_ref;
 	if (optional_ref)
 	{
-		llvm_set_alignment(optional_ref, type_alloca_alignment(type_anyfault));
+		llvm_set_alignment(optional_ref, type_alloca_alignment(type_fault));
 		LLVMSetUnnamedAddress(optional_ref, LLVMGlobalUnnamedAddr);
 	}
 	LLVMValueRef optional_value = NULL;
@@ -635,7 +635,7 @@ void llvm_emit_global_variable_init(GenContext *c, Decl *decl)
 		LLVMSetInitializer(decl->backend_ref, init_value);
 		if (optional_ref)
 		{
-			LLVMSetInitializer(optional_ref, optional_value ? optional_value : llvm_get_zero(c, type_anyfault));
+			LLVMSetInitializer(optional_ref, optional_value ? optional_value : llvm_get_zero(c, type_fault));
 		}
 	}
 
@@ -1115,10 +1115,10 @@ void llvm_add_global_decl(GenContext *c, Decl *decl)
 	}
 	if (IS_OPTIONAL(decl))
 	{
-		LLVMTypeRef anyfault = llvm_get_type(c, type_anyfault);
+		LLVMTypeRef fault = llvm_get_type(c, type_fault);
 		scratch_buffer_set_extern_decl_name(decl, true);
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), anyfault, 0);
+		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), fault, 0);
 	}
 	llvm_set_decl_linkage(c, decl);
 	llvm_set_global_tls(decl);
@@ -1390,7 +1390,7 @@ INLINE GenContext *llvm_gen_tests(Module** modules, unsigned module_count, LLVMC
 	LLVMValueRef *names = NULL;
 	LLVMValueRef *decls = NULL;
 
-	LLVMTypeRef opt_test = LLVMFunctionType(llvm_get_type(c, type_anyfault), NULL, 0, false);
+	LLVMTypeRef opt_test = LLVMFunctionType(llvm_get_type(c, type_fault), NULL, 0, false);
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];
@@ -1458,7 +1458,7 @@ INLINE GenContext *llvm_gen_benchmarks(Module** modules, unsigned module_count, 
 	LLVMValueRef *names = NULL;
 	LLVMValueRef *decls = NULL;
 
-	LLVMTypeRef opt_benchmark = LLVMFunctionType(llvm_get_type(c, type_anyfault), NULL, 0, false);
+	LLVMTypeRef opt_benchmark = LLVMFunctionType(llvm_get_type(c, type_fault), NULL, 0, false);
 	for (unsigned i = 0; i < module_count; i++)
 	{
 		Module *module = modules[i];

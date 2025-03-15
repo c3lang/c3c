@@ -1,7 +1,7 @@
 /*module std::text::i18n;
 import std::collections::map;
 import std::hash::fnv32a;
-distinct Language = char[];
+typedef Language = char[];
 
 const Language EN = "en";
 

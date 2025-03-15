@@ -1,5 +1,5 @@
 module std::thread;
-fault THREAD_QUEUE_FULL;
+faultdef THREAD_QUEUE_FULL;
 
 module std::thread::threadpool @if (env::POSIX || env::WIN32);
 import std::thread;

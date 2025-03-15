@@ -1,8 +1,8 @@
 module test;
 
 alias FnA = fn void(int*);
-distinct FnB = FnA;
-distinct FnC = inline FnA;
+typedef FnB = FnA;
+typedef FnC = inline FnA;
 
 fn void func(int*) {}
 

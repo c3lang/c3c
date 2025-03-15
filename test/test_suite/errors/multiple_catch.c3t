@@ -3,7 +3,7 @@
 module demo1;
 import std::io;
 
-fault ABC, DEF;
+faultdef ABC, DEF;
 
 fn int? hello(int a)
 {
@@ -30,7 +30,7 @@ fn void main()
     {
     	io::printn("3 Ok");
     }
-	if (catch anyfault err = hello(0), bye())
+	if (catch fault err = hello(0), bye())
     {
 		io::printfn("4 Got %s", err);
     }
@@ -95,7 +95,7 @@ end_block:                                        ; preds = %after_check4, %assi
 
 if.then:                                          ; preds = %end_block
   %5 = insertvalue %any undef, ptr %err, 0
-  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %6 = insertvalue %any %5, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %6, ptr %varargslots, align 16
   %7 = call i64 @std.io.printfn(ptr %retparam5, ptr @.str.2, i64 8, ptr %varargslots, i64 1)
   br label %if.exit
@@ -137,7 +137,7 @@ end_block18:                                      ; preds = %after_check17, %ass
 
 if.then20:                                        ; preds = %end_block18
   %13 = insertvalue %any undef, ptr %err8, 0
-  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %14 = insertvalue %any %13, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %14, ptr %varargslots21, align 16
   %15 = call i64 @std.io.printfn(ptr %retparam22, ptr @.str.3, i64 8, ptr %varargslots21, i64 1)
   br label %if.exit25
@@ -273,7 +273,7 @@ end_block66:                                      ; preds = %after_check65, %ass
 
 if.then68:                                        ; preds = %end_block66
   %35 = insertvalue %any undef, ptr %err56, 0
-  %36 = insertvalue %any %35, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %36 = insertvalue %any %35, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %36, ptr %varargslots69, align 16
   %37 = call i64 @std.io.printfn(ptr %retparam70, ptr @.str.5, i64 8, ptr %varargslots69, i64 1)
   br label %if.exit73

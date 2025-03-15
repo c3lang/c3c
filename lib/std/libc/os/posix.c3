@@ -27,8 +27,8 @@ const CUInt SA_RESTART       = env::LINUX ? 0x10000000 : 0x0002;
 const CUInt SA_RESETHAND     = env::LINUX ? 0x80000000 : 0x0004;
 const CUInt SA_SIGINFO       = env::LINUX ? 0x00000004 : 0x0040;
 
-alias Sigset_t = uint @if(!env::LINUX);
-alias Sigset_t = ulong[16] @if(env::LINUX);
+alias Sigset_t @if(!env::LINUX) = uint;
+alias Sigset_t @if(env::LINUX) = ulong[16];
 alias SigActionFunction =  fn void(CInt, void*, void*);
 
 struct Sigaction
@@ -64,10 +64,10 @@ extern fn CInt sigaction(CInt signum, Sigaction *action, Sigaction *oldaction);
 
 module libc::termios @if(env::LIBC &&& env::POSIX);
 
-distinct Cc = char;
-distinct Speed = CUInt;
-distinct Tcflags = CUInt;
-distinct Tcactions = CInt;
+typedef Cc = char;
+typedef Speed = CUInt;
+typedef Tcflags = CUInt;
+typedef Tcactions = CInt;
 
 const Tcactions TCOOFF = 0;
 const Tcactions TCOON = 1;
@@ -187,14 +187,15 @@ extern fn CInt cfsetospeed(Termios* self, Speed speed);
 extern fn CInt cfsetispeed(Termios* self, Speed speed);
 
 const CInt NCCS = 32;
-struct Termios {
-		Tcflags c_iflag;
-		Tcflags c_oflag;
-		Tcflags c_cflag;
-		Tcflags c_lflag;
-		Cc c_line;
-		Cc[NCCS] c_cc;
-		Speed c_ispeed;
-		Speed c_ospeed;
+struct Termios
+{
+	Tcflags c_iflag;
+	Tcflags c_oflag;
+	Tcflags c_cflag;
+	Tcflags c_lflag;
+	Cc c_line;
+	Cc[NCCS] c_cc;
+	Speed c_ispeed;
+	Speed c_ospeed;
 } 
 

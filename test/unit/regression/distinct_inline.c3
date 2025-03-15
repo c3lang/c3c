@@ -1,12 +1,12 @@
 module distinct_inline @test;
 
-distinct Foo = inline int;
-distinct Bar = inline Foo;
-distinct Baz = inline Foo;
-distinct Abc = inline Baz;
-distinct Def = inline Abc;
-distinct Other = inline int;
-distinct Other2 = inline Other;
+typedef Foo = inline int;
+typedef Bar = inline Foo;
+typedef Baz = inline Foo;
+typedef Abc = inline Baz;
+typedef Def = inline Abc;
+typedef Other = inline int;
+typedef Other2 = inline Other;
 fn void test_binary()
 {
 	assert($typeof((Foo)1 + 1).typeid == Foo.typeid);
@@ -16,8 +16,8 @@ fn void test_binary()
 	assert($typeof((Other2)1 + (Def)1).typeid == int.typeid);
 }
 
-distinct DistinctInt = inline int;
-distinct DistinctUInt = inline uint;
+typedef DistinctInt = inline int;
+typedef DistinctUInt = inline uint;
 
 fn void test_comparison()
 {
