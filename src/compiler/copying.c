@@ -486,7 +486,6 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:

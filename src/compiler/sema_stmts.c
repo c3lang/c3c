@@ -783,7 +783,6 @@ static inline bool sema_expr_valid_try_expression(Expr *expr)
 		case EXPR_INT_TO_PTR:
 		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -930,13 +929,13 @@ static inline bool sema_analyse_catch_unwrap(SemaContext *context, Expr *expr)
 
 	Decl *decl = NULL;
 	if (!type && !ident) goto RESOLVE_EXPRS;
-	type = type ? type : type_info_new_base(type_anyfault, expr->span);
+	type = type ? type : type_info_new_base(type_fault, expr->span);
 
 	if (!sema_resolve_type_info(context, type, RESOLVE_TYPE_DEFAULT)) return false;
 
-	if (type->type->canonical != type_anyfault)
+	if (type->type->canonical != type_fault)
 	{
-		RETURN_SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_anyfault),
+		RETURN_SEMA_ERROR(type, "Expected the type to be %s, not %s.", type_quoted_error_string(type_fault),
 		                  type_quoted_error_string(type->type));
 	}
 	if (ident->expr_kind != EXPR_UNRESOLVED_IDENTIFIER)
@@ -966,7 +965,7 @@ RESOLVE_EXPRS:;
 	}
 	expr->catch_expr = (ExprCatch) { .exprs = exprs, .decl = decl };
 	expr->expr_kind = EXPR_CATCH;
-	expr->type = type_anyfault;
+	expr->type = type_fault;
 	expr->resolve_status = RESOLVE_DONE;
 	return true;
 }
@@ -2028,7 +2027,7 @@ static bool sema_analyse_nextcase_stmt(SemaContext *context, Ast *statement)
 		return false;
 	}
 
-	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_anyfault;
+	Type *expected_type = parent->ast_kind == AST_SWITCH_STMT ? cond->type : type_fault;
 
 	if (!sema_analyse_expr_rhs(context, expected_type, value, false, NULL, false)) return false;
 
@@ -2743,7 +2742,7 @@ static inline bool sema_analyse_switch_stmt(SemaContext *context, Ast *statement
 		}
 		else
 		{
-			switch_type = type_anyfault;
+			switch_type = type_fault;
 		}
 
 		statement->switch_stmt.defer = context->active_scope.defer_last;

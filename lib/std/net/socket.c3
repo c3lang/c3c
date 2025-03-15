@@ -25,8 +25,8 @@ macro void @loop_over_ai(AddrInfo* ai; @body(NativeSocket fd, AddrInfo* ai))
 
 const Duration POLL_FOREVER = -1;
 
-distinct PollSubscribes = ushort;
-distinct PollEvents = ushort;
+typedef PollSubscribes = ushort;
+typedef PollEvents = ushort;
 
 const PollSubscribes SUBSCRIBE_ANY_READ     = os::POLLIN;
 const PollSubscribes SUBSCRIBE_PRIO_READ    = os::POLLPRI;

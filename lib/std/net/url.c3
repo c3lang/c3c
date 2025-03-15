@@ -2,7 +2,7 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-fault
+faultdef
 	EMPTY,
 	INVALID_SCHEME,
 	INVALID_USER,

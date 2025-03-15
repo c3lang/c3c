@@ -2,7 +2,7 @@ module std::os::win32 @if(env::WIN32);
 
 // See https://github.com/wine-mirror/wine/blob/master/include/winsock2.h
 
-distinct WSAError = int;
+typedef WSAError = int;
 
 struct Win32_pollfd
 {

@@ -462,7 +462,7 @@ fn Object* Object.get_or_create_obj(&self, String key)
 	return container;
 }
 
-alias ObjectInternalMap = HashMap{String, Object*} @private;
-alias ObjectInternalList = List{Object*} @private;
-alias ObjectInternalMapEntry = Entry{String, Object*} @private;
+alias ObjectInternalMap      @private = HashMap {String, Object*};
+alias ObjectInternalList     @private = List {Object*};
+alias ObjectInternalMapEntry @private = Entry {String, Object*};
 

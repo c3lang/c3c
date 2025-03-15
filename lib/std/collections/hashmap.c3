@@ -535,8 +535,8 @@ struct HashMapIterator
 	Entry* current_entry;
 }
 
-distinct HashMapValueIterator = HashMapIterator;
-distinct HashMapKeyIterator = HashMapIterator;
+typedef HashMapValueIterator = HashMapIterator;
+typedef HashMapKeyIterator = HashMapIterator;
 
 
 <*

@@ -1880,21 +1880,6 @@ static void cast_untyped_list_to_other(Expr *expr, Type *to_type)
 	expr_recursively_rewrite_untyped_list(expr, to_type);
 }
 
-static void cast_anyfault_to_fault(Expr *expr, Type *type)
-{
-	if (!sema_cast_const(expr))
-	{
-		expr->inner_expr = expr_copy(expr);
-		expr->expr_kind = EXPR_ANYFAULT_TO_FAULT;
-		expr->type = type;
-		expr->resolve_status = RESOLVE_DONE;
-		return;
-	}
-	ASSERT(expr_is_const_fault(expr));
-	Decl *value = expr->const_expr.enum_val;
-	ASSERT(value->type != type);
-	expr->type = type;
-}
 
 static void cast_slice_to_ptr(Expr *expr, Type *type)
 {

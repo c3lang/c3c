@@ -201,7 +201,7 @@ fn Type getMult(Type a)
 }
 Type argh = 234;
 
-fault X, Y;
+faultdef X, Y;
 
 enum Hello : int
 {

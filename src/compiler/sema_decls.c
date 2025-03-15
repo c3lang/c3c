@@ -4,10 +4,6 @@
 
 #include "sema_internal.h"
 
-#define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
-#define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
-#define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
-
 static inline bool sema_analyse_func_macro(SemaContext *context, Decl *decl, AttributeDomain domain, bool *erase_decl);
 static inline bool sema_analyse_func(SemaContext *context, Decl *decl, bool *erase_decl);
 static inline bool sema_analyse_macro(SemaContext *context, Decl *decl, bool *erase_decl);
@@ -1377,7 +1373,7 @@ bool sema_analyse_function_signature(SemaContext *context, Decl *func_decl, Type
 
 static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FNTYPE, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 	Signature *sig = &decl->fntype_decl;
 	return sema_analyse_function_signature(context, decl, NULL, sig->abi, sig);
@@ -1385,7 +1381,7 @@ static inline bool sema_analyse_fntype(SemaContext *context, Decl *decl, bool *e
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 
 	bool is_export = decl->is_export;
@@ -1614,7 +1610,7 @@ static inline bool sema_analyse_fault(SemaContext *context, Decl *decl, bool *er
 {
 	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_FAULT, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
-	decl->type = type_anyfault;
+	decl->type = type_fault;
 	decl->alignment = type_abi_alignment(type_string);
 	return true;
 }
@@ -2248,7 +2244,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		case TYPE_ANYFAULT:
 			if (kw == kw_type || kw == kw_nameof)
 			{
-				errname = "'anyfault'";
+				errname = "'fault'";
 				goto NOT_VALID_NAME;
 			}
 			break;
@@ -2393,15 +2389,17 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 		case ATTR_CONST:
 			return "constant";
 		case ATTR_FAULT:
-			return "fault";
-		case ATTR_DEF:
-			return "def";
+			return "faultdef";
+		case ATTR_ALIAS:
+			return "alias";
 		case ATTR_CALL:
 			return "call";
 		case ATTR_DISTINCT:
 			return "distinct";
 		case ATTR_INTERFACE_METHOD:
 			return "interface method";
+		case ATTR_FNTYPE:
+			return "function type";
 	}
 	UNREACHABLE
 }
@@ -2409,9 +2407,9 @@ static const char *attribute_domain_to_string(AttributeDomain domain)
 // Helper method
 INLINE bool update_abi(Decl *decl, CallABI abi)
 {
-	if (decl->decl_kind == DECL_TYPEDEF)
+	if (decl->decl_kind == DECL_FNTYPE)
 	{
-		decl->typedef_decl.decl->fntype_decl.abi = abi;
+		decl->fntype_decl.abi = abi;
 		return true;
 	}
 	decl->func_decl.signature.abi = abi;
@@ -2466,9 +2464,6 @@ static bool update_call_abi_from_string(SemaContext *context, Decl *decl, Expr *
 	RETURN_SEMA_ERROR(expr, "Unknown call convention, only 'cdecl', 'stdcall' and 'veccall' are supported");
 }
 
-#define EXPORTED_USER_DEFINED_TYPES (ATTR_ENUM | ATTR_UNION | ATTR_STRUCT | ATTR_FAULT)
-#define CALLABLE_TYPE (ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_MACRO)
-#define USER_DEFINED_TYPES EXPORTED_USER_DEFINED_TYPES | ATTR_BITSTRUCT | ATTR_DISTINCT
 
 /**
  * Analyse almost all attributes.
@@ -2483,12 +2478,12 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_BENCHMARK] = ATTR_FUNC,
 			[ATTRIBUTE_BIGENDIAN] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_BUILTIN] = ATTR_MACRO | ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST,
-			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_DEF | ATTR_INTERFACE_METHOD,
+			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_FNTYPE,
 			[ATTRIBUTE_COMPACT] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_CONST] = ATTR_MACRO,
 			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
-			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF,
+			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL | ATTR_PARAM),
@@ -2496,7 +2491,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LINK] = ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL,
 			[ATTRIBUTE_LITTLEENDIAN] = ATTR_BITSTRUCT,
-			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
+			[ATTRIBUTE_LOCAL] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS | ATTR_INTERFACE,
 			[ATTRIBUTE_MAYDISCARD] = CALLABLE_TYPE,
 			[ATTRIBUTE_NAKED] = ATTR_FUNC,
 			[ATTRIBUTE_NOALIAS] = ATTR_PARAM,
@@ -2512,8 +2507,8 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_OPTIONAL] = ATTR_INTERFACE_METHOD,
 			[ATTRIBUTE_OVERLAP] = ATTR_BITSTRUCT,
 			[ATTRIBUTE_PACKED] = ATTR_STRUCT | ATTR_UNION,
-			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
-			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_DEF | ATTR_INTERFACE,
+			[ATTRIBUTE_PRIVATE] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS | ATTR_INTERFACE,
+			[ATTRIBUTE_PUBLIC] = ATTR_FUNC | ATTR_MACRO | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS | ATTR_INTERFACE,
 			[ATTRIBUTE_PURE] = ATTR_CALL,
 			[ATTRIBUTE_REFLECT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_SAFEMACRO] = ATTR_MACRO,
@@ -2523,7 +2518,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_UNUSED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_USED] = (AttributeDomain)~(ATTR_CALL),
 			[ATTRIBUTE_WASM] = ATTR_FUNC,
-			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_DEF,
+			[ATTRIBUTE_WEAK] = ATTR_FUNC | ATTR_CONST | ATTR_GLOBAL | ATTR_ALIAS,
 			[ATTRIBUTE_WINMAIN] = ATTR_FUNC,
 	};
 	// NOLINTEND(*.EnumCastOutOfRange)
@@ -2579,10 +2574,6 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_winmain = true;
 			break;
 		case ATTRIBUTE_CALLCONV:
-			if (domain == ATTR_DEF && (decl->decl_kind != DECL_TYPEDEF || !decl->typedef_decl.is_func))
-			{
-				RETURN_SEMA_ERROR(attr, "'@callconv' cannot only be used with fn types.");
-			}
 			if (!expr) RETURN_SEMA_ERROR(decl, "Expected a string argument.");
 			if (expr && !sema_analyse_expr(context, expr)) return false;
 			if (!expr_is_const_string(expr)) RETURN_SEMA_ERROR(expr, "Expected a constant string value as argument.");
@@ -2882,7 +2873,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			}
 			return true;
 		case ATTRIBUTE_WEAK:
-			if (domain == ATTR_DEF)
+			if (domain == ATTR_ALIAS)
 			{
 				if (decl->decl_kind != DECL_TYPEDEF) RETURN_SEMA_ERROR(attr, "'@weak' can only be used on type aliases.");
 				if (!decl->typedef_decl.is_redef)
@@ -3854,7 +3845,7 @@ static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceS
 			{
 				RETURN_SEMA_ERROR_AT(span, "The use of %s as a variable type is not permitted, "
 				                           "catch the error using 'if (catch err = foo) { ... }',"
-										   " or use '@catch(foo)' to convert it to an 'anyfault'.",
+										   " or use '@catch(foo)' to convert it to a 'fault'.",
 				                     type_quoted_error_string(type));
 			}
 			RETURN_SEMA_ERROR_AT(span, "The use of %s as a variable type is not permitted.", type_quoted_error_string(type));
@@ -4513,7 +4504,7 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (!sema_analyse_attributes(c, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 
 	Decl **params = decl->attr_decl.params;
@@ -4538,7 +4529,7 @@ static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext
 
 static inline bool sema_analyse_define(SemaContext *context, Decl *decl, bool *erase_decl)
 {
-	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_DEF, erase_decl)) return decl_poison(decl);
+	if (!sema_analyse_attributes(context, decl, decl->attributes, ATTR_ALIAS, erase_decl)) return decl_poison(decl);
 	if (*erase_decl) return true;
 
 	Expr *expr = decl->define_decl.alias_expr;

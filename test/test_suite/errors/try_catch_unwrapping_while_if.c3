@@ -1,7 +1,7 @@
 extern fn int printf(char* fmt, ...);
 
 extern fn int? err();
-fault X;
+faultdef X;
 
 fn void test1()
 {

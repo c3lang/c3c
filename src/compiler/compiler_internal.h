@@ -1869,7 +1869,7 @@ extern Type *type_ichar, *type_short, *type_int, *type_long, *type_isz;
 extern Type *type_char, *type_ushort, *type_uint, *type_ulong, *type_usz;
 extern Type *type_iptr, *type_uptr;
 extern Type *type_u128, *type_i128;
-extern Type *type_typeid, *type_anyfault, *type_any, *type_typeinfo, *type_member;
+extern Type *type_typeid, *type_fault, *type_any, *type_typeinfo, *type_member;
 extern Type *type_untypedlist;
 extern Type *type_wildcard;
 extern Type *type_cint;
@@ -3385,7 +3385,6 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_ADDR_CONVERSION:
 		case EXPR_RECAST:
-		case EXPR_ANYFAULT_TO_FAULT:
 			expr_set_span(expr->inner_expr, loc);
 			return;
 		case EXPR_EXPRESSION_LIST:
@@ -3678,7 +3677,7 @@ INLINE void expr_rewrite_const_bool(Expr *expr, Type *type, bool b)
 INLINE void expr_rewrite_const_fault(Expr *expr, Decl *fault)
 {
 	expr->expr_kind = EXPR_CONST;
-	expr->type = type_anyfault;
+	expr->type = type_fault;
 	expr->const_expr = (ExprConst) { .fault = fault, .const_kind = CONST_FAULT };
 	expr->resolve_status = RESOLVE_DONE;
 }

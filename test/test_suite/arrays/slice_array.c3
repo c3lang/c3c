@@ -1,4 +1,4 @@
-distinct Bar = inline void;
+typedef Bar = inline void;
 
 struct Foo
 {

@@ -1,9 +1,9 @@
 module errors;
 
-fault A;
+faultdef A;
 
-fault A2, B2;
+faultdef A2, B2;
 
-fault C, D;
+faultdef C, D;
 
 

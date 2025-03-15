@@ -210,7 +210,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 		return expr;
 	}
 
-	// We don't have a chain, so it's either "anyfault f" or "f" or an expression.
+	// We don't have a chain, so it's either "fault f" or "f" or an expression.
 	if (sub_expr->expr_kind == EXPR_TYPEINFO)
 	{
 		// Assign the type
@@ -227,7 +227,7 @@ static inline Expr *parse_catch_unwrap(ParseContext *c)
 	// If we don't have an '=', we check whether
 	if (!try_consume(c, TOKEN_EQ))
 	{
-		// If we had "anyfault f", then we MUST have '='
+		// If we had "fault f", then we MUST have '='
 		if (expr->unresolved_catch_expr.type)
 		{
 			PRINT_ERROR_HERE("Expected a '=' here.");
@@ -1949,7 +1949,7 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FLOAT128] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_VOID] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_TYPEID] = { parse_type_identifier, NULL, PREC_NONE },
-		[TOKEN_ANYFAULT] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_FAULT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ANY] = { parse_type_identifier, NULL, PREC_NONE },
 
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },

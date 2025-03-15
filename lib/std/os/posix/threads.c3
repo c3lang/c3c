@@ -7,7 +7,7 @@ const PTHREAD_MUTEX_ERRORCHECK = env::LINUX ? 2 : 1;
 const PTHREAD_MUTEX_RECURSIVE = env::LINUX ? 1 : 2;
 
 alias PosixThreadFn = fn void*(void*);
-distinct Pthread_t = void*;
+typedef Pthread_t = void*;
 
 extern fn CInt pthread_create(Pthread_t*, Pthread_attr_t*, PosixThreadFn, void*);
 extern fn CInt pthread_cancel(Pthread_t*);
@@ -89,25 +89,25 @@ extern fn void pthread_cleanup_push(PosixThreadFn routine, void* routine_arg);
 extern fn int sched_yield();
 
 module std::thread::os @if(env::POSIX && !env::LINUX);
-distinct Pthread_attr_t = ulong[8];
-distinct Pthread_cond_t = ulong[6];
-distinct Pthread_condattr_t = ulong[8];
-distinct Pthread_key_t = ulong;
-distinct Pthread_mutex_t = ulong[8];
-distinct Pthread_mutexattr_t = ulong[2];
-distinct Pthread_once_t = ulong[2];
-distinct Pthread_rwlock_t = ulong[25];
-distinct Pthread_rwlockattr_t = ulong[3];
-distinct Pthread_sched_param = ulong;
+typedef Pthread_attr_t = ulong[8];
+typedef Pthread_cond_t = ulong[6];
+typedef Pthread_condattr_t = ulong[8];
+typedef Pthread_key_t = ulong;
+typedef Pthread_mutex_t = ulong[8];
+typedef Pthread_mutexattr_t = ulong[2];
+typedef Pthread_once_t = ulong[2];
+typedef Pthread_rwlock_t = ulong[25];
+typedef Pthread_rwlockattr_t = ulong[3];
+typedef Pthread_sched_param = ulong;
 
 module std::thread::os @if(env::LINUX);
-distinct Pthread_attr_t = ulong[7]; // 24 on 32bit
-distinct Pthread_cond_t = ulong[6];
-distinct Pthread_condattr_t = uint;
-distinct Pthread_key_t = uint;
-distinct Pthread_mutex_t = ulong[5]; // 24 on 32 bit
-distinct Pthread_mutexattr_t = uint;
-distinct Pthread_once_t = int;
-distinct Pthread_rwlock_t = ulong[7]; // 32 on 3bit
-distinct Pthread_rwlockattr_t = uint;
-distinct Pthread_sched_param = uint;
+typedef Pthread_attr_t = ulong[7]; // 24 on 32bit
+typedef Pthread_cond_t = ulong[6];
+typedef Pthread_condattr_t = uint;
+typedef Pthread_key_t = uint;
+typedef Pthread_mutex_t = ulong[5]; // 24 on 32 bit
+typedef Pthread_mutexattr_t = uint;
+typedef Pthread_once_t = int;
+typedef Pthread_rwlock_t = ulong[7]; // 32 on 3bit
+typedef Pthread_rwlockattr_t = uint;
+typedef Pthread_sched_param = uint;

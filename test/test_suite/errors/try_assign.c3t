@@ -1,7 +1,7 @@
 // #target: macos-x64
 
 extern fn int? err();
-fault QBERT;
+faultdef QBERT;
 extern fn int printf(char* fmt, ...);
 
 fn void main()

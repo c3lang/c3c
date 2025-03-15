@@ -241,7 +241,7 @@ static void header_gen_function_ptr(HeaderContext *c, Type *type)
 	{
 		extra_ret = rtype->optional;
 		header_gen_maybe_generate_type(c, extra_ret, false);
-		rtype = type_anyfault;
+		rtype = type_fault;
 	}
 	header_gen_maybe_generate_type(c, rtype, false);
 	FOREACH(Decl *, param, sig->params)
@@ -295,7 +295,7 @@ static void header_gen_function(HeaderContext *c, Decl *decl, bool print_fn, boo
 	{
 		extra_ret = rtype->optional;
 		if (!print_fn) header_gen_maybe_generate_type(c, extra_ret, false);
-		rtype = type_anyfault;
+		rtype = type_fault;
 	}
 	if (!print_fn) header_gen_maybe_generate_type(c, rtype, false);
 	if (print_fn)

@@ -2,14 +2,16 @@ module std::core::string;
 import std::ascii;
 import std::io;
 
-distinct String @if(!$defined(String)) = inline char[];
-distinct ZString = inline char*;
-distinct WString = inline Char16*;
+typedef String @if(!$defined(String)) = inline char[];
+typedef ZString = inline char*;
+typedef WString = inline Char16*;
+
 alias Char32 = uint;
 alias Char16 = ushort;
 
-fault INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED, EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
-      INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;
+faultdef INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED,
+         EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
+         INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;
 
 const uint SURROGATE_OFFSET @private = 0x10000;
 const uint SURROGATE_GENERIC_MASK @private = 0xF800;
@@ -18,7 +20,6 @@ const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
 const uint SURROGATE_BITS @private = 10;
 const uint SURROGATE_LOW_VALUE @private = 0xDC00;
 const uint SURROGATE_HIGH_VALUE @private = 0xD800;
-
 
 macro Char32* @wstring32(String $string) @builtin
 {
@@ -279,7 +280,7 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
 *>
 fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(tmem(), needle, max, skip_empty) @inline;
 
-fault BUFFER_EXCEEDED;
+faultdef BUFFER_EXCEEDED;
 
 <*
  Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }

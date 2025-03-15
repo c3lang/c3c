@@ -1,6 +1,6 @@
 // #target: macos-x64
 module broken{Type};
-distinct Bar = Type;
+typedef Bar = Type;
 alias Bar2 = Type;
 struct Baz
 {

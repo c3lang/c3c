@@ -6,7 +6,7 @@ union Union
     double y;
 }
 
-distinct Foo = Union;
+typedef Foo = Union;
 
 union Union2
 {
@@ -19,9 +19,9 @@ union Union2
 }
 Foo f = { .x = 1 };
 
-distinct Union3 = Union2;
+typedef Union3 = Union2;
 
-distinct UnionArr = Union3[3];
+typedef UnionArr = Union3[3];
 
 fn void test(int x)
 {

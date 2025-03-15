@@ -4,7 +4,7 @@ import std::math;
 const char[16] XDIGITS_H = "0123456789ABCDEF";
 const char[16] XDIGITS_L = "0123456789abcdef";
 
-fault BAD_FORMAT;
+faultdef BAD_FORMAT;
 
 fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 {
@@ -22,7 +22,7 @@ fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 	return len;
 }
 
-macro Formatter.first_err(&self, anyfault f)
+macro Formatter.first_err(&self, fault f)
 {
 	if (self.first_fault) return self.first_fault;
 	self.first_fault = f;

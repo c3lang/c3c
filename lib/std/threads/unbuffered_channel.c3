@@ -1,6 +1,6 @@
 module std::thread::channel {Type};
 
-distinct UnbufferedChannel = void*;
+typedef UnbufferedChannel = void*;
 
 struct UnbufferedChannelImpl @private
 {
@@ -44,7 +44,7 @@ fn void? UnbufferedChannel.destroy(&self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)(*self);
 
-	anyfault err = @catch(channel.mu.destroy());
+	fault err = @catch(channel.mu.destroy());
 	err = @catch(channel.send_mu.destroy()) ?: err;
 	err = @catch(channel.send_cond.destroy()) ?: err;
 	err = @catch(channel.read_mu.destroy()) ?: err;
@@ -126,7 +126,7 @@ fn void? UnbufferedChannel.close(self)
 {
 	UnbufferedChannelImpl* channel = (UnbufferedChannelImpl*)self;
 
-	anyfault err = @catch(channel.mu.lock());
+	fault err = @catch(channel.mu.lock());
 
 	channel.closed = true;
 

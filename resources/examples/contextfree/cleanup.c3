@@ -6,7 +6,7 @@ struct Resource
 	String name;
 }
 
-fault WELCOME_TO_YOUR_DOOM;
+faultdef WELCOME_TO_YOUR_DOOM;
 
 fn Resource? resource_init(String name)
 {

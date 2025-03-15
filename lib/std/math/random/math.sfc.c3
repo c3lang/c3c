@@ -10,9 +10,9 @@ const ODD_PHI8 @local = 0x9f;
 
 // Sfc128
 
-distinct Sfc128Random (Random) = uint128[4];
+typedef Sfc128Random (Random) = uint128[4];
 
-fn void  Sfc128Random.set_seed(&self, char[] input) @dynamic
+fn void Sfc128Random.set_seed(&self, char[] input) @dynamic
 {
 	*self = (Sfc128Random)random::make_seed(uint128[4], input);
 }
@@ -40,7 +40,7 @@ fn char Sfc128Random.next_byte(&self) @dynamic => (char)self.next_int128();
 
 // -------------------------------- Sfc64 --------------------------------
 
-distinct Sfc64Random (Random) = ulong[4];
+typedef Sfc64Random (Random) = ulong[4];
 
 fn void  Sfc64Random.set_seed(&self, char[] input) @dynamic
 {
@@ -69,7 +69,7 @@ fn char Sfc64Random.next_byte(&self) @dynamic => (char)self.next_long();
 
 // -------------------------------- Sfc32 --------------------------------
 
-distinct Sfc32Random (Random) = uint[4];
+typedef Sfc32Random (Random) = uint[4];
 
 fn void  Sfc32Random.set_seed(&self, char[] input) @dynamic
 {
@@ -98,7 +98,7 @@ fn char Sfc32Random.next_byte(&self) @dynamic => (char)self.next_int();
 
 // -------------------------------- Sfc16 --------------------------------
 
-distinct Sfc16Random (Random) = ushort[4];
+typedef Sfc16Random (Random) = ushort[4];
 
 fn void  Sfc16Random.set_seed(&self, char[] input) @dynamic
 {
@@ -129,7 +129,7 @@ fn char Sfc16Random.next_byte(&self) @dynamic => (char)self.next_short();
 // -------------------------------- Sfc8 --------------------------------
 
 
-distinct Sfc8Random (Random) = char[4];
+typedef Sfc8Random (Random) = char[4];
 
 fn void  Sfc8Random.set_seed(&self, char[] input) @dynamic
 {

@@ -47,12 +47,12 @@ void llvm_emit_local_static(GenContext *c, Decl *decl, BEValue *value)
 	decl->backend_ref = llvm_add_global(c, "temp", decl->type, decl->alignment);
 	if (IS_OPTIONAL(decl))
 	{
-		LLVMTypeRef anyfault = llvm_get_type(c, type_anyfault);
+		LLVMTypeRef fault = llvm_get_type(c, type_fault);
 		scratch_buffer_append(c->cur_func.name);
 		scratch_buffer_append_char('.');
 		scratch_buffer_append(decl->name);
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), anyfault, 0);
+		decl->var.optional_ref = llvm_add_global_raw(c, scratch_buffer_to_string(), fault, 0);
 	}
 	llvm_emit_global_variable_init(c, decl);
 	// Pop the builder
@@ -133,7 +133,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		scratch_buffer_clear();
 		scratch_buffer_append(decl->name ? decl->name : "anon");
 		scratch_buffer_append(".f");
-		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_anyfault, scratch_buffer_to_string());
+		decl->var.optional_ref = llvm_emit_alloca_aligned(c, type_fault, scratch_buffer_to_string());
 		// Only clear out the result if the assignment isn't an optional.
 	}
 
@@ -154,7 +154,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 		llvm_value_set(value, LLVMGetUndef(alloc_type), decl->type);
 		if (is_optional)
 		{
-			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_anyfault), type_anyfault);
+			llvm_store_to_ptr_raw(c, decl->var.optional_ref, llvm_get_undef(c, type_fault), type_fault);
 		}
 		return;
 	}
@@ -164,7 +164,7 @@ void llvm_emit_local_decl(GenContext *c, Decl *decl, BEValue *value)
 	llvm_value_set_decl_address(c, value, decl);
 	if (is_optional)
 	{
-		llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_anyfault);
+		llvm_store_to_ptr_zero(c, decl->var.optional_ref, type_fault);
 
 		// Prevent accidental optional folding in "llvm_store_zero"!
 		value->kind = BE_ADDRESS;
@@ -228,7 +228,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
-			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
 			llvm_store_to_ptr(c, error_out, &be_value);
 			PUSH_DEFER_ERROR(error_out);
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
@@ -245,7 +245,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
-		error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+		error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
 		c->catch = (OptionalCatch) { error_out, error_return_block };
 	}
 
@@ -297,7 +297,7 @@ static inline void llvm_emit_return(GenContext *c, Ast *ast)
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		POP_DEFER_ERROR();
 		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
+		llvm_value_set_address_abi_aligned(&value, error_out, type_fault);
 		llvm_emit_return_abi(c, NULL, &value);
 	}
 }

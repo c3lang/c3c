@@ -43,7 +43,7 @@ struct StackElementItem @private
 	isz high;
 }
 
-alias Stack = StackElementItem[64] @private;
+alias Stack @private = StackElementItem[64];
 
 // Based on https://alienryderflex.com/quicksort by Darel Rex Finley, Public Domain.
 

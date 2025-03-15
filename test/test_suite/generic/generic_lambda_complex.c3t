@@ -7,7 +7,7 @@ import std::collections::list;
 
 alias TextTagList = List{TextTag};
 
-fault UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
+faultdef UNTERMINATED_TAG, EMPTY_TAG, MISSING_TAG, UNSUPPORTED_TAG;
 
 enum TextTagKind: char
 {
@@ -210,7 +210,7 @@ after_check:                                      ; preds = %if.exit
 
 panic_block:                                      ; preds = %assign_optional
   %6 = insertvalue %any undef, ptr %error_var, 0
-  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %7 = insertvalue %any %6, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %7, ptr %varargslots, align 16
   %8 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %8, i64 1, 1
@@ -233,7 +233,7 @@ after_check6:                                     ; preds = %noerr_block
 
 panic_block7:                                     ; preds = %assign_optional5
   %11 = insertvalue %any undef, ptr %error_var3, 0
-  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %12 = insertvalue %any %11, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %12, ptr %varargslots8, align 16
   %13 = insertvalue %"any[]" undef, ptr %varargslots8, 0
   %"$$temp9" = insertvalue %"any[]" %13, i64 1, 1

@@ -10,8 +10,8 @@ interface Printable
 	fn usz? to_format(Formatter* formatter) @optional;
 }
 
-fault BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS,
-      INVALID_ARGUMENT;
+faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT,
+         NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
 
 alias OutputFn = fn void?(void* buffer, char c);
 alias FloatType = double;
@@ -70,7 +70,7 @@ struct Formatter
 		uint width;
 		uint prec;
 		usz idx;
-		anyfault first_fault;
+		fault first_fault;
 	}
 }
 
@@ -146,8 +146,8 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			return self.out_substr("typeid");
 		case VOID:
 			return self.out_substr("void");
-		case ANYFAULT:
-			return self.out_substr((*(anyfault*)arg.ptr).nameof);
+		case FAULT:
+			return self.out_substr((*(fault*)arg.ptr).nameof);
 		case INTERFACE:
 		case ANY:
 			return self.out_str(*(any*)arg);

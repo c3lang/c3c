@@ -61,8 +61,8 @@ fn void test6()
 }
 
 alias Baz = Foo;
-distinct Bar = int;
-fault FOO;
+typedef Bar = int;
+faultdef FOO;
 union Un { int x; }
 enum MyEnum { BAR }
 
