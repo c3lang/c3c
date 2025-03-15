@@ -135,7 +135,7 @@ fn void test_missing_no_cases(Baz x)
     }
 }
 
-fault DIVISION_BY_ZERO;
+faultdef DIVISION_BY_ZERO;
 
 // Rethrowing an error uses "!!" suffix
 fn void? testMayError()

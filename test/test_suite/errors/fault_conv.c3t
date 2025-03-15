@@ -2,9 +2,9 @@
 module test;
 import std::io;
 
-fault BAD_STUFF, WORSE_STUFF, THE_WORST_STUFF;
+faultdef BAD_STUFF, WORSE_STUFF, THE_WORST_STUFF;
 
-fn int exitcode(anyfault error)
+fn int exitcode(fault error)
 {
     switch (error)
     {

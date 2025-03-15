@@ -358,7 +358,7 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 // All allocators
 
 
-alias mem = thread_allocator @builtin;
+alias mem @builtin = thread_allocator ;
 tlocal Allocator thread_allocator @private = base_allocator();
 Allocator temp_base_allocator @private = base_allocator();
 
@@ -444,7 +444,7 @@ fn TempAllocator* temp_allocator_next() @private
 }
 
 const NullAllocator NULL_ALLOCATOR = {};
-distinct NullAllocator (Allocator) = uptr;
+typedef NullAllocator (Allocator) = uptr;
 
 fn void*? NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {

@@ -3,7 +3,7 @@ enum Foo : char
 	ABC,
 	BCD
 }
-distinct Abc = int;
+typedef Abc = int;
 fn void main()
 {
 	$assert Foo.BCD - 1 == Foo.ABC;

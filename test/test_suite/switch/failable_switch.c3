@@ -1,4 +1,4 @@
-fault FOO;
+faultdef FOO;
 
 fn void test()
 {

@@ -1,6 +1,6 @@
 module foo;
 
-fault Z;
+faultdef Z;
 
 fn void main()
 {

@@ -231,7 +231,7 @@ fn void sending_to_full_buffered_chan_aborted_by_close() @test
 		return 0;
 	}, (void*)c)!!;
 
-	anyfault err = @catch(c.push(1));
+	fault err = @catch(c.push(1));
 	if (err)
 	{
 		assert(err == thread::CHANNEL_CLOSED);
@@ -257,7 +257,7 @@ fn void sending_to_unbuffered_chan_aborted_by_close() @test
 		return 0;
 	}, (void*)c)!!;
 
-	anyfault err = @catch(c.push(1));
+	fault err = @catch(c.push(1));
 	if (err)
 	{
 		assert(err == thread::CHANNEL_CLOSED);

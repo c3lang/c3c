@@ -610,7 +610,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_TYPECALL:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
@@ -657,7 +656,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -5191,7 +5189,7 @@ CHECK_DEEPER:
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_ENUMNAME, type_string);
 			return true;
 		}
-		if (flat_type == type_anyfault)
+		if (flat_type == type_fault)
 		{
 			if (sema_cast_const(current_parent))
 			{
@@ -7803,7 +7801,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	Type *common = type_find_max_type(type, else_type);
 	if (!common)
 	{
-		if (else_type == type_anyfault)
+		if (else_type == type_fault)
 		{
 			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '?' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
 		}
@@ -8039,7 +8037,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 
 	Type *type = inner->type->canonical;
 
-	if (type != type_anyfault)
+	if (type != type_fault)
 	{
 		if (failed_ref) goto ON_FAILED;
 		RETURN_SEMA_ERROR(inner, "You cannot use the '?' operator on expressions of type %s",
@@ -9205,7 +9203,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_PTR_ACCESS:
 			case EXPR_ENUM_FROM_ORD:
 			case EXPR_SLICE_LEN:
-			case EXPR_ANYFAULT_TO_FAULT:
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
@@ -9550,7 +9547,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
 		case EXPR_SLICE_LEN:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
@@ -9612,7 +9608,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return true;
 		}
 		case EXPR_LAST_FAULT:
-			expr->type = type_anyfault;
+			expr->type = type_fault;
 			return true;
 		case EXPR_RETVAL:
 			return sema_expr_analyse_retval(context, expr);
@@ -9736,11 +9732,11 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	Type *to_canonical = to ? to->canonical : NULL;
 	Type *rhs_type = expr->type;
 	Type *rhs_type_canonical = rhs_type->canonical;
-	// Let's have a better error on `return io::FILE_NOT_FOUND;` when the return type is not anyfault.
-	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical == type_anyfault)
+	// Let's have a better error on `return io::FILE_NOT_FOUND;` when the return type is not fault.
+	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical == type_fault)
 	{
 		Type *flat = type_flatten(to);
-		if (flat != type_anyfault && sema_cast_const(expr))
+		if (flat != type_fault && sema_cast_const(expr))
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			print_error_after(expr->span, "You need to add a trailing '?' here to make this an optional.");
@@ -10085,7 +10081,6 @@ IDENT_CHECK:;
 		case EXPR_TYPECALL:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:

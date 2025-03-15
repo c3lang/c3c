@@ -313,7 +313,7 @@ void llvm_emit_return_abi(GenContext *c, BEValue *return_value, BEValue *optiona
 		return_out = c->optional_out;
 		if (!optional)
 		{
-			llvm_value_set(&no_fail, llvm_get_zero(c, type_anyfault), type_anyfault);
+			llvm_value_set(&no_fail, llvm_get_zero(c, type_fault), type_fault);
 			optional = &no_fail;
 		}
 		return_value = optional;
@@ -399,7 +399,7 @@ void llvm_emit_return_implicit(GenContext *c)
 		return;
 	}
 	BEValue value;
-	llvm_value_set(&value, llvm_get_zero(c, type_anyfault), type_anyfault);
+	llvm_value_set(&value, llvm_get_zero(c, type_fault), type_fault);
 	llvm_emit_return_abi(c, NULL, &value);
 }
 

@@ -551,7 +551,7 @@ static LLVMMetadataRef llvm_debug_func_type(GenContext *c, Type *type)
 	}
 	else
 	{
-		vec_add(buffer, llvm_get_debug_type(c, type_anyfault));
+		vec_add(buffer, llvm_get_debug_type(c, type_fault));
 		vec_add(buffer, llvm_get_debug_type(c, type_get_ptr(type_no_optional(return_type))));
 	}
 	FOREACH(Type *, param_type, prototype->param_types)

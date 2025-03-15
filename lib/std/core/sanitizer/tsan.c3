@@ -1,6 +1,6 @@
 module std::core::sanitizer::tsan;
 
-distinct MutexFlags = inline CUInt;
+typedef MutexFlags = inline CUInt;
 
 const MutexFlags MUTEX_LINKER_INIT      = 1 << 0;
 const MutexFlags MUTEX_WRITE_REENTRANT  = 1 << 1;

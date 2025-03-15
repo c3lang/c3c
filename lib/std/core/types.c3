@@ -3,7 +3,7 @@ module std::core::types;
 import libc;
 
 
-fault VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
+faultdef VALUE_OUT_OF_RANGE, VALUE_OUT_OF_UNSIGNED_RANGE;
 
 <*
  @require $Type.kindof.is_int() : "Type was not an integer"
@@ -356,7 +356,7 @@ enum TypeKind : char
 	UNSIGNED_INT,
 	FLOAT,
 	TYPEID,
-	ANYFAULT,
+	FAULT,
 	ANY,
 	ENUM,
 	STRUCT,

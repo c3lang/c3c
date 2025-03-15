@@ -68,7 +68,7 @@ bitstruct Flags1 : int
     bool c;
 }
 
-distinct Bool = bool;
+typedef Bool = bool;
 
 bitstruct Flags2 : int
 {

@@ -25,24 +25,24 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 *>
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
 
-distinct EmptySlot = void*;
+typedef EmptySlot = void*;
 macro @is_empty_macro_slot(#arg) @const @builtin => @typeis(#arg, EmptySlot);
 macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 
 /*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
 */
-fault NO_MORE_ELEMENT @builtin;
+faultdef NO_MORE_ELEMENT @builtin;
 
 /*
  Use `SearchResult` when trying to return a value from some collection but the element is missing.
 */
-fault NOT_FOUND @builtin;
+faultdef NOT_FOUND @builtin;
 
 /*
  Use `CastResult` when an attempt at conversion fails.
 */
-fault TYPE_MISMATCH @builtin;
+faultdef TYPE_MISMATCH @builtin;
 
 
 alias VoidFn = fn void();
@@ -373,7 +373,7 @@ macro swizzle2(v, v2, ...) @builtin
 
  @require @typekind(#expr) == OPTIONAL : `@catch expects an Optional value`
 *>
-macro anyfault @catch(#expr) @builtin
+macro fault @catch(#expr) @builtin
 {
 	if (catch f = #expr) return f;
 	return {};

@@ -8,7 +8,7 @@ bitstruct Image_Tag : uint
   char x4 : 0..7;
 }
 
-distinct Glyph_Format = CInt;
+typedef Glyph_Format = CInt;
 const Glyph_Format GLYPH_FORMAT_BITMAP = (Glyph_Format)(Image_Tag) {'b', 'i', 't', 's'};
 
 fn void main() {

@@ -11,7 +11,7 @@ enum Seek
 	END
 }
 
-fault
+faultdef
 	ALREADY_EXISTS,
 	BUSY,
 	CANNOT_READ_DIR,

@@ -242,7 +242,7 @@ const char INVALID @private = 0xff;
 const int STD_PADDING = '=';
 const int NO_PADDING = -1;
 
-distinct Alphabet = char[32];
+typedef Alphabet = char[32];
 // Standard base32 Alphabet
 const Alphabet STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 // Extended Hex Alphabet

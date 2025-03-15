@@ -100,7 +100,7 @@ after_check3:                                     ; preds = %loop.cond
   br label %noerr_block
 panic_block:                                      ; preds = %assign_optional
   %4 = insertvalue %any undef, ptr %error_var, 0
-  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %5 = insertvalue %any %4, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %5, ptr %varargslots, align 16
   %6 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %6, i64 1, 1

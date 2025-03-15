@@ -1,5 +1,5 @@
 module test;
-distinct Time = long;
+typedef Time = long;
 
 fn void main(String[] args)
 {

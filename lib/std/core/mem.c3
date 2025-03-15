@@ -8,7 +8,7 @@ import std::math;
 const MAX_MEMORY_ALIGNMENT = 0x1000_0000;
 const DEFAULT_MEM_ALIGNMENT = (void*.alignof) * 2;
 
-fault OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
+faultdef OUT_OF_MEMORY, INVALID_ALLOC_SIZE;
 
 macro bool @constant_is_power_of_2($x) @const @private
 {

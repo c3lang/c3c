@@ -1,7 +1,8 @@
 module std::os::backtrace;
 import std::collections::list, std::os, std::io;
 
-fault SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS, RESOLUTION_FAILED;
+faultdef SEGMENT_NOT_FOUND, EXECUTABLE_PATH_NOT_FOUND, IMAGE_NOT_FOUND, NO_BACKTRACE_SYMBOLS,
+         RESOLUTION_FAILED;
 
 const Backtrace BACKTRACE_UNKNOWN = { 0, "", "", "", 0, null, false };
 
@@ -86,9 +87,9 @@ fn void*[] capture_current(void*[] buffer)
 
 alias BacktraceList = List{Backtrace};
 
-alias symbolize_backtrace = linux::symbolize_backtrace @if(env::LINUX);
-alias symbolize_backtrace = win32::symbolize_backtrace @if(env::WIN32);
-alias symbolize_backtrace = darwin::symbolize_backtrace @if(env::DARWIN);
+alias symbolize_backtrace @if(env::LINUX)  = linux::symbolize_backtrace;
+alias symbolize_backtrace @if(env::WIN32)  = win32::symbolize_backtrace;
+alias symbolize_backtrace @if(env::DARWIN) = darwin::symbolize_backtrace;
 
 fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace) @if(!env::NATIVE_STACKTRACE)
 {

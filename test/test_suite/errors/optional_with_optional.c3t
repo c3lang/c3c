@@ -2,7 +2,7 @@
 module test;
 import std::io;
 
-fault ABC, DEF;
+faultdef ABC, DEF;
 
 fn void main()
 {
@@ -190,7 +190,7 @@ if.exit:                                          ; preds = %end_block
 
 expr_block.exit:                                  ; preds = %if.exit, %if.then
   %29 = insertvalue %any undef, ptr %blockret, 0
-  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %30, ptr %varargslots44, align 16
   %31 = call i64 @std.io.printfn(ptr %retparam45, ptr @.str.3, i64 4, ptr %varargslots44, i64 1)
   store i32 3, ptr %taddr49, align 4
@@ -220,7 +220,7 @@ if.exit60:                                        ; preds = %end_block57
 
 expr_block.exit61:                                ; preds = %if.exit60, %if.then59
   %37 = insertvalue %any undef, ptr %blockret54, 0
-  %38 = insertvalue %any %37, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %38 = insertvalue %any %37, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %38, ptr %varargslots53, align 16
   %39 = call i64 @std.io.printfn(ptr %retparam62, ptr @.str.5, i64 4, ptr %varargslots53, i64 1)
   br label %testblock68
@@ -248,7 +248,7 @@ if.exit74:                                        ; preds = %end_block71
 
 expr_block.exit75:                                ; preds = %if.exit74, %if.then73
   %42 = insertvalue %any undef, ptr %blockret66, 0
-  %43 = insertvalue %any %42, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1
+  %43 = insertvalue %any %42, i64 ptrtoint (ptr @"$ct.fault" to i64), 1
   store %any %43, ptr %varargslots65, align 16
   %44 = call i64 @std.io.printfn(ptr %retparam76, ptr @.str.6, i64 4, ptr %varargslots65, i64 1)
   store i64 3, ptr %x, align 8

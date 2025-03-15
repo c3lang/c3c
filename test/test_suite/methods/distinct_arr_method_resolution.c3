@@ -1,6 +1,6 @@
 module abc;
-distinct Foo = int;
-distinct Bar = int;
+typedef Foo = int;
+typedef Bar = int;
 fn void Foo[2].foo(&self) {}
 // Same with:
 macro Bar[2].bar(&self) {}

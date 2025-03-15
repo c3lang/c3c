@@ -1398,6 +1398,7 @@ void compile()
     setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);
+	setup_int_define("LANGUAGE_DEV_VERSION", 7, type_int);
 	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);
 	setup_bool_define("MEMORY_SANITIZER", compiler.build.feature.sanitize_memory);
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);

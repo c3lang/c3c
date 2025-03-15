@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 
-distinct Foo = int;
+typedef Foo = int;
 
 struct Abc
 {

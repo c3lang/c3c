@@ -3,7 +3,7 @@ import std::io, libc, std::os;
 
 // This code is based on https://github.com/sheredom/subprocess.h
 
-fault
+faultdef
 	FAILED_TO_CREATE_PIPE,
 	FAILED_TO_OPEN_STDIN,
 	FAILED_TO_OPEN_STDOUT,

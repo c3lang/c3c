@@ -20,7 +20,7 @@ struct Def
 
 fn int Abc.foo(&self) @dynamic => 1;
 
-distinct Foob = inline Abc;
+typedef Foob = inline Abc;
 
 fn void test1()
 {

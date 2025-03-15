@@ -3,9 +3,9 @@
 module foo;
 import std::io;
 
-fault X;
+faultdef X;
 
-distinct Bar = int;
+typedef Bar = int;
 
 enum MyEnum
 {

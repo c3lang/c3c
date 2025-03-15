@@ -2,7 +2,7 @@
 
 module test;
 
-fault X;
+faultdef X;
 
 fn int? test(int i)
 {

@@ -1,7 +1,7 @@
 module test;
 import libc;
 
-fault NOPE;
+faultde NOPE;
 
 fn int? eventually_succeed()
 {
@@ -13,7 +13,7 @@ fn int? eventually_succeed()
 macro @retry(#function, int retries = 3)
 {
 	var $Type = $typeof(#function);
-    anyfault e;
+    fault e;
     do
     {
         $Type? result = #function;

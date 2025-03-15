@@ -616,7 +616,7 @@ static inline Type *func_create_new_func_proto(Signature *sig, CallABI abi, uint
 		Type *real_return_type = rtype->optional;
 		proto->ret_by_ref_type = rtype->optional;
 		proto->ret_by_ref = !type_is_void(real_return_type);
-		proto->abi_ret_type = type_anyfault;
+		proto->abi_ret_type = type_fault;
 	}
 	else
 	{

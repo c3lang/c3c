@@ -1,5 +1,5 @@
-distinct Foo = double;
-distinct Bar = void*;
+typedef Foo = double;
+typedef Bar = void*;
 fn int main()
 {
 	float f = 1;

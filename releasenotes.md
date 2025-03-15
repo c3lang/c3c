@@ -22,16 +22,20 @@
 - `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
-- Rename `@return` to `@return?` and change syntax to require ":" after faults.
+- Rename `@return!` to `@return?` and change syntax to require ":" after faults.
 - Remove `if (catch foo) { case ... }` syntax.
 - Remove `[?]` syntax.
 - Change `int!` to `int?` syntax.
-- New `fault` declarations.
+- New `fault` declaration using `faultdef`.
 - Enum associated values can reference the calling enum.
 - Improve error message on `foo ?? io::EOF` with missing '?' #2036
 - Make `@public` import recursive. #2018
 - Fault nameof prefixes the first last module path, for instance `std::io::EOF` is rendered as `io::EOF`.
 - Rename `def` to `alias`.
+- Change `distinct` -> `typedef`.
+- Order of attribute declaration is changed for `alias`.
+- Added `LANGUAGE_DEV_VERSION` env constant.
+- Rename `anyfault` -> `fault`.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

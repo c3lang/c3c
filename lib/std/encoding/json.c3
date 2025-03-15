@@ -6,7 +6,7 @@ import std::io;
 import std::ascii;
 import std::collections::object;
 
-fault UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {

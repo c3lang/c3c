@@ -23,8 +23,8 @@
 module std::collections::priorityqueue{Type};
 import std::collections::priorityqueue::private;
 
-distinct PriorityQueue = inline PrivatePriorityQueue{Type, false};
-distinct PriorityQueueMax = inline PrivatePriorityQueue{Type, true};
+typedef PriorityQueue = inline PrivatePriorityQueue{Type, false};
+typedef PriorityQueueMax = inline PrivatePriorityQueue{Type, true};
 
 module std::collections::priorityqueue::private{Type, MAX};
 import std::collections::list, std::io;

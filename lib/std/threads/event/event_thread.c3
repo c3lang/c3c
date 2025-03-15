@@ -21,9 +21,9 @@ struct EventThreadTask
 	Event*[] events;
 }
 
-distinct EventQueue = void;
-distinct EventHandler = void;
-distinct EventMultiQueue = void;
+typedef EventQueue = void;
+typedef EventHandler = void;
+typedef EventMultiQueue = void;
 
 fn EventThreadTask EventQueue.wait_for_task(&self) => EventThreadTask {};
 

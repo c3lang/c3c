@@ -7,7 +7,7 @@ import std::io;
 import libc;
 
 const LibcAllocator LIBC_ALLOCATOR = {};
-distinct LibcAllocator (Allocator, Printable) = uptr;
+typedef LibcAllocator (Allocator, Printable) = uptr;
 
 fn String LibcAllocator.to_string(&self, Allocator allocator) @dynamic => "Libc allocator".copy(allocator);
 fn usz? LibcAllocator.to_format(&self, Formatter *format) @dynamic => format.print("Libc allocator");

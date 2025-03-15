@@ -86,7 +86,7 @@ macro Id unique()
 }
 
 
-distinct Color = float[<4>];
+typedef Color = float[<4>];
 
 const Color BLACK = {0, 0, 0, 1};
 const Color WHITE = {1, 1, 1, 1};
@@ -477,7 +477,7 @@ expr_block.exit:                                  ; preds = %after_check, %if.th
 
 panic_block:                                      ; preds = %assign_optional
   %29 = insertvalue %any undef, ptr %error_var, 0, !dbg !167
-  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.anyfault" to i64), 1, !dbg !167
+  %30 = insertvalue %any %29, i64 ptrtoint (ptr @"$ct.fault" to i64), 1, !dbg !167
   store %any %30, ptr %varargslots, align 16
   %31 = insertvalue %"any[]" undef, ptr %varargslots, 0
   %"$$temp" = insertvalue %"any[]" %31, i64 1, 1
