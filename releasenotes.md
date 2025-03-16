@@ -47,6 +47,7 @@
 - `import` can now both be @public and @norecurse.
 - Crash when trying to convert a struct slice to a vector #2039.
 - Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
+- Bug due to missing cast when doing `$i[$x] = $z`.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
@@ -61,6 +62,7 @@
 - Change all hash functions to have a common `hash` function.
 - `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
 - Updates to `Atomic` to handle distinct types and booleans.
+- Added `math::iota`.
 
 ## 0.6.8 Change list
 

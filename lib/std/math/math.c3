@@ -1145,6 +1145,18 @@ macro overflow_mul_helper(x, y) @local
 	return res;
 }
 
+<*
+ @require types::is_vector($Type) || ($Type.kindof == ARRAY &&& types::is_numerical($typefrom($Type.inner)))
+*>
+macro iota($Type)
+{
+	$Type $val = {};
+	$for var $i = 0; $i < $Type.len; $i++:
+		$val[$i] = $i;
+	$endfor
+	return $val;
+}
+
 macro mul_div_helper(val, mul, div) @private
 {
 	var $Type = $typeof(val);

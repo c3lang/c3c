@@ -633,7 +633,7 @@ module std::core::mem;
 macro TrackingEnv* get_tracking_env()
 {
 	$if env::TRACK_MEMORY:
-		return &&TrackingEnv { $$FILE, $$FUNC, $$LINE };
+		return &&(TrackingEnv){ $$FILE, $$FUNC, $$LINE };
 	$else
 		return null;
 	$endif

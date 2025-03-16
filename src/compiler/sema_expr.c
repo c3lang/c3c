@@ -5745,7 +5745,7 @@ static bool sema_expr_analyse_ct_subscript_rhs(SemaContext *context, Decl *ct_va
 	}
 	else
 	{
-		if (!sema_analyse_inferred_expr(context, type_get_indexed_type(ct_var->type), right)) return false;
+		if (!sema_analyse_expr_rhs(context, type_get_indexed_type(ct_var->type), right, false, NULL, false)) return false;
 	}
 	if (!sema_cast_const(right))
 	{
