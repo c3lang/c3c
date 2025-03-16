@@ -46,12 +46,12 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-distinct Errno = inline CInt;
+typedef Errno = inline CInt;
 alias TerminateFunction = fn void();
 alias CompareFunction = fn int(void*, void*);
 alias JmpBuf = uptr[$$JMP_BUF_SIZE];
 alias Fd = CInt;
-alias Fpos_t = long @if(env::WIN32);
+alias Fpos_t @if(env::WIN32) = long;
 alias SignalFunction = fn void(CInt);
 
 const CInt SIGHUP = 1;
@@ -433,11 +433,11 @@ struct TimeSpec
 }
 
 
-alias Clock_t = int @if(env::WIN32);
-alias Clock_t = CLong @if(!env::WIN32);
+alias Clock_t @if(env::WIN32) = int;
+alias Clock_t @if(!env::WIN32) = CLong;
 
-alias TimeOffset = int @if(env::WASI) ;
-alias TimeOffset = CLong @if(!env::WASI) ;
+alias TimeOffset @if(env::WASI) = int;
+alias TimeOffset @if(!env::WASI) = CLong ;
 
 const int TIME_UTC = 1;
 

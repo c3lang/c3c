@@ -77,15 +77,15 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib5
+          build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib55_v7
 
       - name: Try raylib5
         run: |
           cd resources
-          ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib5
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib5 --print-linking examples\raylib\raylib_arkanoid.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib5 --print-linking examples\raylib\raylib_snake.c3
-          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib5 --print-linking examples\raylib\raylib_tetris.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe vendor-fetch raylib55_v7
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55_v7 --print-linking examples\raylib\raylib_arkanoid.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55_v7 --print-linking examples\raylib\raylib_snake.c3
+          ..\build\${{ matrix.build_type }}\c3c.exe compile --lib raylib55_v7 --print-linking examples\raylib\raylib_tetris.c3
 
       - name: Compile run unit tests
         run: |
@@ -158,7 +158,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib5
+          ./build/c3c vendor-fetch raylib55_v7
 
       - name: Build testproject lib
         run: |
@@ -640,7 +640,7 @@ jobs:
 
       - name: Vendor-fetch
         run: |
-          ./build/c3c vendor-fetch raylib5
+          ./build/c3c vendor-fetch raylib55_v7
 
       - name: Compile and run some examples
         run: |

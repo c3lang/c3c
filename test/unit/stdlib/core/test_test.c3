@@ -273,7 +273,7 @@ fn void test_check_fails_no_info()
 alias TestIntFn = fn int? (int a, int b);
 alias TestFailFn = fn void? (bool to_fail);
 
-fault FOO;
+faultdef FOO;
 
 fn void test_error()
 {

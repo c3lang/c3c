@@ -45,7 +45,7 @@ macro dupe(value)
 	return temp;
 }
 
-fault BAD_READ, OUT_OF_MEMORY;
+faultdef BAD_READ, OUT_OF_MEMORY;
 
 fn Doc? readDoc(char[] url)
 {
@@ -85,7 +85,7 @@ fn Summary readAndBuildSummary(char[] url)
 }
 
 
-fault  TITLE_MISSING;
+faultdef  TITLE_MISSING;
 
 fn bool? isTitleNonEmpty(Doc doc)
 {
@@ -105,7 +105,7 @@ fn char* bool_to_string(bool b)
 {
 	return b ? "true" : "false";
 }
-fn char* nameFromError(anyfault e)
+fn char* nameFromError(fault e)
 {
 	switch (e)
 	{

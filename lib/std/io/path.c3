@@ -9,7 +9,7 @@ const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFER
 
 alias PathList = List { Path };
 
-fault INVALID_PATH, NO_PARENT;
+faultdef INVALID_PATH, NO_PARENT;
 
 alias Path = PathImp;
 

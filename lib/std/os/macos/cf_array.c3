@@ -1,8 +1,8 @@
 module std::os::macos::cf @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 
-distinct CFArrayRef = void*;
-distinct CFArrayCallBacksRef = void*;
-distinct CFMutableArrayRef = void*;
+typedef CFArrayRef = void*;
+typedef CFArrayCallBacksRef = void*;
+typedef CFMutableArrayRef = void*;
 extern fn CFArrayRef macos_CFArrayCreate(CFAllocatorRef allocator, void** values, CFIndex num_values, CFArrayCallBacksRef callBacks) @extern("CFArrayCreate") @builtin;
 extern fn CFArrayRef macos_CFArrayCopy(CFAllocatorRef allocator, CFArrayRef array) @extern("CFArrayCopy") @builtin;
 extern fn CFIndex macos_CFArrayGetCount(CFArrayRef array) @extern("CFArrayGetCount") @builtin;

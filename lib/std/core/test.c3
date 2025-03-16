@@ -8,10 +8,7 @@ Example:
 module sample::m;
 import std::io;
 
-fault MathError
-{
-	DIVISION_BY_ZERO
-}
+faultdef DIVISION_BY_ZERO;
 
 fn double? divide(int a, int b)
 {
@@ -87,7 +84,7 @@ macro @check(#condition, String format = "", args...)
  @param error_expected : `expected error of function execution`
  @require runtime::test_context != null : "Only allowed in @test functions"
 *>
-macro @error(#funcresult, anyfault error_expected)
+macro @error(#funcresult, fault error_expected)
 {
 	if (catch err = #funcresult)
 	{

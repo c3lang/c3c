@@ -22,16 +22,20 @@
 - `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
-- Rename `@return` to `@return?` and change syntax to require ":" after faults.
+- Rename `@return!` to `@return?` and change syntax to require ":" after faults.
 - Remove `if (catch foo) { case ... }` syntax.
 - Remove `[?]` syntax.
 - Change `int!` to `int?` syntax.
-- New `fault` declarations.
+- New `fault` declaration using `faultdef`.
 - Enum associated values can reference the calling enum.
 - Improve error message on `foo ?? io::EOF` with missing '?' #2036
 - Make `@public` import recursive. #2018
 - Fault nameof prefixes the first last module path, for instance `std::io::EOF` is rendered as `io::EOF`.
 - Rename `def` to `alias`.
+- Change `distinct` -> `typedef`.
+- Order of attribute declaration is changed for `alias`.
+- Added `LANGUAGE_DEV_VERSION` env constant.
+- Rename `anyfault` -> `fault`.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -43,6 +47,7 @@
 - `import` can now both be @public and @norecurse.
 - Crash when trying to convert a struct slice to a vector #2039.
 - Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
+- Bug due to missing cast when doing `$i[$x] = $z`.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
@@ -57,6 +62,7 @@
 - Change all hash functions to have a common `hash` function.
 - `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
 - Updates to `Atomic` to handle distinct types and booleans.
+- Added `math::iota`.
 
 ## 0.6.8 Change list
 

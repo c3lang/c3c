@@ -1,2 +1,2 @@
 module test;
-fault; // #error: Expected
+faultdef; // #error: Expected

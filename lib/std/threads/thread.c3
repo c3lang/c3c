@@ -2,24 +2,24 @@ module std::thread;
 import std::thread::os;
 import std::time;
 
-distinct MutexType = int;
+typedef MutexType = int;
 
 const MutexType MUTEX_PLAIN = 0;
 const MutexType MUTEX_TIMED = 1;
 const MutexType MUTEX_RECURSIVE = 2;
 
-distinct Mutex = NativeMutex;
-distinct TimedMutex = inline Mutex;
-distinct RecursiveMutex = inline Mutex;
-distinct TimedRecursiveMutex = inline Mutex;
-distinct ConditionVariable = NativeConditionVariable;
-distinct Thread = inline NativeThread;
-distinct OnceFlag = NativeOnceFlag;
+typedef Mutex = NativeMutex;
+typedef TimedMutex = inline Mutex;
+typedef RecursiveMutex = inline Mutex;
+typedef TimedRecursiveMutex = inline Mutex;
+typedef ConditionVariable = NativeConditionVariable;
+typedef Thread = inline NativeThread;
+typedef OnceFlag = NativeOnceFlag;
 alias OnceFn = fn void();
 
 alias ThreadFn = fn int(void* arg);
 
-fault
+faultdef
 	INIT_FAILED,
 	DESTROY_FAILED,
 	LOCK_FAILED,

@@ -1,6 +1,6 @@
 module abc;
 
-alias @Foo = { @inline };
+attrdef @Foo = @inline;
 
 module bar;
 

@@ -7,7 +7,7 @@ const MUL_MCG16 @local = 0x93d5; // TODO: Find good constant
 
 // Mcg128_64
 
-distinct Mcg128Random (Random) = uint128;
+typedef Mcg128Random (Random) = uint128;
 
 fn void Mcg128Random.set_seed(&self, char[] seed) @dynamic
 {
@@ -40,7 +40,7 @@ fn char Mcg128Random.next_byte(&self) @dynamic => (char)self.next_long();
 
 // Mcg64RandomState
 
-distinct Mcg64Random (Random) = ulong;
+typedef Mcg64Random (Random) = ulong;
 
 fn void Mcg64Random.set_seed(&self, char[] seed) @dynamic
 {
@@ -71,7 +71,7 @@ fn char Mcg64Random.next_byte(&self) @dynamic => (char)self.next_int();
 
 // Mcg32Random
 
-distinct Mcg32Random (Random) = uint;
+typedef Mcg32Random (Random) = uint;
 
 fn void Mcg32Random.set_seed(&self, char[] seed) @dynamic
 {
@@ -97,7 +97,7 @@ fn char Mcg32Random.next_byte(&self) @dynamic => (char)self.next_short();
 
 // -------------------------------- Mcg16RandomState --------------------------------
 
-distinct Mcg16Random (Random) = ushort;
+typedef Mcg16Random (Random) = ushort;
 
 fn void Mcg16Random.set_seed(&self, char[] seed) @dynamic
 {

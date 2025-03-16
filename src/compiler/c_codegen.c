@@ -412,7 +412,6 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_MAKE_SLICE:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_ANYFAULT_TO_FAULT:
 			break;
 		case NON_RUNTIME_EXPR:
 		case UNRESOLVED_EXPRS:
@@ -651,7 +650,7 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 		if (ast->return_stmt.cleanup_fail)
 		{
 			llvm_value_rvalue(c, &be_value);
-			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+			LLVMValueRef error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
 			llvm_store_to_ptr(c, error_out, &be_value);
 			PUSH_DEFER_ERROR(error_out);
 			llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
@@ -678,7 +677,7 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 	if (c->cur_func.prototype && type_is_optional(c->cur_func.prototype->rtype))
 	{
 		error_return_block = llvm_basic_block_new(c, "err_retblock");
-		error_out = llvm_emit_alloca_aligned(c, type_anyfault, "reterr");
+		error_out = llvm_emit_alloca_aligned(c, type_fault, "reterr");
 		c->catch = (OptionalCatch) { error_out, error_return_block };
 	}
 
@@ -730,7 +729,7 @@ static void c_emit_return(GenContext *c, Ast *stmt)
 		llvm_emit_statement_chain(c, ast->return_stmt.cleanup_fail);
 		POP_DEFER_ERROR();
 		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_out, type_anyfault);
+		llvm_value_set_address_abi_aligned(&value, error_out, type_fault);
 		llvm_emit_return_abi(c, NULL, &value);
 	}*/
 }

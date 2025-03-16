@@ -1,7 +1,7 @@
 module std::net;
 import std::io;
 
-fault
+faultdef
 	INVALID_URL,
 	URL_TOO_LONG,
 	INVALID_SOCKET,

@@ -4,8 +4,8 @@ enum Foo
 {
 	ABC
 }
-distinct Abc = inline Foo;
-distinct BarInt = int;
+typedef Abc = inline Foo;
+typedef BarInt = int;
 enum Bar : BarInt
 {
 	ABC

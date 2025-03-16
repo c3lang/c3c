@@ -37,12 +37,11 @@ struct QOIDesc
 	QOIChannels channels;
 	QOIColorspace colorspace;
 }
-
 <*
  QOI Errors.
  These are all the possible bad outcomes.
 *>
-fault INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, TOO_MANY_PIXELS;
+faultdef INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, TOO_MANY_PIXELS;
 
 
 // Let the user decide if they want to use std::io
@@ -417,7 +416,7 @@ macro @enumcast($Type, raw)
 	return INVALID_DATA?;
 }
 
-distinct Pixel = inline char[<4>];
+typedef Pixel = inline char[<4>];
 macro char Pixel.hash(Pixel p)
 {
 	return (p.r * 3 + p.g * 5 + p.b * 7 + p.a * 11) % 64;

@@ -559,7 +559,7 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 		if (!expect_ident(c, "identifier")) return poisoned_ast;
 		Ast *compound = ast_new_curr(c, AST_COMPOUND_STMT);
 		Ast *first = ast_new_curr(c, AST_DECLARE_STMT);
-		Decl *decl = decl_new_var(c->data.string, c->span, type_info_new_base(type_anyfault, c->span), VARDECL_LOCAL);
+		Decl *decl = decl_new_var(c->data.string, c->span, type_info_new_base(type_fault, c->span), VARDECL_LOCAL);
 		defer_stmt->defer_stmt.is_catch = true;
 		decl->var.init_expr = expr_new(EXPR_LAST_FAULT, decl->span);
 		first->declare_stmt = decl;
@@ -1363,9 +1363,9 @@ Ast *parse_stmt(ParseContext *c)
 			advance(c);
 			return poisoned_ast;
 		case TOKEN_ALIAS:
-		case TOKEN_DEF: // TODO remove
 		case TOKEN_AND:
 		case TOKEN_ARROW:
+		case TOKEN_ATTRDEF:
 		case TOKEN_BANGBANG:
 		case TOKEN_BITSTRUCT:
 		case TOKEN_BIT_AND_ASSIGN:
@@ -1383,7 +1383,6 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_CT_EXEC:
 		case TOKEN_CT_INCLUDE:
 		case TOKEN_CT_VASPLAT:
-		case TOKEN_DISTINCT:
 		case TOKEN_DIV:
 		case TOKEN_DIV_ASSIGN:
 		case TOKEN_DOCS_END:
@@ -1399,7 +1398,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_EQ:
 		case TOKEN_EQEQ:
 		case TOKEN_EXTERN:
-		case TOKEN_FAULT:
+		case TOKEN_FAULTDEF:
 		case TOKEN_FN:
 		case TOKEN_GREATER:
 		case TOKEN_GREATER_EQ:
@@ -1429,6 +1428,7 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_SHR:
 		case TOKEN_SHR_ASSIGN:
 		case TOKEN_STRUCT:
+		case TOKEN_TYPEDEF:
 		case TOKEN_UNDERSCORE:
 		case TOKEN_UNION:
 			PRINT_ERROR_HERE("Unexpected '%s' found when expecting a statement.",

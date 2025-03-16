@@ -1,6 +1,6 @@
 int ofek;
 const OFKEOK = 2;
-distinct Helo = int;
+typedef Helo = int;
 fn void Helo.test(&self) {}
 
 alias hupp = Helo.test;

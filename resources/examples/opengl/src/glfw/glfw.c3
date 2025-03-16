@@ -2,8 +2,8 @@ module glfw;
 
 import std::io;
 
-distinct Window @public = inline _Window*;
-distinct Monitor @public = inline _Monitor*;
+typedef Window @public = inline _Window*;
+typedef Monitor @public = inline _Monitor*;
 
 fn void Window.create(&self, int width, int height, String title, Monitor monitor = {}, Window share = {}
 ) @public
@@ -37,8 +37,8 @@ extern fn void terminate() @extern("glfwTerminate") @public;
 
 extern fn void pollEvents() @extern("glfwPollEvents") @public;
 
-distinct _Window @private = void;
-distinct _Monitor @private = void;
+typedef _Window @private = void;
+typedef _Monitor @private = void;
 
 extern fn _Window* _glfwCreateWindow(int width, int height, char* title, _Monitor* monitor, _Window* share) @extern("glfwCreateWindow") @private;
 

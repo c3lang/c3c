@@ -15,7 +15,7 @@ enum UrlEncodingMode : char (String allowed)
 	FRAGMENT   = "$&+,/:;=?@!()*",	// section 4.1
 }
 
-fault INVALID_HEX;
+faultdef INVALID_HEX;
 
 <*
  Returns true if char c should be encoded according to RFC 3986.

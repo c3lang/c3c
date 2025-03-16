@@ -13,110 +13,112 @@ fn int Termios.setAttr(Termios* self, Fd fd, Tcactions optional_actions) => tcse
 
 module libc::termios @if(!env::LIBC ||| !env::POSIX);
 
-distinct Cc = char;
-distinct Speed = CUInt;
-distinct Tcflags = CUInt;
-struct Termios {
-        void* dummy;
+typedef Cc = char;
+typedef Speed = CUInt;
+typedef Tcflags = CUInt;
+
+struct Termios
+{
+	void* dummy;
 }
 
 fn CInt tcgetattr(Fd fd, Termios* self)
 {
-        unreachable("tcgetattr unavailable");
+	unreachable("tcgetattr unavailable");
 }
 
 fn CInt tcsetattr(Fd fd, CInt optional_actions, Termios* self)
 {
-        unreachable("tcsetattr unavailable");
+	unreachable("tcsetattr unavailable");
 }
 
 fn CInt tcsendbreak(Fd fd, CInt duration)
 {
-        unreachable("tcsendbreak unavailable");
+	unreachable("tcsendbreak unavailable");
 }
 
 fn CInt tcdrain(Fd fd)
 {
-        unreachable("tcdrain unavailable");
+	unreachable("tcdrain unavailable");
 }
 
 fn CInt tcflush(Fd fd, CInt queue_selector)
 {
-        unreachable("tcflush unavailable");
+	unreachable("tcflush unavailable");
 }
 
 fn CInt tcflow(Fd fd, CInt action)
 {
-        unreachable("tcflow unavailable");
+    unreachable("tcflow unavailable");
 }
 
 fn Speed cfgetospeed(Termios* self)
 {
-        unreachable("cfgetospeed unavailable");
+	unreachable("cfgetospeed unavailable");
 }
 
 fn Speed cfgetispeed(Termios* self)
 {
-        unreachable("cfgetispeed unavailable");
+	unreachable("cfgetispeed unavailable");
 }
 
 fn CInt cfsetospeed(Termios* self, Speed speed)
 {
-        unreachable("cfsetospeed unavailable");
+	unreachable("cfsetospeed unavailable");
 }
 
 fn CInt cfsetispeed(Termios* self, Speed speed)
 {
-        unreachable("cfsetispeed unavailable");
+	unreachable("cfsetispeed unavailable");
 }
 
 fn int sendBreak(Fd fd, int duration)
 {
-        unreachable("sendBreak unavailable");
+	unreachable("sendBreak unavailable");
 }
 
 fn int drain(Fd fd)
 {
-        unreachable("drain unavailable");
+	unreachable("drain unavailable");
 }
 
 fn int flush(Fd fd, int queue_selector)
 {
-        unreachable("flush unavailable");
+	unreachable("flush unavailable");
 }
 
 fn int flow(Fd fd, int action)
 {
-        unreachable("flow unavailable");
+	unreachable("flow unavailable");
 }
 
 fn Speed Termios.getOSpeed(Termios* self)
 {
-        unreachable("Termios.getOSpeed unavailable");
+	unreachable("Termios.getOSpeed unavailable");
 }
 
 fn Speed Termios.getISpeed(Termios* self)
 {
-        unreachable("Termios.getISpeed unavailable");
+	unreachable("Termios.getISpeed unavailable");
 }
 
 fn int Termios.setOSpeed(Termios* self, Speed speed)
 {
-        unreachable("Termios.setOSpeed unavailable");
+	unreachable("Termios.setOSpeed unavailable");
 }
 
 fn int Termios.setISpeed(Termios* self, Speed speed)
 {
-        unreachable("Termios.setISpeed unavailable");
+	unreachable("Termios.setISpeed unavailable");
 }
 
 fn int Termios.getAttr(Termios* self, Fd fd)
 {
-        unreachable("Termios.getAttr unavailable");
+	unreachable("Termios.getAttr unavailable");
 }
 
 fn int Termios.setAttr(Termios* self, Fd fd, int optional_actions)
 {
-        unreachable("Termios.setAttr unavailable");
+	unreachable("Termios.setAttr unavailable");
 }
 

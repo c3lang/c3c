@@ -11,7 +11,7 @@ fn int main()
   return 0;
 }
 
-fault ABC;
+faultdef ABC;
 
 macro test()
 {

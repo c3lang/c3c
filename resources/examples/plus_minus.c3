@@ -2,7 +2,7 @@ module test;
 import std::io;
 import libc;
 
-fault NO_MORE_TOKENS;
+faultdef NO_MORE_TOKENS;
 
 
 // While we could have written this with libc

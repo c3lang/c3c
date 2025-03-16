@@ -7,7 +7,7 @@ struct EncodeTest
 {
 	String in;
 	String out;
-	anyfault err;
+	fault err;
 	UrlEncodingMode mode;
 }
 

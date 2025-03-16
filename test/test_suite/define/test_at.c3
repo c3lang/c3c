@@ -10,7 +10,7 @@ module bar;
 
 import foo @public;
 
-distinct Int = int;
+typedef Int = int;
 macro Int.@test(self) {}
 
 alias intHello = foo::@hello{int}; // #error: An at-macro like

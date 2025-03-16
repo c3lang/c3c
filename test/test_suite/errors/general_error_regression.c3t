@@ -2,16 +2,16 @@
 module foo;
 import std::io;
 import libc;
-fault
+faultdef
     X,
     Y,
     Z,
     W,
     W1;
 
-fault X1, Y2;
+faultdef X1, Y2;
 
-distinct Bar = int;
+typedef Bar = int;
 
 enum MyEnum
 {
@@ -30,9 +30,9 @@ fn void MyEnum.hello(MyEnum *myenum)
 }
 fn void main()
 {
-    anyfault f = X;
-    anyfault ef = Y;
-    anyfault x = f;
+    fault f = X;
+    fault ef = Y;
+    fault x = f;
     ulong z = (ulong)(x);
     libc::printf("1: %p\n", z);
     x = ef;

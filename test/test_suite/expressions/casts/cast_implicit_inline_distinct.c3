@@ -1,5 +1,5 @@
-distinct DistinctInt = inline int;
-distinct DistinctInt2 = inline DistinctInt;
+typedef DistinctInt = inline int;
+typedef DistinctInt2 = inline DistinctInt;
 
 fn void test()
 {

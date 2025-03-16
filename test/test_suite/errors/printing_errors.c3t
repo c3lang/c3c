@@ -2,10 +2,10 @@
 module test;
 import std::io;
 
-fault HELLO, WORLD;
+faultdef HELLO, WORLD;
 fn void main()
 {
-	anyfault x = WORLD;
+	fault x = WORLD;
 	io::printf("%s %s\n", HELLO.nameof, x.nameof);
 }
 

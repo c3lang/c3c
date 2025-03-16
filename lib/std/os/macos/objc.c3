@@ -1,13 +1,13 @@
 module std::os::macos::objc @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 
-distinct ObjcClass = void*;
-distinct ObjcMethod = void*;
-distinct ObjcIvar = void*;
-distinct ObjcSelector = void*;
+typedef ObjcClass = void*;
+typedef ObjcMethod = void*;
+typedef ObjcIvar = void*;
+typedef ObjcSelector = void*;
 alias ObjcId = void*;
 alias SendVoid = fn void*(void*, ObjcSelector);
 
-fault CLASS_NOT_FOUND, UNKNOWN_EVENT;
+faultdef CLASS_NOT_FOUND, UNKNOWN_EVENT;
 
 macro ZString ObjcClass.name(ObjcClass cls) => class_getName(cls);
 macro ObjcClass ObjcClass.superclass(ObjcClass cls) => class_getSuperclass(cls);

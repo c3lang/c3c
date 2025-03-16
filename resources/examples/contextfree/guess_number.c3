@@ -11,7 +11,7 @@ struct Game
 	int high;
 }
 
-fault NOT_AN_INT, FAILED_TO_READ;
+faultdef NOT_AN_INT, FAILED_TO_READ;
 
 int err_count = 0;
 

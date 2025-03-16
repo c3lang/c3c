@@ -1,7 +1,8 @@
 module std::os::macos::cf @if(env::DARWIN) @link(env::DARWIN, "CoreFoundation.framework");
 
-distinct CFTypeRef = void*;
+typedef CFTypeRef = void*;
 alias CFIndex = isz;
+
 struct CFRange
 {
 	CFIndex location;

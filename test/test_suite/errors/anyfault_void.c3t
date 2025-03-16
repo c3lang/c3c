@@ -1,4 +1,4 @@
-fault FOO, BAR;
+faultdef FOO, BAR;
 
 fn void? errorThing()
 {
@@ -13,7 +13,7 @@ fn void? errorThing2()
 extern fn void printf(char*, ...);
 fn void main()
 {
-    anyfault z = @catch(errorThing());
+    fault z = @catch(errorThing());
     printf("Z;   %llx\n", (iptr)(z));
     printf("BAR: %llx\n", (iptr)(BAR));
     printf("FOO: %llx\n", (iptr)(FOO));

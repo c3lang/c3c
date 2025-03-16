@@ -4,7 +4,7 @@ module test;
 fn void? foo()
 {}
 
-fault AAA;
+faultdef AAA;
 
 macro int? bar()
 {

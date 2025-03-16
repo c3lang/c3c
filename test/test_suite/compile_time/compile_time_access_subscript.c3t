@@ -22,7 +22,7 @@ macro check_type($Type)
 
 enum Blurb { FOO }
 
-distinct Bdd = Abc;
+typedef Bdd = Abc;
 fn void main()
 {
 	var $i = (int[4]) { 1, 2, 3, 4 };
@@ -30,7 +30,7 @@ fn void main()
 	var $c = (any[4]) {};
 	check_type(int);
 	check_type(Abc);
-	check_type(anyfault);
+	check_type(fault);
 	check_type(Blurb);
 	check_type(int*);
 	check_type(bool);

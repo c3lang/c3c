@@ -4,7 +4,7 @@ fn void test1()
     foreach (a : x) { }; // #error: It's not possible to enumerate an expression of type 'int'
 }
 
-distinct Test1 = int;
+typedef Test1 = int;
 
 fn void test2()
 {
