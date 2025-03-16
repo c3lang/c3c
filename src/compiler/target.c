@@ -1836,12 +1836,13 @@ void *llvm_target_machine_create(void)
 #if XTENSA_AVAILABLE
 		INITIALIZE_TARGET(Xtensa);
 #endif
-		INITIALIZE_TARGET(ARM);
-		INITIALIZE_TARGET(AArch64);
-		INITIALIZE_TARGET(RISCV);
-		INITIALIZE_TARGET(WebAssembly);
-		INITIALIZE_TARGET(X86);
-		// To support more targets, add them above.
+		// allow LLVM to initialize all available targets in its configuration
+		LLVMInitializeAllAsmParsers();
+                LLVMInitializeAllAsmPrinters();
+                LLVMInitializeAllTargetInfos();
+                LLVMInitializeAllTargets();
+                LLVMInitializeAllDisassemblers();
+                LLVMInitializeAllTargetMCs();
 	}
 	char *err = NULL;
 	LLVMTargetRef target = NULL;
