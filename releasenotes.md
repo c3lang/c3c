@@ -36,6 +36,7 @@
 - Order of attribute declaration is changed for `alias`.
 - Added `LANGUAGE_DEV_VERSION` env constant.
 - Rename `anyfault` -> `fault`.
+- `!!foo` now works same as as `! ! foo`.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -48,6 +49,7 @@
 - Crash when trying to convert a struct slice to a vector #2039.
 - Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
 - Bug due to missing cast when doing `$i[$x] = $z`.
+- Incorrectly allowed getting pointer to a macro #2049.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.

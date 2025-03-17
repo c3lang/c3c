@@ -7193,12 +7193,16 @@ static const char *sema_addr_check_may_take(Expr *inner)
 		case EXPR_ACCESS_RESOLVED:
 		{
 			Decl *decl = inner->access_resolved_expr.ref;
-			if (decl->decl_kind == DECL_FUNC)
+			switch (decl->decl_kind)
 			{
-				if (decl->func_decl.attr_interface_method) return NULL;
-				return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
+				case DECL_FUNC:
+					if (decl->func_decl.attr_interface_method) return NULL;
+					return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
+				case DECL_MACRO:
+					return "It's not possible to take the address of a macro.";
+				default:
+					return sema_addr_check_may_take(inner->access_resolved_expr.parent);
 			}
-			return sema_addr_check_may_take(inner->access_resolved_expr.parent);
 		}
 		case EXPR_SUBSCRIPT_ADDR:
 			return NULL;
