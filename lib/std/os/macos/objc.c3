@@ -26,7 +26,7 @@ macro ObjcClass? class_by_name(ZString c)
 	return cls ?: CLASS_NOT_FOUND?;
 }
 
-macro ObjcClass[] class_get_list(Allocator allocator = allocator::heap())
+macro ObjcClass[] class_get_list(Allocator allocator)
 {
 	int num_classes = objc::getClassList(null, 0);
 	if (!num_classes) return {};

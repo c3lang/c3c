@@ -74,7 +74,7 @@ fn usz? AnyList.to_format(&self, Formatter* formatter) @dynamic
 *>
 macro void AnyList.push(&self, element)
 {
-	if (!self.allocator) self.allocator = allocator::heap();
+	if (!self.allocator) self.allocator = tmem();
 	self.append_internal(allocator::clone(self.allocator, element));
 }
 
@@ -166,7 +166,7 @@ fn any? AnyList.pop_first_retained(&self)
 <*
  Same as copy_pop() but pops the first value instead.
 *>
-fn any? AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
+fn any? AnyList.copy_pop_first(&self, Allocator allocator)
 {
 	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);

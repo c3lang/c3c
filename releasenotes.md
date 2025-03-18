@@ -72,6 +72,9 @@
 - `Allocator` interface removes `mark` and `reset`.
 - DynamicArenaAllocator has changed init function.
 - Added `BackedArenaAllocator` which is allocated to a fixed size, then allocates on the backing allocator and supports mark/reset.
+- `AnyList` now also defaults to the temp allocator.
+- `os::getcwd` and `os::get_home_dir` requires an explicit allocator.
+- `file::load_new` and `file::load_path_new` removed.
 
 ## 0.6.8 Change list
 

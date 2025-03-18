@@ -66,6 +66,9 @@ fn TempAllocator*? TempAllocator.derive_allocator(&self, usz min_size, usz buffe
 	usz start = mem::aligned_offset(self.used + buffer, mem::DEFAULT_MEM_ALIGNMENT);
 	void* ptr = &self.data[start];
 	TempAllocator* temp = (TempAllocator*)ptr;
+	$if env::ADDRESS_SANITIZER:
+        asan::unpoison_memory_region(ptr, TempAllocator.sizeof);
+	$endif
 	temp.last_page = null;
     temp.backing_allocator = self.backing_allocator;
     temp.used = 0;

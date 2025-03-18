@@ -181,7 +181,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		.breakpoint_on_assert = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
-		.stored.allocator = allocator::heap(),
+		.stored.allocator = mem,
 		.stored.stderr = *io::stderr(),
 		.stored.stdout = *io::stdout(),
 	};

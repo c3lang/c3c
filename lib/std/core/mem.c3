@@ -538,7 +538,7 @@ macro void @stack_mem(usz $size; @body(Allocator mem)) @builtin
 {
 	char[$size] buffer;
 	OnStackAllocator allocator;
-	allocator.init(&buffer, allocator::heap());
+	allocator.init(&buffer, mem);
 	defer allocator.free();
 	@body(&allocator);
 }
@@ -547,7 +547,7 @@ macro void @stack_pool(usz $size; @body) @builtin
 {
 	char[$size] buffer;
 	OnStackAllocator allocator;
-	allocator.init(&buffer, allocator::heap());
+	allocator.init(&buffer, mem);
 	defer allocator.free();
 	mem::@scoped(&allocator)
 	{
@@ -611,7 +611,7 @@ macro TrackingEnv* get_tracking_env()
 
 macro @clone(value) @builtin @nodiscard
 {
-	return allocator::clone(allocator::heap(), value);
+	return allocator::clone(mem, value);
 }
 
 macro @tclone(value) @builtin @nodiscard
@@ -621,7 +621,7 @@ macro @tclone(value) @builtin @nodiscard
 
 fn void* malloc(usz size) @builtin @inline @nodiscard
 {
-	return allocator::malloc(allocator::heap(), size);
+	return allocator::malloc(mem, size);
 }
 
 <*
@@ -630,13 +630,13 @@ fn void* malloc(usz size) @builtin @inline @nodiscard
 *>
 fn void* malloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 {
-	return allocator::malloc_aligned(allocator::heap(), size, alignment)!!;
+	return allocator::malloc_aligned(mem, size, alignment)!!;
 }
 
 fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-	return allocator::temp().acquire(size, NO_ZERO, alignment)!!;
+	return tmem().acquire(size, NO_ZERO, alignment)!!;
 }
 
 <*
@@ -758,7 +758,7 @@ macro talloc_with_padding($Type, usz padding) @nodiscard
 *>
 macro new_array($Type, usz elements) @nodiscard
 {
-	return allocator::new_array(allocator::heap(), $Type, elements);
+	return allocator::new_array(mem, $Type, elements);
 }
 
 <*
@@ -767,7 +767,7 @@ macro new_array($Type, usz elements) @nodiscard
 *>
 macro new_array_aligned($Type, usz elements) @nodiscard
 {
-	return allocator::new_array_aligned(allocator::heap(), $Type, elements);
+	return allocator::new_array_aligned(mem, $Type, elements);
 }
 
 <*
@@ -775,7 +775,7 @@ macro new_array_aligned($Type, usz elements) @nodiscard
 *>
 macro alloc_array($Type, usz elements) @nodiscard
 {
-	return allocator::alloc_array(allocator::heap(), $Type, elements);
+	return allocator::alloc_array(mem, $Type, elements);
 }
 
 <*
@@ -784,7 +784,7 @@ macro alloc_array($Type, usz elements) @nodiscard
 *>
 macro alloc_array_aligned($Type, usz elements) @nodiscard
 {
-	return allocator::alloc_array_aligned(allocator::heap(), $Type, elements);
+	return allocator::alloc_array_aligned(mem, $Type, elements);
 }
 
 macro talloc_array($Type, usz elements) @nodiscard
@@ -799,7 +799,7 @@ macro temp_array($Type, usz elements) @nodiscard
 
 fn void* calloc(usz size) @builtin @inline @nodiscard
 {
-	return allocator::calloc(allocator::heap(), size);
+	return allocator::calloc(mem, size);
 }
 
 <*
@@ -808,40 +808,40 @@ fn void* calloc(usz size) @builtin @inline @nodiscard
 *>
 fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 {
-	return allocator::calloc_aligned(allocator::heap(), size, alignment)!!;
+	return allocator::calloc_aligned(mem, size, alignment)!!;
 }
 
 fn void* tcalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-	return allocator::temp().acquire(size, ZERO, alignment)!!;
+	return tmem().acquire(size, ZERO, alignment)!!;
 }
 
 fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
 {
-	return allocator::realloc(allocator::heap(), ptr, new_size);
+	return allocator::realloc(mem, ptr, new_size);
 }
 
 fn void* realloc_aligned(void *ptr, usz new_size, usz alignment) @builtin @inline @nodiscard
 {
-	return allocator::realloc_aligned(allocator::heap(), ptr, new_size, alignment)!!;
+	return allocator::realloc_aligned(mem, ptr, new_size, alignment)!!;
 }
 
 fn void free(void* ptr) @builtin @inline
 {
-	return allocator::free(allocator::heap(), ptr);
+	return allocator::free(mem, ptr);
 }
 
 fn void free_aligned(void* ptr) @builtin @inline
 {
-	return allocator::free_aligned(allocator::heap(), ptr);
+	return allocator::free_aligned(mem, ptr);
 }
 
 fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMENT) @builtin @inline @nodiscard
 {
 	if (!size) return null;
 	if (!ptr) return tmalloc(size, alignment);
-	return allocator::temp().resize(ptr, size, alignment)!!;
+	return tmem().resize(ptr, size, alignment)!!;
 }
 
 module std::core::mem @if(env::NO_LIBC);
