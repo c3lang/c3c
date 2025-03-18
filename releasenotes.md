@@ -39,6 +39,7 @@
 - `!!foo` now works same as as `! ! foo`.
 - Temp allocator now supports more than 2 in-flight stacks.
 - Printing stacktrace uses its own temp allocator.
+- Allow inferred type on body parameters. E.g. `@stack_mem(1024; alloc) { ... };`
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

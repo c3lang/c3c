@@ -5,9 +5,10 @@ enum Foo
 
 fn void main()
 {
-  @test(;$f) // #error: should be explicitly
+  @test(;$f)
   {
-
+	Foo x = $f;
+	int xd = $f; // #error: It is not possible to cast 'Foo' to 'int'
   };
 }
 
