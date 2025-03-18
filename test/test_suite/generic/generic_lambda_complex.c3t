@@ -179,17 +179,20 @@ entry:
   %indirectarg10 = alloca %"any[]", align 8
   store %"char[]" { ptr @.str, i64 21 }, ptr %foo_tmpl, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %ft, i8 0, i64 72, i1 false)
-  %0 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  %i2nb = icmp eq ptr %0, null
-  br i1 %i2nb, label %if.then, label %if.exit
+  %0 = load ptr, ptr @std.core.mem.allocator.current_temp, align 8
+  %i2b = icmp ne ptr %0, null
+  br i1 %i2b, label %cond.lhs, label %cond.rhs
 
-if.then:                                          ; preds = %entry
-  call void @std.core.mem.allocator.init_default_temp_allocators()
-  br label %if.exit
+cond.lhs:                                         ; preds = %entry
+  br label %cond.phi
 
-if.exit:                                          ; preds = %if.then, %entry
-  %1 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  %2 = insertvalue %any undef, ptr %1, 0
+cond.rhs:                                         ; preds = %entry
+  %1 = call ptr @std.core.mem.allocator.create_temp_allocator()
+  br label %cond.phi
+
+cond.phi:                                         ; preds = %cond.rhs, %cond.lhs
+  %val = phi ptr [ %0, %cond.lhs ], [ %1, %cond.rhs ]
+  %2 = insertvalue %any undef, ptr %val, 0
   %3 = insertvalue %any %2, i64 ptrtoint (ptr @"$ct.std.core.mem.allocator.TempAllocator" to i64), 1
   %lo = load ptr, ptr %foo_tmpl, align 8
   %ptradd = getelementptr inbounds i8, ptr %foo_tmpl, i64 8
@@ -201,11 +204,11 @@ if.exit:                                          ; preds = %if.then, %entry
   %5 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %5, label %after_check, label %assign_optional
 
-assign_optional:                                  ; preds = %if.exit
+assign_optional:                                  ; preds = %cond.phi
   store i64 %4, ptr %error_var, align 8
   br label %panic_block
 
-after_check:                                      ; preds = %if.exit
+after_check:                                      ; preds = %cond.phi
   br label %noerr_block
 
 panic_block:                                      ; preds = %assign_optional

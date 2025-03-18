@@ -81,7 +81,7 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @require @typeis(arr1[0], $typeof(arr2[0])) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
-macro tconcat(arr1, arr2) @nodiscard => concat(allocator::temp(), arr1, arr2);
+macro tconcat(arr1, arr2) @nodiscard => concat(tmem(), arr1, arr2);
 
 module std::core::array::slice{Type};
 

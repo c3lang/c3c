@@ -2132,14 +2132,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				continue;
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_EXPR:
-				// Optional typing
-				break;
 			case VARDECL_PARAM:
-				// Mandatory typing
-				if (!body_arg->var.type_info)
-				{
-					RETURN_SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
-				}
+				// Optional typing
 				break;
 			default:
 				UNREACHABLE
@@ -2150,9 +2144,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Type *type = type_info ? type_info->type : NULL;
 		if (!type && expected_type_info)
 		{
-			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_ERROR(body_arg, "This parameter should be explicitly typed to %s but was untyped.",
-			                  type_quoted_error_string(expected_type_info->type));
+			type = expected_type_info->type;
 		}
 		if (type && expected_type_info && type->canonical != expected_type_info->type->canonical)
 		{

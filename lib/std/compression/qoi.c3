@@ -95,7 +95,7 @@ fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
  @param channels : `The channels to be used`
  @return? FILE_OPEN_FAILED, INVALID_DATA, TOO_MANY_PIXELS
 *>
-fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
+fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool()
 {
 	// read file
 	char[] data = file::load_temp(filename) ?? FILE_OPEN_FAILED?!;

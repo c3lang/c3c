@@ -69,7 +69,8 @@ fn void DString.replace(&self, String needle, String replacement)
 		self.replace_char(needle[0], replacement[0]);
 		return;
 	}
-	@pool(data.allocator) {
+	@pool()
+	{
 		String str = self.tcopy_str();
 		self.clear();
 		usz len = str.len;
@@ -538,7 +539,7 @@ macro void DString.insert_at(&self, usz index, value)
 fn usz? DString.appendf(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
-	@pool(self.data().allocator)
+	@pool()
 	{
 		Formatter formatter;
 		formatter.init(&out_string_append_fn, self);
@@ -549,7 +550,7 @@ fn usz? DString.appendf(&self, String format, args...) @maydiscard
 fn usz? DString.appendfn(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
-	@pool(self.data().allocator)
+	@pool()
 	{
 		Formatter formatter;
 		formatter.init(&out_string_append_fn, self);
