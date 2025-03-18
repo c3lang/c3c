@@ -28,7 +28,7 @@ enum PathEnv
 
 fn Path? cwd(Allocator allocator)
 {
-	@pool(allocator)
+	@pool()
 	{
 		return new(allocator, os::getcwd(tmem()));
 	};
@@ -153,7 +153,7 @@ fn Path? temp(String path, PathEnv path_env = DEFAULT_ENV)
 	return new(tmem(), path, path_env);
 }
 
-fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool(allocator)
+fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool()
 {
 	return path::new(allocator, string::tfrom_wstring(path)!);
 }
@@ -183,7 +183,7 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 	if (!self.path_string.len) return new(allocator, filename, self.env)!;
 	assert(!is_separator(self.path_string[^1], self.env));
 
-	@pool(allocator)
+	@pool()
 	{
 		DString dstr = dstring::temp_with_capacity(self.path_string.len + 1 + filename.len);
 		dstr.append(self.path_string);
@@ -232,7 +232,7 @@ fn bool? Path.is_absolute(self)
 }
 
 
-fn Path? String.to_absolute_path(self, Allocator allocator) => @pool(allocator)
+fn Path? String.to_absolute_path(self, Allocator allocator) => @pool()
 {
 	return temp(self).absolute(allocator);
 }
@@ -247,14 +247,14 @@ fn Path? Path.absolute(self, Allocator allocator)
 	if (self.is_absolute()!) return new(allocator, path_str, self.env);
 	if (path_str == ".")
 	{
-		@pool(allocator)
+		@pool()
 		{
 			String cwd = os::getcwd(tmem())!;
 			return new(allocator, cwd, self.env);
 		};
 	}
 	$if DEFAULT_ENV == WIN32:
-		@pool(allocator)
+		@pool()
 		{
 			const usz BUFFER_LEN = 4096;
 			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
@@ -268,7 +268,7 @@ fn Path? Path.absolute(self, Allocator allocator)
 	$endif
 }
 
-fn String? String.file_basename(self, Allocator allocator) => @pool(allocator)
+fn String? String.file_basename(self, Allocator allocator) => @pool()
 {
 	return temp(self).basename().copy(allocator);
 }
@@ -285,7 +285,7 @@ fn String Path.basename(self)
 
 fn String? String.path_tdirname(self) => self.path_dirname(tmem());
 
-fn String? String.path_dirname(self, Allocator allocator) => @pool(allocator)
+fn String? String.path_dirname(self, Allocator allocator) => @pool()
 {
 	return temp(self).dirname().copy(allocator);
 }

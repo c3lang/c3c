@@ -4,6 +4,7 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
+
 <*
  EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
  way. It relies on the fact that distinct types are not implicitly convertable.
@@ -87,8 +88,16 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @pool()
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
+	TempAllocator* t = allocator::current_temp;
+	TempAllocator* new_t = allocator::new_temp_allocator(smem, 0x1000)!!;
+	allocator::current_temp = new_t;
+	defer
+	{
+		allocator::current_temp = t;
+		new_t.free();
+	}
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;

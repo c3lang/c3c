@@ -4,7 +4,7 @@ fn String add(String s, Allocator a, int x)
 {
     if (x < 0) return s.copy(a);
     String tmp;
-    @pool(a)
+    @pool()
     {
         tmp = "foo".tconcat(s);
         tmp = add(tmp, a, x - 1);
@@ -16,7 +16,7 @@ fn String add(String s, Allocator a, int x)
 
 fn String breakit(String s, Allocator a)
 {
-    @pool(a)
+    @pool()
     {
         return inner2("foo".concat(tmem(), s), a);
     };
@@ -24,7 +24,7 @@ fn String breakit(String s, Allocator a)
 
 fn String inner2(String s, Allocator a)
 {
-    @pool(a)
+    @pool()
     {
         ulong* z1 = mem::talloc(ulong);
         *z1 = 0xAAAA_AAAA_AAAA_AAAA;
@@ -37,7 +37,7 @@ fn String inner2(String s, Allocator a)
 
 fn String inner3(String s, Allocator a)
 {
-    @pool(a)
+    @pool()
     {
         ulong* z1 = mem::talloc(ulong);
         *z1 = 0xAAAA_AAAA_AAAA_AAAA;
@@ -50,7 +50,7 @@ fn String inner3(String s, Allocator a)
 
 fn String inner4(String s, Allocator a)
 {
-    @pool(a)
+    @pool()
     {
         String y = s.concat(tmem(), "xy**********").copy(a);
         return y;

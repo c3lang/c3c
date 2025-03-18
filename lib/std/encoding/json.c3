@@ -23,7 +23,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 	@stack_mem(512; Allocator smem)
 	{
 		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
-		@pool(allocator)
+		@pool()
 		{
 			return parse_any(&context);
 		};

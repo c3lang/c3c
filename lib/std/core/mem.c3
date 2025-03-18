@@ -555,60 +555,31 @@ macro void @stack_pool(usz $size; @body) @builtin
 	};
 }
 
-struct TempState
-{
-	TempAllocator* old;
-	TempAllocator* current;
-	usz mark;
-}
 <*
  Push the current temp allocator. A push must always be balanced with a pop using the current state.
 *>
-fn TempState temp_push(TempAllocator* other = null)
+fn PoolState temp_push()
 {
-	TempAllocator* current = allocator::temp();
-	TempAllocator* old = current;
-	if (other == current)
-	{
-		current = allocator::temp_allocator_next();
-	}
-	return { old, current, current.used };
+	return allocator::push_pool() @inline;
 }
 
 <*
  Pop the current temp allocator. A pop must always be balanced with a push.
 *>
-fn void temp_pop(TempState old_state)
+fn void temp_pop(PoolState old_state)
 {
-	assert(allocator::thread_temp_allocator == old_state.current, "Tried to pop temp allocators out of order.");
-	assert(old_state.current.used >= old_state.mark, "Tried to pop temp allocators out of order.");
-	old_state.current.reset(old_state.mark);
-	allocator::thread_temp_allocator = old_state.old;
+	allocator::pop_pool(old_state) @inline;
 }
 
-<*
- @require @is_empty_macro_slot(#other_temp) ||| $assignable(#other_temp, Allocator) : "Must be an allocator"
- *>
-macro void @pool(#other_temp = EMPTY_MACRO_SLOT; @body) @builtin
+macro void @pool(;@body) @builtin
 {
-	TempAllocator* current = allocator::temp();
-	$if @is_valid_macro_slot(#other_temp):
-		TempAllocator* original = current;
-		if (current == #other_temp.ptr) current = allocator::temp_allocator_next();
-	$endif
-	usz mark = current.used;
+	PoolState state = allocator::push_pool() @inline;
 	defer
 	{
-		current.reset(mark);
-		$if @is_valid_macro_slot(#other_temp):
-			allocator::thread_temp_allocator = original;
-		$endif;
+		allocator::pop_pool(state) @inline;
 	}
 	@body();
 }
-
-import libc;
-
 
 module std::core::mem @if(WASM_NOLIBC);
 import std::core::mem::allocator @public;
@@ -624,7 +595,6 @@ fn void initialize_wasm_mem() @init(1024) @private
 	wasm_allocator.init(fn (x) => allocator::wasm_memory.allocate_block(x));
 	allocator::thread_allocator = &wasm_allocator;
 	allocator::temp_base_allocator = &wasm_allocator;
-	allocator::init_default_temp_allocators();
 }
 
 module std::core::mem;

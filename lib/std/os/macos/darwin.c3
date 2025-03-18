@@ -95,7 +95,7 @@ fn uptr? load_address() @local
 
 fn Backtrace? backtrace_load_element(String execpath, void* buffer, void* load_address, Allocator allocator = allocator::heap()) @local
 {
-	@pool(allocator)
+	@pool()
 	{
 		if (buffer)
 		{
@@ -145,9 +145,9 @@ fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 		}
 		list.free();
 	}
-	@pool(allocator)
+	@pool()
 	{
-		String execpath = executable_path(allocator::temp())!;
+		String execpath = executable_path(tmem())!;
 		foreach (addr : backtrace)
 		{
 			list.push(backtrace_load_element(execpath, addr, load_addr, allocator) ?? backtrace::BACKTRACE_UNKNOWN);

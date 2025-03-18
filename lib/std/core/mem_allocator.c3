@@ -1,5 +1,6 @@
 module std::core::mem::allocator;
 
+
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 
@@ -18,8 +19,6 @@ enum AllocInitType
 
 interface Allocator
 {
-	fn void reset(usz mark) @optional;
-	fn usz mark() @optional;
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
@@ -356,14 +355,32 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 
 
 // All allocators
-
-
 alias mem @builtin = thread_allocator ;
 tlocal Allocator thread_allocator @private = base_allocator();
 Allocator temp_base_allocator @private = base_allocator();
 
-tlocal TempAllocator* thread_temp_allocator @private = null;
-tlocal TempAllocator*[2] temp_allocator_pair @private;
+typedef PoolState = void*;
+
+tlocal TempAllocator* current_temp;
+tlocal TempAllocator* top_temp;
+
+usz temp_allocator_min_size = temp_allocator_default_min_size();
+usz temp_allocator_buffer_size = temp_allocator_default_buffer_size();
+usz temp_allocator_new_mult = 4;
+
+fn PoolState push_pool()
+{
+	TempAllocator* old = current_temp ?: create_temp_allocator();
+	current_temp = current_temp.derive_allocator(temp_allocator_min_size, temp_allocator_buffer_size, temp_allocator_new_mult)!!;
+	return (PoolState)old;
+}
+
+fn void pop_pool(PoolState old)
+{
+	current_temp = (TempAllocator*)old;
+	current_temp.reset();
+
+}
 
 macro Allocator base_allocator() @private
 {
@@ -374,46 +391,51 @@ macro Allocator base_allocator() @private
 	$endif
 }
 
-macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @local
+macro usz temp_allocator_size() @local
 {
 	$switch env::MEMORY_ENV:
-	$case NORMAL:
-		return new_temp_allocator(1024 * 256, allocator)!!;
-	$case SMALL:
-		return new_temp_allocator(1024 * 16, allocator)!!;
-	$case TINY:
-		return new_temp_allocator(1024 * 2, allocator)!!;
-	$case NONE:
-		unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
+		$case NORMAL: return 256 * 1024;
+		$case SMALL: return 1024 * 32;
+		$case TINY: return 1024 * 4;
+		$case NONE: return 0;
+	$endswitch
+}
+
+macro usz temp_allocator_default_min_size() @local
+{
+	$switch env::MEMORY_ENV:
+		$case NORMAL: return 16 * 1024;
+		$case SMALL: return 1024 * 2;
+		$case TINY: return 256;
+		$case NONE: return 256;
+	$endswitch
+}
+
+macro usz temp_allocator_default_buffer_size() @local
+{
+	$switch env::MEMORY_ENV:
+		$case NORMAL: return 1024;
+		$case SMALL: return 128;
+		$case TINY: return 64;
+		$case NONE: return 64;
 	$endswitch
 }
 
 macro Allocator heap() => thread_allocator;
 
-macro TempAllocator* temp()
+<*
+ @require !current_temp : "This should never be called when temp already exists"
+*>
+fn TempAllocator* create_temp_allocator() @private
 {
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-	}
-	return thread_temp_allocator;
+	return top_temp = current_temp = allocator::new_temp_allocator(base_allocator(), temp_allocator_size())!!;
+}
+macro Allocator temp()
+{
+	return current_temp ?: create_temp_allocator();
 }
 
-macro TempAllocator* tmem() @builtin
-{
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-	}
-	return thread_temp_allocator;
-}
-
-fn void init_default_temp_allocators() @private
-{
-	temp_allocator_pair[0] = create_default_sized_temp_allocator(temp_base_allocator);
-	temp_allocator_pair[1] = create_default_sized_temp_allocator(temp_base_allocator);
-	thread_temp_allocator = temp_allocator_pair[0];
-}
+alias tmem @builtin = temp;
 
 fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC)
 {
@@ -425,22 +447,8 @@ fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::L
 *>
 fn void destroy_temp_allocators()
 {
-	if (!thread_temp_allocator) return;
-	temp_allocator_pair[0].destroy();
-	temp_allocator_pair[1].destroy();
-	temp_allocator_pair[..] = null;
-	thread_temp_allocator = null;
-}
-
-fn TempAllocator* temp_allocator_next() @private
-{
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-		return thread_temp_allocator;
-	}
-	usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
-	return thread_temp_allocator = temp_allocator_pair[index];
+	if (!top_temp) return;
+	top_temp.free();
 }
 
 const NullAllocator NULL_ALLOCATOR = {};

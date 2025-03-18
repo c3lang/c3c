@@ -123,12 +123,11 @@ entry:
   %varargslots57 = alloca [1 x %any], align 16
   %result60 = alloca %"double[]", align 8
   %retparam61 = alloca i64, align 8
-  %current = alloca ptr, align 8
-  %mark = alloca i64, align 8
+  %state = alloca ptr, align 8
   %map3 = alloca %HashMap.0, align 8
-  %varargslots67 = alloca [1 x %any], align 16
-  %result70 = alloca %"int[]", align 8
-  %retparam71 = alloca i64, align 8
+  %varargslots66 = alloca [1 x %any], align 16
+  %result69 = alloca %"int[]", align 8
+  %retparam70 = alloca i64, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map, i8 0, i64 48, i1 false)
   %lo = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
   %hi = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
@@ -232,38 +231,24 @@ after_check18:                                    ; preds = %entry, %after_check
   %48 = insertvalue %any %47, i64 ptrtoint (ptr @"$ct.sa$double" to i64), 1
   store %any %48, ptr %varargslots57, align 16
   %49 = call i64 @std.io.printfn(ptr %retparam61, ptr @.str.12, i64 2, ptr %varargslots57, i64 1)
-  %50 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  %i2nb = icmp eq ptr %50, null
-  br i1 %i2nb, label %if.then, label %if.exit
-
-if.then:                                          ; preds = %after_check18
-  call void @std.core.mem.allocator.init_default_temp_allocators()
-  br label %if.exit
-
-if.exit:                                          ; preds = %if.then, %after_check18
-  %51 = load ptr, ptr @std.core.mem.allocator.thread_temp_allocator, align 8
-  store ptr %51, ptr %current, align 8
-  %52 = load ptr, ptr %current, align 8
-  %ptradd64 = getelementptr inbounds i8, ptr %52, i64 24
-  %53 = load i64, ptr %ptradd64, align 8
-  store i64 %53, ptr %mark, align 8
+  %50 = call ptr @std.core.mem.allocator.push_pool() #4
+  store ptr %50, ptr %state, align 8
   call void @llvm.memset.p0.i64(ptr align 8 %map3, i8 0, i64 48, i1 false)
-  %lo65 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
-  %hi66 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %54 = call ptr @"std_collections_map$int$double$.HashMap.init"(ptr %map3, i64 %lo65, ptr %hi66, i32 16, float 7.500000e-01)
-  %55 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map3, i32 5, double 3.200000e+00)
-  %56 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
-  %lo68 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
-  %hi69 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
-  %57 = call { ptr, i64 } @"std_collections_map$int$double$.HashMap.keys"(ptr %map3, i64 %lo68, ptr %hi69)
-  store { ptr, i64 } %57, ptr %result70, align 8
-  %58 = insertvalue %any undef, ptr %result70, 0
-  %59 = insertvalue %any %58, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
-  store %any %59, ptr %varargslots67, align 16
-  %60 = call i64 @std.io.printfn(ptr %retparam71, ptr @.str.13, i64 2, ptr %varargslots67, i64 1)
-  %61 = load ptr, ptr %current, align 8
-  %62 = load i64, ptr %mark, align 8
-  call void @std.core.mem.allocator.TempAllocator.reset(ptr %61, i64 %62)
+  %lo64 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi65 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
+  %51 = call ptr @"std_collections_map$int$double$.HashMap.init"(ptr %map3, i64 %lo64, ptr %hi65, i32 16, float 7.500000e-01)
+  %52 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map3, i32 5, double 3.200000e+00)
+  %53 = call i8 @"std_collections_map$int$double$.HashMap.set"(ptr %map3, i32 7, double 5.200000e+00)
+  %lo67 = load i64, ptr @std.core.mem.allocator.thread_allocator, align 8
+  %hi68 = load ptr, ptr getelementptr inbounds (i8, ptr @std.core.mem.allocator.thread_allocator, i64 8), align 8
+  %54 = call { ptr, i64 } @"std_collections_map$int$double$.HashMap.keys"(ptr %map3, i64 %lo67, ptr %hi68)
+  store { ptr, i64 } %54, ptr %result69, align 8
+  %55 = insertvalue %any undef, ptr %result69, 0
+  %56 = insertvalue %any %55, i64 ptrtoint (ptr @"$ct.sa$int" to i64), 1
+  store %any %56, ptr %varargslots66, align 16
+  %57 = call i64 @std.io.printfn(ptr %retparam70, ptr @.str.13, i64 2, ptr %varargslots66, i64 1)
+  %58 = load ptr, ptr %state, align 8
+  call void @std.core.mem.allocator.pop_pool(ptr %58) #4
   ret void
 }
 

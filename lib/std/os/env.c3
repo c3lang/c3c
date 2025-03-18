@@ -9,7 +9,7 @@ import std::io::path, libc, std::os;
  @require name.len > 0
  @return? NOT_FOUND
 *>
-fn String? get_var(Allocator allocator, String name) => @pool(allocator)
+fn String? get_var(Allocator allocator, String name) => @pool()
 {
 
 	$switch:
@@ -81,7 +81,7 @@ fn String? get_home_dir(Allocator using = allocator::heap())
 <*
 Returns the current user's config directory.
 *>
-fn Path? get_config_dir(Allocator allocator) => @pool(allocator)
+fn Path? get_config_dir(Allocator allocator) => @pool()
 {
 	$if env::WIN32:
 		return path::new(allocator, tget_var("AppData"));

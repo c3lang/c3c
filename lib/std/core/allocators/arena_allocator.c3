@@ -50,8 +50,8 @@ fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
 	}
 }
 
-fn usz ArenaAllocator.mark(&self) @dynamic => self.used;
-fn void ArenaAllocator.reset(&self, usz mark) @dynamic => self.used = mark;
+fn usz ArenaAllocator.mark(&self) => self.used;
+fn void ArenaAllocator.reset(&self, usz mark) => self.used = mark;
 
 <*
  @require !alignment || math::is_power_of_2(alignment)

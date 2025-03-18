@@ -37,6 +37,8 @@
 - Added `LANGUAGE_DEV_VERSION` env constant.
 - Rename `anyfault` -> `fault`.
 - `!!foo` now works same as as `! ! foo`.
+- Temp allocator now supports more than 2 in-flight stacks.
+- Printing stacktrace uses its own temp allocator.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -65,6 +67,10 @@
 - `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
 - Updates to `Atomic` to handle distinct types and booleans.
 - Added `math::iota`.
+- `@pool` no longer takes an argument.
+- `Allocator` interface removes `mark` and `reset`.
+- DynamicArenaAllocator has changed init function.
+- Added `BackedArenaAllocator` which is allocated to a fixed size, then allocates on the backing allocator and supports mark/reset.
 
 ## 0.6.8 Change list
 

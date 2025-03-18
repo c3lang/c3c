@@ -244,7 +244,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len - len / 2);
 	if (!context.is_quiet_mode) io::printn(name);
 	name.clear();
-	TempState temp_state = mem::temp_push();
+	PoolState temp_state = mem::temp_push();
 	defer mem::temp_pop(temp_state);
 	foreach(unit : tests)
 	{

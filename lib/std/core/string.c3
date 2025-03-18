@@ -59,7 +59,7 @@ fn ZString tformat_zstr(String fmt, args...)
  @param [inout] allocator : `The allocator to use`
  @param [in] fmt : `The formatting string`
 *>
-fn String format(Allocator allocator, String fmt, args...) => @pool(allocator)
+fn String format(Allocator allocator, String fmt, args...) => @pool()
 {
 	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);
@@ -104,7 +104,7 @@ fn String join(Allocator allocator, String[] s, String joiner)
 	{
 		total_size += str.len;
 	}
-	@pool(allocator)
+	@pool()
 	{
 		DString res = dstring::temp_with_capacity(total_size);
 		res.append(s[0]);

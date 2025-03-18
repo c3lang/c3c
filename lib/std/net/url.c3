@@ -89,7 +89,7 @@ fn Url? parse(Allocator allocator, String url_string)
 			String userinfo = authority[:user_info_end];
 			String username @noinit;
 			String password;
-			@pool(allocator)
+			@pool()
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
@@ -115,7 +115,7 @@ fn Url? parse(Allocator allocator, String url_string)
 		}
 		else
 		{
-			@pool(allocator)
+			@pool()
 			{
 				String[] host_port = authority.tsplit(":", 2);
 				if (host_port.len > 1)
@@ -270,7 +270,7 @@ fn UrlQueryValues parse_query(Allocator allocator, String query)
 	Splitter raw_vals = query.tokenize("&");
 	while (try String rv = raw_vals.next())
 	{
-		@pool(allocator)
+		@pool()
 		{
 			String[] parts = rv.tsplit("=", 2);
 			String key = tdecode(parts[0], QUERY) ?? parts[0];
