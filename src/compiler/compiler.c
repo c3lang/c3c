@@ -902,8 +902,10 @@ static void setup_bool_define(const char *id, bool value)
 {
 	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
 }
-#if FETCH_AVAILABLE
 
+#define PROGRESS_BAR_LENGTH 35
+
+#if FETCH_AVAILABLE
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
@@ -912,9 +914,25 @@ const char * vendor_fetch_single(const char* lib, const char* path)
 	return error;	
 }
 
+void update_progress_bar(const char* lib, int current_step, int total_steps) {
+    float progress = (float)(current_step + 1) / total_steps;
+    int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
+
+    printf("%s ", lib);
+    printf("[");
+    for (int i = 0; i < PROGRESS_BAR_LENGTH; i++) {
+        if (i < filled_length) {
+            printf("="); 
+        } else {
+            printf(" "); 
+        }
+    }
+    printf("] %d%%\r", (int)(progress * 100));
+    fflush(stdout); 
+}
+
 void vendor_fetch(BuildOptions *options)
 {
-	unsigned count = 0;
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
 		// check if there is a project JSON file
@@ -923,37 +941,39 @@ void vendor_fetch(BuildOptions *options)
 			const char** deps_dirs =  get_project_dependency_directories();
 			int num_lib = vec_size(deps_dirs); 
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-
 		}
-
 	}
 
-	const char** fetched_libraries = NULL;
-	FOREACH(const char *, lib, options->libraries_to_fetch)
+	unsigned count = 0;
+	const char** fetched_libs = NULL;
+	int total_libs = vec_size(options->libraries_to_fetch);
+	
+	for(int i = 0; i < total_libs; i++)
 	{
-		//TODO : Implement progress bar in the download_file function.
-		printf("Fetching library '%s'...", lib);
-		fflush(stdout);
-
+		const char *lib = options->libraries_to_fetch[i];
 		const char *error = vendor_fetch_single(lib, options->vendor_download_path);
 
 		if (!error)
 		{
-			puts("finished.");
-			vec_add(fetched_libraries, lib);
+			update_progress_bar(lib, i, total_libs);
+			vec_add(fetched_libs, lib);
 			count++;
 		}
 		else
 		{
-			printf("Failed: '%s'\n", error);
+			printf("\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
 		}
 	}
-	
+
+	printf("\033[2K\r");
+
 	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
+	add_libraries_to_project_file(fetched_libs, options->project_options.target_name);
 
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
+
+	printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
 #else
 void vendor_fetch(BuildOptions *options)
