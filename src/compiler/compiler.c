@@ -903,8 +903,6 @@ static void setup_bool_define(const char *id, bool value)
 	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
 }
 
-#define PROGRESS_BAR_LENGTH 35
-
 #if FETCH_AVAILABLE
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
@@ -914,20 +912,35 @@ const char * vendor_fetch_single(const char* lib, const char* path)
 	return error;	
 }
 
+#define PROGRESS_BAR_LENGTH 35
+
+#ifdef _WIN32
+#include <io.h>  // for _isatty() on windows
+#define isatty _isatty
+#endif
+
 void update_progress_bar(const char* lib, int current_step, int total_steps) {
+		int ansi_supported = isatty(fileno(stdout));
+		
     float progress = (float)(current_step + 1) / total_steps;
     int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
 
-    printf("%s ", lib);
-    printf("[");
-    for (int i = 0; i < PROGRESS_BAR_LENGTH; i++) {
+		if (ansi_supported) {
+    	printf("%s ", lib);
+    	printf("[");
+    	for (int i = 0; i < PROGRESS_BAR_LENGTH; i++) {
         if (i < filled_length) {
             printf("="); 
         } else {
             printf(" "); 
         }
+	    }
+    	printf("] %d%%\r", (int)(progress * 100));
+    } else {
+			// print a simple progress message because anci is not supported
+    	printf("%s Progress: %d%%\n", lib, (int)(progress * 100));
     }
-    printf("] %d%%\r", (int)(progress * 100));
+    
     fflush(stdout); 
 }
 
