@@ -920,20 +920,20 @@ const char * vendor_fetch_single(const char* lib, const char* path)
 #endif
 
 void update_progress_bar(const char* lib, int current_step, int total_steps) {
-		int ansi_supported = isatty(fileno(stdout));
+	int ansi_supported = isatty(fileno(stdout));
 		
     float progress = (float)(current_step + 1) / total_steps;
     int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
 
-		if (ansi_supported) {
+	if (ansi_supported) {
     	printf("%s ", lib);
     	printf("[");
     	for (int i = 0; i < PROGRESS_BAR_LENGTH; i++) {
-        if (i < filled_length) {
-            printf("="); 
-        } else {
-            printf(" "); 
-        }
+			if (i < filled_length) {
+				printf("="); 
+			} else {
+				printf(" "); 
+			}
 	    }
     	printf("] %d%%\r", (int)(progress * 100));
     } else {
