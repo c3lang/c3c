@@ -92,7 +92,7 @@ static void usage(bool full)
 	print_opt("-U <name>", "Remove feature flag <name>.");
 	PRINTF("");
 	print_opt("--about", "Prints a short description of C3.");
-	print_opt("--build-env", "Prints build environment information.");
+	print_opt("--build-env", "Prints build environment information (only valid with in combination with a command such as 'compile').");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
 	if (full)
