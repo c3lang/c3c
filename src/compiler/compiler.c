@@ -937,7 +937,7 @@ void update_progress_bar(const char* lib, int current_step, int total_steps) {
 	    }
     	printf("] %d%%\r", (int)(progress * 100));
     } else {
-			// print a simple progress message because anci is not supported
+		// print a simple progress message because anci is not supported
     	printf("%s Progress: %d%%\n", lib, (int)(progress * 100));
     }
     
