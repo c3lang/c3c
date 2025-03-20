@@ -88,6 +88,7 @@ void compiler_init(BuildOptions *build_options)
 		compiler.context.lib_dir = find_lib_dir();
 	}
 
+	compiler.context.ansi = build_options->ansi;
 	if (build_options->print_env)
 	{
 		compiler.context.should_print_environment = true;
@@ -912,40 +913,44 @@ const char * vendor_fetch_single(const char* lib, const char* path)
 	return error;	
 }
 
+static bool use_ansi(void)
+{
+	switch (compiler.context.ansi)
+	{
+		case ANSI_DETECT:
+			break;
+		case ANSI_OFF:
+			return false;
+		case ANSI_ON:
+			return true;
+	}
+#if PLATFORM_WINDOWS
+	return false;
+#else
+	return isatty(fileno(stdout));
+#endif
+}
+
 #define PROGRESS_BAR_LENGTH 35
 
-#ifdef _WIN32
-#include <io.h>  // for _isatty() on windows
-#define isatty _isatty
-#endif
-
-void update_progress_bar(const char* lib, int current_step, int total_steps) {
-	int ansi_supported = isatty(fileno(stdout));
-		
-    float progress = (float)(current_step + 1) / total_steps;
+void update_progress_bar(const char* lib, int current_step, int total_steps)
+{
+    float progress = (float)current_step / total_steps;
     int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
-
-	if (ansi_supported) {
-    	printf("%s ", lib);
-    	printf("[");
-    	for (int i = 0; i < PROGRESS_BAR_LENGTH; i++) {
-			if (i < filled_length) {
-				printf("="); 
-			} else {
-				printf(" "); 
-			}
-	    }
-    	printf("] %d%%\r", (int)(progress * 100));
-    } else {
-		// print a simple progress message because anci is not supported
-    	printf("%s Progress: %d%%\n", lib, (int)(progress * 100));
+	printf("\033[2K%-10s ", lib);
+    printf("[");
+    for (int i = 0; i < PROGRESS_BAR_LENGTH; i++)
+    {
+	    printf(i < filled_length ? "=" : " ");
     }
-    
-    fflush(stdout); 
+	printf("] %d%%\r", (int)(progress * 100));
+	fflush(stdout);
 }
 
 void vendor_fetch(BuildOptions *options)
 {
+	bool ansi = use_ansi();
+
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
 		// check if there is a project JSON file
@@ -958,35 +963,59 @@ void vendor_fetch(BuildOptions *options)
 	}
 
 	unsigned count = 0;
-	const char** fetched_libs = NULL;
-	int total_libs = vec_size(options->libraries_to_fetch);
+	const char** fetched_libraries = NULL;
+	int total_libraries = vec_size(options->libraries_to_fetch);
 	
-	for(int i = 0; i < total_libs; i++)
+	for(int i = 0; i < total_libraries; i++)
 	{
 		const char *lib = options->libraries_to_fetch[i];
+		if (!ansi || total_libraries == 1)
+		{
+			printf("Fetching library '%s'...", lib);
+			fflush(stdout);
+		}
+		else
+		{
+			update_progress_bar(lib, i, total_libraries);
+		}
 		const char *error = vendor_fetch_single(lib, options->vendor_download_path);
 
 		if (!error)
 		{
-			update_progress_bar(lib, i, total_libs);
-			vec_add(fetched_libs, lib);
+			if (!ansi || total_libraries == 1)
+			{
+				puts("finished.");
+			}
+			else
+			{
+				update_progress_bar(lib, i + 1, total_libraries);
+			}
+			vec_add(fetched_libraries, lib);
 			count++;
 		}
 		else
 		{
-			printf("\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+			if (ansi)
+			{
+				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+			}
+			else
+			{
+				printf("Failed: '%s'\n", error);
+			}
+			fflush(stdout);
 		}
 	}
 
-	printf("\033[2K\r");
+	if (ansi && total_libraries > 1) printf("\033[2K");
 
 	// add fetched library to the dependency list
-	add_libraries_to_project_file(fetched_libs, options->project_options.target_name);
+	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
 
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
 
-	printf("\033[32mFetching complete.\033[0m\t\t\n");
+	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
 #else
 void vendor_fetch(BuildOptions *options)
