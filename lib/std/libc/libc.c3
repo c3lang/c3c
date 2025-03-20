@@ -97,6 +97,7 @@ extern fn CInt close(CInt fd) @if(!env::WIN32);
 extern fn double difftime(Time_t time1, Time_t time2) @if(!env::WIN32);
 extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
+extern fn void _exit(CInt status) @extern("_Exit");
 extern fn CInt fclose(CFile stream);
 extern fn CFile fdopen(CInt fd, ZString mode) @if(!env::WIN32);
 extern fn CInt feof(CFile stream);

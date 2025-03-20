@@ -86,7 +86,7 @@ fn void main(String[] args)
 	io::printfn("Found %d tests: %.1f%% (%d / %d) passed (%d skipped).",
         test_count, (100.0 * success_count) / math::max(1, test_count - skip_count),
         success_count, test_count - skip_count, skip_count);
-    libc::exit(success_count == test_count - skip_count ? 0 :  1);
+    os::exit(success_count == test_count - skip_count ? 0 :  1);
 }
 
 struct Error
@@ -346,7 +346,7 @@ fn void parse_header_directive(int* line_no, String line, RunSettings* settings,
 			settings.output_files.push(file);
 		default:
 			io::printfn("FAILED - Unknown header directive '%s'", line);
-			libc::exit(1);
+			os::exit(1);
 	}
 }
 
@@ -528,7 +528,7 @@ fn void usage(String appname) @noreturn
     io::printn("Options:");
     io::printn("  -s, --skipped       only run skipped tests");
     io::printn("  --stdlib <path>     override the path to stdlib");
-	libc::exit(0);
+	os::exit(0);
 }
 
 fn void arg_error_exit(String appname, String fmt, args...) @noreturn

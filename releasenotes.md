@@ -75,6 +75,7 @@
 - `AnyList` now also defaults to the temp allocator.
 - `os::getcwd` and `os::get_home_dir` requires an explicit allocator.
 - `file::load_new` and `file::load_path_new` removed.
+- `os::exit` and `os::fastexit` added.
 
 ## 0.6.8 Change list
 
