@@ -1,4 +1,4 @@
-module libc::os;
+module libc::os @if(env::LIBC);
 
 // Linux
 extern fn int* __errno_location() @if(env::LINUX);
@@ -22,7 +22,7 @@ extern fn void _get_errno(int* result) @if(env::WIN32);
 extern fn void _set_errno(int err) @if(env::WIN32);
 
 // Default
-const ERRNO_DEFAULT @local = !env::LINUX && !env::DARWIN && !env::WIN32;
-tlocal int _errno_c3 @if(ERRNO_DEFAULT) = 0;
-fn void errno_set(int err) @if(ERRNO_DEFAULT) => _errno_c3 = err;
-fn int errno() @if(ERRNO_DEFAULT) => _errno_c3;
+module libc::os @if(!env::LIBC || !(env::LINUX || env::DARWIN || env::WIN32));
+tlocal int _errno_c3 = 0;
+fn void errno_set(int err) => _errno_c3 = err;
+fn int errno() => _errno_c3;
