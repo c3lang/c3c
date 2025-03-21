@@ -24,7 +24,7 @@ fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
 *>
 fn DString DString.tinit(&self, usz capacity = MIN_CAPACITY)
 {
-	return self.init(tmem(), capacity) @inline;
+	return self.init(tmem, capacity) @inline;
 }
 
 fn DString new_with_capacity(Allocator allocator, usz capacity)
@@ -32,7 +32,7 @@ fn DString new_with_capacity(Allocator allocator, usz capacity)
 	return (DString){}.init(allocator, capacity);
 }
 
-fn DString temp_with_capacity(usz capacity) => new_with_capacity(tmem(), capacity) @inline;
+fn DString temp_with_capacity(usz capacity) => new_with_capacity(tmem, capacity) @inline;
 
 fn DString new(Allocator allocator, String c = "")
 {
@@ -46,7 +46,7 @@ fn DString new(Allocator allocator, String c = "")
 	return (DString)data;
 }
 
-fn DString temp(String s = "") => new(tmem(), s) @inline;
+fn DString temp(String s = "") => new(tmem, s) @inline;
 
 
 fn void DString.replace_char(self, char ch, char replacement)
@@ -108,7 +108,7 @@ fn DString DString.concat(self, Allocator allocator, DString b)
 	return string;
 }
 
-fn DString DString.tconcat(self, DString b) => self.concat(tmem(), b);
+fn DString DString.tconcat(self, DString b) => self.concat(tmem, b);
 
 fn ZString DString.zstr_view(&self)
 {
@@ -218,7 +218,7 @@ fn usz DString.append_char32(&self, Char32 c)
 	return n;
 }
 
-fn DString DString.tcopy(&self) => self.copy(tmem());
+fn DString DString.tcopy(&self) => self.copy(tmem);
 
 fn DString DString.copy(self, Allocator allocator)
 {
@@ -248,7 +248,7 @@ fn String DString.copy_str(self, Allocator allocator)
 	return (String)self.copy_zstr(allocator)[:self.len()];
 }
 
-fn String DString.tcopy_str(self) => self.copy_str(tmem()) @inline;
+fn String DString.tcopy_str(self) => self.copy_str(tmem) @inline;
 
 fn bool DString.equals(self, DString other_string)
 {
@@ -536,15 +536,13 @@ macro void DString.insert_at(&self, usz index, value)
 	$endswitch
 }
 
+import libc;
 fn usz? DString.appendf(&self, String format, args...) @maydiscard
 {
 	if (!self.data()) self.tinit(format.len + 20);
-	@pool()
-	{
-		Formatter formatter;
-		formatter.init(&out_string_append_fn, self);
-		return formatter.vprintf(format, args);
-	};
+	Formatter formatter;
+	formatter.init(&out_string_append_fn, self);
+	return formatter.vprintf(format, args);
 }
 
 fn usz? DString.appendfn(&self, String format, args...) @maydiscard

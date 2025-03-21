@@ -359,10 +359,12 @@ alias mem @builtin = thread_allocator ;
 tlocal Allocator thread_allocator @private = base_allocator();
 Allocator temp_base_allocator @private = base_allocator();
 
-typedef PoolState = void*;
+typedef PoolState = TempAllocator*;
 
-tlocal TempAllocator* current_temp;
+const LazyTempAllocator LAZY_TEMP @private = {};
+tlocal Allocator current_temp = &LAZY_TEMP;
 tlocal TempAllocator* top_temp;
+tlocal bool auto_create_temp = false;
 
 usz temp_allocator_min_size = temp_allocator_default_min_size();
 usz temp_allocator_buffer_size = temp_allocator_default_buffer_size();
@@ -370,16 +372,16 @@ usz temp_allocator_new_mult = 4;
 
 fn PoolState push_pool()
 {
-	TempAllocator* old = current_temp ?: create_temp_allocator();
-	current_temp = current_temp.derive_allocator(temp_allocator_min_size, temp_allocator_buffer_size, temp_allocator_new_mult)!!;
-	return (PoolState)old;
+	Allocator old = top_temp ? current_temp : create_temp_allocator_on_demand();
+	current_temp = ((TempAllocator*)old).derive_allocator(temp_allocator_min_size, temp_allocator_buffer_size, temp_allocator_new_mult)!!;
+	return (PoolState)old.ptr;
 }
 
 fn void pop_pool(PoolState old)
 {
-	current_temp = (TempAllocator*)old;
-	current_temp.reset();
-
+	TempAllocator* temp = (TempAllocator*)old;
+	current_temp = temp;
+	temp.reset();
 }
 
 macro Allocator base_allocator() @private
@@ -424,18 +426,36 @@ macro usz temp_allocator_default_buffer_size() @local
 macro Allocator heap() => thread_allocator;
 
 <*
- @require !current_temp : "This should never be called when temp already exists"
+ @require !top_temp : "This should never be called when temp already exists"
 *>
-fn TempAllocator* create_temp_allocator() @private
+fn Allocator create_temp_allocator_on_demand() @private
 {
-	return top_temp = current_temp = allocator::new_temp_allocator(base_allocator(), temp_allocator_size())!!;
+	if (!auto_create_temp)
+	{
+	    auto_create_temp = true;
+	    abort("Only the main thread pool is implicitly created. Use '@pool_init()' to enable the temp allocator on other threads.");
+	}
+	return create_temp_allocator(base_allocator(), temp_allocator_size());
 }
-macro Allocator temp()
+<*
+ @require !top_temp : "This should never be called when temp already exists"
+*>
+fn Allocator create_temp_allocator(Allocator allocator, usz size, usz buffer = temp_allocator_default_buffer_size()) @private
 {
-	return current_temp ?: create_temp_allocator();
+	return current_temp = top_temp = allocator::new_temp_allocator(allocator, size)!!;
 }
 
-alias tmem @builtin = temp;
+macro Allocator temp()
+{
+	return current_temp;
+}
+
+alias tmem @builtin = current_temp;
+
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC)
+{
+	auto_create_temp = true;
+}
 
 fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC)
 {
@@ -449,6 +469,27 @@ fn void destroy_temp_allocators()
 {
 	if (!top_temp) return;
 	top_temp.free();
+	top_temp = null;
+	current_temp = &LAZY_TEMP;
+}
+
+import libc;
+typedef LazyTempAllocator (Allocator) @private = uptr;
+
+fn void*? LazyTempAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
+{
+	if (!top_temp) create_temp_allocator_on_demand();
+	return top_temp.acquire(bytes, init_type, alignment);
+}
+
+fn void*? LazyTempAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
+{
+	if (!top_temp) create_temp_allocator_on_demand();
+	return top_temp.resize(old_ptr, new_bytes, alignment);
+}
+
+fn void LazyTempAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
+{
 }
 
 const NullAllocator NULL_ALLOCATOR = {};

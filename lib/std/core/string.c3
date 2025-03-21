@@ -278,7 +278,7 @@ fn String[] String.split(s, Allocator allocator, String needle, usz max = 0, boo
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @param skip_empty : "True to skip empty elements"
 *>
-fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(tmem(), needle, max, skip_empty) @inline;
+fn String[] String.tsplit(s, String needle, usz max = 0, bool skip_empty = false) => s.split(tmem, needle, max, skip_empty) @inline;
 
 faultdef BUFFER_EXCEEDED;
 
@@ -516,10 +516,10 @@ fn String String.concat(s1, Allocator allocator, String s2)
 	return (String)str[:full_len];
 }
 
-fn String String.tconcat(s1, String s2) => s1.concat(tmem(), s2);
+fn String String.tconcat(s1, String s2) => s1.concat(tmem, s2);
 
 
-fn ZString String.zstr_tcopy(s) => s.zstr_copy(tmem()) @inline;
+fn ZString String.zstr_tcopy(s) => s.zstr_copy(tmem) @inline;
 
 <*
  Copy this string, by duplicating the string, always adding a zero byte
@@ -542,7 +542,7 @@ fn void String.free(&s, Allocator allocator)
 	*s = "";
 }
 
-fn String String.tcopy(s) => s.copy(tmem()) @inline;
+fn String String.tcopy(s) => s.copy(tmem) @inline;
 
 fn String ZString.copy(z, Allocator allocator)
 {
@@ -551,7 +551,7 @@ fn String ZString.copy(z, Allocator allocator)
 
 fn String ZString.tcopy(z)
 {
-	return z.str_view().copy(tmem()) @inline;
+	return z.str_view().copy(tmem) @inline;
 }
 
 <*
@@ -568,14 +568,14 @@ fn Char16[]? String.to_utf16(s, Allocator allocator)
 	return data[:len16];
 }
 
-fn Char16[]? String.to_temp_utf16(s) => s.to_utf16(tmem());
+fn Char16[]? String.to_temp_utf16(s) => s.to_utf16(tmem);
 
 fn WString? String.to_wstring(s, Allocator allocator)
 {
 	return (WString)s.to_utf16(allocator).ptr;
 }
 
-fn WString? String.to_temp_wstring(s) => s.to_wstring(tmem());
+fn WString? String.to_temp_wstring(s) => s.to_wstring(tmem);
 
 fn Char32[]? String.to_utf32(s, Allocator allocator)
 {
@@ -586,7 +586,7 @@ fn Char32[]? String.to_utf32(s, Allocator allocator)
 	return data[:codepoints];
 }
 
-fn Char32[]? String.to_temp_utf32(s) => s.to_utf32(tmem());
+fn Char32[]? String.to_temp_utf32(s) => s.to_utf32(tmem);
 
 <*
  Convert a string to ASCII lower case in place.
@@ -608,7 +608,7 @@ fn String String.to_lower_copy(s, Allocator allocator)
 
 fn String String.to_lower_tcopy(s)
 {
-	return s.to_lower_copy(tmem());
+	return s.to_lower_copy(tmem);
 }
 
 <*
@@ -648,7 +648,7 @@ fn StringIterator String.iterator(s)
 *>
 fn String String.to_upper_tcopy(s)
 {
-	return s.to_upper_copy(tmem());
+	return s.to_upper_copy(tmem);
 }
 
 fn String? from_utf32(Allocator allocator, Char32[] utf32)
@@ -679,8 +679,8 @@ fn String? from_wstring(Allocator allocator, WString wstring)
 	return from_utf16(allocator, utf16);
 }
 
-fn String? tfrom_wstring(WString wstring) => from_wstring(tmem(), wstring) @inline;
-fn String? tfrom_utf16(Char16[] utf16) => from_utf16(tmem(), utf16) @inline;
+fn String? tfrom_wstring(WString wstring) => from_wstring(tmem, wstring) @inline;
+fn String? tfrom_utf16(Char16[] utf16) => from_utf16(tmem, utf16) @inline;
 
 fn usz String.utf8_codepoints(s)
 {
@@ -839,4 +839,4 @@ macro String from_struct(Allocator allocator, x)
 	};
 }
 
-macro String tfrom_struct(x) => from_struct(tmem(), x);
+macro String tfrom_struct(x) => from_struct(tmem, x);

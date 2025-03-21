@@ -66,7 +66,7 @@ import std::io;
 fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
-	char[] output = encode(tmem(), input, desc)!;
+	char[] output = encode(tmem, input, desc)!;
 
 	file::save(filename, output)!;
 	return output.len;

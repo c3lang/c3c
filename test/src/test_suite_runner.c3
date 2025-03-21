@@ -476,7 +476,7 @@ fn void test_file(Path file_path)
     		io::printfn(`FAILED - %s did not contain: "%s"`, file.name, next);
     		io::printfn("\n\n\n---------------------------------------------------> %s\n\n", file.name);
     		(void)file_ll.seek(0);
-    		(void)io::printn((String)io::read_fully(tmem(), &file_ll));
+    		(void)io::printn((String)io::read_fully(tmem, &file_ll));
     		io::printfn("<---------------------------------------------------- %s\n", file_path);
     		return;
     	}
@@ -496,7 +496,7 @@ fn void test_file(Path file_path)
 fn void? test_path(Path file_path)
 {
 	(void)path::chdir(start_cwd);
-	foreach (file : path::ls(tmem(), file_path)!!)
+	foreach (file : path::ls(tmem, file_path)!!)
 	{
 		@pool()
 		{

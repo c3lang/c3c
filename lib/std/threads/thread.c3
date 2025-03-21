@@ -72,7 +72,11 @@ macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((Native
 
 macro void yield() => os::native_thread_yield();
 macro Thread current() => (Thread)os::native_thread_current();
-macro void exit(int result) => os::native_thread_exit(result);
+macro void exit(int result)
+{
+	allocator::destroy_temp_allocators();
+	os::native_thread_exit(result);
+}
 macro void? sleep(Duration d) @maydiscard => os::native_sleep_nano(d.to_nano());
 macro void? sleep_ms(ulong ms) @maydiscard  => sleep(time::ms(ms));
 macro void? sleep_ns(NanoDuration ns) @maydiscard  => os::native_sleep_nano(ns);

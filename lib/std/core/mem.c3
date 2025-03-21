@@ -571,6 +571,19 @@ fn void temp_pop(PoolState old_state)
 	allocator::pop_pool(old_state) @inline;
 }
 
+macro void @pool_init(Allocator allocator, usz pool_size, usz buffer_size; @body) @builtin
+{
+	Allocator current = allocator::current_temp;
+	TempAllocator* top = allocator::top_temp;
+	allocator::create_temp_allocator(allocator, pool_size, buffer_size);
+	defer
+	{
+		allocator::destroy_temp_allocators();
+		allocator::top_temp = top;
+		allocator::current_temp = current;
+	}
+	@body();
+}
 macro void @pool(;@body) @builtin
 {
 	PoolState state = allocator::push_pool() @inline;
@@ -636,7 +649,7 @@ fn void* malloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 fn void* tmalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-	return tmem().acquire(size, NO_ZERO, alignment)!!;
+	return tmem.acquire(size, NO_ZERO, alignment)!!;
 }
 
 <*
@@ -814,7 +827,7 @@ fn void* calloc_aligned(usz size, usz alignment) @builtin @inline @nodiscard
 fn void* tcalloc(usz size, usz alignment = 0) @builtin @inline @nodiscard
 {
 	if (!size) return null;
-	return tmem().acquire(size, ZERO, alignment)!!;
+	return tmem.acquire(size, ZERO, alignment)!!;
 }
 
 fn void* realloc(void *ptr, usz new_size) @builtin @inline @nodiscard
@@ -841,7 +854,7 @@ fn void* trealloc(void* ptr, usz size, usz alignment = mem::DEFAULT_MEM_ALIGNMEN
 {
 	if (!size) return null;
 	if (!ptr) return tmalloc(size, alignment);
-	return tmem().resize(ptr, size, alignment)!!;
+	return tmem.resize(ptr, size, alignment)!!;
 }
 
 module std::core::mem @if(env::NO_LIBC);

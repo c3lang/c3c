@@ -169,9 +169,9 @@ macro Type[] ElasticArray.to_array(&self, Allocator allocator)
 fn Type[] ElasticArray.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_aligned_array(tmem());
+	return self.to_aligned_array(tmem);
 	$else
-	return self.to_array(tmem());
+	return self.to_array(tmem);
 	$endif;
 }
 

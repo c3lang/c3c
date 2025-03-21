@@ -47,7 +47,7 @@ struct Url(Printable)
  @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url? tparse(String url_string) => parse(tmem(), url_string);
+fn Url? tparse(String url_string) => parse(tmem, url_string);
 
 <*
  Parse a URL string into a Url struct.
@@ -252,7 +252,7 @@ struct UrlQueryValues
  @param [in] query
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues parse_query_to_temp(String query) => parse_query(tmem(), query);
+fn UrlQueryValues parse_query_to_temp(String query) => parse_query(tmem, query);
 
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.

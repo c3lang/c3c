@@ -30,7 +30,7 @@ fn MultiWriter* MultiWriter.init(&self, Allocator allocator, OutStream... writer
 *>
 fn MultiWriter* MultiWriter.tinit(&self, OutStream... writers)
 {
-	return self.init(tmem(), ...writers);
+	return self.init(tmem, ...writers);
 }
 
 fn void MultiWriter.free(&self)
