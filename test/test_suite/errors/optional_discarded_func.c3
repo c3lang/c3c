@@ -14,7 +14,7 @@ fn void test2()
 	int? x;
 	int y;
 	abc(y);
-	abc(x) + 4; // #error: An optional value may not be discarded
+	abc(x) + 4; // #error: An optional value was discarded
 }
 
 fn void test3()
@@ -30,7 +30,7 @@ fn void test4()
 	int? x;
 	int y;
 	def2(1);
-	def2(x) + 4; // #error: An optional value may not be discarded
+	def2(x) + 4; // #error: An optional value was discarded
 }
 
 fn void test5()
@@ -50,5 +50,5 @@ fn void test6()
 fn void test7()
 {
 	int y;
-	def3(y) + 4; // #error: An optional value may not be discarded
+	def3(y) + 4; // #error: An optional value was discarded
 }

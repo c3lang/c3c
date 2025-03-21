@@ -42,7 +42,7 @@ fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, u
 
 fn PrivatePriorityQueue* PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
 {
-	self.init(tmem(), initial_capacity);
+	self.init(tmem, initial_capacity);
 	return self;
 }
 

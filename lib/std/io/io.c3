@@ -98,7 +98,7 @@ macro String? readline(Allocator allocator, stream = io::stdin())
 *>
 macro String? treadline(stream = io::stdin())
 {
-	return readline(tmem(), stream) @inline;
+	return readline(tmem, stream) @inline;
 }
 
 <*

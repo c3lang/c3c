@@ -94,7 +94,7 @@ fn GrowableBitSet* GrowableBitSet.init(&self, Allocator allocator, usz initial_c
 
 fn GrowableBitSet* GrowableBitSet.tinit(&self, usz initial_capacity = 1)
 {
-	return self.init(tmem(), initial_capacity) @inline;
+	return self.init(tmem, initial_capacity) @inline;
 }
 
 fn void GrowableBitSet.free(&self)

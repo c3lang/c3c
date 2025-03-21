@@ -18,7 +18,7 @@ fn String breakit(String s, Allocator a)
 {
     @pool()
     {
-        return inner2("foo".concat(tmem(), s), a);
+        return inner2("foo".concat(tmem, s), a);
     };
 }
 
@@ -52,7 +52,7 @@ fn String inner4(String s, Allocator a)
 {
     @pool()
     {
-        String y = s.concat(tmem(), "xy**********").copy(a);
+        String y = s.concat(tmem, "xy**********").copy(a);
         return y;
     };
 }

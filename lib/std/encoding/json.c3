@@ -15,7 +15,7 @@ fn Object*? parse_string(Allocator allocator, String s)
 
 fn Object*? tparse_string(String s)
 {
-	return parse(tmem(), (ByteReader){}.init(s));
+	return parse(tmem, (ByteReader){}.init(s));
 }
 
 fn Object*? parse(Allocator allocator, InStream s)
@@ -32,7 +32,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 
 fn Object*? tparse(InStream s)
 {
-	return parse(tmem(), s);
+	return parse(tmem, s);
 }
 
 // -- Implementation follows --

@@ -204,12 +204,22 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 	// Create the directory for the temporary files.
 	const char *lib_name = filename(lib);
 	scratch_buffer_clear();
-	scratch_buffer_append(build_target->build_dir ? build_target->build_dir : "_temp_build");
-	scratch_buffer_printf("/_c3l/%s_%x/", lib_name, file.file_crc32);
-	const char *lib_dir = scratch_buffer_copy();
-	dir_make_recursive(scratch_buffer_to_string());
-	scratch_buffer_append_char('/');
-	char *dir = scratch_buffer_to_string();
+	assert(build_target->build_dir);
+	scratch_buffer_append(build_target->build_dir);
+	scratch_buffer_printf("/_c3l/%s/", lib_name);
+	char *lib_dir = scratch_buffer_copy();
+	char *lib_dir_copy = scratch_buffer_copy();
+	scratch_buffer_append("checksum.txt");
+	const char *checksum_file = scratch_buffer_to_string();
+	uint32_t crc = file.file_crc32;
+	if (file_is_dir(lib_dir))
+	{
+		size_t len;
+		char *data = file_exists(checksum_file) ? file_read_all(checksum_file, &len) : NULL;
+		if (data && crc == strtoll(data, &data, 16)) goto DONE;
+		file_delete_dir(lib_dir);
+	}
+	dir_make_recursive(lib_dir_copy);
 
 	// Iterate through all files.
 	zip_check_err(lib, zip_dir_iterator(f, &iterator));
@@ -218,9 +228,13 @@ static inline JSONObject *resolve_zip_library(BuildTarget *build_target, const c
 		zip_check_err(lib, zip_dir_iterator_next(&iterator, &file));
 		if (file.uncompressed_size == 0 || file.name[0] == '.') continue;
 		// Copy file.
-		zip_file_write(f, &file, dir, false);
+		zip_file_write(f, &file, lib_dir, false);
 	}
+DONE:
 	fclose(f);
+	char buf[64];
+	size_t len = snprintf(buf, 64, "%x", crc);
+	file_write_all(checksum_file, buf, len);
 	*resulting_library = lib_dir;
 	return json;
 

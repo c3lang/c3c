@@ -90,7 +90,7 @@ macro anycast(any v, $Type) @builtin
 
 fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
-	TempAllocator* t = allocator::current_temp;
+	Allocator t = allocator::current_temp;
 	TempAllocator* new_t = allocator::new_temp_allocator(smem, 0x1000)!!;
 	allocator::current_temp = new_t;
 	defer
@@ -101,7 +101,7 @@ fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIV
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem(), backtraces);
+	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem, backtraces);
 	if (catch backtrace) return false;
 	if (backtrace.len() <= backtraces_to_ignore) return false;
 	io::eprint("\nERROR: '");

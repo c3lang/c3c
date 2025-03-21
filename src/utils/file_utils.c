@@ -204,6 +204,15 @@ FILE *file_open_read(const char *path)
 #endif
 }
 
+FILE *file_open_write(const char *path)
+{
+#if (_MSC_VER)
+	return _wfopen(win_utf8to16(path), L"wb");
+#else
+	return fopen(path, "wb");
+#endif
+}
+
 bool file_touch(const char *path)
 {
 #if (_MSC_VER)
@@ -247,6 +256,15 @@ size_t file_clean_buffer(char *buffer, const char *path, size_t file_size)
 	file_size -= offset;
 	buffer[file_size] = '\0';
 	return file_size;
+}
+
+bool file_write_all(const char *path, const char *data, size_t len)
+{
+	FILE *file = file_open_write(path);
+	if (file == NULL) return false;
+	bool success = len == fwrite(data, 1, len, file);
+	fclose(file);
+	return success;
 }
 
 char *file_read_all(const char *path, size_t *return_size)
@@ -571,13 +589,25 @@ bool file_delete_file(const char *path)
 #endif
 }
 
+void file_delete_dir(const char *path)
+{
+#if (_WIN32)
+	// Windows command to remove a directory recursively
+	const char *cmd = "rmdir /S /Q \"%s\" >nul 2>&1";
+#else
+	// UNIX-like command to remove a directory recursively
+	const char *cmd = "rm -rf \"%s\"";
+#endif
+	execute_cmd(str_printf(cmd, path), true, NULL, 2048);
+}
+
 void file_delete_all_files_in_dir_with_suffix(const char *path, const char *suffix)
 {
 	ASSERT(path);
 #if (_WIN32)
 	const char *cmd = "del /q \"%s\\*%s\" >nul 2>&1";
 #else
-	const char *cmd = "rm -f %s/*%s";
+	const char *cmd = "rm -f \"%s/*%s\"";
 #endif
 	execute_cmd(str_printf(cmd, path, suffix), true, NULL, 2048);
 }

@@ -30,7 +30,7 @@ fn Path? cwd(Allocator allocator)
 {
 	@pool()
 	{
-		return new(allocator, os::getcwd(tmem()));
+		return new(allocator, os::getcwd(tmem));
 	};
 }
 
@@ -38,7 +38,7 @@ fn bool is_dir(Path path) => os::native_is_dir(path.str_view());
 fn bool is_file(Path path) => os::native_is_file(path.str_view());
 fn usz? file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
-fn Path? tcwd() => cwd(tmem()) @inline;
+fn Path? tcwd() => cwd(tmem) @inline;
 
 <*
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
@@ -150,7 +150,7 @@ fn Path? new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 *>
 fn Path? temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
-	return new(tmem(), path, path_env);
+	return new(tmem, path, path_env);
 }
 
 fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool()
@@ -193,7 +193,7 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 	};
 }
 
-fn Path? Path.tappend(self, String filename) => self.append(tmem(), filename);
+fn Path? Path.tappend(self, String filename) => self.append(tmem, filename);
 
 fn usz? start_of_base_name(String str, PathEnv path_env) @local
 {
@@ -249,7 +249,7 @@ fn Path? Path.absolute(self, Allocator allocator)
 	{
 		@pool()
 		{
-			String cwd = os::getcwd(tmem())!;
+			String cwd = os::getcwd(tmem)!;
 			return new(allocator, cwd, self.env);
 		};
 	}
@@ -263,8 +263,8 @@ fn Path? Path.absolute(self, Allocator allocator)
 			return { string::from_wstring(allocator, buffer), WIN32, allocator };
 		};
 	$else
-		String cwd = os::getcwd(tmem())!;
-		return (Path){ cwd, self.env, tmem() }.append(allocator, path_str)!;
+		String cwd = os::getcwd(tmem)!;
+		return (Path){ cwd, self.env, tmem }.append(allocator, path_str)!;
 	$endif
 }
 
@@ -273,7 +273,7 @@ fn String? String.file_basename(self, Allocator allocator) => @pool()
 	return temp(self).basename().copy(allocator);
 }
 
-fn String? String.file_tbasename(self) => self.file_basename(tmem());
+fn String? String.file_tbasename(self) => self.file_basename(tmem);
 
 fn String Path.basename(self)
 {
@@ -283,7 +283,7 @@ fn String Path.basename(self)
 	return path_str[basename_start..];
 }
 
-fn String? String.path_tdirname(self) => self.path_dirname(tmem());
+fn String? String.path_tdirname(self) => self.path_dirname(tmem);
 
 fn String? String.path_dirname(self, Allocator allocator) => @pool()
 {
@@ -347,7 +347,7 @@ fn Path? String.to_path(self, Allocator allocator)
 
 fn Path? String.to_tpath(self)
 {
-	return new(tmem(), self);
+	return new(tmem, self);
 }
 
 fn usz? volume_name_len(String path, PathEnv path_env) @local

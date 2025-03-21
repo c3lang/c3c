@@ -10169,9 +10169,9 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 		return true;
 	}
 	if (!IS_OPTIONAL(expr)) return true;
-	RETURN_SEMA_ERROR(expr, "An optional value may not be discarded, you can ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
+	RETURN_SEMA_ERROR(expr, "An optional value was discarded, you can assign it to a variable, ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
 ERROR_ARGS:
-	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). The optional result may not be implicitly discarded. Consider using '(void)', '!' or '!!' to handle this.");
+	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). This optional result may not be implicitly discarded. Please assign it to a variable, ignore it with '(void)', rethrow with '!' or panic with '!!'.");
 }
 
 bool sema_analyse_expr(SemaContext *context, Expr *expr)

@@ -201,7 +201,7 @@ fn char[]? load(Allocator allocator, String filename)
 
 fn char[]? load_path(Allocator allocator, Path path) => load(allocator, path.str_view());
 
-fn char[]? load_temp(String filename) => load(tmem(), filename);
+fn char[]? load_temp(String filename) => load(tmem, filename);
 
 fn char[]? load_path_temp(Path path) => load_temp(path.str_view());
 

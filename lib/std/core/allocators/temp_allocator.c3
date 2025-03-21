@@ -1,5 +1,7 @@
 module std::core::mem::allocator;
 import std::io, std::math;
+import std::core::sanitizer::asan;
+
 
 struct TempAllocatorChunk @local
 {
@@ -87,10 +89,13 @@ fn void TempAllocator.reset(&self)
 	while (child)
 	{
 		TempAllocator* old = child;
-		old.destroy();
 		child = old.derived;
+		old.destroy();
 	}
 	self.capacity = self.original_capacity;
+	$if env::ADDRESS_SANITIZER:
+		asan::poison_memory_region(&self.data[self.used], self.capacity - self.used);
+	$endif
 	self.derived = null;
 }
 
@@ -159,6 +164,7 @@ fn void*? TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, 
 	usz page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
+	if (page_size > size) page_size = size;
 	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	self.backing_allocator.release(real_pointer, page.is_aligned());
 	return data;
@@ -174,10 +180,37 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 		TempAllocatorPage *page = pointer - TempAllocatorPage.sizeof;
 		return self._realloc_page(page, size, alignment);
 	}
-
-	TempAllocatorChunk* data = self.acquire(size, NO_ZERO, alignment)!;
+	bool is_realloc_of_last = chunk.size + pointer == &self.data[self.used];
+	if (is_realloc_of_last)
+	{
+		isz diff = size - chunk.size;
+		if (diff == 0) return pointer;
+		if (self.capacity - self.used > diff)
+		{
+			chunk.size += diff;
+			self.used += diff;
+			$if env::ADDRESS_SANITIZER:
+				if (diff < 0)
+				{
+					asan::poison_memory_region(pointer + chunk.size, -diff);
+				}
+				else
+				{
+					asan::unpoison_memory_region(pointer, chunk.size);
+				}
+			$endif
+			return pointer;
+		}
+	}
+	void* data = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(data, pointer, chunk.size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-
+	if (is_realloc_of_last)
+	{
+		self.used = ((void*)chunk - &self.data);
+		$if env::ADDRESS_SANITIZER:
+			asan::poison_memory_region(chunk, TempAllocatorChunk.sizeof + chunk.size);
+		$endif
+	}
 	return data;
 }
 

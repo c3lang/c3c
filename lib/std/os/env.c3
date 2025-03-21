@@ -36,7 +36,7 @@ fn String? get_var(Allocator allocator, String name) => @pool()
 
 fn String? tget_var(String name)
 {
-	return get_var(tmem(), name);
+	return get_var(tmem, name);
 }
 
 <*

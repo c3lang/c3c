@@ -40,6 +40,8 @@
 - Temp allocator now supports more than 2 in-flight stacks.
 - Printing stacktrace uses its own temp allocator.
 - Allow inferred type on body parameters. E.g. `@stack_mem(1024; alloc) { ... };`
+- Use `@pool_init()` to set up a temp pool on a thread. Only the main thread has implicit temp pool setup.
+- `tmem` is now a variable.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -75,6 +77,7 @@
 - `AnyList` now also defaults to the temp allocator.
 - `os::getcwd` and `os::get_home_dir` requires an explicit allocator.
 - `file::load_new` and `file::load_path_new` removed.
+- `os::exit` and `os::fastexit` added.
 
 ## 0.6.8 Change list
 

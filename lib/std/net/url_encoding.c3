@@ -100,7 +100,7 @@ fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool()
  @param mode : "Url encoding mode"
  @return "Percent-encoded String"
 *>
-fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
+fn String tencode(String s, UrlEncodingMode mode) => encode(tmem, s, mode);
 
 <*
  Calculate the length of the percent-decoded string.
@@ -167,4 +167,4 @@ fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool
  @param mode : "Url encoding mode"
  @return "Percent-decoded String"
 *>
-fn String? tdecode(String s, UrlEncodingMode  mode) => decode(tmem(), s, mode);
+fn String? tdecode(String s, UrlEncodingMode  mode) => decode(tmem, s, mode);

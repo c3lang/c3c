@@ -155,7 +155,7 @@ fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 				Backtrace trace = backtrace::BACKTRACE_UNKNOWN;
 				if (allocation.backtrace[3])
 				{
-					trace = backtrace::symbolize_backtrace(tmem(), allocation.backtrace[3:1]).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
+					trace = backtrace::symbolize_backtrace(tmem, allocation.backtrace[3:1]).get(0) ?? backtrace::BACKTRACE_UNKNOWN;
 				}
 				if (trace.function.len)	leaks = true;
 				io::fprintfn(out, "%13s   %p   %s:%d", allocation.size,
@@ -194,7 +194,7 @@ fn void? TrackingAllocator.fprint_report(&self, OutStream out) => @pool()
 					break;
 				}
 			}
-			BacktraceList list = backtrace::symbolize_backtrace(tmem(), allocation.backtrace[3..(end - 1)])!;
+			BacktraceList list = backtrace::symbolize_backtrace(tmem, allocation.backtrace[3..(end - 1)])!;
 			io::fprintfn(out, "Allocation %d (%d bytes): ", i + 1, allocation.size)!;
 			foreach (trace : list)
 			{
