@@ -131,7 +131,7 @@ fn void test_vec_cross() @test
 	float[<4>] w = { 0,0,1,0 };
 	float[<4>] t = { 0,0,0,1 };
 
-	float[<3>] d = { a.determinant2(b), u.determinant3(v,w), u.determinant4(v,w,t) };
+	float[<3>] d = { u.determinant2(v), u.determinant3(v,w), u.determinant4(v,w,t) };
 	assert(d == { 1, 1, 1 });
 
 	float[<4>] x = vector::cross4(u,v,w);
