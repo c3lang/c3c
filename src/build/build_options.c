@@ -111,7 +111,7 @@ static void usage(bool full)
 		print_opt("--obj-out <dir>", "Override object file output directory.");
 		print_opt("--script-dir <dir>", "Override the base directory for $exec.");
 		print_opt("--llvm-out <dir>", "Override llvm output directory for '--emit-llvm'.");
-		print_opt("--asm-out <dir> ", "Emit LLVM IR as a .ll file per module.");
+		print_opt("--asm-out <dir> ", "Override asm output directory for '--emit-asm'.");
 		print_opt("--emit-llvm", "Emit LLVM IR as a .ll file per module.");
 		print_opt("--emit-asm", "Emit asm as a .s file per module.");
 		print_opt("--obj", "Emit object files. (Enabled by default)");
