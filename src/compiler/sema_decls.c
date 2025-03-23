@@ -1229,12 +1229,13 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			if (!sema_resolve_type_info(context, type_info,
 			                            is_macro ? RESOLVE_TYPE_ALLOW_INFER
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
-			param->type = type_info->type;
-		}
-		if (type_info && param->var.no_alias && !type_is_pointer(param->type) && type_flatten(param->type)->type_kind != TYPE_SLICE)
-		{
-			SEMA_ERROR(param, "The parameter was set to @noalias, but it was neither a slice nor a pointer. You need to either remove '@noalias' or use pointer/slice type.");
-			return decl_poison(param);
+
+			Type *type = param->type = type_info->type;
+			if (param->var.no_alias && !type_is_pointer(type) && type_flatten(type)->type_kind != TYPE_SLICE)
+			{
+				SEMA_ERROR(param, "The parameter was set to @noalias, but it was neither a slice nor a pointer. You need to either remove '@noalias' or use pointer/slice type.");
+				return decl_poison(param);
+			}
 		}
 		switch (var_kind)
 		{
