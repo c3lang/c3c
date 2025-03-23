@@ -1199,6 +1199,8 @@ static void parse_option(BuildOptions *options)
 				options->lsp_mode = true;
 				options->strip_unused = STRIP_UNUSED_OFF;
 				options->test_mode = false;
+				options->benchmarking = true;
+				options->testing = true;
 				return;
 			}
 			if (match_longopt("test"))

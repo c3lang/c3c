@@ -42,7 +42,8 @@
 - Allow inferred type on body parameters. E.g. `@stack_mem(1024; alloc) { ... };`
 - Use `@pool_init()` to set up a temp pool on a thread. Only the main thread has implicit temp pool setup.
 - `tmem` is now a variable.
-
+- Compile test and benchmark functions when invoking `--lsp` #2058.
+ 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
 - Post and pre-decrement operators switched places for vector elements #2010.
