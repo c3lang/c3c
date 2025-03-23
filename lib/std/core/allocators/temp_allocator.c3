@@ -203,10 +203,11 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 		}
 	}
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(data, pointer, chunk.size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	usz len_to_copy = chunk.size > size ? size : chunk.size;
+	mem::copy(data, pointer, len_to_copy, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	if (is_realloc_of_last)
 	{
-		self.used = ((void*)chunk - &self.data);
+		self.used = (uptr)chunk - (uptr)&self.data;
 		$if env::ADDRESS_SANITIZER:
 			asan::poison_memory_region(chunk, TempAllocatorChunk.sizeof + chunk.size);
 		$endif

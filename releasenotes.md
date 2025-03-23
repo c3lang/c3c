@@ -55,6 +55,7 @@
 - Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
 - Bug due to missing cast when doing `$i[$x] = $z`.
 - Incorrectly allowed getting pointer to a macro #2049.
+- &self not runtime null-checked in macro #1827.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.

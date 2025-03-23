@@ -1035,6 +1035,19 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	return expr;
 }
 
+Expr *expr_new_const_null(SourceSpan span, Type *type)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type;
+	ASSERT(type_flatten(type)->type_kind == TYPE_POINTER);
+	expr->const_expr.ptr = 0;
+	expr->const_expr.const_kind = CONST_POINTER;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
 Expr *expr_new_const_string(SourceSpan span, const char *string)
 {
 	Expr *expr = expr_calloc();

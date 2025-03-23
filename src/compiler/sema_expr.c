@@ -1821,7 +1821,7 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 {
 	if (param->var.not_null && expr_is_const_pointer(expr) && !expr->const_expr.ptr)
 	{
-		RETURN_SEMA_ERROR(expr, "You may not pass null to a '&' parameter.");
+		RETURN_SEMA_ERROR(expr, "You may not pass null to the '&' parameter.");
 	}
 	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER)
 	{
@@ -2211,15 +2211,37 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
 	macro_context.block_exit_ref = block_exit_ref;
 
-	FOREACH(Decl *, param, params)
+	AstId assert_first = 0;
+	AstId* next = &assert_first;
+
+	FOREACH_IDX(idx, Decl *, param, params)
 	{
 		// Skip raw vararg
 		if (!param) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
-	}
+		if (param->var.init_expr && param->var.not_null)
+		{
+			Expr *expr = expr_variable(param);
+			Expr *binary = expr_new_expr(EXPR_BINARY, expr);
+			binary->binary_expr.left = exprid(expr);
+			binary->binary_expr.right = exprid(expr_new_const_null(expr->span, type_voidptr));
+			binary->binary_expr.operator = BINARYOP_NE;
+			if (!sema_analyse_expr_rhs(context, type_bool, binary, false, NULL, false)) goto EXIT_FAIL;
+			const char *string = struct_var && idx == 0 ? "Called a method on a null value." : "Passed null to a ref ('&') parameter.";
+			if (expr_is_const_bool(binary) && !binary->const_expr.b)
+			{
+				sema_error_at(context, param->var.init_expr->span, string);
+				goto EXIT_FAIL;
+			}
 
-	AstId assert_first = 0;
-	AstId* next = &assert_first;
+			Ast *assert = new_ast(AST_ASSERT_STMT, param->var.init_expr->span);
+			assert->assert_stmt.is_ensure = true;
+			assert->assert_stmt.expr = exprid(binary);
+			Expr *comment_expr = expr_new_const_string(expr->span, string);
+			assert->assert_stmt.message = exprid(comment_expr);
+			ast_append(&next, assert);
+		}
+	}
 
 	bool has_ensures = false;
 	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span, &has_ensures)) goto EXIT_FAIL;

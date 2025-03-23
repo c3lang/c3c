@@ -69,6 +69,8 @@ entry:
   call void @llvm.memcpy.p0.p0.i32(ptr align 4 %x, ptr align 4 @.__const, i32 8, i1 false)
   %0 = call i32 @test.Abc.add(ptr %x)
   store i32 %0, ptr %a, align 4
+  %neq = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq)
   %1 = load i32, ptr %x, align 4
   %ptradd = getelementptr inbounds i8, ptr %x, i64 4
   %2 = load i32, ptr %ptradd, align 4
@@ -76,8 +78,10 @@ entry:
   store i32 %add, ptr %b, align 4
   store i32 100, ptr %f, align 4
   call void @test.Foo.add(ptr %f)
+  %neq1 = icmp ne ptr %f, null
+  call void @llvm.assume(i1 %neq1)
   %3 = load i32, ptr %f, align 4
-  %add1 = add i32 %3, 1
-  store i32 %add1, ptr %f, align 4
+  %add2 = add i32 %3, 1
+  store i32 %add2, ptr %f, align 4
   ret void
 }

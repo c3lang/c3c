@@ -433,7 +433,7 @@ fn Allocator create_temp_allocator_on_demand() @private
 	if (!auto_create_temp)
 	{
 	    auto_create_temp = true;
-	    abort("Use '@pool_init()' to enable the temp allocator on a new thread. A pool is implicitly created only on the main thread.");
+	    abort("Use '@pool_init()' to enable the temp allocator on a new thread. A temp allocator is only implicitly created on the main thread.");
 	}
 	return create_temp_allocator(base_allocator(), temp_allocator_size());
 }
