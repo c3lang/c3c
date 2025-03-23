@@ -64,7 +64,7 @@ fn usz encode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-encoded String"
 *>
-fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool(allocator)
+fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool()
 {
 	usz n = encode_len(s, mode);
 	DString builder = dstring::temp_with_capacity(n);
@@ -100,7 +100,7 @@ fn String encode(Allocator allocator, String s, UrlEncodingMode mode) => @pool(a
  @param mode : "Url encoding mode"
  @return "Percent-encoded String"
 *>
-fn String tencode(String s, UrlEncodingMode mode) => encode(tmem(), s, mode);
+fn String tencode(String s, UrlEncodingMode mode) => encode(tmem, s, mode);
 
 <*
  Calculate the length of the percent-decoded string.
@@ -131,7 +131,7 @@ fn usz? decode_len(String s, UrlEncodingMode mode) @inline
  @param [inout] allocator
  @return "Percent-decoded String"
 *>
-fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool(allocator)
+fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool()
 {
 	usz n = decode_len(s, mode)!;
 	DString builder = dstring::temp_with_capacity(n);
@@ -167,4 +167,4 @@ fn String? decode(Allocator allocator, String s, UrlEncodingMode  mode) => @pool
  @param mode : "Url encoding mode"
  @return "Percent-decoded String"
 *>
-fn String? tdecode(String s, UrlEncodingMode  mode) => decode(tmem(), s, mode);
+fn String? tdecode(String s, UrlEncodingMode  mode) => decode(tmem, s, mode);

@@ -62,7 +62,7 @@ fn String format(Allocator allocator, DateTimeFormat type, TzDateTime dt)
 	}
 }
 
-fn String tformat(DateTimeFormat dt_format, TzDateTime dt) => format(tmem(), dt_format, dt);
+fn String tformat(DateTimeFormat dt_format, TzDateTime dt) => format(tmem, dt_format, dt);
 
 fn String TzDateTime.format(self, Allocator allocator, DateTimeFormat dt_format) => format(allocator, dt_format, self);
 

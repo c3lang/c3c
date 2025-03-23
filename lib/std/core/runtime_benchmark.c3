@@ -96,5 +96,5 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 
 fn bool default_benchmark_runner(String[] args) => @pool()
 {
-	return run_benchmarks(benchmark_collection_create(tmem()));
+	return run_benchmarks(benchmark_collection_create(tmem));
 }

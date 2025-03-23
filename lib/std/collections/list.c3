@@ -45,7 +45,7 @@ fn List* List.init(&self, Allocator allocator, usz initial_capacity = 16)
 *>
 fn List* List.tinit(&self, usz initial_capacity = 16)
 {
-	return self.init(tmem(), initial_capacity) @inline;
+	return self.init(tmem, initial_capacity) @inline;
 }
 
 <*
@@ -173,9 +173,9 @@ macro Type[] List.to_array(&self, Allocator allocator)
 fn Type[] List.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_aligned_array(tmem());
+	return self.to_aligned_array(tmem);
 	$else
-	return self.to_array(tmem());
+	return self.to_array(tmem);
 	$endif;
 }
 
@@ -354,7 +354,7 @@ fn void List.ensure_capacity(&self, usz min_capacity) @local
 		case &dummy:
 			self.allocator = mem;
 		case null:
-			self.allocator = tmem();
+			self.allocator = tmem;
 		default:
 			break;
 	}

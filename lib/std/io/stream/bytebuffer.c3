@@ -26,7 +26,7 @@ fn ByteBuffer* ByteBuffer.init(&self, Allocator allocator, usz max_read, usz ini
 
 fn ByteBuffer* ByteBuffer.tinit(&self, usz max_read, usz initial_capacity = 16)
 {
-	return self.init(tmem(), max_read, initial_capacity);
+	return self.init(tmem, max_read, initial_capacity);
 }
 
 <*

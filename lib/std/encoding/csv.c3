@@ -51,7 +51,7 @@ fn CsvRow? CsvReader.read_row(self, Allocator allocator)
 
 fn CsvRow? CsvReader.tread_row(self)
 {
-	return self.read_row(tmem()) @inline;
+	return self.read_row(tmem) @inline;
 }
 
 <*

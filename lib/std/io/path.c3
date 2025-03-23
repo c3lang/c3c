@@ -28,9 +28,9 @@ enum PathEnv
 
 fn Path? cwd(Allocator allocator)
 {
-	@pool(allocator)
+	@pool()
 	{
-		return new(allocator, os::getcwd(tmem()));
+		return new(allocator, os::getcwd(tmem));
 	};
 }
 
@@ -38,7 +38,7 @@ fn bool is_dir(Path path) => os::native_is_dir(path.str_view());
 fn bool is_file(Path path) => os::native_is_file(path.str_view());
 fn usz? file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
-fn Path? tcwd() => cwd(tmem()) @inline;
+fn Path? tcwd() => cwd(tmem) @inline;
 
 <*
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
@@ -150,10 +150,10 @@ fn Path? new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 *>
 fn Path? temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
-	return new(tmem(), path, path_env);
+	return new(tmem, path, path_env);
 }
 
-fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool(allocator)
+fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool()
 {
 	return path::new(allocator, string::tfrom_wstring(path)!);
 }
@@ -183,7 +183,7 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 	if (!self.path_string.len) return new(allocator, filename, self.env)!;
 	assert(!is_separator(self.path_string[^1], self.env));
 
-	@pool(allocator)
+	@pool()
 	{
 		DString dstr = dstring::temp_with_capacity(self.path_string.len + 1 + filename.len);
 		dstr.append(self.path_string);
@@ -193,7 +193,7 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 	};
 }
 
-fn Path? Path.tappend(self, String filename) => self.append(tmem(), filename);
+fn Path? Path.tappend(self, String filename) => self.append(tmem, filename);
 
 fn usz? start_of_base_name(String str, PathEnv path_env) @local
 {
@@ -232,7 +232,7 @@ fn bool? Path.is_absolute(self)
 }
 
 
-fn Path? String.to_absolute_path(self, Allocator allocator) => @pool(allocator)
+fn Path? String.to_absolute_path(self, Allocator allocator) => @pool()
 {
 	return temp(self).absolute(allocator);
 }
@@ -247,14 +247,14 @@ fn Path? Path.absolute(self, Allocator allocator)
 	if (self.is_absolute()!) return new(allocator, path_str, self.env);
 	if (path_str == ".")
 	{
-		@pool(allocator)
+		@pool()
 		{
-			String cwd = os::getcwd(tmem())!;
+			String cwd = os::getcwd(tmem)!;
 			return new(allocator, cwd, self.env);
 		};
 	}
 	$if DEFAULT_ENV == WIN32:
-		@pool(allocator)
+		@pool()
 		{
 			const usz BUFFER_LEN = 4096;
 			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
@@ -263,17 +263,17 @@ fn Path? Path.absolute(self, Allocator allocator)
 			return { string::from_wstring(allocator, buffer), WIN32, allocator };
 		};
 	$else
-		String cwd = os::getcwd(tmem())!;
-		return (Path){ cwd, self.env, tmem() }.append(allocator, path_str)!;
+		String cwd = os::getcwd(tmem)!;
+		return (Path){ cwd, self.env, tmem }.append(allocator, path_str)!;
 	$endif
 }
 
-fn String? String.file_basename(self, Allocator allocator) => @pool(allocator)
+fn String? String.file_basename(self, Allocator allocator) => @pool()
 {
 	return temp(self).basename().copy(allocator);
 }
 
-fn String? String.file_tbasename(self) => self.file_basename(tmem());
+fn String? String.file_tbasename(self) => self.file_basename(tmem);
 
 fn String Path.basename(self)
 {
@@ -283,9 +283,9 @@ fn String Path.basename(self)
 	return path_str[basename_start..];
 }
 
-fn String? String.path_tdirname(self) => self.path_dirname(tmem());
+fn String? String.path_tdirname(self) => self.path_dirname(tmem);
 
-fn String? String.path_dirname(self, Allocator allocator) => @pool(allocator)
+fn String? String.path_dirname(self, Allocator allocator) => @pool()
 {
 	return temp(self).dirname().copy(allocator);
 }
@@ -347,7 +347,7 @@ fn Path? String.to_path(self, Allocator allocator)
 
 fn Path? String.to_tpath(self)
 {
-	return new(tmem(), self);
+	return new(tmem, self);
 }
 
 fn usz? volume_name_len(String path, PathEnv path_env) @local

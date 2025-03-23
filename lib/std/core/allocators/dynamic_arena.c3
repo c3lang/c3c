@@ -16,7 +16,7 @@ struct DynamicArenaAllocator (Allocator)
  @param [&inout] allocator
  @require page_size >= 128
 *>
-fn void DynamicArenaAllocator.init(&self, usz page_size, Allocator allocator)
+fn void DynamicArenaAllocator.init(&self, Allocator allocator, usz page_size)
 {
 	self.page = null;
 	self.unused_page = null;
@@ -110,9 +110,8 @@ fn void*? DynamicArenaAllocator.resize(&self, void* old_pointer, usz size, usz a
 	return new_mem;
 }
 
-fn void DynamicArenaAllocator.reset(&self, usz mark = 0) @dynamic
+fn void DynamicArenaAllocator.reset(&self)
 {
-	assert(mark == 0, "Unexpectedly reset dynamic arena allocator with mark %d", mark);
 	DynamicArenaPage* page = self.page;
 	DynamicArenaPage** unused_page_ptr = &self.unused_page;
 	while (page)

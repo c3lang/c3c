@@ -25,8 +25,8 @@ fn char[]? decode(Allocator allocator, char[] code)
 	return data[:decode_bytes(code, data)!];
 }
 
-fn String tencode(char[] code) @inline => encode(tmem(), code);
-fn char[]? tdecode(char[] code) @inline => decode(tmem(), code);
+fn String tencode(char[] code) @inline => encode(tmem, code);
+fn char[]? tdecode(char[] code) @inline => decode(tmem, code);
 
 
 <*

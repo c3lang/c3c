@@ -40,8 +40,8 @@ fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, B
 	return decode_buffer(src, dst, padding, alphabet);
 }
 
-fn String? tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
-fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
+fn String? tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem, code, padding, alphabet);
+fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(tmem, code, padding, alphabet);
 
 <*
  Calculate the length in bytes of the decoded data.

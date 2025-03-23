@@ -204,7 +204,7 @@ fn void? backtrace_add_element(Allocator allocator, BacktraceList *list, void* a
 		return;
 	}
 
-	@pool(allocator)
+	@pool()
 	{
 		Linux_Dl_info info;
 		if (dladdr(addr, &info) == 0)
@@ -227,7 +227,7 @@ fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 		}
 		list.free();
 	}
-	@pool(allocator)
+	@pool()
 	{
 		foreach (addr : backtrace)
 		{
