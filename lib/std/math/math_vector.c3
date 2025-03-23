@@ -53,8 +53,14 @@ fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v
 
 /* determinants */
 macro float[<*>].determinant2(self, float[<*>] b) => determinant2(self,b);
+macro double[<*>].determinant2(self, double[<*>] b) => determinant2(self,b);
+
 macro float[<*>].determinant3(self, float[<*>] b, float[<*>] c) => determinant3(self, b, c);
+macro double[<*>].determinant3(self, double[<*>] b, double[<*>] c) => determinant3(self, b, c);
+
 macro float[<*>].determinant4(self, float[<*>] b, float[<*>] c, float[<*>] d) => determinant4(self, b, c, d);
+macro double[<*>].determinant4(self, double[<*>] b, double[<*>] c, double[<*>] d) => determinant4(self, b, c, d);
+
 /* laplace */
 macro float[<*>].laplace2(self) => laplace2(self);
 macro float[<*>].laplace3(self, float[<*>] b) => laplace3(self, b);
