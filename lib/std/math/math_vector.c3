@@ -63,12 +63,23 @@ macro double[<*>].determinant4(self, double[<*>] b, double[<*>] c, double[<*>] d
 
 /* laplace */
 macro float[<*>].laplace2(self) => laplace2(self);
+macro double[<*>].laplace2(self) => laplace2(self);
+
 macro float[<*>].laplace3(self, float[<*>] b) => laplace3(self, b);
+macro double[<*>].laplace3(self, double[<*>] b) => laplace3(self, b);
+
 macro float[<*>].laplace4(self, float[<*>] b, float[<*>] c) => laplace4(self, b, c);
+macro double[<*>].laplace4(self, double[<*>] b, double[<*>] c) => laplace4(self, b, c);
+
 /* cross[2,3,4] products */
 macro float[<*>].cross2(self, uint winding = 0x901) => cross2(self, winding);
+macro double[<*>].cross2(self, uint winding = 0x901) => cross2(self, winding);
+
 macro float[<*>].cross3(self, float[<*>] other) => cross3(self, other);
+macro double[<*>].cross3(self, double[<*>] other) => cross3(self, other);
+
 macro float[<*>].cross4(self, float[<*>] b, float[<*>] c) => cross4(self, b, c);
+macro double[<*>].cross4(self, double[<*>] b, double[<*>] c) => cross4(self, b, c);
 
 macro determinant2(a, b)       => ({ 1,-1        } * a.xy   * laplace2(b                   )).sum();
 macro determinant3(a, b, c)    => ({ 1,-1, 1     } * a.xyz  * laplace3(b.xyz,c.xyz         )).sum();
