@@ -216,9 +216,9 @@ fn String String.strip(self, String prefix)
 *>
 fn String String.strip_end(self, String suffix)
 {
-	if (!suffix.len || !string.ends_with(suffix)) return string;
+	if (!suffix.len || !self.ends_with(suffix)) return self;
 	// Note that this is the safe way if we want to support zero length.
-	return string[:(string.len - suffix.len)];
+	return string[:(self.len - suffix.len)];
 }
 
 <*
@@ -241,7 +241,7 @@ fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 
 	bool no_more = false;
 	while (!no_more)
 	{
-		usz? index = i == max - 1 ? NOT_FOUND? : s.index_of(delimiter);
+		usz? index = i == max - 1 ? NOT_FOUND? : self.index_of(delimiter);
 		String res @noinit;
 		if (try index)
 		{
@@ -434,13 +434,13 @@ fn usz? String.rindex_of_char(self, char character)
 *>
 fn usz? String.index_of(self, String word)
 {
-	usz needed = needle.len;
+	usz needed = word.len;
 	if (needed > 0 && self.len >= needed)
 	{
-		char first = needle[0];
+		char first = word[0];
 		foreach (i, c: self[..^needed])
 		{
-			if (c == first && self[i:needed] == needle) return i;
+			if (c == first && self[i:needed] == word) return i;
 		}
 	}
 	return NOT_FOUND?;
@@ -648,7 +648,7 @@ fn StringIterator String.iterator(self)
 *>
 fn String String.to_upper_tcopy(self)
 {
-	return s.to_upper_copy(tmem);
+	return self.to_upper_copy(tmem);
 }
 
 fn String? from_utf32(Allocator allocator, Char32[] utf32)
