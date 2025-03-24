@@ -1,5 +1,5 @@
 module std::core::mem::allocator;
-
+import std::math;
 
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;

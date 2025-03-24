@@ -5738,15 +5738,6 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	bool always_inline = false;
 	FunctionPrototype *prototype;
 
-	// 1. Dynamic dispatch.
-	if (expr->call_expr.is_dynamic_dispatch)
-	{
-		ASSERT(arg_count);
-		Expr *any_val = args[0];
-		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
-		args[0] = any_val->inner_expr;
-	}
-
 	if (!expr->call_expr.is_func_ref)
 	{
 		// Call through a pointer.

@@ -1974,7 +1974,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		expr->call_expr.must_use = sig->attrs.nodiscard || (is_optional_return && !sig->attrs.maydiscard);
 	}
 	expr->type = type_add_optional(rtype, optional);
-
+	if (expr->call_expr.is_dynamic_dispatch)
+	{
+		Expr *any_val = expr->call_expr.arguments[0];
+		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
+		*any_val = *(any_val->inner_expr);
+	}
 	return true;
 }
 
