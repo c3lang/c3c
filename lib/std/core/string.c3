@@ -218,7 +218,7 @@ fn String String.strip_end(self, String suffix)
 {
 	if (!suffix.len || !self.ends_with(suffix)) return self;
 	// Note that this is the safe way if we want to support zero length.
-	return string[:(self.len - suffix.len)];
+	return self[:(self.len - suffix.len)];
 }
 
 <*
