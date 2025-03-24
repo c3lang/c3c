@@ -120,101 +120,101 @@ fn String join(Allocator allocator, String[] s, String joiner)
 <*
  Remove characters from the front and end of a string.
 
- @param [in] string : `The string to trim`
+ @param [in] self : `The string to trim`
  @param [in] to_trim : `The set of characters to trim, defaults to whitespace`
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim(string, String to_trim = "\t\n\r ")
+fn String String.trim(self, String to_trim = "\t\n\r ")
 {
-    return string.trim_left(to_trim).trim_right(to_trim);
+    return self.trim_left(to_trim).trim_right(to_trim);
 }
 
 <*
  Remove characters from the front of a string.
 
- @param [in] string : `The string to trim`
+ @param [in] self : `The string to trim`
  @param [in] to_trim : `The set of characters to trim, defaults to whitespace`
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_left(string, String to_trim = "\t\n\r ")
+fn String String.trim_left(self, String to_trim = "\t\n\r ")
 {
 	usz start = 0;
-	usz len = string.len;
-	while (start < len && char_in_set(string[start], to_trim)) start++;
-	if (start == len) return string[:0];
-	return string[start..];
+	usz len = self.len;
+	while (start < len && char_in_set(self[start], to_trim)) start++;
+	if (start == len) return self[:0];
+	return self[start..];
 }
 
 <*
  Remove characters from the end of a string.
 
- @param [in] string : `The string to trim`
+ @param [in] self : `The string to trim`
  @param [in] to_trim : `The set of characters to trim, defaults to whitespace`
  @pure
  @return `a substring of the string passed in`
 *>
-fn String String.trim_right(string, String to_trim = "\t\n\r ")
+fn String String.trim_right(self, String to_trim = "\t\n\r ")
 {
-	usz len = string.len;
-	while (len > 0 && char_in_set(string[len - 1], to_trim)) len--;
-	return string[:len];
+	usz len = self.len;
+	while (len > 0 && char_in_set(self[len - 1], to_trim)) len--;
+	return self[:len];
 }
 
 <*
  Check if the String starts with the delimiter.
 
- @param [in] string
+ @param [in] self
  @param [in] delimiter
  @pure
  @return `'true' if the string starts with the delimiter`
 *>
-fn bool String.starts_with(string, String delimiter)
+fn bool String.starts_with(self, String delimiter)
 {
-	if (delimiter.len > string.len) return false;
+	if (delimiter.len > self.len) return false;
 	if (!delimiter.len) return true;
-	return string[:delimiter.len] == delimiter;
+	return self[:delimiter.len] == delimiter;
 }
 
 <*
  Check if the String ends with the delimiter.
 
- @param [in] string
+ @param [in] self
  @param [in] delimiter
  @pure
  @return `'true' if the string ends with the delimiter`
 *>
-fn bool String.ends_with(string, String delimiter)
+fn bool String.ends_with(self, String delimiter)
 {
-	if (delimiter.len > string.len) return false;
+	if (delimiter.len > self.len) return false;
 	if (!delimiter.len) return true;
-	return string[^delimiter.len..] == delimiter;
+	return self[^delimiter.len..] == delimiter;
 }
 
 <*
  Strip the front of the string if the prefix exists.
 
- @param [in] string
+ @param [in] self
  @param [in] prefix
  @pure
  @return `the substring with the prefix removed`
 *>
-fn String String.strip(string, String prefix)
+fn String String.strip(self, String prefix)
 {
-	if (!prefix.len || !string.starts_with(prefix)) return string;
-	return string[prefix.len..];
+	if (!prefix.len || !self.starts_with(prefix)) return self;
+	return self[prefix.len..];
 }
 
 <*
  Strip the end of the string if the suffix exists.
 
- @param [in] string
+ @param [in] self
  @param [in] suffix
  @pure
  @return `the substring with the suffix removed`
 *>
-fn String String.strip_end(string, String suffix)
+fn String String.strip_end(self, String suffix)
 {
 	if (!suffix.len || !string.ends_with(suffix)) return string;
 	// Note that this is the safe way if we want to support zero length.
@@ -224,7 +224,7 @@ fn String String.strip_end(string, String suffix)
 <*
  Split a string into parts, e.g "a|b|c" split with "|" yields { "a", "b", "c" }
 
- @param [in] s
+ @param [in] self
  @param [in] delimiter
  @param max : "Max number of elements, 0 means no limit, defaults to 0"
  @param skip_empty : "True to skip empty elements"
@@ -233,7 +233,7 @@ fn String String.strip_end(string, String suffix)
  @require delimiter.len > 0 : "The delimiter must be at least 1 character long"
  @ensure return.len > 0
 *>
-fn String[] String.split(s, Allocator allocator, String delimiter, usz max = 0, bool skip_empty = false)
+fn String[] String.split(self, Allocator allocator, String delimiter, usz max = 0, bool skip_empty = false)
 {
 	usz capacity = 16;
 	usz i = 0;
@@ -245,12 +245,12 @@ fn String[] String.split(s, Allocator allocator, String delimiter, usz max = 0, 
 		String res @noinit;
 		if (try index)
 		{
-			res = s[:index];
-			s = s[index + delimiter.len..];
+			res = self[:index];
+			self = self[index + delimiter.len..];
 		}
 		else
 		{
-			res = s;
+			res = self;
 			no_more = true;
 		}
 		if (!res.len && skip_empty)
