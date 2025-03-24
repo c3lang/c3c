@@ -52,7 +52,7 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 	switch (arg.type)
 	{
 		case bool:
-			return *(uint128*)arg;
+			return (uint128)*(bool*)arg;
 		case ichar:
 			int val = *(ichar*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;

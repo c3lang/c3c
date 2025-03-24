@@ -254,6 +254,7 @@ typedef struct
 	bool is_pure : 1;
 	bool noreturn : 1;
 	bool always_const : 1;
+	uint8_t format : 8;
 } CalleeAttributes;
 
 typedef struct

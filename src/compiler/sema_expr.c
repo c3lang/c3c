@@ -1518,7 +1518,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	unsigned vaarg_index = sig->vararg_index;
 	Variadic variadic = sig->variadic;
 	Decl **decl_params = callee->params;
-
+	int format_index = (int)sig->attrs.format - 1;
 	// If this is a type call, then we have an implicit first argument.
 	if (callee->struct_var)
 	{
@@ -1811,6 +1811,97 @@ SPLAT_NORMAL:;
 		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
 	}
 	call->call_expr.arguments = actual_args;
+	if (format_index >= 0) goto CHECK_FORMAT;
+	return true;
+CHECK_FORMAT:;
+	// Check
+	Expr *expr = actual_args[format_index];
+	if (!sema_cast_const(expr) || call->call_expr.va_is_splat) return true;
+	assert(expr_is_const_string(expr));
+	const char *data = expr->const_expr.bytes.ptr;
+	size_t len = expr->const_expr.bytes.len;
+	size_t idx = 0;
+	Expr **vaargs = call->call_expr.varargs;
+	unsigned vacount = vec_size(vaargs);
+	for (size_t i = 0; i < len; i++)
+	{
+		if (data[i] != '%') continue;
+		i++;
+		char c = data[i];
+		if (c == '%') continue;
+		if (idx == vacount)
+		{
+			RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments provided for the formatting string.");
+		}
+		if (c == '.' && data[++i] == '*')
+		{
+			idx++;
+		}
+		expr = vaargs[idx];
+		assert(expr->expr_kind == EXPR_MAKE_ANY);
+		Type *type = expr->make_any_expr.typeid->const_expr.typeid;
+		type = type_flatten(type);
+		while (true)
+		{
+			switch (c)
+			{
+				case 's':
+					goto NEXT;
+				case 'c':
+					if (!type_is_integer(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here.");
+					}
+					goto NEXT;
+				case 'd':
+				case 'X':
+				case 'x':
+				case 'B':
+				case 'b':
+				case 'o':
+				case 'a':
+				case 'A':
+				case 'F':
+				case 'f':
+				case 'e':
+				case 'E':
+				case 'g':
+				case 'G':
+					if (!type_is_number_or_bool(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
+					}
+					goto NEXT;
+				case 'p':
+					if (!type_is_pointer(type) && !type_is_integer(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
+					}
+					goto NEXT;
+				case 'H':
+				case 'h':
+					if (!type_flat_is_char_array(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected a char array here.");
+					}
+					goto NEXT;
+				case '\0':
+					goto DONE;
+				case '+':
+				case '-':
+				default:
+					break;
+			}
+			c = data[++i];
+		}
+NEXT:
+		idx++;
+	}
+DONE:
+	if (idx < vacount)
+	{
+		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too many arguments were provided for the formatting string.");
+	}
 	return true;
 NO_MATCH_REF:
 	*no_match_ref = true;

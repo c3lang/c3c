@@ -1097,6 +1097,7 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 	// Check return type
 	ASSERT(sig->rtype || sig->is_macro);
 	Type *rtype = NULL;
+	int format_index = (int)sig->attrs.format - 1;
 	if (sig->rtype)
 	{
 		TypeInfo *rtype_info = type_infoptr(sig->rtype);
@@ -1180,6 +1181,22 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 								type_to_error_string(method_parent->type), decl->name, type_to_error_string(method_parent->type));
 	}
 
+	if (format_index >= 0)
+	{
+		if (format_index >= param_count)
+		{
+			RETURN_SEMA_ERROR(decl, "The format '@format()' index was out of range.");
+		}
+		if (sig->variadic != VARIADIC_ANY)
+		{
+			RETURN_SEMA_ERROR(decl, "'@format()' is only valid for a function or macro with 'args...' style vaargs.");
+		}
+		if (sig->vararg_index == format_index)
+		{
+			RETURN_SEMA_ERROR(decl, "The format string cannot be a vaarg parameter.");
+		}
+	}
+
 	// Check parameters
 	for (unsigned i = 0; i < param_count; i++)
 	{
@@ -1231,6 +1248,15 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 			                                     : RESOLVE_TYPE_DEFAULT)) return decl_poison(param);
 			param->type = type_info->type;
 		}
+		if (i == format_index)
+		{
+			if (!type_info || type_info->type->canonical != type_string)
+			{
+				SourceSpan span = type_info ? type_info->span : param->span;
+				sema_error_at(context, span, "The '@format()' format string must be be of type 'String'.");
+				return decl_poison(param);
+			}
+		}
 		if (type_info && param->var.no_alias && !type_is_pointer(param->type) && type_flatten(param->type)->type_kind != TYPE_SLICE)
 		{
 			SEMA_ERROR(param, "The parameter was set to @noalias, but it was neither a slice nor a pointer. You need to either remove '@noalias' or use pointer/slice type.");
@@ -1239,6 +1265,11 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		switch (var_kind)
 		{
 			case VARDECL_PARAM_EXPR:
+				if (i == format_index)
+				{
+					SEMA_ERROR(param, "'@format()' cannot be used with lazy arguments, please remove '@format' or make this a regular parameter.");
+					return decl_poison(param);
+				}
 				if (!is_macro)
 				{
 					SEMA_ERROR(param, "Only regular parameters are allowed for functions.");
@@ -2486,6 +2517,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
+			[ATTRIBUTE_FORMAT] = ATTR_FUNC | ATTR_MACRO | ATTR_FNTYPE,
 			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
@@ -2740,6 +2772,37 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			decl->func_decl.attr_finalizer = true;
 			// Ugly
 			goto PARSE;
+		case ATTRIBUTE_FORMAT:
+			if (args != 1) RETURN_SEMA_ERROR(attr, "'@format' expects the index of the format string as the argument, e.g. '@format(1)'.");
+			if (!sema_analyse_expr(context, expr)) return false;
+			if (!type_is_integer(expr->type) || !sema_cast_const(expr))
+			{
+				RETURN_SEMA_ERROR(expr, "Expected an integer compile time constant value.");
+			}
+			else
+			{
+				Int i = expr->const_expr.ixx;
+				if (int_is_neg(i) || int_icomp(i, 127, BINARYOP_GT))
+				{
+					RETURN_SEMA_ERROR(expr, "The index must be between 0 and 127.");
+				}
+				uint16_t val = (uint16_t)i.i.low;
+				switch (decl->decl_kind)
+				{
+					case DECL_FUNC:
+					case DECL_MACRO:
+						if (decl->func_decl.signature.attrs.format) break;
+						decl->func_decl.signature.attrs.format = val + 1;
+						return true;
+					case DECL_FNTYPE:
+						if (decl->fntype_decl.attrs.format) break;
+						decl->fntype_decl.attrs.format = val + 1;
+						return true;
+					default:
+						UNREACHABLE;
+				}
+				RETURN_SEMA_ERROR(attr, "'@format' may not appear twice.");
+			}
 		case ATTRIBUTE_LINK:
 			if (args < 1) RETURN_SEMA_ERROR(attr, "'@link' requires at least one argument.");
 			Expr *cond = args > 1 ? attr->exprs[0] : NULL;

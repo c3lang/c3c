@@ -139,7 +139,7 @@ macro usz? fprint(out, x)
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? fprintf(OutStream out, String format, args...)
+fn usz? fprintf(OutStream out, String format, args...) @format(1)
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
@@ -154,7 +154,7 @@ fn usz? fprintf(OutStream out, String format, args...)
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? fprintfn(OutStream out, String format, args...) @maydiscard
+fn usz? fprintfn(OutStream out, String format, args...) @format(1) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putstream_fn, &out);
@@ -249,7 +249,7 @@ fn void? out_putchar_fn(void* data @unused, char c) @private
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? printf(String format, args...) @maydiscard
+fn usz? printf(String format, args...) @format(0) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);
@@ -263,7 +263,7 @@ fn usz? printf(String format, args...) @maydiscard
  @param [in] format : `The printf-style format string`
  @return `the number of characters printed`
 *>
-fn usz? printfn(String format, args...) @maydiscard
+fn usz? printfn(String format, args...) @format(0) @maydiscard
 {
 	Formatter formatter;
 	formatter.init(&out_putchar_fn);

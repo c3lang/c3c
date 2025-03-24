@@ -448,7 +448,7 @@ fn void test_file(Path file_path)
 	if (result != 0 && result != 1)
 	{
 		(void)io::copy_to(&&compilation.stdout(), &out);
-		io::printfn("FAILED - Error(%s): ", result, out);
+		io::printfn("FAILED - Error(%s): %s", result, out);
 		return;
 	}
 	if (!parse_result(out, settings)) return;

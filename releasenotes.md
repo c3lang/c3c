@@ -43,7 +43,8 @@
 - Use `@pool_init()` to set up a temp pool on a thread. Only the main thread has implicit temp pool setup.
 - `tmem` is now a variable.
 - Compile test and benchmark functions when invoking `--lsp` #2058.
- 
+- Added `@format` attribute for compile time printf validation #2057.
+
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
 - Post and pre-decrement operators switched places for vector elements #2010.
@@ -57,6 +58,7 @@
 - Bug due to missing cast when doing `$i[$x] = $z`.
 - Incorrectly allowed getting pointer to a macro #2049.
 - &self not runtime null-checked in macro #1827.
+- Bug when printing a boolean value as an integer using printf.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
