@@ -1867,7 +1867,7 @@ CHECK_FORMAT:;
 				case 'E':
 				case 'g':
 				case 'G':
-					if (!type_is_number_or_bool(type))
+					if (!type_is_number_or_bool(type) && !type_is_pointer_type(type))
 					{
 						if (type->type_kind == TYPE_ENUM)
 						{
@@ -1877,7 +1877,7 @@ CHECK_FORMAT:;
 					}
 					goto NEXT;
 				case 'p':
-					if (!type_is_pointer(type) && !type_is_integer(type))
+					if (!type_is_pointer_type(type) && !type_is_integer(type))
 					{
 						RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
 					}
