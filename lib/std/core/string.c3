@@ -163,33 +163,33 @@ fn String String.trim_right(self, String to_trim = "\t\n\r ")
 }
 
 <*
- Check if the String starts with the delimiter.
+ Check if the String starts with the prefix.
 
  @param [in] self
- @param [in] delimiter
+ @param [in] prefix
  @pure
- @return `'true' if the string starts with the delimiter`
+ @return `'true' if the string starts with the prefix`
 *>
-fn bool String.starts_with(self, String delimiter)
+fn bool String.starts_with(self, String prefix)
 {
-	if (delimiter.len > self.len) return false;
-	if (!delimiter.len) return true;
-	return self[:delimiter.len] == delimiter;
+	if (prefix.len > self.len) return false;
+	if (!prefix.len) return true;
+	return self[:prefix.len] == prefix;
 }
 
 <*
- Check if the String ends with the delimiter.
+ Check if the String ends with the suffix.
 
  @param [in] self
- @param [in] delimiter
+ @param [in] suffix
  @pure
- @return `'true' if the string ends with the delimiter`
+ @return `'true' if the string ends with the suffix`
 *>
-fn bool String.ends_with(self, String delimiter)
+fn bool String.ends_with(self, String suffix)
 {
-	if (delimiter.len > self.len) return false;
-	if (!delimiter.len) return true;
-	return self[^delimiter.len..] == delimiter;
+	if (suffix.len > self.len) return false;
+	if (!suffix.len) return true;
+	return self[^suffix.len..] == suffix;
 }
 
 <*
@@ -425,22 +425,22 @@ fn usz? String.rindex_of_char(self, char character)
  Find the index of the first incidence of a string.
 
  @param [in] self
- @param [in] word
+ @param [in] substr
  @pure
  @ensure return < self.len
- @require word.len > 0 : "The string must be len 1 or more"
- @return "the index of the word"
- @return? NOT_FOUND : "if the word cannot be found"
+ @require substr.len > 0 : "The string must be len 1 or more"
+ @return "the index of the substring"
+ @return? NOT_FOUND : "if the substring cannot be found"
 *>
-fn usz? String.index_of(self, String word)
+fn usz? String.index_of(self, String substr)
 {
-	usz needed = word.len;
+	usz needed = substr.len;
 	if (needed > 0 && self.len >= needed)
 	{
-		char first = word[0];
+		char first = substr[0];
 		foreach (i, c: self[..^needed])
 		{
-			if (c == first && self[i:needed] == word) return i;
+			if (c == first && self[i : needed] == substr) return i;
 		}
 	}
 	return NOT_FOUND?;
@@ -450,22 +450,22 @@ fn usz? String.index_of(self, String word)
  Find the index of the last incidence of a string.
 
  @param [in] self
- @param [in] word
+ @param [in] substr
  @pure
  @ensure return < self.len
- @require word.len > 0 : "The word must be len 1 or more"
- @return "the index of the word"
- @return? NOT_FOUND : "if the word cannot be found"
+ @require substr.len > 0 : "The substring must be len 1 or more"
+ @return "the index of the substring"
+ @return? NOT_FOUND : "if the substring cannot be found"
 *>
-fn usz? String.rindex_of(self, String word)
+fn usz? String.rindex_of(self, String substr)
 {
-	usz needed = word.len;
+	usz needed = substr.len;
 	if (needed > 0 && self.len >= needed)
 	{
-		char first = word[0];
+		char first = substr[0];
 		foreach_r (i, c: self[..^needed])
 		{
-			if (c == first && self[i:needed] == word) return i;
+			if (c == first && self[i : needed] == substr) return i;
 		}
 	}
 	return NOT_FOUND?;
@@ -696,15 +696,15 @@ fn usz String.utf8_codepoints(s)
 <*
  @require (base <= 10 && base > 1) || base == 16 : "Unsupported base"
 *>
-macro String.to_integer(string, $Type, int base = 10)
+macro String.to_integer(self, $Type, int base = 10)
 {
-	usz len = string.len;
+	usz len = self.len;
 	usz index = 0;
-	char* ptr = string.ptr;
+	char* ptr = self.ptr;
 	while (index < len && ascii::is_blank_m(ptr[index])) index++;
 	if (len == index) return EMPTY_STRING?;
 	bool is_negative;
-	switch (string[index])
+	switch (self[index])
 	{
 		case '-':
 			if ($Type.min == 0) return NEGATIVE_VALUE?;
@@ -717,11 +717,11 @@ macro String.to_integer(string, $Type, int base = 10)
 	}
 	if (len == index) return MALFORMED_INTEGER?;
 	$Type base_used = ($Type)base;
-	if (string[index] == '0' && base == 10)
+	if (self[index] == '0' && base == 10)
 	{
 		index++;
 		if (index == len) return ($Type)0;
-		switch (string[index])
+		switch (self[index])
 		{
 			case 'x':
 			case 'X':
@@ -743,7 +743,7 @@ macro String.to_integer(string, $Type, int base = 10)
 	$Type value = 0;
 	while (index != len)
 	{
-		char c = string[index++];
+		char c = self[index++];
 		switch
 		{
 			case base_used != 16 || c < 'A':  c -= '0';
