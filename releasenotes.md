@@ -44,6 +44,7 @@
 - `tmem` is now a variable.
 - Compile test and benchmark functions when invoking `--lsp` #2058.
 - Added `@format` attribute for compile time printf validation #2057.
+- Formatter no longer implicitly converts enums to ordinals.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).

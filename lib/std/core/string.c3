@@ -46,7 +46,7 @@ macro Char16[] @char16(String $string) @builtin
 
  @param [in] fmt : `The formatting string`
 *>
-fn ZString tformat_zstr(String fmt, args...)
+fn ZString tformat_zstr(String fmt, args...) @format(0)
 {
 	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);
@@ -59,7 +59,7 @@ fn ZString tformat_zstr(String fmt, args...)
  @param [inout] allocator : `The allocator to use`
  @param [in] fmt : `The formatting string`
 *>
-fn String format(Allocator allocator, String fmt, args...) => @pool()
+fn String format(Allocator allocator, String fmt, args...) @format(1) => @pool()
 {
 	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);
@@ -71,7 +71,7 @@ fn String format(Allocator allocator, String fmt, args...) => @pool()
 
  @param [in] fmt : `The formatting string`
 *>
-fn String tformat(String fmt, args...)
+fn String tformat(String fmt, args...) @format(0)
 {
 	DString str = dstring::temp_with_capacity(fmt.len + args.len * 8);
 	str.appendf(fmt, ...args);

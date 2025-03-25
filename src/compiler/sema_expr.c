@@ -1869,6 +1869,10 @@ CHECK_FORMAT:;
 				case 'G':
 					if (!type_is_number_or_bool(type))
 					{
+						if (type->type_kind == TYPE_ENUM)
+						{
+							RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type));
+						}
 						RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
 					}
 					goto NEXT;

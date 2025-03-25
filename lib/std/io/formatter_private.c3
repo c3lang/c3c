@@ -43,7 +43,6 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 			*is_neg = false;
 			return (uint128)(uptr)*(void**)arg.ptr;
 		case TypeKind.DISTINCT:
-		case TypeKind.ENUM:
 			return int_from_any(arg.as_inner(), is_neg);
 		default:
 			break;

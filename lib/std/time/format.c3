@@ -45,18 +45,18 @@ fn String format(Allocator allocator, DateTimeFormat type, TzDateTime dt)
 			return string::format(allocator, "%s, %02d %s %d %02d:%02d:%02d %s", dt.weekday.abbrev, dt.day, dt.month.abbrev, dt.year, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix(dt.gmt_offset));
 		case RFC3339:
 			dt = dt.to_gmt_offset(0);
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02dZ", dt.year, dt.month + 1, dt.day, dt.hour, dt.min, dt.sec);
+			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02dZ", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec);
 		case RFC3339Z:
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d%s", dt.year, dt.month + 1, dt.day, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
+			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d%s", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
 		case RFC3339MS:
 			dt = dt.to_gmt_offset(0);
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d.%dZ", dt.year, dt.month + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec);
+			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d.%dZ", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec);
 		case RFC3339ZMS:
-			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d.%d%s", dt.year, dt.month + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
+			return string::format(allocator, "%04d-%02d-%02dT%02d:%02d:%02d.%d%s", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec, dt.usec, temp_numeric_tzsuffix_colon(dt.gmt_offset));
 		case DATETIME:
-			return string::format(allocator, "%04d-%02d-%02d %02d:%02d:%02d", dt.year, dt.month + 1, dt.day, dt.hour, dt.min, dt.sec);
+			return string::format(allocator, "%04d-%02d-%02d %02d:%02d:%02d", dt.year, dt.month.ordinal + 1, dt.day, dt.hour, dt.min, dt.sec);
 		case DATEONLY:
-			return string::format(allocator, "%04d-%02d-%02d", dt.year, dt.month + 1, dt.day);
+			return string::format(allocator, "%04d-%02d-%02d", dt.year, dt.month.ordinal + 1, dt.day);
 		case TIMEONLY:
 			return string::format(allocator, "%02d:%02d:%02d", dt.hour, dt.min, dt.sec);
 	}

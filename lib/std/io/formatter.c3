@@ -339,7 +339,7 @@ macro usz? @wrap_bad(Formatter* f, #action)
         	case INTERNAL_BUFFER_EXCEEDED:
         		return f.first_err(err)?;
         	default:
-			err = f.first_err(INVALID_ARGUMENT);
+				err = f.first_err(INVALID_ARGUMENT);
         		f.out_substr("<INVALID>")!;
         		return err?;
 		}
