@@ -403,3 +403,7 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 A huge **THANK YOU** goes out to all contributors and sponsors.
 
 A special thank you to sponsors [Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad) for going the extra mile.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=c3lang/c3c&type=Date)](https://www.star-history.com/#c3lang/c3c&Date)
