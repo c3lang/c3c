@@ -505,8 +505,8 @@ macro void @assert_leak($report = true; @body()) @builtin
 {
 	$if env::DEBUG_SYMBOLS || $feature(MEMORY_ASSERTS):
 		TrackingAllocator tracker;
-		tracker.init(allocator::thread_allocator);
-		Allocator old_allocator = allocator::thread_allocator;
+		tracker.init(mem);
+		Allocator old_allocator = mem;
 		allocator::thread_allocator = &tracker;
 		defer
 		{
@@ -515,7 +515,8 @@ macro void @assert_leak($report = true; @body()) @builtin
 			usz allocated = tracker.allocated();
 			if (allocated)
 			{
-				DString report = dstring::new();
+				DString report;
+				report.init(old_allocator);
 				defer report.free();
 				$if $report:
 					report.append_char('\n');
