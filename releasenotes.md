@@ -61,6 +61,7 @@
 - &self not runtime null-checked in macro #1827.
 - Bug when printing a boolean value as an integer using printf.
 - Show error when a generic module contains a self-generic type.
+- "Single module" was not enforced when creating a static library using as a project target.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.

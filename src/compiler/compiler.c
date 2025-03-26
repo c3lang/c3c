@@ -475,6 +475,10 @@ void compiler_compile(void)
 				   "- If you just want to output object files for later linking, use 'compile-only'.");
 	}
 
+	if (compiler.build.type == TARGET_TYPE_STATIC_LIB)
+	{
+		compiler.build.single_module = SINGLE_MODULE_ON;
+	}
 	switch (compiler.build.backend)
 	{
 		case BACKEND_C:
