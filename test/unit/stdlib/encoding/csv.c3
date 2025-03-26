@@ -2,7 +2,8 @@ module csv_test @test;
 import std::encoding::csv;
 import std::io;
 
-struct TestCase {
+struct TestCase
+{
 	String   input;
 	String[] want;
 	String   sep;
@@ -32,17 +33,33 @@ fn void csv_each_row()
 			","
 		},
 	};
-	foreach (t : tests) {
+	foreach (t : tests)
+	{
 		String[] want = t.want;
 
 		CsvReader r;
 		r.init((ByteReader){}.init(t.input), t.sep);
 		r.@each_row(; String[] row) {
-			foreach (i, s : row) {
-				assert(want.len > 0,
-					"more records than we want");
-				assert(s == want[0], "columns do not match; "
-					"got: '%s', want: '%s'", s, want[0]);
+			foreach (i, s : row)
+			{
+				assert(want.len > 0, "more records than we want");
+				assert(s == want[0], "columns do not match; got: '%s', want: '%s'", s, want[0]);
+				want = want[1..];
+			}
+		};
+		assert(want.len == 0, "not enough records found");
+	}
+	foreach (t : tests)
+	{
+		String[] want = t.want;
+		CsvReader r;
+
+		csv::@each_row((ByteReader){}.init(t.input), t.sep; String[] row)
+		{
+			foreach (i, s : row)
+			{
+				assert(want.len > 0, "more records than we want");
+				assert(s == want[0], "columns do not match; got: '%s', want: '%s'", s, want[0]);
 				want = want[1..];
 			}
 		};
