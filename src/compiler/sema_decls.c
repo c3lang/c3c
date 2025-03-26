@@ -4497,6 +4497,13 @@ Decl *sema_analyse_parameterized_identifier(SemaContext *c, Path *decl_path, con
 	Decl *alias = name_resolve.found;
 	ASSERT(alias);
 	Module *module = alias->unit->module;
+
+	if (c->unit->module->generic_module == module)
+	{
+		sema_error_at(c, span, "This identifier is recursively using %s.", module->name->module);
+		return poisoned_decl;
+	}
+
 	unsigned parameter_count = vec_size(module->parameters);
 	ASSERT(parameter_count > 0);
 	if (parameter_count != vec_size(params))

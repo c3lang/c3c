@@ -60,6 +60,7 @@
 - Incorrectly allowed getting pointer to a macro #2049.
 - &self not runtime null-checked in macro #1827.
 - Bug when printing a boolean value as an integer using printf.
+- Show error when a generic module contains a self-generic type.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
