@@ -28,6 +28,10 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Generate timestamped tag name
+        shell: pwsh
+        run: echo "TAG_NAME=latest-master-$(Get-Date -Format 'yyyyMMdd-HHmm')" | Out-File -Append -FilePath $env:GITHUB_ENV
+
       - name: CMake
         run: |
           cmake -B build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{ matrix.build_type }}
@@ -237,6 +241,9 @@ jobs:
         run: |
           sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
 
+      - name: Generate timestamped tag name
+        run: echo "TAG_NAME=latest-master-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
           wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
@@ -413,6 +420,9 @@ jobs:
       - name: Install common deps
         run: |
           sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+
+      - name: Generate timestamped tag name
+        run: echo "TAG_NAME=latest-master-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
       - name: Install Clang ${{matrix.llvm_version}}
         run: |
@@ -627,6 +637,9 @@ jobs:
           TMP_PATH=$(xcrun --show-sdk-path)/user/include
           echo "CPATH=$TMP_PATH" >> $GITHUB_ENV
 
+      - name: Generate timestamped tag name
+        run: echo "TAG_NAME=latest-master-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+
       - name: CMake
         if: matrix.llvm_version < 18
         run: |
@@ -794,8 +807,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: latest-master
-          release_name: latest-master
+          tag_name: ${{ env.TAG_NAME }}
+          release_name: ${{ env.TAG_NAME }}
           draft: false
           prerelease: true
           files: |
