@@ -794,8 +794,8 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
-          tag_name: latest
-          release_name: latest
+          tag_name: latest-master
+          release_name: latest-master
           draft: false
           prerelease: true
           files: |
