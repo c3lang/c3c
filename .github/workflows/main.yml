@@ -750,29 +750,6 @@ jobs:
     if: github.ref == 'refs/heads/master'
 
     steps:
-      - uses: actions/checkout@v4
-      - name: delete tag
-        continue-on-error: true
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.git.deleteRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'tags/latest',
-              sha: context.sha
-            })
-      - name: create tag
-        uses: actions/github-script@v6
-        with:
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'refs/tags/latest',
-              sha: context.sha
-            })
-
       - uses: actions/download-artifact@v4
       - run: cp -r lib c3-windows-Release
       - run: cp -r lib c3-windows-Debug
