@@ -788,7 +788,7 @@ jobs:
       - run: mv c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz c3-ubuntu-20-Debug/c3-ubuntu-20-debug.tar.gz
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
       - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
-      - run: echo "TAG_NAME=latest-master-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+      - run: echo "TAG_NAME=latest-0.7.0-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
       - id: create_release
         uses: softprops/action-gh-release@v2
