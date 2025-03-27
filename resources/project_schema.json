@@ -1,0 +1,246 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Project Configuration Schema for C3 project.json",
+  "description": "Schema for project.json configuration file based on C3 documentation",
+  "type": "object",
+  "properties": {
+    "langrev": {
+      "type": "string",
+      "description": "Language version of C3.",
+      "default": "1"
+    },
+    "warnings": {
+      "type": "array",
+      "description": "Warnings used for all targets.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dependency-search-paths": {
+      "type": "array",
+      "description": "Directories where C3 library files may be found.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "dependencies": {
+      "type": "array",
+      "description": "Libraries to use for all targets.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "authors": {
+      "type": "array",
+      "description": "Authors, optionally with email.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "version": {
+      "type": "string",
+      "description": "Version using semantic versioning."
+    },
+    "sources": {
+      "type": "array",
+      "description": "Sources compiled for all targets.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "c-sources": {
+      "type": "array",
+      "description": "C sources if the project also compiles C sources relative to the project file.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "c-include-dirs": {
+      "type": "array",
+      "description": "Include directories for C sources relative to the project file.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "output": {
+      "type": "string",
+      "description": "Output location, relative to project file."
+    },
+    "targets": {
+      "type": "object",
+      "description": "Architecture and OS target specific configurations.",
+      "additionalProperties": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "Executable or library type for the target.",
+            "enum": ["executable", "static-lib", "dynamic-lib"]
+          },
+          "dependencies": {
+            "type": "array",
+            "description": "Additional libraries for this target.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sources": {
+            "type": "array",
+            "description": "Additional sources for this target.",
+            "items": {
+              "type": "string"
+            }
+          },
+          "warnings": {
+            "type": "array",
+            "description": "Warnings specific to this target.",
+            "items": {
+              "type": "string"
+            }
+          }
+        },
+        "required": ["type"]
+      }
+    },
+    "cc": {
+      "type": "string",
+      "description": "C compiler to use for compiling C sources (if C sources are compiled together with C3 files).",
+      "default": "cc"
+    },
+    "cpu": {
+      "type": "string",
+      "description": "CPU name, used for optimizations in the LLVM backend.",
+      "default": "generic"
+    },
+    "debug-info": {
+      "type": "string",
+      "description": "Debug information level.",
+      "enum": ["none", "full", "line-tables"],
+      "default": "full"
+    },
+    "fp-math": {
+      "type": "string",
+      "description": "FP math behaviour.",
+      "enum": ["strict", "relaxed", "fast"],
+      "default": "strict"
+    },
+    "link-libc": {
+      "type": "boolean",
+      "description": "Link libc other default libraries.",
+      "default": true
+    },
+    "memory-env": {
+      "type": "string",
+      "description": "Memory environment.",
+      "enum": ["normal", "small", "tiny", "none"],
+      "default": "normal"
+    },
+    "opt": {
+      "type": "string",
+      "description": "Optimization setting.",
+      "enum": ["O0", "O1", "O2", "O3", "O4", "O5", "Os", "Oz"],
+      "default": "O0"
+    },
+    "optlevel": {
+      "type": "string",
+      "description": "Code optimization level.",
+      "enum": ["none", "less", "more", "max"],
+      "default": "none"
+    },
+    "optsize": {
+      "type": "string",
+      "description": "Code size optimization.",
+      "enum": ["none", "small", "tiny"],
+      "default": "none"
+    },
+    "reloc": {
+      "type": "string",
+      "description": "Relocation model.",
+      "enum": ["none", "pic", "PIC", "pie", "PIE"],
+      "default": "none"
+    },
+    "trap-on-wrap": {
+      "type": "boolean",
+      "description": "Trap on signed and unsigned integer wrapping for testing.",
+      "default": false
+    },
+    "safe": {
+      "type": "boolean",
+      "description": "Turn safety (contracts, runtime bounds checking, null pointer checks etc).",
+      "default": true
+    },
+    "single-module": {
+      "type": "boolean",
+      "description": "Compile all modules together, enables more inlining.",
+      "default": true
+    },
+    "soft-float": {
+      "type": "boolean",
+      "description": "Use / don't use soft float, value is otherwise target default.",
+      "default": false
+    },
+    "strip-unused": {
+      "type": "boolean",
+      "description": "Strip unused code and globals from the output.",
+      "default": true
+    },
+    "symtab": {
+      "type": "integer",
+      "description": "The size of the symtab, which limits the amount of symbols that can be used.",
+      "default": 1048576
+    },
+    "linker": {
+      "type": "string",
+      "description": "Use the system linker.",
+      "default": "cc"
+    },
+    "use-stdlib": {
+      "type": "boolean",
+      "description": "Include the standard library.",
+      "default": true
+    },
+    "x86cpu": {
+      "type": "string",
+      "description": "Set general level of x64 cpu.",
+      "enum": [
+        "baseline",
+        "ssse3",
+        "sse4",
+        "avx1",
+        "avx2-v1",
+        "avx2-v2",
+        "avx512",
+        "native"
+      ],
+      "default": "native"
+    },
+    "x86vec": {
+      "type": "string",
+      "description": "Set max type of vector use.",
+      "enum": ["none", "mmx", "sse", "avx", "avx512", "native"],
+      "default": "sse"
+    },
+    "features": {
+      "type": "array",
+      "description": "List of upper-case constants that can be tested for in the source code using $feature(NAME_OF_FEATURE).",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linker-search-paths": {
+      "type": "array",
+      "description": "This adds paths for the linker to search, when linking normal C libraries.",
+      "items": {
+        "type": "string"
+      }
+    },
+    "linked-libraries": {
+      "type": "array",
+      "description": "This is a list of C libraries to link to.",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": []
+}
