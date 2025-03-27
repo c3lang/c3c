@@ -750,6 +750,7 @@ jobs:
     if: github.ref == 'refs/heads/master'
 
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
       - run: cp -r lib c3-windows-Release
       - run: cp -r lib c3-windows-Debug
