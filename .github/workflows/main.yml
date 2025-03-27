@@ -749,6 +749,8 @@ jobs:
     runs-on: ubuntu-22.04
     needs: [build-linux, build-mac, build-linux-ubuntu20]
     if: github.ref == 'refs/heads/master'
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
