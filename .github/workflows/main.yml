@@ -16,7 +16,6 @@ jobs:
 
   build-msvc:
     runs-on: windows-latest
-    if: ${{ false }}
     strategy:
       # Don't abort runners if a single one fails
       fail-fast: false
@@ -747,7 +746,7 @@ jobs:
 
   release:
     runs-on: ubuntu-22.04
-    needs: [build-linux, build-mac, build-linux-ubuntu20]
+    needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu20]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
