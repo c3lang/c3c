@@ -769,7 +769,7 @@ jobs:
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
       - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
       - run: gh release delete latest-master --cleanup-tag -y || true
-      - run: echo "RELEASE_NAME=latest-0.7.0-prerelease-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
+      - run: echo "RELEASE_NAME=latest-0.7.0-rc-$(date +'%Y%m%d-%H%M')" >> $GITHUB_ENV
 
       - id: create_release
         uses: softprops/action-gh-release@v2
