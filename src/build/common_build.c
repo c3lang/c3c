@@ -1,5 +1,3 @@
-#include <iso646.h>
-
 #include "build_internal.h"
 #include "utils/common.h"
 #include <math.h>
