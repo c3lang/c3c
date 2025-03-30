@@ -9,7 +9,7 @@ enum Abc
 	OFKEOFK
 }
 
-distinct Bob = inline Abc;
+typedef Bob = inline Abc;
 fn void main()
 {
 	Abc y;

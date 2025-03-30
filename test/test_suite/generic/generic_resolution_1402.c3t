@@ -23,7 +23,7 @@ macro void print_it(...)
 module playground;
 import playground::bug;
 
-def MyFoo = Foo{int};
+alias MyFoo = Foo{int};
 
 fn void main(String[] args)
 {

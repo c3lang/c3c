@@ -1,8 +1,8 @@
 module foo;
 
-fault X, Y, Z;
+faultdef X, Y, Z;
 
 fn void main()
 {
-    anyfault foo;
+    fault foo;
 }

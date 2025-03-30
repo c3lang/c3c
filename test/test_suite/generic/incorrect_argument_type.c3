@@ -7,5 +7,5 @@ struct Foo
 module bar;
 import foo;
 
-def Bar = Foo{int, int}; // #error: Expected a value, not a type
-def Baz = Foo{5, 4}; // #error: Expected a type, not a value
+alias Bar = Foo{int, int}; // #error: Expected a value, not a type
+alias Baz = Foo{5, 4}; // #error: Expected a type, not a value

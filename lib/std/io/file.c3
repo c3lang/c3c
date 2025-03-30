@@ -183,9 +183,7 @@ fn char[]? load_buffer(String filename, char[] buffer)
 
 }
 
-fn char[]? load(Allocator allocator, String filename) => load_new(filename, allocator);
-
-fn char[]? load_new(String filename, Allocator allocator = allocator::heap())
+fn char[]? load(Allocator allocator, String filename)
 {
 	File file = open(filename, "rb")!;
 	defer (void)file.close();
@@ -201,12 +199,9 @@ fn char[]? load_new(String filename, Allocator allocator = allocator::heap())
 	return data[:len];
 }
 
-fn char[]? load_path_new(Path path, Allocator allocator = allocator::heap()) => load_new(path.str_view(), allocator);
+fn char[]? load_path(Allocator allocator, Path path) => load(allocator, path.str_view());
 
-fn char[]? load_temp(String filename)
-{
-	return load_new(filename, allocator::temp());
-}
+fn char[]? load_temp(String filename) => load(tmem, filename);
 
 fn char[]? load_path_temp(Path path) => load_temp(path.str_view());
 

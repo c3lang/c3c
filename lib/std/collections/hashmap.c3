@@ -61,7 +61,7 @@ fn HashMap* HashMap.init(&self, Allocator allocator, uint capacity = DEFAULT_INI
 *>
 fn HashMap* HashMap.tinit(&self, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init(tmem(), capacity, load_factor) @inline;
+	return self.init(tmem, capacity, load_factor) @inline;
 }
 
 <*
@@ -90,7 +90,7 @@ macro HashMap* HashMap.init_with_key_values(&self, Allocator allocator, ..., uin
 *>
 macro HashMap* HashMap.tinit_with_key_values(&self, ..., uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.tinit_with_key_values(tmem(), capacity, load_factor);
+	return self.tinit_with_key_values(tmem, capacity, load_factor);
 }
 
 <*
@@ -126,7 +126,7 @@ fn HashMap* HashMap.init_from_keys_and_values(&self, Allocator allocator, Key[] 
 *>
 fn HashMap* HashMap.tinit_from_keys_and_values(&self, Key[] keys, Value[] values, uint capacity = DEFAULT_INITIAL_CAPACITY, float load_factor = DEFAULT_LOAD_FACTOR)
 {
-	return self.init_from_keys_and_values(tmem(), keys, values, capacity, load_factor);
+	return self.init_from_keys_and_values(tmem, keys, values, capacity, load_factor);
 }
 
 <*
@@ -158,7 +158,7 @@ fn HashMap* HashMap.init_from_map(&self, Allocator allocator, HashMap* other_map
 *>
 fn HashMap* HashMap.tinit_from_map(&map, HashMap* other_map)
 {
-	return map.init_from_map(tmem(), other_map) @inline;
+	return map.init_from_map(tmem, other_map) @inline;
 }
 
 fn bool HashMap.is_empty(&map) @inline
@@ -287,7 +287,7 @@ fn void HashMap.free(&map)
 
 fn Key[] HashMap.tkeys(&self)
 {
-	return self.keys(tmem()) @inline;
+	return self.keys(tmem) @inline;
 }
 
 fn Key[] HashMap.keys(&self, Allocator allocator)
@@ -334,7 +334,7 @@ macro HashMap.@each_entry(map; @body(entry))
 
 fn Value[] HashMap.tvalues(&map)
 {
-	return map.values(tmem()) @inline;
+	return map.values(tmem) @inline;
 }
 
 fn Value[] HashMap.values(&self, Allocator allocator)
@@ -535,8 +535,8 @@ struct HashMapIterator
 	Entry* current_entry;
 }
 
-distinct HashMapValueIterator = HashMapIterator;
-distinct HashMapKeyIterator = HashMapIterator;
+typedef HashMapValueIterator = HashMapIterator;
+typedef HashMapKeyIterator = HashMapIterator;
 
 
 <*

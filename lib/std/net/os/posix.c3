@@ -4,7 +4,7 @@ import std::io, libc;
 const int F_GETFL = 3;
 const int F_SETFL = 4;
 
-distinct NativeSocket = inline Fd;
+typedef NativeSocket = inline Fd;
 
 struct Posix_pollfd
 {
@@ -13,7 +13,7 @@ struct Posix_pollfd
 	CUShort revents;
 }
 
-def Posix_nfds_t = CUInt;
+alias Posix_nfds_t = CUInt;
 
 extern fn CInt connect(NativeSocket socket, SockAddrPtr address, Socklen_t address_len);
 extern fn NativeSocket socket(AIFamily af, AISockType type, AIProtocol ip_protocol);
@@ -30,7 +30,7 @@ const CUShort POLLERR     = 0x0008;
 const CUShort POLLHUP     = 0x0010;
 const CUShort POLLNVAL    = 0x0020;
 
-fn anyfault convert_error(Errno error)
+fn fault convert_error(Errno error)
 {
 	switch (error)
 	{
@@ -51,7 +51,7 @@ fn anyfault convert_error(Errno error)
 	}
 }
 
-fn anyfault socket_error()
+fn fault socket_error()
 {
 	return convert_error(libc::errno());
 }

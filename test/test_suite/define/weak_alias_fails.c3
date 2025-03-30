@@ -1,19 +1,19 @@
 module std::math::vector;
-def Vec2f = float[<2>];
+alias Vec2f = float[<2>];
 
 module abc;
 import std::math;
-def Vec2f = std::math::vector::Vec2f @weak;
+alias Vec2f @weak = std::math::vector::Vec2f;
 fn Vec2f foo(Vec2f a) { return a * 2; }
 
 module gog;
 import std::math;
-def Vec2f = std::math::vector::Vec2f;
+alias Vec2f = std::math::vector::Vec2f;
 
 module deef;
 import gog;
 
-def Vec2f = gog::Vec2f @weak;
+alias Vec2f @weak = gog::Vec2f;
 fn Vec2f foo(Vec2f a) { return a * 2; }
 
 module test;

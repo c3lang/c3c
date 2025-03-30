@@ -3,7 +3,7 @@ module demo;
 import libc;
 import std::io;
 
-fault DIVISION_BY_ZERO;
+faultdef DIVISION_BY_ZERO;
 
 fn int foo() { return 123; }
 fn int bar() { return 0; }

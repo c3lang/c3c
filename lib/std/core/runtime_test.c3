@@ -7,7 +7,7 @@ import std::core::mem::allocator @public;
 import libc, std::time, std::io, std::sort;
 import std::os::env;
 
-def TestFn = fn void();
+alias TestFn = fn void();
 
 TestContext* test_context @private;
 
@@ -181,7 +181,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 		.breakpoint_on_assert = false,
 		.test_filter = "",
 		.has_ansi_codes = terminal_has_ansi_codes(),
-		.stored.allocator = allocator::heap(),
+		.stored.allocator = mem,
 		.stored.stderr = *io::stderr(),
 		.stored.stdout = *io::stdout(),
 	};
@@ -244,7 +244,7 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 	name.append_repeat('-', len - len / 2);
 	if (!context.is_quiet_mode) io::printn(name);
 	name.clear();
-	TempState temp_state = mem::temp_push();
+	PoolState temp_state = mem::temp_push();
 	defer mem::temp_pop(temp_state);
 	foreach(unit : tests)
 	{
@@ -329,6 +329,6 @@ fn bool run_tests(String[] args, TestUnit[] tests) @private
 fn bool default_test_runner(String[] args) => @pool()
 {
 	assert(test_context == null, "test suite is already running");
-	return run_tests(args, test_collection_create(tmem()));
+	return run_tests(args, test_collection_create(tmem));
 }
 

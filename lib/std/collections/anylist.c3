@@ -4,8 +4,8 @@
 module std::collections::anylist;
 import std::io,std::math;
 
-def AnyPredicate = fn bool(any value);
-def AnyTest = fn bool(any type, any context);
+alias AnyPredicate = fn bool(any value);
+alias AnyTest = fn bool(any type, any context);
 
 struct AnyList (Printable)
 {
@@ -44,7 +44,7 @@ fn AnyList* AnyList.init(&self, Allocator allocator, usz initial_capacity = 16)
 *>
 fn AnyList* AnyList.tinit(&self, usz initial_capacity = 16)
 {
-	return self.init(tmem(), initial_capacity) @inline;
+	return self.init(tmem, initial_capacity) @inline;
 }
 
 fn bool AnyList.is_initialized(&self) @inline => self.allocator != null;
@@ -74,7 +74,7 @@ fn usz? AnyList.to_format(&self, Formatter* formatter) @dynamic
 *>
 macro void AnyList.push(&self, element)
 {
-	if (!self.allocator) self.allocator = allocator::heap();
+	if (!self.allocator) self.allocator = tmem;
 	self.append_internal(allocator::clone(self.allocator, element));
 }
 
@@ -96,7 +96,7 @@ fn void AnyList.free_element(&self, any element) @inline
  Pop a value who's type is known. If the type is incorrect, this
  will still pop the element.
 
- @return! TYPE_MISMATCH, NO_MORE_ELEMENT
+ @return? TYPE_MISMATCH, NO_MORE_ELEMENT
 *>
 macro AnyList.pop(&self, $Type)
 {
@@ -107,7 +107,7 @@ macro AnyList.pop(&self, $Type)
 
 <*
  Pop the last value and allocate the copy using the given allocator.
- @return! NO_MORE_ELEMENT
+ @return? NO_MORE_ELEMENT
 *>
 fn any? AnyList.copy_pop(&self, Allocator allocator)
 {
@@ -119,13 +119,13 @@ fn any? AnyList.copy_pop(&self, Allocator allocator)
 
 <*
  Pop the last value and allocate the copy using the temp allocator
- @return! NO_MORE_ELEMENT
+ @return? NO_MORE_ELEMENT
 *>
-fn any? AnyList.tcopy_pop(&self) => self.copy_pop(tmem());
+fn any? AnyList.tcopy_pop(&self) => self.copy_pop(tmem);
 
 <*
  Pop the last value. It must later be released using list.free_element()
- @return! NO_MORE_ELEMENT
+ @return? NO_MORE_ELEMENT
 *>
 fn any? AnyList.pop_retained(&self)
 {
@@ -166,7 +166,7 @@ fn any? AnyList.pop_first_retained(&self)
 <*
  Same as copy_pop() but pops the first value instead.
 *>
-fn any? AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
+fn any? AnyList.copy_pop_first(&self, Allocator allocator)
 {
 	if (!self.size) return NO_MORE_ELEMENT?;
 	defer self.free_element(self.entries[self.size]);
@@ -177,7 +177,7 @@ fn any? AnyList.copy_pop_first(&self, Allocator allocator = allocator::heap())
 <*
  Same as temp_pop() but pops the first value instead.
 *>
-fn any? AnyList.tcopy_pop_first(&self) => self.copy_pop_first(tmem());
+fn any? AnyList.tcopy_pop_first(&self) => self.copy_pop_first(tmem);
 
 <*
  @require index < self.size
@@ -415,7 +415,7 @@ fn void AnyList.reserve(&self, usz min_capacity)
 {
 	if (!min_capacity) return;
 	if (self.capacity >= min_capacity) return;
-	if (!self.allocator) self.allocator = tmem();
+	if (!self.allocator) self.allocator = tmem;
 	min_capacity = math::next_power_of_2(min_capacity);
 	self.entries = allocator::realloc(self.allocator, self.entries, any.sizeof * min_capacity);
 	self.capacity = min_capacity;

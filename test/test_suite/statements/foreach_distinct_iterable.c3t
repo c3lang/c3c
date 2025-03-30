@@ -1,7 +1,7 @@
 // #target: macos-x64
 module test;
 import std;
-distinct TypeA = char[];
+typedef TypeA = char[];
 
 fn char TypeA.get(self, usz i) @operator([]) {
 	return ((char[])self)[i];

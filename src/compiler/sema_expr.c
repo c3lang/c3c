@@ -610,7 +610,6 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_TYPECALL:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
@@ -657,7 +656,6 @@ static bool expr_may_ref(Expr *expr)
 		case EXPR_PTR_TO_INT:
 		case EXPR_SLICE_LEN:
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
@@ -1520,7 +1518,7 @@ INLINE bool sema_call_evaluate_arguments(SemaContext *context, CalledDecl *calle
 	unsigned vaarg_index = sig->vararg_index;
 	Variadic variadic = sig->variadic;
 	Decl **decl_params = callee->params;
-
+	int format_index = (int)sig->attrs.format - 1;
 	// If this is a type call, then we have an implicit first argument.
 	if (callee->struct_var)
 	{
@@ -1813,6 +1811,101 @@ SPLAT_NORMAL:;
 		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
 	}
 	call->call_expr.arguments = actual_args;
+	if (format_index >= 0) goto CHECK_FORMAT;
+	return true;
+CHECK_FORMAT:;
+	// Check
+	Expr *expr = actual_args[format_index];
+	if (!sema_cast_const(expr) || call->call_expr.va_is_splat) return true;
+	assert(expr_is_const_string(expr));
+	const char *data = expr->const_expr.bytes.ptr;
+	size_t len = expr->const_expr.bytes.len;
+	size_t idx = 0;
+	Expr **vaargs = call->call_expr.varargs;
+	unsigned vacount = vec_size(vaargs);
+	for (size_t i = 0; i < len; i++)
+	{
+		if (data[i] != '%') continue;
+		i++;
+		char c = data[i];
+		if (c == '%') continue;
+		if (idx == vacount)
+		{
+			RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too few arguments provided for the formatting string.");
+		}
+		if (c == '.' && data[++i] == '*')
+		{
+			idx++;
+		}
+		expr = vaargs[idx];
+		assert(expr->expr_kind == EXPR_MAKE_ANY);
+		Type *type = expr->make_any_expr.typeid->const_expr.typeid;
+		type = type_flatten(type);
+		while (true)
+		{
+			switch (c)
+			{
+				case 's':
+					goto NEXT;
+				case 'c':
+					if (!type_is_integer(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected an integer here.");
+					}
+					goto NEXT;
+				case 'd':
+				case 'X':
+				case 'x':
+				case 'B':
+				case 'b':
+				case 'o':
+				case 'a':
+				case 'A':
+				case 'F':
+				case 'f':
+				case 'e':
+				case 'E':
+				case 'g':
+				case 'G':
+					if (!type_is_number_or_bool(type) && !type_is_pointer_type(type))
+					{
+						if (type->type_kind == TYPE_ENUM)
+						{
+							RETURN_SEMA_ERROR(vaargs[idx], "An enum cannot directly be turned into a number. Use '.ordinal' to convert it to its value.", type_quoted_error_string(type));
+						}
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected a number here, but was %s", type_quoted_error_string(type));
+					}
+					goto NEXT;
+				case 'p':
+					if (!type_is_pointer_type(type) && !type_is_integer(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected a pointer here.");
+					}
+					goto NEXT;
+				case 'H':
+				case 'h':
+					if (!type_flat_is_char_array(type))
+					{
+						RETURN_SEMA_ERROR(vaargs[idx], "Expected a char array here.");
+					}
+					goto NEXT;
+				case '\0':
+					goto DONE;
+				case '+':
+				case '-':
+				default:
+					break;
+			}
+			c = data[++i];
+		}
+NEXT:
+		idx++;
+	}
+DONE:
+	if (idx < vacount)
+	{
+		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "Too many arguments were provided for the formatting string.");
+	}
 	return true;
 NO_MATCH_REF:
 	*no_match_ref = true;
@@ -1823,7 +1916,7 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 {
 	if (param->var.not_null && expr_is_const_pointer(expr) && !expr->const_expr.ptr)
 	{
-		RETURN_SEMA_ERROR(expr, "You may not pass null to a '&' parameter.");
+		RETURN_SEMA_ERROR(expr, "You may not pass null to the '&' parameter.");
 	}
 	if (expr->expr_kind == EXPR_UNARY && expr->unary_expr.expr->expr_kind == EXPR_IDENTIFIER)
 	{
@@ -1885,7 +1978,12 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		expr->call_expr.must_use = sig->attrs.nodiscard || (is_optional_return && !sig->attrs.maydiscard);
 	}
 	expr->type = type_add_optional(rtype, optional);
-
+	if (expr->call_expr.is_dynamic_dispatch)
+	{
+		Expr *any_val = expr->call_expr.arguments[0];
+		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
+		*any_val = *(any_val->inner_expr);
+	}
 	return true;
 }
 
@@ -2134,14 +2232,8 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 				continue;
 			case VARDECL_PARAM_CT:
 			case VARDECL_PARAM_EXPR:
-				// Optional typing
-				break;
 			case VARDECL_PARAM:
-				// Mandatory typing
-				if (!body_arg->var.type_info)
-				{
-					RETURN_SEMA_ERROR(body_arg, "Expected a type parameter before this variable name.");
-				}
+				// Optional typing
 				break;
 			default:
 				UNREACHABLE
@@ -2152,9 +2244,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 		Type *type = type_info ? type_info->type : NULL;
 		if (!type && expected_type_info)
 		{
-			if (no_match_ref) goto NO_MATCH_REF;
-			RETURN_SEMA_ERROR(body_arg, "This parameter should be explicitly typed to %s but was untyped.",
-			                  type_quoted_error_string(expected_type_info->type));
+			type = expected_type_info->type;
 		}
 		if (type && expected_type_info && type->canonical != expected_type_info->type->canonical)
 		{
@@ -2221,15 +2311,37 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
 	macro_context.block_exit_ref = block_exit_ref;
 
-	FOREACH(Decl *, param, params)
+	AstId assert_first = 0;
+	AstId* next = &assert_first;
+
+	FOREACH_IDX(idx, Decl *, param, params)
 	{
 		// Skip raw vararg
 		if (!param) continue;
 		if (!sema_add_local(&macro_context, param)) goto EXIT_FAIL;
-	}
+		if (param->var.init_expr && param->var.not_null)
+		{
+			Expr *expr = expr_variable(param);
+			Expr *binary = expr_new_expr(EXPR_BINARY, expr);
+			binary->binary_expr.left = exprid(expr);
+			binary->binary_expr.right = exprid(expr_new_const_null(expr->span, type_voidptr));
+			binary->binary_expr.operator = BINARYOP_NE;
+			if (!sema_analyse_expr_rhs(context, type_bool, binary, false, NULL, false)) goto EXIT_FAIL;
+			const char *string = struct_var && idx == 0 ? "Called a method on a null value." : "Passed null to a ref ('&') parameter.";
+			if (expr_is_const_bool(binary) && !binary->const_expr.b)
+			{
+				sema_error_at(context, param->var.init_expr->span, string);
+				goto EXIT_FAIL;
+			}
 
-	AstId assert_first = 0;
-	AstId* next = &assert_first;
+			Ast *assert = new_ast(AST_ASSERT_STMT, param->var.init_expr->span);
+			assert->assert_stmt.is_ensure = true;
+			assert->assert_stmt.expr = exprid(binary);
+			Expr *comment_expr = expr_new_const_string(expr->span, string);
+			assert->assert_stmt.message = exprid(comment_expr);
+			ast_append(&next, assert);
+		}
+	}
 
 	bool has_ensures = false;
 	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span, &has_ensures)) goto EXIT_FAIL;
@@ -5191,7 +5303,7 @@ CHECK_DEEPER:
 			expr_rewrite_to_builtin_access(expr, current_parent, ACCESS_ENUMNAME, type_string);
 			return true;
 		}
-		if (flat_type == type_anyfault)
+		if (flat_type == type_fault)
 		{
 			if (sema_cast_const(current_parent))
 			{
@@ -5747,7 +5859,7 @@ static bool sema_expr_analyse_ct_subscript_rhs(SemaContext *context, Decl *ct_va
 	}
 	else
 	{
-		if (!sema_analyse_inferred_expr(context, type_get_indexed_type(ct_var->type), right)) return false;
+		if (!sema_analyse_expr_rhs(context, type_get_indexed_type(ct_var->type), right, false, NULL, false)) return false;
 	}
 	if (!sema_cast_const(right))
 	{
@@ -7195,12 +7307,16 @@ static const char *sema_addr_check_may_take(Expr *inner)
 		case EXPR_ACCESS_RESOLVED:
 		{
 			Decl *decl = inner->access_resolved_expr.ref;
-			if (decl->decl_kind == DECL_FUNC)
+			switch (decl->decl_kind)
 			{
-				if (decl->func_decl.attr_interface_method) return NULL;
-				return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
+				case DECL_FUNC:
+					if (decl->func_decl.attr_interface_method) return NULL;
+					return "Taking the address of a method should be done through the type e.g. '&Foo.method' not through the value.";
+				case DECL_MACRO:
+					return "It's not possible to take the address of a macro.";
+				default:
+					return sema_addr_check_may_take(inner->access_resolved_expr.parent);
 			}
-			return sema_addr_check_may_take(inner->access_resolved_expr.parent);
 		}
 		case EXPR_SUBSCRIPT_ADDR:
 			return NULL;
@@ -7803,7 +7919,7 @@ static inline bool sema_expr_analyse_or_error(SemaContext *context, Expr *expr, 
 	Type *common = type_find_max_type(type, else_type);
 	if (!common)
 	{
-		if (else_type == type_anyfault)
+		if (else_type == type_fault)
 		{
 			RETURN_SEMA_ERROR(right, "There is no common type for %s and %s, did you perhaps forget a '?' after the last expression?", type_quoted_error_string(type), type_quoted_error_string(else_type));
 		}
@@ -8039,7 +8155,7 @@ static inline bool sema_expr_analyse_optional(SemaContext *context, Expr *expr, 
 
 	Type *type = inner->type->canonical;
 
-	if (type != type_anyfault)
+	if (type != type_fault)
 	{
 		if (failed_ref) goto ON_FAILED;
 		RETURN_SEMA_ERROR(inner, "You cannot use the '?' operator on expressions of type %s",
@@ -9205,7 +9321,6 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_PTR_ACCESS:
 			case EXPR_ENUM_FROM_ORD:
 			case EXPR_SLICE_LEN:
-			case EXPR_ANYFAULT_TO_FAULT:
 			case EXPR_VECTOR_FROM_ARRAY:
 			case EXPR_RVALUE:
 			case EXPR_RECAST:
@@ -9550,7 +9665,6 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_PTR_ACCESS:
 		case EXPR_SLICE_LEN:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 			return sema_analyse_expr(context, expr->inner_expr);
 		case EXPR_INT_TO_BOOL:
@@ -9612,7 +9726,7 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			return true;
 		}
 		case EXPR_LAST_FAULT:
-			expr->type = type_anyfault;
+			expr->type = type_fault;
 			return true;
 		case EXPR_RETVAL:
 			return sema_expr_analyse_retval(context, expr);
@@ -9736,11 +9850,11 @@ bool sema_analyse_expr_rhs(SemaContext *context, Type *to, Expr *expr, bool allo
 	Type *to_canonical = to ? to->canonical : NULL;
 	Type *rhs_type = expr->type;
 	Type *rhs_type_canonical = rhs_type->canonical;
-	// Let's have a better error on `return io::FILE_NOT_FOUND;` when the return type is not anyfault.
-	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical == type_anyfault)
+	// Let's have a better error on `return io::FILE_NOT_FOUND;` when the return type is not fault.
+	if (to && allow_optional && to_canonical != rhs_type_canonical && rhs_type_canonical == type_fault)
 	{
 		Type *flat = type_flatten(to);
-		if (flat != type_anyfault && sema_cast_const(expr))
+		if (flat != type_fault && sema_cast_const(expr))
 		{
 			if (no_match_ref) goto NO_MATCH_REF;
 			print_error_after(expr->span, "You need to add a trailing '?' here to make this an optional.");
@@ -10085,7 +10199,6 @@ IDENT_CHECK:;
 		case EXPR_TYPECALL:
 		case EXPR_TYPEID_INFO:
 		case EXPR_TYPEINFO:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_FROM_ARRAY:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
@@ -10178,9 +10291,9 @@ bool sema_expr_check_discard(SemaContext *context, Expr *expr)
 		return true;
 	}
 	if (!IS_OPTIONAL(expr)) return true;
-	RETURN_SEMA_ERROR(expr, "An optional value may not be discarded, you can ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
+	RETURN_SEMA_ERROR(expr, "An optional value was discarded, you can assign it to a variable, ignore it with a void cast '(void)', rethrow on optional with '!' or panic '!!' to avoid this error.");
 ERROR_ARGS:
-	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). The optional result may not be implicitly discarded. Consider using '(void)', '!' or '!!' to handle this.");
+	RETURN_SEMA_ERROR(expr, "The result of this call is optional due to its argument(s). This optional result may not be implicitly discarded. Please assign it to a variable, ignore it with '(void)', rethrow with '!' or panic with '!!'.");
 }
 
 bool sema_analyse_expr(SemaContext *context, Expr *expr)

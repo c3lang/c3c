@@ -1,5 +1,7 @@
 module std::core::mem::allocator;
 import std::io, std::math;
+import std::core::sanitizer::asan;
+
 
 struct TempAllocatorChunk @local
 {
@@ -11,8 +13,11 @@ struct TempAllocator (Allocator)
 {
 	Allocator backing_allocator;
 	TempAllocatorPage* last_page;
+	TempAllocator* derived;
+	bool allocated;
 	usz used;
 	usz capacity;
+	usz original_capacity;
 	char[*] data;
 }
 
@@ -23,7 +28,6 @@ struct TempAllocatorPage
 {
 	TempAllocatorPage* prev_page;
 	void* start;
-	usz mark;
 	usz size;
 	usz ident;
 	char[*] data;
@@ -34,25 +38,98 @@ macro bool TempAllocatorPage.is_aligned(&self) => self.size & PAGE_IS_ALIGNED ==
 
 <*
  @require size >= 16
+ @require allocator.type != TempAllocator.typeid : "You may not create a temp allocator with a TempAllocator as the backing allocator."
 *>
-fn TempAllocator*? new_temp_allocator(usz size, Allocator allocator)
+fn TempAllocator*? new_temp_allocator(Allocator allocator, usz size)
 {
 	TempAllocator* temp = allocator::alloc_with_padding(allocator, TempAllocator, size)!;
 	temp.last_page = null;
 	temp.backing_allocator = allocator;
 	temp.used = 0;
-	temp.capacity = size;
+	temp.allocated = true;
+	temp.derived = null;
+	temp.original_capacity = temp.capacity = size;
 	return temp;
 }
-
-fn void TempAllocator.destroy(&self)
+<*
+ @require !self.derived
+ @require min_size > TempAllocator.sizeof + 64 : "Min size must meaningfully hold the data + some bytes"
+ @require mult > 0 : "The multiple can never be zero"
+*>
+fn TempAllocator*? TempAllocator.derive_allocator(&self, usz min_size, usz buffer, usz mult)
 {
-	self.reset(0);
-	if (self.last_page) (void)self._free_page(self.last_page);
-	allocator::free(self.backing_allocator, self);
+	usz remaining = self.capacity - self.used;
+	void* mem @noinit;
+	usz size @noinit;
+	if (min_size + buffer > remaining)
+	{
+		return self.derived = new_temp_allocator(self.backing_allocator, min_size * mult)!;
+	}
+	usz start = mem::aligned_offset(self.used + buffer, mem::DEFAULT_MEM_ALIGNMENT);
+	void* ptr = &self.data[start];
+	TempAllocator* temp = (TempAllocator*)ptr;
+	$if env::ADDRESS_SANITIZER:
+        asan::unpoison_memory_region(ptr, TempAllocator.sizeof);
+	$endif
+	temp.last_page = null;
+    temp.backing_allocator = self.backing_allocator;
+    temp.used = 0;
+    temp.allocated = false;
+    temp.derived = null;
+    temp.original_capacity = temp.capacity = self.capacity - start - TempAllocator.sizeof;
+    self.capacity = start;
+	self.derived = temp;
+    return temp;
 }
 
-fn usz TempAllocator.mark(&self) @dynamic => self.used;
+fn void TempAllocator.reset(&self)
+{
+	TempAllocator* child = self.derived;
+	if (!child) return;
+	while (child)
+	{
+		TempAllocator* old = child;
+		child = old.derived;
+		old.destroy();
+	}
+	self.capacity = self.original_capacity;
+	$if env::ADDRESS_SANITIZER:
+		asan::poison_memory_region(&self.data[self.used], self.capacity - self.used);
+	$endif
+	self.derived = null;
+}
+
+<*
+ @require self.allocated : "Only a top level allocator should be freed."
+*>
+fn void TempAllocator.free(&self)
+{
+	self.reset();
+	self.destroy();
+}
+
+fn void TempAllocator.destroy(&self) @local
+{
+	TempAllocatorPage *last_page = self.last_page;
+	while (last_page)
+	{
+		TempAllocatorPage *to_free = last_page;
+		last_page = last_page.prev_page;
+		self._free_page(to_free)!!;
+	}
+	if (self.allocated)
+	{
+		allocator::free(self.backing_allocator, self);
+		return;
+	}
+	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
+    	$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
+    		self.data[0 : self.used] = 0xAA;
+		$else
+            asan::poison_memory_region(&self.data[0], self.used);
+    	$endif
+    $endif
+}
 
 fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 {
@@ -63,32 +140,7 @@ fn void TempAllocator.release(&self, void* old_pointer, bool) @dynamic
 		asan::poison_memory_region(&self.data[self.used], old_size);
 	}
 }
-fn void TempAllocator.reset(&self, usz mark) @dynamic
-{
-	TempAllocatorPage *last_page = self.last_page;
-	while (last_page && last_page.mark > mark)
-	{
-		self.used = last_page.mark;
-		TempAllocatorPage *to_free = last_page;
-		last_page = last_page.prev_page;
-		self._free_page(to_free)!!;
-	}
-	self.last_page = last_page;
-	$if env::COMPILER_SAFE_MODE || env::ADDRESS_SANITIZER:
-		if (!last_page)
-		{
-			usz cleaned = self.used - mark;
-			if (cleaned > 0)
-			{
-				$if env::COMPILER_SAFE_MODE && !env::ADDRESS_SANITIZER:
-					self.data[mark : cleaned] = 0xAA;
-				$endif
-				asan::poison_memory_region(&self.data[mark], cleaned);
-			}
-		}
-	$endif
-	self.used = mark;
-}
+
 
 fn void? TempAllocator._free_page(&self, TempAllocatorPage* page) @inline @local
 {
@@ -112,6 +164,7 @@ fn void*? TempAllocator._realloc_page(&self, TempAllocatorPage* page, usz size, 
 	usz page_size = page.pagesize();
 	// Clear on size > original size.
 	void* data = self.acquire(size, NO_ZERO, alignment)!;
+	if (page_size > size) page_size = size;
 	mem::copy(data, &page.data[0], page_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	self.backing_allocator.release(real_pointer, page.is_aligned());
 	return data;
@@ -127,10 +180,38 @@ fn void*? TempAllocator.resize(&self, void* pointer, usz size, usz alignment) @d
 		TempAllocatorPage *page = pointer - TempAllocatorPage.sizeof;
 		return self._realloc_page(page, size, alignment);
 	}
-
-	TempAllocatorChunk* data = self.acquire(size, NO_ZERO, alignment)!;
-	mem::copy(data, pointer, chunk.size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
-
+	bool is_realloc_of_last = chunk.size + pointer == &self.data[self.used];
+	if (is_realloc_of_last)
+	{
+		isz diff = size - chunk.size;
+		if (diff == 0) return pointer;
+		if (self.capacity - self.used > diff)
+		{
+			chunk.size += diff;
+			self.used += diff;
+			$if env::ADDRESS_SANITIZER:
+				if (diff < 0)
+				{
+					asan::poison_memory_region(pointer + chunk.size, -diff);
+				}
+				else
+				{
+					asan::unpoison_memory_region(pointer, chunk.size);
+				}
+			$endif
+			return pointer;
+		}
+	}
+	void* data = self.acquire(size, NO_ZERO, alignment)!;
+	usz len_to_copy = chunk.size > size ? size : chunk.size;
+	mem::copy(data, pointer, len_to_copy, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
+	if (is_realloc_of_last)
+	{
+		self.used = (uptr)chunk - (uptr)&self.data;
+		$if env::ADDRESS_SANITIZER:
+			asan::poison_memory_region(chunk, TempAllocatorChunk.sizeof + chunk.size);
+		$endif
+	}
 	return data;
 }
 
@@ -202,29 +283,9 @@ fn void*? TempAllocator.acquire(&self, usz size, AllocInitType init_type, usz al
 
 	// Mark it as a page
 	page.ident = ~(usz)0;
-	// Store when it was created
-	page.mark = ++self.used;
 	// Hook up the page.
 	page.prev_page = self.last_page;
 	self.last_page = page;
 	return &page.data[0];
 }
 
-fn void? TempAllocator.print_pages(&self, File* f)
-{
-	TempAllocatorPage *last_page = self.last_page;
-	if (!last_page)
-	{
-		io::fprintf(f, "No pages.\n")!;
-		return;
-	}
-	io::fprintf(f, "---Pages----\n")!;
-	uint index = 0;
-	while (last_page)
-	{
-		bool is_not_aligned = !(last_page.size & (1u64 << 63));
-		io::fprintf(f, "%d. Alloc: %d %d at %p%s\n", ++index,
-				last_page.size & ~(1u64 << 63), last_page.mark, &last_page.data[0], is_not_aligned ? "" : " [aligned]")!;
-		last_page = last_page.prev_page;
-	}
-}

@@ -2,12 +2,12 @@ struct Foo {
   void bar; // #error: Members cannot be of
 }
 
-def Void = void;
+alias Void = void;
 struct Foo2 {
   Void bar; // #error: Members cannot be of
 }
 
-distinct Void2 = void;
+typedef Void2 = void;
 struct Foo3 {
   Void2 bar; // #error: has unknown size
 }

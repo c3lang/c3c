@@ -1,7 +1,7 @@
 // #target: macos-aarch64
 // #safe: yes
 module test;
-def TestFn = fn void();
+alias TestFn = fn void();
 
 fn int main()
 {

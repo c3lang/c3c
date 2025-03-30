@@ -1,6 +1,6 @@
 module gl;
 
-def BitField = int;
+alias BitField = int;
 
 enum BufferBit : int (int value)
 {

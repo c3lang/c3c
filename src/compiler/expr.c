@@ -57,7 +57,6 @@ const char *expr_kind_to_string(ExprKind kind)
 		case EXPR_INT_TO_FLOAT: return "int_to_float";
 		case EXPR_INT_TO_PTR: return "int_to_ptr";
 		case EXPR_PTR_TO_INT: return "ptr_to_int";
-		case EXPR_ANYFAULT_TO_FAULT: return "anyfault_to_fault";
 		case EXPR_LAMBDA: return "lambda";
 		case EXPR_LAST_FAULT: return "last_fault";
 		case EXPR_MACRO_BLOCK: return "macro_block";
@@ -228,7 +227,6 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_BENCHMARK_HOOK:
 		case EXPR_TEST_HOOK:
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_VECTOR_TO_ARRAY:
 		case EXPR_SLICE_TO_VEC_ARRAY:
 		case EXPR_SCALAR_TO_VECTOR:
@@ -339,7 +337,6 @@ bool expr_is_runtime_const(Expr *expr)
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
@@ -776,7 +773,6 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_SLICE_LEN:
 		case EXPR_DISCARD:
 		case EXPR_VECTOR_FROM_ARRAY:
-		case EXPR_ANYFAULT_TO_FAULT:
 		case EXPR_RVALUE:
 		case EXPR_RECAST:
 		case EXPR_ADDR_CONVERSION:
@@ -1035,6 +1031,19 @@ Expr *expr_new_const_bool(SourceSpan span, Type *type, bool value)
 	ASSERT(type_flatten(type)->type_kind == TYPE_BOOL);
 	expr->const_expr.b = value;
 	expr->const_expr.const_kind = CONST_BOOL;
+	expr->resolve_status = RESOLVE_DONE;
+	return expr;
+}
+
+Expr *expr_new_const_null(SourceSpan span, Type *type)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_CONST;
+	expr->span = span;
+	expr->type = type;
+	ASSERT(type_flatten(type)->type_kind == TYPE_POINTER);
+	expr->const_expr.ptr = 0;
+	expr->const_expr.const_kind = CONST_POINTER;
 	expr->resolve_status = RESOLVE_DONE;
 	return expr;
 }

@@ -23,8 +23,8 @@
 module std::collections::priorityqueue{Type};
 import std::collections::priorityqueue::private;
 
-distinct PriorityQueue = inline PrivatePriorityQueue{Type, false};
-distinct PriorityQueueMax = inline PrivatePriorityQueue{Type, true};
+typedef PriorityQueue = inline PrivatePriorityQueue{Type, false};
+typedef PriorityQueueMax = inline PrivatePriorityQueue{Type, true};
 
 module std::collections::priorityqueue::private{Type, MAX};
 import std::collections::list, std::io;
@@ -42,7 +42,7 @@ fn PrivatePriorityQueue* PrivatePriorityQueue.init(&self, Allocator allocator, u
 
 fn PrivatePriorityQueue* PrivatePriorityQueue.tinit(&self, usz initial_capacity = 16) @inline
 {
-	self.init(tmem(), initial_capacity);
+	self.init(tmem, initial_capacity);
 	return self;
 }
 

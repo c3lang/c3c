@@ -11,7 +11,7 @@ fn Path? native_temp_directory(Allocator allocator) @if(!env::WIN32)
 	return path::new(allocator, "/tmp");
 }
 
-fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool(allocator)
+fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool()
 {
 	Win32_DWORD len = win32::getTempPathW(0, null);
 	if (!len) return io::GENERAL_ERROR?;
@@ -23,7 +23,7 @@ fn Path? native_temp_directory(Allocator allocator) @if(env::WIN32) => @pool(all
 module std::io::os @if(env::NO_LIBC);
 import std::io::path;
 
-macro Path? native_temp_directory(Allocator allocator = allocator::heap())
+macro Path? native_temp_directory(Allocator allocator)
 {
 	return io::UNSUPPORTED_OPERATION?;
 }

@@ -559,7 +559,7 @@ static inline Ast* parse_defer_stmt(ParseContext *c)
 		if (!expect_ident(c, "identifier")) return poisoned_ast;
 		Ast *compound = ast_new_curr(c, AST_COMPOUND_STMT);
 		Ast *first = ast_new_curr(c, AST_DECLARE_STMT);
-		Decl *decl = decl_new_var(c->data.string, c->span, type_info_new_base(type_anyfault, c->span), VARDECL_LOCAL);
+		Decl *decl = decl_new_var(c->data.string, c->span, type_info_new_base(type_fault, c->span), VARDECL_LOCAL);
 		defer_stmt->defer_stmt.is_catch = true;
 		decl->var.init_expr = expr_new(EXPR_LAST_FAULT, decl->span);
 		first->declare_stmt = decl;
@@ -1362,74 +1362,75 @@ Ast *parse_stmt(ParseContext *c)
 		case TOKEN_INVALID_TOKEN:
 			advance(c);
 			return poisoned_ast;
-		case TOKEN_COLON:
-		case TOKEN_COMMA:
-		case TOKEN_EQ:
-		case TOKEN_GREATER:
-		case TOKEN_DIV:
-		case TOKEN_DOLLAR:
-		case TOKEN_DOT:
-		case TOKEN_HASH:
-		case TOKEN_LESS:
-		case TOKEN_LBRACKET:
-		case TOKEN_MOD:
-		case TOKEN_QUESTION:
+		case TOKEN_ALIAS:
 		case TOKEN_AND:
 		case TOKEN_ARROW:
+		case TOKEN_ATTRDEF:
+		case TOKEN_BANGBANG:
+		case TOKEN_BITSTRUCT:
 		case TOKEN_BIT_AND_ASSIGN:
 		case TOKEN_BIT_OR_ASSIGN:
 		case TOKEN_BIT_XOR_ASSIGN:
+		case TOKEN_COLON:
+		case TOKEN_COMMA:
+		case TOKEN_CT_CASE:
+		case TOKEN_CT_DEFAULT:
+		case TOKEN_CT_ELSE:
+		case TOKEN_CT_ENDFOR:
+		case TOKEN_CT_ENDFOREACH:
+		case TOKEN_CT_ENDIF:
+		case TOKEN_CT_ENDSWITCH:
+		case TOKEN_CT_EXEC:
+		case TOKEN_CT_INCLUDE:
+		case TOKEN_CT_VASPLAT:
+		case TOKEN_DIV:
 		case TOKEN_DIV_ASSIGN:
+		case TOKEN_DOCS_END:
+		case TOKEN_DOCS_START:
+		case TOKEN_DOC_COMMENT:
+		case TOKEN_DOLLAR:
+		case TOKEN_DOT:
 		case TOKEN_DOTDOT:
+		case TOKEN_ELLIPSIS:
+		case TOKEN_ELSE:
 		case TOKEN_ELVIS:
+		case TOKEN_ENUM:
+		case TOKEN_EQ:
 		case TOKEN_EQEQ:
+		case TOKEN_EXTERN:
+		case TOKEN_FAULTDEF:
+		case TOKEN_FN:
+		case TOKEN_GREATER:
 		case TOKEN_GREATER_EQ:
+		case TOKEN_HASH:
+		case TOKEN_IMPLIES:
+		case TOKEN_IMPORT:
+		case TOKEN_INLINE:
+		case TOKEN_INTERFACE:
+		case TOKEN_LBRACKET:
+		case TOKEN_LESS:
 		case TOKEN_LESS_EQ:
+		case TOKEN_LVEC:
+		case TOKEN_MACRO:
 		case TOKEN_MINUS_ASSIGN:
+		case TOKEN_MOD:
+		case TOKEN_MODULE:
 		case TOKEN_MOD_ASSIGN:
 		case TOKEN_MULT_ASSIGN:
 		case TOKEN_NOT_EQUAL:
 		case TOKEN_PLUS_ASSIGN:
-		case TOKEN_ELLIPSIS:
-		case TOKEN_SCOPE:
-		case TOKEN_SHR:
-		case TOKEN_SHL:
-		case TOKEN_SHR_ASSIGN:
-		case TOKEN_SHL_ASSIGN:
-		case TOKEN_ELSE:
+		case TOKEN_QUESTION:
 		case TOKEN_QUESTQUEST:
-		case TOKEN_ENUM:
-		case TOKEN_FN:
-		case TOKEN_IMPORT:
-		case TOKEN_MACRO:
-		case TOKEN_MODULE:
-		case TOKEN_EXTERN:
-		case TOKEN_STRUCT:
-		case TOKEN_FAULT:
-		case TOKEN_UNION:
-		case TOKEN_DEF:
-		case TOKEN_DOCS_START:
-		case TOKEN_DOCS_END:
-		case TOKEN_DOC_COMMENT:
-		case TOKEN_CT_CASE:
-		case TOKEN_CT_ELSE:
-		case TOKEN_CT_DEFAULT:
-		case TOKEN_CT_ENDIF:
-		case TOKEN_CT_ENDSWITCH:
-		case TOKEN_BANGBANG:
-		case TOKEN_UNDERSCORE:
-		case TOKEN_BITSTRUCT:
-		case TOKEN_LVEC:
 		case TOKEN_RVEC:
-		case TOKEN_CT_ENDFOR:
-		case TOKEN_CT_ENDFOREACH:
-		case TOKEN_CT_VASPLAT:
-		case TOKEN_IMPLIES:
-		case TOKEN_INLINE:
-		case TOKEN_DISTINCT:
-		case TOKEN_CT_INCLUDE:
-		case TOKEN_CT_EXEC:
-		case TOKEN_INTERFACE:
+		case TOKEN_SCOPE:
+		case TOKEN_SHL:
+		case TOKEN_SHL_ASSIGN:
+		case TOKEN_SHR:
+		case TOKEN_SHR_ASSIGN:
+		case TOKEN_STRUCT:
+		case TOKEN_TYPEDEF:
+		case TOKEN_UNDERSCORE:
+		case TOKEN_UNION:
 			PRINT_ERROR_HERE("Unexpected '%s' found when expecting a statement.",
 			                 token_type_to_string(c->tok));
 			advance(c);

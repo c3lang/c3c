@@ -14,7 +14,7 @@ static struct
 	Type bf16, f16, f32, f64, f128;
 	Type usz, isz, uptr, iptr;
 	Type string;
-	Type voidstar, typeid, anyfault, member, typeinfo, untyped_list;
+	Type voidstar, typeid, fault, member, typeinfo, untyped_list;
 	Type any, wildcard;
 } t;
 
@@ -43,7 +43,7 @@ Type *type_ulong = &t.u64;
 Type *type_u128 = &t.u128;
 Type *type_uptr = &t.uptr;
 Type *type_usz = &t.usz;
-Type *type_anyfault = &t.anyfault;
+Type *type_fault = &t.fault;
 Type *type_untypedlist = &t.untyped_list;
 Type *type_wildcard = &t.wildcard;
 Type *type_member = &t.member;
@@ -1385,7 +1385,7 @@ void type_setup(PlatformTarget *target)
 
 	alignment_slice = MAX(type_abi_alignment(&t.voidstar), type_abi_alignment(t.usz.canonical));
 	size_slice = (unsigned)(alignment_slice * 2);
-	type_init("anyfault", &t.anyfault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
+	type_init("fault", &t.fault, TYPE_ANYFAULT, target->width_pointer, target->align_pointer);
 	type_chars = type_get_slice(type_char);
 	type_wildcard_optional = type_get_optional(type_wildcard);
 	Decl *string_decl = decl_new_with_type(symtab_preset("String", TOKEN_TYPE_IDENT), INVALID_SPAN, DECL_DISTINCT);
@@ -1520,8 +1520,8 @@ Type *type_from_token(TokenType type)
 	{
 		case TOKEN_ANY:
 			return type_any;
-		case TOKEN_ANYFAULT:
-			return type_anyfault;
+		case TOKEN_FAULT:
+			return type_fault;
 		case TOKEN_VOID:
 			return type_void;
 		case TOKEN_BOOL:
@@ -2006,7 +2006,7 @@ RETRY_DISTINCT:
 			// some way?
 			return NULL;
 		case TYPE_ANYFAULT:
-			return type_anyfault;
+			return type_fault;
 		case TYPE_FUNC_PTR:
 			if (other == type_voidptr) return other;
 			if (other->type_kind != TYPE_FUNC_PTR) return NULL;

@@ -3,7 +3,7 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::hash::fnv32a;
 
-distinct Fnv32a = uint;
+typedef Fnv32a = uint;
 
 const FNV32A_START @private = 0x811c9dc5;
 const FNV32A_MUL @private = 0x01000193;

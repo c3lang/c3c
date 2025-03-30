@@ -1,6 +1,6 @@
 module std::thread::channel{Type};
 
-distinct BufferedChannel = void*;
+typedef BufferedChannel = void*;
 
 struct BufferedChannelImpl @private
 {
@@ -48,7 +48,7 @@ fn void? BufferedChannel.destroy(&self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)(*self);
 
-	anyfault err = @catch(channel.mu.destroy());
+	fault err = @catch(channel.mu.destroy());
 	err = @catch(channel.send_cond.destroy()) ?: err;
 	err = @catch(channel.read_cond.destroy()) ?: err;
 	allocator::free(channel.allocator, channel);
@@ -147,7 +147,7 @@ fn void? BufferedChannel.close(self)
 {
 	BufferedChannelImpl* channel = (BufferedChannelImpl*)self;
 
-	anyfault err = @catch(channel.mu.lock());
+	fault err = @catch(channel.mu.lock());
 
 	channel.closed = true;
 

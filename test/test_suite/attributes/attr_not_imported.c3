@@ -1,6 +1,6 @@
 module abc;
 
-def @Foo = { @inline };
+attrdef @Foo = @inline;
 
 module bar;
 

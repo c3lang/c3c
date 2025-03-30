@@ -85,3 +85,4 @@ result
 # tests
 /test/tmp/*
 /test/testrun
+/test/test_suite_runner

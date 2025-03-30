@@ -7,11 +7,11 @@ const char PREFERRED_SEPARATOR_WIN32 = '\\';
 const char PREFERRED_SEPARATOR_POSIX = '/';
 const char PREFERRED_SEPARATOR = env::WIN32 ? PREFERRED_SEPARATOR_WIN32 : PREFERRED_SEPARATOR_POSIX;
 
-def PathList = List { Path };
+alias PathList = List { Path };
 
-fault INVALID_PATH, NO_PARENT;
+faultdef INVALID_PATH, NO_PARENT;
 
-def Path = PathImp;
+alias Path = PathImp;
 
 struct PathImp (Printable)
 {
@@ -28,9 +28,9 @@ enum PathEnv
 
 fn Path? cwd(Allocator allocator)
 {
-	@pool(allocator)
+	@pool()
 	{
-		return new(allocator, os::getcwd(tmem()));
+		return new(allocator, os::getcwd(tmem));
 	};
 }
 
@@ -38,7 +38,7 @@ fn bool is_dir(Path path) => os::native_is_dir(path.str_view());
 fn bool is_file(Path path) => os::native_is_file(path.str_view());
 fn usz? file_size(Path path) => os::native_file_size(path.str_view());
 fn bool exists(Path path) => os::native_file_or_dir_exists(path.str_view());
-fn Path? tcwd() => cwd(tmem()) @inline;
+fn Path? tcwd() => cwd(tmem) @inline;
 
 <*
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
@@ -109,7 +109,7 @@ macro bool? mkdir(Path path, bool recursive = false, MkdirPermissions permission
  @param path : `The path to delete`
  @require @is_pathlike(path) : "Expected a Path or String to chdir"
  @return `true if there was a directory to delete, false otherwise`
- @return! INVALID_PATH : `if the path was invalid`
+ @return? INVALID_PATH : `if the path was invalid`
 *>
 macro bool? rmdir(path)
 {
@@ -136,7 +136,7 @@ fn void? rmtree(Path path)
 <*
  Creates a new path.
 
- @return! INVALID_PATH : `if the path was invalid`
+ @return? INVALID_PATH : `if the path was invalid`
 *>
 fn Path? new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 {
@@ -146,14 +146,14 @@ fn Path? new(Allocator allocator, String path, PathEnv path_env = DEFAULT_ENV)
 <*
  Creates a new path using the temp allocator.
 
- @return! INVALID_PATH : `if the path was invalid`
+ @return? INVALID_PATH : `if the path was invalid`
 *>
 fn Path? temp(String path, PathEnv path_env = DEFAULT_ENV)
 {
-	return new(tmem(), path, path_env);
+	return new(tmem, path, path_env);
 }
 
-fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool(allocator)
+fn Path? from_win32_wstring(Allocator allocator, WString path) => @pool()
 {
 	return path::new(allocator, string::tfrom_wstring(path)!);
 }
@@ -183,7 +183,7 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 	if (!self.path_string.len) return new(allocator, filename, self.env)!;
 	assert(!is_separator(self.path_string[^1], self.env));
 
-	@pool(allocator)
+	@pool()
 	{
 		DString dstr = dstring::temp_with_capacity(self.path_string.len + 1 + filename.len);
 		dstr.append(self.path_string);
@@ -193,7 +193,7 @@ fn Path? Path.append(self, Allocator allocator, String filename)
 	};
 }
 
-fn Path? Path.tappend(self, String filename) => self.append(tmem(), filename);
+fn Path? Path.tappend(self, String filename) => self.append(tmem, filename);
 
 fn usz? start_of_base_name(String str, PathEnv path_env) @local
 {
@@ -232,7 +232,7 @@ fn bool? Path.is_absolute(self)
 }
 
 
-fn Path? String.to_absolute_path(self, Allocator allocator) => @pool(allocator)
+fn Path? String.to_absolute_path(self, Allocator allocator) => @pool()
 {
 	return temp(self).absolute(allocator);
 }
@@ -247,14 +247,14 @@ fn Path? Path.absolute(self, Allocator allocator)
 	if (self.is_absolute()!) return new(allocator, path_str, self.env);
 	if (path_str == ".")
 	{
-		@pool(allocator)
+		@pool()
 		{
-			String cwd = os::getcwd(tmem())!;
+			String cwd = os::getcwd(tmem)!;
 			return new(allocator, cwd, self.env);
 		};
 	}
 	$if DEFAULT_ENV == WIN32:
-		@pool(allocator)
+		@pool()
 		{
 			const usz BUFFER_LEN = 4096;
 			WString buffer = (WString)mem::talloc_array(Char16, BUFFER_LEN);
@@ -263,17 +263,17 @@ fn Path? Path.absolute(self, Allocator allocator)
 			return { string::from_wstring(allocator, buffer), WIN32, allocator };
 		};
 	$else
-		String cwd = os::getcwd(tmem())!;
-		return (Path){ cwd, self.env, tmem() }.append(allocator, path_str)!;
+		String cwd = os::getcwd(tmem)!;
+		return (Path){ cwd, self.env, tmem }.append(allocator, path_str)!;
 	$endif
 }
 
-fn String? String.file_basename(self, Allocator allocator) => @pool(allocator)
+fn String? String.file_basename(self, Allocator allocator) => @pool()
 {
 	return temp(self).basename().copy(allocator);
 }
 
-fn String? String.file_tbasename(self) => self.file_basename(tmem());
+fn String? String.file_tbasename(self) => self.file_basename(tmem);
 
 fn String Path.basename(self)
 {
@@ -283,9 +283,9 @@ fn String Path.basename(self)
 	return path_str[basename_start..];
 }
 
-fn String? String.path_tdirname(self) => self.path_dirname(tmem());
+fn String? String.path_tdirname(self) => self.path_dirname(tmem);
 
-fn String? String.path_dirname(self, Allocator allocator) => @pool(allocator)
+fn String? String.path_dirname(self, Allocator allocator) => @pool()
 {
 	return temp(self).dirname().copy(allocator);
 }
@@ -347,7 +347,7 @@ fn Path? String.to_path(self, Allocator allocator)
 
 fn Path? String.to_tpath(self)
 {
-	return new(tmem(), self);
+	return new(tmem, self);
 }
 
 fn usz? volume_name_len(String path, PathEnv path_env) @local
@@ -391,7 +391,7 @@ fn usz? volume_name_len(String path, PathEnv path_env) @local
  of the path itself.
 
  @return `The parent of the path as a non-allocated path`
- @return! NO_PARENT : `if this path does not have a parent`
+ @return? NO_PARENT : `if this path does not have a parent`
 *>
 fn Path? Path.parent(self)
 {
@@ -552,7 +552,7 @@ fn String Path.root_directory(self)
 	return path_str;
 }
 
-def PathWalker = fn bool? (Path, bool is_dir, void*);
+alias PathWalker = fn bool? (Path, bool is_dir, void*);
 
 <*
  Walk the path recursively. PathWalker is run on every file and
@@ -578,7 +578,7 @@ fn bool? Path.walk(self, PathWalker w, void* data)
 	return false;
 }
 
-def TraverseCallback = fn bool? (Path, bool is_dir, any data);
+alias TraverseCallback = fn bool? (Path, bool is_dir, any data);
 
 <*
  Walk the path recursively. TraverseCallback is run for every file and

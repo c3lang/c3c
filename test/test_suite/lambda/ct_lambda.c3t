@@ -2,7 +2,7 @@
 module test;
 import std::io;
 
-def FooFn = fn void(Foo* f, int x);
+alias FooFn = fn void(Foo* f, int x);
 
 struct Foo
 {

@@ -1,7 +1,7 @@
 // #target: elf-riscv32
 module test;
 
-def Sum = fn int(int a, int b);
+alias Sum = fn int(int a, int b);
 
 fn int sum(int a, int b)
 {

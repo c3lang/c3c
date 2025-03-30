@@ -9,7 +9,7 @@ fn bool Foo[].is_empty(Foo[] array) {
   return array.len == 0;
 }
 
-def foo_arr_is_empty = Foo[].is_empty;
+alias foo_arr_is_empty = Foo[].is_empty;
 
 fn void main() {
   Foo[] foos = { (Foo) { .i = 0 } };

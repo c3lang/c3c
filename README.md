@@ -36,7 +36,7 @@ whole new language.
 The following code shows [generic modules](https://c3-lang.org/references/docs/generics/) (more examples can be found at https://c3-lang.org/references/docs/examples/). 
 
 ```cpp
-module stack (<Type>);
+module stack {Type};
 // Above: the parameterized type is applied to the entire module.
 
 struct Stack
@@ -80,13 +80,13 @@ import stack;
 
 // Define our new types, the first will implicitly create 
 // a complete copy of the entire Stack module with "Type" set to "int"
-def IntStack = Stack(<int>);
+alias IntStack = Stack {int};
 // The second creates another copy with "Type" set to "double"
-def DoubleStack = Stack(<double>);
+alias DoubleStack = Stack {double};
 
-// If we had added "define IntStack2 = Stack(<int>)"
+// If we had added "alias IntStack2 = Stack {int}"
 // no additional copy would have been made (since we already
-// have an parameterization of Stack(<int>)) so it would
+// have an parameterization of Stack {int} so it would
 // be same as declaring IntStack2 an alias of IntStack
 
 // Importing an external C function is straightforward
@@ -403,3 +403,7 @@ Editor plugins can be found at https://github.com/c3lang/editor-plugins.
 A huge **THANK YOU** goes out to all contributors and sponsors.
 
 A special thank you to sponsors [Caleb-o](https://github.com/Caleb-o) and [devdad](https://github.com/devdad) for going the extra mile.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=c3lang/c3c&type=Date)](https://www.star-history.com/#c3lang/c3c&Date)

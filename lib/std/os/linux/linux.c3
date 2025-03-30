@@ -5,10 +5,10 @@ extern fn isz readlink(ZString path, char* buf, usz bufsize);
 
 const PT_PHDR = 6;
 const EI_NIDENT = 16;
-def Elf32_Half = ushort;
-def Elf32_Word = uint;
-def Elf32_Addr = uint;
-def Elf32_Off = uint;
+alias Elf32_Half = ushort;
+alias Elf32_Word = uint;
+alias Elf32_Addr = uint;
+alias Elf32_Off = uint;
 
 struct Elf32_Ehdr
 {
@@ -40,14 +40,14 @@ struct Elf32_Phdr
 	Elf32_Word	p_align;
 }
 
-def Elf64_Addr = ulong;
-def Elf64_Half = ushort;
-def Elf64_Off = ulong;
-def Elf64_Word = uint;
-def Elf64_Sword = int;
-def Elf64_Sxword = long;
-def Elf64_Lword = ulong;
-def Elf64_Xword = ulong;
+alias Elf64_Addr = ulong;
+alias Elf64_Half = ushort;
+alias Elf64_Off = ulong;
+alias Elf64_Word = uint;
+alias Elf64_Sword = int;
+alias Elf64_Sxword = long;
+alias Elf64_Lword = ulong;
+alias Elf64_Xword = ulong;
 
 struct Elf64_Ehdr
 {
@@ -204,7 +204,7 @@ fn void? backtrace_add_element(Allocator allocator, BacktraceList *list, void* a
 		return;
 	}
 
-	@pool(allocator)
+	@pool()
 	{
 		Linux_Dl_info info;
 		if (dladdr(addr, &info) == 0)
@@ -227,7 +227,7 @@ fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 		}
 		list.free();
 	}
-	@pool(allocator)
+	@pool()
 	{
 		foreach (addr : backtrace)
 		{

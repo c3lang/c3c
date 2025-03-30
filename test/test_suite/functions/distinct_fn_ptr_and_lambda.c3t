@@ -1,6 +1,6 @@
-def Foo = fn void(int x);
+alias Foo = fn void(int x);
 
-distinct Bar = Foo;
+typedef Bar = Foo;
 
 fn void main()
 {

@@ -4,7 +4,7 @@ import std::math;
 const char[16] XDIGITS_H = "0123456789ABCDEF";
 const char[16] XDIGITS_L = "0123456789abcdef";
 
-fault BAD_FORMAT;
+faultdef BAD_FORMAT;
 
 fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 {
@@ -22,7 +22,7 @@ fn usz? print_hex_chars(Formatter* f, char[] out, bool uppercase) @inline
 	return len;
 }
 
-macro Formatter.first_err(&self, anyfault f)
+macro Formatter.first_err(&self, fault f)
 {
 	if (self.first_fault) return self.first_fault;
 	self.first_fault = f;
@@ -43,7 +43,6 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 			*is_neg = false;
 			return (uint128)(uptr)*(void**)arg.ptr;
 		case TypeKind.DISTINCT:
-		case TypeKind.ENUM:
 			return int_from_any(arg.as_inner(), is_neg);
 		default:
 			break;
@@ -52,7 +51,7 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 	switch (arg.type)
 	{
 		case bool:
-			return *(uint128*)arg;
+			return (uint128)*(bool*)arg;
 		case ichar:
 			int val = *(ichar*)arg;
 			return (*is_neg = val < 0) ? (~(uint128)val) + 1 : (uint128)val;

@@ -92,7 +92,7 @@ static void usage(bool full)
 	print_opt("-U <name>", "Remove feature flag <name>.");
 	PRINTF("");
 	print_opt("--about", "Prints a short description of C3.");
-	print_opt("--build-env", "Prints build environment information.");
+	print_opt("--build-env", "Prints build environment information (only valid with in combination with a command such as 'compile').");
 	print_opt("--libdir <dir>", "Add this directory to the c3l library search paths.");
 	print_opt("--lib <name>", "Add this c3l library to the compilation.");
 	if (full)
@@ -111,7 +111,7 @@ static void usage(bool full)
 		print_opt("--obj-out <dir>", "Override object file output directory.");
 		print_opt("--script-dir <dir>", "Override the base directory for $exec.");
 		print_opt("--llvm-out <dir>", "Override llvm output directory for '--emit-llvm'.");
-		print_opt("--asm-out <dir> ", "Emit LLVM IR as a .ll file per module.");
+		print_opt("--asm-out <dir> ", "Override asm output directory for '--emit-asm'.");
 		print_opt("--emit-llvm", "Emit LLVM IR as a .ll file per module.");
 		print_opt("--emit-asm", "Emit asm as a .s file per module.");
 		print_opt("--obj", "Emit object files. (Enabled by default)");
@@ -1199,6 +1199,8 @@ static void parse_option(BuildOptions *options)
 				options->lsp_mode = true;
 				options->strip_unused = STRIP_UNUSED_OFF;
 				options->test_mode = false;
+				options->benchmarking = true;
+				options->testing = true;
 				return;
 			}
 			if (match_longopt("test"))

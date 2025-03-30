@@ -8,10 +8,10 @@
 module std::collections::enumset{Enum};
 import std::io;
 
-def EnumSetType = $typefrom(type_for_enum_elements(Enum.elements)) @private;
+alias EnumSetType @private = $typefrom(type_for_enum_elements(Enum.elements));
 
 const IS_CHAR_ARRAY = Enum.elements > 128;
-distinct EnumSet (Printable) = EnumSetType;
+typedef EnumSet (Printable) = EnumSetType;
 
 fn void EnumSet.add(&self, Enum v)
 {

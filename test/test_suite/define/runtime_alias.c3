@@ -1,6 +1,6 @@
 module test;
 
-def abc = ggg;
+alias abc = ggg;
 tlocal int ggg = 123;
 
 int[2] x = { abc, 1 }; // #error: expression must be a constant

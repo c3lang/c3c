@@ -2,8 +2,8 @@ import std::thread;
 import std::io;
 import std::atomic::types;
 
-def AtomicUint = Atomic{uint};
-def AtomicFloat = Atomic{float};
+alias AtomicUint = Atomic{uint};
+alias AtomicFloat = Atomic{float};
 AtomicUint a;
 AtomicFloat fa;
 

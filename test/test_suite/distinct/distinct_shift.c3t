@@ -4,7 +4,7 @@ import std::io;
 
 const ODD_PHI16 @local = 0x9e37;
 
-distinct Lcg16_8 = ushort;
+typedef Lcg16_8 = ushort;
 
 fn void Lcg16_8.seed(Lcg16_8* lcg, char[2] seed)
 {

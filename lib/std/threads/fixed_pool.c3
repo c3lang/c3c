@@ -1,12 +1,12 @@
 module std::thread;
-fault THREAD_QUEUE_FULL;
+faultdef THREAD_QUEUE_FULL;
 
 module std::thread::threadpool @if (env::POSIX || env::WIN32);
 import std::thread;
 
 // Please do not use this one in production.
 
-def ThreadPoolFn = fn void(any[] args);
+alias ThreadPoolFn = fn void(any[] args);
 
 struct FixedThreadPool
 {
@@ -116,7 +116,7 @@ fn void? FixedThreadPool.push(&self, ThreadPoolFn func, args...)
 	if (args.len)
 	{
 		data = mem::alloc_array(any, args.len);
-		foreach (i, arg : args) data[i] = allocator::clone_any(allocator::heap(), arg);
+		foreach (i, arg : args) data[i] = allocator::clone_any(mem, arg);
 	}
 	self.queue[self.qindex] = { .func = func, .args = data };
 	self.qindex++;

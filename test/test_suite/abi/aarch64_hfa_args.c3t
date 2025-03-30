@@ -1,7 +1,7 @@
 // #target: macos-aarch64
 module test;
-def Int8x16 = ichar[<16>];
-def Float32x3 = float[<3>];
+alias Int8x16 = ichar[<16>];
+alias Float32x3 = float[<3>];
 
 struct HFAv3
 {

@@ -74,7 +74,7 @@ No space inside parenthesis:
 
 ### Tab vs spaces
 
-Recommendation: tabs, 4 spaces wide. No CRLF in the source.
+Use tabs for indentation, no CRLF in the source.
 
 ### If, braces and new lines
 
@@ -148,3 +148,112 @@ Iterating over the elements are done using `VECEACH`.
 
 There is a scratch buffer for strings in the `global_context` prefer using that
 one with related functions when working on temporary strings.
+
+# C3 Standard library style guide.
+
+When contributing to the standard librairy please to your best to follow the following style requirements 
+as to ensure a consistent style in the stdlib and also make accepting PRs more quickly.
+
+### Braces are placed on the next line
+
+**NO:**
+```c
+fn void foo(String bar) {
+  @pool() {
+    ...
+  };
+} 
+```
+
+**YES:**
+```c
+fn void foo(String bar)
+{
+  @pool() 
+  {
+    ...
+  };
+}
+```
+
+### Indentation with tabs
+
+Use tab for indentation, not spaces, no CRLF in the sources 
+
+### Type names
+
+Use `PascalCase` not `Ada_Case` for type names.
+
+**YES:**
+```c
+enum MyEnum
+{
+  ABC,
+  DEF
+}  
+```
+
+**NO:**
+```c
+enum My_Enum
+{
+  ABC,
+  DEF
+}  
+```
+
+### Type names when binding to OS libraries
+
+When doing bindings (for instance, adding declarations referring to Win32 APIs),
+try to retain the original name when possible. If it isn't possible use (consistently)
+one of two options:
+
+1. Prefix: `HANDLE` -> `Win32_HANDLE`
+2. Change the first letter to upper case: `mode_t` -> `Mode_t`
+
+### Variables, function, methods and globals
+
+Use `snake_case`, not `camelCase`.
+
+**YES:**
+```c
+int some_global = 1;
+
+fn void open_file(String special_file)
+{
+  ...
+}
+```
+
+**NO:**
+```c
+int someGlobal = 1;
+
+fn void openFile(String specialFile)
+{
+  ...
+}
+```
+
+### Variables, function, methods and globals when binding to OS libraries
+
+When doing bindings (for instance, adding declarations referring to Win32 APIs),
+try to retain the original name when possible. If it isn't possible use (consistently)
+one of two options:
+
+1. Prefix: `win32_GetWindowLongPtrW`. However, this is usually only recommended if it is builtin.
+2. Change first character to lower case: `GetWindowLongPtrW` -> `getWindowLongPtrW`
+
+### Use `self` as the first method argument
+
+Unless there is a strong reason not to, use `self` for the first parameter in a method.
+
+### The allocator argument
+
+Prefer always calling the allocator parameter `allocator`, and make it the first regular
+argument.
+
+## Add tests to your changes
+
+If you add or fix things, then there should always be tests in `test/unit/stdlib` to verify
+the functionality.

@@ -4,6 +4,7 @@
 module std::core::builtin;
 import libc, std::hash, std::io, std::os::backtrace;
 
+
 <*
  EMPTY_MACRO_SLOT is a value used for implementing optional arguments for macros in an efficient
  way. It relies on the fact that distinct types are not implicitly convertable.
@@ -25,27 +26,27 @@ macro foo(a, #b = EMPTY_MACRO_SLOT)
 *>
 const EmptySlot EMPTY_MACRO_SLOT @builtin = null;
 
-distinct EmptySlot = void*;
+typedef EmptySlot = void*;
 macro @is_empty_macro_slot(#arg) @const @builtin => @typeis(#arg, EmptySlot);
 macro @is_valid_macro_slot(#arg) @const @builtin => !@typeis(#arg, EmptySlot);
 
 /*
  Use `IteratorResult` when reading the end of an iterator, or accessing a result out of bounds.
 */
-fault NO_MORE_ELEMENT @builtin;
+faultdef NO_MORE_ELEMENT @builtin;
 
 /*
  Use `SearchResult` when trying to return a value from some collection but the element is missing.
 */
-fault NOT_FOUND @builtin;
+faultdef NOT_FOUND @builtin;
 
 /*
  Use `CastResult` when an attempt at conversion fails.
 */
-fault TYPE_MISMATCH @builtin;
+faultdef TYPE_MISMATCH @builtin;
 
 
-def VoidFn = fn void();
+alias VoidFn = fn void();
 
 <*
  Stores a variable on the stack, then restores it at the end of the
@@ -79,7 +80,7 @@ macro void @swap(#a, #b) @builtin
  @param $Type : `the type to convert to`
  @return `The any.ptr converted to its type.`
  @ensure @typeis(return, $Type*)
- @return! TYPE_MISMATCH
+ @return? TYPE_MISMATCH
 *>
 macro anycast(any v, $Type) @builtin
 {
@@ -87,12 +88,20 @@ macro anycast(any v, $Type) @builtin
 	return ($Type*)v.ptr;
 }
 
-fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @pool()
+fn bool print_backtrace(String message, int backtraces_to_ignore) @if(env::NATIVE_STACKTRACE) => @stack_mem(0x1100; Allocator smem)
 {
+	Allocator t = allocator::current_temp;
+	TempAllocator* new_t = allocator::new_temp_allocator(smem, 0x1000)!!;
+	allocator::current_temp = new_t;
+	defer
+	{
+		allocator::current_temp = t;
+		new_t.free();
+	}
 	void*[256] buffer;
 	void*[] backtraces = backtrace::capture_current(&buffer);
 	backtraces_to_ignore++;
-	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem(), backtraces);
+	BacktraceList? backtrace = backtrace::symbolize_backtrace(tmem, backtraces);
 	if (catch backtrace) return false;
 	if (backtrace.len() <= backtraces_to_ignore) return false;
 	io::eprint("\nERROR: '");
@@ -155,7 +164,7 @@ fn void default_panic(String message, String file, String function, uint line) @
 	$$trap();
 }
 
-def PanicFn = fn void(String message, String file, String function, uint line);
+alias PanicFn = fn void(String message, String file, String function, uint line);
 
 PanicFn panic = &default_panic;
 
@@ -247,7 +256,7 @@ macro bitcast(expr, $Type) @builtin
  @param [in] enum_name : `The name of the enum to search for`
  @require $Type.kindof == ENUM : `Only enums may be used`
  @ensure @typeis(return, $Type)
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro enum_by_name($Type, String enum_name) @builtin
 {
@@ -265,7 +274,7 @@ macro enum_by_name($Type, String enum_name) @builtin
  @require $defined($Type.#value) : `Expected '#value' to match an enum associated value`
  @require $assignable(value, $typeof(($Type){}.#value)) : `Expected the value to match the type of the associated value`
  @ensure @typeis(return, $Type)
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro @enum_from_value($Type, #value, value) @builtin
 {
@@ -373,7 +382,7 @@ macro swizzle2(v, v2, ...) @builtin
 
  @require @typekind(#expr) == OPTIONAL : `@catch expects an Optional value`
 *>
-macro anyfault @catch(#expr) @builtin
+macro fault @catch(#expr) @builtin
 {
 	if (catch f = #expr) return f;
 	return {};

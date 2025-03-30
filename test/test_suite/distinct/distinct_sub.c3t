@@ -1,4 +1,4 @@
-distinct Foo = uint;
+typedef Foo = uint;
 
 macro @test($abc)
 {

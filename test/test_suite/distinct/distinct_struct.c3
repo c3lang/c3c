@@ -5,7 +5,7 @@ struct Struct
     double y;
 }
 
-distinct Foo = Struct;
+typedef Foo = Struct;
 
 struct Struct2
 {

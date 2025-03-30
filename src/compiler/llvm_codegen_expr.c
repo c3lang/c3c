@@ -207,7 +207,7 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 
 	if (optional)
 	{
-		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_anyfault), type_anyfault);
+		llvm_store_to_ptr_raw(c, optional, llvm_get_zero(c, type_fault), type_fault);
 	}
 	POP_CATCH();
 
@@ -217,8 +217,8 @@ BEValue llvm_emit_assign_expr(GenContext *c, BEValue *ref, Expr *expr, LLVMValue
 		if (rejump_block)
 		{
 			llvm_emit_block(c, rejump_block);
-			LLVMValueRef error = llvm_load_abi_alignment(c, type_anyfault, optional, "reload_err");
-			llvm_store_to_ptr_raw(c, c->catch.fault, error, type_anyfault);
+			LLVMValueRef error = llvm_load_abi_alignment(c, type_fault, optional, "reload_err");
+			llvm_store_to_ptr_raw(c, c->catch.fault, error, type_fault);
 			llvm_emit_br(c, c->catch.block);
 		}
 		llvm_emit_block(c, assign_block);
@@ -4250,7 +4250,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
 
 	// Set the catch/error var
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyfault, "error_var");
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_fault, "error_var");
 
 	PUSH_CATCH_VAR_BLOCK(error_var, guard_block);
 
@@ -4275,7 +4275,7 @@ static inline void llvm_emit_rethrow_expr(GenContext *c, BEValue *be_value, Expr
 		llvm_emit_statement_chain(c, expr->rethrow_expr.cleanup);
 		POP_DEFER_ERROR();
 		BEValue value;
-		llvm_value_set_address_abi_aligned(&value, error_var, type_anyfault);
+		llvm_value_set_address_abi_aligned(&value, error_var, type_fault);
 		if (expr->rethrow_expr.in_block)
 		{
 			BlockExit *exit = *expr->rethrow_expr.in_block;
@@ -4305,7 +4305,7 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 	LLVMBasicBlockRef no_err_block = llvm_basic_block_new(c, "noerr_block");
 
 	// Set the catch/error var
-	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_anyfault, "error_var");
+	LLVMValueRef error_var = llvm_emit_alloca_aligned(c, type_fault, "error_var");
 
 	PUSH_CATCH_VAR_BLOCK(error_var, panic_block);
 
@@ -4330,8 +4330,8 @@ static inline void llvm_emit_force_unwrap_expr(GenContext *c, BEValue *be_value,
 		SourceSpan loc = expr->span;
 		BEValue *varargs = NULL;
 		BEValue fault_arg;
-		llvm_value_set_address(&fault_arg, error_var, type_anyfault, type_abi_alignment(type_anyfault));
-		llvm_emit_any_from_value(c, &fault_arg, type_anyfault);
+		llvm_value_set_address(&fault_arg, error_var, type_fault, type_abi_alignment(type_fault));
+		llvm_emit_any_from_value(c, &fault_arg, type_fault);
 		vec_add(varargs, fault_arg);
 		llvm_emit_panic(c, "Force unwrap failed!", loc, "Unexpected fault '%s' was unwrapped!", varargs);
 	}
@@ -4747,8 +4747,8 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 		{
 			Decl *decl = expr->const_expr.fault;
 			ASSERT(decl);
-			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_anyfault), "");
-			llvm_value_set(be_value, value, type_anyfault);
+			LLVMValueRef value = LLVMBuildPtrToInt(c->builder, llvm_get_ref(c, decl), llvm_get_type(c, type_fault), "");
+			llvm_value_set(be_value, value, type_fault);
 			return;
 		}
 		case CONST_ENUM:
@@ -5354,7 +5354,7 @@ void llvm_emit_raw_call(GenContext *c, BEValue *result_value, FunctionPrototype 
 		BEValue error_holder = *result_value;
 		if (error_var)
 		{
-			llvm_value_set_address_abi_aligned(&error_holder, c->catch.fault, type_anyfault);
+			llvm_value_set_address_abi_aligned(&error_holder, c->catch.fault, type_fault);
 		}
 
 		LLVMValueRef stored_error;
@@ -5737,15 +5737,6 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 	unsigned arg_count = vec_size(args);
 	bool always_inline = false;
 	FunctionPrototype *prototype;
-
-	// 1. Dynamic dispatch.
-	if (expr->call_expr.is_dynamic_dispatch)
-	{
-		ASSERT(arg_count);
-		Expr *any_val = args[0];
-		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
-		args[0] = any_val->inner_expr;
-	}
 
 	if (!expr->call_expr.is_func_ref)
 	{
@@ -6289,8 +6280,8 @@ static inline void llvm_emit_try_unwrap(GenContext *c, BEValue *value, Expr *exp
 	if (!expr->try_expr.optional)
 	{
 		LLVMValueRef fail_ref = decl_optional_ref(expr->try_expr.decl);
-		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_anyfault), fail_ref, type_abi_alignment(type_anyfault), "load.err");
-		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_anyfault), "result");
+		LLVMValueRef errv = llvm_load(c, llvm_get_type(c, type_fault), fail_ref, type_abi_alignment(type_fault), "load.err");
+		LLVMValueRef result = LLVMBuildICmp(c->builder, LLVMIntEQ, errv, llvm_get_zero(c, type_fault), "result");
 		llvm_value_set(value, result, type_bool);
 		return;
 	}
@@ -6327,8 +6318,8 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 	}
 	else
 	{
-		LLVMValueRef temp_err = llvm_emit_alloca_aligned(c, type_anyfault, "temp_err");
-		llvm_value_set_address_abi_aligned(&addr, temp_err, type_anyfault);
+		LLVMValueRef temp_err = llvm_emit_alloca_aligned(c, type_fault, "temp_err");
+		llvm_value_set_address_abi_aligned(&addr, temp_err, type_fault);
 	}
 
 	LLVMBasicBlockRef catch_block = llvm_basic_block_new(c, "end_block");
@@ -6347,11 +6338,11 @@ void llvm_emit_catch_unwrap(GenContext *c, BEValue *value, Expr *expr)
 
 	POP_CATCH();
 
-	llvm_store_raw(c, &addr, llvm_get_zero(c, type_anyfault));
+	llvm_store_raw(c, &addr, llvm_get_zero(c, type_fault));
 	llvm_emit_br(c, catch_block);
 	llvm_emit_block(c, catch_block);
 	llvm_value_rvalue(c, &addr);
-	llvm_value_set(value, addr.value, type_anyfault);
+	llvm_value_set(value, addr.value, type_fault);
 }
 
 
@@ -6656,7 +6647,7 @@ static LLVMValueRef llvm_get_benchmark_hook_global(GenContext *c, Expr *expr)
 INLINE void llvm_emit_last_fault(GenContext *c, BEValue *value)
 {
 	ASSERT(c->defer_error_var);
-	llvm_value_set_address_abi_aligned(value, c->defer_error_var, type_anyfault);
+	llvm_value_set_address_abi_aligned(value, c->defer_error_var, type_fault);
 }
 
 INLINE void llmv_emit_benchmark_hook(GenContext *c, BEValue *value, Expr *expr)
@@ -7032,12 +7023,6 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 			value->type = type_lowering(expr->type);
 			return;
 		case EXPR_RVALUE:
-			llvm_emit_expr(c, value, expr->inner_expr);
-			llvm_value_rvalue(c, value);
-			value->type = type_lowering(expr->type);
-			return;
-		case EXPR_ANYFAULT_TO_FAULT:
-			REMINDER("Improve anyfault -> fault");
 			llvm_emit_expr(c, value, expr->inner_expr);
 			llvm_value_rvalue(c, value);
 			value->type = type_lowering(expr->type);

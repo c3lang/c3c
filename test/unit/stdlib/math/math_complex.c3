@@ -1,17 +1,17 @@
 module math_tests @test;
 import math_tests::complex;
 
-def ComplexDouble = ComplexType{double} @local;
-def ComplexInt = ComplexType{int} @local;
+alias ComplexDouble @local = ComplexType {double};
+alias ComplexInt    @local = ComplexType {int};
 
-module math_tests::complex{ElementType} @test;
+module math_tests::complex {ElementType} @test;
 import std::math;
 
-def ComplexType = Complex{ElementType};
+alias ComplexType = Complex {ElementType};
 
 fn void complex_mul_imaginary()
 {
-	ComplexType i = complex::IMAGINARY{ElementType};
+	ComplexType i = complex::IMAGINARY {ElementType};
 	assert(i.mul(i).equals((ComplexType){-1, 0}));
 	assert(i.mul(i).mul(i).equals((ComplexType){0, -1}));
 }

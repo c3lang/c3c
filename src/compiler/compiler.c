@@ -88,6 +88,7 @@ void compiler_init(BuildOptions *build_options)
 		compiler.context.lib_dir = find_lib_dir();
 	}
 
+	compiler.context.ansi = build_options->ansi;
 	if (build_options->print_env)
 	{
 		compiler.context.should_print_environment = true;
@@ -474,6 +475,10 @@ void compiler_compile(void)
 				   "- If you just want to output object files for later linking, use 'compile-only'.");
 	}
 
+	if (compiler.build.type == TARGET_TYPE_STATIC_LIB)
+	{
+		compiler.build.single_module = SINGLE_MODULE_ON;
+	}
 	switch (compiler.build.backend)
 	{
 		case BACKEND_C:
@@ -902,8 +907,8 @@ static void setup_bool_define(const char *id, bool value)
 {
 	setup_define(id, expr_new_const_bool(INVALID_SPAN, type_bool, value));
 }
-#if FETCH_AVAILABLE
 
+#if FETCH_AVAILABLE
 const char * vendor_fetch_single(const char* lib, const char* path) 
 {
 	const char *resource = str_printf("/c3lang/vendor/releases/download/latest/%s.c3l", lib);
@@ -912,9 +917,44 @@ const char * vendor_fetch_single(const char* lib, const char* path)
 	return error;	
 }
 
+static bool use_ansi(void)
+{
+	switch (compiler.context.ansi)
+	{
+		case ANSI_DETECT:
+			break;
+		case ANSI_OFF:
+			return false;
+		case ANSI_ON:
+			return true;
+	}
+#if PLATFORM_WINDOWS
+	return false;
+#else
+	return isatty(fileno(stdout));
+#endif
+}
+
+#define PROGRESS_BAR_LENGTH 35
+
+void update_progress_bar(const char* lib, int current_step, int total_steps)
+{
+    float progress = (float)current_step / total_steps;
+    int filled_length = (int)(progress * PROGRESS_BAR_LENGTH);
+	printf("\033[2K%-10s ", lib);
+    printf("[");
+    for (int i = 0; i < PROGRESS_BAR_LENGTH; i++)
+    {
+	    printf(i < filled_length ? "=" : " ");
+    }
+	printf("] %d%%\r", (int)(progress * 100));
+	fflush(stdout);
+}
+
 void vendor_fetch(BuildOptions *options)
 {
-	unsigned count = 0;
+	bool ansi = use_ansi();
+
 	if (str_eq(options->path, DEFAULT_PATH))
 	{
 		// check if there is a project JSON file
@@ -923,37 +963,63 @@ void vendor_fetch(BuildOptions *options)
 			const char** deps_dirs =  get_project_dependency_directories();
 			int num_lib = vec_size(deps_dirs); 
 			if (num_lib > 0) options->vendor_download_path = deps_dirs[0];
-
 		}
-
 	}
 
+	unsigned count = 0;
 	const char** fetched_libraries = NULL;
-	FOREACH(const char *, lib, options->libraries_to_fetch)
+	int total_libraries = vec_size(options->libraries_to_fetch);
+	
+	for(int i = 0; i < total_libraries; i++)
 	{
-		//TODO : Implement progress bar in the download_file function.
-		printf("Fetching library '%s'...", lib);
-		fflush(stdout);
-
+		const char *lib = options->libraries_to_fetch[i];
+		if (!ansi || total_libraries == 1)
+		{
+			printf("Fetching library '%s'...", lib);
+			fflush(stdout);
+		}
+		else
+		{
+			update_progress_bar(lib, i, total_libraries);
+		}
 		const char *error = vendor_fetch_single(lib, options->vendor_download_path);
 
 		if (!error)
 		{
-			puts("finished.");
+			if (!ansi || total_libraries == 1)
+			{
+				puts("finished.");
+			}
+			else
+			{
+				update_progress_bar(lib, i + 1, total_libraries);
+			}
 			vec_add(fetched_libraries, lib);
 			count++;
 		}
 		else
 		{
-			printf("Failed: '%s'\n", error);
+			if (ansi)
+			{
+				printf("\033[2K\033[31mFailed to fetch library '%s': %s\033[0m\n", lib, error);
+			}
+			else
+			{
+				printf("Failed: '%s'\n", error);
+			}
+			fflush(stdout);
 		}
 	}
-	
+
+	if (ansi && total_libraries > 1) printf("\033[2K");
+
 	// add fetched library to the dependency list
 	add_libraries_to_project_file(fetched_libraries, options->project_options.target_name);
 
 	if (count == 0)	error_exit("Error: Failed to download any libraries.");
 	if (count < vec_size(options->libraries_to_fetch)) error_exit("Error: Only some libraries were downloaded.");
+
+	if (ansi) printf("\033[32mFetching complete.\033[0m\t\t\n");
 }
 #else
 void vendor_fetch(BuildOptions *options)
@@ -1398,6 +1464,7 @@ void compile()
     setup_bool_define("BENCHMARKING", compiler.build.benchmarking);
 	setup_int_define("JMP_BUF_SIZE", jump_buffer_size(), type_int);
 	setup_bool_define("TESTING", compiler.build.testing);
+	setup_int_define("LANGUAGE_DEV_VERSION", 7, type_int);
 	setup_bool_define("ADDRESS_SANITIZER", compiler.build.feature.sanitize_address);
 	setup_bool_define("MEMORY_SANITIZER", compiler.build.feature.sanitize_memory);
 	setup_bool_define("THREAD_SANITIZER", compiler.build.feature.sanitize_thread);

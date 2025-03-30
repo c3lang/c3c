@@ -2,24 +2,24 @@ module std::thread;
 import std::thread::os;
 import std::time;
 
-distinct MutexType = int;
+typedef MutexType = int;
 
 const MutexType MUTEX_PLAIN = 0;
 const MutexType MUTEX_TIMED = 1;
 const MutexType MUTEX_RECURSIVE = 2;
 
-distinct Mutex = NativeMutex;
-distinct TimedMutex = inline Mutex;
-distinct RecursiveMutex = inline Mutex;
-distinct TimedRecursiveMutex = inline Mutex;
-distinct ConditionVariable = NativeConditionVariable;
-distinct Thread = inline NativeThread;
-distinct OnceFlag = NativeOnceFlag;
-def OnceFn = fn void();
+typedef Mutex = NativeMutex;
+typedef TimedMutex = inline Mutex;
+typedef RecursiveMutex = inline Mutex;
+typedef TimedRecursiveMutex = inline Mutex;
+typedef ConditionVariable = NativeConditionVariable;
+typedef Thread = inline NativeThread;
+typedef OnceFlag = NativeOnceFlag;
+alias OnceFn = fn void();
 
-def ThreadFn = fn int(void* arg);
+alias ThreadFn = fn int(void* arg);
 
-fault
+faultdef
 	INIT_FAILED,
 	DESTROY_FAILED,
 	LOCK_FAILED,
@@ -72,7 +72,11 @@ macro void OnceFlag.call(&flag, OnceFn func) => NativeOnceFlag.call_once((Native
 
 macro void yield() => os::native_thread_yield();
 macro Thread current() => (Thread)os::native_thread_current();
-macro void exit(int result) => os::native_thread_exit(result);
+macro void exit(int result)
+{
+	allocator::destroy_temp_allocators();
+	os::native_thread_exit(result);
+}
 macro void? sleep(Duration d) @maydiscard => os::native_sleep_nano(d.to_nano());
 macro void? sleep_ms(ulong ms) @maydiscard  => sleep(time::ms(ms));
 macro void? sleep_ns(NanoDuration ns) @maydiscard  => os::native_sleep_nano(ns);

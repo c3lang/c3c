@@ -1,7 +1,7 @@
 // #target: macos-x64
 // #safe: yes
 module test;
-distinct Foo = int;
+typedef Foo = int;
 fn void Foo.test(&self) {}
 fn int main()
 {

@@ -76,7 +76,7 @@ fn usz? native_fread(CFile file, char[] buffer) @inline
 	return libc::fread(buffer.ptr, 1, buffer.len, file);
 }
 
-macro anyfault file_open_errno() @local
+macro fault file_open_errno() @local
 {
 	switch (libc::errno())
 	{
@@ -104,7 +104,7 @@ macro anyfault file_open_errno() @local
 	}
 }
 
-macro anyfault file_seek_errno() @local
+macro fault file_seek_errno() @local
 {
 	switch (libc::errno())
 	{

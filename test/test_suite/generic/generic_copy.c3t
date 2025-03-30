@@ -9,4 +9,4 @@ fn void abc()
 module tester;
 import foo;
 
-def abc_my = foo::abc{int};
+alias abc_my = foo::abc{int};

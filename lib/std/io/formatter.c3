@@ -10,11 +10,11 @@ interface Printable
 	fn usz? to_format(Formatter* formatter) @optional;
 }
 
-fault BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT, NOT_ENOUGH_ARGUMENTS,
-      INVALID_ARGUMENT;
+faultdef BUFFER_EXCEEDED, INTERNAL_BUFFER_EXCEEDED, INVALID_FORMAT,
+         NOT_ENOUGH_ARGUMENTS, INVALID_ARGUMENT;
 
-def OutputFn = fn void?(void* buffer, char c);
-def FloatType = double;
+alias OutputFn = fn void?(void* buffer, char c);
+alias FloatType = double;
 
 
 macro bool is_struct_with_default_print($Type)
@@ -70,7 +70,7 @@ struct Formatter
 		uint width;
 		uint prec;
 		usz idx;
-		anyfault first_fault;
+		fault first_fault;
 	}
 }
 
@@ -146,8 +146,8 @@ fn usz? Formatter.out_str(&self, any arg) @private
 			return self.out_substr("typeid");
 		case VOID:
 			return self.out_substr("void");
-		case ANYFAULT:
-			return self.out_substr((*(anyfault*)arg.ptr).nameof);
+		case FAULT:
+			return self.out_substr((*(fault*)arg.ptr).nameof);
 		case INTERFACE:
 		case ANY:
 			return self.out_str(*(any*)arg);
@@ -339,7 +339,7 @@ macro usz? @wrap_bad(Formatter* f, #action)
         	case INTERNAL_BUFFER_EXCEEDED:
         		return f.first_err(err)?;
         	default:
-			err = f.first_err(INVALID_ARGUMENT);
+				err = f.first_err(INVALID_ARGUMENT);
         		f.out_substr("<INVALID>")!;
         		return err?;
 		}

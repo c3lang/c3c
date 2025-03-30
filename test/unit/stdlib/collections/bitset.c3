@@ -4,9 +4,9 @@ import std::collections::growablebitset;
 import std::collections::list;
 import std::io;
 
-def List = List{usz};
+alias List = List{usz};
 
-def BitSet = BitSet{2048};
+alias BitSet = BitSet{2048};
 
 fn void set_get()
 {
@@ -45,7 +45,7 @@ fn void set_get()
 	assert(bs.cardinality() == 0);
 }
 
-def GrowableBitSet = GrowableBitSet{char};
+alias GrowableBitSet = GrowableBitSet{char};
 fn void growable_set_get()
 {
 	GrowableBitSet bs;

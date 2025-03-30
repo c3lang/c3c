@@ -1,6 +1,6 @@
 // #target: macos-x64
 
-fault TEST;
+faultdef TEST;
 
 macro foo(int x)
 {

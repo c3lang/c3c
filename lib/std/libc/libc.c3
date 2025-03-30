@@ -46,13 +46,13 @@ fn void errno_set(Errno e)
 	os::errno_set((int)e);
 }
 
-distinct Errno = inline CInt;
-def TerminateFunction = fn void();
-def CompareFunction = fn int(void*, void*);
-def JmpBuf = uptr[$$JMP_BUF_SIZE];
-def Fd = CInt;
-def Fpos_t = long @if(env::WIN32);
-def SignalFunction = fn void(CInt);
+typedef Errno = inline CInt;
+alias TerminateFunction = fn void();
+alias CompareFunction = fn int(void*, void*);
+alias JmpBuf = uptr[$$JMP_BUF_SIZE];
+alias Fd = CInt;
+alias Fpos_t @if(env::WIN32) = long;
+alias SignalFunction = fn void(CInt);
 
 const CInt SIGHUP = 1;
 const CInt SIGINT = 2;
@@ -76,8 +76,8 @@ const CInt SIGCHLD = BSD_FLAVOR_SIG ? 20 : 17;
 
 const bool BSD_FLAVOR_SIG @local = env::DARWIN || env::BSD_FAMILY;
 
-def Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
-def Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
+alias Time_t = $typefrom(env::WIN32 ? long.typeid : CLong.typeid);
+alias Off_t = $typefrom(env::WIN32 ? int.typeid : usz.typeid);
 
 module libc @if(env::LIBC);
 
@@ -97,6 +97,7 @@ extern fn CInt close(CInt fd) @if(!env::WIN32);
 extern fn double difftime(Time_t time1, Time_t time2) @if(!env::WIN32);
 extern fn DivResult div(CInt numer, CInt denom);
 extern fn void exit(CInt status);
+extern fn void _exit(CInt status) @extern("_Exit");
 extern fn CInt fclose(CFile stream);
 extern fn CFile fdopen(CInt fd, ZString mode) @if(!env::WIN32);
 extern fn CInt feof(CFile stream);
@@ -369,7 +370,7 @@ module libc;
 
 // stdio
 
-def CFile = void*;
+alias CFile = void*;
 
 
 const HAS_MALLOC_SIZE = env::LINUX || env::WIN32 || env::DARWIN;
@@ -403,7 +404,7 @@ const S_IRUSR  = 0o000400; // Read permission, owner
 const S_IWUSR  = 0o000200; // Write permission, owner
 const S_IXUSR  = 0o000100; // Execute/search permission, owner
 
-def SeekIndex = CLong;
+alias SeekIndex = CLong;
 
 // vsprintf vprintf not supported
 
@@ -433,11 +434,11 @@ struct TimeSpec
 }
 
 
-def Clock_t = int @if(env::WIN32);
-def Clock_t = CLong @if(!env::WIN32);
+alias Clock_t @if(env::WIN32) = int;
+alias Clock_t @if(!env::WIN32) = CLong;
 
-def TimeOffset = int @if(env::WASI) ;
-def TimeOffset = CLong @if(!env::WASI) ;
+alias TimeOffset @if(env::WASI) = int;
+alias TimeOffset @if(!env::WASI) = CLong ;
 
 const int TIME_UTC = 1;
 

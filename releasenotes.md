@@ -22,15 +22,29 @@
 - `$for` "()" replaced by trailing ":" `$for (var $x = 0; $x < FOO; $x++)` -> `$for var $x = 0; $x < FOO; $x++:`
 - `$switch` "()" replaced by trailing ":" `$switch ($Type)` -> `$switch $Type:`
 - Empty `$switch` requires trailing ":" `$switch` -> `$switch:`
-- Change `@return!` syntax to require ":" after faults.
+- Rename `@return!` to `@return?` and change syntax to require ":" after faults.
 - Remove `if (catch foo) { case ... }` syntax.
 - Remove `[?]` syntax.
 - Change `int!` to `int?` syntax.
-- New `fault` declarations.
+- New `fault` declaration using `faultdef`.
 - Enum associated values can reference the calling enum.
 - Improve error message on `foo ?? io::EOF` with missing '?' #2036
 - Make `@public` import recursive. #2018
 - Fault nameof prefixes the first last module path, for instance `std::io::EOF` is rendered as `io::EOF`.
+- Rename `def` to `alias`.
+- Change `distinct` -> `typedef`.
+- Order of attribute declaration is changed for `alias`.
+- Added `LANGUAGE_DEV_VERSION` env constant.
+- Rename `anyfault` -> `fault`.
+- `!!foo` now works same as as `! ! foo`.
+- Temp allocator now supports more than 2 in-flight stacks.
+- Printing stacktrace uses its own temp allocator.
+- Allow inferred type on body parameters. E.g. `@stack_mem(1024; alloc) { ... };`
+- Use `@pool_init()` to set up a temp pool on a thread. Only the main thread has implicit temp pool setup.
+- `tmem` is now a variable.
+- Compile test and benchmark functions when invoking `--lsp` #2058.
+- Added `@format` attribute for compile time printf validation #2057.
+- Formatter no longer implicitly converts enums to ordinals.
 
 ### Fixes
 - Fix address sanitizer to work on MachO targets (e.g. MacOS).
@@ -41,6 +55,13 @@
 - `"+".to_float()` would panic.
 - `import` can now both be @public and @norecurse.
 - Crash when trying to convert a struct slice to a vector #2039.
+- Crash resolving a method on `Foo[2]` when `Foo` is distinct #2042.
+- Bug due to missing cast when doing `$i[$x] = $z`.
+- Incorrectly allowed getting pointer to a macro #2049.
+- &self not runtime null-checked in macro #1827.
+- Bug when printing a boolean value as an integer using printf.
+- Show error when a generic module contains a self-generic type.
+- "Single module" was not enforced when creating a static library using as a project target.
 
 ### Stdlib changes
 - `new_*` functions in general moved to version without `new_` prefix.
@@ -55,6 +76,15 @@
 - Change all hash functions to have a common `hash` function.
 - `@wstring`, `@wstring32`, `@char32` and `@char16` compile time macros added.
 - Updates to `Atomic` to handle distinct types and booleans.
+- Added `math::iota`.
+- `@pool` no longer takes an argument.
+- `Allocator` interface removes `mark` and `reset`.
+- DynamicArenaAllocator has changed init function.
+- Added `BackedArenaAllocator` which is allocated to a fixed size, then allocates on the backing allocator and supports mark/reset.
+- `AnyList` now also defaults to the temp allocator.
+- `os::getcwd` and `os::get_home_dir` requires an explicit allocator.
+- `file::load_new` and `file::load_path_new` removed.
+- `os::exit` and `os::fastexit` added.
 
 ## 0.6.8 Change list
 

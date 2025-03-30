@@ -2,7 +2,7 @@ module test;
 import std::io;
 import std::collections::map;
 
-def IntMap = HashMap{String, int};
+alias IntMap = HashMap{String, int};
 fn void copy_map() @test
 {
 	TrackingAllocator alloc;

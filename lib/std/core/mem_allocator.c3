@@ -1,4 +1,5 @@
 module std::core::mem::allocator;
+import std::math;
 
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
@@ -18,13 +19,11 @@ enum AllocInitType
 
 interface Allocator
 {
-	fn void reset(usz mark) @optional;
-	fn usz mark() @optional;
 	<*
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require size > 0
-	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*? acquire(usz size, AllocInitType init_type, usz alignment = 0);
 	<*
@@ -32,7 +31,7 @@ interface Allocator
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
 	 @require new_size > 0
-	 @return! mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
+	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*? resize(void* ptr, usz new_size, usz alignment = 0);
 	<*
@@ -41,7 +40,7 @@ interface Allocator
 	fn void release(void* ptr, bool aligned);
 }
 
-def MemoryAllocFn = fn char[]?(usz);
+alias MemoryAllocFn = fn char[]?(usz);
 
 
 
@@ -356,14 +355,34 @@ macro void*? @aligned_realloc(#calloc_fn, #free_fn, void* old_pointer, usz bytes
 
 
 // All allocators
-
-
-def mem = thread_allocator @builtin;
+alias mem @builtin = thread_allocator ;
 tlocal Allocator thread_allocator @private = base_allocator();
 Allocator temp_base_allocator @private = base_allocator();
 
-tlocal TempAllocator* thread_temp_allocator @private = null;
-tlocal TempAllocator*[2] temp_allocator_pair @private;
+typedef PoolState = TempAllocator*;
+
+const LazyTempAllocator LAZY_TEMP @private = {};
+tlocal Allocator current_temp = &LAZY_TEMP;
+tlocal TempAllocator* top_temp;
+tlocal bool auto_create_temp = false;
+
+usz temp_allocator_min_size = temp_allocator_default_min_size();
+usz temp_allocator_buffer_size = temp_allocator_default_buffer_size();
+usz temp_allocator_new_mult = 4;
+
+fn PoolState push_pool()
+{
+	Allocator old = top_temp ? current_temp : create_temp_allocator_on_demand();
+	current_temp = ((TempAllocator*)old).derive_allocator(temp_allocator_min_size, temp_allocator_buffer_size, temp_allocator_new_mult)!!;
+	return (PoolState)old.ptr;
+}
+
+fn void pop_pool(PoolState old)
+{
+	TempAllocator* temp = (TempAllocator*)old;
+	current_temp = temp;
+	temp.reset();
+}
 
 macro Allocator base_allocator() @private
 {
@@ -374,45 +393,68 @@ macro Allocator base_allocator() @private
 	$endif
 }
 
-macro TempAllocator* create_default_sized_temp_allocator(Allocator allocator) @local
+macro usz temp_allocator_size() @local
 {
 	$switch env::MEMORY_ENV:
-	$case NORMAL:
-		return new_temp_allocator(1024 * 256, allocator)!!;
-	$case SMALL:
-		return new_temp_allocator(1024 * 16, allocator)!!;
-	$case TINY:
-		return new_temp_allocator(1024 * 2, allocator)!!;
-	$case NONE:
-		unreachable("Temp allocator must explicitly created when memory-env is set to 'none'.");
+		$case NORMAL: return 256 * 1024;
+		$case SMALL: return 1024 * 32;
+		$case TINY: return 1024 * 4;
+		$case NONE: return 0;
+	$endswitch
+}
+
+macro usz temp_allocator_default_min_size() @local
+{
+	$switch env::MEMORY_ENV:
+		$case NORMAL: return 16 * 1024;
+		$case SMALL: return 1024 * 2;
+		$case TINY: return 256;
+		$case NONE: return 256;
+	$endswitch
+}
+
+macro usz temp_allocator_default_buffer_size() @local
+{
+	$switch env::MEMORY_ENV:
+		$case NORMAL: return 1024;
+		$case SMALL: return 128;
+		$case TINY: return 64;
+		$case NONE: return 64;
 	$endswitch
 }
 
 macro Allocator heap() => thread_allocator;
 
-macro TempAllocator* temp()
+<*
+ @require !top_temp : "This should never be called when temp already exists"
+*>
+fn Allocator create_temp_allocator_on_demand() @private
 {
-	if (!thread_temp_allocator)
+	if (!auto_create_temp)
 	{
-		init_default_temp_allocators();
+	    auto_create_temp = true;
+	    abort("Use '@pool_init()' to enable the temp allocator on a new thread. A temp allocator is only implicitly created on the main thread.");
 	}
-	return thread_temp_allocator;
+	return create_temp_allocator(base_allocator(), temp_allocator_size());
+}
+<*
+ @require !top_temp : "This should never be called when temp already exists"
+*>
+fn Allocator create_temp_allocator(Allocator allocator, usz size, usz buffer = temp_allocator_default_buffer_size()) @private
+{
+	return current_temp = top_temp = allocator::new_temp_allocator(allocator, size)!!;
 }
 
-macro TempAllocator* tmem() @builtin
+macro Allocator temp()
 {
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-	}
-	return thread_temp_allocator;
+	return current_temp;
 }
 
-fn void init_default_temp_allocators() @private
+alias tmem @builtin = current_temp;
+
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC)
 {
-	temp_allocator_pair[0] = create_default_sized_temp_allocator(temp_base_allocator);
-	temp_allocator_pair[1] = create_default_sized_temp_allocator(temp_base_allocator);
-	thread_temp_allocator = temp_allocator_pair[0];
+	auto_create_temp = true;
 }
 
 fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC)
@@ -425,26 +467,33 @@ fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::L
 *>
 fn void destroy_temp_allocators()
 {
-	if (!thread_temp_allocator) return;
-	temp_allocator_pair[0].destroy();
-	temp_allocator_pair[1].destroy();
-	temp_allocator_pair[..] = null;
-	thread_temp_allocator = null;
+	if (!top_temp) return;
+	top_temp.free();
+	top_temp = null;
+	current_temp = &LAZY_TEMP;
 }
 
-fn TempAllocator* temp_allocator_next() @private
+import libc;
+typedef LazyTempAllocator (Allocator) @private = uptr;
+
+fn void*? LazyTempAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {
-	if (!thread_temp_allocator)
-	{
-		init_default_temp_allocators();
-		return thread_temp_allocator;
-	}
-	usz index = thread_temp_allocator == temp_allocator_pair[0] ? 1 : 0;
-	return thread_temp_allocator = temp_allocator_pair[index];
+	if (!top_temp) create_temp_allocator_on_demand();
+	return top_temp.acquire(bytes, init_type, alignment);
+}
+
+fn void*? LazyTempAllocator.resize(&self, void* old_ptr, usz new_bytes, usz alignment) @dynamic
+{
+	if (!top_temp) create_temp_allocator_on_demand();
+	return top_temp.resize(old_ptr, new_bytes, alignment);
+}
+
+fn void LazyTempAllocator.release(&self, void* old_ptr, bool aligned) @dynamic
+{
 }
 
 const NullAllocator NULL_ALLOCATOR = {};
-distinct NullAllocator (Allocator) = uptr;
+typedef NullAllocator (Allocator) = uptr;
 
 fn void*? NullAllocator.acquire(&self, usz bytes, AllocInitType init_type, usz alignment) @dynamic
 {

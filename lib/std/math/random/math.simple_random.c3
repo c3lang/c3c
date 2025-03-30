@@ -1,6 +1,6 @@
 module std::math::random;
 
-distinct SimpleRandom (Random) = ulong;
+typedef SimpleRandom (Random) = ulong;
 
 
 fn void SimpleRandom.set_seed(&self, char[] seed) @dynamic

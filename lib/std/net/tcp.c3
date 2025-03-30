@@ -2,8 +2,8 @@ module std::net::tcp @if(os::SUPPORTS_INET);
 import std::net @public;
 import std::time, libc;
 
-distinct TcpSocket = inline Socket;
-distinct TcpServerSocket = inline Socket;
+typedef TcpSocket = inline Socket;
+typedef TcpServerSocket = inline Socket;
 
 fn TcpSocket? connect(String host, uint port, Duration timeout = 0, SocketOption... options, IpProtocol ip_protocol = UNSPECIFIED)
 {

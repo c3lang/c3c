@@ -1,5 +1,5 @@
-def Abc = fn void();
-distinct Foo = inline Abc;
+alias Abc = fn void();
+typedef Foo = inline Abc;
 struct Bar
 {
 	inline Abc a;

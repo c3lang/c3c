@@ -1,15 +1,15 @@
 module std::net::os;
 const bool SUPPORTS_INET = env::LIBC && (env::WIN32 || env::DARWIN || env::LINUX);
 
-distinct AIFamily = CInt;
-distinct AIProtocol = CInt;
-distinct AISockType = CInt;
-distinct AIFlags = CInt;
+typedef AIFamily = CInt;
+typedef AIProtocol = CInt;
+typedef AISockType = CInt;
+typedef AIFlags = CInt;
 
-def Socklen_t = CUInt @if(!env::WIN32);
-def Socklen_t = usz @if(env::WIN32);
+alias Socklen_t @if(!env::WIN32) = CUInt;
+alias Socklen_t @if(env::WIN32)  = usz;
 
-distinct SockAddrPtr = void*;
+typedef SockAddrPtr = void*;
 
 struct AddrInfo
 {

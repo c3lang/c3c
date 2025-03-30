@@ -73,7 +73,7 @@ fn void countingsort_with_lambda()
 	}
 }
 
-def CountingSortTestList = List{int};
+alias CountingSortTestList = List{int};
 
 fn void countingsort_list()
 {

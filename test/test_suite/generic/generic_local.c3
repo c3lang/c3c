@@ -2,7 +2,7 @@ module testing;
 import std::io;
 import foo;
 
-def Foo = foo::Foo;
+alias Foo = foo::Foo;
 
 fn void main()
 {
@@ -13,7 +13,7 @@ module foo;
 import foo::private;
 
 // Bug #856
-distinct Foo = inline PrivateFoo{int}; // #error: could not be found
+typedef Foo = inline PrivateFoo{int}; // #error: could not be found
 
 module foo::private{Type} @local;
 

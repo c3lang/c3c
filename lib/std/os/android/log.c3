@@ -52,8 +52,8 @@ fn bool log_id_is_valid(LogId id)
 extern fn CInt log_buf_write(CInt bufID, CInt prio, ZString tag, ZString text) @extern("__android_log_buf_write");
 extern fn CInt log_buf_print(CInt bufID, CInt prio, ZString tag, ZString fmt, ...) @extern("__android_log_buf_print");
 
-def LoggerFunction = fn void(LogMessage* log_message);
-def AborterFunction = fn void(ZString abort_message);
+alias LoggerFunction = fn void(LogMessage* log_message);
+alias AborterFunction = fn void(ZString abort_message);
 
 extern fn void log_write_log_message(LogMessage log_message) @extern("__android_log_write_log_message");
 extern fn void log_set_logger(LoggerFunction logger) @extern("__android_log_set_logger");

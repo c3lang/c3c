@@ -107,10 +107,10 @@ fn void printf_enum()
 	assert(s == "ENUMB", "got '%s'; want 'ENUMB'", s);
 	free(s);
 
-	s = string::format(mem, "%d", PrintfTest.ENUMA);
+	s = string::format(mem, "%d", PrintfTest.ENUMA.ordinal);
 	assert(s == "0", "got '%s'; want '0'", s);
 	free(s);
-	s = string::format(mem, "%d", PrintfTest.ENUMB);
+	s = string::format(mem, "%d", PrintfTest.ENUMB.ordinal);
 	assert(s == "1", "got '%s'; want '1'", s);
 	free(s);
 }

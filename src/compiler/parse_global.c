@@ -47,8 +47,10 @@ void recover_top_level(ParseContext *c)
 			case TOKEN_IMPORT:
 			case TOKEN_EXTERN:
 			case TOKEN_ENUM:
-			case TOKEN_DEF:
-			case TOKEN_FAULT:
+			case TOKEN_ALIAS:
+			case TOKEN_TYPEDEF:
+			case TOKEN_ATTRDEF:
+			case TOKEN_FAULTDEF:
 				return;
 			case TOKEN_CONST:
 			case TOKEN_ASM:
@@ -1065,14 +1067,7 @@ static bool parse_attributes_for_global(ParseContext *c, Decl *decl)
 	return true;
 }
 
-/**
- * attribute_list ::= attribute*
- *
- * Patch visibility and builtin attributes immediately.
- *
- * @return true if parsing succeeded, false if recovery is needed
- */
-bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref)
+static inline bool parse_attribute_list(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref, bool use_comma)
 {
 	Visibility visibility = -1; // NOLINT
 	if (cond_ref) *cond_ref = false;
@@ -1129,10 +1124,22 @@ bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visib
 			if (other_attr->name == name) RETURN_PRINT_ERROR_AT(false, attr, "Repeat of attribute '%s' here.", name);
 		}
 		vec_add(*attributes_ref, attr);
+		if (use_comma && !try_consume(c, TOKEN_COMMA)) break;
 	}
 	return true;
 }
 
+/**
+ * attribute_list ::= attribute*
+ *
+ * Patch visibility and builtin attributes immediately.
+ *
+ * @return true if parsing succeeded, false if recovery is needed
+ */
+bool parse_attributes(ParseContext *c, Attr ***attributes_ref, Visibility *visibility_ref, bool *builtin_ref, bool *cond_ref)
+{
+	return parse_attribute_list(c, attributes_ref, visibility_ref, builtin_ref, cond_ref, false);
+}
 
 /**
  * global_declaration ::= TLOCAL? optional_type IDENT (('=' expression)? | (',' IDENT)* opt_attributes) ';'
@@ -1678,11 +1685,11 @@ static bool parse_struct_body(ParseContext *c, Decl *parent)
 
 
 /**
- * distinct_declaration ::= 'distinct' TYPE_IDENT opt_interfaces '=' 'inline'? type ';'
+ * typedef_declaration ::= 'typedef' TYPE_IDENT opt_interfaces attributes? '=' 'inline'? type ';'
  */
-static inline Decl *parse_distinct_declaration(ParseContext *c)
+static inline Decl *parse_typedef_declaration(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_DISTINCT);
+	advance_and_verify(c, TOKEN_TYPEDEF);
 
 	Decl *decl = decl_new_with_type(symstr(c), c->span, DECL_DISTINCT);
 
@@ -1700,7 +1707,7 @@ static inline Decl *parse_distinct_declaration(ParseContext *c)
 
 	if (tok_is(c, TOKEN_FN))
 	{
-		PRINT_ERROR_HERE("A distinct type cannot define a new function type, but you can make a distinct type from an existing function type, e.g. `def FooFn = fn void(); distinct Bar = FooFn;`");
+		PRINT_ERROR_HERE("A distinct type cannot define a new function type, but you can make a distinct type from an existing function type, e.g. `alias FooFn = fn void(); typedef Bar = FooFn;`");
 		return poisoned_decl;
 	}
 	// 2. Now parse the type which we know is here.
@@ -1927,14 +1934,16 @@ static inline void decl_add_type(Decl *decl, TypeKind kind)
 	decl->type = type;
 }
 /**
- * typedef_declaration ::= DEF TYPE_IDENT '=' typedef_type ';'
+ * typedef_declaration ::= ALIAS TYPE_IDENT attributes? '=' typedef_type ';'
  *
  * typedef_type ::= func_typedef | type generic_params?
  * func_typedef ::= 'fn' optional_type parameter_type_list
  */
-static inline Decl *parse_def_type(ParseContext *c)
+static inline Decl *parse_alias_type(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_DEF);
+	// TODO remove
+	advance(c);
+	// advance_and_verify(c, TOKEN_ALIAS);
 
 	Decl *decl = decl_new(DECL_POISONED, symstr(c), c->span);
 	DEBUG_LOG("Parse def %s", decl->name);
@@ -1955,6 +1964,8 @@ static inline Decl *parse_def_type(ParseContext *c)
 		return poisoned_decl;
 	}
 
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
 	// 1. Did we have `fn`? In that case it's a function pointer.
@@ -1971,7 +1982,7 @@ static inline Decl *parse_def_type(ParseContext *c)
 		{
 			return poisoned_decl;
 		}
-		if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+		if (!parse_attributes(c, &decl_type->attributes, NULL, NULL, NULL)) return poisoned_decl;
 		RANGE_EXTEND_PREV(decl_type);
 		RANGE_EXTEND_PREV(decl);
 		CONSUME_EOS_OR_RET(poisoned_decl);
@@ -2012,7 +2023,6 @@ static inline Decl *parse_def_type(ParseContext *c)
 	{
 		decl->typedef_decl.is_redef = true;
 	}
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -2020,14 +2030,15 @@ static inline Decl *parse_def_type(ParseContext *c)
 }
 
 /**
- * define_ident ::= 'define' (IDENT | CONST_IDENT | AT_IDENT) '=' identifier_alias generic_params?
+ * define_ident ::= 'define' (IDENT | CONST_IDENT | AT_IDENT) attributes? '=' identifier_alias generic_params?
  *
  * identifier_alias ::= path? (IDENT | CONST_IDENT | AT_IDENT)
  */
-static inline Decl *parse_def_ident(ParseContext *c)
+static inline Decl *parse_alias_ident(ParseContext *c)
 {
-	// 1. Store the beginning of the "define".
-	advance_and_verify(c, TOKEN_DEF);
+	// 1. Store the beginning of the "alias".
+	advance_and_verify(c, TOKEN_ALIAS);
+
 
 	// 2. At this point we expect an ident or a const token.
 	//    since the Type is handled.
@@ -2058,6 +2069,9 @@ static inline Decl *parse_def_ident(ParseContext *c)
 	}
 	// 4. Advance and consume the '='
 	advance(c);
+
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
 
 	if (tok_is(c, TOKEN_FN))
@@ -2067,7 +2081,6 @@ static inline Decl *parse_def_ident(ParseContext *c)
 
 	ASSIGN_EXPR_OR_RET(decl->define_decl.alias_expr, parse_expr(c), poisoned_decl);
 
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 
 	RANGE_EXTEND_PREV(decl);
 	CONSUME_EOS_OR_RET(poisoned_decl);
@@ -2075,12 +2088,11 @@ static inline Decl *parse_def_ident(ParseContext *c)
 }
 
 /**
- * define_attribute ::= 'def' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
+ * define_attribute ::= 'attrdef' AT_TYPE_IDENT '(' parameter_list ')' opt_attributes '=' '{' attributes? '}' ';'
  */
-static inline Decl *parse_def_attribute(ParseContext *c)
+static inline Decl *parse_attrdef(ParseContext *c)
 {
-	// 1. Store the beginning of the "def".
-	advance_and_verify(c, TOKEN_DEF);
+	advance_and_verify(c, TOKEN_ATTRDEF);
 
 	Decl *decl = decl_new(DECL_ATTRIBUTE, symstr(c), c->span);
 
@@ -2098,36 +2110,33 @@ static inline Decl *parse_def_attribute(ParseContext *c)
 	}
 
 	Attr **attributes = NULL;
+	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
+
+	// Empty
+	if (try_consume(c, TOKEN_EOS)) return decl;
 
 	CONSUME_OR_RET(TOKEN_EQ, poisoned_decl);
-	CONSUME_OR_RET(TOKEN_LBRACE, poisoned_decl);
-
 	bool is_cond;
 	bool is_builtin = false;
-	if (!parse_attributes(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond)) return poisoned_decl;
-	CONSUME_OR_RET(TOKEN_RBRACE, poisoned_decl);
+	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true)) return poisoned_decl;
 	decl->attr_decl.attrs = attributes;
 	decl->is_cond = is_cond;
 	decl->is_autoimport = is_builtin;
-	if (!parse_attributes_for_global(c, decl)) return poisoned_decl;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }
 
 /**
- * define_decl ::= DEF define_type_body |
+ * define_decl ::= ALIAS define_type_body
  */
-static inline Decl *parse_def(ParseContext *c)
+static inline Decl *parse_alias(ParseContext *c)
 {
 	switch (peek(c))
 	{
 		case TOKEN_TYPE_IDENT:
-			return parse_def_type(c);
-		case TOKEN_AT_TYPE_IDENT:
-			// define @Foo = @inline, @noreturn
-			return parse_def_attribute(c);
+			return parse_alias_type(c);
 		default:
-			return parse_def_ident(c);
+			return parse_alias_ident(c);
 	}
 }
 
@@ -2246,11 +2255,11 @@ static inline Decl *parse_fault(ParseContext *c)
 }
 
 /**
- * fault_declaration ::= FAULT CONST_IDENT (',' CONST_IDENT)* ','? ';'
+ * faultdef_declaration ::= FAULTDEF CONST_IDENT (',' CONST_IDENT)* ','? ';'
  */
-static inline Decl *parse_fault_declaration(ParseContext *c)
+static inline Decl *parse_faultdef_declaration(ParseContext *c)
 {
-	advance_and_verify(c, TOKEN_FAULT);
+	advance_and_verify(c, TOKEN_FAULTDEF);
 
 	if (c->lexer.token_type == TOKEN_EOS)
 	{
@@ -2709,7 +2718,7 @@ static inline bool parse_doc_optreturn(ParseContext *c, AstId *docs, AstId **doc
 	Ast **returns = NULL;
 	Ast *ast = ast_new_curr(c, AST_CONTRACT);
 	ast->span = c->prev_span;
-	advance_and_verify(c, TOKEN_BANG);
+	advance_and_verify(c, TOKEN_QUESTION);
 	ast->contract_stmt.kind = CONTRACT_OPTIONALS;
 	while (1)
 	{
@@ -2770,7 +2779,7 @@ static bool parse_contracts(ParseContext *c, AstId *contracts_ref)
 		else if (name == kw_at_return)
 		{
 			advance(c);
-			if (tok_is(c, TOKEN_BANG))
+			if (tok_is(c, TOKEN_QUESTION))
 			{
 				if (!parse_doc_optreturn(c, contracts_ref, next)) return false;
 			}
@@ -2932,9 +2941,13 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 		case TOKEN_DOCS_START:
 			PRINT_ERROR_HERE("There are more than one doc comment in a row, that is not allowed.");
 			return poisoned_decl;
-		case TOKEN_DEF:
+		case TOKEN_ALIAS:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_def(c);
+			decl = parse_alias(c);
+			break;
+		case TOKEN_ATTRDEF:
+			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
+			decl = parse_attrdef(c);
 			break;
 		case TOKEN_FN:
 			decl = parse_func_definition(c, contracts, c->unit->is_interface_file ? FUNC_PARSE_C3I : FUNC_PARSE_REGULAR);
@@ -2988,9 +3001,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_interface_declaration(c);
 			break;
-		case TOKEN_DISTINCT:
+		case TOKEN_TYPEDEF:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_distinct_declaration(c);
+			decl = parse_typedef_declaration(c);
 			break;
 		case TOKEN_CONST:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
@@ -3008,9 +3021,9 @@ Decl *parse_top_level_statement(ParseContext *c, ParseContext **context_out)
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
 			decl = parse_enum_declaration(c);
 			break;
-		case TOKEN_FAULT:
+		case TOKEN_FAULTDEF:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;
-			decl = parse_fault_declaration(c);
+			decl = parse_faultdef_declaration(c);
 			break;
 		case TOKEN_IDENT:
 			if (has_real_contracts) goto CONTRACT_NOT_ALLOWED;

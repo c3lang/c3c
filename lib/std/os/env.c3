@@ -7,9 +7,9 @@ import std::io::path, libc, std::os;
 <*
  @param [in] name
  @require name.len > 0
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
-fn String? get_var(Allocator allocator, String name) => @pool(allocator)
+fn String? get_var(Allocator allocator, String name) => @pool()
 {
 
 	$switch:
@@ -36,7 +36,7 @@ fn String? get_var(Allocator allocator, String name) => @pool(allocator)
 
 fn String? tget_var(String name)
 {
-	return get_var(tmem(), name);
+	return get_var(tmem, name);
 }
 
 <*
@@ -66,7 +66,7 @@ fn bool set_var(String name, String value, bool overwrite = true) => @pool()
 <*
 Returns the current user's home directory.
 *>
-fn String? get_home_dir(Allocator using = allocator::heap())
+fn String? get_home_dir(Allocator allocator)
 {
 	String home;
 	$if !env::WIN32:
@@ -74,14 +74,14 @@ fn String? get_home_dir(Allocator using = allocator::heap())
 	$else
 		home = "USERPROFILE";
 	$endif
-	return get_var(using, home);
+	return get_var(allocator, home);
 }
 
 
 <*
 Returns the current user's config directory.
 *>
-fn Path? get_config_dir(Allocator allocator) => @pool(allocator)
+fn Path? get_config_dir(Allocator allocator) => @pool()
 {
 	$if env::WIN32:
 		return path::new(allocator, tget_var("AppData"));

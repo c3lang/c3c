@@ -1,6 +1,6 @@
-def Number8 = char;
-def Number32 = int;
-distinct DNumber32 = int;
+alias Number8 = char;
+alias Number32 = int;
+typedef DNumber32 = int;
 fn void test1()
 {
     int a = (ichar)(10);

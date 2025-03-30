@@ -2,7 +2,7 @@ module std::net::url;
 
 import std::io, std::collections::map, std::collections::list;
 
-fault
+faultdef
 	EMPTY,
 	INVALID_SCHEME,
 	INVALID_USER,
@@ -47,7 +47,7 @@ struct Url(Printable)
  @require url_string.len > 0 : "the url_string must be len 1 or more"
  @return "the parsed Url"
 *>
-fn Url? tparse(String url_string) => parse(tmem(), url_string);
+fn Url? tparse(String url_string) => parse(tmem, url_string);
 
 <*
  Parse a URL string into a Url struct.
@@ -89,7 +89,7 @@ fn Url? parse(Allocator allocator, String url_string)
 			String userinfo = authority[:user_info_end];
 			String username @noinit;
 			String password;
-			@pool(allocator)
+			@pool()
 			{
 				String[] userpass = userinfo.tsplit(":", 2);
 				username = userpass[0];
@@ -115,7 +115,7 @@ fn Url? parse(Allocator allocator, String url_string)
 		}
 		else
 		{
-			@pool(allocator)
+			@pool()
 			{
 				String[] host_port = authority.tsplit(":", 2);
 				if (host_port.len > 1)
@@ -238,7 +238,7 @@ fn String Url.to_string(&self, Allocator allocator)
 }
 
 
-def UrlQueryValueList = List{String};
+alias UrlQueryValueList = List{String};
 
 struct UrlQueryValues
 {
@@ -252,7 +252,7 @@ struct UrlQueryValues
  @param [in] query
  @return "a UrlQueryValues HashMap"
 *>
-fn UrlQueryValues parse_query_to_temp(String query) => parse_query(tmem(), query);
+fn UrlQueryValues parse_query_to_temp(String query) => parse_query(tmem, query);
 
 <*
  Parse the query parameters of the Url into a UrlQueryValues map.
@@ -270,7 +270,7 @@ fn UrlQueryValues parse_query(Allocator allocator, String query)
 	Splitter raw_vals = query.tokenize("&");
 	while (try String rv = raw_vals.next())
 	{
-		@pool(allocator)
+		@pool()
 		{
 			String[] parts = rv.tsplit("=", 2);
 			String key = tdecode(parts[0], QUERY) ?? parts[0];

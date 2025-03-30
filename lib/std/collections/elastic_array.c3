@@ -7,8 +7,8 @@
 module std::collections::elastic_array {Type, MAX_SIZE};
 import std::io, std::math, std::collections::list_common;
 
-def ElementPredicate = fn bool(Type *type);
-def ElementTest = fn bool(Type *type, any context);
+alias ElementPredicate = fn bool(Type *type);
+alias ElementTest = fn bool(Type *type, any context);
 const ELEMENT_IS_EQUATABLE = types::is_equatable_type(Type);
 const ELEMENT_IS_POINTER = Type.kindof == POINTER;
 macro type_is_overaligned() => Type.alignof > mem::DEFAULT_MEM_ALIGNMENT;
@@ -169,9 +169,9 @@ macro Type[] ElasticArray.to_array(&self, Allocator allocator)
 fn Type[] ElasticArray.to_tarray(&self)
 {
 	$if type_is_overaligned():
-	return self.to_aligned_array(tmem());
+	return self.to_aligned_array(tmem);
 	$else
-	return self.to_array(tmem());
+	return self.to_array(tmem);
 	$endif;
 }
 

@@ -4,8 +4,7 @@ import libc;
 import std::io;
 import std::collections::maybe;
 
-fault TITLE_MISSING;
-fault BAD_READ;
+faultdef TITLE_MISSING, BAD_READ;
 
 struct Doc
 {
@@ -71,7 +70,7 @@ fn void main()
 {
     const String[] URLS = { "good", "title-empty", "title-missing", "head-missing", "fail" };
     DynamicArenaAllocator dynamic_arena;
-	dynamic_arena.init(1024, allocator::heap());
+	dynamic_arena.init(mem, 1024);
 	OutStream out = io::stdout();
     foreach (String url : URLS)
     {

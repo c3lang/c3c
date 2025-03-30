@@ -5,8 +5,8 @@ fn void main()
 {
 }
 
-def FooFunc = fn void? (Bar); // #error: Recursive definition
-def Foo = HashMap{String, FooFunc};
+alias FooFunc = fn void? (Bar); // #error: Recursive definition
+alias Foo = HashMap{String, FooFunc};
 
 struct Bar
 {

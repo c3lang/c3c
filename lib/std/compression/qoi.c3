@@ -37,12 +37,11 @@ struct QOIDesc
 	QOIChannels channels;
 	QOIColorspace colorspace;
 }
-
 <*
  QOI Errors.
  These are all the possible bad outcomes.
 *>
-fault INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, TOO_MANY_PIXELS;
+faultdef INVALID_PARAMETERS, FILE_OPEN_FAILED, FILE_WRITE_FAILED, INVALID_DATA, TOO_MANY_PIXELS;
 
 
 // Let the user decide if they want to use std::io
@@ -67,7 +66,7 @@ import std::io;
 fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
 {
 	// encode data
-	char[] output = encode(tmem(), input, desc)!;
+	char[] output = encode(tmem, input, desc)!;
 
 	file::save(filename, output)!;
 	return output.len;
@@ -94,9 +93,9 @@ fn usz? write(String filename, char[] input, QOIDesc* desc) => @pool()
  @param [in] filename : `The file's name to read the image from`
  @param [&out] desc : `The descriptor to fill with the image's info`
  @param channels : `The channels to be used`
- @return! FILE_OPEN_FAILED, INVALID_DATA, TOO_MANY_PIXELS
+ @return? FILE_OPEN_FAILED, INVALID_DATA, TOO_MANY_PIXELS
 *>
-fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool(allocator)
+fn char[]? read(Allocator allocator, String filename, QOIDesc* desc, QOIChannels channels = AUTO) => @pool()
 {
 	// read file
 	char[] data = file::load_temp(filename) ?? FILE_OPEN_FAILED?!;
@@ -122,7 +121,7 @@ import std::bits;
 
  @param [in] input : `The raw RGB or RGBA pixels to encode`
  @param [&in] desc : `The descriptor of the image`
- @return! INVALID_PARAMETERS, TOO_MANY_PIXELS, INVALID_DATA
+ @return? INVALID_PARAMETERS, TOO_MANY_PIXELS, INVALID_DATA
 *>
 fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 {
@@ -277,7 +276,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
  @param [in] data : `The QOI image data to decode`
  @param [&out] desc : `The descriptor to fill with the image's info`
  @param channels : `The channels to be used`
- @return! INVALID_DATA, TOO_MANY_PIXELS
+ @return? INVALID_DATA, TOO_MANY_PIXELS
 *>
 fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels channels = AUTO) @nodiscard
 {
@@ -406,7 +405,7 @@ const char[*] END_OF_STREAM = {0, 0, 0, 0, 0, 0, 0, 1};
 // inefficient, but it's only run once at a time
 
 <*
- @return! INVALID_DATA
+ @return? INVALID_DATA
 *>
 macro @enumcast($Type, raw)
 {
@@ -417,7 +416,7 @@ macro @enumcast($Type, raw)
 	return INVALID_DATA?;
 }
 
-distinct Pixel = inline char[<4>];
+typedef Pixel = inline char[<4>];
 macro char Pixel.hash(Pixel p)
 {
 	return (p.r * 3 + p.g * 5 + p.b * 7 + p.a * 11) % 64;

@@ -1,7 +1,7 @@
 module std::core::runtime;
 import libc, std::time, std::io, std::sort;
 
-def BenchmarkFn = fn void();
+alias BenchmarkFn = fn void();
 
 struct BenchmarkUnit
 {
@@ -96,5 +96,5 @@ fn bool run_benchmarks(BenchmarkUnit[] benchmarks)
 
 fn bool default_benchmark_runner(String[] args) => @pool()
 {
-	return run_benchmarks(benchmark_collection_create(tmem()));
+	return run_benchmarks(benchmark_collection_create(tmem));
 }

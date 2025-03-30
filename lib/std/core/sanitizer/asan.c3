@@ -12,7 +12,7 @@
 
 module std::core::sanitizer::asan;
 
-def ErrorCallback = fn void (ZString);
+alias ErrorCallback = fn void (ZString);
 
 <*
  Marks a memory region ([addr, addr+size)) as unaddressable.

@@ -1,14 +1,14 @@
-fault
+faultdef
 	ABC,
 	DEF,
 	ZED;
 
 
-fault XYZ;
+faultdef XYZ;
 <*
 
  hello world
- @return! XYZ, ABC
+ @return? XYZ, ABC
  *>
 fn void? abc(int a, int b, int z)
 {
@@ -17,7 +17,7 @@ fn void? abc(int a, int b, int z)
 
 <*
 hello world
- @return! XYZ, ABC
+ @return? XYZ, ABC
  *>
 macro void? @abc(int a, int b, int z)
 {

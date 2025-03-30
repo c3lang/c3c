@@ -33,7 +33,7 @@ fn MultiReader* MultiReader.init(&self, Allocator allocator, InStream... readers
 *>
 fn MultiReader* MultiReader.tinit(&self, InStream... readers)
 {
-	return self.init(tmem(), ...readers);
+	return self.init(tmem, ...readers);
 }
 
 fn void MultiReader.free(&self)

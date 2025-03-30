@@ -51,7 +51,7 @@ fn CsvRow? CsvReader.read_row(self, Allocator allocator)
 
 fn CsvRow? CsvReader.tread_row(self)
 {
-	return self.read_row(tmem()) @inline;
+	return self.read_row(tmem) @inline;
 }
 
 <*
@@ -69,13 +69,11 @@ fn void? CsvReader.skip_row(self) @maydiscard => @pool()
 	(void)io::treadline(self.stream);
 }
 
-macro void? CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard
+macro void? @each_row(InStream stream, String separator = ",", int max_rows = int.max; @body(String[] row)) @maydiscard
 {
-	InStream stream = self.stream;
-	String sep = self.separator;
-	while (rows--)
+	while (max_rows--)
 	{
-		@stack_mem(512; Allocator mem)
+		@stack_mem(512; mem)
 		{
 			String? s = io::readline(mem, stream);
 			if (catch err = s)
@@ -83,7 +81,15 @@ macro void? CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @
 				if (err == io::EOF) return;
 				return err?;
 			}
-			@body(s.split(mem, sep));
+			@body(s.split(mem, separator));
 		};
 	}
+}
+
+macro void? CsvReader.@each_row(self, int rows = int.max; @body(String[] row)) @maydiscard
+{
+	return @each_row(self.stream, self.separator, rows; row)
+	{
+		@body(row);
+	};
 }

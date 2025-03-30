@@ -2,7 +2,7 @@ module std::math::uuid;
 import std::math::random @public;
 import std::io;
 
-distinct Uuid (Printable) = char[16];
+typedef Uuid (Printable) = char[16];
 
 <*
 Generate a version 4 UUID from the default random.

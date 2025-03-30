@@ -27,7 +27,7 @@ fn ByteWriter* ByteWriter.init(&self, Allocator allocator)
 *>
 fn ByteWriter* ByteWriter.tinit(&self)
 {
-	return self.init(tmem()) @inline;
+	return self.init(tmem) @inline;
 }
 
 fn ByteWriter* ByteWriter.init_with_buffer(&self, char[] data)

@@ -6,7 +6,7 @@ import std::io;
 import std::ascii;
 import std::collections::object;
 
-fault UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
+faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
 
 fn Object*? parse_string(Allocator allocator, String s)
 {
@@ -15,7 +15,7 @@ fn Object*? parse_string(Allocator allocator, String s)
 
 fn Object*? tparse_string(String s)
 {
-	return parse(tmem(), (ByteReader){}.init(s));
+	return parse(tmem, (ByteReader){}.init(s));
 }
 
 fn Object*? parse(Allocator allocator, InStream s)
@@ -23,7 +23,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 	@stack_mem(512; Allocator smem)
 	{
 		JsonContext context = { .last_string = dstring::new_with_capacity(smem, 64), .stream = s, .allocator = allocator };
-		@pool(allocator)
+		@pool()
 		{
 			return parse_any(&context);
 		};
@@ -32,7 +32,7 @@ fn Object*? parse(Allocator allocator, InStream s)
 
 fn Object*? tparse(InStream s)
 {
-	return parse(tmem(), s);
+	return parse(tmem, s);
 }
 
 // -- Implementation follows --

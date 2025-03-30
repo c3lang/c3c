@@ -185,12 +185,14 @@ const char *token_type_to_string(TokenType type)
 			return "DOC_COMMENT";
 
 		// Keywords
-		case TOKEN_ANYFAULT:
-			return "anyfault";
+		case TOKEN_ALIAS:
+			return "alias";
 		case TOKEN_ASM:
 			return "asm";
 		case TOKEN_ASSERT:
 			return "assert";
+		case TOKEN_ATTRDEF:
+			return "attrdef";
 		case TOKEN_BITSTRUCT:
 			return "bitstruct";
 		case TOKEN_BREAK:
@@ -203,14 +205,10 @@ const char *token_type_to_string(TokenType type)
 			return "const";
 		case TOKEN_CONTINUE:
 			return "continue";
-		case TOKEN_DEF:
-			return "def";
 		case TOKEN_DEFAULT:
 			return "default";
 		case TOKEN_DEFER:
 			return "defer";
-		case TOKEN_DISTINCT:
-			return "distinct";
 		case TOKEN_DO:
 			return "do";
 		case TOKEN_ELSE:
@@ -221,8 +219,8 @@ const char *token_type_to_string(TokenType type)
 			return "extern";
 		case TOKEN_FALSE:
 			return "false";
-		case TOKEN_FAULT:
-			return "fault";
+		case TOKEN_FAULTDEF:
+			return "faultdef";
 		case TOKEN_FOR:
 			return "for";
 		case TOKEN_FOREACH:
@@ -261,6 +259,8 @@ const char *token_type_to_string(TokenType type)
 			return "true";
 		case TOKEN_TRY:
 			return "try";
+		case TOKEN_TYPEDEF:
+			return "typedef";
 		case TOKEN_TYPEID:
 			return "typeid";
 		case TOKEN_UNION:
@@ -275,6 +275,8 @@ const char *token_type_to_string(TokenType type)
 			return "void";
 		case TOKEN_ANY:
 			return "any";
+		case TOKEN_FAULT:
+			return "fault";
 		case TOKEN_BOOL:
 			return "bool";
 		case TOKEN_FLOAT128:
@@ -399,7 +401,6 @@ const char *token_type_to_string(TokenType type)
 			return "<EOL>";
 		case TOKEN_EOF:
 			return "EOF";
-
 	}
 	UNREACHABLE
 }

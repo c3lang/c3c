@@ -65,10 +65,10 @@ fn int Foo2.mutate(Foo2 *foo)
     return ++foo.x;
 }
 
-def oopsInt = test2::argh{int};
-def oopsDouble = test2::argh{int};
-def Argh = fn int(double, Bobo);
-def Argh2 = fn int(double, Bobo);
+alias oopsInt = test2::argh{int};
+alias oopsDouble = test2::argh{int};
+alias Argh = fn int(double, Bobo);
+alias Argh2 = fn int(double, Bobo);
 
 
 
@@ -80,7 +80,7 @@ fn int sum_us(int... x)
     return sum;
 }
 
-def Frob = long;
+alias Frob = long;
 
 fn int sumd(int[] x)
 {
@@ -95,15 +95,15 @@ struct Foo
     int b;
 }
 
-def getValueInt = test2::getValue{int};
-def getValueDouble = test2::getValue{double};
-def IntBlob = test2::Blob{int};
-def DoubleBlob = Blob{double};
-def getMultInt = test2::getMult{int};
-def getMultDouble = test2::getMult{double};
+alias getValueInt = test2::getValue{int};
+alias getValueDouble = test2::getValue{double};
+alias IntBlob = test2::Blob{int};
+alias DoubleBlob = Blob{double};
+alias getMultInt = test2::getMult{int};
+alias getMultDouble = test2::getMult{double};
 
-def IntArray = List{int};
-def IntList = LinkedList{int};
+alias IntArray = List{int};
+alias IntList = LinkedList{int};
 
 enum MyEnum : int
 {
@@ -173,7 +173,7 @@ module hello_world;
 import foo;
 
 extern fn int printf(char *, ...);
-def doubleMult = foo::check{double};
+alias doubleMult = foo::check{double};
 
 fn void hello()
 {
@@ -201,7 +201,7 @@ fn Type getMult(Type a)
 }
 Type argh = 234;
 
-fault X, Y;
+faultdef X, Y;
 
 enum Hello : int
 {
@@ -214,9 +214,9 @@ macro Hello wut()
     return Hello.FOO;
 }
 
-def Bye = Hello;
-def wat = wut;
-def byebye = hello;
+alias Bye = Hello;
+alias wat = wut;
+alias byebye = hello;
 
 fn int hello()
 {

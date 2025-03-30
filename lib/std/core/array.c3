@@ -5,7 +5,7 @@ import std::core::array::slice;
  @param [in] array
  @param [in] element
  @return "the first index of the element"
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro index_of(array, element)
 {
@@ -34,7 +34,7 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
  @param [in] array
  @param [in] element
  @return "the last index of the element"
- @return! NOT_FOUND
+ @return? NOT_FOUND
 *>
 macro rindex_of(array, element)
 {
@@ -81,7 +81,7 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @require @typeis(arr1[0], $typeof(arr2[0])) : "Arrays must have the same type"
  @ensure return.len == arr1.len + arr2.len
 *>
-macro tconcat(arr1, arr2) @nodiscard => concat(allocator::temp(), arr1, arr2);
+macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
 
 module std::core::array::slice{Type};
 

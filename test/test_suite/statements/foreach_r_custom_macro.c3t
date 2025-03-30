@@ -44,6 +44,8 @@ entry:
   %0 = insertvalue %"int[]" undef, ptr %i, 0
   %1 = insertvalue %"int[]" %0, i64 3, 1
   store %"int[]" %1, ptr %x, align 8
+  %neq = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq)
   %ptradd = getelementptr inbounds i8, ptr %x, i64 8
   %2 = load i64, ptr %ptradd, align 8
   store i64 %2, ptr %.anon, align 8
@@ -60,6 +62,8 @@ loop.body:                                        ; preds = %loop.cond
   store i64 %subnuw, ptr %.anon, align 8
   %5 = load i64, ptr %.anon, align 8
   store i64 %5, ptr %index, align 8
+  %neq1 = icmp ne ptr %x, null
+  call void @llvm.assume(i1 %neq1)
   %6 = load ptr, ptr %x, align 8
   %7 = load i64, ptr %index, align 8
   %ptroffset = getelementptr inbounds [4 x i8], ptr %6, i64 %7
@@ -67,11 +71,11 @@ loop.body:                                        ; preds = %loop.cond
   store i32 %8, ptr %f, align 4
   %9 = load i32, ptr %f, align 4
   %10 = call i32 (ptr, ...) @printf(ptr @.str, i32 %9)
-  br label %loop.body1
+  br label %loop.body2
 
-loop.body1:                                       ; preds = %loop.body
+loop.body2:                                       ; preds = %loop.body
   br label %loop.exit
 
-loop.exit:                                        ; preds = %loop.body1, %loop.cond
+loop.exit:                                        ; preds = %loop.body2, %loop.cond
   ret void
 }

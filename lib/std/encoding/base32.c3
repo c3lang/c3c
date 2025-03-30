@@ -40,8 +40,8 @@ fn char[]? decode(Allocator allocator, char[] src, char padding = DEFAULT_PAD, B
 	return decode_buffer(src, dst, padding, alphabet);
 }
 
-fn String? tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem(), code, padding, alphabet);
-fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(tmem(), code, padding, alphabet);
+fn String? tencode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => encode(tmem, code, padding, alphabet);
+fn char[]? tdecode(char[] code, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD) @inline => decode(tmem, code, padding, alphabet);
 
 <*
  Calculate the length in bytes of the decoded data.
@@ -84,7 +84,7 @@ fn usz encode_len(usz n, char padding)
  @require padding < 0xFF : "Invalid padding character"
  @require dst.len >= decode_len(src.len, padding) : "Destination buffer too small"
  @return "The resulting dst buffer"
- @return! encoding::INVALID_PADDING, encoding::INVALID_CHARACTER
+ @return? encoding::INVALID_PADDING, encoding::INVALID_CHARACTER
 *>
 fn char[]? decode_buffer(char[] src, char[] dst, char padding = DEFAULT_PAD, Base32Alphabet* alphabet = &STANDARD)
 {
@@ -242,7 +242,7 @@ const char INVALID @private = 0xff;
 const int STD_PADDING = '=';
 const int NO_PADDING = -1;
 
-distinct Alphabet = char[32];
+typedef Alphabet = char[32];
 // Standard base32 Alphabet
 const Alphabet STD_ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
 // Extended Hex Alphabet

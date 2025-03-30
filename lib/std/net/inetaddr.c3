@@ -63,7 +63,7 @@ fn String InetAddress.to_string(&self, Allocator allocator)
 
 fn String InetAddress.to_tstring(&self)
 {
-	return string::format(tmem(), "%s", *self);
+	return string::format(tmem, "%s", *self);
 }
 
 fn InetAddress? ipv6_from_str(String s)
