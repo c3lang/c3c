@@ -391,6 +391,7 @@ jobs:
           cp msvc_build_libraries.py c3
           cp build/c3c c3
           cp README.md c3
+          cp releasenotes.md c3
           tar czf c3-linux-${{matrix.build_type}}.tar.gz c3
 
       - name: upload artifacts
@@ -511,6 +512,7 @@ jobs:
           mkdir c3
           cp -r lib c3
           cp README.md c3
+          cp releasenotes.md c3          
           cp msvc_build_libraries.py c3
           cp build/c3c c3
           tar czf c3-ubuntu-20-${{matrix.build_type}}.tar.gz c3
@@ -703,6 +705,7 @@ jobs:
           cp -r lib macos
           cp msvc_build_libraries.py macos
           cp README.md macos
+          cp releasenotes.md macos          
           cp build/c3c macos
           zip -r c3-macos-${{matrix.build_type}}.zip macos
 
@@ -760,6 +763,8 @@ jobs:
       - run: cp msvc_build_libraries.py c3-windows-Debug
       - run: cp README.md c3-windows-Release
       - run: cp README.md c3-windows-Debug
+      - run: cp releasenotes.md c3-windows-Release
+      - run: cp releasenotes.md c3-windows-Debug
       - run: zip -r c3-windows.zip c3-windows-Release
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
