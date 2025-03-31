@@ -431,22 +431,63 @@ macro @generic_hash(value)
 	return h;
 }
 
-macro uint int.hash(int i) => @generic_hash(i);
-macro uint uint.hash(uint i) => @generic_hash(i);
-macro uint short.hash(short s) => @generic_hash(s);
-macro uint ushort.hash(ushort s) => @generic_hash(s);
-macro uint char.hash(char c) => @generic_hash(c);
-macro uint ichar.hash(ichar c) => @generic_hash(c);
-macro uint long.hash(long i) => @generic_hash(i);
-macro uint ulong.hash(ulong i) => @generic_hash(i);
-macro uint int128.hash(int128 i) => @generic_hash(i);
-macro uint uint128.hash(uint128 i) => @generic_hash(i);
-macro uint bool.hash(bool b) => @generic_hash(b);
+
+macro uint int128.hash(self)       => @generic_hash(self);
+macro uint uint128.hash(self)      => @generic_hash(self);
+macro uint long.hash(self)         => @generic_hash(self);
+macro uint ulong.hash(self)        => @generic_hash(self);
+macro uint int.hash(self)          => @generic_hash(self);
+macro uint uint.hash(self)         => @generic_hash(self);
+macro uint short.hash(self)        => @generic_hash(self);
+macro uint ushort.hash(self)       => @generic_hash(self);
+macro uint ichar.hash(self)        => @generic_hash(self);
+macro uint char.hash(self)         => @generic_hash(self);
+macro uint bool.hash(self)         => @generic_hash(self);
+
+macro uint int128[*].hash(&self)   => hash_array(self);
+macro uint uint128[*].hash(&self)  => hash_array(self);
+macro uint long[*].hash(&self)     => hash_array(self);
+macro uint ulong[*].hash(&self)    => hash_array(self);
+macro uint int[*].hash(&self)      => hash_array(self);
+macro uint uint[*].hash(&self)     => hash_array(self);
+macro uint short[*].hash(&self)    => hash_array(self);
+macro uint ushort[*].hash(&self)   => hash_array(self);
+macro uint char[*].hash(&self)     => hash_array(self);
+macro uint ichar[*].hash(&self)    => hash_array(self);
+macro uint bool[*].hash(&self)     => hash_array(self);
+
+macro uint int128[<*>].hash(self)  => hash_vec(self);
+macro uint uint128[<*>].hash(self) => hash_vec(self);
+macro uint long[<*>].hash(self)    => hash_vec(self);
+macro uint ulong[<*>].hash(self)   => hash_vec(self);
+macro uint int[<*>].hash(self)     => hash_vec(self);
+macro uint uint[<*>].hash(self)    => hash_vec(self);
+macro uint short[<*>].hash(self)   => hash_vec(self);
+macro uint ushort[<*>].hash(self)  => hash_vec(self);
+macro uint char[<*>].hash(self)    => hash_vec(self);
+macro uint ichar[<*>].hash(self)   => hash_vec(self);
+macro uint bool[<*>].hash(self)    => hash_vec(self);
+
 macro uint typeid.hash(typeid t) => @generic_hash(((ulong)(uptr)t));
 macro uint String.hash(String c) => (uint)fnv32a::hash(c);
 macro uint char[].hash(char[] c) => (uint)fnv32a::hash(c);
 macro uint void*.hash(void* ptr) => @generic_hash(((ulong)(uptr)ptr));
 
+<*
+ @require @typekind(array_ptr) == POINTER &&& @typekind(*array_ptr) == ARRAY
+*>
+macro uint hash_array(array_ptr) @local
+{
+	return (uint)fnv32a::hash(((char*)array_ptr)[:$sizeof(*array_ptr)]);
+}
+
+<*
+ @require @typekind(vec) == VECTOR
+*>
+macro uint hash_vec(vec) @local
+{
+	return (uint)fnv32a::hash(((char*)&&vec)[:$sizeof(vec.len * $typeof(vec).inner.sizeof)]);
+}
 
 const MAX_FRAMEADDRESS = 128;
 <*
