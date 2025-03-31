@@ -4,7 +4,9 @@
 
 ### Changes / improvements
 ### Fixes
+
 ### Stdlib changes
+- Hash functions for integer vectors and arrays.
 
 ## 0.7.0 Change list
 
