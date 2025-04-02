@@ -68,8 +68,7 @@ const char *project_default_keys[][2] = {
 
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 
-const char* project_deprecated_target_keys[] = {
-};
+const char* project_deprecated_target_keys[] = { "xxxxxxxxxx" };
 const char* project_target_keys[][2] = {
 		{"benchfn", "Override the benchmark function."},
 		{"c-sources", "Additional C sources to be compiled for the target."},
