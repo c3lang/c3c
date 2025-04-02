@@ -11,32 +11,32 @@ union Quaternion
 
 const Quaternion IDENTITY = { 0, 0, 0, 1 };
 
-macro Quaternion Quaternion.add(Quaternion a, Quaternion b) => { .v = a.v + b.v };
-macro Quaternion Quaternion.add_each(Quaternion a, Real b) => { .v = a.v + b };
-macro Quaternion Quaternion.sub(Quaternion a, Quaternion b) => { .v = a.v - b.v };
-macro Quaternion Quaternion.sub_each(Quaternion a, Real b) => { .v = a.v - b };
-macro Quaternion Quaternion.scale(Quaternion a, Real s) => { .v = a.v * s };
-macro Quaternion Quaternion.normalize(Quaternion q) => { .v = q.v.normalize() };
-macro Real Quaternion.length(Quaternion q) => q.v.length();
-macro Quaternion Quaternion.lerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount) };
-macro Matrix4f Quaternion.to_matrixf(Quaternion* q) => into_matrix(q, Matrix4f);
-macro Matrix4 Quaternion.to_matrix(Quaternion* q) => into_matrix(q, Matrix4);
-fn Quaternion Quaternion.nlerp(Quaternion q1, Quaternion q2, Real amount) => { .v = q1.v.lerp(q2.v, amount).normalize() };
+macro Quaternion Quaternion.add(self, Quaternion b) => { .v = self.v + b.v };
+macro Quaternion Quaternion.add_each(self, Real b) => { .v = self.v + b };
+macro Quaternion Quaternion.sub(self, Quaternion b) => { .v = self.v - b.v };
+macro Quaternion Quaternion.sub_each(self, Real b) => { .v = self.v - b };
+macro Quaternion Quaternion.scale(self, Real s) => { .v = self.v * s };
+macro Quaternion Quaternion.normalize(self) => { .v = self.v.normalize() };
+macro Real Quaternion.length(self) => self.v.length();
+macro Quaternion Quaternion.lerp(self, Quaternion q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
+macro Matrix4f Quaternion.to_matrixf(&self) => into_matrix(self, Matrix4f);
+macro Matrix4 Quaternion.to_matrix(&self) => into_matrix(self, Matrix4);
+fn Quaternion Quaternion.nlerp(self, Quaternion q2, Real amount) => { .v = self.v.lerp(q2.v, amount).normalize() };
 
-fn Quaternion Quaternion.invert(q)
+fn Quaternion Quaternion.invert(self)
 {
-	Real length_sq = q.v.dot(q.v);
-	if (length_sq <= 0) return q;
+	Real length_sq = self.v.dot(self.v);
+	if (length_sq <= 0) return self;
 	Real inv_length = 1 / length_sq;
-	return { q.v[0] * -inv_length, q.v[1] * -inv_length, q.v[2] * -inv_length, q.v[3] * inv_length };
+	return { self.v[0] * -inv_length, self.v[1] * -inv_length, self.v[2] * -inv_length, self.v[3] * inv_length };
 }
 
-fn Quaternion Quaternion.slerp(q1, Quaternion q2, Real amount)
+fn Quaternion Quaternion.slerp(self, Quaternion q2, Real amount)
 {
 	Quaternion result = {};
 
 	Real[<4>] q2v = q2.v;
-	Real cos_half_theta = q1.v.dot(q2v);
+	Real cos_half_theta = self.v.dot(q2v);
 
 	if (cos_half_theta < 0)
 	{
@@ -44,9 +44,9 @@ fn Quaternion Quaternion.slerp(q1, Quaternion q2, Real amount)
 		cos_half_theta = -cos_half_theta;
 	}
 
-	if (cos_half_theta >= 1) return q1;
+	if (cos_half_theta >= 1) return self;
 
-	Real[<4>] q1v = q1.v;
+	Real[<4>] q1v = self.v;
 	if (cos_half_theta > 0.95f) return { .v = q1v.lerp(q2v, amount) };
 
 	Real half_theta = math::cos(cos_half_theta);
@@ -60,12 +60,12 @@ fn Quaternion Quaternion.slerp(q1, Quaternion q2, Real amount)
 	return { .v = q1v * ratio_a + q2v * ratio_b };
 }
 
-fn Quaternion Quaternion.mul(a, Quaternion b)
+fn Quaternion Quaternion.mul(self, Quaternion b)
 {
-	return { a.i * b.l + a.l * b.i + a.j * b.k - a.k * b.j,
-			 a.j * b.l + a.l * b.j + a.k * b.i - a.i * b.k,
-			 a.k * b.l + a.l * b.k + a.i * b.j - a.j * b.i,
-			 a.l * b.l - a.i * b.i - a.j * a.j - a.k * a.k };
+	return { self.i * b.l + self.l * b.i + self.j * b.k - self.k * b.j,
+			 self.j * b.l + self.l * b.j + self.k * b.i - self.i * b.k,
+			 self.k * b.l + self.l * b.k + self.i * b.j - self.j * b.i,
+			 self.l * b.l - self.i * b.i - self.j * self.j - self.k * self.k };
 }
 
 macro into_matrix(Quaternion* q, $Type) @private
