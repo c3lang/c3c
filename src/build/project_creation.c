@@ -192,7 +192,7 @@ const char *LIB_README = "Welcome to the %s library.\n";
 static bool check_name(const char *name);
 static char* get_cwd_project_name();
 static void exit_fail(const char *fmt, ...);
-static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...);
+NORETURN static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...);
 static void mkdir_or_fail(BuildOptions *build_options, const char *name);
 static void chdir_or_fail(BuildOptions *build_options, const char *name);
 static void create_file_or_fail(BuildOptions *build_options, const char *filename, const char *fmt, ...);
@@ -420,7 +420,7 @@ static void exit_fail(const char *fmt, ...)
 	exit_compiler(EXIT_FAILURE);
 }
 
-static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...)
+ NORETURN static void delete_dir_and_exit(BuildOptions *build_options, const char *fmt, ...)
 {
 	va_list list;
 	va_start(list, fmt);

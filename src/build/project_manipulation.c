@@ -13,7 +13,8 @@ const char** get_project_dependency_directories()
 
 	const char *target = NULL;
 	const char **deps_dirs = NULL;
-	get_list_append_strings((BuildParseContext) { filename, target }, json, &deps_dirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	BuildParseContext context = { filename, target };
+	APPEND_STRING_LIST(&deps_dirs, "dependency-search-paths");
 
 	return deps_dirs;
 }
@@ -379,9 +380,9 @@ void add_libraries_to_project_file(const char** libs, const char* target_name) {
 
 	// write to project json file
 	FILE *file = fopen(filename, "w");
+	if (!file) error_exit("Failed to open file '%s'", filename);
 	print_json_to_file(project_json, file);
 	fclose(file);
-
 }
 
 void add_target_project(BuildOptions *build_options)
@@ -416,6 +417,7 @@ void add_target_project(BuildOptions *build_options)
 	json_map_set(targets_json, build_options->project_options.target_name, new_target);
 
 	FILE *file = fopen(filename, "w");
+	if (!file) error_exit("Failed to open file '%s'", filename);
 	print_json_to_file(project_json, file);
 	fclose(file);
 }

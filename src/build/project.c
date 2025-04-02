@@ -5,6 +5,7 @@
 #include "build_internal.h"
 #include "utils/json.h"
 
+
 const char *project_default_keys[][2] = {
 		{"authors", "Authors, optionally with email."},
 		{"benchfn", "Override the benchmark function."},
@@ -68,8 +69,6 @@ const char *project_default_keys[][2] = {
 const int project_default_keys_count = ELEMENTLEN(project_default_keys);
 
 const char* project_deprecated_target_keys[] = {
-		"c-source-add", "cflags-add", "dependencies-add", "dependency-search-paths-add", "exec-add",
-		"linked-libraries", "linker-search-paths", "link-args-add", "sources-add"
 };
 const char* project_target_keys[][2] = {
 		{"benchfn", "Override the benchmark function."},
@@ -171,37 +170,39 @@ static void load_into_build_target(BuildParseContext context, JSONObject *json, 
 	target->output_dir = get_string(context, json, "output", target->output_dir);
 
 	// "Before compilation" execution
-	get_list_append_strings(context, json, &target->exec, "exec", "exec-override", "exec-add");
+	APPEND_STRING_LIST(&target->exec, "exec");
 
 	// CFlags
 	target->cflags = get_cflags(context, json, target->cflags);
 
 	// C source dirs.
-	get_list_append_strings(context, json, &target->csource_dirs, "c-sources", "c-sources-override", "c-sources-add");
+	APPEND_STRING_LIST(&target->csource_dirs, "c-sources");
 
 	// C include dirs.
-	get_list_append_strings(context, json, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", "c-include-dirs-add");
+	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
 
 	// Sources
-	get_list_append_strings(context, json, &target->source_dirs, "sources", "sources-override", "sources-add");
+	APPEND_STRING_LIST(&target->source_dirs, "sources");
 
 	// Test sources
-	get_list_append_strings(context, json, &target->test_source_dirs, "test-sources", "test-sources-override", "test-sources-add");
+	APPEND_STRING_LIST(&target->test_source_dirs, "test-sources");
 
 	// Linked-libraries - libraries to add at link time
-	get_list_append_strings(context, json, &target->linker_libs, "linked-libraries", "linked-libraries-override", "linked-libraries-add");
+	APPEND_STRING_LIST(&target->linker_libs, "linked-libraries");
 
 	// linker-search-paths libs dir - libraries to add at link time
-	get_list_append_strings(context, json, &target->linker_libdirs, "linker-search-paths", "linker-search-paths-override", "linker-search-paths-add");
+
+	APPEND_STRING_LIST(&target->linker_libdirs, "linker-search-paths");
 
 	// link-args - link args to add at link time
-	get_list_append_strings(context, json, &target->link_args, "link-args", "link-args-override", "link-args-add");
+	APPEND_STRING_LIST(&target->link_args, "link-args");
 
 	// dependency-search-paths - path to search for libraries
-	get_list_append_strings(context, json, &target->libdirs, "dependency-search-paths", "dependency-search-paths-override", "dependency-search-paths-add");
+	APPEND_STRING_LIST(&target->libdirs, "dependency-search-paths");
 
 	// Dependencies
-	get_list_append_strings(context, json, &target->libs, "dependencies", "dependencies-override", "dependencies-add");
+	APPEND_STRING_LIST(&target->libs, "dependencies");
+
 	FOREACH(const char *, name, target->libs)
 	{
 		if (!str_is_valid_lowercase_name(name))

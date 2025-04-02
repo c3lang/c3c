@@ -118,16 +118,11 @@ INLINE void append_strings_to_strings(const char*** list_of_strings_ptr, const c
 	FOREACH(const char *, string, strings_to_append) vec_add(*list_of_strings_ptr, string);
 }
 
-void get_list_append_strings(BuildParseContext context, JSONObject *json, const char ***list_ptr,
-                             const char *base, const char *override, const char *add)
+
+void get_list_append_strings(BuildParseContext context, JSONObject *json, const char ***list_ptr, const char *base, const char *override)
 {
 	const char **value = get_optional_string_array(context, json, context.target ? override : base);
 	const char **add_value = context.target ? get_optional_string_array(context, json, base) : NULL;
-	if (!add_value && context.target && add) add_value = get_optional_string_array(context, json, add);
-	if (value && add_value)
-	{
-		error_exit("In file '%s': '%s' is combining both '%s' and '%s', only one may be used.", context.file, context.target, override, add);
-	}
 	if (value) *list_ptr = value;
 	if (add_value)
 	{

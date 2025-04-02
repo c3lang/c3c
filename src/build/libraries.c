@@ -45,7 +45,7 @@ const char *manifest_deprecated_target_keys[] = { "none" };
 const int manifest_deprecated_target_key_count = ELEMENTLEN(manifest_deprecated_target_keys);
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
-                                        JSONObject *object);
+                                        JSONObject *json);
 
 static inline void parse_library_type(Library *library, LibraryTarget ***target_group, JSONObject *object)
 {
@@ -72,32 +72,32 @@ static inline void parse_library_type(Library *library, LibraryTarget ***target_
 }
 
 static inline void parse_library_target(Library *library, LibraryTarget *target, const char *target_name,
-                                        JSONObject *object)
+                                        JSONObject *json)
 {
 	BuildParseContext context = { library->dir, target_name };
-	target->link_flags = get_string_array(context, object, "link-args", false);
+	target->link_flags = get_string_array(context, json, "link-args", false);
 
-	target->linked_libs = get_string_array(context, object, "linked-libraries", false);
-	target->dependencies = get_string_array(context, object, "dependencies", false);
-	target->execs = get_string_array(context, object, "exec", false);
-	target->cc = get_string(context, object, "cc", library->cc);
-	target->cflags = get_cflags(context, object, library->cflags);
+	target->linked_libs = get_string_array(context, json, "linked-libraries", false);
+	target->dependencies = get_string_array(context, json, "dependencies", false);
+	target->execs = get_string_array(context, json, "exec", false);
+	target->cc = get_string(context, json, "cc", library->cc);
+	target->cflags = get_cflags(context, json, library->cflags);
 	target->source_dirs = library->source_dirs;
 	target->csource_dirs = library->csource_dirs;
 	target->cinclude_dirs = library->cinclude_dirs;
-	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
-	get_list_append_strings(context, object, &target->source_dirs, "sources", "sources-override", NULL);
-	get_list_append_strings(context, object, &target->csource_dirs, "c-sources", "c-sources-override", NULL);
-	get_list_append_strings(context, object, &target->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", NULL);
+	target->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	APPEND_STRING_LIST(&target->source_dirs, "sources");
+	APPEND_STRING_LIST(&target->csource_dirs, "c-sources");
+	APPEND_STRING_LIST(&target->cinclude_dirs, "c-include-dirs");
 }
 
-static Library *add_library(JSONObject *object, const char *dir)
+static Library *add_library(JSONObject *json, const char *dir)
 {
-	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, object, "library", "--list-manifest-properties");
+	check_json_keys(manifest_default_keys, manifest_default_keys_count, NULL, 0, json, "library", "--list-manifest-properties");
 	Library *library = CALLOCS(Library);
 	library->dir = dir;
 	BuildParseContext context = { dir, NULL };
-	const char *provides = get_mandatory_string(context, object, "provides");
+	const char *provides = get_mandatory_string(context, json, "provides");
 	DEBUG_LOG("Added library %s", provides);
 	if (!str_is_valid_lowercase_name(provides))
 	{
@@ -106,15 +106,15 @@ static Library *add_library(JSONObject *object, const char *dir)
 		error_exit("Invalid 'provides' module name in %s, was '%s', the name should only contain alphanumerical letters and '_'.", library->dir, res);
 	}
 	library->provides = provides;
-	library->execs = get_optional_string_array(context, object, "exec");
-	library->dependencies = get_optional_string_array(context, object, "dependencies");
-	library->cc = get_optional_string(context, object, "cc");
-	library->cflags = get_cflags(context, object, NULL);
-	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, object, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
-	get_list_append_strings(context, object, &library->source_dirs, "sources", "sources-override", "sources-add");
-	get_list_append_strings(context, object, &library->csource_dirs, "c-sources", "c-sources-override", NULL);
-	get_list_append_strings(context, object, &library->cinclude_dirs, "c-include-dirs", "c-include-dirs-override", NULL);
-	parse_library_type(library, &library->targets, json_map_get(object, "targets"));
+	library->execs = get_optional_string_array(context, json, "exec");
+	library->dependencies = get_optional_string_array(context, json, "dependencies");
+	library->cc = get_optional_string(context, json, "cc");
+	library->cflags = get_cflags(context, json, NULL);
+	library->win_crt = (WinCrtLinking)get_valid_string_setting(context, json, "wincrt", wincrt_linking, 0, 3, "'none', 'static' or 'dynamic'.");
+	APPEND_STRING_LIST(&library->source_dirs, "sources");
+	APPEND_STRING_LIST(&library->csource_dirs, "c-sources");
+	APPEND_STRING_LIST(&library->cinclude_dirs, "c-include-dirs");
+	parse_library_type(library, &library->targets, json_map_get(json, "targets"));
 	return library;
 }
 
