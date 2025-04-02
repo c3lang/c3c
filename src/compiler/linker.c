@@ -328,6 +328,23 @@ static const char *find_arch_glob_path(const char *glob_path, int file_len)
 	return NULL;
 }
 
+static const char *get_linux_crt_arch_glob(void)
+{
+	switch (compiler.build.arch_os_target)
+	{
+		case LINUX_X64:
+			return "/usr/lib/x86_64*linux*/crt1.o";
+		case LINUX_X86:
+			return "/usr/lib/i686*linux*/crt1.o";
+		case LINUX_AARCH64:
+			return "/usr/lib/aarch64*linux*/crt1.o";
+		case LINUX_RISCV32:
+		case LINUX_RISCV64:
+		default:
+			return "/usr/lib/*/crt1.o";
+	}
+}
+
 static const char *get_linux_crt_begin_arch_glob(void)
 {
 	switch (compiler.build.arch_os_target)
@@ -355,7 +372,8 @@ static const char *find_linux_crt(void)
 		INFO_LOG("Found crt at %s", arch_linux_path);
 		return arch_linux_path;
 	}
-	const char *path = find_arch_glob_path("/usr/lib/*/crt1.o", 6);
+	const char *arch_glob_path = get_linux_crt_arch_glob();
+	const char *path = find_arch_glob_path(arch_glob_path, 6);
 	if (!path)
 	{
 		INFO_LOG("No crt in /usr/lib/*/");
