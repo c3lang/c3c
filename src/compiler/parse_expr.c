@@ -1958,6 +1958,25 @@ ParseRule rules[TOKEN_EOF + 1] = {
 		[TOKEN_FAULT] = { parse_type_identifier, NULL, PREC_NONE },
 		[TOKEN_ANY] = { parse_type_identifier, NULL, PREC_NONE },
 
+		// BEGIN: alternative cohesive primitive type naming
+		[TOKEN_B8] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_U8] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_U16] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_U32] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_U64] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_U128] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_S8] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_S16] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_S32] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_S64] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_S128] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_F16] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_F16B] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_F32] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_F64] = { parse_type_identifier, NULL, PREC_NONE },
+		[TOKEN_F128] = { parse_type_identifier, NULL, PREC_NONE },
+		// END: alternative cohesive primitive type naming
+
 		[TOKEN_QUESTION] = { NULL, parse_ternary_expr, PREC_TERNARY },
 		[TOKEN_QUESTQUEST] = { NULL, parse_orelse, PREC_TERNARY },
 		[TOKEN_ELVIS] = { NULL, parse_elvis_expr, PREC_TERNARY },

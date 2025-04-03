@@ -1351,7 +1351,6 @@ void type_setup(PlatformTarget *target)
 	type_create_float("double", &t.f64, TYPE_F64, BITS64);
 	type_create_float("float128", &t.f128, TYPE_F128, BITS128);
 
-
 	type_init_int("ichar", &t.i8, TYPE_I8, BITS8);
 	type_init_int("short", &t.i16, TYPE_I16, BITS16);
 	type_init_int("int", &t.i32, TYPE_I32, BITS32);
@@ -1364,6 +1363,27 @@ void type_setup(PlatformTarget *target)
 	type_init_int("uint", &t.u32, TYPE_U32, BITS32);
 	type_init_int("ulong", &t.u64, TYPE_U64, BITS64);
 	type_init_int("uint128", &t.u128, TYPE_U128, BITS128);
+
+	// BEGIN: alternative cohesive primitive type naming
+	type_create_float("f16", &t.f16, TYPE_F16, BITS16);
+	type_create_float("f16b", &t.bf16, TYPE_BF16, BITS16);
+	type_create_float("f32", &t.f32, TYPE_F32, BITS32);
+	type_create_float("f64", &t.f64, TYPE_F64, BITS64);
+	type_create_float("f128", &t.f128, TYPE_F128, BITS128);
+
+	type_init_int("s8", &t.i8, TYPE_I8, BITS8);
+	type_init_int("s16", &t.i16, TYPE_I16, BITS16);
+	type_init_int("s32", &t.i32, TYPE_I32, BITS32);
+	type_init_int("s64", &t.i64, TYPE_I64, BITS64);
+	type_init_int("s128", &t.i128, TYPE_I128, BITS128);
+
+	type_init_int("b8", &t.u1, TYPE_BOOL, BITS8);
+	type_init_int("u8", &t.u8, TYPE_U8, BITS8);
+	type_init_int("u16", &t.u16, TYPE_U16, BITS16);
+	type_init_int("u32", &t.u32, TYPE_U32, BITS32);
+	type_init_int("u64", &t.u64, TYPE_U64, BITS64);
+	type_init_int("u128", &t.u128, TYPE_U128, BITS128);
+	// END: alternative cohesive primitive type naming
 
 	type_init_int("void", &t.u0, TYPE_VOID, BITS8);
 
@@ -1518,6 +1538,25 @@ Type *type_from_token(TokenType type)
 {
 	switch (type)
 	{
+		// BEGIN: alternative cohesive primitive type naming
+		case TOKEN_B8	: return type_bool    ;
+		case TOKEN_U8	: return type_char 	  ;
+		case TOKEN_U16	: return type_ushort  ;
+		case TOKEN_U32	: return type_uint 	  ;
+		case TOKEN_U64	: return type_ulong   ;
+		case TOKEN_U128	: return type_u128 	  ;
+		case TOKEN_S8	: return type_ichar   ;
+		case TOKEN_S16	: return type_short   ;
+		case TOKEN_S32	: return type_int	  ;
+		case TOKEN_S64	: return type_long 	  ;
+		case TOKEN_S128	: return type_i128 	  ;
+		case TOKEN_F16	: return type_float16 ;
+		case TOKEN_F16B	: return type_bfloat  ;
+		case TOKEN_F32	: return type_float   ;
+		case TOKEN_F64	: return type_double  ;
+		case TOKEN_F128	: return type_f128 	  ;
+		// END: alternative cohesive primitive type naming
+
 		case TOKEN_ANY:
 			return type_any;
 		case TOKEN_FAULT:

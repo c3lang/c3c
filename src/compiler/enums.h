@@ -1134,6 +1134,25 @@ typedef enum
 	TOKEN_FAULT,
 	TOKEN_TYPEID,
 
+	// BEGIN: alternative cohesive primitive type naming
+	TOKEN_B8,
+	TOKEN_U8,
+	TOKEN_U16,
+	TOKEN_U32,
+	TOKEN_U64,
+	TOKEN_U128,
+	TOKEN_S8,
+	TOKEN_S16,
+	TOKEN_S32,
+	TOKEN_S64,
+	TOKEN_S128,
+	TOKEN_F16,
+	TOKEN_F16B,
+	TOKEN_F32,
+	TOKEN_F64,
+	TOKEN_F128,
+	// END: alternative cohesive primitive type naming
+
 	// Keywords
 	TOKEN_ALIAS,
 	TOKEN_ASSERT,
@@ -1616,6 +1635,23 @@ static_assert(EXPR_LAST < 128, "Too many expression types");
  case OS_TYPE_CONTIKI: case OS_TYPE_AMDPAL: case OS_TYPE_HERMITCORE: case OS_TYPE_HURD: case OS_TYPE_EMSCRIPTEN
 
 // Token helper macros
+#define ALTERNATIVE_COHESIVE_PRIMITIVE_TYPE_TOKENS \
+	     TOKEN_B8	: \
+	case TOKEN_U8   : \
+	case TOKEN_U16  : \
+	case TOKEN_U32  : \
+	case TOKEN_U64  : \
+	case TOKEN_U128	: \
+	case TOKEN_S8	: \
+	case TOKEN_S16	: \
+	case TOKEN_S32	: \
+	case TOKEN_S64	: \
+	case TOKEN_S128	: \
+	case TOKEN_F16  : \
+	case TOKEN_F16B : \
+	case TOKEN_F32  : \
+	case TOKEN_F64  : \
+	case TOKEN_F128
 
 #define NON_VOID_TYPE_TOKENS \
   TOKEN_BOOL: case TOKEN_CHAR: case TOKEN_DOUBLE: case TOKEN_FLOAT: \
@@ -1623,7 +1659,8 @@ static_assert(EXPR_LAST < 128, "Too many expression types");
   case TOKEN_IPTR: case TOKEN_LONG: \
   case TOKEN_SHORT: case TOKEN_UINT128: case TOKEN_UINT: case TOKEN_ULONG:  \
   case TOKEN_UPTR: case TOKEN_USHORT: case TOKEN_USZ: \
-  case TOKEN_ISZ: case TOKEN_FLOAT128: case TOKEN_TYPEID: case TOKEN_FAULT: case TOKEN_ANY
+  case TOKEN_ISZ: case TOKEN_FLOAT128: case TOKEN_TYPEID: case TOKEN_FAULT: case TOKEN_ANY: \
+  case ALTERNATIVE_COHESIVE_PRIMITIVE_TYPE_TOKENS
 #define TYPE_TOKENS NON_VOID_TYPE_TOKENS: case TOKEN_VOID
 #define CT_TYPE_TOKENS TOKEN_CT_TYPE_IDENT: case TOKEN_CT_TYPEOF: case TOKEN_CT_EVALTYPE: \
 	case TOKEN_CT_VATYPE: case TOKEN_CT_TYPEFROM

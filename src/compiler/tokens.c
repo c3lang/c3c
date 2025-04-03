@@ -270,6 +270,25 @@ const char *token_type_to_string(TokenType type)
 		case TOKEN_WHILE:
 			return "while";
 
+		// BEGIN: alternative cohesive primitive type naming
+		case TOKEN_B8	: return "b8"	;
+		case TOKEN_U8	: return "u8"	;
+		case TOKEN_U16	: return "u16"	;
+		case TOKEN_U32	: return "u32"	;
+		case TOKEN_U64	: return "u64"	;
+		case TOKEN_U128	: return "u128"	;
+		case TOKEN_S8	: return "s8"	;
+		case TOKEN_S16	: return "s16"	;
+		case TOKEN_S32	: return "s32"	;
+		case TOKEN_S64	: return "s64"	;
+		case TOKEN_S128	: return "s128"	;
+		case TOKEN_F16	: return "f16"	;
+		case TOKEN_F16B	: return "f16b"	;
+		case TOKEN_F32	: return "f32"	;
+		case TOKEN_F64	: return "f64"	;
+		case TOKEN_F128	: return "f128"	;
+		// END: alternative cohesive primitive type naming
+
 		// Named types
 		case TOKEN_VOID:
 			return "void";
