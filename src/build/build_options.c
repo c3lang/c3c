@@ -198,7 +198,7 @@ static void usage(bool full)
 		print_opt("--linux-crtbegin <dir>", "Set the directory to use for finding crtbegin.o and related files.");
 		PRINTF("");
 		print_opt("--android-ndk <dir>", "Set the NDK directory location.");
-		print_opt("--android-api <dir>", "Set Android API version.");
+		print_opt("--android-api <ver>", "Set Android API version.");
 		PRINTF("");
 		print_opt("--sanitize=<option>", "Enable sanitizer: address, memory, thread.");
 	}
