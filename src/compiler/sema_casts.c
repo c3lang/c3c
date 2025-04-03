@@ -113,6 +113,22 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 		{
 			RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to the inner type %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 		}
+		// Improve the error when incorrectly casting (char[])char*
+		if (cc->to_type->type_kind == TYPE_SLICE && cc->expr->type->type_kind == TYPE_POINTER && cc->to_type->array.base == cc->expr->type->pointer)
+		{
+			RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s. However, you may slice the pointer with an explicit length to create a slice, e.g. 'foo_ptr[:len]'.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
+		}
+		// (int[4])*int*
+		if (cc->to_type->type_kind == TYPE_ARRAY && cc->to_type->array.base == cc->expr->type
+			&& cc->expr->expr_kind == EXPR_UNARY && cc->expr->unary_expr.operator == UNARYOP_DEREF
+			&& cc->expr->unary_expr.expr->type->type_kind == TYPE_POINTER && cc->expr->unary_expr.expr->type->pointer == cc->to_type->array.base)
+		{
+			RETURN_CAST_ERROR(cc->expr, "You cannot directly cast from a dereferenced %s to %s. "
+							   "However, you can could cast the pointer to the array before doing dereference, e.g. "
+							   "'*(%s*)foo'",
+				type_quoted_error_string(cc->expr->unary_expr.expr->type), type_quoted_error_string(cc->to_type),
+				type_to_error_string(cc->to_type));
+		}
 		RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 	}
 
@@ -706,6 +722,11 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 	{
 		RETURN_CAST_ERROR(expr, "You can only convert pointers to 'any'. "
 		                  "Try passing the address of the expression instead.");
+	}
+	// Improve the error when incorrectly casting (String)ZString
+	if (to == type_string && str_eq(expr->type->name, "ZString"))
+	{
+		RETURN_CAST_ERROR(expr, "It is not possible to cast a ZString to a String but you can use .str_view() to do the conversion. E.g. 'my_zstring.str_view()'.");
 	}
 	RETURN_CAST_ERROR(expr,
 	                  "It is not possible to cast %s to %s.",

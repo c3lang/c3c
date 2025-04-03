@@ -3,6 +3,8 @@
 ## 0.7.1 Change list
 
 ### Changes / improvements
+- Better errors on some common casting mistakes (pointer->slice, String->ZString, deref pointer->array) #2064.
+
 ### Fixes
 
 ### Stdlib changes
