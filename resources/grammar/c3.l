@@ -177,6 +177,25 @@ typedef struct {
 "void"			{ return(VOID); }
 "while"			{ return(WHILE); }
 
+// BEGIN: alternative cohesive primitive type naming
+"b8"			{ return(BOOL); }
+"u8"			{ return(CHAR); }
+"u16"			{ return(USHORT); }
+"u32"			{ return(UINT); }
+"u64"			{ return(ULONG); }
+"u128"			{ return(UINT128); }
+"s8"			{ return(ICHAR); }
+"s16"			{ return(SHORT); }
+"s32"			{ return(INT); }
+"s64"			{ return(LONG); }
+"s128"			{ return(INT128); }
+"f16"			{ return(FLOAT16); }
+"f16b"			{ return(BFLOAT16); }
+"f32"			{ return(FLOAT); }
+"f64"			{ return(DOUBLE); }
+"f128"			{ return(FLOAT128); }
+// END: alternative cohesive primitive type naming
+
 @{CONST}        { return(AT_CONST_IDENT); }
 #{CONST}        { return(HASH_CONST_IDENT); }
 ${CONST}        { return(CT_CONST_IDENT); }
