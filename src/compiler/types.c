@@ -780,7 +780,7 @@ static Type *type_generate_optional(Type *optional_type, bool canonical)
 	Type *optional = optional_type->type_cache[OPTIONAL_OFFSET];
 	if (optional == NULL)
 	{
-		optional = type_new(TYPE_OPTIONAL, str_printf("%s!", optional_type->name));
+		optional = type_new(TYPE_OPTIONAL, str_printf("%s?", optional_type->name));
 		optional->pointer = optional_type;
 		optional_type->type_cache[OPTIONAL_OFFSET] = optional;
 		if (optional_type == optional_type->canonical)
