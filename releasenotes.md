@@ -4,8 +4,10 @@
 
 ### Changes / improvements
 - Better errors on some common casting mistakes (pointer->slice, String->ZString, deref pointer->array) #2064.
+- Better errors trying to convert an enum to an int and vice versa.
 
 ### Fixes
+- Trying to cast an enum to int and back caused the compiler to crash.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

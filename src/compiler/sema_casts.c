@@ -129,6 +129,13 @@ static bool cast_is_allowed(CastContext *cc, bool is_explicit, bool is_silent)
 				type_quoted_error_string(cc->expr->unary_expr.expr->type), type_quoted_error_string(cc->to_type),
 				type_to_error_string(cc->to_type));
 		}
+		if (cc->to_type->type_kind == TYPE_ENUM && type_is_integer(cc->expr->type))
+		{
+			RETURN_CAST_ERROR(cc->expr, "It is not possible to cast %s to the enum %s, but you can use .from_ordinal() to convert it. E.g. '%s.fromOrdinal(foo)'.",
+				type_quoted_error_string(cc->expr->type),
+				type_quoted_error_string(cc->to_type),
+				type_to_error_string(cc->to_type));
+		}
 		RETURN_CAST_ERROR(cc->expr, "You cannot cast %s to %s.", type_quoted_error_string(cc->expr->type), type_quoted_error_string(cc->to_type));
 	}
 
@@ -727,6 +734,20 @@ static bool report_cast_error(CastContext *cc, bool may_cast_explicit)
 	if (to == type_string && str_eq(expr->type->name, "ZString"))
 	{
 		RETURN_CAST_ERROR(expr, "It is not possible to cast a ZString to a String but you can use .str_view() to do the conversion. E.g. 'my_zstring.str_view()'.");
+	}
+	if (expr->type->type_kind == TYPE_ENUM && type_is_integer(to))
+	{
+		if (to == expr->type->decl->enums.type_info->type)
+		{
+			RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal. E.g. 'my_enum.ordinal.",
+				type_quoted_error_string(type_no_optional(expr->type)),
+				type_quoted_error_string(type_no_optional(to)),
+				type_to_error_string(type_no_optional(to)));
+		}
+		RETURN_CAST_ERROR(expr, "It is not possible to cast the enum %s to %s, but you can use .ordinal to get the ordinal and cast it. E.g. '(%s)my_enum.ordinal.",
+			type_quoted_error_string(type_no_optional(expr->type)),
+			type_quoted_error_string(type_no_optional(to)),
+			type_to_error_string(type_no_optional(to)));
 	}
 	RETURN_CAST_ERROR(expr,
 	                  "It is not possible to cast %s to %s.",
@@ -1412,34 +1433,6 @@ static bool rule_arr_to_bits(CastContext *cc, bool is_explicit, bool is_silent)
 	return true;
 }
 
-static bool rule_int_to_enum(CastContext *cc, bool is_explicit, bool is_silent)
-{
-	if (!is_explicit) return sema_cast_error(cc, true, is_silent);
-
-	if (!sema_cast_const(cc->expr)) return true;
-
-	Decl *enum_decl = cc->to->decl;
-	// Check that the type is within limits.
-	unsigned max_enums = vec_size(enum_decl->enums.values);
-	Int to_convert = cc->expr->const_expr.ixx;
-
-	// Negative numbers are always wrong.
-	if (int_is_neg(to_convert))
-	{
-		if (!is_silent) RETURN_CAST_ERROR(cc->expr, "A negative number cannot be converted to an enum.");
-		return false;
-	}
-
-	// Check the max, we don't support more than 4 billion,
-	// so we can safely use TYPE_U32.
-	Int max = {.i.low = max_enums, .type = TYPE_U32};
-	if (int_comp(to_convert, max, BINARYOP_GE))
-	{
-		if (!is_silent) RETURN_CAST_ERROR(cc->expr, "This value exceeds the number of enums in %s.", enum_decl->name);
-		return false;
-	}
-	return true;
-}
 
 
 static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent)
@@ -1448,7 +1441,6 @@ static bool rule_enum_to_value(CastContext *cc, bool is_explicit, bool is_silent
 
 	if (!enum_decl->is_substruct)
 	{
-		if (is_explicit && cc->to_group == CONV_INT) return true;
 		return sema_cast_error(cc, false, is_silent);
 	}
 
@@ -2263,7 +2255,6 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type) { expr_rewrite_int_to
 #define RPTIN &rule_ptr_to_int            /* Ptr -> int (explicit + size match)                                                                */
 #define RINBS &rule_int_to_bits           /* Int -> bits (explicit + int + size match)                                                         */
 #define RARBS &rule_arr_to_bits           /* Char[*] -> bits (explicit + base match)                                                           */
-#define RINEN &rule_int_to_enum           /* Int -> enum (explicit, range check const)                                                         */
 #define RPTPT &rule_ptr_to_ptr            /* Ptr -> ptr (explicit or ptr match)                                                                */
 #define RAPSL &rule_arrptr_to_slice       /* Arrptr -> Slice (explicit flattens distinct, pointer match)                                       */
 #define RSLPT &rule_slice_to_ptr          /* Slice -> ptr (explicit flatens distinct, pointer match)                                           */
@@ -2274,7 +2265,7 @@ static void cast_typeid_to_bool(Expr *expr, Type *to_type) { expr_rewrite_int_to
 #define RBSAR &rule_bits_to_arr           /* Bits -> arr (explicit + base match)                                                               */
 #define RBSIN &rule_bits_to_int           /* Bits -> int (explicit + size match)                                                               */
 #define RDIXX &rule_from_distinct         /* Distinct -> internal (explicit or inline)                                                         */
-#define RENXX &rule_enum_to_value             /* Distinct -> internal inline                                                                       */
+#define RENXX &rule_enum_to_value         /* Distinct -> internal inline                                                                       */
 #define RDIDI &rule_to_from_distinct      /* Distinct -> other distinct                                                                        */
 #define RARVC &rule_arr_to_vec            /* Arr -> Vec (len matches, valid elements, flatten if explicit)                                     */
 #define RVCAR &rule_vec_to_arr            /* Vec -> Arr (len matches, if base can be converted, flatten if explicit)                           */
@@ -2298,7 +2289,7 @@ CastRule cast_rules[CONV_LAST + 1][CONV_LAST + 1] = {
  {_NA__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // VOID    (from)
  {ROKOK, _NA__, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, ROKOK, _NO__, _NO__}, // WILDCARD
  {REXPL, _NO__, _NA__, REXPL, REXPL, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // BOOL
- {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, REXVC, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, RINEN, RINPT, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
+ {REXPL, _NO__, REXPL, RWIDE, RINFL, RINPT, _NO__, REXVC, RINBS, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, RINPT, _NO__, _NO__, RINPT, RINPT, _NO__, _NO__}, // INT
  {REXPL, _NO__, REXPL, REXPL, RWIDE, _NO__, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__}, // FLOAT
  {REXPL, _NO__, REXPL, RPTIN, _NO__, RPTPT, _NO__, REXVC, _NO__, RXXDI, _NO__, _NO__, _NO__, ROKOK, RPTIF, _NO__, _NO__, _NO__, _NO__, ROKOK, RPTPT, RPTFE, _NO__}, // PTR
  {REXPL, _NO__, REXPL, _NO__, _NO__, RSLPT, RSLSL, RSLVA, _NO__, RXXDI, RSLVA, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, _NO__, ROKOK, RSLPT, RSLFE, _NO__}, // SLICE
