@@ -112,10 +112,11 @@ typedef struct {
 	[^*]+       { }
 }
 \/\/.*          { }
+"alias"         { return(ALIAS); }
 "any"           { return(ANY); }
-"anyfault"      { return(ANYFAULT); }
 "asm"           { return(ASM); }
 "assert"        { return(ASSERT); }
+"attrdef"       { return(ATTRDEF); }
 "bitstruct"     { return(BITSTRUCT); }
 "bool"          { return(BOOL); }
 "break"			{ return(BREAK); }
@@ -124,10 +125,8 @@ typedef struct {
 "char"			{ return(CHAR); }
 "const"			{ return(CONST); }
 "continue"		{ return(CONTINUE); }
-"def"           { return(DEF); }
 "default"		{ return(DEFAULT); }
 "defer"         { return(DEFER); }
-"distinct"      { return(DISTINCT); }
 "do"			{ return(DO); }
 "double"		{ return(DOUBLE); }
 "else"			{ return(ELSE); }
@@ -135,6 +134,7 @@ typedef struct {
 "extern"        { return(EXTERN); }
 "false"         { return(FALSE); }
 "fault"		    { return(FAULT); }
+"faultdef"      { return(FAULTDEF); }
 "float"			{ return(FLOAT); }
 "bfloat16"      { return(BFLOAT16); }
 "float16"       { return(FLOAT16); }
@@ -165,6 +165,7 @@ typedef struct {
 "tlocal"        { return(TLOCAL); }
 "true"          { return(TRUE); }
 "try"           { return(TRY); }
+"typedef"       { return(TYPEDEF); }
 "typeid"        { return(TYPEID); }
 "uint"			{ return(UINT); }
 "uint128"		{ return(UINT128); }

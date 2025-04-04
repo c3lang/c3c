@@ -26,7 +26,7 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 	if (xlen < 1) xlen = $typeof((*array_ptr)[0]).len + xlen;
 	if (ylen < 1) ylen = $typeof((*array_ptr)).len + ylen;
 	var $ElementType = $typeof((*array_ptr)[0][0]);
-	return Slice2d{$ElementType} { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
+	return (Slice2d{$ElementType}) { ($ElementType*)array_ptr, $typeof((*array_ptr)[0]).len, y, ylen, x, xlen };
 }
 
 

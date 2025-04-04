@@ -14,13 +14,13 @@ void yyerror(YYLTYPE * yylloc_param , yyscan_t yyscanner, const char *yymsgp);
 %token IDENT HASH_IDENT CT_IDENT CONST_IDENT
 %token TYPE_IDENT CT_TYPE_IDENT
 %token AT_TYPE_IDENT AT_IDENT CT_INCLUDE
-%token STRING_LITERAL INTEGER
+%token STRING_LITERAL INTEGER ALIAS
 %token CT_AND_OP CT_OR_OP CT_CONCAT_OP CT_EXEC
 %token INC_OP DEC_OP SHL_OP SHR_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN SHL_ASSIGN SHR_ASSIGN AND_ASSIGN
-%token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE ANYFAULT
-%token MODULE IMPORT DEF EXTERN
+%token XOR_ASSIGN OR_ASSIGN VAR NUL ELVIS NEXTCASE
+%token MODULE IMPORT TYPEDEF ATTRDEF FAULTDEF EXTERN
 %token CHAR SHORT INT LONG FLOAT DOUBLE CONST VOID USZ ISZ UPTR IPTR ANY
 %token ICHAR USHORT UINT ULONG BOOL INT128 UINT128 FLOAT16 FLOAT128 BFLOAT16
 %token TYPEID BITSTRUCT STATIC BANGBANG AT_CONST_IDENT HASH_TYPE_IDENT
@@ -536,7 +536,7 @@ base_type_no_user_defined
 	| UPTR
 	| ISZ
 	| USZ
-	| ANYFAULT
+	| FAULT
 	| ANY
 	| TYPEID
 	| CT_TYPE_IDENT
@@ -567,10 +567,8 @@ type_suffix
 	| '[' constant_expr ']'
         | '[' ']'
         | '[' '*' ']'
-        | '[' '?' ']'
         | LVEC constant_expr RVEC
         | LVEC '*' RVEC
-        | LVEC '?' RVEC
         ;
 type
 	: base_type
@@ -623,17 +621,17 @@ ct_switch_body
 	;
 
 ct_for_stmt
-	: CT_FOR '(' for_cond ')' opt_stmt_list CT_ENDFOR
+	: CT_FOR for_cond ':' opt_stmt_list CT_ENDFOR
 	;
 
 ct_foreach_stmt
-	: CT_FOREACH '(' CT_IDENT ':' expr ')' opt_stmt_list CT_ENDFOREACH
-	| CT_FOREACH '(' CT_IDENT ',' CT_IDENT ':' expr ')' opt_stmt_list CT_ENDFOREACH
+	: CT_FOREACH CT_IDENT ':' expr ':' opt_stmt_list CT_ENDFOREACH
+	| CT_FOREACH CT_IDENT ',' CT_IDENT ':' expr ':' opt_stmt_list CT_ENDFOREACH
 	;
 ct_switch
-	: CT_SWITCH '(' constant_expr ')'
-	| CT_SWITCH '(' type ')'
-	| CT_SWITCH
+	: CT_SWITCH constant_expr ':'
+	| CT_SWITCH type ':'
+	| CT_SWITCH ':'
 	;
 
 ct_switch_stmt
@@ -1076,13 +1074,12 @@ enum_declaration
 	;
 
 faults
-	: CONST_IDENT
-	| faults ',' CONST_IDENT
+	: CONST_IDENT opt_attributes
+	| faults ',' CONST_IDENT opt_attributes
 	;
 
 fault_declaration
-	: FAULT TYPE_IDENT opt_interface_impl opt_attributes '{' faults '}'
-	| FAULT TYPE_IDENT opt_interface_impl opt_attributes '{' faults ',' '}'
+	: FAULTDEF faults ';'
 	;
 
 func_macro_name
@@ -1188,9 +1185,24 @@ global_declaration
 	| global_storage optional_type IDENT opt_attributes '=' expr ';'
 	;
 
+attribute_comma_list
+	: attribute
+	| attribute_comma_list ',' attribute
+	;
+
+opt_comma
+	: ','
+	| empty
+	;
+
+define_attribute_body
+	: empty
+	| '=' attribute_comma_list opt_comma
+	;
+
 define_attribute
-	: AT_TYPE_IDENT '(' parameters ')' opt_attributes '=' '{' opt_attributes '}'
-	| AT_TYPE_IDENT opt_attributes '=' '{' opt_attributes '}'
+	: AT_TYPE_IDENT '(' parameters ')' opt_attributes define_attribute_body
+	| AT_TYPE_IDENT opt_attributes define_attribute_body
 	;
 
 generic_expr
@@ -1203,15 +1215,15 @@ opt_generic_parameters
 	;
 
 define_ident
-	: IDENT '=' path_ident opt_generic_parameters
-	| CONST_IDENT '=' path_const opt_generic_parameters
-	| AT_IDENT '=' path_at_ident opt_generic_parameters
+	: IDENT opt_attributes '=' path_ident opt_generic_parameters
+	| CONST_IDENT  opt_attributes '=' path_const opt_generic_parameters
+	| AT_IDENT opt_attributes '=' path_at_ident opt_generic_parameters
 	;
 
 define_declaration
-	: DEF define_ident opt_attributes ';'
-	| DEF define_attribute opt_attributes ';'
-	| DEF TYPE_IDENT opt_attributes '=' typedef_type opt_attributes ';'
+	: ALIAS define_ident ';'
+	| ATTRDEF define_attribute ';'
+	| ALIAS TYPE_IDENT opt_attributes '=' typedef_type opt_attributes ';'
 	;
 
 interface_body
@@ -1235,7 +1247,7 @@ interface_declaration_name
 	;
 
 distinct_declaration
-	: DISTINCT TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
+	: TYPEDEF TYPE_IDENT opt_interface_impl opt_attributes '=' opt_inline type ';'
 	;
 
 module_param

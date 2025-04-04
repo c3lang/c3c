@@ -90,7 +90,7 @@ fn double _log1p(double x) @weak @extern("log1p") @nostrip
 		/* correction term ~ log(1+x)-log(u), avoid underflow in c/u */
 		if (k < 54)
 		{
-			c = (k >= 2) ? 1. - (u - x) : x - (u - 1.);
+			c = (k >= 2) ? 1.0 - (u - x) : x - (u - 1.0);
 			c /= u;
 		}
 		else
@@ -100,10 +100,10 @@ fn double _log1p(double x) @weak @extern("log1p") @nostrip
 		/* reduce u into [sqrt(2)/2, sqrt(2)] */
 		hu = (hu & 0x000fffff) + 0x3fe6a09e;
 		u = bitcast(((ulong)hu << 32) | (bitcast(u, ulong) & 0xffffffff) , double);
-		f = u - 1.;
+		f = u - 1.0;
 	}
 	double hfsq = 0.5 * f * f;
-	double s = f / (2. + f);
+	double s = f / (2.0 + f);
 	double z = s * s;
 	double w = z * z;
 	double t1 = w * (LG2 + w * (LG4 + w * LG6));

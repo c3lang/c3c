@@ -29,7 +29,7 @@ fn double _atanh(double x) @weak @extern("atanh") @nostrip
 			}
 			return double.nan;
 		/* x<2**-28 */
-		case ix < 0x3e300000 && (1e300 + x) > 0.:
+		case ix < 0x3e300000 && (1e300 + x) > 0.0:
 		     	return x;
 	}
 	x.set_high_word(ix);
@@ -37,11 +37,11 @@ fn double _atanh(double x) @weak @extern("atanh") @nostrip
 	if (ix < 0x3fe00000)
 	{
 		t = x + x;
-		t = 0.5 * _log1p(t + t * x / (1. - x));
+		t = 0.5 * _log1p(t + t * x / (1.0 - x));
 	}
 	else
 	{
-		t = 0.5 * _log1p((x + x) / (1. - x));
+		t = 0.5 * _log1p((x + x) / (1.0 - x));
 	}
 	return sign ? -t : t;
 }

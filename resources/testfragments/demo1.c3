@@ -13,7 +13,7 @@ struct Foo
 fn Foo createFoo(int a, int b = 10)
 {
     // Compound initializer
-    return Foo {a, b};
+    return (Foo) {a, b};
 }
 
 struct Bar

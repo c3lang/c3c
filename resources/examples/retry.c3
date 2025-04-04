@@ -1,7 +1,7 @@
 module test;
 import libc;
 
-faultde NOPE;
+faultdef NOPE;
 
 fn int? eventually_succeed()
 {

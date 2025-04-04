@@ -76,7 +76,7 @@ fn void main()
 	testAllocator(tmem, 126);
 	testAllocator(tmem, 12600);
 	ArenaAllocator aa;
-	aa.init(&&char[1024] {});
+	aa.init(&&(char[1024]){});
 	testAllocator(&aa, 126);
 	io::printn("Test dynamic arena");
 	DynamicArenaAllocator dynamic_arena;
