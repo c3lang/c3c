@@ -1443,11 +1443,6 @@ bool parse_parameters(ParseContext *c, Decl ***params_ref, Variadic *variadic, i
 					PRINT_ERROR_LAST("'&foo' parameters may not be followed by '...’");
 					return false;
 				}
-				if (type)
-				{
-					PRINT_ERROR_LAST("'&foo' should be untyped.");
-					return false;
-				}
 
 				// Span includes the "&"
 				span = extend_span_with_token(span, c->span);

@@ -1145,6 +1145,15 @@ static inline bool sema_analyse_signature(SemaContext *context, Signature *sig, 
 		if (!sema_resolve_type_info(context, method_parent,
 		                            is_macro ? RESOLVE_TYPE_MACRO_METHOD : RESOLVE_TYPE_FUNC_METHOD)) return false;
 	}
+
+	if (params && params[0] && params[0]->var.self_addr && params[0]->var.type_info)
+	{
+		if (method_parent)
+		{
+			RETURN_SEMA_ERROR(type_infoptr(params[0]->var.type_info), "A ref parameter should always be untyped, please remove the type here.");
+		}
+		RETURN_SEMA_ERROR(params[0], "Ref parameters are only allowed on methods.");
+	}
 	// Fill in the type if the first parameter is lacking a type.
 	if (method_parent && params && params[0] && !params[0]->var.type_info)
 	{
