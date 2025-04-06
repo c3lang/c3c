@@ -1278,6 +1278,12 @@ static bool rule_widen_narrow(CastContext *cc, bool is_explicit, bool is_silent)
 		// If it's an integer that's the problem, zoom in on that one.
 		if (type_is_integer(type_flatten(problem->type))) expr = problem;
 		// Otherwise require a cast.
+		if (expr_is_const(expr))
+		{
+			RETURN_CAST_ERROR(expr, "The value of the expression (%s) is out of range and cannot implicitly be converted to %s, but you may use a cast.",
+				expr_const_to_error_string(&expr->const_expr),
+				type_quoted_error_string(cc->to_type));
+		}
 		RETURN_CAST_ERROR(expr, "%s cannot implicitly be converted to %s, but you may use a cast.",
 		           type_quoted_error_string(expr->type), type_quoted_error_string(cc->to_type));
 	}
