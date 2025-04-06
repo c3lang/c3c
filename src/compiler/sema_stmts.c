@@ -382,18 +382,21 @@ static inline bool assert_create_from_contract(SemaContext *context, Ast *direct
 		if (expr->expr_kind == EXPR_DECL) RETURN_SEMA_ERROR(expr, "Only expressions are allowed in contracts.");
 		if (!sema_analyse_expr_rhs(context, type_bool, expr, false, NULL, false)) return false;
 
+		if (evaluation_location.a) expr->span = evaluation_location;
+
 		const char *comment = directive->contract_stmt.contract.comment;
 		if (!comment) comment = directive->contract_stmt.contract.expr_string;
 		if (expr_is_const_bool(expr))
 		{
 			if (expr->const_expr.b) continue;
-			sema_error_at(context, evaluation_location.a ? evaluation_location : expr->span, "%s", comment);
+			sema_error_at(context, expr->span, "%s", comment);
 			return false;
 		}
+
 		Ast *assert = new_ast(AST_ASSERT_STMT, expr->span);
 		assert->assert_stmt.is_ensure = true;
 		assert->assert_stmt.expr = exprid(expr);
-		Expr *comment_expr = expr_new_const_string(expr->span, comment);
+		Expr *comment_expr = expr_new_const_string(assert->span, comment);
 		assert->assert_stmt.message = exprid(comment_expr);
 		ast_append(asserts, assert);
 	}
@@ -3095,9 +3098,11 @@ bool sema_analyse_contracts(SemaContext *context, AstId doc, AstId **asserts, So
 			case CONTRACT_PARAM:
 				break;
 			case CONTRACT_OPTIONALS:
+				if (!has_ensures) break;
 				if (!sema_analyse_optional_returns(context, directive)) return false;
 				break;
 			case CONTRACT_ENSURE:
+				if (!has_ensures) break;
 				if (!sema_analyse_ensure(context, directive)) return false;
 				*has_ensures = true;
 				break;

@@ -1010,6 +1010,16 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type)
 	return expr;
 }
 
+Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions)
+{
+	Expr *expr = expr_calloc();
+	expr->expr_kind = EXPR_EXPRESSION_LIST;
+	expr->span = span;
+	expr->type = type;
+	expr->resolve_status = RESOLVE_DONE;
+	expr->expression_list = expressions;
+	return expr;
+}
 Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer)
 {
 	Expr *expr = expr_calloc();

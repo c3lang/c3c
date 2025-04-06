@@ -951,7 +951,7 @@ static bool sema_analyse_interface(SemaContext *context, Decl *decl, bool *erase
 		bool erase = false;
 
 		// Insert the first parameter, which is the implicit `void*`
-		Decl *first = decl_new_var(kw_self, decl->span, NULL, VARDECL_PARAM);
+		Decl *first = decl_new_var(NULL, decl->span, NULL, VARDECL_PARAM);
 		first->type = type_voidptr;
 		first->var.kind = VARDECL_PARAM;
 		first->unit = context->unit;

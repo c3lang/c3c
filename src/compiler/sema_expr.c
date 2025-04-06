@@ -150,6 +150,11 @@ static inline bool sema_expr_analyse_var_call(SemaContext *context, Expr *expr, 
 static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr, Decl *decl,
 											   Expr *struct_var, bool optional, bool *no_match_ref);
 
+static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDecl *
+                                                 callee,
+                                                 SemaContext *macro_context, Expr *call_expr, Type *rtype,
+                                                 Ast *yield_body,
+                                                 Decl **yield_params, Decl **params, BlockExit **block_exit_ref, InliningSpan *span_ref);
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl, Type *type, Expr *expr,
 													 Expr *struct_var,
 													 bool optional, const char *name, bool *no_match_ref);
@@ -877,9 +882,16 @@ static inline bool sema_cast_ident_rvalue(SemaContext *context, Expr *expr)
 		case VARDECL_REWRAPPED:
 			// Impossible to reach this, they are already unfolded
 			UNREACHABLE
+		case VARDECL_LOCAL:
+			if (decl->var.copy_const && decl->var.init_expr && expr_is_const(decl->var.init_expr))
+			{
+				assert(decl->var.init_expr->resolve_status == RESOLVE_DONE);
+				expr_replace(expr, copy_expr_single(decl->var.init_expr));
+				return true;
+			}
+			FALLTHROUGH;
 		case VARDECL_PARAM:
 		case VARDECL_GLOBAL:
-		case VARDECL_LOCAL:
 		case VARDECL_UNWRAPPED:
 			return true;
 		case VARDECL_BITMEMBER:
@@ -1942,6 +1954,30 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	return true;
 }
 
+static inline bool sema_has_require(AstId doc_id)
+{
+	if (!doc_id) return false;
+	Ast *docs = astptr(doc_id);
+	while (docs)
+	{
+		switch (docs->contract_stmt.kind)
+		{
+			case CONTRACT_UNKNOWN:
+			case CONTRACT_COMMENT:
+			case CONTRACT_PURE:
+			case CONTRACT_PARAM:
+			case CONTRACT_OPTIONALS:
+			case CONTRACT_ENSURE:
+				docs = astptrzero(docs->next);
+				continue;
+			case CONTRACT_REQUIRE:
+				return true;
+		}
+		UNREACHABLE
+	}
+	return false;
+}
+
 static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl *decl,
 													 Type *type, Expr *expr, Expr *struct_var,
 													 bool optional, const char *name, bool *no_match_ref)
@@ -1968,7 +2004,81 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 	if (!sema_call_evaluate_arguments(context, &callee, expr, &optional, no_match_ref)) return false;
 
 	Type *rtype = type->function.prototype->rtype;
+	if (expr->call_expr.is_dynamic_dispatch)
+	{
+		Expr *any_val = expr->call_expr.arguments[0];
+		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
+		*any_val = *(any_val->inner_expr);
+	}
+	expr->call_expr.function_contracts = 0;
+	AstId docs = decl->func_decl.docs;
+	if (!safe_mode_enabled() || !sema_has_require(docs)) goto SKIP_CONTRACTS;
+	SemaContext temp_context;
+	bool success = false;
+	if (!sema_expr_setup_call_analysis(context, &callee, &temp_context,
+	                                            expr, NULL, NULL, NULL, NULL,
+	                                            NULL, NULL))
+	{
+		goto END_CONTRACT;
+	}
+	FOREACH_IDX(i, Decl *, param, sig->params)
+	{
+		if (!param || !param->name) continue;
+		Expr *arg = expr->call_expr.arguments[i];
+		if (!arg)
+		{
+			assert(i == sig->vararg_index);
+			if (expr->call_expr.va_is_splat)
+			{
+				arg = expr->call_expr.vasplat;
+			}
+			else
+			{
+				Expr **exprs = expr->call_expr.varargs;
+				Expr *init_list = expr_new_expr(EXPR_INITIALIZER_LIST, expr);
+				init_list->initializer_list = exprs;
+				init_list->type = param->type;
+				Expr *compound_init = expr_new_expr(EXPR_COMPOUND_LITERAL, expr);
+				compound_init->expr_compound_literal.initializer = init_list;
+				compound_init->expr_compound_literal.type_info = type_info_new_base(param->type, param->span);
+				if (!sema_analyse_expr(context, compound_init)) goto END_CONTRACT;
+				arg = compound_init;
+				expr->call_expr.va_is_splat = true;
+			}
+		}
+		Decl *new_param = decl_new_generated_var(arg->type, VARDECL_LOCAL, expr->span);
+		new_param->name = param->name;
+		new_param->unit = context->unit;
+		new_param->var.copy_const = true;
+		Expr *new_arg = expr_generate_decl(new_param, arg);
+		new_arg->resolve_status = RESOLVE_DONE;
+		new_arg->type = arg->type;
+		if (!sema_add_local(&temp_context, new_param)) goto END_CONTRACT;
+		if (IS_OPTIONAL(new_param))
+		{
+			sema_unwrap_var(&temp_context, new_param);
+		}
+		if (i == sig->vararg_index)
+		{
+			expr->call_expr.vasplat = new_arg;
+			continue;
+		}
+		expr->call_expr.arguments[i] = new_arg;
 
+	}
+	AstId assert_first = 0;
+	AstId* next = &assert_first;
+
+	if (!sema_analyse_contracts(&temp_context, docs, &next, expr->span, NULL)) return false;
+
+	expr->call_expr.function_contracts = assert_first;
+
+	success = true;
+END_CONTRACT:
+	sema_context_destroy(&temp_context);
+	if (!success) return false;
+
+SKIP_CONTRACTS:
 	expr->call_expr.has_optional_arg = optional;
 
 	if (!type_is_void(rtype))
@@ -1978,12 +2088,6 @@ static inline bool sema_call_analyse_func_invocation(SemaContext *context, Decl 
 		expr->call_expr.must_use = sig->attrs.nodiscard || (is_optional_return && !sig->attrs.maydiscard);
 	}
 	expr->type = type_add_optional(rtype, optional);
-	if (expr->call_expr.is_dynamic_dispatch)
-	{
-		Expr *any_val = expr->call_expr.arguments[0];
-		ASSERT(any_val->expr_kind == EXPR_PTR_ACCESS);
-		*any_val = *(any_val->inner_expr);
-	}
 	return true;
 }
 
@@ -2121,7 +2225,53 @@ static inline bool sema_expr_analyse_func_call(SemaContext *context, Expr *expr,
 											 decl->name, no_match_ref);
 }
 
+static inline bool sema_expr_setup_call_analysis(SemaContext *context, CalledDecl *callee,
+                                                 SemaContext *macro_context, Expr *call_expr,
+                                                 Type *rtype,
+                                                 Ast *yield_body,
+                                                 Decl **yield_params, Decl **params,
+                                                 BlockExit **block_exit_ref, InliningSpan *span_ref)
+{
 
+	Decl *decl = callee->definition;
+	sema_context_init(macro_context, decl->unit);
+	macro_context->compilation_unit = context->unit;
+	macro_context->macro_call_depth = context->macro_call_depth + 1;
+	macro_context->call_env = context->call_env;
+	macro_context->expected_block_type = rtype;
+	if (span_ref)
+	{
+		*span_ref = (InliningSpan){ call_expr->span, context->inlined_at };
+	}
+	else
+	{
+		span_ref = context->inlined_at;
+	}
+	macro_context->inlined_at = span_ref;
+	macro_context->current_macro = callee->macro ? decl : NULL;
+	macro_context->yield_body = yield_body;
+	macro_context->yield_params = yield_params;
+	macro_context->yield_context = context;
+	FOREACH(Expr *, expr, call_expr->call_expr.varargs)
+	{
+		if (expr->resolve_status == RESOLVE_DONE) continue;
+		Expr *expr_inner = expr_copy(expr);
+		expr->expr_kind = EXPR_OTHER_CONTEXT;
+		expr->expr_other_context.inner = expr_inner;
+		expr->expr_other_context.context = context;
+	}
+	macro_context->macro_varargs = callee->macro ? call_expr->call_expr.varargs : NULL;
+	macro_context->original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
+	macro_context->original_module = context->original_module ? context->original_module : context->compilation_unit->module;
+	macro_context->macro_params = params;
+
+	macro_context->block_exit_ref = block_exit_ref;
+
+	context_change_scope_with_flags(macro_context, SCOPE_MACRO);
+	macro_context->block_return_defer = macro_context->active_scope.defer_last;
+
+	return true;
+}
 bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *struct_var, Decl *decl,
 								  bool call_var_optional, bool *no_match_ref)
 {
@@ -2183,7 +2333,7 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 			}
 		}
 		param->var.init_expr = args[i];
-		// Ref arguments doesn't affect optional arg.
+		// Lazy arguments doesn't affect optional arg.
 		if (param->var.kind == VARDECL_PARAM_EXPR) continue;
 		has_optional_arg = has_optional_arg || IS_OPTIONAL(args[i]);
 	}
@@ -2272,44 +2422,24 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 
 
 	DynamicScope old_scope = context->active_scope;
+	// Create a scope, since the macro itself will not.
 	context_change_scope_with_flags(context, SCOPE_NONE);
-
 	SemaContext macro_context;
 
-	Type *rtype = NULL;
-	sema_context_init(&macro_context, decl->unit);
-	macro_context.compilation_unit = context->unit;
-	macro_context.macro_call_depth = context->macro_call_depth + 1;
-	macro_context.call_env = context->call_env;
-	rtype = typeget(sig->rtype);
+	Type *rtype = typeget(sig->rtype);
 	bool optional_return = rtype && type_is_optional(rtype);
 	bool may_be_optional = !rtype || optional_return;
 	if (rtype) rtype = type_no_optional(rtype);
-	macro_context.expected_block_type = rtype;
 
-	context_change_scope_with_flags(&macro_context, SCOPE_MACRO);
-
-	macro_context.block_return_defer = macro_context.active_scope.defer_last;
-	InliningSpan span = { call_expr->span, context->inlined_at };
-	macro_context.inlined_at = &span;
-	macro_context.current_macro = decl;
-	macro_context.yield_body = macro_body ? macro_body->macro_body_expr.body : NULL;
-	macro_context.yield_params = body_params;
-	macro_context.yield_context = context;
-	FOREACH(Expr *, expr, call_expr->call_expr.varargs)
-	{
-		if (expr->resolve_status == RESOLVE_DONE) continue;
-		Expr *expr_inner = expr_copy(expr);
-		expr->expr_kind = EXPR_OTHER_CONTEXT;
-		expr->expr_other_context.inner = expr_inner;
-		expr->expr_other_context.context = context;
-	}
-	macro_context.macro_varargs = call_expr->call_expr.varargs;
-	macro_context.original_inline_line = context->original_inline_line ? context->original_inline_line : call_expr->span.row;
-	macro_context.original_module = context->original_module ? context->original_module : context->compilation_unit->module;
-	macro_context.macro_params = params;
 	BlockExit** block_exit_ref = CALLOCS(BlockExit*);
-	macro_context.block_exit_ref = block_exit_ref;
+
+	InliningSpan span;
+	if (!sema_expr_setup_call_analysis(context, &callee, &macro_context,
+	                                   call_expr, rtype, macro_body ? macro_body->macro_body_expr.body : NULL, body_params, params, block_exit_ref,
+	                                   &span))
+	{
+		goto EXIT_FAIL;
+	}
 
 	AstId assert_first = 0;
 	AstId* next = &assert_first;
@@ -2344,10 +2474,10 @@ bool sema_expr_analyse_macro_call(SemaContext *context, Expr *call_expr, Expr *s
 	}
 
 	bool has_ensures = false;
-	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span, &has_ensures)) goto EXIT_FAIL;
-	sema_append_contract_asserts(assert_first, body);
+	if (!sema_analyse_contracts(&macro_context, docs, &next, call_expr->span, &has_ensures)) return false;
 	macro_context.macro_has_ensures = has_ensures;
 
+	sema_append_contract_asserts(assert_first, body);
 	if (!sema_analyse_statement(&macro_context, body)) goto EXIT_FAIL;
 	ASSERT_SPAN(call_expr, macro_context.active_scope.depth == 1);
 	bool implicit_void_return = !macro_context.active_scope.jump_end;
@@ -2513,6 +2643,7 @@ EXIT:
 	}
 	return true;
 EXIT_FAIL:
+	context->active_scope = old_scope;
 	sema_context_destroy(&macro_context);
 	return SCOPE_POP_ERROR();
 NO_MATCH_REF:
@@ -2787,6 +2918,7 @@ INLINE bool sema_call_may_not_have_attributes(SemaContext *context, Expr *expr)
 	}
 	return true;
 }
+
 static inline bool sema_call_analyse_member_get(SemaContext *context, Expr *expr)
 {
 	if (vec_size(expr->call_expr.arguments) != 1)

@@ -321,6 +321,7 @@ RETRY:
 				sema_trace_expr_liveness(exprptr(expr->call_expr.function));
 				return;
 			}
+			sema_trace_astid_liveness(expr->call_expr.function_contracts);
 			sema_trace_decl_liveness(declptr(expr->call_expr.func_ref));
 			return;
 		}

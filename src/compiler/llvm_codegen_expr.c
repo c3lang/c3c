@@ -5839,6 +5839,11 @@ static void llvm_emit_call_expr(GenContext *c, BEValue *result_value, Expr *expr
 		}
 	}
 
+	if (safe_mode_enabled())
+	{
+		llvm_emit_statement_chain(c, expr->call_expr.function_contracts);
+	}
+
 	// 1. Dynamic dispatch.
 	if (expr->call_expr.is_dynamic_dispatch)
 	{

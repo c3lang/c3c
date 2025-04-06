@@ -424,6 +424,7 @@ typedef struct VarDecl_
 	bool bit_is_expr : 1;
 	bool is_self : 1;
 	bool is_temp : 1;
+	bool copy_const : 1;
 	union
 	{
 		Expr *init_expr;
@@ -739,7 +740,11 @@ typedef struct
 		ExprId function;
 		DeclId func_ref;
 	};
-	ExprId macro_body;
+	union
+	{
+		ExprId macro_body;
+		AstId function_contracts;
+	};
 	bool is_type_method : 1;
 	bool is_pointer_call : 1;
 	bool attr_force_inline : 1;
@@ -2198,6 +2203,7 @@ Expr *expr_new_const_typeid(SourceSpan span, Type *type);
 Expr *expr_new_const_string(SourceSpan span, const char *string);
 Expr *expr_new_const_null(SourceSpan span, Type *type);
 Expr *expr_new_const_initializer(SourceSpan span, Type *type, ConstInitializer *initializer);
+Expr *expr_new_expr_list_resolved(SourceSpan span, Type *type, Expr **expressions);
 const char *expr_kind_to_string(ExprKind kind);
 bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);

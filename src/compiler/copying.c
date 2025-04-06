@@ -551,11 +551,19 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 			}
 			else
 			{
-
 				MACRO_COPY_EXPRID(expr->call_expr.function);
 			}
-			MACRO_COPY_EXPRID(expr->call_expr.macro_body);
+			// Arguments must be copied before contracts are copied
+			// or things will break.
 			MACRO_COPY_EXPR_LIST(expr->call_expr.arguments);
+			if (expr->resolve_status == RESOLVE_DONE)
+			{
+				MACRO_COPY_ASTID(expr->call_expr.function_contracts);
+			}
+			else
+			{
+				MACRO_COPY_EXPRID(expr->call_expr.macro_body);
+			}
 			if (expr->call_expr.varargs)
 			{
 				if (expr->call_expr.va_is_splat)
