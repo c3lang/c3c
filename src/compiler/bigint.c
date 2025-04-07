@@ -93,7 +93,7 @@ char *int_to_str(Int i, int radix, bool use_prefix)
 
 Int int_from_real(Real d, TypeKind type)
 {
-	return (Int){ type_kind_is_unsigned(type) ? i128_from_float_unsigned(d) : i128_from_float_signed(d),
+	return (Int){ type_kind_is_unsigned(type) ? i128_from_double_unsigned(d) : i128_from_double_signed(d),
 				  type };
 }
 
@@ -306,16 +306,6 @@ Int128 i128_lshr64(Int128 op1, uint64_t amount)
 	return op1;
 }
 
-
-Int128 i128_from_float_signed(Real d)
-{
-	return (Int128){ 0, (uint64_t)((int64_t)d) };
-}
-
-Int128 i128_from_float_unsigned(Real d)
-{
-	return (Int128){ 0, (uint64_t)d };
-}
 
 UNUSED bool i128_get_bit(const Int128 *op, int bit)
 {
@@ -922,7 +912,7 @@ UNUSED bool i128_can_convert_from_double_signed(double x)
 	&& x < ldexp(1, 127);
 }
 
-UNUSED Int128 i128_from_double(double x)
+Int128 i128_from_double_unsigned(double x)
 {
 	if (x >= ldexp(1, 64))
 	{
@@ -935,5 +925,5 @@ UNUSED Int128 i128_from_double(double x)
 
 UNUSED Int128 i128_from_double_signed(double x)
 {
-	return x < 0 ? i128_neg(i128_from_signed((int64_t)-x)) : i128_from_int((uint64_t)x);
+	return x < 0 ? i128_neg(i128_from_double_unsigned(-x)) : i128_from_double_unsigned(x);
 }
