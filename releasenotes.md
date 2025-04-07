@@ -11,6 +11,7 @@
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
 - Incorrect rounding at compile time going from double to int.
+- Regression with invalid setup of the WASM temp allocator.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

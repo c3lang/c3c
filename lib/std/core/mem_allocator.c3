@@ -435,7 +435,7 @@ fn Allocator create_temp_allocator_on_demand() @private
 	    auto_create_temp = true;
 	    abort("Use '@pool_init()' to enable the temp allocator on a new thread. A temp allocator is only implicitly created on the main thread.");
 	}
-	return create_temp_allocator(base_allocator(), temp_allocator_size());
+	return create_temp_allocator(temp_base_allocator, temp_allocator_size());
 }
 <*
  @require !top_temp : "This should never be called when temp already exists"
