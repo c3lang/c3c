@@ -452,12 +452,12 @@ macro Allocator temp()
 
 alias tmem @builtin = current_temp;
 
-fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC)
+fn void allow_implicit_temp_allocator_on_load_thread() @init(1) @local @if(env::LIBC || env::WASM_NOLIBC)
 {
 	auto_create_temp = true;
 }
 
-fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC)
+fn void destroy_temp_allocators_after_exit() @finalizer(65535) @local @if(env::LIBC || env::WASM_NOLIBC)
 {
 	destroy_temp_allocators();
 }
