@@ -772,7 +772,7 @@ macro void* get_returnaddress(int n)
 	}
 }
 
-module std::core::builtin @if((env::LINUX || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
+module std::core::builtin @if((env::LINUX || env::ANDROID || env::DARWIN) && env::COMPILER_SAFE_MODE && env::DEBUG_SYMBOLS);
 import libc, std::io;
 
 fn void sig_panic(String message)
