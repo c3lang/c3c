@@ -43,7 +43,7 @@ struct Matrix4x4
 	}
 }
 
-fn Real[<2>] Matrix2x2.apply(&self, Real[<2>] vec)
+fn Real[<2>] Matrix2x2.apply(&self, Real[<2>] vec) @operator(*)
 {
 	return {
 		self.m00 * vec[0] + self.m01 * vec[1],
@@ -51,7 +51,7 @@ fn Real[<2>] Matrix2x2.apply(&self, Real[<2>] vec)
 	};
 }
 
-fn Real[<3>] Matrix3x3.apply(&self, Real[<3>] vec)
+fn Real[<3>] Matrix3x3.apply(&self, Real[<3>] vec) @operator(*)
 {
 	return {
 		self.m00 * vec[0] + self.m01 * vec[1] + self.m02 * vec[2],
@@ -60,7 +60,7 @@ fn Real[<3>] Matrix3x3.apply(&self, Real[<3>] vec)
 	};
 }
 
-fn Real[<4>] Matrix4x4.apply(&self, Real[<4>] vec)
+fn Real[<4>] Matrix4x4.apply(&self, Real[<4>] vec) @operator(*)
 {
 	return {
 		self.m00 * vec[0] + self.m01 * vec[1] + self.m02 * vec[2] + self.m03 * vec[3],
@@ -71,7 +71,7 @@ fn Real[<4>] Matrix4x4.apply(&self, Real[<4>] vec)
 }
 
 
-fn Matrix2x2 Matrix2x2.mul(&self, Matrix2x2 b)
+fn Matrix2x2 Matrix2x2.mul(&self, Matrix2x2 b) @operator(*)
 {
 	return {
 		self.m00 * b.m00 + self.m01 * b.m10, self.m00 * b.m01 + self.m01 * b.m11,
@@ -79,7 +79,7 @@ fn Matrix2x2 Matrix2x2.mul(&self, Matrix2x2 b)
 	};
 }
 
-fn Matrix3x3 Matrix3x3.mul(&self, Matrix3x3 b)
+fn Matrix3x3 Matrix3x3.mul(&self, Matrix3x3 b) @operator(*)
 {
 	return {
 		self.m00 * b.m00 + self.m01 * b.m10 + self.m02 * b.m20,
@@ -96,7 +96,7 @@ fn Matrix3x3 Matrix3x3.mul(&self, Matrix3x3 b)
 	};
 }
 
-fn Matrix4x4 Matrix4x4.mul(Matrix4x4* self, Matrix4x4 b)
+fn Matrix4x4 Matrix4x4.mul(Matrix4x4* self, Matrix4x4 b) @operator(*)
 {
 	return {
 		self.m00 * b.m00 + self.m01 * b.m10 + self.m02 * b.m20 + self.m03 * b.m30,
@@ -125,13 +125,25 @@ fn Matrix2x2 Matrix2x2.component_mul(&self, Real s) => matrix_component_mul(self
 fn Matrix3x3 Matrix3x3.component_mul(&self, Real s) => matrix_component_mul(self, s);
 fn Matrix4x4 Matrix4x4.component_mul(&self, Real s) => matrix_component_mul(self, s);
 
-fn Matrix2x2 Matrix2x2.add(&self, Matrix2x2 mat2) => matrix_add(self, mat2);
-fn Matrix3x3 Matrix3x3.add(&self, Matrix3x3 mat2) => matrix_add(self, mat2);
-fn Matrix4x4 Matrix4x4.add(&self, Matrix4x4 mat2) => matrix_add(self, mat2);
+fn Matrix2x2 Matrix2x2.add(&self, Matrix2x2 mat2) @operator(+) => matrix_add(self, mat2);
+fn Matrix3x3 Matrix3x3.add(&self, Matrix3x3 mat2) @operator(+) => matrix_add(self, mat2);
+fn Matrix4x4 Matrix4x4.add(&self, Matrix4x4 mat2) @operator(+) => matrix_add(self, mat2);
 
-fn Matrix2x2 Matrix2x2.sub(&self, Matrix2x2 mat2) => matrix_sub(self, mat2);
-fn Matrix3x3 Matrix3x3.sub(&self, Matrix3x3 mat2) => matrix_sub(self, mat2);
-fn Matrix4x4 Matrix4x4.sub(&self, Matrix4x4 mat2) => matrix_sub(self, mat2);
+fn Matrix2x2 Matrix2x2.sub(&self, Matrix2x2 mat2) @operator(-) => matrix_sub(self, mat2);
+fn Matrix3x3 Matrix3x3.sub(&self, Matrix3x3 mat2) @operator(-) => matrix_sub(self, mat2);
+fn Matrix4x4 Matrix4x4.sub(&self, Matrix4x4 mat2) @operator(-) => matrix_sub(self, mat2);
+
+fn Matrix2x2 Matrix2x2.negate(&self) @operator(-) => { .m = (Real[<4>])self.m };
+fn Matrix3x3 Matrix3x3.negate(&self) @operator(-) => { .m = (Real[<9>])self.m };
+fn Matrix4x4 Matrix4x4.negate(&self) @operator(-) => { .m = (Real[<16>])self.m };
+
+fn bool Matrix2x2.eq(&self, Matrix2x2 mat2) @operator(==) => (Real[<4>])self.m == (Real[<4>])mat2.m;
+fn bool Matrix3x3.eq(&self, Matrix3x3 mat2) @operator(==) => (Real[<9>])self.m == (Real[<9>])mat2.m;
+fn bool Matrix4x4.eq(&self, Matrix4x4 mat2) @operator(==) => (Real[<16>])self.m == (Real[<16>])mat2.m;
+
+fn bool Matrix2x2.neq(&self, Matrix2x2 mat2) @operator(!=) => (Real[<4>])self.m != (Real[<4>])mat2.m;
+fn bool Matrix3x3.neq(&self, Matrix3x3 mat2) @operator(!=) => (Real[<9>])self.m != (Real[<9>])mat2.m;
+fn bool Matrix4x4.neq(&self, Matrix4x4 mat2) @operator(!=) => (Real[<16>])self.m != (Real[<16>])mat2.m;
 
 fn Matrix4x4 look_at(Real[<3>] eye, Real[<3>] target, Real[<3>] up) => matrix_look_at(Matrix4x4, eye, target, up);
 

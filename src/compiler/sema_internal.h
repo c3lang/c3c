@@ -94,7 +94,8 @@ bool sema_analyse_expr_lvalue(SemaContext *context, Expr *expr, bool *failed_ref
 bool sema_analyse_expr_value(SemaContext *context, Expr *expr);
 Expr *expr_access_inline_member(Expr *parent, Decl *parent_decl);
 bool sema_analyse_ct_expr(SemaContext *context, Expr *expr);
-Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload operator_overload);
+Decl *sema_find_typed_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, Expr *binary_arg, Type *binary_type, Decl **ambiguous_ref);
+Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverload operator_overload);
 bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *method_decl, Expr *parent, Expr **arguments);
 bool sema_expr_analyse_builtin_call(SemaContext *context, Expr *expr);
 

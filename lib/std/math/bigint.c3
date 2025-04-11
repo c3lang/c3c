@@ -172,7 +172,7 @@ macro uint find_length(uint* data, uint length)
 	return length;
 }
 
-fn BigInt BigInt.mult(self, BigInt bi2)
+fn BigInt BigInt.mult(self, BigInt bi2) @operator(*)
 {
 	self.mult_this(bi2);
 	return self;
@@ -270,7 +270,7 @@ fn void BigInt.negate(&self)
 
 macro bool BigInt.is_zero(&self) => self.len == 1 && self.data[0] == 0;
 
-fn BigInt BigInt.sub(self, BigInt other)
+fn BigInt BigInt.sub(self, BigInt other) @operator(-)
 {
 	self.sub_this(other);
 	return self;
@@ -325,7 +325,7 @@ fn int BigInt.bitcount(&self)
 	return bits;
 }
 
-fn BigInt BigInt.unary_minus(&self)
+fn BigInt BigInt.unary_minus(&self) @operator(-)
 {
 	if (self.is_zero()) return *self;
 	BigInt result = *self;
@@ -334,7 +334,7 @@ fn BigInt BigInt.unary_minus(&self)
 }
 
 
-macro BigInt BigInt.div(self, BigInt other)
+macro BigInt BigInt.div(self, BigInt other) @operator(/)
 {
 	self.div_this(other);
 	return self;
@@ -377,7 +377,7 @@ fn void BigInt.div_this(&self, BigInt other)
 	*self = quotient;
 }
 
-fn BigInt BigInt.mod(self, BigInt bi2)
+fn BigInt BigInt.mod(self, BigInt bi2) @operator(%)
 {
 	self.mod_this(bi2);
 	return self;
@@ -428,13 +428,13 @@ fn void BigInt.bit_negate_this(&self)
 	self.reduce_len();
 }
 
-fn BigInt BigInt.bit_negate(self)
+fn BigInt BigInt.bit_negate(self) @operator(~)
 {
 	self.bit_negate_this();
 	return self;
 }
 
-fn BigInt BigInt.shr(self, int shift)
+fn BigInt BigInt.shr(self, int shift) @operator(>>)
 {
 	self.shr_this(shift);
 	return self;
@@ -445,13 +445,13 @@ fn void BigInt.shr_this(self, int shift)
 	self.len = shift_right(&self.data, self.len, shift);
 }
 
-fn BigInt BigInt.shl(self, int shift)
+fn BigInt BigInt.shl(self, int shift) @operator(<<)
 {
 	self.shl_this(shift);
 	return self;
 }
 
-macro bool BigInt.equals(&self, BigInt other)
+macro bool BigInt.equals(&self, BigInt other) @operator(==)
 {
 	if (self.len != other.len) return false;
 	return self.data[:self.len] == other.data[:self.len];
@@ -764,7 +764,7 @@ fn BigInt BigInt.sqrt(&self)
 	return result;
 }
 
-fn BigInt BigInt.bit_and(self, BigInt bi2)
+fn BigInt BigInt.bit_and(self, BigInt bi2) @operator(&)
 {
 	self.bit_and_this(bi2);
 	return self;
@@ -782,7 +782,7 @@ fn void BigInt.bit_and_this(&self, BigInt bi2)
 	self.reduce_len();
 }
 
-fn BigInt BigInt.bit_or(self, BigInt bi2)
+fn BigInt BigInt.bit_or(self, BigInt bi2) @operator(|)
 {
 	self.bit_or_this(bi2);
 	return self;
@@ -800,7 +800,7 @@ fn void BigInt.bit_or_this(&self, BigInt bi2)
 	self.reduce_len();
 }
 
-fn BigInt BigInt.bit_xor(self, BigInt bi2)
+fn BigInt BigInt.bit_xor(self, BigInt bi2) @operator(^)
 {
 	self.bit_xor_this(bi2);
 	return self;

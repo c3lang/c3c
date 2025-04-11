@@ -19,10 +19,11 @@ static inline bool unit_add_base_extension_method(SemaContext *context, Compilat
 static inline bool unit_add_method(SemaContext *context, Type *parent_type, Decl *method);
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
                                          uint32_t parameters);
-static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload);
+static inline Decl *operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload,
+	Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
-static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context);
+static inline bool sema_analyse_operator_len(SemaContext *context, Decl *method);
 static bool sema_check_operator_method_validity(SemaContext *context, Decl *method);
 
 static inline const char *method_name_by_decl(Decl *method_like);
@@ -46,6 +47,7 @@ static bool sema_analyse_attributes(SemaContext *context, Decl *decl, Attr **att
 static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
+static Decl *sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span);
@@ -1669,7 +1671,6 @@ static inline const char *method_name_by_decl(Decl *method_like)
 }
 
 
-
 static bool sema_analyse_operator_common(SemaContext *context, Decl *method, TypeInfo **rtype_ptr, Decl ***params_ptr,
                                          uint32_t parameters)
 {
@@ -1698,13 +1699,30 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 	return true;
 }
 
-static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorOverload operator_overload)
+INLINE bool decl_matches_overload(Decl *method, Type *type, OperatorOverload overload)
+{
+	return method->operator == overload && typeget(method->func_decl.type_parent)->canonical == type;
+}
+
+static inline Decl *operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
 {
 	if (module->is_generic) return NULL;
-	Decl **extensions = module->private_method_extensions;
-	FOREACH(Decl *, extension, extensions)
+	Decl *found = sema_find_typed_operator_in_list(c, module->private_method_extensions, operator_overload,
+		method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref);
+	if (found) return found;
+	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		if (extension->operator == operator_overload)
+		return operator_in_module_typed(c, sub_module, operator_overload, method_type, binary_arg, binary_type, candidate_ref, ambiguous_ref);
+	}
+	return NULL;
+}
+
+static inline Decl *operator_in_module_untyped(SemaContext *c, Module *module, Type *type, OperatorOverload operator_overload)
+{
+	if (module->is_generic) return NULL;
+	FOREACH(Decl *, extension, module->private_method_extensions)
+	{
+		if (decl_matches_overload(extension, type, operator_overload))
 		{
 			unit_register_external_symbol(c, extension);
 			return extension;
@@ -1712,14 +1730,15 @@ static inline Decl *operator_in_module(SemaContext *c, Module *module, OperatorO
 	}
 	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		return operator_in_module(c, sub_module, operator_overload);
+		return operator_in_module_untyped(c, sub_module, type, operator_overload);
 	}
 	return NULL;
 }
 
-Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload operator_overload)
+Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverload operator_overload)
 {
 	type = type->canonical;
+	assert(operator_overload < OVERLOAD_TYPED_START);
 	if (!type_may_have_sub_elements(type)) return NULL;
 	Decl *def = type->decl;
 	FOREACH(Decl *, func, def->methods)
@@ -1730,15 +1749,148 @@ Decl *sema_find_operator(SemaContext *context, Type *type, OperatorOverload oper
 			return func;
 		}
 	}
-	Decl *extension = operator_in_module(context, context->compilation_unit->module, operator_overload);
+	FOREACH(Decl *, extension, context->unit->local_method_extensions)
+	{
+		if (decl_matches_overload(extension, type, operator_overload)) return extension;
+	}
+	Decl *extension = operator_in_module_untyped(context, context->compilation_unit->module, type, operator_overload);
+	if (extension) return extension;
+	FOREACH(Decl *, import, context->unit->imports)
+	{
+		extension = operator_in_module_untyped(context, import->import.module, type, operator_overload);
+		if (extension) return extension;
+	}
+	return NULL;
+}
+
+static Decl *sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
+{
+	FOREACH(Decl *, func, methods)
+	{
+		if (func->operator != operator_overload) continue;
+		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
+		Type *first_arg = func->func_decl.signature.params[1]->type->canonical;
+		if (first_arg != binary_type)
+		{
+			if (!binary_arg) continue;
+			if (may_cast(context, binary_arg, first_arg, false, true))
+			{
+				if (*candidate_ref)
+				{
+					*ambiguous_ref = func;
+					continue;
+				}
+				*candidate_ref = func;
+			}
+			continue;
+		}
+		unit_register_external_symbol(context, func);
+		return func;
+	}
+	return NULL;
+}
+Decl *sema_find_typed_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, Expr *binary_arg, Type *binary_type, Decl **ambiguous_ref)
+{
+	assert(operator_overload >= OVERLOAD_TYPED_START);
+	assert(!binary_arg || ambiguous_ref);
+	assert(!binary_type || !binary_arg);
+	type = type->canonical;
+	if (binary_arg) binary_type = binary_arg->type->canonical;
+	Decl *candidate = NULL;
+	Decl *ambiguous = NULL;
+
+	if (type_is_user_defined(type))
+	{
+		Decl *func = sema_find_typed_operator_in_list(context, type->decl->methods, operator_overload, type, binary_arg,
+			binary_type, &candidate, &ambiguous);
+		if (func) return func;
+	}
+	else
+	{
+		Decl *func = sema_find_typed_operator_in_list(context, compiler.context.method_extensions,
+			operator_overload, type, binary_arg, binary_type, &candidate, &ambiguous);
+		if (func) return func;
+	}
+
+	Decl *extension = sema_find_typed_operator_in_list(context, context->unit->local_method_extensions,
+		operator_overload, type, binary_arg, binary_type, &candidate, &ambiguous);
+	if (extension) return extension;
+
+	extension = operator_in_module_typed(context, context->compilation_unit->module, operator_overload, type,
+		binary_arg, binary_type, &candidate, &ambiguous);
 	if (extension) return extension;
 
 	FOREACH(Decl *, import, context->unit->imports)
 	{
-		extension = operator_in_module(context, import->import.module, operator_overload);
+		extension = operator_in_module_typed(context, import->import.module, operator_overload, type, binary_arg,
+			binary_type, &candidate, &ambiguous);
 		if (extension) return extension;
 	}
+	if (ambiguous)
+	{
+		*ambiguous_ref = ambiguous;
+		return NULL;
+	}
+	if (candidate)
+	{
+		unit_register_external_symbol(context, candidate);
+		return candidate;
+	}
 	return NULL;
+}
+
+static inline bool sema_analyse_operator_unary(SemaContext *context, Decl *method, OperatorOverload operator_overload)
+{
+	assert(operator_overload == OVERLOAD_NEGATE || operator_overload == OVERLOAD_UNARY_MINUS);
+	TypeInfo *rtype;
+	Decl **params;
+	if (!sema_analyse_operator_common(context, method, &rtype, &params, 1)) return false;
+	if (!rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
+	if (rtype->type->canonical != typeget(method->func_decl.type_parent)->canonical)
+	{
+		RETURN_SEMA_ERROR(rtype, "The return value must be %s but was %s.", type_quoted_error_string(typeget(method->func_decl.type_parent)),
+			type_quoted_error_string(rtype->type));
+	}
+	return true;
+}
+
+static inline bool sema_analyse_operator_arithmetics(SemaContext *context, Decl *method, OperatorOverload operator_overload)
+{
+	if (operator_overload == OVERLOAD_MINUS && vec_size(method->func_decl.signature.params) < 2)
+	{
+		return sema_analyse_operator_unary(context, method, method->operator = OVERLOAD_UNARY_MINUS);
+	}
+	Signature *signature = &method->func_decl.signature;
+	Decl **params = signature->params;
+	uint32_t param_count = vec_size(params);
+	if (param_count > 2)
+	{
+		RETURN_SEMA_ERROR(params[2], "Too many parameters, '%s' expects only 2 parameters.", method->name);
+	}
+	if (param_count < 2)
+	{
+		RETURN_SEMA_ERROR(method, "Not enough parameters, '%s' requires 2 parameters.", method->name);
+	}
+	if (!signature->rtype) RETURN_SEMA_ERROR(method, "The return value must be explicitly typed for '%s'.", method->name);
+	TypeInfo *rtype = type_infoptr(signature->rtype);
+	if (IS_OPTIONAL(rtype))
+	{
+		RETURN_SEMA_ERROR(rtype, "The return type may not be an optional.");
+	}
+	if (operator_overload == OVERLOAD_EQUAL || operator_overload == OVERLOAD_NOT_EQUAL)
+	{
+		if (rtype->type->canonical != type_bool)
+		{
+			RETURN_SEMA_ERROR(rtype, "The return type was %s, but it must be bool for comparisons.", type_quoted_error_string(rtype->type));
+		}
+	}
+	if (type_is_void(rtype->type))
+	{
+		RETURN_SEMA_ERROR(rtype, "The return type may not be %s.", type_quoted_error_string(rtype->type));
+	}
+	// Set it as pure
+	method->func_decl.signature.attrs.is_pure = true;
+	return true;
 }
 
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method)
@@ -1777,7 +1929,7 @@ static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl 
 	return sema_analyse_operator_common(context, method, &rtype, &params, 3);
 }
 
-static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context)
+static inline bool sema_analyse_operator_len(SemaContext *context, Decl *method)
 {
 	TypeInfo *rtype;
 	Decl **params;
@@ -1791,7 +1943,8 @@ static inline bool sema_analyse_operator_len(Decl *method, SemaContext *context)
 
 static bool sema_check_operator_method_validity(SemaContext *context, Decl *method)
 {
-	switch (method->operator)
+	OperatorOverload operator = method->operator;
+	switch (operator)
 	{
 		case OVERLOAD_ELEMENT_SET:
 			return sema_analyse_operator_element_set(context, method);
@@ -1799,7 +1952,25 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 		case OVERLOAD_ELEMENT_REF:
 			return sema_analyse_operator_element_at(context, method);
 		case OVERLOAD_LEN:
-			return sema_analyse_operator_len(method, context);
+			return sema_analyse_operator_len(context, method);
+		case OVERLOAD_PLUS:
+		case OVERLOAD_MULTIPLY:
+		case OVERLOAD_MINUS:
+		case OVERLOAD_DIVIDE:
+		case OVERLOAD_REMINDER:
+		case OVERLOAD_EQUAL:
+		case OVERLOAD_NOT_EQUAL:
+		case OVERLOAD_AND:
+		case OVERLOAD_OR:
+		case OVERLOAD_XOR:
+		case OVERLOAD_SHL:
+		case OVERLOAD_SHR:
+			return sema_analyse_operator_arithmetics(context, method, operator);
+		case OVERLOAD_NEGATE:
+			return sema_analyse_operator_unary(context, method, operator);
+		case OVERLOAD_UNARY_MINUS:
+			// Changed in OVERLOAD_MINUS analysis
+			UNREACHABLE
 	}
 	UNREACHABLE
 }
@@ -1888,20 +2059,31 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	// Check it's valid for the operator type.
 	if (!sema_check_operator_method_validity(context, method)) return false;
 
-	// We don't support operator overloading on base types, because
-	// there seems little use for it frankly.
-	if (!type_is_user_defined(parent_type))
-	{
-		sema_error_at(context, method_find_overload_span(method),
-		              "Only user-defined types support operator overloading.");
-		return false;
-	}
-
 	// See if the operator has already been defined.
 	OperatorOverload operator = method->operator;
 
-	Decl *other = sema_find_operator(context, parent_type, operator);
-	if (other != method)
+	Type *second_param = vec_size(method->func_decl.signature.params) > 1 ? method->func_decl.signature.params[1]->type : NULL;
+
+	// We don't support operator overloading on base types, because
+	// there seems little use for it frankly.
+	if (!type_is_user_defined(parent_type) && (operator < OVERLOAD_TYPED_START || !type_is_user_defined(second_param->canonical)))
+	{
+		sema_error_at(context, method_find_overload_span(method),
+		              "Only overloads involving user-defined types support overloading.");
+		return false;
+	}
+
+
+	Decl *other = NULL;
+	if (operator >= OVERLOAD_TYPED_START)
+	{
+		other = sema_find_typed_operator(context, parent_type, operator, NULL, second_param, NULL);
+	}
+	else
+	{
+		other = sema_find_untyped_operator(context, parent_type, operator);
+	}
+	if (other && other != method)
 	{
 		SourceSpan span = method_find_overload_span(method);
 		sema_error_at(context, span, "This operator is already defined for '%s'.", parent_type->name);
@@ -1919,14 +2101,14 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			return true;
 		case OVERLOAD_ELEMENT_AT:
 			// [] compares &[]
-			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
 			// And []=
-			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
@@ -1935,14 +2117,14 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			return true;
 		case OVERLOAD_ELEMENT_REF:
 			// &[] compares []
-			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
 			// And []=
-			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
@@ -1951,19 +2133,34 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			return true;
 		case OVERLOAD_ELEMENT_SET:
 			// []= compares &[]
-			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
 			// And []
-			other = sema_find_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
+			return true;
+		case OVERLOAD_SHL:
+		case OVERLOAD_SHR:
+		case OVERLOAD_PLUS:
+		case OVERLOAD_DIVIDE:
+		case OVERLOAD_REMINDER:
+		case OVERLOAD_UNARY_MINUS:
+		case OVERLOAD_AND:
+		case OVERLOAD_OR:
+		case OVERLOAD_XOR:
+		case OVERLOAD_NEGATE:
+		case OVERLOAD_MULTIPLY:
+		case OVERLOAD_MINUS:
+		case OVERLOAD_EQUAL:
+		case OVERLOAD_NOT_EQUAL:
 			return true;
 		default:
 			UNREACHABLE

@@ -87,7 +87,7 @@ fn Time Time.add_minutes(time, long minutes) => time + (Time)(minutes * (long)MI
 fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)HOUR);
 fn Time Time.add_days(time, long days) => time + (Time)(days * (long)DAY);
 fn Time Time.add_weeks(time, long weeks) => time + (Time)(weeks * (long)WEEK);
-fn Time Time.add_duration(time, Duration duration) => time + (Time)duration;
+fn Time Time.add_duration(time, Duration duration) @operator(+) => time + (Time)duration;
 
 fn int Time.compare_to(time, Time other)
 {
@@ -96,7 +96,7 @@ fn int Time.compare_to(time, Time other)
 }
 
 fn double Time.to_seconds(time) => (long)time / (double)SEC;
-fn Duration Time.diff_us(time, Time other) => (Duration)(time - other);
+fn Duration Time.diff_us(time, Time other) @operator(-) => (Duration)(time - other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
 fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MIN;
 fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)HOUR;

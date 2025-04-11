@@ -8,6 +8,7 @@ fn void test_mat4()
 		Matrix4 mat2 = { 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1 };
 		Matrix4 calc = mat.mul(mat2);
 		assert(calc.m == mat.m);
+		assert(mat * mat2 == mat);
 
 		Matrix4 translated = mat.translate({0.0, 0.0, 0.0});
 		assert(translated.m == mat.m);
@@ -19,6 +20,7 @@ fn void test_mat4()
 		Matrix4 calc = mat.mul(mat2);
 		Matrix4 value = { 56, 46, 36, 26, 152, 126, 100, 74, 56, 46, 36, 26, 152, 126, 100, 74 };
 		assert(calc.m == value.m);
+		assert(mat * mat2 == value);
 	};
 
 	{

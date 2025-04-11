@@ -7,6 +7,7 @@
 - Better errors trying to convert an enum to an int and vice versa.
 - Function `@require` checks are added to the caller in safe mode. #186
 - Improved error message when narrowing isn't allowed.
+- Operator overloading for `+ - * / % & | ^ << >> ~ == !=`
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.

@@ -11,11 +11,12 @@ union Quaternion
 
 const Quaternion IDENTITY = { 0, 0, 0, 1 };
 
-macro Quaternion Quaternion.add(self, Quaternion b) => { .v = self.v + b.v };
+macro Quaternion Quaternion.add(self, Quaternion b) @operator(+) => { .v = self.v + b.v };
 macro Quaternion Quaternion.add_each(self, Real b) => { .v = self.v + b };
-macro Quaternion Quaternion.sub(self, Quaternion b) => { .v = self.v - b.v };
+macro Quaternion Quaternion.sub(self, Quaternion b) @operator(-) => { .v = self.v - b.v };
+macro Quaternion Quaternion.negate(self) @operator(-) => { .v = -self.v };
 macro Quaternion Quaternion.sub_each(self, Real b) => { .v = self.v - b };
-macro Quaternion Quaternion.scale(self, Real s) => { .v = self.v * s };
+macro Quaternion Quaternion.scale(self, Real s) @operator(*) => { .v = self.v * s };
 macro Quaternion Quaternion.normalize(self) => { .v = self.v.normalize() };
 macro Real Quaternion.length(self) => self.v.length();
 macro Quaternion Quaternion.lerp(self, Quaternion q2, Real amount) => { .v = self.v.lerp(q2.v, amount) };
@@ -60,7 +61,7 @@ fn Quaternion Quaternion.slerp(self, Quaternion q2, Real amount)
 	return { .v = q1v * ratio_a + q2v * ratio_b };
 }
 
-fn Quaternion Quaternion.mul(self, Quaternion b)
+fn Quaternion Quaternion.mul(self, Quaternion b) @operator(+)
 {
 	return { self.i * b.l + self.l * b.i + self.j * b.k - self.k * b.j,
 			 self.j * b.l + self.l * b.j + self.k * b.i - self.i * b.k,

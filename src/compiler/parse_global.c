@@ -952,10 +952,64 @@ Decl *parse_var_decl(ParseContext *c)
 
 // --- Parse parameters & throws & attributes
 
+static Expr *parse_overload_from_token(ParseContext *c, TokenType token)
+{
+	OperatorOverload overload;
+	switch (token)
+	{
+		case TOKEN_PLUS:
+			overload = OVERLOAD_PLUS;
+			break;
+		case TOKEN_MINUS:
+			overload = OVERLOAD_MINUS;
+			break;
+		case TOKEN_STAR:
+			overload = OVERLOAD_MULTIPLY;
+			break;
+		case TOKEN_DIV:
+			overload = OVERLOAD_DIVIDE;
+			break;
+		case TOKEN_MOD:
+			overload = OVERLOAD_REMINDER;
+			break;
+		case TOKEN_AMP:
+			overload = OVERLOAD_AND;
+			break;
+		case TOKEN_BIT_OR:
+			overload = OVERLOAD_OR;
+			break;
+		case TOKEN_BIT_XOR:
+			overload = OVERLOAD_XOR;
+			break;
+		case TOKEN_SHL:
+			overload = OVERLOAD_SHL;
+			break;
+		case TOKEN_SHR:
+			overload = OVERLOAD_SHR;
+			break;
+		case TOKEN_BIT_NOT:
+			overload = OVERLOAD_NEGATE;
+			break;
+		case TOKEN_EQEQ:
+			overload = OVERLOAD_EQUAL;
+			break;
+		case TOKEN_NOT_EQUAL:
+			overload = OVERLOAD_NOT_EQUAL;
+			break;
+		default:
+			UNREACHABLE;
+	}
+	Expr *expr = EXPR_NEW_TOKEN(EXPR_OPERATOR_CHARS);
+	expr->resolve_status = RESOLVE_DONE;
+	expr->overload_expr = overload;
+	advance(c);
+	RANGE_EXTEND_PREV(expr);
+	return expr;
+}
 /**
  * attribute ::= (AT_IDENT | path_prefix? AT_TYPE_IDENT) attr_params?
  * attr_params ::= '(' attr_param (',' attr_param)* ')'
- * attr_param ::= const_expr | '&' '[' ']' || '[' ']' '='?
+ * attr_param ::= const_expr | '&' '[' ']' | '[' ']' '='? | '-' | '+' | '/' | '%' | '==' | '<=>' | '<<' | '>>' | '|' | '&' | '^' | '~'
  */
 bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 {
@@ -1012,9 +1066,30 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 		while (1)
 		{
 			Expr *expr;
+			bool next_is_rparen = c->lexer.token_type == TOKEN_RPAREN;
 			switch (c->tok)
 			{
+				case TOKEN_PLUS:
+				case TOKEN_MINUS:
+				case TOKEN_STAR:
+				case TOKEN_DIV:
+				case TOKEN_MOD:
+				case TOKEN_BIT_NOT:
+				case TOKEN_BIT_OR:
+				case TOKEN_BIT_XOR:
+				case TOKEN_SHL:
+				case TOKEN_SHR:
+				case TOKEN_EQEQ:
+				case TOKEN_NOT_EQUAL:
+					if (!next_is_rparen) goto PARSE_EXPR;
+					expr = parse_overload_from_token(c, c->tok);
+					break;
 				case TOKEN_AMP:
+					if (next_is_rparen)
+					{
+						expr = parse_overload_from_token(c, c->tok);
+						break;
+					}
 					// &[]
 					expr = EXPR_NEW_TOKEN(EXPR_OPERATOR_CHARS);
 					expr->resolve_status = RESOLVE_DONE;
@@ -1034,6 +1109,7 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 					RANGE_EXTEND_PREV(expr);
 					break;
 				default:
+PARSE_EXPR:
 					expr = parse_constant_expr(c);
 					if (!expr_ok(expr)) return false;
 					break;
