@@ -613,7 +613,7 @@ typedef struct Decl_
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
-	OperatorOverload operator : 5;
+	OperatorOverload operator : 6;
 	union
 	{
 		void *backend_ref;
