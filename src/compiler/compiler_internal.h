@@ -498,6 +498,7 @@ struct Signature_
 typedef struct
 {
 	TypeInfoId type_parent;
+	OperatorOverload operator : 8;
 	Signature signature;
 	AstId body;
 	AstId docs;
@@ -613,7 +614,6 @@ typedef struct Decl_
 	bool attr_nopadding : 1;
 	bool attr_compact : 1;
 	bool resolved_attributes : 1;
-	OperatorOverload operator : 6;
 	union
 	{
 		void *backend_ref;
@@ -670,7 +670,7 @@ typedef struct Decl_
 	};
 } Decl;
 
-// static_assert(sizeof(void*) != 8 || sizeof(Decl) == 136, "Decl has unexpected size.");
+static_assert(sizeof(void*) != 8 || sizeof(Decl) == 136, "Decl has unexpected size.");
 
 typedef enum RangeType
 {

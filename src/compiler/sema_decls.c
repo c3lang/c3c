@@ -1701,7 +1701,7 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
 
 INLINE bool decl_matches_overload(Decl *method, Type *type, OperatorOverload overload)
 {
-	return method->operator == overload && typeget(method->func_decl.type_parent)->canonical == type;
+	return method->func_decl.operator == overload && typeget(method->func_decl.type_parent)->canonical == type;
 }
 
 static inline Decl *operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref)
@@ -1743,7 +1743,7 @@ Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverl
 	Decl *def = type->decl;
 	FOREACH(Decl *, func, def->methods)
 	{
-		if (func->operator == operator_overload)
+		if (func->func_decl.operator == operator_overload)
 		{
 			unit_register_external_symbol(context, func);
 			return func;
@@ -1767,7 +1767,7 @@ static Decl *sema_find_typed_operator_in_list(SemaContext *context, Decl **metho
 {
 	FOREACH(Decl *, func, methods)
 	{
-		if (func->operator != operator_overload) continue;
+		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		Type *first_arg = func->func_decl.signature.params[1]->type->canonical;
 		if (first_arg != binary_type)
@@ -1858,7 +1858,7 @@ static inline bool sema_analyse_operator_arithmetics(SemaContext *context, Decl 
 {
 	if (operator_overload == OVERLOAD_MINUS && vec_size(method->func_decl.signature.params) < 2)
 	{
-		return sema_analyse_operator_unary(context, method, method->operator = OVERLOAD_UNARY_MINUS);
+		return sema_analyse_operator_unary(context, method, method->func_decl.operator = OVERLOAD_UNARY_MINUS);
 	}
 	Signature *signature = &method->func_decl.signature;
 	Decl **params = signature->params;
@@ -1914,7 +1914,7 @@ static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *
 			RETURN_SEMA_ERROR(rtype, "%s has unknown size and cannot be used as a return type.",
 			                  type_quoted_error_string(rtype->type));
 	}
-	if (method->operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(rtype->type))
+	if (method->func_decl.operator == OVERLOAD_ELEMENT_REF && !type_is_pointer(rtype->type))
 	{
 		RETURN_SEMA_ERROR(rtype, "The return type must be a pointer, but it is returning %s, did you mean to overload [] instead?",
 		                  type_quoted_error_string(rtype->type));
@@ -1943,7 +1943,7 @@ static inline bool sema_analyse_operator_len(SemaContext *context, Decl *method)
 
 static bool sema_check_operator_method_validity(SemaContext *context, Decl *method)
 {
-	OperatorOverload operator = method->operator;
+	OperatorOverload operator = method->func_decl.operator;
 	switch (operator)
 	{
 		case OVERLOAD_ELEMENT_SET:
@@ -2027,7 +2027,7 @@ static inline bool unit_add_base_extension_method(UNUSED SemaContext *context, C
 
 static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, Type **index_ref)
 {
-	switch (method->operator)
+	switch (method->func_decl.operator)
 	{
 		case OVERLOAD_LEN:
 			UNREACHABLE
@@ -2061,7 +2061,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	if (!sema_check_operator_method_validity(context, method)) return false;
 
 	// See if the operator has already been defined.
-	OperatorOverload operator = method->operator;
+	OperatorOverload operator = method->func_decl.operator;
 
 	Type *second_param = vec_size(method->func_decl.signature.params) > 1 ? method->func_decl.signature.params[1]->type : NULL;
 
@@ -2584,7 +2584,7 @@ static inline bool sema_analyse_method(SemaContext *context, Decl *decl)
 		}
 	}
 	// Is it an operator?
-	if (decl->operator)
+	if (decl->func_decl.operator)
 	{
 		if (!sema_analyse_operator_method(context, par_type, decl)) return false;
 	}
@@ -2851,7 +2851,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 		{
 			ASSERT(decl->decl_kind == DECL_FUNC || decl->decl_kind == DECL_MACRO);
 			if (!expr) goto FAILED_OP_TYPE;
-			if (decl->operator)
+			if (decl->func_decl.operator)
 			{
 				RETURN_SEMA_ERROR(attr, "This method already has overload, it can't match multiple ones.");
 			}
@@ -2860,10 +2860,10 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 				case EXPR_UNRESOLVED_IDENTIFIER:
 					if (expr->unresolved_ident_expr.path) goto FAILED_OP_TYPE;
 					if (expr->unresolved_ident_expr.ident != kw_len) goto FAILED_OP_TYPE;
-					decl->operator = OVERLOAD_LEN;
+					decl->func_decl.operator = OVERLOAD_LEN;
 					break;
 				case EXPR_OPERATOR_CHARS:
-					decl->operator = expr->overload_expr;
+					decl->func_decl.operator = expr->overload_expr;
 					break;
 				default:
 					goto FAILED_OP_TYPE;
@@ -3917,7 +3917,7 @@ static bool sema_analyse_macro_method(SemaContext *context, Decl *decl)
 		RETURN_SEMA_ERROR(first_param, "The first parameter must be a compile time, regular or ref (&) type.");
 	}
 	// Is it an operator?
-	if (decl->operator)
+	if (decl->func_decl.operator)
 	{
 		if (!sema_analyse_operator_method(context, parent_type, decl)) return false;
 	}
