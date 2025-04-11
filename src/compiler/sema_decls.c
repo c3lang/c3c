@@ -1972,7 +1972,7 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 			// Changed in OVERLOAD_MINUS analysis
 			UNREACHABLE
 	}
-	ASSERT_SPAN(method, "Method had unexpected operator %d", operator);
+	ASSERT_SPANF(method, false, "Method had unexpected operator %d", operator);
 	UNREACHABLE
 }
 
