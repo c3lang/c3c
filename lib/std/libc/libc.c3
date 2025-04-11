@@ -373,7 +373,7 @@ module libc;
 alias CFile = void*;
 
 
-const HAS_MALLOC_SIZE = env::LINUX || env::WIN32 || env::DARWIN;
+const HAS_MALLOC_SIZE = env::LINUX || env::ANDROID || env::WIN32 || env::DARWIN;
 
 // The following needs to be set per arch+os
 // For now I have simply pulled the defaults from MacOS

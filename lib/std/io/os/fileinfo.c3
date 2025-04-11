@@ -1,9 +1,9 @@
 module std::io::os;
 import libc, std::os, std::io;
 
-fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::BSD_FAMILY) => @pool()
+fn void? native_stat(Stat* stat, String path) @if(env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY) => @pool()
 {
-	$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
+	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY:
 		int res = libc::stat(path.zstr_tcopy(), stat);
 	$else
 		unreachable("Stat unimplemented");
@@ -69,6 +69,7 @@ fn bool native_file_or_dir_exists(String path)
 		$case env::NETBSD:
 		$case env::OPENBSD:
 		$case env::LINUX:
+		$case env::ANDROID:
 			Stat stat;
 			return @ok(native_stat(&stat, path));
 		$case env::WIN32:
@@ -94,6 +95,7 @@ fn bool native_is_file(String path)
 		$case env::NETBSD:
 		$case env::OPENBSD:
 		$case env::LINUX:
+		$case env::ANDROID:
 			Stat stat;
 			return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFREG);
 		$default:
@@ -105,7 +107,7 @@ fn bool native_is_file(String path)
 
 fn bool native_is_dir(String path)
 {
-	$if env::DARWIN || env::LINUX || env::BSD_FAMILY:
+	$if env::DARWIN || env::LINUX || env::ANDROID || env::BSD_FAMILY:
 		Stat stat;
 		return @ok(native_stat(&stat, path)) && libc_S_ISTYPE(stat.st_mode, libc::S_IFDIR);
 	$else
