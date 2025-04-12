@@ -1458,8 +1458,8 @@ void append_file(BuildOptions *build_options)
 static inline const char *match_argopt(const char *name)
 {
 	size_t len = strlen(name);
-	if (!str_start_with(&current_arg[2], name)) return false;
-	if (current_arg[2 + len] != '=') return false;
+	if (!str_start_with(&current_arg[2], name)) return nullptr;
+	if (current_arg[2 + len] != '=') return nullptr;
 	return &current_arg[2 + len + 1];
 }
 
