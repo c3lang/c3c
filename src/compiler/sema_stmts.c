@@ -2603,8 +2603,8 @@ static inline bool sema_analyse_ct_foreach_stmt(SemaContext *context, Ast *state
 	Expr **expressions = NULL;
 	Type *const_list_type = NULL;
 	const char *bytes = NULL;
-	Type *bytes_type;
-	switch (collection->const_expr.const_kind)
+    Type *bytes_type = NULL;
+    switch (collection->const_expr.const_kind)
 	{
 		case CONST_FLOAT:
 		case CONST_INTEGER:
