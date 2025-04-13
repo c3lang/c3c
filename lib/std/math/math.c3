@@ -6,7 +6,6 @@ import std::math::complex;
 import std::math::matrix;
 import std::math::quaternion;
 
-// TODO Define these using quad precision.
 const E = 2.718281828459045235360287471352662497757247093699959574966967627724076630353547594571382178525166427427466;
 const LOG2E = 1.44269504088896340735992468100189214; // log2(e)
 const LOG10E = 0.434294481903251827651128918916605082; // log10(e)
@@ -60,6 +59,7 @@ const DOUBLE_EPSILON = 2.22044604925031308085e-16;
 const QUAD_MANT_DIG = 113;
 
 /*
+Currently unsupported float128 constants
 const QUAD_MAX = 1.18973149535723176508575932662800702e+4932;
 const QUAD_MIN = 3.36210314311209350626267781732175260e-4932;
 const QUAD_DENORM_MIN = 6.47517511943802511092443895822764655e-4966;
@@ -129,7 +129,7 @@ macro is_approx(x, y, eps)
 {
 	if (x == y) return true;
 	if (is_nan(x) || is_nan(y)) return false;
-	return abs(x-y) <= eps; 
+	return abs(x - y) <= eps;
 }
 
 <*
@@ -140,7 +140,7 @@ macro is_approx_rel(x, y, eps)
 {
 	if (x == y) return true;
 	if (is_nan(x) || is_nan(y)) return false;
-	return abs(x-y) <= eps * max(abs(x), abs(y)); 
+	return abs(x - y) <= eps * max(abs(x), abs(y));
 }
 
 <*
@@ -149,7 +149,7 @@ macro is_approx_rel(x, y, eps)
 macro sign(x)
 {
 	var $Type = $typeof(x);
-	$if $Type.kindof == TypeKind.UNSIGNED_INT:
+	$if $Type.kindof == UNSIGNED_INT:
 		return ($Type)(x > 0);
 	$else
 		return ($Type)(x > 0) - ($Type)(x < 0);
@@ -177,7 +177,7 @@ macro atan2(x, y)
 *>
 macro sincos_ref(x, sinp, cosp)
 {
-	$if @typeid(*sinp) == float.typeid:
+	$if @typeis(sinp, float*.typeid):
 		return _sincosf(x, sinp, cosp);
 	$else
 		return _sincos(x, sinp, cosp);
@@ -192,7 +192,7 @@ macro sincos_ref(x, sinp, cosp)
 *>
 macro sincos(x)
 {
-	$if @typeid(x) == float.typeid:
+	$if @typeis(x, float):
 		float[<2>] v @noinit;
 		_sincosf(x, &v[0], &v[1]);
 	$else

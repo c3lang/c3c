@@ -1,8 +1,58 @@
 module math_tests;
 import std::math;
+import std::core::test;
+
+
+fn void test_sincos() @test
+{
+	$assert(@typeid(math::sincos(1.0)) == double[<2>].typeid);
+	test::eq_approx(math::sincos(math::PI / 6).x, 0.5, 4);
+	test::eq_approx(math::sincos(math::PI / 6).y, 0.866025, 5);
+	test::eq_approx(math::sincos(math::PI / 4).x, 0.707107, 5);
+	test::eq_approx(math::sincos(math::PI / 4).y, 0.707107, 5);
+	test::eq_approx(math::sincos(math::PI / 3).x, 0.866025, 5);
+	test::eq_approx(math::sincos(math::PI / 3).y, 0.5, 5);
+	test::eq_approx(math::sincos(math::PI / 2).x, 1, 5);
+	test::eq_approx(math::sincos(math::PI / 2).y, 0, 5);
+	test::eq_approx(math::sincos(math::PI).x, 0, 5);
+	test::eq_approx(math::sincos(math::PI).y, -1, 5);
+	test::eq_approx(math::sincos(3 * math::PI / 2).x, -1, 5);
+	test::eq_approx(math::sincos(3 * math::PI / 2).y, 0, 5);
+	test::eq_approx(math::sincos(math::PI * 2).x, 0, 5);
+	test::eq_approx(math::sincos(math::PI * 2).y, 1, 5);
+}
+fn void test_sincosf() @test
+{
+	$assert(@typeid(math::sincos(1.0f)) == float[<2>].typeid);
+	test::eq_approx(math::sincos((float)(math::PI / 6)).x, 0.5, 4);
+	test::eq_approx(math::sincos((float)(math::PI / 6)).y, 0.866025, 5);
+	test::eq_approx(math::sincos((float)(math::PI / 4)).x, 0.707107, 5);
+	test::eq_approx(math::sincos((float)(math::PI / 4)).y, 0.707107, 5);
+	test::eq_approx(math::sincos((float)(math::PI / 3)).x, 0.866025, 5);
+	test::eq_approx(math::sincos((float)(math::PI / 3)).y, 0.5, 5);
+	test::eq_approx(math::sincos((float)(math::PI / 2)).x, 1, 5);
+	test::eq_approx(math::sincos((float)(math::PI / 2)).y, 0, 5);
+	test::eq_approx(math::sincos((float)(math::PI)).x, 0, 5);
+	test::eq_approx(math::sincos((float)(math::PI)).y, -1, 5);
+	test::eq_approx(math::sincos((float)(3 * math::PI / 2)).x, -1, 5);
+	test::eq_approx(math::sincos((float)(3 * math::PI / 2)).y, 0, 5);
+	test::eq_approx(math::sincos((float)(math::PI * 2)).x, 0, 5);
+	test::eq_approx(math::sincos((float)(math::PI * 2)).y, 1, 5);
+}
 
 fn void test_abs() @test
 {
+	test::eq_approx(math::abs(-2.0), 2.0, 6);
+	test::eq_approx(math::abs(-2.0f), 2.0, 6);
+	test::eq_approx(math::abs(2.0), 2.0, 6);
+	test::eq_approx(math::abs(2.0f), 2.0, 6);
+	test::eq(math::abs(-2), 2);
+	test::eq(math::abs(2), 2);
+	test::eq(math::abs((int[<2>]){ -1, 2 }), (int[<2>]) { 1, 2 });
+	test::eq(math::abs((int128)-1), (int128)1);
+	test::eq_approx(math::abs((float[<2>]) { 1, -3 }).x, 1.0, 6);
+	test::eq_approx(math::abs((float[<2>]) { 1, -3 }).y, 3.0, 6);
+
 	int x = -21;
 	assert(math::abs(x) == 21);
 	double y = -123.0;
@@ -19,7 +69,7 @@ fn void test_abs() @test
 fn void test_acos() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
-	double [<3>] out = { 0., math::PI_2, math::PI };
+	double [<3>] out = { 0.0, math::PI_2, math::PI };
 	double [<6>] in2 = { 0.9, 0.6, 0.1, -0.1, -0.6, -0.9 };
 	double [<6>] out2 = { 0.45102681179626236, 0.9272952180016123, 1.4706289056333368, 1.6709637479564565, 2.214297435588181, 2.6905658417935308 };
 	assert(@typeis(math::acos(in[0]), double));
@@ -57,7 +107,7 @@ fn void test_acos() @test
 fn void test_acosh() @test
 {
 	int [<5>] in = { 0, -1, 1, 2, 231 };
-	double [<3>] out = { 0., 1.3169578969248166, 6.135560205979194 };
+	double [<3>] out = { 0.0, 1.3169578969248166, 6.135560205979194 };
 	assert(@typeis(math::acosh(in[0]), double));
 	assert(@typeis(math::acosh((float)in[0]), float));
 	assert(@typeis(math::acosh((double)in[0]), double));
@@ -82,7 +132,7 @@ fn void test_acosh() @test
 fn void test_asin() @test
 {
 	int [<5>] in = { 231, -231, 1, 0, -1 };
-	double [<3>] out = { math::PI_2, 0., -math::PI_2 };
+	double [<3>] out = { math::PI_2, 0.0, -math::PI_2 };
 	double [<6>] in2 = { 0.98, 0.6, 0.1, -0.1, -0.6, -0.98 };
 	double [<6>] out2 = { 1.3704614844717768, 0.6435011087932844, 0.1001674211615598, -0.1001674211615598, -0.6435011087932844, -1.3704614844717768 };
 	assert(@typeis(math::asin(in[0]), double));
@@ -116,7 +166,7 @@ fn void test_asin() @test
 fn void test_asinh() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
-	double [<5>] out = { 6.135569576118435, 0.881373587019543, 0., -0.881373587019543, -6.135569576118435 };
+	double [<5>] out = { 6.135569576118435, 0.881373587019543, 0.0, -0.881373587019543, -6.135569576118435 };
 	assert(@typeis(math::asinh(in[0]), double));
 	assert(@typeis(math::asinh((float)in[0]), float));
 	assert(@typeis(math::asinh((double)in[0]), double));
@@ -134,7 +184,7 @@ fn void test_asinh() @test
 fn void test_atan() @test
 {
 	int [<9>] in = { 231, 3, 2, 1, 0, -1, -2, -3, -231 };
-	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::PI_4, 0., -math::PI_4, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
+	double [<9>] out = { 1.5664673495078372, 1.2490457723982544, 1.1071487177940904, math::PI_4, 0.0, -math::PI_4, -1.1071487177940904, -1.2490457723982544, -1.5664673495078372 };
 	double [<6>] in2 = { 0.6, 0.4, 0.1, -0.1, -0.4, -0.6 };
 	double [<6>] out2 = { 0.5404195002705842, 0.3805063771123649, 0.09966865249116204, -0.09966865249116204, -0.3805063771123649, -0.5404195002705842 };
 	assert(@typeis(math::atan(in[0]), double));
@@ -178,9 +228,9 @@ fn void test_atanh() @test
 		assert(math::is_inf(math::atanh((float)in[i])), "atanh(%f) is not inf", in[i]);
 		assert(math::is_inf(math::atanh((double)in[i])), "atanh(%f) is not inf", in[i]);
 	}
-	assert(math::atanh(0) == 0., "atanh(%d) is not equal to %f", 0, 0.);
-	assert(math::atanh(0.f) == 0.f, "atanh(%f) is not equal to %f", 0.f, 0.f);
-	assert(math::atanh(0.) == 0., "atanh(%f) is not equal to %f", 0., 0.);
+	assert(math::atanh(0) == 0.0, "atanh(%d) is not equal to %f", 0, 0.0);
+	assert(math::atanh(0.0f) == 0.0f, "atanh(%f) is not equal to %f", 0.0f, 0.0f);
+	assert(math::atanh(0.0) == 0.0, "atanh(%f) is not equal to %f", 0.0, 0.0);
 	for (int i = 0; i < 6; i++)
 	{
 		float f = math::atanh((float)in2[i]);
@@ -192,24 +242,24 @@ fn void test_atanh() @test
 
 fn void test_floating_point_word() @test
 {
-	float f = 1.f;
+	float f = 1.0f;
 	assert(f.word() == 0x3f800000);
 	// xor swap
-	float f1 = 2.f;
-	float f2 = 3.f;
+	float f1 = 2.0f;
+	float f2 = 3.0f;
 	uint u1 = f1.word();
 	uint u2 = f2.word();
 	u1 ^= u2; u2 ^= u1; u1 ^= u2;
 	f1.set_word(u1);
 	f2.set_word(u2);
-	assert((f1 == 3.f) && (f2 == 2.f));
+	assert((f1 == 3.0f) && (f2 == 2.0f));
 	// sign bit trick
-	f = -1.f;
+	f = -1.0f;
 	assert((f.word() >> 31) == 1);
-	f = 1.f;
+	f = 1.0f;
 	assert((f.word() >> 31) == 0); 
 	// absolute value bit trick
-	float[<4>] fvals = { 1.f, -1.f, 91.5f, -91.5f };
+	float[<4>] fvals = { 1.0f, -1.0f, 91.5f, -91.5f };
 	for (int i = 0; i < 4; i++)
 	{
 		f = fvals[i];
@@ -217,7 +267,7 @@ fn void test_floating_point_word() @test
 		assert(f == math::abs(fvals[i]));
 	}
 
-	double d = 1.;
+	double d = 1.0;
 	assert((d.high_word() - 0x3ff00000 | d.low_word()) == 0);
 	// xor swap
 	double d1 = 2.0;
@@ -232,14 +282,14 @@ fn void test_floating_point_word() @test
 	d1.set_high_word(u1_high);
 	d2.set_low_word(u2_low);
 	d2.set_high_word(u2_high);
-	assert((d1 == 3.) && (d2 == 2.));
+	assert((d1 == 3.0) && (d2 == 2.0));
 	// sign bit trick
-	d = -1.;
+	d = -1.0;
 	assert((d.high_word() >> 31) == 1);
-	d = 1.;
+	d = 1.0;
 	assert((d.high_word() >> 31) == 0);
 	// absolute value bit trick
-	double[<4>] vals = { 1., -1., 91.5, -91.5 };
+	double[<4>] vals = { 1.0, -1.0, 91.5, -91.5 };
 	for (int i = 0; i < 4; i++)
 	{
 		d = vals[i];
@@ -275,11 +325,11 @@ fn void test_ceil() @test
 fn void test_cos() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
-	double [<5>] out = { 0.09280621889587707, 0.54030230586813972 , 1., 0.54030230586813972, 0.09280621889587707 };
-	float [<2>] in2 = { math::PI, 0.f };
-	float [<2>] out2 =  { -1.f, 1.f };
-	double [<2>] in3 = { math::PI, 0. };
-	double [<2>] out3 =  { -1., 1. };
+	double [<5>] out = { 0.09280621889587707, 0.54030230586813972 , 1.0, 0.54030230586813972, 0.09280621889587707 };
+	float [<2>] in2 = { math::PI, 0.0f };
+	float [<2>] out2 =  { -1.0f, 1.0f };
+	double [<2>] in3 = { math::PI, 0.0 };
+	double [<2>] out3 =  { -1.0, 1.0 };
 	assert(@typeis(math::cos(in[0]), double));
 	assert(@typeis(math::cos((float)in[0]), float));
 	assert(@typeis(math::cos((double)in[0]), double));
@@ -304,7 +354,7 @@ fn void test_cos() @test
 fn void test_exp() @test
 {
 	int[<5>] in = { 2, 1, 0, -1, -2 };
-	double[<5>] out = { 7.38905609893065, math::E , 1., 0.36787944117144233, 0.1353352832366127 };
+	double[<5>] out = { 7.38905609893065, math::E , 1.0, 0.36787944117144233, 0.1353352832366127 };
 	float[<6>] in2 = { 1.8f, 0.6f, 0.4f, -0.4f, -0.8f, -1.8f };
 	float[<6>] out2 =  {6.049647464412946f, 1.8221188003905089f, 1.4918246976412703f, 0.6703200460356393f, 0.44932896411722156f, 0.16529888822158656f };
 	double[<6>] in3 = { 1.8, 0.6, 0.4, -0.4, -0.8, -1.8 };
@@ -357,13 +407,13 @@ fn void test_floor() @test
 fn void test_log() @test
 {
 	int[<8>] in = { 1, 10, 100, 1000, 1, 4, 8, 16 };
-	double[<8>] out = { 0., 1., 2., 3., 0., 2. / 3., 1., 4. / 3. };
-	float[<4>] bf = { 1.f / math::E, 1.f / (math::E * math::E), 1.f / (math::E * math::E), 1.f / math::E };
-	float[<4>] in2 = { math::E * math::E, math::E, 1.f / math::E, 1.f / (math::E * math::E) };
-	float[<4>] out2 =  { -2.f, -0.5f, 0.5f, 2.f };
-	double[<4>] bx = { 1. / math::E, 1. / (math::E * math::E), 1. / (math::E * math::E), 1. / math::E };
-	double[<4>] in3 = { math::E * math::E, math::E, 1. / math::E, 1. / (math::E * math::E) };
-	double[<4>] out3 =  { -2., -0.5, 0.5, 2. };
+	double[<8>] out = { 0.0, 1.0, 2.0, 3.0, 0.0, 2.0 / 3.0, 1.0, 4.0 / 3.0 };
+	float[<4>] bf = { 1.0f / math::E, 1.0f / (math::E * math::E), 1.0f / (math::E * math::E), 1.0f / math::E };
+	float[<4>] in2 = { math::E * math::E, math::E, 1.0f / math::E, 1.0f / (math::E * math::E) };
+	float[<4>] out2 =  { -2.0f, -0.5f, 0.5f, 2.0f };
+	double[<4>] bx = { 1.0 / math::E, 1.0 / (math::E * math::E), 1.0 / (math::E * math::E), 1.0 / math::E };
+	double[<4>] in3 = { math::E * math::E, math::E, 1.0 / math::E, 1.0 / (math::E * math::E) };
+	double[<4>] out3 =  { -2.0, -0.5, 0.5, 2.0 };
 	assert(@typeis(math::log(in[0], in[0]), double));
 	assert(@typeis(math::log(in[0], (float)in[0]), float));
 	assert(@typeis(math::log((float)in[0], in[0]), float));
@@ -398,11 +448,11 @@ fn void test_log() @test
 fn void test_pow() @test
 {
 	int[<10>] e =  { 2, 1, 0, -1, -2, 2, 1, 0, -1, -2 };
-	double[<10>] out = { 100., 10., 1., 0.1, 0.01, 4.,  2., 1., 0.5, 0.25 };
-	float[<2>] base2 = { -1.f / math::E, 1.f / math::E };
-	float[<5>] out2 = { 1.f / (math::E * math::E), 1.f / math::E, 1.f, math::E, math::E * math::E };
-	double[<2>] base3 = { -1. / math::E, 1. / math::E };
-	double[<5>] out3 = { 1. / (math::E * math::E), 1. / math::E, 1., math::E, math::E * math::E };
+	double[<10>] out = { 100.0, 10.0, 1.0, 0.1, 0.01, 4.0,  2.0, 1.0, 0.5, 0.25 };
+	float[<2>] base2 = { -1.0f / math::E, 1.0f / math::E };
+	float[<5>] out2 = { 1.0f / (math::E * math::E), 1.0f / math::E, 1.0f, math::E, math::E * math::E };
+	double[<2>] base3 = { -1.0 / math::E, 1.0 / math::E };
+	double[<5>] out3 = { 1.0 / (math::E * math::E), 1.0 / math::E, 1.0, math::E, math::E * math::E };
 	assert(@typeis(math::pow(e[1], e[1]), double));
 	assert(@typeis(math::pow((float)e[1], e[1]), float));
 	assert(@typeis(math::pow((double)e[1], e[1]), double));
@@ -460,11 +510,11 @@ fn void test_sign() @test
 fn void test_sin() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
-	double [<5>] out = { -0.99568418975810324, 0.84147098480789651 , 0., -0.84147098480789651, 0.99568418975810324 };
+	double [<5>] out = { -0.99568418975810324, 0.84147098480789651 , 0.0, -0.84147098480789651, 0.99568418975810324 };
 	float [<2>] in2 = { math::PI_2, -math::PI_2 };
-	float [<2>] out2 =  { 1.f, -1.f };
+	float [<2>] out2 =  { 1.0f, -1.0f };
 	double [<2>] in3 = { math::PI_2, -math::PI_2 };
-	double [<2>] out3 =  { 1., -1. };
+	double [<2>] out3 =  { 1.0, -1.0 };
 	assert(@typeis(math::sin(in[0]), double));
 	assert(@typeis(math::sin((float)in[0]), float));
 	assert(@typeis(math::sin((double)in[0]), double));
@@ -489,11 +539,11 @@ fn void test_sin() @test
 fn void test_tan() @test
 {
 	int [<5>] in = { 231, 1, 0, -1, -231 };
-	double [<5>] out = { -10.7286365246191129, 1.5574077246549022 , 0., -1.5574077246549022, 10.7286365246191129 };
+	double [<5>] out = { -10.7286365246191129, 1.5574077246549022 , 0.0, -1.5574077246549022, 10.7286365246191129 };
 	float [<2>] in2 = { math::PI_4, -math::PI_4 };
-	float [<2>] out2 =  { 1.f, -1.f };
+	float [<2>] out2 =  { 1.0f, -1.0f };
 	double [<2>] in3 = { math::PI_4, -math::PI_4 };
-	double [<2>] out3 =  { 1., -1. };
+	double [<2>] out3 =  { 1.0, -1.0 };
 	assert(@typeis(math::tan(in[0]), double));
 	assert(@typeis(math::tan((float)in[0]), float));
 	assert(@typeis(math::tan((double)in[0]), double));

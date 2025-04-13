@@ -1477,9 +1477,9 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 
 	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
 	{
-		len = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_LEN);
-		Decl *by_val = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_AT);
-		Decl *by_ref = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_REF);
+		len = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_LEN, NULL);
+		Decl *by_val = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_AT, NULL);
+		Decl *by_ref = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_REF, NULL);
 		if (!len || (!by_val && !by_ref))
 		{
 			if (value_type) goto SKIP_OVERLOAD;

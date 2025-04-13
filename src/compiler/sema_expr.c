@@ -3153,7 +3153,7 @@ static Expr *sema_expr_find_subscript_type_or_overload_for_subscript(SemaContext
                                                                      Decl **overload_ptr)
 {
 	Decl *overload = NULL;
-	overload = sema_find_untyped_operator(context, current_expr->type, overload_type);
+	overload = sema_find_untyped_operator(context, current_expr->type, overload_type, NULL);
 	if (overload)
 	{
 		// Overload for []=
@@ -3340,7 +3340,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	{
 		if (start_from_end)
 		{
-			Decl *len = sema_find_untyped_operator(context, current_expr->type, OVERLOAD_LEN);
+			Decl *len = sema_find_untyped_operator(context, current_expr->type, OVERLOAD_LEN, NULL);
 			if (!len)
 			{
 				if (check_valid) goto VALID_FAIL_POISON;
@@ -3459,7 +3459,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	{
 		if (start_from_end)
 		{
-			Decl *len = sema_find_untyped_operator(context, current_expr->type, OVERLOAD_LEN);
+			Decl *len = sema_find_untyped_operator(context, current_expr->type, OVERLOAD_LEN, NULL);
 			if (!len)
 			{
 				if (check_valid) goto VALID_FAIL_POISON;
@@ -7646,7 +7646,7 @@ static inline bool sema_expr_analyse_neg_plus(SemaContext *context, Expr *expr)
 	// Check for overload
 	if (type_is_user_defined(canonical))
 	{
-		Decl *overload = sema_find_untyped_operator(context, canonical, OVERLOAD_UNARY_MINUS);
+		Decl *overload = sema_find_untyped_operator(context, canonical, OVERLOAD_UNARY_MINUS, NULL);
 		if (overload)
 		{
 			// Plus just returns inner
@@ -7722,7 +7722,7 @@ static inline bool sema_expr_analyse_bit_not(SemaContext *context, Expr *expr)
 
 	if (type_is_user_defined(canonical) && canonical->type_kind != TYPE_BITSTRUCT)
 	{
-		Decl *overload = sema_find_untyped_operator(context, canonical, OVERLOAD_NEGATE);
+		Decl *overload = sema_find_untyped_operator(context, canonical, OVERLOAD_NEGATE, NULL);
 		if (overload) return sema_insert_method_call(context, expr, overload, inner, NULL, false);
 	}
 
@@ -7898,7 +7898,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	Expr *increased = exprptr(subscript_expr->subscript_assign_expr.expr);
 	Type *type_check = increased->type->canonical;
 	Expr *index = exprptr(subscript_expr->subscript_assign_expr.index);
-	Decl *operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_REF);
+	Decl *operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_REF, NULL);
 	Expr **args = NULL;
 	if (operator)
 	{
@@ -7908,7 +7908,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 		main->type = subscript_expr->type;
 		return true;
 	}
-	operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_AT);
+	operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_AT, NULL);
 	if (!operator)
 	{
 		RETURN_SEMA_ERROR(main, "There is no overload for [] for %s.", type_quoted_error_string(increased->type));

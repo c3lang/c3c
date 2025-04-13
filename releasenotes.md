@@ -9,11 +9,13 @@
 - Improved error message when narrowing isn't allowed.
 - Operator overloading for `+ - * / % & | ^ << >> ~ == !=`
 - Add `@operator_r` and `@operator_s` attributes.
+- More stdlib tests: `sincos`.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
 - Incorrect rounding at compile time going from double to int.
 - Regression with invalid setup of the WASM temp allocator.
+- Correctly detect multiple overloads of the same type.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

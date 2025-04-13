@@ -21,7 +21,7 @@ static bool sema_analyse_operator_common(SemaContext *context, Decl *method, Typ
                                          uint32_t parameters);
 static inline Decl *operator_in_module_typed(SemaContext *c, Module *module, OperatorOverload operator_overload,
                                              OverloadType overload_type, Type *method_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
-static inline Decl *operator_in_module_exact_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type);
+static inline Decl *operator_in_module_exact_typed(Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type, Decl *skipped);
 static inline bool sema_analyse_operator_element_at(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_element_set(SemaContext *context, Decl *method);
 static inline bool sema_analyse_operator_len(SemaContext *context, Decl *method);
@@ -49,7 +49,7 @@ static bool sema_analyse_attributes_for_var(SemaContext *context, Decl *decl, bo
 static bool sema_check_section(SemaContext *context, Attr *attr);
 static inline bool sema_analyse_attribute_decl(SemaContext *context, SemaContext *c, Decl *decl, bool *erase_decl);
 static Decl *sema_find_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Expr *binary_arg, Type *binary_type, Decl **candidate_ref, Decl **ambiguous_ref);
-static Decl *sema_find_exact_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Type *binary_type);
+static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Type *binary_type, Decl *skipped);
 
 static inline bool sema_analyse_typedef(SemaContext *context, Decl *decl, bool *erase_decl);
 static bool sema_analyse_variable_type(SemaContext *context, Type *type, SourceSpan span);
@@ -1718,37 +1718,37 @@ static inline Decl *operator_in_module_typed(SemaContext *c, Module *module, Ope
 	return NULL;
 }
 
-static inline Decl *operator_in_module_exact_typed(SemaContext *c, Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type)
+static inline Decl *operator_in_module_exact_typed(Module *module, OperatorOverload operator_overload, OverloadType overload_type, Type *method_type, Type *param_type, Decl *skipped)
 {
 	if (module->is_generic) return NULL;
-	Decl *found = sema_find_exact_typed_operator_in_list(c, module->private_method_extensions, operator_overload, overload_type, method_type, param_type);
+	Decl *found = sema_find_exact_typed_operator_in_list(module->private_method_extensions, operator_overload, overload_type, method_type, param_type, skipped);
 	if (found) return found;
 	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		return operator_in_module_exact_typed(c, sub_module, operator_overload, overload_type, method_type, param_type);
+		return operator_in_module_exact_typed(sub_module, operator_overload, overload_type, method_type, param_type, skipped);
 	}
 	return NULL;
 }
 
-static inline Decl *operator_in_module_untyped(SemaContext *c, Module *module, Type *type, OperatorOverload operator_overload)
+static inline Decl *operator_in_module_untyped(Module *module, Type *type, OperatorOverload operator_overload, Decl *skipped)
 {
 	if (module->is_generic) return NULL;
 	FOREACH(Decl *, extension, module->private_method_extensions)
 	{
+		if (extension == skipped) continue;
 		if (decl_matches_overload(extension, type, operator_overload))
 		{
-			unit_register_external_symbol(c, extension);
 			return extension;
 		}
 	}
 	FOREACH(Module *, sub_module, module->sub_modules)
 	{
-		return operator_in_module_untyped(c, sub_module, type, operator_overload);
+		return operator_in_module_untyped(sub_module, type, operator_overload, skipped);
 	}
 	return NULL;
 }
 
-Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverload operator_overload)
+Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, Decl *skipped)
 {
 	type = type->canonical;
 	assert(operator_overload < OVERLOAD_TYPED_START);
@@ -1756,31 +1756,29 @@ Decl *sema_find_untyped_operator(SemaContext *context, Type *type, OperatorOverl
 	Decl *def = type->decl;
 	FOREACH(Decl *, func, def->methods)
 	{
-		if (func->func_decl.operator == operator_overload)
-		{
-			unit_register_external_symbol(context, func);
-			return func;
-		}
+		if (skipped == func) continue;
+		if (func->func_decl.operator == operator_overload) return func;
 	}
 	FOREACH(Decl *, extension, context->unit->local_method_extensions)
 	{
+		if (skipped == extension) continue;
 		if (decl_matches_overload(extension, type, operator_overload)) return extension;
 	}
-	Decl *extension = operator_in_module_untyped(context, context->compilation_unit->module, type, operator_overload);
+	Decl *extension = operator_in_module_untyped(context->compilation_unit->module, type, operator_overload, skipped);
 	if (extension) return extension;
-	FOREACH(Decl *, import, context->unit->imports)
+	FOREACH(Decl *, import, context->unit->public_imports)
 	{
-		if (!import->import.import_private_as_public) continue;
-		extension = operator_in_module_untyped(context, import->import.module, type, operator_overload);
+		extension = operator_in_module_untyped(import->import.module, type, operator_overload, skipped);
 		if (extension) return extension;
 	}
 	return NULL;
 }
 
-static Decl *sema_find_exact_typed_operator_in_list(SemaContext *context, Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Type *binary_type)
+static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOverload operator_overload, OverloadType overload_type, Type *parent_type, Type *binary_type, Decl *skipped)
 {
 	FOREACH(Decl *, func, methods)
 	{
+		if (func == skipped) continue;
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;
@@ -1819,26 +1817,28 @@ static Decl *sema_find_typed_operator_in_list(SemaContext *context, Decl **metho
 	return NULL;
 }
 
-static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, OverloadType overload_type, Type *param_type)
+static Decl *sema_find_exact_typed_operator(SemaContext *context, Type *type, OperatorOverload operator_overload, OverloadType overload_type, Type *param_type, Decl *skipped)
 {
 	assert(operator_overload >= OVERLOAD_TYPED_START);
 	type = type->canonical;
 
-	Decl *func = sema_find_exact_typed_operator_in_list(context, type->decl->methods, operator_overload, overload_type, type, param_type);
+	Decl *func = sema_find_exact_typed_operator_in_list(type->decl->methods, operator_overload, overload_type, type,
+		param_type, skipped);
 	if (func) return func;
 
-	Decl *extension = sema_find_exact_typed_operator_in_list(context, context->unit->local_method_extensions, operator_overload, overload_type, type, param_type);
+	Decl *extension = sema_find_exact_typed_operator_in_list(context->unit->local_method_extensions,
+		operator_overload, overload_type, type, param_type, skipped);
 	if (extension) return extension;
 
-	extension = operator_in_module_exact_typed(context, context->compilation_unit->module, operator_overload, overload_type,
-										 type, param_type);
+	extension = operator_in_module_exact_typed(context->compilation_unit->module, operator_overload, overload_type,
+		type, param_type, skipped);
 	if (extension) return extension;
 
 	FOREACH(Decl *, import, context->unit->imports)
 	{
 		if (!import->import.import_private_as_public) continue;
-		extension = operator_in_module_exact_typed(context, import->import.module, operator_overload, overload_type,
-											 type, param_type);
+		extension = operator_in_module_exact_typed(import->import.module, operator_overload, overload_type,
+		                                           type, param_type, skipped);
 		if (extension) return extension;
 	}
 	return NULL;
@@ -2155,13 +2155,13 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	Decl *other = NULL;
 	if (operator >= OVERLOAD_TYPED_START)
 	{
-		other =  sema_find_exact_typed_operator(context, parent_type, operator, method->func_decl.overload_type, second_param);
+		other =  sema_find_exact_typed_operator(context, parent_type, operator, method->func_decl.overload_type, second_param, method);
 	}
 	else
 	{
-		other = sema_find_untyped_operator(context, parent_type, operator);
+		other = sema_find_untyped_operator(context, parent_type, operator, method);
 	}
-	if (other && other != method)
+	if (other)
 	{
 		SourceSpan span = method_find_overload_span(method);
 		sema_error_at(context, span, "This operator is already defined for '%s'.", parent_type->name);
@@ -2179,14 +2179,14 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			return true;
 		case OVERLOAD_ELEMENT_AT:
 			// [] compares &[]
-			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF, method);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
 			// And []=
-			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_SET, method);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
@@ -2195,14 +2195,14 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			return true;
 		case OVERLOAD_ELEMENT_REF:
 			// &[] compares []
-			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT, method);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
 			// And []=
-			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_SET);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_SET, method);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
@@ -2211,14 +2211,14 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 			return true;
 		case OVERLOAD_ELEMENT_SET:
 			// []= compares &[]
-			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF, method);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
 				break;
 			}
 			// And []
-			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT);
+			other = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT, method);
 			if (other && decl_ok(other))
 			{
 				sema_get_overload_arguments(other, &value, &index_type);
