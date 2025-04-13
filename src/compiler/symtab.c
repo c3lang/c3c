@@ -347,6 +347,8 @@ void symtab_init(uint32_t capacity)
 	attribute_list[ATTRIBUTE_NOSTRIP] = KW_DEF("@nostrip");
 	attribute_list[ATTRIBUTE_OBFUSCATE] = KW_DEF("@obfuscate");
 	attribute_list[ATTRIBUTE_OPERATOR] = KW_DEF("@operator");
+	attribute_list[ATTRIBUTE_OPERATOR_R] = KW_DEF("@operator_r");
+	attribute_list[ATTRIBUTE_OPERATOR_S] = KW_DEF("@operator_s");
 	attribute_list[ATTRIBUTE_OPTIONAL] = KW_DEF("@optional");
 	attribute_list[ATTRIBUTE_OVERLAP] = KW_DEF("@overlap");
 	attribute_list[ATTRIBUTE_PACKED] = KW_DEF("@packed");

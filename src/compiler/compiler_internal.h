@@ -498,7 +498,8 @@ struct Signature_
 typedef struct
 {
 	TypeInfoId type_parent;
-	OperatorOverload operator : 8;
+	OperatorOverload operator : 6;
+	unsigned overload_type : 2;
 	Signature signature;
 	AstId body;
 	AstId docs;
@@ -814,6 +815,7 @@ typedef struct
 	ExprId ptr;
 	ExprId offset;
 } ExprPointerOffset;
+
 
 typedef struct
 {
@@ -1602,6 +1604,7 @@ struct CompilationUnit_
 	Module *module;
 	File *file;
 	Decl **imports;
+	Decl **public_imports;
 	Decl **types;
 	Decl **functions;
 	Decl **lambdas;

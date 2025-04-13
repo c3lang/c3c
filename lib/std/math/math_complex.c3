@@ -12,19 +12,19 @@ union Complex (Printable)
 
 const Complex IDENTITY = { 1, 0 };
 const Complex IMAGINARY = { 0, 1 };
-macro Complex Real.add_complex(self, Complex r) @operator(+) => { .v = (Real[<2>]) { self, 0 } + c.v  };
-macro Complex Real.sub_complex(self, Complex r) @operator(-) => { .v = (Real[<2>]) { self, 0 } - c.v  };
-macro Complex Real.scale_complex(self, Complex c) @operator(*) => { .v = self * c.v };
-macro Complex Real.div_complex(self, Complex c) @operator(/) => ((Complex) { .r = self }).div(c);
+
+
 macro Complex Complex.add(self, Complex b) @operator(+) => { .v = self.v + b.v };
-macro Complex Complex.add_real(self, Real r) @operator(+) => { .v = self.v + (Real[<2>]) { r, 0 } };
+macro Complex Complex.add_real(self, Real r) @operator_s(+) => { .v = self.v + (Real[<2>]) { r, 0 } };
 macro Complex Complex.add_each(self, Real b) => { .v = self.v + b };
 macro Complex Complex.sub(self, Complex b) @operator(-) => { .v = self.v - b.v };
 macro Complex Complex.sub_real(self, Real r) @operator(-) => { .v = self.v - (Real[<2>]) { r, 0 } };
+macro Complex Complex.sub_from_real(self, Real r) @operator_r(-) => { .v = (Real[<2>]) { r, 0 } - self.v };
 macro Complex Complex.sub_each(self, Real b) => { .v = self.v - b };
-macro Complex Complex.scale(self, Real r) @operator(*) => { .v = self.v * r };
+macro Complex Complex.scale(self, Real r) @operator_s(*) => { .v = self.v * r };
 macro Complex Complex.mul(self, Complex b)@operator(*) => { self.r * b.r - self.c * b.c, self.r * b.c + b.r * self.c };
 macro Complex Complex.div_real(self, Real r) @operator(/) => { .v = self.v / r };
+macro Complex Complex.real_div(Complex c, Real r) @operator_r(/) => ((Complex) { .r = self }).div(c);
 macro Complex Complex.div(self, Complex b) @operator(/)
 {
 	Real div = b.v.dot(b.v);

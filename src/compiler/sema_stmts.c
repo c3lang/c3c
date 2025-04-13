@@ -1576,7 +1576,7 @@ SKIP_OVERLOAD:;
 	if (len)
 	{
 		len_call = expr_new(EXPR_CALL, enumerator->span);
-		if (!sema_insert_method_call(context, len_call, len, enum_val, NULL)) return false;
+		if (!sema_insert_method_call(context, len_call, len, enum_val, NULL, false)) return false;
 	}
 	else
 	{
