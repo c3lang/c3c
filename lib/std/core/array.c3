@@ -17,6 +17,14 @@ macro index_of(array, element)
 }
 
 <*
+ Slice a 2d array and create a Slice2d from it.
+
+ @param array_ptr : "the pointer to create a slice from"
+ @param x : "The starting position of the slice x, optional"
+ @param y : "The starting position of the slice y, optional"
+ @param xlen : "The length of the slice in x, defaults to the length of the array"
+ @param ylen : "The length of the slice in y, defaults to the length of the array"
+ @return "A Slice2d from the array"
  @require @typekind(array_ptr) == POINTER
  @require @typekind(*array_ptr) == VECTOR || @typekind(*array_ptr) == ARRAY
  @require @typekind((*array_ptr)[0]) == VECTOR || @typekind((*array_ptr)[0]) == ARRAY
@@ -82,96 +90,3 @@ macro concat(Allocator allocator, arr1, arr2) @nodiscard
  @ensure return.len == arr1.len + arr2.len
 *>
 macro tconcat(arr1, arr2) @nodiscard => concat(tmem, arr1, arr2);
-
-module std::core::array::slice{Type};
-
-struct Slice2d
-{
-	Type* ptr;
-	usz inner_len;
-	usz ystart;
-	usz ylen;
-	usz xstart;
-	usz xlen;
-}
-
-fn usz Slice2d.len(&self) @operator(len)
-{
-	return self.ylen;
-}
-
-fn usz Slice2d.count(&self)
-{
-	return self.ylen * self.xlen;
-}
-
-macro void Slice2d.@each(&self; @body(usz[<2>], Type))
-{
-	foreach (y, line : *self)
-	{
-		foreach (x, val : line)
-		{
-			@body({ x, y }, val);
-		}
-	}
-}
-
-macro void Slice2d.@each_ref(&self; @body(usz[<2>], Type*))
-{
-	foreach (y, line : *self)
-	{
-		foreach (x, &val : line)
-		{
-			@body({ x, y }, val);
-		}
-	}
-}
-
-<*
- @require idy >= 0 && idy < self.ylen
-*>
-macro Type[] Slice2d.get_row(self, usz idy) @operator([])
-{
-	return (self.ptr + self.inner_len * (idy + self.ystart))[self.xstart:self.xlen];
-}
-
-macro Type Slice2d.get_coord(self, usz[<2>] coord)
-{
-	return *self.get_coord_ref(coord);
-}
-
-macro Type Slice2d.get_xy(self, x, y)
-{
-	return *self.get_xy_ref(x, y);
-}
-
-macro Type* Slice2d.get_xy_ref(self, x, y)
-{
-	return self.ptr + self.inner_len * (y + self.ystart) + self.xstart + x;
-}
-
-macro Type* Slice2d.get_coord_ref(self, usz[<2>] coord)
-{
-	return self.get_xy_ref(coord.x, coord.y);
-}
-
-macro void Slice2d.set_coord(self, usz[<2>] coord, Type value)
-{
-	*self.get_coord_ref(coord) = value;
-}
-
-macro void Slice2d.set_xy(self, x, y, Type value)
-{
-	*self.get_xy_ref(x, y) = value;
-}
-
-<*
- @require y >= 0 && y < self.ylen
- @require x >= 0 && x < self.xlen
-*>
-fn Slice2d Slice2d.slice(&self, isz x = 0, isz xlen = 0, isz y = 0, isz ylen = 0)
-{
-	if (xlen < 1) xlen = self.xlen + xlen;
-	if (ylen < 1) ylen = self.ylen + ylen;
-	return { self.ptr, self.inner_len, y + self.ystart, ylen, x + self.xstart, xlen };
-}

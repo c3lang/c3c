@@ -1,4 +1,4 @@
-// Copyright (c) 2023 Christoffer Lerno and contributors. All rights reserved.
+// Copyright (c) 2023-2025 Christoffer Lerno and contributors. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::bitorder;

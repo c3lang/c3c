@@ -127,13 +127,13 @@ fn bool BigInt.is_negative(&self)
 	return self.data[MAX_LEN - 1] & 0x80000000 != 0;
 }
 
-fn BigInt BigInt.add(self, BigInt other)
+fn BigInt BigInt.add(self, BigInt other) @operator(+)
 {
 	self.add_this(other);
 	return self;
 }
 
-fn void BigInt.add_this(&self, BigInt other)
+fn void BigInt.add_this(&self, BigInt other) @operator(+=)
 {
 	bool sign = self.is_negative();
 	bool sign_arg = other.is_negative();
@@ -178,7 +178,7 @@ fn BigInt BigInt.mult(self, BigInt bi2) @operator(*)
 	return self;
 }
 
-fn void BigInt.mult_this(&self, BigInt bi2)
+fn void BigInt.mult_this(&self, BigInt bi2) @operator(*=)
 {
 	if (bi2.is_zero())
 	{
@@ -276,7 +276,7 @@ fn BigInt BigInt.sub(self, BigInt other) @operator(-)
 	return self;
 }
 
-fn BigInt* BigInt.sub_this(&self, BigInt other)
+fn BigInt* BigInt.sub_this(&self, BigInt other) @operator(-=)
 {
 	self.len = max(self.len, other.len);
 
@@ -340,7 +340,7 @@ macro BigInt BigInt.div(self, BigInt other) @operator(/)
 	return self;
 }
 
-fn void BigInt.div_this(&self, BigInt other)
+fn void BigInt.div_this(&self, BigInt other) @operator(/=)
 {
 	bool negate_answer = self.is_negative();
 
@@ -383,7 +383,7 @@ fn BigInt BigInt.mod(self, BigInt bi2) @operator(%)
 	return self;
 }
 
-fn void BigInt.mod_this(&self, BigInt bi2)
+fn void BigInt.mod_this(&self, BigInt bi2) @operator(%=)
 {
 	if (bi2.is_negative())
 	{
@@ -440,7 +440,7 @@ fn BigInt BigInt.shr(self, int shift) @operator(>>)
 	return self;
 }
 
-fn void BigInt.shr_this(self, int shift)
+fn void BigInt.shr_this(self, int shift) @operator(>>=)
 {
 	self.len = shift_right(&self.data, self.len, shift);
 }
@@ -818,7 +818,7 @@ fn void BigInt.bit_xor_this(&self, BigInt bi2)
 	self.reduce_len();
 }
 
-fn void BigInt.shl_this(&self, int shift)
+fn void BigInt.shl_this(&self, int shift) @operator(<<=)
 {
 	self.len = shift_left(&self.data, self.len, shift);
 }

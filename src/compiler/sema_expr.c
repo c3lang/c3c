@@ -208,6 +208,7 @@ static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, Che
 static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point);
 static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead, Type *infer_type);
 static inline bool sema_insert_binary_overload(SemaContext *context, Expr *expr, Decl *overload, Expr *lhs, Expr *rhs, bool reverse);
+static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref);
 
 // -- implementations
 
@@ -6212,6 +6213,34 @@ static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Exp
 
 }
 
+static BoolErr sema_insert_overload_in_op_assign_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator, Type *lhs_type)
+{
+	if (type_is_user_defined(lhs_type))
+	{
+		if (lhs_type->type_kind == TYPE_BITSTRUCT)
+		{
+			if (operator == BINARYOP_BIT_OR_ASSIGN || operator == BINARYOP_BIT_AND_ASSIGN || operator == BINARYOP_BIT_XOR_ASSIGN) return BOOL_FALSE;
+		}
+		if (!sema_analyse_inferred_expr(context, lhs_type, right)) return BOOL_ERR;
+		static OperatorOverload MAP[BINARYOP_LAST + 1] = {
+			[BINARYOP_ADD_ASSIGN] = OVERLOAD_PLUS_ASSIGN,
+			[BINARYOP_SUB_ASSIGN] = OVERLOAD_MINUS_ASSIGN,
+			[BINARYOP_MULT_ASSIGN] = OVERLOAD_MULTIPLY_ASSIGN,
+			[BINARYOP_DIV_ASSIGN] = OVERLOAD_DIVIDE_ASSIGN,
+			[BINARYOP_MOD_ASSIGN] = OVERLOAD_REMINDER_ASSIGN,
+			[BINARYOP_BIT_XOR_ASSIGN] = OVERLOAD_XOR_ASSIGN,
+			[BINARYOP_BIT_OR_ASSIGN] = OVERLOAD_OR_ASSIGN,
+			[BINARYOP_BIT_AND_ASSIGN] = OVERLOAD_AND_ASSIGN,
+			[BINARYOP_SHL_ASSIGN] = OVERLOAD_SHL_ASSIGN,
+			[BINARYOP_SHR_ASSIGN] = OVERLOAD_SHR_ASSIGN,
+		};
+		OperatorOverload overload = MAP[operator];
+		assert(overload && "Overload not mapped");
+		if (!sema_replace_with_overload(context, expr, left, right, lhs_type, &overload)) return BOOL_ERR;
+		if (!overload) return BOOL_TRUE;
+	}
+	return BOOL_FALSE;
+}
 /**
  * Analyse *= /= %= ^= |= &= += -= <<= >>=
  *
@@ -6274,11 +6303,14 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	Type *no_fail = type_no_optional(left->type);
 	Type *flat = type_flatten(no_fail);
 
+	BoolErr b = sema_insert_overload_in_op_assign_or_error(context, expr, left, right, operator, no_fail->canonical);
+	if (b == BOOL_ERR) return false;
+	if (b == BOOL_TRUE) return true;
+
 	// 3. If this is only defined for ints (^= |= &= %=) verify that this is an int.
 	if (int_only && !type_flat_is_intlike(flat))
 	{
 		if (is_bit_op && (flat->type_kind == TYPE_BITSTRUCT || flat == type_bool || type_flat_is_bool_vector(flat))) goto BITSTRUCT_OK;
-
 		RETURN_SEMA_ERROR(left, "Expected an integer here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
 
@@ -6421,6 +6453,7 @@ END:
 	// 7. Assign type
 	expr->type = type_add_optional(left->type, optional);
 	return true;
+
 }
 
 static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref)

@@ -4,10 +4,62 @@ import std::collections::growablebitset;
 import std::collections::list;
 import std::io;
 
-alias List = List{usz};
+alias List = List {usz};
 
-alias BitSet = BitSet{2048};
+alias BitSet = BitSet {2048};
 
+fn void bit_ops_assign()
+{
+	BitSet bs;
+	BitSet bs2;
+	bs.set(4);
+	bs.set(6);
+	bs2.set(4);
+	bs2.set(8);
+	BitSet bs3 = bs;
+	bs3 ^= bs2;
+	assert(!bs3.get(4));
+	assert(!bs3.get(5));
+	assert(bs3.get(6));
+	assert(bs3.get(8));
+	BitSet bs4 = bs;
+	bs4 |= bs2;
+	assert(bs4.get(4));
+	assert(!bs4.get(5));
+	assert(bs4.get(6));
+	assert(bs4.get(8));
+	BitSet bs5 = bs;
+	bs5 &= bs2;
+	assert(bs5.get(4));
+	assert(!bs5.get(5));
+	assert(!bs5.get(6));
+	assert(!bs5.get(8));
+}
+
+fn void bit_ops()
+{
+	BitSet bs;
+	BitSet bs2;
+	bs.set(4);
+	bs.set(6);
+	bs2.set(4);
+	bs2.set(8);
+	BitSet bs3 = bs ^ bs2;
+	assert(!bs3.get(4));
+	assert(!bs3.get(5));
+	assert(bs3.get(6));
+	assert(bs3.get(8));
+	BitSet bs4 = bs | bs2;
+	assert(bs4.get(4));
+	assert(!bs4.get(5));
+	assert(bs4.get(6));
+	assert(bs4.get(8));
+	BitSet bs5 = bs & bs2;
+	assert(bs5.get(4));
+	assert(!bs5.get(5));
+	assert(!bs5.get(6));
+	assert(!bs5.get(8));
+}
 fn void set_get()
 {
 	BitSet bs;
