@@ -16,8 +16,8 @@ fn void complex_add()
 	Complex b = { 1, 2 };
 	assert(a + b == (Complex){ 4, 6 });
 	assert(a.add_each(1).equals({4, 5}));
-	//a += b;
-	//assert(a == (Complex){ 4, 6 });
+	a += b;
+	assert(a == (Complex){ 4, 6 });
 }
 
 fn void complex_sub()
@@ -26,14 +26,16 @@ fn void complex_sub()
 	Complex b = { 1, 2 };
 	assert(a - b == (Complex){ 2, 2 });
 	assert(a.sub_each(1).equals({2, 3}));
-	//a -= b;
-	//assert(a == (Complex){ 2, 2 });
+	a -= b;
+	assert(a == (Complex){ 2, 2 });
 }
 
 fn void complex_scale()
 {
 	Complex a = {2, 1};
 	assert(a * 2 == (Complex) {4, 2});
+	a *= 2;
+	assert(a == (Complex) {4, 2});
 }
 
 fn void complex_conjugate()
@@ -53,7 +55,7 @@ fn void complex_div()
 	Complex a = {2, 5};
 	Complex b = {4, -1};
 	assert(a / b == (Complex) {3.0/17.0, 22.0/17.0});
-	//a /= b;
-	//assert(a == (Complex) {3.0/17.0, 22.0/17.0});
+	a /= b;
+	assert(a == (Complex) {3.0/17.0, 22.0/17.0});
 }
 

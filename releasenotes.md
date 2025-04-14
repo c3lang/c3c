@@ -11,7 +11,8 @@
 - Add `@operator_r` and `@operator_s` attributes.
 - More stdlib tests: `sincos`, `ArenaAllocator`, `Slice2d`.
 - Make aliases able to use `@deprecated`.
- 
+- Refactored stdlib file organization.
+
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
 - Incorrect rounding at compile time going from double to int.

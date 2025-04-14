@@ -6241,11 +6241,11 @@ INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left,
 	// Simple case: f += a => f = f + a
 	if (left->expr_kind == EXPR_IDENTIFIER)
 	{
+		Expr *lvalue = expr_copy(left);
+		Expr *rvalue = expr_copy(left);
 		expr->expr_kind = EXPR_BINARY;
 		left->expr_kind = EXPR_BINARY;
-		Expr *lvalue = expr_copy(left);
-		Expr *rvalue = expr_copy(right);
-		left->binary_expr = (ExprBinary) { .left = exprid(rvalue), .right = exprid(right), new_op };
+		left->binary_expr = (ExprBinary) { .left = exprid(rvalue), .right = exprid(right), .operator = new_op };
 		expr->binary_expr = (ExprBinary) { .left = exprid(lvalue), .right = exprid(left), .operator = BINARYOP_ASSIGN, .grouped = false };
 		expr->resolve_status = RESOLVE_NOT_DONE;
 		left->resolve_status = RESOLVE_NOT_DONE;
@@ -6422,6 +6422,7 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 			[BINARYOP_SUB] = OVERLOAD_MINUS,
 			[BINARYOP_DIV] = OVERLOAD_DIVIDE,
 			[BINARYOP_MOD] = OVERLOAD_REMINDER,
+			[BINARYOP_MULT] = OVERLOAD_MULTIPLY,
 			[BINARYOP_BIT_XOR] = OVERLOAD_XOR,
 			[BINARYOP_BIT_OR] = OVERLOAD_OR,
 			[BINARYOP_BIT_AND] = OVERLOAD_AND,

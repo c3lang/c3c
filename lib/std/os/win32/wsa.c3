@@ -122,11 +122,11 @@ const SD_RECEIVE = 0x00;
 const SD_SEND    = 0x01;
 const SD_BOTH    = 0x02;
 
-extern fn CInt win32_WSAPoll(Win32_LPWSAPOLLFD fdArray, Win32_ULONG fds, Win32_INT timeout) @extern("WSAPoll") @builtin;
-extern fn WSAError win32_WSAGetLastError() @extern("WSAGetLastError") @builtin;
-extern fn void win32_WSASetLastError(WSAError error) @extern("WSASetLastError") @builtin;
-extern fn CInt win32_WSAStartup(Win32_WORD, void*) @extern("WSAStartup") @builtin;
-extern fn CInt win32_WSACleanup() @extern("WSACleanup") @builtin;
+extern fn CInt wsaPoll(Win32_LPWSAPOLLFD fdArray, Win32_ULONG fds, Win32_INT timeout) @extern("WSAPoll");
+extern fn WSAError wsaGetLastError() @extern("WSAGetLastError");
+extern fn void wsaSetLastError(WSAError error) @extern("WSASetLastError");
+extern fn CInt wsaStartup(Win32_WORD, void*) @extern("WSAStartup");
+extern fn CInt wsaCleanup() @extern("WSACleanup");
 
 const int FIONBIO = -2147195266;
 const int FIONREAD = 1074030207;
@@ -230,3 +230,4 @@ const WSAError QOS_EPSFILTERSPEC            = 11028;
 const WSAError QOS_ESDMODEOBJ               = 11029;
 const WSAError QOS_ESHAPERATEOBJ            = 11030;
 const WSAError QOS_RESERVED_PETYPE          = 11031;
+

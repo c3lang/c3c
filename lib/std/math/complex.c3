@@ -32,9 +32,11 @@ const Complex IDENTITY = { 1, 0 };
 const Complex IMAGINARY = { 0, 1 };
 
 macro Complex Complex.add(self, Complex b) @operator(+) => { .v = self.v + b.v };
+macro Complex Complex.add_this(&self, Complex b) @operator(+=) => { .v = self.v += b.v };
 macro Complex Complex.add_real(self, Real r) @operator_s(+) => { .v = self.v + (Real[<2>]) { r, 0 } };
 macro Complex Complex.add_each(self, Real b) => { .v = self.v + b };
 macro Complex Complex.sub(self, Complex b) @operator(-) => { .v = self.v - b.v };
+macro Complex Complex.sub_this(&self, Complex b) @operator(-=) => { .v = self.v -= b.v };
 macro Complex Complex.sub_real(self, Real r) @operator(-) => { .v = self.v - (Real[<2>]) { r, 0 } };
 macro Complex Complex.sub_real_inverse(self, Real r) @operator_r(-) => { .v = (Real[<2>]) { r, 0 } - self.v };
 macro Complex Complex.sub_each(self, Real b) => { .v = self.v - b };

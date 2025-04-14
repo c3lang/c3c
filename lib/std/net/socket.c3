@@ -69,7 +69,7 @@ fn ulong? poll_ms(Poll[] polls, long timeout_ms)
 {
 	if (timeout_ms > CInt.max) timeout_ms = CInt.max;
 	$if env::WIN32:
-		CInt result = win32_WSAPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)timeout_ms);
+		CInt result = win32::wsaPoll((Win32_LPWSAPOLLFD)polls.ptr, (Win32_ULONG)polls.len, (CInt)timeout_ms);
 	$else
 		CInt result = os::poll((Posix_pollfd*)polls.ptr, (Posix_nfds_t)polls.len, (CInt)timeout_ms);
 	$endif
