@@ -10,7 +10,8 @@
 - Operator overloading for `+ - * / % & | ^ << >> ~ == != += -= *= /= %= &= |= ^= <<= >>=`
 - Add `@operator_r` and `@operator_s` attributes.
 - More stdlib tests: `sincos`, `ArenaAllocator`, `Slice2d`.
-
+- Make aliases able to use `@deprecated`.
+ 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
 - Incorrect rounding at compile time going from double to int.
@@ -19,6 +20,7 @@
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.
+- Prefer `math::I` and `math::I_F` for `math::IMAGINARY` and `math::IMAGINARYF` the latter is deprecated.
 
 ## 0.7.0 Change list
 

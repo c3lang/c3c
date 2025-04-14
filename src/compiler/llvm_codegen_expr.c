@@ -6964,6 +6964,10 @@ void llvm_emit_expr(GenContext *c, BEValue *value, Expr *expr)
 		case EXPR_BUILTIN:
 		case EXPR_OPERATOR_CHARS:
 			UNREACHABLE
+		case EXPR_TWO:
+			llvm_emit_expr(c, value, expr->two_expr.first);
+			llvm_emit_expr(c, value, expr->two_expr.last);
+			return;
 		case EXPR_VECTOR_TO_ARRAY:
 			llvm_emit_vector_to_array(c, value, expr);
 			return;

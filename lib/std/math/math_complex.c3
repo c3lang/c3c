@@ -1,4 +1,22 @@
-module std::math::complex{Real};
+module std::math;
+
+// Complex number aliases.
+
+alias Complexf = Complex {float};
+alias Complex = Complex {double};
+alias COMPLEX_IDENTITY  @builtin = complex::IDENTITY {double};
+alias COMPLEXF_IDENTITY @builtin = complex::IDENTITY {float};
+alias IMAGINARY @builtin @deprecated("Use I") = complex::IMAGINARY { double };
+alias IMAGINARYF @builtin @deprecated("Use I_F") = complex::IMAGINARY { float };
+alias I @builtin = complex::IMAGINARY { double };
+alias I_F @builtin = complex::IMAGINARY { float };
+
+<*
+ The generic complex number module, for float or double based complex number definitions.
+
+ @require Real.kindof == FLOAT : "A complex number must use a floating type"
+*>
+module std::math::complex {Real};
 import std::io;
 
 union Complex (Printable)
@@ -12,7 +30,6 @@ union Complex (Printable)
 
 const Complex IDENTITY = { 1, 0 };
 const Complex IMAGINARY = { 0, 1 };
-
 
 macro Complex Complex.add(self, Complex b) @operator(+) => { .v = self.v + b.v };
 macro Complex Complex.add_real(self, Real r) @operator_s(+) => { .v = self.v + (Real[<2>]) { r, 0 } };
@@ -38,6 +55,7 @@ macro Complex Complex.inverse(self)
 macro Complex Complex.conjugate(self) => { .r = self.r, .c = -self.c };
 macro Complex Complex.negate(self) @operator(-) => { .v = -self.v };
 macro bool Complex.equals(self, Complex b) @operator(==) => self.v == b.v;
+macro bool Complex.equals_real(self, Real r) @operator_s(==) => self.v == { r, 0 };
 macro bool Complex.not_equals(self, Complex b) @operator(!=) => self.v != b.v;
 
 fn usz? Complex.to_format(&self, Formatter* f) @dynamic

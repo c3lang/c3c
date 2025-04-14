@@ -980,6 +980,12 @@ typedef struct
 
 typedef struct
 {
+	Expr *first;
+	Expr *last;
+} ExprTwo;
+
+typedef struct
+{
 	Expr **values;
 	Decl **declarations;
 	AstId first_stmt;
@@ -1177,6 +1183,7 @@ struct Expr_
 		ExprSlice slice_expr;
 		ExprSwizzle swizzle_expr;
 		ExprTernary ternary_expr;                   // 16
+		ExprTwo two_expr;
 		BuiltinDefine benchmark_hook_expr;
 		ExprTypeCall type_call_expr;
 		BuiltinDefine test_hook_expr;
@@ -2210,6 +2217,8 @@ bool expr_is_simple(Expr *expr, bool to_float);
 bool expr_is_pure(Expr *expr);
 bool expr_is_runtime_const(Expr *expr);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
+Expr *expr_new_two(Expr *first, Expr *second);
+void expr_rewrite_two(Expr *original, Expr *first, Expr *second);
 void expr_insert_addr(Expr *original);
 void expr_rewrite_insert_deref(Expr *original);
 Expr *expr_generate_decl(Decl *decl, Expr *assign);
@@ -3340,6 +3349,10 @@ static inline void expr_set_span(Expr *expr, SourceSpan loc)
 	expr->span = loc;
 	switch (expr->expr_kind)
 	{
+		case EXPR_TWO:
+			expr_set_span(expr->two_expr.first, loc);
+			expr_set_span(expr->two_expr.last, loc);
+			return;
 		case EXPR_INT_TO_BOOL:
 			expr_set_span(expr->int_to_bool_expr.inner, loc);
 			return;

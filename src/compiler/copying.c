@@ -296,6 +296,10 @@ Expr *copy_expr(CopyStruct *c, Expr *source_expr)
 	Expr *expr = expr_copy(source_expr);
 	switch (source_expr->expr_kind)
 	{
+		case EXPR_TWO:
+			MACRO_COPY_EXPR(source_expr->two_expr.first);
+			MACRO_COPY_EXPR(source_expr->two_expr.last);
+			return expr;
 		case EXPR_TYPECALL:
 		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE

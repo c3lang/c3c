@@ -1,3 +1,5 @@
+// Vector supplemental methods
+
 module std::math::vector;
 import std::math;
 
@@ -50,6 +52,8 @@ fn double[<3>] double[<3>].unproject(self, Matrix4 projection, Matrix4 view) => 
 
 fn void ortho_normalize(float[<3>]* v1, float[<3>]* v2) => ortho_normalize3(v1, v2);
 fn void ortho_normalized(double[<3>]* v1, double[<3>]* v2) => ortho_normalize3(v1, v2);
+
+// -- private helpers
 
 macro towards(v, target, max_distance) @private
 {
