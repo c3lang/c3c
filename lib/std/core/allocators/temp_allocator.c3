@@ -107,6 +107,9 @@ fn TempAllocator*? TempAllocator.derive_allocator(&self, usz min_size, usz buffe
     return temp;
 }
 
+<*
+ Reset the entire temp allocator, which will merge all the children into it.
+*>
 fn void TempAllocator.reset(&self)
 {
 	TempAllocator* child = self.derived;
