@@ -10118,6 +10118,12 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 			Decl *decl = expr->decl_expr;
 			bool erase = decl->var.kind == VARDECL_LOCAL_CT_TYPE || decl->var.kind == VARDECL_LOCAL_CT;
 			if (!sema_analyse_var_decl(context, decl, true)) return false;
+			if (decl->decl_kind == DECL_ERASED)
+			{
+				expr->expr_kind = EXPR_NOP;
+				expr->type = type_void;
+				return true;
+			}
 			if (erase)
 			{
 				Expr *init = decl->var.init_expr;

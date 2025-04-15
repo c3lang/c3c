@@ -1,0 +1,18 @@
+// #target: macos-x64
+module test;
+fn int main()
+{
+	int a @if(false) = 3;
+	int a @if(true) = 3;
+	int $a = 0;
+	int a @if(false) = $a += 1;
+	$assert($a == 0);
+	return 0;
+}
+
+/* #expect: test.ll
+
+entry:
+  %a = alloca i32, align 4
+  store i32 3, ptr %a, align 4
+  ret i32 0

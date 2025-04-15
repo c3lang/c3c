@@ -824,7 +824,9 @@ Decl *parse_local_decl_after_type(ParseContext *c, TypeInfo *type)
 	Decl *decl = decl_new_var_current(c, type, VARDECL_LOCAL);
 	advance(c);
 
-	if (!parse_attributes(c, &decl->attributes, NULL, NULL, NULL)) return poisoned_decl;
+	bool is_cond;
+	if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+	decl->is_cond = true;
 	if (tok_is(c, TOKEN_EQ))
 	{
 		if (!decl)
@@ -888,7 +890,9 @@ Decl *parse_const_declaration(ParseContext *c, bool is_global, bool is_extern)
 	}
 	else
 	{
-		if (!parse_attributes(c, &decl->attributes, NULL, NULL, NULL)) return poisoned_decl;
+		bool is_cond;
+		if (!parse_attributes(c, &decl->attributes, NULL, NULL, &is_cond)) return poisoned_decl;
+		decl->is_cond = is_cond;
 	}
 
 	if (is_extern) return decl;

@@ -12,6 +12,7 @@
 - More stdlib tests: `sincos`, `ArenaAllocator`, `Slice2d`.
 - Make aliases able to use `@deprecated`.
 - Refactored stdlib file organization.
+- Allow `@if` on locals.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.

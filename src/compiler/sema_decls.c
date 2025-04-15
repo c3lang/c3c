@@ -2856,7 +2856,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
 			[ATTRIBUTE_FINALIZER] = ATTR_FUNC,
 			[ATTRIBUTE_FORMAT] = ATTR_FUNC | ATTR_MACRO | ATTR_FNTYPE,
-			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_LOCAL | ATTR_PARAM),
+			[ATTRIBUTE_IF] = (AttributeDomain)~(ATTR_CALL | ATTR_PARAM),
 			[ATTRIBUTE_INIT] = ATTR_FUNC,
 			[ATTRIBUTE_INLINE] = ATTR_FUNC | ATTR_CALL,
 			[ATTRIBUTE_LINK] = ATTR_FUNC | ATTR_MACRO | ATTR_CONST | ATTR_GLOBAL,
@@ -4380,7 +4380,6 @@ bool sema_analyse_var_decl_ct(SemaContext *context, Decl *decl)
 		default:
 			UNREACHABLE
 	}
-
 	return sema_add_local(context, decl);
 FAIL:
 	sema_add_local(context, decl);
@@ -4416,6 +4415,26 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 	// this should always be true.
 	ASSERT(type_info || decl->var.init_expr);
 
+	bool erase_decl = false;
+	if (!sema_analyse_attributes_for_var(context, decl, &erase_decl)) return decl_poison(decl);
+
+	bool is_static = decl->var.is_static;
+	bool global_level_var = is_static || decl->var.kind == VARDECL_CONST || is_global;
+
+	if (decl->is_extern && decl->var.init_expr)
+	{
+		ASSERT(is_global);
+		SEMA_ERROR(decl->var.init_expr, "Extern globals may not have initializers.");
+		return decl_poison(decl);
+	}
+
+	if (erase_decl)
+	{
+		decl->decl_kind = DECL_ERASED;
+		decl->resolve_status = RESOLVE_DONE;
+		return true;
+	}
+
 	if (is_global)
 	{
 
@@ -4436,24 +4455,7 @@ bool sema_analyse_var_decl(SemaContext *context, Decl *decl, bool local)
 		if (!sema_add_local(context, decl)) return decl_poison(decl);
 	}
 
-	bool erase_decl = false;
-	if (!sema_analyse_attributes_for_var(context, decl, &erase_decl)) return decl_poison(decl);
 
-	bool is_static = decl->var.is_static;
-	bool global_level_var = is_static || decl->var.kind == VARDECL_CONST || is_global;
-
-	if (decl->is_extern && decl->var.init_expr)
-	{
-		ASSERT(is_global);
-		SEMA_ERROR(decl->var.init_expr, "Extern globals may not have initializers.");
-		return decl_poison(decl);
-	}
-	if (erase_decl)
-	{
-		decl->decl_kind = DECL_ERASED;
-		decl->resolve_status = RESOLVE_DONE;
-		return true;
-	}
 	// 1. Local or global constants: const int FOO = 123.
 	if (!type_info)
 	{
