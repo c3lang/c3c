@@ -374,16 +374,16 @@ static inline bool sema_expr_analyse_array_plain_initializer(SemaContext *contex
 					SEMA_ERROR(element, "Too many elements in initializer when expanding, expected only %d.", expected_members);
 					return false;
 				}
-				Expr *expr_list = expr_new_expr(EXPR_EXPRESSION_LIST, element);
+				Expr *expr_two = expr_new_expr(EXPR_TWO, element);
 				Decl *decl = decl_new_generated_var(element_type, VARDECL_LOCAL, element->span);
 				Expr *decl_expr = expr_generate_decl(decl, element);
-				vec_add(expr_list->expression_list, decl_expr);
+				expr_two->two_expr.first = decl_expr;
 				Expr *sub = expr_new_expr(EXPR_SUBSCRIPT, element);
 				sub->subscript_expr.expr = exprid(expr_variable(decl));
 				sub->subscript_expr.index.expr = exprid(expr_new_const_int(element->span, type_usz, 0));
-				vec_add(expr_list->expression_list, sub);
-				if (!sema_analyse_expr_rhs(context, inner_type, expr_list, true, NULL, false)) return false;
-				elements[i] = expr_list;
+				expr_two->two_expr.last = sub;
+				if (!sema_analyse_expr_rhs(context, inner_type, expr_two, true, NULL, false)) return false;
+				elements[i] = expr_two;
 				for (unsigned j = 1; j < len; j++)
 				{
 					sub = expr_new_expr(EXPR_SUBSCRIPT, element);

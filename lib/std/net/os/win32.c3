@@ -88,7 +88,7 @@ fn fault convert_error(WSAError error)
 
 fn fault socket_error()
 {
-	return convert_error(win32_WSAGetLastError());
+	return convert_error(win32::wsaGetLastError());
 }
 
 const CUShort POLLIN      = win32::POLLIN;

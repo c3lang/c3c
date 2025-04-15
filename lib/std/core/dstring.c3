@@ -1,12 +1,20 @@
 module std::core::dstring;
 import std::io;
 
+<*
+ The DString offers a dynamic string builder.
+*>
 typedef DString (OutStream) = DStringOpaque*;
 typedef DStringOpaque = void;
 
 const usz MIN_CAPACITY @private = 16;
 
 <*
+ Initialize the DString with a particular allocator.
+
+ @param [&inout] allocator : "The allocator to use"
+ @param capacity : "Starting capacity, defaults to MIN_CAPACITY and cannot be smaller"
+ @return "Return the DString itself"
  @require !self.data() : "String already initialized"
 *>
 fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
@@ -20,6 +28,11 @@ fn DString DString.init(&self, Allocator allocator, usz capacity = MIN_CAPACITY)
 }
 
 <*
+ Initialize the DString with the temp allocator. Note that if the dstring is never
+ initialized, this is the allocator it will default to.
+
+ @param capacity : "Starting capacity, defaults to MIN_CAPACITY and cannot be smaller"
+ @return "Return the DString itself"
  @require !self.data() : "String already initialized"
 *>
 fn DString DString.tinit(&self, usz capacity = MIN_CAPACITY)

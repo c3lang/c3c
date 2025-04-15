@@ -440,6 +440,9 @@ RETRY:
 			// It's unclear if this can happen.
 			expr = VECLAST(expr->expression_list);
 			goto RETRY;
+		case EXPR_TWO:
+			expr = expr->two_expr.last;
+			goto RETRY;
 		case EXPR_TERNARY:
 		{
 			// In the case a ?: b -> check a and b

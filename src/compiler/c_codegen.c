@@ -412,6 +412,7 @@ static void c_emit_expr(GenContext *c, CValue *value, Expr *expr)
 		case EXPR_MAKE_SLICE:
 		case EXPR_INT_TO_BOOL:
 		case EXPR_VECTOR_FROM_ARRAY:
+		case EXPR_TWO:
 			break;
 		case NON_RUNTIME_EXPR:
 		case UNRESOLVED_EXPRS:

@@ -1,59 +1,61 @@
 module math_tests @test;
-import math_tests::complex;
-
-alias ComplexDouble @local = ComplexType {double};
-alias ComplexInt    @local = ComplexType {int};
-
-module math_tests::complex {ElementType} @test;
 import std::math;
+import std::math::complex;
 
-alias ComplexType = Complex {ElementType};
 
 fn void complex_mul_imaginary()
 {
-	ComplexType i = complex::IMAGINARY {ElementType};
-	assert(i.mul(i).equals((ComplexType){-1, 0}));
-	assert(i.mul(i).mul(i).equals((ComplexType){0, -1}));
+	Complex c = math::I;
+	assert(c * c == -1);
+	assert(c * c * c == -math::I);
 }
 
 fn void complex_add()
 {
-	ComplexType a = {3, 4};
-	ComplexType b = {1, 2};
-	assert(a.add(b).equals((ComplexType){4, 6}));
-	assert(a.add_each(1).equals((ComplexType){4, 5}));
+	Complex a = { 3, 4 };
+	Complex b = { 1, 2 };
+	assert(a + b == (Complex){ 4, 6 });
+	assert(a.add_each(1).equals({4, 5}));
+	a += b;
+	assert(a == (Complex){ 4, 6 });
 }
 
 fn void complex_sub()
 {
-	ComplexType a = {3, 4};
-	ComplexType b = {1, 2};
-	assert(a.sub(b).equals((ComplexType){2, 2}));
-	assert(a.sub_each(1).equals((ComplexType){2, 3}));
+	Complex a = { 3, 4 };
+	Complex b = { 1, 2 };
+	assert(a - b == (Complex){ 2, 2 });
+	assert(a.sub_each(1).equals({2, 3}));
+	a -= b;
+	assert(a == (Complex){ 2, 2 });
 }
 
 fn void complex_scale()
 {
-	ComplexType a = {2, 1};
-	assert(a.scale(2).equals((ComplexType){4, 2}));
+	Complex a = {2, 1};
+	assert(a * 2 == (Complex) {4, 2});
+	a *= 2;
+	assert(a == (Complex) {4, 2});
 }
 
 fn void complex_conjugate()
 {
-	ComplexType a = {3, 4};
-	assert(a.conjugate().equals((ComplexType){3, -4}));
+	Complex a = {3, 4};
+	assert(a.conjugate() == (Complex) {3, -4});
 }
 
-fn void complex_inverse() @if(types::is_float(ElementType))
+fn void complex_inverse()
 {
-	ComplexType a = {3, 4};
-	assert(a.inverse().mul(a).equals(complex::IDENTITY{ElementType}));
+	Complex a = {3, 4};
+	assert(a.inverse() * a == 1);
 }
 
-fn void complex_div() @if(types::is_float(ElementType))
+fn void complex_div()
 {
-	ComplexType a = {2, 5};
-	ComplexType b = {4, -1};
-	assert(a.div(b).equals((ComplexType){3.0/17.0, 22.0/17.0}));
+	Complex a = {2, 5};
+	Complex b = {4, -1};
+	assert(a / b == (Complex) {3.0/17.0, 22.0/17.0});
+	a /= b;
+	assert(a == (Complex) {3.0/17.0, 22.0/17.0});
 }
 

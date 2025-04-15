@@ -208,6 +208,7 @@ static inline bool sema_analyse_expr_check(SemaContext *context, Expr *expr, Che
 static inline Expr **sema_prepare_splat_insert(Expr **exprs, unsigned added, unsigned insert_point);
 static inline bool sema_analyse_maybe_dead_expr(SemaContext *, Expr *expr, bool is_dead, Type *infer_type);
 static inline bool sema_insert_binary_overload(SemaContext *context, Expr *expr, Decl *overload, Expr *lhs, Expr *rhs, bool reverse);
+static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref);
 
 // -- implementations
 
@@ -622,6 +623,7 @@ static bool sema_binary_is_expr_lvalue(SemaContext *context, Expr *top_expr, Exp
 		case EXPR_SCALAR_TO_VECTOR:
 		case EXPR_SUBSCRIPT_ADDR:
 		case EXPR_EXPRESSION_LIST:
+		case EXPR_TWO:
 			goto ERR;
 	}
 	UNREACHABLE
@@ -712,6 +714,8 @@ static bool expr_may_ref(Expr *expr)
 			return true;
 		case EXPR_HASH_IDENT:
 			return false;
+		case EXPR_TWO:
+			return expr_may_ref(expr->two_expr.last);
 		case EXPR_EXPRESSION_LIST:
 			if (!vec_size(expr->expression_list)) return false;
 			return expr_may_ref(VECLAST(expr->expression_list));
@@ -1479,14 +1483,14 @@ INLINE Expr **sema_splat_arraylike_insert(SemaContext *context, Expr **args, Exp
 	}
 	Decl *temp = decl_new_generated_var(arg->type, VARDECL_LOCAL, arg->span);
 	Expr *decl_expr = expr_generate_decl(temp, arg);
-	Expr *list = expr_new_expr(EXPR_EXPRESSION_LIST, arg);
-	vec_add(list->expression_list, decl_expr);
+	Expr *two = expr_new_expr(EXPR_TWO, arg);
+	two->two_expr.first = decl_expr;
 	Expr *subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
 	subscript->subscript_expr.index.expr = exprid(expr_new_const_int(arg->span, type_usz, 0));
 	subscript->subscript_expr.expr = exprid(expr_variable(temp));
-	vec_add(list->expression_list, subscript);
-	if (!sema_analyse_expr(context, list)) return NULL;
-	args[index] = list;
+	two->two_expr.last = subscript;
+	if (!sema_analyse_expr(context, two)) return NULL;
+	args[index] = two;
 	for (ArrayIndex i = 1; i < len; i++)
 	{
 		subscript = expr_new_expr(EXPR_SUBSCRIPT, arg);
@@ -3349,10 +3353,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 			if (!sema_analyse_expr(context, current_expr)) return false;
 			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->span);
 			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
-			current_expr->expr_kind = EXPR_EXPRESSION_LIST;
-			current_expr->expression_list = NULL;
-			vec_add(current_expr->expression_list, decl);
-			vec_add(current_expr->expression_list, expr_variable(temp));
+			expr_rewrite_two(current_expr, decl, expr_variable(temp));
 			if (!sema_analyse_expr(context, current_expr)) return false;
 			Expr *var_for_len = expr_variable(temp);
 			Expr *len_expr = expr_new(EXPR_CALL, expr->span);
@@ -3468,10 +3469,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 			if (!sema_analyse_expr(context, current_expr)) return false;
 			Decl *temp = decl_new_generated_var(current_expr->type, VARDECL_PARAM, current_expr->span);
 			Expr *decl = expr_generate_decl(temp, expr_copy(current_expr));
-			current_expr->expr_kind = EXPR_EXPRESSION_LIST;
-			current_expr->expression_list = NULL;
-			vec_add(current_expr->expression_list, decl);
-			vec_add(current_expr->expression_list, expr_variable(temp));
+			expr_rewrite_two(current_expr, decl, expr_variable(temp));
 			if (!sema_analyse_expr(context, current_expr)) return false;
 			Expr *var_for_len = expr_variable(temp);
 			Expr *len_expr = expr_new(EXPR_CALL, expr->span);
@@ -6212,6 +6210,136 @@ static bool sema_binary_analyse_ct_subscript_op_assign(SemaContext *context, Exp
 
 }
 
+static BoolErr sema_insert_overload_in_op_assign_or_error(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp operator, Type *lhs_type)
+{
+	assert(type_is_user_defined(lhs_type));
+	if (!sema_analyse_inferred_expr(context, lhs_type, right)) return BOOL_ERR;
+	static OperatorOverload MAP[BINARYOP_LAST + 1] = {
+		[BINARYOP_ADD_ASSIGN] = OVERLOAD_PLUS_ASSIGN,
+		[BINARYOP_SUB_ASSIGN] = OVERLOAD_MINUS_ASSIGN,
+		[BINARYOP_MULT_ASSIGN] = OVERLOAD_MULTIPLY_ASSIGN,
+		[BINARYOP_DIV_ASSIGN] = OVERLOAD_DIVIDE_ASSIGN,
+		[BINARYOP_MOD_ASSIGN] = OVERLOAD_REMINDER_ASSIGN,
+		[BINARYOP_BIT_XOR_ASSIGN] = OVERLOAD_XOR_ASSIGN,
+		[BINARYOP_BIT_OR_ASSIGN] = OVERLOAD_OR_ASSIGN,
+		[BINARYOP_BIT_AND_ASSIGN] = OVERLOAD_AND_ASSIGN,
+		[BINARYOP_SHL_ASSIGN] = OVERLOAD_SHL_ASSIGN,
+		[BINARYOP_SHR_ASSIGN] = OVERLOAD_SHR_ASSIGN,
+	};
+	OperatorOverload overload = MAP[operator];
+	assert(overload && "Overload not mapped");
+	if (!sema_replace_with_overload(context, expr, left, right, lhs_type, &overload)) return BOOL_ERR;
+	if (!overload)
+	{
+		return BOOL_TRUE;
+	}
+	return BOOL_FALSE;
+}
+
+INLINE bool sema_rewrite_op_assign(SemaContext *context, Expr *expr, Expr *left, Expr *right, BinaryOp new_op)
+{
+	// Simple case: f += a => f = f + a
+	if (left->expr_kind == EXPR_IDENTIFIER)
+	{
+		Expr *lvalue = expr_copy(left);
+		Expr *rvalue = expr_copy(left);
+		expr->expr_kind = EXPR_BINARY;
+		left->expr_kind = EXPR_BINARY;
+		left->binary_expr = (ExprBinary) { .left = exprid(rvalue), .right = exprid(right), .operator = new_op };
+		expr->binary_expr = (ExprBinary) { .left = exprid(lvalue), .right = exprid(left), .operator = BINARYOP_ASSIGN, .grouped = false };
+		expr->resolve_status = RESOLVE_NOT_DONE;
+		left->resolve_status = RESOLVE_NOT_DONE;
+		return sema_analyse_expr(context, expr);
+	}
+
+	Type *lhs_type = type_no_optional(left->type)->canonical;
+	Decl *variable = decl_new_generated_var(type_get_ptr(left->type), VARDECL_LOCAL, left->span);
+	Expr *left_copy = expr_copy(left);
+
+	// If we have a &[] overload, then replace left copy with that one.
+	if (left->expr_kind == EXPR_SUBSCRIPT_ASSIGN)
+	{
+		Expr *parent = exprptr(left->subscript_assign_expr.expr);
+		Type *parent_type = type_no_optional(parent->type)->canonical;
+		Decl *operator = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_REF, NULL);
+		Expr *index = exprptr(left->subscript_assign_expr.index);
+		if (operator)
+		{
+			Expr **args = NULL;
+			vec_add(args, index);
+			if (!sema_insert_method_call(context, left_copy, operator, parent, args, false)) return false;
+			goto AFTER_ADDR;
+		}
+		// If we only have []=, then we need []
+		operator = sema_find_untyped_operator(context, parent_type, OVERLOAD_ELEMENT_AT, NULL);
+		if (!operator)
+		{
+			RETURN_SEMA_ERROR(left, "There is no overload for [] for %s.", type_quoted_error_string(type_no_optional(left->type)));
+		}
+		Type *return_type = typeget(operator->func_decl.signature.rtype);
+		if (type_no_optional(return_type->canonical) != lhs_type->canonical)
+		{
+			RETURN_SEMA_ERROR(expr, "There is a type mismatch between the overload for [] and []= for %s.", type_quoted_error_string(type_no_optional(left->type)));
+		}
+		// First we want to create the indexed value and the index:
+		Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->span);
+		// We need to take the address of the parent here, otherwise this might fail,
+		expr_insert_addr(parent);
+		Decl *parent_val = decl_new_generated_var(parent->type, VARDECL_LOCAL, parent->span);
+		Expr **list = NULL;
+		// temp = parent, temp_2 = index
+		vec_add(list, expr_generate_decl(parent_val, parent));
+		vec_add(list, expr_generate_decl(index_val, index));
+		// Now, create a lhs of the binary add:
+		Expr *lhs = expr_new_expr(EXPR_SUBSCRIPT, left);
+		Expr *parent_by_variable = expr_variable(parent_val);
+		expr_rewrite_insert_deref(parent_by_variable);
+		lhs->subscript_expr = (ExprSubscript) { .expr = exprid(parent_by_variable), .index.expr = exprid(expr_variable(index_val)) };
+		// Now create the binary expression
+		Expr *binary = expr_new_expr(EXPR_BINARY, expr);
+		binary->binary_expr = (ExprBinary) { .left = exprid(lhs), .right = exprid(right), .operator = new_op };
+		// Finally, we need the assign, and here we just need to replace
+		Expr *assign = expr_new_expr(EXPR_BINARY, expr);
+		assign->binary_expr = (ExprBinary) { .left = exprid(left), .right = exprid(binary), .operator = BINARYOP_ASSIGN };
+		// Now we need to patch the values in `left`:
+		parent_by_variable = expr_variable(parent_val);
+		expr_rewrite_insert_deref(parent_by_variable);
+		left->subscript_assign_expr.expr = exprid(parent_by_variable);
+		left->subscript_assign_expr.index = exprid(expr_variable(index_val));
+		// We add the assign
+		vec_add(list, assign);
+		// And rewrite the expression to an expression list:
+		expr->expr_kind = EXPR_EXPRESSION_LIST;
+		expr->expression_list = list;
+		return sema_expr_analyse_expr_list(context, expr);
+	}
+
+	// f => &f
+	expr_insert_addr(left_copy);
+
+AFTER_ADDR:;
+
+	// temp = &f
+	Expr *init = expr_generate_decl(variable, left_copy);
+	// lvalue = temp, rvalue = temp
+	Expr *left_rvalue = expr_variable(variable);
+	Expr *left_lvalue = expr_variable(variable);
+
+	// lvalue = *temp, rvalue = *temp
+	expr_rewrite_insert_deref(left_lvalue);
+	expr_rewrite_insert_deref(left_rvalue);
+
+	// init, expr -> lvalue = rvalue + a
+	expr->expr_kind = EXPR_BINARY;
+	left->expr_kind = EXPR_BINARY;
+	left->binary_expr = (ExprBinary) { .left = exprid(left_lvalue), .right = exprid(right), new_op };
+	expr->binary_expr = (ExprBinary) { .left = exprid(left_rvalue), .right = exprid(left), .operator = BINARYOP_ASSIGN, .grouped = false };
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	left->resolve_status = RESOLVE_NOT_DONE;
+	Expr *binary = expr_copy(expr);
+	expr_rewrite_two(expr, init, binary);
+	return sema_analyse_expr(context, expr);
+}
 /**
  * Analyse *= /= %= ^= |= &= += -= <<= >>=
  *
@@ -6274,11 +6402,47 @@ static bool sema_expr_analyse_op_assign(SemaContext *context, Expr *expr, Expr *
 	Type *no_fail = type_no_optional(left->type);
 	Type *flat = type_flatten(no_fail);
 
+	Type *canonical = no_fail->canonical;
+	if (type_is_user_defined(canonical))
+	{
+		if (canonical->type_kind == TYPE_BITSTRUCT)
+		{
+			if (operator == BINARYOP_BIT_OR_ASSIGN
+				|| operator == BINARYOP_BIT_AND_ASSIGN
+				|| operator == BINARYOP_BIT_XOR_ASSIGN) goto SKIP_OVERLOAD_CHECK;
+		}
+		BoolErr b = sema_insert_overload_in_op_assign_or_error(context, expr, left, right, operator, no_fail->canonical);
+		if (b == BOOL_ERR) return false;
+		if (b == BOOL_TRUE) return true;
+		// Maybe we have the corresponding implemented % * etc
+		// The right hand side is now already checked.
+		BinaryOp underlying_op = binaryop_assign_base_op(operator);
+		static OperatorOverload MAP[BINARYOP_LAST + 1] = {
+			[BINARYOP_ADD] = OVERLOAD_PLUS,
+			[BINARYOP_SUB] = OVERLOAD_MINUS,
+			[BINARYOP_DIV] = OVERLOAD_DIVIDE,
+			[BINARYOP_MOD] = OVERLOAD_REMINDER,
+			[BINARYOP_MULT] = OVERLOAD_MULTIPLY,
+			[BINARYOP_BIT_XOR] = OVERLOAD_XOR,
+			[BINARYOP_BIT_OR] = OVERLOAD_OR,
+			[BINARYOP_BIT_AND] = OVERLOAD_AND,
+			[BINARYOP_SHL] = OVERLOAD_SHL,
+			[BINARYOP_SHR] = OVERLOAD_SHR,
+		};
+		OperatorOverload mapped_overload = MAP[underlying_op];
+		Decl *ambiguous = NULL;
+		bool reverse = false;
+		Decl *candidate = expr_may_ref(left) ? sema_find_typed_operator(context, mapped_overload, left, right, &ambiguous, &reverse) : NULL;
+		if (candidate && typeget(candidate->func_decl.signature.rtype)->canonical == canonical)
+		{
+			return sema_rewrite_op_assign(context, expr, left, right, underlying_op);
+		}
+	}
+SKIP_OVERLOAD_CHECK:
 	// 3. If this is only defined for ints (^= |= &= %=) verify that this is an int.
 	if (int_only && !type_flat_is_intlike(flat))
 	{
 		if (is_bit_op && (flat->type_kind == TYPE_BITSTRUCT || flat == type_bool || type_flat_is_bool_vector(flat))) goto BITSTRUCT_OK;
-
 		RETURN_SEMA_ERROR(left, "Expected an integer here, not a value of type %s.", type_quoted_error_string(left->type));
 	}
 
@@ -6421,6 +6585,7 @@ END:
 	// 7. Assign type
 	expr->type = type_add_optional(left->type, optional);
 	return true;
+
 }
 
 static bool sema_replace_with_overload(SemaContext *context, Expr *expr, Expr *left, Expr *right, Type *left_type, OperatorOverload* operator_overload_ref)
@@ -7897,9 +8062,9 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 {
 	Expr *increased = exprptr(subscript_expr->subscript_assign_expr.expr);
 	Type *type_check = increased->type->canonical;
-	Expr *index = exprptr(subscript_expr->subscript_assign_expr.index);
 	Decl *operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_REF, NULL);
 	Expr **args = NULL;
+	// The simple case: we have &[] so just replace it by that.
 	if (operator)
 	{
 		vec_add(args, exprptr(subscript_expr->subscript_assign_expr.index));
@@ -7908,6 +8073,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 		main->type = subscript_expr->type;
 		return true;
 	}
+	// We need []= and [] now.
 	operator = sema_find_untyped_operator(context, type_check, OVERLOAD_ELEMENT_AT, NULL);
 	if (!operator)
 	{
@@ -7921,6 +8087,7 @@ static bool sema_analyse_assign_mutate_overloaded_subscript(SemaContext *context
 	bool is_optional_result = type_is_optional(increased->type) || type_is_optional(return_type);
 	Type *result_type = type_add_optional(subscript_expr->type, is_optional_result);
 	expr_insert_addr(increased);
+	Expr *index = exprptr(subscript_expr->subscript_assign_expr.index);
 	Decl *temp_val = decl_new_generated_var(increased->type, VARDECL_LOCAL, increased->span);
 	Decl *index_val = decl_new_generated_var(index->type, VARDECL_LOCAL, index->span);
 	Decl *value_val = decl_new_generated_var(return_type, VARDECL_LOCAL, main->span);
@@ -9567,6 +9734,7 @@ static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr
 			case EXPR_INT_TO_PTR:
 			case EXPR_PTR_TO_INT:
 			case EXPR_MAKE_SLICE:
+			case EXPR_TWO:
 				if (!sema_analyse_expr(active_context, main_expr)) goto FAIL;
 				break;
 		}
@@ -9890,6 +10058,11 @@ static inline bool sema_analyse_expr_dispatch(SemaContext *context, Expr *expr, 
 		case EXPR_MAKE_SLICE:
 		case EXPR_CT_SUBSCRIPT:
 			UNREACHABLE
+		case EXPR_TWO:
+			if (!sema_analyse_expr(context, expr->two_expr.first)) return false;
+			if (!sema_analyse_expr_check(context, expr->two_expr.last, check)) return false;
+			expr->type = expr->two_expr.last->type;
+			return true;
 		case EXPR_MAKE_ANY:
 			if (!sema_analyse_expr(context, expr->make_any_expr.typeid)) return false;
 			return sema_analyse_expr(context, expr->make_any_expr.inner);
@@ -10448,6 +10621,7 @@ IDENT_CHECK:;
 		case EXPR_TYPEID:
 		case EXPR_VASPLAT:
 		case EXPR_TRY_UNRESOLVED:
+		case EXPR_TWO:
 			break;
 		case EXPR_BITACCESS:
 		case EXPR_SUBSCRIPT_ASSIGN:
@@ -10731,14 +10905,9 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		parent->ident_expr = temp;
 		parent->resolve_status = RESOLVE_DONE;
 		parent->type = temp->type;
-		Expr **list = NULL;
-		vec_add(list, generate);
 		if (!sema_analyse_expr(context, generate)) return false;
 		Expr *copied_method = expr_copy(method_call);
-		vec_add(list, copied_method);
-		method_call->expr_kind = EXPR_EXPRESSION_LIST;
-		method_call->resolve_status = RESOLVE_NOT_DONE;
-		method_call->expression_list = list;
+		expr_rewrite_two(method_call, generate, copied_method);
 		Expr *arg0 = arguments[0];
 		arguments[0] = parent;
 		parent = arg0;
@@ -10779,10 +10948,6 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		parent->resolve_status = RESOLVE_NOT_DONE;
 		if (!sema_analyse_expr(context, parent)) return false;
 		expr_rewrite_insert_deref(parent);
-	}
-	if (!(parent && parent->type && first == parent->type->canonical))
-	{
-		puts("TODO");
 	}
 	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,

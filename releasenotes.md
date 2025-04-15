@@ -7,9 +7,11 @@
 - Better errors trying to convert an enum to an int and vice versa.
 - Function `@require` checks are added to the caller in safe mode. #186
 - Improved error message when narrowing isn't allowed.
-- Operator overloading for `+ - * / % & | ^ << >> ~ == !=`
+- Operator overloading for `+ - * / % & | ^ << >> ~ == != += -= *= /= %= &= |= ^= <<= >>=`
 - Add `@operator_r` and `@operator_s` attributes.
-- More stdlib tests: `sincos`.
+- More stdlib tests: `sincos`, `ArenaAllocator`, `Slice2d`.
+- Make aliases able to use `@deprecated`.
+- Refactored stdlib file organization.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
@@ -19,6 +21,7 @@
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.
+- Prefer `math::I` and `math::I_F` for `math::IMAGINARY` and `math::IMAGINARYF` the latter is deprecated.
 
 ## 0.7.0 Change list
 

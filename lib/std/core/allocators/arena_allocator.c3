@@ -1,8 +1,12 @@
-// Copyright (c) 2023 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2023-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::core::mem::allocator;
 import std::math;
+
+// The arena allocator allocates up to its maximum data
+// and then fails to allocate more, returning out of memory.
+// It supports mark and reset to mark.
 
 struct ArenaAllocator (Allocator)
 {
@@ -12,6 +16,8 @@ struct ArenaAllocator (Allocator)
 
 <*
  Initialize a memory arena for use using the provided bytes.
+
+ @param [inout] data : "The memory to use for the arena."
 *>
 fn ArenaAllocator* ArenaAllocator.init(&self, char[] data)
 {
@@ -20,23 +26,44 @@ fn ArenaAllocator* ArenaAllocator.init(&self, char[] data)
 	return self;
 }
 
+<*
+ Reset the usage completely.
+*>
 fn void ArenaAllocator.clear(&self)
 {
 	self.used = 0;
 }
 
-struct ArenaAllocatorHeader @local
-{
-	usz size;
-	char[*] data;
-}
+<*
+ Given some memory, create an arena allocator on the stack for it.
 
+ @param [inout] bytes : `The bytes to use`
+
+ @return `An arena allocator using the bytes`
+*>
 macro ArenaAllocator* wrap(char[] bytes)
 {
 	return (ArenaAllocator){}.init(bytes);
 }
 
 <*
+ "Mark" the current state of the arena allocator by returning the use count.
+
+ @return `The value to pass to 'reset' in order to reset to the current use.`
+*>
+fn usz ArenaAllocator.mark(&self) => self.used;
+
+<*
+ Reset to a previous mark.
+
+ @param mark : `The previous mark.`
+ @require mark <= self.used : "Invalid mark - out of range"
+*>
+fn void ArenaAllocator.reset(&self, usz mark) => self.used = mark;
+
+<*
+ Implements the Allocator interface method.
+
  @require ptr != null
 *>
 fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
@@ -50,10 +77,10 @@ fn void ArenaAllocator.release(&self, void* ptr, bool) @dynamic
 	}
 }
 
-fn usz ArenaAllocator.mark(&self) => self.used;
-fn void ArenaAllocator.reset(&self, usz mark) => self.used = mark;
 
 <*
+ Implements the Allocator interface method.
+
  @require !alignment || math::is_power_of_2(alignment)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require size > 0
@@ -77,6 +104,8 @@ fn void*? ArenaAllocator.acquire(&self, usz size, AllocInitType init_type, usz a
 }
 
 <*
+ Implements the Allocator interface method.
+
  @require !alignment || math::is_power_of_2(alignment)
  @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
  @require old_pointer != null
@@ -111,4 +140,12 @@ fn void*? ArenaAllocator.resize(&self, void *old_pointer, usz size, usz alignmen
 	void* mem = self.acquire(size, NO_ZERO, alignment)!;
 	mem::copy(mem, old_pointer, old_size, mem::DEFAULT_MEM_ALIGNMENT, mem::DEFAULT_MEM_ALIGNMENT);
 	return mem;
+}
+
+// Internal data
+
+struct ArenaAllocatorHeader @local
+{
+	usz size;
+	char[*] data;
 }

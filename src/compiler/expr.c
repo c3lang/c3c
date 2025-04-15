@@ -241,6 +241,7 @@ bool expr_may_addr(Expr *expr)
 		case EXPR_RECAST:
 		case EXPR_DISCARD:
 		case EXPR_ADDR_CONVERSION:
+		case EXPR_TWO:
 			return false;
 		case NON_RUNTIME_EXPR:
 		case EXPR_ASM:
@@ -333,6 +334,7 @@ bool expr_is_runtime_const(Expr *expr)
 		case EXPR_INT_TO_FLOAT:
 		case EXPR_FLOAT_TO_INT:
 		case EXPR_SLICE_LEN:
+		case EXPR_TWO:
 			return false;
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
@@ -548,6 +550,22 @@ static inline bool expr_unary_addr_is_constant_eval(Expr *expr)
 		default:
 			return false;
 	}
+}
+
+void expr_rewrite_two(Expr *original, Expr *first, Expr *second)
+{
+	original->expr_kind = EXPR_TWO;
+	original->two_expr.first = first;
+	original->two_expr.last = second;
+	original->resolve_status = RESOLVE_NOT_DONE;
+}
+
+Expr *expr_new_two(Expr *first, Expr *second)
+{
+	Expr *expr = expr_new_expr(EXPR_TWO, first);
+	expr->two_expr.first = first;
+	expr->two_expr.last = second;
+	return expr;
 }
 
 void expr_insert_addr(Expr *original)
@@ -807,6 +825,8 @@ bool expr_is_pure(Expr *expr)
 		case EXPR_LAST_FAULT:
 		case EXPR_MEMBER_GET:
 			return true;
+		case EXPR_TWO:
+			return expr_is_pure(expr->two_expr.first) && expr_is_pure(expr->two_expr.last);
 		case EXPR_BITASSIGN:
 			return false;
 		case EXPR_BINARY:

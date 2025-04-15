@@ -1,15 +1,15 @@
-module std::math;
+module std::math::math_rt;
 
 fn float __roundevenf(float f) @extern("roundevenf") @weak @nostrip
 {
 	// Slow implementation
-	return round(f / 2) * 2;
+	return math::round(f / 2) * 2;
 }
 
 fn double __roundeven(double d) @extern("roundeven") @weak @nostrip
 {
 	// Slow implementation
-	return round(d / 2) * 2;
+	return math::round(d / 2) * 2;
 }
 
 fn double __powidf2(double a, int b) @extern("__powidf2") @weak @nostrip

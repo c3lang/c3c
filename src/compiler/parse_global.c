@@ -960,32 +960,62 @@ static Expr *parse_overload_from_token(ParseContext *c, TokenType token)
 		case TOKEN_PLUS:
 			overload = OVERLOAD_PLUS;
 			break;
+		case TOKEN_PLUS_ASSIGN:
+			overload = OVERLOAD_PLUS_ASSIGN;
+			break;
 		case TOKEN_MINUS:
 			overload = OVERLOAD_MINUS;
+			break;
+		case TOKEN_MINUS_ASSIGN:
+			overload = OVERLOAD_MINUS_ASSIGN;
 			break;
 		case TOKEN_STAR:
 			overload = OVERLOAD_MULTIPLY;
 			break;
+		case TOKEN_MULT_ASSIGN:
+			overload = OVERLOAD_MULTIPLY_ASSIGN;
+			break;
 		case TOKEN_DIV:
 			overload = OVERLOAD_DIVIDE;
+			break;
+		case TOKEN_DIV_ASSIGN:
+			overload = OVERLOAD_DIVIDE_ASSIGN;
 			break;
 		case TOKEN_MOD:
 			overload = OVERLOAD_REMINDER;
 			break;
+		case TOKEN_MOD_ASSIGN:
+			overload = OVERLOAD_REMINDER_ASSIGN;
+			break;
 		case TOKEN_AMP:
 			overload = OVERLOAD_AND;
+			break;
+		case TOKEN_BIT_AND_ASSIGN:
+			overload = OVERLOAD_AND_ASSIGN;
 			break;
 		case TOKEN_BIT_OR:
 			overload = OVERLOAD_OR;
 			break;
+		case TOKEN_BIT_OR_ASSIGN:
+			overload = OVERLOAD_OR_ASSIGN;
+			break;
 		case TOKEN_BIT_XOR:
 			overload = OVERLOAD_XOR;
+			break;
+		case TOKEN_BIT_XOR_ASSIGN:
+			overload = OVERLOAD_XOR_ASSIGN;
 			break;
 		case TOKEN_SHL:
 			overload = OVERLOAD_SHL;
 			break;
+		case TOKEN_SHL_ASSIGN:
+			overload = OVERLOAD_SHL_ASSIGN;
+			break;
 		case TOKEN_SHR:
 			overload = OVERLOAD_SHR;
+			break;
+		case TOKEN_SHR_ASSIGN:
+			overload = OVERLOAD_SHR_ASSIGN;
 			break;
 		case TOKEN_BIT_NOT:
 			overload = OVERLOAD_NEGATE;
@@ -1081,6 +1111,16 @@ bool parse_attribute(ParseContext *c, Attr **attribute_ref, bool expect_eos)
 				case TOKEN_SHR:
 				case TOKEN_EQEQ:
 				case TOKEN_NOT_EQUAL:
+				case TOKEN_BIT_AND_ASSIGN:
+				case TOKEN_BIT_OR_ASSIGN:
+				case TOKEN_BIT_XOR_ASSIGN:
+				case TOKEN_PLUS_ASSIGN:
+				case TOKEN_MINUS_ASSIGN:
+				case TOKEN_MULT_ASSIGN:
+				case TOKEN_DIV_ASSIGN:
+				case TOKEN_MOD_ASSIGN:
+				case TOKEN_SHL_ASSIGN:
+				case TOKEN_SHR_ASSIGN:
 					if (!next_is_rparen) goto PARSE_EXPR;
 					expr = parse_overload_from_token(c, c->tok);
 					break;

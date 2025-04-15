@@ -1,4 +1,4 @@
-module std::math;
+module std::math::math_rt;
 
 fn int128 __divti3(int128 a, int128 b) @extern("__divti3") @weak @nostrip
 {
@@ -312,21 +312,21 @@ macro float_from_i128($Type, a) @private
 	$switch $Type:
 		$case double:
 			$Rep = ulong;
-			const MANT_DIG = DOUBLE_MANT_DIG;
+			const MANT_DIG = math::DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
 			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
 			const SIGN_BIT = 1u64 << 63;
 		$case float:
 			$Rep = uint;
-			const MANT_DIG = FLOAT_MANT_DIG;
+			const MANT_DIG = math::FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFu32;
 			const SIGN_BIT = 1u32 << 31;
 		$case float16:
 			$Rep = ushort;
-			const MANT_DIG = HALF_MANT_DIG;
+			const MANT_DIG = math::HALF_MANT_DIG;
 		$case float128:
 			$Rep = uint128;
 			const MANT_DIG = QUAD_MANT_DIG;
@@ -371,22 +371,22 @@ macro float_from_u128($Type, a) @private
 	$switch $Type:
 		$case double:
 			$Rep = ulong;
-			const MANT_DIG = DOUBLE_MANT_DIG;
+			const MANT_DIG = math::DOUBLE_MANT_DIG;
 			const SIGNIFICANT_BITS = 52;
 			const EXP_BIAS = 1023;
 			const MANTISSA_MASK = 0xFFFFF_FFFF_FFFFu64;
 		$case float:
 			$Rep = uint;
-			const MANT_DIG = FLOAT_MANT_DIG;
+			const MANT_DIG = math::FLOAT_MANT_DIG;
 			const EXP_BIAS = 127;
 			const SIGNIFICANT_BITS = 23;
 			const MANTISSA_MASK = 0x7F_FFFFu32;
 		$case float16:
 			$Rep = ushort;
-			const MANT_DIG = HALF_MANT_DIG;
+			const MANT_DIG = math::HALF_MANT_DIG;
 		$case float128:
 			$Rep = uint128;
-			const MANT_DIG = QUAD_MANT_DIG;
+			const MANT_DIG = math::QUAD_MANT_DIG;
 	$endswitch
 	if (a == 0) return ($Type)0;
 	int sd = 128 - (int)$$clz(a); // digits

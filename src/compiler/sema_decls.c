@@ -1953,7 +1953,7 @@ static inline bool sema_analyse_operator_arithmetics(SemaContext *context, Decl 
 			RETURN_SEMA_ERROR(rtype, "The return type was %s, but it must be bool for comparisons.", type_quoted_error_string(rtype->type));
 		}
 	}
-	if (type_is_void(rtype->type))
+	if (operator_overload < OVERLOAD_PLUS_ASSIGN && type_is_void(rtype->type))
 	{
 		RETURN_SEMA_ERROR(rtype, "The return type may not be %s.", type_quoted_error_string(rtype->type));
 	}
@@ -2034,6 +2034,16 @@ static bool sema_check_operator_method_validity(SemaContext *context, Decl *meth
 		case OVERLOAD_XOR:
 		case OVERLOAD_SHL:
 		case OVERLOAD_SHR:
+		case OVERLOAD_PLUS_ASSIGN:
+		case OVERLOAD_MINUS_ASSIGN:
+		case OVERLOAD_MULTIPLY_ASSIGN:
+		case OVERLOAD_DIVIDE_ASSIGN:
+		case OVERLOAD_REMINDER_ASSIGN:
+		case OVERLOAD_AND_ASSIGN:
+		case OVERLOAD_OR_ASSIGN:
+		case OVERLOAD_XOR_ASSIGN:
+		case OVERLOAD_SHR_ASSIGN:
+		case OVERLOAD_SHL_ASSIGN:
 			return sema_analyse_operator_arithmetics(context, method, operator);
 		case OVERLOAD_NEGATE:
 			return sema_analyse_operator_unary(context, method, operator);
@@ -2117,6 +2127,53 @@ static inline void sema_get_overload_arguments(Decl *method, Type **value_ref, T
 	}
 }
 
+static const char *OVERLOAD_NAME[OVERLOADS_COUNT + 1] =
+{
+	[OVERLOAD_ELEMENT_AT] = "[]",
+	[OVERLOAD_ELEMENT_REF] = "&[]",
+	[OVERLOAD_ELEMENT_SET] = "[]=",
+	[OVERLOAD_LEN] = ".len",
+	[OVERLOAD_NEGATE] = "~",
+	[OVERLOAD_UNARY_MINUS] = "-",
+	[OVERLOAD_PLUS] = "+",
+	[OVERLOAD_MINUS] = "-",
+	[OVERLOAD_MULTIPLY] = "*",
+	[OVERLOAD_DIVIDE] = "/",
+	[OVERLOAD_REMINDER] = "%",
+	[OVERLOAD_AND] = "&",
+	[OVERLOAD_OR] = "|",
+	[OVERLOAD_XOR] = "^",
+	[OVERLOAD_SHL] = "<<",
+	[OVERLOAD_SHR] = ">>",
+	[OVERLOAD_EQUAL] = "==",
+	[OVERLOAD_NOT_EQUAL] = "!=",
+	[OVERLOAD_PLUS_ASSIGN] = "+=",
+	[OVERLOAD_MINUS_ASSIGN] = "-=",
+	[OVERLOAD_MULTIPLY_ASSIGN] = "*=",
+	[OVERLOAD_DIVIDE_ASSIGN] = "/=",
+	[OVERLOAD_REMINDER_ASSIGN] = "%=",
+	[OVERLOAD_AND_ASSIGN] = "&=",
+	[OVERLOAD_OR_ASSIGN] = "|=",
+	[OVERLOAD_XOR_ASSIGN] = "^=",
+	[OVERLOAD_SHL_ASSIGN] = "<<=",
+	[OVERLOAD_SHR_ASSIGN] = ">>=",
+};
+
+static bool OVERLOAD_MAY_BE_REVERSE[OVERLOADS_COUNT + 1] =
+{
+	[OVERLOAD_PLUS] = true,
+	[OVERLOAD_MINUS] = true,
+	[OVERLOAD_MULTIPLY] = true,
+	[OVERLOAD_DIVIDE] = true,
+	[OVERLOAD_REMINDER] = true,
+	[OVERLOAD_AND] = true,
+	[OVERLOAD_OR] = true,
+	[OVERLOAD_XOR] = true,
+	[OVERLOAD_SHL] = true,
+	[OVERLOAD_SHR] = true,
+	[OVERLOAD_EQUAL] = true,
+	[OVERLOAD_NOT_EQUAL] = true,
+};
 /**
  * Do checks on an operator method:
  *
@@ -2138,20 +2195,7 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 	{
 		RETURN_SEMA_ERROR(method, "Only user-defined types may have overloads.");
 	}
-	bool is_symmetric = method->func_decl.overload_type == OVERLOAD_TYPE_SYMMETRIC;
-	bool is_reverse = method->func_decl.overload_type == OVERLOAD_TYPE_RIGHT;
-
-	if (!second_param)
-	{
-		if (is_symmetric) RETURN_SEMA_ERROR(method, "Methods with single arguments cannot be have symmetric operators.");
-		if (is_reverse) RETURN_SEMA_ERROR(method, "Methods with single arguments cannot have reverse operators.");
-	}
-	else if (second_param->type_kind == parent_type->type_kind)
-	{
-		if (is_symmetric) RETURN_SEMA_ERROR(method, "Methods with same argument types cannot be have symmetric operators.");
-		if (is_reverse) RETURN_SEMA_ERROR(method, "Methods with the same argument types cannot have reverse operators.");
-	}
-
+	
 	Decl *other = NULL;
 	if (operator >= OVERLOAD_TYPED_START)
 	{
@@ -2239,6 +2283,16 @@ INLINE bool sema_analyse_operator_method(SemaContext *context, Type *parent_type
 		case OVERLOAD_MINUS:
 		case OVERLOAD_EQUAL:
 		case OVERLOAD_NOT_EQUAL:
+		case OVERLOAD_PLUS_ASSIGN:
+		case OVERLOAD_MINUS_ASSIGN:
+		case OVERLOAD_MULTIPLY_ASSIGN:
+		case OVERLOAD_DIVIDE_ASSIGN:
+		case OVERLOAD_REMINDER_ASSIGN:
+		case OVERLOAD_AND_ASSIGN:
+		case OVERLOAD_OR_ASSIGN:
+		case OVERLOAD_XOR_ASSIGN:
+		case OVERLOAD_SHL_ASSIGN:
+		case OVERLOAD_SHR_ASSIGN:
 			return true;
 		default:
 			UNREACHABLE
@@ -2796,7 +2850,7 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 			[ATTRIBUTE_CALLCONV] = ATTR_FUNC | ATTR_INTERFACE_METHOD | ATTR_FNTYPE,
 			[ATTRIBUTE_COMPACT] = ATTR_STRUCT | ATTR_UNION,
 			[ATTRIBUTE_CONST] = ATTR_MACRO,
-			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE,
+			[ATTRIBUTE_DEPRECATED] = USER_DEFINED_TYPES | CALLABLE_TYPE | ATTR_CONST | ATTR_GLOBAL | ATTR_MEMBER | ATTR_BITSTRUCT_MEMBER | ATTR_INTERFACE | ATTR_ALIAS,
 			[ATTRIBUTE_DYNAMIC] = ATTR_FUNC,
 			[ATTRIBUTE_EXPORT] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES | ATTR_ALIAS,
 			[ATTRIBUTE_EXTERN] = ATTR_FUNC | ATTR_GLOBAL | ATTR_CONST | USER_DEFINED_TYPES,
@@ -2951,9 +3005,17 @@ static bool sema_analyse_attribute(SemaContext *context, ResolvedAttrData *attr_
 							decl->func_decl.overload_type = OVERLOAD_TYPE_LEFT;
 							break;
 						case ATTRIBUTE_OPERATOR_R:
+							if (!OVERLOAD_MAY_BE_REVERSE[expr->overload_expr])
+							{
+								RETURN_SEMA_ERROR(attr, "'%s' may not be used with @operator_r(), only @operator().", OVERLOAD_NAME[expr->overload_expr]);
+							}
 							decl->func_decl.overload_type = OVERLOAD_TYPE_RIGHT;
 							break;
 						case ATTRIBUTE_OPERATOR_S:
+							if (!OVERLOAD_MAY_BE_REVERSE[expr->overload_expr])
+							{
+								RETURN_SEMA_ERROR(attr, "'%s' may not be used with @operator_s(), only @operator().", OVERLOAD_NAME[expr->overload_expr]);
+							}
 							decl->func_decl.overload_type = OVERLOAD_TYPE_SYMMETRIC;
 							break;
 						default:

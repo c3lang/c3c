@@ -1,4 +1,19 @@
-module std::math::quaternion{Real};
+module std::math;
+
+// Predefined quaternion aliases.
+
+alias Quaternionf = Quaternion {float};
+alias Quaternion = Quaternion {double};
+alias QUATERNION_IDENTITY  @builtin = quaternion::IDENTITY {double};
+alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
+
+<*
+ The generic quaternion module, for float or double based quaternion definitions.
+
+ @require Real.kindof == FLOAT : "A quaternion must use a floating type"
+*>
+
+module std::math::quaternion {Real};
 import std::math::vector;
 union Quaternion
 {

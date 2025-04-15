@@ -67,6 +67,17 @@ struct Darwin_segment_command_64
 	uint    	flags;		/* flags */
 }
 
+struct Darwin_mach_timebase_info
+{
+	uint numer;
+	uint denom;
+}
+
+alias Darwin_mach_timebase_info_t = Darwin_mach_timebase_info;
+alias Darwin_mach_timebase_info_data_t = Darwin_mach_timebase_info;
+
+extern fn void mach_timebase_info(Darwin_mach_timebase_info_data_t* timebase);
+extern fn ulong mach_absolute_time();
 
 fn String? executable_path(Allocator allocator)
 {
@@ -155,3 +166,4 @@ fn BacktraceList? symbolize_backtrace(Allocator allocator, void*[] backtrace)
 	};
 	return list;
 }
+

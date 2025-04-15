@@ -1,18 +1,22 @@
+// Copyright (c) 2023-2025 C3 team. All rights reserved.
+// Use of self source code is governed by the MIT license
+// a copy of which can be found in the LICENSE_STDLIB file.
 <*
- @require SIZE > 0
+ @require SIZE > 0 : "The size of the bitset in bits must be at least 1"
 *>
-module std::collections::bitset{SIZE};
+module std::collections::bitset {SIZE};
 
-alias Type = uint;
-
-const BITS = Type.sizeof * 8;
+const BITS = uint.sizeof * 8;
 const SZ = (SIZE + BITS - 1) / BITS;
 
 struct BitSet
 {
-	Type[SZ] data;
+	uint[SZ] data;
 }
 
+<*
+ @return "The number of bits set"
+*>
 fn usz BitSet.cardinality(&self)
 {
 	usz n;
@@ -24,7 +28,11 @@ fn usz BitSet.cardinality(&self)
 }
 
 <*
- @require i < SIZE
+ Set a bit in the bitset.
+
+ @param i : "The index to set"
+
+ @require i < SIZE : "Index was out of range"
 *>
 fn void BitSet.set(&self, usz i)
 {
@@ -34,7 +42,86 @@ fn void BitSet.set(&self, usz i)
 }
 
 <*
- @require i < SIZE
+ Perform xor over all bits, mutating itself
+
+ @param set : "The bit set to xor with"
+ @return "The resulting bit set"
+*>
+macro BitSet BitSet.xor_self(&self, BitSet set) @operator(^=)
+{
+	foreach (i, &x : self.data) *x ^= set.data[i];
+	return *self;
+}
+
+<*
+ Perform xor over all bits, returning a new bit set.
+
+ @param set : "The bit set to xor with"
+ @return "The resulting bit set"
+*>
+fn BitSet BitSet.xor(&self, BitSet set) @operator(^)
+{
+	BitSet new_set @noinit;
+	foreach (i, x : self.data) new_set.data[i] = x ^ set.data[i];
+	return new_set;
+}
+
+<*
+ Perform or over all bits, returning a new bit set.
+
+ @param set : "The bit set to xor with"
+ @return "The resulting bit set"
+*>
+fn BitSet BitSet.or(&self, BitSet set) @operator(|)
+{
+	BitSet new_set @noinit;
+	foreach (i, x : self.data) new_set.data[i] = x | set.data[i];
+	return new_set;
+}
+
+<*
+ Perform or over all bits, mutating itself
+
+ @param set : "The bit set to xor with"
+ @return "The resulting bit set"
+*>
+macro BitSet BitSet.or_self(&self, BitSet set) @operator(|=)
+{
+	foreach (i, &x : self.data) *x |= set.data[i];
+	return *self;
+}
+
+<*
+ Perform & over all bits, returning a new bit set.
+
+ @param set : "The bit set to xor with"
+ @return "The resulting bit set"
+*>
+fn BitSet BitSet.and(&self, BitSet set) @operator(&)
+{
+	BitSet new_set @noinit;
+	foreach (i, x : self.data) new_set.data[i] = x & set.data[i];
+	return new_set;
+}
+
+<*
+ Perform & over all bits, mutating itself.
+
+ @param set : "The bit set to xor with"
+ @return "The resulting bit set"
+*>
+macro BitSet BitSet.and_self(&self, BitSet set) @operator(&=)
+{
+	foreach (i, &x : self.data) *x &= set.data[i];
+	return *self;
+}
+
+<*
+ Unset (clear) a bit in the bitset.
+
+ @param i : "The index to set"
+
+ @require i < SIZE : "Index was out of range"
 *>
 fn void BitSet.unset(&self, usz i)
 {
@@ -44,7 +131,11 @@ fn void BitSet.unset(&self, usz i)
 }
 
 <*
- @require i < SIZE
+ Get a particular bit in the bitset
+
+ @param i : "The index of the bit"
+
+ @require i < SIZE : "Index was out of range"
 *>
 fn bool BitSet.get(&self, usz i) @operator([]) @inline
 {
@@ -59,7 +150,12 @@ fn usz BitSet.len(&self) @operator(len) @inline
 }
 
 <*
- @require i < SIZE
+ Change a particular bit in the bitset
+
+ @param i : "The index of the bit"
+ @param value : "The value to set the bit to"
+
+ @require i < SIZE : "Index was out of range"
 *>
 fn void BitSet.set_bool(&self, usz i, bool value) @operator([]=) @inline
 {

@@ -1,0 +1,137 @@
+// #target: macos-x64
+module test;
+import std;
+
+struct Abc
+{
+	int x;
+}
+
+fn Abc Abc.add(self, Abc other) @operator(+) => { self.x + other.x };
+fn Abc Abc.sub_self(&self, Abc other) @operator(-) { self.x -= other.x; return *self; }
+
+fn Abc* get_ref(Abc* abc)
+{
+	return abc;
+}
+
+struct Container
+{
+	Abc y;
+}
+
+fn Abc Container.get(self, int i) @operator([]) => self.y;
+fn Abc Container.set(&self, int i, Abc c) @operator([]=) => self.y = c;
+
+fn int main()
+{
+	Abc a = { 3 };
+	Abc b = { 5 };
+
+	Abc[2] y;
+	y[0] += b;
+	assert(y[0].x == 5);
+	*get_ref(&a) += *get_ref(&b);
+	assert(a.x == 8);
+
+	List {Abc} l;
+	l.push({3});
+	assert(l[0].x == 3);
+	l[0] += b;
+	assert(l[0].x == 8);
+	l[0] -= b;
+	assert(l[0].x == 3);
+	Container c = { { 5 }};
+	c[0] += b;
+	assert(c.y.x == 10);
+	c[0] -= b;
+	assert(c.y.x == 5);
+    return 0;
+}
+
+/* #expect: test.ll
+
+define i32 @main() #0 {
+entry:
+  %a = alloca %Abc, align 4
+  %b = alloca %Abc, align 4
+  %y = alloca [2 x %Abc], align 4
+  %result = alloca %Abc, align 4
+  %result1 = alloca %Abc, align 4
+  %l = alloca %List, align 8
+  %literal = alloca %Abc, align 4
+  %result3 = alloca %Abc, align 4
+  %result4 = alloca %Abc, align 4
+  %c = alloca %Container, align 4
+  %result5 = alloca %Abc, align 4
+  %result6 = alloca %Abc, align 4
+  %result7 = alloca %Abc, align 4
+  %result9 = alloca %Abc, align 4
+  %result10 = alloca %Abc, align 4
+  %result11 = alloca %Abc, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %a, ptr align 4 @.__const, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %b, ptr align 4 @.__const.1, i32 4, i1 false)
+  store i32 0, ptr %y, align 4
+  %ptradd = getelementptr inbounds i8, ptr %y, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %0 = load i32, ptr %y, align 4
+  %1 = load i32, ptr %b, align 4
+  %2 = call i32 @test.Abc.add(i32 %0, i32 %1)
+  store i32 %2, ptr %result, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %y, ptr align 4 %result, i32 4, i1 false)
+  %3 = load i32, ptr %y, align 4
+  %eq = icmp eq i32 %3, 5
+  call void @llvm.assume(i1 %eq)
+  %4 = call ptr @test.get_ref(ptr %a)
+  %5 = call ptr @test.get_ref(ptr %b)
+  %6 = load i32, ptr %4, align 4
+  %7 = load i32, ptr %5, align 4
+  %8 = call i32 @test.Abc.add(i32 %6, i32 %7)
+  store i32 %8, ptr %result1, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %4, ptr align 4 %result1, i32 4, i1 false)
+  %9 = load i32, ptr %a, align 4
+  %eq2 = icmp eq i32 %9, 8
+  call void @llvm.assume(i1 %eq2)
+  call void @llvm.memset.p0.i64(ptr align 8 %l, i8 0, i64 40, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %literal, ptr align 4 @.__const.2, i32 4, i1 false)
+  %10 = load i32, ptr %literal, align 4
+  call void @"std_collections_list$test.Abc$.List.push"(ptr %l, i32 %10) #4
+  %11 = call ptr @"std_collections_list$test.Abc$.List.get_ref"(ptr %l, i64 0) #4
+  %12 = load i32, ptr %11, align 4
+  %13 = load i32, ptr %b, align 4
+  %14 = call i32 @test.Abc.add(i32 %12, i32 %13)
+  store i32 %14, ptr %result3, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %11, ptr align 4 %result3, i32 4, i1 false)
+  %15 = call ptr @"std_collections_list$test.Abc$.List.get_ref"(ptr %l, i64 0) #4
+  %16 = load i32, ptr %b, align 4
+  %17 = call i32 @test.Abc.sub_self(ptr %15, i32 %16)
+  store i32 %17, ptr %result4, align 4
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %15, ptr align 4 %result4, i32 4, i1 false)
+  call void @llvm.memcpy.p0.p0.i32(ptr align 4 %c, ptr align 4 @.__const.3, i32 4, i1 false)
+  %18 = load i32, ptr %c, align 4
+  %19 = call i32 @test.Container.get(i32 %18, i32 0)
+  store i32 %19, ptr %result5, align 4
+  %20 = load i32, ptr %result5, align 4
+  %21 = load i32, ptr %b, align 4
+  %22 = call i32 @test.Abc.add(i32 %20, i32 %21)
+  store i32 %22, ptr %result6, align 4
+  %23 = load i32, ptr %result6, align 4
+  %24 = call i32 @test.Container.set(ptr %c, i32 0, i32 %23)
+  store i32 %24, ptr %result7, align 4
+  %25 = load i32, ptr %c, align 4
+  %eq8 = icmp eq i32 %25, 10
+  call void @llvm.assume(i1 %eq8)
+  %26 = load i32, ptr %c, align 4
+  %27 = call i32 @test.Container.get(i32 %26, i32 0)
+  store i32 %27, ptr %result9, align 4
+  %28 = load i32, ptr %b, align 4
+  %29 = call i32 @test.Abc.sub_self(ptr %result9, i32 %28)
+  store i32 %29, ptr %result10, align 4
+  %30 = load i32, ptr %result10, align 4
+  %31 = call i32 @test.Container.set(ptr %c, i32 0, i32 %30)
+  store i32 %31, ptr %result11, align 4
+  %32 = load i32, ptr %c, align 4
+  %eq12 = icmp eq i32 %32, 5
+  call void @llvm.assume(i1 %eq12)
+  ret i32 0
+}

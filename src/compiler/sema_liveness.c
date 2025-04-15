@@ -264,6 +264,10 @@ RETRY:
 		case EXPR_NAMED_ARGUMENT:
 		case UNRESOLVED_EXPRS:
 			UNREACHABLE
+		case EXPR_TWO:
+			sema_trace_expr_liveness(expr->two_expr.first);
+			sema_trace_expr_liveness(expr->two_expr.last);
+			return;
 		case EXPR_DESIGNATOR:
 			sema_trace_expr_liveness(expr->designator_expr.value);
 			return;

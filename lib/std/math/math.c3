@@ -56,22 +56,6 @@ const DOUBLE_MAX_EXP = 1024;
 const DOUBLE_MIN_EXP = -1021;
 const DOUBLE_EPSILON = 2.22044604925031308085e-16;
 
-const QUAD_MANT_DIG = 113;
-
-/*
-Currently unsupported float128 constants
-const QUAD_MAX = 1.18973149535723176508575932662800702e+4932;
-const QUAD_MIN = 3.36210314311209350626267781732175260e-4932;
-const QUAD_DENORM_MIN = 6.47517511943802511092443895822764655e-4966;
-const QUAD_DIG = 33;
-const QUAD_DEC_DIGITS = 36;
-const QUAD_MAX_10_EXP = 4932;
-const QUAD_MIN_10_EXP = -4931;
-const QUAD_MAX_EXP = 16384;
-const QUAD_MIN_EXP = -16481;
-const QUAD_EPSILON = 1.92592994438723585305597794258492732e-34;
-*/
-
 enum RoundingMode : int
 {
 	TOWARD_ZERO,
@@ -81,35 +65,6 @@ enum RoundingMode : int
 }
 
 faultdef OVERFLOW, MATRIX_INVERSE_DOESNT_EXIST;
-
-alias Complexf = Complex {float};
-alias Complex = Complex {double};
-alias COMPLEX_IDENTITY  @builtin = complex::IDENTITY {double};
-alias COMPLEXF_IDENTITY @builtin = complex::IDENTITY {float};
-
-alias Quaternionf = Quaternion {float};
-alias Quaternion = Quaternion {double};
-alias QUATERNION_IDENTITY  @builtin = quaternion::IDENTITY {double};
-alias QUATERNIONF_IDENTITY @builtin = quaternion::IDENTITY {float};
-
-alias Matrix2f = Matrix2x2 {float};
-alias Matrix2  = Matrix2x2 {double};
-alias Matrix3f = Matrix3x3 {float};
-alias Matrix3  = Matrix3x3 {double};
-alias Matrix4f = Matrix4x4 {float};
-alias Matrix4  = Matrix4x4 {double};
-alias matrix4_ortho  @builtin = matrix::ortho {double};
-alias matrix4f_ortho @builtin = matrix::ortho {float};
-alias matrix4_perspective  @builtin = matrix::perspective {double};
-alias matrix4f_perspective @builtin = matrix::perspective {float};
-
-alias MATRIX2_IDENTITY  @builtin = matrix::IDENTITY2 {double};
-alias MATRIX2F_IDENTITY @builtin = matrix::IDENTITY2 {float};
-alias MATRIX3_IDENTITY  @builtin = matrix::IDENTITY3 {double};
-alias MATRIX3F_IDENTITY @builtin = matrix::IDENTITY3 {float};
-alias MATRIX4_IDENTITY  @builtin = matrix::IDENTITY4 {double};
-alias MATRIX4F_IDENTITY @builtin = matrix::IDENTITY4 {float};
-
 
 <*
  @require types::is_numerical($typeof(x)) : `The input must be a numerical value or numerical vector`
@@ -1054,10 +1009,16 @@ extern fn double _atan(double x) @extern("atan");
 extern fn float _atanf(float x) @extern("atanf");
 extern fn double _atan2(double, double) @extern("atan2");
 extern fn float _atan2f(float, float) @extern("atan2f");
+
 extern fn void _sincos(double, double*, double*) @extern("__sincos") @link("m") @if(env::DARWIN);
 extern fn void _sincosf(float, float*, float*) @extern("__sincosf") @link("m") @if(env::DARWIN);
-extern fn void _sincos(double, double*, double*) @extern("sincos") @link("m") @if(!env::DARWIN);
-extern fn void _sincosf(float, float*, float*) @extern("sincosf") @link("m") @if(!env::DARWIN);
+
+extern fn void _sincos(double, double*, double*) @extern("sincos") @link("m") @if(!env::DARWIN && !env::WIN32);
+extern fn void _sincosf(float, float*, float*) @extern("sincosf") @link("m") @if(!env::DARWIN && !env::WIN32);
+
+fn void _sincos(double a, double* s, double* c) @extern("sincos") @if(env::WIN32) { *s = sin(a); *c = cos(a); }
+fn void _sincosf(float a, float* s, float* c) @extern("sincosf") @if(env::WIN32)  { *s = sin(a); *c = cos(a); }
+
 extern fn double _tan(double x) @extern("tan");
 extern fn float _tanf(float x) @extern("tanf");
 extern fn double _scalbn(double x, int n) @extern("scalbn");
