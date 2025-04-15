@@ -2,12 +2,32 @@ module std::core::mem::allocator;
 import std::io, std::math;
 import std::core::sanitizer::asan;
 
-
-struct TempAllocatorChunk @local
-{
-	usz size;
-	char[*] data;
-}
+// This implements the temp allocator.
+// The temp allocator is a specialized allocator only intended for use where
+// the allocation is strictly stack-like.
+//
+// It is *not* thread-safe: you cannot safely use the
+// temp allocator on a thread and pass it to another thread.
+//
+// Fundamentally the temp allocator is a thread local arena allocator
+// but the stack-like behaviour puts additional constraints to it.
+//
+// It works great for allocating temporary data in a scope then dropping
+// that data, however you should not be storing temporary data in globals
+// or locals that have a lifetime outside of the current temp allocator scope.
+//
+// Furthermore, note that the temp allocator is bounded, with additional
+// allocations on top of that causing heap allocations. Such heap allocations
+// will be cleaned up but is undesirable from a performance standpoint.
+//
+// If you want customizable behaviour similar to the temp allocator, consider
+// the ArenaAllocator, BackedArenaAllocator or the DynamicArenaAllocator.
+//
+// Experimenting with the temp allocator to make it work outside of its
+// standard usage patterns will invariably end in tears and frustrated
+// hair pulling.
+//
+// Use one of the ArenaAllocators instead.
 
 struct TempAllocator (Allocator)
 {
@@ -21,8 +41,13 @@ struct TempAllocator (Allocator)
 	char[*] data;
 }
 
-const usz PAGE_IS_ALIGNED @private = (usz)isz.max + 1u;
+struct TempAllocatorChunk @local
+{
+	usz size;
+	char[*] data;
+}
 
+const usz PAGE_IS_ALIGNED @private = (usz)isz.max + 1u;
 
 struct TempAllocatorPage
 {
