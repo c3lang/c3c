@@ -1,4 +1,4 @@
-// Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
 
@@ -18,6 +18,10 @@ alias AllocMap = HashMap { uptr, Allocation };
 // A simple tracking allocator.
 // It tracks allocations using a hash map but
 // is not compatible with allocators that uses mark()
+//
+// It is also embarassingly single-threaded, so
+// do not use it to track allocations that cross threads.
+
 struct TrackingAllocator (Allocator)
 {
 	Allocator inner_allocator;
