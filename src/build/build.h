@@ -25,6 +25,12 @@ typedef enum
 
 typedef enum
 {
+	VISIBILITY_DEFAULT = 0,
+	VISIBILITY_HIDDEN = 1,
+} DefaultVisibility;
+
+typedef enum
+{
 	COMMAND_MISSING = 0,
 	COMMAND_COMPILE,
 	COMMAND_COMPILE_ONLY,
@@ -561,6 +567,7 @@ typedef struct BuildOptions_
 	const char *obj_out;
 	const char *script_dir;
 	RelocModel reloc_model;
+	DefaultVisibility default_visibility;
 	X86VectorCapability x86_vector_capability;
 	X86CpuSet x86_cpu_set;
 	Win64Simd win_64_simd;
@@ -753,6 +760,7 @@ typedef struct
 		const char *ndk_path;
 		int api_version;
 	} android;
+	DefaultVisibility default_visibility;
 } BuildTarget;
 
 static const char *x86_cpu_set[8] = {

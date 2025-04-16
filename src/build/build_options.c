@@ -126,6 +126,7 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
+		print_opt("--visibility=<default|hidden>", "Default symbol visibility.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
@@ -853,6 +854,11 @@ static void parse_option(BuildOptions *options)
 			if ((argopt = match_argopt("use-stdlib")))
 			{
 				options->use_stdlib = parse_opt_select(UseStdlib, argopt, on_off);
+				return;
+			}
+			if ((argopt = match_argopt("visibility")))
+			{
+				options->default_visibility = parse_opt_select(DefaultVisibility, argopt, visibility);
 				return;
 			}
 			if ((argopt = match_argopt("x86vec")))
