@@ -2,6 +2,25 @@ module std::core::array;
 import std::core::array::slice;
 
 <*
+ Returns true if the array contains at least one element, else false
+ 
+ @param [in] array
+ @param [in] element
+ @require @typekind(array) == SLICE || @typekind(array) == ARRAY
+ @require @typeis(array[0], $typeof(element)) : "array and element must have the same type"
+*>
+macro bool contains(array, element)
+{
+	foreach (&item : array)
+	{
+		if (*item == element) return true;
+	}
+	return false;	
+}
+
+<*
+ Return the first index of element found in the array, searching from the start.
+ 
  @param [in] array
  @param [in] element
  @return "the first index of the element"
@@ -39,6 +58,8 @@ macro slice2d(array_ptr, x = 0, xlen = 0, y = 0, ylen = 0)
 
 
 <*
+ Return the first index of element found in the array, searching in reverse from the end.
+ 
  @param [in] array
  @param [in] element
  @return "the last index of the element"

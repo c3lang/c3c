@@ -1,5 +1,12 @@
 module arraytests @test;
 
+fn void contains()
+{
+	int[3] a = { 1, 2, 3 };
+	assert(array::contains(a, 2) == true);
+	assert(array::contains(a, 15) == false);
+}
+
 fn void find()
 {
 	int[3] a = { 1, 2, 3 };

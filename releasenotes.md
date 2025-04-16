@@ -33,6 +33,7 @@
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.
 - Prefer `math::I` and `math::I_F` for `math::IMAGINARY` and `math::IMAGINARYF` the latter is deprecated.
+- Add `array::contains` to check for a value in an array or slice.
 
 ## 0.7.0 Change list
 
