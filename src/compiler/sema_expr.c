@@ -5362,13 +5362,13 @@ CHECK_DEEPER:
 		if (flat_type->type_kind == TYPE_SLICE)
 		{
 			// Handle literal "foo".len which is now a slice.
-			sema_expr_flatten_const_ident(parent);
-			if (expr_is_const_string(parent))
+			sema_expr_flatten_const_ident(current_parent);
+			if (expr_is_const_string(current_parent))
 			{
-				expr_rewrite_const_int(expr, type_isz, parent->const_expr.bytes.len);
+				expr_rewrite_const_int(expr, type_isz, current_parent->const_expr.bytes.len);
 				return true;
 			}
-			expr_rewrite_slice_len(expr, parent, type_usz);
+			expr_rewrite_slice_len(expr, current_parent, type_usz);
 			return true;
 		}
 		if (flat_type->type_kind == TYPE_ARRAY || flat_type->type_kind == TYPE_VECTOR)
@@ -5385,7 +5385,7 @@ CHECK_DEEPER:
 	if (flat_type->type_kind == TYPE_TYPEID)
 	{
 		bool was_error = false;
-		if (sema_expr_rewrite_to_typeid_property(context, expr, parent, kw, &was_error)) return !was_error;
+		if (sema_expr_rewrite_to_typeid_property(context, expr, current_parent, kw, &was_error)) return !was_error;
 	}
 	if (flat_type->type_kind == TYPE_VECTOR)
 	{
@@ -5486,7 +5486,7 @@ CHECK_DEEPER:
 		if (!sema_analyse_decl(context, decl)) return false;
 		Decl *ref = current_parent->const_expr.enum_val;
 		if (!sema_analyse_decl(context, ref)) return false;
-		ASSERT_SPAN(expr, parent->const_expr.const_kind == CONST_ENUM);
+		ASSERT_SPAN(expr, current_parent->const_expr.const_kind == CONST_ENUM);
 		Expr *copy_init = copy_expr_single(ref->enum_constant.args[member->var.index]);
 		expr_replace(expr, copy_init);
 		ASSERT_SPAN(expr, copy_init->resolve_status == RESOLVE_DONE);
