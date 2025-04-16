@@ -613,6 +613,18 @@ static inline Ast* parse_if_stmt(ParseContext *c)
 	CONSUME_OR_RET(TOKEN_LPAREN, poisoned_ast);
 	ASSIGN_EXPRID_OR_RET(if_ast->if_stmt.cond, parse_cond(c), poisoned_ast);
 	unsigned row = c->span.row;
+	if (!tok_is(c, TOKEN_RPAREN))
+	{
+		switch (c->tok)
+		{
+			case TOKEN_IDENT:
+			case TOKEN_CONST:
+				PRINT_ERROR_HERE("Finding an identifier here was surprising - did you forget '||' / '&&' or the ending ')'?");
+				return poisoned_ast;
+			default:
+				break;
+		}
+	}
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_ast);
 
 	unsigned next_row = c->span.row;
