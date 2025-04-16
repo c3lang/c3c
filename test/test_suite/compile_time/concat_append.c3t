@@ -31,6 +31,7 @@ fn int main()
 @.str.5 = private unnamed_addr constant [10 x i8] c"hello... \00", align 1
 @.str.6 = private unnamed_addr constant [8 x i8] c" there!\00", align 1
 @.__const.7 = private unnamed_addr constant [2 x %"char[]"] [%"char[]" { ptr @.str.5, i64 9 }, %"char[]" { ptr @.str.6, i64 7 }], align 16
+@.emptystr = internal constant [1 x i8] zeroinitializer, align 1
 @.str.8 = private unnamed_addr constant [4 x i8] c"bye\00", align 1
 
 define i32 @main() #0 {
@@ -54,7 +55,7 @@ entry:
   %1 = insertvalue %"int[]" %0, i64 3, 1
   store %"int[]" %1, ptr %d, align 8
   call void @llvm.memcpy.p0.p0.i32(ptr align 16 %e, ptr align 16 @.__const.7, i32 32, i1 false)
-  store %"char[]" zeroinitializer, ptr %f, align 8
+  store %"char[]" { ptr @.emptystr, i64 0 }, ptr %f, align 8
   store %"char[]" { ptr @.str.8, i64 3 }, ptr %g, align 8
   store i32 1000299617, ptr %h, align 4
   ret i32 0

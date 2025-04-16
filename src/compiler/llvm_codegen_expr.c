@@ -4701,7 +4701,8 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			ArraySize len = expr->const_expr.bytes.len;
 			if (len == 0 && str_type->type_kind == TYPE_SLICE)
 			{
-				llvm_value_set(be_value, llvm_get_zero(c, expr->type), expr->type);
+				LLVMValueRef data[2] = { llvm_emit_zstring_named(c, "", ".emptystr"), llvm_get_zero(c, type_usz) };
+				llvm_value_set(be_value, llvm_get_struct_named(c->chars_type, data, 2), expr->type);
 				return;
 			}
 			ArraySize size = expr->const_expr.bytes.len;

@@ -86,7 +86,7 @@ loop.body:                                        ; preds = %loop.cond
 
 loop.exit:                                        ; preds = %loop.cond
   %17 = call ptr @std.io.stdout()
-  %18 = call i64 @std.io.File.write(ptr %retparam5, ptr %17, ptr null, i64 0)
+  %18 = call i64 @std.io.File.write(ptr %retparam5, ptr %17, ptr @.emptystr, i64 0)
   %not_err = icmp eq i64 %18, 0
   %19 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
   br i1 %19, label %after_check, label %assign_optional
@@ -166,7 +166,7 @@ loop.body21:                                      ; preds = %loop.cond19
 
 loop.exit29:                                      ; preds = %loop.cond19
   %34 = call ptr @std.io.stdout()
-  %35 = call i64 @std.io.File.write(ptr %retparam33, ptr %34, ptr null, i64 0)
+  %35 = call i64 @std.io.File.write(ptr %retparam33, ptr %34, ptr @.emptystr, i64 0)
   %not_err34 = icmp eq i64 %35, 0
   %36 = call i1 @llvm.expect.i1(i1 %not_err34, i1 true)
   br i1 %36, label %after_check36, label %assign_optional35
@@ -276,7 +276,7 @@ loop.body67:                                      ; preds = %loop.cond65
 
 loop.exit75:                                      ; preds = %loop.cond65
   %73 = call ptr @std.io.stdout()
-  %74 = call i64 @std.io.File.write(ptr %retparam79, ptr %73, ptr null, i64 0)
+  %74 = call i64 @std.io.File.write(ptr %retparam79, ptr %73, ptr @.emptystr, i64 0)
   %not_err80 = icmp eq i64 %74, 0
   %75 = call i1 @llvm.expect.i1(i1 %not_err80, i1 true)
   br i1 %75, label %after_check82, label %assign_optional81
