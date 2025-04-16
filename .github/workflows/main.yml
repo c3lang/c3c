@@ -10,7 +10,7 @@ env:
   LLVM_RELEASE_VERSION_WINDOWS: 18
   LLVM_RELEASE_VERSION_MAC: 17
   LLVM_RELEASE_VERSION_LINUX: 17
-  LLVM_RELEASE_VERSION_UBUNTU20: 17
+  LLVM_RELEASE_VERSION_UBUNTU22: 17
   LLVM_DEV_VERSION: 21
 jobs:
 
@@ -401,6 +401,129 @@ jobs:
           name: c3-linux-${{matrix.build_type}}
           path: c3-linux-${{matrix.build_type}}.tar.gz
 
+  build-linux-ubuntu22:
+    runs-on: ubuntu-22.04
+    strategy:
+      # Don't abort runners if a single one fails
+      fail-fast: false
+      matrix:
+        build_type: [Release, Debug]
+        llvm_version: [17, 18, 19, 20]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install common deps
+        run: |
+          sudo apt-get install zlib1g zlib1g-dev python3 ninja-build curl
+
+      - name: Install Clang ${{matrix.llvm_version}}
+        run: |
+          wget -O - https://apt.llvm.org/llvm-snapshot.gpg.key | sudo apt-key add -
+          if [[ "${{matrix.llvm_version}}" < "${{env.LLVM_DEV_VERSION}}" ]]; then
+            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal-${{matrix.llvm_version}} main"
+          else
+            sudo add-apt-repository "deb http://apt.llvm.org/focal/ llvm-toolchain-focal main"
+          fi
+          sudo apt-get update
+          sudo apt-get install -y clang-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}} llvm-${{matrix.llvm_version}}-dev lld-${{matrix.llvm_version}} liblld-${{matrix.llvm_version}}-dev
+          sudo apt-get install -y libmlir-${{matrix.llvm_version}} libmlir-${{matrix.llvm_version}}-dev mlir-${{matrix.llvm_version}}-tools
+          sudo apt-get install -y libpolly-${{matrix.llvm_version}}-dev
+      - name: CMake Old
+        if: matrix.llvm_version < 18 || matrix.llvm_version == env.LLVM_DEV_VERSION
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}
+          cmake --build build
+      - name: CMake
+        if: matrix.llvm_version >= 18 && matrix.llvm_version != env.LLVM_DEV_VERSION
+        run: |
+          cmake -B build \
+                -G Ninja \
+                -DCMAKE_BUILD_TYPE=${{matrix.build_type}} \
+                -DCMAKE_C_COMPILER=clang-${{matrix.llvm_version}} \
+                -DCMAKE_CXX_COMPILER=clang++-${{matrix.llvm_version}} \
+                -DCMAKE_LINKER=lld-link-${{matrix.llvm_version}} \
+                -DCMAKE_OBJCOPY=llvm-objcopy-${{matrix.llvm_version}} \
+                -DCMAKE_STRIP=llvm-strip-${{matrix.llvm_version}} \
+                -DCMAKE_DLLTOOL=llvm-dlltool-${{matrix.llvm_version}} \
+                -DC3_LLVM_VERSION=${{matrix.llvm_version}}.1
+          cmake --build build
+      - name: Compile and run some examples
+        run: |
+          cd resources
+          ../build/c3c compile examples/gameoflife.c3
+          ../build/c3c compile-only examples/levenshtein.c3
+          ../build/c3c compile-only examples/map.c3
+          ../build/c3c compile examples/mandelbrot.c3
+          ../build/c3c compile examples/plus_minus.c3
+          ../build/c3c compile examples/spectralnorm.c3
+          ../build/c3c compile examples/swap.c3
+          ../build/c3c compile examples/contextfree/guess_number.c3
+          ../build/c3c compile-run examples/hash.c3
+          ../build/c3c compile-run examples/nbodies.c3
+          ../build/c3c compile-run examples/contextfree/boolerr.c3
+          ../build/c3c compile-run examples/contextfree/dynscope.c3
+          ../build/c3c compile-run examples/contextfree/multi.c3
+          ../build/c3c compile-run examples/contextfree/cleanup.c3
+          ../build/c3c compile-run examples/hello_world_many.c3
+          ../build/c3c compile-run examples/time.c3
+          ../build/c3c compile-run examples/fannkuch-redux.c3
+          ../build/c3c compile-run examples/load_world.c3
+          ../build/c3c compile-run examples/base64.c3
+          ../build/c3c compile-run examples/binarydigits.c3
+          ../build/c3c compile-run examples/brainfk.c3
+          ../build/c3c compile-run examples/factorial_macro.c3
+          ../build/c3c compile-run examples/fasta.c3
+          ../build/c3c compile-run examples/process.c3
+          ../build/c3c compile-run --linker=builtin linux_stack.c3
+          ../build/c3c compile-run linux_stack.c3
+          ../build/c3c compile-run examples/args.c3 -- foo -bar "baz baz"
+
+      - name: Compile run unit tests
+        run: |
+          cd test
+          ../build/c3c compile-test unit --sanitize=address
+
+      - name: Build testproject
+        run: |
+          cd resources/testproject
+          ../../build/c3c run -vvv --trust=full
+
+      - name: Build testproject direct linker
+        run: |
+          cd resources/testproject
+          ../../build/c3c run -vvv --linker=builtin --trust=full
+
+      - name: run compiler tests
+        run: |
+          cd test
+          ../build/c3c compile-run -O1 src/test_suite_runner.c3 -- ../build/c3c test_suite/
+
+      - name: bundle_output
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU22
+        run: |
+          mkdir c3
+          cp -r lib c3
+          cp README.md c3
+          cp releasenotes.md c3          
+          cp msvc_build_libraries.py c3
+          cp build/c3c c3
+          tar czf c3-ubuntu-22-${{matrix.build_type}}.tar.gz c3
+
+      - name: upload artifacts
+        if: matrix.llvm_version == env.LLVM_RELEASE_VERSION_UBUNTU22
+        uses: actions/upload-artifact@v4
+        with:
+          name: c3-ubuntu-22-${{matrix.build_type}}
+          path: c3-ubuntu-22-${{matrix.build_type}}.tar.gz
+
   build-with-docker:
     runs-on: ubuntu-22.04
     strategy:
@@ -626,7 +749,7 @@ jobs:
 
   release:
     runs-on: ubuntu-22.04
-    needs: [build-msvc, build-linux, build-mac]
+    needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu22]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -646,6 +769,8 @@ jobs:
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
       - run: mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-Debug/c3-linux-debug.tar.gz
+      - run: mv c3-ubuntu-22-Release/c3-ubuntu-22-Release.tar.gz c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
+      - run: mv c3-ubuntu-22-Debug/c3-ubuntu-22-Debug.tar.gz c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
       - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
       - run: gh release delete latest-prerelease --cleanup-tag -y || true
@@ -665,5 +790,7 @@ jobs:
             c3-windows-debug.zip
             c3-linux-Release/c3-linux.tar.gz
             c3-linux-Debug/c3-linux-debug.tar.gz
+            c3-ubuntu-22-Release/c3-ubuntu-22.tar.gz
+            c3-ubuntu-22-Debug/c3-ubuntu-22-debug.tar.gz
             c3-macos-Release/c3-macos.zip
             c3-macos-Debug/c3-macos-debug.zip
