@@ -626,7 +626,7 @@ jobs:
 
   release:
     runs-on: ubuntu-22.04
-    needs: [build-msvc, build-linux, build-mac, build-linux-ubuntu20]
+    needs: [build-msvc, build-linux, build-mac]
     if: github.ref == 'refs/heads/master'
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -646,8 +646,6 @@ jobs:
       - run: zip -r c3-windows-debug.zip c3-windows-Debug
       - run: mv c3-linux-Release/c3-linux-Release.tar.gz c3-linux-Release/c3-linux.tar.gz
       - run: mv c3-linux-Debug/c3-linux-Debug.tar.gz c3-linux-Debug/c3-linux-debug.tar.gz
-      - run: mv c3-ubuntu-20-Release/c3-ubuntu-20-Release.tar.gz c3-ubuntu-20-Release/c3-ubuntu-20.tar.gz
-      - run: mv c3-ubuntu-20-Debug/c3-ubuntu-20-Debug.tar.gz c3-ubuntu-20-Debug/c3-ubuntu-20-debug.tar.gz
       - run: mv c3-macos-Release/c3-macos-Release.zip c3-macos-Release/c3-macos.zip
       - run: mv c3-macos-Debug/c3-macos-Debug.zip c3-macos-Debug/c3-macos-debug.zip
       - run: gh release delete latest-prerelease --cleanup-tag -y || true
@@ -667,7 +665,5 @@ jobs:
             c3-windows-debug.zip
             c3-linux-Release/c3-linux.tar.gz
             c3-linux-Debug/c3-linux-debug.tar.gz
-            c3-ubuntu-20-Release/c3-ubuntu-20.tar.gz
-            c3-ubuntu-20-Debug/c3-ubuntu-20-debug.tar.gz
             c3-macos-Release/c3-macos.zip
             c3-macos-Debug/c3-macos-debug.zip
