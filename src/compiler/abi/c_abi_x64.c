@@ -491,7 +491,7 @@ bool x64_contains_float_at_offset(Type *type, unsigned offset)
 static Type *x64_get_fp_type_at_offset(Type *type, unsigned ir_offset)
 {
 	if (!ir_offset && type_is_float(type)) return type;
-	if (type->type_kind == TYPE_STRUCT)
+	if (type->type_kind == TYPE_STRUCT || type->type_kind == TYPE_UNION)
 	{
 		Decl *element = x64_get_member_at_offset(type->decl, ir_offset);
 		return x64_get_fp_type_at_offset(element->type, ir_offset - element->offset);

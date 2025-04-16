@@ -19,6 +19,7 @@
 - Incorrect rounding at compile time going from double to int.
 - Regression with invalid setup of the WASM temp allocator.
 - Correctly detect multiple overloads of the same type.
+- ABI bug on x64 Linux / MacOS when passing a union containing a struct of 3 floats. #2087 
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.
