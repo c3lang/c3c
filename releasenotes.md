@@ -26,6 +26,7 @@
 - `@if` now does implicit conversion to bool like `$if`. #2086
 - Fix broken enum inline -> bool conversions #2094.
 - `@if` was ignored on attrdef, regression 0.7 #2093.
+- `@ensure` was not included when the function doesn't return a value #2098.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

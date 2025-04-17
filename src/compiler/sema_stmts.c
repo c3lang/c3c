@@ -651,6 +651,8 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 		if (!sema_analyse_expr_rhs(context, expected_rtype, return_expr, type_is_optional(expected_rtype), NULL, false)) return false;
 		if (!sema_check_not_stack_variable_escape(context, return_expr)) return false;
 		if (!sema_check_return_matches_opt_returns(context, return_expr)) return false;
+		// Process any ensures.
+		sema_inline_return_defers(context, statement, context->active_scope.defer_last, 0);
 	}
 	else
 	{
@@ -660,11 +662,8 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 			return false;
 		}
 		statement->return_stmt.cleanup = context_get_defers(context, context->active_scope.defer_last, 0, true);
-		return true;
 	}
 
-	// Process any ensures.
-	sema_inline_return_defers(context, statement, context->active_scope.defer_last, 0);
 	if (context->call_env.ensures)
 	{
 		// Never generate an expression.
@@ -700,7 +699,7 @@ static inline bool sema_analyse_return_stmt(SemaContext *context, Ast *statement
 	}
 SKIP_ENSURE:;
 
-	ASSERT(type_no_optional(statement->return_stmt.expr->type)->canonical == type_no_optional(expected_rtype)->canonical);
+	ASSERT(!return_expr || type_no_optional(statement->return_stmt.expr->type)->canonical == type_no_optional(expected_rtype)->canonical);
 	return true;
 }
 
@@ -1777,8 +1776,9 @@ static inline bool sema_analyse_if_stmt(SemaContext *context, Ast *statement)
 	}
 	AstId else_id = statement->if_stmt.else_body;
 	Ast *else_body = else_id ? astptr(else_id) : NULL;
+	CondResult result = COND_MISSING;
 	SCOPE_OUTER_START
-		CondResult result = COND_MISSING;
+
 		success = sema_analyse_cond(context, cond, COND_TYPE_UNWRAP_BOOL, &result);
 
 		if (success && !ast_ok(then))
@@ -1841,6 +1841,14 @@ END:
 		sema_unwrappable_from_catch_in_else(context, cond);
 	}
 	if (then_jump && else_jump && !statement->flow.has_break)
+	{
+		context->active_scope.jump_end = true;
+	}
+	else if (then_jump && result == COND_TRUE)
+	{
+		context->active_scope.jump_end = true;
+	}
+	else if (else_jump && result == COND_FALSE)
 	{
 		context->active_scope.jump_end = true;
 	}
@@ -3179,12 +3187,31 @@ bool sema_analyse_function_body(SemaContext *context, Decl *func)
 		bool is_naked = func->func_decl.attr_naked;
 		if (!is_naked) sema_append_contract_asserts(assert_first, body);
 		Type *canonical_rtype = type_no_optional(prototype->rtype)->canonical;
+		if (has_ensures && type_is_void(canonical_rtype))
+		{
+			AstId* append_pos = &body->compound_stmt.first_stmt;
+			if (*append_pos)
+			{
+				Ast *last = ast_last(astptr(*append_pos));
+				if (last->ast_kind == AST_RETURN_STMT) goto NEXT;
+				append_pos = &last->next;
+			}
+			Ast *ret = ast_calloc();
+			ret->ast_kind = AST_RETURN_STMT;
+			ret->span = body->span;
+			*append_pos = astid(ret);
+		}
+NEXT:
 		if (!sema_analyse_compound_statement_no_scope(context, body)) return false;
 		ASSERT_SPAN(func,context->active_scope.depth == 1);
-		if (!context->active_scope.jump_end && canonical_rtype != type_void)
+		if (!context->active_scope.jump_end)
 		{
-			RETURN_SEMA_ERROR(func, "Missing return statement at the end of the function.");
+			if (canonical_rtype != type_void)
+			{
+				RETURN_SEMA_ERROR(func, "Missing return statement at the end of the function.");
+			}
 		}
+
 	SCOPE_END;
 	if (lambda_params)
 	{
