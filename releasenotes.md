@@ -25,6 +25,7 @@
 - Bug with slice acces as inline struct member #2088.
 - `@if` now does implicit conversion to bool like `$if`. #2086
 - Fix broken enum inline -> bool conversions #2094.
+- `@if` was ignored on attrdef, regression 0.7 #2093.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.
