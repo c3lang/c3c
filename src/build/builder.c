@@ -414,6 +414,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	OVERRIDE_IF_SET(linuxpaths.crtbegin);
 	OVERRIDE_IF_SET(android.ndk_path);
 	OVERRIDE_IF_SET(android.api_version);
+	OVERRIDE_IF_SET(default_visibility);
 
 	if (options->silence_deprecation || options->verbosity_level < 0) target->silence_deprecation = options->silence_deprecation || options->verbosity_level < 0;
 	target->print_linking = options->print_linking || options->verbosity_level > 1;

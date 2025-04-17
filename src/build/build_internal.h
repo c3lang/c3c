@@ -107,6 +107,11 @@ static const char *backends[3] = {
 		[BACKEND_C] = "c",
 };
 
+static const char *visibility[2] = {
+	[VISIBILITY_DEFAULT] = "default",
+	[VISIBILITY_HIDDEN] = "hidden",
+};
+
 static const char *validation_levels[3] = {
 	[VALIDATION_LENIENT] = "lenient",
 	[VALIDATION_STRICT] = "strict",

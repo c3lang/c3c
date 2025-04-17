@@ -472,7 +472,7 @@ void llvm_set_global_tls(Decl *decl)
 void llvm_set_weak(GenContext *c, LLVMValueRef global)
 {
 	LLVMSetLinkage(global, compiler.platform.os == OS_TYPE_WIN32 ? LLVMWeakODRLinkage : LLVMWeakAnyLinkage);
-	LLVMSetVisibility(global, LLVMDefaultVisibility);
+	LLVMSetVisibility(global, compiler.build.default_visibility == VISIBILITY_DEFAULT ? LLVMDefaultVisibility : LLVMHiddenVisibility);
 	llvm_set_comdat(c, global);
 }
 
@@ -511,7 +511,7 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 			if (opt_ref) llvm_set_weak(c, opt_ref);
 			return;
 		}
-		LLVMSetVisibility(ref, LLVMDefaultVisibility);
+		LLVMSetVisibility(ref, decl->is_export ? LLVMDefaultVisibility : LLVMHiddenVisibility);
 		if (opt_ref) LLVMSetVisibility(opt_ref, LLVMDefaultVisibility);
 		return;
 	}
@@ -523,13 +523,13 @@ void llvm_set_decl_linkage(GenContext *c, Decl *decl)
 void llvm_set_internal_linkage(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMInternalLinkage);
-	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
+	LLVMSetVisibility(alloc, compiler.build.default_visibility == VISIBILITY_DEFAULT ? LLVMDefaultVisibility : LLVMHiddenVisibility);
 }
 
 void llvm_set_private_declaration(LLVMValueRef alloc)
 {
 	LLVMSetLinkage(alloc, LLVMPrivateLinkage);
-	LLVMSetVisibility(alloc, LLVMDefaultVisibility);
+	LLVMSetVisibility(alloc, compiler.build.default_visibility == VISIBILITY_DEFAULT ? LLVMDefaultVisibility : LLVMHiddenVisibility);
 	LLVMSetUnnamedAddress(alloc, LLVMGlobalUnnamedAddr);
 }
 
@@ -924,7 +924,7 @@ void llvm_set_comdat(GenContext *c, LLVMValueRef global)
 
 void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector)
 {
-	LLVMSetVisibility(selector, LLVMDefaultVisibility);
+	LLVMSetVisibility(selector, compiler.build.default_visibility == VISIBILITY_DEFAULT ? LLVMDefaultVisibility : LLVMHiddenVisibility);
 	LLVMSetLinkage(selector, LLVMLinkOnceODRLinkage);
 	llvm_set_comdat(c, selector);
 }
@@ -932,7 +932,7 @@ void llvm_set_selector_linkage(GenContext *c, LLVMValueRef selector)
 void llvm_set_linkonce(GenContext *c, LLVMValueRef global)
 {
 	LLVMSetLinkage(global, LLVMLinkOnceAnyLinkage);
-	LLVMSetVisibility(global, LLVMDefaultVisibility);
+	LLVMSetVisibility(global, compiler.build.default_visibility == VISIBILITY_DEFAULT ? LLVMDefaultVisibility : LLVMHiddenVisibility);
 	llvm_set_comdat(c, global);
 }
 
