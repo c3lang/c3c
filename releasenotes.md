@@ -14,6 +14,7 @@
 - Refactored stdlib file organization.
 - Allow `@if` on locals.
 - String str = "" is now guaranteed to be null terminated. #2083
+- Improved error messages on `Foo { 3, abc }` #2099.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.

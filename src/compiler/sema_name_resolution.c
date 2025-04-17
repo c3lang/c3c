@@ -1040,6 +1040,17 @@ bool unit_resolve_parameterized_symbol(SemaContext *context, NameResolve *name_r
 	if (!name_resolve->found || name_resolve->ambiguous_other_decl)
 	{
 		if (name_resolve->suppress_error) return name_resolve->found = NULL, false;
+		if (!name_resolve->ambiguous_other_decl)
+		{
+			BoolErr res = sema_symbol_is_defined_in_scope(context, name_resolve->symbol);
+			if (res == BOOL_TRUE)
+			{
+				sema_error_at(context, name_resolve->span, "'%s' is not a generic type. Did you want an initializer "
+											   "but forgot () around the type? That is, you typed '%s { ... }' but intended '(%s) { ... }'?",
+											   name_resolve->symbol, name_resolve->symbol, name_resolve->symbol);
+				return false;
+			}
+		}
 		sema_report_error_on_decl(context, name_resolve);
 		return false;
 	}
