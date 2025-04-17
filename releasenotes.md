@@ -24,6 +24,7 @@
 - ABI bug on x64 Linux / MacOS when passing a union containing a struct of 3 floats. #2087 
 - Bug with slice acces as inline struct member #2088.
 - `@if` now does implicit conversion to bool like `$if`. #2086
+- Fix broken enum inline -> bool conversions #2094.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

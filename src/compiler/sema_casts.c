@@ -1729,7 +1729,7 @@ static void cast_enum_to_value(Expr* expr, Type *to_type)
 	if (decl->enums.inline_value)
 	{
 		sema_expr_convert_enum_to_int(expr);
-		cast_int_to_int(expr, to_type);
+		cast_no_check(expr, to_type, IS_OPTIONAL(expr));
 		return;
 	}
 	if (expr_is_const_enum(expr))
