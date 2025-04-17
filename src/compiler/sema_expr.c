@@ -5829,7 +5829,7 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
-	if (!sema_analyse_expr(context, right)) return false;
+	if (!sema_analyse_inferred_expr(context, left_type->array.base, right)) return false;
 	if (IS_OPTIONAL(right))
 	{
 		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using slice assign.");
