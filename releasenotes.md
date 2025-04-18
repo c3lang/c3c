@@ -15,6 +15,7 @@
 - Allow `@if` on locals.
 - String str = "" is now guaranteed to be null terminated. #2083
 - `Foo[1..2] = { .baz = 123 }` inference now works. #2095
+- Add `array::contains` to check for a value in an array or slice.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
