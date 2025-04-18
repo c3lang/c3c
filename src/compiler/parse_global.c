@@ -2235,8 +2235,6 @@ static inline Decl *parse_attrdef(ParseContext *c)
 	bool is_builtin = false;
 	if (!parse_attribute_list(c, &attributes, NULL, decl_needs_prefix(decl) ? &is_builtin : NULL, &is_cond, true)) return poisoned_decl;
 	decl->attr_decl.attrs = attributes;
-	decl->is_cond = is_cond;
-	decl->is_autoimport = is_builtin;
 	CONSUME_EOS_OR_RET(poisoned_decl);
 	return decl;
 }

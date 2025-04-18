@@ -15,7 +15,7 @@
 - Allow `@if` on locals.
 - String str = "" is now guaranteed to be null terminated. #2083
 - `Foo[1..2] = { .baz = 123 }` inference now works. #2095
-- Add `array::contains` to check for a value in an array or slice.
+- Improved error messages on `Foo { 3, abc }` #2099.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
@@ -25,10 +25,14 @@
 - ABI bug on x64 Linux / MacOS when passing a union containing a struct of 3 floats. #2087 
 - Bug with slice acces as inline struct member #2088.
 - `@if` now does implicit conversion to bool like `$if`. #2086
+- Fix broken enum inline -> bool conversions #2094.
+- `@if` was ignored on attrdef, regression 0.7 #2093.
+- `@ensure` was not included when the function doesn't return a value #2098.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.
 - Prefer `math::I` and `math::I_F` for `math::IMAGINARY` and `math::IMAGINARYF` the latter is deprecated.
+- Add `array::contains(array, element)` to check for a element in an array or slice.
 
 ## 0.7.0 Change list
 
