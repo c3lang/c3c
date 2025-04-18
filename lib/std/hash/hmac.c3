@@ -93,7 +93,7 @@ macro @derive(Hmac *hmac_start, char[] salt, uint iterations, usz index, char[] 
 	UIntBE be = { (uint)index };
 	hmac.update(&&bitcast(be, char[4]));
 	tmp = hmac.final();
-	out[..] = tmp;
+	out[..] = tmp[..];
 	for (int it = 1; it < iterations; it++)
 	{
 		hmac = *hmac_start;

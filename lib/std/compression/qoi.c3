@@ -248,7 +248,7 @@ fn char[]? encode(Allocator allocator, char[] input, QOIDesc* desc) @nodiscard
 	}
 
 	// write end of stream
-	output[pos:END_OF_STREAM.len] = END_OF_STREAM;
+	output[pos:END_OF_STREAM.len] = END_OF_STREAM[..];
 	pos += END_OF_STREAM.len;
 	
 	return output[:pos];
@@ -364,7 +364,7 @@ fn char[]? decode(Allocator allocator, char[] data, QOIDesc* desc, QOIChannels c
 		}
 
 		// draw the pixel
-		if (channels == RGBA) { image[loc:4] = p.rgba; } else { image[loc:3] = p.rgb; }
+		if (channels == RGBA) { image[loc:4] = p.rgba[..]; } else { image[loc:3] = p.rgb[..]; }
 	}
 	
 	return image;

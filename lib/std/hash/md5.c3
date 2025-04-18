@@ -89,10 +89,10 @@ fn char[HASH_BYTES] Md5.final(&ctx)
 	body(ctx, &ctx.buffer, 64);
 
 	char[16] res @noinit;
-	res[0:4] = bitcast(ctx.a, char[4]);
-	res[4:4] = bitcast(ctx.b, char[4]);
-	res[8:4] = bitcast(ctx.c, char[4]);
-	res[12:4] = bitcast(ctx.d, char[4]);
+	res[0:4] = bitcast(ctx.a, char[4])[..];
+	res[4:4] = bitcast(ctx.b, char[4])[..];
+	res[8:4] = bitcast(ctx.c, char[4])[..];
+	res[12:4] = bitcast(ctx.d, char[4])[..];
 	*ctx = {};
 	return res;
 }

@@ -44,7 +44,7 @@ fn void multiple(int x, int y) {}
 
 fn void f()
 {
-	multiple(1); // #error: Expected 1 more argument after this one
+	multiple(1); // #error:1 more argument was expected after this one
 }
 
 fn void g()

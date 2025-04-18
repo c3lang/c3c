@@ -339,6 +339,7 @@ static void update_build_target_from_options(BuildTarget *target, BuildOptions *
 	}
 
 	target->backend = options->backend;
+	target->old_slice_copy = options->old_slice_copy;
 
 	// Remove feature flags
 	FOREACH(const char *, remove_feature, options->removed_feature_names)

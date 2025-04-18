@@ -549,6 +549,7 @@ typedef struct BuildOptions_
 	bool print_input;
 	bool run_once;
 	bool suppress_run;
+	bool old_slice_copy;
 	int verbosity_level;
 	const char *panicfn;
 	const char *benchfn;
@@ -674,6 +675,7 @@ typedef struct
 	bool kernel_build;
 	bool silence_deprecation;
 	bool print_stats;
+	bool old_slice_copy;
 	int build_threads;
 	TrustLevel trust_level;
 	OptimizationSetting optsetting;

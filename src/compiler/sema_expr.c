@@ -1798,6 +1798,8 @@ SPLAT_NORMAL:;
 		}
 		if (!has_named || !param->name)
 		{
+			int missing = 1;
+			for (int j = i + 1; j < func_param_count; j++) if (!actual_args[j]) missing++;
 			if (vec_size(callee->params) == 1)
 			{
 				if (param->type)
@@ -1815,14 +1817,25 @@ SPLAT_NORMAL:;
 			}
 			if (!num_args)
 			{
+				if (missing != needed)
+				{
+					RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d-%d parameters, but none was provided.",
+										   callee->name, missing, needed);
+				}
 				RETURN_SEMA_FUNC_ERROR(callee->definition, call, "'%s' expects %d parameter(s), but none was provided.",
 									   callee->name, needed);
 			}
 			if (!last) last = args[0];
 			int more_needed = func_param_count - i;
+			if (missing != more_needed)
+			{
+				RETURN_SEMA_FUNC_ERROR(callee->definition, last,
+									   "%d-%d additional arguments were expected after this one, did you forget them?",
+									   missing, more_needed);
+			}
 			RETURN_SEMA_FUNC_ERROR(callee->definition, last,
-								   "Expected %d more %s after this one, did you forget %s?",
-								   more_needed, more_needed == 1 ? "argument" : "arguments", more_needed == 1 ? "it" : "them");
+								   "%d more %s expected after this one, did you forget %s?",
+								   more_needed, more_needed == 1 ? "argument was" : "arguments were", more_needed == 1 ? "it" : "them");
 		}
 		RETURN_SEMA_FUNC_ERROR(callee->definition, call, "The parameter '%s' must be set, did you forget it?", param->name);
 	}
@@ -5829,36 +5842,38 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
-	if (!sema_analyse_expr(context, right)) return false;
+	Type *base = left_type->array.base;
+	if (right->expr_kind == EXPR_SLICE || (compiler.build.old_slice_copy && right->expr_kind == EXPR_INITIALIZER_LIST && right->initializer_list))
+	{
+		if (!sema_analyse_inferred_expr(context, left_type, right)) return false;
+		if (type_flatten(left->type) == right->type || right->type == type_untypedlist) goto SLICE_COPY;
+	}
+	else
+	{
+		if (right->expr_kind == EXPR_INITIALIZER_LIST && right->initializer_list)
+		{
+			Type *flat = type_flatten(base);
+			if (!type_is_user_defined(flat) || flat->type_kind == TYPE_INTERFACE)
+			{
+				RETURN_SEMA_ERROR(right, "You trying to assign this expression to each element in the slice, but the expression can't be cast to a value of type %s. Maybe you wanted to do a slice copy and forgot to add [..] at the end? Rather than 'a[..] = { ... }', try 'a[..] = { ... }[..]'.",
+					type_quoted_error_string(base));
+			}
+		}
+		if (!sema_analyse_inferred_expr(context, base, right)) return false;
+	}
+	Type *right_type = right->type->canonical;
+	if (base->canonical != right_type && (type_is_arraylike(right_type) || right_type->type_kind == TYPE_SLICE))
+	{
+		if (right_type->array.base->canonical == base->canonical)
+		{
+			RETURN_SEMA_ERROR(right, "You cannot assign a slice, vector or array to a slicing without making an explicit [..] operation, e.g. 'foo[..] = my_array[..]', so you can try adding an explicit slicing to this expression.");
+		}
+	}
+	if (!cast_implicit(context, right, base, false)) return false;
 	if (IS_OPTIONAL(right))
 	{
 		RETURN_SEMA_ERROR(right, "The right hand side may not be optional when using slice assign.");
 	}
-	Type *base = type_flatten(left_type)->array.base;
-	Type *rhs_type = type_flatten(right->type);
-
-	switch (rhs_type->type_kind)
-	{
-		case TYPE_UNTYPED_LIST:
-			break;
-		case TYPE_VECTOR:
-		case TYPE_ARRAY:
-		case TYPE_SLICE:
-			if (base == rhs_type->array.base) goto SLICE_COPY;
-			break;
-		default:
-			if (!cast_implicit(context, right, base, false)) return false;
-			goto SLICE_ASSIGN;
-	}
-
-	// By default we need to make a silent attempt.
-	bool could_cast = cast_implicit_silent(context, right, base, false);
-
-	// Failed, so let's go back to the original
-	if (!could_cast) goto SLICE_COPY;
-	// Use the copy
-
-SLICE_ASSIGN:
 	expr->expr_kind = EXPR_SLICE_ASSIGN;
 	expr->type = right->type;
 	expr->slice_assign_expr.left = exprid(left);
@@ -5866,73 +5881,28 @@ SLICE_ASSIGN:
 	return true;
 
 SLICE_COPY:;
+	if (!sema_analyse_expr_rhs(context, left_type, right, false, NULL, false)) return false;
 	Range *left_range = &left->slice_expr.range;
 	IndexDiff left_len = range_const_len(left_range);
-	switch (rhs_type->type_kind)
-	{
-		case TYPE_ARRAY:
-		case TYPE_SLICE:
-		case TYPE_VECTOR:
-			if (rhs_type->array.base != base) goto EXPECTED;
-			break;
-		case TYPE_UNTYPED_LIST:
-		{
-			ASSERT_SPAN(expr, right->const_expr.const_kind == CONST_UNTYPED_LIST);
-			// Zero sized lists cannot be right.
-			unsigned count = vec_size(right->const_expr.untyped_list);
-			if (!count) goto EXPECTED;
-			// Cast to an array of the length.
-			rhs_type = type_get_array(base, count);
-			if (!cast_implicit(context, right, rhs_type, false)) return false;
-			break;
-		}
-		default:
-			goto EXPECTED;
-	}
-	ASSERT_SPAN(expr, right->expr_kind != EXPR_SLICE || rhs_type->type_kind == TYPE_SLICE);
-
-	// If we have a slice operation on the right hand side, check the ranges.
-	if (right->expr_kind == EXPR_SLICE)
+	IndexDiff right_len = 0;
+	if (!expr_is_const_slice(right))
 	{
 		Range *right_range = &right->slice_expr.range;
-		IndexDiff right_len = range_const_len(right_range);
+		right_len = range_const_len(right_range);
+	}
+	else
+	{
+		right_len = sema_len_from_const(right);
+	}
 		if (left_len >= 0 && right_len >= 0 && left_len != right_len)
 		{
 			RETURN_SEMA_ERROR(expr, "Length mismatch between slices.");
 		}
-	}
-	else
-	{
-		// Otherwise we want to make a slice.
-		ArraySize len = rhs_type->array.len;
-		if (len > 0 && left_len > 0 && left_len != len)
-		{
-			RETURN_SEMA_ERROR(left, "Length mismatch, expected left hand slice to be %d elements.", left_len);
-		}
-		Expr *inner = expr_copy(right);
-		right->expr_kind = EXPR_SLICE;
-		Expr *const_zero = expr_new_const_int(inner->span, type_uint, 0);
-		Range range;
-		if (len > 0)
-		{
-			range = (Range) { .status = RESOLVE_DONE, .range_type = RANGE_CONST_RANGE, .is_range = true, .is_len = true, .start_index = 0, .len_index = len };
-		}
-		else
-		{
-			range = (Range) { .start = exprid(const_zero), .is_range = true, .is_len = true };
-		}
-		right->slice_expr = (ExprSlice ) { .range = range, .expr = exprid(inner) };
-		right->resolve_status = RESOLVE_NOT_DONE;
-		if (!sema_analyse_expr(context, right)) return false;
-	}
 	expr->expr_kind = EXPR_SLICE_COPY;
 	expr->type = left->type;
 	expr->slice_assign_expr.left = exprid(left);
 	expr->slice_assign_expr.right = exprid(right);
 	return true;
-EXPECTED:
-	RETURN_SEMA_ERROR(right, "Expected an array, vector or slice with element type %s.",
-					  type_quoted_error_string(base));
 }
 
 bool sema_expr_analyse_assign_right_side(SemaContext *context, Expr *expr, Type *left_type, Expr *right,

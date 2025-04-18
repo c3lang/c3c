@@ -126,6 +126,7 @@ static void usage(bool full)
 		print_opt("--single-module=<yes|no>", "Compile all modules together, enables more inlining.");
 		print_opt("--show-backtrace=<yes|no>", "Show detailed backtrace on segfaults.");
 		print_opt("--lsp", "Emit data about errors suitable for a LSP.");
+		print_opt("--use-old-slice-copy", "Use the old slice copy semantics.");
 	}
 	PRINTF("");
 	print_opt("-g", "Emit debug info.");
