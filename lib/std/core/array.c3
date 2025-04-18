@@ -11,16 +11,9 @@ import std::core::array::slice;
 *>
 macro bool contains(array, element)
 {
-	if(array.len == 0)
+	foreach(&item : array)
 	{
-		return false;
-	}
-	foreach(item : array)
-	{
-		if(item == element)
-		{
-			return true;
-		}
+		if (*item == element) return true;
 	}
 	return false;	
 }
