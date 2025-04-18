@@ -718,6 +718,11 @@ static void parse_option(BuildOptions *options)
 				options->ansi = parse_opt_select(Ansi, argopt, on_off);
 				return;
 			}
+			if (match_longopt("use-old-slice-copy"))
+			{
+				options->old_slice_copy = true;
+				return;
+			}
 			if (match_longopt("test-filter"))
 			{
 				if (at_end() || next_is_opt()) error_exit("error: --test-filter needs an argument.");
