@@ -5853,10 +5853,20 @@ static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Typ
 		if (right->expr_kind == EXPR_INITIALIZER_LIST && right->initializer_list)
 		{
 			Type *flat = type_flatten(base);
-			if (!type_is_user_defined(flat) || flat->type_kind == TYPE_INTERFACE)
+			switch (flat->type_kind)
 			{
-				RETURN_SEMA_ERROR(right, "You trying to assign this expression to each element in the slice, but the expression can't be cast to a value of type %s. Maybe you wanted to do a slice copy and forgot to add [..] at the end? Rather than 'a[..] = { ... }', try 'a[..] = { ... }[..]'.",
-					type_quoted_error_string(base));
+				case TYPE_STRUCT:
+				case TYPE_ARRAY:
+				case TYPE_VECTOR:
+				case TYPE_UNION:
+				case TYPE_INFERRED_ARRAY:
+				case TYPE_INFERRED_VECTOR:
+				case TYPE_BITSTRUCT:
+				case TYPE_SLICE:
+					break;
+				default:
+					RETURN_SEMA_ERROR(right, "You trying to assign this expression to each element in the slice, but the expression can't be cast to a value of type %s. Maybe you wanted to do a slice copy and forgot to add [..] at the end? Rather than 'a[..] = { ... }', try 'a[..] = { ... }[..]'.",
+						type_quoted_error_string(base));
 			}
 		}
 		if (!sema_analyse_inferred_expr(context, base, right)) return false;
@@ -5940,14 +5950,16 @@ static bool sema_expr_analyse_ct_identifier_assign(SemaContext *context, Expr *e
 	// Evaluate right side to using inference from last type.
 	if (!sema_analyse_inferred_expr(context, left->type, right)) return false;
 
+	Decl *ident = left->ct_ident_expr.decl;
+
 	if (context->call_env.in_other)
 	{
 		RETURN_SEMA_ERROR(left, "Compile time variables may only be modified in the scope they are defined in.");
 	}
 
-	left->ct_ident_expr.decl->var.init_expr = right;
+	ident->var.init_expr = right;
 	expr_replace(expr, right);
-	left->ct_ident_expr.decl->type = right->type;
+	ident->type = right->type;
 	return true;
 }
 
