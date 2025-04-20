@@ -283,9 +283,29 @@ macro alloc_array_try(Allocator allocator, $Type, usz elements) @nodiscard
 	return (($Type*)malloc_try(allocator, $Type.sizeof * elements))[:elements];
 }
 
+<*
+ Clone a value.
+
+ @param [&inout] allocator : "The allocator to use to clone"
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+ @require $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'clone_aligned' instead"
+*>
 macro clone(Allocator allocator, value) @nodiscard
 {
 	return new(allocator, $typeof(value), value);
+}
+
+<*
+ Clone overaligned values. Must be released using free_aligned.
+
+ @param [&inout] allocator : "The allocator to use to clone"
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+*>
+macro clone_aligned(Allocator allocator, value) @nodiscard
+{
+	return new_aligned(allocator, $typeof(value), value)!!;
 }
 
 fn any clone_any(Allocator allocator, any value) @nodiscard

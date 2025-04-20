@@ -627,14 +627,42 @@ macro TrackingEnv* get_tracking_env()
 	$endif
 }
 
+<*
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+ @require $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'clone_aligned' instead"
+*>
 macro @clone(value) @builtin @nodiscard
 {
 	return allocator::clone(mem, value);
 }
 
+<*
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value, which must be released using free_aligned"
+*>
+macro @clone_aligned(value) @builtin @nodiscard
+{
+	return allocator::clone_aligned(mem, value);
+}
+
+<*
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+ @require $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'tclone_aligned' instead"
+*>
 macro @tclone(value) @builtin @nodiscard
 {
 	return tnew($typeof(value), value);
+}
+
+<*
+ @param value : "The value to clone"
+ @return "A pointer to the cloned value"
+*>
+macro @tclone_aligned(value) @builtin @nodiscard
+{
+	return allocator::clone_aligned(tmem, value);
 }
 
 fn void* malloc(usz size) @builtin @inline @nodiscard
