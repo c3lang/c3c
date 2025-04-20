@@ -649,20 +649,14 @@ macro @clone_aligned(value) @builtin @nodiscard
 <*
  @param value : "The value to clone"
  @return "A pointer to the cloned value"
- @require $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT : "Types with alignment exceeding the default must use 'tclone_aligned' instead"
 *>
 macro @tclone(value) @builtin @nodiscard
 {
-	return tnew($typeof(value), value);
-}
-
-<*
- @param value : "The value to clone"
- @return "A pointer to the cloned value"
-*>
-macro @tclone_aligned(value) @builtin @nodiscard
-{
-	return allocator::clone_aligned(tmem, value);
+	$if $alignof(value) <= mem::DEFAULT_MEM_ALIGNMENT:
+		return tnew($typeof(value), value);
+	$else
+		return allocator::clone_aligned(tmem, value);
+	$endif
 }
 
 fn void* malloc(usz size) @builtin @inline @nodiscard
@@ -766,9 +760,9 @@ macro alloc_aligned($Type) @nodiscard
 macro tnew($Type, ...) @nodiscard
 {
 	$if $vacount == 0:
-		return ($Type*)tcalloc($Type.sizeof) @inline;
+		return ($Type*)tcalloc($Type.sizeof, $Type.alignof) @inline;
 	$else
-		$Type* val = tmalloc($Type.sizeof) @inline;
+		$Type* val = tmalloc($Type.sizeof, $Type.alignof) @inline;
 		*val = $vaexpr[0];
 		return val;
 	$endif
@@ -781,9 +775,9 @@ macro tnew($Type, ...) @nodiscard
 macro temp_with_padding($Type, usz padding, ...) @nodiscard
 {
 	$if $vacount == 0:
-		return ($Type*)tcalloc($Type.sizeof + padding) @inline;
+		return ($Type*)tcalloc($Type.sizeof + padding, $Type.alignof) @inline;
 	$else
-		$Type* val = tmalloc($Type.sizeof + padding) @inline;
+		$Type* val = tmalloc($Type.sizeof + padding, $Type.alignof) @inline;
 		*val = $vaexpr[0];
 		return val;
 	$endif
@@ -791,12 +785,12 @@ macro temp_with_padding($Type, usz padding, ...) @nodiscard
 
 macro talloc($Type) @nodiscard
 {
-	return tmalloc($Type.sizeof);
+	return tmalloc($Type.sizeof, $Type.alignof);
 }
 
 macro talloc_with_padding($Type, usz padding) @nodiscard
 {
-	return tmalloc($Type.sizeof + padding);
+	return tmalloc($Type.sizeof + padding, $Type.alignof);
 }
 
 <*
