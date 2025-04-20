@@ -5136,7 +5136,7 @@ static inline bool sema_expr_analyse_swizzle(SemaContext *context, Expr *expr, E
 	assert(indexed_type);
 	if (is_lvalue) check = CHECK_VALUE;
 	ASSERT_SPAN(expr, len > 0);
-	int index;
+	int index = 0;
 	bool is_overlapping = false;
 	for (unsigned i = 0; i < len; i++)
 	{
