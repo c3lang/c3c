@@ -17,7 +17,9 @@ The manual for C3 can be found at [www.c3-lang.org](http://www.c3-lang.org).
 
 ![vkQuake](https://github.com/c3lang/c3c/blob/master/resources/images/vkQuake.png?raw=true)
 
-Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort. As a demonstration, vkQuake was compiled with a small portion of the code converted to C3 and compiled with the c3c compiler. (The fork can be found at https://github.com/c3lang/vkQuake)
+Thanks to full ABI compatibility with C, it's possible to mix C and C3 in the same project with no effort. As a demonstration, vkQuake was compiled with a small portion of the code converted to C3 and compiled with the c3c compiler. (The aging fork can be found at https://github.com/c3lang/vkQuake)
+
+A non-curated list of user written projects and other resources can be found [here](https://github.com/c3lang/c3-showcase).
 
 ### Design Principles
 - Procedural "get things done"-type of language.
@@ -124,6 +126,7 @@ fn void main()
 - New semantic macro system
 - Module based name spacing
 - Slices
+- Operator overloading
 - Compile time reflection
 - Enhanced compile time execution
 - Generics based on generic modules
