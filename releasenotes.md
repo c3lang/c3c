@@ -30,6 +30,7 @@
 - `@if` was ignored on attrdef, regression 0.7 #2093.
 - `@ensure` was not included when the function doesn't return a value #2098.
 - Added missing `@clone_aligned` and add checks to `@tclone`
+- Comparing a distinct type with an enum with an inline distinct type failed unexpectedly.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

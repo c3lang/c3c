@@ -2002,8 +2002,10 @@ RETRY_DISTINCT:
 			if (other->type_kind == TYPE_POINTER) other = type_decay_array_pointer(other);
 			return type_find_max_ptr_type(type, other);
 		case TYPE_ENUM:
-			// IMPROVE: should there be implicit conversion between one enum and the other in
-			// some way?
+			if (type->decl->is_substruct)
+			{
+				return type_find_max_type(type_flat_distinct_enum_inline(type), other);
+			}
 			return NULL;
 		case TYPE_ANYFAULT:
 			return type_fault;
@@ -2049,6 +2051,10 @@ RETRY_DISTINCT:
 			if (other->type_kind == TYPE_DISTINCT)
 			{
 				return type_find_max_distinct_type(type, other);
+			}
+			if (other->type_kind == TYPE_ENUM && other->decl->is_substruct)
+			{
+				return type_find_max_type(type, type_flat_distinct_enum_inline(other));
 			}
 			// Try matching with its inline type
 			if (type->decl->is_substruct)

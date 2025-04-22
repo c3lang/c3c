@@ -1,0 +1,36 @@
+// #target: macos-x64
+module test;
+typedef Baz = int;
+enum Foo : char (inline Baz x)
+{
+	ABC = 123
+}
+fn void main()
+{
+	Baz y = 2;
+	Foo x = Foo.ABC;
+	if (y == x) return;
+}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %y = alloca i32, align 4
+  %x = alloca i8, align 1
+  store i32 2, ptr %y, align 4
+  store i8 0, ptr %x, align 1
+  %0 = load i32, ptr %y, align 4
+  %1 = load i8, ptr %x, align 1
+  %zext = zext i8 %1 to i64
+  %ptroffset = getelementptr inbounds [4 x i8], ptr @"test.Foo$x", i64 %zext
+  %2 = load i32, ptr %ptroffset, align 4
+  %eq = icmp eq i32 %0, %2
+  br i1 %eq, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %entry
+  ret void
+
+if.exit:                                          ; preds = %entry
+  ret void
+}
