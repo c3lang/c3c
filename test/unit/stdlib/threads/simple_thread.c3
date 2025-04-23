@@ -69,7 +69,10 @@ fn void testrun_mutex_timeout() @test
 		unreachable("lock_timeout should fail");
 	}
 	m.unlock()!!;
-	m.lock_timeout(20)!!;
+	if (catch err = m.lock_timeout(20))
+	{
+		assert(err == thread::WAIT_TIMEOUT);
+	}
 	m.unlock()!!;
 }
 
