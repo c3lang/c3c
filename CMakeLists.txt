@@ -144,6 +144,20 @@ if(C3_WITH_LLVM)
         find_package(LLVM REQUIRED CONFIG)
         find_package(LLD REQUIRED CONFIG)
     else()
+        # Add paths for LLVM CMake files of version 19 and higher as they follow a new installation 
+        # layout and are now in /usr/lib/llvm/*/lib/cmake/llvm/ rather than /usr/lib/cmake/llvm/
+        # 
+        # Because of CMAKE_FIND_PACKAGE_SORT_ORDER CMAKE_FIND_PACKAGE_SORT_DIRECTION,
+        # the newest version will always be found first.
+        message(STATUS "CMAKE_PREFIX_PATH: ${CMAKE_PREFIX_PATH}")
+        if (DEFINED LLVM_DIR) 
+            message(STATUS "Looking for LLVM CMake files in user-specified directory ${LLVM_DIR}")
+        else()
+            file (GLOB LLVM_CMAKE_PATHS "/usr/lib/llvm/*/lib/cmake/llvm/")
+            list (APPEND CMAKE_PREFIX_PATH ${LLVM_CMAKE_PATHS} "/usr/lib/")
+            message(STATUS "No LLVM_DIR specified, searching default directories ${CMAKE_PREFIX_PATH}")
+        endif()
+
         if (NOT C3_LLVM_VERSION STREQUAL "auto")
             find_package(LLVM ${C3_LLVM_VERSION} REQUIRED CONFIG)
         else()
