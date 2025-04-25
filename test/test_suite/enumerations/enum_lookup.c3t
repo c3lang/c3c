@@ -1,0 +1,130 @@
+// #target: macos-x64
+module test;
+import std;
+
+typedef Baz = int;
+enum Foo : char (inline Baz x, String hello)
+{
+	ABC = { 123, "ugh" },
+	DEF = { 444, "hello" }
+}
+fn int main(String[] a)
+{
+	Foo? x = Foo.lookup_field(hello, "hello");
+	Foo? y = Foo.lookup(3);
+	return x.ordinal ?? 222;
+}
+
+/* #expect: test.ll
+
+define i32 @test.main(ptr %0, i64 %1) #0 {
+entry:
+  %a = alloca %"char[][]", align 8
+  %x = alloca i8, align 1
+  %x.f = alloca i64, align 8
+  %blockret = alloca i8, align 1
+  %cmp.idx = alloca i64, align 8
+  %cmp.idx4 = alloca i64, align 8
+  %y = alloca i8, align 1
+  %y.f = alloca i64, align 8
+  store ptr %0, ptr %a, align 8
+  %ptradd = getelementptr inbounds i8, ptr %a, i64 8
+  store i64 %1, ptr %ptradd, align 8
+  br i1 false, label %slice_cmp_values, label %slice_cmp_exit
+
+slice_cmp_values:                                 ; preds = %entry
+  store i64 0, ptr %cmp.idx, align 8
+  br label %slice_loop_start
+
+slice_loop_start:                                 ; preds = %slice_loop_comparison, %slice_cmp_values
+  %2 = load i64, ptr %cmp.idx, align 8
+  %lt = icmp slt i64 %2, 3
+  br i1 %lt, label %slice_loop_comparison, label %slice_cmp_exit
+
+slice_loop_comparison:                            ; preds = %slice_loop_start
+  %ptradd1 = getelementptr inbounds i8, ptr @.str.3, i64 %2
+  %ptradd2 = getelementptr inbounds i8, ptr @.str.2, i64 %2
+  %3 = load i8, ptr %ptradd1, align 1
+  %4 = load i8, ptr %ptradd2, align 1
+  %eq = icmp eq i8 %3, %4
+  %5 = add i64 %2, 1
+  store i64 %5, ptr %cmp.idx, align 8
+  br i1 %eq, label %slice_loop_start, label %slice_cmp_exit
+
+slice_cmp_exit:                                   ; preds = %slice_loop_comparison, %slice_loop_start, %entry
+  %slice_cmp_phi = phi i1 [ true, %slice_loop_start ], [ false, %entry ], [ false, %slice_loop_comparison ]
+  br i1 %slice_cmp_phi, label %if.then, label %if.exit
+
+if.then:                                          ; preds = %slice_cmp_exit
+  store i8 0, ptr %blockret, align 1
+  br label %expr_block.exit
+
+if.exit:                                          ; preds = %slice_cmp_exit
+  br i1 true, label %slice_cmp_values3, label %slice_cmp_exit11
+
+slice_cmp_values3:                                ; preds = %if.exit
+  store i64 0, ptr %cmp.idx4, align 8
+  br label %slice_loop_start5
+
+slice_loop_start5:                                ; preds = %slice_loop_comparison7, %slice_cmp_values3
+  %6 = load i64, ptr %cmp.idx4, align 8
+  %lt6 = icmp slt i64 %6, 5
+  br i1 %lt6, label %slice_loop_comparison7, label %slice_cmp_exit11
+
+slice_loop_comparison7:                           ; preds = %slice_loop_start5
+  %ptradd8 = getelementptr inbounds i8, ptr @.str.4, i64 %6
+  %ptradd9 = getelementptr inbounds i8, ptr @.str.2, i64 %6
+  %7 = load i8, ptr %ptradd8, align 1
+  %8 = load i8, ptr %ptradd9, align 1
+  %eq10 = icmp eq i8 %7, %8
+  %9 = add i64 %6, 1
+  store i64 %9, ptr %cmp.idx4, align 8
+  br i1 %eq10, label %slice_loop_start5, label %slice_cmp_exit11
+
+slice_cmp_exit11:                                 ; preds = %slice_loop_comparison7, %slice_loop_start5, %if.exit
+  %slice_cmp_phi12 = phi i1 [ true, %slice_loop_start5 ], [ false, %if.exit ], [ false, %slice_loop_comparison7 ]
+  br i1 %slice_cmp_phi12, label %if.then13, label %if.exit14
+
+if.then13:                                        ; preds = %slice_cmp_exit11
+  store i8 1, ptr %blockret, align 1
+  br label %expr_block.exit
+
+if.exit14:                                        ; preds = %slice_cmp_exit11
+  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %x.f, align 8
+  br label %after_assign
+
+expr_block.exit:                                  ; preds = %if.then13, %if.then
+  %10 = load i8, ptr %blockret, align 1
+  store i8 %10, ptr %x, align 1
+  store i64 0, ptr %x.f, align 8
+  br label %after_assign
+
+after_assign:                                     ; preds = %expr_block.exit, %if.exit14
+  br label %if.exit16
+
+if.exit16:                                        ; preds = %after_assign
+  br label %if.exit17
+
+if.exit17:                                        ; preds = %if.exit16
+  store i64 ptrtoint (ptr @std.core.builtin.NOT_FOUND to i64), ptr %y.f, align 8
+  br label %after_assign18
+
+after_assign18:                                   ; preds = %if.exit17
+  %optval = load i64, ptr %x.f, align 8
+  %not_err = icmp eq i64 %optval, 0
+  %11 = call i1 @llvm.expect.i1(i1 %not_err, i1 true)
+  br i1 %11, label %after_check, label %else_block
+
+after_check:                                      ; preds = %after_assign18
+  %12 = load i8, ptr %x, align 1
+  %zext = zext i8 %12 to i32
+  br label %phi_block
+
+else_block:                                       ; preds = %after_assign18
+  br label %phi_block
+
+phi_block:                                        ; preds = %else_block, %after_check
+  %val = phi i32 [ %zext, %after_check ], [ 222, %else_block ]
+  ret i32 %val
+}
+

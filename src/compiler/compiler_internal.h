@@ -1903,6 +1903,7 @@ extern const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 extern const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 extern const char *kw_std__core;
 extern const char *kw_std__core__types;
+extern const char *kw_std__core__runtime;
 extern const char *kw_std__io;
 extern const char *kw_typekind;
 extern const char *kw_FILE_NOT_FOUND;
@@ -1910,6 +1911,7 @@ extern const char *kw_IoError;
 
 extern const char *kw_at_deprecated;
 extern const char *kw_at_ensure;
+extern const char *kw_at_enum_lookup;
 extern const char *kw_at_param;
 extern const char *kw_at_pure;
 extern const char *kw_at_require;

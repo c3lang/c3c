@@ -40,11 +40,12 @@ const char *builtin_defines[NUMBER_OF_BUILTIN_DEFINES];
 const char *type_property_list[NUMBER_OF_TYPE_PROPERTIES];
 const char *kw_at_deprecated;
 const char *kw_at_ensure;
+const char *kw_at_enum_lookup;
+const char *kw_at_jump;
 const char *kw_at_param;
 const char *kw_at_pure;
 const char *kw_at_require;
 const char *kw_at_return;
-const char *kw_at_jump;
 const char *kw_in;
 const char *kw_inout;
 const char *kw_len;
@@ -62,6 +63,7 @@ const char *kw_self;
 const char *kw_std;
 const char *kw_std__core;
 const char *kw_std__core__types;
+const char *kw_std__core__runtime;
 const char *kw_std__io;
 const char *kw_type;
 const char *kw_typekind;
@@ -146,6 +148,7 @@ void symtab_init(uint32_t capacity)
 	kw_std = KW_DEF("std");
 	kw_std__core = KW_DEF("std::core");
 	kw_std__core__types = KW_DEF("std::core::types");
+	kw_std__core__runtime = KW_DEF("std::core::runtime");
 	kw_std__io = KW_DEF("std::io");
 	kw_type = KW_DEF("type");
 	kw_winmain = KW_DEF("wWinMain");
@@ -161,12 +164,15 @@ void symtab_init(uint32_t capacity)
 	type_property_list[TYPE_PROPERTY_ELEMENTS] = KW_DEF("elements");
 	type_property_list[TYPE_PROPERTY_EXTNAMEOF] = KW_DEF("extnameof");
 	type_property_list[TYPE_PROPERTY_FROM_ORDINAL] = KW_DEF("from_ordinal");
+
 	type_property_list[TYPE_PROPERTY_GET] = KW_DEF("get");
 	type_property_list[TYPE_PROPERTY_INF] = KW_DEF("inf");
 	type_property_list[TYPE_PROPERTY_INNER] = KW_DEF("inner");
 	type_property_list[TYPE_PROPERTY_IS_EQ] = KW_DEF("is_eq");
 	type_property_list[TYPE_PROPERTY_IS_ORDERED] = KW_DEF("is_ordered");
 	type_property_list[TYPE_PROPERTY_IS_SUBSTRUCT] = KW_DEF("is_substruct");
+	type_property_list[TYPE_PROPERTY_LOOKUP] = KW_DEF("lookup");
+	type_property_list[TYPE_PROPERTY_LOOKUP_FIELD] = KW_DEF("lookup_field");
 	type_property_list[TYPE_PROPERTY_KINDOF] = KW_DEF("kindof");
 	type_property_list[TYPE_PROPERTY_MEMBERSOF] = KW_DEF("membersof");
 	type_property_list[TYPE_PROPERTY_METHODSOF] = KW_DEF("methodsof");
@@ -308,13 +314,14 @@ void symtab_init(uint32_t capacity)
 
 	type = TOKEN_AT_IDENT;
 
-	kw_at_ensure = KW_DEF("@ensure");
 	kw_at_deprecated = KW_DEF("@deprecated");
+	kw_at_ensure = KW_DEF("@ensure");
+	kw_at_enum_lookup = KW_DEF("@enum_lookup");
+	kw_at_jump = KW_DEF("@jump");
 	kw_at_param = KW_DEF("@param");
 	kw_at_pure = KW_DEF("@pure");
 	kw_at_require = KW_DEF("@require");
 	kw_at_return = KW_DEF("@return");
-	kw_at_jump = KW_DEF("@jump");
 	attribute_list[ATTRIBUTE_ALIGN] = KW_DEF("@align");
 	attribute_list[ATTRIBUTE_BENCHMARK] = KW_DEF("@benchmark");
 	attribute_list[ATTRIBUTE_BIGENDIAN] = KW_DEF("@bigendian");

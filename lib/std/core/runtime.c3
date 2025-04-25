@@ -22,6 +22,16 @@ struct SliceRaw
 	usz len;
 }
 
+macro @enum_lookup($Type, #value, value)
+{
+	var $elements = $Type.elements;
+	$for var $i = 0; $i < $elements; $i++:
+		var $val = $Type.from_ordinal($i);
+		if ($val.#value == value) return $val;
+	$endfor
+	return NOT_FOUND?;
+}
+
 
 module std::core::runtime @if(WASM_NOLIBC);
 

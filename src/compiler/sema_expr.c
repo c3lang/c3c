@@ -5,6 +5,8 @@
 #include "sema_internal.h"
 #include <math.h>
 
+#include "parser_internal.h"
+
 #define RETURN_SEMA_FUNC_ERROR(_decl, _node, ...) do { sema_error_at(context, (_node)->span, __VA_ARGS__); SEMA_NOTE(_decl, "The definition was here."); return false; } while (0)
 #define RETURN_NOTE_FUNC_DEFINITION do { SEMA_NOTE(callee->definition, "The definition was here."); return false; } while (0);
 #define RESOLVE(expr__, check__) \
@@ -116,8 +118,6 @@ static inline bool sema_expr_analyse_ct_nameof(SemaContext *context, Expr *expr)
 static inline bool sema_expr_analyse_ct_defined(SemaContext *context, Expr *expr);
 
 // -- returns
-static inline void context_pop_returns(SemaContext *context, Ast **restore);
-static inline Ast **context_push_returns(SemaContext *context);
 static inline Type *context_unify_returns(SemaContext *context);
 
 // -- addr helpers
@@ -440,31 +440,6 @@ static inline bool expr_both_any_integer_or_integer_bool_vector(Expr *left, Expr
 static void expr_binary_unify_failability(Expr *expr, Expr *left, Expr *right)
 {
 	expr->type = type_add_optional(left->type, IS_OPTIONAL(right));
-}
-
-static inline void context_pop_returns(SemaContext *context, Ast **restore)
-{
-	if (!context->returns_cache && context->returns)
-	{
-		context->returns_cache = context->returns;
-	}
-	context->returns = restore;
-}
-
-static inline Ast **context_push_returns(SemaContext *context)
-{
-	Ast** old_returns = context->returns;
-	if (context->returns_cache)
-	{
-		context->returns = context->returns_cache;
-		context->returns_cache = NULL;
-		vec_resize(context->returns, 0);
-	}
-	else
-	{
-		context->returns = NULL;
-	}
-	return old_returns;
 }
 
 CondResult sema_check_comp_time_bool(SemaContext *context, Expr *expr)
@@ -2837,7 +2812,7 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
 	Decl *decl = tag->type_call_expr.type;
-	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single string argument to 'from_ordinal'.");
+	if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected a single integer argument to 'from_ordinal'.");
 	Expr *key = args[0];
 	if (!sema_analyse_expr(context, key)) return false;
 	if (!type_is_integer(key->type))
@@ -2873,13 +2848,87 @@ INLINE bool sema_expr_analyse_from_ordinal(SemaContext *context, Expr *expr, Exp
 	return true;
 }
 
+INLINE bool sema_expr_analyse_lookup(SemaContext *context, Expr *expr, Expr *tag, bool inline_field)
+{
+	Expr **args = expr->call_expr.arguments;
+	unsigned arg_count = vec_size(args);
+	Decl *decl = tag->type_call_expr.type;
+	if (inline_field)
+	{
+		if (arg_count != 1) RETURN_SEMA_ERROR(expr, "Expected one (1) argument to 'lookup'.");
+	}
+	else
+	{
+		if (arg_count != 2) RETURN_SEMA_ERROR(expr, "'lookup_field' requires two arguments: the name of the field and the value to search for.");
+	}
+	Expr *key = inline_field ? args[0] : args[1];
+	if (!sema_analyse_expr(context, key)) return false;
+	ArrayIndex index;
+	if (inline_field)
+	{
+		if (!decl->is_substruct || decl->enums.inline_value)
+		{
+			RETURN_SEMA_ERROR(expr, "'lookup' requires an inline associated value, use 'Enum.lookup_field(fieldname, value)' instead.");
+		}
+	}
+	else
+	{
+		Expr *ident = sema_expr_resolve_access_child(context, args[0], NULL);
+		if (!ident) return false;
+		const char *child = ident->unresolved_ident_expr.ident;
+		FOREACH_IDX(i, Decl *, param, decl->enums.parameters)
+		{
+			if (param->name && param->name == child)
+			{
+				index = i;
+				goto FOUND;
+			}
+		}
+		RETURN_SEMA_ERROR(args[0], "There is no associated value of %s with the name '%s'.", type_quoted_error_string(decl->type), child);
+	}
+	index = decl->enums.inline_index;
+FOUND:;
+	Decl *match = decl->enums.parameters[index];
+	if (!cast_implicit(context, key, match->type, false)) return false;
+	Decl *d = sema_find_symbol(context, kw_at_enum_lookup);
+	if (!d || d->unit->module->name->module != kw_std__core__runtime)
+	{
+		RETURN_SEMA_ERROR(expr, "Missing main enum lookup macro '%s' in '%s'.", kw_at_enum_lookup, kw_std__core__runtime);
+	}
+	Expr *type = expr_new_expr(EXPR_TYPEINFO, expr);
+	type->type_expr = type_info_new_base(decl->type, tag->span);
+	expr->expr_kind = EXPR_CALL;
+	while (vec_size(args) < 3) vec_add(args, NULL);
+	args[0] = type;
+	Expr *unresolved_ident = expr_new_expr(EXPR_UNRESOLVED_IDENTIFIER, expr);
+	unresolved_ident->unresolved_ident_expr.ident = match->name;
+	args[1] = unresolved_ident;
+	args[2] = key;
+	Expr *call = expr_new_expr(EXPR_UNRESOLVED_IDENTIFIER, expr);
+	Path *new_path = CALLOCS(Path);
+	new_path->module = kw_std__core__runtime;
+	new_path->span = expr->span;
+	new_path->len = strlen(kw_std__core__runtime);
+	call->unresolved_ident_expr = (ExprUnresolvedIdentifier) { .ident = kw_at_enum_lookup, .path = new_path };
+	expr->call_expr = (ExprCall) { .arguments = args, .function = exprid(call) };
+	expr->resolve_status = RESOLVE_NOT_DONE;
+	return sema_analyse_expr(context, expr);
+}
+
 static inline bool sema_expr_analyse_typecall(SemaContext *context, Expr *expr)
 {
 	Expr *tag = exprptr(expr->call_expr.function);
 	expr->call_expr.arguments = sema_expand_vasplat_exprs(context, expr->call_expr.arguments);
-	if (tag->type_call_expr.property == TYPE_PROPERTY_FROM_ORDINAL)
+	switch (tag->type_call_expr.property)
 	{
-		return sema_expr_analyse_from_ordinal(context, expr, tag);
+		case TYPE_PROPERTY_FROM_ORDINAL:
+			return sema_expr_analyse_from_ordinal(context, expr, tag);
+		case TYPE_PROPERTY_LOOKUP:
+			return sema_expr_analyse_lookup(context, expr, tag, true);
+		case TYPE_PROPERTY_LOOKUP_FIELD:
+			return sema_expr_analyse_lookup(context, expr, tag, false);
+		default:
+			break;
 	}
 	Expr **args = expr->call_expr.arguments;
 	unsigned arg_count = vec_size(args);
@@ -4267,6 +4316,8 @@ static inline bool sema_expr_analyse_member_access(SemaContext *context, Expr *e
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
 		case TYPE_PROPERTY_FROM_ORDINAL:
+		case TYPE_PROPERTY_LOOKUP:
+		case TYPE_PROPERTY_LOOKUP_FIELD:
 			expr->expr_kind = EXPR_TYPECALL;
 			expr->type_call_expr = (ExprTypeCall) { .type = decl, .property = type_property };
 			return true;
@@ -4775,6 +4826,8 @@ static bool sema_expr_rewrite_to_typeid_property(SemaContext *context, Expr *exp
 		case TYPE_PROPERTY_IS_EQ:
 		case TYPE_PROPERTY_IS_ORDERED:
 		case TYPE_PROPERTY_IS_SUBSTRUCT:
+		case TYPE_PROPERTY_LOOKUP:
+		case TYPE_PROPERTY_LOOKUP_FIELD:
 		case TYPE_PROPERTY_MAX:
 		case TYPE_PROPERTY_MEMBERSOF:
 		case TYPE_PROPERTY_METHODSOF:
@@ -4962,6 +5015,8 @@ static bool sema_type_property_is_valid_for_type(Type *original_type, TypeProper
 					return false;
 			}
 		case TYPE_PROPERTY_FROM_ORDINAL:
+		case TYPE_PROPERTY_LOOKUP:
+		case TYPE_PROPERTY_LOOKUP_FIELD:
 			return type->canonical->type_kind == TYPE_ENUM;
 		case TYPE_PROPERTY_MIN:
 		case TYPE_PROPERTY_MAX:
@@ -5114,6 +5169,8 @@ static bool sema_expr_rewrite_to_type_property(SemaContext *context, Expr *expr,
 		case TYPE_PROPERTY_TAGOF:
 		case TYPE_PROPERTY_HAS_TAGOF:
 		case TYPE_PROPERTY_FROM_ORDINAL:
+		case TYPE_PROPERTY_LOOKUP:
+		case TYPE_PROPERTY_LOOKUP_FIELD:
 			expr->expr_kind = EXPR_TYPECALL;
 			expr->type_call_expr = (ExprTypeCall) {
 				.type = type->type_kind == TYPE_FUNC_PTR

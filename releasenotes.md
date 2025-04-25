@@ -17,6 +17,7 @@
 - Improved error messages on `Foo { 3, abc }` #2099.
 - `Foo[1..2] = { .baz = 123 }` inference now works. #2095
 - Deprecated old inference with slice copy. Copying must now ensure a slicing operator at the end of the right hand side: `foo[1..2] = bar[..]` rather than the old `foo[1..2] = bar`. The old behaviour can be mostly retained with `--use-old-slice-copy`).
+- Added `Enum.lookup` and `Enum.lookup_field`.
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
