@@ -5951,8 +5951,9 @@ SLICE_COPY:;
 	Range *left_range = &left->slice_expr.range;
 	IndexDiff left_len = range_const_len(left_range);
 	IndexDiff right_len = 0;
-	if (!expr_is_const_slice(right))
+	if (!expr_is_const(right))
 	{
+		ASSERT_SPAN(right, right->expr_kind == EXPR_SLICE);
 		Range *right_range = &right->slice_expr.range;
 		right_len = range_const_len(right_range);
 	}
@@ -5960,10 +5961,10 @@ SLICE_COPY:;
 	{
 		right_len = sema_len_from_const(right);
 	}
-		if (left_len >= 0 && right_len >= 0 && left_len != right_len)
-		{
-			RETURN_SEMA_ERROR(expr, "Length mismatch between slices.");
-		}
+	if (left_len >= 0 && right_len >= 0 && left_len != right_len)
+	{
+		RETURN_SEMA_ERROR(expr, "Length mismatch between slices.");
+	}
 	expr->expr_kind = EXPR_SLICE_COPY;
 	expr->type = left->type;
 	expr->slice_assign_expr.left = exprid(left);
