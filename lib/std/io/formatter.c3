@@ -136,7 +136,7 @@ fn usz? Formatter.print_with_function(&self, Printable arg)
 
 fn usz? Formatter.out_unknown(&self, String category, any arg) @private
 {
-	return self.out_substr("[") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr("]");
+	return self.out_substr("<") + self.out_substr(category) + self.out_substr(" type:") + self.ntoa((iptr)arg.type, false, 16) + self.out_substr(", addr:") + self.ntoa((iptr)arg.ptr, false, 16) + self.out_substr(">");
 }
 fn usz? Formatter.out_str(&self, any arg) @private
 {
@@ -196,7 +196,15 @@ fn usz? Formatter.out_str(&self, any arg) @private
 		case BITSTRUCT:
 			return self.out_unknown("bitstruct", arg);
 		case FUNC:
-			return self.out_unknown("function", arg);
+			PrintFlags flags = self.flags;
+			uint width = self.width;
+			defer
+			{
+				self.flags = flags;
+				self.width = width;
+			}
+			self.width = 0;
+			return self.out_substr("0x")! + self.ntoa_any(arg, 16);
 		case DISTINCT:
 			if (arg.type == String.typeid)
 			{

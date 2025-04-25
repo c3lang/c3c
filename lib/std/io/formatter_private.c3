@@ -39,10 +39,11 @@ fn uint128? int_from_any(any arg, bool *is_neg) @private
 {
 	switch (arg.type.kindof)
 	{
-		case TypeKind.POINTER:
+		case FUNC:
+		case POINTER:
 			*is_neg = false;
 			return (uint128)(uptr)*(void**)arg.ptr;
-		case TypeKind.DISTINCT:
+		case DISTINCT:
 			return int_from_any(arg.as_inner(), is_neg);
 		default:
 			break;
