@@ -5899,11 +5899,12 @@ static inline bool sema_expr_analyse_cast(SemaContext *context, Expr *expr, bool
 static bool sema_expr_analyse_slice_assign(SemaContext *context, Expr *expr, Type *left_type, Expr *right)
 {
 	Expr *left = exprptr(expr->binary_expr.left);
-	Type *base = left_type->array.base;
+	Type *left_flat = type_flatten(left_type);
+	Type *base = left_flat->array.base;
 	if (right->expr_kind == EXPR_SLICE || (compiler.build.old_slice_copy && right->expr_kind == EXPR_INITIALIZER_LIST && right->initializer_list))
 	{
 		if (!sema_analyse_inferred_expr(context, left_type, right)) return false;
-		if (type_flatten(left->type) == right->type || right->type == type_untypedlist) goto SLICE_COPY;
+		if (left_flat == type_flatten(right->type) || right->type == type_untypedlist) goto SLICE_COPY;
 	}
 	else
 	{
