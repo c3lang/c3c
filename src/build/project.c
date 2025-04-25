@@ -514,21 +514,6 @@ static void project_add_targets(const char *filename, Project *project, JSONObje
 	}
 }
 
-/**
- * Grab the default target, this will be the executable if one exists, otherwise
- * it's the first target in the list.
- *
- * @param project
- * @return the selected build target.
- */
-static BuildTarget *project_select_default_target(Project *project)
-{
-	FOREACH(BuildTarget *, target, project->targets)
-	{
-		if (target->type == TARGET_TYPE_EXECUTABLE) return target;
-	}
-	return project->targets[0];
-}
 
 /**
  * Select the project target. This may be given a target, if so it is looked for.
@@ -546,7 +531,7 @@ BuildTarget *project_select_target(const char *filename, Project *project, const
 	}
 	if (!optional_target)
 	{
-		return project_select_default_target(project);
+		return project->targets[0];
 	}
 	FOREACH(BuildTarget *, target, project->targets)
 	{
