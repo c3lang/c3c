@@ -342,7 +342,7 @@ macro void copy(void* dst, void* src, usz len, usz $dst_align = 0, usz $src_alig
  @param $src_align : "the alignment of the destination if different from the default, 0 assumes the default"
  @param $is_volatile : "True if this copy should be treated as volatile, i.e. it can't be optimized away."
 
- @require src != null || len == 0 : "Copying a null with non-zero length is invalid"
+ @require src != null || $len == 0 : "Copying a null with non-zero length is invalid"
  @require $len == 0 || dst + $len <= src || src + $len <= dst : "Ranges may not overlap"
 *>
 macro void copy_inline(void* dst, void* src, usz $len, usz $dst_align = 0, usz $src_align = 0, bool $is_volatile = false)
