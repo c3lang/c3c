@@ -1,0 +1,111 @@
+// #target: macos-x64
+// #safe: yes
+module test;
+
+<*
+ @param [out] bar
+ @ensure *bar != 0
+*>
+fn void foo(int* bar)
+{
+	*bar = 1;
+}
+
+fn void main()
+{
+	int x;
+	foo(&x);
+}
+
+/* #expect: test.ll
+
+
+define void @test.foo(ptr %0) #0 {
+entry:
+  %taddr = alloca i64, align 8
+  %taddr2 = alloca i64, align 8
+  %varargslots = alloca [2 x %any], align 16
+  %indirectarg = alloca %"any[]", align 8
+  %taddr8 = alloca i64, align 8
+  %taddr9 = alloca i64, align 8
+  %varargslots10 = alloca [2 x %any], align 16
+  %indirectarg13 = alloca %"any[]", align 8
+  %checknull = icmp eq ptr %0, null
+  %1 = call i1 @llvm.expect.i1(i1 %checknull, i1 false)
+  br i1 %1, label %panic, label %checkok
+
+checkok:                                          ; preds = %entry
+  %2 = ptrtoint ptr %0 to i64
+  %3 = urem i64 %2, 4
+  %4 = icmp ne i64 %3, 0
+  %5 = call i1 @llvm.expect.i1(i1 %4, i1 false)
+  br i1 %5, label %panic1, label %checkok3
+
+checkok3:                                         ; preds = %checkok
+  store i32 1, ptr %0, align 4
+  %checknull4 = icmp eq ptr %0, null
+  %6 = call i1 @llvm.expect.i1(i1 %checknull4, i1 false)
+  br i1 %6, label %panic5, label %checkok6
+
+checkok6:                                         ; preds = %checkok3
+  %7 = ptrtoint ptr %0 to i64
+  %8 = urem i64 %7, 4
+  %9 = icmp ne i64 %8, 0
+  %10 = call i1 @llvm.expect.i1(i1 %9, i1 false)
+  br i1 %10, label %panic7, label %checkok14
+
+checkok14:                                        ; preds = %checkok6
+  %11 = load i32, ptr %0, align 4
+  %neq = icmp ne i32 %11, 0
+  br i1 %neq, label %assert_ok, label %assert_fail
+
+assert_fail:                                      ; preds = %checkok14
+  %12 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %12(ptr @.panic_msg.2, i64 29, ptr @.file, i64 13, ptr @.func, i64 3, i32 8) #2
+  unreachable
+
+assert_ok:                                        ; preds = %checkok14
+  ret void
+
+panic:                                            ; preds = %entry
+  %13 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %13(ptr @.panic_msg, i64 44, ptr @.file, i64 13, ptr @.func, i64 3, i32 9) #2
+  unreachable
+
+panic1:                                           ; preds = %checkok
+  store i64 4, ptr %taddr, align 8
+  %14 = insertvalue %any undef, ptr %taddr, 0
+  %15 = insertvalue %any %14, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  store i64 %3, ptr %taddr2, align 8
+  %16 = insertvalue %any undef, ptr %taddr2, 0
+  %17 = insertvalue %any %16, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  store %any %15, ptr %varargslots, align 16
+  %ptradd = getelementptr inbounds i8, ptr %varargslots, i64 16
+  store %any %17, ptr %ptradd, align 16
+  %18 = insertvalue %"any[]" undef, ptr %varargslots, 0
+  %"$$temp" = insertvalue %"any[]" %18, i64 2, 1
+  store %"any[]" %"$$temp", ptr %indirectarg, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 94, ptr @.file, i64 13, ptr @.func, i64 3, i32 9, ptr byval(%"any[]") align 8 %indirectarg) #2
+  unreachable
+
+panic5:                                           ; preds = %checkok3
+  %19 = load ptr, ptr @std.core.builtin.panic, align 8
+  call void %19(ptr @.panic_msg, i64 44, ptr @.file, i64 13, ptr @.func, i64 3, i32 5) #2
+  unreachable
+
+panic7:                                           ; preds = %checkok6
+  store i64 4, ptr %taddr8, align 8
+  %20 = insertvalue %any undef, ptr %taddr8, 0
+  %21 = insertvalue %any %20, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  store i64 %8, ptr %taddr9, align 8
+  %22 = insertvalue %any undef, ptr %taddr9, 0
+  %23 = insertvalue %any %22, i64 ptrtoint (ptr @"$ct.ulong" to i64), 1
+  store %any %21, ptr %varargslots10, align 16
+  %ptradd11 = getelementptr inbounds i8, ptr %varargslots10, i64 16
+  store %any %23, ptr %ptradd11, align 16
+  %24 = insertvalue %"any[]" undef, ptr %varargslots10, 0
+  %"$$temp12" = insertvalue %"any[]" %24, i64 2, 1
+  store %"any[]" %"$$temp12", ptr %indirectarg13, align 8
+  call void @std.core.builtin.panicf(ptr @.panic_msg.1, i64 94, ptr @.file, i64 13, ptr @.func, i64 3, i32 5, ptr byval(%"any[]") align 8 %indirectarg13) #2
+  unreachable
+}

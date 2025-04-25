@@ -34,6 +34,7 @@
 - Comparing a distinct type with an enum with an inline distinct type failed unexpectedly.
 - The `%s` would not properly print function pointers.
 - Compiler crash when passing an untyped list as an argument to `assert` #2108.
+- `@ensure` should be allowed to read "out" variables. #2107
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

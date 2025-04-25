@@ -1935,13 +1935,11 @@ static inline bool sema_call_check_contract_param_match(SemaContext *context, De
 	if (ident->decl_kind != DECL_VAR) return true;
 	if (ident->var.out_param && !ident->var.in_param && param->var.in_param)
 	{
-		SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' or 'inout' argument.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "An 'out' parameter may not be passed into a function or macro as an 'in' or 'inout' argument.");
 	}
 	if (ident->var.in_param && !ident->var.out_param && param->var.out_param)
 	{
-		SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
-		return false;
+		RETURN_SEMA_ERROR(expr, "An 'in' parameter may not be passed into a function or macro as an 'out' or 'inout' argument.");
 	}
 	return true;
 }
@@ -10418,6 +10416,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
 			if (!decl->var.out_param || decl->var.in_param) break;
+			if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) break;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
 		}
 		case EXPR_UNARY:
@@ -10428,6 +10427,7 @@ static inline bool sema_cast_rvalue(SemaContext *context, Expr *expr, bool mutat
 			Decl *decl = inner->ident_expr;
 			if (decl->decl_kind != DECL_VAR) break;
 			if (!decl->var.out_param || decl->var.in_param) break;
+			if (context->active_scope.flags & (SCOPE_ENSURE | SCOPE_ENSURE_MACRO)) return true;
 			RETURN_SEMA_ERROR(expr, "'out' parameters may not be read.");
 		}
 		default:
