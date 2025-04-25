@@ -284,8 +284,8 @@ fn void? NativeConditionVariable.broadcast(&cond)
 
 fn void? timedwait(NativeConditionVariable* cond, NativeMutex* mtx, uint timeout) @private
 {
-	if (mtx.locks != 1) return thread::WAIT_FAILED?;
 	Win32_DWORD owner_thread = mtx.owner_thread;
+	if (mtx.locks != 1 || owner_thread != win32::getCurrentThreadId()) return thread::WAIT_FAILED?;
 	mtx.owner_thread = 0;
 	mtx.locks = 0;
 	defer
