@@ -115,7 +115,25 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 		{
 			if (!sema_analyse_expr(context, e)) return false;
 			if (IS_OPTIONAL(e)) RETURN_SEMA_ERROR(e, "Optionals cannot be used as assert arguments, use '?""?', '!' or '!!' to fix this.");
-			if (type_is_void(e->type)) RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
+			switch (sema_resolve_storage_type(context, e->type))
+			{
+				case STORAGE_ERROR:
+					return false;
+				case STORAGE_NORMAL:
+					break;
+				case STORAGE_WILDCARD:
+					UNREACHABLE
+				case STORAGE_VOID:
+					RETURN_SEMA_ERROR(e, "This expression is of type 'void', did you make a mistake?");
+				case STORAGE_COMPILE_TIME:
+					if (e->type == type_untypedlist)
+					{
+						RETURN_SEMA_ERROR(e, "The type of an untyped list cannot be inferred, you can try adding an explicit type to solve this.");
+					}
+					RETURN_SEMA_ERROR(e, "You can't use a compile time type as an assert argument.");
+				case STORAGE_UNKNOWN:
+					RETURN_SEMA_ERROR(e, "You can't use an argument of type %s in an assert.", type_quoted_error_string(e->type));
+			}
 		}
 	}
 
