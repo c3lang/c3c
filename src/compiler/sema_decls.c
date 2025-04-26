@@ -4757,6 +4757,10 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 			else
 			{
 				scratch_buffer_append(type->name);
+				if (type_is_user_defined(type) && type->decl->unit->module->generic_suffix)
+				{
+					scratch_buffer_append(type->decl->unit->module->generic_suffix);
+				}
 			}
 		}
 		else
