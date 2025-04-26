@@ -1,8 +1,6 @@
 import std::text::i18n;
 import std::io::path;
 
-import std::io;
-
 fn void translate_from_json() @test {
     Allocator allocator = allocator::heap();
 	Translator translator = i18n::new_translator(allocator);
