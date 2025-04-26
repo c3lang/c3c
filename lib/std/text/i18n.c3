@@ -40,7 +40,6 @@ fn void Translator.free(&self) {
 
 	self.tmap.free();
 	self.loadedFiles.free();
-	self.currentLanguage.free(self.allocator); 
 }
 
 fn void? Translator.load_from_json(&self, String file_path, String code) {
@@ -67,14 +66,13 @@ fn void? Translator.set_language(&self, String code) {
 
 macro Translator.tr(&self, key, ...) {
 	if (try LanguageMap lmap = self.tmap.get(self.currentLanguage)) {
-		Object* value = lmap.get(key)!;
-		defer value.free();
+		Object* object = lmap.get(key)!;
 
-		if (!value.is_string()) {
+		if (!object.is_string()) {
 			return io::UNSUPPORTED_OPERATION?;
 		}
-																
-		return string::format(self.allocator, value.s, $vasplat[..]);
+
+		return string::format(self.allocator, object.s, $vasplat[..]);
 	}
 
 	return NOT_FOUND?;
