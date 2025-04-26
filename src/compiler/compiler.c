@@ -1241,101 +1241,107 @@ PRINT_SCRIPT:;
 	dir_change(old_path);
 }
 
+static void check_address_sanitizer_options(BuildTarget *target)
+{
+	if (target->feature.sanitize_memory || target->feature.sanitize_thread)
+	{
+		error_exit("Address sanitizer cannot be used together with memory or thread sanitizer.");
+	}
+	switch (target->arch_os_target)
+	{
+		case WINDOWS_X64:
+		{
+			WinCrtLinking crt_linking = target->win.crt_linking;
+			if (crt_linking == WIN_CRT_DEFAULT)
+			{
+				error_exit("Please specify `static` or `dynamic` for `wincrt` when using address sanitizer.");
+			}
+
+			if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
+			{
+				// We currently don't have ASan runtime libraries linked against debug CRT.
+				error_exit("Address sanitizer cannot be used when using `static-debug` or `dynamic-debug` for `wincrt`. Please use `static` or `dynamic` instead.");
+			}
+
+			WARNING("Using address sanitizer on Windows requires the sanitizer option `detect_odr_violation=0`, either set by returning it from `__asan_default_options`, or via an environment variable `ASAN_OPTIONS=detect_odr_violation=0`");
+			break;
+		}
+		case LINUX_X86:
+		case LINUX_X64:
+		case MACOS_AARCH64:
+		case MACOS_X64:
+		case FREEBSD_X86:
+		case FREEBSD_X64:
+		case NETBSD_X86:
+		case NETBSD_X64:
+			break;
+		default:
+			error_exit("Address sanitizer is only supported on Linux, FreeBSD, NetBSD, Darwin and Windows.");
+	}
+}
+
+static void check_memory_sanitizer_options(BuildTarget *target)
+{
+	if (target->feature.sanitize_thread)
+	{
+		error_exit("Memory sanitizer cannot be used together thread sanitizer.");
+	}
+	switch (target->arch_os_target)
+	{
+		case LINUX_AARCH64:
+		case LINUX_X86:
+		case LINUX_X64:
+		case FREEBSD_X86:
+		case FREEBSD_X64:
+		case NETBSD_X86:
+		case NETBSD_X64:
+			break;
+		default:
+			error_exit("Memory sanitizer is only supported on Linux, FreeBSD and NetBSD.");
+	}
+	if (target->reloc_model != RELOC_BIG_PIE)
+	{
+		error_exit("Memory sanitizer requires `PIE` relocation model.");
+	}
+}
+
+static void check_thread_sanitizer_options(BuildTarget *target)
+{
+	switch (target->arch_os_target)
+	{
+		case LINUX_AARCH64:
+		case LINUX_X64:
+		case MACOS_AARCH64:
+		case MACOS_X64:
+		case FREEBSD_X64:
+		case NETBSD_X64:
+			break;
+		default:
+			error_exit("Thread sanitizer is only supported on 64-bit Linux, NetBSD, FreeBSD and Darwin.");
+	}
+}
 static void check_sanitizer_options(BuildTarget *target)
 {
-	if (target->feature.sanitize_address)
+	if (target->feature.sanitize_address) check_address_sanitizer_options(target);
+	if (target->feature.sanitize_memory) check_memory_sanitizer_options(target);
+	if (target->feature.sanitize_thread) check_thread_sanitizer_options(target);
+
+	if (target->type == TARGET_TYPE_BENCHMARK)
 	{
-		if (target->feature.sanitize_memory || target->feature.sanitize_thread)
-		{
-			error_exit("Address sanitizer cannot be used together with memory or thread sanitizer.");
-		}
-		switch (target->arch_os_target)
-		{
-			case WINDOWS_X64:
-			{
-				WinCrtLinking crt_linking = target->win.crt_linking;
-				if (crt_linking == WIN_CRT_DEFAULT)
-				{
-					error_exit("Please specify `static` or `dynamic` for `wincrt` when using address sanitizer.");
-				}
-
-				if (crt_linking == WIN_CRT_STATIC_DEBUG || crt_linking == WIN_CRT_DYNAMIC_DEBUG)
-				{
-					// We currently don't have ASan runtime libraries linked against debug CRT.
-					error_exit("Address sanitizer cannot be used when using `static-debug` or `dynamic-debug` for `wincrt`. Please use `static` or `dynamic` instead.");
-				}
-
-				WARNING("Using address sanitizer on Windows requires the sanitizer option `detect_odr_violation=0`, either set by returning it from `__asan_default_options`, or via an environment variable `ASAN_OPTIONS=detect_odr_violation=0`");
-				break;
-			}
-			case LINUX_X86:
-			case LINUX_X64:
-			case MACOS_AARCH64:
-			case MACOS_X64:
-			case FREEBSD_X86:
-			case FREEBSD_X64:
-			case NETBSD_X86:
-			case NETBSD_X64:
-				break;
-			default:
-				error_exit("Address sanitizer is only supported on Linux, Darwin and Windows.");
-		}
-		if (target->type == TARGET_TYPE_BENCHMARK)
+		if (target->feature.sanitize_address)
 		{
 			WARNING("Running benchmarks with address sanitizer enabled!");
 		}
-	}
-	if (target->feature.sanitize_memory)
-	{
-		if (target->feature.sanitize_address || target->feature.sanitize_thread)
+		else if (target->feature.sanitize_thread)
 		{
-			error_exit("Memory sanitizer cannot be used together with address or thread sanitizer.");
+			WARNING("Running benchmarks with thread sanitizer enabled!");
 		}
-		switch (target->arch_os_target)
-		{
-			case LINUX_AARCH64:
-			case LINUX_X86:
-			case LINUX_X64:
-			case FREEBSD_X86:
-			case FREEBSD_X64:
-			case NETBSD_X86:
-			case NETBSD_X64:
-				break;
-			default:
-				error_exit("Memory sanitizer is only supported on Linux.");
-		}
-		if (target->reloc_model != RELOC_BIG_PIE)
-		{
-			error_exit("Memory sanitizer requires `PIE` relocation model.");
-		}
-		if (target->type == TARGET_TYPE_BENCHMARK)
+		else if (target->feature.sanitize_memory)
 		{
 			WARNING("Running benchmarks with memory sanitizer enabled!");
 		}
 	}
-	if (target->feature.sanitize_thread)
-	{
-		if (target->feature.sanitize_address || target->feature.sanitize_memory)
-		{
-			error_exit("Thread sanitizer cannot be used together with address or memory sanitizer.");
-		}
-		switch (target->arch_os_target)
-		{
-			case LINUX_AARCH64:
-			case LINUX_X64:
-			case MACOS_AARCH64:
-			case MACOS_X64:
-			case FREEBSD_X64:
-			case NETBSD_X64:
-				break;
-			default:
-				error_exit("Thread sanitizer is only supported on 64-bit Linux and Darwin.");
-		}
-		if (target->type == TARGET_TYPE_BENCHMARK)
-		{
-			WARNING("Running benchmarks with thread sanitizer enabled!");
-		}
-	}
+
 }
 
 const char *compiler_date_to_iso(void)
@@ -1429,7 +1435,6 @@ void compile()
 		expand_csources(lib->parent->dir, lib->csource_dirs, &lib->csources);
 		expand_cinclude_dirs(lib->parent->dir, lib->cinclude_dirs, &lib->cinclude_dirs);
 	}
-	TokenType type = TOKEN_CONST_IDENT;
 	FOREACH(const char *, feature_flag, compiler.build.feature_list)
 	{
 		feature_flag = symtab_preset(feature_flag, TOKEN_CONST_IDENT);
