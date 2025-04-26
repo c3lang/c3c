@@ -4,17 +4,14 @@ fn void translate_from_json() @test {
     Allocator allocator = allocator::heap();
 	Translator translator = new_translator(allocator);
 
-	if (catch excuse = translator.load_from_json("./i18n_en.json", "en")) {
-		io::printfn("Error loading JSON: %s\n", excuse);
-	}
+	translator.load_from_json("./i18n_en.json", "en")!!;
 
 	translator.set_language("en")!!;
-
-	io::printfn("Current Language: %s", translator.currentLanguage);
+	assert(translator.currentLanguage, "en");
 
 	String greeting = translator.tr("greeting", "C3")!!;
-	io::printfn("- Greeting: %s", greeting);
+	assert(greeting, "Hello, C3!");
 
 	String farewell = translator.tr("farewell", "C3")!!;
-	io::printfn("- Farewell: %s", farewell);
+	assert(farewell, "Goodbye, C3!");
 }
