@@ -2,7 +2,7 @@ import std::text::i18n;
 
 fn void translate_from_json() @test {
     Allocator allocator = allocator::heap();
-	Translator translator = new_translator(allocator);
+	Translator translator = i18n::new_translator(allocator);
 
 	translator.load_from_json("./i18n_en.json", "en")!!;
 
