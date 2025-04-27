@@ -52,8 +52,8 @@ is sufficient. However, please make sure that:
 
 Regardless whether an addition is approved for inclusion or not, it needs to incubate:
 
-1. First implement it the addition standalone, showing that it’s working well and has a solid design. This has the advantage of people being able to contribute or even create competing implementations
-2. One it is considered finished it can be proposed to be included.
+1. First implement it standalone, showing that it’s working well and has a solid design. This has the advantage of people being able to contribute or even create competing implementations
+2. Once it is considered finished it can be proposed for inclusion.
 
 This will greatly help improving the quality of additions.
 
