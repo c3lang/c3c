@@ -20,7 +20,7 @@ fn void main()
 
     Foo f;
     io::printfn("%s", f[12.2]);
-    foreach (int i, value : f) // #error: Only integer
+    foreach (int i, value : f) // #error: Only types indexed by integers or enums may
     {
         io::printfn("v[%s] = %s", i, value);
     }

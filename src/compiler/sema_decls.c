@@ -4766,7 +4766,6 @@ static bool sema_generate_parameterized_name_to_scratch(SemaContext *context, Mo
 		else
 		{
 			Type *type = param->type->canonical;
-			bool is_enum_or_fault = type_kind_is_enum_or_fault(type->type_kind);
 			if (type == type_bool)
 			{
 				if (mangled)

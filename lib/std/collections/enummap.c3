@@ -3,6 +3,7 @@
 *>
 module std::collections::enummap{Enum, ValueType};
 import std::io;
+
 struct EnumMap (Printable)
 {
 	ValueType[Enum.len] values;

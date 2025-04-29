@@ -3289,6 +3289,27 @@ static inline bool sema_expr_resolve_subscript_index(SemaContext *context, Expr 
 		if (!overload) current_type = type_flatten(current_expr->type);
 	}
 	ASSERT(current_type == current_type->canonical);
+	Type *index_type = NULL;
+	if (overload)
+	{
+		index_type = overload->func_decl.signature.params[1]->type;
+		if (!sema_analyse_inferred_expr(context, index_type, index))
+		{
+			expr_poison(index);
+			return false;
+		}
+	}
+	else
+	{
+		if (!sema_analyse_expr_value(context, index))
+		{
+			expr_poison(index);
+			return false;
+		}
+	}
+
+	// Analyse the index.
+
 	int64_t index_value = -1;
 	bool start_from_end = expr->subscript_expr.index.start_from_end;
 	if (start_from_end && (current_type->type_kind == TYPE_POINTER || current_type->type_kind == TYPE_FLEXIBLE_ARRAY))
@@ -3361,9 +3382,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 
 	if (!sema_expr_check_assign(context, expr, NULL)) return false;
 
-	// 2. Evaluate the index.
 	Expr *index = exprptr(expr->subscript_expr.index.expr);
-	if (!sema_analyse_expr(context, index)) return false;
 
 	// 3. Check failability due to value.
 	bool optional = IS_OPTIONAL(subscripted);
@@ -3375,7 +3394,7 @@ static inline bool sema_expr_analyse_subscript_lvalue(SemaContext *context, Expr
 	int64_t index_value;
 	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, false, OVERLOAD_ELEMENT_SET, check_valid))
 	{
-		if (check_valid)
+		if (check_valid && expr_ok(index))
 		{
 			expr_poison(expr);
 			return true;
@@ -3468,12 +3487,11 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 	Expr *subscripted = exprptr(expr->subscript_expr.expr);
 	if (!sema_analyse_expr_check(context, subscripted, CHECK_VALUE)) return false;
 
-	// 2. Evaluate the index.
-	Expr *index = exprptr(expr->subscript_expr.index.expr);
-	if (!sema_analyse_expr(context, index)) return false;
-
 	// 3. Check failability due to value.
 	bool optional = IS_OPTIONAL(subscripted);
+
+	// 2. Evaluate the index.
+	Expr *index = exprptr(expr->subscript_expr.index.expr);
 
 	Decl *overload = NULL;
 	Type *subscript_type = NULL;
@@ -3484,7 +3502,7 @@ static inline bool sema_expr_analyse_subscript(SemaContext *context, Expr *expr,
 
 	if (!sema_expr_resolve_subscript_index(context, expr, subscripted, index, &current_type, &current_expr, &subscript_type, &overload, &index_value, is_eval_ref, overload_type, check_valid))
 	{
-		if (check_valid)
+		if (check_valid && expr_ok(index))
 		{
 			expr_poison(expr);
 			return true;

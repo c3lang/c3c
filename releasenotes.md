@@ -37,6 +37,7 @@
 - Compiler crash when passing an untyped list as an argument to `assert` #2108.
 - `@ensure` should be allowed to read "out" variables. #2107
 - Error message for casting generic to incompatible type does not work properly with nested generics #1953
+- Fixed enum regression after 0.7.0 enum change.
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

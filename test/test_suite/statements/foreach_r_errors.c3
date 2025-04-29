@@ -16,7 +16,7 @@ fn void test2()
 {
     foreach_r (a : z) foo();
     foreach_r (i, a : z) foo();
-    foreach_r (double i, a : z); // #error: Index must be an integer type, 'double' is not valid.
+    foreach_r (double i, a : z); // #error: must be an integer type, 'double' is not valid.
 }
 
 fn void test3()

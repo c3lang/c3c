@@ -1426,13 +1426,13 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	bool is_reverse = statement->foreach_stmt.is_reverse;
 	bool value_by_ref = statement->foreach_stmt.value_by_ref;
 	bool iterator_was_initializer = enumerator->expr_kind == EXPR_INITIALIZER_LIST;
+
 	// Check the type if needed
 	TypeInfo *variable_type_info = vartype(var);
 	if (variable_type_info && !sema_resolve_type_info(context, variable_type_info, RESOLVE_TYPE_DEFAULT)) return false;
 
 	// Conditional scope start
 	SCOPE_START
-
 
 		// In the case of foreach (int x : { 1, 2, 3 }) we will infer the int[] type, so pick out the number of elements.
 		Type *inferred_type = variable_type_info ? type_get_inferred_array(type_no_optional(variable_type_info->type)) : NULL;
@@ -1448,18 +1448,22 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		// And pop the cond scope.
 	SCOPE_END;
 
+	// Trying to iterate over an optional is meaningless, it should always be handled
+	// So check if it's a foreach (x : may_fail())
 	if (IS_OPTIONAL(enumerator))
 	{
 		RETURN_SEMA_ERROR(enumerator, "The foreach iterable expression may not be optional.");
 	}
 
+	// We handle the case of `foreach(&i, v : foo)` here, as it gives the chance
+	// to give better errors
 	if (statement->foreach_stmt.index_by_ref)
 	{
-		ASSERT(index);
+		ASSERT_SPAN(statement, index);
 		RETURN_SEMA_ERROR(index, "The index cannot be held by reference, did you accidentally add a '&'?");
 	}
 
-	// Insert a single deref as needed.
+	// We might have an untyped list, if we failed the conversion.
 	Type *canonical = enumerator->type->canonical;
 	if (canonical->type_kind == TYPE_UNTYPED_LIST)
 	{
@@ -1469,6 +1473,8 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 		}
 		RETURN_SEMA_ERROR(var, "Add an explicit type to the variable if you want to iterate over an initializer list.");
 	}
+
+	// In the case of a single `*`, then we will implicitly dereference that pointer.
 	if (canonical->type_kind == TYPE_POINTER)
 	{
 		// Something like Foo** will not be dereferenced, only Foo*
@@ -1480,51 +1486,82 @@ static inline bool sema_analyse_foreach_stmt(SemaContext *context, Ast *statemen
 	}
 
 	// At this point we should have dereferenced any pointer or bailed.
-	ASSERT(!type_is_pointer(enumerator->type));
+	ASSERT_SPAN(enumerator, !type_is_pointer(enumerator->type));
 
-	// Check that we can even index this expression.
-
+	// Check that we can even index this expression, this will dig into the flattened type.
 	Type *value_type = type_get_indexed_type(enumerator->type);
+
+	// However, if we have something distinct, that flattens to a pointer, we should never take the
+	// the underlying pointee type.
 	if (canonical->type_kind == TYPE_DISTINCT && type_flatten(canonical)->type_kind == TYPE_POINTER)
 	{
 		value_type = NULL;
 	}
 
+	// If we have a value type and it's by ref, then we get the pointer to that type.
 	if (value_type && value_by_ref) value_type = type_get_ptr(value_type);
 
 	Decl *len = NULL;
-	Decl *index_macro = NULL;
+	Decl *index_function = NULL;
 	Type *index_type = type_usz;
+	bool is_enum_iterator = false;
 
+	// Now we lower the foreach...
+	// If we can't find a value, or this is distinct, then we assume there is an overload.
 	if (!value_type || canonical->type_kind == TYPE_DISTINCT)
 	{
+		// Get the overload for .len
 		len = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_LEN, NULL);
+		// For foo[]
 		Decl *by_val = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_AT, NULL);
+		// For &foo[]
 		Decl *by_ref = sema_find_untyped_operator(context, enumerator->type, OVERLOAD_ELEMENT_REF, NULL);
+
+		// If we don't have .len, or there is neither by val nor by ref
 		if (!len || (!by_val && !by_ref))
 		{
+			// If we found an underlying type we can iterate over, use that.
 			if (value_type) goto SKIP_OVERLOAD;
+
+			// Otherwise this is an error.
 			RETURN_SEMA_ERROR(enumerator, "It's not possible to enumerate an expression of type %s.", type_quoted_error_string(enumerator->type));
 		}
+		// If we want the value "by ref" and there isn't a &[], then this is an error.
 		if (!by_ref && value_by_ref)
 		{
 			RETURN_SEMA_ERROR(enumerator, "%s does not support 'foreach' by reference, but you iterate by value.", type_quoted_error_string(enumerator->type));
 		}
+
+		// If there was an error in either of those declarations,
+		// bail here.
 		if (!decl_ok(len) || !decl_ok(by_val) || !decl_ok(by_ref)) return false;
-		index_macro = value_by_ref ? by_ref : by_val;
-		ASSERT(index_macro);
-		index_type = index_macro->func_decl.signature.params[1]->type;
-		if (!type_is_integer(index_type))
+
+		// Get the proper macro
+		index_function = value_by_ref ? by_ref : by_val;
+		ASSERT_SPAN(statement, index_function);
+
+		// The index type is the second parameter.
+		index_type = index_function->func_decl.signature.params[1]->type;
+
+		// If it's an enum this is handled in a special way.
+		is_enum_iterator = index_type->canonical->type_kind == TYPE_ENUM;
+
+		// We check that the index is either using integer or enums.
+		if (!type_is_integer(index_type) && !is_enum_iterator)
 		{
-			RETURN_SEMA_ERROR(enumerator, "Only integer indexed types may be used with foreach.");
+			RETURN_SEMA_ERROR(enumerator, "Only types indexed by integers or enums may be used with foreach.");
 		}
-		TypeInfoId rtype = index_macro->func_decl.signature.rtype;
+
+		// The return type is the value type if it is known (it's inferred for macros)
+		TypeInfoId rtype = index_function->func_decl.signature.rtype;
 		value_type = rtype ? type_infoptr(rtype)->type : NULL;
 	}
 
 SKIP_OVERLOAD:;
 
+	// Get the type of the variable, if available (e.g. foreach (Foo x : y) has a type
 	TypeInfo *type_info = vartype(var);
+
 	// Set up the value, assigning the type as needed.
 	// Element *value @noinit
 	if (!type_info)
@@ -1538,6 +1575,7 @@ SKIP_OVERLOAD:;
 	Type *index_var_type = NULL;
 	if (index)
 	{
+		// The index may or may not have a type, infer it as needed.
 		TypeInfo *idx_type_info = vartype(index);
 		if (!idx_type_info)
 		{
@@ -1545,15 +1583,28 @@ SKIP_OVERLOAD:;
 			index->var.type_info = type_infoid(idx_type_info);
 		}
 		if (!sema_resolve_type_info(context, idx_type_info, RESOLVE_TYPE_DEFAULT)) return false;
+
+		// The resulting type is our "index_var_type"
 		index_var_type = idx_type_info->type;
+
+		// Check that we don't have `foreach(int? i, y : z)`
 		if (type_is_optional(index_var_type))
 		{
 			RETURN_SEMA_ERROR(idx_type_info, "The index may not be an optional.");
 		}
-		if (!type_is_integer(type_flatten(index_var_type)))
+		// If we have an enum iterator, the enums must match.
+		if (is_enum_iterator)
 		{
+			if (index_var_type->canonical != index_type->canonical)
+			{
+				RETURN_SEMA_ERROR(idx_type_info, "The index value must be the enum %s.", type_quoted_error_string(index_type));
+			}
+		}
+		else if (!type_is_integer(type_flatten(index_var_type)))
+		{
+			// Otherwise make sure it's an integer.
 			RETURN_SEMA_ERROR(idx_type_info,
-			                  "Index must be an integer type, '%s' is not valid.",
+			                  "The index must be an integer type, '%s' is not valid.",
 			                  type_to_error_string(index_var_type));
 		}
 	}
@@ -1561,27 +1612,22 @@ SKIP_OVERLOAD:;
 
 	// We either have "foreach (x : some_var)" or "foreach (x : some_call())"
 	// So we grab the former by address (implicit &) and the latter as the value.
+	// Generate the temp as needed.
 	ASSERT(enumerator->resolve_status == RESOLVE_DONE);
 	bool is_addr = false;
-	bool is_variable = false;
+	Decl *temp = NULL;
 	if (enumerator->expr_kind == EXPR_IDENTIFIER)
 	{
 		enumerator->ident_expr->var.is_written = true;
-		is_variable = true;
-	}
-	else if (expr_may_addr(enumerator))
-	{
-		is_addr = true;
-		expr_insert_addr(enumerator);
-	}
-
-	Decl *temp = NULL;
-	if (is_variable)
-	{
 		temp = enumerator->ident_expr;
 	}
 	else
 	{
+		if (expr_may_addr(enumerator))
+		{
+			is_addr = true;
+			expr_insert_addr(enumerator);
+		}
 		// Store either "Foo* __enum$ = &some_var;" or "Foo __enum$ = some_call()"
 		temp = decl_new_generated_var(enumerator->type, VARDECL_LOCAL, enumerator->span);
 		vec_add(expressions, expr_generate_decl(temp, enumerator));
@@ -1623,11 +1669,14 @@ SKIP_OVERLOAD:;
 		is_reverse = false;
 	}
 
-	Decl *idx_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
+	// Find the actual index type -> flattening the enum
+	Type *actual_index_type = is_enum_iterator ? index_type->canonical->decl->enums.type_info->type : index_type;
 
-	// IndexType __len$ = (IndexType)(@__enum$.len())
+	// Generate the index variable
+	Decl *idx_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, index ? index->span : enumerator->span);
+
+	// IndexType __len$ = (ActualIndexType)(@__enum$.len())
 	Decl *len_decl = NULL;
-
 
 	if (is_reverse)
 	{
@@ -1636,36 +1685,53 @@ SKIP_OVERLOAD:;
 			// Create const len if missing.
 			len_call = expr_new_const_int(enumerator->span, type_isz, array_len);
 		}
-		if (!cast_implicit(context, len_call, index_type, false)) return false;
-		// __idx$ = (IndexType)(@__enum$.len()) (or const)
+		if (is_enum_iterator)
+		{
+			if (!cast_explicit(context, len_call, actual_index_type)) return false;
+		}
+		else
+		{
+			if (!cast_implicit(context, len_call, actual_index_type, false)) return false;
+		}
+		// __idx$ = (ActualIndexType)(@__enum$.len()) (or const)
 		vec_add(expressions, expr_generate_decl(idx_decl, len_call));
 	}
 	else
 	{
 		if (len_call)
 		{
-			len_decl = decl_new_generated_var(index_type, VARDECL_LOCAL, enumerator->span);
-			if (!cast_implicit_silent(context, len_call, index_type, false))
+			len_decl = decl_new_generated_var(actual_index_type, VARDECL_LOCAL, enumerator->span);
+			bool success;
+			if (is_enum_iterator)
+			{
+				success = cast_explicit_silent(context, len_call, actual_index_type);
+			}
+			else
+			{
+				success = cast_implicit_silent(context, len_call, actual_index_type, false);
+			}
+			if (!success)
 			{
 				SEMA_ERROR(enumerator,
 				           "'foreach' is not supported, as the length %s cannot "
-				           "be cast implicitly cast to %s - please update your definition.",
-				           type_quoted_error_string(len_call->type), type_quoted_error_string(index_type));
+				           "be %s to %s - please update your definition.",
+				           type_quoted_error_string(len_call->type), is_enum_iterator ? "cast" : "implicitly cast",
+				           type_quoted_error_string(actual_index_type));
 				if (len)
 				{
 					SEMA_NOTE(len, "The definition of 'len()' is here.");
 					decl_poison(len);
 				}
-				if (index_macro)
+				if (index_function)
 				{
-					SEMA_NOTE(index_macro, "The index definition is here.");
-					decl_poison(index_macro);
+					SEMA_NOTE(index_function, "The index definition is here.");
+					decl_poison(index_function);
 				}
 				return false;
 			}
 			vec_add(expressions, expr_generate_decl(len_decl, len_call));
 		}
-		Expr *idx_init = expr_new_const_int(idx_decl->span, index_type, 0);
+		Expr *idx_init = expr_new_const_int(idx_decl->span, actual_index_type, 0);
 		vec_add(expressions, expr_generate_decl(idx_decl, idx_init));
 	}
 
@@ -1726,6 +1792,10 @@ SKIP_OVERLOAD:;
 		Ast *declare_ast = new_ast(AST_DECLARE_STMT, var->span);
 		declare_ast->declare_stmt = index;
 		Expr *load_idx = expr_variable(idx_decl);
+		if (is_enum_iterator)
+		{
+			load_idx->type = index_var_type;
+		}
 		if (!cast_explicit(context, load_idx, index_var_type)) return false;
 		index->var.init_expr = load_idx;
 		ast_append(&succ, declare_ast);
@@ -1740,14 +1810,12 @@ SKIP_OVERLOAD:;
 	enum_val->span = enumerator->span;
 	if (is_addr) expr_rewrite_insert_deref(enum_val);
 	subscript->subscript_expr.expr = exprid(enum_val);
-	if (array_len == 1)
+	Expr *index_expr = array_len == 1 ? expr_new_const_int(var->span, idx_decl->type, 0) : expr_variable(idx_decl);
+	if (is_enum_iterator)
 	{
-		subscript->subscript_expr.index.expr = exprid(expr_new_const_int(var->span, idx_decl->type, 0));
+		expr_rewrite_enum_from_ord(index_expr, index_type);
 	}
-	else
-	{
-		subscript->subscript_expr.index.expr = exprid(expr_variable(idx_decl));
-	}
+	subscript->subscript_expr.index.expr = exprid(index_expr);
 	if (value_by_ref)
 	{
 		Expr *addr = expr_new(EXPR_UNARY, subscript->span);
