@@ -53,15 +53,12 @@ fn void? NativeMutex.init(&mtx, MutexType type)
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+ @require mtx.owner_thread != win32::getCurrentThreadId() : "Mutex was not unlocked before destroying it"
  @ensure !mtx.initialized
 *>
 fn void? NativeMutex.destroy(&mtx)
 {
-	mtx.initialized = false;
-	$if env::COMPILER_SAFE_MODE:
-		Win32_DWORD current_thread = win32::getCurrentThreadId();
-		if (mtx.owner_thread == current_thread) return thread::DESTROY_FAILED?;
-	$endif
+	*mtx = {};
 }
 
 <*
@@ -107,7 +104,9 @@ fn bool NativeMutex.try_lock(&mtx)
 *>
 fn void? NativeMutex.unlock(&mtx)
 {
-	if (!mtx.locks) return thread::UNLOCK_FAILED?;
+	$if env::COMPILER_SAFE_MODE:
+		if (mtx.owner_thread != win32::getCurrentThreadId()) return thread::UNLOCK_FAILED?; // Mutex was not locked by the current thread
+	$endif
 	if (--mtx.locks == 0)
 	{
 		mtx.owner_thread = 0;
@@ -130,15 +129,12 @@ fn void? NativeTimedMutex.init(&mtx, MutexType type)
 
 <*
  @require mtx.initialized : "Mutex was not initialized"
+ @require mtx.owner_thread != win32::getCurrentThreadId() : "Mutex was not unlocked before destroying it"
  @ensure !mtx.initialized
 *>
 fn void? NativeTimedMutex.destroy(&mtx)
 {
-	mtx.initialized = false;
-	$if env::COMPILER_SAFE_MODE:
-		Win32_DWORD current_thread = win32::getCurrentThreadId();
-		if (mtx.owner_thread == current_thread) return thread::DESTROY_FAILED?;
-	$endif
+	*mtx = {};
 }
 
 fn void? NativeTimedMutex.wait_cond_var(&mtx, uint ms) @local
@@ -246,11 +242,13 @@ fn bool NativeTimedMutex.try_lock(&mtx)
 fn void? NativeTimedMutex.unlock(&mtx)
 {
 	win32::acquireSRWLockExclusive(&mtx.srw_lock);
-	if (!mtx.locks)
-	{
-		win32::releaseSRWLockExclusive(&mtx.srw_lock);
-		return thread::UNLOCK_FAILED?;
-	}
+	$if env::COMPILER_SAFE_MODE:
+		if (mtx.owner_thread != win32::getCurrentThreadId()) 
+		{
+			win32::releaseSRWLockExclusive(&mtx.srw_lock);
+			return thread::UNLOCK_FAILED?; // Mutex was not locked by the current thread
+		}
+	$endif
 
 	bool signal;
 	if (--mtx.locks == 0)
