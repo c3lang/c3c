@@ -19,6 +19,7 @@
 - Deprecated old inference with slice copy. Copying must now ensure a slicing operator at the end of the right hand side: `foo[1..2] = bar[..]` rather than the old `foo[1..2] = bar`. The old behaviour can be mostly retained with `--use-old-slice-copy`).
 - Added `Enum.lookup` and `Enum.lookup_field`.
 - `c3c build` picks first target rather than the first executable #2105.
+- New Win32 Mutex, ConditionVariable and OnceFlag implementation
 
 ### Fixes
 - Trying to cast an enum to int and back caused the compiler to crash.
@@ -38,6 +39,7 @@
 - `@ensure` should be allowed to read "out" variables. #2107
 - Error message for casting generic to incompatible type does not work properly with nested generics #1953
 - Fixed enum regression after 0.7.0 enum change.
+- ConditionVariable now properly works on Win32
 
 ### Stdlib changes
 - Hash functions for integer vectors and arrays.

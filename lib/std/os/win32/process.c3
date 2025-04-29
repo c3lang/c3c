@@ -46,6 +46,8 @@ const IMAGE_FILE_MACHINE_ARM64 = 0xAA64;
 const IMAGE_FILE_MACHINE_AMD64 = 0x8664;
 const UNDNAME_COMPLETE = 0x0000;
 
+alias Win32_INIT_ONCE_FN = fn Win32_BOOL(Win32_INIT_ONCE* initOnce, void* parameter, void** context);
+
 extern fn void initializeCriticalSection(Win32_CRITICAL_SECTION* section) @extern("InitializeCriticalSection");
 extern fn void deleteCriticalSection(Win32_CRITICAL_SECTION* section) @extern("DeleteCriticalSection");
 extern fn Win32_HANDLE createMutex(void*, Win32_BOOL, void*) @extern("CreateMutexA");
@@ -53,6 +55,19 @@ extern fn Win32_BOOL releaseMutex(Win32_HANDLE) @extern("ReleaseMutex");
 extern fn void enterCriticalSection(Win32_CRITICAL_SECTION* section) @extern("EnterCriticalSection");
 extern fn void leaveCriticalSection(Win32_CRITICAL_SECTION* section) @extern("LeaveCriticalSection");
 extern fn Win32_BOOL tryEnterCriticalSection(Win32_CRITICAL_SECTION* section) @extern("TryEnterCriticalSection");
+extern fn void initializeSRWLock(Win32_SRWLOCK* lock) @extern("InitializeSRWLock");
+extern fn void acquireSRWLockExclusive(Win32_SRWLOCK* lock) @extern("AcquireSRWLockExclusive");
+extern fn void acquireSRWLockShared(Win32_SRWLOCK* lock) @extern("AcquireSRWLockShared");
+extern fn void releaseSRWLockExclusive(Win32_SRWLOCK* lock) @extern("ReleaseSRWLockExclusive");
+extern fn void releaseSRWLockShared(Win32_SRWLOCK* lock) @extern("ReleaseSRWLockShared");
+extern fn Win32_BOOL tryAcquireSRWLockExclusive(Win32_SRWLOCK* lock) @extern("TryAcquireSRWLockExclusive");
+extern fn Win32_BOOL tryAcquireSRWLockShared(Win32_SRWLOCK* lock) @extern("TryAcquireSRWLockShared");
+extern fn void initializeConditionVariable(Win32_CONDITION_VARIABLE* conditionVariable) @extern("InitializeConditionVariable");
+extern fn void wakeConditionVariable(Win32_CONDITION_VARIABLE* conditionVariable) @extern("WakeConditionVariable");
+extern fn void wakeAllConditionVariable(Win32_CONDITION_VARIABLE* conditionVariable) @extern("WakeAllConditionVariable");
+extern fn Win32_BOOL sleepConditionVariableCS(Win32_CONDITION_VARIABLE* conditionVariable, Win32_CRITICAL_SECTION* section, Win32_DWORD dwMilliseconds) @extern("SleepConditionVariableCS");
+extern fn Win32_BOOL sleepConditionVariableSRW(Win32_CONDITION_VARIABLE* conditionVariable, Win32_SRWLOCK* lock, Win32_DWORD dwMilliseconds, Win32_ULONG flags) @extern("SleepConditionVariableSRW");
+extern fn Win32_BOOL initOnceExecuteOnce(Win32_INIT_ONCE* initOnce, Win32_INIT_ONCE_FN initFn, void* parameter, void** context) @extern("InitOnceExecuteOnce");
 extern fn Win32_DWORD waitForSingleObject(Win32_HANDLE hHandle, Win32_DWORD dwMilliseconds) @extern("WaitForSingleObject");
 extern fn Win32_DWORD waitForSingleObjectEx(Win32_HANDLE hHandle, Win32_DWORD dwMilliseconds, Win32_BOOL bAlertable) @extern("WaitForSingleObjectEx");
 extern fn Win32_DWORD waitForMultipleObjects(Win32_DWORD nCount, Win32_HANDLE* lpHandles, Win32_BOOL bWaitAll, Win32_DWORD dwMilliseconds) @extern("WaitForMultipleObjects");

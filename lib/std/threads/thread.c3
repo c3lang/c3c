@@ -2,16 +2,16 @@ module std::thread;
 import std::thread::os;
 import std::time;
 
-typedef MutexType = int;
-
-const MutexType MUTEX_PLAIN = 0;
-const MutexType MUTEX_TIMED = 1;
-const MutexType MUTEX_RECURSIVE = 2;
+bitstruct MutexType : int
+{
+	bool timed;
+	bool recursive;
+}
 
 typedef Mutex = NativeMutex;
-typedef TimedMutex = inline Mutex;
 typedef RecursiveMutex = inline Mutex;
-typedef TimedRecursiveMutex = inline Mutex;
+typedef TimedMutex = NativeTimedMutex;
+typedef TimedRecursiveMutex = inline TimedMutex;
 typedef ConditionVariable = NativeConditionVariable;
 typedef Thread = inline NativeThread;
 typedef OnceFlag = NativeOnceFlag;
@@ -33,16 +33,21 @@ faultdef
 	INTERRUPTED,
 	CHANNEL_CLOSED;
 
-macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_PLAIN);
-macro void? TimedMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_TIMED);
-macro void? RecursiveMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_RECURSIVE);
-macro void? TimedRecursiveMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, MUTEX_TIMED | MUTEX_RECURSIVE);
+macro void? Mutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {});
+macro void? RecursiveMutex.init(&mutex) => NativeMutex.init((NativeMutex*)mutex, {.recursive});
 macro void? Mutex.destroy(&mutex) => NativeMutex.destroy((NativeMutex*)mutex);
 macro void? Mutex.lock(&mutex) => NativeMutex.lock((NativeMutex*)mutex);
-macro void? TimedMutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
-macro void? TimedRecursiveMutex.lock_timeout(&mutex, ulong ms) => NativeMutex.lock_timeout((NativeMutex*)mutex, ms);
-macro bool Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
+macro bool  Mutex.try_lock(&mutex) => NativeMutex.try_lock((NativeMutex*)mutex);
 macro void? Mutex.unlock(&mutex) => NativeMutex.unlock((NativeMutex*)mutex);
+
+macro void? TimedMutex.init(&mutex) => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed});
+macro void? TimedRecursiveMutex.init(&mutex) => NativeTimedMutex.init((NativeTimedMutex*)mutex, {.timed, .recursive});
+macro void? TimedMutex.destroy(&mutex) => NativeTimedMutex.destroy((NativeTimedMutex*)mutex);
+macro void? TimedMutex.lock(&mutex) => NativeTimedMutex.lock((NativeTimedMutex*)mutex);
+macro void? TimedMutex.lock_timeout(&mutex, ulong ms) => NativeTimedMutex.lock_timeout((NativeTimedMutex*)mutex, ms);
+macro bool  TimedMutex.try_lock(&mutex) => NativeTimedMutex.try_lock((NativeTimedMutex*)mutex);
+macro void? TimedMutex.unlock(&mutex) => NativeTimedMutex.unlock((NativeTimedMutex*)mutex);
+
 macro void Mutex.@in_lock(&mutex; @body)
 {
 	(void)mutex.lock();

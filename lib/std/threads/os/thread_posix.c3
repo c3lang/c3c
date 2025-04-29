@@ -7,6 +7,8 @@ struct NativeMutex
 	bool initialized;
 }
 
+alias NativeTimedMutex = NativeMutex;
+
 alias NativeConditionVariable = Pthread_cond_t;
 
 struct NativeThread
@@ -28,7 +30,7 @@ fn void? NativeMutex.init(&self, MutexType type)
 	if (posix::pthread_mutexattr_init(&attr)) return thread::INIT_FAILED?;
 	defer posix::pthread_mutexattr_destroy(&attr);
 	// TODO: make a fine grained error instead
-	if (type & thread::MUTEX_RECURSIVE)
+	if (type.recursive)
 	{
 		if (posix::pthread_mutexattr_settype(&attr, posix::PTHREAD_MUTEX_RECURSIVE)) return thread::INIT_FAILED?;
 	}
