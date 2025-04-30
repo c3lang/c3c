@@ -1,5 +1,9 @@
 # C3C Release Notes
 
+## 0.7.2 Change list
+
+No changes yet
+
 ## 0.7.1 Change list
 
 ### Changes / improvements
