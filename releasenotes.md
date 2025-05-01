@@ -2,7 +2,8 @@
 
 ## 0.7.2 Change list
 
-No changes yet
+### Fixes
+- Assert triggered when casting from `int[2]` to `uint[2]` #2115
 
 ## 0.7.1 Change list
 

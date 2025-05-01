@@ -1,0 +1,29 @@
+// #target: macos-x64
+module test;
+fn void main()
+{
+	uint[2] v;
+	foo(v);
+}
+
+fn void foo(int[2] v) {}
+
+/* #expect: test.ll
+
+define void @test.main() #0 {
+entry:
+  %v = alloca [2 x i32], align 4
+  store i32 0, ptr %v, align 4
+  %ptradd = getelementptr inbounds i8, ptr %v, i64 4
+  store i32 0, ptr %ptradd, align 4
+  %0 = load i64, ptr %v, align 4
+  call void @test.foo(i64 %0)
+  ret void
+}
+
+define void @test.foo(i64 %0) #0 {
+entry:
+  %v = alloca [2 x i32], align 4
+  store i64 %0, ptr %v, align 4
+  ret void
+}
