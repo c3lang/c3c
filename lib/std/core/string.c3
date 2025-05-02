@@ -869,22 +869,91 @@ fn char? String.to_uchar(self, int base = 10) => self.to_integer(char, base);
 fn double? String.to_double(self) => self.to_real(double);
 fn float? String.to_float(self) => self.to_real(float);
 
-fn Splitter String.splitter(self, String split)
-{
-	return { .string = self, .split = split };
-}
 
+<*
+ Create a Splitter to track tokenizing of a string. Tokenize will turn "foo:bar::baz" into
+ "foo", "bar" and "baz", if you want the empty string to be present, use `tokenize_all`
+ instead.
+
+ @param [in] split : "The string to use for splitting"
+ @return "A Splitter to track the state"
+*>
 fn Splitter String.tokenize(self, String split)
 {
-	return { .string = self, .split = split, .tokenize = true };
+	return { .string = self, .split = split, .type = TOKENIZE };
 }
 
+<*
+ Create a Splitter to track tokenizing of a string. Tokenize will turn "foo:bar::baz" into
+ "foo", "bar" and "baz", if you want the empty string to be present, use `tokenize_all`
+ instead.
+
+ @param [in] split : "The string to use for splitting"
+ @param skip_last : "Set to true to not include the last empty token if present (default: false)"
+ @return "A Splitter to track the state"
+*>
+fn Splitter String.tokenize_all(self, String split, bool skip_last = false)
+{
+	return {
+		.string = self,
+		.split = split,
+		.type = skip_last ? TOKENIZE_ALL_SKIP_LAST : TOKENIZE_ALL
+	};
+}
+
+fn Splitter String.splitter(self, String split) @deprecated("Use tokenize_all instead")
+{
+	return self.tokenize_all(split, skip_last: true);
+}
+
+<*
+ This macro will create a string description of a struct.
+
+ @param [&inout] allocator : "The allocator to use"
+ @param x : "The struct to create a description of"
+*>
+macro String from_struct(Allocator allocator, x)
+{
+	DString s;
+	@stack_mem(512; Allocator mem)
+	{
+		s.init(allocator: mem);
+		io::fprint(&s, x)!!;
+		return s.copy_str(allocator);
+	};
+}
+
+<*
+ This macro will create a temporary string description of a struct.
+
+ @param x : "The struct to create a description of"
+*>
+macro String tfrom_struct(x) => from_struct(tmem, x);
+
+const uint SURROGATE_OFFSET @private = 0x10000;
+const uint SURROGATE_GENERIC_MASK @private = 0xF800;
+const uint SURROGATE_MASK @private = 0xFC00;
+const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
+const uint SURROGATE_BITS @private = 10;
+const uint SURROGATE_LOW_VALUE @private = 0xDC00;
+const uint SURROGATE_HIGH_VALUE @private = 0xD800;
+
+enum SplitterType
+{
+	TOKENIZE,
+	TOKENIZE_ALL,
+	TOKENIZE_ALL_SKIP_LAST
+}
+
+<*
+ Splitter is handles tokenizing strings.
+*>
 struct Splitter
 {
 	String string;
 	String split;
 	usz current;
-	bool tokenize;
+	SplitterType type;
 	int last_index;
 }
 
@@ -899,37 +968,22 @@ fn String? Splitter.next(&self)
 	{
 		usz len = self.string.len;
 		usz current = self.current;
-		if (current >= len) return NO_MORE_ELEMENT?;
+		if (current > len) return NO_MORE_ELEMENT?;
+		if (current == len)
+		{
+			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT?;
+			self.current++;
+			return self.string[current - 1:0];
+		}
 		String remaining = self.string[current..];
 		usz? next = remaining.index_of(self.split);
 		if (try next)
 		{
 			self.current = current + next + self.split.len;
-			if (!next && self.tokenize) continue;
+			if (!next && self.type == TOKENIZE) continue;
 			return remaining[:next];
 		}
 		self.current = len;
 		return remaining;
 	}
 }
-
-macro String from_struct(Allocator allocator, x)
-{
-	DString s;
-	@stack_mem(512; Allocator mem)
-	{
-		s.init(allocator: mem);
-		io::fprint(&s, x)!!;
-		return s.copy_str(allocator);
-	};
-}
-
-macro String tfrom_struct(x) => from_struct(tmem, x);
-
-const uint SURROGATE_OFFSET @private = 0x10000;
-const uint SURROGATE_GENERIC_MASK @private = 0xF800;
-const uint SURROGATE_MASK @private = 0xFC00;
-const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
-const uint SURROGATE_BITS @private = 10;
-const uint SURROGATE_LOW_VALUE @private = 0xDC00;
-const uint SURROGATE_HIGH_VALUE @private = 0xD800;

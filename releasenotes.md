@@ -8,6 +8,7 @@
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
 - std::ascii moved into std::core::ascii. Old _m variants are deprecated, as is uint methods.
+- Add `String.tokenize_all` to replace the now deprecated `String.splitter`
 
 ## 0.7.1 Change list
 

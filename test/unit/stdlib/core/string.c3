@@ -1,4 +1,6 @@
 module std::core::string::tests @test;
+import std::core::test;
+
 
 fn void test_starts_with()
 {
@@ -226,4 +228,43 @@ fn void test_hex_conversion()
 {
 	assert("0x123aCd".to_long()!! == 0x123acd);
 	assert("123acD".to_long(16)!! == 0x123acd);
+}
+
+fn void tokenize()
+{
+	String ex = "foo::bar:baz:";
+	Splitter sp = ex.tokenize(":");
+	DString str;
+    while (try s = sp.next())
+    {
+        str.append(s);
+        str.append("-");
+	}
+	test::eq(str.str_view(), "foo-bar-baz-");
+}
+
+fn void tokenize_all()
+{
+	String ex = "foo::bar:baz:";
+	Splitter sp = ex.tokenize_all(":");
+	DString str;
+    while (try s = sp.next())
+    {
+        str.append(s);
+        str.append("-");
+	}
+	test::eq(str.str_view(), "foo--bar-baz--");
+}
+
+fn void tokenize_all_skip_last()
+{
+	String ex = "foo::bar:baz:";
+	Splitter sp = ex.tokenize_all(":", skip_last: true);
+	DString str;
+    while (try s = sp.next())
+    {
+        str.append(s);
+        str.append("-");
+	}
+	test::eq(str.str_view(), "foo--bar-baz-");
 }
