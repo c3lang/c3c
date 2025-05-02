@@ -1,5 +1,4 @@
 module std::core::string;
-import std::ascii;
 import std::io;
 
 typedef String @if(!$defined(String)) = inline char[];
@@ -787,7 +786,7 @@ macro String.to_integer(self, $Type, int base = 10)
 	usz len = self.len;
 	usz index = 0;
 	char* ptr = self.ptr;
-	while (index < len && ascii::is_blank_m(ptr[index])) index++;
+	while (index < len && ptr[index].is_blank()) index++;
 	if (len == index) return EMPTY_STRING?;
 	bool is_negative;
 	switch (self[index])
