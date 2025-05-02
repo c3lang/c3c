@@ -3,39 +3,77 @@ import std::ascii;
 import std::io;
 
 typedef String @if(!$defined(String)) = inline char[];
+<*
+ ZString is a pointer to a zero terminated array of chars.
+
+ Use ZString when you need to interop with C zero terminated strings.
+*>
 typedef ZString = inline char*;
+
+<*
+ WString is a pointer to a zero terminated array of Char16.
+
+ Depending on the platform, this may or may not correspond to wchar_t.
+ For Windows, wchar_t is generally 16 bits, on MacOS it is 32 bits.
+ However, for both MacOS and Linux, regular C strings (ZString)
+ will be UTF-8 encoded, so there is no need to use the wchar_t versions
+ of functions outside of encoding functions.
+*>
 typedef WString = inline Char16*;
 
+<*
+ Char32 is a UTF32 codepoint
+*>
 alias Char32 = uint;
+
+<*
+ Char16 is a UTF16 "character"
+*>
 alias Char16 = ushort;
 
+<*
+ Common faults used with strings
+*>
 faultdef INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED,
          EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
          INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;
 
-const uint SURROGATE_OFFSET @private = 0x10000;
-const uint SURROGATE_GENERIC_MASK @private = 0xF800;
-const uint SURROGATE_MASK @private = 0xFC00;
-const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
-const uint SURROGATE_BITS @private = 10;
-const uint SURROGATE_LOW_VALUE @private = 0xDC00;
-const uint SURROGATE_HIGH_VALUE @private = 0xD800;
 
+<*
+ Create a pointer to an UTF32 encoded string at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro Char32* @wstring32(String $string) @builtin
 {
 	return (Char32*)&&$$wstr32($string);
 }
 
+<*
+ Create a slice of an UTF32 encoded string at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro Char32[] @char32(String $string) @builtin
 {
 	return $$wstr32($string)[..^2];
 }
 
+<*
+ Create a WString (an UTF16 encoded string) at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro WString @wstring(String $string) @builtin
 {
 	return (WString)&&$$wstr16($string);
 }
 
+<*
+ Create a slice of an UTF32 encoded string at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro Char16[] @char16(String $string) @builtin
 {
 	return $$wstr16($string)[..^2];
@@ -888,3 +926,11 @@ macro String from_struct(Allocator allocator, x)
 }
 
 macro String tfrom_struct(x) => from_struct(tmem, x);
+
+const uint SURROGATE_OFFSET @private = 0x10000;
+const uint SURROGATE_GENERIC_MASK @private = 0xF800;
+const uint SURROGATE_MASK @private = 0xFC00;
+const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
+const uint SURROGATE_BITS @private = 10;
+const uint SURROGATE_LOW_VALUE @private = 0xDC00;
+const uint SURROGATE_HIGH_VALUE @private = 0xD800;
