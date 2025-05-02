@@ -376,6 +376,38 @@ fn bool String.contains(s, String substr)
 }
 
 <*
+ Check how many non-overlapping instances of a substring there is.
+
+ If the substring has zero length, the number of matches is zero.
+
+ @param [in] self : "The string to search"
+ @param [in] substr : "The string to look for."
+ @pure
+ @return "The number of times matched"
+*>
+fn usz String.count(self, String substr)
+{
+	usz count = 0;
+	usz needed = substr.len;
+	if (needed == 0) return 0;
+    char first = substr[0];
+    while OUTER: (self.len >= needed)
+    {
+    	foreach (i, c: self[..^needed])
+    	{
+    		if (c == first && self[i : needed] == substr)
+    		{
+    		    count++;
+    		    self = self[i + needed..];
+    		    continue OUTER;
+    		}
+    	}
+    	break;
+    }
+    return count;
+}
+
+<*
  Find the index of the first incidence of a string.
 
  @param [in] self

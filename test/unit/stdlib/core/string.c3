@@ -14,6 +14,22 @@ fn void test_starts_with()
 	assert(!s.starts_with("o"));
 }
 
+fn void test_count()
+{
+	String s = "aaabcabd";
+	assert(s.count("a") == 4);
+	assert(s.count("aa") == 1);
+	assert(s.count("ab") == 2);
+	assert(s.count("") == 0);
+	assert(s.count("e") == 0);
+	String s2 = "abbccc";
+	assert(s2.count("a") == 1);
+	assert(s2.count("b") == 2);
+	assert(s2.count("c") == 3);
+	assert(s2.count("ab") == 1);
+	assert(s2.count(" ") == 0);
+}
+
 fn void quick_zstr()
 {
 	String str = "1234";
