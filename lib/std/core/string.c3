@@ -692,9 +692,57 @@ fn usz String.utf8_codepoints(s)
 	return len;
 }
 
+<*
+ Determine whether the current string actually points to a ZString-like string.
+
+ This is done by looking at the byte one step after the end of the string. If this
+ is zero, it is considered zero terminated.
+
+ This function can safely be used with data pointing to null. However, it will not
+ work correctly if the pointer is invalid, for example it is already freed.
+*>
+fn bool String.is_zstr(self)
+{
+	return self.ptr && *(self.ptr + self.len) == 0;
+}
 
 <*
- @require (base <= 10 && base > 1) || base == 16 : "Unsupported base"
+ Return a pointer to the string *iff* it is a pointer
+ to a zero terminated string, otherwise return a temp allocated zstring copy.
+
+ This function is suitable if you are converting strings to ZString on the temp
+ allocator, but suspect that the String might actually already point to zero
+ terminated data.
+
+ The function looks one step beyond the end of the slice to determine this,
+ which means that if that data is then modified after this call, this function
+ might behave incorrectly.
+
+ For this reason, try to ensure that the resulting ZString is immediately used.
+
+ @ensure return[self.len] == 0
+*>
+fn ZString String.quick_zstr(self)
+{
+	if (self.is_zstr() @inline) return (ZString)self.ptr;
+	return self.zstr_tcopy();
+}
+
+
+<*
+ Convert a number to a given base. If the base is not given, then
+ it will be inferred from the number if the string starts with 0x 0o or 0b and the
+ base is given as 10.
+
+ Furthermore it will skip any spaces before and after the number.
+
+ @param $Type : "The type to convert to"
+ @param base : "The base to convert to"
+ @require base > 0 && base <= 16 : "Unsupported base"
+ @return? MALFORMED_INTEGER : "When the value has some illegal character"
+ @return? INTEGER_OVERFLOW : "If the value does not fit in the given type"
+ @return? EMPTY_STRING : "If the string was empty"
+ @return? NEGATIVE_VALUE : "If the type was unsigned, and the value had a - prefix"
 *>
 macro String.to_integer(self, $Type, int base = 10)
 {
@@ -746,7 +794,7 @@ macro String.to_integer(self, $Type, int base = 10)
 		char c = self[index++];
 		switch
 		{
-			case base_used != 16 || c < 'A':  c -= '0';
+			case base_used < 10 || c < 'A':   c -= '0';
 			case c <= 'F':                    c -= 'A' - 10;
 			case c < 'a' || c > 'f':          return MALFORMED_INTEGER?;
 			default:                          c -= 'a' - 10;

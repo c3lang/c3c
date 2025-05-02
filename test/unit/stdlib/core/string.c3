@@ -12,6 +12,20 @@ fn void test_starts_with()
 	assert(!s.starts_with("o"));
 }
 
+fn void quick_zstr()
+{
+	String str = "1234";
+	ZString a = str.quick_zstr();
+	ZString b = str[0..2].quick_zstr();
+	ZString c = str[1..].quick_zstr();
+	String empty = {};
+	ZString d = empty.quick_zstr();
+	assert((void*)a == str.ptr);
+	assert((void*)b != str.ptr);
+	assert((void*)c == &str[1]);
+	assert(d[0] == 0);
+}
+
 fn void test_print_null()
 {
 	ZString z;
@@ -199,6 +213,13 @@ fn void test_rindex_of_char()
 	assert(test.rindex_of_char('l')!! == 15);
 	assert(test.rindex_of_char('h')!! == 12);
 	assert(@catch(test.index_of_char('x')));
+}
+
+fn void test_base_13_convesion()
+{
+	assert("13".to_long(13)!! == 13 + 3);
+	assert("1a".to_long(13)!! == 13 + 10);
+	assert("aa".to_long(13)!! == 13 * 10 + 10);
 }
 
 fn void test_hex_conversion()

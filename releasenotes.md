@@ -5,6 +5,9 @@
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
 
+### Stdlib changes
+- Added `String.quick_ztr` and `String.is_zstr`
+
 ## 0.7.1 Change list
 
 ### Changes / improvements
