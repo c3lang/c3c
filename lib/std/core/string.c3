@@ -1,41 +1,78 @@
 module std::core::string;
-import std::ascii;
 import std::io;
 
 typedef String @if(!$defined(String)) = inline char[];
+<*
+ ZString is a pointer to a zero terminated array of chars.
+
+ Use ZString when you need to interop with C zero terminated strings.
+*>
 typedef ZString = inline char*;
+
+<*
+ WString is a pointer to a zero terminated array of Char16.
+
+ Depending on the platform, this may or may not correspond to wchar_t.
+ For Windows, wchar_t is generally 16 bits, on MacOS it is 32 bits.
+ However, for both MacOS and Linux, regular C strings (ZString)
+ will be UTF-8 encoded, so there is no need to use the wchar_t versions
+ of functions outside of encoding functions.
+*>
 typedef WString = inline Char16*;
 
+<*
+ Char32 is a UTF32 codepoint
+*>
 alias Char32 = uint;
+
+<*
+ Char16 is a UTF16 "character"
+*>
 alias Char16 = ushort;
 
+<*
+ Common faults used with strings
+*>
 faultdef INVALID_UTF8, INVALID_UTF16, CONVERSION_FAILED,
          EMPTY_STRING, NEGATIVE_VALUE, MALFORMED_INTEGER,
          INTEGER_OVERFLOW, MALFORMED_FLOAT, FLOAT_OUT_OF_RANGE;
 
-const uint SURROGATE_OFFSET @private = 0x10000;
-const uint SURROGATE_GENERIC_MASK @private = 0xF800;
-const uint SURROGATE_MASK @private = 0xFC00;
-const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
-const uint SURROGATE_BITS @private = 10;
-const uint SURROGATE_LOW_VALUE @private = 0xDC00;
-const uint SURROGATE_HIGH_VALUE @private = 0xD800;
 
+<*
+ Create a pointer to an UTF32 encoded string at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro Char32* @wstring32(String $string) @builtin
 {
 	return (Char32*)&&$$wstr32($string);
 }
 
+<*
+ Create a slice of an UTF32 encoded string at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro Char32[] @char32(String $string) @builtin
 {
 	return $$wstr32($string)[..^2];
 }
 
+<*
+ Create a WString (an UTF16 encoded string) at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro WString @wstring(String $string) @builtin
 {
 	return (WString)&&$$wstr16($string);
 }
 
+<*
+ Create a slice of an UTF32 encoded string at compile time.
+
+ @param $string : "The string to encode"
+*>
 macro Char16[] @char16(String $string) @builtin
 {
 	return $$wstr16($string)[..^2];
@@ -336,6 +373,38 @@ fn String[]? String.split_to_buffer(s, String delimiter, String[] buffer, usz ma
 fn bool String.contains(s, String substr)
 {
 	return @ok(s.index_of(substr));
+}
+
+<*
+ Check how many non-overlapping instances of a substring there is.
+
+ If the substring has zero length, the number of matches is zero.
+
+ @param [in] self : "The string to search"
+ @param [in] substr : "The string to look for."
+ @pure
+ @return "The number of times matched"
+*>
+fn usz String.count(self, String substr)
+{
+	usz count = 0;
+	usz needed = substr.len;
+	if (needed == 0) return 0;
+    char first = substr[0];
+    while OUTER: (self.len >= needed)
+    {
+    	foreach (i, c: self[..^needed])
+    	{
+    		if (c == first && self[i : needed] == substr)
+    		{
+    		    count++;
+    		    self = self[i + needed..];
+    		    continue OUTER;
+    		}
+    	}
+    	break;
+    }
+    return count;
 }
 
 <*
@@ -692,16 +761,64 @@ fn usz String.utf8_codepoints(s)
 	return len;
 }
 
+<*
+ Determine whether the current string actually points to a ZString-like string.
+
+ This is done by looking at the byte one step after the end of the string. If this
+ is zero, it is considered zero terminated.
+
+ This function can safely be used with data pointing to null. However, it will not
+ work correctly if the pointer is invalid, for example it is already freed.
+*>
+fn bool String.is_zstr(self)
+{
+	return self.ptr && *(self.ptr + self.len) == 0;
+}
 
 <*
- @require (base <= 10 && base > 1) || base == 16 : "Unsupported base"
+ Return a pointer to the string *iff* it is a pointer
+ to a zero terminated string, otherwise return a temp allocated zstring copy.
+
+ This function is suitable if you are converting strings to ZString on the temp
+ allocator, but suspect that the String might actually already point to zero
+ terminated data.
+
+ The function looks one step beyond the end of the slice to determine this,
+ which means that if that data is then modified after this call, this function
+ might behave incorrectly.
+
+ For this reason, try to ensure that the resulting ZString is immediately used.
+
+ @ensure return[self.len] == 0
+*>
+fn ZString String.quick_zstr(self)
+{
+	if (self.is_zstr() @inline) return (ZString)self.ptr;
+	return self.zstr_tcopy();
+}
+
+
+<*
+ Convert a number to a given base. If the base is not given, then
+ it will be inferred from the number if the string starts with 0x 0o or 0b and the
+ base is given as 10.
+
+ Furthermore it will skip any spaces before and after the number.
+
+ @param $Type : "The type to convert to"
+ @param base : "The base to convert to"
+ @require base > 0 && base <= 16 : "Unsupported base"
+ @return? MALFORMED_INTEGER : "When the value has some illegal character"
+ @return? INTEGER_OVERFLOW : "If the value does not fit in the given type"
+ @return? EMPTY_STRING : "If the string was empty"
+ @return? NEGATIVE_VALUE : "If the type was unsigned, and the value had a - prefix"
 *>
 macro String.to_integer(self, $Type, int base = 10)
 {
 	usz len = self.len;
 	usz index = 0;
 	char* ptr = self.ptr;
-	while (index < len && ascii::is_blank_m(ptr[index])) index++;
+	while (index < len && ptr[index].is_blank()) index++;
 	if (len == index) return EMPTY_STRING?;
 	bool is_negative;
 	switch (self[index])
@@ -746,7 +863,7 @@ macro String.to_integer(self, $Type, int base = 10)
 		char c = self[index++];
 		switch
 		{
-			case base_used != 16 || c < 'A':  c -= '0';
+			case base_used < 10 || c < 'A':   c -= '0';
 			case c <= 'F':                    c -= 'A' - 10;
 			case c < 'a' || c > 'f':          return MALFORMED_INTEGER?;
 			default:                          c -= 'a' - 10;
@@ -784,22 +901,91 @@ fn char? String.to_uchar(self, int base = 10) => self.to_integer(char, base);
 fn double? String.to_double(self) => self.to_real(double);
 fn float? String.to_float(self) => self.to_real(float);
 
-fn Splitter String.splitter(self, String split)
-{
-	return { .string = self, .split = split };
-}
 
+<*
+ Create a Splitter to track tokenizing of a string. Tokenize will turn "foo:bar::baz" into
+ "foo", "bar" and "baz", if you want the empty string to be present, use `tokenize_all`
+ instead.
+
+ @param [in] split : "The string to use for splitting"
+ @return "A Splitter to track the state"
+*>
 fn Splitter String.tokenize(self, String split)
 {
-	return { .string = self, .split = split, .tokenize = true };
+	return { .string = self, .split = split, .type = TOKENIZE };
 }
 
+<*
+ Create a Splitter to track tokenizing of a string. Tokenize will turn "foo:bar::baz" into
+ "foo", "bar" and "baz", if you want the empty string to be present, use `tokenize_all`
+ instead.
+
+ @param [in] split : "The string to use for splitting"
+ @param skip_last : "Set to true to not include the last empty token if present (default: false)"
+ @return "A Splitter to track the state"
+*>
+fn Splitter String.tokenize_all(self, String split, bool skip_last = false)
+{
+	return {
+		.string = self,
+		.split = split,
+		.type = skip_last ? TOKENIZE_ALL_SKIP_LAST : TOKENIZE_ALL
+	};
+}
+
+fn Splitter String.splitter(self, String split) @deprecated("Use tokenize_all instead")
+{
+	return self.tokenize_all(split, skip_last: true);
+}
+
+<*
+ This macro will create a string description of a struct.
+
+ @param [&inout] allocator : "The allocator to use"
+ @param x : "The struct to create a description of"
+*>
+macro String from_struct(Allocator allocator, x)
+{
+	DString s;
+	@stack_mem(512; Allocator mem)
+	{
+		s.init(allocator: mem);
+		io::fprint(&s, x)!!;
+		return s.copy_str(allocator);
+	};
+}
+
+<*
+ This macro will create a temporary string description of a struct.
+
+ @param x : "The struct to create a description of"
+*>
+macro String tfrom_struct(x) => from_struct(tmem, x);
+
+const uint SURROGATE_OFFSET @private = 0x10000;
+const uint SURROGATE_GENERIC_MASK @private = 0xF800;
+const uint SURROGATE_MASK @private = 0xFC00;
+const uint SURROGATE_CODEPOINT_MASK @private = 0x03FF;
+const uint SURROGATE_BITS @private = 10;
+const uint SURROGATE_LOW_VALUE @private = 0xDC00;
+const uint SURROGATE_HIGH_VALUE @private = 0xD800;
+
+enum SplitterType
+{
+	TOKENIZE,
+	TOKENIZE_ALL,
+	TOKENIZE_ALL_SKIP_LAST
+}
+
+<*
+ Splitter is handles tokenizing strings.
+*>
 struct Splitter
 {
 	String string;
 	String split;
 	usz current;
-	bool tokenize;
+	SplitterType type;
 	int last_index;
 }
 
@@ -814,29 +1000,22 @@ fn String? Splitter.next(&self)
 	{
 		usz len = self.string.len;
 		usz current = self.current;
-		if (current >= len) return NO_MORE_ELEMENT?;
+		if (current > len) return NO_MORE_ELEMENT?;
+		if (current == len)
+		{
+			if (self.type != TOKENIZE_ALL) return NO_MORE_ELEMENT?;
+			self.current++;
+			return self.string[current - 1:0];
+		}
 		String remaining = self.string[current..];
 		usz? next = remaining.index_of(self.split);
 		if (try next)
 		{
 			self.current = current + next + self.split.len;
-			if (!next && self.tokenize) continue;
+			if (!next && self.type == TOKENIZE) continue;
 			return remaining[:next];
 		}
 		self.current = len;
 		return remaining;
 	}
 }
-
-macro String from_struct(Allocator allocator, x)
-{
-	DString s;
-	@stack_mem(512; Allocator mem)
-	{
-		s.init(allocator: mem);
-		io::fprint(&s, x)!!;
-		return s.copy_str(allocator);
-	};
-}
-
-macro String tfrom_struct(x) => from_struct(tmem, x);

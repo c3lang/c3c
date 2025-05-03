@@ -1,6 +1,5 @@
 module std::net;
 import std::io;
-import std::ascii;
 
 enum IpProtocol : char (AIFamily ai_family)
 {

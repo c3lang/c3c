@@ -2199,7 +2199,7 @@ static void cast_arr_to_vec(Expr *expr, Type *to_type)
 static void cast_arr_to_arr(Expr *expr, Type *to_type)
 {
 	ASSERT(type_size(to_type) == type_size(expr->type));
-	expr->type = to_type;
+	expr_rewrite_recast(expr, to_type);
 }
 
 static void cast_anyfault_to_bool(Expr *expr, Type *to_type)

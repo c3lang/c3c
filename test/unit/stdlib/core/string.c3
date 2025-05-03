@@ -1,4 +1,6 @@
 module std::core::string::tests @test;
+import std::core::test;
+
 
 fn void test_starts_with()
 {
@@ -10,6 +12,36 @@ fn void test_starts_with()
 	s = "";
 	assert(s.starts_with(""));
 	assert(!s.starts_with("o"));
+}
+
+fn void test_count()
+{
+	String s = "aaabcabd";
+	assert(s.count("a") == 4);
+	assert(s.count("aa") == 1);
+	assert(s.count("ab") == 2);
+	assert(s.count("") == 0);
+	assert(s.count("e") == 0);
+	String s2 = "abbccc";
+	assert(s2.count("a") == 1);
+	assert(s2.count("b") == 2);
+	assert(s2.count("c") == 3);
+	assert(s2.count("ab") == 1);
+	assert(s2.count(" ") == 0);
+}
+
+fn void quick_zstr()
+{
+	String str = "1234";
+	ZString a = str.quick_zstr();
+	ZString b = str[0..2].quick_zstr();
+	ZString c = str[1..].quick_zstr();
+	String empty = {};
+	ZString d = empty.quick_zstr();
+	assert((void*)a == str.ptr);
+	assert((void*)b != str.ptr);
+	assert((void*)c == &str[1]);
+	assert(d[0] == 0);
 }
 
 fn void test_print_null()
@@ -201,8 +233,54 @@ fn void test_rindex_of_char()
 	assert(@catch(test.index_of_char('x')));
 }
 
+fn void test_base_13_convesion()
+{
+	assert("13".to_long(13)!! == 13 + 3);
+	assert("1a".to_long(13)!! == 13 + 10);
+	assert("aa".to_long(13)!! == 13 * 10 + 10);
+}
+
 fn void test_hex_conversion()
 {
 	assert("0x123aCd".to_long()!! == 0x123acd);
 	assert("123acD".to_long(16)!! == 0x123acd);
+}
+
+fn void tokenize()
+{
+	String ex = "foo::bar:baz:";
+	Splitter sp = ex.tokenize(":");
+	DString str;
+    while (try s = sp.next())
+    {
+        str.append(s);
+        str.append("-");
+	}
+	test::eq(str.str_view(), "foo-bar-baz-");
+}
+
+fn void tokenize_all()
+{
+	String ex = "foo::bar:baz:";
+	Splitter sp = ex.tokenize_all(":");
+	DString str;
+    while (try s = sp.next())
+    {
+        str.append(s);
+        str.append("-");
+	}
+	test::eq(str.str_view(), "foo--bar-baz--");
+}
+
+fn void tokenize_all_skip_last()
+{
+	String ex = "foo::bar:baz:";
+	Splitter sp = ex.tokenize_all(":", skip_last: true);
+	DString str;
+    while (try s = sp.next())
+    {
+        str.append(s);
+        str.append("-");
+	}
+	test::eq(str.str_view(), "foo--bar-baz-");
 }

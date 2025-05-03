@@ -4757,7 +4757,9 @@ static void llvm_emit_const_expr(GenContext *c, BEValue *be_value, Expr *expr)
 			return;
 		case CONST_MEMBER:
 		case CONST_UNTYPED_LIST:
-			UNREACHABLE
+			// This is valid in the case that this will be discarded anyway.
+			llvm_value_set(be_value, NULL, type_void);
+			return;
 	}
 	UNREACHABLE
 }

@@ -692,6 +692,7 @@ fn void test()
 @.str.4 = private unnamed_addr constant [2 x i8] c"\0A\00", align 1
 @.str.5 = private unnamed_addr constant [3 x i8] c"*/\00", align 1
 @"lexer_test.Comment$end" = linkonce constant [2 x %"char[]"] [%"char[]" { ptr @.str.4, i64 1 }, %"char[]" { ptr @.str.5, i64 2 }], align 8
+@std.core.ascii.ASCII_LOOKUP = extern_weak constant [256 x i16], align 16
 @"$ct.std.io.ByteReader" = linkonce global %.introspect { i8 9, i64 0, ptr null, i64 24, i64 0, i64 2, [0 x i64] zeroinitializer }, align 8
 @std.core.mem.allocator.thread_allocator = extern_weak thread_local global %any, align 8
 
@@ -702,31 +703,41 @@ entry:
   br i1 %eq, label %and.rhs, label %and.phi
 
 and.rhs:                                          ; preds = %entry
-  %2 = call i8 @std.ascii.char.is_alpha(i8 zeroext %1)
-  %3 = trunc i8 %2 to i1
+  %zext = zext i8 %1 to i64
+  %ptroffset = getelementptr inbounds [2 x i8], ptr @std.core.ascii.ASCII_LOOKUP, i64 %zext
+  %2 = load i16, ptr %ptroffset, align 2
+  %lshrl = lshr i16 %2, 6
+  %3 = and i16 1, %lshrl
+  %trunc = trunc i16 %3 to i8
+  %4 = trunc i8 %trunc to i1
   br label %and.phi
 
 and.phi:                                          ; preds = %and.rhs, %entry
-  %val = phi i1 [ false, %entry ], [ %3, %and.rhs ]
+  %val = phi i1 [ false, %entry ], [ %4, %and.rhs ]
   br i1 %val, label %or.phi, label %or.rhs
 
 or.rhs:                                           ; preds = %and.phi
   %lt = icmp ult i64 0, %0
-  br i1 %lt, label %and.rhs1, label %and.phi2
+  br i1 %lt, label %and.rhs1, label %and.phi6
 
 and.rhs1:                                         ; preds = %or.rhs
-  %4 = call i8 @std.ascii.char.is_alnum(i8 zeroext %1)
-  %5 = trunc i8 %4 to i1
-  br label %and.phi2
+  %zext2 = zext i8 %1 to i64
+  %ptroffset3 = getelementptr inbounds [2 x i8], ptr @std.core.ascii.ASCII_LOOKUP, i64 %zext2
+  %5 = load i16, ptr %ptroffset3, align 2
+  %lshrl4 = lshr i16 %5, 7
+  %6 = and i16 1, %lshrl4
+  %trunc5 = trunc i16 %6 to i8
+  %7 = trunc i8 %trunc5 to i1
+  br label %and.phi6
 
-and.phi2:                                         ; preds = %and.rhs1, %or.rhs
-  %val3 = phi i1 [ false, %or.rhs ], [ %5, %and.rhs1 ]
+and.phi6:                                         ; preds = %and.rhs1, %or.rhs
+  %val7 = phi i1 [ false, %or.rhs ], [ %7, %and.rhs1 ]
   br label %or.phi
 
-or.phi:                                           ; preds = %and.phi2, %and.phi
-  %val4 = phi i1 [ true, %and.phi ], [ %val3, %and.phi2 ]
-  %6 = zext i1 %val4 to i8
-  ret i8 %6
+or.phi:                                           ; preds = %and.phi6, %and.phi
+  %val8 = phi i1 [ true, %and.phi ], [ %val7, %and.phi6 ]
+  %8 = zext i1 %val8 to i8
+  ret i8 %8
 }
 
 ; Function Attrs: nounwind uwtable

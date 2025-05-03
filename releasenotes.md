@@ -2,7 +2,15 @@
 
 ## 0.7.2 Change list
 
-No changes yet
+### Fixes
+- Assert triggered when casting from `int[2]` to `uint[2]` #2115
+- Assert when a macro with compile time value is discarded, e.g. `foo();` where `foo()` returns an untyped list. #2117
+ 
+### Stdlib changes
+- Added `String.quick_ztr` and `String.is_zstr`
+- std::ascii moved into std::core::ascii. Old _m variants are deprecated, as is uint methods.
+- Add `String.tokenize_all` to replace the now deprecated `String.splitter`
+- Add `String.count` to count the number of instances of a string.
 
 ## 0.7.1 Change list
 

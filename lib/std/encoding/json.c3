@@ -3,7 +3,6 @@
 // a copy of which can be found in the LICENSE_STDLIB file.
 module std::encoding::json;
 import std::io;
-import std::ascii;
 import std::collections::object;
 
 faultdef UNEXPECTED_CHARACTER, INVALID_ESCAPE_SEQUENCE, DUPLICATE_MEMBERS, INVALID_NUMBER;
