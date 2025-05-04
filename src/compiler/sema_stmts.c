@@ -181,6 +181,15 @@ static inline bool sema_analyse_assert_stmt(SemaContext *context, Ast *statement
 			return true;
 		case COND_MISSING:
 			// If the assert isn't compile time resolvable, we keep the assert.
+			if (!message_expr)
+			{
+				scratch_buffer_clear();
+				scratch_buffer_append("Assert \"");
+				span_to_scratch(expr->span);
+				scratch_buffer_append("\" failed.");
+				message_expr = expr_new_const_string(expr->span, scratch_buffer_copy());
+				statement->assert_stmt.message = exprid(message_expr);
+			}
 			return true;
 	}
 	UNREACHABLE

@@ -2,6 +2,9 @@
 
 ## 0.7.2 Change list
 
+### Changes / improvements
+- Better default assert messages when no message is specified #2122
+
 ### Fixes
 - Assert triggered when casting from `int[2]` to `uint[2]` #2115
 - Assert when a macro with compile time value is discarded, e.g. `foo();` where `foo()` returns an untyped list. #2117
