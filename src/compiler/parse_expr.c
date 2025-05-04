@@ -796,9 +796,9 @@ static Expr *parse_ternary_expr(ParseContext *c, Expr *left_side)
 static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 {
 	ASSERT(!left && "Unexpected left hand side");
-	Expr *expr;
+	SourceSpan span = c->span;
 	advance_and_verify(c, TOKEN_LPAREN);
-	ASSIGN_EXPR_OR_RET(expr, parse_expr(c), poisoned_expr);
+	ASSIGN_EXPR_OR_RET(Expr *expr, parse_expr(c), poisoned_expr);
 	CONSUME_OR_RET(TOKEN_RPAREN, poisoned_expr);
 	// Look at what follows.
 	switch (expr->expr_kind)
@@ -808,14 +808,15 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 			TypeInfo *info = expr->type_expr;
 			if (tok_is(c, TOKEN_LBRACE))
 			{
-				return parse_type_compound_literal_expr_after_type(c, info);
+				ASSIGN_EXPR_OR_RET(expr, parse_type_compound_literal_expr_after_type(c, info), poisoned_expr);
+				expr->span = extend_span_with_token(span, expr->span);
+				return expr;
 			}
 			// Create a cast expr
 			if (rules[c->tok].prefix)
 			{
 				Precedence prec = tok_is(c, TOKEN_LBRACE) ? PREC_PRIMARY : PREC_CALL;
 				ASSIGN_EXPRID_OR_RET(ExprId inner, parse_precedence(c, prec), poisoned_expr);
-				SourceSpan span = expr->span;
 				*expr = (Expr) {.expr_kind = EXPR_CAST,
 						.span = span,
 						.cast_expr.type_info = type_infoid(info),
@@ -832,7 +833,6 @@ static Expr *parse_grouping_expr(ParseContext *c, Expr *left)
 		default:
 			break;
 	}
-	RANGE_EXTEND_PREV(expr);
 	return expr;
 }
 

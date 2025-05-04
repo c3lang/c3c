@@ -1,0 +1,15 @@
+// #target: macos-x64
+
+module test;
+macro String @echoo(#arg1)
+{
+	return $stringify(#arg1);
+}
+fn void main()
+{
+	String s = @echoo((int[]) { 1, 2 });
+}
+
+/* #expect: test.ll
+
+@.str = private unnamed_addr constant [17 x i8] c"(int[]) { 1, 2 }\00", align 1
