@@ -2704,11 +2704,15 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 		// This will trap any bad negative index, so we're fine.
 		if (safe_mode_enabled())
 		{
+			BEValue excess;
 			if (is_len_range)
 			{
+				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
+				BEValue actual_end_len = end_index;
+				actual_end_len.value = llvm_emit_sub_int(c, end_index.type, end_index.value, start_index.value, slice->span);
+				llvm_emit_panic_if_true(c, &excess, "Negative slice length", slice->span, "Negative value (%d) given for slice length.", &actual_end_len, NULL);
 				if (len.value)
 				{
-					BEValue excess;
 					llvm_emit_int_comp(c, &excess, &len, &end_index, BINARYOP_LT);
 					BEValue actual_end_index = end_index;
 					actual_end_index.value = llvm_emit_sub_int(c, end_index.type, end_index.value, llvm_const_int(c, type_isz, 1), slice->span);
@@ -2717,7 +2721,6 @@ static void llvm_emit_slice_values(GenContext *c, Expr *slice, BEValue *parent_r
 			}
 			else
 			{
-				BEValue excess;
 				llvm_emit_int_comp(c, &excess, &start_index, &end_index, BINARYOP_GT);
 				llvm_emit_panic_if_true(c, &excess, "Negative size", slice->span, "Negative size (start %d is less than end %d)", &start_index, &end_index);
 
