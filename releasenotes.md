@@ -10,12 +10,14 @@
 - Assert when a macro with compile time value is discarded, e.g. `foo();` where `foo()` returns an untyped list. #2117
 - Fix stringify for compound initializers #2120.
 - Fix No index OOB check for `[:^n]` #2123
+- Fix regression in Time diff due to operator overloading #2124
 
 ### Stdlib changes
 - Added `String.quick_ztr` and `String.is_zstr`
 - std::ascii moved into std::core::ascii. Old _m variants are deprecated, as is uint methods.
 - Add `String.tokenize_all` to replace the now deprecated `String.splitter`
 - Add `String.count` to count the number of instances of a string.
+- Add `Duration * Int` and `Clock - Clock` overload. 
 
 ## 0.7.1 Change list
 

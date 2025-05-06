@@ -2,6 +2,24 @@ module nanoduration_test @test;
 import std::io;
 import std::time;
 
+fn void time_diff()
+{
+	Time t = time::now();
+	Time t2 = t + time::SEC;
+	test::eq(t2 - t, time::SEC);
+	test::ne(t, t2);
+	test::eq(t, t);
+}
+
+fn void clock_diff()
+{
+	Clock c = clock::now();
+	Clock c2 = c + time::SEC.to_nano();
+	test::eq(c2 - c, time::SEC.to_nano());
+	c2 = c + time::DAY;
+	test::eq(c2 - c, time::DAY.to_nano());
+}
+
 fn void to_format()
 {
 	char[32] buffer;

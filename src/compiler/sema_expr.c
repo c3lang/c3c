@@ -10964,19 +10964,22 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 	Expr *resolve = method_call;
 	if (reverse_overload)
 	{
-		Decl *temp = decl_new_generated_var(method_decl->func_decl.signature.params[1]->type, VARDECL_LOCAL, parent->span);
-		Expr *generate = expr_generate_decl(temp, expr_copy(parent));
-		parent->expr_kind = EXPR_IDENTIFIER;
-		parent->ident_expr = temp;
-		parent->resolve_status = RESOLVE_DONE;
-		parent->type = temp->type;
-		if (!sema_analyse_expr(context, generate)) return false;
-		Expr *copied_method = expr_copy(method_call);
-		expr_rewrite_two(method_call, generate, copied_method);
+		if (!expr_is_const(parent))
+		{
+			Decl *temp = decl_new_generated_var(method_decl->func_decl.signature.params[1]->type, VARDECL_LOCAL, parent->span);
+			Expr *generate = expr_generate_decl(temp, expr_copy(parent));
+			parent->expr_kind = EXPR_IDENTIFIER;
+			parent->ident_expr = temp;
+			parent->resolve_status = RESOLVE_DONE;
+			parent->type = temp->type;
+			if (!sema_analyse_expr(context, generate)) return false;
+			Expr *copied_method = expr_copy(method_call);
+			expr_rewrite_two(method_call, generate, copied_method);
+			method_call = copied_method;
+		}
 		Expr *arg0 = arguments[0];
 		arguments[0] = parent;
 		parent = arg0;
-		method_call = copied_method;
 	}
 	*method_call = (Expr) { .expr_kind = EXPR_CALL,
 			.span = original_span,
@@ -11000,19 +11003,6 @@ bool sema_insert_method_call(SemaContext *context, Expr *method_call, Decl *meth
 		{
 			expr_rewrite_insert_deref(parent);
 		}
-	}
-	else if (!expr_may_ref(parent))
-	{
-		Expr *inner = expr_copy(parent);
-		parent->expr_kind = EXPR_UNARY;
-		Type *inner_type = inner->type;
-		bool optional = type_is_optional(inner->type);
-		parent->type = type_add_optional(type_get_ptr(type_no_optional(inner_type)), optional);
-		parent->unary_expr.operator = UNARYOP_TADDR;
-		parent->unary_expr.expr = inner;
-		parent->resolve_status = RESOLVE_NOT_DONE;
-		if (!sema_analyse_expr(context, parent)) return false;
-		expr_rewrite_insert_deref(parent);
 	}
 	ASSERT_SPAN(method_call, parent && parent->type && first == parent->type->canonical);
 	if (!sema_expr_analyse_general_call(context, method_call, method_decl, parent, false,

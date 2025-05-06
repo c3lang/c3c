@@ -1779,6 +1779,7 @@ static Decl *sema_find_exact_typed_operator_in_list(Decl **methods, OperatorOver
 	FOREACH(Decl *, func, methods)
 	{
 		if (func == skipped) continue;
+		if (!decl_ok(func)) continue;
 		if (func->func_decl.operator != operator_overload) continue;
 		if (parent_type && parent_type != typeget(func->func_decl.type_parent)) continue;
 		if ((overload_type & func->func_decl.overload_type) == 0) continue;

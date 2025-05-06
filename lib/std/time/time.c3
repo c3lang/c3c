@@ -19,11 +19,11 @@ const Duration MONTH = 30 * DAY;
 const Duration YEAR = 36525 * DAY / 100;
 const Duration FOREVER = long.max;
 
-fn Duration us(long l) @inline => (Duration)l * US;
-fn Duration ms(long l) @inline => (Duration)l * MS;
-fn Duration sec(long l) @inline => (Duration)l * SEC;
-fn Duration min(long l) @inline => (Duration)l * MIN;
-fn Duration hour(long l) @inline => (Duration)l * HOUR;
+fn Duration us(long l) @inline => l * US;
+fn Duration ms(long l) @inline => l * MS;
+fn Duration sec(long l) @inline =>l * SEC;
+fn Duration min(long l) @inline => l * MIN;
+fn Duration hour(long l) @inline => l * HOUR;
 fn Duration from_float(double s) @inline => (Duration)(s * (double)SEC);
 
 struct DateTime
@@ -82,21 +82,21 @@ fn Time now()
 	$endif
 }
 
-fn Time Time.add_seconds(time, long seconds) => time + (Time)(seconds * (long)SEC);
-fn Time Time.add_minutes(time, long minutes) => time + (Time)(minutes * (long)MIN);
-fn Time Time.add_hours(time, long hours) => time + (Time)(hours * (long)HOUR);
-fn Time Time.add_days(time, long days) => time + (Time)(days * (long)DAY);
-fn Time Time.add_weeks(time, long weeks) => time + (Time)(weeks * (long)WEEK);
-fn Time Time.add_duration(time, Duration duration) @operator(+) => time + (Time)duration;
+fn Time Time.add_seconds(time, long seconds) => time + seconds * SEC;
+fn Time Time.add_minutes(time, long minutes) => time + minutes * MIN;
+fn Time Time.add_hours(time, long hours) => time + hours * HOUR;
+fn Time Time.add_days(time, long days) => time + days * DAY;
+fn Time Time.add_weeks(time, long weeks) => time + weeks * WEEK;
+fn Time Time.add_duration(time, Duration duration) @operator_s(+) @inline => (Time)((long)time + (long)duration);
 
 fn int Time.compare_to(time, Time other)
 {
-	if (time == other) return 0;
+	if ((long)time == (long)other) return 0;
 	return time > other ? 1 : -1;
 }
 
 fn double Time.to_seconds(time) => (long)time / (double)SEC;
-fn Duration Time.diff_us(time, Time other) @operator(-) => (Duration)(time - other);
+fn Duration Time.diff_us(time, Time other) @operator(-) => (Duration)((long)time - (long)other);
 fn double Time.diff_sec(time, Time other) => (long)time.diff_us(other) / (double)SEC;
 fn double Time.diff_min(time, Time other) => (long)time.diff_us(other) / (double)MIN;
 fn double Time.diff_hour(time, Time other) => (long)time.diff_us(other) / (double)HOUR;
@@ -108,6 +108,7 @@ fn long NanoDuration.to_ms(nd) => (long)nd / 1_000_000;
 fn Duration NanoDuration.to_duration(nd) => (Duration)nd / 1_000;
 fn NanoDuration Duration.to_nano(td) => (NanoDuration)td * 1_000;
 fn long Duration.to_ms(td) => (long)td / 1_000;
+macro Duration Duration.mult(#td, long #val) @operator_s(*) @safemacro => (Duration)((long)#td * #val);
 
 fn usz? NanoDuration.to_format(&self, Formatter* formatter) @dynamic
 {
