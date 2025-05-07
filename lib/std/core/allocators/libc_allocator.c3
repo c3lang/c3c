@@ -1,13 +1,15 @@
-// Copyright (c) 2021-2024 Christoffer Lerno. All rights reserved.
+// Copyright (c) 2021-2025 Christoffer Lerno. All rights reserved.
 // Use of this source code is governed by the MIT license
 // a copy of which can be found in the LICENSE_STDLIB file.
-
 module std::core::mem::allocator @if(env::LIBC);
 import std::io;
 import libc;
 
-const LibcAllocator LIBC_ALLOCATOR = {};
+<*
+ The LibcAllocator is a wrapper around malloc to conform to the Allocator interface.
+*>
 typedef LibcAllocator (Allocator, Printable) = uptr;
+const LibcAllocator LIBC_ALLOCATOR = {};
 
 fn String LibcAllocator.to_string(&self, Allocator allocator) @dynamic => "Libc allocator".copy(allocator);
 fn usz? LibcAllocator.to_format(&self, Formatter *format) @dynamic => format.print("Libc allocator");

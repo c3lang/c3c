@@ -5,6 +5,13 @@
 module std::core::mem::allocator;
 import std::math;
 
+<*
+ The SimpleHeapAllocator implements a simple heap allocator on top of an allocator function.
+
+ It uses the given allocator function to allocate memory from some source, but never frees it.
+ This allocator is intended to be used in environments where there isn't any native libc malloc,
+ and it has to be emulated from a memory region, or wrapping linear memory as is the case for plain WASM.
+*>
 struct SimpleHeapAllocator (Allocator)
 {
 	MemoryAllocFn alloc_fn;

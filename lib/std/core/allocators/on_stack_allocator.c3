@@ -1,5 +1,14 @@
 module std::core::mem::allocator;
 
+<*
+ The OnStackAllocator is similar to the ArenaAllocator: it allocates from a chunk of memory
+ given to it.
+
+ The difference is that when it runs out of memory it will go directly to its backing allocator
+ rather than failing.
+
+ It is utilized by the @stack_mem macro as an alternative to the temp allocator.
+*>
 struct OnStackAllocator (Allocator)
 {
 	Allocator backing_allocator;
@@ -7,7 +16,6 @@ struct OnStackAllocator (Allocator)
 	usz used;
 	OnStackAllocatorExtraChunk* chunk;
 }
-
 
 struct OnStackAllocatorExtraChunk @local
 {

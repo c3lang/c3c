@@ -1,6 +1,18 @@
 module std::core::mem::allocator;
 import std::math;
 
+// C3 has multiple different allocators available:
+//
+// Name                     Arena  Uses buffer  OOM Fallback?     Mark?   Reset?
+// ArenaAllocator             Yes          Yes             No       Yes      Yes
+// BackedArenaAllocator       Yes           No            Yes       Yes      Yes
+// DynamicArenaAllocator      Yes           No            Yes        No      Yes
+// HeapAllocator               No           No             No        No       No   *Note: Not for normal use
+// LibcAllocator               No           No             No        No       No   *Note: Wraps malloc
+// OnStackAllocator           Yes          Yes            Yes        No       No   *Note: Used by @stack_mem
+// TempAllocator              Yes           No            Yes        No*      No*  *Note: Mark/reset using @pool
+// TrackingAllocator           No           No            N/A        No       No   *Note: Wraps other heap allocator
+
 const DEFAULT_SIZE_PREFIX = usz.sizeof;
 const DEFAULT_SIZE_PREFIX_ALIGNMENT = usz.alignof;
 
@@ -20,13 +32,18 @@ enum AllocInitType
 interface Allocator
 {
 	<*
+	 Acquire memory from the allocator, with the given alignment and initialization type.
+
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
-	 @require size > 0
+	 @require size > 0 : "The size must be 1 or more"
 	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*? acquire(usz size, AllocInitType init_type, usz alignment = 0);
+
 	<*
+	 Resize acquired memory from the allocator, with the given new size and alignment.
+
 	 @require !alignment || math::is_power_of_2(alignment)
 	 @require alignment <= mem::MAX_MEMORY_ALIGNMENT : `alignment too big`
 	 @require ptr != null
@@ -34,8 +51,11 @@ interface Allocator
 	 @return? mem::INVALID_ALLOC_SIZE, mem::OUT_OF_MEMORY
 	*>
 	fn void*? resize(void* ptr, usz new_size, usz alignment = 0);
+
 	<*
-	 @require ptr != null
+	 Release memory acquired using `acquire` or `resize`.
+
+	 @require ptr != null : "Empty pointers should never be released"
 	*>
 	fn void release(void* ptr, bool aligned);
 }

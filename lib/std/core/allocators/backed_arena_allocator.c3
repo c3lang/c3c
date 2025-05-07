@@ -1,18 +1,27 @@
 module std::core::mem::allocator;
 import std::io, std::math;
 
-struct AllocChunk @local
-{
-	usz size;
-	char[*] data;
-}
+<*
+ The backed arena allocator provides an allocator that will allocate from a pre-allocated chunk of memory
+ provided by it's backing allocator. The allocator supports mark / reset operations, so it can be used
+ as a stack (push-pop) allocator. If the initial memory is used up, it will fall back to regular allocations,
+ that will be safely freed on `reset`.
 
+ While this allocator is similar to the dynamic arena, it supports multiple "save points", which the dynamic arena
+ doesn't.
+*>
 struct BackedArenaAllocator (Allocator)
 {
 	Allocator backing_allocator;
 	ExtraPage* last_page;
 	usz used;
 	usz capacity;
+	char[*] data;
+}
+
+struct AllocChunk @local
+{
+	usz size;
 	char[*] data;
 }
 

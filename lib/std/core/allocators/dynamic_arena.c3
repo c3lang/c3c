@@ -4,6 +4,17 @@
 module std::core::mem::allocator;
 import std::math;
 
+<*
+ The dynamic arena allocator is an arena allocator that can grow by adding additional arena "pages".
+ It only supports reset, at which point all pages except the first one is released to the backing
+ allocator.
+
+ If you want multiple save points, use the BackedArenaAllocator instead.
+
+ The advantage over the BackedArenaAllocator, is that when allocating beyond the first "page", it will
+ retain the characteristics of an arena allocator (allocating a large piece of memory then handing off
+ memory from that memory), wheras the BackedArenaAllocator will have heap allocator characteristics.
+*>
 struct DynamicArenaAllocator (Allocator)
 {
 	Allocator backing_allocator;
