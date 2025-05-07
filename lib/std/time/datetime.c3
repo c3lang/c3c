@@ -149,6 +149,8 @@ fn void DateTime.set_time(&self, Time time)
 	self.time = time;
 }
 
+fn DateTime DateTime.add_us(&self, Duration d) @operator_s(+) => from_time(self.time + d);
+fn DateTime DateTime.sub_us(&self, Duration d) @operator(-) => from_time(self.time - d);
 fn DateTime DateTime.add_seconds(&self, int seconds) => from_time(self.time.add_seconds(seconds));
 fn DateTime DateTime.add_minutes(&self, int minutes) => from_time(self.time.add_minutes(minutes));
 fn DateTime DateTime.add_hours(&self, int hours) => from_time(self.time.add_hours(hours));
@@ -187,6 +189,8 @@ fn DateTime DateTime.add_months(&self, int months)
 }
 
 
+fn TzDateTime TzDateTime.add_us(&self, Duration d) @operator_s(+) => self.date_time.add_us(d).to_gmt_offset(self.gmt_offset);
+fn TzDateTime TzDateTime.sub_us(&self, Duration d) @operator(-) => self.date_time.sub_us(d).to_gmt_offset(self.gmt_offset);
 fn TzDateTime TzDateTime.add_seconds(&self, int seconds) => self.date_time.add_seconds(seconds).to_gmt_offset(self.gmt_offset);
 fn TzDateTime TzDateTime.add_minutes(&self, int minutes) => self.date_time.add_minutes(minutes).to_gmt_offset(self.gmt_offset);
 fn TzDateTime TzDateTime.add_hours(&self, int hours) => self.date_time.add_hours(hours).to_gmt_offset(self.gmt_offset);
@@ -248,7 +252,8 @@ fn double DateTime.diff_sec(self, DateTime from)
 {
 	return (double)self.time.diff_us(from.time) / (double)time::SEC;
 }
-fn Duration DateTime.diff_us(self, DateTime from)
+
+fn Duration DateTime.diff_us(self, DateTime from) @operator(-)
 {
 	return self.time.diff_us(from.time);
 }

@@ -18,6 +18,7 @@
 - Add `String.tokenize_all` to replace the now deprecated `String.splitter`
 - Add `String.count` to count the number of instances of a string.
 - Add `Duration * Int` and `Clock - Clock` overload. 
+- Add `DateTime + Duration` overloads.
 
 ## 0.7.1 Change list
 

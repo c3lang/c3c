@@ -9,6 +9,8 @@ fn void time_diff()
 	test::eq(t2 - t, time::SEC);
 	test::ne(t, t2);
 	test::eq(t, t);
+	t2 = t2 - time::SEC;
+	test::eq(t, t2);
 }
 
 fn void clock_diff()
@@ -18,6 +20,8 @@ fn void clock_diff()
 	test::eq(c2 - c, time::SEC.to_nano());
 	c2 = c + time::DAY;
 	test::eq(c2 - c, time::DAY.to_nano());
+	c2 = c2 - time::DAY;
+	test::eq(c2, c);
 }
 
 fn void to_format()

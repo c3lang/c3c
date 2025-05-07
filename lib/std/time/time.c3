@@ -88,6 +88,7 @@ fn Time Time.add_hours(time, long hours) => time + hours * HOUR;
 fn Time Time.add_days(time, long days) => time + days * DAY;
 fn Time Time.add_weeks(time, long weeks) => time + weeks * WEEK;
 fn Time Time.add_duration(time, Duration duration) @operator_s(+) @inline => (Time)((long)time + (long)duration);
+fn Time Time.sub_duration(time, Duration duration) @operator(-) @inline => (Time)((long)time - (long)duration);
 
 fn int Time.compare_to(time, Time other)
 {

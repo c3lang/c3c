@@ -3,7 +3,7 @@ import std::time;
 
 fn void test_parse_and_add()
 {
-DateTime d = datetime::from_date(1973, APRIL, 27);
+	DateTime d = datetime::from_date(1973, APRIL, 27);
 	assert(d.year == 1973);
 	assert(d.month == APRIL);
 	assert(d.day == 27);
@@ -42,6 +42,11 @@ DateTime d = datetime::from_date(1973, APRIL, 27);
     x = d.add_months(0);
     assert(x.year == 1975);
     assert(x.month == MAY);
+    test::eq(x.day, 4);
+    x = d + time::DAY;
+    test::eq(x.day, 5);
+    x = x - time::DAY;
+    test::eq(x.day, 4);
 }
 
 fn void test_timezone()
@@ -107,6 +112,10 @@ fn void test_timezone()
 	//   keeping the others unchanged. The gmt_offset should be kept as well.
 	dt = d1.add_hours(1);
 	assert(dt.day == 15);
+    dt = dt + time::DAY;
+    test::eq(dt.day, 16);
+    dt = dt - time::DAY;
+    test::eq(dt.day, 15);
 	assert(dt.hour == 1);
 	tz = d2.add_hours(1);
 	assert(tz.day == 15);
